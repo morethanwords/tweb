@@ -323,6 +323,7 @@ export default function onStreamFetch(event: FetchEvent, params: string, search:
 }
 
 export function toggleStreamInUse({url, inUse}: {url: string, inUse: boolean}) {
+  [url] = url.split('?');
   const needle = 'stream/';
   const index = url.indexOf(needle);
   const info = parseInfo(url.slice(index + needle.length));

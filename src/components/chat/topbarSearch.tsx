@@ -7,7 +7,7 @@
 import type {ReactionsContext} from '../../lib/appManagers/appReactionsManager';
 import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, splitProps, on, untrack, batch, Accessor} from 'solid-js';
 import InputSearch from '../inputSearch';
-import {createListTransition, createMiddleware} from '../stories/viewer';
+import {createMiddleware} from '../stories/viewer';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import classNames from '../../helpers/string/classNames';
 import PopupElement from '../popups';
@@ -18,8 +18,6 @@ import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import {ChannelsChannelParticipants, Message, MessageReactions, Reaction, ReactionCount, SavedReactionTag} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import Scrollable from '../scrollable';
-import {resolveElements} from '@solid-primitives/refs';
-import liteMode from '../../helpers/liteMode';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import {createLoadableList} from '../sidebarRight/tabs/statistics';
 import {Middleware, getMiddleware} from '../../helpers/middleware';
@@ -46,13 +44,13 @@ import PeerTitle from '../peerTitle';
 import ReactionsElement from './reactions';
 import ReactionElement, {ReactionLayoutType} from './reaction';
 import {ScrollableXTsx} from '../stories/list';
-import pause from '../../helpers/schedulers/pause';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import fastSmoothScroll from '../../helpers/fastSmoothScroll';
 import Icon from '../icon';
 import PopupPremium from '../popups/premium';
 import usePremium from '../../stores/premium';
+import {AnimationList} from '../../helpers/solid/animationList';
 
 export const ScrollableYTsx = (props: {
   children: JSX.Element,
@@ -77,48 +75,6 @@ export const ScrollableYTsx = (props: {
 
   return ret;
 };
-
-export function AnimationList(props: {
-  children: JSX.Element
-  animationOptions: KeyframeAnimationOptions,
-  keyframes: Keyframe[],
-  animateOnlyReplacement?: boolean
-}) {
-  const transitionList = createListTransition(resolveElements(() => props.children).toArray, {
-    exitMethod: 'keep-index',
-    onChange: ({added, removed, finishRemoved}) => {
-      const options = props.animationOptions;
-      if(!liteMode.isAvailable('animations')) {
-        options.duration = 0;
-      }
-
-      const keyframes = props.keyframes;
-      queueMicrotask(() => {
-        if(!props.animateOnlyReplacement || removed.length) {
-          for(const element of added) {
-            element.animate(keyframes, options);
-          }
-        }
-
-        if(props.animateOnlyReplacement && !added.length) {
-          finishRemoved(removed);
-          return;
-        }
-
-        const reversedKeyframes = keyframes.slice().reverse();
-        const promises: Promise<any>[] = [];
-        for(const element of removed) {
-          const animation = element.animate(reversedKeyframes, options);
-          promises.push(animation.finished);
-        }
-
-        Promise.all(promises).then(() => finishRemoved(removed));
-      });
-    }
-  }) as unknown as JSX.Element;
-
-  return transitionList;
-}
 
 type LoadOptions = {
   middleware: Middleware,

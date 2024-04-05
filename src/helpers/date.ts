@@ -14,6 +14,9 @@ export const monthsLocalized = months.slice();
 export const daysLocalized = days.slice();
 
 export const ONE_DAY = 86400;
+export const ONE_DAY_MINUTES = 1440;
+export const ONE_WEEK = 604800;
+export const ONE_WEEK_MINUTES = 10080;
 
 export function getWeekDays() {
   const dateTimeFormat = I18n.getDateTimeFormat({weekday: 'long'});

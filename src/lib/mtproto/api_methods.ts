@@ -362,6 +362,10 @@ export default abstract class ApiManagerMethods extends AppManager {
     });
   }
 
+  public getTimezonesList() {
+    return this.invokeApiCacheable('help.getTimezonesList', {hash: 0}, {cacheSeconds: 86400, syncIfHasResult: true});
+  }
+
   public getLimit(type: ApiLimitType, isPremium?: boolean) {
     return callbackify(this.getAppConfig(), (appConfig) => {
       const map: {[type in ApiLimitType]: [keyof MTAppConfig, keyof MTAppConfig] | keyof MTAppConfig} = {

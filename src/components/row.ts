@@ -111,9 +111,13 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
       this.container.classList.add('no-wrap');
     }
 
-    if(options.subtitle) {
+    if(options.subtitle || options.subtitleLangKey) {
       const subtitle = this.subtitle;
-      setContent(subtitle, options.subtitle);
+      if(options.subtitleLangKey) {
+        subtitle.append(i18n(options.subtitleLangKey, options.subtitleLangArgs));
+      } else {
+        setContent(subtitle, options.subtitle);
+      }
 
       if(options.noWrap) subtitle.classList.add('no-wrap');
 
@@ -126,8 +130,6 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
         setContent(subtitleRight, options.subtitleRight);
         this.subtitleRow.append(subtitle, subtitleRight);
       }
-    } else if(options.subtitleLangKey) {
-      this.subtitle.append(i18n(options.subtitleLangKey, options.subtitleLangArgs));
     }
 
     let havePadding = !!options.havePadding;

@@ -18,7 +18,7 @@ import makeError from '../helpers/makeError';
 import {makeMediaSize} from '../helpers/mediaSize';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
 import middlewarePromise from '../helpers/middlewarePromise';
-import {Chat, ChatFull, User, UserFull, UserStatus} from '../layer';
+import {BusinessWeeklyOpen, BusinessWorkHours, Chat, ChatFull, HelpTimezonesList, Timezone, User, UserFull, UserStatus} from '../layer';
 import appImManager from '../lib/appManagers/appImManager';
 import {AppManagers} from '../lib/appManagers/managers';
 import getServerMessageId from '../lib/appManagers/utils/messageId/getServerMessageId';
@@ -30,6 +30,7 @@ import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import rootScope from '../lib/rootScope';
 import {avatarNew} from './avatarNew';
+import BusinessHours from './businessHours';
 import CheckboxField from './checkboxField';
 import {generateDelimiter} from './generateDelimiter';
 import PeerProfileAvatars, {SHOW_NO_AVATAR} from './peerProfileAvatars';
@@ -42,6 +43,7 @@ import {toast} from './toast';
 import formatUserPhone from './wrappers/formatUserPhone';
 import wrapPeerTitle from './wrappers/peerTitle';
 import wrapTopicNameButton from './wrappers/topicNameButton';
+import {batch, createRoot, createSignal} from 'solid-js';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   setInnerHTML(row.title, text || undefined);
@@ -61,6 +63,10 @@ export default class PeerProfile {
   private notifications: Row;
   private location: Row;
   private link: Row;
+  private businessHours: Row;
+
+  private setBusinessHours: (hours: BusinessWorkHours) => void;
+  private setTimezones: (timezones: Timezone[]) => void;
 
   private cleaned: boolean;
   private setMoreDetailsTimeout: number;
@@ -229,12 +235,22 @@ export default class PeerProfile {
       icon: 'location'
     });
 
+    this.businessHours = createRoot((dispose) => {
+      this.middlewareHelper.onDestroy(dispose);
+      const [hours, setHours] = createSignal<BusinessWorkHours>();
+      const [timezones, setTimezones] = createSignal<Timezone[]>();
+      this.setBusinessHours = setHours;
+      this.setTimezones = setTimezones;
+      return BusinessHours({hours, timezones});
+    });
+
     this.section.content.append(
       this.phone.container,
       this.username.container,
       this.location.container,
       this.bio.container,
-      this.link.container
+      this.link.container,
+      this.businessHours.container
     );
 
     const {listenerSetter} = this;
@@ -418,7 +434,8 @@ export default class PeerProfile {
       this.phone,
       this.username,
       this.location,
-      this.link
+      this.link,
+      this.businessHours
     ].forEach((row) => {
       row.container.style.display = 'none';
     });
@@ -639,7 +656,7 @@ export default class PeerProfile {
     };
   }
 
-  private async _setMoreDetails(peerId: PeerId, peerFull: ChatFull | UserFull, appConfig:  MTAppConfig) {
+  private async _setMoreDetails(peerId: PeerId, peerFull: ChatFull | UserFull, appConfig: MTAppConfig, timezones: Timezone[]) {
     const m = this.getMiddlewarePromise();
     const isTopic = !!(this.threadId && await m(this.managers.appPeersManager.isForum(peerId)));
     const isPremium = peerId.isUser() ? await m(this.managers.appUsersManager.isPremium(peerId.toUserId())) : undefined;
@@ -690,6 +707,18 @@ export default class PeerProfile {
       callbacks.push(() => setText(location.address, this.location));
     }
 
+    const workHours = (peerFull as UserFull).business_work_hours;
+    if(workHours) {
+      batch(() => {
+        this.setBusinessHours(workHours);
+        this.setTimezones(timezones);
+      });
+    }
+
+    callbacks.push(() => {
+      this.businessHours.container.style.display = workHours ? '' : 'none';
+    });
+
     this.setMoreDetailsTimeout = window.setTimeout(() => this.setMoreDetails(true), 60e3);
 
     return () => {
@@ -709,16 +738,17 @@ export default class PeerProfile {
 
     const results = await m(Promise.all([
       this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId, override),
-      this.managers.acknowledged.apiManager.getAppConfig()
+      this.managers.acknowledged.apiManager.getAppConfig(),
+      this.managers.acknowledged.apiManager.getTimezonesList()
     ]));
-    const promises = results.map((result) => result.result) as [Promise<ChatFull | UserFull.userFull>, Promise<MTAppConfig>];
-    const setPromise = m(Promise.all(promises)).then(async([peerFull, appConfig]) => {
+    const promises = results.map((result) => result.result) as [Promise<ChatFull | UserFull.userFull>, Promise<MTAppConfig>, Promise<HelpTimezonesList.helpTimezonesList>];
+    const setPromise = m(Promise.all(promises)).then(async([peerFull, appConfig, timezonesList]) => {
       if(await m(this.managers.appPeersManager.isPeerRestricted(peerId))) {
         // this.log.warn('peer changed');
         return;
       }
 
-      return m(this._setMoreDetails(peerId, peerFull, appConfig));
+      return m(this._setMoreDetails(peerId, peerFull, appConfig, timezonesList.timezones));
     });
 
     if(results.every((result) => result.cached) && manual) {

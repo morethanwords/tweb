@@ -540,6 +540,7 @@ export namespace User {
       stories_hidden?: true,
       stories_unavailable?: true,
       contact_require_premium?: true,
+      bot_business?: true,
     }>,
     flags2?: number,
     id: string | number,
@@ -783,6 +784,8 @@ export namespace ChatFull {
       translations_disabled?: true,
       stories_pinned_available?: true,
       view_forum_as_messages?: true,
+      restricted_sponsored?: true,
+      can_view_revenue?: true,
     }>,
     flags2?: number,
     id: string | number,
@@ -928,12 +931,14 @@ export namespace Message {
       pinned?: true,
       noforwards?: true,
       invert_media?: true,
+      offline?: true,
       unread?: true,
       is_outgoing?: true,
       is_scheduled?: true,
       sponsored?: true,
       local?: true,
     }>,
+    flags2?: number,
     id: number,
     from_id?: Peer,
     from_boosts_applied?: number,
@@ -941,6 +946,7 @@ export namespace Message {
     saved_peer_id?: Peer,
     fwd_from?: MessageFwdHeader,
     via_bot_id?: string | number,
+    via_business_bot_id?: string | number,
     reply_to?: MessageReplyHeader,
     date: number,
     message: string,
@@ -955,6 +961,7 @@ export namespace Message {
     reactions?: MessageReactions,
     restriction_reason?: Array<RestrictionReason>,
     ttl_period?: number,
+    quick_reply_shortcut_id?: number,
     mid?: number,
     peerId?: PeerId,
     fromId?: PeerId,
@@ -1193,7 +1200,7 @@ export namespace MessageMedia {
 /**
  * @link https://core.telegram.org/type/MessageAction
  */
-export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionGroupCallScheduled | MessageAction.messageActionSetChatTheme | MessageAction.messageActionChatJoinedByRequest | MessageAction.messageActionWebViewDataSentMe | MessageAction.messageActionWebViewDataSent | MessageAction.messageActionGiftPremium | MessageAction.messageActionTopicCreate | MessageAction.messageActionTopicEdit | MessageAction.messageActionSuggestProfilePhoto | MessageAction.messageActionRequestedPeer | MessageAction.messageActionSetChatWallPaper | MessageAction.messageActionGiftCode | MessageAction.messageActionGiveawayLaunch | MessageAction.messageActionGiveawayResults | MessageAction.messageActionBoostApply | MessageAction.messageActionDiscussionStarted | MessageAction.messageActionChannelJoined | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
+export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionGroupCallScheduled | MessageAction.messageActionSetChatTheme | MessageAction.messageActionChatJoinedByRequest | MessageAction.messageActionWebViewDataSentMe | MessageAction.messageActionWebViewDataSent | MessageAction.messageActionGiftPremium | MessageAction.messageActionTopicCreate | MessageAction.messageActionTopicEdit | MessageAction.messageActionSuggestProfilePhoto | MessageAction.messageActionRequestedPeer | MessageAction.messageActionSetChatWallPaper | MessageAction.messageActionGiftCode | MessageAction.messageActionGiveawayLaunch | MessageAction.messageActionGiveawayResults | MessageAction.messageActionBoostApply | MessageAction.messageActionRequestedPeerSentMe | MessageAction.messageActionDiscussionStarted | MessageAction.messageActionChannelJoined | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
 
 export namespace MessageAction {
   export type messageActionEmpty = {
@@ -1468,6 +1475,12 @@ export namespace MessageAction {
   export type messageActionBoostApply = {
     _: 'messageActionBoostApply',
     boosts: number
+  };
+
+  export type messageActionRequestedPeerSentMe = {
+    _: 'messageActionRequestedPeerSentMe',
+    button_id: number,
+    peers: Array<RequestedPeer>
   };
 
   export type messageActionDiscussionStarted = {
@@ -1864,10 +1877,14 @@ export namespace PeerSettings {
       autoarchived?: true,
       invite_members?: true,
       request_chat_broadcast?: true,
+      business_bot_paused?: true,
+      business_bot_can_reply?: true,
     }>,
     geo_distance?: number,
     request_chat_title?: string,
-    request_chat_date?: number
+    request_chat_date?: number,
+    business_bot_id?: string | number,
+    business_bot_manage_url?: string
   };
 }
 
@@ -1976,6 +1993,7 @@ export namespace UserFull {
       contact_require_premium?: true,
       read_dates_private?: true,
     }>,
+    flags2?: number,
     id: string | number,
     about?: string,
     settings: PeerSettings,
@@ -1994,7 +2012,15 @@ export namespace UserFull {
     bot_broadcast_admin_rights?: ChatAdminRights,
     premium_gifts?: Array<PremiumGiftOption>,
     wallpaper?: WallPaper,
-    stories?: PeerStories
+    stories?: PeerStories,
+    business_work_hours?: BusinessWorkHours,
+    business_location?: BusinessLocation,
+    business_greeting_message?: BusinessGreetingMessage,
+    business_away_message?: BusinessAwayMessage,
+    business_intro?: BusinessIntro,
+    birthday?: Birthday,
+    personal_channel_id?: string | number,
+    personal_channel_message?: number
   };
 }
 
@@ -2297,7 +2323,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateChannelPinnedTopic | Update.updateChannelPinnedTopics | Update.updateUser | Update.updateAutoSaveSettings | Update.updateGroupInvitePrivacyForbidden | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload | Update.updatePts;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateChannelPinnedTopic | Update.updateChannelPinnedTopics | Update.updateUser | Update.updateAutoSaveSettings | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateSmsJob | Update.updateQuickReplies | Update.updateNewQuickReply | Update.updateDeleteQuickReply | Update.updateQuickReplyMessage | Update.updateDeleteQuickReplyMessages | Update.updateBotBusinessConnect | Update.updateBotNewBusinessMessage | Update.updateBotEditBusinessMessage | Update.updateBotDeleteBusinessMessage | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload | Update.updatePts;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -3104,11 +3130,6 @@ export namespace Update {
     _: 'updateAutoSaveSettings'
   };
 
-  export type updateGroupInvitePrivacyForbidden = {
-    _: 'updateGroupInvitePrivacyForbidden',
-    user_id: string | number
-  };
-
   export type updateStory = {
     _: 'updateStory',
     peer: Peer,
@@ -3201,6 +3222,69 @@ export namespace Update {
     _: 'updateSavedReactionTags',
     tags?: SavedReactionTag[],
     savedPeerId?: PeerId
+  };
+
+  export type updateSmsJob = {
+    _: 'updateSmsJob',
+    job_id: string
+  };
+
+  export type updateQuickReplies = {
+    _: 'updateQuickReplies',
+    quick_replies: Array<QuickReply>
+  };
+
+  export type updateNewQuickReply = {
+    _: 'updateNewQuickReply',
+    quick_reply: QuickReply
+  };
+
+  export type updateDeleteQuickReply = {
+    _: 'updateDeleteQuickReply',
+    shortcut_id: number
+  };
+
+  export type updateQuickReplyMessage = {
+    _: 'updateQuickReplyMessage',
+    message: Message
+  };
+
+  export type updateDeleteQuickReplyMessages = {
+    _: 'updateDeleteQuickReplyMessages',
+    shortcut_id: number,
+    messages: Array<number>
+  };
+
+  export type updateBotBusinessConnect = {
+    _: 'updateBotBusinessConnect',
+    connection: BotBusinessConnection,
+    qts: number
+  };
+
+  export type updateBotNewBusinessMessage = {
+    _: 'updateBotNewBusinessMessage',
+    flags?: number,
+    connection_id: string,
+    message: Message,
+    reply_to_message?: Message,
+    qts: number
+  };
+
+  export type updateBotEditBusinessMessage = {
+    _: 'updateBotEditBusinessMessage',
+    flags?: number,
+    connection_id: string,
+    message: Message,
+    reply_to_message?: Message,
+    qts: number
+  };
+
+  export type updateBotDeleteBusinessMessage = {
+    _: 'updateBotDeleteBusinessMessage',
+    connection_id: string,
+    peer: Peer,
+    messages: Array<number>,
+    qts: number
   };
 
   export type updateNewDiscussionMessage = {
@@ -3958,7 +4042,7 @@ export namespace ContactsFound {
 /**
  * @link https://core.telegram.org/type/InputPrivacyKey
  */
-export type InputPrivacyKey = InputPrivacyKey.inputPrivacyKeyStatusTimestamp | InputPrivacyKey.inputPrivacyKeyChatInvite | InputPrivacyKey.inputPrivacyKeyPhoneCall | InputPrivacyKey.inputPrivacyKeyPhoneP2P | InputPrivacyKey.inputPrivacyKeyForwards | InputPrivacyKey.inputPrivacyKeyProfilePhoto | InputPrivacyKey.inputPrivacyKeyPhoneNumber | InputPrivacyKey.inputPrivacyKeyAddedByPhone | InputPrivacyKey.inputPrivacyKeyVoiceMessages | InputPrivacyKey.inputPrivacyKeyAbout;
+export type InputPrivacyKey = InputPrivacyKey.inputPrivacyKeyStatusTimestamp | InputPrivacyKey.inputPrivacyKeyChatInvite | InputPrivacyKey.inputPrivacyKeyPhoneCall | InputPrivacyKey.inputPrivacyKeyPhoneP2P | InputPrivacyKey.inputPrivacyKeyForwards | InputPrivacyKey.inputPrivacyKeyProfilePhoto | InputPrivacyKey.inputPrivacyKeyPhoneNumber | InputPrivacyKey.inputPrivacyKeyAddedByPhone | InputPrivacyKey.inputPrivacyKeyVoiceMessages | InputPrivacyKey.inputPrivacyKeyAbout | InputPrivacyKey.inputPrivacyKeyBirthday;
 
 export namespace InputPrivacyKey {
   export type inputPrivacyKeyStatusTimestamp = {
@@ -4000,12 +4084,16 @@ export namespace InputPrivacyKey {
   export type inputPrivacyKeyAbout = {
     _: 'inputPrivacyKeyAbout'
   };
+
+  export type inputPrivacyKeyBirthday = {
+    _: 'inputPrivacyKeyBirthday'
+  };
 }
 
 /**
  * @link https://core.telegram.org/type/PrivacyKey
  */
-export type PrivacyKey = PrivacyKey.privacyKeyStatusTimestamp | PrivacyKey.privacyKeyChatInvite | PrivacyKey.privacyKeyPhoneCall | PrivacyKey.privacyKeyPhoneP2P | PrivacyKey.privacyKeyForwards | PrivacyKey.privacyKeyProfilePhoto | PrivacyKey.privacyKeyPhoneNumber | PrivacyKey.privacyKeyAddedByPhone | PrivacyKey.privacyKeyVoiceMessages | PrivacyKey.privacyKeyAbout;
+export type PrivacyKey = PrivacyKey.privacyKeyStatusTimestamp | PrivacyKey.privacyKeyChatInvite | PrivacyKey.privacyKeyPhoneCall | PrivacyKey.privacyKeyPhoneP2P | PrivacyKey.privacyKeyForwards | PrivacyKey.privacyKeyProfilePhoto | PrivacyKey.privacyKeyPhoneNumber | PrivacyKey.privacyKeyAddedByPhone | PrivacyKey.privacyKeyVoiceMessages | PrivacyKey.privacyKeyAbout | PrivacyKey.privacyKeyBirthday;
 
 export namespace PrivacyKey {
   export type privacyKeyStatusTimestamp = {
@@ -4047,12 +4135,16 @@ export namespace PrivacyKey {
   export type privacyKeyAbout = {
     _: 'privacyKeyAbout'
   };
+
+  export type privacyKeyBirthday = {
+    _: 'privacyKeyBirthday'
+  };
 }
 
 /**
  * @link https://core.telegram.org/type/InputPrivacyRule
  */
-export type InputPrivacyRule = InputPrivacyRule.inputPrivacyValueAllowContacts | InputPrivacyRule.inputPrivacyValueAllowAll | InputPrivacyRule.inputPrivacyValueAllowUsers | InputPrivacyRule.inputPrivacyValueDisallowContacts | InputPrivacyRule.inputPrivacyValueDisallowAll | InputPrivacyRule.inputPrivacyValueDisallowUsers | InputPrivacyRule.inputPrivacyValueAllowChatParticipants | InputPrivacyRule.inputPrivacyValueDisallowChatParticipants | InputPrivacyRule.inputPrivacyValueAllowCloseFriends;
+export type InputPrivacyRule = InputPrivacyRule.inputPrivacyValueAllowContacts | InputPrivacyRule.inputPrivacyValueAllowAll | InputPrivacyRule.inputPrivacyValueAllowUsers | InputPrivacyRule.inputPrivacyValueDisallowContacts | InputPrivacyRule.inputPrivacyValueDisallowAll | InputPrivacyRule.inputPrivacyValueDisallowUsers | InputPrivacyRule.inputPrivacyValueAllowChatParticipants | InputPrivacyRule.inputPrivacyValueDisallowChatParticipants | InputPrivacyRule.inputPrivacyValueAllowCloseFriends | InputPrivacyRule.inputPrivacyValueAllowPremium;
 
 export namespace InputPrivacyRule {
   export type inputPrivacyValueAllowContacts = {
@@ -4094,12 +4186,16 @@ export namespace InputPrivacyRule {
   export type inputPrivacyValueAllowCloseFriends = {
     _: 'inputPrivacyValueAllowCloseFriends'
   };
+
+  export type inputPrivacyValueAllowPremium = {
+    _: 'inputPrivacyValueAllowPremium'
+  };
 }
 
 /**
  * @link https://core.telegram.org/type/PrivacyRule
  */
-export type PrivacyRule = PrivacyRule.privacyValueAllowContacts | PrivacyRule.privacyValueAllowAll | PrivacyRule.privacyValueAllowUsers | PrivacyRule.privacyValueDisallowContacts | PrivacyRule.privacyValueDisallowAll | PrivacyRule.privacyValueDisallowUsers | PrivacyRule.privacyValueAllowChatParticipants | PrivacyRule.privacyValueDisallowChatParticipants | PrivacyRule.privacyValueAllowCloseFriends;
+export type PrivacyRule = PrivacyRule.privacyValueAllowContacts | PrivacyRule.privacyValueAllowAll | PrivacyRule.privacyValueAllowUsers | PrivacyRule.privacyValueDisallowContacts | PrivacyRule.privacyValueDisallowAll | PrivacyRule.privacyValueDisallowUsers | PrivacyRule.privacyValueAllowChatParticipants | PrivacyRule.privacyValueDisallowChatParticipants | PrivacyRule.privacyValueAllowCloseFriends | PrivacyRule.privacyValueAllowPremium;
 
 export namespace PrivacyRule {
   export type privacyValueAllowContacts = {
@@ -4140,6 +4236,10 @@ export namespace PrivacyRule {
 
   export type privacyValueAllowCloseFriends = {
     _: 'privacyValueAllowCloseFriends'
+  };
+
+  export type privacyValueAllowPremium = {
+    _: 'privacyValueAllowPremium'
   };
 }
 
@@ -4623,11 +4723,10 @@ export namespace StickerSet {
       archived?: true,
       official?: true,
       masks?: true,
-      animated?: true,
-      videos?: true,
       emojis?: true,
       text_color?: true,
       channel_emoji_status?: true,
+      creator?: true,
     }>,
     installed_date?: number,
     id: string | number,
@@ -4697,7 +4796,7 @@ export namespace BotInfo {
 /**
  * @link https://core.telegram.org/type/KeyboardButton
  */
-export type KeyboardButton = KeyboardButton.keyboardButton | KeyboardButton.keyboardButtonUrl | KeyboardButton.keyboardButtonCallback | KeyboardButton.keyboardButtonRequestPhone | KeyboardButton.keyboardButtonRequestGeoLocation | KeyboardButton.keyboardButtonSwitchInline | KeyboardButton.keyboardButtonGame | KeyboardButton.keyboardButtonBuy | KeyboardButton.keyboardButtonUrlAuth | KeyboardButton.inputKeyboardButtonUrlAuth | KeyboardButton.keyboardButtonRequestPoll | KeyboardButton.inputKeyboardButtonUserProfile | KeyboardButton.keyboardButtonUserProfile | KeyboardButton.keyboardButtonWebView | KeyboardButton.keyboardButtonSimpleWebView | KeyboardButton.keyboardButtonRequestPeer;
+export type KeyboardButton = KeyboardButton.keyboardButton | KeyboardButton.keyboardButtonUrl | KeyboardButton.keyboardButtonCallback | KeyboardButton.keyboardButtonRequestPhone | KeyboardButton.keyboardButtonRequestGeoLocation | KeyboardButton.keyboardButtonSwitchInline | KeyboardButton.keyboardButtonGame | KeyboardButton.keyboardButtonBuy | KeyboardButton.keyboardButtonUrlAuth | KeyboardButton.inputKeyboardButtonUrlAuth | KeyboardButton.keyboardButtonRequestPoll | KeyboardButton.inputKeyboardButtonUserProfile | KeyboardButton.keyboardButtonUserProfile | KeyboardButton.keyboardButtonWebView | KeyboardButton.keyboardButtonSimpleWebView | KeyboardButton.keyboardButtonRequestPeer | KeyboardButton.inputKeyboardButtonRequestPeer;
 
 export namespace KeyboardButton {
   export type keyboardButton = {
@@ -4806,6 +4905,20 @@ export namespace KeyboardButton {
 
   export type keyboardButtonRequestPeer = {
     _: 'keyboardButtonRequestPeer',
+    text: string,
+    button_id: number,
+    peer_type: RequestPeerType,
+    max_quantity: number
+  };
+
+  export type inputKeyboardButtonRequestPeer = {
+    _: 'inputKeyboardButtonRequestPeer',
+    flags?: number,
+    pFlags: Partial<{
+      name_requested?: true,
+      username_requested?: true,
+      photo_requested?: true,
+    }>,
     text: string,
     button_id: number,
     peer_type: RequestPeerType,
@@ -6955,7 +7068,8 @@ export namespace PhoneCall {
     key_fingerprint: string | number,
     protocol: PhoneCallProtocol,
     connections: Array<PhoneConnection>,
-    start_date: number
+    start_date: number,
+    custom_parameters?: DataJSON
   };
 
   export type phoneCallDiscarded = {
@@ -9178,6 +9292,7 @@ export namespace DialogFilter {
     id: number,
     title: string,
     emoticon?: string,
+    color?: number,
     pinned_peers: Array<InputPeer>,
     include_peers: Array<InputPeer>,
     exclude_peers: Array<InputPeer>,
@@ -9201,6 +9316,7 @@ export namespace DialogFilter {
     id: number,
     title: string,
     emoticon?: string,
+    color?: number,
     pinned_peers: Array<InputPeer>,
     include_peers: Array<InputPeer>,
     localId?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21,
@@ -10087,6 +10203,7 @@ export namespace SponsoredMessage {
     pFlags: Partial<{
       recommended?: true,
       show_peer_photo?: true,
+      can_report?: true,
     }>,
     random_id: Uint8Array,
     from_id?: Peer,
@@ -12374,6 +12491,770 @@ export namespace OutboxReadDate {
   };
 }
 
+/**
+ * @link https://core.telegram.org/type/smsjobs.EligibilityToJoin
+ */
+export type SmsjobsEligibilityToJoin = SmsjobsEligibilityToJoin.smsjobsEligibleToJoin;
+
+export namespace SmsjobsEligibilityToJoin {
+  export type smsjobsEligibleToJoin = {
+    _: 'smsjobs.eligibleToJoin',
+    terms_url: string,
+    monthly_sent_sms: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/smsjobs.Status
+ */
+export type SmsjobsStatus = SmsjobsStatus.smsjobsStatus;
+
+export namespace SmsjobsStatus {
+  export type smsjobsStatus = {
+    _: 'smsjobs.status',
+    flags?: number,
+    pFlags: Partial<{
+      allow_international?: true,
+    }>,
+    recent_sent: number,
+    recent_since: number,
+    recent_remains: number,
+    total_sent: number,
+    total_since: number,
+    last_gift_slug?: string,
+    terms_url: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/SmsJob
+ */
+export type SmsJob = SmsJob.smsJob;
+
+export namespace SmsJob {
+  export type smsJob = {
+    _: 'smsJob',
+    job_id: string,
+    phone_number: string,
+    text: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BusinessWeeklyOpen
+ */
+export type BusinessWeeklyOpen = BusinessWeeklyOpen.businessWeeklyOpen;
+
+export namespace BusinessWeeklyOpen {
+  export type businessWeeklyOpen = {
+    _: 'businessWeeklyOpen',
+    start_minute: number,
+    end_minute: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BusinessWorkHours
+ */
+export type BusinessWorkHours = BusinessWorkHours.businessWorkHours;
+
+export namespace BusinessWorkHours {
+  export type businessWorkHours = {
+    _: 'businessWorkHours',
+    flags?: number,
+    pFlags: Partial<{
+      open_now?: true,
+    }>,
+    timezone_id: string,
+    weekly_open: Array<BusinessWeeklyOpen>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BusinessLocation
+ */
+export type BusinessLocation = BusinessLocation.businessLocation;
+
+export namespace BusinessLocation {
+  export type businessLocation = {
+    _: 'businessLocation',
+    flags?: number,
+    geo_point?: GeoPoint,
+    address: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/InputBusinessRecipients
+ */
+export type InputBusinessRecipients = InputBusinessRecipients.inputBusinessRecipients;
+
+export namespace InputBusinessRecipients {
+  export type inputBusinessRecipients = {
+    _: 'inputBusinessRecipients',
+    flags?: number,
+    pFlags: Partial<{
+      existing_chats?: true,
+      new_chats?: true,
+      contacts?: true,
+      non_contacts?: true,
+      exclude_selected?: true,
+    }>,
+    users?: Array<InputUser>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BusinessRecipients
+ */
+export type BusinessRecipients = BusinessRecipients.businessRecipients;
+
+export namespace BusinessRecipients {
+  export type businessRecipients = {
+    _: 'businessRecipients',
+    flags?: number,
+    pFlags: Partial<{
+      existing_chats?: true,
+      new_chats?: true,
+      contacts?: true,
+      non_contacts?: true,
+      exclude_selected?: true,
+    }>,
+    users?: Array<string | number>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BusinessAwayMessageSchedule
+ */
+export type BusinessAwayMessageSchedule = BusinessAwayMessageSchedule.businessAwayMessageScheduleAlways | BusinessAwayMessageSchedule.businessAwayMessageScheduleOutsideWorkHours | BusinessAwayMessageSchedule.businessAwayMessageScheduleCustom;
+
+export namespace BusinessAwayMessageSchedule {
+  export type businessAwayMessageScheduleAlways = {
+    _: 'businessAwayMessageScheduleAlways'
+  };
+
+  export type businessAwayMessageScheduleOutsideWorkHours = {
+    _: 'businessAwayMessageScheduleOutsideWorkHours'
+  };
+
+  export type businessAwayMessageScheduleCustom = {
+    _: 'businessAwayMessageScheduleCustom',
+    start_date: number,
+    end_date: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/InputBusinessGreetingMessage
+ */
+export type InputBusinessGreetingMessage = InputBusinessGreetingMessage.inputBusinessGreetingMessage;
+
+export namespace InputBusinessGreetingMessage {
+  export type inputBusinessGreetingMessage = {
+    _: 'inputBusinessGreetingMessage',
+    shortcut_id: number,
+    recipients: InputBusinessRecipients,
+    no_activity_days: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BusinessGreetingMessage
+ */
+export type BusinessGreetingMessage = BusinessGreetingMessage.businessGreetingMessage;
+
+export namespace BusinessGreetingMessage {
+  export type businessGreetingMessage = {
+    _: 'businessGreetingMessage',
+    shortcut_id: number,
+    recipients: BusinessRecipients,
+    no_activity_days: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/InputBusinessAwayMessage
+ */
+export type InputBusinessAwayMessage = InputBusinessAwayMessage.inputBusinessAwayMessage;
+
+export namespace InputBusinessAwayMessage {
+  export type inputBusinessAwayMessage = {
+    _: 'inputBusinessAwayMessage',
+    flags?: number,
+    pFlags: Partial<{
+      offline_only?: true,
+    }>,
+    shortcut_id: number,
+    schedule: BusinessAwayMessageSchedule,
+    recipients: InputBusinessRecipients
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BusinessAwayMessage
+ */
+export type BusinessAwayMessage = BusinessAwayMessage.businessAwayMessage;
+
+export namespace BusinessAwayMessage {
+  export type businessAwayMessage = {
+    _: 'businessAwayMessage',
+    flags?: number,
+    pFlags: Partial<{
+      offline_only?: true,
+    }>,
+    shortcut_id: number,
+    schedule: BusinessAwayMessageSchedule,
+    recipients: BusinessRecipients
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/Timezone
+ */
+export type Timezone = Timezone.timezone;
+
+export namespace Timezone {
+  export type timezone = {
+    _: 'timezone',
+    id: string,
+    name: string,
+    utc_offset: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/help.TimezonesList
+ */
+export type HelpTimezonesList = HelpTimezonesList.helpTimezonesListNotModified | HelpTimezonesList.helpTimezonesList;
+
+export namespace HelpTimezonesList {
+  export type helpTimezonesListNotModified = {
+    _: 'help.timezonesListNotModified'
+  };
+
+  export type helpTimezonesList = {
+    _: 'help.timezonesList',
+    timezones: Array<Timezone>,
+    hash: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/QuickReply
+ */
+export type QuickReply = QuickReply.quickReply;
+
+export namespace QuickReply {
+  export type quickReply = {
+    _: 'quickReply',
+    shortcut_id: number,
+    shortcut: string,
+    top_message: number,
+    count: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/InputQuickReplyShortcut
+ */
+export type InputQuickReplyShortcut = InputQuickReplyShortcut.inputQuickReplyShortcut | InputQuickReplyShortcut.inputQuickReplyShortcutId;
+
+export namespace InputQuickReplyShortcut {
+  export type inputQuickReplyShortcut = {
+    _: 'inputQuickReplyShortcut',
+    shortcut: string
+  };
+
+  export type inputQuickReplyShortcutId = {
+    _: 'inputQuickReplyShortcutId',
+    shortcut_id: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.QuickReplies
+ */
+export type MessagesQuickReplies = MessagesQuickReplies.messagesQuickReplies | MessagesQuickReplies.messagesQuickRepliesNotModified;
+
+export namespace MessagesQuickReplies {
+  export type messagesQuickReplies = {
+    _: 'messages.quickReplies',
+    quick_replies: Array<QuickReply>,
+    messages: Array<Message>,
+    chats: Array<Chat>,
+    users: Array<User>
+  };
+
+  export type messagesQuickRepliesNotModified = {
+    _: 'messages.quickRepliesNotModified'
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/ConnectedBot
+ */
+export type ConnectedBot = ConnectedBot.connectedBot;
+
+export namespace ConnectedBot {
+  export type connectedBot = {
+    _: 'connectedBot',
+    flags?: number,
+    pFlags: Partial<{
+      can_reply?: true,
+    }>,
+    bot_id: string | number,
+    recipients: BusinessBotRecipients
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/account.ConnectedBots
+ */
+export type AccountConnectedBots = AccountConnectedBots.accountConnectedBots;
+
+export namespace AccountConnectedBots {
+  export type accountConnectedBots = {
+    _: 'account.connectedBots',
+    connected_bots: Array<ConnectedBot>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.DialogFilters
+ */
+export type MessagesDialogFilters = MessagesDialogFilters.messagesDialogFilters;
+
+export namespace MessagesDialogFilters {
+  export type messagesDialogFilters = {
+    _: 'messages.dialogFilters',
+    flags?: number,
+    pFlags: Partial<{
+      tags_enabled?: true,
+    }>,
+    filters: Array<DialogFilter>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/Birthday
+ */
+export type Birthday = Birthday.birthday;
+
+export namespace Birthday {
+  export type birthday = {
+    _: 'birthday',
+    flags?: number,
+    day: number,
+    month: number,
+    year?: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BotBusinessConnection
+ */
+export type BotBusinessConnection = BotBusinessConnection.botBusinessConnection;
+
+export namespace BotBusinessConnection {
+  export type botBusinessConnection = {
+    _: 'botBusinessConnection',
+    flags?: number,
+    pFlags: Partial<{
+      can_reply?: true,
+      disabled?: true,
+    }>,
+    connection_id: string,
+    user_id: string | number,
+    dc_id: number,
+    date: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/InputBusinessIntro
+ */
+export type InputBusinessIntro = InputBusinessIntro.inputBusinessIntro;
+
+export namespace InputBusinessIntro {
+  export type inputBusinessIntro = {
+    _: 'inputBusinessIntro',
+    flags?: number,
+    title: string,
+    description: string,
+    sticker?: InputDocument
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BusinessIntro
+ */
+export type BusinessIntro = BusinessIntro.businessIntro;
+
+export namespace BusinessIntro {
+  export type businessIntro = {
+    _: 'businessIntro',
+    flags?: number,
+    title: string,
+    description: string,
+    sticker?: Document
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.MyStickers
+ */
+export type MessagesMyStickers = MessagesMyStickers.messagesMyStickers;
+
+export namespace MessagesMyStickers {
+  export type messagesMyStickers = {
+    _: 'messages.myStickers',
+    count: number,
+    sets: Array<StickerSetCovered>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/InputCollectible
+ */
+export type InputCollectible = InputCollectible.inputCollectibleUsername | InputCollectible.inputCollectiblePhone;
+
+export namespace InputCollectible {
+  export type inputCollectibleUsername = {
+    _: 'inputCollectibleUsername',
+    username: string
+  };
+
+  export type inputCollectiblePhone = {
+    _: 'inputCollectiblePhone',
+    phone: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/fragment.CollectibleInfo
+ */
+export type FragmentCollectibleInfo = FragmentCollectibleInfo.fragmentCollectibleInfo;
+
+export namespace FragmentCollectibleInfo {
+  export type fragmentCollectibleInfo = {
+    _: 'fragment.collectibleInfo',
+    purchase_date: number,
+    currency: string,
+    amount: string | number,
+    crypto_currency: string,
+    crypto_amount: string | number,
+    url: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/InputBusinessBotRecipients
+ */
+export type InputBusinessBotRecipients = InputBusinessBotRecipients.inputBusinessBotRecipients;
+
+export namespace InputBusinessBotRecipients {
+  export type inputBusinessBotRecipients = {
+    _: 'inputBusinessBotRecipients',
+    flags?: number,
+    pFlags: Partial<{
+      existing_chats?: true,
+      new_chats?: true,
+      contacts?: true,
+      non_contacts?: true,
+      exclude_selected?: true,
+    }>,
+    users?: Array<InputUser>,
+    exclude_users?: Array<InputUser>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BusinessBotRecipients
+ */
+export type BusinessBotRecipients = BusinessBotRecipients.businessBotRecipients;
+
+export namespace BusinessBotRecipients {
+  export type businessBotRecipients = {
+    _: 'businessBotRecipients',
+    flags?: number,
+    pFlags: Partial<{
+      existing_chats?: true,
+      new_chats?: true,
+      contacts?: true,
+      non_contacts?: true,
+      exclude_selected?: true,
+    }>,
+    users?: Array<string | number>,
+    exclude_users?: Array<string | number>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/ContactBirthday
+ */
+export type ContactBirthday = ContactBirthday.contactBirthday;
+
+export namespace ContactBirthday {
+  export type contactBirthday = {
+    _: 'contactBirthday',
+    contact_id: string | number,
+    birthday: Birthday
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/contacts.ContactBirthdays
+ */
+export type ContactsContactBirthdays = ContactsContactBirthdays.contactsContactBirthdays;
+
+export namespace ContactsContactBirthdays {
+  export type contactsContactBirthdays = {
+    _: 'contacts.contactBirthdays',
+    contacts: Array<ContactBirthday>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/MissingInvitee
+ */
+export type MissingInvitee = MissingInvitee.missingInvitee;
+
+export namespace MissingInvitee {
+  export type missingInvitee = {
+    _: 'missingInvitee',
+    flags?: number,
+    pFlags: Partial<{
+      premium_would_allow_invite?: true,
+      premium_required_for_pm?: true,
+    }>,
+    user_id: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.InvitedUsers
+ */
+export type MessagesInvitedUsers = MessagesInvitedUsers.messagesInvitedUsers;
+
+export namespace MessagesInvitedUsers {
+  export type messagesInvitedUsers = {
+    _: 'messages.invitedUsers',
+    updates: Updates,
+    missing_invitees: Array<MissingInvitee>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/InputBusinessChatLink
+ */
+export type InputBusinessChatLink = InputBusinessChatLink.inputBusinessChatLink;
+
+export namespace InputBusinessChatLink {
+  export type inputBusinessChatLink = {
+    _: 'inputBusinessChatLink',
+    flags?: number,
+    message: string,
+    entities?: Array<MessageEntity>,
+    title?: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BusinessChatLink
+ */
+export type BusinessChatLink = BusinessChatLink.businessChatLink;
+
+export namespace BusinessChatLink {
+  export type businessChatLink = {
+    _: 'businessChatLink',
+    flags?: number,
+    link: string,
+    message: string,
+    entities?: Array<MessageEntity>,
+    title?: string,
+    views: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/account.BusinessChatLinks
+ */
+export type AccountBusinessChatLinks = AccountBusinessChatLinks.accountBusinessChatLinks;
+
+export namespace AccountBusinessChatLinks {
+  export type accountBusinessChatLinks = {
+    _: 'account.businessChatLinks',
+    links: Array<BusinessChatLink>,
+    chats: Array<Chat>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/account.ResolvedBusinessChatLinks
+ */
+export type AccountResolvedBusinessChatLinks = AccountResolvedBusinessChatLinks.accountResolvedBusinessChatLinks;
+
+export namespace AccountResolvedBusinessChatLinks {
+  export type accountResolvedBusinessChatLinks = {
+    _: 'account.resolvedBusinessChatLinks',
+    flags?: number,
+    peer: Peer,
+    message: string,
+    entities?: Array<MessageEntity>,
+    chats: Array<Chat>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/RequestedPeer
+ */
+export type RequestedPeer = RequestedPeer.requestedPeerUser | RequestedPeer.requestedPeerChat | RequestedPeer.requestedPeerChannel;
+
+export namespace RequestedPeer {
+  export type requestedPeerUser = {
+    _: 'requestedPeerUser',
+    flags?: number,
+    user_id: string | number,
+    first_name?: string,
+    last_name?: string,
+    username?: string,
+    photo?: Photo
+  };
+
+  export type requestedPeerChat = {
+    _: 'requestedPeerChat',
+    flags?: number,
+    chat_id: string | number,
+    title?: string,
+    photo?: Photo
+  };
+
+  export type requestedPeerChannel = {
+    _: 'requestedPeerChannel',
+    flags?: number,
+    channel_id: string | number,
+    title?: string,
+    username?: string,
+    photo?: Photo
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/SponsoredMessageReportOption
+ */
+export type SponsoredMessageReportOption = SponsoredMessageReportOption.sponsoredMessageReportOption;
+
+export namespace SponsoredMessageReportOption {
+  export type sponsoredMessageReportOption = {
+    _: 'sponsoredMessageReportOption',
+    text: string,
+    option: Uint8Array
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/channels.SponsoredMessageReportResult
+ */
+export type ChannelsSponsoredMessageReportResult = ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultChooseOption | ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultAdsHidden | ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultReported;
+
+export namespace ChannelsSponsoredMessageReportResult {
+  export type channelsSponsoredMessageReportResultChooseOption = {
+    _: 'channels.sponsoredMessageReportResultChooseOption',
+    title: string,
+    options: Array<SponsoredMessageReportOption>
+  };
+
+  export type channelsSponsoredMessageReportResultAdsHidden = {
+    _: 'channels.sponsoredMessageReportResultAdsHidden'
+  };
+
+  export type channelsSponsoredMessageReportResultReported = {
+    _: 'channels.sponsoredMessageReportResultReported'
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/stats.BroadcastRevenueStats
+ */
+export type StatsBroadcastRevenueStats = StatsBroadcastRevenueStats.statsBroadcastRevenueStats;
+
+export namespace StatsBroadcastRevenueStats {
+  export type statsBroadcastRevenueStats = {
+    _: 'stats.broadcastRevenueStats',
+    top_hours_graph: StatsGraph,
+    revenue_graph: StatsGraph,
+    current_balance: string | number,
+    available_balance: string | number,
+    overall_revenue: string | number,
+    usd_rate: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/stats.BroadcastRevenueWithdrawalUrl
+ */
+export type StatsBroadcastRevenueWithdrawalUrl = StatsBroadcastRevenueWithdrawalUrl.statsBroadcastRevenueWithdrawalUrl;
+
+export namespace StatsBroadcastRevenueWithdrawalUrl {
+  export type statsBroadcastRevenueWithdrawalUrl = {
+    _: 'stats.broadcastRevenueWithdrawalUrl',
+    url: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BroadcastRevenueTransaction
+ */
+export type BroadcastRevenueTransaction = BroadcastRevenueTransaction.broadcastRevenueTransactionProceeds | BroadcastRevenueTransaction.broadcastRevenueTransactionWithdrawal | BroadcastRevenueTransaction.broadcastRevenueTransactionRefund;
+
+export namespace BroadcastRevenueTransaction {
+  export type broadcastRevenueTransactionProceeds = {
+    _: 'broadcastRevenueTransactionProceeds',
+    amount: string | number,
+    from_date: number,
+    to_date: number
+  };
+
+  export type broadcastRevenueTransactionWithdrawal = {
+    _: 'broadcastRevenueTransactionWithdrawal',
+    flags?: number,
+    pFlags: Partial<{
+      pending?: true,
+      failed?: true,
+    }>,
+    amount: string | number,
+    date: number,
+    provider: string,
+    transaction_date?: number,
+    transaction_url?: string
+  };
+
+  export type broadcastRevenueTransactionRefund = {
+    _: 'broadcastRevenueTransactionRefund',
+    amount: string | number,
+    date: number,
+    provider: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/stats.BroadcastRevenueTransactions
+ */
+export type StatsBroadcastRevenueTransactions = StatsBroadcastRevenueTransactions.statsBroadcastRevenueTransactions;
+
+export namespace StatsBroadcastRevenueTransactions {
+  export type statsBroadcastRevenueTransactions = {
+    _: 'stats.broadcastRevenueTransactions',
+    count: number,
+    transactions: Array<BroadcastRevenueTransaction>
+  };
+}
+
 export interface ConstructorDeclMap {
   'error': Error.error,
   'inputPeerEmpty': InputPeer.inputPeerEmpty,
@@ -13467,7 +14348,6 @@ export interface ConstructorDeclMap {
   'appWebViewResultUrl': AppWebViewResult.appWebViewResultUrl,
   'inlineBotWebView': InlineBotWebView.inlineBotWebView,
   'readParticipantDate': ReadParticipantDate.readParticipantDate,
-  'updateGroupInvitePrivacyForbidden': Update.updateGroupInvitePrivacyForbidden,
   'dialogFilterChatlist': DialogFilter.dialogFilterChatlist,
   'inputChatlistDialogFilter': InputChatlist.inputChatlistDialogFilter,
   'exportedChatlistInvite': ExportedChatlistInvite.exportedChatlistInvite,
@@ -13584,6 +14464,79 @@ export interface ConstructorDeclMap {
   'outboxReadDate': OutboxReadDate.outboxReadDate,
   'messageActionBoostApply': MessageAction.messageActionBoostApply,
   'channelAdminLogEventActionChangeEmojiStickerSet': ChannelAdminLogEventAction.channelAdminLogEventActionChangeEmojiStickerSet,
+  'smsjobs.eligibleToJoin': SmsjobsEligibilityToJoin.smsjobsEligibleToJoin,
+  'smsjobs.status': SmsjobsStatus.smsjobsStatus,
+  'updateSmsJob': Update.updateSmsJob,
+  'smsJob': SmsJob.smsJob,
+  'businessWeeklyOpen': BusinessWeeklyOpen.businessWeeklyOpen,
+  'businessWorkHours': BusinessWorkHours.businessWorkHours,
+  'businessLocation': BusinessLocation.businessLocation,
+  'inputBusinessRecipients': InputBusinessRecipients.inputBusinessRecipients,
+  'businessRecipients': BusinessRecipients.businessRecipients,
+  'businessAwayMessageScheduleAlways': BusinessAwayMessageSchedule.businessAwayMessageScheduleAlways,
+  'businessAwayMessageScheduleOutsideWorkHours': BusinessAwayMessageSchedule.businessAwayMessageScheduleOutsideWorkHours,
+  'businessAwayMessageScheduleCustom': BusinessAwayMessageSchedule.businessAwayMessageScheduleCustom,
+  'inputBusinessGreetingMessage': InputBusinessGreetingMessage.inputBusinessGreetingMessage,
+  'businessGreetingMessage': BusinessGreetingMessage.businessGreetingMessage,
+  'inputBusinessAwayMessage': InputBusinessAwayMessage.inputBusinessAwayMessage,
+  'businessAwayMessage': BusinessAwayMessage.businessAwayMessage,
+  'timezone': Timezone.timezone,
+  'help.timezonesListNotModified': HelpTimezonesList.helpTimezonesListNotModified,
+  'help.timezonesList': HelpTimezonesList.helpTimezonesList,
+  'quickReply': QuickReply.quickReply,
+  'inputQuickReplyShortcut': InputQuickReplyShortcut.inputQuickReplyShortcut,
+  'inputQuickReplyShortcutId': InputQuickReplyShortcut.inputQuickReplyShortcutId,
+  'messages.quickReplies': MessagesQuickReplies.messagesQuickReplies,
+  'messages.quickRepliesNotModified': MessagesQuickReplies.messagesQuickRepliesNotModified,
+  'updateQuickReplies': Update.updateQuickReplies,
+  'updateNewQuickReply': Update.updateNewQuickReply,
+  'updateDeleteQuickReply': Update.updateDeleteQuickReply,
+  'updateQuickReplyMessage': Update.updateQuickReplyMessage,
+  'updateDeleteQuickReplyMessages': Update.updateDeleteQuickReplyMessages,
+  'connectedBot': ConnectedBot.connectedBot,
+  'account.connectedBots': AccountConnectedBots.accountConnectedBots,
+  'messages.dialogFilters': MessagesDialogFilters.messagesDialogFilters,
+  'birthday': Birthday.birthday,
+  'updateBotBusinessConnect': Update.updateBotBusinessConnect,
+  'updateBotNewBusinessMessage': Update.updateBotNewBusinessMessage,
+  'updateBotEditBusinessMessage': Update.updateBotEditBusinessMessage,
+  'updateBotDeleteBusinessMessage': Update.updateBotDeleteBusinessMessage,
+  'botBusinessConnection': BotBusinessConnection.botBusinessConnection,
+  'inputBusinessIntro': InputBusinessIntro.inputBusinessIntro,
+  'businessIntro': BusinessIntro.businessIntro,
+  'messages.myStickers': MessagesMyStickers.messagesMyStickers,
+  'inputCollectibleUsername': InputCollectible.inputCollectibleUsername,
+  'inputCollectiblePhone': InputCollectible.inputCollectiblePhone,
+  'fragment.collectibleInfo': FragmentCollectibleInfo.fragmentCollectibleInfo,
+  'inputBusinessBotRecipients': InputBusinessBotRecipients.inputBusinessBotRecipients,
+  'businessBotRecipients': BusinessBotRecipients.businessBotRecipients,
+  'contactBirthday': ContactBirthday.contactBirthday,
+  'contacts.contactBirthdays': ContactsContactBirthdays.contactsContactBirthdays,
+  'inputPrivacyKeyBirthday': InputPrivacyKey.inputPrivacyKeyBirthday,
+  'privacyKeyBirthday': PrivacyKey.privacyKeyBirthday,
+  'inputPrivacyValueAllowPremium': InputPrivacyRule.inputPrivacyValueAllowPremium,
+  'privacyValueAllowPremium': PrivacyRule.privacyValueAllowPremium,
+  'missingInvitee': MissingInvitee.missingInvitee,
+  'messages.invitedUsers': MessagesInvitedUsers.messagesInvitedUsers,
+  'inputBusinessChatLink': InputBusinessChatLink.inputBusinessChatLink,
+  'businessChatLink': BusinessChatLink.businessChatLink,
+  'account.businessChatLinks': AccountBusinessChatLinks.accountBusinessChatLinks,
+  'account.resolvedBusinessChatLinks': AccountResolvedBusinessChatLinks.accountResolvedBusinessChatLinks,
+  'requestedPeerUser': RequestedPeer.requestedPeerUser,
+  'requestedPeerChat': RequestedPeer.requestedPeerChat,
+  'requestedPeerChannel': RequestedPeer.requestedPeerChannel,
+  'messageActionRequestedPeerSentMe': MessageAction.messageActionRequestedPeerSentMe,
+  'inputKeyboardButtonRequestPeer': KeyboardButton.inputKeyboardButtonRequestPeer,
+  'sponsoredMessageReportOption': SponsoredMessageReportOption.sponsoredMessageReportOption,
+  'channels.sponsoredMessageReportResultChooseOption': ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultChooseOption,
+  'channels.sponsoredMessageReportResultAdsHidden': ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultAdsHidden,
+  'channels.sponsoredMessageReportResultReported': ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultReported,
+  'stats.broadcastRevenueStats': StatsBroadcastRevenueStats.statsBroadcastRevenueStats,
+  'stats.broadcastRevenueWithdrawalUrl': StatsBroadcastRevenueWithdrawalUrl.statsBroadcastRevenueWithdrawalUrl,
+  'broadcastRevenueTransactionProceeds': BroadcastRevenueTransaction.broadcastRevenueTransactionProceeds,
+  'broadcastRevenueTransactionWithdrawal': BroadcastRevenueTransaction.broadcastRevenueTransactionWithdrawal,
+  'broadcastRevenueTransactionRefund': BroadcastRevenueTransaction.broadcastRevenueTransactionRefund,
+  'stats.broadcastRevenueTransactions': StatsBroadcastRevenueTransactions.statsBroadcastRevenueTransactions,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -13863,7 +14816,8 @@ export type MessagesSendMessage = {
   reply_markup?: ReplyMarkup,
   entities?: Array<MessageEntity>,
   schedule_date?: number,
-  send_as?: InputPeer
+  send_as?: InputPeer,
+  quick_reply_shortcut?: InputQuickReplyShortcut
 };
 
 export type MessagesSendMedia = {
@@ -13882,7 +14836,8 @@ export type MessagesSendMedia = {
   reply_markup?: ReplyMarkup,
   entities?: Array<MessageEntity>,
   schedule_date?: number,
-  send_as?: InputPeer
+  send_as?: InputPeer,
+  quick_reply_shortcut?: InputQuickReplyShortcut
 };
 
 export type MessagesForwardMessages = {
@@ -13899,7 +14854,8 @@ export type MessagesForwardMessages = {
   to_peer: InputPeer,
   top_msg_id?: number,
   schedule_date?: number,
-  send_as?: InputPeer
+  send_as?: InputPeer,
+  quick_reply_shortcut?: InputQuickReplyShortcut
 };
 
 export type MessagesReportSpam = {
@@ -14473,7 +15429,8 @@ export type MessagesSendInlineBotResult = {
   query_id: string | number,
   id: string,
   schedule_date?: number,
-  send_as?: InputPeer
+  send_as?: InputPeer,
+  quick_reply_shortcut?: InputQuickReplyShortcut
 };
 
 export type ChannelsExportMessageLink = {
@@ -14514,7 +15471,8 @@ export type MessagesEditMessage = {
   media?: InputMedia,
   reply_markup?: ReplyMarkup,
   entities?: Array<MessageEntity>,
-  schedule_date?: number
+  schedule_date?: number,
+  quick_reply_shortcut_id?: number
 };
 
 export type MessagesEditInlineBotMessage = {
@@ -14632,7 +15590,8 @@ export type AccountConfirmPhone = {
 export type ChannelsGetAdminedPublicChannels = {
   flags?: number,
   by_location?: boolean,
-  check_limit?: boolean
+  check_limit?: boolean,
+  for_personal?: boolean
 };
 
 export type MessagesGetMaskStickers = {
@@ -14786,8 +15745,6 @@ export type MessagesSetBotPrecheckoutResults = {
 export type StickersCreateStickerSet = {
   flags?: number,
   masks?: boolean,
-  animated?: boolean,
-  videos?: boolean,
   emojis?: boolean,
   text_color?: boolean,
   user_id: InputUser,
@@ -14813,6 +15770,8 @@ export type StickersAddStickerToSet = {
 };
 
 export type MessagesUploadMedia = {
+  flags?: number,
+  business_connection_id?: string,
   peer: InputPeer,
   media: InputMedia
 };
@@ -15007,7 +15966,8 @@ export type MessagesSendMultiMedia = {
   reply_to?: InputReplyTo,
   multi_media: Array<InputSingleMedia>,
   schedule_date?: number,
-  send_as?: InputPeer
+  send_as?: InputPeer,
+  quick_reply_shortcut?: InputQuickReplyShortcut
 };
 
 export type MessagesUploadEncryptedFile = {
@@ -16969,6 +17929,217 @@ export type ChannelsSetEmojiStickers = {
   stickerset: InputStickerSet
 };
 
+export type SmsjobsIsEligibleToJoin = {
+
+};
+
+export type SmsjobsJoin = {
+
+};
+
+export type SmsjobsLeave = {
+
+};
+
+export type SmsjobsUpdateSettings = {
+  flags?: number,
+  allow_international?: boolean
+};
+
+export type SmsjobsGetStatus = {
+
+};
+
+export type SmsjobsGetSmsJob = {
+  job_id: string
+};
+
+export type SmsjobsFinishJob = {
+  flags?: number,
+  job_id: string,
+  error?: string
+};
+
+export type HelpGetTimezonesList = {
+  hash: number
+};
+
+export type AccountUpdateBusinessWorkHours = {
+  flags?: number,
+  business_work_hours?: BusinessWorkHours
+};
+
+export type AccountUpdateBusinessLocation = {
+  flags?: number,
+  geo_point?: InputGeoPoint,
+  address?: string
+};
+
+export type AccountUpdateBusinessGreetingMessage = {
+  flags?: number,
+  message?: InputBusinessGreetingMessage
+};
+
+export type AccountUpdateBusinessAwayMessage = {
+  flags?: number,
+  message?: InputBusinessAwayMessage
+};
+
+export type MessagesGetQuickReplies = {
+  hash: string | number
+};
+
+export type MessagesReorderQuickReplies = {
+  order: Array<number>
+};
+
+export type MessagesCheckQuickReplyShortcut = {
+  shortcut: string
+};
+
+export type MessagesEditQuickReplyShortcut = {
+  shortcut_id: number,
+  shortcut: string
+};
+
+export type MessagesDeleteQuickReplyShortcut = {
+  shortcut_id: number
+};
+
+export type MessagesGetQuickReplyMessages = {
+  flags?: number,
+  shortcut_id: number,
+  id?: Array<number>,
+  hash: string | number
+};
+
+export type MessagesSendQuickReplyMessages = {
+  peer: InputPeer,
+  shortcut_id: number,
+  id: Array<number>,
+  random_id: Array<string | number>
+};
+
+export type MessagesDeleteQuickReplyMessages = {
+  shortcut_id: number,
+  id: Array<number>
+};
+
+export type AccountUpdateConnectedBot = {
+  flags?: number,
+  can_reply?: boolean,
+  deleted?: boolean,
+  bot: InputUser,
+  recipients: InputBusinessBotRecipients
+};
+
+export type AccountGetConnectedBots = {
+
+};
+
+export type MessagesToggleDialogFilterTags = {
+  enabled: boolean
+};
+
+export type InvokeWithBusinessConnection = {
+  connection_id: string,
+  query: any
+};
+
+export type AccountGetBotBusinessConnection = {
+  connection_id: string
+};
+
+export type AccountUpdateBusinessIntro = {
+  flags?: number,
+  intro?: InputBusinessIntro
+};
+
+export type StickersReplaceSticker = {
+  sticker: InputDocument,
+  new_sticker: InputStickerSetItem
+};
+
+export type MessagesGetMyStickers = {
+  offset_id: string | number,
+  limit: number
+};
+
+export type FragmentGetCollectibleInfo = {
+  collectible: InputCollectible
+};
+
+export type AccountToggleConnectedBotPaused = {
+  peer: InputPeer,
+  paused: boolean
+};
+
+export type AccountDisablePeerConnectedBot = {
+  peer: InputPeer
+};
+
+export type AccountUpdateBirthday = {
+  flags?: number,
+  birthday?: Birthday
+};
+
+export type ContactsGetBirthdays = {
+
+};
+
+export type AccountCreateBusinessChatLink = {
+  link: InputBusinessChatLink
+};
+
+export type AccountEditBusinessChatLink = {
+  slug: string,
+  link: InputBusinessChatLink
+};
+
+export type AccountDeleteBusinessChatLink = {
+  slug: string
+};
+
+export type AccountGetBusinessChatLinks = {
+
+};
+
+export type AccountResolveBusinessChatLink = {
+  slug: string
+};
+
+export type AccountUpdatePersonalChannel = {
+  channel: InputChannel
+};
+
+export type ChannelsReportSponsoredMessage = {
+  channel: InputChannel,
+  random_id: Uint8Array,
+  option: Uint8Array
+};
+
+export type StatsGetBroadcastRevenueStats = {
+  flags?: number,
+  dark?: boolean,
+  channel: InputChannel
+};
+
+export type StatsGetBroadcastRevenueWithdrawalUrl = {
+  channel: InputChannel,
+  password: InputCheckPasswordSRP
+};
+
+export type StatsGetBroadcastRevenueTransactions = {
+  channel: InputChannel,
+  offset: number,
+  limit: number
+};
+
+export type ChannelsRestrictSponsoredMessages = {
+  channel: InputChannel,
+  restricted: boolean
+};
+
 export interface MethodDeclMap {
   'invokeAfterMsg': {req: InvokeAfterMsg, res: any},
   'invokeAfterMsgs': {req: InvokeAfterMsgs, res: any},
@@ -17019,9 +18190,9 @@ export interface MethodDeclMap {
   'messages.getFullChat': {req: MessagesGetFullChat, res: MessagesChatFull},
   'messages.editChatTitle': {req: MessagesEditChatTitle, res: Updates},
   'messages.editChatPhoto': {req: MessagesEditChatPhoto, res: Updates},
-  'messages.addChatUser': {req: MessagesAddChatUser, res: Updates},
+  'messages.addChatUser': {req: MessagesAddChatUser, res: MessagesInvitedUsers},
   'messages.deleteChatUser': {req: MessagesDeleteChatUser, res: Updates},
-  'messages.createChat': {req: MessagesCreateChat, res: Updates},
+  'messages.createChat': {req: MessagesCreateChat, res: MessagesInvitedUsers},
   'updates.getState': {req: UpdatesGetState, res: UpdatesState},
   'updates.getDifference': {req: UpdatesGetDifference, res: UpdatesDifference},
   'photos.updateProfilePhoto': {req: PhotosUpdateProfilePhoto, res: PhotosPhoto},
@@ -17099,7 +18270,7 @@ export interface MethodDeclMap {
   'channels.updateUsername': {req: ChannelsUpdateUsername, res: boolean},
   'channels.joinChannel': {req: ChannelsJoinChannel, res: Updates},
   'channels.leaveChannel': {req: ChannelsLeaveChannel, res: Updates},
-  'channels.inviteToChannel': {req: ChannelsInviteToChannel, res: Updates},
+  'channels.inviteToChannel': {req: ChannelsInviteToChannel, res: MessagesInvitedUsers},
   'channels.deleteChannel': {req: ChannelsDeleteChannel, res: Updates},
   'updates.getChannelDifference': {req: UpdatesGetChannelDifference, res: UpdatesChannelDifference},
   'messages.editChatAdmin': {req: MessagesEditChatAdmin, res: boolean},
@@ -17291,7 +18462,7 @@ export interface MethodDeclMap {
   'messages.getPollVotes': {req: MessagesGetPollVotes, res: MessagesVotesList},
   'messages.toggleStickerSets': {req: MessagesToggleStickerSets, res: boolean},
   'payments.getBankCardData': {req: PaymentsGetBankCardData, res: PaymentsBankCardData},
-  'messages.getDialogFilters': {req: MessagesGetDialogFilters, res: Array<DialogFilter>},
+  'messages.getDialogFilters': {req: MessagesGetDialogFilters, res: MessagesDialogFilters},
   'messages.getSuggestedDialogFilters': {req: MessagesGetSuggestedDialogFilters, res: Array<DialogFilterSuggested>},
   'messages.updateDialogFilter': {req: MessagesUpdateDialogFilter, res: boolean},
   'messages.updateDialogFiltersOrder': {req: MessagesUpdateDialogFiltersOrder, res: boolean},
@@ -17546,5 +18717,49 @@ export interface MethodDeclMap {
   'users.getIsPremiumRequiredToContact': {req: UsersGetIsPremiumRequiredToContact, res: Array<boolean>},
   'channels.setBoostsToUnblockRestrictions': {req: ChannelsSetBoostsToUnblockRestrictions, res: Updates},
   'channels.setEmojiStickers': {req: ChannelsSetEmojiStickers, res: boolean},
+  'smsjobs.isEligibleToJoin': {req: SmsjobsIsEligibleToJoin, res: SmsjobsEligibilityToJoin},
+  'smsjobs.join': {req: SmsjobsJoin, res: boolean},
+  'smsjobs.leave': {req: SmsjobsLeave, res: boolean},
+  'smsjobs.updateSettings': {req: SmsjobsUpdateSettings, res: boolean},
+  'smsjobs.getStatus': {req: SmsjobsGetStatus, res: SmsjobsStatus},
+  'smsjobs.getSmsJob': {req: SmsjobsGetSmsJob, res: SmsJob},
+  'smsjobs.finishJob': {req: SmsjobsFinishJob, res: boolean},
+  'help.getTimezonesList': {req: HelpGetTimezonesList, res: HelpTimezonesList},
+  'account.updateBusinessWorkHours': {req: AccountUpdateBusinessWorkHours, res: boolean},
+  'account.updateBusinessLocation': {req: AccountUpdateBusinessLocation, res: boolean},
+  'account.updateBusinessGreetingMessage': {req: AccountUpdateBusinessGreetingMessage, res: boolean},
+  'account.updateBusinessAwayMessage': {req: AccountUpdateBusinessAwayMessage, res: boolean},
+  'messages.getQuickReplies': {req: MessagesGetQuickReplies, res: MessagesQuickReplies},
+  'messages.reorderQuickReplies': {req: MessagesReorderQuickReplies, res: boolean},
+  'messages.checkQuickReplyShortcut': {req: MessagesCheckQuickReplyShortcut, res: boolean},
+  'messages.editQuickReplyShortcut': {req: MessagesEditQuickReplyShortcut, res: boolean},
+  'messages.deleteQuickReplyShortcut': {req: MessagesDeleteQuickReplyShortcut, res: boolean},
+  'messages.getQuickReplyMessages': {req: MessagesGetQuickReplyMessages, res: MessagesMessages},
+  'messages.sendQuickReplyMessages': {req: MessagesSendQuickReplyMessages, res: Updates},
+  'messages.deleteQuickReplyMessages': {req: MessagesDeleteQuickReplyMessages, res: Updates},
+  'account.updateConnectedBot': {req: AccountUpdateConnectedBot, res: Updates},
+  'account.getConnectedBots': {req: AccountGetConnectedBots, res: AccountConnectedBots},
+  'messages.toggleDialogFilterTags': {req: MessagesToggleDialogFilterTags, res: boolean},
+  'invokeWithBusinessConnection': {req: InvokeWithBusinessConnection, res: any},
+  'account.getBotBusinessConnection': {req: AccountGetBotBusinessConnection, res: Updates},
+  'account.updateBusinessIntro': {req: AccountUpdateBusinessIntro, res: boolean},
+  'stickers.replaceSticker': {req: StickersReplaceSticker, res: MessagesStickerSet},
+  'messages.getMyStickers': {req: MessagesGetMyStickers, res: MessagesMyStickers},
+  'fragment.getCollectibleInfo': {req: FragmentGetCollectibleInfo, res: FragmentCollectibleInfo},
+  'account.toggleConnectedBotPaused': {req: AccountToggleConnectedBotPaused, res: boolean},
+  'account.disablePeerConnectedBot': {req: AccountDisablePeerConnectedBot, res: boolean},
+  'account.updateBirthday': {req: AccountUpdateBirthday, res: boolean},
+  'contacts.getBirthdays': {req: ContactsGetBirthdays, res: ContactsContactBirthdays},
+  'account.createBusinessChatLink': {req: AccountCreateBusinessChatLink, res: BusinessChatLink},
+  'account.editBusinessChatLink': {req: AccountEditBusinessChatLink, res: BusinessChatLink},
+  'account.deleteBusinessChatLink': {req: AccountDeleteBusinessChatLink, res: boolean},
+  'account.getBusinessChatLinks': {req: AccountGetBusinessChatLinks, res: AccountBusinessChatLinks},
+  'account.resolveBusinessChatLink': {req: AccountResolveBusinessChatLink, res: AccountResolvedBusinessChatLinks},
+  'account.updatePersonalChannel': {req: AccountUpdatePersonalChannel, res: boolean},
+  'channels.reportSponsoredMessage': {req: ChannelsReportSponsoredMessage, res: ChannelsSponsoredMessageReportResult},
+  'stats.getBroadcastRevenueStats': {req: StatsGetBroadcastRevenueStats, res: StatsBroadcastRevenueStats},
+  'stats.getBroadcastRevenueWithdrawalUrl': {req: StatsGetBroadcastRevenueWithdrawalUrl, res: StatsBroadcastRevenueWithdrawalUrl},
+  'stats.getBroadcastRevenueTransactions': {req: StatsGetBroadcastRevenueTransactions, res: StatsBroadcastRevenueTransactions},
+  'channels.restrictSponsoredMessages': {req: ChannelsRestrictSponsoredMessages, res: Updates},
 }
 

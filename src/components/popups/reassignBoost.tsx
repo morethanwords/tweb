@@ -19,7 +19,6 @@ import PopupPeer from './peer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {AvatarNew} from '../avatarNew';
-import {createListTransition} from '../stories/viewer';
 import classNames from '../../helpers/string/classNames';
 import filterUnique from '../../helpers/array/filterUnique';
 import {resolveElements} from '@solid-primitives/refs';
@@ -29,6 +28,7 @@ import {hideToast, toastNew} from '../toast';
 import tsNow from '../../helpers/tsNow';
 import {wrapLeftDuration} from '../wrappers/wrapDuration';
 import {IconTsx} from '../iconTsx';
+import {createListTransition} from '../../helpers/solid/createListTransition';
 
 const className = 'popup-boost';
 

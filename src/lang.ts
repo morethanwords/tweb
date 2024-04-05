@@ -1988,6 +1988,27 @@ const lang = {
   'SlowmodeSeconds': '%1$ds',
   'SlowmodeMinutes': '%1$dm',
   'SlowmodeHours': '%1$dh',
+  'BusinessHoursNextDay': '%s (Next day)',
+  'BusinessHoursProfile': 'Business hours',
+  'BusinessHoursProfileOpen': 'open 24 hours',
+  'BusinessHoursProfileFullOpen': 'open 24/7',
+  'BusinessHoursProfileClose': 'closed',
+  'BusinessHoursProfileNowOpen': 'Open',
+  'BusinessHoursProfileNowClosed': 'Closed',
+  'BusinessHoursProfileOpensInMinutes': {
+    'one_value': 'opens in %d minute',
+    'other_value': 'opens in %d minutes'
+  },
+  'BusinessHoursProfileOpensInHours': {
+    'one_value': 'opens in %d hour',
+    'other_value': 'opens in %d hours'
+  },
+  'BusinessHoursProfileOpensInDays': {
+    'one_value': 'opens tomorrow',
+    'other_value': 'opens in %d days'
+  },
+  'BusinessHoursProfileSwitchLocal': 'local time',
+  'BusinessHoursProfileSwitchMy': 'my time',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
