@@ -243,7 +243,7 @@ export default class Chat extends EventListenerBase<{
         blur: settings && settings.pFlags.blur
       });
 
-      const cached = !(r instanceof Promise);
+      const cached: boolean = !(r instanceof Promise);
       log('getting background, cached', cached);
       onCachedStatus?.(cached);
       skipAnimation ??= cached;
@@ -338,12 +338,21 @@ export default class Chat extends EventListenerBase<{
       // }
     }
 
-    if(patternRenderer) {
-      const setOpacityTo = isDarkPattern ? gradientCanvas : patternCanvas;
+    if(intensity && (!image || themeController.isNight())) {
+      let setOpacityTo: HTMLElement;
+      if(image) {
+        setOpacityTo = image;
+      } else {
+        setOpacityTo = isDarkPattern ? gradientCanvas : patternCanvas;
+      }
+
       let opacityMax = Math.abs(intensity) * (isDarkPattern ? .5 : 1);
-      if(isDarkPattern) {
+      if(image) {
+        opacityMax = Math.max(0.3, 1 - intensity);
+      } else if(isDarkPattern) {
         opacityMax = Math.max(0.3, opacityMax);
       }
+
       setOpacityTo.style.setProperty('--opacity-max', '' + opacityMax);
     }
 
