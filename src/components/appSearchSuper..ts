@@ -1040,9 +1040,10 @@ export default class AppSearchSuper {
 
     if(aIsAnchor) {
       (row.container as HTMLAnchorElement).href = a.href;
-      row.container.setAttribute('onclick', a.getAttribute('onclick'));
+      const onClick = a.getAttribute('onclick');
+      onClick && row.container.setAttribute('onclick', onClick);
       if(a.target === '_blank') {
-        setBlankToAnchor(a);
+        setBlankToAnchor(row.container as HTMLAnchorElement);
       }
     }
 
