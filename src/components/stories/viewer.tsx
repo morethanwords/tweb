@@ -100,6 +100,7 @@ import {ButtonIconTsx} from '../buttonIconTsx';
 import {IconTsx} from '../iconTsx';
 import {Transition} from 'solid-transition-group';
 import {TransitionGroup} from '../../helpers/solid/transitionGroup';
+import makeGoogleMapsUrl from '../../helpers/makeGoogleMapsUrl';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -774,7 +775,7 @@ const StoryMediaArea = (props: {
 
   const onLocationClick = async() => {
     const geoPoint = (props.mediaArea as MediaArea.mediaAreaGeoPoint).geo as GeoPoint.geoPoint;
-    const href = 'https://maps.google.com/maps?q=' + geoPoint.lat + ',' + geoPoint.long;
+    const href = makeGoogleMapsUrl(geoPoint);
 
     const onAnchorClick = async(e: MouseEvent) => {
       if(ignoreClickEvent) {

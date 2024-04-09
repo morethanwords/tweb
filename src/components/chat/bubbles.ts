@@ -174,6 +174,8 @@ import {ReactionLayoutType} from './reaction';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainGroupedMessage';
 import cancelNextClickIfNotClick from '../../helpers/dom/cancelNextClickIfNotClick';
+import makeGoogleMapsUrl from '../../helpers/makeGoogleMapsUrl';
+import getWebFileLocation from '../../helpers/getWebFileLocation';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -6624,25 +6626,10 @@ export default class ChatBubbles {
           const zoom = 16;
 
           const setAnchorURL = (geo: GeoPoint.geoPoint) => {
-            container.href = 'https://maps.google.com/maps?q=' + geo.lat + ',' + geo.long;
+            container.href = makeGoogleMapsUrl(geo);
           };
 
           const width = mediaSizes.isMobile ? svgWidth : 420;
-          const getWebFileLocation = (geo: GeoPoint.geoPoint): InputWebFileLocation.inputWebFileGeoPointLocation => {
-            return {
-              _: 'inputWebFileGeoPointLocation',
-              access_hash: geo.access_hash,
-              geo_point: {
-                _: 'inputGeoPoint',
-                lat: geo.lat,
-                long: geo.long
-              },
-              w: width,
-              h: width / (svgWidth / svgHeight),
-              scale: window.devicePixelRatio,
-              zoom
-            };
-          };
 
           let wrapTempId = 0;
           const wrapGeo = (
@@ -6717,7 +6704,7 @@ export default class ChatBubbles {
             }
 
             wrapPhoto({
-              photo: getWebFileLocation(geo),
+              photo: getWebFileLocation(geo, width, width / (svgWidth / svgHeight), zoom),
               container: imageContainer,
               fadeInElement: imageContainer,
               onRender: () => {

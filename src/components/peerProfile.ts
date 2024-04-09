@@ -13,12 +13,14 @@ import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import safeWindowOpen from '../helpers/dom/safeWindowOpen';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
+import getWebFileLocation from '../helpers/getWebFileLocation';
 import ListenerSetter from '../helpers/listenerSetter';
 import makeError from '../helpers/makeError';
+import makeGoogleMapsUrl from '../helpers/makeGoogleMapsUrl';
 import {makeMediaSize} from '../helpers/mediaSize';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
 import middlewarePromise from '../helpers/middlewarePromise';
-import {BusinessWeeklyOpen, BusinessWorkHours, Chat, ChatFull, HelpTimezonesList, Timezone, User, UserFull, UserStatus} from '../layer';
+import {BusinessLocation, BusinessWeeklyOpen, BusinessWorkHours, Chat, ChatFull, GeoPoint, HelpTimezonesList, Timezone, User, UserFull, UserStatus} from '../layer';
 import appImManager from '../lib/appManagers/appImManager';
 import {AppManagers} from '../lib/appManagers/managers';
 import getServerMessageId from '../lib/appManagers/utils/messageId/getServerMessageId';
@@ -27,11 +29,13 @@ import I18n, {i18n, join} from '../lib/langPack';
 import {MTAppConfig} from '../lib/mtproto/appConfig';
 import {HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import rootScope from '../lib/rootScope';
 import {avatarNew} from './avatarNew';
 import BusinessHours from './businessHours';
 import CheckboxField from './checkboxField';
+import confirmationPopup from './confirmationPopup';
 import {generateDelimiter} from './generateDelimiter';
 import PeerProfileAvatars, {SHOW_NO_AVATAR} from './peerProfileAvatars';
 import PopupElement from './popups';
@@ -39,9 +43,10 @@ import PopupToggleReadDate from './popups/toggleReadDate';
 import Row from './row';
 import Scrollable from './scrollable';
 import SettingSection from './settingSection';
-import {toast} from './toast';
+import {toast, toastNew} from './toast';
 import formatUserPhone from './wrappers/formatUserPhone';
 import wrapPeerTitle from './wrappers/peerTitle';
+import wrapPhoto from './wrappers/photo';
 import wrapTopicNameButton from './wrappers/topicNameButton';
 import {batch, createRoot, createSignal} from 'solid-js';
 
@@ -64,6 +69,7 @@ export default class PeerProfile {
   private location: Row;
   private link: Row;
   private businessHours: Row;
+  private businessLocation: Row;
 
   private setBusinessHours: (hours: BusinessWorkHours) => void;
   private setTimezones: (timezones: Timezone[]) => void;
@@ -74,6 +80,8 @@ export default class PeerProfile {
 
   private peerId: PeerId;
   private threadId: number;
+
+  private _businessLocation: BusinessLocation;
 
   private middlewareHelper: MiddlewareHelper;
 
@@ -244,13 +252,51 @@ export default class PeerProfile {
       return BusinessHours({hours, timezones});
     });
 
+    const copyLocationAddress = () => {
+      copyTextToClipboard(this._businessLocation.address);
+      toastNew({langPackKey: 'BusinessLocationCopied'});
+    };
+
+    this.businessLocation = new Row({
+      title: true,
+      subtitleLangKey: 'BusinessProfileLocation',
+      icon: 'location',
+      clickable: async() => {
+        const location = this._businessLocation;
+        if(!location.geo_point) {
+          copyLocationAddress();
+          return;
+        }
+
+        await confirmationPopup({
+          descriptionLangKey: 'Popup.OpenInGoogleMaps',
+          button: {
+            langKey: 'Open'
+          }
+        });
+
+        safeWindowOpen(makeGoogleMapsUrl(location.geo_point as GeoPoint.geoPoint));
+      },
+      contextMenu: {
+        buttons: [{
+          icon: 'copy',
+          text: 'Copy',
+          onClick: copyLocationAddress
+        }]
+      },
+      listenerSetter: this.listenerSetter
+    });
+
+    this.businessLocation.container.classList.add('business-location');
+
     this.section.content.append(
       this.phone.container,
       this.username.container,
       this.location.container,
       this.bio.container,
       this.link.container,
-      this.businessHours.container
+      this.businessHours.container,
+      this.businessLocation.container
     );
 
     const {listenerSetter} = this;
@@ -435,7 +481,8 @@ export default class PeerProfile {
       this.username,
       this.location,
       this.link,
-      this.businessHours
+      this.businessHours,
+      this.businessLocation
     ].forEach((row) => {
       row.container.style.display = 'none';
     });
@@ -657,6 +704,7 @@ export default class PeerProfile {
   }
 
   private async _setMoreDetails(peerId: PeerId, peerFull: ChatFull | UserFull, appConfig: MTAppConfig, timezones: Timezone[]) {
+    const middleware = this.middlewareHelper.get();
     const m = this.getMiddlewarePromise();
     const isTopic = !!(this.threadId && await m(this.managers.appPeersManager.isForum(peerId)));
     const isPremium = peerId.isUser() ? await m(this.managers.appUsersManager.isPremium(peerId.toUserId())) : undefined;
@@ -717,6 +765,43 @@ export default class PeerProfile {
 
     callbacks.push(() => {
       this.businessHours.container.style.display = workHours ? '' : 'none';
+    });
+
+    const businessLocation = (peerFull as UserFull).business_location;
+    this._businessLocation = businessLocation;
+    if(businessLocation) {
+      const geo = businessLocation.geo_point as GeoPoint.geoPoint;
+      callbacks.push(() => {
+        setText(wrapEmojiText(businessLocation.address), this.businessLocation);
+        if(!geo) {
+          this.businessLocation.media?.remove();
+        }
+      });
+
+      if(geo) {
+        const media = this.businessLocation.createMedia('big');
+        media.remove();
+        const loadPromises: Promise<any>[] = [];
+        wrapPhoto({
+          photo: getWebFileLocation(geo, 48, 48, 16),
+          container: media,
+          middleware,
+          onRender: () => {
+            if(!middleware() || this._businessLocation !== businessLocation) {
+              return;
+            }
+
+            this.businessLocation.container.append(media);
+          },
+          loadPromises
+        });
+
+        await Promise.all(loadPromises);
+      }
+    }
+
+    callbacks.push(() => {
+      this.businessLocation.container.style.display = businessLocation ? '' : 'none';
     });
 
     this.setMoreDetailsTimeout = window.setTimeout(() => this.setMoreDetails(true), 60e3);

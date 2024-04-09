@@ -2413,3 +2413,16 @@ hr {
     z-index: 1;
   }
 }
+
+.business-location {
+  .row-media {
+    inset-inline: auto .5rem !important;
+    border-radius: $border-radius-medium;
+  }
+
+  .media-photo {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+  }
+}

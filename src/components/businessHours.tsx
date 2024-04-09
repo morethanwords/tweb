@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createEffect, createSignal, For, on, untrack, JSX} from 'solid-js';
+import {createEffect, createSignal, For, on, untrack, JSX, onCleanup, getOwner, runWithOwner} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import OpeningHours from '../helpers/openingHours';
 import {BusinessWorkHours, Timezone} from '../layer';
@@ -15,6 +15,9 @@ import rotateArray from '../helpers/array/rotate';
 import {AnimationList} from '../helpers/solid/animationList';
 import classNames from '../helpers/string/classNames';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
+import ListenerSetter from '../helpers/listenerSetter';
+import {copyTextToClipboard} from '../helpers/clipboard';
+import {toastNew} from './toast';
 
 export default function BusinessHours(props: {
   hours: () => BusinessWorkHours,
@@ -25,6 +28,12 @@ export default function BusinessHours(props: {
   const [lastKey, setLastKey] = createSignal<string>();
   const [element, setElement] = createSignal<JSX.Element>();
   const [showInMyTimezone, setShowInMyTimezone] = createSignal<boolean>();
+  const [text, setText] = createSignal<string>();
+
+  const listenerSetter = new ListenerSetter();
+  onCleanup(() => listenerSetter.removeAll());
+
+  const owner = getOwner();
 
   let switchElement: HTMLElement;
   const row = new Row({
@@ -43,7 +52,9 @@ export default function BusinessHours(props: {
     clickable: (e) => {
       if(findUpAsChild(e.target as HTMLElement, switchElement)) {
         setShowInMyTimezone((value) => !value);
-        update();
+        runWithOwner(owner, () => {
+          update();
+        });
         setExpanded(true);
         return;
       }
@@ -51,7 +62,18 @@ export default function BusinessHours(props: {
       if(!is24x7()) {
         setExpanded((value) => !value);
       }
-    }
+    },
+    contextMenu: {
+      buttons: [{
+        icon: 'copy',
+        text: 'Copy',
+        onClick: () => {
+          copyTextToClipboard(text());
+          toastNew({langPackKey: 'BusinessHoursCopied'});
+        }
+      }]
+    },
+    listenerSetter
   });
 
   const updateContainerStyles = () => {
@@ -157,7 +179,7 @@ export default function BusinessHours(props: {
     row.title.classList.toggle('green', openNow);
     row.title.classList.toggle('danger', !openNow);
 
-    console.log('weekly', {utcOffset, isDifferentTimezone, adaptedWeeklyOpen, workHours, localDays, myDays, localDaysFormatted, myDaysFormatted, showInMyTimezone, isOpen: openNow});
+    // console.log('weekly', {utcOffset, isDifferentTimezone, adaptedWeeklyOpen, workHours, localDays, myDays, localDaysFormatted, myDaysFormatted, showInMyTimezone, isOpen: openNow});
 
     row.subtitleRight.textContent = is24x7 ? I18n.format('BusinessHoursProfileFullOpen', true) : daysFormattedToUse[0][0];
 
@@ -171,15 +193,20 @@ export default function BusinessHours(props: {
       return;
     }
 
+    const textLines: string[] = [];
+
     setLastKey(key);
     const rows = daysFormattedToUse.map((day, i) => {
+      const weekDay = weekDays[i];
+
+      let textLine = weekDay + ': ';
+      const textPeriods: string[] = day;
+
       if(i === 0) {
         day = day.slice(1);
       }
 
-      const weekDay = weekDays[i];
-
-      return (<For each={day}>{(period, idx) => {
+      const ret = (<For each={day}>{(period, idx) => {
         return (
           <div class="business-hours-row">
             <div class="business-hours-row-day">{i !== 0 && idx() === 0 ? weekDay : ''}</div>
@@ -187,7 +214,14 @@ export default function BusinessHours(props: {
           </div>
         );
       }}</For>);
+
+      textLine += textPeriods.join(', ');
+      textLines.push(textLine);
+
+      return ret;
     });
+
+    setText(rotateArray(textLines, -nowWeekday).join('\n'));
 
     setElement(
       <div class="business-hours">

@@ -2009,6 +2009,9 @@ const lang = {
   },
   'BusinessHoursProfileSwitchLocal': 'local time',
   'BusinessHoursProfileSwitchMy': 'my time',
+  'BusinessProfileLocation': 'Location',
+  'BusinessHoursCopied': 'Business hours copied',
+  'BusinessLocationCopied': 'Business address copied',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
