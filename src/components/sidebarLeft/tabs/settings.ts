@@ -81,7 +81,21 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.header.append(this.buttons.edit, btnMenu);
 
-    this.profile = new PeerProfile(this.managers, this.scrollable, this.listenerSetter, false, this.container);
+    this.profile = new PeerProfile(
+      this.managers,
+      this.scrollable,
+      this.listenerSetter,
+      false,
+      this.container,
+      (has) => {
+        let last = this.profile.element.lastElementChild;
+        if(has) {
+          last = last.previousElementSibling;
+        }
+
+        last.firstElementChild.append(changeAvatarBtn);
+      }
+    );
     this.profile.init();
     this.profile.setPeer(rootScope.myId);
     const fillPromise = this.profile.fillProfileElements();

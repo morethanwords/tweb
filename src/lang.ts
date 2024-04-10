@@ -2012,6 +2012,7 @@ const lang = {
   'BusinessProfileLocation': 'Location',
   'BusinessHoursCopied': 'Business hours copied',
   'BusinessLocationCopied': 'Business address copied',
+  'AccDescrChannel': 'Channel',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

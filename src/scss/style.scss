@@ -2426,3 +2426,44 @@ hr {
     border-radius: inherit;
   }
 }
+
+.personal-channel {
+  &-name {
+    display: flex;
+    align-items: center;
+  }
+
+  &-counter {
+    border-radius: 5px;
+    padding: 1px 6px;
+    background-color: rgba(var(--primary-color-rgb), .2);
+    font-size: var(--font-size-12);
+    margin-inline-start: .5rem;
+  }
+
+  .skeleton {
+    background-color: var(--light-filled-secondary-text-color);
+    position: absolute;
+    width: 75%;
+    top: 0;
+    z-index: 1;
+    border-radius: 8px;
+
+    &-container {
+      height: 1.25rem;
+    }
+  }
+
+  .dialog-title-details {
+    min-width: 2.5rem;
+
+    .skeleton {
+      inset-inline-end: 0;
+      width: 100%;
+
+      &-child {
+        display: inline;
+      }
+    }
+  }
+}

@@ -178,6 +178,13 @@ export class AppProfileManager extends AppManager {
 
         userFull.business_intro = this.appBusinessManager.saveBusinessIntro(id, userFull.business_intro);
 
+        if(userFull.personal_channel_message) {
+          userFull.personal_channel_message = this.appMessagesIdsManager.generateMessageId(
+            userFull.personal_channel_message,
+            userFull.personal_channel_id
+          );
+        }
+
         this.appNotificationsManager.savePeerSettings({
           peerId,
           settings: userFull.notify_settings

@@ -446,17 +446,19 @@
         --color: #fff;
       }
 
-      .premium-icon {
-        color: #fff;
-      }
-
-      .verified-icon {
-        &-background {
-          fill: #fff;
+      .profile-avatars-container {
+        .premium-icon {
+          color: #fff;
         }
 
-        &-check {
-          visibility: hidden;
+        .verified-icon {
+          &-background {
+            fill: #fff;
+          }
+  
+          &-check {
+            visibility: hidden;
+          }
         }
       }
     }

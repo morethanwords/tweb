@@ -20,7 +20,10 @@ import makeGoogleMapsUrl from '../helpers/makeGoogleMapsUrl';
 import {makeMediaSize} from '../helpers/mediaSize';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
 import middlewarePromise from '../helpers/middlewarePromise';
-import {BusinessLocation, BusinessWeeklyOpen, BusinessWorkHours, Chat, ChatFull, GeoPoint, HelpTimezonesList, Timezone, User, UserFull, UserStatus} from '../layer';
+import numberThousandSplitter from '../helpers/number/numberThousandSplitter';
+import pause from '../helpers/schedulers/pause';
+import {BusinessLocation, BusinessWorkHours, Chat, ChatFull, GeoPoint, HelpTimezonesList, Timezone, UserFull, UserStatus} from '../layer';
+import appDialogsManager from '../lib/appManagers/appDialogsManager';
 import appImManager from '../lib/appManagers/appImManager';
 import {AppManagers} from '../lib/appManagers/managers';
 import getServerMessageId from '../lib/appManagers/utils/messageId/getServerMessageId';
@@ -43,12 +46,14 @@ import PopupToggleReadDate from './popups/toggleReadDate';
 import Row from './row';
 import Scrollable from './scrollable';
 import SettingSection from './settingSection';
+import {Skeleton} from './skeleton';
 import {toast, toastNew} from './toast';
 import formatUserPhone from './wrappers/formatUserPhone';
 import wrapPeerTitle from './wrappers/peerTitle';
 import wrapPhoto from './wrappers/photo';
 import wrapTopicNameButton from './wrappers/topicNameButton';
-import {batch, createRoot, createSignal} from 'solid-js';
+import {batch, createMemo, createRoot, createSignal, JSX} from 'solid-js';
+import {render} from 'solid-js/web';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   setInnerHTML(row.title, text || undefined);
@@ -85,12 +90,17 @@ export default class PeerProfile {
 
   private middlewareHelper: MiddlewareHelper;
 
+  private personalChannelSection: SettingSection;
+  private personalChannel: Row;
+  private personalChannelCounter: HTMLSpanElement;
+
   constructor(
     private managers: AppManagers,
     private scrollable: Scrollable,
     private listenerSetter?: ListenerSetter,
     private isDialog = true,
-    private setCollapsedOn?: HTMLElement
+    private setCollapsedOn?: HTMLElement,
+    private onPersonalChannel?: (has: boolean) => void
   ) {
     if(!IS_PARALLAX_SUPPORTED) {
       this.scrollable.container.classList.add('no-parallax');
@@ -108,6 +118,25 @@ export default class PeerProfile {
 
     this.element = document.createElement('div');
     this.element.classList.add('profile-content');
+
+    const personalChannelName = document.createElement('span');
+    personalChannelName.append(i18n('AccDescrChannel'));
+    personalChannelName.classList.add('personal-channel-name');
+    this.personalChannelCounter = document.createElement('span');
+    this.personalChannelCounter.classList.add('personal-channel-counter');
+    personalChannelName.append(this.personalChannelCounter);
+    this.personalChannelSection = new SettingSection({
+      name: personalChannelName
+    });
+
+    appDialogsManager.setListClickListener({
+      list: this.personalChannelSection.content,
+      autonomous: false,
+      openInner: true
+    });
+
+    // this.personalChannel = new Row({});
+    // this.channelSection.content.append(this.personalChannel.container);
 
     this.section = new SettingSection({
       noDelimiter: true
@@ -327,7 +356,7 @@ export default class PeerProfile {
       this.section.content.append(this.notifications.container);
     }
 
-    this.element.append(this.section.container);
+    this.element.append(this.personalChannelSection.container, this.section.container);
 
     if(IS_PARALLAX_SUPPORTED) {
       this.element.append(generateDelimiter());
@@ -482,7 +511,8 @@ export default class PeerProfile {
       this.location,
       this.link,
       this.businessHours,
-      this.businessLocation
+      this.businessLocation,
+      this.personalChannelSection
     ].forEach((row) => {
       row.container.style.display = 'none';
     });
@@ -703,8 +733,13 @@ export default class PeerProfile {
     };
   }
 
-  private async _setMoreDetails(peerId: PeerId, peerFull: ChatFull | UserFull, appConfig: MTAppConfig, timezones: Timezone[]) {
-    const middleware = this.middlewareHelper.get();
+  private async _setMoreDetails(
+    peerId: PeerId,
+    peerFull: ChatFull | UserFull,
+    appConfig: MTAppConfig,
+    timezones: Timezone[]
+  ) {
+    const middleware = this.middlewareHelper.get().create().get();
     const m = this.getMiddlewarePromise();
     const isTopic = !!(this.threadId && await m(this.managers.appPeersManager.isForum(peerId)));
     const isPremium = peerId.isUser() ? await m(this.managers.appUsersManager.isPremium(peerId.toUserId())) : undefined;
@@ -802,6 +837,99 @@ export default class PeerProfile {
 
     callbacks.push(() => {
       this.businessLocation.container.style.display = businessLocation ? '' : 'none';
+    });
+
+    const personalChannelId = (peerFull as UserFull).personal_channel_id;
+    if(personalChannelId) {
+      const peerId = personalChannelId.toPeerId(true);
+      const mid = (peerFull as UserFull).personal_channel_message;
+      const chat = apiManagerProxy.getChat(personalChannelId) as Chat.channel;
+
+      const loadPromises: Promise<any>[] = [];
+      const list = appDialogsManager.createChatList();
+      const dialogElement = appDialogsManager.addDialogNew({
+        peerId: peerId,
+        container: list,
+        rippleEnabled: true,
+        avatarSize: 'abitbigger',
+        append: true,
+        wrapOptions: {middleware},
+        withStories: true,
+        loadPromises
+      });
+
+      dialogElement.container.classList.add('personal-channel');
+
+      const makeSkeleton = (props: {
+        element: HTMLElement,
+        middleware: Middleware
+      }) => {
+        const [children, setChildren] = createSignal<JSX.Element>();
+        const dispose = render(() => {
+          return Skeleton({
+            children,
+            loading: createMemo(() => !children())
+          });
+        }, props.element);
+
+        props.element.classList.add('skeleton-container');
+        props.middleware.onDestroy(dispose);
+
+        return setChildren;
+      };
+
+      const TEST = false;
+      const isCached = !!apiManagerProxy.getMessageByPeer(peerId, mid) && !TEST;
+      const messagePromise = this.managers.appMessagesManager.reloadMessages(peerId, mid);
+      const readyPromise = messagePromise.then(async(message) => {
+        TEST && await pause(1000);
+        await appDialogsManager.setLastMessageN({
+          dialog: {
+            _: 'dialog',
+            peerId
+          } as any,
+          lastMessage: message,
+          dialogElement
+        });
+
+        setSubtitleChildren?.(dialogElement.subtitle);
+        setTimeChildren?.(dialogElement.dom.lastTimeSpan);
+      });
+
+      let setSubtitleChildren: (children: JSX.Element) => void, setTimeChildren: (children: JSX.Element) => void;
+      if(!isCached) {
+        const _subtitle = dialogElement.subtitle.cloneNode(true) as HTMLElement;
+        dialogElement.subtitle.replaceWith(_subtitle);
+        setSubtitleChildren = makeSkeleton({
+          element: _subtitle,
+          middleware
+        });
+
+        const timeSpan = dialogElement.dom.lastTimeSpan.cloneNode(true) as HTMLElement;
+        dialogElement.dom.lastTimeSpan.replaceWith(timeSpan);
+        setTimeChildren = makeSkeleton({
+          element: timeSpan,
+          middleware
+        });
+      }
+
+      if(isCached) {
+        loadPromises.push(readyPromise);
+      }
+
+      callbacks.push(() => {
+        this.personalChannelCounter.replaceChildren(i18n('Subscribers', [numberThousandSplitter(chat.participants_count)]));
+        const oldList = this.personalChannelSection.content.querySelector('.chatlist');
+        oldList?.remove();
+        this.personalChannelSection.content.append(list);
+      });
+
+      await Promise.all(loadPromises);
+    }
+
+    callbacks.push(() => {
+      this.personalChannelSection.container.style.display = personalChannelId ? '' : 'none';
+      this.onPersonalChannel?.(!!personalChannelId);
     });
 
     this.setMoreDetailsTimeout = window.setTimeout(() => this.setMoreDetails(true), 60e3);

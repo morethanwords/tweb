@@ -4,15 +4,17 @@ import {Transition} from 'solid-transition-group';
 import './skeleton.scss';
 
 export interface SkeletonProps {
-  loading: boolean;
+  loading: boolean | (() => boolean);
   class?: string;
-  children?: JSX.Element;
+  children?: JSX.Element | (() => JSX.Element);
 }
 
 export const Skeleton = (props: SkeletonProps) => {
+  const children = () => typeof(props.children) === 'function' ? props.children() : props.children;
+  const loading = () => typeof(props.loading) === 'function' ? props.loading() : props.loading;
   const inner = (
-    <Show when={props.loading} fallback={props.children && (
-      <div class="skeleton-child">{props.children}</div>
+    <Show when={loading()} fallback={children() && (
+      <div class="skeleton-child">{children()}</div>
     )}>
       <div class={`skeleton ${props.class ?? ''}`} />
     </Show>
