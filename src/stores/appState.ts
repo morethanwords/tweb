@@ -15,7 +15,7 @@ const setAppState: typeof _setAppState = (...args: any[]) => {
 
 const setAppStateSilent = _setAppState;
 
-const useAppState = () => appState;
+const useAppState = () => [appState, setAppState] as const;
 
 export {
   appState,

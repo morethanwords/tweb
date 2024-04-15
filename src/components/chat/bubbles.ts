@@ -29,7 +29,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType, WebPageAttribute, Reaction, ChatPhoto, MessageAction, BotApp} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType, WebPageAttribute, Reaction, ChatPhoto, MessageAction, BotApp, TextWithEntities} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -142,9 +142,9 @@ import hasRights from '../../lib/appManagers/utils/chats/hasRights';
 import tsNow from '../../helpers/tsNow';
 import SwipeHandler from '../swipeHandler';
 import getSelectedText from '../../helpers/dom/getSelectedText';
-import {createStoriesViewerWithPeer} from '../stories/viewer';
+import {createMiddleware, createStoriesViewerWithPeer} from '../stories/viewer';
 import {render} from 'solid-js/web';
-import {createRoot, createEffect} from 'solid-js';
+import {createRoot, createEffect, onCleanup, createSignal, createMemo} from 'solid-js';
 import {StoryPreview, wrapStoryMedia} from '../stories/preview';
 import wrapReply from '../wrappers/reply';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
@@ -176,6 +176,8 @@ import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainG
 import cancelNextClickIfNotClick from '../../helpers/dom/cancelNextClickIfNotClick';
 import makeGoogleMapsUrl from '../../helpers/makeGoogleMapsUrl';
 import getWebFileLocation from '../../helpers/getWebFileLocation';
+import usePeerTranslation from '../../hooks/usePeerTranslation';
+import TranslatableMessage from '../translatableMessage';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -5362,17 +5364,19 @@ export default class ChatBubbles {
 
     let messageMedia: MessageMedia = isMessage && message.media;
     let needToSetHTML = true;
-    let messageMessage: string, totalEntities: MessageEntity[], groupedTextMessage: Message.message;
+    let messageMessage: string, totalEntities: MessageEntity[], messageWithMessage: Message.message, groupedTextMessage: Message.message;
     if(isMessage) {
       if(groupedId && groupedMustBeRenderedFull) {
         const t = groupedTextMessage = getGroupedText(groupedMessages);
         messageMessage = t?.message || '';
         // totalEntities = t.entities;
         totalEntities = t?.totalEntities || [];
+        messageWithMessage = groupedTextMessage;
       } else {
         messageMessage = message.message;
         // totalEntities = message.entities;
         totalEntities = message.totalEntities;
+        messageWithMessage = message;
       }
 
       const document = (messageMedia as MessageMedia.messageMediaDocument)?.document as MyDocument;
@@ -5462,7 +5466,25 @@ export default class ChatBubbles {
       passMaskedLinks: !!(message as Message.message).sponsoredMessage
     });
 
-    const richText = messageMessage ? wrapRichText(messageMessage, getRichTextOptions(totalEntities)) : undefined;
+    const richText = messageMessage ? (
+      bigEmojis ?
+        wrapRichText(messageMessage, getRichTextOptions(totalEntities)) :
+        TranslatableMessage({
+          peerId: this.peerId,
+          message: messageWithMessage,
+          middleware,
+          richTextOptions: getRichTextOptions(),
+          observeElement: bubble,
+          observer: this.observer,
+          onTranslation: async(callback) => {
+            await getHeavyAnimationPromise();
+            const scrollSaver = this.createScrollSaver(false);
+            scrollSaver.save();
+            callback();
+            scrollSaver.restore();
+          }
+        })
+      ) : undefined;
 
     let canHaveTail = true;
     let canHavePlainMediaTail = false;
@@ -6322,7 +6344,7 @@ export default class ChatBubbles {
               } : undefined,
               sizeType: 'documentName',
               fontSize: rootScope.settings.messagesTextSize,
-              richTextFragment: typeof(richText) === 'string' ? undefined : richText,
+              richTextFragment: richText,
               richTextOptions: getRichTextOptions(),
               canTranscribeVoice: true
             });

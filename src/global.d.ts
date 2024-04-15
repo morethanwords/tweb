@@ -7,6 +7,7 @@ import type LazyLoadQueue from './components/lazyLoadQueue';
 import type {AppManagers} from './lib/appManagers/managers';
 import type {CustomProperty} from './helpers/dom/customProperties';
 import type Icons from './icons';
+import type {CancellablePromise} from './helpers/cancellablePromise';
 
 declare global {
   interface AddEventListenerOptions extends EventListenerOptions {
@@ -126,6 +127,7 @@ declare global {
   type DOMRectMinified = {top: number, right: number, bottom: number, left: number};
   type DOMRectEditable = DOMRectMinified & {width: number, height: number};
   type MaybePromise<T> = PromiseLike<T> | T;
+  type MaybeDeferredPromise<T> = CancellablePromise<T> | T;
 
   type WrapSomethingOptions = {
     lazyLoadQueue?: LazyLoadQueue | false,

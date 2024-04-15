@@ -2013,6 +2013,9 @@ const lang = {
   'BusinessHoursCopied': 'Business hours copied',
   'BusinessLocationCopied': 'Business address copied',
   'AccDescrChannel': 'Channel',
+  'TranslateToButton': 'Translate to %s',
+  'DoNotTranslateLanguage': 'Don\'t translate %s',
+  'ShowOriginalButton': 'Show Original',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2583,7 +2586,8 @@ const lang = {
   'Giveaway.Type.Specific.Modal.SelectUsers': 'Select Users',
   'GroupStats.Title': 'Group Statistics',
   'Chat.SendJoinRequest.Info': 'You will be able to send messages once the admins approve your request.',
-  'ChatEmpty.BusinessIntro.How': '**%@** added the message above for all empty chats. [How?]()'
+  'ChatEmpty.BusinessIntro.How': '**%@** added the message above for all empty chats. [How?]()',
+  'Chat.Translate.Menu.To': 'Choose Another Language'
 };
 
 export default lang;

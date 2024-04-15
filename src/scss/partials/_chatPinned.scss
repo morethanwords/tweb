@@ -327,6 +327,7 @@
       // border-bottom: 1px solid var(--border-color);
       position: absolute;
       inset: 0;
+      pointer-events: none;
     }
 
     // &:before {
@@ -839,5 +840,34 @@
       pointer-events: none;
       opacity: var(--disabled-opacity);
     }
+  }
+}
+
+.pinned-translation {
+  height: var(--pinned-translation-height) !important;
+  color: var(--primary-color);
+  font-size: var(--font-size-15);
+
+  &-button {
+    font-weight: var(--font-weight-bold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    gap: .375rem;
+
+    @include sidebar-transform(1, true);
+
+    &-icon {
+      font-size: 1.25rem;
+    }
+  }
+
+  &-menu {
+    position: absolute;
+    inset-inline-end: 1.25rem;
+    padding: .25rem;
+    @include sidebar-transform(0, true);
   }
 }

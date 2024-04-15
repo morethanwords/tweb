@@ -531,7 +531,7 @@ export default class Chat extends EventListenerBase<{
     };
 
     const fullPeer = useFullPeer(() => this.peerId);
-    const appState = useAppState();
+    const [appState] = useAppState();
     createEffect(() => {
       update();
       manual = false;

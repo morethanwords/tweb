@@ -123,7 +123,8 @@ export type State = {
   },
   hiddenSimilarChannels: number[],
   appConfig: MTAppConfig,
-  accountThemes: AccountThemes.accountThemes
+  accountThemes: AccountThemes.accountThemes,
+  translations: {[peerId: PeerId]: string}
 };
 
 // const BACKGROUND_DAY_MOBILE: Background = {
@@ -341,5 +342,6 @@ export const STATE_INIT: State = {
   },
   hiddenSimilarChannels: [],
   appConfig: {} as any,
-  accountThemes: {} as any
+  accountThemes: {} as any,
+  translations: {}
 };

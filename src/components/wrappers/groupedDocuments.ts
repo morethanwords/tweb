@@ -49,7 +49,7 @@ export default async function wrapGroupedDocuments({
   managers?: AppManagers,
   fontWeight?: number,
   fontSize?: number,
-  richTextFragment?: DocumentFragment,
+  richTextFragment?: DocumentFragment | HTMLElement,
   richTextOptions?: Parameters<typeof wrapRichText>[1]
   canTranscribeVoice?: boolean
 }) {
