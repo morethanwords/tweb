@@ -10,6 +10,8 @@ import {TextWithEntities, MessagesTranslatedText} from '../../layer';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 
+// ! possible race-condition if message was edited while translation is in progress
+
 export default class AppTranslationsManager extends AppManager {
   private translateTextBatch: {
     [lang: string]: {
@@ -19,6 +21,35 @@ export default class AppTranslationsManager extends AppManager {
       messagesPromises: Map<PeerId, Promise<any>>
     }
   } = {};
+  private triedToTranslateMessages: Map<`${PeerId}_${number}`, Set<string>> = new Map();
+
+  public hasTriedToTranslateMessage(peerId: PeerId, mid: number) {
+    return this.triedToTranslateMessages.has(`${peerId}_${mid}`);
+  }
+
+  public resetMessageTranslations(peerId: PeerId, mid: number) {
+    const key = `${peerId}_${mid}` as const;
+    const languages = this.triedToTranslateMessages.get(key);
+    if(!languages) {
+      return;
+    }
+
+    for(const lang of languages) {
+      const batch = this.translateTextBatch[lang];
+      if(!batch) {
+        continue;
+      }
+
+      const map = batch.messages.get(peerId);
+      if(!map) {
+        continue;
+      }
+
+      map.delete(mid);
+    }
+
+    this.triedToTranslateMessages.delete(key);
+  }
 
   private processTextWithEntities = (textWithEntities: TextWithEntities) => {
     this.appMessagesManager.wrapMessageEntities(textWithEntities);
@@ -93,6 +124,13 @@ export default class AppTranslationsManager extends AppManager {
 
       promise = deferredPromise<TextWithEntities>();
       map.set(options.mid, promise);
+
+      const key = `${options.peerId}_${options.mid}` as const;
+      let tried = this.triedToTranslateMessages.get(key);
+      if(!tried) {
+        this.triedToTranslateMessages.set(key, tried = new Set());
+      }
+      tried.add(options.lang);
 
       this.batchMessageTranslation(options.lang, options.peerId);
 

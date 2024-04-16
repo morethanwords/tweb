@@ -7872,6 +7872,8 @@ export class AppMessagesManager extends AppManager {
             removedResults: reactions.results
           });
         }
+
+        this.appTranslationsManager.resetMessageTranslations(message.peerId, message.mid);
       }
 
       this.deleteMessageFromStorage(storage, mid);
@@ -7901,6 +7903,14 @@ export class AppMessagesManager extends AppManager {
       const groupedId = oldMessage.grouped_id;
       if(groupedId) {
         this.dispatchGroupedEdit(groupedId, storage, []);
+      }
+
+      const isTranslated = this.appTranslationsManager.hasTriedToTranslateMessage(oldMessage.peerId, oldMessage.mid);
+      if(isTranslated && (
+        oldMessage.message !== (newMessage as Message.message).message ||
+        !deepEqual(oldMessage.entities, (newMessage as Message.message).entities)
+      )) {
+        this.appTranslationsManager.resetMessageTranslations(oldMessage.peerId, oldMessage.mid);
       }
     }
   }
