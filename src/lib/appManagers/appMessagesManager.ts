@@ -5390,12 +5390,13 @@ export class AppMessagesManager extends AppManager {
     const {peerId} = message;
     if(message.pFlags.out && !peerId.isUser()) {
       const chatId = peerId.toChatId();
-      const chatFull = this.appProfileManager.getCachedFullChat(chatId) as ChatFull.channelFull;
-      const chat = this.appChatsManager.getChat(chatId) as Chat.channel;
-      if(chatFull?.slowmode_seconds && !chat.admin_rights) {
+      this.appProfileManager.modifyCachedFullChat<ChatFull.channelFull>(chatId, (chatFull) => {
+        const chat = this.appChatsManager.getChat(chatId) as Chat.channel;
+        if(!(chatFull.slowmode_seconds && !chat.admin_rights)) {
+          return false;
+        }
         chatFull.slowmode_next_send_date = message.date + chatFull.slowmode_seconds;
-        this.rootScope.dispatchEvent('chat_full_update', chatId);
-      }
+      });
     }
   }
 
@@ -8028,8 +8029,10 @@ export class AppMessagesManager extends AppManager {
   };
 
   public saveDefaultSendAs(peerId: PeerId, sendAsPeerId: PeerId) {
-    const channelFull = this.appProfileManager.getCachedFullChat(peerId.toChatId()) as ChatFull.channelFull;
-    channelFull.default_send_as = this.appPeersManager.getOutputPeer(sendAsPeerId);
+    this.appProfileManager.modifyCachedFullChat<ChatFull.channelFull>(peerId.toChatId(), (channelFull) => {
+      channelFull.default_send_as = this.appPeersManager.getOutputPeer(sendAsPeerId);
+    });
+
     return this.apiManager.invokeApi('messages.saveDefaultSendAs', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       send_as: this.appPeersManager.getInputPeerById(sendAsPeerId)

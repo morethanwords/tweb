@@ -705,11 +705,9 @@ export class AppChatsManager extends AppManager {
   }
 
   public setChatAvailableReactions(id: ChatId, reactions: ChatReactions) {
-    const chatFull = this.appProfileManager.getCachedFullChat(id);
-    if(chatFull) {
+    this.appProfileManager.modifyCachedFullChat(id, (chatFull) => {
       chatFull.available_reactions = reactions;
-      this.rootScope.dispatchEvent('chat_full_update', id);
-    }
+    });
 
     return this.apiManager.invokeApi('messages.setChatAvailableReactions', {
       peer: this.getInputPeer(id),

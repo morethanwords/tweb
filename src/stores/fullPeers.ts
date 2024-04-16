@@ -17,6 +17,8 @@ rootScope.addEventListener('peer_full_update', requestFullPeer);
 
 export function useFullPeer(peerId: () => PeerId) {
   return createMemo(() => {
+    if(!peerId()) return;
+
     const fullPeer = state[peerId()];
     if(!fullPeer) {
       requestFullPeer(peerId());

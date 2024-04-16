@@ -137,4 +137,16 @@ export default class AppTranslationsManager extends AppManager {
       return promise;
     }
   }
+
+  public togglePeerTranslations(peerId: PeerId, disabled: boolean) {
+    this.appProfileManager.modifyCachedFullPeer(peerId, (fullPeer) => {
+      if(disabled) fullPeer.pFlags.translations_disabled = true;
+      else delete fullPeer.pFlags.translations_disabled;
+    });
+
+    return this.apiManager.invokeApi('messages.togglePeerTranslations', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      disabled
+    });
+  }
 }

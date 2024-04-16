@@ -28,7 +28,7 @@ function _TranslatableMessage(props: {
   const [visible, setVisible] = createSignal(false);
   const wasVisible = createMemo<boolean>((prev) => prev || visible());
   const [textWithEntities, setTextWithEntities] = createSignal<TextWithEntities>();
-  const [translateToLang] = usePeerTranslation(props.peerId);
+  const translation = usePeerTranslation(props.peerId);
   const deferred = deferredPromise<void>();
   const originalText: TextWithEntities = {
     _: 'textWithEntities',
@@ -65,7 +65,7 @@ function _TranslatableMessage(props: {
 
   createEffect(async() => {
     const middleware = createMiddleware().get();
-    const lang = translateToLang();
+    const lang = translation.language();
     const _first = first;
     first = false;
 

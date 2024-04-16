@@ -11,7 +11,6 @@ import usePeerTranslation from '../../hooks/usePeerTranslation';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {i18n} from '../../lib/langPack';
 import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
-import {useFullPeer} from '../../stores/fullPeers';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import Icon from '../icon';
 import Chat from './chat';
@@ -40,14 +39,8 @@ export default class ChatTranslation extends PinnedContainer {
   private init() {
     const {peerId} = this;
 
-    const [shouldShow, setShouldShow] = createSignal(false);
-
-    const translateToLang = createMemo(() => usePeerTranslation(peerId())[0]());
-    const fullPeer = useFullPeer(peerId);
-    createEffect(() => {
-      console.log('translations full peer', fullPeer());
-      setShouldShow(!!fullPeer() && !fullPeer().pFlags.translations_disabled);
-    });
+    const shouldShow = createMemo(() => usePeerTranslation(peerId()).shouldShow());
+    const translateToLang = createMemo(() => usePeerTranslation(peerId()).language());
 
     createEffect(() => {
       this.toggle(!shouldShow());
@@ -67,7 +60,9 @@ export default class ChatTranslation extends PinnedContainer {
     }, {
       icon: 'crossround',
       text: 'Hide',
-      onClick: () => {},
+      onClick: () => {
+        this.managers.appTranslationsManager.togglePeerTranslations(peerId(), true);
+      },
       separator: true
     }], listenerSetter});
     menu.classList.add('pinned-translation-menu', 'primary');
@@ -76,8 +71,8 @@ export default class ChatTranslation extends PinnedContainer {
         <div
           class="pinned-translation-button"
           onClick={() => {
-            const [translationLang, setTranslationLang] = usePeerTranslation(peerId());
-            setTranslationLang(translationLang() ? undefined : 'en');
+            const translation = usePeerTranslation(peerId());
+            translation.set(translation.language() ? undefined : 'en');
           }}
         >
           {Icon('premium_translate', 'pinned-translation-button-icon')}
