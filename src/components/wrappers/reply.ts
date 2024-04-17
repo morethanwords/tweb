@@ -22,7 +22,8 @@ export type WrapReplyOptions = WrapPinnedContainerOptions & {
   isQuote?: boolean,
   noBorder?: boolean,
   replyHeader?: MessageReplyHeader,
-  quote?: {text: string, entities?: MessageEntity[]}
+  quote?: {text: string, entities?: MessageEntity[]},
+  canTranslate?: boolean
 } & WrapSomethingOptions;
 
 export default function wrapReply(options: WrapReplyOptions) {

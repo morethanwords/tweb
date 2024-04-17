@@ -16,13 +16,13 @@ import rootScope from '../../lib/rootScope';
 import {getCountryEmoji} from '../../vendor/emoji';
 import AppSelectPeers from '../appSelectPeers';
 import confirmationPopup from '../confirmationPopup';
-import {createMiddleware} from '../stories/viewer';
 import wrapLocalSticker from '../wrappers/localSticker';
 import {For, JSX} from 'solid-js';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import PopupElement from '../popups';
 import PopupGiftLink from '../popups/giftLink';
 import classNames from '../../helpers/string/classNames';
+import createMiddleware from '../../helpers/solid/createMiddleware';
 
 export function getGiftAssetName(months: number) {
   const durationAssetMap: {[key: number]: LottieAssetName} = {

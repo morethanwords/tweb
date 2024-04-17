@@ -120,9 +120,9 @@ import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import {showTooltip} from '../stories/viewer';
 import eachSecond from '../../helpers/eachSecond';
-import {wrapCallDuration, wrapLeftDuration, wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
+import {wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
+import showTooltip from '../tooltip';
 
 // console.log('Recorder', Recorder);
 

@@ -6,7 +6,7 @@
 
 import {JSX, createSignal, For, createEffect, createResource, Accessor, onMount, createMemo, splitProps, on, Show} from 'solid-js';
 import {ScrollableX} from '../scrollable';
-import {createMiddleware, createStoriesViewer} from './viewer';
+import {createStoriesViewer} from './viewer';
 import styles from './list.module.scss';
 import PeerTitle from '../peerTitle';
 import mediaSizes from '../../helpers/mediaSizes';
@@ -26,6 +26,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import {ChatType} from '../chat/chat';
 import {subscribeOn} from '../../helpers/solid/subscribeOn';
 import {useCollapsable} from '../../hooks/useCollapsable';
+import createMiddleware from '../../helpers/solid/createMiddleware';
 
 const TEST_COUNT = 0;
 

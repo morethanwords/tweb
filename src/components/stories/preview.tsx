@@ -11,12 +11,12 @@ import {Photo, StoryItem, Document, MessageMedia, Message} from '../../layer';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import wrapPhoto from '../wrappers/photo';
 import wrapVideo from '../wrappers/video';
-import {createMiddleware} from './viewer';
 import LazyLoadQueue from '../lazyLoadQueue';
 import {AnimationItemGroup} from '../animationIntersector';
 import {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import {IS_SAFARI} from '../../environment/userAgent';
+import createMiddleware from '../../helpers/solid/createMiddleware';
 
 let processing = false;
 const pollStories = () => {

@@ -7,7 +7,6 @@
 import type {ReactionsContext} from '../../lib/appManagers/appReactionsManager';
 import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, splitProps, on, untrack, batch, Accessor} from 'solid-js';
 import InputSearch from '../inputSearch';
-import {createMiddleware} from '../stories/viewer';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import classNames from '../../helpers/string/classNames';
 import PopupElement from '../popups';
@@ -51,6 +50,7 @@ import Icon from '../icon';
 import PopupPremium from '../popups/premium';
 import usePremium from '../../stores/premium';
 import {AnimationList} from '../../helpers/solid/animationList';
+import createMiddleware from '../../helpers/solid/createMiddleware';
 
 export const ScrollableYTsx = (props: {
   children: JSX.Element,

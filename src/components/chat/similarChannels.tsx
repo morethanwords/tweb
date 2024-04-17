@@ -6,7 +6,6 @@
 
 import {createEffect, createSignal, JSX, For, untrack, Accessor, onCleanup} from 'solid-js';
 import {i18n} from '../../lib/langPack';
-import {createMiddleware, showTooltip} from '../stories/viewer';
 import rootScope from '../../lib/rootScope';
 import {AvatarNew} from '../avatarNew';
 import PeerTitle from '../peerTitle';
@@ -26,6 +25,8 @@ import PopupPickUser from '../popups/pickUser';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import {IconTsx} from '../iconTsx';
+import createMiddleware from '../../helpers/solid/createMiddleware';
+import showTooltip from '../tooltip';
 
 export default function SimilarChannels(props: {
   chatId: ChatId,

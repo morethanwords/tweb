@@ -11,10 +11,12 @@ import usePeerTranslation from '../hooks/usePeerTranslation';
 import {Message, TextWithEntities} from '../layer';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import {createRoot, createSignal, createMemo, onCleanup, createEffect} from 'solid-js';
-import {createMiddleware} from './stories/viewer';
 import rootScope from '../lib/rootScope';
 import SuperIntersectionObserver from '../helpers/dom/superIntersectionObserver';
 import {processMessageForTranslation} from '../stores/peerLanguage';
+import createMiddleware from '../helpers/solid/createMiddleware';
+
+const USE_OBSERVER = false;
 
 function _TranslatableMessage(props: {
   peerId: PeerId,
@@ -23,9 +25,10 @@ function _TranslatableMessage(props: {
   observer?: SuperIntersectionObserver,
   observeElement?: HTMLElement,
   container?: HTMLElement,
-  onTranslation?: (callback: () => void) => void
+  onTranslation?: (callback: () => void) => void,
+  onTextWithEntities?: (textWithEntities: TextWithEntities) => TextWithEntities
 }) {
-  const [visible, setVisible] = createSignal(false);
+  const [visible, setVisible] = createSignal(!USE_OBSERVER);
   const wasVisible = createMemo<boolean>((prev) => prev || visible());
   const [textWithEntities, setTextWithEntities] = createSignal<TextWithEntities>();
   const translation = usePeerTranslation(props.peerId);
@@ -54,7 +57,7 @@ function _TranslatableMessage(props: {
 
   const setOriginalText = () => setTextWithEntities(originalText);
 
-  if(props.observer && props.observeElement) {
+  if(props.observer && props.observeElement && USE_OBSERVER) {
     const onVisible = (entry: IntersectionObserverEntry) => {
       setVisible(entry.isIntersecting);
     };
@@ -76,12 +79,14 @@ function _TranslatableMessage(props: {
       return;
     }
 
-    const r = await translate(translation.language(), _first);
+    const r = await translate(translation.language(), _first && USE_OBSERVER);
     if(!middleware()) {
       return;
     }
 
-    if(r.cached && !r.result) {
+    if(!r.cached) {
+      setOriginalText();
+    } else if(!r.result) {
       setOriginalText();
       return;
     }
@@ -100,9 +105,13 @@ function _TranslatableMessage(props: {
   });
 
   createEffect(() => {
-    const r = textWithEntities();
+    let r = textWithEntities();
     if(!r) {
       return;
+    }
+
+    if(props.onTextWithEntities) {
+      r = props.onTextWithEntities(r);
     }
 
     const middleware = createMiddleware().get();

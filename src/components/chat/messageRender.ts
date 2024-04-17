@@ -318,7 +318,8 @@ export namespace MessageRender {
       lazyLoadQueue,
       replyHeader: replyTo,
       useHighlightingColor: isStandaloneMedia,
-      colorAsOut: isOut
+      colorAsOut: isOut,
+      canTranslate: true
     });
 
     await fillPromise;
