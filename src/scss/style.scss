@@ -2415,6 +2415,8 @@ hr {
 }
 
 .business-location {
+  padding-inline-end: 4rem;
+
   .row-media {
     inset-inline: auto .5rem !important;
     border-radius: $border-radius-medium;

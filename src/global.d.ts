@@ -8,6 +8,7 @@ import type {AppManagers} from './lib/appManagers/managers';
 import type {CustomProperty} from './helpers/dom/customProperties';
 import type Icons from './icons';
 import type {CancellablePromise} from './helpers/cancellablePromise';
+import type Languages from './lib/tinyld/languages';
 
 declare global {
   interface AddEventListenerOptions extends EventListenerOptions {
@@ -104,6 +105,8 @@ declare global {
   type ErrorType = LocalErrorType | ServerErrorType;
 
   type TelegramChoosePeerType = 'users' | 'bots' | 'groups' | 'channels';
+
+  type TranslatableLanguageISO = typeof Languages[number];
 
   interface Error {
     type?: ErrorType;

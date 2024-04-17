@@ -5,7 +5,6 @@
  */
 
 import deferredPromise from '../helpers/cancellablePromise';
-import setInnerHTML from '../helpers/dom/setInnerHTML';
 import {Middleware} from '../helpers/middleware';
 import {modifyAckedPromise} from '../helpers/modifyAckedResult';
 import usePeerTranslation from '../hooks/usePeerTranslation';
@@ -15,6 +14,7 @@ import {createRoot, createSignal, createMemo, onCleanup, createEffect} from 'sol
 import {createMiddleware} from './stories/viewer';
 import rootScope from '../lib/rootScope';
 import SuperIntersectionObserver from '../helpers/dom/superIntersectionObserver';
+import {processMessageForTranslation} from '../stores/peerLanguage';
 
 function _TranslatableMessage(props: {
   peerId: PeerId,
@@ -36,6 +36,8 @@ function _TranslatableMessage(props: {
     entities: props.message.totalEntities
   };
   let first = true, hadText = false;
+
+  processMessageForTranslation(props.peerId, props.message.mid);
 
   if(props.richTextOptions?.loadPromises) {
     props.richTextOptions.loadPromises.push(deferred);
@@ -75,7 +77,6 @@ function _TranslatableMessage(props: {
       return;
     }
 
-    console.log('need translation', props.message.mid);
     const r = await translate(lang, _first);
     if(!middleware()) {
       return;
@@ -91,7 +92,6 @@ function _TranslatableMessage(props: {
       return;
     }
 
-    console.log('translation', props.message.mid, textWithEntities);
     if(!textWithEntities) {
       setOriginalText();
       return;
@@ -120,7 +120,8 @@ function _TranslatableMessage(props: {
       const set = () => {
         if(!middleware()) return;
         deferred.resolve();
-        setInnerHTML(props.container, wrapped);
+        // setInnerHTML(props.container, wrapped);
+        props.container.replaceChildren(wrapped);
         hadText = true;
       };
 

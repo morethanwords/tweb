@@ -176,7 +176,6 @@ import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainG
 import cancelNextClickIfNotClick from '../../helpers/dom/cancelNextClickIfNotClick';
 import makeGoogleMapsUrl from '../../helpers/makeGoogleMapsUrl';
 import getWebFileLocation from '../../helpers/getWebFileLocation';
-import usePeerTranslation from '../../hooks/usePeerTranslation';
 import TranslatableMessage from '../translatableMessage';
 
 export const USER_REACTIONS_INLINE = false;

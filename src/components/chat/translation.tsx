@@ -9,8 +9,9 @@ import {render} from 'solid-js/web';
 import ListenerSetter from '../../helpers/listenerSetter';
 import usePeerTranslation from '../../hooks/usePeerTranslation';
 import {AppManagers} from '../../lib/appManagers/managers';
-import {i18n} from '../../lib/langPack';
+import I18n, {i18n} from '../../lib/langPack';
 import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {useAppState} from '../../stores/appState';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import Icon from '../icon';
 import Chat from './chat';
@@ -39,11 +40,20 @@ export default class ChatTranslation extends PinnedContainer {
   private init() {
     const {peerId} = this;
 
-    const shouldShow = createMemo(() => usePeerTranslation(peerId()).shouldShow());
-    const translateToLang = createMemo(() => usePeerTranslation(peerId()).language());
+    const i = new I18n.IntlElement({
+      key: 'DoNotTranslateLanguage'
+    });
+
+    const peerTranslation = createMemo(() => usePeerTranslation(peerId()));
 
     createEffect(() => {
-      this.toggle(!shouldShow());
+      i.compareAndUpdate({args: [
+        i18n(`Language.${peerTranslation().peerLanguage()}`)
+      ]});
+    });
+
+    createEffect(() => {
+      this.toggle(!peerTranslation().shouldShow());
     });
 
     const listenerSetter = new ListenerSetter();
@@ -54,9 +64,11 @@ export default class ChatTranslation extends PinnedContainer {
       onClick: () => {}
     }, {
       icon: 'hand',
-      text: 'DoNotTranslateLanguage',
-      textArgs: [i18n('LanguageName')],
-      onClick: () => {}
+      textElement: i.element,
+      onClick: () => {
+        const [_, setAppState] = useAppState();
+        setAppState('doNotTranslate', (arr) => [...arr, peerTranslation().peerLanguage()]);
+      }
     }, {
       icon: 'crossround',
       text: 'Hide',
@@ -71,12 +83,12 @@ export default class ChatTranslation extends PinnedContainer {
         <div
           class="pinned-translation-button"
           onClick={() => {
-            const translation = usePeerTranslation(peerId());
+            const translation = peerTranslation();
             translation.set(translation.language() ? undefined : 'en');
           }}
         >
           {Icon('premium_translate', 'pinned-translation-button-icon')}
-          {translateToLang() ? i18n('ShowOriginalButton') : i18n('TranslateToButton', [i18n('LanguageName')])}
+          {peerTranslation().language() ? i18n('ShowOriginalButton') : i18n('TranslateToButton', [i18n('LanguageName')])}
         </div>
         {menu}
       </>
