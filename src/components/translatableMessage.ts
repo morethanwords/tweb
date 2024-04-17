@@ -67,17 +67,16 @@ function _TranslatableMessage(props: {
 
   createEffect(async() => {
     const middleware = createMiddleware().get();
-    const lang = translation.language();
     const _first = first;
     first = false;
 
     // if the message is invisible and it's not the first time we're opening the chat
-    if(!lang || (!wasVisible() && !_first)) {
+    if(!translation.enabled() || (!wasVisible() && !_first)) {
       setOriginalText();
       return;
     }
 
-    const r = await translate(lang, _first);
+    const r = await translate(translation.language(), _first);
     if(!middleware()) {
       return;
     }

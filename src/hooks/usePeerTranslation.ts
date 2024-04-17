@@ -3,6 +3,7 @@ import {useFullPeer} from '../stores/fullPeers';
 import {createEffect} from 'solid-js';
 import usePeerLanguage from '../stores/peerLanguage';
 import useDynamicCachedValue from '../helpers/solid/useDynamicCachedValue';
+import I18n from '../lib/langPack';
 
 function _usePeerTranslation(peerId: PeerId) {
   const [appState, setAppState] = useAppState();
@@ -12,8 +13,10 @@ function _usePeerTranslation(peerId: PeerId) {
 
   const ret = {
     peerLanguage,
-    language: () => appState.translations[peerId],
-    set: (lang: string) => setAppState('translations', peerId, lang),
+    language: (): TranslatableLanguageISO => (appState.translations[peerId] || I18n.lastRequestedNormalizedLangCode) as any,
+    setLanguage: (lang: string) => setAppState('translations', peerId, lang),
+    enabled: () => !!appState.translating[peerId],
+    toggle: (enabled: boolean) => setAppState('translating', peerId, enabled ? true : undefined),
     shouldShow: (): boolean | undefined => {
       const _fullPeer = fullPeer();
       if(!_fullPeer || !peerLanguage()) {
@@ -32,8 +35,8 @@ function _usePeerTranslation(peerId: PeerId) {
   } as const;
 
   createEffect(() => {
-    if(ret.shouldShow() === false && ret.language()) {
-      ret.set(undefined);
+    if(ret.shouldShow() === false && ret.enabled()) {
+      ret.toggle(false);
     }
   });
 

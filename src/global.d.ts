@@ -106,7 +106,7 @@ declare global {
 
   type TelegramChoosePeerType = 'users' | 'bots' | 'groups' | 'channels';
 
-  type TranslatableLanguageISO = typeof Languages[number];
+  type TranslatableLanguageISO = typeof Languages[number][0];
 
   interface Error {
     type?: ErrorType;

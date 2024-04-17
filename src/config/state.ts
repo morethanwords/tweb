@@ -125,6 +125,7 @@ export type State = {
   appConfig: MTAppConfig,
   accountThemes: AccountThemes.accountThemes,
   translations: {[peerId: PeerId]: string},
+  translating: {[peerId: PeerId]: boolean},
   doNotTranslate: TranslatableLanguageISO[]
 };
 
@@ -345,5 +346,6 @@ export const STATE_INIT: State = {
   appConfig: {} as any,
   accountThemes: {} as any,
   translations: {},
+  translating: {},
   doNotTranslate: []
 };
