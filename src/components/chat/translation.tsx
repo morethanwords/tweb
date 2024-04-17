@@ -15,10 +15,12 @@ import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import SearchIndex from '../../lib/searchIndex';
 import Languages from '../../lib/tinyld/languages';
 import {useAppState} from '../../stores/appState';
+import usePremium from '../../stores/premium';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import Icon from '../icon';
 import PopupElement from '../popups';
 import PopupPickUser from '../popups/pickUser';
+import PopupPremium from '../popups/premium';
 import Row from '../row';
 import Chat from './chat';
 import PinnedContainer from './pinnedContainer';
@@ -101,6 +103,7 @@ export default class ChatTranslation extends PinnedContainer {
     });
 
     const peerTranslation = createMemo(() => usePeerTranslation(peerId()));
+    const isPremium = usePremium();
 
     createEffect(() => {
       i.compareAndUpdate({args: [
@@ -114,34 +117,45 @@ export default class ChatTranslation extends PinnedContainer {
 
     const listenerSetter = new ListenerSetter();
     onCleanup(() => listenerSetter.removeAll());
-    const menu = ButtonMenuToggle({direction: 'bottom-left', buttons: [{
-      icon: 'premium_translate',
-      text: 'Chat.Translate.Menu.To',
-      onClick: async() => {
-        const iso2 = await pickLanguage();
-        peerTranslation().setLanguage(iso2);
-      }
-    }, {
-      icon: 'hand',
-      textElement: i.element,
-      onClick: () => {
-        const [_, setAppState] = useAppState();
-        setAppState('doNotTranslate', (arr) => [...arr, peerTranslation().peerLanguage()]);
-      }
-    }, {
-      icon: 'crossround',
-      text: 'Hide',
-      onClick: () => {
-        this.managers.appTranslationsManager.togglePeerTranslations(peerId(), true);
-      },
-      separator: true
-    }], listenerSetter});
+    const menu = ButtonMenuToggle({
+      direction: 'bottom-left',
+      buttons: [{
+        icon: 'premium_translate',
+        text: 'Chat.Translate.Menu.To',
+        onClick: async() => {
+          const iso2 = await pickLanguage();
+          peerTranslation().setLanguage(iso2);
+        },
+        verify: isPremium
+      }, {
+        icon: 'hand',
+        textElement: i.element,
+        onClick: () => {
+          const [_, setAppState] = useAppState();
+          setAppState('doNotTranslate', (arr) => [...arr, peerTranslation().peerLanguage()]);
+        },
+        verify: isPremium,
+        separatorDown: true
+      }, {
+        icon: 'crossround',
+        text: 'Hide',
+        onClick: () => {
+          this.managers.appTranslationsManager.togglePeerTranslations(peerId(), true);
+        }
+      }],
+      listenerSetter
+    });
     menu.classList.add('pinned-translation-menu', 'primary');
     return (
       <>
         <div
           class="pinned-translation-button"
           onClick={() => {
+            if(!isPremium()) {
+              PopupPremium.show({feature: 'translations'});
+              return;
+            }
+
             const translation = peerTranslation();
             translation.toggle(!translation.enabled());
           }}
