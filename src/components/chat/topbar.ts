@@ -874,7 +874,7 @@ export default class ChatTopbar {
     this.status?.destroy();
     this.titleMiddlewareHelper?.destroy();
     this.avatarMiddlewareHelper?.destroy();
-    this.pinnedMessage?.destroy(); // * возможно это можно не делать
+    this.pinnedMessage?.destroy();
     this.pinnedContainers?.forEach((pinnedContainer) => pinnedContainer.destroy());
 
     delete this.pinnedMessage;

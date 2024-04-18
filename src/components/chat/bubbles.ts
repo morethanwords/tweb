@@ -5466,7 +5466,7 @@ export default class ChatBubbles {
     });
 
     const richText = messageMessage ? (
-      bigEmojis ?
+      bigEmojis || our ?
         wrapRichText(messageMessage, getRichTextOptions(totalEntities)) :
         TranslatableMessage({
           peerId: this.peerId,

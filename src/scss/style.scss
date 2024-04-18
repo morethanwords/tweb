@@ -269,6 +269,7 @@
   --badge-text-color: #fff;
   --link-color: #00488f;
   --ripple-color: rgba(0, 0, 0, #{$hover-alpha});
+  --skeleton-color: rgba(0, 0, 0, .2);
   --poll-circle-color: var(--border-color);
   --spoiler-background-color: #e3e5e8;
   --spoiler-draft-background-color: #d9d9d9;
@@ -328,6 +329,7 @@
   --badge-text-color: #fff;
   --link-color: var(--primary-color);
   --ripple-color: rgba(255, 255, 255, #{$hover-alpha});
+  --skeleton-color: rgba(255, 255, 255, .2);
   --poll-circle-color: #fff;
   --spoiler-background-color: #373e4e;
   --spoiler-draft-background-color: #484848;
@@ -2466,6 +2468,32 @@ hr {
       &-child {
         display: inline;
       }
+    }
+  }
+}
+
+// * animation from WebA
+.text-loading {
+  --background-gradient-size: 20rem;
+  background-image: linear-gradient(to right, transparent 10%, var(--skeleton-color) 50%, transparent 90%);
+  background-size: var(--background-gradient-size);
+  box-decoration-break: clone;
+  border-radius: 0.25rem;
+  animation: text-loading 1.5s linear infinite;
+
+  @keyframes text-loading {
+    0% {
+      background-position-x: 0;
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.8;
+    }
+
+    100% {
+      background-position-x: var(--background-gradient-size);
+      opacity: 1;
     }
   }
 }

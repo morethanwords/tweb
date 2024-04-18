@@ -12,6 +12,8 @@ import getServerMessageId from './utils/messageId/getServerMessageId';
 
 // ! possible race-condition if message was edited while translation is in progress
 
+const MAX_MESSAGES_PER_REQUEST = 20;
+
 export default class AppTranslationsManager extends AppManager {
   private translateTextBatch: {
     [lang: string]: {
@@ -68,7 +70,7 @@ export default class AppTranslationsManager extends AppManager {
     }
 
     const promise = pause(0).then(async() => {
-      const doingEntries = [...map.entries()].filter(([mid, v]) => v instanceof Promise);
+      const doingEntries = [...map.entries()].filter(([mid, v]) => v instanceof Promise).slice(0, MAX_MESSAGES_PER_REQUEST);
       const doingMap = new Map(doingEntries);
       const doingMids = doingEntries.map(([mid]) => mid);
 

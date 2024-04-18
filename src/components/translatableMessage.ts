@@ -86,6 +86,7 @@ function _TranslatableMessage(props: {
 
     if(!r.cached) {
       setOriginalText();
+      props.container.classList.add('text-loading');
     } else if(!r.result) {
       setOriginalText();
       return;
@@ -130,6 +131,9 @@ function _TranslatableMessage(props: {
         deferred.resolve();
         // setInnerHTML(props.container, wrapped);
         props.container.replaceChildren(wrapped);
+        if(hadText) {
+          props.container.classList.remove('text-loading');
+        }
         hadText = true;
       };
 

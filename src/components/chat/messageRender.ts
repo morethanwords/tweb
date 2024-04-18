@@ -319,7 +319,7 @@ export namespace MessageRender {
       replyHeader: replyTo,
       useHighlightingColor: isStandaloneMedia,
       colorAsOut: isOut,
-      canTranslate: true
+      canTranslate: originalMessage ? !originalMessage.pFlags.out : undefined
     });
 
     await fillPromise;

@@ -24,12 +24,13 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import {Message} from '../../layer';
 import {logger} from '../../lib/logger';
 import PopupElement from '../popups';
+import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
 
 class AnimatedSuper {
   static DURATION = 200;
   static BASE_CLASS = 'animated-super';
   container: HTMLDivElement;
-  rows: {[index: string]: {element: HTMLElement, timeout?: number, new?: true}} = {};
+  rows: {[index: string]: {element: HTMLElement, middleware: MiddlewareHelper, timeout?: number, new?: true}} = {};
   clearTimeout: number;
 
   constructor() {
@@ -42,7 +43,7 @@ class AnimatedSuper {
     const row = document.createElement('div');
     const isFirst = !Object.keys(this.rows).length && !animateFirst;
     row.className = AnimatedSuper.BASE_CLASS + '-row' + (isFirst ? '' : ' is-hiding hide');
-    this.rows[index] = {element: row, new: true};
+    this.rows[index] = {element: row, middleware: row.middlewareHelper = getMiddleware(), new: true};
     this.container.append(row);
     return row;
   }
@@ -50,6 +51,7 @@ class AnimatedSuper {
   public clearRow(index: number) {
     if(!this.rows[index]) return;
     this.rows[index].element.remove();
+    this.rows[index].middleware.destroy();
     delete this.rows[index];
   }
 
@@ -119,6 +121,12 @@ class AnimatedSuper {
     } */
 
     this.clearRows(index);
+  }
+
+  public destroy() {
+    for(const i in this.rows) {
+      this.clearRow(+i);
+    }
   }
 }
 
@@ -212,6 +220,12 @@ class AnimatedCounter {
     this.hideLeft(number);
     // this.clear(number);
     this.previousNumber = number;
+  }
+
+  destroy() {
+    this.decimals.forEach((decimal) => {
+      decimal.animatedSuper.destroy();
+    });
   }
 }
 
@@ -350,6 +364,9 @@ export default class ChatPinnedMessage {
   }
 
   public destroy() {
+    this.animatedMedia.destroy();
+    this.animatedSubtitle.destroy();
+    this.animatedCounter.destroy();
     this.pinnedMessageContainer.container.remove();
     this.pinnedMessageContainer.toggle(true);
     this.listenerSetter.removeAll();
@@ -631,7 +648,9 @@ export default class ChatPinnedMessage {
         mediaEl: writeMediaTo,
         loadPromises,
         animationGroup: this.chat.animationGroup,
-        textColor: 'primary-text-color'
+        textColor: 'primary-text-color',
+        canTranslate: !message.pFlags.out,
+        middleware: this.animatedSubtitle.getRow(pinnedIndex).middlewareHelper.get()
       });
 
       await Promise.all(loadPromises);
