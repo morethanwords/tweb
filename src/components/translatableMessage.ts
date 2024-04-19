@@ -55,7 +55,10 @@ function _TranslatableMessage(props: {
     }));
   };
 
-  const setOriginalText = () => setTextWithEntities(originalText);
+  const setOriginalText = (loading?: boolean) => {
+    setTextWithEntities(originalText);
+    props.container.classList.toggle('text-loading', !!loading);
+  };
 
   if(props.observer && props.observeElement && USE_OBSERVER) {
     const onVisible = (entry: IntersectionObserverEntry) => {
@@ -85,8 +88,7 @@ function _TranslatableMessage(props: {
     }
 
     if(!r.cached) {
-      setOriginalText();
-      props.container.classList.add('text-loading');
+      setOriginalText(true);
     } else if(!r.result) {
       setOriginalText();
       return;

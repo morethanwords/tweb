@@ -699,6 +699,7 @@ const lang = {
   'Language.yi': 'Yiddish',
   'Language.yo': 'Yoruba',
   'Language.zu': 'Zulu',
+  'Translation.DoNotShow': 'Do not show \'Translate\' buttons for these languages.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2127,6 +2128,14 @@ const lang = {
   'TranslateToButton': 'Translate to %s',
   'DoNotTranslateLanguage': 'Don\'t translate %s',
   'ShowOriginalButton': 'Show Original',
+  'TranslateMessages': 'Translate Messages',
+  'ShowTranslateButton': 'Show Translate Button',
+  'ShowTranslateChatButton': 'Translate Entire Chats',
+  'DoNotTranslate': 'Do Not Translate',
+  'Languages': {
+    'one_value': '%1$d Language',
+    'other_value': '%1$d Languages'
+  },
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2698,7 +2707,8 @@ const lang = {
   'GroupStats.Title': 'Group Statistics',
   'Chat.SendJoinRequest.Info': 'You will be able to send messages once the admins approve your request.',
   'ChatEmpty.BusinessIntro.How': '**%@** added the message above for all empty chats. [How?]()',
-  'Chat.Translate.Menu.To': 'Choose Another Language'
+  'Chat.Translate.Menu.To': 'Choose Another Language',
+  'Language.TranslateMessages.Channel.Premium': 'Subscribe to [Telegram Premium](premium) to translate entire chats.'
 };
 
 export default lang;

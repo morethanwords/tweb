@@ -159,7 +159,7 @@ const RtmpRecordPopupContent = (props: RtmpRecordPopupContentProps) => {
 
       <div>
         <Ripple>
-          <button on:click={onSubmit}
+          <button onClick={onSubmit}
             disabled={name().length > TITLE_MAX_LENGTH}
             class={cnPopup('-button')}
           >

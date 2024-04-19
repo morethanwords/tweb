@@ -34,6 +34,16 @@ $row-border-radius: $border-radius-medium;
     opacity: var(--disabled-opacity);
   }
 
+  &.is-fake-disabled {
+    .row-row {
+      opacity: var(--disabled-opacity);
+    }
+
+    .checkbox-field-toggle {
+      --primary-color: var(--secondary-color);
+    }
+  }
+
   &.no-wrap {
     padding-top: 0 !important;
     padding-bottom: 0 !important;

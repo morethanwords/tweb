@@ -1,14 +1,6 @@
-import {type JSX, createRenderEffect, onMount} from 'solid-js';
+import {resolveFirst} from '@solid-primitives/refs';
+import {createEffect, JSX, onCleanup} from 'solid-js';
 import ripple from './ripple';
-
-declare module 'solid-js' {
-  namespace JSX {
-    interface CustomEvents {
-      click: (ev: MouseEvent) => void;
-    }
-  }
-}
-
 
 export interface RippleProps {
   children: JSX.Element,
@@ -17,7 +9,15 @@ export interface RippleProps {
 }
 
 export const Ripple = (props: RippleProps) => {
-  const {children, callback, onEnd} = props
-  ripple(children as HTMLElement, callback, onEnd, true)
-  return children
-}
+  const {callback, onEnd} = props;
+  const element = resolveFirst(() => props.children);
+  createEffect(() => {
+    const {dispose, element: rippleElement} = ripple(element() as HTMLElement, callback, onEnd, true);
+    onCleanup(() => {
+      dispose();
+      rippleElement.remove();
+    });
+  });
+
+  return props.children;
+};

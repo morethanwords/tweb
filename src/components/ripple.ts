@@ -7,7 +7,6 @@
 import findUpClassName from '../helpers/dom/findUpClassName';
 import sequentialDom from '../helpers/sequentialDom';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import rootScope from '../lib/rootScope';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import {fastRaf} from '../helpers/schedulers';
 import liteMode from '../helpers/liteMode';
@@ -171,7 +170,7 @@ export default function ripple(
       handler?.();
     };
 
-    attachListenerTo.addEventListener('touchstart', (e) => {
+    const onTouchStart = (e: TouchEvent) => {
       if(!liteMode.isAvailable('animations')) {
         return;
       }
@@ -194,9 +193,15 @@ export default function ripple(
         touchEnd();
         attachListenerTo.removeEventListener('touchend', touchEnd);
       }, {once: true});
-    }, {passive: true});
+    };
+
+    attachListenerTo.addEventListener('touchstart', onTouchStart, {passive: true});
+    return {
+      dispose: () => attachListenerTo.removeEventListener('touchstart', onTouchStart),
+      element: r
+    };
   } else {
-    attachListenerTo.addEventListener('mousedown', (e) => {
+    const onMouseDown = (e: MouseEvent) => {
       if(![0, 2].includes(e.button)) { // only left and right buttons
         return;
       }
@@ -217,6 +222,12 @@ export default function ripple(
       drawRipple(clientX, clientY);
       window.addEventListener('mouseup', handler, {once: true, passive: true});
       window.addEventListener('contextmenu', handler, {once: true, passive: true});
-    }, {passive: true});
+    };
+
+    attachListenerTo.addEventListener('mousedown', onMouseDown, {passive: true});
+    return {
+      dispose: () => attachListenerTo.removeEventListener('mousedown', onMouseDown),
+      element: r
+    };
   }
 }

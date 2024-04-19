@@ -20,6 +20,7 @@ import matchUrlProtocol from './richTextProcessor/matchUrlProtocol';
 import wrapUrl from './richTextProcessor/wrapUrl';
 import {setDirection} from '../helpers/dom/setInnerHTML';
 import setBlankToAnchor from './richTextProcessor/setBlankToAnchor';
+import {createSignal} from 'solid-js';
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   'messageActionChatCreate': 'ActionCreateGroup',
@@ -91,6 +92,8 @@ namespace I18n {
   export let timeFormat: State['settings']['timeFormat'];
   export let isRTL = false;
 
+  export const [langCodeNormalized, setLangCodeNormalized] = createSignal<TranslatableLanguageISO>();
+
   export function setRTL(rtl: boolean) {
     isRTL = rtl;
   }
@@ -98,6 +101,7 @@ namespace I18n {
   function setLangCode(langCode: string) {
     lastRequestedLangCode = langCode;
     lastRequestedNormalizedLangCode = langCode.split('-')[0];
+    setLangCodeNormalized(lastRequestedNormalizedLangCode as any);
   }
 
   export function getCacheLangPack(): Promise<LangPackDifference> {

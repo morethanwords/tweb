@@ -26,7 +26,10 @@ import Chat from './chat';
 import PinnedContainer from './pinnedContainer';
 import ChatTopbar from './topbar';
 
-function pickLanguage() {
+export function pickLanguage<T extends boolean>(
+  multi?: T,
+  selected?: Array<TranslatableLanguageISO>
+): T extends true ? Promise<TranslatableLanguageISO[]> : Promise<TranslatableLanguageISO> {
   const deferred = deferredPromise<TranslatableLanguageISO>();
 
   const index = new SearchIndex({ignoreCase: true});
@@ -45,11 +48,13 @@ function pickLanguage() {
         iso2s.forEach((iso2) => {
           const [name, translated] = map.get(iso2 as any as string);
           const row = new Row({
-            title: name,
-            subtitle: translated,
-            clickable: true
+            title: translated,
+            subtitle: name,
+            clickable: true,
+            havePadding: multi
           });
 
+          row.container.append(popup.selector.checkbox(popup.selector.selected.has(iso2)));
           row.container.dataset.peerId = '' + iso2;
           popup.selector.list.append(row.container);
         });
@@ -62,9 +67,10 @@ function pickLanguage() {
           isEnd: true
         };
       },
-      onSelect: (iso2) => {
-        deferred.resolve(iso2 as any);
-      },
+      onSelect: multi ? deferred.resolve.bind(deferred) as any : undefined,
+      onMultiSelect: multi ? deferred.resolve.bind(deferred) as any : undefined,
+      titleLangKey: multi ? 'Telegram.LanguageViewController' : undefined,
+      checkboxSide: 'left',
       noPlaceholder: true
     }
   );
@@ -73,7 +79,23 @@ function pickLanguage() {
     deferred.reject();
   });
 
-  return deferred;
+  if(selected) {
+    const _add = popup.selector.add.bind(popup.selector);
+    popup.selector.add = ({key, scroll}) => {
+      const ret = _add({
+        key: key,
+        title: i18n(`Language.${key as TranslatableLanguageISO}`),
+        scroll,
+        // fallbackIcon: 'close'
+        fallbackIcon: 'check'
+      });
+      return ret;
+    };
+
+    popup.selector.addInitial(selected);
+  }
+
+  return deferred as any;
 }
 
 export default class ChatTranslation extends PinnedContainer {
@@ -123,7 +145,7 @@ export default class ChatTranslation extends PinnedContainer {
         icon: 'premium_translate',
         text: 'Chat.Translate.Menu.To',
         onClick: async() => {
-          const iso2 = await pickLanguage();
+          const iso2 = await pickLanguage(false);
           peerTranslation().setLanguage(iso2);
         },
         verify: isPremium
@@ -132,7 +154,7 @@ export default class ChatTranslation extends PinnedContainer {
         textElement: i.element,
         onClick: () => {
           const [_, setAppState] = useAppState();
-          setAppState('doNotTranslate', (arr) => [...arr, peerTranslation().peerLanguage()]);
+          setAppState('translations', 'doNotTranslate', (arr) => [...arr, peerTranslation().peerLanguage()]);
         },
         verify: isPremium,
         separatorDown: true

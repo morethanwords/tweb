@@ -155,7 +155,7 @@ const RtmpStartStreamPopupContent = (props: RtmpPopupProps) => {
       </Show>
 
       <Ripple>
-        <button on:click={props.onStreamStart}
+        <button onClick={props.onStreamStart}
           classList={{
             [cnPopup('-button')]: true,
             [cnPopup('-button_danger')]: props.active
