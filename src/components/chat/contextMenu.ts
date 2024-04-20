@@ -68,6 +68,7 @@ import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainG
 import PopupTranslate from '../popups/translate';
 import getRichSelection from '../../helpers/dom/getRichSelection';
 import detectLanguageForTranslation from '../../helpers/detectLanguageForTranslation';
+import usePeerTranslation from '../../hooks/usePeerTranslation';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -553,7 +554,8 @@ export default class ChatContextMenu {
         !!this.chat.input.messageInput &&
         !!(this.message as Message.message).message &&
         this.isTextSelected &&
-        !this.isTextFromMultipleMessagesSelected
+        !this.isTextFromMultipleMessagesSelected &&
+        (!usePeerTranslation(this.peerId).enabled() || this.message.pFlags.out)
     }, {
       icon: 'reply',
       text: 'Reply',

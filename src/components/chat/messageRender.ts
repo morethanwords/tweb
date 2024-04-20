@@ -256,6 +256,7 @@ export namespace MessageRender {
         originalPeerTitle = i18n('Loading');
       }
     } else {
+      isReplyFromAnotherPeer = !!replyTo.reply_from;
       const originalMessageFwdFromId = (originalMessage as Message.message).fwdFromId;
       titlePeerId = message.fwdFromId && message.fwdFromId === originalMessageFwdFromId ?
         message.fwdFromId :
@@ -319,7 +320,7 @@ export namespace MessageRender {
       replyHeader: replyTo,
       useHighlightingColor: isStandaloneMedia,
       colorAsOut: isOut,
-      canTranslate: originalMessage ? !originalMessage.pFlags.out : undefined
+      canTranslate: originalMessage && !isReplyFromAnotherPeer ? !originalMessage.pFlags.out : undefined
     });
 
     await fillPromise;
