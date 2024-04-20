@@ -1,5 +1,5 @@
 import {createRoot} from 'solid-js';
-import {createStore, unwrap} from 'solid-js/store';
+import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {State} from '../config/state';
 import rootScope from '../lib/rootScope';
 
@@ -13,7 +13,14 @@ const setAppState: typeof _setAppState = (...args: any[]) => {
   rootScope.managers.appStateManager.setByKey(key, unwrap(appState[key]));
 };
 
-const setAppStateSilent = _setAppState;
+const setAppStateSilent = (key: any, value?: any) => {
+  if(typeof(key) === 'object') {
+    _setAppState(key);
+    return;
+  }
+
+  _setAppState(key, reconcile(value));
+};
 
 const useAppState = () => [appState, setAppState] as const;
 

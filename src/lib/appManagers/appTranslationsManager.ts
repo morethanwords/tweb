@@ -6,7 +6,7 @@
 
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import pause from '../../helpers/schedulers/pause';
-import {TextWithEntities, MessagesTranslatedText} from '../../layer';
+import {TextWithEntities, MessagesTranslatedText, MessagesTranslateText} from '../../layer';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 
@@ -17,7 +17,7 @@ const MAX_MESSAGES_PER_REQUEST = 20;
 export default class AppTranslationsManager extends AppManager {
   private translateTextBatch: {
     [lang: string]: {
-      text: Map<TextWithEntities, MaybeDeferredPromise<TextWithEntities>>,
+      text: Map<string, MaybeDeferredPromise<TextWithEntities>>,
       messages: Map<PeerId, Map<number, MaybeDeferredPromise<TextWithEntities>>>,
       textPromise?: Promise<any>,
       messagesPromises: Map<PeerId, Promise<any>>
@@ -58,30 +58,28 @@ export default class AppTranslationsManager extends AppManager {
     return textWithEntities;
   };
 
-  private batchMessageTranslation(lang: string, peerId: PeerId) {
-    const batch = this.translateTextBatch[lang];
-    if(!batch || batch.messagesPromises.get(peerId)) {
-      return;
-    }
-
-    const map = batch.messages.get(peerId);
+  private batchTranslation<T>(
+    lang: string,
+    map: Map<any, MaybeDeferredPromise<TextWithEntities>>,
+    getParams: (keys: T[]) => Partial<MessagesTranslateText>,
+    noCaching?: boolean
+  ) {
     if(!map || ![...map.values()].some((v) => v instanceof Promise)) {
       return;
     }
 
-    const promise = pause(0).then(async() => {
+    return pause(0).then(async() => {
       const doingEntries = [...map.entries()].filter(([mid, v]) => v instanceof Promise).slice(0, MAX_MESSAGES_PER_REQUEST);
       const doingMap = new Map(doingEntries);
-      const doingMids = doingEntries.map(([mid]) => mid);
+      const doingKeys = doingEntries.map(([mid]) => mid);
 
       const result: MessagesTranslatedText = await this.apiManager.invokeApi('messages.translateText', {
-        peer: this.appPeersManager.getInputPeerById(peerId),
-        id: doingMids.map((mid) => getServerMessageId(mid)),
+        ...getParams(doingKeys),
         to_lang: lang
       }).catch((err) => {
-        doingMids.forEach((mid) => {
-          const deferred = doingMap.get(mid) as CancellablePromise<TextWithEntities>;
-          map.delete(mid);
+        doingKeys.forEach((key) => {
+          const deferred = doingMap.get(key) as CancellablePromise<TextWithEntities>;
+          map.delete(key);
           deferred.reject(err);
         });
 
@@ -90,24 +88,55 @@ export default class AppTranslationsManager extends AppManager {
 
       if(result) result.result.forEach((textWithEntities, idx) => {
         this.processTextWithEntities(textWithEntities);
-        const mid = doingMids[idx];
-        const deferred = doingMap.get(mid) as CancellablePromise<TextWithEntities>;
-        map.set(mid, textWithEntities);
+        const key = doingKeys[idx];
+        const deferred = doingMap.get(key) as CancellablePromise<TextWithEntities>;
+        if(noCaching) map.delete(key);
+        else map.set(key, textWithEntities);
         deferred.resolve(textWithEntities);
       });
+    });
+  }
 
+  private batchMessageTranslation(lang: string, peerId: PeerId) {
+    const batch = this.translateTextBatch[lang];
+    if(!batch || batch.messagesPromises.get(peerId)) {
+      return;
+    }
+
+    const map = batch.messages.get(peerId);
+    const promise = this.batchTranslation<number>(lang, map, (mids) => ({
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      id: mids.map((mid) => getServerMessageId(mid))
+    }));
+    promise && batch.messagesPromises.set(peerId, promise);
+    promise?.then(() => {
       batch.messagesPromises.delete(peerId);
       this.batchMessageTranslation(lang, peerId);
     });
+  }
 
-    batch.messagesPromises.set(peerId, promise);
+  private batchTextTranslation(lang: string) {
+    const batch = this.translateTextBatch[lang];
+    if(!batch || batch.textPromise) {
+      return;
+    }
+
+    const map = batch.text;
+    const promise = this.batchTranslation<string>(lang, map, (keys) => ({
+      text: keys.map((key) => ({entities: [], ...JSON.parse(key)}))
+    }), true);
+    promise && (batch.textPromise = promise);
+    batch.textPromise?.then(() => {
+      batch.textPromise = undefined;
+      this.batchTextTranslation(lang);
+    });
   }
 
   public translateText(options: ({
     peerId: PeerId,
     mid: number
   } | {
-    text: Array<TextWithEntities>
+    text: TextWithEntities
   }) & {lang: string, onlyCache?: boolean}) {
     this.translateTextBatch[options.lang] ??= {text: new Map(), messages: new Map(), messagesPromises: new Map()};
     const batch = this.translateTextBatch[options.lang];
@@ -135,6 +164,19 @@ export default class AppTranslationsManager extends AppManager {
       tried.add(options.lang);
 
       this.batchMessageTranslation(options.lang, options.peerId);
+
+      return promise;
+    } else {
+      const key = JSON.stringify(options.text);
+      let promise = batch.text.get(key);
+      if(promise || options.onlyCache) {
+        return promise;
+      }
+
+      promise = deferredPromise<TextWithEntities>();
+      batch.text.set(key, promise);
+
+      this.batchTextTranslation(options.lang);
 
       return promise;
     }

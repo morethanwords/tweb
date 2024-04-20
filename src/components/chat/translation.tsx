@@ -54,7 +54,9 @@ export function pickLanguage<T extends boolean>(
             havePadding: multi
           });
 
-          row.container.append(popup.selector.checkbox(popup.selector.selected.has(iso2)));
+          if(multi) {
+            row.container.append(popup.selector.checkbox(popup.selector.selected.has(iso2)));
+          }
           row.container.dataset.peerId = '' + iso2;
           popup.selector.list.append(row.container);
         });
@@ -67,7 +69,7 @@ export function pickLanguage<T extends boolean>(
           isEnd: true
         };
       },
-      onSelect: multi ? deferred.resolve.bind(deferred) as any : undefined,
+      onSelect: !multi ? deferred.resolve.bind(deferred) as any : undefined,
       onMultiSelect: multi ? deferred.resolve.bind(deferred) as any : undefined,
       titleLangKey: multi ? 'Telegram.LanguageViewController' : undefined,
       checkboxSide: 'left',

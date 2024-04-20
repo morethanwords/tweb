@@ -18,29 +18,39 @@ import createMiddleware from '../helpers/solid/createMiddleware';
 
 const USE_OBSERVER = false;
 
-function _TranslatableMessage(props: {
+export function TranslatableMessageTsx(props: {
   peerId: PeerId,
   message?: Message.message,
+  textWithEntities?: TextWithEntities,
   richTextOptions?: Parameters<typeof wrapRichText>[1],
   observer?: SuperIntersectionObserver,
   observeElement?: HTMLElement,
   container?: HTMLElement,
+  enabled?: boolean,
   onTranslation?: (callback: () => void) => void,
   onTextWithEntities?: (textWithEntities: TextWithEntities) => TextWithEntities
 }) {
-  const [visible, setVisible] = createSignal(!USE_OBSERVER);
+  const useObserver = USE_OBSERVER && props.observer && props.enabled === undefined;
+  const [visible, setVisible] = createSignal(!useObserver);
   const wasVisible = createMemo<boolean>((prev) => prev || visible());
   const [textWithEntities, setTextWithEntities] = createSignal<TextWithEntities>();
   const translation = usePeerTranslation(props.peerId);
   const deferred = deferredPromise<void>();
-  const originalText: TextWithEntities = {
-    _: 'textWithEntities',
-    text: props.message.message,
-    entities: props.message.totalEntities
-  };
+  let originalText: TextWithEntities = props.textWithEntities;
   let first = true, hadText = false;
 
-  processMessageForTranslation(props.peerId, props.message.mid);
+  const dontShowOriginalFirst = props.enabled;
+  const container = props.container ?? document.createElement('span');
+  container.classList.add('translatable-message');
+
+  if(props.message) {
+    processMessageForTranslation(props.peerId, props.message.mid);
+    originalText = {
+      _: 'textWithEntities',
+      text: props.message.message,
+      entities: props.message.totalEntities
+    };
+  }
 
   if(props.richTextOptions?.loadPromises) {
     props.richTextOptions.loadPromises.push(deferred);
@@ -48,8 +58,12 @@ function _TranslatableMessage(props: {
 
   const translate = (lang: string, onlyCache?: boolean) => {
     return modifyAckedPromise(rootScope.managers.acknowledged.appTranslationsManager.translateText({
-      peerId: props.message.peerId,
-      mid: props.message.mid,
+      ...(props.message ? {
+        peerId: props.message.peerId,
+        mid: props.message.mid
+      } : {
+        text: props.textWithEntities
+      }),
       lang,
       onlyCache
     }));
@@ -57,10 +71,10 @@ function _TranslatableMessage(props: {
 
   const setOriginalText = (loading?: boolean) => {
     setTextWithEntities(originalText);
-    props.container.classList.toggle('text-loading', !!loading);
+    container.classList.toggle('text-loading', !!loading);
   };
 
-  if(props.observer && props.observeElement && USE_OBSERVER) {
+  if(props.observer && props.observeElement && useObserver) {
     const onVisible = (entry: IntersectionObserverEntry) => {
       setVisible(entry.isIntersecting);
     };
@@ -77,18 +91,22 @@ function _TranslatableMessage(props: {
     first = false;
 
     // if the message is invisible and it's not the first time we're opening the chat
-    if(!translation.enabled() || (!wasVisible() && !_first)) {
+    if((!translation.enabled() && !props.enabled) || (!wasVisible() && !_first)) {
       setOriginalText();
       return;
     }
 
-    const r = await translate(translation.language(), _first && USE_OBSERVER);
+    const r = await translate(translation.language(), _first && useObserver);
     if(!middleware()) {
       return;
     }
 
     if(!r.cached) {
-      setOriginalText(true);
+      if(!dontShowOriginalFirst) {
+        setOriginalText(true);
+      } else {
+        container.classList.add('text-loading');
+      }
     } else if(!r.result) {
       setOriginalText();
       return;
@@ -131,11 +149,8 @@ function _TranslatableMessage(props: {
       const set = () => {
         if(!middleware()) return;
         deferred.resolve();
-        // setInnerHTML(props.container, wrapped);
-        props.container.replaceChildren(wrapped);
-        if(hadText) {
-          props.container.classList.remove('text-loading');
-        }
+        container.replaceChildren(wrapped);
+        if(hadText || dontShowOriginalFirst) container.classList.remove('text-loading');
         hadText = true;
       };
 
@@ -147,16 +162,13 @@ function _TranslatableMessage(props: {
       set();
     });
   });
-}
-
-export default function TranslatableMessage(props: Parameters<typeof _TranslatableMessage>[0] & {middleware: Middleware}) {
-  const container = props.container ??= document.createElement('span');
-  container.classList.add('translatable-message');
-
-  createRoot((dispose) => {
-    props.middleware.onDestroy(dispose);
-    return _TranslatableMessage(props);
-  });
 
   return container;
+}
+
+export default function TranslatableMessage(props: Parameters<typeof TranslatableMessageTsx>[0] & {middleware: Middleware}) {
+  return createRoot((dispose) => {
+    props.middleware.onDestroy(dispose);
+    return TranslatableMessageTsx(props);
+  });
 }

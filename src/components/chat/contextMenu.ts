@@ -19,7 +19,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
-import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, ChannelParticipant} from '../../layer';
+import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, ChannelParticipant, TextWithEntities} from '../../layer';
 import PopupReportMessages from '../popups/reportMessages';
 import assumeType from '../../helpers/assumeType';
 import PopupSponsored from '../popups/sponsored';
@@ -67,6 +67,10 @@ import rootScope from '../../lib/rootScope';
 import ReactionElement from './reaction';
 import InputField from '../inputField';
 import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainGroupedMessage';
+import detectLanguage from '../../lib/tinyld/detect';
+import {useAppState} from '../../stores/appState';
+import PopupTranslate from '../popups/translate';
+import getRichSelection from '../../helpers/dom/getRichSelection';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -117,6 +121,7 @@ export default class ChatContextMenu {
   private messagePeerId: number;
 
   private canViewReadTime: boolean;
+  private messageLanguage: TranslatableLanguageISO;
 
   constructor(
     private chat: Chat,
@@ -273,6 +278,23 @@ export default class ChatContextMenu {
       this.linkToMessage = await this.getUrlToMessage();
       this.selectedMessagesText = await this.getSelectedMessagesText();
       this.selectedMessages = this.chat.selection.isSelecting && !avatar ? await this.chat.selection.getSelectedMessages() : undefined;
+
+      if(
+        !this.selectedMessages &&
+        (this.message as Message.message)?.message &&
+        useAppState()[0].translations.showInMenu
+      ) {
+        this.messageLanguage = await detectLanguage((this.message as Message.message).message);
+        if(
+          !this.messageLanguage ||
+          useAppState()[0].translations.doNotTranslate.includes(this.messageLanguage)
+          // I18n.langCodeNormalized() === this.messageLanguage
+        ) {
+          this.messageLanguage = undefined;
+        }
+      } else {
+        this.messageLanguage = undefined;
+      }
 
       const initResult = await this.init();
       if(!initResult) {
@@ -643,6 +665,28 @@ export default class ChatContextMenu {
       },
       verify: () => this.target.classList.contains('anchor-hashtag'),
       withSelection: true
+    }, {
+      icon: 'premium_translate',
+      text: 'TranslateMessage',
+      onClick: () => {
+        if(!rootScope.premium) {
+          PopupPremium.show({feature: 'translations'});
+        } else {
+          let textWithEntities: TextWithEntities;
+          if(this.isTextSelected) {
+            const {text, entities} = this.getQuotedText();
+            textWithEntities = {_: 'textWithEntities', text, entities};
+          }
+
+          PopupElement.createPopup(PopupTranslate, {
+            peerId: this.peerId,
+            textWithEntities,
+            message: textWithEntities ? undefined : this.message as Message.message,
+            detectedLanguage: this.messageLanguage
+          });
+        }
+      },
+      verify: () => !!this.messageLanguage
     }, {
       icon: 'link',
       text: 'MessageContext.CopyMessageLink1',
@@ -1378,84 +1422,15 @@ export default class ChatContextMenu {
     );
   };
 
+  private getQuotedText() {
+    return getRichSelection(this.target);
+  }
+
   private onQuoteClick = async() => {
     const {peerId} = this;
-    const selection = document.getSelection();
-    const range = selection.getRangeAt(0);
-    const {startContainer, startOffset, endContainer, endOffset} = range;
-    const startValue = startContainer.nodeValue;
-    const endValue = endContainer.nodeValue;
     const messageWithText = this.getMessageWithText();
     const {mid} = messageWithText;
-
-    // * find the index
-    const needle = '\x02';
-    const container = findUpClassName(this.target, 'spoilers-container');
-    const skipSelectors: string[] = ['.reply'];
-    const s = skipSelectors.map((selector) => {
-      const element = container.querySelector(selector);
-      if(element) {
-        const textNode = document.createTextNode('');
-        element.replaceWith(textNode);
-        return [textNode, element];
-      }
-    }).filter(Boolean);
-
-    let insertedStartNode: Text, insertedEndNode: Text;
-    if(startValue === null) {
-      startContainer.parentNode.insertBefore(
-        insertedStartNode = document.createTextNode(needle),
-        startOffset === 0 ? startContainer : startContainer.nextSibling
-      );
-    }
-
-    if(endValue === null) {
-      endContainer.parentNode.insertBefore(
-        insertedEndNode = document.createTextNode(needle),
-        endOffset === 0 ? endContainer : endContainer.nextSibling
-      );
-    }
-
-    if(startContainer === endContainer && !insertedStartNode) {
-      startContainer.nodeValue = startValue.slice(0, startOffset) + needle + startValue.slice(startOffset, endOffset) + needle + startValue.slice(endOffset);
-    } else {
-      if(!insertedEndNode) endContainer.nodeValue = endValue.slice(0, endOffset) + needle + endValue.slice(endOffset);
-      if(!insertedStartNode) startContainer.nodeValue = startValue.slice(0, startOffset) + needle + startValue.slice(startOffset);
-    }
-    const {value: valueBefore} = getRichValueWithCaret(container);
-    const startIndex = valueBefore.indexOf(needle);
-    const endIndex = valueBefore.indexOf(needle, startIndex + 1) - 1;
-    if(insertedStartNode) insertedStartNode.remove();
-    else startContainer.nodeValue = startValue;
-    if(insertedEndNode) insertedEndNode.remove();
-    else endContainer.nodeValue = endValue;
-
-    // * have to fix entities
-    const SUPPORTED_ENTITIES = new Set<MessageEntity['_']>([
-      'messageEntityBold',
-      'messageEntityItalic',
-      'messageEntityUnderline',
-      'messageEntityStrike',
-      'messageEntitySpoiler',
-      'messageEntityCustomEmoji',
-      'messageEntityEmoji'
-    ]);
-    let {value: valueAfter, entities} = getRichValueWithCaret(container, true);
-    let value = valueAfter.slice(startIndex, endIndex);
-    for(let i = 0; i < entities.length; ++i) {
-      const entity = entities[i];
-      const startOffset = entity.offset;
-      const endOffset = startOffset + entity.length;
-      if(endOffset < startIndex || startOffset >= endIndex || !SUPPORTED_ENTITIES.has(entity._)) {
-        entities.splice(i--, 1);
-        continue;
-      }
-
-      entity.offset = Math.max(startOffset - startIndex, 0);
-      const distance = Math.max(startIndex - startOffset, 0);
-      const maxLength = endIndex - startIndex - entity.offset;
-      entity.length = Math.min(entity.length - distance, maxLength);
-    }
+    let {text: value, entities = [], offset: startIndex} = this.getQuotedText();
 
     const appConfig = await this.managers.apiManager.getAppConfig();
     let maxLength = appConfig.quote_length_max ?? 1024;
@@ -1486,9 +1461,6 @@ export default class ChatContextMenu {
       replyToMsgId: mid,
       replyToQuote: quote
     };
-
-    s.forEach(([textNode, element]) => textNode.replaceWith(element));
-    cancelSelection();
 
     if(!await this.chat.canSend()) {
       replyTo.replyToPeerId = peerId;

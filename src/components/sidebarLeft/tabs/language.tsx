@@ -65,6 +65,18 @@ export default class AppLanguageTab extends SliderSuperTab {
           })]}
         >
           <RowTsx
+            title={i18n('ShowTranslateButton')}
+            checkboxFieldToggle={
+              <CheckboxFieldTsx
+                checked={appState.translations.showInMenu}
+                toggle
+                onChange={(checked) => {
+                  setAppState('translations', 'showInMenu', checked);
+                }}
+              />
+            }
+          />
+          <RowTsx
             title={i18n('ShowTranslateChatButton')}
             checkboxFieldToggle={
               <CheckboxFieldTsx

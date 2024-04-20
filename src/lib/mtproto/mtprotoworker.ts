@@ -164,7 +164,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
       state: (payload) => {
         if(payload.key) {
-          setAppStateSilent({[payload.key]: payload.value});
+          setAppStateSilent(payload.key, payload.value);
         } else {
           console.error(payload);
         }

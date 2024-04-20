@@ -101,7 +101,7 @@ namespace I18n {
   function setLangCode(langCode: string) {
     lastRequestedLangCode = langCode;
     lastRequestedNormalizedLangCode = langCode.split('-')[0];
-    setLangCodeNormalized(lastRequestedNormalizedLangCode as any);
+    setLangCodeNormalized(lastRequestedNormalizedLangCode.split('-')[0] as any);
   }
 
   export function getCacheLangPack(): Promise<LangPackDifference> {

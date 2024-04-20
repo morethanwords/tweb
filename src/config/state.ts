@@ -128,6 +128,7 @@ export type State = {
     peers: {[peerId: PeerId]: string},
     enabledPeers: {[peerId: PeerId]: boolean},
     enabled: boolean,
+    showInMenu: boolean,
     doNotTranslate: TranslatableLanguageISO[]
   }
 };
@@ -352,6 +353,7 @@ export const STATE_INIT: State = {
     peers: {},
     enabledPeers: {},
     enabled: true,
+    showInMenu: true,
     doNotTranslate: []
   }
 };

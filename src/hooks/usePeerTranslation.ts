@@ -20,13 +20,12 @@ function _usePeerTranslation(peerId: PeerId) {
     enabled: createMemo(() => !!(isPremium() && appState.translations.enabled && appState.translations.enabledPeers[peerId])),
     toggle: (enabled: boolean) => setAppState('translations', 'enabledPeers', peerId, enabled ? true : undefined),
     shouldShow: createMemo<boolean | undefined>(() => {
-      const _fullPeer = fullPeer();
-      if(!_fullPeer || !peerLanguage() || !appState.translations.enabled) {
+      if(!isPremium() || !fullPeer() || !peerLanguage() || !appState.translations.enabled) {
         return;
       }
 
       if(
-        _fullPeer.pFlags.translations_disabled ||
+        fullPeer().pFlags.translations_disabled ||
         appState.translations.doNotTranslate.includes(peerLanguage())
       ) {
         return false;

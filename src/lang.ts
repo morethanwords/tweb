@@ -2136,6 +2136,7 @@ const lang = {
     'one_value': '%1$d Language',
     'other_value': '%1$d Languages'
   },
+  'TranslateMessage': 'Translate',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
