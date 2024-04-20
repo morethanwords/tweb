@@ -54,6 +54,9 @@ import wrapPhoto from './wrappers/photo';
 import wrapTopicNameButton from './wrappers/topicNameButton';
 import {batch, createMemo, createRoot, createSignal, JSX} from 'solid-js';
 import {render} from 'solid-js/web';
+import detectLanguageForTranslation from '../helpers/detectLanguageForTranslation';
+import PopupPremium from './popups/premium';
+import PopupTranslate from './popups/translate';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   setInnerHTML(row.title, text || undefined);
@@ -93,6 +96,9 @@ export default class PeerProfile {
   private personalChannelSection: SettingSection;
   private personalChannel: Row;
   private personalChannelCounter: HTMLSpanElement;
+
+  private bioLanguage: Promise<TranslatableLanguageISO>;
+  private bioText: string;
 
   constructor(
     private managers: AppManagers,
@@ -178,6 +184,25 @@ export default class PeerProfile {
             simulateClickEvent(this.bio.container);
           },
           verify: () => this.peerId.isUser()
+        }, {
+          icon: 'premium_translate',
+          text: 'TranslateMessage',
+          onClick: async() => {
+            if(!rootScope.premium) {
+              PopupPremium.show({feature: 'translations'});
+            } else {
+              PopupElement.createPopup(PopupTranslate, {
+                peerId: this.peerId,
+                textWithEntities: {
+                  _: 'textWithEntities',
+                  text: this.bioText,
+                  entities: []
+                },
+                detectedLanguage: await this.bioLanguage
+              });
+            }
+          },
+          verify: async() => !!(await this.bioLanguage)
         }]
       }
     });
@@ -246,7 +271,7 @@ export default class PeerProfile {
       subtitleLangKey: 'SetUrlPlaceholder',
       icon: 'link',
       clickable: () => {
-        const url = this.link.title.textContent;
+        const url = 'https://' + this.link.title.textContent;
         copyTextToClipboard(url);
         // Promise.resolve(appProfileManager.getChatFull(this.peerId.toChatId())).then((chatFull) => {
         // copyTextToClipboard(chatFull.exported_invite.link);
@@ -744,7 +769,7 @@ export default class PeerProfile {
     const isTopic = !!(this.threadId && await m(this.managers.appPeersManager.isForum(peerId)));
     const isPremium = peerId.isUser() ? await m(this.managers.appUsersManager.isPremium(peerId.toUserId())) : undefined;
     if(isTopic) {
-      let url = 'https://t.me/';
+      let url = 't.me/';
       const threadId = getServerMessageId(this.threadId);
       const username = await m(this.managers.appPeersManager.getPeerUsername(peerId));
       if(username) {
@@ -765,6 +790,7 @@ export default class PeerProfile {
       setText(peerFull.about ? wrapRichText(peerFull.about, {
         whitelistedDomains: isPremium ? undefined : appConfig.whitelisted_domains
       }) : undefined, this.bio);
+      this.bioLanguage = detectLanguageForTranslation(this.bioText = peerFull.about);
     });
     // }
 
@@ -774,7 +800,7 @@ export default class PeerProfile {
       let also: HTMLElement;
       if(usernames.length) {
         also = this.getUsernamesAlso(usernames);
-        callbacks.push(() => setText('https://t.me/' + usernames[0], this.link));
+        callbacks.push(() => setText('t.me/' + usernames[0], this.link));
       } else {
         const exportedInvite = (peerFull as ChatFull.channelFull).exported_invite;
         if(exportedInvite?._ === 'chatInviteExported') {

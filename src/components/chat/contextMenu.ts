@@ -55,10 +55,8 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import Icon from '../icon';
 import cloneDOMRect from '../../helpers/dom/cloneDOMRect';
 import PopupPremium from '../popups/premium';
-import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {ChatInputReplyTo} from './input';
 import {TEST_BUBBLES_DELETION} from './bubbles';
-import cancelSelection from '../../helpers/dom/cancelSelection';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
 import {formatFullSentTime} from '../../helpers/date';
@@ -67,10 +65,9 @@ import rootScope from '../../lib/rootScope';
 import ReactionElement from './reaction';
 import InputField from '../inputField';
 import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainGroupedMessage';
-import detectLanguage from '../../lib/tinyld/detect';
-import {useAppState} from '../../stores/appState';
 import PopupTranslate from '../popups/translate';
 import getRichSelection from '../../helpers/dom/getRichSelection';
+import detectLanguageForTranslation from '../../helpers/detectLanguageForTranslation';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -278,23 +275,7 @@ export default class ChatContextMenu {
       this.linkToMessage = await this.getUrlToMessage();
       this.selectedMessagesText = await this.getSelectedMessagesText();
       this.selectedMessages = this.chat.selection.isSelecting && !avatar ? await this.chat.selection.getSelectedMessages() : undefined;
-
-      if(
-        !this.selectedMessages &&
-        (this.message as Message.message)?.message &&
-        useAppState()[0].translations.showInMenu
-      ) {
-        this.messageLanguage = await detectLanguage((this.message as Message.message).message);
-        if(
-          !this.messageLanguage ||
-          useAppState()[0].translations.doNotTranslate.includes(this.messageLanguage)
-          // I18n.langCodeNormalized() === this.messageLanguage
-        ) {
-          this.messageLanguage = undefined;
-        }
-      } else {
-        this.messageLanguage = undefined;
-      }
+      this.messageLanguage = this.selectedMessages ? undefined : await detectLanguageForTranslation((this.message as Message.message).message);
 
       const initResult = await this.init();
       if(!initResult) {
