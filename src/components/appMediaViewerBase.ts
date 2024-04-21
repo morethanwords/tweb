@@ -1823,7 +1823,7 @@ export default class AppMediaViewerBase<
             live: isLiveStream,
             width: mediaSize?.width,
             height: mediaSize?.height,
-            onPlaybackRackMenuToggle: (open) => {
+            onPlaybackRateMenuToggle: (open) => {
               this.wholeDiv.classList.toggle('hide-caption', !!open);
             },
             onPip: (pip) => {

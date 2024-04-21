@@ -25,7 +25,8 @@ export default class MediaProgressLine extends RangeSelector {
     withTransition?: boolean,
     useTransform?: boolean,
     onSeekStart?: () => void,
-    onSeekEnd?: () => void
+    onSeekEnd?: () => void,
+    onTimeUpdate?: (time: number) => void
   } = {}) {
     super({
       step: 1000 / 60 / 1000,
@@ -179,6 +180,7 @@ export default class MediaProgressLine extends RangeSelector {
     // }
 
     const currentTime = this.media.currentTime;
+    this.options.onTimeUpdate?.(currentTime);
     super.setProgress(currentTime);
   }
 

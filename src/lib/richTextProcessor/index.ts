@@ -68,7 +68,8 @@ export const URL_REG_EXP = URL_PROTOCOL_REG_EXP_PART +
   '(?:/(?:\\S{0,255}[^\\s.;,(\\[\\]{}<>"\'])?)?';
 export const URL_PROTOCOL_REG_EXP = new RegExp('^' + URL_PROTOCOL_REG_EXP_PART.slice(0, -1), 'i');
 export const USERNAME_REG_EXP = '[a-zA-Z\\d_]{5,32}';
-export const TIMESTAMP_REG_EXP = '(?:\\s|^)((?:\\d{1,2}:)?(?:[0-5]?[0-9]):(?:[0-5][0-9]))(?:\\s|$)';
+// export const TIMESTAMP_REG_EXP = '(?:\\s|^)((?:\\d{1,2}:)?(?:[0-5]?[0-9]):(?:[0-5][0-9]))(?:\\s|$)';
+export const TIMESTAMP_REG_EXP = '(?:\\s|^)((?:(\\d{1,2}):(?:[0-5]?[0-9])|(?:\\d{1,2}|\\d{3,})):(?:[0-5][0-9]))(?:\\s|$)';
 export const BOT_COMMAND_REG_EXP = '\\/([a-zA-Z\\d_]{1,32})(?:@(' + USERNAME_REG_EXP + '))?(\\b|$)';
 export const FULL_REG_EXP = new RegExp('(^| )(@)(' + USERNAME_REG_EXP + ')|(' + URL_REG_EXP + ')|(\\n)|(' + emojiRegExp + ')|(^|[\\s\\(\\]])(#[' + ALPHA_NUMERIC_REG_EXP + ']{2,64})|(^|\\s)' + BOT_COMMAND_REG_EXP + '|' + TIMESTAMP_REG_EXP + '', 'i');
 export const EMAIL_REG_EXP = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;

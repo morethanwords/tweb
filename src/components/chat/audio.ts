@@ -24,13 +24,17 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import Icon from '../icon';
 import {replaceButtonIcon} from '../button';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
+import toHHMMSS from '../../helpers/string/toHHMMSS';
+import {PlaybackRateButton} from '../../lib/mediaPlayer';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
   private progressLine: MediaProgressLine;
   private volumeSelector: VolumeSelector;
-  private fasterEl: HTMLElement;
+  private playbackRateButton: ReturnType<typeof PlaybackRateButton>;
   private repeatEl: HTMLButtonElement;
+  private time: HTMLElement;
+  private duration: number;
 
   constructor(protected topbar: ChatTopbar, protected chat: Chat, protected managers: AppManagers) {
     super({
@@ -42,7 +46,11 @@ export default class ChatAudio extends PinnedContainer {
         'pinned-audio',
         (options) => {
           replaceContent(this.divAndCaption.title, options.title);
-          replaceContent(this.divAndCaption.subtitle, options.subtitle);
+          this.divAndCaption.subtitle.replaceChildren(
+            this.time,
+            ' • ',
+            options.subtitle
+          );
         }
       ),
       onClose: () => {
@@ -56,6 +64,9 @@ export default class ChatAudio extends PinnedContainer {
 
     const prevEl = ButtonIcon('fast_rewind active', {noRipple: true});
     const nextEl = ButtonIcon('fast_forward active', {noRipple: true});
+
+    this.time = document.createElement('span');
+    this.time.classList.add('pinned-audio-time');
 
     const attachClick = (elem: HTMLElement, callback: () => void) => {
       attachClickEvent(elem, (e) => {
@@ -102,19 +113,19 @@ export default class ChatAudio extends PinnedContainer {
       }
     });
 
-    const fasterEl = this.fasterEl = ButtonIcon('playback_2x', {noRipple: true});
-    attachClick(fasterEl, () => {
-      appMediaPlaybackController.playbackRate = fasterEl.classList.contains('active') ? 1 : 1.75;
-    });
+    this.playbackRateButton = PlaybackRateButton({direction: 'bottom-left'});
 
-    this.wrapperUtils.prepend(this.volumeSelector.btn, fasterEl, this.repeatEl);
+    this.wrapperUtils.prepend(this.volumeSelector.btn, this.playbackRateButton.element, this.repeatEl);
 
     const progressWrapper = document.createElement('div');
     progressWrapper.classList.add('pinned-audio-progress-wrapper');
 
     this.progressLine = new MediaProgressLine({
       withTransition: true,
-      useTransform: true
+      useTransform: true,
+      onTimeUpdate: (time) => {
+        this.time.textContent = toHHMMSS(time, true)/*  + ' / ' + toHHMMSS(this.duration, true) */;
+      }
     });
     this.progressLine.container.classList.add('pinned-audio-progress');
     progressWrapper.append(this.progressLine.container);
@@ -138,7 +149,8 @@ export default class ChatAudio extends PinnedContainer {
   }
 
   private onPlaybackParams = (playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => {
-    this.fasterEl.classList.toggle('active', playbackParams.playbackRate > 1);
+    this.playbackRateButton.setIcon();
+    this.playbackRateButton.element.classList.toggle('active', playbackParams.playbackRate !== 1);
 
     this.repeatEl.querySelector('.button-icon').replaceWith(Icon(playbackParams.loop ? 'audio_repeat_single' : 'audio_repeat', 'button-icon'));
     this.repeatEl.classList.toggle('active', playbackParams.loop || playbackParams.round);
@@ -170,7 +182,7 @@ export default class ChatAudio extends PinnedContainer {
       subtitle = audioAttribute?.performer ? wrapEmojiText(audioAttribute.performer) : i18n('AudioUnknownArtist');
     }
 
-    this.fasterEl.classList.toggle('hide', isMusic);
+    // this.fasterEl.classList.toggle('hide', isMusic);
     this.repeatEl.classList.toggle('hide', !isMusic);
 
     this.onPlaybackParams(playbackParams);
@@ -178,7 +190,7 @@ export default class ChatAudio extends PinnedContainer {
 
     this.progressLine.setMedia({
       media,
-      duration: doc.duration
+      duration: this.duration = doc.duration
     });
 
     this.fill({
