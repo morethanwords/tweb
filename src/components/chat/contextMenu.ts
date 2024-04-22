@@ -276,7 +276,7 @@ export default class ChatContextMenu {
       this.linkToMessage = await this.getUrlToMessage();
       this.selectedMessagesText = await this.getSelectedMessagesText();
       this.selectedMessages = this.chat.selection.isSelecting && !avatar ? await this.chat.selection.getSelectedMessages() : undefined;
-      this.messageLanguage = this.selectedMessages ? undefined : await detectLanguageForTranslation((this.message as Message.message).message);
+      this.messageLanguage = this.selectedMessages || !this.message ? undefined : await detectLanguageForTranslation((this.message as Message.message).message);
 
       const initResult = await this.init();
       if(!initResult) {
