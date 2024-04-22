@@ -1119,10 +1119,10 @@
       padding: .375rem .625rem;
       line-height: var(--line-height);
 
-      .peer-title {
-        font-weight: var(--font-weight-normal) !important;
-        // pointer-events: none;
-      }
+      // .peer-title {
+      //   font-weight: var(--font-weight-normal) !important;
+      //   // pointer-events: none;
+      // }
     }
 
     .bubble-name-rank {
@@ -1999,9 +1999,24 @@
     }
   }
 
+  &-name-forwarded {
+    font-weight: var(--font-weight-normal);
+
+    .peer-title {
+      font-weight: var(--font-weight-bold);
+    }
+
+    &-avatar {
+      display: inline-block;
+      vertical-align: bottom;
+      margin-inline-end: .25rem;
+      cursor: pointer;
+    }
+  }
+
   .title-flex {
     display: flex;
-    align-items: center;
+    // align-items: center;
     max-width: inherit;
     overflow: inherit;
   }

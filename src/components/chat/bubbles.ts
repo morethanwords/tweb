@@ -7111,7 +7111,8 @@ export default class ChatBubbles {
         }
 
         nameDiv = document.createElement('div');
-        title.dataset.peerId = '' + (storyFromPeerId || fwdFromId);
+        const titlePeerId = storyFromPeerId || fwdFromId;
+        title.dataset.peerId = '' + titlePeerId;
 
         if(
           (isRegularSaved || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) &&
@@ -7125,7 +7126,24 @@ export default class ChatBubbles {
         } else {
           mustHaveName ||= true;
           const firstArgs: FormatterArguments = [title];
-          if(isStandaloneMedia) {
+
+          if(titlePeerId) {
+            const avatar = avatarNew({
+              middleware,
+              size: 20,
+              lazyLoadQueue: this.lazyLoadQueue,
+              peerId: titlePeerId,
+              isDialog: false
+            });
+
+            avatar.node.classList.add('bubble-name-forwarded-avatar');
+            // loadPromises.push(avatar.readyThumbPromise);
+            firstArgs.unshift(avatar.node);
+          } else {
+            title.classList.add('text-normal');
+          }
+
+          if(isStandaloneMedia || true) {
             const br = document.createElement('br');
             br.classList.add('hide-ol');
             firstArgs.unshift(br);
@@ -7134,15 +7152,17 @@ export default class ChatBubbles {
           let nameKey: LangPackKey;
           const nameArgs: FormatterArguments = [firstArgs];
           if(fwdFrom?.post_author) {
-            nameKey = storyFromPeerId ? 'ForwardedStoryFromAuthor' : 'ForwardedFromAuthor';
+            nameKey = storyFromPeerId ? 'ForwardedStoryFromAuthor1' : 'ForwardedFromAuthor';
             const s = document.createElement('span');
             s.append(wrapEmojiText(fwdFrom.post_author));
             nameArgs.push(s);
           } else {
-            nameKey = storyFromPeerId ? 'ForwardedStoryFrom' : 'ForwardedFrom';
+            nameKey = storyFromPeerId ? 'ForwardedStoryFrom1' : 'ForwardedFrom';
           }
 
-          nameDiv.append(i18n(nameKey, nameArgs));
+          const span = i18n(nameKey, nameArgs);
+          span.classList.add('bubble-name-forwarded');
+          nameDiv.append(span);
 
           if(hasTwoTitles) {
             let title: HTMLElement;

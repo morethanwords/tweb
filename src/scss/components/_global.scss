@@ -147,7 +147,11 @@ Utility Classes
 }
 
 .text-bold {
-  font-weight: 500 !important;
+  font-weight: var(--font-weight-bold) !important;
+}
+
+.text-normal {
+  font-weight: var(--font-weight-normal) !important;
 }
 
 .text-capitalize {
