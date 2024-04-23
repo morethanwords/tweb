@@ -269,7 +269,7 @@
   --badge-text-color: #fff;
   --link-color: #00488f;
   --ripple-color: rgba(0, 0, 0, #{$hover-alpha});
-  --skeleton-color: rgba(0, 0, 0, .2);
+  --skeleton-color: rgba(0, 0, 0, .12);
   --poll-circle-color: var(--border-color);
   --spoiler-background-color: #e3e5e8;
   --spoiler-draft-background-color: #d9d9d9;
@@ -329,7 +329,7 @@
   --badge-text-color: #fff;
   --link-color: var(--primary-color);
   --ripple-color: rgba(255, 255, 255, #{$hover-alpha});
-  --skeleton-color: rgba(255, 255, 255, .2);
+  --skeleton-color: rgba(255, 255, 255, .12);
   --poll-circle-color: #fff;
   --spoiler-background-color: #373e4e;
   --spoiler-draft-background-color: #484848;

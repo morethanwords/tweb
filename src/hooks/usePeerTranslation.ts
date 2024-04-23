@@ -13,26 +13,28 @@ function _usePeerTranslation(peerId: PeerId) {
   const peerLanguage = usePeerLanguage(() => peerId, true);
   const isPremium = usePremium();
 
+  const shouldShow = createMemo<boolean | undefined>(() => {
+    if(!isPremium() || !fullPeer() || !peerLanguage() || !appState.translations.enabled) {
+      return;
+    }
+
+    if(
+      fullPeer().pFlags.translations_disabled ||
+      appState.translations.doNotTranslate.includes(peerLanguage())
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
   const ret = {
     peerLanguage,
     language: (): TranslatableLanguageISO => (appState.translations.peers[peerId] || I18n.langCodeNormalized()) as any,
     setLanguage: (lang: string) => setAppState('translations', 'peers', peerId, lang),
-    enabled: createMemo(() => !!(isPremium() && appState.translations.enabled && appState.translations.enabledPeers[peerId])),
+    enabled: createMemo(() => !!(isPremium() && appState.translations.enabled && appState.translations.enabledPeers[peerId]) && shouldShow()),
     toggle: (enabled: boolean) => setAppState('translations', 'enabledPeers', peerId, enabled ? true : undefined),
-    shouldShow: createMemo<boolean | undefined>(() => {
-      if(!isPremium() || !fullPeer() || !peerLanguage() || !appState.translations.enabled) {
-        return;
-      }
-
-      if(
-        fullPeer().pFlags.translations_disabled ||
-        appState.translations.doNotTranslate.includes(peerLanguage())
-      ) {
-        return false;
-      }
-
-      return true;
-    })
+    shouldShow
   } as const;
 
   createEffect(() => {
