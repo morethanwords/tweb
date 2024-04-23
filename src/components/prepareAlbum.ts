@@ -45,19 +45,19 @@ export default function prepareAlbum(options: {
     div.style.left = (geometry.x / width * 100) + '%';
 
     if(sides & RectPart.Left && sides & RectPart.Top) {
-      div.style.borderTopLeftRadius = 'inherit';
+      div.style.borderStartStartRadius = `calc(var(--border-start-start-radius) - ${options.spacing}px)`;
     }
 
     if(sides & RectPart.Left && sides & RectPart.Bottom) {
-      div.style.borderBottomLeftRadius = 'inherit';
+      div.style.borderEndStartRadius =  `calc(var(--border-end-start-radius) - ${options.spacing}px)`;
     }
 
     if(sides & RectPart.Right && sides & RectPart.Top) {
-      div.style.borderTopRightRadius = 'inherit';
+      div.style.borderStartEndRadius =  `calc(var(--border-start-end-radius) - ${options.spacing}px)`;
     }
 
     if(sides & RectPart.Right && sides & RectPart.Bottom) {
-      div.style.borderBottomRightRadius = 'inherit';
+      div.style.borderEndEndRadius =  `calc(var(--border-end-end-radius) - ${options.spacing}px)`;
     }
 
     if(options.forMedia) {
