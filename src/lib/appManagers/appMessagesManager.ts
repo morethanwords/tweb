@@ -4984,7 +4984,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private modifyCachedMentions(options: GetUnreadMentionsOptions & {mid: number, add: boolean}) {
+  private modifyCachedMentions(options: GetUnreadMentionsOptions & {mid?: number, add: boolean}) {
     const {mid, add} = options;
     const slicedArray = this.unreadMentions[this.getUnreadMentionsKey(options)];
     if(!slicedArray) return;
@@ -4993,12 +4993,16 @@ export class AppMessagesManager extends AppManager {
       if(slicedArray.first.isEnd(SliceEnd.Top)) {
         slicedArray.insertSlice([mid]);
       }
-    } else {
+    } else if(mid) {
       slicedArray.delete(mid);
+    } else { // clear it
+      slicedArray.slices.splice(1, Infinity);
+      slicedArray.first.length = 0;
+      slicedArray.first.setEnd(SliceEnd.Both);
     }
   }
 
-  private modifyCachedMentionsAndSave(options: GetUnreadMentionsOptions & {mid: number, addMention?: boolean, addReaction?: boolean}) {
+  private modifyCachedMentionsAndSave(options: GetUnreadMentionsOptions & {mid: number, addMention?: boolean | number, addReaction?: boolean | number}) {
     const dialog = this.dialogsStorage.getAnyDialog(options.peerId, options.threadId) as Dialog | ForumTopic;
     if(!dialog) {
       return;
@@ -5006,7 +5010,7 @@ export class AppMessagesManager extends AppManager {
 
     const releaseUnreadCount = this.dialogsStorage.prepareDialogUnreadCountModifying(dialog);
 
-    const a: [boolean, 'unread_reactions_count' | 'unread_mentions_count'][] = [
+    const a: [boolean | number, 'unread_reactions_count' | 'unread_mentions_count'][] = [
       [options.addMention, 'unread_mentions_count'],
       [options.addReaction, 'unread_reactions_count']
     ];
@@ -5016,13 +5020,13 @@ export class AppMessagesManager extends AppManager {
         return;
       }
 
-      if(add) ++dialog[key];
-      else dialog[key] = Math.max(0, dialog[key] - 1);
+      if(add) dialog[key] += +add;
+      else dialog[key] = Math.max(0, dialog[key] - Math.max(1, +add));
       this.modifyCachedMentions({
         ...options,
         threadId: isForumTopic(dialog) ? options.threadId : undefined,
         isReaction: key === 'unread_reactions_count',
-        add
+        add: !!add
       });
     });
 
@@ -5180,14 +5184,33 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
-  public async readReactions(peerId: PeerId, threadId?: number) {
+  public async readMentions(peerId: PeerId, threadId?: number, isReaction?: boolean): Promise<boolean> {
     if(DO_NOT_READ_HISTORY) {
       return;
     }
 
-    return this.apiManager.invokeApi('messages.readReactions', {
+    return this.apiManager.invokeApi(isReaction ? 'messages.readReactions' : 'messages.readMentions', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       top_msg_id: threadId ? getServerMessageId(threadId) : undefined
+    }).then((affectedHistory) => {
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updatePts',
+        pts: affectedHistory.pts,
+        pts_count: affectedHistory.pts_count
+      });
+
+      if(!affectedHistory.offset) {
+        const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
+        this.modifyCachedMentionsAndSave({
+          peerId,
+          threadId,
+          mid: undefined,
+          ...(isReaction ? {addReaction: -dialog.unread_reactions_count} : {addMention: -dialog.unread_mentions_count})
+        });
+        return true;
+      }
+
+      return this.readMentions(peerId, threadId, isReaction);
     });
   }
 

@@ -1767,6 +1767,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
 				.bubbles-go-mention {
 					--translateY: calc(var(--chat-input-size) * -1 + -.625rem);
+          
+          &.is-visible + .bubbles-go-reaction {
+            --translateY: calc(var(--chat-input-size) * -2 + -.625rem * 2);
+          }
 				}
 			} 
 		//}
@@ -1897,6 +1901,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		visibility: visible;
 		transition: transform var(--layer-transition), opacity var(--layer-transition), visibility 0s 0s !important;
 	}
+
+  &.is-visible + .bubbles-go-reaction {
+    --translateY: calc(var(--chat-input-size) * -1 + -.625rem * 1);
+  }
 }
 
 .chat-secondary-button {

@@ -2137,6 +2137,8 @@ const lang = {
     'other_value': '%1$d Languages'
   },
   'TranslateMessage': 'Translate',
+  'ReadAllReactions': 'Read all reactions',
+  'ReadAllMentions': 'Read all mentions',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

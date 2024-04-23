@@ -123,6 +123,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import eachSecond from '../../helpers/eachSecond';
 import {wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
 import showTooltip from '../tooltip';
+import createContextMenu from '../../helpers/dom/createContextMenu';
 
 // console.log('Recorder', Recorder);
 
@@ -674,7 +675,7 @@ export default class ChatInput {
   }
 
   private constructMentionButton(isReaction?: boolean) {
-    const btn = ButtonCorner({icon: isReaction ? 'reactions' : 'mention', className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention'});
+    const btn = ButtonCorner({icon: isReaction ? 'reactions' : 'mention', className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention bubbles-go-reaction'});
     const badge = createBadge('span', 24, 'primary');
     btn.append(badge);
     this.inputContainer.append(btn);
@@ -692,6 +693,18 @@ export default class ChatInput {
         }
       });
     }, {listenerSetter: this.listenerSetter});
+
+    createContextMenu({
+      buttons: [{
+        icon: 'readchats',
+        text: isReaction ? 'ReadAllReactions' : 'ReadAllMentions',
+        onClick: () => {
+          this.managers.appMessagesManager.readMentions(this.chat.peerId, this.chat.threadId, isReaction);
+        }
+      }],
+      listenTo: btn,
+      listenerSetter: this.listenerSetter
+    });
 
     if(isReaction) {
       this.goReactionUnreadBadge = badge;
