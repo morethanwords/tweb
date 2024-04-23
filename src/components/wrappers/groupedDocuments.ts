@@ -13,6 +13,7 @@ import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import {MediaSearchContext} from '../appMediaPlaybackController';
 import Chat from '../chat/chat';
 import LazyLoadQueue from '../lazyLoadQueue';
+import TranslatableMessage from '../translatableMessage';
 import wrapDocument from './document';
 
 export default async function wrapGroupedDocuments({
@@ -32,7 +33,8 @@ export default async function wrapGroupedDocuments({
   fontSize,
   richTextFragment,
   richTextOptions,
-  canTranscribeVoice
+  canTranscribeVoice,
+  translatableParams
 }: {
   albumMustBeRenderedFull: boolean,
   message: any,
@@ -51,7 +53,8 @@ export default async function wrapGroupedDocuments({
   fontSize?: number,
   richTextFragment?: DocumentFragment | HTMLElement,
   richTextOptions?: Parameters<typeof wrapRichText>[1]
-  canTranscribeVoice?: boolean
+  canTranscribeVoice?: boolean,
+  translatableParams: Parameters<typeof TranslatableMessage>[0]
 }) {
   let nameContainer: HTMLElement;
   const mids = albumMustBeRenderedFull ? await chat.getMidsByMid(message.mid) : [message.mid];
@@ -88,11 +91,22 @@ export default async function wrapGroupedDocuments({
 
       let fragment = richTextFragment;
       if(!fragment) {
-        fragment = wrapRichText(message.message, {
-          ...richTextOptions,
-          entities: message.totalEntities,
-          maxMediaTimestamp: getMediaDurationFromMessage(message)
-        });
+        if(translatableParams) {
+          fragment = TranslatableMessage({
+            ...translatableParams,
+            message,
+            richTextOptions: {
+              ...translatableParams.richTextOptions,
+              maxMediaTimestamp: getMediaDurationFromMessage(message)
+            }
+          });
+        } else {
+          fragment = wrapRichText(message.message, {
+            ...richTextOptions,
+            entities: message.totalEntities,
+            maxMediaTimestamp: getMediaDurationFromMessage(message)
+          });
+        }
       }
 
       setInnerHTML(messageDiv, fragment);

@@ -5468,23 +5468,28 @@ export default class ChatBubbles {
       passMaskedLinks: !!(message as Message.message).sponsoredMessage
     });
 
+    const canTranslate = !bigEmojis && !our;
+    const translatableParams: Parameters<typeof TranslatableMessage>[0] = canTranslate ? {
+      peerId: this.peerId,
+      middleware,
+      observeElement: bubble,
+      observer: this.observer,
+      onTranslation: async(callback) => {
+        await getHeavyAnimationPromise();
+        const scrollSaver = this.createScrollSaver(false);
+        scrollSaver.save();
+        callback();
+        scrollSaver.restore();
+      },
+      richTextOptions: getRichTextOptions()
+    } : undefined;
+
     const richText = messageMessage ? (
-      bigEmojis || our ?
+      !canTranslate ?
         wrapRichText(messageMessage, getRichTextOptions(totalEntities)) :
         TranslatableMessage({
-          peerId: this.peerId,
           message: messageWithMessage,
-          middleware,
-          richTextOptions: getRichTextOptions(),
-          observeElement: bubble,
-          observer: this.observer,
-          onTranslation: async(callback) => {
-            await getHeavyAnimationPromise();
-            const scrollSaver = this.createScrollSaver(false);
-            scrollSaver.save();
-            callback();
-            scrollSaver.restore();
-          }
+          ...translatableParams
         })
       ) : undefined;
 
@@ -6348,7 +6353,8 @@ export default class ChatBubbles {
               fontSize: rootScope.settings.messagesTextSize,
               richTextFragment: richText,
               richTextOptions: getRichTextOptions(),
-              canTranscribeVoice: true
+              canTranscribeVoice: true,
+              translatableParams
             });
 
             if(newNameContainer) {
@@ -6473,7 +6479,13 @@ export default class ChatBubbles {
         case 'messageMediaPoll': {
           bubble.classList.remove('is-message-empty');
 
-          const pollElement = wrapPoll(message, undefined, middleware);
+          const pollElement = wrapPoll({
+            message: message as Message.message,
+            managers: this.managers,
+            middleware,
+            translatableParams,
+            richTextOptions: getRichTextOptions()
+          });
           messageDiv.prepend(pollElement);
           messageDiv.classList.add('poll-message');
 

@@ -19,7 +19,7 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import windowSize from '../helpers/windowSize';
-import {Message, MessageMedia, Poll, PollResults} from '../layer';
+import {Message, MessageEntity, MessageMedia, PollResults} from '../layer';
 import toHHMMSS from '../helpers/string/toHHMMSS';
 import StackedAvatars from './stackedAvatars';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
@@ -30,6 +30,8 @@ import liteMode from '../helpers/liteMode';
 import getPeerId from '../lib/appManagers/utils/peers/getPeerId';
 import Icon from './icon';
 import htmlToDocumentFragment from '../helpers/dom/htmlToDocumentFragment';
+import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
+import TranslatableMessage from './translatableMessage';
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -225,6 +227,10 @@ export default class PollElement extends HTMLElement {
   public message: Message.message;
   public managers: AppManagers;
 
+  public middlewareHelper: MiddlewareHelper;
+  public translatableParams: Parameters<typeof TranslatableMessage>[0];
+  public richTextOptions: Parameters<typeof wrapRichText>[1];
+
   private quizInterval: number;
   private quizTimer: SVGSVGElement;
 
@@ -332,10 +338,11 @@ export default class PollElement extends HTMLElement {
 
     this.append(...votes);
 
-    setInnerHTML(this.firstElementChild, wrapEmojiText(poll.question));
+    setInnerHTML(this.firstElementChild, this.wrapSomeText(poll.question));
 
     Array.from(this.querySelectorAll('.poll-answer-text')).forEach((el, idx) => {
-      setInnerHTML(el, wrapEmojiText(poll.answers[idx].text));
+      const element = this.wrapSomeText(poll.answers[idx].text);
+      setInnerHTML(el, element);
     });
 
     this.descDiv = this.firstElementChild.nextElementSibling as HTMLElement;
@@ -490,6 +497,25 @@ export default class PollElement extends HTMLElement {
     }
   }
 
+  wrapSomeText(text: string, entities?: MessageEntity[], middleware = this.middlewareHelper.get()) {
+    if(!this.translatableParams) {
+      return wrapRichText(text, {
+        ...this.richTextOptions,
+        entities
+      });
+    }
+
+    return TranslatableMessage({
+      ...this.translatableParams,
+      middleware,
+      textWithEntities: {
+        _: 'textWithEntities',
+        text,
+        entities
+      }
+    });
+  }
+
   initQuizHint(results: PollResults) {
     if(results.solution && results.solution_entities) {
       const toggleHint = document.createElement('div');
@@ -503,14 +529,16 @@ export default class PollElement extends HTMLElement {
 
         // active = true;
         toggleHint.classList.add('active');
+        const middleware = getMiddleware();
         setQuizHint({
-          textElement: wrapRichText(results.solution, {entities: results.solution_entities}),
+          textElement: this.wrapSomeText(results.solution, results.solution_entities, middleware.get()),
           appendTo: appImManager.chat.bubbles.container,
           from: 'top',
           duration: IS_TOUCH_SUPPORTED ? 5000 : 7000,
           icon: 'info2',
           onHide: () => {
             // active = false;
+            middleware.destroy();
             toggleHint.classList.remove('active');
           }
         });
