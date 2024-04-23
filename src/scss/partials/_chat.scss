@@ -1956,7 +1956,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		inset-inline-end: -.25rem;
 
 		&.badge-primary:not(.badge-gray) {
-			background-color: var(--chatlist-status-color);
+			background-color: var(--primary-color);
 		}
 		
 		@include respond-to(handhelds) {

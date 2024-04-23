@@ -258,6 +258,8 @@ export default class ChatInput {
   private goDownUnreadBadge: HTMLElement;
   private goMentionBtn: HTMLButtonElement;
   private goMentionUnreadBadge: HTMLSpanElement;
+  private goReactionBtn: HTMLButtonElement;
+  private goReactionUnreadBadge: HTMLElement;
   private btnScheduled: HTMLButtonElement;
 
   private btnPreloader: HTMLButtonElement;
@@ -671,16 +673,16 @@ export default class ChatInput {
     this.replyElements.container.append(btnMenu);
   }
 
-  private constructMentionButton() {
-    this.goMentionBtn = ButtonCorner({icon: 'mention', className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention'});
-    this.goMentionUnreadBadge = createBadge('span', 24, 'primary');
-    this.goMentionBtn.append(this.goMentionUnreadBadge);
-    this.inputContainer.append(this.goMentionBtn);
+  private constructMentionButton(isReaction?: boolean) {
+    const btn = ButtonCorner({icon: isReaction ? 'reactions' : 'mention', className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention'});
+    const badge = createBadge('span', 24, 'primary');
+    btn.append(badge);
+    this.inputContainer.append(btn);
 
-    attachClickEvent(this.goMentionBtn, (e) => {
+    attachClickEvent(btn, (e) => {
       cancelEvent(e);
       const middleware = this.getMiddleware();
-      this.managers.appMessagesManager.goToNextMention(this.chat.peerId, this.chat.threadId).then((mid) => {
+      this.managers.appMessagesManager.goToNextMention({peerId: this.chat.peerId, threadId: this.chat.threadId, isReaction}).then((mid) => {
         if(!middleware()) {
           return;
         }
@@ -690,6 +692,14 @@ export default class ChatInput {
         }
       });
     }, {listenerSetter: this.listenerSetter});
+
+    if(isReaction) {
+      this.goReactionUnreadBadge = badge;
+      this.goReactionBtn = btn;
+    } else {
+      this.goMentionUnreadBadge = badge;
+      this.goMentionBtn = btn;
+    }
   }
 
   private constructScheduledButton() {
@@ -902,6 +912,7 @@ export default class ChatInput {
 
     if(!this.excludeParts.mentionButton) {
       this.constructMentionButton();
+      this.constructMentionButton(true);
     }
 
     if(!this.excludeParts.scheduled) {
@@ -1635,6 +1646,12 @@ export default class ChatInput {
       const hasMentions = !!(dialog?.unread_mentions_count && dialog.unread_count);
       setBadgeContent(this.goMentionUnreadBadge, hasMentions ? '' + (dialog.unread_mentions_count) : '');
       this.goMentionBtn.classList.toggle('is-visible', hasMentions);
+    }
+
+    if(this.goReactionUnreadBadge && this.chat.type === ChatType.Chat) {
+      const hasReactions = !!dialog?.unread_reactions_count;
+      setBadgeContent(this.goReactionUnreadBadge, hasReactions ? '' + (dialog.unread_reactions_count) : '');
+      this.goReactionBtn.classList.toggle('is-visible', hasReactions);
     }
   }
 

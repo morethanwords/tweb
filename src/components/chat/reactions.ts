@@ -19,6 +19,8 @@ import rootScope from '../../lib/rootScope';
 import {AnimationItemGroup} from '../animationIntersector';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ReactionElement, {ReactionLayoutType, REACTIONS_DISPLAY_COUNTER_AT, REACTIONS_SIZE} from './reaction';
+import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
+import pause from '../../helpers/schedulers/pause';
 
 const CLASS_NAME = 'reactions';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -226,6 +228,7 @@ export default class ReactionsElement extends HTMLElement {
       }
     });
 
+    let animationShouldHaveDelay = false;
     const totalReactions = counts.reduce((acc, c) => acc + c.count, 0);
     const canRenderAvatars = reactions &&
       (!!reactions.pFlags.can_see_list || this.context.peerId.isUser()) &&
@@ -246,12 +249,20 @@ export default class ReactionsElement extends HTMLElement {
       const recentReactions = reactions.recent_reactions ?
         reactions.recent_reactions.filter((reaction) => reactionsEqual(reaction.reaction, reactionCount.reaction)) :
         [];
+      const wasUnread = reactionElement.isUnread;
+      const isUnread = recentReactions.some((reaction) => reaction.pFlags.unread);
       reactionElement.reactionCount = {...reactionCount};
       reactionElement.setCanRenderAvatars(canRenderAvatars);
       const customEmojiElement = reactionElement.render(this.isPlaceholder);
       reactionElement.renderCounter(this.forceCounter);
       reactionElement.renderAvatars(recentReactions);
+      reactionElement.isUnread = isUnread;
       reactionElement.setIsChosen();
+
+      if(wasUnread && !isUnread && !changedResults?.includes(reactionCount)) {
+        (changedResults ??= []).push(reactionCount);
+        animationShouldHaveDelay = true;
+      }
 
       customEmojiElements[idx] = customEmojiElement;
 
@@ -312,10 +323,10 @@ export default class ReactionsElement extends HTMLElement {
 
     if(!this.isPlaceholder && changedResults?.length) {
       if(this.isConnected) {
-        this.handleChangedResults(changedResults, waitPromise);
+        this.handleChangedResults(changedResults, waitPromise, animationShouldHaveDelay);
       } else {
         this.onConnectCallback = () => {
-          this.handleChangedResults(changedResults, waitPromise);
+          this.handleChangedResults(changedResults, waitPromise, animationShouldHaveDelay);
         };
       }
     }
@@ -338,9 +349,13 @@ export default class ReactionsElement extends HTMLElement {
     }
   }
 
-  private handleChangedResults(changedResults: ReactionCount[], waitPromise?: Promise<any>) {
+  private async handleChangedResults(changedResults: ReactionCount[], waitPromise?: Promise<any>, withDelay?: boolean) {
+    await getHeavyAnimationPromise();
     // ! temp
     if(this.context.peerId !== appImManager.chat.peerId) return;
+    if(withDelay) {
+      waitPromise = (waitPromise || Promise.resolve()).then(() => pause(150));
+    }
 
     changedResults.forEach((reactionCount) => {
       const reactionElement = this.sorted.find((reactionElement) => {

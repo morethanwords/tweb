@@ -255,7 +255,7 @@ ul.chatlist {
 
         .row-subtitle,
         .row-title,
-        .dialog-pinned-icon,
+        .dialog-subtitle-badge-pinned,
         //.user-title:after,
         .user-title,
         .message-status,
@@ -303,7 +303,8 @@ ul.chatlist {
         }
 
         .badge.unread, 
-        .mention {
+        .mention,
+        .dialog-subtitle-badge-reaction {
           background-color: #fff !important;
           color: var(--primary-color);
         }
@@ -333,156 +334,6 @@ ul.chatlist {
     font-size: .8125rem;
     margin: .1875rem 0 0 .5rem;
     color: var(--secondary-color);
-  }
-
-  .dialog {
-    &-title {
-      &-details {
-        font-size: .75rem;
-        padding: 1px 0px 0px 0px;
-        flex: 0 0 auto;
-        margin-inline-start: .5rem;
-      }
-    }
-
-    &-subtitle {
-      &-flex {
-        display: flex;
-      }
-
-      &-span {
-        flex: 0 0 auto;
-        // flex: 0 1 auto;
-        max-width: 100%;
-
-        &-overflow {
-          text-overflow: ellipsis;
-          overflow: hidden;
-          white-space: pre;
-        }
-
-        &-last {
-          flex: unset;
-          max-width: none;
-          // flex: 1;
-          white-space: nowrap;
-        }
-      }
-
-      &-badge {
-        display: block !important;
-        margin-inline-start: .5rem;
-        flex: 0 0 auto;
-
-        &.avatar-badge {
-          // --padding: .375rem;
-          --size: 1.625rem;
-          margin: 0;
-          position: absolute;
-          right: calc(100% - 4.0625rem);
-          top: 2.4375rem;
-          // border: 2px solid var(--surface-color);
-          border: 2px solid var(--background, var(--surface-color));
-          pointer-events: none;
-          line-height: 23px !important;
-        }
-      }
-
-      &-media {
-        width: 1.25rem;
-        height: 1.25rem;
-        line-height: 1.25rem;
-        position: relative;
-        flex: 0 0 auto;
-        border-radius: .25rem;
-        margin-inline-end: 0.375rem;
-        display: inline-block;
-
-        &:before {
-          content: " ";
-          display: inline-block;
-          width: inherit;
-          height: inherit;
-          min-width: inherit;
-          min-height: inherit;
-        }
-
-        &.is-round {
-          border-radius: 50%;
-
-          .dialog-subtitle-media-play {
-            font-size: .875rem;
-          }
-        }
-
-        &-play {
-          position: absolute;
-          z-index: 1;
-          color: #fff;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          line-height: 1;
-          font-size: 1rem;
-        }
-
-        .media-photo {
-          width: inherit;
-          height: inherit;
-          object-fit: cover;
-          border-radius: inherit;
-          top: auto;
-          bottom: auto;
-        }
-      }
-
-      &-ico {
-        display: inline-block;
-        vertical-align: middle;
-        width: 20px;
-        height: 20px;
-        line-height: 18px;
-        color: var(--chatlist-pinned-color);
-
-        &-storyreply {
-          font-size: 18px;
-          margin-inline-end: .125rem;
-        }
-      }
-    }
-
-    &-group-call-icon {
-      position: absolute;
-      inset-inline-start: 45px;
-      top: 45px;
-      border: 2px solid var(--surface-color);
-      overflow: hidden;
-      border-radius: 50%;
-      background-color: var(--avatar-online-color);
-      width: 20px;
-      height: 20px;
-      z-index: 2;
-    }
-
-    &-subtitle-badge, 
-    &-group-call-icon {
-      @include dialog-badge-transition();
-    }
-
-    &-avatar {
-      @include dialog-badge-transition(true);
-    }
-
-    &-muted-icon {
-      flex: 0 0 auto;
-      color: var(--chatlist-pinned-color);
-      font-size: 1.125rem;
-      margin-inline-start: .125rem;
-    }
-  }
-
-  .dialog-avatar {
-    flex: 0 0 auto;
   }
 
   .dialog-avatar,
@@ -543,10 +394,6 @@ ul.chatlist {
     &:before {
       vertical-align: middle;
     }
-  }
-
-  .dialog-pinned-icon {
-    color: var(--chatlist-pinned-color);
   }
 
   .mention {
@@ -652,5 +499,181 @@ ul.chatlist {
       padding: 0;
       // margin-top: -.5rem;
     }
+  }
+}
+
+.dialog {
+  &-title {
+    &-details {
+      font-size: .75rem;
+      padding: 1px 0px 0px 0px;
+      flex: 0 0 auto;
+      margin-inline-start: .5rem;
+    }
+  }
+
+  &-subtitle {
+    &-flex {
+      display: flex;
+    }
+
+    &-span {
+      flex: 0 0 auto;
+      // flex: 0 1 auto;
+      max-width: 100%;
+
+      &-overflow {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: pre;
+      }
+
+      &-last {
+        flex: unset;
+        max-width: none;
+        // flex: 1;
+        white-space: nowrap;
+      }
+    }
+
+    &-badge {
+      display: block !important;
+      margin-inline-start: .5rem;
+      flex: 0 0 auto;
+      position: relative;
+      z-index: 1;
+
+      &.avatar-badge {
+        // --padding: .375rem;
+        --size: 1.625rem;
+        margin: 0;
+        position: absolute;
+        right: calc(100% - 4.0625rem);
+        top: 2.4375rem;
+        // border: 2px solid var(--surface-color);
+        border: 2px solid var(--background, var(--surface-color));
+        pointer-events: none;
+        line-height: 23px !important;
+      }
+
+      &-reaction {
+        padding: 0;
+        background-color: var(--danger-color) !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        order: 1;
+      }
+
+      &-mention {
+        order: 2;
+      }
+
+      &-unread {
+        order: 3;
+      }
+
+      &-pinned {
+        .has-multiple-badges & {
+          margin-inline-start: -1.375rem;
+        }
+
+        color: var(--chatlist-pinned-color);
+        order: 4;
+        z-index: 0;
+      }
+    }
+
+    &-media {
+      width: 1.25rem;
+      height: 1.25rem;
+      line-height: 1.25rem;
+      position: relative;
+      flex: 0 0 auto;
+      border-radius: .25rem;
+      margin-inline-end: 0.375rem;
+      display: inline-block;
+
+      &:before {
+        content: " ";
+        display: inline-block;
+        width: inherit;
+        height: inherit;
+        min-width: inherit;
+        min-height: inherit;
+      }
+
+      &.is-round {
+        border-radius: 50%;
+
+        .dialog-subtitle-media-play {
+          font-size: .875rem;
+        }
+      }
+
+      &-play {
+        position: absolute;
+        z-index: 1;
+        color: #fff;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        line-height: 1;
+        font-size: 1rem;
+      }
+
+      .media-photo {
+        width: inherit;
+        height: inherit;
+        object-fit: cover;
+        border-radius: inherit;
+        top: auto;
+        bottom: auto;
+      }
+    }
+
+    &-ico {
+      display: inline-block;
+      vertical-align: middle;
+      width: 20px;
+      height: 20px;
+      line-height: 18px;
+      color: var(--chatlist-pinned-color);
+
+      &-storyreply {
+        font-size: 18px;
+        margin-inline-end: .125rem;
+      }
+    }
+  }
+
+  &-group-call-icon {
+    position: absolute;
+    inset-inline-start: 45px;
+    top: 45px;
+    border: 2px solid var(--surface-color);
+    overflow: hidden;
+    border-radius: 50%;
+    background-color: var(--avatar-online-color);
+    width: 20px;
+    height: 20px;
+    z-index: 2;
+  }
+
+  &-subtitle-badge, 
+  &-group-call-icon {
+    @include dialog-badge-transition();
+  }
+
+  &-avatar {
+    flex: 0 0 auto;
+    @include dialog-badge-transition(true);
+  }
+
+  &-muted-icon {
+    flex: 0 0 auto;
+    color: var(--chatlist-pinned-color);
+    font-size: 1.125rem;
+    margin-inline-start: .125rem;
   }
 }

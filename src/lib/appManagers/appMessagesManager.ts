@@ -75,6 +75,8 @@ import getFwdFromName from './utils/messages/getFwdFromName';
 import filterUnique from '../../helpers/array/filterUnique';
 import getSearchType from './utils/messages/getSearchType';
 import getMainGroupedMessage from './utils/messages/getMainGroupedMessage';
+import getUnreadReactions from './utils/messages/getUnreadReactions';
+import isMentionUnread from './utils/messages/isMentionUnread';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -250,6 +252,12 @@ export type RequestHistoryOptions = {
 };
 
 export type SearchStorageFilterKey = string;
+
+type GetUnreadMentionsOptions = {
+  peerId: PeerId,
+  threadId?: number,
+  isReaction?: boolean
+};
 
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
 
@@ -4961,19 +4969,24 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private getUnreadMentionsKey(peerId: PeerId, threadId?: number) {
-    return peerId + (threadId ? `_${threadId}` : '');
+  private getUnreadMentionsKey({peerId, threadId, isReaction}: GetUnreadMentionsOptions) {
+    return peerId + (threadId ? `_${threadId}` : '') + (isReaction ? '_reaction' : '');
   }
 
-  private fixDialogUnreadMentionsIfNoMessage(peerId: PeerId, threadId?: number) {
+  private getDialogUnreadMentions(dialog: Dialog | ForumTopic, isReaction?: boolean) {
+    return dialog && (isReaction ? dialog.unread_reactions_count : dialog.unread_mentions_count);
+  }
+
+  private fixDialogUnreadMentionsIfNoMessage({peerId, threadId, isReaction, force}: GetUnreadMentionsOptions & {force?: boolean}) {
     const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
-    if(dialog?.unread_mentions_count) {
+    if(force || this.getDialogUnreadMentions(dialog, isReaction)) {
       this.reloadConversationOrTopic(peerId);
     }
   }
 
-  private modifyCachedMentions(peerId: PeerId, mid: number, add: boolean, threadId?: number) {
-    const slicedArray = this.unreadMentions[this.getUnreadMentionsKey(peerId, threadId)];
+  private modifyCachedMentions(options: GetUnreadMentionsOptions & {mid: number, add: boolean}) {
+    const {mid, add} = options;
+    const slicedArray = this.unreadMentions[this.getUnreadMentionsKey(options)];
     if(!slicedArray) return;
 
     if(add) {
@@ -4985,35 +4998,69 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private fixUnreadMentionsCountIfNeeded(peerId: PeerId, slicedArray: SlicedArray<number>, threadId?: number) {
+  private modifyCachedMentionsAndSave(options: GetUnreadMentionsOptions & {mid: number, addMention?: boolean, addReaction?: boolean}) {
+    const dialog = this.dialogsStorage.getAnyDialog(options.peerId, options.threadId) as Dialog | ForumTopic;
+    if(!dialog) {
+      return;
+    }
+
+    const releaseUnreadCount = this.dialogsStorage.prepareDialogUnreadCountModifying(dialog);
+
+    const a: [boolean, 'unread_reactions_count' | 'unread_mentions_count'][] = [
+      [options.addMention, 'unread_mentions_count'],
+      [options.addReaction, 'unread_reactions_count']
+    ];
+
+    a.forEach(([add, key]) => {
+      if(add === undefined) {
+        return;
+      }
+
+      if(add) ++dialog[key];
+      else dialog[key] = Math.max(0, dialog[key] - 1);
+      this.modifyCachedMentions({
+        ...options,
+        threadId: isForumTopic(dialog) ? options.threadId : undefined,
+        isReaction: key === 'unread_reactions_count',
+        add
+      });
+    });
+
+    releaseUnreadCount();
+
+    this.rootScope.dispatchEvent('dialog_unread', {peerId: options.peerId, dialog});
+    this.dialogsStorage.setDialogToState(dialog);
+  }
+
+  private fixUnreadMentionsCountIfNeeded({peerId, threadId, slicedArray, isReaction}: GetUnreadMentionsOptions & {slicedArray: SlicedArray<number>}) {
     const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
-    if(!slicedArray.length && dialog?.unread_mentions_count) {
+    if(!slicedArray.length && this.getDialogUnreadMentions(dialog, isReaction)) {
       this.reloadConversationOrTopic(peerId);
     }
   }
 
-  public goToNextMention(peerId: PeerId, threadId?: number) {
+  public goToNextMention(options: GetUnreadMentionsOptions) {
     /* this.getUnreadMentions(peerId, 1, 2, 0).then((messages) => {
       console.log(messages);
     }); */
 
-    const key = this.getUnreadMentionsKey(peerId, threadId);
+    const key = this.getUnreadMentionsKey(options);
     const promise = this.goToNextMentionPromises[key];
     if(promise) {
       return promise;
     }
 
-    const slicedArray = this.unreadMentions[peerId] ??= new SlicedArray();
+    const slicedArray = this.unreadMentions[key] ??= new SlicedArray();
     const length = slicedArray.length;
     const isTopEnd = slicedArray.first.isEnd(SliceEnd.Top);
     if(!length && isTopEnd) {
-      this.fixUnreadMentionsCountIfNeeded(peerId, slicedArray, threadId);
+      this.fixUnreadMentionsCountIfNeeded({...options, slicedArray});
       return Promise.resolve();
     }
 
     let loadNextPromise = Promise.resolve();
     if(!isTopEnd && length < 25) {
-      loadNextPromise = this.loadNextMentions(peerId, threadId);
+      loadNextPromise = this.loadNextMentions(options);
     }
 
     return this.goToNextMentionPromises[key] = loadNextPromise.then(() => {
@@ -5023,21 +5070,22 @@ export class AppMessagesManager extends AppManager {
         slicedArray.delete(mid);
         return mid;
       } else {
-        this.fixUnreadMentionsCountIfNeeded(peerId, slicedArray, threadId);
+        this.fixUnreadMentionsCountIfNeeded({...options, slicedArray});
       }
     }).finally(() => {
       delete this.goToNextMentionPromises[key];
     });
   }
 
-  private loadNextMentions(peerId: PeerId, threadId?: number) {
-    const slicedArray = this.unreadMentions[peerId];
+  private loadNextMentions(options: GetUnreadMentionsOptions) {
+    const {peerId} = options;
+    const slicedArray = this.unreadMentions[this.getUnreadMentionsKey(options)];
     const maxId = slicedArray.first[0] || 1;
 
     const backLimit = 50;
     const addOffset = -backLimit;
     const limit = backLimit;
-    return this.getUnreadMentions(peerId, maxId, addOffset, limit, undefined, undefined, threadId)
+    return this.getUnreadMentions({...options, offsetId: maxId, addOffset, limit})
     .then((messages) => {
       this.mergeHistoryResult({
         slicedArray,
@@ -5050,21 +5098,28 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  private getUnreadMentions(
-    peerId: PeerId,
-    offsetId: number,
-    add_offset: number,
-    limit: number,
+  private getUnreadMentions({
+    peerId,
+    offsetId,
+    addOffset,
+    limit,
     maxId = 0,
     minId = 0,
-    threadId?: number
-  ) {
+    threadId,
+    isReaction
+  }: GetUnreadMentionsOptions & {
+    offsetId: number,
+    addOffset: number,
+    limit: number,
+    maxId?: number,
+    minId?: number
+  }) {
     return this.apiManager.invokeApiSingleProcess({
-      method: 'messages.getUnreadMentions',
+      method: isReaction ? 'messages.getUnreadReactions' : 'messages.getUnreadMentions',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         offset_id: getServerMessageId(offsetId),
-        add_offset,
+        add_offset: addOffset,
         limit,
         max_id: getServerMessageId(maxId),
         min_id: getServerMessageId(minId),
@@ -5123,6 +5178,17 @@ export class AppMessagesManager extends AppManager {
     this.apiUpdatesManager.processLocalUpdate(update);
 
     return promise;
+  }
+
+  public async readReactions(peerId: PeerId, threadId?: number) {
+    if(DO_NOT_READ_HISTORY) {
+      return;
+    }
+
+    return this.apiManager.invokeApi('messages.readReactions', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      top_msg_id: threadId ? getServerMessageId(threadId) : undefined
+    });
   }
 
   public toggleHistoryMaxIdSubscription(historyKey: HistoryStorageKey, subscribe: boolean) {
@@ -5648,9 +5714,9 @@ export class AppMessagesManager extends AppManager {
         const releaseUnreadCount = this.dialogsStorage.prepareDialogUnreadCountModifying(dialog);
 
         ++dialog.unread_count;
-        if(message.pFlags.mentioned) {
+        if(isMentionUnread(message)) {
           ++dialog.unread_mentions_count;
-          this.modifyCachedMentions(peerId, message.mid, true, isTopic ? threadId : undefined);
+          this.modifyCachedMentions({peerId, mid: message.mid, add: true, threadId: isTopic ? threadId : undefined});
         }
 
         releaseUnreadCount();
@@ -5684,21 +5750,34 @@ export class AppMessagesManager extends AppManager {
   };
 
   private onUpdateMessageReactions = (update: Update.updateMessageReactions) => {
-    const {peer, msg_id, reactions} = update;
+    const {peer, msg_id, top_msg_id, reactions} = update;
     const channelId = (peer as Peer.peerChannel).channel_id;
     const mid = this.appMessagesIdsManager.generateMessageId(msg_id, channelId);
+    const threadId = this.appMessagesIdsManager.generateMessageId(top_msg_id, channelId);
     const peerId = this.appPeersManager.getPeerId(peer);
     const message: MyMessage = this.getMessageByPeer(peerId, mid);
 
     if(message?._ !== 'message') {
+      this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, force: true});
       return;
     }
 
+    const modifyUnreadReactions = (add: boolean) => {
+      this.modifyCachedMentionsAndSave({
+        peerId,
+        mid: message.mid,
+        threadId,
+        addReaction: add
+      });
+    };
+
     const recentReactions = reactions?.recent_reactions;
-    if(recentReactions?.length && message.pFlags.out) {
+    const previousReactions = message.reactions;
+    const previousRecentReactions = previousReactions?.recent_reactions;
+    const isUnread = recentReactions?.some((reaction) => reaction.pFlags.unread);
+    const wasUnread = !!previousRecentReactions?.some((reaction) => reaction.pFlags.unread);
+    if(recentReactions?.length && message.pFlags.out) { // * if user added a reaction to our message
       const recentReaction = recentReactions[recentReactions.length - 1];
-      const previousReactions = message.reactions;
-      const previousRecentReactions = previousReactions?.recent_reactions;
       if(
         this.appPeersManager.getPeerId(recentReaction.peer_id) !== this.appPeersManager.peerId && (
           !previousRecentReactions ||
@@ -5706,7 +5785,7 @@ export class AppMessagesManager extends AppManager {
         ) && (
           !previousRecentReactions ||
           !deepEqual(recentReaction, previousRecentReactions[previousRecentReactions.length - 1])
-        )
+        ) && isUnread !== wasUnread
       ) {
         this.getNotifyPeerSettings(peerId).then(({muted, peerTypeNotifySettings}) => {
           if(/* muted ||  */!peerTypeNotifySettings.show_previews) return;
@@ -5716,6 +5795,10 @@ export class AppMessagesManager extends AppManager {
           });
         });
       }
+    }
+
+    if(message.pFlags.out && isUnread !== wasUnread) {
+      modifyUnreadReactions(isUnread);
     }
 
     const key = message.peerId + '_' + message.mid;
@@ -5755,6 +5838,7 @@ export class AppMessagesManager extends AppManager {
     const mid = this.appMessagesIdsManager.generateMessageId(message.id, channelId);
     const storage = this.getHistoryMessagesStorage(peerId);
     if(!storage.has(mid)) {
+      this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId: getMessageThreadId(message, this.appPeersManager.isForum(peerId)), force: true});
       // this.fixDialogUnreadMentionsIfNoMessage(peerId);
       return;
     }
@@ -5917,9 +6001,9 @@ export class AppMessagesManager extends AppManager {
           newUnreadCount = --foundDialog.unread_count;
         }
 
-        if(message.pFlags.mentioned) {
+        if(isMentionUnread(message)) {
           newUnreadMentionsCount = --foundDialog.unread_mentions_count;
-          this.modifyCachedMentions(peerId, message.mid, false);
+          this.modifyCachedMentions({peerId, mid: message.mid, add: false});
         }
       }
 
@@ -6002,12 +6086,26 @@ export class AppMessagesManager extends AppManager {
             delete message.pFlags.media_unread;
           });
 
-          if(!message.pFlags.out && message.pFlags.mentioned) {
-            this.modifyCachedMentions(peerId, mid, false, threadId);
+          if(!message.pFlags.out && isMentionUnread(message)) {
+            this.modifyCachedMentionsAndSave({peerId, mid, addMention: false});
           }
         }
+
+        if(getUnreadReactions(message)) {
+          const newReactions = copy((message as Message.message).reactions);
+          newReactions.recent_reactions.forEach((reaction) => {
+            delete reaction.pFlags.unread;
+          });
+          this.apiUpdatesManager.processLocalUpdate({
+            _: 'updateMessageReactions',
+            peer: this.appPeersManager.getOutputPeer(peerId),
+            msg_id: message.id,
+            reactions: newReactions
+          });
+        }
       } else {
-        this.fixDialogUnreadMentionsIfNoMessage(peerId, threadId);
+        this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId});
+        this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, isReaction: true});
       }
     }
 
@@ -6095,7 +6193,7 @@ export class AppMessagesManager extends AppManager {
       const isTopic = isForumTopic(dialog);
       const isSaved = isSavedDialog(dialog);
       const _isDialog = isDialog(dialog);
-      const affected = historyUpdated.unreadMentions || historyUpdated.unread;
+      const affected = !!(historyUpdated.unreadMentions || historyUpdated.unread || historyUpdated.unreadReactions);
       const releaseUnreadCount = affected && this.dialogsStorage.prepareDialogUnreadCountModifying(dialog);
 
       if(!isSaved && historyUpdated.unread) {
@@ -6104,6 +6202,10 @@ export class AppMessagesManager extends AppManager {
 
       if(!isSaved && historyUpdated.unreadMentions) {
         dialog.unread_mentions_count = !dialog.unread_count ? 0 : Math.max(0, dialog.unread_mentions_count - historyUpdated.unreadMentions);
+      }
+
+      if(!isSaved && historyUpdated.unreadReactions) {
+        dialog.unread_reactions_count = Math.max(0, dialog.unread_reactions_count - historyUpdated.unreadReactions);
       }
 
       if(affected) {
@@ -6129,6 +6231,8 @@ export class AppMessagesManager extends AppManager {
           this.reloadConversation(peerId);
         }
       }
+
+      this.dialogsStorage.setDialogToState(dialog);
     });
   };
 
@@ -7803,6 +7907,7 @@ export class AppMessagesManager extends AppManager {
       count: number,
       unread: number,
       unreadMentions: number,
+      unreadReactions: number,
       // msgs: Map<number, {savedPeerId?: number}>,
       msgs: Set<number>,
       grouped?: {[groupId: string]: Set<number>},
@@ -7810,6 +7915,7 @@ export class AppMessagesManager extends AppManager {
       count: 0,
       unread: 0,
       unreadMentions: 0,
+      unreadReactions: 0,
       msgs: new Set()
     };
 
@@ -7818,7 +7924,8 @@ export class AppMessagesManager extends AppManager {
     for(const mid of messages) {
       const message: MyMessage = this.getMessageFromStorage(storage, mid);
       if(!message) {
-        this.fixDialogUnreadMentionsIfNoMessage(peerId);
+        this.fixDialogUnreadMentionsIfNoMessage({peerId});
+        this.fixDialogUnreadMentionsIfNoMessage({peerId, isReaction: true});
         continue;
       }
 
@@ -7830,9 +7937,9 @@ export class AppMessagesManager extends AppManager {
         ++history.unread;
         this.rootScope.dispatchEvent('notification_cancel', 'msg' + mid);
 
-        if(message.pFlags.mentioned) {
+        if(isMentionUnread(message)) {
           ++history.unreadMentions;
-          this.modifyCachedMentions(peerId, mid, false);
+          this.modifyCachedMentions({peerId, mid, add: false});
         }
       }
 
@@ -7871,6 +7978,17 @@ export class AppMessagesManager extends AppManager {
             message: message as Message.message,
             changedResults: [],
             removedResults: reactions.results
+          });
+        }
+
+        const recentReactions = reactions?.recent_reactions;
+        if(message.pFlags.out && recentReactions?.some((reaction) => reaction.pFlags.unread)) {
+          ++history.unreadReactions;
+          this.modifyCachedMentions({
+            peerId,
+            mid,
+            add: false,
+            isReaction: true
           });
         }
 

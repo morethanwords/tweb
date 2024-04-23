@@ -259,6 +259,7 @@ export default class ReactionElement extends HTMLElement {
   public middleware: Middleware;
   private customEmojiElement: CustomEmojiElement;
   public hasAroundAnimation: Promise<void>;
+  public isUnread: boolean;
   private hasTitle: boolean;
 
   constructor() {

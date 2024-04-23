@@ -88,11 +88,11 @@ import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import wrapMessageActionTextNew from '../wrappers/messageActionTextNew';
 import isMentionUnread from '../../lib/appManagers/utils/messages/isMentionUnread';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
-import {getPeerColorIndexByPeer, getPeerColorsByPeer} from '../../lib/appManagers/utils/peers/getPeerColorById';
+import {getPeerColorIndexByPeer} from '../../lib/appManagers/utils/peers/getPeerColorById';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
 import {AppManagers} from '../../lib/appManagers/managers';
-import {Awaited, SendMessageEmojiInteractionData} from '../../types';
+import {Awaited} from '../../types';
 import idleController from '../../helpers/idleController';
 import overlayCounter from '../../helpers/overlayCounter';
 import {cancelContextMenuOpening} from '../../helpers/dom/attachContextMenuListener';
@@ -177,6 +177,7 @@ import cancelNextClickIfNotClick from '../../helpers/dom/cancelNextClickIfNotCli
 import makeGoogleMapsUrl from '../../helpers/makeGoogleMapsUrl';
 import getWebFileLocation from '../../helpers/getWebFileLocation';
 import TranslatableMessage from '../translatableMessage';
+import getUnreadReactions from '../../lib/appManagers/utils/messages/getUnreadReactions';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -1984,7 +1985,7 @@ export default class ChatBubbles {
       const readContents: number[] = [];
       for(const mid of this.unreadedSeen) {
         const message: MyMessage = this.chat.getMessage(mid);
-        if(isMentionUnread(message)) {
+        if(isMentionUnread(message) || getUnreadReactions(message)) {
           readContents.push(mid);
         }
       }
@@ -4999,6 +5000,8 @@ export default class ChatBubbles {
         isMentionUnread(message)
       );
 
+    const unreadReactions = getUnreadReactions(message);
+
     if(!isInUnread && this.chat.peerId.isAnyChat()) {
       const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId);
       if(readMaxId !== undefined && readMaxId < maxBubbleMid) {
@@ -5342,7 +5345,7 @@ export default class ChatBubbles {
       returnService = true;
     }
 
-    const setUnreadObserver = isInUnread && this.observer ? (element: HTMLElement = bubble) => {
+    const setUnreadObserver = (isInUnread || unreadReactions) && this.observer ? (element: HTMLElement = bubble) => {
       // this.log('not our message', message, message.pFlags.unread);
       this.observer.observe(element, this.unreadedObserverCallback);
       this.unreaded.set(element, maxBubbleMid);
