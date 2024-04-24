@@ -16,7 +16,8 @@ type T = {
     languages: {[lang: string]: number},
     language: TranslatableLanguageISO,
     total: number,
-    totalForeign: number
+    totalForeign: number,
+    isFull?: boolean
   }
 };
 
@@ -62,6 +63,11 @@ let _createStore = () => {
   });
 };
 
+export function setPeerLanguageLoaded(peerId: PeerId) {
+  _createStore?.();
+  setState(peerId, 'isFull', true);
+}
+
 export async function processMessageForTranslation(peerId: PeerId, mid: number) {
   _createStore?.();
   if(state[peerId] && state[peerId].messages[mid]) {
@@ -99,13 +105,8 @@ export async function processMessageForTranslation(peerId: PeerId, mid: number) 
     if(isForeign) setState(peerId, 'totalForeign', newTotalForeign);
 
     const previousLanguage = previous.language;
-    if(
-      newTotal >= MIN_TOTAL_PROCESSED_MESSAGES &&
-      (previous.languages[previousLanguage] || 0) < newLanguageLength
-    ) {
+    if((previous.languages[previousLanguage] || 0) < newLanguageLength) {
       setState(peerId, 'language', lang);
-    } else if(previousLanguage && newTotal < MIN_TOTAL_PROCESSED_MESSAGES) {
-      setState(peerId, 'language', undefined);
     }
   });
 }
@@ -119,6 +120,10 @@ export default function usePeerLanguage(peerId: () => PeerId, onlyIfForeign?: bo
 
     _createStore?.();
     const current = state[_peerId];
+    if(current.total < MIN_TOTAL_PROCESSED_MESSAGES && !current.isFull) {
+      return;
+    }
+
     if(onlyIfForeign && current && (current.totalForeign / current.total) < MIN_FOREIGN_PERCENTAGE) {
       return;
     }

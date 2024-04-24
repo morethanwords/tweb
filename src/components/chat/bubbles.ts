@@ -178,6 +178,7 @@ import makeGoogleMapsUrl from '../../helpers/makeGoogleMapsUrl';
 import getWebFileLocation from '../../helpers/getWebFileLocation';
 import TranslatableMessage from '../translatableMessage';
 import getUnreadReactions from '../../lib/appManagers/utils/messages/getUnreadReactions';
+import {setPeerLanguageLoaded} from '../../stores/peerLanguage';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -8513,6 +8514,10 @@ export default class ChatBubbles {
     this.scrollable.loadedAll[side] = value;
     this.scrollable.onScroll(); // ! WARNING
     // return;
+
+    if(this.scrollable.loadedAll.bottom && this.scrollable.loadedAll.top) {
+      setPeerLanguageLoaded(this.peerId);
+    }
 
     if(!checkPlaceholders) {
       return;
