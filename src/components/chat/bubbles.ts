@@ -882,6 +882,11 @@ export default class ChatBubbles {
             changedResults = [];
           }
 
+          const unreadReactions = getUnreadReactions(message);
+          if(unreadReactions) {
+            changedResults = [];
+          }
+
           const key = message.peerId + '_' + message.mid;
           const set = REACTIONS_ELEMENTS.get(key);
           if(set) {
@@ -892,6 +897,10 @@ export default class ChatBubbles {
             return;
           } else {
             this.appendReactionsElementToBubble(bubble, message, message, changedResults);
+          }
+
+          if(unreadReactions) {
+            this.setUnreadObserver(bubble);
           }
         });
 
@@ -1594,6 +1603,8 @@ export default class ChatBubbles {
     if(entry.isIntersecting) {
       const target = entry.target as HTMLElement;
       const mid = this.unreaded.get(target as HTMLElement);
+      const bubble = findUpClassName(target, 'bubble');
+      (bubble as any).hasUnreadObserver = undefined;
       this.onUnreadedInViewport(target, mid);
     }
   };
@@ -4939,6 +4950,18 @@ export default class ChatBubbles {
     });
   }
 
+  private setUnreadObserver(bubble: HTMLElement, maxBubbleMid?: number, element: HTMLElement = bubble) {
+    if((bubble as any).hasUnreadObserver) {
+      return;
+    }
+
+    (bubble as any).hasUnreadObserver = true;
+    maxBubbleMid ??= (bubble as any).maxBubbleMid;
+    // this.log('not our message', message, message.pFlags.unread);
+    this.observer.observe(element, this.unreadedObserverCallback);
+    this.unreaded.set(element, maxBubbleMid);
+  }
+
   // reverse means top
   private async renderMessage(
     message: Message.message | Message.messageService,
@@ -4972,6 +4995,7 @@ export default class ChatBubbles {
     }
 
     const maxBubbleMid = groupedMids ? Math.max(...groupedMids) : message.mid;
+    (bubble as any).maxBubbleMid = maxBubbleMid;
 
     if(isMessage) {
       reactionsMessage = groupedId ? getMainGroupedMessage(groupedMessages) : message;
@@ -5345,11 +5369,7 @@ export default class ChatBubbles {
       returnService = true;
     }
 
-    const setUnreadObserver = (isInUnread || unreadReactions) && this.observer ? (element: HTMLElement = bubble) => {
-      // this.log('not our message', message, message.pFlags.unread);
-      this.observer.observe(element, this.unreadedObserverCallback);
-      this.unreaded.set(element, maxBubbleMid);
-    } : undefined;
+    const setUnreadObserver = (isInUnread || unreadReactions) && this.observer ? this.setUnreadObserver.bind(this, bubble, maxBubbleMid) : undefined;
 
     const isBroadcast = this.chat.isBroadcast;
     if(returnService) {
