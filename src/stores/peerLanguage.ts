@@ -120,7 +120,7 @@ export default function usePeerLanguage(peerId: () => PeerId, onlyIfForeign?: bo
 
     _createStore?.();
     const current = state[_peerId];
-    if(current.total < MIN_TOTAL_PROCESSED_MESSAGES && !current.isFull) {
+    if(current && current.total < MIN_TOTAL_PROCESSED_MESSAGES && !current.isFull) {
       return;
     }
 
