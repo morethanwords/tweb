@@ -11,7 +11,7 @@ import {fastRaf} from '../../../helpers/schedulers';
 import pause from '../../../helpers/schedulers/pause';
 import appImManager from '../../../lib/appManagers/appImManager';
 import {LangPackKey} from '../../../lib/langPack';
-import rootScope from '../../../lib/rootScope';
+import rootScope, {BroadcastEvents} from '../../../lib/rootScope';
 import {emojiFromCodePoints} from '../../../vendor/emoji';
 import {putPreloader} from '../../putPreloader';
 import {ScrollableX} from '../../scrollable';
@@ -44,6 +44,9 @@ import Icon from '../../icon';
 import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
 import anchorCallback from '../../../helpers/dom/anchorCallback';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import createStickersContextMenu from '../../../helpers/dom/createStickersContextMenu';
+import findUpAsChild from '../../../helpers/dom/findUpAsChild';
+import {IgnoreMouseOutType} from '../../../helpers/dropdownHover';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container?: HTMLElement, prepend = false, unify = false) {
@@ -573,7 +576,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
         }
       });
 
-      !this.noRegularEmoji && this.listenerSetter.add(rootScope)('emoji_recent', this.postponedEvent((emoji) => {
+      const onEmojiRecent = ({emoji, deleted}: BroadcastEvents['emoji_recent']) => {
         const category = this.categories[emoji.docId ? CUSTOM_EMOJI_RECENT_ID : EMOJI_RECENT_ID];
         if(!category) {
           return;
@@ -583,7 +586,18 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
           (item) => item.docId === emoji.docId :
           (item) => item.emoji === emoji.emoji;
         const found = findAndSplice(category.items, verify);
-        if(found) {
+        if(deleted) {
+          // * prevent second invocation
+          findAndSplice(this.postponedEvents, (event) => event.cb === onEmojiRecent && (event.args[0] as BroadcastEvents['emoji_recent']).deleted);
+          if(!found) {
+            return;
+          }
+
+          found.element.remove();
+          if(this.isCategoryVisible(category)) {
+            this.onLocalCategoryUpdate(category);
+          }
+        } else if(found) {
           category.items.unshift(found);
           if(this.isCategoryVisible(category)) {
             const {renderer} = category.elements;
@@ -602,7 +616,10 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
         if(this.closeScrollTop === 0) {
           this.menuOnClickResult.setActive(emoji.docId ? this.categories[EMOJI_RECENT_ID] : category);
         }
-      }));
+      };
+
+      !this.noRegularEmoji && this.listenerSetter.add(rootScope)('emoji_recent', this.postponedEvent(onEmojiRecent));
+      !this.noRegularEmoji && this.listenerSetter.add(rootScope)('emoji_recent', onEmojiRecent);
 
       this.toggleCustomCategory();
 
@@ -610,10 +627,12 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     });
 
     attachClickEvent(this.content, this.onContentClick, {listenerSetter: this.listenerSetter});
-    attachStickerViewerListeners({
-      listenTo: this.content,
-      listenerSetter: this.listenerSetter,
-      getTextColor: () => this.textColor
+
+    const recentCategory = this.categories[EMOJI_RECENT_ID];
+    const recentCustomCategory = this.categories[CUSTOM_EMOJI_RECENT_ID];
+    this.attachHelpers({
+      getTextColor: () => this.textColor,
+      verifyRecent: (target) => !!(findUpAsChild(target, recentCustomCategory.elements.items) || findUpAsChild(target, recentCategory.elements.items))
     });
 
     return this.initPromise = promise;
@@ -770,6 +789,27 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   //   this.onLocalCategoryUpdate(category);
   // }
 
+  public canUseEmoji(emoji: ReturnType<typeof getEmojiFromElement>, category?: EmojiTabCategory) {
+    if(
+      emoji.docId &&
+      !rootScope.premium && (
+        this.isStandalone && category ? category.id !== CUSTOM_EMOJI_RECENT_ID : this.peerId !== rootScope.myId
+      ) && !this.freeCustomEmoji.has(emoji.docId)
+    ) {
+      const a = anchorCallback(() => {
+        hideToast();
+        appImManager.openPremiumBot();
+      });
+      toastNew({
+        langPackKey: 'CustomEmoji.PremiumAlert',
+        langPackArguments: [a]
+      });
+      return false;
+    }
+
+    return true;
+  }
+
   private onContentClick = (e: MouseEvent) => {
     cancelEvent(e);
 
@@ -788,30 +828,14 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
           id: category.set.id,
           access_hash: category.set.access_hash
         },
-        true
+        true,
+        this.emoticonsDropdown.chatInput
       ).show();
       return;
     }
 
     const emoji = getEmojiFromElement(target as HTMLElement);
-    if(!emoji) {
-      return;
-    }
-
-    if(
-      emoji.docId &&
-      !rootScope.premium && (
-        this.isStandalone ? category.id !== CUSTOM_EMOJI_RECENT_ID : this.peerId !== rootScope.myId
-      ) && !this.freeCustomEmoji.has(emoji.docId)
-    ) {
-      const a = anchorCallback(() => {
-        hideToast();
-        appImManager.openPremiumBot();
-      });
-      toastNew({
-        langPackKey: 'CustomEmoji.PremiumAlert',
-        langPackArguments: [a]
-      });
+    if(!emoji || !this.canUseEmoji(emoji, category)) {
       return;
     }
 

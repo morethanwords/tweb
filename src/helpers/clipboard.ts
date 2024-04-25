@@ -5,9 +5,15 @@
  */
 
 // https://stackoverflow.com/a/30810322
-function fallbackCopyTextToClipboard(text: string) {
-  var textArea = document.createElement('textarea');
-  textArea.value = text;
+function fallbackCopyTextToClipboard(text: string, html?: string) {
+  const textArea = document.createElement(html ? 'div' : 'textarea');
+  if(html) {
+    textArea.tabIndex = 0;
+    textArea.contentEditable = 'true';
+    textArea.innerHTML = html;
+  } else {
+    (textArea as HTMLTextAreaElement).value = text;
+  }
 
   // Avoid scrolling to bottom
   textArea.style.top = '0';
@@ -16,28 +22,47 @@ function fallbackCopyTextToClipboard(text: string) {
 
   document.body.appendChild(textArea);
   textArea.focus();
-  textArea.select();
+  if(html) {
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    const range = document.createRange();
+    range.setStartBefore(textArea.firstChild);
+    range.setEndAfter(textArea.lastChild);
+    selection.addRange(range);
+  } else {
+    (textArea as HTMLTextAreaElement).select();
+  }
 
   try {
     document.execCommand('copy');
-    // const successful = document.execCommand('copy');
-    // const msg = successful ? 'successful' : 'unsuccessful';
-    // console.log('Fallback: Copying text command was ' + msg);
+    window.getSelection().removeAllRanges();
   } catch(err) {
-    // console.error('Fallback: Oops, unable to copy', err);
+    console.error('unable to copy', err);
   }
 
   document.body.removeChild(textArea);
 }
 
-export function copyTextToClipboard(text: string) {
+export async function copyTextToClipboard(text: string, html?: string) {
   if(!navigator.clipboard) {
     fallbackCopyTextToClipboard(text);
     return;
   }
 
-  navigator.clipboard.writeText(text).catch((err) => {
+  try {
+    if(!html) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/plain': new Blob([text], {type: 'text/plain'}),
+        'text/html': new Blob([html], {type: 'text/html'})
+      })
+    ]);
+  } catch(err) {
     console.error('clipboard error', err);
-    fallbackCopyTextToClipboard(text);
-  });
+    fallbackCopyTextToClipboard(text, html);
+  }
 }

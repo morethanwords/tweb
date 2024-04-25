@@ -69,6 +69,8 @@ import PopupTranslate from '../popups/translate';
 import getRichSelection from '../../helpers/dom/getRichSelection';
 import detectLanguageForTranslation from '../../helpers/detectLanguageForTranslation';
 import usePeerTranslation from '../../hooks/usePeerTranslation';
+import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import documentFragmentToHTML from '../../helpers/dom/documentFragmentToHTML';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -111,7 +113,7 @@ export default class ChatContextMenu {
   private emojiInputsPromise: CancellablePromise<InputStickerSet.inputStickerSetID[]>;
   private groupedMessages: Message.message[];
   private linkToMessage: Awaited<ReturnType<ChatContextMenu['getUrlToMessage']>>;
-  private selectedMessagesText: string;
+  private selectedMessagesText: Awaited<ReturnType<ChatContextMenu['getSelectedMessagesText']>>;
   private selectedMessages: MyMessage[];
   private avatarPeerId: number;
 
@@ -442,7 +444,7 @@ export default class ChatContextMenu {
         text: 'Loading',
         onClick: () => {
           this.emojiInputsPromise.then((inputs) => {
-            PopupElement.createPopup(PopupStickers, inputs, true).show();
+            PopupElement.createPopup(PopupStickers, inputs, true, this.chat.input).show();
           });
         },
         verify: () => reactionCount.reaction._ === 'reactionCustomEmoji',
@@ -829,7 +831,7 @@ export default class ChatContextMenu {
       text: 'Loading',
       onClick: () => {
         this.emojiInputsPromise.then((inputs) => {
-          PopupElement.createPopup(PopupStickers, inputs, true).show();
+          PopupElement.createPopup(PopupStickers, inputs, true, this.chat.input).show();
         });
       },
       verify: () => !!this.getUniqueCustomEmojisFromMessage().length,
@@ -1235,7 +1237,7 @@ export default class ChatContextMenu {
 
   private async getSelectedMessagesText() {
     if(this.avatarPeerId || !isSelectionEmpty()) {
-      return '';
+      return;
     }
 
     let mids: number[];
@@ -1245,12 +1247,25 @@ export default class ChatContextMenu {
       mids = this.chat.selection.getSelectedMids();
     }
 
-    const parts: string[] = mids.map((mid) => {
+    const htmlParts = mids.map((mid) => {
       const message = this.chat.getMessage(mid) as Message.message;
-      return message?.message ? message.message + '\n' : '';
+      if(!message.message) {
+        return;
+      }
+
+      const wrapped = wrapRichText(message.message, {entities: message.totalEntities, wrappingDraft: true});
+      return documentFragmentToHTML(wrapped);
     });
 
-    return parts.join('');
+    const parts: string[] = mids.map((mid) => {
+      const message = this.chat.getMessage(mid) as Message.message;
+      return message?.message;
+    });
+
+    return {
+      text: parts.filter(Boolean).join('\n'),
+      html: htmlParts.filter(Boolean).join('\n')
+    };
   }
 
   private onSendScheduledClick = async() => {
@@ -1285,7 +1300,8 @@ export default class ChatContextMenu {
 
   private onCopyClick = async() => {
     if(isSelectionEmpty()) {
-      copyTextToClipboard(this.selectedMessagesText);
+      const {text, html} = this.selectedMessagesText;
+      copyTextToClipboard(text, html);
     } else {
       document.execCommand('copy');
       // cancelSelection();

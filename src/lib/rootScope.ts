@@ -153,7 +153,7 @@ export type BroadcastEvents = {
 
   'media_play': void,
 
-  'emoji_recent': AppEmoji,
+  'emoji_recent': {emoji: AppEmoji, deleted?: boolean},
 
   'download_progress': Progress,
   'document_downloading': DocId,

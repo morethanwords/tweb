@@ -5,6 +5,7 @@
  */
 
 import type {AppStickersManager} from '../../lib/appManagers/appStickersManager';
+import type ChatInput from '../chat/input';
 import PopupElement from '.';
 import wrapSticker from '../wrappers/sticker';
 import LazyLoadQueue from '../lazyLoadQueue';
@@ -35,6 +36,7 @@ import DEBUG from '../../config/debug';
 import {ButtonMenuItemOptionsVerifiable} from '../buttonMenu';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import pause from '../../helpers/schedulers/pause';
+import EmojiTab from '../emoticonsDropdown/tabs/emoji';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
@@ -46,7 +48,8 @@ export default class PopupStickers extends PopupElement {
 
   constructor(
     private stickerSetInput: Parameters<AppStickersManager['getStickerSet']>[0] | Parameters<AppStickersManager['getStickerSet']>[0][],
-    private isEmojis?: boolean
+    private isEmojis?: boolean,
+    private chatInput: ChatInput = appImManager.chat?.input
   ) {
     super('popup-stickers', {
       closable: true,
@@ -139,11 +142,27 @@ export default class PopupStickers extends PopupElement {
   }
 
   private onStickersClick = async(e: MouseEvent) => {
-    const target = findUpClassName(e.target, 'sticker-set-sticker');
+    if(!this.chatInput.chat.peerId) {
+      return;
+    }
+
+    const target = findUpClassName(e.target, 'sticker-set-sticker') || findUpClassName(e.target, 'custom-emoji');
     if(!target) return;
 
     const docId = target.dataset.docId;
-    if(await appImManager.chat.input.sendMessageWithDocument({document: docId, target})) {
+    let emoji: {docId: DocId, emoji: string}
+    if(this.isEmojis) {
+      emoji = {docId, emoji: target.dataset.stickerEmoji};
+      this.chatInput.emoticonsDropdown.init?.();
+      if(!this.chatInput.emoticonsDropdown.getTab(EmojiTab).canUseEmoji(emoji)) {
+        return;
+      }
+    }
+
+    const shouldHide = this.isEmojis ?
+      this.chatInput.onEmojiSelected(emoji, false) :
+      await appImManager.chat.input.sendMessageWithDocument({document: docId, target});
+    if(shouldHide) {
       this.hide();
     }
   };
@@ -168,17 +187,17 @@ export default class PopupStickers extends PopupElement {
 
     const isEmojis = this.isEmojis ??= !!firstSet.set.pFlags.emojis;
 
-    if(!isEmojis) {
-      attachClickEvent(this.appendTo, this.onStickersClick, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.appendTo, this.onStickersClick, {listenerSetter: this.listenerSetter});
 
-      const {destroy} = createStickersContextMenu({
-        listenTo: this.appendTo,
-        isStickerPack: true,
-        onSend: () => this.hide()
-      });
+    const {destroy} = createStickersContextMenu({
+      listenTo: this.appendTo,
+      chatInput: this.chatInput,
+      isPack: true,
+      isEmojis: isEmojis,
+      onSend: () => this.hide()
+    });
 
-      this.addEventListener('close', destroy);
-    }
+    this.addEventListener('close', destroy);
 
     animationIntersector.setOnlyOnePlayableGroup(ANIMATION_GROUP);
 

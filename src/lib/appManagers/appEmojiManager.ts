@@ -235,19 +235,27 @@ export class AppEmojiManager extends AppManager {
     }) as any;
   }
 
-  public pushRecentEmoji(emoji: AppEmoji) {
+  public modifyRecentEmoji(emoji: AppEmoji, add: boolean) {
     const type: EmojiType = emoji.docId ? 'custom' : 'native';
     emoji.emoji = fixEmoji(emoji.emoji);
     // @ts-ignore
     this.getRecentEmojis(type).then((recent) => {
       const i = emoji.docId || emoji.emoji;
       indexOfAndSplice(recent, i);
-      recent.unshift(i);
+      if(add) recent.unshift(i);
       recent.splice(RECENT_MAX_LENGTH, recent.length - RECENT_MAX_LENGTH);
 
       this.appStateManager.pushToState(type === 'custom' ? 'recentCustomEmoji' : 'recentEmoji', recent);
-      this.rootScope.dispatchEvent('emoji_recent', emoji);
+      this.rootScope.dispatchEvent('emoji_recent', {emoji, deleted: !add});
     });
+  }
+
+  public pushRecentEmoji(emoji: AppEmoji) {
+    return this.modifyRecentEmoji(emoji, true);
+  }
+
+  public deleteRecentEmoji(emoji: AppEmoji) {
+    return this.modifyRecentEmoji(emoji, false);
   }
 
   public getCustomEmojiDocuments(docIds: DocId[]) {

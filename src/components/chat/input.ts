@@ -2685,6 +2685,7 @@ export default class ChatInput {
       offset: 0
     } : getEmojiEntityFromEmoji(emoji.emoji);
     this.insertAtCaret(emoji.emoji, entity, autocomplete);
+    return true;
   };
 
   private async checkAutocomplete(value?: string, caretPos?: number, entities?: MessageEntity[]) {

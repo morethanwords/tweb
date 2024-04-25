@@ -2306,7 +2306,7 @@ export default class ChatBubbles {
       const doc = ((message as Message.message).media as MessageMedia.messageMediaDocument)?.document as Document.document;
 
       if(doc?.stickerSetInput) {
-        PopupElement.createPopup(PopupStickers, doc.stickerSetInput).show();
+        PopupElement.createPopup(PopupStickers, doc.stickerSetInput, undefined, this.chat.input).show();
       }
 
       return;
@@ -6271,7 +6271,7 @@ export default class ChatBubbles {
               showPremiumInfo: () => {
                 const a = anchorCallback(() => {
                   hideToast();
-                  PopupElement.createPopup(PopupStickers, doc.stickerSetInput).show();
+                  PopupElement.createPopup(PopupStickers, doc.stickerSetInput, undefined, this.chat.input).show();
                 });
 
                 toastNew({

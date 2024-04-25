@@ -238,11 +238,11 @@ export class EmoticonsDropdown extends DropdownHover {
 
   public setTextColor(textColor: string = EMOJI_TEXT_COLOR) {
     this.textColor = textColor;
-    this.getTabsFromRenderer(EmojiTab)?.setTextColor(textColor);
+    this.getTab(EmojiTab)?.setTextColor(textColor);
   }
 
-  public getTabsFromRenderer<T extends EmoticonsTab>(instance: EmoticonsTabConstructable<T>) {
-    return this.tabsToRender.find(tab => tab instanceof instance) as T;
+  public getTab<T extends EmoticonsTab>(instance: EmoticonsTabConstructable<T>) {
+    return this.tabsToRender.find((tab) => tab instanceof instance) as T;
   }
 
   public init() {
@@ -275,7 +275,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
     this.searchButton = this.element.querySelector('.emoji-tabs-search');
     this.listenerSetter.add(this.searchButton)('click', () => {
-      if(this.tabId === this.getTabsFromRenderer(StickersTab)?.tabId) {
+      if(this.tabId === this.getTab(StickersTab)?.tabId) {
         if(!appSidebarRight.isTabExists(AppStickersTab)) {
           appSidebarRight.createTab(AppStickersTab).open();
         }
@@ -343,7 +343,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
     const HIDE_EMOJI_TAB = IS_APPLE_MOBILE && false;
 
-    const INIT_TAB_ID = HIDE_EMOJI_TAB ? this.getTabsFromRenderer(StickersTab).tabId : this.getTabsFromRenderer(EmojiTab).tabId;
+    const INIT_TAB_ID = HIDE_EMOJI_TAB ? this.getTab(StickersTab).tabId : this.getTab(EmojiTab).tabId;
 
     if(HIDE_EMOJI_TAB) {
       (this.tabsEl.children[1] as HTMLElement).classList.add('hide');
@@ -395,7 +395,9 @@ export class EmoticonsDropdown extends DropdownHover {
     this.listenerSetter.add(appImManager)('peer_changed', onPeerChanged);
     onPeerChanged();
 
-    return super.init();
+    const ret = super.init();
+    this.init = undefined;
+    return ret;
   }
 
   public getElement() {
@@ -419,8 +421,8 @@ export class EmoticonsDropdown extends DropdownHover {
     }
 
     const rights: {[tabId: number]: ChatRights} = {
-      ...(this.getTabsFromRenderer(StickersTab) && {[this.getTabsFromRenderer(StickersTab).tabId]: 'send_stickers'}),
-      ...(this.getTabsFromRenderer(GifsTab) && {[this.getTabsFromRenderer(GifsTab).tabId]: 'send_gifs'})
+      ...(this.getTab(StickersTab) && {[this.getTab(StickersTab).tabId]: 'send_stickers'}),
+      ...(this.getTab(GifsTab) && {[this.getTab(GifsTab).tabId]: 'send_gifs'})
     };
 
     const action = rights[id];
@@ -432,8 +434,8 @@ export class EmoticonsDropdown extends DropdownHover {
     animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
     this.tabId = id;
-    this.searchButton.classList.toggle('hide', this.tabId === this.getTabsFromRenderer(EmojiTab)?.tabId);
-    this.deleteBtn.classList.toggle('hide', this.tabId !== this.getTabsFromRenderer(EmojiTab)?.tabId);
+    this.searchButton.classList.toggle('hide', this.tabId === this.getTab(EmojiTab)?.tabId);
+    this.deleteBtn.classList.toggle('hide', this.tabId !== this.getTab(EmojiTab)?.tabId);
   };
 
   private checkRights = async() => {
@@ -449,7 +451,7 @@ export class EmoticonsDropdown extends DropdownHover {
       this.rights[action] = rights[idx];
     });
 
-    const emojiTab = this.getTabsFromRenderer(EmojiTab);
+    const emojiTab = this.getTab(EmojiTab);
     const active = this.tabsEl.querySelector('.active');
     if(active && whichChild(active) !== (emojiTab?.tabId + 1) && (!this.rights['send_stickers'] || !this.rights['send_gifs'])) {
       this.selectTab(emojiTab.tabId, false);

@@ -562,6 +562,28 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
       }
     };
   };
+
+  protected attachHelpers({getTextColor, verifyRecent}: {getTextColor?: () => string, verifyRecent?: (target: HTMLElement) => boolean} = {}) {
+    attachStickerViewerListeners({
+      listenTo: this.content,
+      listenerSetter: this.listenerSetter,
+      getTextColor
+    });
+
+    const type: IgnoreMouseOutType = 'menu';
+    createStickersContextMenu({
+      listenTo: this.content,
+      chatInput: this.emoticonsDropdown.chatInput,
+      verifyRecent,
+      isEmojis: !!getTextColor,
+      onOpen: () => {
+        this.emoticonsDropdown.setIgnoreMouseOut(type, true);
+      },
+      onClose: () => {
+        this.emoticonsDropdown.setIgnoreMouseOut(type, false);
+      }
+    });
+  }
 }
 
 type StickersTabItem = {element: HTMLElement, document: Document.document};
@@ -693,7 +715,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
           return;
         }
 
-        PopupElement.createPopup(PopupStickers, {id: category.set.id, access_hash: category.set.access_hash}).show();
+        PopupElement.createPopup(PopupStickers, {id: category.set.id, access_hash: category.set.access_hash}, false, this.emoticonsDropdown.chatInput).show();
         return;
       }
 
@@ -908,18 +930,8 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
 
     mediaSizes.addEventListener('resize', this.resizeCategories);
 
-    attachStickerViewerListeners({listenTo: this.content, listenerSetter: new ListenerSetter()});
-
-    const type: IgnoreMouseOutType = 'menu';
-    createStickersContextMenu({
-      listenTo: this.content,
-      verifyRecent: (target) => !!findUpAsChild(target, this.categories['recent'].elements.items),
-      onOpen: () => {
-        this.emoticonsDropdown.setIgnoreMouseOut(type, true);
-      },
-      onClose: () => {
-        this.emoticonsDropdown.setIgnoreMouseOut(type, false);
-      }
+    this.attachHelpers({
+      verifyRecent: (target) => !!findUpAsChild(target, this.categories['recent'].elements.items)
     });
 
     this.init = null;
