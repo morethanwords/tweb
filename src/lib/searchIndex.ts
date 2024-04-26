@@ -56,36 +56,47 @@ export default class SearchIndex<SearchWhat> {
     }); */
   }
 
+  public indexObjectArray(id: SearchWhat, searchText: string[]) {
+    return this.indexObject(id, searchText.join(' '));
+  }
+
   private _search(
     query: string,
     queryWords = query.split(' ').filter((word) => word.trim())
   ) {
-    const newFoundObjs: Array<{fullText: string, fullTextLength: number, what: SearchWhat, foundChars: number}> = [];
+    const newFoundObjs: Array<{fullText: string, fullTextLength: number, totalChars?: number, what: SearchWhat, foundChars: number}> = [];
     const fullTexts = this.fullTexts;
     const queryWordsLength = queryWords.length;
     fullTexts.forEach((fullText, what) => {
       let found = true;
       let foundChars = 0;
+      // let totalChars = 0;
       for(let i = 0; i < queryWordsLength; ++i) { // * verify that all words are found
         const word = queryWords[i];
         const idx = fullText.indexOf(word);
-        const isLastWord = i === queryWordsLength - 1;
+        const isLastWord = i === (queryWordsLength - 1);
         if(
-          idx === -1 ||
-          (this.options.fullWords && !isLastWord && fullText[idx + word.length] !== ' ') || // if not last word, then next char must be space
-          (idx !== 0 && fullText[idx - 1] !== ' '/*  && !badCharsRe.test(fullText[idx - 1]) */)) { // * search only from word beginning
+          idx === -1 ||                                                                         // * if not found at all
+          (this.options.fullWords && !isLastWord && fullText[idx + word.length] !== ' ') ||     // * if not last word, then next char must be space
+          (idx !== 0 && fullText[idx - 1] !== ' '/*  && !badCharsRe.test(fullText[idx - 1]) */) // * search only from word beginning
+        ) {
           found = false;
           break;
         }
 
         foundChars += word.length;
+
+        // * count how many chars could possibly be found
+        // const nextSpaceIdx = fullText.indexOf(' ', idx);
+        // const textWordLength = (nextSpaceIdx === -1 ? fullText.length : nextSpaceIdx) - idx;
+        // totalChars += textWordLength;
       }
 
       if(found) {
         foundChars += queryWordsLength - 1;
         const fullTextLength = fullText.length;
         if(this.options.minChars <= foundChars || fullTextLength <= foundChars) {
-          newFoundObjs.push({fullText, fullTextLength, what, foundChars});
+          newFoundObjs.push({fullText, fullTextLength/* , totalChars */, what, foundChars});
         }
       }
     });
@@ -100,11 +111,13 @@ export default class SearchIndex<SearchWhat> {
     const results = queries.map((query) => this._search(query));
     const newFoundObjs = flatten(results);
 
-    newFoundObjs.sort((a, b) => a.fullTextLength - b.fullTextLength || b.foundChars - a.foundChars);
+    newFoundObjs.sort((a, b) => {
+      const aLeftChars = a.fullTextLength - a.foundChars;
+      const bLeftChars = b.fullTextLength - b.foundChars;
+      return aLeftChars - bLeftChars || a.fullTextLength - b.fullTextLength;
+    });
 
-    // newFoundObjs.sort((a, b) => a.fullText.localeCompare(b.fullText));
     const newFoundObjs2: Set<SearchWhat> = new Set(newFoundObjs.map((o) => o.what));
-
     return newFoundObjs2;
   }
 

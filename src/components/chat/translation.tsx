@@ -37,7 +37,7 @@ export function pickLanguage<T extends boolean>(
   Languages.forEach(([iso2, name]) => {
     const translated = I18n.format(`Language.${iso2}`, true);
     map.set(iso2, [name, translated]);
-    index.indexObject(iso2, [iso2, name, translated].join(' '));
+    index.indexObjectArray(iso2, [iso2, name, translated]);
   });
 
   const popup = PopupElement.createPopup(

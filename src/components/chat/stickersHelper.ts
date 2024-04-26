@@ -11,7 +11,6 @@ import preloadAnimatedEmojiSticker from '../../helpers/preloadAnimatedEmojiStick
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import rootScope from '../../lib/rootScope';
-import {EmoticonsDropdown} from '../emoticonsDropdown';
 import {SuperStickerRenderer} from '../emoticonsDropdown/tabs/stickers';
 import LazyLoadQueue from '../lazyLoadQueue';
 import Scrollable from '../scrollable';
@@ -98,6 +97,10 @@ export default class StickersHelper extends AutocompleteHelper {
           });
 
           (Promise.all(promises) as Promise<any>).finally(resolve);
+        });
+
+        middleware.onClean(() => {
+          this.superStickerRenderer.clear();
         });
       } else {
         ready = Promise.resolve();

@@ -47,7 +47,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   public customEmojis: Parameters<typeof wrapRichText>[1]['customEmojis'];
   public lastPausedVideo: HTMLVideoElement;
 
-  public lastRect: DOMRect;
+  public lastRect: {width: number, height: number};
   public isDimensionsSet: boolean;
 
   public animationGroup: AnimationItemGroup;
@@ -65,7 +65,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   public auto: boolean;
   public textColor: CustomProperty;
 
-  public observeResizeElement: HTMLElement;
+  public observeResizeElement: HTMLElement | false;
 
   constructor() {
     super();
@@ -93,8 +93,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
     // this.setDimensions();
     // animationIntersector.addAnimation(this, this.animationGroup);
     const observeElement = this.observeResizeElement ?? this.canvas;
-    resizeObserverMap.set(observeElement, this);
-    resizeObserver.observe(observeElement);
+    if(observeElement) {
+      resizeObserverMap.set(observeElement, this);
+      resizeObserver.observe(observeElement);
+    }
     emojiRenderers.add(this);
 
     this.connectedCallback = undefined;
@@ -116,8 +118,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
     // }
 
     const observeElement = this.observeResizeElement ?? this.canvas;
-    resizeObserverMap.delete(observeElement);
-    resizeObserver.unobserve(observeElement);
+    if(observeElement) {
+      resizeObserverMap.delete(observeElement);
+      resizeObserver.unobserve(observeElement);
+    }
 
     this.customEmojis.forEach((elements) => {
       elements.forEach((element) => {
@@ -299,7 +303,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   //   });
   // }
 
-  public setDimensionsFromRect(rect: DOMRect = this.lastRect, forceRenderAfter = true) {
+  public setDimensionsFromRect(rect: {width: number, height: number} = this.lastRect, forceRenderAfter = true) {
     const {canvas} = this;
     const {dpr} = canvas;
 
@@ -330,7 +334,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.isDimensionsSet = true;
     this.isCanvasClean = true;
 
-    if(this.observeResizeElement) {
+    if(this.observeResizeElement || this.observeResizeElement === false) {
       this.canvas.style.setProperty('width', width + 'px', 'important');
       this.canvas.style.setProperty('height', height + 'px', 'important');
     }
@@ -776,7 +780,7 @@ export type CustomEmojiRendererElementOptions = Partial<{
   isSelectable: boolean,
   wrappingDraft: boolean,
 
-  observeResizeElement?: HTMLElement
+  observeResizeElement?: HTMLElement | false
 }> & WrapSomethingOptions;
 
 const CUSTOM_EMOJI_INSTANT_PLAY = true; // do not wait for animationIntersector

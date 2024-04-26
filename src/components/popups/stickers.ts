@@ -153,8 +153,7 @@ export default class PopupStickers extends PopupElement {
     let emoji: {docId: DocId, emoji: string}
     if(this.isEmojis) {
       emoji = {docId, emoji: target.dataset.stickerEmoji};
-      this.chatInput.emoticonsDropdown.init?.();
-      if(!this.chatInput.emoticonsDropdown.getTab(EmojiTab).canUseEmoji(emoji)) {
+      if(!this.chatInput.emoticonsDropdown.canUseEmoji(emoji, true)) {
         return;
       }
     }

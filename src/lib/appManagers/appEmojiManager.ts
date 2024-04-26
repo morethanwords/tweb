@@ -15,6 +15,7 @@ import stateStorage from '../stateStorage';
 import {AppManager} from './manager';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import pause from '../../helpers/schedulers/pause';
+import filterUnique from '../../helpers/array/filterUnique';
 
 type EmojiLangPack = {
   keywords: {
@@ -166,6 +167,10 @@ export class AppEmojiManager extends AppManager {
       promises.push(this.getRecentEmojis('native'));
     }
 
+    if(this.rootScope.premium) {
+      promises.push(this.appStickersManager.preloadEmojiSets());
+    }
+
     return Promise.all(promises);
   }
 
@@ -197,15 +202,39 @@ export class AppEmojiManager extends AppManager {
     q = q.toLowerCase().replace(/_/g, ' ');
 
     // const perf = performance.now();
-    let emojis: Array<string>;
+    let emojis: Array<string>, docIds: Array<DocId>;
     if(q.trim()) {
       const set = this.index.search(q);
-      emojis = Array.from(set).reduce((acc, v) => acc.concat(v), []);
+      emojis = Array.from(set).reduce((acc, v) => (acc.push(...v), acc), []);
+      emojis.length = Math.min(40, emojis.length);
     } else {
       emojis = this.recent.native.concat(AppEmojiManager.POPULAR_EMOJI).slice(0, RECENT_MAX_LENGTH);
+      emojis = filterUnique(emojis);
     }
 
-    emojis = Array.from(new Set(emojis));
+    const appEmojis: AppEmoji[] = [];
+    const customEmojiIndex = this.appStickersManager.getEmojisSearchIndex();
+    emojis.forEach((emoji) => {
+      if(/* this.rootScope.premium &&  */customEmojiIndex) {
+        appEmojis.push(...Array.from(customEmojiIndex.search(emoji)).map((docId) => ({docId, emoji})));
+      }
+
+      appEmojis.push({emoji});
+    });
+
+    appEmojis.length = Math.min(40, appEmojis.length);
+    // docIds = emojis.reduce((acc, emoji) => {
+    //   acc.push(...customEmojiIndex.search(emoji));
+    //   return acc;
+    // }, []);
+
+    // docIds = filterUnique(docIds);
+    // docIds.length = Math.min(40, docIds.length);
+
+    // appEmojis.push(
+    //   ...(docIds || []).map((docId) => ({docId, emoji: ''})),
+    //   ...emojis.map((emoji) => ({emoji}))
+    // );
     // console.log('searchEmojis', q, 'time', performance.now() - perf);
 
     /* for(let i = 0, length = emojis.length; i < length; ++i) {
@@ -214,7 +243,16 @@ export class AppEmojiManager extends AppManager {
       }
     } */
 
-    return emojis;
+    return appEmojis;
+  }
+
+  public async prepareAndSearchEmojis(q: string) {
+    await Promise.all([
+      this.getBothEmojiKeywords(),
+      this.appStickersManager.preloadEmojiSets()
+    ]);
+
+    return this.searchEmojis(q);
   }
 
   public getRecentEmojis<T extends EmojiType>(type: 'custom'): Promise<DocId[]>;

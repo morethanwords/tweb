@@ -2724,10 +2724,14 @@ export default class ChatInput {
       let query = matches[2];
       const firstChar = query[0];
 
-      if(this.stickersHelper &&
+      if(
+        this.stickersHelper &&
         rootScope.settings.stickers.suggest !== 'none' &&
         await this.chat.canSend('send_stickers') &&
-        entity?._ === 'messageEntityEmoji' && entity.length === value.length && !entity.offset) {
+        (['messageEntityEmoji', 'messageEntityCustomEmoji'] as MessageEntity['_'][]).includes(entity?._) &&
+        entity.length === value.length &&
+        !entity.offset
+      ) {
         foundHelper = this.stickersHelper;
         this.stickersHelper.checkEmoticon(value);
       } else if(firstChar === '@') { // mentions

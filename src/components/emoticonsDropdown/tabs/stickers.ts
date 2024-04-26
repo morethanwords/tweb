@@ -72,6 +72,14 @@ export class SuperStickerRenderer {
 
   public clear() {
     this.lazyLoadQueue.clear();
+    this.animated.forEach((element) => {
+      element.middlewareHelper?.destroy();
+    });
+    this.animated.clear();
+  }
+
+  public destroy() {
+    this.clear();
   }
 
   public renderSticker(doc: MyDocument, element?: HTMLElement, loadPromises?: Promise<any>[]) {
@@ -111,6 +119,7 @@ export class SuperStickerRenderer {
   }
 
   public unobserveAnimated(element: HTMLElement) {
+    element.middlewareHelper?.clean();
     this.animated.delete(element);
     this.lazyLoadQueue.delete({div: element});
   }
@@ -995,5 +1004,10 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
   public onOpened() {
     this.setTyping();
     this.resizeCategories();
+  }
+
+  public destroy() {
+    this.superStickerRenderer.destroy();
+    super.destroy();
   }
 }

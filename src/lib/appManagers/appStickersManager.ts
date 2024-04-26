@@ -21,6 +21,7 @@ import {getEnvironment} from '../../environment/utils';
 import getDocumentInput from './utils/docs/getDocumentInput';
 import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
 import tsNow from '../../helpers/tsNow';
+import SearchIndex from '../searchIndex';
 
 const CACHE_TIME = 3600e3;
 
@@ -70,6 +71,11 @@ export class AppStickersManager extends AppManager {
   private recentStickers: MyDocument[];
 
   private names: Record<string, InputStickerSet.inputStickerSetID>;
+
+  private indexes: Partial<{
+    stickers: SearchIndex<DocId>,
+    emojis: SearchIndex<DocId>
+  }>;
 
   protected after() {
     this.clear(true);
@@ -142,6 +148,7 @@ export class AppStickersManager extends AppManager {
     this.getStickersByEmoticonsPromises = {};
     this.sounds = {};
     this.names = {};
+    this.indexes = {};
   };
 
   private async onStickersUpdated(type: 'faved' | 'recent', overwrite: boolean) {
@@ -183,6 +190,8 @@ export class AppStickersManager extends AppManager {
   }
 
   private saveStickers(docs: Document[]) {
+    if(!docs || (docs as any).saved) return;
+    (docs as any).saved = true;
     forEachReverse(docs, (doc, idx) => {
       doc = this.appDocsManager.saveDoc(doc);
 
@@ -221,7 +230,7 @@ export class AppStickersManager extends AppManager {
       if(!params.overwrite) {
         const cachedSet = await this.storage.get(id);
         if(this.canUseStickerSetCache(cachedSet, params.useCache)) {
-          this.saveStickers(cachedSet.documents);
+          this.saveStickerSetLocal(cachedSet);
           resolve(cachedSet);
 
           if(this.getStickerSetPromises[id] === promise) {
@@ -449,6 +458,46 @@ export class AppStickersManager extends AppManager {
     return this.apiFileManager.downloadMedia({media: doc, thumb: isPremiumEffect ? doc.video_thumbs?.[0] as Extract<VideoSize, VideoSize.videoSize> : undefined});
   }
 
+  public getEmojisSearchIndex() {
+    return this.indexes.emojis;
+  }
+
+  private indexStickerSet(stickerSet: MessagesStickerSet.messagesStickerSet) {
+    const isEmojis = stickerSet.set.pFlags.emojis;
+    const index = this.indexes[isEmojis ? 'emojis' : 'stickers'] ??= new SearchIndex({minChars: 2, fullWords: true});
+
+    const map: Map<DocId, string[]> = new Map();
+    stickerSet.keywords.forEach((keyword) => {
+      map.set(keyword.document_id, keyword.keyword.slice());
+    });
+
+    stickerSet.packs.forEach((pack) => {
+      const emoticon = fixEmoji(pack.emoticon);
+      pack.documents.forEach((docId) => {
+        let array = map.get(docId);
+        if(!array) {
+          map.set(docId, array = []);
+        }
+
+        array.push(emoticon);
+      });
+    });
+
+    const shouldRemove = !stickerSet.set.installed_date;
+    map.forEach((keywords, docId) => {
+      index.indexObjectArray(docId as DocId, shouldRemove ? [] : keywords);
+    });
+  }
+
+  private saveStickerSetLocal(stickerSet: MessagesStickerSet.messagesStickerSet) {
+    if(stickerSet.set.short_name) {
+      this.names[stickerSet.set.short_name] = this.getStickerSetInput(stickerSet.set) as any;
+    }
+
+    this.saveStickers(stickerSet.documents);
+    this.indexStickerSet(stickerSet);
+  }
+
   private saveStickerSet(res: Omit<MessagesStickerSet.messagesStickerSet, '_'>, id: DocId) {
     const newSet: MessagesStickerSet = {
       _: 'messages.stickerSet',
@@ -465,11 +514,7 @@ export class AppStickersManager extends AppManager {
       stickerSet = this.storage.setToCache(id, newSet);
     }
 
-    if(stickerSet.set.short_name) {
-      this.names[stickerSet.set.short_name] = this.getStickerSetInput(newSet.set) as any;
-    }
-
-    this.saveStickers(res.documents);
+    this.saveStickerSetLocal(newSet);
 
     // console.log('stickers wrote', this.stickerSets);
     const needSave = stickerSet.set.installed_date || LOCAL_IDS_SET.has(id as any);
@@ -549,7 +594,12 @@ export class AppStickersManager extends AppManager {
         // });
 
         res.sets.forEach((covered) => {
-          this.saveStickerSet({set: covered.set, documents: [], packs: [], keywords: []}, covered.set.id);
+          this.saveStickerSet({
+            documents: [],
+            packs: [],
+            keywords: [],
+            ...(covered as StickerSetCovered.stickerSetFullCovered)
+          }, covered.set.id);
         });
 
         return res;
@@ -625,7 +675,8 @@ export class AppStickersManager extends AppManager {
   }
 
   public async toggleStickerSet(set: StickerSet.stickerSet) {
-    set = this.storage.getFromCache(set.id).set;
+    const stickerSet = this.storage.getFromCache(set.id);
+    set = stickerSet.set;
 
     if(set.installed_date) {
       const res = await this.apiManager.invokeApi('messages.uninstallStickerSet', {
@@ -634,6 +685,7 @@ export class AppStickersManager extends AppManager {
 
       if(res) {
         delete set.installed_date;
+        this.saveStickerSetLocal(stickerSet);
         this.rootScope.dispatchEvent('stickers_deleted', set);
         this.storage.delete(set.id, true);
         return true;
@@ -646,6 +698,7 @@ export class AppStickersManager extends AppManager {
 
       if(res) {
         set.installed_date = tsNow(true);
+        this.saveStickerSetLocal(stickerSet);
         this.rootScope.dispatchEvent('stickers_installed', set);
         return true;
       }
@@ -677,7 +730,13 @@ export class AppStickersManager extends AppManager {
         // });
 
         res.sets.forEach((covered) => {
-          this.saveStickerSet({set: covered.set, documents: [], packs: [], keywords: []}, covered.set.id);
+          this.saveStickerSet({
+            set: covered.set,
+            documents: [],
+            keywords: [],
+            packs: [],
+            ...(covered as StickerSetCovered.stickerSetFullCovered)
+          }, covered.set.id);
         });
 
         return res;
@@ -723,11 +782,17 @@ export class AppStickersManager extends AppManager {
     });
   }
 
+  private onPreloadStickerSetsResult = (allStickers: MessagesAllStickers) => {
+    const sets = (allStickers as MessagesAllStickers.messagesAllStickers).sets;
+    return Promise.all(sets.map((set) => this.getStickerSet(set, {useCache: true})));
+  };
+
   public preloadStickerSets() {
-    return this.getAllStickers().then((allStickers) => {
-      const sets = (allStickers as MessagesAllStickers.messagesAllStickers).sets;
-      return Promise.all(sets.map((set) => this.getStickerSet(set, {useCache: true})));
-    });
+    return this.getAllStickers().then(this.onPreloadStickerSetsResult);
+  }
+
+  public preloadEmojiSets() {
+    return this.getEmojiStickers().then(this.onPreloadStickerSetsResult);
   }
 
   // TODO: detect "🤷" by "🤷‍♂️"

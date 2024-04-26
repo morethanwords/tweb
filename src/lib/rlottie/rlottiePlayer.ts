@@ -690,7 +690,7 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.addEventListener('enterFrame', () => {
       this.dispatchEvent('firstFrame');
 
-      if(!this.canvas[0].parentNode && this.el && !this.overrideRender) {
+      if(!this.canvas[0].parentNode && this.el?.[0] && !this.overrideRender) {
         this.el.forEach((container, idx) => container.append(this.canvas[idx]));
       }
 

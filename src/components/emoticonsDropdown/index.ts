@@ -220,6 +220,11 @@ export class EmoticonsDropdown extends DropdownHover {
     });
   }
 
+  public canUseEmoji(emoji: AppEmoji, showToast?: boolean) {
+    this.init?.();
+    return this.getTab(EmojiTab).canUseEmoji(emoji, undefined, showToast);
+  }
+
   public get tab() {
     return this.tabs[this.tabId];
   }

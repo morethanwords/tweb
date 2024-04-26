@@ -29,7 +29,6 @@ import {AppManagers} from '../../../lib/appManagers/managers';
 import VisibilityIntersector, {OnVisibilityChangeItem} from '../../visibilityIntersector';
 import mediaSizes from '../../../helpers/mediaSizes';
 import wrapStickerSetThumb from '../../wrappers/stickerSetThumb';
-import attachStickerViewerListeners from '../../stickerViewer';
 import {Document, StickerSet} from '../../../layer';
 import findAndSplice from '../../../helpers/array/findAndSplice';
 import positionElementByIndex from '../../../helpers/dom/positionElementByIndex';
@@ -44,16 +43,22 @@ import Icon from '../../icon';
 import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
 import anchorCallback from '../../../helpers/dom/anchorCallback';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
-import createStickersContextMenu from '../../../helpers/dom/createStickersContextMenu';
 import findUpAsChild from '../../../helpers/dom/findUpAsChild';
-import {IgnoreMouseOutType} from '../../../helpers/dropdownHover';
 
 const loadedURLs: Set<string> = new Set();
-export function appendEmoji(emoji: string, container?: HTMLElement, prepend = false, unify = false) {
+export function appendEmoji(_emoji: AppEmoji, unify = false) {
+  if(_emoji.docId) {
+    const customEmojiElement = CustomEmojiElement.create(_emoji.docId);
+    const spanEmoji = document.createElement('span');
+    spanEmoji.classList.add('super-emoji', 'super-emoji-custom');
+    spanEmoji.append(customEmojiElement);
+    return spanEmoji;
+  }
   // const emoji = details.unified;
   // const emoji = (details.unified as string).split('-')
   // .reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
 
+  let {emoji} = _emoji;
   const spanEmoji = document.createElement('span');
   spanEmoji.classList.add('super-emoji', 'super-emoji-regular');
 
@@ -112,10 +117,6 @@ export function appendEmoji(emoji: string, container?: HTMLElement, prepend = fa
 
   // spanEmoji = spanEmoji.firstElementChild as HTMLSpanElement;
   // spanEmoji.setAttribute('emoji', emoji);
-  if(container) {
-    if(prepend) container.prepend(spanEmoji);
-    else container.appendChild(spanEmoji);
-  }
 
   return spanEmoji;
 }
@@ -746,14 +747,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
       spanEmoji.classList.add('super-emoji');
       spanEmoji.append(element);
       element = spanEmoji;
-    } else if(emoji.docId) {
-      const customEmojiElement = CustomEmojiElement.create(emoji.docId);
-      const span = document.createElement('span');
-      span.classList.add(/* 'emoji',  */'super-emoji', 'super-emoji-custom');
-      span.append(customEmojiElement);
-      element = span;
     } else {
-      element = appendEmoji(emoji.emoji/* .replace(/[\ufe0f\u2640\u2642\u2695]/g, '') */, undefined, false/* , false */);
+      element = appendEmoji(emoji/* .replace(/[\ufe0f\u2640\u2642\u2695]/g, '') *//* , false */);
     }
 
     const item: typeof category['items'][0] = {
@@ -789,21 +784,24 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   //   this.onLocalCategoryUpdate(category);
   // }
 
-  public canUseEmoji(emoji: ReturnType<typeof getEmojiFromElement>, category?: EmojiTabCategory) {
+  public canUseEmoji(emoji: ReturnType<typeof getEmojiFromElement>, category?: EmojiTabCategory, showToast?: boolean) {
     if(
       emoji.docId &&
       !rootScope.premium && (
         this.isStandalone && category ? category.id !== CUSTOM_EMOJI_RECENT_ID : this.peerId !== rootScope.myId
       ) && !this.freeCustomEmoji.has(emoji.docId)
     ) {
-      const a = anchorCallback(() => {
-        hideToast();
-        appImManager.openPremiumBot();
-      });
-      toastNew({
-        langPackKey: 'CustomEmoji.PremiumAlert',
-        langPackArguments: [a]
-      });
+      if(showToast) {
+        const a = anchorCallback(() => {
+          hideToast();
+          appImManager.openPremiumBot();
+        });
+        toastNew({
+          langPackKey: 'CustomEmoji.PremiumAlert',
+          langPackArguments: [a]
+        });
+      }
+
       return false;
     }
 
@@ -835,7 +833,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     }
 
     const emoji = getEmojiFromElement(target as HTMLElement);
-    if(!emoji || !this.canUseEmoji(emoji, category)) {
+    if(!emoji || !this.canUseEmoji(emoji, category, true)) {
       return;
     }
 
