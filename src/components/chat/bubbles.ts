@@ -312,8 +312,11 @@ export default class ChatBubbles {
   private stickyIntersector: StickyIntersector;
 
   private unreaded: Map<HTMLElement, number> = new Map();
+  private unreadedContent: Map<HTMLElement, number> = new Map();
   private unreadedSeen: Set<number> = new Set();
+  private unreadedContentSeen: Set<number> = new Set();
   private readPromise: Promise<void>;
+  private readContentPromise: Promise<void>;
 
   private bubbleGroups: BubbleGroups;
 
@@ -606,9 +609,13 @@ export default class ChatBubbles {
 
         _bubble = bubbles[getMainMidForGrouped(mids)];
         tempIds = (Array.from(_bubble.querySelectorAll('.grouped-item')) as HTMLElement[]).map((el) => +el.dataset.mid);
+        (_bubble as any).maxBubbleMid = lastMid;
       } else {
         messages = [message];
         tempIds = [tempId];
+        if(_bubble) {
+          (_bubble as any).maxBubbleMid = mid;
+        }
       }
 
       if(!_bubble) {
@@ -901,7 +908,7 @@ export default class ChatBubbles {
           }
 
           if(unreadReactions) {
-            this.setUnreadObserver(bubble);
+            this.setUnreadObserver('content', bubble, message.mid);
           }
         });
 
@@ -1604,9 +1611,15 @@ export default class ChatBubbles {
     if(entry.isIntersecting) {
       const target = entry.target as HTMLElement;
       const mid = this.unreaded.get(target as HTMLElement);
-      const bubble = findUpClassName(target, 'bubble');
-      (bubble as any).hasUnreadObserver = undefined;
-      this.onUnreadedInViewport(target, mid);
+      this.onUnreadedInViewport('history', target, mid);
+    }
+  };
+
+  private unreadedContentObserverCallback = (entry: IntersectionObserverEntry) => {
+    if(entry.isIntersecting) {
+      const target = entry.target as HTMLElement;
+      const mid = this.unreadedContent.get(target as HTMLElement);
+      this.onUnreadedInViewport('content', target, mid);
     }
   };
 
@@ -1963,65 +1976,85 @@ export default class ChatBubbles {
     return Object.keys(this.bubbles).length - this.skippedMids.size;
   }
 
-  private onUnreadedInViewport(target: HTMLElement, mid: number) {
-    this.unreadedSeen.add(mid);
-    this.observer.unobserve(target, this.unreadedObserverCallback);
-    this.unreaded.delete(target);
-    this.readUnreaded();
+  private onUnreadedInViewport(type: 'history' | 'content', target: HTMLElement, mid: number) {
+    let {unreadedSeen, unreadedObserverCallback, unreaded} = this;
+    if(type === 'content') {
+      unreadedSeen = this.unreadedContentSeen;
+      unreadedObserverCallback = this.unreadedContentObserverCallback;
+      unreaded = this.unreadedContent;
+    }
+
+    unreadedSeen.add(mid);
+    this.observer.unobserve(target, unreadedObserverCallback);
+    unreaded.delete(target);
+    this.readUnreaded(type);
   }
 
-  private readUnreaded() {
-    if(this.readPromise) return;
+  private readUnreaded(type: 'history' | 'content') {
+    const readPromiseKey = type === 'history' ? 'readPromise' : 'readContentPromise';
+    if(this[readPromiseKey]) return;
+
+    const unreadedSeenKey = type === 'history' ? 'unreadedSeen' : 'unreadedContentSeen';
 
     const middleware = this.getMiddleware();
-    this.readPromise = idleController.getFocusPromise().then(async() => {
+    this[readPromiseKey] = idleController.getFocusPromise().then(async() => {
       if(!middleware()) return;
       const {peerId, threadId} = this.chat;
-      let maxId = Math.max(...Array.from(this.unreadedSeen));
 
-      // ? if message with maxId is not rendered ?
-      if(this.scrollable.loadedAll.bottom) {
-        const bubblesMaxId = Math.max(...Object.keys(this.bubbles).map((i) => +i));
-        if(maxId >= bubblesMaxId) {
-          maxId = Math.max((await this.chat.getHistoryMaxId()) || 0, maxId);
-          if(!middleware()) return;
+      let callback: () => Promise<any>;
+      if(type === 'history') {
+        let maxId = Math.max(...Array.from(this[unreadedSeenKey]));
+
+        // ? if message with maxId is not rendered ?
+        if(this.scrollable.loadedAll.bottom) {
+          const bubblesMaxId = Math.max(...Object.keys(this.bubbles).map((i) => +i));
+          if(maxId >= bubblesMaxId) {
+            maxId = Math.max((await this.chat.getHistoryMaxId()) || 0, maxId);
+            if(!middleware()) return;
+          }
         }
+
+        this.unreaded.forEach((mid, target) => {
+          if(mid <= maxId) {
+            this.onUnreadedInViewport('history', target, mid);
+          }
+        });
+
+        if(DEBUG) {
+          this.log('will readHistory by maxId:', maxId);
+        }
+
+        callback = () => this.managers.appMessagesManager.readHistory(peerId, maxId, threadId);
+      } else {
+        const readContents: number[] = [];
+        for(const mid of this.unreadedContentSeen) {
+          const message: MyMessage = this.chat.getMessage(mid);
+          if(isMentionUnread(message) || getUnreadReactions(message)) {
+            readContents.push(mid);
+          }
+        }
+
+        if(DEBUG) {
+          this.log('will readMessages', readContents);
+        }
+
+        callback = () => this.managers.appMessagesManager.readMessages(peerId, readContents);
       }
 
-      this.unreaded.forEach((mid, target) => {
-        if(mid <= maxId) {
-          this.onUnreadedInViewport(target, mid);
-        }
-      });
-
-      const readContents: number[] = [];
-      for(const mid of this.unreadedSeen) {
-        const message: MyMessage = this.chat.getMessage(mid);
-        if(isMentionUnread(message) || getUnreadReactions(message)) {
-          readContents.push(mid);
-        }
-      }
-
-      this.managers.appMessagesManager.readMessages(peerId, readContents);
-
-      this.unreadedSeen.clear();
-
-      if(DEBUG) {
-        this.log('will readHistory by maxId:', maxId);
-      }
+      this[unreadedSeenKey].clear();
 
       // const promise = Promise.resolve();
-      const promise = this.managers.appMessagesManager.readHistory(peerId, maxId, threadId);
+      const promise = callback();
 
       return promise.catch((err: any) => {
-        this.log.error('readHistory err:', err);
-        this.managers.appMessagesManager.readHistory(peerId, maxId, threadId);
+        this.log.error('read err:', type, err);
+        callback();
       }).finally(() => {
         if(!middleware()) return;
-        this.readPromise = undefined;
+        this[readPromiseKey] = undefined;
 
-        if(this.unreadedSeen.size) {
-          this.readUnreaded();
+        if(this[unreadedSeenKey].size) {
+          this.readUnreaded(type);
         }
       });
     });
@@ -2915,6 +2948,9 @@ export default class ChatBubbles {
       this.observer.unobserve(bubble, this.unreadedObserverCallback);
       this.unreaded.delete(bubble);
 
+      this.observer.unobserve(bubble, this.unreadedContentObserverCallback);
+      this.unreadedContent.delete(bubble);
+
       this.observer.unobserve(bubble, this.viewsObserverCallback);
       this.viewsMids.delete(mid);
 
@@ -3504,8 +3540,11 @@ export default class ChatBubbles {
       this.observer.disconnect();
 
       this.unreaded.clear();
+      this.unreadedContent.clear();
       this.unreadedSeen.clear();
+      this.unreadedContentSeen.clear();
       this.readPromise = undefined;
+      this.readContentPromise = undefined;
 
       this.viewsMids.clear();
     }
@@ -4951,16 +4990,11 @@ export default class ChatBubbles {
     });
   }
 
-  private setUnreadObserver(bubble: HTMLElement, maxBubbleMid?: number, element: HTMLElement = bubble) {
-    if((bubble as any).hasUnreadObserver) {
-      return;
-    }
-
-    (bubble as any).hasUnreadObserver = true;
-    maxBubbleMid ??= (bubble as any).maxBubbleMid;
+  private setUnreadObserver(type: 'history' | 'content', bubble: HTMLElement, mid?: number, element: HTMLElement = bubble) {
+    mid ??= (bubble as any).maxBubbleMid;
     // this.log('not our message', message, message.pFlags.unread);
-    this.observer.observe(element, this.unreadedObserverCallback);
-    this.unreaded.set(element, maxBubbleMid);
+    this.observer.observe(element, type === 'history' ? this.unreadedObserverCallback : this.unreadedContentObserverCallback);
+    (type === 'history' ? this.unreaded : this.unreadedContent).set(element, mid);
   }
 
   // reverse means top
@@ -5018,13 +5052,12 @@ export default class ChatBubbles {
     contentWrapper.append(bubbleContainer);
     bubble.append(contentWrapper);
 
+
     let isInUnread = !our &&
       !message.pFlags.out &&
-      (
-        message.pFlags.unread ||
-        isMentionUnread(message)
-      );
+      message.pFlags.unread;
 
+    const unreadMention = isMentionUnread(message);
     const unreadReactions = getUnreadReactions(message);
 
     if(!isInUnread && this.chat.peerId.isAnyChat()) {
@@ -5370,7 +5403,7 @@ export default class ChatBubbles {
       returnService = true;
     }
 
-    const setUnreadObserver = (isInUnread || unreadReactions) && this.observer ? this.setUnreadObserver.bind(this, bubble, maxBubbleMid) : undefined;
+    const setUnreadObserver = isInUnread && this.observer ? this.setUnreadObserver.bind(this, 'history', bubble, maxBubbleMid) : undefined;
 
     const isBroadcast = this.chat.isBroadcast;
     if(returnService) {
@@ -5380,6 +5413,10 @@ export default class ChatBubbles {
 
     if(!isBroadcast) {
       setUnreadObserver?.();
+    }
+
+    if(this.observer && (unreadMention || unreadReactions)) {
+      this.setUnreadObserver('content', bubble, reactionsMessage.mid);
     }
 
     const isSponsored = (message as Message.message).pFlags.sponsored;
