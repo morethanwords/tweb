@@ -14,6 +14,9 @@ import {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
 import ChatInput from '../../components/chat/input';
 import {copyTextToClipboard} from '../clipboard';
 import {getEmojiFromElement} from '../../components/emoticonsDropdown/tabs/emoji';
+import tsNow from '../tsNow';
+import {toastNew} from '../../components/toast';
+import {EmojiStatus} from '../../layer';
 
 export default function createStickersContextMenu({
   listenTo,
@@ -22,6 +25,7 @@ export default function createStickersContextMenu({
   verifyRecent,
   appendTo,
   isEmojis,
+  canHaveEmojiTimer,
   onOpen,
   onClose,
   onSend
@@ -32,6 +36,7 @@ export default function createStickersContextMenu({
   verifyRecent?: (target: HTMLElement) => boolean,
   appendTo?: HTMLElement,
   isEmojis?: boolean,
+  canHaveEmojiTimer?: boolean,
   onOpen?: () => any,
   onClose?: () => any,
   onSend?: () => any
@@ -47,7 +52,21 @@ export default function createStickersContextMenu({
     return toAdd ? !found : found;
   };
 
-  const buttons: ButtonMenuItemOptionsVerifiable[] = isEmojis ? [{
+  const updateEmojiStatus = (emojiStatus: EmojiStatus) => {
+    rootScope.managers.appUsersManager.updateEmojiStatus(emojiStatus).then(() => {
+      toastNew({langPackKey: 'SetAsEmojiStatusInfo'});
+    });
+  };
+
+  const updateEmojiStatusUntil = async(duration: number) => {
+    updateEmojiStatus({
+      _: 'emojiStatusUntil',
+      document_id: doc.id,
+      until: tsNow(true) + duration
+    });
+  };
+
+  let buttons: ButtonMenuItemOptionsVerifiable[] = isEmojis ? [{
     icon: 'copy',
     text: 'Copy',
     onClick: () => {
@@ -57,6 +76,16 @@ export default function createStickersContextMenu({
         copyTextToClipboard(getEmojiFromElement(target).emoji);
       }
     }
+  }, {
+    icon: 'smile',
+    text: 'SetAsEmojiStatus',
+    onClick: () => {
+      updateEmojiStatus({
+        _: 'emojiStatus',
+        document_id: doc.id
+      });
+    },
+    verify: () => !!(rootScope.premium && doc)
   }, {
     icon: 'delete',
     text: 'DeleteFromRecent',
@@ -102,10 +131,42 @@ export default function createStickersContextMenu({
     verify: () => chatInput && !!chatInput.chat.peerId
   }];
 
+  if(canHaveEmojiTimer) buttons = [{
+    text: 'SetEmojiStatusUntil1Hour',
+    onClick: () => updateEmojiStatusUntil(3600),
+    verify: () => canHaveEmojiTimer
+  }, {
+    text: 'SetEmojiStatusUntil2Hours',
+    onClick: () => updateEmojiStatusUntil(3600 * 2),
+    verify: () => canHaveEmojiTimer
+  }, {
+    text: 'SetEmojiStatusUntil8Hours',
+    onClick: () => updateEmojiStatusUntil(3600 * 8),
+    verify: () => canHaveEmojiTimer
+  }, {
+    text: 'SetEmojiStatusUntil2Days',
+    onClick: () => updateEmojiStatusUntil(3600 * 24 * 2),
+    verify: () => canHaveEmojiTimer
+  }];
+
   return createContextMenu({
     listenTo: listenTo,
     appendTo,
-    findElement: (e) => target = findUpClassName(e.target, 'media-sticker-wrapper') || (isEmojis ? findUpClassName(e.target, 'emoji') : undefined),
+    findElement: (e) => {
+      target = e.target as HTMLElement;
+      if(isEmojis) {
+        const superEmoji = findUpClassName(target, 'super-emoji');
+        if(superEmoji) {
+          target = superEmoji.firstElementChild as HTMLElement;
+        } else {
+          target = findUpClassName(target, 'emoji') || findUpClassName(target, 'custom-emoji');
+        }
+      } else {
+        target = findUpClassName(e.target, 'media-sticker-wrapper');
+      }
+
+      return target;
+    },
     onOpen: async() => {
       doc = await rootScope.managers.appDocsManager.getDoc(target.dataset.docId);
       return onOpen?.();

@@ -432,7 +432,8 @@ export class AppSidebarLeft extends SidebarSlider {
           }
 
           this.managers.appUsersManager.updateEmojiStatus(emojiStatus);
-        }
+        },
+        canHaveEmojiTimer: true
       });
 
       const emoticonsDropdown = new EmoticonsDropdown({

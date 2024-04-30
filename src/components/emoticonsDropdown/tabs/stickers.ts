@@ -572,7 +572,11 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     };
   };
 
-  protected attachHelpers({getTextColor, verifyRecent}: {getTextColor?: () => string, verifyRecent?: (target: HTMLElement) => boolean} = {}) {
+  protected attachHelpers({getTextColor, verifyRecent, canHaveEmojiTimer}: {
+    getTextColor?: () => string,
+    verifyRecent?: (target: HTMLElement) => boolean,
+    canHaveEmojiTimer?: boolean
+  } = {}) {
     attachStickerViewerListeners({
       listenTo: this.content,
       listenerSetter: this.listenerSetter,
@@ -585,6 +589,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
       chatInput: this.emoticonsDropdown.chatInput,
       verifyRecent,
       isEmojis: !!getTextColor,
+      canHaveEmojiTimer,
       onOpen: () => {
         this.emoticonsDropdown.setIgnoreMouseOut(type, true);
       },

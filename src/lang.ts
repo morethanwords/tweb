@@ -2711,7 +2711,13 @@ const lang = {
   'Chat.SendJoinRequest.Info': 'You will be able to send messages once the admins approve your request.',
   'ChatEmpty.BusinessIntro.How': '**%@** added the message above for all empty chats. [How?]()',
   'Chat.Translate.Menu.To': 'Choose Another Language',
-  'Language.TranslateMessages.Channel.Premium': 'Subscribe to [Telegram Premium](premium) to translate entire chats.'
+  'Language.TranslateMessages.Channel.Premium': 'Subscribe to [Telegram Premium](premium) to translate entire chats.',
+  'SetEmojiStatusUntil1Hour': 'Set for 1 hour',
+  'SetEmojiStatusUntil2Hours': 'Set for 2 hours',
+  'SetEmojiStatusUntil8Hours': 'Set for 8 hours',
+  'SetEmojiStatusUntil2Days': 'Set for 2 days',
+  'SetAsEmojiStatus': 'Set as Status',
+  'SetAsEmojiStatusInfo': 'Emoji status set.'
 };
 
 export default lang;

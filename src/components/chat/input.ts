@@ -807,10 +807,10 @@ export default class ChatInput {
       const isShown = icon.classList.contains('state-back');
       if(isShown) {
         this.botCommands.toggle(true);
-        icon.classList.remove('state-back');
+        // icon.classList.remove('state-back');
       } else {
         this.botCommands.setUserId(botId, middleware);
-        icon.classList.add('state-back');
+        // icon.classList.add('state-back');
       }
     }, {listenerSetter: this.listenerSetter});
 

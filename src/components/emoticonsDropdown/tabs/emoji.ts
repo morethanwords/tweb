@@ -207,6 +207,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   private noPacks: boolean;
   private preloaderDelay: number;
   private freeCustomEmoji: Set<DocId>;
+  private canHaveEmojiTimer?: boolean
   public initPromise: Promise<void>;
 
   constructor(options: {
@@ -217,7 +218,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     onClick?: EmojiTab['onClick'],
     noPacks?: EmojiTab['noPacks'],
     preloaderDelay?: EmojiTab['preloaderDelay'],
-    freeCustomEmoji?: EmojiTab['freeCustomEmoji']
+    freeCustomEmoji?: EmojiTab['freeCustomEmoji'],
+    canHaveEmojiTimer?: EmojiTab['canHaveEmojiTimer']
   }) {
     super(
       options.managers,
@@ -633,7 +635,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     const recentCustomCategory = this.categories[CUSTOM_EMOJI_RECENT_ID];
     this.attachHelpers({
       getTextColor: () => this.textColor,
-      verifyRecent: (target) => !!(findUpAsChild(target, recentCustomCategory.elements.items) || findUpAsChild(target, recentCategory.elements.items))
+      verifyRecent: (target) => !!(findUpAsChild(target, recentCustomCategory.elements.items) || findUpAsChild(target, recentCategory.elements.items)),
+      canHaveEmojiTimer: this.canHaveEmojiTimer
     });
 
     return this.initPromise = promise;
