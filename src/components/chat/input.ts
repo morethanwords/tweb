@@ -499,6 +499,13 @@ export default class ChatInput {
     attachClickEvent(this.replyElements.container, this.onHelperClick, {listenerSetter: this.listenerSetter});
 
     const buttons: ButtonMenuItemOptions[] = [{
+      icon: 'message_jump',
+      text: 'ShowMessage',
+      onClick: () => {
+        this.onHelperClick();
+        this.replyHover.toggle(false);
+      }
+    }, {
       icon: 'replace',
       text: 'ReplyToAnotherChat',
       onClick: () => this.changeReplyRecipient()
@@ -506,8 +513,8 @@ export default class ChatInput {
       icon: 'delete',
       text: 'DoNotReply',
       onClick: this.onHelperCancel,
-      danger: true,
-      separator: true
+      danger: true/* ,
+      separator: true */
     }, this.replyElements.doNotQuote = {
       icon: 'delete',
       text: 'DoNotQuote',
@@ -3182,10 +3189,10 @@ export default class ChatInput {
     this.updateSendBtn();
   };
 
-  private onHelperClick = (e: Event) => {
-    cancelEvent(e);
+  private onHelperClick = (e?: Event) => {
+    e && cancelEvent(e);
 
-    if(!findUpClassName(e.target, 'reply')) return;
+    if(e && !findUpClassName(e.target, 'reply')) return;
     let possibleBtnMenuContainer: HTMLElement;
     if(this.helperType === 'forward') {
       possibleBtnMenuContainer = this.forwardElements?.container;

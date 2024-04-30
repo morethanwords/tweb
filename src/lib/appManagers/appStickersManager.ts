@@ -230,6 +230,7 @@ export class AppStickersManager extends AppManager {
       if(!params.overwrite) {
         const cachedSet = await this.storage.get(id);
         if(this.canUseStickerSetCache(cachedSet, params.useCache)) {
+          delete (cachedSet.documents as any).saved;
           this.saveStickerSetLocal(cachedSet);
           resolve(cachedSet);
 

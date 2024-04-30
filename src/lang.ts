@@ -700,6 +700,7 @@ const lang = {
   'Language.yo': 'Yoruba',
   'Language.zu': 'Zulu',
   'Translation.DoNotShow': 'Do not show \'Translate\' buttons for these languages.',
+  'ShowMessage': 'Show Message',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
