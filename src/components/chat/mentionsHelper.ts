@@ -23,8 +23,8 @@ export default class MentionsHelper extends AutocompletePeerHelper {
       controller,
       'mentions-helper',
       (target) => {
-        const userId = (target as HTMLElement).dataset.peerId.toUserId();
-        chatInput.mentionUser(userId, true);
+        const peerId = (target as HTMLElement).dataset.peerId.toPeerId();
+        chatInput.mentionUser(peerId, true);
       }
     );
   }

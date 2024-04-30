@@ -476,7 +476,7 @@ export default class ChatContextMenu {
         icon: 'mention',
         text: 'Mention',
         onClick: () => {
-          this.chat.input.mentionUser(this.avatarPeerId.toUserId(), false);
+          this.chat.input.mentionUser(this.avatarPeerId, false);
         },
         verify: () => /* this.avatarPeerId.isUser() &&  */this.chat.canSend('send_plain')
       }, {

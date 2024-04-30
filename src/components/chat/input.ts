@@ -1732,19 +1732,24 @@ export default class ChatInput {
     this.managers.appDraftsManager.syncDraft(this.chat.peerId, this.chat.threadId, draft);
   }
 
-  public mentionUser(userId: UserId, isHelper?: boolean) {
-    Promise.resolve(this.managers.appUsersManager.getUser(userId)).then((user) => {
+  public mentionUser(peerId: PeerId, isHelper?: boolean) {
+    Promise.resolve(this.managers.appPeersManager.getPeer(peerId)).then((peer) => {
       let str = '', entity: MessageEntity;
-      const usernames = getPeerActiveUsernames(user);
+      const usernames = getPeerActiveUsernames(peer);
       if(usernames[0]) {
         str = '@' + usernames[0];
       } else {
-        str = user.first_name || user.last_name;
+        if(peerId.isUser()) {
+          str = (peer as User.user).first_name || (peer as User.user).last_name;
+        } else {
+          str = (peer as MTChat.channel).title;
+        }
+
         entity = {
           _: 'messageEntityMentionName',
           length: str.length,
           offset: 0,
-          user_id: user.id
+          user_id: peer.id
         };
       }
 
