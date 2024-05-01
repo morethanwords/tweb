@@ -16,14 +16,14 @@ export type ObservableObserver<T> = ((v: T) => void) | {
     complete?: (v: boolean) => void;
 };
 /**
- * creates a simple observable from a signal's accessor to be used with the `from` operator of observable libraries like e.g. rxjs
+ * Creates a simple observable from a signal's accessor to be used with the `from` operator of observable libraries like e.g. rxjs
  * ```typescript
  * import { from } from "rxjs";
  * const [s, set] = createSignal(0);
  * const obsv$ = from(observable(s));
  * obsv$.subscribe((v) => console.log(v));
  * ```
- * description https://www.solidjs.com/docs/latest/api#observable
+ * description https://docs.solidjs.com/reference/reactive-utilities/observable
  */
 export declare function observable<T>(input: Accessor<T>): Observable<T>;
 export declare function from<T>(producer: ((setter: Setter<T | undefined>) => () => void) | {

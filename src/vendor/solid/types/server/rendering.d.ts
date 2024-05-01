@@ -49,7 +49,7 @@ export declare function Index<T>(props: {
 }): string | any[] | undefined;
 /**
  * Conditionally render its children or an optional fallback component
- * @description https://www.solidjs.com/docs/latest/api#show
+ * @description https://docs.solidjs.com/reference/components/show
  */
 export declare function Show<T>(props: {
     when: T | undefined | null | false;
@@ -133,6 +133,7 @@ type HydrationContext = {
     id: string;
     count: number;
     serialize: (id: string, v: Promise<any> | any, deferStream?: boolean) => void;
+    nextRoot: (v: any) => string;
     replace: (id: string, replacement: () => any) => void;
     block: (p: Promise<any>) => void;
     resources: Record<string, any>;

@@ -281,19 +281,29 @@ function wrap(value) {
     });
     const keys = Object.keys(value),
       desc = Object.getOwnPropertyDescriptors(value);
+    const proto = Object.getPrototypeOf(value);
+    const isClass = value !== null && typeof value === "object" && !Array.isArray(value) && proto !== Object.prototype;
+    if (isClass) {
+      const descriptors = Object.getOwnPropertyDescriptors(proto);
+      keys.push(...Object.keys(descriptors));
+      Object.assign(desc, descriptors);
+    }
     for (let i = 0, l = keys.length; i < l; i++) {
       const prop = keys[i];
+      if (isClass && prop === "constructor") continue;
       if (desc[prop].get) {
         const get = desc[prop].get.bind(p);
         Object.defineProperty(value, prop, {
-          get
+          get,
+          configurable: true
         });
       }
       if (desc[prop].set) {
         const og = desc[prop].set,
           set = v => solidJs.batch(() => og.call(p, v));
         Object.defineProperty(value, prop, {
-          set
+          set,
+          configurable: true
         });
       }
     }
@@ -318,11 +328,12 @@ const $ROOT = Symbol("store-root");
 function applyState(target, parent, property, merge, key) {
   const previous = parent[property];
   if (target === previous) return;
-  if (property !== $ROOT && (!isWrappable(target) || !isWrappable(previous) || key && target[key] !== previous[key])) {
+  const isArray = Array.isArray(target);
+  if (property !== $ROOT && (!isWrappable(target) || !isWrappable(previous) || isArray !== Array.isArray(previous) || key && target[key] !== previous[key])) {
     setProperty(parent, property, target);
     return;
   }
-  if (Array.isArray(target)) {
+  if (isArray) {
     if (target.length && previous.length && (!merge || key && target[0] && target[0][key] != null)) {
       let i, j, start, end, newEnd, item, newIndicesNext, keyVal;
       for (start = 0, end = Math.min(previous.length, target.length); start < end && (previous[start] === target[start] || key && previous[start] && target[start] && previous[start][key] === target[start][key]); start++) {

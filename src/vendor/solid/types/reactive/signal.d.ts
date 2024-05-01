@@ -30,11 +30,11 @@ export declare const $TRACK: unique symbol;
 export declare const $DEVCOMP: unique symbol;
 export declare var Owner: Owner | null;
 export declare let Transition: TransitionState | null;
-declare let ExternalSourceFactory: ExternalSourceFactory | null;
 /** Object storing callbacks for debugging during development */
 export declare const DevHooks: {
     afterUpdate: (() => void) | null;
     afterCreateOwner: ((owner: Owner) => void) | null;
+    afterCreateSignal: ((signal: SignalState<any>) => void) | null;
 };
 export type ComputationState = 0 | 1 | 2;
 export interface SourceMapValue {
@@ -93,7 +93,7 @@ export type RootFunction<T> = (dispose: () => void) => T;
  * @param detachedOwner optional reactive context to bind the root to
  * @returns the output of `fn`.
  *
- * @description https://www.solidjs.com/docs/latest/api#createroot
+ * @description https://docs.solidjs.com/reference/reactive-utilities/create-root
  */
 export declare function createRoot<T>(fn: RootFunction<T>, detachedOwner?: typeof Owner): T;
 export type Accessor<T> = () => T;
@@ -128,7 +128,7 @@ export interface SignalOptions<T> extends MemoOptions<T> {
  * setCount(count => count + 1);
  * ```
  *
- * @description https://www.solidjs.com/docs/latest/api#createsignal
+ * @description https://docs.solidjs.com/reference/basic-reactivity/create-signal
  */
 export declare function createSignal<T>(): Signal<T | undefined>;
 export declare function createSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
@@ -152,7 +152,7 @@ export type EffectFunction<Prev, Next extends Prev = Prev> = (v: Prev) => Next;
  * @param value an optional initial value for the computation; if set, fn will never receive undefined as first argument
  * @param options allows to set a name in dev mode for debugging purposes
  *
- * @description https://www.solidjs.com/docs/latest/api#createcomputed
+ * @description https://docs.solidjs.com/reference/secondary-primitives/create-computed
  */
 export declare function createComputed<Next>(fn: EffectFunction<undefined | NoInfer<Next>, Next>): void;
 export declare function createComputed<Next, Init = Next>(fn: EffectFunction<Init | Next, Next>, value: Init, options?: EffectOptions): void;
@@ -169,7 +169,7 @@ export declare function createComputed<Next, Init = Next>(fn: EffectFunction<Ini
  * @param value an optional initial value for the computation; if set, fn will never receive undefined as first argument
  * @param options allows to set a name in dev mode for debugging purposes
  *
- * @description https://www.solidjs.com/docs/latest/api#createrendereffect
+ * @description https://docs.solidjs.com/reference/secondary-primitives/create-render-effect
  */
 export declare function createRenderEffect<Next>(fn: EffectFunction<undefined | NoInfer<Next>, Next>): void;
 export declare function createRenderEffect<Next, Init = Next>(fn: EffectFunction<Init | Next, Next>, value: Init, options?: EffectOptions): void;
@@ -186,7 +186,7 @@ export declare function createRenderEffect<Next, Init = Next>(fn: EffectFunction
  * @param value an optional initial value for the computation; if set, fn will never receive undefined as first argument
  * @param options allows to set a name in dev mode for debugging purposes
  *
- * @description https://www.solidjs.com/docs/latest/api#createeffect
+ * @description https://docs.solidjs.com/reference/basic-reactivity/create-effect
  */
 export declare function createEffect<Next>(fn: EffectFunction<undefined | NoInfer<Next>, Next>): void;
 export declare function createEffect<Next, Init = Next>(fn: EffectFunction<Init | Next, Next>, value: Init, options?: EffectOptions & {
@@ -203,7 +203,7 @@ export declare function createEffect<Next, Init = Next>(fn: EffectFunction<Init 
  * @param invalidated a function that is called when tracked function is invalidated.
  * @param options allows to set a name in dev mode for debugging purposes
  *
- * @description https://www.solidjs.com/docs/latest/api#createreaction
+ * @description https://docs.solidjs.com/reference/secondary-primitives/create-reaction
  */
 export declare function createReaction(onInvalidate: () => void, options?: EffectOptions): (tracking: () => void) => void;
 export interface Memo<Prev, Next = Prev> extends SignalState<Next>, Computation<Next> {
@@ -226,7 +226,7 @@ export interface MemoOptions<T> extends EffectOptions {
  * @param value an optional initial value for the computation; if set, fn will never receive undefined as first argument
  * @param options allows to set a name in dev mode for debugging purposes and use a custom comparison function in equals
  *
- * @description https://www.solidjs.com/docs/latest/api#creatememo
+ * @description https://docs.solidjs.com/reference/basic-reactivity/create-memo
  */
 export declare function createMemo<Next extends Prev, Prev = Next>(fn: EffectFunction<undefined | NoInfer<Prev>, Next>): Accessor<Next>;
 export declare function createMemo<Next extends Prev, Init = Next, Prev = Next>(fn: EffectFunction<Init | Prev, Next>, value: Init, options?: MemoOptions<Next>): Accessor<Next>;
@@ -321,7 +321,7 @@ export type InitializedResourceReturn<T, R = unknown> = [
  * * `mutate` allows to manually overwrite the resource without calling the fetcher
  * * `refetch` will re-run the fetcher without changing the source, and if called with a value, that value will be passed to the fetcher via the `refetching` property on the fetcher's second parameter
  *
- * @description https://www.solidjs.com/docs/latest/api#createresource
+ * @description https://docs.solidjs.com/reference/basic-reactivity/create-resource
  */
 export declare function createResource<T, R = unknown>(fetcher: ResourceFetcher<true, T, R>, options: InitializedResourceOptions<NoInfer<T>, true>): InitializedResourceReturn<T, R>;
 export declare function createResource<T, R = unknown>(fetcher: ResourceFetcher<true, T, R>, options?: ResourceOptions<NoInfer<T>, true>): ResourceReturn<T, R>;
@@ -343,7 +343,7 @@ export interface DeferredOptions<T> {
  * @param fn a function that receives its previous or the initial value, if set, and returns a new value used to react on a computation
  * @param options allows to set the timeout in milliseconds, use a custom comparison function and set a name in dev mode for debugging purposes
  *
- * @description https://www.solidjs.com/docs/latest/api#createdeferred
+ * @description https://docs.solidjs.com/reference/secondary-primitives/create-deferred
  */
 export declare function createDeferred<T>(source: Accessor<T>, options?: DeferredOptions<T>): Accessor<T>;
 export type EqualityCheckerFunction<T, U> = (a: U, b: T) => boolean;
@@ -369,7 +369,7 @@ export type EqualityCheckerFunction<T, U> = (a: U, b: T) => boolean;
  *
  * This makes the operation O(2) instead of O(n).
  *
- * @description https://www.solidjs.com/docs/latest/api#createselector
+ * @description https://docs.solidjs.com/reference/secondary-primitives/create-selector
  */
 export declare function createSelector<T, U = T>(source: Accessor<T>, fn?: EqualityCheckerFunction<T, U>, options?: BaseOptions): (key: U) => boolean;
 /**
@@ -377,7 +377,7 @@ export declare function createSelector<T, U = T>(source: Accessor<T>, fn?: Equal
  * @param fn wraps the reactive updates that should be batched
  * @returns the return value from `fn`
  *
- * @description https://www.solidjs.com/docs/latest/api#batch
+ * @description https://docs.solidjs.com/reference/reactive-utilities/batch
  */
 export declare function batch<T>(fn: Accessor<T>): T;
 /**
@@ -385,7 +385,7 @@ export declare function batch<T>(fn: Accessor<T>): T;
  * @param fn the scope that is out of the tracking context
  * @returns the return value of `fn`
  *
- * @description https://www.solidjs.com/docs/latest/api#untrack
+ * @description https://docs.solidjs.com/reference/reactive-utilities/untrack
  */
 export declare function untrack<T>(fn: Accessor<T>): T;
 /** @deprecated */
@@ -400,7 +400,7 @@ export interface OnOptions {
     defer?: boolean;
 }
 /**
- * on - make dependencies of a computation explicit
+ * Makes dependencies of a computation explicit
  * ```typescript
  * export function on<S, U>(
  *   deps: Accessor<S> | AccessorArray<S>,
@@ -423,7 +423,7 @@ export interface OnOptions {
  * });
  * ```
  *
- * @description https://www.solidjs.com/docs/latest/api#on
+ * @description https://docs.solidjs.com/reference/jsx-attributes/on_
  */
 export declare function on<S, Next extends Prev, Prev = Next>(deps: AccessorArray<S> | Accessor<S>, fn: OnEffectFunction<S, undefined | NoInfer<Prev>, Next>, options?: OnOptions & {
     defer?: false;
@@ -432,29 +432,29 @@ export declare function on<S, Next extends Prev, Prev = Next>(deps: AccessorArra
     defer: true;
 }): EffectFunction<undefined | NoInfer<Next>>;
 /**
- * onMount - run an effect only after initial render on mount
+ * Runs an effect only after initial render on mount
  * @param fn an effect that should run only once on mount
  *
- * @description https://www.solidjs.com/docs/latest/api#onmount
+ * @description https://docs.solidjs.com/reference/lifecycle/on-mount
  */
 export declare function onMount(fn: () => void): void;
 /**
- * onCleanup - run an effect once before the reactive scope is disposed
+ * Runs an effect once before the reactive scope is disposed
  * @param fn an effect that should run only once on cleanup
  *
  * @returns the same {@link fn} function that was passed in
  *
- * @description https://www.solidjs.com/docs/latest/api#oncleanup
+ * @description https://docs.solidjs.com/reference/lifecycle/on-cleanup
  */
 export declare function onCleanup<T extends () => any>(fn: T): T;
 /**
- * catchError - run an effect whenever an error is thrown within the context of the child scopes
+ * Runs an effect whenever an error is thrown within the context of the child scopes
  * @param fn boundary for the error
  * @param handler an error handler that receives the error
  *
  * * If the error is thrown again inside the error handler, it will trigger the next available parent handler
  *
- * @description https://www.solidjs.com/docs/latest/api#catcherror
+ * @description https://docs.solidjs.com/reference/reactive-utilities/catch-error
  */
 export declare function catchError<T>(fn: () => T, handler: (err: Error) => void): T | undefined;
 export declare function getListener(): Computation<any, any> | null;
@@ -464,8 +464,9 @@ export declare function enableScheduling(scheduler?: typeof requestCallback): vo
 /**
  * ```typescript
  * export function startTransition(fn: () => void) => Promise<void>
+ * ```
  *
- * @description https://www.solidjs.com/docs/latest/api#usetransition
+ * @description https://docs.solidjs.com/reference/reactive-utilities/start-transition
  */
 export declare function startTransition(fn: () => unknown): Promise<void>;
 export type Transition = [Accessor<boolean>, (fn: () => void) => Promise<void>];
@@ -477,7 +478,7 @@ export type Transition = [Accessor<boolean>, (fn: () => void) => Promise<void>];
  * ];
  * @returns a tuple; first value is an accessor if the transition is pending and a callback to start the transition
  *
- * @description https://www.solidjs.com/docs/latest/api#usetransition
+ * @description https://docs.solidjs.com/reference/reactive-utilities/use-transition
  */
 export declare function useTransition(): Transition;
 export declare function resumeEffects(e: Computation<any>[]): void;
@@ -513,17 +514,17 @@ export interface Context<T> {
  * @param options allows to set a name in dev mode for debugging purposes
  * @returns The context that contains the Provider Component and that can be used with `useContext`
  *
- * @description https://www.solidjs.com/docs/latest/api#createcontext
+ * @description https://docs.solidjs.com/reference/component-apis/create-context
  */
 export declare function createContext<T>(defaultValue?: undefined, options?: EffectOptions): Context<T | undefined>;
 export declare function createContext<T>(defaultValue: T, options?: EffectOptions): Context<T>;
 /**
- * use a context to receive a scoped state from a parent's Context.Provider
+ * Uses a context to receive a scoped state from a parent's Context.Provider
  *
  * @param context Context object made by `createContext`
  * @returns the current or `defaultValue`, if present
  *
- * @description https://www.solidjs.com/docs/latest/api#usecontext
+ * @description https://docs.solidjs.com/reference/component-apis/use-context
  */
 export declare function useContext<T>(context: Context<T>): T;
 export type ResolvedJSXElement = Exclude<JSX.Element, JSX.ArrayElement>;
@@ -537,7 +538,7 @@ export type ChildrenReturn = Accessor<ResolvedChildren> & {
  * @param fn an accessor for the children
  * @returns a accessor of the same children, but resolved
  *
- * @description https://www.solidjs.com/docs/latest/api#children
+ * @description https://docs.solidjs.com/reference/component-apis/children
  */
 export declare function children(fn: Accessor<JSX.Element>): ChildrenReturn;
 export type SuspenseContextType = {
@@ -554,7 +555,7 @@ type SuspenseContext = Context<SuspenseContextType | undefined> & {
 };
 declare let SuspenseContext: SuspenseContext;
 export declare function getSuspenseContext(): SuspenseContext;
-export declare function enableExternalSource(factory: ExternalSourceFactory): void;
+export declare function enableExternalSource(factory: ExternalSourceFactory, untrack?: <V>(fn: () => V) => V): void;
 export declare function readSignal(this: SignalState<any> | Memo<any>): any;
 export declare function writeSignal(node: SignalState<any> | Memo<any>, value: any, isComp?: boolean): any;
 /**
@@ -564,7 +565,7 @@ export declare function writeSignal(node: SignalState<any> | Memo<any>, value: a
  *
  * * If the error is thrown again inside the error handler, it will trigger the next available parent handler
  *
- * @description https://www.solidjs.com/docs/latest/api#onerror
+ * @description https://www.solidjs.com/docs/latest/api#onerror | https://docs.solidjs.com/reference/reactive-utilities/catch-error
  */
 export declare function onError(fn: (err: Error) => void): void;
 export {};

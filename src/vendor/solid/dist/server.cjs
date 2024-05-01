@@ -307,8 +307,12 @@ function resolveSSRNode(node) {
   if (t === "string") return node;
   if (node == null || t === "boolean") return "";
   if (Array.isArray(node)) {
+    let prev = {};
     let mapped = "";
-    for (let i = 0, len = node.length; i < len; i++) mapped += resolveSSRNode(node[i]);
+    for (let i = 0, len = node.length; i < len; i++) {
+      if (typeof prev !== "object" && typeof node[i] !== "object") mapped += `<!--!$-->`;
+      mapped += resolveSSRNode(prev = node[i]);
+    }
     return mapped;
   }
   if (t === "object") return node.t;
@@ -521,8 +525,7 @@ function createResource(source, fetcher, options = {}) {
     if (p != undefined && typeof p === "object" && "then" in p) {
       read.loading = true;
       read.state = "pending";
-      if (ctx.serialize) ctx.serialize(id, p, options.deferStream);
-      return p.then(res => {
+      p = p.then(res => {
         read.loading = false;
         read.state = "ready";
         ctx.resources[id].data = res;
@@ -535,7 +538,10 @@ function createResource(source, fetcher, options = {}) {
         read.error = error = castError(err);
         p = null;
         notifySuspense(contexts);
+        throw error;
       });
+      if (ctx.serialize) ctx.serialize(id, p, options.deferStream);
+      return p;
     }
     ctx.resources[id].data = p;
     if (ctx.serialize) ctx.serialize(id, p);
@@ -647,7 +653,10 @@ function Suspense(props) {
     }));
   }
   const res = runSuspense();
-  if (suspenseComplete(value)) return res;
+  if (suspenseComplete(value)) {
+    delete ctx.suspense[id];
+    return res;
+  }
   done = ctx.async ? ctx.registerFragment(id) : undefined;
   return catchError(() => {
     if (ctx.async) {

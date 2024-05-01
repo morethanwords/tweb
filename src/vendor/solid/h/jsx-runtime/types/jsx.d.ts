@@ -51,6 +51,13 @@ export namespace JSX {
     1: any;
   }
   type EventHandlerUnion<T, E extends Event> = EventHandler<T, E> | BoundEventHandler<T, E>;
+
+  const SERIALIZABLE: unique symbol;
+  interface SerializableAttributeValue {
+    toString(): string;
+    [SERIALIZABLE]: never;
+  }
+
   interface IntrinsicAttributes {
     ref?: unknown | ((e: unknown) => void);
   }
@@ -634,7 +641,7 @@ export namespace JSX {
   interface HTMLAttributes<T> extends AriaAttributes, DOMAttributes<T> {
     accessKey?: FunctionMaybe<string>;
     class?: FunctionMaybe<string> | undefined;
-    contenteditable?: FunctionMaybe<boolean | "inherit">;
+    contenteditable?: FunctionMaybe<boolean | "plaintext-only" | "inherit">;
     contextmenu?: FunctionMaybe<string>;
     dir?: FunctionMaybe<HTMLDir>;
     draggable?: FunctionMaybe<boolean>;
@@ -649,6 +656,7 @@ export namespace JSX {
     about?: FunctionMaybe<string>;
     datatype?: FunctionMaybe<string>;
     inlist?: FunctionMaybe<any>;
+    popover?: FunctionMaybe<boolean | "manual" | "auto">;
     prefix?: FunctionMaybe<string>;
     property?: FunctionMaybe<string>;
     resource?: FunctionMaybe<string>;
@@ -667,7 +675,7 @@ export namespace JSX {
     inputmode?: FunctionMaybe<
       "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal" | "search"
     >;
-    contentEditable?: FunctionMaybe<boolean | "inherit">;
+    contentEditable?: FunctionMaybe<boolean | "plaintext-only" | "inherit">;
     contextMenu?: FunctionMaybe<string>;
     tabIndex?: FunctionMaybe<number | string>;
     autoCapitalize?: FunctionMaybe<HTMLAutocapitalize>;
@@ -718,19 +726,23 @@ export namespace JSX {
     autofocus?: FunctionMaybe<boolean>;
     disabled?: FunctionMaybe<boolean>;
     form?: FunctionMaybe<string>;
-    formaction?: FunctionMaybe<string>;
+    formaction?: FunctionMaybe<string | SerializableAttributeValue>;
     formenctype?: FunctionMaybe<HTMLFormEncType>;
     formmethod?: FunctionMaybe<HTMLFormMethod>;
     formnovalidate?: FunctionMaybe<boolean>;
     formtarget?: FunctionMaybe<string>;
+    popovertarget?: FunctionMaybe<string>;
+    popovertargetaction?: FunctionMaybe<"hide" | "show" | "toggle">;
     name?: FunctionMaybe<string>;
     type?: FunctionMaybe<"submit" | "reset" | "button">;
     value?: FunctionMaybe<string>;
-    formAction?: FunctionMaybe<string>;
+    formAction?: FunctionMaybe<string | SerializableAttributeValue>;
     formEnctype?: FunctionMaybe<HTMLFormEncType>;
     formMethod?: FunctionMaybe<HTMLFormMethod>;
     formNoValidate?: FunctionMaybe<boolean>;
     formTarget?: FunctionMaybe<string>;
+    popoverTarget?: FunctionMaybe<string>;
+    popoverTargetAction?: FunctionMaybe<"hide" | "show" | "toggle">;
   }
   interface CanvasHTMLAttributes<T> extends HTMLAttributes<T> {
     width?: FunctionMaybe<number | string>;
@@ -767,7 +779,7 @@ export namespace JSX {
   }
   interface FormHTMLAttributes<T> extends HTMLAttributes<T> {
     "accept-charset"?: FunctionMaybe<string>;
-    action?: FunctionMaybe<string>;
+    action?: FunctionMaybe<string | SerializableAttributeValue>;
     autocomplete?: FunctionMaybe<string>;
     encoding?: FunctionMaybe<HTMLFormEncType>;
     enctype?: FunctionMaybe<HTMLFormEncType>;
@@ -819,7 +831,7 @@ export namespace JSX {
     crossorigin?: FunctionMaybe<HTMLCrossorigin>;
     disabled?: FunctionMaybe<boolean>;
     form?: FunctionMaybe<string>;
-    formaction?: FunctionMaybe<string>;
+    formaction?: FunctionMaybe<string | SerializableAttributeValue>;
     formenctype?: FunctionMaybe<HTMLFormEncType>;
     formmethod?: FunctionMaybe<HTMLFormMethod>;
     formnovalidate?: FunctionMaybe<boolean>;
@@ -843,7 +855,7 @@ export namespace JSX {
     value?: FunctionMaybe<string | string[] | number>;
     width?: FunctionMaybe<number | string>;
     crossOrigin?: FunctionMaybe<HTMLCrossorigin>;
-    formAction?: FunctionMaybe<string>;
+    formAction?: FunctionMaybe<string | SerializableAttributeValue>;
     formEnctype?: FunctionMaybe<HTMLFormEncType>;
     formMethod?: FunctionMaybe<HTMLFormMethod>;
     formNoValidate?: FunctionMaybe<boolean>;
@@ -914,6 +926,7 @@ export namespace JSX {
     content?: FunctionMaybe<string>;
     "http-equiv"?: FunctionMaybe<string>;
     name?: FunctionMaybe<string>;
+    media?: FunctionMaybe<string>;
   }
   interface MeterHTMLAttributes<T> extends HTMLAttributes<T> {
     form?: FunctionMaybe<string>;
@@ -1527,6 +1540,15 @@ export namespace JSX {
     azimuth?: FunctionMaybe<number | string>;
     elevation?: FunctionMaybe<number | string>;
   }
+  interface FeDropShadowSVGAttributes<T>
+    extends CoreSVGAttributes<T>,
+      FilterPrimitiveElementSVGAttributes<T>,
+      StylableSVGAttributes,
+      Pick<PresentationSVGAttributes, "color" | "flood-color" | "flood-opacity"> {
+    dx?: FunctionMaybe<number | string>;
+    dy?: FunctionMaybe<number | string>;
+    stdDeviation?: FunctionMaybe<number | string>;
+  }
   interface FeFloodSVGAttributes<T>
     extends FilterPrimitiveElementSVGAttributes<T>,
       StylableSVGAttributes,
@@ -1701,6 +1723,7 @@ export namespace JSX {
     height?: FunctionMaybe<number | string>;
   }
   interface MetadataSVGAttributes<T> extends CoreSVGAttributes<T> {}
+  interface MPathSVGAttributes<T> extends CoreSVGAttributes<T> {}
   interface PathSVGAttributes<T>
     extends GraphicsElementSVGAttributes<T>,
       ShapeElementSVGAttributes<T>,
@@ -1769,6 +1792,10 @@ export namespace JSX {
     rx?: FunctionMaybe<number | string>;
     ry?: FunctionMaybe<number | string>;
   }
+  interface SetSVGAttributes<T>
+    extends CoreSVGAttributes<T>,
+      StylableSVGAttributes,
+      AnimationTimingSVGAttributes {}
   interface StopSVGAttributes<T>
     extends CoreSVGAttributes<T>,
       StylableSVGAttributes,
@@ -1806,7 +1833,16 @@ export namespace JSX {
       NewViewportSVGAttributes<T>,
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
-      FitToViewBoxSVGAttributes {}
+      FitToViewBoxSVGAttributes {
+    width?: FunctionMaybe<number | string>;
+    height?: FunctionMaybe<number | string>;
+    preserveAspectRatio?: FunctionMaybe<SVGPreserveAspectRatio>;
+    refX?: FunctionMaybe<number | string>;
+    refY?: FunctionMaybe<number | string>;
+    viewBox?: FunctionMaybe<string>;
+    x?: FunctionMaybe<number | string>;
+    y?: FunctionMaybe<number | string>;
+  }
   interface TextSVGAttributes<T>
     extends TextContentElementSVGAttributes<T>,
       GraphicsElementSVGAttributes<T>,
@@ -1854,11 +1890,16 @@ export namespace JSX {
     textLength?: FunctionMaybe<number | string>;
     lengthAdjust?: FunctionMaybe<"spacing" | "spacingAndGlyphs">;
   }
+  /**
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/use
+   */
   interface UseSVGAttributes<T>
-    extends GraphicsElementSVGAttributes<T>,
-      ConditionalProcessingSVGAttributes,
-      ExternalResourceSVGAttributes,
+    extends CoreSVGAttributes<T>,
       StylableSVGAttributes,
+      ConditionalProcessingSVGAttributes,
+      GraphicsElementSVGAttributes<T>,
+      PresentationSVGAttributes,
+      ExternalResourceSVGAttributes,
       TransformableSVGAttributes {
     x?: FunctionMaybe<number | string>;
     y?: FunctionMaybe<number | string>;
@@ -1959,7 +2000,8 @@ export namespace JSX {
     ruby: HTMLAttributes<HTMLElement>;
     s: HTMLAttributes<HTMLElement>;
     samp: HTMLAttributes<HTMLElement>;
-    script: ScriptHTMLAttributes<HTMLElement>;
+    script: ScriptHTMLAttributes<HTMLScriptElement>;
+    search: HTMLAttributes<HTMLElement>;
     section: HTMLAttributes<HTMLElement>;
     select: SelectHTMLAttributes<HTMLSelectElement>;
     slot: HTMLSlotElementAttributes;
@@ -2019,7 +2061,7 @@ export namespace JSX {
     feDiffuseLighting: FeDiffuseLightingSVGAttributes<SVGFEDiffuseLightingElement>;
     feDisplacementMap: FeDisplacementMapSVGAttributes<SVGFEDisplacementMapElement>;
     feDistantLight: FeDistantLightSVGAttributes<SVGFEDistantLightElement>;
-    feDropShadow: Partial<SVGFEDropShadowElement>;
+    feDropShadow: FeDropShadowSVGAttributes<SVGFEDropShadowElement>;
     feFlood: FeFloodSVGAttributes<SVGFEFloodElement>;
     feFuncA: FeFuncSVGAttributes<SVGFEFuncAElement>;
     feFuncB: FeFuncSVGAttributes<SVGFEFuncBElement>;
@@ -2045,14 +2087,14 @@ export namespace JSX {
     marker: MarkerSVGAttributes<SVGMarkerElement>;
     mask: MaskSVGAttributes<SVGMaskElement>;
     metadata: MetadataSVGAttributes<SVGMetadataElement>;
-    mpath: Partial<SVGMPathElement>;
+    mpath: MPathSVGAttributes<SVGMPathElement>;
     path: PathSVGAttributes<SVGPathElement>;
     pattern: PatternSVGAttributes<SVGPatternElement>;
     polygon: PolygonSVGAttributes<SVGPolygonElement>;
     polyline: PolylineSVGAttributes<SVGPolylineElement>;
     radialGradient: RadialGradientSVGAttributes<SVGRadialGradientElement>;
     rect: RectSVGAttributes<SVGRectElement>;
-    set: Partial<SVGSetElement>;
+    set: SetSVGAttributes<SVGSetElement>;
     stop: StopSVGAttributes<SVGStopElement>;
     svg: SvgSVGAttributes<SVGSVGElement>;
     switch: SwitchSVGAttributes<SVGSwitchElement>;

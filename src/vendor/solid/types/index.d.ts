@@ -12,6 +12,7 @@ export declare const DEV: {
     readonly hooks: {
         afterUpdate: (() => void) | null;
         afterCreateOwner: ((owner: import("./reactive/signal.js").Owner) => void) | null;
+        afterCreateSignal: ((signal: import("./reactive/signal.js").SignalState<any>) => void) | null;
     };
     readonly writeSignal: typeof writeSignal;
     readonly registerGraph: typeof registerGraph;

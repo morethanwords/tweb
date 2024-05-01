@@ -29,9 +29,14 @@ const serverOptions: ServerOptions = {
   }
 };
 
+const SOLID_SRC_PATH = 'src/solid/packages/solid';
+const SOLID_BUILT_PATH = 'src/vendor/solid';
+const USE_SOLID_SRC = false;
+const SOLID_PATH = USE_SOLID_SRC ? SOLID_SRC_PATH : SOLID_BUILT_PATH;
+const USE_OWN_SOLID = existsSync(resolve(rootDir, SOLID_PATH));
+
 const USE_SSL = false;
 const NO_MINIFY = false;
-const HAS_SOLID = existsSync(resolve(rootDir, 'src/vendor/solid'));
 const SSL_CONFIG: any = undefined && USE_SSL && {
   name: '192.168.95.17',
   certDir: './certs/'
@@ -41,7 +46,11 @@ const ADDITIONAL_ALIASES = {
   'solid-transition-group': resolve(rootDir, 'src/vendor/solid-transition-group')
 };
 
-console.log('has built solid', HAS_SOLID);
+if(USE_OWN_SOLID) {
+  console.log('using own solid', SOLID_PATH, 'built', !USE_SOLID_SRC);
+} else {
+  console.log('using original solid');
+}
 
 export default defineConfig({
   plugins: [
@@ -124,12 +133,12 @@ export default defineConfig({
   },
   resolve: {
     // conditions: ['development', 'browser'],
-    alias: HAS_SOLID ? {
-      'rxcore': resolve(rootDir, 'src/vendor/solid/web/core'),
-      'solid-js/jsx-runtime': resolve(rootDir, 'src/vendor/solid/jsx'),
-      'solid-js/web': resolve(rootDir, 'src/vendor/solid/web'),
-      'solid-js/store': resolve(rootDir, 'src/vendor/solid/store'),
-      'solid-js': resolve(rootDir, 'src/vendor/solid'),
+    alias: USE_OWN_SOLID ? {
+      'rxcore': resolve(rootDir, SOLID_PATH, 'web/core'),
+      'solid-js/jsx-runtime': resolve(rootDir, SOLID_PATH, 'jsx'),
+      'solid-js/web': resolve(rootDir, SOLID_PATH, 'web'),
+      'solid-js/store': resolve(rootDir, SOLID_PATH, 'store'),
+      'solid-js': resolve(rootDir, SOLID_PATH),
       ...ADDITIONAL_ALIASES
     } : ADDITIONAL_ALIASES
   }

@@ -1,8 +1,8 @@
 import type { JSX } from "../jsx.js";
 /**
- * **[experimental]** controls the order in which suspended content is rendered
+ * **[experimental]** Controls the order in which suspended content is rendered
  *
- * @description https://www.solidjs.com/docs/latest/api#suspenselist-experimental
+ * @description https://docs.solidjs.com/reference/components/suspense-list
  */
 export declare function SuspenseList(props: {
     children: JSX.Element;
@@ -10,7 +10,7 @@ export declare function SuspenseList(props: {
     tail?: "collapsed" | "hidden";
 }): JSX.Element;
 /**
- * tracks all resources inside a component and renders a fallback until they are all resolved
+ * Tracks all resources inside a component and renders a fallback until they are all resolved
  * ```typescript
  * const AsyncComponent = lazy(() => import('./component'));
  *
@@ -18,7 +18,7 @@ export declare function SuspenseList(props: {
  *   <AsyncComponent />
  * </Suspense>
  * ```
- * @description https://www.solidjs.com/docs/latest/api#suspense
+ * @description https://docs.solidjs.com/reference/components/suspense
  */
 export declare function Suspense(props: {
     fallback?: JSX.Element;

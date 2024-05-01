@@ -7,11 +7,11 @@ export declare const isServer: boolean;
 export declare const isDev: boolean;
 export declare const hydrate: typeof hydrateCore;
 /**
- * renders components somewhere else in the DOM
+ * Renders components somewhere else in the DOM
  *
  * Useful for inserting modals and tooltips outside of an cropping layout. If no mount point is given, the portal is inserted in document.body; it is wrapped in a `<div>` unless the target is document.head or `isSVG` is true. setting `useShadow` to true places the element in a shadow root to isolate styles.
  *
- * @description https://www.solidjs.com/docs/latest/api#portal
+ * @description https://docs.solidjs.com/reference/components/portal
  */
 export declare function Portal<T extends boolean = false, S extends boolean = false>(props: {
     mount?: Node;
@@ -28,10 +28,10 @@ export type DynamicProps<T extends ValidComponent, P = ComponentProps<T>> = {
     component: T | undefined;
 };
 /**
- * renders an arbitrary custom or native component and passes the other props
+ * Renders an arbitrary custom or native component and passes the other props
  * ```typescript
  * <Dynamic component={multiline() ? 'textarea' : 'input'} value={value()} />
  * ```
- * @description https://www.solidjs.com/docs/latest/api#dynamic
+ * @description https://docs.solidjs.com/reference/components/dynamic
  */
 export declare function Dynamic<T extends ValidComponent>(props: DynamicProps<T>): JSX.Element;

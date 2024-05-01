@@ -95,7 +95,9 @@ export type SplitProps<T, K extends (readonly (keyof T)[])[]> = [
     ...{
         [P in keyof K]: P extends `${number}` ? Pick<T, Extract<K[P], readonly (keyof T)[]>[number]> : never;
     },
-    Omit<T, K[number][number]>
+    {
+        [P in keyof T as Exclude<P, K[number][number]>]: T[P];
+    }
 ];
 export declare function splitProps<T extends Record<any, any>, K extends [readonly (keyof T)[], ...(readonly (keyof T)[])[]]>(props: T, ...keys: K): SplitProps<T, K>;
 export declare function lazy<T extends Component<any>>(fn: () => Promise<{
