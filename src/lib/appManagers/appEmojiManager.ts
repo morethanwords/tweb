@@ -196,7 +196,7 @@ export class AppEmojiManager extends AppManager {
     }
   }
 
-  public searchEmojis(q: string) {
+  private searchEmojis(q: string, limit = 40, minChars = 2) {
     this.indexEmojis();
 
     q = q.toLowerCase().replace(/_/g, ' ');
@@ -204,7 +204,7 @@ export class AppEmojiManager extends AppManager {
     // const perf = performance.now();
     let emojis: Array<string>, docIds: Array<DocId>;
     if(q.trim()) {
-      const set = this.index.search(q);
+      const set = this.index.search(q, minChars);
       emojis = Array.from(set).reduce((acc, v) => (acc.push(...v), acc), []);
       emojis.length = Math.min(40, emojis.length);
     } else {
@@ -216,13 +216,13 @@ export class AppEmojiManager extends AppManager {
     const customEmojiIndex = this.appStickersManager.getEmojisSearchIndex();
     emojis.forEach((emoji) => {
       if(/* this.rootScope.premium &&  */customEmojiIndex) {
-        appEmojis.push(...Array.from(customEmojiIndex.search(emoji)).map((docId) => ({docId, emoji})));
+        appEmojis.push(...Array.from(customEmojiIndex.search(emoji, minChars)).map((docId) => ({docId, emoji})));
       }
 
       appEmojis.push({emoji});
     });
 
-    appEmojis.length = Math.min(40, appEmojis.length);
+    appEmojis.length = Math.min(limit, appEmojis.length);
     // docIds = emojis.reduce((acc, emoji) => {
     //   acc.push(...customEmojiIndex.search(emoji));
     //   return acc;
@@ -246,13 +246,13 @@ export class AppEmojiManager extends AppManager {
     return appEmojis;
   }
 
-  public async prepareAndSearchEmojis(q: string) {
+  public async prepareAndSearchEmojis(q: string, limit?: number, minChars?: number) {
     await Promise.all([
       this.getBothEmojiKeywords(),
       this.appStickersManager.preloadEmojiSets()
     ]);
 
-    return this.searchEmojis(q);
+    return this.searchEmojis(q, limit, minChars);
   }
 
   public getRecentEmojis<T extends EmojiType>(type: 'custom'): Promise<DocId[]>;
@@ -296,8 +296,8 @@ export class AppEmojiManager extends AppManager {
     return this.modifyRecentEmoji(emoji, false);
   }
 
-  public getCustomEmojiDocuments(docIds: DocId[]) {
-    if(!docIds.length) return Promise.resolve([] as MyDocument[]);
+  public getCustomEmojiDocuments(docIds: DocId[]): Promise<MyDocument[]> {
+    if(!docIds.length) return Promise.resolve([]);
     return this.apiManager.invokeApi('messages.getCustomEmojiDocuments', {document_id: docIds}).then((documents) => {
       return documents.map((doc) => {
         return this.appDocsManager.saveDoc(doc, {

@@ -2503,3 +2503,9 @@ hr {
   width: 5.625rem;
   min-width: auto;
 }
+
+.animated {
+  &-item {
+    position: absolute;
+  }
+}

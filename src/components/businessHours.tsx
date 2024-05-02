@@ -12,12 +12,12 @@ import Row from './row';
 import I18n, {i18n} from '../lib/langPack';
 import {getWeekDays, ONE_DAY_MINUTES, ONE_WEEK_MINUTES} from '../helpers/date';
 import rotateArray from '../helpers/array/rotate';
-import {AnimationList} from '../helpers/solid/animationList';
 import classNames from '../helpers/string/classNames';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import ListenerSetter from '../helpers/listenerSetter';
 import {copyTextToClipboard} from '../helpers/clipboard';
 import {toastNew} from './toast';
+import Animated from '../helpers/solid/animations';
 
 export default function BusinessHours(props: {
   hours: () => BusinessWorkHours,
@@ -235,13 +235,9 @@ export default function BusinessHours(props: {
   row.container.classList.add('business-hours-container');
 
   <Portal mount={row.container}>
-    <AnimationList
-      animationOptions={{duration: 200, easing: 'ease-in-out'}}
-      keyframes={[{opacity: 0}, {opacity: 1}]}
-      animateOnlyReplacement
-    >
+    <Animated type="cross-fade">
       {element()}
-    </AnimationList>
+    </Animated>
   </Portal>
 
   return row;

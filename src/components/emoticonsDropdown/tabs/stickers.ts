@@ -44,6 +44,10 @@ import safeAssign from '../../../helpers/object/safeAssign';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../../../helpers/middleware';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import getStickerEffectThumb from '../../../lib/appManagers/utils/stickers/getStickerEffectThumb';
+import {Portal, render} from 'solid-js/web';
+import EmoticonsSearch from '../search';
+import {createEffect, createSignal, createResource, createMemo, untrack} from 'solid-js';
+import Animated from '../../../helpers/solid/animations';
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
@@ -286,7 +290,7 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
   }
 }
 
-export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> implements EmoticonsTab {
+export class EmoticonsTabC<Category extends StickersTabCategory<any, any>, T = any> implements EmoticonsTab {
   public content: HTMLElement;
   public menuScroll: ScrollableX;
   public container: HTMLElement;
@@ -314,15 +318,30 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
   public getContainerSize: Category['getContainerSize'];
 
   public middlewareHelper: MiddlewareHelper;
+  private disposeSearch: () => void;
 
-  constructor(
-    protected managers: AppManagers,
-    protected categoryItemsClassName: string,
-    protected getElementMediaSize: () => MediaSize,
-    protected padding: number,
-    protected gapX: number,
-    protected gapY: number
-  ) {
+  protected managers: AppManagers;
+  protected categoryItemsClassName: string;
+  protected getElementMediaSize: () => MediaSize;
+  protected padding: number;
+  protected gapX: number;
+  protected gapY: number;
+  protected searchFetcher?: (value: string) => Promise<T>;
+  protected processSearchResult?: (result: {data: T, searching: boolean}) => Promise<HTMLElement>;
+  protected searchNoLoader: boolean;
+
+  constructor(options: {
+    managers: AppManagers,
+    categoryItemsClassName: string,
+    getElementMediaSize: () => MediaSize,
+    padding: number,
+    gapX: number,
+    gapY: number,
+    searchFetcher?: EmoticonsTabC<Category, T>['searchFetcher'],
+    processSearchResult?: EmoticonsTabC<Category, T>['processSearchResult'],
+    searchNoLoader?: boolean
+  }) {
+    safeAssign(this, options);
     this.categories = {};
     this.categoriesMap = new Map();
     this.categoriesByMenuTabMap = new Map();
@@ -336,7 +355,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     this.container.classList.add('tabs-tab', 'emoticons-container');
 
     this.menuWrapper = document.createElement('div');
-    this.menuWrapper.classList.add('menu-wrapper', 'emoticons-menu-wrapper');
+    this.menuWrapper.classList.add('menu-wrapper', 'emoticons-menu-wrapper', 'emoticons-will-move-up');
 
     this.menu = document.createElement('nav');
     this.menu.className = 'menu-horizontal-div no-stripe justify-start emoticons-menu';
@@ -350,8 +369,52 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     this.container.append(this.menuWrapper, this.content);
 
     this.scrollable = new Scrollable(this.content, 'STICKERS');
+    this.scrollable.container.classList.add('emoticons-will-move-up');
+
     this.categoriesContainer = document.createElement('div');
-    this.scrollable.append(this.categoriesContainer);
+    this.categoriesContainer.classList.add('emoticons-categories-container', 'emoticons-will-move-down');
+
+    if(options.searchFetcher) {
+      this.createSearch();
+    } else {
+      this.scrollable.append(this.categoriesContainer);
+    }
+  }
+
+  private createSearch() {
+    const searchContainer = document.createElement('div');
+    searchContainer.classList.add('emoticons-search-container', 'emoticons-will-move-down');
+    this.scrollable.append(searchContainer);
+    this.disposeSearch = render(() => {
+      const [query, setQuery] = createSignal('');
+      const [focused, setFocused] = createSignal(false);
+      const searching = createMemo(() => !!query());
+      const [data] = createResource(query, this.searchFetcher);
+      const [element] = createResource(() => ({data: data(), searching: untrack(searching)}), this.processSearchResult);
+      const loading = this.searchNoLoader ? undefined : createMemo(() => searching() && element.loading);
+      const shouldMoveSearch = createMemo(() => focused() || searching());
+      const shouldUseContainer = createMemo(() => element() || this.categoriesContainer);
+
+      Portal({
+        mount: this.scrollable.container,
+        children: Animated({
+          type: 'cross-fade',
+          get children() {
+            return shouldUseContainer();
+          }
+        })
+      });
+
+      createEffect(() => {
+        this.container.classList.toggle('is-searching', shouldMoveSearch());
+      });
+
+      return EmoticonsSearch({
+        loading,
+        onValue: setQuery,
+        onFocusChange: setFocused
+      });
+    }, searchContainer);
   }
 
   public getCategoryByContainer(container: HTMLElement) {
@@ -366,15 +429,15 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     stickerSet,
     title,
     isLocal,
-    noMenuTab
+    noMenuTab = !stickerSet
   }: {
-    stickerSet: StickerSet,
-    title: HTMLElement | DocumentFragment,
+    stickerSet?: StickerSet,
+    title?: HTMLElement | DocumentFragment,
     isLocal?: boolean,
     noMenuTab?: boolean
-  }) {
+  } = {}) {
     const category: Category = new StickersTabCategory({
-      id: '' + stickerSet.id,
+      id: '' + stickerSet?.id,
       title,
       overflowElement: this.content,
       getContainerSize: () => {
@@ -404,16 +467,17 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     const container = category.elements.container;
     container.classList.add('hide');
 
-    category.set = stickerSet;
-    this.categories[stickerSet.id] = category;
-    this.categoriesMap.set(container, category);
-    !noMenuTab && this.categoriesByMenuTabMap.set(category.elements.menuTab, category);
+    if(stickerSet) {
+      category.set = stickerSet;
+      this.categories[stickerSet.id] = category;
+      this.categoriesMap.set(container, category);
+      this.categoriesIntersector.observe(container);
+    }
 
-    this.categoriesIntersector.observe(container);
-    !noMenuTab && this.menuOnClickResult.stickyIntersector.observeStickyHeaderChanges(container);
-
-    if(!isLocal) {
-      !noMenuTab && category.elements.menuTab.classList.add('not-local');
+    if(!noMenuTab) {
+      this.categoriesByMenuTabMap.set(category.elements.menuTab, category);
+      this.menuOnClickResult.stickyIntersector.observeStickyHeaderChanges(container);
+      !isLocal && category.elements.menuTab.classList.add('not-local');
     }
 
     return category;
@@ -513,7 +577,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
   protected deleteCategory(category: Category) {
     if(category) {
       category.elements.container.remove();
-      category.elements.menuTab.remove();
+      category.elements.menuTab?.remove();
       this.categoriesIntersector.unobserve(category.elements.container);
       delete this.categories[category.id];
       this.categoriesMap.delete(category.elements.container);
@@ -560,6 +624,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     this.menuScroll?.destroy();
     this.menuOnClickResult?.stickyIntersector?.disconnect();
     this.middlewareHelper.destroy();
+    this.disposeSearch?.();
   }
 
   protected postponedEvent = <K>(cb: (...args: K[]) => void) => {
@@ -605,14 +670,14 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
   private superStickerRenderer: SuperStickerRenderer;
 
   constructor(managers: AppManagers) {
-    super(
+    super({
       managers,
-      'super-stickers',
-      () => mediaSizes.active.esgSticker,
-      3 * 2,
-      4,
-      4
-    );
+      categoryItemsClassName: 'super-stickers',
+      getElementMediaSize: () => mediaSizes.active.esgSticker,
+      padding: 3 * 2,
+      gapX: 4,
+      gapY: 4
+    });
 
     this.container.classList.add('stickers-padding');
     this.content.id = 'content-stickers';

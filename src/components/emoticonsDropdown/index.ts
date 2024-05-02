@@ -626,9 +626,14 @@ export class EmoticonsDropdown extends DropdownHover {
 
     const a = scrollable.onAdditionalScroll ? scrollable.onAdditionalScroll.bind(scrollable) : noop;
     scrollable.onAdditionalScroll = () => {
-      emoticons.content.parentElement.classList.toggle('scrolled-top', !scrollable.scrollPosition);
+      emoticons.content.parentElement.classList.toggle('no-border-top',
+        scrollable.scrollPosition <= 0 ||
+        emoticons.container.classList.contains('is-searching')
+      );
       a();
     };
+
+    emoticons.content.parentElement.classList.add('no-border-top');
 
     return {stickyIntersector, setActive, setActiveStatic};
   };

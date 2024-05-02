@@ -2140,6 +2140,9 @@ const lang = {
   'TranslateMessage': 'Translate',
   'ReadAllReactions': 'Read all reactions',
   'ReadAllMentions': 'Read all mentions',
+  'NoStickersFound': 'No stickers found',
+  'NoGIFsFound': 'No GIFs found',
+  'NoEmojiFound': 'No emoji found',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

@@ -49,8 +49,8 @@ import fastSmoothScroll from '../../helpers/fastSmoothScroll';
 import Icon from '../icon';
 import PopupPremium from '../popups/premium';
 import usePremium from '../../stores/premium';
-import {AnimationList} from '../../helpers/solid/animationList';
 import createMiddleware from '../../helpers/solid/createMiddleware';
+import Animated from '../../helpers/solid/animations';
 
 export const ScrollableYTsx = (props: {
   children: JSX.Element,
@@ -853,13 +853,9 @@ export default function TopbarSearch(props: {
           }}
         >
           <div class="topbar-search-left-delimiter"></div>
-          <AnimationList
-            animationOptions={{duration: 200, easing: 'ease-in-out'}}
-            keyframes={[{opacity: 0}, {opacity: 1}]}
-            animateOnlyReplacement
-          >
+          <Animated type="cross-fade">
             {list()?.element}
-          </AnimationList>
+          </Animated>
         </ScrollableYTsx>
       </div>
       <div class="topbar-search-right-container">
