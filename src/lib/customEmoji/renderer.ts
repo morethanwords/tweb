@@ -355,6 +355,271 @@ export class CustomEmojiRendererElement extends HTMLElement {
     }
   }
 
+  private onElementCleanup = (element: CustomEmojiElement, syncedPlayer: SyncedPlayer, middleware: Middleware) => {
+    element.clear(); // * it is correct
+
+    syncedPlayer.middlewares.delete(middleware);
+
+    // * still has some elements
+    if(syncedPlayer.middlewares.size) {
+      return;
+    }
+
+    if(syncedPlayer.player) {
+      const frame = syncedPlayersFrames.get(syncedPlayer.player);
+      if(frame) {
+        (frame as ImageBitmap).close?.();
+        syncedPlayersFrames.delete(syncedPlayer.player);
+      }
+
+      syncedPlayersFrames.delete(syncedPlayer.player);
+      if(syncedPlayer.player instanceof RLottiePlayer) {
+        syncedPlayer.player.overrideRender = noop;
+        syncedPlayer.player.remove();
+      } else if(syncedPlayer.player instanceof HTMLVideoElement) {
+        const cacheName = framesCache.generateName('' + element.docId, 0, 0, undefined, undefined);
+        delete videosCache[cacheName];
+      }
+
+      syncedPlayer.player = undefined;
+    }
+
+    if(
+      syncedPlayers.get(syncedPlayer.key) === syncedPlayer &&
+      syncedPlayers.delete(syncedPlayer.key) &&
+      !syncedPlayers.size
+    ) {
+      clearRenderInterval();
+    }
+  };
+
+  private wrap({
+    doc,
+    addCustomEmojis,
+    usingOwnQueue,
+    lazyLoadQueue,
+    onlyThumb,
+    withThumb,
+    loadPromises
+  }: {
+    doc: MyDocument,
+    addCustomEmojis: Parameters<typeof wrapRichText>[1]['customEmojis'],
+    usingOwnQueue?: boolean,
+    lazyLoadQueue?: LazyLoadQueue | false,
+    onlyThumb?: boolean,
+    withThumb?: boolean,
+    loadPromises?: Promise<any>[]
+  }) {
+    const renderer = this;
+    const size = this.size;
+    const managers = rootScope.managers;
+    const middleware = this.middlewareHelper.get();
+
+    const docId = doc.id;
+    const newElements = addCustomEmojis.get(docId);
+    const customEmojis = renderer.customEmojis.get(docId);
+    const newElementsArray = Array.from(newElements);
+    const isLottie = doc.sticker === 2;
+    const isStatic = newElementsArray[0].static || (doc.mime_type === 'video/webm' && !IS_WEBM_SUPPORTED);
+    const willHaveSyncedPlayer = (isLottie || (doc.sticker === 3 && this.isSelectable)) && !onlyThumb && !isStatic;
+
+    const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
+    if(attribute && attribute.pFlags.text_color) {
+      renderer.textColored.add(customEmojis);
+    }
+
+    const loadStickerMiddleware = willHaveSyncedPlayer ? middleware.create().get(() => {
+      return !!syncedPlayer.middlewares.size;
+    }) : undefined;
+
+    const _loadPromises: Promise<any>[] = [];
+    const promise = wrapSticker({
+      div: newElementsArray,
+      doc,
+      width: size.width,
+      height: size.height,
+      loop: true,
+      play: CUSTOM_EMOJI_INSTANT_PLAY,
+      managers,
+      isCustomEmoji: true,
+      group: 'none',
+      loadPromises: _loadPromises,
+      middleware,
+      exportLoad: usingOwnQueue || lazyLoadQueue === false ? 2 : 1, // 2 - export load always, 1 - do not export load if cached static
+      needFadeIn: false,
+      loadStickerMiddleware,
+      static: isStatic,
+      onlyThumb,
+      withThumb: withThumb ?? (renderer.clearedElements.has(customEmojis) ? false : undefined),
+      syncedVideo: this.isSelectable,
+      textColor: renderer.textColor
+    });
+
+    if(loadPromises) {
+      promise.then(() => loadPromises.push(..._loadPromises));
+    }
+
+    const addition: {
+      onRender?: (_p: Awaited<Awaited<typeof promise>['render']>) => Promise<void>,
+      elements: typeof newElements
+    } = {
+      elements: newElements
+    };
+
+    const readyPromise = newElementsArray[0].readyPromise;
+    if(readyPromise) {
+      promise.then(({render}) => {
+        if(!render) {
+          readyPromise.resolve();
+          return;
+        }
+
+        render.then(
+          () => readyPromise.resolve(),
+          readyPromise.reject.bind(readyPromise)
+        );
+      });
+    }
+
+    if(doc.sticker === 1 || onlyThumb || isStatic) {
+      if(this.isSelectable) {
+        addition.onRender = () => Promise.all(_loadPromises).then(() => {
+          if(!middleware()) return;
+          newElementsArray.forEach((element) => {
+            const {placeholder} = element;
+            placeholder.src = (element.firstElementChild as HTMLImageElement).src;
+          });
+        });
+      }
+
+      return promise.then((res) => ({...res, ...addition}));
+    }
+
+    // eslint-disable-next-line prefer-const
+    addition.onRender = (_p) => Promise.all(_loadPromises).then(() => {
+      if(!middleware() || !doc.animated) {
+        return;
+      }
+
+      const players = Array.isArray(_p) ? _p as HTMLVideoElement[] : [_p as RLottiePlayer];
+      const player = Array.isArray(players) ? players[0] : players;
+      assumeType<RLottiePlayer | HTMLVideoElement>(player);
+      newElementsArray.forEach((element, idx) => {
+        const player = players[idx] || players[0];
+        element.player = player;
+
+        if(syncedPlayer) {
+          element.syncedPlayer = syncedPlayer;
+          if(element.paused) {
+            element.syncedPlayer.pausedElements.add(element);
+          } else if(player.paused) {
+            player.play();
+          }
+        }
+
+        if(element.isConnected || middleware()) {
+          animationIntersector.addAnimation({
+            animation: element,
+            group: element.renderer.animationGroup,
+            observeElement: element.placeholder ?? element,
+            controlled: true,
+            type: 'emoji'
+          });
+        }
+      });
+
+      if(player instanceof RLottiePlayer || (player instanceof HTMLVideoElement && this.isSelectable)) {
+        syncedPlayer.player = player;
+        renderer.playersSynced.set(customEmojis, player);
+      }
+
+      if(player instanceof RLottiePlayer) {
+        player.group = renderer.animationGroup;
+
+        player.overrideRender ??= (frame) => {
+          syncedPlayersFrames.set(player, frame);
+          // frames.set(containers, frame);
+        };
+      } else if(player instanceof HTMLVideoElement) {
+        // player.play();
+
+        // const cache = framesCache.getCache(key);
+        // let {width, height} = renderer.size;
+        // width *= dpr;
+        // height *= dpr;
+
+        // const onFrame = (frame: ImageBitmap | HTMLCanvasElement) => {
+        //   topFrames.set(player, frame);
+        //   player.requestVideoFrameCallback(callback);
+        // };
+
+        // let frameNo = -1, lastTime = 0;
+        // const callback: VideoFrameRequestCallback = (now, metadata) => {
+        //   const time = player.currentTime;
+        //   if(lastTime > time) {
+        //     frameNo = -1;
+        //   }
+
+        //   const _frameNo = ++frameNo;
+        //   lastTime = time;
+        //   // const frameNo = Math.floor(player.currentTime * 1000 / CUSTOM_EMOJI_FRAME_INTERVAL);
+        //   // const frameNo = metadata.presentedFrames;
+        //   const imageBitmap = cache.framesNew.get(_frameNo);
+
+        //   if(imageBitmap) {
+        //     onFrame(imageBitmap);
+        //   } else if(IS_IMAGE_BITMAP_SUPPORTED) {
+        //     createImageBitmap(player, {resizeWidth: width, resizeHeight: height}).then((imageBitmap) => {
+        //       cache.framesNew.set(_frameNo, imageBitmap);
+        //       if(frameNo === _frameNo) onFrame(imageBitmap);
+        //     });
+        //   } else {
+        //     const canvas = document.createElement('canvas');
+        //     const context = canvas.getContext('2d');
+        //     canvas.width = width;
+        //     canvas.height = height;
+        //     context.drawImage(player, 0, 0);
+        //     cache.framesNew.set(_frameNo, canvas);
+        //     onFrame(canvas);
+        //   }
+        // };
+
+        // // player.requestVideoFrameCallback(callback);
+        // // setInterval(callback, CUSTOM_EMOJI_FRAME_INTERVAL);
+      }
+
+      if(willHaveSyncedPlayer) {
+        const dpr = getLottiePixelRatio(this.size.width, this.size.height);
+        renderer.canvas.dpr = dpr;
+        setRenderInterval();
+      }
+    });
+
+    let syncedPlayer: SyncedPlayer;
+    const key = [docId, size.width, size.height].join('-');
+    if(willHaveSyncedPlayer) {
+      syncedPlayer = syncedPlayers.get(key);
+      if(!syncedPlayer) {
+        syncedPlayer = {
+          player: undefined,
+          middlewares: new Set(),
+          pausedElements: new Set(),
+          key
+        };
+
+        syncedPlayers.set(key, syncedPlayer);
+      }
+
+      for(const element of newElements) {
+        const middleware = element.middlewareHelper.get();
+        syncedPlayer.middlewares.add(middleware);
+        middleware.onClean(this.onElementCleanup.bind(this, element, syncedPlayer, middleware));
+      }
+    }
+
+    return promise.then((res) => ({...res, ...addition}));
+  }
+
   public add({
     addCustomEmojis,
     lazyLoadQueue,
@@ -367,6 +632,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     withThumb?: boolean
   }) {
     const renderer = this;
+    const middleware = this.middlewareHelper.get();
 
     addCustomEmojis.forEach((addElements, docId) => { // prevent adding old elements
       let elements = this.customEmojis.get(docId);
@@ -380,7 +646,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
           el.clean = false;
           el.renderer = renderer;
           el.elements = elements;
-          el.middlewareHelper = this.middlewareHelper.get().create();
+          el.middlewareHelper = middleware.create();
           elements.add(el);
 
           if(el.lastChildWas && !el.lastChildWas.parentNode) {
@@ -399,264 +665,21 @@ export class CustomEmojiRendererElement extends HTMLElement {
     }
 
     const usingOwnQueue = !!(!lazyLoadQueue && lazyLoadQueue !== false && globalLazyLoadQueue);
-
     const docIds = Array.from(addCustomEmojis.keys());
-
     const managers = rootScope.managers;
-    const middleware = this.middlewareHelper.get();
-    const size = this.size;
 
     const loadPromise = managers.appEmojiManager.getCachedCustomEmojiDocuments(docIds).then((docs) => {
-      if(middleware && !middleware()) return;
+      if(!middleware()) return;
+
+      const wrapOptions: Omit<Parameters<CustomEmojiRendererElement['wrap']>[0], 'doc'> = {
+        addCustomEmojis,
+        usingOwnQueue,
+        lazyLoadQueue,
+        onlyThumb,
+        withThumb
+      };
 
       const loadPromises: Promise<any>[] = [];
-      const wrap = (doc: MyDocument, _loadPromises?: Promise<any>[]) => {
-        const docId = doc.id;
-        const newElements = addCustomEmojis.get(docId);
-        const customEmojis = renderer.customEmojis.get(docId);
-        const newElementsArray = Array.from(newElements);
-        const isLottie = doc.sticker === 2;
-        const isStatic = newElementsArray[0].static || (doc.mime_type === 'video/webm' && !IS_WEBM_SUPPORTED);
-        const willHaveSyncedPlayer = (isLottie || (doc.sticker === 3 && this.isSelectable)) && !onlyThumb && !isStatic;
-
-        const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
-        if(attribute) {
-          if(attribute.pFlags.text_color) {
-            renderer.textColored.add(customEmojis);
-          }
-        }
-
-        const loadPromises: Promise<any>[] = [];
-        const promise = wrapSticker({
-          div: newElementsArray,
-          doc,
-          width: size.width,
-          height: size.height,
-          loop: true,
-          play: CUSTOM_EMOJI_INSTANT_PLAY,
-          managers,
-          isCustomEmoji: true,
-          group: 'none',
-          loadPromises,
-          middleware,
-          exportLoad: usingOwnQueue || lazyLoadQueue === false ? 2 : 1, // 2 - export load always, 1 - do not export load if cached static
-          needFadeIn: false,
-          loadStickerMiddleware: willHaveSyncedPlayer && middleware ? middleware.create().get(() => {
-            // if(syncedPlayers.get(key) !== syncedPlayer) {
-            //   return false;
-            // }
-
-            // let good = false;
-            // for(const middleware of syncedPlayer.middlewares) {
-            //   if(middleware()) {
-            //     good = true;
-            //     break;
-            //   }
-            // }
-
-            // return good;
-            return !!syncedPlayer.middlewares.size;
-          }) : undefined,
-          static: isStatic,
-          onlyThumb,
-          withThumb: withThumb ?? (renderer.clearedElements.has(customEmojis) ? false : undefined),
-          syncedVideo: this.isSelectable,
-          textColor: renderer.textColor
-        });
-
-        if(_loadPromises) {
-          promise.then(() => _loadPromises.push(...loadPromises));
-        }
-
-        const addition: {
-          onRender?: (_p: Awaited<Awaited<typeof promise>['render']>) => Promise<void>,
-          elements: typeof newElements
-        } = {
-          elements: newElements
-        };
-
-        const readyPromise = newElementsArray[0].readyPromise;
-        if(readyPromise) {
-          promise.then(({render}) => {
-            if(!render) {
-              readyPromise.resolve();
-              return;
-            }
-
-            render.then(
-              () => readyPromise.resolve(),
-              readyPromise.reject.bind(readyPromise)
-            );
-          });
-        }
-
-        if(doc.sticker === 1 || onlyThumb || isStatic) {
-          if(this.isSelectable) {
-            addition.onRender = () => Promise.all(loadPromises).then(() => {
-              if(middleware && !middleware()) return;
-              newElementsArray.forEach((element) => {
-                const {placeholder} = element;
-                placeholder.src = (element.firstElementChild as HTMLImageElement).src;
-              });
-            });
-          }
-
-          return promise.then((res) => ({...res, ...addition}));
-        }
-
-        // eslint-disable-next-line prefer-const
-        addition.onRender = (_p) => Promise.all(loadPromises).then(() => {
-          if((middleware && !middleware()) || !doc.animated) {
-            return;
-          }
-
-          const players = Array.isArray(_p) ? _p as HTMLVideoElement[] : [_p as RLottiePlayer];
-          const player = Array.isArray(players) ? players[0] : players;
-          assumeType<RLottiePlayer | HTMLVideoElement>(player);
-          newElementsArray.forEach((element, idx) => {
-            const player = players[idx] || players[0];
-            element.player = player;
-
-            if(syncedPlayer) {
-              element.syncedPlayer = syncedPlayer;
-              if(element.paused) {
-                element.syncedPlayer.pausedElements.add(element);
-              } else if(player.paused) {
-                player.play();
-              }
-            }
-
-            if(element.isConnected || middleware?.()) {
-              animationIntersector.addAnimation({
-                animation: element,
-                group: element.renderer.animationGroup,
-                observeElement: element.placeholder ?? element,
-                controlled: true,
-                type: 'emoji'
-              });
-            }
-          });
-
-          if(player instanceof RLottiePlayer || (player instanceof HTMLVideoElement && this.isSelectable)) {
-            syncedPlayer.player = player;
-            renderer.playersSynced.set(customEmojis, player);
-          }
-
-          if(player instanceof RLottiePlayer) {
-            player.group = renderer.animationGroup;
-
-            player.overrideRender ??= (frame) => {
-              syncedPlayersFrames.set(player, frame);
-              // frames.set(containers, frame);
-            };
-          } else if(player instanceof HTMLVideoElement) {
-            // player.play();
-
-            // const cache = framesCache.getCache(key);
-            // let {width, height} = renderer.size;
-            // width *= dpr;
-            // height *= dpr;
-
-            // const onFrame = (frame: ImageBitmap | HTMLCanvasElement) => {
-            //   topFrames.set(player, frame);
-            //   player.requestVideoFrameCallback(callback);
-            // };
-
-            // let frameNo = -1, lastTime = 0;
-            // const callback: VideoFrameRequestCallback = (now, metadata) => {
-            //   const time = player.currentTime;
-            //   if(lastTime > time) {
-            //     frameNo = -1;
-            //   }
-
-            //   const _frameNo = ++frameNo;
-            //   lastTime = time;
-            //   // const frameNo = Math.floor(player.currentTime * 1000 / CUSTOM_EMOJI_FRAME_INTERVAL);
-            //   // const frameNo = metadata.presentedFrames;
-            //   const imageBitmap = cache.framesNew.get(_frameNo);
-
-            //   if(imageBitmap) {
-            //     onFrame(imageBitmap);
-            //   } else if(IS_IMAGE_BITMAP_SUPPORTED) {
-            //     createImageBitmap(player, {resizeWidth: width, resizeHeight: height}).then((imageBitmap) => {
-            //       cache.framesNew.set(_frameNo, imageBitmap);
-            //       if(frameNo === _frameNo) onFrame(imageBitmap);
-            //     });
-            //   } else {
-            //     const canvas = document.createElement('canvas');
-            //     const context = canvas.getContext('2d');
-            //     canvas.width = width;
-            //     canvas.height = height;
-            //     context.drawImage(player, 0, 0);
-            //     cache.framesNew.set(_frameNo, canvas);
-            //     onFrame(canvas);
-            //   }
-            // };
-
-            // // player.requestVideoFrameCallback(callback);
-            // // setInterval(callback, CUSTOM_EMOJI_FRAME_INTERVAL);
-          }
-
-          if(willHaveSyncedPlayer) {
-            const dpr = getLottiePixelRatio(this.size.width, this.size.height);
-            renderer.canvas.dpr = dpr;
-            setRenderInterval();
-          }
-        });
-
-        let syncedPlayer: SyncedPlayer;
-        const key = [docId, size.width, size.height].join('-');
-        if(willHaveSyncedPlayer) {
-          syncedPlayer = syncedPlayers.get(key);
-          if(!syncedPlayer) {
-            syncedPlayer = {
-              player: undefined,
-              middlewares: new Set(),
-              pausedElements: new Set(),
-              key
-            };
-
-            syncedPlayers.set(key, syncedPlayer);
-          }
-
-          for(const element of newElements) {
-            const middleware = element.middlewareHelper.get();
-            syncedPlayer.middlewares.add(middleware);
-            middleware.onClean(() => {
-              element.clear(); // * it is correct
-
-              syncedPlayer.middlewares.delete(middleware);
-
-              if(!syncedPlayer.middlewares.size) {
-                if(syncedPlayer.player) {
-                  const frame = syncedPlayersFrames.get(syncedPlayer.player);
-                  if(frame) {
-                    (frame as ImageBitmap).close?.();
-                    syncedPlayersFrames.delete(syncedPlayer.player);
-                  }
-
-                  syncedPlayersFrames.delete(syncedPlayer.player);
-                  if(syncedPlayer.player instanceof RLottiePlayer) {
-                    syncedPlayer.player.overrideRender = noop;
-                    syncedPlayer.player.remove();
-                  } else if(syncedPlayer.player instanceof HTMLVideoElement) {
-                    const cacheName = framesCache.generateName('' + element.docId, 0, 0, undefined, undefined);
-                    delete videosCache[cacheName];
-                  }
-
-                  syncedPlayer.player = undefined;
-                }
-
-                if(syncedPlayers.get(syncedPlayer.key) === syncedPlayer && syncedPlayers.delete(syncedPlayer.key) && !syncedPlayers.size) {
-                  clearRenderInterval();
-                }
-              }
-            });
-          }
-        }
-
-        return promise.then((res) => ({...res, ...addition}));
-      };
 
       const missing: DocId[] = [];
       const cachedPromises = docs.map((doc, idx) => {
@@ -665,49 +688,48 @@ export class CustomEmojiRendererElement extends HTMLElement {
           return;
         }
 
-        return wrap(doc, loadPromises);
+        return this.wrap({...wrapOptions, doc, loadPromises});
       }).filter(Boolean);
 
       const uncachedPromisesPromise = !missing.length ?
         Promise.resolve([] as typeof cachedPromises) :
         managers.appEmojiManager.getCustomEmojiDocuments(missing).then((docs) => {
-          if(middleware && !middleware()) return [];
-          return docs.filter(Boolean).map((doc) => wrap(doc));
+          if(!middleware()) return [];
+          return docs.filter(Boolean).map((doc) => this.wrap({...wrapOptions, doc}));
         });
 
-      const loadFromPromises = (promises: typeof cachedPromises) => {
-        return Promise.all(promises).then((arr) => {
-          const promises = arr.map(({load, onRender, elements}) => {
-            if(!load) {
-              return;
-            }
+      const loadFromPromises = async(_promises: typeof cachedPromises) => {
+        const arr = await Promise.all(_promises);
+        const promises = arr.map(({load, onRender, elements}) => {
+          if(!load) {
+            return;
+          }
 
-            const l = () => load().then(onRender);
+          const l = () => load().then(onRender);
 
-            if(usingOwnQueue) {
-              elements.forEach((element) => {
-                globalLazyLoadQueue.push({
-                  div: element,
-                  load: () => {
-                    elements.forEach((element) => {
-                      globalLazyLoadQueue.delete({div: element});
-                    });
+          if(!usingOwnQueue) {
+            return l();
+          }
 
-                    return l();
-                  }
+          elements.forEach((element) => {
+            globalLazyLoadQueue.push({
+              div: element,
+              load: () => {
+                elements.forEach((element) => {
+                  globalLazyLoadQueue.delete({div: element});
                 });
-              });
-            } else {
-              return l();
-            }
-          });
 
-          return Promise.all(promises);
+                return l();
+              }
+            });
+          });
         });
+
+        return Promise.all(promises.filter(Boolean));
       };
 
       const load = () => {
-        if(middleware && !middleware()) return;
+        if(!middleware()) return;
         const cached = loadFromPromises(cachedPromises);
         const uncached = uncachedPromisesPromise.then((promises) => loadFromPromises(promises));
         return Promise.all([cached, uncached]);
@@ -747,11 +769,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
       renderer.style.height = 'inherit';
     }
     // const middleware = () => !!renderer.disconnectedCallback && (!options.middleware || options.middleware());
-    let middleware = options.middleware;
+    const middleware = options.middleware;
     if(middleware) {
       renderer.middlewareHelper = middleware.create();
-      middleware = renderer.middlewareHelper.get();
-      middleware.onDestroy(() => {
+      renderer.middlewareHelper.get().onDestroy(() => {
         renderer.destroy?.();
       });
     } else {

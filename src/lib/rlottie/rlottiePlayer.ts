@@ -16,7 +16,7 @@ import clamp from '../../helpers/number/clamp';
 import QueryableWorker from './queryableWorker';
 import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
 import framesCache, {FramesCache, FramesCacheItem} from '../../helpers/framesCache';
-import customProperties, {CustomProperty} from '../../helpers/dom/customProperties';
+import customProperties from '../../helpers/dom/customProperties';
 
 export type RLottieOptions = {
   container: HTMLElement | HTMLElement[],

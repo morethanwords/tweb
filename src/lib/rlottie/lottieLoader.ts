@@ -202,9 +202,11 @@ export class LottieLoader {
       type: 'lottie'
     });
 
-    params.middleware?.onDestroy(() => {
-      player.remove();
-    });
+    if(!params.sync) {
+      middleware?.onDestroy(() => {
+        player.remove();
+      });
+    }
 
     return player;
   }
