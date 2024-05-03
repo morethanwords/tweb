@@ -420,6 +420,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
       verifyRecent,
       isEmojis: !!getTextColor,
       canHaveEmojiTimer,
+      canViewPack: true,
       onOpen: () => {
         this.emoticonsDropdown.setIgnoreMouseOut(type, true);
       },

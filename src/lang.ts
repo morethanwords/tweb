@@ -2146,6 +2146,7 @@ const lang = {
   'NoStickersFound': 'No stickers found',
   'NoGIFsFound': 'No GIFs found',
   'NoEmojiFound': 'No emoji found',
+  'ViewPackPreview': 'View Pack',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

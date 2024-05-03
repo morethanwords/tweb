@@ -16,7 +16,7 @@ import {copyTextToClipboard} from '../clipboard';
 import {getEmojiFromElement} from '../../components/emoticonsDropdown/tabs/emoji';
 import tsNow from '../tsNow';
 import {toastNew} from '../../components/toast';
-import {EmojiStatus} from '../../layer';
+import {DocumentAttribute, EmojiStatus, InputStickerSet} from '../../layer';
 
 export default function createStickersContextMenu({
   listenTo,
@@ -26,6 +26,7 @@ export default function createStickersContextMenu({
   appendTo,
   isEmojis,
   canHaveEmojiTimer,
+  canViewPack,
   onOpen,
   onClose,
   onSend
@@ -37,6 +38,7 @@ export default function createStickersContextMenu({
   appendTo?: HTMLElement,
   isEmojis?: boolean,
   canHaveEmojiTimer?: boolean,
+  canViewPack?: boolean,
   onOpen?: () => any,
   onClose?: () => any,
   onSend?: () => any
@@ -76,6 +78,20 @@ export default function createStickersContextMenu({
         copyTextToClipboard(getEmojiFromElement(target).emoji);
       }
     }
+  }, {
+    icon: 'stickers_face',
+    text: 'ViewPackPreview',
+    onClick: () => {
+      const attribute = doc.attributes.find((attr) => attr._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
+      const inputStickerSet = attribute.stickerset as InputStickerSet.inputStickerSetID;
+      PopupElement.createPopup(
+        PopupStickers,
+        inputStickerSet,
+        true,
+        chatInput
+      ).show();
+    },
+    verify: () => canViewPack
   }, {
     icon: 'smile',
     text: 'SetAsEmojiStatus',
