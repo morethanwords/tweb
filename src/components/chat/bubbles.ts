@@ -29,7 +29,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType, WebPageAttribute, Reaction, ChatPhoto, MessageAction, BotApp, TextWithEntities} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType, WebPageAttribute, Reaction, ChatPhoto, MessageAction, BotApp, TextWithEntities, DocumentAttribute, InputStickerSet} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -2233,9 +2233,17 @@ export default class ChatBubbles {
         managers: this.managers,
         middleware: this.getMiddleware(),
         peerId: this.peerId
+      }).then((firedAnimation) => {
+        if(firedAnimation) {
+          return;
+        }
+
+        this.openEmojiPackByTarget(stickerEmojiEl);
       });
 
       return;
+    } else if(stickerEmojiEl) {
+      this.openEmojiPackByTarget(stickerEmojiEl);
     }
 
     const commentsDiv: HTMLElement = findUpClassName(target, 'replies');
@@ -2447,6 +2455,23 @@ export default class ChatBubbles {
       }
     }
   };
+
+  private openEmojiPackByTarget(stickerEmojiEl: HTMLElement) {
+    this.managers.appEmojiManager.getCustomEmojiDocument(stickerEmojiEl.dataset.docId).then((doc) => {
+      const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
+      if(!attribute) {
+        return;
+      }
+
+      const inputStickerSet = attribute.stickerset as InputStickerSet.inputStickerSetID;
+      PopupElement.createPopup(
+        PopupStickers,
+        inputStickerSet,
+        true,
+        this.chat.input
+      ).show();
+    });
+  }
 
   public checkTargetForMediaViewer(target: HTMLElement, e?: Event, mediaTimestamp?: number) {
     const bubble = findUpClassName(target, 'bubble');

@@ -36,7 +36,6 @@ import DEBUG from '../../config/debug';
 import {ButtonMenuItemOptionsVerifiable} from '../buttonMenu';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import pause from '../../helpers/schedulers/pause';
-import EmojiTab from '../emoticonsDropdown/tabs/emoji';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 

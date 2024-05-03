@@ -2693,17 +2693,17 @@ export class AppImManager extends EventListenerBase<{
     }
 
     if(!peerId.isUser() || !liteMode.isAvailable('effects_emoji')) {
-      return;
+      return false;
     }
 
     const activeAnimations: Set<{}> = (container as any).activeAnimations ??= new Set();
     if(activeAnimations.size >= 3) {
-      return;
+      return true;
     }
 
     const doc = await managers.appStickersManager.getAnimatedEmojiSticker(emoji, true);
     if(!doc) {
-      return;
+      return false;
     }
 
     const data: SendMessageEmojiInteractionData = (container as any).emojiData ??= {
@@ -2770,6 +2770,8 @@ export class AppImManager extends EventListenerBase<{
 
       sendInteractionThrottled();
     }
+
+    return true;
     // });
   }
 }
