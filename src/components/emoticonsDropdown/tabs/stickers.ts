@@ -24,7 +24,6 @@ import findUpAsChild from '../../../helpers/dom/findUpAsChild';
 import forEachReverse from '../../../helpers/array/forEachReverse';
 import wrapStickerSetThumb from '../../wrappers/stickerSetThumb';
 import PopupElement from '../../popups';
-import Icon from '../../icon';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import getStickerEffectThumb from '../../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import StickersTabCategory from '../category';
@@ -51,6 +50,10 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       },
       groupFetcher: async(group) => {
         if(!group) return [];
+
+        if(group._ === 'emojiGroupPremium') {
+          return this.managers.appStickersManager.getPremiumStickers();
+        }
 
         return this.managers.appStickersManager.getStickersByEmoticon({emoticon: group.emoticons, includeServerStickers: true});
       },
@@ -90,7 +93,8 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
         return container;
       },
       // searchNoLoader: true,
-      searchPlaceholder: 'SearchStickers'
+      searchPlaceholder: 'SearchStickers',
+      searchType: 'stickers'
     });
 
     this.container.classList.add('stickers-padding');
@@ -269,13 +273,6 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       }, noop);
     });
 
-    const premiumCategory = this.createLocalCategory({
-      id: 'premium',
-      title: 'PremiumStickersShort'
-    });
-    const s = Icon('star', 'color-premium');
-    premiumCategory.elements.menuTab.append(s);
-
     const promises = [
       Promise.all([
         this.managers.apiManager.getLimit('favedStickers'),
@@ -293,16 +290,6 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
         for(const set of (res as MessagesAllStickers.messagesAllStickers).sets) {
           this.renderStickerSet(set);
         }
-      }),
-
-      this.managers.appStickersManager.getPremiumStickers().then((stickers) => {
-        const length = stickers.length;
-        this.toggleLocalCategory(premiumCategory, rootScope.premium && !!length);
-        this.categoryAppendStickers(stickers.length, premiumCategory, Promise.resolve(stickers));
-
-        rootScope.addEventListener('premium_toggle', (isPremium) => {
-          this.toggleLocalCategory(this.categories['premium'], isPremium && !!length);
-        });
       })
     ];
 

@@ -36,7 +36,7 @@ const EMOJI_LANG_PACK: EmojiLangPack = {
 const RECENT_MAX_LENGTH = 32;
 
 type EmojiType = 'native' | 'custom';
-type EmojiGroupType = 'esg' | 'status' | 'profilePhoto';
+type EmojiGroupType = 'esg' | 'stickers' | 'status' | 'profilePhoto';
 
 export class AppEmojiManager extends AppManager {
   private static POPULAR_EMOJI = ['😂', '😘', '❤️', '😍', '😊', '😁', '👍', '☺️', '😔', '😄', '😭', '💋', '😒', '😳', '😜', '🙈', '😉', '😃', '😢', '😝', '😱', '😡', '😏', '😞', '😅', '😚', '🙊', '😌', '😀', '😋', '😆', '👌', '😐', '😕'];
@@ -372,11 +372,29 @@ export class AppEmojiManager extends AppManager {
   }
 
   public getEmojiGroups(type: EmojiGroupType) {
+    const pushPremiumGroup = (groups: EmojiGroup[]) => {
+      if(groups.some((group) => group._ === 'emojiGroupPremium')) {
+        return;
+      }
+
+      groups.push({
+        _: 'emojiGroupPremium',
+        title: 'Premium',
+        icon_emoji_id: '5269590556232664327'
+      });
+    };
+
     return this.emojiGroups[type] ??= this.apiManager.invokeApiSingleProcess({
-      method: type === 'esg' ? 'messages.getEmojiGroups' : (type === 'status' ? 'messages.getEmojiStatusGroups' : 'messages.getEmojiProfilePhotoGroups'),
+      method: type === 'esg' || type === 'stickers' ? 'messages.getEmojiGroups' : (type === 'status' ? 'messages.getEmojiStatusGroups' : 'messages.getEmojiProfilePhotoGroups'),
       params: {hash: 0},
       processResult: async(messagesEmojiGroups) => {
         assumeType<MessagesEmojiGroups.messagesEmojiGroups>(messagesEmojiGroups);
+
+        // * until layer 179
+        if(type === 'esg' || type === 'stickers') {
+          pushPremiumGroup(messagesEmojiGroups.groups);
+        }
+
         const documents = await Promise.all(messagesEmojiGroups.groups.map((emojiGroup) => this.getCustomEmojiDocument(emojiGroup.icon_emoji_id)));
         return this.emojiGroups[type] = messagesEmojiGroups.groups.map((group, idx) => {
           return {group, document: documents[idx]};

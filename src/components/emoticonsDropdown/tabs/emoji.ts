@@ -235,7 +235,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, AppEmoji[]
         return this.managers.appEmojiManager.prepareAndSearchEmojis({q: value, limit: Infinity, minChars: 1, addCustom: true});
       },
       groupFetcher: async(group) => {
-        if(!group) return [];
+        if(group?._ !== 'emojiGroup') return [];
 
         const emojiList = await this.managers.appEmojiManager.searchCustomEmoji(group.emoticons.join(''));
 
@@ -280,7 +280,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, AppEmoji[]
         return container;
       },
       searchNoLoader: true,
-      searchPlaceholder: 'SearchEmoji'
+      searchPlaceholder: 'SearchEmoji',
+      searchType: 'emoji'
     });
 
     safeAssign(this, options);

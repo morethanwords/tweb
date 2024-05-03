@@ -20,6 +20,7 @@ import wrapSticker from '../wrappers/sticker';
 /* @refresh reload */
 
 function addSearchCategories(props: {
+  type: Parameters<typeof EmoticonsSearch>[0]['type'],
   searching: Accessor<boolean>,
   inputSearch: InputSearch,
   onGroup: (group: EmojiGroup) => void
@@ -40,6 +41,11 @@ function addSearchCategories(props: {
   };
 
   const EmojiGroup = ({group, document}: ReturnType<typeof emojiGroups>[0]) => {
+    // * until layer 179
+    if(props.type !== 'stickers' && group._ === 'emojiGroupPremium') {
+      return;
+    }
+
     let element: HTMLDivElement, stickerContainer: HTMLDivElement;
     const ret = (
       <div
@@ -90,6 +96,8 @@ function addSearchCategories(props: {
 
   inputSearch.input.after(scrollableContainer);
 
+  inputSearch.currentPlaceholder.classList.remove('will-animate');
+
   const arrowButton = inputSearch.createButtonIcon('arrow_prev', 'will-animate', 'emoticons-search-input-arrow');
   inputSearch.searchIcon.classList.add('will-animate');
   inputSearch.searchIcon.after(arrowButton);
@@ -118,10 +126,11 @@ function addSearchCategories(props: {
     }
   }, {defer: true}));
 
-  rootScope.managers.appEmojiManager.getEmojiGroups('esg').then(setEmojiGroups);
+  rootScope.managers.appEmojiManager.getEmojiGroups(props.type === 'stickers' ? 'stickers' : 'esg').then(setEmojiGroups);
 }
 
 export default function EmoticonsSearch(props: {
+  type: 'emoji' | 'stickers' | 'gifs'
   placeholder?: LangPackKey,
   loading?: Accessor<boolean>,
   onValue: (value: string) => void,
@@ -158,6 +167,7 @@ export default function EmoticonsSearch(props: {
 
   if(props.onGroup) {
     addSearchCategories({
+      type: props.type,
       searching,
       inputSearch,
       onGroup: props.onGroup

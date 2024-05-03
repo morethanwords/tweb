@@ -69,6 +69,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   protected processSearchResult?: (result: {data: T, searching: boolean, grouping: boolean}) => Promise<HTMLElement>;
   protected searchNoLoader: boolean;
   protected searchPlaceholder?: LangPackKey;
+  protected searchType: Parameters<typeof EmoticonsSearch>[0]['type'];
 
   constructor(options: {
     managers: AppManagers,
@@ -81,7 +82,8 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     groupFetcher?: EmoticonsTabC<Category, T>['groupFetcher'],
     processSearchResult?: EmoticonsTabC<Category, T>['processSearchResult'],
     searchNoLoader?: boolean,
-    searchPlaceholder?: LangPackKey
+    searchPlaceholder?: LangPackKey,
+    searchType?: Parameters<typeof EmoticonsSearch>[0]['type']
   }) {
     safeAssign(this, options);
     this.categories = {};
@@ -170,6 +172,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
       });
 
       return EmoticonsSearch({
+        type: this.searchType,
         placeholder: this.searchPlaceholder,
         loading,
         onValue: setQuery,
