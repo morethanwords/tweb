@@ -203,7 +203,8 @@ export class LottieLoader {
     });
 
     if(!params.sync) {
-      middleware?.onDestroy(() => {
+      // * have to use onClean here, SuperStickerRenderer relies on it
+      middleware?.onClean(() => {
         player.remove();
       });
     }
