@@ -457,7 +457,7 @@ button:focus {
         }
       }
 
-      & ~ .btn-icon {
+      & ~ .input-search-button {
         @include hover-background-effect(primary);
       }
     }
@@ -519,7 +519,7 @@ button:focus {
     z-index: 1;
   }
 
-  .btn-icon {
+  &-button {
     padding: .375rem !important;
   }
 }

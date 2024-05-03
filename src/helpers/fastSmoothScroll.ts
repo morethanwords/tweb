@@ -52,6 +52,16 @@ export type ScrollOptions = {
   transitionFunction?: (value: number) => number
 };
 
+export function fastSmoothScrollToStart(container: HTMLElement, axis: 'x') {
+  return fastSmoothScroll({
+    container: container,
+    element: container,
+    getElementPosition: () => -container.scrollLeft,
+    position: 'start',
+    axis: 'x'
+  });
+}
+
 export default function fastSmoothScroll(options: ScrollOptions) {
   options.margin ??= 0;
   options.maxDistance ??= LONG_TRANSITION_MAX_DISTANCE;

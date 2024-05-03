@@ -16,6 +16,8 @@ import {AppManager} from './manager';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import pause from '../../helpers/schedulers/pause';
 import filterUnique from '../../helpers/array/filterUnique';
+import assumeType from '../../helpers/assumeType';
+import {EmojiGroup, EmojiList, MessagesEmojiGroups} from '../../layer';
 
 type EmojiLangPack = {
   keywords: {
@@ -34,6 +36,7 @@ const EMOJI_LANG_PACK: EmojiLangPack = {
 const RECENT_MAX_LENGTH = 32;
 
 type EmojiType = 'native' | 'custom';
+type EmojiGroupType = 'esg' | 'status' | 'profilePhoto';
 
 export class AppEmojiManager extends AppManager {
   private static POPULAR_EMOJI = ['😂', '😘', '❤️', '😍', '😊', '😁', '👍', '☺️', '😔', '😄', '😭', '💋', '😒', '😳', '😜', '🙈', '😉', '😃', '😢', '😝', '😱', '😡', '😏', '😞', '😅', '😚', '🙊', '😌', '😀', '😋', '😆', '👌', '😐', '😕'];
@@ -51,6 +54,8 @@ export class AppEmojiManager extends AppManager {
 
   private getCustomEmojiDocumentsPromise: Promise<any>;
   private getCustomEmojiDocumentPromises: Map<DocId, CancellablePromise<MyDocument>> = new Map();
+
+  private emojiGroups: {[type in EmojiGroupType]?: MaybePromise<{group: EmojiGroup, document: MyDocument}[]>} = {};
 
   /* public getPopularEmoji() {
     return stateStorage.get('emojis_popular').then((popEmojis) => {
@@ -364,5 +369,27 @@ export class AppEmojiManager extends AppManager {
 
   public getCustomEmojis() {
     return this.appStickersManager.getEmojiStickers();
+  }
+
+  public getEmojiGroups(type: EmojiGroupType) {
+    return this.emojiGroups[type] ??= this.apiManager.invokeApiSingleProcess({
+      method: type === 'esg' ? 'messages.getEmojiGroups' : (type === 'status' ? 'messages.getEmojiStatusGroups' : 'messages.getEmojiProfilePhotoGroups'),
+      params: {hash: 0},
+      processResult: async(messagesEmojiGroups) => {
+        assumeType<MessagesEmojiGroups.messagesEmojiGroups>(messagesEmojiGroups);
+        const documents = await Promise.all(messagesEmojiGroups.groups.map((emojiGroup) => this.getCustomEmojiDocument(emojiGroup.icon_emoji_id)));
+        return this.emojiGroups[type] = messagesEmojiGroups.groups.map((group, idx) => {
+          return {group, document: documents[idx]};
+        });
+      }
+    });
+  }
+
+  public searchCustomEmoji(emoticon: string) {
+    return this.apiManager.invokeApiCacheable(
+      'messages.searchCustomEmoji',
+      {hash: 0, emoticon},
+      {cacheSeconds: 3600, syncIfHasResult: true}
+    ) as MaybePromise<EmojiList.emojiList>;
   }
 }

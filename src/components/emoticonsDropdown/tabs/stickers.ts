@@ -7,7 +7,7 @@
 import {EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab} from '..';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import mediaSizes from '../../../helpers/mediaSizes';
-import {Document, MessagesAllStickers, StickerSet} from '../../../layer';
+import {Document, EmojiGroup, MessagesAllStickers, StickerSet} from '../../../layer';
 import {MyDocument} from '../../../lib/appManagers/appDocsManager';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import {i18n, LangPackKey} from '../../../lib/langPack';
@@ -327,8 +327,10 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>, T = a
   protected gapX: number;
   protected gapY: number;
   protected searchFetcher?: (value: string) => Promise<T>;
-  protected processSearchResult?: (result: {data: T, searching: boolean}) => Promise<HTMLElement>;
+  protected groupFetcher?: (group: EmojiGroup) => Promise<T>;
+  protected processSearchResult?: (result: {data: T, searching: boolean, grouping: boolean}) => Promise<HTMLElement>;
   protected searchNoLoader: boolean;
+  protected searchPlaceholder?: LangPackKey;
 
   constructor(options: {
     managers: AppManagers,
@@ -338,8 +340,10 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>, T = a
     gapX: number,
     gapY: number,
     searchFetcher?: EmoticonsTabC<Category, T>['searchFetcher'],
+    groupFetcher?: EmoticonsTabC<Category, T>['groupFetcher'],
     processSearchResult?: EmoticonsTabC<Category, T>['processSearchResult'],
-    searchNoLoader?: boolean
+    searchNoLoader?: boolean,
+    searchPlaceholder?: LangPackKey
   }) {
     safeAssign(this, options);
     this.categories = {};
@@ -387,12 +391,23 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>, T = a
     this.scrollable.append(searchContainer);
     this.disposeSearch = render(() => {
       const [query, setQuery] = createSignal('');
+      const [group, setGroup] = createSignal<EmojiGroup>();
       const [focused, setFocused] = createSignal(false);
       const searching = createMemo(() => !!query());
+
+      const [loadedData, setLoadedData] = createSignal<T>();
       const [data] = createResource(query, this.searchFetcher);
-      const [element] = createResource(() => ({data: data(), searching: untrack(searching)}), this.processSearchResult);
+      const [groupData] = this.groupFetcher ? createResource(group, this.groupFetcher) : [];
+      const [element] = createResource(() => {
+        return {
+          data: loadedData(),
+          grouping: !!untrack(group),
+          searching: untrack(searching)
+        };
+      }, this.processSearchResult);
+
       const loading = this.searchNoLoader ? undefined : createMemo(() => searching() && element.loading);
-      const shouldMoveSearch = createMemo(() => focused() || searching());
+      const shouldMoveSearch = createMemo(() => focused() || searching() || !!group());
       const shouldUseContainer = createMemo(() => element() || this.categoriesContainer);
 
       Portal({
@@ -406,13 +421,22 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>, T = a
       });
 
       createEffect(() => {
+        const useData = group() ? groupData : data;
+        if(!useData.loading) {
+          setLoadedData(() => useData());
+        }
+      });
+
+      createEffect(() => {
         this.container.classList.toggle('is-searching', shouldMoveSearch());
       });
 
       return EmoticonsSearch({
+        placeholder: this.searchPlaceholder,
         loading,
         onValue: setQuery,
-        onFocusChange: setFocused
+        onFocusChange: setFocused,
+        onGroup: setGroup
       });
     }, searchContainer);
   }

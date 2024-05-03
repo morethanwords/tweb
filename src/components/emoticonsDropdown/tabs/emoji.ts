@@ -233,8 +233,20 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, AppEmoji[]
         if(!value) return [];
         return this.managers.appEmojiManager.prepareAndSearchEmojis(value, Infinity, 1);
       },
-      processSearchResult: async({data: emojis, searching}) => {
-        if(!searching) {
+      groupFetcher: async(group) => {
+        if(!group) return [];
+
+        const emojiList = await this.managers.appEmojiManager.searchCustomEmoji(group.emoticons.join(''));
+
+        const emojis: AppEmoji[] = [
+          ...emojiList.document_id.map((docId) => ({docId, emoji: ''})),
+          ...group.emoticons.map((emoji) => ({emoji}))
+        ];
+
+        return emojis;
+      },
+      processSearchResult: async({data: emojis, searching, grouping}) => {
+        if(!emojis || (!searching && !grouping)) {
           return;
         }
 
@@ -266,7 +278,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, AppEmoji[]
 
         return container;
       },
-      searchNoLoader: true
+      searchNoLoader: true,
+      searchPlaceholder: 'SearchEmoji'
     });
 
     safeAssign(this, options);
@@ -851,11 +864,13 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, AppEmoji[]
   }
 
   private onContentClick = (e: MouseEvent) => {
-    cancelEvent(e);
-
     const {target} = e;
-
     const container = findUpClassName(target, 'emoji-category');
+    if(!container) {
+      return;
+    }
+
+    cancelEvent(e);
     const category = this.categoriesMap.get(container);
     if(findUpClassName(target, 'category-title')) {
       if(category.local) {

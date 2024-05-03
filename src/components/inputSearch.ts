@@ -29,7 +29,7 @@ export default class InputSearch {
 
   private statusPreloader: ProgressivePreloader;
   private currentLangPackKey: LangPackKey;
-  private currentPlaceholder: HTMLElement;
+  public currentPlaceholder: HTMLElement;
 
   private listenerSetter: ListenerSetter;
   private debounceTime: number;
@@ -68,8 +68,8 @@ export default class InputSearch {
       input.classList.add('with-focus-effect');
     }
 
-    const searchIcon = this.searchIcon = Icon('search', 'input-search-icon', 'input-search-part');
-    const clearBtn = this.clearBtn = ButtonIcon('close input-search-clear input-search-part', {noRipple: true});
+    const searchIcon = this.searchIcon = this.createIcon('search', 'input-search-icon');
+    const clearBtn = this.clearBtn = this.createButtonIcon('close', 'input-search-clear');
     clearBtn.classList.toggle('always-visible', !!options.alwaysShowClear);
 
     this.listenerSetter.add(input)('input', this.onInput);
@@ -91,6 +91,16 @@ export default class InputSearch {
     }
 
     this.container.append(searchIcon, clearBtn);
+  }
+
+  public createButtonIcon(icon: Icon, ...args: string[]) {
+    args ??= [];
+    args.push('input-search-part', 'input-search-button');
+    return ButtonIcon(icon + ' ' + args.join(' '), {noRipple: true});
+  }
+
+  public createIcon(icon: Icon, ...args: string[]) {
+    return Icon(icon, 'input-search-part', ...args);
   }
 
   public isLoading() {

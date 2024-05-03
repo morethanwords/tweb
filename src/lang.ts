@@ -701,6 +701,9 @@ const lang = {
   'Language.zu': 'Zulu',
   'Translation.DoNotShow': 'Do not show \'Translate\' buttons for these languages.',
   'ShowMessage': 'Show Message',
+  'SearchEmoji': 'Search Emoji',
+  'SearchStickers': 'Search Stickers',
+  'SearchGIFs': 'Search GIFs',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
