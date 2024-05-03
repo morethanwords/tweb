@@ -2025,7 +2025,7 @@ export class AppImManager extends EventListenerBase<{
     this.tabId = id;
     blurActiveElement();
     if(mediaSizes.isMobile && prevTabId === APP_TABS.PROFILE && id < APP_TABS.PROFILE) {
-      document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+      appSidebarRight.hide();
     }
 
     if(prevTabId !== undefined && id > prevTabId) {
