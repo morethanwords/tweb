@@ -6,7 +6,7 @@
 
 import {AppManagers} from '../../lib/appManagers/managers';
 import LazyLoadQueue from '../lazyLoadQueue';
-import {SuperStickerRenderer} from '../emoticonsDropdown/tabs/stickers';
+import SuperStickerRenderer from '../emoticonsDropdown/tabs/SuperStickerRenderer';
 import {AnimationItemGroup} from '../animationIntersector';
 import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
 import wrapStickerAnimation from '../wrappers/stickerAnimation';

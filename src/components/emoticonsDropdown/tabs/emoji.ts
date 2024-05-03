@@ -23,7 +23,6 @@ import fixEmoji from '../../../lib/richTextProcessor/fixEmoji';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import wrapSingleEmoji from '../../../lib/richTextProcessor/wrapSingleEmoji';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import {EmoticonsTabC, StickersTabCategory} from './stickers';
 import {makeMediaSize} from '../../../helpers/mediaSize';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import VisibilityIntersector, {OnVisibilityChangeItem} from '../../visibilityIntersector';
@@ -45,6 +44,8 @@ import anchorCallback from '../../../helpers/dom/anchorCallback';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import findUpAsChild from '../../../helpers/dom/findUpAsChild';
 import {onCleanup} from 'solid-js';
+import StickersTabCategory from '../category';
+import EmoticonsTabC from '../tab';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(_emoji: AppEmoji, unify = false) {
@@ -231,7 +232,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, AppEmoji[]
       gapY: 0,
       searchFetcher: async(value) => {
         if(!value) return [];
-        return this.managers.appEmojiManager.prepareAndSearchEmojis(value, Infinity, 1);
+        return this.managers.appEmojiManager.prepareAndSearchEmojis({q: value, limit: Infinity, minChars: 1, addCustom: true});
       },
       groupFetcher: async(group) => {
         if(!group) return [];

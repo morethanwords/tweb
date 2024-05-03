@@ -6,7 +6,7 @@
 
 import type {MyDocument} from './appDocsManager';
 import type {DownloadOptions} from '../mtproto/apiFileManager';
-import {Document, InputFileLocation, InputStickerSet, MessagesAllStickers, MessagesFavedStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered, Update, VideoSize} from '../../layer';
+import {Document, InputFileLocation, InputStickerSet, MessageEntity, MessagesAllStickers, MessagesFavedStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered, Update, VideoSize} from '../../layer';
 import {Modify} from '../../types';
 import AppStorage from '../storage';
 import DATABASE_STATE from '../../config/databases/state';
@@ -22,6 +22,7 @@ import getDocumentInput from './utils/docs/getDocumentInput';
 import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
 import tsNow from '../../helpers/tsNow';
 import SearchIndex from '../searchIndex';
+import parseEntities from '../richTextProcessor/parseEntities';
 
 const CACHE_TIME = 3600e3;
 
@@ -803,12 +804,13 @@ export class AppStickersManager extends AppManager {
     includeServerStickers,
     excludePremiumEffectStickers
   }: {
-    emoticon: string,
+    emoticon: string | string[],
     includeOurStickers?: boolean,
     includeServerStickers?: boolean,
     excludePremiumEffectStickers?: boolean
   }) {
-    emoticon = fixEmoji(emoticon);
+    const emoticonArray = (Array.isArray(emoticon) ? emoticon : [emoticon]).map((emoji) => fixEmoji(emoji));
+    emoticon = emoticonArray.join('');
     const cacheKey = emoticon + (includeOurStickers ? '1' : '0') + (includeServerStickers ? '1' : '0');
     if(this.getStickersByEmoticonsPromises[cacheKey]) return this.getStickersByEmoticonsPromises[cacheKey];
 
@@ -829,12 +831,14 @@ export class AppStickersManager extends AppManager {
       // console.log('getStickersByEmoticon', messagesStickers, installedSets, recentStickers);
 
       const iteratePacks = (packs: StickerPack.stickerPack[]) => {
-        for(const pack of packs) {
-          const packEmoticon = fixEmoji(pack.emoticon);
-          if(packEmoticon.includes(emoticon)) {
-            for(const docId of pack.documents) {
-              const doc = this.appDocsManager.getDoc(docId);
-              (doc.animated ? cachedStickersAnimated : cachedStickersStatic).push(doc);
+        for(const emoticon of emoticonArray) {
+          for(const pack of packs) {
+            const packEmoticon = fixEmoji(pack.emoticon);
+            if(packEmoticon.includes(emoticon)) {
+              for(const docId of pack.documents) {
+                const doc = this.appDocsManager.getDoc(docId);
+                (doc.animated ? cachedStickersAnimated : cachedStickersStatic).push(doc);
+              }
             }
           }
         }
@@ -874,6 +878,32 @@ export class AppStickersManager extends AppManager {
       });
 
       return stickers;
+    });
+  }
+
+  private async splitSearchQuery(query: string): Promise<string[]> {
+    query = query.trim();
+    if(!query) {
+      return [];
+    }
+
+    const entities = parseEntities(query);
+    const emojiEntities = entities
+    .filter((entity) => entity._ === 'messageEntityEmoji' || entity._ === 'messageEntityCustomEmoji')
+    .map((entity) => query.slice(entity.offset, entity.offset + entity.length));
+
+    let emojis: string[] = emojiEntities;
+    if(!emojis.length) {
+      emojis = (await this.appEmojiManager.prepareAndSearchEmojis({q: query, limit: 200, minChars: 1})).map(({emoji}) => emoji);
+    }
+
+    return emojis;
+  }
+
+  public async searchStickers(query: string): Promise<MyDocument[]> {
+    return this.getStickersByEmoticon({
+      emoticon: await this.splitSearchQuery(query),
+      includeOurStickers: true
     });
   }
 

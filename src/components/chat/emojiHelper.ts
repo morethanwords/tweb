@@ -127,7 +127,7 @@ export default class EmojiHelper extends AutocompleteHelper {
   public checkQuery(query: string, firstChar: string) {
     const middleware = this.controller.getMiddleware();
     const q = query.replace(/^:/, '');
-    this.managers.appEmojiManager.prepareAndSearchEmojis(q).then(async(emojis) => {
+    this.managers.appEmojiManager.prepareAndSearchEmojis({q, addCustom: true}).then(async(emojis) => {
       if(!middleware()) {
         return;
       }

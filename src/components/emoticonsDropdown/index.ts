@@ -16,7 +16,7 @@ import appSidebarRight from '../sidebarRight';
 import StickyIntersector from '../stickyIntersector';
 import EmojiTab, {EmojiTabCategory, getEmojiFromElement} from './tabs/emoji';
 import GifsTab from './tabs/gifs';
-import StickersTab, {EmoticonsTabC, StickersTabCategory} from './tabs/stickers';
+import StickersTab from './tabs/stickers';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import AppGifsTab from '../sidebarRight/tabs/gifs';
 import AppStickersTab from '../sidebarRight/tabs/stickers';
@@ -42,6 +42,7 @@ import {toastNew} from '../toast';
 import ChatInput, {POSTING_NOT_ALLOWED_MAP} from '../chat/input';
 import safeAssign from '../../helpers/object/safeAssign';
 import ButtonIcon from '../buttonIcon';
+import StickersTabCategory from './category';
 
 export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
 
