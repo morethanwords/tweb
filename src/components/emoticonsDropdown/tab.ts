@@ -417,10 +417,11 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     };
   };
 
-  protected attachHelpers({getTextColor, verifyRecent, canHaveEmojiTimer}: {
+  protected attachHelpers({getTextColor, verifyRecent, canHaveEmojiTimer, isGif}: {
     getTextColor?: () => string,
     verifyRecent?: (target: HTMLElement) => boolean,
-    canHaveEmojiTimer?: boolean
+    canHaveEmojiTimer?: boolean,
+    isGif?: boolean
   } = {}) {
     attachStickerViewerListeners({
       listenTo: this.content,
@@ -434,6 +435,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
       chatInput: this.emoticonsDropdown.chatInput,
       verifyRecent,
       isEmojis: !!getTextColor,
+      isGif,
       canHaveEmojiTimer,
       canViewPack: true,
       onOpen: () => {

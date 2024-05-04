@@ -121,6 +121,9 @@ export type BroadcastEvents = {
   'stickers_order': {type: 'masks' | 'emojis' | 'stickers', order: Long[]},
   'sticker_updated': {type: 'recent' | 'faved', document: MyDocument, faved: boolean},
 
+  'gifs_updated': MyDocument[],
+  'gif_updated': {document: MyDocument, saved: boolean},
+
   'state_cleared': void,
   'state_synchronized': void,
   'state_synchronizing': void,

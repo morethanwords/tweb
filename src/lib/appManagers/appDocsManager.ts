@@ -10,7 +10,7 @@
  */
 
 import type {ThumbCache} from '../storages/thumbs';
-import {BotInlineResult, Document, DocumentAttribute, MessagesSavedGifs, PhotoSize, WallPaper} from '../../layer';
+import {Document, DocumentAttribute, PhotoSize, WallPaper} from '../../layer';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {getFullDate} from '../../helpers/date';
 import isObject from '../../helpers/object/isObject';
@@ -24,7 +24,7 @@ import getDocumentInputFileLocation from './utils/docs/getDocumentInputFileLocat
 import getDocumentURL from './utils/docs/getDocumentURL';
 import makeError from '../../helpers/makeError';
 import {EXTENSION_MIME_TYPE_MAP} from '../../environment/mimeTypeMap';
-import {NULL_PEER_ID, THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
+import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 import tsNow from '../../helpers/tsNow';
 import appManagersManager from './appManagersManager';
 import tryPatchMp4 from '../../helpers/fixChromiumMp4';
@@ -365,24 +365,6 @@ export class AppDocsManager extends AppManager {
         return wallPaper;
       });
     });
-  }
-
-  public getGifs() {
-    return this.apiManager.invokeApiHashable({
-      method: 'messages.getSavedGifs',
-      processResult: (res) => {
-        assumeType<MessagesSavedGifs.messagesSavedGifs>(res);
-        return res.gifs.map((doc) => this.saveDoc(doc));
-      }
-    });
-  }
-
-  public async searchGifs(query: string, nextOffset?: string) {
-    const gifBotPeerId = (await this.appUsersManager.resolveUsername('gif')).id.toPeerId(false);
-    const {results, next_offset} = await this.appInlineBotsManager.getInlineResults(NULL_PEER_ID, gifBotPeerId, query, nextOffset);
-
-    const documents = results.map((result) => (result as BotInlineResult.botInlineMediaResult).document).filter(Boolean) as Document.document[];
-    return {documents, nextOffset: next_offset};
   }
 
   public requestDocPart(docId: DocId, dcId: number, offset: number, limit: number) {

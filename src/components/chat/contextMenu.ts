@@ -490,13 +490,19 @@ export default class ChatContextMenu {
       return;
     }
 
+    const isGif = (() => {
+      const doc = ((this.message as Message.message).media as MessageMedia.messageMediaDocument)?.document;
+      const isGif = (doc as MyDocument)?.type === 'gif';
+      return isGif;
+    })();
+
     const verifyFavoriteSticker = async(toAdd: boolean) => {
       const doc = ((this.message as Message.message).media as MessageMedia.messageMediaDocument)?.document;
-      if(!(doc as MyDocument)?.sticker) {
+      if(!(doc as MyDocument)?.sticker && !isGif) {
         return false;
       }
 
-      const favedStickers = await this.managers.acknowledged.appStickersManager.getFavedStickersStickers();
+      const favedStickers = await (isGif ? this.managers.acknowledged.appGifsManager.getGifs() : this.managers.acknowledged.appStickersManager.getFavedStickersStickers());
       if(!favedStickers.cached) {
         return false;
       }
@@ -569,13 +575,13 @@ export default class ChatContextMenu {
         this.chat.type !== ChatType.Scheduled/* ,
       cancelEvent: true */
     }, {
-      icon: 'favourites',
-      text: 'AddToFavorites',
+      icon: isGif ? 'gifs' : 'favourites',
+      text: isGif ? 'SaveToGIFs' : 'AddToFavorites',
       onClick: this.onFaveStickerClick.bind(this, false),
       verify: () => verifyFavoriteSticker(true)
     }, {
-      icon: 'favourites',
-      text: 'DeleteFromFavorites',
+      icon: isGif ? 'gifs' : 'favourites',
+      text: isGif ? 'Message.Context.RemoveGif' : 'DeleteFromFavorites',
       onClick: this.onFaveStickerClick.bind(this, true),
       verify: () => verifyFavoriteSticker(false)
     }, {
@@ -1289,8 +1295,13 @@ export default class ChatContextMenu {
   };
 
   private onFaveStickerClick = (unfave?: boolean) => {
-    const docId = ((this.message as Message.message).media as MessageMedia.messageMediaDocument).document.id;
-    this.managers.appStickersManager.faveSticker(docId, unfave);
+    const document = ((this.message as Message.message).media as MessageMedia.messageMediaDocument).document as MyDocument;
+    const docId = document.id;
+    if(document.type === 'gif') {
+      this.managers.appGifsManager.saveGif(docId, unfave);
+    } else {
+      this.managers.appStickersManager.faveSticker(docId, unfave);
+    }
   };
 
   private onEditClick = () => {

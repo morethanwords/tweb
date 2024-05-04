@@ -546,6 +546,10 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
+    rootScope.addEventListener('gif_updated', ({saved}) => {
+      toastNew({langPackKey: saved ? 'GifSavedHint' : 'RemovedGIFFromFavorites'});
+    });
+
     apiManagerProxy.addEventListener('notificationBuild', async(options) => {
       const isForum = await this.managers.appPeersManager.isForum(options.message.peerId);
       const threadId = getMessageThreadId(options.message, isForum);

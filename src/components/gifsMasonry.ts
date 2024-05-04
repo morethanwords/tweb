@@ -15,6 +15,7 @@ import LazyLoadQueueRepeat2 from './lazyLoadQueueRepeat2';
 import wrapVideo from './wrappers/video';
 import noop from '../helpers/noop';
 import {MiddlewareHelper, getMiddleware} from '../helpers/middleware';
+import positionElementByIndex from '../helpers/dom/positionElementByIndex';
 
 export default class GifsMasonry {
   public lazyLoadQueue: LazyLoadQueueRepeat2;
@@ -22,6 +23,7 @@ export default class GifsMasonry {
   private timeout: number = 0;
   private managers: AppManagers;
   private middlewareHelper: MiddlewareHelper;
+  private map: Map<DocId, HTMLElement>;
 
   constructor(
     private element: HTMLElement,
@@ -31,6 +33,7 @@ export default class GifsMasonry {
   ) {
     this.managers = rootScope.managers;
     this.middlewareHelper = getMiddleware();
+    this.map = new Map();
 
     this.lazyLoadQueue = new LazyLoadQueueRepeat2(undefined, ({target, visible}) => {
       if(visible) {
@@ -83,6 +86,13 @@ export default class GifsMasonry {
     const load = () => {
       const docId = div.dataset.docId;
       const promise = Promise.all([this.managers.appDocsManager.getDoc(docId), this.scrollPromise]).then(async([doc]) => {
+        if(!this.lazyLoadQueue.intersector.isVisible(div)) {
+          this.processInvisibleDiv(div);
+          return;
+        }
+
+        div.middlewareHelper.clean();
+        const middleware = div.middlewareHelper.get().create().get();
         const res = await wrapVideo({
           doc,
           container: div as HTMLDivElement,
@@ -90,32 +100,23 @@ export default class GifsMasonry {
           // lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue,
           group: this.group,
           noInfo: true,
-          noPreview: true
+          noPreview: true,
+          middleware
         });
 
         const promise = res.loadPromise;
         promise.finally(() => {
-          const video = div.querySelector('video');
-          const thumb = div.querySelector('img, canvas');
+          middleware.onDestroy(() => {
+            res.video?.remove();
+          });
 
-          // div.style.opacity = '';
-          thumb && thumb.classList.add('hide');
-
-          if(video && !video.parentElement) {
-            setTimeout(() => {
-              video.src = '';
-              video.load();
-              const animations = animationIntersector.getAnimations(video);
-              animations.forEach((item) => {
-                animationIntersector.removeAnimation(item);
-              });
-            }, 0);
-          }
-
-          // clearTimeout(timeout);
-          if(!this.lazyLoadQueue.intersector.isVisible(div)) {
+          if(!middleware() || !this.lazyLoadQueue.intersector.isVisible(div)) {
             this.processInvisibleDiv(div);
+            return;
           }
+
+          const thumb = div.querySelector('img, canvas');
+          thumb && thumb.classList.add('hide');
         });
 
         return promise;
@@ -137,12 +138,10 @@ export default class GifsMasonry {
         return;
       }
 
-      const video = div.querySelector('video');
       const thumb = div.querySelector('img, canvas');
 
       if(thumb) {
         thumb.classList.remove('hide');
-
         await doubleRaf();
       }
 
@@ -150,23 +149,39 @@ export default class GifsMasonry {
         return;
       }
 
-      if(video) {
-        video.remove();
-        video.src = '';
-        video.load();
-        const animations = animationIntersector.getAnimations(video);
-        animations.forEach((item) => {
-          animationIntersector.removeAnimation(item);
-        });
-      }
+      div.middlewareHelper.clean();
     });
   };
 
+  public addBatch(docs: MyDocument[]) {
+    docs.forEach((doc) => this.add(doc));
+  }
+
+  public update(docs: MyDocument[]) {
+    for(const [docId] of this.map) {
+      if(!docs.some((doc) => doc.id === docId)) {
+        this.delete(docId);
+      }
+    }
+
+    this.addBatch(docs);
+    for(let i = 0, length = docs.length; i < length; ++i) {
+      const element = this.map.get(docs[i].id);
+      positionElementByIndex(element, this.element, i);
+    }
+  }
+
   public add(doc: MyDocument, appendTo = this.element) {
+    if(this.map.has(doc.id)) {
+      return;
+    }
+
     const div = document.createElement('div');
     div.classList.add('gif', 'grid-item'/* , 'fade-in-transition' */);
     // div.style.opacity = '0';
     div.dataset.docId = '' + doc.id;
+    div.middlewareHelper = this.middlewareHelper.get().create();
+    this.map.set(doc.id, div);
 
     appendTo.append(div);
 
@@ -180,7 +195,16 @@ export default class GifsMasonry {
       lazyLoadQueue: null,
       noInfo: true,
       onlyPreview: true,
-      middleware: this.middlewareHelper.get()
+      middleware: div.middlewareHelper.get()
     });
+  }
+
+  public delete(docId: DocId) {
+    const div = this.map.get(docId);
+    if(div) {
+      div.remove();
+      div.middlewareHelper.destroy();
+      this.map.delete(docId);
+    }
   }
 }

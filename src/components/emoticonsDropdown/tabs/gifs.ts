@@ -16,9 +16,10 @@ import {i18n} from '../../../lib/langPack';
 import {onCleanup} from 'solid-js';
 import {Middleware} from '../../../helpers/middleware';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
-import type {AppDocsManager} from '../../../lib/appManagers/appDocsManager';
+import type AppGifsManager from '../../../lib/appManagers/appGifsManager';
+import rootScope from '../../../lib/rootScope';
 
-export default class GifsTab extends EmoticonsTabC<any, Awaited<ReturnType<AppDocsManager['searchGifs']>>> {
+export default class GifsTab extends EmoticonsTabC<any, Awaited<ReturnType<AppGifsManager['searchGifs']>>> {
   private query: string;
 
   constructor(options: {
@@ -34,11 +35,11 @@ export default class GifsTab extends EmoticonsTabC<any, Awaited<ReturnType<AppDo
       noMenu: true,
       searchFetcher: async(value) => {
         if(!value) return {documents: [], nextOffset: ''};
-        return this.managers.appDocsManager.searchGifs(this.query = value);
+        return this.managers.appGifsManager.searchGifs(this.query = value);
       },
       groupFetcher: async(group) => {
         if(group?._ !== 'emojiGroup') return {documents: [], nextOffset: ''};
-        return this.managers.appDocsManager.searchGifs(this.query = group.emoticons.join(''));
+        return this.managers.appGifsManager.searchGifs(this.query = group.emoticons.join(''));
       },
       processSearchResult: async({data: {documents: gifs, nextOffset}, searching, grouping}) => {
         if(!gifs || (!searching && !grouping)) {
@@ -65,7 +66,7 @@ export default class GifsTab extends EmoticonsTabC<any, Awaited<ReturnType<AppDo
             return;
           }
 
-          this.managers.appDocsManager.searchGifs(this.query, nextOffset).then(({documents, nextOffset: newNextOffset}) => {
+          this.managers.appGifsManager.searchGifs(this.query, nextOffset).then(({documents, nextOffset: newNextOffset}) => {
             if(!middleware()) {
               return;
             }
@@ -115,9 +116,17 @@ export default class GifsTab extends EmoticonsTabC<any, Awaited<ReturnType<AppDo
     this.categoriesContainer.append(container);
     const preloader = putPreloader(this.content, true);
 
-    this.managers.appDocsManager.getGifs().then((docs) => {
-      docs.forEach((doc) => masonry.add(doc));
+    this.managers.appGifsManager.getGifs().then((docs) => {
+      masonry.addBatch(docs);
       preloader.remove();
+    });
+
+    rootScope.addEventListener('gifs_updated', (gifs) => {
+      masonry.update(gifs);
+    });
+
+    this.attachHelpers({
+      isGif: true
     });
 
     this.init = undefined;
