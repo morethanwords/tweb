@@ -105,6 +105,11 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     altDoc = undefined;
   }
 
+  if(doc.type === 'gif' && container) {
+    container.classList.add('media-gif-wrapper');
+    container.dataset.docId = '' + doc.id;
+  }
+
   const autoDownloadSize = autoDownload?.video;
   let noAutoDownload = autoDownloadSize === 0;
   const isGroupedItem = !(boxWidth && boxHeight);

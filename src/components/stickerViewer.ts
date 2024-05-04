@@ -30,6 +30,7 @@ import {EMOJI_TEXT_COLOR} from './emoticonsDropdown';
 import SetTransition from './singleTransition';
 import wrapSticker from './wrappers/sticker';
 import {STICKER_EFFECT_MULTIPLIER} from './wrappers/sticker';
+import wrapVideo from './wrappers/video';
 
 let hasViewer = false;
 export default function attachStickerViewerListeners({listenTo, listenerSetter, selector, findTarget: originalFindTarget, getTextColor}: {
@@ -47,7 +48,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
     let el: HTMLElement;
     if(originalFindTarget) el = originalFindTarget(e);
     else {
-      const s = selector || `.media-sticker-wrapper`;
+      const s = selector || '.media-sticker-wrapper, .media-gif-wrapper';
       el = (e.target as HTMLElement).closest(s) as HTMLElement;
     }
 
@@ -87,10 +88,11 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       lockGroups?: boolean,
       isSwitching?: boolean
     }) => {
-      const effectThumb = getStickerEffectThumb(doc);
+      const isGif = doc.type === 'gif';
+      const effectThumb = isGif ? undefined : getStickerEffectThumb(doc);
       const mediaRect: DOMRect = mediaContainer.getBoundingClientRect();
       const s = makeMediaSize(doc.w, doc.h);
-      const size = effectThumb ? 280 : 360;
+      const size = effectThumb ? 280 : (isGif ? Math.min(480, windowSize.height - 200) : 360);
       const boxSize = makeMediaSize(size, size);
       const fitted = mediaRect.width === mediaRect.height ? boxSize : s.aspectFitted(boxSize);
 
@@ -146,7 +148,17 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
 
       const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
 
-      const o = await wrapSticker({
+      const o = isGif ? await wrapVideo({
+        doc,
+        container: stickerContainer,
+        group,
+        boxWidth: fitted.width,
+        boxHeight: fitted.height,
+        canAutoplay: true,
+        middleware,
+        noInfo: true
+        // noPreview: true
+      }).then(async(res) => (await res.loadPromise, res.video)) : await wrapSticker({
         doc,
         div: stickerContainer,
         group,
