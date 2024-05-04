@@ -118,6 +118,12 @@ export namespace JSX {
     | FocusEventHandler<T, E>
     | BoundFocusEventHandler<T, E>;
 
+  const SERIALIZABLE: unique symbol;
+  interface SerializableAttributeValue {
+    toString(): string;
+    [SERIALIZABLE]: never;
+  }
+
   interface IntrinsicAttributes {
     ref?: unknown | ((e: unknown) => void);
   }
@@ -131,7 +137,7 @@ export namespace JSX {
   type Accessor<T> = () => T;
   interface Directives {}
   interface DirectiveFunctions {
-    [x: string]: (el: Element, accessor: Accessor<any>) => void;
+    [x: string]: (el: DOMElement, accessor: Accessor<any>) => void;
   }
   interface ExplicitProperties {}
   interface ExplicitAttributes {}
@@ -710,7 +716,7 @@ export namespace JSX {
     // [key: ClassKeys]: boolean;
     accessKey?: string;
     class?: string | undefined;
-    contenteditable?: boolean | "inherit";
+    contenteditable?: boolean | "plaintext-only" | "inherit";
     contextmenu?: string;
     dir?: HTMLDir;
     draggable?: boolean | "false" | "true";
@@ -726,6 +732,7 @@ export namespace JSX {
     about?: string;
     datatype?: string;
     inlist?: any;
+    popover?: boolean | "manual" | "auto";
     prefix?: string;
     property?: string;
     resource?: string;
@@ -742,7 +749,7 @@ export namespace JSX {
     part?: string;
     exportparts?: string;
     inputmode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal" | "search";
-    contentEditable?: boolean | "inherit";
+    contentEditable?: boolean | "plaintext-only" | "inherit";
     contextMenu?: string;
     tabIndex?: number | string;
     autoCapitalize?: HTMLAutocapitalize;
@@ -791,19 +798,23 @@ export namespace JSX {
     autofocus?: boolean;
     disabled?: boolean;
     form?: string;
-    formaction?: string;
+    formaction?: string | SerializableAttributeValue;
     formenctype?: HTMLFormEncType;
     formmethod?: HTMLFormMethod;
     formnovalidate?: boolean;
     formtarget?: string;
+    popovertarget?: string;
+    popovertargetaction?: "hide" | "show" | "toggle";
     name?: string;
     type?: "submit" | "reset" | "button";
     value?: string;
-    formAction?: string;
+    formAction?: string | SerializableAttributeValue;
     formEnctype?: HTMLFormEncType;
     formMethod?: HTMLFormMethod;
     formNoValidate?: boolean;
     formTarget?: string;
+    popoverTarget?: string;
+    popoverTargetAction?: "hide" | "show" | "toggle";
   }
   interface CanvasHTMLAttributes<T> extends HTMLAttributes<T> {
     width?: number | string;
@@ -842,7 +853,7 @@ export namespace JSX {
   }
   interface FormHTMLAttributes<T> extends HTMLAttributes<T> {
     "accept-charset"?: string;
-    action?: string;
+    action?: string | SerializableAttributeValue;
     autocomplete?: string;
     encoding?: HTMLFormEncType;
     enctype?: HTMLFormEncType;
@@ -898,7 +909,7 @@ export namespace JSX {
     disabled?: boolean;
     enterkeyhint?: "enter" | "done" | "go" | "next" | "previous" | "search" | "send";
     form?: string;
-    formaction?: string;
+    formaction?: string | SerializableAttributeValue;
     formenctype?: HTMLFormEncType;
     formmethod?: HTMLFormMethod;
     formnovalidate?: boolean;
@@ -924,7 +935,7 @@ export namespace JSX {
     value?: string | string[] | number;
     width?: number | string;
     crossOrigin?: HTMLCrossorigin;
-    formAction?: string;
+    formAction?: string | SerializableAttributeValue;
     formEnctype?: HTMLFormEncType;
     formMethod?: HTMLFormMethod;
     formNoValidate?: boolean;
@@ -995,6 +1006,7 @@ export namespace JSX {
     content?: string;
     "http-equiv"?: string;
     name?: string;
+    media?: string;
   }
   interface MeterHTMLAttributes<T> extends HTMLAttributes<T> {
     form?: string;
@@ -1605,6 +1617,15 @@ export namespace JSX {
     azimuth?: number | string;
     elevation?: number | string;
   }
+  interface FeDropShadowSVGAttributes<T>
+    extends CoreSVGAttributes<T>,
+      FilterPrimitiveElementSVGAttributes<T>,
+      StylableSVGAttributes,
+      Pick<PresentationSVGAttributes, "color" | "flood-color" | "flood-opacity"> {
+    dx?: number | string;
+    dy?: number | string;
+    stdDeviation?: number | string;
+  }
   interface FeFloodSVGAttributes<T>
     extends FilterPrimitiveElementSVGAttributes<T>,
       StylableSVGAttributes,
@@ -1779,6 +1800,7 @@ export namespace JSX {
     height?: number | string;
   }
   interface MetadataSVGAttributes<T> extends CoreSVGAttributes<T> {}
+  interface MPathSVGAttributes<T> extends CoreSVGAttributes<T> {}
   interface PathSVGAttributes<T>
     extends GraphicsElementSVGAttributes<T>,
       ShapeElementSVGAttributes<T>,
@@ -1847,6 +1869,10 @@ export namespace JSX {
     rx?: number | string;
     ry?: number | string;
   }
+  interface SetSVGAttributes<T>
+    extends CoreSVGAttributes<T>,
+      StylableSVGAttributes,
+      AnimationTimingSVGAttributes {}
   interface StopSVGAttributes<T>
     extends CoreSVGAttributes<T>,
       StylableSVGAttributes,
@@ -1884,7 +1910,16 @@ export namespace JSX {
       NewViewportSVGAttributes<T>,
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
-      FitToViewBoxSVGAttributes {}
+      FitToViewBoxSVGAttributes {
+    width?: number | string;
+    height?: number | string;
+    preserveAspectRatio?: SVGPreserveAspectRatio;
+    refX?: number | string;
+    refY?: number | string;
+    viewBox?: string;
+    x?: number | string;
+    y?: number | string;
+  }
   interface TextSVGAttributes<T>
     extends TextContentElementSVGAttributes<T>,
       GraphicsElementSVGAttributes<T>,
@@ -1932,11 +1967,16 @@ export namespace JSX {
     textLength?: number | string;
     lengthAdjust?: "spacing" | "spacingAndGlyphs";
   }
+  /**
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/use
+   */
   interface UseSVGAttributes<T>
-    extends GraphicsElementSVGAttributes<T>,
-      ConditionalProcessingSVGAttributes,
-      ExternalResourceSVGAttributes,
+    extends CoreSVGAttributes<T>,
       StylableSVGAttributes,
+      ConditionalProcessingSVGAttributes,
+      GraphicsElementSVGAttributes<T>,
+      PresentationSVGAttributes,
+      ExternalResourceSVGAttributes,
       TransformableSVGAttributes {
     x?: number | string;
     y?: number | string;
@@ -2037,7 +2077,8 @@ export namespace JSX {
     ruby: HTMLAttributes<HTMLElement>;
     s: HTMLAttributes<HTMLElement>;
     samp: HTMLAttributes<HTMLElement>;
-    script: ScriptHTMLAttributes<HTMLElement>;
+    script: ScriptHTMLAttributes<HTMLScriptElement>;
+    search: HTMLAttributes<HTMLElement>;
     section: HTMLAttributes<HTMLElement>;
     select: SelectHTMLAttributes<HTMLSelectElement>;
     slot: HTMLSlotElementAttributes;
@@ -2097,7 +2138,7 @@ export namespace JSX {
     feDiffuseLighting: FeDiffuseLightingSVGAttributes<SVGFEDiffuseLightingElement>;
     feDisplacementMap: FeDisplacementMapSVGAttributes<SVGFEDisplacementMapElement>;
     feDistantLight: FeDistantLightSVGAttributes<SVGFEDistantLightElement>;
-    feDropShadow: Partial<SVGFEDropShadowElement>;
+    feDropShadow: FeDropShadowSVGAttributes<SVGFEDropShadowElement>;
     feFlood: FeFloodSVGAttributes<SVGFEFloodElement>;
     feFuncA: FeFuncSVGAttributes<SVGFEFuncAElement>;
     feFuncB: FeFuncSVGAttributes<SVGFEFuncBElement>;
@@ -2123,14 +2164,14 @@ export namespace JSX {
     marker: MarkerSVGAttributes<SVGMarkerElement>;
     mask: MaskSVGAttributes<SVGMaskElement>;
     metadata: MetadataSVGAttributes<SVGMetadataElement>;
-    mpath: Partial<SVGMPathElement>;
+    mpath: MPathSVGAttributes<SVGMPathElement>;
     path: PathSVGAttributes<SVGPathElement>;
     pattern: PatternSVGAttributes<SVGPatternElement>;
     polygon: PolygonSVGAttributes<SVGPolygonElement>;
     polyline: PolylineSVGAttributes<SVGPolylineElement>;
     radialGradient: RadialGradientSVGAttributes<SVGRadialGradientElement>;
     rect: RectSVGAttributes<SVGRectElement>;
-    set: Partial<SVGSetElement>;
+    set: SetSVGAttributes<SVGSetElement>;
     stop: StopSVGAttributes<SVGStopElement>;
     svg: SvgSVGAttributes<SVGSVGElement>;
     switch: SwitchSVGAttributes<SVGSwitchElement>;

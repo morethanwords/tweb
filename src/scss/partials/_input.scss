@@ -357,6 +357,7 @@ button:focus {
   --border-radius: 22px;
   --padding-horizontal: calc(var(--height) + 3px - var(--border-width));
   --icon-left-offset: .8125rem;
+  --icon-size: 1.5rem;
   position: relative;
   width: 100%;
   margin-inline: .4375rem;
@@ -441,7 +442,7 @@ button:focus {
       }
     }
 
-    &:focus {
+    &.with-focus-effect:focus {
       background-color: transparent;
       border-color: var(--primary-color);
 
@@ -456,7 +457,7 @@ button:focus {
         }
       }
 
-      & ~ .btn-icon {
+      & ~ .input-search-button {
         @include hover-background-effect(primary);
       }
     }
@@ -481,7 +482,7 @@ button:focus {
     // top: 50%;
     // transform: translate(0, -50%);
     text-align: center;
-    font-size: 1.5rem;
+    font-size: var(--icon-size);
     color: var(--secondary-text-color);
     opacity: var(--max-opacity);
     line-height: 1;
@@ -494,8 +495,8 @@ button:focus {
 
   &-icon,
   .preloader-container {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: var(--icon-size);
+    height: var(--icon-size);
     inset-inline-start: var(--icon-left-offset);
     pointer-events: none;
   }
@@ -518,7 +519,7 @@ button:focus {
     z-index: 1;
   }
 
-  .btn-icon {
+  &-button {
     padding: .375rem !important;
   }
 }

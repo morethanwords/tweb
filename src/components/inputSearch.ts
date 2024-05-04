@@ -25,20 +25,25 @@ export default class InputSearch {
   public timeout = 0;
   public onChange: (value: string) => void;
   public onClear: (e?: MouseEvent, wasEmpty?: boolean) => void;
+  public onDebounce: (start: boolean) => void;
 
   private statusPreloader: ProgressivePreloader;
   private currentLangPackKey: LangPackKey;
-  private currentPlaceholder: HTMLElement;
+  public currentPlaceholder: HTMLElement;
 
   private listenerSetter: ListenerSetter;
+  private debounceTime: number;
 
   constructor(options: {
     placeholder?: LangPackKey,
     onChange?: (value: string) => void,
     onClear?: InputSearch['onClear'],
     onFocusChange?: (isFocused: boolean) => void,
+    onDebounce?: (start: boolean) => void,
     alwaysShowClear?: boolean,
-    noBorder?: boolean
+    noBorder?: boolean,
+    noFocusEffect?: boolean,
+    debounceTime?: number
   } = {}) {
     this.inputField = new InputField({
       // placeholder,
@@ -53,12 +58,18 @@ export default class InputSearch {
 
     this.onChange = options.onChange;
     this.onClear = options.onClear;
+    this.onDebounce = options.onDebounce;
+    this.debounceTime = options.debounceTime ?? 300;
 
     const input = this.input = this.inputField.input;
     input.classList.add('input-search-input');
 
-    const searchIcon = this.searchIcon = Icon('search', 'input-search-icon', 'input-search-part');
-    const clearBtn = this.clearBtn = ButtonIcon('close input-search-clear input-search-part', {noRipple: true});
+    if(!options.noFocusEffect) {
+      input.classList.add('with-focus-effect');
+    }
+
+    const searchIcon = this.searchIcon = this.createIcon('search', 'input-search-icon');
+    const clearBtn = this.clearBtn = this.createButtonIcon('close', 'input-search-clear');
     clearBtn.classList.toggle('always-visible', !!options.alwaysShowClear);
 
     this.listenerSetter.add(input)('input', this.onInput);
@@ -80,6 +91,16 @@ export default class InputSearch {
     }
 
     this.container.append(searchIcon, clearBtn);
+  }
+
+  public createButtonIcon(icon: Icon, ...args: string[]) {
+    args ??= [];
+    args.push('input-search-part', 'input-search-button');
+    return ButtonIcon(icon + ' ' + args.join(' '), {noRipple: true});
+  }
+
+  public createIcon(icon: Icon, ...args: string[]) {
+    return Icon(icon, 'input-search-part', ...args);
   }
 
   public isLoading() {
@@ -142,10 +163,11 @@ export default class InputSearch {
 
     if(value !== this.prevValue) {
       this.prevValue = value;
-      clearTimeout(this.timeout);
+      this.clearTimeout(true);
       this.timeout = window.setTimeout(() => {
+        this.onDebounce?.(false);
         this.onChange(value);
-      }, 300);
+      }, this.debounceTime);
     }
   };
 
@@ -156,18 +178,23 @@ export default class InputSearch {
     this.onClear?.(e, isEmpty);
   };
 
+  clearTimeout = (debounceStart: boolean) => {
+    clearTimeout(this.timeout);
+    this.onDebounce?.(debounceStart);
+  };
+
   get value() {
     return this.inputField.value;
   }
 
   set value(value: string) {
     this.prevValue = value;
-    clearTimeout(this.timeout);
+    this.clearTimeout(false);
     this.inputField.value = value;
   }
 
   public remove() {
-    clearTimeout(this.timeout);
+    this.clearTimeout(false);
     this.listenerSetter.removeAll();
   }
 }

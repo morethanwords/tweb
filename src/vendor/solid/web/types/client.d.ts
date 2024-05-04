@@ -33,7 +33,7 @@ export function assign(node: Element, props: any, isSVG?: Boolean, skipChildren?
 export function setAttribute(node: Element, name: string, value: string): void;
 export function setAttributeNS(node: Element, namespace: string, name: string, value: string): void;
 export function className(node: Element, value: string): void;
-export function innerHTML(node: Element, content: string): void;
+export function setProperty(node: Element, name: string, value: any): void;
 export function addEventListener(
   node: Element,
   name: string,
@@ -44,7 +44,7 @@ export function classList(
   node: Element,
   value: { [k: string]: boolean },
   prev?: { [k: string]: boolean }
-): void;
+): { [k: string]: boolean };
 export function style(
   node: Element,
   value: { [k: string]: string },
@@ -70,3 +70,8 @@ export function generateHydrationScript(): string;
 export function Assets(props: { children?: JSX.Element }): JSX.Element;
 export function Hydration(props: { children?: JSX.Element }): JSX.Element;
 export function NoHydration(props: { children?: JSX.Element }): JSX.Element;
+export interface RequestEvent {
+  request: Request;
+}
+export declare const RequestContext: unique symbol;
+export function getRequestEvent(): RequestEvent | undefined;

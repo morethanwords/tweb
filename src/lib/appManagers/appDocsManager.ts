@@ -10,7 +10,7 @@
  */
 
 import type {ThumbCache} from '../storages/thumbs';
-import {Document, DocumentAttribute, MessagesSavedGifs, PhotoSize, WallPaper} from '../../layer';
+import {Document, DocumentAttribute, PhotoSize, WallPaper} from '../../layer';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {getFullDate} from '../../helpers/date';
 import isObject from '../../helpers/object/isObject';
@@ -364,16 +364,6 @@ export class AppDocsManager extends AppManager {
 
         return wallPaper;
       });
-    });
-  }
-
-  public getGifs() {
-    return this.apiManager.invokeApiHashable({
-      method: 'messages.getSavedGifs',
-      processResult: (res) => {
-        assumeType<MessagesSavedGifs.messagesSavedGifs>(res);
-        return res.gifs.map((doc) => this.saveDoc(doc));
-      }
     });
   }
 

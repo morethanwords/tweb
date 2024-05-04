@@ -17,7 +17,7 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {MyPhoto} from '../../lib/appManagers/appPhotosManager';
 import assumeType from '../../helpers/assumeType';
 import GifsMasonry from '../gifsMasonry';
-import {SuperStickerRenderer} from '../emoticonsDropdown/tabs/stickers';
+import SuperStickerRenderer from '../emoticonsDropdown/tabs/SuperStickerRenderer';
 import mediaSizes from '../../helpers/mediaSizes';
 import readBlobAsDataURL from '../../helpers/blob/readBlobAsDataURL';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';

@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {JSX, createSignal, For, createEffect, createResource, Accessor, onMount, createMemo, splitProps, on, Show} from 'solid-js';
+import {JSX, createSignal, For, createEffect, createResource, Accessor, onMount, createMemo, splitProps, on, Show, onCleanup} from 'solid-js';
 import {ScrollableX} from '../scrollable';
 import {createStoriesViewer} from './viewer';
 import styles from './list.module.scss';
 import PeerTitle from '../peerTitle';
 import mediaSizes from '../../helpers/mediaSizes';
 import rootScope from '../../lib/rootScope';
-import fastSmoothScroll from '../../helpers/fastSmoothScroll';
+import {fastSmoothScrollToStart} from '../../helpers/fastSmoothScroll';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {AvatarNew} from '../avatarNew';
 import I18n, {i18n} from '../../lib/langPack';
@@ -31,9 +31,10 @@ import createMiddleware from '../../helpers/solid/createMiddleware';
 const TEST_COUNT = 0;
 
 export const ScrollableXTsx = (props: {
-  children: JSX.Element
+  children: JSX.Element,
+  onAdditionalScroll?: () => void
 } & JSX.HTMLAttributes<HTMLDivElement>) => {
-  const [, rest] = splitProps(props, []);
+  const [, rest] = splitProps(props, ['onAdditionalScroll']);
   let container: HTMLDivElement;
   const ret = (
     <div ref={container} {...rest}>
@@ -42,6 +43,16 @@ export const ScrollableXTsx = (props: {
   );
 
   const scrollable = new ScrollableX(undefined, undefined, undefined, undefined, container);
+
+  if(props.onAdditionalScroll) {
+    scrollable.setListeners();
+    scrollable.onAdditionalScroll = props.onAdditionalScroll;
+  }
+
+  onCleanup(() => {
+    scrollable.destroy();
+  });
+
   return ret;
 };
 
@@ -255,13 +266,7 @@ function _StoriesList(props: {
     const scrollableX = !scrolling && getMenuScrollable();
     if(scrollableX?.scrollLeft) {
       scrolling = true;
-      fastSmoothScroll({
-        container: scrollableX,
-        element: scrollableX,
-        getElementPosition: () => -scrollableX.scrollLeft,
-        position: 'start',
-        axis: 'x'
-      }).then(() => {
+      fastSmoothScrollToStart(scrollableX, 'x').then(() => {
         scrolling = false;
       });
     }

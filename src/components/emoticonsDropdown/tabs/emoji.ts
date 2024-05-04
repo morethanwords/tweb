@@ -10,7 +10,7 @@ import findUpClassName from '../../../helpers/dom/findUpClassName';
 import {fastRaf} from '../../../helpers/schedulers';
 import pause from '../../../helpers/schedulers/pause';
 import appImManager from '../../../lib/appManagers/appImManager';
-import {LangPackKey} from '../../../lib/langPack';
+import {i18n, LangPackKey} from '../../../lib/langPack';
 import rootScope, {BroadcastEvents} from '../../../lib/rootScope';
 import {emojiFromCodePoints} from '../../../vendor/emoji';
 import {putPreloader} from '../../putPreloader';
@@ -23,7 +23,6 @@ import fixEmoji from '../../../lib/richTextProcessor/fixEmoji';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import wrapSingleEmoji from '../../../lib/richTextProcessor/wrapSingleEmoji';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import {EmoticonsTabC, StickersTabCategory} from './stickers';
 import {makeMediaSize} from '../../../helpers/mediaSize';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import VisibilityIntersector, {OnVisibilityChangeItem} from '../../visibilityIntersector';
@@ -44,6 +43,9 @@ import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
 import anchorCallback from '../../../helpers/dom/anchorCallback';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import findUpAsChild from '../../../helpers/dom/findUpAsChild';
+import {onCleanup} from 'solid-js';
+import StickersTabCategory from '../category';
+import EmoticonsTabC from '../tab';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(_emoji: AppEmoji, unify = false) {
@@ -195,7 +197,7 @@ const RECENT_MAX_LENGTH = 32;
 
 type EmojiTabItem = {element: HTMLElement} & ReturnType<typeof getEmojiFromElement>;
 export type EmojiTabCategory = StickersTabCategory<EmojiTabItem, {renderer: CustomEmojiRendererElement}>;
-export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
+export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, AppEmoji[]> {
   private closeScrollTop: number;
   private menuInnerScroll: ScrollableX;
   private isStandalone?: boolean;
@@ -221,14 +223,66 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     freeCustomEmoji?: EmojiTab['freeCustomEmoji'],
     canHaveEmojiTimer?: EmojiTab['canHaveEmojiTimer']
   }) {
-    super(
-      options.managers,
-      'super-emojis',
-      () => EMOJI_ELEMENT_SIZE,
-      16,
-      4,
-      0
-    );
+    super({
+      managers: options.managers,
+      categoryItemsClassName: 'super-emojis',
+      getElementMediaSize: () => EMOJI_ELEMENT_SIZE,
+      padding: 16,
+      gapX: 4,
+      gapY: 0,
+      searchFetcher: async(value) => {
+        if(!value) return [];
+        return this.managers.appEmojiManager.prepareAndSearchEmojis({q: value, limit: Infinity, minChars: 1, addCustom: true});
+      },
+      groupFetcher: async(group) => {
+        if(group?._ !== 'emojiGroup') return [];
+
+        const emojiList = await this.managers.appEmojiManager.searchCustomEmoji(group.emoticons.join(''));
+
+        const emojis: AppEmoji[] = [
+          ...emojiList.document_id.map((docId) => ({docId, emoji: ''})),
+          ...group.emoticons.map((emoji) => ({emoji}))
+        ];
+
+        return emojis;
+      },
+      processSearchResult: async({data: emojis, searching, grouping}) => {
+        if(!emojis || (!searching && !grouping)) {
+          return;
+        }
+
+        if(!emojis.length) {
+          const span = i18n('NoEmojiFound');
+          span.classList.add('emoticons-not-found');
+          return span;
+        }
+
+        const container = this.categoriesContainer.cloneNode(false) as HTMLElement;
+        const category = this.createCategory();
+        this.createRendererForCategory(category);
+        for(const emoji of emojis) {
+          this.addEmojiToCategory({
+            category: category,
+            emoji,
+            batch: true
+          });
+        }
+        category.setCategoryItemsHeight(emojis.length);
+        category.elements.container.style.paddingTop = '.5rem';
+        category.elements.container.classList.remove('hide');
+        this._onCategoryVisibility(category, true);
+        container.append(category.elements.container);
+
+        onCleanup(() => {
+          category.middlewareHelper.destroy();
+        });
+
+        return container;
+      },
+      searchNoLoader: true,
+      searchPlaceholder: 'SearchEmoji',
+      searchType: 'emoji'
+    });
 
     safeAssign(this, options);
     this.container.classList.add('emoji-padding');
@@ -812,11 +866,13 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   }
 
   private onContentClick = (e: MouseEvent) => {
-    cancelEvent(e);
-
     const {target} = e;
-
     const container = findUpClassName(target, 'emoji-category');
+    if(!container) {
+      return;
+    }
+
+    cancelEvent(e);
     const category = this.categoriesMap.get(container);
     if(findUpClassName(target, 'category-title')) {
       if(category.local) {

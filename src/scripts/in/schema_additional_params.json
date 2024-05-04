@@ -492,4 +492,11 @@
     {"name": "pts_count", "type": "number"}
   ],
   "type": "Update"
+}, {
+  "predicate": "emojiGroupPremium",
+  "params": [
+    {"name": "title", "type": "string"},
+    {"name": "icon_emoji_id", "type": "Long"}
+  ],
+  "type": "EmojiGroup"
 }]

@@ -7,15 +7,30 @@ export function AnimationList(props: {
   children: JSX.Element
   animationOptions: KeyframeAnimationOptions,
   keyframes: Keyframe[],
-  animateOnlyReplacement?: boolean
+  animateOnlyReplacement?: boolean,
+  itemClassName?: string,
+  appear?: boolean
 }) {
-  const transitionList = createListTransition(resolveElements(() => props.children).toArray, {
+  const children = resolveElements(() => props.children).toArray;
+
+  const addClassName = props.itemClassName ? (added: Element[]) => {
+    added.forEach((element) => {
+      element.classList.add(props.itemClassName);
+    });
+  } : undefined;
+
+  addClassName?.(children());
+
+  const transitionList = createListTransition(children, {
     exitMethod: 'keep-index',
+    appear: props.appear,
     onChange: ({added, removed, finishRemoved}) => {
       const options = props.animationOptions;
       if(!liteMode.isAvailable('animations')) {
         options.duration = 0;
       }
+
+      addClassName?.(added);
 
       const keyframes = props.keyframes;
       queueMicrotask(() => {

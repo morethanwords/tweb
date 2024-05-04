@@ -11,7 +11,9 @@ interface Runtime {
         [k: string]: boolean;
     }, prev?: {
         [k: string]: boolean;
-    }): void;
+    }): {
+        [k: string]: boolean;
+    };
     style(node: Element, value: {
         [k: string]: string;
     }, prev?: {

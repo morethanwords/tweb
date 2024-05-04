@@ -11,7 +11,7 @@ import preloadAnimatedEmojiSticker from '../../helpers/preloadAnimatedEmojiStick
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import rootScope from '../../lib/rootScope';
-import {SuperStickerRenderer} from '../emoticonsDropdown/tabs/stickers';
+import SuperStickerRenderer from '../emoticonsDropdown/tabs/SuperStickerRenderer';
 import LazyLoadQueue from '../lazyLoadQueue';
 import Scrollable from '../scrollable';
 import attachStickerViewerListeners from '../stickerViewer';

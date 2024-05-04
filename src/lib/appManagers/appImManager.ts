@@ -546,6 +546,10 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
+    rootScope.addEventListener('gif_updated', ({saved}) => {
+      toastNew({langPackKey: saved ? 'GifSavedHint' : 'RemovedGIFFromFavorites'});
+    });
+
     apiManagerProxy.addEventListener('notificationBuild', async(options) => {
       const isForum = await this.managers.appPeersManager.isForum(options.message.peerId);
       const threadId = getMessageThreadId(options.message, isForum);
@@ -2025,7 +2029,7 @@ export class AppImManager extends EventListenerBase<{
     this.tabId = id;
     blurActiveElement();
     if(mediaSizes.isMobile && prevTabId === APP_TABS.PROFILE && id < APP_TABS.PROFILE) {
-      document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+      appSidebarRight.hide();
     }
 
     if(prevTabId !== undefined && id > prevTabId) {
@@ -2693,17 +2697,17 @@ export class AppImManager extends EventListenerBase<{
     }
 
     if(!peerId.isUser() || !liteMode.isAvailable('effects_emoji')) {
-      return;
+      return false;
     }
 
     const activeAnimations: Set<{}> = (container as any).activeAnimations ??= new Set();
     if(activeAnimations.size >= 3) {
-      return;
+      return true;
     }
 
     const doc = await managers.appStickersManager.getAnimatedEmojiSticker(emoji, true);
     if(!doc) {
-      return;
+      return false;
     }
 
     const data: SendMessageEmojiInteractionData = (container as any).emojiData ??= {
@@ -2770,6 +2774,8 @@ export class AppImManager extends EventListenerBase<{
 
       sendInteractionThrottled();
     }
+
+    return true;
     // });
   }
 }

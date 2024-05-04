@@ -1,7 +1,7 @@
 {
   "name": "solid-js",
   "description": "A declarative JavaScript library for building user interfaces.",
-  "version": "1.8.1",
+  "version": "1.8.17",
   "author": "Ryan Carniato",
   "license": "MIT",
   "homepage": "https://solidjs.com",
@@ -27,6 +27,9 @@
     "web/dist",
     "web/types",
     "web/package.json",
+    "web/storage/dist",
+    "web/storage/types",
+    "web/storage/package.json",
     "h/dist",
     "h/types",
     "h/package.json",
@@ -80,6 +83,7 @@
       "require": "./dist/solid.cjs"
     },
     "./dist/*": "./dist/*",
+    "./types/*": "./types/*",
     "./jsx-runtime": {
       "types": "./types/jsx.d.ts",
       "default": "./dist/solid.js"
@@ -124,6 +128,7 @@
       "require": "./store/dist/store.cjs"
     },
     "./store/dist/*": "./store/dist/*",
+    "./store/types/*": "./store/types/*",
     "./web": {
       "worker": {
         "types": "./web/types/index.d.ts",
@@ -159,7 +164,13 @@
       "import": "./web/dist/web.js",
       "require": "./web/dist/web.cjs"
     },
+    "./web/storage": {
+      "types": "./web/storage/types/index.d.ts",
+      "import": "./web/storage/dist/storage.js",
+      "require": "./web/storage/dist/storage.cjs"
+    },
     "./web/dist/*": "./web/dist/*",
+    "./web/types/*": "./web/types/*",
     "./universal": {
       "development": {
         "types": "./universal/types/index.d.ts",
@@ -171,6 +182,7 @@
       "require": "./universal/dist/universal.cjs"
     },
     "./universal/dist/*": "./universal/dist/*",
+    "./universal/types/*": "./universal/types/*",
     "./h": {
       "types": "./h/types/index.d.ts",
       "import": "./h/dist/h.js",
@@ -187,6 +199,7 @@
       "require": "./h/jsx-runtime/dist/jsx.cjs"
     },
     "./h/dist/*": "./h/dist/*",
+    "./h/types/*": "./h/types/*",
     "./html": {
       "types": "./html/types/index.d.ts",
       "import": "./html/dist/html.js",
@@ -204,6 +217,7 @@
     "types:copy": "ncp ../../node_modules/dom-expressions/src/jsx.d.ts ./src/jsx.d.ts && ncp ../../node_modules/dom-expressions/src/jsx-h.d.ts ./h/jsx-runtime/src/jsx.d.ts",
     "types:src": "tsc --project ./tsconfig.build.json && ncp ../../node_modules/dom-expressions/src/jsx.d.ts ./types/jsx.d.ts",
     "types:web": "tsc --project ./web/tsconfig.build.json",
+    "types:web-storage": "tsc --project ./web/storage/tsconfig.build.json",
     "types:copy-web": "ncp ../../node_modules/dom-expressions/src/client.d.ts ./web/types/client.d.ts && ncp ../../node_modules/dom-expressions/src/server.d.ts ./web/types/server.d.ts",
     "types:store": "tsc --project ./store/tsconfig.build.json",
     "types:html": "tsc --project ./html/tsconfig.json && ncp ../../node_modules/lit-dom-expressions/types/index.d.ts ./html/types/lit.d.ts",
@@ -227,6 +241,7 @@
   ],
   "dependencies": {
     "csstype": "^3.1.0",
-    "seroval": "^0.10.4"
+    "seroval": "^1.0.4",
+    "seroval-plugins": "^1.0.3"
   }
 }

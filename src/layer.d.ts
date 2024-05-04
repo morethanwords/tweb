@@ -11289,7 +11289,7 @@ export namespace EmojiList {
 /**
  * @link https://core.telegram.org/type/EmojiGroup
  */
-export type EmojiGroup = EmojiGroup.emojiGroup;
+export type EmojiGroup = EmojiGroup.emojiGroup | EmojiGroup.emojiGroupPremium;
 
 export namespace EmojiGroup {
   export type emojiGroup = {
@@ -11297,6 +11297,12 @@ export namespace EmojiGroup {
     title: string,
     icon_emoji_id: string | number,
     emoticons: Array<string>
+  };
+
+  export type emojiGroupPremium = {
+    _: 'emojiGroupPremium',
+    title?: string,
+    icon_emoji_id?: Long
   };
 }
 
@@ -14562,6 +14568,7 @@ export interface ConstructorDeclMap {
   'messageMediaPhotoExternal': MessageMedia.messageMediaPhotoExternal,
   'messageMediaDocumentExternal': MessageMedia.messageMediaDocumentExternal,
   'updatePts': Update.updatePts,
+  'emojiGroupPremium': EmojiGroup.emojiGroupPremium,
 }
 
 export type InvokeAfterMsg = {

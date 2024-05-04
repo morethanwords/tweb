@@ -417,8 +417,8 @@
 @import "partials/leftSidebar";
 @import "partials/rightSidebar";
 @import "partials/mediaViewer";
-@import "partials/emojiDropdown";
 @import "partials/scrollable";
+@import "partials/emojiDropdown";
 @import "partials/selector";
 @import "partials/gifsMasonry";
 @import "partials/preloader";
@@ -2502,4 +2502,10 @@ hr {
 .playback-rate-menu {
   width: 5.625rem;
   min-width: auto;
+}
+
+.animated {
+  &-item {
+    position: absolute;
+  }
 }

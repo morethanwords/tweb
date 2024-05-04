@@ -701,6 +701,10 @@ const lang = {
   'Language.zu': 'Zulu',
   'Translation.DoNotShow': 'Do not show \'Translate\' buttons for these languages.',
   'ShowMessage': 'Show Message',
+  'SearchEmoji': 'Search Emoji',
+  'SearchStickers': 'Search Stickers',
+  'SearchGIFs': 'Search GIFs',
+  'RemovedGIFFromFavorites': 'GIF was removed from Favorites.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2140,6 +2144,15 @@ const lang = {
   'TranslateMessage': 'Translate',
   'ReadAllReactions': 'Read all reactions',
   'ReadAllMentions': 'Read all mentions',
+  'NoStickersFound': 'No stickers found',
+  'NoGIFsFound': 'No GIFs found',
+  'NoEmojiFound': 'No emoji found',
+  'ViewPackPreview': 'View Pack',
+  'GifSavedHint': 'Added to Favorite GIFs.',
+  // 'LimitReachedFavoriteGifs': 'Limit of %d GIFs Reached',
+  // 'LimitReachedFavoriteGifsSubtitle': 'An older GIF was replaced with this one. You can **increase the limit** to %d GIFs.',
+  // 'LimitReachedFavoriteGifsSubtitlePremium': 'An older GIF was replaced with this one.',
+  'SaveToGIFs': 'Add to GIFs',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2718,7 +2731,8 @@ const lang = {
   'SetEmojiStatusUntil8Hours': 'Set for 8 hours',
   'SetEmojiStatusUntil2Days': 'Set for 2 days',
   'SetAsEmojiStatus': 'Set as Status',
-  'SetAsEmojiStatusInfo': 'Emoji status set.'
+  'SetAsEmojiStatusInfo': 'Emoji status set.',
+  'Message.Context.RemoveGif': 'Remove GIF'
 };
 
 export default lang;

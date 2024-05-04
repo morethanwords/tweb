@@ -16,7 +16,7 @@ import {copyTextToClipboard} from '../clipboard';
 import {getEmojiFromElement} from '../../components/emoticonsDropdown/tabs/emoji';
 import tsNow from '../tsNow';
 import {toastNew} from '../../components/toast';
-import {EmojiStatus} from '../../layer';
+import {DocumentAttribute, EmojiStatus, InputStickerSet} from '../../layer';
 
 export default function createStickersContextMenu({
   listenTo,
@@ -25,7 +25,9 @@ export default function createStickersContextMenu({
   verifyRecent,
   appendTo,
   isEmojis,
+  isGif,
   canHaveEmojiTimer,
+  canViewPack,
   onOpen,
   onClose,
   onSend
@@ -36,14 +38,16 @@ export default function createStickersContextMenu({
   verifyRecent?: (target: HTMLElement) => boolean,
   appendTo?: HTMLElement,
   isEmojis?: boolean,
+  isGif?: boolean,
   canHaveEmojiTimer?: boolean,
+  canViewPack?: boolean,
   onOpen?: () => any,
   onClose?: () => any,
   onSend?: () => any
 }) {
   let target: HTMLElement, doc: MyDocument;
   const verifyFavoriteSticker = async(toAdd: boolean) => {
-    const favedStickers = await rootScope.managers.acknowledged.appStickersManager.getFavedStickersStickers();
+    const favedStickers = await (isGif ? rootScope.managers.acknowledged.appGifsManager.getGifs() : rootScope.managers.acknowledged.appStickersManager.getFavedStickersStickers());
     if(!favedStickers.cached) {
       return false;
     }
@@ -77,6 +81,20 @@ export default function createStickersContextMenu({
       }
     }
   }, {
+    icon: 'stickers_face',
+    text: 'ViewPackPreview',
+    onClick: () => {
+      const attribute = doc.attributes.find((attr) => attr._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
+      const inputStickerSet = attribute.stickerset as InputStickerSet.inputStickerSetID;
+      PopupElement.createPopup(
+        PopupStickers,
+        inputStickerSet,
+        true,
+        chatInput
+      ).show();
+    },
+    verify: () => canViewPack
+  }, {
     icon: 'smile',
     text: 'SetAsEmojiStatus',
     onClick: () => {
@@ -95,16 +113,16 @@ export default function createStickersContextMenu({
     icon: 'stickers',
     text: 'Context.ViewStickerSet',
     onClick: () => PopupElement.createPopup(PopupStickers, doc.stickerSetInput, false, chatInput).show(),
-    verify: () => !isPack
+    verify: () => !isPack && !isGif
   }, {
-    icon: 'favourites',
-    text: 'AddToFavorites',
-    onClick: () => rootScope.managers.appStickersManager.faveSticker(doc.id, false),
+    icon: isGif ? 'gifs' : 'favourites',
+    text: isGif ? 'SaveToGIFs' : 'AddToFavorites',
+    onClick: () => isGif ? rootScope.managers.appGifsManager.saveGif(doc.id, false) : rootScope.managers.appStickersManager.faveSticker(doc.id, false),
     verify: () => verifyFavoriteSticker(true)
   }, {
-    icon: 'favourites',
-    text: 'DeleteFromFavorites',
-    onClick: () => rootScope.managers.appStickersManager.faveSticker(doc.id, true),
+    icon: isGif ? 'gifs' : 'favourites',
+    text: isGif ? 'Message.Context.RemoveGif' : 'DeleteFromFavorites',
+    onClick: () => isGif ? rootScope.managers.appGifsManager.saveGif(doc.id, true) : rootScope.managers.appStickersManager.faveSticker(doc.id, true),
     verify: () => verifyFavoriteSticker(false)
   }, {
     icon: 'delete',
@@ -161,6 +179,8 @@ export default function createStickersContextMenu({
         } else {
           target = findUpClassName(target, 'emoji') || findUpClassName(target, 'custom-emoji');
         }
+      } else if(isGif) {
+        target = findUpClassName(e.target, 'gif');
       } else {
         target = findUpClassName(e.target, 'media-sticker-wrapper');
       }

@@ -10,6 +10,7 @@ import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import AppSharedMediaTab from './tabs/sharedMedia';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import {AppManagers} from '../../lib/appManagers/managers';
+import appNavigationController from '../appNavigationController';
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
@@ -98,6 +99,11 @@ export class AppSidebarRight extends SidebarSlider {
     // this.rect = this.sidebarEl.getBoundingClientRect();
   }
 
+  public hide() {
+    document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+    appNavigationController.removeByType('right');
+  }
+
   public toggleSidebar(enable?: boolean, animate?: boolean) {
     const active = document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     let willChange: boolean;
@@ -125,7 +131,8 @@ export class AppSidebarRight extends SidebarSlider {
     }
 
     const animationPromise = appImManager.selectTab(active ? APP_TABS.CHAT : APP_TABS.PROFILE, animate);
-    document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, enable);
+    if(!enable) this.hide();
+    else document.body.classList.add(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     return animationPromise;
 
     /* return new Promise((resolve, reject) => {

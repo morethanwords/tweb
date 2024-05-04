@@ -62,7 +62,8 @@ export default class SearchIndex<SearchWhat> {
 
   private _search(
     query: string,
-    queryWords = query.split(' ').filter((word) => word.trim())
+    queryWords = query.split(' ').filter((word) => word.trim()),
+    minChars = this.options.minChars
   ) {
     const newFoundObjs: Array<{fullText: string, fullTextLength: number, totalChars?: number, what: SearchWhat, foundChars: number}> = [];
     const fullTexts = this.fullTexts;
@@ -95,7 +96,7 @@ export default class SearchIndex<SearchWhat> {
       if(found) {
         foundChars += queryWordsLength - 1;
         const fullTextLength = fullText.length;
-        if(this.options.minChars <= foundChars || fullTextLength <= foundChars) {
+        if(minChars <= foundChars || fullTextLength <= foundChars) {
           newFoundObjs.push({fullText, fullTextLength/* , totalChars */, what, foundChars});
         }
       }
@@ -104,11 +105,11 @@ export default class SearchIndex<SearchWhat> {
     return newFoundObjs;
   }
 
-  public search(query: string) {
+  public search(query: string, minChars?: number) {
     query = this.processSearchText(query);
 
     const queries = query.split('\x01');
-    const results = queries.map((query) => this._search(query));
+    const results = queries.map((query) => this._search(query, undefined, minChars));
     const newFoundObjs = flatten(results);
 
     newFoundObjs.sort((a, b) => {

@@ -4,46 +4,131 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {EmoticonsDropdown, EmoticonsTab, EMOTICONSSTICKERGROUP} from '..';
+import {EMOTICONSSTICKERGROUP} from '..';
 import GifsMasonry from '../../gifsMasonry';
-import Scrollable from '../../scrollable';
 import {putPreloader} from '../../putPreloader';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import EmoticonsTabC from '../tab';
+import {makeMediaSize} from '../../../helpers/mediaSize';
+import safeAssign from '../../../helpers/object/safeAssign';
+import {i18n} from '../../../lib/langPack';
+import {onCleanup} from 'solid-js';
+import {Middleware} from '../../../helpers/middleware';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
+import type AppGifsManager from '../../../lib/appManagers/appGifsManager';
+import rootScope from '../../../lib/rootScope';
 
-export default class GifsTab implements EmoticonsTab {
-  public content: HTMLElement;
-  public scrollable: Scrollable;
-  public tabId: number;
-  public emoticonsDropdown: EmoticonsDropdown;
+export default class GifsTab extends EmoticonsTabC<any, Awaited<ReturnType<AppGifsManager['searchGifs']>>> {
+  private query: string;
 
-  constructor(private managers: AppManagers) {
+  constructor(options: {
+    managers: AppManagers
+  }) {
+    super({
+      managers: options.managers,
+      categoryItemsClassName: 'emoticons-gifs',
+      getElementMediaSize: () => makeMediaSize(124, 124),
+      padding: 4,
+      gapX: 2,
+      gapY: 2,
+      noMenu: true,
+      searchFetcher: async(value) => {
+        if(!value) return {documents: [], nextOffset: ''};
+        return this.managers.appGifsManager.searchGifs(this.query = value);
+      },
+      groupFetcher: async(group) => {
+        if(group?._ !== 'emojiGroup') return {documents: [], nextOffset: ''};
+        return this.managers.appGifsManager.searchGifs(this.query = group.emoticons.join(''));
+      },
+      processSearchResult: async({data: {documents: gifs, nextOffset}, searching, grouping}) => {
+        if(!gifs || (!searching && !grouping)) {
+          return;
+        }
 
+        if(!gifs.length) {
+          const span = i18n('NoGIFsFound');
+          span.classList.add('emoticons-not-found');
+          return span;
+        }
+
+        const middleware = createMiddleware().get();
+        const container = this.categoriesContainer.cloneNode(false) as HTMLElement;
+        const {masonry, container: gifsContainer} = this.createMasonry(middleware);
+        gifs.forEach((doc) => masonry.add(doc));
+        container.append(gifsContainer);
+
+        const old = this.scrollable.onAdditionalScroll;
+        this.scrollable.onAdditionalScroll = () => {
+          old?.();
+
+          if(!nextOffset) {
+            return;
+          }
+
+          this.managers.appGifsManager.searchGifs(this.query, nextOffset).then(({documents, nextOffset: newNextOffset}) => {
+            if(!middleware()) {
+              return;
+            }
+
+            documents.forEach((doc) => masonry.add(doc));
+            nextOffset = newNextOffset;
+          });
+
+          // prevent multiple requests
+          nextOffset = undefined;
+        };
+
+        onCleanup(() => {
+          this.scrollable.onAdditionalScroll = old;
+        });
+
+        return container;
+      },
+      searchNoLoader: true,
+      searchPlaceholder: 'SearchGIFs',
+      searchType: 'gifs'
+    });
+
+    safeAssign(this, options);
+    this.container.classList.add('gifs-padding');
+    this.content.id = 'content-gifs';
   }
 
-  init() {
-    this.content = document.getElementById('content-gifs');
-    const gifsContainer = this.content.firstElementChild as HTMLDivElement;
-    attachClickEvent(gifsContainer, this.emoticonsDropdown.onMediaClick);
+  private createMasonry(middleware: Middleware) {
+    const gifsContainer = document.createElement('div');
+    gifsContainer.classList.add('gifs-masonry');
+    const detachClickEvent = attachClickEvent(gifsContainer, this.emoticonsDropdown.onMediaClick);
+    const masonry = new GifsMasonry(gifsContainer, EMOTICONSSTICKERGROUP, this.scrollable);
 
-    const scroll = this.scrollable = new Scrollable(this.content, 'GIFS');
-    const masonry = new GifsMasonry(gifsContainer, EMOTICONSSTICKERGROUP, scroll);
+    middleware.onDestroy(() => {
+      masonry.clear();
+      detachClickEvent();
+    });
+
+    this.emoticonsDropdown.addLazyLoadQueueRepeat(masonry.lazyLoadQueue, masonry.processInvisibleDiv, middleware);
+    return {masonry, container: gifsContainer};
+  }
+
+  public init() {
+    const middleware = this.middlewareHelper.get();
+    const {masonry, container} = this.createMasonry(middleware);
+    this.categoriesContainer.append(container);
     const preloader = putPreloader(this.content, true);
 
-    this.managers.appDocsManager.getGifs().then((docs) => {
-      docs.forEach((doc) => {
-        masonry.add(doc);
-      });
-
+    this.managers.appGifsManager.getGifs().then((docs) => {
+      masonry.addBatch(docs);
       preloader.remove();
     });
 
-    this.emoticonsDropdown.addLazyLoadQueueRepeat(masonry.lazyLoadQueue, masonry.processInvisibleDiv);
+    rootScope.addEventListener('gifs_updated', (gifs) => {
+      masonry.update(gifs);
+    });
 
-    this.init = null;
-  }
+    this.attachHelpers({
+      isGif: true
+    });
 
-  onClose() {
-
+    this.init = undefined;
   }
 }

@@ -1,7 +1,7 @@
 import { Accessor } from "../reactive/signal.js";
 import type { JSX } from "../jsx.js";
 /**
- * creates a list elements from a list
+ * Creates a list elements from a list
  *
  * it receives a map function as its child that receives a list element and an accessor with the index and returns a JSX-Element; if the list is empty, an optional fallback is returned:
  * ```typescript
@@ -11,7 +11,7 @@ import type { JSX } from "../jsx.js";
  * ```
  * If you have a list with fixed indices and changing values, consider using `<Index>` instead.
  *
- * @description https://www.solidjs.com/docs/latest/api#for
+ * @description https://docs.solidjs.com/reference/components/for
  */
 export declare function For<T extends readonly any[], U extends JSX.Element>(props: {
     each: T | undefined | null | false;
@@ -29,7 +29,7 @@ export declare function For<T extends readonly any[], U extends JSX.Element>(pro
  * ```
  * If you have a list with changing indices, better use `<For>`.
  *
- * @description https://www.solidjs.com/docs/latest/api#index
+ * @description https://docs.solidjs.com/reference/components/index
  */
 export declare function Index<T extends readonly any[], U extends JSX.Element>(props: {
     each: T | undefined | null | false;
@@ -39,7 +39,7 @@ export declare function Index<T extends readonly any[], U extends JSX.Element>(p
 type RequiredParameter<T> = T extends () => unknown ? never : T;
 /**
  * Conditionally render its children or an optional fallback component
- * @description https://www.solidjs.com/docs/latest/api#show
+ * @description https://docs.solidjs.com/reference/components/show
  */
 export declare function Show<T, TRenderFunction extends (item: Accessor<NonNullable<T>>) => JSX.Element>(props: {
     when: T | undefined | null | false;
@@ -54,7 +54,7 @@ export declare function Show<T, TRenderFunction extends (item: NonNullable<T>) =
     children: JSX.Element | RequiredParameter<TRenderFunction>;
 }): JSX.Element;
 /**
- * switches between content based on mutually exclusive conditions
+ * Switches between content based on mutually exclusive conditions
  * ```typescript
  * <Switch fallback={<FourOhFour />}>
  *   <Match when={state.route === 'home'}>
@@ -65,7 +65,7 @@ export declare function Show<T, TRenderFunction extends (item: NonNullable<T>) =
  *   </Match>
  * </Switch>
  * ```
- * @description https://www.solidjs.com/docs/latest/api#switchmatch
+ * @description https://docs.solidjs.com/reference/components/switch-and-match
  */
 export declare function Switch(props: {
     fallback?: JSX.Element;
@@ -77,13 +77,13 @@ export type MatchProps<T> = {
     children: JSX.Element | ((item: NonNullable<T> | Accessor<NonNullable<T>>) => JSX.Element);
 };
 /**
- * selects a content based on condition when inside a `<Switch>` control flow
+ * Selects a content based on condition when inside a `<Switch>` control flow
  * ```typescript
  * <Match when={condition()}>
  *   <Content/>
  * </Match>
  * ```
- * @description https://www.solidjs.com/docs/latest/api#switchmatch
+ * @description https://docs.solidjs.com/reference/components/switch-and-match
  */
 export declare function Match<T, TRenderFunction extends (item: Accessor<NonNullable<T>>) => JSX.Element>(props: {
     when: T | undefined | null | false;
@@ -97,7 +97,7 @@ export declare function Match<T, TRenderFunction extends (item: NonNullable<T>) 
 }): JSX.Element;
 export declare function resetErrorBoundaries(): void;
 /**
- * catches uncaught errors inside components and renders a fallback content
+ * Catches uncaught errors inside components and renders a fallback content
  *
  * Also supports a callback form that passes the error and a reset function:
  * ```typescript
@@ -109,7 +109,7 @@ export declare function resetErrorBoundaries(): void;
  * ```
  * Errors thrown from the fallback can be caught by a parent ErrorBoundary
  *
- * @description https://www.solidjs.com/docs/latest/api#errorboundary
+ * @description https://docs.solidjs.com/reference/components/error-boundary
  */
 export declare function ErrorBoundary(props: {
     fallback: JSX.Element | ((err: any, reset: () => void) => JSX.Element);

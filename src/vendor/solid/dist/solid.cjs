@@ -152,12 +152,11 @@ const NO_INIT = {};
 var Owner = null;
 let Transition = null;
 let Scheduler = null;
-let ExternalSourceFactory = null;
+let ExternalSourceConfig = null;
 let Listener = null;
 let Updates = null;
 let Effects = null;
 let ExecCount = 0;
-const [transPending, setTransPending] = /*@__PURE__*/createSignal(false);
 function createRoot(fn, detachedOwner) {
   const listener = Listener,
     owner = Owner,
@@ -270,7 +269,7 @@ function createResource(pSource, pFetcher, pOptions) {
   if (sharedConfig.context) {
     id = `${sharedConfig.context.id}${sharedConfig.context.count++}`;
     let v;
-    if (options.ssrLoadFrom === "initial") initP = options.initialValue;else if (sharedConfig.load && (v = sharedConfig.load(id))) initP = isPromise(v) && "value" in v ? v.value : v;
+    if (options.ssrLoadFrom === "initial") initP = options.initialValue;else if (sharedConfig.load && (v = sharedConfig.load(id))) initP = v;
   }
   function loadEnd(p, v, error, key) {
     if (pr === p) {
@@ -337,6 +336,10 @@ function createResource(pSource, pFetcher, pOptions) {
       return p;
     }
     pr = p;
+    if ("value" in p) {
+      if (p.status === "success") loadEnd(pr, p.value, undefined, lookup);else loadEnd(pr, undefined, undefined, lookup);
+      return p;
+    }
     scheduled = true;
     queueMicrotask(() => scheduled = false);
     runUpdates(() => {
@@ -417,10 +420,11 @@ function batch(fn) {
   return runUpdates(fn, false);
 }
 function untrack(fn) {
-  if (Listener === null) return fn();
+  if (!ExternalSourceConfig && Listener === null) return fn();
   const listener = Listener;
   Listener = null;
   try {
+    if (ExternalSourceConfig) return ExternalSourceConfig.untrack(fn);
     return fn();
   } finally {
     Listener = listener;
@@ -438,7 +442,7 @@ function on(deps, fn, options) {
     } else input = deps();
     if (defer) {
       defer = false;
-      return undefined;
+      return prevValue;
     }
     const result = untrack(() => fn(input, prevInput, prevValue));
     prevInput = input;
@@ -519,6 +523,7 @@ function startTransition(fn) {
     return t ? t.done : undefined;
   });
 }
+const [transPending, setTransPending] = /*@__PURE__*/createSignal(false);
 function useTransition() {
   return [transPending, startTransition];
 }
@@ -550,22 +555,31 @@ let SuspenseContext;
 function getSuspenseContext() {
   return SuspenseContext || (SuspenseContext = createContext());
 }
-function enableExternalSource(factory) {
-  if (ExternalSourceFactory) {
-    const oldFactory = ExternalSourceFactory;
-    ExternalSourceFactory = (fn, trigger) => {
-      const oldSource = oldFactory(fn, trigger);
-      const source = factory(x => oldSource.track(x), trigger);
-      return {
-        track: x => source.track(x),
-        dispose() {
-          source.dispose();
-          oldSource.dispose();
-        }
-      };
+function enableExternalSource(factory, untrack = fn => fn()) {
+  if (ExternalSourceConfig) {
+    const {
+      factory: oldFactory,
+      untrack: oldUntrack
+    } = ExternalSourceConfig;
+    ExternalSourceConfig = {
+      factory: (fn, trigger) => {
+        const oldSource = oldFactory(fn, trigger);
+        const source = factory(x => oldSource.track(x), trigger);
+        return {
+          track: x => source.track(x),
+          dispose() {
+            source.dispose();
+            oldSource.dispose();
+          }
+        };
+      },
+      untrack: fn => oldUntrack(() => untrack(fn))
     };
   } else {
-    ExternalSourceFactory = factory;
+    ExternalSourceConfig = {
+      factory,
+      untrack
+    };
   }
 }
 function readSignal() {
@@ -634,10 +648,7 @@ function writeSignal(node, value, isComp) {
 function updateComputation(node) {
   if (!node.fn) return;
   cleanNode(node);
-  const owner = Owner,
-    listener = Listener,
-    time = ExecCount;
-  Listener = Owner = node;
+  const time = ExecCount;
   runComputation(node, Transition && Transition.running && Transition.sources.has(node) ? node.tValue : node.value, time);
   if (Transition && !Transition.running && Transition.sources.has(node)) {
     queueMicrotask(() => {
@@ -649,11 +660,12 @@ function updateComputation(node) {
       }, false);
     });
   }
-  Listener = listener;
-  Owner = owner;
 }
 function runComputation(node, value, time) {
   let nextValue;
+  const owner = Owner,
+    listener = Listener;
+  Listener = Owner = node;
   try {
     nextValue = node.fn(value);
   } catch (err) {
@@ -670,6 +682,9 @@ function runComputation(node, value, time) {
     }
     node.updatedAt = time + 1;
     return handleError(err);
+  } finally {
+    Listener = listener;
+    Owner = owner;
   }
   if (!node.updatedAt || node.updatedAt <= time) {
     if (node.updatedAt != null && "observers" in node) {
@@ -706,14 +721,14 @@ function createComputation(fn, init, pure, state = STALE, options) {
       if (!Owner.owned) Owner.owned = [c];else Owner.owned.push(c);
     }
   }
-  if (ExternalSourceFactory) {
+  if (ExternalSourceConfig && c.fn) {
     const [track, trigger] = createSignal(undefined, {
       equals: false
     });
-    const ordinary = ExternalSourceFactory(c.fn, trigger);
+    const ordinary = ExternalSourceConfig.factory(c.fn, trigger);
     onCleanup(() => ordinary.dispose());
     const triggerInTransition = () => startTransition(trigger).then(() => inTransition.dispose());
-    const inTransition = ExternalSourceFactory(c.fn, triggerInTransition);
+    const inTransition = ExternalSourceConfig.factory(c.fn, triggerInTransition);
     c.fn = x => {
       track();
       return Transition && Transition.running ? inTransition.track(x) : ordinary.track(x);
@@ -1291,40 +1306,36 @@ function mergeProps(...sources) {
       }
     }, propTraps);
   }
-  const target = {};
   const sourcesMap = {};
-  const defined = new Set();
+  const defined = Object.create(null);
   for (let i = sources.length - 1; i >= 0; i--) {
     const source = sources[i];
     if (!source) continue;
     const sourceKeys = Object.getOwnPropertyNames(source);
-    for (let i = 0, length = sourceKeys.length; i < length; i++) {
+    for (let i = sourceKeys.length - 1; i >= 0; i--) {
       const key = sourceKeys[i];
       if (key === "__proto__" || key === "constructor") continue;
       const desc = Object.getOwnPropertyDescriptor(source, key);
-      if (!defined.has(key)) {
-        if (desc.get) {
-          defined.add(key);
-          Object.defineProperty(target, key, {
-            enumerable: true,
-            configurable: true,
-            get: resolveSources.bind(sourcesMap[key] = [desc.get.bind(source)])
-          });
-        } else {
-          if (desc.value !== undefined) defined.add(key);
-          target[key] = desc.value;
-        }
+      if (!defined[key]) {
+        defined[key] = desc.get ? {
+          enumerable: true,
+          configurable: true,
+          get: resolveSources.bind(sourcesMap[key] = [desc.get.bind(source)])
+        } : desc.value !== undefined ? desc : undefined;
       } else {
         const sources = sourcesMap[key];
         if (sources) {
-          if (desc.get) {
-            sources.push(desc.get.bind(source));
-          } else if (desc.value !== undefined) {
-            sources.push(() => desc.value);
-          }
-        } else if (target[key] === undefined) target[key] = desc.value;
+          if (desc.get) sources.push(desc.get.bind(source));else if (desc.value !== undefined) sources.push(() => desc.value);
+        }
       }
     }
+  }
+  const target = {};
+  const definedKeys = Object.keys(defined);
+  for (let i = definedKeys.length - 1; i >= 0; i--) {
+    const key = definedKeys[i],
+      desc = defined[key];
+    if (desc && desc.get) Object.defineProperty(target, key, desc);else target[key] = desc ? desc.value : undefined;
   }
   return target;
 }
@@ -1450,7 +1461,7 @@ function Show(props) {
 }
 function Switch(props) {
   let keyed = false;
-  const equals = (a, b) => a[0] === b[0] && (keyed ? a[1] === b[1] : !a[1] === !b[1]) && a[2] === b[2];
+  const equals = (a, b) => (keyed ? a[1] === b[1] : !a[1] === !b[1]) && a[2] === b[2];
   const conditions = children(() => props.children),
     evalConditions = createMemo(() => {
       let conds = conditions();
@@ -1601,22 +1612,23 @@ function Suspense(props) {
   if (sharedConfig.context && sharedConfig.load) {
     const key = sharedConfig.context.id + sharedConfig.context.count;
     let ref = sharedConfig.load(key);
-    if (ref && (typeof ref !== "object" || !("value" in ref))) p = ref;
+    if (ref) {
+      if (typeof ref !== "object" || ref.status !== "success") p = ref;else sharedConfig.gather(key);
+    }
     if (p && p !== "$$f") {
       const [s, set] = createSignal(undefined, {
         equals: false
       });
       flicker = s;
       p.then(() => {
+        if (sharedConfig.done) return set();
         sharedConfig.gather(key);
         setHydrateContext(ctx);
         set();
         setHydrateContext();
-      }).catch(err => {
-        if (err || sharedConfig.done) {
-          err && (error = err);
-          return set();
-        }
+      }, err => {
+        error = err;
+        set();
       });
     }
   }

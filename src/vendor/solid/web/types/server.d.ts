@@ -3,6 +3,7 @@ export function renderToString<T>(
   options?: {
     nonce?: string;
     renderId?: string;
+    onError?: (err: any) => void;
   }
 ): string;
 export function renderToStringAsync<T>(
@@ -11,6 +12,8 @@ export function renderToStringAsync<T>(
     timeoutMs?: number;
     nonce?: string;
     renderId?: string;
+    noScripts?: boolean;
+    onError?: (err: any) => void;
   }
 ): Promise<string>;
 export function renderToStream<T>(
@@ -20,10 +23,11 @@ export function renderToStream<T>(
     renderId?: string;
     onCompleteShell?: (info: { write: (v: string) => void }) => void;
     onCompleteAll?: (info: { write: (v: string) => void }) => void;
+    onError?: (err: any) => void;
   }
 ): {
   pipe: (writable: { write: (v: string) => void }) => void;
-  pipeTo: (writable: WritableStream) => void;
+  pipeTo: (writable: WritableStream) => Promise<void>;
 };
 
 export function HydrationScript(props: { nonce?: string; eventNames?: string[] }): JSX.Element;
@@ -49,7 +53,12 @@ export function createComponent<T>(Comp: (props: T) => JSX.Element, props: T): J
 export function mergeProps(...sources: unknown[]): unknown;
 export function getOwner(): unknown;
 export function generateHydrationScript(options: { nonce?: string; eventNames?: string[] }): string;
-export function stringify(root: unknown): string;
+export declare const RequestContext: unique symbol;
+export interface RequestEvent {
+  request: Request;
+  locals: Record<string | number | symbol, any>;
+}
+export function getRequestEvent(): RequestEvent | undefined;
 
 export function Hydration(props: { children?: JSX.Element }): JSX.Element;
 export function NoHydration(props: { children?: JSX.Element }): JSX.Element;
