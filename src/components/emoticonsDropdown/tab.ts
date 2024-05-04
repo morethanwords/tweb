@@ -64,6 +64,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   protected padding: number;
   protected gapX: number;
   protected gapY: number;
+  protected noMenu: boolean;
   protected searchFetcher?: (value: string) => Promise<T>;
   protected groupFetcher?: (group: EmojiGroup) => Promise<T>;
   protected processSearchResult?: (result: {data: T, searching: boolean, grouping: boolean}) => Promise<HTMLElement>;
@@ -78,6 +79,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     padding: number,
     gapX: number,
     gapY: number,
+    noMenu?: boolean,
     searchFetcher?: EmoticonsTabC<Category, T>['searchFetcher'],
     groupFetcher?: EmoticonsTabC<Category, T>['groupFetcher'],
     processSearchResult?: EmoticonsTabC<Category, T>['processSearchResult'],
@@ -98,25 +100,26 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     this.container = document.createElement('div');
     this.container.classList.add('tabs-tab', 'emoticons-container');
 
-    this.menuWrapper = document.createElement('div');
-    this.menuWrapper.classList.add('menu-wrapper', 'emoticons-menu-wrapper', 'emoticons-will-move-up');
-
-    this.menu = document.createElement('nav');
-    this.menu.className = 'menu-horizontal-div no-stripe justify-start emoticons-menu';
-
-    this.menuWrapper.append(this.menu);
-    this.menuScroll = new ScrollableX(this.menuWrapper);
+    if(this.noMenu) {
+      this.container.classList.add('no-menu');
+    } else {
+      this.createMenu();
+    }
 
     this.content = document.createElement('div');
     this.content.classList.add('emoticons-content');
 
-    this.container.append(this.menuWrapper, this.content);
+    this.container.append(...[this.menuWrapper, this.content].filter(Boolean));
 
     this.scrollable = new Scrollable(this.content, 'STICKERS');
-    this.scrollable.container.classList.add('emoticons-will-move-up');
 
     this.categoriesContainer = document.createElement('div');
-    this.categoriesContainer.classList.add('emoticons-categories-container', 'emoticons-will-move-down');
+    this.categoriesContainer.classList.add('emoticons-categories-container');
+
+    if(!this.noMenu) {
+      this.scrollable.container.classList.add('emoticons-will-move-up');
+      this.categoriesContainer.classList.add('emoticons-will-move-down');
+    }
 
     if(options.searchFetcher) {
       this.createSearch();
@@ -125,9 +128,21 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     }
   }
 
+  private createMenu() {
+    this.menuWrapper = document.createElement('div');
+    this.menuWrapper.classList.add('menu-wrapper', 'emoticons-menu-wrapper', 'emoticons-will-move-up');
+
+    this.menu = document.createElement('nav');
+    this.menu.className = 'menu-horizontal-div no-stripe justify-start emoticons-menu';
+
+    this.menuWrapper.append(this.menu);
+    this.menuScroll = new ScrollableX(this.menuWrapper);
+  }
+
   private createSearch() {
     const searchContainer = document.createElement('div');
-    searchContainer.classList.add('emoticons-search-container', 'emoticons-will-move-down');
+    searchContainer.classList.add('emoticons-search-container');
+    if(!this.noMenu) searchContainer.classList.add('emoticons-will-move-down');
     this.scrollable.append(searchContainer);
     this.disposeSearch = render(() => {
       const [query, setQuery] = createSignal('');

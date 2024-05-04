@@ -122,13 +122,8 @@ $menu-search-translateY: -#{$menu-height};
     }
   }
 
-  #content-gifs {
-    .scrollable-y {
-      padding: 0 .1875rem;
-    }
-  }
-
   .gifs-masonry {
+    margin: .25rem .1875rem .1875rem;
     border-radius: $border-radius-medium;
     overflow: hidden;
   }
@@ -141,6 +136,21 @@ $menu-search-translateY: -#{$menu-height};
     flex-direction: column;
     height: 100%;
     background-color: transparent !important;
+
+    &.no-menu {
+      .emoticons-search-container {
+        margin-top: .5rem;
+      }
+
+      .scrollable-y {
+        height: 100%;
+        max-height: 100%;
+      }
+
+      .emoticons-categories-container:after {
+        display: none;
+      }
+    }
   }
 
   &-will-move {

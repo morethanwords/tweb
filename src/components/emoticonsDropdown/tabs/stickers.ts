@@ -320,7 +320,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     });
 
     const rendererLazyLoadQueue = this.superStickerRenderer.lazyLoadQueue;
-    this.emoticonsDropdown.addLazyLoadQueueRepeat(rendererLazyLoadQueue, this.superStickerRenderer.processInvisible);
+    this.emoticonsDropdown.addLazyLoadQueueRepeat(rendererLazyLoadQueue, this.superStickerRenderer.processInvisible, this.middlewareHelper.get());
 
     rootScope.addEventListener('sticker_updated', ({type, document, faved}) => {
       // if(type === 'faved') {

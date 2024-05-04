@@ -8,7 +8,6 @@ import type {MyDocument} from '../lib/appManagers/appDocsManager';
 import animationIntersector, {AnimationItemGroup} from './animationIntersector';
 import Scrollable from './scrollable';
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
-import calcImageInBox from '../helpers/calcImageInBox';
 import {doubleRaf} from '../helpers/schedulers';
 import {AppManagers} from '../lib/appManagers/managers';
 import rootScope from '../lib/rootScope';
@@ -16,10 +15,6 @@ import LazyLoadQueueRepeat2 from './lazyLoadQueueRepeat2';
 import wrapVideo from './wrappers/video';
 import noop from '../helpers/noop';
 import {MiddlewareHelper, getMiddleware} from '../helpers/middleware';
-
-const width = 400;
-const maxSingleWidth = width - 100;
-const height = 100;
 
 export default class GifsMasonry {
   public lazyLoadQueue: LazyLoadQueueRepeat2;
@@ -44,15 +39,6 @@ export default class GifsMasonry {
         this.processInvisibleDiv(target);
       }
     });
-
-    /* setInterval(() => {
-      // @ts-ignore
-      const players = animationIntersector.byGroups[group];
-
-      if(players) {
-        console.log(`GIFS RENDERED IN ${group}:`, players.length, players.filter((p) => !p.animation.paused).length, this.lazyLoadQueue.intersector.getVisible().length);
-      }
-    }, .25e3); */
 
     if(attach) {
       this.attach();
@@ -135,10 +121,6 @@ export default class GifsMasonry {
         return promise;
       });
 
-      /* let timeout = window.setTimeout(() => {
-        console.error('processVisibleDiv timeout', div, doc);
-      }, 1e3); */
-
       return promise;
     };
 
@@ -181,21 +163,9 @@ export default class GifsMasonry {
   };
 
   public add(doc: MyDocument, appendTo = this.element) {
-    // let gifWidth = doc.w;
-    // let gifHeight = doc.h;
-    // if(gifHeight < height) {
-    //   gifWidth = height / gifHeight * gifWidth;
-    //   gifHeight = height;
-    // }
-
-    // const willUseWidth = Math.min(maxSingleWidth, width, gifWidth);
-    // const size = calcImageInBox(gifWidth, gifHeight, willUseWidth, height);
-
     const div = document.createElement('div');
     div.classList.add('gif', 'grid-item'/* , 'fade-in-transition' */);
-    // div.style.width = size.width + 'px';
     // div.style.opacity = '0';
-    // div.style.height = h + 'px';
     div.dataset.docId = '' + doc.id;
 
     appendTo.append(div);
