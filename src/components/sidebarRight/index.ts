@@ -132,7 +132,12 @@ export class AppSidebarRight extends SidebarSlider {
 
     const animationPromise = appImManager.selectTab(active ? APP_TABS.CHAT : APP_TABS.PROFILE, animate);
     if(!enable) this.hide();
-    else document.body.classList.add(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+    else {
+      document.body.classList.add(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+      if(!appNavigationController.findItemByType('right')) {
+        this.pushNavigationItem(this.sharedMediaTab);
+      }
+    }
     return animationPromise;
 
     /* return new Promise((resolve, reject) => {
