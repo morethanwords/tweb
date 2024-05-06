@@ -40,7 +40,7 @@ export type PopupButton = {
 
 export type PopupOptions = Partial<{
   closable: boolean,
-  onBackClick: () => void,
+  onBackClick: () => void | false,
   isConfirmationNeededOnClose: () => void | boolean | Promise<any>, // should return boolean instantly or `Promise` from `confirmationPopup`
   overlayClosable: boolean,
   withConfirm: LangPackKey | boolean,
@@ -157,8 +157,9 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
       attachClickEvent(this.btnClose, () => {
         if(options.onBackClick && this.btnCloseAnimatedIcon.classList.contains('state-back')) {
-          this.btnCloseAnimatedIcon.classList.remove('state-back');
-          options.onBackClick();
+          if(options.onBackClick() !== false) {
+            this.btnCloseAnimatedIcon.classList.remove('state-back');
+          }
         } else {
           this.hide();
         }

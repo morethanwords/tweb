@@ -67,6 +67,7 @@ export default class PopupWebApp extends PopupElement<{
       title: wrapEmojiText(options.attachMenuBot?.short_name),
       onBackClick: () => {
         this.telegramWebView.dispatchWebViewEvent('back_button_pressed', undefined);
+        return false;
       },
       isConfirmationNeededOnClose: () => {
         if(!this.isCloseConfirmationNeeded) {
