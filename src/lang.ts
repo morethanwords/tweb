@@ -705,6 +705,8 @@ const lang = {
   'SearchStickers': 'Search Stickers',
   'SearchGIFs': 'Search GIFs',
   'RemovedGIFFromFavorites': 'GIF was removed from Favorites.',
+  'WebPage.OpenLink': 'OPEN LINK',
+  'Ads.Reported': 'We will review this ad to ensure it matches our **[Ad Policies and Guidelines](https://ads.telegram.org/guidelines)**.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2153,6 +2155,12 @@ const lang = {
   // 'LimitReachedFavoriteGifsSubtitle': 'An older GIF was replaced with this one. You can **increase the limit** to %d GIFs.',
   // 'LimitReachedFavoriteGifsSubtitlePremium': 'An older GIF was replaced with this one.',
   'SaveToGIFs': 'Add to GIFs',
+  'RemoveAds': 'Remove Ads',
+  'AboutRevenueSharingAds': 'About These Ads',
+  'ReportAd': 'Report Ad',
+  'ReportAdLearnMore': 'Learn more about our [Ad Policies and Guidelines](https://ads.telegram.org/guidelines).',
+  'AdHidden': 'You will no longer see ads from Telegram.',
+  'SponsoredMessageAdWhatIsThis': 'what\'s this?',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

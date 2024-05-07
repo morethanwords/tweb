@@ -81,6 +81,15 @@ $row-border-radius: $border-radius-medium;
       grid-template-columns: 3.5rem 1fr auto;
     }
 
+    &.no-subtitle {
+      grid-template-areas: "left title right";
+      grid-template-rows: auto;
+
+      .row-title {
+        align-self: unset;
+      }
+    }
+
     .row-title {
       grid-area: title;
       align-self: flex-end;

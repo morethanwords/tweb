@@ -71,6 +71,7 @@ import detectLanguageForTranslation from '../../helpers/detectLanguageForTransla
 import usePeerTranslation from '../../hooks/usePeerTranslation';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import documentFragmentToHTML from '../../helpers/dom/documentFragmentToHTML';
+import PopupReportAd from '../popups/reportAd';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -816,7 +817,15 @@ export default class ChatContextMenu {
       onClick: () => {
         PopupElement.createPopup(PopupSponsored);
       },
-      verify: () => this.isSponsored,
+      verify: () => this.isSponsored && !this.sponsoredMessage.pFlags.can_report,
+      isSponsored: true
+    }, {
+      icon: 'info',
+      text: 'AboutRevenueSharingAds',
+      onClick: () => {
+
+      },
+      verify: () => this.isSponsored && !!this.sponsoredMessage.pFlags.can_report,
       isSponsored: true
     }, {
       icon: 'hand',
@@ -824,12 +833,35 @@ export default class ChatContextMenu {
       onClick: () => {
         PopupPremium.show({feature: 'no_ads'});
       },
-      verify: () => this.isSponsored,
+      verify: () => this.isSponsored && !this.sponsoredMessage.pFlags.can_report,
+      isSponsored: true
+    }, {
+      icon: 'hand',
+      text: 'ReportAd',
+      onClick: () => {
+        PopupElement.createPopup(
+          PopupReportAd,
+          this.peerId,
+          this.sponsoredMessage,
+          () => {
+            this.chat.bubbles.deleteMessagesByIds([this.message.mid], true);
+          }
+        );
+      },
+      verify: () => this.isSponsored && !!this.sponsoredMessage.pFlags.can_report,
+      isSponsored: true
+    }, {
+      icon: 'crossround',
+      text: 'RemoveAds',
+      onClick: () => {
+        PopupPremium.show({feature: 'no_ads'});
+      },
+      verify: () => this.isSponsored && !!this.sponsoredMessage.pFlags.can_report,
       isSponsored: true
     }, {
       icon: 'copy',
       text: 'Copy',
-      onClick: () => copyTextToClipboard(this.sponsoredMessage.message),
+      onClick: this.onCopyClick,
       verify: () => this.isSponsored,
       isSponsored: true
     }, {
@@ -1253,18 +1285,26 @@ export default class ChatContextMenu {
       mids = this.chat.selection.getSelectedMids();
     }
 
-    const htmlParts = mids.map((mid) => {
-      const message = this.chat.getMessage(mid) as Message.message;
-      if(!message.message) {
+    let messages: (Message.message | SponsoredMessage.sponsoredMessage)[];
+    if(this.isSponsored) {
+      messages = [this.sponsoredMessage];
+    } else {
+      messages = mids.map((mid) => this.chat.getMessage(mid) as Message.message);
+    }
+
+    const htmlParts = messages.map((message) => {
+      if(!message?.message) {
         return;
       }
 
-      const wrapped = wrapRichText(message.message, {entities: message.totalEntities, wrappingDraft: true});
+      const wrapped = wrapRichText(message.message, {
+        entities: (message as Message.message).totalEntities || message.entities,
+        wrappingDraft: true
+      });
       return documentFragmentToHTML(wrapped);
     });
 
-    const parts: string[] = mids.map((mid) => {
-      const message = this.chat.getMessage(mid) as Message.message;
+    const parts: string[] = messages.map((message) => {
       return message?.message;
     });
 

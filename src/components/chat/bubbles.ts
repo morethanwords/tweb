@@ -179,6 +179,7 @@ import getWebFileLocation from '../../helpers/getWebFileLocation';
 import TranslatableMessage from '../translatableMessage';
 import getUnreadReactions from '../../lib/appManagers/utils/messages/getUnreadReactions';
 import {setPeerLanguageLoaded} from '../../stores/peerLanguage';
+import ButtonIcon from '../buttonIcon';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -5915,11 +5916,14 @@ export default class ChatBubbles {
                 mid: number,
                 startParam: string,
                 callback: () => void,
-                link: string;
+                link: string,
+                icon: Icon;
               if(sponsoredMessage.app) {
                 text = 'Chat.Message.ViewApp';
               } else if(webPage) {
-                text = 'OpenUrlTitle';
+                text = 'WebPage.OpenLink';
+                icon = 'arrow_next';
+                viewButton.classList.add('is-link');
               } else if(sponsoredMessage.channel_post) {
                 text = 'OpenChannelPost';
                 mid = sponsoredMessage.channel_post;
@@ -5987,6 +5991,7 @@ export default class ChatBubbles {
               };
 
               viewButton.append(sponsoredMessage.button_text ? wrapEmojiText(sponsoredMessage.button_text) : i18n(text));
+              icon && viewButton.append(Icon(icon, `${className}-button-icon`));
               this.observer.observe(viewButton, this.viewsObserverCallback);
             } else {
               const langPackKey = webPageTypes[webPage.type] || 'OpenMessage';
@@ -6105,6 +6110,12 @@ export default class ChatBubbles {
             setDirection(a);
             contentDiv.append(a);
             textElements.push(a);
+
+            if(sponsoredMessage && sponsoredMessage.pFlags.can_report) {
+              const tip = i18n('SponsoredMessageAdWhatIsThis');
+              tip.classList.add('bubble-sponsored-tip');
+              a.append(tip);
+            }
           }
 
           const title = wrapWebPageTitle(webPage);
@@ -7103,12 +7114,29 @@ export default class ChatBubbles {
     }
 
     if(sponsoredMessage) {
-      const button = document.createElement('div');
-      button.classList.add('bubble-beside-button', 'bubble-beside-button-top', 'bubble-sponsored-hide');
-      button.append(Icon('close'));
-      bubbleContainer.prepend(button);
+      const canReport = sponsoredMessage.pFlags.can_report;
+      const buttons = document.createElement('div');
+      buttons.classList.add('bubble-beside-button', 'bubble-beside-button-top');
+      let hideButton: HTMLElement;
+      if(canReport) {
+        buttons.classList.add('bubble-sponsored-buttons');
+        hideButton = ButtonIcon('close bubble-sponsored-buttons-button', {noRipple: true});
+        const hr = document.createElement('div');
+        hr.classList.add('bubble-sponsored-buttons-delimiter');
+        const menu = ButtonIcon('more bubble-sponsored-buttons-button', {noRipple: true});
+        buttons.append(hideButton, hr, menu);
+
+        attachClickEvent(menu, (e) => {
+          this.chat.contextMenu.onContextMenu(e as MouseEvent);
+        });
+      } else {
+        hideButton = buttons;
+        hideButton.append(Icon('close'));
+        buttons.classList.add('bubble-sponsored-hide');
+      }
+      bubbleContainer.prepend(buttons);
       bubble.classList.add('with-beside-button');
-      attachClickEvent(button, () => {
+      attachClickEvent(hideButton, () => {
         PopupPremium.show({feature: 'no_ads'});
       });
     }

@@ -42,7 +42,7 @@ export default function RowTsx(props: Partial<{
   fakeDisabled: boolean,
   // buttonRight?: HTMLElement | boolean,
   // buttonRightLangKey: LangPackKey,
-  // rightContent?: HTMLElement,
+  rightContent?: JSX.Element,
   // rightTextContent?: string,
   asLink: boolean,
   // contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
@@ -111,8 +111,8 @@ export default function RowTsx(props: Partial<{
         'have-padding': havePadding(),
         'row-clickable hover-effect': isClickable(),
         'is-disabled': props.disabled,
-        'is-fake-disabled': props.fakeDisabled
-        // 'row-grid': !!props.rightContent
+        'is-fake-disabled': props.fakeDisabled,
+        'row-grid': !!props.rightContent
       }}
       onClick={typeof(props.clickable) !== 'boolean' && props.clickable}
     >
@@ -122,6 +122,7 @@ export default function RowTsx(props: Partial<{
         <IconTsx icon={props.icon} class={classNames('row-icon', ...(props.iconClasses || []))} />
       )}
       {props.checkboxField || props.radioField}
+      {props.rightContent && (<div class="row-right">{props.rightContent}</div>)}
     </Dynamic>
   );
 

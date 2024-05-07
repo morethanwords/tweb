@@ -824,6 +824,8 @@ export class AppChatsManager extends AppManager {
             sponsoredMessage.chat_invite
           );
         }
+
+        sponsoredMessage.pFlags.can_report = true;
       });
 
       return sponsoredMessages;
@@ -1072,6 +1074,14 @@ export class AppChatsManager extends AppManager {
     });
 
     return promise;
+  }
+
+  public reportSponsoredMessage(chatId: ChatId, randomId: SponsoredMessage['random_id'], option: Uint8Array) {
+    return this.apiManager.invokeApi('channels.reportSponsoredMessage', {
+      channel: this.getChannelInput(chatId),
+      random_id: randomId,
+      option
+    });
   }
 
   private onUpdateChannelParticipant = (update: Update.updateChannelParticipant) => {

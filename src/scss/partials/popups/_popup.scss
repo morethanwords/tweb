@@ -12,6 +12,7 @@ $popup-footer-abitlarger-padding: 1rem;
 .popup {
   --popup-min-width: auto;
   --popup-max-width: auto;
+  --link-color: var(--primary-color);
   position: fixed!important;
   top: 0;
   right: 0;

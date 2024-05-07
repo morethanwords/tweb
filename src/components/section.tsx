@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {JSX, ParentComponent, Ref} from 'solid-js';
+import {JSX, ParentComponent, Ref, splitProps} from 'solid-js';
 import {LangPackKey, FormatterArguments, i18n} from '../lib/langPack';
 import {generateDelimiter} from './generateDelimiter';
 import classNames from '../helpers/string/classNames';
 
 export type SectionOptions = {
-  name?: LangPackKey | HTMLElement,
+  name?: LangPackKey | HTMLElement | DocumentFragment,
   nameArgs?: FormatterArguments,
   nameRight?: JSX.Element,
   caption?: LangPackKey,
@@ -37,11 +37,13 @@ const SectionCaption = (props: Pick<SectionOptions, 'caption' | 'captionArgs'>) 
     </SectionContent>
   );
 };
-const Section: ParentComponent<SectionOptions & {ref?: Ref<HTMLDivElement>}> = (props) => {
+const Section: ParentComponent<SectionOptions & {ref?: Ref<HTMLDivElement>} & JSX.HTMLAttributes<HTMLDivElement>> = (props) => {
+  const [, rest] = splitProps(props, ['name', 'nameArgs', 'nameRight', 'caption', 'captionArgs', 'captionOld', 'noDelimiter', 'fakeGradientDelimiter', 'noShadow', 'class']);
   return (
     <div
       class={classNames(className + '-container', props.class)}
       ref={props.ref}
+      {...rest}
     >
       <div
         class={classNames(

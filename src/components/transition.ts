@@ -158,6 +158,7 @@ type TransitionSliderOptions = {
   type: TransitionSliderType,
   transitionTime: number,
   onTransitionStart?: (id: number) => void,
+  onTransitionStartAfter?: (id: number) => void,
   onTransitionEnd?: (id: number) => void,
   isHeavy?: boolean,
   once?: boolean,
@@ -178,6 +179,7 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
     transitionTime,
     onTransitionEnd,
     onTransitionStart,
+    onTransitionStartAfter,
     isHeavy = true,
     once = false,
     withAnimationListener = true,
@@ -319,6 +321,8 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
         to.classList.add('active');
       }
 
+      onTransitionStartAfter?.(id);
+
       to.classList.remove('from');
       to.classList.add('to');
     }
@@ -351,7 +355,7 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
         timeout = window.setTimeout(callback, transitionTime + 100); // something happened to container
         onTransitionEndCallbacks.set(_from, callback);
       } else {
-        timeout = window.setTimeout(callback, transitionTime);
+        timeout = window.setTimeout(callback, transitionTime + 100);
         onTransitionEndCallbacks.set(_from, () => {
           clearTimeout(timeout);
           onTransitionEndCallbacks.delete(_from);

@@ -129,6 +129,7 @@ class LocalStorage<Storage extends Record<string, any>> {
     for(let i = 1; i <= 5; ++i) {
       keys.push(`dc${i}_server_salt`);
       keys.push(`dc${i}_auth_key`);
+      keys.push(`dc${i}_hash`); // only for WebA
     }
 
     for(const key of keys) {
