@@ -108,7 +108,7 @@ export default function RowTsx(props: Partial<{
         'no-subtitle': !subtitleRow,
         'no-wrap': props.noWrap,
         'row-with-icon': !!props.icon,
-        'have-padding': havePadding(),
+        'row-with-padding': havePadding(),
         'row-clickable hover-effect': isClickable(),
         'is-disabled': props.disabled,
         'is-fake-disabled': props.fakeDisabled,

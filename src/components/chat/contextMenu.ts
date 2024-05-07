@@ -72,6 +72,7 @@ import usePeerTranslation from '../../hooks/usePeerTranslation';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import documentFragmentToHTML from '../../helpers/dom/documentFragmentToHTML';
 import PopupReportAd from '../popups/reportAd';
+import PopupAboutAd from '../popups/aboutAd';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -823,7 +824,7 @@ export default class ChatContextMenu {
       icon: 'info',
       text: 'AboutRevenueSharingAds',
       onClick: () => {
-
+        PopupElement.createPopup(PopupAboutAd);
       },
       verify: () => this.isSponsored && !!this.sponsoredMessage.pFlags.can_report,
       isSponsored: true

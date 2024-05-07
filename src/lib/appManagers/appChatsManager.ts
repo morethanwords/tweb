@@ -825,7 +825,7 @@ export class AppChatsManager extends AppManager {
           );
         }
 
-        sponsoredMessage.pFlags.can_report = true;
+        // sponsoredMessage.pFlags.can_report = true;
       });
 
       return sponsoredMessages;

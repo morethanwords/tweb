@@ -1,0 +1,72 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.popup-about-ad {
+  --popup-max-width: 420px;
+  $parent: ".popup";
+  @include text-overflow(false);
+
+  #{$parent} {
+    &-container {
+      max-height: calc(100vh - 5rem);
+      padding-bottom: 0;
+    }
+
+    &-body {
+      margin: 0 -1rem;
+    }
+  }
+
+  &-title {
+    margin-top: .5rem;
+    margin-bottom: .125rem;
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-16);
+  }
+
+  &-subtitle {
+    color: var(--secondary-text-color);
+    margin-bottom: 1rem;
+    font-size: var(--font-size-14);
+    line-height: var(--line-height-14);
+  }
+
+  &-title,
+  &-subtitle {
+    text-align: center;
+    padding: 0 3rem;
+  }
+
+  .row {
+    justify-content: unset;
+    margin: 0 .5rem;
+
+    &-icon {
+      color: var(--primary-color);
+      top: auto;
+      transform: unset;
+    }
+  }
+
+  &-caption {
+    background-color: var(--light-filled-secondary-text-color);
+    border-radius: $border-radius-big;
+    padding: .625rem 1.25rem;
+    text-align: center;
+    line-height: var(--line-height-16);
+    margin: 1rem .5rem 0;
+
+    &-title {
+      font-weight: var(--font-weight-bold);
+      margin-bottom: .125rem;
+    }
+
+    &-subtitle {
+      font-size: var(--font-size-14);
+      line-height: var(--line-height-14);
+    }
+  }
+}

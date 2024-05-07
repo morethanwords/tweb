@@ -180,6 +180,7 @@ import TranslatableMessage from '../translatableMessage';
 import getUnreadReactions from '../../lib/appManagers/utils/messages/getUnreadReactions';
 import {setPeerLanguageLoaded} from '../../stores/peerLanguage';
 import ButtonIcon from '../buttonIcon';
+import PopupAboutAd from '../popups/aboutAd';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -6114,6 +6115,10 @@ export default class ChatBubbles {
             if(sponsoredMessage && sponsoredMessage.pFlags.can_report) {
               const tip = i18n('SponsoredMessageAdWhatIsThis');
               tip.classList.add('bubble-sponsored-tip');
+              attachClickEvent(tip, (e) => {
+                cancelEvent(e);
+                PopupElement.createPopup(PopupAboutAd);
+              });
               a.append(tip);
             }
           }

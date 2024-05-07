@@ -366,7 +366,7 @@ namespace I18n {
     }
 
     const out: ReturnType<typeof superFormatter> = [];
-    const regExp = /(\*\*|__)(.+?)\1|(\n)|(\[.+?\]\(.*?\))|un\d|%\d\$.|%./g;
+    const regExp = /(\*\*|__)(.+?)\1|(\n)|(\[.+?\]\(.*?\))|un\d|%\d\$.|%\S/g;
 
     let lastIndex = 0;
     input.replace(regExp, (match, p1: any, p2: any, p3: any, p4: string, offset: number, string: string) => {

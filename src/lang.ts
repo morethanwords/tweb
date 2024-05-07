@@ -707,6 +707,7 @@ const lang = {
   'RemovedGIFFromFavorites': 'GIF was removed from Favorites.',
   'WebPage.OpenLink': 'OPEN LINK',
   'Ads.Reported': 'We will review this ad to ensure it matches our **[Ad Policies and Guidelines](https://ads.telegram.org/guidelines)**.',
+  'RevenueSharingAdsInfo4SubtitleLearnMore1': '**[Learn More >](https://ads.telegram.org/)**',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2161,6 +2162,16 @@ const lang = {
   'ReportAdLearnMore': 'Learn more about our [Ad Policies and Guidelines](https://ads.telegram.org/guidelines).',
   'AdHidden': 'You will no longer see ads from Telegram.',
   'SponsoredMessageAdWhatIsThis': 'what\'s this?',
+  'RevenueSharingAdsAlertSubtitle': 'Telegram Ads are very different from ads on other platforms. Ads such as this one:',
+  'RevenueSharingAdsInfo1Title': 'Respect Your Privacy',
+  'RevenueSharingAdsInfo1Subtitle': 'Ads on Telegram do not use your personal information and are based on the channel in which you see them.',
+  'RevenueSharingAdsInfo2Title': 'Help the Channel Creator',
+  'RevenueSharingAdsInfo2Subtitle': '50% of the revenue from Telegram Ads goes to the owner of the channel where they are displayed.',
+  'RevenueSharingAdsInfo3Title': 'Can Be Removed',
+  'RevenueSharingAdsInfo3Subtitle': 'You can turn off ads by subscribing to **Telegram Premium**, and Level %1$s channels can remove them for their subscribers.',
+  'RevenueSharingAdsInfo4Title': 'Can I Launch an Ad?',
+  'RevenueSharingAdsInfo4Subtitle2': 'Anyone can create an ad to display in this channel — with minimal budgets. Check out the **Telegram Ad Platform** for details. %1$s',
+  'RevenueSharingAdsAlertButton': 'Understood',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
