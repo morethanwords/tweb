@@ -399,7 +399,7 @@ export class DialogElement extends Row {
     rightSpan.classList.add('dialog-title-details');
     rightSpan.append(statusSpan, lastTimeSpan);
 
-    this.subtitleRow.classList.add('dialog-subtitle');
+    this.subtitleRow.classList.add('dialog-subtitle', 'has-multiple-badges');
 
     // if(I18n.isRTL) {
     //   // this.subtitle.dir = '';
@@ -3499,8 +3499,13 @@ export class AppDialogsManager {
       dialogElement.createReactionsBadge();
     }
 
-    const hasMultipleBadges = [hasPinnedBadge, hasUnreadBadge, hasMentionsBadge, hasReactionsBadge].filter(Boolean).length > 1;
-    dialogElement.subtitleRow.classList.toggle('has-multiple-badges', hasMultipleBadges);
+    const badgesLength = [hasPinnedBadge, hasUnreadBadge, hasMentionsBadge, hasReactionsBadge].filter(Boolean).length;
+    SetTransition({
+      element: dialogElement.subtitleRow,
+      className: 'has-only-pinned-badge',
+      forwards: hasPinnedBadge && badgesLength === 1,
+      duration: isBatch ? 0 : BADGE_TRANSITION_TIME
+    });
 
     const a: [Parameters<DialogElement['toggleBadgeByKey']>[0], boolean, boolean][] = [
       ['pinnedBadge', hasPinnedBadge, isPinnedBadgeMounted],

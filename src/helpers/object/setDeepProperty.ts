@@ -4,6 +4,10 @@ export function joinDeepPath(...args: any[]) {
   return args.join(DEEP_PATH_JOINER);
 }
 
+export function splitDeepPath(path: string) {
+  return path.split(DEEP_PATH_JOINER);
+}
+
 export default function setDeepProperty(
   object: any,
   key: string,

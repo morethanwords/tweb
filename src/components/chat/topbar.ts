@@ -1287,7 +1287,7 @@ export default class ChatTopbar {
     });
 
     const setAuto = () => {
-      prepare(false).then((callback) => middleware() && callback());
+      prepare(false).then((callback) => middleware() && callback?.());
     };
 
     return {

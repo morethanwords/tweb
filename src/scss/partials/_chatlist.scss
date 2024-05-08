@@ -515,6 +515,10 @@ ul.chatlist {
   &-subtitle {
     &-flex {
       display: flex;
+
+      .has-only-pinned-badge:not(.animating) & {
+        margin-inline-end: 1.5rem;
+      }
     }
 
     &-span {

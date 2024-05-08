@@ -22,7 +22,7 @@ import getGifDuration from '../../helpers/getGifDuration';
 import replaceContent from '../../helpers/dom/replaceContent';
 import createVideo from '../../helpers/dom/createVideo';
 import prepareAlbum from '../prepareAlbum';
-import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
+import {makeMediaSize} from '../../helpers/mediaSize';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -40,7 +40,6 @@ import {DocumentAttribute, DraftMessage, Photo, PhotoSize} from '../../layer';
 import {getPreviewBytesFromURL} from '../../helpers/bytes/getPreviewURLFromBytes';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import ButtonMenuToggle from '../buttonMenuToggle';
-import partition from '../../helpers/array/partition';
 import InputFieldAnimated from '../inputFieldAnimated';
 import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '../../environment/videoMimeTypesSupport';
@@ -52,6 +51,7 @@ import handleVideoLeak from '../../helpers/dom/handleVideoLeak';
 import wrapDraft from '../wrappers/draft';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {ChatType} from '../chat/chat';
+import pause from '../../helpers/schedulers/pause';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -149,7 +149,7 @@ export default class PopupNewMedia extends PopupElement {
     const canSendVideos = canSend.send_videos;
     const canSendDocs = canSend.send_docs;
 
-    attachClickEvent(this.btnConfirm, () => this.send(), {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.btnConfirm, async() => (await pause(0), this.send()), {listenerSetter: this.listenerSetter});
 
     const btnMenu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
@@ -565,11 +565,12 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    if(await this.chat.input.showSlowModeTooltipIfNeeded({
+    const isSlowModeActive = await this.chat.input.showSlowModeTooltipIfNeeded({
       sendingFew: this.messagesCount() > 1,
       container: this.btnConfirm.parentElement,
       element: this.btnConfirm
-    })) {
+    });
+    if(isSlowModeActive) {
       return;
     }
 

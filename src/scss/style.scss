@@ -2020,6 +2020,9 @@ hr {
       line-height: 1.375rem;
 
       &-right-secondary {
+        display: flex;
+        align-items: center;
+        height: 1.25rem;
         margin-top: -.4375rem;
         font-size: var(--font-size-12) !important;
         line-height: var(--line-height-12) !important;
@@ -2372,6 +2375,10 @@ hr {
   width: calc(100% - 4.5rem - 1rem);
   pointer-events: none;
   opacity: 0;
+  
+  @include respond-to(handhelds) {
+    width: calc(100% - 4.5rem - .5rem);
+  }
 
   @include animation-level(2) {
     transition: opacity var(--transition-standard-in);

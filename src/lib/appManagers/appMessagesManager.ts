@@ -1240,7 +1240,6 @@ export class AppMessagesManager extends AppManager {
             sentDeferred.resolve(inputMedia);
           }, (error: ApiError) => {
             toggleError(error);
-            throw error;
           });
 
           return sentDeferred;

@@ -97,6 +97,7 @@
       position: relative;
       text-decoration: none !important;
       max-width: 100%;
+      @include text-overflow(true);
 
       &-container {
         display: flex !important;
@@ -107,6 +108,7 @@
       .peer-title,
       .topic-name {
         position: relative;
+        @include text-overflow(true);
       }
 
       &:before {

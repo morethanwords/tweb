@@ -596,6 +596,8 @@ export default class PeerProfile {
           if(IS_PARALLAX_SUPPORTED) {
             this.scrollable.container.classList.add('parallax');
           }
+
+          this.section.content.classList.remove('has-simple-avatar');
         };
       }
     }
@@ -635,6 +637,7 @@ export default class PeerProfile {
       if(this.avatar) this.avatar.node.remove();
       this.avatar = avatar;
 
+      this.section.content.classList.add('has-simple-avatar');
       this.section.content.prepend(this.avatar.node, this.name, this.subtitle);
     };
   }

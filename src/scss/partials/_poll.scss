@@ -24,6 +24,8 @@ poll-element {
   .poll {
     &-title {
       font-weight: var(--font-weight-bold);
+      white-space: pre-wrap;
+      @include text-overflow(false);
   
       @include respond-to(handhelds) {
         max-width: 88%;

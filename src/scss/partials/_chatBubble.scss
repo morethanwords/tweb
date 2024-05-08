@@ -638,7 +638,7 @@
   .canvas-dots {
     z-index: 1;
   }
-  
+
   &.emoji-big {
     --emoji-size: 1rem;
     font-size: 0;
@@ -691,7 +691,7 @@
       }
     }
   }
-  
+
   &.just-media {
     .bubble-content {
       background: none!important;
@@ -744,19 +744,16 @@
     }
   }
 
-  &:not(.is-message-empty) .attachment/* ,
-  &:not(.is-message-empty).is-reply .attachment */ {
-    border-end-start-radius: 0;
-    border-end-end-radius: 0;
-  }
-  
   &:not(.emoji-big) .attachment {
     font-size: 0;
   }
-  
+
   .attachment {
     max-width: 100%;
-    border-radius: inherit;
+    border-start-start-radius: var(--border-start-start-radius);
+    border-start-end-radius: var(--border-start-end-radius);
+    border-end-start-radius: var(--border-end-start-radius);
+    border-end-end-radius: var(--border-end-end-radius);
     overflow: hidden;
     user-select: none;
 
@@ -904,6 +901,10 @@
   }
 
   &-first {
+    --border-start-start-radius: #{$bubble-border-radius-big};
+    --border-start-end-radius: #{$bubble-border-radius-big};
+    --border-end-end-radius: #{$bubble-border-radius-big};
+    --border-end-start-radius: #{$bubble-border-radius-big};
     order: -1;
     margin-top: .5rem;
     justify-content: center;
@@ -1174,12 +1175,18 @@
     }
   } */
 
+  &:not(.is-message-empty) .attachment/* ,
+  &:not(.is-message-empty).is-reply */ {
+    --border-end-start-radius: 0;
+    --border-end-end-radius: 0;
+  }
+
   &.forwarded .attachment,
   &.is-reply .attachment,
-  &:not(.hide-name)/* .is-message-empty */ .attachment/* ,
-  &:not(.hide-name):not(.sticker) .attachment */ {
-    border-start-start-radius: 0;
-    border-start-end-radius: 0;
+  &:not(.hide-name) .attachment/* .is-message-empty *//* ,
+  &:not(.hide-name):not(.sticker) */ {
+    --border-start-start-radius: 0;
+    --border-start-end-radius: 0;
   }
 
   .message,
@@ -2302,10 +2309,8 @@
   }
 
   &.with-reply-markup {
-    .bubble-content {
-      --border-end-start-radius: #{$bubble-border-radius-medium} !important;
-      --border-end-end-radius: #{$bubble-border-radius-medium} !important;
-    }
+    --border-end-start-radius: #{$bubble-border-radius-medium} !important;
+    --border-end-end-radius: #{$bubble-border-radius-medium} !important;
   }
 
   .name-with-reply {
@@ -3195,12 +3200,12 @@
 }
 
 .bubble.is-in {
-  .bubble-content {
-    --border-start-start-radius: #{$bubble-border-radius-medium};
-    --border-start-end-radius: #{$bubble-border-radius-big};
-    --border-end-end-radius: #{$bubble-border-radius-big};
-    --border-end-start-radius: #{$bubble-border-radius-medium};
+  --border-start-start-radius: #{$bubble-border-radius-medium};
+  --border-start-end-radius: #{$bubble-border-radius-big};
+  --border-end-end-radius: #{$bubble-border-radius-big};
+  --border-end-start-radius: #{$bubble-border-radius-medium};
 
+  .bubble-content {
     &-wrapper {
       &.can-zoom-fade {
         transform-origin: var(--transform-origin-left-center);
@@ -3209,16 +3214,12 @@
   }
 
   &.is-group-first {
-    .bubble-content {
-      --border-start-start-radius: #{$bubble-border-radius-big};
-    }
+    --border-start-start-radius: #{$bubble-border-radius-big};
   }
 
   &.is-group-last {
     &.can-have-tail {
-      .bubble-content {
-        --border-end-start-radius: 0 !important;
-      }
+      --border-end-start-radius: 0 !important;
 
       .bubble-tail {
         margin-inline-start: -8.4px;
@@ -3237,9 +3238,7 @@
     }
 
     &:not(.can-have-tail) {
-      .bubble-content {
-        --border-end-start-radius: #{$bubble-border-radius-big};
-      }
+      --border-end-start-radius: #{$bubble-border-radius-big};
     }
   }
 
@@ -3323,13 +3322,13 @@
   --peer-color-rgb: var(--message-primary-color-rgb);
   --peer-border-background: var(--message-out-peer-border-background);
   --message-reaction-tag-dot-color: var(--message-out-reaction-tag-dot-color);
+  --border-start-start-radius: #{$bubble-border-radius-big};
+  --border-start-end-radius: #{$bubble-border-radius-medium};
+  --border-end-end-radius: #{$bubble-border-radius-medium};
+  --border-end-start-radius: #{$bubble-border-radius-big};
 
   .bubble-content {
     margin-left: auto;
-    --border-start-start-radius: #{$bubble-border-radius-big};
-    --border-start-end-radius: #{$bubble-border-radius-medium};
-    --border-end-end-radius: #{$bubble-border-radius-medium};
-    --border-end-start-radius: #{$bubble-border-radius-big};
 
     &, 
     .poll-footer-button {
@@ -3384,16 +3383,12 @@
   } */
     
   &.is-group-first {
-    .bubble-content {
-      --border-start-end-radius: #{$bubble-border-radius-big};
-    }
+    --border-start-end-radius: #{$bubble-border-radius-big};
   }
     
   &.is-group-last {
     &.can-have-tail {
-      .bubble-content {
-        --border-end-end-radius: 0 !important;
-      }
+      --border-end-end-radius: 0 !important;
 
       .bubble-tail {
         inset-inline-end: -8.4px;
@@ -3413,9 +3408,7 @@
     }
 
     &:not(.can-have-tail) {
-      .bubble-content {
-        --border-end-end-radius: #{$bubble-border-radius-big};
-      }
+      --border-end-end-radius: #{$bubble-border-radius-big};
     }
   }
 

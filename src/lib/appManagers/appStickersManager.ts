@@ -621,8 +621,7 @@ export class AppStickersManager extends AppManager {
   public getPremiumStickers() {
     return this.getStickersByEmoticon({
       emoticon: '📂⭐️',
-      includeServerStickers: true,
-      excludePremiumEffectStickers: true
+      includeServerStickers: true
     });
   }
 
