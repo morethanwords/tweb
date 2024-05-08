@@ -18,6 +18,7 @@ import safeAssign from '../../helpers/object/safeAssign';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import Scrollable from '../scrollable';
+import wrapKeyboardButton from '../wrappers/keyboardButton';
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -132,7 +133,7 @@ export default class ReplyKeyboard extends DropdownHover {
       div.classList.add(ReplyKeyboard.BASE_CLASS + '-row');
 
       for(const button of row.buttons) {
-        const {buttonEl, onClick} = this.chatInput.chat.bubbles.wrapKeyboardButton({button, replyMarkup});
+        const {buttonEl, onClick} = wrapKeyboardButton({button, chat: this.chatInput.chat, replyMarkup});
         this.onClickMap.set(buttonEl, onClick);
         buttonEl.classList.add(ReplyKeyboard.BASE_CLASS + '-button', 'btn');
         div.append(buttonEl);

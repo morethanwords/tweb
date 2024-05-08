@@ -577,6 +577,22 @@ export default class ChatContextMenu {
         this.chat.type !== ChatType.Scheduled/* ,
       cancelEvent: true */
     }, {
+      icon: 'message',
+      text: 'ViewReplies',
+      textArgs: [(this.message as Message.message)?.replies?.replies],
+      onClick: () => {
+        this.chat.appImManager.openThread({
+          peerId: this.peerId,
+          threadId: this.message.mid,
+          lastMsgId: 0
+        });
+      },
+      verify: () => {
+        if(this.chat.threadId) return false;
+        const replies = (this.message as Message.message)?.replies;
+        return !!(replies && !replies.pFlags.comments && replies.replies);
+      }
+    }, {
       icon: isGif ? 'gifs' : 'favourites',
       text: isGif ? 'SaveToGIFs' : 'AddToFavorites',
       onClick: this.onFaveStickerClick.bind(this, false),

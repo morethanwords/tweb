@@ -108,6 +108,7 @@ export type BroadcastEvents = {
   'stories_position': {peerId: PeerId, position: StoriesListPosition},
 
   'replies_updated': Message.message,
+  'replies_short_update': Message.message,
 
   'scheduled_new': Message.message,
   'scheduled_delete': {peerId: PeerId, mids: number[]},

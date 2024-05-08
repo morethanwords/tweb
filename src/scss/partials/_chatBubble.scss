@@ -1874,6 +1874,18 @@
       color: var(--message-time-color);
     }
 
+    &-replies {
+      margin-inline-end: .375rem;
+      order: -1;
+      display: inline-flex;
+
+      &-icon {
+        margin-inline-start: .125rem;
+        font-size: 12px;
+        height: 12px;
+      }
+    }
+
     &.is-block {
       float: none;
       display: block;

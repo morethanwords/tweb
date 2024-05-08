@@ -1898,7 +1898,7 @@ export class AppMessagesManager extends AppManager {
       reply_to: this.generateReplyHeader(peerId, options.replyTo),
       via_bot_id: options.viaBotId,
       reply_markup: options.replyMarkup,
-      replies: this.generateReplies(peerId),
+      replies: this.generateReplies(peerId, options.replyTo),
       views: isBroadcast && 1,
       pending: true
     };
@@ -1996,7 +1996,7 @@ export class AppMessagesManager extends AppManager {
     return header;
   }
 
-  private generateReplies(peerId: PeerId) {
+  private generateReplies(peerId: PeerId, replyTo?: InputReplyTo) {
     let replies: MessageReplies.messageReplies;
     if(this.appPeersManager.isBroadcast(peerId)) {
       const channelFull = this.appProfileManager.getCachedFullChat(peerId.toChatId()) as ChatFull.channelFull;
@@ -2011,6 +2011,13 @@ export class AppMessagesManager extends AppManager {
           replies_pts: 0
         };
       }
+    } else if(this.appPeersManager.isAnyGroup(peerId) && !replyTo) {
+      replies = {
+        _: 'messageReplies',
+        pFlags: {},
+        replies: 0,
+        replies_pts: 0
+      };
     }
 
     return replies;
@@ -3597,7 +3604,7 @@ export class AppMessagesManager extends AppManager {
     return out;
   }
 
-  public generateTempMessageId(peerId: PeerId, topMessage?: number) {
+  public generateTempMessageId(peerId: PeerId, topMessage?: number, canBeOld?: boolean) {
     if(!topMessage) {
       const dialog = this.getDialogOnly(peerId);
       const historyStorage = this.historiesStorage[peerId];
@@ -3605,7 +3612,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     const tempMid = this.tempMids[peerId];
-    if(tempMid && tempMid > topMessage) {
+    if(tempMid && tempMid > topMessage && !canBeOld) {
       topMessage = tempMid;
     }
 
@@ -4611,7 +4618,7 @@ export class AppMessagesManager extends AppManager {
       pFlags: {
         is_single: true
       },
-      id: this.generateTempMessageId(peerId, maxMid),
+      id: this.generateTempMessageId(peerId, maxMid, true),
       date: message.date,
       from_id: {_: 'peerUser', user_id: NULL_PEER_ID}/* message.from_id */,
       peer_id: message.peer_id,
@@ -5636,7 +5643,7 @@ export class AppMessagesManager extends AppManager {
     const historyStorage = this.getHistoryStorage(peerId, isLocalThreadUpdate ? threadId : undefined);
 
     if(!isLocalThreadUpdate) {
-      this.updateMessageRepliesIfNeeded(message);
+      this.updateMessageRepliesIfNeeded(message, true);
     }
 
     // * so message can exist if reloadConversation came back earlier with mid
@@ -6504,7 +6511,7 @@ export class AppMessagesManager extends AppManager {
     return dialog && dialog.top_message === message.mid;
   }
 
-  private updateMessageRepliesIfNeeded(threadMessage: MyMessage) {
+  private updateMessageRepliesIfNeeded(threadMessage: MyMessage, add: boolean) {
     try { // * на всякий случай, скорее всего это не понадобится
       const threadKey = this.getThreadKey(threadMessage);
       if(threadKey) {
@@ -6513,6 +6520,17 @@ export class AppMessagesManager extends AppManager {
           const [peerId, mid] = repliesKey.split('_');
 
           this.updateMessage(peerId.toPeerId(), +mid, 'replies_updated');
+        } else if(threadMessage.reply_to) { // * regular group replies
+          const threadId = +threadKey.split('_').pop();
+          const originalMessage = this.getMessageByPeer(threadMessage.peerId, threadId) as Message.message;
+          const replies = originalMessage?.replies;
+          if(replies) {
+            this.modifyMessage(originalMessage, (message) => {
+              const replies = message.replies;
+              replies.replies = Math.max(0, replies.replies + (add ? 1 : -1));
+              this.rootScope.dispatchEvent('replies_short_update', message);
+            });
+          }
         }
       }
     } catch(err) {
@@ -7954,7 +7972,7 @@ export class AppMessagesManager extends AppManager {
 
       this.handleReleasingMessage(message, storage);
 
-      this.updateMessageRepliesIfNeeded(message);
+      this.updateMessageRepliesIfNeeded(message, false);
 
       if(!message.pFlags.out && !message.pFlags.is_outgoing && message.pFlags.unread) {
         ++history.unread;

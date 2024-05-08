@@ -2172,6 +2172,10 @@ const lang = {
   'RevenueSharingAdsInfo4Title': 'Can I Launch an Ad?',
   'RevenueSharingAdsInfo4Subtitle2': 'Anyone can create an ad to display in this channel — with minimal budgets. Check out the **Telegram Ad Platform** for details. %1$s',
   'RevenueSharingAdsAlertButton': 'Understood',
+  'ViewReplies': {
+    'one_value': 'View %1$d Reply',
+    'other_value': 'View %1$d Replies'
+  },
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
