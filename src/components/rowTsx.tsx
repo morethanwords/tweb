@@ -1,4 +1,4 @@
-import {JSX} from 'solid-js';
+import {JSX, Ref} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import classNames from '../helpers/string/classNames';
@@ -24,6 +24,7 @@ type ConstructorP<T> = T extends {
 } ? U : never;
 
 export default function RowTsx(props: Partial<{
+  ref: Ref<HTMLElement>,
   icon: Icon,
   iconClasses: string[],
   subtitle: JSX.Element,
@@ -40,6 +41,7 @@ export default function RowTsx(props: Partial<{
   noWrap: boolean,
   disabled: boolean,
   fakeDisabled: boolean,
+  color: 'primary' | 'danger',
   // buttonRight?: HTMLElement | boolean,
   // buttonRightLangKey: LangPackKey,
   rightContent?: JSX.Element,
@@ -102,6 +104,7 @@ export default function RowTsx(props: Partial<{
 
   const ret = (
     <Dynamic
+      ref={props.ref as any}
       component={props.asLink ? 'a' : (props.asLabel || isCheckbox() ? 'label' : 'div')}
       classList={{
         'row': true,
@@ -109,7 +112,7 @@ export default function RowTsx(props: Partial<{
         'no-wrap': props.noWrap,
         'row-with-icon': !!props.icon,
         'row-with-padding': havePadding(),
-        'row-clickable hover-effect': isClickable(),
+        [`row-clickable hover-${props.color ? props.color + '-' : ''}effect`]: isClickable(),
         'is-disabled': props.disabled,
         'is-fake-disabled': props.fakeDisabled,
         'row-grid': !!props.rightContent

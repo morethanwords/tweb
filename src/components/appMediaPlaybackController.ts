@@ -66,9 +66,11 @@ export type PlaybackMediaType = 'voice' | 'video' | 'audio';
 
 export class AppMediaPlaybackController extends EventListenerBase<{
   play: (details: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => void,
+  singleMedia: (media: HTMLMediaElement) => void,
   pause: () => void,
   playbackParams: (params: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => void,
   stop: () => void,
+  toggleVideoAutoplaySound: (value: boolean) => void
 }> {
   private container: HTMLElement;
   private media: Map<PeerId, Map<number, HTMLMediaElement>> = new Map();
@@ -552,7 +554,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
   private getMessageByMedia(media: HTMLMediaElement): Message.message {
     const details = this.mediaDetails.get(media);
-    return details.message;
+    return details?.message;
     // const {peerId, mid} = details;
     // const message = details.isScheduled ?
     //   this.managers.appMessagesManager.getScheduledMessageByPeer(peerId, mid) :
@@ -567,6 +569,10 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
 
     const message = this.getMessageByMedia(playingMedia);
+    if(!message) {
+      return;
+    }
+
     return {
       doc: getMediaFromMessage(message, true) as MyDocument,
       message,
@@ -663,10 +669,12 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     // console.log('on media end');
 
     const listLoader = this.listLoader;
-    if(this.lockedSwitchers ||
+    if(
+      this.lockedSwitchers ||
       (!this.round && listLoader.current && !listLoader.next.length) ||
       !listLoader.getNext(true).length ||
-      !this.next()) {
+      !this.next()
+    ) {
       this.stop();
       this.dispatchEvent('stop');
     }
@@ -889,19 +897,20 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     return mediaType;
   }
 
-  public setMedia(media: HTMLMediaElement, message: Message.message) {
+  public setMedia(media: HTMLMediaElement, message: Message.message, standalone?: boolean) {
     const mediaType = this.getPlaybackMediaTypeFromMessage(message);
 
     this._playbackRate = this.playbackRates[mediaType];
 
     this.playingMedia = media;
     this.playingMediaType = mediaType;
-    this.playingMedia.volume = this.volume;
-    this.playingMedia.muted = this.muted;
-    this.playingMedia.playbackRate = this.playbackRate;
-
-    if(mediaType === 'audio') {
-      this.playingMedia.loop = this.loop;
+    if(!standalone) {
+      this.playingMedia.volume = this.volume;
+      this.playingMedia.muted = this.muted;
+      this.playingMedia.playbackRate = this.playbackRate;
+      if(mediaType === 'audio') {
+        this.playingMedia.loop = this.loop;
+      }
     }
 
     if('mediaSession' in navigator) {
@@ -909,7 +918,15 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
   }
 
-  public setSingleMedia(media?: HTMLMediaElement, message?: Message.message) {
+  public setSingleMedia({
+    media,
+    message,
+    standalone
+  }: {
+    media?: HTMLMediaElement,
+    message?: Message.message,
+    standalone?: boolean
+  } = {}) {
     const playingMedia = this.playingMedia;
 
     const wasPlaying = this.pause();
@@ -935,9 +952,11 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
 
     this.willBePlayed(undefined);
-    if(media) this.setMedia(media, message);
+    if(media) this.setMedia(media, message, standalone);
     else this.playingMedia = undefined;
     this.toggleSwitchers(false);
+
+    this.dispatchEvent('singleMedia', media);
 
     return (playPaused = wasPlaying) => {
       this.toggleSwitchers(true);

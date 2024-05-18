@@ -90,7 +90,7 @@ export default class ChatAudio extends PinnedContainer {
     });
     this.wrapper.prepend(this.wrapper.firstElementChild, prevEl, this.toggleEl, nextEl);
 
-    this.volumeSelector = new VolumeSelector(this.listenerSetter, true);
+    this.volumeSelector = new VolumeSelector({listenerSetter: this.listenerSetter, vertical: true, useGlobalVolume: 'auto'});
     const volumeProgressLineContainer = document.createElement('div');
     volumeProgressLineContainer.classList.add('progress-line-container');
     volumeProgressLineContainer.append(this.volumeSelector.container);
@@ -186,7 +186,7 @@ export default class ChatAudio extends PinnedContainer {
     this.repeatEl.classList.toggle('hide', !isMusic);
 
     this.onPlaybackParams(playbackParams);
-    this.volumeSelector.setVolume();
+    this.volumeSelector.setGlobalVolume();
 
     this.progressLine.setMedia({
       media,

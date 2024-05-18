@@ -10,12 +10,14 @@ export type IntersectionCallback = (entry: IntersectionObserverEntry) => void;
 export default class SuperIntersectionObserver {
   private observing: Map<IntersectionTarget, Set<IntersectionCallback>>;
   private observingQueue: SuperIntersectionObserver['observing'];
+  private intersecting: Set<IntersectionTarget>;
   private observer: IntersectionObserver;
   private freezedObservingNew: boolean;
 
   constructor(init?: IntersectionObserverInit) {
     this.observing = new Map();
     this.observingQueue = new Map();
+    this.intersecting = new Set();
     this.freezedObservingNew = false;
 
     this.observer = new IntersectionObserver((entries) => {
@@ -29,6 +31,9 @@ export default class SuperIntersectionObserver {
           continue;
         }
 
+        if(entry.isIntersecting) this.intersecting.add(entry.target);
+        else this.intersecting.delete(entry.target);
+
         for(const callback of callbacks) {
           try {
             callback(entry);
@@ -40,9 +45,14 @@ export default class SuperIntersectionObserver {
     }, init);
   }
 
+  public getIntersecting() {
+    return this.intersecting;
+  }
+
   public disconnect() {
     this.observing.clear();
     this.observingQueue.clear();
+    this.intersecting.clear();
     this.observer.disconnect();
   }
 
@@ -104,6 +114,7 @@ export default class SuperIntersectionObserver {
     if(!callbacks.size) {
       observing.delete(target);
       this.observer.unobserve(target);
+      this.intersecting.delete(target);
     }
   }
 }

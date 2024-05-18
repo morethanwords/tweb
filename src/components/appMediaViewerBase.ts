@@ -1797,7 +1797,10 @@ export default class AppMediaViewerBase<
           if(isLiveStream) {
             // this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia();
           } else {
-            this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
+            this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia({
+              media: video,
+              message: message as Message.message
+            });
           }
         };
 
@@ -1863,7 +1866,9 @@ export default class AppMediaViewerBase<
               // this.toggleWholeActive(false);
               // this.toggleOverlay(false);
               this.close();
-            }
+            },
+            listenKeyboardEvents: 'always',
+            useGlobalVolume: 'auto'
           });
           player.addEventListener('toggleControls', (show) => {
             this.wholeDiv.classList.toggle('has-video-controls', show);

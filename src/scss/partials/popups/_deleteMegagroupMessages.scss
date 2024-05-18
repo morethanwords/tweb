@@ -1,0 +1,94 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+ .popup-delete-megagroup-messages {
+  --popup-max-width: 420px;
+  --popup-min-width: 360px;
+  --disabled-opacity: 1;
+  $parent: ".popup";
+  @include text-overflow(true);
+
+  #{$parent} {
+    &-container {
+      max-height: calc(100vh - 5rem);
+      padding: .75rem .5rem 0;
+    }
+
+    &-body {
+      margin: 0 -.5rem;
+    }
+
+    &-header {
+      height: 2.5rem;
+      margin: 0;
+      margin-bottom: .75rem;
+      padding: 0 1rem;
+      gap: 1rem;
+    }
+
+    &-buttons {
+      margin: .75rem 0;
+    }
+  }
+
+  &-row {
+    margin-inline-start: 3.375rem;
+    padding-inline-start: 3.5rem;
+
+    &-title {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-weight: var(--font-weight-bold);
+    }
+  }
+
+  &-expand-row {
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+
+    &-icon {
+      transform: rotate(0deg);
+
+      // @include animation-level(2) {
+      //   transition: transform var(--transition-standard-in);
+      // }
+    }
+
+    &.is-expanded &-icon {
+      transform: rotate(180deg);
+    }
+  }
+
+  &-permissions {
+    overflow: hidden;
+
+    @include animation-level(2) {
+      transition: max-height var(--transition-standard-in);
+    }
+  }
+
+  &-avatars {
+    --margin-right: -1.125rem;
+    --border-size: 2px;
+  }
+
+  .scrollable-y {
+    padding: 0 .5rem;
+
+    .scrollable-thumb-container {
+      display: none;
+    }
+  }
+
+  .sidebar-left-section {
+    margin-bottom: 0;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}

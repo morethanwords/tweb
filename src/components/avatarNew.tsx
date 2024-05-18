@@ -879,35 +879,3 @@ export function avatarNew(props: {
     return AvatarNew(props);
   });
 }
-
-export type AvatarTsxProps = Parameters<typeof AvatarNew>[0] & {
-  class?: string
-}
-
-export const AvatarTsx = (props: AvatarTsxProps) => {
-  const [inner, rest] = splitProps(props, ['class', 'peerId'])
-  const obj = AvatarNew(rest);
-
-  createEffect(on(
-    () => inner.peerId,
-    (peerId) => obj.render({peerId}),
-    {defer: true}
-  ))
-
-  createEffect(on(
-    () => inner.class,
-    (value, prevValue) => {
-      if(value === prevValue) return
-      obj.node.classList.add(value)
-      obj.node.classList.remove(prevValue)
-    }
-  ))
-
-  onMount(() => {
-    if(inner.peerId) {
-      obj.render({peerId: inner.peerId})
-    }
-  })
-
-  return obj.element
-}

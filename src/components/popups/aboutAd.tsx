@@ -7,10 +7,9 @@
 import PopupElement from '.';
 import {render} from 'solid-js/web';
 import RowTsx from '../rowTsx';
-import I18n, {i18n} from '../../lib/langPack';
-import anchorCallback from '../../helpers/dom/anchorCallback';
+import {i18n} from '../../lib/langPack';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
+import {IconTsx} from '../iconTsx';
 
 export default class PopupAboutAd extends PopupElement {
   constructor() {
@@ -33,6 +32,7 @@ export default class PopupAboutAd extends PopupElement {
   private _construct() {
     return (
       <>
+        <div class="popup-about-ad-icon"><IconTsx icon="ads" /></div>
         <div class="popup-about-ad-title">{i18n('AboutRevenueSharingAds')}</div>
         <div class="popup-about-ad-subtitle">{i18n('RevenueSharingAdsAlertSubtitle')}</div>
         <RowTsx icon="lock" title={i18n('RevenueSharingAdsInfo1Title')} subtitle={i18n('RevenueSharingAdsInfo1Subtitle')} />

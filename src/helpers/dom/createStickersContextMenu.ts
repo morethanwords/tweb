@@ -120,7 +120,7 @@ export default function createStickersContextMenu({
     onClick: () => isGif ? rootScope.managers.appGifsManager.saveGif(doc.id, false) : rootScope.managers.appStickersManager.faveSticker(doc.id, false),
     verify: () => verifyFavoriteSticker(true)
   }, {
-    icon: isGif ? 'gifs' : 'favourites',
+    icon: isGif ? 'crossgif' : 'crossstar',
     text: isGif ? 'Message.Context.RemoveGif' : 'DeleteFromFavorites',
     onClick: () => isGif ? rootScope.managers.appGifsManager.saveGif(doc.id, true) : rootScope.managers.appStickersManager.faveSticker(doc.id, true),
     verify: () => verifyFavoriteSticker(false)

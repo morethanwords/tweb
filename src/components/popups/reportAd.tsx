@@ -196,10 +196,7 @@ export default class PopupReportAd extends PopupElement {
   private async construct() {
     this.transitions = new WeakMap();
     this.reportResult = await this.report(new Uint8Array);
-    const div = document.createElement('div');
-    this.scrollable.append(div);
-    const dispose = render(() => this._construct(), div);
-    this.addEventListener('closeAfterTimeout', dispose);
+    this.appendSolid(() => this._construct());
     this.show();
   }
 }

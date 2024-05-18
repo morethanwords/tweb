@@ -74,6 +74,19 @@
     }
   }
 
+  &-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5.375rem;
+    color: #fff;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    width: 5.5rem;
+    height: 5.5rem;
+    margin: .5rem auto 1rem;
+  }
+
   .scrollable-y {
     padding: 0 .5rem;
   }

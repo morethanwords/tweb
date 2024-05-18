@@ -166,10 +166,7 @@ export default class PopupToggleReadDate extends PopupElement {
     this.isPremiumPurchaseBlocked = isPremiumPurchaseBlocked;
     this.stickerContainer = stickerContainer;
 
-    const div = document.createElement('div');
-    this.body.append(div);
-    const dispose = render(() => this._construct(), div);
-    this.addEventListener('closeAfterTimeout', dispose);
+    this.appendSolid(() => this._construct());
     this.show();
   }
 }

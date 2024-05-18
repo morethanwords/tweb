@@ -8,6 +8,7 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import ListenerSetter from '../helpers/listenerSetter';
+import safeAssign from '../helpers/object/safeAssign';
 import {_tgico} from '../helpers/tgico';
 import appMediaPlaybackController from './appMediaPlaybackController';
 import {replaceButtonIcon} from './button';
@@ -19,28 +20,42 @@ export default class VolumeSelector extends RangeSelector {
   private static ICONS: Icon[] = ['volume_off', 'volume_mute', 'volume_down', 'volume_up'];
   public btn: HTMLElement;
   protected icon: HTMLSpanElement;
+  protected listenerSetter: ListenerSetter;
+  protected vertical: boolean;
+  protected media: HTMLMediaElement;
+  protected useGlobalVolume: 'auto' | 'no-init';
+  protected onVolumeChange: (type: 'global' | 'click') => void;
+  protected ignoreGlobalEvents: boolean;
 
-  constructor(
-    protected listenerSetter: ListenerSetter,
-    protected vertical = false,
-    protected media?: HTMLMediaElement
-  ) {
+  constructor(options: {
+    listenerSetter: ListenerSetter,
+    useGlobalVolume?: VolumeSelector['useGlobalVolume'],
+    vertical?: boolean,
+    media?: HTMLMediaElement,
+    onVolumeChange?: VolumeSelector['onVolumeChange']
+  }) {
     super({
       step: 0.01,
       min: 0,
       max: 1,
-      vertical
+      vertical: options.vertical
     }, 1);
+
+    safeAssign(this, options);
 
     this.setListeners();
     this.setHandlers({
-      onScrub: currentTime => {
-        const value = Math.max(Math.min(currentTime, 1), 0);
+      onScrub: (_value) => {
+        const value = Math.max(Math.min(_value, 1), 0);
 
-        // console.log('volume scrub:', currentTime, value);
+        if(this.useGlobalVolume) {
+          this.modifyGlobal(() => {
+            appMediaPlaybackController.muted = false;
+            appMediaPlaybackController.volume = value;
+          });
+        }
 
-        appMediaPlaybackController.muted = false;
-        appMediaPlaybackController.volume = value;
+        this.setVolume({volume: value, muted: false, eventType: 'click'});
       }
 
       /* onMouseUp: (e) => {
@@ -58,21 +73,52 @@ export default class VolumeSelector extends RangeSelector {
 
       this.onMuteClick(e);
     }, {listenerSetter: this.listenerSetter});
-    this.listenerSetter.add(appMediaPlaybackController)('playbackParams', this.setVolume);
 
-    this.setVolume();
+    if(this.useGlobalVolume) {
+      this.listenerSetter.add(appMediaPlaybackController)('playbackParams', (params) => {
+        if(this.ignoreGlobalEvents) {
+          return;
+        }
+
+        this.setVolume({...params, eventType: 'global'});
+      });
+
+      if(this.useGlobalVolume === 'no-init') {
+        this.setVolume({volume: appMediaPlaybackController.volume, muted: this.media.muted});
+      } else {
+        this.setGlobalVolume();
+      }
+    } else if(this.media) {
+      this.setVolume({volume: this.media.volume, muted: this.media.muted});
+    }
+
     btn.append(this.container);
   }
 
-  private onMuteClick = (e?: Event) => {
-    e && cancelEvent(e);
-    appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
-  };
+  public removeListeners() {
+    super.removeListeners();
+    this.onVolumeChange = undefined;
+  }
 
-  public setVolume = () => {
-    // const volume = video.volume;
-    const {volume, muted} = appMediaPlaybackController;
-    let d: string;
+  private modifyGlobal(callback: () => void) {
+    this.ignoreGlobalEvents = true;
+    callback();
+    this.ignoreGlobalEvents = false;
+  }
+
+  private onMuteClick(e?: Event) {
+    e && cancelEvent(e);
+
+    if(this.useGlobalVolume) {
+      this.modifyGlobal(() => {
+        appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
+      });
+    }
+
+    this.setVolume({volume: this.media.volume, muted: !this.media.muted, eventType: 'click'});
+  }
+
+  public setVolume = ({volume, muted, eventType}: {volume: number, muted: boolean, eventType?: 'global' | 'click'}) => {
     let iconIndex: number;
     if(!volume || muted) {
       iconIndex = 0;
@@ -95,5 +141,12 @@ export default class VolumeSelector extends RangeSelector {
     if(!this.mousedown) {
       this.setProgress(muted ? 0 : volume);
     }
+
+    eventType && this.onVolumeChange?.(eventType);
+  };
+
+  public setGlobalVolume = (eventType?: Parameters<VolumeSelector['setVolume']>[0]['eventType']) => {
+    const {volume, muted} = appMediaPlaybackController;
+    return this.setVolume({volume, muted, eventType});
   };
 }

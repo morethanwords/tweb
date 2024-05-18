@@ -73,8 +73,8 @@ class MediaSizes extends EventListenerBase<{
       popupSticker: makeMediaSize(68, 68)
     },
     desktop: {
-      regular: makeMediaSize(420, 340),
-      webpage: makeMediaSize(420, 340),
+      regular: makeMediaSize(420, 400),
+      webpage: makeMediaSize(420, 380),
       album: makeMediaSize(420, 0),
       esgSticker: makeMediaSize(72, 72),
       animatedSticker: makeMediaSize(200, 200),
@@ -84,7 +84,7 @@ class MediaSizes extends EventListenerBase<{
       round: makeMediaSize(280, 280),
       documentName: makeMediaSize(240, 0),
       invoice: makeMediaSize(320, 320),
-      extendedInvoice: makeMediaSize(420, 340),
+      extendedInvoice: makeMediaSize(420, 400),
       customEmoji: CUSTOM_EMOJI_SIZE,
       esgCustomEmoji: ESG_CUSTOM_EMOJI_SIZE,
       emojiStatus: EMOJI_STATUS_SIZE,

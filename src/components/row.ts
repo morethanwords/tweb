@@ -318,7 +318,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     return c;
   }
 
-  private createTitle() {
+  public createTitle() {
     const title = document.createElement('div');
     title.classList.add('row-title');
     setDirection(title);

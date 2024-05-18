@@ -1588,6 +1588,7 @@ const lang = {
   'DeleteBanUser': 'Ban user',
   'DeleteReportSpam': 'Report spam',
   'DeleteAllFrom': 'Delete all from %1$s',
+  'DeleteAllFromUsers': 'Delete all from users',
   'ChannelAddSubscribers': 'Add Subscribers',
   'ChannelHideMembers': 'Hide Members',
   'ChannelHideMembersInfo': 'Switch on to hide the list of members in this group. Admins will remain visible.',
@@ -2175,6 +2176,24 @@ const lang = {
   'ViewReplies': {
     'one_value': 'View %1$d Reply',
     'other_value': 'View %1$d Replies'
+  },
+  'DeleteAdditionalActions': 'Additional actions',
+  'DeleteOptionsTitle': {
+    'one_value': 'Delete %1$d Message?',
+    'other_value': 'Delete %1$d Messages?'
+  },
+  'DeleteToggleBanUsers': 'Fully ban users',
+  'DeleteToggleBanUser': 'Fully ban this user',
+  'DeleteToggleRestrictUsers': 'Partially restrict users',
+  'DeleteToggleRestrictUser': 'Partially restrict this user',
+  'DeleteProceedBtn': 'Proceed',
+  'DeleteBan': 'Ban %1$s',
+  'DeleteBanUsers': 'Ban users',
+  'DeleteRestrict': 'Restrict %1$s',
+  'DeleteRestrictUsers': 'Restrict users',
+  'UserRestrictionsCanDoUsers': {
+    'one_value': 'What can %1$s selected user do?',
+    'other_value': 'What can %1$s selected users do?'
   },
 
   // * macos

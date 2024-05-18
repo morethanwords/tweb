@@ -577,7 +577,7 @@ export default class ChatContextMenu {
         this.chat.type !== ChatType.Scheduled/* ,
       cancelEvent: true */
     }, {
-      icon: 'message',
+      icon: 'bubblereply',
       text: 'ViewReplies',
       textArgs: [(this.message as Message.message)?.replies?.replies],
       onClick: () => {
@@ -598,7 +598,7 @@ export default class ChatContextMenu {
       onClick: this.onFaveStickerClick.bind(this, false),
       verify: () => verifyFavoriteSticker(true)
     }, {
-      icon: isGif ? 'gifs' : 'favourites',
+      icon: isGif ? 'crossgif' : 'crossstar',
       text: isGif ? 'Message.Context.RemoveGif' : 'DeleteFromFavorites',
       onClick: this.onFaveStickerClick.bind(this, true),
       verify: () => verifyFavoriteSticker(false)
@@ -1432,51 +1432,7 @@ export default class ChatContextMenu {
     }
 
     const {peerId, message} = this;
-    const {fromId, mid} = message;
-    const chatId = peerId.isUser() ? undefined : peerId.toChatId();
-    if(chatId && await this.managers.appChatsManager.isMegagroup(chatId) && !message.pFlags.out) {
-      const participants = await this.managers.appProfileManager.getParticipants({
-        id: chatId,
-        filter: {_: 'channelParticipantsAdmins'},
-        limit: 100
-      });
-      const foundAdmin = participants.participants.some((participant) => getParticipantPeerId(participant) === fromId);
-      if(!foundAdmin) {
-        const [banUser, reportSpam, deleteAll] = await confirmationPopup({
-          titleLangKey: 'DeleteSingleMessagesTitle',
-          peerId: fromId,
-          descriptionLangKey: 'AreYouSureDeleteSingleMessageMega',
-          checkboxes: [{
-            text: 'DeleteBanUser'
-          }, {
-            text: 'DeleteReportSpam'
-          }, {
-            text: 'DeleteAllFrom',
-            textArgs: [await wrapPeerTitle({peerId: fromId})]
-          }],
-          button: {
-            langKey: 'Delete'
-          }
-        });
-
-        if(banUser) {
-          this.managers.appChatsManager.kickFromChannel(peerId.toChatId(), fromId);
-        }
-
-        if(reportSpam) {
-          this.managers.appMessagesManager.reportMessages(peerId, [mid], 'inputReportReasonSpam');
-        }
-
-        if(deleteAll) {
-          this.managers.appMessagesManager.doFlushHistory(peerId, false, true, undefined, fromId);
-        } else {
-          this.managers.appMessagesManager.deleteMessages(peerId, [mid], true);
-        }
-
-        return;
-      }
-    }
-
+    const {mid} = message;
     if(TEST_BUBBLES_DELETION) {
       return this.chat.bubbles.deleteMessagesByIds(await this.chat.getMidsByMid(mid), true);
     }

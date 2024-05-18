@@ -488,6 +488,7 @@
 @import "partials/popups/translate";
 @import "partials/popups/reportAd";
 @import "partials/popups/aboutAd";
+@import "partials/popups/deleteMegagroupMessages";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -1386,6 +1387,14 @@ middle-ellipsis-element {
   @include hover-background-effect();
 }
 
+.hover-primary-effect {
+  @include hover-background-effect(primary);
+}
+
+.hover-danger-effect {
+  @include hover-background-effect(red);
+}
+
 .progress-ring {
   position: absolute;
   top: 0;
@@ -2123,7 +2132,8 @@ hr {
   }
 
   &-icon {
-    transform: rotate(0deg) translateY(4px);
+    --translateY: 4px;
+    transform: rotate(0deg) translateY(var(--translateY));
     color: var(--secondary-text-color);
     font-size: 1.25rem;
     display: inline-block;
@@ -2134,9 +2144,44 @@ hr {
     }
   }
 
-  &-toggler-expanded {
+  &-right-button {
+    min-width: 3.875rem;
+    height: 3rem;
+    border-radius: $border-radius-medium;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-weight-bold);
+    color: var(--primary-text-color);
+    cursor: pointer;
+    position: relative;
+    @include hover-background-effect();
+
     .accordion-icon {
-      transform: translateY(4px) rotate(180deg);
+      --translateY: 0px;
+      color: currentColor;
+      display: block;
+      font-size: 1rem;
+      margin-inline: .125rem -.25rem;
+    }
+
+    .accordion-counter {
+      font-size: var(--font-size-13);
+      margin-inline-start: .0625rem;
+    }
+  }
+
+  &-toggler {
+    &-expanded {
+      .accordion-icon {
+        transform: translateY(var(--translateY)) rotate(180deg);
+      }
+    }
+
+    &-round {
+      padding-inline-end: 0;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
     }
   }
 }

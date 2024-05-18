@@ -26,7 +26,8 @@ export interface AnimationItem {
   animation: AnimationItemWrapper,
   liteModeKey?: LiteModeKey,
   controlled?: boolean | Middleware,
-  type: AnimationItemType
+  type: AnimationItemType,
+  locked?: boolean
 };
 
 export type AnimationItemType = 'lottie' | 'dots' | 'video' | 'emoji';
@@ -179,9 +180,10 @@ export class AnimationIntersector {
     observeElement: HTMLElement,
     controlled?: AnimationItem['controlled'],
     liteModeKey?: LiteModeKey
-    type: AnimationItemType
+    type: AnimationItemType,
+    locked?: boolean
   }) {
-    const {animation, group = '', observeElement, controlled, liteModeKey, type} = options;
+    const {animation, group = '', observeElement, controlled, liteModeKey, type, locked} = options;
     if(group === 'none' || this.byPlayer.has(animation)) {
       return;
     }
@@ -192,7 +194,8 @@ export class AnimationIntersector {
       group,
       controlled,
       liteModeKey,
-      type
+      type,
+      locked
     };
 
     if(controlled && typeof(controlled) !== 'boolean') {
@@ -245,7 +248,11 @@ export class AnimationIntersector {
   }
 
   public checkAnimation(player: AnimationItem, blurred?: boolean, destroy?: boolean) {
-    const {el, animation, group} = player;
+    const {el, animation, group, locked} = player;
+    if(locked) {
+      return;
+    }
+
     // return;
     if(destroy || (!this.lockedGroups[group] && !isInDOM(el))) {
       if(!player.controlled || destroy) {
@@ -255,7 +262,8 @@ export class AnimationIntersector {
       return;
     }
 
-    if(blurred ||
+    if(
+      blurred ||
       (this.onlyOnePlayableGroup && this.onlyOnePlayableGroup !== group) ||
       (player.type === 'video' && this.videosLocked)
     ) {
@@ -263,7 +271,8 @@ export class AnimationIntersector {
         // console.warn('pause animation:', animation);
         animation.pause();
       }
-    } else if(animation.paused &&
+    } else if(
+      animation.paused &&
       this.visible.has(player) &&
       animation.autoplay &&
       (!this.onlyOnePlayableGroup || this.onlyOnePlayableGroup === group) &&
@@ -338,9 +347,11 @@ export class AnimationIntersector {
   public setLoop(loop: boolean) {
     let changed = false;
     this.byPlayer.forEach((animationItem, animation) => {
-      if(animation._loop &&
+      if(
+        animation._loop &&
         animation.loop !== loop &&
-        (animationItem.type === 'lottie' || animationItem.type === 'video')) {
+        (animationItem.type === 'lottie' || animationItem.type === 'video')
+      ) {
         changed = true;
         animation.loop = loop;
 
@@ -351,6 +362,15 @@ export class AnimationIntersector {
     });
 
     return changed;
+  }
+
+  public toggleItemLock(animationItem: AnimationItem, lock: boolean) {
+    // const wasLocked = animationItem.locked;
+    animationItem.locked = lock;
+
+    // if(!!wasLocked !== lock) {
+    //   this.checkAnimation(animationItem);
+    // }
   }
 }
 

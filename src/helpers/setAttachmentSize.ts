@@ -15,6 +15,7 @@ import isWebDocument from '../lib/appManagers/utils/webDocs/isWebDocument';
 export const EXPAND_TEXT_WIDTH = 320;
 export const MIN_IMAGE_WIDTH = 120;
 export const MIN_SIDE_SIZE = 200;
+export const MIN_VIDEO_SIDE_SIZE = 368;
 
 export default function setAttachmentSize({
   photo,
@@ -25,7 +26,8 @@ export default function setAttachmentSize({
   message,
   pushDocumentSize,
   photoSize,
-  size
+  size,
+  canHaveVideoPlayer
 }: {
   photo?: MyPhoto | MyDocument | WebDocument,
   element: HTMLElement | SVGForeignObjectElement,
@@ -35,7 +37,8 @@ export default function setAttachmentSize({
   message?: any,
   pushDocumentSize?: boolean,
   photoSize?: ReturnType<typeof choosePhotoSize>,
-  size?: MediaSize
+  size?: MediaSize,
+  canHaveVideoPlayer?: boolean
 }) {
   const _isWebDocument = isWebDocument(photo);
   // if(_isWebDocument && pushDocumentSize === undefined) {
@@ -63,8 +66,9 @@ export default function setAttachmentSize({
   let isFit = true;
 
   if(!isDocument || ['video', 'gif'].includes(photo.type) || _isWebDocument) {
-    if(boxSize.width < MIN_SIDE_SIZE && boxSize.height < MIN_SIDE_SIZE) { // make at least one side this big
-      boxSize = size = size.aspectCovered(makeMediaSize(MIN_SIDE_SIZE, MIN_SIDE_SIZE));
+    const minSideSize = MIN_SIDE_SIZE;
+    if(boxSize.width < minSideSize && boxSize.height < minSideSize) { // make at least one side this big
+      boxSize = size = size.aspectCovered(makeMediaSize(minSideSize, minSideSize));
     }
 
     if(message &&
@@ -80,8 +84,9 @@ export default function setAttachmentSize({
       }
     }
 
-    if(isFit && boxSize.width < MIN_IMAGE_WIDTH && message) { // if image is too narrow
-      boxSize = makeMediaSize(MIN_IMAGE_WIDTH, boxSize.height);
+    const minWidth = (photo as MyDocument)?.type === 'video' && canHaveVideoPlayer ? MIN_VIDEO_SIDE_SIZE : MIN_IMAGE_WIDTH;
+    if(/* isFit &&  */boxSize.width < minWidth && message) { // if image is too narrow
+      boxSize = makeMediaSize(minWidth, boxSize.height);
       isFit = false;
     }
   }

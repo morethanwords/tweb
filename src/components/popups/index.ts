@@ -24,6 +24,8 @@ import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
 import ButtonIcon from '../buttonIcon';
 import Icon from '../icon';
 import toggleDisability from '../../helpers/dom/toggleDisability';
+import {JSX} from 'solid-js';
+import {render} from 'solid-js/web';
 
 export type PopupButton = {
   text?: HTMLElement | DocumentFragment | Text,
@@ -419,6 +421,13 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         animationIntersector.checkAnimations2(false);
       }
     }, 250);
+  }
+
+  protected appendSolid(callback: () => JSX.Element) {
+    const div = document.createElement('div');
+    (this.scrollable || this.body).append(div);
+    const dispose = render(callback, div);
+    this.addEventListener('closeAfterTimeout', dispose as any);
   }
 
   public static reAppend() {

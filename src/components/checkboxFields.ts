@@ -9,15 +9,15 @@ import {attachClickEvent} from '../helpers/dom/clickEvent';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import ListenerSetter from '../helpers/listenerSetter';
 import safeAssign from '../helpers/object/safeAssign';
-import {TGICO_CLASS} from '../helpers/tgico';
-import I18n, {LangPackKey} from '../lib/langPack';
+import I18n, {FormatterArguments, LangPackKey} from '../lib/langPack';
 import CheckboxField from './checkboxField';
 import Icon from './icon';
 import Row from './row';
 import {toast} from './toast';
 
 export type CheckboxFieldsField = {
-  text: LangPackKey,
+  text?: LangPackKey,
+  textArgs?: FormatterArguments,
   description?: LangPackKey,
   restrictionText?: LangPackKey,
   checkboxField?: CheckboxField,
@@ -35,11 +35,21 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
   public fields: Array<K>;
   protected listenerSetter: ListenerSetter;
   protected asRestrictions: boolean;
+  protected round: boolean;
+  protected onRowCreation: (row: Row, info: K) => void;
+  protected rightButtonIcon: Icon;
+  protected onAnyChange?: () => void;
+  protected onExpand?: (info: K) => void;
 
   constructor(options: {
     fields: Array<K>,
     listenerSetter: ListenerSetter,
-    asRestrictions?: boolean
+    asRestrictions?: boolean,
+    round?: boolean,
+    rightButtonIcon?: Icon,
+    onRowCreation?: CheckboxFields<K>['onRowCreation'],
+    onAnyChange?: () => void,
+    onExpand?: (info: K) => void
   }) {
     safeAssign(this, options);
   }
@@ -49,21 +59,43 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       return;
     }
 
+    const asInner = isNested && !this.round;
+
+    const accordionIcon = Icon('down', 'accordion-icon');
+
+    let rightContent: HTMLElement;
+    if(this.round && !asInner && info.nested) {
+      rightContent = document.createElement('div');
+      rightContent.classList.add('accordion-right-button');
+    }
+
     const row = info.row = new Row({
-      titleLangKey: isNested ? undefined : info.text,
+      titleLangKey: asInner ? undefined : info.text,
+      titleLangArgs: asInner ? undefined : info.textArgs,
       checkboxField: info.checkboxField = new CheckboxField({
-        text: isNested ? info.text : undefined,
+        text: asInner ? info.text : undefined,
+        textArgs: asInner ? info.textArgs : undefined,
         checked: info.nested ? false : info.checked,
-        toggle: !isNested,
+        toggle: this.round ? undefined : !isNested,
         listenerSetter: this.listenerSetter,
         restriction: this.asRestrictions && !isNested,
-        name: info.name
+        name: info.name,
+        round: this.round
       }),
       listenerSetter: this.listenerSetter,
       subtitleLangKey: info.description,
       clickable: info.nested ? (e) => {
-        if(findUpAsChild(e.target as HTMLElement, row.checkboxField.label)) {
-          if(!row.checkboxField.input.disabled) {
+        if(
+          this.round ?
+            !findUpAsChild(e.target as HTMLElement, rightContent) && e.target !== rightContent :
+            findUpAsChild(e.target as HTMLElement, row.checkboxField.label)
+        ) {
+          if(row.checkboxField.input.disabled) {
+            const checked = row.checkboxField.checked;
+            info.nested.forEach((field) => {
+              field.checkboxField.checked = !checked;
+            });
+          } else {
             row.checkboxField.checked = !row.checkboxField.checked;
           }
 
@@ -73,8 +105,12 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
         cancelEvent(e);
         row.container.classList.toggle('accordion-toggler-expanded');
         accordion.classList.toggle('is-expanded');
-      } : undefined
+        this.onExpand?.(info as K);
+      } : undefined,
+      rightContent
     });
+
+    row.container.classList.add('accordion-row');
 
     if(info.restrictionText) {
       if(!info.nestedTo) {
@@ -103,14 +139,18 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       });
       nodes.push(container);
 
-      const span = Icon('down', 'accordion-icon');
-
       nestedCounter = info.nestedCounter = document.createElement('b');
+      nestedCounter.classList.add('accordion-counter');
       this.setNestedCounter(info);
-      row.title.append(' ', nestedCounter, ' ', span);
 
       row.container.classList.add('accordion-toggler');
-      row.titleRow.classList.add('with-delimiter');
+      if(this.round) {
+        rightContent.append(Icon(this.rightButtonIcon), ' ', nestedCounter, ' ', accordionIcon);
+        row.container.classList.add('accordion-toggler-round');
+      } else {
+        row.title.append(' ', nestedCounter, ' ', accordionIcon);
+        row.titleRow.classList.add('with-delimiter');
+      }
 
       // * will control it myself, otherwise on mobiles it will be toggled everytime
       row.checkboxField.input.disabled = true;
@@ -158,8 +198,15 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       this.listenerSetter.add(info.checkboxField.input)('change', () => {
         processToggleWith?.(info);
         processNestedTo?.();
+        this.onAnyChange?.();
+      });
+    } else if(this.onAnyChange && !info.nested) {
+      this.listenerSetter.add(info.checkboxField.input)('change', () => {
+        this.onAnyChange();
       });
     }
+
+    this.onRowCreation?.(row, info as K);
 
     return {row, nodes};
   }
@@ -169,6 +216,6 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
   }
 
   public setNestedCounter(info: CheckboxFieldsField, count = this.getNestedCheckedLength(info)) {
-    info.nestedCounter.textContent = `${count}/${info.nested.length}`;
+    info.nestedCounter.textContent = this.round ? '' + info.nested.length : `${count}/${info.nested.length}`;
   }
 }

@@ -2010,7 +2010,7 @@ export class AppMessagesManager extends AppManager {
           replies_pts: 0
         };
       }
-    } else if(this.appPeersManager.isAnyGroup(peerId) && !replyTo) {
+    } else if(this.appPeersManager.isMegagroup(peerId) && !replyTo) {
       replies = {
         _: 'messageReplies',
         pFlags: {},

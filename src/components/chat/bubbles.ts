@@ -174,6 +174,7 @@ import PopupAboutAd from '../popups/aboutAd';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import wrapGeo from '../wrappers/geo';
 import wrapKeyboardButton from '../wrappers/keyboardButton';
+import safePlay from '../../helpers/dom/safePlay';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -395,6 +396,8 @@ export default class ChatBubbles {
   public replySwipeHandler: SwipeHandler;
 
   private remover: HTMLDivElement;
+
+  private lastPlayingVideo: HTMLVideoElement;
 
   constructor(
     private chat: Chat,
@@ -1786,6 +1789,9 @@ export default class ChatBubbles {
   }
 
   private onBubblesMouseMove = async(e: MouseEvent) => {
+    const mediaVideoContainer = findUpClassName(e.target, 'media-video-mini');
+    (mediaVideoContainer as any)?.onMouseMove?.(e);
+
     const content = findUpClassName(e.target, 'bubble-content');
     if(!(
       this.chat.type !== ChatType.Scheduled &&
@@ -2364,6 +2370,27 @@ export default class ChatBubbles {
       return;
     }
 
+    const videoMini = findUpClassName(target, 'media-video-mini');
+    if(videoMini && false) {
+      if(findUpClassName(target, 'video-to-viewer')) {
+        if(this.checkTargetForMediaViewer(videoMini.querySelector('video'), e)) {
+          cancelNextClickIfNotClick(e);
+          return;
+        }
+      } else if(findUpClassName(target, 'media-photo')) {
+        simulateClickEvent(videoMini.querySelector('video'));
+      }
+
+      cancelEvent(e);
+      // if(findUpClassName(target, 'ckin__controls')) {
+      //   return;
+      // }
+
+      // // console.log('video click', e);
+      // cancelEvent(e);
+      return;
+    }
+
     if(this.checkTargetForMediaViewer(target, e)) {
       cancelNextClickIfNotClick(e);
       return;
@@ -2802,7 +2829,7 @@ export default class ChatBubbles {
     }
   }
 
-  public onScroll = (ignoreHeavyAnimation?: boolean, scrollDimensions?: ScrollStartCallbackDimensions, forceDown?: boolean) => {
+  private onScroll = (ignoreHeavyAnimation?: boolean, scrollDimensions?: ScrollStartCallbackDimensions, forceDown?: boolean) => {
     // return;
 
     if(this.isHeavyAnimationInProgress) {
@@ -2822,6 +2849,40 @@ export default class ChatBubbles {
 
     if(scrollDimensions && scrollDimensions.distanceToEnd < SCROLLED_DOWN_THRESHOLD && this.scrolledDown) {
       return;
+    }
+
+    const intersecting = this.observer?.getIntersecting();
+    if(intersecting) {
+      const videos = Array.from(intersecting).filter((el) => el instanceof HTMLVideoElement && (el as any).mini);
+      const centerY = windowSize.height / 2;
+      const distances = videos.map((video) => {
+        // const bubble = findUpClassName(video, 'bubble');
+        const rect = video.getBoundingClientRect();
+        const distanceToVerticalCenter = Math.abs(rect.top + rect.height / 2 - centerY);
+        return {video/* , bubble */, distance: distanceToVerticalCenter};
+      }).sort((a, b) => a.distance - b.distance);
+      let closest = distances[0];
+      if(closest && closest.distance > 150) {
+        closest = undefined;
+      }
+
+      const video = closest?.video as HTMLVideoElement;
+      if(this.lastPlayingVideo !== video) {
+        const animationItem = animationIntersector.getAnimations(this.lastPlayingVideo)[0];
+        if(animationItem) {
+          animationIntersector.toggleItemLock(animationItem, true);
+          this.lastPlayingVideo.pause();
+        }
+
+        this.lastPlayingVideo = video;
+
+        if(video) {
+          console.log('video', video);
+          const animationItem = animationIntersector.getAnimations(video)[0];
+          animationIntersector.toggleItemLock(animationItem, false);
+          safePlay(video);
+        }
+      }
     }
 
     const distanceToEnd = forceDown ? 0 : scrollDimensions?.distanceToEnd ?? this.scrollable.getDistanceToEnd();
@@ -5754,7 +5815,9 @@ export default class ChatBubbles {
                 group: this.chat.animationGroup,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
-                noInfo: message.mid < 0
+                noInfo: message.mid < 0,
+                observer: this.observer,
+                setShowControlsOn: bubble
               });
             } else {
               const docDiv = await wrapDocument({
@@ -6112,7 +6175,9 @@ export default class ChatBubbles {
                   isScheduled: (message as Message.message).pFlags.is_scheduled
                 } : undefined,
                 noInfo: message.mid <= 0,
-                noAutoplayAttribute: !!messageMedia.pFlags.spoiler
+                noAutoplayAttribute: !!messageMedia.pFlags.spoiler,
+                observer: this.observer,
+                setShowControlsOn: bubble
               });
 
               if(messageMedia.pFlags.spoiler) {
@@ -6357,7 +6422,9 @@ export default class ChatBubbles {
                 boxWidth: mediaSize.width,
                 boxHeight: mediaSize.height,
                 group: this.chat.animationGroup,
-                message: message as Message.message
+                message: message as Message.message,
+                observer: this.observer,
+                setShowControlsOn: bubble
               });
               bubble.classList.add('video');
             } else {

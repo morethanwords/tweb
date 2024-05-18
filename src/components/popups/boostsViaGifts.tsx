@@ -741,10 +741,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
     this.appConfig = appConfig;
     this.subscribersLimit = this.channelsLimit = appConfig.giveaway_add_peers_max ?? 10;
     this.countriesLimit = appConfig.giveaway_countries_max ?? 10;
-    const div = document.createElement('div');
-    this.scrollable.append(div);
-    const dispose = render(() => this._construct(), div);
-    this.addEventListener('closeAfterTimeout', dispose);
+    this.appendSolid(() => this._construct());
     this.show();
   }
 }
