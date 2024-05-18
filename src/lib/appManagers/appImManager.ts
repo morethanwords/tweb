@@ -59,7 +59,7 @@ import copy from '../../helpers/object/copy';
 import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import ChatBackgroundPatternRenderer from '../../components/chat/patternRenderer';
-import {IS_FIREFOX} from '../../environment/userAgent';
+import {IS_CHROMIUM, IS_FIREFOX} from '../../environment/userAgent';
 import compareVersion from '../../helpers/compareVersion';
 import {AppManagers} from './managers';
 import uiNotificationsManager from './uiNotificationsManager';
@@ -622,6 +622,23 @@ export class AppImManager extends EventListenerBase<{
     const setAuthorized = () => {
       telegramMeWebManager.setAuthorized(true);
     };
+
+    // ! THANKS TO CHROMIUM DEVELOPERS FOR THIS BUG
+    // ! https://issues.chromium.org/issues/328755781
+    if(IS_CHROMIUM) document.addEventListener('visibilitychange', () => {
+      if(document.hidden) {
+        return;
+      }
+
+      const canvases = Array.from(document.querySelectorAll('canvas')) as HTMLCanvasElement[];
+      canvases.forEach((canvas) => {
+        const context = canvas.getContext('2d');
+        const oldFillStyle = context.fillStyle;
+        context.fillStyle = 'transparent';
+        context.fillRect(0, 0, 1, 1);
+        context.fillStyle = oldFillStyle;
+      });
+    });
 
     setInterval(setAuthorized, ONE_DAY);
     setAuthorized();
