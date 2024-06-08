@@ -292,11 +292,15 @@ export default class PopupCreatePoll extends PopupElement {
     const poll: Poll = {
       _: 'poll',
       pFlags,
-      question,
+      question: {_: 'textWithEntities', text: question, entities: []},
       answers: answers.map((value, idx) => {
         return {
           _: 'pollAnswer',
-          text: value,
+          text: {
+            _: 'textWithEntities',
+            text: value,
+            entities: []
+          },
           option: new Uint8Array([idx])
         };
       }),

@@ -36,12 +36,15 @@ export default function RowTsx(props: Partial<{
   titleRight: JSX.Element,
   titleRightSecondary: boolean,
   clickable: boolean | JSX.HTMLAttributes<HTMLElement>['onClick'],
+  midtitle: JSX.Element,
   havePadding: boolean,
   noRipple: boolean,
   noWrap: boolean,
   disabled: boolean,
   fakeDisabled: boolean,
   color: 'primary' | 'danger',
+  media: JSX.Element,
+  mediaSize: RowMediaSizeType,
   // buttonRight?: HTMLElement | boolean,
   // buttonRightLangKey: LangPackKey,
   rightContent?: JSX.Element,
@@ -99,7 +102,8 @@ export default function RowTsx(props: Partial<{
     props.havePadding ||
     props.icon ||
     props.checkboxField ||
-    props.radioField
+    props.radioField ||
+    props.media
   );
 
   const ret = (
@@ -115,17 +119,20 @@ export default function RowTsx(props: Partial<{
         [`row-clickable hover-${props.color ? props.color + '-' : ''}effect`]: isClickable(),
         'is-disabled': props.disabled,
         'is-fake-disabled': props.fakeDisabled,
-        'row-grid': !!props.rightContent
+        'row-grid': !!props.rightContent,
+        'with-midtitle': !!props.midtitle
       }}
       onClick={typeof(props.clickable) !== 'boolean' && props.clickable}
     >
       {titleRow}
+      {props.midtitle && <RowRow class="midtitle" left={props.midtitle} />}
       {subtitleRow}
       {props.icon && (
         <IconTsx icon={props.icon} class={classNames('row-icon', ...(props.iconClasses || []))} />
       )}
       {props.checkboxField || props.radioField}
       {props.rightContent && (<div class="row-right">{props.rightContent}</div>)}
+      {props.media && (<div class={classNames('row-media', props.mediaSize && `row-media-${props.mediaSize}`)}>{props.media}</div>)}
     </Dynamic>
   );
 

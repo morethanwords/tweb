@@ -10,15 +10,17 @@ import {useAppState} from './appState';
 export const MIN_TOTAL_PROCESSED_MESSAGES = 8;
 export const MIN_FOREIGN_PERCENTAGE = 0.65;
 
+type TT = {
+  messages: {[mid: number]: TranslatableLanguageISO},
+  languages: {[lang: string]: number},
+  language: TranslatableLanguageISO,
+  total: number,
+  totalForeign: number,
+  isFull?: boolean
+};
+
 type T = {
-  [peerId: PeerId]: {
-    messages: {[mid: number]: TranslatableLanguageISO},
-    languages: {[lang: string]: number},
-    language: TranslatableLanguageISO,
-    total: number,
-    totalForeign: number,
-    isFull?: boolean
-  }
+  [peerId: PeerId]: TT
 };
 
 let state: T, setState: SetStoreFunction<T>, myLanguages: Accessor<Set<TranslatableLanguageISO>>;
@@ -63,8 +65,21 @@ let _createStore = () => {
   });
 };
 
+function createEmpty(): TT {
+  return {
+    messages: {},
+    languages: {},
+    language: undefined,
+    total: 0,
+    totalForeign: 0
+  };
+}
+
 export function setPeerLanguageLoaded(peerId: PeerId) {
   _createStore?.();
+  if(!untrack(() => state[peerId])) {
+    setState(peerId, createEmpty());
+  }
   setState(peerId, 'isFull', true);
 }
 
@@ -85,13 +100,7 @@ export async function processMessageForTranslation(peerId: PeerId, mid: number) 
   batch(() => {
     let previous = untrack(() => state[peerId]);
     if(!previous) {
-      setState(peerId, previous = {
-        messages: {},
-        languages: {},
-        language: undefined,
-        total: 0,
-        totalForeign: 0
-      });
+      setState(peerId, previous = createEmpty());
     } else if(previous.messages[mid]) {
       return;
     }

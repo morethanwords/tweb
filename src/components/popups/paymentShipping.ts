@@ -25,7 +25,7 @@ export default class PopupPaymentShipping extends PopupElement<{
   finish: (o: {shippingAddress: PaymentShippingAddress, requestedInfo: PaymentsValidatedRequestedInfo}) => void
 }> {
   constructor(
-    private paymentForm: PaymentsPaymentForm,
+    private paymentForm: PaymentsPaymentForm.paymentsPaymentForm,
     private inputInvoice: InputInvoice,
     private focus?: ShippingFocusField
   ) {

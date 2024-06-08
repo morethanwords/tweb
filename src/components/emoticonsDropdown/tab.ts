@@ -144,6 +144,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     searchContainer.classList.add('emoticons-search-container');
     if(!this.noMenu) searchContainer.classList.add('emoticons-will-move-down');
     this.scrollable.append(searchContainer);
+    this.categoriesContainer.classList.add('emoticons-has-search');
     this.disposeSearch = render(() => {
       const [query, setQuery] = createSignal('');
       const [group, setGroup] = createSignal<EmojiGroup>();

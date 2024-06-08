@@ -10,6 +10,7 @@ export default function wrapMessageEntities(message: string, entities: MessageEn
   const totalEntities = mergeEntities(entities, myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
   return {
     message,
+    entities,
     myEntities,
     totalEntities
   };

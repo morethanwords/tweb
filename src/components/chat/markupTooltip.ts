@@ -22,14 +22,14 @@ import {applyMarkdown} from '../../helpers/dom/markdown';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import overlayCounter from '../../helpers/overlayCounter';
 
-type TooltipTypes = Extract<MarkdownType, 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'spoiler' | 'quote' | 'link'>;
+export type MarkupTooltipTypes = Extract<MarkdownType, 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'spoiler' | 'quote' | 'link'>;
 
 export default class MarkupTooltip {
   private static INSTANCE: MarkupTooltip;
 
   public container: HTMLElement;
   private wrapper: HTMLElement;
-  private buttons: {[type in TooltipTypes]: HTMLElement} = {} as any;
+  private buttons: {[type in MarkupTooltipTypes]: HTMLElement} = {} as any;
   private linkBackButton: HTMLElement;
   private linkApplyButton: HTMLButtonElement;
   private hideTimeout: number;
@@ -253,11 +253,11 @@ export default class MarkupTooltip {
     //   }
     // });
 
-    const types = Object.keys(this.buttons) as TooltipTypes[];
+    const types = Object.keys(this.buttons) as MarkupTooltipTypes[];
     const markup = getMarkupInSelection(types);
     types.forEach((type) => {
       if(markup[type].active) {
-        currentMarkups.add(this.buttons[type as TooltipTypes]);
+        currentMarkups.add(this.buttons[type as MarkupTooltipTypes]);
       }
     });
 
@@ -278,7 +278,9 @@ export default class MarkupTooltip {
     const selection = document.getSelection();
     const range = selection.getRangeAt(0);
 
-    const rowsWrapper = findUpClassName(this.input, 'rows-wrapper') || findUpClassName(this.input, 'input-message-container');
+    const rowsWrapper = findUpClassName(this.input, 'rows-wrapper') ||
+      findUpClassName(this.input, 'input-message-container') ||
+      findUpClassName(this.input, 'input-field');
     const currentTools = this.container.classList.contains('is-link') ? this.wrapper.lastElementChild : this.wrapper.firstElementChild;
     const bodyRect = document.body.getBoundingClientRect();
     const selectionRect = range.getBoundingClientRect();
@@ -422,7 +424,7 @@ export default class MarkupTooltip {
   }
 
   public canFormatInput(input: Element) {
-    return input.classList.contains('input-message-input');
+    return input.classList.contains('input-message-input') || input.getAttribute('can-format');
   }
 
   public handleSelection() {

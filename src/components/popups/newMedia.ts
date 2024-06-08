@@ -79,7 +79,8 @@ export default class PopupNewMedia extends PopupElement {
     type: 'media' | 'document',
     isMedia: true,
     group: boolean,
-    sendFileDetails: SendFileParams[]
+    sendFileDetails: SendFileParams[],
+    invertMedia: boolean
   }>;
   private messageInputField: InputFieldAnimated;
   private captionLengthMax: number;
@@ -224,6 +225,16 @@ export default class PopupNewMedia extends PopupElement {
         text: 'Popup.Attach.RemoveSpoilers',
         onClick: () => this.changeSpoilers(false),
         verify: () => this.canToggleSpoilers(false, false)
+      }, {
+        icon: 'captionup',
+        text: 'CaptionAbove',
+        onClick: () => this.moveCaption(true),
+        verify: () => this.canMoveCaption() && !this.willAttach.invertMedia
+      }, {
+        icon: 'captiondown',
+        text: 'CaptionBelow',
+        onClick: () => this.moveCaption(false),
+        verify: () => this.canMoveCaption() && !!this.willAttach.invertMedia
       }]
     });
 
@@ -440,14 +451,6 @@ export default class PopupNewMedia extends PopupElement {
     this.body.append(element);
   }
 
-  get type() {
-    return this.willAttach.type;
-  }
-
-  set type(type: PopupNewMedia['willAttach']['type']) {
-    this.willAttach.type = type;
-  }
-
   private partition(mimeTypes = MEDIA_MIME_TYPES_SUPPORTED) {
     const media: SendFileParams[] = [], files: SendFileParams[] = [], audio: SendFileParams[] = [];
     this.willAttach.sendFileDetails.forEach((d) => {
@@ -511,6 +514,10 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private changeType(type: PopupNewMedia['willAttach']['type']) {
+    if(type === 'document') {
+      this.moveCaption(false);
+    }
+
     this.willAttach.type = type;
     this.attachFiles();
   }
@@ -528,6 +535,14 @@ export default class PopupNewMedia extends PopupElement {
         this.removeMediaSpoiler(item);
       }
     });
+  }
+
+  public canMoveCaption() {
+    return !this.messageInputField.isEmpty() && this.willAttach.type === 'media';
+  }
+
+  public moveCaption(above: boolean) {
+    this.willAttach.invertMedia = above || undefined;
   }
 
   public addFiles(files: File[]) {

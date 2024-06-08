@@ -230,7 +230,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, AppEmoji[]
       padding: 16,
       gapX: 4,
       gapY: 0,
-      searchFetcher: async(value) => {
+      searchFetcher: options.noPacks ? undefined : async(value) => {
         if(!value) return [];
         return this.managers.appEmojiManager.prepareAndSearchEmojis({q: value, limit: Infinity, minChars: 1, addCustom: true});
       },
@@ -553,6 +553,9 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, AppEmoji[]
           });
         }
         recentCustomCategory.elements.container.style.paddingTop = '.5rem';
+        if(this.noPacks) {
+          recentCustomCategory.elements.container.style.paddingBottom = '.5rem';
+        }
       }
 
       EMOJI_CATEGORIES.forEach(([id]) => {

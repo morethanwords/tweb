@@ -45,7 +45,7 @@ body.is-right-column-shown {
   --topbar-height: 3.5rem;
   --topbar-avatar-active-size: 0px;
   --topbar-close-active-size: 2.5rem;
-  --topbar-avatar-close-gap: 0px;
+  --topbar-avatar-close-gap: 2px;
   
   --pinned-container-height: 3.25rem;
 	--pinned-audio-height: var(--pinned-container-height);
@@ -93,7 +93,7 @@ body.is-right-column-shown {
 	}
 
 	@include respond-to(no-floating-left-sidebar) {
-		.chat:first-child & {
+		.chat:first-child &:not(.show-back-button) {
       --topbar-close-active-size: 0px;
       --topbar-avatar-close-gap: 0px;
 
@@ -112,6 +112,7 @@ body.is-right-column-shown {
 	}
 
   &.has-avatar {
+    --topbar-close-active-size: 2.5rem;
     --topbar-avatar-active-size: 2.625rem;
     --topbar-avatar-close-gap: 6px;
   }

@@ -677,16 +677,6 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		}
 	}
 
-  &.no-forwards {
-    .bubble-beside-button.forward {
-      display: none;
-    }
-
-    .bubbles {
-      user-select: none !important;
-    }
-  }
-
 	&-background {
 		overflow: hidden;
 		background-color: #e6ebee;
@@ -1867,10 +1857,9 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	} */
 
 	&:not(.is-broadcast) {
-		.message,
-		.name {
-			max-width: 480px;
-		}
+    .bubble {
+      --max-width: 30rem;
+    }
 	}
 
 	&.is-scrolling .is-sticky {

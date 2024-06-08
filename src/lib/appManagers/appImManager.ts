@@ -13,7 +13,7 @@ import appSidebarRight, {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '../../components/s
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import {logger, LogTypes} from '../logger';
 import rootScope from '../rootScope';
-import Chat, {ChatType} from '../../components/chat/chat';
+import Chat, {ChatSearchKeys, ChatType} from '../../components/chat/chat';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '../../components/popups/newMedia';
 import MarkupTooltip from '../../components/chat/markupTooltip';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
@@ -26,7 +26,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity} from '../../layer';
+import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -125,6 +125,9 @@ import useProfileColors from '../../hooks/useProfileColors';
 import {DEFAULT_BACKGROUND_SLUG} from '../../config/app';
 import blur from '../../helpers/blur';
 import {wrapSlowModeLeftDuration} from '../../components/wrappers/wrapDuration';
+import {splitFullMid} from '../../components/chat/bubbles';
+import PopupStars from '../../components/popups/stars';
+import getSelectedNodes from '../../helpers/dom/getSelectedNodes';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -134,16 +137,16 @@ export type ChatSavedPosition = {
 export type ChatSetPeerOptions = {
   peerId: PeerId,
   lastMsgId?: number,
+  lastMsgPeerId?: PeerId,
   threadId?: number,
   startParam?: string,
   stack?: {peerId: PeerId, mid: number, message?: Message.message, isOut?: boolean},
   commentId?: number,
   type?: ChatType,
   mediaTimestamp?: number,
-  savedReaction?: Reaction[],
   text?: string
   entities?: MessageEntity[]
-};
+} & Partial<ChatSearchKeys>;
 
 export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
   peerId: PeerId,
@@ -358,7 +361,7 @@ export class AppImManager extends EventListenerBase<{
       const typing = typings.find((typing) => typing.action._ === 'sendMessageEmojiInteraction');
       if(typing?.action?._ === 'sendMessageEmojiInteraction') {
         const action = typing.action;
-        const bubble = chat.bubbles.bubbles[typing.action.msg_id];
+        const bubble = chat.bubbles.getBubble(peerId, typing.action.msg_id);
         if(bubble && bubble.classList.contains('emoji-big') && getVisibleRect(bubble, chat.bubbles.scrollable.container)) {
           const stickerWrapper: HTMLElement = bubble.querySelector('.media-sticker-wrapper:not(.bubble-hover-reaction-sticker):not(.reaction-sticker)');
 
@@ -649,6 +652,7 @@ export class AppImManager extends EventListenerBase<{
 
     this.onHashChange(true);
     this.attachKeydownListener();
+    this.attachCopyListener();
     this.handleAutologinDomains();
     this.handlePeerColors();
     this.checkForShare();
@@ -1169,6 +1173,37 @@ export class AppImManager extends EventListenerBase<{
     document.body.addEventListener('keydown', onKeyDown);
   }
 
+  // * restrict copying no forwards content
+  private attachCopyListener() {
+    document.addEventListener('copy', (e) => {
+      const nodes = getSelectedNodes();
+      nodes.some((node) => {
+        let element: HTMLElement = node as HTMLElement;
+        if(node.nodeType !== node.ELEMENT_NODE) {
+          element = node.parentElement;
+        }
+
+        if(!findUpClassName(element, 'no-forwards')) {
+          return false;
+        }
+
+        const bubble = findUpClassName(element, 'bubble');
+        if(!bubble) {
+          return false;
+        }
+
+        e.preventDefault();
+        const peerId = bubble.dataset.peerId.toPeerId();
+        const chat = apiManagerProxy.getChat(peerId.toChatId());
+        toastNew({
+          langPackKey: (chat as MTChat.channel).pFlags.broadcast ? 'CopyRestricted.Channel' : 'CopyRestricted.Group'
+        });
+
+        return true;
+      });
+    });
+  }
+
   public openUrl(url: string) {
     const {url: wrappedUrl, onclick} = wrapUrl(url);
     if(!onclick) {
@@ -1652,7 +1687,7 @@ export class AppImManager extends EventListenerBase<{
       const top = chatBubbles.scrollable.scrollPosition;
 
       const position = {
-        mids: getObjectKeysAndSort(chatBubbles.bubbles, 'desc').filter((mid) => mid > 0 && !chatBubbles.skippedMids.has(mid)),
+        mids: chatBubbles.getRenderedHistory('desc').map((fullMid) => splitFullMid(fullMid).mid),
         top
       };
 
@@ -1800,6 +1835,8 @@ export class AppImManager extends EventListenerBase<{
     // if(!isTouchSupported) {
     MarkupTooltip.getInstance().handleSelection();
     // }
+
+    // PopupElement.createPopup(PopupStars);
   }
 
   private attachDragAndDropListeners() {
@@ -2227,7 +2264,7 @@ export class AppImManager extends EventListenerBase<{
       if(options.threadId) {
         if(options.peerId === rootScope.myId) {
           options.type = ChatType.Saved;
-        } else if(!(await this.managers.appPeersManager.isForum(options.peerId))) {
+        } else if(!apiManagerProxy.isForum(options.peerId)) {
           options.type = ChatType.Discussion;
         }
       }
@@ -2626,12 +2663,14 @@ export class AppImManager extends EventListenerBase<{
     peerId,
     element,
     messageHighlighting,
-    colorAsOut
+    colorAsOut,
+    color
   }: {
     peerId: PeerId,
     element: HTMLElement,
     messageHighlighting?: boolean,
-    colorAsOut?: boolean
+    colorAsOut?: boolean,
+    color?: PeerColor
   }) {
     const colorProperty = '--peer-color-rgb';
     const borderBackgroundProperty = '--peer-border-background';
@@ -2650,7 +2689,7 @@ export class AppImManager extends EventListenerBase<{
       peerColorRgbValue = `var(--${property}-primary-color-rgb)`;
       peerBorderBackgroundValue = `var(--${property}-peer-${Math.max(1, length)}-border-background)`;
     } else {
-      const colorIndex = getPeerColorIndexByPeer(peer);
+      const colorIndex = color?.color ?? getPeerColorIndexByPeer(peer);
       if(colorIndex === -1) {
         element.style.removeProperty(colorProperty);
         element.style.removeProperty(borderBackgroundProperty);

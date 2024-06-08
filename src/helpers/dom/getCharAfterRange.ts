@@ -13,7 +13,7 @@ export default function getCharAfterRange(range: Range): string {
   const nextTextNode = findNextTextNode(range.endContainer);
   if(nextTextNode) {
     newRange.setStart(nextTextNode, 0);
-    newRange.setEnd(nextTextNode, 1);
+    newRange.setEnd(nextTextNode, Math.min(nextTextNode.nodeValue.length, 1));
     return newRange.toString();
   }
 }

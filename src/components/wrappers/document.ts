@@ -46,7 +46,7 @@ rootScope.addEventListener('document_downloading', (docId) => {
   });
 });
 
-export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext, fontSize, getSize, canTranscribeVoice}: {
+export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext, fontSize, getSize, canTranscribeVoice, isOut}: {
   message: Message.message,
   withTime?: boolean,
   fontWeight?: number,
@@ -61,7 +61,8 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   cacheContext?: ThumbCache,
   fontSize?: number,
   getSize?: () => number,
-  canTranscribeVoice?: boolean
+  canTranscribeVoice?: boolean,
+  isOut?: boolean
 }): Promise<HTMLElement> {
   fontWeight ??= 500;
   sizeType ??= '' as any;
@@ -87,6 +88,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     audioElement.dataset.fontWeight = '' + fontWeight;
     audioElement.dataset.fontSize = '' + fontSize;
     audioElement.dataset.sizeType = sizeType;
+    if(isOut) audioElement.classList.add('is-out');
     await audioElement.render();
     return audioElement;
   }

@@ -23,6 +23,7 @@ import sortEntities from '../../lib/richTextProcessor/sortEntities';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
 import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
+import wrapTextWithEntities from '../../lib/richTextProcessor/wrapTextWithEntities';
 import rootScope from '../../lib/rootScope';
 import {Modify} from '../../types';
 import TranslatableMessage from '../translatableMessage';
@@ -76,6 +77,13 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   const appMessagesManager = managers.appMessagesManager;
 
   const isRestricted = isMessageRestricted(message as any);
+
+  const someRichTextOptions: WrapRichTextOptions = {
+    ...options,
+    noLinebreaks: true,
+    noLinks: true,
+    noTextFormat: true
+  };
 
   let entities = (message as Message.message).totalEntities ?? (message as DraftMessage.draftMessage).entities;
   if((message as Message.message).media && !isRestricted) {
@@ -131,8 +139,16 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
           addPart('AttachLiveLocation');
           break;
         case 'messageMediaPoll':
-          const f = '📊' + ' ' + (media.poll.question || 'poll');
-          addPart(undefined, plain ? f : wrapEmojiText(f));
+          const pre = '📊' + ' ';
+          if(plain) {
+            const f = pre + media.poll.question.text;
+            addPart(undefined, f);
+          } else {
+            const textWithEntities = wrapTextWithEntities(media.poll.question);
+            const fragment = wrapRichText(textWithEntities.text, {...someRichTextOptions, entities: textWithEntities.entities});
+            fragment.prepend(wrapEmojiText(pre));
+            addPart(undefined, fragment);
+          }
           break;
         case 'messageMediaContact':
           addPart('AttachContact');
@@ -310,12 +326,6 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
         }
       }
 
-      const someRichTextOptions: WrapRichTextOptions = {
-        ...options,
-        noLinebreaks: true,
-        noLinks: true,
-        noTextFormat: true
-      };
       let what: DocumentFragment | HTMLElement;
       if(options.canTranslate) {
         what = TranslatableMessage({

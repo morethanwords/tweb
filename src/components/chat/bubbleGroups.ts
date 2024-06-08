@@ -33,8 +33,19 @@ type GroupItem = {
   mounted: boolean,
   single: boolean,
   group?: BubbleGroup,
-  message: Message.message | Message.messageService // use it only to set avatar
+  message: Message.message | Message.messageService, // use it only to set avatar
+  reverse?: boolean
 };
+
+function insertSomething<T>(to: Array<T>, what: T, sortKey: keyof T, reverse: boolean) {
+  if(!sortKey) {
+    indexOfAndSplice(to, what);
+    return (reverse ? to.push(what) : to.unshift(what)) - 1;
+  } else {
+    // @ts-ignore
+    return insertInDescendSortedArray(to, what, sortKey);
+  }
+}
 
 export class BubbleGroup {
   container: HTMLElement;
@@ -179,7 +190,7 @@ export class BubbleGroup {
 
   insertItem(item: GroupItem) {
     const {items} = this;
-    insertInDescendSortedArray(items, item, this.groups.sortGroupItemsKey);
+    insertSomething(items, item, this.groups.sortGroupItemsKey, this.groups.reverse = item.reverse);
 
     item.group = this;
     if(items.length === 1) {
@@ -299,11 +310,14 @@ export default class BubbleGroups {
   private sortItemsKey: Extract<keyof GroupItem, 'timestamp' | 'mid'>;
   private sortGroupsKey: Extract<keyof BubbleGroup, 'lastMid' | 'lastTimestamp'>;
   public sortGroupItemsKey: Extract<keyof GroupItem, 'groupMid' | 'timestamp'>;
+  public reverse: boolean; // * used for search
 
   constructor(private chat: Chat) {
-    this.sortItemsKey = chat.type === ChatType.Scheduled ? 'timestamp' : 'mid';
-    this.sortGroupsKey = chat.type === ChatType.Scheduled ? 'lastTimestamp' : 'lastMid';
-    this.sortGroupItemsKey = /* chat.type === 'scheduled' ? 'timestamp' :  */'groupMid';
+    if(chat.type !== ChatType.Search) {
+      this.sortItemsKey = chat.type === ChatType.Scheduled ? 'timestamp' : 'mid';
+      this.sortGroupsKey = chat.type === ChatType.Scheduled ? 'lastTimestamp' : 'lastMid';
+      this.sortGroupItemsKey = /* chat.type === 'scheduled' ? 'timestamp' :  */'groupMid';
+    }
   }
 
   removeItem(item: GroupItem) {
@@ -397,13 +411,15 @@ export default class BubbleGroups {
     return this.groups[0];
   }
 
-  changeBubbleMid(bubble: HTMLElement, mid: number) {
+  changeBubbleMessage(bubble: HTMLElement, message: GroupItem['message']) {
     const item = this.getItemByBubble(bubble);
     if(!item) {
       return;
     }
 
-    item.mid = mid;
+    item.mid = /* item.groupMid =  */message.mid;
+    item.message = message;
+    item.groupMid = this.generateGroupMid(message, item.dateTimestamp);
 
     // indexOfAndSplice(item.group.items, item);
     // // const canChangeGroupMid = !item.group.items.length || item.group.items.every((item) => item.groupMid === item.mid);
@@ -438,7 +454,8 @@ export default class BubbleGroups {
       !item2.single &&
       isOut1 === this.chat.isOutMessage(item2.message) &&
       (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true)) &&
-      (!isOut1 || item1.message.fromId === rootScope.myId); // * group anonymous sending
+      (!isOut1 || item1.message.fromId === rootScope.myId) && // * group anonymous sending
+      item1.message.peerId === item2.message.peerId;
   }
 
   getSiblingsAtIndex(itemIndex: number, items: GroupItem[]) {
@@ -483,11 +500,11 @@ export default class BubbleGroups {
   }
 
   insertItemToArray(item: GroupItem, array: GroupItem[]) {
-    return insertInDescendSortedArray(array, item, this.sortItemsKey);
+    return insertSomething(array, item, this.sortItemsKey, this.reverse = item.reverse);
   }
 
   insertGroup(group: BubbleGroup) {
-    const idx = insertInDescendSortedArray(this.groups, group, this.sortGroupsKey);
+    const idx = insertSomething(this.groups, group, this.sortGroupsKey, this.reverse);
     // this.updateGroupsClassNames();
     return idx;
   }
@@ -520,13 +537,18 @@ export default class BubbleGroups {
     return fromId;
   }
 
-  createItem(bubble: HTMLElement, message: MyMessage) {
+  generateGroupMid(message: MyMessage, dateTimestamp: number) {
+    const {mid, date: timestamp} = message;
+    return this.chat.type === ChatType.Scheduled ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${+('' + mid).replace('.', '')}` : mid;
+  }
+
+  createItem(bubble: HTMLElement, message: MyMessage, reverse: boolean) {
     const single = !(message._ === 'message' || (message.action && SERVICE_AS_REGULAR.has(message.action._)));
     const {mid, date: timestamp} = message;
     const {dateTimestamp} = this.chat.bubbles.getDateForDateContainer(timestamp);
     const item: GroupItem = {
       mid,
-      groupMid: this.chat.type === ChatType.Scheduled ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${+('' + mid).replace('.', '')}` : mid,
+      groupMid: this.generateGroupMid(message, dateTimestamp),
       fromId: this.getMessageFromId(message),
       bubble,
       // timestamp: this.chat.type === 'scheduled' ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${mid}` : timestamp,
@@ -534,7 +556,8 @@ export default class BubbleGroups {
       dateTimestamp,
       mounted: false,
       single,
-      message
+      message,
+      reverse
     };
 
     return item;
@@ -568,14 +591,14 @@ export default class BubbleGroups {
     // }
   }
 
-  prepareForGrouping(bubble: HTMLElement, message: MyMessage) {
+  prepareForGrouping(bubble: HTMLElement, message: MyMessage, reverse: boolean) {
     const foundItem = this.getItemByBubble(bubble);
     if(foundItem) { // should happen only on edit
       // debugger;
       return;
     }
 
-    const item = this.createItem(bubble, message);
+    const item = this.createItem(bubble, message, reverse);
     this.addItemToCache(item);
   }
 

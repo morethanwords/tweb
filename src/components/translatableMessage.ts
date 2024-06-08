@@ -15,6 +15,8 @@ import rootScope from '../lib/rootScope';
 import SuperIntersectionObserver from '../helpers/dom/superIntersectionObserver';
 import {processMessageForTranslation} from '../stores/peerLanguage';
 import createMiddleware from '../helpers/solid/createMiddleware';
+import wrapMessageEntities from '../lib/richTextProcessor/wrapMessageEntities';
+import wrapTextWithEntities from '../lib/richTextProcessor/wrapTextWithEntities';
 
 const USE_OBSERVER = false;
 
@@ -133,6 +135,10 @@ export function TranslatableMessageTsx(props: {
 
     if(props.onTextWithEntities) {
       r = props.onTextWithEntities(r);
+    }
+
+    if(originalText !== r || !props.message) {
+      r = wrapTextWithEntities(r);
     }
 
     const middleware = createMiddleware().get();

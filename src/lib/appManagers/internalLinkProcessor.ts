@@ -245,7 +245,7 @@ export class InternalLinkProcessor {
         } else if(PHONE_NUMBER_REG_EXP.test(pathnameParams[0])) {
           link = {
             _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
-            phone: pathnameParams[0].slice(1),
+            phone: pathnameParams[0],
             text: (uriParams as K8).text
           };
         } else if(pathnameParams[0] === 'c') {
@@ -653,7 +653,7 @@ export class InternalLinkProcessor {
 
         //   }
         // };
-        return PopupElement.createPopup(PopupPayment, {inputInvoice, paymentForm});
+        return PopupPayment.create({inputInvoice, paymentForm});
       }, (err) => {
         if((err as ApiError).type === 'SLUG_INVALID') {
           toastNew({langPackKey: 'PaymentInvoiceLinkInvalid'});

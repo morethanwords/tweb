@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {PhotoSize, WebDocument} from '../layer';
+import {Message, MessageMedia, PhotoSize, WebDocument} from '../layer';
 import {REPLIES_HIDDEN_CHANNEL_ID} from '../lib/mtproto/mtproto_config';
 import {MyDocument} from '../lib/appManagers/appDocsManager';
 import {MyPhoto} from '../lib/appManagers/appPhotosManager';
@@ -34,7 +34,7 @@ export default function setAttachmentSize({
   boxWidth: number,
   boxHeight: number,
   noZoom?: boolean,
-  message?: any,
+  message?: Message.message,
   pushDocumentSize?: boolean,
   photoSize?: ReturnType<typeof choosePhotoSize>,
   size?: MediaSize,
@@ -73,8 +73,9 @@ export default function setAttachmentSize({
 
     if(message &&
       (message.message ||
+        message.factcheck ||
         message.reply_to_mid ||
-        message.media.webpage ||
+        (message.media as MessageMedia.messageMediaWebPage).webpage ||
         (message.replies && message.replies.pFlags.comments && message.replies.channel_id.toChatId() !== REPLIES_HIDDEN_CHANNEL_ID)
       )
     ) { // make sure that bubble block is human-readable

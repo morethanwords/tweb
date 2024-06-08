@@ -181,6 +181,7 @@ export default class ChatInput {
     cancelBtn: HTMLButtonElement,
     iconBtn: HTMLButtonElement,
     menuContainer: HTMLElement,
+    replyInAnother: ButtonMenuItemOptions,
     doNotReply: ButtonMenuItemOptions,
     doNotQuote: ButtonMenuItemOptions
   } = {} as any;
@@ -505,7 +506,7 @@ export default class ChatInput {
         this.onHelperClick();
         this.replyHover.toggle(false);
       }
-    }, {
+    }, this.replyElements.replyInAnother = {
       icon: 'replace',
       text: 'ReplyToAnotherChat',
       onClick: () => this.changeReplyRecipient()
@@ -658,7 +659,7 @@ export default class ChatInput {
       radioGroups: [{
         name: 'position',
         onChange: (value) => {
-          this.webPageOptions.invertMedia = !!+value;
+          this.invertMedia = !!+value;
           this.saveDraftDebounced?.();
         },
         checked: 0
@@ -1687,11 +1688,11 @@ export default class ChatInput {
       draft = {
         _: 'draftMessage',
         date: tsNow(true),
-        message: value,
+        message: value.trim(),
         entities: entities.length ? entities : undefined,
         pFlags: {
           no_webpage: this.noWebPage,
-          invert_media: webPageOptions?.invertMedia || undefined
+          invert_media: this.invertMedia || undefined
         },
         reply_to: replyTo ? {
           _: 'inputReplyToMessage',
@@ -2320,6 +2321,46 @@ export default class ChatInput {
         toastNew({
           langPackKey: POSTING_NOT_ALLOWED_MAP['send_plain']
         });
+        return;
+      }
+
+      // const checkPseudoElementClick = (e: MouseEvent, tag: 'after' | 'before') => {
+      //   const target = (e.currentTarget || e.target) as HTMLElement;
+      //   const pseudo = getComputedStyle(target, `:${tag}`);
+      //   if(!pseudo) {
+      //     return false;
+      //   }
+
+      //   const [atop, aheight, aleft, awidth] = ['top', 'height', 'left', 'width'].map((k) => pseudo.getPropertyValue(k).slice(0, -2));
+
+      //   const ex = (e as any).layerX;
+      //   const ey = (e as any).layerY;
+      //   if(ex > aleft && ex < (aleft + awidth) && ey > atop && ey < (atop + aheight)) {
+      //     return true;
+      //   }
+
+      //   return false;
+      // };
+
+      const checkIconClick = (e: MouseEvent, quote: HTMLElement) => {
+        const rect = quote.getBoundingClientRect();
+        const ex = e.clientX;
+        const ey = e.clientY;
+        const elementWidth = 20;
+        const elementHeight = 20;
+        if(ex > (rect.right - elementWidth) && ex < rect.right && ey > rect.top && ey < (rect.top + elementHeight)) {
+          return true;
+        }
+
+        return false;
+      };
+
+      const quote = findUpClassName(e.target, 'can-send-collapsed');
+      if(quote && checkIconClick(e, quote)) {
+        if(quote.dataset.collapsed) delete quote.dataset.collapsed;
+        else quote.dataset.collapsed = '1';
+        toastNew({langPackKey: quote.dataset.collapsed ? 'Input.Quote.Collapsed' : 'Input.Quote.Expanded'});
+        return;
       }
     }, {listenerSetter: this.listenerSetter});
 
@@ -2456,7 +2497,7 @@ export default class ChatInput {
       this.updateBotCommandsToggle();
     }
 
-    if(!this.editMsgId) {
+    if(!this.editMsgId && !this.processingDraftMessage) {
       this.saveDraftDebounced();
     }
 
@@ -2559,7 +2600,6 @@ export default class ChatInput {
         this.webPageOptions = {
           optional: true,
           ...(oldWebPage ? {
-            invertMedia: oldWebPage && invertMedia || undefined,
             smallMedia: oldWebPage && (messageMedia as MessageMedia.messageMediaWebPage).pFlags.force_small_media || undefined,
             largeMedia: oldWebPage && (messageMedia as MessageMedia.messageMediaWebPage).pFlags.force_large_media || undefined
           } : {})
@@ -2628,65 +2668,65 @@ export default class ChatInput {
       //   this.messageInputField.simulateInputEvent();
       // }
     }
-    return;
+    // return;
 
-    // merge emojis
-    const hadEntities = parseEntities(fullValue);
-    mergeEntities(entities, hadEntities);
+    // // merge emojis
+    // const hadEntities = parseEntities(fullValue);
+    // mergeEntities(entities, hadEntities);
 
-    // max for additional whitespace
-    const insertLength = insertEntity ? Math.max(insertEntity.length, insertText.length) : insertText.length;
-    const addEntities: MessageEntity[] = [];
-    if(insertEntity) {
-      addEntities.push(insertEntity);
-      insertEntity.offset = matchIndex;
-    }
+    // // max for additional whitespace
+    // const insertLength = insertEntity ? Math.max(insertEntity.length, insertText.length) : insertText.length;
+    // const addEntities: MessageEntity[] = [];
+    // if(insertEntity) {
+    //   addEntities.push(insertEntity);
+    //   insertEntity.offset = matchIndex;
+    // }
 
-    // add offset to entities next to emoji
-    const diff = matches ? insertLength - matches[2].length : insertLength;
-    entities.forEach((entity) => {
-      if(entity.offset >= matchIndex) {
-        entity.offset += diff;
-      }
-    });
+    // // add offset to entities next to emoji
+    // const diff = matches ? insertLength - matches[2].length : insertLength;
+    // entities.forEach((entity) => {
+    //   if(entity.offset >= matchIndex) {
+    //     entity.offset += diff;
+    //   }
+    // });
 
-    mergeEntities(entities, addEntities);
+    // mergeEntities(entities, addEntities);
 
-    if(/* caretPos !== -1 && caretPos !== fullValue.length */true) {
-      const caretEntity: MessageEntity.messageEntityCaret = {
-        _: 'messageEntityCaret',
-        offset: matchIndex + insertLength,
-        length: 0
-      };
+    // if(/* caretPos !== -1 && caretPos !== fullValue.length */true) {
+    //   const caretEntity: MessageEntity.messageEntityCaret = {
+    //     _: 'messageEntityCaret',
+    //     offset: matchIndex + insertLength,
+    //     length: 0
+    //   };
 
-      let insertCaretAtIndex = 0;
-      for(let length = entities.length; insertCaretAtIndex < length; ++insertCaretAtIndex) {
-        const entity = entities[insertCaretAtIndex];
-        if(entity.offset > caretEntity.offset) {
-          break;
-        }
-      }
+    //   let insertCaretAtIndex = 0;
+    //   for(let length = entities.length; insertCaretAtIndex < length; ++insertCaretAtIndex) {
+    //     const entity = entities[insertCaretAtIndex];
+    //     if(entity.offset > caretEntity.offset) {
+    //       break;
+    //     }
+    //   }
 
-      entities.splice(insertCaretAtIndex, 0, caretEntity);
-    }
+    //   entities.splice(insertCaretAtIndex, 0, caretEntity);
+    // }
 
-    // const saveExecuted = this.prepareDocumentExecute();
-    // can't exec .value here because it will instantly check for autocomplete
-    const value = documentFragmentToHTML(wrapDraftText(newValue, {entities}));
-    this.messageInputField.setValueSilently(value);
+    // // const saveExecuted = this.prepareDocumentExecute();
+    // // can't exec .value here because it will instantly check for autocomplete
+    // const value = documentFragmentToHTML(wrapDraftText(newValue, {entities}));
+    // this.messageInputField.setValueSilently(value);
 
-    const caret = this.messageInput.querySelector('.composer-sel');
-    if(caret) {
-      setCaretAt(caret);
-      caret.remove();
-    }
+    // const caret = this.messageInput.querySelector('.composer-sel');
+    // if(caret) {
+    //   setCaretAt(caret);
+    //   caret.remove();
+    // }
 
-    // but it's needed to be checked only here
-    this.onMessageInput();
+    // // but it's needed to be checked only here
+    // this.onMessageInput();
 
-    // saveExecuted();
+    // // saveExecuted();
 
-    // document.execCommand('insertHTML', true, wrapEmojiText(emoji));
+    // // document.execCommand('insertHTML', true, wrapEmojiText(emoji));
   }
 
   public onEmojiSelected = (emoji: ReturnType<typeof getEmojiFromElement>, autocomplete: boolean) => {
@@ -3432,7 +3472,8 @@ export default class ChatInput {
             entities,
             noWebPage,
             webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
-            webPageOptions: this.webPageOptions
+            webPageOptions: this.webPageOptions,
+            invertMedia: this.willSendWebPage ? this.invertMedia : undefined
           }
         );
 
@@ -3450,6 +3491,7 @@ export default class ChatInput {
         noWebPage,
         webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
         webPageOptions: this.webPageOptions,
+        invertMedia: this.willSendWebPage ? this.invertMedia : undefined,
         clearDraft: true
       });
 
@@ -3779,6 +3821,7 @@ export default class ChatInput {
       });
       this.setReplyTo(replyTo);
 
+      this.replyElements.replyInAnother.element.classList.toggle('hide', !this.chat.bubbles.canForward(message as Message.message));
       this.replyElements.doNotReply.element.classList.toggle('hide', !!replyToQuote);
       this.replyElements.doNotQuote.element.classList.toggle('hide', !replyToQuote);
       this.setCurrentHover(this.replyHover, newReply);

@@ -33,6 +33,7 @@ export default class InputSearch {
 
   private listenerSetter: ListenerSetter;
   private debounceTime: number;
+  private verifyDebounce: (value: string, prevValue: string) => boolean;
 
   constructor(options: {
     placeholder?: LangPackKey,
@@ -43,7 +44,8 @@ export default class InputSearch {
     alwaysShowClear?: boolean,
     noBorder?: boolean,
     noFocusEffect?: boolean,
-    debounceTime?: number
+    debounceTime?: number,
+    verifyDebounce?: (value: string, prevValue: string) => boolean
   } = {}) {
     this.inputField = new InputField({
       // placeholder,
@@ -60,6 +62,7 @@ export default class InputSearch {
     this.onClear = options.onClear;
     this.onDebounce = options.onDebounce;
     this.debounceTime = options.debounceTime ?? 300;
+    this.verifyDebounce = options.verifyDebounce;
 
     const input = this.input = this.inputField.input;
     input.classList.add('input-search-input');
@@ -159,16 +162,23 @@ export default class InputSearch {
   onInput = () => {
     if(!this.onChange) return;
 
-    const value = this.value;
-
-    if(value !== this.prevValue) {
-      this.prevValue = value;
-      this.clearTimeout(true);
-      this.timeout = window.setTimeout(() => {
-        this.onDebounce?.(false);
-        this.onChange(value);
-      }, this.debounceTime);
+    const {value, prevValue} = this;
+    if(value === prevValue) {
+      return;
     }
+
+    this.prevValue = value;
+    if(this.verifyDebounce?.(value, prevValue) === false) {
+      this.clearTimeout(false);
+      this.onChange(value);
+      return;
+    }
+
+    this.clearTimeout(true);
+    this.timeout = window.setTimeout(() => {
+      this.onDebounce?.(false);
+      this.onChange(value);
+    }, this.debounceTime);
   };
 
   onClearClick = (e?: MouseEvent) => {
@@ -195,6 +205,7 @@ export default class InputSearch {
 
   public remove() {
     this.clearTimeout(false);
+    this.verifyDebounce = undefined;
     this.listenerSetter.removeAll();
   }
 }

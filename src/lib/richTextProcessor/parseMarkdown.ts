@@ -156,7 +156,7 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
   //   newText = newText.trim();
   // }
 
-  mergeEntities(currentEntities, entities);
+  currentEntities = mergeEntities(currentEntities, entities);
   combineSameEntities(currentEntities);
 
   let length = newText.length;

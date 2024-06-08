@@ -172,7 +172,7 @@ export default class PopupPremium extends PopupElement {
 
     this.option = this.props.premiumPromo.period_options[0];
     const shortestOption = this.props.premiumPromo.period_options.slice().sort((a, b) => a.months - b.months)[0];
-    this.wrapCurrency = (amount) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true);
+    this.wrapCurrency = (amount) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true, true);
 
     const headerBackground = document.createElement('div');
     headerBackground.classList.add('popup-header-background');

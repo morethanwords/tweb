@@ -19,7 +19,7 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import windowSize from '../helpers/windowSize';
-import {Message, MessageEntity, MessageMedia, PollResults} from '../layer';
+import {Message, MessageEntity, MessageMedia, PollResults, TextWithEntities} from '../layer';
 import toHHMMSS from '../helpers/string/toHHMMSS';
 import StackedAvatars from './stackedAvatars';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
@@ -497,7 +497,12 @@ export default class PollElement extends HTMLElement {
     }
   }
 
-  wrapSomeText(text: string, entities?: MessageEntity[], middleware = this.middlewareHelper.get()) {
+  wrapSomeText(text: string | TextWithEntities, entities?: MessageEntity[], middleware = this.middlewareHelper.get()) {
+    if(typeof(text) !== 'string') {
+      entities = text.entities;
+      text = text.text;
+    }
+
     if(!this.translatableParams) {
       return wrapRichText(text, {
         ...this.richTextOptions,

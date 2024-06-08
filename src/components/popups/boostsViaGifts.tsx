@@ -693,9 +693,8 @@ export default class PopupBoostsViaGifts extends PopupElement {
         purpose,
         option: option()
       };
-      const paymentForm = await this.managers.appPaymentsManager.getPaymentForm(inputInvoice);
 
-      const popup = PopupElement.createPopup(PopupPayment, {inputInvoice, paymentForm});
+      const popup = await PopupPayment.create({inputInvoice});
       await new Promise<void>((resolve, reject) => {
         popup.addEventListener('finish', (result) => {
           if(result === 'cancelled' || result === 'failed') {

@@ -55,10 +55,12 @@ export type SlicedArraySerialized<T extends ItemType> = {
 export default class SlicedArray<T extends ItemType> {
   public slices: Slice<T>[]/*  = [[7,6,5],[4,3,2],[1,0,-1]] */;
   private sliceConstructor: SliceConstructor<T>;
+  public compareValue: (a: T, b: T) => number;
 
   constructor() {
     // @ts-ignore
     this.sliceConstructor = SlicedArray.getSliceConstructor(this);
+    this.compareValue ??= compareValue;
 
     const first = this.constructSlice();
     // first.setEnd(SliceEnd.Bottom);
@@ -230,7 +232,7 @@ export default class SlicedArray<T extends ItemType> {
       let insertIndex = 0;
       for(const length = this.slices.length; insertIndex < length; ++insertIndex) { // * maybe should iterate from the end, could be faster ?
         const s = this.slices[insertIndex];
-        if(compareValue(slice[0], s[0]) === 1) {
+        if(this.compareValue(slice[0], s[0]) === 1) {
           break;
         }
       }
@@ -303,7 +305,7 @@ export default class SlicedArray<T extends ItemType> {
   // * offset will be exclusive, so if offsetId is in slice, then offset will be +1
   public findOffsetInSlice(offsetId: T, slice: Slice<T>) {
     for(let offset = 0; offset < slice.length; ++offset) {
-      if(compareValue(offsetId, slice[offset]) >= 0) {
+      if(this.compareValue(offsetId, slice[offset]) >= 0) {
         /* if(!offset) { // because can't find 3 in [[5,4], [2,1]]
           return undefined;
         } */
@@ -316,21 +318,25 @@ export default class SlicedArray<T extends ItemType> {
     }
   }
 
-  public findSliceOffset(maxId: T): ReturnType<SlicedArray<T>['findOffsetInSlice']> {
+  public findSliceOffset(maxId: T): ReturnType<SlicedArray<T>['findOffsetInSlice']> & {sliceIndex: number} {
     let slice: Slice<T>;
     for(let i = 0; i < this.slices.length; ++i) {
       slice = this.slices[i];
 
       const found = this.findOffsetInSlice(maxId, slice);
       if(found) {
-        return found;
+        return {
+          ...found,
+          sliceIndex: i
+        };
       }
     }
 
     if(slice?.isEnd(SliceEnd.Top)) {
       return {
         slice,
-        offset: slice.length
+        offset: slice.length,
+        sliceIndex: this.slices.length - 1
       };
     }
   }

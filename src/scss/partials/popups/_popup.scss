@@ -200,6 +200,7 @@ $popup-footer-abitlarger-padding: 1rem;
     text-align: center;
 
     .btn-primary {
+      display: block;
       text-transform: uppercase;
       padding: 0 1.0625rem;
       height: #{$popup-footer-button-size};

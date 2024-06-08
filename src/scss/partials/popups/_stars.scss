@@ -1,0 +1,325 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+ .popup-stars {
+  --popup-min-width: 26.25rem;
+  --popup-max-width: 26.25rem;
+  $parent: ".popup";
+
+  #{$parent} {
+    &-header {
+      height: 3.5rem;
+      padding-inline: .5rem;
+
+      .stars-balance {
+        margin-top: .25rem;
+        margin-inline-end: .75rem;
+      }
+    }
+
+    &-container {
+      max-height: calc(100vh - 5rem);
+      padding: 0;
+      border-radius: 1rem;
+    }
+
+    &-body {
+      background-color: var(--background-color);
+    }
+
+    &-close {
+      margin-inline-end: 1rem;
+    }
+
+    &-title {
+      overflow: unset;
+    }
+  }
+
+  &-image {
+    width: 194px;
+    margin: 1.125rem auto .3125rem;
+    display: block;
+    transform: translateX(-3px); // * fix image alignment
+  }
+
+  &-title,
+  &-subtitle {
+    @include text-overflow(false);
+    @include text-center();
+  }
+
+  &-title {
+    font-size: 1.5rem;
+    font-weight: var(--font-weight-bold);
+    line-height: 2rem;
+    margin-bottom: .375rem;
+  }
+
+  &-subtitle {
+    line-height: 1.375rem;
+  }
+
+  &-options {
+    // display: grid;
+    // grid-template-columns: repeat(2, 1fr);
+    // gap: .5rem;
+    margin-top: 1.5rem;
+    margin: 1.5rem .5rem .5rem;
+    overflow: hidden;
+    position: relative;
+
+    @include respond-to(handhelds) {
+      margin-left: 0;
+      margin-right: 0;
+    }
+
+    @include animation-level(2) {
+      transition: height var(--transition-standard-in);
+    }
+  }
+
+  &-option {
+    --background-color: var(--light-filled-secondary-text-color);
+    height: 79px;
+    border-radius: $border-radius-medium;
+    background-color: var(--background-color);
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: absolute;
+    width: calc(50% - .25rem);
+    opacity: 1;
+
+    // @include hover() {
+    //   --background-color: #F1F3F5;
+    // }
+
+    @include animation-level(2) {
+      transition: opacity var(--transition-standard-in), transform var(--transition-standard-in), width var(--transition-standard-in);
+    }
+
+    &.invisible {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    &.full {
+      width: 100%;
+    }
+
+    &-title {
+      font-size: 1.5rem;
+      font-weight: var(--font-weight-bold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .125rem;
+      height: 1.75rem;
+    }
+
+    &-subtitle {
+      font-size: var(--font-size-14);
+      line-height: var(--line-height-16);
+      color: var(--secondary-text-color);
+      height: 1.3125rem;
+    }
+
+    &-stars {
+      width: 26px;
+      height: 26px;
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: center;
+      --star-background-color: var(--background-color);
+
+      .stars-star-icon {
+        width: 26px;
+        height: 26px;
+        flex: 0 0 auto;
+        margin-top: -2px;
+
+        &-stroke { // hide next star leg
+          background: linear-gradient(90deg, var(--star-background-color) 16px, transparent 16px);
+        }
+      }
+    }
+  }
+
+  &-more {
+    font-weight: var(--font-weight-bold);
+    justify-content: center;
+    align-items: unset;
+    height: 0rem;
+    line-height: 3rem;
+
+    &.is-visible {
+      height: 3rem;
+    }
+
+    @include animation-level(2) {
+      transition: height var(--transition-standard-in) !important;
+    }
+
+    @include respond-to(not-handhelds) {
+      margin: 0 .5rem !important;
+      width: calc(100% - 1rem) !important;
+    }
+
+    .button-icon {
+      margin-inline: .25rem 0;
+      order: 1;
+      line-height: inherit;
+    }
+  }
+
+  &-transactions {
+    &-section {
+      .sidebar-left-section {
+        padding: 0 !important;
+      }
+
+      .sidebar-left-section-content {
+        margin: 0 !important;
+      }
+    }
+
+    &-tab {
+      border-radius: 0 !important;
+    }
+
+    &-content {
+      padding: .5rem;
+
+      // .row {
+      //   &-media {
+      //     top: .4375rem !important;
+      //     inset-inline-start: .4375rem !important;
+      //   }
+      // }
+    }
+  }
+
+  &-transaction {
+    &-media {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: #fff;
+      background: var(--premium-gradient);
+    }
+  }
+}
+
+.popup-stars-pay {
+  $parent: ".popup";
+
+  #{$parent} {
+    &-header {
+      margin-bottom: 0;
+    }
+
+    &-body {
+      background-color: var(--surface-color);
+      margin: -3.5rem 0 1rem;
+
+      &.is-receipt {
+        margin-bottom: 0;
+      }
+
+      .scrollable-y {
+        border-top: none;
+      }
+    }
+
+    &-footer {
+      .button-icon {
+        font-size: 18.5px;
+        vertical-align: bottom;
+        line-height: inherit;
+        margin-inline-start: .25rem;
+      }
+    }
+  }
+
+  &-images {
+    position: absolute;
+    top: 2.625rem;
+    inset-inline: 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  &-item {
+    width: 90px;
+    height: 90px;
+    position: relative;
+    border-radius: 50%;
+    margin-right: -1.25rem;
+    outline: 4px solid var(--surface-color);
+    z-index: 1;
+    background-color: var(--surface-color);
+
+    .media-photo {
+      width: inherit;
+      height: inherit;
+      object-fit: cover;
+      border-radius: inherit;
+    }
+  }
+
+  &-tos {
+    color: var(--secondary-text-color);
+    text-align: center;
+    @include text-overflow(false);
+  }
+
+  &-amount {
+    font-weight: var(--font-weight-bold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .25rem;
+
+    .stars-star-icon {
+      width: 20px;
+      height: 20px;
+      margin-top: -3px;
+    }
+  }
+
+  .popup-stars-pay-amount { 
+    margin-top: .375rem;
+  }
+
+  &-padding {
+    padding: 0 1rem;
+  }
+
+  &-avatar {
+    width: 90px;
+    height: 90px;
+    position: relative;
+    
+    .popup-stars-transaction-media {
+      font-size: 3rem;
+    }
+  }
+
+  .monospace-text {
+    cursor: pointer;
+  }
+
+  .popup-stars-image {
+    margin-top: 1.6875rem;
+  }
+}

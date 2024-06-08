@@ -508,8 +508,14 @@ const lang = {
   'Boost.Reassign.Wait': 'Wait until the boost is available or get %s by gifting a **[Telegram Premium]()** subscription.',
   'Search.Empty': 'There were no results for "**%@**". Try a new search.',
   'Search.EmptyFrom': 'There were no messages from **%@**.',
+  'Search.EmptyHashtag': 'There were no results for "%@". Try another hashtag.',
+  'Search.HelpHashtag': 'Enter a hashtag to find messages containing it.',
   'Search.From': 'From:',
   'Search.Member': 'Search Members',
+  'Search.Hashtag': 'Search Hashtag',
+  'Search.Types.ThisChat': 'This Chat',
+  'Search.Types.MyMessages': 'My Messages',
+  'Search.Types.PublicPosts': 'Public Posts',
   'Chat.SearchSelected': 'Search Selected Text',
   'Privacy.VoiceMessagesPremiumCaption': 'Subscribe to Telegram Premium to restrict who can send you voice or video messages.\n\n**[What is Telegram Premium?]()**',
   'Privacy.MessagesInfo': 'You can restrict messages from users who are not in your contacts and don\'t have Premium.\n\n**[What is Telegram Premium?]()**',
@@ -708,6 +714,16 @@ const lang = {
   'WebPage.OpenLink': 'OPEN LINK',
   'Ads.Reported': 'We will review this ad to ensure it matches our **[Ad Policies and Guidelines](https://ads.telegram.org/guidelines)**.',
   'RevenueSharingAdsInfo4SubtitleLearnMore1': '**[Learn More >](https://ads.telegram.org/)**',
+  'Stars.TOS': 'By proceeding and purchasing Stars, you agree with the [Terms and Conditions](https://telegram.org/tos).',
+  'ShowMoreOptions': 'Show More Options',
+  'Stars.ConfirmPurchaseButton': 'Confirm and Pay %d',
+  'Stars.TransactionTOS': 'Review the **[Terms of Service](https://telegram.org/tos)** for Stars.',
+  'Stars.TopUp': 'Stars Top-Up',
+  'Stars.Via.Bot': 'Stars Bot',
+  'Stars.Via.Fragment': 'Purchase from Fragment',
+  'Stars.Via.App': 'In-App Purchase',
+  'Stars.Via.Unsupported': 'In-App Purchase',
+  'Stars.Via': 'Via',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2195,6 +2211,42 @@ const lang = {
     'one_value': 'What can %1$s selected user do?',
     'other_value': 'What can %1$s selected users do?'
   },
+  'TelegramStars': 'Telegram Stars',
+  'TelegramStarsInfo': 'Buy Stars to unlock content and service\nin miniapps on Telegram.',
+  'StarsBalance': 'Balance',
+  'StarsTransactionsAll': 'All Transactions',
+  'StarsTransactionsIncoming': 'Incoming',
+  'StarsTransactionsOutgoing': 'Outgoing',
+  'StarsConfirmPurchaseTitle': 'Confirm Your Purchase',
+  'StarsConfirmPurchaseText': {
+    'one_value': 'Do you want to buy \"**%2$s**\" in **%3$s** for **%1$d star**?',
+    'other_value': 'Do you want to buy \"**%2$s**\" in **%3$s** for **%1$d stars**?'
+  },
+  'StarsNeededTitle': {
+    'one_value': '%d Star Needed',
+    'other_value': '%d Stars Needed'
+  },
+  'StarsNeededText': 'Buy **Stars** and use them on **%s** and other miniapps.',
+  'MenuTelegramStars': 'Your Stars',
+  'StarsCount': {
+    'one_value': '%d Star',
+    'other_value': '%d Stars'
+  },
+  'StarsTransactionID': 'Transaction ID',
+  'StarsTransactionIDCopied': 'Transaction ID copied to clipboard',
+  'StarsTransactionDate': 'Date',
+  'AddFactCheck': 'Add Fact Check',
+  'EditFactCheck': 'Edit Fact Check',
+  'FactCheck': 'Fact Check',
+  'FactCheckWhat': 'what’s this?',
+  'FactCheckDialog': 'Fact Check',
+  'FactCheckPlaceholder': 'Add Fact or Context',
+  'FactCheckToast': 'This clarification was provided by a fact checking agency assigned by the department of the government of your country (%s) responsible for combating misinformation.',
+  'FactCheckFooter': 'This clarification was provided by a fact checking agency assigned by the department of the government of your country (%s) responsible for combating misinformation.',
+  'FactCheckEdited': 'Fact check updated.',
+  'FactCheckDeleted': 'Fact check removed.',
+  'CaptionAbove': 'Move Caption Up',
+  'CaptionBelow': 'Move Caption Down',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2774,7 +2826,11 @@ const lang = {
   'SetEmojiStatusUntil2Days': 'Set for 2 days',
   'SetAsEmojiStatus': 'Set as Status',
   'SetAsEmojiStatusInfo': 'Emoji status set.',
-  'Message.Context.RemoveGif': 'Remove GIF'
+  'Message.Context.RemoveGif': 'Remove GIF',
+  'Input.Quote.Collapsed': 'Quote text will be collapsed',
+  'Input.Quote.Expanded': 'Quote text will be fully visible',
+  'CopyRestricted.Channel': 'Sorry, copying from this channel is disabled by its admins.',
+  'CopyRestricted.Group': 'Sorry, copying from this group is disabled by its admins.'
 };
 
 export default lang;

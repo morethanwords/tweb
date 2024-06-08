@@ -24,14 +24,7 @@ import rootScope from '../rootScope';
 import CustomEmojiElement, {CustomEmojiElements} from './element';
 import assumeType from '../../helpers/assumeType';
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
-
-const resizeObserverMap: WeakMap<Element, CustomEmojiRendererElement> = new WeakMap();
-const resizeObserver = new ResizeObserver((entries) => {
-  for(const entry of entries) {
-    const renderer = resizeObserverMap.get(entry.target);
-    renderer.setDimensionsFromRect(entry.contentRect);
-  }
-});
+import {observeResize, unobserveResize} from '../../components/resizeObserver';
 
 const globalLazyLoadQueue = new LazyLoadQueue();
 
@@ -85,6 +78,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.isCanvasClean = false;
   }
 
+  private onResizeEntry = (entry: ResizeObserverEntry) => {
+    this.setDimensionsFromRect(entry.contentRect);
+  };
+
   public connectedCallback() {
     if(emojiRenderers.has(this)) {
       return;
@@ -94,8 +91,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     // animationIntersector.addAnimation(this, this.animationGroup);
     const observeElement = this.observeResizeElement ?? this.canvas;
     if(observeElement) {
-      resizeObserverMap.set(observeElement, this);
-      resizeObserver.observe(observeElement);
+      observeResize(observeElement, this.onResizeEntry);
     }
     emojiRenderers.add(this);
 
@@ -119,8 +115,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
     const observeElement = this.observeResizeElement ?? this.canvas;
     if(observeElement) {
-      resizeObserverMap.delete(observeElement);
-      resizeObserver.unobserve(observeElement);
+      unobserveResize(observeElement);
     }
 
     this.customEmojis.forEach((elements) => {

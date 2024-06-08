@@ -15,7 +15,7 @@ export default function wrapDraft(
 ) {
   const myEntities = parseEntities(draft.message);
   const apiEntities = draft.entities || [];
-  const totalEntities = mergeEntities(apiEntities.slice(), myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
+  const totalEntities = mergeEntities(apiEntities, myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
 
   return wrapDraftText(draft.message, {...options, entities: totalEntities});
 }

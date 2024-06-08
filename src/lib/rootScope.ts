@@ -190,6 +190,8 @@ export type BroadcastEvents = {
   'saved_tags': {savedPeerId: PeerId, tags: SavedReactionTag[]},
   'saved_tags_clear': void,
 
+  'stars_balance': Long,
+
   'config': Config,
   'app_config': MTAppConfig,
   'managers_ready': void // ! inner

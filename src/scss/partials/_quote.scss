@@ -58,6 +58,72 @@
       font-family: '#{$tgico-font-family}' !important;
     }
   }
+
+  &-collapse {
+    position: absolute;
+    inset-inline-end: 0;
+    bottom: 0;
+    width: 1rem;
+    height: 1rem;
+    overflow: hidden;
+    cursor: pointer;
+
+    &:after {
+      position: relative;
+      inset: auto;
+      content: $tgico-arrowhead;
+      font-size: 110%;
+      display: inline-block;
+      transform: rotate(0deg);
+
+      @include animation-level(2) {
+        transition: transform var(--transition-standard-in);
+      }
+    }
+  }
+
+  &-collapsable {
+    max-height: calc(var(--messages-secondary-line-height) * 3 + 2px); // don't forget padding here
+
+    @include animation-level(2) {
+      transition: max-height var(--transition-standard-in);
+    }
+
+    &.is-expanded {
+      max-height: var(--quote-max-height);
+
+      .quote-like-collapse:after {
+        // content: $tgico-up;
+        transform: rotate(180deg);
+      }
+    }
+
+    &:not(.is-truncated):not(.is-expanded) {
+      .quote-like-collapse {
+        display: none;
+      }
+    }
+
+    // display: -webkit-box !important;
+    // -webkit-line-clamp: 3;
+    // -webkit-box-orient: vertical;  
+    // overflow: hidden;
+  }
+
+  // * in message input
+  &.can-send-collapsed {
+    &:after {
+      content: $tgico-collapse;
+      width: 1.25rem;
+      height: 1.25rem;
+      text-align: end;
+      cursor: pointer;
+    }
+
+    &[data-collapsed]:after {
+      content: $tgico-expand;
+    }
+  }
 }
 
 .quote,

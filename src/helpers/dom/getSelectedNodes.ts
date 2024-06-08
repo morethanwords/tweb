@@ -25,3 +25,27 @@ export default function getSelectedNodes() {
   // * filter null's due to <br>
   return nodes.filter((node) => !!node);
 }
+
+// export default function getSelectedNodes() {
+//   const selection = document.getSelection();
+//   const fragment = document.createDocumentFragment();
+//   const nodeList: Node[] = [];
+
+//   for(let i = 0; i < selection.rangeCount; ++i) {
+//     fragment.append(selection.getRangeAt(i).cloneContents());
+//   }
+
+//   const walker = document.createTreeWalker(fragment);
+//   let currentNode = walker.currentNode;
+
+//   while(currentNode) {
+//     nodeList.push(currentNode);
+//     currentNode = walker.nextNode();
+//   }
+
+//   if(nodeList[0] === fragment) {
+//     nodeList.shift();
+//   }
+
+//   return nodeList;
+// }

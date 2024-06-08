@@ -180,6 +180,7 @@
   --avatar-border-radius-forum: 37%;
 
   --premium-gradient: linear-gradient(52.62deg, #6B93FF 12.22%, #976FFF 50.25%, #E46ACE 98.83%);
+  --star-background-color: var(--surface-color);
 
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
@@ -199,7 +200,7 @@
     --chat-input-size: #{$chat-input-size};
     --chat-input-padding: #{$chat-padding};
     --chat-input-inner-padding: #{$chat-input-inner-padding};
-}
+  }
 
   @include respond-to(esg-bottom) {
     --chat-input-size: #{$chat-input-handhelds-size};
@@ -392,6 +393,7 @@
 @import "fonts/robotoMono";
 @import "partials/input";
 @import "partials/button";
+@import "partials/table";
 @import "partials/animatedIcon";
 @import "partials/autocompleteHelper";
 @import "partials/autocompletePeerHelper";
@@ -489,6 +491,7 @@
 @import "partials/popups/reportAd";
 @import "partials/popups/aboutAd";
 @import "partials/popups/deleteMegagroupMessages";
+@import "partials/popups/stars";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -2562,4 +2565,43 @@ hr {
   &-item {
     position: absolute;
   }
+}
+
+.stars {
+  &-balance {
+    text-align: end;
+
+    &-title {
+      font-size: var(--font-size-14);
+      line-height: 14px;
+    }
+
+    &-subtitle {
+      font-size: var(--font-size-16);
+      font-weight: var(--font-weight-bold);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: .125rem;
+    }
+
+    .stars-star-icon {
+      --star-background-color: var(--surface-color);
+      width: 19px;
+      height: 19px;
+      margin-top: -1px;
+    }
+  }
+}
+
+.xtr {
+  &-icon {
+    vertical-align: bottom;
+    line-height: inherit;
+  }
+}
+
+.clearfix {
+  clear: both;
+  display: table;
 }

@@ -1081,7 +1081,7 @@ export default class AppSelectPeers {
     avatarContainer.classList.add('selector-user-avatar-container');
     const avatarClose = document.createElement('div');
     avatarClose.classList.add('selector-user-avatar-close');
-    avatarClose.append(Icon('close'))
+    avatarClose.append(Icon('close'));
     const avatarEl = avatarNew({
       middleware: div.middlewareHelper.get(),
       size: avatarSize,

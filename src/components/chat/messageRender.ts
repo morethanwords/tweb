@@ -86,9 +86,9 @@ export namespace MessageRender {
       const postAuthor = options.chat.getPostAuthor(message);
       if(postAuthor) {
         const span = document.createElement('span');
-        span.classList.add('post-author');
+        span.classList.add('time-post-author');
         setInnerHTML(span, wrapEmojiText(postAuthor));
-        span.insertAdjacentHTML('beforeend', '<span class="post-author-comma">,' + NBSP + '</span>');
+        span.insertAdjacentHTML('beforeend', '<span class="time-post-author-comma">,' + NBSP + '</span>');
         args.push(span);
       }
 
@@ -169,7 +169,9 @@ export namespace MessageRender {
     lazyLoadQueue?: LazyLoadQueue,
     middleware: Middleware
   }) => {
-    const isFooter = !bubble.classList.contains('sticker') && !bubble.classList.contains('emoji-big') && !bubble.classList.contains('round');
+    const isFooter = !bubble.classList.contains('sticker') &&
+      !bubble.classList.contains('emoji-big') &&
+      !bubble.classList.contains('round');
     const repliesFooter = new RepliesElement();
     repliesFooter.message = message;
     repliesFooter.type = isFooter ? 'footer' : 'beside';
@@ -177,7 +179,7 @@ export namespace MessageRender {
     repliesFooter.lazyLoadQueue = lazyLoadQueue;
     repliesFooter.middlewareHelper = middleware.create();
     repliesFooter.init();
-    bubbleContainer.prepend(repliesFooter);
+    bubbleContainer.append(repliesFooter);
     return isFooter;
   };
 
@@ -213,7 +215,7 @@ export namespace MessageRender {
       (
         replyTo.reply_to_peer_id ?
           getPeerId(replyTo.reply_to_peer_id) :
-          chat.peerId
+          message.peerId
       );
 
     const originalMessage = !isStoryReply && apiManagerProxy.getMessageByPeer(replyToPeerId, message.reply_to_mid);
@@ -224,7 +226,7 @@ export namespace MessageRender {
     let titlePeerId: PeerId, setColorPeerId: PeerId;
     if(isStoryReply) {
       if(!originalStory.cached) {
-        needUpdate.push({replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid});
+        needUpdate.push({replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid, peerId: message.peerId});
         rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
 
         originalPeerTitle = i18n('Loading');
@@ -250,7 +252,7 @@ export namespace MessageRender {
           fromName: getFwdFromName(replyTo.reply_from)
         }).element;
       } else {
-        needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
+        needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid, peerId: message.peerId});
         rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
 
         originalPeerTitle = i18n('Loading');
@@ -325,9 +327,13 @@ export namespace MessageRender {
 
     await fillPromise;
     if(currentReplyDiv) {
-      if(currentReplyDiv.classList.contains('floating-part')) {
-        container.classList.add('floating-part');
-      }
+      const saveClassNames = ['floating-part', 'mb-shorter'];
+      const classList = currentReplyDiv.classList;
+      saveClassNames.forEach((className) => {
+        if(classList.contains(className)) {
+          container.classList.add(className);
+        }
+      });
       currentReplyDiv.replaceWith(container);
     } else {
       appendCallback(container);

@@ -44,7 +44,7 @@ import IS_STANDALONE from '../../environment/standalone';
 import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
 import confirmationPopup from '../confirmationPopup';
-import {TEST_BUBBLES_DELETION} from './bubbles';
+import {makeFullMid, TEST_BUBBLES_DELETION} from './bubbles';
 import {ChatType} from './chat';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
@@ -567,7 +567,7 @@ class AppSelection extends EventListenerBase<{
   /**
    * ! Call this method only to handle deleted messages
    */
-  public deleteSelectedMids(peerId: PeerId, mids: number[]) {
+  public deleteSelectedMids(peerId: PeerId, mids: number[], batch?: boolean) {
     const set = this.selectedMids.get(peerId);
     if(!set) {
       return;
@@ -581,8 +581,13 @@ class AppSelection extends EventListenerBase<{
       this.selectedMids.delete(peerId);
     }
 
-    this.updateContainer();
-    this.toggleSelection();
+    const after = () => {
+      this.updateContainer();
+      this.toggleSelection();
+    };
+
+    if(!batch) after();
+    return after;
   }
 }
 
@@ -858,12 +863,13 @@ export default class ChatSelection extends AppSelection {
     const ret = super.toggleSelection(toggleCheckboxes, forceSelection);
 
     if(ret && toggleCheckboxes) {
-      for(const mid in this.bubbles.bubbles) {
-        if(this.bubbles.skippedMids.has(+mid)) {
+      const history = this.bubbles.getRenderedHistory('asc');
+      for(const fullMid of history) {
+        if(this.bubbles.skippedMids.has(fullMid)) {
           continue;
         }
 
-        const bubble = this.bubbles.bubbles[mid];
+        const bubble = this.bubbles.getBubble(fullMid);
         this.toggleElementCheckbox(bubble, this.isSelecting);
       }
     }
@@ -927,7 +933,7 @@ export default class ChatSelection extends AppSelection {
   };
 
   protected toggleByMid = async(peerId: PeerId, mid: number) => {
-    const mounted = await this.bubbles.getMountedBubble(mid);
+    const mounted = await this.bubbles.getMountedBubble(makeFullMid(peerId, mid));
     if(mounted) {
       this.toggleByElement(mounted.bubble);
     }
@@ -1068,9 +1074,9 @@ export default class ChatSelection extends AppSelection {
         this.selectionDeleteBtn = Button('btn-primary btn-transparent danger text-bold selection-container-delete', {icon: 'delete'});
         this.selectionDeleteBtn.append(i18n('Delete'));
         attachClickEvent(this.selectionDeleteBtn, () => {
-          if(TEST_BUBBLES_DELETION) {
-            return this.chat.bubbles.deleteMessagesByIds(this.getSelectedMids(), true);
-          }
+          // if(TEST_BUBBLES_DELETION) {
+          //   return this.chat.bubbles.deleteMessagesByIds(this.getSelectedMids(), true);
+          // }
 
           PopupElement.createPopup(
             PopupDeleteMessages,
@@ -1128,17 +1134,17 @@ export default class ChatSelection extends AppSelection {
   };
 
   protected onCancelSelection = async() => {
-    return;
-    const promises: Promise<HTMLElement>[] = [];
-    for(const [peerId, mids] of this.selectedMids) {
-      for(const mid of mids) {
-        promises.push(this.bubbles.getMountedBubble(mid).then((m) => m?.bubble));
-      }
-    }
+    // return;
+    // const promises: Promise<HTMLElement>[] = [];
+    // for(const [peerId, mids] of this.selectedMids) {
+    //   for(const mid of mids) {
+    //     promises.push(this.bubbles.getMountedBubble(mid).then((m) => m?.bubble));
+    //   }
+    // }
 
-    const bubbles = filterUnique((await Promise.all(promises)).filter(Boolean));
-    bubbles.forEach((bubble) => {
-      this.toggleByElement(bubble);
-    });
+    // const bubbles = filterUnique((await Promise.all(promises)).filter(Boolean));
+    // bubbles.forEach((bubble) => {
+    //   this.toggleByElement(bubble);
+    // });
   };
 }

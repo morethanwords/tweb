@@ -26,6 +26,7 @@ import mergeEntities from '../lib/richTextProcessor/mergeEntities';
 import parseEntities from '../lib/richTextProcessor/parseEntities';
 import wrapDraftText from '../lib/richTextProcessor/wrapDraftText';
 import {createCustomFiller, insertCustomFillers} from '../lib/richTextProcessor/wrapRichText';
+import type {MarkupTooltipTypes} from './chat/markupTooltip';
 
 export async function insertRichTextAsHTML(input: HTMLElement, text: string, entities: MessageEntity[], wrappingForPeerId: PeerId) {
   const loadPromises: Promise<any>[] = [];
@@ -260,7 +261,7 @@ let init = () => {
 
         let entities2 = parseEntities(text);
         entities2 = entities2.filter(filterEntity);
-        mergeEntities(entities, entities2);
+        entities = mergeEntities(entities, entities2);
       }
 
       // console.log('usePlainText', usePlainText);
@@ -319,7 +320,8 @@ export type InputFieldOptions = {
   autocomplete?: string,
   withBorder?: boolean,
   allowStartingSpace?: boolean,
-  onRawInput?: (value: string) => void
+  onRawInput?: (value: string) => void,
+  canHaveFormatting?: Array<MarkupTooltipTypes>
 };
 
 function createCustomEmojiRendererForInput(textColor?: string, animationGroup?: AnimationItemGroup) {
@@ -410,7 +412,7 @@ export default class InputField {
       options.showLengthOn = Math.min(40, Math.round(options.maxLength / 3));
     }
 
-    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited = true, autocomplete, withBorder, allowStartingSpace} = options;
+    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited = true, autocomplete, withBorder, allowStartingSpace, canHaveFormatting} = options;
     const label = options.label || options.labelText;
     this.allowStartingSpace = allowStartingSpace;
 
@@ -455,6 +457,10 @@ export default class InputField {
         selection.removeAllRanges();
         selection.addRange(range);
       });
+
+      if(canHaveFormatting) {
+        input.setAttribute('can-format', canHaveFormatting.join(','));
+      }
 
       onInputCallbacks.push(() => {
         // console.log('input');
@@ -596,7 +602,7 @@ export default class InputField {
 
     if(options.onRawInput) {
       onInputCallbacks.push(() => {
-        options.onRawInput(this.value)
+        options.onRawInput(this.value);
       });
     }
 

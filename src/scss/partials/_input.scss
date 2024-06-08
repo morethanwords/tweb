@@ -409,6 +409,10 @@ button:focus {
     }
   }
 
+  &.show-placeholder &-placeholder {
+    display: block !important;
+  }
+
   &-placeholder {
     position: absolute;
     color: $placeholder-color;

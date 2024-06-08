@@ -99,6 +99,8 @@ export interface MTAppConfig {
   hash?:                                     number;
   pm_read_date_expire_period?:               number;
   new_noncontact_peers_require_premium_without_ownpremium?: boolean;
+  stars_purchase_blocked?:                   boolean;
+  can_edit_factcheck?:                       boolean;
 }
 
 export interface EmojiesSendDiceSuccess {

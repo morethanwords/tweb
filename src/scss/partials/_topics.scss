@@ -108,6 +108,7 @@
       .peer-title,
       .topic-name {
         position: relative;
+        pointer-events: none;
         @include text-overflow(true);
       }
 

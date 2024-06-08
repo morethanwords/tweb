@@ -30,6 +30,7 @@ import Icon from '../../components/icon';
 import {CodeLanguageAliases, highlightCode} from '../../codeLanguages';
 import callbackify from '../../helpers/callbackify';
 import findIndexFrom from '../../helpers/array/findIndexFrom';
+import {observeResize} from '../../components/resizeObserver';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -73,6 +74,42 @@ function createMarkupFormatting(formatting: string) {
   element.classList.add('is-markup');
   element.dataset.markup = formatting;
   return element;
+}
+
+function onQuoteResize(entry: ResizeObserverEntry) {
+  const target = entry.target as HTMLElement;
+  if((target as any).ignoreQuoteResize) {
+    if(Date.now() < (target as any).ignoreQuoteResize) {
+      return;
+    }
+
+    delete (target as any).ignoreQuoteResize;
+  }
+
+  const scrollHeight = target.scrollHeight;
+  if(!scrollHeight) {
+    return;
+  }
+
+  const padding = entry.contentRect.bottom - entry.contentRect.height + entry.contentRect.top;
+  // const margin = (entry.borderBoxSize[0].blockSize - entry.contentBoxSize[0].blockSize) * 2;
+  const margin = 0;
+  const diff = scrollHeight - padding - margin - Math.floor(entry.contentRect.height);
+  const isExpanded = diff <= 1;
+
+  // console.log('quote resize', entry, scrollHeight, entry.contentRect.height, isExpanded, diff);
+  target.style.setProperty('--quote-max-height', scrollHeight + 'px');
+  target.classList.toggle('is-truncated', !isExpanded);
+}
+
+function makeQuoteCollapsable(element: HTMLElement) {
+  element.classList.add('quote-like-collapsable');
+
+  const collapseIcon = document.createElement('span');
+  collapseIcon.classList.add('quote-like-icon', 'quote-like-collapse');
+  element.append(collapseIcon);
+
+  return observeResize(element, onQuoteResize);
 }
 
 /**
@@ -167,7 +204,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
     nasty.usedLength = endPartOffset;
 
     let element: HTMLElement,
-      property: 'textContent' | 'alt' = 'textContent',
+      property: 'alt',
       usedText = false,
       processingBlockElement = false;
     switch(entity._) {
@@ -649,9 +686,18 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
         if(options.wrappingDraft) {
           element = createMarkupFormatting('quote');
+
+          if(entity.pFlags.collapsed) {
+            element.dataset.collapsed = '1';
+          }
         } else {
           element = document.createElement('blockquote');
           element.classList.add('quote');
+
+          if(entity.pFlags.collapsed/*  || true */) {
+            const dispose = makeQuoteCollapsable(element);
+            options.middleware.onClean(dispose);
+          }
         }
 
         element.classList.add('quote-like', 'quote-like-border', 'quote-like-icon');
@@ -728,8 +774,12 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
     if(!usedText && partText) {
       if(element) {
-        // @ts-ignore
-        element[property] = partText;
+        if(property) {
+          // @ts-ignore
+          element[property] = partText;
+        } else {
+          element.append(partText);
+        }
       } else {
         (element || fragment).append(partText);
       }

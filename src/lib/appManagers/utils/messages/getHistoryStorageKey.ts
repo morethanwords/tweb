@@ -1,5 +1,6 @@
 import type {Reaction} from '../../../../layer';
 import type {HistoryStorage, RequestHistoryOptions, SearchStorageFilterKey} from '../../appMessagesManager';
+import getSearchType from './getSearchType';
 
 export default function getHistoryStorageKey(options: RequestHistoryOptions & {type: HistoryStorage['type']}) {
   const {type, peerId, threadId} = options;
@@ -10,7 +11,8 @@ export default function getHistoryStorageKey(options: RequestHistoryOptions & {t
 export function getSearchStorageFilterKey({
   inputFilter,
   savedReaction,
-  query
+  query,
+  hashtagType
 }: Parameters<typeof getHistoryStorageKey>[0]): SearchStorageFilterKey {
   let reactionsPart: string;
   if(savedReaction) {
@@ -22,5 +24,9 @@ export function getSearchStorageFilterKey({
   }
 
   const filter: SearchStorageFilterKey = inputFilter?._;
-  return [filter, query, reactionsPart].filter(Boolean).join('_');
+  return [filter, hashtagType !== 'this' && hashtagType, query, reactionsPart].filter(Boolean).join('_');
+}
+
+export function getHistoryStorageType(options: RequestHistoryOptions): HistoryStorage['type'] {
+  return getSearchType(options) ? 'search' : (options.threadId ? 'replies' : 'history');
 }

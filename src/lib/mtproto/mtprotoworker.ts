@@ -45,6 +45,7 @@ import isLegacyMessageId from '../appManagers/utils/messageId/isLegacyMessageId'
 import {MTAppConfig} from './appConfig';
 import {setAppStateSilent} from '../../stores/appState';
 import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
+import {reconcilePeer, reconcilePeers} from '../../stores/peers';
 
 const TEST_NO_STREAMING = false;
 
@@ -166,6 +167,14 @@ class ApiManagerProxy extends MTProtoMessagePort {
           setAppStateSilent(payload.key, payload.value);
         } else {
           console.error(payload);
+        }
+      },
+
+      peers: (payload) => {
+        if(payload.key) {
+          reconcilePeer(payload.key.toPeerId(), payload.value as any);
+        } else {
+          reconcilePeers(payload.value);
         }
       }
     };

@@ -14,6 +14,8 @@ import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import Button from '../../button';
 import {Message, MessageMedia} from '../../../layer';
 import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
+import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
+import wrapTextWithEntities from '../../../lib/richTextProcessor/wrapTextWithEntities';
 
 export default class AppPollResultsTab extends SliderSuperTab {
   private resultsDiv: HTMLElement;
@@ -31,7 +33,8 @@ export default class AppPollResultsTab extends SliderSuperTab {
     this.setTitle(poll.poll.pFlags.quiz ? 'PollResults.Title.Quiz' : 'PollResults.Title.Poll');
 
     const title = document.createElement('h3');
-    setInnerHTML(title, wrapEmojiText(poll.poll.question));
+    const questionText = wrapTextWithEntities(poll.poll.question);
+    setInnerHTML(title, wrapRichText(questionText.text, {entities: questionText.entities, middleware: this.middlewareHelper.get()}));
 
     const percents = poll.results.results.map((v) => v.voters / poll.results.total_voters * 100);
     roundPercents(percents);
@@ -49,7 +52,8 @@ export default class AppPollResultsTab extends SliderSuperTab {
       answerEl.classList.add('poll-results-answer');
 
       const answerTitle = document.createElement('div');
-      setInnerHTML(answerTitle, wrapEmojiText(answer.text));
+      const answerText = wrapTextWithEntities(answer.text);
+      setInnerHTML(answerTitle, wrapRichText(answerText.text, {entities: answerText.entities, middleware: this.middlewareHelper.get()}));
 
       const answerPercents = document.createElement('div');
       answerPercents.innerText = Math.round(percents[idx]) + '%';

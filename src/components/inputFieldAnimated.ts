@@ -69,6 +69,16 @@ export default class InputFieldAnimated extends InputField {
       this.input.style.height = newHeight ? newHeight + 'px' : '';
       (this.input as any).oldHeight = (this.input as any).newHeight;
       (this.input as any).newHeight = newHeight;
+
+      Array.from(this.input.querySelectorAll('.quote-like')).forEach((element) => {
+        const scrollHeight = element.scrollHeight;
+        const computedStyle = getComputedStyle(element);
+        const lineHeight = parseFloat(computedStyle.lineHeight);
+        const paddingTop = parseFloat(computedStyle.paddingTop);
+        const paddingBottom = parseFloat(computedStyle.paddingBottom);
+        const lines = (scrollHeight - paddingTop - paddingBottom) / lineHeight;
+        element.classList.toggle('can-send-collapsed', lines > 3);
+      });
     }
 
     const className = 'is-changing-height';

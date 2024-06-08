@@ -1,6 +1,6 @@
 import {Signal, createEffect, createSignal} from 'solid-js';
 import {HelpPeerColorOption, HelpPeerColorSet, User} from '../layer';
-import {usePeer} from './usePeer';
+import {usePeer} from '../stores/peers';
 import useIsNightTheme from './useIsNightTheme';
 
 let signal: Signal<HelpPeerColorOption[]>;

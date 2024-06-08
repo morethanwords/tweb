@@ -219,7 +219,7 @@ export default class PopupPaymentCard extends PopupElement<{
   protected telegramWebView: TelegramWebView;
 
   constructor(
-    private paymentForm: PaymentsPaymentForm,
+    private paymentForm: PaymentsPaymentForm.paymentsPaymentForm,
     private user: User.user,
     private savedCard?: PaymentCardDetails
   ) {

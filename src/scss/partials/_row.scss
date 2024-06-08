@@ -90,6 +90,11 @@ $row-border-radius: $border-radius-medium;
       }
     }
 
+    &.with-midtitle {
+      grid-template-areas: "left title right" "left midtitle right" "left subtitle right";
+      grid-template-rows: auto auto auto;
+    }
+
     .row-title {
       grid-area: title;
       align-self: flex-end;
@@ -97,6 +102,11 @@ $row-border-radius: $border-radius-medium;
 
     .row-subtitle {
       grid-area: subtitle;
+      align-self: flex-start;
+    }
+
+    .row-midtitle {
+      grid-area: midtitle;
       align-self: flex-start;
     }
 
@@ -207,8 +217,9 @@ $row-border-radius: $border-radius-medium;
   }
 
   &-midtitle {
-    margin-top: .125rem;
     font-size: var(--font-size-14);
+    line-height: 20px;
+    margin: 1px 0 -1px;
     order: 1;
   }
 
@@ -238,6 +249,10 @@ $row-border-radius: $border-radius-medium;
 
       &-custom-color {
         color: var(--custom-icon-color);
+      }
+
+      &-stars-color {
+        color: #fecf16;
       }
     }
 

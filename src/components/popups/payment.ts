@@ -25,8 +25,9 @@ import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount
 import ScrollSaver from '../../helpers/scrollSaver';
 import {_tgico} from '../../helpers/tgico';
 import tsNow from '../../helpers/tsNow';
-import {AccountTmpPassword, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption} from '../../layer';
+import {AccountTmpPassword, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption, StarsTransaction} from '../../layer';
 import I18n, {i18n, LangPackKey, _i18n} from '../../lib/langPack';
+import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import rootScope from '../../lib/rootScope';
@@ -44,6 +45,7 @@ import PopupPaymentCardConfirmation from './paymentCardConfirmation';
 import PopupPaymentShipping, {PaymentShippingAddress} from './paymentShipping';
 import PopupPaymentShippingMethods from './paymentShippingMethods';
 import PopupPaymentVerification from './paymentVerification';
+import PopupStarsPay from './starsPay';
 
 const USE_NATIVE_SYMBOL = true;
 const iconPath = 'assets/img/';
@@ -186,9 +188,13 @@ export default class PopupPayment extends PopupElement<{
 
   constructor(options: {
     message?: Message.message,
-    inputInvoice: InputInvoice,
+    inputInvoice?: InputInvoice,
     paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt,
-    isReceipt?: boolean
+    isReceipt?: boolean,
+
+    // * stars only
+    isTopUp?: boolean,
+    transaction?: StarsTransaction
   }) {
     super('popup-payment', {
       closable: true,
@@ -203,15 +209,19 @@ export default class PopupPayment extends PopupElement<{
     this.result = 'cancelled';
 
     this.tipButtonsMap = new Map();
-    this.d().catch((err) => {
-      console.error('payment popup error', err);
-      this.hide();
-    });
   }
 
   public hide() {
     this.dispatchEvent('finish', this.result);
     return super.hide();
+  }
+
+  public setPaymentForm(paymentForm: PaymentsPaymentForm | PaymentsPaymentReceipt) {
+    this.paymentForm = paymentForm;
+    this.d().catch((err) => {
+      console.error('payment popup error', err);
+      this.hide();
+    });
   }
 
   private async d() {
@@ -233,7 +243,7 @@ export default class PopupPayment extends PopupElement<{
       this.hide();
     };
 
-    let {paymentForm, message} = this;
+    const {paymentForm, message} = this;
 
     if(message) {
       this.listenerSetter.add(rootScope)('payment_sent', ({peerId, mid}) => {
@@ -251,6 +261,7 @@ export default class PopupPayment extends PopupElement<{
           paymentForm._ === 'payments.paymentReceipt'
       );
     const isTest = mediaInvoice ? mediaInvoice.pFlags.test : paymentForm.invoice.pFlags.test;
+    const isStars = paymentForm._ === 'payments.paymentFormStars';
 
     const photo = mediaInvoice ? mediaInvoice.photo : paymentForm.photo;
     const title = mediaInvoice ? mediaInvoice.title : paymentForm.title;
@@ -324,14 +335,9 @@ export default class PopupPayment extends PopupElement<{
     this.scrollable.append(preloaderContainer);
 
     const inputInvoice = this.inputInvoice;
-    if(!paymentForm) {
-      if(isReceipt) paymentForm = await this.managers.appPaymentsManager.getPaymentReceipt(message.peerId, mediaInvoice.receipt_msg_id || (inputInvoice as InputInvoice.inputInvoiceMessage).msg_id);
-      else paymentForm = await this.managers.appPaymentsManager.getPaymentForm(inputInvoice);
-      this.paymentForm = paymentForm;
-    }
 
-    let savedInfo = (paymentForm as PaymentsPaymentForm).saved_info || (paymentForm as PaymentsPaymentReceipt).info;
-    const savedCredentials = (paymentForm as PaymentsPaymentForm).saved_credentials?.[0];
+    let savedInfo = (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).saved_info || (paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).info;
+    const savedCredentials = (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).saved_credentials?.[0];
     let [
       lastRequestedInfo,
       passwordState,
@@ -343,7 +349,7 @@ export default class PopupPayment extends PopupElement<{
         return undefined as PaymentsValidatedRequestedInfo;
       }),
       savedCredentials && this.managers.passwordManager.getState(),
-      wrapPeerTitle({peerId: paymentForm.provider_id.toPeerId()})
+      wrapPeerTitle({peerId: isStars ? NULL_PEER_ID : (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).provider_id.toPeerId()})
     ]);
 
     // console.log(paymentForm, lastRequestedInfo);
@@ -353,7 +359,7 @@ export default class PopupPayment extends PopupElement<{
     this.element.classList.remove('is-loading');
 
     const wrapAmount = (amount: string | number, skipSymbol?: boolean) => {
-      return paymentsWrapCurrencyAmount(amount, currency, skipSymbol, USE_NATIVE_SYMBOL);
+      return paymentsWrapCurrencyAmount(amount, currency, skipSymbol, USE_NATIVE_SYMBOL, true);
     };
 
     const {invoice} = paymentForm;
@@ -416,7 +422,7 @@ export default class PopupPayment extends PopupElement<{
     _i18n(totalLabel.left, 'PaymentTransactionTotal');
     const totalAmount = accumulate(invoice.prices.map(({amount}) => +amount), 0);
 
-    const canTip = (invoice.max_tip_amount !== undefined && !isReceipt) || !!(paymentForm as PaymentsPaymentReceipt).tip_amount;
+    const canTip = (invoice.max_tip_amount !== undefined && !isReceipt) || !!(paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).tip_amount;
     if(canTip) {
       const tipsClassName = className + '-tips';
 
@@ -522,7 +528,7 @@ export default class PopupPayment extends PopupElement<{
         tipsEl.append(...tipButtons);
         pricesElements.push(tipsEl);
       } else {
-        setInputValue((paymentForm as PaymentsPaymentReceipt).tip_amount);
+        setInputValue((paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).tip_amount);
       }
     } else {
       setTotal();
@@ -599,7 +605,7 @@ export default class PopupPayment extends PopupElement<{
     const onMethodClick = async() => {
       PopupElement.createPopup(
         PopupPaymentCard,
-        paymentForm as PaymentsPaymentForm,
+        paymentForm as PaymentsPaymentForm.paymentsPaymentForm,
         await this.managers.appUsersManager.getSelf(),
         previousCardDetails as PaymentCardDetails
       ).addEventListener('finish', ({token, card}) => {
@@ -620,8 +626,8 @@ export default class PopupPayment extends PopupElement<{
 
     if(savedCredentials) {
       setCardSubtitle(savedCredentials);
-    } else if((paymentForm as PaymentsPaymentReceipt).credentials_title) {
-      setCardSubtitle({title: (paymentForm as PaymentsPaymentReceipt).credentials_title});
+    } else if((paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).credentials_title) {
+      setCardSubtitle({title: (paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).credentials_title});
     }
 
     const providerRow = createRow({
@@ -632,7 +638,7 @@ export default class PopupPayment extends PopupElement<{
     const providerAvatar = avatarNew({
       middleware: this.middlewareHelper.get(),
       size: 32,
-      peerId: paymentForm.provider_id.toPeerId()
+      peerId: isStars ? NULL_PEER_ID : (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).provider_id.toPeerId()
     });
     providerRow.createMedia('small').append(providerAvatar.node);
 
@@ -666,12 +672,12 @@ export default class PopupPayment extends PopupElement<{
       onShippingAddressClick = (focus) => {
         PopupElement.createPopup(
           PopupPaymentShipping,
-          paymentForm as PaymentsPaymentForm,
+          paymentForm as PaymentsPaymentForm.paymentsPaymentForm,
           inputInvoice,
           focus
         ).addEventListener('finish', ({shippingAddress, requestedInfo}) => {
           lastRequestedInfo = requestedInfo;
-          savedInfo = (paymentForm as PaymentsPaymentForm).saved_info = shippingAddress;
+          savedInfo = (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).saved_info = shippingAddress;
           setShippingInfo(shippingAddress);
         });
       };
@@ -738,7 +744,7 @@ export default class PopupPayment extends PopupElement<{
 
       shippingMethodRow.container.classList.add('hide');
 
-      const shippingOption = (paymentForm as PaymentsPaymentReceipt).shipping;
+      const shippingOption = (paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).shipping;
       if(shippingOption) {
         setShippingOption(shippingOption);
       }
@@ -941,5 +947,25 @@ export default class PopupPayment extends PopupElement<{
     this.body.append(this.btnConfirmOnEnter = payButton);
 
     this.onContentUpdate();
+  }
+
+  public static async create(options: ConstructorParameters<typeof PopupPayment>[0]) {
+    let promise: Promise<PaymentsPaymentForm | PaymentsPaymentReceipt>;
+    if(!options.paymentForm && !options.transaction) {
+      if(options.isReceipt) promise = rootScope.managers.appPaymentsManager.getPaymentReceipt(options.message.peerId, (options.message.media as MessageMedia.messageMediaInvoice).receipt_msg_id || (options.inputInvoice as InputInvoice.inputInvoiceMessage).msg_id);
+      else promise = rootScope.managers.appPaymentsManager.getPaymentForm(options.inputInvoice);
+    } else {
+      promise = Promise.resolve(options.paymentForm);
+    }
+
+    const paymentForm = await promise;
+    const constructor = options.transaction ||
+      paymentForm._ === 'payments.paymentFormStars' ||
+      paymentForm._ === 'payments.paymentReceiptStars' ? PopupStarsPay : PopupPayment;
+
+    const popup = PopupElement.createPopup(constructor as any, options) as PopupStarsPay | PopupPayment;
+    popup.setPaymentForm(paymentForm as any);
+
+    return popup;
   }
 }

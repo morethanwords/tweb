@@ -89,7 +89,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
         element: container,
         boxWidth,
         boxHeight,
-        message,
+        message: message as Message.message,
         canHaveVideoPlayer
       });
     }
@@ -122,7 +122,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
       element: container,
       boxWidth,
       boxHeight,
-      message,
+      message: message as Message.message,
       photoSize: isImageFromDocument ? {
         _: 'photoSize',
         w: photo.w,

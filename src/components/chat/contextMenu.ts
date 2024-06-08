@@ -49,14 +49,12 @@ import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFr
 import canSaveMessageMedia from '../../lib/appManagers/utils/messages/canSaveMessageMedia';
 import getGroupedText from '../../lib/appManagers/utils/messages/getGroupedText';
 import PopupElement from '../popups';
-import getParticipantPeerId from '../../lib/appManagers/utils/chats/getParticipantPeerId';
-import confirmationPopup from '../confirmationPopup';
-import wrapPeerTitle from '../wrappers/peerTitle';
+import confirmationPopup, {PopupConfirmationOptions} from '../confirmationPopup';
 import Icon from '../icon';
 import cloneDOMRect from '../../helpers/dom/cloneDOMRect';
 import PopupPremium from '../popups/premium';
 import {ChatInputReplyTo} from './input';
-import {TEST_BUBBLES_DELETION} from './bubbles';
+import {FullMid, makeFullMid, TEST_BUBBLES_DELETION} from './bubbles';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
 import {formatFullSentTime} from '../../helpers/date';
@@ -73,6 +71,10 @@ import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import documentFragmentToHTML from '../../helpers/dom/documentFragmentToHTML';
 import PopupReportAd from '../popups/reportAd';
 import PopupAboutAd from '../popups/aboutAd';
+import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
+import deepEqual from '../../helpers/object/deepEqual';
+import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
+import flatten from '../../helpers/array/flatten';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -101,6 +103,7 @@ export default class ChatContextMenu {
   private peerId: PeerId;
   private mid: number;
   private message: Message.message | Message.messageService;
+  private mainMessage: Message.message | Message.messageService;
   private sponsoredMessage: SponsoredMessage;
   private noForwards: boolean;
 
@@ -213,9 +216,8 @@ export default class ChatContextMenu {
     const r = async() => {
       const isSponsored = this.isSponsored = mid < 0;
       this.isSelectable = this.chat.selection.canSelectBubble(bubble);
-      this.peerId = this.chat.peerId;
       this.messagePeerId = bubble ? bubble.dataset.peerId.toPeerId() : undefined;
-      // this.msgID = msgID;
+      this.peerId = this.messagePeerId ?? this.chat.peerId;
       this.target = e.target as HTMLElement;
       this.isTextSelected = !isSelectionEmpty();
       this.isAnchorTarget = this.target.tagName === 'A' && (
@@ -240,7 +242,7 @@ export default class ChatContextMenu {
 
       this.sponsoredMessage = isSponsored ? (bubble as any).message.sponsoredMessage : undefined;
 
-      const mids = avatar ? [] : await this.chat.getMidsByMid(mid);
+      const mids = avatar ? [] : await this.chat.getMidsByMid(this.messagePeerId, mid);
       // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
       if(this.chat.selection.isSelecting && !contentWrapper && mid) {
         if(isSponsored) {
@@ -271,15 +273,16 @@ export default class ChatContextMenu {
 
       this.isLegacy = this.messagePeerId && this.messagePeerId !== this.peerId;
       this.isSelected = this.chat.selection.isMidSelected(this.messagePeerId, this.mid);
-      this.message = avatar ? undefined : (bubble as any).message || this.chat.getMessage(this.mid);
+      this.message = avatar ? undefined : (bubble as any).message || this.chat.getMessageByPeer(this.messagePeerId, this.mid);
       this.groupedMessages = (this.message as Message.message)?.grouped_id ? await this.managers.appMessagesManager.getMessagesByGroupedId((this.message as Message.message).grouped_id) : undefined;
       if(!groupedItem && this.groupedMessages) this.message = getMainGroupedMessage(this.groupedMessages);
-      this.noForwards = this.message && !isSponsored && !(await this.managers.appMessagesManager.canForward(this.message));
+      this.mainMessage = this.groupedMessages ? getMainGroupedMessage(this.groupedMessages) : this.message;
+      this.selectedMessages = this.chat.selection.isSelecting && !avatar ? await this.chat.selection.getSelectedMessages() : undefined;
+      this.noForwards = this.message && !isSponsored && !(await Promise.all((this.selectedMessages || [this.message]).map((message) => this.managers.appMessagesManager.canForward(message)))).every(Boolean);
       this.viewerPeerId = undefined;
       this.canOpenReactedList = undefined;
       this.linkToMessage = await this.getUrlToMessage();
       this.selectedMessagesText = await this.getSelectedMessagesText();
-      this.selectedMessages = this.chat.selection.isSelecting && !avatar ? await this.chat.selection.getSelectedMessages() : undefined;
       this.messageLanguage = this.selectedMessages || !this.message ? undefined : await detectLanguageForTranslation((this.message as Message.message).message);
 
       const initResult = await this.init();
@@ -565,7 +568,8 @@ export default class ChatContextMenu {
         !!(this.message as Message.message).message &&
         this.isTextSelected &&
         !this.isTextFromMultipleMessagesSelected &&
-        (!usePeerTranslation(this.peerId).enabled() || this.message.pFlags.out)
+        (!usePeerTranslation(this.peerId).enabled() || this.message.pFlags.out) &&
+        (this.chat.bubbles.canForward(this.message) || this.chat.canSend())
     }, {
       icon: 'reply',
       text: 'Reply',
@@ -574,7 +578,8 @@ export default class ChatContextMenu {
         // await this.chat.canSend() &&
         !this.message.pFlags.is_outgoing &&
         !!this.chat.input.messageInput &&
-        this.chat.type !== ChatType.Scheduled/* ,
+        this.chat.type !== ChatType.Scheduled &&
+        (this.chat.bubbles.canForward(this.message) || this.chat.canSend())/* ,
       cancelEvent: true */
     }, {
       icon: 'bubblereply',
@@ -582,7 +587,7 @@ export default class ChatContextMenu {
       textArgs: [(this.message as Message.message)?.replies?.replies],
       onClick: () => {
         this.chat.appImManager.openThread({
-          peerId: this.peerId,
+          peerId: this.message.peerId,
           threadId: this.message.mid,
           lastMsgId: 0
         });
@@ -608,6 +613,11 @@ export default class ChatContextMenu {
       onClick: this.onEditClick,
       verify: async() => (await this.managers.appMessagesManager.canEditMessage(this.message, 'text')) &&
         !!this.chat.input.messageInput
+    }, {
+      icon: 'factcheck',
+      text: (this.mainMessage as Message.message)?.factcheck ? 'EditFactCheck' : 'AddFactCheck',
+      onClick: this.onEditFactCheckClick,
+      verify: () => this.mainMessage && this.managers.appMessagesManager.canUpdateFactCheck(this.mainMessage.peerId, this.mainMessage.mid)
     }, {
       icon: 'copy',
       text: 'Copy',
@@ -688,7 +698,7 @@ export default class ChatContextMenu {
           }
 
           PopupElement.createPopup(PopupTranslate, {
-            peerId: this.peerId,
+            peerId: textWithEntities ? this.peerId : this.message.peerId,
             textWithEntities,
             message: textWithEntities ? undefined : this.message as Message.message,
             detectedLanguage: this.messageLanguage
@@ -709,13 +719,13 @@ export default class ChatContextMenu {
         !this.message.pFlags.is_outgoing &&
         this.message._ !== 'messageService' &&
         !this.message.pFlags.pinned &&
-        await this.managers.appPeersManager.canPinMessage(this.peerId) &&
+        await this.managers.appPeersManager.canPinMessage(this.message.peerId) &&
         this.chat.type !== ChatType.Scheduled
     }, {
       icon: 'unpin',
       text: 'Message.Context.Unpin',
       onClick: this.onUnpinClick,
-      verify: () => (this.message as Message.message).pFlags.pinned && this.managers.appPeersManager.canPinMessage(this.peerId)
+      verify: () => (this.message as Message.message).pFlags.pinned && this.managers.appPeersManager.canPinMessage(this.message.peerId)
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
@@ -746,8 +756,8 @@ export default class ChatContextMenu {
       icon: 'statistics',
       text: 'ViewStatistics',
       onClick: this.onStatisticsClick,
-      verify: async() => await this.managers.appPeersManager.isBroadcast(this.peerId) &&
-        await this.managers.appProfileManager.canViewStatistics(this.peerId) &&
+      verify: async() => await this.managers.appPeersManager.isBroadcast(this.messagePeerId) &&
+        await this.managers.appProfileManager.canViewStatistics(this.messagePeerId) &&
         !this.message.pFlags.is_outgoing
     }, {
       icon: 'forward',
@@ -776,12 +786,12 @@ export default class ChatContextMenu {
       icon: 'flag',
       text: 'ReportChat',
       onClick: () => {
-        PopupElement.createPopup(PopupReportMessages, this.peerId, [this.mid]);
+        PopupElement.createPopup(PopupReportMessages, this.messagePeerId, [this.mid]);
       },
       verify: () => !this.message.pFlags.out &&
         this.message._ === 'message' &&
         !this.message.pFlags.is_outgoing &&
-        this.managers.appPeersManager.isChannel(this.peerId),
+        this.managers.appPeersManager.isChannel(this.messagePeerId),
       notDirect: () => true,
       withSelection: true
     }, {
@@ -861,7 +871,7 @@ export default class ChatContextMenu {
           this.peerId,
           this.sponsoredMessage,
           () => {
-            this.chat.bubbles.deleteMessagesByIds([this.message.mid], true);
+            this.chat.bubbles.deleteMessagesByIds([makeFullMid(this.message.peerId, this.message.mid)], true);
           }
         );
       },
@@ -1261,12 +1271,12 @@ export default class ChatContextMenu {
   }
 
   private async getUrlToMessage() {
-    if(!this.message || this.peerId.isUser()) {
+    if(!this.message || this.messagePeerId.isUser()) {
       return;
     }
 
     let threadMessage: Message.message;
-    const {peerId, mid} = this;
+    const {peerId, mid} = this.message;
     const threadId = this.chat.threadId;
     if(this.chat.type === ChatType.Discussion) {
       threadMessage = (await this.managers.appMessagesManager.getMessageByPeer(peerId, threadId)) as Message.message;
@@ -1295,18 +1305,25 @@ export default class ChatContextMenu {
       return;
     }
 
-    let mids: number[];
+    let fullMids: FullMid[];
     if(!this.chat.selection.isSelecting) {
-      mids = [this.getMessageWithText().mid];
+      const message = this.getMessageWithText();
+      if(!message) {
+        return;
+      }
+
+      fullMids = [makeFullMid(message.peerId, message.mid)];
     } else {
-      mids = this.chat.selection.getSelectedMids();
+      const v = [...this.chat.selection.selectedMids.entries()];
+      const f = v.map(([peerId, mids]) => [...mids].map((mid) => makeFullMid(peerId, mid)));
+      fullMids = flatten(f);
     }
 
     let messages: (Message.message | SponsoredMessage.sponsoredMessage)[];
     if(this.isSponsored) {
       messages = [this.sponsoredMessage];
     } else {
-      messages = mids.map((mid) => this.chat.getMessage(mid) as Message.message);
+      messages = fullMids.map((fullMid) => this.chat.getMessage(fullMid) as Message.message);
     }
 
     const htmlParts = messages.map((message) => {
@@ -1335,7 +1352,7 @@ export default class ChatContextMenu {
     if(this.chat.selection.isSelecting) {
       simulateClickEvent(this.chat.selection.selectionSendNowBtn);
     } else {
-      PopupElement.createPopup(PopupSendNow, this.peerId, await this.chat.getMidsByMid(this.mid));
+      PopupElement.createPopup(PopupSendNow, this.peerId, await this.chat.getMidsByMid(this.messagePeerId, this.mid));
     }
   };
 
@@ -1366,6 +1383,61 @@ export default class ChatContextMenu {
     this.chat.input.initMessageEditing(this.isTargetAGroupedItem ? this.mid : message.mid);
   };
 
+  private onEditFactCheckClick = async() => {
+    const {mainMessage: message} = this;
+    const factCheck = (message as Message.message).factcheck;
+    const buttonTextElement = new I18n.IntlElement({key: 'Done'});
+    const buttonOptions: PopupConfirmationOptions['button'] = {
+      text: buttonTextElement.element
+    };
+
+    const inputField = new InputField({
+      placeholder: 'FactCheckPlaceholder',
+      withLinebreaks: true,
+      onRawInput: factCheck ? (value) => {
+        buttonTextElement.compareAndUpdate({key: value ? 'Done' : 'Remove'});
+        if(!buttonOptions.element) {
+          return;
+        }
+
+        buttonOptions.element.classList.toggle('primary', !!value);
+        buttonOptions.element.classList.toggle('danger', !value);
+      } : undefined,
+      canHaveFormatting: ['bold', 'italic', 'link']
+    });
+
+    if(factCheck) {
+      inputField.setValueSilently(wrapDraftText(factCheck.text.text, {entities: factCheck.text.entities}));
+    }
+
+    try {
+      await confirmationPopup({
+        titleLangKey: 'FactCheckDialog',
+        inputField,
+        button: buttonOptions,
+        confirmShortcutIsSendShortcut: true
+      });
+    } catch(err) {
+      return;
+    }
+
+    const {value: text, entities} = getRichValueWithCaret(inputField.input, true, false);
+    const newTextWithEntities: TextWithEntities = text ? {_: 'textWithEntities', text, entities} : undefined;
+    if(factCheck && deepEqual(factCheck.text, newTextWithEntities)) {
+      return;
+    }
+
+    this.managers.appMessagesManager.updateFactCheck(
+      message.peerId,
+      message.mid,
+      newTextWithEntities
+    ).then(() => {
+      toastNew({
+        langPackKey: text ? 'FactCheckEdited' : 'FactCheckDeleted'
+      });
+    });
+  };
+
   private onCopyClick = async() => {
     if(isSelectionEmpty()) {
       const {text, html} = this.selectedMessagesText;
@@ -1390,11 +1462,11 @@ export default class ChatContextMenu {
   };
 
   private onPinClick = () => {
-    PopupElement.createPopup(PopupPinMessage, this.peerId, this.mid);
+    PopupElement.createPopup(PopupPinMessage, this.messagePeerId, this.mid);
   };
 
   private onUnpinClick = () => {
-    PopupElement.createPopup(PopupPinMessage, this.peerId, this.mid, true);
+    PopupElement.createPopup(PopupPinMessage, this.messagePeerId, this.mid, true);
   };
 
   private onRetractVote = () => {
@@ -1409,8 +1481,8 @@ export default class ChatContextMenu {
     if(this.chat.selection.isSelecting) {
       simulateClickEvent(this.chat.selection.selectionForwardBtn);
     } else {
-      const peerId = this.peerId;
-      const mids = this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(this.mid);
+      const peerId = this.messagePeerId;
+      const mids = this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(peerId, this.mid);
       PopupForward.create({
         [peerId]: mids
       });
@@ -1431,16 +1503,16 @@ export default class ChatContextMenu {
       return;
     }
 
-    const {peerId, message} = this;
-    const {mid} = message;
-    if(TEST_BUBBLES_DELETION) {
-      return this.chat.bubbles.deleteMessagesByIds(await this.chat.getMidsByMid(mid), true);
-    }
+    const {message} = this;
+    const {peerId, mid} = message;
+    // if(TEST_BUBBLES_DELETION) {
+    //   return this.chat.bubbles.deleteMessagesByIds(await this.chat.getMidsByMid(mid), true);
+    // }
 
     PopupElement.createPopup(
       PopupDeleteMessages,
       peerId,
-      this.isTargetAGroupedItem ? [mid] : await this.chat.getMidsByMid(mid),
+      this.isTargetAGroupedItem ? [mid] : await this.chat.getMidsByMid(peerId, mid),
       this.chat.type
     );
   };
@@ -1450,9 +1522,8 @@ export default class ChatContextMenu {
   }
 
   private onQuoteClick = async() => {
-    const {peerId} = this;
     const messageWithText = this.getMessageWithText();
-    const {mid} = messageWithText;
+    const {peerId, mid} = messageWithText;
     let {text: value, entities = [], offset: startIndex} = this.getQuotedText();
 
     const appConfig = await this.managers.apiManager.getAppConfig();
@@ -1495,7 +1566,7 @@ export default class ChatContextMenu {
   };
 
   private onStatisticsClick = () => {
-    this.chat.topbar.appSidebarRight.createTab(AppStatisticsTab).open(this.peerId.toChatId(), this.mid);
+    this.chat.topbar.appSidebarRight.createTab(AppStatisticsTab).open(this.messagePeerId.toChatId(), this.mid);
     this.chat.topbar.appSidebarRight.toggleSidebar(true);
   };
 

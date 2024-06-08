@@ -405,10 +405,10 @@ export class AppChatsManager extends AppManager {
     return this.apiManager.invokeApi('messages.createChat', {
       users: userIds.map((u) => this.appUsersManager.getUserInput(u)),
       title
-    }).then((updates) => {
-      this.apiUpdatesManager.processUpdateMessage(updates);
+    }).then((invitedUsers) => {
+      this.apiUpdatesManager.processUpdateMessage(invitedUsers.updates);
 
-      const chatId = (updates as any as Updates.updates).chats[0].id;
+      const chatId = (invitedUsers.updates as Updates.updates).chats[0].id;
       return chatId;
     });
   }
@@ -738,53 +738,53 @@ export class AppChatsManager extends AppManager {
   }
 
   public getSponsoredMessage(chatId: ChatId): Promise<MessagesSponsoredMessages> {
-    let promise: Promise<MessagesSponsoredMessages>;
-    if(TEST_SPONSORED) promise = Promise.resolve({
-      '_': 'messages.sponsoredMessages',
-      'messages': [
-        {
-          '_': 'sponsoredMessage',
-          'pFlags': {},
-          'flags': 9,
-          'random_id': new Uint8Array([80, 5, 249, 174, 44, 73, 173, 14, 246, 81, 187, 182, 223, 5, 4, 128]),
-          'from_id': {
-            '_': 'peerUser',
-            'user_id': 983000232
-          },
-          'start_param': 'GreatMinds',
-          'message': 'This is a long sponsored message. In fact, it has the maximum length allowed on the platform – 160 characters 😬😬. It\'s promoting a bot with a start parameter.' + chatId
-        }
-      ],
-      'chats': [],
-      'users': [
-        {
-          '_': 'user',
-          'pFlags': {
-            'bot': true,
-            'verified': true,
-            'apply_min_photo': true
-          },
-          'flags': 34226219,
-          'id': 983000232,
-          'access_hash': '-294959558742535650',
-          'first_name': 'Quiz Bot',
-          'username': 'QuizBot',
-          'photo': {
-            '_': 'userProfilePhoto',
-            'pFlags': {},
-            'flags': 2,
-            'photo_id': '4221953848856651689',
-            'stripped_thumb': new Uint8Array([1, 8, 8, 155, 247, 95, 103, 255, 0, 110, 138, 40, 174, 132, 142, 6, 238, 127]),
-            'dc_id': 2
-          },
-          'bot_info_version': 11,
-          'bot_inline_placeholder': 'Search a quiz...',
-          'sortName': 'quiz bot'
-        }
-      ]
-    });
+    // let promise: Promise<MessagesSponsoredMessages>;
+    // if(TEST_SPONSORED) promise = Promise.resolve({
+    //   '_': 'messages.sponsoredMessages',
+    //   'messages': [
+    //     {
+    //       '_': 'sponsoredMessage',
+    //       'pFlags': {},
+    //       'flags': 9,
+    //       'random_id': new Uint8Array([80, 5, 249, 174, 44, 73, 173, 14, 246, 81, 187, 182, 223, 5, 4, 128]),
+    //       'from_id': {
+    //         '_': 'peerUser',
+    //         'user_id': 983000232
+    //       },
+    //       'start_param': 'GreatMinds',
+    //       'message': 'This is a long sponsored message. In fact, it has the maximum length allowed on the platform – 160 characters 😬😬. It\'s promoting a bot with a start parameter.' + chatId
+    //     }
+    //   ],
+    //   'chats': [],
+    //   'users': [
+    //     {
+    //       '_': 'user',
+    //       'pFlags': {
+    //         'bot': true,
+    //         'verified': true,
+    //         'apply_min_photo': true
+    //       },
+    //       'flags': 34226219,
+    //       'id': 983000232,
+    //       'access_hash': '-294959558742535650',
+    //       'first_name': 'Quiz Bot',
+    //       'username': 'QuizBot',
+    //       'photo': {
+    //         '_': 'userProfilePhoto',
+    //         'pFlags': {},
+    //         'flags': 2,
+    //         'photo_id': '4221953848856651689',
+    //         'stripped_thumb': new Uint8Array([1, 8, 8, 155, 247, 95, 103, 255, 0, 110, 138, 40, 174, 132, 142, 6, 238, 127]),
+    //         'dc_id': 2
+    //       },
+    //       'bot_info_version': 11,
+    //       'bot_inline_placeholder': 'Search a quiz...',
+    //       'sortName': 'quiz bot'
+    //     }
+    //   ]
+    // });
 
-    promise ||= this.apiManager.invokeApiCacheable('channels.getSponsoredMessages', {
+    const promise = this.apiManager.invokeApiCacheable('channels.getSponsoredMessages', {
       channel: this.getChannelInput(chatId)
     }, {cacheSeconds: 300});
 
@@ -799,30 +799,8 @@ export class AppChatsManager extends AppManager {
       sponsoredMessages.messages.push(sponsoredMessage);
 
       sponsoredMessages.messages.forEach((sponsoredMessage) => {
-        const peerId = getPeerId(sponsoredMessage.from_id);
-        if(sponsoredMessage.channel_post) {
-          sponsoredMessage.channel_post = this.appMessagesIdsManager.generateMessageId(
-            sponsoredMessage.channel_post,
-            peerId.toChatId()
-          );
-        }
-
-        if(sponsoredMessage.webpage) {
-          sponsoredMessage.webpage.photo = this.appPhotosManager.savePhoto(sponsoredMessage.webpage.photo);
-        }
-
-        if(sponsoredMessage.app) {
-          sponsoredMessage.app = this.appAttachMenuBotsManager.saveBotApp(
-            peerId.toUserId(),
-            sponsoredMessage.app
-          );
-        }
-
-        if(sponsoredMessage.chat_invite) {
-          sponsoredMessage.chat_invite = this.appChatInvitesManager.saveChatInvite(
-            sponsoredMessage.chat_invite_hash,
-            sponsoredMessage.chat_invite
-          );
+        if(sponsoredMessage.photo) {
+          sponsoredMessage.photo = this.appPhotosManager.savePhoto(sponsoredMessage.photo);
         }
 
         // sponsoredMessage.pFlags.can_report = true;

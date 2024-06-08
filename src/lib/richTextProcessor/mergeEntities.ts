@@ -9,6 +9,7 @@ import findConflictingEntity from './findConflictingEntity';
 import sortEntities from './sortEntities';
 
 export default function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[]) {
+  currentEntities = currentEntities.slice();
   const filtered = newEntities.filter((e) => {
     return !findConflictingEntity(currentEntities, e);
   });
@@ -22,10 +23,11 @@ export default function mergeEntities(currentEntities: MessageEntity[], newEntit
   // * have to fix even if emoji supported since it's being wrapped in span
   // if(!IS_EMOJI_SUPPORTED) {
   for(let i = 0; i < currentEntities.length; ++i) {
-    const entity = currentEntities[i];
+    let entity = currentEntities[i];
     if(entity._ === 'messageEntityEmoji') {
       const nextEntity = currentEntities[i + 1];
       if(nextEntity /* && nextEntity._ !== 'messageEntityCaret' */ && nextEntity.offset < (entity.offset + entity.length)) {
+        entity = currentEntities[i] = {...entity};
         entity.length = nextEntity.offset - entity.offset;
       }
     }

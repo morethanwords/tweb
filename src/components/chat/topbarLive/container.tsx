@@ -1,7 +1,6 @@
 import {Show, createEffect, createMemo, createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 import {TopbarLive} from './topbarLive';
-import {useChat} from '../../../hooks/usePeer';
 import {subscribeOn} from '../../../helpers/solid/subscribeOn';
 import rootScope from '../../../lib/rootScope';
 import {useCurrentRtmpCall} from '../../rtmp/hooks';
@@ -12,6 +11,7 @@ import ChatTopbar from '../topbar';
 import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
 import {Chat as MTChat} from '../../../layer';
 import appImManager from '../../../lib/appManagers/appImManager';
+import {useChat} from '../../../stores/peers';
 
 export default class ChatLive extends PinnedContainer {
   private dispose: () => void;

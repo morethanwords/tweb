@@ -5,6 +5,7 @@
  */
 
 import type {ReactionsContext} from '../../lib/appManagers/appReactionsManager';
+import type {RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, splitProps, on, untrack, batch, Accessor} from 'solid-js';
 import InputSearch from '../inputSearch';
 import {ButtonIconTsx} from '../buttonIconTsx';
@@ -51,6 +52,9 @@ import PopupPremium from '../popups/premium';
 import usePremium from '../../stores/premium';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import Animated from '../../helpers/solid/animations';
+import {ChatType} from './chat';
+import {subscribeOn} from '../../helpers/solid/subscribeOn';
+import getHistoryStorageKey, {getHistoryStorageType} from '../../lib/appManagers/utils/messages/getHistoryStorageKey';
 
 export const ScrollableYTsx = (props: {
   children: JSX.Element,
@@ -76,16 +80,21 @@ export const ScrollableYTsx = (props: {
   return ret;
 };
 
+type SearchType = RequestHistoryOptions['hashtagType'];
+const SEARCH_TYPES: SearchType[] = ['this', 'my', 'public'];
+const DEFAULT_SEARCH_TYPE: SearchType = undefined;
+
 type LoadOptions = {
   middleware: Middleware,
   peerId: PeerId,
   threadId: number,
   query: string,
   fromPeerId?: PeerId,
-  reaction?: Reaction
+  reaction?: Reaction,
+  searchType?: SearchType
 };
 
-const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, query/* , fromPeerId */}: LoadOptions & {fromSavedDialog: boolean, messages: (Message.message | Message.messageService)[]}) => {
+const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, query, searchType/* , fromPeerId */}: LoadOptions & {fromSavedDialog: boolean, messages: (Message.message | Message.messageService)[]}) => {
   const promises = messages.map(async(message) => {
     const fromPeerId = message.fromId;
     const loadPromises: Promise<any>[] = [];
@@ -93,7 +102,7 @@ const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, que
       peerId: fromSavedDialog ? rootScope.myId : (fromPeerId || peerId),
       container: false,
       avatarSize: 'abitbigger',
-      meAsSaved: false,
+      meAsSaved: searchType === 'my',
       message,
       query,
       // noIcons: this.noIcons,
@@ -113,9 +122,9 @@ const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, que
 };
 
 const createSearchLoader = (options: LoadOptions) => {
-  const {middleware, peerId, threadId, query, fromPeerId, reaction} = options;
+  const {middleware, peerId, threadId, query, fromPeerId, reaction, searchType} = options;
   const fromSavedDialog = !!(peerId === rootScope.myId && threadId);
-  let lastMessage: Message.message | Message.messageService, loading = false;
+  let lastMessage: Message.message | Message.messageService, loading = false, nextRate: number;
   const loadMore = async() => {
     if(loading) {
       return;
@@ -124,22 +133,41 @@ const createSearchLoader = (options: LoadOptions) => {
 
     const offsetId = lastMessage?.mid || 0;
     const offsetPeerId = lastMessage?.peerId || NULL_PEER_ID;
-    const result = await rootScope.managers.appMessagesManager.getHistory({
-      peerId,
-      threadId,
+    const requestHistoryOptions: RequestHistoryOptions = {
+      peerId: searchType === 'this' || !searchType ? peerId : NULL_PEER_ID,
+      threadId: searchType === 'this' || !searchType ? threadId : undefined,
       query,
       inputFilter: {_: 'inputMessagesFilterEmpty'},
       offsetId,
       offsetPeerId,
       limit: 30,
       fromPeerId,
-      savedReaction: reaction ? [reaction as Reaction.reactionEmoji] : undefined
+      savedReaction: reaction ? [reaction as Reaction.reactionEmoji] : undefined,
+      nextRate,
+      isPublicHashtag: searchType === 'public',
+      isCacheableSearch: !!searchType,
+      hashtagType: searchType
+    };
+
+    const key = getHistoryStorageKey({type: getHistoryStorageType(requestHistoryOptions), ...requestHistoryOptions});
+    rootScope.managers.appMessagesManager.toggleHistoryKeySubscription(key, true);
+    onCleanup(() => {
+      rootScope.managers.appMessagesManager.toggleHistoryKeySubscription(key, false);
     });
+
+    const result = await rootScope.managers.appMessagesManager.getHistory(requestHistoryOptions);
     if(!middleware()) {
       return;
     }
 
-    const messages = result.history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid));
+    let messages: Message.message[];
+    if(result.messages) {
+      messages = result.messages as Message.message[];
+      nextRate = result.nextRate;
+    } else {
+      messages = result.history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid)) as Message.message[];
+    }
+
     const rendered = await renderHistoryResult({...options, fromSavedDialog, messages});
     if(!middleware()) {
       return;
@@ -231,15 +259,17 @@ const createParticipantsLoader = (options: LoadOptions) => {
 };
 
 export default function TopbarSearch(props: {
+  chatType: ChatType,
   peerId: PeerId,
   threadId?: number,
-  filterPeerId?: Accessor<PeerId>,
+  filterPeerId: Accessor<PeerId>,
   canFilterSender?: boolean,
   query?: Accessor<string>,
   reaction?: Accessor<Reaction>,
   onClose?: () => void,
   onDatePick?: (timestamp: number) => void,
-  onActive?: (active: boolean, showingReactions: boolean) => void
+  onActive?: (active: boolean, showingReactions: boolean) => void,
+  onSearchTypeChange?: () => void
 }) {
   const [isInputFocused, setIsInputFocused] = createSignal(false);
   const [value, setValue] = createSignal<string>('');
@@ -255,14 +285,23 @@ export default function TopbarSearch(props: {
   const [savedReactionTags, setSavedReactionTags] = createSignal<SavedReactionTag[]>(undefined, {equals: false});
   const [reactionsElement, setReactionsElement] = createSignal<ReactionsElement>();
   const [reaction, setReaction] = createSignal<Reaction>(undefined, {equals: false});
+  const [searchType, setSearchType] = createSignal<SearchType>(DEFAULT_SEARCH_TYPE);
   const shouldShowResults = isInputFocused;
   const shouldHaveListNavigation = createMemo(() => (shouldShowResults() && count() && list()) || undefined);
+  const lookingHashtag = createMemo(() => {
+    if(filteringSender() || reaction()) return;
+    const _value = value();
+    return _value.startsWith('#') ? _value.slice(1) : undefined;
+  });
+  const isHashtag = createMemo(() => lookingHashtag() !== undefined);
   const shouldShowReactions = createMemo(() => {
+    if(isHashtag()) return false;
     const element = reactionsElement();
     const tags = savedReactionTags();
     return !!(element && tags?.length);
   });
-  const isActive = createMemo(() => shouldShowReactions() || shouldShowResults());
+  const shouldShowSearchTypes = createMemo(() => isHashtag());
+  const isActive = createMemo(() => shouldShowReactions()/*  || shouldShowSearchTypes() */ || shouldShowResults());
   const isPremium = usePremium();
 
   if(props.onActive) {
@@ -275,7 +314,7 @@ export default function TopbarSearch(props: {
     });
   }
 
-  // full search replacement
+  // * full search replacement
   createEffect(() => {
     inputSearch.onChange(inputSearch.value = props.query());
     setFilteringSender(!!props.filterPeerId());
@@ -287,6 +326,7 @@ export default function TopbarSearch(props: {
     });
   });
 
+  // * list navigation
   createEffect(() => {
     const {element} = shouldHaveListNavigation() || {};
     if(!element) {
@@ -351,15 +391,18 @@ export default function TopbarSearch(props: {
     }
   };
 
-  const inputSearch = new InputSearch({
+  const inputSearch: InputSearch = new InputSearch({
     placeholder: 'Search',
-    onChange: (value) => {
-      setValue(value);
-    },
+    onChange: setValue,
     onClear: onInputClear,
     onFocusChange: setIsInputFocused,
     alwaysShowClear: true,
-    noBorder: true
+    noBorder: true,
+    verifyDebounce: (value) => {
+      return value !== '#' &&
+        !inputSearch.container.classList.contains('show-placeholder') &&
+        !!value.trim(); // skip debounce for hashtag
+    }
   });
   inputSearch.container.classList.add('topbar-search-input-container');
   inputSearch.input.classList.add('topbar-search-input');
@@ -373,18 +416,19 @@ export default function TopbarSearch(props: {
       onInputClear(undefined, isEmpty);
     }
   };
-  inputSearch.input.addEventListener('keydown', onKeyDown);
+  subscribeOn(inputSearch.input)('keydown', onKeyDown);
   onCleanup(() => {
-    inputSearch.input.removeEventListener('keydown', onKeyDown);
     inputSearch.remove();
   });
 
+  const hashWidth = getTextWidth('#', FontFull);
   const fromText = I18n.format('Search.From', true) + ' ';
   const fromWidth = getTextWidth(fromText, FontFull);
   const fromSpan = (<span class={classNames('topbar-search-input-from', filteringSender() && 'is-visible')}>{fromText}</span>);
   inputSearch.container.append(fromSpan as HTMLElement);
   createEffect<HTMLElement>((_element) => {
     const filtering = filteringSender();
+    const _isHashtag = isHashtag();
     if(_element) {
       _element.classList.remove('scale-in');
       void _element.offsetWidth;
@@ -399,31 +443,115 @@ export default function TopbarSearch(props: {
       element.classList.add('topbar-search-input-entity', 'scale-in');
       const detach = attachClickEvent(element, (e) => {
         cancelEvent(e);
-        setFilterPeerId();
+        if(_isHashtag) {
+          setSearchType();
+        } else {
+          setFilterPeerId();
+        }
       }, {cancelMouseDown: true});
       onCleanup(detach);
       inputSearch.container.append(element);
     }
 
     inputSearch.container.style.setProperty('--padding-placeholder', (filtering ? fromWidth : 0) + 'px');
+    inputSearch.container.style.setProperty('--padding-hashtag', (_isHashtag ? hashWidth : 0) + 'px');
     inputSearch.container.style.setProperty('--padding-sender', (element ? element.offsetWidth + 6 : 0) + 'px');
-    inputSearch.setPlaceholder(filtering && !element ? 'Search.Member' : 'Search');
+    inputSearch.setPlaceholder(filtering && !element ? 'Search.Member' : (_isHashtag ? 'Search.Hashtag' : 'Search'));
     return element;
   });
 
+  // * keep placeholder while input is empty
+  createEffect(() => {
+    inputSearch.container.classList.toggle('show-placeholder', /* !value() ||  */lookingHashtag() === '');
+  });
+
+  const PeerEntity = (props: {
+    peerId?: PeerId | string,
+    fallbackIcon?: Icon,
+    title?: HTMLElement,
+    active?: Accessor<boolean>,
+    onPromises?: (promises: Promise<any>[]) => void,
+    onClick?: () => void,
+  }) => {
+    const middleware = createMiddleware().get();
+    const entity = untrack(() => AppSelectPeers.renderEntity({
+      key: props.peerId,
+      title: props.title,
+      fallbackIcon: props.fallbackIcon,
+      middleware,
+      avatarSize: 30,
+      meAsSaved: false
+    }));
+
+    if(props.active !== undefined) {
+      createEffect(() => {
+        entity.element.classList.toggle('active', props.active());
+      });
+    }
+
+    if(props.onClick) {
+      const detach = attachClickEvent(entity.element, (e) => {
+        cancelEvent(e);
+        props.onClick();
+      }, {cancelMouseDown: true});
+      onCleanup(detach);
+    }
+
+    if(props.onPromises) {
+      props.onPromises(entity.promises);
+    }
+
+    return entity.element;
+  };
+
+  const SearchTypeEntity = (_props: {
+    type: SearchType,
+    notList?: boolean,
+    onPromises?: (promises: Promise<any>[]) => void
+  }) => {
+    const peerId = _props.type === 'this' ? props.peerId : (_props.type === 'my' ? rootScope.myId : 'public');
+    const title = i18n(`Search.Types.${_props.type === 'this' ? 'ThisChat' : _props.type === 'my' ? 'MyMessages' : 'PublicPosts'}`);
+    return (
+      <PeerEntity
+        peerId={peerId}
+        title={title}
+        {...(!_props.notList && {
+          active: () => searchType() === _props.type,
+          onClick: () => setSearchType((type) => type === _props.type ? DEFAULT_SEARCH_TYPE : _props.type)
+        })}
+        fallbackIcon={_props.type === 'public' ? 'newchannel_filled' : undefined}
+        onPromises={_props.onPromises}
+      />
+    );
+  };
+
+  // * handle sender or search type entity
   createEffect(async() => {
     const peerId = filterPeerId();
+    const _searchType = searchType();
     const middleware = createMiddleware().get();
     let element: HTMLElement;
-    if(peerId) {
-      const entity = untrack(() => AppSelectPeers.renderEntity({
-        key: peerId,
-        middleware,
-        avatarSize: 30,
-        meAsSaved: false
-      }));
-      element = entity.element;
-      await Promise.all(entity.promises);
+    if(peerId || _searchType) {
+      element = await new Promise((resolve) => {
+        let element: HTMLDivElement;
+        const onPromises = async(promises: Promise<any>[]) => {
+          await Promise.all(promises);
+          return resolve(element);
+        };
+
+        if(_searchType) {
+          element = SearchTypeEntity({
+            type: _searchType,
+            notList: true,
+            onPromises
+          }) as HTMLDivElement;
+        } else {
+          element = PeerEntity({
+            peerId,
+            onPromises
+          });
+        }
+      });
       if(!middleware()) {
         return;
       }
@@ -432,6 +560,7 @@ export default function TopbarSearch(props: {
     setSenderInputEntity(element);
   });
 
+  const MIN_HEIGHT = 43;
   const MAX_HEIGHT = 271;
 
   const ArrowButton = ({direction}: {direction: 'up' | 'down'}) => {
@@ -483,14 +612,36 @@ export default function TopbarSearch(props: {
   </div>);
   b.after(inputSearchTools);
 
-  createEffect(() => {
+  const updateChatSearchContext = (searchType: SearchType, query: string) => {
+    appImManager.chat.setMessageId({
+      query: searchType && query || undefined,
+      isPublicHashtag: searchType === 'public' || undefined,
+      isCacheableSearch: !!searchType || undefined,
+      inputFilter: query && searchType ? {_: 'inputMessagesFilterEmpty'} : undefined,
+      type: query && searchType ? ChatType.Search : props.chatType,
+      hashtagType: searchType
+    });
+  };
+
+  // * search
+  createEffect<Partial<{searchType: SearchType, query: string}>>((prev) => {
+    prev ||= {};
     const {peerId, threadId} = props;
     const query = value();
     const fromPeerId = filterPeerId();
     const isSender = filteringSender() && !fromPeerId;
     const middleware = createMiddleware().get();
-    const isEmptyQuery = !query.trim();
+    const isEmptyQuery = !query.trim() || query === '#';
+    const _isHashtag = isHashtag();
     const _reaction = !isSender && reaction();
+    const _searchType = searchType();
+
+    // * reset search if it's not a hashtag anymore
+    if(_searchType && !query) {
+      setSearchType();
+      updateChatSearchContext(undefined, undefined);
+      return;
+    }
 
     setLoadMore(() => undefined);
     setMessages();
@@ -503,7 +654,8 @@ export default function TopbarSearch(props: {
       threadId,
       query,
       fromPeerId,
-      reaction: _reaction
+      reaction: _reaction,
+      searchType: _searchType
     });
 
     let ref: HTMLDivElement;
@@ -512,15 +664,18 @@ export default function TopbarSearch(props: {
         ref={ref}
         class="topbar-search-left-chatlist chatlist"
       >
-        {count() === 0 ? (
+        {count() === 0 || (_isHashtag && count() === undefined) ? (
           <div class="topbar-search-left-results-empty">
-            {isEmptyQuery && fromPeerId ?
+            {_isHashtag && (count() === undefined ?
+              i18n('Search.HelpHashtag') :
+              i18n('Search.EmptyHashtag', [wrapEmojiText(stringMiddleOverflow(query, 18))]))}
+            {!_isHashtag && (fromPeerId ?
               i18n('Search.EmptyFrom', [(() => {
                 const peerTitle = new PeerTitle({peerId: fromPeerId});
                 return peerTitle.element;
               })()]) :
               i18n('Search.Empty', [wrapEmojiText(stringMiddleOverflow(query, 18))])
-            }
+            )}
           </div>
         ) : (
           <>
@@ -543,10 +698,17 @@ export default function TopbarSearch(props: {
       }
     };
 
+    if(_searchType !== prev.searchType || (_searchType && query !== prev.query)) {
+      props.onSearchTypeChange?.();
+      updateChatSearchContext(_searchType, query);
+    }
+
+    const current = {searchType: _searchType, query};
+
     if(!isSender && !fromPeerId && !_reaction && isEmptyQuery) {
       setCount();
       onLoad();
-      return;
+      return current;
     }
 
     createEffect(
@@ -565,8 +727,10 @@ export default function TopbarSearch(props: {
 
     inputSearch.toggleLoading(true);
     untrack(() => loader().loadMore());
+    return current;
   });
 
+  // * handle target change to jump to message
   createEffect(
     on(
       target,
@@ -593,7 +757,7 @@ export default function TopbarSearch(props: {
         target.classList.add('active');
 
         const message = messages()[idx];
-        appImManager.chat.setMessageId({lastMsgId: message.mid});
+        appImManager.chat.setMessageId({lastMsgId: message.mid, lastMsgPeerId: message.peerId});
       },
       {defer: true}
     )
@@ -622,10 +786,7 @@ export default function TopbarSearch(props: {
 
     setSavedReactionTags(tags);
   };
-  rootScope.addEventListener('saved_tags', onSavedTags);
-  onCleanup(() => {
-    rootScope.removeEventListener('saved_tags', onSavedTags);
-  });
+  subscribeOn(rootScope)('saved_tags', onSavedTags);
 
   // * render saved reaction tags
   createEffect<HTMLElement>((previousLock) => {
@@ -773,9 +934,7 @@ export default function TopbarSearch(props: {
       }
 
       appImManager.chat.setMessageId({
-        lastMsgId: undefined,
-        mediaTimestamp: undefined,
-        savedReaction: reaction ? [reaction] : undefined
+        savedReaction: reaction ? [reaction as Reaction.reactionCustomEmoji | Reaction.reactionEmoji] : undefined
       });
     }
   ));
@@ -786,7 +945,16 @@ export default function TopbarSearch(props: {
       return;
     }
 
-    appImManager.chat.setMessageId({lastMsgId: undefined, mediaTimestamp: undefined, savedReaction: undefined});
+    appImManager.chat.setMessageId({lastMsgId: undefined, lastMsgPeerId: undefined, mediaTimestamp: undefined, savedReaction: undefined});
+  });
+
+  // * reset search on close
+  onCleanup(() => {
+    if(appImManager.chat.type !== ChatType.Search) {
+      return;
+    }
+
+    updateChatSearchContext(undefined, undefined);
   });
 
   const calculateResultsHeight = createMemo(() => {
@@ -795,14 +963,14 @@ export default function TopbarSearch(props: {
     }
 
     const length = count();
-    if(length === undefined) {
+    if(length === undefined && !isHashtag()) {
       return 0;
     }
 
     const paddingVertical = 8 * 2;
     let height: number;
-    if(length === 0) {
-      height = 43;
+    if(!length) {
+      height = MIN_HEIGHT;
     } else if(list().type === 'senders') {
       height = 1 + paddingVertical + length * 48;
     } else {
@@ -817,10 +985,18 @@ export default function TopbarSearch(props: {
       return 0;
     }
 
-    return shouldShowReactions() ? 62 : 0;
+    return shouldShowReactions() ? 61 : 0;
   });
 
-  let scrollableDiv: HTMLDivElement, reactionsScrollableDiv: HTMLDivElement;
+  const calculateSearchTypesHeight = createMemo(() => {
+    if(!isActive()) {
+      return 0;
+    }
+
+    return shouldShowSearchTypes() ? 61 : 0;
+  });
+
+  let scrollableDiv: HTMLDivElement, reactionsScrollableDiv: HTMLDivElement, searchTypesScrollableDiv: HTMLDivElement;
   return (
     <div class="topbar-search-container">
       <div
@@ -844,6 +1020,21 @@ export default function TopbarSearch(props: {
             </ScrollableXTsx>
           </div>
         )}
+        {/* shouldShowReactions() &&  */(
+          <div
+            class="topbar-search-left-reactions-container topbar-search-left-collapsable"
+            style={calculateSearchTypesHeight() ? {height: calculateSearchTypesHeight() + 'px'} : undefined}
+          >
+            <div class="topbar-search-left-delimiter"></div>
+            <ScrollableXTsx ref={searchTypesScrollableDiv} class="topbar-search-left-reactions-scrollable">
+              <div class="topbar-search-left-reactions-padding"></div>
+              <div class="topbar-search-left-search-types">
+                {SEARCH_TYPES.map((type) => (<SearchTypeEntity type={type} />))}
+              </div>
+              <div class="topbar-search-left-reactions-padding"></div>
+            </ScrollableXTsx>
+          </div>
+        )}
         <ScrollableYTsx
           ref={scrollableDiv}
           class="topbar-search-left-results topbar-search-left-collapsable"
@@ -860,7 +1051,7 @@ export default function TopbarSearch(props: {
       </div>
       <div class="topbar-search-right-container">
         {props.canFilterSender && (
-          <div class={classNames('topbar-search-right-filter', filteringSender() && 'is-hidden')}>
+          <div class={classNames('topbar-search-right-filter', (filteringSender() || isHashtag()) && 'is-hidden')}>
             <ButtonIconTsx
               class="topbar-search-right-filter-button"
               icon="newprivate"
@@ -877,16 +1068,18 @@ export default function TopbarSearch(props: {
           </div>
         )}
         {props.onDatePick && (
-          <ButtonIconTsx
-            icon="calendar"
-            onClick={() => {
-              PopupElement.createPopup(
-                PopupDatePicker,
-                new Date(),
-                props.onDatePick
-              ).show();
-            }}
-          />
+          <div class={classNames('topbar-search-right-filter', isHashtag() && 'is-hidden')}>
+            <ButtonIconTsx
+              icon="calendar"
+              onClick={() => {
+                PopupElement.createPopup(
+                  PopupDatePicker,
+                  new Date(),
+                  props.onDatePick
+                ).show();
+              }}
+            />
+          </div>
         )}
       </div>
     </div>

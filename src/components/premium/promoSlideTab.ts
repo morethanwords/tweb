@@ -46,7 +46,7 @@ export function premiumOptionsForm<T extends PremiumSubscriptionOption | Premium
 }) {
   const isGiftCode = periodOptions[0]._ === 'premiumGiftCodeOption';
   const shortestOption = periodOptions.slice().sort((a, b) => a.months - b.months)[0];
-  const wrapCurrency = (amount: number | string) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true);
+  const wrapCurrency = (amount: number | string) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true, true);
   const keys: {[key: number]: LangPackKey} = isGiftCode ? undefined : {
     12: 'PremiumTierAnnual',
     6: 'PremiumTierSemiannual',

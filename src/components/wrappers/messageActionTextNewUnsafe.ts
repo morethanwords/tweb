@@ -379,7 +379,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         const isRecurringInit = action.pFlags.recurring_init;
         const isRecurringUsed = action.pFlags.recurring_used;
         langPackKey = isRecurringUsed ? 'Chat.Service.PaymentSentRecurringUsedNoTitle' : (isRecurringInit ? 'Chat.Service.PaymentSentRecurringInitNoTitle' : 'Chat.Service.PaymentSent1NoTitle');
-        const price = paymentsWrapCurrencyAmount(action.total_amount, action.currency);
+        const price = paymentsWrapCurrencyAmount(action.total_amount, action.currency, undefined, undefined, plain);
         args = [price, getNameDivHTML(message.peerId, plain)];
 
         if(message.reply_to_mid) {
@@ -551,7 +551,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         args = authorElement ? [authorElement] : [];
 
-        args.push(paymentsWrapCurrencyAmount(action.amount, action.currency, false, true));
+        args.push(paymentsWrapCurrencyAmount(action.amount, action.currency, false, true, plain));
 
         langPackKey = isMe ? 'ActionGiftOutbound' : 'ActionGiftInbound';
 

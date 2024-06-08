@@ -206,7 +206,7 @@ export class ChatReactionsMenu {
           const emojiTab = new EmojiTab({
             noRegularEmoji: true,
             noPacks,
-            managers: rootScope.managers,
+            managers: this.managers,
             mainSets: this.tags ? () => {
               const reactionsPromise = this.managers.appReactionsManager.getTagReactions()
               .then(reactionsToDocIds);

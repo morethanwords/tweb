@@ -492,7 +492,7 @@ $menu-search-translateY: -#{$menu-height};
     &-container {
       width: 100%;
 
-      &:after {
+      &.emoticons-has-search:after {
         content: " ";
         display: block;
         height: calc(#{$menu-height} + .5rem);

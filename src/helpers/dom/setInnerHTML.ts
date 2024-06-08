@@ -23,3 +23,7 @@ export function setDirection(elem: Element) {
   elem.setAttribute('dir', 'auto');
   // }
 }
+
+export function getDirection(): 'auto' {
+  return 'auto';
+}

@@ -149,7 +149,16 @@ function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[]
         length: value.length,
         user_id: (closest as HTMLElement).dataset.follow.toUserId()
       });
-    }/*  else if(tag.entityName === 'messageEntityCustomEmoji') {
+    } else if(tag.entityName === 'messageEntityBlockquote') {
+      entities.push({
+        _: tag.entityName,
+        pFlags: {
+          collapsed: /* closest.classList.contains('can-send-collapsd') &&  */!!closest.dataset.collapsed || undefined
+        },
+        offset: offset.offset,
+        length: value.length
+      });
+    } /*  else if(tag.entityName === 'messageEntityCustomEmoji') {
       entities.push({
         _: tag.entityName,
         document_id: (closest as HTMLElement).dataset.docId,
@@ -202,9 +211,9 @@ export default function getRichElementValue(
     } */
 
     if(nodeValue) {
-      if(offset.isInQuote && nodeValue.endsWith('\n')) { // slice last linebreak from quote
-        nodeValue = nodeValue.slice(0, -1);
-      }
+      // if(offset.isInQuote && nodeValue.endsWith('\n')) { // slice last linebreak from quote
+      //   nodeValue = nodeValue.slice(0, -1);
+      // }
 
       if(selNode === node) {
         line.push(nodeValue.substr(0, selOffset) + SELECTION_SEPARATOR + nodeValue.substr(selOffset));
@@ -285,6 +294,12 @@ export default function getRichElementValue(
   }
 
   if(isQuote) {
+    const lastValue = line[line.length - 1];
+    if(lastValue?.endsWith('\n')) { // slice last linebreak from quote
+      line[line.length - 1] = lastValue.slice(0, -1);
+      offset.offset -= 1;
+    }
+
     offset.isInQuote = false;
   }
 

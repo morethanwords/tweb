@@ -8,7 +8,7 @@ import {Boost, PremiumBoostsStatus, PrepaidGiveaway} from '../../../layer';
 import {LangPackKey, i18n, joinElementsWith} from '../../../lib/langPack';
 import Section from '../../section';
 import {SliderSuperTabEventable} from '../../sliderTab';
-import {Accessor, createMemo, createRoot, createSignal, For} from 'solid-js';
+import {Accessor, createMemo, createRoot, createSignal, For, JSX, onCleanup} from 'solid-js';
 import {render} from 'solid-js/web';
 import Row from '../../row';
 import {avatarNew, AvatarNew} from '../../avatarNew';
@@ -68,6 +68,82 @@ export const CPrepaidGiveaway = (props: {
 
   return row.container;
 };
+
+export function Tabs(props: {
+  tab: Accessor<number>,
+  onChange: (index: number) => void,
+  menu: JSX.Element[],
+  content: JSX.Element[],
+  class: string
+}) {
+  const className = props.class;
+
+  const MenuTab = (props: {
+    children: JSX.Element
+  }) => {
+    return (
+      <div class={classNames('menu-horizontal-div-item', `${className}-tab`)}>
+        <div class="menu-horizontal-div-item-span">
+          {props.children}
+          <i />
+        </div>
+      </div>
+    );
+  };
+
+  const ContentTab = (props: {
+    children: JSX.Element,
+    hide: boolean
+  }) => {
+    return (
+      <div
+        class={classNames(`${className}-content`, props.hide && 'hide')}
+      >
+        {props.children}
+      </div>
+    );
+  };
+
+  let tabs: HTMLDivElement, content: HTMLDivElement;
+  const ret = (
+    <>
+      <div ref={tabs} class={classNames('menu-horizontal-div', `${className}-tabs`)}>
+        <For each={props.menu}>{(item) => {
+          return (
+            <MenuTab>{item}</MenuTab>
+          );
+        }}</For>
+      </div>
+      <div ref={content} class={classNames(`${className}-contents`)}>
+        <For each={props.content}>{(item, index) => {
+          return (
+            <ContentTab hide={index() !== props.tab()}>{item}</ContentTab>
+          );
+        }}</For>
+      </div>
+    </>
+  );
+
+  const listenerSetter = new ListenerSetter();
+  onCleanup(() => {
+    listenerSetter.removeAll();
+  });
+
+  const selectTab = horizontalMenu(
+    tabs,
+    content,
+    (tab) => {
+      props.onChange(tab);
+    },
+    undefined,
+    undefined,
+    undefined,
+    listenerSetter
+  );
+  selectTab(props.tab());
+
+  return ret;
+}
 
 export default class AppBoostsTab extends SliderSuperTabEventable {
   private peerId: PeerId;

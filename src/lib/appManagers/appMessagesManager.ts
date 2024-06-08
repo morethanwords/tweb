@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
 import {randomLong} from '../../helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities} from '../../layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '../../types';
 import {logger, LogTypes} from '../logger';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -77,6 +77,7 @@ import getSearchType from './utils/messages/getSearchType';
 import getMainGroupedMessage from './utils/messages/getMainGroupedMessage';
 import getUnreadReactions from './utils/messages/getUnreadReactions';
 import isMentionUnread from './utils/messages/isMentionUnread';
+import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -116,6 +117,7 @@ export type HistoryStorage = {
   _count: number | null,
   count: number | null,
   history: SlicedArray<number>,
+  searchHistory?: SlicedArray<`${PeerId}_${number}`>,
 
   maxId?: number,
   readPromise?: Promise<void>,
@@ -136,6 +138,7 @@ export type HistoryStorage = {
   filterMessages?: (messages: MyMessage[]) => MyMessage[],
   filterMessage?: (message: MyMessage) => boolean,
   onMidInsertion?: (mid: number) => void,
+  nextRate?: number,
 };
 
 export type HistoryResult = {
@@ -202,20 +205,21 @@ const processAfter = (cb: () => void) => {
   cb();
 };
 
-export type MessageSendingParams = {
-  peerId?: PeerId,
-  threadId?: number,
-  replyToMsgId?: number,
-  replyToStoryId?: number,
-  replyToQuote?: {text: string, entities?: MessageEntity[], offset?: number},
-  replyToPeerId?: PeerId,
-  replyTo?: InputReplyTo,
-  scheduleDate?: number,
-  silent?: boolean,
-  sendAsPeerId?: number,
-  updateStickersetOrder?: boolean,
-  savedReaction?: Reaction[]
-};
+export type MessageSendingParams = Partial<{
+  peerId: PeerId,
+  threadId: number,
+  replyToMsgId: number,
+  replyToStoryId: number,
+  replyToQuote: {text: string, entities?: MessageEntity[], offset?: number},
+  replyToPeerId: PeerId,
+  replyTo: InputReplyTo,
+  scheduleDate: number,
+  silent: boolean,
+  sendAsPeerId: number,
+  updateStickersetOrder: boolean,
+  savedReaction: Reaction[],
+  invertMedia: boolean
+}>;
 
 export type MessageForwardParams = MessageSendingParams & {
   fromPeerId: PeerId,
@@ -246,6 +250,9 @@ export type RequestHistoryOptions = {
   savedReaction?: (Reaction.reactionCustomEmoji | Reaction.reactionEmoji)[],
   needRealOffsetIdOffset?: boolean,
   fromPeerId?: PeerId,
+  isPublicHashtag?: boolean,
+  isCacheableSearch?: boolean,
+  hashtagType?: 'this' | 'my' | 'public',
   recursion?: boolean,                  // ! FOR INNER USE ONLY
   historyType?: HistoryType,            // ! FOR INNER USE ONLY
   searchType?: 'cached' | 'uncached'    // ! FOR INNER USE ONLY
@@ -279,7 +286,7 @@ export class AppMessagesManager extends AppManager {
         [inputFilter in SearchStorageFilterKey]?: HistoryStorage
       }
     }
-  };
+  } & {[key: HistoryStorageKey]: HistoryStorage};
   private pinnedMessages: {[key: string]: PinnedStorage};
   private references: {[key: string]: MessageContext};
 
@@ -352,6 +359,8 @@ export class AppMessagesManager extends AppManager {
   private tempMids: {[peerId: PeerId]: number} = {};
 
   private historyMaxIdSubscribed: Map<HistoryStorageKey, number> = new Map();
+
+  private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
 
   protected after() {
     this.clear(true);
@@ -525,6 +534,10 @@ export class AppMessagesManager extends AppManager {
       }
     }, 33, false, true);
 
+    this.factCheckBatcher = new Batcher({
+      processBatch: this.processFactCheckBatch
+    });
+
     return this.appStateManager.getState().then((state) => {
       if(state.maxSeenMsgId) {
         this.maxSeenId = state.maxSeenMsgId;
@@ -584,7 +597,7 @@ export class AppMessagesManager extends AppManager {
       newMedia: InputMedia,
       scheduleDate: number,
       entities: MessageEntity[]
-    }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[0], 'webPage' | 'webPageOptions' | 'noWebPage'>> = {}
+    }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[0], 'webPage' | 'webPageOptions' | 'noWebPage' | 'invertMedia'>> = {}
   ): Promise<void> {
     /* if(!this.canEditMessage(messageId)) {
       return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'});
@@ -607,7 +620,7 @@ export class AppMessagesManager extends AppManager {
       sendEntites = undefined;
     }
 
-    const webPageSend = this.processMessageWebPageOptions(message as Message.message, options);
+    const inputMediaWebPage = this.getInputMediaWebPage(options);
 
     const schedule_date = options.scheduleDate || ((message as Message.message).pFlags.is_scheduled ? message.date : undefined);
     return this.apiManager.invokeApi('messages.editMessage', {
@@ -618,7 +631,8 @@ export class AppMessagesManager extends AppManager {
       entities: sendEntites,
       no_webpage: options.noWebPage,
       schedule_date,
-      ...webPageSend
+      invert_media: options.invertMedia,
+      ...(inputMediaWebPage ? {media: inputMediaWebPage} : {})
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
     }, (error: ApiError) => {
@@ -686,12 +700,12 @@ export class AppMessagesManager extends AppManager {
       noWebPage: true,
       replyMarkup: ReplyMarkup,
       clearDraft: true,
+      invertMedia: boolean,
       webPage: WebPage,
       webPageOptions: Partial<{
         largeMedia: boolean,
         smallMedia: boolean,
-        optional: boolean,
-        invertMedia: boolean
+        optional: boolean
       }>
     }>
   ): Promise<void> {
@@ -734,7 +748,7 @@ export class AppMessagesManager extends AppManager {
 
     const isChannel = this.appPeersManager.isChannel(peerId);
 
-    const webPageSend = this.processMessageWebPageOptions(message, options);
+    const webPageSend = this.generateOutgoingWebPage(message, options);
 
     const toggleError = (error?: ApiError) => {
       this.onMessagesSendError([message], error);
@@ -773,15 +787,18 @@ export class AppMessagesManager extends AppManager {
           schedule_date: options.scheduleDate || undefined,
           silent: options.silent,
           send_as: sendAs,
-          update_stickersets_order: options.updateStickersetOrder
+          update_stickersets_order: options.updateStickersetOrder,
+          invert_media: options.invertMedia
+        };
+
+        const mergedOptions: MessagesSendMessage | MessagesSendMedia = {
+          ...commonOptions as any,
+          ...webPageSend
         };
 
         apiPromise = this.apiManager.invokeApiAfter(
           options.webPage ? 'messages.sendMedia' : 'messages.sendMessage',
-          {
-            ...commonOptions as any,
-            ...webPageSend
-          },
+          mergedOptions,
           sentRequestOptions
         );
       }
@@ -1125,6 +1142,10 @@ export class AppMessagesManager extends AppManager {
       sendEntites = undefined;
     }
 
+    if(options.invertMedia) {
+      message.pFlags.invert_media = true;
+    }
+
     message.entities = entities;
     message.message = caption;
     message.media = isDocument ? {
@@ -1281,7 +1302,8 @@ export class AppMessagesManager extends AppManager {
           entities: sendEntites,
           clear_draft: options.clearDraft,
           send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
-          update_stickersets_order: options.updateStickersetOrder
+          update_stickersets_order: options.updateStickersetOrder,
+          invert_media: options.invertMedia
         }).then((updates) => {
           this.apiUpdatesManager.processUpdateMessage(updates);
         }, (error: ApiError) => {
@@ -1417,7 +1439,8 @@ export class AppMessagesManager extends AppManager {
             silent: options.silent,
             clear_draft: options.clearDraft,
             send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
-            update_stickersets_order: options.updateStickersetOrder
+            update_stickersets_order: options.updateStickersetOrder,
+            invert_media: options.invertMedia
           }).then((updates) => {
             this.apiUpdatesManager.processUpdateMessage(updates);
             deferred.resolve();
@@ -2133,10 +2156,26 @@ export class AppMessagesManager extends AppManager {
     return fwdHeader;
   }
 
-  private processMessageWebPageOptions(
+  private getInputMediaWebPage(options: Parameters<AppMessagesManager['sendText']>[0]): InputMedia.inputMediaWebPage {
+    if(!options.webPage) {
+      return;
+    }
+
+    return {
+      _: 'inputMediaWebPage',
+      url: (options.webPage as WebPage.webPage).url,
+      pFlags: {
+        force_large_media: options.webPageOptions.largeMedia || undefined,
+        force_small_media: options.webPageOptions.smallMedia || undefined,
+        optional: options.webPageOptions.optional || undefined
+      }
+    };
+  }
+
+  private generateOutgoingWebPage(
     message: Message.message,
     options: Parameters<AppMessagesManager['sendText']>[0]
-  ): {media: InputMedia.inputMediaWebPage, invert_media: boolean} | {no_webpage: boolean} | {} {
+  ): {media: InputMedia.inputMediaWebPage} | {no_webpage: boolean} | {} {
     if(message._ !== 'message') {
       return {};
     }
@@ -2154,21 +2193,12 @@ export class AppMessagesManager extends AppManager {
       webpage: options.webPage
     };
 
-    if(options.webPageOptions.invertMedia) {
+    if(options.invertMedia) {
       message.pFlags.invert_media = true;
     }
 
     return {
-      media: {
-        _: 'inputMediaWebPage',
-        url: (options.webPage as WebPage.webPage).url,
-        pFlags: {
-          force_large_media: options.webPageOptions.largeMedia || undefined,
-          force_small_media: options.webPageOptions.smallMedia || undefined,
-          optional: options.webPageOptions.optional || undefined
-        }
-      },
-      invert_media: options.webPageOptions.invertMedia
+      media: this.getInputMediaWebPage(options)
     };
   }
 
@@ -2733,6 +2763,13 @@ export class AppMessagesManager extends AppManager {
         group.messages.forEach((message) => {
           message.grouped_id = group.tempId;
         });
+
+        // * save factcheck to new message
+        const originalMainMessage = getMainGroupedMessage(this.getMessagesByGroupedId(groupId));
+        const message = getMainGroupedMessage(group.messages);
+        if(originalMainMessage.factcheck) {
+          message.factcheck = originalMainMessage.factcheck;
+        }
       }
     }
 
@@ -4504,8 +4541,32 @@ export class AppMessagesManager extends AppManager {
     }
 
     const filter = getSearchStorageFilterKey(o);
-    const searchStorage = ((this.searchesStorage[options.peerId] ??= {})[options.threadId] ??= {})[filter] ??= this.createHistoryStorage(o);
-    if(!searchStorage.originalInsertSlice) {
+    const key = getHistoryStorageKey(o);
+    let searchStorage: HistoryStorage;
+    if(options.isCacheableSearch) {
+      searchStorage = this.searchesStorage[key] ??= this.createHistoryStorage(o);
+    } else {
+      searchStorage = ((this.searchesStorage[options.peerId] ??= {})[options.threadId] ??= {})[filter] ??= this.createHistoryStorage(o);
+    }
+    if(options.isCacheableSearch) { // * don't update messages list if it's a global search
+      if(!searchStorage.searchHistory) {
+        const slicedArray = searchStorage.searchHistory = new SlicedArray();
+        slicedArray.insertSlice = (slice) => {
+          slicedArray.first.push(...slice);
+          return slicedArray.first;
+        };
+
+        slicedArray.findOffsetInSlice = (offsetId, slice) => {
+          const index = slice.indexOf(offsetId);
+          if(index !== -1) {
+            return {
+              slice,
+              offset: index + 1
+            };
+          }
+        };
+      }
+    } else if(!searchStorage.originalInsertSlice) {
       searchStorage.originalInsertSlice = searchStorage.history.insertSlice.bind(searchStorage.history);
       searchStorage.history.insertSlice = (...args) => {
         const slice = searchStorage.originalInsertSlice(...args);
@@ -5220,7 +5281,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public toggleHistoryMaxIdSubscription(historyKey: HistoryStorageKey, subscribe: boolean) {
+  public toggleHistoryKeySubscription(historyKey: HistoryStorageKey, subscribe: boolean) {
     if(!historyKey) {
       return;
     }
@@ -5229,10 +5290,13 @@ export class AppMessagesManager extends AppManager {
     if(subscribe) {
       this.historyMaxIdSubscribed.set(historyKey, previous + 1);
     } else {
-      if(previous === 1) {
-        this.historyMaxIdSubscribed.delete(historyKey);
-      } else {
+      if(previous) {
+        if(previous === 1) this.historyMaxIdSubscribed.delete(historyKey);
         this.historyMaxIdSubscribed.set(historyKey, previous - 1);
+      }
+
+      if(!this.historyMaxIdSubscribed.get(historyKey)) {
+        delete this.searchesStorage[historyKey];
       }
     }
   }
@@ -5398,6 +5462,7 @@ export class AppMessagesManager extends AppManager {
     const {
       count,
       history,
+      searchHistory,
       maxId,
       readMaxId,
       readOutboxMaxId,
@@ -5409,6 +5474,8 @@ export class AppMessagesManager extends AppManager {
       count,
       history: undefined as HistoryStorage,
       historySerialized: history.toJSON(),
+      searchHistory: undefined as HistoryStorage,
+      searchHistorySerialized: searchHistory?.toJSON(),
       maxId,
       readMaxId,
       readOutboxMaxId,
@@ -7078,7 +7145,7 @@ export class AppMessagesManager extends AppManager {
   }): Promise<HistoryResult> | HistoryResult {
     this.processRequestHistoryOptions(options);
 
-    const {historyStorage, limit, addOffset, offsetId, needRealOffsetIdOffset} = options;
+    const {historyStorage, limit, addOffset, offsetId, offsetPeerId, needRealOffsetIdOffset} = options;
 
     if(this.appPeersManager.isPeerRestricted(options.peerId)) {
       const first = historyStorage.history.first;
@@ -7095,7 +7162,18 @@ export class AppMessagesManager extends AppManager {
       };
     }
 
-    const haveSlice = historyStorage.history.sliceMe(offsetId, addOffset, limit);
+    const getPossibleSlice = () => {
+      let haveSlice: ReturnType<SlicedArray<any>['sliceMe']>
+      if(historyStorage.searchHistory) {
+        haveSlice = historyStorage.searchHistory.sliceMe(offsetId ? `${offsetPeerId}_${offsetId}` : undefined, addOffset, limit);
+      } else {
+        haveSlice = historyStorage.history.sliceMe(offsetId, addOffset, limit);
+      }
+
+      return haveSlice;
+    };
+
+    const haveSlice = getPossibleSlice();
     if(
       haveSlice &&
       (haveSlice.slice.length === limit || (haveSlice.fulfilled & SliceEnd.Both) === SliceEnd.Both) &&
@@ -7105,7 +7183,8 @@ export class AppMessagesManager extends AppManager {
         count: historyStorage.count,
         history: Array.from(haveSlice.slice),
         isEnd: haveSlice.slice.getEnds(),
-        offsetIdOffset: haveSlice.offsetIdOffset
+        offsetIdOffset: haveSlice.offsetIdOffset,
+        messages: options.isCacheableSearch ? haveSlice.slice.map((str) => this.getMessageByPeer(+str.split('_')[0], +str.split('_')[1])) : undefined
       };
     }
 
@@ -7134,7 +7213,7 @@ export class AppMessagesManager extends AppManager {
         };
       }
 
-      const slice = historyStorage.history.sliceMe(offsetId, addOffset, limit);
+      const slice = getPossibleSlice();
       const f = slice?.slice || historyStorage.history.constructSlice();
       const isEnd = f.getEnds();
       let offsetIdOffset: number;
@@ -7148,7 +7227,8 @@ export class AppMessagesManager extends AppManager {
         count: historyStorage.count,
         history: Array.from(f),
         isEnd,
-        offsetIdOffset
+        offsetIdOffset,
+        messages: options.isCacheableSearch ? f.map((v) => this.getMessageByPeer(v.split('_')[0].toPeerId(), +v.split('_')[1])) : undefined
       };
     });
   }
@@ -7248,6 +7328,7 @@ export class AppMessagesManager extends AppManager {
       historyStorage
     } = options;
 
+    const searchSlicedArray = historyStorage?.searchHistory;
     const {messages} = historyResult as MessagesMessages.messagesMessagesSlice;
     const isEnd = this.isHistoryResultEnd(options);
     const {count, offsetIdOffset, mids} = isEnd;
@@ -7272,7 +7353,8 @@ export class AppMessagesManager extends AppManager {
       getServerMessageId(offsetId) &&
       !mids.includes(offsetId) &&
       offsetIdOffset < count &&
-      (addOffset || 0) >= 0 // ! warning
+      (addOffset || 0) >= 0 && // ! warning
+      !searchSlicedArray
     ) {
       let i = 0;
       for(const length = mids.length; i < length; ++i) {
@@ -7284,7 +7366,15 @@ export class AppMessagesManager extends AppManager {
       mids.splice(i, 0, offsetId);
     }
 
-    const slice = slicedArray.insertSlice(mids) || slicedArray.slice;
+    let slice: Slice<any>;
+    if(searchSlicedArray) {
+      let full = messages.map((message) => `${(message as Message.message).peerId}_${message.mid}`) as `${PeerId}_${number}`[];
+      full = full.filter((str) => !searchSlicedArray.first.includes(str));
+      slice = searchSlicedArray.insertSlice(full);
+    } else {
+      slice = slicedArray.insertSlice(mids) || slicedArray.slice;
+    }
+
     if(isEnd.isTopEnd) {
       slice.setEnd(SliceEnd.Top);
     }
@@ -7323,6 +7413,15 @@ export class AppMessagesManager extends AppManager {
     peerId = options.peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     const isRequestingLegacy = requestPeerId !== peerId;
+    const isRequestingGlobalCacheable = options.searchType === 'cached' && options.isCacheableSearch;
+    if(isRequestingGlobalCacheable && historyStorage.nextRate) {
+      const last = historyStorage.searchHistory.last;
+      const [peerId, mid] = last[last.length - 1].split('_');
+      const lastMessage = this.getMessageByPeer(peerId.toPeerId(), +mid) as MyMessage;
+      options.offsetId = lastMessage.mid;
+      options.offsetPeerId = peerId.toPeerId();
+      options.nextRate = historyStorage.nextRate;
+    }
 
     const historyResult = await this.requestHistory({
       ...options,
@@ -7331,6 +7430,10 @@ export class AppMessagesManager extends AppManager {
 
     if(!middleware()) {
       return;
+    }
+
+    if(isRequestingGlobalCacheable) {
+      historyStorage.nextRate = (historyResult as MessagesMessages.messagesMessagesSlice).next_rate;
     }
 
     const mergedResult = this.mergeHistoryResult({
@@ -7546,7 +7649,8 @@ export class AppMessagesManager extends AppManager {
     maxDate,
     historyType = this.getHistoryType(peerId, threadId),
     fromPeerId,
-    savedReaction
+    savedReaction,
+    isPublicHashtag
   }: RequestHistoryOptions) {
     const offsetMessage = offsetId && this.getMessageByPeer(offsetPeerId || peerId, offsetId);
     offsetPeerId ??= offsetMessage?.peerId;
@@ -7557,8 +7661,8 @@ export class AppMessagesManager extends AppManager {
     minDate = minDate ? minDate / 1000 | 0 : 0;
     maxDate = maxDate ? maxDate / 1000 | 0 : 0;
 
-    let options: MessagesGetReplies | MessagesGetHistory | MessagesSearch | MessagesSearchGlobal | MessagesGetSavedHistory;
-    let method: 'messages.getReplies' | 'messages.getHistory' | 'messages.search' | 'messages.searchGlobal' | 'messages.getSavedHistory';
+    let options: MessagesGetReplies | MessagesGetHistory | MessagesSearch | MessagesSearchGlobal | MessagesGetSavedHistory | ChannelsSearchPosts;
+    let method: 'messages.getReplies' | 'messages.getHistory' | 'messages.search' | 'messages.searchGlobal' | 'messages.getSavedHistory' | 'channels.searchPosts';
     const commonOptions = {
       peer: this.appPeersManager.getInputPeerById(peerId),
       offset_id: offsetId,
@@ -7574,7 +7678,17 @@ export class AppMessagesManager extends AppManager {
       inputFilter ??= {_: 'inputMessagesFilterEmpty'};
     }
 
-    if(inputFilter && peerId && !nextRate && folderId === undefined/*  || !query */) {
+    if(isPublicHashtag) {
+      const searchOptions: ChannelsSearchPosts = {
+        ...commonOptions,
+        hashtag: query.slice(1),
+        offset_rate: nextRate,
+        offset_peer: this.appPeersManager.getInputPeerById(offsetPeerId)
+      };
+
+      method = 'channels.searchPosts';
+      options = searchOptions;
+    } else if(inputFilter && peerId && !nextRate && folderId === undefined/*  || !query */) {
       const searchOptions: MessagesSearch = {
         ...commonOptions,
         q: query || '',
@@ -8212,5 +8326,138 @@ export class AppMessagesManager extends AppManager {
     return this.apiManager.invokeApi('messages.reportSpam', {
       peer: this.appPeersManager.getInputPeerById(peerId)
     });
+  }
+
+  private processFactCheckBatch = async(batch: AppMessagesManager['factCheckBatcher']['batchMap']) => {
+    for(const [peerId, midsMap] of batch) {
+      const mids = [...midsMap.keys()].slice(0, 100);
+
+      try {
+        const result = await this.apiManager.invokeApi('messages.getFactCheck', {
+          peer: this.appPeersManager.getInputPeerById(peerId),
+          msg_id: mids.map((mid) => getServerMessageId(mid))
+        });
+
+        result.forEach((factCheck, idx) => {
+          const mid = mids[idx];
+
+          const message = this.getMessageByPeer(peerId, mid) as Message.message;
+          if(message) {
+            this.modifyMessage(message, (message) => {
+              message.factcheck = factCheck;
+            });
+          }
+
+          const promise = midsMap.get(mid);
+          promise.resolve(factCheck);
+          midsMap.delete(mid);
+        });
+      } catch(err) {
+        mids.forEach((mid) => {
+          const promise = midsMap.get(mid);
+          promise.reject(err);
+          midsMap.delete(mid);
+        });
+      }
+
+      if(!midsMap.size) {
+        batch.delete(peerId);
+      }
+    }
+  };
+
+  public canUpdateFactCheck(peerId: PeerId, mid: number) {
+    if(!this.appPeersManager.isBroadcast(peerId)) {
+      return false;
+    }
+
+    const message = this.getMessageByPeer(peerId, mid);
+    if(!canMessageHaveFactCheck(message)) {
+      return false;
+    }
+
+    return callbackify(this.apiManager.getAppConfig(), (appConfig) => {
+      return !!appConfig.can_edit_factcheck;
+    });
+  }
+
+  public updateFactCheck(peerId: PeerId, mid: number, text?: TextWithEntities) {
+    let promise: Promise<Updates>;
+    if(!text) {
+      promise = this.apiManager.invokeApi('messages.deleteFactCheck', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        msg_id: getServerMessageId(mid)
+      });
+    } else {
+      promise = this.apiManager.invokeApi('messages.editFactCheck', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        msg_id: getServerMessageId(mid),
+        text
+      });
+    }
+
+    return promise.then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public getFactCheck(peerId: PeerId, mid: number) {
+    const message = this.getMessageByPeer(peerId, mid) as Message.message;
+    if(message && message.factcheck && !message.factcheck.pFlags.need_check) {
+      return message.factcheck;
+    }
+
+    return this.factCheckBatcher.addToBatch(peerId, mid);
+  }
+}
+
+class Batcher<Key, Id, Result> {
+  private batchMap: Map<Key, Map<Id, CancellablePromise<Result>>>;
+  private delay: number;
+  private timeoutId: number;
+  private _processBatch: (batch: Batcher<Key, Id, Result>['batchMap']) => Promise<any>;
+
+  constructor(options: {
+    delay?: number
+    processBatch: (batch: Batcher<Key, Id, Result>['batchMap']) => Promise<any>
+  }) {
+    this.batchMap = new Map();
+    this.delay = options.delay ?? 0;
+    this._processBatch = options.processBatch;
+  }
+
+  private async processBatch() {
+    await this._processBatch(this.batchMap);
+
+    this.timeoutId = undefined;
+    if(this.batchMap.size) {
+      this.scheduleBatch();
+    }
+  }
+
+  private scheduleBatch() {
+    if(!this.timeoutId) {
+      this.timeoutId = ctx.setTimeout(() => {
+        this.processBatch();
+      }, this.delay);
+    }
+  }
+
+  public addToBatch(key: Key, id: Id): Promise<Result> {
+    if(!this.batchMap.has(key)) {
+      this.batchMap.set(key, new Map());
+    }
+
+    const idMap = this.batchMap.get(key)!;
+    const existingPromise = idMap.get(id);
+
+    if(existingPromise) {
+      return existingPromise;
+    } else {
+      const promise = deferredPromise<Result>();
+      idMap.set(id, promise);
+      this.scheduleBatch();
+      return promise;
+    }
   }
 }

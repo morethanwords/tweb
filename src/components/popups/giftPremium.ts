@@ -46,7 +46,7 @@ export default class PopupGiftPremium extends PopupElement {
 
     const shortestOption = this.giftOptions.slice().sort((a, b) => a.months - b.months)[0];
 
-    const wrapCurrency = (amount: number | string) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true);
+    const wrapCurrency = (amount: number | string) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true, true);
 
     const rows = this.giftOptions.map((giftOption, idx) => {
       let subtitle = i18n('PricePerMonth', [wrapCurrency(+giftOption.amount / giftOption.months)]);

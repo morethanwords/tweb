@@ -32,6 +32,9 @@ import ButtonCorner from '../../buttonCorner';
 import PopupPremium from '../../popups/premium';
 import appImManager from '../../../lib/appManagers/appImManager';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import {createEffect, createRoot} from 'solid-js';
+import useStars from '../../../stores/stars';
+import PopupStars from '../../popups/stars';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -240,6 +243,26 @@ export default class AppSettingsTab extends SliderSuperTab {
       listenerSetter: this.listenerSetter
     });
 
+    const starsRow = new Row({
+      titleLangKey: 'MenuTelegramStars',
+      titleRightSecondary: true,
+      icon: 'star',
+      iconClasses: ['row-icon-stars-color'],
+      clickable: () => {
+        PopupElement.createPopup(PopupStars);
+      },
+      listenerSetter: this.listenerSetter
+    });
+
+    createRoot((dispose) => {
+      this.middlewareHelper.onDestroy(dispose);
+      const stars = useStars();
+      createEffect(() => {
+        starsRow.titleRight.textContent = '' + stars();
+        starsRow.container.classList.toggle('hide', !stars());
+      });
+    });
+
     const giftPremium = new Row({
       titleLangKey: 'GiftPremiumGifting',
       icon: 'gift',
@@ -259,7 +282,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     let premiumSection: SettingSection;
     if(!await apiManagerProxy.isPremiumPurchaseBlocked()) {
       premiumSection = new SettingSection();
-      premiumSection.content.append(this.premiumRow.container, giftPremium.container);
+      premiumSection.content.append(this.premiumRow.container, starsRow.container, giftPremium.container);
     }
 
     this.scrollable.append(...[

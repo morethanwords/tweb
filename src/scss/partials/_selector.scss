@@ -106,7 +106,7 @@
 
     @include animation-level(2) {
       transform-origin: var(--transform-origin-left-center);
-      transition: .15s opacity, .15s transform, .15s background-color;
+      transition: .15s opacity, .15s transform, .15s background-color, .15s color;
 
       &.scale-in {
         animation: scaleIn .15s ease forwards;
