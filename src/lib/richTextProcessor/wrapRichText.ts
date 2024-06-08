@@ -687,14 +687,16 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         if(options.wrappingDraft) {
           element = createMarkupFormatting('quote');
 
-          if(entity.pFlags.collapsed) {
+          // * ? because of layer migration
+          if(entity.pFlags?.collapsed) {
             element.dataset.collapsed = '1';
           }
         } else {
           element = document.createElement('blockquote');
           element.classList.add('quote');
 
-          if(entity.pFlags.collapsed/*  || true */) {
+          // * ? because of layer migration
+          if(entity.pFlags?.collapsed/*  || true */) {
             const dispose = makeQuoteCollapsable(element);
             options.middleware.onClean(dispose);
           }

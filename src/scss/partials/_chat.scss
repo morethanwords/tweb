@@ -93,7 +93,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		position: absolute;
 		// inset-inline-end: 0;
     inset-inline-end: calc(#{$btn-send-margin} + var(--chat-input-size) + var(--padding-horizontal));
-		top: 0;
+		// top: 0;
     color: var(--danger-color) !important;
 
     @include hover() {
