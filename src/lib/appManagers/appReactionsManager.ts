@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document, MessagesSavedReactionTags, SavedReactionTag} from '../../layer';
+import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document, MessagesSavedReactionTags, SavedReactionTag, AvailableEffect, MessagesAvailableEffects} from '../../layer';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import assumeType from '../../helpers/assumeType';
@@ -61,6 +61,7 @@ export type ReactionsContext = Pick<Message.message, 'peerId' | 'mid' | 'reactio
 
 export class AppReactionsManager extends AppManager {
   private availableReactions: AvailableReaction[];
+  private availableEffects: MaybePromise<AvailableEffect[]>;
   private sendReactionPromises: Map<string, Promise<any>>;
   private lastSendingTimes: Map<string, number>;
   private reactions: {[key in 'recent' | 'top' | 'tags']?: Reaction[]};
@@ -709,6 +710,30 @@ export class AppReactionsManager extends AppManager {
     if(title) tag.title = title;
     else delete tag.title;
     this.apiUpdatesManager.processLocalUpdate({_: 'updateSavedReactionTags', tags});
+  }
+
+  public getAvailableEffects(overwrite?: boolean) {
+    if(this.availableEffects && overwrite) {
+      this.availableEffects = undefined;
+    }
+
+    return this.availableEffects ??= this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getAvailableEffects',
+      processResult: (availableEffects) => {
+        assumeType<MessagesAvailableEffects.messagesAvailableEffects>(availableEffects);
+        availableEffects.documents.forEach((doc, idx, arr) => {
+          arr[idx] = this.appDocsManager.saveDoc(doc);
+        });
+
+        return this.availableEffects = availableEffects.effects;
+      }
+    });
+  }
+
+  public getAvailableEffect(effect: DocId) {
+    return callbackify(this.getAvailableEffects(), (effects) => {
+      return effects.find((availableEffect) => availableEffect.id === effect);
+    });
   }
 
   public processMessageReactionsChanges({message, changedResults, removedResults, savedPeerId}: BroadcastEvents['messages_reactions'][0] & {savedPeerId?: PeerId}) {

@@ -23,7 +23,7 @@ import mediaSizes from '../../helpers/mediaSizes';
 import {IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
 import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '../../lib/langPack';
 import ripple from '../ripple';
-import {MessageRender} from './messageRender';
+import {fireMessageEffect, MessageRender} from './messageRender';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement from '../poll';
@@ -74,7 +74,7 @@ import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import formatNumber from '../../helpers/number/formatNumber';
 import getViewportSlice from '../../helpers/dom/getViewportSlice';
-import SuperIntersectionObserver from '../../helpers/dom/superIntersectionObserver';
+import SuperIntersectionObserver, {IntersectionCallback} from '../../helpers/dom/superIntersectionObserver';
 import generateFakeIcon from '../generateFakeIcon';
 import copyFromElement from '../../helpers/dom/copyFromElement';
 import PopupElement from '../popups';
@@ -182,6 +182,7 @@ import wrapTextWithEntities from '../../lib/richTextProcessor/wrapTextWithEntiti
 import clearfix from '../../helpers/dom/clearfix';
 import {usePeer} from '../../stores/peers';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
+import wrapStickerAnimation from '../wrappers/stickerAnimation';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -1723,17 +1724,25 @@ export default class ChatBubbles {
     }
   };
 
-  private stickerEffectObserverCallback = (entry: IntersectionObserverEntry) => {
+  private _stickerEffectObserverCallback = (entry: IntersectionObserverEntry, callback: IntersectionCallback, selector: string) => {
     if(entry.isIntersecting) {
-      this.observer.unobserve(entry.target, this.stickerEffectObserverCallback);
+      this.observer.unobserve(entry.target, callback);
 
-      const attachmentDiv: HTMLElement = entry.target.querySelector('.attachment');
+      const attachmentDiv: HTMLElement = entry.target.querySelector(selector);
       getHeavyAnimationPromise().then(() => {
         if(isInDOM(attachmentDiv)) {
           simulateClickEvent(attachmentDiv);
         }
       });
     }
+  };
+
+  private stickerEffectObserverCallback = (entry: IntersectionObserverEntry) => {
+    this._stickerEffectObserverCallback(entry, this.stickerEffectObserverCallback, '.attachment');
+  };
+
+  private messageEffectObserverCallback = (entry: IntersectionObserverEntry) => {
+    this._stickerEffectObserverCallback(entry, this.messageEffectObserverCallback, '.time-inner .time-effect');
   };
 
   private createResizeObserver() {
@@ -2196,6 +2205,12 @@ export default class ChatBubbles {
         }
       }
 
+      return;
+    }
+
+    const timeEffect = findUpClassName(target, 'time-effect');
+    if(timeEffect) {
+      fireMessageEffect({timeEffect, bubble, e, scrollable: this.scrollable});
       return;
     }
 
@@ -3195,6 +3210,7 @@ export default class ChatBubbles {
       this.viewsMids.delete(fullMid);
 
       this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
+      this.observer.unobserve(bubble, this.messageEffectObserverCallback);
     }
 
     if(canBeDeleted) {
@@ -5584,7 +5600,9 @@ export default class ChatBubbles {
         chatType: this.chat.type,
         message,
         reactionsMessage,
-        isOut
+        isOut,
+        middleware,
+        loadPromises
       });
 
       messageDiv.append(timeSpan);
@@ -7167,7 +7185,7 @@ export default class ChatBubbles {
     }
 
     if(isMessage) {
-      this.appendReactionsElementToBubble(bubble, message, reactionsMessage);
+      this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
     }
 
     if(canHaveTail) {
@@ -7198,6 +7216,10 @@ export default class ChatBubbles {
       });
     }
 
+    if(isMessage && message.effect && (isInUnread || isOutgoing)) {
+      this.observer.observe(bubble, this.messageEffectObserverCallback);
+    }
+
     return ret;
   }
 
@@ -7221,7 +7243,8 @@ export default class ChatBubbles {
     bubble: HTMLElement,
     message: Message.message,
     reactionsMessage: Message.message,
-    changedResults?: ReactionCount[]
+    changedResults?: ReactionCount[],
+    loadPromises?: Promise<any>[]
   ) {
     if(this.peerId.isUser() && USER_REACTIONS_INLINE/*  || true */) {
       return;
@@ -7258,7 +7281,9 @@ export default class ChatBubbles {
             chatType: this.chat.type,
             message,
             reactionsMessage,
-            isOut: bubble.classList.contains('is-out')
+            isOut: bubble.classList.contains('is-out'),
+            middleware: bubble.middlewareHelper.get(),
+            loadPromises
           });
         }
 

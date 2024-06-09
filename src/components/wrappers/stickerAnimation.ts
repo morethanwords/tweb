@@ -39,7 +39,9 @@ export default function wrapStickerAnimation({
   loopEffect,
   onUnmount,
   scrollable,
-  textColor
+  textColor,
+  addOffsetX: _addOffsetX = 0,
+  addOffsetY: _addOffsetY = 0
 }: {
   size: number,
   stickerSize?: number,
@@ -56,7 +58,9 @@ export default function wrapStickerAnimation({
   loopEffect?: boolean,
   onUnmount?: () => void,
   scrollable?: Scrollable,
-  textColor?: string
+  textColor?: string,
+  addOffsetX?: number,
+  addOffsetY?: number
 }) {
   const animationDiv = document.createElement('div');
   animationDiv.classList.add('emoji-animation');
@@ -153,8 +157,8 @@ export default function wrapStickerAnimation({
     const rectX = side === 'right' ? rect.right : rect.left;
     const rectY = rect.top;
 
-    const addOffsetX = (side === 'center' ? (rect.width - size) / 2 : (side === 'right' ? -size : 0)) + stableOffsetX + randomOffsetX;
-    const addOffsetY = (side === 'center' || true ? (rect.height - size) / 2 : 0) + stableOffsetY + randomOffsetY;
+    const addOffsetX = (side === 'center' ? (rect.width - size) / 2 : (side === 'right' ? -size : 0)) + stableOffsetX + randomOffsetX + _addOffsetX * (side === 'right' ? 1 : -1);
+    const addOffsetY = (side === 'center' || true ? (rect.height - size) / 2 : 0) + stableOffsetY + randomOffsetY + _addOffsetY;
     const x = rectX + addOffsetX;
     const y = rectY + addOffsetY;
 

@@ -78,6 +78,7 @@ export default function wrapReply(options: WrapReplyOptions) {
         canvasHeight: 54,
         emojiSize: 16
       }).then((canvas) => {
+        if(!options.middleware()) return;
         canvas.classList.add('reply-background-canvas');
       });
     }

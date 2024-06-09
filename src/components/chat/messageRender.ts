@@ -22,6 +22,12 @@ import Chat, {ChatType} from './chat';
 import RepliesElement from './replies';
 import ChatBubbles from './bubbles';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
+import deferredPromise from '../../helpers/cancellablePromise';
+import wrapSticker from '../wrappers/sticker';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
+import wrapStickerAnimation from '../wrappers/stickerAnimation';
+import Scrollable from '../scrollable';
 
 const NBSP = '&nbsp;';
 
@@ -36,6 +42,96 @@ const makeTime = (date: Date, includeDate?: boolean) => {
   return includeDate ? formatFullSentTimeRaw(date.getTime() / 1000 | 0, {combined: true}).dateEl : formatTime(date);
 };
 
+const makeEffect = (props: {
+  onlyElement?: boolean,
+  docId?: DocId,
+  middleware?: Middleware,
+  loadPromises?: Promise<any>[]
+}) => {
+  const span = document.createElement('span');
+  span.classList.add('time-effect');
+  if(props.onlyElement) {
+    return span;
+  }
+
+  const deferred = deferredPromise<void>();
+
+  span.dataset.effectId = '' + props.docId;
+
+  rootScope.managers.acknowledged.appReactionsManager.getAvailableEffect(props.docId)
+  .then(async(result) => {
+    if(!result.cached) {
+      deferred.resolve();
+    }
+
+    const availableEffect = await result.result;
+
+    const loadPromises: Promise<any>[] = [];
+    wrapSticker({
+      doc: await rootScope.managers.appDocsManager.getDoc(availableEffect.static_icon_id),
+      div: span,
+      middleware: props.middleware,
+      loadPromises,
+      width: 12,
+      height: 12
+    });
+
+    Promise.all(loadPromises).then(() => {
+      if(result.cached) {
+        deferred.resolve();
+      }
+    });
+  });
+
+  props.loadPromises?.push(deferred);
+
+  return span;
+};
+
+export const fireMessageEffect = ({timeEffect, bubble, e, scrollable}: {
+  timeEffect: HTMLElement,
+  bubble: HTMLElement,
+  e?: Event,
+  scrollable: Scrollable
+}) => {
+  if(timeEffect.dataset.playing) {
+    e && cancelEvent(e);
+    return;
+  }
+
+  timeEffect.dataset.playing = '1';
+
+  const effectId = timeEffect.dataset.effectId;
+  const middleware = bubble.middlewareHelper.get();
+  rootScope.managers.appReactionsManager.getAvailableEffect(effectId).then(async(availableEffect) => {
+    const isPremiumEffect = !availableEffect.effect_animation_id;
+    const doc = await rootScope.managers.appDocsManager.getDoc(isPremiumEffect ? availableEffect.effect_sticker_id : availableEffect.effect_animation_id);
+    if(!middleware()) return;
+
+    const isOut = bubble ? bubble.classList.contains('is-out') : undefined;
+    const {animationDiv} = wrapStickerAnimation({
+      doc,
+      middleware,
+      side: isOut ? 'right' : 'left',
+      size: 240,
+      target: timeEffect,
+      play: true,
+      scrollable,
+      fullThumb: getStickerEffectThumb(doc),
+      addOffsetX: 40,
+      onUnmount: () => {
+        delete timeEffect.dataset.playing;
+      }
+    });
+
+    if(isOut !== undefined && !isOut) {
+      animationDiv.classList.add('reflect-x');
+    }
+  });
+
+  e && cancelEvent(e);
+};
+
 // const makeSponsored = () => i18n('SponsoredMessage');
 
 export namespace MessageRender {
@@ -48,7 +144,9 @@ export namespace MessageRender {
     chatType: ChatType,
     message: Message.message | Message.messageService,
     reactionsMessage?: Message.message,
-    isOut: boolean
+    isOut: boolean,
+    middleware: Middleware,
+    loadPromises?: Promise<any>[]
   }) => {
     const {chatType, message} = options;
     const isMessage = !('action' in message)/*  && !isSponsored */;
@@ -62,7 +160,8 @@ export namespace MessageRender {
     }
     const date = new Date(timestamp * 1000);
 
-    let editedSpan: HTMLElement;
+    let editedSpan: HTMLElement,
+      effectSpan: HTMLElement;
     // sponsoredSpan: HTMLElement;
     // reactionsElement: ReactionsElement,
     // reactionsMessage: Message.message;
@@ -99,6 +198,11 @@ export namespace MessageRender {
       if(chatType !== ChatType.Pinned && message.pFlags.pinned) {
         const i = Icon('pinnedchat', 'time-icon', 'time-pinned', 'time-part');
         args.unshift(i);
+      }
+
+      if(message.effect) {
+        effectSpan = makeEffect({onlyElement: true});
+        args.push(effectSpan);
       }
 
       // if(USER_REACTIONS_INLINE && message.peer_id._ === 'peerUser'/*  && message.reactions?.results?.length */) {
@@ -145,10 +249,20 @@ export namespace MessageRender {
     //   _reactionsElement.init(reactionsMessage, 'inline');
     //   _reactionsElement.render();
     // }
+    if(effectSpan) {
+      clonedArgs[clonedArgs.indexOf(effectSpan)] = makeEffect({
+        docId: (message as Message.message).effect,
+        middleware: options.middleware,
+        loadPromises: options.loadPromises
+      });
+    }
     clonedArgs = clonedArgs.map((a) => {
-      return a instanceof HTMLElement && !a.classList.contains('i18n') && !a.classList.contains('reactions') ?
-        a.cloneNode(true) as HTMLElement :
-        a;
+      return a instanceof HTMLElement &&
+        !a.classList.contains('i18n') &&
+        !a.classList.contains('reactions') &&
+        !a.classList.contains('time-effect') ?
+          a.cloneNode(true) as HTMLElement :
+          a;
     });
     if(time) {
       clonedArgs[clonedArgs.length - 1] = makeTime(date, includeDate); // clone time

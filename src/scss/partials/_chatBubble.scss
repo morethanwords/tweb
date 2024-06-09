@@ -1786,7 +1786,7 @@
       overflow: visible;
       font-size: inherit;
     }
-    
+
     &-inner {
       pointer-events: all;
       position: absolute;
@@ -1820,6 +1820,13 @@
         float: inline-end;
         direction: ltr;
       }
+    }
+
+    &-effect {
+      width: .75rem;
+      height: .75rem;
+      position: relative;
+      margin-inline-end: .125rem;
     }
 
     &.is-block {
