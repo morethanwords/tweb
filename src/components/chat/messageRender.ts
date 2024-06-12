@@ -88,48 +88,64 @@ const makeEffect = (props: {
   return span;
 };
 
-export const fireMessageEffect = ({timeEffect, bubble, e, scrollable}: {
-  timeEffect: HTMLElement,
-  bubble: HTMLElement,
+export const fireMessageEffect = ({e, isOut, element, middleware, scrollable, effectId}: {
   e?: Event,
-  scrollable: Scrollable
+  isOut?: boolean,
+  element: HTMLElement,
+  middleware: Middleware,
+  scrollable?: Scrollable,
+  effectId: DocId
 }) => {
-  if(timeEffect.dataset.playing) {
+  if(element.dataset.playing) {
     e && cancelEvent(e);
     return;
   }
 
-  timeEffect.dataset.playing = '1';
+  element.dataset.playing = '1';
 
-  const effectId = timeEffect.dataset.effectId;
-  const middleware = bubble.middlewareHelper.get();
   rootScope.managers.appReactionsManager.getAvailableEffect(effectId).then(async(availableEffect) => {
     const isPremiumEffect = !availableEffect.effect_animation_id;
     const doc = await rootScope.managers.appDocsManager.getDoc(isPremiumEffect ? availableEffect.effect_sticker_id : availableEffect.effect_animation_id);
     if(!middleware()) return;
 
-    const isOut = bubble ? bubble.classList.contains('is-out') : undefined;
     const {animationDiv} = wrapStickerAnimation({
       doc,
       middleware,
       side: isOut ? 'right' : 'left',
       size: 240,
-      target: timeEffect,
+      target: element,
       play: true,
       scrollable,
       fullThumb: getStickerEffectThumb(doc),
       addOffsetX: 40,
       onUnmount: () => {
-        delete timeEffect.dataset.playing;
+        delete element.dataset.playing;
       }
     });
 
-    if(isOut !== undefined && !isOut) {
+    if(isOut === false) {
       animationDiv.classList.add('reflect-x');
     }
   });
 
   e && cancelEvent(e);
+};
+
+export const fireMessageEffectByBubble = ({timeEffect, bubble, e, scrollable}: {
+  timeEffect: HTMLElement,
+  bubble: HTMLElement,
+  e?: Event,
+  scrollable?: Scrollable
+}) => {
+  const effectId = timeEffect.dataset.effectId as DocId;
+  return fireMessageEffect({
+    element: timeEffect,
+    isOut: bubble.classList.contains('is-out'),
+    e,
+    scrollable,
+    effectId,
+    middleware: bubble.middlewareHelper.get()
+  });
 };
 
 // const makeSponsored = () => i18n('SponsoredMessage');

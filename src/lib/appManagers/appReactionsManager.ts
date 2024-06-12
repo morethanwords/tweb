@@ -27,6 +27,7 @@ import bytesFromHex from '../../helpers/bytes/bytesFromHex';
 import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
 import bigInt from 'big-integer';
 import forEachReverse from '../../helpers/array/forEachReverse';
+import fixEmoji from '../richTextProcessor/fixEmoji';
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,
@@ -725,6 +726,10 @@ export class AppReactionsManager extends AppManager {
           arr[idx] = this.appDocsManager.saveDoc(doc);
         });
 
+        availableEffects.effects.forEach((availableEffect) => {
+          availableEffect.emoticon = fixEmoji(availableEffect.emoticon);
+        });
+
         return this.availableEffects = availableEffects.effects;
       }
     });
@@ -734,6 +739,16 @@ export class AppReactionsManager extends AppManager {
     return callbackify(this.getAvailableEffects(), (effects) => {
       return effects.find((availableEffect) => availableEffect.id === effect);
     });
+  }
+
+  public async searchAvailableEffects({q, emoticon}: {q?: string, emoticon?: string[]}) {
+    const [emojis, availableEffects] = await Promise.all([
+      q?.trim() ? (await this.appEmojiManager.prepareAndSearchEmojis({q, limit: Infinity})).map((emoji) => emoji.emoji) : emoticon,
+      this.getAvailableEffects()
+    ]);
+
+    const set = new Set(emojis);
+    return availableEffects.filter((availableEffect) => set.has(availableEffect.emoticon));
   }
 
   public processMessageReactionsChanges({message, changedResults, removedResults, savedPeerId}: BroadcastEvents['messages_reactions'][0] & {savedPeerId?: PeerId}) {

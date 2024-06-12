@@ -52,6 +52,8 @@ import wrapDraft from '../wrappers/draft';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {ChatType} from '../chat/chat';
 import pause from '../../helpers/schedulers/pause';
+import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
+import SelectedEffect from '../chat/selectedEffect';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -82,6 +84,8 @@ export default class PopupNewMedia extends PopupElement {
     sendFileDetails: SendFileParams[],
     invertMedia: boolean
   }>;
+  private effect: Accessor<DocId>;
+  private setEffect: Setter<DocId>;
   private messageInputField: InputFieldAnimated;
   private captionLengthMax: number;
 
@@ -323,6 +327,14 @@ export default class PopupNewMedia extends PopupElement {
     });
 
     if(this.chat.type !== ChatType.Scheduled) {
+      createRoot((dispose) => {
+        this.chat.destroyMiddlewareHelper.onDestroy(dispose);
+        const [effect, setEffect] = createSignal<DocId>((this.wasDraft as any)?.effect); // * soon
+        this.effect = effect;
+        this.setEffect = setEffect;
+        this.btnConfirm.append(SelectedEffect({effect: this.effect}) as HTMLElement);
+      });
+
       const sendMenu = new SendContextMenu({
         onSilentClick: () => {
           this.chat.input.sendSilent = true;
@@ -340,13 +352,17 @@ export default class PopupNewMedia extends PopupElement {
         },
         openSide: 'top-left',
         onContextElement: this.btnConfirm,
-        listenerSetter: this.listenerSetter,
-        canSendWhenOnline: this.chat.input.canSendWhenOnline
+        middleware: this.middlewareHelper.get(),
+        canSendWhenOnline: this.chat.input.canSendWhenOnline,
+        onRef: (element) => {
+          this.container.append(element);
+        },
+        withEffects: () => this.chat.peerId.isUser() && this.chat.peerId !== rootScope.myId,
+        effect: this.effect,
+        onEffect: this.setEffect
       });
 
       sendMenu.setPeerId(this.chat.peerId);
-
-      this.container.append(sendMenu.sendMenu);
     }
 
     currentPopup = this;
@@ -655,16 +671,18 @@ export default class PopupNewMedia extends PopupElement {
 
     const {length} = sendFileDetails;
     const sendingParams = this.chat.getMessageSendingParams();
+    let effect = this.effect();
     this.iterate((sendFileParams) => {
       if(caption && sendFileParams.length !== length) {
         this.managers.appMessagesManager.sendText({
           ...sendingParams,
           text: caption,
-          entities
+          entities,
+          effect
           // clearDraft: true
         });
 
-        caption = entities = undefined;
+        caption = entities = effect = undefined;
       }
 
       const d: SendFileDetails[] = sendFileParams.map((params) => {
@@ -684,12 +702,13 @@ export default class PopupNewMedia extends PopupElement {
         ...sendingParams,
         caption,
         entities,
+        effect,
         isMedia,
         // clearDraft: true,
         ...w
       });
 
-      caption = entities = undefined;
+      caption = entities = effect = undefined;
     });
 
     if(sendingParams.replyToMsgId) {

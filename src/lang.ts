@@ -724,6 +724,7 @@ const lang = {
   'Stars.Via.App': 'In-App Purchase',
   'Stars.Via.Unsupported': 'In-App Purchase',
   'Stars.Via': 'Via',
+  'Effect.Remove': 'Remove Effect',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2247,6 +2248,9 @@ const lang = {
   'FactCheckDeleted': 'Fact check removed.',
   'CaptionAbove': 'Move Caption Up',
   'CaptionBelow': 'Move Caption Down',
+  'AddEffectMessageHint': 'Add an animated effect',
+  'AnimatedEffectPremium': 'Subscribe to **Telegram Premium** to add this animated effect.',
+  'StickerEffects': 'Effects from stickers',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

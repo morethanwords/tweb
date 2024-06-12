@@ -1503,33 +1503,30 @@ middle-ellipsis-element {
   height: 100%;
   max-width: 100%;
   max-height: 100%;
+}
 
-  &-wrapper {
-    &.is-premium-sticker {
-      .premium-sticker-lock {
-        position: absolute;
-        bottom: .125rem;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 1.25rem;
-        height: 1.25rem;
-        background: rgba(0, 0, 0, .2);
-        // backdrop-filter: blur(25px) saturate(1.5);
-        border-radius: 50%;
-        color: #fff;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-image: var(--lock-url);
-        background-repeat: no-repeat;
-        background-size: cover;
+.premium-sticker-lock {
+  position: absolute;
+  bottom: .125rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1.25rem;
+  height: 1.25rem;
+  background: rgba(0, 0, 0, .2);
+  // backdrop-filter: blur(25px) saturate(1.5);
+  border-radius: 50%;
+  color: #fff;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: var(--lock-url);
+  background-repeat: no-repeat;
+  background-size: cover;
+  font-size: 1rem;
 
-        @include premium(true) {
-          display: none;
-        }
-      }
-    }
+  @include premium(true) {
+    display: none;
   }
 }
 
@@ -1741,6 +1738,12 @@ hr {
       opacity: 1;
       transition: opacity .2s ease-in-out;
     }
+  }
+
+  .premium-sticker-lock {
+    left: auto;
+    inset-inline-end: 0;
+    transform: scale(.75);
   }
 
   &.active {

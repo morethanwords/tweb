@@ -292,41 +292,7 @@ export default class ChatContextMenu {
 
       element = initResult.element;
       const {cleanup, destroy, menuPadding, reactionsMenu, reactionsMenuPosition} = initResult;
-      let isReactionsMenuVisible = false;
-      if(reactionsMenu) {
-        const className = 'is-visible';
-        isReactionsMenuVisible = reactionsMenu.container.classList.contains(className);
-        if(isReactionsMenuVisible) reactionsMenu.container.classList.remove(className);
-
-        if(reactionsMenuPosition === 'horizontal') {
-          const offsetSize = element[/* reactionsMenuPosition === 'vertical' ? 'offsetHeight' :  */'offsetWidth'];
-          // if(reactionsMenu.scrollable.container.scrollWidth > offsetWidth) {
-          const INNER_CONTAINER_PADDING = 8;
-          const visibleLength = (offsetSize - INNER_CONTAINER_PADDING) / REACTION_CONTAINER_SIZE;
-          const nextVisiblePart = visibleLength % 1;
-          const MIN_NEXT_VISIBLE_PART = 0.65;
-          if(nextVisiblePart < MIN_NEXT_VISIBLE_PART) {
-            const minSize = (offsetSize + (MIN_NEXT_VISIBLE_PART - nextVisiblePart) * REACTION_CONTAINER_SIZE) | 0;
-            element.style[/* reactionsMenuPosition === 'vertical' ? 'minHeight' :  */'minWidth'] = minSize + 'px';
-          }
-          // }
-        }
-      }
-
-      if(reactionsMenu) {
-        const container = reactionsMenu.widthContainer;
-        if(!IS_MOBILE) {
-          const i = document.createElement('div');
-          i.classList.add('btn-menu-items', 'btn-menu-transition');
-          i.append(...Array.from(element.childNodes));
-          element.classList.add('has-items-wrapper');
-          element.append(container, i);
-        } else {
-          element.prepend(container);
-        }
-
-        container.style.setProperty('--height', container.offsetHeight + 'px');
-      }
+      const reactionsCallbacks = reactionsMenu && ChatContextMenu.appendReactionsMenu({element, reactionsMenu, reactionsMenuPosition});
 
       const side: 'left' | 'right' = !bubble || bubble.classList.contains('is-in') ? 'left' : 'right';
       // bubble.parentElement.append(element);
@@ -342,9 +308,7 @@ export default class ChatContextMenu {
       // }
 
       contextMenuController.openBtnMenu(element, () => {
-        if(reactionsMenu) {
-          reactionsMenu.container.classList.remove('is-visible');
-        }
+        reactionsCallbacks?.onClose();
 
         this.mid = 0;
         this.peerId = undefined;
@@ -358,9 +322,7 @@ export default class ChatContextMenu {
         }, 300);
       });
 
-      if(isReactionsMenuVisible) {
-        reactionsMenu.container.classList.add('is-visible');
-      }
+      reactionsCallbacks?.onAfterInit();
     };
 
     r();
@@ -1166,36 +1128,13 @@ export default class ChatContextMenu {
 
           this.chat.sendReaction({message: reactionsMessage, reaction});
         },
-        getOpenPosition: (hasMenu) => {
-          const rect = reactionsMenu.container.getBoundingClientRect();
-          const newRect = cloneDOMRect(rect);
-          newRect.left -= 21 / 2;
-          newRect.top -= 121 / 2;
-          if(!hasMenu) newRect.top += 37;
-          return newRect;
-        },
-        tags
+        getOpenPosition: (hasMenu) => ChatContextMenu.getReactionsOpenPosition(reactionsMenu, hasMenu),
+        isTags: tags
       });
       await reactionsMenu.init(reactionsMessage);
       // element.prepend(reactionsMenu.widthContainer);
 
-      const size = 36;
-      const margin = 8;
-      const totalSize = size + margin;
-      const paddingLeft = 56, paddingRight = 40;
-      if(reactionsMenuPosition === 'vertical') {
-        menuPadding = {
-          top: paddingLeft,
-          // bottom: 36, // positionMenu will detect it itself somehow
-          left: totalSize
-        };
-      } else {
-        menuPadding = {
-          top: totalSize,
-          right: paddingRight,
-          left: paddingLeft
-        };
-      }
+      menuPadding = ChatContextMenu.getReactionsMenuPadding(reactionsMenuPosition);
     }
 
     const emojisButton = filteredButtons.find((button) => button.localName === 'emojis');
@@ -1583,4 +1522,91 @@ export default class ChatContextMenu {
 
     return appDownloadManager.downloadToDisc({media: getMediaFromMessage(messages, true)});
   };
+
+  public static getReactionsMenuPadding(position: 'vertical' | 'horizontal') {
+    const size = 36;
+    const margin = 8;
+    const totalSize = size + margin;
+    const paddingLeft = 56, paddingRight = 40;
+    let menuPadding: MenuPositionPadding;
+    if(position === 'vertical') {
+      menuPadding = {
+        top: paddingLeft,
+        // bottom: 36, // positionMenu will detect it itself somehow
+        left: totalSize
+      };
+    } else {
+      menuPadding = {
+        top: totalSize,
+        right: paddingRight,
+        left: paddingLeft
+      };
+    }
+
+    return menuPadding;
+  }
+
+  public static getReactionsOpenPosition(reactionsMenu: ChatReactionsMenu, hasMenu: boolean) {
+    const rect = reactionsMenu.container.getBoundingClientRect();
+    const newRect = cloneDOMRect(rect);
+    newRect.left -= 21 / 2;
+    newRect.top -= 121 / 2;
+    if(!hasMenu) newRect.top += 37;
+    return newRect;
+  }
+
+  public static appendReactionsMenu({element, reactionsMenu, reactionsMenuPosition}: {
+    element: HTMLElement,
+    reactionsMenu: ChatReactionsMenu,
+    reactionsMenuPosition: 'horizontal' | 'vertical'
+  }) {
+    let isReactionsMenuVisible = false;
+    if(reactionsMenu) {
+      const className = 'is-visible';
+      isReactionsMenuVisible = reactionsMenu.container.classList.contains(className);
+      if(isReactionsMenuVisible) reactionsMenu.container.classList.remove(className);
+
+      if(reactionsMenuPosition === 'horizontal') {
+        const offsetSize = element[/* reactionsMenuPosition === 'vertical' ? 'offsetHeight' :  */'offsetWidth'];
+        // if(reactionsMenu.scrollable.container.scrollWidth > offsetWidth) {
+        const INNER_CONTAINER_PADDING = 8;
+        const visibleLength = (offsetSize - INNER_CONTAINER_PADDING) / REACTION_CONTAINER_SIZE;
+        const nextVisiblePart = visibleLength % 1;
+        const MIN_NEXT_VISIBLE_PART = 0.65;
+        if(nextVisiblePart < MIN_NEXT_VISIBLE_PART) {
+          const minSize = (offsetSize + (MIN_NEXT_VISIBLE_PART - nextVisiblePart) * REACTION_CONTAINER_SIZE) | 0;
+          element.style[/* reactionsMenuPosition === 'vertical' ? 'minHeight' :  */'minWidth'] = minSize + 'px';
+        }
+        // }
+      }
+    }
+
+    if(reactionsMenu) {
+      const container = reactionsMenu.widthContainer;
+      if(!IS_MOBILE) {
+        const i = document.createElement('div');
+        i.classList.add('btn-menu-items', 'btn-menu-transition');
+        i.append(...Array.from(element.childNodes));
+        element.classList.add('has-items-wrapper');
+        element.append(container, i);
+      } else {
+        element.prepend(container);
+      }
+
+      container.style.setProperty('--height', container.offsetHeight + 'px');
+    }
+
+    return {
+      onAfterInit: () => {
+        if(isReactionsMenuVisible) {
+          reactionsMenu.container.classList.add('is-visible');
+        }
+      },
+      onClose: () => {
+        if(reactionsMenu) {
+          reactionsMenu.container.classList.remove('is-visible');
+        }
+      }
+    };
+  }
 }

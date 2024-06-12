@@ -4,13 +4,46 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MediaSize} from '../../helpers/mediaSize';
+import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
+import mediaSizes from '../../helpers/mediaSizes';
 import {MiddlewareHelper, Middleware, getMiddleware} from '../../helpers/middleware';
 import {StickerSet} from '../../layer';
 import ButtonIcon from '../buttonIcon';
 import {ScrollableX} from '../scrollable';
+import {EMOJI_ELEMENT_SIZE} from './tabs/emoji';
 
 export type StickersTabCategoryItem = {element: HTMLElement};
+export type StickersTabStyles = {
+  padding: number,
+  gapX: number,
+  gapY: number,
+  getElementMediaSize: () => MediaSize,
+  itemsClassName: string
+};
+
+export const EmoticonsTabStyles: {[key in 'Stickers' | 'Emoji' | 'GIF']?: StickersTabStyles} = {
+  Stickers: {
+    getElementMediaSize: () => mediaSizes.active.esgSticker,
+    padding: 3 * 2,
+    gapX: 4,
+    gapY: 4,
+    itemsClassName: 'super-stickers'
+  },
+  Emoji: {
+    getElementMediaSize: () => EMOJI_ELEMENT_SIZE,
+    padding: 16,
+    gapX: 4,
+    gapY: 0,
+    itemsClassName: 'super-emojis'
+  },
+  GIF: {
+    getElementMediaSize: () => makeMediaSize(124, 124),
+    padding: 4,
+    gapX: 2,
+    gapY: 2,
+    itemsClassName: 'emoticons-gifs'
+  }
+}
 
 export default class StickersTabCategory<Item extends StickersTabCategoryItem, AdditionalElements extends Record<string, HTMLElement> = {}> {
   public elements: {
@@ -41,10 +74,8 @@ export default class StickersTabCategory<Item extends StickersTabCategoryItem, A
     id: string,
     title: HTMLElement | DocumentFragment,
     overflowElement: HTMLElement,
+    styles: StickersTabStyles,
     getContainerSize: StickersTabCategory<Item>['getContainerSize'],
-    getElementMediaSize: StickersTabCategory<Item>['getElementMediaSize'],
-    gapX: number,
-    gapY: number,
     noMenuTab?: boolean,
     middleware?: Middleware
   }) {
@@ -86,9 +117,9 @@ export default class StickersTabCategory<Item extends StickersTabCategoryItem, A
     this.items = [];
 
     this.getContainerSize = options.getContainerSize;
-    this.getElementMediaSize = options.getElementMediaSize;
-    this.gapX = options.gapX ?? 0;
-    this.gapY = options.gapY ?? 0;
+    this.getElementMediaSize = options.styles.getElementMediaSize;
+    this.gapX = options.styles.gapX ?? 0;
+    this.gapY = options.styles.gapY ?? 0;
     this.middlewareHelper = options.middleware ? options.middleware.create() : getMiddleware();
   }
 

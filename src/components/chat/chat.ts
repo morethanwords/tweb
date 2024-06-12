@@ -143,6 +143,7 @@ export default class Chat extends EventListenerBase<{
   public destroyPromise: CancellablePromise<void>;
 
   public middlewareHelper: MiddlewareHelper;
+  public destroyMiddlewareHelper: MiddlewareHelper;
 
   public searchSignal: ReturnType<typeof createUnifiedSignal<Parameters<Chat['initSearch']>[0]>>;
 
@@ -172,6 +173,7 @@ export default class Chat extends EventListenerBase<{
     this.type = ChatType.Chat;
     this.animationGroup = `chat-${Math.round(Math.random() * 65535)}`;
     this.middlewareHelper = getMiddleware();
+    this.destroyMiddlewareHelper = getMiddleware();
 
     this.hadAnyBackground = false;
 
@@ -750,6 +752,7 @@ export default class Chat extends EventListenerBase<{
     this.input?.destroy();
     this.contextMenu?.destroy();
     this.selection?.attachListeners(undefined, undefined);
+    this.destroyMiddlewareHelper.destroy();
 
     this.cleanupBackground();
 
@@ -1184,7 +1187,8 @@ export default class Chat extends EventListenerBase<{
         ...(this.input.getReplyTo() || false),
         scheduleDate: this.input.scheduleDate,
         silent: this.input.sendSilent,
-        sendAsPeerId: this.input.sendAsPeerId
+        sendAsPeerId: this.input.sendAsPeerId,
+        effect: this.input.effect()
       }),
       savedReaction: this.savedReaction
     };

@@ -13,11 +13,11 @@ $menu-height: 3.0625rem;
 $menu-search-translateY: -#{$menu-height};
 
 .emoji-dropdown {
+  --height: unquote('min(282px, calc(var(--vh) * 100 - 135px))');
 	display: flex/*  !important */;
 	flex-direction: column;
 	width: var(--esg-width);
-	//height: 282px;
-	height: unquote('min(282px, calc(var(--vh) * 100 - 135px))');
+	height: var(--height);
 	background: var(--surface-color);
 	overflow: hidden;
 	flex: 1 1 auto;
@@ -29,13 +29,15 @@ $menu-search-translateY: -#{$menu-height};
     transform: scale(.85);
     bottom: auto;
     inset-inline-start: auto;
+    top: unquote('min(100vh - var(--height) - .5rem, var(--top))');
+    left: var(--left);
   }
 
 	@include respond-to(esg-top) {
 		position: absolute !important;
 		inset-inline-start: $chat-padding;
 		bottom: 5.125rem;
-		height: 26.25rem;
+		--height: 26.25rem;
 		max-height: 26.25rem;
 		box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);
 		z-index: 3;
@@ -60,10 +62,15 @@ $menu-search-translateY: -#{$menu-height};
     .is-rtl & {
       transform-origin: 100% 100%;
     }
+
+    &.smaller {
+      --height: 20rem;
+      max-height: 20rem;
+    }
 	}
 
   &.shrink {
-    height: auto;
+    // height: auto;
 
     .emoticons-content .scrollable-y {
       position: relative;
@@ -108,12 +115,10 @@ $menu-search-translateY: -#{$menu-height};
 		height: 100%;
 	}
 
-	.stickers-padding {
-		.category-items {
-      gap: .25rem;
-      padding: 0 .1875rem;
-		}
-	}
+  .super-stickers {
+    gap: .25rem;
+    padding: 0 .1875rem;
+  }
 
   .tabs-tab.no-border-top {
     .menu-horizontal-div,

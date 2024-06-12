@@ -4,19 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type AppGifsManager from '../../../lib/appManagers/appGifsManager';
 import {EMOTICONSSTICKERGROUP} from '..';
 import GifsMasonry from '../../gifsMasonry';
 import {putPreloader} from '../../putPreloader';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import EmoticonsTabC from '../tab';
-import {makeMediaSize} from '../../../helpers/mediaSize';
 import safeAssign from '../../../helpers/object/safeAssign';
 import {i18n} from '../../../lib/langPack';
 import {onCleanup} from 'solid-js';
 import {Middleware} from '../../../helpers/middleware';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
-import type AppGifsManager from '../../../lib/appManagers/appGifsManager';
 import rootScope from '../../../lib/rootScope';
 
 export default class GifsTab extends EmoticonsTabC<any, Awaited<ReturnType<AppGifsManager['searchGifs']>>> {
@@ -27,11 +26,6 @@ export default class GifsTab extends EmoticonsTabC<any, Awaited<ReturnType<AppGi
   }) {
     super({
       managers: options.managers,
-      categoryItemsClassName: 'emoticons-gifs',
-      getElementMediaSize: () => makeMediaSize(124, 124),
-      padding: 4,
-      gapX: 2,
-      gapY: 2,
       noMenu: true,
       searchFetcher: async(value) => {
         if(!value) return {documents: [], nextOffset: ''};

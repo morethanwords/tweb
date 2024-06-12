@@ -72,7 +72,7 @@ export default class VisibilityIntersector {
   }
 
   public isVisible(target: TargetType) {
-    return this.items.get(target);
+    return !!this.items.get(target);
   }
 
   public disconnect() {

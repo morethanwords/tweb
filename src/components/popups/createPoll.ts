@@ -94,12 +94,14 @@ export default class PopupCreatePoll extends PopupElement {
           });
         },
         openSide: 'bottom-left',
-        onContextElement: this.btnConfirm
+        onContextElement: this.btnConfirm,
+        middleware: this.middlewareHelper.get(),
+        onRef: (element) => {
+          this.header.append(element);
+        }
       });
 
       sendMenu.setPeerId(this.chat.peerId);
-
-      this.header.append(sendMenu.sendMenu);
     }
 
     this.header.append(this.questionInputField.container);

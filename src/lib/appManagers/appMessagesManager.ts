@@ -218,7 +218,8 @@ export type MessageSendingParams = Partial<{
   sendAsPeerId: number,
   updateStickersetOrder: boolean,
   savedReaction: Reaction[],
-  invertMedia: boolean
+  invertMedia: boolean,
+  effect: DocId
 }>;
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -788,7 +789,8 @@ export class AppMessagesManager extends AppManager {
           silent: options.silent,
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder,
-          invert_media: options.invertMedia
+          invert_media: options.invertMedia,
+          effect: options.effect
         };
 
         const mergedOptions: MessagesSendMessage | MessagesSendMedia = {
@@ -1303,7 +1305,8 @@ export class AppMessagesManager extends AppManager {
           clear_draft: options.clearDraft,
           send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
           update_stickersets_order: options.updateStickersetOrder,
-          invert_media: options.invertMedia
+          invert_media: options.invertMedia,
+          effect: options.effect
         }).then((updates) => {
           this.apiUpdatesManager.processUpdateMessage(updates);
         }, (error: ApiError) => {
@@ -1399,6 +1402,7 @@ export class AppMessagesManager extends AppManager {
       if(idx === 0) {
         o.caption = caption;
         o.entities = entities;
+        o.effect = options.effect;
       }
 
       return this.sendFile(o).message;
@@ -1440,7 +1444,8 @@ export class AppMessagesManager extends AppManager {
             clear_draft: options.clearDraft,
             send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
             update_stickersets_order: options.updateStickersetOrder,
-            invert_media: options.invertMedia
+            invert_media: options.invertMedia,
+            effect: options.effect
           }).then((updates) => {
             this.apiUpdatesManager.processUpdateMessage(updates);
             deferred.resolve();
@@ -1922,7 +1927,8 @@ export class AppMessagesManager extends AppManager {
       reply_markup: options.replyMarkup,
       replies: this.generateReplies(peerId, options.replyTo),
       views: isBroadcast && 1,
-      pending: true
+      pending: true,
+      effect: options.effect
     };
 
     defineNotNumerableProperties(message, ['send', 'promise']);

@@ -125,7 +125,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
   constructor(options: {
     customParentElement?: HTMLElement,
-    customAnchorElement?: HTMLElement,
+    // customAnchorElement?: HTMLElement,
     getOpenPosition?: () => DOMRectEditable,
     tabsToRender?: EmoticonsTab[],
     customOnSelect?: (emoji: {element: HTMLElement} & ReturnType<typeof getEmojiFromElement>) => void,
@@ -155,14 +155,14 @@ export class EmoticonsDropdown extends DropdownHover {
 
       if(options.getOpenPosition) {
         const rect = options.getOpenPosition();
-        this.element.style.top = rect.top + 'px';
-        this.element.style.left = rect.left + 'px';
-      } else if(options.customAnchorElement) {
+        this.element.style.setProperty('--top', rect.top + 'px');
+        this.element.style.setProperty('--left', rect.left + 'px');
+      }/*  else if(options.customAnchorElement) {
         const anchorRect = options.customAnchorElement.getBoundingClientRect();
         const offset = 64;
         this.element.style.left = anchorRect.left + 'px' as string;
         this.element.style.bottom = anchorRect.top + offset + 'px' as string;
-      }
+      } */
 
       if(options.customParentElement) {
         options.customParentElement.append(this.element);
@@ -235,6 +235,10 @@ export class EmoticonsDropdown extends DropdownHover {
     if(!this.init && changed && this.chatInput !== undefined) {
       this.checkRights();
     }
+  }
+
+  public get intersectionOptions(): IntersectionObserverInit {
+    return {root: this.getElement()};
   }
 
   public setTextColor(textColor: string = EMOJI_TEXT_COLOR) {

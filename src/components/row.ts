@@ -430,7 +430,7 @@ export const RadioFormFromValues = (values: {
 
   const form = RadioFormFromRows(rows, onChange);
   if(checkedRadioField) {
-    checkedRadioField.checked = true;
+    checkedRadioField.setValueSilently(true);
   }
   return form;
 };

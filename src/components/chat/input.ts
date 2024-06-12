@@ -124,6 +124,8 @@ import eachSecond from '../../helpers/eachSecond';
 import {wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
 import showTooltip from '../tooltip';
 import createContextMenu from '../../helpers/dom/createContextMenu';
+import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
+import SelectedEffect from './selectedEffect';
 
 // console.log('Recorder', Recorder);
 
@@ -223,6 +225,9 @@ export default class ChatInput {
   public sendSilent: true;
   public startParam: string;
   public invertMedia: boolean;
+  public effect: Accessor<DocId>;
+
+  public setEffect: Setter<DocId>;
 
   private recorder: any;
   public recording = false;
@@ -1107,6 +1112,14 @@ export default class ChatInput {
 
     this.btnSendContainer.append(this.recordRippleEl, this.btnSend);
 
+    createRoot((dispose) => {
+      this.chat.destroyMiddlewareHelper.onDestroy(dispose);
+      const [effect, setEffect] = createSignal<DocId>();
+      this.effect = effect;
+      this.setEffect = setEffect;
+      this.btnSendContainer.append(SelectedEffect({effect: this.effect}) as HTMLElement);
+    });
+
     this.sendMenu = new SendMenu({
       onSilentClick: () => {
         this.sendSilent = true;
@@ -1118,21 +1131,25 @@ export default class ChatInput {
       onSendWhenOnlineClick: () => {
         this.setScheduleTimestamp(SEND_WHEN_ONLINE_TIMESTAMP, this.sendMessage.bind(this, true));
       },
-      listenerSetter: this.listenerSetter,
+      middleware: this.chat.destroyMiddlewareHelper.get(),
       openSide: 'top-left',
       onContextElement: this.btnSend,
       onOpen: () => {
-        const good = this.chat.type !== ChatType.Scheduled && (!this.isInputEmpty() || !!Object.keys(this.forwarding).length);
+        const good = this.chat.type !== ChatType.Scheduled && (!this.isInputEmpty() || !!Object.keys(this.forwarding).length) && !this.editMsgId;
         if(good) {
           this.emoticonsDropdown?.toggle(false);
         }
 
         return good;
       },
-      canSendWhenOnline: this.canSendWhenOnline
+      canSendWhenOnline: this.canSendWhenOnline,
+      onRef: (element) => {
+        this.btnSendContainer.append(element);
+      },
+      withEffects: () => this.chat.peerId.isUser() && this.chat.peerId !== rootScope.myId,
+      effect: this.effect,
+      onEffect: this.setEffect
     });
-
-    this.btnSendContainer.append(this.sendMenu.sendMenu);
 
     this.inputContainer.append(...[this.btnReaction, this.btnCancelRecord, this.btnSendContainer].filter(Boolean));
 
@@ -1713,7 +1730,9 @@ export default class ChatInput {
             optional: true
           },
           url: webPage.url
-        } : undefined
+        } : undefined,
+        // @ts-ignore // * soon
+        effect: this.effect()
       };
     }
 
@@ -3337,6 +3356,8 @@ export default class ChatInput {
       clearMarkdownExecutions(this.messageInput);
     }
 
+    this.setEffect();
+
     let set = false;
     if(canSetDraft) {
       set = await this.setDraft(undefined, false);
@@ -3908,6 +3929,7 @@ export default class ChatInput {
     fastRaf(() => {
       focus && placeCaretAtEnd(this.messageInput);
       this.processingDraftMessage = draftMessage;
+      this.setEffect((draftMessage as any).effect); // * soon
       this.onMessageInput();
       this.processingDraftMessage = undefined;
       this.messageInput.scrollTop = this.messageInput.scrollHeight;

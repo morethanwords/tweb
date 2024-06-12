@@ -201,13 +201,18 @@ export class AppEmojiManager extends AppManager {
     }
   }
 
-  private searchEmojis({q, limit = 40, minChars = 2, addCustom}: {q: string, limit?: number, minChars?: number, addCustom?: boolean}) {
+  private searchEmojis({q, limit = 40, minChars = 2, addCustom}: {
+    q: string,
+    limit?: number,
+    minChars?: number,
+    addCustom?: boolean,
+  }) {
     this.indexEmojis();
 
     q = q.toLowerCase().replace(/_/g, ' ');
 
     // const perf = performance.now();
-    let emojis: Array<string>, docIds: Array<DocId>;
+    let emojis: Array<string>/* , docIds: Array<DocId> */;
     if(q.trim()) {
       const set = this.index.search(q, minChars);
       emojis = Array.from(set).reduce((acc, v) => (acc.push(...v), acc), []);
@@ -221,7 +226,9 @@ export class AppEmojiManager extends AppManager {
     const customEmojiIndex = addCustom && this.appStickersManager.getEmojisSearchIndex();
     emojis.forEach((emoji) => {
       if(/* this.rootScope.premium &&  */customEmojiIndex) {
-        appEmojis.push(...Array.from(customEmojiIndex.search(emoji, minChars)).map((docId) => ({docId, emoji})));
+        const customEmojisResult = customEmojiIndex.search(emoji, minChars);
+        const customEmojis = Array.from(customEmojisResult).map((docId) => ({docId, emoji}));
+        appEmojis.push(...customEmojis);
       }
 
       appEmojis.push({emoji});

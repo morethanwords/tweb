@@ -103,6 +103,7 @@ export default class DropdownHover extends EventListenerBase<{
   protected onClickOut = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if(
+      e.isTrusted &&
       !findUpAsChild(target, this.element) &&
       !Array.from(this.ignoreButtons).some((button) => findUpAsChild(target, button) || target === button) &&
       this.ignoreMouseOut.size <= 1 &&

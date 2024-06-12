@@ -19,7 +19,7 @@ import liteMode from '../../helpers/liteMode';
 import {Middleware, getMiddleware} from '../../helpers/middleware';
 import noop from '../../helpers/noop';
 import {fastRaf} from '../../helpers/schedulers';
-import {Message, AvailableReaction, Reaction} from '../../layer';
+import {Message, AvailableReaction, Reaction, AvailableEffect, EmojiGroup} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
@@ -34,10 +34,13 @@ import {i18n} from '../../lib/langPack';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import PopupPremium from '../popups/premium';
 import contextMenuController from '../../helpers/contextMenuController';
+import callbackify from '../../helpers/callbackify';
+import partition from '../../helpers/array/partition';
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
 
+const REACTIONS_MAX_LENGTH = 7;
 const REACTION_SIZE = 28; // 36
 const PADDING = 6;
 export const REACTION_CONTAINER_SIZE = REACTION_SIZE + PADDING * 2;
@@ -66,7 +69,13 @@ export class ChatReactionsMenu {
   private openSide: 'top' | 'bottom';
   private getOpenPosition: (hasMenu: boolean) => DOMRectEditable;
   private noMoreButton: boolean;
-  private tags: boolean;
+  private isTags: boolean;
+  private isEffects: boolean;
+  private reactions: Reaction[];
+  private availableReactions: AvailableReaction[];
+  private noPacks: boolean;
+  private noSearch: boolean;
+  public freeCustomEmoji: Set<DocId>;
   public inited: boolean;
 
   constructor(options: {
@@ -78,7 +87,8 @@ export class ChatReactionsMenu {
     openSide?: ChatReactionsMenu['openSide'],
     getOpenPosition: ChatReactionsMenu['getOpenPosition'],
     noMoreButton?: boolean,
-    tags?: boolean
+    isTags?: boolean,
+    isEffects?: boolean
   }) {
     this.managers = options.managers;
     this.middlewareHelper = options.middleware ? options.middleware.create() : getMiddleware();
@@ -88,7 +98,8 @@ export class ChatReactionsMenu {
     this.openSide = options.openSide ?? 'bottom';
     this.getOpenPosition = options.getOpenPosition;
     this.noMoreButton = options.noMoreButton;
-    this.tags = options.tags;
+    this.isTags = options.isTags;
+    this.isEffects = options.isEffects;
 
     this.middlewareHelper.get().onDestroy(() => {
       this.listenerSetter.removeAll();
@@ -101,9 +112,9 @@ export class ChatReactionsMenu {
       'btn-menu-transition'
     );
 
-    if(this.tags) {
+    if(this.isTags || this.isEffects) {
       widthContainer.classList.add(REACTIONS_CLASS_NAME + '-container-' + 'tags');
-      const description = i18n(
+      const description = this.isEffects ? i18n('AddEffectMessageHint') : i18n(
         rootScope.premium ? 'Reactions.Tag.Description' : 'Reactions.Tag.PremiumHint',
         [
           anchorCallback(() => {
@@ -159,136 +170,57 @@ export class ChatReactionsMenu {
     widthContainer.append(reactionsContainer);
   }
 
-  public async init(message?: Message.message) {
+  private render = async(renderPromises: Promise<any>[], hasMore: boolean) => {
     const middleware = this.middlewareHelper.get();
+    await Promise.all(renderPromises);
+    if(!middleware()) {
+      return;
+    }
 
-    const r = async(
-      {type, reactions}: PeerAvailableReactions,
-      availableReactions: AvailableReaction[]
-    ) => {
-      // this.widthContainer.classList.add('is-visible');
-      // return;
-      const maxLength = 7;
-      // const filtered = reactions.filter((reaction) => !reaction.pFlags.premium || rootScope.premium);
-      const filtered = reactions;
-      const sliced = filtered.slice(0, maxLength);
-      const renderPromises = sliced.map((reaction) => {
-        const availableReaction = reaction._ === 'reactionEmoji' ? availableReactions.find((_reaction) => _reaction.reaction === reaction.emoticon) : undefined;
-        return this.renderReaction(reaction, availableReaction);
-      });
+    if(hasMore && !this.noMoreButton) {
+      const moreButton = ButtonIcon(`${this.openSide === 'bottom' ? 'down' : 'up'} ${REACTIONS_CLASS_NAME}-more`, {noRipple: true});
+      this.container.append(moreButton);
+      attachClickEvent(
+        moreButton,
+        this.onMoreClick,
+        {listenerSetter: this.listenerSetter}
+      );
+    }
 
-      await Promise.all(renderPromises);
-      if(!middleware()) {
-        return;
-      }
-
-      if(filtered.length > maxLength && !this.noMoreButton) {
-        const moreButton = ButtonIcon(`${this.openSide === 'bottom' ? 'down' : 'up'} ${REACTIONS_CLASS_NAME}-more`, {noRipple: true});
-        this.container.append(moreButton);
-        attachClickEvent(moreButton, (e) => {
-          cancelEvent(e);
-
-          const reactionToDocId = (reaction: Reaction) => {
-            let docId = (reaction as Reaction.reactionCustomEmoji).document_id;
-            if(!docId) {
-              const availableReaction = availableReactions.find((_reaction) => _reaction.reaction === (reaction as Reaction.reactionEmoji).emoticon);
-              docId = availableReaction.select_animation.id;
-            }
-
-            return docId;
-          };
-
-          const reactionsToDocIds = (reactions: Reaction[]) => {
-            return reactions.map(reactionToDocId);
-          };
-
-          const noPacks = type !== 'chatReactionsAll';
-          const emojiTab = new EmojiTab({
-            noRegularEmoji: true,
-            noPacks,
-            managers: this.managers,
-            mainSets: this.tags ? () => {
-              const reactionsPromise = this.managers.appReactionsManager.getTagReactions()
-              .then(reactionsToDocIds);
-              return [reactionsPromise];
-            } : () => {
-              const topReactionsPromise = Promise.resolve(reactions)
-              // const topReactionsPromise = this.managers.appReactionsManager.getTopReactions()
-              .then(reactionsToDocIds);
-
-              const allRecentReactionsPromise = this.managers.appReactionsManager.getRecentReactions()
-              .then(reactionsToDocIds);
-
-              const topReactionsSlicedPromise = topReactionsPromise.then((docIds) => noPacks ? docIds : docIds.slice(0, 16));
-
-              const recentReactionsPromise = noPacks ? undefined : Promise.all([
-                topReactionsPromise,
-                allRecentReactionsPromise,
-                topReactionsSlicedPromise
-              ]).then(([topDocIds, recentDocIds, topSlicedDocIds]) => {
-                // filter recent reactions and add left top reactions
-                recentDocIds = recentDocIds.filter((docId) => !topSlicedDocIds.includes(docId));
-                recentDocIds.push(...topDocIds.slice(16));
-                return filterUnique(recentDocIds);
-              });
-
-              return [topReactionsSlicedPromise, recentReactionsPromise].filter(Boolean);
-            },
-            onClick: async(emoji) => {
-              if(emoji.docId && emoji.emoji) {
-                const availableReactions = await apiManagerProxy.getAvailableReactions();
-                const hasNativeReaction = availableReactions.find((_reaction) => _reaction.select_animation?.id === emoji.docId);
-                if(hasNativeReaction) {
-                  emoji.emoji = hasNativeReaction.reaction;
-                  delete emoji.docId;
-                }
-              }
-
-              const reaction: Reaction = emoji.docId ? {
-                _: 'reactionCustomEmoji',
-                document_id: emoji.docId
-              } : {
-                _: 'reactionEmoji',
-                emoticon: emoji.emoji
-              };
-              deferred.resolve(reaction);
-              emoticonsDropdown.hideAndDestroy();
-            },
-            freeCustomEmoji: new Set(availableReactions.map((availableReaction) => availableReaction.select_animation.id))
-          });
-
-          const emoticonsDropdown = new EmoticonsDropdown({
-            tabsToRender: [emojiTab],
-            customParentElement: document.body,
-            getOpenPosition: () => this.getOpenPosition(!noPacks)
-          });
-
-          if(noPacks) {
-            emoticonsDropdown.getElement().classList.add('shrink');
-          }
-
-          const deferred = deferredPromise<Reaction>();
-          this.onFinish(deferred);
-          emoticonsDropdown.addEventListener('closed', () => {
-            deferred.resolve(undefined);
-            emoticonsDropdown.hideAndDestroy();
-          });
-
-          emoticonsDropdown.onButtonClick();
-        }, {listenerSetter: this.listenerSetter});
-      }
-
-      const setVisible = () => {
-        this.widthContainer.classList.add('is-visible');
-      };
-
-      if(cached) {
-        setVisible();
-      } else {
-        fastRaf(setVisible);
-      }
+    const setVisible = () => {
+      this.widthContainer.classList.add('is-visible');
     };
 
+    return setVisible;
+  };
+
+  private renderReactions(
+    {type, reactions}: PeerAvailableReactions,
+    availableReactions: AvailableReaction[]
+  ) {
+    if(availableReactions) {
+      this.availableReactions = availableReactions;
+      this.freeCustomEmoji = new Set(this.availableReactions.map((availableReaction) => availableReaction.select_animation.id));
+    }
+
+    const renderPromises = reactions.slice(0, REACTIONS_MAX_LENGTH).map((reaction) => {
+      const availableReaction = reaction._ === 'reactionEmoji' ? availableReactions.find((_reaction) => _reaction.reaction === reaction.emoticon) : undefined;
+      return this.renderReaction(reaction, availableReaction);
+    });
+
+    return this.render(renderPromises, reactions.length > REACTIONS_MAX_LENGTH);
+  }
+
+  private renderEffects(availableEffects: AvailableEffect[]) {
+    const renderPromises = availableEffects.slice(0, REACTIONS_MAX_LENGTH).map((availableEffect) => {
+      return this.renderReaction({_: 'reactionCustomEmoji', document_id: availableEffect.effect_sticker_id});
+    });
+
+    return this.render(renderPromises, availableEffects.length > REACTIONS_MAX_LENGTH);
+  }
+
+  private async prepareReactions(message?: Message.message) {
+    const middleware = this.middlewareHelper.get();
     const availableReactionsResult = apiManagerProxy.getAvailableReactions();
     const peerAvailableReactionsResult = await this.managers.acknowledged.appReactionsManager.getAvailableReactionsByMessage(message);
     const cached = !(availableReactionsResult instanceof Promise) && peerAvailableReactionsResult.cached;
@@ -304,12 +236,63 @@ export class ChatReactionsMenu {
         return;
       }
 
-      return r(peerAvailableReactions, availableReactions);
+      this.reactions = peerAvailableReactions.reactions;
+      this.noPacks = this.noSearch = peerAvailableReactions.type !== 'chatReactionsAll';
+      return this.renderReactions(peerAvailableReactions, availableReactions);
     });
+
+    return [cached, renderPromise] as const;
+  }
+
+  private async prepareEffects() {
+    const middleware = this.middlewareHelper.get();
+    const availableEffects = await this.managers.acknowledged.appReactionsManager.getAvailableEffects();
+    const {cached} = availableEffects;
+    const renderPromise = callbackify(
+      availableEffects.result,
+      async(availableEffects) => {
+        if(!middleware()) {
+          return;
+        }
+
+        this.freeCustomEmoji = new Set(
+          availableEffects
+          .filter((availableEffect) => !availableEffect.pFlags.premium_required)
+          .map((availableEffect) => availableEffect.effect_sticker_id)
+        );
+
+        this.noPacks = true;
+
+        return this.renderEffects(availableEffects);
+      }
+    );
+
+    return [cached, renderPromise] as const;
+  }
+
+  public async init(message?: Message.message) {
+    let cached: boolean, renderPromise: Promise<() => void>;
+    if(this.isEffects) {
+      [cached, renderPromise] = await this.prepareEffects();
+    } else {
+      [cached, renderPromise] = await this.prepareReactions(message);
+    }
 
     if(cached) {
       await renderPromise;
     }
+
+    renderPromise.then((callback) => {
+      if(!callback) {
+        return;
+      }
+
+      if(cached) {
+        callback();
+      } else {
+        fastRaf(callback);
+      }
+    });
 
     this.inited = true;
   }
@@ -327,6 +310,156 @@ export class ChatReactionsMenu {
   //     this.onScrollProcessItem(div, players);
   //   });
   // };
+
+  private reactionToDocId = (reaction: Reaction) => {
+    let docId = (reaction as Reaction.reactionCustomEmoji).document_id;
+    if(!docId) {
+      const availableReaction = this.availableReactions.find((_reaction) => _reaction.reaction === (reaction as Reaction.reactionEmoji).emoticon);
+      docId = availableReaction.select_animation.id;
+    }
+
+    return docId;
+  };
+
+  private reactionsToDocIds = (reactions: Reaction[]) => {
+    return reactions.map(this.reactionToDocId);
+  };
+
+  private loadTags = () => {
+    const reactionsPromise = this.managers.appReactionsManager.getTagReactions()
+    .then(this.reactionsToDocIds);
+    return [reactionsPromise];
+  };
+
+  private loadEffects = () => {
+    const reactionsPromise = this.managers.appReactionsManager.getAvailableEffects()
+    .then((availableEffects) => {
+      return availableEffects.filter((availableEffect) => {
+        return !!availableEffect.effect_animation_id;
+      }).map((availableEffect) => availableEffect.effect_sticker_id);
+    }) as Promise<DocId[]>;
+    return [reactionsPromise];
+  };
+
+  private loadReactions = () => {
+    const topReactionsPromise = Promise.resolve(this.reactions)
+    // const topReactionsPromise = this.managers.appReactionsManager.getTopReactions()
+    .then(this.reactionsToDocIds);
+
+    const allRecentReactionsPromise = this.managers.appReactionsManager.getRecentReactions()
+    .then(this.reactionsToDocIds);
+
+    const topReactionsSlicedPromise = topReactionsPromise.then((docIds) => this.noPacks ? docIds : docIds.slice(0, 16));
+
+    const recentReactionsPromise = this.noPacks ? undefined : Promise.all([
+      topReactionsPromise,
+      allRecentReactionsPromise,
+      topReactionsSlicedPromise
+    ]).then(([topDocIds, recentDocIds, topSlicedDocIds]) => {
+      // filter recent reactions and add left top reactions
+      recentDocIds = recentDocIds.filter((docId) => !topSlicedDocIds.includes(docId));
+      recentDocIds.push(...topDocIds.slice(16));
+      return filterUnique(recentDocIds);
+    });
+
+    return [topReactionsSlicedPromise, recentReactionsPromise].filter(Boolean);
+  };
+
+  private onMoreClick = (e: MouseEvent) => {
+    cancelEvent(e);
+
+    const canShrink = this.noPacks && this.noSearch;
+
+    const emojiTab = new EmojiTab({
+      noRegularEmoji: true,
+      noPacks: this.noPacks,
+      noSearch: this.noSearch,
+      managers: this.managers,
+      mainSets: this.isTags ? this.loadTags : (this.isEffects ? this.loadEffects : this.loadReactions),
+      additionalLocalStickerSet: this.isEffects ? async() => {
+        const availableEffects = await this.managers.appReactionsManager.getAvailableEffects();
+        return (await this.splitAvailableEffects(availableEffects)).localStickerSet;
+      } : undefined,
+      onClick: async(emoji) => {
+        if(emoji.docId && emoji.emoji) {
+          const availableReactions = await apiManagerProxy.getAvailableReactions();
+          const hasNativeReaction = availableReactions.find((_reaction) => _reaction.select_animation?.id === emoji.docId);
+          if(hasNativeReaction) {
+            emoji.emoji = hasNativeReaction.reaction;
+            delete emoji.docId;
+          }
+        }
+
+        const reaction: Reaction = emoji.docId ? {
+          _: 'reactionCustomEmoji',
+          document_id: emoji.docId
+        } : {
+          _: 'reactionEmoji',
+          emoticon: emoji.emoji
+        };
+        deferred.resolve(reaction);
+        emoticonsDropdown.hideAndDestroy();
+      },
+      freeCustomEmoji: this.freeCustomEmoji,
+      onReady: () => {
+        if(canShrink) {
+          const element = emoticonsDropdown.getElement();
+          const container = element.querySelector<HTMLElement>('.emoticons-categories-container');
+          element.style.setProperty('--height', container.offsetHeight + 'px');
+        }
+      },
+      searchFetcher: this.isEffects ? async(q) => {
+        const availableEffects = await this.managers.appReactionsManager.searchAvailableEffects({q});
+        return this.splitAvailableEffects(availableEffects);
+      } : undefined,
+      groupFetcher: this.isEffects ? async(emojiGroup) => {
+        const availableEffects = await this.managers.appReactionsManager.searchAvailableEffects({emoticon: (emojiGroup as EmojiGroup.emojiGroup).emoticons});
+        return this.splitAvailableEffects(availableEffects);
+      } : undefined,
+      showLocks: this.isEffects
+    });
+
+    const emoticonsDropdown = new EmoticonsDropdown({
+      tabsToRender: [emojiTab],
+      customParentElement: document.body,
+      getOpenPosition: () => this.getOpenPosition(!this.noPacks)
+    });
+
+    if(canShrink) {
+      emoticonsDropdown.getElement().classList.add('shrink');
+    }
+
+    if(this.isEffects) {
+      emoticonsDropdown.getElement().classList.add('smaller');
+    }
+
+    const deferred = deferredPromise<Reaction>();
+    this.onFinish(deferred);
+    emoticonsDropdown.addEventListener('closed', () => {
+      deferred.resolve(undefined);
+      emoticonsDropdown.hideAndDestroy();
+    });
+
+    emoticonsDropdown.onButtonClick();
+  };
+
+  private async splitAvailableEffects(availableEffects: AvailableEffect[]): ReturnType<EmojiTab['searchFetcher']> {
+    const [stickers, customEmojis] = partition(availableEffects, (availableEffect) => !availableEffect.effect_animation_id);
+    const docIds = stickers.map((availableEffect) => availableEffect.effect_sticker_id);
+    const docs = await Promise.all(docIds.map((docId) => this.managers.appDocsManager.getDoc(docId)));
+    return {
+      emojis: customEmojis.map((availableEffect) => {
+        return {
+          emoji: '',
+          docId: availableEffect.effect_sticker_id
+        }
+      }),
+      localStickerSet: {
+        title: 'StickerEffects',
+        stickers: docs
+      }
+    };
+  }
 
   private canUseAnimations() {
     return liteMode.isAvailable('animations') && liteMode.isAvailable('stickers_chat') && !IS_MOBILE;

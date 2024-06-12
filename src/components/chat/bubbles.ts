@@ -23,7 +23,7 @@ import mediaSizes from '../../helpers/mediaSizes';
 import {IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
 import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '../../lib/langPack';
 import ripple from '../ripple';
-import {fireMessageEffect, MessageRender} from './messageRender';
+import {fireMessageEffectByBubble, MessageRender} from './messageRender';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement from '../poll';
@@ -2210,7 +2210,7 @@ export default class ChatBubbles {
 
     const timeEffect = findUpClassName(target, 'time-effect');
     if(timeEffect) {
-      fireMessageEffect({timeEffect, bubble, e, scrollable: this.scrollable});
+      fireMessageEffectByBubble({timeEffect, bubble, e, scrollable: this.scrollable});
       return;
     }
 

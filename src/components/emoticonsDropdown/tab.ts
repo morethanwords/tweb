@@ -4,14 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {EmoticonsTab, EmoticonsDropdown} from '.';
+import {EmoticonsTab, EmoticonsDropdown, EMOTICONSSTICKERGROUP, EMOJI_TEXT_COLOR} from '.';
 import createStickersContextMenu from '../../helpers/dom/createStickersContextMenu';
 import customProperties from '../../helpers/dom/customProperties';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import {IgnoreMouseOutType} from '../../helpers/dropdownHover';
 import ListenerSetter from '../../helpers/listenerSetter';
-import {MediaSize} from '../../helpers/mediaSize';
-import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
+import {MiddlewareHelper, getMiddleware, Middleware} from '../../helpers/middleware';
 import safeAssign from '../../helpers/object/safeAssign';
 import Animated from '../../helpers/solid/animations';
 import windowSize from '../../helpers/windowSize';
@@ -25,8 +24,12 @@ import Icon from '../icon';
 import Scrollable, {ScrollableX} from '../scrollable';
 import attachStickerViewerListeners from '../stickerViewer';
 import VisibilityIntersector from '../visibilityIntersector';
-import StickersTabCategory from './category';
+import StickersTabCategory, {EmoticonsTabStyles, StickersTabStyles} from './category';
 import EmoticonsSearch from './search';
+import wrapStickerSetThumb from '../wrappers/stickerSetThumb';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import type {MyDocument} from '../../lib/appManagers/appDocsManager';
+import SuperStickerRenderer from './tabs/SuperStickerRenderer';
 
 export default class EmoticonsTabC<Category extends StickersTabCategory<any, any>, T = any> implements EmoticonsTab {
   public content: HTMLElement;
@@ -58,12 +61,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   public middlewareHelper: MiddlewareHelper;
   private disposeSearch: () => void;
 
-  protected managers: AppManagers;
-  protected categoryItemsClassName: string;
-  protected getElementMediaSize: () => MediaSize;
-  protected padding: number;
-  protected gapX: number;
-  protected gapY: number;
+  public managers: AppManagers;
   protected noMenu: boolean;
   protected searchFetcher?: (value: string) => Promise<T>;
   protected groupFetcher?: (group: EmojiGroup) => Promise<T>;
@@ -74,11 +72,6 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
 
   constructor(options: {
     managers: AppManagers,
-    categoryItemsClassName: string,
-    getElementMediaSize: () => MediaSize,
-    padding: number,
-    gapX: number,
-    gapY: number,
     noMenu?: boolean,
     searchFetcher?: EmoticonsTabC<Category, T>['searchFetcher'],
     groupFetcher?: EmoticonsTabC<Category, T>['groupFetcher'],
@@ -206,17 +199,23 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     return this.categoriesByMenuTabMap.get(menuTab);
   }
 
-  protected createCategory({
+  public createCategory({
     stickerSet,
     title,
     isLocal,
-    noMenuTab = !stickerSet
+    noMenuTab = !stickerSet,
+    styles
   }: {
     stickerSet?: StickerSet,
     title?: HTMLElement | DocumentFragment,
     isLocal?: boolean,
-    noMenuTab?: boolean
-  } = {}) {
+    noMenuTab?: boolean,
+    styles: StickersTabStyles
+  }) {
+    if(this.noMenu) {
+      noMenuTab = true;
+    }
+
     const category: Category = new StickersTabCategory({
       id: '' + stickerSet?.id,
       title,
@@ -232,17 +231,15 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
           width = esgWidth === undefined ? windowSize.width : esgWidth;
         }
 
-        return {width: width - this.padding, height};
+        return {width: width - styles.padding, height};
       },
-      getElementMediaSize: this.getElementMediaSize,
-      gapX: this.gapX,
-      gapY: this.gapY,
+      styles,
       noMenuTab,
       middleware: this.middlewareHelper.get()
     }) as any;
 
-    if(this.categoryItemsClassName) {
-      category.elements.items.classList.add(this.categoryItemsClassName);
+    if(styles.itemsClassName) {
+      category.elements.items.classList.add(styles.itemsClassName);
     }
 
     const container = category.elements.container;
@@ -264,7 +261,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     return category;
   }
 
-  protected positionCategory(category: Category, prepend?: boolean) {
+  public positionCategory(category: Category, prepend?: boolean) {
     const {menuTab, container} = category.elements;
     const posItems = prepend ? this.localCategories.filter((category) => category.mounted).length : 0xFFFF;
     let foundMenuScroll = false;
@@ -313,26 +310,35 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     id,
     title,
     icon,
-    noMenuTab
+    noMenuTab,
+    styles
   }: {
-    id: string,
+    id?: string,
     title: LangPackKey | '',
     icon?: Icon,
-    noMenuTab?: boolean
+    noMenuTab?: boolean,
+    styles: StickersTabStyles
   }) {
+    if(this.noMenu) {
+      noMenuTab = true;
+    }
+
+    const hasId = id !== undefined;
+
     const category = this.createCategory({
-      stickerSet: {id} as any,
+      stickerSet: hasId ? {id} as any : undefined,
       title: title && i18n(title),
       isLocal: true,
-      noMenuTab
+      noMenuTab,
+      styles
     });
     category.local = true;
-    this.localCategories.push(category);
+    hasId && this.localCategories.push(category);
     if(category.elements.title) {
       category.elements.title.classList.add('disable-hover');
     }
 
-    if(!noMenuTab) {
+    if(category.elements.menuTab) {
       if(icon) {
         category.elements.menuTab.append(Icon(icon));
       }
@@ -446,5 +452,44 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
         this.emoticonsDropdown.setIgnoreMouseOut(type, false);
       }
     });
+  }
+
+  // * common methods for tabs
+
+  public renderStickerSetThumb({set, menuTabPadding, middleware, textColor}: {
+    set: StickerSet.stickerSet,
+    menuTabPadding: HTMLElement,
+    middleware: Middleware,
+    textColor?: string
+  }) {
+    wrapStickerSetThumb({
+      set,
+      container: menuTabPadding,
+      group: EMOTICONSSTICKERGROUP,
+      lazyLoadQueue: this.emoticonsDropdown?.lazyLoadQueue,
+      width: 32,
+      height: 32,
+      autoplay: false,
+      textColor,
+      middleware
+    });
+  }
+
+  public createStickerRenderer() {
+    const superStickerRenderer = new SuperStickerRenderer({
+      regularLazyLoadQueue: this.emoticonsDropdown.lazyLoadQueue,
+      group: EMOTICONSSTICKERGROUP,
+      managers: this.managers,
+      intersectionObserverInit: this.emoticonsDropdown.intersectionOptions
+    });
+
+    const rendererLazyLoadQueue = superStickerRenderer.lazyLoadQueue;
+    this.emoticonsDropdown.addLazyLoadQueueRepeat(
+      rendererLazyLoadQueue,
+      superStickerRenderer.processInvisible,
+      this.middlewareHelper.get()
+    );
+
+    return superStickerRenderer;
   }
 }

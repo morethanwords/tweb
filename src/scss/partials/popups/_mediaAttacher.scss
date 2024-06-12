@@ -266,6 +266,28 @@
       }
     } */
   }
+
+  .btn-menu-reactions {
+    &-container {
+      --bubble-side-offset: 0;
+    }
+
+    &-bubble {
+      display: none;
+    }
+  }
+
+  .btn-primary {
+    overflow: unset;
+  }
+
+  .btn-send-effect {
+    &-container {
+      bottom: -.25rem;
+      inset-inline-end: -.25rem;
+      box-shadow: var(--menu-box-shadow);
+    }
+  }
 }
 
 .popup-create-contact {
