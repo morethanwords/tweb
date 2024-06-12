@@ -2297,6 +2297,7 @@
     .name {
       display: block;
       padding: 0 !important;
+      margin: 0;
 
       &:not(:last-child) {
         .hide-ol {

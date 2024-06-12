@@ -23,6 +23,8 @@ declare global {
 
   interface HTMLElement {
     middlewareHelper?: MiddlewareHelper;
+    timeAppenders?: {element: HTMLElement, callback: () => void}[];
+    timeSpan?: HTMLElement;
     // middleware?: Middleware;
   }
 

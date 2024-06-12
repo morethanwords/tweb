@@ -216,6 +216,8 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     return docDiv;
   }
 
+  const canSaveToCache = doc.size <= MAX_FILE_SAVE_SIZE;
+
   let downloadDiv: HTMLElement, preloader: ProgressivePreloader = null;
   const onLoad = () => {
     docDiv.classList.remove('downloading');
@@ -228,7 +230,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
       return;
     }
 
-    if(doc.size <= MAX_FILE_SAVE_SIZE) {
+    if(canSaveToCache) {
       docDiv.classList.add('downloaded');
     }
 
@@ -297,7 +299,11 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
           }, liteMode.isAvailable('animations') ? 250 : 0);
         });
       }
-    } else if(MEDIA_MIME_TYPES_SUPPORTED.has(doc.mime_type) && doc.thumbs?.length) {
+    } else if(
+      MEDIA_MIME_TYPES_SUPPORTED.has(doc.mime_type) &&
+      doc.thumbs?.length &&
+      canSaveToCache
+    ) {
       download = appDownloadManager.downloadMediaURL({media: doc, queueId});
     } else {
       download = appDownloadManager.downloadToDisc({media: doc, queueId});

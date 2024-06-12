@@ -182,7 +182,7 @@ import wrapTextWithEntities from '../../lib/richTextProcessor/wrapTextWithEntiti
 import clearfix from '../../helpers/dom/clearfix';
 import {usePeer} from '../../stores/peers';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
-import wrapStickerAnimation from '../wrappers/stickerAnimation';
+import findAndSplice from '../../helpers/array/findAndSplice';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -310,6 +310,11 @@ export function splitFullMid(fullMid: FullMid) {
 }
 
 const EMPTY_FULL_MID = makeFullMid(NULL_PEER_ID, 0);
+
+function appendBubbleTime(bubble: HTMLElement, element: HTMLElement, callback: () => void) {
+  bubble.timeAppenders.unshift({element, callback});
+  callback();
+}
 
 export default class ChatBubbles {
   public container: HTMLDivElement;
@@ -832,7 +837,7 @@ export default class ChatBubbles {
           transcribedText.append(document.createTextNode(''));
 
           if(speechTextDiv.classList.contains('document-wrapper')) {
-            audioElement.before(transcribedText);
+            audioElement.after(transcribedText);
           } else {
             speechTextDiv.append(transcribedText);
           }
@@ -952,6 +957,20 @@ export default class ChatBubbles {
           if(set) {
             for(const element of set) {
               element.update(message, changedResults, waitPromise);
+              if(!message.reactions || !message.reactions.results.length) {
+                const parentElement = element.parentElement;
+                element.remove();
+
+                const timeSpan = element.querySelector('.time');
+                if(timeSpan) {
+                  findAndSplice(bubble.timeAppenders, ({element: el}) => el === element);
+                  bubble.timeAppenders[0].callback();
+                }
+
+                if(parentElement.classList.contains('document-message') && !parentElement.childNodes.length) {
+                  parentElement.remove();
+                }
+              }
             }
           } else if(!message.reactions || !message.reactions.results.length) {
             return;
@@ -3212,6 +3231,8 @@ export default class ChatBubbles {
       this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
       this.observer.unobserve(bubble, this.messageEffectObserverCallback);
     }
+
+    bubble.timeAppenders = bubble.timeSpan = undefined;
 
     if(canBeDeleted) {
       let deletingItem: typeof canBeDeleted[0];
@@ -5595,7 +5616,7 @@ export default class ChatBubbles {
 
     let timeSpan: HTMLElement;
     if(!isSponsored) {
-      timeSpan = MessageRender.setTime({
+      timeSpan = bubble.timeSpan = MessageRender.setTime({
         chat: this.chat,
         chatType: this.chat.type,
         message,
@@ -5605,7 +5626,11 @@ export default class ChatBubbles {
         loadPromises
       });
 
-      messageDiv.append(timeSpan);
+      bubble.timeAppenders = [];
+      let _clearfix: HTMLElement;
+      appendBubbleTime(bubble, messageDiv, () => {
+        messageDiv.append(timeSpan, _clearfix ??= clearfix());
+      });
 
       if(I18n.isRTL ? !endsWithRTL(messageMessage) : haveRTLChar) {
         timeSpan.classList.add('is-block');
@@ -6390,8 +6415,9 @@ export default class ChatBubbles {
             }
 
             const lastContainer = messageDiv.lastElementChild.querySelector('.document-message') || messageDiv.lastElementChild.querySelector('.document, .audio');
-            // lastContainer && lastContainer.append(timeSpan.cloneNode(true));
-            lastContainer && lastContainer.append(timeSpan);
+            if(lastContainer) {
+              appendBubbleTime(bubble, lastContainer as HTMLElement, () => lastContainer.append(timeSpan));
+            }
 
             mediaRequiresMessageDiv = true;
             const addClassName = (!(['photo', 'pdf'] as MyDocument['type'][]).includes(doc.type) ? doc.type || 'document' : 'document') + '-message';
@@ -6800,9 +6826,8 @@ export default class ChatBubbles {
     if(isFloatingTime) {
       timeSpan.classList.add('is-floating');
       bubble.classList.add('has-floating-time');
-      bubbleContainer.append(timeSpan);
-    } else if(timeSpan && timeSpan.parentElement === messageDiv) {
-      messageDiv.append(clearfix());
+      bubble.timeAppenders = [];
+      appendBubbleTime(bubble, bubbleContainer, () => bubbleContainer.append(timeSpan));
     }
 
     if(isStandaloneMedia) {
@@ -7269,25 +7294,14 @@ export default class ChatBubbles {
     if(bubble.classList.contains('has-floating-time')) {
       bubble.querySelector('.bubble-content-wrapper').append(reactionsElement);
     } else {
+      const timeSpan = bubble.timeSpan;
       const messageDiv = bubble.querySelector('.message');
+
+      appendBubbleTime(bubble, reactionsElement, () => reactionsElement.append(timeSpan));
+
       if(bubble.classList.contains('is-multiple-documents')) {
         const documentContainer = messageDiv.lastElementChild as HTMLElement;
         let documentMessageDiv = documentContainer.querySelector('.document-message');
-
-        let timeSpan: HTMLElement = documentContainer.querySelector('.time');
-        if(!timeSpan) {
-          timeSpan = MessageRender.setTime({
-            chat: this.chat,
-            chatType: this.chat.type,
-            message,
-            reactionsMessage,
-            isOut: bubble.classList.contains('is-out'),
-            middleware: bubble.middlewareHelper.get(),
-            loadPromises
-          });
-        }
-
-        reactionsElement.append(timeSpan);
 
         if(!documentMessageDiv) {
           documentMessageDiv = document.createElement('div');
@@ -7297,9 +7311,6 @@ export default class ChatBubbles {
 
         documentMessageDiv.append(reactionsElement);
       } else {
-        const timeSpan = Array.from(bubble.querySelectorAll('.time')).pop();
-        reactionsElement.append(timeSpan);
-
         messageDiv.append(reactionsElement);
       }
     }

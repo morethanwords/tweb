@@ -331,22 +331,6 @@ export default class ReactionsElement extends HTMLElement {
       }
     }
     // });
-
-    // ! тут вообще не должно быть этого кода, но пока он побудет тут
-    if(!this.sorted.length && this.type === 'block') {
-      const parentElement = this.parentElement;
-      this.remove();
-
-      if(parentElement.classList.contains('document-message') && !parentElement.childNodes.length) {
-        parentElement.remove();
-        return;
-      }
-
-      const timeSpan = this.querySelector('.time');
-      if(timeSpan) {
-        parentElement.append(timeSpan);
-      }
-    }
   }
 
   private async handleChangedResults(changedResults: ReactionCount[], waitPromise?: Promise<any>, withDelay?: boolean) {

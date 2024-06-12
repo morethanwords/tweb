@@ -1681,13 +1681,14 @@ export class AppImManager extends EventListenerBase<{
     if(
       !(chatBubbles.scrollable.getDistanceToEnd() <= 16 && chatBubbles.scrollable.loadedAll.bottom) &&
       chatBubbles.getRenderedLength() &&
-      !chat.savedReaction
+      !chat.savedReaction &&
+      chatBubbles.getViewportSlice().invisibleBottom.length // * don't save if we're close to the end (or sponsored is below)
     ) {
       chatBubbles.sliceViewport(true);
       const top = chatBubbles.scrollable.scrollPosition;
 
       const position = {
-        mids: chatBubbles.getRenderedHistory('desc').map((fullMid) => splitFullMid(fullMid).mid),
+        mids: chatBubbles.getRenderedHistory('desc', true).map((fullMid) => splitFullMid(fullMid).mid),
         top
       };
 
