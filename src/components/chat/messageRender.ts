@@ -9,7 +9,7 @@ import {formatFullSentTimeRaw, formatTime, getFullDate} from '../../helpers/date
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import {Middleware} from '../../helpers/middleware';
 import formatNumber from '../../helpers/number/formatNumber';
-import {Message, MessageReplyHeader} from '../../layer';
+import {AvailableEffect, Message, MessageReplyHeader} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {i18n, _i18n} from '../../lib/langPack';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -28,6 +28,7 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import wrapStickerAnimation from '../wrappers/stickerAnimation';
 import Scrollable from '../scrollable';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 
 const NBSP = '&nbsp;';
 
@@ -76,16 +77,29 @@ const makeEffect = (props: {
       height: 12
     });
 
-    Promise.all(loadPromises).then(() => {
+    Promise.all(loadPromises).then(async() => {
       if(result.cached) {
         deferred.resolve();
       }
+
+      // * preload effect
+      const {doc, thumb} = await getDocForEffect(availableEffect);
+      appDownloadManager.downloadMedia({
+        media: doc,
+        thumb
+      });
     });
   });
 
   props.loadPromises?.push(deferred);
 
   return span;
+};
+
+const getDocForEffect = async(availableEffect: AvailableEffect) => {
+  const isPremiumEffect = !availableEffect.effect_animation_id;
+  const doc = await rootScope.managers.appDocsManager.getDoc(isPremiumEffect ? availableEffect.effect_sticker_id : availableEffect.effect_animation_id);
+  return {isPremiumEffect, doc, thumb: getStickerEffectThumb(doc)};
 };
 
 export const fireMessageEffect = ({e, isOut, element, middleware, scrollable, effectId}: {
@@ -104,8 +118,7 @@ export const fireMessageEffect = ({e, isOut, element, middleware, scrollable, ef
   element.dataset.playing = '1';
 
   rootScope.managers.appReactionsManager.getAvailableEffect(effectId).then(async(availableEffect) => {
-    const isPremiumEffect = !availableEffect.effect_animation_id;
-    const doc = await rootScope.managers.appDocsManager.getDoc(isPremiumEffect ? availableEffect.effect_sticker_id : availableEffect.effect_animation_id);
+    const {doc, thumb: fullThumb} = await getDocForEffect(availableEffect);
     if(!middleware()) return;
 
     const {animationDiv} = wrapStickerAnimation({
