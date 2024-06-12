@@ -272,7 +272,7 @@ body.is-right-column-shown {
 	}
 
 	&.hide-pinned {
-    --pinned-floating-height: 0px;
+    --pinned-floating-height: 0px !important;
 
     .pinned-container {
       display: none;

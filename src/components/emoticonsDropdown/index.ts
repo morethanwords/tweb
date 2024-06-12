@@ -190,6 +190,12 @@ export class EmoticonsDropdown extends DropdownHover {
       tab.onOpened?.();
     });
 
+    this.addEventListener('openAfterLayout', () => {
+      if(options.getOpenPosition) {
+        this.element.style.setProperty('--width', this.element.offsetWidth + 'px');
+      }
+    });
+
     this.addEventListener('close', () => {
       this.lazyLoadQueue.lock();
 

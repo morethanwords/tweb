@@ -13,16 +13,44 @@ $menu-height: 3.0625rem;
 $menu-search-translateY: -#{$menu-height};
 
 .emoji-dropdown {
-  --height: unquote('min(282px, calc(var(--vh) * 100 - 135px))');
+  --width: 23.875rem;
+  --height: 26.25rem;
 	display: flex/*  !important */;
 	flex-direction: column;
-	width: var(--esg-width);
+	width: var(--width);
 	height: var(--height);
 	background: var(--surface-color);
 	overflow: hidden;
 	flex: 1 1 auto;
-	max-height: 100%;
 	user-select: none;
+  position: absolute;
+  inset-inline-start: $chat-padding;
+  bottom: 5.125rem;
+  max-width: calc(100% - 1rem);
+  max-height: 26.25rem;
+  box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);
+  z-index: 3;
+  border-radius: 1.25rem;
+  transition: transform var(--esg-transition), opacity var(--esg-transition);
+  transform: scale(0);
+  opacity: 0;
+  transform-origin: 0 100%;
+  backdrop-filter: var(--menu-backdrop-filter);
+  background-color: var(--menu-background-color);
+  // background-color: rgba(var(--surface-color-rgb), var(--backdrop-opacity));
+
+  body.animation-level-0 & {
+    transition: none;
+  }
+
+  .is-rtl & {
+    transform-origin: 100% 100%;
+  }
+
+  &.smaller {
+    --height: 20rem;
+    max-height: 20rem;
+  }
 
   &.is-standalone {
     transform-origin: calc(9rem * var(--reflect)) 4.625rem !important;
@@ -30,44 +58,23 @@ $menu-search-translateY: -#{$menu-height};
     bottom: auto;
     inset-inline-start: auto;
     top: unquote('min(100vh - var(--height) - .5rem, var(--top))');
-    left: var(--left);
+    left: unquote('min(100vw - var(--width) - .5rem, max(.5rem, var(--left)))');
   }
 
-	@include respond-to(esg-top) {
-		position: absolute !important;
-		inset-inline-start: $chat-padding;
-		bottom: 5.125rem;
-		--height: 26.25rem;
-		max-height: 26.25rem;
-		box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);
-		z-index: 3;
-		border-radius: 1.25rem;
-		transition: transform var(--esg-transition), opacity var(--esg-transition);
-		transform: scale(0);
-		opacity: 0;
-		transform-origin: 0 100%;
-    backdrop-filter: var(--menu-backdrop-filter);
-    background-color: var(--menu-background-color);
-    // background-color: rgba(var(--surface-color-rgb), var(--backdrop-opacity));
+  &.is-under {
+    --width: 100%;
+    --height: min(282px, calc(var(--vh) * 100 - 135px));
+    position: relative;
+    transform: none;
+    inset: unset;
+    border-radius: unset;
+    max-height: 100%;
+  }
 
-		&.active {
-			opacity: 1;
-			transform: scale(1);
-		}
-
-		body.animation-level-0 & {
-			transition: none;
-		}
-
-    .is-rtl & {
-      transform-origin: 100% 100%;
-    }
-
-    &.smaller {
-      --height: 20rem;
-      max-height: 20rem;
-    }
-	}
+  &.active {
+    opacity: 1;
+    transform: scale(1);
+  }
 
   &.shrink {
     // height: auto;

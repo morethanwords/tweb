@@ -869,5 +869,9 @@
     inset-inline-end: 1.25rem;
     padding: .25rem;
     @include sidebar-transform(0, true);
+
+    @include respond-to(handhelds) {
+      inset-inline-end: .75rem;
+    }
   }
 }

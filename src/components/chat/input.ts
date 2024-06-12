@@ -124,8 +124,9 @@ import eachSecond from '../../helpers/eachSecond';
 import {wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
 import showTooltip from '../tooltip';
 import createContextMenu from '../../helpers/dom/createContextMenu';
-import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createEffect, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from './selectedEffect';
+import windowSize from '../../helpers/windowSize';
 
 // console.log('Recorder', Recorder);
 
@@ -1157,6 +1158,16 @@ export default class ChatInput {
       this.emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
       this.listenerSetter.add(this.emoticonsDropdown)('open', this.onEmoticonsOpen);
       this.listenerSetter.add(this.emoticonsDropdown)('close', this.onEmoticonsClose);
+
+      if(emoticonsDropdown === this.emoticonsDropdown) {
+        createRoot((dispose) => {
+          this.chat.destroyMiddlewareHelper.onDestroy(dispose);
+          createEffect(() => {
+            const shouldBeTop = windowSize.height >= 570 && windowSize.width > 600;
+            this.emoticonsDropdown.getElement().classList.toggle('is-under', !shouldBeTop);
+          });
+        });
+      }
     }
 
     this.attachMessageInputField();

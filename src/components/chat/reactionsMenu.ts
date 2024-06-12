@@ -402,8 +402,9 @@ export class ChatReactionsMenu {
       },
       freeCustomEmoji: this.freeCustomEmoji,
       onReady: () => {
+        const element = emoticonsDropdown.getElement();
+        // element.style.setProperty('--width', element.offsetWidth + 'px');
         if(canShrink) {
-          const element = emoticonsDropdown.getElement();
           const container = element.querySelector<HTMLElement>('.emoticons-categories-container');
           element.style.setProperty('--height', container.offsetHeight + 'px');
         }

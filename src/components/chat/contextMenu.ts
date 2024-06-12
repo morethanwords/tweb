@@ -1527,7 +1527,12 @@ export default class ChatContextMenu {
     const size = 36;
     const margin = 8;
     const totalSize = size + margin;
-    const paddingLeft = 56, paddingRight = 40;
+    let paddingLeft = 56;
+    const paddingRight = 40;
+    if(IS_TOUCH_SUPPORTED) {
+      paddingLeft += 32;
+    }
+
     let menuPadding: MenuPositionPadding;
     if(position === 'vertical') {
       menuPadding = {

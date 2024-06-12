@@ -146,8 +146,6 @@
 
   --custom-emoji-size: 1.25rem;
 
-  --esg-width: 100%;
-
   --chat-input-border-radius: 1rem;
   --chat-input-max-width: var(--messages-container-width);
   --chat-input-btn-send-margin: #{$btn-send-margin};
@@ -205,10 +203,6 @@
   @include respond-to(esg-bottom) {
     --chat-input-size: #{$chat-input-handhelds-size};
     --chat-input-inner-padding: #{$chat-input-inner-padding-handhelds};
-  }
-
-  @include respond-to(esg-top) {
-    --esg-width: 23.875rem;
   }
 
   @include respond-to(only-medium-screens) {

@@ -187,6 +187,18 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     .btn-menu-overlay {
 			z-index: 3;
 		}
+
+    @include respond-to(until-floating-left-sidebar) {
+      .btn-menu-reactions {
+        &-container {
+          --bubble-side-offset: 0;
+        }
+    
+        &-bubble {
+          display: none;
+        }
+      }
+    }
 	}
 
 	.btn-icon {
