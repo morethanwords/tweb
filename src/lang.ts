@@ -2220,8 +2220,8 @@ const lang = {
   'StarsTransactionsOutgoing': 'Outgoing',
   'StarsConfirmPurchaseTitle': 'Confirm Your Purchase',
   'StarsConfirmPurchaseText': {
-    'one_value': 'Do you want to buy \"**%2$s**\" in **%3$s** for **%1$d star**?',
-    'other_value': 'Do you want to buy \"**%2$s**\" in **%3$s** for **%1$d stars**?'
+    'one_value': 'Do you want to buy "**%2$s**" in **%3$s** for **%1$d star**?',
+    'other_value': 'Do you want to buy "**%2$s**" in **%3$s** for **%1$d stars**?'
   },
   'StarsNeededTitle': {
     'one_value': '%d Star Needed',
