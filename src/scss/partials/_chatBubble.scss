@@ -1216,12 +1216,12 @@
   //   }
   // }
 
-  @include respond-to(handhelds) {
-    .document, 
-    .audio {
-      --icon-size: 2.25rem;
-    }
-  }
+  // @include respond-to(handhelds) {
+  //   .document, 
+  //   .audio {
+  //     --icon-size: 2.25rem;
+  //   }
+  // }
 
   .audio {
     $parent: ".audio";
@@ -1241,27 +1241,27 @@
       }
     }
 
-    @include respond-to(handhelds) {
-      height: 2.375rem;
-      --icon-margin: .6875rem;
+    // @include respond-to(handhelds) {
+    //   height: 2.375rem;
+    //   --icon-margin: .6875rem;
 
-      .audio-details {
-        margin-top: 2px;
-        margin-bottom: 0;
-      }
+    //   .audio-details {
+    //     margin-top: 2px;
+    //     margin-bottom: 0;
+    //   }
 
-      .audio-to-text-button {
-        margin-top: -.875rem;
-      }
+    //   .audio-to-text-button {
+    //     margin-top: -.875rem;
+    //   }
 
-      .audio-subtitle {
-        margin-top: -1px;
-      }
+    //   .audio-subtitle {
+    //     margin-top: -1px;
+    //   }
 
-      /* &.corner-download .audio-download {
-        margin: 1.375rem 1.375rem 0;
-      } */
-    }
+    //   /* &.corner-download .audio-download {
+    //     margin: 1.375rem 1.375rem 0;
+    //   } */
+    // }
   }
 
   &.audio-message {
@@ -1271,17 +1271,17 @@
       width: var(--max-content-width);
     }
 
-    @include respond-to(handhelds) {
-      --max-content-width: 280px;
-    }
+    // @include respond-to(handhelds) {
+    //   --max-content-width: 280px;
+    // }
   }
 
   &.voice-message {
     --max-content-width: 364px;
 
-    @include respond-to(handhelds) {
-      --max-content-width: 300px;
-    }
+    // @include respond-to(handhelds) {
+    //   --max-content-width: 300px;
+    // }
 
     .document-message {
       max-width: fit-content;
@@ -1451,17 +1451,17 @@
   .document {
     --icon-margin: .75rem;
 
-    @include respond-to(handhelds) {
-      --icon-margin: .5rem;
+    // @include respond-to(handhelds) {
+    //   --icon-margin: .5rem;
 
-      .document-size {
-        font-size: .75rem;
-      }
+    //   .document-size {
+    //     font-size: .75rem;
+    //   }
 
-      &:not(.document-with-thumb) .document-ico {
-        padding: 1.125rem 0 0 0;
-      }
-    }
+    //   &:not(.document-with-thumb) .document-ico {
+    //     padding: 1.125rem 0 0 0;
+    //   }
+    // }
 
     &-name {
       line-height: 1.4;
@@ -1656,9 +1656,9 @@
   .document {
     height: 54px !important;
     
-    @include respond-to(handhelds) {
-      height: 38px !important;
-    }
+    // @include respond-to(handhelds) {
+    //   height: 38px !important;
+    // }
   }
 
   .audio,
@@ -1872,6 +1872,14 @@
         @include text-overflow();
       }
     }
+
+    & + .clearfix {
+      display: table;
+    }
+  }
+
+  .clearfix {
+    display: none;
   }
 
   &.has-webpage:not(.invert-media) .time {
@@ -2680,9 +2688,9 @@
   .document {
     height: 3.375rem;
 
-    @include respond-to(handhelds) {
-      padding-left: 44px;
-    }
+    // @include respond-to(handhelds) {
+    //   padding-left: 44px;
+    // }
   }
 
   .has-document {

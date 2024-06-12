@@ -38,14 +38,14 @@
     .document:not(.document-with-thumb) & {
       padding: 1.5625rem .25rem 0 .25rem;
 
-      @include respond-to(handhelds) {
-        padding: 1.5rem 0px 0px 0px;
-        font-size: 14px;
+      // @include respond-to(handhelds) {
+      //   padding: 1.5rem 0px 0px 0px;
+      //   font-size: 14px;
 
-        &:after {
-          --size: .875rem;
-        }
-      }
+      //   &:after {
+      //     --size: .875rem;
+      //   }
+      // }
     }
 
     &:after {
