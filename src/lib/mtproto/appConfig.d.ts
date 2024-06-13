@@ -49,6 +49,9 @@ export interface MTAppConfig {
   caption_length_limit_premium?:             number;
   upload_max_fileparts_default?:             number;
   upload_max_fileparts_premium?:             number;
+  upload_premium_speedup_download?:          number;
+  upload_premium_speedup_notify_period?:     number;
+  upload_premium_speedup_upload?:            number;
   about_length_limit_default?:               number;
   about_length_limit_premium?:               number;
   stickers_premium_by_emoji_num?:            number;

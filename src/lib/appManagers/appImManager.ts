@@ -128,6 +128,9 @@ import {wrapSlowModeLeftDuration} from '../../components/wrappers/wrapDuration';
 import {splitFullMid} from '../../components/chat/bubbles';
 import PopupStars from '../../components/popups/stars';
 import getSelectedNodes from '../../helpers/dom/getSelectedNodes';
+import {setQuizHint} from '../../components/poll';
+import anchorCallback from '../../helpers/dom/anchorCallback';
+import PopupPremium from '../../components/popups/premium';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -394,6 +397,23 @@ export class AppImManager extends EventListenerBase<{
           }
         });
       }
+    });
+
+    rootScope.addEventListener('file_speed_limited', ({increaseTimes, isUpload}) => {
+      const {hide} = setQuizHint({
+        icon: 'premium_speed',
+        title: i18n(isUpload ? 'UploadSpeedLimited' : 'DownloadSpeedLimited'),
+        textElement: i18n(isUpload ? 'Chat.UploadLimit.Text' : 'Chat.DownloadLimit.Text', [
+          anchorCallback(() => {
+            hide();
+            PopupPremium.show({feature: 'faster_download'});
+          }),
+          increaseTimes
+        ]),
+        appendTo: this.chat.bubbles.container,
+        from: 'top',
+        duration: 10000
+      });
     });
 
     const onInstanceDeactivated = (reason: InstanceDeactivateReason) => {

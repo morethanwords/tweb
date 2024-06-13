@@ -140,11 +140,12 @@ let isListenerSet = false;
 export const setQuizHint = (options: {
   textElement: HTMLElement | DocumentFragment,
   textRight?: HTMLElement | DocumentFragment,
+  title?: HTMLElement,
   onHide?: () => void,
   appendTo: HTMLElement,
   from: 'top' | 'bottom',
   duration: number,
-  icon: Icon
+  icon?: Icon
 }) => {
   if(prevQuizHint) {
     hideQuizHint(prevQuizHint, prevQuizHintOnHide, prevQuizHintTimeout);
@@ -155,6 +156,14 @@ export const setQuizHint = (options: {
 
   const container = document.createElement('div');
   container.classList.add('quiz-hint-container');
+
+  let titleEl: HTMLElement;
+  if(options.title) {
+    titleEl = document.createElement('div');
+    titleEl.classList.add('quiz-hint-title');
+    titleEl.append(options.title);
+    container.classList.add('has-title');
+  }
 
   const textEl = document.createElement('div');
   textEl.classList.add('quiz-hint-text');
@@ -168,7 +177,8 @@ export const setQuizHint = (options: {
   }
 
   container.append(...[
-    Icon(options.icon, 'quiz-hint-icon'),
+    options.icon && Icon(options.icon, 'quiz-hint-icon'),
+    titleEl,
     textEl,
     textRightEl
   ].filter(Boolean));

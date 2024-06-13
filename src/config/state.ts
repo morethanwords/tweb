@@ -130,7 +130,8 @@ export type State = {
     enabled: boolean,
     showInMenu: boolean,
     doNotTranslate: TranslatableLanguageISO[]
-  }
+  },
+  shownUploadSpeedTimestamp?: number
 };
 
 // const BACKGROUND_DAY_MOBILE: Background = {

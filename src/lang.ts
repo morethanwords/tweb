@@ -2251,6 +2251,8 @@ const lang = {
   'AddEffectMessageHint': 'Add an animated effect',
   'AnimatedEffectPremium': 'Subscribe to **Telegram Premium** to add this animated effect.',
   'StickerEffects': 'Effects from stickers',
+  'DownloadSpeedLimited': 'Download speed limited',
+  'UploadSpeedLimited': 'Upload speed limited',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2834,7 +2836,15 @@ const lang = {
   'Input.Quote.Collapsed': 'Quote text will be collapsed',
   'Input.Quote.Expanded': 'Quote text will be fully visible',
   'CopyRestricted.Channel': 'Sorry, copying from this channel is disabled by its admins.',
-  'CopyRestricted.Group': 'Sorry, copying from this group is disabled by its admins.'
+  'CopyRestricted.Group': 'Sorry, copying from this group is disabled by its admins.',
+  'Chat.DownloadLimit.Text': {
+    'one_value': 'Subscribe to [Telegram Premium]() to increase download speeds %d time.',
+    'other_value': 'Subscribe to [Telegram Premium]() to increase download speeds %d times.'
+  },
+  'Chat.UploadLimit.Text': {
+    'one_value': 'Subscribe to [Telegram Premium]() to increase upload speeds %d time.',
+    'other_value': 'Subscribe to [Telegram Premium]() to increase upload speeds %d times.'
+  }
 };
 
 export default lang;

@@ -38,9 +38,9 @@
     padding: 10px 18px 12px 50px;
     min-height: 48px;
     border-radius: 12px;
-    line-height: 1.5;
+    line-height: var(--line-height-15);
     color: white;
-    font-size: 15px;
+    font-size: var(--font-size-15);
     max-width: unquote("min(100%, 400px)");
     overflow: hidden;
 		text-align: start;
@@ -48,6 +48,7 @@
 		display: flex;
 		align-items: center;
 		flex-wrap: wrap;
+    word-break: break-word;
 
     &.has-right-text {
       justify-content: space-between;
@@ -65,16 +66,22 @@
       text-decoration: underline;
 			// border-bottom: 1px solid white;
 		}
+
+    &.has-title .quiz-hint-icon {
+      top: .625rem;
+    }
 	}
 
   &-icon {
     position: absolute;
     left: 15px;
     font-size: 1.5rem;
-    top: 12px;
+    top: .75rem;
   }
 
-  &-text {
-    word-break: break-word;
+  &-title {
+    font-size: var(--font-size-16);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: .125rem;
   }
 }

@@ -647,7 +647,32 @@ export class ApiManager extends ApiManagerMethods {
           this.networkerFactory.unsetConnectionInited();
           return performRequest();
         } else if(!options.rawError && error.code === 420 && !error.type.includes('SLOWMODE_WAIT')) {
-          const waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 1;
+          const match = error.type.match(/^FLOOD_WAIT_(\d+)/) || error.type.match(/_(\d+)_?/);
+          let waitTime: number;
+          if(match) {
+            waitTime = +match[1];
+          }
+
+          if(error.type.includes('FLOOD_PREMIUM_WAIT')) {
+            Promise.all([
+              this.getAppConfig(),
+              this.appStateManager.getState()
+            ]).then(([appConfig, state]) => {
+              const timestamp = tsNow(true);
+              const shouldShowToast = (timestamp - (state.shownUploadSpeedTimestamp || 0)) >= appConfig.upload_premium_speedup_notify_period;
+              if(!shouldShowToast) {
+                return;
+              }
+
+              this.appStateManager.pushToState('shownUploadSpeedTimestamp', timestamp);
+              this.rootScope.dispatchEvent('file_speed_limited', {
+                increaseTimes: (options.fileUpload ? appConfig.upload_premium_speedup_upload : appConfig.upload_premium_speedup_download) || 10,
+                isUpload: !!options.fileUpload
+              });
+            });
+          }
+
+          waitTime ||= 1;
 
           if(waitTime > (options.floodMaxTimeout ?? 60) && !options.prepareTempMessageId) {
             throw error;
