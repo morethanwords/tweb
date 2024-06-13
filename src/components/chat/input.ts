@@ -2482,10 +2482,10 @@ export default class ChatInput {
 
     // console.log('messageInput input', this.messageInput.innerText);
     // const value = this.messageInput.innerText;
-    const {value: richValue, entities: markdownEntities, caretPos} = getRichValueWithCaret(this.messageInputField.input);
+    const {value: richValue, entities: markdownEntities1, caretPos} = getRichValueWithCaret(this.messageInputField.input);
 
     // const entities = parseEntities(value);
-    const value = parseMarkdown(richValue, markdownEntities, true);
+    const [value, markdownEntities] = parseMarkdown(richValue, markdownEntities1, true);
     const entities = mergeEntities(markdownEntities, parseEntities(value));
 
     // this.chat.log('messageInput entities', richValue, value, markdownEntities, caretPos);
@@ -2786,8 +2786,8 @@ export default class ChatInput {
     }
 
     if(entities === undefined || !hadValue) {
-      const _value = parseMarkdown(value, entities, true);
-      entities = mergeEntities(entities, parseEntities(_value));
+      const [_value, newEntities] = parseMarkdown(value, entities, true);
+      entities = mergeEntities(newEntities, parseEntities(_value));
     }
 
     value = value.slice(0, caretPos);

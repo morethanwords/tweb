@@ -749,8 +749,7 @@ class ApiUpdatesManager {
 
               text = pre + text;
 
-              const entities: MessageEntity[] = [];
-              const message = parseMarkdown(text, entities);
+              const [message, entities] = parseMarkdown(text, []);
 
               const update: Update.updateServiceNotification = {
                 _: 'updateServiceNotification',

@@ -15,7 +15,7 @@ import combineSameEntities from './combineSameEntities';
 import findConflictingEntity from './findConflictingEntity';
 import mergeEntities from './mergeEntities';
 
-export default function parseMarkdown(raw: string, currentEntities: MessageEntity[], noTrim?: boolean): string {
+export default function parseMarkdown(raw: string, currentEntities: MessageEntity[] = [], noTrim?: boolean) {
   /* if(!markdownTestRegExp.test(text)) {
     return noTrim ? text : text.trim();
   } */
@@ -184,5 +184,5 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
     }
   }
 
-  return newText;
+  return [newText, currentEntities] as const;
 }

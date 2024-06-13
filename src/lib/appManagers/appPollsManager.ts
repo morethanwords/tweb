@@ -89,11 +89,7 @@ export class AppPollsManager extends AppManager {
 
   public getInputMediaPoll(poll: Poll, correctAnswers?: Uint8Array[], solution?: string, solutionEntities?: MessageEntity[]): InputMedia.inputMediaPoll {
     if(solution) {
-      if(!solutionEntities) {
-        solutionEntities = [];
-      }
-
-      solution = parseMarkdown(solution, solutionEntities);
+      [solution, solutionEntities] = parseMarkdown(solution, solutionEntities);
     } else {
       solution = undefined; // can be string here
     }

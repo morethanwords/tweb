@@ -613,8 +613,10 @@ export class AppMessagesManager extends AppManager {
       });
     }
 
-    const entities = options.entities || [];
-    text &&= parseMarkdown(text, entities);
+    let entities = options.entities || [];
+    if(text) {
+      [text, entities] = parseMarkdown(text, entities);
+    }
 
     let sendEntites = this.getInputEntities(entities);
     if(!sendEntites.length) {
@@ -732,10 +734,9 @@ export class AppMessagesManager extends AppManager {
 
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
-    const entities = options.entities;
+    let entities = options.entities;
     if(!options.viaBotId) {
-      text = parseMarkdown(text, entities);
-      // entities = mergeEntities(entities, parseEntities(text));
+      [text, entities] = parseMarkdown(text, entities);
     }
 
     let sendEntites = this.getInputEntities(entities);
@@ -921,9 +922,9 @@ export class AppMessagesManager extends AppManager {
 
     this.log('sendFile', file, fileType);
 
-    const entities = options.entities || [];
+    let entities = options.entities || [];
     if(caption) {
-      caption = parseMarkdown(caption, entities);
+      [caption, entities] = parseMarkdown(caption, entities);
     }
 
     const attributes: DocumentAttribute[] = [];
@@ -1362,9 +1363,9 @@ export class AppMessagesManager extends AppManager {
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     let caption = options.caption || '';
-    const entities = options.entities || [];
+    let entities = options.entities || [];
     if(caption) {
-      caption = parseMarkdown(caption, entities);
+      [caption, entities] = parseMarkdown(caption, entities);
     }
 
     let sendEntities = this.getInputEntities(entities);
