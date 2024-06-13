@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppMessagesManager, MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
+import type {MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
 import type ChatBubbles from './bubbles';
 import type ChatInput from './input';
 import type Chat from './chat';
@@ -18,8 +18,8 @@ import SetTransition from '../singleTransition';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PopupSendNow from '../popups/sendNow';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
-import {IS_MOBILE_SAFARI, IS_SAFARI} from '../../environment/userAgent';
-import I18n, {i18n, _i18n} from '../../lib/langPack';
+import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
+import {i18n, _i18n} from '../../lib/langPack';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import cancelEvent from '../../helpers/dom/cancelEvent';
@@ -35,16 +35,14 @@ import EventListenerBase from '../../helpers/eventListenerBase';
 import safeAssign from '../../helpers/object/safeAssign';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
-import filterUnique from '../../helpers/array/filterUnique';
 import appImManager from '../../lib/appManagers/appImManager';
 import {Message} from '../../layer';
 import PopupElement from '../popups';
 import flatten from '../../helpers/array/flatten';
 import IS_STANDALONE from '../../environment/standalone';
-import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
 import confirmationPopup from '../confirmationPopup';
-import {makeFullMid, TEST_BUBBLES_DELETION} from './bubbles';
+import {makeFullMid} from './bubbles';
 import {ChatType} from './chat';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
@@ -602,7 +600,11 @@ export class SearchSelection extends AppSelection {
   public isStoriesArchive: boolean;
   private isPrivate: boolean;
 
-  constructor(private searchSuper: AppSearchSuper, managers: AppManagers, listenerSetter: ListenerSetter) {
+  constructor(
+    private searchSuper: AppSearchSuper,
+    managers: AppManagers,
+    listenerSetter: ListenerSetter
+  ) {
     super({
       managers,
       verifyTarget: (e, target) => !!target && this.isSelecting,
@@ -613,7 +615,7 @@ export class SearchSelection extends AppSelection {
     });
 
     this.isPrivate = !searchSuper.showSender;
-    this.attachListeners(searchSuper.container, listenerSetter);
+    !IS_TOUCH_SUPPORTED && this.attachListeners(searchSuper.container, listenerSetter);
   }
 
   /* public appendCheckbox(element: HTMLElement, checkboxField: CheckboxField) {

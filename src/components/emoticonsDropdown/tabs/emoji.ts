@@ -953,9 +953,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
           docId: sticker.dataset.docId,
           element: sticker
         });
+        return;
       }
-
-      return;
     }
 
     if(findUpClassName(target, 'category-title')) {

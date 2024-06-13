@@ -68,15 +68,15 @@
         transition: clip-path .25s ease-in-out;
       }
 
-      @include respond-to(not-handhelds) {
+      // @include respond-to(not-handhelds) {
         height: 140px;
         width: 140px;
-      }
+      // }
 
-      @include respond-to(handhelds) {
-        height: 92px;
-        width: 92px;
-      }
+      // @include respond-to(handhelds) {
+      //   height: 92px;
+      //   width: 92px;
+      // }
 
       &.one {
         clip-path: polygon(
@@ -223,15 +223,15 @@
 
     &:not(.playing) {
       .part {
-        @include respond-to(not-handhelds) {
+        // @include respond-to(not-handhelds) {
           height: 136px;
           width: 136px;
-        }
+        // }
   
-        @include respond-to(handhelds) {
-          height: 92px;
-          width: 92px;
-        }
+        // @include respond-to(handhelds) {
+        //   height: 92px;
+        //   width: 92px;
+        // }
   
         &.one {
           clip-path: polygon(
@@ -513,10 +513,10 @@
       height: 112px !important;
       width: 112px !important;
 
-      @include respond-to(handhelds) {
-        width: 100px !important;
-        height: 100px !important;
-      }
+      // @include respond-to(handhelds) {
+      //   width: 100px !important;
+      //   height: 100px !important;
+      // }
     }
   // }
 
@@ -531,9 +531,9 @@
     color: var(--secondary-text-color);
     display: flex;
 
-    @include respond-to(handhelds) {
-      font-size: .75rem;
-    }
+    // @include respond-to(handhelds) {
+    //   font-size: .75rem;
+    // }
   }
 
   &-title,
@@ -588,16 +588,16 @@
     //   }
     // }
 
-    @include respond-to(handhelds) {
-      .audio-time {
-        margin-top: .3125rem;
-      }
+    // @include respond-to(handhelds) {
+    //   .audio-time {
+    //     margin-top: .3125rem;
+    //   }
 
-      .audio-waveform-container {
-        height: 16px;
-        margin-top: 0;
-      }
-    }
+    //   .audio-waveform-container {
+    //     height: 16px;
+    //     margin-top: 0;
+    //   }
+    // }
 
     &.is-unread {
       .audio-time {

@@ -165,7 +165,7 @@ import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOf
 import {ReactionLayoutType} from './reaction';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainGroupedMessage';
-import cancelNextClickIfNotClick from '../../helpers/dom/cancelNextClickIfNotClick';
+import cancelClickOrNextIfNotClick from '../../helpers/dom/cancelClickOrNextIfNotClick';
 import TranslatableMessage from '../translatableMessage';
 import getUnreadReactions from '../../lib/appManagers/utils/messages/getUnreadReactions';
 import {setPeerLanguageLoaded} from '../../stores/peerLanguage';
@@ -2513,7 +2513,7 @@ export default class ChatBubbles {
     if(videoMini && false) {
       if(findUpClassName(target, 'video-to-viewer')) {
         if(this.checkTargetForMediaViewer(videoMini.querySelector('video'), e)) {
-          cancelNextClickIfNotClick(e);
+          cancelClickOrNextIfNotClick(e);
           return;
         }
       } else if(findUpClassName(target, 'media-photo')) {
@@ -2531,7 +2531,7 @@ export default class ChatBubbles {
     }
 
     if(this.checkTargetForMediaViewer(target, e)) {
-      cancelNextClickIfNotClick(e);
+      cancelClickOrNextIfNotClick(e);
       return;
     }
 
@@ -6803,7 +6803,7 @@ export default class ChatBubbles {
 
         const width = attachmentDiv.style.width;
         if(width) {
-          bubbleContainer.style.maxWidth = width;
+          bubbleContainer.style.maxWidth = `min(100%, ${width})`;
         }
       }
 

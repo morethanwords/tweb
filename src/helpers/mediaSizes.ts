@@ -55,9 +55,9 @@ class MediaSizes extends EventListenerBase<{
 
   private sizes: {[k in 'desktop' | 'handhelds']: MediaTypeSizes} = {
     handhelds: {
-      regular: makeMediaSize(270, 270),
-      webpage: makeMediaSize(270, 200),
-      album: makeMediaSize(270, 0),
+      regular: makeMediaSize(340, 340),
+      webpage: makeMediaSize(340, 200),
+      album: makeMediaSize(340, 0),
       esgSticker: makeMediaSize(68, 68),
       animatedSticker: makeMediaSize(180, 180),
       staticSticker: makeMediaSize(180, 180),
@@ -65,8 +65,8 @@ class MediaSizes extends EventListenerBase<{
       poll: makeMediaSize(240, 0),
       round: makeMediaSize(240, 240),
       documentName: makeMediaSize(200, 0),
-      invoice: makeMediaSize(270, 270),
-      extendedInvoice: makeMediaSize(270, 270),
+      invoice: makeMediaSize(340, 340),
+      extendedInvoice: makeMediaSize(340, 340),
       customEmoji: CUSTOM_EMOJI_SIZE,
       esgCustomEmoji: ESG_CUSTOM_EMOJI_SIZE,
       emojiStatus: EMOJI_STATUS_SIZE,

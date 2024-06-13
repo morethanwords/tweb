@@ -190,6 +190,14 @@ $btn-menu-z-index: 4;
       }
     }
 
+    .is-multiline,
+    .is-secondary {
+      min-width: auto;
+      font-size: var(--font-size-14);
+      line-height: var(--line-height-14);
+      max-width: 15rem;
+    }
+
     .btn-menu-footer {
       background-color: var(--background-color);
     }
@@ -426,7 +434,7 @@ $btn-menu-z-index: 4;
 
     &.is-multiline,
     &.is-secondary {
-      height: auto;
+      height: auto !important;
       width: fit-content;
       min-width: calc(100% - .625rem);
       max-width: 16.25rem;

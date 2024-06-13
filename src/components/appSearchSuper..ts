@@ -90,6 +90,7 @@ import {ChatType} from './chat/chat';
 import getFwdFromName from '../lib/appManagers/utils/messages/getFwdFromName';
 import SidebarSlider from './slider';
 import setBlankToAnchor from '../lib/richTextProcessor/setBlankToAnchor';
+import cancelClickOrNextIfNotClick from '../helpers/dom/cancelClickOrNextIfNotClick';
 
 // const testScroll = false;
 
@@ -211,15 +212,11 @@ class SearchContextMenu {
       r();
     };
 
-    if(IS_TOUCH_SUPPORTED) {
-
-    } else {
-      attachContextMenuListener({
-        element: attachTo,
-        callback: onContextMenu as any,
-        listenerSetter
-      });
-    }
+    attachContextMenuListener({
+      element: attachTo,
+      callback: onContextMenu as any,
+      listenerSetter
+    });
   }
 
   private init() {
@@ -252,18 +249,6 @@ class SearchContextMenu {
       verify: () => !this.storyItem,
       withSelection: true
     }, {
-      icon: 'select',
-      text: 'Message.Context.Select',
-      onClick: this.onSelectClick,
-      verify: () => !this.isSelected && (!this.storyItem || this.storyItem.pFlags.out),
-      withSelection: true
-    }, {
-      icon: 'select',
-      text: 'Message.Context.Selection.Clear',
-      onClick: this.onClearSelectionClick,
-      verify: () => this.isSelected,
-      withSelection: true
-    }, {
       icon: 'pin',
       text: 'Story.AddToProfile',
       onClick: () => this.onStoryTogglePinClick(true),
@@ -283,6 +268,18 @@ class SearchContextMenu {
       text: 'RemoveFromPosts',
       onClick: () => this.onStoryTogglePinClick(false),
       verify: () => this.storyItem && !this.peerId.isUser() && this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+    }, {
+      icon: 'select',
+      text: 'Message.Context.Select',
+      onClick: this.onSelectClick,
+      verify: () => !this.isSelected && (!this.storyItem || this.storyItem.pFlags.out),
+      withSelection: true
+    }, {
+      icon: 'select',
+      text: 'Message.Context.Selection.Clear',
+      onClick: this.onClearSelectionClick,
+      verify: () => this.isSelected,
+      withSelection: true
     }, {
       icon: 'delete',
       className: 'danger',
@@ -679,7 +676,7 @@ export default class AppSearchSuper {
 
     attachClickEvent(this.tabsContainer, (e) => {
       if(this.selection.isSelecting) {
-        cancelEvent(e);
+        cancelClickOrNextIfNotClick(e);
         this.selection.toggleByElement(findUpClassName(e.target, 'search-super-item'));
       }
     }, {capture: true, passive: false, listenerSetter: this.listenerSetter});

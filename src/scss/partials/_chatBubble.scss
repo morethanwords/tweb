@@ -127,7 +127,7 @@
   }
 
   @include respond-to(handhelds) {
-    --max-width: calc(100% - var(--message-handhelds-margin));
+    --max-width: calc(100% - var(--message-handhelds-margin)) !important;
   }
 
   &.is-gesturing-reply {
@@ -1269,6 +1269,7 @@
 
     .audio {
       width: var(--max-content-width);
+      max-width: 100%;
     }
 
     // @include respond-to(handhelds) {

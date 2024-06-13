@@ -86,7 +86,7 @@ function createWaveformBars(waveform: Uint8Array, duration: number) {
   const barWidth = 2;
   const barMargin = 2;
   const barHeightMin = 4;
-  const barHeightMax = mediaSizes.isMobile ? 16 : 23;
+  const barHeightMax = mediaSizes.isMobile && false ? 16 : 23;
 
   const minW = mediaSizes.isMobile ? 152 : 190;
   const maxW = mediaSizes.isMobile ? 190 : 256;

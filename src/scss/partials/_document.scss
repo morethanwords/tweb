@@ -177,10 +177,10 @@
     width: 2.5rem;
     height: 2.5rem;
 
-    @include respond-to(handhelds) {
-      width: 1.625rem;
-      height: 1.625rem;
-    }
+    // @include respond-to(handhelds) {
+    //   width: 1.625rem;
+    //   height: 1.625rem;
+    // }
   }
 
   .preloader-circular {
