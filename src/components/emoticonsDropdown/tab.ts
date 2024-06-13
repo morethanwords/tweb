@@ -227,8 +227,11 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
           width = size.width;
           height = size.height;
         } else {
-          const esgWidth = customProperties.getPropertyAsSize('esg-width');
-          width = esgWidth === undefined ? windowSize.width : esgWidth;
+          const element = this.emoticonsDropdown.getElement();
+          const propertyWidth = element.style.getPropertyValue('--width');
+          width = propertyWidth ? parseInt(propertyWidth) : element.offsetWidth;
+          // const esgWidth = customProperties.getPropertyAsSize('esg-width');
+          // width = esgWidth === undefined ? windowSize.width : esgWidth;
         }
 
         return {width: width - styles.padding, height};
