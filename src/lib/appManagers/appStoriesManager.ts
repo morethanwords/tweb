@@ -10,6 +10,7 @@ import insertInDescendSortedArray from '../../helpers/array/insertInDescendSorte
 import assumeType from '../../helpers/assumeType';
 import callbackify from '../../helpers/callbackify';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import makeError from '../../helpers/makeError';
 import deepEqual from '../../helpers/object/deepEqual';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import pause from '../../helpers/schedulers/pause';
@@ -34,6 +35,7 @@ type StoriesPeerCache = {
   stories: StoryItem['id'][],
   pinnedStories: StoriesPeerCache['stories'],
   archiveStories: StoriesPeerCache['stories'],
+  pinnedToTop: Map<number, number>,
   storiesMap: Map<MyStoryItem['id'], MyStoryItem>,
   deleted: Set<number>,
   maxReadId?: number,
@@ -250,6 +252,7 @@ export default class AppStoriesManager extends AppManager {
       stories: [],
       pinnedStories: [],
       archiveStories: [],
+      pinnedToTop: new Map(),
       storiesMap: new Map(),
       getStoriesPromises: new Map(),
       deleted: new Set()
@@ -295,6 +298,12 @@ export default class AppStoriesManager extends AppManager {
       });
     }
 
+    const pinnedToTopIndex = cache.pinnedToTop.get(storyItem.id);
+    const modifiedPinnedToTop = storyItem.pinnedIndex !== pinnedToTopIndex;
+    if(modifiedPinnedToTop) {
+      storyItem.pinnedIndex = pinnedToTopIndex;
+    }
+
     let modifiedPinned: boolean;
     if(cacheType !== StoriesCacheType.Pinned) {
       const wasPinned = !!(oldStoryItem as StoryItem.storyItem)?.pFlags?.pinned;
@@ -303,7 +312,7 @@ export default class AppStoriesManager extends AppManager {
         if(newPinned) {
           if(cache.pinnedLoadedAll ||
             (cache.pinnedStories.length && storyItem.id > cache.pinnedStories[cache.pinnedStories.length - 1])) {
-            insertStory(cache.pinnedStories, storyItem.id, StoriesCacheType.Pinned);
+            insertStory(cache.pinnedStories, storyItem, true, StoriesCacheType.Pinned, cache.pinnedToTop);
             modifiedPinned = true;
           }
         } else if(indexOfAndSplice(cache.pinnedStories, storyItem.id)) {
@@ -316,7 +325,7 @@ export default class AppStoriesManager extends AppManager {
     if(cacheType !== StoriesCacheType.Archive && cache.peerId === this.appPeersManager.peerId) {
       if(!cache.archiveStories.includes(storyItem.id) && (cache.archiveLoadedAll ||
         (cache.archiveStories.length && storyItem.id > cache.archiveStories[cache.archiveStories.length - 1]))) {
-        insertStory(cache.archiveStories, storyItem.id, StoriesCacheType.Archive);
+        insertStory(cache.archiveStories, storyItem, true, StoriesCacheType.Archive);
         modifiedArchive = true;
       }
     }
@@ -337,7 +346,7 @@ export default class AppStoriesManager extends AppManager {
 
     if(cacheType) {
       const array = cache[cacheType];
-      insertStory(array, storyItem.id, cacheType);
+      insertStory(array, storyItem, true, cacheType, cache.pinnedToTop);
     }
 
     if(!oldStoryItem) {
@@ -362,12 +371,13 @@ export default class AppStoriesManager extends AppManager {
       safeReplaceObject(oldStoryItem, storyItem);
     }
 
-    if(oldStoryItem || modifiedPinned || modifiedArchive) {
+    if(oldStoryItem || modifiedPinned || modifiedArchive || modifiedPinnedToTop) {
       this.rootScope.dispatchEvent('story_update', {
         peerId: cache.peerId,
         story: oldStoryItem || storyItem,
         modifiedPinned,
-        modifiedArchive
+        modifiedArchive,
+        modifiedPinnedToTop
       });
     }
 
@@ -601,6 +611,36 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
+  public async togglePinnedToTop(peerId: PeerId, storyIds: StoryItem['id'][], pin: boolean) {
+    const oldPins = [...this.getPeerStoriesCache(peerId).pinnedToTop.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id);
+    const newPins = pin ? oldPins.concat(storyIds) : oldPins.filter((id) => !storyIds.includes(id));
+    const appConfig = await this.apiManager.getAppConfig();
+    const limit = appConfig.stories_pinned_to_top_count_max ?? 3;
+    if(newPins.length > limit) {
+      const error = makeError('STORY_ID_TOO_MANY');
+      error.limit = limit;
+      throw error;
+    }
+
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.togglePinnedToTop',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        id: newPins
+      },
+      processResult: () => {
+        const cache = this.getPeerStoriesCache(peerId);
+        const pinnedToTop = cache.pinnedToTop;
+        storyIds.forEach((storyId) => {
+          const storyItem = this.getStoryByIdCached(peerId, storyId);
+          if(pin) pinnedToTop.set(storyId, pinnedToTop.size);
+          else pinnedToTop.delete(storyId);
+          this.saveStoryItem(storyItem, cache, StoriesCacheType.Pinned);
+        });
+      }
+    });
+  }
+
   public hasArchive() {
     return this.lists.archive.length > 0;
   }
@@ -643,7 +683,12 @@ export default class AppStoriesManager extends AppManager {
   }
 
   private getCachedStories(cache: StoriesPeerCache, pinned: boolean, limit: number, offsetId: number) {
-    const array = pinned ? cache.pinnedStories : cache.archiveStories;
+    let array = pinned ? cache.pinnedStories : cache.archiveStories;
+
+    if(pinned && cache.pinnedToTop?.size && offsetId) {
+      array = array.slice(cache.pinnedToTop.size);
+    }
+
     const index = offsetId ? array.findIndex((storyId) => storyId < offsetId) : 0;
     if(index !== -1) {
       const sliced = array.slice(index, index + limit);
@@ -659,6 +704,10 @@ export default class AppStoriesManager extends AppManager {
     limit: number,
     storiesStories: StoriesStories
   ) {
+    if(pinned) {
+      cache.pinnedToTop = new Map((storiesStories.pinned_to_top || []).map((storyId, idx) => [storyId, idx]));
+    }
+
     const length = storiesStories.stories.length;
     const storyItems = this.saveStoriesStories(
       storiesStories,
@@ -672,14 +721,14 @@ export default class AppStoriesManager extends AppManager {
       else cache.archiveLoadedAll = true;
     }
 
-    return {count: storiesStories.count, stories: storyItems};
+    return {count: storiesStories.count, stories: storyItems, pinnedToTop: pinned ? cache.pinnedToTop : undefined};
   }
 
-  public getPinnedStories(peerId: PeerId, limit: number, offsetId: number = 0) {
+  public getPinnedStories(peerId: PeerId, limit: number, offsetId: number = 0): MaybePromise<{count: number, stories: StoryItem.storyItem[], pinnedToTop: StoriesPeerCache['pinnedToTop']}> {
     const cache = this.getPeerStoriesCache(peerId);
     const slice = this.getCachedStories(cache, true, limit, offsetId);
     if(slice) {
-      return {count: cache.count, stories: slice};
+      return {count: cache.count, stories: slice, pinnedToTop: cache.pinnedToTop};
     }
 
     return this.apiManager.invokeApiSingleProcess({
@@ -689,15 +738,18 @@ export default class AppStoriesManager extends AppManager {
         limit,
         offset_id: offsetId
       },
-      processResult: this.processLoadedStoriesStories.bind(this, cache, true, limit)
+      processResult: (response) => { // * response list can have same story if it's pinned to top
+        this.processLoadedStoriesStories(cache, true, limit, response);
+        return this.getPinnedStories(peerId, limit, offsetId);
+      }
     });
   }
 
-  public getStoriesArchive(peerId: PeerId, limit: number, offsetId: number = 0) {
+  public getStoriesArchive(peerId: PeerId, limit: number, offsetId: number = 0): ReturnType<AppStoriesManager['getPinnedStories']> {
     const cache = this.getPeerStoriesCache(peerId);
     const slice = this.getCachedStories(cache, false, limit, offsetId);
     if(slice) {
-      return {count: cache.count, stories: slice};
+      return {count: cache.count, stories: slice, pinnedToTop: undefined};
     }
 
     return this.apiManager.invokeApiSingleProcess({

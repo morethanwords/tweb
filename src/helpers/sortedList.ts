@@ -135,11 +135,11 @@ export default class SortedList<SortedElement extends SortedElementBase, SortedE
   protected elements: Map<SortedElementId, SortedElement>;
   protected sorted: Array<SortedElement>;
 
-  protected getIndex: (element: SortedElement) => PromiseLike<number> | number;
+  protected getIndex: (element: SortedElement) => Promise<number> | number;
   protected onDelete: (element: SortedElement) => void;
   protected onUpdate: (element: SortedElement) => void;
   protected onSort: (element: SortedElement, idx: number) => void;
-  protected onElementCreate: (base: SortedElementBase) => PromiseLike<SortedElement> | SortedElement;
+  protected onElementCreate: (base: SortedElementBase) => Promise<SortedElement> | SortedElement;
 
   protected updateElementWith = (callback: () => void) => callback();
   protected updateListWith = (callback: (canUpdate: boolean | undefined) => void) => callback(true);
@@ -250,7 +250,7 @@ export default class SortedList<SortedElement extends SortedElementBase, SortedE
         pause(1000).then(() => {
           if(!processed) {
             console.error('loadPromises are still pending?', base);
-            return base;
+            return base as any;
           }
         })
       ]);

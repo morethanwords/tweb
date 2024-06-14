@@ -104,6 +104,7 @@ export interface MTAppConfig {
   new_noncontact_peers_require_premium_without_ownpremium?: boolean;
   stars_purchase_blocked?:                   boolean;
   can_edit_factcheck?:                       boolean;
+  stories_pinned_to_top_count_max?:          number;
 }
 
 export interface EmojiesSendDiceSuccess {

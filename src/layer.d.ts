@@ -11785,7 +11785,8 @@ export namespace StoryItem {
     }>,
     id: number,
     date: number,
-    expire_date: number
+    expire_date: number,
+    pinnedIndex?: number
   };
 
   export type storyItem = {
@@ -11813,7 +11814,8 @@ export namespace StoryItem {
     media_areas?: Array<MediaArea>,
     privacy?: Array<PrivacyRule>,
     views?: StoryViews,
-    sent_reaction?: Reaction
+    sent_reaction?: Reaction,
+    pinnedIndex?: number
   };
 }
 

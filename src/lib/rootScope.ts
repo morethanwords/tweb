@@ -98,7 +98,7 @@ export type BroadcastEvents = {
   'messages_downloaded': {peerId: PeerId, mids: number[]},
   'messages_media_read': {peerId: PeerId, mids: number[]},
 
-  'story_update': {peerId: PeerId, story: StoryItem, modifiedPinned?: boolean, modifiedArchive?: boolean},
+  'story_update': {peerId: PeerId, story: StoryItem, modifiedPinned?: boolean, modifiedArchive?: boolean, modifiedPinnedToTop?: boolean},
   'story_deleted': {peerId: PeerId, id: number},
   'story_expired': {peerId: PeerId, id: number},
   'story_new': {peerId: PeerId, story: StoryItem, cacheType: StoriesCacheType, maxReadId: number},

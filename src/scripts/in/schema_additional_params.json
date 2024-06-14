@@ -499,4 +499,14 @@
     {"name": "icon_emoji_id", "type": "Long"}
   ],
   "type": "EmojiGroup"
+}, {
+  "predicate": "storyItem",
+  "params": [
+    {"name": "pinnedIndex", "type": "number"}
+  ]
+}, {
+  "predicate": "storyItemSkipped",
+  "params": [
+    {"name": "pinnedIndex", "type": "number"}
+  ]
 }]

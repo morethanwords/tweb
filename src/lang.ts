@@ -2253,6 +2253,9 @@ const lang = {
   'StickerEffects': 'Effects from stickers',
   'DownloadSpeedLimited': 'Download speed limited',
   'UploadSpeedLimited': 'Upload speed limited',
+  'StoriesPinLimit': {
+    'other_value': 'You can’t pin more than %d posts.'
+  },
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

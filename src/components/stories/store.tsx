@@ -243,13 +243,13 @@ const createStoriesStore = (props: {
         const {peer} = state;
         const offsetId = peer ? peer.stories[peer.stories.length - 1].id : 0;
         const loadCount = 30;
-        let promise: ReturnType<AppStoriesManager['getPinnedStories']>;
+        let promise: ReturnType<AppStoriesManager['getPinnedStories']> | ReturnType<AppStoriesManager['getStoriesArchive']>;
         if(pinned) {
           promise = rootScope.managers.appStoriesManager.getPinnedStories(peerId, loadCount, offsetId);
         } else {
           promise = rootScope.managers.appStoriesManager.getStoriesArchive(peerId, loadCount, offsetId);
         }
-        return promise.then(({count, stories: storyItems}) => {
+        return promise.then(({count, stories: storyItems, pinnedToTop}) => {
           if(!offsetId) {
             const peer: StoriesContextPeerState = {
               index: 0,
@@ -589,7 +589,7 @@ const createStoriesStore = (props: {
   };
 
   // * updates section
-  const onStoryUpdate = ({peerId, story, modifiedPinned, modifiedArchive}: BroadcastEvents['story_update']) => {
+  const onStoryUpdate = ({peerId, story, modifiedPinned, modifiedArchive, modifiedPinnedToTop}: BroadcastEvents['story_update']) => {
     const peerIndex = getPeerIndex(peerId);
     if(peerIndex === -1) {
       return;
@@ -605,6 +605,31 @@ const createStoriesStore = (props: {
         onStoryNew({peerId, story, cacheType: StoriesCacheType.Pinned, maxReadId: peer.maxReadId});
       }
 
+      return;
+    }
+
+    // * change position of story
+    if(props.pinned && modifiedPinnedToTop) {
+      const pinnedIndex = (story as StoryItem.storyItem).pinnedIndex;
+      if( // * if story is unpinned and it should be far far away
+        pinnedIndex === undefined &&
+        story.id < peer.stories[peer.stories.length - 1].id &&
+        !loaded
+      ) {
+        onStoryDeleted({peerId, id: story.id});
+        return;
+      }
+
+      if(storyIndex === -1) {
+        onStoryNew({peerId, story, cacheType: StoriesCacheType.Pinned, maxReadId: peer.maxReadId});
+      } else {
+        setState('peers', peerIndex, 'stories', reconcile(((stories) => {
+          stories = stories.slice();
+          stories.splice(storyIndex, 1);
+          insertStory(stories, story, false, StoriesCacheType.Pinned);
+          return stories;
+        })(peer.stories), {key: 'id', merge: true}));
+      }
       return;
     }
 
@@ -663,7 +688,7 @@ const createStoriesStore = (props: {
       let insertedAt: number;
       setState('peers', peerIndex, 'stories', (stories) => {
         stories = stories.slice();
-        insertedAt = insertStory(stories, story, cacheType);
+        insertedAt = insertStory(stories, story, false, cacheType);
         return stories;
       });
 
