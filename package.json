@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "start": "vite --force",
+    "start": "vite --force --host",
     "serve": "pnpm run build; node server.js",
     "build": "pnpm run generate-changelog && vite build",
     "test": "vitest",

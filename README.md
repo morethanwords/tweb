@@ -19,6 +19,16 @@ Open http://localhost:8080/ in your browser.
 
 Run `node build` to build the minimized production version of the app. Copy `public` folder contents to your web server.
 
+### Running in docker
+
+#### Developing: 
+* Install dependencies `docker-compose up tweb.dependencies`.
+* Run develop container `docker-compose up tweb.develop `.
+* Open http://localhost:8080/ in your browser. 
+
+#### Production:
+* Run `docker-compose up tweb.production -d` nginx image and container to serve the build
+* Open http://localhost:80/ in your browser.
 
 ### Dependencies
 * [BigInteger.js](https://github.com/peterolson/BigInteger.js) ([Unlicense](https://github.com/peterolson/BigInteger.js/blob/master/LICENSE))
