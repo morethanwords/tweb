@@ -38,7 +38,7 @@ export class RangeSettingSelector {
   private range: RangeSelector;
 
   private updateFakeProgress = (value: number) => {
-    this.doubleSideProgress.style.left = value > 0 ? '50%' : `${50 - Math.abs(value)}%`;
+    this.doubleSideProgress.style.left = value >= 0 ? '50%' : `${50 - Math.abs(value)}%`;
     this.doubleSideProgress.style.width = `${ Math.abs(value)}%`;
   }
 
@@ -51,15 +51,13 @@ export class RangeSettingSelector {
     minValue: number,
     maxValue: number,
     writeValue = true,
-    simmetrical = false
+    symmetrical = false
   ) {
     const BASE_CLASS = 'range-setting-selector';
     this.container = document.createElement('div');
     this.container.classList.add(BASE_CLASS);
-    if(simmetrical) {
+    if(symmetrical) {
       this.container.classList.add('double-sided');
-      this.container.style.width = '100%';
-      // this.container = document.createElement('div');
     }
 
     const details = document.createElement('div');
@@ -90,7 +88,7 @@ export class RangeSettingSelector {
           this.onChange(value);
         }
 
-        if(simmetrical) {
+        if(symmetrical) {
           this.updateFakeProgress(value);
         }
 
@@ -103,11 +101,15 @@ export class RangeSettingSelector {
 
     this.container.append(details, this.range.container);
 
-    if(simmetrical) {
+    if(symmetrical) {
       const line = this.container.getElementsByClassName('progress-line')[0];
       this.doubleSideProgress = document.createElement('div');
       this.doubleSideProgress.classList.add('fake-progress');
       line.append(this.doubleSideProgress);
+      if(initialValue === 0) {
+        const lineFilled = line.getElementsByClassName('progress-line__filled')[0] as HTMLElement;
+        lineFilled.style.width = '50%';
+      }
       this.updateFakeProgress(initialValue);
     }
   }

@@ -453,6 +453,17 @@
 "Profile.Info.Group" = "Group Info";
 "Profile.Info.Channel" = "Channel Info";
 "Rtmp.Watching_other" = "%s watching";
+"MediaEditor.General.Enhance': 'Enhance",
+"MediaEditor.General.Brightness': 'Brightness",
+"MediaEditor.General.Contrast': 'Contrast",
+"MediaEditor.General.Saturation': 'Saturation",
+"MediaEditor.General.Warmth': 'Warmth",
+"MediaEditor.General.Fade': 'Fade",
+"MediaEditor.General.Highlights': 'Highlights",
+"MediaEditor.General.Shadows': 'Shadows",
+"MediaEditor.General.Vignette': 'Vignette",
+"MediaEditor.General.Grain': 'Grain",
+"MediaEditor.General.Sharpen': 'Sharpen",
 "Rtmp.Topbar.Title" = "Live Stream";
 "Rtmp.Topbar.NoViewers" = "No viewers";
 "Rtmp.Topbar.Join" = "JOIN";

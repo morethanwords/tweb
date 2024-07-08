@@ -544,6 +544,17 @@ const lang = {
   'Profile.Info.Topic': 'Topic Info',
   'Profile.Info.Group': 'Group Info',
   'Profile.Info.Channel': 'Channel Info',
+  'MediaEditor.General.Enhance': 'Enhance',
+  'MediaEditor.General.Brightness': 'Brightness',
+  'MediaEditor.General.Contrast': 'Contrast',
+  'MediaEditor.General.Saturation': 'Saturation',
+  'MediaEditor.General.Warmth': 'Warmth',
+  'MediaEditor.General.Fade': 'Fade',
+  'MediaEditor.General.Highlights': 'Highlights',
+  'MediaEditor.General.Shadows': 'Shadows',
+  'MediaEditor.General.Vignette': 'Vignette',
+  'MediaEditor.General.Grain': 'Grain',
+  'MediaEditor.General.Sharpen': 'Sharpen',
   'Rtmp.Watching': {
     'other_value': '%s watching'
   },

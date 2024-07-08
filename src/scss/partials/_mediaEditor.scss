@@ -18,23 +18,43 @@ $inactive-opacity: .4;
   display: flex;
   align-items: center;
   justify-content: center;
-
   color: white;
 
   svg, .tgico {
     color: #AAAAAA;
   }
 
+  .range-setting-selector-name,
   .inline-icon {
     color: white !important;
   }
 
-  .range-setting-selector.double-sided {
+  .range-setting-selector-value {
+    color: var(--primary-color);
+  }
+
+  .popup-stars-transactions-contents {
+    width: 100%;
+  }
+
+  .general-settings-container {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow-y: scroll;
+    width: 100%;
+  }
+
+  .range-setting-selector {
+    width: 100%;
+
     .progress-line {
       --height: 4px;
       --thumb-size: 16px;
     }
+  }
 
+  .range-setting-selector.double-sided {
     .progress-line__filled {
       background: transparent;
     }
