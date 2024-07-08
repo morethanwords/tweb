@@ -54,6 +54,9 @@ import {ChatType} from '../chat/chat';
 import pause from '../../helpers/schedulers/pause';
 import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '../chat/selectedEffect';
+import {AppMediaEditor} from '../appMediaEditor';
+import rtmpCallsController from '../../lib/calls/rtmpCallsController';
+import {render} from 'solid-js/web';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -135,6 +138,20 @@ export default class PopupNewMedia extends PopupElement {
     return out;
   }
 
+  public async openMediaEditor(peerId: PeerId) {
+    const pageEl = document.getElementById('page-chats') as HTMLDivElement;
+    if(pageEl.getElementsByClassName('media-editor').length) return;
+    // TODO: remove this, append the button to each image separately
+    const {files, willAttach, mediaContainer} = this;
+    console.info(willAttach);
+    // ---
+    const close = () => {
+      const [editor] = Array.from(pageEl.getElementsByClassName('media-editor'));
+      editor?.remove?.();
+    }
+    render(() => AppMediaEditor({close, imageBlobUrl: willAttach.sendFileDetails[0].objectURL}), pageEl);
+  }
+
   private async construct(willAttachType: PopupNewMedia['willAttach']['type']) {
     this.willAttach = {
       type: willAttachType,
@@ -199,6 +216,19 @@ export default class PopupNewMedia extends PopupElement {
         text: 'SendAsFiles',
         onClick: () => this.changeType('document'),
         verify: () => this.files.length > 1 && this.willAttach.type !== 'document' && canSendDocs
+      }, {
+        icon: 'groupmedia',
+        text: 'Edit',
+        onClick: () => {
+          console.info('edit media');
+          this.openMediaEditor(324);
+        },
+        verify: () => {
+          console.info('dsfdsg');
+          console.info(this.willAttach);
+          console.info(this.willAttach);
+          return this.willAttach.type === 'media' && this.files.length === 1;
+        }
       }, {
         icon: 'groupmedia',
         text: 'Popup.Attach.GroupMedia',
@@ -1033,6 +1063,8 @@ export default class PopupNewMedia extends PopupElement {
 
   private attachFiles() {
     const {files, willAttach, mediaContainer} = this;
+
+    console.info(willAttach);
 
     const oldSendFileDetails = willAttach.sendFileDetails.splice(0, willAttach.sendFileDetails.length);
     oldSendFileDetails.forEach((params) => {

@@ -34,7 +34,13 @@ import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 export class RangeSettingSelector {
   public container: HTMLDivElement;
   public valueContainer: HTMLElement;
+  public doubleSideProgress: HTMLElement;
   private range: RangeSelector;
+
+  private updateFakeProgress = (value: number) => {
+    this.doubleSideProgress.style.left = value > 0 ? '50%' : `${50 - Math.abs(value)}%`;
+    this.doubleSideProgress.style.width = `${ Math.abs(value)}%`;
+  }
 
   public onChange: (value: number) => void;
 
@@ -44,11 +50,17 @@ export class RangeSettingSelector {
     initialValue: number,
     minValue: number,
     maxValue: number,
-    writeValue = true
+    writeValue = true,
+    simmetrical = false
   ) {
     const BASE_CLASS = 'range-setting-selector';
     this.container = document.createElement('div');
     this.container.classList.add(BASE_CLASS);
+    if(simmetrical) {
+      this.container.classList.add('double-sided');
+      this.container.style.width = '100%';
+      // this.container = document.createElement('div');
+    }
 
     const details = document.createElement('div');
     details.classList.add(BASE_CLASS + '-details');
@@ -78,6 +90,10 @@ export class RangeSettingSelector {
           this.onChange(value);
         }
 
+        if(simmetrical) {
+          this.updateFakeProgress(value);
+        }
+
         if(writeValue) {
           // console.log('font size scrub:', value);
           valueDiv.innerText = '' + value;
@@ -86,6 +102,14 @@ export class RangeSettingSelector {
     });
 
     this.container.append(details, this.range.container);
+
+    if(simmetrical) {
+      const line = this.container.getElementsByClassName('progress-line')[0];
+      this.doubleSideProgress = document.createElement('div');
+      this.doubleSideProgress.classList.add('fake-progress');
+      line.append(this.doubleSideProgress);
+      this.updateFakeProgress(initialValue);
+    }
   }
 }
 

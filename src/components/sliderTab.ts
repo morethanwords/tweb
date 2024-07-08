@@ -53,7 +53,7 @@ export default class SliderSuperTab {
     this.destroyable = destroyable;
 
     this.container = document.createElement('div');
-    this.container.classList.add('tabs-tab', 'sidebar-slider-item');
+    this.container.classList.add('tabs-tab', 'sidebar-slider-item', 'TABS_TAB_SLIDER_TAB');
 
     // * Header
     this.header = document.createElement('div');
