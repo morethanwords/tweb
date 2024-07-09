@@ -99,7 +99,7 @@ export function adjustGamma(initial: any, ctx: CanvasRenderingContext2D, width: 
   ctx.putImageData(copyData, 0, 0);
 }
 
-const PGPhotoEnhanceSegments = 8; // Example value, replace with actual value
+const PGPhotoEnhanceSegments = 4; // Example value, replace with actual value
 const PGPhotoEnhanceHistogramBins = 256; // Example value, replace with actual value
 
 export function rgbToHsv(r: number, g: number, b: number) {
@@ -162,37 +162,27 @@ export function hsvToRgb(h: number, s: number, v: number) {
   return [r * 255, g * 255, b * 255];
 }
 
-/*
-float enhance(float value) {" +
-                "const vec2 offset = vec2(0.001953125, 0.03125);" +
-                "value = value + offset.x;" +
-                "vec2 coord = (clamp(vTextureCoord, 0.125, 1.0 - 0.125001) - 0.125) * 4.0;" +
-                "vec2 frac = fract(coord);" +
-                "coord = floor(coord);" +
-                "float p00 = float(coord.y * 4.0 + coord.x) * 0.0625 + offset.y;" +
-                "float p01 = float(coord.y * 4.0 + coord.x + 1.0) * 0.0625 + offset.y;" +
-                "float p10 = float((coord.y + 1.0) * 4.0 + coord.x) * 0.0625 + offset.y;" +
-                "float p11 = float((coord.y + 1.0) * 4.0 + coord.x + 1.0) * 0.0625 + offset.y;" +
-                "vec3 c00 = texture2D(inputImageTexture2, vec2(value, p00)).rgb;" +
-                "vec3 c01 = texture2D(inputImageTexture2, vec2(value, p01)).rgb;" +
-                "vec3 c10 = texture2D(inputImageTexture2, vec2(value, p10)).rgb;" +
-                "vec3 c11 = texture2D(inputImageTexture2, vec2(value, p11)).rgb;" +
-                "float c1 = ((c00.r - c00.g) / (c00.b - c00.g));" +
-                "float c2 = ((c01.r - c01.g) / (c01.b - c01.g));" +
-                "float c3 = ((c10.r - c10.g) / (c10.b - c10.g));" +
-                "float c4 = ((c11.r - c11.g) / (c11.b - c11.g));" +
-                "float c1_2 = mix(c1, c2, frac.x);" +
-                "float c3_4 = mix(c3, c4, frac.x);" +
-                "return mix(c1_2, c3_4, frac.y);" +
-            "}
- */
-
-/* export function enhance(initValue: number): number {
-  const [offsetX, offsetY] = [0.001953125, 0.03125];
-  const value = initValue + offsetX;
-  const coord = (clamp(vTextureCoord, 0.125, 1.0 - 0.125001) - 0.125) * 4.0;
-  // const frac = fract(coord);
-} */
+function rgbToHsv2(r: number, g: number, b: number) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const v = max;
+  let h;
+  const d = max - min;
+  const s = max === 0 ? 0 : d / max;
+  if(max === min) {
+    h = 0; // achromatic
+  } else {
+    switch(max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return [h, s, v];
+}
 
 export function enhance2(value: number) {
   const offset = [0.001953125, 0.03125];
@@ -218,13 +208,15 @@ export function enhance2(value: number) {
   return (1 - frac[1]) * c1_2 + frac[1] * c3_4;
 }
 
-export function bufferToHSV(initial: any, ctx: CanvasRenderingContext2D, width: number, height: number, gamma: number) {
+export function bufferToHSV(initial: any, ctx: CanvasRenderingContext2D, width: number, height: number) {
   const copyData = ctx.createImageData(width, height);
   copyData.data.set(initial.data);
   const data = copyData.data;
 
+  const data2 = new Float32Array(width * height * 4);
+
   for(let i = 0; i < data.length; i += 4) {
-    const [h, s, v] = rgbToHsv(data[i], data[i + 1], data[i + 2]);
+    const [h, s, v] = rgbToHsv2(data[i], data[i + 1], data[i + 2]);
     const it = {
       i,
       r: data[i],
@@ -232,19 +224,115 @@ export function bufferToHSV(initial: any, ctx: CanvasRenderingContext2D, width: 
       b: data[i + 2],
       h, s, v
     };
-    setTimeout(() => {
-      i % 5000 || console.info(i, `${it.r}|${it.g}|${it.b}`, `${h}|${s}|${v}`);
-    });
+    i % 10000 || console.log(i, `${it.r} ${it.g} ${it.b}`, `${h} ${s} ${v}`);
     data[i] = h;
     data[i + 1] = s;
     data[i + 2] = v;
   }
 
-  console.log(copyData.data);
-  ctx.putImageData(copyData, 0, 0);
+  return data;
+  // console.log(data);
+  // ctx.putImageData(copyData, 0, 0);
 }
 
-export function calcCDT(hsvBuffer: Uint8Array, width: number, height: number, buffer: Uint8Array, calcBuffer: Uint32Array) {
+/*
+calcCDT(JNIEnv *env, jclass clazz, jobject hsvBuffer, jint width, jint height, jobject buffer, jobject calcBuffer) {
+
+    unsigned char *bytes = (unsigned char *) env->GetDirectBufferAddress(hsvBuffer);
+    uint32_t *calcBytes = (uint32_t *) env->GetDirectBufferAddress(calcBuffer);
+    unsigned char *result = (unsigned char *) env->GetDirectBufferAddress(buffer);
+
+    uint32_t *cdfsMin = calcBytes;
+    calcBytes += totalSegments;
+    uint32_t *cdfsMax = calcBytes;
+    calcBytes += totalSegments;
+    uint32_t *cdfs = calcBytes;
+    calcBytes += totalSegments * PGPhotoEnhanceHistogramBins;
+    uint32_t *hist = calcBytes;
+    memset(hist, 0, sizeof(uint32_t) * totalSegments * PGPhotoEnhanceHistogramBins);
+
+    float xMul = PGPhotoEnhanceSegments / imageWidth;
+    float yMul = PGPhotoEnhanceSegments / imageHeight;
+
+    uint32_t i, j;
+
+    for (i = 0; i < imageHeight; i++) {
+        uint32_t yOffset = i * width * 4;
+        for (j = 0; j < imageWidth; j++) {
+            uint32_t index = j * 4 + yOffset;
+
+            uint32_t tx = (uint32_t)(j * xMul);
+            uint32_t ty = (uint32_t)(i * yMul);
+            uint32_t t = ty * PGPhotoEnhanceSegments + tx;
+
+            hist[t * PGPhotoEnhanceHistogramBins + bytes[index + 2]]++;
+        }
+    }
+
+    for (i = 0; i < totalSegments; i++) {
+        if(clipLimit > 0) {
+            uint32_t clipped = 0;
+            for (j = 0; j < PGPhotoEnhanceHistogramBins; j++) {
+                if(hist[i * PGPhotoEnhanceHistogramBins + j] > clipLimit) {
+                    clipped += hist[i * PGPhotoEnhanceHistogramBins + j] - clipLimit;
+                    hist[i * PGPhotoEnhanceHistogramBins + j] = clipLimit;
+                }
+            }
+
+            uint32_t redistBatch = clipped / PGPhotoEnhanceHistogramBins;
+            uint32_t residual = clipped - redistBatch * PGPhotoEnhanceHistogramBins;
+
+            for (j = 0; j < PGPhotoEnhanceHistogramBins; j++) {
+                hist[i * PGPhotoEnhanceHistogramBins + j] += redistBatch;
+                if(j < residual) {
+                    hist[i * PGPhotoEnhanceHistogramBins + j]++;
+                }
+            }
+        }
+        memcpy(cdfs + i * PGPhotoEnhanceHistogramBins, hist + i * PGPhotoEnhanceHistogramBins, PGPhotoEnhanceHistogramBins * sizeof(uint32_t));
+
+        uint32_t hMin = PGPhotoEnhanceHistogramBins - 1;
+        for (j = 0; j < hMin; ++j) {
+            if(cdfs[i * PGPhotoEnhanceHistogramBins + j] != 0) {
+                hMin = j;
+            }
+        }
+
+        uint32_t cdf = 0;
+        for (j = hMin; j < PGPhotoEnhanceHistogramBins; j++) {
+            cdf += cdfs[i * PGPhotoEnhanceHistogramBins + j];
+            cdfs[i * PGPhotoEnhanceHistogramBins + j] = (uint8_t) MIN(255, cdf * scale);
+        }
+
+        cdfsMin[i] = cdfs[i * PGPhotoEnhanceHistogramBins + hMin];
+        cdfsMax[i] = cdfs[i * PGPhotoEnhanceHistogramBins + PGPhotoEnhanceHistogramBins - 1];
+    }
+
+    for(j = 0; j < totalSegments; j++) {
+        uint32_t yOffset = j * PGPhotoEnhanceHistogramBins * 4;
+        for(i = 0; i < PGPhotoEnhanceHistogramBins; i++) {
+            uint32_t index = i * 4 + yOffset;
+            result[index] = (uint8_t) cdfs[j * PGPhotoEnhanceHistogramBins + i];
+            result[index + 1] = (uint8_t) cdfsMin[j];
+            result[index + 2] = (uint8_t) cdfsMax[j];
+            result[index + 3] = 255;
+        }
+    }
+}
+ */
+
+export function calcCDTv2(hsvBuffer: Uint8Array | Uint8ClampedArray, width: number, height: number, buffer: Uint8Array, calcBuffer: Uint32Array) {
+  const imageWidth = width;
+  const imageHeight = height;
+  const _clipLimit = 1.25;
+
+  const totalSegments = PGPhotoEnhanceSegments * PGPhotoEnhanceSegments;
+  const tileArea = parseInt(`${Math.floor(imageWidth / PGPhotoEnhanceSegments) * Math.floor(imageHeight / PGPhotoEnhanceSegments)}`);
+  const clipLimit = parseInt(`${Math.max(1, _clipLimit * tileArea / PGPhotoEnhanceHistogramBins)}`);
+  const scale = 255.0 / tileArea;
+}
+
+export function calcCDT22(hsvBuffer: Uint8Array | Uint8ClampedArray, width: number, height: number, buffer: Uint8Array, calcBuffer: Uint32Array) {
   const imageWidth = width;
   const imageHeight = height;
   const _clipLimit = 1.25;
@@ -329,6 +417,90 @@ export function calcCDT(hsvBuffer: Uint8Array, width: number, height: number, bu
   }
 }
 
+export function calcCDT(hsvBuffer: Uint8Array, width: number, height: number, buffer: any) {
+  const imageWidth = width;
+  const imageHeight = height;
+  const _clipLimit = 1.25;
+
+  const totalSegments = PGPhotoEnhanceSegments * PGPhotoEnhanceSegments;
+  const tileArea = Math.floor(imageWidth / PGPhotoEnhanceSegments) * Math.floor(imageHeight / PGPhotoEnhanceSegments);
+  const clipLimit = Math.max(1.0, _clipLimit * tileArea / PGPhotoEnhanceHistogramBins);
+  const scale = 255.0 / tileArea;
+
+  const hist = Array.from({length: totalSegments}, () => new Uint32Array(PGPhotoEnhanceHistogramBins));
+  const cdfs = Array.from({length: totalSegments}, () => new Uint32Array(PGPhotoEnhanceHistogramBins));
+  const cdfsMin = new Uint32Array(totalSegments);
+  const cdfsMax = new Uint32Array(totalSegments);
+
+  const xMul = PGPhotoEnhanceSegments / imageWidth;
+  const yMul = PGPhotoEnhanceSegments / imageHeight;
+
+  for(let y = 0; y < imageHeight; y++) {
+    const yOffset = y * width * 4;
+    for(let x = 0; x < imageWidth; x++) {
+      const index = x * 4 + yOffset;
+      const tx = Math.floor(x * xMul);
+      const ty = Math.floor(y * yMul);
+      const t = ty * PGPhotoEnhanceSegments + tx;
+      hist[t][hsvBuffer[index + 2]]++;
+    }
+  }
+
+  for(let i = 0; i < totalSegments; i++) {
+    if(clipLimit > 0) {
+      let clipped = 0;
+      for(let j = 0; j < PGPhotoEnhanceHistogramBins; j++) {
+        if(hist[i][j] > clipLimit) {
+          clipped += hist[i][j] - clipLimit;
+          hist[i][j] = clipLimit;
+        }
+      }
+
+      const redistBatch = Math.floor(clipped / PGPhotoEnhanceHistogramBins);
+      const residual = clipped - redistBatch * PGPhotoEnhanceHistogramBins;
+
+      for(let j = 0; j < PGPhotoEnhanceHistogramBins; j++) {
+        hist[i][j] += redistBatch;
+      }
+
+      for(let j = 0; j < residual; j++) {
+        hist[i][j]++;
+      }
+    }
+
+    cdfs[i].set(hist[i]);
+
+    let hMin = PGPhotoEnhanceHistogramBins - 1;
+    for(let j = 0; j < PGPhotoEnhanceHistogramBins; j++) {
+      if(cdfs[i][j] !== 0) {
+        hMin = j;
+        break;
+      }
+    }
+
+    let cdf = 0;
+    for(let j = hMin; j < PGPhotoEnhanceHistogramBins; j++) {
+      cdf += cdfs[i][j];
+      cdfs[i][j] = Math.min(255.0, cdf * scale);
+    }
+
+    cdfsMin[i] = cdfs[i][hMin];
+    cdfsMax[i] = cdfs[i][PGPhotoEnhanceHistogramBins - 1];
+  }
+
+  const resultBytesPerRow = 4 * PGPhotoEnhanceHistogramBins;
+
+  for(let tile = 0; tile < totalSegments; tile++) {
+    const yOffset = tile * resultBytesPerRow;
+    for(let i = 0; i < PGPhotoEnhanceHistogramBins; i++) {
+      const index = i * 4 + yOffset;
+      buffer[index] = cdfs[tile][i];
+      buffer[index + 1] = cdfsMin[tile];
+      buffer[index + 2] = cdfsMax[tile];
+      buffer[index + 3] = 255;
+    }
+  }
+}
 
 /*
 const initialData = context.createImageData(canvas.width, canvas.height);

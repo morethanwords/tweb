@@ -80,6 +80,7 @@ $inactive-opacity: .4;
   }
 
   &__main-area {
+    max-width: 500px;
     width: 100%;
     height: 100%;
     flex: 0 0 70%;
@@ -104,6 +105,10 @@ $inactive-opacity: .4;
     }
 
     .images {
+
+      &.small {
+        height: 200px;
+      }
       width: 100%;
       display: flex;
 
