@@ -95,11 +95,18 @@ $inactive-opacity: .4;
 
     canvas {
       scale: 0.5;
-      transform: translateY(-50%);
+      transform: translate(-50%, -50%, );
+
+      &.gl-canvas {
+        transform: translate(-100%, -50%);
+        border: 2px solid yellow;
+      }
     }
 
     .images {
+      width: 100%;
       display: flex;
+
       img {
         width: 50%;
         height: 100%;

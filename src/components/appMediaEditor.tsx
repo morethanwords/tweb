@@ -1,149 +1,189 @@
 import {MediaEditorTabs} from './media-editor/editor-tabs';
 import {EditorHeader} from './media-editor/editor-header';
-import {MediaEditorSlider} from './media-editor/editor-slider';
 import {MediaEditorGeneralSettings} from './media-editor/editor-general-settings';
 import {createEffect, createSignal, onMount} from 'solid-js';
 
-function auto_adjust(context: CanvasRenderingContext2D, W: number, H: number) {
-  // settings
-  var white = 240;    // white color min
-  var black = 30;     // black color max
-  var target_white = 1;   // how much % white colors should take
-  var target_black = 0.5; // how much % black colors should take
-  var modify = 1.1;   // color modify strength
+const vertexShaderSource = `
+            attribute vec4 aVertexPosition;
+            attribute vec2 aTextureCoord;
+            varying vec2 vTextureCoord;
+            void main(void) {
+                gl_Position = aVertexPosition;
+                vTextureCoord = vec2(aTextureCoord.x, 1.0 - aTextureCoord.y);
+            }
+        `;
 
-  var img = context.getImageData(0, 0, W, H);
-  var imgData = img.data;
-  var n = 0;  // pixels count without transparent
+// Fragment shader source
+const fragmentShaderSource = `
+            precision highp float;
+            varying vec2 vTextureCoord;
+            uniform sampler2D sTexture;
+            uniform sampler2D inputImageTexture2;
+            uniform float intensity;
+            /* float enhance(float value) {
+                const vec2 offset = vec2(0.001953125, 0.03125);
+                value = value + offset.x;
+                vec2 coord = (clamp(vTextureCoord, 0.125, 1.0 - 0.125001) - 0.125) * 4.0;
+                vec2 frac = fract(coord);
+                coord = floor(coord);
+                float p00 = float(coord.y * 4.0 + coord.x) * 0.0625 + offset.y;
+                float p01 = float(coord.y * 4.0 + coord.x + 1.0) * 0.0625 + offset.y;
+                float p10 = float((coord.y + 1.0) * 4.0 + coord.x) * 0.0625 + offset.y;
+                float p11 = float((coord.y + 1.0) * 4.0 + coord.x + 1.0) * 0.0625 + offset.y;
+                vec3 c00 = texture2D(inputImageTexture2, vec2(value, p00)).rgb;
+                vec3 c01 = texture2D(inputImageTexture2, vec2(value, p01)).rgb;
+                vec3 c10 = texture2D(inputImageTexture2, vec2(value, p10)).rgb;
+                vec3 c11 = texture2D(inputImageTexture2, vec2(value, p11)).rgb;
+                float c1 = ((c00.r - c00.g) / (c00.b - c00.g));
+                float c2 = ((c01.r - c01.g) / (c01.b - c01.g));
+                float c3 = ((c10.r - c10.g) / (c10.b - c10.g));
+                float c4 = ((c11.r - c11.g) / (c11.b - c11.g));
+                float c1_2 = mix(c1, c2, frac.x);
+                float c3_4 = mix(c3, c4, frac.x);
+                return mix(c1_2, c3_4, frac.y);
+            } 
+            vec3 hsv_to_rgb(vec3 c) {
+                vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+            } */
+            void main(void) {
+                // vec4 texel = texture2D(sTexture, vTextureCoord);
+                // gl_FragColor = vec4(1.0, 1.0, 1.0, 1,0);
+                gl_FragColor = texture2D(sTexture, vTextureCoord) * texture2D(inputImageTexture2, vTextureCoord); // vec4(vTextureCoord, 1.0, 1.0);
+                /* vec4 hsv = texel;
+                hsv.y = min(1.0, hsv.y * 1.2);
+                hsv.z = min(1.0, enhance(hsv.z) * 1.1);
+                gl_FragColor = vec4(hsv_to_rgb(mix(texel.xyz, hsv.xyz, intensity)), texel.w); */
+            }
+        `;
 
-  // make sure we have white
-  var n_valid = 0;
-  for(var i = 0; i < imgData.length; i += 4) {
-    if(imgData[i+3] == 0) continue; // transparent
-    if((imgData[i] + imgData[i+1] + imgData[i+2]) / 3 > white) n_valid++;
-    n++;
+function compileShader(gl: WebGLRenderingContext, source: string, type: number) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if(!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
+    return null;
   }
-  let target = target_white;
-  var n_fix_white = 0;
-  var done = false;
-  for(var j=0; j < 30; j++) {
-    if(n_valid * 100 / n >= target) done = true;
-    if(done == true) break;
-    n_fix_white++;
-
-    // adjust
-    for(var i = 0; i < imgData.length; i += 4) {
-      if(imgData[i+3] == 0) continue; // transparent
-      for(var c = 0; c < 3; c++) {
-        var x = i + c;
-        if(imgData[x] < 10) continue;
-        // increase white
-        imgData[x] *= modify;
-        imgData[x] = Math.round(imgData[x]);
-        if(imgData[x] > 255) imgData[x] = 255;
-      }
-    }
-
-    // recheck
-    n_valid = 0;
-    for(var i = 0; i < imgData.length; i += 4) {
-      if(imgData[i+3] == 0) continue; // transparent
-      if((imgData[i] + imgData[i+1] + imgData[i+2]) / 3 > white) n_valid++;
-    }
-  }
-
-  // make sure we have black
-  n_valid = 0;
-  for(var i = 0; i < imgData.length; i += 4) {
-    if(imgData[i+3] == 0) continue; // transparent
-    if((imgData[i] + imgData[i+1] + imgData[i+2]) / 3 < black) n_valid++;
-  }
-  target = target_black;
-  var n_fix_black = 0;
-  var done = false;
-  for(var j=0; j < 30; j++) {
-    if(n_valid * 100 / n >= target) done = true;
-    if(done == true) break;
-    n_fix_black++;
-
-    // adjust
-    for(var i = 0; i < imgData.length; i += 4) {
-      if(imgData[i+3] == 0) continue; // transparent
-      for(var c = 0; c < 3; c++) {
-        var x = i + c;
-        if(imgData[x] > 240) continue;
-        // increase black
-        imgData[x] -= (255-imgData[x]) * modify - (255-imgData[x]);
-        imgData[x] = Math.round(imgData[x]);
-      }
-    }
-
-    // recheck
-    n_valid = 0;
-    for(var i = 0; i < imgData.length; i += 4) {
-      if(imgData[i+3] == 0) continue; // transparent
-      if((imgData[i] + imgData[i+1] + imgData[i+2]) / 3 < black) n_valid++;
-    }
-  }
-
-  //  save
-  context.putImageData(img, 0, 0);
-  //  log('Iterations: brighten='+n_fix_white+", darken="+n_fix_black);
-}
-
-async function adjustGamma(initial: any, ctx: CanvasRenderingContext2D, width: number, height: number, gamma: number) {
-  const gammaCorrection = 1 / gamma;
-  const copyData = ctx.createImageData(width, height);
-  copyData.data.set(initial.data);
-  const data = copyData.data;
-
-  for(let i = 0; i < data.length; i += 4) {
-    data[i] = 255 * Math.pow((data[i] / 255), gammaCorrection);
-    data[i+1] = 255 * Math.pow((data[i+1] / 255), gammaCorrection);
-    data[i+2] = 255 * Math.pow((data[i+2] / 255), gammaCorrection);
-  }
-  ctx.putImageData(copyData, 0, 0);
+  return shader;
 }
 
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
   let canvas: HTMLCanvasElement;
+  let glCanvas: HTMLCanvasElement;
   let context: CanvasRenderingContext2D;
+  let gl:  WebGLRenderingContext;
   let myImgElement: HTMLImageElement;
   let container: HTMLDivElement;
 
   onMount(() => {
     const img = new Image();
     img.src = imageBlobUrl;
-    img.onload = () => {
-      canvas.width = container.clientWidth * 2;
-      canvas.height = container.clientHeight;
+    img.onload = function() {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      canvas.width = w;
+      canvas.height = h;
+
+      glCanvas.width = w;
+      glCanvas.height = h;
 
       console.info('img', img.width, img.height);
       console.info('canvas', canvas.width, canvas.height);
+      console.info('canvas GL', glCanvas.width, glCanvas.height);
 
-      // canvas.width = img.width;
-      // canvas.height = img.height;
-
-      // img.width
-      // img.height
       context = canvas.getContext('2d');
-      // context.scale(canvas.width / myImgElement.width, canvas.height / myImgElement.height);
-      // context.scale(canvas.width / myImgElement.width, canvas.height / myImgElement.height);
       context.drawImage(myImgElement, 0, 0, img.width, img.height, 0, 0, canvas.width, canvas.height);
-      // let i = 0.1;
 
-      const initialData = context.createImageData(canvas.width, canvas.height);
-      initialData.data.set(context.getImageData(0.0, 0.0, canvas.width, canvas.height).data);
+      // open GL
+      gl = glCanvas.getContext('webgl');
 
-      createEffect(() => {
-        console.warn(data());
-      });
+      const vertexShader = compileShader(gl, vertexShaderSource, gl.VERTEX_SHADER);
+      const fragmentShader = compileShader(gl, fragmentShaderSource, gl.FRAGMENT_SHADER);
+      const shaderProgram = gl.createProgram();
+      gl.attachShader(shaderProgram, vertexShader);
+      gl.attachShader(shaderProgram, fragmentShader);
+      gl.linkProgram(shaderProgram);
 
-      /* setInterval(() => {
-        console.warn('updating this shit', i);
-        adjustGamma(initialData, context, canvas.width, canvas.height, i);
-        i += 0.05;
-      }, 500); */
+      if(!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+        console.error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+      }
+
+      gl.useProgram(shaderProgram);
+      console.info('use shared', shaderProgram);
+
+      // load textures here
+      const texture = gl.createTexture();
+      const inputImageTexture2 = gl.createTexture();
+
+      console.log(texture);
+      console.log(myImgElement);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this as any);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+      // Set up inputImageTexture2 (assuming it's another image, you can change as needed)
+      gl.bindTexture(gl.TEXTURE_2D, inputImageTexture2);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, myImgElement);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+      // load data
+      const positionBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      const positions = [
+        -1.0,  1.0,
+        1.0,  1.0,
+        -1.0, -1.0,
+        1.0, -1.0
+      ];
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+      const textureCoordBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+      const textureCoordinates = [
+        0.0,  1.0,
+        1.0,  1.0,
+        0.0,  0.0,
+        1.0,  0.0
+      ];
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates), gl.STATIC_DRAW);
+
+      const vertexPosition = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
+      gl.enableVertexAttribArray(vertexPosition);
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.vertexAttribPointer(vertexPosition, 2, gl.FLOAT, false, 0, 0);
+
+      const textureCoord = gl.getAttribLocation(shaderProgram, 'aTextureCoord');
+      gl.enableVertexAttribArray(textureCoord);
+      gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+      gl.vertexAttribPointer(textureCoord, 2, gl.FLOAT, false, 0, 0);
+      // Render after both textures are loaded
+      render();
+
+      function render() {
+        console.info('start redner');
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(gl.getUniformLocation(shaderProgram, 'sTexture'), 0);
+
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, inputImageTexture2);
+        gl.uniform1i(gl.getUniformLocation(shaderProgram, 'inputImageTexture2'), 1);
+
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, 'intensity'), 1.0); // Adjust intensity as needed
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
     };
   });
 
@@ -169,7 +209,10 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
           <img src={imageBlobUrl} />
         </div>
 
-        <canvas ref={canvas} />
+        <div class='images'>
+          <canvas ref={canvas} />
+          <canvas class='gl-canvas' ref={glCanvas} />
+        </div>
 
       </div>
       <div class='media-editor__settings'>
