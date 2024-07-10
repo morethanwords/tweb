@@ -1,21 +1,10 @@
-import {createSignal, For, Show} from 'solid-js';
+import {createSignal, For, Show, Signal} from 'solid-js';
 import ColorPicker from '../../colorPicker';
 
-const colors = [
-  '#FFFFFF',
-  '#FE4438',
-  '#FF8901',
-  '#FFD60A',
-  '#33C759',
-  '#62E5E0',
-  '#0A84FF',
-  '#BD5CF3'
-];
-
-export const MediaEditorColorPicker = () => {
+export const MediaEditorColorPicker = ({defaultColors, selectedColor}: { defaultColors: string[], selectedColor: Signal<string | number> }) => {
   const [custom, setCustom] = createSignal(false);
   const [openedCustom, setOpenedCustom] = createSignal(false);
-  const [currentColor, setCurrentColor] = createSignal<number | string>(0);
+  const [currentColor, setCurrentColor] = selectedColor;
 
   const colorPicker = new ColorPicker(true);
   colorPicker.setColor('#FFFFFF');
@@ -27,7 +16,7 @@ export const MediaEditorColorPicker = () => {
 
   return <div class='editor-color-picker'>
     <div class='editor-dots-color-picker'>
-      <For each={colors}>
+      <For each={defaultColors}>
         {(color, idx) => <div class='dot-color-outer' style={{visibility: openedCustom() ? 'hidden' : 'visible', background: idx() === currentColor() ? `${color}1A` : 'transparent'}}>
           <div class='dot-color-inner' style={{background: color}} onClick={() => {
             setCurrentColor(idx);
