@@ -106,10 +106,22 @@ $inactive-opacity: .4;
 
         &.custom {
           overflow: hidden;
+          // if custom
+
+          &.selected {
+            box-sizing: border-box;
+            border: 2px solid rgba(black, 0.4);
+          }
 
           img {
             width: 100%;
             height: 100%;
+            opacity: 1;
+            transition: opacity 1s ease-in-out;
+
+            &.hidden {
+              opacity: 0;
+            }
           }
         }
       }
@@ -199,11 +211,11 @@ $inactive-opacity: .4;
   }
 
   &__settings {
-    min-width: 350px;
+    min-width: 400px;
     max-width: 400px;
+    width: 400px;
     flex: 1 0 30%;
     display: flex;
-    width: 100%;
     height: 100%;
     flex-direction: column;
     align-items: center;

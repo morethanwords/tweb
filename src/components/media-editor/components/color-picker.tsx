@@ -20,16 +20,27 @@ export const MediaEditorColorPicker = () => {
   const colorPicker = new ColorPicker(true);
   colorPicker.setColor('#FFFFFF');
 
+  colorPicker.onChange = color => {
+    setCustom(true);
+    setCurrentColor(color.hex);
+  };
+
   return <div class='editor-color-picker'>
     <div class='editor-dots-color-picker'>
       <For each={colors}>
         {(color, idx) => <div class='dot-color-outer' style={{visibility: openedCustom() ? 'hidden' : 'visible', background: idx() === currentColor() ? `${color}1A` : 'transparent'}}>
-          <div class='dot-color-inner' style={{background: color}} onClick={() => setCurrentColor(idx)}></div>
+          <div class='dot-color-inner' style={{background: color}} onClick={() => {
+            setCurrentColor(idx);
+            setCustom(false);
+          }}></div>
         </div>}
       </For>
       <div class='dot-color-outer' style={{background: custom() || (openedCustom()) ? '#FFFFFF1A' : 'transparent'}}>
-        <div class='dot-color-inner custom' onClick={() => setOpenedCustom(val => !val)}>
-          <img src='assets/img/color-wheel.png' />
+        <div classList={{'dot-color-inner custom': true, 'selected': custom()}} style={{background: custom() ? `${currentColor()}` : 'transparent'}}
+          onClick={() => setOpenedCustom(val => !val)}>
+          <Show when={!custom()}>
+            <img src='assets/img/color-wheel.png' />
+          </Show>
         </div>
       </div>
     </div>
