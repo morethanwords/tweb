@@ -1,7 +1,10 @@
+import {fragmentShaderSource, rgbToHsvFragmentShaderCode, vertexShaderSource, vertexShaderSourceFlip} from './shaders';
+
 const PGPhotoEnhanceSegments = 4; // Example value, replace with actual value
 const PGPhotoEnhanceHistogramBins = 256; // Example value, replace with actual value
 
-export function calcCDT(hsvBuffer: Uint8Array, width: number, height: number, buffer: any) {
+export function calcCDT(hsvBuffer: Uint8Array, width: number, height: number) {
+  const buffer = new Uint8Array(PGPhotoEnhanceSegments * PGPhotoEnhanceSegments * PGPhotoEnhanceHistogramBins * 4);
   const imageWidth = width;
   const imageHeight = height;
   const _clipLimit = 1.25;
@@ -84,6 +87,8 @@ export function calcCDT(hsvBuffer: Uint8Array, width: number, height: number, bu
       buffer[index + 3] = 255;
     }
   }
+
+  return buffer;
 }
 
 export const compileShader = (gl: WebGLRenderingContext, source: string, type: number): WebGLShader | null => {
@@ -126,6 +131,19 @@ export const createGLTexture = (gl: WebGLRenderingContext) => {
   return texture;
 }
 
+export const createTextureFromImage = (gl: WebGLRenderingContext, image: TexImageSource) => {
+  const texture = createGLTexture(gl);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  return texture;
+}
+
+
+export const createTextureFromData = (gl: WebGLRenderingContext, width: number, height: number, buffer: ArrayBufferView) => {
+  const texture = createGLTexture(gl);
+  gl.texImage2D (gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, buffer);
+  return texture;
+}
+
 export const positionCoordinates = [
   -1.0,  1.0,
   1.0,  1.0,
@@ -156,6 +174,50 @@ export const bindBufferToAttribute = (gl: WebGLRenderingContext, shaderProgram: 
 
 export const createAndBindBufferToAttribute = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, attributeName: string, source: BufferSource): WebGLBuffer => {
   const glBuffer = createGLBuffer(gl, source);
-  bindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', glBuffer);
+  bindBufferToAttribute(gl, shaderProgram, attributeName, glBuffer);
   return glBuffer;
+}
+
+export const getHSVTexture = (gl: WebGLRenderingContext, image: TexImageSource, width: number, height: number): Uint8Array => {
+  const dataShaderProgram = createAndUseGLProgram(gl, vertexShaderSource, rgbToHsvFragmentShaderCode);
+  const dataTexture = createTextureFromImage(gl, image);
+  const targetTexture = createTextureFromData(gl, width, height, null);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0);
+  createAndBindBufferToAttribute(gl, dataShaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
+  createAndBindBufferToAttribute(gl, dataShaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.viewport(0, 0, width, height);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, dataTexture);
+  gl.uniform1i(gl.getUniformLocation(dataShaderProgram, 'sTexture'), 0);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  const hsvBuffer = new Uint8Array(width * height * 4);
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, hsvBuffer);
+  return hsvBuffer;
+}
+
+export const executeEnhanceFilter = (gl: WebGLRenderingContext, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView) => {
+  const shaderProgram = createAndUseGLProgram(gl, vertexShaderSourceFlip, fragmentShaderSource);
+  const cdtTexture = createTextureFromData(gl, 256, 16, cdtBuffer);
+  const hsvSourceTexture = createTextureFromData(gl, width, height, hsvBuffer);
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, hsvSourceTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'sTexture'), 0);
+
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, cdtTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'inputImageTexture2'), 1);
+  gl.uniform1f(gl.getUniformLocation(shaderProgram, 'intensity'), 0); // Adjust intensity as needed
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  return shaderProgram;
 }
