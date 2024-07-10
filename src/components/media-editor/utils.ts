@@ -85,3 +85,77 @@ export function calcCDT(hsvBuffer: Uint8Array, width: number, height: number, bu
     }
   }
 }
+
+export const compileShader = (gl: WebGLRenderingContext, source: string, type: number): WebGLShader | null => {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if(!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
+    return null;
+  }
+  return shader;
+}
+
+export const createAndUseGLProgram = (gl: WebGLRenderingContext, vertex: string, fragment: string): WebGLProgram | null => {
+  const vertexShader = compileShader(gl, vertex, gl.VERTEX_SHADER);
+  if(!vertexShader) return null;
+  const fragmentShader = compileShader(gl, fragment, gl.FRAGMENT_SHADER);
+  if(!fragmentShader) return null;
+  const shaderProgram = gl.createProgram();
+  gl.attachShader(shaderProgram, vertexShader);
+  gl.attachShader(shaderProgram, fragmentShader);
+  gl.linkProgram(shaderProgram);
+  if(!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+    console.error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+    return null;
+  } else {
+    gl.useProgram(shaderProgram);
+    return shaderProgram;
+  }
+}
+
+export const createGLTexture = (gl: WebGLRenderingContext) => {
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  return texture;
+}
+
+export const positionCoordinates = [
+  -1.0,  1.0,
+  1.0,  1.0,
+  -1.0, -1.0,
+  1.0, -1.0
+];
+
+export const textureCoordinates = [
+  0.0,  1.0,
+  1.0,  1.0,
+  0.0,  0.0,
+  1.0,  0.0
+];
+
+export const createGLBuffer = (gl: WebGLRenderingContext, source: BufferSource) => {
+  const dataPositionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, dataPositionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, source, gl.STATIC_DRAW);
+  return dataPositionBuffer;
+}
+
+export const bindBufferToAttribute = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, attributeName: string, buffer: WebGLBuffer) => {
+  const attribPosition = gl.getAttribLocation(shaderProgram, attributeName);
+  gl.enableVertexAttribArray(attribPosition);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.vertexAttribPointer(attribPosition, 2, gl.FLOAT, false, 0, 0);
+}
+
+export const createAndBindBufferToAttribute = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, attributeName: string, source: BufferSource): WebGLBuffer => {
+  const glBuffer = createGLBuffer(gl, source);
+  bindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', glBuffer);
+  return glBuffer;
+}
