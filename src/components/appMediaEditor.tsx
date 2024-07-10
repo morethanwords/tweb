@@ -2,7 +2,7 @@ import {MediaEditorTabs} from './media-editor/editor-tabs';
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/editor-general-settings';
 import {createEffect, createSignal, onMount} from 'solid-js';
-import {bufferToHSV, calcCDT} from './media-editor/utils';
+import {calcCDT} from './media-editor/utils';
 
 const vertexShaderSource = `
             attribute vec4 aVertexPosition;
@@ -262,11 +262,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
       // Set up inputImageTexture2 (assuming it's another image, you can change as needed)
-
-      // const buffer = [];
-      /* const initialData = context.createImageData(img.width, img.height);
-      initialData.data.set(context.getImageData(0.0, 0.0, img.width, img.height).data);
-      const hsvBuffer = bufferToHSV(initialData, context, img.width, img.height); */
       const PGPhotoEnhanceHistogramBins = 256;
       const PGPhotoEnhanceSegments = 4;
       const renderBufferWidth = img.width;
