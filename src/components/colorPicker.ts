@@ -38,12 +38,12 @@ export default class ColorPicker {
   private rgbInputField: InputField;
   public onChange: (color: ReturnType<ColorPicker['getCurrentColor']>) => void;
 
-  constructor() {
+  constructor(mediaEditor = false) {
     this.container = document.createElement('div');
     this.container.classList.add(ColorPicker.BASE_CLASS);
 
-    const html = `
-      <svg class="${ColorPicker.BASE_CLASS + '-box'}" viewBox="0 0 380 198">
+    const boxSize = mediaEditor ? ['100%', '100%'] : [380, 198];
+    const boxHTML = `<svg class="${ColorPicker.BASE_CLASS + '-box'}" viewBox="0 0 ${boxSize[0]} ${boxSize[1]}">
         <defs>
           <linearGradient id="color-picker-saturation" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stop-color="#fff"></stop>
@@ -58,13 +58,14 @@ export default class ColorPicker {
             <rect x="0" y="0" width="100%" height="100%" fill="url(#color-picker-brightness)"></rect>
           </pattern>
         </defs>
-        <rect rx="10" ry="10" x="0" y="0" width="380" height="198" fill="url(#color-picker-pattern)"></rect>
+        <rect rx="10" ry="10" x="0" y="0" width="${boxSize[0]}" height="${boxSize[1]}" fill="url(#color-picker-pattern)"></rect>
         <svg class="${ColorPicker.BASE_CLASS + '-dragger'} ${ColorPicker.BASE_CLASS + '-box-dragger'}" x="0" y="0">
           <circle r="11" fill="inherit" stroke="#fff" stroke-width="2"></circle>
         </svg>
-      </svg>
-      <div class="${ColorPicker.BASE_CLASS + '-sliders'}">
-        <svg class="${ColorPicker.BASE_CLASS + '-color-slider'}" viewBox="0 0 380 24">
+      </svg>`;
+
+    const slidersHTML = `<div class="${ColorPicker.BASE_CLASS + '-sliders'}">
+        <svg style="height: 20px; width: 100%" class="${ColorPicker.BASE_CLASS + '-color-slider'}" viewBox="0 0 ${boxSize[0]} ${boxSize[1]}">
           <defs>
             <linearGradient id="hue" x1="100%" y1="0%" x2="0%" y2="0%">
               <stop offset="0%" stop-color="#f00"></stop>
@@ -76,21 +77,25 @@ export default class ColorPicker {
               <stop offset="100%" stop-color="#f00"></stop>
             </linearGradient>
           </defs>
-          <rect rx="4" ry="4" x="0" y="9" width="380" height="8" fill="url(#hue)"></rect>
-          <svg class="${ColorPicker.BASE_CLASS + '-dragger'} ${ColorPicker.BASE_CLASS + '-color-slider-dragger'}" x="0" y="13">
+          <rect rx="10" ry="10" x="0" y="0" width="${boxSize[0]}" height="${boxSize[1]}" fill="url(#hue)"></rect>
+          <svg class="${ColorPicker.BASE_CLASS + '-dragger'} ${ColorPicker.BASE_CLASS + '-color-slider-dragger'}" x="0" y="10">
             <circle r="11" fill="inherit" stroke="#fff" stroke-width="2"></circle>
           </svg>
         </svg>
-      </div>
-    `;
+      </div>`;
 
-    this.container.innerHTML = html;
+    this.container.innerHTML = mediaEditor ? `${slidersHTML}${boxHTML}` : `${boxHTML}${slidersHTML}`;
 
-    this.elements.box = this.container.firstElementChild as any;
+    if(mediaEditor) {
+      this.elements.sliders = this.container.firstElementChild as any;
+      this.elements.box = this.elements.sliders.nextElementSibling as any;
+    } else {
+      this.elements.box = this.container.firstElementChild as any;
+      this.elements.sliders = this.elements.box.nextElementSibling as any;
+    }
+
     this.elements.boxDragger = this.elements.box.lastElementChild as any;
     this.elements.saturation = this.elements.box.firstElementChild.firstElementChild as any;
-
-    this.elements.sliders = this.elements.box.nextElementSibling as any;
 
     this.elements.hue = this.elements.sliders.firstElementChild as any;
     this.elements.hueDragger = this.elements.hue.lastElementChild as any;
@@ -101,7 +106,19 @@ export default class ColorPicker {
     const inputs = document.createElement('div');
     inputs.className = ColorPicker.BASE_CLASS + '-inputs';
     inputs.append(this.hexInputField.container, this.rgbInputField.container);
-    this.container.append(inputs);
+
+    if(mediaEditor) {
+      const box = this.container.lastElementChild;
+      this.container.removeChild(box);
+
+      const inline = document.createElement('div');
+      inline.classList.add(ColorPicker.BASE_CLASS + '-inline-pick');
+      inline.append(box);
+      inline.append(inputs);
+      this.container.append(inline);
+    } else {
+      this.container.append(inputs);
+    }
 
     this.hexInputField.input.addEventListener('input', () => {
       let value = this.hexInputField.value.replace(/#/g, '').slice(0, 6);
@@ -246,7 +263,7 @@ export default class ColorPicker {
   private hueHandler(pageX: number, update = true) {
     const eventX = clamp(pageX - this.hueRect.left, 0, this.hueRect.width);
 
-    const percents = eventX / this.hueRect.width;
+    const percents = eventX / (this.hueRect.width || 200);
     this.hue = Math.round(360 * percents);
 
     const hsla = `hsla(${this.hue}, 100%, 50%, ${this.alpha})`;

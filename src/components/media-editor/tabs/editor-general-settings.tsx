@@ -1,6 +1,6 @@
-import {i18n, I18n, LangPackKey} from '../../lib/langPack';
+import {i18n, I18n, LangPackKey} from '../../../lib/langPack';
 import {createEffect, createSignal, For} from 'solid-js';
-import {MediaEditorSlider} from './editor-slider';
+import {MediaEditorSlider} from '../editor-slider';
 
 export interface MediaEditorSetting {
   label: LangPackKey;
@@ -26,7 +26,7 @@ export const MediaEditorGeneralSettings = ({change}: { change: (data: any) => vo
   const [data, setData] = createSignal(settings.filter(entry => entry.key).reduce((acc, curr) => ({...acc, [curr.key]: 0}), { } as any));
   createEffect(() => change(data()));
 
-  return <div class='general-settings-container'>
+  return <div class='settings-container'>
     <For each={settings}>
       {(entry) => <MediaEditorSlider label={entry.label}
         change={entry.key ? val => setData(prev => ({...prev, [entry.key]: val})): () => {}}
