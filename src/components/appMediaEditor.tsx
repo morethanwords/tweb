@@ -1,17 +1,17 @@
 import {MediaEditorTabs} from './media-editor/editor-tabs';
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-settings';
-import {createEffect, createSignal, onMount} from 'solid-js';
+import {createEffect, createSelector, createSignal, onMount} from 'solid-js';
 import {calcCDT, executeEnhanceFilter, genStateUpdater, getHSVTexture} from './media-editor/utils';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
+import {createStore, StoreSetter, unwrap} from 'solid-js/store';
 
 
-export type Updater<T> = (val: T) => void;
 export interface MediaEditorState {
   crop: number;
-  text?: {
+  text: {
     color: number | string;
     align: number;
     outline: number;
@@ -21,11 +21,19 @@ export interface MediaEditorState {
 }
 
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
-  const [mediaEditorState, updateState] = createSignal<MediaEditorState>({crop: 0});
-  const updateCrop = genStateUpdater(updateState, 'crop');
-  const updateText = genStateUpdater(updateState, 'text');
+  const [mediaEditorState, updateState] = createStore<MediaEditorState>({crop: 0, text: {color: 0, align: 0, outline: 0, size: 24, font: 0}});
 
-  createEffect(() => console.info(mediaEditorState()));
+  createEffect(() => {
+    console.info(unwrap(mediaEditorState));
+    console.info(mediaEditorState.crop);
+  });
+
+  createEffect(() => console.info('outline', mediaEditorState.text.outline));
+  createEffect(() => console.info('align', mediaEditorState.text.align));
+
+  setTimeout(() => {
+    updateState('crop', 5);
+  }, 5000);
 
   let glCanvas: HTMLCanvasElement;
   let gl:  WebGLRenderingContext;
@@ -70,8 +78,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   const test = [
     <MediaEditorGeneralSettings change={val => setData(val)} />,
-    <MediaEditorCropSettings crop={mediaEditorState().crop} setCrop={updateCrop} />,
-    <MediaEditorTextSettings text={mediaEditorState().text} setText={updateText}/>,
+    <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,
+    <MediaEditorTextSettings state={mediaEditorState.text} updateState={updateState} />,
     <MediaEditorPaintSettings />,
     <span>Tab 4</span>
   ];

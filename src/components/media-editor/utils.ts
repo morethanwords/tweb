@@ -224,5 +224,9 @@ export const executeEnhanceFilter = (gl: WebGLRenderingContext, width: number, h
   return shaderProgram;
 }
 
-export const genStateUpdater = <T extends {}, K extends keyof T>(signal: Setter<T>, key: K) => (value: T[K]) => signal((prev: T) => ({...prev, [key]: value}));
+export type Updater<T> = (v: T) => void;
+type SignalFn<T> = (fn: (v: T) => T) => void
+export const genStateUpdater = <T extends { }, K extends keyof T>(signal: SignalFn<T>, key: K) => {
+  return (value: T[K]) => signal((prev: T) => ({...prev, [key]: value}));
+}
 

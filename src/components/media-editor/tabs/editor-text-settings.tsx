@@ -10,7 +10,9 @@ import fontNoFrame from '../svg/font-no-frame.svg';
 import fontWhite from '../svg/font-white.svg';
 import fontBlack from '../svg/font-black.svg';
 import {MediaEditorFontPicker} from '../components/font-picker';
-import {MediaEditorState, Updater} from '../../appMediaEditor';
+import {MediaEditorState} from '../../appMediaEditor';
+import {genStateUpdater, Updater} from '../utils';
+import {SetStoreFunction} from 'solid-js/store';
 
 
 const colors = [
@@ -24,7 +26,7 @@ const colors = [
   '#BD5CF3'
 ];
 
-export const MediaEditorTextSettings = (props: { text: MediaEditorState['text'], setText: Updater<MediaEditorState['text']> }) => {
+export const MediaEditorTextSettings = (props: { state: MediaEditorState['text'], updateState: SetStoreFunction<MediaEditorState> }) => {
   const selectedColor = createSignal<number | string>(0);
   const [color] = selectedColor;
   const hexColor = () => {
@@ -41,8 +43,8 @@ export const MediaEditorTextSettings = (props: { text: MediaEditorState['text'],
     <MediaEditorColorPicker defaultColors={colors} selectedColor={selectedColor}/>
 
     <div class='font-settings'>
-      <TripletButtons buttons={textAlignButtons} />
-      <TripletButtons buttons={textFontButtons} />
+      <TripletButtons buttons={textAlignButtons} selected={props.state.align} setSelected={val => props.updateState('text', 'align', val)} />
+      <TripletButtons buttons={textFontButtons} selected={props.state.outline} setSelected={val => props.updateState('text', 'outline', val)}/>
     </div>
     <MediaEditorSlider color={hexColor} label='TextSize' change={console.info} initialValue={15} min={1} max={30}/>
 

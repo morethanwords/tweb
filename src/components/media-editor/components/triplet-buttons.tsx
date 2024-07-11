@@ -1,12 +1,11 @@
-import {createSignal, For, JSX} from 'solid-js';
+import {For, JSX} from 'solid-js';
+import {Updater} from '../utils';
 
-export const TripletButtons = (props: { buttons: JSX.Element[] }) => {
-  const [selected, setSelected] = createSignal(0);
-
+export const TripletButtons = (props: { buttons: JSX.Element[], selected: number, setSelected: (val: number) => void }) => {
   return <div class='triplet-buttons'>
     <For each={props.buttons}>
-      { (button, idx) => <div classList={{button: true, selected: idx() === selected()}}
-        onClick={() => setSelected(idx())}>{ button }</div>}
+      { (button, idx) => <div classList={{button: true, selected: idx() === props.selected}}
+        onClick={() => props.setSelected(idx())}>{ button }</div>}
     </For>
   </div>
 }
