@@ -1,6 +1,6 @@
 import {MediaEditorColorPicker} from '../components/color-picker';
 import {MediaEditorSlider} from '../editor-slider';
-import {createSignal} from 'solid-js';
+import {Accessor, createSignal} from 'solid-js';
 import {TripletButtons} from '../components/triplet-buttons';
 import leftAlign from '../svg/left-text.svg';
 import centerAlign from '../svg/middle-text.svg';
@@ -10,6 +10,7 @@ import fontNoFrame from '../svg/font-no-frame.svg';
 import fontWhite from '../svg/font-white.svg';
 import fontBlack from '../svg/font-black.svg';
 import {MediaEditorFontPicker} from '../components/font-picker';
+import {MediaEditorState, Updater} from '../../appMediaEditor';
 
 
 const colors = [
@@ -23,16 +24,17 @@ const colors = [
   '#BD5CF3'
 ];
 
-export const MediaEditorTextSettings = () => {
+export const MediaEditorTextSettings = (props: { text: MediaEditorState['text'], setText: Updater<MediaEditorState['text']> }) => {
   const selectedColor = createSignal<number | string>(0);
   const [color] = selectedColor;
   const hexColor = () => {
     const selectedColor = color();
     return typeof selectedColor === 'number' ? colors[selectedColor] : selectedColor;
   };
+
+  // refactor to strings
   const textAlignButtons = [<img src={leftAlign} alt='Left Align' />, <img src={centerAlign} alt='Middle Align' />, <img src={rightAlign} alt='Right Align' />];
   const textFontButtons = [<img src={fontNoFrame} alt='Font No Frame' />, <img src={fontWhite} alt='Font White' />, <img src={fontBlack} alt='Font Black' />];
-
   const selectedFont = createSignal(0);
 
   return <div class='settings-container paint-container'>

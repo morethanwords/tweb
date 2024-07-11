@@ -273,6 +273,10 @@ $inactive-opacity: .4;
       transition: background-color 0.15s ease-in;
       cursor: pointer;
 
+      &:not(.selected):hover {
+        background: var(--light-secondary-text-color);
+      }
+
       &.font {
         height: 48px;
         font-size: 16px;

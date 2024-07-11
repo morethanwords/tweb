@@ -1,5 +1,4 @@
-import {createSignal, For, ValidComponent} from 'solid-js';
-import {Arrow, Blur, Brush, Eraser, Neon, Pen} from '../components/tools';
+import {createSignal, For} from 'solid-js';
 import freeIcon from '../svg/crop/free.svg';
 import originalIcon from '../svg/crop/original.svg';
 import squareIcon from '../svg/crop/square.svg';
@@ -9,8 +8,7 @@ import fiveBy4 from '../svg/crop/5by4.svg';
 import sevenBy5 from '../svg/crop/7by5.svg';
 import sixteenBy9 from '../svg/crop/16by9.svg';
 
-export const MediaEditorCropSettings = () => {
-  const [selected, setSelected] = createSignal(0);
+export const MediaEditorCropSettings = (props: { crop: number, setCrop: (val: number) => void }) => {
   // state end
   const aspectRatios = [
     {label: 'Free', icon: freeIcon},
@@ -33,7 +31,7 @@ export const MediaEditorCropSettings = () => {
   return <div class='settings-container paint-container crop-container'>
     <div class='tool-picker crop-settings'>
       <For each={fullWidth}>
-        { (ratio, idx) => <div classList={{'tool': true, 'selected':selected() === idx()}} onClick={() => setSelected(idx())}>
+        { (ratio, idx) => <div classList={{'tool': true, 'selected': props.crop === idx()}} onClick={() => props.setCrop(idx())}>
           <img src={ratio.icon} alt={ratio.label}/>
           <span>{ ratio.label }</span>
         </div> }
@@ -41,7 +39,7 @@ export const MediaEditorCropSettings = () => {
     </div>
     <div class='tool-picker crop-settings grid'>
       <For each={symmetrical}>
-        { (ratio, idx) => <div classList={{'tool': true, 'selected':selected() === idx() + 3}} onClick={() => setSelected(idx() + 3)}>
+        { (ratio, idx) => <div classList={{'tool': true, 'selected': props.crop === idx() + 3}} onClick={() => props.setCrop(idx() + 3)}>
           <img src={ratio.icon} alt={ratio.label} classList={{rotate: ratio.rotate}}/>
           <span>{ ratio.label }</span>
         </div> }

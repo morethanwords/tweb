@@ -1,4 +1,6 @@
 import {fragmentShaderSource, rgbToHsvFragmentShaderCode, vertexShaderSource, vertexShaderSourceFlip} from './shaders';
+import {MediaEditorState} from '../appMediaEditor';
+import {Setter, Signal} from 'solid-js';
 
 const PGPhotoEnhanceSegments = 4; // Example value, replace with actual value
 const PGPhotoEnhanceHistogramBins = 256; // Example value, replace with actual value
@@ -221,3 +223,6 @@ export const executeEnhanceFilter = (gl: WebGLRenderingContext, width: number, h
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   return shaderProgram;
 }
+
+export const genStateUpdater = <T extends {}, K extends keyof T>(signal: Setter<T>, key: K) => (value: T[K]) => signal((prev: T) => ({...prev, [key]: value}));
+
