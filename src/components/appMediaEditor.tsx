@@ -21,7 +21,16 @@ export interface MediaEditorState {
 }
 
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
-  const [mediaEditorState, updateState] = createStore<MediaEditorState>({crop: 0, text: {color: 0, align: 0, outline: 0, size: 24, font: 0}});
+  const [mediaEditorState, updateState] = createStore<MediaEditorState>({
+    crop: 0,
+    text: {
+      color: 0,
+      align: 0,
+      outline: 0,
+      size: 20,
+      font: 0
+    }
+  });
 
   createEffect(() => {
     console.info(unwrap(mediaEditorState));
@@ -30,9 +39,12 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   createEffect(() => console.info('outline', mediaEditorState.text.outline));
   createEffect(() => console.info('align', mediaEditorState.text.align));
+  createEffect(() => console.info('color', mediaEditorState.text.color));
+  createEffect(() => console.info('size', mediaEditorState.text.size));
+  createEffect(() => console.info('font', mediaEditorState.text.font));
 
   setTimeout(() => {
-    updateState('crop', 5);
+    updateState('text', 'size', 5);
   }, 5000);
 
   let glCanvas: HTMLCanvasElement;

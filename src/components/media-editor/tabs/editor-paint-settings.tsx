@@ -25,9 +25,9 @@ export const MediaEditorPaintSettings = () => {
   createEffect(() => console.info(hexColor()));
 
   return <div class='settings-container paint-container'>
-    <MediaEditorColorPicker defaultColors={colors} selectedColor={selectedColor}/>
+    { /* <MediaEditorColorPicker defaultColors={colors} selectedColor={selectedColor}/> */ }
 
-    <MediaEditorSlider color={hexColor} label='TextSize' change={console.info} initialValue={15} min={1} max={30}  />
+    { /* <MediaEditorSlider color={hexColor} label='TextSize' change={console.info} initialValue={15} min={1} max={30}  /> */ }
 
     <MediaEditorTookPicker />
   </div>

@@ -1,7 +1,6 @@
 import {createSignal, For, JSX, Signal} from 'solid-js';
 
-export const MediaEditorFontPicker = (props: { selectedFont: Signal<number> }) => {
-  const [selected, setSelected] = props.selectedFont;
+export const MediaEditorFontPicker = (props: { selectedFont: number, setFont: (val: number) => void }) => {
   const toolsConfig = [
     ['Roboto', {'font-weight': 500}],
     ['Typewriter', {'font-weight': 600}],
@@ -16,9 +15,9 @@ export const MediaEditorFontPicker = (props: { selectedFont: Signal<number> }) =
 
   return <div class='tool-picker'>
     <For each={toolsConfig2}>
-      { (tool, idx) => <div classList={{'tool': true, 'font': true, 'selected': selected() === idx()}}
+      { (tool, idx) => <div classList={{'tool': true, 'font': true, 'selected': props.selectedFont === idx()}}
         style={tool[1]}
-        onClick={() => setSelected(idx())}>
+        onClick={() => props.setFont(idx())}>
         { tool[0] }
       </div> }
     </For>
