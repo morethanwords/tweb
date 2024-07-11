@@ -41,7 +41,7 @@ export const MediaEditorTextSettings = (props: { state: MediaEditorState['text']
       <TripletButtons buttons={textAlignButtons} selected={props.state.align} setSelected={val => props.updateState('text', 'align', val)} />
       <TripletButtons buttons={textFontButtons} selected={props.state.outline} setSelected={val => props.updateState('text', 'outline', val)}/>
     </div>
-    <MediaEditorSlider color={hexColor()} label='TextSize' change={val => props.updateState('text', 'size', val)} initialValue={props.state.size} min={1} max={30}/>
+    <MediaEditorSlider color={hexColor()} label='TextSize' change={val => props.updateState('text', 'size', val)} initialValue={props.state.size} min={8} max={40}/>
 
     <MediaEditorFontPicker selectedFont={props.state.font} setFont={val => props.updateState('text', 'font', val)} />
   </div>

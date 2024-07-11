@@ -17,6 +17,11 @@ export interface MediaEditorState {
     outline: number;
     size: number;
     font: number;
+  },
+  paint: {
+    size: number;
+    color: number | string;
+    tool: number;
   }
 }
 
@@ -27,8 +32,13 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       color: 0,
       align: 0,
       outline: 0,
-      size: 20,
+      size: 24,
       font: 0
+    },
+    paint: {
+      size: 15,
+      color: 0,
+      tool: 0
     }
   });
 
@@ -39,8 +49,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   createEffect(() => console.info('outline', mediaEditorState.text.outline));
   createEffect(() => console.info('align', mediaEditorState.text.align));
-  createEffect(() => console.info('color', mediaEditorState.text.color));
-  createEffect(() => console.info('size', mediaEditorState.text.size));
+  createEffect(() => console.info('color', mediaEditorState.paint.color));
+  createEffect(() => console.info('size', mediaEditorState.paint.tool));
   createEffect(() => console.info('font', mediaEditorState.text.font));
 
   setTimeout(() => {
@@ -92,7 +102,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     <MediaEditorGeneralSettings change={val => setData(val)} />,
     <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,
     <MediaEditorTextSettings state={mediaEditorState.text} updateState={updateState} />,
-    <MediaEditorPaintSettings />,
+    <MediaEditorPaintSettings state={mediaEditorState.paint} updateState={updateState} />,
     <span>Tab 4</span>
   ];
 

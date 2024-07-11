@@ -2,6 +2,8 @@ import {MediaEditorColorPicker} from '../components/color-picker';
 import {MediaEditorSlider} from '../editor-slider';
 import {createEffect, createSignal} from 'solid-js';
 import {MediaEditorTookPicker} from '../components/tool-picker';
+import {MediaEditorState} from '../../appMediaEditor';
+import {SetStoreFunction} from 'solid-js/store';
 
 const colors = [
   '#FFFFFF',
@@ -14,20 +16,18 @@ const colors = [
   '#BD5CF3'
 ];
 
-export const MediaEditorPaintSettings = () => {
-  const selectedColor = createSignal<number | string>(0);
-  const [color] = selectedColor;
+export const MediaEditorPaintSettings = (props: { state: MediaEditorState['paint'], updateState: SetStoreFunction<MediaEditorState> }) => {
   const hexColor = () => {
-    const selectedColor = color();
+    const selectedColor = props.state.color;
     return typeof selectedColor === 'number' ? colors[selectedColor] : selectedColor;
   };
 
   createEffect(() => console.info(hexColor()));
 
   return <div class='settings-container paint-container'>
-    { /* <MediaEditorColorPicker defaultColors={colors} selectedColor={selectedColor}/> */ }
+    <MediaEditorColorPicker defaultColors={colors} selectedColor={props.state.color} setSelected={val => props.updateState('paint', 'color', val)} />
 
-    { /* <MediaEditorSlider color={hexColor} label='TextSize' change={console.info} initialValue={15} min={1} max={30}  /> */ }
+    <MediaEditorSlider color={hexColor()} label='TextSize' change={val => props.updateState('paint', 'size', val)} initialValue={props.state.size} min={1} max={30}  />
 
     <MediaEditorTookPicker />
   </div>
