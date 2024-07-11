@@ -143,6 +143,10 @@ $inactive-opacity: .4;
   .paint-container {
     padding: 0.5rem;
   }
+
+  .crop-container {
+    gap: 0.5rem;
+  }
   //
 
   .popup-stars-transactions-contents {
@@ -232,6 +236,32 @@ $inactive-opacity: .4;
     align-items: stretch;
     gap: 0.5rem;
 
+    &.grid {
+      display: grid;
+      grid-template-columns: auto auto;
+
+      .rotate {
+        rotate: 90deg;
+      }
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    &.crop-settings .tool {
+      gap: 1.5rem;
+    }
+
+    &:not(.crop-settings) {
+      svg, img {
+        transition: margin-left 0.25s ease-in-out;
+        margin-left: -1.5rem;
+      }
+    }
+
     .tool {
       display: flex;
       align-items: center;
@@ -255,11 +285,6 @@ $inactive-opacity: .4;
         align-items: center;
         height: 20px;
         mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0rem, rgba(0, 0, 0, 0) 0.75rem, rgba(0, 0, 0, 1) 2rem);
-      }
-
-      svg, img {
-        transition: margin-left 0.25s ease-in-out;
-        margin-left: -1.5rem;
       }
 
       &.selected {

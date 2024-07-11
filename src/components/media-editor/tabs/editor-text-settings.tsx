@@ -1,6 +1,6 @@
 import {MediaEditorColorPicker} from '../components/color-picker';
 import {MediaEditorSlider} from '../editor-slider';
-import {createEffect, createSignal} from 'solid-js';
+import {createSignal} from 'solid-js';
 import {TripletButtons} from '../components/triplet-buttons';
 import leftAlign from '../svg/left-text.svg';
 import centerAlign from '../svg/middle-text.svg';
@@ -30,15 +30,10 @@ export const MediaEditorTextSettings = () => {
     const selectedColor = color();
     return typeof selectedColor === 'number' ? colors[selectedColor] : selectedColor;
   };
-
-
   const textAlignButtons = [<img src={leftAlign} alt='Left Align' />, <img src={centerAlign} alt='Middle Align' />, <img src={rightAlign} alt='Right Align' />];
   const textFontButtons = [<img src={fontNoFrame} alt='Font No Frame' />, <img src={fontWhite} alt='Font White' />, <img src={fontBlack} alt='Font Black' />];
 
   const selectedFont = createSignal(0);
-  const [font] = selectedFont;
-
-  createEffect(() => console.info('SEL FONT', font()));
 
   return <div class='settings-container paint-container'>
     <MediaEditorColorPicker defaultColors={colors} selectedColor={selectedColor}/>
