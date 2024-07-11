@@ -7,7 +7,6 @@ export const MediaEditorSlider = ({label, initialValue, min, max, symmetric, cha
   const range = new RangeSettingSelector(label, 1, initialValue || 0, symmetric ? -max : min, max, true, symmetric);
   range.onChange = (value) => change(value);
   createEffect(() => {
-    console.info('huh', color());
     color && range.container.style.setProperty('--primary-color', color());
   });
   return range.container;

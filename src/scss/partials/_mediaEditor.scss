@@ -224,4 +224,41 @@ $inactive-opacity: .4;
       border-bottom: none;
     }
   }
+
+  .tool-picker {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+
+    .tool {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      padding: 0.75rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+      border-radius: 10px;
+
+      .tool-media {
+        display: flex;
+        align-items: center;
+        height: 20px;
+        mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0rem, rgba(0, 0, 0, 0) 0.75rem, rgba(0, 0, 0, 1) 2rem);
+      }
+
+      svg, img {
+        transition: margin-left 0.25s ease-in-out;
+        margin-left: -1.5rem;
+      }
+
+      &.selected {
+        background: #2B2B2B;
+
+        svg, img {
+          margin-left: 0;
+        }
+      }
+    }
+  }
 }

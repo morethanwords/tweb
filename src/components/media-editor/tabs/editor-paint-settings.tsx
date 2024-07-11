@@ -1,6 +1,7 @@
 import {MediaEditorColorPicker} from '../components/color-picker';
 import {MediaEditorSlider} from '../editor-slider';
 import {createEffect, createSignal} from 'solid-js';
+import {MediaEditorTookPicker} from '../components/tool-picker';
 
 const colors = [
   '#FFFFFF',
@@ -27,5 +28,7 @@ export const MediaEditorPaintSettings = () => {
     <MediaEditorColorPicker defaultColors={colors} selectedColor={selectedColor}/>
 
     <MediaEditorSlider color={hexColor} label='TextSize' change={console.info} initialValue={15} min={1} max={30}  />
+
+    <MediaEditorTookPicker />
   </div>
 };
