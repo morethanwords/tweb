@@ -4,6 +4,7 @@ import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-set
 import {createEffect, createSignal, onMount} from 'solid-js';
 import {calcCDT, executeEnhanceFilter, getHSVTexture} from './media-editor/utils';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
+import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
   let glCanvas: HTMLCanvasElement;
@@ -50,7 +51,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const test = [
     <MediaEditorGeneralSettings change={val => setData(val)} />,
     <span>Tab 1</span>,
-    <span>Tab 2</span>,
+    <MediaEditorTextSettings />,
     <MediaEditorPaintSettings />,
     <span>Tab 4</span>
   ];

@@ -135,6 +135,7 @@ $inactive-opacity: .4;
         align-items: center;
         justify-content: center;
         background: transparent;
+        transition: background-color 0.25s ease-in-out;
       }
     }
   }
@@ -239,6 +240,15 @@ $inactive-opacity: .4;
       position: relative;
       overflow: hidden;
       border-radius: 10px;
+      transition: background-color 0.15s ease-in;
+      cursor: pointer;
+
+      &.font {
+        height: 48px;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 20px;
+      }
 
       .tool-media {
         display: flex;
@@ -258,6 +268,34 @@ $inactive-opacity: .4;
         svg, img {
           margin-left: 0;
         }
+      }
+    }
+  }
+
+  .font-settings {
+    margin-top: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .triplet-buttons {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+
+    .button {
+      width: 54px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      border-radius: 10px;
+      justify-content: center;
+      background: transparent;
+      transition: background-color 0.15s ease-in;
+
+      &.selected {
+        background: #2B2B2B;
       }
     }
   }
