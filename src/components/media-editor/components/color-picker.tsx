@@ -20,6 +20,7 @@ export const MediaEditorColorPicker = (props: { defaultColors: string[], selecte
       setOpenedCustom(false);
     } else {
       setCustom(true);
+      colorPicker.setColor(color);
     }
   });
 
