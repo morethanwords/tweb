@@ -1,14 +1,13 @@
 import {MediaEditorTabs} from './media-editor/editor-tabs';
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-settings';
-import {createEffect, createSelector, createSignal, onMount} from 'solid-js';
-import {calcCDT, executeEnhanceFilter, genStateUpdater, getHSVTexture} from './media-editor/utils';
+import {createEffect, createSignal, onMount} from 'solid-js';
+import {calcCDT, executeEnhanceFilter, getHSVTexture} from './media-editor/utils';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
-import {createStore, StoreSetter, unwrap} from 'solid-js/store';
+import {createStore} from 'solid-js/store';
 
-// only for drawing, not
 export interface MediaEditorSettings {
   crop: number;
   text: {
@@ -36,9 +35,10 @@ export interface MediaEditorSettings {
     grain: number,
     sharpen: number
   }
-  // stickers -> probably not here
-  // text -> probably net here
 }
+
+// need state for undo-redo
+// it wil contain actual draw data: filters, crop, stickers pos, text pos, paint pos
 
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
   const [mediaEditorState, updateState] = createStore<MediaEditorSettings>({
@@ -70,13 +70,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
   });
 
-  createEffect(() => console.info('tools 0', mediaEditorState.filters.enhance));
-  createEffect(() => console.info('tools 1', mediaEditorState.paint.tools[1]));
-  createEffect(() => console.info('tools 2', mediaEditorState.paint.tools[2]));
-  createEffect(() => console.info('tools 3', mediaEditorState.paint.tools[3]));
-  createEffect(() => console.info('size', mediaEditorState.paint.size));
-  createEffect(() => console.info('tool', mediaEditorState.paint.tool));
-
   let glCanvas: HTMLCanvasElement;
   let gl:  WebGLRenderingContext;
   let container: HTMLDivElement;
@@ -107,10 +100,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   const [fn, setFN] = createSignal((ebn: number) => { });
 
-  const [data, setData] = createSignal();
-
   createEffect(() => {
-    const en = (data() as any)?.['enhance'];
+    const en = mediaEditorState.filters.enhance;
     console.info(en);
 
     if(fn()) {
@@ -119,7 +110,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   });
 
   const test = [
-    <MediaEditorGeneralSettings change={val => setData(val)} />,
+    <MediaEditorGeneralSettings state={mediaEditorState.filters} updateState={updateState} />,
     <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,
     <MediaEditorTextSettings state={mediaEditorState.text} updateState={updateState} />,
     <MediaEditorPaintSettings state={mediaEditorState.paint} updateState={updateState} />,
