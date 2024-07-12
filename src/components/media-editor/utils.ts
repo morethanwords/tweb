@@ -1,5 +1,5 @@
 import {fragmentShaderSource, rgbToHsvFragmentShaderCode, vertexShaderSource, vertexShaderSourceFlip} from './shaders';
-import {MediaEditorState} from '../appMediaEditor';
+import {MediaEditorSettings} from '../appMediaEditor';
 import {Setter, Signal} from 'solid-js';
 
 const PGPhotoEnhanceSegments = 4; // Example value, replace with actual value

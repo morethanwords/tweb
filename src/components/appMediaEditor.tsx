@@ -8,8 +8,8 @@ import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings'
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
 import {createStore, StoreSetter, unwrap} from 'solid-js/store';
 
-
-export interface MediaEditorState {
+// only for drawing, not
+export interface MediaEditorSettings {
   crop: number;
   text: {
     color: number | string;
@@ -20,13 +20,28 @@ export interface MediaEditorState {
   },
   paint: {
     size: number;
-    color: number | string;
     tool: number;
+    tools: (number | string)[]
+  },
+  filters: {
+    enhance: number,
+    brightness: number,
+    contrast: number,
+    saturation: number,
+    warmth: number,
+    fade: number,
+    highlights: number,
+    shadows: number,
+    vignette: number,
+    grain: number,
+    sharpen: number
   }
+  // stickers -> probably not here
+  // text -> probably net here
 }
 
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
-  const [mediaEditorState, updateState] = createStore<MediaEditorState>({
+  const [mediaEditorState, updateState] = createStore<MediaEditorSettings>({
     crop: 0,
     text: {
       color: 0,
@@ -37,25 +52,30 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     },
     paint: {
       size: 15,
-      color: 0,
-      tool: 0
+      tool: 0,
+      tools: [0, 1, 2, 3]
+    },
+    filters: {
+      enhance: 0,
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      warmth: 0,
+      fade: 0,
+      highlights: 0,
+      shadows: 0,
+      vignette: 0,
+      grain: 0,
+      sharpen: 0
     }
   });
 
-  createEffect(() => {
-    console.info(unwrap(mediaEditorState));
-    console.info(mediaEditorState.crop);
-  });
-
-  createEffect(() => console.info('outline', mediaEditorState.text.outline));
-  createEffect(() => console.info('align', mediaEditorState.text.align));
-  createEffect(() => console.info('color', mediaEditorState.paint.color));
-  createEffect(() => console.info('size', mediaEditorState.paint.tool));
-  createEffect(() => console.info('font', mediaEditorState.text.font));
-
-  setTimeout(() => {
-    updateState('text', 'size', 5);
-  }, 5000);
+  createEffect(() => console.info('tools 0', mediaEditorState.filters.enhance));
+  createEffect(() => console.info('tools 1', mediaEditorState.paint.tools[1]));
+  createEffect(() => console.info('tools 2', mediaEditorState.paint.tools[2]));
+  createEffect(() => console.info('tools 3', mediaEditorState.paint.tools[3]));
+  createEffect(() => console.info('size', mediaEditorState.paint.size));
+  createEffect(() => console.info('tool', mediaEditorState.paint.tool));
 
   let glCanvas: HTMLCanvasElement;
   let gl:  WebGLRenderingContext;

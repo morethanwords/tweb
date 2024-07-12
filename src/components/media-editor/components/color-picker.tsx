@@ -1,4 +1,4 @@
-import {createSignal, For, Show, Signal} from 'solid-js';
+import {createEffect, createSignal, For, Show, Signal} from 'solid-js';
 import ColorPicker from '../../colorPicker';
 
 export const MediaEditorColorPicker = (props: { defaultColors: string[], selectedColor: string | number, setSelected: (val: number | string) => void }) => {
@@ -13,11 +13,22 @@ export const MediaEditorColorPicker = (props: { defaultColors: string[], selecte
     props.setSelected(color.hex);
   };
 
+  createEffect(() => {
+    const color = props.selectedColor;
+    if(typeof color === 'number') {
+      setCustom(false);
+      setOpenedCustom(false);
+    } else {
+      setCustom(true);
+    }
+  });
+
   return <div class='editor-color-picker'>
     <div class='editor-dots-color-picker'>
       <For each={props.defaultColors}>
         {(color, idx) => <div class='dot-color-outer' style={{visibility: openedCustom() ? 'hidden' : 'visible', background: idx() === props.selectedColor ? `${color}1A` : 'transparent'}}>
           <div class='dot-color-inner' style={{background: color}} onClick={() => {
+            console.info('wtfffff');
             props.setSelected(idx());
             setCustom(false);
           }}></div>

@@ -9,7 +9,7 @@ import fontNoFrame from '../svg/font-no-frame.svg';
 import fontWhite from '../svg/font-white.svg';
 import fontBlack from '../svg/font-black.svg';
 import {MediaEditorFontPicker} from '../components/font-picker';
-import {MediaEditorState} from '../../appMediaEditor';
+import {MediaEditorSettings} from '../../appMediaEditor';
 import {SetStoreFunction} from 'solid-js/store';
 
 
@@ -24,7 +24,7 @@ const colors = [
   '#BD5CF3'
 ];
 
-export const MediaEditorTextSettings = (props: { state: MediaEditorState['text'], updateState: SetStoreFunction<MediaEditorState> }) => {
+export const MediaEditorTextSettings = (props: { state: MediaEditorSettings['text'], updateState: SetStoreFunction<MediaEditorSettings> }) => {
   const hexColor = () => {
     const selectedColor = props.state.color;
     return typeof selectedColor === 'number' ? colors[selectedColor] : selectedColor;
