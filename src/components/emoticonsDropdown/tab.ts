@@ -30,6 +30,7 @@ import wrapStickerSetThumb from '../wrappers/stickerSetThumb';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import SuperStickerRenderer from './tabs/SuperStickerRenderer';
+import {RLottieColor} from '../../lib/rlottie/rlottiePlayer';
 
 export default class EmoticonsTabC<Category extends StickersTabCategory<any, any>, T = any> implements EmoticonsTab {
   public content: HTMLElement;
@@ -58,6 +59,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
 
   public getContainerSize: Category['getContainerSize'];
 
+  private color: RLottieColor;
   public middlewareHelper: MiddlewareHelper;
   private disposeSearch: () => void;
 
@@ -78,9 +80,11 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     processSearchResult?: EmoticonsTabC<Category, T>['processSearchResult'],
     searchNoLoader?: boolean,
     searchPlaceholder?: LangPackKey,
-    searchType?: Parameters<typeof EmoticonsSearch>[0]['type']
+    searchType?: Parameters<typeof EmoticonsSearch>[0]['type'],
+    color?: RLottieColor
   }) {
     safeAssign(this, options);
+    this.color = options.color;
     this.categories = {};
     this.categoriesMap = new Map();
     this.categoriesByMenuTabMap = new Map();
@@ -186,7 +190,8 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
         loading,
         onValue: setQuery,
         onFocusChange: setFocused,
-        onGroup: this.groupFetcher ? setGroup : undefined
+        onGroup: this.groupFetcher ? setGroup : undefined,
+        color: this.color
       });
     }, searchContainer);
   }

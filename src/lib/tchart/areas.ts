@@ -62,7 +62,7 @@ export default class TAreas {
 
     // cache rendered version
     if(mini) {
-      const hash = [dims.w, dims.h, state.xg1, state.xg2, this.isDarkMode, state.zoomMode, zoomMorph];
+      const hash = [dims.w, dims.h, state.xg1, state.xg2, this.isDarkMode || true, state.zoomMode, zoomMorph];
       for(i = 0; i < ysLen; i++) {
         hash.push(state[`om_${i}`]);
         hash.push(state[`f_${i}`]);
@@ -231,7 +231,7 @@ export default class TAreas {
           ind: visibleCols[i],
           value: totalPerItem[i],
           label: yItem.label,
-          color: this.isDarkMode ? yItem.colors_n[2] : yItem.colors_d[2]
+          color: (this.isDarkMode || true) ? yItem.colors_n[2] : yItem.colors_d[2]
         });
 
 
@@ -257,7 +257,7 @@ export default class TAreas {
 
       const k = o * yScale;
 
-      ctx.fillStyle = this.isDarkMode ? ys[i].colors_n[0] : ys[i].colors_d[0];
+      ctx.fillStyle = (this.isDarkMode || true) ? ys[i].colors_n[0] : ys[i].colors_d[0];
       ctx.globalAlpha = state[`f_${i}`] * 0.9 + 0.1;
       ctx.beginPath();
 
@@ -510,9 +510,9 @@ export default class TAreas {
         if(isOutboard) {
           fontSize = Math.max(fontSize, 14);
           offset = rad + fontSize / 3 + 13;
-          ctx.fillStyle = this.isDarkMode ? ys[i].colors_n[0] : ys[i].colors_d[0];
+          ctx.fillStyle = (this.isDarkMode || true) ? ys[i].colors_n[0] : ys[i].colors_d[0];
           ctx.lineWidth = 1;
-          ctx.strokeStyle = this.isDarkMode ? ys[i].colors_n[0] : ys[i].colors_d[0];
+          ctx.strokeStyle = (this.isDarkMode || true) ? ys[i].colors_n[0] : ys[i].colors_d[0];
 
           const lx1 = cx + sx + (cosVal * (rad - 1)) * dpi;
           const ly1 = cy + sy - (sinVal * (rad - 1)) * dpi;

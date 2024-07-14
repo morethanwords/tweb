@@ -44,6 +44,7 @@ import safeAssign from '../../helpers/object/safeAssign';
 import ButtonIcon from '../buttonIcon';
 import StickersTabCategory from './category';
 import {Middleware} from '../../helpers/middleware';
+import {RLottieColor} from '../../lib/rlottie/rlottiePlayer';
 
 export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
 
@@ -121,13 +122,19 @@ export class EmoticonsDropdown extends DropdownHover {
   private _chatInput: ChatInput;
   public textColor: string;
 
+  private mediaEditor?: true;
   public isStandalone: boolean;
+  public INIT_TAB_ID: number;
+
+  private mediaEditorSelect: (...args: any[]) => void;
 
   constructor(options: {
+    mediaEditor?: true,
     customParentElement?: HTMLElement,
     // customAnchorElement?: HTMLElement,
     getOpenPosition?: () => DOMRectEditable,
     tabsToRender?: EmoticonsTab[],
+    mediaEditorSelect?: (...args: any[]) => void,
     customOnSelect?: (emoji: {element: HTMLElement} & ReturnType<typeof getEmojiFromElement>) => void,
   } = {}) {
     super({
@@ -136,6 +143,7 @@ export class EmoticonsDropdown extends DropdownHover {
     });
     safeAssign(this, options);
 
+    this.mediaEditorSelect = options.mediaEditorSelect;
     this.listenerSetter = new ListenerSetter();
     this.isStandalone = !!options?.tabsToRender;
     this.element.classList.toggle('is-standalone', this.isStandalone)
@@ -196,7 +204,7 @@ export class EmoticonsDropdown extends DropdownHover {
       }
     });
 
-    this.addEventListener('close', () => {
+    /*  this.addEventListener('close', () => {
       this.lazyLoadQueue.lock();
 
       // нужно залочить группу и выключить стикеры
@@ -205,9 +213,9 @@ export class EmoticonsDropdown extends DropdownHover {
 
       const tab = this.tab;
       tab.onClose?.();
-    });
+    }); */
 
-    this.addEventListener('closed', () => {
+    /* this.addEventListener('closed', () => {
       // теперь можно убрать visible, чтобы они не включились после фокуса
       animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
       this.lazyLoadQueue.unlock();
@@ -219,7 +227,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
       const tab = this.tab;
       tab.onClosed?.();
-    });
+    }); */
   }
 
   public canUseEmoji(emoji: AppEmoji, showToast?: boolean) {
@@ -228,7 +236,8 @@ export class EmoticonsDropdown extends DropdownHover {
   }
 
   public get tab() {
-    return this.tabs[this.tabId];
+    this.tabId = this.tabId >= 0 ? this.tabId : 0;
+    return this.tabs[this.tabId || 0];
   }
 
   public get chatInput() {
@@ -261,9 +270,9 @@ export class EmoticonsDropdown extends DropdownHover {
 
     if(!this.tabsToRender.length) {
       this.tabsToRender = [
-        new EmojiTab({managers: this.managers, preloaderDelay: 200}),
-        new StickersTab(this.managers),
-        new GifsTab({managers: this.managers})
+        // new EmojiTab({managers: this.managers, preloaderDelay: 200}),
+        new StickersTab(this.managers, this.mediaEditor ? [255, 255, 255] : undefined)
+        // new GifsTab({managers: this.managers})
       ];
     }
 
@@ -273,12 +282,14 @@ export class EmoticonsDropdown extends DropdownHover {
       tab.tabId = idx;
       this.tabs[idx] = tab;
     });
+    this.tabId = 0;
 
     this.container = this.element.querySelector('.emoji-container .tabs-container') as HTMLDivElement;
     this.container.prepend(...this.tabsToRender.map((tab) => (tab as EmojiTab).container));
     this.tabsEl = this.element.querySelector('.emoji-tabs') as HTMLUListElement;
 
     this.selectTab = horizontalMenu(this.tabsEl, this.container, this.onSelectTabClick, () => {
+      this.tabId = 0;
       const {tab} = this;
       tab.init?.();
       animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
@@ -354,17 +365,23 @@ export class EmoticonsDropdown extends DropdownHover {
 
     const HIDE_EMOJI_TAB = IS_APPLE_MOBILE && false;
 
-    const INIT_TAB_ID = HIDE_EMOJI_TAB ? this.getTab(StickersTab).tabId : this.getTab(EmojiTab).tabId;
+    this.INIT_TAB_ID = 0; // HIDE_EMOJI_TAB ? this.getTab(StickersTab).tabId : this.getTab(EmojiTab).tabId;
+
 
     if(HIDE_EMOJI_TAB) {
       (this.tabsEl.children[1] as HTMLElement).classList.add('hide');
     }
 
-    simulateClickEvent(this.tabsEl.children[INIT_TAB_ID + 1] as HTMLElement);
+    simulateClickEvent(this.tabsEl.children[this.INIT_TAB_ID + 1] as HTMLElement);
+    setTimeout(() => {
+      // simulateClickEvent(this.tabsEl.children[INIT_TAB_ID + 2] as HTMLElement);
+    });
+
     if(this.tabsToRender.length <= 1) {
       this.tabsEl.classList.add('hide');
     }
-    this.tabs[INIT_TAB_ID].init?.(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
+
+    this.tabs[this.INIT_TAB_ID].init?.(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
 
     if(!IS_TOUCH_SUPPORTED) {
       let lastMouseMoveEvent: MouseEvent, mouseMoveEventAttached = false;
@@ -411,6 +428,10 @@ export class EmoticonsDropdown extends DropdownHover {
     return ret;
   }
 
+  public prepareForMediaEditor() {
+    simulateClickEvent(this.tabsEl.children[this.INIT_TAB_ID + 2] as HTMLElement);
+  }
+
   public getElement() {
     return this.element;
   }
@@ -425,7 +446,7 @@ export class EmoticonsDropdown extends DropdownHover {
     });
   }
 
-  private onSelectTabClick = (id: number) => {
+  public onSelectTabClick = (id: number) => {
     if(this.tabId === id) {
       const {tab} = this;
       this.scrollTo(tab, tab.scrollable.container as HTMLElement);
@@ -646,6 +667,14 @@ export class EmoticonsDropdown extends DropdownHover {
   };
 
   public onMediaClick = async(e: {target: EventTarget | Element}, clearDraft = false, silent?: boolean, ignoreNoPremium?: boolean) => {
+    if(this.mediaEditorSelect) {
+      const target = findUpTag(e.target as HTMLElement, 'DIV');
+      const docId = target.dataset.docId;
+      console.info(docId);
+      this.mediaEditorSelect(e, docId);
+      return;
+    }
+
     const target = findUpTag(e.target as HTMLElement, 'DIV');
     if(!target) return false;
 

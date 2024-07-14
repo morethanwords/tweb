@@ -3,8 +3,7 @@
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
-
-import type RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
+import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import type {ThumbCache} from '../../lib/storages/thumbs';
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
@@ -80,7 +79,7 @@ const getThumbFromContainer = (container: HTMLElement) => {
   return element;
 };
 
-export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache}: {
+export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache, color}: {
   doc: MyDocument,
   div: HTMLElement | HTMLElement[],
   middleware?: Middleware,
@@ -114,7 +113,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   textColor?: WrapSomethingOptions['textColor'],
   scrollable?: Scrollable
   showPremiumInfo?: () => void,
-  useCache?: boolean
+  useCache?: boolean,
+  color?: RLottiePlayer['color'],
 }) {
   const options = arguments[0];
   div = Array.isArray(div) ? div : [div];
@@ -155,6 +155,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     // div.dataset.stickerLoop = '' + +(loop || false);
 
     div.classList.add('media-sticker-wrapper');
+    div.setAttribute('draggable', 'true');
   });
 
   if(play && liteModeKey && !liteMode.isAvailable(liteModeKey) && !isCustomEmoji && !isEffect) {
@@ -446,7 +447,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         middleware: loadStickerMiddleware ?? middleware,
         group,
         liteModeKey: liteModeKey || undefined,
-        textColor: !isCustomEmoji ? textColor : undefined
+        textColor: !isCustomEmoji ? textColor : undefined,
+        color: color || undefined
       });
 
       // const deferred = deferredPromise<void>();

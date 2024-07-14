@@ -1,4 +1,3 @@
-import {MediaEditorTabs} from './media-editor/editor-tabs';
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-settings';
 import {createEffect, createSignal, onMount} from 'solid-js';
@@ -7,6 +6,10 @@ import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-setting
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
 import {createStore} from 'solid-js/store';
+import {MediaEditorTabs} from './media-editor/editor-tabs';
+import {EmoticonsDropdown} from './emoticonsDropdown';
+import StickersTab from './emoticonsDropdown/tabs/stickers';
+import rootScope from '../lib/rootScope';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -117,14 +120,43 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     <span>Tab 4</span>
   ];
 
+  // try here
+
+  let elemCont: HTMLDivElement;
+
+  onMount(() => {
+    console.info(elemCont);
+
+
+    const mmp = new EmoticonsDropdown({
+      mediaEditor: true,
+      customParentElement: elemCont,
+      customOnSelect: em => console.info('em', em),
+      mediaEditorSelect: async(val, doc) => {
+        console.info('val', val);
+        const gr = await rootScope.managers.appDocsManager.getDoc(doc);
+        console.info(gr);
+      }
+      // tabsToRender: [new StickersTab(rootScope.managers)]
+    });
+    // set visibility to 0 bro
+    // action class
+    const elem = mmp.getElement();
+    const tabs = elem.getElementsByClassName('tabs-container');
+    console.info(tabs);
+    mmp.toggle(true);
+  })
+
+  // end try here
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
         <canvas ref={glCanvas} />
       </div>
-      <div class='media-editor__settings'>
-        <EditorHeader undo={null} redo={null} close={close} />
-        <MediaEditorTabs tabs={test} />
+      <div class='media-editor__settings' ref={elemCont}>
+        { /* <EditorHeader undo={null} redo={null} close={close} />
+        <MediaEditorTabs tabs={test} /> */ }
+        { /* mmp.getElement() */ }
       </div>
     </div>
   </div>

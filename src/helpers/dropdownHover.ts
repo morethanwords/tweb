@@ -14,6 +14,7 @@ import appNavigationController, {NavigationItem} from '../components/appNavigati
 import findUpClassName from './dom/findUpClassName';
 import rootScope from '../lib/rootScope';
 import liteMode from './liteMode';
+import {RLottieColor} from '../lib/rlottie/rlottiePlayer';
 
 const KEEP_OPEN = false;
 const TOGGLE_TIMEOUT = 200;
@@ -41,7 +42,7 @@ export default class DropdownHover extends EventListenerBase<{
 
   constructor(options: {
     element: DropdownHover['element'],
-    ignoreOutClickClassName?: string
+    ignoreOutClickClassName?: string,
   }) {
     super(false);
     safeAssign(this, options);
@@ -114,6 +115,7 @@ export default class DropdownHover extends EventListenerBase<{
   };
 
   protected onMouseOut = (e: MouseEvent) => {
+    return;
     if(KEEP_OPEN || !this.isActive()) return;
     this.clearTimeout('toggle');
 

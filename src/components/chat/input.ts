@@ -351,6 +351,9 @@ export default class ChatInput {
     this.excludeParts = {};
     this.isFocused = false;
     this.emoticonsDropdown = emoticonsDropdown;
+    setTimeout(() => {
+      console.info(this.emoticonsDropdown);
+    }, 8000);
   }
 
   public construct() {
@@ -1052,6 +1055,7 @@ export default class ChatInput {
         this.attachMenuButtons.splice(0, this.attachMenuButtons.length, ...buttons);
       },
       onOpen: () => {
+        console.info('attach menu');
         this.emoticonsDropdown?.toggle(false);
         this.onMenuToggle?.(true);
       },

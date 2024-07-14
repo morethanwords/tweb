@@ -30,13 +30,15 @@ import EmoticonsTabC from '../tab';
 import {i18n} from '../../../lib/langPack';
 import {onCleanup} from 'solid-js';
 import SuperStickerRenderer from './SuperStickerRenderer';
+import {RLottieColor} from '../../../lib/rlottie/rlottiePlayer';
 
 type StickersTabItem = {element: HTMLElement, document: Document.document};
 export default class StickersTab extends EmoticonsTabC<StickersTabCategory<StickersTabItem>, Document.document[]> {
   private stickerRenderer: SuperStickerRenderer;
 
-  constructor(managers: AppManagers) {
+  constructor(managers: AppManagers, color?: RLottieColor) {
     super({
+      color,
       managers,
       searchFetcher: async(value) => {
         if(!value) return [];
@@ -135,8 +137,12 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       }
     }); */
 
-    const intersectionOptions = this.emoticonsDropdown.intersectionOptions;
-    this.categoriesIntersector = new VisibilityIntersector(this.onCategoryVisibility, intersectionOptions);
+    if(this.emoticonsDropdown) {
+      const intersectionOptions = this.emoticonsDropdown.intersectionOptions;
+      this.categoriesIntersector = new VisibilityIntersector(this.onCategoryVisibility, intersectionOptions);
+    }
+
+    // this.scrollable.container.addEventListener('')
 
     this.scrollable.container.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
@@ -151,7 +157,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
         return;
       }
 
-      this.emoticonsDropdown.onMediaClick(e);
+      this.emoticonsDropdown?.onMediaClick(e);
     });
 
     this.menuOnClickResult = EmoticonsDropdown.menuOnClick(this, this.menu, this.scrollable, this.menuScroll);
@@ -311,9 +317,9 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
 
     mediaSizes.addEventListener('resize', this.resizeCategories);
 
-    this.attachHelpers({
+    /* this.attachHelpers({
       verifyRecent: (target) => !!findUpAsChild(target, this.categories['recent'].elements.items)
-    });
+    }); */
 
     this.init = null;
   }
