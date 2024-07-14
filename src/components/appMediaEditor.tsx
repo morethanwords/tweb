@@ -7,9 +7,9 @@ import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings'
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
 import {createStore} from 'solid-js/store';
 import {MediaEditorTabs} from './media-editor/editor-tabs';
-import {EmoticonsDropdown} from './emoticonsDropdown';
-import StickersTab from './emoticonsDropdown/tabs/stickers';
+import {MediaEditorStickersSettings} from './media-editor/tabs/editor-stickers-settings';
 import rootScope from '../lib/rootScope';
+import {EmoticonsDropdown} from './emoticonsDropdown';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -117,46 +117,17 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,
     <MediaEditorTextSettings state={mediaEditorState.text} updateState={updateState} />,
     <MediaEditorPaintSettings state={mediaEditorState.paint} updateState={updateState} />,
-    <span>Tab 4</span>
+    <MediaEditorStickersSettings />
   ];
 
-  // try here
-
-  let elemCont: HTMLDivElement;
-
-  onMount(() => {
-    console.info(elemCont);
-
-
-    const mmp = new EmoticonsDropdown({
-      mediaEditor: true,
-      customParentElement: elemCont,
-      customOnSelect: em => console.info('em', em),
-      mediaEditorSelect: async(val, doc) => {
-        console.info('val', val);
-        const gr = await rootScope.managers.appDocsManager.getDoc(doc);
-        console.info(gr);
-      }
-      // tabsToRender: [new StickersTab(rootScope.managers)]
-    });
-    // set visibility to 0 bro
-    // action class
-    const elem = mmp.getElement();
-    const tabs = elem.getElementsByClassName('tabs-container');
-    console.info(tabs);
-    mmp.toggle(true);
-  })
-
-  // end try here
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
         <canvas ref={glCanvas} />
       </div>
-      <div class='media-editor__settings' ref={elemCont}>
-        { /* <EditorHeader undo={null} redo={null} close={close} />
-        <MediaEditorTabs tabs={test} /> */ }
-        { /* mmp.getElement() */ }
+      <div class='media-editor__settings'>
+        <EditorHeader undo={null} redo={null} close={close} />
+        <MediaEditorTabs tabs={test} />
       </div>
     </div>
   </div>
