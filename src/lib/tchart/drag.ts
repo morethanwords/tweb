@@ -124,7 +124,11 @@ export default class TDrag {
   };
 
   onDragEnd = (e: any) => {
+    console.info('eft');
+
     if(this.skipMoveEnd) return;
+
+    console.info('eft2 ');
 
     this.skipMoveEnd = true;
 

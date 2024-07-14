@@ -2,7 +2,7 @@ import {onMount} from 'solid-js';
 import {EmoticonsDropdown} from '../../emoticonsDropdown';
 import rootScope from '../../../lib/rootScope';
 
-export const MediaEditorStickersSettings = () => {
+export const MediaEditorStickersSettings = (props: { stickerCLick: (val: any, doc: any) => void }) => {
   let element: HTMLDivElement;
 
   onMount(() => {
@@ -11,9 +11,10 @@ export const MediaEditorStickersSettings = () => {
       customParentElement: element,
       customOnSelect: em => console.info('em', em),
       mediaEditorSelect: async(val, doc) => {
-        console.info('val', val);
-        const gr = await rootScope.managers.appDocsManager.getDoc(doc);
-        console.info(gr);
+        props.stickerCLick(val, doc);
+        // console.info('val', val);
+        // const gr = await rootScope.managers.appDocsManager.getDoc(doc);
+        // console.info(gr);
       }
     });
     mmp.toggle(true);

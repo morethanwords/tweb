@@ -203,15 +203,27 @@ $inactive-opacity: .4;
     display: flex;
     align-items: center;
     background: black;
-
     flex-direction: column;
+    position: relative;
+
+    .media-editor-sticker {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      cursor: move;
+      top: 0;
+      left: 0;
+
+      overflow:auto;
+      resize: both;
+
+      &.selected {
+        border: 1px solid red;
+      }
+    }
 
     & > * {
       flex: 0 0 auto;
-    }
-
-    canvas {
-      border: 2px solid yellow;
     }
   }
 
@@ -395,6 +407,85 @@ $inactive-opacity: .4;
 
     .scrollable.scrollable-y {
       position: relative;
+    }
+  }
+
+  @function stroke($stroke, $color) {
+    $shadow: ();
+    $from: $stroke*-1;
+    @for $i from $from through $stroke {
+      @for $j from $from through $stroke {
+        $shadow: append($shadow, $i*1px $j*1px 0 $color, comma);
+      }
+    }
+    @return $shadow;
+  }
+
+  @mixin stroke($stroke, $color) {
+    text-shadow: stroke($stroke, $color);
+  }
+
+  .ca2 {
+    position: absolute;
+    z-index: 10;
+    top:0;
+    left: 0;
+    border: 3px solid red;
+    background: yellow;
+  }
+
+  .text-helper {
+    text-align: center;
+    max-width: 400px;
+    display: block;
+    top: 300px;
+    white-space: pre-wrap;
+    position: absolute;
+
+    filter: url('#instagram');
+  }
+
+  .media-editor-text {
+    position: absolute;
+    border-radius: 5px;
+    font-weight: bolder;
+    color: yellow;
+    // white-space: pre-wrap;
+    display: inline;
+    // font-family: Noteworthy;
+    font-family: Papyrus;
+
+    &:first-of-type {
+      color: white;
+      top: 50px;
+      @include stroke(3, black);
+    }
+
+
+    // check their widths, if withs almost equal -> no
+
+
+    // chekc width, if yow width greater then 10 (or N), add border radius to that part
+    // (if you are not breatert then then no border radius)
+    &.test {
+      white-space: nowrap;
+      position: relative;
+      display: inline;
+      color: white;
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+      background: #FE4438;
+      font-size: 35px;
+      line-height: 50px;
+      font-style: italic;
+      padding: 0.25rem 1rem;
+      text-align:center;
+      border-radius: 10px;
+
+      &:last-child {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+      }
     }
   }
 }
