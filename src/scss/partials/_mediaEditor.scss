@@ -359,11 +359,10 @@ $inactive-opacity: .4;
     bottom: 0;
     inset-inline-start: 0;
     background: transparent;
-    --height: 100%;
+    --height: 95%;
     max-height: 95%;
     --width: 100%;
     max-width: 100%;
-    padding-bottom: 0.5rem;
 
     .emoji-tabs {
       display: none;
@@ -513,12 +512,81 @@ $inactive-opacity: .4;
         position: absolute;
         left: 0;
         top: 0;
-        // transform: translate(0, 0);
-        // will-change: transform;
-        border: 2px solid transparent;
+        transform: translate(0, 0);
+        will-change: transform;
+
+        .sticker-container {
+          top: 0;
+          left: 0;
+          width: 200px;
+          height: 200px;
+          display: block;
+          position: relative;
+          transform: scale(1, 1);
+          transform-origin: 0 0;
+        }
+        // transform-origin: 0 0;
+        // border: 1px solid white; // 30%
+
+        /* border-style: solid;
+        border-width: 1px;
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 5px, white 5px, white 10px), repeating-linear-gradient(to right, transparent, transparent 5px, white 5px, white 10px); // , repeating-linear-gradient(to right, #617ca2, #617ca2 5px, #28487d 5px, #28487d 10px);
+        */
+
+
+        /* background-size: 5px 5px;
+        background-repeat: repeat;
+        background-image: conic-gradient(
+                        #28487d 90deg,
+                        #28487d 90deg 180deg,
+                        #617ca2 180deg 270deg,
+                        #28487d 270deg
+        ); */
+
+        // background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='white' stroke-width='2' stroke-dasharray='5%2c 12' stroke-dashoffset='43' stroke-linecap='square'/%3e%3c/svg%3e");
 
         &.selected {
+          // find better option idk
+
+          // HERE: maybe do with 4 elements
+          background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='white' stroke-width='2' stroke-dasharray='8%2c 10' stroke-dashoffset='54' stroke-linecap='square'/%3e%3c/svg%3e");
+
+          //background: linear-gradient(to right, currentColor 0%, currentColor 50%, transparent 50%, transparent 100%) repeat-x left bottom;
+          //background-size: 3px 1px;
+
+          // border-image: linear-gradient(to right, transparent 33%, rgba(white, 0.5) 0%);
+
+
+          // background-position: bottom;
+          // background-size: 5px 1px;
+          // background-repeat: repeat-x;
+
+
           // border-color: yellow;
+          .crop-handle {
+            position: absolute;
+            background: white;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+
+            &.top {
+              top: -4px;
+            }
+
+            &.bottom {
+              bottom: -4px;
+            }
+
+            &.left {
+              left: -4px;
+            }
+
+            &.right {
+              right: -4px;
+            }
+          }
         }
       }
     }

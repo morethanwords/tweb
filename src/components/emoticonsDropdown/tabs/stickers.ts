@@ -142,8 +142,6 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       this.categoriesIntersector = new VisibilityIntersector(this.onCategoryVisibility, intersectionOptions);
     }
 
-    // this.scrollable.container.addEventListener('')
-
     this.scrollable.container.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       if(findUpClassName(target, 'category-title')) {
