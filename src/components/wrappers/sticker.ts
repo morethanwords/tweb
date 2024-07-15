@@ -155,7 +155,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     // div.dataset.stickerLoop = '' + +(loop || false);
 
     div.classList.add('media-sticker-wrapper');
-    div.setAttribute('draggable', 'true');
+    // div.setAttribute('draggable', 'true');
   });
 
   if(play && liteModeKey && !liteMode.isAvailable(liteModeKey) && !isCustomEmoji && !isEffect) {

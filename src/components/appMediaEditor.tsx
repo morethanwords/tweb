@@ -13,6 +13,7 @@ import {EmoticonsDropdown} from './emoticonsDropdown';
 import wrapSticker from './wrappers/sticker';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
 import {MediaEditorSticker} from './media-editor/components/sticker';
+import {MediaEditorStickersPanel} from './media-editor/media-panels/stickers-panel';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -43,48 +44,51 @@ export interface MediaEditorSettings {
   }
 }
 
+const defaultEditorState = {
+  crop: 0,
+  text: {
+    color: 0,
+    align: 0,
+    outline: 0,
+    size: 24,
+    font: 0
+  },
+  paint: {
+    size: 15,
+    tool: 0,
+    tools: [0, 1, 2, 3]
+  },
+  filters: {
+    enhance: 0,
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+    warmth: 0,
+    fade: 0,
+    highlights: 0,
+    shadows: 0,
+    vignette: 0,
+    grain: 0,
+    sharpen: 0
+  }
+};
+
 // need state for undo-redo
 // it wil contain actual draw data: filters, crop, stickers pos, text pos, paint pos
 
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
-  const [mediaEditorState, updateState] = createStore<MediaEditorSettings>({
-    crop: 0,
-    text: {
-      color: 0,
-      align: 0,
-      outline: 0,
-      size: 24,
-      font: 0
-    },
-    paint: {
-      size: 15,
-      tool: 0,
-      tools: [0, 1, 2, 3]
-    },
-    filters: {
-      enhance: 0,
-      brightness: 0,
-      contrast: 0,
-      saturation: 0,
-      warmth: 0,
-      fade: 0,
-      highlights: 0,
-      shadows: 0,
-      vignette: 0,
-      grain: 0,
-      sharpen: 0
-    }
-  });
+  const [tab, setTab] = createSignal(0);
+  const [mediaEditorState, updateState] = createStore<MediaEditorSettings>(defaultEditorState);
 
   let glCanvas: HTMLCanvasElement;
   let gl:  WebGLRenderingContext;
   let container: HTMLDivElement;
 
+  /*
   let ca2: HTMLCanvasElement;
   let ctx2:  CanvasRenderingContext2D;
   let svgg: SVGElement;
   let helper: HTMLElement;
-
 
   async function createImage(url: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
@@ -125,6 +129,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     foreignObject.appendChild(node)
     return svgToDataURL(svg)
   }
+   */
 
   onMount(() => {
     const img = new Image();
@@ -132,13 +137,13 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     img.onload = async function() {
       glCanvas.width = container.clientWidth;
       glCanvas.height = container.clientHeight;
-
-      ca2.width = container.clientWidth / 2;
-      ca2.height = container.clientHeight / 2;
-
       const sourceWidth = img.width;
       const sourceHeight = img.height;
       gl = glCanvas.getContext('webgl');
+
+      /*
+      ca2.width = container.clientWidth / 2;
+      ca2.height = container.clientHeight / 2;
 
       ctx2 = ca2.getContext('2d');
       ctx2.font = '60px Papyrus';
@@ -156,7 +161,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       if(svgg) {
         // ctx2.drawImage(img, 0, 0, ca2.width, ca2.height);
 
-      }
+      } */
 
 
       // get hsv data
@@ -183,14 +188,15 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
   });
 
-  const [selectedSticker, setSelectedSticker] = createSignal(null);
   const [stickers, setStickers] = createSignal([]);
-  const [dragging, setDragging] = createSignal<number[]>([]);
+
+  const updatePos = (id: string, x: number, y: number) => {
+    setStickers(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y}) : sticker));
+  };
 
   const stickerCLick = async(val: any, doc: any) => {
     const docId = await rootScope.managers.appDocsManager.getDoc(doc);
-    setStickers(prev => [...prev, docId]);
-    setSelectedSticker(stickers.length);
+    docId && setStickers(prev => [...prev, {id: crypto.randomUUID(), docId, x: 0, y: 0}]);
   }
 
   const [text, setText] = createSignal([
@@ -200,17 +206,14 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
-      <div ref={container} class='media-editor__main-area' onDragOver={val => {
-        console.log(val);
-        const {left, top} = container.getBoundingClientRect();
-        setDragging([val.clientX - left, val.clientY - top]);
-      }}>
+      <div ref={container} class='media-editor__main-area' >
         <canvas ref={glCanvas} />
-        <For each={stickers()}>
-          { (sticker, idx) => <MediaEditorSticker dragPos={dragging()} cancelDrag={() => setDragging([])} selected={idx() === selectedSticker()} docId={sticker} /> }
-        </For>
+        <MediaEditorStickersPanel stickers={stickers()} updatePos={updatePos} />
+        { /* <For each={stickers().map(sticker => sticker.docId)}>
+          { (sticker, idx) => <MediaEditorSticker dragPos={dragging()} cancelDrag={() => setDragging([])} docId={sticker} /> }
+        </For> */ }
 
-        <For each={text()}>
+        { /* <For each={text()}>
           { (text, idx) => <span class='media-editor-text'>{text}</span> }
         </For>
         <div class='text-helper'>
@@ -228,11 +231,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
           </defs>
         </svg>
 
-        <canvas class='ca2' ref={ca2} />
+        <canvas class='ca2' ref={ca2} /> */ }
       </div>
       <div class='media-editor__settings'>
         <EditorHeader undo={null} redo={null} close={close} />
-        <MediaEditorTabs tabs={[
+        <MediaEditorTabs tab={tab()} setTab={setTab} tabs={[
           <MediaEditorGeneralSettings state={mediaEditorState.filters} updateState={updateState} />,
           <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,
           <MediaEditorTextSettings state={mediaEditorState.text} updateState={updateState} />,

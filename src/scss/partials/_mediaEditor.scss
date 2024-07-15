@@ -402,6 +402,8 @@ $inactive-opacity: .4;
     }
   }
 
+  // STICKER TRY
+
   .stickers-container {
     height: 100%;
 
@@ -485,6 +487,38 @@ $inactive-opacity: .4;
       &:last-child {
         border-top-left-radius: 0;
         border-top-right-radius: 0;
+      }
+    }
+  }
+
+  // STICKERS TRY END
+
+  .media-editor-stickers-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+
+    .container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+
+      .media-editor-placed-sticker {
+        width: 100px;
+        height: 100px;
+        box-sizing: content-box;
+        position: absolute;
+        left: 0;
+        top: 0;
+        // transform: translate(0, 0);
+        // will-change: transform;
+        border: 2px solid transparent;
+
+        &.selected {
+          border-color: yellow;
+        }
       }
     }
   }

@@ -1,7 +1,7 @@
 import {createSignal, JSX} from 'solid-js';
 import {Tabs} from '../sidebarRight/tabs/boosts';
 
-export const MediaEditorTabs = ({tabs}: { tabs: JSX.Element[] }) => {
+export const MediaEditorTabs = (props: { tabs: JSX.Element[], tab: number, setTab: (val: number) => void }) => {
   const generalSettingsIcon = <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
     <path fill-rule="evenodd" clip-rule="evenodd" d="M14 1C14 0.447715 13.5523 0 13 0C12.4477 0 12 0.447715 12 1V3V5C12 5.55228 12.4477 6 13 6C13.5523 6 14 5.55228 14 5V4H17C17.5523 4 18 3.55228 18 3C18 2.44772 17.5523 2 17 2H14V1ZM0 3C0 2.44772 0.447715 2 1 2H9C9.55229 2 10 2.44772 10 3C10 3.55228 9.55229 4 9 4H1C0.447715 4 0 3.55228 0 3ZM0 15C0 14.4477 0.447715 14 1 14H5C5.55228 14 6 14.4477 6 15C6 15.5523 5.55228 16 5 16H1C0.447715 16 0 15.5523 0 15ZM9 8C8.44771 8 8 8.44771 8 9C8 9.55229 8.44771 10 9 10H17C17.5523 10 18 9.55229 18 9C18 8.44771 17.5523 8 17 8H9ZM10 13V14H17C17.5523 14 18 14.4477 18 15C18 15.5523 17.5523 16 17 16H10V17C10 17.5523 9.55229 18 9 18C8.44771 18 8 17.5523 8 17V15V13C8 12.4477 8.44771 12 9 12C9.55229 12 10 12.4477 10 13ZM0 9C0 8.44771 0.447715 8 1 8H4V7C4 6.44772 4.44772 6 5 6C5.55228 6 6 6.44772 6 7V9V11C6 11.5523 5.55228 12 5 12C4.44772 12 4 11.5523 4 11V10H1C0.447715 10 0 9.55229 0 9Z" fill="currentcolor"/>
   </svg>;
@@ -17,11 +17,10 @@ export const MediaEditorTabs = ({tabs}: { tabs: JSX.Element[] }) => {
   const emojiIcon = <svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
     <path fill-rule="evenodd" clip-rule="evenodd" d="M2 11C2 6.02944 6.02944 2 11 2C15.9706 2 20 6.02944 20 11C20 15.9706 15.9706 20 11 20C6.02944 20 2 15.9706 2 11ZM11 0C4.92487 0 0 4.92487 0 11C0 17.0751 4.92487 22 11 22C17.0751 22 22 17.0751 22 11C22 4.92487 17.0751 0 11 0ZM6.9886 13.0419C6.73758 12.5499 6.13529 12.3546 5.64335 12.6056C5.15141 12.8567 4.9561 13.4589 5.20712 13.9509C6.28095 16.0554 8.4709 17.5 11 17.5C13.5253 17.5 15.7126 16.0596 16.7881 13.9603C17.0399 13.4687 16.8456 12.8661 16.354 12.6143C15.8625 12.3625 15.2599 12.5568 15.0081 13.0484C14.2613 14.506 12.7459 15.5 11 15.5C9.25151 15.5 7.73416 14.503 6.9886 13.0419ZM9 8.5C9 9.32843 8.44036 10 7.75 10C7.05964 10 6.5 9.32843 6.5 8.5C6.5 7.67157 7.05964 7 7.75 7C8.44036 7 9 7.67157 9 8.5ZM14.25 10C14.9404 10 15.5 9.32843 15.5 8.5C15.5 7.67157 14.9404 7 14.25 7C13.5596 7 13 7.67157 13 8.5C13 9.32843 13.5596 10 14.25 10Z" fill="currentcolor"/>
   </svg>
-  const [tab, setTab] = createSignal(0);
 
   return <Tabs
-    tab={tab}
-    onChange={setTab}
+    tab={() => props.tab}
+    onChange={props.setTab}
     class="popup-stars-transactions"
     menu={[
       generalSettingsIcon,
@@ -30,6 +29,6 @@ export const MediaEditorTabs = ({tabs}: { tabs: JSX.Element[] }) => {
       brushIcon,
       emojiIcon
     ]}
-    content={tabs}
+    content={props.tabs}
   />
 };

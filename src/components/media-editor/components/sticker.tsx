@@ -29,7 +29,7 @@ export const MediaEditorSticker = (props: { dragPos: number[], cancelDrag: () =>
   });
 
   const onDragStart = (args: any) => {
-    args.dataTransfer.setDragImage(img, 0, 0);
+    // args.dataTransfer.setDragImage(img, 0, 0);
     const {left, top} = element.getBoundingClientRect();
     setStarted(true);
     setInitPos([args.pageX - left, args.pageY - top]);
