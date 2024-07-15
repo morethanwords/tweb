@@ -1,6 +1,6 @@
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-settings';
-import {createEffect, createSignal, For, onMount} from 'solid-js';
+import {createEffect, createSignal, onMount} from 'solid-js';
 import {calcCDT, executeEnhanceFilter, getHSVTexture} from './media-editor/utils';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
@@ -9,10 +9,6 @@ import {createStore} from 'solid-js/store';
 import {MediaEditorTabs} from './media-editor/editor-tabs';
 import {MediaEditorStickersSettings} from './media-editor/tabs/editor-stickers-settings';
 import rootScope from '../lib/rootScope';
-import {EmoticonsDropdown} from './emoticonsDropdown';
-import wrapSticker from './wrappers/sticker';
-import appDownloadManager from '../lib/appManagers/appDownloadManager';
-import {MediaEditorSticker} from './media-editor/components/sticker';
 import {MediaEditorStickersPanel} from './media-editor/media-panels/stickers-panel';
 
 export interface MediaEditorSettings {
@@ -209,9 +205,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       <div ref={container} class='media-editor__main-area' >
         <canvas ref={glCanvas} />
         <MediaEditorStickersPanel stickers={stickers()} updatePos={updatePos} />
-        { /* <For each={stickers().map(sticker => sticker.docId)}>
-          { (sticker, idx) => <MediaEditorSticker dragPos={dragging()} cancelDrag={() => setDragging([])} docId={sticker} /> }
-        </For> */ }
 
         { /* <For each={text()}>
           { (text, idx) => <span class='media-editor-text'>{text}</span> }
