@@ -1,4 +1,4 @@
-import {createEffect, createSignal, For, Index, onMount} from 'solid-js';
+import {createEffect, createSignal, Index, onMount} from 'solid-js';
 import wrapSticker from '../../wrappers/sticker';
 import rootScope from '../../../lib/rootScope';
 
@@ -16,8 +16,7 @@ const MediaEditorSticker = (props: { containerPos: [number, number], updatePos: 
   const img = new Image();
 
   const styles = () => dragging() && props.dragPos.every(Boolean) ?
-    {transform: `translate(${( props.dragPos[0] - initDragPos()[0])}px, ${( props.dragPos[1] - initDragPos()[1])}px)`} :
-    {transform: `translate(${props.x}px, ${props.y}px)`};
+    [props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1]] : [props.x, props.y];
 
   onMount(async() => {
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
@@ -41,21 +40,21 @@ const MediaEditorSticker = (props: { containerPos: [number, number], updatePos: 
     setInitDragPos([ev.pageX - props.x - props.containerPos[0], ev.pageY - props.y - props.containerPos[1]]);
   };
 
-  const onDragEnd = (ev: DragEvent) => {
+  const onDragEnd = () => {
     setDragging(false);
     props.updatePos(props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1]);
   }
 
   return <div draggable={true} onDragStart={onDragStart} onDragEnd={onDragEnd}
     onClick={props.select} classList={{'media-editor-placed-sticker': true, 'selected': props.selected}}
-    style={styles()} ref={element}></div>;
+    style={{transform: `translate(${Math.round(styles()[0])}px, ${Math.round(styles()[1])}px)`}} ref={element}></div>;
 }
 
 export const MediaEditorStickersPanel = (props: { stickers: StickerData[], updatePos: (id: string, x: number, y: number) => void }) => {
   let container: HTMLDivElement;
   const [containerPos, setContainerPos] = createSignal([0, 0] as [number, number]);
   const [dragPosRaw, setDragPosRaw] = createSignal([0, 0]);
-  const dragPos = () => [Math.max(0, dragPosRaw()[0] - containerPos()[0]), Math.max(0, dragPosRaw()[1] - containerPos()[1])] as [number, number];
+  const dragPos = () => [Math.floor(Math.max(0, dragPosRaw()[0] - containerPos()[0])), Math.floor(Math.max(0, dragPosRaw()[1] - containerPos()[1]))] as [number, number];
   const [selectedSticker, setSelectedSticker] = createSignal(null);
 
   onMount(() => {
