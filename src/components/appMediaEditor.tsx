@@ -204,7 +204,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area' >
         <canvas ref={glCanvas} />
-        <MediaEditorStickersPanel stickers={stickers()} updatePos={updatePos} />
+        <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} />
 
         { /* <For each={text()}>
           { (text, idx) => <span class='media-editor-text'>{text}</span> }

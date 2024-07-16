@@ -499,6 +499,10 @@ $inactive-opacity: .4;
     bottom: 0;
     right: 0;
 
+    &.disabled {
+      pointer-events: none;
+    }
+
     .container {
       position: relative;
       width: 100%;
@@ -506,14 +510,18 @@ $inactive-opacity: .4;
       overflow: hidden;
 
       .media-editor-placed-sticker {
-        width: 100px;
-        height: 100px;
+        width: 200px;
+        height: 200px;
         box-sizing: content-box;
         position: absolute;
         left: 0;
+        // padding-right: 100px;
+        // padding-bottom: 100px;
+        // treat this as a container, the resize and rotate handlers should be positioned absolutely (and maybe one for all of the objects bro)
         top: 0;
         transform: translate(0, 0);
-        will-change: transform;
+        // transition: transform 0.01s linear;
+        // will-change: transform;
 
         .sticker-container {
           top: 0;
@@ -524,6 +532,8 @@ $inactive-opacity: .4;
           position: relative;
           transform: scale(1, 1);
           transform-origin: 0 0;
+          // will-change: transform;
+          // transition: transform 0.01s linear;
         }
         // transform-origin: 0 0;
         // border: 1px solid white; // 30%

@@ -85,7 +85,9 @@ export default class SuperStickerRenderer {
     return element;
   }
 
+  // TODO: FIX AND REMOVE
   public observeAnimated(element: HTMLElement) {
+    console.info(element);
     this.animated.add(element);
     this.lazyLoadQueue.observe({
       div: element,
@@ -133,8 +135,8 @@ export default class SuperStickerRenderer {
       lazyLoadQueue: null,
       group: this.group,
       onlyThumb: false,
-      play: true,
-      loop: true,
+      // play: true,
+      // loop: true,
       withLock: true,
       middleware: element.middlewareHelper.get(),
       ...(this.visibleRenderOptions || {})
