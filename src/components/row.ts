@@ -408,7 +408,7 @@ export const RadioFormFromValues = (values: {
   value: number | string,
   checked?: boolean,
   textElement?: ConstructorParameters<typeof RadioField>[0]['textElement']
-}[], onChange: Parameters<typeof RadioFormFromRows>[1]) => {
+}[], onChange: Parameters<typeof RadioFormFromRows>[1], fireInit?: boolean) => {
   const name = 'name-' + (Math.random() * 0x7FFFFF | 0);
   let checkedRadioField: RadioField;
   const rows = values.map(({langPackKey, value, checked, textElement}) => {
@@ -430,7 +430,8 @@ export const RadioFormFromValues = (values: {
 
   const form = RadioFormFromRows(rows, onChange);
   if(checkedRadioField) {
-    checkedRadioField.setValueSilently(true);
+    if(fireInit) checkedRadioField.checked = true;
+    else checkedRadioField.setValueSilently(true);
   }
   return form;
 };
