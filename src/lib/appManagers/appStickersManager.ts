@@ -23,6 +23,7 @@ import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
 import tsNow from '../../helpers/tsNow';
 import SearchIndex from '../searchIndex';
 import parseEntities from '../richTextProcessor/parseEntities';
+import toArray from '../../helpers/array/toArray';
 
 const CACHE_TIME = 3600e3;
 
@@ -808,7 +809,7 @@ export class AppStickersManager extends AppManager {
     includeServerStickers?: boolean,
     excludePremiumEffectStickers?: boolean
   }) {
-    const emoticonArray = (Array.isArray(emoticon) ? emoticon : [emoticon]).map((emoji) => fixEmoji(emoji));
+    const emoticonArray = toArray(emoticon).map((emoji) => fixEmoji(emoji));
     emoticon = emoticonArray.join('');
     const cacheKey = emoticon + (includeOurStickers ? '1' : '0') + (includeServerStickers ? '1' : '0');
     if(this.getStickersByEmoticonsPromises[cacheKey]) return this.getStickersByEmoticonsPromises[cacheKey];

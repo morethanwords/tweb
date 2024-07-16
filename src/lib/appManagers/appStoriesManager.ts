@@ -7,6 +7,7 @@
 import forEachReverse from '../../helpers/array/forEachReverse';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
+import toArray from '../../helpers/array/toArray';
 import assumeType from '../../helpers/assumeType';
 import callbackify from '../../helpers/callbackify';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
@@ -575,7 +576,7 @@ export default class AppStoriesManager extends AppManager {
   }
 
   public togglePinned(peerId: PeerId, storyId: StoryItem['id'] | StoryItem['id'][], pinned: boolean) {
-    if(!Array.isArray(storyId)) storyId = [storyId];
+    storyId = toArray(storyId);
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.togglePinned',
       params: {

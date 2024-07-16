@@ -13,7 +13,8 @@ export default function prepareAlbum(options: {
   minWidth: number,
   spacing: number,
   maxHeight?: number,
-  forMedia?: true
+  forMedia?: true,
+  noGroupedItem?: boolean
 }) {
   const layouter = new Layouter(options.items, options.maxWidth, options.minWidth, options.spacing, options.maxHeight);
   const layout = layouter.layout();
@@ -37,7 +38,8 @@ export default function prepareAlbum(options: {
       container.append(div);
     }
 
-    div.classList.add('album-item', 'grouped-item');
+    div.classList.add('album-item');
+    if(!options.noGroupedItem) div.classList.add('grouped-item');
 
     div.style.width = (geometry.width / width * 100) + '%';
     div.style.height = (geometry.height / height * 100) + '%';

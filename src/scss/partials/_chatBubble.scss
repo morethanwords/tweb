@@ -1940,6 +1940,11 @@
       padding: 0;
       margin-inline-start: 1px;
     }
+
+    &.other-side {
+      left: auto;
+      right: 3px;
+    }
   }
 
   &.show-controls {
@@ -1981,30 +1986,6 @@
   }
 
   // * mini player section end
-
-  .extended-media-buy {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    height: 2.5rem;
-    padding: 0 1rem;
-    background-color: rgba(0, 0, 0, .3);
-    backdrop-filter: var(--menu-backdrop-filter);
-    font-weight: var(--font-weight-bold);
-    color: #fff;
-    z-index: 2;
-    font-size: var(--font-size-14);
-    border-radius: 2rem;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-
-    &-icon {
-      margin-right: .25rem;
-      font-size: 1.125rem;
-    }
-  }
 
   .anchor-url {
     text-decoration: underline;

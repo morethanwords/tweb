@@ -656,6 +656,10 @@ export class AppImManager extends EventListenerBase<{
       const canvases = Array.from(document.querySelectorAll('canvas')) as HTMLCanvasElement[];
       canvases.forEach((canvas) => {
         const context = canvas.getContext('2d');
+        if(!context) {
+          return;
+        }
+
         const oldFillStyle = context.fillStyle;
         context.fillStyle = 'transparent';
         context.fillRect(0, 0, 1, 1);

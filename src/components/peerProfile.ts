@@ -807,7 +807,7 @@ export default class PeerProfile {
       } else {
         const exportedInvite = (peerFull as ChatFull.channelFull).exported_invite;
         if(exportedInvite?._ === 'chatInviteExported') {
-          callbacks.push(() => setText(exportedInvite.link, this.link));
+          callbacks.push(() => setText(exportedInvite.link.slice(exportedInvite.link.indexOf('t.me/')), this.link));
         }
       }
 

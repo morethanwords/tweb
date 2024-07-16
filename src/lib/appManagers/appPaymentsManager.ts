@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {HelpPremiumPromo, InputInvoice, InputPaymentCredentials, InputStorePaymentPurpose, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsPaymentResult, PaymentsStarsStatus, Update} from '../../layer';
+import {HelpPremiumPromo, InputInvoice, InputPaymentCredentials, InputStorePaymentPurpose, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsPaymentResult, PaymentsStarsStatus, StarsTransactionPeer, Update} from '../../layer';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 
@@ -189,6 +189,27 @@ export default class AppPaymentsManager extends AppManager {
 
   private saveStarsStatus = (starsStatus: PaymentsStarsStatus) => {
     this.appPeersManager.saveApiPeers(starsStatus);
+
+    starsStatus.history.forEach((transaction) => {
+      const transactionPeer = transaction.peer as StarsTransactionPeer.starsTransactionPeer;
+      const peerId = transactionPeer && this.appPeersManager.getPeerId(transactionPeer.peer);
+      if(transaction.msg_id) {
+        transaction.msg_id = this.appMessagesIdsManager.generateMessageId(
+          transaction.msg_id,
+          this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined
+        );
+      }
+
+      if(transaction.extended_media) {
+        transaction.extended_media.forEach((messageMedia) => {
+          this.appMessagesManager.saveMessageMedia(
+            {media: messageMedia},
+            {type: 'starsTransaction', peerId, mid: transaction.msg_id}
+          );
+        });
+      }
+    });
+
     return starsStatus;
   };
 
@@ -215,7 +236,8 @@ export default class AppPaymentsManager extends AppManager {
         peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
         offset,
         inbound,
-        outbound: inbound === false
+        outbound: inbound === false,
+        limit: 30
       },
       processResult: this.saveStarsStatus
     });

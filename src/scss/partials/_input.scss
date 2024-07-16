@@ -50,12 +50,12 @@
     transform: rotate(45deg);
     transition: .2s all;
   }
-  
+
   label {
     position: absolute;
     color: $placeholder-color;
     top: 0;
-    inset-inline: 1rem auto;
+    inset-inline: var(--padding-horizontal) auto;
     z-index: 2;
     height: 1.5rem;
     transform: translate(0, 0);
@@ -226,7 +226,7 @@
     &:valid ~ label,
     &:not(.is-empty) ~ label,
     &:disabled ~ label {
-      transform: translate(-.1875rem, calc(var(--height) / -2 + .0625rem)) scale(.75);
+      transform: translate(calc(-.1875rem + (1rem - var(--padding-horizontal))), calc(var(--height) / -2 + .0625rem)) scale(.75);
       padding: 0 .3125rem;
       opacity: 1;
     }

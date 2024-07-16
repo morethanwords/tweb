@@ -188,7 +188,7 @@ export class ScrollableBase {
 
   public prepend(...elements: (string | Node)[]) {
     const prependTo = this.splitUp || this.padding || this.container;
-    this.thumb && prependTo !== this.container && elements.unshift(this.thumbContainer);
+    this.thumb && /* prependTo === this.container &&  */elements.unshift(this.thumbContainer);
     prependTo.prepend(...elements);
     this.onSizeChange();
   }

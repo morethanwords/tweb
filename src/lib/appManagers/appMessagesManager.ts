@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
 import {randomLong} from '../../helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck} from '../../layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '../../types';
 import {logger, LogTypes} from '../logger';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -339,6 +339,8 @@ export class AppMessagesManager extends AppManager {
   public log = logger('MESSAGES', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 
   private groupedTempId = 0;
+  private mediaTempId = 0;
+  private mediaTempMap: {[tempId: number]: number} = {};
 
   private typings: {[key: string]: {action: SendMessageAction, timeout?: number}} = {};
 
@@ -902,6 +904,10 @@ export class AppMessagesManager extends AppManager {
 
     waveform: Uint8Array,
 
+    stars: number,
+    groupedMessage: Message.message,
+    useTempMediaId: boolean,
+
     // ! only for internal use
     processAfter?: typeof processAfter
   }>) {
@@ -911,7 +917,8 @@ export class AppMessagesManager extends AppManager {
 
     this.checkSendOptions(options);
 
-    const message = this.generateOutgoingMessage(peerId, options);
+    const hadMessageBefore = !!options.groupedMessage;
+    const message = options.groupedMessage ?? this.generateOutgoingMessage(peerId, options);
 
     let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
 
@@ -937,6 +944,7 @@ export class AppMessagesManager extends AppManager {
       type: 'i'
     };
 
+    const mediaTempId = options.useTempMediaId ? this.mediaTempId++ : message.id;
     let photo: MyPhoto, document: MyDocument;
 
     let actionName: Extract<SendMessageAction['_'], 'sendMessageUploadAudioAction' | 'sendMessageUploadDocumentAction' | 'sendMessageUploadPhotoAction' | 'sendMessageUploadVideoAction'>;
@@ -950,7 +958,7 @@ export class AppMessagesManager extends AppManager {
 
       if(options.isVoiceMessage) {
         attachType = 'voice';
-        message.pFlags.media_unread = true;
+        if(message) message.pFlags.media_unread = true;
       }
 
       const attribute: DocumentAttribute.documentAttributeAudio = {
@@ -983,7 +991,7 @@ export class AppMessagesManager extends AppManager {
 
       photo = {
         _: 'photo',
-        id: '' + message.id,
+        id: mediaTempId,
         sizes: [photoSize],
         w: options.width,
         h: options.height
@@ -1035,11 +1043,14 @@ export class AppMessagesManager extends AppManager {
 
     attributes.push({_: 'documentAttributeFilename', file_name: fileName || apiFileName});
 
-    if((['document', 'video', 'audio', 'voice'] as (typeof attachType)[]).indexOf(attachType) !== -1 && !isDocument) {
+    if(
+      (['document', 'video', 'audio', 'voice'] as (typeof attachType)[]).includes(attachType) &&
+      !isDocument
+    ) {
       const thumbs: PhotoSize[] = [];
       document = {
         _: 'document',
-        id: '' + message.id,
+        id: mediaTempId,
         duration: options.duration,
         attributes,
         w: options.width,
@@ -1145,23 +1156,28 @@ export class AppMessagesManager extends AppManager {
       sendEntites = undefined;
     }
 
-    if(options.invertMedia) {
-      message.pFlags.invert_media = true;
-    }
-
-    message.entities = entities;
-    message.message = caption;
-    message.media = isDocument ? {
-      _: 'messageMediaDocument',
-      pFlags: {},
-      document: file
-    } as MessageMedia.messageMediaDocument : media;
-
     const uploadingFileName = !isDocument ? getFileNameForUpload(file) : undefined;
-    message.uploadingFileName = uploadingFileName;
-
     if(uploadingFileName) {
       this.uploadFilePromises[uploadingFileName] = sentDeferred;
+    }
+
+    if(!hadMessageBefore) {
+      if(options.invertMedia) {
+        message.pFlags.invert_media = true;
+      }
+
+      message.entities = entities;
+      message.message = caption;
+      message.media = isDocument ? {
+        _: 'messageMediaDocument',
+        pFlags: {},
+        document: file
+      } as MessageMedia.messageMediaDocument : media;
+      message.uploadingFileName = [uploadingFileName];
+
+      if(options.stars) {
+        message.media = this.generateOutgoingPaidMedia([message], options.stars);
+      }
     }
 
     const toggleError = (error?: ApiError) => {
@@ -1172,7 +1188,7 @@ export class AppMessagesManager extends AppManager {
     let uploaded = false,
       uploadPromise: ReturnType<ApiFileManager['upload']> = null;
 
-    message.send = () => {
+    const send = () => {
       if(isDocument) {
         const inputMedia: InputMedia = {
           _: 'inputMediaDocument',
@@ -1183,7 +1199,7 @@ export class AppMessagesManager extends AppManager {
         sentDeferred.resolve(inputMedia);
       } else if(file instanceof File || file instanceof Blob) {
         const load = () => {
-          if(!uploaded || message.error) {
+          if(!uploaded || message?.error) {
             uploaded = false;
 
             uploadPromise = this.apiFileManager.upload({file, fileName: uploadingFileName});
@@ -1194,7 +1210,7 @@ export class AppMessagesManager extends AppManager {
 
               this.log('cancelling upload', media);
 
-              this.cancelPendingMessage(message.random_id);
+              message && this.cancelPendingMessage(message.random_id);
               this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
               sentDeferred.reject(err);
             });
@@ -1252,6 +1268,14 @@ export class AppMessagesManager extends AppManager {
                 };
             }
 
+            if(options.stars && !options.isGroupedItem) {
+              inputMedia = {
+                _: 'inputMediaPaidMedia',
+                extended_media: [inputMedia],
+                stars_amount: '' + options.stars
+              };
+            }
+
             if(thumbUploadPromise) {
               try {
                 const inputFile = await thumbUploadPromise;
@@ -1281,7 +1305,8 @@ export class AppMessagesManager extends AppManager {
       return sentDeferred;
     };
 
-    this.beforeMessageSending(message, {
+    !hadMessageBefore && (message.send = send);
+    !hadMessageBefore && this.beforeMessageSending(message, {
       isGroupedItem: options.isGroupedItem,
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
@@ -1335,12 +1360,18 @@ export class AppMessagesManager extends AppManager {
 
     const ret: {
       message: typeof message,
-      promise: typeof sentDeferred
+      promise: typeof sentDeferred,
+      send: typeof send,
+      media: typeof media,
+      uploadingFileName: typeof uploadingFileName
     } = {
-      message
+      message,
+      media,
+      send,
+      uploadingFileName
     } as any;
 
-    defineNotNumerableProperties(ret, ['promise']);
+    defineNotNumerableProperties(ret, ['promise', 'send']);
     ret.promise = sentDeferred;
 
     return ret;
@@ -1351,7 +1382,8 @@ export class AppMessagesManager extends AppManager {
     entities?: MessageEntity[],
     caption?: string,
     sendFileDetails: SendFileDetails[],
-    clearDraft?: boolean
+    clearDraft?: boolean,
+    stars?: number
   }) {
     this.checkSendOptions(options);
 
@@ -1376,14 +1408,17 @@ export class AppMessagesManager extends AppManager {
     const log = this.log.bindPrefix('sendGrouped');
     log(options);
 
-    const groupId = '' + ++this.groupedTempId;
+    const groupId = options.stars ? undefined : '' + ++this.groupedTempId;
 
     const callbacks: Array<() => void> = [];
     const processAfter = (cb: () => void) => {
       callbacks.push(cb);
     };
 
-    const messages = options.sendFileDetails.map((details, idx) => {
+    let firstMessage: Message.message;
+    const isSingleMessageForAlbum = !!options.stars;
+    const preserveMediaTempId = this.mediaTempId;
+    const results = options.sendFileDetails.map((details, idx) => {
       const o: Parameters<AppMessagesManager['sendFile']>[0] = {
         peerId,
         isGroupedItem: true,
@@ -1395,6 +1430,8 @@ export class AppMessagesManager extends AppManager {
         replyToQuote: options.replyToQuote,
         threadId: options.threadId,
         sendAsPeerId: options.sendAsPeerId,
+        useTempMediaId: isSingleMessageForAlbum,
+        groupedMessage: isSingleMessageForAlbum && firstMessage,
         groupId,
         processAfter,
         ...details
@@ -1406,8 +1443,21 @@ export class AppMessagesManager extends AppManager {
         o.effect = options.effect;
       }
 
-      return this.sendFile(o).message;
+      const result = this.sendFile(o);
+
+      if(idx === 0) {
+        firstMessage = result.message;
+      }
+
+      return result;
     });
+
+    if(options.stars) {
+      const message = results[0].message;
+      message.media = this.generateOutgoingPaidMedia(results, options.stars);
+      this.mediaTempMap[message.id] = preserveMediaTempId;
+      message.uploadingFileName = results.map(({uploadingFileName}) => uploadingFileName);
+    }
 
     if(options.clearDraft) {
       callbacks.push(() => {
@@ -1425,6 +1475,10 @@ export class AppMessagesManager extends AppManager {
     }
 
     const toggleError = (message: Message.message, error?: ApiError) => {
+      if(message.error === error) {
+        return;
+      }
+
       this.onMessagesSendError([message], error);
       this.rootScope.dispatchEvent('messages_pending');
     };
@@ -1436,9 +1490,8 @@ export class AppMessagesManager extends AppManager {
       const deferred = deferredPromise<void>();
       this.sendSmthLazyLoadQueue.push({
         load: () => {
-          return this.apiManager.invokeApi('messages.sendMultiMedia', {
+          return this.apiManager.invokeApi(options.stars ? 'messages.sendMedia' : 'messages.sendMultiMedia', {
             peer: inputPeer,
-            multi_media: multiMedia,
             reply_to: options.replyTo,
             schedule_date: options.scheduleDate,
             silent: options.silent,
@@ -1446,12 +1499,20 @@ export class AppMessagesManager extends AppManager {
             send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
             update_stickersets_order: options.updateStickersetOrder,
             invert_media: options.invertMedia,
-            effect: options.effect
+            effect: options.effect,
+            ...(options.stars ? {
+              media: multiMedia[0].media,
+              message: multiMedia[0].message,
+              entities: multiMedia[0].entities,
+              random_id: multiMedia[0].random_id
+            } : {
+              multi_media: multiMedia
+            })
           }).then((updates) => {
             this.apiUpdatesManager.processUpdateMessage(updates);
             deferred.resolve();
           }, (error: ApiError) => {
-            messages.forEach((message) => toggleError(message, error));
+            results.forEach(({message}) => toggleError(message, error));
             deferred.reject(error);
           });
         }
@@ -1460,16 +1521,19 @@ export class AppMessagesManager extends AppManager {
       return deferred;
     };
 
-    const promises: Promise<InputSingleMedia>[] = messages.map(async(message) => {
+    const promises: Promise<InputSingleMedia>[] = results.map(async({message, send}) => {
       let inputMedia: InputMedia;
       try {
-        inputMedia = await message.send() as InputMedia;
+        inputMedia = await send() as InputMedia;
       } catch(err) {
-        if((err as ApiError).type === 'UPLOAD_CANCELED') {
+        const isUploadCanceled = (err as ApiError).type === 'UPLOAD_CANCELED';
+        if(isUploadCanceled && !isSingleMessageForAlbum) {
           return undefined;
         }
 
-        log.error('upload item error:', err, message);
+        if(!isUploadCanceled) {
+          log.error('upload item error:', err, message);
+        }
         toggleError(message, err);
         throw err;
       }
@@ -1509,7 +1573,7 @@ export class AppMessagesManager extends AppManager {
       const inputSingleMedia: InputSingleMedia = {
         _: 'inputSingleMedia',
         media: inputMedia,
-        random_id: message.random_id,
+        random_id: message?.random_id,
         message: caption,
         entities: sendEntities
       };
@@ -1524,7 +1588,21 @@ export class AppMessagesManager extends AppManager {
     });
 
     return Promise.all(promises).then((inputs) => {
-      return invoke(inputs.filter(Boolean));
+      inputs = inputs.filter(Boolean);
+
+      if(options.stars) {
+        const spliced = inputs.splice(1, Infinity);
+        inputs[0].media = {
+          _: 'inputMediaPaidMedia',
+          extended_media: [
+            inputs[0].media,
+            ...spliced.map(({media}) => media)
+          ],
+          stars_amount: '' + options.stars
+        };
+      }
+
+      return invoke(inputs);
     });
   }
 
@@ -1887,7 +1965,13 @@ export class AppMessagesManager extends AppManager {
     return pending;
   }
 
-  private generateOutgoingMessage(
+  public generateStandaloneOutgoingMessage(peerId: PeerId) {
+    const message = this.generateOutgoingMessage(peerId, {});
+    this.saveMessage(message, {storage: new Map() as any});
+    return message;
+  }
+
+  public generateOutgoingMessage(
     peerId: PeerId,
     options: MessageSendingParams & Partial<{
       viaBotId: BotId,
@@ -2228,6 +2312,14 @@ export class AppMessagesManager extends AppManager {
 
     this.getHistoryMessagesStorage(peerId).set(maxId, message);
     return message;
+  }
+
+  private generateOutgoingPaidMedia(messages: {media?: MessageMedia}[], stars: number): MessageMedia.messageMediaPaidMedia {
+    return {
+      _: 'messageMediaPaidMedia',
+      extended_media: messages.map(({media}) => ({_: 'messageExtendedMedia', media})),
+      stars_amount: '' + stars
+    };
   }
 
   public getUploadPromise(uploadFileName: string) {
@@ -2865,6 +2957,14 @@ export class AppMessagesManager extends AppManager {
     messages.forEach((message) => {
       if(message.error === error) {
         return;
+      }
+
+      // * cancel uploading rest of files if it's a single-message album
+      const {uploadingFileName} = message;
+      if(uploadingFileName?.length > 1) {
+        uploadingFileName.forEach((name) => {
+          this.apiFileManager.cancelDownload(name);
+        });
       }
 
       this.modifyMessage(message, (message) => {
@@ -4098,6 +4198,15 @@ export class AppMessagesManager extends AppManager {
 
       case 'messageMediaGiveawayResults': {
         media.launch_msg_id = this.appMessagesIdsManager.generateMessageId(media.launch_msg_id, media.channel_id);
+        break;
+      }
+
+      case 'messageMediaPaidMedia': {
+        media.extended_media.forEach((extendedMedia) => {
+          if(extendedMedia._ === 'messageExtendedMedia') {
+            this.saveMessageMedia(extendedMedia, mediaContext, isScheduled);
+          }
+        });
         break;
       }
 
@@ -6550,12 +6659,15 @@ export class AppMessagesManager extends AppManager {
     }
 
     const message = this.getMessageFromStorage(storage, mid) as Message.message;
-    const messageMedia = message.media as MessageMedia.messageMediaInvoice;
-    if(messageMedia.extended_media?._ === 'messageExtendedMedia') {
+    const messageMedia = message.media as MessageMedia.messageMediaInvoice | MessageMedia.messageMediaPaidMedia;
+    const b = messageMedia.extended_media;
+    const isArray = Array.isArray(b);
+    const before = isArray ? b : [b];
+    if(before.some((extendedMedia) => extendedMedia?._ === 'messageExtendedMedia')) {
       return;
     }
 
-    messageMedia.extended_media = update.extended_media;
+    messageMedia.extended_media = isArray ? update.extended_media : update.extended_media[0];
     this.onUpdateEditMessage({
       _: 'updateEditMessage',
       message,
@@ -6780,38 +6892,61 @@ export class AppMessagesManager extends AppManager {
     if((message as Message.message).media) {
       assumeType<Message.message>(message);
       const {photo: newPhoto, document: newDoc} = message.media as any;
-      if(newPhoto) {
-        const photo = this.appPhotosManager.getPhoto('' + tempId);
-        if(/* photo._ !== 'photoEmpty' */photo) {
-          const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
-          const oldCacheContext = this.thumbsStorage.getCacheContext(photo, THUMB_TYPE_FULL);
-          this.thumbsStorage.setCacheContextURL(newPhoto, newPhotoSize.type, oldCacheContext.url, oldCacheContext.downloaded);
+      const newExtendedMedia = (message.media as MessageMedia.messageMediaPaidMedia).extended_media as MessageExtendedMedia.messageExtendedMedia[];
 
-          // const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
-          // const downloadOptions = getPhotoDownloadOptions(newPhoto, photoSize);
-          // const fileName = getFileNameByLocation(downloadOptions.location);
+      const updatePhoto = (newPhoto: Photo.photo, photoId: string) => {
+        const photo = this.appPhotosManager.getPhoto(photoId);
+        if(!photo) {
+          return;
+        }
+
+        const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
+        const oldCacheContext = this.thumbsStorage.getCacheContext(photo, THUMB_TYPE_FULL);
+        this.thumbsStorage.setCacheContextURL(newPhoto, newPhotoSize.type, oldCacheContext.url, oldCacheContext.downloaded);
+
+        // const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
+        // const downloadOptions = getPhotoDownloadOptions(newPhoto, photoSize);
+        // const fileName = getFileNameByLocation(downloadOptions.location);
+        // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
+      };
+
+      const updateDocument = (newDoc: Document.document, docId: DocId) => {
+        const oldDoc = this.appDocsManager.getDoc(docId);
+        if(!oldDoc) {
+          return;
+        }
+
+        const oldCacheContext = this.thumbsStorage.getCacheContext(oldDoc);
+        if(
+          /* doc._ !== 'documentEmpty' &&  */
+          oldDoc.type &&
+          oldDoc.type !== 'sticker' &&
+          oldDoc.mime_type !== 'image/gif' &&
+          oldCacheContext.url
+        ) {
+          this.thumbsStorage.setCacheContextURL(newDoc, undefined, oldCacheContext.url, oldCacheContext.downloaded);
+
+          // const fileName = getDocumentInputFileName(newDoc);
           // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
         }
-      } else if(newDoc) {
-        const oldDoc = this.appDocsManager.getDoc('' + tempId);
-        if(oldDoc) {
-          const oldCacheContext = this.thumbsStorage.getCacheContext(oldDoc);
-          if(
-            /* doc._ !== 'documentEmpty' &&  */
-            oldDoc.type &&
-            oldDoc.type !== 'sticker' &&
-            oldDoc.mime_type !== 'image/gif' &&
-            oldCacheContext.url
-          ) {
-            this.thumbsStorage.setCacheContextURL(newDoc, undefined, oldCacheContext.url, oldCacheContext.downloaded);
+      };
 
-            // const fileName = getDocumentInputFileName(newDoc);
-            // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
-          }
-        }
+      if(newPhoto) {
+        updatePhoto(newPhoto, '' + tempId);
+      } else if(newDoc) {
+        updateDocument(newDoc, '' + tempId);
       } else if((message.media as MessageMedia.messageMediaPoll).poll) {
         delete this.appPollsManager.polls[tempId];
         delete this.appPollsManager.results[tempId];
+      } else if(newExtendedMedia) {
+        const mediaTempId = this.mediaTempMap[tempId];
+        newExtendedMedia.forEach((extendedMedia, idx) => {
+          const {photo} = extendedMedia.media as MessageMedia.messageMediaPhoto;
+          const {document} = extendedMedia.media as MessageMedia.messageMediaDocument;
+          const id = '' + (mediaTempId + idx);
+          if(photo) updatePhoto(photo as Photo.photo, id);
+          else if(document) updateDocument(document as Document.document, id);
+        });
       }
     }
 

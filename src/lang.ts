@@ -725,6 +725,30 @@ const lang = {
   'Stars.Via.Unsupported': 'In-App Purchase',
   'Stars.Via': 'Via',
   'Effect.Remove': 'Remove Effect',
+  'PaidMedia.Menu': 'Make this content paid',
+  'PaidMedia.Menu.Edit': 'Edit price',
+  'PaidMedia.Title': 'Paid Content',
+  'PaidMedia.Enter': 'Enter unlock cost',
+  'PaidMedia.Caption': 'Users will have to transfer this amount of Stars to your channel in order to view this media. [Learn more >]()',
+  'PaidMedia.Button': 'Make This Media Paid',
+  'PaidMedia.KeepFree': 'Keep this media free',
+  'PaidMedia.Unlock': 'Unlock for %s',
+  'Stars.Unlock': 'Do you want to unlock %s in **%s** for **%s**?',
+  'Stars.Unlock.Stars': {
+    'one_value': '%d Star',
+    'other_value': '%d Stars'
+  },
+  'Stars.Unlock.Media': '%s and %s',
+  'Stars.Unlock.Photo': 'a **photo**',
+  'Stars.Unlock.Photos': {
+    'one_value': '**%d photo**',
+    'other_value': '**%d photos**'
+  },
+  'Stars.Unlock.Video': 'a **video**',
+  'Stars.Unlock.Videos': {
+    'one_value': '**%d video**',
+    'other_value': '**%d videos**'
+  },
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2256,6 +2280,33 @@ const lang = {
   'StoriesPinLimit': {
     'other_value': 'You can’t pin more than %d posts.'
   },
+  'Photos': {
+    'one_value': '%d photo',
+    'other_value': '%d photos'
+  },
+  'Videos': {
+    'one_value': '%d video',
+    'other_value': '%d videos'
+  },
+  'Media': {
+    'other_value': '%d media'
+  },
+  'SearchAsList': 'Show as List',
+  'SearchAsChat': 'Show as Chat',
+  'Stars': {
+    'one_value': '%d Star',
+    'other_value': '%d Stars'
+  },
+  'StarsMediaPurchaseCompleted': 'Media Unlocked',
+  'StarsMediaPurchaseCompletedInfo': {
+    'one_value': '**%1$d Star** transferred to **%2$s**.',
+    'other_value': '**%1$d Stars** transferred to **%2$s**.'
+  },
+  'StarMediaPurchase': 'Media Purchase',
+  'StarsTransactionMedia': 'Media',
+  'StarsRefunded': 'Refund',
+  'StarsFailed': 'Failed',
+  'StarsPending': 'Pending',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

@@ -8,7 +8,7 @@
 
 import PopupElement from '.';
 import maybe2x from '../../helpers/maybe2x';
-import {InputInvoice, PaymentsPaymentForm, StarsTopupOption, StarsTransaction, StarsTransactionPeer} from '../../layer';
+import {InputInvoice, MessageMedia, PaymentsPaymentForm, Photo, Document, StarsTopupOption, StarsTransaction, StarsTransactionPeer, MessageExtendedMedia} from '../../layer';
 import {i18n, LangPackKey} from '../../lib/langPack';
 import Section from '../section';
 import {createMemo, createRoot, createSignal, For, JSX, onCleanup} from 'solid-js';
@@ -31,6 +31,9 @@ import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import Icon from '../icon';
 import {Middleware} from '../../helpers/middleware';
+import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
+import wrapMediaSpoiler from '../wrappers/mediaSpoiler';
+import wrapPhoto from '../wrappers/photo';
 
 export function StarsStar(props: {stroke?: boolean, style?: JSX.HTMLAttributes<HTMLDivElement>['style']}) {
   return (
@@ -70,11 +73,12 @@ export function StarsBalance() {
   );
 }
 
-export function StarsChange(props: {stars: Long}) {
+export function StarsChange(props: {stars: Long, isRefund?: boolean}) {
   return (
     <div class={classNames('popup-stars-pay-amount', +props.stars > 0 ? 'green' : 'danger')}>
       {`${+props.stars > 0 ? '+' : ''}${props.stars}`}
       <StarsStar />
+      {props.isRefund && <span class="popup-stars-pay-amount-status">{i18n('StarsRefunded')}</span>}
     </div>
   );
 }
@@ -91,9 +95,19 @@ export function getStarsTransactionTitle(transaction: StarsTransaction) {
   return i18n(key);
 }
 
-export async function getStarsTransactionTitleAndMedia(transaction: StarsTransaction, middleware: Middleware, size: number) {
+export async function getStarsTransactionTitleAndMedia(
+  transaction: StarsTransaction,
+  middleware: Middleware,
+  size: number,
+  paidMedia?: MessageMedia.messageMediaPaidMedia,
+  paidMediaPeerId?: PeerId
+) {
   const [title, media] = await Promise.all([
     (() => {
+      if(paidMedia || transaction?.extended_media) {
+        return wrapPeerTitle({peerId: paidMediaPeerId || getPeerId((transaction.peer as StarsTransactionPeer.starsTransactionPeer).peer)});
+      }
+
       if(transaction.peer._ === 'starsTransactionPeer') {
         return wrapPeerTitle({peerId: getPeerId(transaction.peer.peer)})
       }
@@ -101,6 +115,68 @@ export async function getStarsTransactionTitleAndMedia(transaction: StarsTransac
       return getStarsTransactionTitle(transaction);
     })(),
     (async() => {
+      const _wrapPhoto = async(container: HTMLElement, photo: Parameters<typeof wrapPhoto>[0]['photo']) => {
+        const loadPromises: Promise<any>[] = [];
+        wrapPhoto({
+          container,
+          photo,
+          boxWidth: size,
+          boxHeight: size,
+          middleware,
+          loadPromises,
+          withoutPreloader: true
+        });
+
+        await Promise.all(loadPromises);
+      };
+
+      if(paidMedia || transaction?.extended_media) {
+        const array = paidMedia?.extended_media || transaction.extended_media;
+        let media: Photo.photo | Document.document;
+
+        if(paidMedia) {
+          const extendedMedia = paidMedia.extended_media[0] as MessageExtendedMedia.messageExtendedMediaPreview;
+          media = generatePhotoForExtendedMediaPreview(extendedMedia);
+        } else {
+          const extendedMedia = transaction.extended_media[0];
+          media = (extendedMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo ||
+            (extendedMedia as MessageMedia.messageMediaDocument).document as Document.document;
+        }
+
+        const container = document.createElement('div');
+        container.classList.add('popup-stars-transaction-media', 'is-paid-media');
+
+        if(paidMedia) {
+          const spoilerContainer = await wrapMediaSpoiler({
+            media,
+            animationGroup: 'chat',
+            middleware,
+            width: size,
+            height: size
+          });
+          container.append(spoilerContainer);
+        } else {
+          await _wrapPhoto(container, media);
+        }
+
+        const length = array.length;
+        if(length > 1) {
+          const counter = document.createElement('span');
+          counter.classList.add('popup-stars-transaction-media-counter');
+          counter.textContent = '' + length;
+          container.append(counter);
+        }
+
+        return container;
+      }
+
+      if(transaction?.photo) {
+        const container = document.createElement('div');
+        container.classList.add('popup-stars-transaction-media', 'is-paid-media');
+        await _wrapPhoto(container, transaction?.photo);
+        return container;
+      }
+
       if(transaction.peer._ === 'starsTransactionPeer') {
         const avatar = avatarNew({peerId: getPeerId(transaction.peer.peer), size, middleware});
         await avatar.readyThumbPromise;
@@ -147,13 +223,24 @@ export default class PopupStars extends PopupElement {
     return createRoot((dispose) => {
       middleware.onDestroy(dispose);
 
+      const _title = transaction.extended_media ? i18n('StarMediaPurchase') : title;
+      const midtitle = transaction.extended_media ?
+        title :
+        (transaction.description ? wrapEmojiText(transaction.description) : (+transaction.stars > 0 ? i18n('Stars.TopUp') : undefined));
+      const subtitle = formatFullSentTime(transaction.date);
+
+      let subtitleStatus: HTMLElement;
+      if(transaction.pFlags.refund) subtitleStatus = i18n('StarsRefunded');
+      else if(transaction.pFlags.failed) subtitleStatus = i18n('StarsFailed');
+      else if(transaction.pFlags.pending) subtitleStatus = i18n('StarsPending');
+
       let container: HTMLDivElement;
       (
         <RowTsx
           ref={container}
-          title={<b>{title}</b>}
-          midtitle={transaction.description ? wrapEmojiText(transaction.description) : (+transaction.stars > 0 ? i18n('Stars.TopUp') : undefined)}
-          subtitle={formatFullSentTime(transaction.date)}
+          title={<b>{_title}</b>}
+          midtitle={midtitle}
+          subtitle={subtitleStatus ? [subtitle, ' — ', subtitleStatus] : subtitle}
           media={media}
           mediaSize="abitbigger"
           clickable={() => {
@@ -172,25 +259,31 @@ export default class PopupStars extends PopupElement {
   private _construct(image: HTMLElement, botTitle?: HTMLElement) {
     this.header.append(StarsBalance() as HTMLElement);
 
-    const [extended, setExtended] = createSignal(false);
     const stars = useStars();
     const starsNeeded = createMemo(() => this.paymentForm ? +this.paymentForm.invoice.prices[0].amount - +stars() : 0);
     const topupOptions = createMemo(() => {
       if(this.paymentForm) {
-        return this.topupOptions.filter((option) => +option.stars >= starsNeeded());
+        const filtered = this.topupOptions.filter((option) => +option.stars >= starsNeeded());
+        if(!filtered.length) {
+          return [this.topupOptions[this.topupOptions.length - 1]];
+        }
+
+        return filtered;
       }
 
       return this.topupOptions;
     });
-    const alwaysVisible = topupOptions().filter((option) => !option.pFlags.extended);
+    const alwaysVisible = topupOptions().length > 3 ? topupOptions().filter((option) => !option.pFlags.extended) : topupOptions();
+    const [extended, setExtended] = createSignal(topupOptions().length <= 3);
     const displayingRows = createMemo(() => Math.ceil((extended() ? topupOptions().length : alwaysVisible.length) / 2));
 
-    const showMore = Button('btn-primary btn-transparent primary popup-stars-more is-visible', {icon: 'down', text: 'ShowMoreOptions'});
+    const showMore = Button('btn-primary btn-transparent primary popup-stars-more', {icon: 'down', text: 'ShowMoreOptions'});
     const detachClickEvent = attachClickEvent(showMore, () => {
       setExtended((v) => !v);
       showMore.classList.toggle('is-visible');
     });
     onCleanup(detachClickEvent);
+    if(!extended()) showMore.classList.add('is-visible');
 
     let busy = false;
 
@@ -289,6 +382,7 @@ export default class PopupStars extends PopupElement {
 
         loading = true;
         const starsStatus = await this.managers.appPaymentsManager.getStarsTransactions(offset, inbound);
+        if(inbound === undefined) console.log('stars', starsStatus);
         if(!middleware()) return;
 
         const promises = starsStatus.history.map(this.renderTransaction);
@@ -347,7 +441,7 @@ export default class PopupStars extends PopupElement {
     return (
       <>
         {firstSection}
-        {secondSection}
+        {!starsNeeded() && secondSection}
       </>
     );
   }

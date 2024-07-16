@@ -1,8 +1,10 @@
+import toArray from '../../../../helpers/array/toArray';
 import {Document, Game, Message, MessageAction, MessageExtendedMedia, MessageMedia, Photo, StoryItem, WebPage} from '../../../../layer';
+import generatePhotoForExtendedMediaPreview from '../photos/generatePhotoForExtendedMediaPreview';
 
-export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner: true): Photo.photo | Document.document;
-export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner?: false): Photo.photo | Document.document | Game.game | WebPage.webPage;
-export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner = false): Photo.photo | Document.document | Game.game | WebPage.webPage {
+export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner: true, index?: number): Photo.photo | Document.document;
+export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner?: false, index?: number): Photo.photo | Document.document | Game.game | WebPage.webPage;
+export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner = false, index?: number): Photo.photo | Document.document | Game.game | WebPage.webPage {
   if(!message) return;
 
   let media: any;
@@ -10,10 +12,15 @@ export default function getMediaFromMessage(message: Message | StoryItem.storyIt
     media = ((message as Message.messageService).action as MessageAction.messageActionChannelEditPhoto).photo;
   } else if((message as Message.message).media) {
     let messageMedia = (message as Message.message).media;
+    const extendedMedia = (messageMedia as MessageMedia.messageMediaInvoice | MessageMedia.messageMediaPaidMedia).extended_media;
     if((messageMedia as MessageMedia.messageMediaWebPage).webpage) {
       messageMedia = (messageMedia as MessageMedia.messageMediaWebPage).webpage as any as MessageMedia;
-    } else if((messageMedia as MessageMedia.messageMediaInvoice).extended_media?._ === 'messageExtendedMedia') {
-      messageMedia = ((messageMedia as MessageMedia.messageMediaInvoice).extended_media as MessageExtendedMedia.messageExtendedMedia).media;
+    } else if(extendedMedia) {
+      const media = toArray(extendedMedia)[index ?? 0];
+      messageMedia = (media as MessageExtendedMedia.messageExtendedMedia).media;
+      if(!messageMedia) {
+        return generatePhotoForExtendedMediaPreview(media as MessageExtendedMedia.messageExtendedMediaPreview);
+      }
     }
 
     media = /* (messageMedia as MessageMedia.messageMediaDocument).alt_document || */

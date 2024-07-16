@@ -20,8 +20,9 @@ import wrapMediaSpoiler from './mediaSpoiler';
 import wrapPhoto from './photo';
 import wrapVideo from './video';
 
-export default function wrapAlbum({messages, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, autoDownload, managers = rootScope.managers, animationGroup}: {
-  messages: Message.message[],
+export default function wrapAlbum({messages, media, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, autoDownload, managers = rootScope.managers, animationGroup, spoilered, videoTimes, uploadingFileName}: {
+  messages?: Message.message[],
+  media?: (Photo.photo | Document.document)[],
   attachmentDiv: HTMLElement,
   middleware?: Middleware,
   lazyLoadQueue?: LazyLoadQueue,
@@ -31,16 +32,22 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
   loadPromises?: Promise<any>[],
   autoDownload?: ChatAutoDownloadSettings,
   managers?: AppManagers,
-  animationGroup?: AnimationItemGroup
+  animationGroup?: AnimationItemGroup,
+  spoilered?: boolean,
+  videoTimes?: HTMLElement[],
+  uploadingFileName?: string[]
 }) {
   const items: {size: PhotoSize.photoSize, media: Photo.photo | Document.document, message: Message.message}[] = [];
 
   // !lowest msgID will be the FIRST in album
-  for(const message of messages) {
-    const media = getMediaFromMessage(message, true);
+  for(const message of media || messages) {
+    const isMessage = !!messages;
+    const media = isMessage ? getMediaFromMessage(message as Message.message, true) : message;
 
-    const size: any = media._ === 'photo' ? choosePhotoSize(media, 480, 480) : {w: media.w, h: media.h};
-    items.push({size, media, message});
+    const size: any = media._ === 'photo' ?
+      choosePhotoSize(media, 480, 480) :
+      {w: (media as Document.document).w, h: (media as Document.document).h};
+    items.push({size, media: media as any, message: isMessage ? message as Message.message : undefined});
   }
 
   /* // * pending
@@ -54,7 +61,8 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
     maxWidth: mediaSizes.active.album.width,
     minWidth: 100,
     spacing: 1,
-    forMedia: true
+    forMedia: true,
+    noGroupedItem: !messages
   });
 
   const {width, height} = attachmentDiv.style;
@@ -64,12 +72,16 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
   items.forEach((item, idx) => {
     const {size, media, message} = item;
 
-    const messageMedia = message.media;
-    const hasSpoiler = !!(messageMedia as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument).pFlags?.spoiler;
+    const messageMedia = message?.media;
+    const hasSpoiler = spoilered || !!(messageMedia as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument)?.pFlags?.spoiler;
 
     const div = attachmentDiv.children[idx] as HTMLElement;
-    div.dataset.mid = '' + message.mid;
-    div.dataset.peerId = '' + message.peerId;
+    if(message) {
+      div.dataset.mid = '' + message.mid;
+      div.dataset.peerId = '' + message.peerId;
+    } else {
+      div.dataset.index = '' + idx;
+    }
     const mediaDiv = div.firstElementChild as HTMLElement;
     const isPhoto = media._ === 'photo';
     let thumbPromise: Promise<any>;
@@ -86,7 +98,8 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
         size,
         loadPromises,
         autoDownloadSize: autoDownload.photo,
-        managers
+        managers,
+        uploadingFileName: uploadingFileName?.[idx]
       });
     } else {
       thumbPromise = wrapVideo({
@@ -102,7 +115,8 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
         loadPromises,
         autoDownload,
         managers,
-        noAutoplayAttribute: hasSpoiler
+        noAutoplayAttribute: true,
+        uploadingFileName: uploadingFileName?.[idx]
       });
     }
 
@@ -135,6 +149,11 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
       });
 
       loadPromises?.push(promise);
+    }
+
+    const videoTime = videoTimes?.[idx];
+    if(videoTime) {
+      mediaDiv.append(videoTime);
     }
   });
 }
