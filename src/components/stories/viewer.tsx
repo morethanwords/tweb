@@ -103,6 +103,8 @@ import {TransitionGroup} from '../../helpers/solid/transitionGroup';
 import makeGoogleMapsUrl from '../../helpers/makeGoogleMapsUrl';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import showTooltip from '../tooltip';
+import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
+import wrapUrl from '../../lib/richTextProcessor/wrapUrl';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -632,6 +634,7 @@ const StoryMediaArea = (props: {
   const isLocation = createMemo(() => props.mediaArea._ === 'mediaAreaGeoPoint' || props.mediaArea._ === 'mediaAreaVenue');
   const isReaction = createMemo(() => props.mediaArea._ === 'mediaAreaSuggestedReaction');
   const isPost = createMemo(() => props.mediaArea._ === 'mediaAreaChannelPost');
+  const isLink = createMemo(() => props.mediaArea._ === 'mediaAreaUrl');
 
   const onLocationClick = async() => {
     const geoPoint = (props.mediaArea as MediaArea.mediaAreaGeoPoint).geo as GeoPoint.geoPoint;
@@ -714,22 +717,15 @@ const StoryMediaArea = (props: {
     });
   };
 
-  const onPostClick = () => {
-    const openPost = () => {
-      props.close(() => {
-        const mediaArea = props.mediaArea as MediaArea.mediaAreaChannelPost;
-        appImManager.setInnerPeer({
-          peerId: mediaArea.channel_id.toPeerId(true),
-          lastMsgId: mediaArea.msg_id
-        });
-      });
-    };
-
+  const showNotCenteredTooltip = (_props: {
+    callback: () => void,
+    text: HTMLElement
+  }) => {
     const a = anchorCallback(() => {
       close();
-      openPost();
+      _props.callback();
     });
-    a.append(i18n('Story.ViewPost'));
+    a.append(_props.text);
     const wasPlaying = !stories.paused;
     actions.pause();
     const {close} = showTooltip({
@@ -744,6 +740,39 @@ const StoryMediaArea = (props: {
       }
     });
     props.setTooltipCloseCallback(() => close);
+  };
+
+  const onPostClick = () => {
+    const openPost = () => {
+      props.close(() => {
+        const mediaArea = props.mediaArea as MediaArea.mediaAreaChannelPost;
+        appImManager.setInnerPeer({
+          peerId: mediaArea.channel_id.toPeerId(true),
+          lastMsgId: mediaArea.msg_id
+        });
+      });
+    };
+
+    showNotCenteredTooltip({
+      callback: openPost,
+      text: i18n('Story.ViewPost')
+    });
+  };
+
+  const onLinkClick = () => {
+    showNotCenteredTooltip({
+      callback: () => {
+        const url = (props.mediaArea as MediaArea.mediaAreaUrl).url;
+        if(wrapUrl(url).onclick) {
+          props.close(() => {
+            appImManager.openUrl(url);
+          });
+        } else {
+          safeWindowOpen(url);
+        }
+      },
+      text: i18n('OpenUrlTitle')
+    });
   };
 
   const onClick = (e: MouseEvent) => {
@@ -831,6 +860,9 @@ const StoryMediaArea = (props: {
     props.setReady(true);
   } else if(isPost()) {
     onTypeClick = onPostClick;
+    props.setReady(true);
+  } else if(isLink()) {
+    onTypeClick = onLinkClick;
     props.setReady(true);
   } else {
     props.setReady(true);
