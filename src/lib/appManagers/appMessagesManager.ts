@@ -918,7 +918,7 @@ export class AppMessagesManager extends AppManager {
     this.checkSendOptions(options);
 
     const hadMessageBefore = !!options.groupedMessage;
-    const message = options.groupedMessage ?? this.generateOutgoingMessage(peerId, options);
+    const message = options.groupedMessage || this.generateOutgoingMessage(peerId, options);
 
     let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
 
