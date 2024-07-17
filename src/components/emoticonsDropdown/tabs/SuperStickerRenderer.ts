@@ -87,7 +87,7 @@ export default class SuperStickerRenderer {
 
   // TODO: FIX AND REMOVE
   public observeAnimated(element: HTMLElement) {
-    console.info(element);
+    // console.info(element);
     this.animated.add(element);
     this.lazyLoadQueue.observe({
       div: element,

@@ -1,4 +1,10 @@
-import {fragmentShaderSource, rgbToHsvFragmentShaderCode, vertexShaderSource, vertexShaderSourceFlip} from './shaders';
+import {
+  fragmentShaderSource, linesFragmentShaderSource,
+  linesVertexShaderSource,
+  rgbToHsvFragmentShaderCode, textureFragmentShader,
+  vertexShaderSource,
+  vertexShaderSourceFlip
+} from './shaders';
 import {MediaEditorSettings} from '../appMediaEditor';
 import {Setter, Signal} from 'solid-js';
 
@@ -199,6 +205,40 @@ export const getHSVTexture = (gl: WebGLRenderingContext, image: TexImageSource, 
   const hsvBuffer = new Uint8Array(width * height * 4);
   gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, hsvBuffer);
   return hsvBuffer;
+}
+
+export const executeLineDrawing = (gl: WebGLRenderingContext, width: number, height: number, points: number[]) => {
+  const shaderProgram = createAndUseGLProgram(gl, linesVertexShaderSource, linesFragmentShaderSource);
+  const targetTexture = createTextureFromData(gl, width, height, null);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0);
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(points));
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.viewport(0, 0, width, height);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.LINE_STRIP, 0, points.length / 2);
+  const lineBuffer = new Uint8Array(width * height * 4);
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, lineBuffer);
+  return lineBuffer;
+}
+
+export const drawTextureDebug = (gl: WebGLRenderingContext, width: number, height: number, texture: ArrayBufferView) => {
+  const shaderProgram = createAndUseGLProgram(gl, vertexShaderSourceFlip, textureFragmentShader);
+  const hsvSourceTexture = createTextureFromData(gl, width, height, texture);
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, hsvSourceTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'sTexture'), 0);
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  return shaderProgram;
 }
 
 export const executeEnhanceFilter = (gl: WebGLRenderingContext, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView) => {

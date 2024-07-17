@@ -1,7 +1,7 @@
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-settings';
 import {createEffect, createSignal, onMount} from 'solid-js';
-import {calcCDT, executeEnhanceFilter, getHSVTexture} from './media-editor/utils';
+import {calcCDT, drawTextureDebug, executeEnhanceFilter, executeLineDrawing, getHSVTexture} from './media-editor/utils';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
@@ -10,6 +10,7 @@ import {MediaEditorTabs} from './media-editor/editor-tabs';
 import {MediaEditorStickersSettings} from './media-editor/tabs/editor-stickers-settings';
 import rootScope from '../lib/rootScope';
 import {MediaEditorStickersPanel} from './media-editor/media-panels/stickers-panel';
+import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -159,7 +160,13 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
       } */
 
+      // LEAVE FOR TOMORROW CLEAR HEAD
+      /* const linesTexture = executeLineDrawing(gl, sourceWidth, sourceHeight, [-1.0, -1.0, 0.5, 0.5, 0.0, 1.0, -0.5, 0.5, 1.0, -1.0]);
 
+      console.info(linesTexture);
+      console.info(linesTexture.filter(el => el > 0));
+
+      const debugProgram = drawTextureDebug(gl, sourceWidth, sourceHeight, linesTexture); */
       // get hsv data
       const hsvBuffer = getHSVTexture(gl, this as any, sourceWidth, sourceHeight);
       // calculate CDT Data
@@ -204,6 +211,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area' >
         <canvas ref={glCanvas} />
+        <MediaEditorPaintPanel active={tab() === 3} state={mediaEditorState.paint} />
         <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} />
 
         { /* <For each={text()}>
