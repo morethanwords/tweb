@@ -72,6 +72,7 @@ export class LottieLoader {
           this.log('worker #' + i + ' ready');
 
           queryableWorker.addEventListener('frame', this.onFrame);
+          queryableWorker.addEventListener('render_all', this.onAllFrames);
           queryableWorker.addEventListener('loaded', this.onPlayerLoaded);
           queryableWorker.addEventListener('error', this.onPlayerError);
 
@@ -222,6 +223,40 @@ export class LottieLoader {
     this.log.debug('onPlayerLoaded');
     player.onLoad(frameCount, fps);
   };
+
+  private onAllFrames = (reqId: number, ...args: any[]) => {
+    console.info('got 222222 shit');
+    console.info('got 222222 shit');
+    console.info('got 222222 shit');
+    console.info('got 222222 shit');
+    console.info('got 222222 shit');
+    console.info('got 222222 shit');
+    console.info('got 222222 shit');
+    console.info('got 222222 shit');
+    console.info('got 222222 shit');
+    console.info('got shit');
+    console.info('got shit');
+    console.info('got shit');
+    console.info('got shit', reqId);
+    console.info('got shit', args);
+
+    const [imgs] = args as [any[]];
+    imgs.forEach((img, idx) => {
+      const cnv = document.createElement('canvas');
+      cnv.classList.add('f' + idx);
+      cnv.id = 'frame' + idx;
+      cnv.width = 400;
+      cnv.height = 400;
+
+      console.info(img);
+      const ctx = cnv.getContext('2d');
+      // ctx.rotate(-0.5);
+      ctx.drawImage(img, 0, 0);
+
+      console.info(cnv);
+      document.body.appendChild(cnv);
+    });
+  }
 
   private onFrame = (reqId: number, frameNo: number, frame: Uint8ClampedArray | ImageBitmap) => {
     const player = this.players[reqId];

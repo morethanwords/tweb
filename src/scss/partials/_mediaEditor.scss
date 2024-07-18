@@ -602,3 +602,29 @@ $inactive-opacity: .4;
     }
   }
 }
+
+body > canvas {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  scale: 0.5;
+
+  &.f1 {
+    left: 100px;
+  }
+
+  &.f2 {
+    top: 100px;
+  }
+
+  &.f3 {
+    left: 100px;
+    top: 100px;
+  }
+
+  &.f4 {
+    left: 200px;
+    top: 200px;
+  }
+
+}

@@ -11,6 +11,7 @@ import {MediaEditorStickersSettings} from './media-editor/tabs/editor-stickers-s
 import rootScope from '../lib/rootScope';
 import {MediaEditorStickersPanel} from './media-editor/media-panels/stickers-panel';
 import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
+import {generateFakeGif} from './media-editor/generate/media-editor-generator';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -80,6 +81,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   let glCanvas: HTMLCanvasElement;
   let gl:  WebGLRenderingContext;
   let container: HTMLDivElement;
+  let img: HTMLImageElement;
 
   /*
   let ca2: HTMLCanvasElement;
@@ -129,9 +131,10 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
    */
 
   onMount(() => {
-    const img = new Image();
+    img = new Image();
     img.src = imageBlobUrl;
     img.onload = async function() {
+      generateFakeGif(img);
       glCanvas.width = container.clientWidth;
       glCanvas.height = container.clientHeight;
       const sourceWidth = img.width;

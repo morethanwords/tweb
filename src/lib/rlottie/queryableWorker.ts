@@ -12,6 +12,7 @@ export default class QueryableWorker extends EventListenerBase<{
   frame: (reqId: number, frameNo: number, frame: Uint8ClampedArray | ImageBitmap) => void,
   loaded: (reqId: number, frameCount: number, fps: number) => void,
   error: (reqId: number, error: Error) => void,
+  render_all: (reqId: number, frameCount: number, fps: number) => void,
   workerError: (error: ErrorEvent) => void
 }> {
   constructor(private worker: Worker) {

@@ -494,6 +494,8 @@ export default class RLottiePlayer extends EventListenerBase<{
       }
 
       this.sendQuery(['renderFrame', frameNo], this.clamped ? [this.clamped.buffer] : undefined);
+
+      this.sendQuery(['renderAllFrames', frameNo], this.clamped ? [this.clamped.buffer] : undefined);
     }
   }
 
@@ -689,6 +691,8 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.dispatchEvent('ready');
     this.addEventListener('enterFrame', () => {
       this.dispatchEvent('firstFrame');
+
+      console.info(this.canvas);
 
       if(!this.canvas[0].parentNode && this.el?.[0] && !this.overrideRender) {
         this.el.forEach((container, idx) => container.append(this.canvas[idx]));

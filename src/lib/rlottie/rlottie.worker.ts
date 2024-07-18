@@ -111,6 +111,33 @@ export class RLottieItem {
     }
   }
 
+  // probably add scale pos and roation here
+  public async rawRender(frameNo: number): Promise<any> {
+    if(this.dead || this.handle === undefined) return;
+    // return;
+
+    if(this.frameCount < frameNo || frameNo < 0) {
+      return;
+    }
+
+    try {
+      worker.Api.render(this.handle, frameNo);
+
+      const bufferPointer = worker.Api.buffer(this.handle);
+
+      const data = Module.HEAPU8.subarray(bufferPointer, bufferPointer + (this.width * this.height * 4));
+
+      const frameImage = new ImageData(this.width, this.height);
+
+      frameImage.data.set(data);
+      return await createImageBitmap(frameImage);
+    } catch(e) {
+      console.error('Render error:', e);
+      this.dead = true;
+      return null;
+    }
+  }
+
   public destroy() {
     this.dead = true;
 
@@ -200,7 +227,23 @@ const queryableFunctions = {
   },
   renderFrame: function(reqId: number, frameNo: number, clamped?: Uint8ClampedArray) {
     // console.log('worker renderFrame', reqId, frameNo, clamped);
+
     items[reqId].render(frameNo, clamped);
+  },
+  renderAllFrames: async function(reqId: number, frameNo: number, clamped?: Uint8ClampedArray) {
+    // console.log('worker renderFrame', reqId, frameNo, clamped);
+    // items[reqId].render(frameNo, clamped);
+
+    if(frameNo === 3) {
+      const res1 = await items[reqId].rawRender(0);
+      const res2 = await items[reqId].rawRender(5);
+      const res3 = await items[reqId].rawRender(10);
+      const res4 = await items[reqId].rawRender(15);
+      const res5 = await items[reqId].rawRender(20);
+
+      reply(['render_all', reqId, [res1, res2, res3, res4, res5]]);
+      console.info('okk');
+    }
   }
 };
 
