@@ -8,6 +8,18 @@ export const vertexShaderSource = `
             }
         `;
 
+export const textureFragmentShaderReal = `
+precision highp float;
+            varying vec2 vTextureCoord;
+            uniform sampler2D sTexture;
+            
+            void main(void) {
+                vec4 texel = texture2D(sTexture, vTextureCoord);
+                // float dist = distance(texel);
+                gl_FragColor = texel; // vec4(texel.xyz, dist);
+           }
+`;
+
 // 960 1280
 export const textureFragmentShader = `
             precision highp float;
@@ -25,7 +37,7 @@ export const textureFragmentShader = `
                 
                 vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
                     bool foundDifferent = false;
-                    int maxRadius = 12 * 5;
+                    int maxRadius = 11;
                     const int uRadius = 60;
                     float w = 1.0 / float(960);
                     float h = 1.0 / float(1280);
@@ -285,3 +297,94 @@ export const newLineTransparentFragment = `
                 gl_FragColor = vec4(1.0, 0.5, 0.2, 0.3);
             }
         `;
+
+/* export const newLineTransparentVertexWIDE = `
+            attribute vec2 aVertexPosition;
+            attribute vec2 aNormal;
+            attribute float aMiter;
+
+            // varying vec3 vColor;
+            varying vec3 vColor;
+
+            void main() {
+                vColor = vec3(aNormal.xy, aMiter); // aNormal;  //vec2(1.0, 0.5);
+                gl_Position = vec4(aVertexPosition, 0.0, 1.0);
+
+                // vColor = vec3(aMiter, aMiter, aMiter);
+            }
+        `;
+// Fragment shader source code
+export const newLineTransparentFragmentWIDE = `
+            precision mediump float;
+
+            varying vec3 vColor;
+
+            void main() {
+                gl_FragColor = vec4(vColor.xyz, 1.0);
+            }
+        `;
+*/
+export const newLineTransparentVertexWIDE = `
+            attribute vec2 aVertexPosition;
+            attribute vec2 aNormal;
+            attribute float aMiter;
+            
+            varying float edge;
+            
+            
+            void main() {
+                float thickness = 0.1;
+                edge = sign(aMiter);
+                  vec2 pointPos = aVertexPosition.xy + vec2(aNormal * thickness/2.0 * aMiter);
+                  gl_Position = vec4(pointPos, 0.0, 1.0);
+            }
+        `;
+
+// Fragment shader source code
+export const newLineTransparentFragmentWIDE = `
+            precision mediump float;
+            
+           varying float edge;
+
+
+                void main() {
+                const vec3 color2 = vec3(0.8);
+                float inner = 0.0;
+                  float v = 1.0 - abs(edge);
+                  v = smoothstep(0.65, 0.7, v*inner);
+                  gl_FragColor = vec4(1.0, 0.0, 1.0, 0.25); // mix(vec4(edge, edge, 0.0, 1.0), vec4(0.0), v);
+                }
+        `;
+
+/*
+export const newLineTransparentVertexWIDE = `
+            attribute vec2 aVertexPosition;
+            attribute vec2 aNormal;
+            attribute float aMiter;
+
+            varying float edge;
+
+            void main() {
+                float thickness = 2.0;
+                edge = sign(aMiter);
+                  vec2 pointPos = aVertexPosition.xy + vec2(aNormal * thickness/2.0 * aMiter);
+                  gl_Position = vec4(aVertexPosition, 0.0, 1.0);
+            }
+        `;
+
+// Fragment shader source code
+export const newLineTransparentFragmentWIDE = `
+            precision mediump float;
+
+            varying float edge;
+
+
+                void main() {
+                const vec3 color2 = vec3(0.8);
+                float inner = 1.0;
+                  float v = 1.0 - abs(edge);
+                  v = smoothstep(0.65, 0.7, v*inner);
+                  gl_FragColor = mix(vec4(1.0, 0.5, 0.0, 1.0), vec4(0.0), v);
+                }
+        `;
+ */

@@ -1,7 +1,13 @@
 import {
-  fragmentShaderSource, linesFragmentShaderSource,
-  linesVertexShaderSource, newLineTransparentFragment, newLineTransparentVertex,
-  rgbToHsvFragmentShaderCode, textureFragmentShader,
+  fragmentShaderSource,
+  linesFragmentShaderSource,
+  linesVertexShaderSource,
+  newLineTransparentFragment,
+  newLineTransparentFragmentWIDE,
+  newLineTransparentVertex,
+  newLineTransparentVertexWIDE,
+  rgbToHsvFragmentShaderCode,
+  textureFragmentShader, textureFragmentShaderReal,
   vertexShaderSource,
   vertexShaderSourceFlip
 } from './shaders';
@@ -173,16 +179,16 @@ export const createGLBuffer = (gl: WebGLRenderingContext, source: BufferSource) 
   return dataPositionBuffer;
 }
 
-export const bindBufferToAttribute = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, attributeName: string, buffer: WebGLBuffer) => {
+export const bindBufferToAttribute = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, attributeName: string, buffer: WebGLBuffer, size = 2) => {
   const attribPosition = gl.getAttribLocation(shaderProgram, attributeName);
   gl.enableVertexAttribArray(attribPosition);
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.vertexAttribPointer(attribPosition, 2, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(attribPosition, size, gl.FLOAT, false, 0, 0);
 }
 
-export const createAndBindBufferToAttribute = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, attributeName: string, source: BufferSource): WebGLBuffer => {
+export const createAndBindBufferToAttribute = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, attributeName: string, source: BufferSource, size = 2): WebGLBuffer => {
   const glBuffer = createGLBuffer(gl, source);
-  bindBufferToAttribute(gl, shaderProgram, attributeName, glBuffer);
+  bindBufferToAttribute(gl, shaderProgram, attributeName, glBuffer, size);
   return glBuffer;
 }
 
@@ -223,7 +229,7 @@ export const executeLineDrawing = (gl: WebGLRenderingContext, width: number, hei
   return lineBuffer;
 }
 
-export const drawCorrectLine = (gl: WebGLRenderingContext, width: number, height: number, points: number[]) => {
+export const drawOpaqueTriangles = (gl: WebGLRenderingContext, width: number, height: number, points: number[]) => {
   const shaderProgram = createAndUseGLProgram(gl, newLineTransparentVertex, newLineTransparentFragment);
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(points));
   // createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
@@ -235,7 +241,42 @@ export const drawCorrectLine = (gl: WebGLRenderingContext, width: number, height
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-  gl.drawArrays(gl.TRIANGLES, 0, 9);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  return shaderProgram;
+}
+
+export const drawWideLine = (gl: WebGLRenderingContext, width: number, height: number, points: number[], normals: number[], miters: number[]) => {
+  console.info(points);
+  console.info(normals);
+  console.info(miters);
+
+  const textureCoordinates2 = [
+    0.0,  1.0,
+    0.0,  1.0,
+    1.0,  1.0,
+    1.0,  1.0,
+    0.0,  0.0,
+    0.0,  0.0,
+    1.0,  0.0,
+    1.0,  0.0
+  ];
+
+  const shaderProgram = createAndUseGLProgram(gl, newLineTransparentVertexWIDE, newLineTransparentFragmentWIDE);
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(points));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates2));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aNormal', new Float32Array(normals));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aMiter', new Float32Array(miters), 1);
+
+  gl.clearColor(1.0, 1.0, 1.0, 1.0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, points.length / 2);
+
+
   return shaderProgram;
 }
 
@@ -246,6 +287,29 @@ export const drawTextureDebug = (gl: WebGLRenderingContext, width: number, heigh
   createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, hsvSourceTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'sTexture'), 0);
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  return shaderProgram;
+}
+
+export const drawTextureImageDebug = (gl: WebGLRenderingContext, width: number, height: number, texture: HTMLImageElement) => {
+  const shaderProgram = createAndUseGLProgram(gl, vertexShaderSourceFlip, textureFragmentShaderReal);
+  const hsvSourceTexture = createTextureFromImage(gl, texture);
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.clearColor(1.0, 0.0, 1.0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);

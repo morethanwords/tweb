@@ -3,8 +3,8 @@ import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-set
 import {createEffect, createSignal, onMount} from 'solid-js';
 import {
   calcCDT,
-  drawCorrectLine,
-  drawTextureDebug,
+  drawOpaqueTriangles,
+  drawTextureDebug, drawTextureImageDebug, drawWideLine,
   executeEnhanceFilter,
   executeLineDrawing,
   getHSVTexture
@@ -19,6 +19,8 @@ import rootScope from '../lib/rootScope';
 import {MediaEditorStickersPanel} from './media-editor/media-panels/stickers-panel';
 import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
 import {generateFakeGif} from './media-editor/generate/media-editor-generator';
+import {polylineNormals} from './media-editor/media-panels/draw.util';
+import {dup} from '../vendor/leemon';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -170,6 +172,66 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
       } */
 
+      const duplicate2 = (nestedArray: number[], mirror = false) => {
+        const out: any[] = []
+        nestedArray.forEach(x => {
+          out.push(mirror ? -x : x, x)
+        })
+        return out;
+      }
+
+      const duplicate3 = (nestedArray: number[]) => {
+        let out: any[] = [];
+        const outs: any[][] = [];
+        nestedArray.forEach(x => {
+          out.push(x);
+          if(out.length === 2) {
+            outs.push([...out]);
+            out = [];
+          }
+        });
+        const res: any[] = [];
+        outs.forEach(oo => {
+          res.push(oo);
+          res.push(oo);
+        });
+        return res;
+      }
+
+
+      // debug brush
+
+      const plz = new Image();
+      plz.src = 'assets/brush.png';
+
+      plz.onload = (l => {
+        const debugProgram = drawTextureImageDebug(gl, sourceWidth, sourceHeight, plz);
+      });
+      // const img
+
+
+      return;
+
+      // const path = [[0, 122], [0, 190], [90, 190]];
+      const path = [[-0.5, 0], [0, 0.0], [0.5, 0.5], [-1.0, 0.5], [1.0, -1.0]];
+      const rawNormals = polylineNormals(path, false);
+      const normals = rawNormals.map(x => x[0]);
+      const miters = rawNormals.map(x => x[1]);
+      // console.info(normals);
+      // console.info(miters);
+      const lines = [].concat(...path.map((point, idx) => [...point, ...normals[idx], miters[idx]]));
+      // console.info(lines);
+      const res = [].concat(...path);
+
+      const duplicate = duplicate2; // (val: any, ...args: any[]) => val;
+
+      const points = [].concat(...duplicate3(res));
+      const nrmls = [].concat(...duplicate3( [].concat(...normals)));
+      const mtrs = duplicate([].concat(...miters), true);
+
+      drawWideLine(gl, sourceWidth, sourceHeight, points, nrmls, mtrs);
+
+      return;
       const triangles = [
         // First triangle (semi-transparent red)
         -0.5, -0.5,
@@ -186,7 +248,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         0.75, 0.0,
         0.0, 0.75
       ];
-      drawCorrectLine(gl, sourceWidth, sourceHeight, triangles);
+      drawOpaqueTriangles(gl, sourceWidth, sourceHeight, [0, 0, 0, 1, 0.5, 1]);
 
       return
       // LEAVE FOR TOMORROW CLEAR HEAD
