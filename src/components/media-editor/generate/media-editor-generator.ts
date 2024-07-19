@@ -9,7 +9,7 @@ export const generateFakeGif = async(src: HTMLImageElement) => {
   const totalFrames = Math.floor(durationInMillisecond / frameTimeInMillisecond) ;
   let chunkCount = 0;
   let encoderClosed = false;
-  let videoEncoder: any;
+  let videoEncoder: any = null;
 
   // ------ Mp4box setup --------
   const oneSecondInMillisecond = 1000;

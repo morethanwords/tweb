@@ -70,6 +70,12 @@ export const textureFragmentShader = `
                     }
                     
                     // foundDifferent = true;
+                     if (foundDifferent) {
+                    gl_FragColor = vec4(1.0, 0.5, 0.3, 1.0);
+                    } else {
+                    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+                    }
+                    return;
                     
                     if (foundDifferent) {
                     // we can calculate a table fro those things: step and  intensity threshold
@@ -259,3 +265,23 @@ void main() {
   gl_FragColor = mix(vec4(color, 1.0), vec4(0.0), v);
 }
 `;
+
+export const newLineTransparentVertex = `
+            attribute vec2 aVertexPosition;
+            // attribute vec4 aColor;
+            // varying vec4 vColor;
+            void main() {
+                gl_Position = vec4(aVertexPosition, 0.0, 1.0);
+                // vColor = aColor;
+            }
+        `;
+
+// Fragment shader source code
+export const newLineTransparentFragment = `
+            precision mediump float;
+            // varying vec4 vColor;
+            
+            void main() {
+                gl_FragColor = vec4(1.0, 0.5, 0.2, 0.3);
+            }
+        `;

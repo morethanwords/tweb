@@ -1,7 +1,14 @@
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-settings';
 import {createEffect, createSignal, onMount} from 'solid-js';
-import {calcCDT, drawTextureDebug, executeEnhanceFilter, executeLineDrawing, getHSVTexture} from './media-editor/utils';
+import {
+  calcCDT,
+  drawCorrectLine,
+  drawTextureDebug,
+  executeEnhanceFilter,
+  executeLineDrawing,
+  getHSVTexture
+} from './media-editor/utils';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
@@ -134,7 +141,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     img = new Image();
     img.src = imageBlobUrl;
     img.onload = async function() {
-      generateFakeGif(img);
+      // generateFakeGif(img);
       glCanvas.width = container.clientWidth;
       glCanvas.height = container.clientHeight;
       const sourceWidth = img.width;
@@ -163,13 +170,33 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
       } */
 
+      const triangles = [
+        // First triangle (semi-transparent red)
+        -0.5, -0.5,
+        0.5, -0.5,
+        0.0,  0.5,
+
+        // Second triangle (semi-transparent green)
+        -0.5,  0.5,
+        0.5,  0.5,
+        0.0, -0.5,
+
+        // Third triangle (semi-transparent blue)
+        -0.75, 0.0,
+        0.75, 0.0,
+        0.0, 0.75
+      ];
+      drawCorrectLine(gl, sourceWidth, sourceHeight, triangles);
+
+      return
       // LEAVE FOR TOMORROW CLEAR HEAD
-      /* const linesTexture = executeLineDrawing(gl, sourceWidth, sourceHeight, [-1.0, -1.0, 0.5, 0.5, 0.0, 1.0, -0.5, 0.5, 1.0, -1.0]);
+      const linesTexture = executeLineDrawing(gl, sourceWidth, sourceHeight, [-1.0, -1.0, 0.5, 0.5, 0.0, 1.0, -0.5, 0.5, 1.0, -1.0]);
 
       console.info(linesTexture);
       console.info(linesTexture.filter(el => el > 0));
 
-      const debugProgram = drawTextureDebug(gl, sourceWidth, sourceHeight, linesTexture); */
+      const debugProgram = drawTextureDebug(gl, sourceWidth, sourceHeight, linesTexture);
+      return;
       // get hsv data
       const hsvBuffer = getHSVTexture(gl, this as any, sourceWidth, sourceHeight);
       // calculate CDT Data
