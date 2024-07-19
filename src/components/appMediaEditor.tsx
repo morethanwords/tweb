@@ -205,7 +205,26 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       plz.src = 'assets/brush.png';
 
       plz.onload = (l => {
-        const debugProgram = drawTextureImageDebug(gl, sourceWidth, sourceHeight, plz);
+        // const debugProgram = drawTextureImageDebug(gl, sourceWidth, sourceHeight, plz);
+
+
+        const path = [[-0.5, 0], [0, 0.0], [0.5, 0.5], [-1.0, 0.5], [1.0, -1.0]];
+        const rawNormals = polylineNormals(path, false);
+        const normals = rawNormals.map(x => x[0]);
+        const miters = rawNormals.map(x => x[1]);
+        // console.info(normals);
+        // console.info(miters);
+        const lines = [].concat(...path.map((point, idx) => [...point, ...normals[idx], miters[idx]]));
+        // console.info(lines);
+        const res = [].concat(...path);
+
+        const duplicate = duplicate2; // (val: any, ...args: any[]) => val;
+
+        const points = [].concat(...duplicate3(res));
+        const nrmls = [].concat(...duplicate3( [].concat(...normals)));
+        const mtrs = duplicate([].concat(...miters), true);
+
+        drawWideLine(gl, sourceWidth, sourceHeight, points, nrmls, mtrs, plz);
       });
       // const img
 
@@ -229,7 +248,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       const nrmls = [].concat(...duplicate3( [].concat(...normals)));
       const mtrs = duplicate([].concat(...miters), true);
 
-      drawWideLine(gl, sourceWidth, sourceHeight, points, nrmls, mtrs);
+      // drawWideLine(gl, sourceWidth, sourceHeight, points, nrmls, mtrs);
 
       return;
       const triangles = [

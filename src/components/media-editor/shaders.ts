@@ -326,14 +326,18 @@ export const newLineTransparentFragmentWIDE = `
 */
 export const newLineTransparentVertexWIDE = `
             attribute vec2 aVertexPosition;
+            attribute vec2 aTextureCoord;
+            
             attribute vec2 aNormal;
             attribute float aMiter;
             
             varying float edge;
+            varying vec2 vTextureCoord;
             
             
             void main() {
                 float thickness = 0.1;
+                vTextureCoord = aTextureCoord;
                 edge = sign(aMiter);
                   vec2 pointPos = aVertexPosition.xy + vec2(aNormal * thickness/2.0 * aMiter);
                   gl_Position = vec4(pointPos, 0.0, 1.0);
@@ -344,47 +348,20 @@ export const newLineTransparentVertexWIDE = `
 export const newLineTransparentFragmentWIDE = `
             precision mediump float;
             
+           
            varying float edge;
+           varying vec2 vTextureCoord;
+           uniform sampler2D sTexture;
 
 
                 void main() {
+                vec4 texel = texture2D(sTexture, vTextureCoord);
                 const vec3 color2 = vec3(0.8);
                 float inner = 0.0;
                   float v = 1.0 - abs(edge);
                   v = smoothstep(0.65, 0.7, v*inner);
-                  gl_FragColor = vec4(1.0, 0.0, 1.0, 0.25); // mix(vec4(edge, edge, 0.0, 1.0), vec4(0.0), v);
+                  gl_FragColor = vec4(1.0, 0.0, 1.0, 0.45 * texel.a); // mix(vec4(edge, edge, 0.0, 1.0), vec4(0.0), v);
+                  
+                  // gl_FragColor = 1.0 - texel;
                 }
         `;
-
-/*
-export const newLineTransparentVertexWIDE = `
-            attribute vec2 aVertexPosition;
-            attribute vec2 aNormal;
-            attribute float aMiter;
-
-            varying float edge;
-
-            void main() {
-                float thickness = 2.0;
-                edge = sign(aMiter);
-                  vec2 pointPos = aVertexPosition.xy + vec2(aNormal * thickness/2.0 * aMiter);
-                  gl_Position = vec4(aVertexPosition, 0.0, 1.0);
-            }
-        `;
-
-// Fragment shader source code
-export const newLineTransparentFragmentWIDE = `
-            precision mediump float;
-
-            varying float edge;
-
-
-                void main() {
-                const vec3 color2 = vec3(0.8);
-                float inner = 1.0;
-                  float v = 1.0 - abs(edge);
-                  v = smoothstep(0.65, 0.7, v*inner);
-                  gl_FragColor = mix(vec4(1.0, 0.5, 0.0, 1.0), vec4(0.0), v);
-                }
-        `;
- */

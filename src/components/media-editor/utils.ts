@@ -245,31 +245,40 @@ export const drawOpaqueTriangles = (gl: WebGLRenderingContext, width: number, he
   return shaderProgram;
 }
 
-export const drawWideLine = (gl: WebGLRenderingContext, width: number, height: number, points: number[], normals: number[], miters: number[]) => {
+export const drawWideLine = (gl: WebGLRenderingContext, width: number, height: number, points: number[], normals: number[], miters: number[], texture: HTMLImageElement) => {
   console.info(points);
   console.info(normals);
   console.info(miters);
 
   const textureCoordinates2 = [
     0.0,  1.0,
-    0.0,  1.0,
     1.0,  1.0,
-    1.0,  1.0,
-    0.0,  0.0,
     0.0,  0.0,
     1.0,  0.0,
-    1.0,  0.0
+
+    0.0,  1.0,
+    1.0,  1.0,
+    0.0,  0.0,
+    1.0,  0.0,
+
+    0.0,  1.0,
+    1.0,  1.0
   ];
 
   const shaderProgram = createAndUseGLProgram(gl, newLineTransparentVertexWIDE, newLineTransparentFragmentWIDE);
+  const hsvSourceTexture = createTextureFromImage(gl, texture);
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(points));
   createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates2));
   createAndBindBufferToAttribute(gl, shaderProgram, 'aNormal', new Float32Array(normals));
   createAndBindBufferToAttribute(gl, shaderProgram, 'aMiter', new Float32Array(miters), 1);
 
-  gl.clearColor(1.0, 1.0, 1.0, 1.0);
+  gl.clearColor(0.0, 1.0, 1.0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, hsvSourceTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'sTexture'), 0);
 
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
