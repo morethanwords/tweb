@@ -4,7 +4,6 @@ import {createEffect, createSignal, For, onMount} from 'solid-js';
 // °
 export const CropResizePanel = (props: { active: boolean, state?: MediaEditorSettings['paint'] }) => {
   const angleLabel = [...Array(13).keys()].map(idx => (idx - 6) * 15);
-  const [selectedAngle, setSelectedAngle] = createSignal(0);
   const [containerPos, setContainerPos] = createSignal([0, 0]);
   const [initDragPos, setInitDragPos] = createSignal(0);
 
@@ -61,7 +60,7 @@ export const CropResizePanel = (props: { active: boolean, state?: MediaEditorSet
       <div style={{transform: `translateX(${dragValue()}px)`}} class='angle' draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div class='labels'>
           <For each={angleLabel}>
-            { angle => <div style={{opacity: fn(angle, currentAngle())}} classList={{label: true, selected: angle === selectedAngle()}}>{angle < 0 ? -angle : angle}</div> }
+            { angle => <div style={{opacity: fn(angle, currentAngle())}} classList={{label: true, selected: Math.abs(angle - currentAngle()) < 8}}>{angle < 0 ? -angle : angle}</div> }
           </For>
         </div>
         { /* dots here */ }
