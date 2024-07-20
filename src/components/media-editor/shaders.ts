@@ -330,17 +330,22 @@ export const newLineTransparentVertexWIDE = `
             
             attribute vec2 aNormal;
             attribute float aMiter;
+            attribute vec3 aColor;
+            
             
             varying float edge;
             varying vec2 vTextureCoord;
+            varying vec3 vColor;
             
             
             void main() {
                 float thickness = 0.1;
+                vColor = aColor;
                 vTextureCoord = aTextureCoord;
                 edge = sign(aMiter);
                   vec2 pointPos = aVertexPosition.xy + vec2(aNormal * thickness/2.0 * aMiter);
-                  gl_Position = vec4(pointPos, 0.0, 1.0);
+                  pointPos = (pointPos * 2.0 - 1.0) / 2.0;
+                  gl_Position = vec4(pointPos.x, 1.0 - pointPos.y, 0.0, 1.0);
             }
         `;
 
@@ -351,6 +356,8 @@ export const newLineTransparentFragmentWIDE = `
            
            varying float edge;
            varying vec2 vTextureCoord;
+            varying vec3 vColor;
+           
            uniform sampler2D sTexture;
 
 
@@ -360,8 +367,9 @@ export const newLineTransparentFragmentWIDE = `
                 float inner = 0.0;
                   float v = 1.0 - abs(edge);
                   v = smoothstep(0.65, 0.7, v*inner);
-                  gl_FragColor = vec4(1.0, 0.0, 1.0, 0.45 * texel.a); // mix(vec4(edge, edge, 0.0, 1.0), vec4(0.0), v);
+                  float aaa = (texel.r + texel.g + texel.b) / 3.0;
+                  gl_FragColor = vec4(1.0, 0.0, 1.0, 0.45); // mix(vec4(edge, edge, 0.0, 1.0), vec4(0.0), v);
                   
-                  // gl_FragColor = 1.0 - texel;
+                  // gl_FragColor = 1.0 - vec4(vColor, 1.0) * (1.0 - texel);
                 }
         `;

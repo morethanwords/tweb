@@ -1,3 +1,6 @@
+import {simplifyDouglasPeucker} from './algo';
+import {simplifyRadialDist} from './radial';
+
 /**
  * Draws a cardinal spline through given point array. Points must be arranged
  * as: [x1, y1, x2, y2, ..., xn, yn]. It adds the points to the current path.
@@ -239,4 +242,11 @@ export function duplicate(nestedArray: any[], mirror: boolean) {
     out.push(x1, x)
   })
   return out
+}
+
+
+export function simplify(points: number[][], tolerance: number) {
+  points = simplifyRadialDist(points, tolerance);
+  points = simplifyDouglasPeucker(points, tolerance);
+  return points;
 }

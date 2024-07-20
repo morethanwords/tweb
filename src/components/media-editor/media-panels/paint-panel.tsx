@@ -1,5 +1,5 @@
 import {MediaEditorSettings} from '../../appMediaEditor';
-import {createEffect, createSignal, onMount} from 'solid-js';
+import {createEffect, createSignal, onMount, Signal} from 'solid-js';
 import {curve} from './draw.util';
 
 interface Point {
@@ -7,8 +7,8 @@ interface Point {
   y: number;
 }
 
-export const MediaEditorPaintPanel = (props: { active: boolean, state: MediaEditorSettings['paint'] }) => {
-  const [lines, setLines] = createSignal<number[][]>([]);
+export const MediaEditorPaintPanel = (props: { linesSignal: Signal<number[][]>, active: boolean, state: MediaEditorSettings['paint'] }) => {
+  const [lines, setLines] = props.linesSignal;
   const [points, setPoints] = createSignal([]);
   const [drawing, setDrawing] = createSignal(false);
   const [canvasPos, setCanvasPos] = createSignal([0, 0]);
@@ -19,8 +19,8 @@ export const MediaEditorPaintPanel = (props: { active: boolean, state: MediaEdit
   let ctx: CanvasRenderingContext2D;
 
   onMount(() => {
-    canvas.width = 512 * 2;
-    canvas.height = 824 * 2;
+    canvas.width = 512;
+    canvas.height = 824;
     const {left, top} = canvas.getBoundingClientRect();
     setCanvasPos([left, top]);
     ctx = canvas.getContext('2d');
@@ -49,7 +49,9 @@ export const MediaEditorPaintPanel = (props: { active: boolean, state: MediaEdit
     for(let i = 0, l = points().length; i < l; i += 2)
       ctx.lineTo(points()[i], points()[i+1]);
     // const res = curve(ctx, after, 0.5, 10);
-    ctx.stroke();
+    //
+    //
+    // ctx.stroke();
     /* if(prevPoints.length) {
 
     } else {
@@ -76,6 +78,7 @@ export const MediaEditorPaintPanel = (props: { active: boolean, state: MediaEdit
       if(skip > -1) {
         skip = 0;
         setPoints(points => [...points, 2 * (ev.pageX - canvasPos()[0]), 2 * (ev.pageY - canvasPos()[1])]);
+        setLines(lines => [...lines.slice(0, lines.length - 2), points()]);
       }
     }
   }
@@ -83,13 +86,13 @@ export const MediaEditorPaintPanel = (props: { active: boolean, state: MediaEdit
   const finishDraw = () => {
     console.info('FINISH DRAW');
     setDrawing(false);
-    setLines(lines => [...lines, points()]);
+    setLines(lines => [...lines.slice(0, lines.length - 2), points()]);
     setPoints([]);
 
-    ctx.filter = 'blur(16px)';
+    // ctx.filter = 'blur(16px)';
   }
 
   return <div onMouseUp={finishDraw} onMouseDown={() => setDrawing(true)} onMouseMove={draw} classList={{'media-editor-stickers-panel': true, 'disabled': !props.active}}>
-    <canvas style={{'transform-origin': '0 0', 'transform': 'scale(0.5)'}} class='draw-canvas' ref={canvas}></canvas>
+    <canvas style={{'transform-origin': '0 0'}} class='draw-canvas' ref={canvas}></canvas>
   </div>
 }

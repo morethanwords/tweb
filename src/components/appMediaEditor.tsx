@@ -19,7 +19,7 @@ import rootScope from '../lib/rootScope';
 import {MediaEditorStickersPanel} from './media-editor/media-panels/stickers-panel';
 import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
 import {generateFakeGif} from './media-editor/generate/media-editor-generator';
-import {polylineNormals} from './media-editor/media-panels/draw.util';
+import {polylineNormals, simplify} from './media-editor/media-panels/draw.util';
 import {dup} from '../vendor/leemon';
 
 export interface MediaEditorSettings {
@@ -83,6 +83,46 @@ const defaultEditorState = {
 // need state for undo-redo
 // it wil contain actual draw data: filters, crop, stickers pos, text pos, paint pos
 
+const duplicate2 = (nestedArray: number[], mirror = false) => {
+  const out: any[] = []
+  nestedArray.forEach(x => {
+    out.push(mirror ? -x : x, x)
+  })
+  return out;
+}
+
+const duplicate3 = (nestedArray: number[]) => {
+  let out: any[] = [];
+  const outs: any[][] = [];
+  nestedArray.forEach(x => {
+    out.push(x);
+    if(out.length === 2) {
+      outs.push([...out]);
+      out = [];
+    }
+  });
+  const res: any[] = [];
+  outs.forEach(oo => {
+    res.push(oo);
+    res.push(oo);
+  });
+  return res;
+}
+
+const dup1 = (nestedArray: number[]) => {
+  let out: any[] = [];
+  const outs: any[][] = [];
+  nestedArray.forEach(x => {
+    out.push(x / 900);
+    if(out.length === 2) {
+      outs.push([...out]);
+      out = [];
+    }
+  });
+  return outs;
+}
+
+
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
   const [tab, setTab] = createSignal(0);
   const [mediaEditorState, updateState] = createStore<MediaEditorSettings>(defaultEditorState);
@@ -91,6 +131,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   let gl:  WebGLRenderingContext;
   let container: HTMLDivElement;
   let img: HTMLImageElement;
+  const plz = new Image();
 
   /*
   let ca2: HTMLCanvasElement;
@@ -140,6 +181,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
    */
 
   onMount(() => {
+    plz.src = 'assets/brush.png';
+
     img = new Image();
     img.src = imageBlobUrl;
     img.onload = async function() {
@@ -172,41 +215,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
       } */
 
-      const duplicate2 = (nestedArray: number[], mirror = false) => {
-        const out: any[] = []
-        nestedArray.forEach(x => {
-          out.push(mirror ? -x : x, x)
-        })
-        return out;
-      }
-
-      const duplicate3 = (nestedArray: number[]) => {
-        let out: any[] = [];
-        const outs: any[][] = [];
-        nestedArray.forEach(x => {
-          out.push(x);
-          if(out.length === 2) {
-            outs.push([...out]);
-            out = [];
-          }
-        });
-        const res: any[] = [];
-        outs.forEach(oo => {
-          res.push(oo);
-          res.push(oo);
-        });
-        return res;
-      }
-
-
       // debug brush
-
-      const plz = new Image();
-      plz.src = 'assets/brush.png';
-
-      plz.onload = (l => {
+      /* plz.onload = (l => {
         // const debugProgram = drawTextureImageDebug(gl, sourceWidth, sourceHeight, plz);
-
 
         const path = [[-0.5, 0], [0, 0.0], [0.5, 0.5], [-1.0, 0.5], [1.0, -1.0]];
         const rawNormals = polylineNormals(path, false);
@@ -224,11 +235,24 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         const nrmls = [].concat(...duplicate3( [].concat(...normals)));
         const mtrs = duplicate([].concat(...miters), true);
 
-        drawWideLine(gl, sourceWidth, sourceHeight, points, nrmls, mtrs, plz);
-      });
+        const textureCoordinates2 = [
+          0.0,  1.0,
+          1.0,  1.0,
+          0.0,  0.0,
+          1.0,  0.0,
+
+          0.0,  1.0,
+          1.0,  1.0,
+          0.0,  0.0,
+          1.0,  0.0,
+
+          0.0,  1.0,
+          1.0,  1.0
+        ];
+
+        drawWideLine(gl, sourceWidth, sourceHeight, points, nrmls, mtrs, textureCoordinates2, plz);
+      }); */
       // const img
-
-
       return;
 
       // const path = [[0, 122], [0, 190], [90, 190]];
@@ -318,11 +342,125 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     'hello friend, how are you? \n fine shank you'
   ]);
 
+  const linesSignal = createSignal<number[][]>([]);
+  const [lines2, setLines] = linesSignal;
+
+  // const pointss = () => lines2().map(l => duplicate3(l));
+
+  createEffect(() => {
+    // console.info('LINES', pointss());
+
+    lines2()/* .map(len => len.map(dc => [dc[0] / 512, dc[1] / 824])).slice(0, 1) */.forEach(ppp => {
+      const path = dup1(ppp);
+      // const path = simplify(path2, 0.005);
+      console.info(path);
+      const rawNormals = polylineNormals(path, false);
+      const normals = rawNormals.map(x => x[0]);
+      const miters = rawNormals.map(x => x[1]);
+
+      const res = [].concat(...path);
+      const points = [].concat(...duplicate3(res));
+      const nrmls = [].concat(...duplicate3( [].concat(...normals)));
+      const mtrs = duplicate2([].concat(...miters), true);
+
+      const textureCoordinates2 = [].concat(...mtrs.map((_, idx) => {
+        if(idx % 4 === 0) {
+          return [0.0,  1.0];
+        }
+        if(idx % 4 === 1) {
+          return [1.0,  1.0];
+        }
+        if(idx % 4 === 2) {
+          return [0.0,  0.0];
+        }
+        return [1.0,  0.0];
+      }));
+
+      const colors = [].concat(...mtrs.map((_, idx) => {
+        return [0.7,  0.2, 0.1];
+      }));
+
+      console.log(textureCoordinates2);
+      console.log(colors);
+
+      drawWideLine(gl, glCanvas.width, glCanvas.height, points, nrmls, mtrs, colors, textureCoordinates2, plz);
+    });
+  });
+
+  const drawLines = () => {
+    let path = [];
+    path = [[0.58145, 0.28252], [0.4681, 0.55193], [0.3878, 0.7048], [-1.0, 0.5], [1.0, -1.0]];
+    path = [
+      [527.703125, 316.796875],
+      [500.703125, 300.796875],
+      [345.703125, 290.796875],
+      [327.703125, 275.796875]
+      // [301.703125, 250.796875]
+      // [301.703125, 336.796875]
+    ];
+    console.info(path);
+    const rawNormals = polylineNormals(path, false);
+    const normals = rawNormals.map(x => x[0]);
+    const miters = rawNormals.map(x => x[1]);
+    path = path.map(dc => [dc[0] / 900, dc[1] / 904]);
+    // console.info(normals);
+    // console.info(miters);
+    const res = [].concat(...path);
+
+    const duplicate = duplicate2; // (val: any, ...args: any[]) => val;
+
+    const points = [].concat(...duplicate3(res));
+    const nrmls = [].concat(...duplicate3( [].concat(...normals)));
+    const mtrs = duplicate([].concat(...miters), true);
+
+    const textureCoordinates2 = [
+      0.0,  1.0,
+      1.0,  1.0,
+      0.0,  0.0,
+      1.0,  0.0,
+
+      0.0,  1.0,
+      1.0,  1.0,
+      0.0,  0.0,
+      1.0,  0.0
+
+      // 0.0,  1.0,
+      // 1.0,  1.0
+      // 0.0,  0.0,
+      // 1.0,  0.0
+    ];
+
+    const colors = [
+      1.0, 0.0, 0.0,
+      1.0, 0.0, 0.0,
+      1.0, 0.0, 0.0,
+
+      0.0, 1.0, 0.0,
+      0.0, 1.0, 0.0,
+      0.0, 1.0, 0.0,
+
+      0.0, 0.0, 1.0,
+      0.0, 0.0, 1.0
+      // 0.0, 0.0, 1.0,
+
+      // 1.0, 1.0, 1.0
+    ];
+
+    console.log(textureCoordinates2);
+    console.log(colors);
+
+    drawWideLine(gl, glCanvas.width, glCanvas.height, points, nrmls, mtrs, colors, textureCoordinates2, plz);
+  }
+
+  setTimeout(() => {
+    // drawLines();
+  }, 700);
+
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area' >
         <canvas ref={glCanvas} />
-        <MediaEditorPaintPanel active={tab() === 3} state={mediaEditorState.paint} />
+        <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
         <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} />
 
         { /* <For each={text()}>
