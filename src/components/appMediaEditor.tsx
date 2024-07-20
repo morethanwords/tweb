@@ -4,7 +4,7 @@ import {createEffect, createSignal, onMount} from 'solid-js';
 import {
   calcCDT,
   drawOpaqueTriangles,
-  drawTextureDebug, drawTextureImageDebug, drawWideLine,
+  drawTextureDebug, drawTextureImageDebug, drawWideLine, drawWideLineTriangle,
   executeEnhanceFilter,
   executeLineDrawing,
   getHSVTexture
@@ -21,6 +21,7 @@ import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
 import {generateFakeGif} from './media-editor/generate/media-editor-generator';
 import {polylineNormals, simplify} from './media-editor/media-panels/draw.util';
 import {dup} from '../vendor/leemon';
+import {Stroke} from './media-editor/media-panels/algo';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -113,7 +114,7 @@ const dup1 = (nestedArray: number[]) => {
   let out: any[] = [];
   const outs: any[][] = [];
   nestedArray.forEach(x => {
-    out.push(x / 900);
+    out.push(x);
     if(out.length === 2) {
       outs.push([...out]);
       out = [];
@@ -343,14 +344,15 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   ]);
 
   const linesSignal = createSignal<number[][]>([]);
+  const currentLineSignal = createSignal<number[]>([]);
   const [lines2, setLines] = linesSignal;
+  const [currentLines, setCurrentLine] = currentLineSignal;
 
-  // const pointss = () => lines2().map(l => duplicate3(l));
-
+  /*
   createEffect(() => {
     // console.info('LINES', pointss());
 
-    lines2()/* .map(len => len.map(dc => [dc[0] / 512, dc[1] / 824])).slice(0, 1) */.forEach(ppp => {
+    lines2()/* .map(len => len.map(dc => [dc[0] / 512, dc[1] / 824])).slice(0, 1) * /.forEach(ppp => {
       const path = dup1(ppp);
       // const path = simplify(path2, 0.005);
       console.info(path);
@@ -387,6 +389,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     });
   });
 
+*/
   const drawLines = () => {
     let path = [];
     path = [[0.58145, 0.28252], [0.4681, 0.55193], [0.3878, 0.7048], [-1.0, 0.5], [1.0, -1.0]];
@@ -452,9 +455,54 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     drawWideLine(gl, glCanvas.width, glCanvas.height, points, nrmls, mtrs, colors, textureCoordinates2, plz);
   }
 
+  const drawTriangleLines = () => {
+    const polyline = [
+      [527.703125, 316.796875],
+      [500.703125, 300.796875],
+      [345.703125, 290.796875],
+      [327.703125, 275.796875],
+      [301.703125, 250.796875],
+      [301.703125, 336.796875]
+    ];
+    const stroke = Stroke({
+      thickness: 50,
+      cap: 'square',
+      join: 'bevel',
+      miterLimit: 10
+    })
+    const {positions} = stroke.build(polyline) as { cells: [number, number, number][], positions: [number, number][] };
+    const fin = [].concat(...positions).map(val => val / 900);
+    console.info(fin);
+    drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
+  }
+
+  createEffect(() => {
+    console.info(lines2().length);
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+    lines2().forEach(ppp => {
+      const llld = dup1(ppp);
+      const lll = simplify(llld, 2);
+      // console.log(lll);
+      const stroke = Stroke({
+        thickness: 50,
+        join: 'bevel',
+        miterLimit: 5
+      })
+      const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
+      // console.info(positions);
+      // console.info('cc', cells);
+      const fin = [].concat(...[].concat(...cells).map(cell => positions[cell])).map(val => val / 900);
+      // console.info(fin);
+      drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
+    });
+  })
+
   setTimeout(() => {
-    // drawLines();
-  }, 700);
+    // drawTriangleLines();
+  }, 1000);
 
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>

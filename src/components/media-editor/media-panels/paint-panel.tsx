@@ -7,9 +7,31 @@ interface Point {
   y: number;
 }
 
-export const MediaEditorPaintPanel = (props: { linesSignal: Signal<number[][]>, active: boolean, state: MediaEditorSettings['paint'] }) => {
+function find_angle(A: Point, B: Point, C: Point) {
+  /* console.info(A);
+  console.info(B);
+  console.info(C); */
+  var AB = Math.sqrt(Math.pow(B.x-A.x, 2)+ Math.pow(B.y-A.y, 2));
+  var BC = Math.sqrt(Math.pow(B.x-C.x, 2)+ Math.pow(B.y-C.y, 2));
+  var AC = Math.sqrt(Math.pow(C.x-A.x, 2)+ Math.pow(C.y-A.y, 2));
+  return Math.acos((BC*BC+AB*AB-AC*AC)/(2*BC*AB));
+}
+
+/* function calculateAngles(points: Point[]): number[] {
+  const angles: number[] = [];
+
+  for(let i = 1; i < points.length - 1; i++) {
+    let angle = find_angle(points[i - 1], points[i], points[i + 1]);
+    angle = angle * 180 / Math.PI;
+    angles.push(angle);
+  }
+
+  return angles;
+} */
+
+export const MediaEditorPaintPanel = (props: { currentLine: Signal<number[]>, linesSignal: Signal<number[][]>, active: boolean, state: MediaEditorSettings['paint'] }) => {
   const [lines, setLines] = props.linesSignal;
-  const [points, setPoints] = createSignal([]);
+  const [points, setPoints] = props.currentLine; // createSignal([]);
   const [drawing, setDrawing] = createSignal(false);
   const [canvasPos, setCanvasPos] = createSignal([0, 0]);
   let skip = 0;
@@ -75,10 +97,32 @@ export const MediaEditorPaintPanel = (props: { linesSignal: Signal<number[][]>, 
   const draw = (ev: MouseEvent) => {
     if(drawing()) {
       skip += 1;
-      if(skip > -1) {
+      if(skip > 3) {
         skip = 0;
-        setPoints(points => [...points, 2 * (ev.pageX - canvasPos()[0]), 2 * (ev.pageY - canvasPos()[1])]);
-        setLines(lines => [...lines.slice(0, lines.length - 2), points()]);
+
+        if(points().length >= 4) {
+          const prev = {x: points().at(-4), y: points().at(-3)};
+          const curr = {x: points().at(-2), y: points().at(-1)};
+          let angle = find_angle(prev, curr, {x: ev.pageX - canvasPos()[0], y: ev.pageY - canvasPos()[1]});
+          angle = angle * 180 / Math.PI;
+          console.info('ANGLE', angle);
+
+          if(isNaN(angle) || angle < 75) {
+            setLines(lines => [...lines, points()]);
+            setPoints([(ev.pageX - canvasPos()[0]), (ev.pageY - canvasPos()[1])]);
+          } else {
+            setPoints(points => [...points, (ev.pageX - canvasPos()[0]), (ev.pageY - canvasPos()[1])]);
+          }
+          // setLines(lines => [...lines, points()]);
+          //
+          // setPoints();
+        } else {
+          setPoints(points => [...points, (ev.pageX - canvasPos()[0]), (ev.pageY - canvasPos()[1])]);
+        }
+        // get current point and get last 2 points (if any)
+        // check angle
+        // if angle very sharp -> setLines with current lines (on top, not replace)
+        // setLines(lines => [...lines.slice(0, lines.length - 2), points()]);
       }
     }
   }
@@ -86,7 +130,8 @@ export const MediaEditorPaintPanel = (props: { linesSignal: Signal<number[][]>, 
   const finishDraw = () => {
     console.info('FINISH DRAW');
     setDrawing(false);
-    setLines(lines => [...lines.slice(0, lines.length - 2), points()]);
+    setLines(lines => [...lines, points()]);
+    // setLines(lines => [...lines.slice(0, lines.length - 2), points()]);
     setPoints([]);
 
     // ctx.filter = 'blur(16px)';

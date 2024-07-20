@@ -373,3 +373,31 @@ export const newLineTransparentFragmentWIDE = `
                   // gl_FragColor = 1.0 - vec4(vColor, 1.0) * (1.0 - texel);
                 }
         `;
+
+// dsfsfsd
+export const wideLineVertexShader = `
+            attribute vec2 aVertexPosition;
+            // attribute vec3 aColor;
+            // varying vec3 vColor;
+            
+            
+            void main() {
+                
+                // vColor = aColor;
+                
+                  gl_Position = vec4(aVertexPosition.x, 1.0 - aVertexPosition.y, 0.0, 1.0);
+            }
+        `;
+
+// Fragment shader source code
+export const wideLineFragmentShader = `
+            precision mediump float;
+            
+           // varying vec3 vColor;
+
+
+                void main() {
+               gl_FragColor = vec4(1.0, 0.5, 0.1, 0.5);
+                }
+        `;
+

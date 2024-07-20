@@ -9,7 +9,7 @@ import {
   rgbToHsvFragmentShaderCode,
   textureFragmentShader, textureFragmentShaderReal,
   vertexShaderSource,
-  vertexShaderSourceFlip
+  vertexShaderSourceFlip, wideLineFragmentShader, wideLineVertexShader
 } from './shaders';
 import {MediaEditorSettings} from '../appMediaEditor';
 import {Setter, Signal} from 'solid-js';
@@ -270,6 +270,20 @@ export const drawWideLine = (gl: WebGLRenderingContext, width: number, height: n
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, points.length / 2);
 
+
+  return shaderProgram;
+}
+
+export const drawWideLineTriangle = (gl: WebGLRenderingContext, width: number, height: number, points: number[]) => {
+  const shaderProgram = createAndUseGLProgram(gl, wideLineVertexShader, wideLineFragmentShader);
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(points));
+
+
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  gl.drawArrays(gl.TRIANGLES, 0, points.length / 2);
 
   return shaderProgram;
 }
