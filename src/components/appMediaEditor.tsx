@@ -10,9 +10,10 @@ import {MediaEditorStickersSettings} from './media-editor/tabs/editor-stickers-s
 import rootScope from '../lib/rootScope';
 import {MediaEditorStickersPanel} from './media-editor/media-panels/stickers-panel';
 import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
-import {simplify} from './media-editor/media-panels/draw.util';
+import {simplify} from './media-editor/math/draw.util';
 import {Stroke} from './media-editor/math/algo';
 import {calcCDT, drawWideLineTriangle, executeEnhanceFilter, getHSVTexture} from './media-editor/glPrograms';
+import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -179,6 +180,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area' >
         <canvas class='main-canvas' ref={glCanvas} />
+        <CropResizePanel active={tab() === 1} />
         <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
         <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} />
       </div>

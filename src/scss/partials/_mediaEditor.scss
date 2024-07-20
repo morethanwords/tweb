@@ -206,6 +206,64 @@ $inactive-opacity: .4;
     flex-direction: column;
     position: relative;
 
+    .crop-resize-panel-container {
+      visibility: hidden;
+      position: absolute;
+      width: 100%;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 100px;
+      background: black;
+      display: flex;
+      align-items: center;
+      justify-content: space-evenly;
+      color: white;
+
+      &.active {
+        visibility: visible;
+      }
+
+      .angle-container {
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        align-items: center;
+      }
+
+      .angle {
+        display: flex;
+        flex-direction: column;
+        cursor: pointer;
+
+        align-items: center;
+        gap: 1rem;
+        // mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.65) 45%,  rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0.65) 65%, rgba(0, 0, 0, 0) 100%);
+
+        .labels {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-evenly;
+
+          .label {
+            min-width: 35px;
+            width: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.7;
+
+            &.selected {
+              opacity: 1;
+              font-weight: bolder;
+              font-size: 1.05em;
+            }
+          }
+        }
+      }
+    }
+
     .media-editor-sticker {
       position: absolute;
       width: 100px;

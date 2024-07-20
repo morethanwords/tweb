@@ -1,5 +1,5 @@
-import {simplifyDouglasPeucker} from '../math/algo';
-import {simplifyRadialDist} from '../math/radial';
+import {simplifyDouglasPeucker} from './algo';
+import {simplifyRadialDist} from './radial';
 
 type vec2 = [number, number];
 

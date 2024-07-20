@@ -1,5 +1,5 @@
 // @ts-nocheck
-import {computeMiter, direction, normal} from '../media-panels/draw.util';
+import {computeMiter, direction, normal} from './draw.util';
 
 function getSqSegDist(p: number[], p1: number[], p2: number[]) {
   var x = p1[0],

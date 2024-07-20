@@ -1,6 +1,6 @@
 import {MediaEditorSettings} from '../../appMediaEditor';
 import {createEffect, createSignal, onMount, Signal} from 'solid-js';
-import {simplify} from './draw.util';
+import {simplify} from '../math/draw.util';
 import {Stroke} from '../math/algo';
 import {drawWideLineTriangle} from '../glPrograms';
 
