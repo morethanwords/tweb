@@ -30,12 +30,13 @@ const dup1 = (nestedArray: number[]) => {
 }
 
 export const MediaEditorPaintPanel = (props: { linesSignal: Signal<number[][]>, active: boolean, state: MediaEditorSettings['paint'] }) => {
-  const [lines, setLines] = props.linesSignal;
+  const [, setLines] = props.linesSignal;
   const [points, setPoints] = createSignal([]);
   const [drawing, setDrawing] = createSignal(false);
   const [canvasPos, setCanvasPos] = createSignal([0, 0]);
   let skip = 0;
 
+  let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
   let currentLineGL:  WebGLRenderingContext;
 
@@ -46,22 +47,21 @@ export const MediaEditorPaintPanel = (props: { linesSignal: Signal<number[][]>, 
     }
     const lll = simplify(llld, 2);
     const stroke = Stroke({
-      thickness: 100,
+      thickness: 50,
       join: 'bevel',
       miterLimit: 5
     })
     const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
-    const fin = [].concat(...[].concat(...cells).map(cell => positions[cell])).map(val => val / 650);
-
-    /* currentLineGL.clearColor(1.0, 1.0, 1.0, 1.0);
-    currentLineGL.clear(currentLineGL.COLOR_BUFFER_BIT);
-    currentLineGL.viewport(0, 0, currentLineGL.canvas.width, currentLineGL.canvas.height); */
+    const fin = [].concat(...[].concat(...cells).map(cell => {
+      const [x, y] = positions[cell];
+      return [2 * (x / container.clientWidth) - 1, 2 * (y / container.clientHeight)];
+    }));
     drawWideLineTriangle(currentLineGL, canvas.width, canvas.height, fin);
   });
 
   onMount(() => {
-    canvas.width = 512;
-    canvas.height = 824;
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
     currentLineGL = canvas.getContext('webgl');
     const {left, top} = canvas.getBoundingClientRect();
     setCanvasPos([left, top]);
@@ -76,18 +76,20 @@ export const MediaEditorPaintPanel = (props: { linesSignal: Signal<number[][]>, 
       return;
     }
     skip = 0;
+    const next = {x: ev.pageX - canvasPos()[0], y: ev.pageY - canvasPos()[1]};
     if(points().length >= 4) {
       const prev = {x: points().at(-4), y: points().at(-3)};
       const curr = {x: points().at(-2), y: points().at(-1)};
-      let angle = findAngle(prev, curr, {x: ev.pageX - canvasPos()[0], y: ev.pageY - canvasPos()[1]});
+
+      let angle = findAngle(prev, curr, next);
       angle = angle * 180 / Math.PI;
       if(isNaN(angle) || angle < 75) {
         setLines(lines => [...lines, points()]);
-        setPoints([(ev.pageX - canvasPos()[0]), (ev.pageY - canvasPos()[1])]);
+        setPoints([next.x, next.y]);
         return;
       }
     }
-    setPoints(points => [...points, (ev.pageX - canvasPos()[0]), (ev.pageY - canvasPos()[1])]);
+    setPoints(points => [...points, next.x, next.y]);
   }
 
   const finishDraw = () => {
@@ -97,7 +99,7 @@ export const MediaEditorPaintPanel = (props: { linesSignal: Signal<number[][]>, 
     setPoints([]);
   }
 
-  return <div onMouseUp={finishDraw} onMouseDown={() => setDrawing(true)} onMouseMove={draw} classList={{'media-editor-stickers-panel': true, 'disabled': !props.active}}>
+  return <div ref={container} onMouseUp={finishDraw} onMouseDown={() => setDrawing(true)} onMouseMove={draw} classList={{'media-editor-stickers-panel': true, 'disabled': !props.active}}>
     <canvas style={{'transform-origin': '0 0'}} class='draw-canvas' ref={canvas}></canvas>
   </div>
 }

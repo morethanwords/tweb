@@ -167,7 +167,10 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         miterLimit: 5
       })
       const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
-      const fin = [].concat(...[].concat(...cells).map(cell => positions[cell])).map(val => val / 900);
+      const fin = [].concat(...[].concat(...cells).map(cell => {
+        const [x, y] = positions[cell];
+        return [2 * (x / container.clientWidth) - 1, 2 * (y / container.clientHeight)];
+      }));
       drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
     });
   })
