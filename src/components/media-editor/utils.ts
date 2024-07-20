@@ -278,8 +278,7 @@ export const drawWideLineTriangle = (gl: WebGLRenderingContext, width: number, h
   const shaderProgram = createAndUseGLProgram(gl, wideLineVertexShader, wideLineFragmentShader);
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(points));
 
-
-
+  // clear color ??
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 

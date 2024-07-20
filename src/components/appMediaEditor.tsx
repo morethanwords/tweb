@@ -130,6 +130,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   let glCanvas: HTMLCanvasElement;
   let gl:  WebGLRenderingContext;
+
   let container: HTMLDivElement;
   let img: HTMLImageElement;
   const plz = new Image();
@@ -344,9 +345,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   ]);
 
   const linesSignal = createSignal<number[][]>([]);
-  const currentLineSignal = createSignal<number[]>([]);
   const [lines2, setLines] = linesSignal;
-  const [currentLines, setCurrentLine] = currentLineSignal;
 
   /*
   createEffect(() => {
@@ -478,6 +477,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   createEffect(() => {
     console.info(lines2().length);
+    if(!gl) {
+      return;
+    }
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -507,7 +509,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area' >
-        <canvas ref={glCanvas} />
+        <canvas class='main-canvas' ref={glCanvas} />
         <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
         <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} />
 

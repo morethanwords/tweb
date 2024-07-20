@@ -1,6 +1,8 @@
 import {MediaEditorSettings} from '../../appMediaEditor';
 import {createEffect, createSignal, onMount, Signal} from 'solid-js';
-import {curve} from './draw.util';
+import {curve, simplify} from './draw.util';
+import {Stroke} from './algo';
+import {drawWideLineTriangle} from '../utils';
 
 interface Point {
   x: number;
@@ -29,27 +31,69 @@ function find_angle(A: Point, B: Point, C: Point) {
   return angles;
 } */
 
-export const MediaEditorPaintPanel = (props: { currentLine: Signal<number[]>, linesSignal: Signal<number[][]>, active: boolean, state: MediaEditorSettings['paint'] }) => {
+
+const dup1 = (nestedArray: number[]) => {
+  let out: any[] = [];
+  const outs: any[][] = [];
+  nestedArray.forEach(x => {
+    out.push(x);
+    if(out.length === 2) {
+      outs.push([...out]);
+      out = [];
+    }
+  });
+  return outs;
+}
+
+
+export const MediaEditorPaintPanel = (props: { linesSignal: Signal<number[][]>, active: boolean, state: MediaEditorSettings['paint'] }) => {
   const [lines, setLines] = props.linesSignal;
-  const [points, setPoints] = props.currentLine; // createSignal([]);
+  const [points, setPoints] = createSignal([]);
   const [drawing, setDrawing] = createSignal(false);
   const [canvasPos, setCanvasPos] = createSignal([0, 0]);
   let skip = 0;
   const skipN = 5;
 
   let canvas: HTMLCanvasElement;
-  let ctx: CanvasRenderingContext2D;
+  let currentLineGL:  WebGLRenderingContext;
+
+  createEffect(() => {
+    console.info('???????');
+    console.info(points());
+    if(!currentLineGL) {
+      return;
+    }
+    const llld = dup1(points());
+    console.info(llld);
+    const lll = simplify(llld, 2);
+    const stroke = Stroke({
+      thickness: 50,
+      join: 'bevel',
+      miterLimit: 5
+    })
+    const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
+    // console.info(positions);
+    // console.info('cc', cells);
+    const fin = [].concat(...[].concat(...cells).map(cell => positions[cell])).map(val => val / 650);
+    // console.info(fin);
+
+    /* currentLineGL.clearColor(1.0, 1.0, 1.0, 1.0);
+    currentLineGL.clear(currentLineGL.COLOR_BUFFER_BIT);
+    currentLineGL.viewport(0, 0, currentLineGL.canvas.width, currentLineGL.canvas.height); */
+    drawWideLineTriangle(currentLineGL, canvas.width, canvas.height, fin);
+  });
 
   onMount(() => {
     canvas.width = 512;
     canvas.height = 824;
+    currentLineGL = canvas.getContext('webgl');
     const {left, top} = canvas.getBoundingClientRect();
     setCanvasPos([left, top]);
-    ctx = canvas.getContext('2d');
+    /* ctx = canvas.getContext('2d');
     ctx.strokeStyle = 'red';
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.lineWidth = 20;
+    ctx.lineWidth = 20; */
 
     // ctx.shadowBlur = 10;
     // ctx.shadowColor = 'yellow';
@@ -67,9 +111,9 @@ export const MediaEditorPaintPanel = (props: { currentLine: Signal<number[]>, li
 
   createEffect((prevPoints: number[]) => {
     // ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.moveTo(points()[0], points()[1]);
-    for(let i = 0, l = points().length; i < l; i += 2)
-      ctx.lineTo(points()[i], points()[i+1]);
+    // ctx.moveTo(points()[0], points()[1]);
+    // for(let i = 0, l = points().length; i < l; i += 2)
+    // ctx.lineTo(points()[i], points()[i+1]);
     // const res = curve(ctx, after, 0.5, 10);
     //
     //
@@ -105,7 +149,7 @@ export const MediaEditorPaintPanel = (props: { currentLine: Signal<number[]>, li
           const curr = {x: points().at(-2), y: points().at(-1)};
           let angle = find_angle(prev, curr, {x: ev.pageX - canvasPos()[0], y: ev.pageY - canvasPos()[1]});
           angle = angle * 180 / Math.PI;
-          console.info('ANGLE', angle);
+          // console.info('ANGLE', angle);
 
           if(isNaN(angle) || angle < 75) {
             setLines(lines => [...lines, points()]);
