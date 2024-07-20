@@ -354,10 +354,3 @@ export const executeEnhanceFilter = (gl: WebGLRenderingContext, width: number, h
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   return shaderProgram;
 }
-
-export type Updater<T> = (v: T) => void;
-type SignalFn<T> = (fn: (v: T) => T) => void
-export const genStateUpdater = <T extends { }, K extends keyof T>(signal: SignalFn<T>, key: K) => {
-  return (value: T[K]) => signal((prev: T) => ({...prev, [key]: value}));
-}
-

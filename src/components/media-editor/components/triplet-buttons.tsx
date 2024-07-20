@@ -1,5 +1,4 @@
 import {For, JSX} from 'solid-js';
-import {Updater} from '../utils';
 
 export const TripletButtons = (props: { buttons: JSX.Element[], selected: number, setSelected: (val: number) => void }) => {
   return <div class='triplet-buttons'>

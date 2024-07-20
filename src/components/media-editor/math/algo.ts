@@ -1,5 +1,5 @@
 // @ts-nocheck
-import {computeMiter, direction, normal} from './draw.util';
+import {computeMiter, direction, normal} from '../media-panels/draw.util';
 
 function getSqSegDist(p: number[], p1: number[], p2: number[]) {
   var x = p1[0],
@@ -60,11 +60,6 @@ export function simplifyDouglasPeucker(points: number[][], tolerance: number) {
 
   return simplified;
 }
-
-// TRIANGLES
-
-
-// var util = require('polyline-miter-util')
 
 const number = (num: string | number, def: number): number => {
   return typeof num === 'number' ? num : (typeof def === 'number' ? def : 0)
