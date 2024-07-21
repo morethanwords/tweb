@@ -232,8 +232,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   onMount(() => {
     setCrop([
-      {x: 0, y: 0},
-      {x: container.clientWidth * 1, y: container.clientHeight * 1}
+      {x: 100, y: 100},
+      {x: container.clientWidth * 0.75, y: container.clientHeight * 0.75}
     ]);
     plz.src = 'assets/brush.png';
 
@@ -325,7 +325,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   createEffect(() => {
     if(angle() === 0) {
-      console.info('out');
       setScl(1);
       setCropScaleOutput(1);
       setCropOutput([0, 0]);
@@ -333,22 +332,16 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
     const originW = container.clientWidth;
     const originH = container.clientHeight;
-    console.info('or', originW, originH);
     const croppedRect = [
       {x: crop()[0].x, y: crop()[0].y},
       {x: crop()[0].x, y: crop()[1].y},
       {x: crop()[1].x, y: crop()[0].y},
       {x: crop()[1].x, y: crop()[1].y}
     ];
-    console.info(croppedRect);
     const centerPoint = getRectangleCenter(croppedRect);
-    console.info(centerPoint);
     const rotatedRectangle = rotateRectangle(croppedRect, centerPoint, angle());
-    console.info(rotatedRectangle);
     const [topLeft, bottomRight] = getExtremumPoints(rotatedRectangle);
 
-    console.info(topLeft);
-    // check this extremum
     const newRotatedPos = [
       {x: rotatedRectangle[0].x + Math.abs(topLeft.x), y: rotatedRectangle[0].y + Math.abs(topLeft.y)},
       {x: rotatedRectangle[1].x + Math.abs(topLeft.x), y: rotatedRectangle[1].y + Math.abs(topLeft.y)},
@@ -356,26 +349,12 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       {x: rotatedRectangle[3].x + Math.abs(topLeft.x), y: rotatedRectangle[3].y + Math.abs(topLeft.y)}
     ];
 
-    console.info('new ro pas', newRotatedPos);
-
     const extrWidth = (bottomRight.x - topLeft.x);
     const extrHeight = (bottomRight.y - topLeft.y);
-
-    console.log('ww', extrWidth, extrHeight, originW, originH);
-
     const centerPoint2 = getRectangleCenter(newRotatedPos);
     const transCrop = rotateRectangle(newRotatedPos, centerPoint2, -angle());
-
-    // check if
-
     if(extrWidth > originW || extrHeight > originH) {
-      console.info('outofbounds');
-
       const scale = Math.min(originW / extrWidth, originH / extrHeight);
-
-      // move back :(
-
-      console.info('sc', scale);
       setCropScaleOutput(scale);
     } else {
       setCropOutput([transCrop[0], transCrop[3]]);
@@ -442,7 +421,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
         <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1}, ${cropResizeActive() ? 0.8 : 1}))`}}>
-          <div>
+          <div style={{transform: `rotate(${-angle()}deg)`}}>
             <div class='border' style={{transform: `rotate(${angle()}deg)`, scale: cropScaleOutput(), top: `${cropOutput()[0].y}px`, left: `${cropOutput()[0].x}px`, height: `${(cropOutput()[1].y - cropOutput()[0].y)}px`, width: `${(cropOutput()[1].x - cropOutput()[0].x)}px`}}></div>
             <canvas style={{transform: `scale(${scl()})`}} class='main-canvas' ref={glCanvas} />
           </div>
