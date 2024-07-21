@@ -117,6 +117,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       // calculate CDT Data
       const cdtBuffer = calcCDT(hsvBuffer, sourceWidth, sourceHeight);
       // apply enhancing filter
+      // TODO: store into framebuffer (for blur and erase)
       const enhanceProgram = executeEnhanceFilter(gl, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer);
       setFN(() => (int: number) => {
         gl.uniform1f(gl.getUniformLocation(enhanceProgram, 'intensity'), int);

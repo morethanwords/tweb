@@ -224,11 +224,19 @@ $inactive-opacity: .4;
         visibility: visible;
       }
 
+      .angle-marker {
+        position: absolute;
+        left: 50%;
+        top: 75%;
+        transform: translate(-50%, -50%);
+      }
+
       .angle-container {
         overflow: hidden;
         height: 100%;
         display: flex;
         align-items: center;
+        position: relative;
       }
 
       .angle {
