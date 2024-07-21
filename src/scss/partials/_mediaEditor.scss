@@ -215,6 +215,7 @@ $inactive-opacity: .4;
 
       .main-canvas {
         transform: rotate(0deg) scale(1);
+        opacity: 0.25;
         // transition: transform 0.3s ease-in-out;
       }
     }

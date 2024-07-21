@@ -39,7 +39,7 @@ export const CropResizePanel = (props: { active: boolean, state: MediaEditorSett
     setDragValue(Math.max(-(containerPos()[1] / 2), Math.min(prev() + dvalue, containerPos()[1] / 2) )); // containerPos()[1]
   }
 
-  const currentAngle = () => Math.floor(Math.max(-45, Math.min(-dragValue() / (containerPos()[1] / (181 + 10)), 45)));
+  const currentAngle = () => Math.floor(Math.max(-90, Math.min(-dragValue() / (containerPos()[1] / (181 + 10)), 90)));
 
   createEffect(prevAngle => {
     if(prevAngle !== currentAngle()) {

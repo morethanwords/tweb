@@ -340,8 +340,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
     console.info('wh', extrWidth, extrHeight, originW, originH);
 
-    // const scale = Math.max(extrWidth / originW, extrHeight / originH);
-    const scale = Math.min(originW / extrWidth, originH / extrHeight);
+    const scale = Math.max(extrWidth / originW, extrHeight / originH);
+    // const scale = Math.min(originW / extrWidth, originH / extrHeight);
     setScl(scale)
     // console.info('sca', extrWidth / originW, extrHeight / originH);
     console.info('sca', originW / extrWidth, originH / extrHeight);
