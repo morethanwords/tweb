@@ -212,11 +212,22 @@ $inactive-opacity: .4;
       transition: transform 0.3s ease-in-out;
       border: 2px solid red;
       box-sizing: content-box;
+      position: relative;
 
       .main-canvas {
         transform: rotate(0deg) scale(1);
         opacity: 0.25;
         // transition: transform 0.3s ease-in-out;
+      }
+
+      .border {
+        position: absolute;
+        background: transparent;
+        border: 2px solid yellow;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
       }
     }
 

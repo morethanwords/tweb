@@ -218,6 +218,7 @@ const dup1 = (nestedArray: number[]) => {
 
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
   const [tab, setTab] = createSignal(0);
+  const cropResizeActive = () => tab() === 1;
   const [mediaEditorState, updateState] = createStore<MediaEditorSettings>(defaultEditorState);
 
   let glCanvas: HTMLCanvasElement;
@@ -227,7 +228,13 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   let img: HTMLImageElement;
   const plz = new Image();
 
+  const [crop, setCrop] = createSignal([]);
+
   onMount(() => {
+    setCrop([
+      {x: 0, y: 0},
+      {x: container.clientWidth * 1, y: container.clientHeight * 1}
+    ]);
     plz.src = 'assets/brush.png';
 
     img = new Image();
@@ -313,24 +320,88 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     {x:1, y:1}
   ]);
 
-  // const centerPoint = () => getRectangleCenter(rectangle());
+  const [cropOutput, setCropOutput] = createSignal([]);
+  const [cropScaleOutput, setCropScaleOutput] = createSignal(1);
+
+  createEffect(() => {
+    if(angle() === 0) {
+      console.info('out');
+      setScl(1);
+      setCropScaleOutput(1);
+      setCropOutput([0, 0]);
+      return;
+    }
+    const originW = container.clientWidth;
+    const originH = container.clientHeight;
+    console.info('or', originW, originH);
+    const croppedRect = [
+      {x: crop()[0].x, y: crop()[0].y},
+      {x: crop()[0].x, y: crop()[1].y},
+      {x: crop()[1].x, y: crop()[0].y},
+      {x: crop()[1].x, y: crop()[1].y}
+    ];
+    console.info(croppedRect);
+    const centerPoint = getRectangleCenter(croppedRect);
+    console.info(centerPoint);
+    const rotatedRectangle = rotateRectangle(croppedRect, centerPoint, angle());
+    console.info(rotatedRectangle);
+    const [topLeft, bottomRight] = getExtremumPoints(rotatedRectangle);
+
+    console.info(topLeft);
+    // check this extremum
+    const newRotatedPos = [
+      {x: rotatedRectangle[0].x + Math.abs(topLeft.x), y: rotatedRectangle[0].y + Math.abs(topLeft.y)},
+      {x: rotatedRectangle[1].x + Math.abs(topLeft.x), y: rotatedRectangle[1].y + Math.abs(topLeft.y)},
+      {x: rotatedRectangle[2].x + Math.abs(topLeft.x), y: rotatedRectangle[2].y + Math.abs(topLeft.y)},
+      {x: rotatedRectangle[3].x + Math.abs(topLeft.x), y: rotatedRectangle[3].y + Math.abs(topLeft.y)}
+    ];
+
+    console.info('new ro pas', newRotatedPos);
+
+    const extrWidth = (bottomRight.x - topLeft.x);
+    const extrHeight = (bottomRight.y - topLeft.y);
+
+    console.log('ww', extrWidth, extrHeight, originW, originH);
+
+    const centerPoint2 = getRectangleCenter(newRotatedPos);
+    const transCrop = rotateRectangle(newRotatedPos, centerPoint2, -angle());
+
+    // check if
+
+    if(extrWidth > originW || extrHeight > originH) {
+      console.info('outofbounds');
+
+      const scale = Math.min(originW / extrWidth, originH / extrHeight);
+
+      // move back :(
+
+      console.info('sc', scale);
+      setCropScaleOutput(scale);
+    } else {
+      setCropOutput([transCrop[0], transCrop[3]]);
+    }
+  });
 
   // rotating here
   createEffect(() => {
-    console.info(angle());
+    return;
+    console.info('angle', angle());
     if(angle() === 0) {
       setScl(1);
+      return;
     }
 
     const originW = container.clientWidth;
     const originH = container.clientHeight;
 
-    const currentRectangle = rectangle().map(point => ({x: point.x * originW, y: point.y * originH}));
+    const originRectangle = rectangle().map(point => ({x: point.x * originW / 2, y: point.y * originH / 2}));
 
-    const centerPoint = getRectangleCenter(currentRectangle);
+    const centerPoint = getRectangleCenter(originRectangle);
     console.info(centerPoint);
 
-    const rotatedRectangle = rotateRectangle(currentRectangle, centerPoint, angle());
+    const rotatedRectangle = rotateRectangle(originRectangle, centerPoint, angle());
+
+    // if container is smaller then push somehow
 
     const [topLeft, bottomRight] = getExtremumPoints(rotatedRectangle);
     console.info('bpund', topLeft, bottomRight);
@@ -340,71 +411,41 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
     console.info('wh', extrWidth, extrHeight, originW, originH);
 
-    const scale = Math.max(extrWidth / originW, extrHeight / originH);
-    // const scale = Math.min(originW / extrWidth, originH / extrHeight);
-    setScl(scale)
-    // console.info('sca', extrWidth / originW, extrHeight / originH);
-    console.info('sca', originW / extrWidth, originH / extrHeight);
-    console.info('sca2', scale);
+    const scale = Math.min(originW / extrWidth, originH / extrHeight);
+
+    if(scale > 1) {
+      // it means it's smaller
+
+      // setScl(scale);
+    } else {
+      setScl(scale);
+
+      // console.info('sca', extrWidth / originW, extrHeight / originH);
+      console.info('sca', originW / extrWidth, originH / extrHeight);
+      console.info('sca2', scale);
 
 
-    console.info('sca', 2 - (extrWidth / originW), 2 - (extrHeight / originH));
-    console.info('sca', 2 - (originW / extrWidth), 2 - (originH / extrHeight));
-    console.info('sca2', 2 - scale);
-    // setScl(1 - (scale - 1));
-    // setScl(1 - scale + 1)
-    return;
-
-    const finalRectangle = [
-      [currentRectangle[0], rotatedRectangle[0]],
-      [currentRectangle[1], rotatedRectangle[1]],
-      [currentRectangle[2], rotatedRectangle[2]],
-      [currentRectangle[3], rotatedRectangle[3]]
-    ];
-    // add threshold
-    const isOutside = finalRectangle[1]; // .find(([orig, point]) => point.x < 0 || point.x > originW || point.y < 0 || point.y > originH);
-    console.info(rotatedRectangle);
-    console.info(!!isOutside);
-    console.info(isOutside);
-
-    if(angle() === 0 || !isOutside) {
-      setScl(1);
-      return;
+      console.info('sca', 2 - (extrWidth / originW), 2 - (extrHeight / originH));
+      console.info('sca', 2 - (originW / extrWidth), 2 - (originH / extrHeight));
+      console.info('sca2', 2 - scale);
     }
-    const [original, rotated] = isOutside;
-    const xAbs = Math.abs(rotated.x);
-    const yAbs = Math.abs(rotated.y);
-    console.info('orig', original.x)
-    console.info('orig', original.y)
-    console.info('rot', rotated.x);
-    console.info('rot', rotated.y);
-
-    const scaleX = (originW - xAbs) / originW;
-    const scaleY = (originH - yAbs) / originH;
-
-    console.info('scX', scaleX);
-    console.info('scY', scaleY);
-
-    const scale2 = Math.max((originW - xAbs) / originW, (originH - yAbs) / originH);
-    // const scale = Math.max((originW + xAbs) / originW, (originH + yAbs) / originH);
-
-    // setScl(scale);
-    // const dst = calculateDistance(rectangle(), rotatedRectangle);
-    // console.info(dst);
-    // setScl(1.0 - Math.abs(dst)); // scale - newTest
   });
 
   // rotating here
 
   const [scl, setScl] = createSignal(1);
 
+  // translate(${cropMove()[0]}px, ${cropMove()[1]}px)
+  // style={{transform: `rotate(${-angle()}deg)`}}
   createEffect(() => console.info('secl', scl()));
-  const cropResizeActive = () => tab() === 1;
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
-        <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1}, ${cropResizeActive() ? 0.8 : 1})`}}>
-          <canvas style={{transform: `rotate(${angle()}deg) scale(${scl()})`}} class='main-canvas' ref={glCanvas} />
+        <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1}, ${cropResizeActive() ? 0.8 : 1}))`}}>
+          <div>
+            <div class='border' style={{transform: `rotate(${angle()}deg)`, scale: cropScaleOutput(), top: `${cropOutput()[0].y}px`, left: `${cropOutput()[0].x}px`, height: `${(cropOutput()[1].y - cropOutput()[0].y)}px`, width: `${(cropOutput()[1].x - cropOutput()[0].x)}px`}}></div>
+            <canvas style={{transform: `scale(${scl()})`}} class='main-canvas' ref={glCanvas} />
+          </div>
         </div>
         <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
         <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
