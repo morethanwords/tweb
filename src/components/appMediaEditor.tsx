@@ -17,6 +17,7 @@ import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
 
 export interface MediaEditorSettings {
   crop: number;
+  angle: number;
   text: {
     color: number | string;
     align: number;
@@ -46,6 +47,7 @@ export interface MediaEditorSettings {
 
 const defaultEditorState = {
   crop: 0,
+  angle: 0,
   text: {
     color: 0,
     align: 0,
@@ -175,13 +177,22 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       }));
       drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
     });
-  })
+  });
 
+  const angle = () => mediaEditorState.angle;
+
+  createEffect(() => {
+    console.info(angle());
+  });
+
+  const cropResizeActive = () => tab() === 1;
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
-      <div ref={container} class='media-editor__main-area' >
-        <canvas class='main-canvas' ref={glCanvas} />
-        <CropResizePanel active={tab() === 1} />
+      <div ref={container} class='media-editor__main-area'>
+        <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1}, ${cropResizeActive() ? 0.8 : 1})`}}>
+          <canvas style={{transform: `rotate(${angle()}deg)`}} class='main-canvas' ref={glCanvas} />
+        </div>
+        <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
         <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
         <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} />
       </div>

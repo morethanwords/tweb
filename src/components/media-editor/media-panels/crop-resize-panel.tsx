@@ -1,8 +1,9 @@
 import {MediaEditorSettings} from '../../appMediaEditor';
 import {createEffect, createSignal, For, onMount} from 'solid-js';
+import {SetStoreFunction} from 'solid-js/store';
 
 // °
-export const CropResizePanel = (props: { active: boolean, state?: MediaEditorSettings['paint'] }) => {
+export const CropResizePanel = (props: { active: boolean, state: MediaEditorSettings['angle'], updateState: SetStoreFunction<MediaEditorSettings> }) => {
   const angleLabel = [...Array(13).keys()].map(idx => (idx - 6) * 15);
   const [containerPos, setContainerPos] = createSignal([0, 0]);
   const [initDragPos, setInitDragPos] = createSignal(0);
@@ -11,6 +12,7 @@ export const CropResizePanel = (props: { active: boolean, state?: MediaEditorSet
   const [dragValue, setDragValue] = createSignal(0);
   const img = new Image();
   let container: HTMLDivElement;
+  let debounceTimer: any;
 
   onMount(() => {
     const {left, width} = container.getBoundingClientRect();
@@ -22,7 +24,6 @@ export const CropResizePanel = (props: { active: boolean, state?: MediaEditorSet
   const handleDragStart = (ev: DragEvent) => {
     ev.stopImmediatePropagation();
     ev.dataTransfer.setDragImage(img, 0, 0);
-    console.info(ev);
     setInitDragPos(ev.pageX - containerPos()[0]);
   }
 
@@ -40,6 +41,16 @@ export const CropResizePanel = (props: { active: boolean, state?: MediaEditorSet
 
   const currentAngle = () => Math.floor(Math.max(-90, Math.min(-dragValue() / (containerPos()[1] / (181 + 10)), 90)));
 
+  createEffect(prevAngle => {
+    if(prevAngle !== currentAngle()) {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        props.updateState('angle', currentAngle())
+      }, 75);
+    }
+    return currentAngle();
+  }, currentAngle());
+
   const fn = (angle: number, curr: number) => {
     const absolute = Math.abs(angle - curr);
     if(absolute < 5) {
@@ -47,12 +58,6 @@ export const CropResizePanel = (props: { active: boolean, state?: MediaEditorSet
     }
     return 0.6 - (0.12 * absolute / 20);
   }
-
-  console.info('RESS', fn(45, 90));
-
-  createEffect(() => {
-    console.info(currentAngle());
-  })
 
   return <div classList={{'crop-resize-panel-container': true, 'active': props.active}}>
     <div>Left</div>

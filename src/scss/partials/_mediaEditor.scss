@@ -206,6 +206,17 @@ $inactive-opacity: .4;
     flex-direction: column;
     position: relative;
 
+    .main-canvas-container {
+      transform-origin: 0 0;
+      transform: translate(0px, 0px) scale(1, 1);
+      transition: transform 0.3s ease-in-out;
+
+      .main-canvas {
+        transform: rotate(0deg);
+        transition: transform 0.3s ease-in-out;
+      }
+    }
+
     .crop-resize-panel-container {
       visibility: hidden;
       position: absolute;
@@ -213,8 +224,7 @@ $inactive-opacity: .4;
       left: 0;
       right: 0;
       bottom: 0;
-      height: 100px;
-      background: black;
+      height: 70px;
       display: flex;
       align-items: center;
       justify-content: space-evenly;
