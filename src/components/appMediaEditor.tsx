@@ -10,7 +10,7 @@ import {MediaEditorStickersSettings} from './media-editor/tabs/editor-stickers-s
 import rootScope from '../lib/rootScope';
 import {MediaEditorStickersPanel} from './media-editor/media-panels/stickers-panel';
 import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
-import {simplify} from './media-editor/math/draw.util';
+import {dot, simplify} from './media-editor/math/draw.util';
 import {Stroke} from './media-editor/math/algo';
 import {calcCDT, drawWideLineTriangle, executeEnhanceFilter, getHSVTexture} from './media-editor/glPrograms';
 import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
@@ -75,6 +75,131 @@ const defaultEditorState = {
   }
 };
 
+interface Point {
+  x: number;
+  y: number;
+}
+
+function getExtremumPoints(points: Point[]): Point[] {
+  const minX = Math.min(...points.map(point => point.x));
+  const minY = Math.min(...points.map(point => point.y));
+
+  const maxX = Math.max(...points.map(point => point.x));
+  const maxY = Math.max(...points.map(point => point.y));
+
+  const topLeft = {x: minX, y: minY};
+  const bottomRight = {x: maxX, y: maxY};
+  return [
+    topLeft,
+    // {x: topLeft.x, y: bottomRight.y},
+    // {x: bottomRight.x, y: topLeft.y},
+    bottomRight
+  ]
+}
+
+function rotatePoint(point: Point, center: Point, angle: number): Point {
+  // Convert angle to radians
+  const radians = angle * (Math.PI / 180);
+
+  // Translate point back to origin
+  const translatedX = point.x - center.x;
+  const translatedY = point.y - center.y;
+
+  // Rotate point
+  const rotatedX = translatedX * Math.cos(radians) - translatedY * Math.sin(radians);
+  const rotatedY = translatedX * Math.sin(radians) + translatedY * Math.cos(radians);
+
+  // Translate point back to original location
+  const newX = rotatedX + center.x;
+  const newY = rotatedY + center.y;
+
+  return {x: newX, y: newY};
+}
+
+function rotateRectangle(rectangle: Point[], center: Point, angle: number): Point[] {
+  return rectangle.map(point => rotatePoint(point, center, angle));
+}
+
+function getRectangleCenter(rectangle: Point[]): Point {
+  if(rectangle.length !== 4) {
+    throw new Error('Rectangle must have exactly 4 points');
+  }
+
+  const sum = rectangle.reduce(
+    (acc, point) => {
+      return {x: acc.x + point.x, y: acc.y + point.y};
+    },
+    {x: 0, y: 0}
+  );
+
+  const centerX = sum.x / 4;
+  const centerY = sum.y / 4;
+
+  return {x: centerX, y: centerY};
+}
+
+function getRectangleAspectRatio(rectangle: Point[]): number {
+  if(rectangle.length !== 4) {
+    throw new Error('Rectangle must have exactly 4 points');
+  }
+
+  // Find the width and height
+  const width = Math.abs(rectangle[1].x - rectangle[0].x);
+  const height = Math.abs(rectangle[2].y - rectangle[1].y);
+
+  // Calculate aspect ratio
+  const aspectRatio = width / height;
+
+  return aspectRatio;
+}
+
+function scalePoint(point: Point, origin: Point, scale: number): Point {
+  // Translate point to origin
+  const translatedX = point.x - origin.x;
+  const translatedY = point.y - origin.y;
+
+  // Scale point
+  const scaledX = translatedX * scale;
+  const scaledY = translatedY * scale;
+
+  // Translate point back
+  const newX = scaledX + origin.x;
+  const newY = scaledY + origin.y;
+
+  return {x: newX, y: newY};
+}
+
+function scaleRectangle(rectangle: Point[], origin: Point, scale: number): Point[] {
+  return rectangle.map(point => scalePoint(point, origin, scale));
+}
+
+function getBoundingBox(points: Point[]): { min: Point; max: Point } {
+  let minX = points[0].x;
+  let maxX = points[0].x;
+  let minY = points[0].y;
+  let maxY = points[0].y;
+
+  for(const point of points) {
+    if(point.x < minX) minX = point.x;
+    if(point.x > maxX) maxX = point.x;
+    if(point.y < minY) minY = point.y;
+    if(point.y > maxY) maxY = point.y;
+  }
+
+  return {min: {x: minX, y: minY}, max: {x: maxX, y: maxY}};
+}
+
+function calculateDistance(rect1: Point[], rect2: Point[]): number {
+  const bbox1 = getBoundingBox(rect1);
+  const bbox2 = getBoundingBox(rect2);
+
+  const dx = Math.max(bbox1.min.x - bbox2.max.x, bbox2.min.x - bbox1.max.x, 0);
+  const dy = Math.max(bbox1.min.y - bbox2.max.y, bbox2.min.y - bbox1.max.y, 0);
+
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+//
 // need state for undo-redo
 // it wil contain actual draw data: filters, crop, stickers pos, text pos, paint pos
 
@@ -179,18 +304,110 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     });
   });
 
-  const angle = () => mediaEditorState.angle;
+  const angle = () => cropResizeActive() ? mediaEditorState.angle : 0;
 
+  const [rectangle, setRectangle] = createSignal([
+    {x:0, y:0}, // top left
+    {x:0, y:1},
+    {x:1, y:0},
+    {x:1, y:1}
+  ]);
+
+  // const centerPoint = () => getRectangleCenter(rectangle());
+
+  // rotating here
   createEffect(() => {
     console.info(angle());
+    if(angle() === 0) {
+      setScl(1);
+    }
+
+    const originW = container.clientWidth;
+    const originH = container.clientHeight;
+
+    const currentRectangle = rectangle().map(point => ({x: point.x * originW, y: point.y * originH}));
+
+    const centerPoint = getRectangleCenter(currentRectangle);
+    console.info(centerPoint);
+
+    const rotatedRectangle = rotateRectangle(currentRectangle, centerPoint, angle());
+
+    const [topLeft, bottomRight] = getExtremumPoints(rotatedRectangle);
+    console.info('bpund', topLeft, bottomRight);
+
+    const extrWidth = 1 * (bottomRight.x - topLeft.x);
+    const extrHeight = 1 * (bottomRight.y - topLeft.y);
+
+    console.info('wh', extrWidth, extrHeight, originW, originH);
+
+    // const scale = Math.max(extrWidth / originW, extrHeight / originH);
+    const scale = Math.min(originW / extrWidth, originH / extrHeight);
+    setScl(scale)
+    // console.info('sca', extrWidth / originW, extrHeight / originH);
+    console.info('sca', originW / extrWidth, originH / extrHeight);
+    console.info('sca2', scale);
+
+
+    console.info('sca', 2 - (extrWidth / originW), 2 - (extrHeight / originH));
+    console.info('sca', 2 - (originW / extrWidth), 2 - (originH / extrHeight));
+    console.info('sca2', 2 - scale);
+    // setScl(1 - (scale - 1));
+    // setScl(1 - scale + 1)
+    return;
+
+    const finalRectangle = [
+      [currentRectangle[0], rotatedRectangle[0]],
+      [currentRectangle[1], rotatedRectangle[1]],
+      [currentRectangle[2], rotatedRectangle[2]],
+      [currentRectangle[3], rotatedRectangle[3]]
+    ];
+    // add threshold
+    const isOutside = finalRectangle[1]; // .find(([orig, point]) => point.x < 0 || point.x > originW || point.y < 0 || point.y > originH);
+    console.info(rotatedRectangle);
+    console.info(!!isOutside);
+    console.info(isOutside);
+
+    if(angle() === 0 || !isOutside) {
+      setScl(1);
+      return;
+    }
+    const [original, rotated] = isOutside;
+    const xAbs = Math.abs(rotated.x);
+    const yAbs = Math.abs(rotated.y);
+    console.info('orig', original.x)
+    console.info('orig', original.y)
+    console.info('rot', rotated.x);
+    console.info('rot', rotated.y);
+
+    const scaleX = (originW - xAbs) / originW;
+    const scaleY = (originH - yAbs) / originH;
+
+    console.info('scX', scaleX);
+    console.info('scY', scaleY);
+
+    const scale2 = Math.max((originW - xAbs) / originW, (originH - yAbs) / originH);
+    // const scale = Math.max((originW + xAbs) / originW, (originH + yAbs) / originH);
+
+    // setScl(scale);
+    // const dst = calculateDistance(rectangle(), rotatedRectangle);
+    // console.info(dst);
+    // setScl(1.0 - Math.abs(dst)); // scale - newTest
   });
 
+  // rotating here
+
+  const [scl, setScl] = createSignal(1);
+
+  createEffect(() => console.info('secl', scl()));
+
+
+  // style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1}, ${cropResizeActive() ? 0.8 : 1})`}}
   const cropResizeActive = () => tab() === 1;
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
-        <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1}, ${cropResizeActive() ? 0.8 : 1})`}}>
-          <canvas style={{transform: `rotate(${angle()}deg)`}} class='main-canvas' ref={glCanvas} />
+        <div class='main-canvas-container' >
+          <canvas style={{transform: `rotate(${angle()}deg) scale(${scl()})`}} class='main-canvas' ref={glCanvas} />
         </div>
         <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
         <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
