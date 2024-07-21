@@ -335,8 +335,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     const [topLeft, bottomRight] = getExtremumPoints(rotatedRectangle);
     console.info('bpund', topLeft, bottomRight);
 
-    const extrWidth = 1 * (bottomRight.x - topLeft.x);
-    const extrHeight = 1 * (bottomRight.y - topLeft.y);
+    const extrWidth = (bottomRight.x - topLeft.x);
+    const extrHeight = (bottomRight.y - topLeft.y);
 
     console.info('wh', extrWidth, extrHeight, originW, originH);
 
@@ -399,14 +399,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const [scl, setScl] = createSignal(1);
 
   createEffect(() => console.info('secl', scl()));
-
-
-  // style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1}, ${cropResizeActive() ? 0.8 : 1})`}}
   const cropResizeActive = () => tab() === 1;
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
-        <div class='main-canvas-container' >
+        <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1}, ${cropResizeActive() ? 0.8 : 1})`}}>
           <canvas style={{transform: `rotate(${angle()}deg) scale(${scl()})`}} class='main-canvas' ref={glCanvas} />
         </div>
         <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
