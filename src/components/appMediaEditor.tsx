@@ -399,13 +399,14 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`}}>
           <div class='canvas-view' style={{transform: `translate(${-cropOffsetForScale()[0]}px, ${-cropOffsetForScale()[1]}px)`}}>
             <div class='canvas-view-helper' style={{'transform-origin': `${cropArea()[0].x}px ${cropArea()[0].y}px`, 'transform': `scale(${cropScale()})`}}>
-              <div class='canvas-elem' style={{'transform': `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`}}>
+              <div class='canvas-elem' style={{transform: `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`, filter: cropResizeActive() ? 'brightness(50%)' : 'none'}}>
                 <canvas class='main-canvas' ref={glCanvas} style={{
                   'transform': `rotate(${-angle()}deg) scale(${canvasScale()})`,
                   'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
                 }} />
               </div>
               <div class='border' style={{
+                opacity: +cropResizeActive(),
                 top: `${cropArea()[0].y}px`,
                 left: `${cropArea()[0].x}px`,
                 height: `${(cropArea()[1].y - cropArea()[0].y)}px`,
@@ -419,11 +420,10 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
             <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle bottom right'></div>
           </Show> */ }
           </div>
-          <div class='canvas-hider' style={{left: 0, top: 0, bottom: 0, width: `${viewCropOffset()[0] / 2}px`, opacity: +!cropResizeActive()}}></div>
-          <div class='canvas-hider' style={{right: 0, top: 0, bottom: 0, width: `${viewCropOffset()[0] / 2}px`, opacity: +!cropResizeActive()}}></div>
-
-          <div class='canvas-hider' style={{left: 0, right: 0, bottom: 0, height: `${viewCropOffset()[1] / 2}px`, opacity: +!cropResizeActive()}}></div>
-          <div class='canvas-hider' style={{left: 0, right: 0, top: 0, height: `${viewCropOffset()[1] / 2}px`, opacity: +!cropResizeActive()}}></div>
+          <div class='canvas-hider' style={{left: '-1000px', top: '-1000px', bottom: '-1000px', width: `calc(1000px + ${viewCropOffset()[0] / 2}px)`, opacity: +!cropResizeActive()}}></div>
+          <div class='canvas-hider' style={{right: '-1000px', top: '-1000px', bottom: '-1000px', width: `calc(1000px + ${viewCropOffset()[0] / 2}px)`, opacity: +!cropResizeActive()}}></div>
+          <div class='canvas-hider' style={{left: '-1000px', right: '-1000px', bottom: '-1000px', height: `calc(1000px + ${viewCropOffset()[1] / 2}px)`, opacity: +!cropResizeActive()}}></div>
+          <div class='canvas-hider' style={{left: '-1000px', right: '-1000px', top: '-1000px', height: `calc(1000px + ${viewCropOffset()[1] / 2}px)`, opacity: +!cropResizeActive()}}></div>
         </div>
         <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
         <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
