@@ -1,6 +1,6 @@
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-settings';
-import {createEffect, createSignal, onMount} from 'solid-js';
+import {createEffect, createSignal, onMount, Show} from 'solid-js';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
@@ -230,13 +230,40 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // crop area in real pixels of image
   const [cropArea, setCropArea] = createSignal([{x: 0, y: 0}, {x: 0, y:0}]);
-  const [cropScale, setCropScale] = createSignal(1);
+  const [canvasScale, setCanvasScale] = createSignal(1);
   const [canvasPos, setCanvasPos] = createSignal([0, 0]);
 
+  const cropScale = () => {
+    const cropWidth = cropArea()[1].x - cropArea()[0].x;
+    const cropHeight = cropArea()[1].y - cropArea()[0].y;
+
+    const scaleX = container.clientWidth / cropWidth;
+    const scaleY = container.clientHeight / cropHeight;
+
+    return Math.min(scaleX, scaleY);
+  };
+
+  const cropOffsetForScale = () => {
+    const x = cropArea()[0].x;
+    const y = cropArea()[0].y;
+
+    const cropWidth = cropArea()[1].x - cropArea()[0].x;
+    const cropHeight = cropArea()[1].y - cropArea()[0].y;
+
+    const scaledWidth = cropWidth * cropScale();
+    const scaledHeight = cropHeight * cropScale();
+
+    const restX = Math.max(0, container.clientWidth - scaledWidth);
+    const restY = Math.max(0, container.clientHeight - scaledHeight);
+
+    return [x - restX / 2, y - restY / 2];
+  }
+
+  createEffect(() => cropScale());
 
   onMount(() => {
     setCropArea([
-      {x: 0, y: 0},
+      {x: 340, y: 300},
       {x: container.clientWidth, y: container.clientHeight}
     ]);
     plz.src = 'assets/brush.png';
@@ -314,7 +341,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     });
   });
 
-  const angle = () => cropResizeActive() ? mediaEditorState.angle : 0;
+  // crop rotate
+  // const angle = () => cropResizeActive() ? mediaEditorState.angle : 0;
+  const angle = () => mediaEditorState.angle;
   const croppedAreaRectangle = () => [
     {x: cropArea()[0].x, y: cropArea()[0].y},
     {x: cropArea()[0].x, y: cropArea()[1].y},
@@ -324,6 +353,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const croppedAreaCenterPoint = () => getRectangleCenter(croppedAreaRectangle());
 
   createEffect(() => {
+    if(angle() === 0) {
+      setCanvasScale(1);
+      setCanvasPos([0, 0]);
+      return;
+    }
     const rotatedRectangle = rotateRectangle(croppedAreaRectangle(), croppedAreaCenterPoint(), -angle());
     const [topLeft, bottomRight] = getExtremumPoints(rotatedRectangle);
 
@@ -336,7 +370,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     const scaledRectangle = scale > 1 ?
       scaleRectangle(rotatedRectangle, getRectangleCenter(rotatedRectangle), 1 / scale) :
       rotatedRectangle;
-    setCropScale(Math.max(1, scale));
+    setCanvasScale(Math.max(1, scale));
 
     const [scaledTopLeft, scaledBottomRight] = getExtremumPoints(scaledRectangle);
 
@@ -351,22 +385,37 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
   });
 
+  // end crop rotate
+
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
         <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`}}>
-          <div class='canvas-elem' style={{'transform': `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`}}>
-            <canvas class='main-canvas' ref={glCanvas} style={{
-              'transform': `rotate(${-angle()}deg) scale(${cropScale()})`,
-              'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
-            }} />
+          <div class='canvas-view' style={{transform: `translate(${-cropOffsetForScale()[0]}px, ${-cropOffsetForScale()[1]}px)`}}>
+            <div class='canvas-view-helper' style={{'transform-origin': `${cropArea()[0].x}px ${cropArea()[0].y}px`, 'transform': `scale(${cropScale()})`}}>
+              <div class='canvas-elem' style={{
+                'transform': `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`,
+                ...(!cropResizeActive() && {'clip-path': `xywh(${cropArea()[0].x}px ${cropArea()[0].y}px ${cropArea()[1].x - cropArea()[0].x}px ${(cropArea()[1].y - cropArea()[0].y)}px)`})
+              }}>
+                <canvas class='main-canvas' ref={glCanvas} style={{
+                  'transform': `rotate(${-angle()}deg) scale(${canvasScale()})`,
+                  'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
+                }} />
+              </div>
+              <div class='border' style={{
+                top: `${cropArea()[0].y}px`,
+                left: `${cropArea()[0].x}px`,
+                height: `${(cropArea()[1].y - cropArea()[0].y)}px`,
+                width: `${(cropArea()[1].x - cropArea()[0].x)}px`
+              }}></div>
+            </div>
+            { /* <Show when={props.selected}>
+            <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle top left'></div>
+            <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle top right'></div>
+            <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle bottom left'></div>
+            <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle bottom right'></div>
+          </Show> */ }
           </div>
-          <div class='border' style={{
-            top: `${cropArea()[0].y}px`,
-            left: `${cropArea()[0].x}px`,
-            height: `${(cropArea()[1].y - cropArea()[0].y)}px`,
-            width: `${(cropArea()[1].x - cropArea()[0].x)}px`
-          }}></div>
         </div>
         <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
         <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
