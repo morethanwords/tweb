@@ -351,33 +351,22 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
   });
 
-  const style = () => ({
-    transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`
-  });
-
-  createEffect(() => console.info(style()));
-
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
-        <div class='main-canvas-container' style={style()}>
-          <div>
-            <div style={{
-              'transform': `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`
-            }}>
-              <canvas class='main-canvas' ref={glCanvas} style={{
-                'transform': `rotate(${-angle()}deg) scale(${cropScale()})`,
-                'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
-              }} />
-            </div>
-            <div class='border' style={{
-              // transform: `translate(${canvasPos()[0]}px, ${canvasPos()[1]}px) rotate(${angle()}deg) scale(${1 / cropScale()})`,
-              top: `${cropArea()[0].y}px`,
-              left: `${cropArea()[0].x}px`,
-              height: `${(cropArea()[1].y - cropArea()[0].y)}px`,
-              width: `${(cropArea()[1].x - cropArea()[0].x)}px`
-            }}></div>
+        <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`}}>
+          <div class='canvas-elem' style={{'transform': `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`}}>
+            <canvas class='main-canvas' ref={glCanvas} style={{
+              'transform': `rotate(${-angle()}deg) scale(${cropScale()})`,
+              'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
+            }} />
           </div>
+          <div class='border' style={{
+            top: `${cropArea()[0].y}px`,
+            left: `${cropArea()[0].x}px`,
+            height: `${(cropArea()[1].y - cropArea()[0].y)}px`,
+            width: `${(cropArea()[1].x - cropArea()[0].x)}px`
+          }}></div>
         </div>
         <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
         <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />

@@ -214,7 +214,13 @@ $inactive-opacity: .4;
       position: relative;
 
       .main-canvas {
+        transition: transform 0.3s ease-in-out;
         transform: rotate(0deg) scale(1);
+      }
+
+      .canvas-elem {
+        transition: transform 0.3s ease-in-out;
+        filter: brightness(35%);
       }
 
       .border {
@@ -223,8 +229,8 @@ $inactive-opacity: .4;
         left: 0;
         right: 0;
         bottom: 0;
-        background: red;
-        opacity: 0.5;
+        background: white;
+        mix-blend-mode: overlay;
       }
     }
 
