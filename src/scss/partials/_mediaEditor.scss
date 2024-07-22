@@ -219,6 +219,13 @@ $inactive-opacity: .4;
         transform: rotate(0deg) scale(1);
       }
 
+      .canvas-hider {
+        opacity: 1;
+        position: absolute;
+        background: black;
+        transition: opacity 0.3s ease-in-out;
+      }
+
       .canvas-view {
         transform-origin: 100% 100%;
       }

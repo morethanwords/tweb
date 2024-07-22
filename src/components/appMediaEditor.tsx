@@ -243,18 +243,24 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     return Math.min(scaleX, scaleY);
   };
 
-  const cropOffsetForScale = () => {
-    const x = cropArea()[0].x;
-    const y = cropArea()[0].y;
-
+  const viewCropOffset = () => {
     const cropWidth = cropArea()[1].x - cropArea()[0].x;
     const cropHeight = cropArea()[1].y - cropArea()[0].y;
 
     const scaledWidth = cropWidth * cropScale();
     const scaledHeight = cropHeight * cropScale();
 
-    const restX = Math.max(0, container.clientWidth - scaledWidth);
-    const restY = Math.max(0, container.clientHeight - scaledHeight);
+    return [
+      Math.max(0, container.clientWidth - scaledWidth),
+      Math.max(0, container.clientHeight - scaledHeight)
+    ];
+  };
+
+  const cropOffsetForScale = () => {
+    const x = cropArea()[0].x;
+    const y = cropArea()[0].y;
+
+    const [restX, restY] = viewCropOffset();
 
     return [x - restX / 2, y - restY / 2];
   }
@@ -393,10 +399,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`}}>
           <div class='canvas-view' style={{transform: `translate(${-cropOffsetForScale()[0]}px, ${-cropOffsetForScale()[1]}px)`}}>
             <div class='canvas-view-helper' style={{'transform-origin': `${cropArea()[0].x}px ${cropArea()[0].y}px`, 'transform': `scale(${cropScale()})`}}>
-              <div class='canvas-elem' style={{
-                'transform': `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`,
-                ...(!cropResizeActive() && {'clip-path': `xywh(${cropArea()[0].x}px ${cropArea()[0].y}px ${cropArea()[1].x - cropArea()[0].x}px ${(cropArea()[1].y - cropArea()[0].y)}px)`})
-              }}>
+              <div class='canvas-elem' style={{'transform': `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`}}>
                 <canvas class='main-canvas' ref={glCanvas} style={{
                   'transform': `rotate(${-angle()}deg) scale(${canvasScale()})`,
                   'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
@@ -416,6 +419,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
             <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle bottom right'></div>
           </Show> */ }
           </div>
+          <div class='canvas-hider' style={{left: 0, top: 0, bottom: 0, width: `${viewCropOffset()[0] / 2}px`, opacity: +!cropResizeActive()}}></div>
+          <div class='canvas-hider' style={{right: 0, top: 0, bottom: 0, width: `${viewCropOffset()[0] / 2}px`, opacity: +!cropResizeActive()}}></div>
+
+          <div class='canvas-hider' style={{left: 0, right: 0, bottom: 0, height: `${viewCropOffset()[1] / 2}px`, opacity: +!cropResizeActive()}}></div>
+          <div class='canvas-hider' style={{left: 0, right: 0, top: 0, height: `${viewCropOffset()[1] / 2}px`, opacity: +!cropResizeActive()}}></div>
         </div>
         <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
         <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
