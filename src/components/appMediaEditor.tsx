@@ -230,14 +230,14 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // crop area in real pixels of image
   const [cropArea, setCropArea] = createSignal([{x: 0, y: 0}, {x: 0, y:0}]);
-  const [cropScale, setCropScale] = createSignal(1); // scalr the crop so it appears at whole screen
+  const [cropScale, setCropScale] = createSignal(1);
   const [canvasPos, setCanvasPos] = createSignal([0, 0]);
 
 
   onMount(() => {
     setCropArea([
-      {x: 20, y: 20},
-      {x: container.clientWidth * 0.75, y: container.clientHeight * 0.75}
+      {x: 0, y: 0},
+      {x: container.clientWidth, y: container.clientHeight}
     ]);
     plz.src = 'assets/brush.png';
 
@@ -351,18 +351,17 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
   });
 
+  const style = () => ({
+    transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`
+  });
+
+  createEffect(() => console.info(style()));
+
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
-        <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1}, ${cropResizeActive() ? 0.8 : 1}))`}}>
+        <div class='main-canvas-container' style={style()}>
           <div>
-            <div class='border' style={{
-              // transform: `translate(${canvasPos()[0]}px, ${canvasPos()[1]}px) rotate(${angle()}deg) scale(${1 / cropScale()})`,
-              top: `${cropArea()[0].y}px`,
-              left: `${cropArea()[0].x}px`,
-              height: `${(cropArea()[1].y - cropArea()[0].y)}px`,
-              width: `${(cropArea()[1].x - cropArea()[0].x)}px`
-            }}></div>
             <div style={{
               'transform': `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`
             }}>
@@ -371,6 +370,13 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                 'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
               }} />
             </div>
+            <div class='border' style={{
+              // transform: `translate(${canvasPos()[0]}px, ${canvasPos()[1]}px) rotate(${angle()}deg) scale(${1 / cropScale()})`,
+              top: `${cropArea()[0].y}px`,
+              left: `${cropArea()[0].x}px`,
+              height: `${(cropArea()[1].y - cropArea()[0].y)}px`,
+              width: `${(cropArea()[1].x - cropArea()[0].x)}px`
+            }}></div>
           </div>
         </div>
         <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
