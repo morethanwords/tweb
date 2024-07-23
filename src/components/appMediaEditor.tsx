@@ -1,6 +1,6 @@
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-settings';
-import {createEffect, createSignal, onMount, Show} from 'solid-js';
+import {createEffect, createSignal, onMount, Show, untrack} from 'solid-js';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
@@ -251,15 +251,12 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       Math.max(0, container.clientHeight - scaledHeight)
     ];
   };
-
   const centerScaledCropOffset = () => {
     const x = cropArea()[0].x;
     const y = cropArea()[0].y;
     const [restX, restY] = viewCropOffset();
     return [x - restX / 2, y - restY / 2];
   }
-
-  createEffect(() => console.info('scscs', cropScale()));
 
   onMount(() => {
     plz.src = 'assets/brush.png';
@@ -281,8 +278,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         {x: img.width / scale, y: img.height / scale}
       ]); */
       setCropArea([
-        {x: 50, y: 50},
-        {x: img.width / scale - 50, y: img.height / scale - 10}
+        {x: 100, y: 100},
+        {x: img.width / scale - 50, y: img.height / scale - 50}
       ]);
 
       const sourceWidth = img.width;
@@ -352,7 +349,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     });
   });
 
-  // crop rotate
+  // rotate
   const angle = () => mediaEditorState.angle;
   const croppedAreaRectangle = () => [
     {x: cropArea()[0].x, y: cropArea()[0].y},
@@ -395,10 +392,70 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
   });
 
-  // end crop rotate
-
   const mainCanvasCropResizeStyle = () => ({transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`});
   const canvasSizeStyle = () => ({width: `${canvasSize()[0]}px`, height: `${canvasSize()[1]}px`});
+  // end rotate
+
+  // crop
+  const [currentHandlerDrag, setCurrentHandlerDrag] = createSignal<number>(null);
+  const [initDragPos, setInitDragPos] = createSignal<[number, number]>([0, 0]);
+  let parentSize = [0, 0];
+
+  createEffect(() => console.info(initDragPos()));
+
+  const [tempCropArea, setTempCropArea] = createSignal([]);
+  createEffect(() => setTempCropArea(cropArea()));
+  const handleDragStart = (ev: DragEvent, idx: number) => {
+    setCurrentHandlerDrag(idx);
+    const [x, y] = [ev.clientX, ev.clientY];
+    const {width, height} = (ev.target as HTMLElement).parentElement.getBoundingClientRect();
+    parentSize = [width, height];
+    setInitDragPos([x, y]);
+  }
+
+  let skip = 0;
+  let cropDebounce: any;
+  const onDrag = (ev: DragEvent) => {
+    skip += 1;
+    if(skip < 25) {
+      return;
+    }
+    skip = 0;
+    const [cX, cY] = [ev.clientX, ev.clientY];
+    const x = (cX - initDragPos()[0]);
+    const y = (cY - initDragPos()[1]);
+    const [width, height] = parentSize;
+    const scaleX = x / (width); // percentage of how much we decrease the size
+    const scaleY = y / (height);
+
+    const cropWidth = cropArea()[1].x - cropArea()[0].x;
+    const cropHeight = cropArea()[1].y - cropArea()[0].y;
+    const cropX = scaleX * cropWidth;
+    const cropY = scaleY * cropHeight;
+
+    setTempCropArea(cropArea());
+    if(currentHandlerDrag() === 0) {
+      setTempCropArea(([topLeft, bottomRight]) => [{x: topLeft.x + cropX, y: topLeft.y + cropY}, bottomRight]);
+    } else if(currentHandlerDrag() === 1) {
+      setTempCropArea(([topLeft, bottomRight]) => [{x: topLeft.x, y: topLeft.y + cropY}, {x: bottomRight.x + cropX, y: bottomRight.y}]);
+    } else if(currentHandlerDrag() === 2) {
+      setTempCropArea(([topLeft, bottomRight]) => [{x: topLeft.x + cropX, y: topLeft.y}, {x: bottomRight.x, y: bottomRight.y + cropY}]);
+    } else {
+      setTempCropArea(([topLeft, bottomRight]) => [topLeft, {x: bottomRight.x + cropX, y: bottomRight.y + cropY}]);
+    }
+  }
+
+  const handleDragEnd = () => {
+    setCurrentHandlerDrag(null);
+    parentSize = [0, 0];
+    clearTimeout(cropDebounce);
+    cropDebounce = setTimeout(() => {
+      setCropArea(tempCropArea());
+      // canvas-view-helper
+    }, 50);
+  }
+  // end crop
+
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
@@ -415,13 +472,31 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                   'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
                 }} />
               </div>
-              <div class='border' style={{
+              <div class='cropped-view-area' style={{
                 opacity: +cropResizeActive(),
                 top: `${cropArea()[0].y}px`,
                 left: `${cropArea()[0].x}px`,
                 height: `${(cropArea()[1].y - cropArea()[0].y)}px`,
                 width: `${(cropArea()[1].x - cropArea()[0].x)}px`
               }}></div>
+              <div class='canvas-crop-handlers'
+                onDragEnter={onDrag}
+                onDragOver={onDrag}
+                onClick={ev => console.info(ev.clientX, ev.clientY)}
+                style={{
+                  'opacity': +cropResizeActive(),
+                  'top': `${tempCropArea()[0].y}px`,
+                  'left': `${tempCropArea()[0].x}px`,
+                  'width': '100%', 'height': '100%',
+                  'max-height': `${(tempCropArea()[1].y - tempCropArea()[0].y)}px`,
+                  'max-width': `${(tempCropArea()[1].x - tempCropArea()[0].x)}px`
+                }}
+              >
+                <div draggable={true} onDragStart={ev => handleDragStart(ev, 0)} onClick={ev => console.info(ev.clientX, ev.clientY)} onDragEnd={handleDragEnd} class='crop-handle top left'></div>
+                <div draggable={true} onDragStart={ev => handleDragStart(ev, 1)} onClick={ev => console.info(ev.clientX, ev.clientY)} onDragEnd={handleDragEnd} class='crop-handle top right'></div>
+                <div draggable={true} onDragStart={ev => handleDragStart(ev, 2)} onClick={ev => console.info(ev.clientX, ev.clientY)} onDragEnd={handleDragEnd} class='crop-handle bottom left'></div>
+                <div draggable={true} onDragStart={ev => handleDragStart(ev, 3)} onClick={ev => console.info(ev.clientX, ev.clientY)} onDragEnd={handleDragEnd} class='crop-handle bottom right'></div>
+              </div>
             </div>
           </div>
           <div class='canvas-hider' style={{left: '-1000px', top: '-1000px', bottom: '-1000px', width: `calc(1000px + ${viewCropOffset()[0] / 2}px)`, opacity: +!cropResizeActive()}}></div>

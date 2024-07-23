@@ -220,6 +220,12 @@ $inactive-opacity: .4;
         // when moving manually then remove this
         // transition: transform 0.3s ease-in-out;
         transform: rotate(0deg) scale(1);
+        transition: transform 0.3s ease-in-out;
+      }
+
+      .canvas-view-helper,
+      .center-crop-area {
+        transition: transform 0.4s ease-in-out;
       }
 
       .canvas-hider {
@@ -234,12 +240,49 @@ $inactive-opacity: .4;
       }
 
       .canvas-elem {
-        // transition: transform 0.3s ease-in-out;
+        transition: transform 0.3s ease-in-out,  filter 0.3s ease-in-out;
         filter: brightness(50%);
-        transition: filter 0.3s ease-in-out
       }
 
-      .border {
+      .canvas-crop-handlers {
+        position: absolute;
+        z-index: 1000;
+        border: 1px dashed white;
+        transform-origin: 0 0;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+
+        .crop-handle {
+          z-index: 1000;
+          position: absolute;
+          background: white;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          cursor: pointer;
+
+          transform-origin: center;
+          scale: 2;
+
+          &.top {
+            top: -4px;
+          }
+
+          &.bottom {
+            bottom: -4px;
+          }
+
+          &.left {
+            left: -4px;
+          }
+
+          &.right {
+            right: -4px;
+          }
+        }
+      }
+
+      .cropped-view-area {
         position: absolute;
         top: 0;
         left: 0;
