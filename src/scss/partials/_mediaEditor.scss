@@ -220,12 +220,12 @@ $inactive-opacity: .4;
         // when moving manually then remove this
         // transition: transform 0.3s ease-in-out;
         transform: rotate(0deg) scale(1);
-        transition: transform 0.3s ease-in-out;
+        // transition: transform 0.3s ease-out;
       }
 
       .canvas-view-helper,
       .center-crop-area {
-        transition: transform 0.4s ease-in-out;
+        // transition: transform 0.4s ease-in-out;
       }
 
       .canvas-hider {
@@ -239,9 +239,19 @@ $inactive-opacity: .4;
         transform-origin: 100% 100%;
       }
 
+      .center-crop-area,
       .canvas-elem {
-        transition: transform 0.3s ease-in-out,  filter 0.3s ease-in-out;
+        // transition: transform 0.3s ease-in-out,  filter 0.3s ease-in-out, max-width 0.3s ease-out, max-height 0.3s ease-out, top 0.3s ease-out, left 0.3s ease-out;
+      }
+
+      .canvas-elem {
+        transition: filter 0.3s ease-in-out;
+        // transition: transform 0.3s ease-in-out,  filter 0.3s ease-in-out, max-width 0.3s ease-out, max-height 0.3s ease-out, top 0.3s ease-out, left 0.3s ease-out;
         filter: brightness(50%);
+      }
+
+      .cropped-view-area {
+        transition: opacity 0.3s ease-in-out; //, max-width 0.3s ease-out, max-height 0.3s ease-out, top 0.3s ease-out, left 0.3s ease-out;
       }
 
       .canvas-crop-handlers {
@@ -250,7 +260,7 @@ $inactive-opacity: .4;
         border: 1px dashed white;
         transform-origin: 0 0;
         opacity: 0;
-        transition: opacity 0.3s ease-in-out;
+        transition: opacity 0.3s ease-in-out; // , max-width 0.3s ease-out, max-height 0.3s ease-out, top 0.3s ease-out, left 0.3s ease-out;
 
         .crop-handle {
           z-index: 1000;

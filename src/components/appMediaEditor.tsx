@@ -273,13 +273,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
       // generateFakeGif(img);
 
-      /* setCropArea([
+      setCropArea([
         {x: 0, y: 0},
         {x: img.width / scale, y: img.height / scale}
-      ]); */
-      setCropArea([
-        {x: 100, y: 100},
-        {x: img.width / scale - 50, y: img.height / scale - 50}
       ]);
 
       const sourceWidth = img.width;
@@ -393,7 +389,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   });
 
   const mainCanvasCropResizeStyle = () => ({transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`});
-  const canvasSizeStyle = () => ({width: `${canvasSize()[0]}px`, height: `${canvasSize()[1]}px`});
+  const canvasSizeStyle = () => ({'max-width': `${canvasSize()[0]}px`, 'max-height': `${canvasSize()[1]}px`, 'width': '100%', 'height': '100%'});
   // end rotate
 
   // crop
@@ -451,9 +447,24 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     clearTimeout(cropDebounce);
     cropDebounce = setTimeout(() => {
       setCropArea(tempCropArea());
-      // canvas-view-helper
     }, 50);
   }
+
+  createEffect(() => {
+    console.info('butn', mediaEditorState.crop);
+    const option = mediaEditorState.crop;
+    if(option === 2) {
+      setCropArea(([topLeft, bottomRight]) => {
+        const cropWidth = bottomRight.x - topLeft.x;
+        const cropHeight = bottomRight.y - topLeft.y;
+        const squareSide = Math.min(cropWidth, cropHeight);
+        return [
+          {x: topLeft.x + (cropWidth - squareSide) / 2, y: topLeft.y + (cropHeight - squareSide) / 2},
+          {x: topLeft.x + squareSide + (cropWidth - squareSide) / 2, y: topLeft.y + squareSide + (cropHeight - squareSide) / 2}
+        ];
+      });
+    }
+  });
   // end crop
 
   return <div class='media-editor' onClick={() => close()}>
@@ -473,11 +484,12 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                 }} />
               </div>
               <div class='cropped-view-area' style={{
-                opacity: +cropResizeActive(),
-                top: `${cropArea()[0].y}px`,
-                left: `${cropArea()[0].x}px`,
-                height: `${(cropArea()[1].y - cropArea()[0].y)}px`,
-                width: `${(cropArea()[1].x - cropArea()[0].x)}px`
+                'opacity': +cropResizeActive(),
+                'top': `${cropArea()[0].y}px`,
+                'left': `${cropArea()[0].x}px`,
+                'width': '100%', 'height': '100%',
+                'max-height': `${(cropArea()[1].y - cropArea()[0].y)}px`,
+                'max-width': `${(cropArea()[1].x - cropArea()[0].x)}px`
               }}></div>
               <div class='canvas-crop-handlers'
                 onDragEnter={onDrag}
