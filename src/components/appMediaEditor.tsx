@@ -353,7 +353,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   });
 
   // crop rotate
-  // const angle = () => cropResizeActive() ? mediaEditorState.angle : 0;
   const angle = () => mediaEditorState.angle;
   const croppedAreaRectangle = () => [
     {x: cropArea()[0].x, y: cropArea()[0].y},
