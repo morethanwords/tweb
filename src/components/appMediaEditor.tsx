@@ -228,6 +228,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   let img: HTMLImageElement;
   const plz = new Image();
 
+  const [canvasSize, setCanvasSize] = createSignal([0, 0]);
   // crop area in real pixels of image
   const [cropArea, setCropArea] = createSignal([{x: 0, y: 0}, {x: 0, y:0}]);
   const [canvasScale, setCanvasScale] = createSignal(1);
@@ -236,50 +237,54 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const cropScale = () => {
     const cropWidth = cropArea()[1].x - cropArea()[0].x;
     const cropHeight = cropArea()[1].y - cropArea()[0].y;
-
     const scaleX = container.clientWidth / cropWidth;
     const scaleY = container.clientHeight / cropHeight;
-
     return Math.min(scaleX, scaleY);
   };
-
   const viewCropOffset = () => {
     const cropWidth = cropArea()[1].x - cropArea()[0].x;
     const cropHeight = cropArea()[1].y - cropArea()[0].y;
-
     const scaledWidth = cropWidth * cropScale();
     const scaledHeight = cropHeight * cropScale();
-
     return [
       Math.max(0, container.clientWidth - scaledWidth),
       Math.max(0, container.clientHeight - scaledHeight)
     ];
   };
 
-  const cropOffsetForScale = () => {
+  const centerScaledCropOffset = () => {
     const x = cropArea()[0].x;
     const y = cropArea()[0].y;
-
     const [restX, restY] = viewCropOffset();
-
     return [x - restX / 2, y - restY / 2];
   }
 
-  createEffect(() => cropScale());
+  createEffect(() => console.info('scscs', cropScale()));
 
   onMount(() => {
-    setCropArea([
-      {x: 340, y: 300},
-      {x: container.clientWidth, y: container.clientHeight}
-    ]);
     plz.src = 'assets/brush.png';
 
     img = new Image();
     img.src = imageBlobUrl;
     img.onload = async function() {
+      const scaleX = img.width / container.clientWidth;
+      const scaleY = img.height / container.clientHeight;
+      const scale = Math.max(scaleX, scaleY);
+      setCanvasSize([img.width / scale, img.height / scale]);
+      glCanvas.width = img.width / scale;
+      glCanvas.height = img.height / scale;
+
       // generateFakeGif(img);
-      glCanvas.width = container.clientWidth;
-      glCanvas.height = container.clientHeight;
+
+      /* setCropArea([
+        {x: 0, y: 0},
+        {x: img.width / scale, y: img.height / scale}
+      ]); */
+      setCropArea([
+        {x: 50, y: 50},
+        {x: img.width / scale - 50, y: img.height / scale - 10}
+      ]);
+
       const sourceWidth = img.width;
       const sourceHeight = img.height;
       gl = glCanvas.getContext('webgl');
@@ -369,8 +374,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
     const rotatedBBWidth = bottomRight.x - topLeft.x;
     const rotatedBBHeight = bottomRight.y - topLeft.y;
-    const scaleX = rotatedBBWidth / container.clientWidth;
-    const scaleY = rotatedBBHeight / container.clientHeight;
+    const scaleX = rotatedBBWidth / canvasSize()[0];
+    const scaleY = rotatedBBHeight / canvasSize()[1];
 
     const scale = Math.max(scaleX, scaleY);
     const scaledRectangle = scale > 1 ?
@@ -384,22 +389,28 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       const moveX = scaledTopLeft.x > 0 ? 0 : Math.abs(scaledTopLeft.x);
       const moveY = scaledTopLeft.y > 0 ? 0 : Math.abs(scaledTopLeft.y);
       setCanvasPos([moveX, moveY]);
-    } else if(scaledBottomRight.x > container.clientWidth || scaledBottomRight.y > container.clientHeight) {
-      const moveX = scaledBottomRight.x < container.clientWidth ? 0 : -Math.abs(scaledBottomRight.x - container.clientWidth);
-      const moveY = scaledBottomRight.y < container.clientHeight ? 0 : -Math.abs(scaledBottomRight.y - container.clientHeight);
+    } else if(scaledBottomRight.x > canvasSize()[0] || scaledBottomRight.y > canvasSize()[1]) {
+      const moveX = scaledBottomRight.x < canvasSize()[0] ? 0 : -Math.abs(scaledBottomRight.x - canvasSize()[0]);
+      const moveY = scaledBottomRight.y < canvasSize()[1] ? 0 : -Math.abs(scaledBottomRight.y - canvasSize()[1]);
       setCanvasPos([moveX, moveY]); // these probably should be set later on btw
     }
   });
 
   // end crop rotate
 
+  const mainCanvasCropResizeStyle = () => ({transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`});
+  const canvasSizeStyle = () => ({width: `${canvasSize()[0]}px`, height: `${canvasSize()[1]}px`});
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
-        <div class='main-canvas-container' style={{transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`}}>
-          <div class='canvas-view' style={{transform: `translate(${-cropOffsetForScale()[0]}px, ${-cropOffsetForScale()[1]}px)`}}>
+        <div class='main-canvas-container' style={mainCanvasCropResizeStyle()}>
+          <div class='center-crop-area' style={{...canvasSizeStyle(), transform: `translate(${-centerScaledCropOffset()[0]}px, ${-centerScaledCropOffset()[1]}px)`}}>
             <div class='canvas-view-helper' style={{'transform-origin': `${cropArea()[0].x}px ${cropArea()[0].y}px`, 'transform': `scale(${cropScale()})`}}>
-              <div class='canvas-elem' style={{transform: `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`, filter: cropResizeActive() ? 'brightness(50%)' : 'none'}}>
+              <div class='canvas-elem' style={{
+                ...canvasSizeStyle(),
+                transform: `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`,
+                filter: cropResizeActive() ? 'brightness(50%)' : 'none'
+              }}>
                 <canvas class='main-canvas' ref={glCanvas} style={{
                   'transform': `rotate(${-angle()}deg) scale(${canvasScale()})`,
                   'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
@@ -413,12 +424,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                 width: `${(cropArea()[1].x - cropArea()[0].x)}px`
               }}></div>
             </div>
-            { /* <Show when={props.selected}>
-            <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle top left'></div>
-            <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle top right'></div>
-            <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle bottom left'></div>
-            <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle bottom right'></div>
-          </Show> */ }
           </div>
           <div class='canvas-hider' style={{left: '-1000px', top: '-1000px', bottom: '-1000px', width: `calc(1000px + ${viewCropOffset()[0] / 2}px)`, opacity: +!cropResizeActive()}}></div>
           <div class='canvas-hider' style={{right: '-1000px', top: '-1000px', bottom: '-1000px', width: `calc(1000px + ${viewCropOffset()[0] / 2}px)`, opacity: +!cropResizeActive()}}></div>
