@@ -664,6 +664,12 @@ $inactive-opacity: .4;
     bottom: 0;
     right: 0;
 
+    &.media-paint-panel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     &.disabled {
       pointer-events: none;
     }

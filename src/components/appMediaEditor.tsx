@@ -258,6 +258,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     return [x - restX / 2, y - restY / 2];
   }
 
+  // filters start =========
   onMount(() => {
     plz.src = 'assets/brush.png';
 
@@ -305,6 +306,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
   });
 
+  // filter end ===========
+
+  // stickers start ==========
   const [stickers, setStickers] = createSignal([]);
 
   const updatePos = (id: string, x: number, y: number) => {
@@ -316,11 +320,28 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     docId && setStickers(prev => [...prev, {id: crypto.randomUUID(), docId, x: 0, y: 0}]);
   }
 
+  // stickers end ========
+
+  // paint start =========
   const linesSignal = createSignal<number[][]>([]);
+  const [points, setPoints] = createSignal([]);
   const [lines2] = linesSignal;
+
+  // map drawing point to crop area, transform and rotate around center of crop area
+
+  createEffect(() => {
+    console.info('lines', lines2());
+    console.info('points', points());
+  });
+
+  setTimeout(() => {
+    // setLines2([[50, 50, 250, 250, 300, 300, 350, 350]]);
+    // console.info('set');
+  })
 
   createEffect(() => {
     const lines22 = lines2();
+    console.info(lines22);
     if(!gl) {
       return;
     }
@@ -332,20 +353,83 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       const llld = dup1(ppp);
       const lll = simplify(llld, 2);
       const stroke = Stroke({
-        thickness: 50,
+        thickness: 25,
         join: 'bevel',
         miterLimit: 5
-      })
+      });
+
+      const drawCanvasWidth = container.clientWidth - viewCropOffset()[0];
+      const drawCanvasHeight = container.clientHeight - viewCropOffset()[1];
+
       const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
       const fin = [].concat(...[].concat(...cells).map(cell => {
-        const [x, y] = positions[cell];
-        return [2 * (x / container.clientWidth) - 1, 2 * (y / container.clientHeight)];
+        let [x, y] = positions[cell];
+
+        const scaleX = x / drawCanvasWidth;
+        const scaleY = y / drawCanvasHeight;
+
+        // fix corrdinate system convertion
+        // console.info('xx', scaleX, scaleY);
+        const cropWidth = cropArea()[1].x - cropArea()[0].x;
+        const cropHeight = cropArea()[1].y - cropArea()[0].y;
+
+        // console.info('crop', cropWidth, cropHeight, canvasSize()[0], canvasSize()[1], drawCanvasWidth, drawCanvasHeight);
+
+        const justCropX = cropArea()[0].x + cropWidth * scaleX;
+        const justCropY = cropArea()[0].y + cropHeight * scaleY;
+
+        // console.info('pos', justCropX, justCropY);
+
+        [x, y] = [justCropX / canvasSize()[0], justCropY / canvasSize()[1]];
+        return [2 * x - 1, 2 * y];
       }));
       drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
     });
+
+
+    [points()].forEach(ppp => {
+      const llld = dup1(ppp);
+      const lll = simplify(llld, 2);
+      const stroke = Stroke({
+        thickness: 25,
+        join: 'bevel',
+        miterLimit: 5
+      });
+
+      const drawCanvasWidth = container.clientWidth - viewCropOffset()[0];
+      const drawCanvasHeight = container.clientHeight - viewCropOffset()[1];
+
+      const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
+      const fin = [].concat(...[].concat(...cells).map(cell => {
+        let [x, y] = positions[cell];
+
+        const scaleX = x / drawCanvasWidth;
+        const scaleY = y / drawCanvasHeight;
+
+        // fix corrdinate system convertion
+        // console.info('xx', scaleX, scaleY);
+        const cropWidth = cropArea()[1].x - cropArea()[0].x;
+        const cropHeight = cropArea()[1].y - cropArea()[0].y;
+
+        // console.info('crop', cropWidth, cropHeight, canvasSize()[0], canvasSize()[1], drawCanvasWidth, drawCanvasHeight);
+
+        const justCropX = cropArea()[0].x + cropWidth * scaleX;
+        const justCropY = cropArea()[0].y + cropHeight * scaleY;
+
+        // console.info('pos', justCropX, justCropY);
+
+        [x, y] = [justCropX / canvasSize()[0], justCropY / canvasSize()[1]];
+        return [2 * x - 1, 2 * y];
+      }));
+      drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
+    });
+
+
   });
 
-  // rotate
+  // paint end ===========
+
+  // rotate start =========
   const angle = () => mediaEditorState.angle;
   const croppedAreaRectangle = () => [
     {x: cropArea()[0].x, y: cropArea()[0].y},
@@ -390,9 +474,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   const mainCanvasCropResizeStyle = () => ({transform: `translate(${cropResizeActive() ? 10 : 0}%, ${cropResizeActive() ? 6.5 : 0}%) scale(${cropResizeActive() ? 0.8 : 1})`});
   const canvasSizeStyle = () => ({'max-width': `${canvasSize()[0]}px`, 'max-height': `${canvasSize()[1]}px`, 'width': '100%', 'height': '100%'});
-  // end rotate
+  // rotate end =========
 
-  // crop
+  // crop start =========
   const [currentHandlerDrag, setCurrentHandlerDrag] = createSignal<number>(null);
   const [initDragPos, setInitDragPos] = createSignal<[number, number]>([0, 0]);
   let parentSize = [0, 0];
@@ -450,6 +534,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }, 50);
   }
 
+  // crop shapes
   createEffect(() => {
     console.info('butn', mediaEditorState.crop);
     const option = mediaEditorState.crop;
@@ -465,7 +550,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       });
     }
   });
-  // end crop
+  // crop end =========
 
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
@@ -517,7 +602,14 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
           <div class='canvas-hider' style={{left: '-1000px', right: '-1000px', top: '-1000px', height: `calc(1000px + ${viewCropOffset()[1] / 2}px)`, opacity: +!cropResizeActive()}}></div>
         </div>
         <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
-        <MediaEditorPaintPanel linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
+        <MediaEditorPaintPanel
+          crop={cropArea() as [Point, Point]}
+          setPoints={setPoints}
+          top={viewCropOffset()[1] / 2}
+          left={viewCropOffset()[0] / 2}
+          width={container.clientWidth - viewCropOffset()[0]}
+          height={container.clientHeight - viewCropOffset()[1]}
+          linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
         <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} />
       </div>
       <div class='media-editor__settings'>
