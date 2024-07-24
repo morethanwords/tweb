@@ -37,13 +37,15 @@ const MediaEditorSticker = (props: {
   const [scale, setScale] = createSignal([1, 1]);
   const img = new Image();
 
+  const propsXY = () => ({x: props.x - 100, y: props.y - 100});
+
   createEffect(() => {
     if(props.resize) {
       const [w, h] = size();
 
       if(props.dragPos.some(Boolean)) {
-        const posX = props.dragPos[0] - props.x;
-        const posY = props.dragPos[1] - props.y;
+        const posX = props.dragPos[0] - propsXY().x;
+        const posY = props.dragPos[1] - propsXY().y;
         const scaleX = posX / w;
         const scaleY = posY / h;
 
@@ -52,13 +54,14 @@ const MediaEditorSticker = (props: {
     }
   });
 
-  const styles = () => dragging() && props.dragPos.some(Boolean) ? [props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1]] : [props.x, props.y];
+  // SUPER EASY TO ADD CORRECT ROTATION, just ANGLE() and that's it
+  const styles = () => dragging() && props.dragPos.some(Boolean) ? [props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1]] : [propsXY().x, propsXY().y];
 
   onMount(async() => {
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
     const loadPromises: Promise<any>[] = [];
     console.info(element);
-    const res = await wrapSticker({
+    await wrapSticker({
       doc: await rootScope.managers.appDocsManager.getDoc(props.docId),
       div: element,
       loadPromises,
@@ -73,41 +76,41 @@ const MediaEditorSticker = (props: {
     ev.dataTransfer.setDragImage(img, 0, 0);
     setDragging(true);
     props.select();
-    // setInitDragPos([ev.pageX - props.x - props.containerPos[0], ev.pageY - props.y - props.containerPos[1]]);
 
     const {pageX, pageY} = ev;
     const x = pageX - props.left;
     const y = pageY - props.top;
     const res = props.upd({x, y});
     console.info('start pos', res);
-    setInitDragPos([res.x - props.x, res.y - props.y]);
+    setInitDragPos([res.x - propsXY().x, res.y - propsXY().y]);
   };
 
   const onDragEnd = () => {
     setDragging(false);
-    props.updatePos(props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1]);
+    props.updatePos(props.dragPos[0] - initDragPos()[0] + 100, props.dragPos[1] - initDragPos()[1] + 100);
   }
 
   const handleDragStart = (ev: DragEvent) => {
     ev.stopImmediatePropagation();
-    // ev.dataTransfer.setDragImage(img, 0, 0);
     props.select();
     props.setResize(true);
-    // setInitDragPos([ev.pageX - props.x - props.containerPos[0], ev.pageY - props.y - props.containerPos[1]]);
-    console.info(ev);
   }
 
   const handleDragEnd = (ev: DragEvent) => {
     ev.stopImmediatePropagation();
     props.setResize(false);
-    // console.info(ev); */
   }
 
   // scale(${scale()[0]},
   // makeparetn container which wel apply the handlers, and the inside will be the scaling of the rlottie player
   return <div draggable={true} onDragStart={onDragStart} onDragEnd={onDragEnd}
     onClick={props.select} classList={{'media-editor-placed-sticker': true, 'selected': props.selected}}
-    style={{width: `${scale()[0] * 200}px`, height: `${scale()[1] * 200}px`, transform: `translate(${Math.round(styles()[0])}px, ${Math.round(styles()[1])}px)`}}>
+    style={{
+      'width': `${scale()[0] * 200}px`,
+      'height': `${scale()[1] * 200}px`,
+      'transform': `translate(${Math.round(styles()[0])}px, ${Math.round(styles()[1])}px)`,
+      'transform-origin': 'center'
+    }}>
     <div ref={element} class='sticker-container' style={{transform: `scale(${scale()[0]}, ${scale()[1]})`}}></div>
     <Show when={props.selected}>
       <div draggable={true} onDragStart={handleDragStart} onDragEnd={handleDragEnd} class='crop-handle top left'></div>
