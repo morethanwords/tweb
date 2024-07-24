@@ -275,8 +275,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       // generateFakeGif(img);
 
       setCropArea([
-        {x: 0, y: 0},
-        {x: img.width / scale, y: img.height / scale}
+        {x: 150, y: 150},
+        {x: img.width / scale - 150, y: img.height / scale - 150}
       ]);
 
       const sourceWidth = img.width;
@@ -321,113 +321,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   }
 
   // stickers end ========
-
-  // paint start =========
-  const linesSignal = createSignal<number[][]>([]);
-  const [points, setPoints] = createSignal([]);
-  const [lines2] = linesSignal;
-
-  // map drawing point to crop area, transform and rotate around center of crop area
-
-  createEffect(() => {
-    console.info('lines', lines2());
-    console.info('points', points());
-  });
-
-  setTimeout(() => {
-    // setLines2([[50, 50, 250, 250, 300, 300, 350, 350]]);
-    // console.info('set');
-  })
-
-  createEffect(() => {
-    const lines22 = lines2();
-    console.info(lines22);
-    if(!gl) {
-      return;
-    }
-    gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
-    lines22.forEach(ppp => {
-      const llld = dup1(ppp);
-      const lll = simplify(llld, 2);
-      const stroke = Stroke({
-        thickness: 25,
-        join: 'bevel',
-        miterLimit: 5
-      });
-
-      const drawCanvasWidth = container.clientWidth - viewCropOffset()[0];
-      const drawCanvasHeight = container.clientHeight - viewCropOffset()[1];
-
-      const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
-      const fin = [].concat(...[].concat(...cells).map(cell => {
-        let [x, y] = positions[cell];
-
-        const scaleX = x / drawCanvasWidth;
-        const scaleY = y / drawCanvasHeight;
-
-        // fix corrdinate system convertion
-        // console.info('xx', scaleX, scaleY);
-        const cropWidth = cropArea()[1].x - cropArea()[0].x;
-        const cropHeight = cropArea()[1].y - cropArea()[0].y;
-
-        // console.info('crop', cropWidth, cropHeight, canvasSize()[0], canvasSize()[1], drawCanvasWidth, drawCanvasHeight);
-
-        const justCropX = cropArea()[0].x + cropWidth * scaleX;
-        const justCropY = cropArea()[0].y + cropHeight * scaleY;
-
-        // console.info('pos', justCropX, justCropY);
-
-        [x, y] = [justCropX / canvasSize()[0], justCropY / canvasSize()[1]];
-        return [2 * x - 1, 2 * y];
-      }));
-      drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
-    });
-
-
-    [points()].forEach(ppp => {
-      const llld = dup1(ppp);
-      const lll = simplify(llld, 2);
-      const stroke = Stroke({
-        thickness: 25,
-        join: 'bevel',
-        miterLimit: 5
-      });
-
-      const drawCanvasWidth = container.clientWidth - viewCropOffset()[0];
-      const drawCanvasHeight = container.clientHeight - viewCropOffset()[1];
-
-      const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
-      const fin = [].concat(...[].concat(...cells).map(cell => {
-        let [x, y] = positions[cell];
-
-        const scaleX = x / drawCanvasWidth;
-        const scaleY = y / drawCanvasHeight;
-
-        // fix corrdinate system convertion
-        // console.info('xx', scaleX, scaleY);
-        const cropWidth = cropArea()[1].x - cropArea()[0].x;
-        const cropHeight = cropArea()[1].y - cropArea()[0].y;
-
-        // console.info('crop', cropWidth, cropHeight, canvasSize()[0], canvasSize()[1], drawCanvasWidth, drawCanvasHeight);
-
-        const justCropX = cropArea()[0].x + cropWidth * scaleX;
-        const justCropY = cropArea()[0].y + cropHeight * scaleY;
-
-        // console.info('pos', justCropX, justCropY);
-
-        [x, y] = [justCropX / canvasSize()[0], justCropY / canvasSize()[1]];
-        return [2 * x - 1, 2 * y];
-      }));
-      drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
-    });
-
-
-  });
-
-  // paint end ===========
 
   // rotate start =========
   const angle = () => mediaEditorState.angle;
@@ -551,6 +444,103 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
   });
   // crop end =========
+
+  // paint start =========
+  const linesSignal = createSignal<number[][]>([]);
+  const [points, setPoints] = createSignal([]);
+  const [lines2] = linesSignal;
+
+  // map drawing point to crop area, transform and rotate around center of crop area
+
+  createEffect(() => {
+    const lines22 = lines2();
+    console.info(lines22);
+    if(!gl) {
+      return;
+    }
+    const viewCropOffsetUntracked = untrack(viewCropOffset);
+    const canvasSizeUntracked = untrack(canvasSize);
+    const cropAreaUntracked = untrack(cropArea);
+    const pivot = untrack(croppedAreaCenterPoint);
+    const untrackedAngle = untrack(angle);
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+    lines22.forEach(ppp => {
+      const llld = dup1(ppp);
+      const lll = simplify(llld, 2);
+      const stroke = Stroke({
+        thickness: 25,
+        join: 'bevel',
+        miterLimit: 5
+      });
+
+      const drawCanvasWidth = container.clientWidth - viewCropOffsetUntracked[0];
+      const drawCanvasHeight = container.clientHeight - viewCropOffsetUntracked[1];
+
+      const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
+      const fin = [].concat(...[].concat(...cells).map(cell => {
+        let [x, y] = positions[cell];
+
+        const scaleX = x / drawCanvasWidth;
+        const scaleY = y / drawCanvasHeight;
+
+        // fix corrdinate system convertion
+        // console.info('xx', scaleX, scaleY);
+        const cropWidth = cropAreaUntracked[1].x - cropAreaUntracked[0].x;
+        const cropHeight = cropAreaUntracked[1].y - cropAreaUntracked[0].y;
+
+        // console.info('crop', cropWidth, cropHeight, canvasSize()[0], canvasSize()[1], drawCanvasWidth, drawCanvasHeight);
+
+        const justCropX = cropAreaUntracked[0].x + cropWidth * scaleX;
+        const justCropY = cropAreaUntracked[0].y + cropHeight * scaleY;
+
+        // console.info('pos', justCropX, justCropY);
+
+        const {x: rotateCropX, y: rotateCropY} = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
+        [x, y] = [rotateCropX / canvasSizeUntracked[0], rotateCropY / canvasSizeUntracked[1]];
+
+        return [2 * x - 1, 2 * y];
+      }));
+      drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
+    });
+
+
+
+    [points()].forEach(ppp => {
+      const llld = dup1(ppp);
+      const lll = simplify(llld, 2);
+      const stroke = Stroke({
+        thickness: 25,
+        join: 'bevel',
+        miterLimit: 5
+      });
+
+      const drawCanvasWidth = container.clientWidth - viewCropOffsetUntracked[0];
+      const drawCanvasHeight = container.clientHeight - viewCropOffsetUntracked[1];
+
+      const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
+      const fin = [].concat(...[].concat(...cells).map(cell => {
+        let [x, y] = positions[cell];
+        const scaleX = x / drawCanvasWidth;
+        const scaleY = y / drawCanvasHeight;
+        const cropWidth = cropAreaUntracked[1].x - cropAreaUntracked[0].x;
+        const cropHeight = cropAreaUntracked[1].y - cropAreaUntracked[0].y;
+        const justCropX = cropAreaUntracked[0].x + cropWidth * scaleX;
+        const justCropY = cropAreaUntracked[0].y + cropHeight * scaleY;
+
+        const {x: rotateCropX, y: rotateCropY} = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
+
+        [x, y] = [rotateCropX / canvasSizeUntracked[0], rotateCropY / canvasSizeUntracked[1]];
+        return [2 * x - 1, 2 * y];
+      }));
+      drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
+    });
+  });
+
+  // paint end ===========
+
 
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>

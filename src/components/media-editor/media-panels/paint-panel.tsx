@@ -45,9 +45,7 @@ export const MediaEditorPaintPanel = (props: { setPoints: Setter<any[]>, crop: [
     if(!currentLineGL) {
       return;
     }
-    console.info('ddddd', llld);
     const lll = simplify(llld, 2);
-    console.info('draw', lll);
     const stroke = Stroke({
       thickness: 25,
       join: 'bevel',
@@ -76,8 +74,6 @@ export const MediaEditorPaintPanel = (props: { setPoints: Setter<any[]>, crop: [
       // [x, y] = [justCropX / props.width, justCropY / props.height];
       // return [2 * scaleX - 1, 2 * scaleY];
 
-      console.info('pp', x, y);
-
       return [x, y];
       // return [2 * (x / props.width) - 1, 2 * ((y + props.top) / props.height)];
     }));
@@ -85,7 +81,6 @@ export const MediaEditorPaintPanel = (props: { setPoints: Setter<any[]>, crop: [
   });
 
   onMount(() => {
-    console.info('pr', props);
     canvas.width = props.width || container.clientWidth;
     canvas.height = props.height || container.clientHeight;
     currentLineGL = canvas.getContext('webgl');
@@ -94,7 +89,6 @@ export const MediaEditorPaintPanel = (props: { setPoints: Setter<any[]>, crop: [
   });
 
   createEffect(() => {
-    console.info('pr', props);
     canvas.width = props.width || container.clientWidth;
     canvas.height = props.height || container.clientHeight;
   });
