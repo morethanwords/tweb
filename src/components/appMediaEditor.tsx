@@ -276,7 +276,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
       setCropArea([
         {x: 0, y: 0},
-        {x: img.width / scale - 300, y: img.height / scale - 400}
+        {x: img.width / scale, y: img.height / scale}
       ]);
 
       const sourceWidth = img.width;
@@ -464,6 +464,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     const pivot = untrack(croppedAreaCenterPoint);
     const untrackedAngle = untrack(angle);
     const untrackedCanvasPost = untrack(canvasPos);
+    const untrackedCanvasScale = untrack(canvasScale);
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -493,11 +494,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         const justCropX = cropAreaUntracked[0].x + cropWidth * scaleX;
         const justCropY = cropAreaUntracked[0].y + cropHeight * scaleY;
 
-        const {x: rotateCropX, y: rotateCropY} = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
-        [x, y] = [rotateCropX / canvasSizeUntracked[0], rotateCropY / canvasSizeUntracked[1]];
+        const rotatedPoint = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
+        const {x: scaledCropX, y: scaledCropY} = scalePoint(rotatedPoint, pivot, 1 / untrackedCanvasScale);
 
-        const movedCropX = rotateCropX + untrackedCanvasPost[0];
-        const movedCropY = rotateCropY + untrackedCanvasPost[1];
+        const movedCropX = scaledCropX + untrackedCanvasPost[0];
+        const movedCropY = scaledCropY + untrackedCanvasPost[1];
         [x, y] = [movedCropX / canvasSizeUntracked[0], movedCropY / canvasSizeUntracked[1]];
 
         return [2 * x - 1, 2 * y];
@@ -527,10 +528,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         const justCropX = cropAreaUntracked[0].x + cropWidth * scaleX;
         const justCropY = cropAreaUntracked[0].y + cropHeight * scaleY;
 
-        const {x: rotateCropX, y: rotateCropY} = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
+        const rotatedPoint = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
+        const {x: scaledCropX, y: scaledCropY} = scalePoint(rotatedPoint, pivot, 1 / untrackedCanvasScale);
 
-        const movedCropX = rotateCropX + untrackedCanvasPost[0];
-        const movedCropY = rotateCropY + untrackedCanvasPost[1];
+        const movedCropX = scaledCropX + untrackedCanvasPost[0];
+        const movedCropY = scaledCropY + untrackedCanvasPost[1];
         [x, y] = [movedCropX / canvasSizeUntracked[0], movedCropY / canvasSizeUntracked[1]];
         return [2 * x - 1, 2 * y];
       }));
