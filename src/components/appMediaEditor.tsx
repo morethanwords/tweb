@@ -275,8 +275,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       // generateFakeGif(img);
 
       setCropArea([
-        {x: 150, y: 150},
-        {x: img.width / scale - 150, y: img.height / scale - 150}
+        {x: 0, y: 0},
+        {x: img.width / scale - 300, y: img.height / scale - 400}
       ]);
 
       const sourceWidth = img.width;
@@ -463,6 +463,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     const cropAreaUntracked = untrack(cropArea);
     const pivot = untrack(croppedAreaCenterPoint);
     const untrackedAngle = untrack(angle);
+    const untrackedCanvasPost = untrack(canvasPos);
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -486,27 +487,23 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         const scaleX = x / drawCanvasWidth;
         const scaleY = y / drawCanvasHeight;
 
-        // fix corrdinate system convertion
-        // console.info('xx', scaleX, scaleY);
         const cropWidth = cropAreaUntracked[1].x - cropAreaUntracked[0].x;
         const cropHeight = cropAreaUntracked[1].y - cropAreaUntracked[0].y;
-
-        // console.info('crop', cropWidth, cropHeight, canvasSize()[0], canvasSize()[1], drawCanvasWidth, drawCanvasHeight);
 
         const justCropX = cropAreaUntracked[0].x + cropWidth * scaleX;
         const justCropY = cropAreaUntracked[0].y + cropHeight * scaleY;
 
-        // console.info('pos', justCropX, justCropY);
-
         const {x: rotateCropX, y: rotateCropY} = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
         [x, y] = [rotateCropX / canvasSizeUntracked[0], rotateCropY / canvasSizeUntracked[1]];
+
+        const movedCropX = rotateCropX + untrackedCanvasPost[0];
+        const movedCropY = rotateCropY + untrackedCanvasPost[1];
+        [x, y] = [movedCropX / canvasSizeUntracked[0], movedCropY / canvasSizeUntracked[1]];
 
         return [2 * x - 1, 2 * y];
       }));
       drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
     });
-
-
 
     [points()].forEach(ppp => {
       const llld = dup1(ppp);
@@ -532,7 +529,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
         const {x: rotateCropX, y: rotateCropY} = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
 
-        [x, y] = [rotateCropX / canvasSizeUntracked[0], rotateCropY / canvasSizeUntracked[1]];
+        const movedCropX = rotateCropX + untrackedCanvasPost[0];
+        const movedCropY = rotateCropY + untrackedCanvasPost[1];
+        [x, y] = [movedCropX / canvasSizeUntracked[0], movedCropY / canvasSizeUntracked[1]];
         return [2 * x - 1, 2 * y];
       }));
       drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
