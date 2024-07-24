@@ -14,6 +14,7 @@ import {dot, simplify} from './media-editor/math/draw.util';
 import {Stroke} from './media-editor/math/algo';
 import {calcCDT, drawWideLineTriangle, executeEnhanceFilter, getHSVTexture} from './media-editor/glPrograms';
 import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
+import {generateFakeGif} from './media-editor/generate/media-editor-generator';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -272,8 +273,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       glCanvas.width = img.width / scale;
       glCanvas.height = img.height / scale;
 
-      // generateFakeGif(img);
-
       setCropArea([
         {x: 0, y: 0},
         {x: img.width / scale, y: img.height / scale}
@@ -281,7 +280,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
       const sourceWidth = img.width;
       const sourceHeight = img.height;
-      gl = glCanvas.getContext('webgl');
+      gl = glCanvas.getContext('webgl', {preserveDrawingBuffer: true});
       // get hsv data
       const hsvBuffer = getHSVTexture(gl, this as any, sourceWidth, sourceHeight);
       // calculate CDT Data
@@ -542,6 +541,46 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // paint end ===========
 
+  const testExport = () => {
+    // generateFakeGif(img);
+
+    const destinationCanvas = document.createElement('canvas');
+    destinationCanvas.classList.add('test-exp');
+
+    const cropWidth = cropArea()[1].x - cropArea()[0].x;
+    const cropHeight = cropArea()[1].y - cropArea()[0].y;
+
+    console.info(cropArea());
+
+    destinationCanvas.width = cropWidth;
+    destinationCanvas.height = cropHeight;
+
+    document.body.append(destinationCanvas);
+    const destinationCtx = destinationCanvas.getContext('2d');
+
+    // Draw the original canvas onto the off-screen canvas
+
+    const pivot = croppedAreaCenterPoint();
+
+    console.info('pivot 22', pivot);
+
+    const pivotOffset = [pivot.x, pivot.y]; // [pivot.x - cropArea()[0].x, pivot.y - cropArea()[0].y];
+
+    const degree = -angle();
+    // move to make crop
+    destinationCtx.translate(-cropArea()[0].x, -cropArea()[0].y);
+    // go to center of crop (but relatively for the whole canvas), rotate and go back
+    destinationCtx.translate(pivotOffset[0], pivotOffset[1]);
+    destinationCtx.rotate(degree * Math.PI / 180);
+    destinationCtx.scale(canvasScale(), canvasScale());
+    destinationCtx.translate(-pivotOffset[0], -pivotOffset[1]);
+    // translate by canvas pos
+    destinationCtx.translate(-canvasPos()[0], -canvasPos()[1]);
+    destinationCtx.drawImage(glCanvas, 0, 0);
+
+    // only crop:
+    // destinationCtx.drawImage(glCanvas, cropArea()[0].x, cropArea()[0].y, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+  }
 
   return <div class='media-editor' onClick={() => close()}>
     <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
@@ -604,7 +643,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} />
       </div>
       <div class='media-editor__settings'>
-        <EditorHeader undo={null} redo={null} close={close} />
+        <EditorHeader undo={testExport} redo={null} close={close} />
         <MediaEditorTabs tab={tab()} setTab={setTab} tabs={[
           <MediaEditorGeneralSettings state={mediaEditorState.filters} updateState={updateState} />,
           <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,

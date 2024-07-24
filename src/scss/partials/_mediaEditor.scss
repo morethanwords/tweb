@@ -247,7 +247,9 @@ $inactive-opacity: .4;
       .canvas-elem {
         transition: filter 0.3s ease-in-out;
         // transition: transform 0.3s ease-in-out,  filter 0.3s ease-in-out, max-width 0.3s ease-out, max-height 0.3s ease-out, top 0.3s ease-out, left 0.3s ease-out;
-        filter: brightness(50%);
+
+
+        //filter: brightness(50%);
       }
 
       .cropped-view-area {
@@ -298,10 +300,10 @@ $inactive-opacity: .4;
         left: 0;
         right: 0;
         bottom: 0;
-        background: white;
-        mix-blend-mode: overlay;
+        background: transparent;
+        // mix-blend-mode: overlay;
         transform-origin: 0 0;
-        opacity: 1;
+        // opacity: 1;
         transition: opacity 0.3s ease-in-out;
       }
     }
@@ -774,27 +776,38 @@ $inactive-opacity: .4;
   }
 }
 
-body > canvas {
-  display: none;
+body > img,
+body > canvas.test-exp {
+  display: block;
+  z-index: 10000;
   position: fixed;
   top: 10px;
   left: 10px;
   scale: 0.5;
 
+  background: red;
+
   &.f1 {
+    display: none;
     left: 100px;
   }
 
   &.f2 {
     top: 100px;
+    display: none;
+
   }
 
   &.f3 {
+    display: none;
+
     left: 100px;
     top: 100px;
   }
 
   &.f4 {
+    display: none;
+
     left: 200px;
     top: 200px;
   }
