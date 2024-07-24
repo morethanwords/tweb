@@ -9,7 +9,27 @@ export interface StickerData {
   y: number;
 }
 
-const MediaEditorSticker = (props: { resize: boolean, setResize: (val: boolean) => void, containerPos: [number, number], updatePos: (x: number, y: number) => void, docId: number, x: number, y: number, dragPos: [number, number], selected: boolean, select: (ev?: MouseEvent) => void }) => {
+interface Point {
+  x: number;
+  y: number;
+}
+
+const MediaEditorSticker = (props: {
+  upd: (p: Point) => Point,
+  crop: [Point, Point],
+  left: number,
+  top: number,
+  height: number,
+  width: number,
+  resize: boolean,
+  setResize: (val: boolean) => void,
+  containerPos: [number, number],
+  updatePos: (x: number, y: number) => void,
+  docId: number, x: number, y: number,
+  dragPos: [number, number],
+  selected: boolean,
+  select: (ev?: MouseEvent) => void }
+) => {
   let element: HTMLDivElement;
   const [size, setSize] = createSignal([200, 200]);
   const [dragging, setDragging] = createSignal(false);
@@ -22,36 +42,17 @@ const MediaEditorSticker = (props: { resize: boolean, setResize: (val: boolean) 
       const [w, h] = size();
 
       if(props.dragPos.some(Boolean)) {
-        // console.info(props.dragPos, props.x, props.y);
-
         const posX = props.dragPos[0] - props.x;
         const posY = props.dragPos[1] - props.y;
         const scaleX = posX / w;
         const scaleY = posY / h;
 
-        // console.info(scaleX, scaleY);
         setScale([scaleX, scaleY]);
       }
-      /* if(props.dragPos.some(Boolean)) {
-
-
-        setScale([scaleX, scaleY]);
-      } else {
-        const scaleX = props.x / w;
-        const scaleY = props.y / h;
-
-
-      } */
-
-
-      // const scaleX =
     }
-  })
+  });
 
-  // createEffect(() => console.info(scale()));
-
-  const styles = () => dragging() && props.dragPos.some(Boolean) ?
-    [props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1]] : [props.x, props.y];
+  const styles = () => dragging() && props.dragPos.some(Boolean) ? [props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1]] : [props.x, props.y];
 
   onMount(async() => {
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
@@ -72,7 +73,14 @@ const MediaEditorSticker = (props: { resize: boolean, setResize: (val: boolean) 
     ev.dataTransfer.setDragImage(img, 0, 0);
     setDragging(true);
     props.select();
-    setInitDragPos([ev.pageX - props.x - props.containerPos[0], ev.pageY - props.y - props.containerPos[1]]);
+    // setInitDragPos([ev.pageX - props.x - props.containerPos[0], ev.pageY - props.y - props.containerPos[1]]);
+
+    const {pageX, pageY} = ev;
+    const x = pageX - props.left;
+    const y = pageY - props.top;
+    const res = props.upd({x, y});
+    console.info('start pos', res);
+    setInitDragPos([res.x - props.x, res.y - props.y]);
   };
 
   const onDragEnd = () => {
@@ -110,18 +118,18 @@ const MediaEditorSticker = (props: { resize: boolean, setResize: (val: boolean) 
   </div>;
 }
 
-export const MediaEditorStickersPanel = (props: { active: boolean, stickers: StickerData[], updatePos: (id: string, x: number, y: number) => void }) => {
+export const MediaEditorStickersPanel = (props: { upd: (p: Point) => Point, crop: [Point, Point], left: number, top: number, height: number, width: number, active: boolean, stickers: StickerData[], updatePos: (id: string, x: number, y: number) => void }) => {
   let container: HTMLDivElement;
   const [containerPos, setContainerPos] = createSignal([0, 0] as [number, number]);
   const [dragPosRaw, setDragPosRaw] = createSignal([0, 0]);
-  const dragPos = () => [Math.floor(Math.max(0, dragPosRaw()[0] - containerPos()[0])), Math.floor(Math.max(0, dragPosRaw()[1] - containerPos()[1]))] as [number, number];
+  const dragPos = () => [dragPosRaw()[0], dragPosRaw()[1]] as [number, number];
   const [selectedSticker, setSelectedSticker] = createSignal(null);
   const [resize, setResize] = createSignal(false);
 
   onMount(() => {
     const {left, top} = container.getBoundingClientRect();
     setContainerPos([left, top]);
-  })
+  });
 
   createEffect(() => props.active || setSelectedSticker(null));
 
@@ -132,13 +140,23 @@ export const MediaEditorStickersPanel = (props: { active: boolean, stickers: Sti
     return props.stickers;
   }, props.stickers);
 
+  const drag = (ev: DragEvent) => {
+    const {pageX, pageY} = ev;
+    const x = pageX - props.left;
+    const y = pageY - props.top;
+    const res = props.upd({x, y});
+    setDragPosRaw([res.x, res.y]);
+  }
+
   return <div classList={{'media-editor-stickers-panel': true, 'disabled': !props.active}} >
     <div ref={container} class='container'
-      onDragEnter={ev => setDragPosRaw([ev.clientX, ev.clientY])}
-      onDragOver={ev => setDragPosRaw([ev.clientX, ev.clientY])}
+      onDragEnter={drag} onDragOver={drag}
       onClick={() => setSelectedSticker(null)}>
       <Index each={props.stickers}>
-        { (sticker) => <MediaEditorSticker resize={resize()} docId={sticker().docId} x={sticker().x} y={sticker().y}
+        { (sticker) => <MediaEditorSticker
+          top={props.top} left={props.left} width={props.width} height={props.height}
+          upd={props.upd} crop={props.crop}
+          resize={resize()} docId={sticker().docId} x={sticker().x} y={sticker().y}
           updatePos={(x, y) => {
             props.updatePos(sticker().id, x, y);
             setDragPosRaw([0, 0]);

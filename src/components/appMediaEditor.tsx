@@ -226,9 +226,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   let gl:  WebGLRenderingContext;
 
   let container: HTMLDivElement;
+  let mediaEditor: HTMLDivElement;
   let img: HTMLImageElement;
   const plz = new Image();
 
+  const [globalPos, setGlobalPos] = createSignal([0, 0]);
   const [canvasSize, setCanvasSize] = createSignal([0, 0]);
   // crop area in real pixels of image
   const [cropArea, setCropArea] = createSignal([{x: 0, y: 0}, {x: 0, y:0}]);
@@ -261,6 +263,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // filters start =========
   onMount(() => {
+    const {left, top} = mediaEditor.getBoundingClientRect();
+    setGlobalPos([left, top]);
     plz.src = 'assets/brush.png';
 
     img = new Image();
@@ -306,20 +310,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   });
 
   // filter end ===========
-
-  // stickers start ==========
-  const [stickers, setStickers] = createSignal([]);
-
-  const updatePos = (id: string, x: number, y: number) => {
-    setStickers(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y}) : sticker));
-  };
-
-  const stickerCLick = async(val: any, doc: any) => {
-    const docId = await rootScope.managers.appDocsManager.getDoc(doc);
-    docId && setStickers(prev => [...prev, {id: crypto.randomUUID(), docId, x: 0, y: 0}]);
-  }
-
-  // stickers end ========
 
   // rotate start =========
   const angle = () => mediaEditorState.angle;
@@ -449,7 +439,38 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const [points, setPoints] = createSignal([]);
   const [lines2] = linesSignal;
 
-  // map drawing point to crop area, transform and rotate around center of crop area
+
+  const updatePointPos = ({x, y}: Point): Point => {
+    const viewCropOffsetUntracked = untrack(viewCropOffset);
+    const canvasSizeUntracked = untrack(canvasSize);
+    const cropAreaUntracked = untrack(cropArea);
+    const pivot = untrack(croppedAreaCenterPoint);
+    const untrackedAngle = untrack(angle);
+    const untrackedCanvasPost = untrack(canvasPos);
+    const untrackedCanvasScale = untrack(canvasScale);
+
+    const drawCanvasWidth = container.clientWidth - viewCropOffsetUntracked[0];
+    const drawCanvasHeight = container.clientHeight - viewCropOffsetUntracked[1];
+
+    const scaleX = x / drawCanvasWidth;
+    const scaleY = y / drawCanvasHeight;
+
+    const cropWidth = cropAreaUntracked[1].x - cropAreaUntracked[0].x;
+    const cropHeight = cropAreaUntracked[1].y - cropAreaUntracked[0].y;
+
+    const justCropX = cropAreaUntracked[0].x + cropWidth * scaleX;
+    const justCropY = cropAreaUntracked[0].y + cropHeight * scaleY;
+
+    const rotatedPoint = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
+    const {x: scaledCropX, y: scaledCropY} = scalePoint(rotatedPoint, pivot, 1 / untrackedCanvasScale);
+
+    const movedCropX = scaledCropX + untrackedCanvasPost[0];
+    const movedCropY = scaledCropY + untrackedCanvasPost[1];
+    return {
+      x: movedCropX, // / canvasSizeUntracked[0],
+      y: movedCropY // canvasSizeUntracked[1]
+    };
+  }
 
   createEffect(() => {
     const lines22 = lines2();
@@ -541,6 +562,32 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // paint end ===========
 
+  // stickers start ==========
+  const [stickers, setStickers] = createSignal([]);
+
+  const updatePos = (id: string, x: number, y: number) => {
+    setStickers(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y}) : sticker));
+  };
+
+  const stickerCLick = async(val: any, doc: any) => {
+    const docId = await rootScope.managers.appDocsManager.getDoc(doc);
+    docId && setStickers(prev => [...prev, {id: crypto.randomUUID(), docId, x: 0, y: 0}]);
+  }
+
+  createEffect(() => {
+    // calc stickers new pos (and later rotation)
+
+    // convert sticker from global to crop
+    const res = stickers().map(({x, y, ...sticker}) => {
+      // todo
+    });
+
+    console.info(res);
+  });
+
+  // stickers end ========
+
+
   const testExport = () => {
     // generateFakeGif(img);
 
@@ -572,18 +619,16 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     // go to center of crop (but relatively for the whole canvas), rotate and go back
     destinationCtx.translate(pivotOffset[0], pivotOffset[1]);
     destinationCtx.rotate(degree * Math.PI / 180);
+    // scale while you at the point
     destinationCtx.scale(canvasScale(), canvasScale());
     destinationCtx.translate(-pivotOffset[0], -pivotOffset[1]);
     // translate by canvas pos
     destinationCtx.translate(-canvasPos()[0], -canvasPos()[1]);
     destinationCtx.drawImage(glCanvas, 0, 0);
-
-    // only crop:
-    // destinationCtx.drawImage(glCanvas, cropArea()[0].x, cropArea()[0].y, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
   }
 
   return <div class='media-editor' onClick={() => close()}>
-    <div class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
+    <div ref={mediaEditor} class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
         <div class='main-canvas-container' style={mainCanvasCropResizeStyle()}>
           <div class='center-crop-area' style={{...canvasSizeStyle(), transform: `translate(${-centerScaledCropOffset()[0]}px, ${-centerScaledCropOffset()[1]}px)`}}>
@@ -593,12 +638,26 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                 transform: `translate(${-canvasPos()[0]}px, ${-canvasPos()[1]}px)`,
                 filter: cropResizeActive() ? 'brightness(50%)' : 'none'
               }}>
-                <canvas class='main-canvas' ref={glCanvas} style={{
+                <div style={{
+                  ...canvasSizeStyle(),
                   'transform': `rotate(${-angle()}deg) scale(${canvasScale()})`,
                   'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
-                }} />
+                }}>
+                  <canvas onClick={() => console.info('clik work idk')} class='main-canvas' ref={glCanvas} />
+                  <MediaEditorStickersPanel active={tab() === 4}
+                    upd={updatePointPos}
+                    stickers={stickers()}
+                    updatePos={updatePos}
+                    crop={cropArea() as [Point, Point]}
+                    top={globalPos()[1] + viewCropOffset()[1] / 2}
+                    left={globalPos()[0] + viewCropOffset()[0] / 2}
+                    width={container.clientWidth - viewCropOffset()[0]}
+                    height={container.clientHeight - viewCropOffset()[1]}
+                  />
+                </div>
               </div>
               <div class='cropped-view-area' style={{
+                'pointer-events': cropResizeActive() ? 'auto' : 'none',
                 'opacity': +cropResizeActive(),
                 'top': `${cropArea()[0].y}px`,
                 'left': `${cropArea()[0].x}px`,
@@ -609,8 +668,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
               <div class='canvas-crop-handlers'
                 onDragEnter={onDrag}
                 onDragOver={onDrag}
-                onClick={ev => console.info(ev.clientX, ev.clientY)}
                 style={{
+                  'pointer-events': cropResizeActive() ? 'auto' : 'none',
                   'opacity': +cropResizeActive(),
                   'top': `${tempCropArea()[0].y}px`,
                   'left': `${tempCropArea()[0].x}px`,
@@ -633,17 +692,17 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         </div>
         <CropResizePanel state={mediaEditorState.angle} updateState={updateState} active={cropResizeActive()} />
         <MediaEditorPaintPanel
-          crop={cropArea() as [Point, Point]}
           setPoints={setPoints}
+          crop={cropArea() as [Point, Point]}
           top={viewCropOffset()[1] / 2}
           left={viewCropOffset()[0] / 2}
           width={container.clientWidth - viewCropOffset()[0]}
           height={container.clientHeight - viewCropOffset()[1]}
           linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
-        <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} />
+        { /* <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} /> */ }
       </div>
       <div class='media-editor__settings'>
-        <EditorHeader undo={testExport} redo={null} close={close} />
+        <EditorHeader undo={null} redo={testExport} close={close} />
         <MediaEditorTabs tab={tab()} setTab={setTab} tabs={[
           <MediaEditorGeneralSettings state={mediaEditorState.filters} updateState={updateState} />,
           <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,
