@@ -326,6 +326,7 @@ export const drawTextureDebug = (gl: WebGLRenderingContext, width: number, heigh
   createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.clearColor(1.0, 0.0, 1.0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -334,8 +335,8 @@ export const drawTextureDebug = (gl: WebGLRenderingContext, width: number, heigh
   gl.bindTexture(gl.TEXTURE_2D, hsvSourceTexture);
   gl.uniform1i(gl.getUniformLocation(shaderProgram, 'sTexture'), 0);
 
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.disable(gl.BLEND);
+  // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   return shaderProgram;

@@ -757,6 +757,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     bgImage.width = cropWidth;
     bgImage.height = cropHeight;
     const bgCtx = bgImage.getContext('2d');
+    bgCtx.fillStyle = 'black';
+    bgCtx.fillRect(0, 0, cropWidth, cropHeight);
     bgCtx.drawImage(glCanvas, 0, 0);
 
     // rotate and scale if sticker is rotated and scaled
