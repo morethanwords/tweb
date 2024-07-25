@@ -1,6 +1,6 @@
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-settings';
-import {createEffect, createSignal, onMount, Show, untrack} from 'solid-js';
+import {createEffect, createSignal, onMount, untrack} from 'solid-js';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
@@ -10,11 +10,18 @@ import {MediaEditorStickersSettings} from './media-editor/tabs/editor-stickers-s
 import rootScope from '../lib/rootScope';
 import {MediaEditorStickersPanel} from './media-editor/media-panels/stickers-panel';
 import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
-import {dot, simplify} from './media-editor/math/draw.util';
+import {simplify} from './media-editor/math/draw.util';
 import {Stroke} from './media-editor/math/algo';
-import {calcCDT, drawWideLineTriangle, executeEnhanceFilter, getHSVTexture} from './media-editor/glPrograms';
+import {
+  calcCDT,
+  drawTextureDebug, drawTextureToNewFramebuffer,
+  drawWideLineTriangle,
+  executeEnhanceFilterToTexture, getGLFramebufferData,
+  getHSVTexture
+} from './media-editor/glPrograms';
 import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
-import {generateFakeGif} from './media-editor/generate/media-editor-generator';
+import {MessageRender} from './chat/messageRender';
+import setTime = MessageRender.setTime;
 
 export interface MediaEditorSettings {
   crop: number;
@@ -200,10 +207,6 @@ function calculateDistance(rect1: Point[], rect2: Point[]): number {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-//
-// need state for undo-redo
-// it wil contain actual draw data: filters, crop, stickers pos, text pos, paint pos
-
 const dup1 = (nestedArray: number[]) => {
   let out: any[] = [];
   const outs: any[][] = [];
@@ -216,7 +219,6 @@ const dup1 = (nestedArray: number[]) => {
   });
   return outs;
 }
-
 
 type PropertyChange<T> = {
   prev: T;
@@ -255,82 +257,33 @@ type UndoRedoMediaAction = {
   data: MediaData;
 }
 
+interface UndoRedoPaintAction {
+  color: string;
+  points: number[];
+  size: number;
+  tool: number;
+}
+
 type UndoRedoAction = {
   type: 'paint';
+  action: UndoRedoPaintAction;
 } | {
   type: 'media';
   action: UndoRedoMediaAction | UndoRedoUpdateAction;
 };
-
-/*
-  type PropertyChange<T> = T | {
-    prev: T;
-    next: T;
-  }
-
-  interface UndoRedoMediaAction {
-    type: 'create' | 'update' | 'delete';
-    x: PropertyChange<number>;
-    y: PropertyChange<number>;
-    rotation: PropertyChange<number>;
-    scale: PropertyChange<number>;
-    id: string;
-    // docid or text and other props
-  }
-
-  interface UndoRedoPaintAction {
-    color: string;
-    points: [number, number][];
-    size: number;
-    tool: number;
-  }
-
-  interface UndoRedoPaintBatch {
-    key: any; // key framebuffer of frame
-    actions: UndoRedoPaintAction[]; // up to 5
-  }
-
-  type UndoRedoAction = {
-    type: 'paint';
-  } | {
-    type: 'media';
-    action: UndoRedoMediaAction;
-  };
-
-  const [batches, setBatches] = createSignal<UndoRedoPaintBatch[]>([]);
-  const [actions, setActions] = createSignal<UndoRedoAction[]>([]);
-  const [currentStep, setCurrentStep] = createSignal(-1);
-
-  const getBatch = () => {
-    const step = currentStep();
-    const skipBatches = Math.floor(step / 5);
-    const action = step % 5;
-    const {key, actions} = batches().at(skipBatches);
-    return {key, actions, action: actions.at(action - 1)};
-  }
-
-  const addPaintEntry = (entry: UndoRedoPaintAction) => {
-    const currentBatch = getBatch();
-    if(currentBatch.actions.length === 5) {
-      // get current framebuffer
-    } else {
-      setBatches(batches => );
-    }
-  }
-
-  // .at(-fromLast) -> 0 === current state, 1 === last action
-  const getPaintStateFromAction = (step: number) => {
-
-  }
-  */
 
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
   const [tab, setTab] = createSignal(0);
   const cropResizeActive = () => tab() === 1;
   const [mediaEditorState, updateState] = createStore<MediaEditorSettings>(defaultEditorState);
 
+  let sourceWidth = 0;
+  let sourceHeight = 0;
   let glCanvas: HTMLCanvasElement;
   let gl:  WebGLRenderingContext;
+
+  let originalTextureWithFilters: any = null;
+  let currentTexture: any = null;
 
   let container: HTMLDivElement;
   let mediaEditor: HTMLDivElement;
@@ -368,6 +321,14 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     return [x - restX / 2, y - restY / 2];
   }
 
+  const drawTextureWithFilters = (img: any, sourceWidth: number, sourceHeight: number) => {
+    // get data from filters!!
+    const hsvBuffer = getHSVTexture(gl, img, sourceWidth, sourceHeight);
+    // calculate CDT Data
+    const cdtBuffer = calcCDT(hsvBuffer, sourceWidth, sourceHeight);
+    originalTextureWithFilters = executeEnhanceFilterToTexture(gl, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer);
+  }
+
   // filters start =========
   onMount(() => {
     const {left, top} = mediaEditor.getBoundingClientRect();
@@ -389,20 +350,21 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         {x: img.width / scale, y: img.height / scale}
       ]);
 
-      const sourceWidth = img.width;
-      const sourceHeight = img.height;
       gl = glCanvas.getContext('webgl', {preserveDrawingBuffer: true});
-      // get hsv data
-      const hsvBuffer = getHSVTexture(gl, this as any, sourceWidth, sourceHeight);
-      // calculate CDT Data
-      const cdtBuffer = calcCDT(hsvBuffer, sourceWidth, sourceHeight);
-      // apply enhancing filter
-      // TODO: store into framebuffer (for blur and erase)
-      const enhanceProgram = executeEnhanceFilter(gl, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer);
+
+      sourceWidth = img.width;
+      sourceHeight = img.height;
+      drawTextureWithFilters(this, sourceWidth, sourceHeight);
+      currentTexture = originalTextureWithFilters;
+      drawTextureDebug(gl, sourceWidth, sourceHeight, originalTextureWithFilters);
+
+      return;
+      /* const enhanceProgram = executeEnhanceFilter(gl, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer);
       setFN(() => (int: number) => {
         gl.uniform1f(gl.getUniformLocation(enhanceProgram, 'intensity'), int);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       });
+      */
     };
   });
 
@@ -546,7 +508,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const [points, setPoints] = createSignal([]);
   const [lines2] = linesSignal;
 
-
   const updatePointPos = ({x, y}: Point): Point => {
     const viewCropOffsetUntracked = untrack(viewCropOffset);
     const canvasSizeUntracked = untrack(canvasSize);
@@ -579,109 +540,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     };
   }
 
-  createEffect(() => {
-    const lines22 = lines2();
-    console.info(lines22);
-    if(!gl) {
-      return;
-    }
-    const viewCropOffsetUntracked = untrack(viewCropOffset);
-    const canvasSizeUntracked = untrack(canvasSize);
-    const cropAreaUntracked = untrack(cropArea);
-    const pivot = untrack(croppedAreaCenterPoint);
-    const untrackedAngle = untrack(angle);
-    const untrackedCanvasPost = untrack(canvasPos);
-    const untrackedCanvasScale = untrack(canvasScale);
-    gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
-    lines22.forEach(ppp => {
-      const llld = dup1(ppp);
-      const lll = simplify(llld, 2);
-      const stroke = Stroke({
-        thickness: 25,
-        join: 'bevel',
-        miterLimit: 5
-      });
-
-      const drawCanvasWidth = container.clientWidth - viewCropOffsetUntracked[0];
-      const drawCanvasHeight = container.clientHeight - viewCropOffsetUntracked[1];
-
-      const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
-      const fin = [].concat(...[].concat(...cells).map(cell => {
-        let [x, y] = positions[cell];
-
-        const scaleX = x / drawCanvasWidth;
-        const scaleY = y / drawCanvasHeight;
-
-        const cropWidth = cropAreaUntracked[1].x - cropAreaUntracked[0].x;
-        const cropHeight = cropAreaUntracked[1].y - cropAreaUntracked[0].y;
-
-        const justCropX = cropAreaUntracked[0].x + cropWidth * scaleX;
-        const justCropY = cropAreaUntracked[0].y + cropHeight * scaleY;
-
-        const rotatedPoint = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
-        const {x: scaledCropX, y: scaledCropY} = scalePoint(rotatedPoint, pivot, 1 / untrackedCanvasScale);
-
-        const movedCropX = scaledCropX + untrackedCanvasPost[0];
-        const movedCropY = scaledCropY + untrackedCanvasPost[1];
-        [x, y] = [movedCropX / canvasSizeUntracked[0], movedCropY / canvasSizeUntracked[1]];
-
-        return [2 * x - 1, 2 * y];
-      }));
-      drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
-    });
-
-    [points()].forEach(ppp => {
-      const llld = dup1(ppp);
-      const lll = simplify(llld, 2);
-      const stroke = Stroke({
-        thickness: 25,
-        join: 'bevel',
-        miterLimit: 5
-      });
-
-      const drawCanvasWidth = container.clientWidth - viewCropOffsetUntracked[0];
-      const drawCanvasHeight = container.clientHeight - viewCropOffsetUntracked[1];
-
-      const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
-      const fin = [].concat(...[].concat(...cells).map(cell => {
-        let [x, y] = positions[cell];
-        const scaleX = x / drawCanvasWidth;
-        const scaleY = y / drawCanvasHeight;
-        const cropWidth = cropAreaUntracked[1].x - cropAreaUntracked[0].x;
-        const cropHeight = cropAreaUntracked[1].y - cropAreaUntracked[0].y;
-        const justCropX = cropAreaUntracked[0].x + cropWidth * scaleX;
-        const justCropY = cropAreaUntracked[0].y + cropHeight * scaleY;
-
-        const rotatedPoint = rotatePoint({x: justCropX, y: justCropY}, pivot, untrackedAngle);
-        const {x: scaledCropX, y: scaledCropY} = scalePoint(rotatedPoint, pivot, 1 / untrackedCanvasScale);
-
-        const movedCropX = scaledCropX + untrackedCanvasPost[0];
-        const movedCropY = scaledCropY + untrackedCanvasPost[1];
-        [x, y] = [movedCropX / canvasSizeUntracked[0], movedCropY / canvasSizeUntracked[1]];
-        return [2 * x - 1, 2 * y];
-      }));
-      drawWideLineTriangle(gl, glCanvas.width, glCanvas.height, fin);
-    });
-  });
-
   // paint end ===========
 
   // undo redo start ======
-
-  // have array of batches, [key, and 5 actions]
-  // have 3 functions: add new, get state, replace
-
-  // have array of actions,
-  // when we at action:
-  // if action paing
-  // get stat fn, re-draw, that's it
-  // if action no paint
-  // just update the item and that's it
-
-
   const [undoActions, setUndoActions] = createSignal<UndoRedoAction[]>([]);
   const [redoActions, setRedoActions] = createSignal<UndoRedoAction[]>([]);
 
@@ -703,7 +564,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     setRedoActions(actions => [...actions, action]);
     executeAction(action, false);
   }
-
   const redo = () => {
     if(!redoActions().length) {
       return;
@@ -713,65 +573,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     setUndoActions(actions => [...actions, action]);
     executeAction(action, true);
   }
-
-  /* const [actions, setActions] = createSignal<UndoRedoAction[]>([]);
-  const [step, setStep] = createSignal<[number, boolean]>([-1, false]); // step, go right
-
-  const lastAction = () => actions().at(step()[0]);
-
-  const undo = () => {
-    setStep(([step]) => [Math.max(-1, step - 1), false]);
-  }
-
-  const redo = () => {
-    setStep(([step]) => [step + 1, true]);
-  }
-
-  const undoActive = () => (actions().length > 0) && (step()[0] > -1);
-  const redoActive = () => (actions().length - 1) > step()[0];
-
-  createEffect(() => {
-    console.info('ac', actions());
-    console.info('step', step());
-  })
-
-  const addAction = (action: UndoRedoAction) => {
-    setActions(prevActions => [...prevActions.slice(0, Math.max(0, step()[0])), action]);
-    redo();
-  }
-
-  createEffect(() => {
-    const [idx, direction] = step();
-    if(idx < 0) {
-      return;
-    }
-    const action = lastAction();
-
-    console.info('dir, act', action);
-    if(action.type === 'media') {
-      console.info('media');
-      const {id, type, media, ...other} = action.action;
-      if(type === 'create') {
-        console.info('created');
-
-        // if forwrds -> create, otherwise -> delete
-        if(direction) {
-          console.info('direction');
-
-          if(media === 'sticker') {
-            const {x, y, docId} = action.action;
-            setStickers(prev => [...prev, {id, docId, x, y}]);
-          } else {
-            setStickers(prev => prev.filter(sticker => sticker.id !== id));
-          }
-        } else {
-
-        }
-      } else if(type === 'update') {
-      } else {
-      }
-    }
-  }); */
 
   // undo redo end ========
 
@@ -848,10 +649,108 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       }
     } else {
       // paint
+      if(forward) {
+        // sets buffer as active
+        drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
+        drawWideLineTriangle(gl, sourceWidth, sourceHeight, action.action.points);
+        const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+        drawTextureDebug(gl, sourceWidth, sourceHeight, dat); // sets screen as active
+        currentTexture = dat;
+      } else {
+        // draw form the beginning
+        redrawAllUndo();
+      }
     }
   }
 
+  const redrawAllUndo = () => {
+    const drawCommands = untrack(undoActions).filter(action => action.type === 'paint') as { type: 'paint', action: UndoRedoPaintAction }[];
+    console.info('commands', drawCommands);
+    // draw with filter, update original image too
+    drawTextureWithFilters(img, sourceWidth, sourceHeight);
+    currentTexture = originalTextureWithFilters;
+    drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
+    drawCommands.forEach(command => {
+      drawWideLineTriangle(gl, sourceWidth, sourceHeight, command.action.points);
+    });
+    const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+    drawTextureDebug(gl, sourceWidth, sourceHeight, dat); // sets screen as active
+    currentTexture = dat;
+  }
+
+  // FUNCTIONS TO DO:
+  // redraw all
+  // draw next -> take current texture
+  // draw current -> for drawing only -> take current texture
+
   // execution pipeline end =====
+
+  createEffect(() => {
+    const trackedPoints = points();
+    if(!gl) {
+      return;
+    }
+    const canvasSizeUntracked = untrack(canvasSize);
+    const llld = dup1(trackedPoints);
+    const lll = simplify(llld, 2);
+    const stroke = Stroke({
+      thickness: 25,
+      join: 'bevel',
+      miterLimit: 5
+    });
+
+    const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
+    const fin = [].concat(...[].concat(...cells).map(cell => {
+      const [x1, y1] = positions[cell];
+      let {x, y} = updatePointPos({x: x1, y: y1});
+      x = x / canvasSizeUntracked[0];
+      y = y / canvasSizeUntracked[1];
+      return [2 * x - 1, 2 * y];
+    }));
+
+    drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
+    drawWideLineTriangle(gl, sourceWidth, sourceHeight, fin);
+    const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+    drawTextureDebug(gl, sourceWidth, sourceHeight, dat);
+  });
+
+  // converts added lines to draw action
+  createEffect((lines22: number[][]) => {
+    if(lines2().length < lines22.length) {
+      return lines2();
+    }
+    const newLines = lines2().slice(lines22.length);
+    const canvasSizeUntracked = untrack(canvasSize);
+
+    // should be one only
+    newLines.forEach(ppp => {
+      const llld = dup1(ppp);
+      const lll = simplify(llld, 2);
+      const stroke = Stroke({
+        thickness: 25,
+        join: 'bevel',
+        miterLimit: 5
+      });
+      const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
+      const fin = [].concat(...[].concat(...cells).map(cell => {
+        const [x1, y1] = positions[cell];
+        let {x, y} = updatePointPos({x: x1, y: y1});
+        x /= canvasSizeUntracked[0];
+        y /= canvasSizeUntracked[1];
+        return [2 * x - 1, 2 * y];
+      }));
+      addAction({
+        type: 'paint',
+        action: {
+          color: '#aadd11',
+          points: fin,
+          size: 25,
+          tool: 0
+        }
+      });
+    });
+    return lines2();
+  }, lines2());
 
   const testExport = () => {
     // generateFakeGif(img);

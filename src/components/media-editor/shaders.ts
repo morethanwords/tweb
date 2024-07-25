@@ -20,6 +20,7 @@ precision highp float;
            }
 `;
 
+
 // 960 1280
 export const textureFragmentShader = `
             precision highp float;
@@ -397,7 +398,7 @@ export const wideLineFragmentShader = `
 
 
                 void main() {
-               gl_FragColor = vec4(1.0, 0.1, 0.1, 0.5);
+               gl_FragColor = vec4(1.0, 0.1, 0.1, 0.75);
                 }
         `;
 

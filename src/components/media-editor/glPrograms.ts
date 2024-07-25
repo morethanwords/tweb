@@ -274,11 +274,11 @@ export const drawWideLine = (gl: WebGLRenderingContext, width: number, height: n
   return shaderProgram;
 }
 
+
 export const drawWideLineTriangle = (gl: WebGLRenderingContext, width: number, height: number, points: number[]) => {
   const shaderProgram = createAndUseGLProgram(gl, wideLineVertexShader, wideLineFragmentShader);
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(points));
 
-  // clear color ??
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
@@ -287,8 +287,40 @@ export const drawWideLineTriangle = (gl: WebGLRenderingContext, width: number, h
   return shaderProgram;
 }
 
+export const drawTextureToNewFramebuffer = (gl: WebGLRenderingContext, width: number, height: number, texture: ArrayBufferView) => {
+  const shaderProgram = createAndUseGLProgram(gl, vertexShaderSource, textureFragmentShaderReal);
+  const hsvSourceTexture = createTextureFromData(gl, width, height, texture);
+
+  const targetTexture = createTextureFromData(gl, width, height, null);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0);
+
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.viewport(0, 0, width, height);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, hsvSourceTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'sTexture'), 0);
+
+  gl.disable(gl.BLEND);
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  return fb;
+}
+
+export const getGLFramebufferData = (gl: WebGLRenderingContext, width: number, height: number) => {
+  const resBuffer = new Uint8Array(width * height * 4);
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, resBuffer);
+  return resBuffer;
+}
+
 export const drawTextureDebug = (gl: WebGLRenderingContext, width: number, height: number, texture: ArrayBufferView) => {
-  const shaderProgram = createAndUseGLProgram(gl, vertexShaderSourceFlip, textureFragmentShader);
+  const shaderProgram = createAndUseGLProgram(gl, vertexShaderSource, textureFragmentShaderReal);
   const hsvSourceTexture = createTextureFromData(gl, width, height, texture);
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
   createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
@@ -332,16 +364,20 @@ export const drawTextureImageDebug = (gl: WebGLRenderingContext, width: number, 
   return shaderProgram;
 }
 
-export const executeEnhanceFilter = (gl: WebGLRenderingContext, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView) => {
+export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView) => {
   const shaderProgram = createAndUseGLProgram(gl, vertexShaderSourceFlip, fragmentShaderSource);
   const cdtTexture = createTextureFromData(gl, 256, 16, cdtBuffer);
   const hsvSourceTexture = createTextureFromData(gl, width, height, hsvBuffer);
+
+  const targetTexture = createTextureFromData(gl, width, height, null);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0);
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
   createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.viewport(0, 0, width, height);
   gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, hsvSourceTexture);
@@ -352,5 +388,8 @@ export const executeEnhanceFilter = (gl: WebGLRenderingContext, width: number, h
   gl.uniform1i(gl.getUniformLocation(shaderProgram, 'inputImageTexture2'), 1);
   gl.uniform1f(gl.getUniformLocation(shaderProgram, 'intensity'), 0); // Adjust intensity as needed
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  return shaderProgram;
+
+  const resBuffer = new Uint8Array(width * height * 4);
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, resBuffer);
+  return resBuffer;
 }
