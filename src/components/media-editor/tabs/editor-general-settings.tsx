@@ -19,7 +19,7 @@ export const MediaEditorGeneralSettings = (props: { state: MediaEditorSettings['
     {label: 'MediaEditor.General.Sharpen', key: 'sharpen'}
   ];
 
-  return <div class='settings-container'>
+  return <div class='settings-container filters'>
     <For each={settings}>
       {(entry) => <MediaEditorSlider label={entry.label}
         change={entry.key ? val => props.updateState('filters', entry.key, val): () => {}}

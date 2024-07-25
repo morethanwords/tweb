@@ -22,6 +22,9 @@ import {
 import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
 import {MessageRender} from './chat/messageRender';
 import setTime = MessageRender.setTime;
+import ButtonCorner from './buttonCorner';
+import Button from './button';
+import {generateFakeGif} from './media-editor/generate/media-editor-generator';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -666,7 +669,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const redrawAllUndo = () => {
     const drawCommands = untrack(undoActions).filter(action => action.type === 'paint') as { type: 'paint', action: UndoRedoPaintAction }[];
     console.info('commands', drawCommands);
-    // draw with filter, update original image too
     drawTextureWithFilters(img, sourceWidth, sourceHeight);
     currentTexture = originalTextureWithFilters;
     drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
@@ -677,12 +679,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     drawTextureDebug(gl, sourceWidth, sourceHeight, dat); // sets screen as active
     currentTexture = dat;
   }
-
-  // FUNCTIONS TO DO:
-  // redraw all
-  // draw next -> take current texture
-  // draw current -> for drawing only -> take current texture
-
   // execution pipeline end =====
 
   createEffect(() => {
@@ -754,29 +750,31 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   const testExport = () => {
     // generateFakeGif(img);
-
-    const destinationCanvas = document.createElement('canvas');
-    destinationCanvas.classList.add('test-exp');
-
     const cropWidth = cropArea()[1].x - cropArea()[0].x;
     const cropHeight = cropArea()[1].y - cropArea()[0].y;
 
-    console.info(cropArea());
+    const bgImage = document.createElement('canvas');
+    bgImage.width = cropWidth;
+    bgImage.height = cropHeight;
+    const bgCtx = bgImage.getContext('2d');
+    bgCtx.drawImage(glCanvas, 0, 0);
 
+    // rotate and scale if sticker is rotated and scaled
+    const stickerCanvas = document.body.lastElementChild.previousElementSibling; // .getElementsByTagName('canvas').item(0);
+    console.info(stickerCanvas);
+    bgCtx.drawImage(stickerCanvas as any, 0, 0, 400, 400, 100, 100, 200, 200);
+
+    // transformation
+    const destinationCanvas = document.createElement('canvas');
+    destinationCanvas.classList.add('test-exp');
     destinationCanvas.width = cropWidth;
     destinationCanvas.height = cropHeight;
 
     document.body.append(destinationCanvas);
     const destinationCtx = destinationCanvas.getContext('2d');
 
-    // Draw the original canvas onto the off-screen canvas
-
     const pivot = croppedAreaCenterPoint();
-
-    console.info('pivot 22', pivot);
-
     const pivotOffset = [pivot.x, pivot.y]; // [pivot.x - cropArea()[0].x, pivot.y - cropArea()[0].y];
-
     const degree = -angle();
     // move to make crop
     destinationCtx.translate(-cropArea()[0].x, -cropArea()[0].y);
@@ -788,8 +786,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     destinationCtx.translate(-pivotOffset[0], -pivotOffset[1]);
     // translate by canvas pos
     destinationCtx.translate(-canvasPos()[0], -canvasPos()[1]);
-    destinationCtx.drawImage(glCanvas, 0, 0);
+    destinationCtx.drawImage(bgImage, 0, 0);
   }
+
+  const saveButton = Button('btn-circle btn-corner', {icon: 'check'});
+  saveButton.onclick = () => testExport();
 
   return <div class='media-editor' onClick={() => close()}>
     <div ref={mediaEditor} class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
@@ -868,6 +869,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       </div>
       <div class='media-editor__settings'>
         <EditorHeader undoActive={undoActive()} redoActive={redoActive()} undo={undo} redo={redo} close={close} />
+        { saveButton }
         <MediaEditorTabs tab={tab()} setTab={setTab} tabs={[
           <MediaEditorGeneralSettings state={mediaEditorState.filters} updateState={updateState} />,
           <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,
