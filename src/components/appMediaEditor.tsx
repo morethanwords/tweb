@@ -14,17 +14,15 @@ import {simplify} from './media-editor/math/draw.util';
 import {Stroke} from './media-editor/math/algo';
 import {
   calcCDT,
-  drawTextureDebug, drawTextureToNewFramebuffer,
+  drawTextureDebug,
+  drawTextureToNewFramebuffer,
   drawWideLineTriangle,
-  executeEnhanceFilterToTexture, getGLFramebufferData,
+  executeEnhanceFilterToTexture,
+  getGLFramebufferData,
   getHSVTexture
 } from './media-editor/glPrograms';
 import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
-import {MessageRender} from './chat/messageRender';
-import setTime = MessageRender.setTime;
-import ButtonCorner from './buttonCorner';
 import Button from './button';
-import {generateFakeGif} from './media-editor/generate/media-editor-generator';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -149,21 +147,6 @@ function getRectangleCenter(rectangle: Point[]): Point {
   return {x: centerX, y: centerY};
 }
 
-function getRectangleAspectRatio(rectangle: Point[]): number {
-  if(rectangle.length !== 4) {
-    throw new Error('Rectangle must have exactly 4 points');
-  }
-
-  // Find the width and height
-  const width = Math.abs(rectangle[1].x - rectangle[0].x);
-  const height = Math.abs(rectangle[2].y - rectangle[1].y);
-
-  // Calculate aspect ratio
-  const aspectRatio = width / height;
-
-  return aspectRatio;
-}
-
 function scalePoint(point: Point, origin: Point, scale: number): Point {
   // Translate point to origin
   const translatedX = point.x - origin.x;
@@ -182,32 +165,6 @@ function scalePoint(point: Point, origin: Point, scale: number): Point {
 
 function scaleRectangle(rectangle: Point[], origin: Point, scale: number): Point[] {
   return rectangle.map(point => scalePoint(point, origin, scale));
-}
-
-function getBoundingBox(points: Point[]): { min: Point; max: Point } {
-  let minX = points[0].x;
-  let maxX = points[0].x;
-  let minY = points[0].y;
-  let maxY = points[0].y;
-
-  for(const point of points) {
-    if(point.x < minX) minX = point.x;
-    if(point.x > maxX) maxX = point.x;
-    if(point.y < minY) minY = point.y;
-    if(point.y > maxY) maxY = point.y;
-  }
-
-  return {min: {x: minX, y: minY}, max: {x: maxX, y: maxY}};
-}
-
-function calculateDistance(rect1: Point[], rect2: Point[]): number {
-  const bbox1 = getBoundingBox(rect1);
-  const bbox2 = getBoundingBox(rect2);
-
-  const dx = Math.max(bbox1.min.x - bbox2.max.x, bbox2.min.x - bbox1.max.x, 0);
-  const dy = Math.max(bbox1.min.y - bbox2.max.y, bbox2.min.y - bbox1.max.y, 0);
-
-  return Math.sqrt(dx * dx + dy * dy);
 }
 
 const dup1 = (nestedArray: number[]) => {
@@ -245,7 +202,7 @@ type UndoRedoUpdateAction = {
   type: 'update';
   x: PropertyChange<number>;
   y: PropertyChange<number>;
-  rotation?: PropertyChange<number>;
+  rotation: PropertyChange<number>;
   scale?: PropertyChange<number>;
 }
 
@@ -255,7 +212,7 @@ type UndoRedoMediaAction = {
   y: number
   id: string;
 
-  rotation?: number;
+  rotation: number;
   scale?: number;
   data: MediaData;
 }
@@ -558,6 +515,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     setRedoActions([]);
   }
 
+  createEffect(() => {
+    console.info('undo:', undoActions());
+    console.info('redo:', redoActions());
+  })
+
   const undo = () => {
     if(!undoActions().length) {
       return;
@@ -582,8 +544,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   // stickers start ==========
   const [stickers, setStickers] = createSignal([]);
   let dragInitData: any = null;
-
   const startDragInitData = (val: any) => {
+    console.warn('setting initial data', val);
     dragInitData = val;
   }
 
@@ -592,20 +554,21 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     // add action
 
     const sticker = stickers().find(st => st.id === id);
-    const {x, y} = dragInitData;
+    const {x, y, rotation} = dragInitData;
     addAction({
       type: 'media',
       action: {
         type: 'update',
         id,
         x: {prev: x, next: sticker.x},
-        y: {prev: y, next: sticker.y}
+        y: {prev: y, next: sticker.y},
+        rotation: {prev: rotation, next: sticker.rotation}
       }
     });
   }
 
-  const updatePos = (id: string, x: number, y: number) => {
-    setStickers(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y}) : sticker));
+  const updatePos = (id: string, x: number, y: number, rotation: number) => {
+    setStickers(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y, rotation}) : sticker));
   };
 
   const stickerCLick = async(val: any, doc: any) => {
@@ -620,6 +583,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         id: crypto.randomUUID(),
         x: 100, // need center of screen of crop!!
         y: 100,
+        rotation: angle(),
         data: {
           media: 'sticker',
           docId
@@ -638,7 +602,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       if(type === 'update') {
         const x = action.action.x[forward ? 'next' : 'prev'];
         const y = action.action.y[forward ? 'next' : 'prev'];
-        updatePos(id, x, y);
+        const rotation = action.action.rotation[forward ? 'next' : 'prev'];
+        console.info('Update ' + forward, action.action);
+        updatePos(id, x, y, rotation);
         // for text too
       } else {
         const {data: {media, ...mediaData}, ...other} = action.action;
