@@ -217,6 +217,113 @@ const dup1 = (nestedArray: number[]) => {
   return outs;
 }
 
+
+type PropertyChange<T> = {
+  prev: T;
+  next: T;
+}
+
+type TextData = {
+  media: 'text';
+  text: string; // or string[]
+}
+
+type StickerData = {
+  media: 'sticker';
+  docId: any;
+}
+
+type MediaData = TextData | StickerData;
+
+type UndoRedoUpdateAction = {
+  id: string;
+  type: 'update';
+  x: PropertyChange<number>;
+  y: PropertyChange<number>;
+  rotation?: PropertyChange<number>;
+  scale?: PropertyChange<number>;
+}
+
+type UndoRedoMediaAction = {
+  type: 'create' | 'delete';
+  x: number;
+  y: number
+  id: string;
+
+  rotation?: number;
+  scale?: number;
+  data: MediaData;
+}
+
+type UndoRedoAction = {
+  type: 'paint';
+} | {
+  type: 'media';
+  action: UndoRedoMediaAction | UndoRedoUpdateAction;
+};
+
+/*
+  type PropertyChange<T> = T | {
+    prev: T;
+    next: T;
+  }
+
+  interface UndoRedoMediaAction {
+    type: 'create' | 'update' | 'delete';
+    x: PropertyChange<number>;
+    y: PropertyChange<number>;
+    rotation: PropertyChange<number>;
+    scale: PropertyChange<number>;
+    id: string;
+    // docid or text and other props
+  }
+
+  interface UndoRedoPaintAction {
+    color: string;
+    points: [number, number][];
+    size: number;
+    tool: number;
+  }
+
+  interface UndoRedoPaintBatch {
+    key: any; // key framebuffer of frame
+    actions: UndoRedoPaintAction[]; // up to 5
+  }
+
+  type UndoRedoAction = {
+    type: 'paint';
+  } | {
+    type: 'media';
+    action: UndoRedoMediaAction;
+  };
+
+  const [batches, setBatches] = createSignal<UndoRedoPaintBatch[]>([]);
+  const [actions, setActions] = createSignal<UndoRedoAction[]>([]);
+  const [currentStep, setCurrentStep] = createSignal(-1);
+
+  const getBatch = () => {
+    const step = currentStep();
+    const skipBatches = Math.floor(step / 5);
+    const action = step % 5;
+    const {key, actions} = batches().at(skipBatches);
+    return {key, actions, action: actions.at(action - 1)};
+  }
+
+  const addPaintEntry = (entry: UndoRedoPaintAction) => {
+    const currentBatch = getBatch();
+    if(currentBatch.actions.length === 5) {
+      // get current framebuffer
+    } else {
+      setBatches(batches => );
+    }
+  }
+
+  // .at(-fromLast) -> 0 === current state, 1 === last action
+  const getPaintStateFromAction = (step: number) => {
+
+  }
+  */
+
 export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
   const [tab, setTab] = createSignal(0);
   const cropResizeActive = () => tab() === 1;
@@ -562,8 +669,136 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // paint end ===========
 
+  // undo redo start ======
+
+  // have array of batches, [key, and 5 actions]
+  // have 3 functions: add new, get state, replace
+
+  // have array of actions,
+  // when we at action:
+  // if action paing
+  // get stat fn, re-draw, that's it
+  // if action no paint
+  // just update the item and that's it
+
+
+  const [undoActions, setUndoActions] = createSignal<UndoRedoAction[]>([]);
+  const [redoActions, setRedoActions] = createSignal<UndoRedoAction[]>([]);
+
+  const undoActive = () => !!undoActions().length;
+  const redoActive = () => !!redoActions().length;
+
+  const addAction = (action: UndoRedoAction) => {
+    executeAction(action, true);
+    setUndoActions(undo => [...undo, action]);
+    setRedoActions([]);
+  }
+
+  const undo = () => {
+    if(!undoActions().length) {
+      return;
+    }
+    const action = undoActions().at(-1);
+    setUndoActions(actions => actions.slice(0, actions.length - 1));
+    setRedoActions(actions => [...actions, action]);
+    executeAction(action, false);
+  }
+
+  const redo = () => {
+    if(!redoActions().length) {
+      return;
+    }
+    const action = redoActions().at(-1);
+    setRedoActions(actions => actions.slice(0, actions.length - 1));
+    setUndoActions(actions => [...actions, action]);
+    executeAction(action, true);
+  }
+
+  /* const [actions, setActions] = createSignal<UndoRedoAction[]>([]);
+  const [step, setStep] = createSignal<[number, boolean]>([-1, false]); // step, go right
+
+  const lastAction = () => actions().at(step()[0]);
+
+  const undo = () => {
+    setStep(([step]) => [Math.max(-1, step - 1), false]);
+  }
+
+  const redo = () => {
+    setStep(([step]) => [step + 1, true]);
+  }
+
+  const undoActive = () => (actions().length > 0) && (step()[0] > -1);
+  const redoActive = () => (actions().length - 1) > step()[0];
+
+  createEffect(() => {
+    console.info('ac', actions());
+    console.info('step', step());
+  })
+
+  const addAction = (action: UndoRedoAction) => {
+    setActions(prevActions => [...prevActions.slice(0, Math.max(0, step()[0])), action]);
+    redo();
+  }
+
+  createEffect(() => {
+    const [idx, direction] = step();
+    if(idx < 0) {
+      return;
+    }
+    const action = lastAction();
+
+    console.info('dir, act', action);
+    if(action.type === 'media') {
+      console.info('media');
+      const {id, type, media, ...other} = action.action;
+      if(type === 'create') {
+        console.info('created');
+
+        // if forwrds -> create, otherwise -> delete
+        if(direction) {
+          console.info('direction');
+
+          if(media === 'sticker') {
+            const {x, y, docId} = action.action;
+            setStickers(prev => [...prev, {id, docId, x, y}]);
+          } else {
+            setStickers(prev => prev.filter(sticker => sticker.id !== id));
+          }
+        } else {
+
+        }
+      } else if(type === 'update') {
+      } else {
+      }
+    }
+  }); */
+
+  // undo redo end ========
+
   // stickers start ==========
   const [stickers, setStickers] = createSignal([]);
+  let dragInitData: any = null;
+
+  const startDragInitData = (val: any) => {
+    dragInitData = val;
+  }
+
+  const endMediaDrag = (id: string) => {
+    console.info('endsaf', id, dragInitData);
+    // add action
+
+    const sticker = stickers().find(st => st.id === id);
+    const {x, y} = dragInitData;
+    addAction({
+      type: 'media',
+      action: {
+        type: 'update',
+        id,
+        x: {prev: x, next: sticker.x},
+        y: {prev: y, next: sticker.y}
+      }
+    });
+  }
 
   const updatePos = (id: string, x: number, y: number) => {
     setStickers(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y}) : sticker));
@@ -571,22 +806,52 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   const stickerCLick = async(val: any, doc: any) => {
     const docId = await rootScope.managers.appDocsManager.getDoc(doc);
-    docId && setStickers(prev => [...prev, {id: crypto.randomUUID(), docId, x: 0, y: 0}]);
-  }
-
-  createEffect(() => {
-    // calc stickers new pos (and later rotation)
-
-    // convert sticker from global to crop
-    const res = stickers().map(({x, y, ...sticker}) => {
-      // todo
+    if(!docId) {
+      return;
+    }
+    addAction({
+      type: 'media',
+      action: {
+        type: 'create',
+        id: crypto.randomUUID(),
+        x: 100, // need center of screen of crop!!
+        y: 100,
+        data: {
+          media: 'sticker',
+          docId
+        }
+      }
     });
-
-    console.info(res);
-  });
+  }
 
   // stickers end ========
 
+  // execution pipeline start =====
+
+  const executeAction = (action: UndoRedoAction, forward: boolean) => {
+    if(action.type === 'media') {
+      const {id, type} = action.action;
+      if(type === 'update') {
+        const x = action.action.x[forward ? 'next' : 'prev'];
+        const y = action.action.y[forward ? 'next' : 'prev'];
+        updatePos(id, x, y);
+        // for text too
+      } else {
+        const {data: {media, ...mediaData}, ...other} = action.action;
+        if((type === 'create') === forward) {
+          // same with text
+          setStickers(prev => [...prev, {id, ...other, ...mediaData}]);
+        } else {
+          // same with text
+          setStickers(prev => prev.filter(sticker => sticker.id !== id));
+        }
+      }
+    } else {
+      // paint
+    }
+  }
+
+  // execution pipeline end =====
 
   const testExport = () => {
     // generateFakeGif(img);
@@ -645,6 +910,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                 }}>
                   <canvas onClick={() => console.info('clik work idk')} class='main-canvas' ref={glCanvas} />
                   <MediaEditorStickersPanel active={tab() === 4}
+                    startDrag={startDragInitData}
+                    endDrag={endMediaDrag}
                     upd={updatePointPos}
                     stickers={stickers()}
                     updatePos={updatePos}
@@ -699,10 +966,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
           width={container.clientWidth - viewCropOffset()[0]}
           height={container.clientHeight - viewCropOffset()[1]}
           linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
-        { /* <MediaEditorStickersPanel active={tab() === 4} stickers={stickers()} updatePos={updatePos} /> */ }
       </div>
       <div class='media-editor__settings'>
-        <EditorHeader undo={null} redo={testExport} close={close} />
+        <EditorHeader undoActive={undoActive()} redoActive={redoActive()} undo={undo} redo={redo} close={close} />
         <MediaEditorTabs tab={tab()} setTab={setTab} tabs={[
           <MediaEditorGeneralSettings state={mediaEditorState.filters} updateState={updateState} />,
           <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,

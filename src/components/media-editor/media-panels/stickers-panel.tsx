@@ -15,6 +15,8 @@ interface Point {
 }
 
 const MediaEditorSticker = (props: {
+  startDrag: (data: any) => void,
+  endDrag: () => void,
   upd: (p: Point) => Point,
   crop: [Point, Point],
   left: number,
@@ -73,6 +75,7 @@ const MediaEditorSticker = (props: {
   });
 
   const onDragStart = (ev: DragEvent) => {
+    props.startDrag({x: props.x, y: props.y}); // rotation scale too
     ev.dataTransfer.setDragImage(img, 0, 0);
     setDragging(true);
     props.select();
@@ -88,6 +91,7 @@ const MediaEditorSticker = (props: {
   const onDragEnd = () => {
     setDragging(false);
     props.updatePos(props.dragPos[0] - initDragPos()[0] + 100, props.dragPos[1] - initDragPos()[1] + 100);
+    props.endDrag();
   }
 
   const handleDragStart = (ev: DragEvent) => {
@@ -121,7 +125,15 @@ const MediaEditorSticker = (props: {
   </div>;
 }
 
-export const MediaEditorStickersPanel = (props: { upd: (p: Point) => Point, crop: [Point, Point], left: number, top: number, height: number, width: number, active: boolean, stickers: StickerData[], updatePos: (id: string, x: number, y: number) => void }) => {
+export const MediaEditorStickersPanel = (props: {
+  startDrag: (data: any) => void,
+  endDrag: (id: string) => void,
+  upd: (p: Point) => Point,
+  crop: [Point, Point],
+  left: number, top: number, height: number, width: number,
+  active: boolean, stickers: StickerData[],
+  updatePos: (id: string, x: number, y: number) => void }
+) => {
   let container: HTMLDivElement;
   const [containerPos, setContainerPos] = createSignal([0, 0] as [number, number]);
   const [dragPosRaw, setDragPosRaw] = createSignal([0, 0]);
@@ -157,6 +169,8 @@ export const MediaEditorStickersPanel = (props: { upd: (p: Point) => Point, crop
       onClick={() => setSelectedSticker(null)}>
       <Index each={props.stickers}>
         { (sticker) => <MediaEditorSticker
+          startDrag={props.startDrag}
+          endDrag={() => props.endDrag(sticker().id)}
           top={props.top} left={props.left} width={props.width} height={props.height}
           upd={props.upd} crop={props.crop}
           resize={resize()} docId={sticker().docId} x={sticker().x} y={sticker().y}
