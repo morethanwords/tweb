@@ -49,6 +49,10 @@ function getAngle(pointA: Point, pointB: Point, pointC: Point) {
   return crossProduct > 0 ? angleDeg : -angleDeg;
 }
 
+const lessThanThreshold = (val1: number, val2: number, delta = 0.001) => {
+  return Math.abs(val1 - val2) < delta;
+}
+
 const MediaEditorSticker = (props: {
   startDrag: (data: any) => void,
   endDrag: () => void,
@@ -86,6 +90,10 @@ const MediaEditorSticker = (props: {
       const origin = {x: initHandleDragPos()[0], y: initHandleDragPos()[1]};
       const center = {x: props.x, y: props.y};
       const target = {x: props.handlerDragPos[0], y: props.handlerDragPos[1]};
+      if(lessThanThreshold(origin.x, target.x) && lessThanThreshold(origin.y, target.y)) {
+        setRot(0);
+        return;
+      }
       const angle = getAngle(origin, center, target);
       setRot(-angle);
     }
@@ -230,7 +238,6 @@ export const MediaEditorStickersPanel = (props: {
           x={sticker().x} y={sticker().y}
           rotation={sticker().rotation}
           updatePos={(x, y, rotation) => {
-            console.info('wtfffff', x, y, rotation);
             props.updatePos(sticker().id, x, y, rotation);
             setDragPos([0, 0]);
             setHandlerDragPos([0, 0]);

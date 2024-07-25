@@ -392,8 +392,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const [initDragPos, setInitDragPos] = createSignal<[number, number]>([0, 0]);
   let parentSize = [0, 0];
 
-  createEffect(() => console.info(initDragPos()));
-
   const [tempCropArea, setTempCropArea] = createSignal([]);
   createEffect(() => setTempCropArea(cropArea()));
   const handleDragStart = (ev: DragEvent, idx: number) => {
@@ -447,7 +445,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // crop shapes
   createEffect(() => {
-    console.info('butn', mediaEditorState.crop);
     const option = mediaEditorState.crop;
     if(option === 2) {
       setCropArea(([topLeft, bottomRight]) => {
@@ -515,11 +512,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     setRedoActions([]);
   }
 
-  createEffect(() => {
-    console.info('undo:', undoActions());
-    console.info('redo:', redoActions());
-  })
-
   const undo = () => {
     if(!undoActions().length) {
       return;
@@ -545,12 +537,10 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const [stickers, setStickers] = createSignal([]);
   let dragInitData: any = null;
   const startDragInitData = (val: any) => {
-    console.warn('setting initial data', val);
     dragInitData = val;
   }
 
   const endMediaDrag = (id: string) => {
-    console.info('endsaf', id, dragInitData);
     // add action
 
     const sticker = stickers().find(st => st.id === id);
@@ -603,7 +593,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         const x = action.action.x[forward ? 'next' : 'prev'];
         const y = action.action.y[forward ? 'next' : 'prev'];
         const rotation = action.action.rotation[forward ? 'next' : 'prev'];
-        console.info('Update ' + forward, action.action);
         updatePos(id, x, y, rotation);
         // for text too
       } else {
@@ -634,7 +623,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   const redrawAllUndo = () => {
     const drawCommands = untrack(undoActions).filter(action => action.type === 'paint') as { type: 'paint', action: UndoRedoPaintAction }[];
-    console.info('commands', drawCommands);
     drawTextureWithFilters(img, sourceWidth, sourceHeight);
     currentTexture = originalTextureWithFilters;
     drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
@@ -776,7 +764,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                   'transform': `rotate(${-angle()}deg) scale(${canvasScale()})`,
                   'transform-origin': `${croppedAreaCenterPoint().x + canvasPos()[0]}px ${croppedAreaCenterPoint().y + canvasPos()[1]}px`
                 }}>
-                  <canvas onClick={() => console.info('clik work idk')} class='main-canvas' ref={glCanvas} />
+                  <canvas class='main-canvas' ref={glCanvas} />
                   <MediaEditorStickersPanel active={tab() === 4}
                     startDrag={startDragInitData}
                     endDrag={endMediaDrag}
@@ -813,10 +801,10 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                   'max-width': `${(tempCropArea()[1].x - tempCropArea()[0].x)}px`
                 }}
               >
-                <div draggable={true} onDragStart={ev => handleDragStart(ev, 0)} onClick={ev => console.info(ev.clientX, ev.clientY)} onDragEnd={handleDragEnd} class='crop-handle top left'></div>
-                <div draggable={true} onDragStart={ev => handleDragStart(ev, 1)} onClick={ev => console.info(ev.clientX, ev.clientY)} onDragEnd={handleDragEnd} class='crop-handle top right'></div>
-                <div draggable={true} onDragStart={ev => handleDragStart(ev, 2)} onClick={ev => console.info(ev.clientX, ev.clientY)} onDragEnd={handleDragEnd} class='crop-handle bottom left'></div>
-                <div draggable={true} onDragStart={ev => handleDragStart(ev, 3)} onClick={ev => console.info(ev.clientX, ev.clientY)} onDragEnd={handleDragEnd} class='crop-handle bottom right'></div>
+                <div draggable={true} onDragStart={ev => handleDragStart(ev, 0)} onDragEnd={handleDragEnd} class='crop-handle top left'></div>
+                <div draggable={true} onDragStart={ev => handleDragStart(ev, 1)} onDragEnd={handleDragEnd} class='crop-handle top right'></div>
+                <div draggable={true} onDragStart={ev => handleDragStart(ev, 2)} onDragEnd={handleDragEnd} class='crop-handle bottom left'></div>
+                <div draggable={true} onDragStart={ev => handleDragStart(ev, 3)} onDragEnd={handleDragEnd} class='crop-handle bottom right'></div>
               </div>
             </div>
           </div>
