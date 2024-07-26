@@ -8,6 +8,7 @@ export interface StickerData {
   x: number;
   y: number;
   rotation: number;
+  scale: number;
 }
 
 interface Point {
@@ -53,6 +54,12 @@ const lessThanThreshold = (val1: number, val2: number, delta = 0.001) => {
   return Math.abs(val1 - val2) < delta;
 }
 
+const getDistance = (A: Point, B: Point) => {
+  const a = A.x - B.x;
+  const b = A.y - B.y;
+  return Math.sqrt( a*a + b*b );
+}
+
 const MediaEditorSticker = (props: {
   startDrag: (data: any) => void,
   endDrag: () => void,
@@ -65,8 +72,8 @@ const MediaEditorSticker = (props: {
   resize: boolean,
   setResize: (val: boolean) => void,
   containerPos: [number, number],
-  updatePos: (x: number, y: number, rotation: number) => void,
-  docId: number, x: number, y: number, rotation: number,
+  updatePos: (x: number, y: number, rotation: number, scale: number) => void,
+  docId: number, x: number, y: number, rotation: number, scale: number,
   dragPos: [number, number],
   handlerDragPos: [number, number],
   setHandlerDragPos: (val: [number, number]) => void,
@@ -74,22 +81,22 @@ const MediaEditorSticker = (props: {
   select: (ev?: MouseEvent) => void }
 ) => {
   let element: HTMLDivElement;
-  const [size, setSize] = createSignal([200, 200]);
   const [dragging, setDragging] = createSignal(false);
   const [initDragPos, setInitDragPos] = createSignal([0, 0]);
+  const [initScale, setInitScale] = createSignal(0);
   const [initHandleDragPos, setInitHandleDragPos] = createSignal([0, 0]);
-  const [scale, setScale] = createSignal([1, 1]);
+  const [scale, setScale] = createSignal(1);
   const img = new Image();
-
   const [rot, setRot] = createSignal(0);
-  const propsXY = () => ({x: props.x - 100, y: props.y - 100});
-
+  const propsXY = () => ({x: props.x, y: props.y});
 
   createEffect(() => {
     if(props.resize) {
       const origin = {x: initHandleDragPos()[0], y: initHandleDragPos()[1]};
       const center = {x: props.x, y: props.y};
       const target = {x: props.handlerDragPos[0], y: props.handlerDragPos[1]};
+      const dist = getDistance(center, target);
+      setScale(dist / initScale());
       if(lessThanThreshold(origin.x, target.x) && lessThanThreshold(origin.y, target.y)) {
         setRot(0);
         return;
@@ -99,12 +106,9 @@ const MediaEditorSticker = (props: {
     }
   });
 
-  createEffect(() => {
-    console.info('ROT', props.rotation);
-  })
-
   const styles = () => props.selected && dragging() && props.dragPos.some(Boolean) ? [props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1]] : [propsXY().x, propsXY().y];
   const appRotation = () => props.selected && props.resize && props.handlerDragPos.some(Boolean) ? props.rotation - rot() : props.rotation;
+  const appScale = () => props.selected && props.resize && props.handlerDragPos.some(Boolean) ? props.scale * scale() : props.scale;
 
   onMount(async() => {
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
@@ -122,7 +126,7 @@ const MediaEditorSticker = (props: {
   });
 
   const onDragStart = (ev: DragEvent) => {
-    props.startDrag({x: props.x, y: props.y, rotation: props.rotation}); // rotation scale too
+    props.startDrag({x: props.x, y: props.y, rotation: props.rotation, scale: props.scale}); // rotation scale too
     ev.dataTransfer.setDragImage(img, 0, 0);
     setDragging(true);
     props.select();
@@ -136,12 +140,12 @@ const MediaEditorSticker = (props: {
 
   const onDragEnd = () => {
     setDragging(false);
-    props.updatePos(props.dragPos[0] - initDragPos()[0] + 100, props.dragPos[1] - initDragPos()[1] + 100, props.rotation);
+    props.updatePos(props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1], props.rotation, props.scale);
     props.endDrag();
   }
 
   const handleDragStart = (ev: DragEvent, idx: number) => {
-    props.startDrag({x: props.x, y: props.y, rotation: props.rotation}); // rotation scale too
+    props.startDrag({x: props.x, y: props.y, rotation: props.rotation, scale: props.scale}); // rotation scale too
     ev.stopImmediatePropagation();
     props.select();
     const {pageX, pageY} = ev;
@@ -150,35 +154,45 @@ const MediaEditorSticker = (props: {
     const res = props.upd({x, y});
     setInitHandleDragPos([res.x, res.y]);
     props.setHandlerDragPos([res.x, res.y]);
+    const dist = getDistance({x: props.x, y: props.y}, {x:res.x, y: res.y});
+    setInitScale(dist);
     props.setResize(true);
   }
 
   const handleDragEnd = (ev: DragEvent) => {
-    ev.stopImmediatePropagation();
-    props.updatePos(props.x, props.y, props.rotation - rot());
-    props.endDrag(); // rename to commit or smth
     props.setResize(false);
+    ev.stopImmediatePropagation();
+    props.updatePos(props.x, props.y, props.rotation - rot(), props.scale * scale());
+    props.endDrag(); // rename to commit or smth
+
     props.setHandlerDragPos([0, 0]);
     setInitHandleDragPos([0, 0]);
   }
 
-  // scale(${scale()[0]},
-  // makeparetn container which wel apply the handlers, and the inside will be the scaling of the rlottie player
   return <div draggable={true} onDragStart={onDragStart} onDragEnd={onDragEnd}
     onClick={props.select} classList={{'media-editor-placed-sticker': true, 'selected': props.selected}}
     style={{
-      'width': `${scale()[0] * 200}px`,
-      'height': `${scale()[1] * 200}px`,
+      'width': `${appScale() * 200}px`,
+      'height': `${appScale() * 200}px`,
       'transform': `translate(${Math.round(styles()[0])}px, ${Math.round(styles()[1])}px) rotate(${appRotation()}deg)`,
-      'transform-origin': 'center'
+      'transform-origin': '0 0'
     }}>
-    <div ref={element} class='sticker-container' style={{transform: `scale(${scale()[0]}, ${scale()[1]})`}}></div>
-    <Show when={props.selected}>
-      <div draggable={true} onDragStart={ev => handleDragStart(ev, 0)} onDragEnd={handleDragEnd} class='crop-handle top left'></div>
-      <div draggable={true} onDragStart={ev => handleDragStart(ev, 1)} onDragEnd={handleDragEnd} class='crop-handle top right'></div>
-      <div draggable={true} onDragStart={ev => handleDragStart(ev, 2)} onDragEnd={handleDragEnd} class='crop-handle bottom left'></div>
-      <div draggable={true} onDragStart={ev => handleDragStart(ev, 3)} onDragEnd={handleDragEnd} class='crop-handle bottom right'></div>
-    </Show>
+    <div style={{
+      'transform': `translate(-50%, -50%)`,
+      'transform-origin': '0 0',
+      'width': `${appScale() * 200}px`,
+      'height': `${appScale() * 200}px`
+    }}>
+      <div style={{'transform-origin': '0 0', 'transform': `scale(${appScale()})`}}>
+        <div ref={element} class='sticker-container'></div>
+      </div>
+      <Show when={props.selected}>
+        <div draggable={true} onDragStart={ev => handleDragStart(ev, 0)} onDragEnd={handleDragEnd} class='crop-handle top left'></div>
+        <div draggable={true} onDragStart={ev => handleDragStart(ev, 1)} onDragEnd={handleDragEnd} class='crop-handle top right'></div>
+        <div draggable={true} onDragStart={ev => handleDragStart(ev, 2)} onDragEnd={handleDragEnd} class='crop-handle bottom left'></div>
+        <div draggable={true} onDragStart={ev => handleDragStart(ev, 3)} onDragEnd={handleDragEnd} class='crop-handle bottom right'></div>
+      </Show>
+    </div>
   </div>;
 }
 
@@ -189,7 +203,7 @@ export const MediaEditorStickersPanel = (props: {
   crop: [Point, Point],
   left: number, top: number, height: number, width: number,
   active: boolean, stickers: StickerData[],
-  updatePos: (id: string, x: number, y: number, rotation: number) => void }
+  updatePos: (id: string, x: number, y: number, rotation: number, scale: number) => void }
 ) => {
   let container: HTMLDivElement;
   const [containerPos, setContainerPos] = createSignal([0, 0] as [number, number]);
@@ -237,8 +251,9 @@ export const MediaEditorStickersPanel = (props: {
           resize={resize()} docId={sticker().docId}
           x={sticker().x} y={sticker().y}
           rotation={sticker().rotation}
-          updatePos={(x, y, rotation) => {
-            props.updatePos(sticker().id, x, y, rotation);
+          scale={sticker().scale}
+          updatePos={(x, y, rotation, scale) => {
+            props.updatePos(sticker().id, x, y, rotation, scale);
             setDragPos([0, 0]);
             setHandlerDragPos([0, 0]);
           }}

@@ -745,7 +745,9 @@ $inactive-opacity: .4;
           // find better option idk
 
           // HERE: maybe do with 4 elements
-          background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='white' stroke-width='2' stroke-dasharray='8%2c 10' stroke-dashoffset='54' stroke-linecap='square'/%3e%3c/svg%3e");
+          & > div {
+            background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='white' stroke-width='2' stroke-dasharray='8%2c 10' stroke-dashoffset='54' stroke-linecap='square'/%3e%3c/svg%3e");
+          }
 
           //background: linear-gradient(to right, currentColor 0%, currentColor 50%, transparent 50%, transparent 100%) repeat-x left bottom;
           //background-size: 3px 1px;

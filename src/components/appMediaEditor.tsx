@@ -203,7 +203,7 @@ type UndoRedoUpdateAction = {
   x: PropertyChange<number>;
   y: PropertyChange<number>;
   rotation: PropertyChange<number>;
-  scale?: PropertyChange<number>;
+  scale: PropertyChange<number>;
 }
 
 type UndoRedoMediaAction = {
@@ -213,7 +213,7 @@ type UndoRedoMediaAction = {
   id: string;
 
   rotation: number;
-  scale?: number;
+  scale: number;
   data: MediaData;
 }
 
@@ -544,7 +544,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     // add action
 
     const sticker = stickers().find(st => st.id === id);
-    const {x, y, rotation} = dragInitData;
+    const {x, y, rotation, scale} = dragInitData;
     addAction({
       type: 'media',
       action: {
@@ -552,13 +552,14 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         id,
         x: {prev: x, next: sticker.x},
         y: {prev: y, next: sticker.y},
-        rotation: {prev: rotation, next: sticker.rotation}
+        rotation: {prev: rotation, next: sticker.rotation},
+        scale: {prev: scale, next: sticker.scale}
       }
     });
   }
 
-  const updatePos = (id: string, x: number, y: number, rotation: number) => {
-    setStickers(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y, rotation}) : sticker));
+  const updatePos = (id: string, x: number, y: number, rotation: number, scale: number) => {
+    setStickers(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y, rotation, scale}) : sticker));
   };
 
   const stickerCLick = async(val: any, doc: any) => {
@@ -574,6 +575,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         x: 100, // need center of screen of crop!!
         y: 100,
         rotation: angle(),
+        scale: 1,
         data: {
           media: 'sticker',
           docId
@@ -593,7 +595,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         const x = action.action.x[forward ? 'next' : 'prev'];
         const y = action.action.y[forward ? 'next' : 'prev'];
         const rotation = action.action.rotation[forward ? 'next' : 'prev'];
-        updatePos(id, x, y, rotation);
+        const scale = action.action.scale[forward ? 'next' : 'prev'];
+        updatePos(id, x, y, rotation, scale);
         // for text too
       } else {
         const {data: {media, ...mediaData}, ...other} = action.action;
