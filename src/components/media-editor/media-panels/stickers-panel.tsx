@@ -60,6 +60,26 @@ const getDistance = (A: Point, B: Point) => {
   return Math.sqrt( a*a + b*b );
 }
 
+function vectorLength(vector: Point) {
+  return Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+}
+
+// Function to normalize the vector
+function normalizeVector(vector: Point) {
+  const length = vectorLength(vector);
+  return {x: vector.x / length, y: vector.y / length};
+}
+
+const extendVectorBy = (A: Point, B: Point, length: number) => {
+  // Calculate the direction vector from A to B
+  const directionVector = {x: B.x - A.x, y: B.y - A.y};
+
+  const normalizedDirection = normalizeVector(directionVector);
+
+  const scaledVector = {x: normalizedDirection.x * length, y: normalizedDirection.y * length};
+  return {x: A.x - scaledVector.x, y: A.y - scaledVector.y};
+}
+
 const MediaEditorSticker = (props: {
   startDrag: (data: any) => void,
   endDrag: () => void,
@@ -86,9 +106,11 @@ const MediaEditorSticker = (props: {
   const [initScale, setInitScale] = createSignal(0);
   const [initHandleDragPos, setInitHandleDragPos] = createSignal([0, 0]);
   const [scale, setScale] = createSignal(1);
+  const [scalePos, setScalePos] = createSignal([0, 0]);
   const img = new Image();
   const [rot, setRot] = createSignal(0);
   const propsXY = () => ({x: props.x, y: props.y});
+  let originalCenter = [0, 0];
 
   createEffect(() => {
     if(props.resize) {
@@ -96,12 +118,24 @@ const MediaEditorSticker = (props: {
       const center = {x: props.x, y: props.y};
       const target = {x: props.handlerDragPos[0], y: props.handlerDragPos[1]};
       const dist = getDistance(center, target);
-      setScale(dist / initScale());
+
+      const dir = [origin.x - originalCenter[0], origin.y - originalCenter[1]];
+      const farPoint = {x:originalCenter[0] - dir[0], y: originalCenter[1] - dir[1]};
+
+
+      // const farPoint = extendVectorBy(center, target, initScale());
+
+
+      const newPos = [(farPoint.x + target.x) / 2, (farPoint.y + target.y) / 2]
+      const newSLen = getDistance(farPoint, target);
+
+      setScalePos(newPos);
+      setScale((newSLen / 2) / initScale());
       if(lessThanThreshold(origin.x, target.x) && lessThanThreshold(origin.y, target.y)) {
-        setRot(0);
-        return;
+        return setRot(0);
       }
-      const angle = getAngle(origin, center, target);
+      // {x: newPos[0], y: newPos[1]}
+      const angle = getAngle(origin, farPoint, target); // mb use new origin bro
       setRot(-angle);
     }
   });
@@ -109,6 +143,8 @@ const MediaEditorSticker = (props: {
   const styles = () => props.selected && dragging() && props.dragPos.some(Boolean) ? [props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1]] : [propsXY().x, propsXY().y];
   const appRotation = () => props.selected && props.resize && props.handlerDragPos.some(Boolean) ? props.rotation - rot() : props.rotation;
   const appScale = () => props.selected && props.resize && props.handlerDragPos.some(Boolean) ? props.scale * scale() : props.scale;
+  const appScalePos = () => props.selected && props.resize && props.handlerDragPos.some(Boolean) ? scalePos() : [propsXY().x, propsXY().y];
+  const posss = () => props.resize ? appScalePos() : styles();
 
   onMount(async() => {
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
@@ -152,6 +188,7 @@ const MediaEditorSticker = (props: {
     const x = pageX - props.left;
     const y = pageY - props.top;
     const res = props.upd({x, y});
+    originalCenter = [props.x, props.y];
     setInitHandleDragPos([res.x, res.y]);
     props.setHandlerDragPos([res.x, res.y]);
     const dist = getDistance({x: props.x, y: props.y}, {x:res.x, y: res.y});
@@ -162,7 +199,7 @@ const MediaEditorSticker = (props: {
   const handleDragEnd = (ev: DragEvent) => {
     props.setResize(false);
     ev.stopImmediatePropagation();
-    props.updatePos(props.x, props.y, props.rotation - rot(), props.scale * scale());
+    props.updatePos(scalePos()[0], scalePos()[1], props.rotation - rot(), props.scale * scale());
     props.endDrag(); // rename to commit or smth
 
     props.setHandlerDragPos([0, 0]);
@@ -174,7 +211,7 @@ const MediaEditorSticker = (props: {
     style={{
       'width': `${appScale() * 200}px`,
       'height': `${appScale() * 200}px`,
-      'transform': `translate(${Math.round(styles()[0])}px, ${Math.round(styles()[1])}px) rotate(${appRotation()}deg)`,
+      'transform': `translate(${Math.round(posss()[0])}px, ${Math.round(posss()[1])}px) rotate(${appRotation()}deg)`,
       'transform-origin': '0 0'
     }}>
     <div style={{
