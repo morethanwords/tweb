@@ -567,13 +567,15 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     if(!docId) {
       return;
     }
+    const cropWidth = cropArea()[1].x - cropArea()[0].x;
+    const cropHeight = cropArea()[1].y - cropArea()[0].y;
     addAction({
       type: 'media',
       action: {
         type: 'create',
         id: crypto.randomUUID(),
-        x: 100, // need center of screen of crop!!
-        y: 100,
+        x: cropArea()[0].x + (cropWidth / 2),
+        y: cropArea()[0].y + (cropHeight / 2),
         rotation: angle(),
         scale: 1,
         data: {
