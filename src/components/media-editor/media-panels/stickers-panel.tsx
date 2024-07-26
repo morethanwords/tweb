@@ -16,37 +16,16 @@ interface Point {
   y: number;
 }
 
-function findAngle(A: Point, B: Point, C: Point) {
-  var AB = Math.sqrt(Math.pow(B.x-A.x, 2)+ Math.pow(B.y-A.y, 2));
-  var BC = Math.sqrt(Math.pow(B.x-C.x, 2)+ Math.pow(B.y-C.y, 2));
-  var AC = Math.sqrt(Math.pow(C.x-A.x, 2)+ Math.pow(C.y-A.y, 2));
-  return Math.acos((BC*BC+AB*AB-AC*AC)/(2*BC*AB));
-}
-
 function getAngle(pointA: Point, pointB: Point, pointC: Point) {
   const vectorAB = {x: pointA.x - pointB.x, y: pointA.y - pointB.y};
   const vectorBC = {x: pointC.x - pointB.x, y: pointC.y - pointB.y};
-
-  // Calculate the dot product of AB and BC
   const dotProduct = vectorAB.x * vectorBC.x + vectorAB.y * vectorBC.y;
-
-  // Calculate the magnitudes of AB and BC
   const magnitudeAB = Math.sqrt(vectorAB.x * vectorAB.x + vectorAB.y * vectorAB.y);
   const magnitudeBC = Math.sqrt(vectorBC.x * vectorBC.x + vectorBC.y * vectorBC.y);
-
-  // Calculate the cosine of the angle
   const cosTheta = dotProduct / (magnitudeAB * magnitudeBC);
-
-  // Calculate the angle in radians
   const angleRad = Math.acos(cosTheta);
-
-  // Convert the angle to degrees
   const angleDeg = angleRad * (180 / Math.PI);
-
-  // Calculate the cross product to determine the direction
   const crossProduct = vectorAB.x * vectorBC.y - vectorAB.y * vectorBC.x;
-  const direction = crossProduct > 0 ? 'counterclockwise' : 'clockwise';
-
   return crossProduct > 0 ? angleDeg : -angleDeg;
 }
 
@@ -58,26 +37,6 @@ const getDistance = (A: Point, B: Point) => {
   const a = A.x - B.x;
   const b = A.y - B.y;
   return Math.sqrt( a*a + b*b );
-}
-
-function vectorLength(vector: Point) {
-  return Math.sqrt(vector.x * vector.x + vector.y * vector.y);
-}
-
-// Function to normalize the vector
-function normalizeVector(vector: Point) {
-  const length = vectorLength(vector);
-  return {x: vector.x / length, y: vector.y / length};
-}
-
-const extendVectorBy = (A: Point, B: Point, length: number) => {
-  // Calculate the direction vector from A to B
-  const directionVector = {x: B.x - A.x, y: B.y - A.y};
-
-  const normalizedDirection = normalizeVector(directionVector);
-
-  const scaledVector = {x: normalizedDirection.x * length, y: normalizedDirection.y * length};
-  return {x: A.x - scaledVector.x, y: A.y - scaledVector.y};
 }
 
 const MediaEditorSticker = (props: {
@@ -115,16 +74,10 @@ const MediaEditorSticker = (props: {
   createEffect(() => {
     if(props.resize) {
       const origin = {x: initHandleDragPos()[0], y: initHandleDragPos()[1]};
-      const center = {x: props.x, y: props.y};
       const target = {x: props.handlerDragPos[0], y: props.handlerDragPos[1]};
-      const dist = getDistance(center, target);
 
       const dir = [origin.x - originalCenter[0], origin.y - originalCenter[1]];
       const farPoint = {x:originalCenter[0] - dir[0], y: originalCenter[1] - dir[1]};
-
-
-      // const farPoint = extendVectorBy(center, target, initScale());
-
 
       const newPos = [(farPoint.x + target.x) / 2, (farPoint.y + target.y) / 2]
       const newSLen = getDistance(farPoint, target);
@@ -134,7 +87,6 @@ const MediaEditorSticker = (props: {
       if(lessThanThreshold(origin.x, target.x) && lessThanThreshold(origin.y, target.y)) {
         return setRot(0);
       }
-      // {x: newPos[0], y: newPos[1]}
       const angle = getAngle(origin, farPoint, target); // mb use new origin bro
       setRot(-angle);
     }
