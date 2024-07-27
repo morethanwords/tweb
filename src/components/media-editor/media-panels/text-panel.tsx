@@ -171,6 +171,7 @@ const MediaEditorText = (props: {
     }}>
       <div style={{'transform-origin': '0 0', 'transform': `scale(${appScale()})`}}>
         <div class='sticker-container with-text'>
+          { /* TOOD: upscale text (yes even more bcoz we scale and it's a bit blurry) */ }
           <TextRenderer text={props.textData.text} state={props.textData} />
         </div>
       </div>

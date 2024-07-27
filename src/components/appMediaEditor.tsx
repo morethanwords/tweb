@@ -558,7 +558,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // stickers start ==========
   const [stickers, setStickers] = createSignal([]);
-  const endMediaDrag = (id: string) => {
+  const endStickerDrag = (id: string) => {
     // add action
 
     const sticker = stickers().find(st => st.id === id);
@@ -568,6 +568,26 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       action: {
         type: 'update',
         mediaType: 'sticker',
+        id,
+        x: {prev: x, next: sticker.x},
+        y: {prev: y, next: sticker.y},
+        rotation: {prev: rotation, next: sticker.rotation},
+        scale: {prev: scale, next: sticker.scale}
+        // set text prev next data
+      }
+    });
+  }
+
+  const endTextDrag = (id: string) => {
+    // add action
+
+    const sticker = texts().find(st => st.id === id);
+    const {x, y, rotation, scale} = dragInitData; // get data for text too
+    addAction({
+      type: 'media',
+      action: {
+        type: 'update',
+        mediaType: 'text',
         id,
         x: {prev: x, next: sticker.x},
         y: {prev: y, next: sticker.y},
@@ -847,7 +867,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                   <canvas class='main-canvas' ref={glCanvas} />
                   <MediaEditorStickersPanel active={tab() === 4}
                     startDrag={startDragInitData}
-                    endDrag={endMediaDrag}
+                    endDrag={endStickerDrag}
                     upd={updatePointPos}
                     stickers={stickers()}
                     updatePos={updateStickerPos}
@@ -859,7 +879,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                   />
                   <MediaEditorTextsPanel active={tab() === 2}
                     startDrag={startDragInitData}
-                    endDrag={endMediaDrag}
+                    endDrag={endTextDrag}
                     upd={updatePointPos}
                     stickers={texts()}
                     updatePos={updateTextPos}
