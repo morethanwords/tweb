@@ -13,11 +13,11 @@ import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
 import {simplify} from './media-editor/math/draw.util';
 import {Stroke} from './media-editor/math/algo';
 import {
-  calcCDT, createEnhanceFilterProgram,
+  calcCDT, createEnhanceFilterProgram, createSharpeningFilterProgram,
   drawTextureDebug,
   drawTextureToNewFramebuffer,
   drawWideLineTriangle,
-  executeEnhanceFilterToTexture,
+  executeEnhanceFilterToTexture, executeSharpeningFilterToTexture,
   getGLFramebufferData,
   getHSVTexture, useProgram
 } from './media-editor/glPrograms';
@@ -265,6 +265,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   let currentTexture: any = null;
 
   let filterGLProgram: WebGLProgram;
+  let sharpenGLProgram: WebGLProgram;
 
   let container: HTMLDivElement;
   let mediaEditor: HTMLDivElement;
@@ -307,9 +308,20 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   }
 
   const drawTextureWithFilters = (img: any, sourceWidth: number, sourceHeight: number, forceUpdateBuffer = true) => {
+    if(!filterGLProgram) return;
+    if(!sharpenGLProgram) return;
     useProgram(gl, filterGLProgram);
-    executeEnhanceFilterToTexture(gl, filterGLProgram, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer, enhanceProgram => {
+    const buffer = executeEnhanceFilterToTexture(gl, filterGLProgram, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer, enhanceProgram => {
       gl.uniform1f(gl.getUniformLocation(enhanceProgram, 'intensity'), (mediaEditorState.filters.enhance || 0) / 100);
+    });
+
+    const temp = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+    useProgram(gl, sharpenGLProgram);
+    executeSharpeningFilterToTexture(gl, sharpenGLProgram, temp, sourceWidth, sourceHeight, sharpenProgram => {
+      gl.uniform1f(gl.getUniformLocation(sharpenProgram, 'inputWidth'), sourceWidth);
+      gl.uniform1f(gl.getUniformLocation(sharpenProgram, 'inputHeight'), sourceHeight);
+      gl.uniform1f(gl.getUniformLocation(sharpenProgram, 'sharpen'), (mediaEditorState.filters.sharpen || 0) / 100);
+
     });
     originalTextureWithFilters = getGLFramebufferData(gl, sourceWidth, sourceHeight);
   }
@@ -343,7 +355,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       cdtBuffer = calcCDT(hsvBuffer, sourceWidth, sourceHeight);
 
       filterGLProgram = createEnhanceFilterProgram(gl);
-      useProgram(gl, filterGLProgram);
+      sharpenGLProgram = createSharpeningFilterProgram(gl);
       drawTextureWithFilters(this, sourceWidth, sourceHeight);
       currentTexture = originalTextureWithFilters;
       drawTextureDebug(gl, sourceWidth, sourceHeight, originalTextureWithFilters);

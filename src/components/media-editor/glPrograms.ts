@@ -13,6 +13,7 @@ import {
 } from './shaders';
 import {MediaEditorSettings} from '../appMediaEditor';
 import {Setter, Signal} from 'solid-js';
+import {sharpeningFragmentShader, sharpeningVertexShader} from './shaders2';
 
 const PGPhotoEnhanceSegments = 4; // Example value, replace with actual value
 const PGPhotoEnhanceHistogramBins = 256; // Example value, replace with actual value
@@ -369,6 +370,10 @@ export const createEnhanceFilterProgram = (gl: WebGLRenderingContext) => {
   return createAndUseGLProgram(gl, vertexShaderSourceFlip, fragmentShaderSource);
 }
 
+export const createSharpeningFilterProgram = (gl: WebGLRenderingContext) => {
+  return createAndUseGLProgram(gl, sharpeningVertexShader, sharpeningFragmentShader);
+}
+
 export const useProgram = (gl: WebGLRenderingContext, program: WebGLProgram) => {
   gl.useProgram(program);
 }
@@ -395,6 +400,23 @@ export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, shaderP
   gl.bindTexture(gl.TEXTURE_2D, cdtTexture);
   gl.uniform1i(gl.getUniformLocation(shaderProgram, 'inputImageTexture2'), 1);
   gl.uniform1f(gl.getUniformLocation(shaderProgram, 'intensity'), 0); // Adjust intensity as needed
+
+  fn(shaderProgram);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+  return [fb, targetTexture];
+}
+
+export const executeSharpeningFilterToTexture = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, texture: ArrayBufferView, width: number, height: number, fn: (program: WebGLProgram) => void) => {
+
+  const srcTexture = createTextureFromData(gl, width, height, texture);
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, srcTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'sTexture'), 0);
+  gl.uniform1f(gl.getUniformLocation(shaderProgram, 'sharpen'), 0);
 
   fn(shaderProgram);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
