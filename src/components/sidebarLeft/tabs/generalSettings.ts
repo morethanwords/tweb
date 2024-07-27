@@ -36,13 +36,23 @@ export class RangeSettingSelector {
   public valueContainer: HTMLElement;
   public doubleSideProgress: HTMLElement;
   private range: RangeSelector;
+  private valueDiv: HTMLDivElement;
 
-  private updateFakeProgress = (value: number) => {
+  public updateFakeProgress = (value: number) => {
+    if(!this.doubleSideProgress) {
+      return;
+    }
     this.doubleSideProgress.style.left = value >= 0 ? '50%' : `${50 - Math.abs(value)}%`;
     this.doubleSideProgress.style.width = `${ Math.abs(value)}%`;
   }
 
   public onChange: (value: number) => void;
+
+  public update = (value: number) => {
+    this.valueDiv.innerText = '' + value;
+    this.range.setFilled(value);
+    this.range.setProgress(value);
+  }
 
   constructor(
     name: LangPackKey,
@@ -67,14 +77,14 @@ export class RangeSettingSelector {
     nameDiv.classList.add(BASE_CLASS + '-name');
     _i18n(nameDiv, name);
 
-    const valueDiv = this.valueContainer = document.createElement('div');
-    valueDiv.classList.add(BASE_CLASS + '-value');
+    this.valueDiv = this.valueContainer = document.createElement('div');
+    this.valueDiv.classList.add(BASE_CLASS + '-value');
 
     if(writeValue) {
-      valueDiv.innerHTML = '' + initialValue;
+      this.valueDiv.innerHTML = '' + initialValue;
     }
 
-    details.append(nameDiv, valueDiv);
+    details.append(nameDiv, this.valueDiv);
 
     this.range = new RangeSelector({
       step,
@@ -94,7 +104,7 @@ export class RangeSettingSelector {
 
         if(writeValue) {
           // console.log('font size scrub:', value);
-          valueDiv.innerText = '' + value;
+          this.valueDiv.innerText = '' + value;
         }
       }
     });

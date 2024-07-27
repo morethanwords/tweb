@@ -180,8 +180,8 @@ const MediaEditorText = (props: {
       'width': `${appScale() * textSize()[0]}px`,
       'height': `${appScale() * textSize()[1]}px`
     }}>
-      <div style={{'transform-origin': '0 0', 'transform': `scale(${appScale()})`}}>
-        <div class='sticker-container' onclick={props.editText}>
+      <div style={{'transform-origin': '0 0', 'transform': `scale(${appScale()})`}} onclick={() => props.selected && props.editText()}>
+        <div class='sticker-container'>
           { /* TOOD: upscale text (yes even more bcoz we scale and it's a bit blurry) */ }
           <TextRenderer textSizeUpdate={setTextSize} text={props.textData.text} state={props.textData} />
         </div>
