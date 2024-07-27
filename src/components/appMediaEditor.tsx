@@ -4,7 +4,7 @@ import {createEffect, createSignal, onMount, Show, untrack} from 'solid-js';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
-import {createStore} from 'solid-js/store';
+import {createStore, unwrap} from 'solid-js/store';
 import {MediaEditorTabs} from './media-editor/editor-tabs';
 import {MediaEditorStickersSettings} from './media-editor/tabs/editor-stickers-settings';
 import rootScope from '../lib/rootScope';
@@ -299,11 +299,15 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   }
 
   const drawTextureWithFilters = (img: any, sourceWidth: number, sourceHeight: number) => {
+    console.info('redraw', mediaEditorState.filters.enhance);
     // get data from filters!!
     const hsvBuffer = getHSVTexture(gl, img, sourceWidth, sourceHeight);
     // calculate CDT Data
     const cdtBuffer = calcCDT(hsvBuffer, sourceWidth, sourceHeight);
-    originalTextureWithFilters = executeEnhanceFilterToTexture(gl, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer);
+
+    originalTextureWithFilters = executeEnhanceFilterToTexture(gl, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer, enhanceProgram => {
+      gl.uniform1f(gl.getUniformLocation(enhanceProgram, 'intensity'), mediaEditorState.filters.enhance / 100);
+    });
   }
 
   // filters start =========
@@ -708,8 +712,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
   }
 
-  createEffect(() => console.info(undoActions()));
-
   const redrawAllUndo = () => {
     const drawCommands = untrack(undoActions).filter(action => action.type === 'paint') as { type: 'paint', action: UndoRedoPaintAction }[];
     drawTextureWithFilters(img, sourceWidth, sourceHeight);
@@ -723,6 +725,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     currentTexture = dat;
   }
   // execution pipeline end =====
+
   createEffect(() => {
     const trackedPoints = points();
     if(!gl) {
@@ -983,7 +986,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         <EditorHeader undoActive={undoActive()} redoActive={redoActive()} undo={undo} redo={redo} close={close} />
         { saveButton }
         <MediaEditorTabs tab={tab()} setTab={setTab} tabs={[
-          <MediaEditorGeneralSettings state={mediaEditorState.filters} updateState={updateState} />,
+          <MediaEditorGeneralSettings change={redrawAllUndo} state={mediaEditorState.filters} updateState={updateState} />,
           <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,
           <MediaEditorTextSettings state={mediaEditorState.text} updateState={updateState} />,
           <MediaEditorPaintSettings state={mediaEditorState.paint} updateState={updateState} />,

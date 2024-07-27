@@ -365,7 +365,7 @@ export const drawTextureImageDebug = (gl: WebGLRenderingContext, width: number, 
   return shaderProgram;
 }
 
-export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView) => {
+export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView, fn: (program: WebGLProgram) => void) => {
   const shaderProgram = createAndUseGLProgram(gl, vertexShaderSourceFlip, fragmentShaderSource);
   const cdtTexture = createTextureFromData(gl, 256, 16, cdtBuffer);
   const hsvSourceTexture = createTextureFromData(gl, width, height, hsvBuffer);
@@ -388,6 +388,8 @@ export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, width: 
   gl.bindTexture(gl.TEXTURE_2D, cdtTexture);
   gl.uniform1i(gl.getUniformLocation(shaderProgram, 'inputImageTexture2'), 1);
   gl.uniform1f(gl.getUniformLocation(shaderProgram, 'intensity'), 0); // Adjust intensity as needed
+
+  fn(shaderProgram);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
   const resBuffer = new Uint8Array(width * height * 4);

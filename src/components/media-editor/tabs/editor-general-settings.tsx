@@ -4,7 +4,7 @@ import {MediaEditorSlider} from '../editor-slider';
 import {MediaEditorSettings} from '../../appMediaEditor';
 import {SetStoreFunction} from 'solid-js/store';
 
-export const MediaEditorGeneralSettings = (props: { state: MediaEditorSettings['filters'], updateState: SetStoreFunction<MediaEditorSettings> }) => {
+export const MediaEditorGeneralSettings = (props: { state: MediaEditorSettings['filters'], change: () => void, updateState: SetStoreFunction<MediaEditorSettings> }) => {
   const settings: { label: LangPackKey, symmetrical?: true, key: keyof MediaEditorSettings['filters'] }[] = [
     {label: 'MediaEditor.General.Enhance', key: 'enhance'},
     {label: 'MediaEditor.General.Brightness', symmetrical: true, key: 'brightness'},
@@ -22,7 +22,10 @@ export const MediaEditorGeneralSettings = (props: { state: MediaEditorSettings['
   return <div class='settings-container filters'>
     <For each={settings}>
       {(entry) => <MediaEditorSlider label={entry.label}
-        change={entry.key ? val => props.updateState('filters', entry.key, val): () => {}}
+        change={val => {
+          props.updateState('filters', entry.key, val);
+          props.change(); // dumbass stores
+        }}
         max={entry.symmetrical ? 50 : 100} symmetric={entry.symmetrical || false} /> }
     </For>
   </div>
