@@ -5,9 +5,10 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
   const [editingText, setEditingText] = props.editingText;
   let content: HTMLDivElement;
   let canvas: HTMLCanvasElement;
-  const [newText, setNewText] = createSignal('_');
+  const [newText, setNewText] = createSignal('test');
 
   const drawText = (text: string, size: number, font: string, position: 0 | 1 | 2) => {
+    console.info('ren', `[${text}]`);
     const ctx1 = canvas.getContext('2d');
     ctx1.font = `${size}px ${font}`;
     ctx1.lineWidth = 5;
@@ -129,31 +130,27 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     });
   }
 
+  const caretToEnd = () => {
+    const range = document.createRange();
+    const selection = window.getSelection();
+    range.setStart(content, content.childNodes.length);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
   onMount(() => {
     setTimeout(() => {
       content.focus();
     }, 150);
     console.info('MOUNT', canvas);
 
-    // canvas.width = 600;
-    // canvas.height = 600;
-    drawText('hello sdkjfhgdfsdfssdkjh ired \n fuck olfhslidhaslff1hl 1ff \n browtfiamsuposetodo\n dsfkgadsfklgdblfasy;adisy \n fuck you sfdffmean', 40, 'serif', 0);
+    content.innerText = newText();
+    caretToEnd();
   });
 
   createEffect(() => {
     drawText(newText(), 40, 'serif', 2);
-  })
-
-  window.addEventListener('click', ev => {
-    ev.preventDefault();
-    ev.stopImmediatePropagation();
-    content.focus();
-  })
-
-  window.addEventListener('key', ev => {
-    ev.preventDefault();
-    ev.stopImmediatePropagation();
-    content.focus();
   })
 
   return <div onclick={ev => {
@@ -161,12 +158,13 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     ev.stopImmediatePropagation();
     setEditingText(false);
   }} classList={{'media-paint-panel': true, 'media-editor-stickers-panel': true, 'edit-text-panel': true}}>
-    <div class='text-edit' ref={content} style={{'color': 'white', 'white-space': 'pre-wrap', 'min-width': '100px', 'min-height': '100px'}}
-      contentEditable={true}
-      onKeyDown={key => console.info(key)}
-      onInput={() => setNewText(content.innerText)}>
-      {setNewText()}
-    </div>
-    <canvas style={{background: 'transparent'}} ref={canvas}></canvas>
+    <div class='text-edit' ref={content} onblur={() => {
+      content.focus();
+      caretToEnd();
+    }} style={{'position': 'fixed', 'left': '-1000px', 'top': '-1000px', 'color': 'white', 'white-space': 'pre-wrap', 'min-width': '100px', 'min-height': '100px'}}
+    contentEditable={true}
+    // onKeyDown={key => console.info(key)}
+    onInput={() => setNewText(content.innerText)}></div>
+    <canvas onclick={ev => ev.stopImmediatePropagation()} style={{background: 'transparent'}} ref={canvas}></canvas>
   </div>
 };
