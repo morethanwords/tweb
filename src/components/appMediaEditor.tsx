@@ -842,7 +842,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
           height={container.clientHeight - viewCropOffset()[1]}
           linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
         <Show when={tab() === 2 && editingText()}>
-          <AddTextPanel editingText={editingTextSignal} />
+          <AddTextPanel state={mediaEditorState.text} editingText={editingTextSignal} />
         </Show>
       </div>
       <div class='media-editor__settings'>
