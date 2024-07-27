@@ -13,13 +13,13 @@ import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
 import {simplify} from './media-editor/math/draw.util';
 import {Stroke} from './media-editor/math/algo';
 import {
-  calcCDT,
+  calcCDT, createEnhanceFilterProgram,
   drawTextureDebug,
   drawTextureToNewFramebuffer,
   drawWideLineTriangle,
   executeEnhanceFilterToTexture,
   getGLFramebufferData,
-  getHSVTexture
+  getHSVTexture, useProgram
 } from './media-editor/glPrograms';
 import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
 import Button from './button';
@@ -52,7 +52,8 @@ export interface MediaEditorSettings {
     shadows: number,
     vignette: number,
     grain: number,
-    sharpen: number
+    sharpen: number,
+    date: unknown // to track in createState
   }
 }
 
@@ -82,7 +83,8 @@ const defaultEditorState = {
     shadows: 0,
     vignette: 0,
     grain: 0,
-    sharpen: 0
+    sharpen: 0,
+    date: new Date()
   }
 };
 
@@ -262,6 +264,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   let originalTextureWithFilters: any = null;
   let currentTexture: any = null;
 
+  let filterGLProgram: WebGLProgram;
+
   let container: HTMLDivElement;
   let mediaEditor: HTMLDivElement;
   let img: HTMLImageElement;
@@ -304,9 +308,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     const hsvBuffer = getHSVTexture(gl, img, sourceWidth, sourceHeight);
     // calculate CDT Data
     const cdtBuffer = calcCDT(hsvBuffer, sourceWidth, sourceHeight);
-
-    originalTextureWithFilters = executeEnhanceFilterToTexture(gl, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer, enhanceProgram => {
-      gl.uniform1f(gl.getUniformLocation(enhanceProgram, 'intensity'), mediaEditorState.filters.enhance / 100);
+    useProgram(gl, filterGLProgram);
+    originalTextureWithFilters = executeEnhanceFilterToTexture(gl, filterGLProgram, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer, enhanceProgram => {
+      gl.uniform1f(gl.getUniformLocation(enhanceProgram, 'intensity'), (mediaEditorState.filters.enhance || 0) / 100);
     });
   }
 
@@ -335,10 +339,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
       sourceWidth = img.width;
       sourceHeight = img.height;
+      filterGLProgram = createEnhanceFilterProgram(gl);
+      useProgram(gl, filterGLProgram);
       drawTextureWithFilters(this, sourceWidth, sourceHeight);
       currentTexture = originalTextureWithFilters;
       drawTextureDebug(gl, sourceWidth, sourceHeight, originalTextureWithFilters);
-
       return;
       /* const enhanceProgram = executeEnhanceFilter(gl, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer);
       setFN(() => (int: number) => {
@@ -888,6 +893,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // ext edit end ======
 
+  createEffect(() => {
+    mediaEditorState.filters.date; // triggers the effect
+    redrawAllUndo();
+  })
+
   return <div class='media-editor' onClick={() => close()}>
     <div ref={mediaEditor} class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
@@ -986,7 +996,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         <EditorHeader undoActive={undoActive()} redoActive={redoActive()} undo={undo} redo={redo} close={close} />
         { saveButton }
         <MediaEditorTabs tab={tab()} setTab={setTab} tabs={[
-          <MediaEditorGeneralSettings change={redrawAllUndo} state={mediaEditorState.filters} updateState={updateState} />,
+          <MediaEditorGeneralSettings state={mediaEditorState.filters} updateState={updateState} />,
           <MediaEditorCropSettings crop={mediaEditorState.crop} setCrop={val => updateState('crop', val)} />,
           <MediaEditorTextSettings state={mediaEditorState.text} updateState={updateState} />,
           <MediaEditorPaintSettings state={mediaEditorState.paint} updateState={updateState} />,

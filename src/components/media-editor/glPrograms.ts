@@ -365,8 +365,15 @@ export const drawTextureImageDebug = (gl: WebGLRenderingContext, width: number, 
   return shaderProgram;
 }
 
-export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView, fn: (program: WebGLProgram) => void) => {
-  const shaderProgram = createAndUseGLProgram(gl, vertexShaderSourceFlip, fragmentShaderSource);
+export const createEnhanceFilterProgram = (gl: WebGLRenderingContext) => {
+  return createAndUseGLProgram(gl, vertexShaderSourceFlip, fragmentShaderSource);
+}
+
+export const useProgram = (gl: WebGLRenderingContext, program: WebGLProgram) => {
+  gl.useProgram(program);
+}
+
+export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView, fn: (program: WebGLProgram) => void) => {
   const cdtTexture = createTextureFromData(gl, 256, 16, cdtBuffer);
   const hsvSourceTexture = createTextureFromData(gl, width, height, hsvBuffer);
 

@@ -1,10 +1,10 @@
 import {LangPackKey} from '../../../lib/langPack';
-import {For} from 'solid-js';
+import {createSelector, For} from 'solid-js';
 import {MediaEditorSlider} from '../editor-slider';
 import {MediaEditorSettings} from '../../appMediaEditor';
 import {SetStoreFunction} from 'solid-js/store';
 
-export const MediaEditorGeneralSettings = (props: { state: MediaEditorSettings['filters'], change: () => void, updateState: SetStoreFunction<MediaEditorSettings> }) => {
+export const MediaEditorGeneralSettings = (props: { state: MediaEditorSettings['filters'], updateState: SetStoreFunction<MediaEditorSettings> }) => {
   const settings: { label: LangPackKey, symmetrical?: true, key: keyof MediaEditorSettings['filters'] }[] = [
     {label: 'MediaEditor.General.Enhance', key: 'enhance'},
     {label: 'MediaEditor.General.Brightness', symmetrical: true, key: 'brightness'},
@@ -24,7 +24,7 @@ export const MediaEditorGeneralSettings = (props: { state: MediaEditorSettings['
       {(entry) => <MediaEditorSlider label={entry.label}
         change={val => {
           props.updateState('filters', entry.key, val);
-          props.change(); // dumbass stores
+          props.updateState('filters', 'date', new Date());
         }}
         max={entry.symmetrical ? 50 : 100} symmetric={entry.symmetrical || false} /> }
     </For>
