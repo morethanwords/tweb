@@ -13,7 +13,7 @@ import {
 } from './shaders';
 import {MediaEditorSettings} from '../appMediaEditor';
 import {Setter, Signal} from 'solid-js';
-import {sharpeningFragmentShader, sharpeningVertexShader} from './shaders2';
+import {filtersFragmentShader, filtersVertexShader, sharpeningFragmentShader, sharpeningVertexShader} from './shaders2';
 
 const PGPhotoEnhanceSegments = 4; // Example value, replace with actual value
 const PGPhotoEnhanceHistogramBins = 256; // Example value, replace with actual value
@@ -374,6 +374,10 @@ export const createSharpeningFilterProgram = (gl: WebGLRenderingContext) => {
   return createAndUseGLProgram(gl, sharpeningVertexShader, sharpeningFragmentShader);
 }
 
+export const createOthersFilterProgram = (gl: WebGLRenderingContext) => {
+  return createAndUseGLProgram(gl, filtersVertexShader, filtersFragmentShader);
+}
+
 export const useProgram = (gl: WebGLRenderingContext, program: WebGLProgram) => {
   gl.useProgram(program);
 }
@@ -403,12 +407,9 @@ export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, shaderP
 
   fn(shaderProgram);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-  return [fb, targetTexture];
 }
 
 export const executeSharpeningFilterToTexture = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, texture: ArrayBufferView, width: number, height: number, fn: (program: WebGLProgram) => void) => {
-
   const srcTexture = createTextureFromData(gl, width, height, texture);
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
   createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
@@ -422,10 +423,16 @@ export const executeSharpeningFilterToTexture = (gl: WebGLRenderingContext, shad
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
-/* export const redrawEnhanceFilterToTexture = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView, fn: (program: WebGLProgram) => void) => {
-  const targetTexture = createTextureFromData(gl, width, height, null);
-  const fb = gl.createFramebuffer();
-  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0);
-} */
 
+export const executeOtherFilterToTexture = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, texture: ArrayBufferView, width: number, height: number, fn: (program: WebGLProgram) => void) => {
+  const srcTexture = createTextureFromData(gl, width, height, texture);
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, srcTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'sTexture'), 0);
+
+  fn(shaderProgram);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}

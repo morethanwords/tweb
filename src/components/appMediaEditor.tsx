@@ -13,11 +13,11 @@ import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
 import {simplify} from './media-editor/math/draw.util';
 import {Stroke} from './media-editor/math/algo';
 import {
-  calcCDT, createEnhanceFilterProgram, createSharpeningFilterProgram,
+  calcCDT, createEnhanceFilterProgram, createOthersFilterProgram, createSharpeningFilterProgram,
   drawTextureDebug,
   drawTextureToNewFramebuffer,
   drawWideLineTriangle,
-  executeEnhanceFilterToTexture, executeSharpeningFilterToTexture,
+  executeEnhanceFilterToTexture, executeOtherFilterToTexture, executeSharpeningFilterToTexture,
   getGLFramebufferData,
   getHSVTexture, useProgram
 } from './media-editor/glPrograms';
@@ -266,6 +266,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   let filterGLProgram: WebGLProgram;
   let sharpenGLProgram: WebGLProgram;
+  let othersGLProgram: WebGLProgram;
 
   let container: HTMLDivElement;
   let mediaEditor: HTMLDivElement;
@@ -310,8 +311,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const drawTextureWithFilters = (img: any, sourceWidth: number, sourceHeight: number, forceUpdateBuffer = true) => {
     if(!filterGLProgram) return;
     if(!sharpenGLProgram) return;
+    if(!othersGLProgram) return;
     useProgram(gl, filterGLProgram);
-    const buffer = executeEnhanceFilterToTexture(gl, filterGLProgram, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer, enhanceProgram => {
+    executeEnhanceFilterToTexture(gl, filterGLProgram, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer, enhanceProgram => {
       gl.uniform1f(gl.getUniformLocation(enhanceProgram, 'intensity'), (mediaEditorState.filters.enhance || 0) / 100);
     });
 
@@ -321,8 +323,36 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       gl.uniform1f(gl.getUniformLocation(sharpenProgram, 'inputWidth'), sourceWidth);
       gl.uniform1f(gl.getUniformLocation(sharpenProgram, 'inputHeight'), sourceHeight);
       gl.uniform1f(gl.getUniformLocation(sharpenProgram, 'sharpen'), (mediaEditorState.filters.sharpen || 0) / 100);
-
     });
+    const temp2 = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+    useProgram(gl, othersGLProgram);
+    executeOtherFilterToTexture(gl, othersGLProgram, temp2, sourceWidth, sourceHeight, filtersProgram => {
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'width'), sourceWidth);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'height'), sourceHeight);
+
+      console.info(mediaEditorState.filters.brightness);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'exposure'), (mediaEditorState.filters.brightness || 0) / 100);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'contrast'), ((mediaEditorState.filters.contrast || 1) / 100) * 0.3 + 1);
+
+      let saturation = (mediaEditorState.filters.saturation || 1) / 100;
+      if(saturation > 0) {
+        saturation *= 1.05;
+      }
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'saturation'), saturation + 1);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'warmth'), (mediaEditorState.filters.warmth || 0) / 100);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'fadeAmount'), (mediaEditorState.filters.fade || 0) / 100);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'highlights'), (((mediaEditorState.filters.highlights || 1) / 100) * 0.75 + 100.0) / 100.0);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'shadows'), (((mediaEditorState.filters.shadows || 1) / 100) * 0.55 + 100) / 100);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'vignette'), (mediaEditorState.filters.vignette || 0) / 100);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'grain'), ((mediaEditorState.filters.grain || 0) / 100) * 0.04);
+
+      gl.uniform3f(gl.getUniformLocation(filtersProgram, 'highlightsTintColor'), 1, 0, 0); // some color idk -> 0
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'highlightsTintIntensity'), 0.25); // 0 -> 0.25
+
+      gl.uniform3f(gl.getUniformLocation(filtersProgram, 'shadowsTintColor'), 1, 0, 0); // some color idk -> 0
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'shadowsTintIntensity'), 0.25); // 0 -> 0.25
+    });
+
     originalTextureWithFilters = getGLFramebufferData(gl, sourceWidth, sourceHeight);
   }
 
@@ -356,9 +386,15 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
       filterGLProgram = createEnhanceFilterProgram(gl);
       sharpenGLProgram = createSharpeningFilterProgram(gl);
+      othersGLProgram = createOthersFilterProgram(gl);
       drawTextureWithFilters(this, sourceWidth, sourceHeight);
       currentTexture = originalTextureWithFilters;
       drawTextureDebug(gl, sourceWidth, sourceHeight, originalTextureWithFilters);
+
+      createEffect(() => {
+        mediaEditorState.filters.date; // triggers the effect
+        redrawAllUndo(false);
+      })
     };
   });
 
@@ -888,11 +924,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   };
 
   // ext edit end ======
-
-  createEffect(() => {
-    mediaEditorState.filters.date; // triggers the effect
-    redrawAllUndo(false);
-  })
 
   return <div class='media-editor' onClick={() => close()}>
     <div ref={mediaEditor} class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
