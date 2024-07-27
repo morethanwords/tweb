@@ -189,7 +189,7 @@ type PropertyChange<T> = {
 
 type TextData = {
   media: 'text';
-  text: string; // or string[]
+  text: string;
   color: number | string;
   align: number;
   outline: number;
@@ -581,19 +581,19 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const endTextDrag = (id: string) => {
     // add action
 
-    const sticker = texts().find(st => st.id === id);
-    const {x, y, rotation, scale} = dragInitData; // get data for text too
+    const text = texts().find(st => st.id === id);
+    const {x, y, rotation, scale, data} = dragInitData; // get data for text too
     addAction({
       type: 'media',
       action: {
         type: 'update',
         mediaType: 'text',
         id,
-        x: {prev: x, next: sticker.x},
-        y: {prev: y, next: sticker.y},
-        rotation: {prev: rotation, next: sticker.rotation},
-        scale: {prev: scale, next: sticker.scale}
-        // set text prev next data
+        x: {prev: x, next: text.x},
+        y: {prev: y, next: text.y},
+        rotation: {prev: rotation, next: text.rotation},
+        scale: {prev: scale, next: text.scale},
+        data: {prev: data, next: text.data}
       }
     });
   }
@@ -603,8 +603,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     setStickers(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y, rotation, scale}) : sticker));
   };
 
-  const updateTextPos = (id: string, x: number, y: number, rotation: number, scale: number) => {
-    setTexts(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y, rotation, scale}) : sticker));
+  const updateTextPos = (id: string, x: number, y: number, rotation: number, scale: number, data: any) => {
+    setTexts(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y, rotation, scale, ...data}) : sticker));
   };
 
   const stickerCLick = async(val: any, doc: any) => {
@@ -676,11 +676,12 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         const scale = action.action.scale[forward ? 'next' : 'prev'];
 
         if(action.action.mediaType === 'text') {
-          updateTextPos(id, x, y, rotation, scale);
+          const data = action.action.data[forward ? 'next' : 'prev'];
+          console.info('exec action', action);
+          updateTextPos(id, x, y, rotation, scale, data);
         } else {
           updateStickerPos(id, x, y, rotation, scale);
         }
-        // for text too
       } else {
         const {data: {media, ...mediaData}, ...other} = action.action;
         if((type === 'create') === forward) {
@@ -843,10 +844,46 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     if(tab() === 2) {
       setEditingText(true); // or the selected text
     } else {
-      // save or cnacel whatever
       setEditingText(false);
     }
-  })
+  });
+
+  const startEditText = (id: string) => {
+    const textElem = texts().find(st => st.id === id);
+    const {color, align, outline, size, font, text} = textElem;
+    updateState('text', {color, align, outline, size, font});
+    dragInitData = {x: textElem.x, y: textElem.y, rotation: textElem.rotation, scale: textElem.scale, data: {color, align, outline, size, font, text}};
+    setEditingText(texts().find(st => st.id === id));
+  }
+
+  const finishEditText = (newText: string, newData: {
+    color: number | string;
+    align: number;
+    outline: number;
+    size: number;
+    font: number;
+  }) => {
+    const text = editingText() as any;
+    const {x, y, rotation, scale, data} = dragInitData;
+    addAction({
+      type: 'media',
+      action: {
+        type: 'update',
+        mediaType: 'text',
+        id: text.id,
+        x: {prev: x, next: x},
+        y: {prev: y, next: y},
+        rotation: {prev: rotation, next: rotation},
+        scale: {prev: scale, next: scale},
+        data: {prev: data, next: {
+          text: newText,
+          ...newData
+        }}
+      }
+    });
+  };
+
+  // ext edit end ======
 
   return <div class='media-editor' onClick={() => close()}>
     <div ref={mediaEditor} class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
@@ -882,6 +919,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                     endDrag={endTextDrag}
                     upd={updatePointPos}
                     stickers={texts()}
+                    editText={startEditText}
                     updatePos={updateTextPos}
                     crop={cropArea() as [Point, Point]}
                     top={globalPos()[1] + viewCropOffset()[1] / 2}
@@ -935,7 +973,10 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
           height={container.clientHeight - viewCropOffset()[1]}
           linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
         <Show when={tab() === 2 && editingText()}>
-          <AddTextPanel createNewText={createNewText} state={mediaEditorState.text} editingText={editingTextSignal} />
+          <AddTextPanel finishEditText={finishEditText}
+            createNewText={createNewText}
+            state={mediaEditorState.text}
+            editingText={editingTextSignal} />
         </Show>
       </div>
       <div class='media-editor__settings'>

@@ -1,8 +1,14 @@
-import {createSignal, onMount, Signal} from 'solid-js';
+import {createEffect, createSignal, onMount, Signal} from 'solid-js';
 import {MediaEditorSettings} from '../../appMediaEditor';
 import {TextRenderer} from './text-renderer';
 
-export const AddTextPanel = (props: { createNewText: (text: string, data: {
+export const AddTextPanel = (props: { finishEditText: (text: string, data: {
+    color: number | string;
+    align: number;
+    outline: number;
+    size: number;
+    font: number;
+  }) => void, createNewText: (text: string, data: {
     color: number | string;
     align: number;
     outline: number;
@@ -22,21 +28,36 @@ export const AddTextPanel = (props: { createNewText: (text: string, data: {
     selection.addRange(range);
   }
 
-  onMount(() => {
-    setTimeout(() => {
-      content.focus();
-    }, 150);
-    console.info('MOUNT', canvas);
+  const editing = () => editingText() && editingText().text;
 
+  createEffect(() => {
+    if(editing()) {
+      setNewText(editingText().text);
+    }
+  })
+
+  createEffect(() => {
     // if newline, trim all stuff before appending (dont add 2 newlines)
     content.innerText = newText();
     caretToEnd();
   });
 
+  onMount(() => {
+    setTimeout(() => {
+      content.focus();
+    }, 150);
+    console.info('MOUNT', canvas);
+  });
+
   return <div onclick={ev => {
     ev.preventDefault();
     ev.stopImmediatePropagation();
-    if(newText().trim()) {
+    if(!newText().trim()) {
+      return;
+    }
+    if(editing()) {
+      props.finishEditText(newText(), props.state);
+    } else {
       props.createNewText(newText(), props.state);
     }
     setEditingText(false);

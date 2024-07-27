@@ -59,15 +59,15 @@ const MediaEditorText = (props: {
   textData: TextData,
   setResize: (val: boolean) => void,
   containerPos: [number, number],
-  updatePos: (x: number, y: number, rotation: number, scale: number) => void,
+  updatePos: (x: number, y: number, rotation: number, scale: number, data: any) => void,
   x: number, y: number, rotation: number, scale: number,
   dragPos: [number, number],
   handlerDragPos: [number, number],
   setHandlerDragPos: (val: [number, number]) => void,
   selected: boolean,
+  editText: () => void,
   select: (ev?: MouseEvent) => void }
 ) => {
-  let element: HTMLDivElement;
   const [dragging, setDragging] = createSignal(false);
   const [initDragPos, setInitDragPos] = createSignal([0, 0]);
   const [initScale, setInitScale] = createSignal(0);
@@ -95,7 +95,7 @@ const MediaEditorText = (props: {
       if(lessThanThreshold(origin.x, target.x) && lessThanThreshold(origin.y, target.y)) {
         return setRot(0);
       }
-      const angle = getAngle(origin, farPoint, target); // mb use new origin bro
+      const angle = getAngle(origin, farPoint, target);
       setRot(-angle);
     }
   });
@@ -110,8 +110,14 @@ const MediaEditorText = (props: {
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
   });
 
+  const textData = () => {
+    const {color, align, outline, size, font, text} = props.textData;
+    return {color, align, outline, size, font, text};
+  }
+
   const onDragStart = (ev: DragEvent) => {
-    props.startDrag({x: props.x, y: props.y, rotation: props.rotation, scale: props.scale}); // rotation scale too
+    const {color, align, outline, size, font, text} = props.textData;
+    props.startDrag({x: props.x, y: props.y, rotation: props.rotation, scale: props.scale, data: textData()});
     ev.dataTransfer.setDragImage(img, 0, 0);
     setDragging(true);
     props.select();
@@ -124,13 +130,15 @@ const MediaEditorText = (props: {
   };
 
   const onDragEnd = () => {
+    const {color, align, outline, size, font, text} = props.textData;
     setDragging(false);
-    props.updatePos(props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1], props.rotation, props.scale);
+    props.updatePos(props.dragPos[0] - initDragPos()[0], props.dragPos[1] - initDragPos()[1], props.rotation, props.scale, textData());
     props.endDrag();
   }
 
   const handleDragStart = (ev: DragEvent, idx: number) => {
-    props.startDrag({x: props.x, y: props.y, rotation: props.rotation, scale: props.scale}); // rotation scale too
+    const {color, align, outline, size, font, text} = props.textData;
+    props.startDrag({x: props.x, y: props.y, rotation: props.rotation, scale: props.scale, data: textData()});
     ev.stopImmediatePropagation();
     props.select();
     const {pageX, pageY} = ev;
@@ -148,7 +156,8 @@ const MediaEditorText = (props: {
   const handleDragEnd = (ev: DragEvent) => {
     props.setResize(false);
     ev.stopImmediatePropagation();
-    props.updatePos(scalePos()[0], scalePos()[1], props.rotation - rot(), props.scale * scale());
+    const {color, align, outline, size, font, text} = props.textData;
+    props.updatePos(scalePos()[0], scalePos()[1], props.rotation - rot(), props.scale * scale(), textData());
     props.endDrag(); // rename to commit or smth
 
     props.setHandlerDragPos([0, 0]);
@@ -172,7 +181,7 @@ const MediaEditorText = (props: {
       'height': `${appScale() * textSize()[1]}px`
     }}>
       <div style={{'transform-origin': '0 0', 'transform': `scale(${appScale()})`}}>
-        <div class='sticker-container'>
+        <div class='sticker-container' onclick={props.editText}>
           { /* TOOD: upscale text (yes even more bcoz we scale and it's a bit blurry) */ }
           <TextRenderer textSizeUpdate={setTextSize} text={props.textData.text} state={props.textData} />
         </div>
@@ -195,7 +204,8 @@ export const MediaEditorTextsPanel = (props: {
   left: number, top: number, height: number, width: number,
   active: boolean,
   stickers: TextData[],
-  updatePos: (id: string, x: number, y: number, rotation: number, scale: number) => void }
+  editText: (id: string) => void,
+  updatePos: (id: string, x: number, y: number, rotation: number, scale: number, data: any) => void }
 ) => {
   let container: HTMLDivElement;
   const [containerPos, setContainerPos] = createSignal([0, 0] as [number, number]);
@@ -237,6 +247,7 @@ export const MediaEditorTextsPanel = (props: {
       <Index each={props.stickers}>
         { (sticker) => <MediaEditorText
           startDrag={props.startDrag}
+          editText={() => props.editText(sticker().id)}
           endDrag={() => props.endDrag(sticker().id)}
           top={props.top} left={props.left} width={props.width} height={props.height}
           upd={props.upd} crop={props.crop}
@@ -244,8 +255,8 @@ export const MediaEditorTextsPanel = (props: {
           x={sticker().x} y={sticker().y}
           rotation={sticker().rotation}
           scale={sticker().scale}
-          updatePos={(x, y, rotation, scale) => {
-            props.updatePos(sticker().id, x, y, rotation, scale);
+          updatePos={(x, y, rotation, scale, data) => {
+            props.updatePos(sticker().id, x, y, rotation, scale, data);
             setDragPos([0, 0]);
             setHandlerDragPos([0, 0]);
           }}
