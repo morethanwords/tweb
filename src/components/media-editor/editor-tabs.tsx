@@ -1,4 +1,4 @@
-import {createSignal, JSX} from 'solid-js';
+import {JSX} from 'solid-js';
 import {Tabs} from '../sidebarRight/tabs/boosts';
 
 export const MediaEditorTabs = (props: { tabs: JSX.Element[], tab: number, setTab: (val: number) => void }) => {

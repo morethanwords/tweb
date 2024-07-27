@@ -1,6 +1,6 @@
 import {EditorHeader} from './media-editor/editor-header';
 import {MediaEditorGeneralSettings} from './media-editor/tabs/editor-general-settings';
-import {createEffect, createSignal, onMount, untrack} from 'solid-js';
+import {createEffect, createSignal, onMount, Show, untrack} from 'solid-js';
 import {MediaEditorPaintSettings} from './media-editor/tabs/editor-paint-settings';
 import {MediaEditorTextSettings} from './media-editor/tabs/editor-text-settings';
 import {MediaEditorCropSettings} from './media-editor/tabs/editor-crop-settings';
@@ -23,6 +23,7 @@ import {
 } from './media-editor/glPrograms';
 import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
 import Button from './button';
+import {AddTextPanel} from './media-editor/media-panels/add-text-panel';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -753,6 +754,19 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   const saveButton = Button('btn-circle btn-corner', {icon: 'check'});
   saveButton.onclick = () => testExport();
 
+  // text editing
+  const editingTextSignal = createSignal(false);
+  const [editingText, setEditingText] = editingTextSignal;
+
+  createEffect(() => {
+    if(tab() === 2) {
+      setEditingText(true); // or the selected text
+    } else {
+      // save or cnacel whatever
+      setEditingText(false);
+    }
+  })
+
   return <div class='media-editor' onClick={() => close()}>
     <div ref={mediaEditor} class='media-editor__container' onClick={ev => ev.stopImmediatePropagation()}>
       <div ref={container} class='media-editor__main-area'>
@@ -827,6 +841,9 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
           width={container.clientWidth - viewCropOffset()[0]}
           height={container.clientHeight - viewCropOffset()[1]}
           linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
+        <Show when={tab() === 2 && editingText()}>
+          <AddTextPanel editingText={editingTextSignal} />
+        </Show>
       </div>
       <div class='media-editor__settings'>
         <EditorHeader undoActive={undoActive()} redoActive={redoActive()} undo={undo} redo={redo} close={close} />

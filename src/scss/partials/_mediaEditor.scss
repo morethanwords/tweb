@@ -685,6 +685,17 @@ $inactive-opacity: .4;
       justify-content: center;
     }
 
+    &.edit-text-panel {
+      // transition: background-color 0.3s ease-in-out;
+      background: rgba(black, 0.5);
+
+      .text-edit {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
     &.disabled {
       pointer-events: none;
     }

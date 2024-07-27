@@ -139,9 +139,14 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   public async openMediaEditor(peerId: PeerId) {
+    console.dir('btn');
+    console.dir(this.btnConfirmOnEnter);
+    const temp = this.btnConfirmOnEnter;
+    this.btnConfirmOnEnter = null;
+    // restore when closing the window
     const pageEl = document.getElementById('page-chats') as HTMLDivElement;
     if(pageEl.getElementsByClassName('media-editor').length) return;
-    // TODO: remove this, append the button to each image separately
+    // TODO: remove this, append the button to each image separatelyя
     const {files, willAttach, mediaContainer} = this;
     console.info(willAttach);
     // ---
