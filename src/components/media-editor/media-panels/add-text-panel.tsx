@@ -1,4 +1,4 @@
-import {createSignal, onMount, Show, Signal} from 'solid-js';
+import {createEffect, createSignal, onMount, Show, Signal} from 'solid-js';
 import {max} from 'big-integer';
 
 export const AddTextPanel = (props: {editingText: Signal<any>}) => {
@@ -13,16 +13,13 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     ctx1.font = `${size}px ${font}`;
     ctx1.lineWidth = 5;
     ctx1.fillStyle = 'white';
-    const lines = text.split('\n');
+    const lines = text.split('\n').filter(Boolean);
     const linesData = lines.map(line => {
-      const newLine = line.trim();
-      const {actualBoundingBoxRight, actualBoundingBoxLeft, actualBoundingBoxAscent, actualBoundingBoxDescent} = ctx1.measureText(newLine);
-      return {line: newLine, width: actualBoundingBoxRight + actualBoundingBoxLeft, height: actualBoundingBoxAscent + actualBoundingBoxDescent};
+      const {actualBoundingBoxRight, actualBoundingBoxLeft, actualBoundingBoxAscent, actualBoundingBoxDescent} = ctx1.measureText(line.trim());
+      return {line: line.trim(), width: actualBoundingBoxRight + actualBoundingBoxLeft, height: actualBoundingBoxAscent + actualBoundingBoxDescent};
     });
-    console.info(linesData);
     const maxWidth = Math.max(...linesData.map(({width}) => width));
     const maxHeight = Math.max(...linesData.map(({height}) => height));
-    // mb same for height
     const fullLinesData = linesData.map(line => {
       if(position === 0) {
         return {...line, x: 0, end: maxWidth - line.width};
@@ -33,8 +30,8 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
       }
     });
     const paddingSize = size;
-    canvas.width = 600; // paddingSize + maxWidth;
-    canvas.height = 600; // fullLinesData.length * (maxHeight + paddingSize);
+    canvas.width = maxWidth + size;
+    canvas.height = 600;
 
     const ctx = canvas.getContext('2d');
     ctx.font = `${size}px ${font}`;
@@ -44,7 +41,6 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     const radiusSize = size / 2;
 
     const drawBottomRight = (x: number, y: number, radius: number) => {
-      // ctx.beginPath();
       ctx.moveTo(x, y - radius); // first point
       ctx.arcTo(x, y, x + radius, y, radius); // second point and third + radius
       ctx.lineTo(x + radius, y);
@@ -55,7 +51,6 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     }
 
     const drawBottomLeft = (x: number, y: number, radius: number) => {
-      // ctx.beginPath();
       ctx.moveTo(x, y - radius); // first point
       ctx.arcTo(x, y, x - radius, y, radius); // second point and third + radius
       ctx.lineTo(x - radius, y);
@@ -66,7 +61,6 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     }
 
     const drawTopLeft = (x: number, y: number, radius: number) => {
-      // ctx.beginPath();
       ctx.moveTo(x, y + radius); // first point
       ctx.arcTo(x, y, x - radius, y, radius); // second point and third + radius
       ctx.lineTo(x - radius, y);
@@ -77,7 +71,6 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     }
 
     const drawTopRight = (x: number, y: number, radius: number) => {
-      // ctx.beginPath();
       ctx.moveTo(x, y + radius); // first point
       ctx.arcTo(x, y, x + radius, y, radius); // second point and third + radius
       ctx.lineTo(x + radius, y);
@@ -88,80 +81,45 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     }
 
     const rectRadius = (radius: number) => {
-      return Math.min(radius / 2, radiusSize);
+      return Math.max(-radiusSize, Math.min(radius / 2, radiusSize));
     }
 
     const fixRadius = (radius: number) => {
       return Math.max(0, radius);
     }
 
-    ctx.translate(50, 50);
-
+    ctx.fillStyle = 'white';
     fullLinesData.forEach((line, idx) => {
-      const first = idx === 0;
-      const last = idx === fullLinesData.length - 1;
-      ctx.fillStyle = 'white';
-      let radius = [];
-      if(first && last) {
-        radius = [radiusSize];
-      } else if(first) {
-        const next = fullLinesData[idx + 1];
-        const rightBottomOffset = line.end - next.end;
-        const leftBottomOffset = next.x - line.x;
-        const leftBottomRadius = rectRadius(leftBottomOffset);
-        const rightBottomRadius = rectRadius(rightBottomOffset);
-        radius = [radiusSize, radiusSize, fixRadius(rightBottomRadius), fixRadius(leftBottomRadius)];
+      const prev = fullLinesData[idx - 1];
+      const next = fullLinesData[idx + 1];
 
-        if(leftBottomRadius !== 0) {
-          drawBottomLeft(line.x, idx * (maxHeight + paddingSize) + maxHeight + size, fixRadius(-leftBottomRadius));
-        }
-        if(rightBottomRadius !== 0) {
-          drawBottomRight(line.end + size, idx * (maxHeight + paddingSize) + maxHeight + size, fixRadius(-rightBottomRadius));
-        }
-      } else if(last) {
-        const prev = fullLinesData[idx - 1];
-        const topLeftOffset = prev.x - line.x;
-        const topRightOffset = line.end - prev.end;
-        const leftTopRadius = rectRadius(topLeftOffset);
-        const rightTopRadius = rectRadius(topRightOffset);
-        radius = [fixRadius(leftTopRadius), fixRadius(rightTopRadius), radiusSize, radiusSize];
+      const leftTopRadius = rectRadius(prev?.x - line.x);
+      const rightTopRadius = rectRadius(line.end - prev?.end);
 
-        if(leftTopRadius !== 0) {
-          drawTopLeft(line.x, idx * (maxHeight + paddingSize), fixRadius(-leftTopRadius));
-        }
-        if(rightTopRadius !== 0) {
-          drawTopRight(line.end + size, idx * (maxHeight + paddingSize), fixRadius(-rightTopRadius));
-        }
-      } else {
-        const prev = fullLinesData[idx - 1];
-        const next = fullLinesData[idx + 1];
+      const leftBottomRadius = rectRadius(next?.x - line.x);
+      const rightBottomRadius = rectRadius(line.end - next?.end);
 
-        const rightBottomOffset = line.end - next.end;
-        const leftBottomOffset = next.x - line.x;
-        const leftBottomRadius = rectRadius(leftBottomOffset);
-        const rightBottomRadius = rectRadius(rightBottomOffset);
+      const radius = [
+        prev ? fixRadius(leftTopRadius) : radiusSize,
+        prev ? fixRadius(rightTopRadius) : radiusSize,
+        next ? fixRadius(rightBottomRadius): radiusSize,
+        next ? fixRadius(leftBottomRadius) : radiusSize
+      ];
 
-        const topLeftOffset = prev.x - line.x;
-        const topRightOffset = line.end - prev.end;
-        const leftTopRadius = rectRadius(topLeftOffset);
-        const rightTopRadius = rectRadius(topRightOffset);
-
-        radius = [fixRadius(leftTopRadius), fixRadius(rightTopRadius), fixRadius(rightBottomRadius), fixRadius(leftBottomRadius)];
-
-        if(leftBottomRadius !== 0) {
-          drawBottomLeft(line.x, idx * (maxHeight + paddingSize) + maxHeight + size, fixRadius(-leftBottomRadius));
-        }
-        if(rightBottomRadius !== 0) {
-          drawBottomRight(line.end + size, idx * (maxHeight + paddingSize) + maxHeight + size, fixRadius(-rightBottomRadius));
-        }
-
-        if(leftTopRadius !== 0) {
-          drawTopLeft(line.x, idx * (maxHeight + paddingSize), fixRadius(-leftTopRadius));
-        }
-        if(rightTopRadius !== 0) {
-          drawTopRight(line.end + size, idx * (maxHeight + paddingSize), fixRadius(-rightTopRadius));
-        }
+      if(leftBottomRadius !== 0) {
+        drawBottomLeft(line.x, idx * (maxHeight + paddingSize) + maxHeight + size, fixRadius(-leftBottomRadius));
       }
+      if(rightBottomRadius !== 0) {
+        drawBottomRight(line.end + size, idx * (maxHeight + paddingSize) + maxHeight + size, fixRadius(-rightBottomRadius));
+      }
+
+      if(leftTopRadius !== 0) {
+        drawTopLeft(line.x, idx * (maxHeight + paddingSize), fixRadius(-leftTopRadius));
+      }
+      if(rightTopRadius !== 0) {
+        drawTopRight(line.end + size, idx * (maxHeight + paddingSize), fixRadius(-rightTopRadius));
+      }
+
       ctx.roundRect(line.x, idx * (maxHeight + paddingSize), line.width + size, maxHeight + size, radius);
       ctx.closePath();
       ctx.fill();
@@ -173,14 +131,18 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
   }
 
   onMount(() => {
-    /* setTimeout(() => {
+    setTimeout(() => {
       content.focus();
-    }, 150); */
+    }, 150);
     console.info('MOUNT', canvas);
 
     canvas.width = 600;
     canvas.height = 600;
     drawText('hello sdkjfhgsdkjh ired \n fuck olfhslidhaslff1hl 1ff \n browtfiamsuposetodo\n dsfkgadsfklgdblfasy;adisy \n fuck you sfdffmean', 40, 'serif', 1);
+  });
+
+  createEffect(() => {
+    drawText(newText(), 40, 'serif', 1);
   })
 
   /* window.addEventListener('keypress', ev => {
@@ -201,7 +163,7 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
         onInput={(e) => setNewText(e.currentTarget.value)} /> */ }
     <div class='text-edit' ref={content} style={{'color': 'white', 'white-space': 'pre-wrap', 'min-width': '100px', 'min-height': '100px'}}
       contentEditable={true}
-      onKeyDown={key => console.info(key)}
+      // onKeyDown={key => console.info(key)}
       onInput={() => setNewText(content.innerText)}>
       {setNewText()}
     </div>
