@@ -269,6 +269,10 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   let container: HTMLDivElement;
   let mediaEditor: HTMLDivElement;
   let img: HTMLImageElement;
+
+  let hsvBuffer: Uint8Array;
+  let cdtBuffer: Uint8Array;
+
   const plz = new Image();
 
   const [globalPos, setGlobalPos] = createSignal([0, 0]);
@@ -302,19 +306,14 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     return [x - restX / 2, y - restY / 2];
   }
 
-  const drawTextureWithFilters = (img: any, sourceWidth: number, sourceHeight: number) => {
-    console.info('redraw', mediaEditorState.filters.enhance);
-    // get data from filters!!
-    const hsvBuffer = getHSVTexture(gl, img, sourceWidth, sourceHeight);
-    // calculate CDT Data
-    const cdtBuffer = calcCDT(hsvBuffer, sourceWidth, sourceHeight);
+  const drawTextureWithFilters = (img: any, sourceWidth: number, sourceHeight: number, forceUpdateBuffer = true) => {
     useProgram(gl, filterGLProgram);
-    originalTextureWithFilters = executeEnhanceFilterToTexture(gl, filterGLProgram, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer, enhanceProgram => {
+    executeEnhanceFilterToTexture(gl, filterGLProgram, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer, enhanceProgram => {
       gl.uniform1f(gl.getUniformLocation(enhanceProgram, 'intensity'), (mediaEditorState.filters.enhance || 0) / 100);
     });
+    originalTextureWithFilters = getGLFramebufferData(gl, sourceWidth, sourceHeight);
   }
 
-  // filters start =========
   onMount(() => {
     const {left, top} = mediaEditor.getBoundingClientRect();
     setGlobalPos([left, top]);
@@ -339,32 +338,17 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
       sourceWidth = img.width;
       sourceHeight = img.height;
+
+      hsvBuffer = getHSVTexture(gl, this as any, sourceWidth, sourceHeight);
+      cdtBuffer = calcCDT(hsvBuffer, sourceWidth, sourceHeight);
+
       filterGLProgram = createEnhanceFilterProgram(gl);
       useProgram(gl, filterGLProgram);
       drawTextureWithFilters(this, sourceWidth, sourceHeight);
       currentTexture = originalTextureWithFilters;
       drawTextureDebug(gl, sourceWidth, sourceHeight, originalTextureWithFilters);
-      return;
-      /* const enhanceProgram = executeEnhanceFilter(gl, sourceWidth, sourceHeight, hsvBuffer, cdtBuffer);
-      setFN(() => (int: number) => {
-        gl.uniform1f(gl.getUniformLocation(enhanceProgram, 'intensity'), int);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      });
-      */
     };
   });
-
-  const [fn, setFN] = createSignal((ebn: number) => { });
-  createEffect(() => {
-    const en = mediaEditorState.filters.enhance;
-    console.info(en);
-
-    if(fn()) {
-      fn()(en / 100);
-    }
-  });
-
-  // filter end ===========
 
   // rotate start =========
   const angle = () => mediaEditorState.angle;
@@ -712,14 +696,14 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         currentTexture = dat;
       } else {
         // draw form the beginning
-        redrawAllUndo();
+        redrawAllUndo(true);
       }
     }
   }
 
-  const redrawAllUndo = () => {
+  const redrawAllUndo = (force: boolean) => {
     const drawCommands = untrack(undoActions).filter(action => action.type === 'paint') as { type: 'paint', action: UndoRedoPaintAction }[];
-    drawTextureWithFilters(img, sourceWidth, sourceHeight);
+    drawTextureWithFilters(img, sourceWidth, sourceHeight, force);
     currentTexture = originalTextureWithFilters;
     drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
     drawCommands.forEach(command => {
@@ -895,7 +879,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   createEffect(() => {
     mediaEditorState.filters.date; // triggers the effect
-    redrawAllUndo();
+    redrawAllUndo(false);
   })
 
   return <div class='media-editor' onClick={() => close()}>

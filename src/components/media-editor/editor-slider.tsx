@@ -20,7 +20,6 @@ export const MediaEditorSlider = (props: { value?: number, color?: string, label
     console.info('val upd', props.value);
     if(!props.value && props.value !== 0) return;
     range.update(props.value);
-    range.updateFakeProgress(props.value);
   });
   return range.container;
 }

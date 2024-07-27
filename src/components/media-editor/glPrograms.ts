@@ -376,13 +376,13 @@ export const useProgram = (gl: WebGLRenderingContext, program: WebGLProgram) => 
 export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView, fn: (program: WebGLProgram) => void) => {
   const cdtTexture = createTextureFromData(gl, 256, 16, cdtBuffer);
   const hsvSourceTexture = createTextureFromData(gl, width, height, hsvBuffer);
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
 
   const targetTexture = createTextureFromData(gl, width, height, null);
   const fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0);
-  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
-  createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.viewport(0, 0, width, height);
   gl.clear(gl.COLOR_BUFFER_BIT);
@@ -398,8 +398,12 @@ export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, shaderP
 
   fn(shaderProgram);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-  const resBuffer = new Uint8Array(width * height * 4);
-  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, resBuffer);
-  return resBuffer;
 }
+
+/* export const redrawEnhanceFilterToTexture = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, width: number, height: number, hsvBuffer: ArrayBufferView, cdtBuffer: ArrayBufferView, fn: (program: WebGLProgram) => void) => {
+  const targetTexture = createTextureFromData(gl, width, height, null);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0);
+} */
+
