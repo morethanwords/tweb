@@ -33,7 +33,7 @@ const hexToCol = (hex: string, idx: number, mult: number): number => {
   return parseInt(hex.substring(idx, idx + 2), 16) * mult;
 }
 
-export const TextRenderer = (props: { text: string, state: MediaEditorSettings['text'] }) => {
+export const TextRenderer = (props: { textSizeUpdate?: (val: number[]) => void, text: string, state: MediaEditorSettings['text'] }) => {
   let canvas: HTMLCanvasElement;
 
   const drawText = (text: string, size: number, font: string, position: number, outline: number, color: string) => {
@@ -60,6 +60,7 @@ export const TextRenderer = (props: { text: string, state: MediaEditorSettings['
     const paddingSize = size;
     canvas.width = maxWidth + size + paddingSize;
     canvas.height = lines.length * (maxHeight + size) + paddingSize;
+    props.textSizeUpdate?.([canvas.width, canvas.height]);
 
     const ctx = canvas.getContext('2d');
     ctx.translate(paddingSize / 2, -1);

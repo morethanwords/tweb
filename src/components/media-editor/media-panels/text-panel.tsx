@@ -155,24 +155,26 @@ const MediaEditorText = (props: {
     setInitHandleDragPos([0, 0]);
   }
 
+  const [textSize, setTextSize] = createSignal([0, 0]);
+
   return <div draggable={true} onDragStart={onDragStart} onDragEnd={onDragEnd}
-    onClick={props.select} classList={{'media-editor-placed-sticker': true, 'selected': props.selected}}
+    onClick={props.select} classList={{'media-editor-placed-sticker': true, 'text': true, 'selected': props.selected}}
     style={{
-      'width': `${appScale() * 200}px`,
-      'height': `${appScale() * 200}px`,
+      'width': `${appScale() * textSize()[0]}px`,
+      'height': `${appScale() * textSize()[1]}px`,
       'transform': `translate(${Math.round(posss()[0])}px, ${Math.round(posss()[1])}px) rotate(${appRotation()}deg)`,
       'transform-origin': '0 0'
     }}>
     <div style={{
       'transform': `translate(-50%, -50%)`,
       'transform-origin': '0 0',
-      'width': `${appScale() * 200}px`,
-      'height': `${appScale() * 200}px`
+      'width': `${appScale() * textSize()[0]}px`,
+      'height': `${appScale() * textSize()[1]}px`
     }}>
       <div style={{'transform-origin': '0 0', 'transform': `scale(${appScale()})`}}>
-        <div class='sticker-container with-text'>
+        <div class='sticker-container'>
           { /* TOOD: upscale text (yes even more bcoz we scale and it's a bit blurry) */ }
-          <TextRenderer text={props.textData.text} state={props.textData} />
+          <TextRenderer textSizeUpdate={setTextSize} text={props.textData.text} state={props.textData} />
         </div>
       </div>
       <Show when={props.selected}>
