@@ -24,6 +24,7 @@ import {
 import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
 import Button from './button';
 import {AddTextPanel} from './media-editor/media-panels/add-text-panel';
+import {MediaEditorTextsPanel} from './media-editor/media-panels/text-panel';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -189,6 +190,11 @@ type PropertyChange<T> = {
 type TextData = {
   media: 'text';
   text: string; // or string[]
+  color: number | string;
+  align: number;
+  outline: number;
+  size: number;
+  font: number;
 }
 
 type StickerData = {
@@ -199,22 +205,32 @@ type StickerData = {
 type MediaData = TextData | StickerData;
 
 type UndoRedoUpdateAction = {
-  id: string;
   type: 'update';
+  mediaType: 'sticker' | 'text';
+  id: string;
   x: PropertyChange<number>;
   y: PropertyChange<number>;
   rotation: PropertyChange<number>;
   scale: PropertyChange<number>;
+
+  data?: PropertyChange<{
+    text: string;
+    color: number | string;
+    align: number;
+    outline: number;
+    size: number;
+    font: number;
+  }>,
 }
 
 type UndoRedoMediaAction = {
   type: 'create' | 'delete';
+  id: string;
   x: number;
   y: number
-  id: string;
-
   rotation: number;
   scale: number;
+
   data: MediaData;
 }
 
@@ -534,33 +550,41 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // undo redo end ========
 
-  // stickers start ==========
-  const [stickers, setStickers] = createSignal([]);
+  // media start
   let dragInitData: any = null;
   const startDragInitData = (val: any) => {
     dragInitData = val;
   }
 
+  // stickers start ==========
+  const [stickers, setStickers] = createSignal([]);
   const endMediaDrag = (id: string) => {
     // add action
 
     const sticker = stickers().find(st => st.id === id);
-    const {x, y, rotation, scale} = dragInitData;
+    const {x, y, rotation, scale} = dragInitData; // get data for text too
     addAction({
       type: 'media',
       action: {
         type: 'update',
+        mediaType: 'sticker',
         id,
         x: {prev: x, next: sticker.x},
         y: {prev: y, next: sticker.y},
         rotation: {prev: rotation, next: sticker.rotation},
         scale: {prev: scale, next: sticker.scale}
+        // set text prev next data
       }
     });
   }
 
-  const updatePos = (id: string, x: number, y: number, rotation: number, scale: number) => {
+  // text too bro
+  const updateStickerPos = (id: string, x: number, y: number, rotation: number, scale: number) => {
     setStickers(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y, rotation, scale}) : sticker));
+  };
+
+  const updateTextPos = (id: string, x: number, y: number, rotation: number, scale: number) => {
+    setTexts(list => list.map(sticker => sticker.id === id ? ({...sticker, x, y, rotation, scale}) : sticker));
   };
 
   const stickerCLick = async(val: any, doc: any) => {
@@ -589,8 +613,39 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
   // stickers end ========
 
-  // execution pipeline start =====
+  // text start ========
+  const [texts, setTexts] = createSignal([]);
 
+  const createNewText = (text: string, data: {
+    color: number | string;
+    align: number;
+    outline: number;
+    size: number;
+    font: number;
+  }) => {
+    const cropWidth = cropArea()[1].x - cropArea()[0].x;
+    const cropHeight = cropArea()[1].y - cropArea()[0].y;
+    addAction({
+      type: 'media',
+      action: {
+        type: 'create',
+        id: crypto.randomUUID(),
+        x: cropArea()[0].x + (cropWidth / 2),
+        y: cropArea()[0].y + (cropHeight / 2),
+        rotation: angle(),
+        scale: 1,
+        data: {
+          media: 'text',
+          text,
+          ...data
+        }
+      }
+    });
+  }
+
+  // text end ==========
+
+  // execution pipeline start =====
   const executeAction = (action: UndoRedoAction, forward: boolean) => {
     if(action.type === 'media') {
       const {id, type} = action.action;
@@ -599,16 +654,21 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         const y = action.action.y[forward ? 'next' : 'prev'];
         const rotation = action.action.rotation[forward ? 'next' : 'prev'];
         const scale = action.action.scale[forward ? 'next' : 'prev'];
-        updatePos(id, x, y, rotation, scale);
+
+        if(action.action.mediaType === 'text') {
+          updateTextPos(id, x, y, rotation, scale);
+        } else {
+          updateStickerPos(id, x, y, rotation, scale);
+        }
         // for text too
       } else {
         const {data: {media, ...mediaData}, ...other} = action.action;
         if((type === 'create') === forward) {
-          // same with text
-          setStickers(prev => [...prev, {id, ...other, ...mediaData}]);
+          const fn = action.action.data.media === 'text' ? setTexts : setStickers;
+          fn(prev => [...prev, {id, ...other, ...mediaData}]);
         } else {
-          // same with text
-          setStickers(prev => prev.filter(sticker => sticker.id !== id));
+          const fn = action.action.data.media === 'text' ? setTexts : setStickers;
+          fn(prev => prev.filter(sticker => sticker.id !== id));
         }
       }
     } else {
@@ -627,6 +687,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
   }
 
+  createEffect(() => console.info(undoActions()));
+
   const redrawAllUndo = () => {
     const drawCommands = untrack(undoActions).filter(action => action.type === 'paint') as { type: 'paint', action: UndoRedoPaintAction }[];
     drawTextureWithFilters(img, sourceWidth, sourceHeight);
@@ -640,7 +702,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     currentTexture = dat;
   }
   // execution pipeline end =====
-
   createEffect(() => {
     const trackedPoints = points();
     if(!gl) {
@@ -789,7 +850,19 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
                     endDrag={endMediaDrag}
                     upd={updatePointPos}
                     stickers={stickers()}
-                    updatePos={updatePos}
+                    updatePos={updateStickerPos}
+                    crop={cropArea() as [Point, Point]}
+                    top={globalPos()[1] + viewCropOffset()[1] / 2}
+                    left={globalPos()[0] + viewCropOffset()[0] / 2}
+                    width={container.clientWidth - viewCropOffset()[0]}
+                    height={container.clientHeight - viewCropOffset()[1]}
+                  />
+                  <MediaEditorTextsPanel active={tab() === 2}
+                    startDrag={startDragInitData}
+                    endDrag={endMediaDrag}
+                    upd={updatePointPos}
+                    stickers={texts()}
+                    updatePos={updateTextPos}
                     crop={cropArea() as [Point, Point]}
                     top={globalPos()[1] + viewCropOffset()[1] / 2}
                     left={globalPos()[0] + viewCropOffset()[0] / 2}
@@ -842,7 +915,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
           height={container.clientHeight - viewCropOffset()[1]}
           linesSignal={linesSignal} active={tab() === 3} state={mediaEditorState.paint} />
         <Show when={tab() === 2 && editingText()}>
-          <AddTextPanel state={mediaEditorState.text} editingText={editingTextSignal} />
+          <AddTextPanel createNewText={createNewText} state={mediaEditorState.text} editingText={editingTextSignal} />
         </Show>
       </div>
       <div class='media-editor__settings'>
