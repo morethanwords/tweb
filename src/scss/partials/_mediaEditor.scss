@@ -688,6 +688,10 @@ $inactive-opacity: .4;
     &.edit-text-panel {
       // transition: background-color 0.3s ease-in-out;
       background: rgba(black, 0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
 
       .text-edit {
         display: flex;

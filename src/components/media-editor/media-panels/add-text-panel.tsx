@@ -1,13 +1,12 @@
-import {createEffect, createSignal, onMount, Show, Signal} from 'solid-js';
-import {max} from 'big-integer';
+import {createEffect, createSignal, onMount, Signal} from 'solid-js';
 
 export const AddTextPanel = (props: {editingText: Signal<any>}) => {
   console.info('ADD TEXT PANEL');
   const [editingText, setEditingText] = props.editingText;
   let content: HTMLDivElement;
   let canvas: HTMLCanvasElement;
+  const [newText, setNewText] = createSignal('_');
 
-  const [newText, setNewText] = createSignal('');
   const drawText = (text: string, size: number, font: string, position: 0 | 1 | 2) => {
     const ctx1 = canvas.getContext('2d');
     ctx1.font = `${size}px ${font}`;
@@ -16,13 +15,13 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     const lines = text.split('\n').filter(Boolean);
     const linesData = lines.map(line => {
       const {actualBoundingBoxRight, actualBoundingBoxLeft, actualBoundingBoxAscent, actualBoundingBoxDescent} = ctx1.measureText(line.trim());
-      return {line: line.trim(), width: actualBoundingBoxRight + actualBoundingBoxLeft, height: actualBoundingBoxAscent + actualBoundingBoxDescent};
+      return {line: line.trim(), width: actualBoundingBoxRight + actualBoundingBoxLeft, height: actualBoundingBoxAscent - size / 5}; // subtract if lower bounding is larger of wtf
     });
     const maxWidth = Math.max(...linesData.map(({width}) => width));
-    const maxHeight = Math.max(...linesData.map(({height}) => height));
+    const maxHeight = Math.min(...linesData.map(({height}) => height));
     const fullLinesData = linesData.map(line => {
       if(position === 0) {
-        return {...line, x: 0, end: maxWidth - line.width};
+        return {...line, x: 0, end: line.width};
       } else if(position === 1) {
         return {...line, x: (maxWidth - line.width) / 2, end: maxWidth - ((maxWidth - line.width) / 2)};
       } else {
@@ -30,13 +29,13 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
       }
     });
     const paddingSize = size;
-    canvas.width = maxWidth + size;
+    canvas.width = maxWidth + size + 2;
     canvas.height = 600;
 
     const ctx = canvas.getContext('2d');
+    ctx.translate(-1, -1);
     ctx.font = `${size}px ${font}`;
     ctx.fillStyle = 'white';
-    ctx.moveTo(0, 0);
 
     const radiusSize = size / 2;
 
@@ -126,7 +125,7 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     });
     fullLinesData.forEach((line, idx) => {
       ctx.fillStyle = 'red';
-      ctx.fillText(line.line, line.x + size / 2, idx * (maxHeight + paddingSize) + size * 1.25);
+      ctx.fillText(line.line, line.x + size / 2, idx * (maxHeight + paddingSize) + size);
     });
   }
 
@@ -136,37 +135,38 @@ export const AddTextPanel = (props: {editingText: Signal<any>}) => {
     }, 150);
     console.info('MOUNT', canvas);
 
-    canvas.width = 600;
-    canvas.height = 600;
-    drawText('hello sdkjfhgsdkjh ired \n fuck olfhslidhaslff1hl 1ff \n browtfiamsuposetodo\n dsfkgadsfklgdblfasy;adisy \n fuck you sfdffmean', 40, 'serif', 1);
+    // canvas.width = 600;
+    // canvas.height = 600;
+    drawText('hello sdkjfhgdfsdfssdkjh ired \n fuck olfhslidhaslff1hl 1ff \n browtfiamsuposetodo\n dsfkgadsfklgdblfasy;adisy \n fuck you sfdffmean', 40, 'serif', 0);
   });
 
   createEffect(() => {
-    drawText(newText(), 40, 'serif', 1);
+    drawText(newText(), 40, 'serif', 2);
   })
 
-  /* window.addEventListener('keypress', ev => {
+  window.addEventListener('click', ev => {
     ev.preventDefault();
     ev.stopImmediatePropagation();
-    console.info('evev', ev);
-  }) */
+    content.focus();
+  })
 
-  /* const old = document.body.onkeypress;
-  document.body.onkeypress = ev => {
-    console.info('aaaa', ev);
-  } */
+  window.addEventListener('key', ev => {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    content.focus();
+  })
 
-  // lets tye to hide the contenteditable (but focus on it)
-  // maybe not hide all, keep the backdrop idk
-  return <div classList={{'media-paint-panel': true, 'media-editor-stickers-panel': true, 'edit-text-panel': true}}>
-    { /* <input value={newText()}
-        onInput={(e) => setNewText(e.currentTarget.value)} /> */ }
+  return <div onclick={ev => {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    setEditingText(false);
+  }} classList={{'media-paint-panel': true, 'media-editor-stickers-panel': true, 'edit-text-panel': true}}>
     <div class='text-edit' ref={content} style={{'color': 'white', 'white-space': 'pre-wrap', 'min-width': '100px', 'min-height': '100px'}}
       contentEditable={true}
-      // onKeyDown={key => console.info(key)}
+      onKeyDown={key => console.info(key)}
       onInput={() => setNewText(content.innerText)}>
       {setNewText()}
     </div>
-    <canvas style={{background: 'black'}} ref={canvas}></canvas>
+    <canvas style={{background: 'transparent'}} ref={canvas}></canvas>
   </div>
 };
