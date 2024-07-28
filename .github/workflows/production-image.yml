@@ -45,3 +45,24 @@ jobs:
 
         run: |
           docker push ${{ vars.DOCKERHUB_USERNAME}}/tweb:latest
+
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read version from .env
+        id: env
+        run: echo "::set-output name=PRODUCTION_BUILD_VERSION::$(grep ^PRODUCTION_BUILD_VERSION= .env | cut -d'=' -f2)"
+
+      - name: Pull versioned image
+        run: |
+          version=${{ steps.env.outputs.PRODUCTION_BUILD_VERSION }}
+          docker pull ${{ vars.DOCKERHUB_USERNAME}}/tweb:${version}
+
+      - name: Pull latest image
+        run: docker pull ${{ vars.DOCKERHUB_USERNAME}}/tweb:latest
