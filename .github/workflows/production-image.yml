@@ -38,7 +38,7 @@ jobs:
 
       - name: Push versioned image
         run: |
-          version=${{ steps.env.outputs.VERSION }}
+          version=${{ steps.env.outputs.PRODUCTION_BUILD_VERSION }}
           docker push  ${{ vars.DOCKERHUB_USERNAME}}/tweb:${version}
 
       - name: Push latest image
