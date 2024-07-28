@@ -330,7 +330,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'width'), sourceWidth);
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'height'), sourceHeight);
 
-      console.info(mediaEditorState.filters.brightness);
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'exposure'), (mediaEditorState.filters.brightness || 0) / 100);
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'contrast'), ((mediaEditorState.filters.contrast || 1) / 100) * 0.3 + 1);
 
@@ -341,15 +340,15 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'saturation'), saturation + 1);
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'warmth'), (mediaEditorState.filters.warmth || 0) / 100);
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'fadeAmount'), (mediaEditorState.filters.fade || 0) / 100);
-      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'highlights'), (((mediaEditorState.filters.highlights || 1) / 100) * 0.75 + 100.0) / 100.0);
-      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'shadows'), (((mediaEditorState.filters.shadows || 1) / 100) * 0.55 + 100) / 100);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'highlights'), (((mediaEditorState.filters.highlights || 1)) * 0.75 + 100.0) / 100.0);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'shadows'), (((mediaEditorState.filters.shadows || 1)) * 0.55 + 100) / 100);
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'vignette'), (mediaEditorState.filters.vignette || 0) / 100);
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'grain'), ((mediaEditorState.filters.grain || 0) / 100) * 0.04);
 
-      gl.uniform3f(gl.getUniformLocation(filtersProgram, 'highlightsTintColor'), 1, 0, 0); // some color idk -> 0
+      gl.uniform3f(gl.getUniformLocation(filtersProgram, 'highlightsTintColor'), 1, 1, 1); // some color idk -> 0
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'highlightsTintIntensity'), 0.25); // 0 -> 0.25
 
-      gl.uniform3f(gl.getUniformLocation(filtersProgram, 'shadowsTintColor'), 1, 0, 0); // some color idk -> 0
+      gl.uniform3f(gl.getUniformLocation(filtersProgram, 'shadowsTintColor'), 0, 0, 0); // some color idk -> 0
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'shadowsTintIntensity'), 0.25); // 0 -> 0.25
     });
 
