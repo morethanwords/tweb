@@ -793,35 +793,49 @@ export default class PopupNewMedia extends PopupElement {
       const blb = this.editedImg;
       console.info('bbbbl', blb);
 
-      const file = new File([blb?.data], 'filename.mp4', {type: 'video/mp4'});
-
+      const file = blb?.img ?
+        new File([blb?.data], 'filename.png', {type: 'image/png'}) :
+        new File([blb?.data], 'filename.mp4', {type: 'video/mp4'});
       const willSendPaidMedia = this.willSendPaidMedia();
-
 
       const d: SendFileDetails[] = sendFileParams.map((params) => {
         console.info('ppr', params);
         console.info('pris', params.scaledBlob || params.file);
-        return {
-          ...params,
+        if(blb) {
+          if(blb.img) {
+            return {
+              ...params,
+              width: blb.width,
+              height: blb.height,
+              objectURL: URL.createObjectURL(blb.data),
+              file,
+              spoiler: willSendPaidMedia ? undefined : !!params.mediaSpoiler
+            };
+          } else {
+            return {
+              ...params,
+              width: blb.width,
+              height: blb.height,
+              objectURL: URL.createObjectURL(blb.data),
+              noSound: true,
+              duration: blb.duration,
+              thumb: {
+                blob: blb.thumb,
+                size: new MediaSize(blb.width, blb.height),
+                url: URL.createObjectURL(blb.thumb)
+              },
+              file,
+              spoiler: willSendPaidMedia ? undefined : !!params.mediaSpoiler
 
-          width: blb.width,
-          height: blb.height,
-          objectURL: URL.createObjectURL(blb.data),
-          noSound: true,
-          duration: blb.duration,
-          thumb: {
-            blob: blb.thumb,
-            size: new MediaSize(blb.width, blb.height),
-            url: URL.createObjectURL(blb.thumb)
-          },
-          file,
-          // file: params.scaledBlob || params.file,
-          spoiler: !!params.mediaSpoiler
-
-          file: params.scaledBlob || params.file,
-          spoiler: willSendPaidMedia ? undefined : !!params.mediaSpoiler
-
-        };
+            };
+          }
+        } else {
+          return {
+            ...params,
+            file: params.scaledBlob || params.file,
+            spoiler: willSendPaidMedia ? undefined : !!params.mediaSpoiler
+          };
+        }
       });
 
       const w = {
