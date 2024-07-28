@@ -91,7 +91,7 @@ export const generateGif = async(width: number, height: number, frames: any[]) =
       createImageBitmap(temp).then((bmp) => {
         const videoFrame = new ((window as unknown as {
           VideoFrame: any
-        }).VideoFrame)(bmp, {timestamp: durationInMillisecond * id});
+        }).VideoFrame)(bmp, {timestamp: frameTimeInMillisecond * id});
         videoEncoder.encode(videoFrame);
         videoFrame.close();
       });

@@ -728,12 +728,14 @@ export default class PopupNewMedia extends PopupElement {
       const blb = this.editedImg;
       console.info('bbbbl', blb);
 
-      const file = new File([blb.data], 'filename.jpg', {type: 'image/png'});
+      const file = new File([blb.data], 'filename.mp4', {type: 'video/mp4'});
 
       const d: SendFileDetails[] = sendFileParams.map((params) => {
         console.info('ppr', params);
         return {
           ...params,
+          width: blb.width,
+          height: blb.height,
           objectURL: URL.createObjectURL(blb.data),
           file,
           // file: blb.data, // params.scaledBlob || params.file,

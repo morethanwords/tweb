@@ -990,18 +990,15 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
               });
             });
           }
-
           const blb = await cnvToBLB();
           console.info(blb);
-          close({img: true, data: blb});
+          close({img: true, width: cropWidth, height: cropHeight, data: blb});
           return;
-
-          // res[0].toBlob();
-          const url = res[0].toDataURL();
+          /* const url = res[0].toDataURL();
           const newImg = document.createElement('img'); // create img tag
           newImg.src = url;
 
-          close({img: true, data: newImg});
+          close({img: true, width: cropWidth, height: cropHeight, data: newImg}); */
 
           /* const a = document.createElement('a');
           a.href = url;
@@ -1012,11 +1009,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         }
       } else {
         // export video
-
+        // const blb = await cnvToBLB();
         const gif = await generateGif(cropWidth, cropHeight, res);
         console.info(gif);
 
-        close({img: false, data: gif});
+        close({img: false, width: cropWidth, height: cropHeight, data: gif});
       }
     }
 
