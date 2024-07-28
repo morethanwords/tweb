@@ -241,9 +241,10 @@ export const createRawPaintShader = (gl: WebGLRenderingContext) => {
   return createAndUseGLProgram(gl, paintVertexShaderNoMarker, paintFragmentShaderNoMarker);
 }
 
-export const executeRawPaintShader = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, original: ArrayBufferView, points: ArrayBufferView, width: number, height: number, fn: (program: WebGLProgram) => void) => {
-  const srcTexture = createTextureFromData(gl, width, height, original);
+export const executeRawPaintShader = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, current: ArrayBufferView, points: ArrayBufferView, original: ArrayBufferView, width: number, height: number, fn: (program: WebGLProgram) => void) => {
+  const srcTexture = createTextureFromData(gl, width, height, current);
   const pointsTexture = createTextureFromData(gl, width, height, points);
+  const originalTexture = createTextureFromData(gl, width, height, original);
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
   createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
 
@@ -254,6 +255,10 @@ export const executeRawPaintShader = (gl: WebGLRenderingContext, shaderProgram: 
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, pointsTexture);
   gl.uniform1i(gl.getUniformLocation(shaderProgram, 'pointsTexture'), 1);
+
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, originalTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'originalTexture'), 2);
   gl.uniform1f(gl.getUniformLocation(shaderProgram, 'width'), 1);
   gl.uniform1f(gl.getUniformLocation(shaderProgram, 'height'), 1);
 

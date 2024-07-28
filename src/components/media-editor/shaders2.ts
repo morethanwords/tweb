@@ -64,11 +64,12 @@ export const paintFragmentShaderNoMarker = `
         
         uniform sampler2D sTexture; // original texture
         uniform sampler2D pointsTexture; // points texture
+        uniform sampler2D originalTexture; // points texture
         
         uniform float width;
         uniform float height;
         uniform int size;
-        // uniform float tool;
+        uniform int tool;
         
         uniform vec3 color;
         
@@ -77,8 +78,8 @@ export const paintFragmentShaderNoMarker = `
             vec4 pointsResult = texture2D(pointsTexture, vTextureCoord);
             
             bool foundDifferent = false;
-            int maxRadius = size;
-            const int uRadius = 30;
+            int maxRadius = size / 2;
+            const int uRadius = 15;
             float w = 1.0 / float(width);
             float h = 1.0 / float(height);
             
@@ -99,10 +100,16 @@ export const paintFragmentShaderNoMarker = `
                     if (y > 0 && maxRadius < y) {
                         continue;
                     }
+                    
+                    vec2 offset2 = vec2(float(x), float(y));
+                    if(length(offset2) < 0.00001) {
+                      // gl_FragColor = vec4(offset2, 0.0, 1.0);
+                      // return;
+                    }
 
                     vec2 offset = vec2(float(x) * w, float(y) * h);
-                            
                     if(length(offset) >= (float(maxRadius) / width)) {
+                    
                         continue;
                     }
                           
@@ -120,7 +127,11 @@ export const paintFragmentShaderNoMarker = `
             }
             
             if (foundDifferent) {
+              if (tool == 4) {
+                  gl_FragColor = texture2D(originalTexture, vTextureCoord);
+              } else {
                 gl_FragColor = vec4(color, 1.0);
+               }
             } else {
                 gl_FragColor = result;
             }

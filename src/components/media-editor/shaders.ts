@@ -380,12 +380,12 @@ export const wideLineVertexShader = `
             attribute vec2 aVertexPosition;
             // attribute vec3 aColor;
             // varying vec3 vColor;
-            
+            varying vec2 vVertexPosition;
             
             void main() {
                 
                 // vColor = aColor;
-                
+                vVertexPosition = aVertexPosition;
                   gl_Position = vec4(aVertexPosition.x, 1.0 - aVertexPosition.y, 0.0, 1.0);
             }
         `;
@@ -394,12 +394,16 @@ export const wideLineVertexShader = `
 export const wideLineFragmentShader = `
             precision mediump float;
             uniform vec3 color;
+            varying vec2 vVertexPosition;
             
             uniform int tool;
 
 
             void main() {
-               gl_FragColor = vec4(color, tool == 2 ? 0.75 : 1.0);
+                
+                gl_FragColor = vec4(color,  0.75);
+          
+               
             }
         `;
 

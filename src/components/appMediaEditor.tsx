@@ -759,7 +759,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       if(forward) {
         // sets buffer as active
         const {r, g, b} = hexToRgb(action.action.color);
-        if(action.action.tool >= 0) {
+        if(action.action.tool === 2) {
           drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
           useProgram(gl, markerGLProgram);
           drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, action.action.points, pr => {
@@ -771,11 +771,12 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
           drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
           const dat2 = getGLFramebufferData(gl, sourceWidth, sourceHeight);
           useProgram(gl, paintGLProgram);
-          executeRawPaintShader(gl, paintGLProgram, dat2, res, sourceWidth, sourceHeight, pr => {
+          executeRawPaintShader(gl, paintGLProgram, dat2, res, originalTextureWithFilters, sourceWidth, sourceHeight, pr => {
             gl.uniform1f(gl.getUniformLocation(pr, 'width'), sourceWidth);
             gl.uniform1f(gl.getUniformLocation(pr, 'height'), sourceHeight);
             gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
             gl.uniform1i(gl.getUniformLocation(pr, 'tool'), action.action.tool);
+            gl.uniform1i(gl.getUniformLocation(pr, 'size'), action.action.size);
           });
         }
         const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
@@ -795,7 +796,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
     drawCommands.forEach(command => {
       const {r, g, b} = hexToRgb(command.action.color);
-      if(command.action.tool >= 0) {
+      if(command.action.tool === 2) {
         useProgram(gl, markerGLProgram);
         drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, command.action.points, pr => {
           gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
@@ -806,11 +807,12 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
         const dat2 = getGLFramebufferData(gl, sourceWidth, sourceHeight);
         useProgram(gl, paintGLProgram);
-        executeRawPaintShader(gl, paintGLProgram, dat2, res, sourceWidth, sourceHeight, pr => {
+        executeRawPaintShader(gl, paintGLProgram, dat2, res, originalTextureWithFilters, sourceWidth, sourceHeight, pr => {
           gl.uniform1f(gl.getUniformLocation(pr, 'width'), sourceWidth);
           gl.uniform1f(gl.getUniformLocation(pr, 'height'), sourceHeight);
           gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
           gl.uniform1i(gl.getUniformLocation(pr, 'tool'), command.action.tool);
+          gl.uniform1i(gl.getUniformLocation(pr, 'size'), command.action.size);
         });
         currentTexture = getGLFramebufferData(gl, sourceWidth, sourceHeight);
       }
@@ -828,7 +830,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
 
     const canvasSizeUntracked = untrack(canvasSize);
-    if(mediaEditorState.paint.tool >= 0) {
+    if(mediaEditorState.paint.tool === 2) {
       const llld = dup1(trackedPoints);
       const lll = simplify(llld, 2);
       const stroke = Stroke({
@@ -872,12 +874,14 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
       const dat2 = getGLFramebufferData(gl, sourceWidth, sourceHeight);
       useProgram(gl, paintGLProgram);
-      executeRawPaintShader(gl, paintGLProgram, dat2, res, sourceWidth, sourceHeight, pr => {
+      executeRawPaintShader(gl, paintGLProgram, dat2, res, originalTextureWithFilters, sourceWidth, sourceHeight, pr => {
         gl.uniform1f(gl.getUniformLocation(pr, 'width'), sourceWidth);
         gl.uniform1f(gl.getUniformLocation(pr, 'height'), sourceHeight);
         const {r, g, b} = hexToRgb(hexColor());
+        console.info('toolt', mediaEditorState.paint.tool);
         gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
         gl.uniform1i(gl.getUniformLocation(pr, 'tool'), mediaEditorState.paint.tool);
+        gl.uniform1i(gl.getUniformLocation(pr, 'size'), mediaEditorState.paint.size);
       });
 
       const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
@@ -896,7 +900,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
     // should be one only
     newLines.forEach(({points: ppp, tool, color, size}) => {
-      if(tool >= 0) {
+      if(tool === 2) {
         const llld = dup1(ppp);
         const lll = simplify(llld, 2);
         const stroke = Stroke({
