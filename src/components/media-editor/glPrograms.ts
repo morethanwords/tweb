@@ -13,7 +13,13 @@ import {
 } from './shaders';
 import {MediaEditorSettings} from '../appMediaEditor';
 import {Setter, Signal} from 'solid-js';
-import {filtersFragmentShader, filtersVertexShader, sharpeningFragmentShader, sharpeningVertexShader} from './shaders2';
+import {
+  filtersFragmentShader,
+  filtersVertexShader, paintFragmentShaderNoMarker,
+  paintVertexShaderNoMarker,
+  sharpeningFragmentShader,
+  sharpeningVertexShader
+} from './shaders2';
 
 const PGPhotoEnhanceSegments = 4; // Example value, replace with actual value
 const PGPhotoEnhanceHistogramBins = 256; // Example value, replace with actual value
@@ -223,12 +229,38 @@ export const executeLineDrawing = (gl: WebGLRenderingContext, width: number, hei
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(points));
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.viewport(0, 0, width, height);
+  gl.clearColor(0, 0, 0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.drawArrays(gl.LINE_STRIP, 0, points.length / 2);
   const lineBuffer = new Uint8Array(width * height * 4);
   gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, lineBuffer);
   return lineBuffer;
 }
+
+export const createRawPaintShader = (gl: WebGLRenderingContext) => {
+  return createAndUseGLProgram(gl, paintVertexShaderNoMarker, paintFragmentShaderNoMarker);
+}
+
+export const executeRawPaintShader = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, original: ArrayBufferView, points: ArrayBufferView, width: number, height: number, fn: (program: WebGLProgram) => void) => {
+  const srcTexture = createTextureFromData(gl, width, height, original);
+  const pointsTexture = createTextureFromData(gl, width, height, points);
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
+  createAndBindBufferToAttribute(gl, shaderProgram, 'aTextureCoord', new Float32Array(textureCoordinates));
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, srcTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'sTexture'), 0);
+
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, pointsTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, 'pointsTexture'), 1);
+  gl.uniform1f(gl.getUniformLocation(shaderProgram, 'width'), 1);
+  gl.uniform1f(gl.getUniformLocation(shaderProgram, 'height'), 1);
+
+  fn(shaderProgram);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
 
 export const drawOpaqueTriangles = (gl: WebGLRenderingContext, width: number, height: number, points: number[]) => {
   const shaderProgram = createAndUseGLProgram(gl, newLineTransparentVertex, newLineTransparentFragment);
@@ -324,7 +356,7 @@ export const getGLFramebufferData = (gl: WebGLRenderingContext, width: number, h
   return resBuffer;
 }
 
-export const drawTextureDebug = (gl: WebGLRenderingContext, width: number, height: number, texture: ArrayBufferView) => {
+export const drawTextureToScreen = (gl: WebGLRenderingContext, width: number, height: number, texture: ArrayBufferView) => {
   const shaderProgram = createAndUseGLProgram(gl, vertexShaderSource, textureFragmentShaderReal);
   const hsvSourceTexture = createTextureFromData(gl, width, height, texture);
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(positionCoordinates));
@@ -411,6 +443,7 @@ export const executeEnhanceFilterToTexture = (gl: WebGLRenderingContext, shaderP
 
   fn(shaderProgram);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  return fb;
 }
 
 export const executeSharpeningFilterToTexture = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, texture: ArrayBufferView, width: number, height: number, fn: (program: WebGLProgram) => void) => {

@@ -222,14 +222,14 @@ export const linesVertexShaderSource = `
 attribute vec4 aVertexPosition;
             
 void main(void) {
-  gl_Position = aVertexPosition;
+  gl_Position = vec4(aVertexPosition.x, -aVertexPosition.y, 1.0, 1.0);
   gl_PointSize = 50.0;
 }
 `;
 
 export const linesFragmentShaderSource = `
 void main() {
-  gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+  gl_FragColor = vec4(1.0, 0.5, 0.0, 1.0);
 }`;
 
 /*
@@ -350,7 +350,7 @@ export const newLineTransparentVertexWIDE = `
             }
         `;
 
-// Fragment shader source code
+// Fragment shader source code // MITER, NOT USED
 export const newLineTransparentFragmentWIDE = `
             precision mediump float;
             
@@ -394,7 +394,6 @@ export const wideLineVertexShader = `
 export const wideLineFragmentShader = `
             precision mediump float;
             uniform vec3 color;
-           // varying vec3 vColor;
 
 
                 void main() {

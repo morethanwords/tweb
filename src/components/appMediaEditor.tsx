@@ -14,12 +14,12 @@ import {simplify} from './media-editor/math/draw.util';
 import {Stroke} from './media-editor/math/algo';
 import {
   calcCDT, createEnhanceFilterProgram, createMarkerGLProgram, createOthersFilterProgram, createSharpeningFilterProgram,
-  drawTextureDebug,
+  drawTextureToScreen,
   drawTextureToNewFramebuffer,
   drawWideLineTriangle,
   executeEnhanceFilterToTexture, executeOtherFilterToTexture, executeSharpeningFilterToTexture,
   getGLFramebufferData,
-  getHSVTexture, useProgram
+  getHSVTexture, useProgram, executeLineDrawing, createRawPaintShader, executeRawPaintShader
 } from './media-editor/glPrograms';
 import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
 import Button from './button';
@@ -287,6 +287,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   let sharpenGLProgram: WebGLProgram;
   let othersGLProgram: WebGLProgram;
   let markerGLProgram: WebGLProgram;
+  let paintGLProgram: WebGLProgram;
 
   let container: HTMLDivElement;
   let mediaEditor: HTMLDivElement;
@@ -406,9 +407,10 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       sharpenGLProgram = createSharpeningFilterProgram(gl);
       othersGLProgram = createOthersFilterProgram(gl);
       markerGLProgram = createMarkerGLProgram(gl);
+      paintGLProgram = createRawPaintShader(gl);
       drawTextureWithFilters(this, sourceWidth, sourceHeight);
       currentTexture = originalTextureWithFilters;
-      drawTextureDebug(gl, sourceWidth, sourceHeight, originalTextureWithFilters);
+      drawTextureToScreen(gl, sourceWidth, sourceHeight, originalTextureWithFilters);
 
       createEffect(() => {
         mediaEditorState.filters.date; // triggers the effect
@@ -756,15 +758,26 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       // paint
       if(forward) {
         // sets buffer as active
-        drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
-        useProgram(gl, markerGLProgram);
         const {r, g, b} = hexToRgb(action.action.color);
-        console.info('ccc', r, g, b, action.action);
-        drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, action.action.points, pr => {
-          gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
-        });
+        if(action.action.tool === 2) {
+          drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
+          useProgram(gl, markerGLProgram);
+          drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, action.action.points, pr => {
+            gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+          });
+        } else {
+          const res = executeLineDrawing(gl, sourceWidth, sourceHeight, action.action.points);
+          drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
+          const dat2 = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+          useProgram(gl, paintGLProgram);
+          executeRawPaintShader(gl, paintGLProgram, dat2, res, sourceWidth, sourceHeight, pr => {
+            gl.uniform1f(gl.getUniformLocation(pr, 'width'), sourceWidth);
+            gl.uniform1f(gl.getUniformLocation(pr, 'height'), sourceHeight);
+            gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+          });
+        }
         const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
-        drawTextureDebug(gl, sourceWidth, sourceHeight, dat); // sets screen as active
+        drawTextureToScreen(gl, sourceWidth, sourceHeight, dat); // sets screen as active
         currentTexture = dat;
       } else {
         // draw form the beginning
@@ -779,14 +792,27 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     currentTexture = originalTextureWithFilters;
     drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
     drawCommands.forEach(command => {
-      useProgram(gl, markerGLProgram);
       const {r, g, b} = hexToRgb(command.action.color);
-      drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, command.action.points, pr => {
-        gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
-      });
+      if(command.action.tool === 2) {
+        useProgram(gl, markerGLProgram);
+        drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, command.action.points, pr => {
+          gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+        });
+      } else {
+        const res = executeLineDrawing(gl, sourceWidth, sourceHeight, command.action.points);
+        drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
+        const dat2 = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+        useProgram(gl, paintGLProgram);
+        executeRawPaintShader(gl, paintGLProgram, dat2, res, sourceWidth, sourceHeight, pr => {
+          gl.uniform1f(gl.getUniformLocation(pr, 'width'), sourceWidth);
+          gl.uniform1f(gl.getUniformLocation(pr, 'height'), sourceHeight);
+          gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+        });
+        currentTexture = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+      }
     });
     const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
-    drawTextureDebug(gl, sourceWidth, sourceHeight, dat); // sets screen as active
+    drawTextureToScreen(gl, sourceWidth, sourceHeight, dat); // sets screen as active
     currentTexture = dat;
   }
   // execution pipeline end =====
@@ -796,33 +822,62 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     if(!gl) {
       return;
     }
+
     const canvasSizeUntracked = untrack(canvasSize);
-    const llld = dup1(trackedPoints);
-    const lll = simplify(llld, 2);
-    const stroke = Stroke({
-      thickness: mediaEditorState.paint.size,
-      join: 'bevel',
-      miterLimit: 5
-    });
+    if(mediaEditorState.paint.tool === 2) {
+      const llld = dup1(trackedPoints);
+      const lll = simplify(llld, 2);
+      const stroke = Stroke({
+        thickness: mediaEditorState.paint.size,
+        join: 'bevel',
+        miterLimit: 5
+      });
 
-    const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
-    const fin = [].concat(...[].concat(...cells).map(cell => {
-      const [x1, y1] = positions[cell];
-      let {x, y} = updatePointPos({x: x1, y: y1});
-      x = x / canvasSizeUntracked[0];
-      y = y / canvasSizeUntracked[1];
-      return [2 * x - 1, 2 * y];
-    }));
+      const {positions, cells} = stroke.build(lll) as {
+        cells: [number, number, number][],
+        positions: [number, number][]
+      };
+      const fin = [].concat(...[].concat(...cells).map(cell => {
+        const [x1, y1] = positions[cell];
+        let {x, y} = updatePointPos({x: x1, y: y1});
+        x = x / canvasSizeUntracked[0];
+        y = y / canvasSizeUntracked[1];
+        return [2 * x - 1, 2 * y];
+      }));
 
-    drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
-    useProgram(gl, markerGLProgram);
-    console.info(mediaEditorState.paint);
-    const {r, g, b} = hexToRgb(hexColor());
-    drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, fin, pr => {
-      gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
-    });
-    const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
-    drawTextureDebug(gl, sourceWidth, sourceHeight, dat);
+      drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
+      useProgram(gl, markerGLProgram);
+      // console.info(mediaEditorState.paint);
+      const {r, g, b} = hexToRgb(hexColor());
+      drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, fin, pr => {
+        gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+      });
+      const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+      drawTextureToScreen(gl, sourceWidth, sourceHeight, dat);
+    } else {
+      const llld = dup1(trackedPoints);
+      const ress = [].concat(...llld.map(pp => {
+        let {x, y} = updatePointPos({x: pp[0], y: pp[1]});
+        x = x / canvasSizeUntracked[0];
+        y = y / canvasSizeUntracked[1];
+        return [2 * x - 1, 2 * y - 1];
+      }));
+      const res = executeLineDrawing(gl, sourceWidth, sourceHeight, ress);
+
+      drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
+      const dat2 = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+      useProgram(gl, paintGLProgram);
+      executeRawPaintShader(gl, paintGLProgram, dat2, res, sourceWidth, sourceHeight, pr => {
+        gl.uniform1f(gl.getUniformLocation(pr, 'width'), sourceWidth);
+        gl.uniform1f(gl.getUniformLocation(pr, 'height'), sourceHeight);
+        const {r, g, b} = hexToRgb(hexColor());
+        gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+      });
+
+      const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
+      drawTextureToScreen(gl, sourceWidth, sourceHeight, dat);
+      return;
+    }
   });
 
   // converts added lines to draw action
@@ -835,30 +890,52 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
     // should be one only
     newLines.forEach(({points: ppp, tool, color, size}) => {
-      const llld = dup1(ppp);
-      const lll = simplify(llld, 2);
-      const stroke = Stroke({
-        thickness: size,
-        join: 'bevel',
-        miterLimit: 5
-      });
-      const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
-      const fin = [].concat(...[].concat(...cells).map(cell => {
-        const [x1, y1] = positions[cell];
-        let {x, y} = updatePointPos({x: x1, y: y1});
-        x /= canvasSizeUntracked[0];
-        y /= canvasSizeUntracked[1];
-        return [2 * x - 1, 2 * y];
-      }));
-      addAction({
-        type: 'paint',
-        action: {
-          color: hexColor(),
-          points: fin,
-          size: size,
-          tool: tool
-        }
-      });
+      if(tool === 2) {
+        const llld = dup1(ppp);
+        const lll = simplify(llld, 2);
+        const stroke = Stroke({
+          thickness: size,
+          join: 'bevel',
+          miterLimit: 5
+        });
+        const {positions, cells} = stroke.build(lll) as {
+          cells: [number, number, number][],
+          positions: [number, number][]
+        };
+        const fin = [].concat(...[].concat(...cells).map(cell => {
+          const [x1, y1] = positions[cell];
+          let {x, y} = updatePointPos({x: x1, y: y1});
+          x /= canvasSizeUntracked[0];
+          y /= canvasSizeUntracked[1];
+          return [2 * x - 1, 2 * y];
+        }));
+        addAction({
+          type: 'paint',
+          action: {
+            color: hexColor(),
+            points: fin,
+            size: size,
+            tool: tool
+          }
+        });
+      } else {
+        const llld = dup1(ppp);
+        const ress = [].concat(...llld.map(pp => {
+          let {x, y} = updatePointPos({x: pp[0], y: pp[1]});
+          x = x / canvasSizeUntracked[0];
+          y = y / canvasSizeUntracked[1];
+          return [2 * x - 1, 2 * y - 1];
+        }));
+        addAction({
+          type: 'paint',
+          action: {
+            color: hexColor(),
+            points: ress,
+            size: size,
+            tool: tool
+          }
+        });
+      }
     });
     return lines2();
   }, lines2());
