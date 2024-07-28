@@ -759,6 +759,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
         useProgram(gl, markerGLProgram);
         const {r, g, b} = hexToRgb(action.action.color);
+        console.info('ccc', r, g, b, action.action);
         drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, action.action.points, pr => {
           gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
         });
@@ -852,7 +853,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       addAction({
         type: 'paint',
         action: {
-          color: '#aadd11',
+          color: hexColor(),
           points: fin,
           size: 25,
           tool: 0
