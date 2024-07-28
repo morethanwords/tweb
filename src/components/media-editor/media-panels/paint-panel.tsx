@@ -13,7 +13,7 @@ function findAngle(A: Point, B: Point, C: Point) {
   return Math.acos((BC*BC+AB*AB-AC*AC)/(2*BC*AB));
 }
 
-export const MediaEditorPaintPanel = (props: { setPoints: Setter<any[]>, crop: [Point, Point], left: number, top: number, height: number, width: number, linesSignal: Signal<number[][]>, active: boolean, state: MediaEditorSettings['paint'] }) => {
+export const MediaEditorPaintPanel = (props: { setPoints: Setter<any[]>, crop: [Point, Point], left: number, top: number, height: number, width: number, linesSignal: Signal<{points: number[], size: number, color: string | number, tool: number}[]>, active: boolean, state: MediaEditorSettings['paint'] }) => {
   const [, setLines] = props.linesSignal;
   const [points, setPoints] = createSignal([]);
   const [drawing, setDrawing] = createSignal(false);
@@ -53,7 +53,7 @@ export const MediaEditorPaintPanel = (props: { setPoints: Setter<any[]>, crop: [
       let angle = findAngle(prev, curr, next);
       angle = angle * 180 / Math.PI;
       if(isNaN(angle) || angle < 75) {
-        setLines(lines => [...lines, points()]);
+        setLines(lines => [...lines, {points: points(), size: props.state.size, tool: props.state.tool, color: hexColor()}]);
         setPoints([next.x, next.y]);
         props.setPoints([next.x, next.y]);
         return;
@@ -63,10 +63,26 @@ export const MediaEditorPaintPanel = (props: { setPoints: Setter<any[]>, crop: [
     props.setPoints(points => [...points, next.x, next.y]);
   }
 
+  const colors = [
+    '#FFFFFF',
+    '#FE4438',
+    '#FF8901',
+    '#FFD60A',
+    '#33C759',
+    '#62E5E0',
+    '#0A84FF',
+    '#BD5CF3'
+  ];
+  const selectedColor = () => props.state.tools[props.state.tool];
+  const hexColor = () => {
+    const color = selectedColor();
+    return typeof color === 'number' ? colors[color] : color;
+  };
+
   const finishDraw = () => {
     console.info('FINISH DRAW');
     setDrawing(false);
-    setLines(lines => [...lines, points()]);
+    setLines(lines => [...lines, {points: points(), size: props.state.size, tool: props.state.tool, color: hexColor()}]);
     setPoints([]);
     props.setPoints([]);
   }

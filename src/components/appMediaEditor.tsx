@@ -538,7 +538,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   // crop end =========
 
   // paint start =========
-  const linesSignal = createSignal<number[][]>([]);
+  const linesSignal = createSignal<{ points: number[], size: number, tool: number, color: number | string }[]>([]);
   const [points, setPoints] = createSignal([]);
   const [lines2] = linesSignal;
 
@@ -800,7 +800,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     const llld = dup1(trackedPoints);
     const lll = simplify(llld, 2);
     const stroke = Stroke({
-      thickness: 25,
+      thickness: mediaEditorState.paint.size,
       join: 'bevel',
       miterLimit: 5
     });
@@ -826,7 +826,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   });
 
   // converts added lines to draw action
-  createEffect((lines22: number[][]) => {
+  createEffect((lines22: {points: number[], size: number, tool: number, color: number | string}[]) => {
     if(lines2().length < lines22.length) {
       return lines2();
     }
@@ -834,11 +834,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     const canvasSizeUntracked = untrack(canvasSize);
 
     // should be one only
-    newLines.forEach(ppp => {
+    newLines.forEach(({points: ppp, tool, color, size}) => {
       const llld = dup1(ppp);
       const lll = simplify(llld, 2);
       const stroke = Stroke({
-        thickness: 25,
+        thickness: size,
         join: 'bevel',
         miterLimit: 5
       });
@@ -855,8 +855,8 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         action: {
           color: hexColor(),
           points: fin,
-          size: 25,
-          tool: 0
+          size: size,
+          tool: tool
         }
       });
     });
