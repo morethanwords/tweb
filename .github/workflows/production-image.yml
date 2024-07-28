@@ -23,7 +23,7 @@ jobs:
 
       - name: Read version from .env
         id: env
-        run: echo "::set-output name=VERSION::$(grep ^VERSION= .env | cut -d'=' -f2)"
+        run: echo "::set-output name=PRODUCTION_BUILD_VERSION::$(grep ^PRODUCTION_BUILD_VERSION= .env | cut -d'=' -f2)"
 
       - name: Build the Docker image for latest
         run: docker build -f ./.docker/Dockerfile_production -t ${{ vars.DOCKERHUB_USERNAME}}/tweb:latest .
