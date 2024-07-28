@@ -138,6 +138,8 @@ export default class PopupNewMedia extends PopupElement {
     return out;
   }
 
+  public editedImg: any;
+
   public async openMediaEditor(peerId: PeerId) {
     console.dir('btn');
     console.dir(this.btnConfirmOnEnter);
@@ -146,12 +148,15 @@ export default class PopupNewMedia extends PopupElement {
     // restore when closing the window
     const pageEl = document.getElementById('page-chats') as HTMLDivElement;
     if(pageEl.getElementsByClassName('media-editor').length) return;
-    // TODO: remove this, append the button to each image separatelyя
+    // TODO: remove this, append the button to each image separately
     const {files, willAttach, mediaContainer} = this;
-    console.info(willAttach);
+    console.info('will att', willAttach);
+    console.info('files', files);
+    console.info('this', this);
     // ---
-    const close = () => {
+    const close = (result: {img: boolean, data: any}) => {
       const [editor] = Array.from(pageEl.getElementsByClassName('media-editor'));
+      this.editedImg = result;
       editor?.remove?.();
     }
     render(() => AppMediaEditor({close, imageBlobUrl: willAttach.sendFileDetails[0].objectURL}), pageEl);
@@ -720,10 +725,18 @@ export default class PopupNewMedia extends PopupElement {
         caption = entities = effect = undefined;
       }
 
+      const blb = this.editedImg;
+      console.info('bbbbl', blb);
+
+      const file = new File([blb.data], 'filename.jpg', {type: 'image/png'});
+
       const d: SendFileDetails[] = sendFileParams.map((params) => {
+        console.info('ppr', params);
         return {
           ...params,
-          file: params.scaledBlob || params.file,
+          objectURL: URL.createObjectURL(blb.data),
+          file,
+          // file: blb.data, // params.scaledBlob || params.file,
           spoiler: !!params.mediaSpoiler
         };
       });

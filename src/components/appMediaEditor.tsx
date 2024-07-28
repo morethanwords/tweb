@@ -261,7 +261,7 @@ type UndoRedoAction = {
   action: UndoRedoMediaAction | UndoRedoUpdateAction;
 };
 
-export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: (() => void) }) => {
+export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, close: ((...args: any[]) => void) }) => {
   const [tab, setTab] = createSignal(0);
   const cropResizeActive = () => tab() === 1;
   const [mediaEditorState, updateState] = createStore<MediaEditorSettings>(defaultEditorState);
@@ -895,11 +895,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     document.body.append(previ);
 
     // firefox too
-    const allStickersLoaded = (staticImg = false) => {
+    const allStickersLoaded = async(staticImg = false) => {
       const frames = Array.from(exportData.values());
       const maxFrames = staticImg ? 1 : Math.max(...frames.map(([[arr]]) => arr.length)) || 1;
 
-      const res = []; // result images or canvases
+      const res: any[] = []; // result images or canvases
 
       for(let frame = 0; frame < maxFrames; frame++) {
         const currentFrameCanvas = document.createElement('canvas');
@@ -972,7 +972,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         destinationCtx.drawImage(currentFrameCanvas, 0, 0);
 
         res.push(destinationCanvas);
-        previ.append(destinationCanvas);
+        // previ.append(destinationCanvas);
         console.info('appended');
         // get bg image (already have)
         // go through all undo, filter by media, if text -> draw text, if sticker draw sticker frame (% array length)
@@ -983,9 +983,25 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
         const cnv = res[0];
         if(cnv) {
+          const cnvToBLB = () => {
+            return new Promise(resolve => {
+              res[0].toBlob((blb: any) => {
+                resolve(blb);
+              });
+            });
+          }
+
+          const blb = await cnvToBLB();
+          console.info(blb);
+          close({img: true, data: blb});
+          return;
+
+          // res[0].toBlob();
           const url = res[0].toDataURL();
           const newImg = document.createElement('img'); // create img tag
           newImg.src = url;
+
+          close({img: true, data: newImg});
 
           /* const a = document.createElement('a');
           a.href = url;
@@ -997,7 +1013,10 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       } else {
         // export video
 
-        generateGif(cropWidth, cropHeight, res);
+        const gif = await generateGif(cropWidth, cropHeight, res);
+        console.info(gif);
+
+        close({img: false, data: gif});
       }
     }
 
