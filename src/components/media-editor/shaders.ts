@@ -394,10 +394,12 @@ export const wideLineVertexShader = `
 export const wideLineFragmentShader = `
             precision mediump float;
             uniform vec3 color;
+            
+            uniform int tool;
 
 
-                void main() {
-               gl_FragColor = vec4(color, 0.75);
-                }
+            void main() {
+               gl_FragColor = vec4(color, tool == 2 ? 0.75 : 1.0);
+            }
         `;
 

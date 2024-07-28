@@ -67,6 +67,8 @@ export const paintFragmentShaderNoMarker = `
         
         uniform float width;
         uniform float height;
+        uniform int size;
+        // uniform float tool;
         
         uniform vec3 color;
         
@@ -75,8 +77,8 @@ export const paintFragmentShaderNoMarker = `
             vec4 pointsResult = texture2D(pointsTexture, vTextureCoord);
             
             bool foundDifferent = false;
-            int maxRadius = 2;
-            const int uRadius = 60;
+            int maxRadius = size;
+            const int uRadius = 30;
             float w = 1.0 / float(width);
             float h = 1.0 / float(height);
             
@@ -109,7 +111,7 @@ export const paintFragmentShaderNoMarker = `
                             
                             // gl_FragColor = vec4(offset, 0.0, 1.0); // Color if different pixel found
                                 foundDifferent = true;
-                                // break;
+                                break;
                             }
                         }
                         if (foundDifferent) {

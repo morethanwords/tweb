@@ -759,11 +759,12 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       if(forward) {
         // sets buffer as active
         const {r, g, b} = hexToRgb(action.action.color);
-        if(action.action.tool === 2) {
+        if(action.action.tool >= 0) {
           drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
           useProgram(gl, markerGLProgram);
           drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, action.action.points, pr => {
             gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+            gl.uniform1i(gl.getUniformLocation(pr, 'tool'), action.action.tool);
           });
         } else {
           const res = executeLineDrawing(gl, sourceWidth, sourceHeight, action.action.points);
@@ -774,6 +775,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
             gl.uniform1f(gl.getUniformLocation(pr, 'width'), sourceWidth);
             gl.uniform1f(gl.getUniformLocation(pr, 'height'), sourceHeight);
             gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+            gl.uniform1i(gl.getUniformLocation(pr, 'tool'), action.action.tool);
           });
         }
         const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
@@ -793,10 +795,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
     drawCommands.forEach(command => {
       const {r, g, b} = hexToRgb(command.action.color);
-      if(command.action.tool === 2) {
+      if(command.action.tool >= 0) {
         useProgram(gl, markerGLProgram);
         drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, command.action.points, pr => {
           gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+          gl.uniform1i(gl.getUniformLocation(pr, 'tool'), command.action.tool);
         });
       } else {
         const res = executeLineDrawing(gl, sourceWidth, sourceHeight, command.action.points);
@@ -807,6 +810,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
           gl.uniform1f(gl.getUniformLocation(pr, 'width'), sourceWidth);
           gl.uniform1f(gl.getUniformLocation(pr, 'height'), sourceHeight);
           gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+          gl.uniform1i(gl.getUniformLocation(pr, 'tool'), command.action.tool);
         });
         currentTexture = getGLFramebufferData(gl, sourceWidth, sourceHeight);
       }
@@ -824,7 +828,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }
 
     const canvasSizeUntracked = untrack(canvasSize);
-    if(mediaEditorState.paint.tool === 2) {
+    if(mediaEditorState.paint.tool >= 0) {
       const llld = dup1(trackedPoints);
       const lll = simplify(llld, 2);
       const stroke = Stroke({
@@ -851,6 +855,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       const {r, g, b} = hexToRgb(hexColor());
       drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, fin, pr => {
         gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+        gl.uniform1i(gl.getUniformLocation(pr, 'tool'), mediaEditorState.paint.tool);
       });
       const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
       drawTextureToScreen(gl, sourceWidth, sourceHeight, dat);
@@ -872,6 +877,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         gl.uniform1f(gl.getUniformLocation(pr, 'height'), sourceHeight);
         const {r, g, b} = hexToRgb(hexColor());
         gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+        gl.uniform1i(gl.getUniformLocation(pr, 'tool'), mediaEditorState.paint.tool);
       });
 
       const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
@@ -890,7 +896,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
 
     // should be one only
     newLines.forEach(({points: ppp, tool, color, size}) => {
-      if(tool === 2) {
+      if(tool >= 0) {
         const llld = dup1(ppp);
         const lll = simplify(llld, 2);
         const stroke = Stroke({
