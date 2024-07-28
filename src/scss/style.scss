@@ -254,6 +254,7 @@
   --secondary-color: #c4c9cc;
   --warning-color: #fed85a;
   --green-color: #3ba748;
+  --green-color-rgb: 59, 167, 72;
 
   // --avatar-online-color: #0ac630;
   --avatar-online-color: var(--primary-color);
@@ -486,6 +487,7 @@
 @import "partials/popups/aboutAd";
 @import "partials/popups/deleteMegagroupMessages";
 @import "partials/popups/stars";
+@import "partials/popups/makePaid";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -1273,6 +1275,15 @@ not screen and (                min-resolution: 2dppx) {
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+
+    &-pin {
+      position: absolute;
+      top: 0;
+      right: 0;
+      color: #fff;
+      font-size: 1.75rem;
+      text-shadow: 0px 0 3px rgba(0, 0, 0, 0.45);
     }
   }
 }
@@ -2116,6 +2127,7 @@ hr {
     object-fit: unset !important;
     width: 100%;
     height: 100%;
+    border-radius: inherit;
   }
 }
 
@@ -2601,4 +2613,28 @@ hr {
 .clearfix {
   clear: both;
   display: table;
+}
+
+.extended-media-buy {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 2.5rem;
+  padding: 0 1rem;
+  background-color: rgba(0, 0, 0, .3);
+  backdrop-filter: var(--menu-backdrop-filter);
+  font-weight: var(--font-weight-bold);
+  color: #fff;
+  z-index: 2;
+  font-size: var(--font-size-14);
+  border-radius: 2rem;
+  white-space: pre;
+  display: flex;
+  align-items: center;
+
+  &-icon {
+    margin-right: .25rem;
+    font-size: 1.125rem;
+  }
 }

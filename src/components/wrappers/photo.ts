@@ -28,7 +28,7 @@ import liteMode from '../../helpers/liteMode';
 import isWebFileLocation from '../../lib/appManagers/utils/webFiles/isWebFileLocation';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
-export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish, useBlur, useRenderCache, canHaveVideoPlayer}: {
+export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish, useBlur, useRenderCache, canHaveVideoPlayer, uploadingFileName}: {
   photo: MyPhoto | MyDocument | WebDocument | InputWebFileLocation,
   message?: Message.message | Message.messageService,
   container?: HTMLElement,
@@ -53,7 +53,8 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   onRenderFinish?: () => void,
   useBlur?: boolean | number,
   useRenderCache?: boolean,
-  canHaveVideoPlayer?: boolean
+  canHaveVideoPlayer?: boolean,
+  uploadingFileName?: string
 }) {
   const ret = {
     loadPromises: {
@@ -231,7 +232,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   const needFadeIn = (thumbImage || !cacheContext.downloaded) && liteMode.isAvailable('animations') && !noFadeIn;
 
   let preloader: ProgressivePreloader;
-  const uploadingFileName = (message as Message.message)?.uploadingFileName;
+  uploadingFileName ??= (message as Message.message)?.uploadingFileName?.[0];
   if(!withoutPreloader) {
     if(!cacheContext.downloaded || uploadingFileName) {
       preloader = new ProgressivePreloader({

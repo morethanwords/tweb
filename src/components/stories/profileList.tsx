@@ -11,6 +11,7 @@ import {wrapStoryMedia} from './preview';
 import getMediaThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
 import {SearchSelection} from '../chat/selection';
 import {StoriesProvider, useStories} from './store';
+import Icon from '../icon';
 
 const TEST_ONE = false;
 const TEST_TWO = false;
@@ -18,7 +19,8 @@ const TEST_TWO = false;
 function _StoriesProfileList(props: {
   onReady?: () => void,
   onLengthChange?: (length: number) => void,
-  selection?: SearchSelection
+  selection?: SearchSelection,
+  pinned: boolean
 }) {
   const [stories, actions] = useStories();
   const [list, setList] = createSignal<JSX.Element>();
@@ -95,6 +97,7 @@ function _StoriesProfileList(props: {
       noPlayButton: true
     });
 
+    let icon: HTMLElement;
     createEffect(() => {
       const t = thumb();
       const m = media();
@@ -125,6 +128,13 @@ function _StoriesProfileList(props: {
           thumb.remove();
         });
       }
+
+      if(element.parentElement && props.pinned && (storyItem as StoryItem.storyItem).pinnedIndex !== undefined) {
+        icon ??= Icon('pin2', 'grid-item-pin');
+        element.parentElement.append(icon);
+      } else if(icon) {
+        icon.remove();
+      }
     });
 
     if(props.selection?.isSelecting) {
@@ -148,7 +158,7 @@ export default function StoriesProfileList(props: Parameters<typeof StoriesProvi
   const [, rest] = splitProps(props, ['onReady', 'onLengthChange', 'selection']);
   return (
     <StoriesProvider {...rest}>
-      <_StoriesProfileList {...props} />
+      <_StoriesProfileList {...props} pinned={rest.pinned} />
     </StoriesProvider>
   );
 }

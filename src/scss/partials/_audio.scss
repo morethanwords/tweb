@@ -441,72 +441,8 @@
       margin-bottom: -2px;
     }
 
-    body.is-premium &.can-transcribe {
+    &.can-transcribe {
       padding-inline-end: 2.25rem;
-
-      .audio-to-text-button {
-        display: flex;
-      }
-    }
-    
-    .audio-to-text-button {
-      background: var(--light-filled-message-primary-color);
-      color: var(--message-primary-color);
-      width: max-content;
-      font-size: 1.1875rem;
-      border-radius: 0.3125rem;
-      width: 2rem;
-      height: 1.5rem;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      position: absolute;
-      overflow: hidden;
-      align-self: flex-end;
-      margin-right: -2.25rem;
-      margin-top: -1rem;
-
-      @include hover() {
-        &:after {
-          content: " ";
-          position: absolute;
-          top: 0;
-          right: 0;
-          bottom: 0;
-          left: 0;
-          border-radius: inherit;
-          background-color: var(--message-primary-color);
-          opacity: $hover-alpha;
-        }
-      }
-
-      .loader {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        transition: opacity .2s;
-
-        &.active {
-          opacity: 1;
-        }
-
-        .audio-transcribe-outline {
-          width: 100%;
-          height: 100%;
-
-          @keyframes loading {
-            from { stroke-dashoffset: 100 }
-            to { stroke-dashoffset: 0 }
-          }
-
-          &-rect {
-            animation: 1s ease-in-out loading infinite;
-          }
-        }
-      }
     }
 
     .part {
@@ -519,6 +455,66 @@
       // }
     }
   // }
+
+  &-to-text-button {
+    background: var(--light-filled-message-primary-color);
+    color: var(--message-primary-color);
+    width: max-content;
+    font-size: 1.1875rem;
+    border-radius: 0.3125rem;
+    width: 2rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    overflow: hidden;
+    align-self: flex-end;
+    margin-right: -2.25rem;
+    margin-top: -1rem;
+
+    @include hover() {
+      &:after {
+        content: " ";
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        border-radius: inherit;
+        background-color: var(--message-primary-color);
+        opacity: $hover-alpha;
+      }
+    }
+
+    .loader {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity .2s;
+
+      &.active {
+        opacity: 1;
+      }
+    }
+  }
+
+  &-transcribe-outline {
+    width: 100%;
+    height: 100%;
+
+    @keyframes loading {
+      from { stroke-dashoffset: 100 }
+      to { stroke-dashoffset: 0 }
+    }
+
+    &-rect {
+      animation: 1s ease-in-out loading infinite;
+    }
+  }
 
   &-title {
     font-size: 1rem;

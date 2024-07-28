@@ -20,12 +20,14 @@ export default class InputSearch {
   public inputField: InputField;
   public clearBtn: HTMLElement;
   public searchIcon: HTMLElement;
+  public backBtn: HTMLElement;
 
   public prevValue = '';
   public timeout = 0;
   public onChange: (value: string) => void;
   public onClear: (e?: MouseEvent, wasEmpty?: boolean) => void;
   public onDebounce: (start: boolean) => void;
+  public onBack: () => void;
 
   private statusPreloader: ProgressivePreloader;
   private currentLangPackKey: LangPackKey;
@@ -35,17 +37,22 @@ export default class InputSearch {
   private debounceTime: number;
   private verifyDebounce: (value: string, prevValue: string) => boolean;
 
+  private alwaysShowClear: boolean;
+  private arrowBack: boolean;
+
   constructor(options: {
     placeholder?: LangPackKey,
     onChange?: (value: string) => void,
     onClear?: InputSearch['onClear'],
     onFocusChange?: (isFocused: boolean) => void,
     onDebounce?: (start: boolean) => void,
+    onBack?: () => void,
     alwaysShowClear?: boolean,
     noBorder?: boolean,
     noFocusEffect?: boolean,
     debounceTime?: number,
-    verifyDebounce?: (value: string, prevValue: string) => boolean
+    verifyDebounce?: (value: string, prevValue: string) => boolean,
+    arrowBack?: boolean
   } = {}) {
     this.inputField = new InputField({
       // placeholder,
@@ -61,8 +68,10 @@ export default class InputSearch {
     this.onChange = options.onChange;
     this.onClear = options.onClear;
     this.onDebounce = options.onDebounce;
+    this.onBack = options.onBack;
     this.debounceTime = options.debounceTime ?? 300;
     this.verifyDebounce = options.verifyDebounce;
+    this.alwaysShowClear = options.alwaysShowClear;
 
     const input = this.input = this.inputField.input;
     input.classList.add('input-search-input');
@@ -73,7 +82,6 @@ export default class InputSearch {
 
     const searchIcon = this.searchIcon = this.createIcon('search', 'input-search-icon');
     const clearBtn = this.clearBtn = this.createButtonIcon('close', 'input-search-clear');
-    clearBtn.classList.toggle('always-visible', !!options.alwaysShowClear);
 
     this.listenerSetter.add(input)('input', this.onInput);
     attachClickEvent(clearBtn, this.onClearClick, {listenerSetter: this.listenerSetter, cancelMouseDown: true});
@@ -94,7 +102,26 @@ export default class InputSearch {
     }
 
     this.container.append(searchIcon, clearBtn);
+
+    this.setArrowBack(options.arrowBack);
   }
+
+  public setArrowBack = (arrowBack: boolean) => {
+    if(this.arrowBack === arrowBack) return;
+    this.arrowBack = arrowBack;
+
+    this.container.classList.toggle('with-arrow-back', arrowBack);
+
+    if(arrowBack && !this.backBtn) {
+      this.backBtn = this.createButtonIcon('arrow_prev', 'input-search-icon', 'input-search-back');
+      this.container.append(this.backBtn);
+      attachClickEvent(this.backBtn, this.onBack, {listenerSetter: this.listenerSetter, cancelMouseDown: true});
+    }
+
+    this.searchIcon.classList.toggle('hide', arrowBack);
+    this.backBtn && this.backBtn.classList.toggle('hide', !arrowBack);
+    this.clearBtn.classList.toggle('always-visible', !arrowBack && !!this.alwaysShowClear);
+  };
 
   public createButtonIcon(icon: Icon, ...args: string[]) {
     args ??= [];
@@ -111,12 +138,13 @@ export default class InputSearch {
   }
 
   public toggleLoading(loading: boolean) {
+    const another = this.arrowBack ? this.clearBtn : this.searchIcon;
     if(!this.statusPreloader) {
       this.statusPreloader = new ProgressivePreloader({cancelable: false});
       this.statusPreloader.constructContainer({color: 'transparent', bold: true});
       this.statusPreloader.construct?.();
       this.statusPreloader.preloader.classList.add('is-visible', 'will-animate');
-      this.searchIcon.classList.add('will-animate');
+      another.classList.add('will-animate');
     }
 
     if(loading && !this.statusPreloader.preloader.parentElement) {
@@ -124,7 +152,7 @@ export default class InputSearch {
     }
 
     this.statusPreloader.preloader.classList.toggle('is-hiding', !loading);
-    this.searchIcon.classList.toggle('is-hiding', loading);
+    another.classList.toggle('is-hiding', loading || (another === this.clearBtn && this.inputField.isEmpty()));
     SetTransition({
       element: this.container,
       className: 'is-connecting',

@@ -16,6 +16,7 @@ import IS_WEB_ASSEMBLY_SUPPORTED from '../../environment/webAssemblySupport';
 import makeError from '../../helpers/makeError';
 import App from '../../config/app';
 import rootScope from '../rootScope';
+import toArray from '../../helpers/array/toArray';
 
 export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' |
@@ -179,7 +180,7 @@ export class LottieLoader {
       }
     }
 
-    const containers = Array.isArray(params.container) ? params.container : [params.container];
+    const containers = toArray(params.container);
     if(!params.width || !params.height) {
       params.width = parseInt(containers[0].style.width);
       params.height = parseInt(containers[0].style.height);

@@ -56,7 +56,8 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
   },
   'secondary-text-color': {
     light: true,
-    lightFilled: true
+    lightFilled: true,
+    rgb: true
   },
   'message-background-color': {
     light: true,

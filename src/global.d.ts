@@ -103,7 +103,7 @@ declare global {
     'SAVED_DIALOGS_UNSUPPORTED' | 'YOUR_PRIVACY_RESTRICTED' | 'INVITE_REQUEST_SENT' | 'GROUPCALL_INVALID' |
     'TIME_TOO_BIG' | 'TIME_TOO_SMALL' | 'TIME_INVALID' | 'GROUPCALL_FORBIDDEN' | 'VIDEO_CHANNEL_INVALID' |
     'GROUPCALL_JOIN_MISSING' | `SLOWMODE_WAIT_${number}` | 'BALANCE_TOO_LOW' | 'FORM_EXPIRED' |
-    `FLOOD_PREMIUM_WAIT_${number}`;
+    `FLOOD_PREMIUM_WAIT_${number}` | 'STORY_ID_TOO_MANY' | `FILE_REFERENCE_${number}_EXPIRED`;
 
   type ErrorType = LocalErrorType | ServerErrorType;
 
@@ -123,7 +123,8 @@ declare global {
     stack: string,
     handled: boolean,
     input: string,
-    message: ApiError
+    message: ApiError,
+    limit: number
   }>;
 
   declare const electronHelpers: {
@@ -132,7 +133,7 @@ declare global {
 
   type DOMRectMinified = {top: number, right: number, bottom: number, left: number};
   type DOMRectEditable = DOMRectMinified & {width: number, height: number};
-  type MaybePromise<T> = PromiseLike<T> | T;
+  type MaybePromise<T> = Promise<T> | T;
   type MaybeDeferredPromise<T> = CancellablePromise<T> | T;
 
   type WrapSomethingOptions = {

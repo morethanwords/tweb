@@ -36,6 +36,7 @@ import DEBUG from '../../config/debug';
 import {ButtonMenuItemOptionsVerifiable} from '../buttonMenu';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import pause from '../../helpers/schedulers/pause';
+import toArray from '../../helpers/array/toArray';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
@@ -167,7 +168,7 @@ export default class PopupStickers extends PopupElement {
 
   private async loadStickerSet() {
     const middleware = this.middlewareHelper.get();
-    const inputs = Array.isArray(this.stickerSetInput) ? this.stickerSetInput : [this.stickerSetInput];
+    const inputs = toArray(this.stickerSetInput);
     const setsPromises = inputs.map((input) => this.managers.appStickersManager.getStickerSet(input));
     let sets = await Promise.all(setsPromises);
     if(!middleware()) return;

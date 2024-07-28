@@ -234,7 +234,8 @@ export default class ChatTopbar {
       if(
         findUpClassName(e.target, 'topbar-search-container') ||
         !(e.target as HTMLElement).isConnected ||
-        findUpClassName(e.target, 'pinned-translation')
+        findUpClassName(e.target, 'pinned-translation') ||
+        findUpClassName(e.target, 'chat-search-top')
       ) {
         return;
       }

@@ -82,7 +82,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
 
 let turnedObserverOn = false;
 
-export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn}: {
+export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName}: {
   doc: MyDocument,
   altDoc?: MyDocument,
   container?: HTMLElement,
@@ -110,7 +110,8 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   canAutoplay?: boolean,
   useBlur?: boolean | number,
   observer?: SuperIntersectionObserver,
-  setShowControlsOn?: HTMLElement
+  setShowControlsOn?: HTMLElement,
+  uploadingFileName?: string
 }) {
   const supportsStreaming = doc.supportsStreaming && !ignoreStreaming;
   if(!supportsStreaming && altDoc && !onlyPreview && !IS_H265_SUPPORTED) {
@@ -198,7 +199,8 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       autoDownloadSize,
       size: photoSize,
       managers,
-      useBlur
+      useBlur,
+      uploadingFileName
     });
 
     res.thumb = photoRes;
@@ -420,7 +422,8 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       size: photoSize,
       managers,
       useBlur,
-      canHaveVideoPlayer: willObserveSound
+      canHaveVideoPlayer: willObserveSound,
+      uploadingFileName
     });
 
     res.thumb = photoRes;
@@ -485,13 +488,13 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
   getCacheContext();
 
-  const uploadFileName = message?.uploadingFileName;
-  if(uploadFileName) { // means upload
+  uploadingFileName ??= message?.uploadingFileName?.[0];
+  if(uploadingFileName) { // means upload
     preloader = new ProgressivePreloader({
       attachMethod: 'prepend',
       isUpload: true
     });
-    preloader.attachPromise(appDownloadManager.getUpload(uploadFileName));
+    preloader.attachPromise(appDownloadManager.getUpload(uploadingFileName));
     preloader.attach(container, false);
     noAutoDownload = undefined;
   } else if(!cacheContext.downloaded && !supportsStreaming && !withoutPreloader) {
@@ -515,7 +518,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       console.error('Error ' + video.error.code + '; details: ' + video.error.message);
     }
 
-    if(preloader && !uploadFileName) {
+    if(preloader && !uploadingFileName) {
       preloader.detach();
     }
 
@@ -564,7 +567,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
     getCacheContext();
     let loadPromise: Promise<any> = Promise.resolve();
-    if((preloader && !uploadFileName) || withoutPreloader) {
+    if((preloader && !uploadingFileName) || withoutPreloader) {
       if(!cacheContext.downloaded && !supportsStreaming) {
         const promise = loadPromise = appDownloadManager.downloadMediaURL({
           media: doc,
@@ -632,7 +635,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
           });
         }
 
-        if(preloader && !uploadFileName) {
+        if(preloader && !uploadingFileName) {
           preloader.detach();
         }
 
@@ -675,7 +678,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     return {download: loadPromise, render: Promise.all([loadPromise, renderDeferred])};
   };
 
-  if(preloader && !uploadFileName) {
+  if(preloader && !uploadingFileName) {
     preloader.setDownloadFunction(load);
   }
 

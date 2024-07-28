@@ -16,6 +16,11 @@
     gap: .5rem;
     z-index: 1;
 
+    @include respond-to(handhelds) {
+      inset-inline: .5rem;
+      background-color: var(--surface-color);
+    }
+
     @include respond-to(medium-screens) {
       transition: padding-inline-end var(--transition-standard-out);
   
@@ -27,11 +32,6 @@
       body.animation-level-0 & {
         transition: none;
       }
-    }
-
-    .selector-user {
-      color: var(--secondary-text-color);
-      font-weight: var(--font-weight-bold);
     }
   }
 
@@ -156,6 +156,10 @@
 
       &-padding {
         width: 1rem;
+
+        @include respond-to(handhelds) {
+          width: .5rem;
+        }
       }
 
       &-scrollable {
@@ -235,6 +239,10 @@
     padding-inline-start: var(--padding-horizontal-start);
     padding-inline-end: 136px;
 
+    @include respond-to(handhelds) {
+      padding-inline-end: 3.25rem;
+    }
+
     @include animation-level(2) {
       transition: padding-inline-start .2s ease-in-out;
     }
@@ -264,9 +272,19 @@
         margin-inline-end: .4375rem;
       }
 
+      .input-search-back {
+        pointer-events: all;
+      }
+
       .preloader-path-new {
         stroke: var(--secondary-text-color) !important;
         opacity: .6;
+      }
+
+      &.with-arrow-back {
+        .preloader-container {
+          inset-inline: auto var(--icon-left-offset);
+        }
       }
     }
 

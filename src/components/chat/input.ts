@@ -1742,7 +1742,6 @@ export default class ChatInput {
           },
           url: webPage.url
         } : undefined,
-        // @ts-ignore // * soon
         effect: this.effect()
       };
     }
@@ -3940,7 +3939,7 @@ export default class ChatInput {
     fastRaf(() => {
       focus && placeCaretAtEnd(this.messageInput);
       this.processingDraftMessage = draftMessage;
-      this.setEffect((draftMessage as any).effect); // * soon
+      this.setEffect(draftMessage.effect);
       this.onMessageInput();
       this.processingDraftMessage = undefined;
       this.messageInput.scrollTop = this.messageInput.scrollHeight;

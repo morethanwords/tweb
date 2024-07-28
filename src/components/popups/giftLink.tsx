@@ -195,7 +195,7 @@ export default class PopupGiftLink extends PopupElement {
 
     let dotsCanvas: HTMLElement;
     if(this.isInChat && !this.checkedGiftCode.used_date) {
-      const {dotRenderer, readyResult} = DotRenderer.create({
+      const {canvas, readyResult} = DotRenderer.create({
         width: 320,
         height: 32,
         middleware: this.middlewareHelper.get(),
@@ -207,7 +207,7 @@ export default class PopupGiftLink extends PopupElement {
       });
 
       await readyResult;
-      dotsCanvas = dotRenderer.canvas;
+      dotsCanvas = canvas;
     }
 
     const div = document.createElement('div');

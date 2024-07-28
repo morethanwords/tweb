@@ -131,6 +131,7 @@ import getSelectedNodes from '../../helpers/dom/getSelectedNodes';
 import {setQuizHint} from '../../components/poll';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import PopupPremium from '../../components/popups/premium';
+import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -656,6 +657,10 @@ export class AppImManager extends EventListenerBase<{
       const canvases = Array.from(document.querySelectorAll('canvas')) as HTMLCanvasElement[];
       canvases.forEach((canvas) => {
         const context = canvas.getContext('2d');
+        if(!context) {
+          return;
+        }
+
         const oldFillStyle = context.fillStyle;
         context.fillStyle = 'transparent';
         context.fillRect(0, 0, 1, 1);
@@ -1224,9 +1229,13 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  public openUrl(url: string) {
+  public openUrl(url: string, newWindowIfNoClick?: boolean) {
     const {url: wrappedUrl, onclick} = wrapUrl(url);
     if(!onclick) {
+      if(newWindowIfNoClick) {
+        safeWindowOpen(wrappedUrl);
+      }
+
       return;
     }
 

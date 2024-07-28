@@ -12,53 +12,55 @@
 	z-index: 2;
 
 	&-footer {
-		height: 46px;
+		height: 3rem;
 		padding: 0 8px;
 		flex: 0 0 auto;
 		width: 100%;
 		background-color: var(--surface-color);
 		display: flex;
-		justify-content: space-between;
 		align-items: center;
-		box-shadow: 0px -1px 5px -1px rgba(0, 0, 0, .21);
+		box-shadow: 0px -2px 4px 0 rgba(0, 0, 0, .05);
 		overflow: hidden;
+    z-index: 2;
 
-		.chat-search-count {
-			margin-left: 8px;
-			color: var(--secondary-text-color);
-		}
-	
+    &-left {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    &-right {
+      display: flex;
+      flex: 1 1 auto;
+      justify-content: flex-end;
+      color: var(--primary-color);
+    }
+
+    &-type {
+      cursor: pointer;
+      padding: .5rem;
+    }
+
+    &-type,
+    &-count {
+      font-weight: var(--font-weight-bold);
+    }
+
 		& + .chat-input {
 			display: none;
 		}
 	}
 
-	&-count {
-		&.empty {
-			display: none;
-		}
-
-		&:not(.empty) + .chat-search-calendar {
-			display: none;
-		}
-	}
-
-	&-controls {
-		display: flex;
-	}
-
 	&-results {
-		width: 100%;
-    height: 100%;
-    max-height: 100%;
+    inset: 3.5rem 0 0;
     overflow: hidden;
 		position: absolute;
-		top: 0;
-		left: 0;
 		visibility: hidden;
 		opacity: 0;
 		background-color: var(--surface-color);
-		transition: .2s ease;
+		transition: opacity .2s ease, visibility .2s ease;
+    z-index: 2;
+    padding-bottom: 3rem;
 
 		body.animation-level-0 & {
 			transition: none;
@@ -68,5 +70,50 @@
 			opacity: 1;
 			visibility: visible;
 		}
+
+    &.search-top-active {
+      margin-top: 3rem;
+    }
+
+    .user-title {
+      font-weight: var(--font-weight-bold);
+    }
+
+    .is-empty {
+      display: none;
+      // height: 100%;
+      // justify-content: center;
+    }
+
+    .topbar-search-left-results-padding {
+      height: 3rem;
+    }
 	}
+
+  &-top {
+    position: absolute;
+    top: 100%;
+    inset-inline: 0;
+    background-color: var(--surface-color);
+    height: 3rem;
+  }
+
+  &-go {
+    --translateY: 0;
+    bottom: 3.5rem;
+    inset-inline-end: .625rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.08) !important;
+    font-size: 1.625rem;
+
+    &.is-end {
+      color: rgba(var(--secondary-text-color-rgb), .2);
+      pointer-events: none;
+    }
+
+    &-up {
+      margin-bottom: 2.75rem;
+    }
+  }
 }

@@ -39,7 +39,8 @@ type AppMediaViewerTargetType = {
   element: HTMLElement,
   mid: number,
   peerId: PeerId,
-  message?: MyMessage
+  message?: MyMessage,
+  index?: number
 };
 
 export const onMediaCaptionClick = (caption: HTMLElement, e: MouseEvent) => {
@@ -72,7 +73,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     return this.listLoader.searchContext;
   }
 
-  constructor() {
+  constructor(protected local?: boolean) {
     super(new SearchListLoader({
       processItem: (item) => {
         const isForDocument = this.searchContext.inputFilter._ === 'inputMessagesFilterDocument';
@@ -191,7 +192,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   onPrevClick = async(target: AppMediaViewerTargetType) => {
     this.openMedia({
-      message: await this.getMessageByPeer(target.peerId, target.mid),
+      message: this.local ? target.message : await this.getMessageByPeer(target.peerId, target.mid),
+      index: target.index,
       target: target.element,
       fromRight: -1
     });
@@ -199,7 +201,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   onNextClick = async(target: AppMediaViewerTargetType) => {
     this.openMedia({
-      message: await this.getMessageByPeer(target.peerId, target.mid),
+      message: this.local ? target.message : await this.getMessageByPeer(target.peerId, target.mid),
+      index: target.index,
       target: target.element,
       fromRight: 1
     });
@@ -232,10 +235,10 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   };
 
   onAuthorClick = async(e: MouseEvent) => {
-    const {mid, peerId} = this.target;
+    let {mid, peerId, message} = this.target;
     if(mid && mid !== Number.MAX_SAFE_INTEGER) {
       const threadId = this.searchContext.threadId;
-      const message = await this.getMessageByPeer(peerId, mid);
+      message ||= await this.getMessageByPeer(peerId, mid);
       this.close(e)
       // .then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
       .then(async() => {
@@ -256,8 +259,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   };
 
   onDownloadClick = () => {
-    const {message} = this.target;
-    const media = getMediaFromMessage(message, true);
+    const {message, index} = this.target;
+    const media = getMediaFromMessage(message, true, index);
     if(!media) return;
     appDownloadManager.downloadToDisc({media, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
   };
@@ -293,6 +296,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   public async openMedia({
     message,
+    index,
     target,
     fromRight = 0,
     reverse = false,
@@ -301,6 +305,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     mediaTimestamp
   }: {
     message: MyMessage,
+    index?: number,
     target?: HTMLElement,
     fromRight?: number,
     reverse?: boolean,
@@ -313,7 +318,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     const mid = message.mid;
     const fromId = (message as Message.message).fwd_from && !message.fromId ? getFwdFromName((message as Message.message).fwd_from) : message.fromId;
-    const media = getMediaFromMessage(message, true);
+    const media = getMediaFromMessage(message, true, index);
 
     const noForwards = await this.managers.appPeersManager.noForwards(message.peerId);
     const isServiceMessage = message._ === 'messageService';
@@ -354,6 +359,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.target.mid = mid;
     this.target.peerId = message.peerId;
     this.target.message = message;
+    this.target.index = index;
 
     return promise;
   }

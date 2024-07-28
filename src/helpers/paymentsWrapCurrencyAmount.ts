@@ -1,6 +1,7 @@
 import Icon from '../components/icon';
 import Currencies from '../config/currencies';
 import I18n from '../lib/langPack';
+import {STARS_CURRENCY} from '../lib/mtproto/mtproto_config';
 
 // https://stackoverflow.com/a/34141813
 function number_format(number: any, decimals: any, dec_point: any, thousands_sep: any): string {
@@ -36,7 +37,7 @@ export default function paymentsWrapCurrencyAmount<T extends boolean = false>(
 ): T extends true ? string : HTMLElement | string {
   amount = +amount;
 
-  if(currency === 'XTR') {
+  if(currency === STARS_CURRENCY) {
     if(plain) {
       return I18n.format('StarsCount', true, [amount]);
     }

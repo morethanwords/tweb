@@ -3316,7 +3316,8 @@ export class AppDialogsManager {
       } else if(lastMessage) {
         wrapResult = wrapMessageForReply({
           ...wrapMessageForReplyOptions,
-          message: lastMessage, withoutMediaType
+          message: lastMessage,
+          withoutMediaType
         });
       } else { // rare case
         fragment = document.createDocumentFragment();

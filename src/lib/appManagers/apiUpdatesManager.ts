@@ -570,7 +570,10 @@ class ApiUpdatesManager {
           };
         }
 
-        curState.syncPending.ptsAwaiting = true;
+        if(curState.syncPending) {
+          curState.syncPending.ptsAwaiting = true;
+        }
+
         return false;
       }
 

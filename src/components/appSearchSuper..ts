@@ -146,7 +146,8 @@ class SearchContextMenu {
   constructor(
     private attachTo: HTMLElement,
     private searchSuper: AppSearchSuper,
-    private listenerSetter: ListenerSetter
+    private listenerSetter: ListenerSetter,
+    private storiesPinned: boolean
   ) {
     this.managers = searchSuper.managers;
 
@@ -249,25 +250,25 @@ class SearchContextMenu {
       verify: () => !this.storyItem,
       withSelection: true
     }, {
-      icon: 'pin',
-      text: 'Story.AddToProfile',
+      icon: 'archive',
+      text: 'Archive',
+      onClick: () => this.onStoryTogglePinClick(false),
+      verify: () => this.storyItem && this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+    }, {
+      icon: 'unarchive',
+      text: 'Unarchive',
       onClick: () => this.onStoryTogglePinClick(true),
-      verify: () => this.storyItem && this.peerId === rootScope.myId && !this.storyItem.pFlags.pinned
+      verify: () => this.storyItem && !this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+    }, {
+      icon: 'pin',
+      text: 'ChatList.Context.Pin',
+      onClick: () => this.onStoryToggleToTopClick(true),
+      verify: () => this.storiesPinned && this.storyItem && this.storyItem.pinnedIndex === undefined && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
     }, {
       icon: 'unpin',
-      text: 'Story.RemoveFromProfile',
-      onClick: () => this.onStoryTogglePinClick(false),
-      verify: () => this.storyItem && this.peerId === rootScope.myId && this.storyItem.pFlags.pinned
-    }, {
-      icon: 'pin',
-      text: 'SaveToPosts',
-      onClick: () => this.onStoryTogglePinClick(true),
-      verify: () => this.storyItem && !this.peerId.isUser() && !this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
-    }, {
-      icon: 'unpin',
-      text: 'RemoveFromPosts',
-      onClick: () => this.onStoryTogglePinClick(false),
-      verify: () => this.storyItem && !this.peerId.isUser() && this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+      text: 'ChatList.Context.Unpin',
+      onClick: () => this.onStoryToggleToTopClick(false),
+      verify: () => this.storiesPinned && this.storyItem && this.storyItem.pinnedIndex !== undefined && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
     }, {
       icon: 'select',
       text: 'Message.Context.Select',
@@ -349,6 +350,10 @@ class SearchContextMenu {
 
   private onStoryTogglePinClick = (pin: boolean) => {
     this.searchSuper.selection.onPinClick([this.storyItem.id], pin);
+  };
+
+  private onStoryToggleToTopClick = (pin: boolean) => {
+    this.searchSuper.selection.onPinToTopClick([this.storyItem.id], pin);
   };
 }
 
@@ -467,7 +472,7 @@ export default class AppSearchSuper {
     this.container.classList.add('search-super');
 
     this.listenerSetter = new ListenerSetter();
-    this.searchContextMenu = new SearchContextMenu(this.container, this, this.listenerSetter);
+    this.searchContextMenu = new SearchContextMenu(this.container, this, this.listenerSetter, !this.storiesArchive);
     this.selection = new SearchSelection(this, this.managers, this.listenerSetter);
     if(this.storiesArchive) {
       this.selection.isStoriesArchive = true;
