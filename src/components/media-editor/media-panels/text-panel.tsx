@@ -2,6 +2,7 @@ import {createEffect, createSignal, Index, onMount, Show} from 'solid-js';
 import wrapSticker from '../../wrappers/sticker';
 import rootScope from '../../../lib/rootScope';
 import {TextRenderer} from './text-renderer';
+import {exportTextData} from '../generate/export-callbacks';
 
 export interface TextData {
   id: string;
@@ -183,7 +184,7 @@ const MediaEditorText = (props: {
       <div style={{'transform-origin': '0 0', 'transform': `scale(${appScale()})`}} onclick={() => props.selected && props.editText()}>
         <div class='sticker-container'>
           { /* TOOD: upscale text (yes even more bcoz we scale and it's a bit blurry) */ }
-          <TextRenderer textSizeUpdate={setTextSize} text={props.textData.text} state={props.textData} />
+          <TextRenderer canvasUpdate={cnv => exportTextData.set(props.textData.id, cnv)} textSizeUpdate={setTextSize} text={props.textData.text} state={props.textData} />
         </div>
       </div>
       <Show when={props.selected}>

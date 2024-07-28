@@ -16,6 +16,7 @@ import IS_WEB_ASSEMBLY_SUPPORTED from '../../environment/webAssemblySupport';
 import makeError from '../../helpers/makeError';
 import App from '../../config/app';
 import rootScope from '../rootScope';
+import {exportCallbacks} from '../../components/media-editor/generate/export-callbacks';
 
 export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' |
@@ -224,38 +225,8 @@ export class LottieLoader {
     player.onLoad(frameCount, fps);
   };
 
-  private onAllFrames = (reqId: number, ...args: any[]) => {
-    console.info('got 222222 shit');
-    console.info('got 222222 shit');
-    console.info('got 222222 shit');
-    console.info('got 222222 shit');
-    console.info('got 222222 shit');
-    console.info('got 222222 shit');
-    console.info('got 222222 shit');
-    console.info('got 222222 shit');
-    console.info('got 222222 shit');
-    console.info('got shit');
-    console.info('got shit');
-    console.info('got shit');
-    console.info('got shit', reqId);
-    console.info('got shit', args);
-
-    const [imgs] = args as [any[]];
-    imgs.forEach((img, idx) => {
-      const cnv = document.createElement('canvas');
-      cnv.classList.add('f' + idx);
-      cnv.id = 'frame' + idx;
-      cnv.width = 400;
-      cnv.height = 400;
-
-      console.info(img);
-      const ctx = cnv.getContext('2d');
-      // ctx.rotate(-0.5);
-      ctx.drawImage(img, 0, 0);
-
-      console.info(cnv);
-      document.body.appendChild(cnv);
-    });
+  private onAllFrames = (reqId: number, callback: any, ...args: any[]) => {
+    exportCallbacks.get(callback)([...args]);
   }
 
   private onFrame = (reqId: number, frameNo: number, frame: Uint8ClampedArray | ImageBitmap) => {

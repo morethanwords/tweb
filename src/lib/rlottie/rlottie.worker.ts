@@ -37,6 +37,10 @@ export class RLottieItem {
   ) {
   }
 
+  public getFrameCount() {
+    return this.frameCount;
+  }
+
   public init(json: string, fps: number) {
     if(this.dead) {
       return;
@@ -230,20 +234,13 @@ const queryableFunctions = {
 
     items[reqId].render(frameNo, clamped);
   },
-  renderAllFrames: async function(reqId: number, frameNo: number, clamped?: Uint8ClampedArray) {
-    // console.log('worker renderFrame', reqId, frameNo, clamped);
-    // items[reqId].render(frameNo, clamped);
-
-    if(frameNo === 3) {
-      const res1 = await items[reqId].rawRender(0);
-      const res2 = await items[reqId].rawRender(5);
-      const res3 = await items[reqId].rawRender(10);
-      const res4 = await items[reqId].rawRender(15);
-      const res5 = await items[reqId].rawRender(20);
-
-      reply(['render_all', reqId, [res1, res2, res3, res4, res5]]);
-      console.info('okk');
+  renderAllFrames: async function(reqId: number, callbackId: string, clamped?: Uint8ClampedArray) {
+    const frames = items[reqId].getFrameCount();
+    const res = [];
+    for(let i = 0; i < frames; i++) {
+      res.push(items[reqId].rawRender(i));
     }
+    Promise.all(res).then(res => reply(['render_all', reqId, callbackId, res]));
   }
 };
 

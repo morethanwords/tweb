@@ -25,6 +25,16 @@ import {CropResizePanel} from './media-editor/media-panels/crop-resize-panel';
 import Button from './button';
 import {AddTextPanel} from './media-editor/media-panels/add-text-panel';
 import {MediaEditorTextsPanel} from './media-editor/media-panels/text-panel';
+import {
+  exportCallbacks,
+  exportData,
+  exportTextData,
+  exportTriggers,
+  loadedExportData
+} from './media-editor/generate/export-callbacks';
+import wrapSticker from './wrappers/sticker';
+import {generateGif} from './media-editor/generate/media-editor-generator';
+import {IS_FIREFOX} from '../environment/userAgent';
 
 export interface MediaEditorSettings {
   crop: number;
@@ -344,12 +354,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'shadows'), (((mediaEditorState.filters.shadows || 1)) * 0.55 + 100) / 100);
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'vignette'), (mediaEditorState.filters.vignette || 0) / 100);
       gl.uniform1f(gl.getUniformLocation(filtersProgram, 'grain'), ((mediaEditorState.filters.grain || 0) / 100) * 0.04);
+      gl.uniform3f(gl.getUniformLocation(filtersProgram, 'highlightsTintColor'), 1, 1, 1);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'highlightsTintIntensity'), 0.25);
 
-      gl.uniform3f(gl.getUniformLocation(filtersProgram, 'highlightsTintColor'), 1, 1, 1); // some color idk -> 0
-      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'highlightsTintIntensity'), 0.25); // 0 -> 0.25
-
-      gl.uniform3f(gl.getUniformLocation(filtersProgram, 'shadowsTintColor'), 0, 0, 0); // some color idk -> 0
-      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'shadowsTintIntensity'), 0.25); // 0 -> 0.25
+      gl.uniform3f(gl.getUniformLocation(filtersProgram, 'shadowsTintColor'), 0, 0, 0);
+      gl.uniform1f(gl.getUniformLocation(filtersProgram, 'shadowsTintIntensity'), 0.25);
     });
 
     originalTextureWithFilters = getGLFramebufferData(gl, sourceWidth, sourceHeight);
@@ -829,52 +838,6 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     return lines2();
   }, lines2());
 
-  const testExport = () => {
-    // generateFakeGif(img);
-    const cropWidth = cropArea()[1].x - cropArea()[0].x;
-    const cropHeight = cropArea()[1].y - cropArea()[0].y;
-
-    const bgImage = document.createElement('canvas');
-    bgImage.width = cropWidth;
-    bgImage.height = cropHeight;
-    const bgCtx = bgImage.getContext('2d');
-    bgCtx.fillStyle = 'black';
-    bgCtx.fillRect(0, 0, cropWidth, cropHeight);
-    bgCtx.drawImage(glCanvas, 0, 0);
-
-    // rotate and scale if sticker is rotated and scaled
-    const stickerCanvas = document.body.lastElementChild.previousElementSibling; // .getElementsByTagName('canvas').item(0);
-    console.info(stickerCanvas);
-    bgCtx.drawImage(stickerCanvas as any, 0, 0, 400, 400, 100, 100, 200, 200);
-
-    // transformation
-    const destinationCanvas = document.createElement('canvas');
-    destinationCanvas.classList.add('test-exp');
-    destinationCanvas.width = cropWidth;
-    destinationCanvas.height = cropHeight;
-
-    document.body.append(destinationCanvas);
-    const destinationCtx = destinationCanvas.getContext('2d');
-
-    const pivot = croppedAreaCenterPoint();
-    const pivotOffset = [pivot.x, pivot.y]; // [pivot.x - cropArea()[0].x, pivot.y - cropArea()[0].y];
-    const degree = -angle();
-    // move to make crop
-    destinationCtx.translate(-cropArea()[0].x, -cropArea()[0].y);
-    // go to center of crop (but relatively for the whole canvas), rotate and go back
-    destinationCtx.translate(pivotOffset[0], pivotOffset[1]);
-    destinationCtx.rotate(degree * Math.PI / 180);
-    // scale while you at the point
-    destinationCtx.scale(canvasScale(), canvasScale());
-    destinationCtx.translate(-pivotOffset[0], -pivotOffset[1]);
-    // translate by canvas pos
-    destinationCtx.translate(-canvasPos()[0], -canvasPos()[1]);
-    destinationCtx.drawImage(bgImage, 0, 0);
-  }
-
-  const saveButton = Button('btn-circle btn-corner', {icon: 'check'});
-  saveButton.onclick = () => testExport();
-
   // text editing
   const editingTextSignal = createSignal(false);
   const [editingText, setEditingText] = editingTextSignal;
@@ -921,6 +884,142 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       }
     });
   };
+
+  const testExport = () => {
+    // generateFakeGif(img);
+    const cropWidth = cropArea()[1].x - cropArea()[0].x;
+    const cropHeight = cropArea()[1].y - cropArea()[0].y;
+
+    const previ = document.createElement('div');
+    previ.classList.add('previ');
+    document.body.append(previ);
+
+    // firefox too
+    const allStickersLoaded = (staticImg = false) => {
+      const frames = Array.from(exportData.values());
+      const maxFrames = staticImg ? 1 : Math.max(...frames.map(([[arr]]) => arr.length)) || 1;
+
+      const res = []; // result images or canvases
+
+      for(let frame = 0; frame < maxFrames; frame++) {
+        const currentFrameCanvas = document.createElement('canvas');
+        currentFrameCanvas.classList.add('test-exp');
+        currentFrameCanvas.classList.add('current-frame');
+        currentFrameCanvas.width = glCanvas.width;
+        currentFrameCanvas.height = glCanvas.height;
+        const currentFrameContext = currentFrameCanvas.getContext('2d');
+        currentFrameContext.drawImage(glCanvas, 0, 0);
+
+        undoActions().filter(act => act.type === 'media' && act.action.type === 'create').forEach((action: any) => {
+          console.info(action);
+
+          if(action.action.data.media === 'sticker') {
+            const curr = stickers().find(st => st.id === action.action.id);
+
+            const [[dat]] = exportData.get(action.action.id);
+            const data = dat[frame % dat.length];
+
+            currentFrameContext.translate(curr.x, curr.y);
+            currentFrameContext.rotate(curr.rotation * Math.PI / 180);
+            currentFrameContext.scale(curr.scale, curr.scale);
+            currentFrameContext.drawImage(data, -100, -100, 200, 200);
+
+            // return to original
+            currentFrameContext.scale(1 / curr.scale, 1 / curr.scale);
+            currentFrameContext.rotate(-curr.rotation * Math.PI / 180);
+            currentFrameContext.translate(-curr.x, -curr.y);
+          } else {
+            // text here too
+            const curr = texts().find(st => st.id === action.action.id);
+
+            const cnv: HTMLCanvasElement = exportTextData.get(curr.id);
+
+            currentFrameContext.translate(curr.x, curr.y);
+            currentFrameContext.rotate(curr.rotation * Math.PI / 180);
+            currentFrameContext.scale(curr.scale, curr.scale);
+            currentFrameContext.drawImage(cnv, -cnv.width / 2, -cnv.height / 2, cnv.width, cnv.height);
+
+            // return to original
+            currentFrameContext.scale(1 / curr.scale, 1 / curr.scale);
+            currentFrameContext.rotate(-curr.rotation * Math.PI / 180);
+            currentFrameContext.translate(-curr.x, -curr.y);
+          }
+        })
+
+        // crop and etc
+
+        const destinationCanvas = document.createElement('canvas');
+        destinationCanvas.classList.add('test-exp');
+        destinationCanvas.width = cropWidth;
+        destinationCanvas.height = cropHeight;
+
+        // document.body.append(destinationCanvas);
+        const destinationCtx = destinationCanvas.getContext('2d');
+
+        const pivot = croppedAreaCenterPoint();
+        const pivotOffset = [pivot.x, pivot.y]; // [pivot.x - cropArea()[0].x, pivot.y - cropArea()[0].y];
+        const degree = -angle();
+        // move to make crop
+        destinationCtx.translate(-cropArea()[0].x, -cropArea()[0].y);
+        // go to center of crop (but relatively for the whole canvas), rotate and go back
+        destinationCtx.translate(pivotOffset[0], pivotOffset[1]);
+        destinationCtx.rotate(degree * Math.PI / 180);
+        // scale while you at the point
+        destinationCtx.scale(canvasScale(), canvasScale());
+        destinationCtx.translate(-pivotOffset[0], -pivotOffset[1]);
+        // translate by canvas pos
+        destinationCtx.translate(-canvasPos()[0], -canvasPos()[1]);
+        destinationCtx.drawImage(currentFrameCanvas, 0, 0);
+
+        res.push(destinationCanvas);
+        previ.append(destinationCanvas);
+        console.info('appended');
+        // get bg image (already have)
+        // go through all undo, filter by media, if text -> draw text, if sticker draw sticker frame (% array length)
+      }
+
+      if(staticImg || IS_FIREFOX) {
+        // export image
+
+        const cnv = res[0];
+        if(cnv) {
+          const url = res[0].toDataURL();
+          const newImg = document.createElement('img'); // create img tag
+          newImg.src = url;
+
+          /* const a = document.createElement('a');
+          a.href = url;
+          a.download = 'output.png';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a); */
+        }
+      } else {
+        // export video
+
+        generateGif(cropWidth, cropHeight, res);
+      }
+    }
+
+    if(!stickers().length) {
+      allStickersLoaded(true);
+    }
+
+    stickers().forEach(async(sticker) => {
+      exportCallbacks.set(sticker.id, (...data: any) => {
+        exportData.set(sticker.id, data);
+        loadedExportData.set(sticker.id, true);
+        const loadedAll = Array.from(loadedExportData.values()).every(Boolean);
+        if(loadedAll) {
+          allStickersLoaded();
+        }
+      });
+    });
+    stickers().forEach(sticker => exportTriggers.get(sticker.id)());
+  }
+
+  const saveButton = Button('btn-circle btn-corner', {icon: 'check'});
+  saveButton.onclick = () => testExport();
 
   // ext edit end ======
 

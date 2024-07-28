@@ -811,14 +811,25 @@ $inactive-opacity: .4;
   }
 }
 
+body > .previ {
+  display: flex;
+  overflow: scroll;
+  flex-direction: column;
+  z-index: 10000;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  height: 500px;
+}
+
 body > img,
-body > canvas.test-exp {
+body > video,
+body > canvas {
   display: block;
   z-index: 10000;
   position: fixed;
   top: 10px;
   left: 10px;
-  scale: 0.5;
 
 
   &.f1 {

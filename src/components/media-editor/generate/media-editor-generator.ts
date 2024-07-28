@@ -1,12 +1,17 @@
-export const generateFakeGif = async(src: HTMLImageElement) => {
-  // if firefox then only static
+export const generateGif = async(width: number, height: number, frames: any[]) => {
+  console.info('gg', width, height);
+  if(width % 2) {
+    width += 1;
+  }
 
-  const width = src.width;
-  const height = src.height;
+  if(height % 2) {
+    height += 1;
+  }
+  // if firefox then only static
   const durationInMillisecond = 1000;
-  const fps = 5; // 60;
+  const fps = 60;
   const frameTimeInMillisecond = 1000 / fps;
-  const totalFrames = Math.floor(durationInMillisecond / frameTimeInMillisecond) ;
+  const totalFrames = frames.length; // Math.floor(durationInMillisecond / frameTimeInMillisecond) ;
   let chunkCount = 0;
   let encoderClosed = false;
   let videoEncoder: any = null;
@@ -46,11 +51,26 @@ export const generateFakeGif = async(src: HTMLImageElement) => {
     file.addSample(track, ab, sampleOptions);
 
     chunkCount++;
-    if(chunkCount >= 5) {
+
+    console.info(chunkCount);
+    if(chunkCount >= totalFrames) {
       videoEncoder.close();
       encoderClosed = true;
+
+      console.info(file);
       file.save('test.mp4');
       console.log('completed !');
+
+      const buffer = file.getBuffer();
+      console.info('bff', buffer);
+
+      const blob = new Blob([buffer]);
+      const video = document.createElement('video');
+      video.autoplay = true;
+      video.muted = true;
+      video.controls = true;
+      video.src = URL.createObjectURL(blob);
+      document.body.appendChild(video);
     }
   };
 
@@ -59,15 +79,11 @@ export const generateFakeGif = async(src: HTMLImageElement) => {
   const drawFrame = (id: number) => {
     if(encoderClosed) return;
 
-    const elem = document.getElementById('frame' + id) as HTMLCanvasElement;
-    console.info(elem);
-
     const temp = document.createElement('canvas');
     temp.width = width;
     temp.height = height;
     const ctx = temp.getContext('2d');
-    ctx.drawImage(src, 0, 0);
-    ctx.drawImage(elem, 0, 0);
+    ctx.drawImage(frames[id], 0, 0);
 
     createImageBitmap(temp).then((bmp) => {
       const videoFrame = new ((window as unknown as { VideoFrame: any }).VideoFrame)(bmp, {timestamp: durationInMillisecond * id});
@@ -76,11 +92,9 @@ export const generateFakeGif = async(src: HTMLImageElement) => {
     });
   };
 
-  drawFrame(0);
-  drawFrame(1);
-  drawFrame(2);
-  drawFrame(3);
-  drawFrame(4);
+  for(let i = 0; i < frames.length; i++) {
+    drawFrame(i);
+  }
 }
 
 const createVideoEncoder = async(width: number, height: number, output: (encodedChunk: any, config: any) => void) => {
@@ -104,3 +118,4 @@ const createVideoEncoder = async(width: number, height: number, output: (encoded
     resolve(videoEncoder);
   });
 }
+

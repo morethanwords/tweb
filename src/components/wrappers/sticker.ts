@@ -43,6 +43,7 @@ import Icon from '../icon';
 import {SHOULD_HANDLE_VIDEO_LEAK, attachVideoLeakListeners, leakVideoFallbacks, onVideoLeak} from '../../helpers/dom/handleVideoLeak';
 import noop from '../../helpers/noop';
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
+import {exportCallbacks, exportData, exportTriggers, loadedExportData} from '../media-editor/generate/export-callbacks';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -79,7 +80,7 @@ const getThumbFromContainer = (container: HTMLElement) => {
   return element;
 };
 
-export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache, color}: {
+export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache, color, onlyData = false, dataKey}: {
   doc: MyDocument,
   div: HTMLElement | HTMLElement[],
   middleware?: Middleware,
@@ -115,6 +116,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   showPremiumInfo?: () => void,
   useCache?: boolean,
   color?: RLottiePlayer['color'],
+  onlyData?: boolean,
+  dataKey?: string
 }) {
   const options = arguments[0];
   div = Array.isArray(div) ? div : [div];
@@ -450,6 +453,17 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         textColor: !isCustomEmoji ? textColor : undefined,
         color: color || undefined
       });
+
+      if(onlyData) {
+        console.info('anim', animation);
+        setTimeout(() => {
+          exportTriggers.set(dataKey, () => {
+            console.info('TRIGGER TRIGGERD:', dataKey)
+            loadedExportData.set(dataKey, false);
+            animation.getData(dataKey);
+          });
+        }, 250);
+      }
 
       // const deferred = deferredPromise<void>();
 

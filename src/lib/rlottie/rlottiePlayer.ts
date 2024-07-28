@@ -481,6 +481,10 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.renderFrame2(frame, frameNo);
   }
 
+  public getData(callbackId: string) {
+    this.sendQuery(['renderAllFrames', callbackId], this.clamped ? [this.clamped.buffer] : undefined);
+  }
+
   public requestFrame(frameNo: number) {
     const frame = this.cache.frames.get(frameNo);
     const frameNew = this.cache.framesNew.get(frameNo);
@@ -494,8 +498,6 @@ export default class RLottiePlayer extends EventListenerBase<{
       }
 
       this.sendQuery(['renderFrame', frameNo], this.clamped ? [this.clamped.buffer] : undefined);
-
-      this.sendQuery(['renderAllFrames', frameNo], this.clamped ? [this.clamped.buffer] : undefined);
     }
   }
 

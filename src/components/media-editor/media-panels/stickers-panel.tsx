@@ -1,6 +1,7 @@
 import {createEffect, createSignal, Index, onMount, Show} from 'solid-js';
 import wrapSticker from '../../wrappers/sticker';
 import rootScope from '../../../lib/rootScope';
+import {exportCallbacks, exportData, exportTriggers, loadedExportData} from '../generate/export-callbacks';
 
 export interface StickerData {
   id: string;
@@ -45,6 +46,7 @@ const MediaEditorSticker = (props: {
   upd: (p: Point) => Point,
   crop: [Point, Point],
   left: number,
+  id: string,
   top: number,
   height: number,
   width: number,
@@ -101,15 +103,16 @@ const MediaEditorSticker = (props: {
   onMount(async() => {
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
     const loadPromises: Promise<any>[] = [];
-    console.info(element);
-    await wrapSticker({
+    const anim = await wrapSticker({
       doc: await rootScope.managers.appDocsManager.getDoc(props.docId),
       div: element,
       loadPromises,
       width: 200,
       height: 200,
       loop: true,
-      play: true
+      play: true,
+      onlyData: true,
+      dataKey: props.id
     });
   });
 
@@ -241,6 +244,7 @@ export const MediaEditorStickersPanel = (props: {
           x={sticker().x} y={sticker().y}
           rotation={sticker().rotation}
           scale={sticker().scale}
+          id={sticker().id}
           updatePos={(x, y, rotation, scale) => {
             props.updatePos(sticker().id, x, y, rotation, scale);
             setDragPos([0, 0]);
