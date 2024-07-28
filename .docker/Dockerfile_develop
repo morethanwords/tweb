@@ -1,0 +1,11 @@
+# Base image
+FROM node:18
+
+RUN npm install -g pnpm
+
+# Set the working directory in the container
+WORKDIR /app
+
+COPY .. .
+
+EXPOSE 8080
