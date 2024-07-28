@@ -275,13 +275,17 @@ export const drawWideLine = (gl: WebGLRenderingContext, width: number, height: n
   return shaderProgram;
 }
 
+export const createMarkerGLProgram = (gl: WebGLRenderingContext) => {
+  return createAndUseGLProgram(gl, wideLineVertexShader, wideLineFragmentShader);
+}
 
-export const drawWideLineTriangle = (gl: WebGLRenderingContext, width: number, height: number, points: number[]) => {
-  const shaderProgram = createAndUseGLProgram(gl, wideLineVertexShader, wideLineFragmentShader);
+export const drawWideLineTriangle = (gl: WebGLRenderingContext, shaderProgram: WebGLProgram, width: number, height: number, points: number[], fn: (program: WebGLProgram) => void) => {
   createAndBindBufferToAttribute(gl, shaderProgram, 'aVertexPosition', new Float32Array(points));
 
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.uniform3f(gl.getUniformLocation(shaderProgram, 'color'), 1, 1, 1);
+  fn?.(shaderProgram);
 
   gl.drawArrays(gl.TRIANGLES, 0, points.length / 2);
 

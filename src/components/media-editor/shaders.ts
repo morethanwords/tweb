@@ -393,12 +393,12 @@ export const wideLineVertexShader = `
 // Fragment shader source code
 export const wideLineFragmentShader = `
             precision mediump float;
-            
+            uniform vec3 color;
            // varying vec3 vColor;
 
 
                 void main() {
-               gl_FragColor = vec4(1.0, 0.1, 0.1, 0.75);
+               gl_FragColor = vec4(color, 0.75);
                 }
         `;
 

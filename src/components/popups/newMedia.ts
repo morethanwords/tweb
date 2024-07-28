@@ -158,6 +158,7 @@ export default class PopupNewMedia extends PopupElement {
       const [editor] = Array.from(pageEl.getElementsByClassName('media-editor'));
       this.editedImg = result;
       editor?.remove?.();
+      this.btnConfirmOnEnter = temp;
     }
     render(() => AppMediaEditor({close, imageBlobUrl: willAttach.sendFileDetails[0].objectURL}), pageEl);
   }

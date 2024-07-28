@@ -13,7 +13,7 @@ import {MediaEditorPaintPanel} from './media-editor/media-panels/paint-panel';
 import {simplify} from './media-editor/math/draw.util';
 import {Stroke} from './media-editor/math/algo';
 import {
-  calcCDT, createEnhanceFilterProgram, createOthersFilterProgram, createSharpeningFilterProgram,
+  calcCDT, createEnhanceFilterProgram, createMarkerGLProgram, createOthersFilterProgram, createSharpeningFilterProgram,
   drawTextureDebug,
   drawTextureToNewFramebuffer,
   drawWideLineTriangle,
@@ -101,6 +101,15 @@ const defaultEditorState = {
 interface Point {
   x: number;
   y: number;
+}
+
+function hexToRgb(hex: string) {
+  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16) / 255,
+    g: parseInt(result[2], 16) / 255,
+    b: parseInt(result[3], 16) / 255
+  } : null;
 }
 
 function getExtremumPoints(points: Point[]): Point[] {
@@ -277,6 +286,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
   let filterGLProgram: WebGLProgram;
   let sharpenGLProgram: WebGLProgram;
   let othersGLProgram: WebGLProgram;
+  let markerGLProgram: WebGLProgram;
 
   let container: HTMLDivElement;
   let mediaEditor: HTMLDivElement;
@@ -395,6 +405,7 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       filterGLProgram = createEnhanceFilterProgram(gl);
       sharpenGLProgram = createSharpeningFilterProgram(gl);
       othersGLProgram = createOthersFilterProgram(gl);
+      markerGLProgram = createMarkerGLProgram(gl);
       drawTextureWithFilters(this, sourceWidth, sourceHeight);
       currentTexture = originalTextureWithFilters;
       drawTextureDebug(gl, sourceWidth, sourceHeight, originalTextureWithFilters);
@@ -746,7 +757,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
       if(forward) {
         // sets buffer as active
         drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
-        drawWideLineTriangle(gl, sourceWidth, sourceHeight, action.action.points);
+        useProgram(gl, markerGLProgram);
+        const {r, g, b} = hexToRgb(action.action.color);
+        drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, action.action.points, pr => {
+          gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+        });
         const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
         drawTextureDebug(gl, sourceWidth, sourceHeight, dat); // sets screen as active
         currentTexture = dat;
@@ -763,7 +778,11 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     currentTexture = originalTextureWithFilters;
     drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
     drawCommands.forEach(command => {
-      drawWideLineTriangle(gl, sourceWidth, sourceHeight, command.action.points);
+      useProgram(gl, markerGLProgram);
+      const {r, g, b} = hexToRgb(command.action.color);
+      drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, command.action.points, pr => {
+        gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+      });
     });
     const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
     drawTextureDebug(gl, sourceWidth, sourceHeight, dat); // sets screen as active
@@ -795,7 +814,12 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     }));
 
     drawTextureToNewFramebuffer(gl, sourceWidth, sourceHeight, currentTexture);
-    drawWideLineTriangle(gl, sourceWidth, sourceHeight, fin);
+    useProgram(gl, markerGLProgram);
+    console.info(mediaEditorState.paint);
+    const {r, g, b} = hexToRgb(hexColor());
+    drawWideLineTriangle(gl, markerGLProgram, sourceWidth, sourceHeight, fin, pr => {
+      gl.uniform3f(gl.getUniformLocation(pr, 'color'), r, g, b);
+    });
     const dat = getGLFramebufferData(gl, sourceWidth, sourceHeight);
     drawTextureDebug(gl, sourceWidth, sourceHeight, dat);
   });
@@ -837,6 +861,22 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
     });
     return lines2();
   }, lines2());
+
+  const selectedColor = () => mediaEditorState.paint.tools[mediaEditorState.paint.tool];
+  const hexColor = () => {
+    const color = selectedColor();
+    const colors = [
+      '#FFFFFF',
+      '#FE4438',
+      '#FF8901',
+      '#FFD60A',
+      '#33C759',
+      '#62E5E0',
+      '#0A84FF',
+      '#BD5CF3'
+    ];
+    return typeof color === 'number' ? colors[color] : color;
+  };
 
   // text editing
   const editingTextSignal = createSignal(false);

@@ -1,8 +1,5 @@
 import {MediaEditorSettings} from '../../appMediaEditor';
 import {createEffect, createSignal, onMount, Setter, Signal} from 'solid-js';
-import {simplify} from '../math/draw.util';
-import {Stroke} from '../math/algo';
-import {drawWideLineTriangle} from '../glPrograms';
 
 interface Point {
   x: number;
@@ -16,19 +13,6 @@ function findAngle(A: Point, B: Point, C: Point) {
   return Math.acos((BC*BC+AB*AB-AC*AC)/(2*BC*AB));
 }
 
-const dup1 = (nestedArray: number[]) => {
-  let out: any[] = [];
-  const outs: any[][] = [];
-  nestedArray.forEach(x => {
-    out.push(x);
-    if(out.length === 2) {
-      outs.push([...out]);
-      out = [];
-    }
-  });
-  return outs;
-}
-
 export const MediaEditorPaintPanel = (props: { setPoints: Setter<any[]>, crop: [Point, Point], left: number, top: number, height: number, width: number, linesSignal: Signal<number[][]>, active: boolean, state: MediaEditorSettings['paint'] }) => {
   const [, setLines] = props.linesSignal;
   const [points, setPoints] = createSignal([]);
@@ -38,52 +22,10 @@ export const MediaEditorPaintPanel = (props: { setPoints: Setter<any[]>, crop: [
 
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
-  let currentLineGL:  WebGLRenderingContext;
-
-  createEffect(() => {
-    const llld = dup1(points());
-    if(!currentLineGL) {
-      return;
-    }
-    const lll = simplify(llld, 2);
-    const stroke = Stroke({
-      thickness: 25,
-      join: 'bevel',
-      miterLimit: 5
-    })
-    const {positions, cells} = stroke.build(lll) as { cells: [number, number, number][], positions: [number, number][] };
-    const fin = [].concat(...[].concat(...cells).map(cell => {
-      const [x, y] = positions[cell];
-
-      // const scaleX = x / props.width;
-      // const scaleY = y / props.height;
-
-      /* const cropWidth = props.crop[1].x - props.crop[0].x;
-      const cropHeight = props.crop[1].y - props.crop[0].y;
-
-      const justCropX = props.crop[0].x + cropWidth * scaleX;
-      const justCropY = props.crop[0].y + cropHeight * scaleY; */
-
-      // fix corrdinate system convertion
-      // console.info('xx 22222', scaleX, scaleY);
-
-      // console.info('pos  22222', justCropX, justCropY);
-
-      // console.info('point', x, y);
-
-      // [x, y] = [justCropX / props.width, justCropY / props.height];
-      // return [2 * scaleX - 1, 2 * scaleY];
-
-      return [x, y];
-      // return [2 * (x / props.width) - 1, 2 * ((y + props.top) / props.height)];
-    }));
-    // drawWideLineTriangle(currentLineGL, props.width, props.height, fin);
-  });
 
   onMount(() => {
     canvas.width = props.width || container.clientWidth;
     canvas.height = props.height || container.clientHeight;
-    currentLineGL = canvas.getContext('webgl');
     const {left, top} = canvas.getBoundingClientRect();
     setCanvasPos([left, top]);
   });
