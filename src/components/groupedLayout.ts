@@ -48,7 +48,7 @@ export class Layouter {
 
   public layout(): GroupMediaLayout[] {
     if(!this.count) return [];
-    // else if(this.count === 1) return this.layoutOne();
+    else if(this.count === 1) return this.layoutOne();
 
     if(this.count >= 5 || this.ratios.find((r) => r > 2)) {
       return new ComplexLayouter(this.ratios, this.averageRatio, this.maxWidth, this.minWidth, this.spacing).layout();
@@ -71,7 +71,6 @@ export class Layouter {
   }
 
   private layoutThree(): ReturnType<Layouter['layout']> {
-    // console.log('layoutThree:', this);
     if(this.proportions[0] === 'n') {
       return this.layoutThreeLeftAndOther();
     }
@@ -83,6 +82,18 @@ export class Layouter {
       return this.layoutFourTopAndOther();
     }
     return this.layoutFourLeftAndOther();
+  }
+
+  private layoutOne(): ReturnType<Layouter['layout']> {
+    const width = this.maxWidth;
+    const height = (this.sizes[0].h * width) / this.sizes[0].w;
+
+    return [
+      {
+        geometry: {x: 0, y: 0, width, height},
+        sides: RectPart.Left | RectPart.Top | RectPart.Right | RectPart.Bottom
+      }
+    ];
   }
 
   private layoutTwoTopBottom(): ReturnType<Layouter['layout']> {

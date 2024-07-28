@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import partition from '../../helpers/array/partition';
 import assumeType from '../../helpers/assumeType';
 import {formatDate} from '../../helpers/date';
 import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
@@ -26,6 +27,7 @@ import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wra
 import wrapTextWithEntities from '../../lib/richTextProcessor/wrapTextWithEntities';
 import rootScope from '../../lib/rootScope';
 import {Modify} from '../../types';
+import Icon from '../icon';
 import TranslatableMessage from '../translatableMessage';
 import wrapMessageActionTextNew, {WrapMessageActionTextOptions} from './messageActionTextNew';
 import {wrapMessageGiveawayResults} from './messageActionTextNewUnsafe';
@@ -118,6 +120,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
       usingFullGrouepd = false;
     }
 
+    let i = 1;
     if((!usingFullGrouepd && !withoutMediaType) || !options.text) {
       const media = message.media;
       switch(media?._) {
@@ -250,6 +253,35 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
           break;
         }
 
+        case 'messageMediaPaidMedia': {
+          const extendedMedia = media.extended_media;
+          const [photos, videos] = partition(extendedMedia, (media) => {
+            if(media._ === 'messageExtendedMediaPreview') {
+              return media.video_duration === undefined;
+            }
+
+            return media.media._ === 'messageMediaPhoto';
+          });
+
+          if(!plain) {
+            i += 2;
+            addPart(undefined, Icon('star', 'xtr-icon'));
+            addPart(undefined, ' ');
+          }
+
+          const length = photos.length + videos.length;
+          if(length < 2) {
+            addPart(photos.length ? 'AttachPhoto' : 'AttachVideo');
+            break;
+          }
+
+          addPart(
+            photos.length && videos.length ? 'Media' : photos.length ? 'Photos' : 'Videos', undefined,
+            [length]
+          );
+          break;
+        }
+
         default:
           addPart(UNSUPPORTED_LANG_PACK_KEY);
           options.text = '';
@@ -260,7 +292,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
     }
 
     const length = parts.length;
-    for(let i = 1; i < length; i += 2) {
+    for(; i < length; i += 2) {
       parts.splice(i, 0, ', ');
     }
 

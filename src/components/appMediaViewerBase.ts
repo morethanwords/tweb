@@ -116,7 +116,7 @@ export default class AppMediaViewerBase<
 
   protected isFirstOpen = true;
 
-  protected pageEl = document.getElementById('page-chats') as HTMLDivElement;
+  // protected pageEl = document.getElementById('page-chats') as HTMLDivElement;
 
   protected setMoverPromise: Promise<void>;
   protected setMoverAnimationPromise: Promise<void>;
@@ -1654,7 +1654,7 @@ export default class AppMediaViewerBase<
       await setAuthorPromise;
 
       if(!this.wholeDiv.parentElement) {
-        this.pageEl.insertBefore(this.wholeDiv, document.getElementById('main-columns'));
+        document.body.append(this.wholeDiv);
         void this.wholeDiv.offsetLeft; // reflow
       }
 

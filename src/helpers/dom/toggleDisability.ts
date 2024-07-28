@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import toArray from '../array/toArray';
+
 export default function toggleDisability(elements: HTMLElement | HTMLElement[], disable: boolean): () => void {
-  if(!Array.isArray(elements)) {
-    elements = [elements];
-  }
+  elements = toArray(elements);
 
   if(disable) {
     elements.forEach((el) => el.setAttribute('disabled', 'true'));

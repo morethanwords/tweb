@@ -47,7 +47,7 @@ import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOf
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {SendReactionOptions} from '../../lib/appManagers/appReactionsManager';
 import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
-import {createEffect, createRoot, createSignal, on} from 'solid-js';
+import {createEffect, createRoot, createSignal, on, untrack} from 'solid-js';
 import TopbarSearch from './topbarSearch';
 import createUnifiedSignal from '../../helpers/solid/createUnifiedSignal';
 import liteMode from '../../helpers/liteMode';
@@ -683,7 +683,8 @@ export default class Chat extends EventListenerBase<{
           return;
         }
 
-        topbarSearch = TopbarSearch({
+        topbarSearch = untrack(() => TopbarSearch({
+          chat: this,
           chatType: this.type,
           peerId: this.peerId,
           threadId: this.threadId,
@@ -697,9 +698,9 @@ export default class Chat extends EventListenerBase<{
           onDatePick: (timestamp) => {
             this.bubbles.onDatePick(timestamp);
           },
-          onActive: (active, showingReactions) => {
+          onActive: (active, showingReactions, isSmallScreen) => {
             const className = 'is-search-active';
-            const isActive = !!(active && showingReactions);
+            const isActive = !!(active && (showingReactions || isSmallScreen));
             const wasActive = this.container.classList.contains(className);
             if(wasActive === isActive) {
               return;
@@ -707,13 +708,14 @@ export default class Chat extends EventListenerBase<{
 
             const scrollSaver = this.bubbles.createScrollSaver();
             scrollSaver.save();
-            this.container.classList.toggle(className, isActive);
+            this.container.classList.toggle(className, !isSmallScreen && isActive);
+            this.topbar.container.classList.toggle('hide-pinned', isSmallScreen);
             scrollSaver.restore();
           },
           onSearchTypeChange: () => {
             this.ignoreSearchCleaning = true;
           }
-        }) as HTMLElement;
+        })) as HTMLElement;
         this.topbar.container.append(topbarSearch);
         animateElements(topbarSearch, true);
         return topbarSearch;
@@ -1127,24 +1129,10 @@ export default class Chat extends EventListenerBase<{
     this.searchSignal?.(undefined);
   }
 
-  public initSearch(options: {query?: string, filterPeerId?: PeerId, reaction?: Reaction} = {}) {
+  public initSearch(options: {query?: string, filterPeerId?: PeerId, reaction?: Reaction} = {}): void {
     if(!this.peerId) return;
-    const {query} = options;
-
-    if(mediaSizes.isMobile) {
-      if(!this.search) {
-        this.search = new ChatSearch(this.topbar, this, query);
-      } else {
-        this.search.setQuery(query);
-      }
-    } else {
-      options.query ||= '';
-      this.searchSignal(options);
-      // let tab = appSidebarRight.getTab(AppPrivateSearchTab);
-      // tab ||= appSidebarRight.createTab(AppPrivateSearchTab);
-
-      // tab.open(this.peerId, this.threadId, this.bubbles.onDatePick, query);
-    }
+    options.query ||= '';
+    this.searchSignal(options);
   }
 
   public canSend(action?: ChatRights) {

@@ -194,7 +194,8 @@ export default class PopupPayment extends PopupElement<{
 
     // * stars only
     isTopUp?: boolean,
-    transaction?: StarsTransaction
+    transaction?: StarsTransaction,
+    paidMedia?: MessageMedia.messageMediaPaidMedia
   }) {
     super('popup-payment', {
       closable: true,

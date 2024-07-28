@@ -26,7 +26,7 @@ import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import {SEND_WHEN_ONLINE_TIMESTAMP, SERVER_IMAGE_MIME_TYPES, THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
+import {SEND_WHEN_ONLINE_TIMESTAMP, SERVER_IMAGE_MIME_TYPES, STARS_CURRENCY, THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
 import wrapDocument from '../wrappers/document';
 import createContextMenu from '../../helpers/dom/createContextMenu';
 import findUpClassName from '../../helpers/dom/findUpClassName';
@@ -54,9 +54,14 @@ import {ChatType} from '../chat/chat';
 import pause from '../../helpers/schedulers/pause';
 import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '../chat/selectedEffect';
+
 import {AppMediaEditor} from '../appMediaEditor';
 import rtmpCallsController from '../../lib/calls/rtmpCallsController';
 import {render} from 'solid-js/web';
+
+import PopupMakePaid from './makePaid';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -85,7 +90,8 @@ export default class PopupNewMedia extends PopupElement {
     isMedia: true,
     group: boolean,
     sendFileDetails: SendFileParams[],
-    invertMedia: boolean
+    invertMedia: boolean,
+    stars: number
   }>;
   private effect: Accessor<DocId>;
   private setEffect: Setter<DocId>;
@@ -93,8 +99,6 @@ export default class PopupNewMedia extends PopupElement {
   private captionLengthMax: number;
 
   private animationGroup: AnimationItemGroup;
-  private _scrollable: Scrollable;
-  private inputContainer: HTMLDivElement;
 
   constructor(
     private chat: Chat,
@@ -280,6 +284,24 @@ export default class PopupNewMedia extends PopupElement {
         text: 'CaptionBelow',
         onClick: () => this.moveCaption(false),
         verify: () => this.canMoveCaption() && !!this.willAttach.invertMedia
+      }, {
+        icon: 'cash_circle',
+        text: 'PaidMedia.Menu.Edit',
+        onClick: () => {
+          PopupElement.createPopup(PopupMakePaid, (value) => {
+            this.setPaidMedia(value);
+          }, this.willAttach.stars);
+        },
+        verify: () => !!this.willAttach.stars && this.canSendPaidMedia()
+      }, {
+        icon: 'cash_circle',
+        text: 'PaidMedia.Menu',
+        onClick: () => {
+          PopupElement.createPopup(PopupMakePaid, (value) => {
+            this.setPaidMedia(value);
+          });
+        },
+        verify: () => !this.willAttach.stars && this.canSendPaidMedia()
       }]
     });
 
@@ -291,7 +313,7 @@ export default class PopupNewMedia extends PopupElement {
     this.mediaContainer.classList.add('popup-photo');
     this.scrollable.container.append(this.mediaContainer);
 
-    const inputContainer = this.inputContainer = document.createElement('div');
+    const inputContainer = document.createElement('div');
     inputContainer.classList.add('popup-input-container');
 
     const c = document.createElement('div');
@@ -348,14 +370,14 @@ export default class PopupNewMedia extends PopupElement {
         onClick: () => {
           this.applyMediaSpoiler(item);
         },
-        verify: () => isMedia && !item.mediaSpoiler
+        verify: () => isMedia && !item.mediaSpoiler && !this.willAttach.stars
       }, {
         icon: 'mediaspoileroff',
         text: 'DisablePhotoSpoiler',
         onClick: () => {
           this.removeMediaSpoiler(item);
         },
-        verify: () => !!(isMedia && item.mediaSpoiler)
+        verify: () => !!(isMedia && item.mediaSpoiler) && !this.willAttach.stars
       }],
       listenTo: this.mediaContainer,
       listenerSetter: this.listenerSetter,
@@ -370,7 +392,7 @@ export default class PopupNewMedia extends PopupElement {
     if(this.chat.type !== ChatType.Scheduled) {
       createRoot((dispose) => {
         this.chat.destroyMiddlewareHelper.onDestroy(dispose);
-        const [effect, setEffect] = createSignal<DocId>((this.wasDraft as any)?.effect); // * soon
+        const [effect, setEffect] = createSignal<DocId>(this.wasDraft?.effect);
         this.effect = effect;
         this.setEffect = setEffect;
         this.btnConfirm.append(SelectedEffect({effect: this.effect}) as HTMLElement);
@@ -407,6 +429,40 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     currentPopup = this;
+  }
+
+  private async canSendPaidMedia() {
+    return await this.managers.appPeersManager.isBroadcast(this.chat.peerId) &&
+      !!(await this.managers.appProfileManager.getChannelFull(this.chat.peerId.toChatId())).pFlags.paid_media_allowed;
+  }
+
+  public willSendPaidMedia() {
+    return this.willAttach.stars &&
+      this.willAttach.type === 'media' &&
+      this.willAttach.sendFileDetails.length <= 10;
+  }
+
+  public setPaidMedia(stars: number) {
+    this.willAttach.stars = stars;
+    this.changeSpoilers(!!stars);
+    this.setUnlockPlaceholders();
+  }
+
+  private setUnlockPlaceholders() {
+    const {stars} = this.willAttach;
+    this.mediaContainer.querySelectorAll('.popup-item-album, .popup-item-media:not(.grouped-item)').forEach((element) => {
+      const className = 'extended-media-buy';
+      element.querySelector(`.${className}`)?.remove();
+
+      if(!this.willSendPaidMedia()) {
+        return;
+      }
+
+      const priceEl = document.createElement('span');
+      priceEl.classList.add(className);
+      priceEl.append(i18n('PaidMedia.Unlock', [paymentsWrapCurrencyAmount(stars, STARS_CURRENCY)]));
+      element.append(priceEl);
+    });
   }
 
   private onScroll = () => {
@@ -550,6 +606,8 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private canToggleSpoilers(toggle: boolean, single: boolean) {
+    if(this.willSendPaidMedia()) return false;
+
     let good = this.willAttach.type === 'media' && this.hasAnyMedia();
     if(single && good) {
       good = this.files.length === 1;
@@ -613,6 +671,11 @@ export default class PopupNewMedia extends PopupElement {
 
     if(toPush.length) {
       this.files.push(...toPush);
+
+      if(this.willSendPaidMedia() && this.files.length > 10) {
+        this.changeSpoilers(false);
+      }
+
       this.attachFiles();
     }
   }
@@ -726,16 +789,21 @@ export default class PopupNewMedia extends PopupElement {
         caption = entities = effect = undefined;
       }
 
+
       const blb = this.editedImg;
       console.info('bbbbl', blb);
 
       const file = new File([blb?.data], 'filename.mp4', {type: 'video/mp4'});
+
+      const willSendPaidMedia = this.willSendPaidMedia();
+
 
       const d: SendFileDetails[] = sendFileParams.map((params) => {
         console.info('ppr', params);
         console.info('pris', params.scaledBlob || params.file);
         return {
           ...params,
+
           width: blb.width,
           height: blb.height,
           objectURL: URL.createObjectURL(blb.data),
@@ -749,6 +817,10 @@ export default class PopupNewMedia extends PopupElement {
           file,
           // file: params.scaledBlob || params.file,
           spoiler: !!params.mediaSpoiler
+
+          file: params.scaledBlob || params.file,
+          spoiler: willSendPaidMedia ? undefined : !!params.mediaSpoiler
+
         };
       });
 
@@ -756,6 +828,10 @@ export default class PopupNewMedia extends PopupElement {
         ...willAttach,
         sendFileDetails: d
       };
+
+      if(!willSendPaidMedia) {
+        delete w.stars;
+      }
 
       this.managers.appMessagesManager.sendGrouped({
         ...sendingParams,
@@ -1139,15 +1215,13 @@ export default class PopupNewMedia extends PopupElement {
 
         sendFileDetails.forEach((params) => {
           const oldParams = oldSendFileDetails.find((o) => o.file === params.file);
-          if(!oldParams) {
-            return;
-          }
-
-          if(oldParams.mediaSpoiler) {
+          if(oldParams?.mediaSpoiler || this.willSendPaidMedia()) {
             this.applyMediaSpoiler(params, true);
           }
         });
       });
+
+      this.setUnlockPlaceholders();
     }).then(() => {
       this.onRender();
       this.onScroll();

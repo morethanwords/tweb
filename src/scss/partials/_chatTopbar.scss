@@ -274,6 +274,10 @@ body.is-right-column-shown {
 	&.hide-pinned {
     --pinned-floating-height: 0px !important;
 
+    &.search-top-active {
+      --pinned-floating-height: 3rem !important;
+    }
+
     .pinned-container {
       display: none;
     }
@@ -282,6 +286,15 @@ body.is-right-column-shown {
       .bubbles-inner {
         margin-bottom: .25rem;
       }
+    }
+  }
+
+  .selector-user {
+    color: var(--secondary-text-color);
+    font-weight: var(--font-weight-bold);
+
+    @include respond-to(handhelds) {
+      max-width: 9rem;
     }
   }
 

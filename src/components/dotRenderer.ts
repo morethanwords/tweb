@@ -12,7 +12,44 @@ import callbackify from '../helpers/callbackify';
 import callbackifyAll from '../helpers/callbackifyAll';
 import {Middleware} from '../helpers/middleware';
 import clamp from '../helpers/number/clamp';
+import getUnsafeRandomInt from '../helpers/number/getUnsafeRandomInt';
+import {applyColorOnContext} from '../lib/rlottie/rlottiePlayer';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from './animationIntersector';
+
+export class AnimationItemNested implements AnimationItemWrapper {
+  public autoplay = true;
+  public loop = true;
+  public paused = true;
+
+  constructor(private options: {
+    onPlay: () => void,
+    onPause: () => void,
+    onDestroy?: () => void
+  }) {}
+
+  public remove() {
+    this.pause();
+    this.options.onDestroy?.();
+  }
+
+  public play() {
+    if(!this.paused) {
+      return;
+    }
+
+    this.paused = false;
+    this.options.onPlay();
+  }
+
+  public pause() {
+    if(this.paused) {
+      return;
+    }
+
+    this.paused = true;
+    this.options.onPause();
+  }
+}
 
 // type DotRendererDot = {
 //   x: number,
@@ -27,6 +64,10 @@ import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from './
 export default class DotRenderer implements AnimationItemWrapper {
   private static shaderTexts: {[url: string]: string | Promise<string>} = {};
   private static createdIndex = -1;
+
+  private static instance: DotRenderer;
+  private static drawCallbacks: Map<HTMLElement, () => void> = new Map();
+  private static counter = 0;
 
   public canvas: HTMLCanvasElement;
   private context: WebGL2RenderingContext;
@@ -82,6 +123,7 @@ export default class DotRenderer implements AnimationItemWrapper {
   private multiply: number;
 
   public loop: boolean = true;
+  private initPromise: MaybePromise<boolean>;
 
   constructor() {
     const canvas = this.canvas = document.createElement('canvas');
@@ -94,10 +136,10 @@ export default class DotRenderer implements AnimationItemWrapper {
     this.time = 0;
     this.bufferIndex = 0;
     // this.context = canvas.getContext('2d');
-    this.context = canvas.getContext('webgl2');
+    this.context = canvas.getContext('webgl2'/* , {preserveDrawingBuffer: true} */);
   }
 
-  public resize(width: number, height: number, multiply?: number, config: Partial<DotRenderer['config']> = {}) {
+  private resize(width: number, height: number, multiply?: number, config: Partial<DotRenderer['config']> = {}) {
     this.width = width;
     this.height = height;
     this.multiply = multiply;
@@ -247,7 +289,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     gl.useProgram(this.program);
     gl.uniform1f(this.resetHandle, this.reset ? 1 : 0);
     if(this.reset) {
-      this.time = 0
+      this.time = 0;
       this.reset = false;
     }
     gl.uniform1f(this.timeHandle, this.time);
@@ -293,6 +335,8 @@ export default class DotRenderer implements AnimationItemWrapper {
     gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
 
     this.bufferIndex = 1 - this.bufferIndex;
+
+    DotRenderer.drawCallbacks.forEach((draw) => draw());
   }
 
   public remove() {
@@ -382,13 +426,14 @@ export default class DotRenderer implements AnimationItemWrapper {
   }
 
   private init() {
-    return callbackify(this.compileShaders(), (shaders) => {
+    return this.initPromise ??= callbackify(this.compileShaders(), (shaders) => {
       this._init(...shaders);
       this.draw();
+      return true;
     });
   }
 
-  public destroy() {
+  private destroy() {
     if(this.buffer) {
       this.context.deleteBuffer(this.buffer[0]);
       this.context.deleteBuffer(this.buffer[1]);
@@ -415,10 +460,23 @@ export default class DotRenderer implements AnimationItemWrapper {
     config?: Partial<DotRenderer['config']>
   }) {
     const index = ++this.createdIndex;
-    const dotRenderer = new DotRenderer();
+    let {instance} = this;
+    if(!instance) {
+      instance = this.instance = new DotRenderer();
+      instance.resize(480, 480);
+      (window as any).dotRenderer = instance;
+    }
     // dotRenderer.renderFirstFrame();
 
-    const {canvas} = dotRenderer;
+    const canvas = document.createElement('canvas');
+    canvas.classList.add('canvas-thumbnail', 'canvas-dots');
+    const dpr = window.devicePixelRatio;
+    if(width) {
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+    }
+    const context = canvas.getContext('2d');
+
     const rotate = (index % 4) === 1;
     const flipX = (index % 4) === 2;
     const flipY = (index % 4) === 3;
@@ -432,17 +490,59 @@ export default class DotRenderer implements AnimationItemWrapper {
       canvas.style.transform = transforms.join(' ');
     }
 
+    const x = getUnsafeRandomInt(0, instance.canvas.width - canvas.width);
+    const y = getUnsafeRandomInt(0, instance.canvas.height - canvas.height);
+    const draw = () => {
+      const {width, height} = canvas;
+      context.clearRect(0, 0, width, height);
+      context.drawImage(
+        instance.canvas,
+        x,
+        y,
+        width,
+        height,
+        0,
+        0,
+        width,
+        height
+      );
+
+      if(config?.color) {
+        applyColorOnContext(context, '#' + config.color.toString(16), 0, 0, width, height);
+      }
+    };
+
+    ++this.counter;
+    const animation = new AnimationItemNested({
+      onPlay: () => {
+        this.drawCallbacks.set(canvas, draw);
+        instance.play();
+      },
+      onPause: () => {
+        this.drawCallbacks.delete(canvas);
+        if(!this.drawCallbacks.size) {
+          instance.pause();
+        }
+      },
+      onDestroy: () => {
+        if(!--this.counter) {
+          instance.remove();
+          this.instance = undefined;
+        }
+      }
+    });
+
     animationIntersector.addAnimation({
-      animation: dotRenderer,
+      animation,
       group: animationGroup,
-      observeElement: dotRenderer.canvas,
+      observeElement: canvas,
       controlled: middleware,
       type: 'dots'
     });
 
     return {
-      dotRenderer,
-      readyResult: width && (dotRenderer.resize(width, height, multiply, config), dotRenderer.init())
+      canvas,
+      readyResult: width && (/* dotRenderer.resize(width, height, multiply, config),  */instance.init())
     };
   }
 }

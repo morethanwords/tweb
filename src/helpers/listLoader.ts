@@ -101,7 +101,7 @@ export default class ListLoader<T extends {}, P extends {}> {
     }
 
     this.current = item;
-    dispatchJump && this.onJump && this.onJump(item, length > 0);
+    dispatchJump && this.onJump?.(item, length > 0);
     return this.current;
   }
 

@@ -43,7 +43,11 @@ import Icon from '../icon';
 import {SHOULD_HANDLE_VIDEO_LEAK, attachVideoLeakListeners, leakVideoFallbacks, onVideoLeak} from '../../helpers/dom/handleVideoLeak';
 import noop from '../../helpers/noop';
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
+
 import {exportCallbacks, exportData, exportTriggers, loadedExportData} from '../media-editor/generate/export-callbacks';
+
+import toArray from '../../helpers/array/toArray';
+
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -120,7 +124,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   dataKey?: string
 }) {
   const options = arguments[0];
-  div = Array.isArray(div) ? div : [div];
+  div = toArray(div);
 
   liteModeKey ??= 'stickers_panel';
 

@@ -49,7 +49,7 @@ export default class PopupMute extends PopupPeer {
     let time: number;
     const radioForm = RadioFormFromValues(times, (value) => {
       time = +value;
-    });
+    }, true);
 
     this.body.append(radioForm);
 

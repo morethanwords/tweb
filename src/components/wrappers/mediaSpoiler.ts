@@ -69,12 +69,12 @@ function wrapMediaSpoilerWithImage(options: {
   container.classList.add('media-spoiler-container');
   container.middlewareHelper = middleware.create();
 
-  const {dotRenderer, readyResult} = DotRenderer.create({
+  const {canvas, readyResult} = DotRenderer.create({
     ...options,
     middleware: container.middlewareHelper.get()
   });
 
-  container.append(image, dotRenderer.canvas);
+  container.append(image, canvas);
 
   return {container, readyResult};
 }

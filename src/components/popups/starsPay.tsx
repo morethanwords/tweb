@@ -12,8 +12,7 @@ import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import maybe2x from '../../helpers/maybe2x';
 import safeAssign from '../../helpers/object/safeAssign';
-import classNames from '../../helpers/string/classNames';
-import {InputInvoice, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction} from '../../layer';
+import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, MessageExtendedMedia, Photo, Document} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {i18n} from '../../lib/langPack';
@@ -28,8 +27,17 @@ import {toastNew} from '../toast';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import wrapPhoto from '../wrappers/photo';
 import PopupPayment, {PopupPaymentResult} from './payment';
-import PopupStars, {getStarsTransactionTitle, getStarsTransactionTitleAndMedia, StarsBalance, StarsChange, StarsStar} from './stars';
-import {JSX} from 'solid-js';
+import PopupStars, {getStarsTransactionTitleAndMedia, StarsBalance, StarsChange} from './stars';
+import {createMemo, JSX} from 'solid-js';
+import partition from '../../helpers/array/partition';
+import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
+import wrapMediaSpoiler from '../wrappers/mediaSpoiler';
+import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
+import wrapTelegramUrlToAnchor from '../../lib/richTextProcessor/wrapTelegramUrlToAnchor';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import AppMediaViewer from '../appMediaViewer';
+import AppMediaViewerBase from '../appMediaViewerBase';
+import SearchListLoader from '../../helpers/searchListLoader';
 
 export default class PopupStarsPay extends PopupElement<{
   finish: (result: PopupPaymentResult) => void
@@ -38,6 +46,9 @@ export default class PopupStarsPay extends PopupElement<{
   private result: PopupPaymentResult;
   private inputInvoice: InputInvoice;
   private isReceipt: boolean;
+  private isTopUp: boolean;
+  private paidMedia: MessageMedia.messageMediaPaidMedia;
+  private message: Message.message;
   private peerId: PeerId;
   private transaction: StarsTransaction;
 
@@ -119,7 +130,13 @@ export default class PopupStarsPay extends PopupElement<{
     this.construct();
   }
 
-  private _construct(image: HTMLElement, botTitle: HTMLElement, avatar: HTMLElement, itemImage?: HTMLElement) {
+  private _construct(
+    image: HTMLElement,
+    _title: HTMLElement,
+    avatar: HTMLElement,
+    itemImage?: HTMLElement,
+    link?: string
+  ) {
     if(!this.isReceipt) {
       this.header.append(StarsBalance() as HTMLElement);
     }
@@ -142,11 +159,33 @@ export default class PopupStarsPay extends PopupElement<{
     }
 
     let title: JSX.Element, subtitle: JSX.Element;
-    if(this.transaction && !this.form.title) {
+    if(this.transaction?.extended_media) {
+      title = i18n('StarMediaPurchase');
+    } else if(this.paidMedia) {
+      const [photos, videos] = partition(this.paidMedia.extended_media, (extendedMedia) => {
+        if(extendedMedia._ === 'messageExtendedMedia') {
+          return extendedMedia.media._ !== 'messageMediaDocument';
+        } else {
+          return extendedMedia.video_duration === undefined;
+        }
+      });
+
+      const multiplePhotosLang = i18n('Stars.Unlock.Photos', [photos.length]);
+      const multipleVideosLang = i18n('Stars.Unlock.Videos', [videos.length]);
+
+      title = i18n('StarsConfirmPurchaseTitle');
+      subtitle = i18n('Stars.Unlock', [
+        photos.length && videos.length ?
+          i18n('Stars.Unlock.Media', [multiplePhotosLang, multipleVideosLang]) :
+          (photos.length || videos.length) === 1 ? i18n(photos.length ? 'Stars.Unlock.Photo' : 'Stars.Unlock.Video') : (photos.length ? multiplePhotosLang : multipleVideosLang),
+        _title,
+        i18n('Stars.Unlock.Stars', [amount])
+      ]);
+    } else if(this.transaction && !this.form.title) {
       title = i18n('Stars.TopUp');
     } else {
       title = this.isReceipt ? wrapEmojiText(this.form.title) : i18n('StarsConfirmPurchaseTitle');
-      subtitle = this.isReceipt ? wrapEmojiText(this.form.description) : i18n('StarsConfirmPurchaseText', [amount, wrapEmojiText(this.paymentForm.title), botTitle]);
+      subtitle = this.isReceipt ? wrapEmojiText(this.form.description) : i18n('StarsConfirmPurchaseText', [amount, wrapEmojiText(this.paymentForm.title), _title]);
     }
 
     const transactionId = this.transaction?.id ?? (this.paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).transaction_id;
@@ -155,27 +194,85 @@ export default class PopupStarsPay extends PopupElement<{
       toastNew({langPackKey: 'StarsTransactionIDCopied'});
     };
 
+    const hidePopupsWithCallback = (callback: () => void, e?: Event) => {
+      cancelEvent(e);
+      this.hide();
+      const starsPopups = PopupElement.getPopups(PopupStars);
+      starsPopups?.[0]?.hide();
+      this.hideWithCallback(callback);
+    };
+
+    const messageAnchor = link && wrapTelegramUrlToAnchor(link);
+    if(messageAnchor) {
+      messageAnchor.textContent = link.replace('https://', '');
+      messageAnchor.onclick = (e) => hidePopupsWithCallback(() => appImManager.openUrl(link), e);
+    }
+
+    const tableContent: Parameters<typeof Table>[0]['content'] = this.isReceipt && [
+      this.peerId ? ['BoostingTo', TablePeer({peerId: this.peerId, onClick: () => {
+        hidePopupsWithCallback(() => {
+          appImManager.setInnerPeer({peerId: this.peerId})
+        });
+      }})] : ['Stars.Via', _title],
+      this.transaction?.extended_media && ['StarsTransactionMedia', messageAnchor],
+      ['StarsTransactionID', <span onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>],
+      ['StarsTransactionDate', formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
+    ];
+
     return (
       <div class="popup-stars-pay-padding">
         {image}
         <div class="popup-stars-pay-images">
           {itemImage}
-          <div class="popup-stars-pay-avatar">{avatar}</div>
+          <div
+            class="popup-stars-pay-avatar"
+            onClick={async() => {
+              if(!this.isReceipt || !this.transaction.extended_media) {
+                return;
+              }
+
+              const extendedMedia = this.transaction.extended_media;
+              const media = extendedMedia.map((messageMedia) => {
+                return (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo ||
+                  (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
+              });
+
+              const message = await this.managers.appMessagesManager.generateStandaloneOutgoingMessage(this.peerId);
+              message.media = {
+                _: 'messageMediaPaidMedia',
+                extended_media: extendedMedia.map((messageMedia) => {
+                  return {_: 'messageExtendedMedia', media: messageMedia};
+                }),
+                stars_amount: 0
+              };
+              message.id = getServerMessageId(this.transaction.msg_id);
+              message.mid = this.transaction.msg_id;
+
+              const targets: AppMediaViewer['target'][] = media.map((media, index) => {
+                return {element: null, mid: 0, peerId: 0, index, message};
+              });
+
+              targets[0].element = avatar;
+
+              new AppMediaViewer(true)
+              .setSearchContext({peerId: 0, inputFilter: {_: 'inputMessagesFilterEmpty'}, useSearch: false})
+              .openMedia({
+                message,
+                target: targets[0].element,
+                fromRight: 0,
+                reverse: false,
+                prevTargets: [],
+                nextTargets: targets.slice(1)
+              });
+            }}
+          >{avatar}</div>
         </div>
         <div class="popup-stars-title">{title}</div>
         {subtitle && <div class="popup-stars-subtitle">{subtitle}</div>}
         {this.isReceipt && (
           <>
-            <StarsChange stars={!this.transaction ? -+amount : amount} />
-            <Table content={[
-              this.peerId ? ['BoostingTo', TablePeer({peerId: this.peerId, onClick: () => {
-                this.hideWithCallback(() => {
-                  appImManager.setInnerPeer({peerId: this.peerId})
-                });
-              }})] : ['Stars.Via', botTitle],
-              ['StarsTransactionID', <span onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>],
-              ['StarsTransactionDate', formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
-            ]} />
+            <StarsChange stars={!this.transaction ? -+amount : amount} isRefund={!!this.transaction?.pFlags?.refund} />
+            <Table content={tableContent.filter(Boolean)} />
             <div class="popup-stars-pay-tos">{i18n('Stars.TransactionTOS')}</div>
           </>
         )}
@@ -190,7 +287,7 @@ export default class PopupStarsPay extends PopupElement<{
       this.peerId = getPeerId(this.transaction.peer.peer);
     }
 
-    const [image, {title, media}, itemImage] = await Promise.all([
+    const [image, {title, media}, itemImage, link] = await Promise.all([
       (async() => {
         const img = document.createElement('img');
         img.classList.add('popup-stars-image');
@@ -198,47 +295,53 @@ export default class PopupStarsPay extends PopupElement<{
         return img;
       })(),
       (async() => {
-        if(this.peerId) {
-          const [title, avatar] = await Promise.all([
-            wrapPeerTitle({
-              peerId: this.peerId
-            }),
-            avatarNew({
-              peerId: this.peerId,
-              size: 90,
-              middleware: this.middlewareHelper.get()
-            })
-          ]);
+        const result = await getStarsTransactionTitleAndMedia(
+          this.transaction,
+          this.middlewareHelper.get(),
+          90,
+          this.paidMedia,
+          this.message ? this.message.fwdFromId || this.message.peerId : this.peerId
+        );
 
-          await avatar.readyThumbPromise;
+        result.media.classList.add('popup-stars-pay-item');
 
-          return {title, media: avatar.node};
-        } else {
-          return getStarsTransactionTitleAndMedia(this.transaction, this.middlewareHelper.get(), 90);
-        }
+        return result;
       })(),
       (async() => {
-        if(!this.form.photo) {
+        return undefined as HTMLElement;
+        // if(!this.form.photo || true) {
+        //   return;
+        // }
+
+        // const div = document.createElement('div');
+        // div.classList.add('popup-stars-pay-item');
+        // const loadPromises: Promise<any>[] = [];
+        // wrapPhoto({
+        //   photo: this.form.photo,
+        //   container: div,
+        //   boxWidth: 90,
+        //   boxHeight: 90,
+        //   size: {_: 'photoSizeEmpty', type: ''},
+        //   loadPromises
+        // });
+        // await Promise.all(loadPromises);
+        // return div;
+      })(),
+      (async() => {
+        if(!this.transaction?.extended_media) {
           return;
         }
 
-        const div = document.createElement('div');
-        div.classList.add('popup-stars-pay-item');
-        const loadPromises: Promise<any>[] = [];
-        wrapPhoto({
-          photo: this.form.photo,
-          container: div,
-          boxWidth: 90,
-          boxHeight: 90,
-          size: {_: 'photoSizeEmpty', type: ''},
-          loadPromises
+        return this.managers.apiManager.invokeApi('channels.exportMessageLink', {
+          channel: await this.managers.appChatsManager.getChannelInput(this.peerId.toChatId()),
+          id: getServerMessageId(this.transaction.msg_id)
+        }).then((exportedMessageLink) => {
+          return exportedMessageLink.link;
         });
-        await Promise.all(loadPromises);
-        return div;
       })()
     ]);
     this.body.classList.toggle('is-receipt', this.isReceipt);
-    this.appendSolid(() => this._construct(image, title, media, itemImage));
+    this.appendSolid(() => this._construct(image, title, media, itemImage, link));
     this.show();
   }
 }

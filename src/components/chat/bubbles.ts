@@ -26,10 +26,10 @@ import ripple from '../ripple';
 import {fireMessageEffectByBubble, MessageRender} from './messageRender';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
-import PollElement from '../poll';
+import PollElement, {setQuizHint} from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, BotApp, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck} from '../../layer';
-import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, BotApp, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia} from '../../layer';
+import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
 import {fastRaf, fastRafPromise} from '../../helpers/schedulers';
@@ -183,6 +183,8 @@ import clearfix from '../../helpers/dom/clearfix';
 import {usePeer} from '../../stores/peers';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import findAndSplice from '../../helpers/array/findAndSplice';
+import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
+import icon from '../icon';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -2257,15 +2259,6 @@ export default class ChatBubbles {
       return;
     }
 
-    const mediaSpoiler: HTMLElement = findUpClassName(target, 'media-spoiler-container');
-    if(mediaSpoiler) {
-      onMediaSpoilerClick({
-        event: e,
-        mediaSpoiler
-      });
-      return;
-    }
-
     const contactDiv: HTMLElement = findUpClassName(target, 'contact');
     if(contactDiv) {
       const peerId = contactDiv.dataset.peerId.toPeerId();
@@ -2298,9 +2291,40 @@ export default class ChatBubbles {
         return;
       }
 
-      PopupPayment.create({
+      const media = (message as Message.message).media;
+      const paidMedia = media?._ === 'messageMediaPaidMedia' ? media : undefined;
+
+      const popup = await PopupPayment.create({
         message: message as Message.message,
-        inputInvoice: await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid)
+        inputInvoice: await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid),
+        paidMedia
+      });
+
+      if(paidMedia) {
+        popup.addEventListener('finish', async(result) => {
+          if(result === 'paid') {
+            setQuizHint({
+              icon: 'cash_circle',
+              title: i18n('StarsMediaPurchaseCompleted'),
+              textElement: i18n('StarsMediaPurchaseCompletedInfo', [
+                paidMedia.stars_amount,
+                await wrapPeerTitle({peerId: (message as Message.message).fwdFromId || message.peerId})
+              ]),
+              appendTo: this.container,
+              from: 'top',
+              duration: 5000
+            });
+          }
+        });
+      }
+      return;
+    }
+
+    const mediaSpoiler: HTMLElement = findUpClassName(target, 'media-spoiler-container');
+    if(mediaSpoiler) {
+      onMediaSpoilerClick({
+        event: e,
+        mediaSpoiler
       });
       return;
     }
@@ -2673,7 +2697,8 @@ export default class ChatBubbles {
       }
 
       cancelEvent(e);
-      const fullMessageId = getBubbleFullMid(groupedItem || bubble);
+      const groupedItemIndex = groupedItem ? +(groupedItem.dataset.index ?? -1) : -1;
+      const fullMessageId = getBubbleFullMid(groupedItemIndex !== -1 ? bubble : groupedItem || bubble);
       const message = this.chat.getMessage(fullMessageId);
       if(!message) {
         this.log.warn('no message by messageId:', fullMessageId);
@@ -2692,7 +2717,7 @@ export default class ChatBubbles {
         return;
       }
 
-      const SINGLE_MEDIA_CLASSNAME = 'has-webpage';
+      const SINGLE_MEDIA_CLASSNAME = 'single-media';
       const isSingleMedia = bubble.classList.contains(SINGLE_MEDIA_CLASSNAME);
 
       const f = documentDiv ? (media: any) => {
@@ -2701,7 +2726,7 @@ export default class ChatBubbles {
         return media._ === 'photo' || ['video', 'gif'].includes(media.type);
       };
 
-      const targets: {element: HTMLElement, mid: number, peerId: PeerId, fullMid: string}[] = [];
+      const targets: {element: HTMLElement, mid: number, peerId: PeerId, fullMid: string, index?: number}[] = [];
       const fullMids = isSingleMedia ? [fullMessageId] : this.getRenderedHistory('asc').map((fullMid) => {
         const bubble = this.getBubble(fullMid);
         if(!isSingleMedia && bubble.classList.contains(SINGLE_MEDIA_CLASSNAME)) {
@@ -2762,11 +2787,13 @@ export default class ChatBubbles {
             const parent = albumItem || element.parentElement;
             if(parents.has(parent)) return;
             parents.add(parent);
+            const _fullMid = groupedItemIndex !== -1 ? fullMid : getBubbleFullMid(albumItem || element) || fullMid;
             targets.push({
               element,
-              mid: albumItem ? +albumItem.dataset.mid : splitFullMid(fullMid).mid,
+              mid: splitFullMid(_fullMid).mid,
               peerId: this.peerId,
-              fullMid: albumItem ? getBubbleFullMid(albumItem) : fullMid
+              fullMid: _fullMid,
+              index: albumItem && +(albumItem.dataset.index ?? -1)
             });
           });
         }
@@ -2780,9 +2807,9 @@ export default class ChatBubbles {
         }
       });
 
-      targets.sort((a, b) => a.mid - b.mid);
+      // targets.sort((a, b) => a.mid - b.mid);
 
-      const idx = targets.findIndex((t) => t.fullMid === fullMessageId);
+      const idx = groupedItemIndex === -1 ? targets.findIndex((t) => t.fullMid === fullMessageId) : targets.findIndex((t) => t.index === groupedItemIndex);
 
       if(DEBUG) {
         this.log('open mediaViewer single with ids:', fullMids, idx, targets);
@@ -2803,6 +2830,7 @@ export default class ChatBubbles {
       })
       .openMedia({
         message: message,
+        index: targets[idx].index,
         target: targets[idx].element,
         fromRight: 0,
         reverse: true,
@@ -6021,7 +6049,7 @@ export default class ChatBubbles {
             });
           }
 
-          bubble.classList.add('has-webpage');
+          bubble.classList.add('has-webpage', 'single-media');
 
           let preview: HTMLDivElement;
           const doc = webPage.document as MyDocument;
@@ -6550,29 +6578,57 @@ export default class ChatBubbles {
           break;
         }
 
+        case 'messageMediaPaidMedia':
         case 'messageMediaInvoice': {
-          const isTest = messageMedia.pFlags.test;
-          const extendedMedia = messageMedia.extended_media;
-          const isAlreadyPaid = extendedMedia?._ === 'messageExtendedMedia';
-          const isNotPaid = extendedMedia?._ === 'messageExtendedMediaPreview';
-          let innerMedia = isAlreadyPaid ?
-            (extendedMedia.media as MessageMedia.messageMediaPhoto).photo as Photo.photo ||
-              (extendedMedia.media as MessageMedia.messageMediaDocument).document as Document.document :
-            messageMedia.photo;
+          type I = MessageMedia.messageMediaInvoice;
+          type P = MessageMedia.messageMediaPaidMedia;
+          type M = Photo.photo | Document.document | WebDocument;
+          const pFlags = (messageMedia as I).pFlags || {};
+          const isTest = pFlags.test;
+          const isInvoice = messageMedia._ === 'messageMediaInvoice';
+          const extendedMedia = (Array.isArray(messageMedia.extended_media) ? messageMedia.extended_media : [messageMedia.extended_media]).filter(Boolean);
+          const isAlreadyPaid = extendedMedia[0]?._ === 'messageExtendedMedia';
+          const isNotPaid = extendedMedia[0]?._ === 'messageExtendedMediaPreview';
 
-          const wrappedPrice = paymentsWrapCurrencyAmount(messageMedia.total_amount, messageMedia.currency);
+          if(!isInvoice) {
+            bubble.classList.add('single-media');
+            if(canHideNameIfMedia) {
+              bubble.classList.add('hide-name');
+            }
+
+            canHavePlainMediaTail = canPossiblyHavePlainMediaTail;
+          }
+
+          let innerMedia: M | M[], videoTimes: HTMLElement[];
+          if(isInvoice) {
+            innerMedia = (messageMedia as I).photo;
+          } else if(isAlreadyPaid) {
+            innerMedia = extendedMedia.map((media) => {
+              return getMediaFromMessage(media as any as Message.message) as M;
+            });
+          }
+
+          const wrappedPrice = isInvoice ?
+            paymentsWrapCurrencyAmount((messageMedia as I).total_amount, (messageMedia as I).currency) :
+            paymentsWrapCurrencyAmount((messageMedia as P).stars_amount, STARS_CURRENCY);
           let priceEl: HTMLElement;
-          if(!extendedMedia) {
+          if(!extendedMedia.length || (!isInvoice && isAlreadyPaid)) {
             priceEl = document.createElement(innerMedia ? 'span' : 'div');
             const f = document.createDocumentFragment();
-            const l = i18n(messageMedia.receipt_msg_id ? 'PaymentReceipt' : (isTest ? 'PaymentTestInvoice' : 'PaymentInvoice'));
+            const l = i18n((messageMedia as I).receipt_msg_id ? 'PaymentReceipt' : (isTest ? 'PaymentTestInvoice' : 'PaymentInvoice'));
             l.classList.add('text-uppercase');
             const joiner = ' ' + NBSP;
             const p = document.createElement('span');
             p.classList.add('text-bold');
-            p.append(wrappedPrice, joiner);
-            f.append(p, l);
-            if(isTest && messageMedia.receipt_msg_id) {
+            p.append(wrappedPrice);
+            f.append(p);
+            if(isInvoice) {
+              p.append(joiner);
+              f.append(l);
+            } else {
+              priceEl.classList.add('other-side');
+            }
+            if(isTest && (messageMedia as I).receipt_msg_id) {
               const a = document.createElement('span');
               a.classList.add('text-uppercase', 'pre-wrap');
               a.append(joiner + '(Test)');
@@ -6580,38 +6636,64 @@ export default class ChatBubbles {
             }
             setInnerHTML(priceEl, f);
           } else if(isNotPaid) {
+            attachmentDiv.classList.add('is-buy');
             priceEl = document.createElement('span');
             priceEl.classList.add('extended-media-buy');
-            priceEl.append(Icon('premium_lock', 'extended-media-buy-icon'));
-            attachmentDiv.classList.add('is-buy');
-            _i18n(priceEl, 'Checkout.PayPrice', [wrappedPrice]);
+            if(isInvoice) {
+              priceEl.append(
+                Icon('premium_lock', 'extended-media-buy-icon'),
+                i18n('Checkout.PayPrice', [wrappedPrice])
+              );
+            } else {
+              priceEl.append(i18n('PaidMedia.Unlock', [wrappedPrice]));
+            }
 
-            if(extendedMedia.video_duration !== undefined) {
+            videoTimes = extendedMedia.map((extendedMedia) => {
+              const videoDuration = (extendedMedia as MessageExtendedMedia.messageExtendedMediaPreview).video_duration;
+              if(videoDuration === undefined) {
+                return;
+              }
+
               const videoTime = document.createElement('span');
               videoTime.classList.add('video-time');
-              videoTime.textContent = toHHMMSS(extendedMedia.video_duration, false);
-              attachmentDiv.append(videoTime);
+              videoTime.textContent = toHHMMSS(videoDuration, false);
+              return videoTime;
+            });
+
+            if(videoTimes.length === 1 && videoTimes[0]) {
+              attachmentDiv.append(videoTimes[0]);
             }
           }
 
           if(isNotPaid) {
-            (extendedMedia.thumb as PhotoSize.photoStrippedSize).w = extendedMedia.w;
-            (extendedMedia.thumb as PhotoSize.photoStrippedSize).h = extendedMedia.h;
-            innerMedia = {
-              _: 'photo',
-              access_hash: '',
-              pFlags: {},
-              date: 0,
-              dc_id: 0,
-              file_reference: [],
-              id: 0,
-              sizes: [extendedMedia.thumb]
-            };
+            type P = MessageExtendedMedia.messageExtendedMediaPreview;
+            innerMedia = extendedMedia.map((extendedMedia) => {
+              return generatePhotoForExtendedMediaPreview(extendedMedia as P);
+            });
+          }
+
+          if(Array.isArray(innerMedia) && innerMedia.length === 1) {
+            innerMedia = innerMedia[0];
           }
 
           if(innerMedia) {
-            const mediaSize = extendedMedia ? mediaSizes.active.extendedInvoice : mediaSizes.active.invoice;
-            if(innerMedia._ === 'document') {
+            const mediaSize = extendedMedia.length ? mediaSizes.active.extendedInvoice : mediaSizes.active.invoice;
+            if(Array.isArray(innerMedia)) {
+              bubble.classList.add('is-album', 'photo');
+              wrapAlbum({
+                media: innerMedia as (Photo.photo | Document.document)[],
+                attachmentDiv,
+                middleware: this.getMiddleware(),
+                isOut: our,
+                lazyLoadQueue: this.lazyLoadQueue,
+                chat: this.chat,
+                loadPromises,
+                autoDownload: this.chat.autoDownload,
+                spoilered: !isAlreadyPaid,
+                videoTimes,
+                uploadingFileName: (message as Message.message).uploadingFileName
+              });
+            } else if(innerMedia._ === 'document') {
               wrapVideo({
                 doc: innerMedia,
                 container: attachmentDiv,
@@ -6625,7 +6707,8 @@ export default class ChatBubbles {
                 group: this.chat.animationGroup,
                 message: message as Message.message,
                 observer: this.observer,
-                setShowControlsOn: bubble
+                setShowControlsOn: bubble,
+                uploadingFileName: (message as Message.message).uploadingFileName[0]
               });
               bubble.classList.add('video');
             } else {
@@ -6645,7 +6728,7 @@ export default class ChatBubbles {
             }
 
             if(priceEl) {
-              if(!extendedMedia) {
+              if(!extendedMedia.length || (!isInvoice && isAlreadyPaid)) {
                 priceEl.classList.add('video-time');
               }
 
@@ -6663,28 +6746,36 @@ export default class ChatBubbles {
             });
             this.setExtendedMediaMessagesPollInterval();
 
-            const {width, height} = attachmentDiv.style;
-            const {dotRenderer, readyResult} = DotRenderer.create({
-              width: parseInt(width),
-              height: parseInt(height),
-              middleware,
-              animationGroup: this.chat.animationGroup
-            });
-            loadPromises?.push(readyResult as Promise<any>);
-            attachmentDiv.append(dotRenderer.canvas);
+            if(extendedMedia.length === 1) {
+              const {width, height} = attachmentDiv.style;
+              const {canvas, readyResult} = DotRenderer.create({
+                width: parseInt(width),
+                height: parseInt(height),
+                middleware,
+                animationGroup: this.chat.animationGroup
+              });
+              loadPromises?.push(readyResult as Promise<any>);
+              attachmentDiv.append(canvas);
+            }
           }
 
           let titleDiv: HTMLElement;
-          if(!extendedMedia) {
+          if(isInvoice) {
             titleDiv = document.createElement('div');
             titleDiv.classList.add('bubble-primary-color');
-            setInnerHTML(titleDiv, wrapEmojiText(messageMedia.title));
+            setInnerHTML(titleDiv, wrapEmojiText((messageMedia as I).title));
           }
 
-          const richText = isAlreadyPaid ? undefined : wrapEmojiText(messageMedia.description);
-          messageDiv.prepend(...[titleDiv, !innerMedia && priceEl, richText].filter(Boolean));
+          let richText: HTMLElement | DocumentFragment;
+          if(isInvoice) {
+            richText = isAlreadyPaid ? undefined : wrapEmojiText((messageMedia as I).description);
+          }
 
-          if(!richText) canHaveTail = false;
+          messageDiv.prepend(...[titleDiv, richText].filter(Boolean));
+          attachmentDiv.append(...[(!innerMedia || !isInvoice) && priceEl].filter(Boolean));
+
+          if(!isInvoice) {}
+          else if(!richText) canHaveTail = false;
           else mediaRequiresMessageDiv = true;
           bubble.classList.add('is-invoice');
 
@@ -6790,7 +6881,9 @@ export default class ChatBubbles {
         default:
           attachmentDiv = undefined;
           mediaRequiresMessageDiv = true;
-          messageDiv.append(i18n(UNSUPPORTED_LANG_PACK_KEY), timeSpan);
+          noAttachmentDivNeeded = true;
+          messageDiv.replaceChildren(i18n(UNSUPPORTED_LANG_PACK_KEY));
+          bubble.timeAppenders[0].callback();
           this.log.warn('unrecognized media type:', messageMedia._, message);
           break;
       }

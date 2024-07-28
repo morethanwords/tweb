@@ -66,6 +66,10 @@ const makeEffect = (props: {
     }
 
     const availableEffect = await result.result;
+    if(!availableEffect) {
+      deferred.resolve();
+      return;
+    }
 
     const loadPromises: Promise<any>[] = [];
     wrapSticker({

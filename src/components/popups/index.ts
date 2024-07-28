@@ -53,7 +53,8 @@ export type PopupOptions = Partial<{
   scrollable: boolean,
   buttons: Array<PopupButton>,
   title: boolean | LangPackKey | DocumentFragment | HTMLElement,
-  floatingHeader: boolean
+  floatingHeader: boolean,
+  withFooterConfirm: boolean
 }>;
 
 export interface PopupElementConstructable<T extends PopupElement = any> {
@@ -221,6 +222,10 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       this.footer = document.createElement('div');
       this.footer.classList.add('popup-footer');
       (this.body || this.container).append(this.footer);
+
+      if(options.withFooterConfirm) {
+        this.footer.append(this.btnConfirm);
+      }
     }
 
     this.btnConfirmOnEnter = this.btnConfirm;
@@ -425,7 +430,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
   protected appendSolid(callback: () => JSX.Element) {
     const div = document.createElement('div');
-    (this.scrollable || this.body).append(div);
+    (this.scrollable || this.body).prepend(div);
     const dispose = render(callback, div);
     this.addEventListener('closeAfterTimeout', dispose as any);
   }

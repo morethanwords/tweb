@@ -150,7 +150,7 @@ export class AnimationIntersector {
 
   public removeAnimation(player: AnimationItem) {
     const {el, animation} = player;
-    if(!player.controlled && player.type !== 'video') {
+    if(player.controlled !== true && player.type !== 'video') {
       animation.remove();
     }
 

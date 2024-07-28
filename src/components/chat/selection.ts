@@ -687,6 +687,17 @@ export class SearchSelection extends AppSelection {
     });
   };
 
+  public onPinToTopClick = (ids: number[], pin: boolean) => {
+    const peerId = [...this.selectedMids.keys()][0] || this.searchSuper.searchContext.peerId;
+    const promise = this.managers.appStoriesManager.togglePinnedToTop(peerId, ids, pin);
+    this.cancelSelection();
+    promise.catch((err) => {
+      if((err as ApiError).type === 'STORY_ID_TOO_MANY') {
+        toastNew({langPackKey: 'StoriesPinLimit', langPackArguments: [(err as ApiError).limit]});
+      }
+    });
+  };
+
   protected onUpdateContainer = (cantForward: boolean, cantDelete: boolean, cantSend: boolean, cantPin: boolean) => {
     const length = this.length();
     replaceContent(this.selectionCountEl, i18n(this.isStories ? 'StoriesCount' : 'messages', [length]));
