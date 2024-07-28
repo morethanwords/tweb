@@ -978,42 +978,30 @@ export const AppMediaEditor = ({imageBlobUrl, close} : { imageBlobUrl: string, c
         // go through all undo, filter by media, if text -> draw text, if sticker draw sticker frame (% array length)
       }
 
+
+      const cnvToBLB = () => {
+        return new Promise(resolve => {
+          res[0].toBlob((blb: any) => {
+            resolve(blb);
+          }, 'image/png');
+        });
+      }
       if(staticImg || IS_FIREFOX) {
         // export image
-
         const cnv = res[0];
         if(cnv) {
-          const cnvToBLB = () => {
-            return new Promise(resolve => {
-              res[0].toBlob((blb: any) => {
-                resolve(blb);
-              });
-            });
-          }
           const blb = await cnvToBLB();
           console.info(blb);
           close({img: true, width: cropWidth, height: cropHeight, data: blb});
           return;
-          /* const url = res[0].toDataURL();
-          const newImg = document.createElement('img'); // create img tag
-          newImg.src = url;
-
-          close({img: true, width: cropWidth, height: cropHeight, data: newImg}); */
-
-          /* const a = document.createElement('a');
-          a.href = url;
-          a.download = 'output.png';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a); */
         }
       } else {
         // export video
-        // const blb = await cnvToBLB();
+        const blb = await cnvToBLB();
         const gif = await generateGif(cropWidth, cropHeight, res);
         console.info(gif);
 
-        close({img: false, width: cropWidth, height: cropHeight, data: gif});
+        close({img: false, duration: maxFrames * 60, thumb: blb, width: cropWidth, height: cropHeight, data: gif});
       }
     }
 

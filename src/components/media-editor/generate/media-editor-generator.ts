@@ -47,23 +47,15 @@ export const generateGif = async(width: number, height: number, frames: any[]) =
       sampleOptions.dts = encodedChunk.timestamp * 1000;
       sampleOptions.cts = encodedChunk.timestamp * 1000;
       sampleOptions.is_sync = (encodedChunk.type === 'key');
-      console.log(encodedChunk.timestamp);
+      // console.log(encodedChunk.timestamp);
       file.addSample(track, ab, sampleOptions);
 
       chunkCount++;
 
-      console.info(chunkCount);
       if(chunkCount >= totalFrames) {
         videoEncoder.close();
         encoderClosed = true;
-
-        console.info(file);
-        file.save('test.mp4');
-        console.log('completed !');
-
         const buffer = file.getBuffer();
-        console.info('bff', buffer);
-
         const blob = new Blob([buffer], {type: 'video/mp4'});
 
         /* const video = document.createElement('video');

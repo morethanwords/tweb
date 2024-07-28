@@ -22,7 +22,7 @@ import getGifDuration from '../../helpers/getGifDuration';
 import replaceContent from '../../helpers/dom/replaceContent';
 import createVideo from '../../helpers/dom/createVideo';
 import prepareAlbum from '../prepareAlbum';
-import {makeMediaSize} from '../../helpers/mediaSize';
+import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -728,17 +728,25 @@ export default class PopupNewMedia extends PopupElement {
       const blb = this.editedImg;
       console.info('bbbbl', blb);
 
-      const file = new File([blb.data], 'filename.mp4', {type: 'video/mp4'});
+      const file = new File([blb?.data], 'filename.mp4', {type: 'video/mp4'});
 
       const d: SendFileDetails[] = sendFileParams.map((params) => {
         console.info('ppr', params);
+        console.info('pris', params.scaledBlob || params.file);
         return {
           ...params,
           width: blb.width,
           height: blb.height,
           objectURL: URL.createObjectURL(blb.data),
+          noSound: true,
+          duration: blb.duration,
+          thumb: {
+            blob: blb.thumb,
+            size: new MediaSize(blb.width, blb.height),
+            url: URL.createObjectURL(blb.thumb)
+          },
           file,
-          // file: blb.data, // params.scaledBlob || params.file,
+          // file: params.scaledBlob || params.file,
           spoiler: !!params.mediaSpoiler
         };
       });
