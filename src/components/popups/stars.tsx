@@ -104,7 +104,7 @@ export async function getStarsTransactionTitleAndMedia(
 ) {
   const [title, media] = await Promise.all([
     (() => {
-      if(paidMedia || transaction?.extended_media) {
+      if(paidMedia || transaction?.extended_media || !transaction) {
         return wrapPeerTitle({peerId: paidMediaPeerId || getPeerId((transaction.peer as StarsTransactionPeer.starsTransactionPeer).peer)});
       }
 
@@ -177,8 +177,14 @@ export async function getStarsTransactionTitleAndMedia(
         return container;
       }
 
-      if(transaction.peer._ === 'starsTransactionPeer') {
-        const avatar = avatarNew({peerId: getPeerId(transaction.peer.peer), size, middleware});
+      if(!transaction || transaction.peer._ === 'starsTransactionPeer') {
+        const avatar = avatarNew({
+          peerId: transaction ?
+            getPeerId((transaction.peer as StarsTransactionPeer.starsTransactionPeer).peer) :
+            paidMediaPeerId,
+          size,
+          middleware
+        });
         await avatar.readyThumbPromise;
         return avatar.node;
       }
