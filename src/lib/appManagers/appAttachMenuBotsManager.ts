@@ -32,7 +32,10 @@ export type RequestWebViewOptions = MessageSendingParams & {
   writeAllowed?: boolean,
   app?: BotApp.botApp,
   noConfirmation?: boolean,
-  hasSettings?: boolean
+  hasSettings?: boolean,
+  main?: boolean,
+  compact?: boolean,
+  masked?: boolean
 };
 
 export default class AppAttachMenuBotsManager extends AppManager {
@@ -168,19 +171,26 @@ export default class AppAttachMenuBotsManager extends AppManager {
       startParam,
       isSimpleWebView,
       app,
-      writeAllowed
+      writeAllowed,
+      main,
+      compact
     } = options;
 
     const platform = 'web';
+
+    const commonOptions = {
+      start_param: startParam,
+      theme_params: themeParams,
+      compact,
+      platform
+    };
 
     if(app) {
       return this.apiManager.invokeApiSingleProcess({
         method: 'messages.requestAppWebView',
         params: {
+          ...commonOptions,
           peer: this.appPeersManager.getInputPeerById(peerId),
-          start_param: startParam,
-          theme_params: themeParams,
-          platform,
           write_allowed: writeAllowed,
           app: {
             _: 'inputBotAppID',
@@ -195,13 +205,22 @@ export default class AppAttachMenuBotsManager extends AppManager {
       return this.apiManager.invokeApiSingleProcess({
         method: 'messages.requestSimpleWebView',
         params: {
+          ...commonOptions,
           bot: this.appUsersManager.getUserInput(botId),
           url,
-          platform,
           from_switch_webview: fromSwitchWebView,
-          from_side_menu: fromSideMenu,
-          theme_params: themeParams,
-          start_param: startParam
+          from_side_menu: fromSideMenu
+        }
+      });
+    }
+
+    if(main) {
+      return this.apiManager.invokeApiSingleProcess({
+        method: 'messages.requestMainWebView',
+        params: {
+          ...commonOptions,
+          peer: this.appPeersManager.getInputPeerById(peerId),
+          bot: this.appUsersManager.getUserInput(botId)
         }
       });
     }
@@ -209,16 +228,14 @@ export default class AppAttachMenuBotsManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'messages.requestWebView',
       params: {
+        ...commonOptions,
         peer: this.appPeersManager.getInputPeerById(peerId),
         bot: this.appUsersManager.getUserInput(botId),
         silent,
-        platform,
         url,
         reply_to: this.appMessagesManager.getInputReplyTo(options),
         from_bot_menu: fromBotMenu,
-        theme_params: themeParams,
-        send_as: sendAsPeerId ? this.appPeersManager.getInputPeerById(sendAsPeerId) : undefined,
-        start_param: startParam
+        send_as: sendAsPeerId ? this.appPeersManager.getInputPeerById(sendAsPeerId) : undefined
       }
     });
   }
@@ -281,6 +298,23 @@ export default class AppAttachMenuBotsManager extends AppManager {
       processResult: (messagesBotApp) => {
         messagesBotApp.app = this.saveBotApp(botId, messagesBotApp.app);
         return messagesBotApp;
+      }
+    });
+  }
+
+  public getPopularAppBots(offset: string = '', limit: number = 50) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'bots.getPopularAppBots',
+      params: {
+        limit,
+        offset
+      },
+      processResult: (popularAppBots) => {
+        this.appPeersManager.saveApiPeers(popularAppBots);
+        return {
+          nextOffset: popularAppBots.next_offset,
+          userIds: popularAppBots.users.map((user) => user.id)
+        };
       }
     });
   }

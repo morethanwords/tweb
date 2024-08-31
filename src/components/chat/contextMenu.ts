@@ -452,7 +452,7 @@ export default class ChatContextMenu {
         onClick: () => {
           this.chat.initSearch({filterPeerId: this.avatarPeerId});
         },
-        verify: () => this.chat.isRealGroup
+        verify: () => this.chat.isAnyGroup
       }];
       return;
     }

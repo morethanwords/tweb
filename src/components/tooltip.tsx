@@ -7,7 +7,6 @@
 import clamp from '../helpers/number/clamp';
 import OverlayClickHandler from '../helpers/overlayClickHandler';
 import classNames from '../helpers/string/classNames';
-import {LangPackKey} from '../lib/langPack';
 import {createRoot, createSignal, onMount, JSX} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import {IconTsx} from './iconTsx';
@@ -19,29 +18,32 @@ export default function showTooltip({
   element,
   container = element.parentElement,
   vertical,
-  text,
   textElement,
+  subtitleElement,
   paddingX = 0,
   centerVertically,
   onClose,
   icon,
-  auto
+  auto,
+  mountOn = document.body,
+  relative
 }: {
   element: HTMLElement,
   container?: HTMLElement,
   vertical: 'top' | 'bottom',
-  text?: LangPackKey,
   textElement?: HTMLElement,
+  subtitleElement?: HTMLElement,
   paddingX?: number,
   centerVertically?: boolean,
   onClose?: () => void,
   icon?: Icon,
-  auto?: boolean
+  auto?: boolean,
+  mountOn?: HTMLElement,
+  relative?: boolean
 }) {
-  const containerRect = container.getBoundingClientRect();
-  const elementRect = element.getBoundingClientRect();
-
-  const mountOn = document.body;
+  const containerRect = !relative && container.getBoundingClientRect();
+  const elementRect = !relative &&  element.getBoundingClientRect();
+  const useOverlay = mountOn === document.body;
   let close: () => void;
   createRoot((dispose) => {
     const [getRect, setRect] = createSignal<DOMRect>();
@@ -77,13 +79,18 @@ export default function showTooltip({
       <div
         ref={div}
         class={classNames('tooltip', 'tooltip-' + vertical, icon && 'tooltip-with-icon')}
-        style={getStyle()}
+        style={!relative && getStyle()}
       >
         <div class="tooltip-part tooltip-background"></div>
         <span class="tooltip-part tooltip-notch"></span>
         <div class="tooltip-part tooltip-text">
           {icon && <IconTsx icon={icon} class="tooltip-icon" />}
-          {textElement}
+          {subtitleElement ? (
+            <>
+              <div>{textElement}</div>
+              <div class="tooltip-subtitle">{subtitleElement}</div>
+            </>
+          ) : textElement}
         </div>
       </div>
     );
@@ -93,7 +100,7 @@ export default function showTooltip({
     </Portal>
 
     onMount(() => {
-      setRect(div.getBoundingClientRect());
+      !relative && setRect(div.getBoundingClientRect());
       div.classList.add('mounted');
       SetTransition({
         element: div,
@@ -129,12 +136,13 @@ export default function showTooltip({
         return;
       }
 
-      tooltipOverlayClickHandler.close();
+      if(useOverlay) tooltipOverlayClickHandler.close();
+      else onToggle(false);
     };
 
     const timeout = KEEP_TOOLTIP && !auto ? 0 : window.setTimeout(close, 3000);
 
-    Promise.resolve().then(() => {
+    useOverlay && Promise.resolve().then(() => {
       tooltipOverlayClickHandler.open(mountOn);
       tooltipOverlayClickHandler.addEventListener('toggle', onToggle, {once: true});
     });

@@ -9,11 +9,52 @@ import anchorCallback from '../../helpers/dom/anchorCallback';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import shake from '../../helpers/dom/shake';
-import {subscribeOn} from '../../helpers/solid/subscribeOn';
+import {Middleware} from '../../helpers/middleware';
+import {LangPackKey} from '../../lib/langPack';
 import Button from '../button';
+import currencyStarIcon from '../currencyStarIcon';
 import InputField from '../inputField';
 import Section from '../section';
-import PopupStars, {StarsStar} from './stars';
+import PopupStars from './stars';
+
+export function InputStarsField(options: {
+  middleware: Middleware,
+  placeholder?: LangPackKey,
+  label?: LangPackKey,
+  max: number,
+  onValue?: (stars: number) => void,
+}) {
+  const inputField = new InputField({
+    inputMode: 'numeric',
+    label: options.label,
+    placeholder: options.placeholder,
+    plainText: true,
+    withLinebreaks: false
+  });
+
+  inputField.container.classList.add('popup-make-paid-input');
+
+  const star = currencyStarIcon() as HTMLElement;
+  star.classList.add('popup-make-paid-star');
+  inputField.container.append(star);
+
+  const onInput = () => {
+    const value = '' + +inputField.value;
+    let newValue = value.replace(/[^0-9]/g, '');
+    if(+newValue > options.max) {
+      newValue = '' + options.max;
+    }
+    inputField.setValueSilently(newValue);
+    options.onValue?.(+newValue);
+  };
+
+  inputField.input.addEventListener('input', onInput);
+  options.middleware.onDestroy(() => {
+    inputField.input.removeEventListener('input', onInput);
+  });
+
+  return inputField;
+}
 
 export default class PopupMakePaid extends PopupElement {
   private inputField: InputField;
@@ -56,24 +97,10 @@ export default class PopupMakePaid extends PopupElement {
   private async d() {
     const appConfig = await this.managers.apiManager.getAppConfig();
     this.appendSolid(() => {
-      const inputField = this.inputField = new InputField({
-        inputMode: 'numeric',
+      const inputField = this.inputField = InputStarsField({
+        middleware: this.middlewareHelper.get(),
         label: 'PaidMedia.Enter',
-        plainText: true,
-        withLinebreaks: false
-      });
-
-      const star = StarsStar({}) as HTMLElement;
-      star.classList.add('popup-make-paid-star');
-      inputField.container.append(star);
-
-      subscribeOn(inputField.input)('input', () => {
-        const value = '' + +inputField.value;
-        let newValue = value.replace(/[^0-9]/g, '');
-        if(+newValue > appConfig.stars_paid_post_amount_max) {
-          newValue = '' + appConfig.stars_paid_post_amount_max;
-        }
-        inputField.setValueSilently(newValue);
+        max: appConfig.stars_paid_post_amount_max
       });
 
       if(this.editingFrom) {

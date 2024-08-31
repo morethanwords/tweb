@@ -734,6 +734,7 @@ const lang = {
   'PaidMedia.KeepFree': 'Keep this media free',
   'PaidMedia.Unlock': 'Unlock for %s',
   'Stars.Unlock': 'Do you want to unlock %s in **%s** for **%s**?',
+  'Stars.Unlock.FromBot': 'Do you want to unlock %s from **%s** for **%s**?',
   'Stars.Unlock.Stars': {
     'one_value': '%d Star',
     'other_value': '%d Stars'
@@ -749,6 +750,62 @@ const lang = {
     'one_value': '**%d video**',
     'other_value': '**%d videos**'
   },
+  'InviteLink.Subscription.Title': 'Require Monthly Fee',
+  'InviteLink.Subscription.Caption': 'Charge a subscription fee from people joining your channel via this link. [Learn More >](https://telegram.org/)',
+  'InviteLink.Subscription.Placeholder': 'Stars Amount per month',
+  'InviteLink.Subscription.Price': '~%s / month',
+  'InviteLink.Subscription.Edit': 'If you need to change the subscription fee, create a new invite link with a different price.',
+  'InviteLink.Observe.Fee': 'Subscription Fee',
+  'InviteLink.Observe.Fee.Title': '%s / month x %d',
+  'InviteLink.Observe.Fee.Subtitle': 'You get approximately %s monthly',
+  'InviteLink.AdminApproval.Disabled': 'You can\'t enable admin approval for links that require a monthly fee.',
+  'InviteLinks.Description': 'You can create additional invite links that are limited by time, number of users, or require a paid subscription.',
+  'Stars.Subscribe.Title': 'Subscribe to the Channel',
+  'Stars.Subscribe.Description': 'Do you want to subscribe for **%s** for **%s** per month?',
+  'Stars.Subscribe.Terms': 'By subscribing you agree to the [Terms of Service](https://telegram.org).',
+  'Stars.Subscribe.Button': 'Subscribe',
+  'Stars.Subscription': 'Subscription',
+  'Stars.Subscription.Title': 'Monthly subscription fee',
+  'Stars.Subscription.Active': 'If you cancel now, you can still access your subscription until %s.',
+  'Stars.Subscription.Cancelled': 'You have cancelled your subscription.',
+  'Stars.Subscription.Cancel': 'Cancel Subscription',
+  'Stars.Subscription.Subscribed': 'Subscribed',
+  'Stars.Subscription.Renews': 'Renews',
+  'Stars.Subscription.ReviewTerms': 'Renews',
+  'Stars.Subscription.Fee': '%s / month',
+  'Stars.Subscription.CancelCaption': 'If you cancel now, you can still access your subscription until %s',
+  'Stars.Subscription.Fulfill': 'SUBSCRIBE TO CHANNEL',
+  'Stars.Subscription.Renew': 'RENEW SUBSCRIPTION',
+  'Stars.Subscriptions': 'My Subscriptions',
+  'Stars.Subscriptions.Renews': 'renews on %s',
+  'Stars.Subscriptions.Expires': 'expires on %s',
+  'Stars.Subscriptions.Expired': 'expired on %s',
+  'Stars.Subscriptions.PerMonth': 'per month',
+  'Stars.Subscriptions.Cancelled': 'cancelled',
+  'Stars.Subscribe.Need': 'Buy **Stars** and use them to subscribe to channels.',
+  'MiniApps.OpenApp': 'Open App',
+  'MiniApps.Apps': 'Apps you use',
+  'MiniApps.AppsSearch': 'Apps',
+  'MiniApps.AppsMore': 'Show more',
+  'MiniApps.AppsLess': 'Show less',
+  'MiniApps.Popular': 'Popular Apps',
+  'MiniApps.Search': 'Search Apps',
+  'MiniApps.Collapsed.One': '%s',
+  'MiniApps.Collapsed.Two': '%s & %s',
+  'MiniApps.Collapsed.Many': {
+    'other_value': '%s & %d Other'
+  },
+  'PaidReaction.Sent': {
+    'one_value': 'Star sent!',
+    'other_value': 'Stars sent!'
+  },
+  'PaidReaction.Sent.Anonymously': {
+    'one_value': 'Star sent anonymously!',
+    'other_value': 'Stars sent anonymously!'
+  },
+  'Stars.TopUp.Reaction': 'Buy **Stars** and send them to **%s** to support their posts.',
+  'Stars.TopUp.Label_default': 'Buy Stars to unlock content and service\nin miniapps on Telegram.',
+  'Stars.TopUp.Enough': 'You have enough Stars at the moment. [Buy anyway]()',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2307,6 +2364,41 @@ const lang = {
   'StarsRefunded': 'Refund',
   'StarsFailed': 'Failed',
   'StarsPending': 'Pending',
+  'BotUsers': {
+    'one_value': '%d user',
+    'other_value': '%d users'
+  },
+  'ChannelSignMessagesWithProfile': 'Show Authors\' Profiles',
+  'ChannelSignProfilesInfo': 'Add names and photos of admins to the messages they post, linking to their profiles.',
+  'SponsoredMessageAd': 'Ad',
+  'StarsGiftReceived': 'Received Gift',
+  'StarsGiftSent': 'Sent Gift',
+  // 'StarsGiftSentPopup': 'Stars Gift Sent!',
+  'StarsGiftSentPopupInfo': {
+    'one_value': '**%1$d Star** sent as gift to %2$s.',
+    'other_value': '**%1$d Stars** sent as gift to %2$s.'
+  },
+  'ActionGiftStarsSubtitle': 'With Stars, **%s** is able to unlock content and services on Telegram.',
+  'ActionGiftStarsSubtitleYou': 'Use Stars to unlock content and services on Telegram.',
+  'GiftStarsTitle': 'Gift Stars',
+  'GiftStarsSubtitle': 'With Stars, **%s** will be able to unlock content and services on Telegram.',
+  'GiftStarsSubtitleLinkName': '**See Examples >**',
+  'ActionGiftStarsTitle': {
+    'one_value': '%d Star',
+    'other_value': '%d Stars'
+  },
+  'SearchAppsExamples': 'Examples',
+  'TelegramStarsGift': 'Gift Stars to Friends',
+  'StarsSentText': {
+    'one_value': 'You reacted with **%d** star.',
+    'other_value': 'You reacted with **%d** stars.'
+  },
+  'StarsSentUndo': 'Undo',
+  'StarsReactionTitle': 'Star Reaction',
+  'StarsReactionText': 'Choose how many stars you want to send to **%s** to support this post.',
+  'StarsReactionTopSenders': 'Top Senders',
+  'StarsReactionShowMeInTopSenders': 'Show me in Top Senders',
+  'StarsReactionAnonymous': 'Anonymous',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

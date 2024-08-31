@@ -17,9 +17,11 @@ import {AppManagers} from '../../../lib/appManagers/managers';
 import {i18n} from '../../../lib/langPack';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import AppSelectPeers from '../../appSelectPeers';
+import {StarsAmount} from '../../popups/stars';
 import Row from '../../row';
 import SettingSection from '../../settingSection';
 import {SliderSuperTabEventable} from '../../sliderTab';
+import {UsernameRow} from '../../usernamesSection';
 import AppChatInviteLinksTab, {ChatInviteLink} from './chatInviteLinks';
 
 type ChatInvite = ExportedChatInvite.chatInviteExported;
@@ -140,11 +142,29 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
         }
       });
 
+      dom.titleSpan.classList.add('text-bold');
       attachClickEvent(dom.listEl, () => {
         appImManager.setInnerPeer({peerId});
       }, {listenerSetter: this.listenerSetter});
 
       dom.lastMessageSpan.append(formatFullSentTime(chatInvite.date));
+      this.scrollable.append(section.container);
+    }
+
+    if(chatInvite.subscription_pricing) {
+      const section = new SettingSection({name: 'InviteLink.Observe.Fee'});
+
+      const row = new UsernameRow(true, 'link_paid', 'green');
+
+      const stars = chatInvite.subscription_pricing.amount;
+      const usage = chatInvite.usage ?? 0;
+      const title = i18n('InviteLink.Observe.Fee.Title', [StarsAmount({stars}) as HTMLElement, usage]);
+      const subtitle = i18n('InviteLink.Observe.Fee.Subtitle', ['$' + (usage * +stars * 0.02).toFixed(2)]);
+      row.title.append(title);
+      row.subtitle.append(subtitle);
+
+      section.content.append(row.container);
+
       this.scrollable.append(section.container);
     }
 

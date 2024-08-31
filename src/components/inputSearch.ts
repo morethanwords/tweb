@@ -52,7 +52,8 @@ export default class InputSearch {
     noFocusEffect?: boolean,
     debounceTime?: number,
     verifyDebounce?: (value: string, prevValue: string) => boolean,
-    arrowBack?: boolean
+    arrowBack?: boolean,
+    oldStyle?: boolean
   } = {}) {
     this.inputField = new InputField({
       // placeholder,
@@ -64,6 +65,10 @@ export default class InputSearch {
     this.container = this.inputField.container;
     this.container.classList.remove('input-field');
     this.container.classList.add('input-search');
+
+    if(options.oldStyle) {
+      this.container.classList.add('old-style');
+    }
 
     this.onChange = options.onChange;
     this.onClear = options.onClear;

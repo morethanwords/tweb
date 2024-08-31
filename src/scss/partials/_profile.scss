@@ -90,6 +90,15 @@
       // background-color: #000;
       position: relative;
 
+      .avatar-star {
+        --size: 420px;
+        opacity: 0;
+
+        @include animation-level(2) {
+          transition: opacity var(--transition-standard-in);
+        }
+      }
+
       &.active {
         @include animation-level(2) {
           transform: scale(1);
@@ -380,6 +389,10 @@
       .profile-avatars-avatar.active {
         transform: translateY(-1.5%) scale(calc(120 / 420));
         border-radius: 50%;
+      }
+
+      .avatar-star {
+        opacity: 1;
       }
 
       .profile-avatars-tabs,

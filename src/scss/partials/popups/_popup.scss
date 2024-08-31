@@ -215,6 +215,14 @@ $popup-footer-abitlarger-padding: 1rem;
         line-height: #{$popup-footer-abitlarger-button-size};
       }
     }
+
+    &-caption {
+      display: block;
+      color: var(--secondary-text-color);
+      font-size: var(--font-size-13);
+      line-height: var(--line-height-14);
+      margin-top: .625rem;
+    }
   }
 
   &-button {

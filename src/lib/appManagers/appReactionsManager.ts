@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document, MessagesSavedReactionTags, SavedReactionTag, AvailableEffect, MessagesAvailableEffects} from '../../layer';
+import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document, MessagesSavedReactionTags, SavedReactionTag, AvailableEffect, MessagesAvailableEffects, MessageReactions} from '../../layer';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import assumeType from '../../helpers/assumeType';
@@ -55,7 +55,10 @@ export type SendReactionOptions = {
   message: Message.message | ReactionsContext,
   reaction?: Reaction | AvailableReaction,
   onlyLocal?: boolean,
-  sendAsPeerId?: PeerId
+  onlyReturn?: boolean,
+  sendAsPeerId?: PeerId,
+  private?: boolean,
+  count?: number
 };
 
 export type ReactionsContext = Pick<Message.message, 'peerId' | 'mid' | 'reactions'>;
@@ -64,7 +67,7 @@ export class AppReactionsManager extends AppManager {
   private availableReactions: AvailableReaction[];
   private availableEffects: MaybePromise<AvailableEffect[]>;
   private sendReactionPromises: Map<string, Promise<any>>;
-  private lastSendingTimes: Map<string, number>;
+  // private lastSendingTimes: Map<string, number>;
   private reactions: {[key in 'recent' | 'top' | 'tags']?: Reaction[]};
   private savedReactionsTags: Map<PeerId, MaybePromise<SavedReactionTag[]>>;
 
@@ -132,7 +135,7 @@ export class AppReactionsManager extends AppManager {
   public clear = (init = false) => {
     if(init) {
       this.sendReactionPromises = new Map();
-      this.lastSendingTimes = new Map();
+      // this.lastSendingTimes = new Map();
       this.reactions = {};
     }
 
@@ -437,8 +440,11 @@ export class AppReactionsManager extends AppManager {
     message,
     reaction,
     onlyLocal,
-    sendAsPeerId
-  }: SendReactionOptions) {
+    onlyReturn,
+    sendAsPeerId,
+    private: _private,
+    count
+  }: SendReactionOptions): Promise<MessageReactions> {
     message = this.appMessagesManager.getMessageByPeer(message.peerId, message.mid) as Message.message;
 
     if(reaction._ === 'availableReaction') {
@@ -448,18 +454,20 @@ export class AppReactionsManager extends AppManager {
       };
     }
 
+    const isPaidReaction = reaction._ === 'reactionPaid';
+
     const limit = await this.apiManager.getLimit('reactions');
 
-    const lastSendingTimeKey = message.peerId + '_' + message.mid;
-    const lastSendingTime = this.lastSendingTimes.get(lastSendingTimeKey);
-    if(lastSendingTime) {
-      return;
-    } else {
-      this.lastSendingTimes.set(lastSendingTimeKey, Date.now());
-      setTimeout(() => {
-        this.lastSendingTimes.delete(lastSendingTimeKey);
-      }, 333);
-    }
+    // const lastSendingTimeKey = message.peerId + '_' + message.mid;
+    // const lastSendingTime = this.lastSendingTimes.get(lastSendingTimeKey);
+    // if(lastSendingTime) {
+    //   return;
+    // } else {
+    //   this.lastSendingTimes.set(lastSendingTimeKey, Date.now());
+    //   setTimeout(() => {
+    //     this.lastSendingTimes.delete(lastSendingTimeKey);
+    //   }, 333);
+    // }
 
     const {peerId, mid} = message;
     let myPeer: Peer;
@@ -493,7 +501,9 @@ export class AppReactionsManager extends AppManager {
       }
     };
 
-    const canSeeList = message.reactions?.pFlags?.can_see_list || !this.appPeersManager.isBroadcast(message.peerId) || message.peerId.isUser();
+    const canSeeList = message.reactions?.pFlags?.can_see_list ||
+      !this.appPeersManager.isBroadcast(message.peerId) ||
+      message.peerId.isUser();
     if(!message.reactions) {
       message.reactions = {
         _: 'messageReactions',
@@ -506,7 +516,7 @@ export class AppReactionsManager extends AppManager {
     }
 
     let reactions = onlyLocal ? message.reactions : copy(message.reactions);
-    const chosenReactions = reactions.results.filter((reactionCount) => reactionCount.chosen_order !== undefined);
+    const chosenReactions = reactions.results.filter((reactionCount) => reactionCount.chosen_order !== undefined && reactionCount.chosen_order >= 0);
     chosenReactions.sort((a, b) => b.chosen_order - a.chosen_order);
     const unsetReactions: ReactionCount[] = [];
     const chosenReactionIdx = chosenReactions.findIndex((reactionCount) => reactionsEqual(reactionCount.reaction, reaction as Reaction));
@@ -553,12 +563,39 @@ export class AppReactionsManager extends AppManager {
           reaction
         };
 
-        reactionCountIdx = reactions.results.push(reactionCount) - 1;
+        if(isPaidReaction) {
+          reactions.results.unshift(reactionCount);
+          reactionCountIdx = 0;
+        } else {
+          reactionCountIdx = reactions.results.push(reactionCount) - 1;
+        }
       }
 
-      ++reactionCount.count;
-      reactionCount.chosen_order = chosenReactions.length ? chosenReactions[0].chosen_order + 1 : 0;
-      chosenReactions.unshift(reactionCount);
+      if(isPaidReaction) {
+        reactionCount.count += count;
+        reactionCount.chosen_order = -1;
+
+        reactions.top_reactors ??= [];
+        let topReactor = findAndSplice(reactions.top_reactors, (topReactor) => topReactor.pFlags.my);
+        if(!topReactor) {
+          topReactor = {
+            _: 'messageReactor',
+            count: 0,
+            pFlags: {
+              my: true,
+              anonymous: _private || undefined
+            }
+          };
+        }
+
+        topReactor.count += count;
+        insertInDescendSortedArray(reactions.top_reactors, topReactor, 'count');
+        topReactor.pFlags.top = reactions.top_reactors.indexOf(topReactor) < 3 || undefined;
+      } else {
+        ++reactionCount.count;
+        reactionCount.chosen_order = chosenReactions.length ? chosenReactions[0].chosen_order + 1 : 0;
+        chosenReactions.unshift(reactionCount);
+      }
 
       if(!reactions.recent_reactions && canSeeList) {
         reactions.recent_reactions = [];
@@ -597,12 +634,25 @@ export class AppReactionsManager extends AppManager {
         const id2 = (b.reaction as Reaction.reactionCustomEmoji).document_id || (b.reaction as Reaction.reactionEmoji).emoticon;
         return (b.count - a.count) || ((indexes.get(id1) ?? 0) - (indexes.get(id2) ?? 0));
       });
+
+      const paidReactionIndex = reactions.results.findIndex((reactionCount) => reactionCount.reaction._ === 'reactionPaid');
+      if(paidReactionIndex !== -1) {
+        reactions.results.unshift(reactions.results.splice(paidReactionIndex, 1)[0]);
+      }
+    }
+
+    if(onlyReturn) {
+      return reactions;
     }
 
     if(onlyLocal) {
       message.reactions = reactions;
-      this.rootScope.dispatchEvent('messages_reactions', [{message: message as Message.message, changedResults: [], removedResults: []}]);
-      return Promise.resolve();
+      this.rootScope.dispatchEvent('messages_reactions', [{
+        message: message as Message.message,
+        changedResults: [],
+        removedResults: []
+      }]);
+      return;
     }
 
     this.apiUpdatesManager.processLocalUpdate({
@@ -613,13 +663,7 @@ export class AppReactionsManager extends AppManager {
       local: true
     });
 
-    const promiseKey = [peerId, mid].join('-');
-    const msgId = getServerMessageId(mid);
-    const promise = this.apiManager.invokeApi('messages.sendReaction', {
-      peer: this.appPeersManager.getInputPeerById(peerId),
-      msg_id: msgId,
-      reaction: chosenReactions.map((reactionCount) => reactionCount.reaction).reverse()
-    }).then((updates) => {
+    const onUpdates = (updates: Updates) => {
       assumeType<Updates.updates>(updates);
 
       const editMessageUpdateIdx = updates.updates.findIndex((update) => update._ === 'updateEditMessage' || update._ === 'updateEditChannelMessage');
@@ -636,7 +680,32 @@ export class AppReactionsManager extends AppManager {
       }
 
       this.apiUpdatesManager.processUpdateMessage(updates);
-    }).catch((err: ApiError) => {
+    };
+
+    const msgId = getServerMessageId(mid);
+    if(isPaidReaction) {
+      const currentTime = tsNow(true);
+
+      const randomPart = Math.floor(Math.random() * Math.pow(2, 32));
+      const uniqueId = bigInt(currentTime).shiftLeft(32).or(randomPart);
+      const randomId = uniqueId.toString();
+
+      this.apiManager.invokeApi('messages.sendPaidReaction', {
+        count,
+        msg_id: msgId,
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        random_id: randomId,
+        private: _private
+      }).then(onUpdates);
+      return;
+    }
+
+    const promiseKey = [peerId, mid].join('-');
+    const promise = this.apiManager.invokeApi('messages.sendReaction', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      msg_id: msgId,
+      reaction: chosenReactions.map((reactionCount) => reactionCount.reaction).reverse()
+    }).then(onUpdates).catch((err: ApiError) => {
       if(err.type === 'REACTION_INVALID' && this.sendReactionPromises.get(promiseKey) === promise) {
         this.sendReaction({
           message,
@@ -652,7 +721,6 @@ export class AppReactionsManager extends AppManager {
     });
 
     this.sendReactionPromises.set(promiseKey, promise);
-    return promise;
   }
 
   public getRandomGenericAnimation() {

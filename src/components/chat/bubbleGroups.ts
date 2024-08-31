@@ -88,6 +88,16 @@ export class BubbleGroup {
     };
   }
 
+  destroyAvatar() {
+    if(!this.avatar) {
+      return;
+    }
+
+    this.avatarContainer.remove();
+    this.avatarLoadPromise = this.avatar = this.avatarContainer = undefined;
+    --this.offset;
+  }
+
   createAvatar(message: Message.message | Message.messageService, options?: Partial<Parameters<typeof avatarNew>[0]>) {
     if(this.avatarLoadPromise) {
       return this.avatarLoadPromise;
@@ -455,7 +465,8 @@ export default class BubbleGroups {
       isOut1 === this.chat.isOutMessage(item2.message) &&
       (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true)) &&
       (!isOut1 || item1.message.fromId === rootScope.myId) && // * group anonymous sending
-      item1.message.peerId === item2.message.peerId;
+      item1.message.peerId === item2.message.peerId &&
+      (item1.message as Message.message).post_author === (item2.message as Message.message).post_author;
   }
 
   getSiblingsAtIndex(itemIndex: number, items: GroupItem[]) {

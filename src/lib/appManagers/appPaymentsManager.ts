@@ -190,7 +190,7 @@ export default class AppPaymentsManager extends AppManager {
   private saveStarsStatus = (starsStatus: PaymentsStarsStatus) => {
     this.appPeersManager.saveApiPeers(starsStatus);
 
-    starsStatus.history.forEach((transaction) => {
+    starsStatus.history?.forEach((transaction) => {
       const transactionPeer = transaction.peer as StarsTransactionPeer.starsTransactionPeer;
       const peerId = transactionPeer && this.appPeersManager.getPeerId(transactionPeer.peer);
       if(transaction.msg_id) {
@@ -243,6 +243,40 @@ export default class AppPaymentsManager extends AppManager {
     });
   }
 
+  public getStarsSubscriptions(offset?: string, missingBalance?: boolean) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.getStarsSubscriptions',
+      params: {
+        // peer: this.appPeersManager.getInputPeerById(peerId),
+        peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
+        offset,
+        missing_balance: missingBalance
+      },
+      processResult: this.saveStarsStatus
+    });
+  }
+
+  public changeStarsSubscription(subscriptionId: string, canceled: boolean) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.changeStarsSubscription',
+      params: {
+        subscription_id: subscriptionId,
+        peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
+        canceled
+      }
+    });
+  }
+
+  public fulfillStarsSubscription(subscriptionId: string) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.fulfillStarsSubscription',
+      params: {
+        subscription_id: subscriptionId,
+        peer: this.appPeersManager.getInputPeerById(this.rootScope.myId)
+      }
+    });
+  }
+
   public sendStarsForm(
     invoice: InputInvoice,
     formId: PaymentsPaymentForm['form_id']
@@ -251,6 +285,10 @@ export default class AppPaymentsManager extends AppManager {
       form_id: formId,
       invoice
     }).then(this.processPaymentResult);
+  }
+
+  public getStarsGiftOptions(userId: UserId) {
+    return this.apiManager.invokeApi('payments.getStarsGiftOptions', {user_id: this.appUsersManager.getUserInput(userId)});
   }
 
   private processPaymentResult = (result: PaymentsPaymentResult) => {

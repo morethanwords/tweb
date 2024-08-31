@@ -21,6 +21,7 @@ import findAndSplice from '../../helpers/array/findAndSplice';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import AppStoriesManager from '../../lib/appManagers/appStoriesManager';
+import untrackActions from '../../helpers/solid/untrackActions';
 
 export type NextPrevStory = () => void;
 export type ChangeStoryParams = {
@@ -107,20 +108,6 @@ const createPositions = (positions: Map<PeerId, StoriesListPosition> = new Map()
 
 const {positions: globalPositions, onPosition} = createPositions();
 rootScope.addEventListener('stories_position', onPosition);
-
-const untrackActions = <T extends Record<string, AnyFunction>>(actions: T) => {
-  for(const action in actions) {
-    // @ts-ignore
-    const callback = actions[action];
-    // @ts-ignore
-    actions[action] = (...args: any[]) => {
-      // console.log('action', action, args);
-      return untrack(() => callback(...args));
-    };
-  }
-
-  return actions;
-};
 
 const createStoriesStore = (props: {
   peers?: StoriesContextPeerState[],

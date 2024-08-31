@@ -5,6 +5,7 @@
  */
 
 import {formatFullSentTimeRaw} from '../../helpers/date';
+import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import {User} from '../../layer';
 import {LangPackKey, i18n} from '../../lib/langPack';
 import {REPLIES_PEER_ID, SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
@@ -26,7 +27,13 @@ export default function getUserStatusString(user: User.user): HTMLElement {
       break;
     default: {
       if(user.pFlags.bot) {
-        key = 'Bot';
+        if(user.bot_active_users === undefined) {
+          key = 'Bot';
+          break;
+        }
+
+        key = 'BotUsers';
+        args = [numberThousandSplitter(user.bot_active_users)];
         break;
       }
 

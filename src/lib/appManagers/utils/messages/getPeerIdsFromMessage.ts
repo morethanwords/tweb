@@ -45,6 +45,11 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     peerIds.push(...recentReactions.map((reaction) => getPeerId(reaction.peer_id)));
   }
 
+  const topReactors = ((message as Message.message).reactions)?.top_reactors;
+  if(topReactors?.length) {
+    peerIds.push(...topReactors.map((reactor) => getPeerId(reactor.peer_id)));
+  }
+
   const action = (message as Message.messageService).action;
   if(action) {
     const userIds: UserId[] = [

@@ -851,7 +851,7 @@ export default function TopbarSearch(props: {
           setLoadMore(() => loadMore);
           if(isSender) setSendersPeerIds(values as any);
           else setMessages(values as any);
-          onLoad(rendered[0]);
+          onLoad((rendered as HTMLElement[])[0]);
         },
         {defer: true}
       )

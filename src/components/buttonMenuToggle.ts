@@ -51,6 +51,10 @@ export function ButtonMenuToggleHandler({
   });
 }
 
+export function filterButtonMenuItems(buttons: ButtonMenuItemOptionsVerifiable[]) {
+  return filterAsync(buttons, (button) => button?.verify ? button.verify() ?? false : true);
+}
+
 export default function ButtonMenuToggle({
   buttonOptions,
   listenerSetter: attachListenerSetter,
@@ -102,9 +106,7 @@ export default function ButtonMenuToggle({
         return;
       }
 
-      const f = (b: (typeof buttons[0])[]) => filterAsync(b, (button) => button?.verify ? button.verify() ?? false : true);
-
-      const filteredButtons = await f(buttons);
+      const filteredButtons = await filterButtonMenuItems(buttons);
       if(_tempId !== tempId) return;
       if(!filteredButtons.length) {
         return;

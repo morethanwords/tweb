@@ -122,6 +122,19 @@ export class AppPeersManager extends AppManager {
     return !peerId.isUser() && !this.appChatsManager.isBroadcast(peerId.toChatId());
   }
 
+  public isLikeGroup(peerId: PeerId) {
+    if(this.isAnyGroup(peerId)) {
+      return true;
+    }
+
+    const peer = this.getPeer(peerId) as Chat.channel;
+    if(!peer) {
+      return false;
+    }
+
+    return !!peer.pFlags.signature_profiles;
+  }
+
   public isBroadcast(peerId: PeerId): boolean {
     return this.isChannel(peerId) && !this.isMegagroup(peerId);
   }
