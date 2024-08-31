@@ -7495,7 +7495,7 @@ export class AppMessagesManager extends AppManager {
       offsetId &&
       getServerMessageId(offsetId) &&
       !mids.includes(offsetId) &&
-      offsetIdOffset < count &&
+      offsetIdOffset <= count &&
       (addOffset || 0) >= 0 && // ! warning
       !searchSlicedArray
     ) {

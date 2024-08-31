@@ -56,7 +56,6 @@ import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import {simulateClickEvent} from '../../helpers/dom/clickEvent';
 import PopupCall from '../../components/call';
 import copy from '../../helpers/object/copy';
-import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import ChatBackgroundPatternRenderer from '../../components/chat/patternRenderer';
 import {IS_CHROMIUM, IS_FIREFOX} from '../../environment/userAgent';
@@ -116,7 +115,6 @@ import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
-import deepEqual from '../../helpers/object/deepEqual';
 import {savedReactionTags} from '../../components/chat/reactions';
 import {setAppState} from '../../stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
@@ -131,8 +129,7 @@ import {setQuizHint} from '../../components/poll';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import PopupPremium from '../../components/popups/premium';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
-import AppEditChatInviteLink from '../../components/sidebarRight/tabs/editChatInviteLink';
-import {openCatalogueInAppBrowser, openInAppBrowser, openWebAppInAppBrowser} from '../../components/browser';
+import {openWebAppInAppBrowser} from '../../components/browser';
 
 export type ChatSavedPosition = {
   mids: number[],
