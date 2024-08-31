@@ -4,9 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {ChatInvite, InputUser, Updates} from '../../layer';
+import Modes from '../../config/modes';
+import {ChatInvite, InputUser, StarsSubscriptionPricing, Updates} from '../../layer';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
+
+function starsSubscriptionPricing(amount: number): StarsSubscriptionPricing {
+  return {
+    _: 'starsSubscriptionPricing',
+    amount,
+    period: Modes.test ? 60 : 2592000
+  };
+}
 
 export default class AppChatInvitesManager extends AppManager {
   protected after() {
@@ -49,20 +58,23 @@ export default class AppChatInvitesManager extends AppManager {
     expireDate,
     usageLimit,
     requestNeeded,
-    title
+    title,
+    stars
   }: {
     chatId: ChatId,
     expireDate?: number,
     usageLimit?: number,
     requestNeeded?: boolean,
-    title?: string
+    title?: string,
+    stars?: number
   }) {
     return this.apiManager.invokeApi('messages.exportChatInvite', {
       peer: this.appChatsManager.getInputPeer(chatId),
       expire_date: expireDate,
       usage_limit: usageLimit,
       request_needed: requestNeeded,
-      title
+      title,
+      subscription_pricing: stars ? starsSubscriptionPricing(stars) : undefined
     });
   }
 

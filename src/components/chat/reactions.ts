@@ -10,7 +10,7 @@ import callbackifyAll from '../../helpers/callbackifyAll';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import {Middleware, MiddlewareHelper} from '../../helpers/middleware';
-import {ReactionCount, SavedReactionTag} from '../../layer';
+import {Message, ReactionCount, SavedReactionTag} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
@@ -21,12 +21,21 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ReactionElement, {ReactionLayoutType, REACTIONS_DISPLAY_COUNTER_AT, REACTIONS_SIZE} from './reaction';
 import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
 import pause from '../../helpers/schedulers/pause';
+import showTooltip from '../tooltip';
+import {i18n} from '../../lib/langPack';
 
 const CLASS_NAME = 'reactions';
 const TAG_NAME = CLASS_NAME + '-element';
 
 const REACTIONS_ELEMENTS: Map<string, Set<ReactionsElement>> = new Map();
 export {REACTIONS_ELEMENTS};
+
+const PENDING_PAID_REACTIONS: Map<string, {count: number, sendTimestamp: number, sendTimeout: number, cancel: () => void}> = new Map();
+export {PENDING_PAID_REACTIONS};
+
+export function getPendingPaidReactionKey(message: ReactionsContext) {
+  return message.peerId + '_' + message.mid;
+}
 
 export const savedReactionTags: SavedReactionTag[] = [];
 rootScope.addEventListener('saved_tags', ({savedPeerId, tags}) => {
@@ -201,7 +210,7 @@ export default class ReactionsElement extends HTMLElement {
 
     // const availableReactionsResult = this.managers.appReactionsManager.getAvailableReactions();
     // callbackify(availableReactionsResult, () => {
-    const counts = hasReactions ? (
+    let counts = hasReactions ? (
       reactions.results
         // availableReactionsResult instanceof Promise ?
         //   reactions.results :
@@ -210,10 +219,12 @@ export default class ReactionsElement extends HTMLElement {
         //   })
       ) : [];
 
+    counts = counts.filter((count) => count.reaction._ !== 'reactionPaid');
+
     // if(this.context.peerId.isUser()) {
     //   counts.sort((a, b) => (b.count - a.count) || ((b.chosen_order ?? 0) - (a.chosen_order ?? 0)));
     // } else {
-    counts.sort((a, b) => (b.count - a.count) || ((a.chosen_order ?? 0) - (b.chosen_order ?? 0)));
+    // counts.sort((a, b) => (b.count - a.count) || ((a.chosen_order ?? 0) - (b.chosen_order ?? 0)));
     // }
 
     forEachReverse(this.sorted, (reactionElement, idx, arr) => {
@@ -246,18 +257,24 @@ export default class ReactionsElement extends HTMLElement {
       reactionElement.classList.toggle('is-last', idx === (arr.length - 1));
       positionElementByIndex(reactionElement, this, idx);
 
+      const isPaidReaction = reactionCount.reaction._ === 'reactionPaid';
+      const pending = PENDING_PAID_REACTIONS.get(getPendingPaidReactionKey(this.context));
+
       const recentReactions = reactions.recent_reactions ?
         reactions.recent_reactions.filter((reaction) => reactionsEqual(reaction.reaction, reactionCount.reaction)) :
         [];
       const wasUnread = reactionElement.isUnread;
       const isUnread = recentReactions.some((reaction) => reaction.pFlags.unread);
-      reactionElement.reactionCount = {...reactionCount};
+      reactionElement.reactionCount = {
+        ...reactionCount,
+        count: reactionCount.count + (pending?.count ?? 0)
+      };
       reactionElement.setCanRenderAvatars(canRenderAvatars);
       const customEmojiElement = reactionElement.render(this.isPlaceholder);
       reactionElement.renderCounter(this.forceCounter);
       reactionElement.renderAvatars(recentReactions);
       reactionElement.isUnread = isUnread;
-      reactionElement.setIsChosen();
+      reactionElement.setIsChosen(!!pending || undefined);
 
       if(wasUnread && !isUnread && !changedResults?.includes(reactionCount)) {
         (changedResults ??= []).push(reactionCount);
@@ -265,6 +282,21 @@ export default class ReactionsElement extends HTMLElement {
       }
 
       customEmojiElements[idx] = customEmojiElement;
+
+      if(pending) {
+        const title = i18n('PaidReaction.Sent', [pending.count]);
+        title.classList.add('text-bold');
+        const {close} = showTooltip({
+          element: reactionElement,
+          container: this,
+          vertical: 'top',
+          textElement: title,
+          subtitleElement: i18n('StarsSentText', [pending.count]),
+          icon: 'star',
+          mountOn: this,
+          relative: true
+        });
+      }
 
       return reactionElement;
     });

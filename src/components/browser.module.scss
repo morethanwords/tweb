@@ -1,0 +1,381 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@import "../scss/mixins";
+@import "../scss/variables";
+
+$transition: .2s var(--transition-standard-easing);
+
+.Browser {
+  position: fixed;
+  width: 480px;
+  height: 688px;
+  border-radius: $border-radius-huge;
+  // top: 100px;
+  // left: calc(50vw - 240px);
+  z-index: 3;
+  backdrop-filter: blur(20px);
+  // background-color: rgba(var(--surface-color-rgb), .65);
+  background-color: rgba(var(--body-background-color-rgb), .65);
+  box-shadow: 0px 0px 16px 0px rgba(0, 0, 0, .15);
+  overflow: hidden;
+
+  @include animation-level-global(2) {
+    transition: width $transition, height $transition;
+  }
+
+  &Header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 3rem;
+    width: 100%;
+    padding-inline: .5625rem .8125rem;
+    position: relative;
+    z-index: 1;
+
+    &Button {
+      font-size: 1.5rem;
+      width: 1.875rem !important;
+      height: 1.875rem !important;
+      margin: 0 .25rem;
+      flex: 0 0 auto;
+    }
+
+    &Tabs {
+      display: flex;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: .125rem;
+      margin-inline: .4375rem 1.125rem;
+      position: relative;
+      height: 100%;
+
+      &Scrollable {
+        display: flex;
+        position: relative;
+        flex: 1 1 auto;
+        margin-inline: -5px 1rem;
+        -webkit-mask-image: linear-gradient(
+          to right,
+          transparent,
+          #000 .5rem,
+          #000 calc(100% - 30px),
+          transparent
+        );
+
+        // &:not(:global(.scrolled-end)) {
+        //   -webkit-mask-image: linear-gradient(
+        //     to left,
+        //     transparent,
+        //     #000 30px
+        //   );
+        // }
+
+        // &:not(:global(.scrolled-start)) {
+        //   -webkit-mask-image: linear-gradient(
+        //     to right,
+        //     transparent,
+        //     #000 30px
+        //   );
+        // }
+
+        // &:not(:global(.scrolled-start)):not(:global(.scrolled-end)) {
+        //   -webkit-mask-image: linear-gradient(
+        //     to right,
+        //     transparent,
+        //     #000 .5rem,
+        //     #000 calc(100% - 30px),
+        //     transparent
+        //   );
+        // }
+      }
+    }
+
+    &Tab {
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      transform: translateX(0);
+      // -webkit-mask-image: linear-gradient(
+      //   to left,
+      //   transparent,
+      //   #000 1.875rem
+      // );
+      -webkit-mask-image: linear-gradient(to right, #000 1.875rem, #000 calc(100% - 30px), transparent);
+      &.first {
+        -webkit-mask-image: linear-gradient(to right, #000 2.875rem, #000 calc(100% - 30px), transparent);
+      }
+
+      @include animation-level-global(2) {
+        transition: transform $transition;
+      }
+
+      &Title {
+        width: 0px;
+        font-weight: var(--font-weight-bold);
+        white-space: nowrap;
+        overflow: hidden;
+
+        @include animation-level-global(2) {
+          transition: width $transition;
+        }
+      }
+
+      &Icon {
+        margin-left: .25rem;
+
+        @include animation-level-global(2) {
+          transition: margin-left $transition;
+        }
+
+        &Inner {
+          border: 1.5px solid transparent;
+          width: 1.6875rem;
+          height: 1.6875rem;
+          border-radius: 50%;
+
+          @include animation-level-global(2) {
+            transition: border-color $transition;
+          }
+        }
+      }
+
+      &More {
+        position: absolute;
+        width: 1.5rem;
+        height: 1.5rem;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.25rem;
+        border-radius: 50%;
+        background-color: rgba(0, 0, 0, .4);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      &Close {
+        font-size: 1rem;
+        position: absolute;
+        transform: translateX(calc(var(--text-width) - 3px + 1rem));
+        z-index: 1;
+        padding: .25rem;
+        color: var(--secondary-text-color);
+      }
+
+      &Mask {
+        position: absolute;
+        height: 100%;
+        transform: translate(1.875rem);
+        width: var(--text-width);
+        background: linear-gradient(
+          90deg,
+          transparent 50%,
+          rgba(var(--surface-color-rgb), 1) 80%,
+          rgba(var(--surface-color-rgb), 1) 100%
+        );
+        pointer-events: none !important;
+      }
+
+      &.active &Icon,
+      &.first &Icon {
+        margin-left: 1.25rem;
+      }
+
+      &.active &Title {
+        width: var(--text-width);
+      }
+
+      &Hover {
+        opacity: 0;
+        pointer-events: none;
+
+        @include animation-level-global(2) {
+          transition: opacity $transition, background-color $transition;
+        }
+      }
+
+      &.active {
+        @include hover-global() {
+          .BrowserHeaderTabHover {
+            opacity: 1;
+            pointer-events: all;
+          }
+        }
+      }
+    }
+
+    &Selector {
+      position: absolute;
+      background-color: var(--surface-color);
+      height: 100%;
+      z-index: -1;
+      border-top-left-radius: $border-radius-huge;
+      border-top-right-radius: $border-radius-huge;
+      pointer-events: none;
+      opacity: 1;
+      box-shadow: 0px 0px 5px rgba(0, 0, 0, .08);
+
+      @include animation-level-global(2) {
+        transition: transform $transition, width $transition, opacity $transition;
+      }
+
+      &Tail {
+        position: absolute;
+        bottom: 0;
+
+        &.left {
+          left: -1rem;
+        }
+
+        &.right {
+          right: -1rem;
+          transform: scaleX(-1);
+        }
+      }
+    }
+
+    &CollapsedTitle {
+      position: absolute;
+      opacity: 0;
+      font-weight: var(--font-weight-bold);
+      left: 7rem;
+      transform: translateX(3.5rem);
+      max-width: 10.25rem;
+      pointer-events: none;
+
+      @include text-overflow();
+
+      @include animation-level-global(2) {
+        transition: opacity $transition, transform $transition;
+      }
+    }
+
+    &NewButton {
+      opacity: 1;
+
+      @include animation-level-global(2) {
+        transition: opacity $transition;
+      }
+    }
+  }
+
+  &Body {
+    background-color: var(--surface-color);
+    border-top-left-radius: $border-radius-huge;
+    border-top-right-radius: $border-radius-huge;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, .08);
+  }
+
+  &Page {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    :global {
+      .payment-verification {
+        height: 100%;
+      }
+    }
+  }
+
+  &.collapsed {
+    width: 328px !important;
+    height: 3rem !important;
+  }
+
+  // &.collapsed &HeaderTabs {
+  //   transform: translateX(-1.25rem);
+  // }
+
+  &.collapsed &HeaderSelector,
+  &.collapsed &HeaderNewButton {
+    opacity: 0;
+  }
+
+  &.collapsed &HeaderTabIconInner {
+    border-color: var(--secondary-color);
+  }
+
+  &.collapsed &HeaderCollapsedTitle {
+    opacity: 1;
+    transform: translateX(var(--translateX));
+  }
+
+  &Catalogue {
+    padding: 1.5rem 1.5rem 0;
+
+    &Search {
+      --height: 44px;
+      --icon-left-add-offset: .1875rem;
+      margin: 0 0 .375rem;
+    }
+
+    &List {
+      display: grid;
+	    grid-template-columns: repeat(auto-fill, 5rem);
+      margin: .125rem -.5rem 0;
+      justify-content: space-between;
+      row-gap: .3125rem;
+      column-gap: .75rem;
+
+      &.folded {
+        height: 7rem;
+        overflow: hidden;
+        margin-bottom: -1.125rem;
+      }
+    }
+
+    :global {
+      .sidebar-left-section {
+        &-name {
+          padding-inline: .5rem !important;
+          color: var(--primary-text-color);
+
+          &-right {
+            font-weight: var(--font-weight-bold);
+            color: var(--primary-color);
+            cursor: pointer;
+          }
+        }
+
+        &-content {
+          margin: 0 !important;
+        }
+      }
+
+      .similar-channels-channel {
+        width: 5rem;
+        height: 7rem;
+
+        &-badge {
+          top: 55px;
+          height: 19px;
+        }
+
+        &-name {
+          margin-top: .5rem;
+          font-weight: var(--font-weight-bold);
+        }
+
+        &.no-badge {
+          height: 6.5rem;
+        }
+      }
+
+      .animated-item {
+        width: calc(100% - 3rem);
+      }
+    }
+  }
+}

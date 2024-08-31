@@ -87,6 +87,10 @@
     transform: translateY(-50%);
   }
 
+  &-subtitle {
+    margin-top: .125rem;
+  }
+
   &.is-visible {
     @include animation-level(2) {
       transition: transform var(--btn-menu-transition);

@@ -18,6 +18,7 @@ import {i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import CheckboxField from '../../checkboxField';
 import InputField from '../../inputField';
+import {InputStarsField} from '../../popups/makePaid';
 import {InputRightNumber} from '../../popups/payment';
 import PopupSchedule from '../../popups/schedule';
 import {setButtonLoader} from '../../putPreloader';
@@ -78,7 +79,8 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
           title,
           requestNeeded,
           usageLimit,
-          expireDate
+          expireDate,
+          stars: paidLinkCheckboxField?.checked ? +paidLinkInputField.value : undefined
         }) as ChatInvite;
       }
 
@@ -109,9 +111,56 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
       this.scrollable.append(section.container);
     }
 
-    let approveNewMembersCheckboxField: CheckboxField;
-    if(await this.managers.appChatsManager.isBroadcast(chatId)) {
-      const section = new SettingSection({caption: 'ApproveNewMembersDescription'});
+    const isBroadcast = await this.managers.appChatsManager.isBroadcast(chatId);
+    const appConfig = await this.managers.apiManager.getAppConfig();
+
+    let paidLinkCheckboxField: CheckboxField, paidLinkInputField: InputField;
+    if(isBroadcast) {
+      const section = new SettingSection({caption: invite ? 'InviteLink.Subscription.Edit' : 'InviteLink.Subscription.Caption'});
+
+      const row = new Row({
+        titleLangKey: 'InviteLink.Subscription.Title',
+        checkboxField: paidLinkCheckboxField = new CheckboxField({toggle: true})
+      });
+
+      this.listenerSetter.add(paidLinkCheckboxField.input)('change', () => {
+        const checked = paidLinkCheckboxField.checked;
+        approveNewMembersCheckboxField.toggleDisability(checked);
+        approveNewMembersSection.caption.replaceChildren(i18n(checked ? 'ApproveNewMembersDescription' : 'InviteLink.AdminApproval.Disabled'));
+        wrapper.classList.toggle('hide', !checked);
+      });
+
+      const wrapper = document.createElement('div');
+      wrapper.classList.add('input-wrapper');
+      const inputField = paidLinkInputField = InputStarsField({
+        label: 'InviteLink.Subscription.Placeholder',
+        max: appConfig.stars_subscription_amount_max,
+        middleware: this.middlewareHelper.get(),
+        onValue: (stars) => {
+          rightLabel.replaceChildren(...(stars ? [
+            i18n('InviteLink.Subscription.Price', ['$' + (appConfig.stars_usd_sell_rate_x1000 / 1000 * stars / 100).toFixed(2)])
+          ] : []));
+        }
+      });
+
+      const rightLabel = document.createElement('span');
+      rightLabel.classList.add('input-field-right-label');
+      inputField.container.append(rightLabel);
+
+      this.listenerSetter.add(inputField.input)('input', () => {});
+
+      wrapper.append(inputField.container);
+
+      section.content.append(row.container, wrapper);
+
+      inputField.value = '' + 500;
+
+      this.scrollable.append(section.container);
+    }
+
+    let approveNewMembersCheckboxField: CheckboxField, approveNewMembersSection: SettingSection;
+    if(isBroadcast) {
+      const section = approveNewMembersSection = new SettingSection({caption: true});
 
       const row = new Row({
         titleLangKey: 'ApproveNewMembers',
@@ -305,6 +354,22 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
 
       if(invite) {
         approveNewMembersCheckboxField.checked = invite?.pFlags?.request_needed;
+      }
+    }
+
+    if(paidLinkCheckboxField) {
+      const value = !!invite?.subscription_pricing;
+      paidLinkCheckboxField.setValueSilently(!value);
+      paidLinkCheckboxField.checked = value;
+
+      if(value) {
+        paidLinkInputField.value = '' + invite.subscription_pricing?.amount;
+      }
+
+      if(invite) {
+        paidLinkCheckboxField.toggleDisability(true);
+        paidLinkInputField.container.classList.add('disable-hover');
+        // paidLinkInputField.input.contentEditable = 'false';
       }
     }
   }

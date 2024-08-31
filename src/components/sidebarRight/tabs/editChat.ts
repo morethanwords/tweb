@@ -516,24 +516,42 @@ export default class AppEditChatTab extends SliderSuperTab {
     }
 
     if(isBroadcast && canPostMessages) {
-      const section = new SettingSection({caption: 'ChannelSignMessagesInfo'});
+      const section = new SettingSection({caption: true});
       const signMessagesCheckboxField = new CheckboxField({
-        text: 'ChannelSignMessages',
-        checked: !!(chat as Chat.channel).pFlags.signatures
+        text: 'ChannelSignMessages'
+      });
+
+      const showProfilesCheckboxField = new CheckboxField({
+        text: 'ChannelSignMessagesWithProfile'
       });
 
       this.listenerSetter.add(signMessagesCheckboxField.input)('change', () => {
         const toggle = signMessagesCheckboxField.toggleDisability(true);
-        this.managers.appChatsManager.toggleSignatures(this.chatId, signMessagesCheckboxField.checked).then(() => {
+        this.managers.appChatsManager.toggleSignatures(this.chatId, signMessagesCheckboxField.checked, signMessagesCheckboxField.checked && showProfilesCheckboxField.checked).then(() => {
           toggle();
         });
       });
 
-      addChatUpdateListener(() => {
-        signMessagesCheckboxField.setValueSilently(!!(chat as Chat.channel).pFlags.signatures);
+      this.listenerSetter.add(showProfilesCheckboxField.input)('change', () => {
+        const toggle = showProfilesCheckboxField.toggleDisability(true);
+        this.managers.appChatsManager.toggleSignatures(this.chatId, signMessagesCheckboxField.checked, showProfilesCheckboxField.checked).then(() => {
+          toggle();
+        });
       });
 
-      section.content.append(CreateRowFromCheckboxField(signMessagesCheckboxField).container);
+      const update = () => {
+        signMessagesCheckboxField.setValueSilently(!!(chat as Chat.channel).pFlags.signatures);
+        showProfilesCheckboxField.setValueSilently(signMessagesCheckboxField.checked && !!(chat as Chat.channel).pFlags.signature_profiles);
+        row2.container.classList.toggle('hide', !signMessagesCheckboxField.checked);
+        section.caption.replaceChildren(i18n(showProfilesCheckboxField.checked ? 'ChannelSignProfilesInfo' : 'ChannelSignMessagesInfo'));
+      };
+
+      const row2 = CreateRowFromCheckboxField(showProfilesCheckboxField);
+
+      update();
+      addChatUpdateListener(update);
+
+      section.content.append(CreateRowFromCheckboxField(signMessagesCheckboxField).container, row2.container);
       this.scrollable.append(section.container);
     }
 

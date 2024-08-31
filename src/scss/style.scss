@@ -2594,12 +2594,18 @@ hr {
       gap: .125rem;
     }
 
-    .stars-star-icon {
-      --star-background-color: var(--surface-color);
-      width: 19px;
-      height: 19px;
+    .currency-star-icon {
+      width: 20px;
+      height: 20px;
       margin-top: -1px;
     }
+  }
+}
+
+.currency-star-icon {
+  &-stroke {
+    stroke-width: 5px;
+    stroke: var(--surface-color);
   }
 }
 

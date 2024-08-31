@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createEffect, createSignal, JSX, For, untrack, Accessor, onCleanup} from 'solid-js';
+import {createEffect, createSignal, JSX, For, untrack, Accessor, onCleanup, Ref, createMemo} from 'solid-js';
 import {i18n} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
 import {AvatarNew} from '../avatarNew';
 import PeerTitle from '../peerTitle';
 import {ScrollableXTsx} from '../stories/list';
 import formatNumber from '../../helpers/number/formatNumber';
-import {Chat, MessagesChats} from '../../layer';
+import {Chat, MessagesChats, User} from '../../layer';
 import computeLockColor from '../../helpers/computeLockColor';
 import classNames from '../../helpers/string/classNames';
 import cancelEvent from '../../helpers/dom/cancelEvent';
@@ -27,6 +27,118 @@ import {ButtonIconTsx} from '../buttonIconTsx';
 import {IconTsx} from '../iconTsx';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import showTooltip from '../tooltip';
+import {usePeer} from '../../stores/peers';
+
+let canvas: HTMLCanvasElement, context: CanvasRenderingContext2D;
+export function SimilarPeer(props: {
+  peerId: PeerId,
+  promises?: Promise<any>[],
+  ref?: Ref<HTMLDivElement>,
+  avatarSize: number,
+
+  isLast?: boolean,
+  count?: number,
+  defaultLimit?: number,
+  premium?: boolean
+}) {
+  if(!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.width = 20;
+    canvas.height = 20;
+    context = canvas.getContext('2d', {alpha: false, willReadFrequently: true});
+  }
+
+  const [color, setColor] = createSignal<string>();
+  const [badgeBackgroundUrl, setBadgeBackgroundUrl] = createSignal<string>();
+  const onImageLoad = (image: HTMLImageElement) => {
+    if(image.naturalWidth < 100) {
+      return;
+    }
+
+    // const perf = performance.now();
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    setBadgeBackgroundUrl(computeLockColor(canvas));
+    // console.log('lock color', performance.now() - perf);
+  };
+
+  const avatar = untrack(() => {
+    return AvatarNew({
+      peerId: props.peerId,
+      size: props.avatarSize,
+      processImageOnLoad: onImageLoad
+    });
+  });
+  avatar.node.classList.add('similar-channels-channel-avatar');
+  const promises: Promise<any>[] = [];
+  promises.push(avatar.readyThumbPromise);
+  if(props.isLast) {
+    avatar.node.classList.add('similar-channels-channel-avatar-stack-first');
+  }
+
+  avatar.readyThumbPromise.then(() => {
+    setColor(avatar.color());
+  });
+
+  let nameElement: HTMLElement;
+  if(!props.isLast) {
+    const peerTitle = new PeerTitle();
+    promises.push(peerTitle.update({peerId: untrack(() => props.peerId)}));
+    nameElement = peerTitle.element;
+  } else {
+    nameElement = i18n('MoreSimilar');
+  }
+  nameElement.classList.add('similar-channels-channel-name');
+
+  const icon = (
+    <IconTsx
+      icon={props.isLast ? 'premium_lock' : 'newprivate_filled'}
+      class="similar-channels-channel-badge-icon"
+    />
+  );
+
+  if(props.promises) {
+    props.promises.push(...promises);
+  }
+
+  const peer = usePeer(props.peerId);
+  const badge = (
+    <span
+      class="similar-channels-channel-badge"
+      style={badgeBackgroundUrl() ? {'background-image': `url(${badgeBackgroundUrl()})`} : {'background-color': `var(--peer-avatar-${color()}-bottom)`}}
+    >
+      {props.isLast ? (
+        <>
+          {`+${props.count - props.defaultLimit}`}
+          {!untrack(() => props.premium) && icon}
+        </>
+      ) : (
+        <>
+          {icon}
+          {formatNumber((peer as User.user).bot_active_users || (peer as Chat.channel).participants_count || 1, 1)}
+        </>
+      )}
+    </span>
+  );
+
+  const displayBadge = createMemo(() => (peer as User.user)._ !== 'user' || (peer as User.user).bot_active_users !== undefined);
+
+  return (
+    <div
+      class={classNames('similar-channels-channel', props.isLast && 'is-last', !displayBadge() && 'no-badge')}
+      ref={props.ref}
+    >
+      {props.isLast ? (
+        <div class="similar-channels-channel-avatar-stack">
+          {avatar.element}
+          <div class="similar-channels-channel-avatar-stack-middle" />
+          <div class="similar-channels-channel-avatar-stack-last" />
+        </div>
+      ) : avatar.element}
+      {displayBadge() && badge}
+      {nameElement}
+    </div>
+  );
+}
 
 export default function SimilarChannels(props: {
   chatId: ChatId,
@@ -181,7 +293,21 @@ export default function SimilarChannels(props: {
     const list = (
       <div ref={ref} class="similar-channels-list">
         <For each={(messagesChats.chats as Chat.channel[]).slice(0, defaultLimit)}>
-          {Item}
+          {(chat, idx) => {
+            const isLast = hasMore && idx() === defaultLimit - 1;
+            return (
+              <SimilarPeer
+                peerId={chat.id.toPeerId(true)}
+                promises={promises}
+                isLast={isLast}
+                ref={(el) => rendered.set(el, isLast ? undefined : chat)}
+                count={count}
+                defaultLimit={defaultLimit}
+                premium={untrack(premium)}
+                avatarSize={60}
+              />
+            );
+          }}
         </For>
       </div>
     );

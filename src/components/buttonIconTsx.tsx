@@ -12,7 +12,8 @@ export const ButtonIconTsx = (props: {icon?: Icon, noRipple?: boolean} & JSX.But
       class={classNames('btn-icon', props.class)}
       tabIndex={-1}
     >
-      {props.icon ? Icon(props.icon) : props.children}
+      {props.icon && Icon(props.icon)}
+      {props.children}
     </button>
   );
 

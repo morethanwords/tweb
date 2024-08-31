@@ -25,18 +25,33 @@ import {UsernameInputField} from './usernameInputField';
 const CLASS_NAME = 'usernames';
 
 export class UsernameRow extends Row {
-  constructor() {
+  constructor(
+    isLink?: boolean,
+    icon: Icon = 'limit_link',
+    color?: string,
+    titleRight?: HTMLElement,
+    subtitleRight?: HTMLElement
+  ) {
     super({
       title: true,
       subtitle: true,
-      clickable: true
+      clickable: true,
+      titleRight,
+      subtitleRight
     });
+
+    if(isLink) {
+      this.title.classList.add('text-bold');
+      this.container.classList.add('is-link');
+    }
 
     this.container.classList.add(CLASS_NAME + '-username');
     this.subtitle.classList.add(CLASS_NAME + '-username-status');
-    const media = this.createMedia('medium');
-    media.classList.add(CLASS_NAME + '-username-icon');
-    media.append(Icon('link'));
+    const media = this.createMedia('abitbigger');
+    media.classList.add(CLASS_NAME + '-username-icon', 'avatar-gradient');
+    if(color) media.dataset.color = color;
+    if(isLink && icon === 'link_paid') this.container.classList.add('is-paid');
+    media.append(Icon(icon));
   }
 }
 

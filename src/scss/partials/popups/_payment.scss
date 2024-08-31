@@ -86,20 +86,20 @@
     }
   }
 
-  .payment-verification {
-    width: 100%;
-    height: 40rem;
-    max-height: 100%;
-    border: none;
-    flex: 1 1 auto;
-
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in);
-    }
-  }
-
   .row {
     border-radius: $row-border-radius;
+  }
+}
+
+.payment-verification {
+  width: 100%;
+  height: 40rem;
+  max-height: 100%;
+  border: none;
+  flex: 1 1 auto;
+
+  @include animation-level(2) {
+    transition: opacity var(--transition-standard-in);
   }
 }
 

@@ -761,6 +761,8 @@ export default class ReactionElement extends HTMLElement {
     let promise: Promise<void>;
     if(reaction._ === 'reactionEmoji') {
       promise = onEmoticon(undefined, reaction.emoticon);
+    } else if(reaction._ === 'reactionPaid') {
+      promise = Promise.resolve();
     } else {
       promise = callbackify(options.managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id), (doc) => {
         return onEmoticon(doc);

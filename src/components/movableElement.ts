@@ -27,16 +27,20 @@ export type MovableElementOptions = {
   minWidth: MovableElement['minWidth'],
   minHeight: MovableElement['minHeight'],
   element: MovableElement['element'],
-  verifyTouchTarget?: MovableElement['verifyTouchTarget']
+  verifyTouchTarget?: MovableElement['verifyTouchTarget'],
+  aspectRatio?: MovableElement['aspectRatio'],
+  resetTransition?: MovableElement['resetTransition']
 };
 
 export default class MovableElement extends EventListenerBase<{
-  resize: () => void
+  resize: (state: MovableState) => void
 }> {
   private minWidth: number;
   private minHeight: number;
   private element: HTMLElement;
-  private verifyTouchTarget: SwipeHandler['verifyTouchTarget'];
+  private verifyTouchTarget: (evt: Parameters<SwipeHandler['verifyTouchTarget']>[0], type: 'resize' | 'move') => boolean;
+  private aspectRatio: number;
+  private resetTransition: boolean;
 
   private top: number;
   private left: number;
@@ -45,6 +49,7 @@ export default class MovableElement extends EventListenerBase<{
 
   private swipeHandler: SwipeHandler;
   private handlers: HTMLElement[];
+  private overlay: HTMLElement;
 
   constructor(options: MovableElementOptions) {
     super(true);
@@ -60,18 +65,31 @@ export default class MovableElement extends EventListenerBase<{
   }
 
   private onResize = () => {
-    this.fixDimensions();
+    this.fixDimensions(true);
     this.fixPosition();
     this.setPosition();
   };
 
+  public toggleResizable(value: boolean) {
+    if(!value) {
+      this.destroyResizeHandlers();
+    } else {
+      this.addResizeHandlers();
+    }
+  }
+
   public destroyElements() {
     this.element.classList.remove(className);
+    this.destroyResizeHandlers();
+  }
 
+  public destroyResizeHandlers() {
     if(this.handlers) {
       this.handlers.forEach((handler) => {
         handler.remove();
       });
+
+      this.handlers = undefined;
     }
   }
 
@@ -81,6 +99,10 @@ export default class MovableElement extends EventListenerBase<{
   }
 
   private addResizeHandlers() {
+    if(this.handlers) {
+      return;
+    }
+
     const sides: ResizeSide[] = ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw'];
     this.handlers = sides.map((side) => {
       const div = document.createElement('div');
@@ -92,30 +114,49 @@ export default class MovableElement extends EventListenerBase<{
   }
 
   private setSwipeHandler() {
-    let startTop: number, startLeft: number, startWidth: number, startHeight: number, resizingSide: ResizeSide;
+    let startTop: number,
+      startLeft: number,
+      startWidth: number,
+      startHeight: number,
+      startExtraHeight: number,
+      startExtraWidth: number,
+      resizingSide: ResizeSide;
     const swipeHandler = this.swipeHandler = new SwipeHandler({
       element: this.element,
       onSwipe: (xDiff, yDiff, e) => {
         // console.log(xDiff, yDiff, e);
 
         if(resizingSide) {
-          if(resizingSide.includes('e') || resizingSide.includes('w')) {
+          const changingWidth = resizingSide.includes('e') || resizingSide.includes('w');
+          const changingHeight = resizingSide.includes('n') || resizingSide.includes('s');
+          const maxPossibleWidth = resizingSide.includes('e') || !changingWidth ? windowSize.width - startLeft : startWidth + startLeft;
+          const maxPossibleHeight = resizingSide.includes('s') || !changingHeight ? windowSize.height - startTop : startHeight + startTop;
+
+          if(changingWidth) {
             const isEnlarging = resizingSide.includes('e') && xDiff > 0 || resizingSide.includes('w') && xDiff < 0;
             const resizeDiff = Math.abs(xDiff) * (isEnlarging ? 1 : -1);
 
-            const maxPossible = resizingSide.includes('e') ? windowSize.width - startLeft : startWidth + startLeft;
-            this.width = Math.min(maxPossible, startWidth + resizeDiff);
+            this.width = clamp(startWidth + resizeDiff, this.minWidth, maxPossibleWidth);
+
+            if(this.aspectRatio) {
+              this.height = clamp(this.width / this.aspectRatio + startExtraHeight, this.minHeight, maxPossibleHeight);
+              this.width = this.height * this.aspectRatio + startExtraWidth;
+            }
           }
 
-          if(resizingSide.includes('n') || resizingSide.includes('s')) {
+          if(changingHeight) {
             const isEnlarging = resizingSide.includes('s') && yDiff > 0 || resizingSide.includes('n') && yDiff < 0;
             const resizeDiff = Math.abs(yDiff) * (isEnlarging ? 1 : -1);
 
-            const maxPossible = resizingSide.includes('s') ? windowSize.height - startTop : startHeight + startTop;
-            this.height = Math.min(maxPossible, startHeight + resizeDiff);
+            this.height = clamp(startHeight + resizeDiff, this.minHeight, maxPossibleHeight);
+
+            if(this.aspectRatio) {
+              this.width = clamp(this.height * this.aspectRatio + startExtraWidth, this.minWidth, maxPossibleWidth);
+              this.height = this.width / this.aspectRatio + startExtraHeight;
+            }
           }
 
-          this.fixDimensions();
+          // this.fixDimensions();
 
           if(resizingSide.includes('w')) {
             this.left = Math.min(startLeft + startWidth - this.minWidth, startLeft + xDiff);
@@ -134,14 +175,23 @@ export default class MovableElement extends EventListenerBase<{
       },
       verifyTouchTarget: (e) => {
         const target = e.target;
-        if(this.verifyTouchTarget && !this.verifyTouchTarget(e)) {
+        const resizeHandler = findUpClassName(target, resizeHandlerClassName);
+
+        if(this.verifyTouchTarget && !this.verifyTouchTarget(e, resizeHandler ? 'resize' : 'move')) {
           return false;
         }
 
-        const resizeHandler = findUpClassName(target, resizeHandlerClassName);
         if(resizeHandler) {
           resizingSide = resizeHandler.dataset.side as ResizeSide;
-          swipeHandler.setCursor('');
+          let cursor: Parameters<SwipeHandler['setCursor']>[0] = 'col-resize';
+          if(resizingSide === 'nw' || resizingSide === 'se') {
+            cursor = 'nwse-resize';
+          } else if(resizingSide === 'ne' || resizingSide === 'sw') {
+            cursor = 'nesw-resize';
+          } else if(resizingSide === 'n' || resizingSide === 's') {
+            cursor = 'row-resize';
+          }
+          swipeHandler.setCursor(cursor);
         } else {
           resizingSide = undefined;
           swipeHandler.setCursor('grabbing');
@@ -154,7 +204,32 @@ export default class MovableElement extends EventListenerBase<{
         startLeft = this.left;
         startWidth = this.width;
         startHeight = this.height;
-      }
+
+        if(!this.overlay) {
+          this.overlay = document.createElement('div');
+          this.overlay.classList.add(className + '-overlay');
+        }
+
+        this.element.append(this.overlay);
+
+        if(this.aspectRatio) {
+          startExtraWidth = this.width - this.height * this.aspectRatio;
+          startExtraHeight = this.height - this.width / this.aspectRatio;
+        }
+
+        if(this.resetTransition) {
+          this.element.classList.add('no-transition');
+          void this.element.offsetLeft; // reflow
+        }
+      },
+      onReset: () => {
+        if(this.resetTransition) {
+          this.element.classList.remove('no-transition');
+        }
+
+        this.overlay.remove();
+      },
+      setCursorTo: document.body
     });
   }
 
@@ -164,7 +239,24 @@ export default class MovableElement extends EventListenerBase<{
     this.setPosition();
   }
 
-  private fixDimensions() {
+  private fixDimensions(fixAspectRatio?: boolean) {
+    if(fixAspectRatio && this.aspectRatio) {
+      const extraWidth = this.width - this.height * this.aspectRatio;
+      const extraHeight = this.height - this.width / this.aspectRatio;
+
+      const maxPossibleWidth = windowSize.width - this.left;
+      const maxPossibleHeight = windowSize.height - this.top;
+      if(this.width > maxPossibleWidth) {
+        this.width = maxPossibleWidth;
+        this.height = this.width / this.aspectRatio + extraHeight;
+      } else if(this.height > maxPossibleHeight) {
+        this.height = maxPossibleHeight;
+        this.width = this.height * this.aspectRatio + extraWidth;
+      } else {
+        return;
+      }
+    }
+
     this.width = clamp(this.width, this.minWidth, windowSize.width);
     this.height = clamp(this.height, this.minHeight, windowSize.height);
   }
@@ -182,7 +274,7 @@ export default class MovableElement extends EventListenerBase<{
     this.element.style.width = this.width + 'px';
     this.element.style.height = this.height + 'px';
 
-    this.dispatchEvent('resize');
+    this.dispatchEvent('resize', this.state);
   }
 
   public get width() {
@@ -218,5 +310,10 @@ export default class MovableElement extends EventListenerBase<{
     this.width = width;
     this.height = height;
     this.onResize();
+  }
+
+  public setMinValues(width: number, height: number) {
+    this.minWidth = width;
+    this.minHeight = height;
   }
 }

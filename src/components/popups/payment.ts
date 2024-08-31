@@ -25,7 +25,7 @@ import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount
 import ScrollSaver from '../../helpers/scrollSaver';
 import {_tgico} from '../../helpers/tgico';
 import tsNow from '../../helpers/tsNow';
-import {AccountTmpPassword, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption, StarsTransaction} from '../../layer';
+import {AccountTmpPassword, ChatInvite, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageAction, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption, StarsSubscription, StarsTransaction} from '../../layer';
 import I18n, {i18n, LangPackKey, _i18n} from '../../lib/langPack';
 import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -195,7 +195,11 @@ export default class PopupPayment extends PopupElement<{
     // * stars only
     isTopUp?: boolean,
     transaction?: StarsTransaction,
-    paidMedia?: MessageMedia.messageMediaPaidMedia
+    paidMedia?: MessageMedia.messageMediaPaidMedia,
+    chatInvite?: ChatInvite.chatInvite,
+    noPaymentForm?: boolean,
+    subscription?: StarsSubscription,
+    giftAction?: MessageAction.messageActionGiftStars
   }) {
     super('popup-payment', {
       closable: true,
@@ -952,7 +956,7 @@ export default class PopupPayment extends PopupElement<{
 
   public static async create(options: ConstructorParameters<typeof PopupPayment>[0]) {
     let promise: Promise<PaymentsPaymentForm | PaymentsPaymentReceipt>;
-    if(!options.paymentForm && !options.transaction) {
+    if(!options.paymentForm && !options.transaction && !options.noPaymentForm) {
       if(options.isReceipt) promise = rootScope.managers.appPaymentsManager.getPaymentReceipt(options.message.peerId, (options.message.media as MessageMedia.messageMediaInvoice).receipt_msg_id || (options.inputInvoice as InputInvoice.inputInvoiceMessage).msg_id);
       else promise = rootScope.managers.appPaymentsManager.getPaymentForm(options.inputInvoice);
     } else {
@@ -960,7 +964,9 @@ export default class PopupPayment extends PopupElement<{
     }
 
     const paymentForm = await promise;
-    const constructor = options.transaction ||
+    const constructor = options.noPaymentForm ||
+      options.transaction ||
+      options.giftAction ||
       paymentForm._ === 'payments.paymentFormStars' ||
       paymentForm._ === 'payments.paymentReceiptStars' ? PopupStarsPay : PopupPayment;
 

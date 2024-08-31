@@ -10,6 +10,7 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import liteMode from '../../helpers/liteMode';
 import {getMiddleware} from '../../helpers/middleware';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
+import {Chat} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {i18n} from '../../lib/langPack';
@@ -129,7 +130,7 @@ export default class ChatSendAs {
       subtitle.classList.add('btn-menu-item-subtitle');
       if(sendAsPeerId.isUser()) {
         subtitle.append(i18n('Chat.SendAs.PersonalAccount'));
-      } else if(sendAsPeerId === this.peerId) {
+      } else if(sendAsPeerId === this.peerId && (apiManagerProxy.getPeer(this.peerId) as Chat.channel).pFlags.megagroup) {
         subtitle.append(i18n('VoiceChat.DiscussionGroup'));
       } else {
         subtitle.append(await getChatMembersString(sendAsPeerId.toChatId()));
