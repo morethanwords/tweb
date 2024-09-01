@@ -194,6 +194,24 @@ $inactive-opacity: .4;
       background-color: #000;
       opacity: 1 !important;
     }
+
+    &.has-button {
+      .scrollable-y {
+        height: auto;
+      }
+    }
+
+    &-button {
+      width: 20rem;
+      height: 3rem;
+      background-color: rgba(255, 255, 255, .2);
+      color: #fff;
+      margin-bottom: 2rem;
+
+      @include hover() {
+        background-color: rgba(255, 255, 255, .4);
+      }
+    }
   }
 
   &-switcher {

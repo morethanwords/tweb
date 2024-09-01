@@ -20,7 +20,7 @@ export default class MovablePanel {
   constructor(options: {
     listenerSetter: ListenerSetter,
     previousState: MovableState,
-    onResize?: () => void,
+    onResize?: (state: MovableState) => void,
     movableOptions: MovableElementOptions
   }) {
     safeAssign(this, options);

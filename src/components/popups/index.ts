@@ -383,10 +383,10 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     appNavigationController.backByItem(this.navigationItem);
   }
 
-  public hideWithCallback(callback: () => void) {
+  public hideWithCallback = (callback: () => void) => {
     this.addEventListener('closeAfterTimeout', callback as any);
     this.hide();
-  }
+  };
 
   public forceHide() {
     return this.destroy();

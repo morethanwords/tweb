@@ -22,7 +22,8 @@ export enum INTERNAL_LINK_TYPE {
   BOOST,
   PREMIUM_FEATURES,
   GIFT_CODE,
-  BUSINESS_CHAT
+  BUSINESS_CHAT,
+  STARS_TOPUP
 };
 
 export type InternalLink =
@@ -41,7 +42,8 @@ export type InternalLink =
   InternalLink.InternalLinkBoost |
   InternalLink.InternalLinkPremiumFeatures |
   InternalLink.InternalLinkGiftCode |
-  InternalLink.InternalLinkBusinessChat;
+  InternalLink.InternalLinkBusinessChat |
+  InternalLink.InternalLinkStarsTopup;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -118,7 +120,8 @@ export namespace InternalLink {
     domain: string,
     appname: string,
     startapp?: string,
-    masked?: boolean
+    masked?: boolean,
+    mode?: 'compact'
   }
 
   export interface InternalLinkAddList {
@@ -153,6 +156,12 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.BUSINESS_CHAT,
     slug: string
   }
+
+  export interface InternalLinkStarsTopup {
+    _: INTERNAL_LINK_TYPE.STARS_TOPUP,
+    balance: string,
+    purpose: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -171,5 +180,6 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.BOOST]: InternalLink.InternalLinkBoost,
   [INTERNAL_LINK_TYPE.PREMIUM_FEATURES]: InternalLink.InternalLinkPremiumFeatures,
   [INTERNAL_LINK_TYPE.GIFT_CODE]: InternalLink.InternalLinkGiftCode,
-  [INTERNAL_LINK_TYPE.BUSINESS_CHAT]: InternalLink.InternalLinkBusinessChat
+  [INTERNAL_LINK_TYPE.BUSINESS_CHAT]: InternalLink.InternalLinkBusinessChat,
+  [INTERNAL_LINK_TYPE.STARS_TOPUP]: InternalLink.InternalLinkStarsTopup
 };

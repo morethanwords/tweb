@@ -33,7 +33,7 @@ import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import pause from '../../helpers/schedulers/pause';
 
 export type User = MTUser.user;
-export type TopPeerType = 'correspondents' | 'bots_inline';
+export type TopPeerType = 'correspondents' | 'bots_inline' | 'bots_app';
 export type MyTopPeer = {id: PeerId, rating: number};
 
 const SEARCH_OPTIONS: ProcessSearchTextOptions = {
@@ -960,8 +960,8 @@ export class AppUsersManager extends AppManager {
 
     return this.getTopPeersPromises[type] = this.appStateManager.getState().then((state) => {
       const cached = state.topPeersCache[type];
-      if(cached && (cached.cachedTime + 86400e3) > Date.now() && cached.peers) {
-        return cached.peers;
+      if(cached && (cached.cachedTime + 86400e3) > Date.now() && cached.peers) { // * fix deleted peer
+        return cached.peers.filter((topPeer) => this.appPeersManager.getPeer(topPeer.id));
       }
 
       return this.apiManager.invokeApi('contacts.getTopPeers', {

@@ -16,8 +16,8 @@
       &-svg {
         // --stroke-offset: 0;
         position: absolute;
-        width: 46px;
-        height: 46px;
+        width: 51px;
+        height: 51px;
         transform: scaleX(-1) rotate(270deg);
       }
 
@@ -43,19 +43,9 @@
       }
     }
 
-    &.is-link {
-      --color: var(--secondary-color);
-
-      &.active {
-        --color: var(--primary-color);
-      }
-
-      &.is-expired {
-        --color: var(--danger-color);
-      }
-
+    &.is-paid {
       .usernames-username-icon {
-        background-color: var(--color);
+        font-size: 1.625rem;
       }
     }
   }

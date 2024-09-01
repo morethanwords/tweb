@@ -530,6 +530,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionGiftStars':
       case 'messageActionGiftCode':
       case 'messageActionGiftPremium': {
         const isGiftCode = action._ === 'messageActionGiftCode';

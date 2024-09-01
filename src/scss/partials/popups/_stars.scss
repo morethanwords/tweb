@@ -56,11 +56,15 @@
     font-size: 1.5rem;
     font-weight: var(--font-weight-bold);
     line-height: 2rem;
-    margin-bottom: .375rem;
   }
 
   &-subtitle {
     line-height: 1.375rem;
+    margin-top: .375rem;
+
+    &.mt {
+      margin-top: .5rem;
+    }
   }
 
   &-options {
@@ -239,6 +243,17 @@
     }
   }
 
+  &-cancelled {
+    font-size: var(--font-size-13);
+  }
+
+  &-gift-avatar {
+    position: absolute;
+    top: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
   .media-photo {
     width: inherit;
     height: inherit;
@@ -261,6 +276,10 @@
 
       &.is-receipt {
         margin-bottom: 0;
+
+        .popup-stars-pay-amount {
+          display: flex;
+        }
       }
 
       .scrollable-y {
@@ -301,24 +320,38 @@
     background-color: var(--surface-color);
   }
 
+  &-sticker {
+    width: 128px;
+    height: 128px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    margin-top: -1rem;
+  }
+
   &-tos {
     color: var(--secondary-text-color);
     text-align: center;
     @include text-overflow(false);
+
+    &2 {
+      margin-top: 1.5rem;
+    }
   }
 
   &-amount {
     font-weight: var(--font-weight-bold);
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: .25rem;
-    margin-top: .375rem;
+    vertical-align: bottom;
+    gap: .125rem;
 
-    .stars-star-icon {
-      width: 20px;
-      height: 20px;
-      margin-top: -3px;
+    .currency-star-icon {
+      width: 1.125rem;
+      height: 1.125rem;
     }
 
     &-status {
@@ -352,5 +385,13 @@
 
   .popup-stars-transaction-media-counter {
     font-size: 2.5rem;
+  }
+
+  .table {
+    margin-top: 1.375rem;
+
+    &-key {
+      font-weight: var(--font-weight-normal);
+    }
   }
 }

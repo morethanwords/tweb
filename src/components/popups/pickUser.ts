@@ -426,4 +426,23 @@ export default class PopupPickUser extends PopupElement {
       selfPresence: 'SavedMessagesInfoQuote'
     });
   }
+
+  public static createContactPicker() {
+    return new Promise<PeerId>((resolve, reject) => {
+      let resolved = false;
+      const popup = PopupElement.createPopup(PopupPickUser, {
+        peerType: ['contacts'],
+        placeholder: 'Search',
+        onSelect: (peerId) => {
+          resolved = true;
+          resolve(peerId);
+        }
+      });
+      popup.addEventListener('close', () => {
+        if(!resolved) {
+          reject();
+        }
+      });
+    });
+  }
 }

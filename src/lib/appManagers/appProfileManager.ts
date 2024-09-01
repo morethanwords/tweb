@@ -538,6 +538,11 @@ export class AppProfileManager extends AppManager {
       return this.chatsFull[id] as ChatFull.channelFull;
     }
 
+    const chat = this.appChatsManager.getChat(id);
+    if(chat._ === 'channelForbidden') {
+      throw makeError('CHANNEL_PRIVATE') as any;
+    }
+
     return this.apiManager.invokeApiSingleProcess({
       method: 'channels.getFullChannel',
       params: {

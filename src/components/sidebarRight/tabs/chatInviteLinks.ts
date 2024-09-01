@@ -10,6 +10,7 @@ import createContextMenu from '../../../helpers/dom/createContextMenu';
 import customProperties from '../../../helpers/dom/customProperties';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
+import paymentsWrapCurrencyAmount from '../../../helpers/paymentsWrapCurrencyAmount';
 import tsNow from '../../../helpers/tsNow';
 import {ExportedChatInvite, MessagesExportedChatInvite, MessagesExportedChatInvites} from '../../../layer';
 import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
@@ -22,6 +23,7 @@ import rootScope from '../../../lib/rootScope';
 import Button from '../../button';
 import {ButtonMenuItemOptionsVerifiable} from '../../buttonMenu';
 import confirmationPopup from '../../confirmationPopup';
+import {StarsAmount, StarsChange} from '../../popups/stars';
 import SettingSection from '../../settingSection';
 import {InviteLink} from '../../sidebarLeft/tabs/sharedFolder';
 import {SliderSuperTabEventable} from '../../sliderTab';
@@ -287,7 +289,10 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
 
     let additionalLinks: SettingSection;
     {
-      const section = additionalLinks = new SettingSection({name: this.adminId ? 'LinksCreatedByThisAdmin' : 'InviteLinks.Additional'});
+      const section = additionalLinks = new SettingSection({
+        name: this.adminId ? 'LinksCreatedByThisAdmin' : 'InviteLinks.Additional',
+        caption: this.adminId ? undefined : 'InviteLinks.Description'
+      });
 
       if(!this.adminId) {
         const btn = Button('btn-primary btn-transparent primary', {icon: 'plus', text: 'CreateNewLink'});
@@ -463,12 +468,25 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
     const updateCallbacks: Set<() => void> = new Set();
 
     const createRow = (invite: ChatInvite) => {
-      const row = new UsernameRow();
-      row.title.replaceChildren(wrapInviteTitle(invite));
-      row.container.classList.add('is-link');
+      let priceElement: HTMLElement, subtitleRight: HTMLElement;
+      if(invite.subscription_pricing) {
+        priceElement = StarsAmount({
+          stars: invite.subscription_pricing.amount
+        }) as HTMLElement;
+        subtitleRight = i18n('Stars.Subscriptions.PerMonth');
+      }
 
-      if(!invite.expire_date && !invite.pFlags.revoked) {
-        row.container.classList.add('active');
+      const row = new UsernameRow(
+        true,
+        invite.subscription_pricing ? 'link_paid' : undefined,
+        invite.subscription_pricing ? 'green' : undefined,
+        priceElement,
+        subtitleRight
+      );
+      row.title.replaceChildren(wrapInviteTitle(invite));
+
+      if(!invite.expire_date && !invite.pFlags.revoked && !invite.subscription_pricing) {
+        delete row.media.dataset.color;
       }
 
       let onClean: () => void;
@@ -501,8 +519,7 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
             i18n('ExportedInvitation.Status.Revoked')
           );
 
-          row.media.style.removeProperty('--color');
-          row.container.classList.remove('active', 'is-expired');
+          row.media.dataset.color = 'archive';
           if(circle) {
             circle.parentElement.remove();
             circle = undefined;
@@ -514,7 +531,7 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
 
             if(isLimit) {
               elements.push(i18n('InviteLinks.LimitReached'));
-              row.container.classList.add('is-expired');
+              row.media.dataset.color = 'red';
             } else if(invite.usage_limit) {
               elements.push(i18n('PeopleJoinedRemaining', [invite.usage_limit - joined]));
             } else if(requested) {
@@ -533,7 +550,7 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
           if(!isExpired) {
             elements.push(i18n('InviteLink.Sticker.TimeLeft', [wrapLeftDuration(timeLeft)]));
           } else {
-            row.container.classList.add('is-expired');
+            row.media.dataset.color = 'red';
             elements.push(i18n('ExportedInvitation.Status.Expired'));
             onClean?.();
           }
@@ -574,7 +591,7 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
       const cache: K = {row, invite, update, destroy};
       invitesMap.set(row.container, cache);
 
-      let circle: SVGCircleElement, totalLength = 131.0966339111328;
+      let circle: SVGCircleElement, totalLength = 146.70338439941406;
       if((invite.expire_date || invite.usage_limit) && isActiveInvite(invite)) {
         if(invite.expire_date) {
           onClean = () => {
@@ -586,8 +603,8 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
         }
 
         row.media.insertAdjacentHTML('beforeend', `
-          <svg class="usernames-username-icon-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 46 46">
-            <circle class="usernames-username-icon-circle" cx="23" cy="23" r="21"/>
+          <svg class="usernames-username-icon-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 51 51">
+            <circle class="usernames-username-icon-circle" cx="25.5" cy="25.5" r="23.5"/>
           </svg>
         `);
 

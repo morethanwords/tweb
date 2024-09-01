@@ -5,13 +5,14 @@
  */
 
 import {T_ME_PREFIXES} from '../lib/mtproto/mtproto_config';
+import wrapUrl from '../lib/richTextProcessor/wrapUrl';
 import cancelEvent from './dom/cancelEvent';
 import parseUriParams from './string/parseUriParams';
 
 type InternalLinkAnchorType = 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
   'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
   'addemoji' | 'setMediaTimestamp' | 'addlist' | 'boost' | 'premium_offer' | 'giftcode' |
-  'm' | 'message';
+  'm' | 'message' | 'stars_topup';
 
 export const UNSAFE_ANCHOR_LINK_TYPES: Set<InternalLinkAnchorType> = new Set([
   'showMaskedAlert',
@@ -47,7 +48,7 @@ export default function addAnchorListener<Params extends {pathnameParams?: any, 
     if(!options.noPathnameParams) pathnameParams = new URL(href).pathname.split('/').slice(1);
     if(!options.noUriParams) uriParams = parseUriParams(href);
 
-    const masked = element.href !== element.textContent && element.getAttribute('safe') === null;
+    const masked = element.href !== wrapUrl(element.textContent).url && element.getAttribute('safe') === null;
     const result = options.callback(
       {pathnameParams, uriParams} as Params,
       element,

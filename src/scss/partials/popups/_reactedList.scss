@@ -7,6 +7,7 @@
 .popup-reacted-list {
   --size: 1.5rem;
   --custom-emoji-size: var(--size);
+  --message-primary-color: var(--primary-color);
   $parent: ".popup";
 
   #{$parent} {
@@ -20,7 +21,7 @@
     &-header {
       min-height: 3.5625rem;
       margin: 0;
-      padding: .25rem .75rem .75rem;
+      padding: .25rem .75rem .5rem;
       border-bottom: 1px solid var(--border-color);
     }
 
@@ -41,6 +42,7 @@
     --counter-color: var(--primary-color);
     flex: 1 0 auto;
     justify-content: space-evenly;
+    --margin-vertical: .5rem;
 
     &.is-chosen {
       &:not(.backwards) {

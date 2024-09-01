@@ -45,6 +45,7 @@ import wrapPhoto from './wrappers/photo';
 import customProperties from '../helpers/dom/customProperties';
 import {appState} from '../stores/appState';
 import useIsNightTheme from '../hooks/useIsNightTheme';
+import currencyStarIcon from './currencyStarIcon';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -316,6 +317,7 @@ export const AvatarNew = (props: {
   threadId?: number,
   isDialog?: boolean,
   isBig?: boolean,
+  isSubscribed?: boolean,
   peerTitle?: string,
   lazyLoadQueue?: LazyLoadQueue | false,
   wrapOptions?: WrapSomethingOptions,
@@ -339,6 +341,7 @@ export const AvatarNew = (props: {
   const [color, setColor] = createSignal<string>();
   const [isForum, setIsForum] = createSignal(false);
   const [isTopic, setIsTopic] = createSignal(false);
+  const [isSubscribed, setIsSubscribed] = createSignal(false);
   const {setStoriesSegments, storyDimensions, storiesCircle} = StoriesSegments({
     size: props.size as number,
     colors: props.storyColors,
@@ -495,6 +498,7 @@ export const AvatarNew = (props: {
     color,
     isForum,
     isTopic,
+    isSubscribed,
     storiesSegments
   }: {
     abbreviature?: JSX.Element,
@@ -502,6 +506,7 @@ export const AvatarNew = (props: {
     color?: string,
     isForum?: boolean,
     isTopic?: boolean,
+    isSubscribed?: boolean,
     storiesSegments?: StoriesSegments
   }) => {
     setThumb();
@@ -511,6 +516,7 @@ export const AvatarNew = (props: {
     setColor(color);
     setIsForum(isForum);
     setIsTopic(isTopic);
+    setIsSubscribed(isSubscribed);
     setStoriesSegments(storiesSegments);
   };
 
@@ -592,6 +598,7 @@ export const AvatarNew = (props: {
     }
 
     const _isForum = !!(peer as Chat.channel)?.pFlags?.forum;
+    const _isSubscribed = props.isSubscribed ?? !!(peer as Chat.channel)?.subscription_until_date;
     const storiesSegmentsResult = withStories && ((peer as User.user | Chat.channel)?.stories_max_id || storyId) && await getStoriesSegments(peerId, storyId);
     const storiesSegments = storiesSegmentsResult?.cached ? await storiesSegmentsResult.result : undefined;
     if(!middleware()) {
@@ -629,6 +636,7 @@ export const AvatarNew = (props: {
         abbreviature: documentFragmentToNodes(abbr),
         color,
         isForum: _isForum,
+        isSubscribed: _isSubscribed,
         storiesSegments
       });
       isSet = true;
@@ -647,6 +655,7 @@ export const AvatarNew = (props: {
 
       const changeSegments = !!storiesSegments;
       const changeForum = _isForum !== isForum();
+      const changeIsSubcribed = _isSubscribed !== isSubscribed();
       promise.then(({loadThumbPromise}) => loadThumbPromise).then(() => {
         if(!middleware()) {
           return;
@@ -658,6 +667,10 @@ export const AvatarNew = (props: {
 
         if(changeForum) {
           setIsForum(_isForum);
+        }
+
+        if(changeIsSubcribed) {
+          setIsSubscribed(_isSubscribed);
         }
 
         if(TEST_SWAPPING && peerId === TEST_SWAPPING) {
@@ -775,7 +788,7 @@ export const AvatarNew = (props: {
     return {
       'is-forum': isForum(),
       'is-topic': isTopic(),
-      'avatar-relative': !!thumb()
+      'avatar-relative': !!thumb() || isSubscribed()
     };
   };
 
@@ -799,6 +812,7 @@ export const AvatarNew = (props: {
       {icon() && Icon(icon(), 'avatar-icon', 'avatar-icon-' + icon())}
       {thumb()}
       {[media(), abbreviature()].find(Boolean)}
+      {isSubscribed() && currencyStarIcon({class: 'avatar-star', stroke: true})}
     </>
   );
 
@@ -823,7 +837,7 @@ export const AvatarNew = (props: {
   const element = (
     <div
       ref={node}
-      class={`avatar avatar-like avatar-${props.size}`}
+      class={`avatar avatar-like avatar-${props.size} avatar-gradient`}
       classList={classList()}
       data-color={color()}
       data-peer-id={props.peerId}
@@ -844,8 +858,10 @@ export const AvatarNew = (props: {
     render,
     setIcon,
     setStoriesSegments,
+    setIsSubscribed,
     updateStoriesSegments,
-    set
+    set,
+    color
   };
 
   if(

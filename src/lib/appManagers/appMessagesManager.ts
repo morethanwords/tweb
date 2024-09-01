@@ -1240,7 +1240,7 @@ export class AppMessagesManager extends AppManager {
               this.log('appMessagesManager: sendFile uploaded:', inputFile);
             } */
 
-            inputFile.name = apiFileName;
+            (inputFile as InputFile.inputFile).name = apiFileName;
             uploaded = true;
             let inputMedia: InputMedia;
             switch(attachType) {
@@ -3892,9 +3892,10 @@ export class AppMessagesManager extends AppManager {
 
       const fromId = (fwdHeader?.saved_from_id/*  && (this.appPeersManager.getPeerId(fwdHeader.saved_from_id) !== myId && fwdHeader.saved_from_id) */) || fwdHeader?.from_id;
       message.fromId = fwdHeader ? (fromId && !getFwdFromName(fwdHeader) ? this.appPeersManager.getPeerId(fromId) : NULL_PEER_ID) : myId;
+    } else if(message.from_id) {
+      message.fromId = this.appPeersManager.getPeerId(message.from_id);
     } else {
-      // message.fromId = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerId : appPeersManager.getPeerId(message.from_id);
-      message.fromId = message.pFlags.post || !message.from_id ? peerId : this.appPeersManager.getPeerId(message.from_id);
+      message.fromId = peerId;
     }
 
     this.setMessageUnreadByDialog(message);
@@ -7494,7 +7495,7 @@ export class AppMessagesManager extends AppManager {
       offsetId &&
       getServerMessageId(offsetId) &&
       !mids.includes(offsetId) &&
-      offsetIdOffset < count &&
+      offsetIdOffset <= count &&
       (addOffset || 0) >= 0 && // ! warning
       !searchSlicedArray
     ) {
@@ -7508,21 +7509,26 @@ export class AppMessagesManager extends AppManager {
       mids.splice(i, 0, offsetId);
     }
 
-    let slice: Slice<any>;
+    let slice: Slice<any>, hadSlice: boolean;
     if(searchSlicedArray) {
       let full = messages.map((message) => `${(message as Message.message).peerId}_${message.mid}`) as `${PeerId}_${number}`[];
       full = full.filter((str) => !searchSlicedArray.first.includes(str));
       slice = searchSlicedArray.insertSlice(full);
+      hadSlice = !!slice;
     } else {
-      slice = slicedArray.insertSlice(mids) || slicedArray.slice;
+      slice = slicedArray.insertSlice(mids);
+      hadSlice = !!slice;
+      slice ||= slicedArray.slice;
     }
 
-    if(isEnd.isTopEnd) {
-      slice.setEnd(SliceEnd.Top);
-    }
+    if(hadSlice) {
+      if(isEnd.isTopEnd) {
+        slice.setEnd(SliceEnd.Top);
+      }
 
-    if(isEnd.isBottomEnd) {
-      slice.setEnd(SliceEnd.Bottom);
+      if(isEnd.isBottomEnd) {
+        slice.setEnd(SliceEnd.Bottom);
+      }
     }
 
     return {slice, mids, messages, ...isEnd};
