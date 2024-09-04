@@ -7510,7 +7510,10 @@ export class AppMessagesManager extends AppManager {
     }
 
     let slice: Slice<any>, hadSlice: boolean;
-    if(searchSlicedArray) {
+    if(!count) {
+      slice = slicedArray.slice;
+      hadSlice = true;
+    } else if(searchSlicedArray) {
       let full = messages.map((message) => `${(message as Message.message).peerId}_${message.mid}`) as `${PeerId}_${number}`[];
       full = full.filter((str) => !searchSlicedArray.first.includes(str));
       slice = searchSlicedArray.insertSlice(full);
