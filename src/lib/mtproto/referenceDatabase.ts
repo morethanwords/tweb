@@ -173,6 +173,7 @@ export class ReferenceDatabase extends AppManager {
           contexts.delete(_context);
           if(!contexts.size) {
             this.contexts.delete(reference);
+            this.apiFileManager.cancelDownloadByReference(reference);
             delete this.links[bytesToHex(reference)];
           }
           return true;
