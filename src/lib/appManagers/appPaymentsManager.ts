@@ -287,8 +287,22 @@ export default class AppPaymentsManager extends AppManager {
     }).then(this.processPaymentResult);
   }
 
+  public getStarsTransactionsByID(transactionId: string) {
+    if(!transactionId) return;
+    return this.apiManager.invokeApi('payments.getStarsTransactionsByID', {
+      peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
+      id: [{_: 'inputStarsTransaction', pFlags: {}, id: transactionId}]
+    }).then((starsStatus) => {
+      return starsStatus.history?.[0];
+    });
+  }
+
   public getStarsGiftOptions(userId: UserId) {
     return this.apiManager.invokeApi('payments.getStarsGiftOptions', {user_id: this.appUsersManager.getUserInput(userId)});
+  }
+
+  public getStarsGiveawayOptions() {
+    return this.apiManager.invokeApi('payments.getStarsGiveawayOptions');
   }
 
   private processPaymentResult = (result: PaymentsPaymentResult) => {

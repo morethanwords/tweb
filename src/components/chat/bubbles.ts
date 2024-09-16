@@ -313,7 +313,7 @@ export function splitFullMid(fullMid: FullMid) {
 const EMPTY_FULL_MID = makeFullMid(NULL_PEER_ID, 0);
 
 function appendBubbleTime(bubble: HTMLElement, element: HTMLElement, callback: () => void) {
-  bubble.timeAppenders.unshift({element, callback});
+  (bubble.timeAppenders ??= []).unshift({element, callback});
   callback();
 }
 
@@ -5188,7 +5188,7 @@ export default class ChatBubbles {
       if(action) {
         const isGiftCode = action._ === 'messageActionGiftCode';
         let promise: Promise<any>;
-        if(action._ === 'messageActionGiftStars') {
+        if(action._ === 'messageActionGiftStars' || action._ === 'messageActionPrizeStars') {
           const content = bubbleContainer.cloneNode(false) as HTMLElement;
           content.classList.add('has-service-before');
           const service = s.cloneNode(false) as HTMLElement;
@@ -5196,31 +5196,50 @@ export default class ChatBubbles {
           // s.append(i18n(message.fromId === rootScope.myId ? 'ActionGiftOutbound' : 'ActionGiftInbound', [await wrapPeerTitle({peerId: message.peerId}), paymentsWrapCurrencyAmount(action.amount, action.currency)]));
           s.append(await wrapMessageActionTextNew({message, middleware}));
 
-          const title = i18n('ActionGiftStarsTitle', [action.stars]);
-          title.classList.add('text-bold');
           const isSent = message.fromId === rootScope.myId;
+          const isPrize = action._ === 'messageActionPrizeStars';
+
+          let subtitle: HTMLElement;
+          if(isPrize) {
+            subtitle = i18n(
+              'Action.StarGiveawayPrize',
+              [+action.stars, await wrapPeerTitle({peerId: getPeerId(action.boost_peer)})]
+            );
+          } else {
+            subtitle = i18n(isSent ? 'ActionGiftStarsSubtitle' : 'ActionGiftStarsSubtitleYou', [await wrapPeerTitle({peerId: message.peerId})]);
+          }
+
+          const title = i18n(isPrize ? 'BoostingCongratulations' : 'ActionGiftStarsTitle', [action.stars]);
+          title.classList.add('text-bold');
           this.wrapGift({
             content,
             service,
             middleware,
             loadPromises,
-            assetName: 'Gift6',
+            assetName: 'Gift3',
             title,
-            subtitle: i18n(isSent ? 'ActionGiftStarsSubtitle' : 'ActionGiftStarsSubtitleYou', [await wrapPeerTitle({peerId: message.peerId})]),
+            subtitle,
             buttonText: 'ActionGiftPremiumView',
-            buttonCallback: () => {
+            buttonCallback: async() => {
               PopupPayment.create({
                 message: message as Message.message,
                 noPaymentForm: true,
                 transaction: {
                   _: 'starsTransaction',
                   date: message.date,
-                  id: isSent ? '' : '1',
-                  peer: {_: 'starsTransactionPeer', peer: {_: 'peerUser', user_id: isSent ? message.peerId : rootScope.myId}},
-                  pFlags: {
-                    gift: true
+                  id: action.transaction_id || (isSent ? '' : '1'),
+                  peer: {
+                    _: 'starsTransactionPeer',
+                    peer: isPrize ? action.boost_peer : {
+                      _: 'peerUser',
+                      user_id: isSent ? message.peerId : rootScope.myId
+                    }
                   },
-                  stars: action.stars
+                  pFlags: {
+                    gift: isPrize ? undefined : true
+                  },
+                  stars: action.stars,
+                  giveaway_post_id: isPrize ? action.giveaway_msg_id : undefined
                 }
               });
             }
@@ -5709,7 +5728,7 @@ export default class ChatBubbles {
     const isOut = this.chat.isOutMessage(message);
     const haveRTLChar = isRTL(messageMessage, true);
 
-    let timeSpan: HTMLElement;
+    let timeSpan: HTMLElement, _clearfix: HTMLElement;
     if(!isSponsored) {
       timeSpan = bubble.timeSpan = MessageRender.setTime({
         chat: this.chat,
@@ -5721,7 +5740,6 @@ export default class ChatBubbles {
         loadPromises
       });
 
-      bubble.timeAppenders = [];
       let _clearfix: HTMLElement;
       appendBubbleTime(bubble, messageDiv, () => {
         messageDiv.append(timeSpan, _clearfix ??= clearfix());
@@ -6514,7 +6532,11 @@ export default class ChatBubbles {
 
             const lastContainer = messageDiv.lastElementChild.querySelector('.document-message') || messageDiv.lastElementChild.querySelector('.document, .audio');
             if(lastContainer) {
-              appendBubbleTime(bubble, lastContainer as HTMLElement, () => lastContainer.append(timeSpan));
+              appendBubbleTime(
+                bubble,
+                lastContainer as HTMLElement,
+                () => lastContainer.append(timeSpan, _clearfix ??= clearfix())
+              );
             }
 
             mediaRequiresMessageDiv = true;
@@ -6991,7 +7013,7 @@ export default class ChatBubbles {
     if(isFloatingTime) {
       timeSpan.classList.add('is-floating');
       bubble.classList.add('has-floating-time');
-      bubble.timeAppenders = [];
+      // bubble.timeAppenders = [];
       appendBubbleTime(bubble, bubbleContainer, () => bubbleContainer.append(timeSpan));
     }
 

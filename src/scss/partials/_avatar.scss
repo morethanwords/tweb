@@ -67,6 +67,11 @@
     --color-bottom: #db5c9d;
     --color-top: #a767ff;
   }
+
+  &[data-color="stars"] {
+    --color-bottom: #FFAA00;
+    --color-top: #FFCD3A;
+  }
 }
 
 .avatar {

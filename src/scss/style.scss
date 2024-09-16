@@ -2600,6 +2600,28 @@ hr {
       margin-top: -1px;
     }
   }
+
+  &-stacked {
+    --size: 26px;
+    --background-offset: calc(var(--size) - 10px);
+    width: var(--size);
+    height: var(--size);
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: center;
+    --star-background-color: var(--background-color);
+
+    .stars-star-icon {
+      width: var(--size);
+      height: var(--size);
+      flex: 0 0 auto;
+      margin-top: -2px;
+
+      &-stroke { // hide next star leg
+        background: linear-gradient(90deg, var(--star-background-color) var(--background-offset), transparent var(--background-offset));
+      }
+    }
+  }
 }
 
 .currency-star-icon {

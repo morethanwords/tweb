@@ -72,6 +72,43 @@ export function StarsStrokeStar(props: {stroke?: boolean, style?: JSX.HTMLAttrib
   );
 }
 
+export function StarsStackedStars(props: {stars: number, size: number}) {
+  let icons = 1;
+  if(props.stars >= 2500) icons = 6;
+  else if(props.stars >= 1000) icons = 5;
+  else if(props.stars >= 500) icons = 4;
+  else if(props.stars >= 250) icons = 3;
+  else if(props.stars >= 50) icons = 2;
+  let iconsElements: JSX.Element;
+  const m = props.size + (props.size === 18 ? 4 : 6);
+  if(icons > 1) {
+    iconsElements = [];
+    for(let i = 0; i < icons; ++i) iconsElements.push((
+      <StarsStrokeStar
+        stroke={i !== (icons - 1)}
+        style={{
+          'margin-right': (Math.min(i, 1) * -m) + 'px'
+        }}
+      />
+    ));
+  } else {
+    iconsElements = <StarsStrokeStar />;
+  }
+
+  iconsElements = (
+    <div
+      class="stars-stacked"
+      style={{
+        'width': `${props.size + (icons - 1) * 6}px`,
+        '--size': props.size + 'px'
+      }}
+    >
+      {iconsElements}
+    </div>
+  );
+  return iconsElements;
+}
+
 export function StarsStar() {
   return currencyStarIcon();
 }
@@ -332,6 +369,8 @@ export default class PopupStars extends PopupElement {
         midtitle = wrapEmojiText(transaction.description);
       } else if(transaction.pFlags.reaction) {
         midtitle = i18n('StarsReactionTitle');
+      } else if(transaction.giveaway_post_id) {
+        midtitle = i18n('StarsGiveawayPrizeReceived');
       } else if(+transaction.stars > 0) {
         midtitle = transaction.pFlags.gift ? i18n('StarsGiftReceived') : i18n('Stars.TopUp');
       } else if(transaction.subscription_period) {
@@ -508,24 +547,7 @@ export default class PopupStars extends PopupElement {
               return index() === (alwaysVisible.length - 1);
             });
 
-            const stars = +option.stars;
-            let icons = 1;
-            if(stars >= 2500) icons = 6;
-            else if(stars >= 1000) icons = 5;
-            else if(stars >= 500) icons = 4;
-            else if(stars >= 250) icons = 3;
-            else if(stars >= 50) icons = 2;
-            let iconsElements: JSX.Element;
-            if(icons > 1) {
-              iconsElements = [];
-              for(let i = 0; i < icons; ++i) iconsElements.push((
-                <StarsStrokeStar stroke={i !== (icons - 1)} style={{'margin-right': (Math.min(i, 1) * -32) + 'px'}} />
-              ));
-            } else {
-              iconsElements = <StarsStrokeStar />;
-            }
-
-            iconsElements = <div class="popup-stars-option-stars" style={`width: ${26 + (icons - 1) * 6}px`}>{iconsElements}</div>;
+            const iconsElements = StarsStackedStars({stars: +option.stars, size: 26});
 
             return (
               <div

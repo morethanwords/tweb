@@ -130,6 +130,7 @@ import anchorCallback from '../../helpers/dom/anchorCallback';
 import PopupPremium from '../../components/popups/premium';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import {openWebAppInAppBrowser} from '../../components/browser';
+import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -681,11 +682,7 @@ export class AppImManager extends EventListenerBase<{
     this.checkForShare();
     this.init();
 
-    // appSidebarLeft.toggleSidebar(true).finally(() => {
-    // appSidebarLeft.createTab(AppEditChatInviteLink).open({chatId: 5000866300});
-    // });
-
-    // openCatalogueInAppBrowser();
+    // PopupElement.createPopup(PopupBoostsViaGifts, -5000866300);
   }
 
   private checkForShare() {

@@ -4074,6 +4074,13 @@ export class AppMessagesManager extends AppManager {
               )
             );
           break;
+
+        case 'messageActionPrizeStars':
+          action.giveaway_msg_id = this.appMessagesIdsManager.generateMessageId(
+            action.giveaway_msg_id,
+            this.appPeersManager.getPeerId(action.boost_peer).toChatId()
+          );
+          break;
       }
 
       if(migrateFrom &&

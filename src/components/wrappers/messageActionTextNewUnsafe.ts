@@ -124,7 +124,7 @@ export function wrapMessageGiveawayResults(action: MessageAction.messageActionGi
   };
 
   if(!action.winners_count) {
-    langPackKey = 'Giveaway.Results.NoWinners';
+    langPackKey = (action as MessageAction.messageActionGiveawayResults).pFlags.stars ? 'Giveaway.Results.NoWinners.Stars' : 'Giveaway.Results.NoWinners';
     args = [action.unclaimed_count];
   } else if(action.unclaimed_count) {
     setCombined('Giveaway.Results.Unclaimed', [action.unclaimed_count]);
@@ -306,6 +306,16 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         } else {
           langPackKey = isBroadcast ? 'ChatService.UserJoinedChannelByRequest' : 'ChatService.UserJoinedGroupByRequest';
           args = [getNameDivHTML(message.fromId, plain)];
+        }
+        break;
+      }
+
+      case 'messageActionGiveawayLaunch': {
+        langPackKey = action.stars ? 'BoostingStarsGiveawayJustStarted' : 'BoostingGiveawayJustStarted';
+        args = [getNameDivHTML(message.fromId, plain)];
+
+        if(action.stars) {
+          args.unshift(+action.stars);
         }
         break;
       }
@@ -527,6 +537,11 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         } else {
           langPackKey = isMe ? 'ChatThemeDisabledYou' : 'ChatThemeDisabled';
         }
+        break;
+      }
+
+      case 'messageActionPrizeStars': {
+        langPackKey = 'BoostingReceivedGiftNoName';
         break;
       }
 

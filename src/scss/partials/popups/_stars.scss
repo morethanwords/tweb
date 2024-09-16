@@ -133,26 +133,6 @@
       color: var(--secondary-text-color);
       height: 1.3125rem;
     }
-
-    &-stars {
-      width: 26px;
-      height: 26px;
-      display: flex;
-      flex-direction: row-reverse;
-      justify-content: center;
-      --star-background-color: var(--background-color);
-
-      .stars-star-icon {
-        width: 26px;
-        height: 26px;
-        flex: 0 0 auto;
-        margin-top: -2px;
-
-        &-stroke { // hide next star leg
-          background: linear-gradient(90deg, var(--star-background-color) 16px, transparent 16px);
-        }
-      }
-    }
   }
 
   &-more {
@@ -373,6 +353,18 @@
     .popup-stars-transaction-media {
       font-size: 3rem;
     }
+  }
+
+  &-boosts {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--premium-color);
+    border-radius: .75rem;
+    height: 1.5rem;
+    color: #fff;
+    padding-inline: .25rem .5rem;
+    font-size: var(--font-size-14);
+    gap: .125rem;
   }
 
   .monospace-text {

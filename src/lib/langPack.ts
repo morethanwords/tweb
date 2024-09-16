@@ -48,7 +48,6 @@ export const langPack: {[actionType: string]: LangPackKey} = {
   'messageActionChannelDeletePhoto': 'Chat.Service.Channel.RemovedPhoto',
   'messageActionHistoryClear': 'HistoryCleared',
   'messageActionDiscussionStarted': 'DiscussionStarted',
-  'messageActionGiveawayLaunch': 'BoostingGiveawayJustStarted',
   'messageActionChannelJoined': 'ChannelJoined',
 
   'messageActionChannelMigrateFrom': 'ActionMigrateFromGroup',

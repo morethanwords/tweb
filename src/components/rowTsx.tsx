@@ -53,6 +53,7 @@ export default function RowTsx(props: Partial<{
   // contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
   asLabel: boolean,
   // checkboxKeys: [LangPackKey, LangPackKey],
+  classList: {[key: string]: boolean}
 }> = {}) {
   const RowRowPart = (props: {
     class: string,
@@ -120,7 +121,8 @@ export default function RowTsx(props: Partial<{
         'is-disabled': props.disabled,
         'is-fake-disabled': props.fakeDisabled,
         'row-grid': !!props.rightContent,
-        'with-midtitle': !!props.midtitle
+        'with-midtitle': !!props.midtitle,
+        ...(props.classList || {})
       }}
       onClick={typeof(props.clickable) !== 'boolean' && props.clickable}
     >

@@ -12,7 +12,7 @@ import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import maybe2x from '../../helpers/maybe2x';
 import safeAssign from '../../helpers/object/safeAssign';
-import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, MessageExtendedMedia, Photo, Document, ChatInvite, StarsSubscription, Chat, MessageAction} from '../../layer';
+import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, MessageExtendedMedia, Photo, Document, ChatInvite, StarsSubscription, Chat, MessageAction, Boost} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {i18n} from '../../lib/langPack';
@@ -34,11 +34,11 @@ import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import tsNow from '../../helpers/tsNow';
 import classNames from '../../helpers/string/classNames';
 import {useChat} from '../../stores/peers';
-import anchorCallback from '../../helpers/dom/anchorCallback';
-import PopupPickUser from './pickUser';
 import wrapLocalSticker from '../wrappers/localSticker';
 import liteMode from '../../helpers/liteMode';
 import PeerTitle from '../peerTitle';
+import rootScope from '../../lib/rootScope';
+import {IconTsx} from '../iconTsx';
 
 export default class PopupStarsPay extends PopupElement<{
   finish: (result: PopupPaymentResult) => void
@@ -55,6 +55,7 @@ export default class PopupStarsPay extends PopupElement<{
   private chatInvite: ChatInvite.chatInvite;
   private subscription: StarsSubscription;
   private isOutGift: boolean;
+  private boost: Boost;
 
   constructor(options: ConstructorParameters<typeof PopupPayment>[0]) {
     super('popup-stars popup-stars-pay', {
@@ -228,6 +229,7 @@ export default class PopupStarsPay extends PopupElement<{
       this.hideWithCallback(callback);
     };
 
+    let noStarsChange = false;
     let title: JSX.Element, subtitle: JSX.Element;
     if(this.transaction && this.transaction.pFlags.gift) {
       title = i18n(this.isOutGift ? 'StarsGiftSent' : 'StarsGiftReceived');
@@ -264,6 +266,17 @@ export default class PopupStarsPay extends PopupElement<{
       ]);
     } else if(this.transaction && this.transaction.pFlags.reaction) {
       title = i18n('StarsReactionTitle');
+    } else if(this.transaction?.giveaway_post_id) {
+      title = i18n(!this.transaction.id ? 'Stars' : 'StarsGiveawayPrizeReceived', [this.transaction.stars]);
+      if(!this.transaction.id) {
+        subtitle = (
+          <span class="popup-stars-pay-boosts">
+            <IconTsx icon="boost" />
+            {i18n('BoostingBoostsCountTitle', [this.boost.multiplier || 1])}
+          </span>
+        );
+        noStarsChange = true;
+      }
     } else if(this.transaction && !this.form.title) {
       title = i18n(this.transaction.subscription_period ? 'Stars.Subscription.Title' : 'Stars.TopUp');
     } else if(this.chatInvite) {
@@ -291,14 +304,18 @@ export default class PopupStarsPay extends PopupElement<{
       messageAnchor.onclick = (e) => hidePopupsWithCallback(() => appImManager.openUrl(link), e);
     }
 
-    const tablePeer = (this.isReceipt || this.subscription) && TablePeer({
-      peerId: this.peerId,
+    const makeTablePeer = (peerId: PeerId) => TablePeer({
+      peerId,
       onClick: () => {
         hidePopupsWithCallback(() => {
-          appImManager.setInnerPeer({peerId: this.peerId})
+          appImManager.setInnerPeer({peerId})
         });
       }
     });
+
+    const tablePeer = (this.isReceipt || this.subscription) && makeTablePeer(this.peerId);
+
+    const transactionIdSpan = (<span onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>);
 
     let tableContent: Parameters<typeof Table>[0]['content'];
     if(this.subscription) {
@@ -306,6 +323,16 @@ export default class PopupStarsPay extends PopupElement<{
         ['Stars.Subscription', tablePeer],
         ['Stars.Subscription.Subscribed', formatFullSentTime(this.subscription.until_date - this.subscription.pricing.period)],
         ['Stars.Subscription.Renews', formatFullSentTime(this.subscription.until_date)]
+      ];
+    } else if(this.transaction?.giveaway_post_id) {
+      messageAnchor.replaceChildren(i18n('BoostingGiveaway'));
+      tableContent = [
+        ['BoostingFrom', tablePeer],
+        this.transaction.id && ['BoostingTo', makeTablePeer(rootScope.myId)],
+        [this.transaction.id ? 'BoostingGift' : 'Giveaway.Prize', i18n('Stars', [+this.transaction.stars])],
+        ['BoostingReason', messageAnchor],
+        this.transaction.id && ['StarsTransactionID', transactionIdSpan],
+        ['StarsTransactionDate',  formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
       ];
     } else if(this.transaction && this.transaction.pFlags.gift) {
       tableContent = [
@@ -319,7 +346,7 @@ export default class PopupStarsPay extends PopupElement<{
           tablePeer
         ] : ['Stars.Via', _title],
         this.transaction && (this.transaction.extended_media || this.transaction.pFlags.reaction) && messageAnchor && [this.transaction.pFlags.reaction ? 'Message' : 'StarsTransactionMedia', messageAnchor],
-        ['StarsTransactionID', <span onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>],
+        ['StarsTransactionID', transactionIdSpan],
         ['StarsTransactionDate', formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
       ];
     }
@@ -373,8 +400,8 @@ export default class PopupStarsPay extends PopupElement<{
           >{avatar}</div>
         </div>
         <div class="popup-stars-title">{title}</div>
-        {tableContent && !this.subscription && <StarsChange stars={!this.transaction ? -+amount : amount} isRefund={!!this.transaction?.pFlags?.refund} noSign={this.isOutGift} />}
-        {subtitle && <div class={classNames('popup-stars-subtitle', tableContent && !this.subscription && 'mt')}>{subtitle}</div>}
+        {tableContent && !this.subscription && !noStarsChange && <StarsChange stars={!this.transaction ? -+amount : amount} isRefund={!!this.transaction?.pFlags?.refund} noSign={this.isOutGift} />}
+        {subtitle && <div class={classNames('popup-stars-subtitle', tableContent && !this.subscription && !this.boost && 'mt')}>{subtitle}</div>}
         {tableContent && (
           <>
             <Table content={tableContent.filter(Boolean)} />
@@ -410,7 +437,7 @@ export default class PopupStarsPay extends PopupElement<{
       (async() => {
         const img = document.createElement('img');
         img.classList.add('popup-stars-image');
-        await renderImageFromUrlPromise(img, `assets/img/${maybe2x('stars_pay')}.png`);
+        await renderImageFromUrlPromise(img, `assets/img/${maybe2x(this.boost ? 'stars' : 'stars_pay')}.png`);
         return img;
       })(),
       (async() => {
@@ -424,12 +451,18 @@ export default class PopupStarsPay extends PopupElement<{
           subscription: this.subscription
         });
 
-        if(this.transaction && this.transaction.pFlags.gift) {
+        if(this.boost) {
+          result.media = undefined;
+          // const img = document.createElement('img');
+          // await renderImageFromUrlPromise(img, `assets/img/${maybe2x('stars')}.png`);
+          // result.media = img;
+          // img.classList.add('popup-stars-pay-star');
+        } else if(this.transaction && (this.transaction.pFlags.gift || this.transaction.giveaway_post_id)) {
           const size = 128;
           result.media = await wrapLocalSticker({
             width: size,
             height: size,
-            assetName: 'Gift6',
+            assetName: 'Gift3',
             middleware: this.middlewareHelper.get(),
             loop: false,
             autoplay: liteMode.isAvailable('stickers_chat')
@@ -466,7 +499,7 @@ export default class PopupStarsPay extends PopupElement<{
       })(),
       (async() => {
         if(
-          (!this.transaction || (!this.transaction.extended_media && !this.transaction.pFlags.reaction)) ||
+          (!this.transaction || (!this.transaction.extended_media && !this.transaction.pFlags.reaction && !this.transaction.giveaway_post_id)) ||
           !this.peerId ||
           this.peerId.isUser()
         ) {
@@ -475,7 +508,7 @@ export default class PopupStarsPay extends PopupElement<{
 
         return this.managers.apiManager.invokeApi('channels.exportMessageLink', {
           channel: await this.managers.appChatsManager.getChannelInput(this.peerId.toChatId()),
-          id: getServerMessageId(this.transaction.msg_id)
+          id: getServerMessageId(this.transaction.msg_id || this.transaction.giveaway_post_id)
         }).then((exportedMessageLink) => {
           return exportedMessageLink.link;
         }, () => undefined as string);

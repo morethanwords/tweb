@@ -2516,6 +2516,10 @@
         z-index: 1;
         font-weight: var(--font-weight-bold);
         font-size: calc(var(--font-size) - 2px);
+
+        &-stars {
+          background-color: #ffbc2e;
+        }
       }
     }
 
@@ -2572,9 +2576,9 @@
       max-width: 20rem;
     }
 
-    .delimiter-with-text {
-      margin-top: .125rem;
-    }
+    // .delimiter-with-text {
+    //   margin-top: .125rem;
+    // }
   }
 
   .verified-icon {

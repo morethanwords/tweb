@@ -281,6 +281,7 @@ $transition: .2s var(--transition-standard-easing);
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 
     :global {
       .payment-verification {

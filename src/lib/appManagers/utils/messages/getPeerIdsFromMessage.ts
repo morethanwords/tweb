@@ -66,7 +66,7 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     peerIds.push(...chatIds.filter(Boolean).map((chatId) => chatId.toPeerId(true)));
 
     const peers: Peer[] = [
-      (action as MessageAction.messageActionGiftCode).boost_peer,
+      (action as MessageAction.messageActionGiftCode | MessageAction.messageActionPrizeStars).boost_peer,
       ...(action as MessageAction.messageActionRequestedPeer).peers || [],
       (action as MessageAction.messageActionGeoProximityReached).from_id,
       (action as MessageAction.messageActionGeoProximityReached).to_id

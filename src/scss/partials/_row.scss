@@ -115,6 +115,8 @@ $row-border-radius: $border-radius-medium;
       grid-area: left;
       width: 3.5rem;
       position: relative !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
 
     // .row-media {

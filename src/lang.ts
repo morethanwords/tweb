@@ -307,11 +307,7 @@ const lang = {
   'OnlyNewSubscribers': 'Only New Subscribers',
   'Ends': 'Ends',
   'BoostsViaGifts.Title': 'Boosts via Gifts',
-  'BoostsViaGifts.Subtitle': 'Get more boosts for your channel by gifting Premium to your subscribers.',
-  'BoostsViaGifts.Create': 'Create Giveaway',
   'BoostsViaGifts.CreateSubtitle': 'winners are chosen randomly',
-  'BoostsViaGifts.Specific': 'Award Specific Users',
-  'BoostsViaGifts.SpecificSubtitle': 'select recipients',
   'BoostsViaGifts.Prepaid': 'Prepaid Giveaways',
   'BoostsViaGifts.PrepaidSubtitle': {
     'one_value': '%d subscription for %s',
@@ -330,6 +326,10 @@ const lang = {
   'BoostsViaGifts.EndSubtitle': {
     'one_value': 'Choose when %d subscriber of your channel will receive Telegram Premium.',
     'other_value': 'Choose when %d subscribers of your channel will be randomly selected to receive Telegram Premium.'
+  },
+  'BoostsViaGifts.Stars.EndSubtitle': {
+    'one_value': 'Choose when %d subscriber of your channel will receive Stars.',
+    'other_value': 'Choose when %d subscribers of your channel will be randomly selected to receive Stars.'
   },
   'BoostsViaGifts.Duration': 'Duration of premium subscriptions',
   'BoostsViaGifts.DurationSubtitle': 'You can review the list of features and terms of use for Telegram Premium [here]().',
@@ -394,6 +394,7 @@ const lang = {
     'one_value': 'Due to the giveaway terms, no winner could be selected by Telegram, **1** gift link was forwarded to channel administrators.',
     'other_value': 'Due to the giveaway terms, no winners could be selected by Telegram, all **%d** gift links were forwarded to channel administrators.'
   },
+  'Giveaway.Results.NoWinners.Stars': 'Due to the giveaway terms, no winners could be selected by Telegram, all stars were credited to channel administrators.',
   'Giveaway.Results.Combined': '%s\n%s',
   'SimilarChannels': 'Similar Channels',
   'Premium.Promo.Colors.Title': 'Name and Profile Colors',
@@ -415,12 +416,20 @@ const lang = {
   'BoostsViaGifts.AdditionalPrizesSubtitle': 'All prizes: %s',
   'BoostsViaGifts.AdditionalPrizesSubtitleOff': 'Turn this on if you want to give the winners your own prizes in addition to Telegram Premium subscriptions.',
   'BoostsViaGifts.AdditionalPrizesDetailed': {
-    'one_value': '**%d** Telegram Premium subscription for %s',
-    'other_value': '**%d** Telegram Premium subscriptions for %s'
+    'one_value': '**%d** Telegram Premium subscription for %s.',
+    'other_value': '**%d** Telegram Premium subscriptions for %s.'
   },
   'BoostsViaGifts.AdditionalPrizesDetailedWith': {
-    'one_value': '**%d** %s with Telegram Premium subscription for %s',
-    'other_value': '**%d** %s with Telegram Premium subscriptions for %s'
+    'one_value': '**%d** %s with Telegram Premium subscription for %s.',
+    'other_value': '**%d** %s with Telegram Premium subscriptions for %s.'
+  },
+  'BoostsViaGifts.AdditionalStarsPrizesDetailed': {
+    'one_value': '**%1$d** Star.',
+    'other_value': '**%1$d** Stars.'
+  },
+  'BoostsViaGifts.AdditionalStarsPrizesDetailedWith': {
+    'one_value': '**%d** %s with %1$d Star.',
+    'other_value': '**%d** %s with %1$d Stars.'
   },
   'Giveaway.AlsoPrizes': '**%s** also included **%d** **%s** in the prizes. %s',
   'Giveaway.AlsoPrizes2': {
@@ -430,6 +439,14 @@ const lang = {
   'Giveaway.With': 'with',
   'Giveaway.WithSubscriptionsSingle': 'Telegram Premium subscription for %s',
   'Giveaway.WithSubscriptionsPlural': 'Telegram Premium subscriptions for %s',
+  'Giveaway.WithStars': {
+    'one_value': '%s will be distributed to %1$d winner',
+    'other_value': '%s will be distributed to %1$d winners'
+  },
+  'Giveaway.WithStars.Stars': {
+    'one_value': '**%d** Star',
+    'other_value': '**%d** Stars'
+  },
   'Giveaway.Results.Title': {
     'one_value': '**Winner Selected!**',
     'other_value': '**Winners Selected!**'
@@ -806,6 +823,15 @@ const lang = {
   'Stars.TopUp.Reaction': 'Buy **Stars** and send them to **%s** to support their posts.',
   'Stars.TopUp.Label_default': 'Buy Stars to unlock content and service\nin miniapps on Telegram.',
   'Stars.TopUp.Enough': 'You have enough Stars at the moment. [Buy anyway]()',
+  'Action.StarGiveawayPrize': {
+    'one_value': 'You won a prize in a giveaway organized by **%s**.\n\nYour prize is **%1$d Star**.',
+    'other_value': 'You won a prize in a giveaway organized by **%s**.\n\nYour prize is **%1$d Stars**.'
+  },
+  'Giveaway.Prize': 'Prize',
+  'Giveaway.Prepaid.For': {
+    'one_value': 'for %d user',
+    'other_value': 'for %d users'
+  },
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1856,6 +1882,14 @@ const lang = {
     'one_value': 'New subscribers of the channel:',
     'other_value': 'New subscribers of the channels:'
   },
+  'BoostingStarsGiveawayMsgInfoPlural1': {
+    'one_value': '**%1$d Star** will be distributed',
+    'other_value': '**%1$d Stars** will be distributed'
+  },
+  'BoostingStarsGiveawayMsgInfoPlural2': {
+    'one_value': 'to the **%1$d** winner.',
+    'other_value': 'among **%1$d** winners.'
+  },
   'BoostingHowItWork': 'LEARN MORE',
   'BoldMonths': {
     'one_value': '**%1$d** month',
@@ -1871,9 +1905,17 @@ const lang = {
     'one_value': 'This giveaway is sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscription for %4$s for its followers.',
     'other_value': 'This giveaway is sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscriptions for %4$s for its followers.'
   },
+  'BoostingStarsGiveawayHowItWorksText': {
+    'one_value': 'This giveaway is sponsored by the admins of **%2$s**, who acquired **%1$d Star** for its followers.',
+    'other_value': 'This giveaway is sponsored by the admins of **%2$s**, who acquired **%1$d Stars** for its followers.'
+  },
   'BoostingGiveawayHowItWorksTextEnd': {
     'one_value': 'This giveaway was sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscription for %4$s for its followers.',
     'other_value': 'This giveaway was sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscriptions for %4$s for its followers.'
+  },
+  'BoostingStarsGiveawayHowItWorksTextEnd': {
+    'one_value': 'This giveaway was sponsored by the admins of **%2$s**, who acquired **%1$d Star** for its followers.',
+    'other_value': 'This giveaway was sponsored by the admins of **%2$s**, who acquired **%1$d Stars** for its followers.'
   },
   'BoostingGiveawayYouNotWon': 'You didn\'t win a prize in this giveaway.',
   'BoostingGiveawayNotEligible': 'You are not eligible to participate in this giveaway, because you joined this channel on **%1$s**, which is before the contest started.',
@@ -1912,6 +1954,21 @@ const lang = {
   'BoostingIncompleteGiveaway': 'Incomplete Giveaway',
   'BoostingNoRecipient': 'No recipient',
   'BoostingUseLink': 'Use Link',
+  'BoostingPremium': 'Telegram Premium',
+  'BoostingStars': 'Telegram Stars',
+  'BoostingStarsQuantityPrizes': 'Number of winners',
+  'BoostingStarsQuantityPrizesInfo': 'Choose how many winners you want to distribute stars among.',
+  'BoostingStarsGiveawayAdditionPrizeHint': 'Turn this on if you want to give the winners your own prizes in addition to Stars.',
+  'BoostingGetMoreBoosts2': 'Get more boosts and subscribers for your channel by giving away prizes.',
+  'BoostingStarsOptions': 'Stars to distribute',
+  'BoostingStarOptionPerUser': {
+    'other_value': '%d per user'
+  },
+  'BoostingStarsOptionsInfo': 'Choose how many stars to give away and how many boosts to receive for 1 year.',
+  'BoostingStarsGiveawayJustStarted': {
+    'one_value': '%2$s just started a giveaway of %1$d Star to its followers.',
+    'other_value': '%2$s just started a giveaway of %1$d Stars to its followers.'
+  },
   'GrowthChartTitle': 'Growth',
   'FollowersChartTitle': 'Followers',
   'InteractionsChartTitle': 'Interactions',
@@ -2399,6 +2456,11 @@ const lang = {
   'StarsReactionTopSenders': 'Top Senders',
   'StarsReactionShowMeInTopSenders': 'Show me in Top Senders',
   'StarsReactionAnonymous': 'Anonymous',
+  'StarsGiveawayPrizeReceived': 'Received Prize',
+  'BoostingBoostsCountTitle': {
+    'one_value': '%d boost',
+    'other_value': '%d boosts'
+  },
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
