@@ -833,8 +833,8 @@ export class AppImManager extends EventListenerBase<{
     };
 
     if(
-      !options.attachMenuBot &&
-      (options.fromAttachMenu || options.fromSideMenu)
+      !options.attachMenuBot/*  &&
+      (options.fromAttachMenu || options.fromSideMenu) */
     ) {
       try {
         options.attachMenuBot = await this.managers.appAttachMenuBotsManager.getAttachMenuBot(options.botId);
