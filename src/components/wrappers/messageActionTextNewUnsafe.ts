@@ -418,6 +418,13 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionPaymentRefunded': {
+        const price = paymentsWrapCurrencyAmount(action.total_amount, action.currency, undefined, undefined, plain);
+        args = [getNameDivHTML(message.fromId, plain), price];
+        langPackKey = 'Chat.Service.Refund';
+        break;
+      }
+
       case 'messageActionSetMessagesTTL': {
         args = [];
 

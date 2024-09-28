@@ -12,7 +12,7 @@ import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import maybe2x from '../../helpers/maybe2x';
 import safeAssign from '../../helpers/object/safeAssign';
-import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, MessageExtendedMedia, Photo, Document, ChatInvite, StarsSubscription, Chat, MessageAction, Boost} from '../../layer';
+import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, MessageExtendedMedia, Photo, Document, ChatInvite, StarsSubscription, Chat, MessageAction, Boost, WebDocument} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {i18n} from '../../lib/langPack';
@@ -158,7 +158,6 @@ export default class PopupStarsPay extends PopupElement<{
     image: HTMLElement,
     _title: HTMLElement,
     avatar: HTMLElement,
-    itemImage?: HTMLElement,
     link?: string
   ) {
     if(!this.isReceipt && (!this.subscription || tsNow(true) > this.subscription.until_date)) {
@@ -315,7 +314,7 @@ export default class PopupStarsPay extends PopupElement<{
 
     const tablePeer = (this.isReceipt || this.subscription) && makeTablePeer(this.peerId);
 
-    const transactionIdSpan = (<span onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>);
+    const transactionIdSpan = transactionId && (<span onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>);
 
     let tableContent: Parameters<typeof Table>[0]['content'];
     if(this.subscription) {
@@ -355,7 +354,6 @@ export default class PopupStarsPay extends PopupElement<{
       <div class="popup-stars-pay-padding">
         {image}
         <div class="popup-stars-pay-images">
-          {itemImage}
           <div
             class="popup-stars-pay-avatar"
             onClick={async() => {
@@ -433,7 +431,7 @@ export default class PopupStarsPay extends PopupElement<{
       this.peerId = getPeerId(this.transaction.peer.peer);
     }
 
-    const [image, {title, media}, itemImage, link] = await Promise.all([
+    const [image, {title, media}, link] = await Promise.all([
       (async() => {
         const img = document.createElement('img');
         img.classList.add('popup-stars-image');
@@ -448,7 +446,8 @@ export default class PopupStarsPay extends PopupElement<{
           paidMedia: this.paidMedia,
           paidMediaPeerId: this.message ? this.message.fwdFromId || this.message.fromId : this.peerId,
           chatInvite: this.chatInvite,
-          subscription: this.subscription
+          subscription: this.subscription,
+          photo: this.form?.photo as WebDocument.webDocument
         });
 
         if(this.boost) {
@@ -478,26 +477,6 @@ export default class PopupStarsPay extends PopupElement<{
         return result;
       })(),
       (async() => {
-        return undefined as HTMLElement;
-        // if(!this.form.photo || true) {
-        //   return;
-        // }
-
-        // const div = document.createElement('div');
-        // div.classList.add('popup-stars-pay-item');
-        // const loadPromises: Promise<any>[] = [];
-        // wrapPhoto({
-        //   photo: this.form.photo,
-        //   container: div,
-        //   boxWidth: 90,
-        //   boxHeight: 90,
-        //   size: {_: 'photoSizeEmpty', type: ''},
-        //   loadPromises
-        // });
-        // await Promise.all(loadPromises);
-        // return div;
-      })(),
-      (async() => {
         if(
           (!this.transaction || (!this.transaction.extended_media && !this.transaction.pFlags.reaction && !this.transaction.giveaway_post_id)) ||
           !this.peerId ||
@@ -515,7 +494,7 @@ export default class PopupStarsPay extends PopupElement<{
       })()
     ]);
     this.body.classList.toggle('is-receipt', this.isReceipt);
-    this.appendSolid(() => this._construct(image, title, media, itemImage, link));
+    this.appendSolid(() => this._construct(image, title, media, link));
     this.show();
   }
 }

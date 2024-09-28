@@ -8,7 +8,7 @@
 
 import PopupElement from '.';
 import maybe2x from '../../helpers/maybe2x';
-import {InputInvoice, MessageMedia, PaymentsPaymentForm, Photo, Document, StarsTopupOption, StarsTransaction, StarsTransactionPeer, MessageExtendedMedia, ChatInvite, StarsSubscription, StarsGiftOption, InputStorePaymentPurpose} from '../../layer';
+import {InputInvoice, MessageMedia, PaymentsPaymentForm, Photo, Document, StarsTopupOption, StarsTransaction, StarsTransactionPeer, MessageExtendedMedia, ChatInvite, StarsSubscription, StarsGiftOption, InputStorePaymentPurpose, WebDocument} from '../../layer';
 import I18n, {i18n, LangPackKey} from '../../lib/langPack';
 import Section from '../section';
 import {createMemo, createRoot, createSignal, For, JSX, untrack} from 'solid-js';
@@ -197,7 +197,8 @@ export async function getStarsTransactionTitleAndMedia({
   paidMedia,
   paidMediaPeerId,
   chatInvite,
-  subscription
+  subscription,
+  photo
 }: {
   transaction: StarsTransaction,
   middleware: Middleware,
@@ -205,7 +206,8 @@ export async function getStarsTransactionTitleAndMedia({
   paidMedia?: MessageMedia.messageMediaPaidMedia,
   paidMediaPeerId?: PeerId,
   chatInvite?: ChatInvite.chatInvite,
-  subscription?: StarsSubscription
+  subscription?: StarsSubscription,
+  photo?: WebDocument.webDocument
 }) {
   const [title, media] = await Promise.all([
     (() => {
@@ -221,8 +223,10 @@ export async function getStarsTransactionTitleAndMedia({
         return wrapPeerTitle({peerId: paidMediaPeerId || getPeerId((transaction.peer as StarsTransactionPeer.starsTransactionPeer).peer)});
       }
 
-      if(transaction.peer._ === 'starsTransactionPeer') {
-        return wrapPeerTitle({peerId: getPeerId(transaction.peer.peer)});
+      if(!transaction || transaction.peer._ === 'starsTransactionPeer') {
+        return wrapPeerTitle({
+          peerId: transaction ? getPeerId((transaction.peer as StarsTransactionPeer.starsTransactionPeer).peer) : paidMediaPeerId
+        });
       }
 
       return getStarsTransactionTitle(transaction);
@@ -237,11 +241,19 @@ export async function getStarsTransactionTitleAndMedia({
           boxHeight: size,
           middleware,
           loadPromises,
-          withoutPreloader: true
+          withoutPreloader: true,
+          size: photo._ === 'webDocument' ? {_: 'photoSizeEmpty', type: ''} : undefined
         });
 
         await Promise.all(loadPromises);
       };
+
+      if(photo) {
+        const container = document.createElement('div');
+        container.classList.add('popup-stars-pay-item');
+        await _wrapPhoto(container, photo);
+        return container;
+      }
 
       if(chatInvite) {
         const avatar = await wrapChatInviteAvatar(chatInvite, middleware, 90);
@@ -298,8 +310,10 @@ export async function getStarsTransactionTitleAndMedia({
       let peerId: PeerId;
       if(subscription) {
         peerId = getPeerId(subscription.peer);
-      } else if(transaction.peer._ === 'starsTransactionPeer') {
+      } else if(transaction && transaction.peer._ === 'starsTransactionPeer') {
         peerId = getPeerId(transaction.peer.peer);
+      } else if(paidMediaPeerId) {
+        peerId = paidMediaPeerId;
       }
 
       if(peerId) {
