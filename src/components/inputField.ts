@@ -184,7 +184,7 @@ let init = () => {
       // console.log(html.replace(/ (style|class|id)=".+?"/g, ''));
 
       html = html.replace(/<style([\s\S]*)<\/style>/, '');
-      html = html.replace(/<!--([\s\S]*)-->/, '');
+      html = html.replace(/<!--([\s\S]*?)-->/, '');
       html = html.replace('<br class="Apple-interchange-newline">', '');
 
       const match = html.match(/<body>([\s\S]*)<\/body>/);
