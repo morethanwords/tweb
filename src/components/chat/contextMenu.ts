@@ -19,7 +19,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
-import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, ChannelParticipant, TextWithEntities} from '../../layer';
+import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, ChannelParticipant, TextWithEntities, User} from '../../layer';
 import PopupReportMessages from '../popups/reportMessages';
 import assumeType from '../../helpers/assumeType';
 import PopupSponsored from '../popups/sponsored';
@@ -75,6 +75,8 @@ import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import deepEqual from '../../helpers/object/deepEqual';
 import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
 import flatten from '../../helpers/array/flatten';
+import {logger} from '../../lib/logger'
+import DEBUG from '../../config/debug';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -128,6 +130,8 @@ export default class ChatContextMenu {
   private canViewReadTime: boolean;
   private messageLanguage: TranslatableLanguageISO;
 
+  private log: ReturnType<typeof logger>;
+
   constructor(
     private chat: Chat,
     private managers: AppManagers
@@ -135,6 +139,7 @@ export default class ChatContextMenu {
     this.listenerSetter = new ListenerSetter();
     this.attachListenerSetter = new ListenerSetter();
     this.middleware = getMiddleware();
+    this.log = logger('ContextMenu')
   }
 
   public attachTo(element: HTMLElement) {
@@ -1262,24 +1267,34 @@ export default class ChatContextMenu {
     if(this.isSponsored) {
       messages = [this.sponsoredMessage];
     } else {
-      messages = fullMids.map((fullMid) => this.chat.getMessage(fullMid) as Message.message);
+      messages = fullMids.map((fullMid) => this.chat.getMessage(fullMid) as Message.message).sort((a, b)=> a.date - b.date);
     }
 
-    const htmlParts = messages.map((message) => {
+    const formatter = async(message: typeof messages[number]) => {
+      let prefix = ''
+      if(message._ === 'message') {
+        const peer = await this.managers.appPeersManager.getPeer(message?.fromId) as User.user
+        prefix += `${peer.first_name}, [${new Date(message.date * 1000).toLocaleString()}]`
+        DEBUG && this.log('peer', peer)
+        DEBUG && this.log('message', message)
+        prefix += '\n'
+      }
+      return [prefix, message?.message].join('')
+    }
+
+    const htmlParts = await Promise.all(messages.map(async(message) => {
       if(!message?.message) {
         return;
       }
 
-      const wrapped = wrapRichText(message.message, {
+      const wrapped = wrapRichText(await formatter(message), {
         entities: (message as Message.message).totalEntities || message.entities,
         wrappingDraft: true
       });
       return documentFragmentToHTML(wrapped);
-    });
+    }));
 
-    const parts: string[] = messages.map((message) => {
-      return message?.message;
-    });
+    const parts: string[] = await Promise.all(messages.map(formatter));
 
     return {
       text: parts.filter(Boolean).join('\n'),
