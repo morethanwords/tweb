@@ -75,7 +75,7 @@ import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import deepEqual from '../../helpers/object/deepEqual';
 import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
 import flatten from '../../helpers/array/flatten';
-import { logger } from '../../lib/logger'
+import {logger} from '../../lib/logger'
 import DEBUG from '../../config/debug';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
@@ -1267,22 +1267,10 @@ export default class ChatContextMenu {
     if(this.isSponsored) {
       messages = [this.sponsoredMessage];
     } else {
-      messages = fullMids.map((fullMid) => this.chat.getMessage(fullMid) as Message.message);
+      messages = fullMids.map((fullMid) => this.chat.getMessage(fullMid) as Message.message).sort((a, b)=> a.date - b.date);
     }
 
-    const htmlParts = messages.map((message) => {
-      if(!message?.message) {
-        return;
-      }
-
-      const wrapped = wrapRichText(message.message, {
-        entities: (message as Message.message).totalEntities || message.entities,
-        wrappingDraft: true
-      });
-      return documentFragmentToHTML(wrapped);
-    });
-
-    const parts: string[] = await Promise.all(messages.map(async(message) => {
+    const formatter = async(message: typeof messages[number]) => {
       let prefix = ''
       if(message._ === 'message') {
         const peer = await this.managers.appPeersManager.getPeer(message?.fromId) as User.user
@@ -1292,7 +1280,21 @@ export default class ChatContextMenu {
         prefix += '\n'
       }
       return [prefix, message?.message].join('')
+    }
+
+    const htmlParts = await Promise.all(messages.map(async(message) => {
+      if(!message?.message) {
+        return;
+      }
+
+      const wrapped = wrapRichText(await formatter(message), {
+        entities: (message as Message.message).totalEntities || message.entities,
+        wrappingDraft: true
+      });
+      return documentFragmentToHTML(wrapped);
     }));
+
+    const parts: string[] = await Promise.all(messages.map(formatter));
 
     return {
       text: parts.filter(Boolean).join('\n'),
