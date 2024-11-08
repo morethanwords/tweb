@@ -3058,7 +3058,9 @@ export class AppMessagesManager extends AppManager {
         const {mid} = message;
 
         let inserted = true;
-        if(first.isEnd(SliceEnd.Bottom) && first[0] < mid) {
+        if(first.isEnd(SliceEnd.Both) && first[0] === undefined) {
+          searchStorage.history.unshift(mid);
+        } else if(first.isEnd(SliceEnd.Bottom) && first[0] < mid) {
           searchStorage.history.unshift(mid);
         } else if(last.isEnd(SliceEnd.Top) && last[last.length - 1] > mid) {
           searchStorage.history.push(mid);
@@ -6588,11 +6590,7 @@ export class AppMessagesManager extends AppManager {
         }, storage);
       }
 
-      delete this.pinnedMessages[this.getPinnedMessagesKey(peerId)];
-      this.appStateManager.getState().then((state) => {
-        delete state.hiddenPinnedMessages[peerId];
-        this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, mids, pinned});
-      });
+      this.resetPinnedMessagesCache(peerId, mids, pinned);
     });
   };
 
@@ -8111,6 +8109,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public fetchMessageReplyTo(message: MyMessage) {
+    message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
     if(!message.reply_to) return Promise.resolve(this.generateEmptyMessage(0));
     const replyTo = message.reply_to;
     if(replyTo._ === 'messageReplyStoryHeader') {
@@ -8250,6 +8249,10 @@ export class AppMessagesManager extends AppManager {
       {
         const deletedPeerId = peerId.isAnyChat() && isLegacyMessageId(mid) ? GLOBAL_HISTORY_PEER_ID : peerId;
         this.deletedMessages.add(`${deletedPeerId}_${message.mid}`);
+      }
+
+      if((message as Message.message).pFlags.pinned) {
+        this.resetPinnedMessagesCache(peerId, [mid], false);
       }
 
       this.updateMessageRepliesIfNeeded(message, false);
@@ -8403,6 +8406,14 @@ export class AppMessagesManager extends AppManager {
       details.batch.set(key, getElementCallback ? getElementCallback() : undefined);
       this.batchUpdatesDebounced();
     }
+  }
+
+  private resetPinnedMessagesCache(peerId: PeerId, mids: number[], pinned: boolean) {
+    delete this.pinnedMessages[this.getPinnedMessagesKey(peerId)];
+    this.appStateManager.getState().then((state) => {
+      delete state.hiddenPinnedMessages[peerId];
+      this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, mids, pinned});
+    });
   }
 
   private getMessagesFromMap<T extends Map<any, any>>(map: T) {
