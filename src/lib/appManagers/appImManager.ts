@@ -148,7 +148,8 @@ export type ChatSetPeerOptions = {
   type?: ChatType,
   mediaTimestamp?: number,
   text?: string
-  entities?: MessageEntity[]
+  entities?: MessageEntity[],
+  isDeleting?: boolean
 } & Partial<ChatSearchKeys>;
 
 export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
@@ -2245,6 +2246,12 @@ export class AppImManager extends EventListenerBase<{
     const chatIndex = this.chats.indexOf(chat);
     const isSamePeer = this.isSamePeer(chat, options as any);
     if(!peerId) {
+      if(options.isDeleting) {
+        await this.selectTab(APP_TABS.CHATLIST, animate);
+        await chat.setPeer(options as any as Parameters<Chat['setPeer']>[0]);
+        return;
+      }
+
       if(chatIndex > 0) {
         this.spliceChats(chatIndex, undefined, animate);
         return;
