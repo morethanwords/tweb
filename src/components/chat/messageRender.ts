@@ -29,6 +29,7 @@ import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStick
 import wrapStickerAnimation from '../wrappers/stickerAnimation';
 import Scrollable from '../scrollable';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 
 const NBSP = '&nbsp;';
 
@@ -330,7 +331,7 @@ export namespace MessageRender {
     return isFooter;
   };
 
-  export const setReply = async({chat, bubble, bubbleContainer, message, appendCallback, middleware, lazyLoadQueue, needUpdate, isStandaloneMedia, isOut}: {
+  export const setReply = async({chat, bubble, bubbleContainer, message, appendCallback, middleware, lazyLoadQueue, needUpdate, isStandaloneMedia, isOut, fromUpdate}: {
     chat: Chat,
     bubble: HTMLElement,
     bubbleContainer?: HTMLElement,
@@ -340,14 +341,15 @@ export namespace MessageRender {
     lazyLoadQueue: LazyLoadQueue,
     needUpdate: ChatBubbles['needUpdate'],
     isStandaloneMedia: boolean,
-    isOut: boolean
+    isOut: boolean,
+    fromUpdate?: boolean
   }) => {
     const isReplacing = !bubbleContainer;
     if(isReplacing) {
       bubbleContainer = bubble.querySelector('.bubble-content');
     }
 
-    const currentReplyDiv = isReplacing ? bubbleContainer.querySelector('.reply') : null;
+    const currentReplyDiv = isReplacing ? bubbleContainer.querySelector('.reply') as HTMLElement : null;
     const replyTo = message.reply_to;
     if(!replyTo) {
       currentReplyDiv?.remove();
@@ -370,12 +372,24 @@ export namespace MessageRender {
     let originalPeerTitle: string | HTMLElement | DocumentFragment;
 
     let isReplyFromAnotherPeer = false;
-    let titlePeerId: PeerId, setColorPeerId: PeerId;
+    let titlePeerId: PeerId, setColorPeerId: PeerId, forUpdate: typeof needUpdate[0];
+
+    if(!fromUpdate) {
+      if(isStoryReply) {
+        needUpdate.push(forUpdate = {replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid, peerId: message.peerId});
+      } else {
+        needUpdate.push(forUpdate = {replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid, peerId: message.peerId});
+      }
+
+      middleware.onClean(() => {
+        indexOfAndSplice(needUpdate, forUpdate);
+      });
+    }
+
     if(isStoryReply) {
       if(!originalStory.cached) {
-        needUpdate.push({replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid, peerId: message.peerId});
         rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
-
+        // needUpdate.push(forUpdate = {replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid, peerId: message.peerId});
         originalPeerTitle = i18n('Loading');
       } else {
         titlePeerId = replyToPeerId;
@@ -399,7 +413,7 @@ export namespace MessageRender {
           fromName: getFwdFromName(replyTo.reply_from)
         }).element;
       } else {
-        needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid, peerId: message.peerId});
+        // needUpdate.push(forUpdate = {replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid, peerId: message.peerId});
         rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
 
         originalPeerTitle = i18n('Loading');

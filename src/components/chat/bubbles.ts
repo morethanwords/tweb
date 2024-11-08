@@ -599,6 +599,12 @@ export default class ChatBubbles {
 
       this.changedMids.set(tempId, mid);
 
+      this.needUpdate.forEach((obj) => {
+        if(obj.peerId === tempMessage.peerId && obj.mid === tempId) {
+          obj.mid = mid;
+        }
+      });
+
       const fullTempMid = makeFullMid(tempMessage);
       const fullMid = makeFullMid(message);
 
@@ -989,87 +995,8 @@ export default class ChatBubbles {
       });
     }
 
-    const updateMessageReply = async(options: {
-      peerId: PeerId,
-      mids?: number[],
-      ids?: number[]
-    }) => {
-      const middleware = this.getMiddleware();
-      await getHeavyAnimationPromise();
-      if(!middleware()) return;
-
-      const callbacks: (() => Promise<any>)[] = [];
-
-      const peerId = options.peerId;
-      const ids = options.mids || options.ids;
-      const needUpdate = this.needUpdate;
-      const property: keyof typeof needUpdate[0] = options.mids ? 'replyMid' : 'replyStoryId';
-      const promises = ids.map((id) => {
-        const filtered: typeof needUpdate[0][] = [];
-        forEachReverse(needUpdate, (obj, idx) => {
-          if(obj[property] === id && (obj.replyToPeerId === peerId || !peerId)) {
-            needUpdate.splice(idx, 1)[0];
-            filtered.push(obj);
-          }
-        });
-
-        const promises = filtered.map(async({peerId, mid, replyMid, replyToPeerId}) => {
-          const fullMid = makeFullMid(peerId, mid);
-          const bubble = this.getBubble(fullMid);
-          if(!bubble) return;
-
-          const [message, originalMessage] = await Promise.all([
-            this.chat.getMessage(fullMid) as Message.message,
-            replyMid && this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyMid) as Promise<Message.message>
-          ]);
-
-          callbacks.push(async() => {
-            const promise = MessageRender.setReply({
-              chat: this.chat,
-              bubble,
-              message,
-              middleware: bubble.middlewareHelper.get(),
-              lazyLoadQueue: this.lazyLoadQueue,
-              needUpdate: this.needUpdate,
-              isStandaloneMedia: bubble.classList.contains('just-media'),
-              isOut: bubble.classList.contains('is-out')
-            });
-
-            if(!originalMessage) {
-              return promise;
-            }
-
-            await promise;
-
-            let maxMediaTimestamp: number;
-            const timestamps = bubble.querySelectorAll<HTMLAnchorElement>('.timestamp');
-            if(maxMediaTimestamp = getMediaDurationFromMessage(originalMessage)) {
-              timestamps.forEach((timestamp) => {
-                const value = +timestamp.dataset.timestamp;
-                if(value < maxMediaTimestamp) {
-                  timestamp.classList.remove('is-disabled');
-                } else {
-                  timestamp.removeAttribute('href');
-                }
-              });
-            }
-          });
-        });
-
-        return Promise.all(promises);
-      });
-
-      await Promise.all(promises);
-      if(!middleware() || !callbacks.length) return;
-
-      const scrollSaver = this.createScrollSaver(true);
-      scrollSaver.save();
-      await Promise.all(callbacks.map((callback) => callback()));
-      scrollSaver.restore();
-    };
-
-    !DO_NOT_UPDATE_MESSAGE_REPLY && this.listenerSetter.add(rootScope)('messages_downloaded', updateMessageReply);
-    !DO_NOT_UPDATE_MESSAGE_REPLY && this.listenerSetter.add(rootScope)('stories_downloaded', updateMessageReply);
+    !DO_NOT_UPDATE_MESSAGE_REPLY && this.listenerSetter.add(rootScope)('messages_downloaded', this.updateMessageReply);
+    !DO_NOT_UPDATE_MESSAGE_REPLY && this.listenerSetter.add(rootScope)('stories_downloaded', this.updateMessageReply);
 
     attachStickerViewerListeners({
       listenTo: this.scrollable.container,
@@ -1424,7 +1351,13 @@ export default class ChatBubbles {
         return;
       }
 
-      this.deleteMessagesByIds([...msgs.keys()].map((mid) => makeFullMid(peerId, mid)));
+      const mids = [...msgs.keys()];
+      const fullMids = mids.map((mid) => makeFullMid(peerId, mid));
+      this.deleteMessagesByIds(fullMids);
+      this.updateMessageReply({
+        peerId,
+        mids
+      });
     });
 
     this.listenerSetter.add(rootScope)('history_delete_key', ({historyKey, mid}) => {
@@ -1898,6 +1831,86 @@ export default class ChatBubbles {
     resizeObserver.disconnect();
     this.resizeObserver = undefined;
   }
+
+  private updateMessageReply = async(options: {
+    peerId: PeerId,
+    mids?: number[],
+    ids?: number[]
+  }) => {
+    const middleware = this.getMiddleware();
+    await getHeavyAnimationPromise();
+    if(!middleware()) return;
+
+    const callbacks: (() => Promise<any>)[] = [];
+
+    const peerId = options.peerId;
+    const ids = options.mids || options.ids;
+    const needUpdate = this.needUpdate;
+    const property: keyof typeof needUpdate[0] = options.mids ? 'replyMid' : 'replyStoryId';
+    const promises = ids.map((id) => {
+      const filtered: typeof needUpdate[0][] = [];
+      forEachReverse(needUpdate, (obj, idx) => {
+        if(obj[property] === id && (obj.replyToPeerId === peerId || !peerId)) {
+          // needUpdate.splice(idx, 1)[0];
+          filtered.push(obj);
+        }
+      });
+
+      const promises = filtered.map(async({peerId, mid, replyMid, replyToPeerId}) => {
+        const fullMid = makeFullMid(peerId, mid);
+        const bubble = this.getBubble(fullMid);
+        if(!bubble) return;
+
+        const [message, originalMessage] = await Promise.all([
+          this.chat.getMessage(fullMid) as Message.message,
+          replyMid && this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyMid) as Promise<Message.message>
+        ]);
+
+        callbacks.push(async() => {
+          const promise = MessageRender.setReply({
+            chat: this.chat,
+            bubble,
+            message,
+            middleware: bubble.middlewareHelper.get(),
+            lazyLoadQueue: this.lazyLoadQueue,
+            needUpdate: this.needUpdate,
+            isStandaloneMedia: bubble.classList.contains('just-media'),
+            isOut: bubble.classList.contains('is-out'),
+            fromUpdate: true
+          });
+
+          if(!originalMessage) {
+            return promise;
+          }
+
+          await promise;
+
+          let maxMediaTimestamp: number;
+          const timestamps = bubble.querySelectorAll<HTMLAnchorElement>('.timestamp');
+          if(maxMediaTimestamp = getMediaDurationFromMessage(originalMessage)) {
+            timestamps.forEach((timestamp) => {
+              const value = +timestamp.dataset.timestamp;
+              if(value < maxMediaTimestamp) {
+                timestamp.classList.remove('is-disabled');
+              } else {
+                timestamp.removeAttribute('href');
+              }
+            });
+          }
+        });
+      });
+
+      return Promise.all(promises);
+    });
+
+    await Promise.all(promises);
+    if(!middleware() || !callbacks.length) return;
+
+    const scrollSaver = this.createScrollSaver(true);
+    scrollSaver.save();
+    await Promise.all(callbacks.map((callback) => callback()));
+    scrollSaver.restore();
+  };
 
   private onBubblesMouseMove = async(e: MouseEvent) => {
     const mediaVideoContainer = findUpClassName(e.target, 'media-video-mini');

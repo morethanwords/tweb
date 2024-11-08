@@ -317,6 +317,8 @@ export class AppMessagesManager extends AppManager {
   private fetchSingleMessagesPromise: Promise<void>;
   private extendedMedia: Map<PeerId, Map<number, CancellablePromise<void>>> = new Map();
 
+  private deletedMessages: Set<string> = new Set();
+
   private maxSeenId = 0;
 
   public migratedFromTo: {[peerId: PeerId]: PeerId} = {};
@@ -8004,6 +8006,8 @@ export class AppMessagesManager extends AppManager {
 
           if(map.size) {
             for(const [mid, promise] of map) {
+              const deletedPeerId = peerId.isAnyChat() && isLegacyMessageId(mid) ? GLOBAL_HISTORY_PEER_ID : peerId;
+              this.deletedMessages.add(`${deletedPeerId}_${mid}`);
               promise.resolve(this.generateEmptyMessage(mid));
             }
           }
@@ -8037,7 +8041,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     const message = this.getMessageByPeer(peerId, mid);
-    if(message && !overwrite) {
+    if(this.deletedMessages.has(`${peerId}_${mid}`) || (message && !overwrite)) {
       this.rootScope.dispatchEvent('messages_downloaded', {peerId, mids: [mid]});
       return Promise.resolve(message);
     } else {
@@ -8242,6 +8246,11 @@ export class AppMessagesManager extends AppManager {
       }
 
       this.handleReleasingMessage(message, storage);
+
+      {
+        const deletedPeerId = peerId.isAnyChat() && isLegacyMessageId(mid) ? GLOBAL_HISTORY_PEER_ID : peerId;
+        this.deletedMessages.add(`${deletedPeerId}_${message.mid}`);
+      }
 
       this.updateMessageRepliesIfNeeded(message, false);
 
