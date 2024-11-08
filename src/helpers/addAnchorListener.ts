@@ -12,7 +12,7 @@ import parseUriParams from './string/parseUriParams';
 type InternalLinkAnchorType = 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
   'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
   'addemoji' | 'setMediaTimestamp' | 'addlist' | 'boost' | 'premium_offer' | 'giftcode' |
-  'm' | 'message' | 'stars_topup';
+  'm' | 'message' | 'stars_topup' | 'share';
 
 export const UNSAFE_ANCHOR_LINK_TYPES: Set<InternalLinkAnchorType> = new Set([
   'showMaskedAlert',

@@ -1367,12 +1367,12 @@ export class AppMessagesManager extends AppManager {
     } = {
       message,
       media,
-      send,
       uploadingFileName
     } as any;
 
     defineNotNumerableProperties(ret, ['promise', 'send']);
     ret.promise = sentDeferred;
+    ret.send = send;
 
     return ret;
   }
