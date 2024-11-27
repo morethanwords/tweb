@@ -30,12 +30,23 @@ export default class CodeInputField extends InputField {
 
       const length = this.value.length;
       if(length === options.length) { // submit code
-        options.onFill(this.value);
+        if (this.validateCode(this.value)) {
+          options.onFill(this.value);
+        } else {
+          this.input.classList.add('error');
+        }
       } else if(length === lastLength) {
         return;
       }
 
       lastLength = length;
     });
+  }
+
+  validateCode(code: string): boolean {
+    // Add your validation logic here
+    // For example, check if the code is numeric and has the correct length
+    const isNumeric = /^\d+$/.test(code);
+    return isNumeric && code.length === this.options.length;
   }
 }
