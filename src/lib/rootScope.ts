@@ -27,6 +27,7 @@ import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {IS_WORKER} from '../helpers/context';
 import {RtmpCallInstance} from './calls/rtmpCallsController';
+import {ActiveAccountNumber} from './accounts/types';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -151,6 +152,8 @@ export type BroadcastEvents = {
   'notification_reset': string,
   'notification_cancel': string,
 
+  'notification_count_update': void,
+
   'language_change': string,
 
   'theme_change': {x: number, y: number} | void,
@@ -179,7 +182,7 @@ export type BroadcastEvents = {
 
   'service_notification': Update.updateServiceNotification,
 
-  'logging_out': void,
+  'logging_out': {accountNumber: ActiveAccountNumber, migrateTo?: ActiveAccountNumber},
 
   'payment_sent': {peerId: PeerId, mid: number, receiptMessage: Message.messageService},
 
@@ -197,7 +200,9 @@ export type BroadcastEvents = {
 
   'config': Config,
   'app_config': MTAppConfig,
-  'managers_ready': void // ! inner
+  'managers_ready': void, // ! inner
+
+  'account_logged_in': {accountNumber: ActiveAccountNumber, userId: UserId}
 };
 
 export type BroadcastEventsListeners = {
@@ -235,7 +240,14 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
 
     this.dispatchEvent = (e, ...args) => {
       super.dispatchEvent(e, ...args);
-      MTProtoMessagePort.getInstance().invokeVoid('event', {name: e as string, args});
+      (async() => {
+        const accountNumber = this.managers ? await this.managers.apiManager.getAccountNumber() : undefined;
+        MTProtoMessagePort.getInstance().invokeVoid('event', {
+          name: e as string,
+          args,
+          accountNumber
+        });
+      })();
     };
 
     if(!IS_WORKER) {
@@ -251,6 +263,10 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
 
   public getPremium() {
     return this.premium;
+  }
+
+  public getMyId() {
+    return this.myId;
   }
 
   public dispatchEventSingle<L extends EventListenerListeners = BroadcastEventsListeners, T extends keyof L = keyof L>(

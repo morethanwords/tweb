@@ -280,3 +280,66 @@
   opacity: 1;
   transition: opacity var(--transition-standard-in);
 }
+
+#auth-pages-close {
+  position: fixed;
+  display: flex;
+  left: 24px;
+  top: 24px;
+  z-index: 100;
+}
+
+.main-screen-enter {
+  transition: 0.2s;
+  transform: scale(1.75);
+  opacity: 0;
+}
+
+.main-screen-entering {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.main-screen-exit {
+  transition: 0.2s, transform 0.2s ease-in;
+  transform: scale(1);
+  opacity: 1;
+}
+
+.main-screen-exiting {
+  transform: scale(1.75);
+  opacity: 0;
+}
+
+.chatlist-exit {
+  transition: 0.2s;
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.chatlist-exiting {
+  opacity: 0;
+  transform: translateY(18px) scale(1.01);
+}
+
+.auth-pages-enter {
+  transition: 0.4s;
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+.auth-pages-entering {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.auth-pages-exit {
+  transition: 0.2s;
+  transform: scale(1);
+  opacity: 1;
+}
+
+.auth-pages-exiting {
+  transform: scale(1.025);
+  opacity: 0;
+}

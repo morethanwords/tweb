@@ -663,7 +663,8 @@ export class AppUsersManager extends AppManager {
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
       name: 'peers',
       key: '' + user.id,
-      value: user
+      value: user,
+      accountNumber: this.getAccountNumber()
     });
   }
 

@@ -8,10 +8,9 @@ import type createManagers from './createManagers';
 import type {AckedResult} from '../mtproto/superMessagePort';
 import {ModifyFunctionsToAsync} from '../../types';
 import apiManagerProxy from '../mtproto/mtprotoworker';
-import DEBUG from '../../config/debug';
-import dT from '../../helpers/dT';
-import noop from '../../helpers/noop';
-import copy from '../../helpers/object/copy';
+import DEBUG, {MOUNT_CLASS_TO} from '../../config/debug';
+import {getCurrentAccount} from '../accounts/getCurrentAccount';
+import {ActiveAccountNumber} from '../accounts/types';
 
 // let stats: {
 //   [manager: string]: {
@@ -78,7 +77,7 @@ const DEBUG_MANAGER_REQUESTS: {[managerName: string]: Set<string>} = {
   // appMessagesManager: new Set(['getMessageByPeer', 'getGroupsFirstMessage'])
 };
 
-function createProxy(/* source: T,  */name: string, ack?: boolean) {
+function createProxy(/* source: T,  */name: string, accountNumber: ActiveAccountNumber, ack?: boolean) {
   const proxy = new Proxy({}, {
     get: (target, p, receiver) => {
       // console.log('get', target, p, receiver);
@@ -92,7 +91,8 @@ function createProxy(/* source: T,  */name: string, ack?: boolean) {
         const promise = apiManagerProxy.invoke('manager', {
           name,
           method: p as string,
-          args
+          args,
+          accountNumber
         }, ack as any);
 
         if(DEBUG) {
@@ -119,30 +119,38 @@ type AA<T> = {
 };
 
 type T = Awaited<ReturnType<typeof createManagers>>;
-type ProxiedManagers = {
+export type ProxiedManagers = {
   [name in keyof T]?: ModifyFunctionsToAsync<T[name]>;
-} & {
+};
+
+type ProxiedAndAcknowledgedManagers = ProxiedManagers & {
   acknowledged?: {
     [name in keyof T]?: AA<T[name]>;
   }
 };
 
-function createProxyProxy(proxied: any, ack?: boolean) {
+function createProxyProxy(proxied: any, accountNumber: ActiveAccountNumber, ack?: boolean) {
   return new Proxy(proxied, {
     get: (target, p, receiver) => {
       // @ts-ignore
-      return target[p] ??= createProxy(p as string, ack);
+      return target[p] ??= createProxy(p as string, accountNumber, ack);
     }
   });
 }
 
-let proxied: ProxiedManagers;
+export function createProxiedManagersForAccount(accountNumber: ActiveAccountNumber): ProxiedManagers {
+  return createProxyProxy({}, accountNumber);
+}
+
+MOUNT_CLASS_TO.createProxiedManagersForAccount = createProxiedManagersForAccount;
+
+let proxied: ProxiedAndAcknowledgedManagers;
 export default function getProxiedManagers() {
   if(proxied) {
     return proxied;
   }
 
-  proxied = createProxyProxy({}, false);
-  proxied.acknowledged = createProxyProxy({}, true);
+  proxied = createProxyProxy({}, getCurrentAccount(), false);
+  proxied.acknowledged = createProxyProxy({}, getCurrentAccount(), true);
   return proxied;
 }

@@ -90,6 +90,23 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
       });
     };
 
+    const notifyFromAllSection = new SettingSection({
+      name: 'MultiAccount.ShowNotificationsFrom',
+      caption: 'MultiAccount.ShowNotificationsFromCaption'
+    });
+
+    const allAccountsRow = new Row({
+      titleLangKey: 'MultiAccount.AllAccounts',
+      checkboxField: new CheckboxField({
+        name: 'all-accounts',
+        stateKey: joinDeepPath('settings', 'notifyAllAccounts'),
+        toggle: true
+      })
+    });
+
+    notifyFromAllSection.content.append(allAccountsRow.container);
+    this.scrollable.append(notifyFromAllSection.container);
+
     NotifySection({
       name: 'NotificationsPrivateChats',
       typeText: 'NotificationsForPrivateChats',

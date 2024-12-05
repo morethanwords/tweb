@@ -12,13 +12,17 @@ import copy from '../../../../helpers/object/copy';
 import validateInitObject from '../../../../helpers/object/validateInitObject';
 import {UserAuth} from '../../../mtproto/mtproto_config';
 import rootScope from '../../../rootScope';
-import stateStorage from '../../../stateStorage';
 import sessionStorage from '../../../sessionStorage';
 import {recordPromiseBound} from '../../../../helpers/recordPromise';
-// import RESET_STORAGES_PROMISE from "../storages/resetStoragesPromise";
 import {StoragesResults} from '../storages/loadStorages';
 import {LogTypes, logger} from '../../../logger';
 import {WallPaper} from '../../../../layer';
+import {AccountSessionData, ActiveAccountNumber} from '../../../accounts/types';
+import StateStorage from '../../../stateStorage';
+import AccountController from '../../../accounts/accountController';
+import commonStateStorage from '../../../commonStateStorage';
+import {TrueDcId} from '../../../../types';
+import {getOldDatabaseState} from '../../../../config/databases/state';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 // const REFRESH_EVERY = 1e3;
@@ -38,8 +42,74 @@ const REFRESH_KEYS: Array<keyof State> = [
 
 // const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
 
-async function loadStateInner() {
+async function loadStateForAccount(accountNumber: ActiveAccountNumber): Promise<LoadStateResult> {
+  const log = logger(`STATE-LOADER-ACCOUNT-${accountNumber}`, LogTypes.Error);
+
+  const stateStorage = new StateStorage(accountNumber);
+
+  const promises = ALL_KEYS.map((key) => {
+    if(key === 'settings') return commonStateStorage.get('settings')
+    else return stateStorage.get(key)
+  });
+
+  const arr = await Promise.all(promises);
+
+  const pushedKeys: (keyof State)[] = [];
+  const pushToState = <T extends keyof State>(key: T, value: State[T]) => {
+    state[key] = value;
+    pushedKeys.push(key);
+  };
+
+  const state: State = {} as any;
+
+  for(let i = 0, length = ALL_KEYS.length; i < length; ++i) {
+    const key = ALL_KEYS[i];
+    const value = arr[i];
+    if(value !== undefined) {
+      // @ts-ignore
+      state[key] = value;
+    } else {
+      pushToState(key, copy(STATE_INIT[key]));
+    }
+  }
+
+  arr.splice(0, ALL_KEYS.length);
+
+  const time = Date.now();
+  if((state.stateCreatedTime + REFRESH_EVERY) < time) {
+    if(DEBUG) {
+      log('will refresh state', state.stateCreatedTime, time);
+    }
+
+    REFRESH_KEYS.forEach((key) => {
+      pushToState(key, copy(STATE_INIT[key]));
+    });
+  }
+
+  const SKIP_VALIDATING_PATHS: Set<string> = new Set([
+    'settings.themes'
+  ]);
+  validateInitObject(STATE_INIT, state, (missingKey) => {
+    pushToState(missingKey as keyof State, state[missingKey as keyof State]);
+  }, undefined, SKIP_VALIDATING_PATHS);
+
+  const accountData = await AccountController.get(accountNumber);
+  if(accountData?.userId) {
+    state.authState = {_: 'authStateSignedIn'};
+  }
+
+  let newVersion: string, oldVersion: string;
+  if(compareVersion(state.version, STATE_VERSION) !== 0) {
+    newVersion = STATE_VERSION;
+    oldVersion = state.version;
+  }
+
+  return {state, pushedKeys, newVersion, oldVersion, resetStorages: new Set};
+}
+
+async function loadOldState() {
   const log = logger('STATE-LOADER', LogTypes.Error);
+  const stateStorage = new StateStorage('old');
 
   const totalPerf = performance.now();
   const recordPromise = recordPromiseBound(log);
@@ -179,9 +249,9 @@ async function loadStateInner() {
   if(auth) {
     // ! Warning ! DON'T delete this
     state.authState = {_: 'authStateSignedIn'};
-    rootScope.dispatchEvent('user_auth', typeof(auth) === 'number' || typeof(auth) === 'string' ?
-      {dcID: 0, date: Date.now() / 1000 | 0, id: auth.toPeerId(false)} :
-      auth); // * support old version
+    // rootScope.dispatchEvent('user_auth', typeof(auth) === 'number' || typeof(auth) === 'string' ?
+    //   {dcID: 0, date: Date.now() / 1000 | 0, id: auth.toPeerId(false)} :
+    //   auth); // * support old version
   }
 
   const resetStorages: Set<keyof StoragesResults> = new Set();
@@ -453,7 +523,79 @@ async function loadStateInner() {
   return {state, resetStorages, newVersion, oldVersion, pushedKeys};
 }
 
-let promise: ReturnType<typeof loadStateInner>;
-export default function loadState() {
-  return promise ??= loadStateInner();
+async function moveAccessKeysToMultiAccountFormat() {
+  const data: Partial<AccountSessionData> = {};
+
+  for(let i = 1; i <= 5; i++) {
+    const authKeyKey = `dc${i as TrueDcId}_auth_key` as const;
+    const serverSaltKey = `dc${i as TrueDcId}_server_salt` as const;
+
+    data[authKeyKey] = await sessionStorage.get(authKeyKey);
+    data[serverSaltKey] = await sessionStorage.get(serverSaltKey);
+
+    sessionStorage.delete(authKeyKey);
+    sessionStorage.delete(serverSaltKey);
+  }
+
+  const userAuth = await sessionStorage.get(`user_auth`);
+  const fingerprint = await sessionStorage.get(`auth_key_fingerprint`);
+
+  sessionStorage.delete('user_auth');
+  sessionStorage.delete('auth_key_fingerprint');
+
+  data['auth_key_fingerprint'] = fingerprint;
+  data['userId'] = typeof userAuth === 'string' || typeof userAuth === 'number' ? +userAuth : userAuth?.id;
+
+  await AccountController.update(1, data, true);
+}
+
+export type LoadStateResult = {
+  state: State;
+  resetStorages: Set<keyof StoragesResults>;
+  newVersion: string;
+  oldVersion: string;
+  pushedKeys: (keyof State)[];
+}
+
+async function checkIfHasMultiAccount() {
+  return !!(await AccountController.get(1));
+}
+
+async function deleteOldDatabase() {
+  indexedDB.deleteDatabase(getOldDatabaseState().name);
+}
+
+async function applyBuildVersionToStorage() {
+  const sessionBuild = await sessionStorage.get('k_build');
+  if(sessionBuild !== BUILD && (!sessionBuild || sessionBuild < BUILD)) {
+    sessionStorage.set({k_build: BUILD});
+  }
+}
+
+async function loadStateForAllAccounts() {
+  const hasMultiAccount = await checkIfHasMultiAccount();
+
+  let stateForFirstAccount: LoadStateResult;
+
+  if(!hasMultiAccount) {
+    stateForFirstAccount = await loadOldState();
+    moveAccessKeysToMultiAccountFormat();
+    deleteOldDatabase();
+  } else {
+    stateForFirstAccount = await loadStateForAccount(1);
+  }
+
+  applyBuildVersionToStorage();
+
+  return {
+    1: stateForFirstAccount,
+    2: await loadStateForAccount(2),
+    3: await loadStateForAccount(3),
+    4: await loadStateForAccount(4)
+  }
+}
+
+let promise: ReturnType<typeof loadStateForAllAccounts>;
+export default function loadStateForAllAccountsOnce() {
+  return promise ??= loadStateForAllAccounts();
 }

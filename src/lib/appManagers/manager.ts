@@ -37,7 +37,7 @@ import type {AppPollsManager} from './appPollsManager';
 import type {AppPrivacyManager} from './appPrivacyManager';
 import type {AppProfileManager} from './appProfileManager';
 import type {AppReactionsManager} from './appReactionsManager';
-import type {AppStateManager} from './appStateManager';
+import type AppStateManager from './appStateManager';
 import type {AppStickersManager} from './appStickersManager';
 import type {AppStoragesManager} from './appStoragesManager';
 import type {AppUsersManager} from './appUsersManager';
@@ -56,8 +56,11 @@ import type AppBusinessManager from './appBusinessManager';
 import type AppTranslationsManager from './appTranslationsManager';
 import type {AppManagers} from './managers';
 import AppGifsManager from './appGifsManager';
+import {ActiveAccountNumber} from '../accounts/types';
 
 export class AppManager {
+  private accountNumber: ActiveAccountNumber;
+
   protected appPeersManager: AppPeersManager;
   protected appChatsManager: AppChatsManager;
   protected appDocsManager: AppDocsManager;
@@ -113,8 +116,12 @@ export class AppManager {
 
   public clear: (init?: boolean) => void;
 
-  public setManagers(managers: AppManagers) {
-    Object.assign(this, managers);
+  public getAccountNumber() {
+    return this.accountNumber;
+  }
+
+  public setManagersAndAccountNumber(managers: AppManagers, accountNumber: ActiveAccountNumber) {
+    Object.assign(this, {...managers, accountNumber});
     // this.after();
   }
 }

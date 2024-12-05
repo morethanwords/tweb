@@ -46,6 +46,8 @@ import customProperties from '../helpers/dom/customProperties';
 import {appState} from '../stores/appState';
 import useIsNightTheme from '../hooks/useIsNightTheme';
 import currencyStarIcon from './currencyStarIcon';
+import {ActiveAccountNumber} from '../lib/accounts/types';
+import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -313,6 +315,7 @@ export function StoriesSegments(props: {
 }
 
 export const AvatarNew = (props: {
+  accountNumber?: ActiveAccountNumber,
   peerId?: PeerId,
   threadId?: number,
   isDialog?: boolean,
@@ -411,7 +414,7 @@ export const AvatarNew = (props: {
     const middleware = middlewareHelper.get();
     const {peerId, useCache} = props;
     const {photo, size} = options;
-    const result = apiManagerProxy.loadAvatar(peerId, photo, size);
+    const result = apiManagerProxy.loadAvatar(peerId, photo, size, props.accountNumber);
     const loadPromise = result;
     const cached = !(result instanceof Promise);
 
@@ -609,7 +612,7 @@ export const AvatarNew = (props: {
     const photo = getPeerPhoto(peer);
     const avatarAvailable = !!photo;
     const avatarRendered = avatarAvailable && !!media(); // if avatar isn't available, let's reset it
-    const isAvatarCached = avatarAvailable && apiManagerProxy.isAvatarCached(peerId, size);
+    const isAvatarCached = props.accountNumber === getCurrentAccount() && avatarAvailable && apiManagerProxy.isAvatarCached(peerId, size);
     if(!middleware()) {
       return;
     }

@@ -103,7 +103,7 @@ export default class ConnectionStatusComponent {
 
   private setConnectionStatus = (overrideStatus?: ConnectionStatus) => {
     Promise.all([
-      sessionStorage.get('dc'),
+      rootScope.managers.apiManager.getBaseDcId(),
       rootScope.managers.rootScope.getConnectionStatus()
     ]).then(([baseDcId, connectionStatus]) => {
       if(!baseDcId) {

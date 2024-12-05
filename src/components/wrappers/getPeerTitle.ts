@@ -17,7 +17,8 @@ type GetPeerTitleOptions = {
   plainText?: boolean,
   onlyFirstName?: boolean,
   limitSymbols?: number,
-  threadId?: number
+  threadId?: number,
+  useManagers?: boolean
 } & Pick<WrapSomethingOptions, 'managers'>;
 
 export default async function getPeerTitle<
@@ -32,12 +33,13 @@ export default async function getPeerTitle<
     onlyFirstName,
     limitSymbols,
     managers = rootScope.managers,
+    useManagers,
     threadId
   } = options;
 
   let title = '';
   if(peerId.isUser()) {
-    const user = apiManagerProxy.getUser(peerId.toUserId());
+    const user = useManagers ? await managers.appUsersManager.getUser(peerId.toUserId()) : apiManagerProxy.getUser(peerId.toUserId());
     if(user) {
       if(user.first_name) title += user.first_name;
       if(user.last_name && (!onlyFirstName || !title)) title += ' ' + user.last_name;
@@ -52,7 +54,7 @@ export default async function getPeerTitle<
     }
 
     if(!title) {
-      const chat = apiManagerProxy.getChat(peerId.toChatId()) as Chat.chat;
+      const chat = (useManagers ? managers.appChatsManager.getChat(peerId.toChatId()) : apiManagerProxy.getChat(peerId.toChatId())) as Chat.chat;
       title = chat?.title || '';
     }
 

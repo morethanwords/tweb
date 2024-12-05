@@ -228,6 +228,10 @@ export default class AppStorage<
     return this.storage.getAll().catch(() => []);
   }
 
+  public getAllEntries() {
+    return this.storage.getAllEntries().catch(() => [] as IDBStorage.Entries);
+  }
+
   public set(obj: Partial<Storage>, onlyLocal = false) {
     // console.log('storageSetValue', obj, callback, arguments);
 
@@ -306,7 +310,6 @@ export default class AppStorage<
         storage.keysToDelete.clear();
         storage.getPromises.forEach((deferred) => deferred.resolve(undefined));
         storage.getPromises.clear();
-        return storage.clear(true);
       } else {
         return storage.set(storage.cache);
       }

@@ -533,8 +533,7 @@ export class AppMessagesManager extends AppManager {
         // @ts-ignore
         const result = details.callback(details.batch);
         if(result && (!(result instanceof Array) || result.length)) {
-          // @ts-ignore
-          rootScope.dispatchEvent(event as keyof BatchUpdates, result);
+          this.rootScope.dispatchEvent(event as keyof BatchUpdates, result as any);
         }
       }
     }, 33, false, true);
@@ -3121,7 +3120,8 @@ export class AppMessagesManager extends AppManager {
 
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
       name: 'messages',
-      value: mirror
+      value: mirror,
+      accountNumber: this.getAccountNumber()
     }, port);
   }
 
@@ -3161,7 +3161,8 @@ export class AppMessagesManager extends AppManager {
       MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
         name: 'messages',
         key: joinDeepPath(storage.key, mid),
-        value: message
+        value: message,
+        accountNumber: this.getAccountNumber()
       });
     }
 
@@ -3181,7 +3182,8 @@ export class AppMessagesManager extends AppManager {
     if(storage.type !== 'grouped') {
       MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
         name: 'messages',
-        key: joinDeepPath(storage.key, mid)
+        key: joinDeepPath(storage.key, mid),
+        accountNumber: this.getAccountNumber()
       });
     }
 
@@ -7107,7 +7109,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  private notifyAboutMessage(message: MyMessage, options: Partial<{
+  private async notifyAboutMessage(message: MyMessage, options: Partial<{
     fwdCount: number,
     peerReaction: MessagePeerReaction,
     peerTypeNotifySettings: PeerNotifySettings
@@ -7118,20 +7120,32 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    const tabs = appTabsManager.getTabs();
+    const state = await this.appStateManager.getState();
+
+    let tabs = appTabsManager.getTabs();
+    if(!state.settings.notifyAllAccounts)
+      tabs = tabs.filter(tab => tab.state.accountNumber === this.getAccountNumber());
+
+    tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
+
     let tab = tabs.find((tab) => {
-      const {chatPeerIds} = tab.state;
-      return chatPeerIds[chatPeerIds.length - 1] === peerId;
+      const {chatPeerIds, accountNumber} = tab.state;
+      return accountNumber === this.getAccountNumber() && chatPeerIds[chatPeerIds.length - 1] === peerId;
     });
 
+    if(!tab) {
+      tab = tabs.find(tab => tab.state.accountNumber === this.getAccountNumber());
+    }
+
     if(!tab && tabs.length) {
-      tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
       tab = !tabs[0].state.idleStartTime ? tabs[0] : tabs[tabs.length - 1];
     }
 
     const port = MTProtoMessagePort.getInstance<false>();
     port.invokeVoid('notificationBuild', {
       message,
+      accountNumber: this.getAccountNumber(),
+      isOtherTabActive: !!tab.state.idleStartTime,
       ...options
     }, tab?.source);
   }

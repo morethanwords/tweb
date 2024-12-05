@@ -1,10 +1,11 @@
 import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
+import {getCurrentAccount} from '../../lib/accounts/getCurrentAccount';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {Middleware} from '../middleware';
 
 function updateStreamInUse(url: string, inUse: boolean) {
   if(url.includes('stream/')) {
-    apiManagerProxy.serviceMessagePort.invokeVoid('toggleStreamInUse', {url, inUse});
+    apiManagerProxy.serviceMessagePort.invokeVoid('toggleStreamInUse', {url, inUse, accountNumber: getCurrentAccount()});
   }
 }
 

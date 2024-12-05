@@ -5,8 +5,7 @@
  */
 
 import type {Awaited} from '../../types';
-import type {CacheStorageDbName} from '../files/cacheStorage';
-import type {State} from '../../config/state';
+import {type State} from '../../config/state';
 import type {Chat, ChatPhoto, Message, MessagePeerReaction, PeerNotifySettings, User, UserProfilePhoto} from '../../layer';
 import type {CryptoMethods} from '../crypto/crypto_methods';
 import type {ThumbStorageMedia} from '../storages/thumbs';
@@ -14,7 +13,7 @@ import type ThumbsStorage from '../storages/thumbs';
 import type {AppReactionsManager} from '../appManagers/appReactionsManager';
 import type {MessagesStorageKey} from '../appManagers/appMessagesManager';
 import type {AppAvatarsManager, PeerPhotoSize} from '../appManagers/appAvatarsManager';
-import rootScope from '../rootScope';
+import rootScope, {BroadcastEvents} from '../rootScope';
 import webpWorkerController from '../webp/webpWorkerController';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import sessionStorage from '../sessionStorage';
@@ -23,7 +22,7 @@ import appRuntimeManager from '../appManagers/appRuntimeManager';
 import telegramMeWebManager from './telegramMeWebManager';
 import pause from '../../helpers/schedulers/pause';
 import ENVIRONMENT from '../../environment';
-import loadState from '../appManagers/utils/state/loadState';
+import loadStateForAllAccountsOnce from '../appManagers/utils/state/loadState';
 import opusDecodeController from '../opusDecodeController';
 import MTProtoMessagePort from './mtprotoMessagePort';
 import cryptoMessagePort from '../crypto/cryptoMessagePort';
@@ -46,6 +45,20 @@ import {MTAppConfig} from './appConfig';
 import {setAppStateSilent} from '../../stores/appState';
 import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 import {reconcilePeer, reconcilePeers} from '../../stores/peers';
+import {getCurrentAccount} from '../accounts/getCurrentAccount';
+import {ActiveAccountNumber} from '../accounts/types';
+import {createProxiedManagersForAccount, ProxiedManagers} from '../appManagers/getProxiedManagers';
+import noop from '../../helpers/noop';
+import AccountController from '../accounts/accountController';
+import getPeerTitle from '../../components/wrappers/getPeerTitle';
+import I18n from '../langPack';
+import {getPeerAvatarColorByPeer} from '../appManagers/utils/peers/getPeerColorById';
+import customProperties from '../../helpers/dom/customProperties';
+import drawCircle from '../../helpers/canvas/drawCircle';
+import getAbbreviation from '../richTextProcessor/getAbbreviation';
+import {FontFamily} from '../../config/font';
+import {NOTIFICATION_BADGE_PATH} from '../../config/notifications';
+import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
 
 const TEST_NO_STREAMING = false;
 
@@ -76,19 +89,23 @@ export type MirrorTaskPayload<
   name: T,
   // key?: K,
   key?: string,
-  value?: any
+  value?: any,
+  accountNumber: ActiveAccountNumber
 };
 
 export type NotificationBuildTaskPayload = {
   message: Message.message | Message.messageService,
   fwdCount?: number,
   peerReaction?: MessagePeerReaction,
-  peerTypeNotifySettings?: PeerNotifySettings
+  peerTypeNotifySettings?: PeerNotifySettings,
+  accountNumber?: ActiveAccountNumber,
+  isOtherTabActive?: boolean
 };
 
 export type TabState = {
   chatPeerIds: PeerId[],
   idleStartTime: number,
+  accountNumber: number
 };
 
 class ApiManagerProxy extends MTProtoMessagePort {
@@ -100,6 +117,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
   public oldVersion: string;
 
   private tabState: TabState;
+  private allTabStates: TabState[];
 
   public share: ShareData;
 
@@ -113,6 +131,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
   };
 
   private appConfig: MaybePromise<MTAppConfig>;
+
+  private closeMTProtoWorker = noop;
 
   constructor() {
     super();
@@ -180,6 +200,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     };
 
     this.tabState = {
+      accountNumber: getCurrentAccount(),
       chatPeerIds: [],
       idleStartTime: 0
     };
@@ -203,7 +224,19 @@ class ApiManagerProxy extends MTProtoMessagePort {
         return opusDecodeController.pushDecodeTask(bytes, false).then((result) => result.bytes);
       },
 
-      event: ({name, args}) => {
+      event: ({name, args, accountNumber}) => {
+        const commonEventNames: (keyof BroadcastEvents)[] = [
+          'language_change',
+          'settings_updated',
+          'theme_changed',
+          'theme_change',
+          'background_change',
+          'logging_out',
+          'notification_count_update',
+          'account_logged_in'
+        ];
+        const isDifferentAccount = accountNumber && accountNumber !== getCurrentAccount();
+        if(!commonEventNames.includes(name as keyof BroadcastEvents) && isDifferentAccount) return;
         // @ts-ignore
         rootScope.dispatchEventSingle(name, ...args);
       },
@@ -217,6 +250,41 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
       receivedServiceMessagePort: () => {
         this.log.warn('mtproto worker received service message port');
+      },
+
+      tabsUpdated: (payload) => {
+        this.allTabStates = payload;
+        rootScope.dispatchEvent('notification_count_update');
+      },
+
+      callNotification: async(payload) => {
+        const {accountNumber} = payload;
+        const managers = createProxiedManagersForAccount(accountNumber);
+        const peerId = payload.callerId.toPeerId();
+        const peer = await managers.appPeersManager.getPeer(peerId);
+        const title = await getPeerTitle({peerId: peerId, managers, plainText: true, limitSymbols: 20, useManagers: true});
+
+        const notification = new Notification(title, {
+          body: I18n.format('Call.StatusCalling', true),
+          icon: await this.createNotificationImage(managers, peerId, title),
+          badge: NOTIFICATION_BADGE_PATH
+        });
+        notification.onclick = () => {
+          const peerId = peer.id;
+          const url = createAppURLForAccount(accountNumber, {
+            p: '' + peerId.toPeerId(),
+            call: '' + payload.callId
+          });
+          window.open(url, '_blank');
+          notification.close();
+        };
+        setTimeout(() => {
+          notification.close();
+        }, 5_000);
+      },
+
+      log: (payload) => {
+        console.log('Received log from shared worker', payload);
       }
 
       // hello: () => {
@@ -281,6 +349,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     // });
 
     rootScope.addEventListener('language_change', (language) => {
+      console.log('change from ApiManagerProxy');
       rootScope.managers.networkerFactory.setLanguage(language);
       rootScope.managers.appAttachMenuBotsManager.onLanguageChange();
     });
@@ -289,18 +358,39 @@ class ApiManagerProxy extends MTProtoMessagePort {
       rootScope.managers.networkerFactory.forceReconnectTimeout();
     });
 
-    rootScope.addEventListener('logging_out', () => {
-      const toClear: CacheStorageDbName[] = ['cachedFiles', 'cachedStreamChunks'];
+    rootScope.addEventListener('logging_out', ({accountNumber, migrateTo}) => {
+      // const toClear: CacheStorageDbName[] = ['cachedFiles', 'cachedStreamChunks'];
       Promise.all([
         toggleStorages(false, true),
-        sessionStorage.clear(),
+        // sessionStorage.clear(),
         Promise.race([
+          // TODO: Check here
           telegramMeWebManager.setAuthorized(false),
           pause(3000)
         ]),
-        webPushApiManager.forceUnsubscribe(),
-        Promise.all(toClear.map((cacheName) => caches.delete(cacheName)))
+        webPushApiManager.forceUnsubscribe()
+        // Promise.all(toClear.map((cacheName) => caches.delete(cacheName)))
       ]).finally(() => {
+        let url = new URL(location.href);
+
+        const currentAccount = getCurrentAccount();
+        if(currentAccount > accountNumber) {
+          const newAccountNumber = currentAccount - 1;
+          url = createAppURLForAccount(newAccountNumber as ActiveAccountNumber, undefined, true);
+          //
+        } else if(currentAccount === accountNumber) {
+          if(migrateTo) url = createAppURLForAccount(migrateTo);
+          else {
+            url.hash = '';
+            url.search = '';
+          }
+        }
+
+        history.replaceState(null, '', url);
+
+        // Make sure managers don't have any obsolete data
+        this.closeMTProtoWorker();
+
         appRuntimeManager.reload();
       });
     });
@@ -311,6 +401,47 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.updateTabStateIdle(idleController.isIdle);
 
     // this.sendState();
+  }
+
+  async createNotificationImage(managers: ProxiedManagers, peerId: PeerId, peerTitle: string) {
+    const peer = await managers.appPeersManager.getPeer(peerId);
+    const peerPhoto = await managers.appPeersManager.getPeerPhoto(peerId);
+    if(peerPhoto) {
+      const url = await managers.appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small');
+
+      return url;
+    }
+    const avatarCanvas = document.createElement('canvas');
+    const avatarContext = avatarCanvas.getContext('2d');
+
+    const SIZE = 54;
+    const dpr = 1;
+    avatarCanvas.dpr = dpr;
+    avatarCanvas.width = avatarCanvas.height = SIZE * dpr;
+
+    const color = getPeerAvatarColorByPeer(peer);
+    const gradient = avatarContext.createLinearGradient(avatarCanvas.width / 2, 0, avatarCanvas.width / 2, avatarCanvas.height);
+
+    const colorTop = customProperties.getProperty(`peer-avatar-${color}-top`);
+    const colorBottom = customProperties.getProperty(`peer-avatar-${color}-bottom`);
+    gradient.addColorStop(0, colorTop);
+    gradient.addColorStop(1, colorBottom);
+
+    avatarContext.fillStyle = gradient;
+
+    drawCircle(avatarContext, avatarCanvas.width / 2, avatarCanvas.height / 2, avatarCanvas.width / 2);
+    avatarContext.fill();
+
+    const fontSize = 20 * avatarCanvas.dpr;
+    const abbreviation = getAbbreviation(peerTitle);
+
+    avatarContext.font = `700 ${fontSize}px ${FontFamily}`;
+    avatarContext.textBaseline = 'middle';
+    avatarContext.textAlign = 'center';
+    avatarContext.fillStyle = 'white';
+    avatarContext.fillText(abbreviation.text, avatarCanvas.width / 2, avatarCanvas.height * (window.devicePixelRatio > 1 || true ? .5625 : .5));
+
+    return avatarCanvas.toDataURL();
   }
 
   public sendEnvironment() {
@@ -549,11 +680,13 @@ class ApiManagerProxy extends MTProtoMessagePort {
         new URL('./mtproto.worker.ts', import.meta.url),
         {type: 'module'}
       );
+      this.closeMTProtoWorker = () => (worker as SharedWorker).port.close();
     } else {
       worker = new Worker(
         new URL('./mtproto.worker.ts', import.meta.url),
         {type: 'module'}
       );
+      this.closeMTProtoWorker = () => (worker as Worker).terminate();
     }
 
     this.onWorkerFirstMessage(worker);
@@ -579,25 +712,51 @@ class ApiManagerProxy extends MTProtoMessagePort {
     }
   }
 
-  private loadState() {
-    return Promise.all([
-      loadState().then((stateResult) => {
-        this.newVersion = stateResult.newVersion;
-        this.oldVersion = stateResult.oldVersion;
-        this.mirrors['state'] = stateResult.state;
-        setAppStateSilent(stateResult.state);
-        return stateResult;
-      })
-      // loadStorages(createStorages()),
-    ]);
+  private async loadAllStates() {
+    const loadedStates = await loadStateForAllAccountsOnce();
+
+    this.dispatchUserAuth();
+
+    const stateForThisAccount = loadedStates[getCurrentAccount()];
+
+    rootScope.settings = stateForThisAccount.state.settings;
+
+    this.newVersion = stateForThisAccount.newVersion;
+    this.oldVersion = stateForThisAccount.oldVersion;
+    this.mirrors['state'] = stateForThisAccount.state;
+    setAppStateSilent(stateForThisAccount.state);
+
+    return loadedStates;
   }
 
-  public sendState() {
-    return this.loadState().then((result) => {
-      const [stateResult] = result;
-      this.invoke('state', {...stateResult, userId: rootScope.myId.toUserId()});
-      return result;
-    });
+
+  private async dispatchUserAuth() {
+    const accountData = await AccountController.get(getCurrentAccount());
+
+    if(accountData?.userId) {
+      rootScope.dispatchEvent('user_auth',
+        {dcID: accountData.dcId || 0, date: accountData.date || (Date.now() / 1000 | 0), id: accountData.userId.toPeerId(false)}
+      );
+    }
+  }
+
+  public hasTabOpenFor(accountNumber: ActiveAccountNumber) {
+    return !!this.allTabStates.find((tab) => tab.accountNumber === accountNumber);
+  }
+
+  public async sendAllStates() {
+    const loadedStates = await this.loadAllStates();
+
+
+    for(let i = 1; i <= 4; i++) {
+      const userId = (await sessionStorage.get(`account${i as ActiveAccountNumber}`))?.userId;
+      this.invoke('state', {
+        ...loadedStates[i as ActiveAccountNumber],
+        userId,
+        accountNumber: i as ActiveAccountNumber
+      });
+    }
+    return loadedStates;
   }
 
   public invokeCrypto<Method extends keyof CryptoMethods>(method: Method, ...args: Parameters<CryptoMethods[typeof method]>): Promise<Awaited<ReturnType<CryptoMethods[typeof method]>>> {
@@ -621,6 +780,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   public getState() {
     return this.getMirror('state');
+  }
+
+  public getAllTabStates() {
+    return [...this.allTabStates];
   }
 
   public getCacheContext(
@@ -704,6 +867,12 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), messageId);
   }
 
+
+  public getPeerForAccount(peerId: PeerId, accountNumber: ActiveAccountNumber) {
+    const managers = createProxiedManagersForAccount(accountNumber);
+    return managers.appPeersManager.getPeer(peerId);
+  }
+
   public getPeer(peerId: PeerId) {
     return this.mirrors.peers[peerId];
   }
@@ -730,7 +899,12 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return !!(saved && saved[size] && !(saved[size] instanceof Promise));
   }
 
-  public loadAvatar(peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize) {
+  public loadAvatar(peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize, accountNumber?: ActiveAccountNumber) {
+    if(accountNumber && accountNumber !== getCurrentAccount()) {
+      const managers = createProxiedManagersForAccount(accountNumber);
+      return managers.appAvatarsManager.loadAvatar(peerId, photo, size);
+    }
+
     const saved = this.mirrors.avatars[peerId] ??= {};
     return saved[size] ??= rootScope.managers.appAvatarsManager.loadAvatar(peerId, photo, size);
   }
@@ -767,6 +941,20 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
   }
 
+  public async hasSomeonePremium() {
+    const totalAccounts = await AccountController.getTotalAccounts();
+
+    let hasSomeonePremium = false;
+    for(let i = 1; i <= totalAccounts; i++) {
+      const accountNumber = i as ActiveAccountNumber;
+      const managers = createProxiedManagersForAccount(accountNumber);
+      hasSomeonePremium ||= await managers.rootScope.getPremium();
+      if(hasSomeonePremium) break;
+    }
+
+    return hasSomeonePremium;
+  }
+
   public updateTabState<T extends keyof TabState>(key: T, value: TabState[T]) {
     this.tabState[key] = value;
     this.invokeVoid('tabState', this.tabState);
@@ -777,7 +965,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   private onMirrorTask = (payload: MirrorTaskPayload) => {
-    const {name, key, value} = payload;
+    const {name, key, value, accountNumber} = payload;
+    const isSettingsUpdate = name === 'state' && key === 'settings';
+    if(!isSettingsUpdate && accountNumber !== getCurrentAccount()) return;
+
     this.processMirrorTaskMap[name]?.(payload);
     if(!payload.hasOwnProperty('key')) {
       this.mirrors[name] = value;

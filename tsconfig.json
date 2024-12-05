@@ -59,7 +59,8 @@
     "types": [                                /* Type declaration files to be included in compilation. */
       "vite/client",
       "vitest/globals",
-      "chrome"
+      "chrome",
+      "dom-webcodecs"
     ],
     "allowSyntheticDefaultImports": true,     /* Allow default imports from modules with no default export. This does not affect code emit, just typechecking. */
     "esModuleInterop": true,                  /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */

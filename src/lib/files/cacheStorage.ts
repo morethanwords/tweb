@@ -138,17 +138,16 @@ export default class CacheStorageController implements FileStorage {
     };
   }
 
-  public static toggleStorage(enabled: boolean, clearWrite: boolean) {
-    return Promise.all(this.STORAGES.map((storage) => {
+  public static toggleStorage(enabled: boolean, _clearWrite: boolean) {
+    this.STORAGES.forEach((storage) => {
       storage.useStorage = enabled;
+    });
+    return Promise.resolve();
+  }
 
-      if(!clearWrite) {
-        return;
-      }
-
-      if(!enabled) {
-        return storage.deleteAll();
-      }
+  public static deleteAllStorages() {
+    return Promise.all(this.STORAGES.map((storage) => {
+      return storage.deleteAll();
     }));
   }
 }

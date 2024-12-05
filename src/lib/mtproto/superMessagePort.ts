@@ -140,7 +140,7 @@ export default class SuperMessagePort<
     this.listenPorts = [];
     this.sendPorts = [];
     this.pingResolves = new Map();
-    this.taskId = 0;
+    this.taskId = Math.random(); // [0 <-> 1] Have some decimals to prevent tabs from overlapping ids
     this.awaiting = {};
     this.pending = new Map();
     this.log = logger('MP' + (logSuffix ? '-' + logSuffix : ''));

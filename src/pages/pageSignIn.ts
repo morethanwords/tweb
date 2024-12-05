@@ -20,14 +20,17 @@ import {attachClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import toggleDisability from '../helpers/dom/toggleDisability';
 import sessionStorage from '../lib/sessionStorage';
-import {DcAuthKey} from '../types';
+import {DcAuthKey, DcId, TrueDcId} from '../types';
 import placeCaretAtEnd from '../helpers/dom/placeCaretAtEnd';
 import {HelpCountry, HelpCountryCode} from '../layer';
-import stateStorage from '../lib/stateStorage';
+import stateStorage from '../lib/stateStorageInstance';
 import rootScope from '../lib/rootScope';
 import TelInputField from '../components/telInputField';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import CountryInputField from '../components/countryInputField';
+import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
+import AccountController from '../lib/accounts/accountController';
+import commonStateStorage from '../lib/commonStateStorage';
 
 // import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -122,8 +125,6 @@ const onFirstMount = () => {
   signedCheckboxField.input.addEventListener('change', () => {
     const keepSigned = signedCheckboxField.checked;
     rootScope.managers.appStateManager.pushToState('keepSigned', keepSigned);
-
-    apiManagerProxy.toggleStorages(keepSigned, true);
   });
 
   apiManagerProxy.getState().then((state) => {
@@ -235,7 +236,7 @@ const onFirstMount = () => {
 
   const tryAgain = () => {
     rootScope.managers.apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
-      const langPack = stateStorage.getFromCache('langPack');
+      const langPack = commonStateStorage.getFromCache('langPack');
       if(langPack && !langPack.countries?.hash) {
         I18n.getLangPack(langPack.lang_code).then(() => {
           telInputField.simulateInputEvent();
@@ -262,8 +263,9 @@ const onFirstMount = () => {
           const dcId = _dcs.shift();
           if(!dcId) return;
 
-          const dbKey: DcAuthKey = `dc${dcId}_auth_key` as any;
-          const key = await sessionStorage.get(dbKey);
+          const accountData = await AccountController.get(getCurrentAccount());
+          const key = accountData?.[`dc${dcId as TrueDcId}_auth_key`];
+
           if(key) {
             return g();
           }

@@ -124,19 +124,6 @@ class LocalStorage<Storage extends Record<string, any>> {
     // }
   } */
 
-  public clear() {
-    const keys: string[] = ['dc', 'server_time_offset', 'xt_instance', 'user_auth', 'state_id', 'k_build'];
-    for(let i = 1; i <= 5; ++i) {
-      keys.push(`dc${i}_server_salt`);
-      keys.push(`dc${i}_auth_key`);
-      keys.push(`dc${i}_hash`); // only for WebA
-    }
-
-    for(const key of keys) {
-      this.delete(key, true);
-    }
-  }
-
   public toggleStorage(enabled: boolean, clearWrite: boolean) {
     this.useStorage = enabled;
 
@@ -144,9 +131,7 @@ class LocalStorage<Storage extends Record<string, any>> {
       return;
     }
 
-    if(!enabled) {
-      this.clear();
-    } else {
+    if(enabled) {
       return this.set(this.cache);
     }
   }

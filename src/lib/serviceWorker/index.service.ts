@@ -172,6 +172,7 @@ const onFetch = (event: FetchEvent): void => {
         break;
       }
 
+      // TODO: Verify, have no idea how to trigger
       case 'rtmp': {
         onRtmpFetch(event, params, search);
         break;

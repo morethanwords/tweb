@@ -13,10 +13,11 @@ import {Awaited} from '../../../../types';
 import {logger} from '../../../logger';
 import RESET_STORAGES_PROMISE from './resetStoragesPromise';
 import noop from '../../../../helpers/noop';
+import {ResetStoragesPromise} from '../../appStateManager';
 
-export type StoragesResults = Awaited<ReturnType<typeof loadStoragesInner>>;
+export type StoragesResults = Awaited<ReturnType<typeof loadStorages>>;
 
-async function loadStoragesInner(storages: StoragesStorages) {
+export default async function loadStorages(storages: StoragesStorages, resetStoragesPromise: ResetStoragesPromise) {
   const recordPromise = recordPromiseBound(logger('STORAGES-LOADER'));
   const storagesKeys = Object.keys(storages) as Array<keyof StoragesStorages>;
   const storagesPromises: Promise<any>[] = storagesKeys.map((key) => {
@@ -37,7 +38,7 @@ async function loadStoragesInner(storages: StoragesStorages) {
   arr.splice(0, storagesKeys.length);
 
   // * will reset storages before setting the new state
-  const {storages: resetStorages, callback} = await RESET_STORAGES_PROMISE;
+  const {storages: resetStorages, callback} = await resetStoragesPromise;
   if(resetStorages.size) {
     const clearPromises: Promise<any>[] = [];
     for(const key of resetStorages) {
@@ -49,12 +50,12 @@ async function loadStoragesInner(storages: StoragesStorages) {
     await Promise.all(clearPromises).catch(noop);
   }
 
-  callback();
+  await callback();
 
   return storagesResults;
 }
 
-let promise: ReturnType<typeof loadStoragesInner>;
-export default function loadStorages(storages: StoragesStorages) {
-  return promise ??= loadStoragesInner(storages);
-}
+// let promise: ReturnType<typeof loadStoragesInner>;
+// export default function loadStorages(storages: StoragesStorages, resetStoragesPromise: ResetStoragesPromise) {
+//   return promise ??= loadStoragesInner(storages, resetStoragesPromise);
+// }

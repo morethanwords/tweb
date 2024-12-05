@@ -11,7 +11,7 @@
 
 import type {Chat, ForumTopic as MTForumTopic, DialogPeer, Message, MessagesForumTopics, MessagesPeerDialogs, Update, Peer, MessagesMessages, MessagesSavedDialogs} from '../../layer';
 import type {AppMessagesManager, Dialog, ForumTopic, MyMessage, SavedDialog} from '../appManagers/appMessagesManager';
-import type DATABASE_STATE from '../../config/databases/state';
+import type {AccountDatabase} from '../../config/databases/state';
 import tsNow from '../../helpers/tsNow';
 import SearchIndex from '../searchIndex';
 import {SliceEnd} from '../../helpers/slicedArray';
@@ -214,7 +214,7 @@ export default class DialogsStorage extends AppManager {
       }
 
       if(dialogs.length) {
-        AppStorage.freezeSaving<typeof DATABASE_STATE>(this.setDialogsFromState.bind(this, dialogs), ['chats', 'dialogs', 'messages', 'users']);
+        AppStorage.freezeSaving<AccountDatabase>(this.setDialogsFromState.bind(this, dialogs), ['chats', 'dialogs', 'messages', 'users']);
       }
 
       this.allDialogsLoaded = state.allDialogsLoaded || {};

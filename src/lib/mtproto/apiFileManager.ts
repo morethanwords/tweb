@@ -44,6 +44,7 @@ import isWebFileLocation from '../appManagers/utils/webFiles/isWebFileLocation';
 import appManagersManager from '../appManagers/appManagersManager';
 import clamp from '../../helpers/number/clamp';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
+import {ActiveAccountNumber} from '../accounts/types';
 
 export type DownloadOptions = {
   dcId: DcId,
@@ -54,7 +55,8 @@ export type DownloadOptions = {
   limitPart?: number,
   queueId?: number,
   onlyCache?: boolean,
-  downloadId?: string
+  downloadId?: string,
+  accountNumber?: ActiveAccountNumber
   // getFileMethod: Parameters<CacheStorageController['getFile']>[1]
 };
 

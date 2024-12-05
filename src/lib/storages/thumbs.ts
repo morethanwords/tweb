@@ -13,6 +13,7 @@ import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 import generateEmptyThumb from './utils/thumbs/generateEmptyThumb';
 import getStickerThumbKey from './utils/thumbs/getStickerThumbKey';
 import getThumbKey from './utils/thumbs/getThumbKey';
+import {AppManager} from '../appManagers/manager';
 
 export type ThumbCache = {
   downloaded: number,
@@ -39,7 +40,7 @@ export type StickerCachedThumb = {
   h: number
 };
 
-export default class ThumbsStorage {
+export default class ThumbsStorage extends AppManager {
   private thumbsCache: ThumbsCache = {};
   private stickerCachedThumbs: StickerCachedThumbs = {};
 
@@ -61,7 +62,8 @@ export default class ThumbsStorage {
       name: 'thumbs',
       // key: [key, thumbSize].filter(Boolean).join('.'),
       key: joinDeepPath(key, thumbSize),
-      value
+      value,
+      accountNumber: this.getAccountNumber()
     });
   }
 
@@ -69,7 +71,8 @@ export default class ThumbsStorage {
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
       name: 'stickerThumbs',
       key,
-      value
+      value,
+      accountNumber: this.getAccountNumber()
     });
   }
 
@@ -77,12 +80,14 @@ export default class ThumbsStorage {
     const instance = MTProtoMessagePort.getInstance<false>();
     instance.invokeVoid('mirror', {
       name: 'thumbs',
-      value: this.thumbsCache
+      value: this.thumbsCache,
+      accountNumber: this.getAccountNumber()
     }, port);
 
     instance.invokeVoid('mirror', {
       name: 'stickerThumbs',
-      value: this.stickerCachedThumbs
+      value: this.stickerCachedThumbs,
+      accountNumber: this.getAccountNumber()
     }, port);
   }
 

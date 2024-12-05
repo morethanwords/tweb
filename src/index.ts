@@ -39,7 +39,12 @@ import {nextRandomUint} from './helpers/random';
 import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from './environment/overlayScrollSupport';
 import IMAGE_MIME_TYPES_SUPPORTED, {IMAGE_MIME_TYPES_SUPPORTED_PROMISE} from './environment/imageMimeTypesSupport';
 import MEDIA_MIME_TYPES_SUPPORTED from './environment/mediaMimeTypesSupport';
-// import appNavigationController from './components/appNavigationController';
+import {doubleRaf} from './helpers/schedulers';
+import {getCurrentAccount} from './lib/accounts/getCurrentAccount';
+import AccountController from './lib/accounts/accountController';
+import {changeAccount} from './lib/accounts/changeAccount';
+import {MAX_ACCOUNTS_FREE, MAX_ACCOUNTS_PREMIUM} from './lib/accounts/constants';
+
 
 IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   mimeTypes.forEach((mimeType) => {
@@ -310,7 +315,7 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
 
   const [stateResult, langPack] = await Promise.all([
     // loadState(),
-    apiManagerProxy.sendState().then(([stateResult]) => stateResult),
+    apiManagerProxy.sendAllStates().then((loadedStates) => loadedStates[getCurrentAccount()]),
     langPromise
   ]);
   I18n.setTimeFormat(stateResult.state.settings.timeFormat);
@@ -327,7 +332,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     fillLocalizedDates();
   }
 
-  rootScope.addEventListener('language_change', () => {
+  rootScope.addEventListener('language_change', (langCode) => {
+    I18n.getLangPack(langCode);
     fillLocalizedDates();
   });
 
@@ -391,9 +397,43 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   if(authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {
     console.log('Will mount auth page:', authState._, Date.now() / 1000);
 
+    (async() => {
+      const totalAccounts = await AccountController.getTotalAccounts();
+      const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
+      const maxAccountNumber = hasSomeonePremium ? MAX_ACCOUNTS_PREMIUM : MAX_ACCOUNTS_FREE;
+
+      const currentAccount = getCurrentAccount();
+
+      if(currentAccount > Math.min(maxAccountNumber, totalAccounts + 1)) {
+        changeAccount(1);
+      }
+    })();
+
     const el = document.getElementById('auth-pages');
     let scrollable: HTMLElement;
+
+    let isEnteringAnimationFinished = false;
+
+    const finishEnteringAnimation = async() => {
+      if(isEnteringAnimationFinished) return;
+      isEnteringAnimationFinished = true;
+
+      await doubleRaf();
+      el.classList.add('auth-pages-entering');
+
+      await pause(1000); // Need a little more time for the animation to finish
+      el.classList.remove('auth-pages-enter', 'auth-pages-entering');
+    }
+
     if(el) {
+      if(localStorage.getItem('should-animate-auth')) {
+        localStorage.removeItem('should-animate-auth');
+        el.classList.add('auth-pages-enter');
+
+        // Just in case
+        pause(1000).then(() => finishEnteringAnimation());
+      }
+
       scrollable = el.querySelector('.scrollable') as HTMLElement;
       if((!IS_TOUCH_SUPPORTED || IS_MOBILE_SAFARI)) {
         scrollable.classList.add('no-scrollbar');
@@ -457,6 +497,12 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
           document.fonts.ready
         ]) :
         Promise.resolve();
+
+      promise.then(async() => {
+        await pause(20);
+        finishEnteringAnimation();
+      });
+
       fadeInWhenFontsReady(scrollable, promise);
     }
 
@@ -488,7 +534,25 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     }, 500); */
   } else {
     console.log('Will mount IM page:', Date.now() / 1000);
-    fadeInWhenFontsReady(document.getElementById('main-columns'), loadFonts());
-    (await import('./pages/pageIm')).default.mount();
+
+    const fontsPromise = loadFonts()
+    fadeInWhenFontsReady(document.getElementById('main-columns'), fontsPromise);
+
+    const page = (await import('./pages/pageIm')).default;
+
+    const shouldAnimate = localStorage.getItem('should-animate-main');
+    if(shouldAnimate) {
+      localStorage.removeItem('should-animate-main')
+      page.pageEl.classList.add('main-screen-enter');
+    }
+
+    await page.mount();
+    await fontsPromise;
+
+    await doubleRaf();
+    page.pageEl.classList.add('main-screen-entering');
+    await pause(200);
+
+    page.pageEl.classList.remove('main-screen-enter', 'main-screen-entering');
   }
 });
