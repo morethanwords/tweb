@@ -9,7 +9,7 @@ import '../polyfill'; // just to include
 import bytesModPow from '../../helpers/bytes/bytesModPow';
 import gzipUncompress from '../../helpers/gzipUncompress';
 import listenMessagePort from '../../helpers/listenMessagePort';
-import getEmojisFingerprint from '../calls/helpers/getEmojisFingerprint';
+// import getEmojisFingerprint from '../calls/helpers/getEmojisFingerprint';
 import computeDhKey from './computeDhKey';
 import cryptoMessagePort from './cryptoMessagePort';
 import {CryptoMethods} from './crypto_methods';
@@ -41,7 +41,7 @@ const cryptoMethods: CryptoMethods = {
   'computeSRP': computeSRP,
   'generate-dh': generateDh,
   'compute-dh-key': computeDhKey,
-  'get-emojis-fingerprint': getEmojisFingerprint,
+  // 'get-emojis-fingerprint': getEmojisFingerprint,
   'aes-ctr-prepare': aesCtrPrepare,
   'aes-ctr-process': aesCtrProcess,
   'aes-ctr-destroy': aesCtrDestroy

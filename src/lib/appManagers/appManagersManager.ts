@@ -129,18 +129,18 @@ export class AppManagersManager {
           return callbackify(appManagersManager.getManagers(), (managers) => {
             return managers.appDocsManager.cancelDocPartsRequests(docId);
           });
-        },
-        requestRtmpState(call) {
-          return callbackify(appManagersManager.getManagers(), (managers) => {
-            return managers.appGroupCallsManager.fetchRtmpState(call);
-          });
-        },
-        requestRtmpPart(payload) {
-          return callbackify(appManagersManager.getManagers(), (managers) => {
-            const {request, dcId} = payload;
-            return managers.appGroupCallsManager.fetchRtmpPart(request, dcId);
-          });
         }
+        // requestRtmpState(call) {
+        //   return callbackify(appManagersManager.getManagers(), (managers) => {
+        //     return managers.appGroupCallsManager.fetchRtmpState(call);
+        //   });
+        // },
+        // requestRtmpPart(payload) {
+        //   return callbackify(appManagersManager.getManagers(), (managers) => {
+        //     const {request, dcId} = payload;
+        //     return managers.appGroupCallsManager.fetchRtmpPart(request, dcId);
+        //   });
+        // }
       });
     }
 

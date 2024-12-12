@@ -14,7 +14,7 @@ import PopupPickUser from '../../components/popups/pickUser';
 import PopupStickers from '../../components/popups/stickers';
 import {toastNew, toast, hideToast} from '../../components/toast';
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
+// import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import addAnchorListener from '../../helpers/addAnchorListener';
 import assumeType from '../../helpers/assumeType';
 import findUpClassName from '../../helpers/dom/findUpClassName';
@@ -193,18 +193,18 @@ export class InternalLinkProcessor {
       }
     });
 
-    if(IS_GROUP_CALL_SUPPORTED) {
-      addAnchorListener<{
-        uriParams: Omit<InternalLink.InternalLinkVoiceChat, '_'>
-      }>({
-        name: 'voicechat',
-        protocol: 'tg',
-        callback: ({uriParams}) => {
-          const link = this.makeLink(INTERNAL_LINK_TYPE.VOICE_CHAT, uriParams);
-          return this.processInternalLink(link);
-        }
-      });
-    }
+    // if(IS_GROUP_CALL_SUPPORTED) {
+    //   addAnchorListener<{
+    //     uriParams: Omit<InternalLink.InternalLinkVoiceChat, '_'>
+    //   }>({
+    //     name: 'voicechat',
+    //     protocol: 'tg',
+    //     callback: ({uriParams}) => {
+    //       const link = this.makeLink(INTERNAL_LINK_TYPE.VOICE_CHAT, uriParams);
+    //       return this.processInternalLink(link);
+    //     }
+    //   });
+    // }
 
     type K1 = {thread?: string, comment?: string, t?: string};
     type K2 = {thread?: string, comment?: string, start?: string, t?: string, text?: string};
@@ -653,31 +653,6 @@ export class InternalLinkProcessor {
     });
   };
 
-  public processVoiceChatLink = async(link: InternalLink.InternalLinkVoiceChat) => {
-    const openPeerId = (peerId: PeerId) => {
-      if(appImManager.chat.peerId !== peerId) {
-        return appImManager.setInnerPeer({peerId});
-      }
-    };
-
-    if(link.livestream !== undefined) {
-      const peer = await this.managers.appUsersManager.resolveUsername(link.domain);
-      const peerId = peer.id.toPeerId(true);
-      await openPeerId(peerId);
-      return appImManager.joinLiveStream(peerId);
-    }
-
-    if(!IS_GROUP_CALL_SUPPORTED) {
-      return;
-    }
-
-    if(link.id) {
-      const peerId = link.chat_id.toPeerId(true);
-      await openPeerId(peerId);
-      return appImManager.joinGroupCall(peerId, link.id);
-    }
-  };
-
   public processUserPhoneNumberLink = (link: InternalLink.InternalLinkUserPhoneNumber) => {
     return this.managers.appUsersManager.resolvePhone(link.phone).then((user) => {
       return appImManager.setInnerPeer({
@@ -975,7 +950,7 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.EMOJI_SET]: this.processStickerSetLink,
       [INTERNAL_LINK_TYPE.STICKER_SET]: this.processStickerSetLink,
       [INTERNAL_LINK_TYPE.JOIN_CHAT]: this.processJoinChatLink,
-      [INTERNAL_LINK_TYPE.VOICE_CHAT]: this.processVoiceChatLink,
+      // [INTERNAL_LINK_TYPE.VOICE_CHAT]: this.processVoiceChatLink,
       [INTERNAL_LINK_TYPE.USER_PHONE_NUMBER]: this.processUserPhoneNumberLink,
       [INTERNAL_LINK_TYPE.INVOICE]: this.processInvoiceLink,
       [INTERNAL_LINK_TYPE.ATTACH_MENU_BOT]: this.processAttachMenuBotLink,

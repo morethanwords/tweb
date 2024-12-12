@@ -10,12 +10,12 @@ import DialogsStorage from '../storages/dialogs';
 import FiltersStorage from '../storages/filters';
 import {ApiUpdatesManager} from './apiUpdatesManager';
 import {AppAvatarsManager} from './appAvatarsManager';
-import {AppCallsManager} from './appCallsManager';
+// import {AppCallsManager} from './appCallsManager';
 import {AppChatsManager} from './appChatsManager';
 import {AppDocsManager} from './appDocsManager';
 import {AppDraftsManager} from './appDraftsManager';
 import {AppEmojiManager} from './appEmojiManager';
-import {AppGroupCallsManager} from './appGroupCallsManager';
+// import {AppGroupCallsManager} from './appGroupCallsManager';
 import {AppInlineBotsManager} from './appInlineBotsManager';
 import {AppMessagesIdsManager} from './appMessagesIdsManager';
 import {AppMessagesManager} from './appMessagesManager';
@@ -72,8 +72,8 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     appNotificationsManager: new AppNotificationsManager,
     apiUpdatesManager: new ApiUpdatesManager,
     appAvatarsManager: new AppAvatarsManager,
-    appGroupCallsManager: new AppGroupCallsManager,
-    appCallsManager: new AppCallsManager,
+    // appGroupCallsManager: new AppGroupCallsManager,
+    // appCallsManager: new AppCallsManager,
     appReactionsManager: new AppReactionsManager,
     appMessagesManager: new AppMessagesManager,
     appMessagesIdsManager: new AppMessagesIdsManager,

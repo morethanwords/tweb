@@ -3979,28 +3979,6 @@ export class AppMessagesManager extends AppManager {
           }
           break;
 
-        case 'messageActionGroupCall': {
-          // assumeType<MessageAction.messageActionGroupCall>(action);
-
-          this.appGroupCallsManager.saveGroupCall(action.call);
-
-          let type: string;
-          if(action.duration === undefined) {
-            type = 'started';
-          } else {
-            type = 'ended'
-          }
-
-          if(!isBroadcast) {
-            type += '_by' + suffix;
-          }
-
-          // @ts-ignore
-          action.type = type;
-
-          break;
-        }
-
         case 'messageActionChatEditTitle':
           /* if(options.isNew) {
             const chat = appChatsManager.getChat(peerId.toChatId());

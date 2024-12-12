@@ -322,9 +322,9 @@ export class AppProfileManager extends AppManager {
           chatFull.chat_photo = this.appPhotosManager.savePhoto(chatFull.chat_photo, {type: 'profilePhoto', peerId});
         }
 
-        if(chatFull.call) {
-          this.appGroupCallsManager.saveGroupCall(chatFull.call, id);
-        }
+        // if(chatFull.call) {
+        //   this.appGroupCallsManager.saveGroupCall(chatFull.call, id);
+        // }
 
         // appMessagesManager.savePinnedMessage(peerId, fullChat.pinned_msg_id);
         this.appNotificationsManager.savePeerSettings({
@@ -559,9 +559,9 @@ export class AppProfileManager extends AppManager {
 
         fullChannel.wallpaper = this.appThemesManager.saveWallPaper(fullChannel.wallpaper);
 
-        if(fullChannel.call) {
-          this.appGroupCallsManager.saveGroupCall(fullChannel.call, id);
-        }
+        // if(fullChannel.call) {
+        //   this.appGroupCallsManager.saveGroupCall(fullChannel.call, id);
+        // }
 
         this.appNotificationsManager.savePeerSettings({
           peerId,

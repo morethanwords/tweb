@@ -58,10 +58,10 @@ import SetTransition from '../singleTransition';
 import handleHorizontalSwipe from '../../helpers/dom/handleHorizontalSwipe';
 import findUpAttribute from '../../helpers/dom/findUpAttribute';
 import findUpAsChild from '../../helpers/dom/findUpAsChild';
-import {wrapCallDuration} from '../wrappers/wrapDuration';
-import IS_CALL_SUPPORTED from '../../environment/callSupport';
+// import {wrapCallDuration} from '../wrappers/wrapDuration';
+// import IS_CALL_SUPPORTED from '../../environment/callSupport';
 import Button from '../button';
-import {CallType} from '../../lib/calls/types';
+// import {CallType} from '../../lib/calls/types';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import {InternalLink, INTERNAL_LINK_TYPE} from '../../lib/appManagers/internalLink';
 import ReactionsElement, {REACTIONS_ELEMENTS} from './reactions';
@@ -202,9 +202,9 @@ const IGNORE_ACTIONS = new Map(IGNORE_ACTIONS_ARRAY);
 
 export const SERVICE_AS_REGULAR: Set<MESSAGE_ACTION_TYPE> = new Set();
 
-if(IS_CALL_SUPPORTED) {
-  SERVICE_AS_REGULAR.add('messageActionPhoneCall');
-}
+// if(IS_CALL_SUPPORTED) {
+//   SERVICE_AS_REGULAR.add('messageActionPhoneCall');
+// }
 
 // const TEST_SCROLL_TIMES: number = undefined;
 // let TEST_SCROLL = TEST_SCROLL_TIMES;
@@ -2304,11 +2304,11 @@ export default class ChatBubbles {
       return;
     }
 
-    const callDiv: HTMLElement = findUpClassName(target, 'bubble-call');
-    if(callDiv) {
-      this.chat.appImManager.callUser(this.peerId.toUserId(), callDiv.dataset.type as any);
-      return;
-    }
+    // const callDiv: HTMLElement = findUpClassName(target, 'bubble-call');
+    // if(callDiv) {
+    //   this.chat.appImManager.callUser(this.peerId.toUserId(), callDiv.dataset.type as any);
+    //   return;
+    // }
 
     const buyButton: HTMLElement = findUpClassName(target, 'is-buy');
     if(buyButton) {
@@ -6566,61 +6566,6 @@ export default class ChatBubbles {
 
             noAttachmentDivNeeded = true;
           }
-
-          break;
-        }
-
-        case 'messageMediaCall': {
-          const action = messageMedia.action;
-          const div = document.createElement('div');
-          div.classList.add('bubble-call');
-          div.append(Icon(action.pFlags.video ? 'videocamera' : 'phone', 'bubble-call-icon'));
-
-          const type: CallType = action.pFlags.video ? 'video' : 'voice';
-          div.dataset.type = type;
-
-          const title = document.createElement('div');
-          title.classList.add('bubble-call-title');
-
-          _i18n(title, isOut ?
-            (action.pFlags.video ? 'CallMessageVideoOutgoing' : 'CallMessageOutgoing') :
-            (action.pFlags.video ? 'CallMessageVideoIncoming' : 'CallMessageIncoming'));
-
-          const subtitle = document.createElement('div');
-          subtitle.classList.add('bubble-call-subtitle');
-
-          if(action.duration !== undefined) {
-            subtitle.append(wrapCallDuration(action.duration));
-          } else {
-            let langPackKey: LangPackKey;
-            switch(action.reason._) {
-              case 'phoneCallDiscardReasonBusy':
-                langPackKey = 'Call.StatusBusy';
-                break;
-              case 'phoneCallDiscardReasonMissed':
-                langPackKey = 'Chat.Service.Call.Missed';
-                break;
-              // case 'phoneCallDiscardReasonHangup':
-              default:
-                langPackKey = 'Chat.Service.Call.Cancelled';
-                break;
-            }
-
-            subtitle.classList.add('is-reason');
-            _i18n(subtitle, langPackKey);
-          }
-
-          subtitle.prepend(Icon('arrow_next', 'bubble-call-arrow', 'bubble-call-arrow-' + (action.duration !== undefined ? 'green' : 'red')));
-
-          appendBubbleTime(bubble, subtitle, () => subtitle.append(timeSpan));
-
-          div.append(title, subtitle);
-
-          noAttachmentDivNeeded = true;
-
-          mediaRequiresMessageDiv = true;
-          bubble.classList.add('call-message');
-          messageDiv.append(div);
 
           break;
         }

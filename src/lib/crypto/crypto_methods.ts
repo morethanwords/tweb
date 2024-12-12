@@ -6,7 +6,7 @@
 
 import type bytesModPow from '../../helpers/bytes/bytesModPow';
 import type gzipUncompress from '../../helpers/gzipUncompress';
-import type getEmojisFingerprint from '../calls/helpers/getEmojisFingerprint';
+// import type getEmojisFingerprint from '../calls/helpers/getEmojisFingerprint';
 import type {aesCtrDestroy, aesCtrPrepare, aesCtrProcess} from './aesCtrUtils';
 import type computeDhKey from './computeDhKey';
 import type generateDh from './generateDh';
@@ -32,7 +32,7 @@ export type CryptoMethods = {
   'computeSRP': typeof computeSRP,
   'generate-dh': typeof generateDh,
   'compute-dh-key': typeof computeDhKey,
-  'get-emojis-fingerprint': typeof getEmojisFingerprint,
+  // 'get-emojis-fingerprint': typeof getEmojisFingerprint,
   'aes-ctr-prepare': typeof aesCtrPrepare,
   'aes-ctr-process': typeof aesCtrProcess,
   'aes-ctr-destroy': typeof aesCtrDestroy

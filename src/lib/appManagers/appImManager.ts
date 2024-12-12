@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {GroupCallId, MyGroupCall} from './appGroupCallsManager';
-import type GroupCallInstance from '../calls/groupCallInstance';
-import type CallInstance from '../calls/callInstance';
+// import type {GroupCallId, MyGroupCall} from './appGroupCallsManager';
+// import type GroupCallInstance from '../calls/groupCallInstance';
+// import type CallInstance from '../calls/callInstance';
 import animationIntersector from '../../components/animationIntersector';
 import appSidebarLeft, {LEFT_COLUMN_ACTIVE_CLASSNAME} from '../../components/sidebarLeft';
 import appSidebarRight, {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '../../components/sidebarRight';
@@ -45,16 +45,16 @@ import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport'
 import {NULL_PEER_ID} from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import {ONE_DAY} from '../../helpers/date';
-import TopbarCall from '../../components/topbarCall';
+// import TopbarCall from '../../components/topbarCall';
 import confirmationPopup from '../../components/confirmationPopup';
-import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
-import IS_CALL_SUPPORTED from '../../environment/callSupport';
-import {CallType} from '../calls/types';
+// import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
+// import IS_CALL_SUPPORTED from '../../environment/callSupport';
+// import {CallType} from '../calls/types';
 import {Modify, SendMessageEmojiInteractionData} from '../../types';
 import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import {simulateClickEvent} from '../../helpers/dom/clickEvent';
-import PopupCall from '../../components/call';
+// import PopupCall from '../../components/call';
 import copy from '../../helpers/object/copy';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import ChatBackgroundPatternRenderer from '../../components/chat/patternRenderer';
@@ -76,8 +76,8 @@ import appDialogsManager from './appDialogsManager';
 import idleController from '../../helpers/idleController';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import {AckedResult} from '../mtproto/superMessagePort';
-import groupCallsController from '../calls/groupCallsController';
-import callsController from '../calls/callsController';
+// import groupCallsController from '../calls/groupCallsController';
+// import callsController from '../calls/callsController';
 import getFilesFromEvent from '../../helpers/files/getFilesFromEvent';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 import appRuntimeManager from './appRuntimeManager';
@@ -117,8 +117,8 @@ import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
 import {savedReactionTags} from '../../components/chat/reactions';
 import {setAppState} from '../../stores/appState';
-import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
-import {AppMediaViewerRtmp} from '../../components/appMediaViewerRtmp';
+// import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
+// import {AppMediaViewerRtmp} from '../../components/appMediaViewerRtmp';
 import useProfileColors from '../../hooks/useProfileColors';
 import {DEFAULT_BACKGROUND_SLUG} from '../../config/app';
 import blur from '../../helpers/blur';
@@ -188,7 +188,7 @@ export class AppImManager extends EventListenerBase<{
 
   private backgroundPromises: {[url: string]: MaybePromise<string>};
 
-  private topbarCall: TopbarCall;
+  // private topbarCall: TopbarCall;
 
   public lastBackgroundUrl: string;
 
@@ -598,46 +598,46 @@ export class AppImManager extends EventListenerBase<{
     stateStorage.setToCache('chatPositions', /* c ||  */{});
     // });
 
-    if(IS_CALL_SUPPORTED || IS_GROUP_CALL_SUPPORTED) {
-      this.topbarCall = new TopbarCall(managers);
-    }
+    // if(IS_CALL_SUPPORTED || IS_GROUP_CALL_SUPPORTED) {
+    //   this.topbarCall = new TopbarCall(managers);
+    // }
 
-    if(IS_CALL_SUPPORTED) {
-      callsController.addEventListener('instance', ({instance/* , hasCurrent */}) => {
-        // if(hasCurrent) {
-        // return;
-        // }
+    // if(IS_CALL_SUPPORTED) {
+    //   callsController.addEventListener('instance', ({instance/* , hasCurrent */}) => {
+    //     // if(hasCurrent) {
+    //     // return;
+    //     // }
 
-        const popup = PopupElement.createPopup(PopupCall, instance);
+    //     const popup = PopupElement.createPopup(PopupCall, instance);
 
-        instance.addEventListener('acceptCallOverride', () => {
-          return this.discardCurrentCall(instance.interlocutorUserId.toPeerId(), 'Call', undefined, instance)
-          .then(() => {
-            callsController.dispatchEvent('accepting', instance);
-            return true;
-          })
-          .catch(() => false);
-        });
+    //     instance.addEventListener('acceptCallOverride', () => {
+    //       return this.discardCurrentCall(instance.interlocutorUserId.toPeerId(), 'Call', undefined, instance)
+    //       .then(() => {
+    //         callsController.dispatchEvent('accepting', instance);
+    //         return true;
+    //       })
+    //       .catch(() => false);
+    //     });
 
-        popup.addEventListener('close', () => {
-          const currentCall = callsController.currentCall;
-          if(currentCall && currentCall !== instance && !instance.wasTryingToJoin) {
-            instance.hangUp('phoneCallDiscardReasonBusy');
-          }
-        }, {once: true});
+    //     popup.addEventListener('close', () => {
+    //       const currentCall = callsController.currentCall;
+    //       if(currentCall && currentCall !== instance && !instance.wasTryingToJoin) {
+    //         instance.hangUp('phoneCallDiscardReasonBusy');
+    //       }
+    //     }, {once: true});
 
-        popup.show();
-      });
+    //     popup.show();
+    //   });
 
-      callsController.addEventListener('incompatible', async(userId) => {
-        toastNew({
-          langPackKey: 'VoipPeerIncompatible',
-          langPackArguments: [
-            await wrapPeerTitle({peerId: userId.toPeerId()})
-          ]
-        });
-      });
-    }
+    //   callsController.addEventListener('incompatible', async(userId) => {
+    //     toastNew({
+    //       langPackKey: 'VoipPeerIncompatible',
+    //       langPackArguments: [
+    //         await wrapPeerTitle({peerId: userId.toPeerId()})
+    //       ]
+    //     });
+    //   });
+    // }
 
     // ! do not remove this line
     // ! instance can be deactivated before the UI starts, because it waits in background for RAF that is delayed
@@ -1485,155 +1485,155 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  public async callUser(userId: UserId, type: CallType) {
-    const call = callsController.getCallByUserId(userId);
-    if(call) {
-      return;
-    }
+  // public async callUser(userId: UserId, type: CallType) {
+  //   const call = callsController.getCallByUserId(userId);
+  //   if(call) {
+  //     return;
+  //   }
 
-    const userFull = await this.managers.appProfileManager.getProfile(userId);
-    if(userFull.pFlags.phone_calls_private) {
-      wrapPeerTitle({peerId: userId.toPeerId()}).then((element) => {
-        return confirmationPopup({
-          descriptionLangKey: 'Call.PrivacyErrorMessage',
-          descriptionLangArgs: [element],
-          button: {
-            langKey: 'OK',
-            isCancel: true
-          }
-        });
-      });
+  //   const userFull = await this.managers.appProfileManager.getProfile(userId);
+  //   if(userFull.pFlags.phone_calls_private) {
+  //     wrapPeerTitle({peerId: userId.toPeerId()}).then((element) => {
+  //       return confirmationPopup({
+  //         descriptionLangKey: 'Call.PrivacyErrorMessage',
+  //         descriptionLangArgs: [element],
+  //         button: {
+  //           langKey: 'OK',
+  //           isCancel: true
+  //         }
+  //       });
+  //     });
 
-      return;
-    }
+  //     return;
+  //   }
 
-    await this.discardCurrentCall(userId.toPeerId(), 'Call');
+  //   await this.discardCurrentCall(userId.toPeerId(), 'Call');
 
-    callsController.startCallInternal(userId, type === 'video');
-  }
+  //   callsController.startCallInternal(userId, type === 'video');
+  // }
 
-  private discardCurrentCall(toPeerId: PeerId, toType: 'Live' | 'Voice' | 'Call', ignoreGroupCall?: GroupCallInstance, ignoreCall?: CallInstance, ignoreLive?: RtmpCallInstance): Promise<void> {
-    if(groupCallsController.groupCall && groupCallsController.groupCall !== ignoreGroupCall) return this.discardGroupCallConfirmation(toPeerId, toType);
-    else if(callsController.currentCall && callsController.currentCall !== ignoreCall) return this.discardCallConfirmation(toPeerId, toType);
-    else if(rtmpCallsController.currentCall && rtmpCallsController.currentCall !== ignoreLive) return this.discardLiveConfirmation(toPeerId, toType);
-    else return Promise.resolve();
-  }
+  // private discardCurrentCall(toPeerId: PeerId, toType: 'Live' | 'Voice' | 'Call', ignoreGroupCall?: GroupCallInstance, ignoreCall?: CallInstance, ignoreLive?: RtmpCallInstance): Promise<void> {
+  //   if(groupCallsController.groupCall && groupCallsController.groupCall !== ignoreGroupCall) return this.discardGroupCallConfirmation(toPeerId, toType);
+  //   else if(callsController.currentCall && callsController.currentCall !== ignoreCall) return this.discardCallConfirmation(toPeerId, toType);
+  //   else if(rtmpCallsController.currentCall && rtmpCallsController.currentCall !== ignoreLive) return this.discardLiveConfirmation(toPeerId, toType);
+  //   else return Promise.resolve();
+  // }
 
-  private async discardAnyCallConfirmation(fromPeerId: PeerId, toPeerId: PeerId, fromType: Parameters<AppImManager['discardCurrentCall']>[1], toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
-    await Promise.all([
-      wrapPeerTitle({peerId: fromPeerId}),
-      wrapPeerTitle({peerId: toPeerId})
-    ]).then(([title1, title2]) => {
-      return confirmationPopup({
-        titleLangKey: `Call.Confirm.Discard.${fromType}.Header`,
-        descriptionLangKey: `Call.Confirm.Discard.${fromType}.To${toType}.Text`,
-        descriptionLangArgs: [title1, title2],
-        button: {
-          langKey: 'OK'
-        }
-      });
-    });
-  }
+  // private async discardAnyCallConfirmation(fromPeerId: PeerId, toPeerId: PeerId, fromType: Parameters<AppImManager['discardCurrentCall']>[1], toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
+  //   await Promise.all([
+  //     wrapPeerTitle({peerId: fromPeerId}),
+  //     wrapPeerTitle({peerId: toPeerId})
+  //   ]).then(([title1, title2]) => {
+  //     return confirmationPopup({
+  //       titleLangKey: `Call.Confirm.Discard.${fromType}.Header`,
+  //       descriptionLangKey: `Call.Confirm.Discard.${fromType}.To${toType}.Text`,
+  //       descriptionLangArgs: [title1, title2],
+  //       button: {
+  //         langKey: 'OK'
+  //       }
+  //     });
+  //   });
+  // }
 
-  private async discardGroupCallConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
-    const currentCall = groupCallsController.groupCall;
-    if(currentCall) {
-      await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, 'Voice', toType);
+  // private async discardGroupCallConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
+  //   const currentCall = groupCallsController.groupCall;
+  //   if(currentCall) {
+  //     await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, 'Voice', toType);
 
-      if(groupCallsController.groupCall === currentCall) {
-        await currentCall.hangUp();
-      }
-    }
-  }
+  //     if(groupCallsController.groupCall === currentCall) {
+  //       await currentCall.hangUp();
+  //     }
+  //   }
+  // }
 
-  private async discardCallConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
-    const currentCall = callsController.currentCall;
-    if(currentCall) {
-      await this.discardAnyCallConfirmation(currentCall.interlocutorUserId.toPeerId(false), toPeerId, 'Call', toType);
+  // private async discardCallConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
+  //   const currentCall = callsController.currentCall;
+  //   if(currentCall) {
+  //     await this.discardAnyCallConfirmation(currentCall.interlocutorUserId.toPeerId(false), toPeerId, 'Call', toType);
 
-      if(!currentCall.isClosing) {
-        await currentCall.hangUp('phoneCallDiscardReasonDisconnect');
-      }
-    }
-  }
+  //     if(!currentCall.isClosing) {
+  //       await currentCall.hangUp('phoneCallDiscardReasonDisconnect');
+  //     }
+  //   }
+  // }
 
-  private async discardLiveConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
-    const currentCall = rtmpCallsController.currentCall;
-    if(currentCall) {
-      await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, 'Live', toType);
+  // private async discardLiveConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
+  //   const currentCall = rtmpCallsController.currentCall;
+  //   if(currentCall) {
+  //     await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, 'Live', toType);
 
-      if(rtmpCallsController.currentCall === currentCall) {
-        await rtmpCallsController.leaveCall();
-      }
-    }
-  }
+  //     if(rtmpCallsController.currentCall === currentCall) {
+  //       await rtmpCallsController.leaveCall();
+  //     }
+  //   }
+  // }
 
-  public async joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId) {
-    const chatId = peerId.toChatId();
-    const hasRights = this.managers.appChatsManager.hasRights(chatId, 'manage_call');
-    const next = async() => {
-      const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
-      let call: MyGroupCall;
-      if(!chatFull.call) {
-        if(!hasRights) {
-          return;
-        }
+  // public async joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId) {
+  //   const chatId = peerId.toChatId();
+  //   const hasRights = this.managers.appChatsManager.hasRights(chatId, 'manage_call');
+  //   const next = async() => {
+  //     const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
+  //     let call: MyGroupCall;
+  //     if(!chatFull.call) {
+  //       if(!hasRights) {
+  //         return;
+  //       }
 
-        call = await this.managers.appGroupCallsManager.createGroupCall(chatId);
-      } else {
-        call = chatFull.call;
-      }
+  //       call = await this.managers.appGroupCallsManager.createGroupCall(chatId);
+  //     } else {
+  //       call = chatFull.call;
+  //     }
 
-      groupCallsController.joinGroupCall(chatId, call.id, true, false);
-    };
+  //     groupCallsController.joinGroupCall(chatId, call.id, true, false);
+  //   };
 
-    if(groupCallId) {
-      const groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(groupCallId);
-      if(groupCall._ === 'groupCallDiscarded') {
-        if(!hasRights) {
-          toastNew({
-            langPackKey: 'VoiceChat.Chat.Ended'
-          });
+  //   if(groupCallId) {
+  //     const groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(groupCallId);
+  //     if(groupCall._ === 'groupCallDiscarded') {
+  //       if(!hasRights) {
+  //         toastNew({
+  //           langPackKey: 'VoiceChat.Chat.Ended'
+  //         });
 
-          return;
-        }
+  //         return;
+  //       }
 
-        await confirmationPopup({
-          descriptionLangKey: 'VoiceChat.Chat.StartNew',
-          button: {
-            langKey: 'VoiceChat.Chat.StartNew.OK'
-          }
-        });
-      }
-    }
+  //       await confirmationPopup({
+  //         descriptionLangKey: 'VoiceChat.Chat.StartNew',
+  //         button: {
+  //           langKey: 'VoiceChat.Chat.StartNew.OK'
+  //         }
+  //       });
+  //     }
+  //   }
 
-    await this.discardCurrentCall(peerId, 'Voice');
+  //   await this.discardCurrentCall(peerId, 'Voice');
 
-    next();
-  }
+  //   next();
+  // }
 
-  public async joinLiveStream(peerId: PeerId) {
-    await this.discardCurrentCall(peerId, 'Live');
+  // public async joinLiveStream(peerId: PeerId) {
+  //   await this.discardCurrentCall(peerId, 'Live');
 
-    await rtmpCallsController.joinCall(peerId.toChatId()).catch((err) => {
-      console.error(err);
-      toastNew({
-        langPackKey: 'Error.AnError'
-      });
-    });
+  //   await rtmpCallsController.joinCall(peerId.toChatId()).catch((err) => {
+  //     console.error(err);
+  //     toastNew({
+  //       langPackKey: 'Error.AnError'
+  //     });
+  //   });
 
-    this.openLiveStreamPlayer(peerId);
-  }
+  //   this.openLiveStreamPlayer(peerId);
+  // }
 
-  private async openLiveStreamPlayer(peerId: PeerId) {
-    if(AppMediaViewerRtmp.activeInstance) return;
+  // private async openLiveStreamPlayer(peerId: PeerId) {
+  //   if(AppMediaViewerRtmp.activeInstance) return;
 
-    const shareUrl = await AppMediaViewerRtmp.getShareUrl(peerId.toChatId());
-    new AppMediaViewerRtmp(shareUrl).openMedia({
-      peerId,
-      isAdmin: rtmpCallsController.currentCall.admin
-    });
-  }
+  //   const shareUrl = await AppMediaViewerRtmp.getShareUrl(peerId.toChatId());
+  //   new AppMediaViewerRtmp(shareUrl).openMedia({
+  //     peerId,
+  //     isAdmin: rtmpCallsController.currentCall.admin
+  //   });
+  // }
 
   public setCurrentBackground(broadcastEvent = false, skipAnimation?: boolean): ReturnType<AppImManager['setBackground']> {
     const theme = themeController.getTheme();

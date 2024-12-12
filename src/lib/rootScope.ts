@@ -11,11 +11,11 @@ import type {AnyDialog, Folder} from './storages/dialogs';
 import type {UserTyping} from './appManagers/appProfileManager';
 import type {MyDraftMessage} from './appManagers/appDraftsManager';
 import type {ConnectionStatusChange} from './mtproto/connectionStatus';
-import type {GroupCallId} from './appManagers/appGroupCallsManager';
+// import type {GroupCallId} from './appManagers/appGroupCallsManager';
 import type {AppManagers} from './appManagers/managers';
 import type {State} from '../config/state';
 import type {Progress} from './appManagers/appDownloadManager';
-import type {CallId} from './appManagers/appCallsManager';
+// import type {CallId} from './appManagers/appCallsManager';
 import type {MyDocument} from './appManagers/appDocsManager';
 import type {MTAppConfig} from './mtproto/appConfig';
 import type StoriesCacheType from './appManagers/utils/stories/cacheType';
@@ -26,7 +26,7 @@ import EventListenerBase, {EventListenerListeners} from '../helpers/eventListene
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {IS_WORKER} from '../helpers/context';
-import {RtmpCallInstance} from './calls/rtmpCallsController';
+// import {RtmpCallInstance} from './calls/rtmpCallsController';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -166,14 +166,14 @@ export type BroadcastEvents = {
 
   'choosing_sticker': boolean
 
-  'group_call_update': GroupCall,
-  'group_call_participant': {groupCallId: GroupCallId, participant: GroupCallParticipant},
+  // 'group_call_update': GroupCall,
+  // 'group_call_participant': {groupCallId: GroupCallId, participant: GroupCallParticipant},
   // 'group_call_video_track_added': {instance: GroupCallInstance}
 
-  'call_update': PhoneCall,
-  'call_signaling': {callId: CallId, data: Uint8Array},
+  // 'call_update': PhoneCall,
+  // 'call_signaling': {callId: CallId, data: Uint8Array},
 
-  'rtmp_call_update': RtmpCallInstance,
+  // 'rtmp_call_update': RtmpCallInstance,
 
   'quick_reaction': Reaction,
 

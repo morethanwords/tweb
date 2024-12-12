@@ -9,8 +9,8 @@ import type {PushNotificationObject} from './push';
 import type {MyUploadFile} from '../mtproto/apiFileManager';
 import SuperMessagePort from '../mtproto/superMessagePort';
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import {InputFileLocation, InputGroupCall} from '../../layer';
-import {GroupCallRtmpState} from '../appManagers/appGroupCallsManager';
+// import {InputFileLocation, InputGroupCall} from '../../layer';
+// import {GroupCallRtmpState} from '../appManagers/appGroupCallsManager';
 
 export type ServicePushPingTaskPayload = {
   localNotifications: boolean,
@@ -29,10 +29,10 @@ export type ServiceRequestFilePartTaskPayload = {
   limit: number
 };
 
-export type ServiceRequestRtmpPartTaskPayload = {
-  request: InputFileLocation.inputGroupCallStream,
-  dcId: number,
-};
+// export type ServiceRequestRtmpPartTaskPayload = {
+//   request: InputFileLocation.inputGroupCallStream,
+//   dcId: number,
+// };
 
 export type ServiceDownloadTaskPayload = {
   headers: any,
@@ -50,7 +50,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   pushPing: (payload: ServicePushPingTaskPayload, source: MessageEventSource, event: MessageEvent) => void,
   hello: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
   shownNotification: (payload: string) => void,
-  leaveRtmpCall: (payload: [Long, boolean]) => void,
+  // leaveRtmpCall: (payload: [Long, boolean]) => void,
   toggleStreamInUse: (payload: {url: string, inUse: boolean}) => void,
 
   // from mtproto worker
@@ -63,15 +63,15 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   pushClick: (payload: PushNotificationObject) => void,
   hello: (payload: void, source: MessageEventSource) => void,
   share: (payload: ShareData) => void,
-  rtmpStreamTime: (payload: {callId: Long, time: string}) => void,
-  rtmpStreamDestroyed: (payload: Long) => void,
+  // rtmpStreamTime: (payload: {callId: Long, time: string}) => void,
+  // rtmpStreamDestroyed: (payload: Long) => void,
   downloadRequestReceived: (payload: string) => void,
 
   // to mtproto worker
   requestFilePart: (payload: ServiceRequestFilePartTaskPayload) => MaybePromise<MyUploadFile>,
   cancelFilePartRequests: (payload: DocId) => void,
-  requestRtmpState: (payload: InputGroupCall) => MaybePromise<GroupCallRtmpState>,
-  requestRtmpPart: (payload: ServiceRequestRtmpPartTaskPayload) => MaybePromise<MyUploadFile>,
+  // requestRtmpState: (payload: InputGroupCall) => MaybePromise<GroupCallRtmpState>,
+  // requestRtmpPart: (payload: ServiceRequestRtmpPartTaskPayload) => MaybePromise<MyUploadFile>,
 } & ServiceEvent, Master> {
   constructor() {
     super('SERVICE');

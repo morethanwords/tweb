@@ -1,6 +1,8 @@
 /*
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
+  rtmpStreamTime: (payload: {callId: Long, time: string}) => void,
+  rtmpStreamDestroyed: (payload: Long) => void,
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
@@ -16,7 +18,7 @@ import {getWindowClients} from '../../helpers/context';
 import {MessageSendPort} from '../mtproto/superMessagePort';
 import handleDownload from './download';
 import onShareFetch, {checkWindowClientForDeferredShare} from './share';
-import {onRtmpFetch, onRtmpLeftCall} from './rtmp';
+// import {onRtmpFetch, onRtmpLeftCall} from './rtmp';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -86,7 +88,7 @@ serviceMessagePort.addMultipleEventsListeners({
   },
 
   shownNotification: onShownNotification,
-  leaveRtmpCall: onRtmpLeftCall,
+  // leaveRtmpCall: onRtmpLeftCall,
 
   toggleStreamInUse
 });
@@ -172,10 +174,10 @@ const onFetch = (event: FetchEvent): void => {
         break;
       }
 
-      case 'rtmp': {
-        onRtmpFetch(event, params, search);
-        break;
-      }
+      // case 'rtmp': {
+      //   onRtmpFetch(event, params, search);
+      //   break;
+      // }
 
       // default: {
       //   event.respondWith(fetch(event.request));

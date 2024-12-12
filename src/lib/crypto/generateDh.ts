@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type CallInstance from '../calls/callInstance';
+// import type CallInstance from '../calls/callInstance';
 import type {MessagesDhConfig} from '../../layer';
 import bigInt from 'big-integer';
 import randomize from '../../helpers/array/randomize';
@@ -42,12 +42,13 @@ export default async function generateDh(dhConfig: MessagesDhConfig.messagesDhCo
   const g_a = addPadding(await cryptoWorker.invokeCrypto('mod-pow', gBytes, a, p), 256, true, true, true);
   const g_a_hash = await cryptoWorker.invokeCrypto('sha256', g_a);
 
-  const dh: CallInstance['dh'] = {
-    a: a,
-    g_a: g_a,
-    g_a_hash: g_a_hash,
-    p
-  };
+  // const dh: CallInstance['dh'] = {
+  //   a: a,
+  //   g_a: g_a,
+  //   g_a_hash: g_a_hash,
+  //   p
+  // };
 
-  return dh;
+  // return dh;
+  return 0;
 }

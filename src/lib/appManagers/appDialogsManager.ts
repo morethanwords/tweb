@@ -46,9 +46,9 @@ import {setSendingStatus} from '../../components/sendingStatus';
 import SortedList, {SortedElementBase} from '../../helpers/sortedList';
 import debounce from '../../helpers/schedulers/debounce';
 import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS} from '../mtproto/mtproto_config';
-import groupCallActiveIcon from '../../components/groupCallActiveIcon';
+// import groupCallActiveIcon from '../../components/groupCallActiveIcon';
 import {Chat, ChatlistsChatlistUpdates, DialogFilter, Message, MessageReplyHeader} from '../../layer';
-import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
+// import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import mediaSizes from '../../helpers/mediaSizes';
 import appNavigationController, {NavigationItem} from '../../components/appNavigationController';
 import appMediaPlaybackController from '../../components/appMediaPlaybackController';
@@ -69,8 +69,8 @@ import deferredPromise, {CancellablePromise} from '../../helpers/cancellableProm
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import appDownloadManager from './appDownloadManager';
-import groupCallsController from '../calls/groupCallsController';
-import callsController from '../calls/callsController';
+// import groupCallsController from '../calls/groupCallsController';
+// import callsController from '../calls/callsController';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import noop from '../../helpers/noop';
 import DialogsPlaceholder from '../../helpers/dialogsPlaceholder';
@@ -112,7 +112,7 @@ import createBadge from '../../helpers/createBadge';
 import {isDialog, isForumTopic, isSavedDialog} from './utils/dialogs/isDialog';
 import {ChatType} from '../../components/chat/chat';
 import PopupDeleteDialog from '../../components/popups/deleteDialog';
-import rtmpCallsController from '../calls/rtmpCallsController';
+// import rtmpCallsController from '../calls/rtmpCallsController';
 import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -127,7 +127,7 @@ export type DialogDom = {
   pinnedBadge?: HTMLElement,
   unreadBadge?: HTMLElement,
   unreadAvatarBadge?: HTMLElement,
-  callIcon?: ReturnType<typeof groupCallActiveIcon>,
+  // callIcon?: ReturnType<typeof groupCallActiveIcon>,
   mentionsBadge?: HTMLElement,
   reactionsBadge?: HTMLElement,
   lastMessageSpan: HTMLSpanElement,
@@ -1334,7 +1334,7 @@ class Some2 extends Some<Dialog> {
 
     this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
       const peerId = chatId.toPeerId(true);
-      this.processDialogForCallStatus(peerId);
+      // this.processDialogForCallStatus(peerId);
     });
 
     this.listenerSetter.add(rootScope)('dialog_flush', ({dialog}) => {
@@ -1539,43 +1539,43 @@ class Some2 extends Some<Dialog> {
     return super.updateDialog(dialog);
   }
 
-  public setCallStatus(dom: DialogDom, visible: boolean) {
-    let {callIcon, listEl} = dom;
-    if(!callIcon && visible) {
-      const {canvas, startAnimation} = dom.callIcon = callIcon = groupCallActiveIcon(listEl.classList.contains('active'));
-      canvas.classList.add('dialog-group-call-icon');
-      listEl.append(canvas);
-      startAnimation();
-    }
+  // public setCallStatus(dom: DialogDom, visible: boolean) {
+  //   let {callIcon, listEl} = dom;
+  //   if(!callIcon && visible) {
+  //     const {canvas, startAnimation} = dom.callIcon = callIcon = groupCallActiveIcon(listEl.classList.contains('active'));
+  //     canvas.classList.add('dialog-group-call-icon');
+  //     listEl.append(canvas);
+  //     startAnimation();
+  //   }
 
-    if(!callIcon) {
-      return;
-    }
+  //   if(!callIcon) {
+  //     return;
+  //   }
 
-    SetTransition({
-      element: dom.callIcon.canvas,
-      className: 'is-visible',
-      forwards: visible,
-      duration: BADGE_TRANSITION_TIME,
-      onTransitionEnd: visible ? undefined : () => {
-        dom.callIcon.canvas.remove();
-        dom.callIcon = undefined;
-      },
-      useRafs: visible ? 2 : 0
-    });
-  }
+  //   SetTransition({
+  //     element: dom.callIcon.canvas,
+  //     className: 'is-visible',
+  //     forwards: visible,
+  //     duration: BADGE_TRANSITION_TIME,
+  //     onTransitionEnd: visible ? undefined : () => {
+  //       dom.callIcon.canvas.remove();
+  //       dom.callIcon = undefined;
+  //     },
+  //     useRafs: visible ? 2 : 0
+  //   });
+  // }
 
-  public processDialogForCallStatus(peerId: PeerId, dom?: DialogDom) {
-    if(!IS_GROUP_CALL_SUPPORTED) {
-      return;
-    }
+  // public processDialogForCallStatus(peerId: PeerId, dom?: DialogDom) {
+  //   if(!IS_GROUP_CALL_SUPPORTED) {
+  //     return;
+  //   }
 
-    if(!dom) dom = this.getDialogDom(peerId);
-    if(!dom) return;
+  //   if(!dom) dom = this.getDialogDom(peerId);
+  //   if(!dom) return;
 
-    const chat = apiManagerProxy.getChat(peerId.toChatId()) as Chat.chat | Chat.channel;
-    this.setCallStatus(dom, !!(chat.pFlags.call_active && chat.pFlags.call_not_empty));
-  }
+  //   const chat = apiManagerProxy.getChat(peerId.toChatId()) as Chat.chat | Chat.channel;
+  //   this.setCallStatus(dom, !!(chat.pFlags.call_active && chat.pFlags.call_not_empty));
+  // }
 
   public onChatsScroll(side: SliceSides = 'bottom') {
     if(this.scrollable.loadedAll[side]) {
@@ -2027,10 +2027,10 @@ export class AppDialogsManager {
     appDownloadManager.construct(managers);
     appSidebarLeft.construct(managers);
     appSidebarRight.construct(managers);
-    groupCallsController.construct(managers);
-    callsController.construct(managers);
+    // groupCallsController.construct(managers);
+    // callsController.construct(managers);
     appImManager.construct(managers);
-    if(IS_LIVE_STREAM_SUPPORTED) rtmpCallsController.construct(managers);
+    // if(IS_LIVE_STREAM_SUPPORTED) rtmpCallsController.construct(managers);
     new ConnectionStatusComponent().construct(managers, this.chatsContainer, appSidebarLeft.inputSearch);
 
     // start
@@ -2220,9 +2220,9 @@ export class AppDialogsManager {
       this.lastActiveElements.delete(listEl);
     }
 
-    if(dom?.callIcon) {
-      dom.callIcon.setActive(active);
-    }
+    // if(dom?.callIcon) {
+    //   dom.callIcon.setActive(active);
+    // }
   }
 
   private async onStateLoaded(state: State) {
@@ -3628,7 +3628,7 @@ export class AppDialogsManager {
         const promises: (Promise<any> | void)[] = [];
         const isUser = peerId.isUser();
         if(!isUser && isDialog(dialog)) {
-          promises.push(this.xd.processDialogForCallStatus(peerId, ret.dom));
+          // promises.push(this.xd.processDialogForCallStatus(peerId, ret.dom));
         }
 
         if(peerId !== rootScope.myId && isUser) {
