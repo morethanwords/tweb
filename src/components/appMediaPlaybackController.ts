@@ -711,6 +711,10 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     return true;
   }
 
+  public getPlayingMedia() {
+    return this.playingMedia;
+  }
+
   public play = () => {
     return this.toggle(true);
   };

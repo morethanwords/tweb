@@ -7,7 +7,7 @@ import {i18n} from '../../lib/langPack';
 import {logger} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
 import BezierEasing from '../../vendor/bezierEasing';
-import {HTMLMediaElement} from '../appMediaPlaybackController';
+import appMediaPlaybackController, {HTMLMediaElement} from '../appMediaPlaybackController';
 import Icon from '../icon';
 import {animateValue, delay, lerp} from '../mediaEditor/utils';
 import PopupPremium from '../popups/premium';
@@ -60,14 +60,18 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
 
   let animatedCanvas: HTMLCanvasElement;
 
-  function drawCurrentFrame() {
+  async function drawCurrentFrame() {
     if(!animatedCanvas) return;
 
     const currentFrameVideo = mediaContainer.querySelector('.media-video') as HTMLVideoElement;
     const currentFrameCanvas = mediaContainer.querySelector('.video-round-canvas') as HTMLCanvasElement;
     const ctx = animatedCanvas.getContext('2d');
-    ctx.drawImage(currentFrameVideo, 0, 0, animatedCanvas.width, animatedCanvas.height);
-    ctx.drawImage(currentFrameCanvas, 0, 0, animatedCanvas.width, animatedCanvas.height); // In case the video is playing
+
+    if(appMediaPlaybackController.getPlayingMedia() === await globalMediaDeferred) {
+      ctx.drawImage(currentFrameCanvas, 0, 0, animatedCanvas.width, animatedCanvas.height); // In case the video is playing
+    } else {
+      ctx.drawImage(currentFrameVideo, 0, 0, animatedCanvas.width, animatedCanvas.height);
+    }
   }
 
   async function hideAudio() {

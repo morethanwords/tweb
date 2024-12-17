@@ -3099,7 +3099,7 @@ const lang = {
   'EnableDarkMode': 'Enable Dark Mode',
   'DisableDarkMode': 'Disable Dark Mode',
   'DisableAnimations': 'Disable Animations',
-  'RoundVideoTranscription.PremiumAlert': 'Subscribe to Telegram Premium to unlock this video transcription. [Read More]()'
+  'RoundVideoTranscription.PremiumAlert': 'Subscribe to Telegram Premium to unlock video and audio transcription. [Read More]()'
 };
 
 export default lang;
