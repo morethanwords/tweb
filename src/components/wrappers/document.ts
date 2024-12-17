@@ -46,7 +46,7 @@ rootScope.addEventListener('document_downloading', (docId) => {
   });
 });
 
-export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext, fontSize, getSize, canTranscribeVoice, isOut, uploadingFileName}: {
+export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext, fontSize, getSize, canTranscribeVoice, isOut, uploadingFileName, shouldWrapAsVoice, customAudioToTextButton}: {
   message: Message.message,
   withTime?: boolean,
   fontWeight?: number,
@@ -63,7 +63,9 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   getSize?: () => number,
   canTranscribeVoice?: boolean,
   isOut?: boolean,
-  uploadingFileName?: string
+  uploadingFileName?: string,
+  customAudioToTextButton?: HTMLElement,
+  shouldWrapAsVoice?: boolean
 }): Promise<HTMLElement> {
   fontWeight ??= 500;
   sizeType ??= '' as any;
@@ -80,6 +82,8 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     audioElement.lazyLoadQueue = lazyLoadQueue;
     audioElement.loadPromises = loadPromises;
     audioElement.uploadingFileName = uploadingFileName;
+    audioElement.shouldWrapAsVoice = shouldWrapAsVoice;
+    audioElement.customAudioToTextButton = customAudioToTextButton;
     if(canTranscribeVoice && doc.type === 'voice') audioElement.transcriptionState = 0;
     (audioElement as any).getSize = getSize;
 

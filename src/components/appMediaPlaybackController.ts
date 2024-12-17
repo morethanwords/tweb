@@ -34,7 +34,7 @@ import setCurrentTime from '../helpers/dom/setCurrentTime';
 
 export type MediaItem = {mid: number, peerId: PeerId};
 
-type HTMLMediaElement = HTMLAudioElement | HTMLVideoElement;
+export type HTMLMediaElement = HTMLAudioElement | HTMLVideoElement;
 
 const SHOULD_USE_SAFARI_FIX = (() => {
   try {

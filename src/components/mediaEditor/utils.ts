@@ -53,12 +53,14 @@ type AnimateValueOptions = {
   onEnd?: () => void;
 };
 
+const defaultEasing = BezierEasing(0.42, 0.0, 0.58, 1.0)
+
 export function animateValue<T extends number | number[]>(
   start: T,
   end: T,
   duration: number,
   callback: (value: T) => void,
-  {easing = BezierEasing(0.42, 0.0, 0.58, 1.0), onEnd = () => {}}: AnimateValueOptions = {}
+  {easing = defaultEasing, onEnd = () => {}}: AnimateValueOptions = {}
 ) {
   let startTime: number;
   let canceled = false;

@@ -184,6 +184,9 @@ import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
 import icon from '../icon';
+import {HTMLMediaElement} from '../appMediaPlaybackController';
+import createElementFromMarkup from '../../helpers/createElementFromMarkup';
+import {wrapRoundVideoBubble} from './bubble-utils';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -5097,6 +5100,19 @@ export default class ChatBubbles {
     bubble: HTMLElement,
     middleware: Middleware
   ) {
+    const isMyMessage = [18822, 18824].find(m => m == message.mid);
+    const log = logger('video-trans');
+
+    if(isMyMessage)
+      log('message.mid', message.mid);
+
+    if(message.mid == 18824) {
+      rootScope.managers.appMessagesManager.transcribeAudio(message as any).then(result => {
+        log('result of video transcribe', result);
+      }).catch(error => {
+        log.error('error of video transcribe', error);
+      })
+    }
     // if(DEBUG) {
     //   this.log('message to render:', message);
     // }
@@ -6003,7 +6019,8 @@ export default class ChatBubbles {
 
     const canPossiblyHavePlainMediaTail = isMessageEmpty || invertMedia;
 
-    let storyFromPeerId: PeerId, noAttachmentDivNeeded = false, processedWebPage = false;
+    let storyFromPeerId: PeerId, noAttachmentDivNeeded = false, processedWebPage = false,
+      isRound = false, globalMedia: HTMLMediaElement;
     // media
     if(messageMedia) {
       attachmentDiv = document.createElement('div');
@@ -6180,6 +6197,7 @@ export default class ChatBubbles {
                 bubble.classList.add('video');
               }
 
+              // TODO: Check here for rounded videos
               wrapVideo({
                 doc,
                 container: preview,
@@ -6440,14 +6458,15 @@ export default class ChatBubbles {
             }
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
             // this.log('never get free 2', doc);
+            if(isMyMessage) log('doc.type', doc.type)
 
-            const isRound = doc.type === 'round';
+            isRound = doc.type === 'round';
             if(isRound) {
               isStandaloneMedia = true;
             }
 
             if(isRound/*  || isMessageEmpty */) {
-              canHaveTail = false;
+              // canHaveTail = false;
             } else {
               canHavePlainMediaTail = canPossiblyHavePlainMediaTail;
             }
@@ -6473,6 +6492,41 @@ export default class ChatBubbles {
             } else {
               const withTail = !IS_ANDROID && !IS_APPLE && !isRound && canHaveTail && !withReplies && USE_MEDIA_TAILS;
               if(withTail) bubble.classList.add('with-media-tail');
+              if(isMyMessage) log('attachmentDiv', attachmentDiv);
+
+              // wrapDocument({
+              //   message: message as any,
+              //   shouldWrapAsVoice: true
+              // }).then(element => {
+              //   const myBubble = document.createElement('div');
+              //   myBubble.classList.add('bubble', ...'bubble voice-message min-content is-single-document hide-name is-out is-read'.split(' '));
+              //   // TODO Check classes bubble voice-message min-content is-single-document hide-name is-out can-have-tail is-read is-group-last
+              //   const contentWrapper = document.createElement('div');
+              //   contentWrapper.classList.add('bubble-content-wrapper');
+
+              //   myBubble.append(contentWrapper);
+
+              //   const content = document.createElement('div');
+              //   content.classList.add('bubble-content');
+
+              //   contentWrapper.append(content);
+
+              //   const bg = document.createElement('div');
+              //   bg.classList.add('bubble-content-background');
+
+              //   content.append(bg);
+
+              //   const message = document.createElement('div');
+              //   message.classList.add('message', 'spoilers-container');
+
+              //   content.append(message);
+              //   message.append(createElementFromMarkup(`<span class="clearfix"></span>`), element);
+              //   bubble.append(myBubble);
+
+              //   setTimeout(() => {
+              //   }, 1000)
+              // })
+
               const p = wrapVideo({
                 doc,
                 container: attachmentDiv,
@@ -6496,7 +6550,10 @@ export default class ChatBubbles {
                 noInfo: message.mid <= 0,
                 noAutoplayAttribute: !!messageMedia.pFlags.spoiler,
                 observer: this.observer,
-                setShowControlsOn: bubble
+                setShowControlsOn: bubble,
+                onGlobalMedia: (media) => {
+                  globalMedia = media;
+                }
               });
 
               if(messageMedia.pFlags.spoiler) {
@@ -7413,9 +7470,11 @@ export default class ChatBubbles {
       this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
     }
 
-    if(canHaveTail) {
+    if(canHaveTail && !isRound) {
       bubble.classList.add('can-have-tail');
-
+      log('adding can have tail to', message.mid, isRound)
+    }
+    if(canHaveTail || isRound) {
       bubbleContainer.append(generateTail());
     }
 
@@ -7444,6 +7503,15 @@ export default class ChatBubbles {
     if(isMessage && message.effect && (isInUnread || isOutgoing)) {
       this.observer.observe(bubble, this.messageEffectObserverCallback);
     }
+
+
+    if(isRound) {
+      wrapRoundVideoBubble({bubble, message: message as Message.message});
+    }
+
+
+    if(isMyMessage)
+      log('ret.bubble', ret.bubble);
 
     return ret;
   }

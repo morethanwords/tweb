@@ -38,7 +38,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import rootScope from '../../lib/rootScope';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
-import appMediaPlaybackController, {AppMediaPlaybackController, MediaSearchContext} from '../appMediaPlaybackController';
+import appMediaPlaybackController, {AppMediaPlaybackController, HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
 import AudioElement, {findMediaTargets} from '../audio';
 import Button from '../button';
 import Icon from '../icon';
@@ -82,7 +82,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
 
 let turnedObserverOn = false;
 
-export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName}: {
+export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName, onGlobalMedia}: {
   doc: MyDocument,
   altDoc?: MyDocument,
   container?: HTMLElement,
@@ -111,7 +111,8 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   useBlur?: boolean | number,
   observer?: SuperIntersectionObserver,
   setShowControlsOn?: HTMLElement,
-  uploadingFileName?: string
+  uploadingFileName?: string,
+  onGlobalMedia?: (media: HTMLMediaElement) => void
 }) {
   const supportsStreaming = doc.supportsStreaming && !ignoreStreaming;
   if(!supportsStreaming && altDoc && !onlyPreview && !IS_H265_SUPPORTED) {
@@ -261,6 +262,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     const onLoad = () => {
       const message: Message.message = (divRound as any).message;
       const globalVideo = appMediaPlaybackController.addMedia(message, !noAutoDownload) as HTMLVideoElement;
+      onGlobalMedia?.(globalVideo);
       const clear = () => {
         (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
           if(isInDOM(globalVideo)) {

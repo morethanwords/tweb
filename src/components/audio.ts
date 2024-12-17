@@ -181,7 +181,10 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
   timeDiv.classList.add('audio-time');
   audioEl.append(waveformContainer, timeDiv);
 
-  if(audioEl.transcriptionState !== undefined) {
+  if(audioEl.customAudioToTextButton) {
+    audioEl.classList.add('can-transcribe');
+    audioEl.append(audioEl.customAudioToTextButton);
+  } else if(audioEl.transcriptionState !== undefined) {
     audioEl.classList.add('can-transcribe');
     const speechRecognitionDiv = document.createElement('div');
     speechRecognitionDiv.classList.add('audio-to-text-button');
@@ -483,7 +486,7 @@ export const findMediaTargets = (anchor: HTMLElement, anchorMid: number/* , useS
 };
 
 export default class AudioElement extends HTMLElement {
-  public audio: HTMLAudioElement;
+  public audio: HTMLMediaElement;
   public preloader: ProgressivePreloader;
   public message: Message.message;
   public withTime = false;
@@ -496,6 +499,8 @@ export default class AudioElement extends HTMLElement {
   public managers: AppManagers;
   public transcriptionState: number;
   public uploadingFileName: string;
+  public shouldWrapAsVoice?: boolean;
+  public customAudioToTextButton?: HTMLElement;
 
   private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;
@@ -544,7 +549,7 @@ export default class AudioElement extends HTMLElement {
       this.append(downloadDiv);
     }
 
-    const onTypeLoad = await (isVoice ? wrapVoiceMessage(this) : wrapAudio(this));
+    const onTypeLoad = await (isVoice || this.shouldWrapAsVoice ? wrapVoiceMessage(this) : wrapAudio(this));
 
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.textContent = getDurationStr();
@@ -552,7 +557,7 @@ export default class AudioElement extends HTMLElement {
     const onLoad = this.onLoad = (autoload: boolean) => {
       this.onLoad = undefined;
 
-      const audio = this.audio = appMediaPlaybackController.addMedia(this.message, autoload);
+      const audio = this.audio = appMediaPlaybackController.addMedia(this.message, autoload) as HTMLMediaElement;
 
       const readyPromise = this.readyPromise = deferredPromise<void>();
       if(this.audio.readyState >= this.audio.HAVE_CURRENT_DATA) readyPromise.resolve();
