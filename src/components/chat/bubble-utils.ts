@@ -35,12 +35,16 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
   bubble.classList.add('with-beside-button');
 
   const mediaContainer = bubble.querySelector('.attachment.media-container') as HTMLElement;
-  const audioContainer = document.createElement('div');
-  audioContainer.classList.add('message');
-  audioContainer.style.display = 'none';
-  content.append(audioContainer);
+  const audioMessageContainer = document.createElement('div');
+  audioMessageContainer.append(createElementFromMarkup(`<span class="clearfix"></span>`))
+  audioMessageContainer.classList.add('message');
+  audioMessageContainer.style.display = 'none';
 
-  let isShownAudio = false;
+  content.append(audioMessageContainer);
+
+  const videoSentTime = content.querySelector('.time') as HTMLElement;
+  const audioSentTime = videoSentTime.cloneNode(true) as HTMLElement;
+  audioSentTime.classList.remove('is-floating');
 
   const bubbleVideoClassNames = ['round', 'just-media'];
   const bubbleAudioClassNames = ['can-have-tail', 'voice-message'];
@@ -64,9 +68,7 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
   }
 
   async function hideAudio() {
-    isShownAudio = false;
-
-    const initialThumbBcr = audioContainer.querySelector('.audio-thumb')?.getBoundingClientRect();
+    const initialThumbBcr = audioMessageContainer.querySelector('.audio-thumb')?.getBoundingClientRect();
     const initialThumbLeft = initialThumbBcr.left + initialThumbBcr.width / 2;
     const initialThumbTop = initialThumbBcr.top + initialThumbBcr.height / 2;
     const initialThumbSize = initialThumbBcr.width;
@@ -92,6 +94,7 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
     document.body.append(animatedCanvas);
 
     transcribe.style.removeProperty('display');
+    videoSentTime.style.removeProperty('display');
 
     const initialHeight = content.clientHeight;
     const initialWidth = content.clientWidth;
@@ -101,8 +104,8 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
     content.style.overflow = 'hidden';
     content.style.setProperty('background', contentStyle.background, 'important');
 
-    audioContainer.style.width = audioContainer.clientWidth + 'px';
-    audioContainer.style.height = audioContainer.clientHeight + 'px';
+    audioMessageContainer.style.width = audioMessageContainer.clientWidth + 'px';
+    audioMessageContainer.style.height = audioMessageContainer.clientHeight + 'px';
 
     mediaContainer.style.opacity = '0';
     mediaContainer.style.position = 'absolute';
@@ -147,7 +150,7 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
 
         content.style.setProperty('border-radius', tr);
 
-        audioContainer.style.opacity = lerp(1, 0, progress) + '';
+        audioMessageContainer.style.opacity = lerp(0.5, 0, Math.min(1, progress * 2)) + '';
 
         drawCurrentFrame();
       },
@@ -156,7 +159,7 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
           animatedCanvas.remove();
           animatedCanvas = undefined;
 
-          audioContainer.style.display = 'none';
+          audioMessageContainer.style.display = 'none';
           mediaContainer.style.removeProperty('opacity');
           mediaContainer.style.removeProperty('position');
           mediaContainer.style.display = 'block';
@@ -168,9 +171,9 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
           content.style.removeProperty('max-width');
           content.style.removeProperty('border-radius');
 
-          audioContainer.style.removeProperty('width');
-          audioContainer.style.removeProperty('height');
-          audioContainer.style.removeProperty('opacity');
+          audioMessageContainer.style.removeProperty('width');
+          audioMessageContainer.style.removeProperty('height');
+          audioMessageContainer.style.removeProperty('opacity');
         }
       }
     );
@@ -179,7 +182,6 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
   async function showAudio() {
     if(isTranscribeDisabled) return;
     isTranscribeDisabled = true;
-    isShownAudio = true;
 
     if(!hasAddedTranscription) {
       hasAddedTranscription = true;
@@ -194,7 +196,9 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
       } catch{
         transcribedText.append(i18n('Chat.Voice.Transribe.Error'));
       }
-      audioContainer.append(transcribedText);
+      audioMessageContainer.append(transcribedText);
+      // audioMessageInner.append(audioSentTime);
+      // audioMessageInner.append(createElementFromMarkup(`<span class="clearfix"></span>`))
 
       spinner.remove();
     }
@@ -254,6 +258,7 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
     mediaContainer.style.display = 'none';
 
     transcribe.style.display = 'none';
+    videoSentTime.style.display = 'none';
 
     content.style.overflow = 'hidden';
 
@@ -261,11 +266,11 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
     contentWrapper.style.position = 'relative';
     // const contentWrapperStyle = window.getComputedStyle(bubble.querySelector('.bubble-content-wrapper'));
 
-    audioContainer.style.display = 'block';
+    audioMessageContainer.style.display = 'block';
     const measure: HTMLDivElement = createElementFromMarkup(`
       <div style="position: absolute;width:min-content;opacity:0;"></div>
     `);
-    measure.append(audioContainer);
+    measure.append(audioMessageContainer);
     contentWrapper.append(measure);
 
     await doubleRaf();
@@ -275,8 +280,8 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
 
     // const targetWidth = parseInt(contentWrapperStyle.maxWidth);
     // const targetWidth = 299;
-    const audioStyle = window.getComputedStyle(audioContainer);
-    audioContainer.style.width =
+    const audioStyle = window.getComputedStyle(audioMessageContainer);
+    audioMessageContainer.style.width =
       targetWidth - (+parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight)) + 'px';
 
     const bubbleTail = bubble.querySelector('.bubble-tail') as HTMLElement;
@@ -287,7 +292,7 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
     });
 
     measure.remove();
-    content.append(audioContainer);
+    content.append(audioMessageContainer);
 
     await doubleRaf();
 
@@ -317,7 +322,7 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
         1,
         ANIMATION_TIME,
         (progress) => {
-          const targetBcr = audioContainer.querySelector('.audio-thumb')?.getBoundingClientRect();
+          const targetBcr = audioMessageContainer.querySelector('.audio-thumb')?.getBoundingClientRect();
           const targetLeft = targetBcr.left + targetBcr.width / 2;
           const targetTop = targetBcr.top + targetBcr.height / 2;
           const targetSize = targetBcr.width;
@@ -329,6 +334,7 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
 
           content.style.height = lerp(initialHeight, targetHeight, progress) + 'px';
           content.style.width = lerp(initialWidth, targetWidth, progress) + 'px';
+
           const tr = targetRadiuses
           .map((r) => lerp(initialRadius, parseInt(r), Math.min(1, progress * 1)) + 'px')
           .join(' ');
@@ -340,6 +346,8 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
         {
           easing: simpleEasing,
           onEnd: async() => {
+            isTranscribeDisabled = false;
+
             animatedCanvas.style.opacity = '1';
             animatedCanvas.style.transition = '.2s';
 
@@ -353,15 +361,13 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
             content.style.removeProperty('width');
             content.style.removeProperty('height');
             content.style.removeProperty('border-radius');
-            audioContainer.style.removeProperty('width');
-            audioContainer.style.removeProperty('height');
+            audioMessageContainer.style.removeProperty('width');
+            audioMessageContainer.style.removeProperty('height');
 
             animatedCanvas.style.removeProperty('transition');
             animatedCanvas.style.removeProperty('opacity');
 
             bubbleTail?.style.removeProperty('transition');
-
-            isTranscribeDisabled = false;
           }
         }
       );
@@ -388,7 +394,9 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
       globalMedia
     });
     console.log('[video-trans] audioElement', message.mid, audioElement);
-    audioContainer.append(audioElement);
+    audioMessageContainer.append(audioElement);
+    audioElement.append(audioSentTime);
+    audioElement.append(createElementFromMarkup(`<span class="clearfix"></span>`))
     // audioContainer.append(transcribedText);
   })();
 }
