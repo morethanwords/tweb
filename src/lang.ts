@@ -3098,7 +3098,8 @@ const lang = {
   'MultiAccount.AccountsLimitDescription': 'You have reached the limit of **3** connected accounts. You can add more by subscribing to **Telegram Premium**.',
   'EnableDarkMode': 'Enable Dark Mode',
   'DisableDarkMode': 'Disable Dark Mode',
-  'DisableAnimations': 'Disable Animations'
+  'DisableAnimations': 'Disable Animations',
+  'RoundVideoTranscription.PremiumAlert': 'Subscribe to Telegram Premium to unlock this video transcription. [Read More]()'
 };
 
 export default lang;

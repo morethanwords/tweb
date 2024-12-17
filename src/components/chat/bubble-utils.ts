@@ -1,4 +1,5 @@
 import createElementFromMarkup from '../../helpers/createElementFromMarkup';
+import anchorCallback from '../../helpers/dom/anchorCallback';
 import {doubleRaf} from '../../helpers/schedulers';
 import pause from '../../helpers/schedulers/pause';
 import {Message} from '../../layer';
@@ -9,6 +10,8 @@ import BezierEasing from '../../vendor/bezierEasing';
 import {HTMLMediaElement} from '../appMediaPlaybackController';
 import Icon from '../icon';
 import {animateValue, delay, lerp} from '../mediaEditor/utils';
+import PopupPremium from '../popups/premium';
+import {hideToast, toastNew} from '../toast';
 import wrapDocument from '../wrappers/document';
 
 type WrapRoundVideoBubbleOptions = {
@@ -180,6 +183,17 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
   }
 
   async function showAudio() {
+    if(!rootScope.getPremium()) {
+      toastNew({
+        langPackKey: 'RoundVideoTranscription.PremiumAlert',
+        langPackArguments: [anchorCallback(() => {
+          hideToast();
+          PopupPremium.show({feature: 'voice_to_text'});
+        })]
+      })
+      return;
+    }
+
     if(isTranscribeDisabled) return;
     isTranscribeDisabled = true;
 
