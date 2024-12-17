@@ -67,7 +67,10 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
     const currentFrameCanvas = mediaContainer.querySelector('.video-round-canvas') as HTMLCanvasElement;
     const ctx = animatedCanvas.getContext('2d');
 
-    if(appMediaPlaybackController.getPlayingMedia() === await globalMediaDeferred) {
+    const globalMedia = await globalMediaDeferred;
+    if(!animatedCanvas) return;
+
+    if(appMediaPlaybackController.getPlayingMedia() === globalMedia) {
       ctx.drawImage(currentFrameCanvas, 0, 0, animatedCanvas.width, animatedCanvas.height); // In case the video is playing
     } else {
       ctx.drawImage(currentFrameVideo, 0, 0, animatedCanvas.width, animatedCanvas.height);
