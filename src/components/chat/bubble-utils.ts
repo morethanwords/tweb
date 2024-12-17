@@ -2,10 +2,12 @@ import createElementFromMarkup from '../../helpers/createElementFromMarkup';
 import {doubleRaf} from '../../helpers/schedulers';
 import pause from '../../helpers/schedulers/pause';
 import {Message} from '../../layer';
+import {i18n} from '../../lib/langPack';
 import {logger} from '../../lib/logger';
+import rootScope from '../../lib/rootScope';
 import BezierEasing from '../../vendor/bezierEasing';
 import Icon from '../icon';
-import {animateValue, lerp} from '../mediaEditor/utils';
+import {animateValue, delay, lerp} from '../mediaEditor/utils';
 import wrapDocument from '../wrappers/document';
 
 type WrapRoundVideoBubbleOptions = {
@@ -17,7 +19,31 @@ const log = logger('video-trans');
 const ANIMATION_TIME = 180;
 // const ANIMATION_TIME = 540;
 
+let added = false;
+
 export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOptions) {
+  for(;false;) {
+    if(added) break;
+    added = true;
+    const el = createElementFromMarkup(`<div style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1000;">
+      <svg viewBox="0 0 100 100" width="100" height="100">
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
+          fill="none"
+          stroke="white"
+          stroke-width="8"
+          stroke-linecap="round"
+          stroke-dasharray="125.6"
+          stroke-dashoffset="0"
+          class="my-spinner"
+        ></circle>
+      </svg>
+    </div>`);
+    document.body.append(el);
+    break;
+  }
   // bubble.style.background = 'magenta';
   const content = bubble.querySelector('.bubble-content') as HTMLElement;
 
@@ -29,7 +55,7 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
   content.append(transcribe);
   bubble.classList.add('with-beside-button');
 
-  const mediaContainer = bubble.querySelector('.media-container') as HTMLElement;
+  const mediaContainer = bubble.querySelector('.attachment.media-container') as HTMLElement;
   const audioContainer = document.createElement('div');
   audioContainer.classList.add('message');
   audioContainer.style.display = 'none';
@@ -40,11 +66,10 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
   const bubbleVideoClassNames = ['round', 'just-media'];
   const bubbleAudioClassNames = ['can-have-tail', 'voice-message'];
 
-  const transcribedText = document.createElement('div');
-  transcribedText.classList.add('audio-transcribed-text');
-  transcribedText.innerText = shortText;
   // transcribedText.innerText = longText;
 
+  let hasAddedTranscription = false;
+  let isTranscribeDisabled = false;
 
   let animatedCanvas: HTMLCanvasElement;
 
@@ -97,6 +122,8 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
 
     const reply = bubble.querySelector('.reply') as HTMLElement;
     reply?.style.removeProperty('display');
+    const forward = bubble.querySelector('.bubble-name-forwarded') as HTMLElement;
+    forward?.style.removeProperty('display');
 
     await doubleRaf();
 
@@ -149,17 +176,39 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
   }
 
   async function showAudio() {
+    if(isTranscribeDisabled) return;
+    isTranscribeDisabled = true;
     isShownAudio = true;
 
-    const currentFrameCanvas = mediaContainer.querySelector('.media-video') as HTMLVideoElement;
-    const bcr = currentFrameCanvas.getBoundingClientRect();
+    if(!hasAddedTranscription) {
+      hasAddedTranscription = true;
+      const spinner = createSpinner()
+      transcribe.append(spinner);
+      const transcribedText = document.createElement('div');
+      transcribedText.classList.add('audio-transcribed-text');
+      try {
+        const transcribeResult = await rootScope.managers.appMessagesManager.transcribeAudio(message);
+        if(!transcribeResult.text) throw '';
+        transcribedText.innerText = transcribeResult.text;
+      } catch{
+        transcribedText.append(i18n('Chat.Voice.Transribe.Error'));
+      }
+      audioContainer.append(transcribedText);
+
+      spinner.remove();
+    }
+
+    const currentFrameVideo = mediaContainer.querySelector('.media-video') as HTMLVideoElement;
+    log('mediaContainer', mediaContainer)
+    log('currentFrameVideo', currentFrameVideo)
+    const bcr = currentFrameVideo.getBoundingClientRect();
     const initialSize = bcr.width;
 
     animatedCanvas = document.createElement('canvas');
     animatedCanvas.width = initialSize;
     animatedCanvas.height = initialSize;
     const ctx = animatedCanvas.getContext('2d');
-    ctx.drawImage(currentFrameCanvas, 0, 0, initialSize, initialSize);
+    ctx.drawImage(currentFrameVideo, 0, 0, initialSize, initialSize);
     animatedCanvas.style.position = 'fixed';
     animatedCanvas.style.zIndex = '1000';
     animatedCanvas.style.transform = 'translate(-50%, -50%)';
@@ -215,6 +264,8 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
 
     const reply = bubble.querySelector('.reply') as HTMLElement;
     if(reply) reply.style.display = 'none';
+    const forward = bubble.querySelector('.bubble-name-forwarded') as HTMLElement;
+    if(forward) forward.style.display = 'none';
 
     await doubleRaf();
     // console.log('margins audio', parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight));
@@ -281,6 +332,8 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
             animatedCanvas.style.removeProperty('opacity');
 
             bubbleTail?.style.removeProperty('transition');
+
+            isTranscribeDisabled = false;
           }
         }
       );
@@ -305,8 +358,24 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
     });
     console.log('[video-trans] audioElement', message.mid, audioElement);
     audioContainer.append(audioElement);
-    audioContainer.append(transcribedText);
+    // audioContainer.append(transcribedText);
   })();
+}
+
+function createSpinner() {
+  return createElementFromMarkup(`<svg class="my-spinner-svg" viewBox="0 0 24 24" width="100" height="100">
+    <circle
+      cx="12"
+      cy="12"
+      r="10.5"
+      fill="none"
+      stroke="white"
+      stroke-width="1"
+      stroke-linecap="round"
+      stroke-dashoffset="0"
+      class="my-spinner"
+    ></circle>
+  </svg>`);
 }
 
 const shortText = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. \

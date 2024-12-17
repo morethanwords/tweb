@@ -158,7 +158,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     audioEl.classList.add('is-out');
   }
 
-  let waveform = (doc.attributes.find((attribute) => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || new Uint8Array([]);
+  let waveform = (doc.attributes.find((attribute) => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio)?.waveform || new Uint8Array([]);
   waveform = decodeWaveform(waveform.slice(0, 63));
 
   const {svg, container: svgContainer, availW} = createWaveformBars(waveform, doc.duration);
