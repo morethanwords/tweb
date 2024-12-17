@@ -14,6 +14,8 @@ type WrapRoundVideoBubbleOptions = {
 };
 
 const log = logger('video-trans');
+const ANIMATION_TIME = 180;
+// const ANIMATION_TIME = 540;
 
 export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOptions) {
   // bubble.style.background = 'magenta';
@@ -40,18 +42,110 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
 
   const transcribedText = document.createElement('div');
   transcribedText.classList.add('audio-transcribed-text');
-  // transcribedText.innerText = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
-  // Morbi ac orci ut felis gravida iaculis. Nullam convallis varius ex lacinia maximus. \
-  // Praesent ac nisi lectus.`;
-  transcribedText.innerText = longText;
+  transcribedText.innerText = shortText;
+  // transcribedText.innerText = longText;
 
-  function hideAudio() {
+
+  let animatedCanvas: HTMLCanvasElement;
+
+  async function hideAudio() {
     isShownAudio = false;
-    audioContainer.style.display = 'none';
+
+
+    const initialThumbBcr = audioContainer.querySelector('.audio-thumb')?.getBoundingClientRect();
+    const initialThumbLeft = initialThumbBcr.left + initialThumbBcr.width / 2;
+    const initialThumbTop = initialThumbBcr.top + initialThumbBcr.height / 2;
+    const initialThumbSize = initialThumbBcr.width;
+
+    log('initialThumbBcr', initialThumbBcr);
+
+    const contentStyle = window.getComputedStyle(content);
+
+    const initialRadiuses = [
+      contentStyle.borderStartStartRadius,
+      contentStyle.borderStartEndRadius,
+      contentStyle.borderEndEndRadius,
+      contentStyle.borderEndStartRadius
+    ];
+
+    animatedCanvas.style.left = initialThumbLeft + 'px';
+    animatedCanvas.style.top = initialThumbTop + 'px';
+    animatedCanvas.style.width = initialThumbSize + 'px';
+    animatedCanvas.style.height = initialThumbSize + 'px';
+    animatedCanvas.style.borderRadius = '50%';
+    document.body.append(animatedCanvas);
+
+    transcribe.style.removeProperty('display');
+
+    const initialHeight = content.clientHeight;
+    const initialWidth = content.clientWidth;
+    log('initialHeight', initialHeight);
+    content.style.height = initialHeight + 'px';
+    content.style.width = initialWidth + 'px';
+    content.style.overflow = 'hidden';
+    content.style.setProperty('background', contentStyle.background, 'important');
+
+    audioContainer.style.width = audioContainer.clientWidth + 'px';
+    audioContainer.style.height = audioContainer.clientHeight + 'px';
+
+    mediaContainer.style.opacity = '0';
+    mediaContainer.style.position = 'absolute';
     mediaContainer.style.display = 'block';
+
     bubbleVideoClassNames.forEach(cls => bubble.classList.add(cls));
     bubbleAudioClassNames.forEach(cls => bubble.classList.remove(cls));
-    transcribe.style.removeProperty('display');
+
+    const reply = bubble.querySelector('.reply') as HTMLElement;
+    reply?.style.removeProperty('display');
+
+    await doubleRaf();
+
+    const targetHeight = mediaContainer.clientHeight;
+    const targetWidth = mediaContainer.clientWidth;
+    log('targetHeight', targetHeight);
+
+    // return;
+    animateValue(0, 1, ANIMATION_TIME, (progress) => {
+      const targetBcr = content?.getBoundingClientRect();
+      const targetLeft = targetBcr.left + targetBcr.width / 2;
+      const targetTop = targetBcr.top + targetBcr.height / 2;
+      const targetSize = targetBcr.width;
+
+      animatedCanvas.style.left = lerp(initialThumbLeft, targetLeft, progress) + 'px';
+      animatedCanvas.style.top = lerp(initialThumbTop, targetTop, progress) + 'px';
+      animatedCanvas.style.width = lerp(initialThumbSize, targetSize, progress) + 'px';
+      animatedCanvas.style.height = lerp(initialThumbSize, targetSize, progress) + 'px';
+
+      content.style.height = lerp(initialHeight, targetHeight, progress) + 'px';
+      content.style.width = lerp(initialWidth, targetWidth, progress) + 'px';
+
+      const tr = initialRadiuses.map(r => lerp(parseInt(r), targetSize, Math.min(1, progress * 1.5)) + 'px').join(' ')
+
+      content.style.setProperty('border-radius', tr);
+
+      audioContainer.style.opacity = lerp(1, 0, progress) + '';
+    }, {
+      onEnd: () => {
+        animatedCanvas.remove();
+        animatedCanvas = undefined;
+
+        audioContainer.style.display = 'none';
+        mediaContainer.style.removeProperty('opacity');
+        mediaContainer.style.removeProperty('position');
+        mediaContainer.style.display = 'block';
+
+        content.style.removeProperty('overflow');
+        content.style.removeProperty('background');
+        content.style.removeProperty('width');
+        content.style.removeProperty('height');
+        content.style.removeProperty('max-width');
+        content.style.removeProperty('border-radius');
+
+        audioContainer.style.removeProperty('width');
+        audioContainer.style.removeProperty('height');
+        audioContainer.style.removeProperty('opacity');
+      }
+    });
   }
 
   async function showAudio() {
@@ -61,7 +155,7 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
     const bcr = currentFrameCanvas.getBoundingClientRect();
     const initialSize = bcr.width;
 
-    const animatedCanvas = document.createElement('canvas');
+    animatedCanvas = document.createElement('canvas');
     animatedCanvas.width = initialSize;
     animatedCanvas.height = initialSize;
     const ctx = animatedCanvas.getContext('2d');
@@ -119,6 +213,9 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
 
     const bubbleTail = bubble.querySelector('.bubble-tail') as HTMLElement;
 
+    const reply = bubble.querySelector('.reply') as HTMLElement;
+    if(reply) reply.style.display = 'none';
+
     await doubleRaf();
     // console.log('margins audio', parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight));
     // const targetWidth = audioContainer.scrollWidth + parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight); // TODO Make this dynamic
@@ -133,6 +230,7 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
     log('targetHeight, targetWidth', targetHeight, targetWidth);
 
     await doubleRaf();
+
     const bubbleStyle = window.getComputedStyle(bubbleTail);
     const initialTailTransform = bubbleStyle.transform;
     bubbleTail.style.transform = `${initialTailTransform !== 'none' ? initialTailTransform : ''} translateX(calc(100% * var(--reflect)))`;
@@ -142,7 +240,7 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
       animateValue(
         0,
         1,
-        240,
+        ANIMATION_TIME,
         (progress) => {
           const targetBcr = audioContainer.querySelector('.audio-thumb')?.getBoundingClientRect();
           const targetLeft = targetBcr.left + targetBcr.width / 2;
@@ -179,6 +277,9 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
             audioContainer.style.removeProperty('width');
             audioContainer.style.removeProperty('height');
 
+            animatedCanvas.style.removeProperty('transition');
+            animatedCanvas.style.removeProperty('opacity');
+
             bubbleTail?.style.removeProperty('transition');
           }
         }
@@ -207,6 +308,11 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
     audioContainer.append(transcribedText);
   })();
 }
+
+const shortText = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
+  Morbi ac orci ut felis gravida iaculis. Nullam convallis varius ex lacinia maximus. \
+  Praesent ac nisi lectus.`;
+
 const longText = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
 Morbi ac orci ut felis gravida iaculis. Nullam convallis varius ex lacinia \
 maximus. Praesent ac nisi lectus. Phasellus eget massa ut sem mattis lobortis \
