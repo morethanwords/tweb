@@ -466,7 +466,8 @@ export const findMediaTargets = (anchor: HTMLElement, anchorMid: number/* , useS
 
     const selector = selectors.join(', ');
 
-    const elements = Array.from(container.querySelectorAll(selector)) as HTMLElement[];
+    let elements = Array.from(container.querySelectorAll(selector)) as HTMLElement[];
+    elements = elements.filter(element => element === anchor || element.matches(':not([data-to-be-skipped="1"])'));
     const idx = elements.indexOf(anchor);
 
     const mediaItems: MediaItem[] = elements.map((element) => ({peerId: element.dataset.peerId.toPeerId(), mid: +element.dataset.mid}));
@@ -557,7 +558,7 @@ export default class AudioElement extends HTMLElement {
     const onLoad = this.onLoad = (autoload: boolean) => {
       this.onLoad = undefined;
 
-      const audio = this.audio = appMediaPlaybackController.addMedia(this.message, autoload) as HTMLMediaElement;
+      const audio = this.audio ??= appMediaPlaybackController.addMedia(this.message, autoload) as HTMLMediaElement;
 
       const readyPromise = this.readyPromise = deferredPromise<void>();
       if(this.audio.readyState >= this.audio.HAVE_CURRENT_DATA) readyPromise.resolve();

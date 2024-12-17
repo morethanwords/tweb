@@ -6020,7 +6020,8 @@ export default class ChatBubbles {
     const canPossiblyHavePlainMediaTail = isMessageEmpty || invertMedia;
 
     let storyFromPeerId: PeerId, noAttachmentDivNeeded = false, processedWebPage = false,
-      isRound = false, globalMedia: HTMLMediaElement;
+      isRound = false;
+    const globalMediaDeferred = deferredPromise<HTMLMediaElement>();
     // media
     if(messageMedia) {
       attachmentDiv = document.createElement('div');
@@ -6552,7 +6553,7 @@ export default class ChatBubbles {
                 observer: this.observer,
                 setShowControlsOn: bubble,
                 onGlobalMedia: (media) => {
-                  globalMedia = media;
+                  globalMediaDeferred.resolve(media);
                 }
               });
 
@@ -7506,7 +7507,11 @@ export default class ChatBubbles {
 
 
     if(isRound) {
-      wrapRoundVideoBubble({bubble, message: message as Message.message});
+      wrapRoundVideoBubble({
+        bubble,
+        message: message as Message.message,
+        globalMediaDeferred
+      });
     }
 
 

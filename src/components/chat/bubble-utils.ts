@@ -6,6 +6,7 @@ import {i18n} from '../../lib/langPack';
 import {logger} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
 import BezierEasing from '../../vendor/bezierEasing';
+import {HTMLMediaElement} from '../appMediaPlaybackController';
 import Icon from '../icon';
 import {animateValue, delay, lerp} from '../mediaEditor/utils';
 import wrapDocument from '../wrappers/document';
@@ -13,37 +14,15 @@ import wrapDocument from '../wrappers/document';
 type WrapRoundVideoBubbleOptions = {
   bubble: HTMLElement;
   message: Message.message;
+  globalMediaDeferred: Promise<HTMLMediaElement>;
 };
 
 const log = logger('video-trans');
 const ANIMATION_TIME = 180;
 // const ANIMATION_TIME = 540;
 
-let added = false;
 
-export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOptions) {
-  for(;false;) {
-    if(added) break;
-    added = true;
-    const el = createElementFromMarkup(`<div style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1000;">
-      <svg viewBox="0 0 100 100" width="100" height="100">
-        <circle
-          cx="50"
-          cy="50"
-          r="40"
-          fill="none"
-          stroke="white"
-          stroke-width="8"
-          stroke-linecap="round"
-          stroke-dasharray="125.6"
-          stroke-dashoffset="0"
-          class="my-spinner"
-        ></circle>
-      </svg>
-    </div>`);
-    document.body.append(el);
-    break;
-  }
+export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: WrapRoundVideoBubbleOptions) {
   // bubble.style.background = 'magenta';
   const content = bubble.querySelector('.bubble-content') as HTMLElement;
 
@@ -65,6 +44,7 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
 
   const bubbleVideoClassNames = ['round', 'just-media'];
   const bubbleAudioClassNames = ['can-have-tail', 'voice-message'];
+  const selectorsToHideWhenCollapsed = ['.topic-name-button-container', '.reply', '.bubble-name-forwarded'];
 
   // transcribedText.innerText = longText;
 
@@ -73,9 +53,18 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
 
   let animatedCanvas: HTMLCanvasElement;
 
+  function drawCurrentFrame() {
+    if(!animatedCanvas) return;
+
+    const currentFrameVideo = mediaContainer.querySelector('.media-video') as HTMLVideoElement;
+    const currentFrameCanvas = mediaContainer.querySelector('.video-round-canvas') as HTMLCanvasElement;
+    const ctx = animatedCanvas.getContext('2d');
+    ctx.drawImage(currentFrameVideo, 0, 0, animatedCanvas.width, animatedCanvas.height);
+    ctx.drawImage(currentFrameCanvas, 0, 0, animatedCanvas.width, animatedCanvas.height); // In case the video is playing
+  }
+
   async function hideAudio() {
     isShownAudio = false;
-
 
     const initialThumbBcr = audioContainer.querySelector('.audio-thumb')?.getBoundingClientRect();
     const initialThumbLeft = initialThumbBcr.left + initialThumbBcr.width / 2;
@@ -92,6 +81,8 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
       contentStyle.borderEndEndRadius,
       contentStyle.borderEndStartRadius
     ];
+
+    drawCurrentFrame()
 
     animatedCanvas.style.left = initialThumbLeft + 'px';
     animatedCanvas.style.top = initialThumbTop + 'px';
@@ -117,13 +108,13 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
     mediaContainer.style.position = 'absolute';
     mediaContainer.style.display = 'block';
 
-    bubbleVideoClassNames.forEach(cls => bubble.classList.add(cls));
-    bubbleAudioClassNames.forEach(cls => bubble.classList.remove(cls));
+    bubbleVideoClassNames.forEach((cls) => bubble.classList.add(cls));
+    bubbleAudioClassNames.forEach((cls) => bubble.classList.remove(cls));
 
-    const reply = bubble.querySelector('.reply') as HTMLElement;
-    reply?.style.removeProperty('display');
-    const forward = bubble.querySelector('.bubble-name-forwarded') as HTMLElement;
-    forward?.style.removeProperty('display');
+    selectorsToHideWhenCollapsed.forEach((selector) => {
+      const elementToHide = bubble.querySelector(selector) as HTMLElement;
+      elementToHide?.style.removeProperty('display');
+    });
 
     await doubleRaf();
 
@@ -132,47 +123,57 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
     log('targetHeight', targetHeight);
 
     // return;
-    animateValue(0, 1, ANIMATION_TIME, (progress) => {
-      const targetBcr = content?.getBoundingClientRect();
-      const targetLeft = targetBcr.left + targetBcr.width / 2;
-      const targetTop = targetBcr.top + targetBcr.height / 2;
-      const targetSize = targetBcr.width;
+    animateValue(
+      0,
+      1,
+      ANIMATION_TIME,
+      (progress) => {
+        const targetBcr = content?.getBoundingClientRect();
+        const targetLeft = targetBcr.left + targetBcr.width / 2;
+        const targetTop = targetBcr.top + targetBcr.height / 2;
+        const targetSize = targetBcr.width;
 
-      animatedCanvas.style.left = lerp(initialThumbLeft, targetLeft, progress) + 'px';
-      animatedCanvas.style.top = lerp(initialThumbTop, targetTop, progress) + 'px';
-      animatedCanvas.style.width = lerp(initialThumbSize, targetSize, progress) + 'px';
-      animatedCanvas.style.height = lerp(initialThumbSize, targetSize, progress) + 'px';
+        animatedCanvas.style.left = lerp(initialThumbLeft, targetLeft, progress) + 'px';
+        animatedCanvas.style.top = lerp(initialThumbTop, targetTop, progress) + 'px';
+        animatedCanvas.style.width = lerp(initialThumbSize, targetSize, progress) + 'px';
+        animatedCanvas.style.height = lerp(initialThumbSize, targetSize, progress) + 'px';
 
-      content.style.height = lerp(initialHeight, targetHeight, progress) + 'px';
-      content.style.width = lerp(initialWidth, targetWidth, progress) + 'px';
+        content.style.height = lerp(initialHeight, targetHeight, progress) + 'px';
+        content.style.width = lerp(initialWidth, targetWidth, progress) + 'px';
 
-      const tr = initialRadiuses.map(r => lerp(parseInt(r), targetSize, Math.min(1, progress * 1.5)) + 'px').join(' ')
+        const tr = initialRadiuses
+        .map((r) => lerp(parseInt(r), targetSize, Math.min(1, progress * 1.5)) + 'px')
+        .join(' ');
 
-      content.style.setProperty('border-radius', tr);
+        content.style.setProperty('border-radius', tr);
 
-      audioContainer.style.opacity = lerp(1, 0, progress) + '';
-    }, {
-      onEnd: () => {
-        animatedCanvas.remove();
-        animatedCanvas = undefined;
+        audioContainer.style.opacity = lerp(1, 0, progress) + '';
 
-        audioContainer.style.display = 'none';
-        mediaContainer.style.removeProperty('opacity');
-        mediaContainer.style.removeProperty('position');
-        mediaContainer.style.display = 'block';
+        drawCurrentFrame();
+      },
+      {
+        onEnd: () => {
+          animatedCanvas.remove();
+          animatedCanvas = undefined;
 
-        content.style.removeProperty('overflow');
-        content.style.removeProperty('background');
-        content.style.removeProperty('width');
-        content.style.removeProperty('height');
-        content.style.removeProperty('max-width');
-        content.style.removeProperty('border-radius');
+          audioContainer.style.display = 'none';
+          mediaContainer.style.removeProperty('opacity');
+          mediaContainer.style.removeProperty('position');
+          mediaContainer.style.display = 'block';
 
-        audioContainer.style.removeProperty('width');
-        audioContainer.style.removeProperty('height');
-        audioContainer.style.removeProperty('opacity');
+          content.style.removeProperty('overflow');
+          content.style.removeProperty('background');
+          content.style.removeProperty('width');
+          content.style.removeProperty('height');
+          content.style.removeProperty('max-width');
+          content.style.removeProperty('border-radius');
+
+          audioContainer.style.removeProperty('width');
+          audioContainer.style.removeProperty('height');
+          audioContainer.style.removeProperty('opacity');
+        }
       }
-    });
+    );
   }
 
   async function showAudio() {
@@ -182,7 +183,7 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
 
     if(!hasAddedTranscription) {
       hasAddedTranscription = true;
-      const spinner = createSpinner()
+      const spinner = createSpinner();
       transcribe.append(spinner);
       const transcribedText = document.createElement('div');
       transcribedText.classList.add('audio-transcribed-text');
@@ -198,17 +199,17 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
       spinner.remove();
     }
 
-    const currentFrameVideo = mediaContainer.querySelector('.media-video') as HTMLVideoElement;
-    log('mediaContainer', mediaContainer)
-    log('currentFrameVideo', currentFrameVideo)
-    const bcr = currentFrameVideo.getBoundingClientRect();
+    log('mediaContainer', mediaContainer);
+    // log('currentFrameVideo', currentFrameVideo);
+    // log('currentFrameCanvas', currentFrameCanvas);
+    const bcr = content.getBoundingClientRect();
     const initialSize = bcr.width;
 
     animatedCanvas = document.createElement('canvas');
     animatedCanvas.width = initialSize;
     animatedCanvas.height = initialSize;
-    const ctx = animatedCanvas.getContext('2d');
-    ctx.drawImage(currentFrameVideo, 0, 0, initialSize, initialSize);
+    drawCurrentFrame();
+
     animatedCanvas.style.position = 'fixed';
     animatedCanvas.style.zIndex = '1000';
     animatedCanvas.style.transform = 'translate(-50%, -50%)';
@@ -220,9 +221,13 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
     animatedCanvas.style.height = initialSize + 'px';
     animatedCanvas.style.borderRadius = '50%';
 
-    console.log('initialLeft, initialTop', initialLeft, initialTop)
+    console.log('initialLeft, initialTop', initialLeft, initialTop);
 
     document.body.append(animatedCanvas);
+
+    // MOUNT_CLASS_TO.ctx = ctx;
+    // MOUNT_CLASS_TO.currentFrameCanvas = currentFrameCanvas;
+    // MOUNT_CLASS_TO.animatedCanvas = animatedCanvas;
 
     // return;
 
@@ -231,8 +236,8 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
     const initialRadius = Math.max(initialHeight, content.clientWidth);
     log('initialHeight, initialWidth, initialRadius', initialHeight, initialWidth, initialRadius);
 
-    bubbleVideoClassNames.forEach(cls => bubble.classList.remove(cls));
-    bubbleAudioClassNames.forEach(cls => bubble.classList.add(cls));
+    bubbleVideoClassNames.forEach((cls) => bubble.classList.remove(cls));
+    bubbleAudioClassNames.forEach((cls) => bubble.classList.add(cls));
 
     const computedStyle = window.getComputedStyle(content);
     const targetRadiuses = [
@@ -252,25 +257,44 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
 
     content.style.overflow = 'hidden';
 
-    const contentWrapperStyle = window.getComputedStyle(bubble.querySelector('.bubble-content-wrapper'));
+    const contentWrapper = bubble.querySelector('.bubble-content-wrapper') as HTMLElement;
+    contentWrapper.style.position = 'relative';
+    // const contentWrapperStyle = window.getComputedStyle(bubble.querySelector('.bubble-content-wrapper'));
 
     audioContainer.style.display = 'block';
+    const measure: HTMLDivElement = createElementFromMarkup(`
+      <div style="position: absolute;width:min-content;opacity:0;"></div>
+    `);
+    measure.append(audioContainer);
+    contentWrapper.append(measure);
+
+    await doubleRaf();
+    const targetWidth = measure.clientWidth;
+    const targetHeight = measure.clientHeight;
+    log('targetWidth', targetWidth);
+
     // const targetWidth = parseInt(contentWrapperStyle.maxWidth);
-    const targetWidth = 299;
+    // const targetWidth = 299;
     const audioStyle = window.getComputedStyle(audioContainer);
-    audioContainer.style.width = (targetWidth - (+ parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight))) + 'px'
+    audioContainer.style.width =
+      targetWidth - (+parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight)) + 'px';
 
     const bubbleTail = bubble.querySelector('.bubble-tail') as HTMLElement;
 
-    const reply = bubble.querySelector('.reply') as HTMLElement;
-    if(reply) reply.style.display = 'none';
-    const forward = bubble.querySelector('.bubble-name-forwarded') as HTMLElement;
-    if(forward) forward.style.display = 'none';
+    selectorsToHideWhenCollapsed.forEach((selector) => {
+      const elementToHide = bubble.querySelector(selector) as HTMLElement;
+      if(elementToHide) elementToHide.style.setProperty('display', 'none', 'important');
+    });
+
+    measure.remove();
+    content.append(audioContainer);
 
     await doubleRaf();
+
+    contentWrapper.style.removeProperty('position');
     // console.log('margins audio', parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight));
     // const targetWidth = audioContainer.scrollWidth + parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight); // TODO Make this dynamic
-    const targetHeight = audioContainer.scrollHeight /* + parseFloat(audioStyle.marginTop) + parseFloat(audioStyle.marginBottom) */ + 16; // TODO find actual height
+    // const targetHeight = audioContainer.scrollHeight /* + parseFloat(audioStyle.marginTop) + parseFloat(audioStyle.marginBottom) */ + 16; // TODO find actual height
     // audioContainer.style.width = audioContainer.scrollWidth + 'px';
     // audioContainer.style.height = audioContainer.scrollHeight + 'px';
 
@@ -305,9 +329,13 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
 
           content.style.height = lerp(initialHeight, targetHeight, progress) + 'px';
           content.style.width = lerp(initialWidth, targetWidth, progress) + 'px';
-          const tr = targetRadiuses.map(r => lerp(initialRadius, parseInt(r), Math.min(1, progress * 1)) + 'px').join(' ')
+          const tr = targetRadiuses
+          .map((r) => lerp(initialRadius, parseInt(r), Math.min(1, progress * 1)) + 'px')
+          .join(' ');
 
           content.style.setProperty('border-radius', tr);
+
+          drawCurrentFrame();
         },
         {
           easing: simpleEasing,
@@ -351,10 +379,13 @@ export function wrapRoundVideoBubble({bubble, message}: WrapRoundVideoBubbleOpti
       hideAudio();
     });
 
+    const globalMedia = await globalMediaDeferred;
+
     const audioElement = await wrapDocument({
       message: message as any,
       customAudioToTextButton: closeButton,
-      shouldWrapAsVoice: true
+      shouldWrapAsVoice: true,
+      globalMedia
     });
     console.log('[video-trans] audioElement', message.mid, audioElement);
     audioContainer.append(audioElement);

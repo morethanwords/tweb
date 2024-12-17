@@ -27,7 +27,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
 import rootScope from '../../lib/rootScope';
 import type {ThumbCache} from '../../lib/storages/thumbs';
-import {MediaSearchContext} from '../appMediaPlaybackController';
+import {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
 import AudioElement from '../audio';
 import confirmationPopup from '../confirmationPopup';
 import LazyLoadQueue from '../lazyLoadQueue';
@@ -46,7 +46,27 @@ rootScope.addEventListener('document_downloading', (docId) => {
   });
 });
 
-export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext, fontSize, getSize, canTranscribeVoice, isOut, uploadingFileName, shouldWrapAsVoice, customAudioToTextButton}: {
+export default async function wrapDocument({message,
+  withTime,
+  fontWeight,
+  voiceAsMusic,
+  showSender,
+  searchContext,
+  loadPromises,
+  autoDownloadSize,
+  lazyLoadQueue,
+  sizeType,
+  managers = rootScope.managers,
+  cacheContext,
+  fontSize,
+  getSize,
+  canTranscribeVoice,
+  isOut,
+  uploadingFileName,
+  shouldWrapAsVoice,
+  customAudioToTextButton,
+  globalMedia
+}: {
   message: Message.message,
   withTime?: boolean,
   fontWeight?: number,
@@ -65,7 +85,8 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   isOut?: boolean,
   uploadingFileName?: string,
   customAudioToTextButton?: HTMLElement,
-  shouldWrapAsVoice?: boolean
+  shouldWrapAsVoice?: boolean,
+  globalMedia?: HTMLMediaElement
 }): Promise<HTMLElement> {
   fontWeight ??= 500;
   sizeType ??= '' as any;
@@ -84,6 +105,10 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     audioElement.uploadingFileName = uploadingFileName;
     audioElement.shouldWrapAsVoice = shouldWrapAsVoice;
     audioElement.customAudioToTextButton = customAudioToTextButton;
+
+    audioElement.audio = globalMedia as any;
+    if(globalMedia) audioElement.dataset.toBeSkipped = '1';
+
     if(canTranscribeVoice && doc.type === 'voice') audioElement.transcriptionState = 0;
     (audioElement as any).getSize = getSize;
 
