@@ -803,6 +803,8 @@ export class AppSidebarLeft extends SidebarSlider {
       recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
     };
 
+    // bots.getPopularAppBots
+
     const searchSuper = this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
         inputFilter: 'inputMessagesFilterEmpty',
