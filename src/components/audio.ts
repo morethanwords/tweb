@@ -786,7 +786,8 @@ export default class AudioElement extends HTMLElement {
       inputFilter: {_: 'inputMessagesFilterEmpty'},
       useSearch: false
     })) {
-      const [prev, next] = !hadSearchContext ? [] : findMediaTargets(this, this.message.mid/* , this.searchContext.useSearch */);
+      const thisTarget = this.dataset.toBeSkipped ? this.audio.parentElement : this;
+      const [prev, next] = !hadSearchContext ? [] : findMediaTargets(thisTarget, this.message.mid/* , this.searchContext.useSearch */);
       appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next);
     }
   }

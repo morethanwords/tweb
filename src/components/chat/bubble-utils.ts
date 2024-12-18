@@ -7,7 +7,7 @@ import {i18n} from '../../lib/langPack';
 import {logger} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
 import BezierEasing from '../../vendor/bezierEasing';
-import appMediaPlaybackController, {HTMLMediaElement} from '../appMediaPlaybackController';
+import appMediaPlaybackController, {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
 import Icon from '../icon';
 import {animateValue, delay, lerp} from '../mediaEditor/utils';
 import PopupPremium from '../popups/premium';
@@ -18,6 +18,7 @@ type WrapRoundVideoBubbleOptions = {
   bubble: HTMLElement;
   message: Message.message;
   globalMediaDeferred: Promise<HTMLMediaElement>;
+  searchContext?: MediaSearchContext;
 };
 
 const log = logger('video-trans');
@@ -25,7 +26,12 @@ const ANIMATION_TIME = 180;
 // const ANIMATION_TIME = 540;
 
 
-export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: WrapRoundVideoBubbleOptions) {
+export function wrapRoundVideoBubble({
+  bubble,
+  message,
+  globalMediaDeferred,
+  searchContext
+}: WrapRoundVideoBubbleOptions) {
   // bubble.style.background = 'magenta';
   const content = bubble.querySelector('.bubble-content') as HTMLElement;
 
@@ -412,7 +418,8 @@ export function wrapRoundVideoBubble({bubble, message, globalMediaDeferred}: Wra
       message: message as any,
       customAudioToTextButton: closeButton,
       shouldWrapAsVoice: true,
-      globalMedia
+      globalMedia,
+      searchContext
     });
     console.log('[video-trans] audioElement', message.mid, audioElement);
     audioMessageContainer.append(audioElement);

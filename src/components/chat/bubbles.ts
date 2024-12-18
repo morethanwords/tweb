@@ -184,7 +184,7 @@ import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
 import icon from '../icon';
-import {HTMLMediaElement} from '../appMediaPlaybackController';
+import {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
 import createElementFromMarkup from '../../helpers/createElementFromMarkup';
 import {wrapRoundVideoBubble} from './bubble-utils';
 
@@ -6020,7 +6020,7 @@ export default class ChatBubbles {
     const canPossiblyHavePlainMediaTail = isMessageEmpty || invertMedia;
 
     let storyFromPeerId: PeerId, noAttachmentDivNeeded = false, processedWebPage = false,
-      isRound = false;
+      isRound = false, searchContext: MediaSearchContext;
     const globalMediaDeferred = deferredPromise<HTMLMediaElement>();
     // media
     if(messageMedia) {
@@ -6541,7 +6541,7 @@ export default class ChatBubbles {
                 group: this.chat.animationGroup,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
-                searchContext: isRound ? {
+                searchContext: isRound ? searchContext = {
                   peerId: this.peerId,
                   inputFilter: {_: 'inputMessagesFilterRoundVoice'},
                   threadId: this.chat.threadId,
@@ -7510,7 +7510,8 @@ export default class ChatBubbles {
       wrapRoundVideoBubble({
         bubble,
         message: message as Message.message,
-        globalMediaDeferred
+        globalMediaDeferred,
+        searchContext
       });
     }
 
