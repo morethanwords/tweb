@@ -163,7 +163,7 @@ export function wrapRoundVideoBubble({
         content.style.width = lerp(initialWidth, targetWidth, progress) + 'px';
 
         const tr = initialRadiuses
-        .map((r) => lerp(parseInt(r), targetSize, Math.min(1, progress * 1.5)) + 'px')
+        .map((r) => lerp(parseInt(r), targetSize, progress * Math.sqrt(progress)) + 'px')
         .join(' ');
 
         content.style.setProperty('border-radius', tr);

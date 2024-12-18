@@ -18,7 +18,7 @@ import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '../hooks/useHeav
 import I18n, {LangPackKey, i18n, join} from '../lib/langPack';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant, Document, Message, MessageMedia, MessagesChats, Photo, StoryItem, Update, User, WebPage} from '../layer';
+import {ChannelParticipant, Chat, ChatFull, ChatParticipant, Document, Message, MessageMedia, MessagesChats, Peer, Photo, StoryItem, Update, User, WebPage} from '../layer';
 import SortedUserList from './sortedUserList';
 import findUpTag from '../helpers/dom/findUpTag';
 import appSidebarRight from './sidebarRight';
@@ -91,6 +91,7 @@ import getFwdFromName from '../lib/appManagers/utils/messages/getFwdFromName';
 import SidebarSlider from './slider';
 import setBlankToAnchor from '../lib/richTextProcessor/setBlankToAnchor';
 import cancelClickOrNextIfNotClick from '../helpers/dom/cancelClickOrNextIfNotClick';
+import createElementFromMarkup from '../helpers/createElementFromMarkup';
 
 // const testScroll = false;
 
@@ -110,7 +111,7 @@ export type SearchSuperContext = {
 
 export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
   'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar' |
-  'savedDialogs' | 'saved';
+  'savedDialogs' | 'saved' | 'channels' | 'apps';
 export type SearchSuperMediaTab = {
   inputFilter?: SearchSuperType,
   name: LangPackKey,
@@ -1299,11 +1300,13 @@ export default class AppSearchSuper {
         return arg;
       };
 
+      const log = logger('new-tabs');
       return Promise.all([
         this.managers.appUsersManager.getContactsPeerIds(query, true, undefined, 10)
         .then(onLoad)
         .then((contacts) => {
           if(contacts) {
+            log('contacts', contacts);
             setResults(contacts, this.searchGroups.contacts, true);
           }
         }),
@@ -1312,6 +1315,7 @@ export default class AppSearchSuper {
         .then(onLoad)
         .then((contacts) => {
           if(contacts) {
+            log('contacts2', contacts);
             setResults(contacts.my_results, this.searchGroups.contacts, true);
             setResults(contacts.results/* .concat(contacts.results, contacts.results, contacts.results) */, this.searchGroups.globalContacts);
 
@@ -1342,6 +1346,7 @@ export default class AppSearchSuper {
         .then(onLoad)
         .then((value) => {
           if(value) {
+            log('contacts3', value.dialogs);
             setResults(value.dialogs.map((d) => d.peerId), this.searchGroups.contacts, true);
           }
         })
@@ -1787,6 +1792,73 @@ export default class AppSearchSuper {
     return xd.onChatsScroll();
   }
 
+  private async loadChannels({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    const log = logger('new-tabs');
+
+    const renderChannels = async(into: HTMLElement, peerIds: PeerId[]) => {
+      for(const peerId of peerIds) {
+        const {dom} = appDialogsManager.addDialogNew({
+          peerId: peerId.toPeerId(true),
+          container: into,
+          avatarSize: 'abitbigger',
+          wrapOptions: {
+            middleware
+          }
+          // withStories: true
+        });
+        const peer = await this.managers.appPeersManager.getPeer(peerId);
+        if((peer as Chat.channel).participants_count || (peer as any).participants) {
+          const chatMembersString = await getChatMembersString(peer.id.toChatId());
+          dom.lastMessageSpan.append(chatMembersString);
+        }
+      }
+    }
+
+    {
+      const group = new SearchGroup('JoinedChannels', 'channels');
+      group.setActive();
+      mediaTab.contentTab.append(group.container);
+
+      const dialogs = await this.managers.dialogsStorage.getCachedDialogs();
+      const channelDialogsWithUndefined = await Promise.all(dialogs.map(async dialog => await this.managers.appPeersManager.isBroadcast(dialog.peerId) ? dialog : undefined))
+      const channelDialogs = channelDialogsWithUndefined.filter(Boolean);
+
+      const SHOW_MORE_LIMIT = 5;
+      if(channelDialogs.length > SHOW_MORE_LIMIT) {
+        let shouldShowMore = false;
+        const showMore: HTMLDivElement = createElementFromMarkup(`
+          <div class="search-group__show-more"></div>
+        `);
+        group.nameEl.append(showMore);
+
+        updateShowMoreContent();
+
+        attachClickEvent(showMore, () => {
+          shouldShowMore = !shouldShowMore;
+          updateShowMoreContent();
+        });
+        function updateShowMoreContent() {
+          showMore.replaceChildren(i18n(shouldShowMore ? 'Separator.ShowLess' : 'Separator.ShowMore'));
+          group.container.classList[shouldShowMore ? 'remove' : 'add']('is-short-5');
+        }
+      }
+
+      await renderChannels(group.list, channelDialogs.map(dialog => dialog.peerId));
+    }
+
+    {
+      const group = new SearchGroup('SimilarChannels', 'channels');
+      group.setActive();
+      mediaTab.contentTab.append(group.container);
+
+      const recommendations = await this.managers.appChatsManager.getGenericChannelRecommendations();
+
+      await renderChannels(group.list, recommendations.chats.map(chat => chat.id.toPeerId(true)));
+    }
+
+    this.loaded[mediaTab.type] = true;
+  }
+
   private loadType(options: SearchSuperLoadTypeOptions) {
     const {
       mediaTab,
@@ -1797,11 +1869,14 @@ export default class AppSearchSuper {
     } = options;
     const {type, inputFilter} = mediaTab;
 
+    console.log('loadType type, mediaTab, this.searchContext.query', type, mediaTab, this.searchContext.query)
+
     let promise = this.loadPromises[type];
     if(promise) {
       return promise;
     }
 
+    // Here load of data is happening
     if(type === 'members' || type === 'groups') {
       promise = this.loadMembers(options);
     } else if(type === 'stories') {
@@ -1810,6 +1885,10 @@ export default class AppSearchSuper {
       promise = this.loadSimilarChannels(options);
     } else if(type === 'savedDialogs') {
       promise = this.loadSavedDialogs(options);
+    } else if(type === 'channels') {
+      promise = this.loadChannels(options);
+    } else if(type === 'apps') {
+      return;
     }
 
     if(promise) {
