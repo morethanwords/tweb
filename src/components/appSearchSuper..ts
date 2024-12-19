@@ -1891,6 +1891,7 @@ export default class AppSearchSuper {
       this.renderPeerDialogs(recommendations.chats.map(chat => chat.id.toPeerId(true)), group, middleware);
     }
 
+    this.afterPerforming(1, mediaTab.contentTab);
     this.loaded[mediaTab.type] = true;
   }
 
@@ -1964,6 +1965,7 @@ export default class AppSearchSuper {
       await loadMoreApps();
     }
 
+    this.afterPerforming(1, mediaTab.contentTab);
     this.loaded[mediaTab.type] = true;
   }
 
