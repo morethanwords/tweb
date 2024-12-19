@@ -3100,7 +3100,9 @@ const lang = {
   'DisableDarkMode': 'Disable Dark Mode',
   'DisableAnimations': 'Disable Animations',
   'RoundVideoTranscription.PremiumAlert': 'Subscribe to Telegram Premium to unlock video and audio transcription. [Read More]()',
-  'JoinedChannels': 'Channels you joined'
+  'Chat.Search.JoinedChannels': 'Channels you joined',
+  'Chat.Search.NothingFound': 'Nothing interesting here yet...',
+  'UnknownBotUsers': 'Unknown users'
 };
 
 export default lang;
