@@ -8,6 +8,9 @@ import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
 import {i18n} from '../../../lib/langPack';
 import {MyDialogFilter} from '../../../lib/storages/filters';
+import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
+import createContextMenu from '../../../helpers/dom/createContextMenu';
+import findUpClassName from '../../../helpers/dom/findUpClassName';
 
 import type SolidJSHotReloadGuardProvider from '../solidjsHotReloadGuardProvider';
 import {useHotReloadGuard} from '../solidjsHotReloadGuard';
@@ -23,15 +26,15 @@ export function FoldersSidebarContent() {
   const {
     rootScope,
     appSidebarLeft,
-    AppChatFoldersTab
+    AppChatFoldersTab,
+    AppEditFolderTab
   } = useHotReloadGuard();
 
   const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
   const [folderItems, setFolderItems] = createSignal<FolderItemPayload[]>([]);
 
   let menuRef: HTMLDivElement;
-
-  // TODO: position items by order `localId`
+  let folderItemsContainer: HTMLDivElement
 
   function updateFolderItem(folderId: number, payload: Partial<FolderItemPayload>) {
     setFolderItems((prev) =>
@@ -94,14 +97,31 @@ export function FoldersSidebarContent() {
     setFolderItems([...items]);
   }
 
-  async function updateItemsOrder() {
+  async function updateItemsOrder(order: number[]) {
+    order = [...order];
+    indexOfAndSplice(order, FOLDER_ID_ARCHIVE);
+
     const items = [...folderItems()];
-    const orderedFolderItems = await getFolderItemsInOrder(items, rootScope.managers);
-    setFolderItems(orderedFolderItems);
+
+    items.sort((a, b) => {
+      const aIndex = order.indexOf(a.id);
+      const bIndex = order.indexOf(b.id);
+
+      if(aIndex === -1) return 1;
+      if(bIndex === -1) return -1;
+
+      return aIndex - bIndex;
+    });
+
+    setFolderItems(items);;
   }
+
+  (window as any).sliceTabsUntilFirstTab = appSidebarLeft.closeAllTabs.bind(appSidebarLeft);
 
   function setSelectedFolder(folderId: number) {
     setSelectedFolderId(folderId);
+    appSidebarLeft.closeAllTabs();
+    appSidebarLeft.closeSearch();
     rootScope.dispatchEvent('changing_folder_from_sidebar', folderId);
   }
 
@@ -111,6 +131,49 @@ export function FoldersSidebarContent() {
     appSidebarLeft.createToolsMenu(menuRef);
     menuRef.classList.add('sidebar-tools-button', 'is-visible');
 
+    let clickFilterId: number;
+
+    const contextMenu = createContextMenu({
+      buttons: [{
+        icon: 'edit',
+        text: 'FilterEdit',
+        onClick: () => {
+          rootScope.managers.filtersStorage.getFilter(clickFilterId).then((filter) => {
+            const tab = appSidebarLeft.createTab(AppEditFolderTab);
+            tab.setInitFilter(filter);
+            tab.open();
+          });
+        },
+        verify: () => clickFilterId !== FOLDER_ID_ALL
+      }, {
+        icon: 'edit',
+        text: 'FilterEditAll',
+        onClick: () => {
+          appSidebarLeft.createTab(AppChatFoldersTab).open();
+        },
+        verify: () => clickFilterId === FOLDER_ID_ALL
+      }, {
+        icon: 'readchats',
+        text: 'MarkAllAsRead',
+        onClick: () => {
+          rootScope.managers.dialogsStorage.markFolderAsRead(clickFilterId);
+        },
+        verify: async() => !!(await rootScope.managers.dialogsStorage.getFolderUnreadCount(clickFilterId)).unreadCount
+      }, {
+        icon: 'delete',
+        className: 'danger',
+        text: 'Delete',
+        onClick: () => {
+          AppEditFolderTab.deleteFolder(clickFilterId);
+        },
+        verify: () => clickFilterId !== FOLDER_ID_ALL
+      }],
+      listenTo: folderItemsContainer,
+      findElement: (e) => findUpClassName(e.target, 'folders-sidebar__folder-item'),
+      onOpen: (e, target) => {
+        clickFilterId = +target.dataset.filterId;
+      }
+    });
 
     (async() => {
       const filters = await rootScope.managers.filtersStorage.getDialogFilters();
@@ -142,8 +205,8 @@ export function FoldersSidebarContent() {
       deleteFolder(filter.id);
     });
 
-    listenerSetter.add(rootScope)('filter_order', () => {
-      updateItemsOrder();
+    listenerSetter.add(rootScope)('filter_order', (order) => {
+      updateItemsOrder(order);
     });
 
     listenerSetter.add(rootScope)('changing_folder_from_chatlist', (id) => {
@@ -153,6 +216,7 @@ export function FoldersSidebarContent() {
 
     onCleanup(() => {
       listenerSetter.removeAll();
+      contextMenu.destroy();
     });
   });
 
@@ -160,13 +224,15 @@ export function FoldersSidebarContent() {
     <>
       <FolderItem ref={(el) => (menuRef = el)} class='folders-sidebar__menu-button' icon='menu' />
 
-      <For each={folderItems()}>{(folderItem) => (
-        <FolderItem
-          {...folderItem}
-          selected={selectedFolderId() === folderItem.id}
-          onClick={() => setSelectedFolder(folderItem.id)}
-        />
-      )}</For>
+      <div ref={folderItemsContainer}>
+        <For each={folderItems()}>{(folderItem) => (
+          <FolderItem
+            {...folderItem}
+            selected={selectedFolderId() === folderItem.id}
+            onClick={() => setSelectedFolder(folderItem.id)}
+          />
+        )}</For>
+      </div>
 
       <FolderItem
         icon='enhance'

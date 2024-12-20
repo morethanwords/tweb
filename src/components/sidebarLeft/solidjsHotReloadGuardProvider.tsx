@@ -4,6 +4,8 @@ import rootScope from '../../lib/rootScope';
 
 import appSidebarLeft from '.';
 import AppChatFoldersTab from './tabs/chatFolders';
+import AppEditFolderTab from './tabs/editFolder';
+
 import {SolidJSHotReloadGuardContext} from './solidjsHotReloadGuard';
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
@@ -11,6 +13,7 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
     <SolidJSHotReloadGuardContext.Provider value={{
       rootScope,
       appSidebarLeft,
+      AppEditFolderTab,
       AppChatFoldersTab
     }}>
       {props.children}

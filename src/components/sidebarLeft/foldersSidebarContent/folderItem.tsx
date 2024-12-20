@@ -48,6 +48,10 @@ export default function FolderItem(props: FolderItemProps) {
         'folders-sidebar__folder-item--selected': props.selected
       }}
       onClick={props.onClick}
+      {...(props.id !== undefined ?
+        {'data-filter-id': props.id} :
+        {}
+      )}
     >
       <IconTsx icon={props.icon} />
       <Show when={props.name}>

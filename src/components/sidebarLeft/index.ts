@@ -1151,6 +1151,10 @@ export class AppSidebarLeft extends SidebarSlider {
       checkChannelsVisiblity();
     });
   }
+
+  public closeSearch() {
+    simulateClickEvent(this.backBtn);
+  }
 }
 
 export class SettingChatListSection extends SettingSection {
