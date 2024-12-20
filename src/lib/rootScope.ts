@@ -67,6 +67,9 @@ export type BroadcastEvents = {
 
   'folder_unread': Omit<Folder, 'dialogs' | 'dispatchUnreadTimeout'>,
 
+  'changing_folder_from_chatlist': number,
+  'changing_folder_from_sidebar': number,
+
   'dialog_draft': {peerId: PeerId, dialog: Dialog | ForumTopic, drop: boolean, draft: MyDraftMessage | undefined},
   'dialog_unread': {peerId: PeerId, dialog: Dialog | ForumTopic},
   'dialog_flush': {peerId: PeerId, dialog: Dialog},

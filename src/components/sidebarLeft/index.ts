@@ -85,6 +85,8 @@ import AccountsLimitPopup from './accountsLimitPopup';
 import {changeAccount} from '../../lib/accounts/changeAccount';
 import {UiNotificationsManager} from '../../lib/appManagers/uiNotificationsManager';
 import {updateStorageForWebA} from '../../lib/updateStorageForWebA';
+import {renderFoldersSidebarContent} from './foldersSidebarContent';
+import SolidJSHotReloadGuardProvider from './solidjsHotReloadGuardProvider';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -115,6 +117,9 @@ export class AppSidebarLeft extends SidebarSlider {
   construct(managers: AppManagers) {
     this.managers = managers;
     // this._selectTab(0); // make first tab as default
+    const mainMiddleware = this.middlewareHelper.get();
+    const foldersSidebar = document.getElementById('folders-sidebar');
+    renderFoldersSidebarContent(foldersSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
 
     this.inputSearch = new InputSearch();
     (this.inputSearch.input as HTMLInputElement).placeholder = ' ';
@@ -138,19 +143,6 @@ export class AppSidebarLeft extends SidebarSlider {
     // this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
 
-    const btnArchive: typeof menuButtons[0] = {
-      icon: 'archive',
-      text: 'ArchivedChats',
-      onClick: () => {
-        this.createTab(AppArchivedTab).open();
-      },
-      verify: async() => {
-        const folder = await this.managers.dialogsStorage.getFolderDialogs(FOLDER_ID_ARCHIVE, false);
-        const hasArchiveStories = await this.managers.appStoriesManager.hasArchive();
-        return !!folder.length || hasArchiveStories || !(await this.managers.dialogsStorage.isDialogsLoaded(FOLDER_ID_ARCHIVE));
-      }
-    };
-
     const themeCheckboxField = new CheckboxField({
       toggle: true,
       checked: themeController.getTheme().name === 'night'
@@ -169,332 +161,9 @@ export class AppSidebarLeft extends SidebarSlider {
       themeCheckboxField.setValueSilently(themeController.getTheme().name === 'night');
     });
 
-    const more = document.createElement('span');
-    // more.setAttribute('style', 'display: inline-flex; justify-content: space-between; align-items: center');
-    more.classList.add('more-label');
-    more.append(i18n('MultiAccount.More'), Icon('arrowhead'));
-
-    let removeSubmenuListener: () => void;
-    const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
-      icon: 'plus',
-      text: 'MultiAccount.AddAccount',
-      onClick: async(e) => {
-        const totalAccounts = await AccountController.getTotalAccounts();
-        if(totalAccounts >= MAX_ACCOUNTS) return;
-
-        const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
-
-        if(totalAccounts === MAX_ACCOUNTS_FREE && !hasSomeonePremium) {
-          new AccountsLimitPopup().show();
-          return;
-        }
-
-        localStorage.setItem('previous-account', getCurrentAccount() + '');
-        if(!e.ctrlKey) {
-          appImManager.goOffline();
-
-          localStorage.setItem('should-animate-auth', 'true');
-
-          const chatsPageEl = document.querySelector('.page-chats');
-          chatsPageEl.classList.add('main-screen-exit');
-          await doubleRaf();
-          chatsPageEl.classList.add('main-screen-exiting');
-          await pause(200);
-        }
-
-        changeAccount((totalAccounts + 1) as ActiveAccountNumber, e.ctrlKey);
-      },
-      verify: async() => {
-        const totalAccounts = await AccountController.getTotalAccounts();
-        return totalAccounts < MAX_ACCOUNTS;
-      }
-    }, {
-      icon: 'savedmessages',
-      text: 'SavedMessages',
-      onClick: () => {
-        setTimeout(() => { // menu doesn't close if no timeout (lol)
-          appImManager.setPeer({
-            peerId: appImManager.myId
-          });
-        }, 0);
-      },
-      separator: true
-    }, btnArchive, {
-      icon: 'stories',
-      text: 'MyStories.Title',
-      onClick: () => {
-        this.createTab(AppMyStoriesTab).open();
-      },
-      verify: () => !TEST_NO_STORIES
-    }, {
-      icon: 'user',
-      text: 'Contacts',
-      onClick: onContactsClick
-    }, {
-      icon: 'settings',
-      text: 'Settings',
-      onClick: () => {
-        this.createTab(AppSettingsTab).open();
-      }
-    }, {
-      icon: 'more',
-      regularText: more,
-      onClick: () => {}
-    }];
-
     injectMediaEditorLangPack();
 
-    const filteredButtons = menuButtons.filter(Boolean);
-    const filteredButtonsSliced = filteredButtons.slice();
-    this.toolsBtn = ButtonMenuToggle({
-      direction: 'bottom-right',
-      buttons: filteredButtons,
-      onOpenBefore: async() => {
-        const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
-        const buttons = filteredButtonsSliced.slice();
-        const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
-          return attachMenuBot.pFlags.show_in_side_menu;
-        }).map((attachMenuBot) => {
-          const icon = getAttachMenuBotIcon(attachMenuBot);
-          const button: typeof buttons[0] = {
-            regularText: wrapEmojiText(attachMenuBot.short_name),
-            onClick: () => {
-              appImManager.openWebApp({
-                attachMenuBot,
-                botId: attachMenuBot.bot_id,
-                isSimpleWebView: true,
-                fromSideMenu: true
-              });
-            },
-            iconDoc: icon?.icon as MyDocument,
-            new: attachMenuBot.pFlags.side_menu_disclaimer_needed || attachMenuBot.pFlags.inactive
-          };
-
-          return button;
-        });
-
-        function wrapUserName(user: User.user) {
-          let name = user.first_name;
-          if(user.last_name) name += ' ' + user.last_name;
-
-          name = limitSymbols(name, 15, 18);
-          return wrapEmojiText(name);
-        }
-
-        const targetIdx = 5;
-        buttons[targetIdx].separator = !!attachMenuBotsButtons.length;
-        buttons.splice(targetIdx, 0, ...attachMenuBotsButtons);
-        buttons[targetIdx].separator = true;
-
-        const totalAccounts = await AccountController.getTotalAccounts();
-        const notificationsCount = await UiNotificationsManager.getNotificationsCountForAllAccounts();
-        const accountButtons: typeof buttons = [];
-        for(let i = 1; i <= totalAccounts; i++) {
-          const accountNumber = i as ActiveAccountNumber;
-          if(accountNumber === getCurrentAccount()) {
-            const user = await this.managers.appUsersManager.getSelf();
-            accountButtons.push({
-              avatarInfo: {
-                accountNumber: getCurrentAccount(),
-                peerId: rootScope.myId.toPeerId()
-              },
-              regularText: wrapUserName(user),
-              onClick: () => {
-                this.createTab(AppSettingsTab).open();
-              }
-            });
-          } else {
-            const otherManagers = createProxiedManagersForAccount(accountNumber);
-            const accountData = await AccountController.get(accountNumber)
-            const peerId = accountData?.userId?.toPeerId();
-            const user = await otherManagers.appUsersManager.getSelf();
-
-            const content = document.createElement('span');
-            content.append(wrapUserName(user));
-
-            if(notificationsCount[accountNumber]) {
-              const badge = createBadge('span', 20, 'primary');
-              setBadgeContent(badge, '' + notificationsCount[accountNumber]);
-              content.append(badge);
-            }
-
-            accountButtons.push({
-              avatarInfo: {
-                accountNumber,
-                peerId,
-                peer: user
-              },
-              className: 'btn-menu-account-item',
-              regularText: content,
-              onClick: async(e) => {
-                if(!e.ctrlKey) {
-                  appImManager.goOffline();
-
-                  const chatListEl = document.querySelector('.chatlist-container')?.firstElementChild;
-                  chatListEl.classList.add('chatlist-exit');
-                  await doubleRaf();
-                  chatListEl.classList.add('chatlist-exiting');
-                  await pause(200);
-                }
-                changeAccount(accountNumber, e.ctrlKey);
-              }
-            });
-          }
-        }
-
-        buttons.splice(0, 0, ...accountButtons);
-
-        filteredButtons.splice(0, filteredButtons.length, ...buttons);
-      },
-      onOpen: (e, btnMenu) => {
-        const isDarkModeEnabled = () => themeController.getTheme().name === 'night';
-        const toggleTheme = () => {
-          const item = btns[0].element;
-          const icon = item.querySelector('.tgico');
-          const rect = icon.getBoundingClientRect();
-          themeController.switchTheme(isDarkModeEnabled() ? 'day' : 'night', {
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2
-          });
-        };
-
-        const darkModeText = document.createElement('span');
-        darkModeText.append(i18n(isDarkModeEnabled() ? 'DisableDarkMode': 'EnableDarkMode'));
-        const animationsText = document.createElement('span');
-
-        const btns: ButtonMenuItemOptionsVerifiable[] = [{
-          icon: 'darkmode',
-          regularText: darkModeText,
-          onClick: () => {}
-        }, {
-          id: 'animations-toggle',
-          icon: 'animations',
-          regularText: animationsText,
-          onClick: () => {
-            toggleAnimations();
-          },
-          verify: () => !liteMode.isEnabled()
-        }, {
-          icon: 'animations',
-          text: 'LiteMode.Title',
-          onClick: () => {
-            this.createTab(AppPowerSavingTab).open();
-          },
-          verify: () => liteMode.isEnabled()
-        }, {
-          icon: 'aversion',
-          text: 'ChatList.Menu.SwitchTo.A',
-          onClick: () => {
-            Promise.all([
-              updateStorageForWebA(),
-              sessionStorage.set({kz_version: 'Z'}),
-              sessionStorage.delete('tgme_sync')
-            ]).then(() => {
-              location.href = 'https://web.telegram.org/a/';
-            });
-          },
-          separator: App.isMainDomain,
-          verify: () => App.isMainDomain
-        }, {
-          icon: 'help',
-          text: 'TelegramFeatures',
-          onClick: () => {
-            const url = I18n.format('TelegramFeaturesUrl', true);
-            appImManager.openUrl(url);
-          },
-          separator: !App.isMainDomain
-        }, {
-          icon: 'bug',
-          text: 'ReportBug',
-          onClick: () => {
-            const a = document.createElement('a');
-            setBlankToAnchor(a);
-            a.href = 'https://bugs.telegram.org/?tag_ids=40&sort=time';
-            document.body.append(a);
-            a.click();
-            setTimeout(() => {
-              a.remove();
-            }, 0);
-          }
-        }, {
-          icon: 'plusround',
-          text: 'PWA.Install',
-          onClick: () => {
-            const installPrompt = getInstallPrompt();
-            installPrompt?.();
-          },
-          verify: () => !!getInstallPrompt()
-        }];
-
-
-        async function hasAnimations() {
-          const state = await apiManagerProxy.getState();
-          return !state.settings.liteMode.animations;
-        }
-
-        async function initAnimationsToggleIcon() {
-          updateAnimationsToggleButton(await hasAnimations());
-        }
-
-        async function toggleAnimations() {
-          updateAnimationsToggleButton(!(await hasAnimations()));
-          rootScope.managers.appStateManager.setByKey(
-            joinDeepPath('settings', 'liteMode', 'animations'),
-            await hasAnimations() // The value is already reversed
-          );
-        }
-
-        async function updateAnimationsToggleButton(enabled: boolean) {
-          const animationToggleButton = btns.find(button => button.id === 'animations-toggle')?.element;
-          if(!animationToggleButton) return;
-
-          const icon = animationToggleButton.querySelector('.tgico');
-          enabled ?
-            icon?.classList.add('animations-icon-off') :
-            icon?.classList.remove('animations-icon-off');
-
-          animationsText.replaceChildren(i18n(enabled ? 'DisableAnimations' : 'EnableAnimations'));
-        }
-
-        const moreBtn = filteredButtons.find(item => item.icon === 'more');
-        moreBtn.element.addEventListener(CLICK_EVENT_NAME, (e) => {
-          e.stopPropagation();
-        }, true);
-        moreBtn.element.classList.add('disable-click');
-        removeSubmenuListener = attachFloatingButtonMenu({
-          element: moreBtn.element,
-          direction: 'right-start',
-          createMenu: async() => {
-            const filtered = await filterAsync(btns, (button) => button?.verify ? button.verify() ?? false : true);
-            const menu = await ButtonMenu({
-              buttons: filtered
-            });
-
-            menu.append(getVersionLink());
-            menu.classList.add('sidebar-tools-submenu');
-
-            const darkModeBtn = btns[0].element;
-            darkModeBtn.addEventListener(CLICK_EVENT_NAME, (e) => {
-              e.stopPropagation();
-              toggleTheme();
-              pause(20).then(() => contextMenuController.close());
-            }, true);
-
-            initAnimationsToggleIcon();
-
-            return menu;
-          },
-          offset: [-5, -5],
-          triggerEvent: 'mouseenter'
-        });
-
-        btnArchive.element?.append(this.archivedCount);
-      },
-      onClose: () => {
-        removeSubmenuListener?.();
-      },
-      noIcon: true
-    });
+    this.toolsBtn = this.createToolsMenu();
 
     this.toolsBtn.classList.add('sidebar-tools-button', 'is-visible');
     this.totalNotificationsCount = createBadge('span', 20, 'primary');
@@ -782,6 +451,355 @@ export class AppSidebarLeft extends SidebarSlider {
 
     fastRaf(onResize);
     mediaSizes.addEventListener('resize', onResize);
+  }
+
+  public createToolsMenu(mountTo?: HTMLElement) {
+    const btnArchive: typeof menuButtons[0] = {
+      icon: 'archive',
+      text: 'ArchivedChats',
+      onClick: () => {
+        this.createTab(AppArchivedTab).open();
+      },
+      verify: async() => {
+        const folder = await this.managers.dialogsStorage.getFolderDialogs(FOLDER_ID_ARCHIVE, false);
+        const hasArchiveStories = await this.managers.appStoriesManager.hasArchive();
+        return !!folder.length || hasArchiveStories || !(await this.managers.dialogsStorage.isDialogsLoaded(FOLDER_ID_ARCHIVE));
+      }
+    };
+
+    const onContactsClick = () => {
+      this.createTab(AppContactsTab).open();
+    };
+
+    const more = document.createElement('span');
+    // more.setAttribute('style', 'display: inline-flex; justify-content: space-between; align-items: center');
+    more.classList.add('more-label');
+    more.append(i18n('MultiAccount.More'), Icon('arrowhead'));
+
+    let removeSubmenuListener: () => void;
+    const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
+      icon: 'plus',
+      text: 'MultiAccount.AddAccount',
+      onClick: async(e) => {
+        const totalAccounts = await AccountController.getTotalAccounts();
+        if(totalAccounts >= MAX_ACCOUNTS) return;
+
+        const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
+
+        if(totalAccounts === MAX_ACCOUNTS_FREE && !hasSomeonePremium) {
+          new AccountsLimitPopup().show();
+          return;
+        }
+
+        localStorage.setItem('previous-account', getCurrentAccount() + '');
+        if(!e.ctrlKey) {
+          appImManager.goOffline();
+
+          localStorage.setItem('should-animate-auth', 'true');
+
+          const chatsPageEl = document.querySelector('.page-chats');
+          chatsPageEl.classList.add('main-screen-exit');
+          await doubleRaf();
+          chatsPageEl.classList.add('main-screen-exiting');
+          await pause(200);
+        }
+
+        changeAccount((totalAccounts + 1) as ActiveAccountNumber, e.ctrlKey);
+      },
+      verify: async() => {
+        const totalAccounts = await AccountController.getTotalAccounts();
+        return totalAccounts < MAX_ACCOUNTS;
+      }
+    }, {
+      icon: 'savedmessages',
+      text: 'SavedMessages',
+      onClick: () => {
+        setTimeout(() => { // menu doesn't close if no timeout (lol)
+          appImManager.setPeer({
+            peerId: appImManager.myId
+          });
+        }, 0);
+      },
+      separator: true
+    }, btnArchive, {
+      icon: 'stories',
+      text: 'MyStories.Title',
+      onClick: () => {
+        this.createTab(AppMyStoriesTab).open();
+      },
+      verify: () => !TEST_NO_STORIES
+    }, {
+      icon: 'user',
+      text: 'Contacts',
+      onClick: onContactsClick
+    }, {
+      icon: 'settings',
+      text: 'Settings',
+      onClick: () => {
+        this.createTab(AppSettingsTab).open();
+      }
+    }, {
+      icon: 'more',
+      regularText: more,
+      onClick: () => {}
+    }];
+
+    injectMediaEditorLangPack();
+
+    const filteredButtons = menuButtons.filter(Boolean);
+    const filteredButtonsSliced = filteredButtons.slice();
+    const buttonMenuToggle = ButtonMenuToggle({
+      direction: 'bottom-right',
+      buttons: filteredButtons,
+      container: mountTo,
+      onOpenBefore: async() => {
+        const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
+        const buttons = filteredButtonsSliced.slice();
+        const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
+          return attachMenuBot.pFlags.show_in_side_menu;
+        }).map((attachMenuBot) => {
+          const icon = getAttachMenuBotIcon(attachMenuBot);
+          const button: typeof buttons[0] = {
+            regularText: wrapEmojiText(attachMenuBot.short_name),
+            onClick: () => {
+              appImManager.openWebApp({
+                attachMenuBot,
+                botId: attachMenuBot.bot_id,
+                isSimpleWebView: true,
+                fromSideMenu: true
+              });
+            },
+            iconDoc: icon?.icon as MyDocument,
+            new: attachMenuBot.pFlags.side_menu_disclaimer_needed || attachMenuBot.pFlags.inactive
+          };
+
+          return button;
+        });
+
+        function wrapUserName(user: User.user) {
+          let name = user.first_name;
+          if(user.last_name) name += ' ' + user.last_name;
+
+          name = limitSymbols(name, 15, 18);
+          return wrapEmojiText(name);
+        }
+
+        const targetIdx = 5;
+        buttons[targetIdx].separator = !!attachMenuBotsButtons.length;
+        buttons.splice(targetIdx, 0, ...attachMenuBotsButtons);
+        buttons[targetIdx].separator = true;
+
+        const totalAccounts = await AccountController.getTotalAccounts();
+        const notificationsCount = await UiNotificationsManager.getNotificationsCountForAllAccounts();
+        const accountButtons: typeof buttons = [];
+        for(let i = 1; i <= totalAccounts; i++) {
+          const accountNumber = i as ActiveAccountNumber;
+          if(accountNumber === getCurrentAccount()) {
+            const user = await this.managers.appUsersManager.getSelf();
+            accountButtons.push({
+              avatarInfo: {
+                accountNumber: getCurrentAccount(),
+                peerId: rootScope.myId.toPeerId()
+              },
+              regularText: wrapUserName(user),
+              onClick: () => {
+                this.createTab(AppSettingsTab).open();
+              }
+            });
+          } else {
+            const otherManagers = createProxiedManagersForAccount(accountNumber);
+            const accountData = await AccountController.get(accountNumber)
+            const peerId = accountData?.userId?.toPeerId();
+            const user = await otherManagers.appUsersManager.getSelf();
+
+            const content = document.createElement('span');
+            content.append(wrapUserName(user));
+
+            if(notificationsCount[accountNumber]) {
+              const badge = createBadge('span', 20, 'primary');
+              setBadgeContent(badge, '' + notificationsCount[accountNumber]);
+              content.append(badge);
+            }
+
+            accountButtons.push({
+              avatarInfo: {
+                accountNumber,
+                peerId,
+                peer: user
+              },
+              className: 'btn-menu-account-item',
+              regularText: content,
+              onClick: async(e) => {
+                if(!e.ctrlKey) {
+                  appImManager.goOffline();
+
+                  const chatListEl = document.querySelector('.chatlist-container')?.firstElementChild;
+                  chatListEl.classList.add('chatlist-exit');
+                  await doubleRaf();
+                  chatListEl.classList.add('chatlist-exiting');
+                  await pause(200);
+                }
+                changeAccount(accountNumber, e.ctrlKey);
+              }
+            });
+          }
+        }
+
+        buttons.splice(0, 0, ...accountButtons);
+
+        filteredButtons.splice(0, filteredButtons.length, ...buttons);
+      },
+      onOpen: (e, btnMenu) => {
+        const isDarkModeEnabled = () => themeController.getTheme().name === 'night';
+        const toggleTheme = () => {
+          const item = btns[0].element;
+          const icon = item.querySelector('.tgico');
+          const rect = icon.getBoundingClientRect();
+          themeController.switchTheme(isDarkModeEnabled() ? 'day' : 'night', {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+          });
+        };
+
+        const darkModeText = document.createElement('span');
+        darkModeText.append(i18n(isDarkModeEnabled() ? 'DisableDarkMode': 'EnableDarkMode'));
+        const animationsText = document.createElement('span');
+
+        const btns: ButtonMenuItemOptionsVerifiable[] = [{
+          icon: 'darkmode',
+          regularText: darkModeText,
+          onClick: () => {}
+        }, {
+          id: 'animations-toggle',
+          icon: 'animations',
+          regularText: animationsText,
+          onClick: () => {
+            toggleAnimations();
+          },
+          verify: () => !liteMode.isEnabled()
+        }, {
+          icon: 'animations',
+          text: 'LiteMode.Title',
+          onClick: () => {
+            this.createTab(AppPowerSavingTab).open();
+          },
+          verify: () => liteMode.isEnabled()
+        }, {
+          icon: 'aversion',
+          text: 'ChatList.Menu.SwitchTo.A',
+          onClick: () => {
+            Promise.all([
+              updateStorageForWebA(),
+              sessionStorage.set({kz_version: 'Z'}),
+              sessionStorage.delete('tgme_sync')
+            ]).then(() => {
+              location.href = 'https://web.telegram.org/a/';
+            });
+          },
+          separator: App.isMainDomain,
+          verify: () => App.isMainDomain
+        }, {
+          icon: 'help',
+          text: 'TelegramFeatures',
+          onClick: () => {
+            const url = I18n.format('TelegramFeaturesUrl', true);
+            appImManager.openUrl(url);
+          },
+          separator: !App.isMainDomain
+        }, {
+          icon: 'bug',
+          text: 'ReportBug',
+          onClick: () => {
+            const a = document.createElement('a');
+            setBlankToAnchor(a);
+            a.href = 'https://bugs.telegram.org/?tag_ids=40&sort=time';
+            document.body.append(a);
+            a.click();
+            setTimeout(() => {
+              a.remove();
+            }, 0);
+          }
+        }, {
+          icon: 'plusround',
+          text: 'PWA.Install',
+          onClick: () => {
+            const installPrompt = getInstallPrompt();
+            installPrompt?.();
+          },
+          verify: () => !!getInstallPrompt()
+        }];
+
+
+        async function hasAnimations() {
+          const state = await apiManagerProxy.getState();
+          return !state.settings.liteMode.animations;
+        }
+
+        async function initAnimationsToggleIcon() {
+          updateAnimationsToggleButton(await hasAnimations());
+        }
+
+        async function toggleAnimations() {
+          updateAnimationsToggleButton(!(await hasAnimations()));
+          rootScope.managers.appStateManager.setByKey(
+            joinDeepPath('settings', 'liteMode', 'animations'),
+            await hasAnimations() // The value is already reversed
+          );
+        }
+
+        async function updateAnimationsToggleButton(enabled: boolean) {
+          const animationToggleButton = btns.find(button => button.id === 'animations-toggle')?.element;
+          if(!animationToggleButton) return;
+
+          const icon = animationToggleButton.querySelector('.tgico');
+          enabled ?
+            icon?.classList.add('animations-icon-off') :
+            icon?.classList.remove('animations-icon-off');
+
+          animationsText.replaceChildren(i18n(enabled ? 'DisableAnimations' : 'EnableAnimations'));
+        }
+
+        const moreBtn = filteredButtons.find(item => item.icon === 'more');
+        moreBtn.element.addEventListener(CLICK_EVENT_NAME, (e) => {
+          e.stopPropagation();
+        }, true);
+        moreBtn.element.classList.add('disable-click');
+        removeSubmenuListener = attachFloatingButtonMenu({
+          element: moreBtn.element,
+          direction: 'right-start',
+          createMenu: async() => {
+            const filtered = await filterAsync(btns, (button) => button?.verify ? button.verify() ?? false : true);
+            const menu = await ButtonMenu({
+              buttons: filtered
+            });
+
+            menu.append(getVersionLink());
+            menu.classList.add('sidebar-tools-submenu');
+
+            const darkModeBtn = btns[0].element;
+            darkModeBtn.addEventListener(CLICK_EVENT_NAME, (e) => {
+              e.stopPropagation();
+              toggleTheme();
+              pause(20).then(() => contextMenuController.close());
+            }, true);
+
+            initAnimationsToggleIcon();
+
+            return menu;
+          },
+          offset: [-5, -5],
+          triggerEvent: 'mouseenter'
+        });
+
+        btnArchive.element?.append(this.archivedCount);
+      },
+      onClose: () => {
+        removeSubmenuListener?.();
+      },
+      noIcon: true
+    });
+
+    return buttonMenuToggle;
   }
 
   private initSearch() {

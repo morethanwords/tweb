@@ -1,0 +1,73 @@
+.folders-sidebar {
+  flex: 80px 0 0;
+
+  --background: #212121;
+  --background-hover: #272727;
+
+  background-color: var(--background);
+  color: #717579;
+
+  z-index: 2;
+
+  &__folder-item {
+    position: relative;
+    overflow: hidden;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background-color: var(--background);
+
+    flex-direction: column;
+    gap: 6px;
+
+    padding: 12px 0;
+    min-height: 56px;
+
+    font-size: 12px;
+    line-height: 14px;
+    font-weight: 500;
+    
+    cursor: pointer;
+
+    > .tgico {
+      font-size: 30px;
+    }
+
+    > .badge {
+      position: absolute;
+      top: 6px;
+      right: 19px;
+
+      font-size: 12px;
+      line-height: 18px !important;
+
+      box-shadow: 0 0 0 1px var(--background);
+    }
+
+    
+    &--selected {
+      color: var(--primary-color);
+    }
+
+    &:hover {
+      --background: var(--background-hover);
+    }
+  }
+
+  &__menu-button {
+    > .tgico {
+      font-size: 24px;
+    }
+
+    .btn-menu {
+      inset-inline: 48px auto;
+    }
+  }
+}
+
+.night .folders-sidebar {
+  --background: #181818;
+  --background-hover: #1f1f1f;
+}

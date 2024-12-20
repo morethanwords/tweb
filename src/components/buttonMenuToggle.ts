@@ -71,7 +71,7 @@ export default function ButtonMenuToggle({
   buttonOptions?: Parameters<typeof ButtonIcon>[1],
   listenerSetter?: ListenerSetter,
   container?: HTMLElement
-  direction: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right',
+  direction: 'bottom-left' | 'bottom-right' | 'bottom-right' | 'top-left' | 'top-right',
   buttons: ButtonMenuItemOptionsVerifiable[],
   onOpenBefore?: (e: Event) => any,
   onOpen?: (e: Event, element: HTMLElement) => any,

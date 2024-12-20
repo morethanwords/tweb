@@ -1,0 +1,200 @@
+import {createRoot, createSignal, For, onCleanup, onMount} from 'solid-js';
+import {render} from 'solid-js/web';
+
+import {Middleware} from '../../../helpers/middleware';
+import ListenerSetter from '../../../helpers/listenerSetter';
+import {logger} from '../../../lib/logger';
+import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
+import {i18n} from '../../../lib/langPack';
+import {MyDialogFilter} from '../../../lib/storages/filters';
+
+import type SolidJSHotReloadGuardProvider from '../solidjsHotReloadGuardProvider';
+import {useHotReloadGuard} from '../solidjsHotReloadGuard';
+
+import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
+import type {FolderItemPayload} from './types';
+import FolderItem from './folderItem';
+
+const log = logger('folders-sidebar');
+
+
+export function FoldersSidebarContent() {
+  const {
+    rootScope,
+    appSidebarLeft,
+    AppChatFoldersTab
+  } = useHotReloadGuard();
+
+  const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
+  const [folderItems, setFolderItems] = createSignal<FolderItemPayload[]>([]);
+
+  let menuRef: HTMLDivElement;
+
+  // TODO: position items by order `localId`
+
+  function updateFolderItem(folderId: number, payload: Partial<FolderItemPayload>) {
+    setFolderItems((prev) =>
+      prev.map((folderItem) => (folderItem.id === folderId ? {...folderItem, ...payload} : folderItem))
+    );
+  }
+
+  async function updateFolderNotifications(folderId: number) {
+    updateFolderItem(folderId, {
+      notifications: await getNotificationCountForFilter(folderId, rootScope.managers)
+    });
+  }
+
+  async function updateAllFolderNotifications() {
+    const items = folderItems();
+
+    for(const folderItem of items) {
+      if(!folderItem.id) continue;
+      updateFolderNotifications(folderItem.id);
+    }
+  }
+
+  async function makeFolderItemPayload(filter: MyDialogFilter): Promise<FolderItemPayload> {
+    function wrapTitle(title: string) {
+      const span = document.createElement('span');
+      // Needs to be in an actual element
+      span.append(wrapEmojiText(title));
+      return span;
+    }
+    return {
+      id: filter.id,
+      name: filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapTitle(filter.title),
+      icon: getIconForFilter(filter),
+      notifications: await getNotificationCountForFilter(filter.id, rootScope.managers)
+    };
+  }
+
+
+  async function updateOrAddFolder(filter: MyDialogFilter) {
+    const items = [...folderItems()];
+    const existingItem = items.find((item) => item.id === filter.id);
+
+    if(existingItem) {
+      updateFolderItem(filter.id, await makeFolderItemPayload(filter));
+      return;
+    }
+
+    items.push(await makeFolderItemPayload(filter));
+    const orderedFolderItems = await getFolderItemsInOrder(items, rootScope.managers);
+    setFolderItems(orderedFolderItems);
+  }
+
+  async function deleteFolder(filterId: number) {
+    const items = folderItems();
+    const existingItemIndex = items.findIndex((item) => item.id === filterId);
+
+    if(existingItemIndex === -1) return;
+
+    items.splice(existingItemIndex, 1);
+    setFolderItems([...items]);
+  }
+
+  async function updateItemsOrder() {
+    const items = [...folderItems()];
+    const orderedFolderItems = await getFolderItemsInOrder(items, rootScope.managers);
+    setFolderItems(orderedFolderItems);
+  }
+
+  function setSelectedFolder(folderId: number) {
+    setSelectedFolderId(folderId);
+    rootScope.dispatchEvent('changing_folder_from_sidebar', folderId);
+  }
+
+  onMount(() => {
+    const listenerSetter = new ListenerSetter();
+
+    appSidebarLeft.createToolsMenu(menuRef);
+    menuRef.classList.add('sidebar-tools-button', 'is-visible');
+
+
+    (async() => {
+      const filters = await rootScope.managers.filtersStorage.getDialogFilters();
+      const folderFilters = filters.filter(filter => filter.id !== FOLDER_ID_ARCHIVE);
+
+      const folderItems = await Promise.all(folderFilters.map(makeFolderItemPayload));
+      const orderedFolderItems = await getFolderItemsInOrder(folderItems, rootScope.managers);
+
+      setFolderItems(orderedFolderItems);
+    })()
+
+    listenerSetter.add(rootScope)('dialog_flush', ({dialog}) => {
+      if(!dialog) return;
+      updateAllFolderNotifications();
+    });
+
+    listenerSetter.add(rootScope)('folder_unread', (filter) => {
+      if(filter.id < 0) return;
+      updateFolderNotifications(filter.id);
+    });
+
+    listenerSetter.add(rootScope)('filter_update', (filter) => {
+      log('filter_update', filter);
+      if(REAL_FOLDERS.has(filter.id)) return;
+      updateOrAddFolder(filter);
+    });
+
+    listenerSetter.add(rootScope)('filter_delete', (filter) => {
+      deleteFolder(filter.id);
+    });
+
+    listenerSetter.add(rootScope)('filter_order', () => {
+      updateItemsOrder();
+    });
+
+    listenerSetter.add(rootScope)('changing_folder_from_chatlist', (id) => {
+      log('changing_folder_from_chatlist', id);
+      setSelectedFolderId(id);
+    });
+
+    onCleanup(() => {
+      listenerSetter.removeAll();
+    });
+  });
+
+  return (
+    <>
+      <FolderItem ref={(el) => (menuRef = el)} class='folders-sidebar__menu-button' icon='menu' />
+
+      <For each={folderItems()}>{(folderItem) => (
+        <FolderItem
+          {...folderItem}
+          selected={selectedFolderId() === folderItem.id}
+          onClick={() => setSelectedFolder(folderItem.id)}
+        />
+      )}</For>
+
+      <FolderItem
+        icon='enhance'
+        name={i18n('Edit')}
+        onClick={() => {
+          appSidebarLeft.createTab(AppChatFoldersTab).open();
+        }}
+      />
+
+      {/* <div class="folders-sidebar__folder-item">
+        <IconTsx icon="group_filled" />
+        <div class="folders-sidebar__folder-item-name">
+          Groups
+        </div>
+      </div>
+      <div class="folders-sidebar__folder-item">
+        <IconTsx icon="bots" />
+        <div class="folders-sidebar__folder-item-name">
+          Bots
+        </div>
+      </div> */}
+    </>
+  );
+}
+
+export function renderFoldersSidebarContent(element: HTMLElement, HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider, middleware: Middleware) {
+  createRoot((dispose) => {
+    render(() => <HotReloadGuardProvider><FoldersSidebarContent /></HotReloadGuardProvider>, element);
+    middleware.onDestroy(() => dispose());
+  });
+}
