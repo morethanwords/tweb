@@ -11,6 +11,7 @@ import {MyDialogFilter} from '../../../lib/storages/filters';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 import createContextMenu from '../../../helpers/dom/createContextMenu';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
+import pause from '../../../helpers/schedulers/pause';
 
 import type SolidJSHotReloadGuardProvider from '../solidjsHotReloadGuardProvider';
 import {useHotReloadGuard} from '../solidjsHotReloadGuard';
@@ -116,7 +117,10 @@ export function FoldersSidebarContent() {
     setFolderItems(items);;
   }
 
-  (window as any).sliceTabsUntilFirstTab = appSidebarLeft.closeAllTabs.bind(appSidebarLeft);
+  async function closeTabsBefore(clb: () => void) {
+    appSidebarLeft.closeAllTabs() && await pause(200);
+    clb();
+  }
 
   function setSelectedFolder(folderId: number) {
     setSelectedFolderId(folderId);
@@ -139,9 +143,11 @@ export function FoldersSidebarContent() {
         text: 'FilterEdit',
         onClick: () => {
           rootScope.managers.filtersStorage.getFilter(clickFilterId).then((filter) => {
-            const tab = appSidebarLeft.createTab(AppEditFolderTab);
-            tab.setInitFilter(filter);
-            tab.open();
+            closeTabsBefore(() => {
+              const tab = appSidebarLeft.createTab(AppEditFolderTab);
+              tab.setInitFilter(filter);
+              tab.open();
+            });
           });
         },
         verify: () => clickFilterId !== FOLDER_ID_ALL
@@ -149,7 +155,9 @@ export function FoldersSidebarContent() {
         icon: 'edit',
         text: 'FilterEditAll',
         onClick: () => {
-          appSidebarLeft.createTab(AppChatFoldersTab).open();
+          closeTabsBefore(() => {
+            appSidebarLeft.createTab(AppChatFoldersTab).open();
+          });
         },
         verify: () => clickFilterId === FOLDER_ID_ALL
       }, {
@@ -238,7 +246,9 @@ export function FoldersSidebarContent() {
         icon='enhance'
         name={i18n('Edit')}
         onClick={() => {
-          appSidebarLeft.createTab(AppChatFoldersTab).open();
+          closeTabsBefore(() => {
+            appSidebarLeft.createTab(AppChatFoldersTab).open()
+          });
         }}
       />
 

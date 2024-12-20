@@ -46,6 +46,13 @@
       box-shadow: 0 0 0 1px var(--background);
     }
 
+    &-name {
+      max-width: 80%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     
     &--selected {
       color: var(--primary-color);

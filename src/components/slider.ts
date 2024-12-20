@@ -150,11 +150,13 @@ export default class SidebarSlider {
   }
 
   public closeAllTabs() {
+    const hasTabs = this.historyTabIds.length > 0;
     for(let i = this.historyTabIds.length - 1; i >= 0; --i) {
       const tabId = this.historyTabIds[i];
       const tab = tabId instanceof SliderSuperTab ? tabId : this.tabs.get(tabId);
       tab.close();
     }
+    return hasTabs;
   }
 
   public sliceTabsUntilTab(tabConstructor: SliderSuperTabConstructable, preserveTab: SliderSuperTab) {
