@@ -59,7 +59,7 @@ export function wrapRoundVideoBubble({
   const bubbleAudioClassNames = ['can-have-tail', 'voice-message'];
   const selectorsToHideWhenCollapsed = ['.topic-name-button-container', '.reply', '.bubble-name-forwarded'];
 
-  // transcribedText.innerText = longText;
+  const getBubblesContainer = () => bubble.closest('.bubbles');
 
   let hasAddedTranscription = false;
   let isTranscribeDisabled = false;
@@ -83,10 +83,19 @@ export function wrapRoundVideoBubble({
     }
   }
 
+  function insideBubbleContainerCoords() {
+    const bcr = getBubblesContainer().getBoundingClientRect();
+    return {
+      x: (value: number) => value - bcr.left,
+      y: (value: number) => value - bcr.top
+    }
+  }
+
   async function hideAudio() {
+    const coords = insideBubbleContainerCoords();
     const initialThumbBcr = audioMessageContainer.querySelector('.audio-thumb')?.getBoundingClientRect();
-    const initialThumbLeft = initialThumbBcr.left + initialThumbBcr.width / 2;
-    const initialThumbTop = initialThumbBcr.top + initialThumbBcr.height / 2;
+    const initialThumbLeft = coords.x(initialThumbBcr.left + initialThumbBcr.width / 2);
+    const initialThumbTop = coords.y(initialThumbBcr.top + initialThumbBcr.height / 2);
     const initialThumbSize = initialThumbBcr.width;
 
     log('initialThumbBcr', initialThumbBcr);
@@ -107,7 +116,7 @@ export function wrapRoundVideoBubble({
     animatedCanvas.style.width = initialThumbSize + 'px';
     animatedCanvas.style.height = initialThumbSize + 'px';
     animatedCanvas.style.borderRadius = '50%';
-    document.body.append(animatedCanvas);
+    getBubblesContainer().append(animatedCanvas);
 
     transcribe.style.removeProperty('display');
     videoSentTime.style.removeProperty('display');
@@ -147,9 +156,10 @@ export function wrapRoundVideoBubble({
       1,
       ANIMATION_TIME,
       (progress) => {
+        const coords = insideBubbleContainerCoords();
         const targetBcr = content?.getBoundingClientRect();
-        const targetLeft = targetBcr.left + targetBcr.width / 2;
-        const targetTop = targetBcr.top + targetBcr.height / 2;
+        const targetLeft = coords.x(targetBcr.left + targetBcr.width / 2);
+        const targetTop = coords.y(targetBcr.top + targetBcr.height / 2);
         const targetSize = targetBcr.width;
 
         animatedCanvas.style.left = lerp(initialThumbLeft, targetLeft, progress) + 'px';
@@ -236,16 +246,18 @@ export function wrapRoundVideoBubble({
     const bcr = content.getBoundingClientRect();
     const initialSize = bcr.width;
 
+    const coords = insideBubbleContainerCoords();
+
     animatedCanvas = document.createElement('canvas');
     animatedCanvas.width = initialSize;
     animatedCanvas.height = initialSize;
     drawCurrentFrame();
 
-    animatedCanvas.style.position = 'fixed';
+    animatedCanvas.style.position = 'absolute';
     animatedCanvas.style.zIndex = '1000';
     animatedCanvas.style.transform = 'translate(-50%, -50%)';
-    const initialLeft = bcr.left + bcr.width / 2;
-    const initialTop = bcr.top + bcr.height / 2;
+    const initialLeft = coords.x(bcr.left + bcr.width / 2);
+    const initialTop = coords.y(bcr.top + bcr.height / 2);
     animatedCanvas.style.left = initialLeft + 'px';
     animatedCanvas.style.top = initialTop + 'px';
     animatedCanvas.style.width = initialSize + 'px';
@@ -254,7 +266,7 @@ export function wrapRoundVideoBubble({
 
     console.log('initialLeft, initialTop', initialLeft, initialTop);
 
-    document.body.append(animatedCanvas);
+    getBubblesContainer().append(animatedCanvas);
 
     // MOUNT_CLASS_TO.ctx = ctx;
     // MOUNT_CLASS_TO.currentFrameCanvas = currentFrameCanvas;
@@ -349,9 +361,10 @@ export function wrapRoundVideoBubble({
         1,
         ANIMATION_TIME,
         (progress) => {
+          const coords = insideBubbleContainerCoords();
           const targetBcr = audioMessageContainer.querySelector('.audio-thumb')?.getBoundingClientRect();
-          const targetLeft = targetBcr.left + targetBcr.width / 2;
-          const targetTop = targetBcr.top + targetBcr.height / 2;
+          const targetLeft = coords.x(targetBcr.left + targetBcr.width / 2);
+          const targetTop = coords.y(targetBcr.top + targetBcr.height / 2);
           const targetSize = targetBcr.width;
 
           animatedCanvas.style.left = lerp(initialLeft, targetLeft, progress) + 'px';
