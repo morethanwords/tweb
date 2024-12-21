@@ -4,13 +4,80 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+
 #column-left {
   //display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  // min-width: unquote('min(100%, 18rem)');
-  max-width: calc(#{$large-screen} / 4);
-  width: calc(#{$large-screen} / 4);
+
+  $max-width: calc($large-screen / 4);
+  --current-width: var(--current-sidebar-left-width, #{$max-width});
+
+  flex: var(--current-width) 1 auto;
+  max-width: #{$max-width};
+  width: var(--current-width);
+
+  .sidebar-header-search-trigger {
+    display: none;
+    margin-left: 8px;
+  }
+
+  @include respond-to(no-floating-left-sidebar) {
+    &.is-collapsed {
+      width: var(--sidebar-left-width-when-collapsed, 88px);
+
+      >.sidebar-slider {
+        width: var(--sidebar-left-inner-width-when-collapsed, 88px);
+      }
+
+      #new-menu {
+        display: none !important;
+      }
+
+      .btn-corner.btn-update {
+        position: fixed !important;
+        left: calc(max(0px, (100vw - #{$large-screen}) / 2) + 12px) !important;
+        z-index: 4;
+      }
+    }
+
+    &.is-collapsed:not(.has-open-tabs) {
+      .chatlist-chat {
+        padding-inline-end: 0;
+        .row-row {
+          display: none;
+        }
+      }
+
+      .sidebar-header {
+        >:not(.sidebar-header-search-trigger) {
+          display: none;
+        }
+        .sidebar-header-search-trigger {
+          display: block;
+        }
+      }
+    }
+
+    &.is-collapsed.has-open-tabs, &.is-collapsed.force-fixed {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: calc(max(0px, (100vw - #{$large-screen}) / 2) + 80px) !important;
+
+      z-index: 3;
+      overflow: hidden;
+
+      width: var(--sidebar-left-width-when-collapsed, #{$max-width});
+      >.sidebar-slider {
+        width: var(--sidebar-left-inner-width-when-collapsed, #{$max-width});
+      }
+
+      // #new-menu, 
+      .btn-corner.btn-update {
+        display: none;
+      }
+    }
+  }
 
   @include respond-to(handhelds) {
     width: 100%;
@@ -64,7 +131,7 @@
   }
 
   @include respond-to(before-medium-screens) {
-    flex: 2;
+    flex: var(--current-width) 2 auto;
   }
 
   // ! WARNING, ОЧЕНЬ КРУТОЙ КОСТЫЛЬ - ФИКС ЧЁРНОЙ РАМКИ У КАРТИНОК С ХВОСТИКОМ
@@ -363,30 +430,6 @@
       bottom: calc(100% + 10px);
     }
 
-    .btn-corner {
-      &:not(.menu-open) .animated-button-icon-icon-first, 
-      &.menu-open .animated-button-icon-icon-last {
-        visibility: visible;
-        animation: grow-icon .4s forwards ease-in-out;
-      }
-
-      @include respond-to(handhelds) {
-        --size: 54px;
-        bottom: 14px;
-        inset-inline-end: 14px;
-
-        position: fixed !important;
-        z-index: 1;
-      }
-
-      /* html:not(.no-touch) & {
-        transform: translateZ(0);
-      } */
-      &:not(.is-hidden) {
-        transform: translateZ(0);
-      }
-    }
-
     /* html.no-touch &:hover .btn-corner:not(.is-hidden) {
       transform: translateZ(0);
     } */
@@ -493,6 +536,65 @@
   }
 }
 
+#column-left .btn-corner, .folders-sidebar .btn-corner {
+  &:not(.menu-open) .animated-button-icon-icon-first, 
+  &.menu-open .animated-button-icon-icon-last {
+    visibility: visible;
+    animation: grow-icon .4s forwards ease-in-out;
+  }
+
+  @include respond-to(handhelds) {
+    --size: 54px;
+    bottom: 14px;
+    inset-inline-end: 14px;
+
+    position: fixed !important;
+    z-index: 1;
+  }
+
+  /* html:not(.no-touch) & {
+    transform: translateZ(0);
+  } */
+  &:not(.is-hidden) {
+    transform: translateZ(0);
+  }
+}
+
+.sidebar-left-overlay {
+  opacity: 0;
+  pointer-events: none;
+
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+
+  z-index: 3;
+
+  background-color: rgba(0, 0, 0, 0.3);
+  transition: opacity .4s;
+
+  @include respond-to(no-floating-left-sidebar) {
+    html:has(#column-left.is-collapsed.has-open-tabs) &:not(.force-hide) {
+      opacity: 1;
+      pointer-events: initial;
+    }
+  }
+}
+
+.sidebar-left-placeholder {
+  display: none;
+
+  @include respond-to(no-floating-left-sidebar) {
+    html:has(#column-left.is-collapsed.has-open-tabs) &, &.keep-active {
+      display: block;
+      flex: 88px 0 0;
+      width: 88px;
+    }
+  }
+}
+
 .sidebar-tools-submenu {
   min-width: 200px;
 }
@@ -519,6 +621,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
+
+    @include respond-to(no-floating-left-sidebar) {
+      width: 0px;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+
+      transition: width 0.12s, opacity 0.12s;
+
+      &.is-visible {
+        width: 2.5rem;
+        opacity: 1;
+        overflow: initial;
+        pointer-events: initial;
+      }
+    }
 
     .btn-icon {
       visibility: hidden;
@@ -1337,5 +1455,69 @@
 
     border-radius: 10px;
     background-color: currentColor;
+  }
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 5px;
+  
+  z-index: 4;
+
+  background-color: var(--primary-color);
+  // box-shadow: 0 0 1px 0.5px rgba(128, 128, 128, 0.25);
+  box-shadow: 0 0 1.5px 0.5px rgba(255, 255, 255, 1);
+  opacity: 0;
+
+  transition: opacity 0.2s;
+  cursor: col-resize;
+
+  html:has(.btn-menu.active) &, #column-left.has-open-tabs & {
+    display: none;
+  }
+
+  @include respond-to(until-floating-left-sidebar) {
+    display: none;
+  }
+
+  &:hover, &.is-active {
+    opacity: 1;
+  }
+
+  // Make the primary color a bit lighter
+  &::before {
+    content: '';
+    display: block;
+    position: absolute;
+
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    background-color: rgba(255, 255, 255, 0.375);
+  }
+
+  &.is-active {
+    &::after {
+      content: '';
+      display: block;
+      position: absolute;
+
+      top: 0;
+      left: 50%;
+      transform: translate(-50%, 0);
+      width: 32px;
+      height: 100%;
+    }
+  }
+}
+
+@include respond-to(no-floating-left-sidebar) {
+  .folders-tabs-scrollable {
+    display: none !important;
   }
 }

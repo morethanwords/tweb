@@ -87,10 +87,20 @@ import {UiNotificationsManager} from '../../lib/appManagers/uiNotificationsManag
 import {updateStorageForWebA} from '../../lib/updateStorageForWebA';
 import {renderFoldersSidebarContent} from './foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from './solidjsHotReloadGuardProvider';
+import SwipeHandler, {getEvent} from '../swipeHandler';
+import clamp from '../../helpers/number/clamp';
+import {animateValue} from '../mediaEditor/utils';
+import throttle from '../../helpers/schedulers/throttle';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
+type SearchInitResult = {
+  open: () => void;
+  close: () => void;
+}
+
 export class AppSidebarLeft extends SidebarSlider {
+  private buttonsContainer: HTMLElement;
   private toolsBtn: HTMLElement;
   private backBtn: HTMLButtonElement;
   public inputSearch: InputSearch;
@@ -103,6 +113,9 @@ export class AppSidebarLeft extends SidebarSlider {
 
   private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
   private searchSuper: AppSearchSuper;
+  private searchInitResult: SearchInitResult;
+  private isSearchActive = false;
+  private searchTriggerWhenCollapsed: HTMLElement;
 
   private updateBtn: HTMLElement;
   private hasUpdate: boolean;
@@ -126,40 +139,8 @@ export class AppSidebarLeft extends SidebarSlider {
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
     sidebarHeader.append(this.inputSearch.container);
 
-    const onNewGroupClick = () => {
-      this.createTab(AppAddMembersTab).open({
-        type: 'chat',
-        skippable: true,
-        takeOut: (peerIds) => this.createTab(AppNewGroupTab).open({peerIds}),
-        title: 'GroupAddMembers',
-        placeholder: 'SendMessageTo'
-      });
-    };
-
-    const onContactsClick = () => {
-      this.createTab(AppContactsTab).open();
-    };
-
     // this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
-
-    const themeCheckboxField = new CheckboxField({
-      toggle: true,
-      checked: themeController.getTheme().name === 'night'
-    });
-    themeCheckboxField.input.addEventListener('change', () => {
-      const item = findUpClassName(themeCheckboxField.label, 'btn-menu-item');
-      const icon = item.querySelector('.tgico');
-      const rect = icon.getBoundingClientRect();
-      themeController.switchTheme(themeCheckboxField.checked ? 'night' : 'day', {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2
-      });
-    });
-
-    rootScope.addEventListener('theme_changed', () => {
-      themeCheckboxField.setValueSilently(themeController.getTheme().name === 'night');
-    });
 
     injectMediaEditorLangPack();
 
@@ -182,30 +163,9 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.backBtn.parentElement.insertBefore(this.toolsBtn, this.backBtn);
 
-    this.newBtnMenu = ButtonMenuToggle({
-      direction: 'top-left',
-      buttons: [{
-        icon: 'newchannel',
-        text: 'NewChannel',
-        onClick: () => {
-          this.createTab(AppNewChannelTab).open();
-        }
-      }, {
-        icon: 'newgroup',
-        text: 'NewGroup',
-        onClick: onNewGroupClick
-      }, {
-        icon: 'newprivate',
-        text: 'NewPrivateChat',
-        onClick: onContactsClick
-      }],
-      noIcon: true
-    });
-    this.newBtnMenu.className = 'btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
-    this.newBtnMenu.tabIndex = -1;
-    const icons: Icon[] = ['newchat_filled', 'close'];
-    this.newBtnMenu.prepend(...icons.map((icon, idx) => Icon(icon, 'animated-button-icon-icon', 'animated-button-icon-icon-' + (idx === 0 ? 'first' : 'last'))));
-    this.newBtnMenu.id = 'new-menu';
+    this.buttonsContainer = this.backBtn.parentElement;
+
+    this.newBtnMenu = this.createNewBtnMenu(true);
     sidebarHeader.nextElementSibling.append(this.newBtnMenu);
 
     this.updateBtn = document.createElement('div');
@@ -451,14 +411,122 @@ export class AppSidebarLeft extends SidebarSlider {
 
     fastRaf(onResize);
     mediaSizes.addEventListener('resize', onResize);
+
+    this.searchTriggerWhenCollapsed = document.createElement('div');
+    this.searchTriggerWhenCollapsed.className = 'sidebar-header-search-trigger';
+    this.searchTriggerWhenCollapsed.append(ButtonIcon('search'));
+    this.searchTriggerWhenCollapsed.addEventListener('click', () => {
+      this.initSearch().open();
+    });
+
+    this.buttonsContainer.parentElement.prepend(this.searchTriggerWhenCollapsed);
+
+    const sidebarOverlay = document.querySelector('.sidebar-left-overlay');
+    sidebarOverlay.addEventListener('click', () => {
+      this.closeAllTabs();
+      this.closeSearch();
+    });
+
+    this.initSidebarResize();
   }
 
-  public createToolsMenu(mountTo?: HTMLElement) {
+  private onTabsOrSearchChange = () => {
+    const wasFloating = this.sidebarEl.classList.contains('has-open-tabs');
+    const isFloating = this.hasTabsInNavigation() || this.isSearchActive;
+    const isCollapsed = this.sidebarEl.classList.contains('is-collapsed');
+
+    this.sidebarEl.classList.toggle('has-open-tabs', isFloating);
+
+    const sidebarPlaceholder = document.querySelector('.sidebar-left-placeholder');
+
+    if(wasFloating === isFloating || !isCollapsed) return;
+
+    const WIDTH_WHEN_COLLAPSED = 88;
+    const FULL_WIDTH = 420;
+
+    if(isFloating) {
+      animateValue(WIDTH_WHEN_COLLAPSED, FULL_WIDTH, 200, (value) => {
+        this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
+      }, {
+        onEnd: () => {
+          this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
+        }
+      });
+    } else {
+      sidebarPlaceholder.classList.add('keep-active');
+      this.sidebarEl.classList.add('force-fixed');
+
+      animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, 200, (value) => {
+        this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
+      }, {
+        onEnd: () => {
+          this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
+          this.sidebarEl.classList.remove('force-fixed');
+          sidebarPlaceholder.classList.remove('keep-active');
+        }
+      });
+    }
+  }
+
+  private initSidebarResize() {
+    this.onTabsCountChange = () => {
+      this.onTabsOrSearchChange();
+    }
+
+    const MIN_SIDEBAR_WIDTH = 260;
+    const MAX_SIDEBAR_WIDTH = 420;
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.classList.add('sidebar-resize-handle');
+    this.sidebarEl.append(resizeHandle);
+
+    const throttledSetToStorage = throttle((width: number) => {
+      localStorage.setItem('sidebar-left-width', width + '');
+    }, 200);
+
+    new SwipeHandler({
+      element: resizeHandle,
+      setCursorTo: document.body,
+      onStart: () => {
+        resizeHandle.classList.add('is-active');
+      },
+      onSwipe: (_, __, _e) => {
+        const e = getEvent(_e);
+        const rect = this.sidebarEl.getBoundingClientRect();
+
+        const width = e.clientX - rect.left;
+        const clampedWidth = Math.round(clamp(width, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH));
+
+        document.documentElement.style.setProperty('--current-sidebar-left-width', clampedWidth + 'px');
+
+        const isCollapsed = width < MIN_SIDEBAR_WIDTH;
+        this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
+
+        throttledSetToStorage(isCollapsed ? 0 : clampedWidth);
+      },
+      onReset: () => {
+        resizeHandle.classList.remove('is-active');
+      }
+    })
+  }
+
+  public createToolsMenu(mountTo?: HTMLElement, closeBefore?: boolean) {
+    const closeTabsBefore = async(clb: () => void) => {
+      if(closeBefore) {
+        this.closeSearch();
+        this.closeAllTabs() && await pause(200);
+      }
+
+      clb();
+    }
+
     const btnArchive: typeof menuButtons[0] = {
       icon: 'archive',
       text: 'ArchivedChats',
       onClick: () => {
-        this.createTab(AppArchivedTab).open();
+        closeTabsBefore(() => {
+          this.createTab(AppArchivedTab).open();
+        });
       },
       verify: async() => {
         const folder = await this.managers.dialogsStorage.getFolderDialogs(FOLDER_ID_ARCHIVE, false);
@@ -468,7 +536,9 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     const onContactsClick = () => {
-      this.createTab(AppContactsTab).open();
+      closeTabsBefore(() => {
+        this.createTab(AppContactsTab).open();
+      });
     };
 
     const more = document.createElement('span');
@@ -525,7 +595,9 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'stories',
       text: 'MyStories.Title',
       onClick: () => {
-        this.createTab(AppMyStoriesTab).open();
+        closeTabsBefore(() => {
+          this.createTab(AppMyStoriesTab).open();
+        });
       },
       verify: () => !TEST_NO_STORIES
     }, {
@@ -536,7 +608,9 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'settings',
       text: 'Settings',
       onClick: () => {
-        this.createTab(AppSettingsTab).open();
+        closeTabsBefore(() => {
+          this.createTab(AppSettingsTab).open();
+        });
       }
     }, {
       icon: 'more',
@@ -603,7 +677,9 @@ export class AppSidebarLeft extends SidebarSlider {
               },
               regularText: wrapUserName(user),
               onClick: () => {
-                this.createTab(AppSettingsTab).open();
+                closeTabsBefore(() => {
+                  this.createTab(AppSettingsTab).open();
+                });
               }
             });
           } else {
@@ -681,7 +757,9 @@ export class AppSidebarLeft extends SidebarSlider {
           icon: 'animations',
           text: 'LiteMode.Title',
           onClick: () => {
-            this.createTab(AppPowerSavingTab).open();
+            closeTabsBefore(() => {
+              this.createTab(AppPowerSavingTab).open();
+            });
           },
           verify: () => liteMode.isEnabled()
         }, {
@@ -802,7 +880,66 @@ export class AppSidebarLeft extends SidebarSlider {
     return buttonMenuToggle;
   }
 
+  public createNewBtnMenu(withId?: boolean, closeBefore?: boolean) {
+    const closeTabsBefore = async(clb: () => void) => {
+      if(closeBefore) {
+        this.closeSearch();
+        this.closeAllTabs() && await pause(200);
+      }
+      clb();
+    }
+
+    const onNewGroupClick = () => {
+      closeTabsBefore(() => {
+        this.createTab(AppAddMembersTab).open({
+          type: 'chat',
+          skippable: true,
+          takeOut: (peerIds) => this.createTab(AppNewGroupTab).open({peerIds}),
+          title: 'GroupAddMembers',
+          placeholder: 'SendMessageTo'
+        });
+      });
+    };
+
+    const onContactsClick = () => {
+      closeTabsBefore(() => {
+        this.createTab(AppContactsTab).open();
+      });
+    };
+
+    const btnMenu = ButtonMenuToggle({
+      direction: 'top-left',
+      buttons: [{
+        icon: 'newchannel',
+        text: 'NewChannel',
+        onClick: () => {
+          closeTabsBefore(() => {
+            this.createTab(AppNewChannelTab).open();
+          });
+        }
+      }, {
+        icon: 'newgroup',
+        text: 'NewGroup',
+        onClick: onNewGroupClick
+      }, {
+        icon: 'newprivate',
+        text: 'NewPrivateChat',
+        onClick: onContactsClick
+      }],
+      noIcon: true
+    });
+    btnMenu.className = 'btn-new-menu btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
+    btnMenu.tabIndex = -1;
+    const icons: Icon[] = ['newchat_filled', 'close'];
+    btnMenu.prepend(...icons.map((icon, idx) => Icon(icon, 'animated-button-icon-icon', 'animated-button-icon-icon-' + (idx === 0 ? 'first' : 'last'))));
+    withId && (btnMenu.id = 'new-menu');
+
+    return btnMenu;
+  }
+
   private initSearch() {
+    if(this.searchInitResult) return this.searchInitResult;
+
     const searchContainer = this.sidebarEl.querySelector('#search-container') as HTMLDivElement;
 
     const scrollable = new Scrollable(searchContainer);
@@ -1096,6 +1233,10 @@ export class AppSidebarLeft extends SidebarSlider {
       }
 
       transition(1);
+
+      this.buttonsContainer.classList.add('is-visible');
+      this.isSearchActive = true;
+      this.onTabsOrSearchChange();
     };
 
     this.inputSearch.input.addEventListener('focus', onFocus);
@@ -1109,6 +1250,10 @@ export class AppSidebarLeft extends SidebarSlider {
       appNavigationController.removeByType('global-search');
 
       transition(0);
+
+      this.buttonsContainer.classList.remove('is-visible');
+      this.isSearchActive = false;
+      this.onTabsOrSearchChange();
     });
 
     const clearRecentSearchBtn = ButtonIcon('close');
@@ -1126,6 +1271,15 @@ export class AppSidebarLeft extends SidebarSlider {
         });
       });
     });
+
+    return this.searchInitResult = {
+      open: () => {
+        onFocus();
+      },
+      close: () => {
+        close();
+      }
+    };
   }
 
   private async watchChannelsTabVisibility() {

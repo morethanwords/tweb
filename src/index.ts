@@ -74,6 +74,14 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     }
   } catch(err) {}
 
+  const sidebarEl = document.getElementById('column-left');
+  const storedWidth = localStorage.getItem('sidebar-left-width');
+  if(storedWidth === '0') {
+    sidebarEl.classList.add('is-collapsed');
+  } else if(storedWidth) {
+    document.documentElement.style.setProperty('--current-sidebar-left-width', storedWidth + 'px');
+  }
+
   toggleAttributePolyfill();
 
   // polyfill for replaceChildren

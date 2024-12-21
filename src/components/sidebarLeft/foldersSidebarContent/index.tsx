@@ -118,6 +118,7 @@ export function FoldersSidebarContent() {
   }
 
   async function closeTabsBefore(clb: () => void) {
+    appSidebarLeft.closeSearch();
     appSidebarLeft.closeAllTabs() && await pause(200);
     clb();
   }
@@ -132,7 +133,7 @@ export function FoldersSidebarContent() {
   onMount(() => {
     const listenerSetter = new ListenerSetter();
 
-    appSidebarLeft.createToolsMenu(menuRef);
+    appSidebarLeft.createToolsMenu(menuRef, true);
     menuRef.classList.add('sidebar-tools-button', 'is-visible');
 
     let clickFilterId: number;
@@ -251,6 +252,8 @@ export function FoldersSidebarContent() {
           });
         }}
       />
+
+      {appSidebarLeft.createNewBtnMenu(false, true)}
 
       {/* <div class="folders-sidebar__folder-item">
         <IconTsx icon="group_filled" />

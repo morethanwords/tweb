@@ -29,6 +29,7 @@ export default class SidebarSlider {
   protected managers: AppManagers;
   protected middlewareHelper: MiddlewareHelper;
   public onOpenTab: () => MaybePromise<void>;
+  public onTabsCountChange?: () => void;
 
   constructor(options: {
     sidebarEl: SidebarSlider['sidebarEl'],
@@ -65,6 +66,7 @@ export default class SidebarSlider {
     const item = appNavigationController.findItemByType(this.navigationType);
     if(item) {
       appNavigationController.back(this.navigationType);
+      this.onTabsCountChange?.();
     } else if(this.historyTabIds.length) {
       this.closeTab(this.historyTabIds[this.historyTabIds.length - 1]);
     }
@@ -95,6 +97,8 @@ export default class SidebarSlider {
           if(result) {
             Promise.resolve(result).then(() => {
               appNavigationController.removeItem(navigationItem);
+              this.onTabsCountChange?.();
+
               this.closeTab(undefined, undefined, true);
             });
 
@@ -109,6 +113,7 @@ export default class SidebarSlider {
 
     // if(!this.canHideFirst || this.historyTabIds.length) {
     appNavigationController.pushItem(navigationItem);
+    this.onTabsCountChange?.();
     // }
   }
 
@@ -150,7 +155,7 @@ export default class SidebarSlider {
   }
 
   public closeAllTabs() {
-    const hasTabs = this.historyTabIds.length > 0;
+    const hasTabs = this.hasTabsInNavigation();
     for(let i = this.historyTabIds.length - 1; i >= 0; --i) {
       const tabId = this.historyTabIds[i];
       const tab = tabId instanceof SliderSuperTab ? tabId : this.tabs.get(tabId);
@@ -187,6 +192,7 @@ export default class SidebarSlider {
   protected onCloseTab(id: number | SliderSuperTab, animate: boolean, isNavigation?: boolean) {
     if(!isNavigation) {
       appNavigationController.removeByType(this.navigationType, true);
+      this.onTabsCountChange?.();
     }
 
     const tab: SliderSuperTab = id instanceof SliderSuperTab ? id : this.tabs.get(id);
@@ -230,5 +236,9 @@ export default class SidebarSlider {
     const tab = new ctor(doNotAppend ? undefined : this, destroyable);
     tab.managers = this.managers;
     return tab;
+  }
+
+  public hasTabsInNavigation() {
+    return !!appNavigationController.findItemByType(this.navigationType);
   }
 }

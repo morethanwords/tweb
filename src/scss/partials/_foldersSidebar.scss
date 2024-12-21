@@ -1,4 +1,5 @@
 .folders-sidebar {
+  position: relative;
   flex: 80px 0 0;
 
   --background: #212121;
@@ -7,7 +8,12 @@
   background-color: var(--background);
   color: #717579;
 
-  z-index: 2;
+  z-index: 4;
+
+  @include respond-to(until-floating-left-sidebar) {
+    flex: 0 0 0;
+    display: none;
+  }
 
   &__folder-item {
     position: relative;
@@ -72,9 +78,29 @@
       inset-inline: 48px auto;
     }
   }
+
+  .btn-new-menu {
+    display: none;
+    position: absolute !important;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%) !important;
+
+    .btn-menu.top-left {
+      --transform-origin-x: var(--transform-origin-inline-start);
+      inset-inline: 0 auto;
+      inset-block: auto 120%;
+    }
+
+    @include respond-to(no-floating-left-sidebar) {
+      html:has(#column-left.is-collapsed) & {
+        display: flex;
+      }
+    }
+  }
 }
 
 .night .folders-sidebar {
-  --background: #181818;
-  --background-hover: #1f1f1f;
+  --background: #141414;
+  --background-hover: #1d1d1d;
 }
