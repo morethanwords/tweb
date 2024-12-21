@@ -1979,7 +1979,6 @@ export default class AppSearchSuper {
       return promise;
     }
 
-    // Here load of data is happening
     if(type === 'members' || type === 'groups') {
       promise = this.loadMembers(options);
     } else if(type === 'stories') {
