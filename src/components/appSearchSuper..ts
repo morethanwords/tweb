@@ -1301,13 +1301,11 @@ export default class AppSearchSuper {
         return arg;
       };
 
-      const log = logger('new-tabs');
       return Promise.all([
         this.managers.appUsersManager.getContactsPeerIds(query, true, undefined, 10)
         .then(onLoad)
         .then((contacts) => {
           if(contacts) {
-            log('contacts', contacts);
             setResults(contacts, this.searchGroups.contacts, true);
           }
         }),
@@ -1316,7 +1314,6 @@ export default class AppSearchSuper {
         .then(onLoad)
         .then((contacts) => {
           if(contacts) {
-            log('contacts2', contacts);
             setResults(contacts.my_results, this.searchGroups.contacts, true);
             setResults(contacts.results/* .concat(contacts.results, contacts.results, contacts.results) */, this.searchGroups.globalContacts);
 
@@ -1347,7 +1344,6 @@ export default class AppSearchSuper {
         .then(onLoad)
         .then((value) => {
           if(value) {
-            log('contacts3', value.dialogs);
             setResults(value.dialogs.map((d) => d.peerId), this.searchGroups.contacts, true);
           }
         })
@@ -1985,7 +1981,6 @@ export default class AppSearchSuper {
       return promise;
     }
 
-    // Here load of data is happening
     if(type === 'members' || type === 'groups') {
       promise = this.loadMembers(options);
     } else if(type === 'stories') {
