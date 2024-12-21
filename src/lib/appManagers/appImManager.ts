@@ -312,15 +312,13 @@ export class AppImManager extends EventListenerBase<{
 
     mediaSizes.addEventListener('resize', () => {
       // const perf = performance.now();
-      const rect = this.chatsContainer.getBoundingClientRect();
-      ChatBackgroundPatternRenderer.resizeInstances(rect.width, rect.height).then(() => {
-        // this.log.warn('resize bg time:', performance.now() - perf);
-        // for(const chat of this.chats) {
-        //   if(chat.renderDarkPattern) {
-        //     chat.renderDarkPattern();
-        //   }
-        // }
-      });
+      this.adjustChatPatternBackground();
+      // this.log.warn('resize bg time:', performance.now() - perf);
+      // for(const chat of this.chats) {
+      //   if(chat.renderDarkPattern) {
+      //     chat.renderDarkPattern();
+      //   }
+      // }
     });
 
     const onPeerChanging = (chat: Chat) => {
@@ -689,6 +687,11 @@ export class AppImManager extends EventListenerBase<{
     this.init();
 
     // PopupElement.createPopup(PopupBoostsViaGifts, -5000866300);
+  }
+
+  public adjustChatPatternBackground() {
+    const rect = this.chatsContainer.getBoundingClientRect();
+    ChatBackgroundPatternRenderer.resizeInstances(rect.width, rect.height);
   }
 
   private checkForShare() {

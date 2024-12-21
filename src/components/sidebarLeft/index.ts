@@ -503,6 +503,8 @@ export class AppSidebarLeft extends SidebarSlider {
         const isCollapsed = !this.hasTabsInNavigation() && !this.isSearchActive && width < MIN_SIDEBAR_WIDTH * 0.65;
         this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
 
+        appImManager.adjustChatPatternBackground();
+
         throttledSetToStorage(isCollapsed ? 0 : clampedWidth);
       },
       onReset: () => {
