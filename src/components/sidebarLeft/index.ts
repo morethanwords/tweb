@@ -86,7 +86,7 @@ import {changeAccount} from '../../lib/accounts/changeAccount';
 import {UiNotificationsManager} from '../../lib/appManagers/uiNotificationsManager';
 import {updateStorageForWebA} from '../../lib/updateStorageForWebA';
 import {renderFoldersSidebarContent} from './foldersSidebarContent';
-import SolidJSHotReloadGuardProvider from './solidjsHotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import SwipeHandler, {getEvent} from '../swipeHandler';
 import clamp from '../../helpers/number/clamp';
 import {animateValue} from '../mediaEditor/utils';

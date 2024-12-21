@@ -1,8 +1,10 @@
 import {createContext, useContext} from 'solid-js';
-import type {RootScope} from '../../lib/rootScope';
-import type {AppSidebarLeft} from '.';
-import type AppChatFoldersTab from './tabs/chatFolders';
-import type AppEditFolderTab from './tabs/editFolder';
+
+// `import type` is mandatory to avoid reloading the page
+import type {RootScope} from '../rootScope';
+import type {AppSidebarLeft} from '../../components/sidebarLeft';
+import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
+import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 
 export type SolidJSHotReloadGuardContextValue = {
   rootScope: RootScope;
@@ -13,6 +15,10 @@ export type SolidJSHotReloadGuardContextValue = {
 
 export const SolidJSHotReloadGuardContext = createContext<SolidJSHotReloadGuardContextValue>(null);
 
+/**
+ * If importing a module causes the page to reload when you make changes in your SolidJS component
+ * provide the values through the SolidJSHotReloadGuardProvider
+ */
 export function useHotReloadGuard() {
   const contextValue = useContext(SolidJSHotReloadGuardContext);
   if(!contextValue) throw new Error('useHotReloadGuard should not be used outside a <SolidJSHotReloadGuardProvider />');

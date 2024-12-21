@@ -2074,7 +2074,6 @@ export class AppDialogsManager {
   }
 
   private initListeners() {
-    // Check this event
     rootScope.addEventListener('dialog_flush', ({dialog}) => {
       if(!dialog) {
         return;
@@ -2083,7 +2082,6 @@ export class AppDialogsManager {
       this.setFiltersUnreadCount();
     });
 
-    // Check this event
     rootScope.addEventListener('folder_unread', async(folder) => {
       if(folder.id < 0) {
         const dialogElement = this.xd.getDialogElement(folder.id);
@@ -2125,7 +2123,6 @@ export class AppDialogsManager {
       // this.log('peer_changed total time:', performance.now() - perf);
     });
 
-    // Filter update listen to
     rootScope.addEventListener('filter_update', async(filter) => {
       if(REAL_FOLDERS.has(filter.id)) {
         return;
@@ -2140,7 +2137,6 @@ export class AppDialogsManager {
       setInnerHTML(elements.title, wrapEmojiText(filter.title));
     });
 
-    // Filter delete listen to
     rootScope.addEventListener('filter_delete', (filter) => {
       const elements = this.filtersRendered[filter.id];
       if(!elements) return;
@@ -2161,7 +2157,6 @@ export class AppDialogsManager {
       }
     });
 
-    // Filter order listen to
     rootScope.addEventListener('filter_order', async(order) => {
       order = order.slice();
       indexOfAndSplice(order, FOLDER_ID_ARCHIVE);
@@ -2192,7 +2187,6 @@ export class AppDialogsManager {
       } */
     });
 
-    // Check this event too
     rootScope.addEventListener('filter_joined', (filter) => {
       const filterRendered = this.filtersRendered[filter.id];
       this.selectTab(filterRendered.menu);

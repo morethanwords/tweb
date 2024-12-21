@@ -12,9 +12,8 @@ import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 import createContextMenu from '../../../helpers/dom/createContextMenu';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import pause from '../../../helpers/schedulers/pause';
-
-import type SolidJSHotReloadGuardProvider from '../solidjsHotReloadGuardProvider';
-import {useHotReloadGuard} from '../solidjsHotReloadGuard';
+import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 
 import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
 import type {FolderItemPayload} from './types';
@@ -254,19 +253,6 @@ export function FoldersSidebarContent() {
       />
 
       {appSidebarLeft.createNewBtnMenu(false, true)}
-
-      {/* <div class="folders-sidebar__folder-item">
-        <IconTsx icon="group_filled" />
-        <div class="folders-sidebar__folder-item-name">
-          Groups
-        </div>
-      </div>
-      <div class="folders-sidebar__folder-item">
-        <IconTsx icon="bots" />
-        <div class="folders-sidebar__folder-item-name">
-          Bots
-        </div>
-      </div> */}
     </>
   );
 }

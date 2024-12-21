@@ -1,12 +1,13 @@
 import {ParentProps} from 'solid-js';
 
-import rootScope from '../../lib/rootScope';
+import appSidebarLeft from '../../components/sidebarLeft';
+import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
+import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 
-import appSidebarLeft from '.';
-import AppChatFoldersTab from './tabs/chatFolders';
-import AppEditFolderTab from './tabs/editFolder';
+import rootScope from '../rootScope';
 
-import {SolidJSHotReloadGuardContext} from './solidjsHotReloadGuard';
+
+import {SolidJSHotReloadGuardContext} from './hotReloadGuard';
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
   return (
