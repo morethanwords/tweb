@@ -499,7 +499,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
         document.documentElement.style.setProperty('--current-sidebar-left-width', clampedWidth + 'px');
 
-        const isCollapsed = width < MIN_SIDEBAR_WIDTH;
+        const isCollapsed = !this.hasTabsInNavigation() && !this.isSearchActive && width < MIN_SIDEBAR_WIDTH * 0.65;
         this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
 
         throttledSetToStorage(isCollapsed ? 0 : clampedWidth);

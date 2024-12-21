@@ -1468,14 +1468,17 @@
   z-index: 4;
 
   background-color: var(--primary-color);
-  // box-shadow: 0 0 1px 0.5px rgba(128, 128, 128, 0.25);
-  box-shadow: 0 0 1.5px 0.5px rgba(255, 255, 255, 1);
   opacity: 0;
-
+  
   transition: opacity 0.2s;
   cursor: col-resize;
+  
+  box-shadow: 0 0 1.5px 0.5px rgba(255, 255, 255, 1);
+  .night & {
+    box-shadow: 0 0 0px 0.5px rgba(128, 128, 128, 1);
+  }
 
-  html:has(.btn-menu.active) &, #column-left.has-open-tabs & {
+  html:has(.btn-menu.active) &, #column-left.is-collapsed.has-open-tabs & {
     display: none;
   }
 
@@ -1487,7 +1490,7 @@
     opacity: 1;
   }
 
-  // Make the primary color a bit lighter
+  // Make the primary color a bit lighter / darker
   &::before {
     content: '';
     display: block;
@@ -1499,6 +1502,10 @@
     height: 100%;
 
     background-color: rgba(255, 255, 255, 0.375);
+
+    .night & {
+      background-color: rgba(0, 0, 0, 0.25);
+    }
   }
 
   &.is-active {
