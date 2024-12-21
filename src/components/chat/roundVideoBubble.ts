@@ -4,12 +4,12 @@ import {doubleRaf} from '../../helpers/schedulers';
 import pause from '../../helpers/schedulers/pause';
 import {Message} from '../../layer';
 import {i18n} from '../../lib/langPack';
-import {logger} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
 import BezierEasing from '../../vendor/bezierEasing';
+
 import appMediaPlaybackController, {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
 import Icon from '../icon';
-import {animateValue, delay, lerp} from '../mediaEditor/utils';
+import {animateValue, lerp} from '../mediaEditor/utils';
 import PopupPremium from '../popups/premium';
 import {hideToast, toastNew} from '../toast';
 import wrapDocument from '../wrappers/document';
@@ -21,10 +21,8 @@ type WrapRoundVideoBubbleOptions = {
   searchContext?: MediaSearchContext;
 };
 
-const log = logger('video-trans');
 const ANIMATION_TIME = 180;
-// const ANIMATION_TIME = 540;
-
+const simpleEasing = BezierEasing(0.25, 0.1, 0.25, 1);
 
 export function wrapRoundVideoBubble({
   bubble,
@@ -32,7 +30,6 @@ export function wrapRoundVideoBubble({
   globalMediaDeferred,
   searchContext
 }: WrapRoundVideoBubbleOptions) {
-  // bubble.style.background = 'magenta';
   const content = bubble.querySelector('.bubble-content') as HTMLElement;
 
   const hasBesideButton = !!bubble.querySelector('.bubble-beside-button');
@@ -98,8 +95,6 @@ export function wrapRoundVideoBubble({
     const initialThumbTop = coords.y(initialThumbBcr.top + initialThumbBcr.height / 2);
     const initialThumbSize = initialThumbBcr.width;
 
-    log('initialThumbBcr', initialThumbBcr);
-
     const contentStyle = window.getComputedStyle(content);
 
     const initialRadiuses = [
@@ -123,7 +118,7 @@ export function wrapRoundVideoBubble({
 
     const initialHeight = content.clientHeight;
     const initialWidth = content.clientWidth;
-    log('initialHeight', initialHeight);
+
     content.style.height = initialHeight + 'px';
     content.style.width = initialWidth + 'px';
     content.style.overflow = 'hidden';
@@ -148,9 +143,7 @@ export function wrapRoundVideoBubble({
 
     const targetHeight = mediaContainer.clientHeight;
     const targetWidth = mediaContainer.clientWidth;
-    log('targetHeight', targetHeight);
 
-    // return;
     animateValue(
       0,
       1,
@@ -181,6 +174,7 @@ export function wrapRoundVideoBubble({
         drawCurrentFrame();
       },
       {
+        easing: simpleEasing,
         onEnd: () => {
           animatedCanvas.remove();
           animatedCanvas = undefined;
@@ -234,15 +228,10 @@ export function wrapRoundVideoBubble({
         transcribedText.append(i18n('Chat.Voice.Transribe.Error'));
       }
       audioMessageContainer.append(transcribedText);
-      // audioMessageInner.append(audioSentTime);
-      // audioMessageInner.append(createElementFromMarkup(`<span class="clearfix"></span>`))
 
       spinner.remove();
     }
 
-    log('mediaContainer', mediaContainer);
-    // log('currentFrameVideo', currentFrameVideo);
-    // log('currentFrameCanvas', currentFrameCanvas);
     const bcr = content.getBoundingClientRect();
     const initialSize = bcr.width;
 
@@ -264,20 +253,12 @@ export function wrapRoundVideoBubble({
     animatedCanvas.style.height = initialSize + 'px';
     animatedCanvas.style.borderRadius = '50%';
 
-    console.log('initialLeft, initialTop', initialLeft, initialTop);
-
     getBubblesContainer().append(animatedCanvas);
 
-    // MOUNT_CLASS_TO.ctx = ctx;
-    // MOUNT_CLASS_TO.currentFrameCanvas = currentFrameCanvas;
-    // MOUNT_CLASS_TO.animatedCanvas = animatedCanvas;
-
-    // return;
 
     const initialHeight = content.clientHeight;
     const initialWidth = content.clientWidth;
     const initialRadius = Math.max(initialHeight, content.clientWidth);
-    log('initialHeight, initialWidth, initialRadius', initialHeight, initialWidth, initialRadius);
 
     bubbleVideoClassNames.forEach((cls) => bubble.classList.remove(cls));
     bubbleAudioClassNames.forEach((cls) => bubble.classList.add(cls));
@@ -303,7 +284,6 @@ export function wrapRoundVideoBubble({
 
     const contentWrapper = bubble.querySelector('.bubble-content-wrapper') as HTMLElement;
     contentWrapper.style.position = 'relative';
-    // const contentWrapperStyle = window.getComputedStyle(bubble.querySelector('.bubble-content-wrapper'));
 
     audioMessageContainer.style.display = 'block';
     const measure: HTMLDivElement = createElementFromMarkup(`
@@ -315,10 +295,7 @@ export function wrapRoundVideoBubble({
     await doubleRaf();
     const targetWidth = measure.clientWidth;
     const targetHeight = measure.clientHeight;
-    log('targetWidth', targetWidth);
 
-    // const targetWidth = parseInt(contentWrapperStyle.maxWidth);
-    // const targetWidth = 299;
     const audioStyle = window.getComputedStyle(audioMessageContainer);
     audioMessageContainer.style.width =
       targetWidth - (+parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight)) + 'px';
@@ -336,17 +313,6 @@ export function wrapRoundVideoBubble({
     await doubleRaf();
 
     contentWrapper.style.removeProperty('position');
-    // console.log('margins audio', parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight));
-    // const targetWidth = audioContainer.scrollWidth + parseFloat(audioStyle.marginLeft) + parseFloat(audioStyle.marginRight); // TODO Make this dynamic
-    // const targetHeight = audioContainer.scrollHeight /* + parseFloat(audioStyle.marginTop) + parseFloat(audioStyle.marginBottom) */ + 16; // TODO find actual height
-    // audioContainer.style.width = audioContainer.scrollWidth + 'px';
-    // audioContainer.style.height = audioContainer.scrollHeight + 'px';
-
-    // const floatingDiv = createElementFromMarkup(`<div style="position:fixed;left:50%;top:50%;z-index:1000;width:min-content;"></div>`);
-    // floatingDiv.append(audioContainer);
-    // document.body.append(floatingDiv);
-
-    log('targetHeight, targetWidth', targetHeight, targetWidth);
 
     await doubleRaf();
 
@@ -443,7 +409,7 @@ export function wrapRoundVideoBubble({
 }
 
 function createSpinner() {
-  return createElementFromMarkup(`<svg class="my-spinner-svg" viewBox="0 0 24 24" width="100" height="100">
+  return createElementFromMarkup(`<svg class="transcribe-button-spinner-svg" viewBox="0 0 24 24" width="100" height="100">
     <circle
       cx="12"
       cy="12"
@@ -453,64 +419,6 @@ function createSpinner() {
       stroke-width="1"
       stroke-linecap="round"
       stroke-dashoffset="0"
-      class="my-spinner"
     ></circle>
   </svg>`);
 }
-
-const shortText = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
-  Morbi ac orci ut felis gravida iaculis. Nullam convallis varius ex lacinia maximus. \
-  Praesent ac nisi lectus.`;
-
-const longText = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
-Morbi ac orci ut felis gravida iaculis. Nullam convallis varius ex lacinia \
-maximus. Praesent ac nisi lectus. Phasellus eget massa ut sem mattis lobortis \
-ut ut ante. Etiam egestas congue dui, ac rhoncus sem hendrerit sed. Donec dignissim, \
-ex eu molestie ultrices, libero massa sagittis nibh, ut varius justo lacus non mi. Fusce \
-efficitur est non ante venenatis feugiat. Donec ut sollicitudin elit. Vestibulum \
-egestas efficitur purus, eu molestie odio feugiat tempus. Pellentesque nec feugiat \
-felis. Pellentesque massa orci, pharetra non tellus quis, viverra tincidunt tellus. \
-Ut sodales, tortor non semper tempus, justo est sollicitudin nisl, ac tincidunt dolor \
-leo ac dolor.`;
-
-const simpleEasing = BezierEasing(0.25, 0.1, 0.25, 1);
-
-/*
-
-
-(async() => {
-    const audioElement = await wrapDocument({
-      message: message as any,
-      shouldWrapAsVoice: true
-    });
-
-    const myBubble = document.createElement('div');
-    myBubble.classList.add(
-      'bubble',
-      ...'bubble voice-message min-content is-single-document hide-name is-out is-read'.split(' ')
-    );
-    // TODO Check classes bubble voice-message min-content is-single-document hide-name is-out can-have-tail is-read is-group-last
-    const contentWrapper = document.createElement('div');
-    contentWrapper.classList.add('bubble-content-wrapper');
-
-    myBubble.append(contentWrapper);
-
-    const content = document.createElement('div');
-    content.classList.add('bubble-content');
-
-    contentWrapper.append(content);
-
-    const bg = document.createElement('div');
-    bg.classList.add('bubble-content-background');
-
-    content.append(bg);
-
-    const messageEl = document.createElement('div');
-    messageEl.classList.add('message', 'spoilers-container');
-
-    content.append(messageEl);
-    messageEl.append(createElementFromMarkup(`<span class="clearfix"></span>`), audioElement);
-    resultingBubble.append(myBubble);
-  })();
-
-*/

@@ -185,8 +185,7 @@ import findAndSplice from '../../helpers/array/findAndSplice';
 import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
 import icon from '../icon';
 import {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
-import createElementFromMarkup from '../../helpers/createElementFromMarkup';
-import {wrapRoundVideoBubble} from './bubble-utils';
+import {wrapRoundVideoBubble} from './roundVideoBubble';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -5100,19 +5099,6 @@ export default class ChatBubbles {
     bubble: HTMLElement,
     middleware: Middleware
   ) {
-    const isMyMessage = [18822, 18824].find(m => m == message.mid);
-    const log = logger('video-trans');
-
-    if(isMyMessage)
-      log('message.mid', message.mid);
-
-    if(message.mid == 18824) {
-      rootScope.managers.appMessagesManager.transcribeAudio(message as any).then(result => {
-        log('result of video transcribe', result);
-      }).catch(error => {
-        log.error('error of video transcribe', error);
-      })
-    }
     // if(DEBUG) {
     //   this.log('message to render:', message);
     // }
@@ -6198,7 +6184,6 @@ export default class ChatBubbles {
                 bubble.classList.add('video');
               }
 
-              // TODO: Check here for rounded videos
               wrapVideo({
                 doc,
                 container: preview,
@@ -6459,7 +6444,6 @@ export default class ChatBubbles {
             }
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
             // this.log('never get free 2', doc);
-            if(isMyMessage) log('doc.type', doc.type)
 
             isRound = doc.type === 'round';
             if(isRound) {
@@ -6493,40 +6477,6 @@ export default class ChatBubbles {
             } else {
               const withTail = !IS_ANDROID && !IS_APPLE && !isRound && canHaveTail && !withReplies && USE_MEDIA_TAILS;
               if(withTail) bubble.classList.add('with-media-tail');
-              if(isMyMessage) log('attachmentDiv', attachmentDiv);
-
-              // wrapDocument({
-              //   message: message as any,
-              //   shouldWrapAsVoice: true
-              // }).then(element => {
-              //   const myBubble = document.createElement('div');
-              //   myBubble.classList.add('bubble', ...'bubble voice-message min-content is-single-document hide-name is-out is-read'.split(' '));
-              //   // TODO Check classes bubble voice-message min-content is-single-document hide-name is-out can-have-tail is-read is-group-last
-              //   const contentWrapper = document.createElement('div');
-              //   contentWrapper.classList.add('bubble-content-wrapper');
-
-              //   myBubble.append(contentWrapper);
-
-              //   const content = document.createElement('div');
-              //   content.classList.add('bubble-content');
-
-              //   contentWrapper.append(content);
-
-              //   const bg = document.createElement('div');
-              //   bg.classList.add('bubble-content-background');
-
-              //   content.append(bg);
-
-              //   const message = document.createElement('div');
-              //   message.classList.add('message', 'spoilers-container');
-
-              //   content.append(message);
-              //   message.append(createElementFromMarkup(`<span class="clearfix"></span>`), element);
-              //   bubble.append(myBubble);
-
-              //   setTimeout(() => {
-              //   }, 1000)
-              // })
 
               const p = wrapVideo({
                 doc,
@@ -7473,7 +7423,6 @@ export default class ChatBubbles {
 
     if(canHaveTail && !isRound) {
       bubble.classList.add('can-have-tail');
-      log('adding can have tail to', message.mid, isRound)
     }
     if(canHaveTail || isRound) {
       bubbleContainer.append(generateTail());
@@ -7514,10 +7463,6 @@ export default class ChatBubbles {
         searchContext
       });
     }
-
-
-    if(isMyMessage)
-      log('ret.bubble', ret.bubble);
 
     return ret;
   }
