@@ -417,6 +417,7 @@ export class AppSidebarLeft extends SidebarSlider {
     this.searchTriggerWhenCollapsed.append(ButtonIcon('search'));
     this.searchTriggerWhenCollapsed.addEventListener('click', () => {
       this.initSearch().open();
+      this.inputSearch.input.focus();
     });
 
     this.buttonsContainer.parentElement.prepend(this.searchTriggerWhenCollapsed);

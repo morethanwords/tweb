@@ -108,8 +108,8 @@ export function FoldersSidebarContent() {
       const aIndex = order.indexOf(a.id);
       const bIndex = order.indexOf(b.id);
 
-      if(aIndex === -1) return 1;
-      if(bIndex === -1) return -1;
+      if(aIndex === -1) return -1;
+      if(bIndex === -1) return 1;
 
       return aIndex - bIndex;
     });
