@@ -114,7 +114,6 @@ export function wrapRoundVideoBubble({
     getBubblesContainer().append(animatedCanvas);
 
     transcribe.style.removeProperty('display');
-    videoSentTime.style.removeProperty('display');
 
     const initialHeight = content.clientHeight;
     const initialWidth = content.clientWidth;
@@ -194,6 +193,8 @@ export function wrapRoundVideoBubble({
           audioMessageContainer.style.removeProperty('width');
           audioMessageContainer.style.removeProperty('height');
           audioMessageContainer.style.removeProperty('opacity');
+
+          videoSentTime.style.removeProperty('display');
         }
       }
     );
@@ -219,7 +220,7 @@ export function wrapRoundVideoBubble({
       const spinner = createSpinner();
       transcribe.append(spinner);
       const transcribedText = document.createElement('div');
-      transcribedText.classList.add('audio-transcribed-text');
+      transcribedText.classList.add('video-transcribed-text');
       try {
         const transcribeResult = await rootScope.managers.appMessagesManager.transcribeAudio(message);
         if(!transcribeResult.text) throw '';
@@ -228,6 +229,8 @@ export function wrapRoundVideoBubble({
         transcribedText.append(i18n('Chat.Voice.Transribe.Error'));
       }
       audioMessageContainer.append(transcribedText);
+      transcribedText.append(audioSentTime);
+      transcribedText.append(createElementFromMarkup(`<span class="clearfix"></span>`))
 
       spinner.remove();
     }
@@ -402,8 +405,6 @@ export function wrapRoundVideoBubble({
     });
     console.log('[video-trans] audioElement', message.mid, audioElement);
     audioMessageContainer.append(audioElement);
-    audioElement.append(audioSentTime);
-    audioElement.append(createElementFromMarkup(`<span class="clearfix"></span>`))
     // audioContainer.append(transcribedText);
   })();
 }
