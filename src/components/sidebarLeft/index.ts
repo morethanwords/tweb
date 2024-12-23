@@ -91,6 +91,7 @@ import SwipeHandler, {getEvent} from '../swipeHandler';
 import clamp from '../../helpers/number/clamp';
 import {animateValue} from '../mediaEditor/utils';
 import throttle from '../../helpers/schedulers/throttle';
+import AppChatFoldersTab from './tabs/chatFolders';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -100,6 +101,7 @@ type SearchInitResult = {
 }
 
 export class AppSidebarLeft extends SidebarSlider {
+  private chatListContainer: HTMLElement;
   private buttonsContainer: HTMLElement;
   private toolsBtn: HTMLElement;
   private backBtn: HTMLButtonElement;
@@ -134,6 +136,7 @@ export class AppSidebarLeft extends SidebarSlider {
     const foldersSidebar = document.getElementById('folders-sidebar');
     renderFoldersSidebarContent(foldersSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
 
+    this.chatListContainer = document.getElementById('chatlist-container');
     this.inputSearch = new InputSearch();
     (this.inputSearch.input as HTMLInputElement).placeholder = ' ';
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
@@ -431,10 +434,20 @@ export class AppSidebarLeft extends SidebarSlider {
     this.initSidebarResize();
   }
 
-  private onTabsOrSearchChange = () => {
+  public isCollapsed() {
+    return this.sidebarEl.classList.contains('is-collapsed')
+  }
+
+  public onCollapsedChange() {
+    this.chatListContainer.parentElement.classList.toggle('fade', this.isCollapsed());
+    this.chatListContainer.parentElement.classList.toggle('zoom-fade', !this.isCollapsed());
+    appDialogsManager.xd.toggleAvatarUnreadBadges(this.isCollapsed(), undefined);
+  }
+
+  private onTabsOrSearchChange = (force = false) => {
     const wasFloating = this.sidebarEl.classList.contains('has-open-tabs');
-    const isFloating = this.hasTabsInNavigation() || this.isSearchActive;
-    const isCollapsed = this.sidebarEl.classList.contains('is-collapsed');
+    const isFloating = force || this.hasTabsInNavigation() || this.isSearchActive;
+    const isCollapsed = this.isCollapsed();
 
     this.sidebarEl.classList.toggle('has-open-tabs', isFloating);
 
@@ -442,28 +455,45 @@ export class AppSidebarLeft extends SidebarSlider {
 
     if(wasFloating === isFloating || !isCollapsed) return;
 
-    const WIDTH_WHEN_COLLAPSED = 88;
+    const WIDTH_WHEN_COLLAPSED = 80;
     const FULL_WIDTH = 420;
 
+    const t = (this.chatListContainer.firstElementChild as HTMLElement)
     if(isFloating) {
-      animateValue(WIDTH_WHEN_COLLAPSED, FULL_WIDTH, 200, (value) => {
+      t.style.width = WIDTH_WHEN_COLLAPSED + 'px';
+      this.sidebarEl.classList.add('force-hide-large-content', 'force-hide-menu');
+      !this.isSearchActive && this.sidebarEl.classList.add('force-hide-search');
+
+      animateValue(WIDTH_WHEN_COLLAPSED, FULL_WIDTH, 300, (value) => {
         this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
       }, {
         onEnd: () => {
           this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
+          t.style.removeProperty('width');
+          this.sidebarEl.classList.remove(
+            'force-hide-large-content',
+            'force-hide-menu',
+            'force-hide-search'
+          );
         }
       });
+      appDialogsManager.xd.toggleAvatarUnreadBadges(false, undefined);
     } else {
       sidebarPlaceholder.classList.add('keep-active');
-      this.sidebarEl.classList.add('force-fixed');
+      this.sidebarEl.classList.add('force-fixed', 'hide-add-folders');
+      this.buttonsContainer.classList.add('force-static');
+      t.style.width = WIDTH_WHEN_COLLAPSED + 'px';
 
-      animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, 200, (value) => {
+      animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, 300, (value) => {
         this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
       }, {
         onEnd: () => {
           this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
-          this.sidebarEl.classList.remove('force-fixed');
+          this.sidebarEl.classList.remove('force-fixed', 'hide-add-folders');
           sidebarPlaceholder.classList.remove('keep-active');
+          appDialogsManager.xd.toggleAvatarUnreadBadges(true, undefined);
+          t.style.removeProperty('width');
+          this.buttonsContainer.classList.remove('force-static');
         }
       });
     }
@@ -500,8 +530,12 @@ export class AppSidebarLeft extends SidebarSlider {
 
         document.documentElement.style.setProperty('--current-sidebar-left-width', clampedWidth + 'px');
 
+        const wasCollapsed = this.isCollapsed();
         const isCollapsed = !this.hasTabsInNavigation() && !this.isSearchActive && width < MIN_SIDEBAR_WIDTH * 0.65;
         this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
+
+        if(isCollapsed !== wasCollapsed)
+          this.onCollapsedChange();
 
         appImManager.adjustChatPatternBackground();
 
@@ -608,8 +642,17 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'Contacts',
       onClick: onContactsClick
     }, {
+      icon: 'folder',
+      text: 'ManageFilters',
+      onClick: () => {
+        closeTabsBefore(() => {
+          this.createTab(AppChatFoldersTab).open();
+        });
+      }
+    }, {
       icon: 'settings',
       text: 'Settings',
+      separator: true,
       onClick: () => {
         closeTabsBefore(() => {
           this.createTab(AppSettingsTab).open();

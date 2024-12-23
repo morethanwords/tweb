@@ -107,6 +107,7 @@ export default class SidebarSlider {
         }
 
         this.closeTab(undefined, canAnimate, true);
+        this.onTabsCountChange?.();
         return true;
       }
     };

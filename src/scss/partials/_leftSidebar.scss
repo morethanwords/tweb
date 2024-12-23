@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+:root {
+  --sidebar-collapsed-width: 80px;
+}
 
 #column-left {
   //display: flex;
@@ -18,15 +21,15 @@
 
   .sidebar-header-search-trigger {
     display: none;
-    margin-left: 8px;
+    margin-left: 4px;
   }
 
   @include respond-to(no-floating-left-sidebar) {
     &.is-collapsed {
-      width: var(--sidebar-left-width-when-collapsed, 88px);
+      width: var(--sidebar-left-width-when-collapsed, var(--sidebar-collapsed-width));
 
       >.sidebar-slider {
-        width: var(--sidebar-left-inner-width-when-collapsed, 88px);
+        width: var(--sidebar-left-inner-width-when-collapsed, var(--sidebar-collapsed-width));
       }
 
       #new-menu {
@@ -41,20 +44,55 @@
     }
 
     &.is-collapsed:not(.has-open-tabs) {
+      .chatlist {
+        padding: 0;
+      }
       .chatlist-chat {
         padding-inline-end: 0;
+        border-radius: 0;
+        .row-media-bigger {
+          inset-inline-start: 13px !important;
+        }
         .row-row {
           display: none;
         }
       }
-
-      .sidebar-header {
-        >:not(.sidebar-header-search-trigger) {
+      body:not(.has-folders-sidebar) & {
+        .sidebar-header__btn-container:not(.force-static) {
+          position: fixed;
+          z-index: 4;
+          top: 8px;
+          left: calc(max(0px, (100vw - #{$large-screen}) / 2) + 20px) !important;
+        }
+        .force-static {
+          margin-left: 4px;
+        }
+      }
+    }
+    body:not(.has-folders-sidebar) &.is-collapsed.force-hide-menu {
+      .btn-menu {
+        display: none;
+      }
+    }
+    &.is-collapsed:not(.has-open-tabs), &.is-collapsed.force-hide-search {
+      .sidebar-header:has(.input-search) {
+        >:not(.sidebar-header-search-trigger):not(.sidebar-header__btn-container) {
           display: none;
         }
-        .sidebar-header-search-trigger {
-          display: block;
+        body.has-folders-sidebar & { 
+          .sidebar-header-search-trigger {
+            display: block;
+          }
         }
+      }
+    }
+
+    &.is-collapsed:not(.has-open-tabs), &.is-collapsed.force-hide-large-content {
+      .sidebar-left-contacts-section {
+        display: none;
+      }
+      .empty-placeholder {
+        display: none;
       }
     }
 
@@ -62,7 +100,11 @@
       position: fixed;
       top: 0;
       bottom: 0;
-      left: calc(max(0px, (100vw - #{$large-screen}) / 2) + 80px) !important;
+      left: calc(max(0px, (100vw - #{$large-screen}) / 2) + var(--sidebar-collapsed-width)) !important;
+      
+      body:not(.has-folders-sidebar) & {
+        left: calc(max(0px, (100vw - #{$large-screen}) / 2)) !important;
+      }
 
       z-index: 3;
       overflow: hidden;
@@ -589,8 +631,8 @@
   @include respond-to(no-floating-left-sidebar) {
     html:has(#column-left.is-collapsed.has-open-tabs) &, &.keep-active {
       display: block;
-      flex: 88px 0 0;
-      width: 88px;
+      flex: var(--sidebar-collapsed-width) 0 0;
+      width: var(--sidebar-collapsed-width);
     }
   }
 }
@@ -623,18 +665,20 @@
     justify-content: center;
 
     @include respond-to(no-floating-left-sidebar) {
-      width: 0px;
-      opacity: 0;
-      overflow: hidden;
-      pointer-events: none;
+      body.has-folders-sidebar & {
+        width: 0px;
+        opacity: 0;
+        overflow: hidden;
+        pointer-events: none;
+        
+        transition: width 0.12s, opacity 0.12s;
 
-      transition: width 0.12s, opacity 0.12s;
-
-      &.is-visible {
-        width: 2.5rem;
-        opacity: 1;
-        overflow: initial;
-        pointer-events: initial;
+        &.is-visible {
+          width: 2.5rem;
+          opacity: 1;
+          overflow: initial;
+          pointer-events: initial;
+        }
       }
     }
 
@@ -1296,7 +1340,6 @@
   text-align: center;
   line-height: var(--line-height);
   user-select: none;
-  width: 21rem !important;
   margin: 0 auto;
   padding: 0 1rem;
   position: relative;
@@ -1524,7 +1567,9 @@
 }
 
 @include respond-to(no-floating-left-sidebar) {
-  .folders-tabs-scrollable {
-    display: none !important;
+  body.has-folders-sidebar, #column-left.is-collapsed {
+    .folders-tabs-scrollable {
+      display: none !important;
+    }
   }
 }

@@ -151,7 +151,7 @@ const transitions: {[type in TransitionSliderType]?: TransitionFunction} = {
   // topics: slideTopics
 };
 
-type TransitionSliderType = 'tabs' | 'premiumTabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'topics' | 'none'/*  | 'counter' */;
+type TransitionSliderType = 'tabs' | 'premiumTabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'topics' | 'none' | 'fade' /*  | 'counter' */;
 
 type TransitionSliderOptions = {
   content: HTMLElement,
@@ -175,7 +175,7 @@ type TransitionFunction = {
 const TransitionSlider = (options: TransitionSliderOptions) => {
   let {
     content,
-    type,
+    type: t,
     transitionTime,
     onTransitionEnd,
     onTransitionStart,
@@ -186,6 +186,7 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
     listenerSetter,
     animateFirst = false
   } = options;
+  const type = t;
 
   const {callback: animationFunction, animateFirst: _animateFirst} = transitions[type] || {};
   content.dataset.animation = type;

@@ -1587,6 +1587,7 @@ class Some2 extends Some<Dialog> {
   }
 
   public toggleAvatarUnreadBadges(value: boolean, useRafs: number) {
+    console.log('toggling avatar unread', value);
     if(!value) {
       this.sortedList.getAll().forEach((sortedDialog) => {
         const {dom, dialogElement} = sortedDialog;
@@ -2039,6 +2040,8 @@ export class AppDialogsManager {
 
     this.xd = this.xds[this.filterId];
 
+
+    appSidebarLeft.onCollapsedChange();
     // selectTab(0, false);
   }
 
@@ -2634,6 +2637,7 @@ export class AppDialogsManager {
 
     let placeholder: ReturnType<AppDialogsManager['generateEmptyPlaceholder']>, type: 'dialogs' | 'folder';
     if(!this.filterId) {
+      // Check here for placeholder too
       placeholder = this.generateEmptyPlaceholder({
         title: 'ChatList.Main.EmptyPlaceholder.Title',
         classNameType: type = 'dialogs'
@@ -2771,7 +2775,7 @@ export class AppDialogsManager {
       fakeGradientDelimiter: true
     });
 
-    section.container.classList.add('hide');
+    section.container.classList.add('sidebar-left-contacts-section', 'hide');
 
     this.managers.appUsersManager.getContactsPeerIds(undefined, undefined, 'online').then((contacts) => {
       let ready = false;
@@ -3489,7 +3493,8 @@ export class AppDialogsManager {
       dialogElement.createUnreadBadge();
     }
 
-    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && !!this.forumTab && this.xd.getDialogElement(peerId) === dialogElement && isDialogUnread;
+    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && (!!this.forumTab || appSidebarLeft.isCollapsed()) && this.xd.getDialogElement(peerId) === dialogElement && isDialogUnread;
+
     const isUnreadAvatarBadgeMounted = !!dom.unreadAvatarBadge;
     if(hasUnreadAvatarBadge) {
       dialogElement.createUnreadAvatarBadge();

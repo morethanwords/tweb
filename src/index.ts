@@ -328,6 +328,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   ]);
   I18n.setTimeFormat(stateResult.state.settings.timeFormat);
 
+  document.body.classList.toggle('has-folders-sidebar', stateResult.state.settings.tabsInSidebar)
+
   rootScope.managers.rootScope.getPremium().then((isPremium) => {
     rootScope.premium = isPremium;
   });

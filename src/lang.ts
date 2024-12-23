@@ -3102,7 +3102,11 @@ const lang = {
   'RoundVideoTranscription.PremiumAlert': 'Subscribe to Telegram Premium to unlock video and audio transcription. [Read More]()',
   'Chat.Search.JoinedChannels': 'Channels you joined',
   'Chat.Search.NothingFound': 'Nothing interesting here yet...',
-  'UnknownBotUsers': 'Unknown users'
+  'UnknownBotUsers': 'Unknown users',
+  'FiltersView': 'Folders view',
+  'FiltersOnLeft': 'Folders on the left',
+  'FiltersOnTop': 'Folders at the top',
+  'ManageFilters': 'Manage folders'
 };
 
 export default lang;

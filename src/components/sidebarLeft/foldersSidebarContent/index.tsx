@@ -68,7 +68,8 @@ export function FoldersSidebarContent() {
       id: filter.id,
       name: filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapTitle(filter.title),
       icon: getIconForFilter(filter),
-      notifications: await getNotificationCountForFilter(filter.id, rootScope.managers)
+      notifications: await getNotificationCountForFilter(filter.id, rootScope.managers),
+      chatsCount: (await rootScope.managers.dialogsStorage.getFolder(filter.id))?.dialogs?.length || 0
     };
   }
 
@@ -129,6 +130,17 @@ export function FoldersSidebarContent() {
     rootScope.dispatchEvent('changing_folder_from_sidebar', folderId);
   }
 
+  async function openSettingsForFilter(filterId: number) {
+    if(REAL_FOLDERS.has(filterId)) return;
+    const filter = await rootScope.managers.filtersStorage.getFilter(filterId)
+
+    closeTabsBefore(() => {
+      const tab = appSidebarLeft.createTab(AppEditFolderTab);
+      tab.setInitFilter(filter);
+      tab.open();
+    });
+  }
+
   onMount(() => {
     const listenerSetter = new ListenerSetter();
 
@@ -142,13 +154,7 @@ export function FoldersSidebarContent() {
         icon: 'edit',
         text: 'FilterEdit',
         onClick: () => {
-          rootScope.managers.filtersStorage.getFilter(clickFilterId).then((filter) => {
-            closeTabsBefore(() => {
-              const tab = appSidebarLeft.createTab(AppEditFolderTab);
-              tab.setInitFilter(filter);
-              tab.open();
-            });
-          });
+          openSettingsForFilter(clickFilterId);
         },
         verify: () => clickFilterId !== FOLDER_ID_ALL
       }, {
@@ -238,19 +244,10 @@ export function FoldersSidebarContent() {
             {...folderItem}
             selected={selectedFolderId() === folderItem.id}
             onClick={() => setSelectedFolder(folderItem.id)}
+            onAddFoldersClick={() => openSettingsForFilter(folderItem.id)}
           />
         )}</For>
       </div>
-
-      <FolderItem
-        icon='enhance'
-        name={i18n('Edit')}
-        onClick={() => {
-          closeTabsBefore(() => {
-            appSidebarLeft.createTab(AppChatFoldersTab).open()
-          });
-        }}
-      />
 
       {appSidebarLeft.createNewBtnMenu(false, true)}
     </>

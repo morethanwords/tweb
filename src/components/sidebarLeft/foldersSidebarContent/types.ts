@@ -5,4 +5,5 @@ export type FolderItemPayload = {
   icon: Icon;
   name?: JSX.Element;
   notifications?: number;
+  chatsCount?: number | null;
 }

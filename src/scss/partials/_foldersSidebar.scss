@@ -10,12 +10,32 @@
 
   z-index: 4;
 
+  --folder-item-ripple-color: rgba(255, 255, 255, #{$hover-alpha});
+
   @include respond-to(until-floating-left-sidebar) {
-    flex: 0 0 0;
+    display: none;
+  }
+
+  body:not(.has-folders-sidebar) & {
     display: none;
   }
 
   &__folder-item {
+    position: relative;
+
+    &-name {
+      max-width: 80%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &--selected {
+      color: var(--primary-color);
+    }
+  }
+
+  &__folder-item-content {
     position: relative;
     overflow: hidden;
 
@@ -31,8 +51,8 @@
     padding: 12px 0;
     min-height: 56px;
 
-    font-size: 12px;
-    line-height: 14px;
+    font-size: 10px;
+    line-height: 12px;
     font-weight: 500;
     
     cursor: pointer;
@@ -52,16 +72,8 @@
       box-shadow: 0 0 0 1px var(--background);
     }
 
-    &-name {
-      max-width: 80%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    
-    &--selected {
-      color: var(--primary-color);
+    > .c-ripple {
+      --ripple-color: var(--folder-item-ripple-color) !important;
     }
 
     &:hover {
@@ -98,9 +110,74 @@
       }
     }
   }
+
+  &__add-folders-button {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translate(100%, -50%);
+
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    width: 72px;
+    height: 88px;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background-color: var(--background);
+
+    mask-image: url('/assets/img/add-chats-to-folder-shape.svg');
+
+    font-size: 10px;
+    line-height: 12px;
+    font-weight: 500;
+
+    color: #aaaaaa;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+
+    transition: opacity .2s;
+
+    cursor: pointer;
+
+    &:hover {
+      --background: var(--background-hover);
+    }
+
+    :has(#column-left.is-collapsed:not(.has-open-tabs)) & {
+      display: flex;
+    }
+
+    body:has(.hide-add-folders) & {
+      opacity: 0;
+    }
+
+    > .tgico {
+      font-size: 30px;
+    }
+
+    > .c-ripple {
+      --ripple-color: var(--folder-item-ripple-color) !important;
+    }
+
+    &-corner {
+      position: absolute;
+      left: 0;
+
+      &:nth-of-type(1) {
+        top: -8px;
+      }
+      &:nth-of-type(2) {
+        bottom: -8px;
+        transform: scaleY(-1);
+      }
+    }
+  }
 }
 
 .night .folders-sidebar {
   --background: #141414;
-  --background-hover: #1d1d1d;
+  --background-hover: #1b1b1b;
 }
