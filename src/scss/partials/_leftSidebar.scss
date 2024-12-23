@@ -31,6 +31,9 @@
         width: var(--sidebar-left-inner-width-when-collapsed, var(--sidebar-collapsed-width));
       }
 
+      #chatlist-container {
+        --stories-scrolled: 92px !important;
+      }
       #chatlist-container .chatlist {
         padding: 0;
       }
@@ -65,7 +68,11 @@
         z-index: 4;
       }
 
+      .stories-list {
+        display: none;
+      }
     }
+
     &.is-collapsed:not(.has-real-tabs) {
       .topics-container {
         transform: translateX(0) !important;
@@ -90,7 +97,7 @@
       }
     }
     &.is-collapsed:not(.has-open-tabs):not(.animate-search-out), &.is-collapsed.force-hide-search {
-      .sidebar-header:has(.input-search) {
+      .sidebar-header.main-search-sidebar-header {
         >:not(.sidebar-header-search-trigger):not(.sidebar-header__btn-container) {
           display: none;
         }
@@ -113,7 +120,7 @@
 
     &.is-collapsed.animate-search-out {
       body.has-folders-sidebar & {
-        .sidebar-header:has(.input-search) {
+        .sidebar-header.main-search-sidebar-header {
           .sidebar-header-search-trigger {
             opacity: 0;
           }
@@ -148,7 +155,7 @@
       }
 
       body.has-folders-sidebar & {
-        .sidebar-header:has(.input-search) {
+        .sidebar-header.main-search-sidebar-header {
           pointer-events: none;
         }
       }
@@ -602,7 +609,9 @@
       height: calc(100% - 64px); */
     }
   }
+}
 
+#column-left, .settings-slider-popup {
   .input-wrapper {
     width: 420px;
     margin: 0 auto;
@@ -1609,6 +1618,33 @@
   body.has-folders-sidebar, #column-left.is-collapsed {
     .folders-tabs-scrollable {
       display: none !important;
+    }
+  }
+}
+
+.settings-slider-popup {
+  .popup-header {
+    display: none;
+  }
+  .popup-container {
+    padding: 0;
+    max-width: 100%;
+    width: calc($large-screen / 4);
+
+    border-radius: 16px;
+  }
+
+  .avatar-edit {
+    width: 120px;
+    height: 120px;
+    margin: 1rem auto 2rem;
+    flex: 0 0 auto;
+  }
+  
+  &__height-limit {
+    height: 85vh;
+    >div {
+      height: 85vh;
     }
   }
 }

@@ -27,6 +27,7 @@ import {ChatType} from '../chat/chat';
 import {subscribeOn} from '../../helpers/solid/subscribeOn';
 import {useCollapsable} from '../../hooks/useCollapsable';
 import createMiddleware from '../../helpers/solid/createMiddleware';
+import ListenerSetter from '../../helpers/listenerSetter';
 
 const TEST_COUNT = 0;
 
@@ -93,6 +94,8 @@ function _StoriesList(props: {
   const [stories, actions] = useStories();
   const [viewerPeer, setViewerPeer] = createSignal<PeerStories>();
   const [containerRect, setContainerRect] = createSignal<DOMRect>();
+  const [hasTransition, setHasTransition] = createSignal(true); // to make it smooth when resizing the left sidebar
+
   const peers = createMemo(() => {
     const peers = stories.peers;
     if(TEST_COUNT) {
@@ -242,7 +245,10 @@ function _StoriesList(props: {
           })()
         }}
         onClick={onClick}
-        style={calculateMovement()?.cssProperties}
+        style={{
+          ...calculateMovement()?.cssProperties,
+          transition: hasTransition() ? undefined : 'none'
+        }}
       >
         {avatar.element}
         <div class={styles.ListItemName}>
@@ -325,6 +331,22 @@ function _StoriesList(props: {
   props.resizeCallback?.(onResize);
 
   let container: HTMLDivElement;
+
+  onMount(() => {
+    const listenerSetter = new ListenerSetter();
+    let timeoutId: number;
+    listenerSetter.add(rootScope)('resizing_left_sidebar', () => {
+      onResize();
+      window.clearTimeout(timeoutId);
+      setHasTransition(false);
+      setTimeout(() => {
+        setHasTransition(true);
+      }, 100);
+    });
+    onCleanup(() => {
+      listenerSetter.removeAll();
+    })
+  });
 
   const {folded, unfold, fold, isTransition, progress, STATE_UNFOLDED} = useCollapsable({
     scrollable: props.getScrollable,

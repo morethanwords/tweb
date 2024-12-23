@@ -9,7 +9,7 @@ import rootScope from '../../lib/rootScope';
 import {SearchGroup} from '../appSearch';
 import Scrollable, {ScrollableX} from '../scrollable';
 import InputSearch from '../inputSearch';
-import SidebarSlider from '../slider';
+import SidebarSlider, {SliderSuperTab} from '../slider';
 import TransitionSlider from '../transition';
 import AppNewGroupTab from './tabs/newGroup';
 import AppSearchSuper from '../appSearchSuper.';
@@ -92,6 +92,9 @@ import clamp from '../../helpers/number/clamp';
 import {animateValue} from '../mediaEditor/utils';
 import throttle from '../../helpers/schedulers/throttle';
 import AppChatFoldersTab from './tabs/chatFolders';
+import {SliderSuperTabConstructable} from '../sliderTab';
+import SettingsSliderPopup from './settingsSliderPopup';
+import AppEditFolderTab from './tabs/editFolder';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -121,6 +124,8 @@ export class AppSidebarLeft extends SidebarSlider {
 
   private updateBtn: HTMLElement;
   private hasUpdate: boolean;
+
+  private onResize: () => void;
 
   constructor() {
     super({
@@ -407,13 +412,13 @@ export class AppSidebarLeft extends SidebarSlider {
       }, CHECK_UPDATE_INTERVAL);
     });
 
-    const onResize = () => {
+    this.onResize = () => {
       const rect = this.rect = this.tabsContainer.getBoundingClientRect();
       document.documentElement.style.setProperty('--left-column-width', rect.width + 'px');
     };
 
-    fastRaf(onResize);
-    mediaSizes.addEventListener('resize', onResize);
+    fastRaf(this.onResize);
+    mediaSizes.addEventListener('resize', this.onResize);
 
     this.searchTriggerWhenCollapsed = document.createElement('div');
     this.searchTriggerWhenCollapsed.className = 'sidebar-header-search-trigger';
@@ -557,6 +562,8 @@ export class AppSidebarLeft extends SidebarSlider {
         const clampedWidth = Math.round(clamp(width, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH));
 
         document.documentElement.style.setProperty('--current-sidebar-left-width', clampedWidth + 'px');
+        this.onResize();
+        rootScope.dispatchEvent('resizing_left_sidebar');
 
         const wasCollapsed = this.isCollapsed();
         const isCollapsed = !this.hasSomethingOpenInside() && width < MIN_SIDEBAR_WIDTH * 0.65;
@@ -1380,6 +1387,20 @@ export class AppSidebarLeft extends SidebarSlider {
 
   public closeSearch() {
     simulateClickEvent(this.backBtn);
+  }
+
+  public createTab<T extends SliderSuperTab>(
+    ctor: SliderSuperTabConstructable<T>,
+    destroyable = true,
+    doNotAppend?: boolean
+  ) {
+    const ctorsToOpenInPopup = [AppSettingsTab, AppEditFolderTab, AppChatFoldersTab]
+    if(this.isCollapsed() && ctorsToOpenInPopup.includes(ctor as any)) {
+      const popup = new SettingsSliderPopup(this.managers);
+      popup.show();
+      return popup.slider.createTab(ctor, destroyable, doNotAppend);
+    }
+    return super.createTab(ctor, destroyable, doNotAppend);
   }
 }
 

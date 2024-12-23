@@ -18,6 +18,13 @@ const TRANSITION_TIME = 250;
 
 export {SliderSuperTab};
 
+export type SidebarSliderOptions = {
+  sidebarEl: SidebarSlider['sidebarEl'],
+  tabs?: SidebarSlider['tabs'],
+  canHideFirst?: SidebarSlider['canHideFirst'],
+  navigationType: SidebarSlider['navigationType']
+}
+
 export default class SidebarSlider {
   protected _selectTab: ReturnType<typeof horizontalMenu>;
   protected historyTabIds: (number | SliderSuperTab)[] = []; // * key is any, since right sidebar is ugly nowz
@@ -31,12 +38,7 @@ export default class SidebarSlider {
   public onOpenTab: () => MaybePromise<void>;
   public onTabsCountChange?: () => void;
 
-  constructor(options: {
-    sidebarEl: SidebarSlider['sidebarEl'],
-    tabs?: SidebarSlider['tabs'],
-    canHideFirst?: SidebarSlider['canHideFirst'],
-    navigationType: SidebarSlider['navigationType']
-  }) {
+  constructor(options: SidebarSliderOptions) {
     safeAssign(this, options);
 
     this.tabs ??= new Map();

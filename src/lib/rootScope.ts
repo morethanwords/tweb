@@ -205,7 +205,9 @@ export type BroadcastEvents = {
   'app_config': MTAppConfig,
   'managers_ready': void, // ! inner
 
-  'account_logged_in': {accountNumber: ActiveAccountNumber, userId: UserId}
+  'account_logged_in': {accountNumber: ActiveAccountNumber, userId: UserId},
+
+  'resizing_left_sidebar': void
 };
 
 export type BroadcastEventsListeners = {
