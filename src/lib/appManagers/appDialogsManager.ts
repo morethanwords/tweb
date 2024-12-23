@@ -2195,9 +2195,9 @@ export class AppDialogsManager {
       this.selectTab(filterRendered.menu);
     });
 
-    rootScope.addEventListener('changing_folder_from_sidebar', (id) => {
+    rootScope.addEventListener('changing_folder_from_sidebar', ({id, dontAnimate}) => {
       const filterRendered = this.filtersRendered[id];
-      this.selectTab(filterRendered.menu);
+      this.selectTab(filterRendered.menu, !dontAnimate);
     });
   }
 
@@ -2848,6 +2848,8 @@ export class AppDialogsManager {
     return isContact && !dialog;
   };
 
+  public onForumTabToggle?: () => void;
+
   public async toggleForumTab(newTab?: ForumTab, hideTab = this.forumTab) {
     if(!hideTab && !newTab) {
       return;
@@ -2868,6 +2870,7 @@ export class AppDialogsManager {
     const promise = newTab?.toggle(true);
     if(hideTab === this.forumTab) {
       this.forumTab = newTab;
+      this.onForumTabToggle?.();
     }
 
     if(newTab) {

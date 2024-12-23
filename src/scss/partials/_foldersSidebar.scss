@@ -151,7 +151,7 @@
     }
 
     body:has(.hide-add-folders) & {
-      opacity: 0;
+      opacity: 0 !important;
     }
 
     > .tgico {

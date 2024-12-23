@@ -16,6 +16,7 @@ type FolderItemProps = FolderItemPayload & {
   selected?: boolean;
   onClick?: () => void;
   onAddFoldersClick?: () => void;
+  canShowAddFolders?: boolean;
 };
 
 export default function FolderItem(props: FolderItemProps) {
@@ -27,7 +28,7 @@ export default function FolderItem(props: FolderItemProps) {
     ripple(content);
   });
 
-  const showAddFolders = () => props.selected && props.chatsCount === 0;
+  const showAddFolders = () => props.canShowAddFolders && props.selected && props.chatsCount === 0;
 
   createEffect(() => {
     if(showAddFolders()) ripple(showAddFoldersButton);

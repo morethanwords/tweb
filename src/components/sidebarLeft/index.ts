@@ -427,15 +427,21 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const sidebarOverlay = document.querySelector('.sidebar-left-overlay');
     sidebarOverlay.addEventListener('click', () => {
-      this.closeAllTabs();
-      this.closeSearch();
+      this.closeEverythingInisde();
     });
 
     this.initSidebarResize();
+    appDialogsManager.onForumTabToggle = () => {
+      this.onSomethingOpenInsideChange();
+    }
   }
 
   public isCollapsed() {
     return this.sidebarEl.classList.contains('is-collapsed')
+  }
+
+  public hasFoldersSidebar() {
+    return document.body.classList.contains('has-folders-sidebar')
   }
 
   public onCollapsedChange() {
@@ -444,12 +450,23 @@ export class AppSidebarLeft extends SidebarSlider {
     appDialogsManager.xd.toggleAvatarUnreadBadges(this.isCollapsed(), undefined);
   }
 
-  private onTabsOrSearchChange = (force = false) => {
+  public hasSomethingOpenInside() {
+    return this.hasTabsInNavigation() || this.isSearchActive || !!appDialogsManager.forumTab;
+  }
+
+  public closeEverythingInisde() {
+    this.closeSearch();
+    appDialogsManager.toggleForumTab();
+    return this.closeAllTabs();
+  }
+
+  private onSomethingOpenInsideChange = (closingSearch = false, force = false) => {
     const wasFloating = this.sidebarEl.classList.contains('has-open-tabs');
-    const isFloating = force || this.hasTabsInNavigation() || this.isSearchActive;
+    const isFloating = force || this.hasSomethingOpenInside();
     const isCollapsed = this.isCollapsed();
 
     this.sidebarEl.classList.toggle('has-open-tabs', isFloating);
+    this.sidebarEl.classList.toggle('has-real-tabs', this.hasTabsInNavigation());
 
     const sidebarPlaceholder = document.querySelector('.sidebar-left-placeholder');
 
@@ -481,7 +498,11 @@ export class AppSidebarLeft extends SidebarSlider {
     } else {
       sidebarPlaceholder.classList.add('keep-active');
       this.sidebarEl.classList.add('force-fixed', 'hide-add-folders');
-      this.buttonsContainer.classList.add('force-static');
+      closingSearch && this.sidebarEl.classList.add('animate-search-out');
+
+      this.buttonsContainer.classList.add('force-static', 'is-visible');
+      closingSearch && this.hasFoldersSidebar() && this.toolsBtn.parentElement.firstElementChild.classList.add('state-back');
+
       t.style.width = WIDTH_WHEN_COLLAPSED + 'px';
 
       animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, 300, (value) => {
@@ -489,11 +510,18 @@ export class AppSidebarLeft extends SidebarSlider {
       }, {
         onEnd: () => {
           this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
-          this.sidebarEl.classList.remove('force-fixed', 'hide-add-folders');
+          this.sidebarEl.classList.remove('force-fixed', 'hide-add-folders', 'animate-search-out');
           sidebarPlaceholder.classList.remove('keep-active');
           appDialogsManager.xd.toggleAvatarUnreadBadges(true, undefined);
           t.style.removeProperty('width');
           this.buttonsContainer.classList.remove('force-static');
+          this.buttonsContainer.classList.remove('is-visible');
+          this.buttonsContainer.style.transition = 'none';
+
+          pause(200).then(() => {
+            this.buttonsContainer.style.removeProperty('transition');
+            this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', false);
+          });
         }
       });
     }
@@ -501,7 +529,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
   private initSidebarResize() {
     this.onTabsCountChange = () => {
-      this.onTabsOrSearchChange();
+      this.onSomethingOpenInsideChange();
     }
 
     const MIN_SIDEBAR_WIDTH = 260;
@@ -531,7 +559,7 @@ export class AppSidebarLeft extends SidebarSlider {
         document.documentElement.style.setProperty('--current-sidebar-left-width', clampedWidth + 'px');
 
         const wasCollapsed = this.isCollapsed();
-        const isCollapsed = !this.hasTabsInNavigation() && !this.isSearchActive && width < MIN_SIDEBAR_WIDTH * 0.65;
+        const isCollapsed = !this.hasSomethingOpenInside() && width < MIN_SIDEBAR_WIDTH * 0.65;
         this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
 
         if(isCollapsed !== wasCollapsed)
@@ -550,8 +578,7 @@ export class AppSidebarLeft extends SidebarSlider {
   public createToolsMenu(mountTo?: HTMLElement, closeBefore?: boolean) {
     const closeTabsBefore = async(clb: () => void) => {
       if(closeBefore) {
-        this.closeSearch();
-        this.closeAllTabs() && await pause(200);
+        this.closeEverythingInisde() && await pause(200);
       }
 
       clb();
@@ -929,8 +956,7 @@ export class AppSidebarLeft extends SidebarSlider {
   public createNewBtnMenu(withId?: boolean, closeBefore?: boolean) {
     const closeTabsBefore = async(clb: () => void) => {
       if(closeBefore) {
-        this.closeSearch();
-        this.closeAllTabs() && await pause(200);
+        this.closeEverythingInisde() && await pause(200);
       }
       clb();
     }
@@ -1282,7 +1308,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
       this.buttonsContainer.classList.add('is-visible');
       this.isSearchActive = true;
-      this.onTabsOrSearchChange();
+      this.onSomethingOpenInsideChange();
     };
 
     this.inputSearch.input.addEventListener('focus', onFocus);
@@ -1299,7 +1325,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
       this.buttonsContainer.classList.remove('is-visible');
       this.isSearchActive = false;
-      this.onTabsOrSearchChange();
+      this.onSomethingOpenInsideChange(true);
     });
 
     const clearRecentSearchBtn = ButtonIcon('close');

@@ -118,16 +118,17 @@ export function FoldersSidebarContent() {
   }
 
   async function closeTabsBefore(clb: () => void) {
-    appSidebarLeft.closeSearch();
-    appSidebarLeft.closeAllTabs() && await pause(200);
+    appSidebarLeft.closeEverythingInisde() && await pause(200);
     clb();
   }
 
-  function setSelectedFolder(folderId: number) {
+  async function setSelectedFolder(folderId: number) {
     setSelectedFolderId(folderId);
-    appSidebarLeft.closeAllTabs();
-    appSidebarLeft.closeSearch();
-    rootScope.dispatchEvent('changing_folder_from_sidebar', folderId);
+    const hasSomethingOpen = appSidebarLeft.hasSomethingOpenInside()
+    appSidebarLeft.closeEverythingInisde();
+
+    hasSomethingOpen && await pause(300);
+    rootScope.dispatchEvent('changing_folder_from_sidebar', {id: folderId});
   }
 
   async function openSettingsForFilter(filterId: number) {
@@ -245,6 +246,7 @@ export function FoldersSidebarContent() {
             selected={selectedFolderId() === folderItem.id}
             onClick={() => setSelectedFolder(folderItem.id)}
             onAddFoldersClick={() => openSettingsForFilter(folderItem.id)}
+            canShowAddFolders={!REAL_FOLDERS.has(folderItem.id)}
           />
         )}</For>
       </div>
