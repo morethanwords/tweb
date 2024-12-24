@@ -95,11 +95,14 @@ import AppChatFoldersTab from './tabs/chatFolders';
 import {SliderSuperTabConstructable} from '../sliderTab';
 import SettingsSliderPopup from './settingsSliderPopup';
 import AppEditFolderTab from './tabs/editFolder';
+import {addShortcutListener} from '../mediaEditor/shortcutListener';
+import tsNow from '../../helpers/tsNow';
+import {toastNew} from '../toast';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
 type SearchInitResult = {
-  open: () => void;
+  open: (focus?: boolean) => void;
   close: () => void;
 }
 
@@ -425,7 +428,6 @@ export class AppSidebarLeft extends SidebarSlider {
     this.searchTriggerWhenCollapsed.append(ButtonIcon('search'));
     this.searchTriggerWhenCollapsed.addEventListener('click', () => {
       this.initSearch().open();
-      this.inputSearch.input.focus();
     });
 
     this.buttonsContainer.parentElement.prepend(this.searchTriggerWhenCollapsed);
@@ -439,6 +441,11 @@ export class AppSidebarLeft extends SidebarSlider {
     appDialogsManager.onForumTabToggle = () => {
       this.onSomethingOpenInsideChange();
     }
+
+    addShortcutListener(['anymeta+f'], () => {
+      if(appNavigationController.findItemByType('popup')) return;
+      this.initSearch().open();
+    });
   }
 
   public isCollapsed() {
@@ -449,10 +456,14 @@ export class AppSidebarLeft extends SidebarSlider {
     return document.body.classList.contains('has-folders-sidebar')
   }
 
-  public onCollapsedChange() {
+  public onCollapsedChange(canShowCtrlFTip = false) {
     this.chatListContainer.parentElement.classList.toggle('fade', this.isCollapsed());
     this.chatListContainer.parentElement.classList.toggle('zoom-fade', !this.isCollapsed());
     appDialogsManager.xd.toggleAvatarUnreadBadges(this.isCollapsed(), undefined);
+
+    if(canShowCtrlFTip && this.isCollapsed() && !this.hasFoldersSidebar()) {
+      this.showCtrlFTip();
+    }
   }
 
   public hasSomethingOpenInside() {
@@ -472,6 +483,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.sidebarEl.classList.toggle('has-open-tabs', isFloating);
     this.sidebarEl.classList.toggle('has-real-tabs', this.hasTabsInNavigation());
+    this.sidebarEl.classList.toggle('has-forum-open', !!appDialogsManager.forumTab);
 
     const sidebarPlaceholder = document.querySelector('.sidebar-left-placeholder');
 
@@ -480,9 +492,10 @@ export class AppSidebarLeft extends SidebarSlider {
     const WIDTH_WHEN_COLLAPSED = 80;
     const FULL_WIDTH = 420;
 
-    const t = (this.chatListContainer.firstElementChild as HTMLElement)
+    const chatList = (this.chatListContainer.firstElementChild as HTMLElement);
+
     if(isFloating) {
-      t.style.width = WIDTH_WHEN_COLLAPSED + 'px';
+      chatList.style.width = WIDTH_WHEN_COLLAPSED + 'px';
       this.sidebarEl.classList.add('force-hide-large-content', 'force-hide-menu');
       !this.isSearchActive && this.sidebarEl.classList.add('force-hide-search');
 
@@ -491,7 +504,7 @@ export class AppSidebarLeft extends SidebarSlider {
       }, {
         onEnd: () => {
           this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
-          t.style.removeProperty('width');
+          chatList.style.removeProperty('width');
           this.sidebarEl.classList.remove(
             'force-hide-large-content',
             'force-hide-menu',
@@ -508,7 +521,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.buttonsContainer.classList.add('force-static', 'is-visible');
       closingSearch && this.hasFoldersSidebar() && this.toolsBtn.parentElement.firstElementChild.classList.add('state-back');
 
-      t.style.width = WIDTH_WHEN_COLLAPSED + 'px';
+      chatList.style.width = WIDTH_WHEN_COLLAPSED - 1 + 'px'; // -1 probably for the border
 
       animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, 300, (value) => {
         this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
@@ -518,7 +531,7 @@ export class AppSidebarLeft extends SidebarSlider {
           this.sidebarEl.classList.remove('force-fixed', 'hide-add-folders', 'animate-search-out');
           sidebarPlaceholder.classList.remove('keep-active');
           appDialogsManager.xd.toggleAvatarUnreadBadges(true, undefined);
-          t.style.removeProperty('width');
+          chatList.style.removeProperty('width');
           this.buttonsContainer.classList.remove('force-static');
           this.buttonsContainer.classList.remove('is-visible');
           this.buttonsContainer.style.transition = 'none';
@@ -530,6 +543,21 @@ export class AppSidebarLeft extends SidebarSlider {
         }
       });
     }
+  }
+
+  public showCtrlFTip() {
+    const DATE_KEY = 'ctrlf-toast-to-show-again';
+    const showAgain = parseInt(localStorage.getItem(DATE_KEY));
+    const now = tsNow(true);
+
+    if(showAgain && now < showAgain) return;
+
+    toastNew({
+      langPackKey: 'CtrlFSearchTip'
+    });
+    // Show once between 1 week to 2 months
+    const waitSeconds = (Math.round(Math.random() * 7 * 7) + 7) * 24 * 60 * 60;
+    localStorage.setItem(DATE_KEY, now + waitSeconds + '');
   }
 
   private initSidebarResize() {
@@ -570,7 +598,7 @@ export class AppSidebarLeft extends SidebarSlider {
         this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
 
         if(isCollapsed !== wasCollapsed)
-          this.onCollapsedChange();
+          this.onCollapsedChange(true);
 
         appImManager.adjustChatPatternBackground();
 
@@ -1352,8 +1380,9 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     return this.searchInitResult = {
-      open: () => {
+      open: (focus = true) => {
         onFocus();
+        focus && this.inputSearch.input.focus();
       },
       close: () => {
         close();

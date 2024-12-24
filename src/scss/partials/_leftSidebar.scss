@@ -154,14 +154,19 @@
         display: none;
       }
 
+      body:not(.has-folders-sidebar) & {
+        .sidebar-header__btn-container {
+          margin-left: 4px;
+        }
+      }
+    }
+    &.is-collapsed.has-open-tabs.has-forum-open {
       body.has-folders-sidebar & {
         .sidebar-header.main-search-sidebar-header {
           pointer-events: none;
         }
-      }
-      body:not(.has-folders-sidebar) & {
-        .sidebar-header__btn-container {
-          margin-left: 4px;
+        .sidebar-header-search-trigger {
+          opacity: 0;
         }
       }
     }

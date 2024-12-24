@@ -29,6 +29,7 @@ import showLimitPopup from '../../popups/limit';
 import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 import RadioField from '../../radioField';
 import appImManager from '../../../lib/appManagers/appImManager';
+import appSidebarLeft from '..';
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -215,6 +216,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       if(key === stateKey) {
         document.body.classList.toggle('has-folders-sidebar', value);
         appImManager.adjustChatPatternBackground();
+        if(!value) appSidebarLeft.showCtrlFTip();
       }
     });
 

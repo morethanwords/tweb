@@ -3105,8 +3105,9 @@ const lang = {
   'UnknownBotUsers': 'Unknown users',
   'FiltersView': 'Folders view',
   'FiltersOnLeft': 'Folders on the left',
-  'FiltersOnTop': 'Folders at the top',
-  'ManageFilters': 'Manage folders'
+  'FiltersOnTop': 'Folders above chats',
+  'ManageFilters': 'Manage folders',
+  'CtrlFSearchTip': 'Tip: Use **Ctrl+F** to open Search'
 };
 
 export default lang;
