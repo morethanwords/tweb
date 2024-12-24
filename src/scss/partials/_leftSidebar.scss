@@ -1651,6 +1651,10 @@
     flex: 0 0 auto;
   }
   
+  .sidebar-left-section-container:not(.profile-content *):last-child .sidebar-left-section:last-child {
+    margin-bottom: 0;
+  }
+
   &__height-limit {
     height: 85vh;
     >div {
