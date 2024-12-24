@@ -530,7 +530,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.buttonsContainer.classList.add('force-static', 'is-visible');
       closingSearch && this.hasFoldersSidebar() && this.toolsBtn.parentElement.firstElementChild.classList.add('state-back');
 
-      chatList.style.width = WIDTH_WHEN_COLLAPSED - 1 + 'px'; // -1 probably for the border
+      chatList.style.width = WIDTH_WHEN_COLLAPSED + 'px';
 
       animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, 300, (value) => {
         this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
