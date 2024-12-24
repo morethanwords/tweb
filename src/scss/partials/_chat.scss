@@ -758,7 +758,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
           }
   
           body.animation-level-2.is-right-column-shown & {
-            transform: scale(.666666667);
+            transform: scale(calc(1 - var(--right-column-proportion, 0)));
             transition: transform var(--transition-standard-in), opacity var(--transition-standard-in) !important;
           }
         }

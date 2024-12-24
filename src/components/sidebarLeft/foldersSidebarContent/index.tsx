@@ -1,4 +1,5 @@
-import {createRoot, createSignal, For, onCleanup, onMount} from 'solid-js';
+import {createEffect, createMemo, createRoot, createSignal, For, onCleanup, onMount} from 'solid-js';
+import {createStore} from 'solid-js/store';
 import {render} from 'solid-js/web';
 
 import {Middleware} from '../../../helpers/middleware';
@@ -14,6 +15,12 @@ import findUpClassName from '../../../helpers/dom/findUpClassName';
 import pause from '../../../helpers/schedulers/pause';
 import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
+
+import Scrollable from '../../scrollable2';
+import Space from '../../mediaEditor/space';
+import Animated from '../../../helpers/solid/animations';
+import {IconTsx} from '../../iconTsx';
+import ripple from '../../ripple';
 
 import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
 import type {FolderItemPayload} from './types';
@@ -32,9 +39,19 @@ export function FoldersSidebarContent() {
 
   const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
   const [folderItems, setFolderItems] = createSignal<FolderItemPayload[]>([]);
+  const [scrollAmount, setScrollAmount] = createSignal(0);
+  const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
+  const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
+
+  const hasScroll = createMemo(() => scrollAmount() > 0);
+  const showAddFolders = () => canShowAddFolders() && selectedFolderId() && !REAL_FOLDERS.has(selectedFolderId()) &&
+     folderItems().find(item => item.id === selectedFolderId())?.chatsCount === 0;
+
+  const [folderItemRefs, setFolderItemRefs] = createStore<Record<number, HTMLDivElement>>({});
 
   let menuRef: HTMLDivElement;
-  let folderItemsContainer: HTMLDivElement
+  let folderItemsContainer: HTMLDivElement;
+  let showAddFoldersButton: HTMLDivElement;
 
   function updateFolderItem(folderId: number, payload: Partial<FolderItemPayload>) {
     setFolderItems((prev) =>
@@ -190,6 +207,12 @@ export function FoldersSidebarContent() {
       }
     });
 
+    const scrollListener = () => {
+      setScrollAmount(folderItemsContainer.scrollTop);
+    };
+
+    folderItemsContainer.addEventListener('scroll', scrollListener);
+
     (async() => {
       const filters = await rootScope.managers.filtersStorage.getDialogFilters();
       const folderFilters = filters.filter(filter => filter.id !== FOLDER_ID_ARCHIVE);
@@ -232,23 +255,65 @@ export function FoldersSidebarContent() {
     onCleanup(() => {
       listenerSetter.removeAll();
       contextMenu.destroy();
+      folderItemsContainer.removeEventListener('scroll', scrollListener);
     });
+  });
+
+  createEffect(() => {
+    if(showAddFolders()) ripple(showAddFoldersButton);
+  });
+
+  createEffect(() => {
+    scrollAmount();
+    const selectedItem = folderItemRefs[selectedFolderId()];
+
+    if(!selectedItem) return;
+    const containerRect = folderItemsContainer.getBoundingClientRect();
+    const itemRect = selectedItem.getBoundingClientRect();
+    const offset = itemRect.top + itemRect.height / 2 - containerRect.top;
+    const MARGIN_PX = 50;
+    setCanShowAddFolders(offset > MARGIN_PX && offset < containerRect.height - MARGIN_PX);
+    setAddFoldersOffset(offset);
   });
 
   return (
     <>
       <FolderItem ref={(el) => (menuRef = el)} class='folders-sidebar__menu-button' icon='menu' />
 
-      <div ref={folderItemsContainer}>
-        <For each={folderItems()}>{(folderItem) => (
-          <FolderItem
-            {...folderItem}
-            selected={selectedFolderId() === folderItem.id}
-            onClick={() => setSelectedFolder(folderItem.id)}
-            onAddFoldersClick={() => openSettingsForFilter(folderItem.id)}
-            canShowAddFolders={!REAL_FOLDERS.has(folderItem.id)}
-          />
-        )}</For>
+      <div
+        class="folders-sidebar__scrollable-position"
+        classList={{
+          'folders-sidebar__scrollable-position--has-scroll': hasScroll()
+        }}
+      >
+        <Scrollable ref={folderItemsContainer}>
+          <For each={folderItems()}>{(folderItem) => (
+            <FolderItem
+              {...folderItem}
+              ref={(el) => setFolderItemRefs({[folderItem.id]: el})}
+              onCleanup={() => setFolderItemRefs({[folderItem.id]: undefined})}
+              selected={selectedFolderId() === folderItem.id}
+              onClick={() => setSelectedFolder(folderItem.id)}
+            />
+          )}</For>
+          <Space amount="92px" /> {/* Make the new chats button not cover the folders */}
+        </Scrollable>
+
+        <Animated type='cross-fade' mode='add-remove'>
+          {showAddFolders() && <div
+            ref={showAddFoldersButton}
+            class="folders-sidebar__add-folders-button"
+            onClick={() => openSettingsForFilter(selectedFolderId())}
+            style={{
+              '--offset': addFoldersOffset()
+            }}
+          >
+            <IconTsx icon='plus' />
+            <div class="folders-sidebar__add-folders-button-name">
+              {i18n('ChatList.Filter.Include.AddChat')}
+            </div>
+          </div>}
+        </Animated>
       </div>
 
       {appSidebarLeft.createNewBtnMenu(false, true)}

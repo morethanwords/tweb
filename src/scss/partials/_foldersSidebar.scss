@@ -2,6 +2,9 @@
   position: relative;
   flex: 80px 0 0;
 
+  display: flex;
+  flex-direction: column;
+
   --background: #212121;
   --background-hover: #272727;
 
@@ -20,8 +23,33 @@
     display: none;
   }
 
+  &__scrollable-position {
+    position: relative;
+    flex: 1;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(to bottom, var(--background), transparent);
+      // border-top: 1px solid rgba(0, 0, 0, 0.1);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 1;
+    }
+    &--has-scroll::before {
+      opacity: 1;
+    }
+  }
+
   &__folder-item {
     position: relative;
+    flex-shrink: 0;
+    flex-grow: 0;
 
     &-name {
       max-width: 80%;
@@ -113,7 +141,7 @@
 
   &__add-folders-button {
     position: absolute;
-    top: 50%;
+    top: calc(var(--offset) * 1px);
     right: 0;
     transform: translate(100%, -50%);
 

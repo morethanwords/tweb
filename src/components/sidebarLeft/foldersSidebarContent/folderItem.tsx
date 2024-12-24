@@ -1,22 +1,18 @@
-import {createEffect, onMount, Show} from 'solid-js';
+import {createEffect, onCleanup, onMount, Show} from 'solid-js';
 
 import createBadge from '../../../helpers/createBadge';
 import setBadgeContent from '../../../helpers/setBadgeContent';
-import {i18n} from '../../../lib/langPack';
 
 import {IconTsx} from '../../iconTsx';
-import ripple from '../../ripple';
 
 import {FolderItemPayload} from './types';
-import Animated from '../../../helpers/solid/animations';
 
 type FolderItemProps = FolderItemPayload & {
   ref?: (el: HTMLDivElement | null) => void;
   class?: string;
   selected?: boolean;
   onClick?: () => void;
-  onAddFoldersClick?: () => void;
-  canShowAddFolders?: boolean;
+  onCleanup?: () => void;
 };
 
 export default function FolderItem(props: FolderItemProps) {
@@ -24,14 +20,8 @@ export default function FolderItem(props: FolderItemProps) {
   let content: HTMLDivElement;
   let showAddFoldersButton: HTMLDivElement;
 
-  onMount(() => {
-    ripple(content);
-  });
-
-  const showAddFolders = () => props.canShowAddFolders && props.selected && props.chatsCount === 0;
-
-  createEffect(() => {
-    if(showAddFolders()) ripple(showAddFoldersButton);
+  onCleanup(() => {
+    props.onCleanup?.();
   });
 
   const hasNotifications = () => !!props.notifications;
@@ -73,22 +63,6 @@ export default function FolderItem(props: FolderItemProps) {
           {badge}
         </Show>
       </div>
-
-      <Animated type='cross-fade' mode='add-remove'>
-        {showAddFolders() && <div
-          ref={showAddFoldersButton}
-          class="folders-sidebar__add-folders-button"
-          onClick={props.onAddFoldersClick}
-        >
-          <IconTsx icon='plus' />
-          <div class="folders-sidebar__add-folders-button-name">
-            {i18n('ChatList.Filter.Include.AddChat')}
-          </div>
-        </div>}
-      </Animated>
-      {/* <Show when={props.selected && props.chatsCount === 0}>
-
-      </Show> */}
     </div>
   );
 }
