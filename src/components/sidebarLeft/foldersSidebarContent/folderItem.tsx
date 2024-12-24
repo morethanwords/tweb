@@ -6,6 +6,7 @@ import setBadgeContent from '../../../helpers/setBadgeContent';
 import {IconTsx} from '../../iconTsx';
 
 import {FolderItemPayload} from './types';
+import ripple from '../../ripple';
 
 type FolderItemProps = FolderItemPayload & {
   ref?: (el: HTMLDivElement | null) => void;
@@ -18,8 +19,10 @@ type FolderItemProps = FolderItemPayload & {
 export default function FolderItem(props: FolderItemProps) {
   let container: HTMLDivElement;
   let content: HTMLDivElement;
-  let showAddFoldersButton: HTMLDivElement;
 
+  onMount(() => {
+    ripple(container);
+  });
   onCleanup(() => {
     props.onCleanup?.();
   });
@@ -53,16 +56,15 @@ export default function FolderItem(props: FolderItemProps) {
         {'data-filter-id': props.id} :
         {}
       )}
+      onClick={props.onClick}
     >
-      <div ref={content} class="folders-sidebar__folder-item-content" onClick={props.onClick}>
-        <IconTsx icon={props.icon} />
-        <Show when={props.name}>
-          <div class="folders-sidebar__folder-item-name">{props.name}</div>
-        </Show>
-        <Show when={hasNotifications()}>
-          {badge}
-        </Show>
-      </div>
+      <IconTsx icon={props.icon} />
+      <Show when={props.name}>
+        <div class="folders-sidebar__folder-item-name">{props.name}</div>
+      </Show>
+      <Show when={hasNotifications()}>
+        {badge}
+      </Show>
     </div>
   );
 }

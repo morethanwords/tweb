@@ -51,20 +51,6 @@
     flex-shrink: 0;
     flex-grow: 0;
 
-    &-name {
-      max-width: 80%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    &--selected {
-      color: var(--primary-color);
-    }
-  }
-
-  &__folder-item-content {
-    position: relative;
     overflow: hidden;
 
     display: flex;
@@ -106,6 +92,17 @@
 
     &:hover {
       --background: var(--background-hover);
+    }
+
+    &-name {
+      max-width: 80%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &--selected {
+      color: var(--primary-color);
     }
   }
 
