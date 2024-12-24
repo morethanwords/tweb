@@ -487,7 +487,16 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const sidebarPlaceholder = document.querySelector('.sidebar-left-placeholder');
 
-    if(wasFloating === isFloating || !isCollapsed) return;
+    if(!isCollapsed && !this.hasSomethingOpenInside()) {
+      pause(300).then(() => {
+        // Mainly for stories when changing tabs view left <-> top
+        rootScope.dispatchEvent('resizing_left_sidebar');
+      });
+      return;
+    }
+
+    if(wasFloating === isFloating) return;
+
 
     const WIDTH_WHEN_COLLAPSED = 80;
     const FULL_WIDTH = 420;
