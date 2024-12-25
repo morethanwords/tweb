@@ -637,6 +637,8 @@ export class AppSidebarLeft extends SidebarSlider {
       clb();
     }
 
+    injectMediaEditorLangPack();
+
     const btnArchive: typeof menuButtons[0] = {
       icon: 'archive',
       text: 'ArchivedChats',
@@ -746,8 +748,6 @@ export class AppSidebarLeft extends SidebarSlider {
         });
       }
     }, moreSubmenu.menuBtnOptions];
-
-    injectMediaEditorLangPack();
 
     const filteredButtons = menuButtons.filter(Boolean);
     const filteredButtonsSliced = filteredButtons.slice();

@@ -3104,12 +3104,12 @@ const lang = {
   'Chat.Search.NothingFound': 'Nothing interesting here yet...',
   'UnknownBotUsers': 'Unknown users',
   'FiltersView': 'Folders view',
-  'FiltersOnLeft': 'Folders on the left',
+  'FiltersOnLeft': 'Folders on the Left',
   'FiltersOnTop': 'Folders above chats',
-  'ManageFilters': 'Manage folders',
+  'ManageFilters': 'Manage Folders',
   'CtrlFSearchTip': 'Tip: Use **Ctrl+F** to open Search',
-  'CreateANew': 'Create a new',
-  'PrivateChat': 'Private chat',
+  'CreateANew': 'Create A New',
+  'PrivateChat': 'Private Chat',
   'Channel': 'Channel',
   'Group': 'Group'
 };
