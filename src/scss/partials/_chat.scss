@@ -650,7 +650,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	}
 
   &:not(.active) {
-    transform: translate3d(calc(min(#{$large-screen / 4}, 25vw) * -1), 0, 0);
+    transform: translate3d(calc(min(#{calc($large-screen / 4)}, 25vw) * -1), 0, 0);
 
     &:last-child {
       transform: translate3d(100%, 0, 0);
