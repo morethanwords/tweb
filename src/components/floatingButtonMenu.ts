@@ -34,17 +34,17 @@ export default function attachFloatingButtonMenu({
 
       document.body.append(menu);
 
-      const menuBcr = menu.getBoundingClientRect();
+      const OFFSET_FROM_WINDOW_MARGIN_PX = 16;
 
       if(direction === 'right-start') {
         menu.style.transformOrigin = '0 0';
         let left = triggerBcr.right + offset[0];
-        const right = left + menuBcr.width;
-        if(right > window.innerWidth) left -= right - window.innerWidth;
+        const right = left + menu.clientWidth; // cannot use .getBoundingClientRect as it has scale
+        if(right + OFFSET_FROM_WINDOW_MARGIN_PX > window.innerWidth) left -= right - window.innerWidth + OFFSET_FROM_WINDOW_MARGIN_PX;
 
         let top = triggerBcr.top + offset[1];
-        const bottom = top + menuBcr.height;
-        if(bottom > window.innerHeight) top -= bottom - window.innerHeight;
+        const bottom = top + menu.clientHeight;
+        if(bottom + OFFSET_FROM_WINDOW_MARGIN_PX > window.innerHeight) top -= bottom - window.innerHeight + OFFSET_FROM_WINDOW_MARGIN_PX;
 
         menu.style.left = left + 'px';
         menu.style.top = top + 'px';
