@@ -3107,7 +3107,11 @@ const lang = {
   'FiltersOnLeft': 'Folders on the left',
   'FiltersOnTop': 'Folders above chats',
   'ManageFilters': 'Manage folders',
-  'CtrlFSearchTip': 'Tip: Use **Ctrl+F** to open Search'
+  'CtrlFSearchTip': 'Tip: Use **Ctrl+F** to open Search',
+  'CreateANew': 'Create a new',
+  'PrivateChat': 'Private chat',
+  'Channel': 'Channel',
+  'Group': 'Group'
 };
 
 export default lang;

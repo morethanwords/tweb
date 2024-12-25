@@ -176,7 +176,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.buttonsContainer = this.backBtn.parentElement;
 
-    this.newBtnMenu = this.createNewBtnMenu(true);
+    this.newBtnMenu = this.createNewChatsMenuButton();
     sidebarHeader.nextElementSibling.append(this.newBtnMenu);
 
     this.updateBtn = document.createElement('div');
@@ -501,46 +501,55 @@ export class AppSidebarLeft extends SidebarSlider {
     const WIDTH_WHEN_COLLAPSED = 80;
     const FULL_WIDTH = 420;
 
-    const chatList = (this.chatListContainer.firstElementChild as HTMLElement);
-
     if(isFloating) {
-      chatList.style.width = WIDTH_WHEN_COLLAPSED + 'px';
-      this.sidebarEl.classList.add('force-hide-large-content', 'force-hide-menu');
+      this.sidebarEl.classList.add(
+        'force-hide-large-content',
+        'force-hide-menu',
+        'force-chatlist-thin'
+      );
       !this.isSearchActive && this.sidebarEl.classList.add('force-hide-search');
+
 
       animateValue(WIDTH_WHEN_COLLAPSED, FULL_WIDTH, 300, (value) => {
         this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
       }, {
         onEnd: () => {
           this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
-          chatList.style.removeProperty('width');
           this.sidebarEl.classList.remove(
             'force-hide-large-content',
             'force-hide-menu',
-            'force-hide-search'
+            'force-hide-search',
+            'force-chatlist-thin'
           );
         }
       });
       appDialogsManager.xd.toggleAvatarUnreadBadges(false, undefined);
     } else {
       sidebarPlaceholder.classList.add('keep-active');
-      this.sidebarEl.classList.add('force-fixed', 'hide-add-folders');
+      this.sidebarEl.classList.add(
+        'force-fixed',
+        'hide-add-folders',
+        'force-chatlist-thin'
+      );
       closingSearch && this.sidebarEl.classList.add('animate-search-out');
 
       this.buttonsContainer.classList.add('force-static', 'is-visible');
       closingSearch && this.hasFoldersSidebar() && this.toolsBtn.parentElement.firstElementChild.classList.add('state-back');
-
-      chatList.style.width = WIDTH_WHEN_COLLAPSED + 'px';
 
       animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, 300, (value) => {
         this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
       }, {
         onEnd: () => {
           this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
-          this.sidebarEl.classList.remove('force-fixed', 'hide-add-folders', 'animate-search-out');
+          this.sidebarEl.classList.remove(
+            'force-fixed',
+            'hide-add-folders',
+            'animate-search-out',
+            'force-chatlist-thin'
+          );
           sidebarPlaceholder.classList.remove('keep-active');
+
           appDialogsManager.xd.toggleAvatarUnreadBadges(true, undefined);
-          chatList.style.removeProperty('width');
           this.buttonsContainer.classList.remove('force-static');
           this.buttonsContainer.classList.remove('is-visible');
           this.buttonsContainer.style.transition = 'none';
@@ -649,12 +658,18 @@ export class AppSidebarLeft extends SidebarSlider {
       });
     };
 
-    const more = document.createElement('span');
-    // more.setAttribute('style', 'display: inline-flex; justify-content: space-between; align-items: center');
-    more.classList.add('more-label');
-    more.append(i18n('MultiAccount.More'), Icon('arrowhead'));
+    const moreSubmenu = this.createSubmenuHelper({
+      text: 'MultiAccount.More',
+      icon: 'more'
+    }, () => this.createMoreSubmenu(moreSubmenu, closeTabsBefore));
 
-    let removeSubmenuListener: () => void;
+    const newSubmenu = this.createSubmenuHelper({
+      text: 'CreateANew',
+      icon: 'edit',
+      verify: () => this.isCollapsed(),
+      separator: true
+    }, () => this.createNewChatsSubmenu());
+
     const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
       icon: 'plus',
       text: 'MultiAccount.AddAccount',
@@ -688,7 +703,7 @@ export class AppSidebarLeft extends SidebarSlider {
         const totalAccounts = await AccountController.getTotalAccounts();
         return totalAccounts < MAX_ACCOUNTS;
       }
-    }, {
+    }, newSubmenu.menuBtnOptions, {
       icon: 'savedmessages',
       text: 'SavedMessages',
       onClick: () => {
@@ -713,6 +728,7 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'Contacts',
       onClick: onContactsClick
     }, {
+      id: 'manage-filters',
       icon: 'folder',
       text: 'ManageFilters',
       onClick: () => {
@@ -729,11 +745,7 @@ export class AppSidebarLeft extends SidebarSlider {
           this.createTab(AppSettingsTab).open();
         });
       }
-    }, {
-      icon: 'more',
-      regularText: more,
-      onClick: () => {}
-    }];
+    }, moreSubmenu.menuBtnOptions];
 
     injectMediaEditorLangPack();
 
@@ -775,7 +787,7 @@ export class AppSidebarLeft extends SidebarSlider {
           return wrapEmojiText(name);
         }
 
-        const targetIdx = 5;
+        const targetIdx = buttons.findIndex(btn => btn.id === 'manage-filters');
         buttons[targetIdx].separator = !!attachMenuBotsButtons.length;
         buttons.splice(targetIdx, 0, ...attachMenuBotsButtons);
         buttons[targetIdx].separator = true;
@@ -842,154 +854,14 @@ export class AppSidebarLeft extends SidebarSlider {
 
         filteredButtons.splice(0, filteredButtons.length, ...buttons);
       },
-      onOpen: (e, btnMenu) => {
-        const isDarkModeEnabled = () => themeController.getTheme().name === 'night';
-        const toggleTheme = () => {
-          const item = btns[0].element;
-          const icon = item.querySelector('.tgico');
-          const rect = icon.getBoundingClientRect();
-          themeController.switchTheme(isDarkModeEnabled() ? 'day' : 'night', {
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2
-          });
-        };
-
-        const darkModeText = document.createElement('span');
-        darkModeText.append(i18n(isDarkModeEnabled() ? 'DisableDarkMode': 'EnableDarkMode'));
-        const animationsText = document.createElement('span');
-
-        const btns: ButtonMenuItemOptionsVerifiable[] = [{
-          icon: 'darkmode',
-          regularText: darkModeText,
-          onClick: () => {}
-        }, {
-          id: 'animations-toggle',
-          icon: 'animations',
-          regularText: animationsText,
-          onClick: () => {
-            toggleAnimations();
-          },
-          verify: () => !liteMode.isEnabled()
-        }, {
-          icon: 'animations',
-          text: 'LiteMode.Title',
-          onClick: () => {
-            closeTabsBefore(() => {
-              this.createTab(AppPowerSavingTab).open();
-            });
-          },
-          verify: () => liteMode.isEnabled()
-        }, {
-          icon: 'aversion',
-          text: 'ChatList.Menu.SwitchTo.A',
-          onClick: () => {
-            Promise.all([
-              updateStorageForWebA(),
-              sessionStorage.set({kz_version: 'Z'}),
-              sessionStorage.delete('tgme_sync')
-            ]).then(() => {
-              location.href = 'https://web.telegram.org/a/';
-            });
-          },
-          separator: App.isMainDomain,
-          verify: () => App.isMainDomain
-        }, {
-          icon: 'help',
-          text: 'TelegramFeatures',
-          onClick: () => {
-            const url = I18n.format('TelegramFeaturesUrl', true);
-            appImManager.openUrl(url);
-          },
-          separator: !App.isMainDomain
-        }, {
-          icon: 'bug',
-          text: 'ReportBug',
-          onClick: () => {
-            const a = document.createElement('a');
-            setBlankToAnchor(a);
-            a.href = 'https://bugs.telegram.org/?tag_ids=40&sort=time';
-            document.body.append(a);
-            a.click();
-            setTimeout(() => {
-              a.remove();
-            }, 0);
-          }
-        }, {
-          icon: 'plusround',
-          text: 'PWA.Install',
-          onClick: () => {
-            const installPrompt = getInstallPrompt();
-            installPrompt?.();
-          },
-          verify: () => !!getInstallPrompt()
-        }];
-
-
-        async function hasAnimations() {
-          const state = await apiManagerProxy.getState();
-          return !state.settings.liteMode.animations;
-        }
-
-        async function initAnimationsToggleIcon() {
-          updateAnimationsToggleButton(await hasAnimations());
-        }
-
-        async function toggleAnimations() {
-          updateAnimationsToggleButton(!(await hasAnimations()));
-          rootScope.managers.appStateManager.setByKey(
-            joinDeepPath('settings', 'liteMode', 'animations'),
-            await hasAnimations() // The value is already reversed
-          );
-        }
-
-        async function updateAnimationsToggleButton(enabled: boolean) {
-          const animationToggleButton = btns.find(button => button.id === 'animations-toggle')?.element;
-          if(!animationToggleButton) return;
-
-          const icon = animationToggleButton.querySelector('.tgico');
-          enabled ?
-            icon?.classList.add('animations-icon-off') :
-            icon?.classList.remove('animations-icon-off');
-
-          animationsText.replaceChildren(i18n(enabled ? 'DisableAnimations' : 'EnableAnimations'));
-        }
-
-        const moreBtn = filteredButtons.find(item => item.icon === 'more');
-        moreBtn.element.addEventListener(CLICK_EVENT_NAME, (e) => {
-          e.stopPropagation();
-        }, true);
-        moreBtn.element.classList.add('disable-click');
-        removeSubmenuListener = attachFloatingButtonMenu({
-          element: moreBtn.element,
-          direction: 'right-start',
-          createMenu: async() => {
-            const filtered = await filterAsync(btns, (button) => button?.verify ? button.verify() ?? false : true);
-            const menu = await ButtonMenu({
-              buttons: filtered
-            });
-
-            menu.append(getVersionLink());
-            menu.classList.add('sidebar-tools-submenu');
-
-            const darkModeBtn = btns[0].element;
-            darkModeBtn.addEventListener(CLICK_EVENT_NAME, (e) => {
-              e.stopPropagation();
-              toggleTheme();
-              pause(20).then(() => contextMenuController.close());
-            }, true);
-
-            initAnimationsToggleIcon();
-
-            return menu;
-          },
-          offset: [-5, -5],
-          triggerEvent: 'mouseenter'
-        });
-
+      onOpen: () => {
+        moreSubmenu.onOpen();
+        newSubmenu.onOpen();
         btnArchive.element?.append(this.archivedCount);
       },
       onClose: () => {
-        removeSubmenuListener?.();
+        moreSubmenu.onClose();
+        newSubmenu.onClose();
       },
       noIcon: true
     });
@@ -997,7 +869,194 @@ export class AppSidebarLeft extends SidebarSlider {
     return buttonMenuToggle;
   }
 
-  public createNewBtnMenu(withId?: boolean, closeBefore?: boolean) {
+
+  private async createMoreSubmenu(
+    submenu: ReturnType<typeof this.createSubmenuHelper>,
+    closeTabsBefore: (clb: () => void) => void
+  ) {
+    const isDarkModeEnabled = () => themeController.getTheme().name === 'night';
+    const toggleTheme = () => {
+      const item = btns[0].element;
+      const icon = item.querySelector('.tgico');
+      const rect = icon.getBoundingClientRect();
+      themeController.switchTheme(isDarkModeEnabled() ? 'day' : 'night', {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      });
+    };
+
+    const darkModeText = document.createElement('span');
+    darkModeText.append(i18n(isDarkModeEnabled() ? 'DisableDarkMode': 'EnableDarkMode'));
+    const animationsText = document.createElement('span');
+
+    const btns: ButtonMenuItemOptionsVerifiable[] = [{
+      icon: 'darkmode',
+      regularText: darkModeText,
+      onClick: () => {}
+    }, {
+      id: 'animations-toggle',
+      icon: 'animations',
+      regularText: animationsText,
+      onClick: () => {
+        toggleAnimations();
+      },
+      verify: () => !liteMode.isEnabled()
+    }, {
+      icon: 'animations',
+      text: 'LiteMode.Title',
+      onClick: () => {
+        closeTabsBefore(() => {
+          this.createTab(AppPowerSavingTab).open();
+        });
+      },
+      verify: () => liteMode.isEnabled()
+    }, {
+      icon: 'aversion',
+      text: 'ChatList.Menu.SwitchTo.A',
+      onClick: () => {
+        Promise.all([
+          updateStorageForWebA(),
+          sessionStorage.set({kz_version: 'Z'}),
+          sessionStorage.delete('tgme_sync')
+        ]).then(() => {
+          location.href = 'https://web.telegram.org/a/';
+        });
+      },
+      separator: App.isMainDomain,
+      verify: () => App.isMainDomain
+    }, {
+      icon: 'help',
+      text: 'TelegramFeatures',
+      onClick: () => {
+        const url = I18n.format('TelegramFeaturesUrl', true);
+        appImManager.openUrl(url);
+      },
+      separator: !App.isMainDomain
+    }, {
+      icon: 'bug',
+      text: 'ReportBug',
+      onClick: () => {
+        const a = document.createElement('a');
+        setBlankToAnchor(a);
+        a.href = 'https://bugs.telegram.org/?tag_ids=40&sort=time';
+        document.body.append(a);
+        a.click();
+        setTimeout(() => {
+          a.remove();
+        }, 0);
+      }
+    }, {
+      icon: 'plusround',
+      text: 'PWA.Install',
+      onClick: () => {
+        const installPrompt = getInstallPrompt();
+        installPrompt?.();
+      },
+      verify: () => !!getInstallPrompt()
+    }];
+
+
+    async function hasAnimations() {
+      const state = await apiManagerProxy.getState();
+      return !state.settings.liteMode.animations;
+    }
+
+    async function initAnimationsToggleIcon() {
+      updateAnimationsToggleButton(await hasAnimations());
+    }
+
+    async function toggleAnimations() {
+      updateAnimationsToggleButton(!(await hasAnimations()));
+      rootScope.managers.appStateManager.setByKey(
+        joinDeepPath('settings', 'liteMode', 'animations'),
+        await hasAnimations() // The value is already reversed
+      );
+    }
+
+    async function updateAnimationsToggleButton(enabled: boolean) {
+      const animationToggleButton = btns.find(button => button.id === 'animations-toggle')?.element;
+      if(!animationToggleButton) return;
+
+      const icon = animationToggleButton.querySelector('.tgico');
+      enabled ?
+        icon?.classList.add('animations-icon-off') :
+        icon?.classList.remove('animations-icon-off');
+
+      animationsText.replaceChildren(i18n(enabled ? 'DisableAnimations' : 'EnableAnimations'));
+    }
+
+    const filtered = await filterAsync(btns, (button) => button?.verify ? button.verify() ?? false : true);
+    const menu = await ButtonMenu({
+      buttons: filtered
+    });
+
+    menu.append(getVersionLink());
+    menu.classList.add('sidebar-tools-submenu');
+
+    const darkModeBtn = btns[0].element;
+    darkModeBtn.addEventListener(CLICK_EVENT_NAME, (e) => {
+      e.stopPropagation();
+      toggleTheme();
+      pause(20).then(() => contextMenuController.close());
+    }, true);
+
+    initAnimationsToggleIcon();
+
+    return menu;
+  }
+
+  private static submenuHelperIdSeed = 0;
+  private createSubmenuHelper(
+    options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'icon' | 'verify' | 'separator'>,
+    createSubmenu: () => MaybePromise<HTMLElement>
+  ) {
+    const content = document.createElement('span');
+    content.classList.add('submenu-label');
+    content.append(i18n(options.text), Icon('arrowhead'));
+
+    const menuBtnOptions: ButtonMenuItemOptionsVerifiable = {
+      ...options,
+
+      regularText: content,
+      onClick: noop,
+      id: AppSidebarLeft.submenuHelperIdSeed++
+    };
+
+    delete menuBtnOptions.text;
+
+    let removeEventListener: () => void;
+
+    const onOpen = () => {
+      if(!menuBtnOptions.element) return;
+
+      menuBtnOptions.element.addEventListener(CLICK_EVENT_NAME, (e) => {
+        e.stopPropagation();
+      }, true);
+      menuBtnOptions.element.classList.add('disable-click');
+
+      removeEventListener = attachFloatingButtonMenu({
+        element: menuBtnOptions.element,
+        direction: 'right-start',
+        createMenu: createSubmenu,
+        offset: [-5, -5],
+        level: 2,
+        triggerEvent: 'mouseenter'
+      });
+    };
+
+    const onClose = () => {
+      // Prevents hover from triggering when the menu is closing
+      removeEventListener?.();
+    }
+
+    return {
+      menuBtnOptions,
+      onOpen,
+      onClose
+    }
+  }
+
+  private createNewChatsMenuOptions(closeBefore?: boolean, singular?: boolean): ButtonMenuItemOptionsVerifiable[]  {
     const closeTabsBefore = async(clb: () => void) => {
       if(closeBefore) {
         this.closeEverythingInisde() && await pause(200);
@@ -1023,34 +1082,44 @@ export class AppSidebarLeft extends SidebarSlider {
       });
     };
 
+    return [{
+      icon: 'newchannel',
+      text: singular ? 'Channel' : 'NewChannel',
+      onClick: () => {
+        closeTabsBefore(() => {
+          this.createTab(AppNewChannelTab).open();
+        });
+      }
+    }, {
+      icon: 'newgroup',
+      text: singular ? 'Group' : 'NewGroup',
+      onClick: onNewGroupClick
+    }, {
+      icon: 'newprivate',
+      text: singular ? 'PrivateChat' : 'NewPrivateChat',
+      onClick: onContactsClick
+    }];
+  }
+
+  private createNewChatsMenuButton() {
     const btnMenu = ButtonMenuToggle({
       direction: 'top-left',
-      buttons: [{
-        icon: 'newchannel',
-        text: 'NewChannel',
-        onClick: () => {
-          closeTabsBefore(() => {
-            this.createTab(AppNewChannelTab).open();
-          });
-        }
-      }, {
-        icon: 'newgroup',
-        text: 'NewGroup',
-        onClick: onNewGroupClick
-      }, {
-        icon: 'newprivate',
-        text: 'NewPrivateChat',
-        onClick: onContactsClick
-      }],
+      buttons: this.createNewChatsMenuOptions(false),
       noIcon: true
     });
     btnMenu.className = 'btn-new-menu btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
     btnMenu.tabIndex = -1;
     const icons: Icon[] = ['newchat_filled', 'close'];
     btnMenu.prepend(...icons.map((icon, idx) => Icon(icon, 'animated-button-icon-icon', 'animated-button-icon-icon-' + (idx === 0 ? 'first' : 'last'))));
-    withId && (btnMenu.id = 'new-menu');
+    btnMenu.id = 'new-menu';
 
     return btnMenu;
+  }
+
+  private createNewChatsSubmenu() {
+    return ButtonMenu({
+      buttons: this.createNewChatsMenuOptions(true, true)
+    });
   }
 
   private initSearch() {

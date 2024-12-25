@@ -315,8 +315,6 @@ export function FoldersSidebarContent() {
           </div>}
         </Animated>
       </div>
-
-      {appSidebarLeft.createNewBtnMenu(false, true)}
     </>
   );
 }

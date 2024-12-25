@@ -5,6 +5,7 @@ export type AttachFloatingButtonMenuOptions = {
   element: HTMLElement;
   triggerEvent: keyof HTMLElementEventMap;
   direction: 'right-start'; // Add other directions as necessary
+  level: number;
   offset?: [number, number];
   createMenu: () => HTMLElement | Promise<HTMLElement>;
 }
@@ -13,6 +14,7 @@ export default function attachFloatingButtonMenu({
   element,
   triggerEvent,
   direction,
+  level,
   offset = [0, 0],
   createMenu
 }: AttachFloatingButtonMenuOptions) {
@@ -49,7 +51,7 @@ export default function attachFloatingButtonMenu({
       }
 
       await doubleRaf();
-      contextMenuController.addAdditionalMenu(menu, element, onClose);
+      contextMenuController.addAdditionalMenu(menu, element, level, onClose);
     })();
   };
 

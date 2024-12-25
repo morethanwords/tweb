@@ -12,12 +12,15 @@ import OverlayClickHandler from './overlayClickHandler';
 import overlayCounter from './overlayCounter';
 import pause from './schedulers/pause';
 
+type AdditionalMenuItem = {
+  level: number,
+  element: HTMLElement,
+  triggerElement: HTMLElement,
+  close: () => void,
+}
+
 class ContextMenuController extends OverlayClickHandler {
-  protected additionalMenus: {
-    element: HTMLElement,
-    triggerElement: HTMLElement,
-    close: () => void,
-  }[] = [];
+  protected additionalMenus: AdditionalMenuItem[] = [];
 
   constructor() {
     super('menu', true);
@@ -45,6 +48,7 @@ class ContextMenuController extends OverlayClickHandler {
       ...[...this.additionalMenus].reverse(),
       {
         triggerElement: undefined,
+        level: 0,
         element: this.element,
         close: () => this.close()
       }
@@ -64,15 +68,27 @@ class ContextMenuController extends OverlayClickHandler {
     for(const item of allMenus) {
       if(item.triggerElement && !isFartherThan(item.triggerElement, 40)) break;
 
-      if(isFartherThan(item.element, 100)) {
-        item.close();
-        const idx = this.additionalMenus.indexOf(item);
-        if(idx > -1) this.additionalMenus.splice(idx, 1);
+      if(isFartherThan(item.element, item.level === 0 ? 100 : 40)) {
+        this.closeAndRemoveMenu(item);
       } else {
         break;
       }
     }
   };
+
+  protected closeAndRemoveMenu(item: AdditionalMenuItem) {
+    item.close();
+    const idx = this.additionalMenus.indexOf(item);
+    if(idx > -1) this.additionalMenus.splice(idx, 1);
+  }
+
+  public closeMenusByLevel(level: number) {
+    this.additionalMenus.filter(menu => menu.level === level).forEach((item) => {
+      item.close();
+      const idx = this.additionalMenus.indexOf(item);
+      if(idx > -1) this.additionalMenus.splice(idx, 1);
+    });
+  }
 
   public close() {
     if(this.element) {
@@ -123,10 +139,13 @@ class ContextMenuController extends OverlayClickHandler {
     }
   }
 
-  public addAdditionalMenu(element: HTMLElement, triggerElement: HTMLElement, onClose?: () => void) {
+  public addAdditionalMenu(element: HTMLElement, triggerElement: HTMLElement, level: number, onClose?: () => void) {
+    this.closeMenusByLevel(level);
+
     this.additionalMenus.push({
       element,
       triggerElement,
+      level,
       close: () => {
         element.classList.remove('active');
         pause(400).then(() => element.remove());

@@ -78,9 +78,10 @@
         transform: translateX(0) !important;
       }
     }
+
     &.is-collapsed:not(.has-open-tabs) {
       body:not(.has-folders-sidebar) & {
-        .sidebar-header__btn-container:not(.force-static) {
+        .sidebar-header.main-search-sidebar-header .sidebar-header__btn-container:not(.force-static) {
           position: fixed;
           z-index: 4;
           top: 8px;
@@ -91,11 +92,13 @@
         }
       }
     }
+
     body:not(.has-folders-sidebar) &.is-collapsed.force-hide-menu {
       .btn-menu {
         display: none;
       }
     }
+
     &.is-collapsed:not(.has-open-tabs):not(.animate-search-out), &.is-collapsed.force-hide-search {
       .sidebar-header.main-search-sidebar-header {
         >:not(.sidebar-header-search-trigger):not(.sidebar-header__btn-container) {
@@ -160,6 +163,13 @@
         }
       }
     }
+
+    &.is-collapsed.force-chatlist-thin {
+      #chatlist-container .chatlist {
+        width: var(--sidebar-collapsed-width);
+      }
+    }
+
     &.is-collapsed.has-open-tabs.has-forum-open {
       body.has-folders-sidebar & {
         .sidebar-header.main-search-sidebar-header {
@@ -170,6 +180,7 @@
         }
       }
     }
+
     body.has-folders-sidebar & {
       .tabs-tab.item-main {
         --stories-additional-offset: -40px;
@@ -792,7 +803,7 @@
           }
         }
 
-        .more-label {
+        .submenu-label {
           display: flex;
           justify-content: space-between;
           align-items: center;

@@ -3024,12 +3024,13 @@ export class AppDialogsManager {
     const findAvatarWithStories = (target: EventTarget) => {
       return (target as HTMLElement).closest('.avatar.has-stories') as HTMLElement;
     };
+    const isOpeningStoriesDisabled = () => appSidebarLeft.isCollapsed() && !appSidebarLeft.hasSomethingOpenInside();
 
     list.dataset.autonomous = '' + +autonomous;
     list.addEventListener('mousedown', (e) => {
       if(
         e.button !== 0 ||
-        findAvatarWithStories(e.target)
+        (!isOpeningStoriesDisabled() && findAvatarWithStories(e.target))
       ) {
         return;
       }
@@ -3097,6 +3098,7 @@ export class AppDialogsManager {
         cancelEvent(e);
       }
 
+      if(isOpeningStoriesDisabled()) return;
       const avatar = findAvatarWithStories(e.target);
       avatar && appImManager.openStoriesFromAvatar(avatar);
     }, {capture: true});
