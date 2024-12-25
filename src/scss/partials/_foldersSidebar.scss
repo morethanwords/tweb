@@ -27,6 +27,8 @@
     position: relative;
     flex: 1;
 
+    --scrollbar-color: rgba(255, 255, 255, .2);
+
     &::before {
       content: '';
       position: absolute;

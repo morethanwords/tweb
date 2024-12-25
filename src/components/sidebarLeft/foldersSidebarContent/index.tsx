@@ -296,7 +296,6 @@ export function FoldersSidebarContent() {
               onClick={() => setSelectedFolder(folderItem.id)}
             />
           )}</For>
-          <Space amount="92px" /> {/* Make the new chats button not cover the folders */}
         </Scrollable>
 
         <Animated type='cross-fade' mode='add-remove'>
