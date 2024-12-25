@@ -566,6 +566,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
           pause(200).then(() => {
             this.buttonsContainer.style.removeProperty('transition');
+            if(this.isSearchActive) return;
             this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', false);
           });
         }
