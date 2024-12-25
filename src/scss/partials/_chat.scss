@@ -765,7 +765,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
             transition: transform var(--transition-standard-out), opacity var(--transition-standard-out) !important;
           }
   
-          body.animation-level-2.is-right-column-shown & {
+          body.animation-level-2.is-right-column-shown .chat.active & {
             transform: scaleX(calc(1 - var(--right-column-proportion, 0)));
             transition: transform var(--transition-standard-in), opacity var(--transition-standard-in) !important;
           }
