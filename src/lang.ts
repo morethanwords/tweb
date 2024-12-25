@@ -3108,7 +3108,7 @@ const lang = {
   'FiltersOnTop': 'Folders above chats',
   'ManageFilters': 'Manage Folders',
   'CtrlFSearchTip': 'Tip: Use **Ctrl+F** to open Search',
-  'CreateANew': 'Create A New',
+  'CreateANew': 'Create a New',
   'PrivateChat': 'Private Chat',
   'Channel': 'Channel',
   'Group': 'Group'
