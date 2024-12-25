@@ -24,10 +24,15 @@
   }
 
   @include respond-to(no-floating-left-sidebar) {
-    &.is-collapsed {
+    &.is-collapsed {  
       width: var(--sidebar-left-width-when-collapsed, var(--sidebar-collapsed-width));
 
       >.sidebar-slider {
+        overflow: hidden;
+        width: 100%;
+      }
+
+      >.sidebar-slider>.tabs-tab {
         width: var(--sidebar-left-inner-width-when-collapsed, var(--sidebar-collapsed-width));
       }
 
@@ -83,12 +88,18 @@
       body:not(.has-folders-sidebar) & {
         .sidebar-header.main-search-sidebar-header .sidebar-header__btn-container:not(.force-static) {
           position: fixed;
-          z-index: 4;
           top: 8px;
           left: calc(max(0px, (100vw - #{$large-screen}) / 2) + 20px) !important;
         }
         .force-static {
           margin-left: 4px;
+        }
+      }
+    }
+    &.is-collapsed.can-menu-have-z-index:not(.has-open-tabs) {
+      body:not(.has-folders-sidebar) & {
+        .sidebar-header.main-search-sidebar-header .sidebar-header__btn-container:not(.force-static) {
+          z-index: 4;
         }
       }
     }
@@ -132,6 +143,15 @@
           transition: .1s ease-out;
         }
       }
+      body:not(.has-folders-sidebar) & {
+        .sidebar-header.main-search-sidebar-header {
+          >:not(.sidebar-header__btn-container) {
+            transform: translateX(20px);
+            opacity: 0;
+            transition: .1s ease-out;
+          }
+        }
+      }
     }
 
     &.is-collapsed.has-open-tabs, &.is-collapsed.force-fixed {
@@ -145,10 +165,10 @@
       }
 
       z-index: 3;
-      overflow: hidden;
+      // overflow: hidden;
 
       width: var(--sidebar-left-width-when-collapsed, #{$max-width});
-      >.sidebar-slider {
+      >.sidebar-slider>.tabs-tab {
         width: var(--sidebar-left-inner-width-when-collapsed, #{$max-width});
       }
 

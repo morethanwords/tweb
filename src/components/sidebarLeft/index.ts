@@ -161,6 +161,12 @@ export class AppSidebarLeft extends SidebarSlider {
     this.totalNotificationsCount = createBadge('span', 20, 'primary');
     this.toolsBtn.append(this.totalNotificationsCount);
 
+    // If it has z-index to early, the browser makes it shift a few times before showing it properly in its position (on very large screens)
+    // Doesn't solve the blinking, which doesn't seem to appear when the project is built
+    pause(1000).then(() => {
+      this.sidebarEl.classList.add('can-menu-have-z-index');
+    });
+
     rootScope.addEventListener('notification_count_update', async() => {
       const notificationsCount = await UiNotificationsManager.getNotificationsCountForAllAccounts();
       const count = Object.entries(notificationsCount).reduce(
@@ -500,6 +506,9 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const WIDTH_WHEN_COLLAPSED = 80;
     const FULL_WIDTH = 420;
+    const ANIMATION_TIME = 200;
+    // Need to wait until the sliding animation is finish, this one needs to be faster to avoid random layout shifting
+    const DELAY_AFTER_ANIMATION = 150;
 
     if(isFloating) {
       this.sidebarEl.classList.add(
@@ -509,11 +518,11 @@ export class AppSidebarLeft extends SidebarSlider {
       );
       !this.isSearchActive && this.sidebarEl.classList.add('force-hide-search');
 
-
-      animateValue(WIDTH_WHEN_COLLAPSED, FULL_WIDTH, 300, (value) => {
+      animateValue(WIDTH_WHEN_COLLAPSED, FULL_WIDTH, ANIMATION_TIME, (value) => {
         this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
       }, {
-        onEnd: () => {
+        onEnd: async() => {
+          await pause(DELAY_AFTER_ANIMATION);
           this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
           this.sidebarEl.classList.remove(
             'force-hide-large-content',
@@ -536,10 +545,11 @@ export class AppSidebarLeft extends SidebarSlider {
       this.buttonsContainer.classList.add('force-static', 'is-visible');
       closingSearch && this.hasFoldersSidebar() && this.toolsBtn.parentElement.firstElementChild.classList.add('state-back');
 
-      animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, 300, (value) => {
+      animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, ANIMATION_TIME, (value) => {
         this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
       }, {
-        onEnd: () => {
+        onEnd: async() => {
+          await pause(DELAY_AFTER_ANIMATION);
           this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
           this.sidebarEl.classList.remove(
             'force-fixed',
