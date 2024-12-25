@@ -1513,7 +1513,7 @@ export class AppSidebarLeft extends SidebarSlider {
     doNotAppend?: boolean
   ) {
     const ctorsToOpenInPopup = [AppSettingsTab, AppEditFolderTab, AppChatFoldersTab]
-    if(this.isCollapsed() && ctorsToOpenInPopup.includes(ctor as any)) {
+    if(this.isCollapsed() && !mediaSizes.isLessThanFloatingLeftSidebar && ctorsToOpenInPopup.includes(ctor as any)) {
       const popup = new SettingsSliderPopup(this.managers);
       popup.show();
       return popup.slider.createTab(ctor, destroyable, doNotAppend);
