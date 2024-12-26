@@ -809,6 +809,12 @@ export class AppSidebarLeft extends SidebarSlider {
         name: 'FilterChats',
         type: 'chats'
       }, {
+        name: 'Channels',
+        type: 'channels'
+      }, {
+        name: 'MiniApps.AppsSearch',
+        type: 'apps'
+      }, {
         inputFilter: 'inputMessagesFilterPhotoVideo',
         name: 'SharedMediaTab2',
         type: 'media'
@@ -836,6 +842,8 @@ export class AppSidebarLeft extends SidebarSlider {
       showSender: true,
       managers: this.managers
     });
+
+    this.watchChannelsTabVisibility();
 
     searchContainer.prepend(searchSuper.nav.parentElement.parentElement);
     scrollable.append(searchSuper.container);
@@ -1097,6 +1105,30 @@ export class AppSidebarLeft extends SidebarSlider {
           this.searchGroups.recent.clear();
         });
       });
+    });
+  }
+
+  private async watchChannelsTabVisibility() {
+    const checkChannelsVisiblity = async() => {
+      const dialogs = await this.managers.dialogsStorage.getCachedDialogs();
+
+      let hasChannels = false;
+      for(const dialog of dialogs) {
+        hasChannels = await this.managers.appPeersManager.isBroadcast(dialog.peerId);
+        if(hasChannels) break;
+      }
+
+      const channelsTab = this.searchSuper.mediaTabs.find(tab => tab.type === 'channels');
+      channelsTab.menuTab?.classList.toggle('hide', !hasChannels);
+    };
+
+    checkChannelsVisiblity();
+
+    rootScope.addEventListener('channel_update', () => {
+      pause(200).then(() => checkChannelsVisiblity());
+    });
+    rootScope.addEventListener('peer_deleted', () => {
+      checkChannelsVisiblity();
     });
   }
 }

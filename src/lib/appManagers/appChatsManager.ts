@@ -1047,6 +1047,17 @@ export class AppChatsManager extends AppManager {
     });
   }
 
+  public getGenericChannelRecommendations() {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'channels.getChannelRecommendations',
+      params: {},
+      processResult: (messagesChats) => {
+        this.saveApiChats(messagesChats.chats);
+        return messagesChats;
+      }
+    });
+  }
+
   public getChannelRecommendations(chatId: ChatId) {
     const result = this.recommendations[chatId];
     if(result) {
