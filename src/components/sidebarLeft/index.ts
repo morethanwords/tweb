@@ -610,6 +610,7 @@ export class AppSidebarLeft extends SidebarSlider {
       setCursorTo: document.body,
       onStart: () => {
         resizeHandle.classList.add('is-active');
+        document.body.classList.add('resizing-left-sidebar');
       },
       onSwipe: (_, __, _e) => {
         const e = getEvent(_e);
@@ -635,6 +636,7 @@ export class AppSidebarLeft extends SidebarSlider {
       },
       onReset: () => {
         resizeHandle.classList.remove('is-active');
+        document.body.classList.remove('resizing-left-sidebar');
       }
     })
   }

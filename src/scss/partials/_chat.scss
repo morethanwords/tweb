@@ -765,8 +765,12 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
             transition: transform var(--transition-standard-out), opacity var(--transition-standard-out) !important;
           }
   
-          body.animation-level-2.is-right-column-shown .chat.active & {
-            transform: scaleX(calc(1 - var(--right-column-proportion, 0)));
+          body.is-right-column-shown.resizing-left-sidebar & {
+            // When collapsing sidebar, for a moment there is a black stripe on right, so we're extending the bg a little to avoid this
+            --additional-chat-bg-proportion: #{calc($large-screen / 8)}; // sidebar left width '/ 4', and half of it '/ 2'
+          }
+          body.animation-level-2.is-right-column-shown .chat.active {
+            transform: scaleX(calc(1 - var(--right-column-proportion, 0) + var(--additional-chat-bg-proportion, 0)));
             transition: transform var(--transition-standard-in), opacity var(--transition-standard-in) !important;
           }
         }
