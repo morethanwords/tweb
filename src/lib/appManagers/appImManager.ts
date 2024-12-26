@@ -2274,7 +2274,7 @@ export class AppImManager extends EventListenerBase<{
       if(chatIndex > 0) {
         this.spliceChats(chatIndex, undefined, animate);
         return;
-      } else if(mediaSizes.activeScreen === ScreenSize.medium) { // * floating sidebar case
+      } else if(mediaSizes.isFloatingLeftSidebar) {
         this.selectTab(+!this.tabId, animate);
         return;
       }
