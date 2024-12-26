@@ -11,6 +11,7 @@ import AppSharedMediaTab from './tabs/sharedMedia';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import {AppManagers} from '../../lib/appManagers/managers';
 import appNavigationController from '../appNavigationController';
+import rootScope from '../../lib/rootScope';
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
@@ -36,6 +37,25 @@ export class AppSidebarRight extends SidebarSlider {
       }
     });
 
+    let removeTransitionTimeoutId: number;
+    const toggleBgScalableTransition = (value: boolean) => {
+      document.querySelectorAll('.chat-background-item-scalable').forEach(_el => {
+        const el = _el as HTMLElement;
+        if(!value) {
+          el.style.setProperty('transition', 'none', 'important');
+        } else {
+          el.style.removeProperty('transition');
+        }
+      });
+    }
+    rootScope.addEventListener('resizing_left_sidebar', () => {
+      window.clearTimeout(removeTransitionTimeoutId);
+      toggleBgScalableTransition(false);
+      this.setColumnProportion();
+      removeTransitionTimeoutId = window.setTimeout(() => {
+        toggleBgScalableTransition(true);
+      }, 100);
+    });
     mediaSizes.addEventListener('resize', () => {
       this.setColumnProportion();
     });
@@ -97,6 +117,8 @@ export class AppSidebarRight extends SidebarSlider {
     document.documentElement.style.setProperty('--middle-column-width', middleWidth + 'px');
     document.documentElement.style.setProperty('--middle-column-width-value', '' + middleWidth);
     // this.rect = this.sidebarEl.getBoundingClientRect();
+
+    return proportion;
   }
 
   public hide() {

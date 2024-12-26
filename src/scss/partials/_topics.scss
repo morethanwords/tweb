@@ -22,7 +22,7 @@
 
     &.is-floating {
       --offset: 5.0625rem;
-      --width: calc(var(--left-column-width) - var(--offset));
+      --width: calc(100% - var(--offset));
       transform: translateX(calc(var(--width) * var(--reflect)));
       overflow: unset !important;
       position: absolute;

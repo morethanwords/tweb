@@ -1587,6 +1587,7 @@ class Some2 extends Some<Dialog> {
   }
 
   public toggleAvatarUnreadBadges(value: boolean, useRafs: number) {
+    console.log('toggling avatar unread', value);
     if(!value) {
       this.sortedList.getAll().forEach((sortedDialog) => {
         const {dom, dialogElement} = sortedDialog;
@@ -1899,6 +1900,8 @@ export class AppDialogsManager {
       const _id = id;
       id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
 
+      rootScope.dispatchEvent('changing_folder_from_chatlist', id);
+
       const isFilterAvailable = this.filterId === -1 || REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
       if(!isFilterAvailable) {
         showLimitPopup('folders');
@@ -2037,6 +2040,8 @@ export class AppDialogsManager {
 
     this.xd = this.xds[this.filterId];
 
+
+    appSidebarLeft.onCollapsedChange();
     // selectTab(0, false);
   }
 
@@ -2188,6 +2193,11 @@ export class AppDialogsManager {
     rootScope.addEventListener('filter_joined', (filter) => {
       const filterRendered = this.filtersRendered[filter.id];
       this.selectTab(filterRendered.menu);
+    });
+
+    rootScope.addEventListener('changing_folder_from_sidebar', ({id, dontAnimate}) => {
+      const filterRendered = this.filtersRendered[id];
+      this.selectTab(filterRendered.menu, !dontAnimate);
     });
   }
 
@@ -2627,6 +2637,7 @@ export class AppDialogsManager {
 
     let placeholder: ReturnType<AppDialogsManager['generateEmptyPlaceholder']>, type: 'dialogs' | 'folder';
     if(!this.filterId) {
+      // Check here for placeholder too
       placeholder = this.generateEmptyPlaceholder({
         title: 'ChatList.Main.EmptyPlaceholder.Title',
         classNameType: type = 'dialogs'
@@ -2764,7 +2775,7 @@ export class AppDialogsManager {
       fakeGradientDelimiter: true
     });
 
-    section.container.classList.add('hide');
+    section.container.classList.add('sidebar-left-contacts-section', 'hide');
 
     this.managers.appUsersManager.getContactsPeerIds(undefined, undefined, 'online').then((contacts) => {
       let ready = false;
@@ -2837,6 +2848,8 @@ export class AppDialogsManager {
     return isContact && !dialog;
   };
 
+  public onForumTabToggle?: () => void;
+
   public async toggleForumTab(newTab?: ForumTab, hideTab = this.forumTab) {
     if(!hideTab && !newTab) {
       return;
@@ -2857,6 +2870,7 @@ export class AppDialogsManager {
     const promise = newTab?.toggle(true);
     if(hideTab === this.forumTab) {
       this.forumTab = newTab;
+      this.onForumTabToggle?.();
     }
 
     if(newTab) {
@@ -3010,12 +3024,13 @@ export class AppDialogsManager {
     const findAvatarWithStories = (target: EventTarget) => {
       return (target as HTMLElement).closest('.avatar.has-stories') as HTMLElement;
     };
+    const isOpeningStoriesDisabled = () => appSidebarLeft.isCollapsed() && !appSidebarLeft.hasSomethingOpenInside();
 
     list.dataset.autonomous = '' + +autonomous;
     list.addEventListener('mousedown', (e) => {
       if(
         e.button !== 0 ||
-        findAvatarWithStories(e.target)
+        (!isOpeningStoriesDisabled() && findAvatarWithStories(e.target))
       ) {
         return;
       }
@@ -3083,6 +3098,7 @@ export class AppDialogsManager {
         cancelEvent(e);
       }
 
+      if(isOpeningStoriesDisabled()) return;
       const avatar = findAvatarWithStories(e.target);
       avatar && appImManager.openStoriesFromAvatar(avatar);
     }, {capture: true});
@@ -3482,7 +3498,8 @@ export class AppDialogsManager {
       dialogElement.createUnreadBadge();
     }
 
-    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && !!this.forumTab && this.xd.getDialogElement(peerId) === dialogElement && isDialogUnread;
+    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && (!!this.forumTab || appSidebarLeft.isCollapsed()) && this.xd.getDialogElement(peerId) === dialogElement && isDialogUnread;
+
     const isUnreadAvatarBadgeMounted = !!dom.unreadAvatarBadge;
     if(hasUnreadAvatarBadge) {
       dialogElement.createUnreadAvatarBadge();

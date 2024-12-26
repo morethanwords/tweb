@@ -172,7 +172,8 @@
   /* .bubbles.is-selecting */ & {
     &:after {
       position: absolute;
-      left: -50%;
+      left: 50%;
+      transform: translateX(-50%);
       /* top: 0;
       bottom: 0; */
       top: -#{$bubble-overflow};
@@ -259,7 +260,7 @@
   //&.is-highlighted:after, &.is-first-unread:before, &.is-selected:after {
   &:after, 
   &:before {
-    width: 200%;
+    width: 100vw;
     display: block;
   }
 

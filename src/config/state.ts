@@ -83,7 +83,8 @@ export type StateSettings = {
   timeFormat: 'h12' | 'h23',
   liteMode: {[key in LiteModeKey]: boolean},
   savedAsForum: boolean,
-  notifyAllAccounts: boolean
+  notifyAllAccounts: boolean,
+  tabsInSidebar: boolean
 };
 
 export type State = {
@@ -328,7 +329,8 @@ export const STATE_INIT: State = {
       video: false
     },
     savedAsForum: false,
-    notifyAllAccounts: true
+    notifyAllAccounts: true,
+    tabsInSidebar: false
   },
   playbackParams: {
     volume: 1,
