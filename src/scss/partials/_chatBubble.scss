@@ -525,6 +525,13 @@
     html.no-touch body.animation-level-2 & {
       transition: opacity .2s ease-in-out, transform .2s ease-in-out;
     }
+
+    &--transcribe {
+      font-size: 1.375rem;
+    }
+    &--lifted {
+      bottom: calc(var(--message-beside-button-size) + 0.25rem);
+    }
   }
 
   &-view-button {
@@ -2396,6 +2403,10 @@
     }
   }
 
+  .video-transcribed-text {
+    margin-top: .25rem;
+  }
+
   &.no-forwards {
     .bubble-beside-button.forward {
       display: none;
@@ -3642,4 +3653,37 @@
 .bubble-primary-color {
   color: var(--message-primary-color);
   font-weight: var(--font-weight-bold);
+}
+
+.transcribe-button-spinner-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+
+  circle {
+    transform-origin: 50% 50%; /* Center rotation */
+    animation: transcribe-button-spinner-animation 1s linear infinite, transcribe-button-spinner-length-animation 1.2s linear infinite alternate;
+  }
+}
+
+
+@keyframes transcribe-button-spinner-animation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes transcribe-button-spinner-length-animation {
+  0% {
+    stroke-dasharray: 0 65.97;
+  }
+  100% {
+    // stroke-dasharray: calc(var(--PI) * var(--radius)) calc(var(--PI) * var(--radius));
+    stroke-dasharray: 32.98 32.98;
+  }
 }
