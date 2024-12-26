@@ -389,7 +389,8 @@ export class AppSidebarLeft extends SidebarSlider {
       type: 'global-search-focus',
       onPop: () => {
         setTimeout(() => {
-          this.inputSearch.input.focus();
+          if(this.isAnimatingCollapse) return;
+          this.initSearch().open();
         }, 0);
 
         return false;
@@ -448,7 +449,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.onSomethingOpenInsideChange();
     }
 
-    addShortcutListener(['anymeta+f'], () => {
+    addShortcutListener(['ctrl+f', 'alt+f', 'meta+f'], () => {
       if(appNavigationController.findItemByType('popup')) return;
       this.initSearch().open();
     });
@@ -482,6 +483,7 @@ export class AppSidebarLeft extends SidebarSlider {
     return this.closeAllTabs();
   }
 
+  private isAnimatingCollapse = false;
   private onSomethingOpenInsideChange = (closingSearch = false, force = false) => {
     const wasFloating = this.sidebarEl.classList.contains('has-open-tabs');
     const isFloating = force || this.hasSomethingOpenInside();
@@ -518,11 +520,13 @@ export class AppSidebarLeft extends SidebarSlider {
       );
       !this.isSearchActive && this.sidebarEl.classList.add('force-hide-search');
 
+      this.isAnimatingCollapse = true;
       animateValue(WIDTH_WHEN_COLLAPSED, FULL_WIDTH, ANIMATION_TIME, (value) => {
         this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
       }, {
         onEnd: async() => {
           await pause(DELAY_AFTER_ANIMATION);
+          this.isAnimatingCollapse = false;
           this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
           this.sidebarEl.classList.remove(
             'force-hide-large-content',
@@ -545,6 +549,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.buttonsContainer.classList.add('force-static', 'is-visible');
       closingSearch && this.hasFoldersSidebar() && this.toolsBtn.parentElement.firstElementChild.classList.add('state-back');
 
+      this.isAnimatingCollapse = true;
       animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, ANIMATION_TIME, (value) => {
         this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
       }, {
@@ -566,6 +571,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
           pause(200).then(() => {
             this.buttonsContainer.style.removeProperty('transition');
+            this.isAnimatingCollapse = false;
             if(this.isSearchActive) return;
             this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', false);
           });
@@ -1424,6 +1430,7 @@ export class AppSidebarLeft extends SidebarSlider {
       if(!IS_MOBILE_SAFARI && !appNavigationController.findItemByType(navigationType)) {
         appNavigationController.pushItem({
           onPop: () => {
+            if(this.isAnimatingCollapse) return false;
             close();
           },
           type: navigationType
