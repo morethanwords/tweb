@@ -7,10 +7,10 @@
 .spoiler {
   --anim: .4s ease;
   // position: relative; // ! idk what it was for
-  background-color: var(--spoiler-background-color);
+  // background-color: var(--spoiler-background-color);
   
   &-text {
-    opacity: 0;
+    opacity: 1;
   }
 
   /* &-draft {
@@ -72,4 +72,11 @@
       }
     }
   }
+}
+
+.spoiler-text-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
 }

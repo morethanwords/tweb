@@ -65,7 +65,7 @@ export default class DotRenderer implements AnimationItemWrapper {
   private static shaderTexts: {[url: string]: string | Promise<string>} = {};
   private static createdIndex = -1;
 
-  private static instance: DotRenderer;
+  public static instance: DotRenderer;
   private static drawCallbacks: Map<HTMLElement, () => void> = new Map();
   private static counter = 0;
 

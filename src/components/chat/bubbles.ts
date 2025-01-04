@@ -48,7 +48,7 @@ import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
 import reflowScrollableElement from '../../helpers/dom/reflowScrollableElement';
 import setInnerHTML, {setDirection} from '../../helpers/dom/setInnerHTML';
 import whichChild from '../../helpers/dom/whichChild';
-import {animateSingle, cancelAnimationByKey} from '../../helpers/animation';
+import {animate, animateSingle, cancelAnimationByKey} from '../../helpers/animation';
 import assumeType from '../../helpers/assumeType';
 import debounce, {DebounceReturnType} from '../../helpers/schedulers/debounce';
 import windowSize from '../../helpers/windowSize';
@@ -186,6 +186,8 @@ import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/ph
 import icon from '../icon';
 import {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
 import {wrapRoundVideoBubble} from './roundVideoBubble';
+import {animateValue} from '../mediaEditor/utils';
+import BezierEasing from '../../vendor/bezierEasing';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -5134,8 +5136,93 @@ export default class ChatBubbles {
     // * can't use 'message.pFlags.out' here because this check will be used to define side of message (left-right)
     const our = this.chat.isOurMessage(message);
 
+    // here message div
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', 'spoilers-container');
+
+    const canvas = document.createElement('canvas');
+    canvas.classList.add('spoiler-text-canvas');
+    const ctx = canvas.getContext('2d');
+    const [w, h] = [480, 480];
+    canvas.width = w;
+    canvas.height = h;
+
+    setTimeout(() => {
+      messageDiv.append(canvas);
+    }, 2000);
+
+    let progress = 0;
+    let initialCoords: [number, number];
+    let maxDist = 0;
+
+    messageDiv.addEventListener('click', (e) => {
+      const rect = messageDiv.getBoundingClientRect();
+      initialCoords = [e.clientX - rect.left, e.clientY - rect.top];
+      maxDist = Math.max(
+        Math.hypot(e.clientX - rect.left,
+          e.clientY - rect.top),
+        Math.hypot(rect.right - e.clientX, rect.bottom - e.clientY)
+      ) + 20; // TODO: all 4 corners
+      animateValue(0, 1, Math.min(820, maxDist / 160 * 400), (p) => {
+        progress = p;
+      }, {
+        easing: BezierEasing(.45, .37, .29, 1)
+      });
+    });
+
+    animate(() => {
+      if(!DotRenderer.instance) return true;
+      const renderer = DotRenderer.instance;
+
+      ctx.clearRect(0, 0, w, h);
+
+      let bg: string = 'transparent';
+      if(messageDiv.parentElement) {
+        const computedStyle = window.getComputedStyle(messageDiv.parentElement);
+        bg = computedStyle.backgroundColor;
+      }
+      const rect = messageDiv.getBoundingClientRect();
+      const spoilers = messageDiv.querySelectorAll('.spoiler-text');
+      const offset = 1;
+      spoilers.forEach((_el) => {
+        const el = _el as HTMLElement;
+        const srects = el.getClientRects();
+
+        for(let i = 0; i < srects.length; i++) {
+          const crect = srects.item(i);
+          const x = crect.left - rect.left; // - offset;
+          const y = crect.top - rect.top - offset;
+          const dw = crect.width; // + offset * 2;
+          const dh = crect.height + offset * 2;
+          ctx.fillStyle = bg;
+          ctx.fillRect(x, y, dw, dh);
+          if(initialCoords) {
+            const scaledProgress = progress * 0.125;
+            ctx.drawImage(renderer.canvas,
+              x + (initialCoords[0] - x) * scaledProgress,
+              y + (initialCoords[1] - y) * scaledProgress,
+              dw * (1 - scaledProgress),
+              dh * (1 - scaledProgress),
+              x, y, dw, dh
+            );
+          } else
+            ctx.drawImage(renderer.canvas, x, y, dw, dh, x, y, dw, dh);
+        }
+      });
+      if(initialCoords) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = 'white';
+        ctx.shadowBlur = 120;
+        ctx.shadowColor = 'white';
+        ctx.beginPath();
+        ctx.arc(initialCoords[0], initialCoords[1], maxDist * progress, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.restore();
+      }
+      return true;
+    });
 
     const contentWrapper = document.createElement('div');
     contentWrapper.classList.add('bubble-content-wrapper');
