@@ -1,12 +1,22 @@
 const {execSync} = require('child_process');
 const {readFileSync, writeFileSync} = require('fs');
 
-const willPaste = process.argv[2];
-if(willPaste) {
-  const newSchemaIn = execSync('pbpaste', {encoding: 'utf8'});
+const willPaste = process.argv[2] === '1';
+const sourceFile = process.argv[2];
+
+let sourceContent = (() => {
+  if(willPaste) {
+    return execSync('pbpaste', {encoding: 'utf8'});
+  }
+  if(sourceFile) {
+    return readFileSync(sourceFile, 'utf8');
+  }
+})();
+
+if(sourceContent) {
   const path = `${__dirname}/src/scripts/in/schema.json`;
   const schemaIn = readFileSync(path, 'utf8');
-  const replaced = schemaIn.replace(/("API": ).+?(,\n)/, `$1${newSchemaIn}$2`);
+  const replaced = schemaIn.replace(/("API": ).+?(,\n)/, `$1${sourceContent}$2`);
   writeFileSync(path, replaced);
 }
 
