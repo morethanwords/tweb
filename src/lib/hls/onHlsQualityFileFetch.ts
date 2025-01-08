@@ -12,10 +12,7 @@ const cacheStorage = new CacheStorageController('cachedHlsQualityFiles');
 const ctx = self as any as ServiceWorkerGlobalScope;
 
 
-/** Global */
 export const log = logger('SW-HLS');
-// TODO: Remove as it is unused
-export const sourceHlsQuality = new Map<string, string>();
 
 export type HlsStreamUrlParams = {
   docId: string;
@@ -23,8 +20,6 @@ export type HlsStreamUrlParams = {
   size: number;
   mimeType: string;
 };
-
-/** ----- */
 
 /**
  * To be used in the service worker
@@ -44,10 +39,8 @@ export async function onHlsQualityFileFetch(event: FetchEvent, params: string, s
 
     // log.info('original hls quality file', fileString);
 
-    const {targetDocId, replacedContent} = await replaceQualityFileWithLocalURLs(fileString, accountNumber);
+    const replacedContent = await replaceQualityFileWithLocalURLs(fileString, accountNumber);
     // log.info('replaced hls quality file', replacedContent);
-
-    sourceHlsQuality.set(targetDocId, replacedContent);
 
     deferred.resolve(new Response(replacedContent));
   } catch(e) {
@@ -62,7 +55,7 @@ function getHlsQualityCacheFilename(docId: string) {
 
 async function getHlsQualityFile(docId: string, accountNumber: ActiveAccountNumber): Promise<Blob> {
   try {
-    throw '';
+    // throw '';
     const file = await cacheStorage.getFile(getHlsQualityCacheFilename(docId));
     log.info('using cached quality file', docId);
     return file;
@@ -100,8 +93,5 @@ async function replaceQualityFileWithLocalURLs(fileString: string, accountNumber
 
   const replacedContent = fileString.replace(new RegExp(regex, 'g'), targetFileURL);
 
-  return {
-    targetDocId,
-    replacedContent
-  };
+  return replacedContent;
 }
