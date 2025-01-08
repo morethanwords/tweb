@@ -12,7 +12,7 @@ import FileStorage from './fileStorage';
 import makeError from '../../helpers/makeError';
 import deferredPromise from '../../helpers/cancellablePromise';
 
-export type CacheStorageDbName = 'cachedFiles' | 'cachedStreamChunks' | 'cachedAssets';
+export type CacheStorageDbName = 'cachedFiles' | 'cachedStreamChunks' | 'cachedAssets' | 'cachedHlsQualityFiles';
 
 export default class CacheStorageController implements FileStorage {
   private static STORAGES: CacheStorageController[] = [];

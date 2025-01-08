@@ -17,6 +17,9 @@ import {MessageSendPort} from '../mtproto/superMessagePort';
 import handleDownload from './download';
 import onShareFetch, {checkWindowClientForDeferredShare} from './share';
 import {onRtmpFetch, onRtmpLeftCall} from './rtmp';
+import {onHlsQualityFileFetch} from '../hls/onHlsQualityFileFetch';
+import {get500ErrorResponse} from './errors';
+import {onHlsStreamFetch} from '../hls/onHlsStreamFetch';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -172,9 +175,18 @@ const onFetch = (event: FetchEvent): void => {
         break;
       }
 
-      // TODO: Verify, have no idea how to trigger
       case 'rtmp': {
         onRtmpFetch(event, params, search);
+        break;
+      }
+
+      case 'hls_quality_file': {
+        onHlsQualityFileFetch(event, params, search);
+        break;
+      }
+
+      case 'hls_stream': {
+        onHlsStreamFetch(event, params, search);
         break;
       }
 
@@ -185,11 +197,7 @@ const onFetch = (event: FetchEvent): void => {
     }
   } catch(err) {
     log.error('fetch error', err);
-    event.respondWith(new Response('', {
-      status: 500,
-      statusText: 'Internal Server Error',
-      headers: {'Cache-Control': 'no-cache'}
-    }));
+    event.respondWith(get500ErrorResponse());
   }
 };
 

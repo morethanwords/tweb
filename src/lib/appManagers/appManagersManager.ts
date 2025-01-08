@@ -172,7 +172,6 @@ export class AppManagersManager {
         requestFilePart: (payload) => {
           return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
             const {docId, dcId, offset, limit, accountNumber} = payload;
-            console.log('accountNumber from worker', accountNumber)
             return managersByAccount[accountNumber].appDocsManager.requestDocPart(docId, dcId, offset, limit);
           });
         },
@@ -190,6 +189,29 @@ export class AppManagersManager {
           return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
             const {request, dcId, accountNumber} = payload;
             return managersByAccount[accountNumber].appGroupCallsManager.fetchRtmpPart(request, dcId);
+          });
+        },
+        requestDoc(payload) {
+          return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
+            const {docId, accountNumber} = payload;
+            return managersByAccount[accountNumber].appDocsManager.getDoc(docId);
+          });
+        },
+        downloadDoc(payload) {
+          return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
+            const {docId, accountNumber} = payload;
+            const appDocsManager = managersByAccount[accountNumber].appDocsManager;
+            const doc = appDocsManager.getDoc(docId);
+            return appDocsManager.downloadDoc(doc);
+          });
+        },
+        // TODO: Remove as it is unused
+        requestCacheContext(payload) {
+          return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
+            const {docId, accountNumber} = payload;
+            const {appDocsManager, thumbsStorage} = managersByAccount[accountNumber];
+            const doc = appDocsManager.getDoc(docId);
+            return thumbsStorage.getCacheContext(doc);
           });
         }
       });
