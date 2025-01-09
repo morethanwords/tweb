@@ -45,8 +45,9 @@ const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
 
 async function fetchFilePart(params: RequestFilePartIdentificationParams, range: StreamFetchingRange) {
   try {
-    const key = getChunkKey(params, range);
-    const blob: Blob = await cacheStorage.getFile(key, 'blob');
+    // throw '';
+    const filename = getChunkFilename(params, range);
+    const blob: Blob = await cacheStorage.getFile(filename, 'blob');
     const bytes = await readBlobAsUint8Array(blob);
     return bytes;
   } catch{
@@ -59,12 +60,12 @@ async function fetchFilePart(params: RequestFilePartIdentificationParams, range:
   }
 }
 
-function getChunkKey(params: RequestFilePartIdentificationParams, range: StreamFetchingRange) {
+function getChunkFilename(params: RequestFilePartIdentificationParams, range: StreamFetchingRange) {
   return `${params.accountNumber}-${params.docId}?offset=${range.offset}&limit=${range.limit}`;
 }
 
 async function saveChunkToCache(bytes: Uint8Array, params: RequestFilePartIdentificationParams, range: StreamFetchingRange) {
-  const key = getChunkKey(params, range);
+  const filename = getChunkFilename(params, range);
 
   const response = new Response(bytes, {
     headers: {
@@ -74,5 +75,5 @@ async function saveChunkToCache(bytes: Uint8Array, params: RequestFilePartIdenti
     }
   });
 
-  await cacheStorage.save(key, response);
+  await cacheStorage.save(filename, response);
 }

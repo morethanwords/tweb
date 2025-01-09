@@ -5,8 +5,9 @@ import {get500ErrorResponse} from '../serviceWorker/errors';
 import {parseRange} from '../serviceWorker/stream';
 
 import {fetchAndConcatFileParts} from './fetchAndConcatFileParts';
-import {HlsStreamUrlParams, log} from './onHlsQualityFileFetch';
-import {splitRangeForGettingFiles} from './splitRangeForGettingFileParts';
+import {HlsStreamUrlParams} from './onHlsQualityFileFetch';
+import {swLog} from './common';
+import {splitRangeForGettingFileParts} from './splitRangeForGettingFileParts';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 
@@ -18,7 +19,7 @@ export async function onHlsStreamFetch(event: FetchEvent, inParams: string, sear
     const {docId, dcId, size, mimeType}: HlsStreamUrlParams = JSON.parse(decodeURIComponent(inParams));
     const range = parseRange(event.request.headers.get('Range'));
 
-    log('docId, dcId, range', docId, dcId, range);
+    swLog('docId, dcId, range', docId, dcId, range);
     const client = await ctx.clients.get(event.clientId);
     const accountNumber = getCurrentAccountFromURL(client.url);
 
@@ -28,7 +29,7 @@ export async function onHlsStreamFetch(event: FetchEvent, inParams: string, sear
 
     const [lowerBound, upperBound] = range;
 
-    const {ranges, alignedLowerBound, alignedUpperBound} = splitRangeForGettingFiles(lowerBound, upperBound);
+    const {ranges, alignedLowerBound, alignedUpperBound} = splitRangeForGettingFileParts(lowerBound, upperBound);
 
     const filePart = await fetchAndConcatFileParts({docId, dcId, accountNumber}, ranges);
     // deferred.resolve()
@@ -71,6 +72,6 @@ export async function onHlsStreamFetch(event: FetchEvent, inParams: string, sear
     }));
   } catch(e) {
     deferred.resolve(get500ErrorResponse());
-    log.error(e);
+    swLog.error(e);
   }
 }

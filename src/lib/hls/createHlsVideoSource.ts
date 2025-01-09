@@ -1,7 +1,8 @@
 import assumeType from '../../helpers/assumeType';
 import {Document, DocumentAttribute, Message, MessageMedia} from '../../layer';
 
-const QUALITY_FILE_MIME_TYPE = 'application/x-mpegurl';
+import {isDocumentHlsQualityFile} from './common';
+
 const QUALITY_FILE_NAME_PREFIX = 'mtproto:';
 
 const FALLBACK_BANDWIDTH = 1_000_000;
@@ -10,7 +11,7 @@ const FALLBACK_HEIGHT = 720;
 
 export function createHlsVideoSource(message: Message.message): string | null {
   const altDocs = getAltDocsFromMessage(message);
-  if(!altDocs.length) return;
+  if(!altDocs.length) return null;
 
   const videoAttributes = getVideoAttributesFromAltDocs(altDocs);
   const qualityURLs = getQualityURLsFromAltDocs(altDocs);
@@ -78,8 +79,7 @@ function getQualityURLsFromAltDocs(altDocs: Document.document[]) {
   const result: Map<string, string> = new Map();
 
   for(const doc of altDocs) {
-    // "application/x-mpegurl" missing from union MTMimeType wtf
-    if((doc.mime_type as string) !== QUALITY_FILE_MIME_TYPE) continue;
+    if(!isDocumentHlsQualityFile(doc)) continue;
 
     result.set(getTargetDocIdForQualityFile(doc), getURLForQualityFile(doc));
   }

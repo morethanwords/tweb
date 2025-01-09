@@ -3,16 +3,11 @@ import deferredPromise from '../../helpers/cancellablePromise';
 import {getCurrentAccountFromURL} from '../accounts/getCurrentAccountFromURL';
 import {ActiveAccountNumber} from '../accounts/types';
 import CacheStorageController from '../files/cacheStorage';
-import {logger} from '../logger';
 import {get500ErrorResponse} from '../serviceWorker/errors';
 import {serviceMessagePort} from '../serviceWorker/index.service';
+import {ctx, swLog} from './common';
 
 const cacheStorage = new CacheStorageController('cachedHlsQualityFiles');
-
-const ctx = self as any as ServiceWorkerGlobalScope;
-
-
-export const log = logger('SW-HLS');
 
 export type HlsStreamUrlParams = {
   docId: string;
@@ -45,7 +40,7 @@ export async function onHlsQualityFileFetch(event: FetchEvent, params: string, s
     deferred.resolve(new Response(replacedContent));
   } catch(e) {
     deferred.resolve(get500ErrorResponse());
-    log.error(e);
+    swLog.error(e);
   }
 }
 
@@ -57,10 +52,10 @@ async function getHlsQualityFile(docId: string, accountNumber: ActiveAccountNumb
   try {
     // throw '';
     const file = await cacheStorage.getFile(getHlsQualityCacheFilename(docId));
-    log.info('using cached quality file', docId);
+    swLog.info('using cached quality file', docId);
     return file;
   } catch{
-    log.info('fetching quality file', docId);
+    swLog.info('fetching quality file', docId);
     const file = await serviceMessagePort.invoke('downloadDoc', {docId, accountNumber});
     cacheStorage.saveFile(getHlsQualityCacheFilename(docId), file);
     return file;
@@ -75,7 +70,7 @@ async function replaceQualityFileWithLocalURLs(fileString: string, accountNumber
 
   const targetDocId = match[1];
 
-  log.info('targetDocId', targetDocId);
+  swLog.info('targetDocId', targetDocId);
 
   if(!targetDocId) throw new Error('Wrong Hls quality file format');
 
