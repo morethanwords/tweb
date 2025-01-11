@@ -753,10 +753,6 @@ export class AppSidebarLeft extends SidebarSlider {
     appNavigationController.pushItem(navigationItem);
 
     apiManagerProxy.getState().then((state) => {
-      if(!state.keepSigned) {
-        return;
-      }
-
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
         fetch('version', {cache: 'no-cache'})

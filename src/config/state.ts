@@ -114,7 +114,6 @@ export type State = {
   authState: AuthState,
   hiddenPinnedMessages: {[peerId: PeerId]: number},
   playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
-  keepSigned: boolean,
   chatContextMenuHintWasShown: boolean,
   hideChatJoinRequests: {[peerId: PeerId]: number},
   stateId: number,
@@ -342,7 +341,6 @@ export const STATE_INIT: State = {
     loop: false,
     round: false
   },
-  keepSigned: true,
   chatContextMenuHintWasShown: false,
   hideChatJoinRequests: {},
   stateId: nextRandomUint(32),

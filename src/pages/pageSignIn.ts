@@ -115,27 +115,6 @@ const onFirstMount = () => {
     this.removeAttribute('readonly'); // fix autocomplete
   });*/
 
-  const signedCheckboxField = new CheckboxField({
-    text: 'Login.KeepSigned',
-    name: 'keepSession',
-    withRipple: true,
-    checked: true
-  });
-
-  signedCheckboxField.input.addEventListener('change', () => {
-    const keepSigned = signedCheckboxField.checked;
-    rootScope.managers.appStateManager.pushToState('keepSigned', keepSigned);
-  });
-
-  apiManagerProxy.getState().then((state) => {
-    if(!stateStorage.isAvailable()) {
-      signedCheckboxField.checked = false;
-      signedCheckboxField.label.classList.add('checkbox-disabled');
-    } else {
-      signedCheckboxField.checked = state.keepSigned;
-    }
-  });
-
   btnNext = Button('btn-primary btn-color-primary', {text: 'Login.Next'});
   btnNext.style.visibility = 'hidden';
 
@@ -222,7 +201,7 @@ const onFirstMount = () => {
     }); */
   });
 
-  inputWrapper.append(countryInputField.container, telInputField.container, signedCheckboxField.label, btnNext, btnQr);
+  inputWrapper.append(countryInputField.container, telInputField.container, btnNext, btnQr);
 
   const h4 = document.createElement('h4');
   h4.classList.add('text-center');

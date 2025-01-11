@@ -842,7 +842,7 @@ export class UiNotificationsManager {
 
     this.updateLocalSettings();
     this.managers.appStateManager.getState().then((state) => {
-      if(UiNotificationsManager.stopped || !state.keepSigned) {
+      if(UiNotificationsManager.stopped) {
         return;
       }
 

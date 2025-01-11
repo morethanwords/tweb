@@ -115,25 +115,6 @@ appTabsManager.start();
 
 let isFirst = true;
 
-async function logoutSingleUseAccounts() {
-  const managersByAccount = await appManagersManager.getManagersByAccount();
-
-  for(let i = 1; i <= 4; i++) {
-    const accountNumber = i as ActiveAccountNumber;
-
-    const managers = managersByAccount[accountNumber];
-    const state = await managers.appStateManager.getState();
-
-    const accountData = await AccountController.get(accountNumber);
-
-    if(state.keepSigned !== false || !accountData?.userId) continue;
-
-    // Theoretically requests won't fire until the managers are fully initialized
-    managers.apiManager.logOut();
-    return;
-  }
-}
-
 function resetNotificationsCount() {
   commonStateStorage.set({
     notificationsCount: {}
@@ -144,7 +125,6 @@ listenMessagePort(port, (source) => {
   appTabsManager.addTab(source);
   if(isFirst) {
     isFirst = false;
-    logoutSingleUseAccounts();
     resetNotificationsCount();
     // port.invoke('log', 'Shared worker first connection')
   } else {
