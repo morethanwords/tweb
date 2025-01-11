@@ -9,8 +9,8 @@ import {IS_APPLE_MOBILE, IS_MOBILE} from '../../environment/userAgent';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import ListenerSetter, {Listener} from '../../helpers/listenerSetter';
-import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '../../components/buttonMenu';
-import ButtonMenuToggle, {ButtonMenuToggleHandler} from '../../components/buttonMenuToggle';
+import {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
+import ButtonMenuToggle from '../../components/buttonMenuToggle';
 import ControlsHover from '../../helpers/dom/controlsHover';
 import {addFullScreenListener, cancelFullScreen, getFullScreenElement, isFullScreen, requestFullScreen} from '../../helpers/dom/fullScreen';
 import toHHMMSS from '../../helpers/string/toHHMMSS';
@@ -31,72 +31,8 @@ import createCanvasStream from '../../helpers/canvas/createCanvasStream';
 import simulateEvent from '../../helpers/dom/dispatchEvent';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {createQualityLevelsSwitchButton} from './qualityLevelsSwitchButton';
+import {createPlaybackRateButton} from './playbackRateButton';
 
-export const PlaybackRateButton = (options: {
-  onPlaybackRateMenuToggle?: (open: boolean) => void,
-  direction: string
-}) => {
-  const PLAYBACK_RATES = [0.5, 1, 1.5, 2];
-  const PLAYBACK_RATES_ICONS: Icon[] = ['playback_05', 'playback_1x', 'playback_15', 'playback_2x'];
-  const button = ButtonIcon(` btn-menu-toggle`, {noRipple: true});
-
-  const setIcon = () => {
-    const playbackRateButton = button;
-
-    let idx = PLAYBACK_RATES.indexOf(appMediaPlaybackController.playbackRate);
-    if(idx === -1) idx = PLAYBACK_RATES.indexOf(1);
-
-    const icon = Icon(PLAYBACK_RATES_ICONS[idx]);
-    if(playbackRateButton.firstElementChild) {
-      playbackRateButton.firstElementChild.replaceWith(icon);
-    } else {
-      playbackRateButton.append(icon);
-    }
-  };
-
-  const setBtnMenuToggle = () => {
-    const buttons = PLAYBACK_RATES.map((rate, idx) => {
-      const buttonOptions: Parameters<typeof ButtonMenuSync>[0]['buttons'][0] = {
-        // icon: PLAYBACK_RATES_ICONS[idx],
-        regularText: rate + 'x',
-        onClick: () => {
-          appMediaPlaybackController.playbackRate = rate;
-        }
-      };
-
-      return buttonOptions;
-    });
-    const btnMenu = ButtonMenuSync({buttons});
-    btnMenu.classList.add(options.direction, 'playback-rate-menu');
-    ButtonMenuToggleHandler({
-      el: button,
-      onOpen: options.onPlaybackRateMenuToggle ? () => {
-        options.onPlaybackRateMenuToggle(true);
-      } : undefined,
-      onClose: options.onPlaybackRateMenuToggle ? () => {
-        options.onPlaybackRateMenuToggle(false);
-      } : undefined
-    });
-    setIcon();
-    button.append(btnMenu);
-  };
-
-  const addRate = (add: number) => {
-    const playbackRate = appMediaPlaybackController.playbackRate;
-    const idx = PLAYBACK_RATES.indexOf(playbackRate);
-    const nextIdx = idx + add;
-    if(nextIdx >= 0 && nextIdx < PLAYBACK_RATES.length) {
-      appMediaPlaybackController.playbackRate = PLAYBACK_RATES[nextIdx];
-    }
-  };
-
-  const isMenuOpen = () => {
-    return button.classList.contains('menu-open');
-  };
-
-  setBtnMenuToggle();
-  return {element: button, setIcon, addRate, isMenuOpen};
-};
 
 export default class VideoPlayer extends ControlsHover {
   public video: HTMLVideoElement;
@@ -106,7 +42,7 @@ export default class VideoPlayer extends ControlsHover {
   protected live: boolean;
 
   protected listenerSetter: ListenerSetter;
-  protected playbackRateButton: ReturnType<typeof PlaybackRateButton>;
+  protected playbackRateButton: ReturnType<typeof createPlaybackRateButton>;
   protected pipButton: HTMLElement;
   protected liveMenuButton: HTMLElement;
   protected toggles: HTMLElement[];
@@ -212,7 +148,11 @@ export default class VideoPlayer extends ControlsHover {
       element: this.wrapper,
       listenerSetter: this.listenerSetter,
       canHideControls: () => {
-        return !this.video.paused && (!this.playbackRateButton || !this.playbackRateButton.isMenuOpen());
+        if(this.video.paused) return false;
+        if(this.playbackRateButton?.controls.isMenuOpen()) return false;
+        if(this.qualityLevelsButton?.controls.isMenuOpen()) return false;
+
+        return true;
       },
       showOnLeaveToClassName: 'media-viewer-caption',
       ignoreClickClassName: 'ckin__controls'
@@ -314,8 +254,7 @@ export default class VideoPlayer extends ControlsHover {
 
       const rightControls = wrapper.querySelector('.right-controls') as HTMLElement;
       if(!live) {
-        this.playbackRateButton = PlaybackRateButton({direction: 'top-left', onPlaybackRateMenuToggle: this.onPlaybackRateMenuToggle});
-        this.playbackRateButton.element.classList.add(`${skin}__button`);
+        this.playbackRateButton = createPlaybackRateButton({skin: this.skin, onMenuToggle: this.onPlaybackRateMenuToggle});
       }
       if(!IS_MOBILE && document.pictureInPictureEnabled) {
         this.pipButton = ButtonIcon(`pip ${skin}__button`, {noRipple: true});
@@ -393,7 +332,7 @@ export default class VideoPlayer extends ControlsHover {
             this.togglePlay();
           } else if(e.altKey && (code === 'Equal' || code === 'Minus') && this.canSeek) {
             const add = code === 'Equal' ? 1 : -1;
-            this.playbackRateButton.addRate(add);
+            this.playbackRateButton.controls.changeRate(add);
           } else if(wrapper.classList.contains('ckin__fullscreen') && (key === 'ArrowLeft' || key === 'ArrowRight') && this.canSeek) {
             if(key === 'ArrowLeft') appMediaPlaybackController.seekBackward({action: 'seekbackward'});
             else appMediaPlaybackController.seekForward({action: 'seekforward'});
@@ -454,7 +393,7 @@ export default class VideoPlayer extends ControlsHover {
       });
 
       listenerSetter.add(appMediaPlaybackController)('playbackParams', () => {
-        this.playbackRateButton.setIcon();
+        this.playbackRateButton.controls.setPlayBackRate(appMediaPlaybackController.playbackRate);
       });
 
       if(live) {
@@ -682,6 +621,8 @@ export default class VideoPlayer extends ControlsHover {
     this.listenerSetter.removeAll();
     this.progress?.removeListeners();
     this.volumeSelector?.removeListeners();
+    this.qualityLevelsButton?.dispose();
+    this.playbackRateButton?.dispose();
     this.onPlaybackRateMenuToggle =
       this.onPip =
       this.onVolumeChange =

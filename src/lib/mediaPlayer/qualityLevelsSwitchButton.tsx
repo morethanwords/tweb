@@ -21,6 +21,7 @@ type InternalQualityLevelsSwitchButtonProps = QualityLevelsSwitchButtonProps & {
 
 type QualityLevelsSwitchButtonControls = {
   loadQualityLevels: () => Promise<void>;
+  isMenuOpen: () => boolean;
 }
 
 function QualityLevelsSwitchButton(props: InternalQualityLevelsSwitchButtonProps) {
@@ -32,6 +33,9 @@ function QualityLevelsSwitchButton(props: InternalQualityLevelsSwitchButtonProps
   const controls: QualityLevelsSwitchButtonControls = {
     loadQualityLevels: async() => {
       setQualityLevelsLoaded(true);
+    },
+    isMenuOpen: () => {
+      return qualityLevelsButton().classList.contains('menu-open');
     }
   };
 
@@ -64,7 +68,7 @@ function QualityLevelsSwitchButton(props: InternalQualityLevelsSwitchButtonProps
   }));
 
   createEffect(() => {
-    qualityLevelsButton()?.classList.add('quality-levels-switch-button-menu');
+    qualityLevelsButton()?.classList.add('checkable-button-menu');
   });
 
   return <Show when={qualityLevelsMenuButtons().length > 0}>{qualityLevelsButton()}</Show>;

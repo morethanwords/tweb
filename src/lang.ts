@@ -3115,7 +3115,8 @@ const lang = {
   'Hls.ResolutionHeightAuto': 'Auto',
   'Hls.ResolutionHeightName480': 'Low',
   'Hls.ResolutionHeightName720': 'Medium',
-  'Hls.ResolutionHeightName1080': 'High'
+  'Hls.ResolutionHeightName1080': 'High',
+  'PlaybackRateNormal': 'Normal'
 };
 
 export default lang;
