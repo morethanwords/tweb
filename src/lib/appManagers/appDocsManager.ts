@@ -252,7 +252,7 @@ export class AppDocsManager extends AppManager {
        * comes first without alt_documents, and later comes with them
        */
       if(!cacheContext.url || supportsHlsStreaming) {
-        this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc, {mediaContext: context, supportsHlsStreaming}), 0);
+        this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc, {supportsHlsStreaming}), 0);
       }
     } else {
       doc.supportsStreaming = false;
