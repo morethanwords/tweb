@@ -8,11 +8,15 @@ import type {Document, PhotoSize, VideoSize} from '../../../../layer';
 import type {DownloadOptions} from '../../../mtproto/apiFileManager';
 import getDocumentInputFileLocation from './getDocumentInputFileLocation';
 
+type GetDocumentDownloadOptions = {
+  thumb?: PhotoSize.photoSize | Extract<VideoSize, VideoSize.videoSize>;
+  queueId?: number;
+  onlyCache?: boolean;
+};
+
 export default function getDocumentDownloadOptions(
   doc: Document.document,
-  thumb?: PhotoSize.photoSize | Extract<VideoSize, VideoSize.videoSize>,
-  queueId?: number,
-  onlyCache?: boolean
+  {thumb, queueId, onlyCache}: GetDocumentDownloadOptions = {}
 ): DownloadOptions {
   const inputFileLocation = getDocumentInputFileLocation(doc, thumb?.type);
 
