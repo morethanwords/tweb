@@ -1,5 +1,6 @@
 import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
 import {getCurrentAccount} from '../../lib/accounts/getCurrentAccount';
+import {initVideoHls} from '../../lib/hls/initVideoHls';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {Middleware} from '../middleware';
 
@@ -40,7 +41,11 @@ export default function createVideo({
 
       originalSrc = newValue;
 
-      video.setAttribute('src', newValue);
+      if(newValue.startsWith('hls/')) {
+        initVideoHls({video, src: newValue, middleware: middleware});
+      } else {
+        video.setAttribute('src', newValue);
+      }
     }
   });
 

@@ -20,6 +20,7 @@ import {onRtmpFetch, onRtmpLeftCall} from './rtmp';
 import {onHlsQualityFileFetch} from '../hls/onHlsQualityFileFetch';
 import {get500ErrorResponse} from './errors';
 import {onHlsStreamFetch} from '../hls/onHlsStreamFetch';
+import {onHlsPlaylistFetch} from '../hls/onHlsPlaylistFetch';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -177,6 +178,11 @@ const onFetch = (event: FetchEvent): void => {
 
       case 'rtmp': {
         onRtmpFetch(event, params, search);
+        break;
+      }
+
+      case 'hls': {
+        onHlsPlaylistFetch(event, params, search);
         break;
       }
 

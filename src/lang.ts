@@ -3111,7 +3111,11 @@ const lang = {
   'CreateANew': 'Create a New',
   'PrivateChat': 'Private Chat',
   'Channel': 'Channel',
-  'Group': 'Group'
+  'Group': 'Group',
+  'Hls.ResolutionHeightAuto': 'Auto',
+  'Hls.ResolutionHeightName480': 'Low',
+  'Hls.ResolutionHeightName720': 'Medium',
+  'Hls.ResolutionHeightName1080': 'High'
 };
 
 export default lang;

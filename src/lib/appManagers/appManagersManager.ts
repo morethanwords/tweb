@@ -205,13 +205,11 @@ export class AppManagersManager {
             return appDocsManager.downloadDoc(doc);
           });
         },
-        // TODO: Remove as it is unused
-        requestCacheContext(payload) {
+        requestAltDocsByDoc(payload) {
           return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
             const {docId, accountNumber} = payload;
-            const {appDocsManager, thumbsStorage} = managersByAccount[accountNumber];
-            const doc = appDocsManager.getDoc(docId);
-            return thumbsStorage.getCacheContext(doc);
+            const {appMessagesManager} = managersByAccount[accountNumber];
+            return appMessagesManager.altDocsByMainMediaDocument.get(docId.toString());
           });
         }
       });

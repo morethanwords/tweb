@@ -1876,6 +1876,8 @@ export default class AppMediaViewerBase<
             listenKeyboardEvents: 'always',
             useGlobalVolume: 'auto'
           });
+          this.videoPlayer?.loadQualityLevels();
+
           player.addEventListener('toggleControls', (show) => {
             this.wholeDiv.classList.toggle('has-video-controls', show);
           });
@@ -2016,6 +2018,7 @@ export default class AppMediaViewerBase<
               // }
             } else {
               renderImageFromUrl(video, url);
+              this.videoPlayer?.loadQualityLevels();
             }
 
             // * have to set options (especially playbackRate) after src

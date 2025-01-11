@@ -781,3 +781,12 @@ $inactive-opacity: .4;
     pointer-events: none;
   }
 }
+
+.quality-levels-switch-button-menu {
+  .btn-menu-item {
+    padding-left: 8px;
+  }
+  .btn-menu-item-icon {
+    margin-right: 12px;
+  }
+}

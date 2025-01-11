@@ -78,6 +78,7 @@ import getMainGroupedMessage from './utils/messages/getMainGroupedMessage';
 import getUnreadReactions from './utils/messages/getUnreadReactions';
 import isMentionUnread from './utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
+import {isDocumentHlsQualityFile} from '../hls/common';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -4120,6 +4121,8 @@ export class AppMessagesManager extends AppManager {
     return messages;
   }
 
+  public altDocsByMainMediaDocument: Map<string, Document.document[]> = new Map();
+
   public saveMessageMedia(message: {
     media?: MessageMedia,
     reply_media?: MessageMedia,
@@ -4166,8 +4169,15 @@ export class AppMessagesManager extends AppManager {
           unsupported = true;
         } else {
           const originalDoc = media.document;
-          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext); // 11.04.2020 warning
-          media.alt_document &&= this.appDocsManager.saveDoc(media.alt_document, mediaContext); // 11.04.2020 warning
+
+          const supportsHlsStreaming = (media.alt_documents || []).some(doc => isDocumentHlsQualityFile(doc));
+
+          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext, supportsHlsStreaming); // 11.04.2020 warning
+          // ??? 11.04.2020 warning
+          media.alt_documents &&= media.alt_documents?.map(altDoc =>
+            this.appDocsManager.saveDoc(altDoc, mediaContext)).filter(Boolean) || []; // idk why but sometimes there is [undefined] in the alt_documents
+
+          if(media.alt_documents) this.altDocsByMainMediaDocument.set(media.document.id.toString(), media.alt_documents as Document.document[]);
 
           if(!media.document && originalDoc._ !== 'documentEmpty') {
             unsupported = true;
@@ -4276,6 +4286,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public reportMessages(peerId: PeerId, mids: number[], reason: ReportReason['_'], message?: string) {
+    // TODO: Update this after migrating to layer 191
     return this.apiManager.invokeApiSingle('messages.report', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       id: mids.map((mid) => getServerMessageId(mid)),
@@ -4283,7 +4294,7 @@ export class AppMessagesManager extends AppManager {
         _: reason
       },
       message
-    });
+    } as any);
   }
 
   public async unblockBot(botId: BotId) {

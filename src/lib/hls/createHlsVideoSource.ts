@@ -9,8 +9,11 @@ const FALLBACK_BANDWIDTH = 1_000_000;
 const FALLBACK_WIDTH = 1280;
 const FALLBACK_HEIGHT = 720;
 
-export function createHlsVideoSource(message: Message.message): string | null {
-  const altDocs = getAltDocsFromMessage(message);
+export function createHlsVideoSource(
+  // message: Message.message
+  altDocs: Document.document[]
+): string | null {
+  // const altDocs = getAltDocsFromMessage(message);
   if(!altDocs.length) return null;
 
   const videoAttributes = getVideoAttributesFromAltDocs(altDocs);
@@ -88,7 +91,7 @@ function getQualityURLsFromAltDocs(altDocs: Document.document[]) {
 }
 
 function getURLForQualityFile(doc: Document.document) {
-  return new URL(`hls_quality_file/${doc.id}`, window.location.href).toString();
+  return `hls_quality_file/${doc.id}`;
 }
 
 function getTargetDocIdForQualityFile(doc: Document.document) {

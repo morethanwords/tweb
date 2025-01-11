@@ -78,7 +78,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   requestRtmpPart: (payload: ServiceRequestRtmpPartTaskPayload) => MaybePromise<MyUploadFile>,
   downloadDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Blob>,
   requestDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Document.document>,
-  requestCacheContext: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<ThumbCache>,
+  requestAltDocsByDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Document.document[]>,
 } & ServiceEvent, Master> {
   constructor() {
     super('SERVICE');

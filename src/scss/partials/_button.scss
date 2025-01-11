@@ -809,6 +809,19 @@ $btn-menu-z-index: 4;
   }
 }
 
+.btn-menu-item-with-auxiliary-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  min-width: 114px;
+}
+
+.btn-menu-item-auxiliary-text {
+  font-weight: 400;
+  opacity: 0.5;
+}
+
 .floating-button-menu-container {
   position: fixed;
   transition: .2s;

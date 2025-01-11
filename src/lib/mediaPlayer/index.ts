@@ -4,32 +4,33 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appMediaPlaybackController from '../components/appMediaPlaybackController';
-import {IS_APPLE_MOBILE, IS_MOBILE} from '../environment/userAgent';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import ListenerSetter, {Listener} from '../helpers/listenerSetter';
-import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '../components/buttonMenu';
-import ButtonMenuToggle, {ButtonMenuToggleHandler} from '../components/buttonMenuToggle';
-import ControlsHover from '../helpers/dom/controlsHover';
-import {addFullScreenListener, cancelFullScreen, getFullScreenElement, isFullScreen, requestFullScreen} from '../helpers/dom/fullScreen';
-import toHHMMSS from '../helpers/string/toHHMMSS';
-import MediaProgressLine from '../components/mediaProgressLine';
-import VolumeSelector from '../components/volumeSelector';
-import debounce from '../helpers/schedulers/debounce';
-import overlayCounter from '../helpers/overlayCounter';
-import onMediaLoad from '../helpers/onMediaLoad';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import safePlay from '../helpers/dom/safePlay';
-import ButtonIcon from '../components/buttonIcon';
-import Button from '../components/button';
-import Icon from '../components/icon';
-import setCurrentTime from '../helpers/dom/setCurrentTime';
-import {i18n} from './langPack';
-import {numberThousandSplitterForWatching} from '../helpers/number/numberThousandSplitter';
-import createCanvasStream from '../helpers/canvas/createCanvasStream';
-import simulateEvent from '../helpers/dom/dispatchEvent';
-import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
+import appMediaPlaybackController from '../../components/appMediaPlaybackController';
+import {IS_APPLE_MOBILE, IS_MOBILE} from '../../environment/userAgent';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import ListenerSetter, {Listener} from '../../helpers/listenerSetter';
+import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '../../components/buttonMenu';
+import ButtonMenuToggle, {ButtonMenuToggleHandler} from '../../components/buttonMenuToggle';
+import ControlsHover from '../../helpers/dom/controlsHover';
+import {addFullScreenListener, cancelFullScreen, getFullScreenElement, isFullScreen, requestFullScreen} from '../../helpers/dom/fullScreen';
+import toHHMMSS from '../../helpers/string/toHHMMSS';
+import MediaProgressLine from '../../components/mediaProgressLine';
+import VolumeSelector from '../../components/volumeSelector';
+import debounce from '../../helpers/schedulers/debounce';
+import overlayCounter from '../../helpers/overlayCounter';
+import onMediaLoad from '../../helpers/onMediaLoad';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import safePlay from '../../helpers/dom/safePlay';
+import ButtonIcon from '../../components/buttonIcon';
+import Button from '../../components/button';
+import Icon from '../../components/icon';
+import setCurrentTime from '../../helpers/dom/setCurrentTime';
+import {i18n} from '../langPack';
+import {numberThousandSplitterForWatching} from '../../helpers/number/numberThousandSplitter';
+import createCanvasStream from '../../helpers/canvas/createCanvasStream';
+import simulateEvent from '../../helpers/dom/dispatchEvent';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {createQualityLevelsSwitchButton} from './qualityLevelsSwitchButton';
 
 export const PlaybackRateButton = (options: {
   onPlaybackRateMenuToggle?: (open: boolean) => void,
@@ -320,7 +321,13 @@ export default class VideoPlayer extends ControlsHover {
         this.pipButton = ButtonIcon(`pip ${skin}__button`, {noRipple: true});
       }
       const fullScreenButton = ButtonIcon(` ${skin}__button`, {noRipple: true});
-      rightControls.append(...[this.playbackRateButton?.element, this.pipButton, fullScreenButton].filter(Boolean));
+
+      rightControls.append(...[
+        this.playbackRateButton?.element,
+        this.createQualityLevelsButton(),
+        this.pipButton,
+        fullScreenButton
+      ].filter(Boolean));
 
       const timeElapsed = wrapper.querySelector('.ckin__time-elapsed');
       timeDuration = wrapper.querySelector('.ckin__time-duration') as HTMLElement;
@@ -476,6 +483,18 @@ export default class VideoPlayer extends ControlsHover {
         });
       }
     }
+  }
+
+  private qualityLevelsButton: ReturnType<typeof createQualityLevelsSwitchButton>;
+
+  private createQualityLevelsButton() {
+    this.qualityLevelsButton = createQualityLevelsSwitchButton({skin: this.skin, video: this.video});
+
+    return this.qualityLevelsButton.element;
+  }
+
+  public async loadQualityLevels() {
+    this.qualityLevelsButton.controls.loadQualityLevels();
   }
 
   protected checkInteraction() {

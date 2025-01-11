@@ -33,6 +33,7 @@ type AvatarInfo = {
 export type ButtonMenuItemOptions = {
   id?: any;
   icon?: Icon,
+  emptyIcon?: boolean,
   iconDoc?: Document.document,
   avatarInfo?: AvatarInfo,
   danger?: boolean,
@@ -76,7 +77,8 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
     text,
     onClick,
     checkboxField,
-    noCheckboxClickListener
+    noCheckboxClickListener,
+    emptyIcon
   } = options;
   const el = document.createElement('div');
   const iconSplitted = icon?.split(' ');
@@ -91,6 +93,10 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
 
   if(iconSplitted) {
     el.append(Icon(iconSplitted[0] as Icon, 'btn-menu-item-icon'));
+  } else if(emptyIcon) {
+    const iconPlaceholder = document.createElement('span');
+    iconPlaceholder.classList.add('btn-menu-item-icon');
+    el.append(iconPlaceholder);
   }
 
   let textElement = options.textElement;

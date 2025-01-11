@@ -1,4 +1,8 @@
-// https://core.telegram.org/cdn#restrictions-on-uploadgetfile-and-uploadgetcdnfile-parameters
+/**
+ * Fetching file parts are implemented based on these restrictions:
+ * https://core.telegram.org/cdn#restrictions-on-uploadgetfile-and-uploadgetcdnfile-parameters
+ */
+
 const STREAM_CHUNK_MULTIPLIER = 4096;
 const STREAM_FRAGMENT_SIZE = 1024 * 1024; // 1048576 (1MB)
 

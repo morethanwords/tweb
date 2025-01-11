@@ -78,7 +78,7 @@ export default function ButtonMenuToggle({
   onClose?: () => void,
   onCloseAfter?: () => void,
   noIcon?: boolean,
-  icon?: string
+  icon?: (string & {}) | Icon
 }) {
   if(buttonOptions) {
     buttonOptions.asDiv = true;
