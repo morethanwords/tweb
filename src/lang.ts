@@ -3116,7 +3116,8 @@ const lang = {
   'Hls.ResolutionHeightName480': 'Low',
   'Hls.ResolutionHeightName720': 'Medium',
   'Hls.ResolutionHeightName1080': 'High',
-  'PlaybackRateNormal': 'Normal'
+  'PlaybackRateNormal': 'Normal',
+  'PlaybackRateDragTip': 'Hold and move the cursor left or right to change the speed.'
 };
 
 export default lang;

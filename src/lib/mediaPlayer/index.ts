@@ -32,6 +32,7 @@ import simulateEvent from '../../helpers/dom/dispatchEvent';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {createQualityLevelsSwitchButton} from './qualityLevelsSwitchButton';
 import {createPlaybackRateButton} from './playbackRateButton';
+import {createSpeedDragHandler} from './speedDragHandler';
 
 
 export default class VideoPlayer extends ControlsHover {
@@ -42,7 +43,11 @@ export default class VideoPlayer extends ControlsHover {
   protected live: boolean;
 
   protected listenerSetter: ListenerSetter;
+
   protected playbackRateButton: ReturnType<typeof createPlaybackRateButton>;
+  protected speedDragHandler: ReturnType<typeof createSpeedDragHandler>;
+  protected qualityLevelsButton: ReturnType<typeof createQualityLevelsSwitchButton>;
+
   protected pipButton: HTMLElement;
   protected liveMenuButton: HTMLElement;
   protected toggles: HTMLElement[];
@@ -142,6 +147,8 @@ export default class VideoPlayer extends ControlsHover {
     this.useGlobalVolume = useGlobalVolume;
     this.shouldEnableSoundOnClick = shouldEnableSoundOnClick;
 
+    this.video.playbackRate = appMediaPlaybackController.playbackRate;
+
     this.listenerSetter = new ListenerSetter();
 
     this.setup({
@@ -152,6 +159,10 @@ export default class VideoPlayer extends ControlsHover {
         if(this.playbackRateButton?.controls.isMenuOpen()) return false;
         if(this.qualityLevelsButton?.controls.isMenuOpen()) return false;
 
+        return true;
+      },
+      canShowControls: () => {
+        if(this.speedDragHandler?.controls.isChangingSpeed()) return false;
         return true;
       },
       showOnLeaveToClassName: 'media-viewer-caption',
@@ -304,7 +315,7 @@ export default class VideoPlayer extends ControlsHover {
       if(!IS_TOUCH_SUPPORTED) {
         if(this.canPause) {
           attachClickEvent(video, () => {
-            if(this.checkInteraction()) {
+            if(this.checkInteraction() || video.dataset.wasChangingSpeed) {
               return;
             }
 
@@ -332,7 +343,7 @@ export default class VideoPlayer extends ControlsHover {
             this.togglePlay();
           } else if(e.altKey && (code === 'Equal' || code === 'Minus') && this.canSeek) {
             const add = code === 'Equal' ? 1 : -1;
-            this.playbackRateButton.controls.changeRate(add);
+            this.playbackRateButton.controls.changeRateByAmount(add);
           } else if(wrapper.classList.contains('ckin__fullscreen') && (key === 'ArrowLeft' || key === 'ArrowRight') && this.canSeek) {
             if(key === 'ArrowLeft') appMediaPlaybackController.seekBackward({action: 'seekbackward'});
             else appMediaPlaybackController.seekForward({action: 'seekforward'});
@@ -344,6 +355,23 @@ export default class VideoPlayer extends ControlsHover {
             cancelEvent(e);
             return false;
           }
+        });
+      }
+
+      if(this.canPause) {
+        this.speedDragHandler = createSpeedDragHandler({
+          video: this.video,
+          onShowSpeed: () => {
+            this.hideControls();
+          },
+          onHideSpeed: () => {
+            this.showControls();
+          }
+        });
+        this.wrapper.append(this.speedDragHandler.element);
+
+        listenerSetter.add(video)('contextmenu', (e) => {
+          e.preventDefault();
         });
       }
 
@@ -424,8 +452,6 @@ export default class VideoPlayer extends ControlsHover {
     }
   }
 
-  private qualityLevelsButton: ReturnType<typeof createQualityLevelsSwitchButton>;
-
   private createQualityLevelsButton() {
     this.qualityLevelsButton = createQualityLevelsSwitchButton({skin: this.skin, video: this.video});
 
@@ -433,7 +459,7 @@ export default class VideoPlayer extends ControlsHover {
   }
 
   public async loadQualityLevels() {
-    this.qualityLevelsButton.controls.loadQualityLevels();
+    this.qualityLevelsButton?.controls.loadQualityLevels();
   }
 
   protected checkInteraction() {
@@ -623,6 +649,7 @@ export default class VideoPlayer extends ControlsHover {
     this.volumeSelector?.removeListeners();
     this.qualityLevelsButton?.dispose();
     this.playbackRateButton?.dispose();
+    this.speedDragHandler?.dispose();
     this.onPlaybackRateMenuToggle =
       this.onPip =
       this.onVolumeChange =

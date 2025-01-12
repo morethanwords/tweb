@@ -3,7 +3,6 @@ import {render} from 'solid-js/web';
 
 import {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
 import ButtonMenuToggle from '../../components/buttonMenuToggle';
-
 import appMediaPlaybackController from '../../components/appMediaPlaybackController';
 import Icon from '../../components/icon';
 
@@ -18,12 +17,12 @@ type InternalPlaybackRateButtonProps = PlaybackRateButtonProps & {
 
 type PlaybackRateButtonControls = {
   setPlayBackRate: (value: number | ((val: number) => number)) => void;
-  changeRate: (amount: number) => void;
+  changeRateByAmount: (amount: number) => void;
   isMenuOpen: () => boolean;
 }
 
 const rates = [0.5, 1, 1.5, 2, 3];
-const MAX_RATE = 10;
+const MAX_RATE = 5;
 
 const geometricFontMap: Record<string, Icon> = {
   '0': 'geometric_digit_0',
@@ -41,19 +40,16 @@ const geometricFontMap: Record<string, Icon> = {
 };
 
 function PlaybackRateButton(props: InternalPlaybackRateButtonProps) {
-  const [selectedRate, setSelectedRate] = createSignal<number>(1);
+  const [selectedRate, setSelectedRate] = createSignal<number>(appMediaPlaybackController.playbackRate || 1);
 
   const controls: PlaybackRateButtonControls = {
     setPlayBackRate: setSelectedRate,
-    changeRate: (amount) => {
+    changeRateByAmount: (amount) => {
       const newValue = selectedRate() + amount;
       if(newValue < 1) {
         setSelectedRate(0.5);
-      } else if(newValue <= 1.5) {
-        // When doing +1 on 0.5
-        setSelectedRate(1);
       } else {
-        setSelectedRate(Math.min(MAX_RATE, Math.round(newValue)));
+        setSelectedRate(Math.min(MAX_RATE, Math.round(newValue - 0.01)));
       }
       appMediaPlaybackController.playbackRate = selectedRate();
     },
@@ -86,6 +82,7 @@ function PlaybackRateButton(props: InternalPlaybackRateButtonProps) {
     playbackRateButton.querySelector(`.${cls}`)?.remove();
 
     const rateAsString = selectedRate().toFixed(1).replace(/\.0$/, 'x');
+
     const icons = rateAsString.split('').map(char => ({
       char: char === '.' ? 'dot': char,
       icon: geometricFontMap[char]
@@ -112,7 +109,7 @@ function PlaybackRateButton(props: InternalPlaybackRateButtonProps) {
   });
 
   createEffect(() => {
-    playbackRateButton?.classList.add('checkable-button-menu');
+    playbackRateButton?.classList.add('checkable-button-menu', 'playback-rate-button-menu');
   });
 
   return <>{playbackRateButton}</>;
