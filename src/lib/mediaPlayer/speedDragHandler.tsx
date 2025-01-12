@@ -29,7 +29,7 @@ const SHOW_TIP_TIMEOUT = 200;
 const HIDE_TIP_TIMEOUT = 1500;
 
 const SPEED_PER_PX = 1 / 100;
-const SPPED_MULTIPLIER_WHEN_BELOW_ONE = 0.2;
+const SPEED_MULTIPLIER_WHEN_BELOW_ONE = 0.2;
 const MAX_SPEED = 5;
 const MIN_SPEED = 0.2;
 
@@ -119,8 +119,15 @@ export function SpeedDragHandler(props: InternalSpeedDragHandlerProps) {
 
       let newSpeed: number;
 
-      if(startSpeed + changedSpeed < 1) {
-        newSpeed = 1 - (1 - startSpeed - changedSpeed) * SPPED_MULTIPLIER_WHEN_BELOW_ONE;
+      if(startSpeed < 1) {
+        const borrowedUnits = Math.min((1 - startSpeed) / SPEED_MULTIPLIER_WHEN_BELOW_ONE, changedSpeed);
+
+        newSpeed = startSpeed +
+          borrowedUnits * SPEED_MULTIPLIER_WHEN_BELOW_ONE +
+          Math.max(0, changedSpeed - borrowedUnits);
+        //
+      } else if(startSpeed + changedSpeed < 1) {
+        newSpeed = 1 - (1 - startSpeed - changedSpeed) * SPEED_MULTIPLIER_WHEN_BELOW_ONE;
       } else {
         newSpeed = startSpeed + changedSpeed;
       }
