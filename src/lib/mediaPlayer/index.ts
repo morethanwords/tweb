@@ -421,6 +421,7 @@ export default class VideoPlayer extends ControlsHover {
       });
 
       listenerSetter.add(appMediaPlaybackController)('playbackParams', () => {
+        if(this.video.dataset.startedChangingSpeed) return;
         this.playbackRateButton.controls.setPlayBackRate(appMediaPlaybackController.playbackRate);
       });
 

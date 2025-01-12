@@ -171,7 +171,11 @@ export function SpeedDragHandler(props: InternalSpeedDragHandlerProps) {
     if(showSpeed()) {
       props.onShowSpeed();
       if(props.video) {
+        props.video.dataset.startedChangingSpeed = 'true';
         props.video.dataset.wasChangingSpeed = 'true';
+        setTimeout(() => {
+          delete props.video.dataset.startedChangingSpeed;
+        }, 100);
       }
 
       onCleanup(() => {
