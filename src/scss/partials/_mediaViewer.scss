@@ -935,3 +935,15 @@ $inactive-opacity: .4;
     min-width: 200px;
   }
 }
+
+.quality-levels-switch-button {
+  &__hd-icon {
+    position: absolute;
+    right: 4px;
+    top: 8px;
+    display: none;
+  }
+  &--is-hd &__hd-icon {
+    display: initial;
+  }
+}
