@@ -5,9 +5,12 @@ import {ActiveAccountNumber} from '../accounts/types';
 import CacheStorageController from '../files/cacheStorage';
 import {get500ErrorResponse} from '../serviceWorker/errors';
 import {serviceMessagePort} from '../serviceWorker/index.service';
+
 import {ctx, swLog} from './common';
+import {RequestSynchronizer} from './requestSynchronizer';
 
 const cacheStorage = new CacheStorageController('cachedHlsQualityFiles');
+const requestSynchronizer = new RequestSynchronizer<string, string>();
 
 export type HlsStreamUrlParams = {
   docId: string;
@@ -15,6 +18,7 @@ export type HlsStreamUrlParams = {
   size: number;
   mimeType: string;
 };
+
 
 /**
  * To be used in the service worker
@@ -29,19 +33,28 @@ export async function onHlsQualityFileFetch(event: FetchEvent, params: string, s
     const client = await ctx.clients.get(event.clientId);
     const accountNumber = getCurrentAccountFromURL(client.url);
 
-    const file = await getHlsQualityFile(docId, accountNumber);
-    const fileString = await file.text();
+    const result = await requestSynchronizer.performRequest(
+      getHlsQualityCacheFilename(docId),
+      () => fetchAndProcessQualityFile(docId, accountNumber)
+    );
 
-    // log.info('original hls quality file', fileString);
-
-    const replacedContent = await replaceQualityFileWithLocalURLs(fileString, accountNumber);
-    // log.info('replaced hls quality file', replacedContent);
-
-    deferred.resolve(new Response(replacedContent));
+    deferred.resolve(new Response(result));
   } catch(e) {
     deferred.resolve(get500ErrorResponse());
     swLog.error(e);
   }
+}
+
+async function fetchAndProcessQualityFile(docId: string, accountNumber: ActiveAccountNumber) {
+  const file = await getHlsQualityFile(docId, accountNumber);
+  const fileString = await file.text();
+
+  // log.info('original hls quality file', fileString);
+
+  const replacedContent = await replaceQualityFileWithLocalURLs(fileString, accountNumber);
+  // log.info('replaced hls quality file', replacedContent);
+
+  return replacedContent;
 }
 
 function getHlsQualityCacheFilename(docId: string) {

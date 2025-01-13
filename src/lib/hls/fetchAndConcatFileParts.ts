@@ -6,6 +6,7 @@ import CacheStorageController from '../files/cacheStorage';
 import {serviceMessagePort} from '../serviceWorker/index.service';
 
 import {swLog} from './common';
+import {RequestSynchronizer} from './requestSynchronizer';
 import {StreamFetchingRange} from './splitRangeForGettingFileParts';
 
 const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
@@ -18,6 +19,7 @@ type RequestFilePartIdentificationParams = {
 };
 
 const cacheStorage = new CacheStorageController('cachedHlsStreamChunks');
+const requestSynchronizer = new RequestSynchronizer<string, Uint8Array>();
 
 export async function fetchAndConcatFileParts(
   params: RequestFilePartIdentificationParams,
@@ -27,7 +29,11 @@ export async function fetchAndConcatFileParts(
   let totalLength = 0;
 
   for(const range of ranges) {
-    const bytes = await fetchFilePart(params, range);
+    const bytes = await requestSynchronizer.performRequest(
+      getChunkFilename(params, range),
+      () => fetchFilePart(params, range)
+    );
+
     totalLength += bytes.length;
     fileParts.push(bytes);
   }
