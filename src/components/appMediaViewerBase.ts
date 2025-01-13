@@ -1578,6 +1578,7 @@ export default class AppMediaViewerBase<
     this.removeQualityOptions();
 
     const altDocs = await this.managers.appMessagesManager.getAltDocsByDocument(doc);
+    if(!altDocs) return;
 
     const qualityEntries = getQualityFilesEntries(altDocs);
     if(!qualityEntries.length) return;

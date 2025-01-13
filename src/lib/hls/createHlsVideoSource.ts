@@ -37,7 +37,7 @@ export function createHlsVideoSource(
 }
 
 export function getQualityFilesEntries(altDocs: Document.document[]) {
-  if(!altDocs.length) return [];
+  if(!altDocs?.length) return [];
 
   const videoAttributes = getVideoAttributesFromAltDocs(altDocs);
   const qualityURLs = getQualityURLsFromAltDocs(altDocs);

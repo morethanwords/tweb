@@ -1,4 +1,4 @@
-import Modes from '../../config/modes';
+import DEBUG from '../../config/debug';
 import {Middleware} from '../../helpers/middleware';
 
 import {log} from './common';
@@ -16,7 +16,7 @@ export async function initVideoHls({video, src, middleware}: InitVideoHlsParamet
   log('initing video hls', src);
 
   const hls = new Hls({
-    debug: Modes.debug || true,
+    debug: DEBUG,
     startLevel: 0,
     testBandwidth: false,
     // autoStartLoad: false
@@ -35,6 +35,6 @@ export async function initVideoHls({video, src, middleware}: InitVideoHlsParamet
 
   middleware?.onDestroy(() => {
     log('destroying Hls instance for video', src);
-    // hls.destroy();
+    hls.destroy();
   });
 }
