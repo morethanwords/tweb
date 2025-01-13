@@ -1693,6 +1693,8 @@ export default class AppMediaViewerBase<
 
     if(media._ === 'document')
       this.loadQualityLevelsDownloadOptions(media);
+    else
+      this.removeQualityOptions();
 
     const wasActive = fromRight !== 0;
     if(wasActive) {
