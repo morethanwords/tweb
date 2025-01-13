@@ -21,6 +21,7 @@ import {onHlsQualityFileFetch} from '../hls/onHlsQualityFileFetch';
 import {get500ErrorResponse} from './errors';
 import {onHlsStreamFetch} from '../hls/onHlsStreamFetch';
 import {onHlsPlaylistFetch} from '../hls/onHlsPlaylistFetch';
+import {watchHlsStreamChunksLifetime} from '../hls/fetchAndConcatFileParts';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -132,6 +133,8 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
   }
 });
 // #endif
+
+watchHlsStreamChunksLifetime();
 
 const onFetch = (event: FetchEvent): void => {
   if(

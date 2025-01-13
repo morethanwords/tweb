@@ -1,10 +1,15 @@
 import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
+import pause from '../../helpers/schedulers/pause';
 
 import {ActiveAccountNumber} from '../accounts/types';
 import CacheStorageController from '../files/cacheStorage';
 import {serviceMessagePort} from '../serviceWorker/index.service';
 
+import {swLog} from './common';
 import {StreamFetchingRange} from './splitRangeForGettingFileParts';
+
+const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
+const CHUNK_LIFETIME_SECONDS = 24 * 60 * 60; // 24 hours
 
 type RequestFilePartIdentificationParams = {
   docId: string;
@@ -41,7 +46,6 @@ export async function fetchAndConcatFileParts(
   return result;
 }
 
-const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
 
 async function fetchFilePart(params: RequestFilePartIdentificationParams, range: StreamFetchingRange) {
   try {
@@ -77,3 +81,32 @@ async function saveChunkToCache(bytes: Uint8Array, params: RequestFilePartIdenti
 
   await cacheStorage.save(filename, response);
 }
+
+
+export async function watchHlsStreamChunksLifetime() {
+  await pause(20e3); // wait some time for the app to fully initialize
+
+  clearOldChunks();
+  setInterval(clearOldChunks, 1800e3);
+}
+
+function clearOldChunks() {
+  return cacheStorage.timeoutOperation(async(cache) => {
+    const requests = await cache.keys();
+
+    const currentTimeSeconds = Date.now() / 1000 | 0;
+
+    for(const request of requests) {
+      const response = await cache.match(request);
+      if(!response) continue;
+
+      const savedTimeSeconds = +response.headers.get(CHUNK_CACHED_TIME_HEADER);
+      if(!savedTimeSeconds) continue;
+      if(savedTimeSeconds + CHUNK_LIFETIME_SECONDS > currentTimeSeconds) continue;
+
+      swLog('deleting cached stream chunk', request.url);
+      cache.delete(request);
+    }
+  });
+};
+
