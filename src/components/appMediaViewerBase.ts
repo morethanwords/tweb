@@ -19,7 +19,7 @@ import rootScope from '../lib/rootScope';
 import animationIntersector from './animationIntersector';
 import appMediaPlaybackController, {AppMediaPlaybackController} from './appMediaPlaybackController';
 import ButtonIcon from './buttonIcon';
-import {ButtonMenuItemOptions} from './buttonMenu';
+import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from './buttonMenu';
 import ButtonMenuToggle from './buttonMenuToggle';
 import ProgressivePreloader from './preloader';
 import SwipeHandler, {ZoomDetails} from './swipeHandler';
@@ -69,6 +69,10 @@ import {MediaSize} from '../helpers/mediaSize';
 import {getRtmpStreamUrl} from '../lib/rtmp/url';
 import boxBlurCanvasRGB from '../vendor/fastBlur';
 import {i18n} from '../lib/langPack';
+import {getQualityFilesEntries} from '../lib/hls/createHlsVideoSource';
+import {snapQualityHeight} from '../lib/hls/snapQualityHeight';
+import {ButtonMenuItemWithAuxiliaryText} from '../lib/mediaPlayer/qualityLevelsSwitchButton';
+import formatBytes from '../helpers/formatBytes';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -127,7 +131,12 @@ export default class AppMediaViewerBase<
 
   protected streamEnded: boolean = false;
 
-  protected onDownloadClick: (e: MouseEvent) => void;
+  protected downloadQualityMenuOptions: ButtonMenuItemOptionsVerifiable[] = [];
+  protected get hasQualityOptions() {
+    return this.downloadQualityMenuOptions.length > 0;
+  }
+
+  protected onDownloadClick: (e: MouseEvent | TouchEvent, docId?: DocId) => void;
   protected onPrevClick: (target: TargetType) => void;
   protected onNextClick: (target: TargetType) => void;
 
@@ -324,7 +333,17 @@ export default class AppMediaViewerBase<
   }
 
   protected setListeners() {
-    attachClickEvent(this.buttons.download, this.onDownloadClick);
+    attachClickEvent(this.buttons.download, (e) => {
+      if(this.hasQualityOptions) return;
+      this.onDownloadClick(e);
+    });
+    this.buttons.download.classList.add('quality-download-options-button-menu');
+    ButtonMenuToggle({
+      container: this.buttons.download,
+      buttons: this.downloadQualityMenuOptions,
+      direction: 'bottom-left'
+    });
+
     [this.buttons.close, this.buttons['mobile-close'], this.preloaderStreamable.preloader].forEach((el) => {
       attachClickEvent(el, this.close.bind(this));
     });
@@ -1551,6 +1570,47 @@ export default class AppMediaViewerBase<
     );
   }
 
+  protected removeQualityOptions() {
+    this.downloadQualityMenuOptions.splice(0);
+  }
+
+  protected async loadQualityLevelsDownloadOptions(doc: MyDocument) {
+    this.removeQualityOptions();
+
+    const altDocs = await this.managers.appMessagesManager.getAltDocsByDocument(doc);
+
+    const qualityEntries = getQualityFilesEntries(altDocs);
+    if(!qualityEntries.length) return;
+
+    const availableHeights = Array.from(new Set(qualityEntries.map(entry => snapQualityHeight(entry.h))))
+    .sort((a, b) => b - a);
+
+    const filteredEntries = availableHeights.map(height => {
+      let chosenEntry: (typeof qualityEntries)[number];
+      for(const entry of qualityEntries) {
+        if(snapQualityHeight(entry.h) !== height) continue;
+        if(!chosenEntry || entry.bandwidth < chosenEntry.bandwidth) chosenEntry = entry;
+      }
+      return chosenEntry;
+    });
+
+    if(filteredEntries.length <= 1) return;
+
+    const options: ButtonMenuItemOptionsVerifiable[] = await Promise.all(filteredEntries.map(async(entry) => {
+      const doc = await this.managers.appDocsManager.getDoc(entry.id);
+      const snappedHeight = snapQualityHeight(entry.h);
+
+      return ({
+        regularText: ButtonMenuItemWithAuxiliaryText(`Hls.SaveIn${snappedHeight}`, formatBytes(doc.size, 1)) as HTMLElement,
+        onClick: (e) => {
+          this.onDownloadClick(e, entry.id);
+        }
+      });
+    }));
+
+    this.downloadQualityMenuOptions.push(...options);
+  }
+
   protected async _openMedia({
     media,
     mediaThumbnail,
@@ -1631,7 +1691,8 @@ export default class AppMediaViewerBase<
       container.replaceChildren();
     }
 
-    // ok set
+    if(media._ === 'document')
+      this.loadQualityLevelsDownloadOptions(media);
 
     const wasActive = fromRight !== 0;
     if(wasActive) {

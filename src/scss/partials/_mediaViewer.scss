@@ -929,3 +929,9 @@ $inactive-opacity: .4;
     opacity: 0.7;
   }
 }
+
+.quality-download-options-button-menu {
+  .btn-menu {
+    min-width: 200px;
+  }
+}

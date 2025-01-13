@@ -1,5 +1,5 @@
 import assumeType from '../../helpers/assumeType';
-import {Document, DocumentAttribute, Message, MessageMedia} from '../../layer';
+import {Document, DocumentAttribute} from '../../layer';
 
 import {isDocumentHlsQualityFile} from './common';
 
@@ -14,25 +14,8 @@ export function createHlsVideoSource(
   altDocs: Document.document[]
 ): string | null {
   // const altDocs = getAltDocsFromMessage(message);
-  if(!altDocs.length) return null;
 
-  const videoAttributes = getVideoAttributesFromAltDocs(altDocs);
-  const qualityURLs = getQualityURLsFromAltDocs(altDocs);
-
-  const qualityEntries = Array.from(videoAttributes.entries()).map(([id, attr]) => {
-    const {w = FALLBACK_WIDTH, h = FALLBACK_HEIGHT, duration = 0} = attr;
-    const {size} = altDocs.find(doc => doc.id.toString() === id);
-
-    const bandwidth = (duration > 0 ? size / duration * 8 : FALLBACK_BANDWIDTH) | 0;
-
-    return {
-      w,
-      h,
-      duration,
-      bandwidth,
-      url: qualityURLs.get(id)
-    }
-  });
+  const qualityEntries = getQualityFilesEntries(altDocs);
 
   if(!qualityEntries.length) return null;
 
@@ -53,15 +36,27 @@ export function createHlsVideoSource(
   return hlsFileSource;
 }
 
-function getAltDocsFromMessage(message: Message.message) {
-  const media = message?.media;
-  assumeType<MessageMedia.messageMediaDocument>(media);
-  if(!media) return [];
+export function getQualityFilesEntries(altDocs: Document.document[]) {
+  if(!altDocs.length) return [];
 
-  const altDocs = media?.alt_documents || [];
-  assumeType<Document.document[]>(altDocs);
+  const videoAttributes = getVideoAttributesFromAltDocs(altDocs);
+  const qualityURLs = getQualityURLsFromAltDocs(altDocs);
 
-  return altDocs;
+  return Array.from(videoAttributes.entries()).map(([id, attr]) => {
+    const {w = FALLBACK_WIDTH, h = FALLBACK_HEIGHT, duration = 0} = attr;
+    const {size} = altDocs.find(doc => doc.id.toString() === id);
+
+    const bandwidth = (duration > 0 ? size / duration * 8 : FALLBACK_BANDWIDTH) | 0;
+
+    return {
+      id,
+      w,
+      h,
+      duration,
+      bandwidth,
+      url: qualityURLs.get(id)
+    }
+  });
 }
 
 function getVideoAttributesFromAltDocs(altDocs: Document.document[]) {

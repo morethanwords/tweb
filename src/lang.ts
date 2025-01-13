@@ -3116,6 +3116,9 @@ const lang = {
   'Hls.ResolutionHeightName480': 'Low',
   'Hls.ResolutionHeightName720': 'Medium',
   'Hls.ResolutionHeightName1080': 'High',
+  'Hls.SaveIn480': 'Save in 480p',
+  'Hls.SaveIn720': 'Save in 720p',
+  'Hls.SaveIn1080': 'Save in 1080p',
   'PlaybackRateNormal': 'Normal',
   'PlaybackRateDragTip': 'Hold and move the cursor left or right to change the speed.'
 };

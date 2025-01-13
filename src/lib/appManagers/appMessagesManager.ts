@@ -368,6 +368,8 @@ export class AppMessagesManager extends AppManager {
 
   private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
 
+  public altDocsByMainMediaDocument: Map<string, Document.document[]> = new Map();
+
   protected after() {
     this.clear(true);
 
@@ -4120,8 +4122,6 @@ export class AppMessagesManager extends AppManager {
 
     return messages;
   }
-
-  public altDocsByMainMediaDocument: Map<string, Document.document[]> = new Map();
 
   public saveMessageMedia(message: {
     media?: MessageMedia,
@@ -8611,6 +8611,10 @@ export class AppMessagesManager extends AppManager {
     }
 
     return this.factCheckBatcher.addToBatch(peerId, mid);
+  }
+
+  public getAltDocsByDocument(doc: Document.document) {
+    return this.altDocsByMainMediaDocument.get(doc.id.toString());
   }
 }
 

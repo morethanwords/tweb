@@ -262,7 +262,12 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
   };
 
-  onDownloadClick = () => {
+  onDownloadClick = async(_: any, docId?: DocId) => {
+    if(docId) {
+      const doc = await this.managers.appDocsManager.getDoc(docId);
+      appDownloadManager.downloadToDisc({media: doc, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
+      return;
+    }
     const {message, index} = this.target;
     const media = getMediaFromMessage(message, true, index);
     if(!media) return;

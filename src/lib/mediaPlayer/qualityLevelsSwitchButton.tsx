@@ -1,4 +1,4 @@
-import {createEffect, createMemo, createSignal, Show} from 'solid-js';
+import {createEffect, createMemo, createSignal, Show, JSX} from 'solid-js';
 import {render} from 'solid-js/web';
 import type {Level} from 'hls.js';
 
@@ -8,7 +8,8 @@ import deferredPromise from '../../helpers/cancellablePromise';
 
 import {hlsInstancesByVideo} from '../hls/hlsInstancesByVideo';
 import {HlsStandardResolutionHeight} from '../hls/types';
-import {i18n} from '../langPack';
+import {snapQualityHeight} from '../hls/snapQualityHeight';
+import {i18n, LangPackKey} from '../langPack';
 
 type QualityLevelsSwitchButtonProps = {
   video: HTMLVideoElement;
@@ -99,13 +100,17 @@ export function createQualityLevelsSwitchButton(props: QualityLevelsSwitchButton
   };
 }
 
-function ButtonMenuItemQualityText(height: HlsStandardResolutionHeight) {
-  return (
+export function ButtonMenuItemWithAuxiliaryText(mainText: LangPackKey, additionalText: JSX.Element) {
+  return  (
     <span class="btn-menu-item-with-auxiliary-text">
-      {i18n(`Hls.ResolutionHeightName${height}`)}
-      <span class="btn-menu-item-auxiliary-text">{height}p</span>
+      {i18n(mainText)}
+      <span class="btn-menu-item-auxiliary-text">{additionalText}</span>
     </span>
-  )
+  );
+}
+
+export function ButtonMenuItemQualityText(height: HlsStandardResolutionHeight) {
+  return ButtonMenuItemWithAuxiliaryText(`Hls.ResolutionHeightName${height}`, `${height}p`);
 }
 
 async function getButtonMenuQualityOptions(
@@ -169,16 +174,4 @@ async function getButtonMenuQualityOptions(
   ];
 
   return result;
-}
-
-function snapQualityHeight(height: number) {
-  const standardHeights: HlsStandardResolutionHeight[] = [480, 720, 1080];
-
-  const threshold1 = (standardHeights[1] - standardHeights[0]) / 2;
-  if(height < standardHeights[0] + threshold1) return standardHeights[0];
-
-  const threshold2 = (standardHeights[2] - standardHeights[1]) / 2;
-  if(height < standardHeights[1] + threshold2) return standardHeights[1];
-
-  return standardHeights[2];
 }
