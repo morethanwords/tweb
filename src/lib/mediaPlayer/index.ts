@@ -33,6 +33,7 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {createQualityLevelsSwitchButton} from './qualityLevelsSwitchButton';
 import {createPlaybackRateButton} from './playbackRateButton';
 import {createSpeedDragHandler} from './speedDragHandler';
+import {VideoTimestamp} from '../../components/appMediaViewerBase';
 
 
 export default class VideoPlayer extends ControlsHover {
@@ -95,6 +96,7 @@ export default class VideoPlayer extends ControlsHover {
     live,
     width,
     height,
+    videoTimestamps,
     onPlaybackRateMenuToggle,
     onPip,
     onPipClose,
@@ -113,6 +115,7 @@ export default class VideoPlayer extends ControlsHover {
     live?: boolean,
     width?: number,
     height?: number,
+    videoTimestamps?: VideoTimestamp[],
     onPlaybackRateMenuToggle?: VideoPlayer['onPlaybackRateMenuToggle'],
     onPip?: VideoPlayer['onPip'],
     onPipClose?: VideoPlayer['onPipClose'],
@@ -182,6 +185,7 @@ export default class VideoPlayer extends ControlsHover {
       const controls = this.controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
       this.gradient = this.controls.previousElementSibling as HTMLElement;
       this.progress = new MediaProgressLine({
+        videoTimestamps,
         onSeekStart: () => {
           this.wrapper.classList.add('is-seeking');
         },
@@ -658,6 +662,8 @@ export default class VideoPlayer extends ControlsHover {
       this.onFullScreenToPip =
       this.shouldEnableSoundOnClick =
       undefined;
+
+    this.progress?.cleanup();
   }
 
   public unmount() {

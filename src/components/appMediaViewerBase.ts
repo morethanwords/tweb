@@ -90,6 +90,11 @@ type Transform = {
   scale: number;
 };
 
+export type VideoTimestamp = {
+  time: number;
+  text?: string;
+};
+
 export default class AppMediaViewerBase<
   ContentAdditionType extends string,
   ButtonsAdditionType extends string,
@@ -178,6 +183,8 @@ export default class AppMediaViewerBase<
   protected middlewareHelper: MiddlewareHelper;
 
   protected overlayActive: boolean;
+
+  protected videoTimestamps: VideoTimestamp[] = [];
 
   get target() {
     return this.listLoader.current;
@@ -1890,6 +1897,7 @@ export default class AppMediaViewerBase<
           // const play = useController ? appMediaPlaybackController.willBePlayedMedia === video : true;
           const play = !isLiveStream;
           const player = this.videoPlayer = new VideoPlayer({
+            videoTimestamps: this.videoTimestamps,
             video,
             play,
             streamable: supportsStreaming,
