@@ -26,18 +26,21 @@ export type AppInstance = {
   time: number
 };
 
-export type InstanceDeactivateReason = 'version';
+export type InstanceDeactivateReason = 'version' | 'tabs';
 
 const CHECK_INSTANCE_INTERVAL = 5000;
+const DEACTIVATE_TIMEOUT = 30000;
 const MULTIPLE_TABS_THRESHOLD = 20000;
 const IS_MULTIPLE_TABS_SUPPORTED = IS_SHARED_WORKER_SUPPORTED;
-// Check RootScope
+
 export class SingleInstance extends EventListenerBase<{
   activated: () =>  void,
   deactivated: (reason: InstanceDeactivateReason) => void
 }> {
   private instanceId: number;
   private started: boolean;
+  private masterInstance: boolean;
+  private deactivateTimeout: number;
   private deactivated: InstanceDeactivateReason;
   private log = logger('INSTANCE');
 
@@ -69,11 +72,13 @@ export class SingleInstance extends EventListenerBase<{
   }
 
   private reset() {
+    this.masterInstance = false;
+    this.clearDeactivateTimeout();
     this.deactivated = undefined;
   }
 
   private clearInstance = () => {
-    if(!this.deactivated) {
+    if(this.masterInstance && !this.deactivated) {
       this.log.warn('clear master instance');
       sessionStorage.delete('xt_instance');
     }
@@ -88,14 +93,22 @@ export class SingleInstance extends EventListenerBase<{
   }
 
   private deactivateInstance(reason: InstanceDeactivateReason) {
-    if(this.deactivated) {
+    if(this.masterInstance || this.deactivated) {
       return;
     }
 
     this.log.warn('deactivate', reason);
+    this.clearDeactivateTimeout();
     this.deactivated = reason;
 
     this.dispatchEvent('deactivated', reason);
+  }
+
+  private clearDeactivateTimeout() {
+    if(this.deactivateTimeout) {
+      clearTimeout(this.deactivateTimeout);
+      this.deactivateTimeout = 0;
+    }
   }
 
   private checkInstance = async(idle = idleController.isIdle) => {
@@ -116,6 +129,7 @@ export class SingleInstance extends EventListenerBase<{
     ]);
 
     if(build > App.build) {
+      this.masterInstance = false;
       rootScope.managers.networkerFactory.stopAll();
       this.deactivateInstance('version');
       apiManagerProxy.toggleStorages(false, false);
@@ -131,6 +145,19 @@ export class SingleInstance extends EventListenerBase<{
         curInstance.id === this.instanceId ||
         curInstance.time < (time - MULTIPLE_TABS_THRESHOLD)) {
       sessionStorage.set({xt_instance: newInstance});
+
+      if(!this.masterInstance) {
+        this.masterInstance = true;
+        rootScope.managers.networkerFactory.startAll();
+        this.log.warn('now master instance', newInstance);
+      }
+
+      this.clearDeactivateTimeout();
+    } else if(this.masterInstance) {
+      this.masterInstance = false;
+      rootScope.managers.networkerFactory.stopAll();
+      this.log.warn('now idle instance', newInstance);
+      this.deactivateTimeout ||= window.setTimeout(() => this.deactivateInstance('tabs'), DEACTIVATE_TIMEOUT);
     }
   };
 }

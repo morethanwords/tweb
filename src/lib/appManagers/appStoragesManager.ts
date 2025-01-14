@@ -7,7 +7,6 @@
 import {getDatabaseState} from '../../config/databases/state';
 import {MAX_ACCOUNTS} from '../accounts/constants';
 import {logger} from '../logger';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import AppStorage from '../storage';
 import {ResetStoragesPromise} from './appStateManager';
 import {AppManager} from './manager';

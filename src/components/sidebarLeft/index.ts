@@ -77,7 +77,6 @@ import {MAX_ACCOUNTS, MAX_ACCOUNTS_FREE} from '../../lib/accounts/constants';
 import {getCurrentAccount} from '../../lib/accounts/getCurrentAccount';
 import {createProxiedManagersForAccount} from '../../lib/appManagers/getProxiedManagers';
 import limitSymbols from '../../helpers/string/limitSymbols';
-import {injectMediaEditorLangPack} from '../mediaEditor/langPack';
 import attachFloatingButtonMenu from '../floatingButtonMenu';
 import filterAsync from '../../helpers/array/filterAsync';
 import pause from '../../helpers/schedulers/pause';
@@ -189,11 +188,11 @@ export class AppSidebarLeft extends SidebarSlider {
           return;
         }
 
-        localStorage.setItem('previous-account', getCurrentAccount() + '');
+        sessionStorage.set({previous_account: getCurrentAccount()});
         if(!e.ctrlKey) {
           appImManager.goOffline();
 
-          localStorage.setItem('should-animate-auth', 'true');
+          sessionStorage.set({should_animate_auth: 1});
 
           const chatsPageEl = document.querySelector('.page-chats');
           chatsPageEl.classList.add('main-screen-exit');
@@ -241,8 +240,6 @@ export class AppSidebarLeft extends SidebarSlider {
       regularText: more,
       onClick: () => {}
     }];
-
-    injectMediaEditorLangPack();
 
     const filteredButtons = menuButtons.filter(Boolean);
     const filteredButtonsSliced = filteredButtons.slice();

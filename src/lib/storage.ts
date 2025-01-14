@@ -224,8 +224,8 @@ export default class AppStorage<
     } */
   }
 
-  public getAll() {
-    return this.storage.getAll().catch(() => []);
+  public getAll(): Promise<any[]> {
+    return this.storage.getAll().catch(() => [] as any[]);
   }
 
   public getAllEntries() {

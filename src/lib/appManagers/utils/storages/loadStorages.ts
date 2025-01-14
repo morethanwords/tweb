@@ -8,12 +8,11 @@ import type {Chat} from '../../../../layer';
 import type {Dialog} from '../../appMessagesManager';
 import type {User} from '../../appUsersManager';
 import type {StoragesStorages} from './createStorages';
+import type {ResetStoragesPromise} from '../../appStateManager';
 import {recordPromiseBound} from '../../../../helpers/recordPromise';
 import {Awaited} from '../../../../types';
 import {logger} from '../../../logger';
-import RESET_STORAGES_PROMISE from './resetStoragesPromise';
 import noop from '../../../../helpers/noop';
-import {ResetStoragesPromise} from '../../appStateManager';
 
 export type StoragesResults = Awaited<ReturnType<typeof loadStorages>>;
 

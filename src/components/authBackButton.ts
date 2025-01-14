@@ -5,13 +5,14 @@ import {getValidatedAccount} from '../lib/accounts/getValidatedAccount';
 import {changeAccount} from '../lib/accounts/changeAccount';
 
 import ButtonIcon from './buttonIcon';
+import sessionStorage from '../lib/sessionStorage';
 
 export function AuthBackButton() {
   const button = ButtonIcon('back');
   button.addEventListener('click', async() => {
-    localStorage.setItem('should-animate-main', 'true');
-    const prevAccount = getValidatedAccount(localStorage.getItem('previous-account'));
-    localStorage.removeItem('previous-account');
+    await sessionStorage.set({should_animate_main: 1});
+    const prevAccount = getValidatedAccount(await sessionStorage.get('previous_account'));
+    await sessionStorage.delete('previous_account');
 
     const authPagesEl = document.getElementById('auth-pages');
 

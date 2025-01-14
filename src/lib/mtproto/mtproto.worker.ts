@@ -21,7 +21,6 @@ import appTabsManager from '../appManagers/appTabsManager';
 import callbackify from '../../helpers/callbackify';
 import Modes from '../../config/modes';
 import {ActiveAccountNumber} from '../accounts/types';
-import AccountController from '../accounts/accountController';
 import commonStateStorage from '../commonStateStorage';
 
 const log = logger('MTPROTO');
@@ -61,9 +60,13 @@ port.addMultipleEventsListeners({
     appStateManager.resetStoragesPromise.resolve({
       storages: resetStorages,
       callback: async() => {
+        const promises: Promise<any>[] = [];
         for(const key of (Object.keys(state) as any as (keyof State)[])) {
-          await appStateManager.pushToState(key, state[key], true, !pushedKeys.includes(key));
+          const promise = appStateManager.pushToState(key, state[key], true, !pushedKeys.includes(key));
+          promises.push(promise);
         }
+
+        await Promise.all(promises);
       }
     });
     // haveState = true;
