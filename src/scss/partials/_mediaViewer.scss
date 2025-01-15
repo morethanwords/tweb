@@ -986,6 +986,8 @@ $inactive-opacity: .4;
     opacity: 0;
     transition: width .1s, height .1s, opacity .12s;
 
+    pointer-events: none; // prevent :active being set on thumb
+
     // For hover
     &::after {
       content: '';
@@ -998,7 +1000,7 @@ $inactive-opacity: .4;
       height: 17px;
     }
   
-    input:active + &, &:hover {
+    input:active + &, input:hover + & {
       opacity: 1;
       width: 17px;
       height: 17px;
@@ -1047,7 +1049,7 @@ $inactive-opacity: .4;
     height: 3px;
     y: 1px;
 
-    transition: height 0.075s, y 0.075s;
+    // transition: height 0.075s, y 0.075s;
 
     &[data-active="true"] {
       height: 5px;
