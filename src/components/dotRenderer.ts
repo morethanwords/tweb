@@ -6,6 +6,7 @@
 
 // * thanks https://github.com/dkaraush/particles for webgl version
 
+import {MOUNT_CLASS_TO} from '../config/debug';
 import {IS_MOBILE} from '../environment/userAgent';
 import {animate} from '../helpers/animation';
 import callbackify from '../helpers/callbackify';
@@ -51,6 +52,10 @@ export class AnimationItemNested implements AnimationItemWrapper {
   }
 }
 
+function getDefaultParticlesCount(width: number, height: number) {
+  return clamp(width * height / (500 * 500) * 1000 * (IS_MOBILE ? 5 : 10), 500, 10000);
+}
+
 // type DotRendererDot = {
 //   x: number,
 //   y: number,
@@ -65,9 +70,11 @@ export default class DotRenderer implements AnimationItemWrapper {
   private static shaderTexts: {[url: string]: string | Promise<string>} = {};
   private static createdIndex = -1;
 
-  public static instance: DotRenderer;
-  private static drawCallbacks: Map<HTMLElement, () => void> = new Map();
-  private static counter = 0;
+  private static imageSpoilerInstance: DotRenderer;
+  private static textSpoilerInstance: DotRenderer;
+
+  private drawCallbacks: Map<HTMLElement, () => void> = new Map();
+  private targetCanvasesCount = 0;
 
   public canvas: HTMLCanvasElement;
   private context: WebGL2RenderingContext;
@@ -146,7 +153,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     this.canvas.width = width * this.dpr;
     this.canvas.height = height * this.dpr;
     this.config = {
-      particlesCount: clamp(width * height / (500 * 500) * 1000 * (IS_MOBILE ? 5 : 10), 500, 10000),
+      particlesCount: getDefaultParticlesCount(width, height),
       radius: this.dpr * 1.6,
       seed: Math.random() * 10,
       noiseScale: 6,
@@ -336,7 +343,7 @@ export default class DotRenderer implements AnimationItemWrapper {
 
     this.bufferIndex = 1 - this.bufferIndex;
 
-    DotRenderer.drawCallbacks.forEach((draw) => draw());
+    this.drawCallbacks.forEach((draw) => draw());
   }
 
   public remove() {
@@ -460,9 +467,9 @@ export default class DotRenderer implements AnimationItemWrapper {
     config?: Partial<DotRenderer['config']>
   }) {
     const index = ++this.createdIndex;
-    let {instance} = this;
+    let {imageSpoilerInstance: instance} = this;
     if(!instance) {
-      instance = this.instance = new DotRenderer();
+      instance = this.imageSpoilerInstance = new DotRenderer();
       instance.resize(480, 480);
       (window as any).dotRenderer = instance;
     }
@@ -512,22 +519,22 @@ export default class DotRenderer implements AnimationItemWrapper {
       }
     };
 
-    ++this.counter;
+    ++instance.targetCanvasesCount;
     const animation = new AnimationItemNested({
       onPlay: () => {
-        this.drawCallbacks.set(canvas, draw);
+        instance.drawCallbacks.set(canvas, draw);
         instance.play();
       },
       onPause: () => {
-        this.drawCallbacks.delete(canvas);
-        if(!this.drawCallbacks.size) {
+        instance.drawCallbacks.delete(canvas);
+        if(!instance.drawCallbacks.size) {
           instance.pause();
         }
       },
       onDestroy: () => {
-        if(!--this.counter) {
+        if(!--instance.targetCanvasesCount) {
           instance.remove();
-          this.instance = undefined;
+          this.imageSpoilerInstance = undefined;
         }
       }
     });
@@ -543,6 +550,68 @@ export default class DotRenderer implements AnimationItemWrapper {
     return {
       canvas,
       readyResult: width && (/* dotRenderer.resize(width, height, multiply, config),  */instance.init())
+    };
+  }
+
+  public static attachTextSpoilerTarget({
+    middleware,
+    animationGroup,
+    canvas,
+    draw
+  }: {
+    canvas: HTMLCanvasElement,
+    draw: () => void,
+    middleware: Middleware,
+    animationGroup: AnimationItemGroup,
+  }) {
+    let {textSpoilerInstance: instance} = this;
+    if(!instance) {
+      const instanceCanvasWidth = 240;
+      const instanceCanvasHeight = 240;
+      // const instanceCanvasWidth = 100;
+      // const instanceCanvasHeight = 40;
+
+      instance = this.textSpoilerInstance = new DotRenderer();
+      instance.resize(instanceCanvasWidth, instanceCanvasHeight, undefined, {
+        particlesCount: 2 * getDefaultParticlesCount(instanceCanvasWidth, instanceCanvasHeight)
+      });
+
+      MOUNT_CLASS_TO.textSpoilerRenderer = instance;
+    }
+
+    ++instance.targetCanvasesCount;
+
+    const animation = new AnimationItemNested({
+      onPlay: () => {
+        instance.drawCallbacks.set(canvas, draw);
+        instance.play();
+      },
+      onPause: () => {
+        instance.drawCallbacks.delete(canvas);
+        if(!instance.drawCallbacks.size) {
+          instance.pause();
+        }
+      },
+      onDestroy: () => {
+        if(!--instance.targetCanvasesCount) {
+          instance.remove();
+          this.textSpoilerInstance = undefined;
+        }
+      }
+    });
+
+    animationIntersector.addAnimation({
+      animation,
+      group: animationGroup,
+      observeElement: canvas,
+      controlled: middleware,
+      type: 'dots'
+    });
+
+    return {
+      sourceCanvas: instance.canvas,
+      dpr: instance.dpr,
+      readyResult: instance.init()
     };
   }
 }
