@@ -567,13 +567,13 @@ export default class DotRenderer implements AnimationItemWrapper {
     let {textSpoilerInstance: instance} = this;
     if(!instance) {
       const instanceCanvasWidth = 240;
-      const instanceCanvasHeight = 240;
+      const instanceCanvasHeight = 120;
       // const instanceCanvasWidth = 100;
       // const instanceCanvasHeight = 40;
 
       instance = this.textSpoilerInstance = new DotRenderer();
       instance.resize(instanceCanvasWidth, instanceCanvasHeight, undefined, {
-        particlesCount: 2 * getDefaultParticlesCount(instanceCanvasWidth, instanceCanvasHeight)
+        particlesCount: 4 * getDefaultParticlesCount(instanceCanvasWidth, instanceCanvasHeight)
       });
 
       MOUNT_CLASS_TO.textSpoilerRenderer = instance;

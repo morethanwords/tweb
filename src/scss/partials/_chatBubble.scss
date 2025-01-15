@@ -1211,6 +1211,10 @@
     &.margin-bigger {
       margin: $message-padding-horizontal;
     }
+
+    &.is-hovering-spoiler {
+      cursor: pointer;
+    }
   }
 
   .next-is-message {
