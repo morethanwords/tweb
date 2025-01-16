@@ -187,6 +187,7 @@ import icon from '../icon';
 import {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
 import {wrapRoundVideoBubble} from './roundVideoBubble';
 import {createMessageSpoilerOverlay} from '../messageSpoilerOverlay';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -7468,9 +7469,10 @@ export default class ChatBubbles {
 
     if(messageDiv.querySelector('.spoiler-text')) {
       const spoilerOverlay = createMessageSpoilerOverlay({
+        mid: message.mid,
         messageElement: messageDiv,
         animationGroup: this.chat.animationGroup
-      });
+      }, SolidJSHotReloadGuardProvider);
       messageDiv.append(spoilerOverlay.element);
       middleware.onDestroy(() => {
         spoilerOverlay.dispose();

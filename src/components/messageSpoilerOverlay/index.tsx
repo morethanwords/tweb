@@ -1,28 +1,33 @@
-import {batch, createEffect, createMemo, createSignal, onCleanup, onMount} from 'solid-js';
+import {batch, createMemo, createSignal, onCleanup, onMount} from 'solid-js';
 import {render} from 'solid-js/web';
 
 import ListenerSetter from '../../helpers/listenerSetter';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import {logger} from '../../lib/logger';
+import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import {useHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
 
 import {animateValue} from '../mediaEditor/utils';
-import {observeResize} from '../resizeObserver';
 import DotRenderer from '../dotRenderer';
 import type {AnimationItemGroup} from '../animationIntersector';
+import {observeResize} from '../resizeObserver';
 
 import {drawImageFromSource} from './drawImageFromSource';
 import {
   computeMaxDistToMargin,
   CustomDOMRect,
   getInnerCustomRect,
+  getParticleColor,
   getTimeForDist,
   isMouseCloseToAnySpoilerElement,
   SPAN_BOUNDING_BOX_THRESHOLD_Y,
   toDOMRectArray,
-  UnwrapEasing
+  UnwrapEasing,
+  waitResizeToBePainted
 } from './utils';
 
 type MessageSpoilerOverlayProps = {
+  mid: number;
   messageElement: HTMLDivElement;
   animationGroup: AnimationItemGroup;
 };
@@ -40,9 +45,13 @@ const UNWRAPPED_TIMEOUT_MS = 10e3;
 
 const log = logger('spoiler-overlay');
 
+
 function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
+  const {rootScope} = useHotReloadGuard();
+
   const [spanRects, setSpanRects] = createSignal<CustomDOMRect[]>([]);
   const [backgroundColor, setBackgroundColor] = createSignal('transparent');
+  const [particleColor, setParticleColor] = createSignal(getParticleColor());
   const [unwrapProgress, setUnwrapProgress] = createSignal<number>(0);
   const [clickCoordinates, setClickCoordinates] = createSignal<[number, number]>();
   const [maxDist, setMaxDist] = createSignal<number>();
@@ -66,13 +75,19 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     update();
 
     const listenerSetter = new ListenerSetter();
+    // const resizeObserver = new ResizeObserver(resizeObserverCallback);
+    const unobserve = observeResize(props.parentElement, resizeObserverCallback);
+
     listenerSetter.add(props.messageElement)('click', onMessageClick, true);
     listenerSetter.add(props.messageElement)('mousemove', onMessageHover);
     listenerSetter.add(props.messageElement)('mouseout', onMessageOut);
 
-    const unobserve = observeResize(props.parentElement, () => {
-      update();
+    listenerSetter.add(rootScope)('theme_changed', () => {
+      setTimeout(() => {
+        updateColors();
+      }, 200);
     });
+    // resizeObserver.observe(props.parentElement);
 
     attachDotRendererTarget();
 
@@ -81,14 +96,10 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
       window.clearTimeout(unwrapTimeout);
       listenerSetter.removeAll();
       unobserve();
+      // resizeObserver.disconnect();
 
-      const bubble = props.messageElement.closest('[data-mid]') as HTMLElement;
-      log('cleaning-up', bubble?.dataset.mid);
+      log('cleaning-up', props.mid);
     });
-  });
-
-  createEffect(() => {
-    updateCanvasSize();
   });
 
   const canvas = (
@@ -100,6 +111,20 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     />
   ) as HTMLCanvasElement;
   const ctx = canvas.getContext('2d');
+
+  const offScreenCanvas = (
+    <canvas
+      class="message-spoiler-overlay__canvas"
+      classList={{
+        'message-spoiler-overlay__canvas--hidden': unwrapProgress() === 1
+      }}
+    />
+  ) as HTMLCanvasElement;
+  const offScreenCtx = offScreenCanvas.getContext('2d');
+
+
+  //
+
 
   async function attachDotRendererTarget() {
     const middlewareHelper = createMiddleware();
@@ -123,15 +148,24 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     batch(() => {
       updateCanvasSize();
       updateSpanRects();
-      updateBackgroundColor();
+      updateColors();
     });
   }
 
+  async function resizeObserverCallback(entry: ResizeObserverEntry) {
+    if(!entry) return;
+
+    await waitResizeToBePainted(entry);
+    update();
+  }
+
   function updateCanvasSize() {
-    // const bubble = props.messageElement.closest('[data-mid]') as HTMLElement;
     const rect = props.parentElement.getBoundingClientRect();
-    // console.log('rect, bubble.id :>> ', rect, bubble.dataset.mid);
+
+    offScreenCanvas.width =
     canvas.width = rect.width * dpr();
+
+    offScreenCanvas.height =
     canvas.height = rect.height * dpr();
   }
 
@@ -151,6 +185,13 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     setSpanRects(adjustedRects);
   }
 
+  function updateColors() {
+    batch(() => {
+      updateBackgroundColor();
+      updateParticleColor();
+    });
+  }
+
   function updateBackgroundColor() {
     let bg: string = 'transparent';
     const targetElement = props.messageElement.parentElement;
@@ -160,6 +201,10 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     }
 
     setBackgroundColor(bg);
+  }
+
+  function updateParticleColor() {
+    setParticleColor(getParticleColor());
   }
 
   function onMessageClick(e: MouseEvent) {
@@ -243,7 +288,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
 
     for(const rect of rects) {
       const x = rect.left; // - offset;
-      const y = rect.top - SPAN_BOUNDING_BOX_THRESHOLD_Y;
+      const y = Math.max(0, rect.top - SPAN_BOUNDING_BOX_THRESHOLD_Y);
       const dw = rect.width; // + offset * 2;
       const dh = rect.height + SPAN_BOUNDING_BOX_THRESHOLD_Y * 2;
 
@@ -253,26 +298,35 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
 
       if(!sourceCanvas) continue;
 
+      offScreenCtx.clearRect(...timesDpr(x, y, dw, dh));
       if(!initialCoords) {
-        drawImageFromSource(ctx, sourceCanvas, ...timesDpr(x, y, dw, dh, x, y, dw, dh));
-        continue;
+        drawImageFromSource(offScreenCtx, sourceCanvas, ...timesDpr(x, y, dw, dh, x, y, dw, dh));
+      } else {
+        const scaledProgress = progress * 0.125;
+        drawImageFromSource(
+          offScreenCtx,
+          sourceCanvas,
+          ...timesDpr(
+            x + (initialCoords[0] - x) * scaledProgress,
+            y + (initialCoords[1] - y) * scaledProgress,
+            dw * (1 - scaledProgress),
+            dh * (1 - scaledProgress),
+            x,
+            y,
+            dw,
+            dh
+          )
+        );
       }
 
-      const scaledProgress = progress * 0.125;
-      drawImageFromSource(
-        ctx,
-        sourceCanvas,
-        ...timesDpr(
-          x + (initialCoords[0] - x) * scaledProgress,
-          y + (initialCoords[1] - y) * scaledProgress,
-          dw * (1 - scaledProgress),
-          dh * (1 - scaledProgress),
-          x,
-          y,
-          dw,
-          dh
-        )
-      );
+      offScreenCtx.globalCompositeOperation = 'source-atop';
+
+      offScreenCtx.fillStyle = particleColor();
+      offScreenCtx.fillRect(...timesDpr(x, y, dw, dh));
+
+      offScreenCtx.globalCompositeOperation = 'source-over';
+
+      ctx.drawImage(offScreenCanvas, ...timesDpr(x, y, dw, dh, x, y, dw, dh));
     }
   }
 
@@ -298,7 +352,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
   return <>{canvas}</>;
 }
 
-export function createMessageSpoilerOverlay(props: MessageSpoilerOverlayProps) {
+export function createMessageSpoilerOverlay(props: MessageSpoilerOverlayProps, HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider) {
   const element = document.createElement('div');
   element.classList.add('message-spoiler-overlay');
 
@@ -306,13 +360,15 @@ export function createMessageSpoilerOverlay(props: MessageSpoilerOverlayProps) {
 
   const dispose = render(
     () => (
-      <MessageSpoilerOverlay
-        parentElement={element}
-        controlsRef={(value) => {
-          controls = value;
-        }}
-        {...props}
-      />
+      <HotReloadGuardProvider>
+        <MessageSpoilerOverlay
+          parentElement={element}
+          controlsRef={(value) => {
+            controls = value;
+          }}
+          {...props}
+        />
+      </HotReloadGuardProvider>
     ),
     element
   );
