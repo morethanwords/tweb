@@ -16,12 +16,11 @@ import {drawImageFromSource} from './drawImageFromSource';
 import {
   computeMaxDistToMargin,
   CustomDOMRect,
-  getInnerCustomRect,
+  getCustomDOMRectsForSpoilerSpan,
   getParticleColor,
   getTimeForDist,
   isMouseCloseToAnySpoilerElement,
   SPAN_BOUNDING_BOX_THRESHOLD_Y,
-  toDOMRectArray,
   UnwrapEasing,
   waitResizeToBePainted
 } from './utils';
@@ -50,7 +49,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
   const {rootScope} = useHotReloadGuard();
 
   const [spanRects, setSpanRects] = createSignal<CustomDOMRect[]>([]);
-  const [backgroundColor, setBackgroundColor] = createSignal('transparent');
+  const [backgroundColor, setBackgroundColor] = createSignal('transparent'); // For now is just as fallback if inner spans fail to compute individual color
   const [particleColor, setParticleColor] = createSignal(getParticleColor());
   const [unwrapProgress, setUnwrapProgress] = createSignal<number>(0);
   const [clickCoordinates, setClickCoordinates] = createSignal<[number, number]>();
@@ -112,6 +111,13 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     }
   });
 
+  createEffect(() => {
+    // Hide text when collapsing / uncollapsing blockquote
+    if(!spanRects().length && unwrapProgress() === 0) {
+      props.parentElement.closest('.spoilers-container')?.classList.remove('can-show-spoiler-text')
+    }
+  })
+
   const canvas = (
     <canvas
       class="message-spoiler-overlay__canvas"
@@ -160,8 +166,14 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
   async function resizeObserverCallback(entry: ResizeObserverEntry) {
     if(!entry) return;
 
+    resetBeforeResize(); // When opening / closing collapsible blockquote
     await waitResizeToBePainted(entry);
     update();
+  }
+
+  function resetBeforeResize() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setSpanRects([]);
   }
 
   function updateCanvasSize() {
@@ -176,18 +188,10 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
 
   function updateSpanRects() {
     const parentRect = props.parentElement.getBoundingClientRect();
-    const spoilers = props.messageElement.querySelectorAll('.spoiler-text');
+    const spoilers = Array.from(props.messageElement.querySelectorAll('.spoiler-text'));
 
-    const rects: DOMRect[] = [];
-
-    spoilers.forEach((_el) => {
-      const el = _el as HTMLElement;
-      rects.push(...toDOMRectArray(el.getClientRects()));
-    });
-
-    const adjustedRects: CustomDOMRect[] = rects.map((spoilerRect) => getInnerCustomRect(parentRect, spoilerRect));
-
-    setSpanRects(adjustedRects);
+    const rects = spoilers.map(el => getCustomDOMRectsForSpoilerSpan(el as HTMLElement, parentRect)).flat();
+    setSpanRects(rects);
   }
 
   function updateColors() {
@@ -222,6 +226,8 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     }
 
     e.stopImmediatePropagation();
+    e.stopPropagation();
+    e.preventDefault();
 
     const rect = props.parentElement.getBoundingClientRect();
 
@@ -297,7 +303,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
       const dw = rect.width; // + offset * 2;
       const dh = rect.height + SPAN_BOUNDING_BOX_THRESHOLD_Y * 2;
 
-      ctx.fillStyle = bg;
+      ctx.fillStyle = rect.color || bg;
       // ctx.fillStyle = 'red';
       ctx.fillRect(...timesDpr(x, y, dw, dh));
 

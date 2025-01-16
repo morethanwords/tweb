@@ -9,13 +9,18 @@ export const UnwrapEasing = BezierEasing(0.45, 0.37, 0.29, 1);
 
 const RESIZE_PAINT_CHECK_ATTEMPTS = 100;
 const RESIZE_PAINT_COMPARISON_ERROR = 0.1;
+const BLOCKQUOTE_SPAN_BOUNDING_BOX_ADJUSTMENT_Y = 0.5;
 
 export type CustomDOMRect = {
   left: number;
   top: number;
   width: number;
   height: number;
+  color?: string;
 };
+
+type RGBA = Record<'a' | 'r' | 'g' | 'b', number>;
+
 
 export function getInnerCustomRect(parentRect: DOMRect, rect: CustomDOMRect): CustomDOMRect {
   return {
@@ -104,4 +109,80 @@ export async function waitResizeToBePainted(resizeEntry: ResizeObserverEntry) {
   });
 
   return deferred;
+}
+
+
+function parseRgba(rgba: string): RGBA {
+  const match = rgba.match(/rgba?\((\d+), (\d+), (\d+),?\s?(\d?.?\d+)?\)/);
+  if(!match) return {
+    r: 0, g: 0, b: 0, a: 0
+  };
+  return {
+    r: parseInt(match[1], 10),
+    g: parseInt(match[2], 10),
+    b: parseInt(match[3], 10),
+    a: parseFloat(match[4] ?? '1')
+  };
+}
+
+function blendColors(base: RGBA, overlay: RGBA): RGBA {
+  const blendedAlpha = overlay.a + base.a * (1 - overlay.a);
+  const r = Math.round(
+    (overlay.a * overlay.r + base.a * base.r * (1 - overlay.a)) / blendedAlpha
+  );
+  const g = Math.round(
+    (overlay.a * overlay.g + base.a * base.g * (1 - overlay.a)) / blendedAlpha
+  );
+  const b = Math.round(
+    (overlay.a * overlay.b + base.a * base.b * (1 - overlay.a)) / blendedAlpha
+  );
+  return {
+    r,
+    g,
+    b,
+    a: blendedAlpha
+  };
+}
+
+export function computeFinalBackgroundColor(element: HTMLElement) {
+  let color = {r: 0, g: 0, b: 0, a: 0};
+
+  while(element && color.a < 1) {
+    const bgColor = window.getComputedStyle(element).backgroundColor;
+    if(bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+      const rgba = parseRgba(bgColor);
+      color = blendColors(rgba, color);
+    }
+    element = element.parentElement;
+  }
+
+  return `rgb(${color.r}, ${color.g}, ${color.b})`;
+}
+
+export function getCustomDOMRectsForSpoilerSpan(el: HTMLElement, parentRect: DOMRect): CustomDOMRect[] {
+  const color = computeFinalBackgroundColor(el);
+
+  const originalRects = toDOMRectArray(el.getClientRects());
+
+  const normalizedRects = originalRects
+  .map((spoilerRect) => getInnerCustomRect(parentRect, spoilerRect))
+  .map((rect) => ({...rect, color}));
+
+  if(el.matches('blockquote *')) {
+    const blockquote = el.closest('blockquote');
+    const bqRect = blockquote.getBoundingClientRect();
+
+    const result = normalizedRects
+    // Blockquote collapsed case
+    .filter((rect) => rect.top + parentRect.top + rect.height < bqRect.bottom)
+    .map((rect) => ({
+      ...rect,
+      top: rect.top + BLOCKQUOTE_SPAN_BOUNDING_BOX_ADJUSTMENT_Y,
+      height: rect.height - BLOCKQUOTE_SPAN_BOUNDING_BOX_ADJUSTMENT_Y * 2
+    }));
+
+    return result;
+  }
+
+  return normalizedRects;
 }
