@@ -347,9 +347,21 @@ export default class MediaProgressLine extends RangeSelector {
   };
 
   protected scrub(e: GrabEvent) {
-    const scrubTime = super.scrub(e);
+    const scrubTime = super.scrub(e, this.snapScrubValue);
     setCurrentTime(this.media, scrubTime);
     return scrubTime;
+  }
+
+  protected snapScrubValue = (value: number) => {
+    if(!this.segments?.length) return value;
+
+    const totalWidth = this.segments[this.segments.length - 1].right;
+    const x = value / this.media.duration * totalWidth;
+    for(const segment of this.segments) {
+      if(segment.left - 2 <= x && x <= segment.left + 3) return segment.time;
+    }
+
+    return value;
   }
 
   protected setLoadProgress() {

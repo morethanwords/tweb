@@ -144,7 +144,7 @@ export default class RangeSelector {
     }
   }
 
-  protected scrub(event: GrabEvent) {
+  protected scrub(event: GrabEvent, snapValue?: (value: number) => number) {
     const rectMax = this.vertical ? this.rect.height : this.rect.width;
     let offsetAxisValue = clamp(
       this.vertical ?
@@ -166,6 +166,7 @@ export default class RangeSelector {
 
     value = +value.toFixed(this.decimals);
     value = clamp(value, this.min, this.max);
+    if(snapValue) value = snapValue(value);
 
     // this.seek.value = '' + value;
     // this.onInput();
