@@ -486,9 +486,10 @@ export class AppImManager extends EventListenerBase<{
     });
 
     (window as any).onSpoilerClick = (e: MouseEvent) => {
-      return;
       const spoiler = findUpClassName(e.target, 'spoiler');
       const parentElement = findUpClassName(spoiler, 'spoilers-container') || spoiler.parentElement;
+
+      if(parentElement.querySelector('.message-spoiler-overlay')) return;
 
       const className = 'is-spoiler-visible';
       const isVisible = parentElement.classList.contains(className);
