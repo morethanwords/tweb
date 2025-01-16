@@ -84,7 +84,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
 
     listenerSetter.add(rootScope)('theme_changed', () => {
       setTimeout(() => {
-        updateColors();
+        update();
       }, 200);
     });
     // resizeObserver.observe(props.parentElement);
