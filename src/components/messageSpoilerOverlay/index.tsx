@@ -6,6 +6,7 @@ import createMiddleware from '../../helpers/solid/createMiddleware';
 import {logger} from '../../lib/logger';
 import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import {useHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
+import debounce from '../../helpers/schedulers/debounce';
 
 import {animateValue} from '../mediaEditor/utils';
 import DotRenderer from '../dotRenderer';
@@ -24,7 +25,6 @@ import {
   UnwrapEasing,
   waitResizeToBePainted
 } from './utils';
-import debounce from '../../helpers/schedulers/debounce';
 
 type MessageSpoilerOverlayProps = {
   mid: number;

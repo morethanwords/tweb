@@ -7,7 +7,7 @@
 .spoiler {
   --anim: .4s ease;
   // position: relative; // ! idk what it was for
-  // background-color: var(--spoiler-background-color);
+  background-color: var(--spoiler-background-color);
   
   &-text {
     opacity: 0;
@@ -61,6 +61,12 @@
     //     filter: blur(3px);
     //   }
     // }
+  }
+
+  &:has(.message-spoiler-overlay) {
+    .spoiler {
+      background-color: unset;
+    }
   }
 
   &:not(.is-spoiler-visible):not(:has(.message-spoiler-overlay)) {

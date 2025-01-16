@@ -48,7 +48,7 @@ import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
 import reflowScrollableElement from '../../helpers/dom/reflowScrollableElement';
 import setInnerHTML, {setDirection} from '../../helpers/dom/setInnerHTML';
 import whichChild from '../../helpers/dom/whichChild';
-import {animate, animateSingle, cancelAnimationByKey} from '../../helpers/animation';
+import {animateSingle, cancelAnimationByKey} from '../../helpers/animation';
 import assumeType from '../../helpers/assumeType';
 import debounce, {DebounceReturnType} from '../../helpers/schedulers/debounce';
 import windowSize from '../../helpers/windowSize';
@@ -5136,7 +5136,6 @@ export default class ChatBubbles {
     // * can't use 'message.pFlags.out' here because this check will be used to define side of message (left-right)
     const our = this.chat.isOurMessage(message);
 
-    // here message div
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', 'spoilers-container');
 
