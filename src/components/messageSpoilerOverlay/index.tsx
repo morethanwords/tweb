@@ -24,6 +24,7 @@ import {
   UnwrapEasing,
   waitResizeToBePainted
 } from './utils';
+import debounce from '../../helpers/schedulers/debounce';
 
 type MessageSpoilerOverlayProps = {
   mid: number;
@@ -75,7 +76,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
 
     const listenerSetter = new ListenerSetter();
     // const resizeObserver = new ResizeObserver(resizeObserverCallback);
-    const unobserve = observeResize(props.parentElement, resizeObserverCallback);
+    const unobserve = observeResize(props.parentElement, debounce(resizeObserverCallback, 100));
 
     listenerSetter.add(props.messageElement)('click', onMessageClick, true);
     listenerSetter.add(props.messageElement)('mousemove', onMessageHover);
