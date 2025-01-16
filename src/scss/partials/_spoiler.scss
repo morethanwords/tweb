@@ -10,7 +10,7 @@
   // background-color: var(--spoiler-background-color);
   
   &-text {
-    opacity: 1;
+    opacity: 0;
   }
 
   /* &-draft {
@@ -71,6 +71,10 @@
         pointer-events: none;
       }
     }
+  }
+
+  &.can-show-spoiler-text .spoiler-text {
+    opacity: 1;
   }
 }
 

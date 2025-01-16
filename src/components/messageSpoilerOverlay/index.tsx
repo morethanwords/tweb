@@ -1,4 +1,4 @@
-import {batch, createMemo, createSignal, onCleanup, onMount} from 'solid-js';
+import {batch, createEffect, createMemo, createSignal, onCleanup, onMount} from 'solid-js';
 import {render} from 'solid-js/web';
 
 import ListenerSetter from '../../helpers/listenerSetter';
@@ -102,23 +102,28 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     });
   });
 
+  const canShowSpoilers = createMemo(() => rendererInitResult() && spanRects().length);
+
+  createEffect(() => {
+    if(canShowSpoilers()) {
+      setTimeout(() => {
+        props.parentElement.closest('.spoilers-container')?.classList.add('can-show-spoiler-text')
+      }, 400);
+    }
+  });
+
   const canvas = (
     <canvas
       class="message-spoiler-overlay__canvas"
       classList={{
-        'message-spoiler-overlay__canvas--hidden': unwrapProgress() === 1
+        'message-spoiler-overlay__canvas--hidden': unwrapProgress() === 1 || !canShowSpoilers()
       }}
     />
   ) as HTMLCanvasElement;
   const ctx = canvas.getContext('2d');
 
   const offScreenCanvas = (
-    <canvas
-      class="message-spoiler-overlay__canvas"
-      classList={{
-        'message-spoiler-overlay__canvas--hidden': unwrapProgress() === 1
-      }}
-    />
+    <canvas />
   ) as HTMLCanvasElement;
   const offScreenCtx = offScreenCanvas.getContext('2d');
 
