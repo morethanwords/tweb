@@ -177,6 +177,10 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     setSpanRects([]);
   }
 
+  createEffect(() => {
+    updateCanvasSize(); // Rect to dpr() change
+  });
+
   function updateCanvasSize() {
     const rect = props.parentElement.getBoundingClientRect();
 
@@ -316,7 +320,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
       if(!initialCoords) {
         drawImageFromSource(offScreenCtx, sourceCanvas, ...timesDpr(x, y, dw, dh, x, y, dw, dh));
       } else {
-        const scaledProgress = progress * 0.125;
+        const scaledProgress = progress ** 2 * Math.sqrt(progress) * 0.125;
         drawImageFromSource(
           offScreenCtx,
           sourceCanvas,
