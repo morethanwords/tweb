@@ -23,10 +23,10 @@ type RGBA = Record<'a' | 'r' | 'g' | 'b', number>;
 
 export function getInnerCustomRect(parentRect: DOMRect, rect: CustomDOMRect): CustomDOMRect {
   return {
-    left: rect.left - parentRect.left,
-    top: rect.top - parentRect.top,
-    width: rect.width,
-    height: rect.height
+    left: Math.floor(rect.left - parentRect.left),
+    top: Math.floor(rect.top - parentRect.top),
+    width: Math.ceil(rect.width),
+    height: Math.ceil(rect.height)
   };
 }
 

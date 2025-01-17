@@ -572,11 +572,22 @@ export default class DotRenderer implements AnimationItemWrapper {
       // const instanceCanvasHeight = 40;
 
       instance = this.textSpoilerInstance = new DotRenderer();
+
+      /**
+       * Bigger DPR will make a visible separation between drawn chunks (when text spoilers are huge)
+       * Do not make this bigger, unless there is a way to mirror the dot on the other side when it is close to some margin
+       */
+      instance.dpr = Math.min(2, window.devicePixelRatio);
       instance.resize(instanceCanvasWidth, instanceCanvasHeight, undefined, {
         particlesCount: 4 * getDefaultParticlesCount(instanceCanvasWidth, instanceCanvasHeight),
         noiseSpeed: 5,
         maxVelocity: 10,
-        radius: 2 * instance.dpr
+        timeScale: 1.2,
+        radius: 1.8 * instance.dpr,
+        forceMult: .2,
+        velocityMult: .4,
+        dampingMult: 2.2,
+        longevity: 5.0
       });
 
       MOUNT_CLASS_TO.textSpoilerRenderer = instance;
