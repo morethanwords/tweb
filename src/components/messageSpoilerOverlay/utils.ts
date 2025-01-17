@@ -189,7 +189,7 @@ export function adjustSpaceBetweenCloseRects(rects: CustomDOMRect[]): CustomDOMR
 
     const dist = nextRect.top - (rect.top + rect.height);
     if(dist > 0 && dist <= MAX_SPACE_BETWEEN_SPOILER_LINES) {
-      const flooredHalfDist = (dist / 2); //  try to make whole pixels
+      const flooredHalfDist = Math.floor(dist / 2); //  try to make whole pixels
       const restHalfDist = dist - flooredHalfDist;
 
       rects[idx + 1] = {...nextRect, top: nextRect.top - flooredHalfDist, height: nextRect.height + flooredHalfDist};
