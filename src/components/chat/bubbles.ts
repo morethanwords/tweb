@@ -321,6 +321,14 @@ function appendBubbleTime(bubble: HTMLElement, element: HTMLElement, callback: (
   callback();
 }
 
+type AddMessageSpoilerOverlayParams = {
+  mid: number;
+  loadPromises?: Promise<void>[];
+  messageDiv: HTMLDivElement;
+  middleware: Middleware;
+  canTranslate?: boolean;
+}
+
 export default class ChatBubbles {
   public container: HTMLDivElement;
   public chatInner: HTMLDivElement;
@@ -7466,19 +7474,35 @@ export default class ChatBubbles {
       });
     }
 
-    if(messageDiv.querySelector('.spoiler-text')) {
-      const spoilerOverlay = createMessageSpoilerOverlay({
-        mid: message.mid,
-        messageElement: messageDiv,
-        animationGroup: this.chat.animationGroup
-      }, SolidJSHotReloadGuardProvider);
-      messageDiv.append(spoilerOverlay.element);
-      middleware.onDestroy(() => {
-        spoilerOverlay.dispose();
-      });
-    }
+    this.addMessageSpoilerOverlay({
+      mid: message.mid,
+      messageDiv,
+      middleware,
+      loadPromises,
+      canTranslate
+    });
 
     return ret;
+  }
+
+  private async addMessageSpoilerOverlay({mid, messageDiv, middleware, loadPromises, canTranslate}: AddMessageSpoilerOverlayParams) {
+    if(canTranslate && loadPromises) await Promise.all(loadPromises); // TranslatableMessage delays the moment when content appears in the DOM
+
+    if(!messageDiv.querySelector('.spoiler-text')) return;
+
+    const spoilerOverlay = createMessageSpoilerOverlay({
+      mid: mid,
+      messageElement: messageDiv,
+      animationGroup: this.chat.animationGroup
+    }, SolidJSHotReloadGuardProvider);
+
+    messageDiv.append(spoilerOverlay.element);
+    middleware.onDestroy(() => {
+      spoilerOverlay.dispose();
+    });
+
+    await Promise.all(loadPromises);
+    spoilerOverlay.controls.update(); // For chats that have custom theme differing from the one from settings
   }
 
   public canForward(message: Message.message | Message.messageService) {

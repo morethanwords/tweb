@@ -15,13 +15,13 @@ import {observeResize} from '../resizeObserver';
 
 import {drawImageFromSource} from './drawImageFromSource';
 import {
+  adjustSpaceBetweenCloseRects,
   computeMaxDistToMargin,
   CustomDOMRect,
   getCustomDOMRectsForSpoilerSpan,
   getParticleColor,
   getTimeForDist,
   isMouseCloseToAnySpoilerElement,
-  SPAN_BOUNDING_BOX_THRESHOLD_Y,
   UnwrapEasing,
   waitResizeToBePainted
 } from './utils';
@@ -192,7 +192,8 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     const spoilers = Array.from(props.messageElement.querySelectorAll('.spoiler-text'));
 
     const rects = spoilers.map(el => getCustomDOMRectsForSpoilerSpan(el as HTMLElement, parentRect)).flat();
-    setSpanRects(rects);
+    const adjustedRects = adjustSpaceBetweenCloseRects(rects);
+    setSpanRects(adjustedRects);
   }
 
   function updateColors() {
@@ -280,6 +281,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
   }
 
   function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawSpoilerRects();
     drawClippingCircle();
   }
@@ -299,10 +301,10 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     const {sourceCanvas} = rendererInitResult() || {};
 
     for(const rect of rects) {
-      const x = rect.left; // - offset;
-      const y = Math.max(0, rect.top - SPAN_BOUNDING_BOX_THRESHOLD_Y);
-      const dw = rect.width; // + offset * 2;
-      const dh = rect.height + SPAN_BOUNDING_BOX_THRESHOLD_Y * 2;
+      const x = rect.left;
+      const y = Math.max(0, rect.top);
+      const dw = rect.width;
+      const dh = rect.height;
 
       ctx.fillStyle = rect.color || bg;
       // ctx.fillStyle = 'red';

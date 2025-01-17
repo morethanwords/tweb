@@ -4,12 +4,11 @@ import themeController from '../../helpers/themeController';
 import {logger} from '../../lib/logger';
 import BezierEasing from '../../vendor/bezierEasing';
 
-export const SPAN_BOUNDING_BOX_THRESHOLD_Y = 1; // cover space between lines of the message;
 export const UnwrapEasing = BezierEasing(0.45, 0.37, 0.29, 1);
 
+const MAX_SPACE_BETWEEN_SPOILER_LINES = 2;
 const RESIZE_PAINT_CHECK_ATTEMPTS = 100;
 const RESIZE_PAINT_COMPARISON_ERROR = 0.1;
-const BLOCKQUOTE_SPAN_BOUNDING_BOX_ADJUSTMENT_Y = 0.5;
 
 export type CustomDOMRect = {
   left: number;
@@ -71,8 +70,8 @@ export function isMouseCloseToAnySpoilerElement(e: MouseEvent, parentElement: HT
     if(
       actualRect.left <= e.clientX &&
       e.clientX <= actualRect.left + actualRect.width &&
-      actualRect.top - SPAN_BOUNDING_BOX_THRESHOLD_Y <= e.clientY &&
-      e.clientY <= actualRect.top + actualRect.height + SPAN_BOUNDING_BOX_THRESHOLD_Y
+      actualRect.top <= e.clientY &&
+      e.clientY <= actualRect.top + actualRect.height
     )
       return true;
   }
@@ -168,21 +167,35 @@ export function getCustomDOMRectsForSpoilerSpan(el: HTMLElement, parentRect: DOM
   .map((spoilerRect) => getInnerCustomRect(parentRect, spoilerRect))
   .map((rect) => ({...rect, color}));
 
-  if(el.matches('blockquote *')) {
-    const blockquote = el.closest('blockquote');
+  let blockquote;
+
+  if(blockquote = el.closest('blockquote')) {
     const bqRect = blockquote.getBoundingClientRect();
 
-    const result = normalizedRects
+    return normalizedRects
     // Blockquote collapsed case
-    .filter((rect) => rect.top + parentRect.top + rect.height < bqRect.bottom)
-    .map((rect) => ({
-      ...rect,
-      top: rect.top + BLOCKQUOTE_SPAN_BOUNDING_BOX_ADJUSTMENT_Y,
-      height: rect.height - BLOCKQUOTE_SPAN_BOUNDING_BOX_ADJUSTMENT_Y * 2
-    }));
-
-    return result;
+    .filter((rect) => rect.top + parentRect.top + rect.height < bqRect.bottom);
   }
 
   return normalizedRects;
+}
+
+export function adjustSpaceBetweenCloseRects(rects: CustomDOMRect[]): CustomDOMRect[] {
+  rects = [...rects];
+
+  for(let idx = 0; idx < rects.length - 1; idx++) {
+    const rect = rects[idx];
+    const nextRect = rects[idx + 1];
+
+    const dist = nextRect.top - (rect.top + rect.height);
+    if(dist > 0 && dist <= MAX_SPACE_BETWEEN_SPOILER_LINES) {
+      const flooredHalfDist = (dist / 2); //  try to make whole pixels
+      const restHalfDist = dist - flooredHalfDist;
+
+      rects[idx + 1] = {...nextRect, top: nextRect.top - flooredHalfDist, height: nextRect.height + flooredHalfDist};
+      rects[idx] = {...rect, height: rect.height + restHalfDist};
+    }
+  }
+
+  return rects;
 }
