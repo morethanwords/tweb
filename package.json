@@ -44,6 +44,7 @@
     "eslint": "^8.56.0",
     "express": "^4.18.2",
     "fast-png": "^6.2.0",
+    "hls.js": "^1.5.18",
     "http-proxy": "^1.18.1",
     "js-md5": "^0.8.3",
     "jsdom": "^22.1.0",
@@ -62,5 +63,6 @@
     "vite-plugin-handlebars": "^1.6.0",
     "vite-plugin-solid": "^2.8.0",
     "vitest": "^0.34.6"
-  }
+  },
+  "packageManager": "pnpm@9.15.3+sha512.1f79bc245a66eb0b07c5d4d83131240774642caaa86ef7d0434ab47c0d16f66b04e21e0c086eb61e62c77efc4d7f7ec071afad3796af64892fae66509173893a"
 }
