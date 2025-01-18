@@ -623,6 +623,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     });
 
     return {
+      animation,
       sourceCanvas: instance.canvas,
       dpr: instance.dpr,
       readyResult: instance.init()

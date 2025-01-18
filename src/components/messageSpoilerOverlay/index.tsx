@@ -7,6 +7,7 @@ import {logger} from '../../lib/logger';
 import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import {useHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
 import debounce from '../../helpers/schedulers/debounce';
+import {animate} from '../../helpers/animation';
 
 import {animateValue} from '../mediaEditor/utils';
 import DotRenderer from '../dotRenderer';
@@ -281,6 +282,11 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
         setClickCoordinates();
         setMaxDist();
       });
+      if(rendererInitResult()?.animation.paused) {
+        animate(() => {
+          draw();
+        });
+      }
     }
   }
 
