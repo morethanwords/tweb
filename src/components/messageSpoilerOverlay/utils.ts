@@ -8,7 +8,7 @@ export const UnwrapEasing = BezierEasing(0.45, 0.37, 0.29, 1);
 
 const MAX_SPACE_BETWEEN_SPOILER_LINES = 2;
 const RESIZE_PAINT_CHECK_ATTEMPTS = 100;
-const RESIZE_PAINT_COMPARISON_ERROR = 0.1;
+const GENEROUS_COMPARISON_ERROR = 0.1;
 
 export type CustomDOMRect = {
   left: number;
@@ -39,18 +39,20 @@ export function getActualRectForCustomRect(parentRect: DOMRect, rect: CustomDOMR
   };
 }
 
-export function computeMaxDistToMargin(e: MouseEvent, rect: DOMRect) {
-  return Math.max(
+export function computeMaxDistToMargin(e: MouseEvent, parentRect: DOMRect, rects: CustomDOMRect []) {
+  const actualRects = rects.map(rect => getActualRectForCustomRect(parentRect, rect));
+
+  return Math.max(...actualRects.map(rect => Math.max(
     Math.hypot(e.clientX - rect.left, e.clientY - rect.top),
-    Math.hypot(e.clientX - rect.left, e.clientY - rect.bottom),
-    Math.hypot(e.clientX - rect.right, e.clientY - rect.top),
-    Math.hypot(e.clientX - rect.right, e.clientY - rect.bottom)
-  );
+    Math.hypot(e.clientX - rect.left, e.clientY - (rect.top + rect.height)),
+    Math.hypot(e.clientX - (rect.left + rect.width), e.clientY - rect.top),
+    Math.hypot(e.clientX - (rect.left + rect.width), e.clientY - (rect.top + rect.height))
+  )));;
 }
 
 export function getTimeForDist(dist: number) {
-  // per 160px move time = 400ms
-  return Math.min(600, (dist / 160) * 400);
+  // per 160px move time = 200ms
+  return Math.max(200, (dist / 160) * 200);
 }
 
 export function toDOMRectArray(list: DOMRectList) {
@@ -96,8 +98,8 @@ export async function waitResizeToBePainted(resizeEntry: ResizeObserverEntry) {
   animate(() => {
     const targetRect = resizeEntry.target.getBoundingClientRect();
     if(
-      Math.abs(targetRect.width - entryRect.width) < RESIZE_PAINT_COMPARISON_ERROR &&
-      Math.abs(targetRect.height - entryRect.height) < RESIZE_PAINT_COMPARISON_ERROR
+      Math.abs(targetRect.width - entryRect.width) < GENEROUS_COMPARISON_ERROR &&
+      Math.abs(targetRect.height - entryRect.height) < GENEROUS_COMPARISON_ERROR
     ) {
       deferred.resolve();
       resizeLog('Resize was painted after attempts :>> ', attempts);
@@ -181,19 +183,25 @@ export function getCustomDOMRectsForSpoilerSpan(el: HTMLElement, parentRect: DOM
 }
 
 export function adjustSpaceBetweenCloseRects(rects: CustomDOMRect[]): CustomDOMRect[] {
-  rects = [...rects];
+  rects = [...rects].sort((a, b) => a.top - b.top);
 
   for(let idx = 0; idx < rects.length - 1; idx++) {
     const rect = rects[idx];
-    const nextRect = rects[idx + 1];
 
-    const dist = nextRect.top - (rect.top + rect.height);
-    if(dist > 0 && dist <= MAX_SPACE_BETWEEN_SPOILER_LINES) {
-      const flooredHalfDist = Math.floor(dist / 2); //  try to make whole pixels
-      const restHalfDist = dist - flooredHalfDist;
+    let nextIdx = idx ;
+    while(++nextIdx < rects.length) {
+      const nextRect = rects[nextIdx];
 
-      rects[idx + 1] = {...nextRect, top: nextRect.top - flooredHalfDist, height: nextRect.height + flooredHalfDist};
-      rects[idx] = {...rect, height: rect.height + restHalfDist};
+      const dist = nextRect.top - (rect.top + rect.height);
+      if(dist <= MAX_SPACE_BETWEEN_SPOILER_LINES) {
+        if(dist < 0) continue;
+
+        const flooredHalfDist = Math.floor(dist / 2); //  try to make whole pixels
+        const restHalfDist = dist - flooredHalfDist;
+
+        rects[nextIdx] = {...nextRect, top: nextRect.top - flooredHalfDist, height: nextRect.height + flooredHalfDist};
+        rects[idx] = {...rect, height: rect.height + restHalfDist};
+      } else break;
     }
   }
 

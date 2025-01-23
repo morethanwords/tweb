@@ -82,6 +82,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     listenerSetter.add(props.messageElement)('click', onMessageClick, true);
     listenerSetter.add(props.messageElement)('mousemove', onMessageHover);
     listenerSetter.add(props.messageElement)('mouseout', onMessageOut);
+    listenerSetter.add(window)('blur', returnToInitial);
 
     listenerSetter.add(rootScope)('theme_changed', () => {
       setTimeout(() => {
@@ -239,7 +240,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     const rect = props.parentElement.getBoundingClientRect();
 
     setClickCoordinates([e.clientX - rect.left, e.clientY - rect.top]);
-    setMaxDist(computeMaxDistToMargin(e, rect) + 20);
+    setMaxDist(computeMaxDistToMargin(e, rect, spanRects() || []) + 20);
 
     cancelAnimation = animateValue(0, 1, getTimeForDist(maxDist()), setUnwrapProgress, {
       easing: UnwrapEasing,
