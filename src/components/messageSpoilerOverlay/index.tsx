@@ -172,6 +172,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     resetBeforeResize(); // When opening / closing collapsible blockquote
     await waitResizeToBePainted(entry);
     update();
+    draw();
   }
 
   function resetBeforeResize() {
