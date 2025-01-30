@@ -629,27 +629,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       case 'messageEntitySpoiler': {
-        if(options.bluffSpoilers) {
-          element = document.createElement('span');
-          element.append(...partText.split('').map(part => createElementFromMarkup(`<span class="bluff-spoiler">${part}</span>`)))
-          fragment.append(element);
-
-          DotRenderer.attachBluffTextSpoilerTarget(element);
-
-          usedText = true;
-
-          // Ignore entities inside spoiler
-          if(endPartOffset !== endOffset) {
-            nasty.usedLength += endOffset - endPartOffset;
-          }
-          let n: MessageEntity;
-          for(; n = entities[nasty.i + 1], n && n.offset < endOffset;) {
-            // nasty.usedLength += n.length;
-            ++nasty.i;
-            nasty.lastEntity = n;
-            nextEntity = entities[nasty.i + 1];
-          }
-        } else if(options.noTextFormat) {
+        if(options.noTextFormat) {
           const encoded = encodeSpoiler(nasty.text, entity);
           nasty.text = encoded.text;
           partText = encoded.entityText;
@@ -662,6 +642,16 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
             ++nasty.i;
             nasty.lastEntity = n;
             nextEntity = entities[nasty.i + 1];
+          }
+
+          if(options.bluffSpoilers) {
+            element = document.createElement('span');
+            element.append(...partText.split('').map(encodedLetter => createElementFromMarkup(`<span class="bluff-spoiler">${encodedLetter}</span>`)))
+            fragment.append(element);
+
+            DotRenderer.attachBluffTextSpoilerTarget(element);
+
+            usedText = true;
           }
         } else if(options.wrappingDraft) {
           element = createMarkupFormatting('spoiler');
