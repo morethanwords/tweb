@@ -16,6 +16,7 @@ import clamp from '../helpers/number/clamp';
 import getUnsafeRandomInt from '../helpers/number/getUnsafeRandomInt';
 import {applyColorOnContext} from '../lib/rlottie/rlottiePlayer';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from './animationIntersector';
+import BluffSpoilerStyle from './bluffSpoilerStyle';
 
 export class AnimationItemNested implements AnimationItemWrapper {
   public autoplay = true;
@@ -71,10 +72,11 @@ export default class DotRenderer implements AnimationItemWrapper {
   private static createdIndex = -1;
 
   private static imageSpoilerInstance: DotRenderer;
-  private static textSpoilerInstance: DotRenderer;
+  public static textSpoilerInstance: DotRenderer;
 
   private drawCallbacks: Map<HTMLElement, () => void> = new Map();
   private targetCanvasesCount = 0;
+  private bluffSpoilersCount = 0;
 
   public canvas: HTMLCanvasElement;
   private context: WebGL2RenderingContext;
@@ -553,6 +555,38 @@ export default class DotRenderer implements AnimationItemWrapper {
     };
   }
 
+  private static getTextSpoilerInstance() {
+    if(this.textSpoilerInstance) return this.textSpoilerInstance;
+
+    const instanceCanvasWidth = 240;
+    const instanceCanvasHeight = 120;
+    // const instanceCanvasWidth = 100;
+    // const instanceCanvasHeight = 40;
+
+    const instance = this.textSpoilerInstance = new DotRenderer();
+
+    /**
+     * Bigger DPR will make a visible separation between drawn chunks (when text spoilers are huge)
+     * Do not make this bigger, unless there is a way to mirror the dot on the other side when it is close to some margin
+     */
+    instance.dpr = Math.min(2, window.devicePixelRatio);
+    instance.resize(instanceCanvasWidth, instanceCanvasHeight, undefined, {
+      particlesCount: 4 * getDefaultParticlesCount(instanceCanvasWidth, instanceCanvasHeight),
+      noiseSpeed: 5,
+      maxVelocity: 10,
+      timeScale: 1.2,
+      radius: 1.8 * instance.dpr,
+      forceMult: .2,
+      velocityMult: .4,
+      dampingMult: 2.2,
+      longevity: 5.0
+    });
+
+    MOUNT_CLASS_TO.textSpoilerRenderer = instance;
+
+    return instance;
+  }
+
   public static attachTextSpoilerTarget({
     middleware,
     animationGroup,
@@ -564,34 +598,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     middleware: Middleware,
     animationGroup: AnimationItemGroup,
   }) {
-    let {textSpoilerInstance: instance} = this;
-    if(!instance) {
-      const instanceCanvasWidth = 240;
-      const instanceCanvasHeight = 120;
-      // const instanceCanvasWidth = 100;
-      // const instanceCanvasHeight = 40;
-
-      instance = this.textSpoilerInstance = new DotRenderer();
-
-      /**
-       * Bigger DPR will make a visible separation between drawn chunks (when text spoilers are huge)
-       * Do not make this bigger, unless there is a way to mirror the dot on the other side when it is close to some margin
-       */
-      instance.dpr = Math.min(2, window.devicePixelRatio);
-      instance.resize(instanceCanvasWidth, instanceCanvasHeight, undefined, {
-        particlesCount: 4 * getDefaultParticlesCount(instanceCanvasWidth, instanceCanvasHeight),
-        noiseSpeed: 5,
-        maxVelocity: 10,
-        timeScale: 1.2,
-        radius: 1.8 * instance.dpr,
-        forceMult: .2,
-        velocityMult: .4,
-        dampingMult: 2.2,
-        longevity: 5.0
-      });
-
-      MOUNT_CLASS_TO.textSpoilerRenderer = instance;
-    }
+    const instance = this.getTextSpoilerInstance();
 
     ++instance.targetCanvasesCount;
 
@@ -628,5 +635,41 @@ export default class DotRenderer implements AnimationItemWrapper {
       dpr: instance.dpr,
       readyResult: instance.init()
     };
+  }
+
+  public static attachBluffTextSpoilerTarget(element: HTMLElement) {
+    const instance = this.getTextSpoilerInstance();
+
+    ++instance.targetCanvasesCount;
+    ++instance.bluffSpoilersCount;
+
+    const animation = new AnimationItemNested({
+      onPlay: () => {
+        instance.drawCallbacks.set(element, () => BluffSpoilerStyle.draw(instance.canvas));
+        instance.play();
+      },
+      onPause: () => {
+        instance.drawCallbacks.delete(element);
+        if(!instance.drawCallbacks.size) {
+          instance.pause();
+        }
+      },
+      onDestroy: () => {
+        if(!--instance.targetCanvasesCount) {
+          instance.remove();
+          this.textSpoilerInstance = undefined;
+        }
+        if(!--instance.bluffSpoilersCount) {
+          BluffSpoilerStyle.destroy();
+        }
+      }
+    });
+
+    animationIntersector.addAnimation({
+      animation,
+      group: 'BLUFF-SPOILER',
+      observeElement: element,
+      type: 'dots'
+    });
   }
 }

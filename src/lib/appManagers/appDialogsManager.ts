@@ -36,7 +36,7 @@ import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import replaceContent from '../../helpers/dom/replaceContent';
 import ConnectionStatusComponent from '../../components/connectionStatus';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
-import {fastRafConventional, fastRafPromise} from '../../helpers/schedulers';
+import {doubleRaf, fastRafConventional, fastRafPromise} from '../../helpers/schedulers';
 import SortedUserList from '../../components/sortedUserList';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import handleTabSwipe from '../../helpers/dom/handleTabSwipe';
@@ -114,6 +114,8 @@ import {ChatType} from '../../components/chat/chat';
 import PopupDeleteDialog from '../../components/popups/deleteDialog';
 import rtmpCallsController from '../calls/rtmpCallsController';
 import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
+import {WrapRichTextOptions} from '../richTextProcessor/wrapRichText';
+import assumeType from '../../helpers/assumeType';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -1749,6 +1751,26 @@ const TEST_TOP_NOTIFICATION = true ? undefined : (): ChatlistsChatlistUpdates =>
   }]
 });
 
+// TODO: move to another place
+// TODO: Spoilers in replies
+function adjustBluffSpoilers(container: HTMLElement) {
+  const spoilers = container.querySelectorAll('.bluff-spoiler');
+
+  let lastParent: HTMLElement;
+  let bcr: DOMRect;
+
+  spoilers.forEach((spoiler) => {
+    assumeType<HTMLElement>(spoiler);
+    if(spoiler.offsetParent !== lastParent) {
+      lastParent = spoiler.offsetParent as HTMLElement;
+      bcr = lastParent.getBoundingClientRect();
+    }
+
+    spoiler.classList.add('bluff-spoiler--adjusted');
+    spoiler.style.setProperty('mask-position', `${-(spoiler.getBoundingClientRect().left - (bcr?.left || 0))}px 0px`);
+  });
+}
+
 export class AppDialogsManager {
   public chatsContainer = document.getElementById('chatlist-container') as HTMLDivElement;
 
@@ -3312,8 +3334,9 @@ export class AppDialogsManager {
       }
 
       const withoutMediaType = !!mediaContainer && !!(lastMessage as Message.message)?.message;
-      const wrapMessageForReplyOptions: Partial<WrapMessageForReplyOptions> = {
-        textColor: this.getTextColor(dom.listEl.classList.contains('active'))
+      const wrapMessageForReplyOptions: Partial<WrapMessageForReplyOptions & WrapRichTextOptions> = {
+        textColor: this.getTextColor(dom.listEl.classList.contains('active')),
+        bluffSpoilers: true
       };
 
       let fragment: DocumentFragment, wrapResult: ReturnType<typeof wrapMessageForReply>;
@@ -3371,6 +3394,10 @@ export class AppDialogsManager {
       } else {
         replaceContent(dom.lastMessageSpan, fragment);
       }
+      // Yes, weird stuff, but it's needed for correct spoiler adjustment :)
+      doubleRaf().then(doubleRaf).then(() => {
+        adjustBluffSpoilers(dom.lastMessageSpan);
+      });
     }
 
     if(lastMessage || draftMessage/*  && lastMessage._ !== 'draftMessage' */) {

@@ -51,8 +51,7 @@ export function computeMaxDistToMargin(e: MouseEvent, parentRect: DOMRect, rects
 }
 
 export function getTimeForDist(dist: number) {
-  // per 160px move time = 200ms
-  return Math.max(200, (dist / 160) * 200);
+  return Math.max(400, (dist / 160) * 200);
 }
 
 export function toDOMRectArray(list: DOMRectList) {
@@ -147,8 +146,9 @@ function blendColors(base: RGBA, overlay: RGBA): RGBA {
 
 export function computeFinalBackgroundColor(element: HTMLElement) {
   let color = {r: 0, g: 0, b: 0, a: 0};
+  let maxDepth = 10;
 
-  while(element && color.a < 1) {
+  while(element && color.a < 1 && maxDepth--) {
     const bgColor = window.getComputedStyle(element).backgroundColor;
     if(bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
       const rgba = parseRgba(bgColor);
@@ -157,7 +157,7 @@ export function computeFinalBackgroundColor(element: HTMLElement) {
     element = element.parentElement;
   }
 
-  return `rgb(${color.r}, ${color.g}, ${color.b})`;
+  return color.a === 1 ? `rgb(${color.r}, ${color.g}, ${color.b})` : undefined;
 }
 
 export function getCustomDOMRectsForSpoilerSpan(el: HTMLElement, parentRect: DOMRect): CustomDOMRect[] {

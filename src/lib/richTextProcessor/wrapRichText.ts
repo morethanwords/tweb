@@ -31,6 +31,8 @@ import {CodeLanguageAliases, highlightCode} from '../../codeLanguages';
 import callbackify from '../../helpers/callbackify';
 import findIndexFrom from '../../helpers/array/findIndexFrom';
 import {observeResize} from '../../components/resizeObserver';
+import createElementFromMarkup from '../../helpers/createElementFromMarkup';
+import DotRenderer from '../../components/dotRenderer';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -43,6 +45,7 @@ export type WrapRichTextOptions = Partial<{
   // mustWrapEmoji: boolean,
   fromBot: boolean,
   noTextFormat: boolean,
+  bluffSpoilers: boolean,
   passEntities: Partial<{
     [_ in MessageEntity['_']]: boolean
   }>,
@@ -626,7 +629,15 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       case 'messageEntitySpoiler': {
-        if(options.noTextFormat) {
+        if(options.bluffSpoilers) {
+          element = document.createElement('span');
+          element.append(...partText.split('').map(part => createElementFromMarkup(`<span class="bluff-spoiler">${part}</span>`)))
+          fragment.append(element);
+
+          DotRenderer.attachBluffTextSpoilerTarget(element);
+
+          usedText = true;
+        } else if(options.noTextFormat) {
           const encoded = encodeSpoiler(nasty.text, entity);
           nasty.text = encoded.text;
           partText = encoded.entityText;

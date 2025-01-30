@@ -82,7 +82,8 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     listenerSetter.add(props.messageElement)('click', onMessageClick, true);
     listenerSetter.add(props.messageElement)('mousemove', onMessageHover);
     listenerSetter.add(props.messageElement)('mouseout', onMessageOut);
-    listenerSetter.add(window)('blur', returnToInitial);
+    // listenerSetter.add(window)('blur', returnToInitial);
+    listenerSetter.add(rootScope)('chat_background_set', onChatBackgroundSet);
 
     listenerSetter.add(rootScope)('theme_changed', () => {
       setTimeout(() => {
@@ -119,7 +120,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     if(!spanRects().length && unwrapProgress() === 0) {
       props.parentElement.closest('.spoilers-container')?.classList.remove('can-show-spoiler-text')
     }
-  })
+  });
 
   const canvas = (
     <canvas
@@ -229,8 +230,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     if(!isMouseCloseToAnySpoilerElement(e, props.parentElement, spanRects())) return;
 
     if(unwrapProgress()) {
-      // if(DEBUG)
-      returnToInitial();
+      // returnToInitial();
       return;
     }
 
@@ -242,6 +242,8 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
 
     setClickCoordinates([e.clientX - rect.left, e.clientY - rect.top]);
     setMaxDist(computeMaxDistToMargin(e, rect, spanRects() || []) + 20);
+
+    props.messageElement.classList.remove('is-hovering-spoiler');
 
     cancelAnimation = animateValue(0, 1, getTimeForDist(maxDist()), setUnwrapProgress, {
       easing: UnwrapEasing,
@@ -255,6 +257,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
 
   // There is some space between span lines, so we need to manually set the cursor because of this
   function onMessageHover(e: MouseEvent) {
+    if(unwrapProgress()) return;
     props.messageElement.classList.toggle(
       'is-hovering-spoiler',
       isMouseCloseToAnySpoilerElement(e, props.parentElement, spanRects())
@@ -290,6 +293,14 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
         });
       }
     }
+  }
+
+  function onChatBackgroundSet() {
+    resetBeforeResize();
+    setTimeout(() => {
+      update();
+      draw();
+    }, 200);
   }
 
   function draw() {
@@ -366,7 +377,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     ctx.save();
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = 'white';
-    ctx.shadowBlur = 200 * dpr() * progress + 60;
+    ctx.shadowBlur = 100 * dpr() * progress + 30;
     ctx.shadowColor = 'white';
     ctx.beginPath();
     ctx.arc(...timesDpr(initialCoords[0], initialCoords[1], radius * progress), 0, 2 * Math.PI);

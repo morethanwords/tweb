@@ -12,7 +12,7 @@
   &-text {
     opacity: 0;
   }
-
+  
   /* &-draft {
     background-color: var(--spoiler-draft-background-color);
   } */
@@ -102,4 +102,20 @@
       opacity: 0;
     }
   }
+}
+
+.bluff-spoiler {
+  position: relative;
+  display: inline-block;
+
+  mask-size: 240px 120px;
+  mask-repeat: repeat;
+  // mask-image: none !important;
+
+  opacity: 0;
+  transition: opacity 0.2s;
+
+  white-space: pre;
+
+  background-color: currentColor;
 }
