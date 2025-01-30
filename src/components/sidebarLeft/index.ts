@@ -637,6 +637,8 @@ export class AppSidebarLeft extends SidebarSlider {
           this.onCollapsedChange(true);
 
         appImManager.adjustChatPatternBackground();
+        appDialogsManager.adjustBluffSpoilers();
+
 
         throttledSetToStorage(isCollapsed ? 0 : clampedWidth);
       },

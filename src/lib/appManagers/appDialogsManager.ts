@@ -3377,7 +3377,7 @@ export class AppDialogsManager {
       }
       // Yes, weird stuff, but it's needed for correct spoiler adjustment :)
       doubleRaf().then(doubleRaf).then(() => {
-        adjustBluffSpoilers(dom.lastMessageSpan);
+        this.adjustBluffSpoilers(dom.lastMessageSpan);
       });
     }
 
@@ -3726,25 +3726,26 @@ export class AppDialogsManager {
     return d;
     // return this.addDialog(options.peerId, options.container, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName, options.noIcons);
   }
+
+  public adjustBluffSpoilers(container: HTMLElement = this.folders.container) {
+    const spoilers = container.querySelectorAll('.bluff-spoiler');
+
+    let lastParent: HTMLElement;
+    let bcr: DOMRect;
+
+    spoilers.forEach((spoiler) => {
+      assumeType<HTMLElement>(spoiler);
+      if(spoiler.offsetParent !== lastParent) {
+        lastParent = spoiler.offsetParent as HTMLElement;
+        bcr = lastParent?.getBoundingClientRect();
+      }
+
+      spoiler.classList.add('bluff-spoiler--adjusted');
+      spoiler.style.setProperty('mask-position', `${-(spoiler.getBoundingClientRect().left - (bcr?.left || 0))}px 0px`);
+    });
+  }
 }
 
-function adjustBluffSpoilers(container: HTMLElement) {
-  const spoilers = container.querySelectorAll('.bluff-spoiler');
-
-  let lastParent: HTMLElement;
-  let bcr: DOMRect;
-
-  spoilers.forEach((spoiler) => {
-    assumeType<HTMLElement>(spoiler);
-    if(spoiler.offsetParent !== lastParent) {
-      lastParent = spoiler.offsetParent as HTMLElement;
-      bcr = lastParent.getBoundingClientRect();
-    }
-
-    spoiler.classList.add('bluff-spoiler--adjusted');
-    spoiler.style.setProperty('mask-position', `${-(spoiler.getBoundingClientRect().left - (bcr?.left || 0))}px 0px`);
-  });
-}
 
 const appDialogsManager = new AppDialogsManager();
 MOUNT_CLASS_TO.appDialogsManager = appDialogsManager;
