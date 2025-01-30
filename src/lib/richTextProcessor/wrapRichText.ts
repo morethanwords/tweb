@@ -637,6 +637,18 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           DotRenderer.attachBluffTextSpoilerTarget(element);
 
           usedText = true;
+
+          // Ignore entities inside spoiler
+          if(endPartOffset !== endOffset) {
+            nasty.usedLength += endOffset - endPartOffset;
+          }
+          let n: MessageEntity;
+          for(; n = entities[nasty.i + 1], n && n.offset < endOffset;) {
+            // nasty.usedLength += n.length;
+            ++nasty.i;
+            nasty.lastEntity = n;
+            nextEntity = entities[nasty.i + 1];
+          }
         } else if(options.noTextFormat) {
           const encoded = encodeSpoiler(nasty.text, entity);
           nasty.text = encoded.text;

@@ -72,7 +72,7 @@ export default class DotRenderer implements AnimationItemWrapper {
   private static createdIndex = -1;
 
   private static imageSpoilerInstance: DotRenderer;
-  public static textSpoilerInstance: DotRenderer;
+  private static textSpoilerInstance: DotRenderer;
 
   private drawCallbacks: Map<HTMLElement, () => void> = new Map();
   private targetCanvasesCount = 0;
@@ -672,5 +672,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       observeElement: element,
       type: 'dots'
     });
+
+    instance.init();
   }
 }

@@ -25,8 +25,8 @@ export function getInnerCustomRect(parentRect: DOMRect, rect: CustomDOMRect): Cu
   return {
     left: Math.floor(rect.left - parentRect.left),
     top: Math.floor(rect.top - parentRect.top),
-    width: Math.ceil(rect.width),
-    height: Math.ceil(rect.height)
+    width: Math.ceil(rect.width + 0.99),
+    height: Math.ceil(rect.height + 0.99)
   };
 }
 
