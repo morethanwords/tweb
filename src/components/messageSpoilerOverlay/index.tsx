@@ -122,6 +122,22 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     }
   });
 
+
+  /**
+   * If it fails the first time to compute the rects, try again after some time
+  */
+  let failTimeout: number;
+  createEffect(() => {
+    if(spanRects().length) return;
+
+    failTimeout ||= window.setTimeout(() => {
+      failTimeout = undefined;
+      if(spanRects().length) return;
+
+      update();
+    }, 3000);
+  });
+
   const canvas = (
     <canvas
       class="message-spoiler-overlay__canvas"
@@ -182,7 +198,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
   }
 
   createEffect(() => {
-    updateCanvasSize(); // Rect to dpr() change
+    updateCanvasSize(); // React to dpr() change
   });
 
   function updateCanvasSize() {
