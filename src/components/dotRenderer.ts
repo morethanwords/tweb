@@ -668,6 +668,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     animationIntersector.addAnimation({
       animation,
       group: 'BLUFF-SPOILER',
+      controlled: true,
       observeElement: element,
       type: 'dots'
     });

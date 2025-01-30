@@ -1,7 +1,7 @@
 export default class BluffSpoilerStyle {
   private static style: HTMLStyleElement;
   private static lastDrawTime: number = 0;
-  private static DRAW_INTERVAL = 5 * (1000 / 60); // Once in 5 frames (considering 60fps) to avoid performance issues
+  private static DRAW_INTERVAL = 4 * (1000 / 60); // Once in 4 frames (considering 60fps) to avoid performance issues
 
   private static getStyleSheet() {
     if(this.style) return this.style;
@@ -30,7 +30,7 @@ export default class BluffSpoilerStyle {
   }
 
   public static destroy() {
-    this.style.remove();
+    this.style?.remove();
     this.style = undefined;
   }
 }

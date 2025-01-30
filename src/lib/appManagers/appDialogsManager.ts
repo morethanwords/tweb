@@ -1751,25 +1751,6 @@ const TEST_TOP_NOTIFICATION = true ? undefined : (): ChatlistsChatlistUpdates =>
   }]
 });
 
-// TODO: move to another place
-// TODO: Spoilers in replies
-function adjustBluffSpoilers(container: HTMLElement) {
-  const spoilers = container.querySelectorAll('.bluff-spoiler');
-
-  let lastParent: HTMLElement;
-  let bcr: DOMRect;
-
-  spoilers.forEach((spoiler) => {
-    assumeType<HTMLElement>(spoiler);
-    if(spoiler.offsetParent !== lastParent) {
-      lastParent = spoiler.offsetParent as HTMLElement;
-      bcr = lastParent.getBoundingClientRect();
-    }
-
-    spoiler.classList.add('bluff-spoiler--adjusted');
-    spoiler.style.setProperty('mask-position', `${-(spoiler.getBoundingClientRect().left - (bcr?.left || 0))}px 0px`);
-  });
-}
 
 export class AppDialogsManager {
   public chatsContainer = document.getElementById('chatlist-container') as HTMLDivElement;
@@ -3745,6 +3726,24 @@ export class AppDialogsManager {
     return d;
     // return this.addDialog(options.peerId, options.container, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName, options.noIcons);
   }
+}
+
+function adjustBluffSpoilers(container: HTMLElement) {
+  const spoilers = container.querySelectorAll('.bluff-spoiler');
+
+  let lastParent: HTMLElement;
+  let bcr: DOMRect;
+
+  spoilers.forEach((spoiler) => {
+    assumeType<HTMLElement>(spoiler);
+    if(spoiler.offsetParent !== lastParent) {
+      lastParent = spoiler.offsetParent as HTMLElement;
+      bcr = lastParent.getBoundingClientRect();
+    }
+
+    spoiler.classList.add('bluff-spoiler--adjusted');
+    spoiler.style.setProperty('mask-position', `${-(spoiler.getBoundingClientRect().left - (bcr?.left || 0))}px 0px`);
+  });
 }
 
 const appDialogsManager = new AppDialogsManager();
