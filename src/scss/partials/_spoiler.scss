@@ -114,8 +114,13 @@
 
   opacity: 0;
   transition: opacity 0.2s;
+  transition-delay: 0.2s;
 
   white-space: pre;
 
   background-color: currentColor;
+
+  .tabs-container.animating & {
+    opacity: 0;
+  }
 }

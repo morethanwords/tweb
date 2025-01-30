@@ -3375,7 +3375,7 @@ export class AppDialogsManager {
       } else {
         replaceContent(dom.lastMessageSpan, fragment);
       }
-      this.waitBeforeAdjustingBluffSpoilers().then(() => {
+      this.waitBeforeAdjustingBluffSpoilers(() => {
         this.adjustBluffSpoilers(dom.lastMessageSpan);
       });
     }
@@ -3728,16 +3728,20 @@ export class AppDialogsManager {
 
   private isFirstBluffSpoilersLoad = true;
   private firstBluffSpoilersTimeout: number;
-  /**
-   * When loading first time, we need to wait a little bit to avoid the spoilers blinking
-   * as setLastMessage might be called a few times per dialog
-   */
-  private async waitBeforeAdjustingBluffSpoilers() {
+
+  private async waitBeforeAdjustingBluffSpoilers(callback: () => void) {
     if(this.isFirstBluffSpoilersLoad) {
+      /**
+       * When loading first time, we need to wait a little bit to avoid the spoilers blinking
+       * as setLastMessage might be called a few times per dialog
+       */
       this.firstBluffSpoilersTimeout ||= window.setTimeout(() => {
         this.isFirstBluffSpoilersLoad = false;
       }, 1000);
+
       await pause(500);
+      callback();
+
       return;
     }
 
@@ -3745,6 +3749,12 @@ export class AppDialogsManager {
     await doubleRaf();
     await doubleRaf();
     await doubleRaf();
+
+    callback();
+
+    // It might not be enough, so wait a little after the first try))
+    await pause(500);
+    callback();
   }
 
   public adjustBluffSpoilers(container: HTMLElement = this.folders.container) {
