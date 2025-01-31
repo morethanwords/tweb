@@ -114,7 +114,7 @@
 
   mask-size: 240px 120px;
   mask-repeat: repeat;
-  mask-position: calc(var(--index) * var(--width)) 0px;
+  mask-position: calc(var(--index) * var(--width) * -1) 0px;
   // mask-image: none !important;
 
   opacity: 0;
