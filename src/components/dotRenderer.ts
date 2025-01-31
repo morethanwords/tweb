@@ -16,7 +16,7 @@ import clamp from '../helpers/number/clamp';
 import getUnsafeRandomInt from '../helpers/number/getUnsafeRandomInt';
 import {applyColorOnContext} from '../lib/rlottie/rlottiePlayer';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from './animationIntersector';
-import BluffSpoilerStyle from './bluffSpoilerStyle';
+import BluffSpoilerController from './bluffSpoilerController';
 
 export class AnimationItemNested implements AnimationItemWrapper {
   public autoplay = true;
@@ -76,7 +76,6 @@ export default class DotRenderer implements AnimationItemWrapper {
 
   private drawCallbacks: Map<HTMLElement, () => void> = new Map();
   private targetCanvasesCount = 0;
-  private bluffSpoilersCount = 0;
 
   public canvas: HTMLCanvasElement;
   private context: WebGL2RenderingContext;
@@ -640,12 +639,14 @@ export default class DotRenderer implements AnimationItemWrapper {
   public static attachBluffTextSpoilerTarget(element: HTMLElement) {
     const instance = this.getTextSpoilerInstance();
 
+    BluffSpoilerController.observeReconnection(element, (el) => this.attachBluffTextSpoilerTarget(el));
+
     ++instance.targetCanvasesCount;
-    ++instance.bluffSpoilersCount;
+    ++BluffSpoilerController.instancesCount;
 
     const animation = new AnimationItemNested({
       onPlay: () => {
-        instance.drawCallbacks.set(element, () => BluffSpoilerStyle.draw(instance.canvas));
+        instance.drawCallbacks.set(element, () => BluffSpoilerController.draw(instance.canvas));
         instance.play();
       },
       onPause: () => {
@@ -659,8 +660,8 @@ export default class DotRenderer implements AnimationItemWrapper {
           instance.remove();
           this.textSpoilerInstance = undefined;
         }
-        if(!--instance.bluffSpoilersCount) {
-          BluffSpoilerStyle.destroy();
+        if(!--BluffSpoilerController.instancesCount) {
+          BluffSpoilerController.destroy();
         }
       }
     });
@@ -668,7 +669,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     animationIntersector.addAnimation({
       animation,
       group: 'BLUFF-SPOILER',
-      controlled: true,
+      // controlled: true, // should not be controlled! elements might reappear in the DOM after being removed
       observeElement: element,
       type: 'dots'
     });

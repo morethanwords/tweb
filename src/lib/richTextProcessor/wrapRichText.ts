@@ -45,7 +45,6 @@ export type WrapRichTextOptions = Partial<{
   // mustWrapEmoji: boolean,
   fromBot: boolean,
   noTextFormat: boolean,
-  bluffSpoilers: boolean,
   passEntities: Partial<{
     [_ in MessageEntity['_']]: boolean
   }>,
@@ -644,15 +643,13 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
             nextEntity = entities[nasty.i + 1];
           }
 
-          if(options.bluffSpoilers) {
-            element = document.createElement('span');
-            element.append(...partText.split('').map(encodedLetter => createElementFromMarkup(`<span class="bluff-spoiler">${encodedLetter}</span>`)))
-            fragment.append(element);
+          element = document.createElement('span');
+          element.append(...partText.split('').map((encodedLetter, i) => createElementFromMarkup(`<span class="bluff-spoiler" style="--index:${i}">${encodedLetter}</span>`)))
+          fragment.append(element);
 
-            DotRenderer.attachBluffTextSpoilerTarget(element);
+          DotRenderer.attachBluffTextSpoilerTarget(element);
 
-            usedText = true;
-          }
+          usedText = true;
         } else if(options.wrappingDraft) {
           element = createMarkupFormatting('spoiler');
           // element = document.createElement('span');

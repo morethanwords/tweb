@@ -108,8 +108,13 @@
   position: relative;
   display: inline-block;
 
+  --width: 0.75em;
+  --index: 0;
+  width: var(--width);
+
   mask-size: 240px 120px;
   mask-repeat: repeat;
+  mask-position: calc(var(--index) * var(--width)) 0px;
   // mask-image: none !important;
 
   opacity: 0;

@@ -3316,8 +3316,7 @@ export class AppDialogsManager {
 
       const withoutMediaType = !!mediaContainer && !!(lastMessage as Message.message)?.message;
       const wrapMessageForReplyOptions: Partial<WrapMessageForReplyOptions & WrapRichTextOptions> = {
-        textColor: this.getTextColor(dom.listEl.classList.contains('active')),
-        bluffSpoilers: true
+        textColor: this.getTextColor(dom.listEl.classList.contains('active'))
       };
 
       let fragment: DocumentFragment, wrapResult: ReturnType<typeof wrapMessageForReply>;
@@ -3375,9 +3374,6 @@ export class AppDialogsManager {
       } else {
         replaceContent(dom.lastMessageSpan, fragment);
       }
-      this.waitBeforeAdjustingBluffSpoilers(() => {
-        this.adjustBluffSpoilers(dom.lastMessageSpan);
-      });
     }
 
     if(lastMessage || draftMessage/*  && lastMessage._ !== 'draftMessage' */) {
@@ -3724,55 +3720,6 @@ export class AppDialogsManager {
 
     return d;
     // return this.addDialog(options.peerId, options.container, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName, options.noIcons);
-  }
-
-  private isFirstBluffSpoilersLoad = true;
-  private firstBluffSpoilersTimeout: number;
-
-  private async waitBeforeAdjustingBluffSpoilers(callback: () => void) {
-    if(this.isFirstBluffSpoilersLoad) {
-      /**
-       * When loading first time, we need to wait a little bit to avoid the spoilers blinking
-       * as setLastMessage might be called a few times per dialog
-       */
-      this.firstBluffSpoilersTimeout ||= window.setTimeout(() => {
-        this.isFirstBluffSpoilersLoad = false;
-      }, 1000);
-
-      await pause(500);
-      callback();
-
-      return;
-    }
-
-    // Yeah... :D
-    await doubleRaf();
-    await doubleRaf();
-    await doubleRaf();
-
-    callback();
-
-    // It might not be enough, so wait a little after the first try))
-    await pause(500);
-    callback();
-  }
-
-  public adjustBluffSpoilers(container: HTMLElement = this.folders.container) {
-    const spoilers = container.querySelectorAll('.bluff-spoiler');
-
-    let lastParent: HTMLElement;
-    let bcr: DOMRect;
-
-    spoilers.forEach((spoiler) => {
-      assumeType<HTMLElement>(spoiler);
-      if(spoiler.offsetParent !== lastParent) {
-        lastParent = spoiler.offsetParent as HTMLElement;
-        bcr = lastParent?.getBoundingClientRect();
-      }
-
-      spoiler.classList.add('bluff-spoiler--adjusted');
-      spoiler.style.setProperty('mask-position', `${-(spoiler.getBoundingClientRect().left - (bcr?.left || 0))}px 0px`);
-    });
   }
 }
 
