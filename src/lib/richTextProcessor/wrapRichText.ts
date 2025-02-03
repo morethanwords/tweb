@@ -31,6 +31,8 @@ import {CodeLanguageAliases, highlightCode} from '../../codeLanguages';
 import callbackify from '../../helpers/callbackify';
 import findIndexFrom from '../../helpers/array/findIndexFrom';
 import {observeResize} from '../../components/resizeObserver';
+import createElementFromMarkup from '../../helpers/createElementFromMarkup';
+import DotRenderer from '../../components/dotRenderer';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -640,6 +642,14 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
             nasty.lastEntity = n;
             nextEntity = entities[nasty.i + 1];
           }
+
+          element = document.createElement('span');
+          element.append(...partText.split('').map((encodedLetter, i) => createElementFromMarkup(`<span class="bluff-spoiler" style="--index:${i}">${encodedLetter}</span>`)))
+          fragment.append(element);
+
+          DotRenderer.attachBluffTextSpoilerTarget(element);
+
+          usedText = true;
         } else if(options.wrappingDraft) {
           element = createMarkupFormatting('spoiler');
           // element = document.createElement('span');

@@ -2,10 +2,7 @@ import {createMemo, JSX} from 'solid-js';
 
 import clamp from '../../helpers/number/clamp';
 import {hexaToHsla} from '../../helpers/color';
-
-function nMap(value: number, min: number, max: number, tMin: number, tMax: number) {
-  return ((value - min) / (max - min)) * (tMax - tMin) + tMin;
-}
+import nMap from '../../helpers/number/nMap';
 
 export default function RangeInput(props: {
   ref?: (el: HTMLDivElement) => void;

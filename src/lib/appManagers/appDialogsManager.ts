@@ -36,7 +36,7 @@ import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import replaceContent from '../../helpers/dom/replaceContent';
 import ConnectionStatusComponent from '../../components/connectionStatus';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
-import {fastRafConventional, fastRafPromise} from '../../helpers/schedulers';
+import {doubleRaf, fastRafConventional, fastRafPromise} from '../../helpers/schedulers';
 import SortedUserList from '../../components/sortedUserList';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import handleTabSwipe from '../../helpers/dom/handleTabSwipe';
@@ -114,6 +114,8 @@ import {ChatType} from '../../components/chat/chat';
 import PopupDeleteDialog from '../../components/popups/deleteDialog';
 import rtmpCallsController from '../calls/rtmpCallsController';
 import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
+import {WrapRichTextOptions} from '../richTextProcessor/wrapRichText';
+import assumeType from '../../helpers/assumeType';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -1749,6 +1751,7 @@ const TEST_TOP_NOTIFICATION = true ? undefined : (): ChatlistsChatlistUpdates =>
   }]
 });
 
+
 export class AppDialogsManager {
   public chatsContainer = document.getElementById('chatlist-container') as HTMLDivElement;
 
@@ -3312,7 +3315,7 @@ export class AppDialogsManager {
       }
 
       const withoutMediaType = !!mediaContainer && !!(lastMessage as Message.message)?.message;
-      const wrapMessageForReplyOptions: Partial<WrapMessageForReplyOptions> = {
+      const wrapMessageForReplyOptions: Partial<WrapMessageForReplyOptions & WrapRichTextOptions> = {
         textColor: this.getTextColor(dom.listEl.classList.contains('active'))
       };
 
@@ -3719,6 +3722,7 @@ export class AppDialogsManager {
     // return this.addDialog(options.peerId, options.container, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName, options.noIcons);
   }
 }
+
 
 const appDialogsManager = new AppDialogsManager();
 MOUNT_CLASS_TO.appDialogsManager = appDialogsManager;

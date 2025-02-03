@@ -469,7 +469,9 @@ export default class Chat extends EventListenerBase<{
     return this.setBackgroundPromise = Promise.race([
       pause(500),
       promise
-    ]).then(() => {}) as any;
+    ]).then(() => {
+      rootScope.dispatchEvent('chat_background_set');
+    }) as any;
   }
 
   public setBackgroundIfNotSet(options: Parameters<Chat['setBackground']>[0]) {

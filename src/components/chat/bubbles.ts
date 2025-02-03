@@ -186,6 +186,8 @@ import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/ph
 import icon from '../icon';
 import {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
 import {wrapRoundVideoBubble} from './roundVideoBubble';
+import {createMessageSpoilerOverlay} from '../messageSpoilerOverlay';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -317,6 +319,14 @@ const EMPTY_FULL_MID = makeFullMid(NULL_PEER_ID, 0);
 function appendBubbleTime(bubble: HTMLElement, element: HTMLElement, callback: () => void) {
   (bubble.timeAppenders ??= []).unshift({element, callback});
   callback();
+}
+
+type AddMessageSpoilerOverlayParams = {
+  mid: number;
+  loadPromises?: Promise<void>[];
+  messageDiv: HTMLDivElement;
+  middleware: Middleware;
+  canTranslate?: boolean;
 }
 
 export default class ChatBubbles {
@@ -7464,7 +7474,35 @@ export default class ChatBubbles {
       });
     }
 
+    this.addMessageSpoilerOverlay({
+      mid: message.mid,
+      messageDiv,
+      middleware,
+      loadPromises,
+      canTranslate
+    });
+
     return ret;
+  }
+
+  private async addMessageSpoilerOverlay({mid, messageDiv, middleware, loadPromises, canTranslate}: AddMessageSpoilerOverlayParams) {
+    if(canTranslate && loadPromises) await Promise.all(loadPromises); // TranslatableMessage delays the moment when content appears in the DOM
+
+    if(!messageDiv.querySelector('.spoiler-text')) return;
+
+    const spoilerOverlay = createMessageSpoilerOverlay({
+      mid: mid,
+      messageElement: messageDiv,
+      animationGroup: this.chat.animationGroup
+    }, SolidJSHotReloadGuardProvider);
+
+    messageDiv.append(spoilerOverlay.element);
+    middleware.onDestroy(() => {
+      spoilerOverlay.dispose();
+    });
+
+    await Promise.all(loadPromises);
+    spoilerOverlay.controls.update(); // For chats that have custom theme differing from the one from settings
   }
 
   public canForward(message: Message.message | Message.messageService) {

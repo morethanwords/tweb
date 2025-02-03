@@ -629,6 +629,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
         appImManager.adjustChatPatternBackground();
 
+
         throttledSetToStorage(isCollapsed ? 0 : clampedWidth);
       },
       onReset: () => {
