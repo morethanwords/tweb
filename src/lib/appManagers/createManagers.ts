@@ -35,13 +35,13 @@ import ctx from '../../environment/ctx';
 import PeersStorage from '../storages/peers';
 import ThumbsStorage from '../storages/thumbs';
 import {NetworkerFactory} from '../mtproto/networkerFactory';
-import {RootScope} from '../rootScope';
+import rootScope, {RootScope} from '../rootScope';
 import {Authorizer} from '../mtproto/authorizer';
 import {DcConfigurator} from '../mtproto/dcConfigurator';
 import {TimeManager} from '../mtproto/timeManager';
 import {AppStoragesManager} from './appStoragesManager';
 import cryptoMessagePort from '../crypto/cryptoMessagePort';
-import appStateManager from './appStateManager';
+import AppStateManager from './appStateManager';
 import filterUnique from '../../helpers/array/filterUnique';
 import AppWebDocsManager from './appWebDocsManager';
 import AppPaymentsManager from './appPaymentsManager';
@@ -57,8 +57,15 @@ import AppStatisticsManager from './appStatisticsManager';
 import AppBusinessManager from './appBusinessManager';
 import AppTranslationsManager from './appTranslationsManager';
 import AppGifsManager from './appGifsManager';
+import {ActiveAccountNumber} from '../accounts/types';
+import {AppManager} from './manager';
 
-export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
+export default function createManagers(
+  appStoragesManager: AppStoragesManager,
+  stateManager: AppStateManager,
+  accountNumber: ActiveAccountNumber,
+  userId: UserId
+) {
   const managers = {
     appPeersManager: new AppPeersManager,
     appChatsManager: new AppChatsManager,
@@ -96,7 +103,7 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     dcConfigurator: new DcConfigurator,
     timeManager: new TimeManager,
     appStoragesManager: appStoragesManager,
-    appStateManager: appStateManager,
+    appStateManager: stateManager,
     appWebDocsManager: new AppWebDocsManager,
     appPaymentsManager: new AppPaymentsManager,
     appAttachMenuBotsManager: new AppAttachMenuBotsManager,
@@ -116,19 +123,21 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
   type T = typeof managers;
 
   for(const name in managers) {
-    const manager = managers[name as keyof T];
+    const manager = managers[name as keyof T] as AppManager;
     if(!manager) {
       continue;
     }
 
-    if((manager as AppMessagesManager).setManagers) {
-      (manager as AppMessagesManager).setManagers(managers as any);
-      delete (manager as AppMessagesManager).setManagers;
+    if(manager.setManagersAndAccountNumber) {
+      manager.setManagersAndAccountNumber(managers as any, accountNumber);
+      delete manager.setManagersAndAccountNumber;
     }
 
     // @ts-ignore
     ctx[name] = manager;
   }
+
+  Object.assign(managers.rootScope, {managers});
 
   const promises: Array<Promise<(() => void) | void> | void>[] = [];
   let names = Object.keys(managers) as (keyof T)[];

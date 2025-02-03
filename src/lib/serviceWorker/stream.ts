@@ -4,18 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ctx from '../../environment/ctx';
 import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tryPatchMp4 from '../../helpers/fixChromiumMp4';
 import debounce, {DebounceReturnType} from '../../helpers/schedulers/debounce';
 import pause from '../../helpers/schedulers/pause';
 import {InputFileLocation} from '../../layer';
+import {getCurrentAccountFromURL} from '../accounts/getCurrentAccountFromURL';
+import {ActiveAccountNumber} from '../accounts/types';
 import CacheStorageController from '../files/cacheStorage';
 import {DownloadOptions, MyUploadFile} from '../mtproto/apiFileManager';
 import {getMtprotoMessagePort, log, serviceMessagePort} from './index.service';
 import {ServiceRequestFilePartTaskPayload} from './serviceMessagePort';
 import timeout from './timeout';
+
+const ctx = self as any as ServiceWorkerGlobalScope;
 
 const deferredPromises: Map<MessagePort, {[taskId: string]: CancellablePromise<MyUploadFile>}> = new Map();
 const cacheStorage = new CacheStorageController('cachedStreamChunks');
@@ -28,7 +31,7 @@ const PRELOAD_SIZE = 20 * 1024 * 1024;
 const clearOldChunks = () => {
   return cacheStorage.timeoutOperation((cache) => {
     return cache.keys().then((requests) => {
-      const filtered: Map<StreamId, Request> = new Map();
+      const filtered: Map<DocId, Request> = new Map();
       const timestamp = Date.now() / 1000 | 0;
       for(const request of requests) {
         const match = request.url.match(/\/(\d+?)\?/);
@@ -72,7 +75,8 @@ setInterval(() => {
 }, 120e3);
 
 type StreamRange = [number, number];
-type StreamId = DocId;
+type StreamId = `${ActiveAccountNumber}-${DocId}`;
+
 const streams: Map<StreamId, Stream> = new Map();
 (ctx as any).streams = streams;
 class Stream {
@@ -84,6 +88,8 @@ class Stream {
   private inUse: number;
 
   constructor(private info: DownloadOptions) {
+    console.log('stream() info', info)
+
     this.id = Stream.getId(info);
     streams.set(this.id, this);
     this.inUse = 0;
@@ -96,7 +102,10 @@ class Stream {
   private destroy = () => {
     this.destroyDebounced.clearTimeout();
     streams.delete(this.id);
-    serviceMessagePort.invokeVoid('cancelFilePartRequests', this.id, getMtprotoMessagePort());
+    serviceMessagePort.invokeVoid('cancelFilePartRequests', {
+      docId: Stream.getDocId(this.info),
+      accountNumber: this.info.accountNumber
+    }, getMtprotoMessagePort());
   };
 
   public toggleInUse = (inUse: boolean) => {
@@ -108,10 +117,11 @@ class Stream {
 
   private async requestFilePartFromWorker(alignedOffset: number, limit: number, fromPreload = false) {
     const payload: ServiceRequestFilePartTaskPayload = {
-      docId: this.id,
+      docId: Stream.getDocId(this.info),
       dcId: this.info.dcId,
       offset: alignedOffset,
-      limit
+      limit,
+      accountNumber: this.info.accountNumber
     };
 
     const taskId = JSON.stringify(payload);
@@ -296,7 +306,11 @@ class Stream {
     return streams.get(this.getId(info)) ?? new Stream(info);
   }
 
-  private static getId(info: DownloadOptions) {
+  private static getId(info: DownloadOptions): StreamId {
+    return `${info.accountNumber}-${this.getDocId(info)}`;
+  }
+
+  private static getDocId(info: DownloadOptions) {
     return (info.location as InputFileLocation.inputDocumentFileLocation).id;
   }
 }
@@ -306,27 +320,38 @@ function parseInfo(params: string) {
 }
 
 export default function onStreamFetch(event: FetchEvent, params: string, search: string) {
-  const range = parseRange(event.request.headers.get('Range'));
-  const info = parseInfo(params);
-  const stream = Stream.get(info);
+  async function performRequest() {
+    const range = parseRange(event.request.headers.get('Range'));
+    const info = parseInfo(params);
 
-  if(search === '_crbug1250841') {
-    stream.patchChromiumMp4();
+    const client = await ctx.clients.get(event.clientId);
+    // Theoretically should never happen otherwise
+    if(client?.type === 'window') info.accountNumber = getCurrentAccountFromURL(client.url);
+
+    const stream = Stream.get(info);
+
+    if(search === '_crbug1250841') {
+      stream.patchChromiumMp4();
+    }
+
+    return stream.requestRange(range);
   }
 
   // log.debug('[stream]', url, offset, end);
 
   event.respondWith(Promise.race([
     timeout(45 * 1000),
-    stream.requestRange(range)
+    performRequest()
   ]));
 }
 
-export function toggleStreamInUse({url, inUse}: {url: string, inUse: boolean}) {
+export function toggleStreamInUse({url, inUse, accountNumber}: {url: string, inUse: boolean, accountNumber: ActiveAccountNumber}) {
   [url] = url.split('?');
   const needle = 'stream/';
   const index = url.indexOf(needle);
   const info = parseInfo(url.slice(index + needle.length));
+  info.accountNumber = accountNumber;
+  console.log('toggle stream in use', info);
   const stream = Stream.get(info);
   stream.toggleInUse(inUse);
 }

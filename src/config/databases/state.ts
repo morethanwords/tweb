@@ -5,36 +5,72 @@
  */
 
 import type {Database} from '.';
-import type {IDBIndex} from '../../lib/files/idb';
+import {ActiveAccountNumber} from '../../lib/accounts/types';
+import {MOUNT_CLASS_TO} from '../debug';
 
-const DATABASE_STATE: Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> = {
-  name: 'tweb',
+export type AccountDatabase = Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'>;
+export type CommonDatabase = Database<'session'>;
+
+export const getOldDatabaseState = (): AccountDatabase => ({
+  name: `tweb`,
   version: 7,
-  stores: [{
-    name: 'session'
-  }, {
-    name: 'stickerSets'
-  }, {
-    name: 'users'
-  }, {
-    name: 'chats'
-  }, {
-    name: 'dialogs'
-    // indexes: [
-    //   ...(new Array(20 + 2).fill(0)).map((_, idx) => {
-    //     const name = `index_${idx}`;
-    //     const index: IDBIndex = {
-    //       indexName: name,
-    //       keyPath: name,
-    //       objectParameters: {}
-    //     };
+  stores: [
+    {
+      name: 'session'
+    },
+    {
+      name: 'stickerSets'
+    },
+    {
+      name: 'users'
+    },
+    {
+      name: 'chats'
+    },
+    {
+      name: 'dialogs'
+    },
+    {
+      name: 'messages'
+    }
+  ]
+});
 
-    //     return index
-    //   })
-    // ]
-  }, {
-    name: 'messages'
-  }]
-};
+export const getCommonDatabaseState = (): Database<'session'> => ({
+  name: `tweb-common`,
+  version: 7,
+  stores: [
+    {
+      name: 'session'
+    }
+  ]
+});
 
-export default DATABASE_STATE;
+export const getDatabaseState = (
+  accountNumber: ActiveAccountNumber
+): Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> => ({
+  name: `tweb-account-${accountNumber}`,
+  version: 7,
+  stores: [
+    {
+      name: 'session'
+    },
+    {
+      name: 'stickerSets'
+    },
+    {
+      name: 'users'
+    },
+    {
+      name: 'chats'
+    },
+    {
+      name: 'dialogs'
+    },
+    {
+      name: 'messages'
+    }
+  ]
+});
+
+MOUNT_CLASS_TO.getDatabaseState = getDatabaseState;

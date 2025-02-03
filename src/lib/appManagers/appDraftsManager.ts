@@ -11,7 +11,6 @@
 
 import {MessageEntity, DraftMessage, MessagesSaveDraft, MessageReplyHeader, InputReplyTo, MessageMedia, WebPage, InputMedia} from '../../layer';
 import tsNow from '../../helpers/tsNow';
-import stateStorage from '../stateStorage';
 import assumeType from '../../helpers/assumeType';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
@@ -40,7 +39,7 @@ export class AppDraftsManager extends AppManager {
       }
     });
 
-    /* return  */stateStorage.get('drafts').then((drafts) => {
+    /* return  */this.appStateManager.storage.get('drafts').then((drafts) => {
       this.drafts = drafts || {};
     });
   }
@@ -118,7 +117,7 @@ export class AppDraftsManager extends AppManager {
       delete this.drafts[key];
     }
 
-    stateStorage.set({
+    this.appStateManager.storage.set({
       drafts: this.drafts
     });
 

@@ -23,6 +23,7 @@ export default class SuperStickerRenderer {
   private managers: AppManagers;
   private intersectionObserverInit: IntersectionObserverInit;
   private visibleRenderOptions: Partial<Parameters<typeof wrapSticker>[0]>;
+  private withLock: boolean
 
   constructor(options: {
     regularLazyLoadQueue: LazyLoadQueue;
@@ -30,7 +31,9 @@ export default class SuperStickerRenderer {
     managers: AppManagers;
     intersectionObserverInit?: SuperStickerRenderer['intersectionObserverInit'];
     visibleRenderOptions?: SuperStickerRenderer['visibleRenderOptions'];
+    withLock?: boolean
   }) {
+    options.withLock ??= true;
     safeAssign(this, options);
 
     this.lazyLoadQueue = new LazyLoadQueueRepeat(undefined, ({target, visible}) => {
@@ -135,7 +138,7 @@ export default class SuperStickerRenderer {
       onlyThumb: false,
       play: true,
       loop: true,
-      withLock: true,
+      withLock: this.withLock,
       middleware: element.middlewareHelper.get(),
       ...(this.visibleRenderOptions || {})
     }).then(({render}) => render);

@@ -23,6 +23,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
   onOpen,
   onClose,
   onCloseAfter,
+  onElementReady,
   onOpenBefore,
   listenerSetter: attachListenerSetter,
   middleware,
@@ -37,6 +38,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
   onClose?: () => any,
   onCloseAfter?: () => any,
   onOpenBefore?: () => any,
+  onElementReady?: (element: HTMLElement) => void,
   listenerSetter?: ListenerSetter,
   middleware?: Middleware,
   listenForClick?: boolean
@@ -127,6 +129,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
     _element.classList.add('contextmenu');
 
     await onOpenBefore?.();
+    onElementReady?.(_element);
 
     appendTo.append(_element);
 

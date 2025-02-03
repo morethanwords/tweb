@@ -18,6 +18,7 @@ import fixBase64String from '../helpers/fixBase64String';
 import bytesCmp from '../helpers/bytes/bytesCmp';
 import bytesToBase64 from '../helpers/bytes/bytesToBase64';
 import textToSvgURL from '../helpers/textToSvgURL';
+import AccountController from '../lib/accounts/accountController';
 
 const FETCH_INTERVAL = 3;
 
@@ -61,7 +62,7 @@ const onFirstMount = async() => {
   const QRCodeStyling = results[0].default;
 
   let stop = false;
-  rootScope.addEventListener('user_auth', () => {
+  rootScope.addEventListener('user_auth', (auth) => {
     stop = true;
     cachedPromise = null;
   }, {once: true});
@@ -71,10 +72,12 @@ const onFirstMount = async() => {
 
   const iterate = async(isLoop: boolean) => {
     try {
+      const userIds = await AccountController.getUserIds();
       let loginToken = await rootScope.managers.apiManager.invokeApi('auth.exportLoginToken', {
         api_id: App.id,
         api_hash: App.hash,
-        except_ids: []
+        except_ids: userIds.map(userId => userId.toUserId())
+        // except_ids: []
       }, {ignoreErrors: true});
 
       if(loginToken._ === 'auth.loginTokenMigrateTo') {

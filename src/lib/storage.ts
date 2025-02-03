@@ -224,8 +224,12 @@ export default class AppStorage<
     } */
   }
 
-  public getAll() {
-    return this.storage.getAll().catch(() => []);
+  public getAll(): Promise<any[]> {
+    return this.storage.getAll().catch(() => [] as any[]);
+  }
+
+  public getAllEntries() {
+    return this.storage.getAllEntries().catch(() => [] as IDBStorage.Entries);
   }
 
   public set(obj: Partial<Storage>, onlyLocal = false) {
@@ -293,6 +297,10 @@ export default class AppStorage<
     return this.storage.clear().catch(noop);
   }
 
+  public close() {
+    return this.storage.close();
+  }
+
   public static toggleStorage(enabled: boolean, clearWrite: boolean) {
     return Promise.all(this.STORAGES.map((storage) => {
       storage.useStorage = enabled;
@@ -306,7 +314,6 @@ export default class AppStorage<
         storage.keysToDelete.clear();
         storage.getPromises.forEach((deferred) => deferred.resolve(undefined));
         storage.getPromises.clear();
-        return storage.clear(true);
       } else {
         return storage.set(storage.cache);
       }

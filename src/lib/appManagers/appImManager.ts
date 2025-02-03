@@ -21,7 +21,6 @@ import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
 import {doubleRaf} from '../../helpers/schedulers';
 import useHeavyAnimationCheck, {dispatchHeavyAnimationEvent} from '../../hooks/useHeavyAnimationCheck';
-import stateStorage from '../stateStorage';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
@@ -61,14 +60,14 @@ import ChatBackgroundPatternRenderer from '../../components/chat/patternRenderer
 import {IS_CHROMIUM, IS_FIREFOX} from '../../environment/userAgent';
 import compareVersion from '../../helpers/compareVersion';
 import {AppManagers} from './managers';
-import uiNotificationsManager from './uiNotificationsManager';
+import {UiNotificationsManager} from './uiNotificationsManager';
 import appMediaPlaybackController from '../../components/appMediaPlaybackController';
 import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
 import wrapRichText from '../richTextProcessor/wrapRichText';
 import wrapUrl from '../richTextProcessor/wrapUrl';
 import getUserStatusString from '../../components/wrappers/getUserStatusString';
 import getChatMembersString from '../../components/wrappers/getChatMembersString';
-import {STATE_INIT} from '../../config/state';
+import {STATE_INIT, SETTINGS_INIT} from '../../config/state';
 import CacheStorageController from '../files/cacheStorage';
 import themeController from '../../helpers/themeController';
 import overlayCounter from '../../helpers/overlayCounter';
@@ -131,6 +130,8 @@ import PopupPremium from '../../components/popups/premium';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import {openWebAppInAppBrowser} from '../../components/browser';
 import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
+import stateStorage from '../stateStorageInstance';
+import {createProxiedManagersForAccount} from './getProxiedManagers';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -147,8 +148,9 @@ export type ChatSetPeerOptions = {
   commentId?: number,
   type?: ChatType,
   mediaTimestamp?: number,
-  text?: string
+  text?: string,
   entities?: MessageEntity[],
+  call?: string | number,
   isDeleting?: boolean
 } & Partial<ChatSearchKeys>;
 
@@ -209,19 +211,14 @@ export class AppImManager extends EventListenerBase<{
     this.managers = managers;
     internalLinkProcessor.construct(managers);
 
-    const {
-      apiUpdatesManager
-    } = managers;
-    apiUpdatesManager.attach(I18n.lastRequestedLangCode);
+    UiNotificationsManager.constructAndStartAll();
 
     appMediaPlaybackController.construct(managers);
-    uiNotificationsManager.construct(managers);
-    uiNotificationsManager.start();
 
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
 
     this.backgroundPromises = {};
-    STATE_INIT.settings.themes.forEach((theme) => {
+    SETTINGS_INIT.themes.forEach((theme) => {
       const themeSettings = theme.settings;
       if(!themeSettings) {
         return;
@@ -275,6 +272,11 @@ export class AppImManager extends EventListenerBase<{
       this.dispatchEvent('premium_toggle', isPremium);
     };
     rootScope.addEventListener('premium_toggle', onPremiumToggle);
+
+    rootScope.addEventListener('background_change', () => {
+      this.applyCurrentTheme({noSetTheme: true});
+    });
+
     onPremiumToggle(rootScope.premium);
     this.managers.rootScope.getPremium().then(onPremiumToggle);
 
@@ -575,13 +577,16 @@ export class AppImManager extends EventListenerBase<{
     });
 
     apiManagerProxy.addEventListener('notificationBuild', async(options) => {
-      const isForum = await this.managers.appPeersManager.isForum(options.message.peerId);
+      const {accountNumber} = options;
+      const managers = createProxiedManagersForAccount(accountNumber);
+      const isForum = await managers.appPeersManager.isForum(options.message.peerId);
       const threadId = getMessageThreadId(options.message, isForum);
+
       if(this.chat.peerId === options.message.peerId && this.chat.threadId === threadId && !idleController.isIdle) {
         return;
       }
 
-      uiNotificationsManager.buildNotificationQueue(options);
+      UiNotificationsManager.byAccount[accountNumber]?.buildNotificationQueue(options);
     });
 
     this.addEventListener('peer_changed', async({peerId}) => {
@@ -1317,7 +1322,8 @@ export class AppImManager extends EventListenerBase<{
               this.op({
                 peer,
                 lastMsgId: messageId,
-                threadId
+                threadId,
+                call: params.call
               });
             });
             break;
@@ -1397,6 +1403,11 @@ export class AppImManager extends EventListenerBase<{
         threadId = options.threadId = lastMsgId;
         lastMsgId = options.lastMsgId = undefined;
       }
+    }
+
+    if(options.call) {
+      const call = await rootScope.managers.appCallsManager.getCall(options.call);
+      rootScope.dispatchEvent('call_update', call);
     }
 
     if(threadId) {
@@ -1640,7 +1651,7 @@ export class AppImManager extends EventListenerBase<{
 
     const slug = (theme.settings?.wallpaper as WallPaper.wallPaper)?.slug;
     if(slug) {
-      const defaultTheme = STATE_INIT.settings.themes.find((t) => t.name === theme.name);
+      const defaultTheme = SETTINGS_INIT.themes.find((t) => t.name === theme.name);
       // const isDefaultBackground = theme.background.blur === defaultTheme.background.blur &&
       // slug === defaultslug;
 
@@ -2166,6 +2177,11 @@ export class AppImManager extends EventListenerBase<{
 
   public updateStatus() {
     return this.managers.appUsersManager.updateMyOnlineStatus(this.offline);
+  }
+
+  public goOffline() {
+    this.offline = true;
+    this.updateStatus();
   }
 
   private createNewChat() {

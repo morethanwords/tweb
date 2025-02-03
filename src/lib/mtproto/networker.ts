@@ -41,6 +41,8 @@ import pause from '../../helpers/schedulers/pause';
 import {getEnvironment} from '../../environment/utils';
 import {TimeManager} from './timeManager';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {ActiveAccountNumber} from '../accounts/types';
+import AccountController from '../accounts/accountController';
 
 // console.error('networker included!', new Error().stack);
 
@@ -209,6 +211,7 @@ export default class MTPNetworker {
     private authKey: Uint8Array,
     private authKeyId: Uint8Array,
     serverSalt: Uint8Array,
+    private accountNumber: ActiveAccountNumber,
     options: InvokeApiOptions = {}
   ) {
     this.authKeyUint8 = convertToUint8Array(this.authKey);
@@ -642,7 +645,7 @@ export default class MTPNetworker {
     log('check', this.longPollPending);
 
     const isClean = this.cleanupSent();
-    sessionStorage.get('dc').then((baseDcId) => {
+    this.getBaseDcId().then((baseDcId) => {
       if(isClean && (
         baseDcId !== this.dcId ||
           (this.sleepAfter && Date.now() > this.sleepAfter)
@@ -849,6 +852,11 @@ export default class MTPNetworker {
     }
 
     return promise;
+  }
+
+  private async getBaseDcId() {
+    const accountData = await AccountController.get(this.accountNumber);
+    return accountData?.dcId;
   }
 
   public attachPromise(promise: Promise<any>, message: MTMessage) {
@@ -1523,7 +1531,7 @@ export default class MTPNetworker {
   private applyServerSalt(newServerSalt: string) {
     const serverSalt = longToBytes(newServerSalt);
 
-    sessionStorage.set({
+    AccountController.update(this.accountNumber, {
       ['dc' + this.dcId + '_server_salt']: bytesToHex(serverSalt)
     });
 
@@ -1871,7 +1879,7 @@ export default class MTPNetworker {
         this.processMessageAck(message.first_msg_id);
         this.applyServerSalt(message.server_salt);
 
-        sessionStorage.get('dc').then((baseDcId) => {
+        this.getBaseDcId().then((baseDcId) => {
           if(baseDcId === this.dcId && !this.isFileNetworker) {
             this.networkerFactory.updatesProcessor?.(message);
           }

@@ -336,7 +336,8 @@ export class AppPeersManager extends AppManager {
 
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
       name: 'peers',
-      value: peers
+      value: peers,
+      accountNumber: this.getAccountNumber()
     }, port);
   }
 }

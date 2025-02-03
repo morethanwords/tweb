@@ -1,5 +1,6 @@
 import {AuthSentCode} from './layer';
 import type {ApiError} from './lib/mtproto/apiManager';
+import {ActiveAccountNumber} from './lib/sessionStorage';
 
 export type DcId = number;
 export type TrueDcId = 1 | 2 | 3 | 4 | 5;
@@ -8,6 +9,7 @@ export type DcServerSalt = `dc${TrueDcId}_server_salt`;
 
 export type InvokeApiOptions = Partial<{
   dcId: DcId,
+  accountNumber: ActiveAccountNumber,
   floodMaxTimeout: number,
   noErrorBox: true,
   fileUpload: true,

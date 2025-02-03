@@ -10,7 +10,7 @@
  */
 
 import type {UserAuth} from './mtproto_config';
-import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions} from '../../types';
+import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions, TrueDcId} from '../../types';
 import type {MethodDeclMap} from '../../layer';
 import type TcpObfuscated from './transports/tcpObfuscated';
 import sessionStorage from '../sessionStorage';
@@ -31,10 +31,14 @@ import isObject from '../../helpers/object/isObject';
 import pause from '../../helpers/schedulers/pause';
 import ApiManagerMethods from './api_methods';
 import {getEnvironment} from '../../environment/utils';
-import toggleStorages from '../../helpers/toggleStorages';
 import tsNow from '../../helpers/tsNow';
 import transportController from './transports/controller';
 import MTTransport from './transports/transport';
+import AccountController from '../accounts/accountController';
+import {AppStoragesManager} from '../appManagers/appStoragesManager';
+import commonStateStorage from '../commonStateStorage';
+import CacheStorageController from '../files/cacheStorage';
+import {ActiveAccountNumber} from '../accounts/types';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -238,7 +242,8 @@ export class ApiManager extends ApiManagerMethods {
       return this.baseDcId;
     }
 
-    const baseDcId = await sessionStorage.get('dc');
+    const accountData = await AccountController.get(this.getAccountNumber());
+    const baseDcId = accountData?.dcId;
     if(!this.baseDcId) {
       if(!baseDcId) {
         this.setBaseDcId(App.baseDcId);
@@ -262,8 +267,10 @@ export class ApiManager extends ApiManagerMethods {
       userAuth.dcID = baseDcId;
     }
 
-    sessionStorage.set({
-      user_auth: userAuth
+    AccountController.update(this.getAccountNumber(), {
+      date:  (userAuth as UserAuth).date,
+      userId: (userAuth as UserAuth).id,
+      dcId: (userAuth as UserAuth).dcID as TrueDcId
     });
 
     // this.telegramMeNotify(true);
@@ -279,40 +286,65 @@ export class ApiManager extends ApiManagerMethods {
 
     this.baseDcId = dcId;
 
-    sessionStorage.set({
-      dc: this.baseDcId
+    AccountController.update(this.getAccountNumber(), {
+      dcId: this.baseDcId as TrueDcId
     });
   }
 
-  public async logOut() {
+  public async logOut(migrateAccountTo?: ActiveAccountNumber) {
     if(this.loggingOut) {
       return;
     }
 
     this.loggingOut = true;
-    const storageKeys: Array<DcAuthKey> = [];
 
-    const prefix = 'dc';
-    for(let dcId = 1; dcId <= 5; dcId++) {
-      storageKeys.push(prefix + dcId + '_auth_key' as any);
-    }
-
-    // WebPushApiManager.forceUnsubscribe(); // WARNING // moved to worker's master
-    const storageResult = await Promise.all(storageKeys.map((key) => sessionStorage.get(key)));
+    const totalAccounts = await AccountController.getTotalAccounts();
+    const accountNumber = this.getAccountNumber();
+    const accountData = await AccountController.get(accountNumber);
 
     const logoutPromises: Promise<any>[] = [];
-    for(let i = 0; i < storageResult.length; i++) {
-      if(storageResult[i]) {
-        logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId: (i + 1) as DcId, ignoreErrors: true}));
+
+    for(let dcId = 1; dcId <= 5; dcId++) {
+      const key = `dc${dcId as TrueDcId}_auth_key` as const;
+      if(accountData?.[key]) {
+        logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId, ignoreErrors: true}));
       }
     }
 
     const clear = async() => {
       this.baseDcId = undefined;
       // this.telegramMeNotify(false);
-      await toggleStorages(false, true);
+      if(totalAccounts === 1 && accountNumber === 1 && !migrateAccountTo) {
+        await Promise.all([
+          (async() => {
+            const keys: Parameters<typeof sessionStorage['delete']>[0][] = [
+              'account1',
+              'dc',
+              'server_time_offset',
+              'xt_instance',
+              'user_auth',
+              // 'state_id',
+              'k_build',
+              'auth_key_fingerprint'
+            ];
+            for(let i = 1; i <= 5; ++i) {
+              keys.push(`dc${i as TrueDcId}_server_salt`);
+              keys.push(`dc${i as TrueDcId}_auth_key`);
+              keys.push(`dc${i as TrueDcId}_hash`); // only for WebA
+            }
+
+            return Promise.all(keys.map((key) => sessionStorage.delete(key)));
+          })(),
+          AppStoragesManager.clearAllStoresForAccount(1),
+          commonStateStorage.clear(),
+          CacheStorageController.deleteAllStorages()
+        ]);
+      } else {
+        await AccountController.shiftAccounts(accountNumber);
+        await AppStoragesManager.shiftStorages(accountNumber);
+      }
       IDB.closeDatabases();
-      this.rootScope.dispatchEvent('logging_out');
+      this.rootScope.dispatchEvent('logging_out', {accountNumber, migrateTo: migrateAccountTo});
     };
 
     setTimeout(clear, 1e3);
@@ -387,8 +419,10 @@ export class ApiManager extends ApiManagerMethods {
     const ak: DcAuthKey = `dc${dcId}_auth_key` as any;
     const ss: DcServerSalt = `dc${dcId}_server_salt` as any;
 
+    console.log('this.getAccountNumber()', this.getAccountNumber())
+
     let transport = this.chooseServer(dcId, connectionType, transportType);
-    return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map((key) => sessionStorage.get(key)))
+    return this.gettingNetworkers[getKey] = AccountController.get(this.getAccountNumber()).then(accountData => [accountData?.[ak], accountData?.[ss]] as const)
     .then(async([authKeyHex, serverSaltHex]) => {
       let networker: MTPNetworker, error: any;
       if(authKeyHex?.length === 512) {
@@ -408,13 +442,7 @@ export class ApiManager extends ApiManagerMethods {
           authKeyHex = bytesToHex(auth.authKey);
           serverSaltHex = bytesToHex(auth.serverSalt);
 
-          if(dcId === App.baseDcId) {
-            sessionStorage.set({
-              auth_key_fingerprint: authKeyHex.slice(0, 8)
-            });
-          }
-
-          sessionStorage.set({
+          AccountController.update(this.getAccountNumber(), {
             [ak]: authKeyHex,
             [ss]: serverSaltHex
           });
@@ -603,11 +631,10 @@ export class ApiManager extends ApiManagerMethods {
 
         if(error.code === 401 && this.baseDcId === dcId) {
           if(error.type !== 'SESSION_PASSWORD_NEEDED') {
-            sessionStorage.delete('dc')
-            sessionStorage.delete('user_auth'); // ! возможно тут вообще не нужно это делать, но нужно проверить случай с USER_DEACTIVATED (https://core.telegram.org/api/errors)
-            // this.telegramMeNotify(false);
+            AccountController.update(this.getAccountNumber(), {
+              dcId: undefined
+            });
           }
-
           throw error;
         } else if(error.code === 401 && this.baseDcId && dcId !== this.baseDcId) {
           if(this.cachedExportPromise[dcId] === undefined) {

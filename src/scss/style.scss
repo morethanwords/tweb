@@ -386,6 +386,7 @@
 @import "tgico";
 @import "fonts/roboto";
 @import "fonts/robotoMono";
+@import "fonts/mediaEditorFonts";
 @import "partials/input";
 @import "partials/button";
 @import "partials/table";
@@ -450,6 +451,7 @@
 @import "partials/similarChannels";
 @import "partials/tooltip";
 @import "partials/topbarSearch";
+@import "partials/mediaEditor";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -488,6 +490,7 @@
 @import "partials/popups/deleteMegagroupMessages";
 @import "partials/popups/stars";
 @import "partials/popups/makePaid";
+@import "partials/popups/accountsLimit";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -554,6 +557,12 @@ body {
   background-color: var(--body-background-color);
   color: var(--primary-text-color);
   user-select: none;
+
+  transition: background-color 0.2s;
+
+  &.has-auth-pages {
+    background-color: var(--surface-color);
+  }
 }
 
 

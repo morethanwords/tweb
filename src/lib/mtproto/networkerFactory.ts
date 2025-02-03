@@ -38,7 +38,7 @@ export class NetworkerFactory extends AppManager {
 
   public getNetworker(dcId: number, authKey: Uint8Array, authKeyId: Uint8Array, serverSalt: Uint8Array, options: InvokeApiOptions) {
     // console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcId, options);
-    const networker = new MTPNetworker(this, this.timeManager, dcId, authKey, authKeyId, serverSalt, options);
+    const networker = new MTPNetworker(this, this.timeManager, dcId, authKey, authKeyId, serverSalt, this.getAccountNumber(), options);
     this.networkers.push(networker);
     return networker;
   }

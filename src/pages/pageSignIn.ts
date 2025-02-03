@@ -6,7 +6,6 @@
 
 import {putPreloader} from '../components/putPreloader';
 import Page from './page';
-import CheckboxField from '../components/checkboxField';
 import Button from '../components/button';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import App from '../config/app';
@@ -19,15 +18,15 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import toggleDisability from '../helpers/dom/toggleDisability';
-import sessionStorage from '../lib/sessionStorage';
-import {DcAuthKey} from '../types';
+import {TrueDcId} from '../types';
 import placeCaretAtEnd from '../helpers/dom/placeCaretAtEnd';
 import {HelpCountry, HelpCountryCode} from '../layer';
-import stateStorage from '../lib/stateStorage';
 import rootScope from '../lib/rootScope';
 import TelInputField from '../components/telInputField';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import CountryInputField from '../components/countryInputField';
+import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
+import AccountController from '../lib/accounts/accountController';
+import commonStateStorage from '../lib/commonStateStorage';
 
 // import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -111,29 +110,6 @@ const onFirstMount = () => {
   /* telEl.addEventListener('focus', function(this: typeof telEl, e) {
     this.removeAttribute('readonly'); // fix autocomplete
   });*/
-
-  const signedCheckboxField = new CheckboxField({
-    text: 'Login.KeepSigned',
-    name: 'keepSession',
-    withRipple: true,
-    checked: true
-  });
-
-  signedCheckboxField.input.addEventListener('change', () => {
-    const keepSigned = signedCheckboxField.checked;
-    rootScope.managers.appStateManager.pushToState('keepSigned', keepSigned);
-
-    apiManagerProxy.toggleStorages(keepSigned, true);
-  });
-
-  apiManagerProxy.getState().then((state) => {
-    if(!stateStorage.isAvailable()) {
-      signedCheckboxField.checked = false;
-      signedCheckboxField.label.classList.add('checkbox-disabled');
-    } else {
-      signedCheckboxField.checked = state.keepSigned;
-    }
-  });
 
   btnNext = Button('btn-primary btn-color-primary', {text: 'Login.Next'});
   btnNext.style.visibility = 'hidden';
@@ -221,7 +197,7 @@ const onFirstMount = () => {
     }); */
   });
 
-  inputWrapper.append(countryInputField.container, telInputField.container, signedCheckboxField.label, btnNext, btnQr);
+  inputWrapper.append(countryInputField.container, telInputField.container, btnNext, btnQr);
 
   const h4 = document.createElement('h4');
   h4.classList.add('text-center');
@@ -235,7 +211,7 @@ const onFirstMount = () => {
 
   const tryAgain = () => {
     rootScope.managers.apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
-      const langPack = stateStorage.getFromCache('langPack');
+      const langPack = commonStateStorage.getFromCache('langPack');
       if(langPack && !langPack.countries?.hash) {
         I18n.getLangPack(langPack.lang_code).then(() => {
           telInputField.simulateInputEvent();
@@ -262,8 +238,9 @@ const onFirstMount = () => {
           const dcId = _dcs.shift();
           if(!dcId) return;
 
-          const dbKey: DcAuthKey = `dc${dcId}_auth_key` as any;
-          const key = await sessionStorage.get(dbKey);
+          const accountData = await AccountController.get(getCurrentAccount());
+          const key = accountData?.[`dc${dcId as TrueDcId}_auth_key`];
+
           if(key) {
             return g();
           }
