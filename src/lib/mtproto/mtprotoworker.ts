@@ -37,7 +37,7 @@ import {makeWorkerURL} from '../../helpers/setWorkerProxy';
 import ServiceWorkerURL from '../../../sw?worker&url';
 import setDeepProperty, {splitDeepPath} from '../../helpers/object/setDeepProperty';
 import getThumbKey from '../storages/utils/thumbs/getThumbKey';
-import {NULL_PEER_ID, THUMB_TYPE_FULL} from './mtproto_config';
+import {NULL_PEER_ID, TEST_NO_STREAMING, THUMB_TYPE_FULL} from './mtproto_config';
 import generateEmptyThumb from '../storages/utils/thumbs/generateEmptyThumb';
 import getStickerThumbKey from '../storages/utils/thumbs/getStickerThumbKey';
 import callbackify from '../../helpers/callbackify';
@@ -46,8 +46,6 @@ import {MTAppConfig} from './appConfig';
 import {setAppStateSilent} from '../../stores/appState';
 import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 import {reconcilePeer, reconcilePeers} from '../../stores/peers';
-
-const TEST_NO_STREAMING = false;
 
 export type Mirrors = {
   state: State,
