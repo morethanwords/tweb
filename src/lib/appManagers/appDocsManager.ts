@@ -77,7 +77,7 @@ export class AppDocsManager extends AppManager {
     }
   };
 
-  public saveDoc(doc: Document, context?: ReferenceContext): MyDocument {
+  public saveDoc(doc: Document, context?: ReferenceContext, supportsHlsStreaming?: boolean): MyDocument {
     if(!doc || doc._ === 'documentEmpty') {
       return;
     }
@@ -246,8 +246,13 @@ export class AppDocsManager extends AppManager {
       doc.supportsStreaming = true;
 
       const cacheContext = this.thumbsStorage.getCacheContext(doc);
-      if(!cacheContext.url) {
-        this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc), 0);
+
+      /**
+       * Need to override when supportsHlsStreaming=true as for some reason the message.media
+       * comes first without alt_documents, and later comes with them
+       */
+      if(!cacheContext.url || supportsHlsStreaming) {
+        this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc, {supportsHlsStreaming}), 0);
       }
     } else {
       doc.supportsStreaming = false;

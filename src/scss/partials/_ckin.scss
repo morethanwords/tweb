@@ -162,8 +162,11 @@
   }
 
   &.is-playing {
-    &:not(.show-controls) {
+    &:not(.show-controls):not(:has(.speed-drag-handler__speed-tip--visible)) {
       cursor: none;
+    }
+    &:has(.speed-drag-handler__speed-tip--visible) {
+      cursor: pointer;
     }
   }
 

@@ -368,6 +368,8 @@ export class AppMessagesManager extends AppManager {
 
   private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
 
+  public altDocsByMainMediaDocument: Map<string, Document.document[]> = new Map();
+
   protected after() {
     this.clear(true);
 
@@ -4167,8 +4169,15 @@ export class AppMessagesManager extends AppManager {
           unsupported = true;
         } else {
           const originalDoc = media.document;
-          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext); // 11.04.2020 warning
-          media.alt_document &&= this.appDocsManager.saveDoc(media.alt_document, mediaContext); // 11.04.2020 warning
+
+          const supportsHlsStreaming = (media.alt_documents || []).some(doc => isDocumentHlsQualityFile(doc));
+
+          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext, supportsHlsStreaming); // 11.04.2020 warning
+          // ??? 11.04.2020 warning
+          media.alt_documents &&= media.alt_documents?.map(altDoc =>
+            this.appDocsManager.saveDoc(altDoc, mediaContext)).filter(Boolean) || []; // idk why but sometimes there is [undefined] in the alt_documents
+
+          if(media.alt_documents) this.altDocsByMainMediaDocument.set(media.document.id.toString(), media.alt_documents as Document.document[]);
 
           if(!media.document && originalDoc._ !== 'documentEmpty') {
             unsupported = true;
@@ -4277,6 +4286,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public reportMessages(peerId: PeerId, mids: number[], reason: ReportReason['_'], message?: string) {
+    // TODO: Update this after migrating to layer 191
     return this.apiManager.invokeApiSingle('messages.report', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       id: mids.map((mid) => getServerMessageId(mid)),
@@ -4284,7 +4294,7 @@ export class AppMessagesManager extends AppManager {
         _: reason
       },
       message
-    });
+    } as any);
   }
 
   public async unblockBot(botId: BotId) {
@@ -8601,6 +8611,10 @@ export class AppMessagesManager extends AppManager {
     }
 
     return this.factCheckBatcher.addToBatch(peerId, mid);
+  }
+
+  public getAltDocsByDocument(doc: Document.document) {
+    return this.altDocsByMainMediaDocument.get(doc.id.toString());
   }
 }
 

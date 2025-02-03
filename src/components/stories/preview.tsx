@@ -145,7 +145,7 @@ export const wrapStoryMedia = (props: {
 
     video: (messageMedia: MessageMedia.messageMediaDocument) => {
       const document = messageMedia.document as Document.document;
-      const altDocument = messageMedia.alt_document as Document.document;
+      const altDocument = messageMedia.alt_documents?.[0] as Document.document; // Supposedly there is only one alt document for stories
       const result = wrapVideo({
         ...props,
         container: div,

@@ -67,7 +67,7 @@ export function getFileNameByLocation(location: InputFileLocation | InputWebFile
   return str + (options?.downloadId ? '_download' : '') + (ext ? '.' + ext : ext);
 }
 
-export type FileURLType = 'photo' | 'thumb' | 'document' | 'stream' | 'download';
+export type FileURLType = 'photo' | 'thumb' | 'document' | 'stream' | 'download' | 'hls';
 export function getFileURL(type: FileURLType, options: DownloadOptions) {
   // console.log('getFileURL', location);
   // const perf = performance.now();

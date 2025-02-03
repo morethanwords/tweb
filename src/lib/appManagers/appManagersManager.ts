@@ -190,6 +190,27 @@ export class AppManagersManager {
             const {request, dcId, accountNumber} = payload;
             return managersByAccount[accountNumber].appGroupCallsManager.fetchRtmpPart(request, dcId);
           });
+        },
+        requestDoc(payload) {
+          return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
+            const {docId, accountNumber} = payload;
+            return managersByAccount[accountNumber].appDocsManager.getDoc(docId);
+          });
+        },
+        downloadDoc(payload) {
+          return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
+            const {docId, accountNumber} = payload;
+            const appDocsManager = managersByAccount[accountNumber].appDocsManager;
+            const doc = appDocsManager.getDoc(docId);
+            return appDocsManager.downloadDoc(doc);
+          });
+        },
+        requestAltDocsByDoc(payload) {
+          return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
+            const {docId, accountNumber} = payload;
+            const {appMessagesManager} = managersByAccount[accountNumber];
+            return appMessagesManager.altDocsByMainMediaDocument.get(docId.toString());
+          });
         }
       });
     }

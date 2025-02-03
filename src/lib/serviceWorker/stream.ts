@@ -396,7 +396,7 @@ const STREAM_CHUNK_MIDDLE_LIMIT = 512 * 1024;
 const STREAM_CHUNK_UPPER_LIMIT = 1024 * 1024;
 const SMALLEST_CHUNK_LIMIT = 512 * 4;
 
-function parseRange(header: string): StreamRange {
+export function parseRange(header: string): StreamRange {
   if(!header) return [0, 0];
   const [, chunks] = header.split('=');
   const ranges = chunks.split(', ');

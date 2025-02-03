@@ -17,7 +17,6 @@ import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGu
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 
 import Scrollable from '../../scrollable2';
-import Space from '../../mediaEditor/space';
 import Animated from '../../../helpers/solid/animations';
 import {IconTsx} from '../../iconTsx';
 import ripple from '../../ripple';

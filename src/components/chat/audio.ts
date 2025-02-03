@@ -25,7 +25,7 @@ import Icon from '../icon';
 import {replaceButtonIcon} from '../button';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 import toHHMMSS from '../../helpers/string/toHHMMSS';
-import {PlaybackRateButton} from '../../lib/mediaPlayer';
+import {PlaybackRateButton} from '../../components/playbackRateButton';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;

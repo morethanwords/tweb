@@ -4,98 +4,37 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appMediaPlaybackController from '../components/appMediaPlaybackController';
-import {IS_APPLE_MOBILE, IS_MOBILE} from '../environment/userAgent';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import ListenerSetter, {Listener} from '../helpers/listenerSetter';
-import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '../components/buttonMenu';
-import ButtonMenuToggle, {ButtonMenuToggleHandler} from '../components/buttonMenuToggle';
-import ControlsHover from '../helpers/dom/controlsHover';
-import {addFullScreenListener, cancelFullScreen, getFullScreenElement, isFullScreen, requestFullScreen} from '../helpers/dom/fullScreen';
-import toHHMMSS from '../helpers/string/toHHMMSS';
-import MediaProgressLine from '../components/mediaProgressLine';
-import VolumeSelector from '../components/volumeSelector';
-import debounce from '../helpers/schedulers/debounce';
-import overlayCounter from '../helpers/overlayCounter';
-import onMediaLoad from '../helpers/onMediaLoad';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import safePlay from '../helpers/dom/safePlay';
-import ButtonIcon from '../components/buttonIcon';
-import Button from '../components/button';
-import Icon from '../components/icon';
-import setCurrentTime from '../helpers/dom/setCurrentTime';
-import {i18n} from './langPack';
-import {numberThousandSplitterForWatching} from '../helpers/number/numberThousandSplitter';
-import createCanvasStream from '../helpers/canvas/createCanvasStream';
-import simulateEvent from '../helpers/dom/dispatchEvent';
-import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
+import appMediaPlaybackController from '../../components/appMediaPlaybackController';
+import {IS_APPLE_MOBILE, IS_MOBILE} from '../../environment/userAgent';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import ListenerSetter, {Listener} from '../../helpers/listenerSetter';
+import {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
+import ButtonMenuToggle from '../../components/buttonMenuToggle';
+import ControlsHover from '../../helpers/dom/controlsHover';
+import {addFullScreenListener, cancelFullScreen, getFullScreenElement, isFullScreen, requestFullScreen} from '../../helpers/dom/fullScreen';
+import toHHMMSS from '../../helpers/string/toHHMMSS';
+import MediaProgressLine from '../../components/mediaProgressLine';
+import VolumeSelector from '../../components/volumeSelector';
+import debounce from '../../helpers/schedulers/debounce';
+import overlayCounter from '../../helpers/overlayCounter';
+import onMediaLoad from '../../helpers/onMediaLoad';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import safePlay from '../../helpers/dom/safePlay';
+import ButtonIcon from '../../components/buttonIcon';
+import Button from '../../components/button';
+import Icon from '../../components/icon';
+import setCurrentTime from '../../helpers/dom/setCurrentTime';
+import {i18n} from '../langPack';
+import {numberThousandSplitterForWatching} from '../../helpers/number/numberThousandSplitter';
+import createCanvasStream from '../../helpers/canvas/createCanvasStream';
+import simulateEvent from '../../helpers/dom/dispatchEvent';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {createQualityLevelsSwitchButton} from './qualityLevelsSwitchButton';
+import {createPlaybackRateButton} from './playbackRateButton';
+import {createSpeedDragHandler} from './speedDragHandler';
+import {VideoTimestamp} from '../../components/appMediaViewerBase';
 
-export const PlaybackRateButton = (options: {
-  onPlaybackRateMenuToggle?: (open: boolean) => void,
-  direction: string
-}) => {
-  const PLAYBACK_RATES = [0.5, 1, 1.5, 2];
-  const PLAYBACK_RATES_ICONS: Icon[] = ['playback_05', 'playback_1x', 'playback_15', 'playback_2x'];
-  const button = ButtonIcon(` btn-menu-toggle`, {noRipple: true});
-
-  const setIcon = () => {
-    const playbackRateButton = button;
-
-    let idx = PLAYBACK_RATES.indexOf(appMediaPlaybackController.playbackRate);
-    if(idx === -1) idx = PLAYBACK_RATES.indexOf(1);
-
-    const icon = Icon(PLAYBACK_RATES_ICONS[idx]);
-    if(playbackRateButton.firstElementChild) {
-      playbackRateButton.firstElementChild.replaceWith(icon);
-    } else {
-      playbackRateButton.append(icon);
-    }
-  };
-
-  const setBtnMenuToggle = () => {
-    const buttons = PLAYBACK_RATES.map((rate, idx) => {
-      const buttonOptions: Parameters<typeof ButtonMenuSync>[0]['buttons'][0] = {
-        // icon: PLAYBACK_RATES_ICONS[idx],
-        regularText: rate + 'x',
-        onClick: () => {
-          appMediaPlaybackController.playbackRate = rate;
-        }
-      };
-
-      return buttonOptions;
-    });
-    const btnMenu = ButtonMenuSync({buttons});
-    btnMenu.classList.add(options.direction, 'playback-rate-menu');
-    ButtonMenuToggleHandler({
-      el: button,
-      onOpen: options.onPlaybackRateMenuToggle ? () => {
-        options.onPlaybackRateMenuToggle(true);
-      } : undefined,
-      onClose: options.onPlaybackRateMenuToggle ? () => {
-        options.onPlaybackRateMenuToggle(false);
-      } : undefined
-    });
-    setIcon();
-    button.append(btnMenu);
-  };
-
-  const addRate = (add: number) => {
-    const playbackRate = appMediaPlaybackController.playbackRate;
-    const idx = PLAYBACK_RATES.indexOf(playbackRate);
-    const nextIdx = idx + add;
-    if(nextIdx >= 0 && nextIdx < PLAYBACK_RATES.length) {
-      appMediaPlaybackController.playbackRate = PLAYBACK_RATES[nextIdx];
-    }
-  };
-
-  const isMenuOpen = () => {
-    return button.classList.contains('menu-open');
-  };
-
-  setBtnMenuToggle();
-  return {element: button, setIcon, addRate, isMenuOpen};
-};
 
 export default class VideoPlayer extends ControlsHover {
   public video: HTMLVideoElement;
@@ -105,7 +44,11 @@ export default class VideoPlayer extends ControlsHover {
   protected live: boolean;
 
   protected listenerSetter: ListenerSetter;
-  protected playbackRateButton: ReturnType<typeof PlaybackRateButton>;
+
+  protected playbackRateButton: ReturnType<typeof createPlaybackRateButton>;
+  protected speedDragHandler: ReturnType<typeof createSpeedDragHandler>;
+  protected qualityLevelsButton: ReturnType<typeof createQualityLevelsSwitchButton>;
+
   protected pipButton: HTMLElement;
   protected liveMenuButton: HTMLElement;
   protected toggles: HTMLElement[];
@@ -153,6 +96,7 @@ export default class VideoPlayer extends ControlsHover {
     live,
     width,
     height,
+    videoTimestamps,
     onPlaybackRateMenuToggle,
     onPip,
     onPipClose,
@@ -171,6 +115,7 @@ export default class VideoPlayer extends ControlsHover {
     live?: boolean,
     width?: number,
     height?: number,
+    videoTimestamps?: VideoTimestamp[],
     onPlaybackRateMenuToggle?: VideoPlayer['onPlaybackRateMenuToggle'],
     onPip?: VideoPlayer['onPip'],
     onPipClose?: VideoPlayer['onPipClose'],
@@ -205,13 +150,23 @@ export default class VideoPlayer extends ControlsHover {
     this.useGlobalVolume = useGlobalVolume;
     this.shouldEnableSoundOnClick = shouldEnableSoundOnClick;
 
+    this.video.playbackRate = appMediaPlaybackController.playbackRate;
+
     this.listenerSetter = new ListenerSetter();
 
     this.setup({
       element: this.wrapper,
       listenerSetter: this.listenerSetter,
       canHideControls: () => {
-        return !this.video.paused && (!this.playbackRateButton || !this.playbackRateButton.isMenuOpen());
+        if(this.video.paused) return false;
+        if(this.playbackRateButton?.controls.isMenuOpen()) return false;
+        if(this.qualityLevelsButton?.controls.isMenuOpen()) return false;
+
+        return true;
+      },
+      canShowControls: () => {
+        if(this.speedDragHandler?.controls.isChangingSpeed()) return false;
+        return true;
       },
       showOnLeaveToClassName: 'media-viewer-caption',
       ignoreClickClassName: 'ckin__controls'
@@ -230,6 +185,7 @@ export default class VideoPlayer extends ControlsHover {
       const controls = this.controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
       this.gradient = this.controls.previousElementSibling as HTMLElement;
       this.progress = new MediaProgressLine({
+        videoTimestamps,
         onSeekStart: () => {
           this.wrapper.classList.add('is-seeking');
         },
@@ -313,14 +269,19 @@ export default class VideoPlayer extends ControlsHover {
 
       const rightControls = wrapper.querySelector('.right-controls') as HTMLElement;
       if(!live) {
-        this.playbackRateButton = PlaybackRateButton({direction: 'top-left', onPlaybackRateMenuToggle: this.onPlaybackRateMenuToggle});
-        this.playbackRateButton.element.classList.add(`${skin}__button`);
+        this.playbackRateButton = createPlaybackRateButton({skin: this.skin, onMenuToggle: this.onPlaybackRateMenuToggle});
       }
       if(!IS_MOBILE && document.pictureInPictureEnabled) {
         this.pipButton = ButtonIcon(`pip ${skin}__button`, {noRipple: true});
       }
       const fullScreenButton = ButtonIcon(` ${skin}__button`, {noRipple: true});
-      rightControls.append(...[this.playbackRateButton?.element, this.pipButton, fullScreenButton].filter(Boolean));
+
+      rightControls.append(...[
+        this.playbackRateButton?.element,
+        this.createQualityLevelsButton(),
+        this.pipButton,
+        fullScreenButton
+      ].filter(Boolean));
 
       const timeElapsed = wrapper.querySelector('.ckin__time-elapsed');
       timeDuration = wrapper.querySelector('.ckin__time-duration') as HTMLElement;
@@ -358,7 +319,7 @@ export default class VideoPlayer extends ControlsHover {
       if(!IS_TOUCH_SUPPORTED) {
         if(this.canPause) {
           attachClickEvent(video, () => {
-            if(this.checkInteraction()) {
+            if(this.checkInteraction() || video.dataset.wasChangingSpeed) {
               return;
             }
 
@@ -386,7 +347,7 @@ export default class VideoPlayer extends ControlsHover {
             this.togglePlay();
           } else if(e.altKey && (code === 'Equal' || code === 'Minus') && this.canSeek) {
             const add = code === 'Equal' ? 1 : -1;
-            this.playbackRateButton.addRate(add);
+            this.playbackRateButton.controls.changeRateByAmount(add);
           } else if(wrapper.classList.contains('ckin__fullscreen') && (key === 'ArrowLeft' || key === 'ArrowRight') && this.canSeek) {
             if(key === 'ArrowLeft') appMediaPlaybackController.seekBackward({action: 'seekbackward'});
             else appMediaPlaybackController.seekForward({action: 'seekforward'});
@@ -398,6 +359,23 @@ export default class VideoPlayer extends ControlsHover {
             cancelEvent(e);
             return false;
           }
+        });
+      }
+
+      if(this.canPause) {
+        this.speedDragHandler = createSpeedDragHandler({
+          video: this.video,
+          onShowSpeed: () => {
+            this.hideControls();
+          },
+          onHideSpeed: () => {
+            this.showControls();
+          }
+        });
+        this.wrapper.append(this.speedDragHandler.element);
+
+        listenerSetter.add(video)('contextmenu', (e) => {
+          e.preventDefault();
         });
       }
 
@@ -447,7 +425,8 @@ export default class VideoPlayer extends ControlsHover {
       });
 
       listenerSetter.add(appMediaPlaybackController)('playbackParams', () => {
-        this.playbackRateButton.setIcon();
+        if(this.video.dataset.startedChangingSpeed) return;
+        this.playbackRateButton.controls.setPlayBackRate(appMediaPlaybackController.playbackRate);
       });
 
       if(live) {
@@ -476,6 +455,16 @@ export default class VideoPlayer extends ControlsHover {
         });
       }
     }
+  }
+
+  private createQualityLevelsButton() {
+    this.qualityLevelsButton = createQualityLevelsSwitchButton({skin: this.skin, video: this.video});
+
+    return this.qualityLevelsButton.element;
+  }
+
+  public async loadQualityLevels() {
+    this.qualityLevelsButton?.controls.loadQualityLevels();
   }
 
   protected checkInteraction() {
@@ -663,6 +652,9 @@ export default class VideoPlayer extends ControlsHover {
     this.listenerSetter.removeAll();
     this.progress?.removeListeners();
     this.volumeSelector?.removeListeners();
+    this.qualityLevelsButton?.dispose();
+    this.playbackRateButton?.dispose();
+    this.speedDragHandler?.dispose();
     this.onPlaybackRateMenuToggle =
       this.onPip =
       this.onVolumeChange =
@@ -670,6 +662,8 @@ export default class VideoPlayer extends ControlsHover {
       this.onFullScreenToPip =
       this.shouldEnableSoundOnClick =
       undefined;
+
+    this.progress?.cleanup();
   }
 
   public unmount() {

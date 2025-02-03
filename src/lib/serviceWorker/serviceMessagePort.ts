@@ -9,9 +9,10 @@ import type {PushNotificationObject} from './push';
 import type {MyUploadFile} from '../mtproto/apiFileManager';
 import SuperMessagePort from '../mtproto/superMessagePort';
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import {InputFileLocation, InputGroupCall} from '../../layer';
+import {Document, InputFileLocation, InputGroupCall} from '../../layer';
 import {GroupCallRtmpState} from '../appManagers/appGroupCallsManager';
 import {ActiveAccountNumber} from '../accounts/types';
+import {ThumbCache} from '../storages/thumbs';
 
 export type ServicePushPingTaskPayload = {
   localNotifications: boolean,
@@ -75,6 +76,9 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   cancelFilePartRequests: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => void,
   requestRtmpState: (payload: {call: InputGroupCall, accountNumber: ActiveAccountNumber}) => MaybePromise<GroupCallRtmpState>,
   requestRtmpPart: (payload: ServiceRequestRtmpPartTaskPayload) => MaybePromise<MyUploadFile>,
+  downloadDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Blob>,
+  requestDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Document.document>,
+  requestAltDocsByDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Document.document[]>,
 } & ServiceEvent, Master> {
   constructor() {
     super('SERVICE');
