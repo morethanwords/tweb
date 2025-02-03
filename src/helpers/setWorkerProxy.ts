@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {CURRENT_ACCOUNT_QUERY_PARAM} from '../lib/accounts/constants';
+
 export function makeWorkerURL(url: string | URL) {
   if(!(url instanceof URL)) {
     url = new URL(url + '', location.href);
@@ -12,6 +14,7 @@ export function makeWorkerURL(url: string | URL) {
   if(location.search && url.protocol !== 'blob:') {
     const params = new URLSearchParams(location.search);
     params.forEach((value, key) => {
+      if(key === CURRENT_ACCOUNT_QUERY_PARAM) return;
       (url as URL).searchParams.set(key, value);
     });
   }

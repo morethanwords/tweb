@@ -1,4 +1,5 @@
 import {ColorHsla, ColorRgba, hexaToHsla, hslaToRgba, rgbaToHexa as rgbaToHexa, rgbaToHsla} from '../helpers/color';
+import createElementFromMarkup from '../helpers/createElementFromMarkup';
 import attachGrabListeners from '../helpers/dom/attachGrabListeners';
 import clamp from '../helpers/number/clamp';
 import InputField, {InputState} from './inputField';
@@ -13,8 +14,18 @@ export type ColorPickerColor = {
   rgbaArray: ColorRgba;
 };
 
+
+interface ColorPickerOptions {
+  buildLayout?: typeof ColorPicker.defaultBuildLayout
+  pickerBoxWidth?: number
+  pickerBoxHeight?: number
+  sliderWidth?: number
+  thickSlider?: boolean
+}
+
 export default class ColorPicker {
   private static BASE_CLASS = 'color-picker';
+  private static idSeed = 0;
   public container: HTMLElement;
 
   private boxRect: DOMRect;
@@ -38,35 +49,44 @@ export default class ColorPicker {
   private rgbInputField: InputField;
   public onChange: (color: ReturnType<ColorPicker['getCurrentColor']>) => void;
 
-  constructor() {
-    this.container = document.createElement('div');
-    this.container.classList.add(ColorPicker.BASE_CLASS);
+  constructor({
+    buildLayout = ColorPicker.defaultBuildLayout,
+    pickerBoxWidth = 380,
+    pickerBoxHeight = 198,
+    sliderWidth = pickerBoxWidth,
+    thickSlider = false
+  }: ColorPickerOptions = {}) {
+    // Multiple instances of color pickers will need different id's for SVG markup
+    const id = ColorPicker.idSeed++;
 
-    const html = `
-      <svg class="${ColorPicker.BASE_CLASS + '-box'}" viewBox="0 0 380 198">
+    const pickerBox: SVGSVGElement = createElementFromMarkup(`
+      <svg class="${ColorPicker.BASE_CLASS + '-box'}" viewBox="0 0 ${pickerBoxWidth} ${pickerBoxHeight}" style="width: ${pickerBoxWidth}px; height: ${pickerBoxHeight}px;">
         <defs>
-          <linearGradient id="color-picker-saturation" x1="0%" y1="0%" x2="100%" y2="0%">
+          <linearGradient id="color-picker-saturation-${id}" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stop-color="#fff"></stop>
             <stop offset="100%" stop-color="hsl(0,100%,50%)"></stop>
           </linearGradient>
-          <linearGradient id="color-picker-brightness" x1="0%" y1="0%" x2="0%" y2="100%">
+          <linearGradient id="color-picker-brightness-${id}" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stop-color="rgba(0,0,0,0)"></stop>
             <stop offset="100%" stop-color="#000"></stop>
           </linearGradient>
-          <pattern id="color-picker-pattern" width="100%" height="100%">
-            <rect x="0" y="0" width="100%" height="100%" fill="url(#color-picker-saturation)"></rect>
-            <rect x="0" y="0" width="100%" height="100%" fill="url(#color-picker-brightness)"></rect>
+          <pattern id="color-picker-pattern-${id}" width="100%" height="100%">
+            <rect x="0" y="0" width="100%" height="100%" fill="url(#color-picker-saturation-${id})"></rect>
+            <rect x="0" y="0" width="100%" height="100%" fill="url(#color-picker-brightness-${id})"></rect>
           </pattern>
         </defs>
-        <rect rx="10" ry="10" x="0" y="0" width="380" height="198" fill="url(#color-picker-pattern)"></rect>
+        <rect rx="10" ry="10" x="0" y="0" width="${pickerBoxWidth}" height="${pickerBoxHeight}" fill="url(#color-picker-pattern-${id})"></rect>
         <svg class="${ColorPicker.BASE_CLASS + '-dragger'} ${ColorPicker.BASE_CLASS + '-box-dragger'}" x="0" y="0">
           <circle r="11" fill="inherit" stroke="#fff" stroke-width="2"></circle>
         </svg>
       </svg>
-      <div class="${ColorPicker.BASE_CLASS + '-sliders'}">
-        <svg class="${ColorPicker.BASE_CLASS + '-color-slider'}" viewBox="0 0 380 24">
+    `)
+
+    const slider: HTMLDivElement = createElementFromMarkup(`
+      <div class="${ColorPicker.BASE_CLASS + '-sliders'}" style="width: ${sliderWidth}px; height: 24px">
+        <svg class="${ColorPicker.BASE_CLASS + '-color-slider'}" viewBox="0 0 ${sliderWidth} 24">
           <defs>
-            <linearGradient id="hue" x1="100%" y1="0%" x2="0%" y2="0%">
+            <linearGradient id="hue-${id}" x1="100%" y1="0%" x2="0%" y2="0%">
               <stop offset="0%" stop-color="#f00"></stop>
               <stop offset="16.666%" stop-color="#f0f"></stop>
               <stop offset="33.333%" stop-color="#00f"></stop>
@@ -76,32 +96,32 @@ export default class ColorPicker {
               <stop offset="100%" stop-color="#f00"></stop>
             </linearGradient>
           </defs>
-          <rect rx="4" ry="4" x="0" y="9" width="380" height="8" fill="url(#hue)"></rect>
+          <rect rx="${thickSlider ? 10 : 4}" x="0" y="${thickSlider ? 3 : 9}" width="${sliderWidth}" height="${thickSlider ? 20 : 8}" fill="url(#hue-${id})"></rect>
           <svg class="${ColorPicker.BASE_CLASS + '-dragger'} ${ColorPicker.BASE_CLASS + '-color-slider-dragger'}" x="0" y="13">
             <circle r="11" fill="inherit" stroke="#fff" stroke-width="2"></circle>
           </svg>
         </svg>
       </div>
-    `;
+    `)
 
-    this.container.innerHTML = html;
+    this.elements.box = pickerBox;
+    this.elements.boxDragger = pickerBox.lastElementChild as SVGSVGElement;
+    this.elements.saturation = pickerBox.querySelector(`#color-picker-saturation-${id}`);
 
-    this.elements.box = this.container.firstElementChild as any;
-    this.elements.boxDragger = this.elements.box.lastElementChild as any;
-    this.elements.saturation = this.elements.box.firstElementChild.firstElementChild as any;
+    this.elements.sliders = slider;
 
-    this.elements.sliders = this.elements.box.nextElementSibling as any;
-
-    this.elements.hue = this.elements.sliders.firstElementChild as any;
+    this.elements.hue = slider.firstElementChild as SVGSVGElement;
     this.elements.hueDragger = this.elements.hue.lastElementChild as any;
 
     this.hexInputField = new InputField({plainText: true, label: 'Appearance.Color.Hex'});
     this.rgbInputField = new InputField({plainText: true, label: 'Appearance.Color.RGB'});
 
-    const inputs = document.createElement('div');
-    inputs.className = ColorPicker.BASE_CLASS + '-inputs';
-    inputs.append(this.hexInputField.container, this.rgbInputField.container);
-    this.container.append(inputs);
+    this.container = buildLayout({
+      pickerBox,
+      slider,
+      hexInput: this.hexInputField.container,
+      rgbInput: this.rgbInputField.container
+    })
 
     this.hexInputField.input.addEventListener('input', () => {
       let value = this.hexInputField.value.replace(/#/g, '').slice(0, 6);
@@ -131,6 +151,26 @@ export default class ColorPicker {
 
     this.attachBoxListeners();
     this.attachHueListeners();
+  }
+
+  public static defaultBuildLayout(parts: {
+    pickerBox: SVGSVGElement
+    slider: HTMLElement
+    hexInput: HTMLElement
+    rgbInput: HTMLElement
+  }) {
+    const container = document.createElement('div');
+    container.classList.add(ColorPicker.BASE_CLASS);
+
+    const inputs = document.createElement('div');
+    inputs.className = ColorPicker.BASE_CLASS + '-inputs';
+    inputs.append(parts.hexInput, parts.rgbInput);
+
+    container.append(
+      parts.pickerBox, parts.slider, inputs
+    );
+
+    return container;
   }
 
   private onGrabStart = () => {

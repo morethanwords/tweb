@@ -11,7 +11,6 @@
 
 import EventListenerBase from '../../helpers/eventListenerBase';
 import {logger} from '../logger';
-import rootScope from '../rootScope';
 import {GROUP_CALL_AMPLITUDE_ANALYSE_COUNT_MAX} from './constants';
 import stopTrack from './helpers/stopTrack';
 import LocalConferenceDescription from './localConferenceDescription';

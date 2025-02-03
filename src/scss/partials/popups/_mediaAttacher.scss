@@ -196,6 +196,8 @@
   }
 
   .popup-photo > .popup-item-media {
+    position: relative;
+
     display: flex;
     justify-content: center;
     margin: 0 auto;
@@ -203,6 +205,33 @@
     img {
       object-fit: contain;
     }
+  }
+
+  .popup-item-media-extend-full {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .gif-label {
+    --height: calc(var(--messages-time-text-size) + .375rem);
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    border-radius: var(--height);
+    background-color: var(--message-time-background);
+    padding: 0px 6px;
+    z-index: 2;
+    font-size: var(--messages-time-text-size);
+    color: white;
+    display: flex;
+    align-items: center;
+    user-select: none;
+    height: var(--height);
+    line-height: 1;
   }
 
   .popup-photo > .popup-item {
@@ -327,5 +356,78 @@
   .popup-close {
     margin-top: -1px;
     margin-inline-start: -4px;
+  }
+}
+
+.popup-item-media-action-menu {
+  position: fixed;
+  --size: 20px;
+  --move: 0px;
+
+  transform: translate(-50%, calc(-100% - 6px));
+
+  display: flex;
+  padding: 2px 6px;
+  gap: 8px;
+
+  border-radius: 999px;
+
+  background-color: rgba(0, 0, 0, .4);
+  backdrop-filter: blur(35px);
+
+  @supports (-moz-animation: animation 1s) {
+    // Firefox doesn't render backdrop-filter by default
+    background-color: rgba(0, 0, 0, .8);
+    backdrop-filter: none;
+  }
+
+  color: rgba(255, 255, 255, .7);
+  font-size: var(--size);
+
+  transition: opacity .2s;
+
+  opacity: 0;
+  z-index: 5;
+}
+
+.popup-item-media-action {
+  position: relative;
+  cursor: pointer;
+  pointer-events: initial !important;
+
+  --padding: 4px;
+  padding: var(--padding);
+  line-height: 1;
+  border-radius: 50%;
+
+  height: calc(var(--size) + var(--padding) * 2);
+  width: calc(var(--size) + var(--padding) * 2);
+
+  transition: .2s;
+
+  &:hover {
+    color: #ffffff;
+  }
+
+  > span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    transition: .2s;
+  }
+
+  > span:nth-child(2) {
+    opacity: 0;
+  }
+
+  &[data-toggled="true"] {
+    > span:nth-child(1) {
+      opacity: 0;
+    }
+
+    > span:nth-child(2) {
+      opacity: 1;
+    }
   }
 }

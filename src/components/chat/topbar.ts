@@ -60,7 +60,6 @@ import {ChatType} from './chat';
 import AppBoostsTab from '../sidebarRight/tabs/boosts';
 import ChatLive from './topbarLive/container';
 import {RtmpStartStreamPopup} from '../rtmp/adminPopup';
-import {appState} from '../../stores/appState';
 import assumeType from '../../helpers/assumeType';
 import PinnedContainer from './pinnedContainer';
 import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
@@ -454,7 +453,7 @@ export default class ChatTopbar {
       onClick: () => {
         this.chat.appImManager.toggleViewAsMessages(this.peerId, false);
       },
-      verify: () => this.peerId === rootScope.myId && !this.chat.threadId && !appState.settings.savedAsForum
+      verify: () => this.peerId === rootScope.myId && !this.chat.threadId && !rootScope.settings.savedAsForum
     }, {
       icon: 'select',
       text: 'Chat.Menu.SelectMessages',

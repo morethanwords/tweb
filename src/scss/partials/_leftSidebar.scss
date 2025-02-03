@@ -324,9 +324,17 @@
 
   .sidebar-tools-button {
     width: 100%;
+    position: relative;
+
+    > .badge {
+      position: absolute;
+      right: -4px;
+      top: -2px;
+      font-size: 12px;
+    }
 
     .btn-menu {
-      min-width: 260px;
+      min-width: 200px;
       max-height: calc(100 * var(--vh) - 3.75rem);
 
       &-item {
@@ -339,7 +347,35 @@
             margin-right: .75rem;
           }
         }
+
+        .more-label {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+
+          .tgico {
+            font-size: 20px;
+            transform: rotate(-90deg);
+            color: var(--secondary-color);
+          }
+        }
       }
+    }
+  }
+
+  .btn-menu-account-item {
+    position: relative;
+
+    .badge {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+
+      font-size: 12px;
+
+      color: var(--badge-text-color);
+      background-color: var(--primary-color);  
     }
   }
 
@@ -560,6 +596,10 @@
       width: 100%;
     }
   }
+}
+
+.sidebar-tools-submenu {
+  min-width: 200px;
 }
 
 #search-container {
@@ -1260,5 +1300,40 @@
   .sticker-container {
     width: 100px;
     height: 100px;
+  }
+}
+
+.animations-icon-off {
+  position: relative;
+  --amount: 8.4%;
+  --shift: 5.8%;
+  --opposite: calc(100% - var(--amount));
+  clip-path: polygon(
+    calc(var(--amount) - var(--shift)) 0,
+    100% 0%,
+    100% calc(var(--opposite) + var(--shift)),
+    calc(var(--amount) - var(--shift)) 0,
+    0% 0%,
+    0 calc(var(--amount) + var(--shift)),
+    calc(var(--opposite) - var(--shift)) 100%,
+    0% 100%,
+    0 0
+  );
+  // clip-path: polygon(15% 0, 100% 0%, 100% 85%, 15% 0, 0% 0%, 0 15%, 85% 100%, 0% 100%, 0 0);
+
+  &::after {
+    content: '';
+    display: block;
+
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-47%, -111%) rotate(45deg);
+
+    width: 115%;
+    height: 8.4%;
+
+    border-radius: 10px;
+    background-color: currentColor;
   }
 }

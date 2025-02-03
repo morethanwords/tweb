@@ -18,7 +18,7 @@ import {BaseTheme} from '../../../layer';
 import eachMinute from '../../../helpers/eachMinute';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import IS_GEOLOCATION_SUPPORTED from '../../../environment/geolocationSupport';
-import {DEFAULT_THEME, State} from '../../../config/state';
+import {DEFAULT_THEME, StateSettings} from '../../../config/state';
 import {generateSection} from '../../settingSection';
 import {ScrollableX} from '../../scrollable';
 import wrapStickerEmoji from '../../wrappers/stickerEmoji';
@@ -484,7 +484,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const name = 'time-format';
       const stateKey = joinDeepPath('settings', 'timeFormat');
 
-      const formats: [State['settings']['timeFormat'], LangPackKey][] = [
+      const formats: [StateSettings['timeFormat'], LangPackKey][] = [
         ['h12', 'General.TimeFormat.h12'],
         ['h23', 'General.TimeFormat.h23']
       ];

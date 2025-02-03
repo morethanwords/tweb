@@ -45,6 +45,47 @@ export type AutoDownloadPeerTypeSettings = {
   channels: boolean
 };
 
+export type StateSettings = {
+  messagesTextSize: number,
+  distanceUnit: 'kilometers' | 'miles',
+  sendShortcut: 'enter' | 'ctrlEnter',
+  animationsEnabled?: boolean, // ! DEPRECATED
+  autoDownload: {
+    contacts?: boolean, // ! DEPRECATED
+    private?: boolean, // ! DEPRECATED
+    groups?: boolean, // ! DEPRECATED
+    channels?: boolean, // ! DEPRECATED
+    photo: AutoDownloadPeerTypeSettings,
+    video: AutoDownloadPeerTypeSettings,
+    file: AutoDownloadPeerTypeSettings
+  },
+  autoDownloadNew: AutoDownloadSettings,
+  autoPlay?: { // ! DEPRECATED
+    gifs: boolean,
+    videos: boolean
+  },
+  stickers: {
+    suggest: 'all' | 'installed' | 'none',
+    dynamicPackOrder: boolean,
+    loop: boolean
+  },
+  emoji: {
+    suggest: boolean,
+    big: boolean
+  },
+  background?: Background, // ! DEPRECATED
+  themes: AppTheme[],
+  theme: AppTheme['name'],
+  notifications: {
+    sound: boolean
+  },
+  nightTheme?: boolean, // ! DEPRECATED
+  timeFormat: 'h12' | 'h23',
+  liteMode: {[key in LiteModeKey]: boolean},
+  savedAsForum: boolean,
+  notifyAllAccounts: boolean
+};
+
 export type State = {
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'],
   pinnedOrders: DialogsStorage['pinnedOrders'],
@@ -72,50 +113,10 @@ export type State = {
   build: typeof BUILD,
   authState: AuthState,
   hiddenPinnedMessages: {[peerId: PeerId]: number},
-  settings: {
-    messagesTextSize: number,
-    distanceUnit: 'kilometers' | 'miles',
-    sendShortcut: 'enter' | 'ctrlEnter',
-    animationsEnabled?: boolean, // ! DEPRECATED
-    autoDownload: {
-      contacts?: boolean, // ! DEPRECATED
-      private?: boolean, // ! DEPRECATED
-      groups?: boolean, // ! DEPRECATED
-      channels?: boolean, // ! DEPRECATED
-      photo: AutoDownloadPeerTypeSettings,
-      video: AutoDownloadPeerTypeSettings,
-      file: AutoDownloadPeerTypeSettings
-    },
-    autoDownloadNew: AutoDownloadSettings,
-    autoPlay?: { // ! DEPRECATED
-      gifs: boolean,
-      videos: boolean
-    },
-    stickers: {
-      suggest: 'all' | 'installed' | 'none',
-      dynamicPackOrder: boolean,
-      loop: boolean
-    },
-    emoji: {
-      suggest: boolean,
-      big: boolean
-    },
-    background?: Background, // ! DEPRECATED
-    themes: AppTheme[],
-    theme: AppTheme['name'],
-    notifications: {
-      sound: boolean
-    },
-    nightTheme?: boolean, // ! DEPRECATED
-    timeFormat: 'h12' | 'h23',
-    liteMode: {[key in LiteModeKey]: boolean},
-    savedAsForum: boolean
-  },
   playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
-  keepSigned: boolean,
   chatContextMenuHintWasShown: boolean,
   hideChatJoinRequests: {[peerId: PeerId]: number},
-  stateId: number,
+  // stateId?: number, // ! DEPRECATED
   notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings},
   confirmedWebViews: BotId[],
   seenTooltips: {
@@ -131,7 +132,12 @@ export type State = {
     showInMenu: boolean,
     doNotTranslate: TranslatableLanguageISO[]
   },
-  shownUploadSpeedTimestamp?: number
+  shownUploadSpeedTimestamp?: number,
+  settings?: StateSettings // ! DEPRECATED, BUT DON'T REMOVE BEFORE FULL MIGRATION
+};
+
+export type CommonState = {
+  settings: StateSettings
 };
 
 // const BACKGROUND_DAY_MOBILE: Background = {
@@ -231,6 +237,84 @@ const makeDefaultAppTheme = (
   };
 };
 
+export const SETTINGS_INIT: StateSettings = {
+  messagesTextSize: 16,
+  distanceUnit: 'kilometers',
+  sendShortcut: 'enter',
+  autoDownload: {
+    photo: {
+      contacts: true,
+      private: true,
+      groups: true,
+      channels: true
+    },
+    video: {
+      contacts: true,
+      private: true,
+      groups: true,
+      channels: true
+    },
+    file: {
+      contacts: true,
+      private: true,
+      groups: true,
+      channels: true
+    }
+  },
+  autoDownloadNew: {
+    _: 'autoDownloadSettings',
+    file_size_max: 3145728,
+    pFlags: {
+      video_preload_large: true,
+      audio_preload_next: true
+    },
+    photo_size_max: 1048576,
+    video_size_max: 15728640,
+    video_upload_maxbitrate: 100,
+    small_queue_active_operations_max: 0,
+    large_queue_active_operations_max: 0
+  },
+  stickers: {
+    suggest: 'all',
+    dynamicPackOrder: true,
+    loop: true
+  },
+  emoji: {
+    suggest: true,
+    big: true
+  },
+  themes: [
+    makeDefaultAppTheme('day', 'baseThemeClassic', 'hsla(86.4, 43.846153%, 45.117647%, .4)'),
+    makeDefaultAppTheme('night', 'baseThemeNight', 'hsla(299.142857, 44.166666%, 37.470588%, .4)')
+  ],
+  theme: 'system',
+  notifications: {
+    sound: false
+  },
+  timeFormat: getTimeFormat(),
+  liteMode: {
+    all: false,
+    animations: false,
+    chat: false,
+    chat_background: false,
+    chat_spoilers: false,
+    effects: false,
+    effects_premiumstickers: false,
+    effects_reactions: false,
+    effects_emoji: false,
+    emoji: false,
+    emoji_messages: false,
+    emoji_panel: false,
+    gif: false,
+    stickers: false,
+    stickers_chat: false,
+    stickers_panel: false,
+    video: false
+  },
+  savedAsForum: false,
+  notifyAllAccounts: true
+};
+
 export const STATE_INIT: State = {
   allDialogsLoaded: {},
   pinnedOrders: {},
@@ -250,82 +334,6 @@ export const STATE_INIT: State = {
     _: IS_MOBILE ? 'authStateSignIn' : 'authStateSignQr'
   },
   hiddenPinnedMessages: {},
-  settings: {
-    messagesTextSize: 16,
-    distanceUnit: 'kilometers',
-    sendShortcut: 'enter',
-    autoDownload: {
-      photo: {
-        contacts: true,
-        private: true,
-        groups: true,
-        channels: true
-      },
-      video: {
-        contacts: true,
-        private: true,
-        groups: true,
-        channels: true
-      },
-      file: {
-        contacts: true,
-        private: true,
-        groups: true,
-        channels: true
-      }
-    },
-    autoDownloadNew: {
-      _: 'autoDownloadSettings',
-      file_size_max: 3145728,
-      pFlags: {
-        video_preload_large: true,
-        audio_preload_next: true
-      },
-      photo_size_max: 1048576,
-      video_size_max: 15728640,
-      video_upload_maxbitrate: 100,
-      small_queue_active_operations_max: 0,
-      large_queue_active_operations_max: 0
-    },
-    stickers: {
-      suggest: 'all',
-      dynamicPackOrder: true,
-      loop: true
-    },
-    emoji: {
-      suggest: true,
-      big: true
-    },
-    themes: [
-      makeDefaultAppTheme('day', 'baseThemeClassic', 'hsla(86.4, 43.846153%, 45.117647%, .4)'),
-      makeDefaultAppTheme('night', 'baseThemeNight', 'hsla(299.142857, 44.166666%, 37.470588%, .4)')
-    ],
-    theme: 'system',
-    notifications: {
-      sound: false
-    },
-    timeFormat: getTimeFormat(),
-    liteMode: {
-      all: false,
-      animations: false,
-      chat: false,
-      chat_background: false,
-      chat_spoilers: false,
-      effects: false,
-      effects_premiumstickers: false,
-      effects_reactions: false,
-      effects_emoji: false,
-      emoji: false,
-      emoji_messages: false,
-      emoji_panel: false,
-      gif: false,
-      stickers: false,
-      stickers_chat: false,
-      stickers_panel: false,
-      video: false
-    },
-    savedAsForum: false
-  },
   playbackParams: {
     volume: 1,
     muted: false,
@@ -338,10 +346,9 @@ export const STATE_INIT: State = {
     loop: false,
     round: false
   },
-  keepSigned: true,
   chatContextMenuHintWasShown: false,
   hideChatJoinRequests: {},
-  stateId: nextRandomUint(32),
+  // stateId: nextRandomUint(32),
   notifySettings: {},
   confirmedWebViews: [],
   seenTooltips: {
@@ -357,4 +364,8 @@ export const STATE_INIT: State = {
     showInMenu: true,
     doNotTranslate: []
   }
+};
+
+export const COMMON_STATE_INIT: CommonState = {
+  settings: SETTINGS_INIT
 };

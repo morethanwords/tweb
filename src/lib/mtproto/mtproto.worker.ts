@@ -10,10 +10,8 @@ import '../../helpers/peerIdPolyfill';
 
 import cryptoWorker from '../crypto/cryptoMessagePort';
 import {setEnvironment} from '../../environment/utils';
-import appStateManager from '../appManagers/appStateManager';
 import transportController from './transports/controller';
 import MTProtoMessagePort from './mtprotoMessagePort';
-import RESET_STORAGES_PROMISE from '../appManagers/utils/storages/resetStoragesPromise';
 import appManagersManager from '../appManagers/appManagersManager';
 import listenMessagePort from '../../helpers/listenMessagePort';
 import {logger} from '../logger';
@@ -22,6 +20,8 @@ import toggleStorages from '../../helpers/toggleStorages';
 import appTabsManager from '../appManagers/appTabsManager';
 import callbackify from '../../helpers/callbackify';
 import Modes from '../../config/modes';
+import {ActiveAccountNumber} from '../accounts/types';
+import commonStateStorage from '../commonStateStorage';
 
 const log = logger('MTPROTO');
 // let haveState = false;
@@ -40,23 +40,47 @@ port.addMultipleEventsListeners({
     return cryptoWorker.invokeCrypto(method as any, ...args as any);
   },
 
-  state: ({state, resetStorages, pushedKeys, newVersion, oldVersion, userId}) => {
+  state: ({state, resetStorages, pushedKeys, newVersion, oldVersion, userId, accountNumber, common}) => {
     // if(haveState) {
     //   return;
     // }
 
-    log('got state', state, pushedKeys);
+    log('got state', accountNumber, state, pushedKeys);
 
+    const appStateManager = appManagersManager.stateManagersByAccount[accountNumber];
     appStateManager.userId = userId;
     appStateManager.newVersion = newVersion;
     appStateManager.oldVersion = oldVersion;
 
-    RESET_STORAGES_PROMISE.resolve({
+    // * preserve self user
+    if(userId && resetStorages.has('users')) {
+      resetStorages.set('users', [userId]);
+    }
+
+    appStateManager.resetStoragesPromise.resolve({
       storages: resetStorages,
-      callback: () => {
-        (Object.keys(state) as any as (keyof State)[]).forEach((key) => {
-          appStateManager.pushToState(key, state[key], true, !pushedKeys.includes(key));
-        });
+      callback: async() => {
+        const promises: Promise<any>[] = [];
+
+        const map: Map<string, any> = new Map();
+        const pushedKeysCombined: string[] = [...pushedKeys];
+        if(accountNumber === 1) {
+          for(const key in common) {
+            map.set(key, common[key as keyof typeof common]);
+            pushedKeysCombined.push(key as any); // ! unoptimized, but it's ok for now since it's only one key
+          }
+        }
+
+        for(const key in state) {
+          map.set(key, state[key as keyof typeof state]);
+        }
+
+        for(const [key, value] of map) {
+          const promise = appStateManager.pushToState(key as any, value, true, !pushedKeysCombined.includes(key));
+          promises.push(promise);
+        }
+
+        await Promise.all(promises);
       }
     });
     // haveState = true;
@@ -103,20 +127,31 @@ port.addMultipleEventsListeners({
 log('MTProto start');
 
 appManagersManager.start();
-appManagersManager.getManagers();
+appManagersManager.getManagersByAccount();
 appTabsManager.start();
 
 let isFirst = true;
-// let sentHello = false;
+
+function resetNotificationsCount() {
+  commonStateStorage.set({
+    notificationsCount: {}
+  });
+}
+
 listenMessagePort(port, (source) => {
   appTabsManager.addTab(source);
   if(isFirst) {
     isFirst = false;
+    resetNotificationsCount();
+    // port.invoke('log', 'Shared worker first connection')
   } else {
-    callbackify(appManagersManager.getManagers(), (managers) => {
-      managers.thumbsStorage.mirrorAll(source);
-      managers.appPeersManager.mirrorAllPeers(source);
-      managers.appMessagesManager.mirrorAllMessages(source);
+    callbackify(appManagersManager.getManagersByAccount(), (managers) => {
+      for(const key in managers) {
+        const accountNumber = key as any as ActiveAccountNumber
+        managers[accountNumber].thumbsStorage.mirrorAll(source);
+        managers[accountNumber].appPeersManager.mirrorAllPeers(source);
+        managers[accountNumber].appMessagesManager.mirrorAllMessages(source);
+      }
     });
   }
 

@@ -217,7 +217,8 @@ export class AppChatsManager extends AppManager {
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
       name: 'peers',
       key: '' + chat.id.toPeerId(true),
-      value: chat
+      value: chat,
+      accountNumber: this.getAccountNumber()
     });
   }
 

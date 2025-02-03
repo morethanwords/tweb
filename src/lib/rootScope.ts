@@ -13,7 +13,7 @@ import type {MyDraftMessage} from './appManagers/appDraftsManager';
 import type {ConnectionStatusChange} from './mtproto/connectionStatus';
 import type {GroupCallId} from './appManagers/appGroupCallsManager';
 import type {AppManagers} from './appManagers/managers';
-import type {State} from '../config/state';
+import type {StateSettings} from '../config/state';
 import type {Progress} from './appManagers/appDownloadManager';
 import type {CallId} from './appManagers/appCallsManager';
 import type {MyDocument} from './appManagers/appDocsManager';
@@ -25,8 +25,8 @@ import {NULL_PEER_ID, UserAuth} from './mtproto/mtproto_config';
 import EventListenerBase, {EventListenerListeners} from '../helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
-import {IS_WORKER} from '../helpers/context';
 import {RtmpCallInstance} from './calls/rtmpCallsController';
+import {ActiveAccountNumber} from './accounts/types';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -138,7 +138,7 @@ export type BroadcastEvents = {
   'webpage_updated': {id: WebPage.webPage['id'], msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[]},
 
   'connection_status_change': ConnectionStatusChange,
-  'settings_updated': {key: string, value: any, settings: State['settings']},
+  'settings_updated': {key: string, value: any, settings: StateSettings},
   'draft_updated': {peerId: PeerId, threadId: number, draft: MyDraftMessage | undefined, force?: boolean},
 
   'background_change': void,
@@ -150,6 +150,8 @@ export type BroadcastEvents = {
 
   'notification_reset': string,
   'notification_cancel': string,
+
+  'notification_count_update': void,
 
   'language_change': string,
 
@@ -179,7 +181,7 @@ export type BroadcastEvents = {
 
   'service_notification': Update.updateServiceNotification,
 
-  'logging_out': void,
+  'logging_out': {accountNumber: ActiveAccountNumber, migrateTo?: ActiveAccountNumber},
 
   'payment_sent': {peerId: PeerId, mid: number, receiptMessage: Message.messageService},
 
@@ -197,7 +199,9 @@ export type BroadcastEvents = {
 
   'config': Config,
   'app_config': MTAppConfig,
-  'managers_ready': void // ! inner
+  'managers_ready': void, // ! inner
+
+  'account_logged_in': {accountNumber: ActiveAccountNumber, userId: UserId}
 };
 
 export type BroadcastEventsListeners = {
@@ -207,7 +211,7 @@ export type BroadcastEventsListeners = {
 export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
   public myId: PeerId;
   private connectionStatus: {[name: string]: ConnectionStatusChange};
-  public settings: State['settings'];
+  public settings: StateSettings;
   public managers: AppManagers;
   public premium: boolean;
 
@@ -235,14 +239,15 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
 
     this.dispatchEvent = (e, ...args) => {
       super.dispatchEvent(e, ...args);
-      MTProtoMessagePort.getInstance().invokeVoid('event', {name: e as string, args});
+      (async() => {
+        const accountNumber = this.managers ? await this.managers.apiManager.getAccountNumber() : undefined;
+        MTProtoMessagePort.getInstance().invokeVoid('event', {
+          name: e as string,
+          args,
+          accountNumber
+        });
+      })();
     };
-
-    if(!IS_WORKER) {
-      this.addEventListener('settings_updated', ({settings}) => {
-        this.settings = settings;
-      });
-    }
   }
 
   public getConnectionStatus() {
@@ -251,6 +256,10 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
 
   public getPremium() {
     return this.premium;
+  }
+
+  public getMyId() {
+    return this.myId;
   }
 
   public dispatchEventSingle<L extends EventListenerListeners = BroadcastEventsListeners, T extends keyof L = keyof L>(

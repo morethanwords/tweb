@@ -34,7 +34,7 @@ type EE = E | (Exclude<E, 'clientX' | 'clientY'> & {
   touches: E[]
 });
 
-const getEvent = (e: EE) => {
+export const getEvent = (e: EE) => {
   return 'touches' in e ? e.touches[0] : e;
 };
 

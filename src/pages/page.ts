@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {AuthBackButton} from '../components/authBackButton';
+import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
 import pagesManager from './pagesManager';
 
 export default class Page {
@@ -42,9 +44,20 @@ export default class Page {
         }
       }
 
+      this.mountBackButtonIfAuth();
+
       this.installed = true;
     }
 
     pagesManager.setPage(this);
+  }
+
+  private mountBackButtonIfAuth() {
+    if(!this.isAuthPage || getCurrentAccount() === 1) return;
+
+    const closeContainer = document.getElementById('auth-pages-close');
+    closeContainer?.style.removeProperty('display');
+    closeContainer?.replaceChildren();
+    closeContainer?.append(AuthBackButton());
   }
 }

@@ -11,11 +11,14 @@ import bigInt from 'big-integer';
 import {IS_SAFARI} from '../../environment/userAgent';
 import {OpusDecoder} from '../../vendor/opus';
 import deferredPromise from '../../helpers/cancellablePromise';
-import ctx from '../../environment/ctx';
 import {logger} from '../logger';
 import assumeType from '../../helpers/assumeType';
 import clamp from '../../helpers/number/clamp';
 import pause from '../../helpers/schedulers/pause';
+import {ActiveAccountNumber} from '../accounts/types';
+import {getCurrentAccountFromURL} from '../accounts/getCurrentAccountFromURL';
+
+const ctx = self as any as ServiceWorkerGlobalScope;
 
 const pendingStreams: Map<string, RtmpStream> = new Map();
 (ctx as any).pendingStreams = pendingStreams;
@@ -94,7 +97,7 @@ class RtmpStream {
 
   private _log: ReturnType<typeof logger>;
 
-  constructor(readonly call: InputGroupCall) {
+  constructor(readonly call: InputGroupCall, readonly accountNumber: ActiveAccountNumber) {
     this.decodeOpus = this.decodeOpus.bind(this);
     this._log = logger('RTMP-' + (Date.now() + '').slice(-2));
     this._log('constructor', call.id);
@@ -153,6 +156,7 @@ class RtmpStream {
     const now = Date.now();
     const chunk = await serviceMessagePort.invoke('requestRtmpPart', {
       dcId: this._dcId,
+      accountNumber: this.accountNumber,
       request: {
         _: 'inputGroupCallStream',
         call: this.call,
@@ -446,7 +450,10 @@ class RtmpStream {
       }, 1000);
       this._timeouts.add(timeout);
 
-      serviceMessagePort.invoke('requestRtmpState', this.call).then((state) => {
+      serviceMessagePort.invoke('requestRtmpState', {
+        call: this.call,
+        accountNumber: this.accountNumber
+      }).then((state) => {
         clearTimeout(timeout);
         promise.resolve(state);
       }).catch((e) => {
@@ -796,7 +803,7 @@ class RtmpStream {
   }
 }
 
-export function onRtmpFetch(event: FetchEvent, params: string, search: string) {
+async function getRtmpFetchResponse(event: FetchEvent, params: string, search: string): Promise<Response> {
   const call = JSON.parse(decodeURIComponent(params));
   let pending = pendingStreams.get(call.id);
 
@@ -807,9 +814,12 @@ export function onRtmpFetch(event: FetchEvent, params: string, search: string) {
   //   pending = undefined;
   // }
 
+  const client = await ctx.clients.get(event.clientId);
+  const accountNumber = getCurrentAccountFromURL(client.url);
+
   if(!pending) {
     log('creating rtmp stream', call.id);
-    pending = new RtmpStream(call);
+    pending = new RtmpStream(call, accountNumber);
     pendingStreams.set(call.id, pending);
   }
 
@@ -819,33 +829,33 @@ export function onRtmpFetch(event: FetchEvent, params: string, search: string) {
     const chunk = search.slice(4);
 
     if(chunk === 'playlist') {
-      return event.respondWith(pending.getHlsPlaylist(baseUrl).then((r) => new Response(r, {
+      return pending.getHlsPlaylist(baseUrl).then((r) => new Response(r, {
         headers: {
           'Content-Type': HLS_MIME
         }
-      })));
+      }));
     }
 
     if(chunk === 'init') {
       const init = pending.getInitChunk();
 
       if(!init) {
-        event.respondWith(new Response('', {status: 404}));
+        return new Response('', {status: 404});
       }
 
-      return event.respondWith(new Response(init, {
+      return new Response(init, {
         headers: {
           'Content-Type': MP4_MIME
         }
-      }));
+      });
     }
 
     const seq = Number(chunk);
     if(isNaN(seq)) {
-      return event.respondWith(new Response('', {status: 404}));
+      return new Response('', {status: 404});
     }
 
-    return event.respondWith(pending.getHlsChunk(seq).then((r) => {
+    return pending.getHlsChunk(seq).then((r) => {
       if(!r) {
         return new Response('', {status: 404});
       }
@@ -855,14 +865,19 @@ export function onRtmpFetch(event: FetchEvent, params: string, search: string) {
           'Content-Type': MP4_MIME
         }
       });
-    }));
+    });
   }
 
-  event.respondWith(new Response(pending.createStream(), {
+  return new Response(pending.createStream(), {
     headers: {
       'Content-Type': 'video/mp4'
     }
-  }));
+  });
+}
+
+export function onRtmpFetch(event: FetchEvent, params: string, search: string) {
+  const responsePromise = getRtmpFetchResponse(event, params, search)
+  event.respondWith(responsePromise);
 }
 
 
