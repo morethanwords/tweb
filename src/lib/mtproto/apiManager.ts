@@ -315,10 +315,30 @@ export class ApiManager extends ApiManagerMethods {
       this.baseDcId = undefined;
       // this.telegramMeNotify(false);
       if(totalAccounts === 1 && accountNumber === 1 && !migrateAccountTo) {
-        await sessionStorage.delete(`account1`);
-        await AppStoragesManager.clearAllStoresForAccount(1);
-        await commonStateStorage.clear();
-        await CacheStorageController.deleteAllStorages();
+        await Promise.all([
+          (async() => {
+            const keys: Parameters<typeof sessionStorage['delete']>[0][] = [
+              'account1',
+              'dc',
+              'server_time_offset',
+              'xt_instance',
+              'user_auth',
+              // 'state_id',
+              'k_build',
+              'auth_key_fingerprint'
+            ];
+            for(let i = 1; i <= 5; ++i) {
+              keys.push(`dc${i as TrueDcId}_server_salt`);
+              keys.push(`dc${i as TrueDcId}_auth_key`);
+              keys.push(`dc${i as TrueDcId}_hash`); // only for WebA
+            }
+
+            return Promise.all(keys.map((key) => sessionStorage.delete(key)));
+          })(),
+          AppStoragesManager.clearAllStoresForAccount(1),
+          commonStateStorage.clear(),
+          CacheStorageController.deleteAllStorages()
+        ]);
       } else {
         await AccountController.shiftAccounts(accountNumber);
         await AppStoragesManager.shiftStorages(accountNumber);
@@ -421,12 +441,6 @@ export class ApiManager extends ApiManagerMethods {
 
           authKeyHex = bytesToHex(auth.authKey);
           serverSaltHex = bytesToHex(auth.serverSalt);
-
-          if(dcId === App.baseDcId) {
-            AccountController.update(this.getAccountNumber(), {
-              auth_key_fingerprint: authKeyHex.slice(0, 8)
-            });
-          }
 
           AccountController.update(this.getAccountNumber(), {
             [ak]: authKeyHex,

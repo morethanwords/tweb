@@ -63,7 +63,6 @@ const onFirstMount = async() => {
 
   let stop = false;
   rootScope.addEventListener('user_auth', (auth) => {
-    console.log('auth', auth)
     stop = true;
     cachedPromise = null;
   }, {once: true});

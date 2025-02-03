@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {State} from '../../../config/state';
+import type {StateSettings} from '../../../config/state';
 import flatten from '../../../helpers/array/flatten';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import {LiteModeKey} from '../../../helpers/liteMode';
@@ -107,7 +107,7 @@ export default class AppPowerSavingTab extends SliderSuperTab {
     };
 
     this.listenerSetter.add(form)('change', async() => {
-      const liteMode: State['settings']['liteMode'] = {} as any;
+      const liteMode: StateSettings['liteMode'] = {} as any;
       fields.forEach((field) => {
         const checked = field.checkboxField.checked;
         liteMode[field.key] = field.key === 'all' ? checked : !checked;

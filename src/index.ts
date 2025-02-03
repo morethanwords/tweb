@@ -44,6 +44,7 @@ import {getCurrentAccount} from './lib/accounts/getCurrentAccount';
 import AccountController from './lib/accounts/accountController';
 import {changeAccount} from './lib/accounts/changeAccount';
 import {MAX_ACCOUNTS_FREE, MAX_ACCOUNTS_PREMIUM} from './lib/accounts/constants';
+import sessionStorage from './lib/sessionStorage';
 
 
 IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
@@ -319,14 +320,10 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
 
   // await pause(1000000);
 
-  const langPromise = I18n.getCacheLangPack();
-
-  const [stateResult, langPack] = await Promise.all([
-    // loadState(),
-    apiManagerProxy.sendAllStates().then((loadedStates) => loadedStates[getCurrentAccount()]),
-    langPromise
-  ]);
-  I18n.setTimeFormat(stateResult.state.settings.timeFormat);
+  // * can't combine now since langPack will be migrated to the new system
+  const stateResult = await apiManagerProxy.sendAllStates().then((loadedStates) => loadedStates[getCurrentAccount()]);
+  const langPack = await I18n.getCacheLangPack();
+  I18n.setTimeFormat(rootScope.settings.timeFormat);
 
   document.body.classList.toggle('has-folders-sidebar', stateResult.state.settings.tabsInSidebar)
 
@@ -436,8 +433,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     }
 
     if(el) {
-      if(localStorage.getItem('should-animate-auth')) {
-        localStorage.removeItem('should-animate-auth');
+      if(await sessionStorage.get('should_animate_auth')) {
+        await sessionStorage.delete('should_animate_auth');
         el.classList.add('auth-pages-enter');
 
         // Just in case
@@ -545,24 +542,27 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   } else {
     console.log('Will mount IM page:', Date.now() / 1000);
 
-    const fontsPromise = loadFonts()
+    const fontsPromise = loadFonts();
     fadeInWhenFontsReady(document.getElementById('main-columns'), fontsPromise);
 
-    const page = (await import('./pages/pageIm')).default;
-
-    const shouldAnimate = localStorage.getItem('should-animate-main');
+    const [page, shouldAnimate] = await Promise.all([
+      import('./pages/pageIm').then((module) => module.default),
+      sessionStorage.get('should_animate_main')
+    ]);
     if(shouldAnimate) {
-      localStorage.removeItem('should-animate-main')
+      await sessionStorage.delete('should_animate_main');
       page.pageEl.classList.add('main-screen-enter');
+
+      await page.mount();
+      await fontsPromise;
+
+      await doubleRaf();
+      page.pageEl.classList.add('main-screen-entering');
+      await pause(200);
+
+      page.pageEl.classList.remove('main-screen-enter', 'main-screen-entering');
+    } else {
+      await page.mount();
     }
-
-    await page.mount();
-    await fontsPromise;
-
-    await doubleRaf();
-    page.pageEl.classList.add('main-screen-entering');
-    await pause(200);
-
-    page.pageEl.classList.remove('main-screen-enter', 'main-screen-entering');
   }
 });

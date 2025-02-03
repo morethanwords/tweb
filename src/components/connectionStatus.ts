@@ -9,7 +9,6 @@ import DEBUG from '../config/debug';
 import {LangPackKey, i18n} from '../lib/langPack';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
-import sessionStorage from '../lib/sessionStorage';
 import {ConnectionStatus} from '../lib/mtproto/connectionStatus';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../helpers/dom/clickEvent';

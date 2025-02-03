@@ -32,6 +32,11 @@ const sessionStorage = new LocalStorageController<{
   dc3_server_salt: string,
   dc4_server_salt: string,
   dc5_server_salt: string,
+  dc1_hash: string, // WebA only
+  dc2_hash: string, // WebA only
+  dc3_hash: string, // WebA only
+  dc4_hash: string, // WebA only
+  dc5_hash: string, // WebA only
   auth_key_fingerprint: string, // = dc${App.baseDcId}_auth_key.slice(0, 8)
   // -->
 
@@ -42,7 +47,13 @@ const sessionStorage = new LocalStorageController<{
     canRedirect: boolean,
     ts: number
   },
-  k_build: number
+  k_build: number,
+
+  // auth options
+  previous_account?: number, // only for back button when logging in to another account
+  current_account?: number, // 1 if not set
+  should_animate_auth?: number,
+  should_animate_main?: number
 }>(/* ['kz_version'] */);
 MOUNT_CLASS_TO.appStorage = sessionStorage;
 export default sessionStorage;

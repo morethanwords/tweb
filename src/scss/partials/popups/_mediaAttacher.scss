@@ -409,7 +409,7 @@
     color: #ffffff;
   }
 
-  >span {
+  > span {
     position: absolute;
     left: 50%;
     top: 50%;
@@ -417,16 +417,16 @@
     transition: .2s;
   }
 
-  >span:nth-child(2) {
+  > span:nth-child(2) {
     opacity: 0;
   }
 
   &[data-toggled="true"] {
-    >span:nth-child(1) {
+    > span:nth-child(1) {
       opacity: 0;
     }
 
-    >span:nth-child(2) {
+    > span:nth-child(2) {
       opacity: 1;
     }
   }

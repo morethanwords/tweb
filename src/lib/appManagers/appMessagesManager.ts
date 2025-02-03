@@ -78,6 +78,7 @@ import getMainGroupedMessage from './utils/messages/getMainGroupedMessage';
 import getUnreadReactions from './utils/messages/getUnreadReactions';
 import isMentionUnread from './utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
+import commonStateStorage from '../commonStateStorage';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -7120,11 +7121,11 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    const state = await this.appStateManager.getState();
+    const settings = await commonStateStorage.get('settings', false);
 
     let tabs = appTabsManager.getTabs();
-    if(!state.settings.notifyAllAccounts)
-      tabs = tabs.filter(tab => tab.state.accountNumber === this.getAccountNumber());
+    if(!settings.notifyAllAccounts)
+      tabs = tabs.filter((tab) => tab.state.accountNumber === this.getAccountNumber());
 
     tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
 
@@ -7134,7 +7135,7 @@ export class AppMessagesManager extends AppManager {
     });
 
     if(!tab) {
-      tab = tabs.find(tab => tab.state.accountNumber === this.getAccountNumber());
+      tab = tabs.find((tab) => tab.state.accountNumber === this.getAccountNumber());
     }
 
     if(!tab && tabs.length) {

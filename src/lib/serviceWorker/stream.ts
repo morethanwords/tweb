@@ -5,6 +5,7 @@
  */
 
 import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
+import bufferConcats from '../../helpers/bytes/bufferConcats';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tryPatchMp4 from '../../helpers/fixChromiumMp4';
 import debounce, {DebounceReturnType} from '../../helpers/schedulers/debounce';
@@ -256,12 +257,25 @@ class Stream {
       end = Math.min(offset + limit, this.info.size - 1);
     }
 
-    return this.requestFilePart(alignedOffset, limit).then((ab) => {
+    let overflow: number;
+    if(offset !== alignedOffset || end !== (alignedOffset + limit)) {
+      overflow = end - alignedOffset - limit + 1;
+    }
+
+    const parts = Promise.all([
+      this.requestFilePart(alignedOffset, limit),
+      overflow && this.requestFilePart(alignedOffset + limit, limit)
+    ]);
+
+    return parts.then((parts) => {
+      let ab = bufferConcats(...parts.filter(Boolean));
       // log.debug('[stream] requestFilePart result:', result);
 
       // if(isSafari) {
       if(offset !== alignedOffset || end !== (alignedOffset + limit)) {
-        ab = ab.slice(offset - alignedOffset, end - alignedOffset + 1);
+        const sliceStart = offset - alignedOffset;
+        const sliceEnd = end - alignedOffset + 1;
+        ab = ab.slice(sliceStart, sliceEnd);
       }
 
       if(this.shouldPatchMp4 === true || this.shouldPatchMp4 === alignedOffset) {
@@ -276,7 +290,8 @@ class Stream {
       const headers: Record<string, string> = {
         'Accept-Ranges': 'bytes',
         'Content-Range': `bytes ${offset}-${offset + ab.byteLength - 1}/${this.info.size || '*'}`,
-        'Content-Length': `${ab.byteLength}`
+        'Content-Length': `${ab.byteLength}`,
+        'Response-Time': '' + Date.now()
       };
 
       if(this.info.mimeType) {

@@ -140,7 +140,7 @@ class LocalStorage<Storage extends Record<string, any>> {
 export interface LocalStorageProxyTask extends WorkerTaskTemplate {
   type: 'localStorageProxy',
   payload: {
-    type: 'set' | 'get' | 'delete' | 'clear' | 'toggleStorage',
+    type: 'set' | 'get' | 'delete' /* | 'clear'  */| 'toggleStorage',
     args: any[]
   }
 };
@@ -189,9 +189,9 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     return this.proxy<void>('delete', key, saveLocal);
   }
 
-  public clear(/* preserveKeys?: (keyof Storage)[] */) {
-    return this.proxy<void>('clear'/* , preserveKeys */);
-  }
+  // public clear(/* preserveKeys?: (keyof Storage)[] */) {
+  //   return this.proxy<void>('clear'/* , preserveKeys */);
+  // }
 
   public toggleStorage(enabled: boolean, clearWrite: boolean) {
     return this.proxy<void>('toggleStorage', enabled, clearWrite);

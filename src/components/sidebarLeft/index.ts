@@ -77,14 +77,12 @@ import {MAX_ACCOUNTS, MAX_ACCOUNTS_FREE} from '../../lib/accounts/constants';
 import {getCurrentAccount} from '../../lib/accounts/getCurrentAccount';
 import {createProxiedManagersForAccount} from '../../lib/appManagers/getProxiedManagers';
 import limitSymbols from '../../helpers/string/limitSymbols';
-import {injectMediaEditorLangPack} from '../mediaEditor/langPack';
 import attachFloatingButtonMenu from '../floatingButtonMenu';
 import filterAsync from '../../helpers/array/filterAsync';
 import pause from '../../helpers/schedulers/pause';
 import AccountsLimitPopup from './accountsLimitPopup';
 import {changeAccount} from '../../lib/accounts/changeAccount';
 import {UiNotificationsManager} from '../../lib/appManagers/uiNotificationsManager';
-import {updateStorageForWebA} from '../../lib/updateStorageForWebA';
 import {renderFoldersSidebarContent} from './foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import SwipeHandler, {getEvent} from '../swipeHandler';
@@ -153,10 +151,7 @@ export class AppSidebarLeft extends SidebarSlider {
     // this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
 
-    injectMediaEditorLangPack();
-
     this.toolsBtn = this.createToolsMenu();
-
     this.toolsBtn.classList.add('sidebar-tools-button', 'is-visible');
     this.totalNotificationsCount = createBadge('span', 20, 'primary');
     this.toolsBtn.append(this.totalNotificationsCount);
@@ -400,10 +395,6 @@ export class AppSidebarLeft extends SidebarSlider {
     appNavigationController.pushItem(navigationItem);
 
     apiManagerProxy.getState().then((state) => {
-      if(!state.keepSigned) {
-        return;
-      }
-
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
         fetch('version', {cache: 'no-cache'})
@@ -655,8 +646,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
       clb();
     }
-
-    injectMediaEditorLangPack();
 
     const btnArchive: typeof menuButtons[0] = {
       icon: 'archive',
@@ -934,7 +923,6 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'ChatList.Menu.SwitchTo.A',
       onClick: () => {
         Promise.all([
-          updateStorageForWebA(),
           sessionStorage.set({kz_version: 'Z'}),
           sessionStorage.delete('tgme_sync')
         ]).then(() => {
@@ -976,8 +964,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
 
     async function hasAnimations() {
-      const state = await apiManagerProxy.getState();
-      return !state.settings.liteMode.animations;
+      return !rootScope.settings.liteMode.animations;
     }
 
     async function initAnimationsToggleIcon() {

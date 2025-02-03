@@ -6,7 +6,6 @@
 
 import {putPreloader} from '../components/putPreloader';
 import Page from './page';
-import CheckboxField from '../components/checkboxField';
 import Button from '../components/button';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import App from '../config/app';
@@ -19,14 +18,11 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import toggleDisability from '../helpers/dom/toggleDisability';
-import sessionStorage from '../lib/sessionStorage';
-import {DcAuthKey, DcId, TrueDcId} from '../types';
+import {TrueDcId} from '../types';
 import placeCaretAtEnd from '../helpers/dom/placeCaretAtEnd';
 import {HelpCountry, HelpCountryCode} from '../layer';
-import stateStorage from '../lib/stateStorageInstance';
 import rootScope from '../lib/rootScope';
 import TelInputField from '../components/telInputField';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import CountryInputField from '../components/countryInputField';
 import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
 import AccountController from '../lib/accounts/accountController';
@@ -115,27 +111,6 @@ const onFirstMount = () => {
     this.removeAttribute('readonly'); // fix autocomplete
   });*/
 
-  const signedCheckboxField = new CheckboxField({
-    text: 'Login.KeepSigned',
-    name: 'keepSession',
-    withRipple: true,
-    checked: true
-  });
-
-  signedCheckboxField.input.addEventListener('change', () => {
-    const keepSigned = signedCheckboxField.checked;
-    rootScope.managers.appStateManager.pushToState('keepSigned', keepSigned);
-  });
-
-  apiManagerProxy.getState().then((state) => {
-    if(!stateStorage.isAvailable()) {
-      signedCheckboxField.checked = false;
-      signedCheckboxField.label.classList.add('checkbox-disabled');
-    } else {
-      signedCheckboxField.checked = state.keepSigned;
-    }
-  });
-
   btnNext = Button('btn-primary btn-color-primary', {text: 'Login.Next'});
   btnNext.style.visibility = 'hidden';
 
@@ -222,7 +197,7 @@ const onFirstMount = () => {
     }); */
   });
 
-  inputWrapper.append(countryInputField.container, telInputField.container, signedCheckboxField.label, btnNext, btnQr);
+  inputWrapper.append(countryInputField.container, telInputField.container, btnNext, btnQr);
 
   const h4 = document.createElement('h4');
   h4.classList.add('text-center');

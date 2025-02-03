@@ -187,6 +187,15 @@ export class IDB {
     });
   }
 
+  public closeDatabase() {
+    if(!this.db) {
+      return;
+    }
+
+    this.db.onclose = () => {};
+    this.db.close();
+  }
+
   public static create<T extends Database<any>>(db: T) {
     return this.INSTANCES.find((instance) => instance.name === db.name) ?? new IDB(db);
   }
@@ -197,28 +206,8 @@ export class IDB {
         return;
       }
 
-      const db = storage.db;
-      if(db) {
-        db.onclose = () => {};
-        db.close();
-      }
+      storage.closeDatabase();
     });
-  }
-}
-
-namespace IDBStorage {
-  export type Entries = Array<[IDBValidKey, any]>
-}
-
-class IDBStorage<T extends Database<any>, StoreName extends string = T['stores'][0]['name']> {
-  private log: ReturnType<typeof logger>;
-  private storeName: T['stores'][0]['name'];
-  private idb: IDB;
-
-  constructor(db: T, storeName: typeof db['stores'][0]['name']) {
-    this.storeName = storeName;
-    this.log = logger(['IDB', db.name, storeName].join('-'));
-    this.idb = IDB.create(db);
   }
 
   /**
@@ -239,21 +228,45 @@ class IDBStorage<T extends Database<any>, StoreName extends string = T['stores']
     const storages = this.STORAGES;
     const dbNames = Array.from(new Set(storages.map((storage) => storage.name)));
     const promises = dbNames.map((dbName) => {
-      return new Promise<void>((resolve, reject) => {
-        const deleteRequest = indexedDB.deleteDatabase(dbName);
-
-        deleteRequest.onerror = () => {
-          reject();
-        };
-
-        deleteRequest.onsuccess = () => {
-          resolve();
-        };
-      });
+      this.deleteDatabaseByName(dbName);
     });
 
     return Promise.all(promises);
   } */
+
+  public static deleteDatabaseByName(dbName: string) {
+    return new Promise<void>((resolve, reject) => {
+      const deleteRequest = indexedDB.deleteDatabase(dbName);
+
+      deleteRequest.onerror = () => {
+        reject();
+      };
+
+      deleteRequest.onsuccess = () => {
+        resolve();
+      };
+    });
+  }
+}
+
+namespace IDBStorage {
+  export type Entries = Array<[IDBValidKey, any]>
+}
+
+class IDBStorage<T extends Database<any>, StoreName extends string = T['stores'][0]['name']> {
+  private log: ReturnType<typeof logger>;
+  private storeName: T['stores'][0]['name'];
+  private idb: IDB;
+
+  constructor(db: T, storeName: typeof db['stores'][0]['name']) {
+    this.storeName = storeName;
+    this.log = logger(['IDB', db.name, storeName].join('-'));
+    this.idb = IDB.create(db);
+  }
+
+  public close() {
+    return this.idb.closeDatabase();
+  }
 
   public delete(entryName: string | string[], storeName?: StoreName): Promise<void> {
     // return Promise.resolve();
@@ -433,6 +446,10 @@ class IDBStorage<T extends Database<any>, StoreName extends string = T['stores']
           // resolved = true;
           const results = requests.map((r) => r.result);
           resolve(isArray ? results : results[0]);
+
+          if(log) {
+            this.log(log + ': resolved', isArray ? results : results[0]);
+          }
         };
 
         transaction.onerror = onError;

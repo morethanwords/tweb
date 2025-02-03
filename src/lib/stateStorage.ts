@@ -15,8 +15,7 @@ export default class StateStorage extends AppStorage<{
   chatPositions: {
     [peerId_threadId: string]: ChatSavedPosition
   },
-  drafts: AppDraftsManager['drafts'],
-  user_auth: any, // support old webk format
+  drafts: AppDraftsManager['drafts']
 } & State, AccountDatabase> {
   constructor(accountNumber: ActiveAccountNumber | 'old') {
     const db = accountNumber === 'old' ?

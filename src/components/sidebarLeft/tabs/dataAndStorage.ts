@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AutoDownloadPeerTypeSettings, STATE_INIT} from '../../../config/state';
+import {AutoDownloadPeerTypeSettings, STATE_INIT, SETTINGS_INIT} from '../../../config/state';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import replaceContent from '../../../helpers/dom/replaceContent';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
@@ -52,8 +52,8 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
 
       const onChange = () => {
         toggleDisability([resetButton],
-          deepEqual(rootScope.settings.autoDownload, STATE_INIT.settings.autoDownload) &&
-          deepEqual(rootScope.settings.autoDownloadNew, STATE_INIT.settings.autoDownloadNew));
+          deepEqual(rootScope.settings.autoDownload, SETTINGS_INIT.autoDownload) &&
+          deepEqual(rootScope.settings.autoDownloadNew, SETTINGS_INIT.autoDownloadNew));
       };
 
       const setSubtitles = () => {
@@ -109,8 +109,8 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
           }
         }).then(() => {
           const settings = rootScope.settings;
-          settings.autoDownloadNew = copy(STATE_INIT.settings.autoDownloadNew);
-          settings.autoDownload = copy(STATE_INIT.settings.autoDownload);
+          settings.autoDownloadNew = copy(SETTINGS_INIT.autoDownloadNew);
+          settings.autoDownload = copy(SETTINGS_INIT.autoDownload);
           rootScope.settings = settings;
           this.managers.appStateManager.setByKey('settings', settings);
 

@@ -224,8 +224,8 @@ export default class AppStorage<
     } */
   }
 
-  public getAll() {
-    return this.storage.getAll().catch(() => []);
+  public getAll(): Promise<any[]> {
+    return this.storage.getAll().catch(() => [] as any[]);
   }
 
   public getAllEntries() {
@@ -295,6 +295,10 @@ export default class AppStorage<
     }
 
     return this.storage.clear().catch(noop);
+  }
+
+  public close() {
+    return this.storage.close();
   }
 
   public static toggleStorage(enabled: boolean, clearWrite: boolean) {

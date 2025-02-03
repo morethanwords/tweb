@@ -10,9 +10,9 @@ import type {StoragesResults} from '../appManagers/utils/storages/loadStorages';
 import type {LocalStorageProxyTask} from '../localStorage';
 import type {MirrorTaskPayload, NotificationBuildTaskPayload, TabState} from './mtprotoworker';
 import type toggleStorages from '../../helpers/toggleStorages';
+import type {ActiveAccountNumber} from '../accounts/types';
+import type {LoadStateResult} from '../appManagers/utils/state/loadState';
 import SuperMessagePort from './superMessagePort';
-import {ActiveAccountNumber} from '../accounts/types';
-import {LoadStateResult} from '../appManagers/utils/state/loadState';
 
 export type MTProtoManagerTaskPayload = {name: string, method: string, args: any[], accountNumber: ActiveAccountNumber};
 
@@ -29,7 +29,7 @@ type MTProtoBroadcastEvent = {
 export default class MTProtoMessagePort<Master extends boolean = true> extends SuperMessagePort<{
   environment: (environment: ReturnType<typeof getEnvironment>) => void,
   crypto: (payload: {method: string, args: any[]}) => Promise<any>,
-  state: (payload: {userId: UserId, accountNumber: ActiveAccountNumber} & LoadStateResult & {storagesResults?: StoragesResults}) => void,
+  state: (payload: {accountNumber: ActiveAccountNumber} & LoadStateResult) => void,
   manager: (payload: MTProtoManagerTaskPayload) => any,
   toggleStorages: (payload: {enabled: boolean, clearWrite: boolean}) => ReturnType<typeof toggleStorages>,
   serviceWorkerOnline: (online: boolean) => void,

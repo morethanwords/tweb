@@ -726,7 +726,7 @@ export class UiNotificationsManager {
 
   public updateLocalSettings = () => {
     const keys = ['notify_nodesktop', 'notify_volume', 'notify_novibrate', 'notify_nopreview', 'notify_nopush'];
-    const promises = keys.map(() => undefined);
+    const promises = keys.map(() => undefined as any);
     // const promises = keys.map((k) => stateStorage.get(k as any));
     Promise.all(promises)
     .then((updSettings) => {
@@ -751,9 +751,7 @@ export class UiNotificationsManager {
       webPushApiManager.setSettings(this.settings);
     });
 
-    this.managers.appStateManager.getState().then((state) => {
-      this.settings.nosound = !state.settings.notifications.sound;
-    });
+    this.settings.nosound = !rootScope.settings.notifications.sound;
   }
 
   public getLocalSettings() {
@@ -842,7 +840,7 @@ export class UiNotificationsManager {
 
     this.updateLocalSettings();
     this.managers.appStateManager.getState().then((state) => {
-      if(UiNotificationsManager.stopped || !state.keepSigned) {
+      if(UiNotificationsManager.stopped) {
         return;
       }
 

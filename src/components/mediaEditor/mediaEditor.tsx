@@ -8,7 +8,6 @@ import {i18n} from '../../lib/langPack';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 
 import {delay} from './utils';
-import {injectMediaEditorLangPack} from './langPack';
 import MediaEditorContext, {createStandaloneContextValue, StandaloneContext} from './context';
 import MainCanvas from './canvas/mainCanvas';
 import FinishButton from './finishButton';
@@ -137,8 +136,6 @@ export function MediaEditor(props: MediaEditorProps) {
 }
 
 export function openMediaEditor(props: MediaEditorProps) {
-  injectMediaEditorLangPack();
-
   const element = document.createElement('div');
   document.body.append(element);
 

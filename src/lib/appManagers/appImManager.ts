@@ -67,7 +67,7 @@ import wrapRichText from '../richTextProcessor/wrapRichText';
 import wrapUrl from '../richTextProcessor/wrapUrl';
 import getUserStatusString from '../../components/wrappers/getUserStatusString';
 import getChatMembersString from '../../components/wrappers/getChatMembersString';
-import {STATE_INIT} from '../../config/state';
+import {STATE_INIT, SETTINGS_INIT} from '../../config/state';
 import CacheStorageController from '../files/cacheStorage';
 import themeController from '../../helpers/themeController';
 import overlayCounter from '../../helpers/overlayCounter';
@@ -218,7 +218,7 @@ export class AppImManager extends EventListenerBase<{
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
 
     this.backgroundPromises = {};
-    STATE_INIT.settings.themes.forEach((theme) => {
+    SETTINGS_INIT.themes.forEach((theme) => {
       const themeSettings = theme.settings;
       if(!themeSettings) {
         return;
@@ -1654,7 +1654,7 @@ export class AppImManager extends EventListenerBase<{
 
     const slug = (theme.settings?.wallpaper as WallPaper.wallPaper)?.slug;
     if(slug) {
-      const defaultTheme = STATE_INIT.settings.themes.find((t) => t.name === theme.name);
+      const defaultTheme = SETTINGS_INIT.themes.find((t) => t.name === theme.name);
       // const isDefaultBackground = theme.background.blur === defaultTheme.background.blur &&
       // slug === defaultslug;
 
