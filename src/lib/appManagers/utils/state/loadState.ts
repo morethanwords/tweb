@@ -172,7 +172,6 @@ const STATE_STEPS = {
   },
   VERSION: (writer: ReturnType<typeof StateWriter>) => {
     let newVersion: string, oldVersion: string;
-    writer.state.build = 525;
     if(writer.state.version !== STATE_VERSION || writer.state.build !== BUILD/*  || true */) {
       if(writer.state.build < 526) { // * drop all previous migrations
         writer.reset();
