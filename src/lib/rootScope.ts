@@ -13,7 +13,7 @@ import type {MyDraftMessage} from './appManagers/appDraftsManager';
 import type {ConnectionStatusChange} from './mtproto/connectionStatus';
 import type {GroupCallId} from './appManagers/appGroupCallsManager';
 import type {AppManagers} from './appManagers/managers';
-import type {State} from '../config/state';
+import type {StateSettings} from '../config/state';
 import type {Progress} from './appManagers/appDownloadManager';
 import type {CallId} from './appManagers/appCallsManager';
 import type {MyDocument} from './appManagers/appDocsManager';
@@ -25,7 +25,6 @@ import {NULL_PEER_ID, UserAuth} from './mtproto/mtproto_config';
 import EventListenerBase, {EventListenerListeners} from '../helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
-import {IS_WORKER} from '../helpers/context';
 import {RtmpCallInstance} from './calls/rtmpCallsController';
 import {ActiveAccountNumber} from './accounts/types';
 
@@ -139,7 +138,7 @@ export type BroadcastEvents = {
   'webpage_updated': {id: WebPage.webPage['id'], msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[]},
 
   'connection_status_change': ConnectionStatusChange,
-  'settings_updated': {key: string, value: any, settings: State['settings']},
+  'settings_updated': {key: string, value: any, settings: StateSettings},
   'draft_updated': {peerId: PeerId, threadId: number, draft: MyDraftMessage | undefined, force?: boolean},
 
   'background_change': void,
@@ -212,7 +211,7 @@ export type BroadcastEventsListeners = {
 export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
   public myId: PeerId;
   private connectionStatus: {[name: string]: ConnectionStatusChange};
-  public settings: State['settings'];
+  public settings: StateSettings;
   public managers: AppManagers;
   public premium: boolean;
 
@@ -249,12 +248,6 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
         });
       })();
     };
-
-    if(!IS_WORKER) {
-      this.addEventListener('settings_updated', ({settings}) => {
-        this.settings = settings;
-      });
-    }
   }
 
   public getConnectionStatus() {

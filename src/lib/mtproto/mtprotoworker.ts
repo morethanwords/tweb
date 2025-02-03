@@ -59,6 +59,7 @@ import getAbbreviation from '../richTextProcessor/getAbbreviation';
 import {FontFamily} from '../../config/font';
 import {NOTIFICATION_BADGE_PATH} from '../../config/notifications';
 import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
+import {appSettings, setAppSettingsSilent} from '../../stores/appSettings';
 
 const TEST_NO_STREAMING = false;
 
@@ -349,7 +350,6 @@ class ApiManagerProxy extends MTProtoMessagePort {
     // });
 
     rootScope.addEventListener('language_change', (language) => {
-      console.log('change from ApiManagerProxy');
       rootScope.managers.networkerFactory.setLanguage(language);
       rootScope.managers.appAttachMenuBotsManager.onLanguageChange();
     });
@@ -393,6 +393,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
         appRuntimeManager.reload();
       });
+    });
+
+    rootScope.addEventListener('settings_updated', ({key, settings}) => {
+      setAppSettingsSilent(/* key,  */settings);
     });
 
     idleController.addEventListener('change', (idle) => {
@@ -718,25 +722,30 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.dispatchUserAuth();
 
     const stateForThisAccount = loadedStates[getCurrentAccount()];
-
-    rootScope.settings = stateForThisAccount.state.settings;
-
+    rootScope.settings = stateForThisAccount.common.settings;
     this.newVersion = stateForThisAccount.newVersion;
     this.oldVersion = stateForThisAccount.oldVersion;
     this.mirrors['state'] = stateForThisAccount.state;
     setAppStateSilent(stateForThisAccount.state);
+    setAppSettingsSilent(stateForThisAccount.common.settings);
+
+    Object.defineProperty(rootScope, 'settings', {
+      get: () => {
+        return appSettings;
+      }
+    });
 
     return loadedStates;
   }
 
-
   private async dispatchUserAuth() {
     const accountData = await AccountController.get(getCurrentAccount());
-
     if(accountData?.userId) {
-      rootScope.dispatchEvent('user_auth',
-        {dcID: accountData.dcId || 0, date: accountData.date || (Date.now() / 1000 | 0), id: accountData.userId.toPeerId(false)}
-      );
+      rootScope.dispatchEvent('user_auth', {
+        dcID: accountData.dcId || 0,
+        date: accountData.date || (Date.now() / 1000 | 0),
+        id: accountData.userId.toPeerId(false)
+      });
     }
   }
 
@@ -747,12 +756,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
   public async sendAllStates() {
     const loadedStates = await this.loadAllStates();
 
-
     for(let i = 1; i <= 4; i++) {
-      const userId = (await sessionStorage.get(`account${i as ActiveAccountNumber}`))?.userId;
+      const state = loadedStates[i as ActiveAccountNumber];
       this.invoke('state', {
-        ...loadedStates[i as ActiveAccountNumber],
-        userId,
+        ...state,
         accountNumber: i as ActiveAccountNumber
       });
     }

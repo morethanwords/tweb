@@ -312,14 +312,10 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
 
   // await pause(1000000);
 
-  const langPromise = I18n.getCacheLangPack();
-
-  const [stateResult, langPack] = await Promise.all([
-    // loadState(),
-    apiManagerProxy.sendAllStates().then((loadedStates) => loadedStates[getCurrentAccount()]),
-    langPromise
-  ]);
-  I18n.setTimeFormat(stateResult.state.settings.timeFormat);
+  // * can't combine now since langPack will be migrated to the new system
+  const stateResult = await apiManagerProxy.sendAllStates().then((loadedStates) => loadedStates[getCurrentAccount()]);
+  const langPack = await I18n.getCacheLangPack();
+  I18n.setTimeFormat(rootScope.settings.timeFormat);
 
   rootScope.managers.rootScope.getPremium().then((isPremium) => {
     rootScope.premium = isPremium;

@@ -15,7 +15,7 @@ import {StoragesResults} from './utils/storages/loadStorages';
 import commonStateStorage from '../commonStateStorage';
 
 export type ResetStoragesPromise = CancellablePromise<{
-  storages: Set<keyof StoragesResults>,
+  storages: Map<keyof StoragesResults, (PeerId | UserId | ChatId)[]>,
   callback: () => Promise<void>
 }>;
 
@@ -60,8 +60,11 @@ export default class AppStateManager {
     return this.setKeyValueToStorage(key, value, onlyLocal);
   }
 
-  public udpateLocalState<T extends keyof State>(key: T, value: State[T]) {
+  public updateLocalState<T extends keyof State>(key: T, value: State[T]) {
     this.state[key] = value;
+    return this.storage.set({
+      [key]: value
+    }, true);
   }
 
   public setKeyValueToStorage<T extends keyof State>(key: T, value: State[T] = this.state[key], onlyLocal?: boolean) {

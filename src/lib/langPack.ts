@@ -533,6 +533,11 @@ namespace I18n {
     public update(options?: IntlElementOptions) {
       safeAssign(this, options);
 
+      if(!this.key) {
+        this.element.replaceChildren();
+        return;
+      }
+
       if(this.property === 'innerHTML') {
         this.element.replaceChildren(...format(this.key, false, this.args) as any);
         if(this.args?.length) {

@@ -57,11 +57,11 @@ export class AppManagersManager {
 
     const managersByAccountAsArray = Object.values(this.stateManagersByAccount)
 
-    managersByAccountAsArray.forEach(stateManager => {
+    managersByAccountAsArray.forEach((stateManager) => {
       stateManager.onSettingsUpdate = (settingsValue) => {
-        managersByAccountAsArray.forEach(stateManagerToUpdate => {
+        managersByAccountAsArray.forEach((stateManagerToUpdate) => {
           if(stateManager !== stateManagerToUpdate)
-            stateManagerToUpdate.udpateLocalState('settings', settingsValue);
+            stateManagerToUpdate.updateLocalState('settings', settingsValue);
         });
       }
     })
@@ -122,7 +122,7 @@ export class AppManagersManager {
   }
 
   private async createManagers() {
-    const promises = ([1, 2, 3, 4] as ActiveAccountNumber[]).map(async accountNumber => {
+    const promises = ([1, 2, 3, 4] as ActiveAccountNumber[]).map(async(accountNumber) => {
       const stateManager = this.stateManagersByAccount[accountNumber]
       const appStoragesManager = new AppStoragesManager(accountNumber, stateManager.resetStoragesPromise);
 
@@ -172,7 +172,6 @@ export class AppManagersManager {
         requestFilePart: (payload) => {
           return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
             const {docId, dcId, offset, limit, accountNumber} = payload;
-            console.log('accountNumber from worker', accountNumber)
             return managersByAccount[accountNumber].appDocsManager.requestDocPart(docId, dcId, offset, limit);
           });
         },

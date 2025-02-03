@@ -43,11 +43,11 @@ import callbackify from '../helpers/callbackify';
 import Icon from './icon';
 import wrapPhoto from './wrappers/photo';
 import customProperties from '../helpers/dom/customProperties';
-import {appState} from '../stores/appState';
 import useIsNightTheme from '../hooks/useIsNightTheme';
 import currencyStarIcon from './currencyStarIcon';
 import {ActiveAccountNumber} from '../lib/accounts/types';
 import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
+import {appSettings} from '../stores/appSettings';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -548,13 +548,13 @@ export const AvatarNew = (props: {
     if(peerId === myId && isDialog) {
       set({
         icon: props.meAsNotes ? 'mynotes' : 'saved',
-        isForum: !props.meAsNotes && appState.settings.savedAsForum
+        isForum: !props.meAsNotes && appSettings.savedAsForum
       });
 
       !props.meAsNotes && createRoot((dispose) => {
         createEffect(
           on(
-            () => appState.settings.savedAsForum,
+            () => appSettings.savedAsForum,
             setIsForum,
             {defer: true}
           )

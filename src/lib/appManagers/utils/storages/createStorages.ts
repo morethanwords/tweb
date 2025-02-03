@@ -7,7 +7,7 @@
 import type {Chat} from '../../../../layer';
 import type {Dialog} from '../../appMessagesManager';
 import type {User} from '../../appUsersManager';
-import {AccountDatabase, getDatabaseState} from '../../../../config/databases/state';
+import {AccountDatabase, getDatabaseState, getOldDatabaseState} from '../../../../config/databases/state';
 import AppStorage from '../../../storage';
 import {ActiveAccountNumber} from '../../../accounts/types';
 
@@ -22,7 +22,7 @@ export default function createStorages(accountNumber: ActiveAccountNumber) {
   const storages: StoragesStorages = {} as any;
   for(const name of names) {
     // @ts-ignore
-    storages[name] = new AppStorage(getDatabaseState(accountNumber), name);
+    storages[name] = new AppStorage(accountNumber === undefined ? getOldDatabaseState() : getDatabaseState(accountNumber), name);
   }
 
   console.log('createStorages typeof window', typeof window)

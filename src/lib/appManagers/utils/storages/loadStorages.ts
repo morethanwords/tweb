@@ -9,6 +9,7 @@ import type {Dialog} from '../../appMessagesManager';
 import type {User} from '../../appUsersManager';
 import type {StoragesStorages} from './createStorages';
 import type {ResetStoragesPromise} from '../../appStateManager';
+import type AppStorage from '../../../storage';
 import {recordPromiseBound} from '../../../../helpers/recordPromise';
 import {Awaited} from '../../../../types';
 import {logger} from '../../../logger';
@@ -39,14 +40,35 @@ export default async function loadStorages(storages: StoragesStorages, resetStor
   // * will reset storages before setting the new state
   const {storages: resetStorages, callback} = await resetStoragesPromise;
   if(resetStorages.size) {
+    const preserved: Record<keyof StoragesResults, Promise<any[]>> = {} as any;
+    for(const [key, preserve] of resetStorages) {
+      const promises = preserve.map((id) => (storages[key] as AppStorage<any, any>).get('' + id)); // important: need string here, not a number
+      preserved[key] = Promise.all(promises);
+    }
+
+    await Promise.all(Object.values(preserved)).catch(noop);
+
     const clearPromises: Promise<any>[] = [];
-    for(const key of resetStorages) {
+    for(const [key] of resetStorages) {
       storagesResults[key].length = 0;
       clearPromises.push(storages[key].clear());
     }
 
-    resetStorages.clear();
     await Promise.all(clearPromises).catch(noop);
+
+    const preservePromises: Promise<any>[] = [];
+    for(const [key, preserve] of resetStorages) {
+      const preservedValues = await preserved[key];
+      for(let i = 0; i < preserve.length; ++i) {
+        const value = preservedValues[i];
+        storagesResults[key].push(value);
+        preservePromises.push((storages[key] as AppStorage<any, any>).set({[preserve[i]]: value}));
+      }
+    }
+
+    await Promise.all(preservePromises).catch(noop);
+
+    resetStorages.clear();
   }
 
   await callback();

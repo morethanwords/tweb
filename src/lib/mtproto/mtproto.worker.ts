@@ -40,29 +40,43 @@ port.addMultipleEventsListeners({
     return cryptoWorker.invokeCrypto(method as any, ...args as any);
   },
 
-  state: ({state, resetStorages, pushedKeys, newVersion, oldVersion, userId, accountNumber}) => {
+  state: ({state, resetStorages, pushedKeys, newVersion, oldVersion, userId, accountNumber, common}) => {
     // if(haveState) {
     //   return;
     // }
 
     log('got state', accountNumber, state, pushedKeys);
 
-    // console.log('accountNumber', accountNumber);
-
     const appStateManager = appManagersManager.stateManagersByAccount[accountNumber];
     appStateManager.userId = userId;
     appStateManager.newVersion = newVersion;
     appStateManager.oldVersion = oldVersion;
-    // callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
-    // });
 
-    // TODO: Understand why is this needed
+    // * preserve self user
+    if(userId && resetStorages.has('users')) {
+      resetStorages.set('users', [userId]);
+    }
+
     appStateManager.resetStoragesPromise.resolve({
       storages: resetStorages,
       callback: async() => {
         const promises: Promise<any>[] = [];
-        for(const key of (Object.keys(state) as any as (keyof State)[])) {
-          const promise = appStateManager.pushToState(key, state[key], true, !pushedKeys.includes(key));
+
+        const map: Map<string, any> = new Map();
+        const pushedKeysCombined: string[] = [...pushedKeys];
+        if(accountNumber === 1) {
+          for(const key in common) {
+            map.set(key, common[key as keyof typeof common]);
+            pushedKeysCombined.push(key as any); // ! unoptimized, but it's ok for now since it's only one key
+          }
+        }
+
+        for(const key in state) {
+          map.set(key, state[key as keyof typeof state]);
+        }
+
+        for(const [key, value] of map) {
+          const promise = appStateManager.pushToState(key as any, value, true, !pushedKeysCombined.includes(key));
           promises.push(promise);
         }
 
