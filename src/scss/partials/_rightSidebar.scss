@@ -732,6 +732,11 @@
       display: none;
     }
   }
+  .search-group.is-short-5 {
+    .chatlist-chat:nth-child(n + 6) {
+      display: none;
+    }
+  }
 }
 
 #stickers-container {

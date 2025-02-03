@@ -9,7 +9,6 @@ export default function AccountsLimitPopupContent(props: {onCancel: () => void; 
     <div>
       <div class="accounts-limit__pin-container">
         <img class="accounts-limit__pin-image" src="assets/img/accounts-limit-pin-shape.svg" />
-        {/* TODO: Change with the icon from design */}
         <IconTsx class="accounts-limit__pin-icon" icon="person" />
         <span class="accounts-limit__pin-count">{MAX_ACCOUNTS_FREE}</span>
       </div>

@@ -10,6 +10,8 @@ export function addShortcutListener(combos: string[], callback: (combo: string) 
           (key === 'ctrl' && event.ctrlKey) ||
           (key === 'shift' && event.shiftKey) ||
           (key === 'alt' && event.altKey) ||
+          (key === 'meta' && event.metaKey) ||
+          (key === 'anymeta' && (event.ctrlKey || event.shiftKey || event.altKey || event.metaKey)) ||
           event.key.toLowerCase() === key
         );
       });

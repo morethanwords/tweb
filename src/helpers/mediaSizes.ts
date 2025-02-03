@@ -36,6 +36,7 @@ export enum ScreenSize {
 }
 
 const MOBILE_SIZE = 600;
+const FLOATING_LEFT_SIDEBAR_SIZE = 925;
 const MEDIUM_SIZE = 1275;
 const LARGE_SIZE = 1680;
 
@@ -93,6 +94,8 @@ class MediaSizes extends EventListenerBase<{
   };
 
   public isMobile = false;
+  public isFloatingLeftSidebar = false;
+  public isLessThanFloatingLeftSidebar = false;
   public active: MediaTypeSizes;
   public activeScreen: ScreenSize;
   private rAF: number;
@@ -125,6 +128,8 @@ class MediaSizes extends EventListenerBase<{
     const wasScreen = this.activeScreen;
     this.activeScreen = activeScreen;
     this.isMobile = this.activeScreen === ScreenSize.mobile;
+    this.isLessThanFloatingLeftSidebar = innerWidth <= FLOATING_LEFT_SIDEBAR_SIZE;
+    this.isFloatingLeftSidebar = this.activeScreen === ScreenSize.medium && this.isLessThanFloatingLeftSidebar;
     this.active = this.isMobile ? this.sizes.handhelds : this.sizes.desktop;
 
     // console.time('esg');

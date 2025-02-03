@@ -75,6 +75,14 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     }
   } catch(err) {}
 
+  const sidebarEl = document.getElementById('column-left');
+  const storedWidth = localStorage.getItem('sidebar-left-width');
+  if(storedWidth === '0') {
+    sidebarEl.classList.add('is-collapsed');
+  } else if(storedWidth) {
+    document.documentElement.style.setProperty('--current-sidebar-left-width', storedWidth + 'px');
+  }
+
   toggleAttributePolyfill();
 
   // polyfill for replaceChildren
@@ -316,6 +324,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   const stateResult = await apiManagerProxy.sendAllStates().then((loadedStates) => loadedStates[getCurrentAccount()]);
   const langPack = await I18n.getCacheLangPack();
   I18n.setTimeFormat(rootScope.settings.timeFormat);
+
+  document.body.classList.toggle('has-folders-sidebar', stateResult.state.settings.tabsInSidebar)
 
   rootScope.managers.rootScope.getPremium().then((isPremium) => {
     rootScope.premium = isPremium;

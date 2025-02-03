@@ -184,6 +184,8 @@ import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
 import icon from '../icon';
+import {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
+import {wrapRoundVideoBubble} from './roundVideoBubble';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -6003,7 +6005,9 @@ export default class ChatBubbles {
 
     const canPossiblyHavePlainMediaTail = isMessageEmpty || invertMedia;
 
-    let storyFromPeerId: PeerId, noAttachmentDivNeeded = false, processedWebPage = false;
+    let storyFromPeerId: PeerId, noAttachmentDivNeeded = false, processedWebPage = false,
+      isRound = false, searchContext: MediaSearchContext;
+    const globalMediaDeferred = deferredPromise<HTMLMediaElement>();
     // media
     if(messageMedia) {
       attachmentDiv = document.createElement('div');
@@ -6441,13 +6445,13 @@ export default class ChatBubbles {
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
             // this.log('never get free 2', doc);
 
-            const isRound = doc.type === 'round';
+            isRound = doc.type === 'round';
             if(isRound) {
               isStandaloneMedia = true;
             }
 
             if(isRound/*  || isMessageEmpty */) {
-              canHaveTail = false;
+              // canHaveTail = false;
             } else {
               canHavePlainMediaTail = canPossiblyHavePlainMediaTail;
             }
@@ -6473,6 +6477,7 @@ export default class ChatBubbles {
             } else {
               const withTail = !IS_ANDROID && !IS_APPLE && !isRound && canHaveTail && !withReplies && USE_MEDIA_TAILS;
               if(withTail) bubble.classList.add('with-media-tail');
+
               const p = wrapVideo({
                 doc,
                 container: attachmentDiv,
@@ -6486,7 +6491,7 @@ export default class ChatBubbles {
                 group: this.chat.animationGroup,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
-                searchContext: isRound ? {
+                searchContext: isRound ? searchContext = {
                   peerId: this.peerId,
                   inputFilter: {_: 'inputMessagesFilterRoundVoice'},
                   threadId: this.chat.threadId,
@@ -6496,7 +6501,10 @@ export default class ChatBubbles {
                 noInfo: message.mid <= 0,
                 noAutoplayAttribute: !!messageMedia.pFlags.spoiler,
                 observer: this.observer,
-                setShowControlsOn: bubble
+                setShowControlsOn: bubble,
+                onGlobalMedia: (media) => {
+                  globalMediaDeferred.resolve(media);
+                }
               });
 
               if(messageMedia.pFlags.spoiler) {
@@ -7413,9 +7421,10 @@ export default class ChatBubbles {
       this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
     }
 
-    if(canHaveTail) {
+    if(canHaveTail && !isRound) {
       bubble.classList.add('can-have-tail');
-
+    }
+    if(canHaveTail || isRound) {
       bubbleContainer.append(generateTail());
     }
 
@@ -7443,6 +7452,16 @@ export default class ChatBubbles {
 
     if(isMessage && message.effect && (isInUnread || isOutgoing)) {
       this.observer.observe(bubble, this.messageEffectObserverCallback);
+    }
+
+
+    if(isRound) {
+      wrapRoundVideoBubble({
+        bubble,
+        message: message as Message.message,
+        globalMediaDeferred,
+        searchContext
+      });
     }
 
     return ret;

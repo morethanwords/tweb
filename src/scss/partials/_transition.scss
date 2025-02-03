@@ -61,6 +61,41 @@
   }
 
   /*
+   * fade
+   */
+   &.fade {
+    > .from {
+      opacity: 1;
+    }
+
+    > .to {
+      opacity: 0;
+    }
+
+    &.animating {
+      > .from {
+        animation: fade-out-opacity .15s ease;
+      }
+
+      > .to {
+        animation: fade-in-opacity .15s ease;
+      }
+    }
+  }
+
+  &.fade.backwards {
+    &.animating {
+      > .from {
+        animation: fade-in-backwards-opacity .1s ease;
+      }
+
+      > .to {
+        animation: fade-out-backwards-opacity .15s ease;
+      }
+    }
+  }
+
+  /*
    * slide-fade
    */
   &.slide-fade {

@@ -34,7 +34,7 @@ import setCurrentTime from '../helpers/dom/setCurrentTime';
 
 export type MediaItem = {mid: number, peerId: PeerId};
 
-type HTMLMediaElement = HTMLAudioElement | HTMLVideoElement;
+export type HTMLMediaElement = HTMLAudioElement | HTMLVideoElement;
 
 const SHOULD_USE_SAFARI_FIX = (() => {
   try {
@@ -709,6 +709,10 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
 
     return true;
+  }
+
+  public getPlayingMedia() {
+    return this.playingMedia;
   }
 
   public play = () => {
