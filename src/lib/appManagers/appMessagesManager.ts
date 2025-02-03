@@ -78,6 +78,7 @@ import getMainGroupedMessage from './utils/messages/getMainGroupedMessage';
 import getUnreadReactions from './utils/messages/getUnreadReactions';
 import isMentionUnread from './utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
+import commonStateStorage from '../commonStateStorage';
 import {isDocumentHlsQualityFile} from '../hls/common';
 
 // console.trace('include');
