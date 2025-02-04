@@ -60,6 +60,7 @@ import {FontFamily} from '../../config/font';
 import {NOTIFICATION_BADGE_PATH} from '../../config/notifications';
 import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
 import {appSettings, setAppSettingsSilent} from '../../stores/appSettings';
+import {unwrap} from 'solid-js/store';
 
 export type Mirrors = {
   state: State,
@@ -729,7 +730,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     Object.defineProperty(rootScope, 'settings', {
       get: () => {
-        return appSettings;
+        return unwrap(appSettings);
       }
     });
 

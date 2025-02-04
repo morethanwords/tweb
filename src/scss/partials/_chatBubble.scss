@@ -221,8 +221,8 @@
       content: "Unread messages";
       height: 30px;
       margin-bottom: $bubble-overflow-big;
-      margin-left: -50%;
-      margin-right: -50%;
+      margin-left: -60%;
+      margin-right: -60%;
       text-align: center;
       color: var(--primary-color);
       line-height: 2.1;
@@ -3611,36 +3611,6 @@
     &-text {
       position: relative;
       pointer-events: none;
-      transition: opacity 0.2s;
-    }
-
-    &-text-copied-notice {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-
-      max-width: 100%;
-      width: max-content;
-
-      text-align: center;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-
-      .tgico {
-        font-size: 1.2em;
-      }
-
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    &.text-copied &-text-copied-notice {
-      opacity: 1;
-    }
-    &.text-copied &-text {
-      opacity: 0;
     }
 
     &.anchor-url {

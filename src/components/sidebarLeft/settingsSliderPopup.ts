@@ -21,7 +21,6 @@ export default class SettingsSliderPopup extends PopupElement {
     });
 
     this.middlewareHelper.onDestroy(() => {
-      console.log('[my-debug] settings slider destroyed');
       pause(200).then(() => {
         this.slider.closeAllTabs();
       }); // wait for popup to close

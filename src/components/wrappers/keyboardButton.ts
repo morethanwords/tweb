@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {copyTextToClipboard} from '../../helpers/clipboard';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
 import toggleDisability from '../../helpers/dom/toggleDisability';
-import pause from '../../helpers/schedulers/pause';
 import {KeyboardButton, Message, ReplyMarkup, InlineQueryPeerType, RequestPeerType, Chat as MTChat} from '../../layer';
 import {ChatRights} from '../../lib/appManagers/appChatsManager';
 import hasRights from '../../lib/appManagers/utils/chats/hasRights';
@@ -345,24 +345,10 @@ export default function wrapKeyboardButton({
       buttonEl = document.createElement('button');
       buttonIcon = Icon('copy');
 
-      const textCopiedNotice = document.createElement('div');
-      textCopiedNotice.classList.add('reply-markup-button-text-copied-notice');
-      textCopiedNotice.append(Icon('check'), ' ', i18n('TextCopied'));
-
-      buttonEl.append(textCopiedNotice);
-
-      let isCopied = false;
-      buttonEl.addEventListener('click', async() => {
-        if(isCopied) return;
-
-        isCopied = true;
-        await navigator.clipboard.writeText(button.copy_text);
-        buttonEl.classList.add('text-copied');
-
-        await pause(1e3);
-        isCopied = false;
-        buttonEl.classList.remove('text-copied');
-      });
+      onClick = () => {
+        copyTextToClipboard(button.copy_text);
+        toastNew({langPackKey: 'TextCopied'});
+      };
       break;
     }
 

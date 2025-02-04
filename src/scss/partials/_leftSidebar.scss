@@ -231,6 +231,7 @@
       inset-inline-end: -1px;
       top: 0;
       z-index: 3;
+      pointer-events: none;
     }
   }
   
@@ -676,7 +677,8 @@
   }
 }
 
-#column-left, .settings-slider-popup {
+#column-left,
+.settings-slider-popup {
   .input-wrapper {
     width: 420px;
     margin: 0 auto;
@@ -718,7 +720,8 @@
   display: none;
 
   @include respond-to(no-floating-left-sidebar) {
-    html:has(#column-left.is-collapsed.has-open-tabs) &, &.keep-active {
+    html:has(#column-left.is-collapsed.has-open-tabs) &,
+    &.keep-active {
       display: block;
       flex: var(--sidebar-collapsed-width) 0 0;
       width: var(--sidebar-collapsed-width);
@@ -998,7 +1001,8 @@
     margin-top: 0;
   }
 
-  .search-group.search-group-contacts ul, .search-group.search-group-messages ul {
+  .search-group.search-group-contacts ul,
+  .search-group.search-group-messages ul {
     margin-top: 7px;
   }
 
@@ -1596,21 +1600,22 @@
   right: -3px;
   bottom: 0;
   width: 5px;
-  
+
   z-index: 4;
 
   background-color: var(--primary-color);
   opacity: 0;
-  
+
   transition: opacity 0.2s;
   cursor: col-resize;
-  
+
   box-shadow: 0 0 1.5px 0.5px rgba(255, 255, 255, 1);
   .night & {
     box-shadow: 0 0 0px 0.5px rgba(128, 128, 128, 1);
   }
 
-  html:has(.btn-menu.active) &, #column-left.is-collapsed.has-open-tabs & {
+  html:has(.btn-menu.active) &,
+  #column-left.is-collapsed.has-open-tabs & {
     display: none;
   }
 
@@ -1618,7 +1623,8 @@
     display: none;
   }
 
-  &:hover, &.is-active {
+  &:hover,
+  &.is-active {
     opacity: 1;
   }
 
@@ -1656,7 +1662,8 @@
 }
 
 @include respond-to(no-floating-left-sidebar) {
-  body.has-folders-sidebar, #column-left.is-collapsed {
+  body.has-folders-sidebar,
+  #column-left.is-collapsed {
     .folders-tabs-scrollable {
       display: none !important;
     }
@@ -1667,6 +1674,7 @@
   .popup-header {
     display: none;
   }
+
   .popup-container {
     padding: 0;
     max-width: 100%;
@@ -1681,14 +1689,16 @@
     margin: 1rem auto 2rem;
     flex: 0 0 auto;
   }
-  
-  .sidebar-left-section-container:not(.profile-content *):last-child .sidebar-left-section:last-child {
-    margin-bottom: 0;
-  }
+
+  // * remove last margin from last section
+  // .sidebar-left-section-container:not(.profile-content *):last-child .sidebar-left-section:last-child {
+  //   margin-bottom: 0;
+  // }
 
   &__height-limit {
     height: 85vh;
-    >div {
+
+    > div {
       height: 85vh;
     }
   }

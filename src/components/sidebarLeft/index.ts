@@ -432,7 +432,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const sidebarOverlay = document.querySelector('.sidebar-left-overlay');
     sidebarOverlay.addEventListener('click', () => {
-      this.closeEverythingInisde();
+      this.closeEverythingInside();
     });
 
     this.initSidebarResize();
@@ -468,7 +468,7 @@ export class AppSidebarLeft extends SidebarSlider {
     return this.hasTabsInNavigation() || this.isSearchActive || !!appDialogsManager.forumTab;
   }
 
-  public closeEverythingInisde() {
+  public closeEverythingInside() {
     this.closeSearch();
     appDialogsManager.toggleForumTab();
     return this.closeAllTabs();
@@ -642,7 +642,7 @@ export class AppSidebarLeft extends SidebarSlider {
   public createToolsMenu(mountTo?: HTMLElement, closeBefore?: boolean) {
     const closeTabsBefore = async(clb: () => void) => {
       if(closeBefore) {
-        this.closeEverythingInisde() && await pause(200);
+        this.closeEverythingInside() && await pause(200);
       }
 
       clb();
@@ -1066,7 +1066,7 @@ export class AppSidebarLeft extends SidebarSlider {
   private createNewChatsMenuOptions(closeBefore?: boolean, singular?: boolean): ButtonMenuItemOptionsVerifiable[]  {
     const closeTabsBefore = async(clb: () => void) => {
       if(closeBefore) {
-        this.closeEverythingInisde() && await pause(200);
+        this.closeEverythingInside() && await pause(200);
       }
       clb();
     }

@@ -1,5 +1,5 @@
 import {createEffect, createMemo, createRoot, createSignal, For, onCleanup, onMount} from 'solid-js';
-import {createStore} from 'solid-js/store';
+import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
 
 import {Middleware} from '../../../helpers/middleware';
@@ -37,14 +37,14 @@ export function FoldersSidebarContent() {
   } = useHotReloadGuard();
 
   const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
-  const [folderItems, setFolderItems] = createSignal<FolderItemPayload[]>([]);
+  const [folderItems, setFolderItems] = createStore<FolderItemPayload[]>([]);
   const [scrollAmount, setScrollAmount] = createSignal(0);
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
   const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
 
   const hasScroll = createMemo(() => scrollAmount() > 0);
   const showAddFolders = () => canShowAddFolders() && selectedFolderId() && !REAL_FOLDERS.has(selectedFolderId()) &&
-     folderItems().find(item => item.id === selectedFolderId())?.chatsCount === 0;
+     folderItems.find(item => item.id === selectedFolderId())?.chatsCount === 0;
 
   const [folderItemRefs, setFolderItemRefs] = createStore<Record<number, HTMLDivElement>>({});
 
@@ -53,9 +53,9 @@ export function FoldersSidebarContent() {
   let showAddFoldersButton: HTMLDivElement;
 
   function updateFolderItem(folderId: number, payload: Partial<FolderItemPayload>) {
-    setFolderItems((prev) =>
-      prev.map((folderItem) => (folderItem.id === folderId ? {...folderItem, ...payload} : folderItem))
-    );
+    const idx = folderItems.findIndex((item) => item.id === folderId);
+    const folderItem = folderItems[idx];
+    setFolderItems(idx, reconcile({...folderItem, ...payload}));
   }
 
   async function updateFolderNotifications(folderId: number) {
@@ -65,7 +65,7 @@ export function FoldersSidebarContent() {
   }
 
   async function updateAllFolderNotifications() {
-    const items = folderItems();
+    const items = folderItems;
 
     for(const folderItem of items) {
       if(!folderItem.id) continue;
@@ -80,18 +80,24 @@ export function FoldersSidebarContent() {
       span.append(wrapEmojiText(title));
       return span;
     }
+
+    const [notifications, folder] = await Promise.all([
+      getNotificationCountForFilter(filter.id, rootScope.managers),
+      rootScope.managers.dialogsStorage.getFolder(filter.id)
+    ]);
+
     return {
       id: filter.id,
       name: filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapTitle(filter.title),
       icon: getIconForFilter(filter),
-      notifications: await getNotificationCountForFilter(filter.id, rootScope.managers),
-      chatsCount: (await rootScope.managers.dialogsStorage.getFolder(filter.id))?.dialogs?.length || 0
+      notifications: notifications,
+      chatsCount: folder?.dialogs?.length || 0
     };
   }
 
 
   async function updateOrAddFolder(filter: MyDialogFilter) {
-    const items = [...folderItems()];
+    const items = [...folderItems];
     const existingItem = items.find((item) => item.id === filter.id);
 
     if(existingItem) {
@@ -99,13 +105,17 @@ export function FoldersSidebarContent() {
       return;
     }
 
-    items.push(await makeFolderItemPayload(filter));
-    const orderedFolderItems = await getFolderItemsInOrder(items, rootScope.managers);
+    const [payload, orderedFolderItems] = await Promise.all([
+      makeFolderItemPayload(filter),
+      getFolderItemsInOrder(items, rootScope.managers)
+    ]);
+
+    items.push(payload);
     setFolderItems(orderedFolderItems);
   }
 
   async function deleteFolder(filterId: number) {
-    const items = folderItems();
+    const items = folderItems;
     const existingItemIndex = items.findIndex((item) => item.id === filterId);
 
     if(existingItemIndex === -1) return;
@@ -118,7 +128,7 @@ export function FoldersSidebarContent() {
     order = [...order];
     indexOfAndSplice(order, FOLDER_ID_ARCHIVE);
 
-    const items = [...folderItems()];
+    const items = [...folderItems];
 
     items.sort((a, b) => {
       const aIndex = order.indexOf(a.id);
@@ -130,18 +140,18 @@ export function FoldersSidebarContent() {
       return aIndex - bIndex;
     });
 
-    setFolderItems(items);;
+    setFolderItems(items);
   }
 
   async function closeTabsBefore(clb: () => void) {
-    appSidebarLeft.closeEverythingInisde() && await pause(200);
+    appSidebarLeft.closeEverythingInside() && await pause(200);
     clb();
   }
 
   async function setSelectedFolder(folderId: number) {
     setSelectedFolderId(folderId);
-    const hasSomethingOpen = appSidebarLeft.hasSomethingOpenInside()
-    appSidebarLeft.closeEverythingInisde();
+    const hasSomethingOpen = appSidebarLeft.hasSomethingOpenInside();
+    appSidebarLeft.closeEverythingInside();
 
     hasSomethingOpen && await pause(300);
     rootScope.dispatchEvent('changing_folder_from_sidebar', {id: folderId});
@@ -149,7 +159,7 @@ export function FoldersSidebarContent() {
 
   async function openSettingsForFilter(filterId: number) {
     if(REAL_FOLDERS.has(filterId)) return;
-    const filter = await rootScope.managers.filtersStorage.getFilter(filterId)
+    const filter = await rootScope.managers.filtersStorage.getFilter(filterId);
 
     closeTabsBefore(() => {
       const tab = appSidebarLeft.createTab(AppEditFolderTab);
@@ -277,7 +287,7 @@ export function FoldersSidebarContent() {
 
   return (
     <>
-      <FolderItem ref={(el) => (menuRef = el)} class='folders-sidebar__menu-button' icon='menu' />
+      <FolderItem ref={(el) => (menuRef = el)} class="folders-sidebar__menu-button" icon="menu" />
 
       <div
         class="folders-sidebar__scrollable-position"
@@ -286,18 +296,25 @@ export function FoldersSidebarContent() {
         }}
       >
         <Scrollable ref={folderItemsContainer}>
-          <For each={folderItems()}>{(folderItem) => (
-            <FolderItem
-              {...folderItem}
-              ref={(el) => setFolderItemRefs({[folderItem.id]: el})}
-              onCleanup={() => setFolderItemRefs({[folderItem.id]: undefined})}
-              selected={selectedFolderId() === folderItem.id}
-              onClick={() => setSelectedFolder(folderItem.id)}
-            />
-          )}</For>
+          <For each={folderItems}>{(folderItem) => {
+            const {id} = folderItem;
+
+            onCleanup(() => {
+              setFolderItemRefs({[id]: undefined});
+            });
+
+            return (
+              <FolderItem
+                {...folderItem}
+                ref={(el) => setFolderItemRefs({[id]: el})}
+                selected={selectedFolderId() === id}
+                onClick={() => setSelectedFolder(id)}
+              />
+            );
+          }}</For>
         </Scrollable>
 
-        <Animated type='cross-fade' mode='add-remove'>
+        <Animated type="cross-fade" mode="add-remove">
           {showAddFolders() && <div
             ref={showAddFoldersButton}
             class="folders-sidebar__add-folders-button"
@@ -306,7 +323,7 @@ export function FoldersSidebarContent() {
               '--offset': addFoldersOffset()
             }}
           >
-            <IconTsx icon='plus' />
+            <IconTsx icon="plus" />
             <div class="folders-sidebar__add-folders-button-name">
               {i18n('ChatList.Filter.Include.AddChat')}
             </div>

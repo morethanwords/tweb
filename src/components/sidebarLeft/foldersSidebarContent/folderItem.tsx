@@ -13,33 +13,22 @@ type FolderItemProps = FolderItemPayload & {
   class?: string;
   selected?: boolean;
   onClick?: () => void;
-  onCleanup?: () => void;
 };
 
 export default function FolderItem(props: FolderItemProps) {
   let container: HTMLDivElement;
-  let content: HTMLDivElement;
 
   onMount(() => {
     ripple(container);
   });
-  onCleanup(() => {
-    props.onCleanup?.();
-  });
 
   const hasNotifications = () => !!props.notifications;
-
   const badge = createBadge('div', 18, 'primary');
-
-  if(hasNotifications())
-    setBadgeContent(badge, props.notifications?.toString());
 
   createEffect(() => {
     if(!hasNotifications()) return;
-
     setBadgeContent(badge, props.notifications?.toString());
   });
-
 
   return (
     <div
