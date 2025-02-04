@@ -250,6 +250,9 @@ export default class PopupPayment extends PopupElement<{
     };
 
     const {paymentForm, message} = this;
+    if(paymentForm._ === 'payments.paymentFormStarGift') {
+      throw new Error('not implemented');
+    }
 
     if(message) {
       this.listenerSetter.add(rootScope)('payment_sent', ({peerId, mid}) => {
@@ -269,7 +272,7 @@ export default class PopupPayment extends PopupElement<{
     const isTest = mediaInvoice ? mediaInvoice.pFlags.test : paymentForm.invoice.pFlags.test;
     const isStars = paymentForm._ === 'payments.paymentFormStars';
 
-    const photo = mediaInvoice ? mediaInvoice.photo : paymentForm.photo;
+    const photo = mediaInvoice ? mediaInvoice.photo : (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).photo;
     const title = mediaInvoice ? mediaInvoice.title : paymentForm.title;
     const description = mediaInvoice ? mediaInvoice.description : paymentForm.description;
 

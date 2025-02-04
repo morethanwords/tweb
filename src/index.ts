@@ -325,7 +325,7 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   const langPack = await I18n.getCacheLangPack();
   I18n.setTimeFormat(rootScope.settings.timeFormat);
 
-  document.body.classList.toggle('has-folders-sidebar', stateResult.state.settings.tabsInSidebar)
+  document.body.classList.toggle('has-folders-sidebar', rootScope.settings.tabsInSidebar);
 
   rootScope.managers.rootScope.getPremium().then((isPremium) => {
     rootScope.premium = isPremium;

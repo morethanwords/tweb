@@ -4286,16 +4286,21 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public reportMessages(peerId: PeerId, mids: number[], reason: ReportReason['_'], message?: string) {
-    // TODO: Update this after migrating to layer 191
+  public reportMessages(peerId: PeerId, mids: number[], option: Uint8Array, message?: string) {
     return this.apiManager.invokeApiSingle('messages.report', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       id: mids.map((mid) => getServerMessageId(mid)),
-      reason: {
-        _: reason
-      },
+      option,
       message
-    } as any);
+    });
+  }
+
+  public reportSpamMessages(peerId: PeerId, participantPeerId: PeerId, mids: number[]) {
+    return this.apiManager.invokeApiSingle('channels.reportSpam', {
+      channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
+      participant: this.appPeersManager.getInputPeerById(participantPeerId),
+      id: mids.map((mid) => getServerMessageId(mid))
+    });
   }
 
   public async unblockBot(botId: BotId) {

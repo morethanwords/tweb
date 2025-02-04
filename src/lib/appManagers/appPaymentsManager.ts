@@ -43,8 +43,10 @@ export default class AppPaymentsManager extends AppManager {
       invoice,
       theme_params: this.apiManager.getThemeParams()
     }).then((paymentForm) => {
-      this.appPeersManager.saveApiPeers(paymentForm);
-      paymentForm.photo = this.appWebDocsManager.saveWebDocument(paymentForm.photo);
+      if(paymentForm._ !== 'payments.paymentFormStarGift') {
+        this.appPeersManager.saveApiPeers(paymentForm);
+        paymentForm.photo = this.appWebDocsManager.saveWebDocument(paymentForm.photo);
+      }
 
       return paymentForm;
     });

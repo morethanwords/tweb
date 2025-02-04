@@ -63,7 +63,6 @@ import SetTransition from '../singleTransition';
 import StackedAvatars from '../stackedAvatars';
 import PopupElement from '../popups';
 import {processDialogElementForReaction} from '../popups/reactedList';
-import PopupReportMessages from '../popups/reportMessages';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import focusInput from '../../helpers/dom/focusInput';
 import {wrapStoryMedia} from './preview';
@@ -105,6 +104,7 @@ import createMiddleware from '../../helpers/solid/createMiddleware';
 import showTooltip from '../tooltip';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import wrapUrl from '../../lib/richTextProcessor/wrapUrl';
+import PopupReportAd from '../popups/reportAd';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -2250,13 +2250,7 @@ const Stories = (props: {
       onClick: () => {
         ignoreOnClose = true;
         const onAnyPopupClose = bindOnAnyPopupClose(wasPlaying);
-        PopupElement.createPopup(
-          PopupReportMessages,
-          props.state.peerId,
-          [currentStory().id],
-          onAnyPopupClose,
-          true
-        );
+        PopupReportAd.createStoryReport(props.state.peerId, [currentStory().id], onAnyPopupClose);
       },
       verify: () => !(story as StoryItem.storyItem).pFlags?.out && props.state.peerId !== CHANGELOG_PEER_ID
       // separator: true

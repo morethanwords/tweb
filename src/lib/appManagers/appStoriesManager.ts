@@ -938,13 +938,13 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
-  public report(peerId: PeerId, id: number[], reason: ReportReason['_'], message?: string) {
+  public report(peerId: PeerId, id: number[], option: Uint8Array, message?: string) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.report',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         id,
-        reason: {_: reason},
+        option,
         message
       }
     });

@@ -2503,6 +2503,10 @@ const lang = {
     'one_value': '%d boost',
     'other_value': '%d boosts'
   },
+  'Report2Comment': 'Add Comment',
+  'Report2CommentOptional': 'Add Comment (Optional)',
+  'Report2Send': 'Send Report',
+  'Reported2': 'Telegram moderators will review your report. Thank you!',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

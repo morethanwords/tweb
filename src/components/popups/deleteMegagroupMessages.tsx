@@ -85,7 +85,7 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
       }
 
       if(actions.has('report')) {
-        promises.push(managers.appMessagesManager.reportMessages(peerId, mids, 'inputReportReasonSpam'));
+        promises.push(managers.appMessagesManager.reportSpamMessages(peerId, fromId, mids));
       }
 
       if(actions.has('delete')) {

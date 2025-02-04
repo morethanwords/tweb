@@ -20,7 +20,6 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
 import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, ChannelParticipant, TextWithEntities} from '../../layer';
-import PopupReportMessages from '../popups/reportMessages';
 import assumeType from '../../helpers/assumeType';
 import PopupSponsored from '../popups/sponsored';
 import ListenerSetter from '../../helpers/listenerSetter';
@@ -748,7 +747,7 @@ export default class ChatContextMenu {
       icon: 'flag',
       text: 'ReportChat',
       onClick: () => {
-        PopupElement.createPopup(PopupReportMessages, this.messagePeerId, [this.mid]);
+        PopupReportAd.createMessageReport(this.messagePeerId, [this.mid]);
       },
       verify: () => !this.message.pFlags.out &&
         this.message._ === 'message' &&
@@ -828,14 +827,10 @@ export default class ChatContextMenu {
       icon: 'hand',
       text: 'ReportAd',
       onClick: () => {
-        PopupElement.createPopup(
-          PopupReportAd,
-          this.peerId,
-          this.sponsoredMessage,
-          () => {
-            this.chat.bubbles.deleteMessagesByIds([makeFullMid(this.message.peerId, this.message.mid)], true);
-          }
-        );
+        const {peerId, mid} = this.message;
+        PopupReportAd.createAdReport(this.peerId, this.sponsoredMessage, () => {
+          this.chat.bubbles.deleteMessagesByIds([makeFullMid(peerId, mid)], true)
+        });
       },
       verify: () => this.isSponsored && !!this.sponsoredMessage.pFlags.can_report,
       isSponsored: true

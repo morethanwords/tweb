@@ -5,28 +5,35 @@
  */
 
 import PopupElement from '.';
-import {ChannelsSponsoredMessageReportResult, SponsoredMessage, SponsoredMessageReportOption} from '../../layer';
-import {render} from 'solid-js/web';
+import {ChannelsSponsoredMessageReportResult, MessageReportOption, ReportResult, SponsoredMessage, SponsoredMessageReportOption} from '../../layer';
 import {Accessor, createSignal, For, Setter, createResource, createEffect, onCleanup, createMemo, untrack} from 'solid-js';
 import Section from '../section';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import RowTsx from '../rowTsx';
 import {TransitionGroup} from '../../helpers/solid/transitionGroup';
 import TransitionSlider from '../transition';
-import {i18n} from '../../lib/langPack';
+import {i18n, LangPackKey} from '../../lib/langPack';
 import {toastNew} from '../toast';
 import Icon from '../icon';
+import rootScope from '../../lib/rootScope';
+import preloadAnimatedEmojiSticker from '../../helpers/preloadAnimatedEmojiSticker';
+import wrapStickerEmoji from '../wrappers/stickerEmoji';
+import InputField from '../inputField';
+import createMiddleware from '../../helpers/solid/createMiddleware';
+import Button from '../buttonTsx';
+import classNames from '../../helpers/string/classNames';
 
 export default class PopupReportAd extends PopupElement {
-  private reportResult: ChannelsSponsoredMessageReportResult;
+  private static STICKER_EMOJI = '👮‍♀️';
+  private reportResult: ChannelsSponsoredMessageReportResult | ReportResult;
   private sections: Accessor<ReturnType<PopupReportAd['renderSection']>[]>;
   private setSections: Setter<ReturnType<PopupReportAd['renderSection']>[]>;
   private activeSection: Accessor<ReturnType<PopupReportAd['renderSection']>>;
   private transitions: WeakMap<HTMLElement, Accessor<boolean>>;
 
   constructor(
-    private peerId: PeerId,
-    private sponsoredMessage: SponsoredMessage,
+    private type: 'ad' | 'message' | 'story',
+    private report: (option: Uint8Array, text?: string) => Promise<ChannelsSponsoredMessageReportResult | ReportResult>,
     private onAdHide?: () => void
   ) {
     super('popup-report-ad', {
@@ -42,11 +49,21 @@ export default class PopupReportAd extends PopupElement {
     });
 
     this.construct();
+    preloadAnimatedEmojiSticker(PopupReportAd.STICKER_EMOJI);
   }
 
-  private renderSection(result: ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultChooseOption, prevText?: string) {
-    const [option, setOption] = createSignal<SponsoredMessageReportOption>(undefined, {equals: false});
-    const [data] = createResource(() => option()?.option, this.report);
+  private renderSection(
+    result: ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultChooseOption | ReportResult.reportResultChooseOption | ReportResult.reportResultAddComment,
+    prevText?: string
+  ) {
+    const [option, setOption] = createSignal<SponsoredMessageReportOption | MessageReportOption>(undefined, {equals: false});
+    const [data] = createResource(() => option()?.option, (option) => this.report(option));
+
+    const onReport = (hasReported: boolean) => {
+      this.hide();
+      this.onAdHide?.();
+      toastNew({langPackKey: this.type === 'ad' ? (hasReported ? 'Ads.Reported' : 'AdHidden') : 'Reported2'});
+    };
 
     createEffect(() => {
       const _data = data();
@@ -54,19 +71,22 @@ export default class PopupReportAd extends PopupElement {
         return;
       }
 
-      const hasReported = _data._ === 'channels.sponsoredMessageReportResultReported';
+      const hasReported = _data._ === 'channels.sponsoredMessageReportResultReported' || _data._ === 'reportResultReported';
       const hasHidden = _data._ === 'channels.sponsoredMessageReportResultAdsHidden';
       if(hasReported || hasHidden) {
-        this.hide();
-        this.onAdHide?.();
-        toastNew({langPackKey: hasReported ? 'Ads.Reported' : 'AdHidden'});
+        onReport(hasReported);
         return;
       }
 
-      this.setSections((sections) => [
-        ...sections,
-        this.renderSection(_data as ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultChooseOption, untrack(option).text)
-      ]);
+      const rendered = this.renderSection(_data as typeof result, untrack(option).text);
+      const middleware = createMiddleware().get();
+      rendered.readyPromise.then(() => {
+        if(!middleware()) return;
+        this.setSections((sections) => [
+          ...sections,
+          rendered
+        ]);
+      });
       setOption(); // reset for another click
     });
 
@@ -88,32 +108,72 @@ export default class PopupReportAd extends PopupElement {
       }
     };
 
-    const maxHeight = 48 * result.options.length;
-    let container: HTMLDivElement;
-    const activeHeight = createMemo(() => this.activeSection()?.maxHeight);
+    let maxHeight: Accessor<number>, setMaxHeight: Setter<number>;
+    let stickerDiv: HTMLDivElement, inputField: InputField, sendButton: HTMLButtonElement;
+    let readyPromise: Promise<any> = Promise.resolve();
+    const isComment = result._ === 'reportResultAddComment';
+    if(isComment) {
+      stickerDiv = document.createElement('div');
+      const size = 130;
+      readyPromise = wrapStickerEmoji({
+        div: stickerDiv,
+        emoji: PopupReportAd.STICKER_EMOJI,
+        width: size,
+        height: size,
+        middleware: createMiddleware().get()
+      }).then(({render}) => render);
+      inputField = new InputField({
+        label: 'ReportHint',
+        maxLength: 512,
+        placeholder: result.pFlags.optional ? 'Report2CommentOptional' : 'Report2Comment',
+        required: !result.pFlags.optional
+      });
+
+      [maxHeight, setMaxHeight] = createSignal<number>();
+    } else {
+      maxHeight = () => 48 * result.options.length;
+    }
+
+    let container: HTMLDivElement, caption: HTMLDivElement;
+    const activeHeight = createMemo(() => {
+      const section = this.activeSection();
+      const height = section?.maxHeight();
+      return height && section.isComment && !isComment ? height - 64 : height;
+    });
+
+    const inner = isComment ? (
+      <>
+        {stickerDiv}
+        {inputField.container}
+      </>
+    ) : (
+      <For each={result.options}>
+        {(option) => {
+          return (
+            <RowTsx
+              title={wrapEmojiText(option.text)}
+              clickable={() => setOption(option)}
+              rightContent={Icon('next', 'popup-report-ad-option-arrow-icon')}
+            />
+          );
+        }}
+      </For>
+    );
+
     (
       <Section
         ref={container}
-        name={wrapEmojiText(result.title)}
-        caption="ReportAdLearnMore"
+        name={'title' in result ? wrapEmojiText(result.title) : undefined}
+        caption={this.type === 'ad' ? 'ReportAdLearnMore' : (isComment ? 'ReportInfo' : undefined)}
+        captionRef={(ref) => caption = ref}
         class="popup-report-ad-tab tabs-tab"
         noShadow
         noDelimiter
         onTransitionStart={onTransition}
         onTransitionEnd={onTransition}
       >
-        <div class="popup-report-ad-tab-options" style={{height: (activeHeight() || maxHeight) + 'px'}}>
-          <For each={result.options}>
-            {(option) => {
-              return (
-                <RowTsx
-                  title={wrapEmojiText(option.text)}
-                  clickable={() => setOption(option)}
-                  rightContent={Icon('next', 'popup-report-ad-option-arrow-icon')}
-                />
-              );
-            }}
-          </For>
+        <div class={classNames('popup-report-ad-tab-options')} style={{height: (activeHeight() || maxHeight()) + 'px'}}>
+          {inner}
         </div>
       </Section>
     );
@@ -121,7 +181,42 @@ export default class PopupReportAd extends PopupElement {
     this.transitions.set(container, transition);
     onCleanup(() => this.transitions.delete(container));
 
-    return {container, transition, maxHeight, prevText};
+    if(isComment) {
+      const [disabled, setDisabled] = createSignal(false);
+      (
+        <Button
+          ref={sendButton}
+          disabled={disabled()}
+          class="btn-primary btn-color-primary popup-report-ad-send-button"
+          text="Report2Send"
+          onClick={async() => {
+            setDisabled(true);
+            inputField.input.contentEditable = 'false';
+            try {
+              await this.report(result.option, inputField.value);
+              onReport(true);
+            } catch(err) {
+              console.error(err);
+              setDisabled(false);
+              inputField.input.contentEditable = 'true';
+            }
+          }}
+        />
+      );
+
+      const onChange = () => {
+        setDisabled(!inputField.isValid());
+        setMaxHeight((inputField.value ? inputField.container.offsetHeight : 54) + 142 + 147);
+      };
+
+      inputField.input.addEventListener('input', onChange);
+      onChange();
+
+      caption.classList.add('popup-report-ad-comment-caption')
+      caption.after(sendButton);
+    }
+
+    return {container, transition, maxHeight, prevText, readyPromise, isComment};
   }
 
   private _construct() {
@@ -132,7 +227,7 @@ export default class PopupReportAd extends PopupElement {
     this.activeSection = activeSection;
 
     setSections([
-      this.renderSection(this.reportResult as ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultChooseOption)
+      this.renderSection(this.reportResult as Parameters<PopupReportAd['renderSection']>[0])
     ]);
 
     createEffect(() => {
@@ -166,13 +261,14 @@ export default class PopupReportAd extends PopupElement {
 
     const prevText = createMemo<string>((prev) => activeSection()?.prevText ?? prev);
 
+    const titleKey: LangPackKey = this.type === 'ad' ? 'ReportAd' : 'ReportChat';
     let titleRef: HTMLDivElement;
     this.title.append((
       <div ref={titleRef} class="transition slide-fade">
-        <div class="transition-item">{i18n('ReportAd')}</div>
+        <div class="transition-item">{i18n(titleKey)}</div>
         <div class="transition-item">
           <div class="popup-report-ad-header-rows">
-            <div class="popup-report-ad-header-title">{i18n('ReportAd')}</div>
+            <div class="popup-report-ad-header-title">{i18n(titleKey)}</div>
             <div class="popup-report-ad-header-subtitle">{wrapEmojiText(prevText())}</div>
           </div>
         </div>
@@ -189,14 +285,46 @@ export default class PopupReportAd extends PopupElement {
     return ret;
   }
 
-  private report = (option: Uint8Array) => {
-    return this.managers.appChatsManager.reportSponsoredMessage(this.peerId.toChatId(), this.sponsoredMessage.random_id, option);
-  };
-
   private async construct() {
     this.transitions = new WeakMap();
     this.reportResult = await this.report(new Uint8Array);
     this.appendSolid(() => this._construct());
     this.show();
+  }
+
+  public static createAdReport(
+    peerId: PeerId,
+    sponsoredMessage: SponsoredMessage,
+    onAdHide?: () => void
+  ) {
+    PopupElement.createPopup(
+      PopupReportAd,
+      'ad',
+      (option) => {
+        return rootScope.managers.appChatsManager.reportSponsoredMessage(peerId.toChatId(), sponsoredMessage.random_id, option);
+      },
+      onAdHide
+    );
+  }
+
+  public static createMessageReport(peerId: PeerId, mids: number[]) {
+    PopupElement.createPopup(
+      PopupReportAd,
+      'message',
+      (option, text) => {
+        return rootScope.managers.appMessagesManager.reportMessages(peerId, mids, option, text);
+      }
+    );
+  }
+
+  public static createStoryReport(peerId: PeerId, ids: number[], onFinish?: () => void) {
+    PopupElement.createPopup(
+      PopupReportAd,
+      'story',
+      (option, text) => {
+        return rootScope.managers.appStoriesManager.report(peerId, ids, option, text);
+      },
+      onFinish
+    );
   }
 }

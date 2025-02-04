@@ -58,6 +58,7 @@
   }
 
   &-tab {
+    width: 22rem;
     background-color: var(--surface-color) !important;
     padding-bottom: 1rem;
 
@@ -76,6 +77,10 @@
     // }
   }
 
+  &-comment-caption {
+    margin-top: -147px !important;
+  }
+
   // .scrollable-y {
   //   border: none !important;
   // }
@@ -90,5 +95,22 @@
 
   .sidebar-left-section-caption {
     font-size: 1rem;
+  }
+
+  .media-sticker-wrapper {
+    width: 130px;
+    height: 130px;
+    position: relative;
+    margin: 0 auto;
+  }
+
+  .input-field {
+    margin: 1rem .5rem 0;
+  }
+
+  &-send-button {
+    margin: 1rem 1rem 0;
+    width: auto;
+    text-transform: uppercase;
   }
 }
