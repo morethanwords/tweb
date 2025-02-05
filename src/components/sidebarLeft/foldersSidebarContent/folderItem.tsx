@@ -1,4 +1,4 @@
-import {createEffect, onCleanup, onMount, Show} from 'solid-js';
+import {createEffect, onMount, Show} from 'solid-js';
 
 import createBadge from '../../../helpers/createBadge';
 import setBadgeContent from '../../../helpers/setBadgeContent';
@@ -24,6 +24,7 @@ export default function FolderItem(props: FolderItemProps) {
 
   const hasNotifications = () => !!props.notifications;
   const badge = createBadge('div', 18, 'primary');
+  badge.classList.add('folders-sidebar__folder-item-badge');
 
   createEffect(() => {
     if(!hasNotifications()) return;
@@ -47,7 +48,7 @@ export default function FolderItem(props: FolderItemProps) {
       )}
       onClick={props.onClick}
     >
-      <IconTsx icon={props.icon} />
+      <IconTsx icon={props.icon} class="folders-sidebar__folder-item-icon" />
       <Show when={props.name}>
         <div class="folders-sidebar__folder-item-name">{props.name}</div>
       </Show>

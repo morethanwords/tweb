@@ -408,7 +408,7 @@ export default class PopupNewMedia extends PopupElement {
     const {input} = this.messageInputField;
     this.scrollable.onAdditionalScroll();
     if(input.scrollTop > 0 && input.scrollHeight > 130) {
-      this.scrollable.container.classList.remove('scrolled-bottom');
+      this.scrollable.container.classList.remove('scrolled-end');
     }
 
     this.scrollable.container.addEventListener('scroll', () => {

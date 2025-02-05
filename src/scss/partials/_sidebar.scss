@@ -98,7 +98,7 @@
       }
     }
 
-    .scrollable-y-bordered:not(.scrolled-top) & {
+    .scrollable-y-bordered:not(.scrolled-start) & {
       // border-bottom-color: var(--border-color);
       &:after {
         opacity: 1;

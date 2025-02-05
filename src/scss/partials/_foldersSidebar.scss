@@ -1,6 +1,6 @@
 .folders-sidebar {
   position: relative;
-  flex: 80px 0 0;
+  flex: 5rem 0 0;
 
   display: flex;
   flex-direction: column;
@@ -23,32 +23,23 @@
     display: none;
   }
 
-  &__scrollable-position {
-    position: relative;
-    flex: 1;
-
-    --scrollbar-color: rgba(255, 255, 255, .2);
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(to bottom, var(--background), transparent);
-      // border-top: 1px solid rgba(0, 0, 0, 0.1);
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 1;
+  &__scrollable {
+    --border-color: rgba(255, 255, 255, .2);
+    
+    .night & {
+      --border-color: rgba(255, 255, 255, .1);
     }
-    &--has-scroll::before {
-      opacity: 1;
+
+    &-position {
+      position: relative;
+      flex: 1;
+  
+      --scrollbar-color: rgba(255, 255, 255, .2);
     }
   }
 
   &__folder-item {
+    --ripple-color: var(--folder-item-ripple-color) !important;
     position: relative;
     flex-shrink: 0;
     flex-grow: 0;
@@ -62,22 +53,26 @@
     background-color: var(--background);
 
     flex-direction: column;
-    gap: 6px;
+    gap: .375rem;
 
-    padding: 12px 0;
-    min-height: 56px;
+    padding: .75rem 0;
+    min-height: 3.5rem;
 
     font-size: 10px;
     line-height: 12px;
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
     
     cursor: pointer;
 
-    > .tgico {
-      font-size: 30px;
+    @include hover() {
+      --background: var(--background-hover);
     }
 
-    > .badge {
+    &-icon {
+      font-size: 1.875rem;
+    }
+
+    &-badge {
       position: absolute;
       top: 6px;
       right: 19px;
@@ -86,14 +81,6 @@
       line-height: 18px !important;
 
       box-shadow: 0 0 0 1px var(--background);
-    }
-
-    > .c-ripple {
-      --ripple-color: var(--folder-item-ripple-color) !important;
-    }
-
-    &:hover {
-      --background: var(--background-hover);
     }
 
     &-name {
@@ -109,12 +96,12 @@
   }
 
   &__menu-button {
-    > .tgico {
-      font-size: 24px;
+    .folders-sidebar__folder-item-icon {
+      font-size: 1.5rem;
     }
 
     .btn-menu {
-      inset-inline: 48px auto;
+      inset-inline: 3rem auto;
     }
   }
 
@@ -148,19 +135,19 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: .375rem;
 
-    width: 72px;
-    height: 88px;
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
+    width: 4.5rem;
+    height: 5.5rem;
+    border-top-right-radius: $border-radius;
+    border-bottom-right-radius: $border-radius;
     background-color: var(--background);
 
     mask-image: url('/assets/img/add-chats-to-folder-shape.svg');
 
     font-size: 10px;
     line-height: 12px;
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
 
     color: #aaaaaa;
     border-left: 1px solid rgba(0, 0, 0, 0.1);
@@ -169,7 +156,7 @@
 
     cursor: pointer;
 
-    &:hover {
+    @include hover() {
       --background: var(--background-hover);
     }
 
@@ -181,25 +168,8 @@
       opacity: 0 !important;
     }
 
-    > .tgico {
+    &-icon {
       font-size: 30px;
-    }
-
-    > .c-ripple {
-      --ripple-color: var(--folder-item-ripple-color) !important;
-    }
-
-    &-corner {
-      position: absolute;
-      left: 0;
-
-      &:nth-of-type(1) {
-        top: -8px;
-      }
-      &:nth-of-type(2) {
-        bottom: -8px;
-        transform: scaleY(-1);
-      }
     }
   }
 }

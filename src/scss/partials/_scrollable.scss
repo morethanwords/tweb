@@ -118,11 +118,11 @@ html.custom-scroll {
         transition: border-top-color var(--transition-standard-in), border-bottom-color var(--transition-standard-in);
       }
   
-      &:not(.scrolled-top) {
+      &:not(.scrolled-start) {
         border-top-color: var(--border-color);
       }
   
-      &:not(.scrolled-bottom) {
+      &:not(.scrolled-end) {
         border-bottom-color: var(--border-color);
       }
     }

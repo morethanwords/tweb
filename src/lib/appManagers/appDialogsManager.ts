@@ -1903,7 +1903,7 @@ export class AppDialogsManager {
       const _id = id;
       id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
 
-      rootScope.dispatchEvent('changing_folder_from_chatlist', id);
+      rootScope.dispatchEventSingle('changing_folder_from_chatlist', id);
 
       const isFilterAvailable = this.filterId === -1 || REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
       if(!isFilterAvailable) {

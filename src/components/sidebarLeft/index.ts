@@ -739,15 +739,7 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'Contacts',
       onClick: onContactsClick
     }, {
-      id: 'manage-filters',
-      icon: 'folder',
-      text: 'ManageFilters',
-      onClick: () => {
-        closeTabsBefore(() => {
-          this.createTab(AppChatFoldersTab).open();
-        });
-      }
-    }, {
+      id: 'settings',
       icon: 'settings',
       text: 'Settings',
       separator: true,
@@ -796,7 +788,7 @@ export class AppSidebarLeft extends SidebarSlider {
           return wrapEmojiText(name);
         }
 
-        const targetIdx = buttons.findIndex(btn => btn.id === 'manage-filters');
+        const targetIdx = buttons.findIndex(btn => btn.id === 'settings');
         buttons[targetIdx].separator = !!attachMenuBotsButtons.length;
         buttons.splice(targetIdx, 0, ...attachMenuBotsButtons);
         buttons[targetIdx].separator = true;
@@ -1553,7 +1545,7 @@ function getVersionLink() {
   });
   const t = document.createElement('span');
   t.classList.add('btn-menu-footer-text');
-  t.textContent = 'Telegram Web' + App.suffix + ' '/* ' alpha ' */ + App.version;
+  t.textContent = `Telegram Web${App.suffix} ${App.version} (${App.build})`;
   btnMenuFooter.append(t);
 
   return btnMenuFooter;

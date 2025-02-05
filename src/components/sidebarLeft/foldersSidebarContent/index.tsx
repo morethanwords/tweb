@@ -24,6 +24,7 @@ import ripple from '../../ripple';
 import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
 import type {FolderItemPayload} from './types';
 import FolderItem from './folderItem';
+import showLimitPopup from '../../popups/limit';
 
 const log = logger('folders-sidebar');
 
@@ -38,13 +39,11 @@ export function FoldersSidebarContent() {
 
   const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
   const [folderItems, setFolderItems] = createStore<FolderItemPayload[]>([]);
-  const [scrollAmount, setScrollAmount] = createSignal(0);
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
   const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
 
-  const hasScroll = createMemo(() => scrollAmount() > 0);
   const showAddFolders = () => canShowAddFolders() && selectedFolderId() && !REAL_FOLDERS.has(selectedFolderId()) &&
-     folderItems.find(item => item.id === selectedFolderId())?.chatsCount === 0;
+    folderItems.find((item) => item.id === selectedFolderId())?.chatsCount === 0;
 
   const [folderItemRefs, setFolderItemRefs] = createStore<Record<number, HTMLDivElement>>({});
 
@@ -149,12 +148,18 @@ export function FoldersSidebarContent() {
   }
 
   async function setSelectedFolder(folderId: number) {
+    const isFilterAvailable = await rootScope.managers.filtersStorage.isFilterIdAvailable(folderId);
+    if(!isFilterAvailable) {
+      showLimitPopup('folders');
+      return false;
+    }
+
     setSelectedFolderId(folderId);
     const hasSomethingOpen = appSidebarLeft.hasSomethingOpenInside();
     appSidebarLeft.closeEverythingInside();
 
     hasSomethingOpen && await pause(300);
-    rootScope.dispatchEvent('changing_folder_from_sidebar', {id: folderId});
+    rootScope.dispatchEventSingle('changing_folder_from_sidebar', {id: folderId});
   }
 
   async function openSettingsForFilter(filterId: number) {
@@ -216,12 +221,6 @@ export function FoldersSidebarContent() {
       }
     });
 
-    const scrollListener = () => {
-      setScrollAmount(folderItemsContainer.scrollTop);
-    };
-
-    folderItemsContainer.addEventListener('scroll', scrollListener);
-
     (async() => {
       const filters = await rootScope.managers.filtersStorage.getDialogFilters();
       const folderFilters = filters.filter(filter => filter.id !== FOLDER_ID_ARCHIVE);
@@ -264,7 +263,6 @@ export function FoldersSidebarContent() {
     onCleanup(() => {
       listenerSetter.removeAll();
       contextMenu.destroy();
-      folderItemsContainer.removeEventListener('scroll', scrollListener);
     });
   });
 
@@ -272,8 +270,7 @@ export function FoldersSidebarContent() {
     if(showAddFolders()) ripple(showAddFoldersButton);
   });
 
-  createEffect(() => {
-    scrollAmount();
+  const updateCanShowAddFolders = () => {
     const selectedItem = folderItemRefs[selectedFolderId()];
 
     if(!selectedItem) return;
@@ -283,19 +280,22 @@ export function FoldersSidebarContent() {
     const MARGIN_PX = 50;
     setCanShowAddFolders(offset > MARGIN_PX && offset < containerRect.height - MARGIN_PX);
     setAddFoldersOffset(offset);
-  });
+  };
 
+  createEffect(updateCanShowAddFolders);
+
+  let openingChatFolders = false;
   return (
     <>
       <FolderItem ref={(el) => (menuRef = el)} class="folders-sidebar__menu-button" icon="menu" />
 
-      <div
-        class="folders-sidebar__scrollable-position"
-        classList={{
-          'folders-sidebar__scrollable-position--has-scroll': hasScroll()
-        }}
-      >
-        <Scrollable ref={folderItemsContainer}>
+      <div class="folders-sidebar__scrollable-position">
+        <Scrollable
+          ref={folderItemsContainer}
+          class="folders-sidebar__scrollable"
+          onScroll={updateCanShowAddFolders}
+          withBorders="both"
+        >
           <For each={folderItems}>{(folderItem) => {
             const {id} = folderItem;
 
@@ -323,13 +323,28 @@ export function FoldersSidebarContent() {
               '--offset': addFoldersOffset()
             }}
           >
-            <IconTsx icon="plus" />
+            <IconTsx icon="plus" class="folders-sidebar__add-folders-button-icon" />
             <div class="folders-sidebar__add-folders-button-name">
               {i18n('ChatList.Filter.Include.AddChat')}
             </div>
           </div>}
         </Animated>
       </div>
+
+      <FolderItem
+        class="folders-sidebar__menu-button"
+        icon="equalizer"
+        onClick={() => {
+          if(openingChatFolders) return;
+          openingChatFolders = true;
+          closeTabsBefore(() => {
+            const tab = appSidebarLeft.createTab(AppChatFoldersTab);
+            tab.open().finally(() => {
+              openingChatFolders = false;
+            });
+          });
+        }}
+      />
     </>
   );
 }
