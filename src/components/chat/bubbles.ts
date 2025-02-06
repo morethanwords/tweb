@@ -20,7 +20,7 @@ import Scrollable, {SliceSides} from '../scrollable';
 import StickyIntersector from '../stickyIntersector';
 import animationIntersector from '../animationIntersector';
 import mediaSizes from '../../helpers/mediaSizes';
-import {IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
+import {IS_ANDROID, IS_APPLE, IS_FIREFOX, IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
 import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '../../lib/langPack';
 import ripple from '../ripple';
 import {fireMessageEffectByBubble, MessageRender} from './messageRender';
@@ -7486,6 +7486,7 @@ export default class ChatBubbles {
   }
 
   private async addMessageSpoilerOverlay({mid, messageDiv, middleware, loadPromises, canTranslate}: AddMessageSpoilerOverlayParams) {
+    if(IS_FIREFOX) return; // Firefox has very poor performance when drawing on canvas
     if(canTranslate && loadPromises) await Promise.all(loadPromises); // TranslatableMessage delays the moment when content appears in the DOM
 
     if(!messageDiv.querySelector('.spoiler-text')) return;

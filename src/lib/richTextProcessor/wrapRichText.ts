@@ -643,13 +643,15 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
             nextEntity = entities[nasty.i + 1];
           }
 
-          element = document.createElement('span');
-          element.append(...partText.split('').map((encodedLetter, i) => createElementFromMarkup(`<span class="bluff-spoiler" style="--index:${i}">${encodedLetter}</span>`)))
-          fragment.append(element);
+          if(!IS_FIREFOX) { // Firefox has very poor performance when drawing on canvas
+            element = document.createElement('span');
+            element.append(...partText.split('').map((encodedLetter, i) => createElementFromMarkup(`<span class="bluff-spoiler" style="--index:${i}">${encodedLetter}</span>`)))
+            fragment.append(element);
 
-          DotRenderer.attachBluffTextSpoilerTarget(element);
+            DotRenderer.attachBluffTextSpoilerTarget(element);
 
-          usedText = true;
+            usedText = true;
+          }
         } else if(options.wrappingDraft) {
           element = createMarkupFormatting('spoiler');
           // element = document.createElement('span');
