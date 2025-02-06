@@ -40,9 +40,13 @@ export default function StickerLayerContent(props: ResizableLayerProps) {
     });
   });
 
+  const children = (
+    <div ref={container} class="media-editor__sticker-layer-content" />
+  ); // Needs to be rendered here for hot reload to work properly
+
   return (
     <ResizableContainer layerSignal={props.layerSignal}>
-      <div ref={container} class="media-editor__sticker-layer-content"></div>
+      {children}
     </ResizableContainer>
   );
 }
