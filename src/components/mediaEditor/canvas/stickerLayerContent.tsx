@@ -1,4 +1,4 @@
-import {onMount, useContext} from 'solid-js';
+import {onCleanup, onMount, useContext} from 'solid-js';
 
 import createMiddleware from '../../../helpers/solid/createMiddleware';
 import wrapSticker from '../../wrappers/sticker';
@@ -16,6 +16,8 @@ export default function StickerLayerContent(props: ResizableLayerProps) {
   const [layer] = props.layerSignal;
 
   onMount(() => {
+    const middleware = createMiddleware();
+
     wrapSticker({
       div: container,
       doc: layer().sticker,
@@ -25,13 +27,17 @@ export default function StickerLayerContent(props: ResizableLayerProps) {
       play: true,
       loop: true,
       withThumb: false,
-      middleware: createMiddleware().get()
+      middleware: middleware.get()
     });
 
     setStickersLayersInfo((prev) => ({
       ...prev,
       [layer().id]: {container}
     }));
+
+    onCleanup(() => {
+      middleware.destroy();
+    });
   });
 
   return (

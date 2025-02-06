@@ -278,39 +278,3 @@ function ArrowUp() {
     </svg>
   );
 }
-
-/*
-if(shouldSnap) newDiff = -moved();
-if(isAnimating) return;
-
-if(!shouldSnap && isSnapped) {
-  isSnapped = false;
-  cancelAnimation?.();
-  const initialDiff = movedDiff();
-  isAnimating = true;
-  cancelAnimation = animateValue(0, 1, 120, (progress) => {
-    setMovedDiff(lerp(initialDiff, newDiff, progress));
-    onSwipe();
-  }, {
-    onEnd: () => isAnimating = false
-  });
-  return;
-}
-if(!shouldSnap) {
-  setMovedDiff(newDiff);
-  onSwipe();
-  return;
-}
-
-if(isSnapped) return;
-isSnapped = true;
-cancelAnimation?.();
-const initialDiff = movedDiff();
-isAnimating = true;
-cancelAnimation = animateValue(0, 1, 200, (progress) => {
-  setMovedDiff(lerp(initialDiff, newDiff, progress));
-  onSwipe();
-}, {
-  onEnd: () => isAnimating = false
-});
-*/
