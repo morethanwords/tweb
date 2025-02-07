@@ -113,6 +113,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
   public archivedCount: HTMLSpanElement;
   private totalNotificationsCount: HTMLSpanElement;
+  private totalNotificationsCountSidebar: HTMLSpanElement;
   public rect: DOMRect;
 
   private newBtnMenu: HTMLElement;
@@ -138,9 +139,6 @@ export class AppSidebarLeft extends SidebarSlider {
   construct(managers: AppManagers) {
     this.managers = managers;
     // this._selectTab(0); // make first tab as default
-    const mainMiddleware = this.middlewareHelper.get();
-    const foldersSidebar = document.getElementById('folders-sidebar');
-    renderFoldersSidebarContent(foldersSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
 
     this.chatListContainer = document.getElementById('chatlist-container');
     this.inputSearch = new InputSearch();
@@ -154,7 +152,13 @@ export class AppSidebarLeft extends SidebarSlider {
     this.toolsBtn = this.createToolsMenu();
     this.toolsBtn.classList.add('sidebar-tools-button', 'is-visible');
     this.totalNotificationsCount = createBadge('span', 20, 'primary');
+    this.totalNotificationsCount.classList.add('sidebar-tools-button-notifications');
+    this.totalNotificationsCountSidebar = this.totalNotificationsCount.cloneNode(true) as HTMLElement;
     this.toolsBtn.append(this.totalNotificationsCount);
+
+    const mainMiddleware = this.middlewareHelper.get();
+    const foldersSidebar = document.getElementById('folders-sidebar');
+    renderFoldersSidebarContent(foldersSidebar, this.totalNotificationsCountSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
 
     // If it has z-index to early, the browser makes it shift a few times before showing it properly in its position (on very large screens)
     // Doesn't solve the blinking, which doesn't seem to appear when the project is built
@@ -170,7 +174,9 @@ export class AppSidebarLeft extends SidebarSlider {
           (+accountNumber !== getCurrentAccount() ? count || 0 : 0)
         , 0);
 
-      setBadgeContent(this.totalNotificationsCount, '' + (count || ''));
+      [this.totalNotificationsCount, this.totalNotificationsCountSidebar].forEach((el) => {
+        setBadgeContent(el, '' + (count || ''));
+      });
     });
 
     this.backBtn.parentElement.insertBefore(this.toolsBtn, this.backBtn);

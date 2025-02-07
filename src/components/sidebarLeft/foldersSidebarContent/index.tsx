@@ -29,7 +29,9 @@ import showLimitPopup from '../../popups/limit';
 const log = logger('folders-sidebar');
 
 
-export function FoldersSidebarContent() {
+export function FoldersSidebarContent(props: {
+  notificationsElement: HTMLElement
+}) {
   const {
     rootScope,
     appSidebarLeft,
@@ -178,6 +180,7 @@ export function FoldersSidebarContent() {
 
     appSidebarLeft.createToolsMenu(menuRef, true);
     menuRef.classList.add('sidebar-tools-button', 'is-visible');
+    menuRef.append(props.notificationsElement);
 
     let clickFilterId: number;
 
@@ -335,7 +338,7 @@ export function FoldersSidebarContent() {
         class="folders-sidebar__menu-button"
         icon="equalizer"
         onClick={() => {
-          if(openingChatFolders) return;
+          if(openingChatFolders || appSidebarLeft.getTab(AppChatFoldersTab)) return;
           openingChatFolders = true;
           closeTabsBefore(() => {
             const tab = appSidebarLeft.createTab(AppChatFoldersTab);
@@ -349,9 +352,14 @@ export function FoldersSidebarContent() {
   );
 }
 
-export function renderFoldersSidebarContent(element: HTMLElement, HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider, middleware: Middleware) {
+export function renderFoldersSidebarContent(
+  element: HTMLElement,
+  notificationsElement: HTMLElement,
+  HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
+  middleware: Middleware
+) {
   createRoot((dispose) => {
-    render(() => <HotReloadGuardProvider><FoldersSidebarContent /></HotReloadGuardProvider>, element);
+    render(() => <HotReloadGuardProvider><FoldersSidebarContent notificationsElement={notificationsElement} /></HotReloadGuardProvider>, element);
     middleware.onDestroy(() => dispose());
   });
 }
