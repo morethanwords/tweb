@@ -20,6 +20,7 @@ export default function TextTab() {
 
   const [savedColor, setSavedColor] = createStoredColor('media-editor-text-color', '#ffffff');
 
+  setLayerInfo((prev) => ({...prev, color: savedColor().value}));
   createEffect(() => {
     setLayerInfo((prev) => ({...prev, color: savedColor().value}));
   });
