@@ -6250,7 +6250,7 @@ export class AppMessagesManager extends AppManager {
         }
       }
 
-      this.rootScope.dispatchEvent('notification_cancel', 'msg' + mid);
+      this.rootScope.dispatchEvent('notification_cancel', `msg_${this.getAccountNumber()}_${peerId}_${mid}`);
     }
 
     if(isOut) historyStorage.readOutboxMaxId = maxId;
@@ -8290,7 +8290,7 @@ export class AppMessagesManager extends AppManager {
 
       if(!message.pFlags.out && !message.pFlags.is_outgoing && message.pFlags.unread) {
         ++history.unread;
-        this.rootScope.dispatchEvent('notification_cancel', 'msg' + mid);
+        this.rootScope.dispatchEvent('notification_cancel', `msg_${this.getAccountNumber()}_${peerId}_${mid}`);
 
         if(isMentionUnread(message)) {
           ++history.unreadMentions;

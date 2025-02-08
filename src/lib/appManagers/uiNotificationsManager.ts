@@ -39,6 +39,7 @@ import AccountController from '../accounts/accountController';
 import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
 import createNotificationImage from '../../helpers/createNotificationImage';
 import {getMiddleware} from '../../helpers/middleware';
+import {FOLDER_ID_ALL} from '../mtproto/mtproto_config';
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -178,7 +179,7 @@ export class UiNotificationsManager {
 
     if(this.setAppBadge) {
       rootScope.addEventListener('folder_unread', (folder) => {
-        if(folder.id === 0) {
+        if(folder.id === FOLDER_ID_ALL) {
           this.setAppBadge(folder.unreadUnmutedPeerIds.size);
         }
       });
@@ -385,7 +386,7 @@ export class UiNotificationsManager {
     };
 
     notification.message = notificationMessage;
-    notification.key = 'msg' + message.mid;
+    notification.key = `msg_${this.accountNumber}_${message.peerId}_${message.mid}`;
     notification.tag = peerString;
     notification.silent = true;// message.pFlags.silent || false;
 
@@ -454,7 +455,12 @@ export class UiNotificationsManager {
       }
 
       if(!idle) {
-        this.byAccount[getCurrentAccount()].clear();
+        for(const _accountNumber in this.byAccount) {
+          const accountNumber = +_accountNumber as ActiveAccountNumber;
+          if(!apiManagerProxy.hasTabOpenFor(accountNumber) || accountNumber === getCurrentAccount()) {
+            this.byAccount[accountNumber].clear();
+          }
+        }
       }
 
       this.toggleToggler();

@@ -214,6 +214,18 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.registerServiceWorker();
     this.registerCryptoWorker();
 
+    const commonEventNames: Set<keyof BroadcastEvents> = new Set([
+      'language_change',
+      'settings_updated',
+      'theme_changed',
+      'theme_change',
+      'background_change',
+      'logging_out',
+      'notification_count_update',
+      'account_logged_in',
+      'notification_cancel'
+    ]);
+
     // const perf = performance.now();
     this.addMultipleEventsListeners({
       convertWebp: ({fileName, bytes}) => {
@@ -225,18 +237,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
       },
 
       event: ({name, args, accountNumber}) => {
-        const commonEventNames: (keyof BroadcastEvents)[] = [
-          'language_change',
-          'settings_updated',
-          'theme_changed',
-          'theme_change',
-          'background_change',
-          'logging_out',
-          'notification_count_update',
-          'account_logged_in'
-        ];
         const isDifferentAccount = accountNumber && accountNumber !== getCurrentAccount();
-        if(!commonEventNames.includes(name as keyof BroadcastEvents) && isDifferentAccount) return;
+        if(!commonEventNames.has(name as keyof BroadcastEvents) && isDifferentAccount) return;
         // @ts-ignore
         rootScope.dispatchEventSingle(name, ...args);
       },
