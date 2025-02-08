@@ -226,7 +226,7 @@ export function FoldersSidebarContent(props: {
 
     (async() => {
       const filters = await rootScope.managers.filtersStorage.getDialogFilters();
-      const folderFilters = filters.filter(filter => filter.id !== FOLDER_ID_ARCHIVE);
+      const folderFilters = filters.filter((filter) => filter.id !== FOLDER_ID_ARCHIVE);
 
       const folderItems = await Promise.all(folderFilters.map(makeFolderItemPayload));
       const orderedFolderItems = await getFolderItemsInOrder(folderItems, rootScope.managers);

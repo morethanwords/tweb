@@ -24,13 +24,13 @@ if(!('requestVideoFrameCallback' in HTMLVideoElement.prototype) && 'getVideoPlay
         });
         delete this._rvfcpolyfillmap[handle];
       } else {
-        this._rvfcpolyfillmap[handle] = requestAnimationFrame(newer => check(now, newer));
+        this._rvfcpolyfillmap[handle] = requestAnimationFrame((newer) => check(now, newer));
       }
     }
 
     const handle = Date.now();
     const now = performance.now();
-    this._rvfcpolyfillmap[handle] = requestAnimationFrame(newer => check(now, newer));
+    this._rvfcpolyfillmap[handle] = requestAnimationFrame((newer) => check(now, newer));
     return handle; // spec says long, not doube, so can't re-use performance.now
   };
 

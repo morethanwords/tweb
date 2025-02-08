@@ -76,7 +76,7 @@ const onFirstMount = async() => {
       let loginToken = await rootScope.managers.apiManager.invokeApi('auth.exportLoginToken', {
         api_id: App.id,
         api_hash: App.hash,
-        except_ids: userIds.map(userId => userId.toUserId())
+        except_ids: userIds.map((userId) => userId.toUserId())
         // except_ids: []
       }, {ignoreErrors: true});
 

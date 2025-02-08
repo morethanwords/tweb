@@ -57,8 +57,8 @@ function QualityLevelsSwitchButton(props: InternalQualityLevelsSwitchButtonProps
 
   createEffect(() => {
     if(qualityLevelsLoaded()) {
-      qualityLevelsMenuButtons().forEach(btn => btn.icon = undefined);
-      const selectedMenuButton = qualityLevelsMenuButtons().find(btn => btn.id === (selectedHeight() || 'auto'));
+      qualityLevelsMenuButtons().forEach((btn) => btn.icon = undefined);
+      const selectedMenuButton = qualityLevelsMenuButtons().find((btn) => btn.id === (selectedHeight() || 'auto'));
       if(selectedMenuButton) selectedMenuButton.icon = 'check';
     }
   });
@@ -140,11 +140,11 @@ async function getButtonMenuQualityOptions(
 
   const levels = await deferredLevels;
 
-  const availableHeights = Array.from(new Set(levels.map(level => snapQualityHeight(level.height))))
+  const availableHeights = Array.from(new Set(levels.map((level) => snapQualityHeight(level.height))))
   .sort((a, b) => b - a);
 
   const qualityButtons = availableHeights.map((height): ButtonMenuItemOptionsVerifiable => {
-    const levelsOfThisHeight = levels.filter(level => snapQualityHeight(level.height) === height)
+    const levelsOfThisHeight = levels.filter((level) => snapQualityHeight(level.height) === height)
     .sort((a, b) => a.bitrate - b.bitrate);
 
     const onClick = () => {

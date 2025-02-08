@@ -1313,7 +1313,7 @@ export default class PopupNewMedia extends PopupElement {
 
   private hasGif() {
     const {sendFileDetails} = this.willAttach;
-    return sendFileDetails.some(params => params.editResult?.isGif);
+    return sendFileDetails.some((params) => params.editResult?.isGif);
   }
 
   private iterate(cb: (sendFileDetails: SendFileParams[]) => void) {

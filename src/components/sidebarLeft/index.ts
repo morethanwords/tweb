@@ -794,13 +794,15 @@ export class AppSidebarLeft extends SidebarSlider {
           return wrapEmojiText(name);
         }
 
-        const targetIdx = buttons.findIndex(btn => btn.id === 'settings');
+        const targetIdx = buttons.findIndex((btn) => btn.id === 'settings');
         buttons[targetIdx].separator = !!attachMenuBotsButtons.length;
         buttons.splice(targetIdx, 0, ...attachMenuBotsButtons);
         buttons[targetIdx].separator = true;
 
-        const totalAccounts = await AccountController.getTotalAccounts();
-        const notificationsCount = await UiNotificationsManager.getNotificationsCountForAllAccounts();
+        const [totalAccounts, notificationsCount] = await Promise.all([
+          AccountController.getTotalAccounts(),
+          UiNotificationsManager.getNotificationsCountForAllAccounts()
+        ]);
         const accountButtons: typeof buttons = [];
         for(let i = 1; i <= totalAccounts; i++) {
           const accountNumber = i as ActiveAccountNumber;
@@ -979,7 +981,7 @@ export class AppSidebarLeft extends SidebarSlider {
     }
 
     async function updateAnimationsToggleButton(enabled: boolean) {
-      const animationToggleButton = btns.find(button => button.id === 'animations-toggle')?.element;
+      const animationToggleButton = btns.find((button) => button.id === 'animations-toggle')?.element;
       if(!animationToggleButton) return;
 
       const icon = animationToggleButton.querySelector('.tgico');
@@ -1484,7 +1486,7 @@ export class AppSidebarLeft extends SidebarSlider {
         if(hasChannels) break;
       }
 
-      const channelsTab = this.searchSuper.mediaTabs.find(tab => tab.type === 'channels');
+      const channelsTab = this.searchSuper.mediaTabs.find((tab) => tab.type === 'channels');
       channelsTab.menuTab?.classList.toggle('hide', !hasChannels);
     };
 

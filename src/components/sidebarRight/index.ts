@@ -39,7 +39,7 @@ export class AppSidebarRight extends SidebarSlider {
 
     let removeTransitionTimeoutId: number;
     const toggleBgScalableTransition = (value: boolean) => {
-      document.querySelectorAll('.chat-background-item-scalable').forEach(_el => {
+      document.querySelectorAll('.chat-background-item-scalable').forEach((_el) => {
         const el = _el as HTMLElement;
         if(!value) {
           el.style.setProperty('transition', 'none', 'important');

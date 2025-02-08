@@ -130,7 +130,7 @@ export default class MediaProgressLine extends RangeSelector {
     const bcr = this.filledContainer.getBoundingClientRect();
     const x = e.clientX - bcr.left;
 
-    const segmentIdx = this.segments.findIndex(segment => segment.left <= x && x <= segment.right);
+    const segmentIdx = this.segments.findIndex((segment) => segment.left <= x && x <= segment.right);
     if(segmentIdx >= 0) {
       this.activeSegmentIdx = segmentIdx;
       this.toggleSegment(segmentIdx, true);
@@ -201,8 +201,8 @@ export default class MediaProgressLine extends RangeSelector {
     this.currentTimeElement.textContent = formattedTime;
 
     if(this.segments?.length > 0) {
-      const segment = this.segments.find(segment => segment.left <= x && x <= segment.right);
-      const timestamp = this.options.videoTimestamps?.find(timestamp => timestamp.time === segment.time);
+      const segment = this.segments.find((segment) => segment.left <= x && x <= segment.right);
+      const timestamp = this.options.videoTimestamps?.find((timestamp) => timestamp.time === segment.time);
       this.currentSegmentElement.textContent = limitSymbols(timestamp?.text || '', 24, 27);
     }
 
@@ -230,7 +230,7 @@ export default class MediaProgressLine extends RangeSelector {
 
     const margin = 1;
 
-    const rects = segments.map(segment => `<rect x="${
+    const rects = segments.map((segment) => `<rect x="${
       (segment.left + margin).toFixed(2)
     }" width="${
       (segment.right - segment.left - 2 * margin).toFixed(2)
@@ -265,7 +265,7 @@ export default class MediaProgressLine extends RangeSelector {
     if(!duration) return [];
 
     const timePoints = videoTimestamps.map(({time}) => time)
-    .filter(time => time >= 0 && time <= duration)
+    .filter((time) => time >= 0 && time <= duration)
     .sort((a, b) => a - b);
 
     if(timePoints[0] !== 0) timePoints.unshift(0);

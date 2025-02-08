@@ -14,7 +14,7 @@ import {MOUNT_CLASS_TO} from '../config/debug';
 // import DATABASE_SESSION from "../config/databases/session";
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import {IS_WORKER} from '../helpers/context';
-import throttle from '../helpers/schedulers/throttle';
+import throttleWith from '../helpers/schedulers/throttleWith';
 // import { WorkerTaskTemplate } from "../types";
 import IDBStorage from './files/idb';
 
@@ -76,7 +76,7 @@ export default class AppStorage<
 
     AppStorage.STORAGES.push(this);
 
-    this.saveThrottled = throttle(async() => {
+    this.saveThrottled = throttleWith(queueMicrotask, async() => {
       const deferred = this.saveDeferred;
       this.saveDeferred = deferredPromise();
 
@@ -115,9 +115,9 @@ export default class AppStorage<
       if(set.size) {
         this.saveThrottled();
       }
-    }, THROTTLE_TIME, false);
+    }, /* THROTTLE_TIME,  */false);
 
-    this.deleteThrottled = throttle(async() => {
+    this.deleteThrottled = throttleWith(queueMicrotask, async() => {
       const deferred = this.deleteDeferred;
       this.deleteDeferred = deferredPromise();
 
@@ -148,13 +148,18 @@ export default class AppStorage<
       if(set.size) {
         this.deleteThrottled();
       }
-    }, THROTTLE_TIME, false);
+    }, /* THROTTLE_TIME,  */false);
 
-    this.getThrottled = throttle(async() => {
+    this.getThrottled = throttleWith(queueMicrotask, async() => {
       const keys = Array.from(this.getPromises.keys());
+
+      const timeout = setTimeout(() => {
+        console.error('[AS]: get timeout:', keys, storeName);
+      }, 5000);
 
       // const perf = performance.now();
       this.storage.get(keys as string[]).then((values) => {
+        clearTimeout(timeout);
         for(let i = 0, length = keys.length; i < length; ++i) {
           const key = keys[i];
           const deferred = this.getPromises.get(key);
@@ -167,6 +172,7 @@ export default class AppStorage<
 
         // console.log('[AS]: get time', keys, performance.now() - perf);
       }, (error: ApiError) => {
+        clearTimeout(timeout);
         const ignoreErrors: Set<ErrorType> = new Set(['NO_ENTRY_FOUND', 'STORAGE_OFFLINE']);
         if(!ignoreErrors.has(error.type)) {
           this.useStorage = false;
@@ -187,7 +193,7 @@ export default class AppStorage<
           this.getThrottled();
         }
       });
-    }, THROTTLE_TIME, false);
+    }, /* THROTTLE_TIME,  */false);
   }
 
   public isAvailable() {

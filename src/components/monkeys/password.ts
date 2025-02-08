@@ -32,7 +32,7 @@ export default class PasswordMonkey {
     }, 'TwoFactorSetupMonkeyPeek').then((_animation) => {
       // return;
       this.animation = _animation;
-      this.animation.addEventListener('enterFrame', currentFrame => {
+      this.animation.addEventListener('enterFrame', (currentFrame) => {
         // console.log('enterFrame', currentFrame, this.needFrame);
 
         if((this.animation.direction === 1 && currentFrame >= this.needFrame) ||

@@ -467,7 +467,7 @@ export const findMediaTargets = (anchor: HTMLElement, anchorMid: number/* , useS
     const selector = selectors.join(', ');
 
     let elements = Array.from(container.querySelectorAll(selector)) as HTMLElement[];
-    elements = elements.filter(element => element === anchor || element.matches(':not([data-to-be-skipped="1"])'));
+    elements = elements.filter((element) => element === anchor || element.matches(':not([data-to-be-skipped="1"])'));
     const idx = elements.indexOf(anchor);
 
     const mediaItems: MediaItem[] = elements.map((element) => ({peerId: element.dataset.peerId.toPeerId(), mid: +element.dataset.mid}));

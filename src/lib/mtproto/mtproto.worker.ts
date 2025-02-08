@@ -106,6 +106,18 @@ port.addMultipleEventsListeners({
 
   createObjectURL: (blob) => {
     return URL.createObjectURL(blob);
+  },
+
+  setInterval: (timeout) => {
+    const intervalId = setInterval(() => {
+      port.invokeVoid('intervalCallback', intervalId);
+    }, timeout) as any as number;
+
+    return intervalId;
+  },
+
+  clearInterval: (intervalId) => {
+    clearInterval(intervalId);
   }
 
   // socketProxy: (task) => {

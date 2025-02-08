@@ -40,9 +40,9 @@ export function getActualRectForCustomRect(parentRect: DOMRect, rect: CustomDOMR
 }
 
 export function computeMaxDistToMargin(e: MouseEvent, parentRect: DOMRect, rects: CustomDOMRect []) {
-  const actualRects = rects.map(rect => getActualRectForCustomRect(parentRect, rect));
+  const actualRects = rects.map((rect) => getActualRectForCustomRect(parentRect, rect));
 
-  return Math.max(...actualRects.map(rect => Math.max(
+  return Math.max(...actualRects.map((rect) => Math.max(
     Math.hypot(e.clientX - rect.left, e.clientY - rect.top),
     Math.hypot(e.clientX - rect.left, e.clientY - (rect.top + rect.height)),
     Math.hypot(e.clientX - (rect.left + rect.width), e.clientY - rect.top),

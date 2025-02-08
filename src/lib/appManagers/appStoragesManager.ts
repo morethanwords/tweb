@@ -52,7 +52,7 @@ export class AppStoragesManager extends AppManager {
     });
   }
 
-  public static allStoreNames = getDatabaseState(1).stores.map(store => store.name);
+  public static allStoreNames = getDatabaseState(1).stores.map((store) => store.name);
 
   public static async moveAccountStorages(fromAccount: ActiveAccountNumber, toAccount: ActiveAccountNumber) {
     for(const storeName of this.allStoreNames) {

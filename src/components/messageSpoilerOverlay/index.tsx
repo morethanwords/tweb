@@ -215,7 +215,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     const parentRect = props.parentElement.getBoundingClientRect();
     const spoilers = Array.from(props.messageElement.querySelectorAll('.spoiler-text'));
 
-    const rects = spoilers.map(el => getCustomDOMRectsForSpoilerSpan(el as HTMLElement, parentRect)).flat();
+    const rects = spoilers.map((el) => getCustomDOMRectsForSpoilerSpan(el as HTMLElement, parentRect)).flat();
     const adjustedRects = adjustSpaceBetweenCloseRects(rects);
     setSpanRects(adjustedRects);
   }

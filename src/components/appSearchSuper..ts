@@ -1847,11 +1847,11 @@ export default class AppSearchSuper {
       const SEARCH_LIMIT = 200; // will get filtered anyway
       const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT);
       const filteredResultsWithUndefined = await Promise.all(
-        globalResults.map(async user => await this.managers.appPeersManager.isBroadcast(user) ? user : undefined)
-      )
+        globalResults.map(async(user) => await this.managers.appPeersManager.isBroadcast(user) ? user : undefined)
+      );
       const filteredResults = filteredResultsWithUndefined.filter(Boolean);
 
-      this.renderPeerDialogs(filteredResults.map(user => user.toPeerId(true)), group, middleware);
+      this.renderPeerDialogs(filteredResults.map((user) => user.toPeerId(true)), group, middleware);
 
       if(filteredResults.length) {
         mediaTab.contentTab.append(group.container);
@@ -1863,7 +1863,7 @@ export default class AppSearchSuper {
     }
 
     const dialogs = await this.managers.dialogsStorage.getCachedDialogs();
-    const channelDialogsWithUndefined = await Promise.all(dialogs.map(async dialog => await this.managers.appPeersManager.isBroadcast(dialog.peerId) ? dialog : undefined))
+    const channelDialogsWithUndefined = await Promise.all(dialogs.map(async(dialog) => await this.managers.appPeersManager.isBroadcast(dialog.peerId) ? dialog : undefined));
     const channelDialogs = channelDialogsWithUndefined.filter(Boolean);
 
     if(channelDialogs.length) {
@@ -1874,7 +1874,7 @@ export default class AppSearchSuper {
       const SHOW_MORE_LIMIT = 5;
       if(channelDialogs.length > SHOW_MORE_LIMIT) this.appendShowMoreButton(group);
 
-      this.renderPeerDialogs(channelDialogs.map(dialog => dialog.peerId), group, middleware);
+      this.renderPeerDialogs(channelDialogs.map((dialog) => dialog.peerId), group, middleware);
     }
 
     const recommendations = await this.managers.appChatsManager.getGenericChannelRecommendations();
@@ -1884,7 +1884,7 @@ export default class AppSearchSuper {
       group.setActive();
       mediaTab.contentTab.append(group.container);
 
-      this.renderPeerDialogs(recommendations.chats.map(chat => chat.id.toPeerId(true)), group, middleware);
+      this.renderPeerDialogs(recommendations.chats.map((chat) => chat.id.toPeerId(true)), group, middleware);
     }
 
     this.afterPerforming(1, mediaTab.contentTab);
@@ -1899,11 +1899,11 @@ export default class AppSearchSuper {
       const SEARCH_LIMIT = 200; // will get filtered anyway
       const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT);
       const filteredResultsWithUndefined = await Promise.all(
-        globalResults.map(async user => await this.managers.appPeersManager.isBot(user) ? user : undefined)
-      )
+        globalResults.map(async(user) => await this.managers.appPeersManager.isBot(user) ? user : undefined)
+      );
       const filteredResults = filteredResultsWithUndefined.filter(Boolean);
 
-      this.renderPeerDialogs(filteredResults.map(user => user.toPeerId(false)), group, middleware, 'bots');
+      this.renderPeerDialogs(filteredResults.map((user) => user.toPeerId(false)), group, middleware, 'bots');
 
       if(filteredResults.length) {
         mediaTab.contentTab.append(group.container);
@@ -1924,7 +1924,7 @@ export default class AppSearchSuper {
       const SHOW_MORE_LIMIT = 5;
       if(myTopApps.length > SHOW_MORE_LIMIT)  this.appendShowMoreButton(group);
 
-      this.renderPeerDialogs(myTopApps.map(app => app.id.toPeerId(false)), group, middleware, 'bots');
+      this.renderPeerDialogs(myTopApps.map((app) => app.id.toPeerId(false)), group, middleware, 'bots');
     }
 
     const group = new SearchGroup('MiniApps.Popular', 'apps');
@@ -1941,7 +1941,7 @@ export default class AppSearchSuper {
       loadPromise = rootScope.managers.appAttachMenuBotsManager.getPopularAppBots(currentOffset, APPS_LIMIT_PER_LOAD);
       const {nextOffset, userIds} = await loadPromise;
 
-      await this.renderPeerDialogs(userIds.map(id => id.toPeerId(false)), group, middleware, 'bots');
+      await this.renderPeerDialogs(userIds.map((id) => id.toPeerId(false)), group, middleware, 'bots');
 
       currentOffset = nextOffset || null;
       loadPromise = undefined;

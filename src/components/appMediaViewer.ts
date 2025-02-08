@@ -336,7 +336,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     loadPromises && await Promise.all(loadPromises);
     const timestampElements = Array.from(messageContent.querySelectorAll('.timestamp[data-timestamp]'));
 
-    this.videoTimestamps = timestampElements.map(element => ({
+    this.videoTimestamps = timestampElements.map((element) => ({
       time: +(element as HTMLElement).dataset.timestamp,
       text: this.extractTimestampText(element)
     }));

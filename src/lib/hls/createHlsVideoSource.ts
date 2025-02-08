@@ -44,7 +44,7 @@ export function getQualityFilesEntries(altDocs: Document.document[]) {
 
   return Array.from(videoAttributes.entries()).map(([id, attr]) => {
     const {w = FALLBACK_WIDTH, h = FALLBACK_HEIGHT, duration = 0} = attr;
-    const {size} = altDocs.find(doc => doc.id.toString() === id);
+    const {size} = altDocs.find((doc) => doc.id.toString() === id);
 
     const bandwidth = (duration > 0 ? size / duration * 8 : FALLBACK_BANDWIDTH) | 0;
 
@@ -63,7 +63,7 @@ function getVideoAttributesFromAltDocs(altDocs: Document.document[]) {
   const result: Map<string, DocumentAttribute.documentAttributeVideo> = new Map();
 
   for(const doc of altDocs) {
-    const videoAttribute = doc?.attributes?.find(attr => attr._ === 'documentAttributeVideo');
+    const videoAttribute = doc?.attributes?.find((attr) => attr._ === 'documentAttributeVideo');
     if(!videoAttribute) continue;
     assumeType<DocumentAttribute.documentAttributeVideo>(videoAttribute);
 
@@ -90,7 +90,7 @@ function getURLForQualityFile(doc: Document.document) {
 }
 
 function getTargetDocIdForQualityFile(doc: Document.document) {
-  const fileNameAttribute = doc.attributes?.find(attr => attr._ === 'documentAttributeFilename');
+  const fileNameAttribute = doc.attributes?.find((attr) => attr._ === 'documentAttributeFilename');
   assumeType<DocumentAttribute.documentAttributeFilename>(fileNameAttribute);
 
   const rawFileName = doc.file_name || fileNameAttribute?.file_name;

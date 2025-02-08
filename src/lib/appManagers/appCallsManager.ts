@@ -60,7 +60,7 @@ export class AppCallsManager extends AppManager {
 
     const tabs = appTabsManager.getTabs();
     tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
-    const tab = tabs.find(tab => tab.state.accountNumber === this.getAccountNumber());
+    const tab = tabs.find((tab) => tab.state.accountNumber === this.getAccountNumber());
     const anyTab = tabs[0];
     // this.rootScope.dispatchEvent('call_update', call);
 

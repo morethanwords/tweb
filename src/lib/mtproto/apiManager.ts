@@ -422,7 +422,7 @@ export class ApiManager extends ApiManagerMethods {
     console.log('this.getAccountNumber()', this.getAccountNumber())
 
     let transport = this.chooseServer(dcId, connectionType, transportType);
-    return this.gettingNetworkers[getKey] = AccountController.get(this.getAccountNumber()).then(accountData => [accountData?.[ak], accountData?.[ss]] as const)
+    return this.gettingNetworkers[getKey] = AccountController.get(this.getAccountNumber()).then((accountData) => [accountData?.[ak], accountData?.[ss]] as const)
     .then(async([authKeyHex, serverSaltHex]) => {
       let networker: MTPNetworker, error: any;
       if(authKeyHex?.length === 512) {

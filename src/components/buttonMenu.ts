@@ -125,7 +125,7 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
   }
 
   if(avatarInfo) {
-    const avatar = createRoot(dispose => {
+    const avatar = createRoot((dispose) => {
       options.dispose = dispose;
       return AvatarNew({
         size: 24,

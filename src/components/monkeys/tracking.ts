@@ -119,7 +119,7 @@ export default class TrackingMonkey {
           this.animation.canvas[0].style.display = 'none';
         }
 
-        this.animation.addEventListener('enterFrame', currentFrame => {
+        this.animation.addEventListener('enterFrame', (currentFrame) => {
           // console.log('enterFrame', currentFrame, needFrame);
           // let currentFrame = Math.round(e.currentTime);
 

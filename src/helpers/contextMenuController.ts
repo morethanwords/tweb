@@ -83,7 +83,7 @@ class ContextMenuController extends OverlayClickHandler {
   }
 
   public closeMenusByLevel(level: number) {
-    this.additionalMenus.filter(menu => menu.level === level).forEach((item) => {
+    this.additionalMenus.filter((menu) => menu.level === level).forEach((item) => {
       item.close();
       const idx = this.additionalMenus.indexOf(item);
       if(idx > -1) this.additionalMenus.splice(idx, 1);
@@ -107,7 +107,7 @@ class ContextMenuController extends OverlayClickHandler {
       }
     }
 
-    this.additionalMenus.forEach(menu => {
+    this.additionalMenus.forEach((menu) => {
       menu.close();
     });
 

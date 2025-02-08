@@ -22,7 +22,7 @@ export class AccountController {
 
     const allAccountsData = await Promise.all(promises);
 
-    return allAccountsData.map(accountData => accountData?.userId).filter(Boolean);
+    return allAccountsData.map((accountData) => accountData?.userId).filter(Boolean);
   }
 
   static async get(accountNumber: ActiveAccountNumber) {

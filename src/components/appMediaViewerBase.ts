@@ -1590,10 +1590,10 @@ export default class AppMediaViewerBase<
     const qualityEntries = getQualityFilesEntries(altDocs);
     if(!qualityEntries.length) return;
 
-    const availableHeights = Array.from(new Set(qualityEntries.map(entry => snapQualityHeight(entry.h))))
+    const availableHeights = Array.from(new Set(qualityEntries.map((entry) => snapQualityHeight(entry.h))))
     .sort((a, b) => b - a);
 
-    const filteredEntries = availableHeights.map(height => {
+    const filteredEntries = availableHeights.map((height) => {
       let chosenEntry: (typeof qualityEntries)[number];
       for(const entry of qualityEntries) {
         if(snapQualityHeight(entry.h) !== height) continue;

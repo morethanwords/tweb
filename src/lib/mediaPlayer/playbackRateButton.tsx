@@ -60,7 +60,7 @@ function PlaybackRateButton(props: InternalPlaybackRateButtonProps) {
 
   props.controlsRef(controls);
 
-  const buttons: ButtonMenuItemOptionsVerifiable[] = rates.map(rate => ({
+  const buttons: ButtonMenuItemOptionsVerifiable[] = rates.map((rate) => ({
     id: rate.toFixed(1),
     emptyIcon: true,
     onClick: () => {
@@ -72,8 +72,8 @@ function PlaybackRateButton(props: InternalPlaybackRateButtonProps) {
   }));
 
   createEffect(() => {
-    buttons.forEach(btn => btn.icon = undefined);
-    const button = buttons.find(btn => btn.id === selectedRate().toFixed(1));
+    buttons.forEach((btn) => btn.icon = undefined);
+    const button = buttons.find((btn) => btn.id === selectedRate().toFixed(1));
     if(button) button.icon = 'check';
   });
 
@@ -83,7 +83,7 @@ function PlaybackRateButton(props: InternalPlaybackRateButtonProps) {
 
     const rateAsString = selectedRate().toFixed(1).replace(/\.0$/, 'x');
 
-    const icons = rateAsString.split('').map(char => ({
+    const icons = rateAsString.split('').map((char) => ({
       char: char === '.' ? 'dot': char,
       icon: geometricFontMap[char]
     })).filter(Boolean);

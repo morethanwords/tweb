@@ -4171,11 +4171,11 @@ export class AppMessagesManager extends AppManager {
         } else {
           const originalDoc = media.document;
 
-          const supportsHlsStreaming = (media.alt_documents || []).some(doc => isDocumentHlsQualityFile(doc));
+          const supportsHlsStreaming = (media.alt_documents || []).some((doc) => isDocumentHlsQualityFile(doc));
 
           media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext, supportsHlsStreaming); // 11.04.2020 warning
           // ??? 11.04.2020 warning
-          media.alt_documents &&= media.alt_documents?.map(altDoc =>
+          media.alt_documents &&= media.alt_documents?.map((altDoc) =>
             this.appDocsManager.saveDoc(altDoc, mediaContext)).filter(Boolean) || []; // idk why but sometimes there is [undefined] in the alt_documents
 
           if(media.alt_documents) this.altDocsByMainMediaDocument.set(media.document.id.toString(), media.alt_documents as Document.document[]);
