@@ -66,6 +66,8 @@ export type NotificationSettings = {
   nosound: boolean
 };
 
+const SHOW_NOTIFICATIONS_FOR_OTHER_ACCOUNT = false;
+
 export class UiNotificationsManager {
   private notificationsUiSupport: boolean;
   private notificationsShown: {[key: string]: MyNotification | true} = {};
@@ -111,7 +113,7 @@ export class UiNotificationsManager {
     const notificationsCount = await this.getNotificationsCountForAllAccounts();
     const shouldCount = (accountNumber: ActiveAccountNumber) =>
       accountNumber === getCurrentAccount() ||
-      !apiManagerProxy.hasTabOpenFor(accountNumber);
+      (SHOW_NOTIFICATIONS_FOR_OTHER_ACCOUNT && !apiManagerProxy.hasTabOpenFor(accountNumber));
 
     const count = Object.entries(notificationsCount).reduce(
       (prev, [accountNumber, count]) => prev + (shouldCount(+accountNumber as ActiveAccountNumber) ? count : 0) || 0,
@@ -457,7 +459,10 @@ export class UiNotificationsManager {
       if(!idle) {
         for(const _accountNumber in this.byAccount) {
           const accountNumber = +_accountNumber as ActiveAccountNumber;
-          if(!apiManagerProxy.hasTabOpenFor(accountNumber) || accountNumber === getCurrentAccount()) {
+          if(
+            (SHOW_NOTIFICATIONS_FOR_OTHER_ACCOUNT && !apiManagerProxy.hasTabOpenFor(accountNumber)) ||
+            accountNumber === getCurrentAccount()
+          ) {
             this.byAccount[accountNumber].clear();
           }
         }

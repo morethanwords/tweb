@@ -467,6 +467,27 @@ $btn-menu-z-index: 4;
     .checkbox-field-toggle {
       padding: 0;
     }
+
+    &-avatar {
+      // width: 1.5rem !important;
+      // height: 1.5rem !important;
+      // display: flex;
+      // align-items: center;
+      // justify-content: center;
+      // position: relative;
+
+      &.active:before {
+        --offset: -3px;
+        content: " ";
+        position: absolute;
+        top: var(--offset);
+        right: var(--offset);
+        bottom: var(--offset);
+        left: var(--offset);
+        border: 1.5px solid var(--primary-color);
+        border-radius: inherit;
+      }
+    }
   }
 
   &-items {

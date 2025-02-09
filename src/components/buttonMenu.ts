@@ -25,9 +25,10 @@ import {ActiveAccountNumber} from '../lib/accounts/types';
 
 type ButtonMenuItemInner = Omit<Parameters<typeof ButtonMenuSync>[0], 'listenerSetter'>;
 type AvatarInfo = {
-  accountNumber?: ActiveAccountNumber;
-  peerId?: PeerId;
-  peer?: Chat.channel | Chat.chat | User.user;
+  accountNumber?: ActiveAccountNumber,
+  peerId?: PeerId,
+  peer?: Chat.channel | Chat.chat | User.user,
+  active?: boolean
 };
 
 export type ButtonMenuItemOptions = {
@@ -128,12 +129,14 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
     const avatar = createRoot((dispose) => {
       options.dispose = dispose;
       return AvatarNew({
-        size: 24,
+        size: /* avatarInfo.active ? 22 :  */24,
         ...avatarInfo
       });
     });
-    avatar.node.classList.add('btn-menu-item-icon');
-    avatar.node.classList.add('is-external');
+    avatar.node.classList.add('btn-menu-item-icon', 'is-external', 'btn-menu-item-avatar');
+    if(avatarInfo.active) {
+      avatar.node.classList.add('active');
+    }
     el.append(avatar.node);
   }
 

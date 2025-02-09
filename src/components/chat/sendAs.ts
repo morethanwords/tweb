@@ -190,7 +190,7 @@ export default class ChatSendAs {
         size: 26,
         peerId
       });
-      avatar.node.classList.add('btn-menu-item-icon');
+      avatar.node.classList.add('btn-menu-item-icon', 'btn-menu-item-avatar');
 
       if(!idx) {
         avatar.node.classList.add('active');

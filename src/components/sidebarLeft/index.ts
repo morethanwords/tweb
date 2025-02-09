@@ -811,7 +811,8 @@ export class AppSidebarLeft extends SidebarSlider {
             accountButtons.push({
               avatarInfo: {
                 accountNumber: getCurrentAccount(),
-                peerId: rootScope.myId.toPeerId()
+                peerId: rootScope.myId.toPeerId(),
+                active: true
               },
               regularText: wrapUserName(user),
               onClick: () => {
@@ -822,7 +823,7 @@ export class AppSidebarLeft extends SidebarSlider {
             });
           } else {
             const otherManagers = createProxiedManagersForAccount(accountNumber);
-            const accountData = await AccountController.get(accountNumber)
+            const accountData = await AccountController.get(accountNumber);
             const peerId = accountData?.userId?.toPeerId();
             const user = await otherManagers.appUsersManager.getSelf();
 

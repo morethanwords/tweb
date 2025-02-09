@@ -1453,18 +1453,6 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
             &-icon {
               margin-inline-end: calc(var(--icon-margin) - .5rem);
-
-              &.active:before {
-                --offset: -.125rem;
-                content: " ";
-                position: absolute;
-                top: var(--offset);
-                right: var(--offset);
-                bottom: var(--offset);
-                left: var(--offset);
-                border: .0625rem solid var(--primary-color);
-                border-radius: inherit;
-              }
             }
 
             &-text {
