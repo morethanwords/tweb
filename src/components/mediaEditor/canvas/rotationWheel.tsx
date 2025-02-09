@@ -217,7 +217,11 @@ export default function RotationWheel() {
   function flipImage() {
     setIsMoving(true);
     const isReversedRatio = Math.abs(Math.round((rotation() / Math.PI) * 2)) & 1;
-    const targetFlip = [flip()[0] * (isReversedRatio ? 1 : -1), flip()[1] * (isReversedRatio ? -1 : 1)];
+    const snapTo1 = (value: number) => value < 0 ? -1 : 1;
+    const targetFlip = [
+      snapTo1(flip()[0]) * (isReversedRatio ? 1 : -1),
+      snapTo1(flip()[1]) * (isReversedRatio ? -1 : 1)
+    ];
     animateValue(flip(), targetFlip, 200, setFlip, {
       onEnd: () => setIsMoving(false)
     });
