@@ -3,10 +3,9 @@ import {createEffect, createResource, createSignal, For, onCleanup, onMount, Sho
 import {Document, EmojiGroup, StickerSet} from '../../../layer';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import {i18n} from '../../../lib/langPack';
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 
-import EmoticonsSearch from '../../emoticonsDropdown/search';
 import LazyLoadQueue from '../../lazyLoadQueue';
-import wrapStickerSetThumb from '../../wrappers/stickerSetThumb';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {IconTsx} from '../../iconTsx';
 import {ScrollableX} from '../../scrollable';
@@ -21,6 +20,7 @@ import {delay} from '../utils';
 import {TabContentContext} from './tabContent';
 
 export default function StickersTab() {
+  const {wrapStickerSetThumb, EmoticonsSearch} = useHotReloadGuard();
   const context = useContext(MediaEditorContext);
   const {container, scrollAmount} = useContext(TabContentContext);
 

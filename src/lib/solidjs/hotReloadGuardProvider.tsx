@@ -3,6 +3,8 @@ import {ParentProps} from 'solid-js';
 import appSidebarLeft from '../../components/sidebarLeft';
 import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
+import EmoticonsSearch from '../../components/emoticonsDropdown/search';
+import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 
 import rootScope from '../rootScope';
 
@@ -15,7 +17,9 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       rootScope,
       appSidebarLeft,
       AppEditFolderTab,
-      AppChatFoldersTab
+      AppChatFoldersTab,
+      EmoticonsSearch,
+      wrapStickerSetThumb
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>
