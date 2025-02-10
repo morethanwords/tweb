@@ -1,18 +1,14 @@
-import {createEffect, onMount, Show} from 'solid-js';
-
-import createBadge from '../../../helpers/createBadge';
-import setBadgeContent from '../../../helpers/setBadgeContent';
-
+import {onMount, Show} from 'solid-js';
 import {IconTsx} from '../../iconTsx';
-
 import {FolderItemPayload} from './types';
 import ripple from '../../ripple';
+import Badge from '../../badge';
 
 type FolderItemProps = FolderItemPayload & {
-  ref?: (el: HTMLDivElement | null) => void;
-  class?: string;
-  selected?: boolean;
-  onClick?: () => void;
+  ref?: (el: HTMLDivElement | null) => void,
+  class?: string,
+  selected?: boolean,
+  onClick?: () => void
 };
 
 export default function FolderItem(props: FolderItemProps) {
@@ -22,15 +18,7 @@ export default function FolderItem(props: FolderItemProps) {
     ripple(container);
   });
 
-  const hasNotifications = () => !!props.notifications;
-  const badge = createBadge('div', 18, 'primary');
-  badge.classList.add('folders-sidebar__folder-item-badge');
-
-  createEffect(() => {
-    if(!hasNotifications()) return;
-    setBadgeContent(badge, props.notifications?.toString());
-  });
-
+  const hasNotifications = () => !!props.notifications?.count;
   return (
     <div
       ref={(el) => {
@@ -53,7 +41,14 @@ export default function FolderItem(props: FolderItemProps) {
         <div class="folders-sidebar__folder-item-name">{props.name}</div>
       </Show>
       <Show when={hasNotifications()}>
-        {badge}
+        <Badge
+          class="folders-sidebar__folder-item-badge"
+          tag="div"
+          color={props.notifications.muted && !props.selected ? 'gray' : 'primary'}
+          size={18}
+        >
+          {'' + props.notifications.count}
+        </Badge>
       </Show>
     </div>
   );

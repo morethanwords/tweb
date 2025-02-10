@@ -1520,6 +1520,11 @@ export class AppSidebarLeft extends SidebarSlider {
     }
     return super.createTab(ctor, destroyable, doNotAppend);
   }
+
+  public async closeTabsBefore(clb: () => void) {
+    this.closeEverythingInside() && await pause(200);
+    clb();
+  }
 }
 
 export class SettingChatListSection extends SettingSection {

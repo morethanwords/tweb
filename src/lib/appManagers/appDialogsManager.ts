@@ -89,14 +89,12 @@ import safeAssign from '../../helpers/object/safeAssign';
 import ListenerSetter from '../../helpers/listenerSetter';
 import ButtonMenuToggle from '../../components/buttonMenuToggle';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
-import findUpClassName from '../../helpers/dom/findUpClassName';
 import formatNumber from '../../helpers/number/formatNumber';
 import AppSharedMediaTab from '../../components/sidebarRight/tabs/sharedMedia';
 import {dispatchHeavyAnimationEvent} from '../../hooks/useHeavyAnimationCheck';
 import shake from '../../helpers/dom/shake';
 import AppEditTopicTab from '../../components/sidebarRight/tabs/editTopic';
 import getServerMessageId from './utils/messageId/getServerMessageId';
-import createContextMenu from '../../helpers/dom/createContextMenu';
 import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import eachTimeout from '../../helpers/eachTimeout';
 import PopupSharedFolderInvite from '../../components/popups/sharedFolderInvite';
@@ -115,7 +113,7 @@ import PopupDeleteDialog from '../../components/popups/deleteDialog';
 import rtmpCallsController from '../calls/rtmpCallsController';
 import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
 import {WrapRichTextOptions} from '../richTextProcessor/wrapRichText';
-import assumeType from '../../helpers/assumeType';
+import createFolderContextMenu from '../../helpers/dom/createFolderContextMenu';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -1951,47 +1949,13 @@ export class AppDialogsManager {
       }
     }, undefined, foldersScrollable);
 
-    let clickFilterId: number;
-    createContextMenu({
-      buttons: [{
-        icon: 'edit',
-        text: 'FilterEdit',
-        onClick: () => {
-          this.managers.filtersStorage.getFilter(clickFilterId).then((filter) => {
-            const tab = appSidebarLeft.createTab(AppEditFolderTab);
-            tab.setInitFilter(filter);
-            tab.open();
-          });
-        },
-        verify: () => clickFilterId !== FOLDER_ID_ALL
-      }, {
-        icon: 'edit',
-        text: 'FilterEditAll',
-        onClick: () => {
-          appSidebarLeft.createTab(AppChatFoldersTab).open();
-        },
-        verify: () => clickFilterId === FOLDER_ID_ALL
-      }, {
-        icon: 'readchats',
-        text: 'MarkAllAsRead',
-        onClick: () => {
-          this.managers.dialogsStorage.markFolderAsRead(clickFilterId);
-        },
-        verify: async() => !!(await this.managers.dialogsStorage.getFolderUnreadCount(clickFilterId)).unreadCount
-      }, {
-        icon: 'delete',
-        className: 'danger',
-        text: 'Delete',
-        onClick: () => {
-          AppEditFolderTab.deleteFolder(clickFilterId);
-        },
-        verify: () => clickFilterId !== FOLDER_ID_ALL
-      }],
-      listenTo: this.folders.menu,
-      findElement: (e) => findUpClassName(e.target, 'menu-horizontal-div-item'),
-      onOpen: (e, target) => {
-        clickFilterId = +target.dataset.filterId;
-      }
+    createFolderContextMenu({
+      appSidebarLeft,
+      AppChatFoldersTab,
+      AppEditFolderTab,
+      managers: this.managers,
+      className: 'menu-horizontal-div-item',
+      listenTo: this.folders.menu
     });
 
     apiManagerProxy.getState().then((state) => {

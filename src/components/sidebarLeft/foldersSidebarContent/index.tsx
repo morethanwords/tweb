@@ -1,4 +1,4 @@
-import {createEffect, createMemo, createRoot, createSignal, For, onCleanup, onMount} from 'solid-js';
+import {createEffect, createRoot, createSignal, For, onCleanup, onMount} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
 
@@ -10,8 +10,6 @@ import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtpro
 import {i18n} from '../../../lib/langPack';
 import {MyDialogFilter} from '../../../lib/storages/filters';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
-import createContextMenu from '../../../helpers/dom/createContextMenu';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
 import pause from '../../../helpers/schedulers/pause';
 import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
@@ -25,6 +23,7 @@ import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} 
 import type {FolderItemPayload} from './types';
 import FolderItem from './folderItem';
 import showLimitPopup from '../../popups/limit';
+import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
 
 const log = logger('folders-sidebar');
 
@@ -44,7 +43,9 @@ export function FoldersSidebarContent(props: {
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
   const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
 
-  const showAddFolders = () => canShowAddFolders() && selectedFolderId() && !REAL_FOLDERS.has(selectedFolderId()) &&
+  const showAddFolders = () => canShowAddFolders() &&
+    selectedFolderId() &&
+    !REAL_FOLDERS.has(selectedFolderId()) &&
     folderItems.find((item) => item.id === selectedFolderId())?.chatsCount === 0;
 
   const [folderItemRefs, setFolderItemRefs] = createStore<Record<number, HTMLDivElement>>({});
@@ -96,7 +97,6 @@ export function FoldersSidebarContent(props: {
     };
   }
 
-
   async function updateOrAddFolder(filter: MyDialogFilter) {
     const items = [...folderItems];
     const existingItem = items.find((item) => item.id === filter.id);
@@ -144,11 +144,6 @@ export function FoldersSidebarContent(props: {
     setFolderItems(items);
   }
 
-  async function closeTabsBefore(clb: () => void) {
-    appSidebarLeft.closeEverythingInside() && await pause(200);
-    clb();
-  }
-
   async function setSelectedFolder(folderId: number) {
     const isFilterAvailable = await rootScope.managers.filtersStorage.isFilterIdAvailable(folderId);
     if(!isFilterAvailable) {
@@ -164,17 +159,7 @@ export function FoldersSidebarContent(props: {
     rootScope.dispatchEventSingle('changing_folder_from_sidebar', {id: folderId});
   }
 
-  async function openSettingsForFilter(filterId: number) {
-    if(REAL_FOLDERS.has(filterId)) return;
-    const filter = await rootScope.managers.filtersStorage.getFilter(filterId);
-
-    closeTabsBefore(() => {
-      const tab = appSidebarLeft.createTab(AppEditFolderTab);
-      tab.setInitFilter(filter);
-      tab.open();
-    });
-  }
-
+  let contextMenu: ReturnType<typeof createFolderContextMenu>;
   onMount(() => {
     const listenerSetter = new ListenerSetter();
 
@@ -182,46 +167,13 @@ export function FoldersSidebarContent(props: {
     menuRef.classList.add('sidebar-tools-button', 'is-visible');
     menuRef.append(props.notificationsElement);
 
-    let clickFilterId: number;
-
-    const contextMenu = createContextMenu({
-      buttons: [{
-        icon: 'edit',
-        text: 'FilterEdit',
-        onClick: () => {
-          openSettingsForFilter(clickFilterId);
-        },
-        verify: () => clickFilterId !== FOLDER_ID_ALL
-      }, {
-        icon: 'edit',
-        text: 'FilterEditAll',
-        onClick: () => {
-          closeTabsBefore(() => {
-            appSidebarLeft.createTab(AppChatFoldersTab).open();
-          });
-        },
-        verify: () => clickFilterId === FOLDER_ID_ALL
-      }, {
-        icon: 'readchats',
-        text: 'MarkAllAsRead',
-        onClick: () => {
-          rootScope.managers.dialogsStorage.markFolderAsRead(clickFilterId);
-        },
-        verify: async() => !!(await rootScope.managers.dialogsStorage.getFolderUnreadCount(clickFilterId)).unreadCount
-      }, {
-        icon: 'delete',
-        className: 'danger',
-        text: 'Delete',
-        onClick: () => {
-          AppEditFolderTab.deleteFolder(clickFilterId);
-        },
-        verify: () => clickFilterId !== FOLDER_ID_ALL
-      }],
-      listenTo: folderItemsContainer,
-      findElement: (e) => findUpClassName(e.target, 'folders-sidebar__folder-item'),
-      onOpen: (e, target) => {
-        clickFilterId = +target.dataset.filterId;
-      }
+    contextMenu = createFolderContextMenu({
+      appSidebarLeft,
+      AppChatFoldersTab,
+      AppEditFolderTab,
+      managers: rootScope.managers,
+      className: 'folders-sidebar__folder-item',
+      listenTo: folderItemsContainer
     });
 
     (async() => {
@@ -321,7 +273,7 @@ export function FoldersSidebarContent(props: {
           {showAddFolders() && <div
             ref={showAddFoldersButton}
             class="folders-sidebar__add-folders-button"
-            onClick={() => openSettingsForFilter(selectedFolderId())}
+            onClick={() => contextMenu.openSettingsForFilter(selectedFolderId())}
             style={{
               '--offset': addFoldersOffset()
             }}
@@ -340,7 +292,7 @@ export function FoldersSidebarContent(props: {
         onClick={() => {
           if(openingChatFolders || appSidebarLeft.getTab(AppChatFoldersTab)) return;
           openingChatFolders = true;
-          closeTabsBefore(() => {
+          appSidebarLeft.closeTabsBefore(() => {
             const tab = appSidebarLeft.createTab(AppChatFoldersTab);
             tab.open().finally(() => {
               openingChatFolders = false;

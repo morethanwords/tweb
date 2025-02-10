@@ -9,7 +9,10 @@ import {FolderItemPayload} from './types';
 export async function getNotificationCountForFilter(filterId: number, managers: AppManagers) {
   const {unreadUnmutedCount, unreadCount} = await managers.dialogsStorage.getFolderUnreadCount(filterId);
 
-  return filterId === FOLDER_ID_ALL ? unreadUnmutedCount : unreadCount;
+  return {
+    count: filterId === FOLDER_ID_ALL ? unreadUnmutedCount : unreadCount,
+    muted: !unreadUnmutedCount && !!unreadCount
+  };
 }
 
 export function getIconForFilter(filter: MyDialogFilter): Icon {
@@ -29,12 +32,15 @@ export function getIconForFilter(filter: MyDialogFilter): Icon {
 
 export async function getFolderItemsInOrder(folderItems: FolderItemPayload[], managers: AppManagers) {
   const filters = new Map<number, MyDialogFilter>();
-  for(const folderItem of folderItems) {
-    if(folderItem.id) {
-      const filter = await managers.filtersStorage.getFilter(folderItem.id);
-      filters.set(folderItem.id, filter);
-    }
+
+  const filtersPromises = folderItems
+  .filter((item) => item.id)
+  .map((item) => managers.filtersStorage.getFilter(item.id));
+  const filtersArr = await Promise.all(filtersPromises);
+  for(const filter of filtersArr) {
+    filters.set(filter.id, filter);
   }
+
   return folderItems.sort((a, b) => {
     if(!a.id || !b.id) return 0;
     return filters.get(a.id)?.localId - filters.get(b.id)?.localId;
