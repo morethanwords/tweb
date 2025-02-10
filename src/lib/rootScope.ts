@@ -21,11 +21,11 @@ import type {MTAppConfig} from './mtproto/appConfig';
 import type StoriesCacheType from './appManagers/utils/stories/cacheType';
 import type {StoriesListPosition} from './appManagers/appStoriesManager';
 import type {ArgumentTypes} from '../types';
+import type {RtmpCallInstance} from './calls/rtmpCallsController';
 import {NULL_PEER_ID, UserAuth} from './mtproto/mtproto_config';
 import EventListenerBase, {EventListenerListeners} from '../helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
-import {RtmpCallInstance} from './calls/rtmpCallsController';
 import {ActiveAccountNumber} from './accounts/types';
 
 export type BroadcastEvents = {
