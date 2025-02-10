@@ -66,7 +66,7 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
         acc.set(field.peerId, set = new Set());
       }
 
-      if(field.checked) {
+      if(field.checkboxField.checked) {
         set.add(field.action);
       }
       return acc;
