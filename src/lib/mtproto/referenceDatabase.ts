@@ -26,7 +26,8 @@ export type ReferenceContext =
   ReferenceContext.referenceContextBotApp |
   ReferenceContext.referenceContextChatInvite |
   ReferenceContext.referenceContextEffects |
-  ReferenceContext.referenceContextStarsTransaction;
+  ReferenceContext.referenceContextStarsTransaction |
+  ReferenceContext.referenceContextSavedGifs;
 
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
@@ -102,6 +103,10 @@ export namespace ReferenceContext {
     type: 'starsTransaction',
     peerId: PeerId,
     mid: number
+  };
+
+  export type referenceContextSavedGifs = {
+    type: 'savedGifs'
   };
 }
 
@@ -260,6 +265,11 @@ export class ReferenceDatabase extends AppManager {
 
       case 'effects': {
         promise = Promise.resolve(this.appReactionsManager.getAvailableEffects(true));
+        break;
+      }
+
+      case 'savedGifs': {
+        promise = Promise.resolve(this.appGifsManager.getGifs(true));
         break;
       }
 

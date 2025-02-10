@@ -8,6 +8,7 @@ import findAndSplice from '../../helpers/array/findAndSplice';
 import assumeType from '../../helpers/assumeType';
 import {BotInlineResult, MessagesSavedGifs, Document} from '../../layer';
 import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {AppManager} from './manager';
 import getDocumentInput from './utils/docs/getDocumentInput';
 
@@ -36,15 +37,26 @@ export default class AppGifsManager extends AppManager {
 
     return this.gifs ??= this.apiManager.invokeApi('messages.getSavedGifs').then((res) => {
       assumeType<MessagesSavedGifs.messagesSavedGifs>(res);
-      return this.gifs = res.gifs.map((doc) => this.appDocsManager.saveDoc(doc)).filter(Boolean);
+      const referenceContext: ReferenceContext = {type: 'savedGifs'};
+      return this.gifs = res.gifs.map((doc) => {
+        return this.appDocsManager.saveDoc(doc, referenceContext);
+      }).filter(Boolean);
     });
   }
 
   public async searchGifs(query: string, nextOffset?: string) {
-    const gifBotPeerId = (await this.appUsersManager.resolveUsername('gif')).id.toPeerId(false);
-    const {results, next_offset} = await this.appInlineBotsManager.getInlineResults(NULL_PEER_ID, gifBotPeerId, query, nextOffset);
+    const user = await this.appUsersManager.resolveUsername('gif');
+    const gifBotPeerId = user.id.toPeerId(false);
+    const {results, next_offset} = await this.appInlineBotsManager.getInlineResults(
+      NULL_PEER_ID,
+      gifBotPeerId,
+      query,
+      nextOffset
+    );
 
-    const documents = results.map((result) => (result as BotInlineResult.botInlineMediaResult).document).filter(Boolean) as Document.document[];
+    const documents = (results as BotInlineResult.botInlineMediaResult[])
+    .map((result) => result.document)
+    .filter(Boolean) as Document.document[];
     return {documents, nextOffset: next_offset};
   }
 
