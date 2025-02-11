@@ -26,13 +26,18 @@ export default function BrushTab() {
     return savedBrushColors[brush as keyof typeof savedBrushColors];
   }
 
-  createEffect(() => {
+  function updateCurrentBrush() {
     const [savedColor] = savedBrushSignal(currentBrush().brush) || [];
     if(!savedColor || currentBrush().color === savedColor().value) return;
     setCurrentBrush((prev) => ({
       ...prev,
       color: savedColor().value
     }));
+  }
+
+  updateCurrentBrush(); // Change the brush before the ColorPicker is rendered
+  createEffect(() => {
+    updateCurrentBrush();
   });
 
   function setColor(color: string) {

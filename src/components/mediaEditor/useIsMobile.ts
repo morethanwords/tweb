@@ -1,6 +1,6 @@
 import {createSignal, onCleanup} from 'solid-js';
 
-export default function useMediaQuery(query: string) {
+function useMediaQuery(query: string) {
   const [isMatch, setIsMatch] = createSignal(false);
 
   const updateMatch = () => {
@@ -16,4 +16,9 @@ export default function useMediaQuery(query: string) {
   });
 
   return isMatch;
+}
+
+export default function useIsMobile() {
+  const isMobile = useMediaQuery('(max-width: 800px');
+  return isMobile;
 }

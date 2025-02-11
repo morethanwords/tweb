@@ -18,6 +18,7 @@ export default function MainCanvas() {
   const [canvasSize, setCanvasSize] = context.canvasSize;
   const [previewBrushSize] = context.previewBrushSize;
   const [currentBrush] = context.currentBrush;
+  const [, setResizeHandlesContainer] = context.resizeHandlesContainer;
 
   useFinalTransform();
 
@@ -52,6 +53,7 @@ export default function MainCanvas() {
               }}
             />
           )}
+          <div ref={setResizeHandlesContainer} class="media-editor__resize-handles-overlay" />
           <CropHandles />
           <RotationWheel />
         </Show>

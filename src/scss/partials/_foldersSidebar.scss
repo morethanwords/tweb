@@ -81,6 +81,12 @@
       line-height: 18px !important;
 
       box-shadow: 0 0 0 1px var(--background);
+
+      transition: none !important;
+
+      &.badge-gray {
+        background-color: #717579;
+      }
     }
 
     &-name {

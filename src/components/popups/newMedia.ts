@@ -63,6 +63,7 @@ import RenderProgressCircle from '../mediaEditor/renderProgressCircle';
 import {animateValue, delay, lerp, snapToViewport} from '../mediaEditor/utils';
 import {IS_MOBILE} from '../../environment/userAgent';
 import deferredPromise from '../../helpers/cancellablePromise';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -1063,7 +1064,7 @@ export default class PopupNewMedia extends PopupElement {
                 if(!hasGif)
                   (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
               }
-            });
+            }, SolidJSHotReloadGuardProvider);
           });
         }
 

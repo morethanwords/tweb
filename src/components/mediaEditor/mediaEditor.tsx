@@ -2,10 +2,12 @@ import {createEffect, onCleanup, onMount} from 'solid-js';
 import {render} from 'solid-js/web';
 
 import {doubleRaf} from '../../helpers/schedulers';
+import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {i18n} from '../../lib/langPack';
 
 import appNavigationController, {NavigationItem} from '../appNavigationController';
+import confirmationPopup from '../confirmationPopup';
 
 import {delay} from './utils';
 import MediaEditorContext, {createStandaloneContextValue, StandaloneContext} from './context';
@@ -14,7 +16,6 @@ import FinishButton from './finishButton';
 import {withCurrentOwner} from './utils';
 import {createFinalResult, MediaEditorFinalResult} from './finalRender/createFinalResult';
 import Toolbar from './toolbar';
-import confirmationPopup from '../confirmationPopup';
 
 export type MediaEditorProps = {
   onClose: (hasGif: boolean) => void;
@@ -135,11 +136,15 @@ export function MediaEditor(props: MediaEditorProps) {
   );
 }
 
-export function openMediaEditor(props: MediaEditorProps) {
+export function openMediaEditor(props: MediaEditorProps, HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider) {
   const element = document.createElement('div');
   document.body.append(element);
 
-  const dispose = render(() => <MediaEditor {...props} onClose={onClose} />, element);
+  const dispose = render(() => (
+    <HotReloadGuardProvider>
+      <MediaEditor {...props} onClose={onClose} />
+    </HotReloadGuardProvider>
+  ), element);
 
   function onClose(hasGif: boolean) {
     props.onClose(hasGif);

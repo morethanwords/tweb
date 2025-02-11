@@ -136,16 +136,14 @@ export default function ColorPicker(props: {
     on(
       () => props.colorKey,
       async() => {
-        await doubleRaf();
+        await delay(0);
         const newCollapsed = colorPickerSwatches.includes(props.value);
         if(newCollapsed !== collapsed()) {
-          batch(() => {
-            setCollapsed(newCollapsed);
-            if(newCollapsed) {
-              setCollapsing(true);
-              delay(200).then(() => setCollapsing(false));
-            }
-          });
+          setCollapsed(newCollapsed);
+          if(newCollapsed) {
+            setCollapsing(true);
+            delay(200).then(() => setCollapsing(false));
+          }
         }
       }
     )

@@ -20,7 +20,7 @@ import Scrollable, {SliceSides} from '../scrollable';
 import StickyIntersector from '../stickyIntersector';
 import animationIntersector from '../animationIntersector';
 import mediaSizes from '../../helpers/mediaSizes';
-import {IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
+import {IS_ANDROID, IS_APPLE, IS_FIREFOX, IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
 import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '../../lib/langPack';
 import ripple from '../ripple';
 import {fireMessageEffectByBubble, MessageRender} from './messageRender';
@@ -32,7 +32,7 @@ import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Documen
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
-import {fastRaf, fastRafPromise} from '../../helpers/schedulers';
+import {doubleRaf, fastRaf, fastRafPromise} from '../../helpers/schedulers';
 import deferredPromise from '../../helpers/cancellablePromise';
 import RepliesElement from './replies';
 import DEBUG from '../../config/debug';
@@ -111,7 +111,7 @@ import wrapDocument from '../wrappers/document';
 import wrapGroupedDocuments from '../wrappers/groupedDocuments';
 import wrapPhoto from '../wrappers/photo';
 import wrapPoll from '../wrappers/poll';
-import wrapVideo from '../wrappers/video';
+import wrapVideo, {USE_VIDEO_OBSERVER} from '../wrappers/video';
 import isRTL, {endsWithRTL} from '../../helpers/string/isRTL';
 import NBSP from '../../helpers/string/nbsp';
 import DotRenderer from '../dotRenderer';
@@ -1926,7 +1926,7 @@ export default class ChatBubbles {
 
   private onBubblesMouseMove = async(e: MouseEvent) => {
     const mediaVideoContainer = findUpClassName(e.target, 'media-video-mini');
-    (mediaVideoContainer as any)?.onMouseMove?.(e);
+    mediaVideoContainer?.onMiniVideoMouseMove?.(e);
 
     const content = findUpClassName(e.target, 'bubble-content');
     if(!(
@@ -3100,40 +3100,6 @@ export default class ChatBubbles {
       return;
     }
 
-    const intersecting = this.observer?.getIntersecting();
-    if(intersecting) {
-      const videos = Array.from(intersecting).filter((el) => el instanceof HTMLVideoElement && (el as any).mini);
-      const centerY = windowSize.height / 2;
-      const distances = videos.map((video) => {
-        // const bubble = findUpClassName(video, 'bubble');
-        const rect = video.getBoundingClientRect();
-        const distanceToVerticalCenter = Math.abs(rect.top + rect.height / 2 - centerY);
-        return {video/* , bubble */, distance: distanceToVerticalCenter};
-      }).sort((a, b) => a.distance - b.distance);
-      let closest = distances[0];
-      if(closest && closest.distance > 150) {
-        closest = undefined;
-      }
-
-      const video = closest?.video as HTMLVideoElement;
-      if(this.lastPlayingVideo !== video) {
-        const animationItem = animationIntersector.getAnimations(this.lastPlayingVideo)[0];
-        if(animationItem) {
-          animationIntersector.toggleItemLock(animationItem, true);
-          this.lastPlayingVideo.pause();
-        }
-
-        this.lastPlayingVideo = video;
-
-        if(video) {
-          // console.log('video', video);
-          const animationItem = animationIntersector.getAnimations(video)[0];
-          animationIntersector.toggleItemLock(animationItem, false);
-          safePlay(video);
-        }
-      }
-    }
-
     const distanceToEnd = forceDown ? 0 : scrollDimensions?.distanceToEnd ?? this.scrollable.getDistanceToEnd();
     if(/* !IS_TOUCH_SUPPORTED &&  */(this.scrollable.lastScrollDirection !== 0 && distanceToEnd > 0) || scrollDimensions || forceDown) {
     // if(/* !IS_TOUCH_SUPPORTED &&  */(this.scrollable.lastScrollDirection !== 0 || scrollDimensions) && distanceToEnd > 0) {
@@ -3156,6 +3122,77 @@ export default class ChatBubbles {
       this.container.classList.remove('scrolled-down');
       this.scrolledDown = false;
     }
+
+    this.checkIntersectingVideos();
+  };
+
+  private checkIntersectingVideos() {
+    if(!USE_VIDEO_OBSERVER) {
+      return;
+    }
+
+    const intersecting = this.observer?.getIntersecting();
+    if(!intersecting) {
+      return;
+    }
+
+    const videos = Array.from(intersecting).filter((el) => el instanceof HTMLVideoElement && el.mini);
+    const centerY = videos.length ? windowSize.height / 2 : 0;
+    const distances = videos.map((video) => {
+      const bubble = findUpClassName(video, 'bubble');
+      const rect = video.getBoundingClientRect();
+      const rectBubble = bubble.getBoundingClientRect();
+      const distanceToVerticalCenter = Math.abs(rect.top + rect.height / 2 - centerY);
+      let distanceBubbleToVerticalCenter = rectBubble.top > centerY ? rectBubble.top - centerY : centerY - rectBubble.bottom;
+      if(rectBubble.top < centerY && rectBubble.bottom > centerY) { // * if bubble is in the center
+        distanceBubbleToVerticalCenter = 0;
+      }
+      return {
+        video,
+        rect,
+        /* , bubble */
+        distance: distanceToVerticalCenter,
+        distanceBubble: distanceBubbleToVerticalCenter
+      };
+    }).sort((a, b) => a.distance - b.distance);
+    let closest = distances[0];
+    if(this.scrolledDown && closest) { // * if it's the last message
+      distances.sort((a, b) => b.rect.bottom - a.rect.bottom);
+      closest = distances[0];
+    } else if(closest && closest.distance > 150 && closest.distanceBubble > 150) {
+      closest = undefined;
+    }
+
+    const video = closest?.video as HTMLVideoElement;
+    if(this.lastPlayingVideo !== video) {
+      const animationItem = animationIntersector.getAnimations(this.lastPlayingVideo)[0];
+      if(animationItem) {
+        animationIntersector.toggleItemLock(animationItem, true);
+        this.lastPlayingVideo.pause();
+      }
+
+      this.lastPlayingVideo = video;
+
+      if(video) {
+        // console.log('video', video);
+        const animationItem = animationIntersector.getAnimations(video)[0];
+        animationIntersector.toggleItemLock(animationItem, false);
+        safePlay(video);
+      }
+    }
+  }
+
+  private onVideoLoad = async() => {
+    if(!USE_VIDEO_OBSERVER) {
+      return;
+    }
+
+    await getHeavyAnimationPromise();
+    await doubleRaf();
+    if(this.lastPlayingVideo) {
+      return;
+    }
+    this.checkIntersectingVideos();
   };
 
   public setScroll() {
@@ -6208,6 +6245,7 @@ export default class ChatBubbles {
                 autoDownload: this.chat.autoDownload,
                 noInfo: message.mid < 0 && !sponsoredMedia,
                 observer: this.observer,
+                onLoad: this.onVideoLoad,
                 setShowControlsOn: bubble
               });
             } else {
@@ -6511,6 +6549,7 @@ export default class ChatBubbles {
                 noInfo: message.mid <= 0,
                 noAutoplayAttribute: !!messageMedia.pFlags.spoiler,
                 observer: this.observer,
+                onLoad: this.onVideoLoad,
                 setShowControlsOn: bubble,
                 onGlobalMedia: (media) => {
                   globalMediaDeferred.resolve(media);
@@ -6832,6 +6871,7 @@ export default class ChatBubbles {
                 group: this.chat.animationGroup,
                 message: message as Message.message,
                 observer: this.observer,
+                onLoad: this.onVideoLoad,
                 setShowControlsOn: bubble,
                 uploadingFileName: (message as Message.message).uploadingFileName[0]
               });
@@ -7486,6 +7526,7 @@ export default class ChatBubbles {
   }
 
   private async addMessageSpoilerOverlay({mid, messageDiv, middleware, loadPromises, canTranslate}: AddMessageSpoilerOverlayParams) {
+    if(IS_FIREFOX) return; // Firefox has very poor performance when drawing on canvas
     if(canTranslate && loadPromises) await Promise.all(loadPromises); // TranslatableMessage delays the moment when content appears in the DOM
 
     if(!messageDiv.querySelector('.spoiler-text')) return;

@@ -5,12 +5,16 @@ import type {RootScope} from '../rootScope';
 import type {AppSidebarLeft} from '../../components/sidebarLeft';
 import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
+import type EmoticonsSearch from '../../components/emoticonsDropdown/search';
+import type wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 
 export type SolidJSHotReloadGuardContextValue = {
   rootScope: RootScope;
   appSidebarLeft: AppSidebarLeft;
   AppChatFoldersTab: typeof AppChatFoldersTab;
   AppEditFolderTab: typeof AppEditFolderTab;
+  EmoticonsSearch: typeof EmoticonsSearch;
+  wrapStickerSetThumb: typeof wrapStickerSetThumb;
 };
 
 export const SolidJSHotReloadGuardContext = createContext<SolidJSHotReloadGuardContextValue>(null);

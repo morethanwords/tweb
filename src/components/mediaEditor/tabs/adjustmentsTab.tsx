@@ -3,7 +3,7 @@ import {createEffect, createSignal, on, onCleanup, useContext} from 'solid-js';
 import RangeInput from '../rangeInput';
 import Space from '../space';
 import MediaEditorContext from '../context';
-import useMediaQuery from '../useMediaQuery';
+import useIsMobile from '../useIsMobile';
 
 const ADJUST_TIMEOUT = 800;
 
@@ -12,7 +12,7 @@ export default function AdjustmentsTab() {
   const {adjustments} = context;
   const [, setIsAdjusting] = context.isAdjusting;
 
-  const isMobile = useMediaQuery('(max-width: 800px)');
+  const isMobile = useIsMobile();
 
   let timeoutId = 0;
   function removeIsAdjusting() {

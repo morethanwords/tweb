@@ -702,7 +702,8 @@ export class AppSidebarLeft extends SidebarSlider {
         }
 
         localStorage.setItem('previous-account', getCurrentAccount() + '');
-        if(!e.ctrlKey) {
+        const newTab = e.ctrlKey || e.metaKey;
+        if(!newTab) {
           appImManager.goOffline();
 
           localStorage.setItem('should-animate-auth', 'true');
@@ -714,7 +715,7 @@ export class AppSidebarLeft extends SidebarSlider {
           await pause(200);
         }
 
-        changeAccount((totalAccounts + 1) as ActiveAccountNumber, e.ctrlKey);
+        changeAccount((totalAccounts + 1) as ActiveAccountNumber, newTab);
       },
       verify: async() => {
         const totalAccounts = await AccountController.getTotalAccounts();
@@ -845,7 +846,8 @@ export class AppSidebarLeft extends SidebarSlider {
               className: 'btn-menu-account-item',
               regularText: content,
               onClick: async(e) => {
-                if(!e.ctrlKey) {
+                const newTab = e.ctrlKey || e.metaKey;
+                if(!newTab) {
                   appImManager.goOffline();
 
                   const chatListEl = document.querySelector('.chatlist-container')?.firstElementChild;
@@ -854,7 +856,7 @@ export class AppSidebarLeft extends SidebarSlider {
                   chatListEl.classList.add('chatlist-exiting');
                   await pause(200);
                 }
-                changeAccount(accountNumber, e.ctrlKey);
+                changeAccount(accountNumber, newTab);
               }
             });
           }
@@ -1517,6 +1519,11 @@ export class AppSidebarLeft extends SidebarSlider {
       return popup.slider.createTab(ctor, destroyable, doNotAppend);
     }
     return super.createTab(ctor, destroyable, doNotAppend);
+  }
+
+  public async closeTabsBefore(clb: () => void) {
+    this.closeEverythingInside() && await pause(200);
+    clb();
   }
 }
 

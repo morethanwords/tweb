@@ -12,7 +12,7 @@ import BrushTab from './tabs/brushTab';
 import StickersTab from './tabs/stickersTab';
 import MediaEditorContext from './context';
 import {animateValue, delay, lerp} from './utils';
-import useMediaQuery from './useMediaQuery';
+import useIsMobile from './useIsMobile';
 
 export default function Toolbar(props: {onFinish: () => void; onClose: () => void}) {
   let toolbar: HTMLDivElement;
@@ -28,7 +28,7 @@ export default function Toolbar(props: {onFinish: () => void; onClose: () => voi
   const [containerHeight, setContainerHeight] = createSignal(0);
   const [extraMove, setExtraMove] = createSignal(0);
 
-  const isMobile = useMediaQuery('(max-width: 800px)');
+  const isMobile = useIsMobile();
 
   const [shouldHide, setShouldHide] = createSignal(isMobile());
 
