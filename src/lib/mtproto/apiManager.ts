@@ -419,8 +419,6 @@ export class ApiManager extends ApiManagerMethods {
     const ak: DcAuthKey = `dc${dcId}_auth_key` as any;
     const ss: DcServerSalt = `dc${dcId}_server_salt` as any;
 
-    console.log('this.getAccountNumber()', this.getAccountNumber())
-
     let transport = this.chooseServer(dcId, connectionType, transportType);
     return this.gettingNetworkers[getKey] = AccountController.get(this.getAccountNumber()).then((accountData) => [accountData?.[ak], accountData?.[ss]] as const)
     .then(async([authKeyHex, serverSaltHex]) => {

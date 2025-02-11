@@ -2894,7 +2894,6 @@ export default function StoriesViewer(props: {
     const openOnReady = () => {
       clearTimeout(timeout)
       wasReady = true;
-      console.log('ready', performance.now() - perf);
       runWithOwner(owner, () => {
         onMount(() => {
           open();

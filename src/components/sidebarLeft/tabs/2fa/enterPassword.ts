@@ -112,8 +112,6 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
 
         const plainPassword = passwordInputField.value;
         this.managers.passwordManager.check(passwordInputField.value, this.state).then((auth) => {
-          console.log(auth);
-
           if(auth._ === 'auth.authorization') {
             clearInterval(getStateInterval);
             if(monkey) monkey.remove();

@@ -25,7 +25,5 @@ export default function createStorages(accountNumber: ActiveAccountNumber) {
     storages[name] = new AppStorage(accountNumber === undefined ? getOldDatabaseState() : getDatabaseState(accountNumber), name);
   }
 
-  console.log('createStorages typeof window', typeof window)
-
   return storages;
 }

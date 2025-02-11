@@ -89,8 +89,6 @@ class Stream {
   private inUse: number;
 
   constructor(private info: DownloadOptions) {
-    console.log('stream() info', info)
-
     this.id = Stream.getId(info);
     streams.set(this.id, this);
     this.inUse = 0;
@@ -366,7 +364,6 @@ export function toggleStreamInUse({url, inUse, accountNumber}: {url: string, inU
   const index = url.indexOf(needle);
   const info = parseInfo(url.slice(index + needle.length));
   info.accountNumber = accountNumber;
-  console.log('toggle stream in use', info);
   const stream = Stream.get(info);
   stream.toggleInUse(inUse);
 }

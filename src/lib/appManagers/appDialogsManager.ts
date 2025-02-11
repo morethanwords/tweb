@@ -1587,7 +1587,6 @@ class Some2 extends Some<Dialog> {
   }
 
   public toggleAvatarUnreadBadges(value: boolean, useRafs: number) {
-    console.log('toggling avatar unread', value);
     if(!value) {
       this.sortedList.getAll().forEach((sortedDialog) => {
         const {dom, dialogElement} = sortedDialog;

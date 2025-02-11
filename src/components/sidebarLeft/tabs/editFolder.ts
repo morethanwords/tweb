@@ -387,8 +387,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
         throw err;
       }).then((chatlistInvites) => {
-        console.log(chatlistInvites);
-
         const CLASS_NAME = 'usernames';
 
         const content = this.inviteLinks.generateContentElement();

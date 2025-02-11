@@ -116,7 +116,6 @@ export function useCollapsable(props: {
 
     let value = delta / 600;
     value = clamp(wasProgress + value, 0, 1);
-    console.log('value', value);
     setProgress(value);
     if(value >= 1 || value <= 0) {
       debounced.clearTimeout();

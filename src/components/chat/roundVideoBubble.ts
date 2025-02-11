@@ -403,7 +403,6 @@ export function wrapRoundVideoBubble({
       globalMedia,
       searchContext
     });
-    console.log('[video-trans] audioElement', message.mid, audioElement);
     audioMessageContainer.append(audioElement);
     // audioContainer.append(transcribedText);
   })();
