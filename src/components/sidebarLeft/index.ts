@@ -1020,14 +1020,16 @@ export class AppSidebarLeft extends SidebarSlider {
     options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'icon' | 'verify' | 'separator'>,
     createSubmenu: () => MaybePromise<HTMLElement>
   ) {
-    const content = document.createElement('span');
-    content.classList.add('submenu-label');
-    content.append(i18n(options.text), Icon('arrowhead'));
-
     const menuBtnOptions: ButtonMenuItemOptionsVerifiable = {
       ...options,
 
-      regularText: content,
+      // * fix langpack
+      get regularText() {
+        const content = document.createElement('span');
+        content.classList.add('submenu-label');
+        content.append(i18n(options.text), Icon('arrowhead'));
+        return content;
+      },
       onClick: noop,
       id: AppSidebarLeft.submenuHelperIdSeed++
     };

@@ -45,7 +45,9 @@ import AccountController from './lib/accounts/accountController';
 import {changeAccount} from './lib/accounts/changeAccount';
 import {MAX_ACCOUNTS_FREE, MAX_ACCOUNTS_PREMIUM} from './lib/accounts/constants';
 import sessionStorage from './lib/sessionStorage';
-
+import replaceChildrenPolyfill from './helpers/dom/replaceChildrenPolyfill';
+import listenForWindowPrint from './helpers/dom/windowPrint';
+import cancelImageEvents from './helpers/dom/cancelImageEvents';
 
 IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   mimeTypes.forEach((mimeType) => {
@@ -57,8 +59,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   apiManagerProxy.sendEnvironment();
 });
 
-/* false &&  */document.addEventListener('DOMContentLoaded', async() => {
-  // * Randomly choose a version if user came from google
+// * Randomly choose a version if user came from a search engine
+function randomlyChooseVersionFromSearch() {
   try {
     if(
       App.isMainDomain &&
@@ -74,37 +76,14 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
       }
     }
   } catch(err) {}
+}
 
-  const sidebarEl = document.getElementById('column-left');
-  const storedWidth = localStorage.getItem('sidebar-left-width');
-  if(storedWidth === '0') {
-    sidebarEl.classList.add('is-collapsed');
-  } else if(storedWidth) {
-    document.documentElement.style.setProperty('--current-sidebar-left-width', storedWidth + 'px');
-  }
-
-  toggleAttributePolyfill();
-
-  // polyfill for replaceChildren
-  if((Node as any).prototype.replaceChildren === undefined) {
-    (Node as any).prototype.replaceChildren = function(...nodes: any[]) {
-      this.textContent = '';
-      // while(this.lastChild) {
-      //   this.removeChild(this.lastChild);
-      // }
-      if(nodes) {
-        this.append(...nodes);
-      }
-    }
-  }
-
-  rootScope.managers = getProxiedManagers();
-
+function setManifest() {
   const manifest = document.getElementById('manifest') as HTMLLinkElement;
   if(manifest) manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=jw3mK7G9Aq`;
+}
 
-  singleInstance.start();
-
+function setViewportHeightListeners() {
   // We listen to the resize event (https://css-tricks.com/the-trick-to-viewport-units-on-mobile/)
   const w = window.visualViewport || window; // * handle iOS keyboard
   let setViewportVH = false/* , hasFocus = false */;
@@ -133,52 +112,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     } */
   };
 
-  setWorkerProxy;
-
-  // const [_, touchSupport, userAgent, _rootScope, _appStateManager, _I18n, __/* , ___ */] = await Promise.all([
-  //   import('./lib/polyfill'),
-  //   import('./environment/touchSupport'),
-  //   import('./environment/userAgent'),
-  //   import('./lib/rootScope'),
-  //   import('./lib/appManagers/appStateManager'),
-  //   import('./lib/langPack'),
-  //   import('./helpers/peerIdPolyfill'),
-  //   // import('./helpers/cacheFunctionPolyfill')
-  // ]);
-
-  /* const {IS_TOUCH_SUPPORTED} = touchSupport;
-  const {IS_FIREFOX, IS_MOBILE, IS_APPLE, IS_SAFARI, IS_APPLE_MOBILE, IS_ANDROID} = userAgent;
-  const rootScope = _rootScope.default;
-  const appStateManager = _appStateManager.default;
-  const I18n = _I18n.default; */
-
   window.addEventListener('resize', setVH);
   setVH();
-
-  const preparePrint = () => {
-    const chat = document.querySelector('.chat.active');
-    if(!chat) {
-      return;
-    }
-
-    const chatClone = chat.cloneNode(true) as HTMLElement;
-    chatClone.querySelectorAll('.chat-input, .chat-background').forEach((element) => element.remove());
-    const bubbles = chatClone.querySelector('.bubbles');
-    const bubblesInner = bubbles.querySelector('.bubbles-inner');
-    bubbles.replaceChildren(bubblesInner);
-    const video = bubbles.querySelectorAll<HTMLVideoElement>('video');
-    video.forEach((video) => (video.muted = true));
-    const printable = document.createElement('div');
-    printable.setAttribute('id', 'printable');
-    printable.append(chatClone);
-    document.body.append(printable);
-  };
-  const removePrint = () => {
-    const printContent = document.getElementById('printable');
-    printContent?.remove();
-  };
-  window.addEventListener('beforeprint', preparePrint);
-  window.addEventListener('afterprint', removePrint);
 
   if(IS_STICKY_INPUT_BUGGED) {
     const toggleResizeMode = () => {
@@ -210,68 +145,57 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
       toggleResizeMode();
     });
   }
+}
 
-  if(IS_FIREFOX && !IS_EMOJI_SUPPORTED) {
-    document.addEventListener('dragstart', (e) => {
-      const target = e.target as HTMLElement;
-      if(target.tagName === 'IMG' && target.classList.contains('emoji')) {
-        cancelEvent(e);
-        return false;
-      }
-    });
+function setSidebarLeftWidth() {
+  const sidebarEl = document.getElementById('column-left');
+  const storedWidth = localStorage.getItem('sidebar-left-width');
+  if(storedWidth === '0') {
+    sidebarEl.classList.add('is-collapsed');
+  } else if(storedWidth) {
+    document.documentElement.style.setProperty('--current-sidebar-left-width', storedWidth + 'px');
   }
+}
+
+function setRootClasses() {
+  const add: string[] = [];
 
   if(IS_EMOJI_SUPPORTED) {
-    document.documentElement.classList.add('native-emoji');
+    add.push('native-emoji');
   }
 
   if(USE_NATIVE_SCROLL) {
-    document.documentElement.classList.add('native-scroll');
+    add.push('native-scroll');
   } else if(IS_OVERLAY_SCROLL_SUPPORTED) {
-    document.documentElement.classList.add('overlay-scroll');
+    add.push('overlay-scroll');
   } else if(USE_CUSTOM_SCROLL) {
-    document.documentElement.classList.add('custom-scroll');
+    add.push('custom-scroll');
   }
 
-  // document.documentElement.style.setProperty('--quote-icon', `"${getIconContent('quote')}"`);
-
-  // prevent firefox image dragging
-  document.addEventListener('dragstart', (e) => {
-    if((e.target as HTMLElement)?.tagName === 'IMG') {
-      e.preventDefault();
-      return false;
-    }
-  });
-
-  // restrict contextmenu on images (e.g. webp stickers)
-  document.addEventListener('contextmenu', (e) => {
-    if((e.target as HTMLElement).tagName === 'IMG' && !(window as any).appMediaViewer) {
-      cancelEvent(e);
-    }
-  });
+  // root.style.setProperty('--quote-icon', `"${getIconContent('quote')}"`);
 
   if(IS_FIREFOX) {
-    document.documentElement.classList.add('is-firefox', 'no-backdrop');
+    add.push('is-firefox', 'no-backdrop');
   }
 
   if(IS_MOBILE) {
-    document.documentElement.classList.add('is-mobile');
+    add.push('is-mobile');
   }
 
   if(IS_APPLE) {
     if(IS_SAFARI) {
-      document.documentElement.classList.add('is-safari');
+      add.push('is-safari');
     }
 
-    // document.documentElement.classList.add('emoji-supported');
+    // root.classList.add('emoji-supported');
 
     if(IS_APPLE_MOBILE) {
-      document.documentElement.classList.add('is-ios');
+      add.push('is-ios');
     } else {
-      document.documentElement.classList.add('is-mac');
+      add.push('is-mac');
     }
   } else if(IS_ANDROID) {
-    document.documentElement.classList.add('is-android');
+    add.push('is-android');
 
     // force losing focus on input blur
     // focusin and focusout are not working on mobile
@@ -301,9 +225,9 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   }
 
   if(!IS_TOUCH_SUPPORTED) {
-    document.documentElement.classList.add('no-touch');
+    add.push('no-touch');
   } else {
-    document.documentElement.classList.add('is-touch');
+    add.push('is-touch');
     /* document.addEventListener('touchmove', (event: any) => {
       event = event.originalEvent || event;
       if(event.scale && event.scale !== 1) {
@@ -311,6 +235,23 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
       }
     }, {capture: true, passive: false}); */
   }
+
+  document.documentElement.classList.add(...add);
+}
+
+/* false &&  */document.addEventListener('DOMContentLoaded', async() => {
+  randomlyChooseVersionFromSearch();
+  setSidebarLeftWidth();
+  toggleAttributePolyfill();
+  replaceChildrenPolyfill();
+  rootScope.managers = getProxiedManagers();
+  setManifest();
+  singleInstance.start();
+  setViewportHeightListeners();
+  setWorkerProxy; // * just to import
+  listenForWindowPrint();
+  cancelImageEvents();
+  setRootClasses();
 
   if(IS_INSTALL_PROMPT_SUPPORTED) {
     cacheInstallPrompt();

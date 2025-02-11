@@ -40,7 +40,7 @@ port.addMultipleEventsListeners({
     return cryptoWorker.invokeCrypto(method as any, ...args as any);
   },
 
-  state: ({state, resetStorages, pushedKeys, newVersion, oldVersion, userId, accountNumber, common}) => {
+  state: ({state, resetStorages, pushedKeys, newVersion, oldVersion, userId, accountNumber, common, refetchStorages}) => {
     // if(haveState) {
     //   return;
     // }
@@ -59,6 +59,7 @@ port.addMultipleEventsListeners({
 
     appStateManager.resetStoragesPromise.resolve({
       storages: resetStorages,
+      refetch: refetchStorages,
       callback: async() => {
         const promises: Promise<any>[] = [];
 

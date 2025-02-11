@@ -17,6 +17,7 @@ import {IS_WORKER} from '../helpers/context';
 import throttleWith from '../helpers/schedulers/throttleWith';
 // import { WorkerTaskTemplate } from "../types";
 import IDBStorage from './files/idb';
+import {logger} from './logger';
 
 function noop() {}
 
@@ -48,23 +49,33 @@ export default class AppStorage<
   private storage: IDBStorage<T>;// new CacheStorageController('session');
 
   // private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
-  private cache: Partial<Storage> = {};
+  private cache: Partial<Storage>;
   private useStorage: boolean;
   private savingFreezed: boolean;
 
-  private getPromises: Map<keyof Storage, CancellablePromise<Storage[keyof Storage]>> = new Map();
+  private getPromises: Map<keyof Storage, CancellablePromise<Storage[keyof Storage]>>;
   private getThrottled: () => void;
 
-  private keysToSet: Set<keyof Storage> = new Set();
+  private keysToSet: Set<keyof Storage>;
   private saveThrottled: () => void;
-  private saveDeferred = deferredPromise<void>();
+  private saveDeferred: CancellablePromise<void>;
 
-  private keysToDelete: Set<keyof Storage> = new Set();
+  private keysToDelete: Set<keyof Storage>;
   private deleteThrottled: () => void;
-  private deleteDeferred = deferredPromise<void>();
+  private deleteDeferred: CancellablePromise<void>;
+
+  private log: ReturnType<typeof logger>;
 
   constructor(private db: T, private storeName: typeof db['stores'][number]['name']) {
     this.storage = new IDBStorage<T>(db, storeName);
+    this.log = logger(`AS-${db.name}-${storeName}`);
+
+    this.cache = {};
+    this.getPromises = new Map();
+    this.keysToSet = new Set();
+    this.saveDeferred = deferredPromise();
+    this.keysToDelete = new Set();
+    this.deleteDeferred = deferredPromise();
 
     if(AppStorage.STORAGES.length) {
       this.useStorage = AppStorage.STORAGES[0].useStorage;
@@ -76,125 +87,123 @@ export default class AppStorage<
 
     AppStorage.STORAGES.push(this);
 
-    this.saveThrottled = throttleWith(queueMicrotask, async() => {
-      const deferred = this.saveDeferred;
-      this.saveDeferred = deferredPromise();
-
-      const set = this.keysToSet;
-      if(set.size) {
-        const keys = Array.from(set.values()) as string[];
-        set.clear();
-
-        const values = keys.map((key) => this.cache[key]);
-        try {
-          // console.log('setItem: will set', key/* , value */);
-          // await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
-          // await this.storage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
-
-          /* if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
-            self.postMessage({
-              type: 'localStorageProxy',
-              payload: {
-                type: 'set',
-                keys,
-                values
-              }
-            } as LocalStorageProxySetTask);
-          } */
-
-          await this.storage.save(keys, values);
-          // console.log('setItem: have set', key/* , value */);
-        } catch(e) {
-          // this.useCS = false;
-          console.error('[AS]: set error:', e, keys, values);
-        }
-      }
-
-      deferred.resolve();
-
-      if(set.size) {
-        this.saveThrottled();
-      }
-    }, /* THROTTLE_TIME,  */false);
-
-    this.deleteThrottled = throttleWith(queueMicrotask, async() => {
-      const deferred = this.deleteDeferred;
-      this.deleteDeferred = deferredPromise();
-
-      const set = this.keysToDelete;
-      if(set.size) {
-        const keys = Array.from(set.values()) as string[];
-        set.clear();
-
-        try {
-          /* if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
-            self.postMessage({
-              type: 'localStorageProxy',
-              payload: {
-                type: 'delete',
-                keys
-              }
-            } as LocalStorageProxyDeleteTask);
-          } */
-
-          await this.storage.delete(keys);
-        } catch(e) {
-          console.error('[AS]: delete error:', e, keys);
-        }
-      }
-
-      deferred.resolve();
-
-      if(set.size) {
-        this.deleteThrottled();
-      }
-    }, /* THROTTLE_TIME,  */false);
-
-    this.getThrottled = throttleWith(queueMicrotask, async() => {
-      const keys = Array.from(this.getPromises.keys());
-
-      const timeout = setTimeout(() => {
-        console.error('[AS]: get timeout:', keys, storeName);
-      }, 5000);
-
-      // const perf = performance.now();
-      this.storage.get(keys as string[]).then((values) => {
-        clearTimeout(timeout);
-        for(let i = 0, length = keys.length; i < length; ++i) {
-          const key = keys[i];
-          const deferred = this.getPromises.get(key);
-          if(deferred) {
-            // @ts-ignore
-            deferred.resolve(this.cache[key] = values[i]);
-            this.getPromises.delete(key);
-          }
-        }
-
-        // console.log('[AS]: get time', keys, performance.now() - perf);
-      }, (error: ApiError) => {
-        clearTimeout(timeout);
-        const ignoreErrors: Set<ErrorType> = new Set(['NO_ENTRY_FOUND', 'STORAGE_OFFLINE']);
-        if(!ignoreErrors.has(error.type)) {
-          this.useStorage = false;
-          console.error('[AS]: get error:', error, keys, storeName);
-        }
-
-        for(let i = 0, length = keys.length; i < length; ++i) {
-          const key = keys[i];
-          const deferred = this.getPromises.get(key);
-          if(deferred) {
-            // deferred.reject(error);
-            deferred.resolve(undefined);
-            this.getPromises.delete(key);
-          }
-        }
-      }).finally(() => {
-        if(this.getPromises.size) {
-          this.getThrottled();
-        }
-      });
-    }, /* THROTTLE_TIME,  */false);
+    this.saveThrottled = throttleWith(queueMicrotask, this._save, /* THROTTLE_TIME,  */false);
+    this.deleteThrottled = throttleWith(queueMicrotask, this._delete, /* THROTTLE_TIME,  */false);
+    this.getThrottled = throttleWith(queueMicrotask, this._get, /* THROTTLE_TIME,  */false);
   }
+
+  private _save = async() => {
+    const deferred = this.saveDeferred;
+    this.saveDeferred = deferredPromise();
+
+    const set = this.keysToSet;
+    if(set.size) {
+      const keys = Array.from(set.values()) as string[];
+      set.clear();
+
+      const values = keys.map((key) => this.cache[key]);
+      try {
+        // console.log('setItem: will set', key/* , value */);
+        // await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
+        // await this.storage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
+
+        /* if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
+          self.postMessage({
+            type: 'localStorageProxy',
+            payload: {
+              type: 'set',
+              keys,
+              values
+            }
+          } as LocalStorageProxySetTask);
+        } */
+
+        await this.storage.save(keys, values);
+        // console.log('setItem: have set', key/* , value */);
+      } catch(e) {
+        // this.useCS = false;
+        this.log.error('set error', e, keys, values);
+      }
+    }
+
+    deferred.resolve();
+
+    if(set.size) {
+      this.saveThrottled();
+    }
+  };
+
+  private _delete = async() => {
+    const deferred = this.deleteDeferred;
+    this.deleteDeferred = deferredPromise();
+
+    const set = this.keysToDelete;
+    if(set.size) {
+      const keys = Array.from(set.values()) as string[];
+      set.clear();
+
+      try {
+        /* if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
+          self.postMessage({
+            type: 'localStorageProxy',
+            payload: {
+              type: 'delete',
+              keys
+            }
+          } as LocalStorageProxyDeleteTask);
+        } */
+
+        await this.storage.delete(keys);
+      } catch(e) {
+        this.log.error('delete error', e, keys);
+      }
+    }
+
+    deferred.resolve();
+
+    if(set.size) {
+      this.deleteThrottled();
+    }
+  };
+
+  private _get = async() => {
+    const keys = Array.from(this.getPromises.keys());
+
+    // const perf = performance.now();
+    this.storage.get(keys as string[]).then((values) => {
+      for(let i = 0, length = keys.length; i < length; ++i) {
+        const key = keys[i];
+        const deferred = this.getPromises.get(key);
+        if(deferred) {
+          // @ts-ignore
+          deferred.resolve(this.cache[key] = values[i]);
+          this.getPromises.delete(key);
+        }
+      }
+
+      // console.log('[AS]: get time', keys, performance.now() - perf);
+    }, (error: ApiError) => {
+      const ignoreErrors: Set<ErrorType> = new Set(['NO_ENTRY_FOUND', 'STORAGE_OFFLINE']);
+      if(!ignoreErrors.has(error.type)) {
+        this.useStorage = false;
+        this.log.error('get error', error, keys, this.storeName);
+      }
+
+      for(let i = 0, length = keys.length; i < length; ++i) {
+        const key = keys[i];
+        const deferred = this.getPromises.get(key);
+        if(deferred) {
+          // deferred.reject(error);
+          deferred.resolve(undefined);
+          this.getPromises.delete(key);
+        }
+      }
+    }).finally(() => {
+      if(this.getPromises.size) {
+        this.getThrottled();
+      }
+    });
+  };
 
   public isAvailable() {
     return this.useStorage;
@@ -242,6 +251,7 @@ export default class AppStorage<
     // console.log('storageSetValue', obj, callback, arguments);
 
     const canUseStorage = this.useStorage && !onlyLocal && !this.savingFreezed;
+    let setSomething = false;
     for(const key in obj) {
       if(obj.hasOwnProperty(key)) {
         const value = obj[key];
@@ -266,10 +276,12 @@ export default class AppStorage<
           this.keysToDelete.delete(key);
           this.saveThrottled();
         }
+
+        setSomething = true;
       }
     }
 
-    return canUseStorage ? this.saveDeferred : Promise.resolve();
+    return canUseStorage && setSomething ? this.saveDeferred : Promise.resolve();
   }
 
   public delete(key: keyof Storage, saveLocal = false) {

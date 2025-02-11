@@ -17,8 +17,12 @@ import noop from '../../../../helpers/noop';
 
 export type StoragesResults = Awaited<ReturnType<typeof loadStorages>>;
 
-export default async function loadStorages(storages: StoragesStorages, resetStoragesPromise: ResetStoragesPromise) {
-  const recordPromise = recordPromiseBound(logger('STORAGES-LOADER'));
+/**
+ * Will start loading storages before getting the state from the main thread \
+ * In case of migration, will refetch the storages, because storages were modified
+ */
+export default async function loadStorages(accountNumber: number, storages: StoragesStorages, resetStoragesPromise: ResetStoragesPromise, refetching?: boolean) {
+  const recordPromise = recordPromiseBound(logger('STORAGES-LOADER-' + accountNumber));
   const storagesKeys = Object.keys(storages) as Array<keyof StoragesStorages>;
   const storagesPromises: Promise<any>[] = storagesKeys.map((key) => {
     const promise = storages[key].getAll();
@@ -38,7 +42,11 @@ export default async function loadStorages(storages: StoragesStorages, resetStor
   arr.splice(0, storagesKeys.length);
 
   // * will reset storages before setting the new state
-  const {storages: resetStorages, callback} = await resetStoragesPromise;
+  const {storages: resetStorages, refetch, callback} = await resetStoragesPromise;
+  if(refetch && !refetching) {
+    return loadStorages(accountNumber, storages, resetStoragesPromise, true);
+  }
+
   if(resetStorages.size) {
     const preserved: Record<keyof StoragesResults, Promise<any[]>> = {} as any;
     for(const [key, preserve] of resetStorages) {

@@ -30,8 +30,9 @@ export type LoadStateResult = {
   resetStorages: Map<keyof StoragesResults, (PeerId | UserId | ChatId)[]>,
   newVersion: string,
   oldVersion: string,
-  pushedKeys: (keyof State)[],
+  pushedKeys: Set<keyof State>,
   userId: UserId
+  refetchStorages?: boolean
 };
 
 const TEST_MULTI_MIGRATION = false;
@@ -56,16 +57,16 @@ const REFRESH_KEYS: Array<keyof State> = [
 // const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
 
 function AnyStateWriter<S>(log: ReturnType<typeof logger>, keys: string[], init: S) {
-  const pushedKeys: (keyof S)[] = [];
+  const pushedKeys: Set<keyof S> = new Set();
   const pushToState = <T extends keyof S>(key: T, value: S[T]) => {
     state[key] = value;
-    pushedKeys.push(key);
+    pushedKeys.add(key);
   };
 
   const replaceState = (_state: S) => {
-    pushedKeys.length = 0;
+    pushedKeys.clear();
     state = _state;
-    pushedKeys.push(...Object.keys(state) as any as typeof pushedKeys);
+    (Object.keys(state) as any as Array<keyof S>).forEach((key) => pushedKeys.add(key));
   };
 
   let state: S = {} as any;
@@ -162,12 +163,12 @@ const STATE_STEPS = {
       });
     }
   },
-  VALIDATE: (writer: ReturnType<typeof AnyStateWriter>) => {
+  VALIDATE: <T>(writer: ReturnType<typeof AnyStateWriter<T>>, init: T) => {
     const SKIP_VALIDATING_PATHS: Set<string> = new Set([
       'settings.themes'
     ]);
-    validateInitObject(STATE_INIT, writer.state, (missingKey) => {
-      writer.push(missingKey as keyof State, writer.state[missingKey as keyof State]);
+    validateInitObject(init, writer.state, (missingKey) => {
+      writer.push(missingKey as keyof typeof init, writer.state[missingKey as keyof typeof init]);
     }, undefined, SKIP_VALIDATING_PATHS);
   },
   VERSION: (writer: ReturnType<typeof StateWriter>) => {
@@ -227,7 +228,7 @@ const STATE_STEPS = {
 };
 
 async function loadStateForAccount(accountNumber: ActiveAccountNumber): Promise<LoadStateResult> {
-  const log = logger(`STATE-LOADER-ACCOUNT-${accountNumber}`, LogTypes.Error);
+  const log = logger(`STATE-LOADER-ACCOUNT-${accountNumber}`);
   const stateStorage = new StateStorage(accountNumber);
 
   const [accountData, ...arr] = await Promise.all([
@@ -249,8 +250,8 @@ async function loadStateForAccount(accountNumber: ActiveAccountNumber): Promise<
   // await STATE_STEPS.STATE_ID(writer);
   if(accountNumber === 1) await STATE_STEPS.CHANGED_AUTH(writer);
   STATE_STEPS.REFRESH(writer);
-  STATE_STEPS.VALIDATE(writer);
-  STATE_STEPS.VALIDATE(commonWriter);
+  STATE_STEPS.VALIDATE(writer, STATE_INIT);
+  STATE_STEPS.VALIDATE(commonWriter, COMMON_STATE_INIT);
   const {newVersion, oldVersion} = STATE_STEPS.VERSION(writer);
 
   return {
@@ -265,7 +266,7 @@ async function loadStateForAccount(accountNumber: ActiveAccountNumber): Promise<
 }
 
 async function loadOldState(): Promise<LoadStateResult> {
-  const log = logger('STATE-LOADER', LogTypes.Error);
+  const log = logger('STATE-LOADER');
   const stateStorage = new StateStorage('old');
 
   const totalPerf = performance.now();
@@ -296,8 +297,8 @@ async function loadOldState(): Promise<LoadStateResult> {
   // await STATE_STEPS.STATE_ID(writer);
   await STATE_STEPS.CHANGED_AUTH(writer);
   STATE_STEPS.REFRESH(writer);
-  STATE_STEPS.VALIDATE(writer);
-  STATE_STEPS.VALIDATE(commonWriter);
+  STATE_STEPS.VALIDATE(writer, STATE_INIT);
+  STATE_STEPS.VALIDATE(commonWriter, COMMON_STATE_INIT);
   const {newVersion, oldVersion} = STATE_STEPS.VERSION(writer);
 
   if(DEBUG) {
@@ -444,9 +445,10 @@ async function loadStateForAllAccounts() {
       moveAccessKeysToMultiAccountFormat(),
       moveStoragesToMultiAccountFormat()
     ]);
+    stateForFirstAccount.refetchStorages = true;
 
     if(!TEST_MULTI_MIGRATION) {
-      await deleteOldDatabase();
+      deleteOldDatabase(); // * don't wait for the result
     }
   } else {
     stateForFirstAccount = await loadStateForAccount(1);

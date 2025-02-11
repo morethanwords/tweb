@@ -20,6 +20,7 @@ export class AppStoragesManager extends AppManager {
   private loadStoragesPromise: ReturnType<typeof loadStorages>;
 
   private log: ReturnType<typeof logger>;
+  private _accountNumber: ActiveAccountNumber;
 
   constructor(accountNumber: ActiveAccountNumber, resetStoragesPromise: ResetStoragesPromise) {
     super();
@@ -27,11 +28,12 @@ export class AppStoragesManager extends AppManager {
     this.resetStoragesPromise = resetStoragesPromise;
     this.log = logger('STORAGES');
     this.storages = createStorages(accountNumber);
+    this._accountNumber = accountNumber;
     // this.loadPromise = deferredPromise();
   }
 
   public loadStorages() {
-    return (this.loadStoragesPromise ??= loadStorages(this.storages, this.resetStoragesPromise));
+    return (this.loadStoragesPromise ??= loadStorages(this._accountNumber, this.storages, this.resetStoragesPromise));
     // loadStorages(this.storages).then((storagesResults) => {
     // this.loadPromise.resolve(storagesResults);
     // });

@@ -16,6 +16,7 @@ import commonStateStorage from '../commonStateStorage';
 
 export type ResetStoragesPromise = CancellablePromise<{
   storages: Map<keyof StoragesResults, (PeerId | UserId | ChatId)[]>,
+  refetch?: boolean,
   callback: () => Promise<void>
 }>;
 
