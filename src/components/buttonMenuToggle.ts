@@ -140,7 +140,10 @@ export default function ButtonMenuToggle({
         onCloseAfter?.();
         closeTimeout = undefined;
         listenerSetter.removeAll();
-        buttons.forEach((button) => button.element = undefined);
+        buttons.forEach((button) => {
+          try {button.dispose?.();} catch{}
+          button.element = undefined;
+        });
         element.remove();
       }, 300);
     }

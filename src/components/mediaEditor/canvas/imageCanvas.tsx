@@ -43,13 +43,22 @@ export default function ImageCanvas() {
 
   setImageCanvas(canvas);
 
-  onMount(async() => {
-    createReaction(async() => {
-      const payload = await initWebGL(gl, context);
-      setRenderingPayload(payload);
-      setImageSize([payload.image.width, payload.image.height]);
-      if(!currentImageRatio()) setCurrentImageRatio(payload.image.width / payload.image.height);
-    })(isReady);
+  async function init() {
+    const payload = await initWebGL(gl, context);
+    setRenderingPayload(payload);
+    setImageSize([payload.image.width, payload.image.height]);
+    if(!currentImageRatio()) setCurrentImageRatio(payload.image.width / payload.image.height);
+  }
+
+  onMount(() => {
+    if(isReady()) init(); // When hot reloading
+    else {
+      const track = createReaction(() => {
+        init();
+      });
+
+      track(isReady);
+    }
   });
 
   createEffect(() => {

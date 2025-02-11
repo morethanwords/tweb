@@ -45,6 +45,8 @@ export interface MediaEditorContextValue {
   previewBrushSize: Signal<number>;
   brushDrawnLines: Signal<BrushDrawnLine[]>;
 
+  resizeHandlesContainer: Signal<HTMLElement>;
+
   history: Signal<HistoryItem[]>;
   redoHistory: Signal<HistoryItem[]>;
   pushToHistory: (item: HistoryItem) => void;
@@ -123,6 +125,8 @@ function createContextValue(props: MediaEditorProps): MediaEditorContextValue {
       size: 18
     }),
     previewBrushSize: createSignal(),
+
+    resizeHandlesContainer: createSignal(),
 
     history,
     redoHistory,

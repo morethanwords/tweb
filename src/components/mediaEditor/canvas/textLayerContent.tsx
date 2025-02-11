@@ -193,32 +193,36 @@ export default function TextLayerContent(props: ResizableLayerProps) {
     return layerInfo.lines.map((line) => <div>{line.content}</div>);
   })();
 
+  const children = (
+    <div
+      ref={container}
+      class="media-editor__text-layer"
+      classList={{
+        'media-editor__text-layer--with-bg': layer().textInfo.style === 'background'
+      }}
+      style={{
+        'color': color(),
+        'font-size': layer().textInfo.size + 'px',
+        'font-family': fontInfo().fontFamily,
+        'font-weight': fontInfo().fontWeight,
+        '--align-items': flexAlignMap[layer().textInfo.alignment]
+      }}
+    >
+      <div
+        ref={contentEditable}
+        class="media-editor__text-layer-layout"
+        contenteditable
+        onInput={() => updateBackground()}
+        onFocus={onFocus}
+      >
+        {intialContent}
+      </div>
+    </div>
+  ); // Needs to be rendered here for hot reload to work properly
+
   return (
     <ResizableContainer layerSignal={props.layerSignal} onDoubleClick={() => selectAll()}>
-      <div
-        ref={container}
-        class="media-editor__text-layer"
-        classList={{
-          'media-editor__text-layer--with-bg': layer().textInfo.style === 'background'
-        }}
-        style={{
-          'color': color(),
-          'font-size': layer().textInfo.size + 'px',
-          'font-family': fontInfo().fontFamily,
-          'font-weight': fontInfo().fontWeight,
-          '--align-items': flexAlignMap[layer().textInfo.alignment]
-        }}
-      >
-        <div
-          ref={contentEditable}
-          class="media-editor__text-layer-layout"
-          contenteditable
-          onInput={() => updateBackground()}
-          onFocus={onFocus}
-        >
-          {intialContent}
-        </div>
-      </div>
+      {children}
     </ResizableContainer>
   );
 }

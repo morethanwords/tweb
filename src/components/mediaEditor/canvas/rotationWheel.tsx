@@ -217,7 +217,11 @@ export default function RotationWheel() {
   function flipImage() {
     setIsMoving(true);
     const isReversedRatio = Math.abs(Math.round((rotation() / Math.PI) * 2)) & 1;
-    const targetFlip = [flip()[0] * (isReversedRatio ? 1 : -1), flip()[1] * (isReversedRatio ? -1 : 1)];
+    const snapTo1 = (value: number) => value < 0 ? -1 : 1;
+    const targetFlip = [
+      snapTo1(flip()[0]) * (isReversedRatio ? 1 : -1),
+      snapTo1(flip()[1]) * (isReversedRatio ? -1 : 1)
+    ];
     animateValue(flip(), targetFlip, 200, setFlip, {
       onEnd: () => setIsMoving(false)
     });
@@ -278,39 +282,3 @@ function ArrowUp() {
     </svg>
   );
 }
-
-/*
-if(shouldSnap) newDiff = -moved();
-if(isAnimating) return;
-
-if(!shouldSnap && isSnapped) {
-  isSnapped = false;
-  cancelAnimation?.();
-  const initialDiff = movedDiff();
-  isAnimating = true;
-  cancelAnimation = animateValue(0, 1, 120, (progress) => {
-    setMovedDiff(lerp(initialDiff, newDiff, progress));
-    onSwipe();
-  }, {
-    onEnd: () => isAnimating = false
-  });
-  return;
-}
-if(!shouldSnap) {
-  setMovedDiff(newDiff);
-  onSwipe();
-  return;
-}
-
-if(isSnapped) return;
-isSnapped = true;
-cancelAnimation?.();
-const initialDiff = movedDiff();
-isAnimating = true;
-cancelAnimation = animateValue(0, 1, 200, (progress) => {
-  setMovedDiff(lerp(initialDiff, newDiff, progress));
-  onSwipe();
-}, {
-  onEnd: () => isAnimating = false
-});
-*/
