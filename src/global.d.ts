@@ -25,6 +25,7 @@ declare global {
     middlewareHelper?: MiddlewareHelper;
     timeAppenders?: {element: HTMLElement, callback: () => void}[];
     timeSpan?: HTMLElement;
+    onMiniVideoMouseMove?: (e: MouseEvent) => void;
     // middleware?: Middleware;
   }
 
@@ -36,6 +37,7 @@ declare global {
   interface HTMLVideoElement {
     _loop?: boolean | number;
     _autoplay?: boolean;
+    mini?: boolean;
 
     sinkId?: string;
     setSinkId?: (sinkId: string) => any;
