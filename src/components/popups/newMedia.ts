@@ -768,7 +768,7 @@ export default class PopupNewMedia extends PopupElement {
           width: params.editResult?.width || params.width,
           height: params.editResult?.height || params.height,
           spoiler: willSendPaidMedia ? undefined : !!params.mediaSpoiler,
-          editResult: undefined
+          editResult: undefined as MediaEditorFinalResult
         };
       });
 

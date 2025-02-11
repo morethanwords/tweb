@@ -379,7 +379,7 @@ export default class PopupStarsPay extends PopupElement<{
               message.mid = this.transaction.msg_id;
 
               const targets: AppMediaViewer['target'][] = media.map((media, index) => {
-                return {element: null, mid: 0, peerId: 0, index, message};
+                return {element: null as HTMLElement, mid: 0, peerId: 0, index, message};
               });
 
               targets[0].element = avatar;

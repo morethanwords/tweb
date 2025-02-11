@@ -7,7 +7,7 @@ import {i18n} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
 import BezierEasing from '../../vendor/bezierEasing';
 
-import appMediaPlaybackController, {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
+import appMediaPlaybackController, {MediaSearchContext} from '../appMediaPlaybackController';
 import Icon from '../icon';
 import {animateValue, lerp} from '../mediaEditor/utils';
 import PopupPremium from '../popups/premium';

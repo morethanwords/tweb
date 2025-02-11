@@ -38,9 +38,21 @@ declare global {
     _loop?: boolean | number;
     _autoplay?: boolean;
     mini?: boolean;
+  }
 
-    sinkId?: string;
-    setSinkId?: (sinkId: string) => any;
+  interface Window {
+    Prism?: {
+      manual?: boolean
+    };
+  }
+
+  interface NotificationAction {
+    action: string;
+    title: string;
+  }
+
+  interface NotificationOptions {
+    actions?: NotificationAction[];
   }
 
   // typescript is lack of types

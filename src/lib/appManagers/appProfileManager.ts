@@ -445,7 +445,7 @@ export class AppProfileManager extends AppManager {
       try {
         sendAsPeersResult = this.appChatsManager.getSendAs(id);
         if(sendAsPeersResult instanceof Promise) {
-          sendAsPeersResult = sendAsPeersResult.catch(() => undefined);
+          sendAsPeersResult = sendAsPeersResult.catch(() => undefined as any);
         }
       } catch(err) {
 

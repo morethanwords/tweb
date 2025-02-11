@@ -531,7 +531,7 @@ export default class PopupStars extends PopupElement {
         }
       }
 
-      subtitle = i18n(langPackKey, [peerTitle]);
+      subtitle = i18n(langPackKey as LangPackKey, [peerTitle]);
     } else if(this.itemPrice) {
       subtitle = i18n(this.paymentForm ? 'StarsNeededText' : 'Stars.Subscribe.Need', [peerTitle]);
     } else {

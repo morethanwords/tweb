@@ -4,7 +4,7 @@ import createElementFromMarkup from '../../../helpers/createElementFromMarkup';
 import {i18n} from '../../../lib/langPack';
 
 import MediaEditorContext from '../context';
-import {ResizableLayer, ResizableLayerProps, TextLayerInfo, TextRenderingInfoLine} from '../types';
+import {ResizableLayer, ResizableLayerProps, TextLayerInfo, TextRenderingInfo, TextRenderingInfoLine} from '../types';
 import {fontInfoMap, getContrastColor} from '../utils';
 
 import {ResizableContainer} from './resizableLayers';
@@ -41,7 +41,7 @@ export default function TextLayerContent(props: ResizableLayerProps) {
 
     setTextLayersInfo((prev) => ({
       ...prev,
-      [layer().id]: undefined
+      [layer().id]: undefined as TextRenderingInfo
     }));
 
     setLayers((prev) => {

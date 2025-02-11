@@ -979,10 +979,10 @@ export function importPrism(language: string) {
     return callbackify(prism, () => importPrismLanguage(language));
   }
 
-  const hadBefore = !!(window as any).Prism;
+  const hadBefore = !!window.Prism;
   if(!hadBefore) {
-    (window as any).Prism = window.Prism || {};
-    (window as any).Prism.manual = true;
+    window.Prism = window.Prism || {};
+    window.Prism.manual = true;
   }
 
   return prism = import('./vendor/prism').then((module) => {

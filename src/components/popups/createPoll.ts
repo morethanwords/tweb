@@ -17,7 +17,7 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import isInputEmpty from '../../helpers/dom/isInputEmpty';
 import whichChild from '../../helpers/dom/whichChild';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {Poll} from '../../layer';
+import {Poll, PollAnswer} from '../../layer';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import confirmationPopup from '../confirmationPopup';
 import ButtonIcon from '../buttonIcon';
@@ -296,7 +296,7 @@ export default class PopupCreatePoll extends PopupElement {
       pFlags,
       question: {_: 'textWithEntities', text: question, entities: []},
       answers: answers.map((value, idx) => {
-        return {
+        const pollAnswer: PollAnswer = {
           _: 'pollAnswer',
           text: {
             _: 'textWithEntities',
@@ -305,6 +305,8 @@ export default class PopupCreatePoll extends PopupElement {
           },
           option: new Uint8Array([idx])
         };
+
+        return pollAnswer;
       }),
       id: undefined
     };

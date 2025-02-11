@@ -38,7 +38,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import rootScope from '../../lib/rootScope';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
-import appMediaPlaybackController, {AppMediaPlaybackController, HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
+import appMediaPlaybackController, {AppMediaPlaybackController, MediaSearchContext} from '../appMediaPlaybackController';
 import AudioElement, {findMediaTargets} from '../audio';
 import Button from '../button';
 import Icon from '../icon';

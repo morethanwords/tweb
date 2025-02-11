@@ -239,7 +239,7 @@ export default function Giveaway(props: {
         <DelimiterWithText langKey="Giveaway.With" />
         {giveaway.stars ?
           i18n('Giveaway.WithStars', [giveaway.quantity, i18n('Giveaway.WithStars.Stars', [+giveaway.stars])]) :
-          i18n(quantity > 1 ? 'Giveaway.WithSubscriptionsPlural' : 'Giveaway.WithSubscriptionsSingle', [headerDuration])}
+          i18n(+quantity > 1 ? 'Giveaway.WithSubscriptionsPlural' : 'Giveaway.WithSubscriptionsSingle', [headerDuration])}
       </>
     ) : (
       <>

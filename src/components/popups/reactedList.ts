@@ -5,7 +5,7 @@
  */
 
 import PopupElement from '.';
-import {Message, Reaction} from '../../layer';
+import {Message, Reaction, ReactionCount} from '../../layer';
 import ReactionsElement from '../chat/reactions';
 import {horizontalMenu} from '../horizontalMenu';
 import Scrollable from '../scrollable';
@@ -116,11 +116,12 @@ export default class PopupReactedList extends PopupElement {
     };
 
     newMessage.reactions.results = newMessage.reactions.results.map((reactionCount) => {
-      return {
+      const _reactionCount: ReactionCount = {
         ...reactionCount,
-        chosen_order: undefined,
-        pFlags: {}
+        chosen_order: undefined
       };
+
+      return _reactionCount;
     });
 
     reactionsElement.init({

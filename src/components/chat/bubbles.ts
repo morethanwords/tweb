@@ -184,7 +184,7 @@ import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
 import icon from '../icon';
-import {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
+import {MediaSearchContext} from '../appMediaPlaybackController';
 import {wrapRoundVideoBubble} from './roundVideoBubble';
 import {createMessageSpoilerOverlay} from '../messageSpoilerOverlay';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
@@ -5043,7 +5043,7 @@ export default class ChatBubbles {
 
       const promise = originalPromise.then((r) => ((r && realMiddleware() ? {...r, updatePosition, canAnimateLadder} : undefined) as typeof result));
 
-      this.renderMessagesQueue(promise.catch(() => undefined));
+      this.renderMessagesQueue(promise.catch(() => undefined as any));
 
       result = await promise;
       if(!realMiddleware()) {

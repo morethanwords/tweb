@@ -29,7 +29,7 @@ export default class TelInputField extends InputField {
     const telEl = this.input;
     if(telEl instanceof HTMLInputElement) {
       telEl.type = 'tel';
-      telEl.autocomplete = 'rr55RandomRR55';
+      telEl.autocomplete = 'rr55RandomRR55' as any;
     } else {
       telEl.inputMode = 'decimal';
 

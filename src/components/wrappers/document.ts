@@ -27,7 +27,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
 import rootScope from '../../lib/rootScope';
 import type {ThumbCache} from '../../lib/storages/thumbs';
-import {HTMLMediaElement, MediaSearchContext} from '../appMediaPlaybackController';
+import {MediaSearchContext} from '../appMediaPlaybackController';
 import AudioElement from '../audio';
 import confirmationPopup from '../confirmationPopup';
 import LazyLoadQueue from '../lazyLoadQueue';

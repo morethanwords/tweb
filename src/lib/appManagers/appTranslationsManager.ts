@@ -83,7 +83,7 @@ export default class AppTranslationsManager extends AppManager {
           deferred.reject(err);
         });
 
-        return undefined;
+        return undefined as MessagesTranslatedText;
       });
 
       if(result) result.result.forEach((textWithEntities, idx) => {

@@ -275,7 +275,7 @@ describe('AES-CTR', () => {
   const encrypt = (data: Uint8Array) => update(data, 'encrypt');
   const decrypt = (data: Uint8Array) => update(data, 'decrypt');
 
-  it('init', async() => {
+  beforeAll(async() => {
     id = await cryptoWorker.invokeCrypto('aes-ctr-prepare', {
       encKey: bytesFromHex('903547a2e1ebb870f90c44bcf2d221b33fe8e28130e7995a3cf7840ff37758ae'),
       encIv: new Uint8Array([125, 161, 46, 206, 12, 22, 182, 3, 245, 28, 86, 210, 27, 124, 142, 9]),

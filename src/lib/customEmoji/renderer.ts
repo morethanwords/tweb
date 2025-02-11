@@ -490,7 +490,6 @@ export class CustomEmojiRendererElement extends HTMLElement {
       return promise.then((res) => ({...res, ...addition}));
     }
 
-    // eslint-disable-next-line prefer-const
     addition.onRender = (_p) => Promise.all(_loadPromises).then(() => {
       if(!middleware() || !doc.animated) {
         return;

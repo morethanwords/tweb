@@ -19,7 +19,7 @@ String.prototype.toPeerId = function(isChat?: boolean) {
   return (+this).toPeerId(isChat);
 };
 
-String.prototype.isPeerId = function() {
+String.prototype.isPeerId = function(): this is string {
   return /^[\d-]/.test(this.toString());
 };
 
@@ -37,7 +37,7 @@ Number.prototype.toPeerId = function(isChat?: boolean) {
   return isChat === undefined ? +this : (isChat ? -Math.abs(this as number) : +this);
 };
 
-Number.prototype.isPeerId = function() {
+Number.prototype.isPeerId = function(): this is number {
   return true;
 };
 
