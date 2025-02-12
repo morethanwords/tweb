@@ -63,7 +63,8 @@ export default defineConfig({
       typescript: true,
       eslint: {
         // for example, lint .ts and .tsx
-        lintCommand: 'eslint "./src/**/*.{ts,tsx}" --ignore-pattern "/src/solid/*"'
+        lintCommand: 'eslint "./src/**/*.{ts,tsx}" --ignore-pattern "/src/solid/*"',
+        useFlatConfig: true
       }
     }),
     solidPlugin(),
