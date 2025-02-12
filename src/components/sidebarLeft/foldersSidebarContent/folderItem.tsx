@@ -1,8 +1,10 @@
 import {onMount, Show} from 'solid-js';
+
 import {IconTsx} from '../../iconTsx';
-import {FolderItemPayload} from './types';
 import ripple from '../../ripple';
 import Badge from '../../badge';
+
+import {FolderItemPayload} from './types';
 
 type FolderItemProps = FolderItemPayload & {
   ref?: (el: HTMLDivElement | null) => void,
@@ -53,9 +55,3 @@ export default function FolderItem(props: FolderItemProps) {
     </div>
   );
 }
-
-// const invertedCornerSvg = (cls: string) => (
-//   <svg class={cls} width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
-//     <path d="M0 0V8H8C3 8 0 5 0 0Z" fill="#212121"/>
-//   </svg>
-// );

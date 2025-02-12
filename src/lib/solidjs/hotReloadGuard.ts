@@ -7,6 +7,7 @@ import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolder
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import type EmoticonsSearch from '../../components/emoticonsDropdown/search';
 import type wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
+import type showLimitPopup from '../../components/popups/limit';
 
 export type SolidJSHotReloadGuardContextValue = {
   rootScope: RootScope;
@@ -15,6 +16,7 @@ export type SolidJSHotReloadGuardContextValue = {
   AppEditFolderTab: typeof AppEditFolderTab;
   EmoticonsSearch: typeof EmoticonsSearch;
   wrapStickerSetThumb: typeof wrapStickerSetThumb;
+  showLimitPopup: typeof showLimitPopup;
 };
 
 export const SolidJSHotReloadGuardContext = createContext<SolidJSHotReloadGuardContextValue>(null);
