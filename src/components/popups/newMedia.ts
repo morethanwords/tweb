@@ -105,6 +105,8 @@ export default class PopupNewMedia extends PopupElement {
   private activeActionsMenu: HTMLElement;
   private canShowActions = false;
 
+  private cachedMediaEditorFiles = new WeakMap<Blob, File>;
+
   constructor(
     private chat: Chat,
     private files: File[],
@@ -658,6 +660,15 @@ export default class PopupNewMedia extends PopupElement {
     }
   };
 
+  private prepareEditedFileForSending(params: SendFileParams): File | undefined {
+    params.editResult?.standaloneContext?.dispose();
+
+    const editResult = params.editResult?.getResult();
+    if(!editResult || editResult instanceof Promise) return undefined;
+
+    return this.wrapMediaEditorBlobInFile(params.file, editResult, params.editResult?.isGif);
+  }
+
   private async send(force = false) {
     let {value: caption, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
     if(caption.length > this.captionLengthMax) {
@@ -757,14 +768,9 @@ export default class PopupNewMedia extends PopupElement {
       const willSendPaidMedia = this.willSendPaidMedia();
 
       const d: SendFileDetails[] = sendFileParams.map((params) => {
-        let editBlob = params.editResult?.getResult();
-        if(editBlob instanceof Promise) editBlob = undefined;
-
-        params.editResult?.standaloneContext?.dispose();
-
         return {
           ...params,
-          file: (editBlob as Blob) || params.scaledBlob || params.file,
+          file: this.prepareEditedFileForSending(params) || params.scaledBlob || params.file,
           width: params.editResult?.width || params.width,
           height: params.editResult?.height || params.height,
           spoiler: willSendPaidMedia ? undefined : !!params.mediaSpoiler,
@@ -1132,10 +1138,27 @@ export default class PopupNewMedia extends PopupElement {
     return promise;
   }
 
+  private wrapMediaEditorBlobInFile(originalFile: File, editedBlob: Blob, isGif: boolean) {
+    if(this.cachedMediaEditorFiles.has(editedBlob)) return this.cachedMediaEditorFiles.get(editedBlob);
+
+    let name = originalFile.name;
+    if(isGif) name = name.replace(/\.[^.]+$/, '.mp4');
+
+    const result = new File([editedBlob], name, {type: editedBlob.type});
+    this.cachedMediaEditorFiles.set(editedBlob, result);
+
+    return result;
+  }
+
+
   private async attachDocument(params: SendFileParams): ReturnType<PopupNewMedia['attachMedia']> {
     const {itemDiv} = params;
     itemDiv.classList.add('popup-item-document');
-    const file = params.file;
+
+    const editedBlob = await params.editResult?.getResult();
+    const file = editedBlob ?
+      this.wrapMediaEditorBlobInFile(params.file, editedBlob, params.editResult?.isGif) :
+      params.file;
 
     const isPhoto = file.type.startsWith('image/');
     const isAudio = AUDIO_MIME_TYPES_SUPPORTED.has(file.type as any);
@@ -1149,7 +1172,7 @@ export default class PopupNewMedia extends PopupElement {
     if(isPhoto && params.objectURL) {
       img = new Image();
       await renderImageFromUrlPromise(img, params.objectURL);
-      const scaled = await this.scaleImageForTelegram(img, params.file.type as MTMimeType);
+      const scaled = await this.scaleImageForTelegram(img, file.type as MTMimeType);
       if(scaled) {
         params.objectURL = scaled.url;
       }
