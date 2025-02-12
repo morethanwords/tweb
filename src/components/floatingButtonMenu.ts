@@ -8,6 +8,7 @@ export type AttachFloatingButtonMenuOptions = {
   level: number;
   offset?: [number, number];
   createMenu: () => HTMLElement | Promise<HTMLElement>;
+  canOpen?: () => boolean;
 }
 
 export default function attachFloatingButtonMenu({
@@ -16,12 +17,13 @@ export default function attachFloatingButtonMenu({
   direction,
   level,
   offset = [0, 0],
-  createMenu
+  createMenu,
+  canOpen = () => true
 }: AttachFloatingButtonMenuOptions) {
   let opened = false;
   const listener = () => {
     (async() => {
-      if(opened) return;
+      if(opened || !canOpen()) return;
       opened = true;
 
       const triggerBcr = element.getBoundingClientRect();
@@ -59,5 +61,5 @@ export default function attachFloatingButtonMenu({
 
   return () => {
     element.removeEventListener(triggerEvent, listener);
-  }
+  };
 }
