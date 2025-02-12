@@ -1,4 +1,4 @@
-import {createEffect, createRoot, createSignal, For, onCleanup, onMount} from 'solid-js';
+import {createEffect, createRoot, createSelector, createSignal, For, onCleanup, onMount} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
 
@@ -47,6 +47,8 @@ export function FoldersSidebarContent(props: {
     folderItems.find((item) => item.id === selectedFolderId())?.chatsCount === 0;
 
   const [folderItemRefs, setFolderItemRefs] = createStore<Record<number, HTMLDivElement>>({});
+
+  const isSelected = createSelector(selectedFolderId);
 
   let menuRef: HTMLDivElement;
   let folderItemsContainer: HTMLDivElement;
@@ -258,7 +260,7 @@ export function FoldersSidebarContent(props: {
               <FolderItem
                 {...folderItem}
                 ref={(el) => setFolderItemRefs({[id]: el})}
-                selected={selectedFolderId() === id}
+                selected={isSelected(id)}
                 onClick={() => setSelectedFolder(id)}
               />
             );
