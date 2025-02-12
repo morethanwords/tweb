@@ -41,10 +41,10 @@
     <link rel="canonical" href="https://web.telegram.org/">
 
     <link rel="manifest" id="manifest">
-    <script type="module" crossorigin src="./index-BWSv4yyN.js"></script>
-    <link rel="stylesheet" crossorigin href="./index-vX_PR0Tt.css">
+    <script type="module" crossorigin src="./index-e7urbcmo.js"></script>
+    <link rel="stylesheet" crossorigin href="./index-DWEkd1do.css">
   </head>
-  <body class="animation-level-2">
+  <body class="animation-level-2 has-auth-pages">
     <!--[if IE]>
       <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience and security.</p>
     <![endif]-->
@@ -101,6 +101,7 @@
       </defs>
     </svg>
     <div class="whole" id="auth-pages" style="display: none;">
+      <div id="auth-pages-close" style="display: none;"></div>
       <div class="scrollable scrollable-y">
         <div class="tabs-container auth-pages__container" data-animation="tabs">
           <div class="tabs-tab page-signImport">
@@ -136,12 +137,15 @@
         </div>
       </div>
     </div>
+    <div class="sidebar-left-overlay"></div>
     <div class="whole page-chats" style="display: none;" id="page-chats">
       <div id="main-columns" class="tabs-container" data-animation="navigation">
-        <div class="tabs-tab chatlist-container sidebar sidebar-left main-column" id="column-left">
+        <div class="folders-sidebar sidebar-left-common" id="folders-sidebar"></div>
+        <div class="sidebar-left-placeholder"></div>
+        <div class="tabs-tab chatlist-container sidebar sidebar-left main-column sidebar-left-common" id="column-left">
           <div class="sidebar-slider tabs-container">
             <div class="tabs-tab sidebar-slider-item item-main">
-              <div class="sidebar-header can-have-forum">
+              <div class="sidebar-header main-search-sidebar-header can-have-forum">
                 <div class="sidebar-header__btn-container">
                   <div class="animated-menu-icon"></div>
                   <div class="btn-icon sidebar-back-button"></div>
