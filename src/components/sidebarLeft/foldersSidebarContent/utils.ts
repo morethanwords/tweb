@@ -4,6 +4,7 @@ import type {AppManagers} from '../../../lib/appManagers/managers';
 import {MyDialogFilter} from '../../../lib/storages/filters';
 import {DialogFilter} from '../../../layer';
 import assumeType from '../../../helpers/assumeType';
+
 import {FolderItemPayload} from './types';
 
 export async function getNotificationCountForFilter(filterId: number, managers: AppManagers) {

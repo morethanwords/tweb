@@ -1036,7 +1036,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     delete menuBtnOptions.text;
 
-    let removeEventListener: () => void;
+    let isDisabled = false;
 
     const onOpen = () => {
       if(!menuBtnOptions.element) return;
@@ -1046,19 +1046,22 @@ export class AppSidebarLeft extends SidebarSlider {
       }, true);
       menuBtnOptions.element.classList.add('disable-click');
 
-      removeEventListener = attachFloatingButtonMenu({
+      attachFloatingButtonMenu({
         element: menuBtnOptions.element,
         direction: 'right-start',
         createMenu: createSubmenu,
         offset: [-5, -5],
         level: 2,
-        triggerEvent: 'mouseenter'
+        triggerEvent: 'mouseenter',
+        canOpen: () => !isDisabled
       });
     };
 
-    const onClose = () => {
+    const onClose = async() => {
       // Prevents hover from triggering when the menu is closing
-      removeEventListener?.();
+      isDisabled = true;
+      await pause(200);
+      isDisabled = false;
     }
 
     return {

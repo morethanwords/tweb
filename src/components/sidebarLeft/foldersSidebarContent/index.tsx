@@ -4,15 +4,16 @@ import {render} from 'solid-js/web';
 
 import {Middleware} from '../../../helpers/middleware';
 import ListenerSetter from '../../../helpers/listenerSetter';
-import {logger} from '../../../lib/logger';
+import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
+import pause from '../../../helpers/schedulers/pause';
+import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
+
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
 import {i18n} from '../../../lib/langPack';
 import {MyDialogFilter} from '../../../lib/storages/filters';
-import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
-import pause from '../../../helpers/schedulers/pause';
 import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 
 import Scrollable from '../../scrollable2';
 import Animated from '../../../helpers/solid/animations';
@@ -22,10 +23,6 @@ import ripple from '../../ripple';
 import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
 import type {FolderItemPayload} from './types';
 import FolderItem from './folderItem';
-import showLimitPopup from '../../popups/limit';
-import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
-
-const log = logger('folders-sidebar');
 
 
 export function FoldersSidebarContent(props: {
@@ -35,7 +32,8 @@ export function FoldersSidebarContent(props: {
     rootScope,
     appSidebarLeft,
     AppChatFoldersTab,
-    AppEditFolderTab
+    AppEditFolderTab,
+    showLimitPopup
   } = useHotReloadGuard();
 
   const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
@@ -197,7 +195,6 @@ export function FoldersSidebarContent(props: {
     });
 
     listenerSetter.add(rootScope)('filter_update', (filter) => {
-      log('filter_update', filter);
       if(REAL_FOLDERS.has(filter.id)) return;
       updateOrAddFolder(filter);
     });
@@ -211,7 +208,6 @@ export function FoldersSidebarContent(props: {
     });
 
     listenerSetter.add(rootScope)('changing_folder_from_chatlist', (id) => {
-      log('changing_folder_from_chatlist', id);
       setSelectedFolderId(id);
     });
 
@@ -311,7 +307,12 @@ export function renderFoldersSidebarContent(
   middleware: Middleware
 ) {
   createRoot((dispose) => {
-    render(() => <HotReloadGuardProvider><FoldersSidebarContent notificationsElement={notificationsElement} /></HotReloadGuardProvider>, element);
+    render(() => (
+      <HotReloadGuardProvider>
+        <FoldersSidebarContent notificationsElement={notificationsElement} />
+      </HotReloadGuardProvider>
+    ), element);
+
     middleware.onDestroy(() => dispose());
   });
 }
