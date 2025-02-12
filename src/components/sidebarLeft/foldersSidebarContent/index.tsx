@@ -1,5 +1,5 @@
 import {createEffect, createRoot, createSignal, For, onCleanup, onMount} from 'solid-js';
-import {createStore} from 'solid-js/store';
+import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
 
 import {Middleware} from '../../../helpers/middleware';
@@ -37,14 +37,14 @@ export function FoldersSidebarContent(props: {
   } = useHotReloadGuard();
 
   const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
-  const [folderItems, setFolderItems] = createSignal<FolderItemPayload[]>([]);
+  const [folderItems, setFolderItems] = createStore<FolderItemPayload[]>([]);
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
   const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
 
   const showAddFolders = () => canShowAddFolders() &&
     selectedFolderId() &&
     !REAL_FOLDERS.has(selectedFolderId()) &&
-    folderItems().find((item) => item.id === selectedFolderId())?.chatsCount === 0;
+    folderItems.find((item) => item.id === selectedFolderId())?.chatsCount === 0;
 
   const [folderItemRefs, setFolderItemRefs] = createStore<Record<number, HTMLDivElement>>({});
 
@@ -53,13 +53,9 @@ export function FoldersSidebarContent(props: {
   let showAddFoldersButton: HTMLDivElement;
 
   function updateFolderItem(folderId: number, payload: Partial<FolderItemPayload>) {
-    setFolderItems(items =>
-      items.map((folder) =>
-        folder.id === folderId ?
-          {...folder, ...payload} :
-          folder
-        )
-    );
+    const idx = folderItems.findIndex((item) => item.id === folderId);
+    const folderItem = folderItems[idx];
+    setFolderItems(idx, reconcile({...folderItem, ...payload}));
   }
 
   async function updateFolderNotifications(folderId: number) {
@@ -69,7 +65,7 @@ export function FoldersSidebarContent(props: {
   }
 
   async function updateAllFolderNotifications() {
-    const items = folderItems();
+    const items = folderItems;
 
     for(const folderItem of items) {
       if(!folderItem.id) continue;
@@ -100,7 +96,7 @@ export function FoldersSidebarContent(props: {
   }
 
   async function updateOrAddFolder(filter: MyDialogFilter) {
-    const items = [...folderItems()];
+    const items = [...folderItems];
     const existingItem = items.find((item) => item.id === filter.id);
 
     if(existingItem) {
@@ -118,20 +114,20 @@ export function FoldersSidebarContent(props: {
   }
 
   async function deleteFolder(filterId: number) {
-    const items = [...folderItems()];
+    const items = folderItems;
     const existingItemIndex = items.findIndex((item) => item.id === filterId);
 
     if(existingItemIndex === -1) return;
 
     items.splice(existingItemIndex, 1);
-    setFolderItems(items);
+    setFolderItems([...items]);
   }
 
   async function updateItemsOrder(order: number[]) {
     order = [...order];
     indexOfAndSplice(order, FOLDER_ID_ARCHIVE);
 
-    const items = [...folderItems()];
+    const items = [...folderItems];
 
     items.sort((a, b) => {
       const aIndex = order.indexOf(a.id);
@@ -251,7 +247,7 @@ export function FoldersSidebarContent(props: {
           onScroll={updateCanShowAddFolders}
           withBorders="both"
         >
-          <For each={folderItems()}>{(folderItem) => {
+          <For each={folderItems}>{(folderItem) => {
             const {id} = folderItem;
 
             onCleanup(() => {
