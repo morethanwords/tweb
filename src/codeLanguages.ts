@@ -981,7 +981,7 @@ export function importPrism(language: string) {
 
   const hadBefore = !!window.Prism;
   if(!hadBefore) {
-    window.Prism = window.Prism || {};
+    window.Prism = window.Prism || {} as any;
     window.Prism.manual = true;
   }
 
