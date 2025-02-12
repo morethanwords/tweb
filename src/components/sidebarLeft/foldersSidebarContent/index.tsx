@@ -114,13 +114,13 @@ export function FoldersSidebarContent(props: {
   }
 
   async function deleteFolder(filterId: number) {
-    const items = folderItems;
+    const items = [...folderItems];
     const existingItemIndex = items.findIndex((item) => item.id === filterId);
 
     if(existingItemIndex === -1) return;
 
     items.splice(existingItemIndex, 1);
-    setFolderItems([...items]);
+    setFolderItems(items);
   }
 
   async function updateItemsOrder(order: number[]) {
