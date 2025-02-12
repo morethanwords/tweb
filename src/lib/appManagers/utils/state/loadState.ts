@@ -23,6 +23,7 @@ import {TrueDcId} from '../../../../types';
 import {getOldDatabaseState} from '../../../../config/databases/state';
 import {IDB} from '../../../files/idb';
 import createStorages from '../storages/createStorages';
+import isObject from '../../../../helpers/object/isObject';
 
 export type LoadStateResult = {
   state: State,
@@ -272,8 +273,16 @@ async function loadOldState(): Promise<LoadStateResult> {
   const totalPerf = performance.now();
   const recordPromise = recordPromiseBound(log);
 
+  const migrateToStateKeys = [
+    'playbackParams',
+    'chatContextMenuHintWasShown',
+    'seenTooltips',
+    'translations'
+  ];
+  const commonKeys = migrateToStateKeys.concat(COMMON_KEYS);
+
   const arr = await Promise.all([
-    ...COMMON_KEYS.map((key) => (stateStorage as typeof commonStateStorage).get(key)),
+    ...commonKeys.map((key) => (stateStorage as typeof commonStateStorage).get(key as any)),
     ...ALL_KEYS.map((key) => recordPromise(stateStorage.get(key), 'state ' + key)),
     (stateStorage as typeof commonStateStorage).get('langPack'),
     recordPromise(sessionStorage.get('user_auth'), 'auth')
@@ -282,6 +291,11 @@ async function loadOldState(): Promise<LoadStateResult> {
   log.warn('promises', performance.now() - totalPerf);
 
   const commonWriter = CommonStateWriter(log);
+  if(isObject(arr[0])) { // * migrate values to settings
+    arr.splice(0, migrateToStateKeys.length).forEach((value, i) => {
+      arr[0][migrateToStateKeys[i]] = value;
+    });
+  }
   commonWriter.readFromArray(arr.splice(0, COMMON_KEYS.length));
 
   const writer = StateWriter(log);

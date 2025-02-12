@@ -12,18 +12,18 @@ import overlayCounter from '../../helpers/overlayCounter';
 import throttle from '../../helpers/schedulers/throttle';
 import classNames from '../../helpers/string/classNames';
 import windowSize from '../../helpers/windowSize';
-import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Photo, Reaction, StoryItem, StoryView, User, Chat as MTChat, PeerStories, AvailableReaction, MessageEntity} from '../../layer';
+import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Reaction, StoryItem, StoryView, User, Chat as MTChat, AvailableReaction, MessageEntity} from '../../layer';
 import animationIntersector from '../animationIntersector';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import PeerTitle from '../peerTitle';
 import SwipeHandler from '../swipeHandler';
 import styles from './viewer.module.scss';
-import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, mergeProps, createContext, useContext, Context, ParentComponent, splitProps, untrack, on, getOwner, runWithOwner, createRoot, ParentProps, Suspense, batch, Signal, onMount, Setter, createReaction, Show, FlowComponent, useTransition, $TRACK, Owner, createRenderEffect} from 'solid-js';
+import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, mergeProps, splitProps, untrack, on, getOwner, runWithOwner, createRoot, ParentProps, Signal, onMount, Setter, createReaction, Show, createRenderEffect} from 'solid-js';
 import {unwrap} from 'solid-js/store';
-import {assign, isServer, Portal} from 'solid-js/web';
+import {assign, Portal} from 'solid-js/web';
 import rootScope from '../../lib/rootScope';
 import ListenerSetter from '../../helpers/listenerSetter';
-import {Middleware, getMiddleware} from '../../helpers/middleware';
+import {Middleware} from '../../helpers/middleware';
 import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
 import wrapMessageEntities from '../../lib/richTextProcessor/wrapMessageEntities';
 import tsNow from '../../helpers/tsNow';
@@ -53,13 +53,11 @@ import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import {AvatarNew, avatarNew} from '../avatarNew';
 import documentFragmentToNodes from '../../helpers/dom/documentFragmentToNodes';
-import clamp from '../../helpers/number/clamp';
 import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import idleController from '../../helpers/idleController';
 import OverlayClickHandler from '../../helpers/overlayClickHandler';
 import getStoryPrivacyType, {StoryPrivacyType} from '../../lib/appManagers/utils/stories/privacyType';
 import wrapPeerTitle from '../wrappers/peerTitle';
-import SetTransition from '../singleTransition';
 import StackedAvatars from '../stackedAvatars';
 import PopupElement from '../popups';
 import {processDialogElementForReaction} from '../popups/reactedList';
@@ -70,7 +68,7 @@ import {StoriesContextPeerState, useStories, StoriesProvider} from './store';
 import createUnifiedSignal from '../../helpers/solid/createUnifiedSignal';
 import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
 import liteMode from '../../helpers/liteMode';
-import Icon, {getIconContent} from '../icon';
+import Icon from '../icon';
 import {ChatReactionsMenu} from '../chat/reactionsMenu';
 import setCurrentTime from '../../helpers/dom/setCurrentTime';
 import ReactionElement from '../chat/reaction';
@@ -79,7 +77,6 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 import wrapSticker from '../wrappers/sticker';
 import createContextMenu from '../../helpers/dom/createContextMenu';
-import {joinDeepPath} from '../../helpers/object/setDeepProperty';
 import isTargetAnInput from '../../helpers/dom/isTargetAnInput';
 import {setQuizHint} from '../poll';
 import {doubleRaf} from '../../helpers/schedulers';
@@ -105,6 +102,7 @@ import showTooltip from '../tooltip';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import wrapUrl from '../../lib/richTextProcessor/wrapUrl';
 import PopupReportAd from '../popups/reportAd';
+import {useAppSettings} from '../../stores/appSettings';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -1256,7 +1254,8 @@ const Stories = (props: {
     });
 
     if(!untrack(noSound)) apiManagerProxy.getState().then((state) => {
-      if(!cleaned && !state.seenTooltips.storySound) {
+      const [appSettings, setAppSettings] = useAppSettings();
+      if(!cleaned && !appSettings.seenTooltips.storySound) {
         runWithOwner(owner, () => {
           const playingMemo = createMemo((prev) => prev || (isActive() && stories.startTime));
           createEffect(() => {
@@ -1270,7 +1269,7 @@ const Stories = (props: {
           });
         });
 
-        rootScope.managers.appStateManager.setByKey(joinDeepPath('seenTooltips', 'storySound'), true);
+        setAppSettings('seenTooltips', 'storySound', true);
       }
     });
 

@@ -114,6 +114,7 @@ import rtmpCallsController from '../calls/rtmpCallsController';
 import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
 import {WrapRichTextOptions} from '../richTextProcessor/wrapRichText';
 import createFolderContextMenu from '../../helpers/dom/createFolderContextMenu';
+import {useAppSettings} from '../../stores/appSettings';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -1958,10 +1959,11 @@ export class AppDialogsManager {
     });
 
     apiManagerProxy.getState().then((state) => {
+      const [appSettings, setAppSettings] = useAppSettings();
       // * it should've had a better place :(
-      appMediaPlaybackController.setPlaybackParams(state.playbackParams);
+      appMediaPlaybackController.setPlaybackParams(appSettings.playbackParams);
       appMediaPlaybackController.addEventListener('playbackParams', (params) => {
-        this.managers.appStateManager.pushToState('playbackParams', params);
+        setAppSettings('playbackParams', params);
       });
 
       return this.onStateLoaded(state);

@@ -84,7 +84,19 @@ export type StateSettings = {
   liteMode: {[key in LiteModeKey]: boolean},
   savedAsForum: boolean,
   notifyAllAccounts: boolean,
-  tabsInSidebar: boolean
+  tabsInSidebar: boolean,
+  seenTooltips: {
+    storySound: boolean
+  },
+  playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
+  translations: {
+    peers: {[peerId: PeerId]: string},
+    enabledPeers: {[peerId: PeerId]: boolean},
+    enabled: boolean,
+    showInMenu: boolean,
+    doNotTranslate: TranslatableLanguageISO[]
+  },
+  chatContextMenuHintWasShown: boolean
 };
 
 export type State = {
@@ -114,26 +126,18 @@ export type State = {
   build: typeof BUILD,
   authState: AuthState,
   hiddenPinnedMessages: {[peerId: PeerId]: number},
-  playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
-  chatContextMenuHintWasShown: boolean,
   hideChatJoinRequests: {[peerId: PeerId]: number},
   // stateId?: number, // ! DEPRECATED
   notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings},
   confirmedWebViews: BotId[],
-  seenTooltips: {
-    storySound: boolean
-  },
   hiddenSimilarChannels: number[],
   appConfig: MTAppConfig,
   accountThemes: AccountThemes.accountThemes,
-  translations: {
-    peers: {[peerId: PeerId]: string},
-    enabledPeers: {[peerId: PeerId]: boolean},
-    enabled: boolean,
-    showInMenu: boolean,
-    doNotTranslate: TranslatableLanguageISO[]
-  },
   shownUploadSpeedTimestamp?: number,
+  // playbackParams?: StateSettings['playbackParams'], // ! MIGRATED TO SETTINGS
+  // chatContextMenuHintWasShown?: StateSettings['chatContextMenuHintWasShown'], // ! MIGRATED TO SETTINGS
+  // seenTooltips?: StateSettings['seenTooltips'], // ! MIGRATED TO SETTINGS
+  // translations?: StateSettings['translations'], // ! MIGRATED TO SETTINGS
   settings?: StateSettings // ! DEPRECATED, BUT DON'T REMOVE BEFORE FULL MIGRATION
 };
 
@@ -314,7 +318,30 @@ export const SETTINGS_INIT: StateSettings = {
   },
   savedAsForum: false,
   notifyAllAccounts: true,
-  tabsInSidebar: false
+  tabsInSidebar: false,
+  playbackParams: {
+    volume: 1,
+    muted: false,
+    playbackRate: 1,
+    playbackRates: {
+      voice: 1,
+      video: 1,
+      audio: 1
+    },
+    loop: false,
+    round: false
+  },
+  chatContextMenuHintWasShown: false,
+  seenTooltips: {
+    storySound: false
+  },
+  translations: {
+    peers: {},
+    enabledPeers: {},
+    enabled: true,
+    showInMenu: true,
+    doNotTranslate: []
+  }
 };
 
 export const STATE_INIT: State = {
@@ -336,36 +363,13 @@ export const STATE_INIT: State = {
     _: IS_MOBILE ? 'authStateSignIn' : 'authStateSignQr'
   },
   hiddenPinnedMessages: {},
-  playbackParams: {
-    volume: 1,
-    muted: false,
-    playbackRate: 1,
-    playbackRates: {
-      voice: 1,
-      video: 1,
-      audio: 1
-    },
-    loop: false,
-    round: false
-  },
-  chatContextMenuHintWasShown: false,
   hideChatJoinRequests: {},
   // stateId: nextRandomUint(32),
   notifySettings: {},
   confirmedWebViews: [],
-  seenTooltips: {
-    storySound: false
-  },
   hiddenSimilarChannels: [],
   appConfig: {} as any,
-  accountThemes: {} as any,
-  translations: {
-    peers: {},
-    enabledPeers: {},
-    enabled: true,
-    showInMenu: true,
-    doNotTranslate: []
-  }
+  accountThemes: {} as any
 };
 
 export const COMMON_STATE_INIT: CommonState = {

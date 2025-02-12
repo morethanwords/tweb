@@ -4,13 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createMemo, createRoot, createSignal} from 'solid-js';
+import {createMemo, createRoot} from 'solid-js';
 import anchorCallback from '../../../helpers/dom/anchorCallback';
 import {randomLong} from '../../../helpers/random';
 import {LangPackLanguage} from '../../../layer';
 import I18n, {i18n, join} from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
-import {useAppState} from '../../../stores/appState';
 import usePremium from '../../../stores/premium';
 import {pickLanguage} from '../../chat/translation';
 import CheckboxFieldTsx from '../../checkboxFieldTsx';
@@ -21,6 +20,7 @@ import RowTsx from '../../rowTsx';
 import Section from '../../section';
 import SettingSection from '../../settingSection';
 import {SliderSuperTab} from '../../slider'
+import {useAppSettings} from '../../../stores/appSettings';
 
 export default class AppLanguageTab extends SliderSuperTab {
   public static getInitArgs() {
@@ -43,10 +43,10 @@ export default class AppLanguageTab extends SliderSuperTab {
     const section1 = createRoot((dispose) => {
       this.middlewareHelper.get().onDestroy(dispose);
 
-      const [appState, setAppState] = useAppState();
+      const [appSettings, setAppSettings] = useAppSettings();
       const isPremium = usePremium();
       const doNotTranslate = createMemo(() => {
-        const arr = appState.translations.doNotTranslate;
+        const arr = appSettings.translations.doNotTranslate;
         if(!arr.length) {
           return [I18n.langCodeNormalized()];
         }
@@ -68,10 +68,10 @@ export default class AppLanguageTab extends SliderSuperTab {
             title={i18n('ShowTranslateButton')}
             checkboxFieldToggle={
               <CheckboxFieldTsx
-                checked={appState.translations.showInMenu}
+                checked={appSettings.translations.showInMenu}
                 toggle
                 onChange={(checked) => {
-                  setAppState('translations', 'showInMenu', checked);
+                  setAppSettings('translations', 'showInMenu', checked);
                 }}
               />
             }
@@ -80,10 +80,10 @@ export default class AppLanguageTab extends SliderSuperTab {
             title={i18n('ShowTranslateChatButton')}
             checkboxFieldToggle={
               <CheckboxFieldTsx
-                checked={appState.translations.enabled}
+                checked={appSettings.translations.enabled}
                 toggle
                 onChange={(checked) => {
-                  setAppState('translations', 'enabled', checked);
+                  setAppSettings('translations', 'enabled', checked);
                 }}
               />
             }
@@ -95,7 +95,7 @@ export default class AppLanguageTab extends SliderSuperTab {
               }
             }}
           />
-          {appState.translations.enabled && (<RowTsx
+          {appSettings.translations.enabled && (<RowTsx
             title={i18n('DoNotTranslate')}
             titleRight={doNotTranslate().length < 3 ?
               join(doNotTranslate().map((lang) => i18n(`Language.${lang}`)), false) :
@@ -104,7 +104,7 @@ export default class AppLanguageTab extends SliderSuperTab {
             titleRightSecondary
             clickable={async() => {
               const languages = await pickLanguage(true, doNotTranslate());
-              setAppState('translations', 'doNotTranslate', languages);
+              setAppSettings('translations', 'doNotTranslate', languages);
             }}
           />)}
         </Section>
