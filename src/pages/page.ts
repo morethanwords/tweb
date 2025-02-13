@@ -10,7 +10,7 @@ import pagesManager from './pagesManager';
 
 export default class Page {
   public pageEl: HTMLDivElement;
-  private installed = false;
+  private installPromise: Promise<void>;
 
   constructor(
     className: string,
@@ -32,24 +32,25 @@ export default class Page {
       }
     }
 
-    if(!this.installed) {
-      if(this.onFirstMount) {
-        try {
-          const res = this.onFirstMount(...args);
-          if(res instanceof Promise) {
-            await res;
-          }
-        } catch(err) {
-          console.error('PAGE MOUNT ERROR:', err);
-        }
-      }
-
-      this.mountBackButtonIfAuth();
-
-      this.installed = true;
-    }
+    this.installPromise ??= this.install(...args);
+    await this.installPromise;
 
     pagesManager.setPage(this);
+  }
+
+  private async install(...args: any[]) {
+    if(this.onFirstMount) {
+      try {
+        const res = this.onFirstMount(...args);
+        if(res instanceof Promise) {
+          await res;
+        }
+      } catch(err) {
+        console.error('PAGE MOUNT ERROR:', err);
+      }
+    }
+
+    this.mountBackButtonIfAuth();
   }
 
   private mountBackButtonIfAuth() {
