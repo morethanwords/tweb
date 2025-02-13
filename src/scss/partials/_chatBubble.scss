@@ -221,8 +221,9 @@
       content: "Unread messages";
       height: 30px;
       margin-bottom: $bubble-overflow-big;
-      margin-left: -60%;
-      margin-right: -60%;
+      margin-left: -50%;
+      margin-right: -50%;
+      width: 200vw;
       text-align: center;
       color: var(--primary-color);
       line-height: 2.1;
