@@ -619,8 +619,8 @@ export class AppSidebarLeft extends SidebarSlider {
         const e = getEvent(_e);
         const rect = this.sidebarEl.getBoundingClientRect();
 
-        const width = e.clientX - rect.left;
-        const clampedWidth = Math.round(clamp(width, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH));
+        const width = Math.round(e.clientX - rect.left);
+        const clampedWidth = clamp(width % 2 ? width + 1 : width, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
 
         document.documentElement.style.setProperty('--current-sidebar-left-width', clampedWidth + 'px');
         this.onResize();
