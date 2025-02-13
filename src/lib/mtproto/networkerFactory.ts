@@ -51,6 +51,7 @@ export class NetworkerFactory extends AppManager {
       this.updatesProcessor && this.updatesProcessor({_: 'new_session_created'});
 
       for(const networker of stoppedNetworkers) {
+        networker.sendPingDelayDisconnect();
         networker.scheduleRequest();
       }
     }

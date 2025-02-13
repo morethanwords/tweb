@@ -31,11 +31,10 @@ import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import disableTransition from '../../helpers/dom/disableTransition';
-import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import replaceContent from '../../helpers/dom/replaceContent';
 import whichChild from '../../helpers/dom/whichChild';
 import PopupElement from '../../components/popups';
-import singleInstance, {InstanceDeactivateReason, SingleInstance} from '../mtproto/singleInstance';
+import singleInstance from '../mtproto/singleInstance';
 import {toastNew} from '../../components/toast';
 import debounce from '../../helpers/schedulers/debounce';
 import pause from '../../helpers/schedulers/pause';
@@ -385,8 +384,8 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('message_error', ({peerId, error}) => {
-      if(error.type.includes('SLOWMODE_WAIT')) {
-        const time = +error.type.split('_').pop();
+      if(error.cause.includes('SLOWMODE_WAIT')) {
+        const time = +error.cause.split('_').pop();
         confirmationPopup({
           titleLangKey: 'Slowmode',
           peerId,
@@ -416,46 +415,6 @@ export class AppImManager extends EventListenerBase<{
         duration: 10000
       });
     });
-
-    const onInstanceDeactivated = (reason: InstanceDeactivateReason) => {
-      const isUpdated = reason === 'version';
-      const popup = PopupElement.createPopup(PopupElement, 'popup-instance-deactivated', {overlayClosable: true});
-      const c = document.createElement('div');
-      c.classList.add('instance-deactivated-container');
-      (popup as any).container.replaceWith(c);
-
-      const header = document.createElement('div');
-      header.classList.add('header');
-      header.append(i18n(isUpdated ? 'Deactivated.Version.Title' : 'Deactivated.Title'));
-
-      const subtitle = document.createElement('div');
-      subtitle.classList.add('subtitle');
-      subtitle.append(i18n(isUpdated ? 'Deactivated.Version.Subtitle' : 'Deactivated.Subtitle'));
-
-      c.append(header, subtitle);
-
-      document.body.classList.add('deactivated');
-
-      const onClose = isUpdated ? () => {
-        appRuntimeManager.reload();
-      } : () => {
-        document.body.classList.add('deactivated-backwards');
-
-        singleInstance.activateInstance();
-
-        setTimeout(() => {
-          document.body.classList.remove('deactivated', 'deactivated-backwards');
-        }, 333);
-      };
-
-      popup.addEventListener('close', onClose);
-      popup.show();
-    };
-
-    singleInstance.addEventListener('deactivated', onInstanceDeactivated);
-    if(singleInstance.deactivatedReason) {
-      onInstanceDeactivated(singleInstance.deactivatedReason);
-    }
 
     // remove scroll listener when setting chat to tray
     this.addEventListener('chat_changing', ({to}) => {
@@ -896,7 +855,7 @@ export class AppImManager extends EventListenerBase<{
         openWebAppInAppBrowser(webAppOptions);
       }
     } catch(err) {
-      if((err as ApiError).type === 'PEER_ID_INVALID' && options.attachMenuBot) {
+      if((err as ApiError).cause === 'PEER_ID_INVALID' && options.attachMenuBot) {
         toastNew({
           langPackKey: 'BotAlreadyAddedToAttachMenu'
         });
@@ -1450,9 +1409,9 @@ export class AppImManager extends EventListenerBase<{
         ...options
       });
     }, (err: ApiError) => {
-      if(err.type === 'USERNAME_NOT_OCCUPIED') {
+      if(err.cause === 'USERNAME_NOT_OCCUPIED') {
         toastNew({langPackKey: 'NoUsernameFound'});
-      } else if(err.type === 'USERNAME_INVALID') {
+      } else if(err.cause === 'USERNAME_INVALID') {
         toastNew({langPackKey: 'Alert.UserDoesntExists'});
       }
     });
@@ -1711,7 +1670,7 @@ export class AppImManager extends EventListenerBase<{
     return this.backgroundPromises[storageUrl] ||= this.cacheStorage.getFile(storageUrl).then((blob) => {
       return this.backgroundPromises[storageUrl] = URL.createObjectURL(blob);
     }, canDownload ? async(err) => {
-      if((err as ApiError).type !== 'NO_ENTRY_FOUND') {
+      if((err as ApiError).cause !== 'NO_ENTRY_FOUND') {
         throw err;
       }
 

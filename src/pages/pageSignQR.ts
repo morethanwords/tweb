@@ -193,9 +193,8 @@ const onFirstMount = async() => {
         await pause(diff > FETCH_INTERVAL ? 1e3 * FETCH_INTERVAL : 1e3 * diff | 0);
       }
     } catch(err) {
-      switch((err as ApiError).type) {
+      switch((err as ApiError).cause) {
         case 'SESSION_PASSWORD_NEEDED':
-          (err as ApiError).handled = true;
           import('./pagePassword').then((m) => m.default.mount());
           stop = true;
           cachedPromise = null;

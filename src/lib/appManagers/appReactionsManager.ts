@@ -707,7 +707,7 @@ export class AppReactionsManager extends AppManager {
       msg_id: msgId,
       reaction: chosenReactions.map((reactionCount) => reactionCount.reaction).reverse()
     }).then(onUpdates).catch((err: ApiError) => {
-      if(err.type === 'REACTION_INVALID' && this.sendReactionPromises.get(promiseKey) === promise) {
+      if(err.cause === 'REACTION_INVALID' && this.sendReactionPromises.get(promiseKey) === promise) {
         this.sendReaction({
           message,
           reaction: chosenReactions[0]?.reaction,

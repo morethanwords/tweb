@@ -837,7 +837,7 @@ export default class ChatTopbar {
 
     promise.catch((err) => {
       assumeType<ApiError>(err);
-      switch(err.type) {
+      switch(err.cause) {
         case 'INVITE_REQUEST_SENT': {
           toastNew({langPackKey: 'Chat.SendJoinRequest.Info'});
           return;

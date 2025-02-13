@@ -550,13 +550,13 @@ export default class WebApp {
             params
           );
         } catch(_error) {
-          error = _error;
+          error = _error as ApiError;
         }
 
         telegramWebView.dispatchWebViewEvent('custom_method_invoked', {
           req_id,
           result: result && JSON.parse(result.data),
-          error: error?.type
+          error: error?.cause
         });
       }
     });
@@ -650,7 +650,7 @@ export default class WebApp {
         return;
       }
 
-      if(err.type === 'QUERY_ID_INVALID') {
+      if(err.cause === 'QUERY_ID_INVALID') {
         this.forceHide();
       } else {
         console.error('web app prolong error', err);

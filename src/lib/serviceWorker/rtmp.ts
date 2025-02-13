@@ -282,7 +282,7 @@ class RtmpStream {
           chunk.iso = await this.fetchChunk(nextTime, ignoreRequestedTime);
         } catch(e) {
           assumeType<ApiError>(e);
-          log('error', e.type, nextTime.toString());
+          log('error', e.cause, nextTime.toString());
 
           const retry = async(delay: number) => {
             await pause(delay);
@@ -290,7 +290,7 @@ class RtmpStream {
             return fetchChunk(true);
           };
 
-          if(e.type === 'TIME_TOO_BIG') { // * can happen when we're ahead or the stream is ended
+          if(e.cause === 'TIME_TOO_BIG') { // * can happen when we're ahead or the stream is ended
             if(ignoreRequestedTime) { // * we already tried to refetch it
               throw new Error('stream ended');
             }
@@ -585,22 +585,22 @@ class RtmpStream {
 
     if(typeof(error) === 'object' && error && typeof(error.type) === 'string') {
       assumeType<ApiError>(error);
-      if(error.type.startsWith('FLOOD_WAIT')) {
-        const wait = +error.type.split('_').pop();
+      if(error.cause.startsWith('FLOOD_WAIT')) {
+        const wait = +error.cause.split('_').pop();
         floodRelease.set(this.call.id, Date.now() + wait * 1000);
         this.start();
         return true;
       }
 
-      if(error.type === 'TIME_TOO_SMALL' || error.type === 'TIME_INVALID') {
+      if(error.cause === 'TIME_TOO_SMALL' || error.cause === 'TIME_INVALID') {
         log('rtmp stream need resync', error);
         this.start();
         return true;
       }
 
       if((
-        error.type === 'GROUPCALL_FORBIDDEN' ||
-        error.type === 'VIDEO_CHANNEL_INVALID'
+        error.cause === 'GROUPCALL_FORBIDDEN' ||
+        error.cause === 'VIDEO_CHANNEL_INVALID'
       ) && this._retryCount < 3) {
         log('retrying rtmp stream', error);
         this._retryCount += 1;

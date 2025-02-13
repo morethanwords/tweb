@@ -8,7 +8,6 @@
 
 import App from './config/app';
 import blurActiveElement from './helpers/dom/blurActiveElement';
-import cancelEvent from './helpers/dom/cancelEvent';
 import {IS_STICKY_INPUT_BUGGED} from './helpers/dom/fixSafariStickyInputFocusing';
 import loadFonts from './helpers/dom/loadFonts';
 import IS_EMOJI_SUPPORTED from './environment/emojiSupport';
@@ -20,14 +19,14 @@ import setWorkerProxy from './helpers/setWorkerProxy';
 import toggleAttributePolyfill from './helpers/dom/toggleAttributePolyfill';
 import rootScope from './lib/rootScope';
 import IS_TOUCH_SUPPORTED from './environment/touchSupport';
-import I18n from './lib/langPack';
+import I18n, {i18n} from './lib/langPack';
 import './helpers/peerIdPolyfill';
 import './lib/polyfill';
 import apiManagerProxy from './lib/mtproto/mtprotoworker';
 import getProxiedManagers from './lib/appManagers/getProxiedManagers';
 import themeController from './helpers/themeController';
 import overlayCounter from './helpers/overlayCounter';
-import singleInstance from './lib/mtproto/singleInstance';
+import singleInstance, {InstanceDeactivateReason} from './lib/mtproto/singleInstance';
 import {parseUriParamsLine} from './helpers/string/parseUriParams';
 import Modes from './config/modes';
 import {AuthState} from './types';
@@ -48,6 +47,8 @@ import sessionStorage from './lib/sessionStorage';
 import replaceChildrenPolyfill from './helpers/dom/replaceChildrenPolyfill';
 import listenForWindowPrint from './helpers/dom/windowPrint';
 import cancelImageEvents from './helpers/dom/cancelImageEvents';
+import PopupElement from './components/popups';
+import appRuntimeManager from './lib/appManagers/appRuntimeManager';
 
 IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   mimeTypes.forEach((mimeType) => {
@@ -239,14 +240,49 @@ function setRootClasses() {
   document.documentElement.classList.add(...add);
 }
 
+function onInstanceDeactivated(reason: InstanceDeactivateReason) {
+  const isUpdated = reason === 'version';
+  const popup = PopupElement.createPopup(PopupElement, 'popup-instance-deactivated', {overlayClosable: true});
+  const c = document.createElement('div');
+  c.classList.add('instance-deactivated-container');
+  (popup as any).container.replaceWith(c);
+
+  const header = document.createElement('div');
+  header.classList.add('header');
+  header.append(i18n(isUpdated ? 'Deactivated.Version.Title' : 'Deactivated.Title'));
+
+  const subtitle = document.createElement('div');
+  subtitle.classList.add('subtitle');
+  subtitle.append(i18n(isUpdated ? 'Deactivated.Version.Subtitle' : 'Deactivated.Subtitle'));
+
+  c.append(header, subtitle);
+
+  document.body.classList.add('deactivated');
+
+  const onClose = isUpdated ? () => {
+    appRuntimeManager.reload();
+  } : () => {
+    document.body.classList.add('deactivated-backwards');
+
+    singleInstance.activateInstance();
+
+    setTimeout(() => {
+      document.body.classList.remove('deactivated', 'deactivated-backwards');
+    }, 333);
+  };
+
+  popup.addEventListener('close', onClose);
+  popup.show();
+};
+
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
+  const perf = performance.now();
   randomlyChooseVersionFromSearch();
   setSidebarLeftWidth();
   toggleAttributePolyfill();
   replaceChildrenPolyfill();
   rootScope.managers = getProxiedManagers();
   setManifest();
-  singleInstance.start();
   setViewportHeightListeners();
   setWorkerProxy; // * just to import
   listenForWindowPrint();
@@ -257,14 +293,34 @@ function setRootClasses() {
     cacheInstallPrompt();
   }
 
-  const perf = performance.now();
+  // * (1) load states
+  // * (2) check app version
+  // * (3) send all states if updated
+  // * (4) exit if not updated
 
-  // await pause(1000000);
+  // * (1)
+  const allStates = await apiManagerProxy.loadAllStates();
+  const stateResult = allStates[getCurrentAccount()];
 
-  // * can't combine now since langPack will be migrated to the new system
-  const stateResult = await apiManagerProxy.sendAllStates().then((loadedStates) => loadedStates[getCurrentAccount()]);
+  // * (2)
+  singleInstance.addEventListener('deactivated', onInstanceDeactivated);
+  await singleInstance.start();
+  const sendAllStatesPromise = singleInstance.deactivatedReason !== 'version' && apiManagerProxy.sendAllStates(allStates);
+  if(singleInstance.deactivatedReason) {
+    onInstanceDeactivated(singleInstance.deactivatedReason);
+  }
+
+  // * (3)
+  await sendAllStatesPromise;
   const langPack = await I18n.getCacheLangPack();
   I18n.setTimeFormat(rootScope.settings.timeFormat);
+
+  // * (4)
+  if(!sendAllStatesPromise) {
+    return;
+  }
+
+  await apiManagerProxy.sendAllStates(allStates);
 
   document.body.classList.toggle('has-folders-sidebar', rootScope.settings.tabsInSidebar);
 

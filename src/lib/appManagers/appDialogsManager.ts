@@ -1004,7 +1004,7 @@ class Some<T extends AnyDialog = AnyDialog> {
           placeholder.detach(chatList.childElementCount);
         }
       } catch(err) {
-        if((err as ApiError)?.type !== 'MIDDLEWARE') {
+        if((err as ApiError)?.cause !== 'MIDDLEWARE') {
           log.error(err);
         }
 
@@ -3110,7 +3110,7 @@ export class AppDialogsManager {
   public setLastMessageN(options: Parameters<AppDialogsManager['setLastMessage']>[0]) {
     const promise = this.setLastMessage(options);
     return promise.catch((err: ApiError) => {
-      if(err?.type !== 'MIDDLEWARE') {
+      if(err?.cause !== 'MIDDLEWARE') {
         this.log.error('set last message error', err);
       }
     });

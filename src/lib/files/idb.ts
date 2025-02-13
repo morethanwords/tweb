@@ -111,7 +111,7 @@ export class IDB {
     let finished = false;
     setTimeout(() => {
       if(!finished) {
-        request.onerror(makeError('IDB_CREATE_TIMEOUT') as Event);
+        request.onerror(makeError('IDB_CREATE_TIMEOUT') as any as Event);
       }
     }, 3000);
 

@@ -41,6 +41,7 @@ import safePlay from '../helpers/dom/safePlay';
 import {_tgico} from '../helpers/tgico';
 import Icon from './icon';
 import setCurrentTime from '../helpers/dom/setCurrentTime';
+import makeError from '../helpers/makeError';
 
 const UNMOUNT_PRELOADER = true;
 
@@ -655,9 +656,7 @@ export default class AudioElement extends HTMLElement {
               });
               deferred.cancel = () => {
                 deferred.cancel = noop;
-                const err = new Error();
-                (err as any).type = 'CANCELED';
-                deferred.reject(err);
+                deferred.reject(makeError('CANCELED'));
               };
               preloader.attach(downloadDiv, false, deferred);
 

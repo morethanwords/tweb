@@ -49,7 +49,7 @@ export default class PopupPaymentCardConfirmation extends PopupElement<{
           this.dispatchEvent('finish', tmpPassword);
           this.hide();
         } catch(err) {
-          if((err as ApiError).type === 'PASSWORD_HASH_INVALID') {
+          if((err as ApiError).cause === 'PASSWORD_HASH_INVALID') {
             (err as ApiError).handled = true;
             passwordInputField.setError('PASSWORD_HASH_INVALID');
           }

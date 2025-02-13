@@ -243,9 +243,9 @@ export default class PopupGiftLink extends PopupElement {
       popup.hide();
       toastNew({langPackKey: 'GiftLink.UseSuccess'});
     } catch(err) {
-      if((err as ApiError).type.includes('PREMIUM_SUB_ACTIVE_UNTIL_')) {
+      if((err as ApiError).cause.includes('PREMIUM_SUB_ACTIVE_UNTIL_')) {
         popup.hide();
-        const timestamp = +(err as ApiError).type.split('_').pop();
+        const timestamp = +(err as ApiError).cause.split('_').pop();
         let button: Parameters<typeof confirmationPopup>[0]['button'];
         confirmationPopup({
           titleLangKey: 'GiftPremiumActivateErrorTitle',

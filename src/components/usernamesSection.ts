@@ -210,7 +210,7 @@ export default class UsernamesSection extends SettingSection {
       });
 
       promise.catch((err: ApiError) => {
-        if(err.type === 'USERNAMES_ACTIVE_TOO_MUCH') {
+        if(err.cause === 'USERNAMES_ACTIVE_TOO_MUCH') {
           confirmationPopup({
             titleLangKey: 'UsernameActivateErrorTitle',
             descriptionLangKey: 'UsernameActivateErrorMessage',

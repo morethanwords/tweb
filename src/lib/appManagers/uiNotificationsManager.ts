@@ -866,8 +866,6 @@ export class UiNotificationsManager {
     }).then(() => {
       UiNotificationsManager.log('registered device');
       this.registeredDevice = tokenData;
-    }, (error) => {
-      error.handled = true;
     });
   }
 
@@ -882,8 +880,6 @@ export class UiNotificationsManager {
       other_uids: []
     }).then(() => {
       this.registeredDevice = false;
-    }, (error) => {
-      error.handled = true;
     });
   }
 }

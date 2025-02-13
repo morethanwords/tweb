@@ -39,6 +39,7 @@ import {AppStoragesManager} from '../appManagers/appStoragesManager';
 import commonStateStorage from '../commonStateStorage';
 import CacheStorageController from '../files/cacheStorage';
 import {ActiveAccountNumber} from '../accounts/types';
+import makeError from '../../helpers/makeError';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -563,13 +564,13 @@ export class ApiManager extends ApiManagerMethods {
 
     const rejectPromise = async(error: ApiError) => {
       if(!error) {
-        error = {type: 'ERROR_EMPTY'};
+        error = makeError('ERROR_EMPTY');
       } else if(!isObject(error)) {
-        error = {message: error};
+        error = makeError(undefined, error);
       }
 
-      if((error.code === 401 && error.type === 'SESSION_REVOKED') ||
-        (error.code === 406 && error.type === 'AUTH_KEY_DUPLICATED')) {
+      if((error.code === 401 && error.cause === 'SESSION_REVOKED') ||
+        (error.code === 406 && error.cause === 'AUTH_KEY_DUPLICATED')) {
         this.logOut();
       }
 
@@ -582,7 +583,6 @@ export class ApiManager extends ApiManagerMethods {
       }
 
       if(!options.noErrorBox) {
-        error.input = method;
         // error.stack = stack || (error.originalError && error.originalError.stack) || error.stack || (new Error()).stack;
         setTimeout(() => {
           if(!error.handled) {
@@ -623,12 +623,12 @@ export class ApiManager extends ApiManagerMethods {
 
       return promise.catch((error: ApiError) => {
         // if(!options.ignoreErrors) {
-        if(error.type !== 'FILE_REFERENCE_EXPIRED'/*  && error.type !== 'MSG_WAIT_FAILED' */) {
-          this.log.error('Error', error.code, error.type, this.baseDcId, dcId, method, params);
+        if(error.cause !== 'FILE_REFERENCE_EXPIRED'/*  && error.type !== 'MSG_WAIT_FAILED' */) {
+          this.log.error('Error', error.code, error.cause, this.baseDcId, dcId, method, params);
         }
 
         if(error.code === 401 && this.baseDcId === dcId) {
-          if(error.type !== 'SESSION_PASSWORD_NEEDED') {
+          if(error.cause !== 'SESSION_PASSWORD_NEEDED') {
             AccountController.update(this.getAccountNumber(), {
               dcId: undefined
             });
@@ -650,7 +650,7 @@ export class ApiManager extends ApiManagerMethods {
 
           return this.cachedExportPromise[dcId].then(() => performRequest());
         } else if(error.code === 303) {
-          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_|STATS_MIGRATE_)(\d+)/)[2] as DcId;
+          const newDcId = +error.cause.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_|STATS_MIGRATE_)(\d+)/)[2] as DcId;
           if(newDcId !== dcId) {
             if(options.dcId) {
               options.dcId = newDcId;
@@ -660,25 +660,25 @@ export class ApiManager extends ApiManagerMethods {
 
             return this.invokeApi(method, params, options);
           }
-        } else if(error.code === 400 && error.type.indexOf('FILE_MIGRATE') === 0) {
-          const newDcId = +error.type.match(/^(FILE_MIGRATE_)(\d+)/)[2] as DcId;
+        } else if(error.code === 400 && error.cause.indexOf('FILE_MIGRATE') === 0) {
+          const newDcId = +error.cause.match(/^(FILE_MIGRATE_)(\d+)/)[2] as DcId;
           if(newDcId !== dcId) {
             options.dcId = newDcId;
             return this.invokeApi(method, params, options);
           } else {
             throw error;
           }
-        } else if(error.code === 400 && error.type === 'CONNECTION_NOT_INITED') {
+        } else if(error.code === 400 && error.cause === 'CONNECTION_NOT_INITED') {
           this.networkerFactory.unsetConnectionInited();
           return performRequest();
-        } else if(!options.rawError && error.code === 420 && !error.type.includes('SLOWMODE_WAIT')) {
-          const match = error.type.match(/^FLOOD_WAIT_(\d+)/) || error.type.match(/_(\d+)_?/);
+        } else if(!options.rawError && error.code === 420 && !error.cause.includes('SLOWMODE_WAIT')) {
+          const match = error.cause.match(/^FLOOD_WAIT_(\d+)/) || error.cause.match(/_(\d+)_?/);
           let waitTime: number;
           if(match) {
             waitTime = +match[1];
           }
 
-          if(error.type.includes('FLOOD_PREMIUM_WAIT')) {
+          if(error.cause.includes('FLOOD_PREMIUM_WAIT')) {
             Promise.all([
               this.getAppConfig(),
               this.appStateManager.getState()
@@ -704,7 +704,7 @@ export class ApiManager extends ApiManagerMethods {
           }
 
           return pause(waitTime/* (waitTime + 5) */ * 1000).then(() => performRequest());
-        } else if(!options.rawError && ['MSG_WAIT_FAILED', 'MSG_WAIT_TIMEOUT'].includes(error.type)) {
+        } else if(!options.rawError && ['MSG_WAIT_FAILED', 'MSG_WAIT_TIMEOUT'].includes(error.cause)) {
           const after = this.afterMessageTempIds[afterMessageId];
 
           afterMessageId = undefined;
@@ -722,7 +722,7 @@ export class ApiManager extends ApiManagerMethods {
 
           options.waitTime = options.waitTime ? Math.min(60, options.waitTime * 1.5) : 1;
           return pause(options.waitTime * 1000).then(() => performRequest());
-        } else if(error.type === 'UNKNOWN' || error.type === 'MTPROTO_CLUSTER_INVALID') { // cluster invalid - request from regular user to premium endpoint
+        } else if(error.cause === 'UNKNOWN' || error.cause === 'MTPROTO_CLUSTER_INVALID') { // cluster invalid - request from regular user to premium endpoint
           return pause(1000).then(() => performRequest());
         } else {
           throw error;

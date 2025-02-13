@@ -134,7 +134,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
           // this.setProfileUrl();
 
           const {error} = this.usernameInputField;
-          const isPurchase = error?.type === 'USERNAME_PURCHASE_AVAILABLE';
+          const isPurchase = error?.cause === 'USERNAME_PURCHASE_AVAILABLE';
           setUsername(isPurchase ? this.usernameInputField.value : undefined);
         },
         availableText: 'EditProfile.Username.Available',

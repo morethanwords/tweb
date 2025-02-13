@@ -683,7 +683,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     }
   }
 
-  private async loadAllStates() {
+  public async loadAllStates() {
     const loadedStates = await loadStateForAllAccountsOnce();
 
     this.dispatchUserAuth();
@@ -720,17 +720,19 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return !!this.allTabStates.find((tab) => tab.accountNumber === accountNumber);
   }
 
-  public async sendAllStates() {
-    const loadedStates = await this.loadAllStates();
-
+  public sendAllStates(loadedStates: Awaited<ReturnType<ApiManagerProxy['loadAllStates']>>) {
+    const promises: Promise<any>[] = [];
     for(let i = 1; i <= 4; i++) {
       const state = loadedStates[i as ActiveAccountNumber];
-      this.invoke('state', {
+      const promise = this.invoke('state', {
         ...state,
         accountNumber: i as ActiveAccountNumber
       });
+
+      promises.push(promise);
     }
-    return loadedStates;
+
+    return Promise.all(promises);
   }
 
   public invokeCrypto<Method extends keyof CryptoMethods>(method: Method, ...args: Parameters<CryptoMethods[typeof method]>): Promise<Awaited<ReturnType<CryptoMethods[typeof method]>>> {

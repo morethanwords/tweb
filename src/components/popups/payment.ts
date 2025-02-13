@@ -915,10 +915,10 @@ export default class PopupPayment extends PopupElement<{
             });
           }
         } catch(err) {
-          if((err as ApiError).type === 'BOT_PRECHECKOUT_TIMEOUT') {
+          if((err as ApiError).cause === 'BOT_PRECHECKOUT_TIMEOUT') {
             toastNew({langPackKey: 'Error.AnError'});
             (err as ApiError).handled = true;
-          } else if((err as ApiError).type === 'TMP_PASSWORD_INVALID') {
+          } else if((err as ApiError).cause === 'TMP_PASSWORD_INVALID') {
             passwordState = lastTmpPasword = undefined;
             simulateClickEvent(payButton);
             (err as ApiError).handled = true;

@@ -185,7 +185,7 @@ export default class PopupBoost extends PopupPeer {
       }]));
     };
 
-    const handleErrorType = (type: ApiError['type']) => {
+    const handleErrorType = (type: ErrorType) => {
       if(type === 'PREMIUM_ACCOUNT_REQUIRED') {
         showPremiumNeeded();
       }/*  else if(type === 'BOOST_NOT_MODIFIED') {
@@ -241,7 +241,7 @@ export default class PopupBoost extends PopupPeer {
       try {
         const givenBoosts = getGivenBoosts();
         const availableBoost = myBoosts.my_boosts.find((myBoost) => !myBoost.peer);
-        let type: ApiError['type'];
+        let type: ApiError['cause'];
         if(!rootScope.premium) {
           type = 'PREMIUM_ACCOUNT_REQUIRED';
         } else if(givenBoosts.length === myBoosts.my_boosts.length) {
@@ -288,7 +288,7 @@ export default class PopupBoost extends PopupPeer {
         setBoostsStatus(boostsStatus);
         setInfo();
       } catch(err) {
-        handleErrorType((err as ApiError).type);
+        handleErrorType((err as ApiError).cause);
       }
 
       return false;

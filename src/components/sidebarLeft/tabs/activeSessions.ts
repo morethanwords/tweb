@@ -104,7 +104,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
     this.scrollable.append(otherSection.container);
 
     const onError = (err: ApiError) => {
-      if(err.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
+      if(err.cause === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
         toast(I18n.format('RecentSessions.Error.FreshReset', true));
       }
     };

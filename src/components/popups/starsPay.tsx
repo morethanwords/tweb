@@ -102,7 +102,7 @@ export default class PopupStarsPay extends PopupElement<{
         this.hide();
       } catch(err) {
         let shouldRetry = false;
-        if((err as ApiError).type === 'BALANCE_TOO_LOW') {
+        if((err as ApiError).cause === 'BALANCE_TOO_LOW') {
           PopupElement.createPopup(PopupStars, {
             itemPrice: paymentForm ? +paymentForm.invoice.prices[0].amount : (this.chatInvite ? +this.chatInvite.subscription_pricing.amount : +this.subscription.pricing.amount),
             paymentForm: paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars,
@@ -111,7 +111,7 @@ export default class PopupStarsPay extends PopupElement<{
               onConfirm();
             }
           });
-        } else if((err as ApiError).type === 'FORM_EXPIRED') {
+        } else if((err as ApiError).cause === 'FORM_EXPIRED') {
           await this.reloadForm();
           shouldRetry = true;
         } else {

@@ -242,7 +242,7 @@ export default class PopupSharedFolderInvite extends PopupElement {
           this.slug,
           peerIds
         ).catch((error: ApiError) => {
-          if(error.type === 'DIALOG_FILTERS_TOO_MUCH') {
+          if(error.cause === 'DIALOG_FILTERS_TOO_MUCH') {
             showLimitPopup('folders');
             this.hide();
           } else {

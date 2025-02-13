@@ -184,7 +184,7 @@ export default class AppStorage<
       // console.log('[AS]: get time', keys, performance.now() - perf);
     }, (error: ApiError) => {
       const ignoreErrors: Set<ErrorType> = new Set(['NO_ENTRY_FOUND', 'STORAGE_OFFLINE']);
-      if(!ignoreErrors.has(error.type)) {
+      if(!ignoreErrors.has(error.cause)) {
         this.useStorage = false;
         this.log.error('get error', error, keys, this.storeName);
       }
