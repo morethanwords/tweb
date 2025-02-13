@@ -2507,6 +2507,7 @@ const lang = {
   'Report2CommentOptional': 'Add Comment (Optional)',
   'Report2Send': 'Send Report',
   'Reported2': 'Telegram moderators will review your report. Thank you!',
+  'UnreadMessages': 'Unread Messages',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

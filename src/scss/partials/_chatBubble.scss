@@ -218,7 +218,7 @@
     }
 
     &:before {
-      content: "Unread messages";
+      content: var(--unread-messages-text);
       height: 30px;
       margin-bottom: $bubble-overflow-big;
       margin-left: -50%;

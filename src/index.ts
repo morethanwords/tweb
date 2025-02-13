@@ -274,8 +274,14 @@ function setRootClasses() {
 
   themeController.setThemeListener();
 
+  const setUnreadMessagesText = () => {
+    const text = I18n.format('UnreadMessages', true);
+    document.documentElement.style.setProperty('--unread-messages-text', `"${text}"`);
+  };
+
+  setUnreadMessagesText();
   if(langPack.appVersion !== App.langPackVersion) {
-    I18n.getLangPack(langPack.lang_code);
+    I18n.getLangPack(langPack.lang_code).finally(setUnreadMessagesText);
   } else {
     fillLocalizedDates();
   }
@@ -283,6 +289,7 @@ function setRootClasses() {
   rootScope.addEventListener('language_change', (langCode) => {
     I18n.getLangPack(langCode);
     fillLocalizedDates();
+    setUnreadMessagesText();
   });
 
   /**
