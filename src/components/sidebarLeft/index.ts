@@ -22,8 +22,7 @@ import AppArchivedTab from './tabs/archivedTab';
 import AppAddMembersTab from './tabs/addMembers';
 import I18n, {i18n} from '../../lib/langPack';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '../buttonMenu';
-import CheckboxField from '../checkboxField';
-import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
+import {IS_APPLE, IS_MOBILE_SAFARI} from '../../environment/userAgent';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import findUpTag from '../../helpers/dom/findUpTag';
@@ -450,14 +449,22 @@ export class AppSidebarLeft extends SidebarSlider {
       if(appNavigationController.findItemByType('popup')) return;
       this.initSearch().open();
     });
+
+    addShortcutListener(['ctrl+0', 'alt+0', 'meta+0'], () => {
+      if(appNavigationController.findItemByType('popup') ||
+        appImManager.chat.peerId === appImManager.myId) return;
+      appImManager.setPeer({
+        peerId: appImManager.myId
+      });
+    });
   }
 
   public isCollapsed() {
-    return this.sidebarEl.classList.contains('is-collapsed')
+    return this.sidebarEl.classList.contains('is-collapsed');
   }
 
   public hasFoldersSidebar() {
-    return document.body.classList.contains('has-folders-sidebar')
+    return document.body.classList.contains('has-folders-sidebar');
   }
 
   public onCollapsedChange(canShowCtrlFTip = false) {
@@ -585,7 +592,7 @@ export class AppSidebarLeft extends SidebarSlider {
     if(showAgain && now < showAgain) return;
 
     toastNew({
-      langPackKey: 'CtrlFSearchTip'
+      langPackKey: IS_APPLE ? 'CtrlFSearchTipMac' : 'CtrlFSearchTip'
     });
     // Show once between 1 week to 2 months
     const waitSeconds = (Math.round(Math.random() * 7 * 7) + 7) * 24 * 60 * 60;

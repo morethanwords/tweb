@@ -43,6 +43,7 @@
   
     .sidebar-content {
       min-width: var(--right-column-width);
+      width: var(--right-column-width);
     }
   
     /* &:not(.active) {

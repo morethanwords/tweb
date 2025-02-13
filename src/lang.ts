@@ -874,6 +874,7 @@ const lang = {
   'MultiAccount.ShowNotificationsFromCaption': 'Turn this off if you want to receive notifications only from the account you are currently using.',
   'MultiAccount.AllAccounts': 'All Accounts',
   'MultiAccount.AccountsLimitDescription': 'You have reached the limit of **3** connected accounts. You can add more by subscribing to **Telegram Premium**.',
+  'CtrlFSearchTipMac': 'Tip: Use **Cmd+F** to open Search',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
