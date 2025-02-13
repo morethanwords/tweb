@@ -1166,7 +1166,7 @@ export class AppSidebarLeft extends SidebarSlider {
         name: 'FilterChats',
         type: 'chats'
       }, {
-        name: 'Channels',
+        name: 'ChannelsTab',
         type: 'channels'
       }, {
         name: 'MiniApps.AppsSearch',
