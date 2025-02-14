@@ -82,7 +82,7 @@ export default async function addChatUsers({
   };
 
   const onError = (err: ApiError) => {
-    if(err.cause === 'USER_PRIVACY_RESTRICTED') {
+    if(err.type === 'USER_PRIVACY_RESTRICTED') {
       toastNew({langPackKey: 'InviteToGroupError'});
     }
   };

@@ -575,7 +575,7 @@ export class AppProfileManager extends AppManager {
         return fullChannel;
       },
       processError: (error) => {
-        switch(error.cause) {
+        switch(error.type) {
           case 'CHANNEL_PRIVATE':
             const chat = this.appChatsManager.getChat(id) as Chat.channel | Chat.channelForbidden;
             if(chat._ !== 'channelForbidden') {

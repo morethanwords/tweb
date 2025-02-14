@@ -976,7 +976,7 @@ export default class ChatContextMenu {
           return;
         }
 
-        if((err as ApiError).cause !== 'YOUR_PRIVACY_RESTRICTED') {
+        if((err as ApiError).type !== 'YOUR_PRIVACY_RESTRICTED') {
           delimiter.remove();
           viewsButton.element.remove();
           return;

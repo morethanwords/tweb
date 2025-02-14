@@ -648,12 +648,12 @@ export class AppMessagesManager extends AppManager {
     }, (error: ApiError) => {
       this.log.error('editMessage error:', error);
 
-      if(error?.cause === 'MESSAGE_NOT_MODIFIED') {
+      if(error?.type === 'MESSAGE_NOT_MODIFIED') {
         error.handled = true;
         return;
       }
 
-      if(error?.cause === 'MESSAGE_EMPTY') {
+      if(error?.type === 'MESSAGE_EMPTY') {
         error.handled = true;
       }
 
@@ -686,7 +686,7 @@ export class AppMessagesManager extends AppManager {
         return result;
       },
       processError: (error) => {
-        if(error.cause === 'TRANSCRIPTION_FAILED' || error.cause === 'MSG_VOICE_MISSING') {
+        if(error.type === 'TRANSCRIPTION_FAILED' || error.type === 'MSG_VOICE_MISSING') {
           process({
             _: 'messages.transcribedAudio',
             transcription_id: 0,
@@ -1342,8 +1342,8 @@ export class AppMessagesManager extends AppManager {
           this.apiUpdatesManager.processUpdateMessage(updates);
         }, (error: ApiError) => {
           if(attachType === 'photo' &&
-            (error.cause === 'PHOTO_INVALID_DIMENSIONS' ||
-            error.cause === 'PHOTO_SAVE_FILE_INVALID')) {
+            (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
+            error.type === 'PHOTO_SAVE_FILE_INVALID')) {
             error.handled = true;
             attachType = 'document';
             message.send();
@@ -1530,7 +1530,7 @@ export class AppMessagesManager extends AppManager {
       try {
         inputMedia = await send() as InputMedia;
       } catch(err) {
-        const isUploadCanceled = (err as ApiError).cause === 'UPLOAD_CANCELED';
+        const isUploadCanceled = (err as ApiError).type === 'UPLOAD_CANCELED';
         if(isUploadCanceled && !isSingleMessageForAlbum) {
           return undefined;
         }
@@ -4337,7 +4337,7 @@ export class AppMessagesManager extends AppManager {
       }
 
       return promise.catch((error: ApiError) => {
-        if(error?.cause == 'USER_ALREADY_PARTICIPANT') {
+        if(error?.type == 'USER_ALREADY_PARTICIPANT') {
           error.handled = true;
           return;
         }
@@ -7962,7 +7962,7 @@ export class AppMessagesManager extends AppManager {
 
       return historyResult;
     }, (error: ApiError) => {
-      switch(error.cause) {
+      switch(error.type) {
         case 'CHANNEL_PRIVATE':
           let channel = this.appChatsManager.getChat(peerId.toChatId());
           if(channel._ === 'channel') {

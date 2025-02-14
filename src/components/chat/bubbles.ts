@@ -4271,7 +4271,7 @@ export default class ChatBubbles {
             this.processRanks = undefined;
           });
         }, (err) => {
-          if((err as ApiError).cause !== 'CHAT_ADMIN_REQUIRED') {
+          if((err as ApiError).type !== 'CHAT_ADMIN_REQUIRED') {
             this.log.error('ranks error', err);
           }
 

@@ -30,7 +30,7 @@ const importWebToken = async() => {
       // return;
     }
   } catch(err) {
-    switch((err as ApiError).cause) {
+    switch((err as ApiError).type) {
       case 'SESSION_PASSWORD_NEEDED': {
         mountPageAfter = import('./pagePassword');
         break;

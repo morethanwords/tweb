@@ -3546,7 +3546,7 @@ export default class ChatInput {
           dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
           dropCaptions: this.isDroppingCaptions()
         }).catch(async(err: ApiError) => {
-          if(err.cause === 'VOICE_MESSAGES_FORBIDDEN') {
+          if(err.type === 'VOICE_MESSAGES_FORBIDDEN') {
             toastNew({
               langPackKey: 'Chat.SendVoice.PrivacyError',
               langPackArguments: [await wrapPeerTitle({peerId})]

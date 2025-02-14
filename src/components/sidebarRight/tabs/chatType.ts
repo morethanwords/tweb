@@ -149,7 +149,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
       applyBtn.classList.toggle('is-visible', changedPrivacy || changedJoinToSend || changedJoinRequest);
 
       const {error} = linkInputField;
-      const isPurchase = error?.cause === 'USERNAME_PURCHASE_AVAILABLE';
+      const isPurchase = error?.type === 'USERNAME_PURCHASE_AVAILABLE';
       setUsername(isPurchase ? linkInputField.getValue() : undefined);
     };
 

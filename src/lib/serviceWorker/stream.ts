@@ -170,7 +170,7 @@ class Stream {
     return cacheStorage.getFile(key).then((blob: Blob) => {
       return fromPreload ? new Uint8Array() : readBlobAsUint8Array(blob);
     }, (error: ApiError) => {
-      if(error.cause === 'NO_ENTRY_FOUND') {
+      if(error.type === 'NO_ENTRY_FOUND') {
         return;
       }
     });

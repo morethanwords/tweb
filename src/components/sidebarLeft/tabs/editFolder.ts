@@ -312,7 +312,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
           postponedFilterUpdate = undefined;
         }
 
-        if(err.cause === 'DIALOG_FILTERS_TOO_MUCH') {
+        if(err.type === 'DIALOG_FILTERS_TOO_MUCH') {
           showLimitPopup('folders');
         } else {
           console.error('updateDialogFilter error:', err);
@@ -381,7 +381,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       }
 
       this.managers.filtersStorage.getExportedInvites(this.filter.id).catch((err: ApiError) => {
-        if(err.cause === 'FILTER_NOT_SUPPORTED') {
+        if(err.type === 'FILTER_NOT_SUPPORTED') {
           return [] as ExportedChatlistInvite[];
         }
 
@@ -518,10 +518,10 @@ export default class AppEditFolderTab extends SliderSuperTab {
             });
           }, (err: ApiError) => {
             toggle();
-            if(err.cause === 'INVITES_TOO_MUCH' || err.cause === 'FILTERS_TOO_MUCH' || err.cause === 'CHATLISTS_TOO_MUCH') {
+            if(err.type === 'INVITES_TOO_MUCH' || err.type === 'FILTERS_TOO_MUCH' || err.type === 'CHATLISTS_TOO_MUCH') {
               showLimitPopup('chatlistInvites');
               return;
-            } else if(err.cause === 'PEERS_LIST_EMPTY' || err.cause === 'CHAT_ADMIN_REQUIRED') {
+            } else if(err.type === 'PEERS_LIST_EMPTY' || err.type === 'CHAT_ADMIN_REQUIRED') {
               openChatlistInvite();
               return;
             }

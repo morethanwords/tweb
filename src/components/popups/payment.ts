@@ -19,6 +19,7 @@ import replaceContent from '../../helpers/dom/replaceContent';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {formatPhoneNumber} from '../../helpers/formatPhoneNumber';
+import makeError from '../../helpers/makeError';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import safeAssign from '../../helpers/object/safeAssign';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
@@ -906,7 +907,7 @@ export default class PopupPayment extends PopupElement<{
                 if(confirmed) {
                   resolve();
                 } else {
-                  const err = new Error('payment not finished');
+                  const err = makeError(undefined, 'payment not finished');
                   (err as ApiError).handled = true;
                   reject(err);
                   this.result = 'failed';
@@ -915,10 +916,10 @@ export default class PopupPayment extends PopupElement<{
             });
           }
         } catch(err) {
-          if((err as ApiError).cause === 'BOT_PRECHECKOUT_TIMEOUT') {
+          if((err as ApiError).type === 'BOT_PRECHECKOUT_TIMEOUT') {
             toastNew({langPackKey: 'Error.AnError'});
             (err as ApiError).handled = true;
-          } else if((err as ApiError).cause === 'TMP_PASSWORD_INVALID') {
+          } else if((err as ApiError).type === 'TMP_PASSWORD_INVALID') {
             passwordState = lastTmpPasword = undefined;
             simulateClickEvent(payButton);
             (err as ApiError).handled = true;

@@ -241,7 +241,7 @@ export default class PopupBoost extends PopupPeer {
       try {
         const givenBoosts = getGivenBoosts();
         const availableBoost = myBoosts.my_boosts.find((myBoost) => !myBoost.peer);
-        let type: ApiError['cause'];
+        let type: ApiError['type'];
         if(!rootScope.premium) {
           type = 'PREMIUM_ACCOUNT_REQUIRED';
         } else if(givenBoosts.length === myBoosts.my_boosts.length) {
@@ -288,7 +288,7 @@ export default class PopupBoost extends PopupPeer {
         setBoostsStatus(boostsStatus);
         setInfo();
       } catch(err) {
-        handleErrorType((err as ApiError).cause);
+        handleErrorType((err as ApiError).type);
       }
 
       return false;

@@ -83,7 +83,7 @@ export default class LazyLoadQueueBase {
       // await item.load(item.div);
       await this.loadItem(item);
     } catch(err) {
-      if(!IGNORE_ERRORS.has((err as ApiError)?.cause)) {
+      if(!IGNORE_ERRORS.has((err as ApiError)?.type)) {
         this.log.error('loadMediaQueue error:', err/* , item */);
       }
     }

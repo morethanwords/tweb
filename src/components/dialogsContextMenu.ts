@@ -269,7 +269,7 @@ export default class DialogsContextMenu {
       filterId,
       topicOrSavedId: threadId
     }).catch(async(err: ApiError) => {
-      if(err.cause === 'PINNED_DIALOGS_TOO_MUCH' || err.cause === 'PINNED_TOO_MUCH') {
+      if(err.type === 'PINNED_DIALOGS_TOO_MUCH' || err.type === 'PINNED_TOO_MUCH') {
         if(isSaved) {
           showLimitPopup('savedPin');
         } else if(threadId) {

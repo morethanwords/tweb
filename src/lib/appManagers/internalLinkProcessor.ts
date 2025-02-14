@@ -647,7 +647,7 @@ export class InternalLinkProcessor {
 
       return PopupElement.createPopup(PopupJoinChatInvite, link.invite, chatInvite);
     }, (err: ApiError) => {
-      if(err.cause === 'INVITE_HASH_EXPIRED') {
+      if(err.type === 'INVITE_HASH_EXPIRED') {
         toast(i18n('InviteExpired'));
       }
     });
@@ -685,7 +685,7 @@ export class InternalLinkProcessor {
         text: link.text
       });
     }).catch((err: ApiError) => {
-      if(err.cause === 'PHONE_NOT_OCCUPIED') {
+      if(err.type === 'PHONE_NOT_OCCUPIED') {
         toastNew({langPackKey: 'Alert.UserDoesntExists'});
       }
     });
@@ -710,7 +710,7 @@ export class InternalLinkProcessor {
         // };
         return PopupPayment.create({inputInvoice, paymentForm});
       }, (err) => {
-        if((err as ApiError).cause === 'SLUG_INVALID') {
+        if((err as ApiError).type === 'SLUG_INVALID') {
           toastNew({langPackKey: 'PaymentInvoiceLinkInvalid'});
         }
 
@@ -807,7 +807,7 @@ export class InternalLinkProcessor {
     try {
       messagesBotApp = await this.managers.appAttachMenuBotsManager.getBotApp(botId, link.appname);
     } catch(err) {
-      if((err as ApiError).cause === 'BOT_APP_INVALID') {
+      if((err as ApiError).type === 'BOT_APP_INVALID') {
         toastNew({langPackKey: 'Alert.BotAppDoesntExist'});
         return;
       } else {
@@ -843,7 +843,7 @@ export class InternalLinkProcessor {
     try {
       chatlistInvite = await this.managers.filtersStorage.checkChatlistInvite(link.slug);
     } catch(err) {
-      if((err as ApiError).cause === 'INVITE_SLUG_EXPIRED') {
+      if((err as ApiError).type === 'INVITE_SLUG_EXPIRED') {
         toastNew({langPackKey: 'SharedFolder.Link.Expired'});
         return;
       }
@@ -869,7 +869,7 @@ export class InternalLinkProcessor {
     try {
       peer = await this.managers.appUsersManager.resolveUsername(link.domain);
     } catch(err) {
-      if((err as ApiError).cause === 'USERNAME_NOT_OCCUPIED') {
+      if((err as ApiError).type === 'USERNAME_NOT_OCCUPIED') {
         toastNew({langPackKey: 'NoUsernameFound'});
       } else {
         console.error(err);

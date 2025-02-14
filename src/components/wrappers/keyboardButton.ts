@@ -330,7 +330,7 @@ export default function wrapKeyboardButton({
           button.button_id,
           requestedPeerIds
         ).catch((err: ApiError) => {
-          if(err.cause === 'CHAT_ADMIN_INVITE_REQUIRED') {
+          if(err.type === 'CHAT_ADMIN_INVITE_REQUIRED') {
             toastNew({
               langPackKey: isRequestingChannel ? 'Error.RequestPeer.NoRights.Channel' : 'Error.RequestPeer.NoRights.Group'
             });

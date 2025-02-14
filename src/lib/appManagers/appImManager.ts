@@ -384,8 +384,8 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('message_error', ({peerId, error}) => {
-      if(error.cause.includes('SLOWMODE_WAIT')) {
-        const time = +error.cause.split('_').pop();
+      if(error.type.includes('SLOWMODE_WAIT')) {
+        const time = +error.type.split('_').pop();
         confirmationPopup({
           titleLangKey: 'Slowmode',
           peerId,
@@ -855,7 +855,7 @@ export class AppImManager extends EventListenerBase<{
         openWebAppInAppBrowser(webAppOptions);
       }
     } catch(err) {
-      if((err as ApiError).cause === 'PEER_ID_INVALID' && options.attachMenuBot) {
+      if((err as ApiError).type === 'PEER_ID_INVALID' && options.attachMenuBot) {
         toastNew({
           langPackKey: 'BotAlreadyAddedToAttachMenu'
         });
@@ -1409,9 +1409,9 @@ export class AppImManager extends EventListenerBase<{
         ...options
       });
     }, (err: ApiError) => {
-      if(err.cause === 'USERNAME_NOT_OCCUPIED') {
+      if(err.type === 'USERNAME_NOT_OCCUPIED') {
         toastNew({langPackKey: 'NoUsernameFound'});
-      } else if(err.cause === 'USERNAME_INVALID') {
+      } else if(err.type === 'USERNAME_INVALID') {
         toastNew({langPackKey: 'Alert.UserDoesntExists'});
       }
     });
@@ -1670,7 +1670,7 @@ export class AppImManager extends EventListenerBase<{
     return this.backgroundPromises[storageUrl] ||= this.cacheStorage.getFile(storageUrl).then((blob) => {
       return this.backgroundPromises[storageUrl] = URL.createObjectURL(blob);
     }, canDownload ? async(err) => {
-      if((err as ApiError).cause !== 'NO_ENTRY_FOUND') {
+      if((err as ApiError).type !== 'NO_ENTRY_FOUND') {
         throw err;
       }
 

@@ -420,12 +420,12 @@ export class AppGroupCallsManager extends AppManager {
     } catch(error) {
       assumeType<ApiError>(error);
 
-      if(error.cause?.indexOf('CALL_MIGRATE') === 0) {
-        const dcId = +error.cause.match(/^(CALL_MIGRATE_)(\d+)/)[2] as DcId;
+      if(error.type?.indexOf('CALL_MIGRATE') === 0) {
+        const dcId = +error.type.match(/^(CALL_MIGRATE_)(\d+)/)[2] as DcId;
         return this._fetchRtmpState(call, retry, dcId);
       }
 
-      if(error.cause === 'GROUPCALL_INVALID' && retry < 3) {
+      if(error.type === 'GROUPCALL_INVALID' && retry < 3) {
         // this sometimes happens for some reason. retry
         return this._fetchRtmpState(call, retry + 1);
       }

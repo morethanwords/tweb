@@ -112,7 +112,7 @@ export default class AppEditBotTab extends SliderSuperTab {
           this.editPeer.handleChange();
 
           const {error} = this.usernameInputField;
-          const isPurchase = error?.cause === 'USERNAME_PURCHASE_AVAILABLE';
+          const isPurchase = error?.type === 'USERNAME_PURCHASE_AVAILABLE';
           setUsername(isPurchase ? this.usernameInputField.value : undefined);
         },
         availableText: 'EditProfile.Username.Available',

@@ -159,7 +159,7 @@ export default class PopupPaymentShipping extends PopupElement<{
             REQ_INFO_PHONE_INVALID: telInputField
           };
 
-          const inputField = errorMap[(err as ApiError).cause];
+          const inputField = errorMap[(err as ApiError).type];
           if(inputField) {
             inputField.setError();
             (err as ApiError).handled = true;

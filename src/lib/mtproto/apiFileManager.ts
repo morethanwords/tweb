@@ -257,7 +257,7 @@ export class ApiFileManager extends AppManager {
 
       // networkPromise.resolve();
     }, (error: ApiError) => {
-      if(!IGNORE_ERRORS.has(error?.cause)) {
+      if(!IGNORE_ERRORS.has(error?.type)) {
         this.log.error('downloadCheck error:', error);
       }
 
@@ -430,7 +430,7 @@ export class ApiFileManager extends AppManager {
           return promise.catch((err: ApiError) => {
             checkCancel?.();
 
-            if(err.cause === 'FILE_REFERENCE_EXPIRED') {
+            if(err.type === 'FILE_REFERENCE_EXPIRED') {
               return this.refreshReference(location as InputFileLocation.inputDocumentFileLocation, reference).then(invoke);
             }
 
@@ -979,7 +979,7 @@ export class ApiFileManager extends AppManager {
 
     let canceled = false, resolved = false;
     let errorHandler = (error: ApiError) => {
-      if(error?.cause !== 'UPLOAD_CANCELED') {
+      if(error?.type !== 'UPLOAD_CANCELED') {
         this.log.error('up error', error);
       }
 

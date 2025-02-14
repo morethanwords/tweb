@@ -134,7 +134,7 @@ export default class PopupJoinChatInvite extends PopupPeer {
     .then((chatId) => {
       this.openChat(chatId);
     }, (error) => {
-      if((error as ApiError).cause === 'INVITE_REQUEST_SENT') {
+      if((error as ApiError).type === 'INVITE_REQUEST_SENT') {
         toastNew({langPackKey: 'RequestToJoinSent'});
       }
     });

@@ -128,13 +128,14 @@ declare global {
 
   type TranslatableLanguageISO = typeof Languages[number][0];
 
-  interface Error { // * these properties won't be available when transferred to another thread
+  type ApiError = {
+    type: ErrorType,
+    stack: string,
+    message?: string,
     code?: number,
-    handled?: boolean;
+    handled?: boolean,
     originalError?: any,
-  }
-
-  type ApiError = Error & {cause: ErrorType};
+  };
 
   declare const electronHelpers: {
     openExternal(url): void;
