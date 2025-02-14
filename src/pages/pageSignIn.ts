@@ -269,7 +269,9 @@ const onFirstMount = () => {
     }, 0);
   }
 
-  getLanguageChangeButton(inputWrapper);
+  if(getCurrentAccount() === 1) {
+    getLanguageChangeButton(inputWrapper);
+  }
 
   tryAgain();
 };

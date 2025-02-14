@@ -19,6 +19,7 @@ import bytesCmp from '../helpers/bytes/bytesCmp';
 import bytesToBase64 from '../helpers/bytes/bytesToBase64';
 import textToSvgURL from '../helpers/textToSvgURL';
 import AccountController from '../lib/accounts/accountController';
+import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
 
 const FETCH_INTERVAL = 3;
 
@@ -34,7 +35,9 @@ const onFirstMount = async() => {
   const btnBack = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Cancel'});
   inputWrapper.append(btnBack);
 
-  getLanguageChangeButton(inputWrapper);
+  if(getCurrentAccount() === 1) {
+    getLanguageChangeButton(inputWrapper);
+  }
 
   const container = imageDiv.parentElement;
 
