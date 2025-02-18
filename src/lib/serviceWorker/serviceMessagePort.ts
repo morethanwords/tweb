@@ -7,12 +7,11 @@
 import type {WebPushApiManager} from '../mtproto/webPushApiManager';
 import type {PushNotificationObject} from './push';
 import type {MyUploadFile} from '../mtproto/apiFileManager';
+import type {Document, InputFileLocation, InputGroupCall} from '../../layer';
+import type {GroupCallRtmpState} from '../appManagers/appGroupCallsManager';
+import type {ActiveAccountNumber} from '../accounts/types';
 import SuperMessagePort from '../mtproto/superMessagePort';
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import {Document, InputFileLocation, InputGroupCall} from '../../layer';
-import {GroupCallRtmpState} from '../appManagers/appGroupCallsManager';
-import {ActiveAccountNumber} from '../accounts/types';
-import {ThumbCache} from '../storages/thumbs';
 
 export type ServicePushPingTaskPayload = {
   localNotifications: boolean,

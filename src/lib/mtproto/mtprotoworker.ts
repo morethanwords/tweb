@@ -132,6 +132,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private intervals: Map<number, () => any>;
 
+  private serviceWorkerRegistration: ServiceWorkerRegistration;
+
   constructor() {
     super();
 
@@ -370,14 +372,13 @@ class ApiManagerProxy extends MTProtoMessagePort {
       // const toClear: CacheStorageDbName[] = ['cachedFiles', 'cachedStreamChunks'];
       Promise.all([
         toggleStorages(false, true),
-        // sessionStorage.clear(),
         Promise.race([
           // TODO: Check here
           telegramMeWebManager.setAuthorized(false),
           pause(3000)
         ]),
-        webPushApiManager.forceUnsubscribe()
-        // Promise.all(toClear.map((cacheName) => caches.delete(cacheName)))
+        webPushApiManager.forceUnsubscribe(),
+        this.serviceWorkerRegistration?.unregister().catch(noop) // * release storages
       ]).finally(() => {
         let url = new URL(location.href);
 
@@ -483,6 +484,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       }
 
       this.log('SW registered', registration);
+      this.serviceWorkerRegistration = registration;
 
       const url = new URL(window.location.href);
       const FIX_KEY = 'swfix';

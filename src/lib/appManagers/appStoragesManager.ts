@@ -57,7 +57,7 @@ export class AppStoragesManager extends AppManager {
   public static allStoreNames = getDatabaseState(1).stores.map((store) => store.name);
 
   public static async moveAccountStorages(fromAccount: ActiveAccountNumber, toAccount: ActiveAccountNumber) {
-    for(const storeName of this.allStoreNames) {
+    const promises = this.allStoreNames.map(async(storeName) => {
       const sourceStorage = new AppStorage(getDatabaseState(fromAccount), storeName);
       const targetStorage = new AppStorage(getDatabaseState(toAccount), storeName);
 
@@ -65,14 +65,18 @@ export class AppStoragesManager extends AppManager {
 
       if(sourceEntries.length)
         await targetStorage.set(Object.fromEntries(sourceEntries));
-    }
+    });
+
+    await Promise.all(promises);
   }
 
   public static async clearAllStoresForAccount(accountNumber: ActiveAccountNumber) {
-    for(const storeName of this.allStoreNames) {
+    const promises = this.allStoreNames.map((storeName) => {
       const storage = new AppStorage(getDatabaseState(accountNumber), storeName);
-      await storage.clear();
-    }
+      return storage.clear();
+    });
+
+    await Promise.all(promises);
   }
 
   public static async shiftStorages(upTo: ActiveAccountNumber) {

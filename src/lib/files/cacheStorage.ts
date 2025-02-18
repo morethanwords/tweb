@@ -7,7 +7,6 @@
 import Modes from '../../config/modes';
 import blobConstruct from '../../helpers/blob/blobConstruct';
 import MemoryWriter from './memoryWriter';
-import FileManager from './memoryWriter';
 import FileStorage from './fileStorage';
 import makeError from '../../helpers/makeError';
 import deferredPromise from '../../helpers/cancellablePromise';
