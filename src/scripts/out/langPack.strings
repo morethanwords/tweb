@@ -754,6 +754,7 @@
 "MultiAccount.ShowNotificationsFromCaption" = "Turn this off if you want to receive notifications only from the account you are currently using.";
 "MultiAccount.AllAccounts" = "All Accounts";
 "MultiAccount.AccountsLimitDescription" = "You have reached the limit of **3** connected accounts. You can add more by subscribing to **Telegram Premium**.";
+"CtrlFSearchTipMac" = "Tip: Use **Cmd+F** to open Search";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";
@@ -2167,6 +2168,8 @@
 "Report2CommentOptional" = "Add Comment (Optional)";
 "Report2Send" = "Send Report";
 "Reported2" = "Telegram moderators will review your report. Thank you!";
+"UnreadMessages" = "Unread Messages";
+"ChannelsTab" = "Channels";
 "AccountSettings.Filters" = "Chat Folders";
 "AccountSettings.Notifications" = "Notifications and Sounds";
 "AccountSettings.PrivacyAndSecurity" = "Privacy and Security";
