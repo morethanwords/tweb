@@ -378,6 +378,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
           pause(3000)
         ]),
         webPushApiManager.forceUnsubscribe(),
+        this.invokeVoid('terminate', undefined), // * terminate mtproto worker
         this.serviceWorkerRegistration?.unregister().catch(noop) // * release storages
       ]).finally(() => {
         let url = new URL(location.href);

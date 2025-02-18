@@ -39,7 +39,8 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   tabState: (payload: TabState, source: MessageEventSource) => void,
   createProxyWorkerURLs: (payload: {originalUrl: string, blob: Blob}) => string[],
   setInterval: (timeout: number) => number,
-  clearInterval: (intervalId: number) => void
+  clearInterval: (intervalId: number) => void,
+  terminate: () => void
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,

@@ -119,6 +119,12 @@ port.addMultipleEventsListeners({
 
   clearInterval: (intervalId) => {
     clearInterval(intervalId);
+  },
+
+  terminate: () => {
+    if(typeof(SharedWorkerGlobalScope) !== 'undefined') {
+      self.close();
+    }
   }
 
   // socketProxy: (task) => {
