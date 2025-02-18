@@ -291,9 +291,11 @@ async function loadOldState(): Promise<LoadStateResult> {
   log.warn('promises', performance.now() - totalPerf);
 
   const commonWriter = CommonStateWriter(log);
-  if(isObject(arr[0])) { // * migrate values to settings
-    arr.splice(0, migrateToStateKeys.length).forEach((value, i) => {
-      arr[0][migrateToStateKeys[i]] = value;
+  const migrateToStateSettingsValues = arr.splice(0, migrateToStateKeys.length);
+  const settingsKeyIndex = COMMON_KEYS.indexOf('settings');
+  if(isObject(arr[settingsKeyIndex])) { // * migrate values to settings
+    migrateToStateSettingsValues.forEach((value, i) => {
+      arr[settingsKeyIndex][migrateToStateKeys[i]] = value;
     });
   }
   commonWriter.readFromArray(arr.splice(0, COMMON_KEYS.length));
@@ -338,7 +340,7 @@ async function loadOldState(): Promise<LoadStateResult> {
     oldVersion,
     resetStorages: writer.resetStorages,
     common: commonWriter.state,
-    userId: typeof(auth) === 'number' ? auth : auth?.id
+    userId: typeof(auth) === 'number' ? auth : (auth?.id ? +auth.id : undefined)
   };
 }
 
@@ -384,7 +386,7 @@ async function moveAccessKeysToMultiAccountFormat() {
   // ]);
 
   data['auth_key_fingerprint'] = fingerprint;
-  data['userId'] = typeof(userAuth) === 'string' || typeof(userAuth) === 'number' ? +userAuth : userAuth?.id;
+  data['userId'] = typeof(userAuth) === 'string' || typeof(userAuth) === 'number' ? +userAuth : (userAuth?.id ? +userAuth.id : undefined);
 
   await AccountController.update(1, data, true);
 }
