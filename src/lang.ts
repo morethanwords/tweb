@@ -3127,7 +3127,8 @@ const lang = {
   'Hls.SaveIn720': 'Save in 720p',
   'Hls.SaveIn1080': 'Save in 1080p',
   'PlaybackRateNormal': 'Normal',
-  'PlaybackRateDragTip': 'Hold and move the cursor left or right to change the speed.'
+  'PlaybackRateDragTip': 'Hold and move the cursor left or right to change the speed.',
+  'Text.Context.Copy.Email': 'Copy Email'
 };
 
 export default lang;

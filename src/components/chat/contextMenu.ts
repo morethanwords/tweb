@@ -95,6 +95,7 @@ export default class ChatContextMenu {
   private isTextFromMultipleMessagesSelected: boolean;
   private isAnchorTarget: boolean;
   private isUsernameTarget: boolean;
+  private isEmailTarget: boolean;
   private isSponsored: boolean;
   private isOverBubble: boolean;
   private isTag: boolean;
@@ -223,6 +224,7 @@ export default class ChatContextMenu {
         (this.target as HTMLAnchorElement).target === '_blank' ||
         this.target.classList.contains('anchor-url')
       );
+      this.isEmailTarget = this.isAnchorTarget && (this.target as HTMLAnchorElement).href.startsWith('mailto:');
       this.isUsernameTarget = this.target.tagName === 'A' && this.target.classList.contains('mention');
       this.isTag = !!tagReactionElement;
       this.reactionElement = tagReactionElement as ReactionElement;
@@ -625,7 +627,7 @@ export default class ChatContextMenu {
       withSelection: true
     }, {
       icon: 'copy',
-      text: 'CopyLink',
+      text: this.isEmailTarget ? 'Text.Context.Copy.Email' : 'CopyLink',
       onClick: this.onCopyAnchorLinkClick,
       verify: () => this.isAnchorTarget,
       withSelection: true
