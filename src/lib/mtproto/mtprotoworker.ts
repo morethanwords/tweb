@@ -34,7 +34,7 @@ import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import {makeWorkerURL} from '../../helpers/setWorkerProxy';
 import ServiceWorkerURL from '../../../sw?worker&url';
-import setDeepProperty, {splitDeepPath} from '../../helpers/object/setDeepProperty';
+import setDeepProperty, {joinDeepPath, splitDeepPath} from '../../helpers/object/setDeepProperty';
 import getThumbKey from '../storages/utils/thumbs/getThumbKey';
 import {NULL_PEER_ID, TEST_NO_STREAMING, THUMB_TYPE_FULL} from './mtproto_config';
 import generateEmptyThumb from '../storages/utils/thumbs/generateEmptyThumb';
@@ -150,6 +150,21 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     this.processMirrorTaskMap = {
       messages: (payload) => {
+        if(!payload.key) { // * mirroring all messages at once
+          for(const key in payload.value) {
+            for(const mid in payload.value[key]) {
+              this.processMirrorTaskMap.messages({
+                name: payload.name,
+                accountNumber: payload.accountNumber,
+                key: joinDeepPath(key, mid),
+                value: payload.value[key][mid] as any
+              });
+            }
+          }
+
+          return;
+        }
+
         const message = payload.value as Message.message | Message.messageService;
         let mid: number, groupedId: string;
         if(message) {
