@@ -916,11 +916,16 @@ export class AppMessagesManager extends AppManager {
     // ! only for internal use
     processAfter?: typeof processAfter
   }>) {
-    const file = options.file;
+    let file = options.file;
     let {peerId} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     this.checkSendOptions(options);
+
+    const isDocument = !(file instanceof File) && !(file instanceof Blob);
+    if(isDocument) {
+      file = this.appDocsManager.getDoc((file as MyDocument).id) || file;
+    }
 
     const hadMessageBefore = !!options.groupedMessage;
     const message = options.groupedMessage || this.generateOutgoingMessage(peerId, options);
@@ -929,7 +934,6 @@ export class AppMessagesManager extends AppManager {
 
     const fileType = (file as Document.document).mime_type || file.type;
     const fileName = file instanceof File ? file.name : '';
-    const isDocument = !(file instanceof File) && !(file instanceof Blob);
     let caption = options.caption || '';
 
     this.log('sendFile', file, fileType);
@@ -1161,7 +1165,7 @@ export class AppMessagesManager extends AppManager {
       sendEntites = undefined;
     }
 
-    const uploadingFileName = !isDocument ? getFileNameForUpload(file) : undefined;
+    const uploadingFileName = !isDocument ? getFileNameForUpload(file as File | Blob) : undefined;
     if(uploadingFileName) {
       this.uploadFilePromises[uploadingFileName] = sentDeferred;
     }
@@ -1197,7 +1201,7 @@ export class AppMessagesManager extends AppManager {
       if(isDocument) {
         const inputMedia: InputMedia = {
           _: 'inputMediaDocument',
-          id: getDocumentInput(file),
+          id: getDocumentInput(file as MyDocument),
           pFlags: {}
         };
 
@@ -1320,9 +1324,7 @@ export class AppMessagesManager extends AppManager {
     });
 
     if(!options.isGroupedItem) {
-      sentDeferred.then((inputMedia) => {
-        this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
-
+      const cb = (inputMedia: Awaited<typeof sentDeferred>) => {
         return this.apiManager.invokeApi('messages.sendMedia', {
           background: options.background,
           peer: this.appPeersManager.getInputPeerById(peerId),
@@ -1340,7 +1342,23 @@ export class AppMessagesManager extends AppManager {
           effect: options.effect
         }).then((updates) => {
           this.apiUpdatesManager.processUpdateMessage(updates);
-        }, (error: ApiError) => {
+        });
+      };
+
+      sentDeferred.then((inputMedia) => {
+        this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+
+        let promise: Promise<void>;
+        if(inputMedia._ === 'inputMediaDocument') {
+          promise = this.apiFileManager.invokeApiWithReference({
+            context: inputMedia.id as InputDocument.inputDocument,
+            callback: () => cb(inputMedia)
+          });
+        } else {
+          promise = cb(inputMedia);
+        }
+
+        return promise.catch((error: ApiError) => {
           if(attachType === 'photo' &&
             (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
             error.type === 'PHOTO_SAVE_FILE_INVALID')) {
@@ -3840,7 +3858,7 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    const mediaContext: ReferenceContext = {
+    const mediaContext: ReferenceContext = options.isOutgoing ? undefined : {
       type: 'message',
       peerId,
       messageId: mid

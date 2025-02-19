@@ -201,6 +201,7 @@ export class ReferenceDatabase extends AppManager {
       [context, reference] = c;
     }
 
+    const hex = bytesToHex(reference);
     let promise: Promise<any>;
     switch(context?.type) {
       case 'message': {
@@ -279,9 +280,9 @@ export class ReferenceDatabase extends AppManager {
       }
     }
 
-    const hex = bytesToHex(reference);
     this.log('refreshReference: refreshing reference:', hex);
-    return promise.then(() => {
+
+    const onFinish = () => {
       const newHex = bytesToHex(reference);
       this.log('refreshReference: refreshed, reference before:', hex, 'after:', newHex);
       if(hex !== newHex) {
@@ -298,7 +299,9 @@ export class ReferenceDatabase extends AppManager {
       this.log.error('refreshReference: no new context, reference before:', hex, 'after:', newHex, context);
 
       throw makeError('NO_NEW_CONTEXT');
-    });
+    };
+
+    return promise.then(onFinish, onFinish);
   }
 
   /* public replaceReference(oldReference: ReferenceBytes, newReference: ReferenceBytes) {

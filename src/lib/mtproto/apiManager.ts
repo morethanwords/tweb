@@ -623,7 +623,7 @@ export class ApiManager extends ApiManagerMethods {
 
       return promise.catch((error: ApiError) => {
         // if(!options.ignoreErrors) {
-        if(error.type !== 'FILE_REFERENCE_EXPIRED'/*  && error.type !== 'MSG_WAIT_FAILED' */) {
+        if(error.type !== 'FILE_REFERENCE_EXPIRED' && error.type !== 'FILE_REFERENCE_INVALID'/*  && error.type !== 'MSG_WAIT_FAILED' */) {
           this.log.error('Error', error.code, error.type, this.baseDcId, dcId, method, params);
         }
 

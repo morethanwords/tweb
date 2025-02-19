@@ -14,6 +14,7 @@ import getDocumentInput from './utils/docs/getDocumentInput';
 
 export default class AppGifsManager extends AppManager {
   private gifs: MaybePromise<Document.document[]>;
+  // private TEST_REFERENCE = false;
 
   protected after() {
     this.rootScope.addEventListener('user_auth', () => {
@@ -38,9 +39,14 @@ export default class AppGifsManager extends AppManager {
     return this.gifs ??= this.apiManager.invokeApi('messages.getSavedGifs').then((res) => {
       assumeType<MessagesSavedGifs.messagesSavedGifs>(res);
       const referenceContext: ReferenceContext = {type: 'savedGifs'};
-      return this.gifs = res.gifs.map((doc) => {
+      this.gifs = res.gifs.map((doc) => {
+        // if(this.TEST_REFERENCE) {
+        //   (doc as Document.document).file_reference[0] = 5;
+        // }
         return this.appDocsManager.saveDoc(doc, referenceContext);
       }).filter(Boolean);
+      // this.TEST_REFERENCE = false;
+      return this.gifs;
     });
   }
 
