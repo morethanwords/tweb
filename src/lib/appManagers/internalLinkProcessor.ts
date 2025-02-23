@@ -557,6 +557,25 @@ export class InternalLinkProcessor {
         return this.processInternalLink(link);
       }
     });
+
+    addAnchorListener<{
+      uriParams: {
+        url?: string,
+        text?: string
+      }
+    }>({
+      name: 'msg_url',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.SHARE,
+          url: uriParams.url,
+          text: uriParams.text
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
   }
 
   private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {

@@ -9,10 +9,12 @@ import wrapUrl from '../lib/richTextProcessor/wrapUrl';
 import cancelEvent from './dom/cancelEvent';
 import parseUriParams from './string/parseUriParams';
 
+// * https://core.telegram.org/api/links
+
 type InternalLinkAnchorType = 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
   'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
   'addemoji' | 'setMediaTimestamp' | 'addlist' | 'boost' | 'premium_offer' | 'giftcode' |
-  'm' | 'message' | 'stars_topup' | 'share';
+  'm' | 'message' | 'stars_topup' | 'share' | 'msg_url';
 
 export const UNSAFE_ANCHOR_LINK_TYPES: Set<InternalLinkAnchorType> = new Set([
   'showMaskedAlert',

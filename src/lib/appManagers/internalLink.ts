@@ -6,6 +6,8 @@
 
 import type {ChatSetPeerOptions} from './appImManager';
 
+// * https://core.telegram.org/api/links
+
 export enum INTERNAL_LINK_TYPE {
   MESSAGE,
   PRIVATE_POST,

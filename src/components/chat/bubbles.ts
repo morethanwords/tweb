@@ -4152,6 +4152,11 @@ export default class ChatBubbles {
           });
         }
 
+        // * set draft if already in this peer
+        if(options.text) {
+          this.managers.appDraftsManager.setDraft(this.peerId, this.chat.threadId, options.text);
+        }
+
         return null;
       }
     } else {
