@@ -266,14 +266,14 @@ export class AppDocsManager extends AppManager {
       doc.supportsStreaming = true;
 
       const cacheContext = this.thumbsStorage.getCacheContext(doc);
-      const supportsHlsStreaming = (altDocuments || []).some((doc) => isDocumentHlsQualityFile(doc));
+      // const supportsHlsStreaming = (altDocuments || []).some((doc) => isDocumentHlsQualityFile(doc));
 
       /**
        * Need to override when supportsHlsStreaming=true as for some reason the message.media
        * comes first without alt_documents, and later comes with them
        */
-      if(!cacheContext.url || supportsHlsStreaming) {
-        this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc, {supportsHlsStreaming}), 0);
+      if(!cacheContext.url/*  || supportsHlsStreaming */) {
+        this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc/* , {supportsHlsStreaming} */), 0);
       }
     } else {
       doc.supportsStreaming = false;

@@ -580,7 +580,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
         },
 
         hello: (payload, source) => {
+          this.log('got hello from service worker');
           this.serviceMessagePort.resendLockTask(source);
+          this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
         },
 
         share: (payload) => {

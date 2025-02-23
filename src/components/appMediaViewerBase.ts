@@ -73,6 +73,7 @@ import {getQualityFilesEntries} from '../lib/hls/createHlsVideoSource';
 import {snapQualityHeight} from '../lib/hls/snapQualityHeight';
 import {ButtonMenuItemWithAuxiliaryText} from '../lib/mediaPlayer/qualityLevelsSwitchButton';
 import formatBytes from '../helpers/formatBytes';
+import getDocumentURL from '../lib/appManagers/utils/docs/getDocumentURL';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -1662,6 +1663,7 @@ export default class AppMediaViewerBase<
     const isLiveStream = media._ === 'inputGroupCall';
     const isDocument = media._ === 'document';
     const isVideo = isDocument && media.mime_type && ((['video', 'gif'] as MyDocument['type'][]).includes(media.type) || media.mime_type.indexOf('video/') === 0);
+    let isHlsStream: boolean;
 
     this.log('openMedia', media, fromId, prevTargets, nextTargets, isLiveStream, isDocument, isVideo);
 
@@ -1699,10 +1701,11 @@ export default class AppMediaViewerBase<
       container.replaceChildren();
     }
 
+    let changeQualityOptionsPromise: Promise<void>;
     if(media._ === 'document')
-      this.loadQualityLevelsDownloadOptions(media);
+      changeQualityOptionsPromise = this.loadQualityLevelsDownloadOptions(media);
     else
-      this.removeQualityOptions();
+      changeQualityOptionsPromise = Promise.resolve(this.removeQualityOptions());
 
     const wasActive = fromRight !== 0;
     if(wasActive) {
@@ -1809,6 +1812,7 @@ export default class AppMediaViewerBase<
 
     const getCacheContext = (type = size?.type) => {
       if(isLiveStream) return {url: getRtmpStreamUrl(media)};
+      if(isHlsStream) return {url: getDocumentURL(media as MyDocument, {supportsHlsStreaming: true})};
       return this.managers.thumbsStorage.getCacheContext(media, type);
     };
 
@@ -1833,6 +1837,8 @@ export default class AppMediaViewerBase<
       // return; // set and don't move
       // if(wasActive) return;
         // return;
+
+        isHlsStream = this.hasQualityOptions;
 
         onMoverSet?.();
 
@@ -2120,7 +2126,7 @@ export default class AppMediaViewerBase<
         // } else createPlayer();
       });
 
-      setMoverPromise = thumbPromise.then(set);
+      setMoverPromise = Promise.all([thumbPromise, changeQualityOptionsPromise]).then(set);
     } else {
       const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
       // return; // set and don't move
