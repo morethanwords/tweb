@@ -1,0 +1,14 @@
+# Base image
+FROM node:18
+
+# Set the working directory in the container
+WORKDIR /app
+
+COPY ../package.json ./
+
+# Install app dependencies
+RUN npm install -g pnpm
+
+RUN pnpm install
+
+
