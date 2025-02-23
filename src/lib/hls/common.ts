@@ -10,6 +10,5 @@ export const swLog = logger('SW-HLS');
 
 export function isDocumentHlsQualityFile(doc: Document | undefined) {
   assumeType<Document.document | undefined>(doc);
-  // "application/x-mpegurl" missing from union MTMimeType wtf
-  return (doc?.mime_type as string) === QUALITY_FILE_MIME_TYPE;
+  return doc?.mime_type === QUALITY_FILE_MIME_TYPE;
 }

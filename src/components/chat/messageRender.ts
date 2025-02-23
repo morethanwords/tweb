@@ -5,7 +5,8 @@
  */
 
 import type LazyLoadQueue from '../lazyLoadQueue';
-import {formatFullSentTimeRaw, formatTime, getFullDate} from '../../helpers/date';
+import {formatFullSentTimeRaw, formatTime} from '../../helpers/date';
+import {getFullDate} from '../../helpers/date/getFullDate';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import {Middleware} from '../../helpers/middleware';
 import formatNumber from '../../helpers/number/formatNumber';

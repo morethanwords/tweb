@@ -208,8 +208,8 @@ export class AppManagersManager {
         requestAltDocsByDoc(payload) {
           return callbackify(appManagersManager.getManagersByAccount(), (managersByAccount) => {
             const {docId, accountNumber} = payload;
-            const {appMessagesManager} = managersByAccount[accountNumber];
-            return appMessagesManager.altDocsByMainMediaDocument.get(docId.toString());
+            const {appDocsManager} = managersByAccount[accountNumber];
+            return appDocsManager.getAltDocsByDocument(docId);
           });
         }
       });

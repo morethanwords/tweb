@@ -1,3 +1,4 @@
+import {getEnvironment} from '../../environment/utils';
 import assumeType from '../../helpers/assumeType';
 import {Document, DocumentAttribute} from '../../layer';
 
@@ -15,7 +16,11 @@ export function createHlsVideoSource(
 ): string | null {
   // const altDocs = getAltDocsFromMessage(message);
 
-  const qualityEntries = getQualityFilesEntries(altDocs);
+  let qualityEntries = getQualityFilesEntries(altDocs);
+
+  if(!getEnvironment().IS_AV1_SUPPORTED) {
+    qualityEntries = qualityEntries.filter((entry) => entry.codec !== 'av01');
+  }
 
   if(!qualityEntries.length) return null;
 
@@ -42,8 +47,8 @@ export function getQualityFilesEntries(altDocs: Document.document[]) {
   const videoAttributes = getVideoAttributesFromAltDocs(altDocs);
   const qualityURLs = getQualityURLsFromAltDocs(altDocs);
 
-  return Array.from(videoAttributes.entries()).map(([id, attr]) => {
-    const {w = FALLBACK_WIDTH, h = FALLBACK_HEIGHT, duration = 0} = attr;
+  return Object.entries(videoAttributes).map(([id, attr]) => {
+    const {w = FALLBACK_WIDTH, h = FALLBACK_HEIGHT, duration = 0, video_codec: codec} = attr;
     const {size} = altDocs.find((doc) => doc.id.toString() === id);
 
     const bandwidth = (duration > 0 ? size / duration * 8 : FALLBACK_BANDWIDTH) | 0;
@@ -54,32 +59,33 @@ export function getQualityFilesEntries(altDocs: Document.document[]) {
       h,
       duration,
       bandwidth,
-      url: qualityURLs.get(id)
-    }
+      url: qualityURLs[id],
+      codec
+    };
   });
 }
 
 function getVideoAttributesFromAltDocs(altDocs: Document.document[]) {
-  const result: Map<string, DocumentAttribute.documentAttributeVideo> = new Map();
+  const result: {[docId: DocId]: DocumentAttribute.documentAttributeVideo} = {};
 
   for(const doc of altDocs) {
     const videoAttribute = doc?.attributes?.find((attr) => attr._ === 'documentAttributeVideo');
     if(!videoAttribute) continue;
     assumeType<DocumentAttribute.documentAttributeVideo>(videoAttribute);
 
-    result.set(doc.id.toString(), videoAttribute);
+    result[doc.id] = videoAttribute;
   }
 
   return result;
 }
 
 function getQualityURLsFromAltDocs(altDocs: Document.document[]) {
-  const result: Map<string, string> = new Map();
+  const result: {[docId: DocId]: string} = {};
 
   for(const doc of altDocs) {
     if(!isDocumentHlsQualityFile(doc)) continue;
 
-    result.set(getTargetDocIdForQualityFile(doc), getURLForQualityFile(doc));
+    result[getTargetDocIdForQualityFile(doc)] = getURLForQualityFile(doc);
   }
 
   return result;

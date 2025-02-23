@@ -1584,7 +1584,7 @@ export default class AppMediaViewerBase<
   protected async loadQualityLevelsDownloadOptions(doc: MyDocument) {
     this.removeQualityOptions();
 
-    const altDocs = await this.managers.appMessagesManager.getAltDocsByDocument(doc);
+    const altDocs = await this.managers.appDocsManager.getAltDocsByDocument(doc.id);
     if(!altDocs) return;
 
     const qualityEntries = getQualityFilesEntries(altDocs);

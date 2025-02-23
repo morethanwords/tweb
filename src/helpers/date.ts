@@ -6,10 +6,9 @@
 
 import {MOUNT_CLASS_TO} from '../config/debug';
 import I18n, {i18n} from '../lib/langPack';
+import {days, months} from './date/common';
 import capitalizeFirstLetter from './string/capitalizeFirstLetter';
 
-export const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-export const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 export const monthsLocalized = months.slice();
 export const daysLocalized = days.slice();
 
@@ -174,23 +173,6 @@ export function formatTime(date: Date) {
 }
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.formatDateAccordingToTodayNew = formatDateAccordingToTodayNew);
-
-export const getFullDate = (date: Date, options: Partial<{
-  noTime: true,
-  noSeconds: true,
-  monthAsNumber: true,
-  leadingZero: true,
-  shortYear: boolean
-}> = {}) => {
-  const joiner = options.monthAsNumber ? '.' : ' ';
-  const time = ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + (options.noSeconds ? '' : ':' + ('0' + date.getSeconds()).slice(-2));
-  const fullYear = date.getFullYear();
-
-  return (options.leadingZero ? ('0' + date.getDate()).slice(-2) : date.getDate()) +
-    joiner + (options.monthAsNumber ? ('0' + (date.getMonth() + 1)).slice(-2) : months[date.getMonth()]) +
-    joiner + (('' + fullYear).slice(options.shortYear ? 2 : 0)) +
-    (options.noTime ? '' : ', ' + time);
-};
 
 export function formatMonthsDuration(months: number, bold?: boolean) {
   const isYears = months >= 12 && !(months % 12);

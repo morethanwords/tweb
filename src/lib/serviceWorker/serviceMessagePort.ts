@@ -10,6 +10,7 @@ import type {MyUploadFile} from '../mtproto/apiFileManager';
 import type {Document, InputFileLocation, InputGroupCall} from '../../layer';
 import type {GroupCallRtmpState} from '../appManagers/appGroupCallsManager';
 import type {ActiveAccountNumber} from '../accounts/types';
+import type {getEnvironment} from '../../environment/utils';
 import SuperMessagePort from '../mtproto/superMessagePort';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 
@@ -48,6 +49,7 @@ export type ServiceEvent = {
 
 export default class ServiceMessagePort<Master extends boolean = false> extends SuperMessagePort<{
   // from main thread to service worker
+  environment: (environment: ReturnType<typeof getEnvironment>) => void,
   notificationsClear: () => void,
   toggleStorages: (payload: {enabled: boolean, clearWrite: boolean}) => void,
   pushPing: (payload: ServicePushPingTaskPayload, source: MessageEventSource, event: MessageEvent) => void,

@@ -22,6 +22,7 @@ import {get500ErrorResponse} from './errors';
 import {onHlsStreamFetch} from '../hls/onHlsStreamFetch';
 import {onHlsPlaylistFetch} from '../hls/onHlsPlaylistFetch';
 import {watchHlsStreamChunksLifetime} from '../hls/fetchAndConcatFileParts';
+import {setEnvironment} from '../../environment/utils';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -76,6 +77,10 @@ const onWindowConnected = (source: WindowClient) => {
 
 export const serviceMessagePort = new ServiceMessagePort<false>();
 serviceMessagePort.addMultipleEventsListeners({
+  environment: (environment) => {
+    setEnvironment(environment);
+  },
+
   notificationsClear: closeAllNotifications,
 
   toggleStorages: ({enabled, clearWrite}) => {

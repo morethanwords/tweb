@@ -128,7 +128,7 @@ async function getButtonMenuQualityOptions(
   const hls = hlsInstancesByVideo.get(video);
   if(!hls) return [];
 
-  const deferredLevels = deferredPromise<Level[]>()
+  const deferredLevels = deferredPromise<Level[]>();
 
   const {default: Hls} = await import('hls.js');
 
@@ -164,7 +164,7 @@ async function getButtonMenuQualityOptions(
       emptyIcon: true,
       regularText: ButtonMenuItemQualityText(height) as HTMLElement,
       onClick
-    }
+    };
   });
 
   const result: ButtonMenuItemOptionsVerifiable[] = [
@@ -190,5 +190,5 @@ function HdSvg() {
       <rect width="14" height="10" rx="2" fill="currentColor"/>
       <path fill-rule="evenodd" clip-rule="evenodd" d="M3.5 2.5C3.5 2.08579 3.16421 1.75 2.75 1.75C2.33579 1.75 2 2.08579 2 2.5V5V7.5C2 7.91421 2.33579 8.25 2.75 8.25C3.16421 8.25 3.5 7.91421 3.5 7.5V5.75H5V7.5C5 7.91421 5.33579 8.25 5.75 8.25C6.16421 8.25 6.5 7.91421 6.5 7.5V5V2.5C6.5 2.08579 6.16421 1.75 5.75 1.75C5.33579 1.75 5 2.08579 5 2.5V4.25H3.5V2.5ZM8.25 1.75C7.83579 1.75 7.5 2.08579 7.5 2.5V7.5C7.5 7.91421 7.83579 8.25 8.25 8.25H9.75C11.2688 8.25 12.5 7.01878 12.5 5.5V4.5C12.5 2.98122 11.2688 1.75 9.75 1.75H8.25ZM9.75 6.75H9V3.25H9.75C10.4404 3.25 11 3.80964 11 4.5V5.5C11 6.19036 10.4404 6.75 9.75 6.75Z" fill="black"/>
     </svg>
-  )
+  );
 }

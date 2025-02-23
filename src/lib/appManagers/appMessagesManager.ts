@@ -79,7 +79,6 @@ import getUnreadReactions from './utils/messages/getUnreadReactions';
 import isMentionUnread from './utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
 import commonStateStorage from '../commonStateStorage';
-import {isDocumentHlsQualityFile} from '../hls/common';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -368,8 +367,6 @@ export class AppMessagesManager extends AppManager {
   private historyMaxIdSubscribed: Map<HistoryStorageKey, number> = new Map();
 
   private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
-
-  public altDocsByMainMediaDocument: Map<string, Document.document[]> = new Map();
 
   protected after() {
     this.clear(true);
@@ -3980,11 +3977,12 @@ export class AppMessagesManager extends AppManager {
       let migrateFrom: PeerId, migrateTo: PeerId;
 
       if((action as MessageAction.messageActionChatEditPhoto).photo) {
-        (action as MessageAction.messageActionChatEditPhoto).photo = this.appPhotosManager.savePhoto((action as MessageAction.messageActionChatEditPhoto).photo, mediaContext);
+        (action as MessageAction.messageActionChatEditPhoto).photo =
+          this.appPhotosManager.savePhoto((action as MessageAction.messageActionChatEditPhoto).photo, mediaContext);
       }
 
-      if((action as any).document) {
-        (action as any).document = this.appDocsManager.saveDoc((action as any).photo, mediaContext);
+      if('document' in action) {
+        action.document = this.appDocsManager.saveDoc(action.document as Document, mediaContext);
       }
 
       switch(action._) {
@@ -4188,14 +4186,7 @@ export class AppMessagesManager extends AppManager {
         } else {
           const originalDoc = media.document;
 
-          const supportsHlsStreaming = (media.alt_documents || []).some((doc) => isDocumentHlsQualityFile(doc));
-
-          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext, supportsHlsStreaming); // 11.04.2020 warning
-          // ??? 11.04.2020 warning
-          media.alt_documents &&= media.alt_documents?.map((altDoc) =>
-            this.appDocsManager.saveDoc(altDoc, mediaContext)).filter(Boolean) || []; // idk why but sometimes there is [undefined] in the alt_documents
-
-          if(media.alt_documents) this.altDocsByMainMediaDocument.set(media.document.id.toString(), media.alt_documents as Document.document[]);
+          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext, media.alt_documents);
 
           if(!media.document && originalDoc._ !== 'documentEmpty') {
             unsupported = true;
@@ -8634,10 +8625,6 @@ export class AppMessagesManager extends AppManager {
     }
 
     return this.factCheckBatcher.addToBatch(peerId, mid);
-  }
-
-  public getAltDocsByDocument(doc: Document.document) {
-    return this.altDocsByMainMediaDocument.get(doc.id.toString());
   }
 }
 

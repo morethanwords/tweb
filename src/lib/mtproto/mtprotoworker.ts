@@ -481,6 +481,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.lastServiceWorker && this.serviceMessagePort.detachPort(this.lastServiceWorker);
     this.serviceMessagePort.attachSendPort(this.lastServiceWorker = serviceWorker);
     this.serviceMessagePort.invokeVoid('hello', undefined);
+    this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
   }
 
   private _registerServiceWorker() {
