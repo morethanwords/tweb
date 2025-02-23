@@ -4,8 +4,7 @@ export default function spoiler(text: string): string {
 
   const out: string[] = [];
   for(let i = 0; i < text.length; ++i) {
-    const char = text.charCodeAt(i);
-    out.push(chars[char % charsLength]);
+    out.push(chars[(Math.random() * 1000 | 0) % charsLength]);
   }
 
   return out.join('');
