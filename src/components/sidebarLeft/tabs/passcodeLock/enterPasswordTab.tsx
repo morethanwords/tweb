@@ -9,15 +9,16 @@ import PasswordInputField from '../../../passwordInputField';
 
 import {useSuperTab} from './superTabProvider';
 import {LottieAnimation} from './lottieAnimation';
-import type {AppPasscodeEnterPasswordTab as AppPasscodeEnterPasswordTabType} from '.';
+import type {AppPasscodeEnterPasswordTab} from '.';
 
 
 import commonStyles from './common.module.scss';
 
+type AppPasscodeEnterPasswordTabClass = typeof AppPasscodeEnterPasswordTab;
 
 const EnterPasswordTab = () => {
   const [value, setValue] = createSignal('');
-  const [tab, {AppPasscodeEnterPasswordTab}] = useSuperTab<typeof AppPasscodeEnterPasswordTabType>();
+  const [tab, {AppPasscodeEnterPasswordTab}] = useSuperTab<AppPasscodeEnterPasswordTabClass>();
 
   const isFirst = !tab.payload || !tab.payload.passcode;
 

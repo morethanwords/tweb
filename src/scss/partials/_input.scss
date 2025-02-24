@@ -565,6 +565,10 @@ button:focus {
         // ! меньше 1rem будет зумить поле
         font-size: 1rem;
       }
+
+      &::-ms-reveal {
+        display: none; // Remove the reveal password eye in Edge browsers
+      }
     }
   }
   
