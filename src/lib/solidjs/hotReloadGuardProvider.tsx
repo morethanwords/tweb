@@ -7,6 +7,7 @@ import EmoticonsSearch from '../../components/emoticonsDropdown/search';
 import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import showLimitPopup from '../../components/popups/limit';
 
+import lottieLoader from '../rlottie/lottieLoader';
 import rootScope from '../rootScope';
 
 
@@ -21,7 +22,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       AppChatFoldersTab,
       EmoticonsSearch,
       wrapStickerSetThumb,
-      showLimitPopup
+      showLimitPopup,
+      lottieLoader
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

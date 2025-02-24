@@ -40,6 +40,7 @@ import PopupPremium from '../../popups/premium';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
 import AppPrivacyMessagesTab from './privacy/messages';
+import {AppPasscodeLockTab} from './passcodeLock';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -109,6 +110,19 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       const twoFactorRow = new Row(twoFactorRowOptions);
       twoFactorRow.freezed = true;
 
+      const passcodeLockRowOptions: ConstructorParameters<typeof Row>[0] = {
+        icon: 'key',
+        titleLangKey: 'TwoStepVerification' as LangPackKey,
+        subtitleLangKey: SUBTITLE,
+        clickable: (e: Event) => {
+          const tab = this.slider.createTab(AppPasscodeLockTab);
+          tab.open();
+        },
+        listenerSetter: this.listenerSetter
+      };
+      const passcodeLockRow = new Row(passcodeLockRowOptions);
+      // passcodeLockRow.freezed = true;
+
       const activeSessionsRow = this.activeSessionsRow = new Row({
         icon: 'activesessions',
         titleLangKey: 'SessionsTitle',
@@ -140,7 +154,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       });
       websitesRow.freezed = true;
 
-      section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionsRow.container, websitesRow.container);
+      section.content.append(blockedUsersRow.container, passcodeLockRow.container, twoFactorRow.container, activeSessionsRow.container, websitesRow.container);
       this.scrollable.append(section.container);
 
       const setBlockedCount = (count: number) => {

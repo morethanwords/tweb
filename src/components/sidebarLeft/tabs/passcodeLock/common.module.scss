@@ -1,0 +1,21 @@
+.LottieAnimation {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-width: var(--size, 100%);
+
+  margin: 0 auto;
+  margin-top: 1.5rem;
+}
+
+.LargeButtonWrapper {
+  padding: 0.5rem;
+  padding-bottom: 1rem;
+}
+
+.LargeButton {
+  height: 3rem;
+  font-size: 1rem;
+
+  text-transform: uppercase;
+  font-weight: 600;
+}

@@ -3128,7 +3128,14 @@ const lang = {
   'Hls.SaveIn1080': 'Save in 1080p',
   'PlaybackRateNormal': 'Normal',
   'PlaybackRateDragTip': 'Hold and move the cursor left or right to change the speed.',
-  'Text.Context.Copy.Email': 'Copy Email'
+  'Text.Context.Copy.Email': 'Copy Email',
+  'PasscodeLock.Title': 'Passcode',
+  'PasscodeLock.Description': 'When a passcode is set, a lock icon appears above your chat list. Tap it to lock your Telegram.',
+  'PasscodeLock.TurnOn': 'Turn Passcode On',
+  'PasscodeLock.Notice': 'Note: if you forget your passcode, you\'ll need to log out.',
+  'PasscodeLock.AutoLock': 'Auto-lock after',
+  'PasscodeLock.EnableLockShortcut': 'Enable lock shortcut',
+  'PasscodeLock.LockShortcutDescription': 'Play around to find the perfect shortcut to work for your browser.'
 };
 
 export default lang;

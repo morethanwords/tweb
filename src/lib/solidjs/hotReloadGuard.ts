@@ -1,13 +1,15 @@
 import {createContext, useContext} from 'solid-js';
 
 // `import type` is mandatory to avoid reloading the page
-import type {RootScope} from '../rootScope';
 import type {AppSidebarLeft} from '../../components/sidebarLeft';
 import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import type EmoticonsSearch from '../../components/emoticonsDropdown/search';
 import type wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import type showLimitPopup from '../../components/popups/limit';
+
+import type {RootScope} from '../rootScope';
+import type lottieLoader from '../rlottie/lottieLoader';
 
 export type SolidJSHotReloadGuardContextValue = {
   rootScope: RootScope;
@@ -17,6 +19,7 @@ export type SolidJSHotReloadGuardContextValue = {
   EmoticonsSearch: typeof EmoticonsSearch;
   wrapStickerSetThumb: typeof wrapStickerSetThumb;
   showLimitPopup: typeof showLimitPopup;
+  lottieLoader: typeof lottieLoader;
 };
 
 export const SolidJSHotReloadGuardContext = createContext<SolidJSHotReloadGuardContextValue>(null);
