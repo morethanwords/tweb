@@ -3132,10 +3132,17 @@ const lang = {
   'PasscodeLock.Title': 'Passcode',
   'PasscodeLock.Description': 'When a passcode is set, a lock icon appears above your chat list. Tap it to lock your Telegram.',
   'PasscodeLock.TurnOn': 'Turn Passcode On',
-  'PasscodeLock.Notice': 'Note: if you forget your passcode, you\'ll need to log out.',
+  'PasscodeLock.TurnOff': 'Turn Passcode Off',
+  'PasscodeLock.Notice': 'Note: If you forget your passcode, you\'ll need to log out.',
   'PasscodeLock.AutoLock': 'Auto-lock after',
   'PasscodeLock.EnableLockShortcut': 'Enable lock shortcut',
-  'PasscodeLock.LockShortcutDescription': 'Play around to find the perfect shortcut to work for your browser.'
+  'PasscodeLock.LockShortcutDescription': 'Play around to find the perfect shortcut to work for your browser.',
+  'PasscodeLock.PasscodesDontMatch': 'Passcode don’t match. Please try again.',
+  'PasscodeLock.SetPasscode': 'Set passcode',
+  'PasscodeLock.Next': 'Next',
+  'PasscodeLock.ReEnterPasscode': 'Re-enter the passcode',
+  'PasscodeLock.EnterAPasscode': 'Enter a passcode',
+  'PasscodeLock.ChangePasscode': 'Change passcode'
 };
 
 export default lang;

@@ -1,11 +1,12 @@
-import {createEffect, createRenderEffect, mergeProps, onCleanup} from 'solid-js';
+import {createRenderEffect, mergeProps, onCleanup} from 'solid-js';
 
 import type {LottieAssetName} from '../../../../lib/rlottie/lottieLoader';
 import type RLottiePlayer from '../../../../lib/rlottie/rlottiePlayer';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 
+import {usePromiseCollector} from './promiseCollector';
+
 import styles from './common.module.scss';
-import { usePromiseCollector } from './promiseCollector';
 
 type LottieAnimationProps = {
   class?: string;
@@ -19,9 +20,11 @@ export function LottieAnimation(inProps: LottieAnimationProps) {
   const {lottieLoader} = useHotReloadGuard();
   const promiseCollector = usePromiseCollector();
 
+  let animationPromise: Promise<RLottiePlayer>;
+
   const div = (
-    <div 
-      class={styles.LottieAnimation} 
+    <div
+      class={styles.LottieAnimation}
       classList={{
         [props.class]: !!props.class
       }}
@@ -29,14 +32,12 @@ export function LottieAnimation(inProps: LottieAnimationProps) {
         '--size': props.size + 'px'
       }}
       onClick={() => {
-        animationPromise.then((animation) => {
+        animationPromise?.then((animation) => {
           animation.playOrRestart();
         });
       }}
     />
   ) as HTMLDivElement;
-
-  let animationPromise: Promise<RLottiePlayer>;
 
   createRenderEffect(() => {
     animationPromise = lottieLoader.loadAnimationAsAsset(
@@ -49,14 +50,15 @@ export function LottieAnimation(inProps: LottieAnimationProps) {
       },
       props.name
     );
-    promiseCollector.collect(animationPromise);
 
     onCleanup(() => {
-      animationPromise.then((animation) => {
+      animationPromise?.then((animation) => {
         animation.remove();
       });
     });
   });
+
+  promiseCollector.collect(animationPromise);
 
   return div;
 }
