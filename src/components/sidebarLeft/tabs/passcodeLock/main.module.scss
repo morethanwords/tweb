@@ -6,3 +6,9 @@
   text-align: center;
   padding: 1rem;
 }
+
+.FirstSection {
+  :global(.sidebar-left-section-caption) {
+    margin-bottom: 0.5rem;
+  }
+}

@@ -23,6 +23,8 @@ function scaffoldSolidJSTab<Payload = void>({title, getComponentModule}: Scaffol
   return class extends SliderSuperTab {
     public payload: Payload;
 
+    private dispose?: () => void;
+
     public async init(payload: Payload) {
       this.setTitle(title);
       this.payload = payload;
@@ -34,7 +36,7 @@ function scaffoldSolidJSTab<Payload = void>({title, getComponentModule}: Scaffol
       const loadPromises: Promise<any>[] = [];
       let collectPromise = (promise: Promise<any>): void => void loadPromises.push(promise);
 
-      render(() => (
+      this.dispose = render(() => (
         <SolidJSHotReloadGuardProvider>
           <PromiseCollector onCollect={(promise) => collectPromise(promise)}>
             <SuperTabProvider self={this} allTabs={allTabs}>
@@ -50,6 +52,11 @@ function scaffoldSolidJSTab<Payload = void>({title, getComponentModule}: Scaffol
       this.scrollable.append(div);
 
       await Promise.all(loadPromises);
+    }
+
+    protected onCloseAfterTimeout() {
+      this.dispose?.();
+      super.onCloseAfterTimeout();
     }
   } as ScaffoledClass<Payload>;
 }

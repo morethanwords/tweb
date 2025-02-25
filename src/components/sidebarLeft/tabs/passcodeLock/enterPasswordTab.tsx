@@ -1,26 +1,32 @@
-import {createSignal} from 'solid-js';
+import {createEffect, createSignal} from 'solid-js';
 
 import Section from '../../../section';
 import {InputFieldTsx} from '../../../inputFieldTsx';
 import Space from '../../../mediaEditor/space';
 import {i18n} from '../../../../lib/langPack';
-import ripple from '../../../ripple';
+import ripple from '../../../ripple'; // keep
 import PasswordInputField from '../../../passwordInputField';
 
 import {useSuperTab} from './superTabProvider';
-import {LottieAnimation} from './lottieAnimation';
+import LottieAnimation from './lottieAnimation';
 import type {AppPasscodeEnterPasswordTab} from '.';
-
 
 import commonStyles from './common.module.scss';
 
 type AppPasscodeEnterPasswordTabClass = typeof AppPasscodeEnterPasswordTab;
 
 const EnterPasswordTab = () => {
-  const [value, setValue] = createSignal('');
   const [tab, {AppPasscodeEnterPasswordTab}] = useSuperTab<AppPasscodeEnterPasswordTabClass>();
 
+  const [value, setValue] = createSignal('');
+  const [isError, setIsError] = createSignal(false);
+
   const isFirst = !tab.payload || !tab.payload.passcode;
+
+  createEffect(() => {
+    value();
+    setIsError(false);
+  });
 
   return (
     <Section caption="PasscodeLock.Notice">
@@ -28,20 +34,36 @@ const EnterPasswordTab = () => {
 
       <Space amount="1.125rem" />
 
-      <form action="" autocomplete="off" onSubmit={(e) => {
-        e.preventDefault();
+      <form
+        action=""
+        autocomplete="off"
+        onSubmit={(e) => {
+          e.preventDefault();
 
-        if(!value()) return;
+          if(!value()) return;
 
-        tab.slider.createTab(AppPasscodeEnterPasswordTab)
-        .open({passcode: value()});
-      }}>
+          if(isFirst) {
+            tab.slider.createTab(AppPasscodeEnterPasswordTab)
+            .open({passcode: value()});
+          } else {
+            if(tab.payload && value() !== tab.payload.passcode) {
+              setIsError(true);
+            } else {
+            }
+          }
+        }}
+      >
         <div class={commonStyles.LargeButtonWrapper}>
           <InputFieldTsx
             InputFieldClass={PasswordInputField}
             autocomplete="off"
             value={value()}
-            label={isFirst ? 'PasscodeLock.EnterAPasscode' : 'PasscodeLock.ReEnterPasscode'}
+            errorLabel={isError() ? 'PasscodeLock.PasscodesDontMatch' : undefined}
+            label={
+              isFirst ?
+                'PasscodeLock.EnterAPasscode' :
+                'PasscodeLock.ReEnterPasscode'
+            }
             onRawInput={setValue}
           />
         </div>

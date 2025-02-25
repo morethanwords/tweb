@@ -3137,7 +3137,7 @@ const lang = {
   'PasscodeLock.AutoLock': 'Auto-lock after',
   'PasscodeLock.EnableLockShortcut': 'Enable lock shortcut',
   'PasscodeLock.LockShortcutDescription': 'Play around to find the perfect shortcut to work for your browser.',
-  'PasscodeLock.PasscodesDontMatch': 'Passcode don’t match. Please try again.',
+  'PasscodeLock.PasscodesDontMatch': 'Passcodes don’t match, try again',
   'PasscodeLock.SetPasscode': 'Set passcode',
   'PasscodeLock.Next': 'Next',
   'PasscodeLock.ReEnterPasscode': 'Re-enter the passcode',

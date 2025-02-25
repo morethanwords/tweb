@@ -1,4 +1,4 @@
-import {createRenderEffect, mergeProps, onCleanup} from 'solid-js';
+import {Component, createRenderEffect, mergeProps, onCleanup} from 'solid-js';
 
 import type {LottieAssetName} from '../../../../lib/rlottie/lottieLoader';
 import type RLottiePlayer from '../../../../lib/rlottie/rlottiePlayer';
@@ -8,13 +8,11 @@ import {usePromiseCollector} from './promiseCollector';
 
 import styles from './common.module.scss';
 
-type LottieAnimationProps = {
+const LottieAnimation: Component<{
   class?: string;
   name: LottieAssetName;
   size?: number;
-};
-
-export function LottieAnimation(inProps: LottieAnimationProps) {
+}> = (inProps) => {
   const props = mergeProps({size: 100}, inProps);
 
   const {lottieLoader} = useHotReloadGuard();
@@ -62,3 +60,5 @@ export function LottieAnimation(inProps: LottieAnimationProps) {
 
   return div;
 }
+
+export default LottieAnimation;

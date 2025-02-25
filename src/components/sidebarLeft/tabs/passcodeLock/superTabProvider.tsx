@@ -21,5 +21,5 @@ export const SuperTabProvider: ParentComponent<SuperTabProviderProps> = (props) 
   );
 };
 
-export const useSuperTab = <TabType extends typeof SliderSuperTab>() =>
-  useContext(SuperTabContext) as [InstanceOf<TabType>, AllPasscodeLockTabs];
+export const useSuperTab = <TabClass extends typeof SliderSuperTab>() =>
+  useContext(SuperTabContext) as [InstanceOf<TabClass>, AllPasscodeLockTabs];

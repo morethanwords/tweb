@@ -1,17 +1,22 @@
 import {createEffect, mergeProps, on, splitProps} from 'solid-js';
-import InputField, {InputFieldOptions} from './inputField';
+
+import {LangPackKey} from '../lib/langPack';
+
+import InputField, {InputFieldOptions, InputState} from './inputField';
 
 export interface InputFieldTsxProps extends InputFieldOptions {
+  InputFieldClass?: typeof InputField
+
   class?: string
   value?: string
   onRawInput?: (value: string) => void
-  InputFieldClass?: typeof InputField
+  errorLabel?: LangPackKey
 }
 
 export const InputFieldTsx = (inProps: InputFieldTsxProps) => {
   const props = mergeProps({InputFieldClass: InputField}, inProps);
 
-  const [, rest] = splitProps(props, ['class', 'value'])
+  const [, rest] = splitProps(props, ['class', 'value', 'InputFieldClass', 'errorLabel'])
   const obj = new props.InputFieldClass(rest)
 
   createEffect(on(
@@ -19,6 +24,16 @@ export const InputFieldTsx = (inProps: InputFieldTsxProps) => {
     (value, prev) => {
       obj.container.classList.remove(prev)
       obj.container.classList.add(value)
+    }
+  ))
+
+  createEffect(on(
+    () => props.errorLabel,
+    (value, prev) => {
+      if(!value && !prev) return // Prevent setting error first render
+
+      if(value) obj.setError(value)
+      else obj.setState(InputState.Neutral)
     }
   ))
 
