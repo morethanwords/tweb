@@ -12,6 +12,7 @@ import LottieAnimation from './lottieAnimation';
 import {useSuperTab} from './superTabProvider';
 import StaticSwitch from './staticSwitch';
 import InlineSelect from './inlineSelect';
+import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
 
 import commonStyles from './common.module.scss';
 import styles from './main.module.scss';
@@ -73,6 +74,8 @@ const PasscodeSetContent = () => {
 
   const [isOpen, setIsOpen] = createSignal(false);
 
+  const [keys, setKeys] = createSignal<ShortcutKey[]>([]);
+
   const caption = (
     <>
       {i18n('PasscodeLock.Description')}
@@ -90,6 +93,7 @@ const PasscodeSetContent = () => {
 
         <RowTsx
           title={i18n('PasscodeLock.TurnOff')}
+          classList={{[styles.Row]: true}}
           icon="lockoff"
           clickable={(e) => {
           //
@@ -107,6 +111,7 @@ const PasscodeSetContent = () => {
       <Section caption="PasscodeLock.LockShortcutDescription">
         <RowTsx
           ref={setAutoCloseRowEl}
+          classList={{[styles.Row]: true}}
           title={i18n('PasscodeLock.AutoLock')}
           // icon="lockoff"
           rightContent={<InlineSelect
@@ -131,6 +136,9 @@ const PasscodeSetContent = () => {
             setChecked(p => !p)
           }}
         />
+        <div class={styles.ShortcutBuilderRow} classList={{[styles.collapsed]: !checked()}}>
+          <ShortcutBuilder value={keys()} onChange={setKeys} key="L" />
+        </div>
       </Section>
 
     </>

@@ -14,7 +14,7 @@ const InlineSelect: Component<{
   onClose?: () => void;
   value: string;
   onChange: (value: any) => void;
-  options: { value: any; label: JSX.Element }[];
+  options: {value: any; label: JSX.Element}[];
   parent: HTMLElement;
 }> = (props) => {
   let valueEl: HTMLDivElement;
@@ -37,10 +37,16 @@ const InlineSelect: Component<{
 
   const onEnter = async(el: Element, done: () => void) => {
     const selectEl = el.firstElementChild as HTMLElement;
+    const selectOptionEl = selectEl.querySelector(`.${styles.selected}`);
+
+    if(!selectOptionEl || !selectEl) {
+      // done();
+      return;
+    }
 
     const valueRect = valueEl.getBoundingClientRect();
     const selectRect = selectEl.getBoundingClientRect();
-    const selectedOptionRect = selectEl.querySelector(`.${styles.selected}`)?.getBoundingClientRect();
+    const selectedOptionRect = selectOptionEl.getBoundingClientRect();
 
     const optionTop = selectedOptionRect.top - selectRect.top;
     const optionBottom = optionTop + selectedOptionRect.height;
@@ -48,28 +54,31 @@ const InlineSelect: Component<{
     const y = valueRect.top + valueRect.height / 2 - distToOptionCenter;
     const x = valueRect.left + valueRect.width / 2;
 
-    const maxDist = Math.max(
-      optionTop,
-      selectRect.height - optionBottom
-    );
+    const maxDist = Math.max(optionTop, selectRect.height - optionBottom);
 
     selectEl.style.setProperty('--x', '' + x);
     selectEl.style.setProperty('--y', '' + y);
 
     const getPath = (dist: number) =>
-      `polygon(0% ${optionTop - dist}px, 100% ${optionTop - dist}px, 100% ${optionBottom + dist}px, 0px ${optionBottom + dist}px)`
+      `polygon(0% ${optionTop - dist}px, 100% ${optionTop - dist}px, 100% ${optionBottom + dist}px, 0px ${optionBottom + dist}px)`;
 
     selectEl.animate({opacity: [0, 1]}, {duration: 100});
 
-    animateValue(0, maxDist, 400, (dist) => {
-      selectEl.style.setProperty('clip-path', getPath(dist));
-    }, {
-      easing: simpleEasing,
-      onEnd: () => {
-        selectEl.style.removeProperty('clip-path');
-        done();
+    animateValue(
+      0,
+      maxDist,
+      400,
+      (dist) => {
+        selectEl.style.setProperty('clip-path', getPath(dist));
+      },
+      {
+        easing: simpleEasing,
+        onEnd: () => {
+          selectEl.style.removeProperty('clip-path');
+          done();
+        }
       }
-    });
+    );
 
     done();
   };
@@ -77,9 +86,8 @@ const InlineSelect: Component<{
   const onExit = (el: Element, done: () => void) => {
     const selectEl = el.firstElementChild as HTMLElement;
 
-    selectEl.animate({opacity: [1, 0]}, {duration: 120})
-    .finished.then(() => {
-      done()
+    selectEl.animate({opacity: [1, 0]}, {duration: 120}).finished.then(() => {
+      done();
     });
   };
 
@@ -89,7 +97,14 @@ const InlineSelect: Component<{
 
     const isOutside = toCheck.every((el) => {
       const rect = el.getBoundingClientRect();
-      return Math.max(rect.left - e.clientX, e.clientX - rect.right, rect.top - e.clientY, e.clientY - rect.bottom) > 50;
+      const max = Math.max(
+        rect.left - e.clientX,
+        e.clientX - rect.right,
+        rect.top - e.clientY,
+        e.clientY - rect.bottom
+      );
+
+      return max > 100;
     });
 
     if(isOutside) {
@@ -104,11 +119,7 @@ const InlineSelect: Component<{
       </div>
 
       <Portal>
-        <Transition
-          appear
-          onEnter={onEnter}
-          onExit={onExit}
-        >
+        <Transition appear onEnter={onEnter} onExit={onExit}>
           {props.isOpen && (
             <div
               class={styles.Overlay}
@@ -121,7 +132,7 @@ const InlineSelect: Component<{
               <div class={styles.SelectClip}>
                 <div class={styles.Select} ref={setSelectEl}>
                   <For each={props.options}>
-                    {option =>
+                    {(option) => (
                       <div
                         use:ripple
                         class={styles.Option}
@@ -132,11 +143,9 @@ const InlineSelect: Component<{
                           props.onChange(option.value);
                         }}
                       >
-                        <span>
-                          {option.label}
-                        </span>
+                        <span>{option.label}</span>
                       </div>
-                    }
+                    )}
                   </For>
                 </div>
               </div>
@@ -144,7 +153,6 @@ const InlineSelect: Component<{
           )}
         </Transition>
       </Portal>
-
     </>
   );
 };

@@ -46,5 +46,5 @@
   border: 2px solid var(--color);
   transition: border-color 0.2s;
 
-  transition: left 0.2s;
+  transition: left 0.1s cubic-bezier(0.22, 0.75, 0.7, 1.3);
 }
