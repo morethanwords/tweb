@@ -15,7 +15,7 @@ import InlineSelect from './inlineSelect';
 import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
 
 import commonStyles from './common.module.scss';
-import styles from './main.module.scss';
+import styles from './mainTab.module.scss';
 
 const MainTab = () => {
   return (
@@ -74,7 +74,7 @@ const PasscodeSetContent = () => {
 
   const [isOpen, setIsOpen] = createSignal(false);
 
-  const [keys, setKeys] = createSignal<ShortcutKey[]>([]);
+  const [keys, setKeys] = createSignal<ShortcutKey[]>(['Alt']);
 
   const caption = (
     <>
@@ -113,15 +113,16 @@ const PasscodeSetContent = () => {
           ref={setAutoCloseRowEl}
           classList={{[styles.Row]: true}}
           title={i18n('PasscodeLock.AutoLock')}
-          // icon="lockoff"
-          rightContent={<InlineSelect
-            value={value()}
-            onClose={() => setIsOpen(false)}
-            options={options}
-            onChange={setValue}
-            isOpen={isOpen()}
-            parent={autoCloseRowEl()}
-          />}
+          rightContent={
+            <InlineSelect
+              value={value()}
+              onClose={() => setIsOpen(false)}
+              options={options}
+              onChange={setValue}
+              isOpen={isOpen()}
+              parent={autoCloseRowEl()}
+            />
+          }
           clickable={(e) => {
             setIsOpen(true);
             console.log('setting isOpen to true');

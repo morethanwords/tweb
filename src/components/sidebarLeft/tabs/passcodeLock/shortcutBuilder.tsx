@@ -1,4 +1,6 @@
-import {Component, createSelector} from 'solid-js';
+import {Component, createSelector, JSX} from 'solid-js';
+
+import {IS_APPLE} from '../../../../environment/userAgent';
 
 import {IconTsx} from '../../../iconTsx';
 import ripple from '../../../ripple'; // keep
@@ -17,6 +19,28 @@ const ShortcutBuilder: Component<{
 }> = (props) => {
   const isSelected = createSelector(() => props.value, (value: ShortcutKey, shortcuts) => shortcuts.includes(value));
 
+  const getKeyContent = (key: ShortcutKey): JSX.Element => {
+    if(key === 'Meta') {
+      return <IconTsx icon={IS_APPLE ? 'mac_command_key' : 'win_key'} />;
+    }
+    return <span>{key}</span>;
+  };
+
+  const onKeyClick = (key: ShortcutKey) => {
+    if(props.value.includes(key)) {
+      const newValue = props.value.filter((k) => k !== key);
+
+      if(!newValue.length) {
+        const indicies = [0, 1, 2, 3].filter((i) => i !== shortcutKeys.indexOf(key));
+        newValue.push(shortcutKeys[indicies[Math.floor(Math.random() * indicies.length)]]);
+      }
+
+      props.onChange(newValue);
+    } else {
+      props.onChange([...props.value, key]);
+    }
+  };
+
   return (
     <div class={styles.Container}>
       <div class={styles.KeysContainer}>
@@ -25,22 +49,9 @@ const ShortcutBuilder: Component<{
             use:ripple
             class={styles.KeyButton}
             classList={{[styles.selected]: isSelected(key)}}
-            onClick={() => {
-              if(props.value.includes(key)) {
-                const newValue = props.value.filter((k) => k !== key);
-                if(!newValue.length) {
-                  const indicies = [0, 1, 2, 3].filter((i) => i !== shortcutKeys.indexOf(key));
-                  newValue.push(shortcutKeys[indicies[Math.floor(Math.random() * indicies.length)]]);
-                }
-                props.onChange(newValue);
-              } else {
-                props.onChange([...props.value, key]);
-              }
-            }}
+            onClick={[onKeyClick, key]}
           >
-            <span>
-              {key}
-            </span>
+            {getKeyContent(key)}
           </button>
         ))}
       </div>

@@ -35,7 +35,7 @@ const InlineSelect: Component<{
     });
   });
 
-  const onEnter = async(el: Element, done: () => void) => {
+  const onEnter = (el: Element, done: () => void) => {
     const selectEl = el.firstElementChild as HTMLElement;
     const selectOptionEl = selectEl.querySelector(`.${styles.selected}`);
 
@@ -79,16 +79,14 @@ const InlineSelect: Component<{
         }
       }
     );
-
-    done();
   };
 
-  const onExit = (el: Element, done: () => void) => {
+  const onExit = async(el: Element, done: () => void) => {
     const selectEl = el.firstElementChild as HTMLElement;
 
-    selectEl.animate({opacity: [1, 0]}, {duration: 120}).finished.then(() => {
-      done();
-    });
+    await selectEl.animate({opacity: [1, 0]}, {duration: 120}).finished;
+
+    done();
   };
 
   const onMouseMove = (e: MouseEvent) => {
@@ -139,9 +137,7 @@ const InlineSelect: Component<{
                         classList={{
                           [styles.selected]: isSelected(option.value)
                         }}
-                        onClick={() => {
-                          props.onChange(option.value);
-                        }}
+                        onClick={[props.onChange, option.value]}
                       >
                         <span>{option.label}</span>
                       </div>

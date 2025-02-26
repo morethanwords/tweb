@@ -26,11 +26,15 @@
   font-size: 12px;
   font-weight: 500;
 
+  :global(.tgico) {
+    font-size: 20px;
+  }
+
   border-radius: 2px;
 
   color: white;
   // background-color: #e0e3e5;
-  background-color: hsl(from var(--secondary-color) h s calc(l + 7));
+  background-color: hsl(from var(--secondary-color) h s calc(l + 8));
 
   transition: background-color 0.2s;
 
