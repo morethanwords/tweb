@@ -1,10 +1,11 @@
-import {createSignal} from 'solid-js';
+import {createSignal, Show} from 'solid-js';
 
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import {IS_MOBILE} from '../../../../environment/userAgent';
 import {i18n} from '../../../../lib/langPack';
 
 import Section from '../../../section';
-import Space from '../../../mediaEditor/space';
+import Space from '../../../space';
 import ripple from '../../../ripple'; // keep
 import RowTsx from '../../../rowTsx';
 
@@ -37,10 +38,10 @@ const NoPasscodeContent = () => {
 
       <Space amount="0.5rem" />
 
-      <div class={commonStyles.LargeButtonWrapper}>
+      <div class={commonStyles.AdditionalPadding}>
         <button
           use:ripple
-          class={`btn-primary btn-color-primary ${commonStyles.LargeButton}`}
+          class="btn-primary btn-color-primary btn-large"
           onClick={() => {
             tab.slider.createTab(AppPasscodeEnterPasswordTab)
             .open();
@@ -71,10 +72,10 @@ const PasscodeSetContent = () => {
   ];
 
   const [autoCloseRowEl, setAutoCloseRowEl] = createSignal<HTMLElement>();
-
   const [isOpen, setIsOpen] = createSignal(false);
-
   const [keys, setKeys] = createSignal<ShortcutKey[]>(['Alt']);
+
+  const canShowShortcut = !IS_MOBILE;
 
   const caption = (
     <>
@@ -108,7 +109,7 @@ const PasscodeSetContent = () => {
         />
       </Section>
 
-      <Section caption="PasscodeLock.LockShortcutDescription">
+      <Section caption={canShowShortcut ? 'PasscodeLock.LockShortcutDescription' : undefined}>
         <RowTsx
           ref={setAutoCloseRowEl}
           classList={{[styles.Row]: true}}
@@ -128,18 +129,20 @@ const PasscodeSetContent = () => {
             console.log('setting isOpen to true');
           }}
         />
-        <RowTsx
-          title={i18n('PasscodeLock.EnableLockShortcut')}
-          rightContent={
-            <StaticSwitch checked={checked()} />
-          }
-          clickable={(e) => {
-            setChecked(p => !p)
-          }}
-        />
-        <div class={styles.ShortcutBuilderRow} classList={{[styles.collapsed]: !checked()}}>
-          <ShortcutBuilder value={keys()} onChange={setKeys} key="L" />
-        </div>
+        <Show when={canShowShortcut}>
+          <RowTsx
+            title={i18n('PasscodeLock.EnableLockShortcut')}
+            rightContent={
+              <StaticSwitch checked={checked()} />
+            }
+            clickable={(e) => {
+              setChecked(p => !p)
+            }}
+          />
+          <div class={styles.ShortcutBuilderRow} classList={{[styles.collapsed]: !checked()}}>
+            <ShortcutBuilder value={keys()} onChange={setKeys} key="L" />
+          </div>
+        </Show>
       </Section>
 
     </>

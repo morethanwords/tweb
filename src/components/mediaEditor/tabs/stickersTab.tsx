@@ -10,9 +10,9 @@ import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {IconTsx} from '../../iconTsx';
 import {ScrollableX} from '../../scrollable';
 import SuperStickerRenderer from '../../emoticonsDropdown/tabs/SuperStickerRenderer';
+import Space from '../../space';
 
 import useNormalizePoint from '../canvas/useNormalizePoint';
-import Space from '../space';
 import MediaEditorContext from '../context';
 import {ResizableLayer} from '../types';
 import {delay} from '../utils';

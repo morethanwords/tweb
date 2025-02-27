@@ -2,7 +2,7 @@ import {createEffect, createSignal} from 'solid-js';
 
 import Section from '../../../section';
 import {InputFieldTsx} from '../../../inputFieldTsx';
-import Space from '../../../mediaEditor/space';
+import Space from '../../../space';
 import {i18n} from '../../../../lib/langPack';
 import ripple from '../../../ripple'; // keep
 import PasswordInputField from '../../../passwordInputField';
@@ -53,7 +53,7 @@ const EnterPasswordTab = () => {
           }
         }}
       >
-        <div class={commonStyles.LargeButtonWrapper}>
+        <div class={commonStyles.AdditionalPadding}>
           <InputFieldTsx
             InputFieldClass={PasswordInputField}
             autocomplete="off"
@@ -70,11 +70,11 @@ const EnterPasswordTab = () => {
 
         <Space amount="1rem" />
 
-        <div class={commonStyles.LargeButtonWrapper}>
+        <div class={commonStyles.AdditionalPadding}>
           <button
             use:ripple
             type="submit"
-            class={`btn-primary btn-color-primary ${commonStyles.LargeButton}`}
+            class="btn-primary btn-color-primary btn-large"
             disabled={!value()}
           >
             {i18n(isFirst ? 'PasscodeLock.Next' : 'PasscodeLock.SetPasscode')}

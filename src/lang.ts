@@ -3142,7 +3142,12 @@ const lang = {
   'PasscodeLock.Next': 'Next',
   'PasscodeLock.ReEnterPasscode': 'Re-enter the passcode',
   'PasscodeLock.EnterAPasscode': 'Enter a passcode',
-  'PasscodeLock.ChangePasscode': 'Change passcode'
+  'PasscodeLock.ChangePasscode': 'Change passcode',
+  'PasscodeLock.EnterYourPasscode': 'Enter your passcode',
+  'PasscodeLock.Proceed': 'Proceed',
+  'PasscodeLock.ForgotPasscode.OneAccount': 'Note: If you forgot your passcode, you need to [log out]().',
+  'PasscodeLock.ForgotPasscode.MultipleAccounts': 'Note: If you forgot your passcode, you need to [log out]() from all your accounts from this browser.',
+  'PasscodeLock.WrongPasscode': 'Wrong passcode. Please try again.'
 };
 
 export default lang;

@@ -6,7 +6,9 @@ import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import EmoticonsSearch from '../../components/emoticonsDropdown/search';
 import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import showLimitPopup from '../../components/popups/limit';
+import themeController from '../../helpers/themeController';
 
+import appImManager from '../appManagers/appImManager';
 import lottieLoader from '../rlottie/lottieLoader';
 import rootScope from '../rootScope';
 
@@ -23,7 +25,9 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       EmoticonsSearch,
       wrapStickerSetThumb,
       showLimitPopup,
-      lottieLoader
+      lottieLoader,
+      themeController,
+      appImManager
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

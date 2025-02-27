@@ -4,7 +4,7 @@ import {render} from 'solid-js/web';
 import SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
 import {LangPackKey} from '../../../../lib/langPack';
 
-import SidebarSlider, {SliderSuperTab} from '../../../slider';
+import {SliderSuperTab} from '../../../slider';
 
 import {PromiseCollector} from './promiseCollector';
 import {SuperTabProvider} from './superTabProvider';
@@ -14,12 +14,15 @@ type ScaffoldSolidJSTabArgs = {
   getComponentModule: () => MaybePromise<{default: Component}>;
 };
 
-type ScaffoledClass<Payload = void> = new (slider: SidebarSlider, destroyable?: boolean) => SliderSuperTab & {
+type ScaffoledClass<Payload = void> = new (...args: ConstructorParameters<typeof SliderSuperTab>) => SliderSuperTab & {
   payload: Payload;
   init(payload: Payload): Promise<void>;
 };
 
-function scaffoldSolidJSTab<Payload = void>({title, getComponentModule}: ScaffoldSolidJSTabArgs): ScaffoledClass<Payload> {
+function scaffoldSolidJSTab<Payload = void>({
+  title,
+  getComponentModule
+}: ScaffoldSolidJSTabArgs): ScaffoledClass<Payload> {
   return class extends SliderSuperTab {
     public payload: Payload;
 
@@ -61,17 +64,17 @@ function scaffoldSolidJSTab<Payload = void>({title, getComponentModule}: Scaffol
   } as ScaffoledClass<Payload>;
 }
 
-export const AppPasscodeLockTab = scaffoldSolidJSTab({
-  title: 'PasscodeLock.Title',
-  getComponentModule: () => import('./mainTab')
-});
+export const AppPasscodeLockTab =
+  scaffoldSolidJSTab({
+    title: 'PasscodeLock.Title',
+    getComponentModule: () => import('./mainTab')
+  });
 
-export const AppPasscodeEnterPasswordTab = scaffoldSolidJSTab<{
-  passcode: string;
-} | void>({
-  title: 'PasscodeLock.Title',
-  getComponentModule: () => import('./enterPasswordTab')
-});
+export const AppPasscodeEnterPasswordTab =
+  scaffoldSolidJSTab<{passcode: string} | void>({
+    title: 'PasscodeLock.Title',
+    getComponentModule: () => import('./enterPasswordTab')
+  });
 
 
 export type AllPasscodeLockTabs = typeof allTabs;

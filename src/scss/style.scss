@@ -2675,3 +2675,16 @@ hr {
     font-size: 1.125rem;
   }
 }
+
+.passcode-lock-screen {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  /* Just in case, as the passcode module is dynamically imported */
+  background-color: var(--surface-color);
+
+  z-index: 100000;
+}

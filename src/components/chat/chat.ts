@@ -320,6 +320,7 @@ export default class Chat extends EventListenerBase<{
 
           const rect = this.appImManager.chatsContainer.getBoundingClientRect();
           patternRenderer = this.patternRenderer = ChatBackgroundPatternRenderer.getInstance({
+            element: this.appImManager.chatsContainer,
             url,
             width: rect.width,
             height: rect.height,

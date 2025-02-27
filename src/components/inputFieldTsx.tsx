@@ -1,11 +1,14 @@
 import {createEffect, mergeProps, on, splitProps} from 'solid-js';
 
 import {LangPackKey} from '../lib/langPack';
+import {InstanceOf} from '../types';
 
 import InputField, {InputFieldOptions, InputState} from './inputField';
 
-export interface InputFieldTsxProps extends InputFieldOptions {
-  InputFieldClass?: typeof InputField
+export interface InputFieldTsxProps<T extends typeof InputField> extends InputFieldOptions {
+  InputFieldClass?: T
+
+  instanceRef?: (value: InstanceOf<T>) => void
 
   class?: string
   value?: string
@@ -13,11 +16,13 @@ export interface InputFieldTsxProps extends InputFieldOptions {
   errorLabel?: LangPackKey
 }
 
-export const InputFieldTsx = (inProps: InputFieldTsxProps) => {
+export const InputFieldTsx = <T extends typeof InputField, >(inProps: InputFieldTsxProps<T>) => {
   const props = mergeProps({InputFieldClass: InputField}, inProps);
 
-  const [, rest] = splitProps(props, ['class', 'value', 'InputFieldClass', 'errorLabel'])
-  const obj = new props.InputFieldClass(rest)
+  const [, options] = splitProps(props, ['class', 'value', 'InputFieldClass', 'errorLabel'])
+
+  const obj = new props.InputFieldClass(options)
+  props.instanceRef?.(obj as InstanceOf<T>)
 
   createEffect(on(
     () => props.class,

@@ -16,6 +16,7 @@ const SCALE_PATTERN = false;
 const USE_BITMAP = IS_IMAGE_BITMAP_SUPPORTED && IS_FIREFOX;
 
 type ChatBackgroundPatternRendererInitOptions = {
+  element: HTMLElement;
   url: string,
   width: number,
   height: number,
@@ -41,7 +42,7 @@ export default class ChatBackgroundPatternRenderer {
 
   public static getInstance(options: ChatBackgroundPatternRendererInitOptions) {
     let instance = this.INSTANCES.find((instance) => {
-      return deepEqual(instance.options, options);
+      return instance.options.element === options.element && deepEqual(instance.options, options, ['element']);
     });
 
     if(!instance) {
@@ -232,8 +233,12 @@ export default class ChatBackgroundPatternRenderer {
     return Promise.all(promises);
   }
 
-  public static resizeInstances(width: number, height: number) {
-    return Promise.all(this.INSTANCES.map((instance) => instance.resize(width, height)));
+  public static resizeInstancesOf(element: HTMLElement) {
+    const toResize = this.INSTANCES.filter(instance => instance.options.element === element);
+
+    const rect = element.getBoundingClientRect();
+
+    return Promise.all(toResize.map((instance) => instance.resize(rect.width, rect.height)));
   }
 
   /* public setResizeMode(resizing: boolean) {
