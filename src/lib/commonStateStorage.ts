@@ -5,6 +5,8 @@ import {StateSettings} from '../config/state';
 
 import AppStorage from './storage';
 import {ActiveAccountNumber} from './accounts/types';
+import DeferredIsUsingPasscode from './passcode/deferred';
+import PasscodeHashFetcher from './passcode/hashFetcher';
 
 type AppStorageValue = {
   langPack: LangPackDifference;
@@ -23,5 +25,16 @@ class CommonStateStorage extends AppStorage<AppStorageValue, CommonDatabase> {
 }
 
 const commonStateStorage = new CommonStateStorage();
+
+commonStateStorage.get('settings', false).then((settings) => {
+  DeferredIsUsingPasscode.resolveDeferred(settings?.passcode?.enabled || false);
+});
+
+PasscodeHashFetcher.fetchHash = async() => {
+  // Will be cached inside storage
+  const passcode = await commonStateStorage.get('passcode');
+  return passcode.hash;
+}
+
 MOUNT_CLASS_TO.commonStateStorage = commonStateStorage;
 export default commonStateStorage;

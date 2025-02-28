@@ -97,10 +97,17 @@ export default class AppStorage<
   private async getStorage(): Promise<StorageLayer> {
     if(this.storage) return this.storage;
 
-    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
-    return this.storage = isUsingPasscode ?
+    const isUsingPasscode = this.db.shouldEncryptWhenLocked ?
+      await DeferredIsUsingPasscode.isUsingPasscode() :
+      false;
+
+    const storage = this.storage = isUsingPasscode ?
       new EncryptedStorageLayer(this.db, this.storeName) :
       new IDBStorage(this.db, this.storeName);
+
+    if(storage instanceof EncryptedStorageLayer) storage.loadEncrypted();
+
+    return storage;
   }
 
   private _save = async() => {
@@ -361,6 +368,34 @@ export default class AppStorage<
       console.error('freezeSaving callback error:', err);
     }
     this.STORAGES.forEach((storage) => storage.savingFreezed = false);
+  }
+
+  private async toggleEncrypted(shouldEncrypt: boolean) {
+    const isEncrypted = this.storage instanceof EncryptedStorageLayer;
+    if(shouldEncrypt === isEncrypted) return;
+
+    const entries = await this.getAllEntries();
+    const data = Object.fromEntries(entries);
+    this.storage.clear();
+    this.storage.close();
+
+    if(shouldEncrypt) {
+      const storage = this.storage = new EncryptedStorageLayer(this.db, this.storeName);
+      storage.loadDecrypted(data);
+    } else {
+      const storage = this.storage = new IDBStorage(this.db, this.storeName);
+      const keys = entries.map(entry => entry[0] as string);
+      const values = entries.map(entry => entry[1]);
+
+      await storage.save(keys, values);
+    }
+  }
+
+  public static async toggleEncryptedForAll(shouldEncrypt: boolean) {
+    await Promise.all(
+      this.STORAGES.map((storage) => storage.toggleEncrypted(shouldEncrypt))
+    );
+    EncryptedStorageLayer.clearLoadingDataMap();
   }
 
   /* public deleteDatabase() {

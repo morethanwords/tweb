@@ -17,6 +17,8 @@ import {ActiveAccountNumber} from '../accounts/types';
 import AppStateManager from './appStateManager';
 import rootScope from '../rootScope';
 import AccountController from '../accounts/accountController';
+import AppStorage from '../storage';
+import DeferredIsUsingPasscode from '../passcode/deferred';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 
@@ -118,6 +120,11 @@ export class AppManagersManager {
           managersByAccount[accountNumber].apiManager.logOut(otherAccountNumber);
         }
       }
+    });
+
+    rootScope.addEventListener('toggle_using_passcode', (value) => {
+      DeferredIsUsingPasscode.overrideCurrentValue(value);
+      AppStorage.toggleEncryptedForAll(value);
     });
   }
 

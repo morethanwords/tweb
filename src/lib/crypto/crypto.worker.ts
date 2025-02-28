@@ -23,6 +23,7 @@ import sha1 from './utils/sha1';
 import sha256 from './utils/sha256';
 import {aesCtrDestroy, aesCtrPrepare, aesCtrProcess} from './aesCtrUtils';
 import ctx from '../../environment/ctx';
+import {decryptLocalData, encryptLocalData} from './utils/aesLocal';
 
 console.log('CryptoWorker start');
 
@@ -44,7 +45,9 @@ const cryptoMethods: CryptoMethods = {
   'get-emojis-fingerprint': getEmojisFingerprint,
   'aes-ctr-prepare': aesCtrPrepare,
   'aes-ctr-process': aesCtrProcess,
-  'aes-ctr-destroy': aesCtrDestroy
+  'aes-ctr-destroy': aesCtrDestroy,
+  'aes-local-encrypt': encryptLocalData,
+  'aes-local-decrypt': decryptLocalData
 };
 
 cryptoMessagePort.addMultipleEventsListeners({

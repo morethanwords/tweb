@@ -208,7 +208,9 @@ export type BroadcastEvents = {
 
   'resizing_left_sidebar': void,
 
-  'chat_background_set': void
+  'chat_background_set': void,
+
+  'toggle_using_passcode': boolean
 };
 
 export type BroadcastEventsListeners = {

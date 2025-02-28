@@ -17,7 +17,7 @@ export default class DeferredIsUsingPasscode {
   public static async isUsingPasscode() {
     if(this.deferred) await this.deferred;
 
-    if(typeof this.value !== 'boolean') throw 'WTF?';
+    if(typeof this.value !== 'boolean') throw new Error('Is using passcode is not boolean WTF?');
 
     return this.value;
   }

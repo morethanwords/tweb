@@ -57,6 +57,8 @@ import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
 import {appSettings, setAppSettingsSilent} from '../../stores/appSettings';
 import {unwrap} from 'solid-js/store';
 import createNotificationImage from '../../helpers/createNotificationImage';
+import AppStorage from '../storage';
+import DeferredIsUsingPasscode from '../passcode/deferred';
 
 export type Mirrors = {
   state: State,
@@ -231,7 +233,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.registerServiceWorker();
     this.registerCryptoWorker();
 
-    const commonEventNames: Set<keyof BroadcastEvents> = new Set([
+    const commonEventNames = new Set<keyof BroadcastEvents>([
       'language_change',
       'settings_updated',
       'theme_changed',
@@ -240,7 +242,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
       'logging_out',
       'notification_count_update',
       'account_logged_in',
-      'notification_cancel'
+      'notification_cancel',
+      'toggle_using_passcode'
     ]);
 
     // const perf = performance.now();
@@ -422,6 +425,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     rootScope.addEventListener('settings_updated', ({key, settings}) => {
       setAppSettingsSilent(/* key,  */settings);
+    });
+
+    rootScope.addEventListener('toggle_using_passcode', (value) => {
+      DeferredIsUsingPasscode.overrideCurrentValue(value);
+      AppStorage.toggleEncryptedForAll(value);
     });
 
     idleController.addEventListener('change', (idle) => {
