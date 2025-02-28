@@ -51,6 +51,7 @@ export const getDatabaseState = (
 ): Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> => ({
   name: `tweb-account-${accountNumber}`,
   version: 7,
+  shouldEncryptWhenLocked: true,
   stores: [
     {
       name: 'session'

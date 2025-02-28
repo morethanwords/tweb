@@ -18,6 +18,8 @@ import throttleWith from '../helpers/schedulers/throttleWith';
 // import { WorkerTaskTemplate } from "../types";
 import IDBStorage from './files/idb';
 import {logger} from './logger';
+import DeferredIsUsingPasscode from './passcode/deferred';
+import EncryptedStorageLayer, {StorageLayer} from './encryptedStorageLayer';
 
 function noop() {}
 
@@ -46,7 +48,8 @@ export default class AppStorage<
   T extends Database<any>
 > {
   private static STORAGES: AppStorage<any, Database<any>>[] = [];
-  private storage: IDBStorage<T>;// new CacheStorageController('session');
+
+  private storage: StorageLayer;
 
   // private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
   private cache: Partial<Storage>;
@@ -67,7 +70,6 @@ export default class AppStorage<
   private log: ReturnType<typeof logger>;
 
   constructor(private db: T, private storeName: typeof db['stores'][number]['name']) {
-    this.storage = new IDBStorage<T>(db, storeName);
     this.log = logger(`AS-${db.name}-${storeName}`);
 
     this.cache = {};
@@ -90,6 +92,15 @@ export default class AppStorage<
     this.saveThrottled = throttleWith(queueMicrotask, this._save, /* THROTTLE_TIME,  */false);
     this.deleteThrottled = throttleWith(queueMicrotask, this._delete, /* THROTTLE_TIME,  */false);
     this.getThrottled = throttleWith(queueMicrotask, this._get, /* THROTTLE_TIME,  */false);
+  }
+
+  private async getStorage(): Promise<StorageLayer> {
+    if(this.storage) return this.storage;
+
+    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+    return this.storage = isUsingPasscode ?
+      new EncryptedStorageLayer(this.db, this.storeName) :
+      new IDBStorage(this.db, this.storeName);
   }
 
   private _save = async() => {
@@ -118,7 +129,8 @@ export default class AppStorage<
           } as LocalStorageProxySetTask);
         } */
 
-        await this.storage.save(keys, values);
+        const storage = await this.getStorage();
+        storage.save(keys, values);
         // console.log('setItem: have set', key/* , value */);
       } catch(e) {
         // this.useCS = false;
@@ -153,7 +165,8 @@ export default class AppStorage<
           } as LocalStorageProxyDeleteTask);
         } */
 
-        await this.storage.delete(keys);
+        const storage = await this.getStorage();
+        storage.delete(keys);
       } catch(e) {
         this.log.error('delete error', e, keys);
       }
@@ -169,8 +182,8 @@ export default class AppStorage<
   private _get = async() => {
     const keys = Array.from(this.getPromises.keys());
 
-    // const perf = performance.now();
-    this.storage.get(keys as string[]).then((values) => {
+    const storage = await this.getStorage();
+    storage.get(keys as string[]).then((values) => {
       for(let i = 0, length = keys.length; i < length; ++i) {
         const key = keys[i];
         const deferred = this.getPromises.get(key);
@@ -239,12 +252,14 @@ export default class AppStorage<
     } */
   }
 
-  public getAll(): Promise<any[]> {
-    return this.storage.getAll().catch(() => [] as any[]);
+  public async getAll(): Promise<any[]> {
+    const storage = await this.getStorage();
+    return storage.getAll().catch(() => [] as any[]);
   }
 
-  public getAllEntries() {
-    return this.storage.getAllEntries().catch(() => [] as IDBStorage.Entries);
+  public async getAllEntries() {
+    const storage = await this.getStorage();
+    return storage.getAllEntries().catch(() => [] as IDBStorage.Entries);
   }
 
   public set(obj: Partial<Storage>, onlyLocal = false) {
@@ -312,11 +327,11 @@ export default class AppStorage<
       }
     }
 
-    return this.storage.clear().catch(noop);
+    return this.getStorage().then(storage => storage.clear().catch(noop));
   }
 
   public close() {
-    return this.storage.close();
+    return this.getStorage().then(storage => storage.close());
   }
 
   public static toggleStorage(enabled: boolean, clearWrite: boolean) {

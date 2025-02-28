@@ -16,6 +16,7 @@ import getTimeFormat from '../helpers/getTimeFormat';
 import {nextRandomUint} from '../helpers/random';
 import App from './app';
 import {MTAppConfig} from '../lib/mtproto/appConfig';
+import {ShortcutKey as PasscodeLockShortcutKey} from '../components/sidebarLeft/tabs/passcodeLock/shortcutBuilder';
 
 const STATE_VERSION = App.version;
 const BUILD = App.build;
@@ -96,7 +97,14 @@ export type StateSettings = {
     showInMenu: boolean,
     doNotTranslate: TranslatableLanguageISO[]
   },
-  chatContextMenuHintWasShown: boolean
+  chatContextMenuHintWasShown: boolean,
+  passcode: {
+    enabled: boolean,
+    autoLockTimeoutMins: number | null,
+    lockShortcutEnabled: boolean,
+    lockShortcut: PasscodeLockShortcutKey[],
+    canAttemptAgainOn: number | null
+  }
 };
 
 export type State = {
@@ -341,6 +349,13 @@ export const SETTINGS_INIT: StateSettings = {
     enabled: true,
     showInMenu: true,
     doNotTranslate: []
+  },
+  passcode: {
+    enabled: false,
+    autoLockTimeoutMins: null,
+    lockShortcutEnabled: false,
+    lockShortcut: ['Alt'],
+    canAttemptAgainOn: null
   }
 };
 

@@ -258,7 +258,7 @@ namespace IDBStorage {
   export type Entries = Array<[IDBValidKey, any]>
 }
 
-class IDBStorage<T extends Database<any>, StoreName extends string = T['stores'][0]['name']> {
+class IDBStorage<T extends Database<any>, StoreName extends string = T['stores'][number]['name']> {
   private log: ReturnType<typeof logger>;
   private storeName: T['stores'][0]['name'];
   private idb: IDB;

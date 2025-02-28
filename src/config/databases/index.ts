@@ -10,5 +10,6 @@ export type DatabaseStore<StoreName extends string> = Omit<IDBStore, 'name'> & {
 export type Database<StoreName extends string> = {
   name: string,
   version: number,
+  shouldEncryptWhenLocked?: boolean,
   stores: DatabaseStore<StoreName>[]
 };
