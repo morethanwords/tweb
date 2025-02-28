@@ -4,7 +4,7 @@ import {Transition} from 'solid-transition-group';
 
 import ListenerSetter from '../../../../helpers/listenerSetter';
 
-import ripple from '../../../ripple'; // keep
+import ripple from '../../../ripple'; ripple; // keep
 import {animateValue, simpleEasing} from '../../../mediaEditor/utils';
 
 import styles from './inlineSelect.module.scss';
@@ -51,8 +51,9 @@ const InlineSelect: Component<{
     const optionTop = selectedOptionRect.top - selectRect.top;
     const optionBottom = optionTop + selectedOptionRect.height;
     const distToOptionCenter = optionTop + selectedOptionRect.height / 2;
-    const y = valueRect.top + valueRect.height / 2 - distToOptionCenter;
+
     const x = valueRect.left + valueRect.width / 2;
+    const y = valueRect.top + valueRect.height / 2 - distToOptionCenter;
 
     const maxDist = Math.max(optionTop, selectRect.height - optionBottom);
 
@@ -62,7 +63,7 @@ const InlineSelect: Component<{
     const getPath = (dist: number) =>
       `polygon(0% ${optionTop - dist}px, 100% ${optionTop - dist}px, 100% ${optionBottom + dist}px, 0px ${optionBottom + dist}px)`;
 
-    selectEl.animate({opacity: [0, 1]}, {duration: 100});
+    selectEl.animate({opacity: [0, 1]}, {duration: 120});
 
     animateValue(
       0,

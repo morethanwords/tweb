@@ -3,7 +3,7 @@ import {Component, createSelector, JSX} from 'solid-js';
 import {IS_APPLE} from '../../../../environment/userAgent';
 
 import {IconTsx} from '../../../iconTsx';
-import ripple from '../../../ripple'; // keep
+import ripple from '../../../ripple'; ripple; // keep
 
 import styles from './shortcutBuilder.module.scss';
 

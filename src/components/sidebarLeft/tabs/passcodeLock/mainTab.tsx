@@ -6,7 +6,7 @@ import {i18n} from '../../../../lib/langPack';
 
 import Section from '../../../section';
 import Space from '../../../space';
-import ripple from '../../../ripple'; // keep
+import ripple from '../../../ripple'; ripple; // keep
 import RowTsx from '../../../rowTsx';
 
 import LottieAnimation from './lottieAnimation';
@@ -21,8 +21,8 @@ import styles from './mainTab.module.scss';
 const MainTab = () => {
   return (
     <>
-      <PasscodeSetContent />
-      {/* <NoPasscodeContent /> */}
+      {/* <PasscodeSetContent /> */}
+      <NoPasscodeContent />
     </>
   );
 };
@@ -94,7 +94,6 @@ const PasscodeSetContent = () => {
 
         <RowTsx
           title={i18n('PasscodeLock.TurnOff')}
-          classList={{[styles.Row]: true}}
           icon="lockoff"
           clickable={(e) => {
           //
@@ -132,6 +131,7 @@ const PasscodeSetContent = () => {
         <Show when={canShowShortcut}>
           <RowTsx
             title={i18n('PasscodeLock.EnableLockShortcut')}
+            classList={{[styles.Row]: true}}
             rightContent={
               <StaticSwitch checked={checked()} />
             }

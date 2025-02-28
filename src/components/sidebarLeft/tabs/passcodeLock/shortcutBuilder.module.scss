@@ -38,16 +38,32 @@
 
   transition: background-color 0.2s;
 
+  &:hover {
+    background-color: hsl(from var(--secondary-color) h s calc(l + 6));
+  }
+
   &.selected {
     background-color: hsl(from var(--primary-color) h s calc(l + 5));
+  }
+
+  &.selected:hover {
+    background-color: hsl(from var(--primary-color) h s calc(l + 10));
   }
 
   :global(.night) & {
     background-color: hsl(from var(--secondary-color) h s calc(l - 23));
 
+    &:hover {
+      background-color: hsl(from var(--secondary-color) h s calc(l - 16));
+    }
+
     &.selected {
       // background-color: hsl(from var(--primary-color) h s calc(l + 5));
       background-color: var(--primary-color);
+    }
+
+    &.selected:hover {
+      background-color: hsl(from var(--primary-color) h s calc(l + 4));
     }
   }
 

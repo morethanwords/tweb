@@ -8,6 +8,7 @@ export const UnwrapEasing = BezierEasing(0.45, 0.37, 0.29, 1);
 
 const MAX_SPACE_BETWEEN_SPOILER_LINES = 2;
 const RESIZE_PAINT_CHECK_ATTEMPTS = 100;
+const RESIZE_PAINT_SKIP_FRAMES = 5;
 const GENEROUS_COMPARISON_ERROR = 0.1;
 
 export type CustomDOMRect = {
@@ -91,10 +92,14 @@ export async function waitResizeToBePainted(resizeEntry: ResizeObserverEntry) {
   const deferred = deferredPromise<void>();
 
   let attempts = 0;
+  let skip = -1;
 
   const entryRect = resizeEntry.contentRect;
 
   animate(() => {
+    skip = (skip + 1) % RESIZE_PAINT_SKIP_FRAMES;
+    if(skip) return true;
+
     const targetRect = resizeEntry.target.getBoundingClientRect();
     if(
       Math.abs(targetRect.width - entryRect.width) < GENEROUS_COMPARISON_ERROR &&

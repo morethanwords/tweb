@@ -1,3 +1,6 @@
+@import "../../../../scss/variables";
+@import "../../../../scss/mixins";
+
 .Overlay {
   position: fixed;
   left: 0;
@@ -65,4 +68,6 @@
   &.selected {
     color: var(--primary-color);
   }
+
+  @include hover-global(filled-gray, background-color);
 }

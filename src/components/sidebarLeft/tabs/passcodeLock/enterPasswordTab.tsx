@@ -1,10 +1,12 @@
-import {createEffect, createSignal} from 'solid-js';
+import {createEffect, createSignal, onCleanup} from 'solid-js';
+
+import {MAX_PASSCODE_LENGTH} from '../../../../lib/passcode';
 
 import Section from '../../../section';
 import {InputFieldTsx} from '../../../inputFieldTsx';
 import Space from '../../../space';
 import {i18n} from '../../../../lib/langPack';
-import ripple from '../../../ripple'; // keep
+import ripple from '../../../ripple'; ripple; // keep
 import PasswordInputField from '../../../passwordInputField';
 
 import {useSuperTab} from './superTabProvider';
@@ -13,10 +15,13 @@ import type {AppPasscodeEnterPasswordTab} from '.';
 
 import commonStyles from './common.module.scss';
 
+
 type AppPasscodeEnterPasswordTabClass = typeof AppPasscodeEnterPasswordTab;
 
 const EnterPasswordTab = () => {
   const [tab, {AppPasscodeEnterPasswordTab}] = useSuperTab<AppPasscodeEnterPasswordTabClass>();
+
+  let inputField: PasswordInputField;
 
   const [value, setValue] = createSignal('');
   const [isError, setIsError] = createSignal(false);
@@ -28,6 +33,34 @@ const EnterPasswordTab = () => {
     setIsError(false);
   });
 
+  setTimeout(() => {
+    inputField.input.focus();
+  }, 200);
+
+  onCleanup(() => {
+    // Just in case
+    setValue('');
+    (inputField.input as HTMLInputElement).value = '';
+  });
+
+  const canSubmit = () => value() && value().length <= MAX_PASSCODE_LENGTH;
+
+  function onSubmit(e: Event) {
+    e.preventDefault();
+
+    if(!canSubmit()) return;
+
+    if(isFirst) {
+      tab.slider.createTab(AppPasscodeEnterPasswordTab)
+      .open({passcode: value()});
+    } else {
+      if(tab.payload && value() === tab.payload.passcode) {
+      } else {
+        setIsError(true);
+      }
+    }
+  }
+
   return (
     <Section caption="PasscodeLock.Notice">
       <LottieAnimation name="UtyanPasscode" />
@@ -37,25 +70,13 @@ const EnterPasswordTab = () => {
       <form
         action=""
         autocomplete="off"
-        onSubmit={(e) => {
-          e.preventDefault();
-
-          if(!value()) return;
-
-          if(isFirst) {
-            tab.slider.createTab(AppPasscodeEnterPasswordTab)
-            .open({passcode: value()});
-          } else {
-            if(tab.payload && value() !== tab.payload.passcode) {
-              setIsError(true);
-            } else {
-            }
-          }
-        }}
+        onSubmit={onSubmit}
       >
         <div class={commonStyles.AdditionalPadding}>
           <InputFieldTsx
             InputFieldClass={PasswordInputField}
+            instanceRef={(ref) => void (inputField = ref)}
+            maxLength={MAX_PASSCODE_LENGTH}
             autocomplete="off"
             value={value()}
             errorLabel={isError() ? 'PasscodeLock.PasscodesDontMatch' : undefined}
@@ -75,7 +96,7 @@ const EnterPasswordTab = () => {
             use:ripple
             type="submit"
             class="btn-primary btn-color-primary btn-large"
-            disabled={!value()}
+            disabled={!canSubmit()}
           >
             {i18n(isFirst ? 'PasscodeLock.Next' : 'PasscodeLock.SetPasscode')}
           </button>

@@ -1,4 +1,4 @@
-import {batch, Component, createEffect, createRenderEffect, createSignal, mergeProps, on, onCleanup, onMount} from 'solid-js';
+import {batch, Component, createEffect, createRenderEffect, createResource, createSignal, mergeProps, on, onCleanup, onMount} from 'solid-js';
 import {createMutable} from 'solid-js/store';
 
 import {SETTINGS_INIT} from '../../config/state';
@@ -11,7 +11,7 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import {getColorsFromWallPaper} from '../../helpers/color';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 
-import ripple from '../ripple'; // keep
+import ripple from '../ripple'; ripple; // keep
 import Space from '../space';
 import ChatBackgroundPatternRenderer from '../chat/patternRenderer';
 import ChatBackgroundGradientRenderer from '../chat/gradientRenderer';
@@ -26,7 +26,6 @@ type StateStore = {
   isMobile: boolean;
   isError: boolean;
   passcode: string;
-  totalAccounts: number;
   patternCanvas?: HTMLCanvasElement;
   gradientCanvas?: HTMLCanvasElement;
 };
@@ -51,9 +50,12 @@ const PasscodeLockScreen: Component<{}> = (props) => {
   const store = createMutable<StateStore>({
     isMobile: mediaSizes.activeScreen === ScreenSize.mobile,
     isError: false,
-    passcode: '',
-    totalAccounts: 1
+    passcode: ''
+  }, {
+    name: 'store'
   });
+
+  const [totalAccounts] = createResource(() =>  AccountController.getTotalAccounts());
 
   async function createBackground() {
     const rect = container.getBoundingClientRect();
@@ -76,12 +78,27 @@ const PasscodeLockScreen: Component<{}> = (props) => {
     });
 
     const createdPatternCanvas = patternRenderer.createCanvas();
-    createdPatternCanvas.classList.add(styles.CanvasCommon, styles.PatternCanvas);
+    createdPatternCanvas.classList.add(styles.CanvasCommon)
+    if(!isDarkPattern) createdPatternCanvas.classList.add(styles.blend);
+
     patternRenderer.renderToCanvas(createdPatternCanvas);
 
     const colors = getColorsFromWallPaper(wallPaper);
     const {canvas: createdGradientCanvas} = ChatBackgroundGradientRenderer.create(colors);
     createdGradientCanvas.classList.add(styles.CanvasCommon);
+
+    log('intensity', intensity)
+    if(intensity) {
+      // let setOpacityTo: HTMLElement;
+      const setOpacityTo = isDarkPattern ? createdGradientCanvas : createdPatternCanvas;
+
+      let opacityMax = Math.abs(intensity) * (isDarkPattern ? .25 : 1);
+      if(isDarkPattern) {
+        opacityMax = Math.min(0.3, opacityMax);
+      }
+
+      setOpacityTo.style.setProperty('--opacity-max', '' + opacityMax);
+    }
 
     batch(() => {
       store.patternCanvas = createdPatternCanvas;
@@ -93,9 +110,9 @@ const PasscodeLockScreen: Component<{}> = (props) => {
 
   onMount(() => {
     // const promise = createBackground();
-
-    AccountController.getTotalAccounts().then(amount => store.totalAccounts = amount);
-
+    setTimeout(() => {
+      passwordInputField.input.focus();
+    }, 500);
     listenerSetter.add(window)('resize', () => {
       ChatBackgroundPatternRenderer.resizeInstancesOf(container);
     });
@@ -143,7 +160,6 @@ const PasscodeLockScreen: Component<{}> = (props) => {
     />
   );
 
-
   return (
     <div ref={container} class={styles.Container}>
       {store.gradientCanvas}
@@ -171,7 +187,7 @@ const PasscodeLockScreen: Component<{}> = (props) => {
         <div class={styles.Description}>
           {
             i18n(
-              store.totalAccounts > 1 ?
+              totalAccounts() > 1 ? // Gonna be `false` when undefined
                 'PasscodeLock.ForgotPasscode.MultipleAccounts' :
                 'PasscodeLock.ForgotPasscode.OneAccount',
               [

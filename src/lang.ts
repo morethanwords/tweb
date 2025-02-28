@@ -3146,7 +3146,7 @@ const lang = {
   'PasscodeLock.EnterYourPasscode': 'Enter your passcode',
   'PasscodeLock.Proceed': 'Proceed',
   'PasscodeLock.ForgotPasscode.OneAccount': 'Note: If you forgot your passcode, you need to [log out]().',
-  'PasscodeLock.ForgotPasscode.MultipleAccounts': 'Note: If you forgot your passcode, you need to [log out]() from all your accounts from this browser.',
+  'PasscodeLock.ForgotPasscode.MultipleAccounts': 'Note: If you forgot your passcode, you need to [log out]() from all your current accounts.',
   'PasscodeLock.WrongPasscode': 'Wrong passcode. Please try again.'
 };
 
