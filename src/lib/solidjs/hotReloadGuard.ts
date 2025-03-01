@@ -15,6 +15,7 @@ import type {ThemeController} from '../../helpers/themeController';
 import type {AppImManager} from '../appManagers/appImManager';
 import type {RootScope} from '../rootScope';
 import type lottieLoader from '../rlottie/lottieLoader';
+import type apiManagerProxy from '../mtproto/mtprotoworker';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -27,7 +28,8 @@ export type SolidJSHotReloadGuardContextValue = {
   showLimitPopup: typeof showLimitPopup;
   lottieLoader: typeof lottieLoader;
   themeController: ThemeController;
-  appImManager: AppImManager
+  appImManager: AppImManager;
+  apiManagerProxy: typeof apiManagerProxy;
 };
 
 export const SolidJSHotReloadGuardContext = createContext<SolidJSHotReloadGuardContextValue>(null);

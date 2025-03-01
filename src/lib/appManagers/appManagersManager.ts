@@ -121,11 +121,6 @@ export class AppManagersManager {
         }
       }
     });
-
-    rootScope.addEventListener('toggle_using_passcode', (value) => {
-      DeferredIsUsingPasscode.overrideCurrentValue(value);
-      AppStorage.toggleEncryptedForAll(value);
-    });
   }
 
   private async createManagers() {

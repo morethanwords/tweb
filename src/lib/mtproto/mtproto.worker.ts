@@ -22,6 +22,9 @@ import callbackify from '../../helpers/callbackify';
 import Modes from '../../config/modes';
 import {ActiveAccountNumber} from '../accounts/types';
 import commonStateStorage from '../commonStateStorage';
+import DeferredIsUsingPasscode from '../passcode/deferred';
+import AppStorage from '../storage';
+
 
 const log = logger('MTPROTO');
 // let haveState = false;
@@ -125,6 +128,20 @@ port.addMultipleEventsListeners({
     if(typeof(SharedWorkerGlobalScope) !== 'undefined') {
       self.close();
     }
+  },
+
+  toggleUsingPasscode: (value) => {
+    DeferredIsUsingPasscode.overrideCurrentValue(value);
+    AppStorage.toggleEncryptedForAll(value);
+  },
+
+  changePasscode: async(payload) => {
+    await AppStorage.freezeSavingAsync(async() => {
+      commonStateStorage.unfreezeAsync(async() => {
+        await commonStateStorage.set({passcode: payload});
+      });
+    });
+    await AppStorage.reEncryptEncrypted();
   }
 
   // socketProxy: (task) => {

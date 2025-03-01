@@ -4,6 +4,7 @@ import asyncThrottle from '../helpers/schedulers/asyncThrottle';
 
 import cryptoMessagePort from './crypto/cryptoMessagePort';
 import IDBStorage from './files/idb';
+import {logger, Logger} from './logger';
 import PasscodeHashFetcher from './passcode/hashFetcher';
 
 
@@ -23,22 +24,30 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   private static STORAGE_KEY = 'data';
   private static STORAGE_THROTTLE_TIME_MS = 250;
 
-  /**
-   * Sync loading data between the same stores
-   * Note that the object reference of data will be also synced across instances with same stores
-   */
-  private static loadingDataMap = new Map<string, Promise<any>>();
+  private static instances = new Map<string, EncryptedStorageLayer<Database<any>>>();
 
   private storage: IDBStorage<T>;
   private data: StoredData;
 
-  private loadingDataPromise: Promise<void>;
+  private log: Logger;
 
-  constructor(private db: T, private storeName: T['stores'][number]['name']) {
-    this.storage = new IDBStorage(db, storeName + '__encrypted');
+  private loadingDataPromise: Promise<unknown>;
+
+  private constructor(private db: T, private encryptedStoreName: T['stores'][number]['encryptedName']) {
+    this.storage = new IDBStorage(db, encryptedStoreName);
+    this.log = logger(`encrypted-storage-${encryptedStoreName}`)
   }
 
-  private static getLoadingDataKey(dbName: string, storeName: string) {
+  public static getInstance<T extends Database<any>>(db: T, encryptedStoreName: T['stores'][number]['encryptedName']): EncryptedStorageLayer<T> {
+    const key = this.getStorageKey(db.name, encryptedStoreName);
+    if(this.instances.has(key)) return this.instances.get(key) as EncryptedStorageLayer<T>;
+
+    const instance = new EncryptedStorageLayer(db, encryptedStoreName);
+    this.instances.set(key, instance);
+    return instance;
+  }
+
+  private static getStorageKey(dbName: string, storeName: string) {
     return `${dbName}**${storeName}`;
   }
 
@@ -56,38 +65,45 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
     return JSON.parse(result);
   }
 
-  public static clearLoadingDataMap() {
-    this.loadingDataMap.clear();
-  }
-
   public loadEncrypted() {
-    const loadingDataKey = EncryptedStorageLayer.getLoadingDataKey(this.db.name, this.storeName);
-    const promise = this.loadingDataPromise = EncryptedStorageLayer.loadingDataMap.get(loadingDataKey);
-    if(promise) {
-      promise.then((data) => {
-        this.data = data;
-        this.loadingDataPromise = undefined;
-      }); // instant for already loaded data, we're not clearing anything
-    } else {
-      EncryptedStorageLayer.loadingDataMap.set(loadingDataKey, this.loadFromIDB());
-    }
+    this.loadingDataPromise = this.loadFromIDB();
+    this.loadingDataPromise.then(() => {
+      this.loadingDataPromise = undefined;
+    });
+    // const loadingDataKey = EncryptedStorageLayer.getStorageKey(this.db.name, this.storeName);
+    // const promise = this.loadingDataPromise = EncryptedStorageLayer.loadingDataMap.get(loadingDataKey);
+    // if(promise) {
+    //   promise.then((data) => {
+    //     this.data = data;
+    //     this.loadingDataPromise = undefined;
+    //   }); // instant for already loaded data, we're not clearing anything
+    // } else {
+    //   EncryptedStorageLayer.loadingDataMap.set(loadingDataKey, this.loadFromIDB());
+    // }
   }
 
-  public loadDecrypted(data: any) {
+  public async loadDecrypted(data: any) {
+    this.log('loading decrypted', data);
     this.data = data;
+    this.saveToIDB();
   }
 
   private waitToLoad() {
     if(this.loadingDataPromise) return this.loadingDataPromise;
   }
 
-  private saveToIDB = asyncThrottle(async() => {
+  private saveToIDB = async() => {
     await this.waitToLoad();
 
     // TODO: Check performance;
     const encryptedData = await EncryptedStorageLayer.encrypt(this.data);
     await this.storage.save(EncryptedStorageLayer.STORAGE_KEY, encryptedData);
-  }, EncryptedStorageLayer.STORAGE_THROTTLE_TIME_MS);
+  };
+
+  private saveToIDBThrottled = asyncThrottle(
+    () => this.saveToIDB(),
+    EncryptedStorageLayer.STORAGE_THROTTLE_TIME_MS
+  );
 
   private async loadFromIDB() {
     try {
@@ -103,7 +119,11 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
     return this.data;
   }
 
-  async save(entryName: string | string[], value: any | any[]): Promise<void> {
+  public async reEncrypt() {
+    await this.saveToIDB();
+  }
+
+  public async save(entryName: string | string[], value: any | any[]): Promise<void> {
     await this.waitToLoad();
 
     const names = toArray(entryName);
@@ -113,28 +133,28 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
       this.data[name] = values[idx];
     });
 
-    this.saveToIDB();
+    this.saveToIDBThrottled();
   }
 
-  async get<T>(entryNames: string[]): Promise<T[]> {
+  public async get<T>(entryNames: string[]): Promise<T[]> {
     await this.waitToLoad();
 
     return entryNames.map((entryName) => this.data[entryName]);
   }
 
-  async getAllEntries(): Promise<IDBStorage.Entries> {
+  public async getAllEntries(): Promise<IDBStorage.Entries> {
     await this.waitToLoad();
 
     return Object.entries(this.data);
   }
 
-  async getAll<T>(): Promise<T[]> {
+  public async getAll<T>(): Promise<T[]> {
     await this.waitToLoad();
 
     return Object.values(this.data);
   }
 
-  async delete(entryName: string | string[]): Promise<void> {
+  public async delete(entryName: string | string[]): Promise<void> {
     await this.waitToLoad();
 
     const names = toArray(entryName);
@@ -142,17 +162,17 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
       delete this.data[name];
     });
 
-    this.saveToIDB();
+    this.saveToIDBThrottled();
   }
 
-  async clear(): Promise<void> {
+  public async clear(): Promise<void> {
     await this.waitToLoad();
 
     this.data = {};
     await this.storage.clear();
   }
 
-  close(): void {
+  public close(): void {
     this.storage.close();
   }
 }

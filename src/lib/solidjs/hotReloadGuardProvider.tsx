@@ -8,6 +8,7 @@ import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import showLimitPopup from '../../components/popups/limit';
 import themeController from '../../helpers/themeController';
 
+import apiManagerProxy from '../mtproto/mtprotoworker';
 import appImManager from '../appManagers/appImManager';
 import lottieLoader from '../rlottie/lottieLoader';
 import rootScope from '../rootScope';
@@ -27,7 +28,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       showLimitPopup,
       lottieLoader,
       themeController,
-      appImManager
+      appImManager,
+      apiManagerProxy
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

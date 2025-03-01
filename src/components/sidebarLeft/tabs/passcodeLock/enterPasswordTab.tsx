@@ -19,14 +19,12 @@ import commonStyles from './common.module.scss';
 type AppPasscodeEnterPasswordTabClass = typeof AppPasscodeEnterPasswordTab;
 
 const EnterPasswordTab = () => {
-  const [tab, {AppPasscodeEnterPasswordTab}] = useSuperTab<AppPasscodeEnterPasswordTabClass>();
+  const [tab] = useSuperTab<AppPasscodeEnterPasswordTabClass>();
 
   let inputField: PasswordInputField;
 
   const [value, setValue] = createSignal('');
   const [isError, setIsError] = createSignal(false);
-
-  const isFirst = !tab.payload || !tab.payload.passcode;
 
   createEffect(() => {
     value();
@@ -45,19 +43,15 @@ const EnterPasswordTab = () => {
 
   const canSubmit = () => value() && value().length <= MAX_PASSCODE_LENGTH;
 
-  function onSubmit(e: Event) {
+  async function onSubmit(e: Event) {
     e.preventDefault();
 
     if(!canSubmit()) return;
 
-    if(isFirst) {
-      tab.slider.createTab(AppPasscodeEnterPasswordTab)
-      .open({passcode: value()});
-    } else {
-      if(tab.payload && value() === tab.payload.passcode) {
-      } else {
-        setIsError(true);
-      }
+    try {
+      await tab.payload.onSubmit(value(), tab);
+    } catch{
+      setIsError(true);
     }
   }
 
@@ -80,11 +74,7 @@ const EnterPasswordTab = () => {
             autocomplete="off"
             value={value()}
             errorLabel={isError() ? 'PasscodeLock.PasscodesDontMatch' : undefined}
-            label={
-              isFirst ?
-                'PasscodeLock.EnterAPasscode' :
-                'PasscodeLock.ReEnterPasscode'
-            }
+            label={tab.payload.inputLabel}
             onRawInput={setValue}
           />
         </div>
@@ -98,7 +88,7 @@ const EnterPasswordTab = () => {
             class="btn-primary btn-color-primary btn-large"
             disabled={!canSubmit()}
           >
-            {i18n(isFirst ? 'PasscodeLock.Next' : 'PasscodeLock.SetPasscode')}
+            {i18n(tab.payload.buttonText)}
           </button>
         </div>
       </form>

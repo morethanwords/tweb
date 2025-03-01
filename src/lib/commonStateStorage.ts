@@ -31,8 +31,7 @@ commonStateStorage.get('settings', false).then((settings) => {
 });
 
 PasscodeHashFetcher.fetchHash = async() => {
-  // Will be cached inside storage
-  const passcode = await commonStateStorage.get('passcode');
+  const passcode = await commonStateStorage.get('passcode', false);
   return passcode.hash;
 }
 

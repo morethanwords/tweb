@@ -24,7 +24,7 @@ export async function encryptLocalData(passcodeHash: Uint8Array, data: string) {
   );
 
   /**
-   * Have different salt and IV per user to prevent precomputed attacks
+   * Have different salt and IV per encryption to prevent precomputed attacks
    */
   const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
   combined.set(salt, 0);

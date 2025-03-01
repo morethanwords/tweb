@@ -7,6 +7,7 @@ export default class DeferredIsUsingPasscode {
   public static resolveDeferred(value: boolean) {
     this.value = value;
     this.deferred?.resolve(value);
+    this.deferred = undefined;
   }
 
   public static overrideCurrentValue(value: boolean) {

@@ -50,26 +50,31 @@ export const getDatabaseState = (
   accountNumber: ActiveAccountNumber
 ): Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> => ({
   name: `tweb-account-${accountNumber}`,
-  version: 7,
-  shouldEncryptWhenLocked: true,
+  version: 8,
   stores: [
     {
-      name: 'session'
+      name: 'session',
+      encryptedName: 'session__encrypted'
     },
     {
-      name: 'stickerSets'
+      name: 'stickerSets',
+      encryptedName: 'stickerSets__encrypted'
     },
     {
-      name: 'users'
+      name: 'users',
+      encryptedName: 'users__encrypted'
     },
     {
-      name: 'chats'
+      name: 'chats',
+      encryptedName: 'chats__encrypted'
     },
     {
-      name: 'dialogs'
+      name: 'dialogs',
+      encryptedName: 'dialogs__encrypted'
     },
     {
-      name: 'messages'
+      name: 'messages',
+      encryptedName: 'messages__encrypted'
     }
   ]
 });

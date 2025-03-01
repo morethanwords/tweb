@@ -67,9 +67,12 @@ export default class AppStorage<
   private deleteThrottled: () => void;
   private deleteDeferred: CancellablePromise<void>;
 
+  private isEncryptable: boolean;
+  private encryptedStoreName?: T['stores'][number]['encryptedName'];
+
   private log: ReturnType<typeof logger>;
 
-  constructor(private db: T, private storeName: typeof db['stores'][number]['name']) {
+  constructor(private db: T, private storeName: T['stores'][number]['name']) {
     this.log = logger(`AS-${db.name}-${storeName}`);
 
     this.cache = {};
@@ -78,6 +81,10 @@ export default class AppStorage<
     this.saveDeferred = deferredPromise();
     this.keysToDelete = new Set();
     this.deleteDeferred = deferredPromise();
+
+    const store = db.stores.find(store => store.name === storeName);
+    this.isEncryptable = !!store?.encryptedName;
+    this.encryptedStoreName = store?.encryptedName;
 
     if(AppStorage.STORAGES.length) {
       this.useStorage = AppStorage.STORAGES[0].useStorage;
@@ -94,15 +101,16 @@ export default class AppStorage<
     this.getThrottled = throttleWith(queueMicrotask, this._get, /* THROTTLE_TIME,  */false);
   }
 
+
   private async getStorage(): Promise<StorageLayer> {
     if(this.storage) return this.storage;
 
-    const isUsingPasscode = this.db.shouldEncryptWhenLocked ?
+    const isUsingPasscode = this.isEncryptable ?
       await DeferredIsUsingPasscode.isUsingPasscode() :
       false;
 
     const storage = this.storage = isUsingPasscode ?
-      new EncryptedStorageLayer(this.db, this.storeName) :
+      EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName) :
       new IDBStorage(this.db, this.storeName);
 
     if(storage instanceof EncryptedStorageLayer) storage.loadEncrypted();
@@ -337,6 +345,17 @@ export default class AppStorage<
     return this.getStorage().then(storage => storage.clear().catch(noop));
   }
 
+  public async unfreezeAsync(callback: () => Promise<unknown>) {
+    const prevFreezed = this.savingFreezed;
+    this.savingFreezed = false;
+    try {
+      await callback();
+    } catch(err) {
+      console.error('unfreezeAsync callback error:', err);
+    }
+    this.savingFreezed = prevFreezed;
+  }
+
   public close() {
     return this.getStorage().then(storage => storage.close());
   }
@@ -370,18 +389,31 @@ export default class AppStorage<
     this.STORAGES.forEach((storage) => storage.savingFreezed = false);
   }
 
+  public static async freezeSavingAsync(callback: () => Promise<unknown>) {
+    this.STORAGES.forEach((storage) => storage.savingFreezed = true);
+    try {
+      await callback();
+    } catch(err) {
+      console.error('freezeSavingAsync callback error:', err);
+    }
+    this.STORAGES.forEach((storage) => storage.savingFreezed = false);
+  }
+
   private async toggleEncrypted(shouldEncrypt: boolean) {
+    if(!this.isEncryptable) return;
+
     const isEncrypted = this.storage instanceof EncryptedStorageLayer;
     if(shouldEncrypt === isEncrypted) return;
 
     const entries = await this.getAllEntries();
-    const data = Object.fromEntries(entries);
-    this.storage.clear();
-    this.storage.close();
+
+    await this.storage.clear();
 
     if(shouldEncrypt) {
-      const storage = this.storage = new EncryptedStorageLayer(this.db, this.storeName);
-      storage.loadDecrypted(data);
+      const storage = this.storage = EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName);
+      const data = Object.fromEntries(entries);
+
+      await storage.loadDecrypted(data);
     } else {
       const storage = this.storage = new IDBStorage(this.db, this.storeName);
       const keys = entries.map(entry => entry[0] as string);
@@ -391,11 +423,27 @@ export default class AppStorage<
     }
   }
 
+  private async reEncrypt() {
+    if(!(this.storage instanceof EncryptedStorageLayer)) return;
+
+    await this.storage.reEncrypt();
+  }
+
   public static async toggleEncryptedForAll(shouldEncrypt: boolean) {
-    await Promise.all(
-      this.STORAGES.map((storage) => storage.toggleEncrypted(shouldEncrypt))
-    );
-    EncryptedStorageLayer.clearLoadingDataMap();
+    // this.freezeSaving()
+    this.freezeSavingAsync(async() => {
+      await Promise.all(
+        this.STORAGES.map((storage) => storage.toggleEncrypted(shouldEncrypt))
+      );
+    });
+  }
+
+  public static async reEncryptEncrypted() {
+    this.freezeSavingAsync(async() => {
+      await Promise.all(
+        this.STORAGES.map((storage) => storage.reEncrypt())
+      );
+    });
   }
 
   /* public deleteDatabase() {

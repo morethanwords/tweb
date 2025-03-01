@@ -40,7 +40,9 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   createProxyWorkerURLs: (payload: {originalUrl: string, blob: Blob}) => string[],
   setInterval: (timeout: number) => number,
   clearInterval: (intervalId: number) => void,
-  terminate: () => void
+  terminate: () => void,
+  toggleUsingPasscode: (value: boolean) => void,
+  changePasscode: (payload: {hash: Uint8Array, salt: Uint8Array}) => void
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,

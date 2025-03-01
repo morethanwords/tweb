@@ -3,6 +3,7 @@ import {render} from 'solid-js/web';
 
 import SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
 import {LangPackKey} from '../../../../lib/langPack';
+import {InstanceOf} from '../../../../types';
 
 import {SliderSuperTab} from '../../../slider';
 
@@ -16,7 +17,7 @@ type ScaffoldSolidJSTabArgs = {
 
 type ScaffoledClass<Payload = void> = new (...args: ConstructorParameters<typeof SliderSuperTab>) => SliderSuperTab & {
   payload: Payload;
-  init(payload: Payload): Promise<void>;
+  init(payload: Payload, overrideTitle?: LangPackKey): Promise<void>;
 };
 
 function scaffoldSolidJSTab<Payload = void>({
@@ -28,8 +29,8 @@ function scaffoldSolidJSTab<Payload = void>({
 
     private dispose?: () => void;
 
-    public async init(payload: Payload) {
-      this.setTitle(title);
+    public async init(payload: Payload, overrideTitle?: LangPackKey) {
+      this.setTitle(overrideTitle || title);
       this.payload = payload;
 
       const div = document.createElement('div');
@@ -70,8 +71,15 @@ export const AppPasscodeLockTab =
     getComponentModule: () => import('./mainTab')
   });
 
+type AppPasscodeEnterPasswordTabPayload = {
+  onSubmit: (passcode: string, tab: InstanceOf<typeof AppPasscodeEnterPasswordTab>) => MaybePromise<void>;
+
+  inputLabel: LangPackKey;
+  buttonText: LangPackKey;
+};
+
 export const AppPasscodeEnterPasswordTab =
-  scaffoldSolidJSTab<{passcode: string} | void>({
+  scaffoldSolidJSTab<AppPasscodeEnterPasswordTabPayload>({
     title: 'PasscodeLock.Title',
     getComponentModule: () => import('./enterPasswordTab')
   });

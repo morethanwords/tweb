@@ -1,8 +1,10 @@
-import {createSignal, Show} from 'solid-js';
+import {createResource, createSignal, onCleanup, Show} from 'solid-js';
 
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {IS_MOBILE} from '../../../../environment/userAgent';
+import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {i18n} from '../../../../lib/langPack';
+import ListenerSetter from '../../../../helpers/listenerSetter';
+import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
 
 import Section from '../../../section';
 import Space from '../../../space';
@@ -14,21 +16,74 @@ import {useSuperTab} from './superTabProvider';
 import StaticSwitch from './staticSwitch';
 import InlineSelect from './inlineSelect';
 import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
+import {usePromiseCollector} from './promiseCollector';
 
 import commonStyles from './common.module.scss';
 import styles from './mainTab.module.scss';
+import {usePasscodeActions} from '../../../../lib/passcode';
 
 const MainTab = () => {
+  const {rootScope, apiManagerProxy} = useHotReloadGuard();
+  const promiseColletor = usePromiseCollector();
+
+  const [enabled, {mutate}] = createResource(() => {
+    const promise = apiManagerProxy.getState().then(state =>
+      state.settings?.passcode?.enabled || false
+    );
+    promiseColletor.collect(promise);
+    return promise;
+  });
+
+  const listenerSetter = new ListenerSetter();
+
+  listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
+    if(key === joinDeepPath('settings', 'passcode', 'enabled')) {
+      mutate(value);
+    }
+  });
+  onCleanup(() => {
+    listenerSetter.removeAll();
+  })
+
   return (
-    <>
-      {/* <PasscodeSetContent /> */}
-      <NoPasscodeContent />
-    </>
+    <Show when={enabled.state === 'ready'}>
+      <Show when={enabled()} fallback={<NoPasscodeContent />}>
+        <PasscodeSetContent />
+      </Show>
+    </Show>
   );
 };
 
 const NoPasscodeContent = () => {
-  const [tab, {AppPasscodeEnterPasswordTab}] = useSuperTab();
+  const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab}] = useSuperTab();
+  const {enablePasscode} = usePasscodeActions();
+
+  const onEnable = () => {
+    tab.slider.createTab(AppPasscodeEnterPasswordTab)
+    .open({
+      onSubmit: (passcode) => {
+        onSecondStep(passcode);
+        passcode = '';
+      },
+      buttonText: 'PasscodeLock.Next',
+      inputLabel: 'PasscodeLock.EnterAPasscode'
+    });
+  };
+
+  const onSecondStep = (firstPasscode: string) => {
+    tab.slider.createTab(AppPasscodeEnterPasswordTab)
+    .open({
+      onSubmit: async(passcode, otherTab) => {
+        if(passcode !== firstPasscode) throw {};
+        await enablePasscode(passcode);
+        passcode = '';
+        otherTab.slider.sliceTabsUntilTab(AppPasscodeLockTab, otherTab);
+        otherTab.close();
+      },
+      buttonText: 'PasscodeLock.SetPasscode',
+      inputLabel: 'PasscodeLock.ReEnterPasscode'
+    });
+  };
 
   return (
     <Section caption="PasscodeLock.Notice">
@@ -42,10 +97,7 @@ const NoPasscodeContent = () => {
         <button
           use:ripple
           class="btn-primary btn-color-primary btn-large"
-          onClick={() => {
-            tab.slider.createTab(AppPasscodeEnterPasswordTab)
-            .open();
-          }}
+          onClick={onEnable}
         >
           {i18n('PasscodeLock.TurnOn')}
         </button>
@@ -58,7 +110,8 @@ const NoPasscodeContent = () => {
 
 
 const PasscodeSetContent = () => {
-  const [tab, {AppPasscodeEnterPasswordTab}] = useSuperTab();
+  const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab}] = useSuperTab();
+  const {isMyPasscode, disablePasscode, changePasscode} = usePasscodeActions();
 
   const [checked, setChecked] = createSignal(false);
   const [value, setValue] = createSignal('disabled');
@@ -76,6 +129,66 @@ const PasscodeSetContent = () => {
   const [keys, setKeys] = createSignal<ShortcutKey[]>(['Alt']);
 
   const canShowShortcut = !IS_MOBILE;
+
+
+  const onPasscodeChange = () => {
+    tab.slider.createTab(AppPasscodeEnterPasswordTab)
+    .open({
+      onSubmit: async(passcode) => {
+        const isCorrect = await isMyPasscode(passcode);
+        passcode = ''; // forget
+        if(!isCorrect) throw {};
+
+        onChangeSecondStep();
+      },
+      buttonText: 'PasscodeLock.Next',
+      inputLabel: 'PasscodeLock.EnterYourPasscode'
+    }, 'PasscodeLock.EnterYourCurrentPasscode');
+  };
+
+  const onChangeSecondStep = () => {
+    tab.slider.createTab(AppPasscodeEnterPasswordTab)
+    .open({
+      onSubmit: (passcode) => {
+        onChangeThirdStep(passcode);
+        passcode = ''; // forget
+      },
+      buttonText: 'PasscodeLock.Next',
+      inputLabel: 'PasscodeLock.EnterAPasscode'
+    }, 'PasscodeLock.EnterANewPasscode');
+  };
+
+  const onChangeThirdStep = (firstPasscode: string) => {
+    tab.slider.createTab(AppPasscodeEnterPasswordTab)
+    .open({
+      onSubmit: async(passcode, otherTab) => {
+        if(passcode !== firstPasscode) throw {};
+        await changePasscode(passcode);
+        passcode = ''; // forget
+        otherTab.slider.sliceTabsUntilTab(AppPasscodeLockTab, otherTab);
+        otherTab.close();
+      },
+      buttonText: 'PasscodeLock.SetPasscode',
+      inputLabel: 'PasscodeLock.ReEnterPasscode'
+    }, 'PasscodeLock.ReEnterPasscode');
+  };
+
+  const onDisable = () => {
+    tab.slider.createTab(AppPasscodeEnterPasswordTab)
+    .open({
+      onSubmit: async(passcode, otherTab) => {
+        const isCorrect = await isMyPasscode(passcode);
+        passcode = '';
+        if(!isCorrect) throw {};
+
+        await disablePasscode();
+        otherTab.slider.sliceTabsUntilTab(AppPasscodeLockTab, otherTab);
+        otherTab.close();
+      },
+      buttonText: 'PasscodeLock.TurnOff',
+      inputLabel: 'PasscodeLock.EnterYourPasscode'
+    });
+  };
 
   const caption = (
     <>
@@ -95,16 +208,12 @@ const PasscodeSetContent = () => {
         <RowTsx
           title={i18n('PasscodeLock.TurnOff')}
           icon="lockoff"
-          clickable={(e) => {
-          //
-          }}
+          clickable={onDisable}
         />
         <RowTsx
           title={i18n('PasscodeLock.ChangePasscode')}
           icon="key"
-          clickable={(e) => {
-          //
-          }}
+          clickable={onPasscodeChange}
         />
       </Section>
 
