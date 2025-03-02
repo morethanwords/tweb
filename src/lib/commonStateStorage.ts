@@ -6,16 +6,31 @@ import {StateSettings} from '../config/state';
 import AppStorage from './storage';
 import {ActiveAccountNumber} from './accounts/types';
 import DeferredIsUsingPasscode from './passcode/deferred';
-import PasscodeHashFetcher from './passcode/hashFetcher';
+
+export type PasscodeStorageValue = {
+  /**
+   * Have different salt per user to prevent precomputed attacks
+   *
+   * Used to randomize the verification hash
+   */
+  verificationSalt: Uint8Array;
+  /**
+   * Hash used just to verify whether the passcode is correct, the hash for encryption will not be stored anywhere except in memory
+   */
+  verificationHash: Uint8Array;
+  /**
+   * Salt used for getting a hashed passcode that will be used for encryption (instead of passing raw passcode between processes)
+   *
+   * Used to randomize the encryption hash
+   */
+  encryptionSalt: Uint8Array;
+};
 
 type AppStorageValue = {
   langPack: LangPackDifference;
   settings: StateSettings;
   notificationsCount: Partial<Record<ActiveAccountNumber, number>>;
-  passcode: {
-    salt: Uint8Array; // Have different salt per user to prevent precomputed attacks
-    hash: Uint8Array;
-  };
+  passcode: PasscodeStorageValue;
 };
 
 class CommonStateStorage extends AppStorage<AppStorageValue, CommonDatabase> {
@@ -29,11 +44,6 @@ const commonStateStorage = new CommonStateStorage();
 commonStateStorage.get('settings', false).then((settings) => {
   DeferredIsUsingPasscode.resolveDeferred(settings?.passcode?.enabled || false);
 });
-
-PasscodeHashFetcher.fetchHash = async() => {
-  const passcode = await commonStateStorage.get('passcode', false);
-  return passcode.hash;
-}
 
 MOUNT_CLASS_TO.commonStateStorage = commonStateStorage;
 export default commonStateStorage;

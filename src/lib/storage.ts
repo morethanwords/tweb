@@ -10,7 +10,7 @@
  */
 
 import {Database} from '../config/databases';
-import {MOUNT_CLASS_TO} from '../config/debug';
+import DEBUG, {MOUNT_CLASS_TO} from '../config/debug';
 // import DATABASE_SESSION from "../config/databases/session";
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import {IS_WORKER} from '../helpers/context';
@@ -277,10 +277,22 @@ export default class AppStorage<
     return storage.getAllEntries().catch(() => [] as IDBStorage.Entries);
   }
 
+  private warnAboutSaving() {
+    // TODO: Save data only in worker
+    // if(DEBUG && typeof window !== 'undefined' && this.isEncryptable) {
+    //   const message = 'Encryptable storages should not be used in a window client, only in the shared worker. This avoids data mismatches when the lock screen feature is activated';
+    //   this.log.error(message);
+    //   throw new Error(message);
+    // }
+  }
+
   public set(obj: Partial<Storage>, onlyLocal = false) {
     // console.log('storageSetValue', obj, callback, arguments);
 
     const canUseStorage = this.useStorage && !onlyLocal && !this.savingFreezed;
+
+    this.warnAboutSaving();
+
     let setSomething = false;
     for(const key in obj) {
       if(obj.hasOwnProperty(key)) {
@@ -319,6 +331,8 @@ export default class AppStorage<
       return;
     } */
 
+    this.warnAboutSaving();
+
     // ! it is needed here
     key = '' + (key as string);
 
@@ -356,9 +370,9 @@ export default class AppStorage<
     this.savingFreezed = prevFreezed;
   }
 
-  public close() {
-    return this.getStorage().then(storage => storage.close());
-  }
+  // public close() { // This closes the whole database, not just the store!
+  //   return this.getStorage().then(storage => storage.close());
+  // }
 
   public static toggleStorage(enabled: boolean, clearWrite: boolean) {
     return Promise.all(this.STORAGES.map((storage) => {

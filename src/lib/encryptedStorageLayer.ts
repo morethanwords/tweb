@@ -5,7 +5,7 @@ import asyncThrottle from '../helpers/schedulers/asyncThrottle';
 import cryptoMessagePort from './crypto/cryptoMessagePort';
 import IDBStorage from './files/idb';
 import {logger, Logger} from './logger';
-import PasscodeHashFetcher from './passcode/hashFetcher';
+import EncryptionPasscodeHashStore from './passcode/hashStore';
 
 
 export interface StorageLayer {
@@ -15,7 +15,6 @@ export interface StorageLayer {
   getAll: <T>() => Promise<T[]>;
   delete: (entryName: string | string[]) => Promise<void>;
   clear: () => Promise<void>;
-  close: () => void;
 };
 
 type StoredData = Record<string, any>;
@@ -52,14 +51,15 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   }
 
   private static async encrypt(data: StoredData): Promise<Uint8Array> {
-    const hash = await PasscodeHashFetcher.fetchHash();
+    const hash = EncryptionPasscodeHashStore.getValue();
     const result = await cryptoMessagePort.invokeCrypto('aes-local-encrypt', hash, JSON.stringify(data));
 
     return result;
   }
 
   private static async decrypt(data: Uint8Array): Promise<StoredData> {
-    const hash = await PasscodeHashFetcher.fetchHash();
+    const hash = EncryptionPasscodeHashStore.getValue();
+    // TODO: Try invokeCryptoNew
     const result = await cryptoMessagePort.invokeCrypto('aes-local-decrypt', hash, data);
 
     return JSON.parse(result);
@@ -85,7 +85,7 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   public async loadDecrypted(data: any) {
     this.log('loading decrypted', data);
     this.data = data;
-    this.saveToIDB();
+    await this.saveToIDB();
   }
 
   private waitToLoad() {
@@ -108,7 +108,7 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   private async loadFromIDB() {
     try {
       const storageData = await this.storage.get(EncryptedStorageLayer.STORAGE_KEY);
-      if(!(storageData instanceof Uint8Array)) throw new Error('Stored data in ecrypted store is not a Uint8Array');
+      if(!(storageData instanceof Uint8Array)) throw new Error('Stored data in encrypted store is not a Uint8Array');
 
       const decrypted = await EncryptedStorageLayer.decrypt(storageData);
       this.data = decrypted;
@@ -170,9 +170,5 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
 
     this.data = {};
     await this.storage.clear();
-  }
-
-  public close(): void {
-    this.storage.close();
   }
 }

@@ -129,8 +129,8 @@ import PopupPremium from '../../components/popups/premium';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import {openWebAppInAppBrowser} from '../../components/browser';
 import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
-import stateStorage from '../stateStorageInstance';
 import {createProxiedManagersForAccount} from './getProxiedManagers';
+import ChatBackgroundStore from '../chatBackgroundStore';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -198,6 +198,10 @@ export class AppImManager extends EventListenerBase<{
   public cacheStorage = new CacheStorageController('cachedFiles');
   public customEmojiSize: MediaSize;
 
+  private chatPositions: {
+    [peerId_threadId: string]: ChatSavedPosition;
+  };
+
   get myId() {
     return rootScope.myId;
   }
@@ -230,7 +234,7 @@ export class AppImManager extends EventListenerBase<{
       }
 
       const url = 'assets/img/' + slug + '.svg' + (IS_FIREFOX ? '?1' : '');
-      this.setBackgroundUrlToCache({slug, url})
+      ChatBackgroundStore.setBackgroundUrlToCache({slug, url})
     });
 
     this.selectTab(APP_TABS.CHATLIST);
@@ -559,7 +563,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     // stateStorage.get('chatPositions').then((c) => {
-    stateStorage.setToCache('chatPositions', /* c ||  */{});
+    this.chatPositions = {};
     // });
 
     if(IS_CALL_SUPPORTED || IS_GROUP_CALL_SUPPORTED) {
@@ -639,6 +643,8 @@ export class AppImManager extends EventListenerBase<{
       savedReactionTags.splice(0, savedReactionTags.length, ...tags);
     });
 
+    // new PasscodeLockScreenControler().lock();
+
     this.onHashChange(true);
     this.attachKeydownListener();
     this.attachCopyListener();
@@ -651,8 +657,7 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public adjustChatPatternBackground() {
-    const rect = this.chatsContainer.getBoundingClientRect();
-    ChatBackgroundPatternRenderer.resizeInstances(rect.width, rect.height);
+    ChatBackgroundPatternRenderer.resizeInstancesOf(this.chatsContainer);
   }
 
   private checkForShare() {
@@ -1620,7 +1625,11 @@ export class AppImManager extends EventListenerBase<{
       // slug === defaultslug;
 
       // if(!isDefaultBackground) {
-      return Promise.resolve(this.getBackground({slug})).then((url) => {
+      return Promise.resolve(ChatBackgroundStore.getBackground({
+        slug,
+        managers: this.managers,
+        appDownloadManager
+      })).then((url) => {
         return this.setBackground(url, broadcastEvent, skipAnimation);
       }, () => { // * if NO_ENTRY_FOUND
         theme.settings = copy(defaultTheme.settings); // * reset background
@@ -1630,62 +1639,6 @@ export class AppImManager extends EventListenerBase<{
     }
 
     return this.setBackground('', broadcastEvent, skipAnimation);
-  }
-
-  private getWallPaperStorageUrl(slug: string, blur?: boolean) {
-    return `backgrounds/${slug}${blur ? '?blur' : ''}`;
-  }
-
-  public saveWallPaperToCache(slug: string, url: string, blur?: boolean) {
-    if(!slug || slug === DEFAULT_BACKGROUND_SLUG) {
-      return;
-    }
-
-    return fetch(url).then((response) => {
-      return appImManager.cacheStorage.save(this.getWallPaperStorageUrl(slug, blur), response);
-    });
-  }
-
-  public blurWallPaperImage(url: string) {
-    const {canvas, promise} = blur(url, 12, 4);
-    return promise.then(() => {
-      return canvas.toDataURL();
-    });
-  }
-
-  public setBackgroundUrlToCache({slug, url, blur}: {slug: string, url: string, blur?: boolean}) {
-    this.backgroundPromises[this.getWallPaperStorageUrl(slug, blur)] = url;
-  }
-
-  public getBackground({
-    slug,
-    canDownload,
-    blur
-  }: {
-    slug: string,
-    canDownload?: boolean,
-    blur?: boolean
-  }) {
-    const storageUrl = this.getWallPaperStorageUrl(slug, blur);
-    return this.backgroundPromises[storageUrl] ||= this.cacheStorage.getFile(storageUrl).then((blob) => {
-      return this.backgroundPromises[storageUrl] = URL.createObjectURL(blob);
-    }, canDownload ? async(err) => {
-      if((err as ApiError).type !== 'NO_ENTRY_FOUND') {
-        throw err;
-      }
-
-      const wallPaper = await this.managers.appThemesManager.getWallPaperBySlug(slug);
-      let url = await appDownloadManager.downloadMediaURL({
-        media: (wallPaper as WallPaper.wallPaper).document as Document.document
-      });
-
-      if(blur) {
-        url = await this.blurWallPaperImage(url);
-      }
-
-      this.saveWallPaperToCache(slug, url, blur);
-      return this.backgroundPromises[storageUrl] = url;
-    } : undefined);
   }
 
   public setBackground(url: string, broadcastEvent = true, skipAnimation?: boolean): Promise<void> {
@@ -1708,7 +1661,8 @@ export class AppImManager extends EventListenerBase<{
     // const top = bubble.getBoundingClientRect().top;
     const chatBubbles = chat.bubbles;
     const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
-    const chatPositions = stateStorage.getFromCache('chatPositions');
+
+    const chatPositions = this.chatPositions;
     if(
       !(chatBubbles.scrollable.getDistanceToEnd() <= 16 && chatBubbles.scrollable.loadedAll.bottom) &&
       chatBubbles.getRenderedLength() &&
@@ -1732,7 +1686,7 @@ export class AppImManager extends EventListenerBase<{
       this.log('deleted chat position');
     }
 
-    stateStorage.set({chatPositions}, true);
+    this.chatPositions = chatPositions;
     // }
   }
 
@@ -1742,8 +1696,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
-    const cache = stateStorage.getFromCache('chatPositions');
-    return cache && cache[key];
+    return this.chatPositions[key];
   }
 
   public applyCurrentTheme({
@@ -1760,7 +1713,7 @@ export class AppImManager extends EventListenerBase<{
     skipAnimation?: boolean
   } = {}) {
     if(backgroundUrl) {
-      this.setBackgroundUrlToCache({slug, url: backgroundUrl});
+      ChatBackgroundStore.setBackgroundUrlToCache({slug, url: backgroundUrl});
     }
 
     !noSetTheme && themeController.setTheme();

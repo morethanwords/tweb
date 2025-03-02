@@ -427,6 +427,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
       setAppSettingsSilent(/* key,  */settings);
     });
 
+    // TODO: encrypted storages should not be in the window client, just in the shared worker to avoid any data mismatches
+    // NO NO NO ->  X X X Now doesn't seem like any ecryptable storages are in the window client so shouldn't be a problem~~
     rootScope.addEventListener('toggle_using_passcode', (value) => {
       DeferredIsUsingPasscode.overrideCurrentValue(value);
       AppStorage.toggleEncryptedForAll(value);

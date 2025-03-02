@@ -24,12 +24,16 @@ import {ActiveAccountNumber} from '../accounts/types';
 import commonStateStorage from '../commonStateStorage';
 import DeferredIsUsingPasscode from '../passcode/deferred';
 import AppStorage from '../storage';
+import EncryptionPasscodeHashStore from '../passcode/hashStore';
 
 
 const log = logger('MTPROTO');
 // let haveState = false;
 
 const port = new MTProtoMessagePort<false>();
+
+let isLocked = true;
+
 port.addMultipleEventsListeners({
   environment: (environment) => {
     setEnvironment(environment);
@@ -130,18 +134,37 @@ port.addMultipleEventsListeners({
     }
   },
 
-  toggleUsingPasscode: (value) => {
-    DeferredIsUsingPasscode.overrideCurrentValue(value);
-    AppStorage.toggleEncryptedForAll(value);
+  toggleUsingPasscode: (payload) => {
+    DeferredIsUsingPasscode.overrideCurrentValue(payload.isUsingPasscode);
+    AppStorage.toggleEncryptedForAll(payload.isUsingPasscode);
+
+    if(payload.isUsingPasscode && payload.encryptionHash) {
+      EncryptionPasscodeHashStore.setValue(payload.encryptionHash);
+    }
+
+    isLocked = false;
   },
 
-  changePasscode: async(payload) => {
+  changePasscode: async({toStore, encryptionHash}) => {
     await AppStorage.freezeSavingAsync(async() => {
-      commonStateStorage.unfreezeAsync(async() => {
-        await commonStateStorage.set({passcode: payload});
+      EncryptionPasscodeHashStore.setValue(encryptionHash);
+      await commonStateStorage.unfreezeAsync(async() => {
+        await commonStateStorage.set({passcode: toStore});
       });
     });
     await AppStorage.reEncryptEncrypted();
+  },
+
+  isLocked: async() => {
+    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+    if(isUsingPasscode) return isLocked;
+
+    return false;
+  },
+
+  toggleLockOthers: (value, source) => {
+    isLocked = value;
+    port.invokeExceptSource('toggleLock', value, source);
   }
 
   // socketProxy: (task) => {

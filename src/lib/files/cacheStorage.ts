@@ -11,7 +11,32 @@ import FileStorage from './fileStorage';
 import makeError from '../../helpers/makeError';
 import deferredPromise from '../../helpers/cancellablePromise';
 
-export type CacheStorageDbName = 'cachedFiles' | 'cachedStreamChunks' | 'cachedAssets' | 'cachedHlsQualityFiles' | 'cachedHlsStreamChunks';
+type CacheStorageDbConfigEntry = {
+  encryptable: boolean;
+};
+
+const cacheStorageDbConfig = {
+  cachedFiles: {
+    encryptable: true
+  },
+  cachedStreamChunks: {
+    encryptable: true
+  },
+  cachedBackgrounds: {
+    encryptable: false
+  },
+  cachedAssets: {
+    encryptable: false
+  },
+  cachedHlsQualityFiles: {
+    encryptable: true
+  },
+  cachedHlsStreamChunks: {
+    encryptable: true
+  }
+} satisfies Record<string, CacheStorageDbConfigEntry>;
+
+export type CacheStorageDbName = keyof typeof cacheStorageDbConfig;
 
 export default class CacheStorageController implements FileStorage {
   private static STORAGES: CacheStorageController[] = [];

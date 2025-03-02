@@ -65,6 +65,8 @@ import PopupElement from '../popups';
 import PopupStars from '../popups/stars';
 import {getPendingPaidReactionKey, PENDING_PAID_REACTIONS} from './reactions';
 import tsNow from '../../helpers/tsNow';
+import ChatBackgroundStore from '../../lib/chatBackgroundStore';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 
 export enum ChatType {
   Chat = 'chat',
@@ -260,9 +262,11 @@ export default class Chat extends EventListenerBase<{
 
     if(!url && !isColorBackground) {
       const settings = wallPaper.settings;
-      const r = this.appImManager.getBackground({
+      const r = ChatBackgroundStore.getBackground({
         slug,
         canDownload: true,
+        managers: this.managers,
+        appDownloadManager: appDownloadManager,
         blur: settings && settings.pFlags.blur
       });
 

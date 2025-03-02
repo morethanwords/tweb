@@ -12,6 +12,7 @@ import type {MirrorTaskPayload, NotificationBuildTaskPayload, TabState} from './
 import type toggleStorages from '../../helpers/toggleStorages';
 import type {ActiveAccountNumber} from '../accounts/types';
 import type {LoadStateResult} from '../appManagers/utils/state/loadState';
+import type {PasscodeStorageValue} from '../commonStateStorage';
 import SuperMessagePort from './superMessagePort';
 
 export type MTProtoManagerTaskPayload = {name: string, method: string, args: any[], accountNumber: ActiveAccountNumber};
@@ -24,6 +25,13 @@ type CallNotificationPayload = {
 
 type MTProtoBroadcastEvent = {
   event: (payload: {name: string, args: any[], accountNumber: ActiveAccountNumber}, source: MessageEventSource) => void
+};
+
+type ToggleUsingPasscodePayload = {
+  isUsingPasscode: true;
+  encryptionHash: Uint8Array;
+} | {
+  isUsingPasscode: false;
 };
 
 export default class MTProtoMessagePort<Master extends boolean = true> extends SuperMessagePort<{
@@ -41,8 +49,11 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   setInterval: (timeout: number) => number,
   clearInterval: (intervalId: number) => void,
   terminate: () => void,
-  toggleUsingPasscode: (value: boolean) => void,
-  changePasscode: (payload: {hash: Uint8Array, salt: Uint8Array}) => void
+  toggleUsingPasscode: (payload: ToggleUsingPasscodePayload) => void,
+  changePasscode: (payload: {toStore: PasscodeStorageValue, encryptionHash: Uint8Array}) => void,
+  saveEncryptionHash: (encryptionHash: Uint8Array) => void,
+  isLocked: () => Promise<boolean>,
+  toggleLockOthers: (isLocked: boolean, source: MessageEventSource) => void
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
@@ -53,7 +64,8 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   log: (payload: any) => void
   tabsUpdated: (payload: TabState[]) => void,
   callNotification: (payload: CallNotificationPayload) => void,
-  intervalCallback: (intervalId: number) => void
+  intervalCallback: (intervalId: number) => void,
+  toggleLock: (isLocked: boolean) => void
   // hello: () => void
 } & MTProtoBroadcastEvent, Master> {
   private static INSTANCE: MTProtoMessagePort;

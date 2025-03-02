@@ -1,0 +1,29 @@
+.Container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  width: 100%;
+  height: 100%;
+}
+
+.CanvasCommon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  opacity: var(--opacity-max, 1);
+
+  &.blend {
+    mix-blend-mode: soft-light;
+  }
+}

@@ -32,7 +32,13 @@ export type SolidJSHotReloadGuardContextValue = {
   apiManagerProxy: typeof apiManagerProxy;
 };
 
+export type LockScreenHotReloadGuardContextValue = Pick<
+  SolidJSHotReloadGuardContextValue,
+  'rootScope' | 'apiManagerProxy' | 'themeController'
+>;
+
 export const SolidJSHotReloadGuardContext = createContext<SolidJSHotReloadGuardContextValue>(null);
+export const LockScreenHotReloadGuardContext = createContext<LockScreenHotReloadGuardContextValue>(null);
 
 /**
  * If importing a module causes the page to reload when you make changes in your SolidJS component
@@ -41,6 +47,13 @@ export const SolidJSHotReloadGuardContext = createContext<SolidJSHotReloadGuardC
 export function useHotReloadGuard() {
   const contextValue = useContext(SolidJSHotReloadGuardContext);
   if(!contextValue) throw new Error('useHotReloadGuard should not be used outside a <SolidJSHotReloadGuardProvider />');
+
+  return contextValue;
+}
+
+export function useLockScreenHotReloadGuard() {
+  const contextValue = useContext(LockScreenHotReloadGuardContext);
+  if(!contextValue) throw new Error('useLockScreenHotReloadGuard should not be used outside a <SolidJSHotReloadGuardProvider />');
 
   return contextValue;
 }

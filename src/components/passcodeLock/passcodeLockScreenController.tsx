@@ -1,15 +1,33 @@
 import {render} from 'solid-js/web';
 
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import LockScreenHotReloadGuardProvider from '../../lib/solidjs/lockScreenHotReloadGuardProvider';
 import pause from '../../helpers/schedulers/pause';
+import deferredPromise from '../../helpers/cancellablePromise';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 
 export default class PasscodeLockScreenController {
-  private mountedElement: HTMLDivElement;
-  private dispose?: () => void;
+  private static mountedElement: HTMLDivElement;
+  private static dispose?: () => void;
 
-  public async lock() {
+  private static appStartupDeferred = deferredPromise<void>();
+
+  private static async checkLockState(isLockedCallback: () => Promise<void>) {
+    const isLocked = await apiManagerProxy.invoke('isLocked', undefined);
+    console.log('isLocked :>> ', isLocked);
+    if(isLocked) {
+      await isLockedCallback();
+      await this.lock();
+    } else this.appStartupDeferred.resolve();
+  }
+
+  public static async waitForUnlock(isLockedCallback: () => Promise<void>) {
+    this.checkLockState(isLockedCallback);
+    await this.appStartupDeferred;
+  }
+
+  public static async lock() {
     if(this.mountedElement) return;
 
     const importPasscodeLockScreen = () => import('./passcodeLockScreen');
@@ -23,13 +41,13 @@ export default class PasscodeLockScreenController {
     const {default: PasscodeLockScreen} = await importPasscodeLockScreen();
 
     this.dispose = render(() => (
-      <SolidJSHotReloadGuardProvider>
+      <LockScreenHotReloadGuardProvider>
         <PasscodeLockScreen />
-      </SolidJSHotReloadGuardProvider>
+      </LockScreenHotReloadGuardProvider>
     ), this.mountedElement);
   }
 
-  public unlock() {
+  public static unlock() {
 
   }
 }

@@ -33,6 +33,7 @@ import wrapPhoto from '../../wrappers/photo';
 import {CreateRowFromCheckboxField} from '../../row';
 import {generateSection} from '../../settingSection';
 import {getColorsFromWallPaper} from '../../../helpers/color';
+import ChatBackgroundStore from '../../../lib/chatBackgroundStore';
 
 const needBlur = (wallPaper: WallPaper, respectPattern = true) => {
   const blur = (wallPaper as WallPaper.wallPaper)?.settings?.pFlags?.blur;
@@ -421,7 +422,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         const slug = (wallPaper as WallPaper.wallPaper).slug;
         Promise.all([
           getPixelPromise,
-          appImManager.saveWallPaperToCache(slug, url)
+          ChatBackgroundStore.saveWallPaperToCache(slug, url)
         ]).then(([pixel]) => {
           if(!middleware()) {
             deferred.resolve();
@@ -453,7 +454,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       const cacheContext = await rootScope.managers.thumbsStorage.getCacheContext(doc);
       if(needBlur(wallPaper)) {
         setTimeout(() => {
-          appImManager.blurWallPaperImage(cacheContext.url).then((url) => {
+          ChatBackgroundStore.blurWallPaperImage(cacheContext.url).then((url) => {
             if(!middleware()) {
               deferred.resolve();
               return;
