@@ -98,7 +98,7 @@ class TLSerialization {
   }
 
   public checkLength(needBytes: number) {
-    if(this.offset + needBytes < this.maxLength) {
+    if((this.offset + needBytes) < this.maxLength) {
       return;
     }
 
@@ -143,6 +143,9 @@ class TLSerialization {
     this.writeInt(iHigh, (field || '') + ':long[high]');
   }
 
+  /**
+   * @param sLong should be big-endian
+   */
   public storeLong(sLong: Array<number> | string | number, field?: string) {
     if(Array.isArray(sLong)) {
       if(sLong.length === 2) {
@@ -231,6 +234,9 @@ class TLSerialization {
     }
   }
 
+  /**
+   * @param bytes should be little-endian
+   */
   public storeIntBytes(bytes: ArrayBuffer | Uint8Array | number[], bits: number, field?: string) {
     if(bytes instanceof ArrayBuffer) {
       bytes = new Uint8Array(bytes);
@@ -281,6 +287,8 @@ class TLSerialization {
 
   public storeObject(obj: any, type: string, field?: string) {
     switch(type) {
+      case '!X':
+        return obj(this);
       case '#':
         obj ||= 0;
       case 'int':
@@ -359,7 +367,8 @@ class TLSerialization {
     for(const param of constructorData.params) {
       let type = param.type;
 
-      if(type.indexOf('?') !== -1) {
+      const isOptional = type.indexOf('?') !== -1;
+      if(isOptional) {
         const condType = type.split('?');
         const fieldBit = condType[0].split('.');
 
@@ -378,6 +387,8 @@ class TLSerialization {
       const isFlagHandler = type === '#';
       if(isFlagHandler) {
         (flagsHandler ??= {})[param.name] = {flags: 0};
+      } else if(!isOptional && obj[param.name] === undefined) {
+        throw new Error('Param ' + param.name + ' is undefined');
       }
 
       const result = this.storeObject(
@@ -466,7 +477,10 @@ class TLDeserialization<FetchLongAs extends Long> {
     return doubleView[0];
   }
 
-  // ! it should've been signed
+  /**
+   * ! it should've been signed
+   * @returns value in big-endian order
+   */
   public fetchLong(field?: string): FetchLongAs {
     const iLow = this.readInt((field || '') + ':long[low]');
     const iHigh = this.readInt((field || '') + ':long[high]');
@@ -552,6 +566,9 @@ class TLDeserialization<FetchLongAs extends Long> {
     return bytes;
   }
 
+  /**
+   * @returns bytes in little-endian order
+   */
   public fetchIntBytes(bits: number, typed: true, field?: string): Uint8Array;
   public fetchIntBytes(bits: number, typed?: false, field?: string): number[];
   public fetchIntBytes(bits: number, typed: boolean = true, field?: string) {

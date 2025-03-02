@@ -35,6 +35,7 @@ import toggleStorages from '../../helpers/toggleStorages';
 import tsNow from '../../helpers/tsNow';
 import transportController from './transports/controller';
 import MTTransport from './transports/transport';
+import {MTAuthKey} from './authorizer';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -390,39 +391,58 @@ export class ApiManager extends ApiManagerMethods {
     let transport = this.chooseServer(dcId, connectionType, transportType);
     return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map((key) => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
-      let networker: MTPNetworker, error: any;
+      let networker: MTPNetworker, error: any, onTransport: () => Promise<any>;
+      let permanent: {authKey?: MTAuthKey, serverSalt?: Uint8Array}, temporary: typeof permanent;
       if(authKeyHex?.length === 512) {
         if(serverSaltHex?.length !== 16) {
           serverSaltHex = 'AAAAAAAAAAAAAAAA';
         }
 
         const authKey = bytesFromHex(authKeyHex);
-        const authKeyId = (await CryptoWorker.invokeCrypto('sha1', authKey)).slice(-8);
-        const serverSalt = bytesFromHex(serverSaltHex);
+        permanent = {
+          authKey: new MTAuthKey(authKey, (await CryptoWorker.invokeCrypto('sha1', authKey)).slice(-8)),
+          serverSalt: bytesFromHex(serverSaltHex)
+        };
 
-        networker = this.networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, options);
+        temporary = await this.authorizer.auth(dcId, true);
       } else {
         try { // if no saved state
-          const auth = await this.authorizer.auth(dcId);
+          [permanent, temporary] = await Promise.all([this.authorizer.auth(dcId, false), this.authorizer.auth(dcId, true)]);
 
-          authKeyHex = bytesToHex(auth.authKey);
-          serverSaltHex = bytesToHex(auth.serverSalt);
+          authKeyHex = bytesToHex(permanent.authKey.key);
+          serverSaltHex = bytesToHex(permanent.serverSalt);
 
-          if(dcId === App.baseDcId) {
-            sessionStorage.set({
-              auth_key_fingerprint: authKeyHex.slice(0, 8)
-            });
-          }
+          // if(dcId === App.baseDcId) {
+          //   sessionStorage.set({
+          //     auth_key_fingerprint: authKeyHex.slice(0, 8)
+          //   });
+          // }
 
           sessionStorage.set({
             [ak]: authKeyHex,
             [ss]: serverSaltHex
           });
-
-          networker = this.networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, options);
         } catch(_error) {
           error = _error;
         }
+      }
+
+      if(!error) {
+        const auth = temporary ?? permanent;
+        networker = this.networkerFactory.getNetworker({
+          dcId,
+          permAuthKey: permanent.authKey,
+          authKey: auth.authKey,
+          serverSalt: auth.serverSalt,
+          isFileDownload: connectionType === 'download',
+          isFileUpload: connectionType === 'upload'
+        });
+
+        if(temporary) onTransport = async() => {
+          await networker.wrapBindAuthKeyCall(temporary.authKey.expiresAt);
+          // await networker.wrapApiCall('help.getConfig', {});
+          // await pause(1000000);
+        };
       }
 
       // ! cannot get it before this promise because simultaneous changeTransport will change nothing
@@ -451,6 +471,7 @@ export class ApiManager extends ApiManagerMethods {
       }
 
       this.changeNetworkerTransport(networker, transport);
+      // onTransport && await onTransport?.();
       networkers.unshift(networker);
       this.setOnDrainIfNeeded(networker);
       return networker;

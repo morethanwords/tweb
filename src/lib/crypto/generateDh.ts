@@ -7,26 +7,25 @@
 import type CallInstance from '../calls/callInstance';
 import type {MessagesDhConfig} from '../../layer';
 import bigInt from 'big-integer';
-import randomize from '../../helpers/array/randomize';
 import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
 import addPadding from '../../helpers/bytes/addPadding';
 import bytesFromHex from '../../helpers/bytes/bytesFromHex';
 import cryptoWorker from './cryptoMessagePort';
+import {randomBytes} from '../../helpers/random';
 
 export default async function generateDh(dhConfig: MessagesDhConfig.messagesDhConfig) {
   const {p, g} = dhConfig;
 
   const generateA = (p: Uint8Array) => {
     for(;;) {
-      const a = randomize(new Uint8Array(p.length));
-      // const a = new Uint8Array(4).randomize();
+      const a = randomBytes(p.length);
 
-      const aBigInt = bigIntFromBytes(a); // str2bigInt(bytesToHex(a), 16);
+      const aBigInt = bigIntFromBytes(a);
       if(!aBigInt.greater(bigInt.one)) {
         continue;
       }
 
-      const pBigInt = bigIntFromBytes(p); // str2bigInt(bytesToHex(p), 16);
+      const pBigInt = bigIntFromBytes(p);
       if(!aBigInt.lesser(pBigInt.subtract(bigInt.one))) {
         continue;
       }
@@ -36,7 +35,6 @@ export default async function generateDh(dhConfig: MessagesDhConfig.messagesDhCo
   };
 
   const a = generateA(p);
-  // const a = new Uint8Array([0]);
 
   const gBytes = bytesFromHex(g.toString(16));
   const g_a = addPadding(await cryptoWorker.invokeCrypto('mod-pow', gBytes, a, p), 256, true, true, true);

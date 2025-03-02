@@ -48,9 +48,9 @@ async function loadStateInner() {
   .concat(
     recordPromise(sessionStorage.get('user_auth'), 'auth'),
     recordPromise(sessionStorage.get('state_id'), 'auth'),
-    recordPromise(sessionStorage.get('k_build'), 'auth'),
-    recordPromise(sessionStorage.get('auth_key_fingerprint'), 'auth'),
-    recordPromise(sessionStorage.get(`dc${App.baseDcId}_auth_key`), 'auth')
+    recordPromise(sessionStorage.get('k_build'), 'auth')
+    // recordPromise(sessionStorage.get('auth_key_fingerprint'), 'auth'),
+    // recordPromise(sessionStorage.get(`dc${App.baseDcId}_auth_key`), 'auth')
   )
   .concat( // support old webk format
     recordPromise(stateStorage.get('user_auth'), 'old auth')
@@ -129,8 +129,8 @@ async function loadStateInner() {
   let auth = arr.shift() as UserAuth | number;
   const stateId = arr.shift() as number;
   const sessionBuild = arr.shift() as number;
-  const authKeyFingerprint = arr.shift() as string;
-  const baseDcAuthKey = arr.shift() as string;
+  // const authKeyFingerprint = arr.shift() as string;
+  // const baseDcAuthKey = arr.shift() as string;
   const shiftedWebKAuth = arr.shift() as UserAuth | number;
   if(!auth && shiftedWebKAuth) { // support old webk auth
     auth = shiftedWebKAuth;
@@ -217,20 +217,20 @@ async function loadStateInner() {
     });
   }
 
-  if(baseDcAuthKey) {
-    const _authKeyFingerprint = baseDcAuthKey.slice(0, 8);
-    if(!authKeyFingerprint) { // * migration, preserve settings
-      resetState(['settings']);
-    } else if(authKeyFingerprint !== _authKeyFingerprint) {
-      resetState([]);
-    }
+  // if(baseDcAuthKey) {
+  //   const _authKeyFingerprint = baseDcAuthKey.slice(0, 8);
+  //   if(!authKeyFingerprint) { // * migration, preserve settings
+  //     resetState(['settings']);
+  //   } else if(authKeyFingerprint !== _authKeyFingerprint) {
+  //     resetState([]);
+  //   }
 
-    if(authKeyFingerprint !== _authKeyFingerprint) {
-      await sessionStorage.set({
-        auth_key_fingerprint: _authKeyFingerprint
-      });
-    }
-  }
+  //   if(authKeyFingerprint !== _authKeyFingerprint) {
+  //     await sessionStorage.set({
+  //       auth_key_fingerprint: _authKeyFingerprint
+  //     });
+  //   }
+  // }
 
   const time = Date.now();
   if((state.stateCreatedTime + REFRESH_EVERY) < time) {
