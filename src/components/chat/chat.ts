@@ -17,7 +17,7 @@ import ChatContextMenu from './contextMenu';
 import ChatInput from './input';
 import ChatSelection from './selection';
 import ChatTopbar from './topbar';
-import {NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_REACTION_DELAY} from '../../lib/mtproto/mtproto_config';
 import SetTransition from '../singleTransition';
 import AppPrivateSearchTab from '../sidebarRight/tabs/search';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
@@ -1301,19 +1301,22 @@ export default class Chat extends EventListenerBase<{
         return;
       }
 
-      const DELAY = 5;
-
       const key = getPendingPaidReactionKey(options.message as Message.message);
       let pending = PENDING_PAID_REACTIONS.get(key);
       if(!pending) {
+        const [count, setCount] = createSignal(0);
+        const [sendTime, setSendTime] = createSignal(0);
         PENDING_PAID_REACTIONS.set(key, pending = {
-          count: 0,
-          sendTimestamp: 0,
+          count,
+          setCount,
+          sendTime,
+          setSendTime,
           sendTimeout: 0,
           cancel: () => {
             clearTimeout(pending.sendTimeout);
+            pending.setSendTime(0);
             PENDING_PAID_REACTIONS.delete(key);
-            setReservedStars((reservedStars) => reservedStars - pending.count);
+            setReservedStars((reservedStars) => reservedStars - pending.count());
             rootScope.dispatchEventSingle('messages_reactions', [{
               message: this.getMessageByPeer(options.message.peerId, options.message.mid) as Message.message,
               changedResults: [],
@@ -1325,12 +1328,12 @@ export default class Chat extends EventListenerBase<{
         clearTimeout(pending.sendTimeout);
       }
 
-      pending.count += count;
-      pending.sendTimestamp = tsNow(true) + DELAY;
+      pending.setCount((_count) => _count + count);
+      pending.setSendTime(Date.now() + SEND_PAID_REACTION_DELAY);
       pending.sendTimeout = window.setTimeout(() => {
         pending.cancel();
-        alert('yeah');
-      }, DELAY * 1e3);
+        // alert('yeah');
+      }, SEND_PAID_REACTION_DELAY);
 
       setReservedStars((reservedStars) => reservedStars + count);
     }

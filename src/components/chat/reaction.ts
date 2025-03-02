@@ -31,6 +31,8 @@ import Scrollable from '../scrollable';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {savedReactionTags} from './reactions';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
+import {StarsStar} from '../popups/stars';
+import PaidReactionBackground from './paidReactionBackground';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -365,6 +367,10 @@ export default class ReactionElement extends HTMLElement {
 
       this.customEmojiElement.docId = reaction.document_id;
       return this.customEmojiElement;
+    } else if(reaction._ === 'reactionPaid') {
+      this.classList.add('is-paid');
+      this.append(PaidReactionBackground() as HTMLElement);
+      this.stickerContainer.append(StarsStar() as HTMLElement);
     }
   }
 
