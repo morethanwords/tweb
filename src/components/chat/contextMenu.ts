@@ -75,6 +75,7 @@ import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import deepEqual from '../../helpers/object/deepEqual';
 import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
 import flatten from '../../helpers/array/flatten';
+import PopupStarReaction from '../popups/starReaction';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -208,6 +209,12 @@ export default class ChatContextMenu {
 
     if(avatar && !avatar.dataset.peerId) {
       toastNew({langPackKey: 'HidAccount'});
+      return;
+    }
+
+    const paidReactionElement = (e.target as HTMLElement).closest('.reaction.is-paid');
+    if(paidReactionElement && !findUpClassName(e.target, 'tooltip')) {
+      PopupElement.createPopup(PopupStarReaction, bubble.dataset.peerId.toPeerId(), mid);
       return;
     }
 

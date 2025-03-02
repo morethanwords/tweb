@@ -832,6 +832,11 @@ const lang = {
     'one_value': 'for %d user',
     'other_value': 'for %d users'
   },
+  'Giveaway.Results.Stars.Winners': {
+    'one_value': 'The winner received a total of %2$d Stars.',
+    'other_value': 'All winners received a total of %2$d Stars.'
+  },
+  'PaidReaction.Send': 'SEND %d',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

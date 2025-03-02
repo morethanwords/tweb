@@ -2346,6 +2346,10 @@ export default class ChatBubbles {
 
     const reactionElement = findUpTag(target, 'REACTION-ELEMENT') as ReactionElement;
     if(reactionElement) {
+      if(findUpClassName(target, 'tooltip')) {
+        return;
+      }
+
       cancelEvent(e);
       if(reactionElement.classList.contains('is-inactive')) {
         return;

@@ -387,3 +387,104 @@
     }
   }
 }
+
+.popup-star-reaction {
+  $parent: ".popup";
+
+  #{$parent} {
+    &-header {
+      margin-bottom: -.25rem;
+    }
+
+    &-body {
+      background-color: var(--surface-color);
+
+      .scrollable-y {
+        border: none;
+      }
+
+      .scrollable-thumb-container {
+        display: none;
+      }
+    }
+
+    &-footer {
+      .button-icon {
+        font-size: 18.5px;
+        vertical-align: bottom;
+        line-height: inherit;
+        margin-inline-start: .25rem;
+      }
+    }
+  }
+
+  &-senders {
+    &-delimiter {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .625rem;
+      padding: 0 1rem;
+      margin-top: 1.625rem;
+    }
+
+    &-line {
+      height: .5px;
+      background-color: var(--border-color);
+      flex: 1 1 auto;
+    }
+
+    &-text {
+      height: 2.125rem;
+      border-radius: 1.0625rem;
+      color: #fff;
+      font-size: var(--font-size-15);
+      line-height: 2.125rem;
+      padding: 0 1rem;
+      background: linear-gradient(90deg, #FFAA00, #FFCD3A);
+      flex: 0 0 auto;
+      font-weight: var(--font-weight-bold);
+      letter-spacing: -.4px;
+    }
+  }
+
+  &-checkbox {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+
+    &-row {
+      padding-inline-start: 3.5rem;
+    }
+  }
+
+  .limit-line {
+    &-container {
+      margin: 4.25rem 1rem 1.75rem;
+    }
+
+    &-hint {
+      --height: 3rem;
+      margin-top: -4.1875rem;
+      font-size: 1.5rem;
+      padding: 0 .875rem 0 .625rem;
+      background: linear-gradient(90deg, #FFAA00, #FFCD3A);
+
+      &:after {
+        height: 12px;
+        bottom: -12px;
+        background-position-x: calc(-50% - 23px);
+        clip-path: path("M0.5 0H44.5H36.9853C35.394 0 33.8679 0.632141 32.7426 1.75736L25.3284 9.17157C23.7663 10.7337 21.2337 10.7337 19.6716 9.17157L12.2574 1.75736C11.1321 0.632141 9.60602 0 8.01472 0H0.5Z");
+        margin-left: -22.5px;
+      }
+
+      &-icon {
+        font-size: 1.625rem;
+      }
+    }
+  }
+
+  .stars-balance {
+    flex: 1 1 auto;
+  }
+}

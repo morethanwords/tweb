@@ -26,13 +26,15 @@ export default function showTooltip({
   icon,
   auto,
   mountOn = document.body,
-  relative
+  relative,
+  rightElement
 }: {
   element: HTMLElement,
   container?: HTMLElement,
   vertical: 'top' | 'bottom',
   textElement?: HTMLElement,
   subtitleElement?: HTMLElement,
+  rightElement?: JSX.Element,
   paddingX?: number,
   centerVertically?: boolean,
   onClose?: () => void,
@@ -92,6 +94,7 @@ export default function showTooltip({
             </>
           ) : textElement}
         </div>
+        {rightElement && <div class="tooltip-part tooltip-right">{rightElement}</div>}
       </div>
     );
 

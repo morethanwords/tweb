@@ -165,6 +165,24 @@
       margin-inline-start: .1875rem;
       // margin-right: .0625rem;
     }
+
+    &.is-paid {
+      --chosen-background-color: #FFBC2E !important;
+      --background-color: rgba(255, 188, 46, .2) !important;
+      color: #E98111;
+
+      .currency-star-icon {
+        transform: translateX(1px);
+      }
+
+      &.is-chosen {
+        color: #fff;
+
+        .reaction-paid-background {
+          fill: #fff6ec;
+        }
+      }
+    }
   }
 
   &-block &-counter {
@@ -297,5 +315,12 @@
     // &-title {
     //   font-size: var(--font-size-14);
     // }
+  }
+
+  &-paid-background {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    fill: #E78510;
   }
 }
