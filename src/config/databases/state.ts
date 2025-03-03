@@ -9,7 +9,7 @@ import {ActiveAccountNumber} from '../../lib/accounts/types';
 import {MOUNT_CLASS_TO} from '../debug';
 
 export type AccountDatabase = Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'>;
-export type CommonDatabase = Database<'session'>;
+export type CommonDatabase = Database<'session' | 'localStorage'>;
 
 export const getOldDatabaseState = (): AccountDatabase => ({
   name: `tweb`,
@@ -36,12 +36,16 @@ export const getOldDatabaseState = (): AccountDatabase => ({
   ]
 });
 
-export const getCommonDatabaseState = (): Database<'session'> => ({
+export const getCommonDatabaseState = (): CommonDatabase => ({
   name: `tweb-common`,
   version: 7,
   stores: [
     {
       name: 'session'
+    },
+    {
+      name: 'localStorage', // not used (
+      encryptedName: 'localStorage__encrypted'
     }
   ]
 });

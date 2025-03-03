@@ -36,9 +36,17 @@ const Background = () => {
     isMobile: mediaSizes.activeScreen === ScreenSize.mobile
   });
 
-  async function tryGetURL(slug: string) {
+  async function getBackgroundURL(slug: string) {
+    if(slug === DEFAULT_BACKGROUND_SLUG) {
+      return '/assets/img/pattern.svg' // ChatBackgroundStore.getWallPaperStorageUrl(slug);
+    }
+
+    return ChatBackgroundStore.getBackground({slug});
+  }
+
+  async function tryGetBackgroundURL(slug: string) {
     try {
-      const backgroundUrl = await ChatBackgroundStore.getBackground({slug});
+      const backgroundUrl = await getBackgroundURL(slug);
       return backgroundUrl;
     } catch{
       return undefined;
@@ -50,7 +58,7 @@ const Background = () => {
       const theme = themeController.getTheme();
       const slug = (theme.settings?.wallpaper as WallPaper.wallPaper)?.slug;
 
-      const backgroundUrl = slug ? await ChatBackgroundStore.getBackground({slug}) : undefined; // expected to throw if no cache available
+      const backgroundUrl = slug ? await getBackgroundURL(slug) : undefined; // expected to throw if no cache available
 
       const {wallpaper: wallPaper} = themeController.getThemeSettings(theme);
       const isPattern = !!(wallPaper as WallPaper.wallPaper)?.pFlags?.pattern;
@@ -69,7 +77,7 @@ const Background = () => {
       const defaultTheme = SETTINGS_INIT.themes.find((t) => t.name === theme.name);
       const slug = (defaultTheme.settings?.wallpaper as WallPaper.wallPaper)?.slug || DEFAULT_BACKGROUND_SLUG;
 
-      const backgroundUrl = await tryGetURL(slug) ;
+      const backgroundUrl = await tryGetBackgroundURL(slug) ;
 
       const {wallpaper: wallPaper} = themeController.getThemeSettings(defaultTheme);
       const isPattern = !!(wallPaper as WallPaper.wallPaper)?.pFlags?.pattern;
@@ -165,8 +173,9 @@ const Background = () => {
       ChatBackgroundPatternRenderer.resizeInstancesOf(container);
     });
     listenerSetter.add(mediaSizes)('changeScreen', (_, to) => {
-      setStore
-      store.isMobile = to === ScreenSize.mobile;
+      setStore({
+        isMobile: to === ScreenSize.mobile
+      });
     });
   });
 

@@ -51,16 +51,24 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   }
 
   private static async encrypt(data: StoredData): Promise<Uint8Array> {
-    const hash = EncryptionPasscodeHashStore.getValue();
-    const result = await cryptoMessagePort.invokeCrypto('aes-local-encrypt', hash, JSON.stringify(data));
+    const hash = await EncryptionPasscodeHashStore.getValue();
+    const result = await cryptoMessagePort.invokeCryptoNew({
+      method: 'aes-local-encrypt',
+      args: [hash, JSON.stringify(data)]
+    });
 
     return result;
   }
 
   private static async decrypt(data: Uint8Array): Promise<StoredData> {
-    const hash = EncryptionPasscodeHashStore.getValue();
-    // TODO: Try invokeCryptoNew
-    const result = await cryptoMessagePort.invokeCrypto('aes-local-decrypt', hash, data);
+    const hash = await EncryptionPasscodeHashStore.getValue();
+
+    const result = await cryptoMessagePort.invokeCryptoNew({
+      method: 'aes-local-decrypt',
+      args: [hash, data],
+      transfer: [data.buffer]
+    });
+    // console.timeEnd('loadEncrypted ' + this.db.name + this.encryptedStoreName);
 
     return JSON.parse(result);
   }
@@ -82,7 +90,7 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
     // }
   }
 
-  public async loadDecrypted(data: any) {
+  public async loadDecrypted(data: StoredData) {
     this.log('loading decrypted', data);
     this.data = data;
     await this.saveToIDB();
@@ -112,7 +120,8 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
 
       const decrypted = await EncryptedStorageLayer.decrypt(storageData);
       this.data = decrypted;
-    } catch{
+    } catch(error) {
+      this.log(error);
       this.data = {}; // Should not happen but anyway))
     }
 

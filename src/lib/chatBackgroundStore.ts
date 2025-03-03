@@ -33,7 +33,7 @@ class ChatBackgroundStore extends StaticUtilityClass {
   private static cacheStorage = new CacheStorageController('cachedBackgrounds');
   private static backgroundPromises: ChatBackgroundStore.BackgroundPromises = {};
 
-  private static getWallPaperStorageUrl(slug: string, blur?: boolean) {
+  public static getWallPaperStorageUrl(slug: string, blur?: boolean) {
     return `backgrounds/${slug}${blur ? '?blur' : ''}`;
   }
 

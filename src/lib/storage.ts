@@ -18,7 +18,7 @@ import throttleWith from '../helpers/schedulers/throttleWith';
 // import { WorkerTaskTemplate } from "../types";
 import IDBStorage from './files/idb';
 import {logger} from './logger';
-import DeferredIsUsingPasscode from './passcode/deferred';
+import DeferredIsUsingPasscode from './passcode/deferredIsUsingPasscode';
 import EncryptedStorageLayer, {StorageLayer} from './encryptedStorageLayer';
 
 function noop() {}

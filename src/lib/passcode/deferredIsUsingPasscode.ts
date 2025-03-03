@@ -1,17 +1,15 @@
 import deferredPromise from '../../helpers/cancellablePromise';
 
-export default class DeferredIsUsingPasscode {
-  private static deferred = deferredPromise<boolean>();
+import StaticUtilityClass from '../staticUtilityClass';
+
+
+export default class DeferredIsUsingPasscode extends StaticUtilityClass {
+  private static deferred = deferredPromise<void>();
   private static value: boolean;
 
   public static resolveDeferred(value: boolean) {
     this.value = value;
-    this.deferred?.resolve(value);
-    this.deferred = undefined;
-  }
-
-  public static overrideCurrentValue(value: boolean) {
-    this.value = value;
+    this.deferred?.resolve();
     this.deferred = undefined;
   }
 

@@ -9,25 +9,59 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import {CommonDatabase, getCommonDatabaseState} from '../config/databases/state';
 import Modes from '../config/modes';
+import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import {IS_WORKER} from '../helpers/context';
 import makeError from '../helpers/makeError';
 import {WorkerTaskTemplate} from '../types';
+import EncryptedStorageLayer from './encryptedStorageLayer';
+import {logger} from './logger';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
-// import { stringify } from '../helpers/json';
+import DeferredIsUsingPasscode from './passcode/deferredIsUsingPasscode';
+
 
 class LocalStorage<Storage extends Record<string, any>> {
   private prefix = '';
   private cache: Partial<Storage> = {};
   private useStorage = true;
 
-  constructor(/* private preserveKeys: (keyof Storage)[] */) {
+  constructor() {
     if(Modes.test) {
       this.prefix = 't_';
     }
   }
 
-  public get<T extends keyof Storage>(key: T, useCache = true): Storage[T] {
+  // private async setValueToStorage(key: string, value: string, originalKey: string): Promise<void> {
+  //   const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+  //   const isEncryptable = this.encryptableKeys.has(originalKey);
+
+  //   if(isUsingPasscode && isEncryptable) try {
+  //     value = await LocalStorage.encrypt(value);
+  //   } catch(error) {
+  //     value = null;
+  //     console.error(error);
+  //   }
+
+  //   localStorage.setItem(key, value);
+  // }
+
+  // private async getValueFromStorage(key: string, originalKey: string, overrideHash?: Uint8Array): Promise<string | null> {
+  //   const value = localStorage.getItem(key);
+
+  //   const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+  //   const isEncryptable = this.encryptableKeys.has(originalKey);
+
+  //   if(isUsingPasscode && isEncryptable) try {
+  //     return LocalStorage.decrypt(value, overrideHash);
+  //   } catch{
+  //     return null;
+  //   }
+
+  //   return value;
+  // }
+
+  public get<T extends keyof Storage>(key: T, useCache = true): Promise<Storage[T]> {
     if(this.cache.hasOwnProperty(key) && useCache) {
       return this.cache[key];
     } else if(this.useStorage) {
@@ -60,6 +94,8 @@ class LocalStorage<Storage extends Record<string, any>> {
     for(const key in obj) {
       if(obj.hasOwnProperty(key)) {
         const value = obj[key];
+        // TODO: check that all window clients receive the cache
+        console.log('[my-debug] setting value to local storage cache :>> ', obj);
         this.cache[key] = value;
 
         if(!onlyLocal) {
@@ -135,6 +171,76 @@ class LocalStorage<Storage extends Record<string, any>> {
       return this.set(this.cache);
     }
   }
+
+  // public async encryptEncryptable() {
+  //   if(!this.useStorage) return;
+
+  //   this.encryptionDeferred = deferredPromise();
+
+  //   for(const _key of this.encryptableKeys.values()) {
+  //     const originalKey = _key as string;
+  //     const key = this.prefix + originalKey;
+  //     try {
+  //       const value = localStorage.getItem(key);
+  //       if(!value) continue;
+
+  //       await this.setValueToStorage(key, value, originalKey);
+  //     } catch{
+  //       this.useStorage = false;
+  //       throw new Error('Failed to encrypt localStorage');
+  //     }
+  //   }
+
+  //   // IDK what will happen if the above throws
+  //   this.encryptionDeferred.resolve();
+  //   this.encryptionDeferred = undefined;
+  // }
+
+  // public async reEncryptEncryptable(prevHash: Uint8Array) {
+  //   if(!this.useStorage) return;
+
+  //   this.encryptionDeferred = deferredPromise();
+
+  //   for(const _key of this.encryptableKeys.values()) {
+  //     const originalKey = _key as string;
+  //     const key = this.prefix + originalKey;
+  //     try {
+  //       const value = await this.getValueFromStorage(key, originalKey, prevHash);
+  //       if(!value) continue;
+
+  //       await this.setValueToStorage(key, value, originalKey);
+  //     } catch{
+  //       this.useStorage = false;
+  //       throw new Error('Failed to re-encrypt localStorage');
+  //     }
+  //   }
+
+  //   this.encryptionDeferred.resolve();
+  //   this.encryptionDeferred = undefined;
+  // }
+
+  // public async decryptEncryptable(prevHash: Uint8Array) {
+  //   if(!this.useStorage) return;
+
+  //   this.encryptionDeferred = deferredPromise();
+
+  //   for(const _key of this.encryptableKeys.values()) {
+  //     const originalKey = _key as string;
+  //     const key = this.prefix + originalKey;
+  //     try {
+  //       const value = await this.getValueFromStorage(key, originalKey, prevHash);
+  //       if(!value) continue;
+
+  //       localStorage.setItem(key, value);
+  //     } catch{
+  //       this.useStorage = false;
+  //       throw new Error('Failed to decrypt localStorage');
+  //     }
+  //   }
+
+  //   this.encryptionDeferred.resolve();
+  //   this.encryptionDeferred = undefined;
+  // }
 }
 
 export interface LocalStorageProxyTask extends WorkerTaskTemplate {
@@ -145,27 +251,63 @@ export interface LocalStorageProxyTask extends WorkerTaskTemplate {
   }
 };
 
-export interface LocalStorageProxyTaskResponse extends WorkerTaskTemplate {
-  type: 'localStorageProxy',
-  payload: any
+type EncryptedLocalStorageProxyTaskType = 'save' | 'get' | 'delete';
+type EncryptionMethodsProxyTaskType = 'encryptEncryptable' | 'reEncryptEncryptable' | 'decryptEncryptable';
+
+export interface LocalStorageEncryptedProxyTaskPayload {
+  type: EncryptedLocalStorageProxyTaskType;
+  args: Parameters<EncryptedStorageLayer<any>[EncryptedLocalStorageProxyTaskType]>;
 };
+
+// export interface LocalStorageEncryptionMethodsProxyTaskPayload {
+//   type: EncryptionMethodsProxyTaskType;
+//   args: Parameters<LocalStorageController<any>['encryptionMethods'][EncryptionMethodsProxyTaskType]>;
+// };
+
 
 export default class LocalStorageController<Storage extends Record<string, any>> {
   private static STORAGES: LocalStorageController<any>[] = [];
+
+  private static ENCRYPTION_DB = getCommonDatabaseState();
+  private static ENCRYPTION_DB_STORE_NAME = 'localStorage__encrypted' as const;
   // private log = (...args: any[]) => console.log('[SW LS]', ...args);
-  // private log = (...args: any[]) => {};
+  private log = logger('[local-storage-controller]');
 
   private storage: LocalStorage<Storage>;
+  private encryptedStorage: EncryptedStorageLayer<CommonDatabase>;
 
-  constructor(/* private preserveKeys: (keyof Storage)[] = [] */) {
+  private encryptableKeys: Set<keyof Storage>;
+  private encryptionDeferred: CancellablePromise<void>;
+
+  constructor(encryptableKeys: (keyof Storage)[] = []) {
     LocalStorageController.STORAGES.push(this);
+    this.encryptableKeys = new Set(encryptableKeys);
 
     if(!IS_WORKER) {
-      this.storage = new LocalStorage(/* preserveKeys */);
+      this.storage = new LocalStorage();
     }
   }
 
-  private async proxy<T>(type: LocalStorageProxyTask['payload']['type'], ...args: LocalStorageProxyTask['payload']['args']): Promise<T> {
+  private async getEncryptedStorage() {
+    if(this.encryptedStorage) return this.encryptedStorage;
+
+    this.encryptedStorage = EncryptedStorageLayer.getInstance(
+      LocalStorageController.ENCRYPTION_DB, LocalStorageController.ENCRYPTION_DB_STORE_NAME
+    );
+
+    this.encryptedStorage.loadEncrypted();
+
+    return this.encryptedStorage;
+  }
+
+  private async shouldUseEncryptableStorage(key: keyof Storage) {
+    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+    const isEncryptable = this.encryptableKeys.has(key);
+
+    return isUsingPasscode && isEncryptable;
+  }
+
+  private async localStorageProxy<T>(type: LocalStorageProxyTask['payload']['type'], ...args: LocalStorageProxyTask['payload']['args']): Promise<T> {
     if(IS_WORKER) {
       const port = MTProtoMessagePort.getInstance<false>();
       return port.invoke('localStorageProxy', {type, args});
@@ -177,23 +319,168 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     return this.storage[type].apply(this.storage, args as any);
   }
 
-  public get<T extends keyof Storage>(key: T, useCache?: boolean) {
-    return this.proxy<Storage[T]>('get', key, useCache);
+  public async encryptedStorageProxy<T extends EncryptedLocalStorageProxyTaskType>(
+    type: T,
+    ...args: Parameters<EncryptedStorageLayer<any>[T]>
+  ): Promise<Awaited<ReturnType<EncryptedStorageLayer<any>[T]>>> {
+    if(!IS_WORKER) {
+      const port = MTProtoMessagePort.getInstance<true>();
+      return port.invoke('localStorageEncryptedProxy', {type, args});
+    }
+
+    const encryptedStorage = await this.getEncryptedStorage();
+    // @ts-ignore
+    return encryptedStorage[type](...args);
   }
 
-  public set(obj: Partial<Storage>, onlyLocal?: boolean) {
-    return this.proxy<void>('set', obj, onlyLocal);
-  }
+  // public async encryptionMethodsProxy<T extends EncryptionMethodsProxyTaskType>(
+  //   type: T,
+  //   ...args: []
+  // ): Promise<void> {
+  //   if(!IS_WORKER) {
+  //     const port = MTProtoMessagePort.getInstance<true>();
+  //     return port.invoke('localStorageEncryptionMethodsProxy', {type, args});
+  //   }
 
-  public delete(key: keyof Storage, saveLocal?: boolean) {
-    return this.proxy<void>('delete', key, saveLocal);
-  }
-
-  // public clear(/* preserveKeys?: (keyof Storage)[] */) {
-  //   return this.proxy<void>('clear'/* , preserveKeys */);
+  //   // @ts-ignore
+  //   return this.encryptionMethods[type](...args);
   // }
 
+  public async get<Key extends string>(key: Key, useCache?: boolean) {
+    if(this.encryptionDeferred) await this.encryptionDeferred;
+
+    if(await this.shouldUseEncryptableStorage(key)) {
+      const result = await this.encryptedStorageProxy('get', [key]); // uses cache by default
+      return result[0] as Storage[Key];
+    }
+
+    return this.localStorageProxy<Storage[Key]>('get', key, useCache);
+  }
+
+  public async set(obj: Partial<Storage>) {
+    if(this.encryptionDeferred) await this.encryptionDeferred;
+
+    obj = {...obj};
+
+    const encryptableKeys = Object.keys(obj).filter(key => this.encryptableKeys.has(key));
+
+    if(encryptableKeys.length && await this.shouldUseEncryptableStorage(encryptableKeys[0])) {
+      const values = encryptableKeys.map((key) => obj[key]);
+      await this.encryptedStorageProxy('save', encryptableKeys, values);
+      encryptableKeys.forEach((key) => {
+        delete obj[key];
+      });
+    }
+
+    if(Object.keys(obj).length) {
+      return this.localStorageProxy<void>('set', obj);
+    }
+  }
+
+  public async delete(key: string) {
+    if(this.encryptionDeferred) await this.encryptionDeferred;
+
+    if(await this.shouldUseEncryptableStorage(key)) {
+      return this.encryptedStorageProxy('delete', key);
+    }
+
+    return this.localStorageProxy<void>('delete', key);
+  }
+
   public toggleStorage(enabled: boolean, clearWrite: boolean) {
-    return this.proxy<void>('toggleStorage', enabled, clearWrite);
+    return this.localStorageProxy<void>('toggleStorage', enabled, clearWrite);
+  }
+
+  // private encryptionMethods = {
+  //   encryptEncryptable: async() => {
+  //     const encryptableKeys = Array.from(this.encryptableKeys.values());
+  //     const values = await Promise.all(encryptableKeys.map((key) => this.localStorageProxy('get', key)));
+
+  //     const filteredEntries = encryptableKeys.map((key, idx) => [key, values[idx]]).filter((entry) => entry[1]);
+
+  //     const data = Object.fromEntries(filteredEntries);
+
+  //     this.encryptedStorage = EncryptedStorageLayer.getInstance(
+  //       LocalStorageController.ENCRYPTION_DB, LocalStorageController.ENCRYPTION_DB_STORE_NAME
+  //     );
+  //     await this.encryptedStorage.loadDecrypted(data);
+  //   },
+  //   reEncryptEncryptable: async() => {
+  //     const encryptedStorage = await this.getEncryptedStorage();
+  //     await encryptedStorage.reEncrypt();
+  //   },
+  //   decryptEncryptable: async() => {
+  //     const encryptedStorage = await this.getEncryptedStorage();
+
+  //     const entries = await encryptedStorage.getAllEntries();
+  //     const filteredEntries = entries.filter((entry) => this.encryptableKeys.has(entry[0] as any)); // just in case
+
+  //     const data = Object.fromEntries(filteredEntries);
+
+  //     await this.localStorageProxy('set', data);
+  //   }
+  // };
+
+  private warnAboutEncrypting(methodName: string) {
+    if(IS_WORKER) return false;
+
+    this.log.warn(`${methodName} should not be called in a window client, call it only in the MTProto worker`);
+    return true;
+  }
+
+  public async encryptEncryptable() {
+    if(this.warnAboutEncrypting('encryptEncryptable')) return;
+
+    this.encryptionDeferred = deferredPromise();
+
+    const encryptableKeys = Array.from(this.encryptableKeys.values());
+    const values = await Promise.all(encryptableKeys.map((key) => this.localStorageProxy('get', key)));
+
+    const filteredEntries = encryptableKeys.map((key, idx) => [key, values[idx]]).filter((entry) => entry[1]);
+
+    const data = Object.fromEntries(filteredEntries);
+
+    this.encryptedStorage = EncryptedStorageLayer.getInstance(
+      LocalStorageController.ENCRYPTION_DB, LocalStorageController.ENCRYPTION_DB_STORE_NAME
+    );
+    await this.encryptedStorage.loadDecrypted(data);
+
+    // Let window clients have the values in cache while we delete them
+    // await Promise.all(filteredEntries.map(([key]) => this.localStorageProxy('set', key, /* onlyLocal = */true)));
+
+    await Promise.all(filteredEntries.map(([key]) => this.localStorageProxy('delete', key)));
+
+    this.encryptionDeferred?.resolve();
+    this.encryptionDeferred = undefined;
+  }
+
+  public async reEncryptEncryptable() {
+    if(this.warnAboutEncrypting('reEncryptEncryptable')) return;
+
+    this.encryptionDeferred = deferredPromise();
+
+    const encryptedStorage = await this.getEncryptedStorage();
+    await encryptedStorage.reEncrypt();
+
+    this.encryptionDeferred?.resolve();
+    this.encryptionDeferred = undefined;
+  }
+
+  public async decryptEncryptable() {
+    if(this.warnAboutEncrypting('decryptEncryptable')) return;
+
+    this.encryptionDeferred = deferredPromise();
+
+    const encryptedStorage = await this.getEncryptedStorage();
+
+    const entries = await encryptedStorage.getAllEntries();
+    const filteredEntries = entries.filter((entry) => this.encryptableKeys.has(entry[0] as any)); // just in case
+
+    const data = Object.fromEntries(filteredEntries);
+
+    await this.localStorageProxy('set', data);
+
+    this.encryptionDeferred?.resolve();
+    this.encryptionDeferred = undefined;
   }
 }

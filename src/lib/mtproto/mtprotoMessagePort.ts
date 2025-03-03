@@ -7,7 +7,7 @@
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import type {getEnvironment} from '../../environment/utils';
 import type {StoragesResults} from '../appManagers/utils/storages/loadStorages';
-import type {LocalStorageProxyTask} from '../localStorage';
+import type {LocalStorageEncryptedProxyTaskPayload, LocalStorageProxyTask} from '../localStorage';
 import type {MirrorTaskPayload, NotificationBuildTaskPayload, TabState} from './mtprotoworker';
 import type toggleStorages from '../../helpers/toggleStorages';
 import type {ActiveAccountNumber} from '../accounts/types';
@@ -54,6 +54,8 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   saveEncryptionHash: (encryptionHash: Uint8Array) => void,
   isLocked: () => Promise<boolean>,
   toggleLockOthers: (isLocked: boolean, source: MessageEventSource) => void
+  localStorageEncryptedProxy: (payload: LocalStorageEncryptedProxyTaskPayload) => Promise<any>
+  // localStorageEncryptionMethodsProxy: (payload: LocalStorageEncryptionMethodsProxyTaskPayload) => Promise<any>,
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,

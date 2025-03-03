@@ -76,6 +76,7 @@ const onWindowConnected = (source: WindowClient) => {
 };
 
 export const serviceMessagePort = new ServiceMessagePort<false>();
+
 serviceMessagePort.addMultipleEventsListeners({
   environment: (environment) => {
     setEnvironment(environment);

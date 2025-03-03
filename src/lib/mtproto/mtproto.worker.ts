@@ -15,16 +15,16 @@ import MTProtoMessagePort from './mtprotoMessagePort';
 import appManagersManager from '../appManagers/appManagersManager';
 import listenMessagePort from '../../helpers/listenMessagePort';
 import {logger} from '../logger';
-import {State} from '../../config/state';
 import toggleStorages from '../../helpers/toggleStorages';
 import appTabsManager from '../appManagers/appTabsManager';
 import callbackify from '../../helpers/callbackify';
 import Modes from '../../config/modes';
 import {ActiveAccountNumber} from '../accounts/types';
 import commonStateStorage from '../commonStateStorage';
-import DeferredIsUsingPasscode from '../passcode/deferred';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import AppStorage from '../storage';
 import EncryptionPasscodeHashStore from '../passcode/hashStore';
+import sessionStorage from '../sessionStorage';
 
 
 const log = logger('MTPROTO');
@@ -134,25 +134,29 @@ port.addMultipleEventsListeners({
     }
   },
 
-  toggleUsingPasscode: (payload) => {
-    DeferredIsUsingPasscode.overrideCurrentValue(payload.isUsingPasscode);
-    AppStorage.toggleEncryptedForAll(payload.isUsingPasscode);
+  toggleUsingPasscode: async(payload) => {
+    DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
 
-    if(payload.isUsingPasscode && payload.encryptionHash) {
-      EncryptionPasscodeHashStore.setValue(payload.encryptionHash);
-    }
+    EncryptionPasscodeHashStore.setValue(payload.isUsingPasscode ? payload.encryptionHash : null);
+
+    await Promise.all([
+      AppStorage.toggleEncryptedForAll(payload.isUsingPasscode),
+      payload.isUsingPasscode ?
+        sessionStorage.encryptEncryptable() :
+        sessionStorage.decryptEncryptable()
+    ]);
 
     isLocked = false;
   },
 
   changePasscode: async({toStore, encryptionHash}) => {
-    await AppStorage.freezeSavingAsync(async() => {
-      EncryptionPasscodeHashStore.setValue(encryptionHash);
-      await commonStateStorage.unfreezeAsync(async() => {
-        await commonStateStorage.set({passcode: toStore});
-      });
-    });
-    await AppStorage.reEncryptEncrypted();
+    await commonStateStorage.set({passcode: toStore});
+
+    EncryptionPasscodeHashStore.setValue(encryptionHash);
+    await Promise.all([
+      AppStorage.reEncryptEncrypted(),
+      sessionStorage.reEncryptEncryptable()
+    ]);
   },
 
   isLocked: async() => {
@@ -165,7 +169,19 @@ port.addMultipleEventsListeners({
   toggleLockOthers: (value, source) => {
     isLocked = value;
     port.invokeExceptSource('toggleLock', value, source);
+  },
+
+  saveEncryptionHash: (value) => {
+    EncryptionPasscodeHashStore.setValue(value);
+  },
+
+  localStorageEncryptedProxy: (payload) => {
+    return sessionStorage.encryptedStorageProxy(payload.type, ...payload.args);
   }
+
+  // localStorageEncryptionMethodsProxy: (payload) => {
+  //   return sessionStorage.encryptionMethodsProxy(payload.type, ...payload.args);
+  // }
 
   // socketProxy: (task) => {
   //   const socketTask = task.payload;

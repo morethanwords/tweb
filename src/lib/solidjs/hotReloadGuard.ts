@@ -52,8 +52,8 @@ export function useHotReloadGuard() {
 }
 
 export function useLockScreenHotReloadGuard() {
-  const contextValue = useContext(LockScreenHotReloadGuardContext);
-  if(!contextValue) throw new Error('useLockScreenHotReloadGuard should not be used outside a <SolidJSHotReloadGuardProvider />');
+  const contextValue = useContext(LockScreenHotReloadGuardContext) || useContext(SolidJSHotReloadGuardContext);
+  if(!contextValue) throw new Error('useLockScreenHotReloadGuard should not be used outside a <LockScreenHotReloadGuardProvider />');
 
   return contextValue;
 }

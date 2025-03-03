@@ -1,14 +1,16 @@
 import {MOUNT_CLASS_TO} from '../../config/debug';
+import App from '../../config/app';
+import tsNow from '../../helpers/tsNow';
+import type {TrueDcId} from '../../types';
 
 import sessionStorage from '../sessionStorage';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+import StaticUtilityClass from '../staticUtilityClass';
 
 import {AccountSessionData, ActiveAccountNumber} from './types';
 import {MAX_ACCOUNTS} from './constants';
-import {TrueDcId} from '../../types';
-import tsNow from '../../helpers/tsNow';
-import App from '../../config/app';
 
-export class AccountController {
+export class AccountController extends StaticUtilityClass {
   static async getTotalAccounts() {
     const promises = ([1, 2, 3, 4] as const).map((accountNumber) => sessionStorage.get(`account${accountNumber}`));
 
@@ -74,6 +76,8 @@ export class AccountController {
   }
 
   static async updateStorageForLegacy(accountData: Partial<AccountSessionData>) {
+    if(await DeferredIsUsingPasscode.isUsingPasscode()) return; // We can't expose keys if there's a passcode set
+
     const obj: Parameters<typeof sessionStorage['set']>[0] = {};
     const toClear: (keyof typeof obj)[] = [];
 

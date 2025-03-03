@@ -1,10 +1,11 @@
 import {createResource, createSignal, onCleanup, Show} from 'solid-js';
 
 import {IS_MOBILE} from '../../../../environment/userAgent';
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import {i18n} from '../../../../lib/langPack';
 import ListenerSetter from '../../../../helpers/listenerSetter';
 import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
+import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import {i18n} from '../../../../lib/langPack';
+import {usePasscodeActions} from '../../../../lib/passcode/actions';
 
 import Section from '../../../section';
 import Space from '../../../space';
@@ -20,7 +21,6 @@ import {usePromiseCollector} from './promiseCollector';
 
 import commonStyles from './common.module.scss';
 import styles from './mainTab.module.scss';
-import {usePasscodeActions} from '../../../../lib/passcode';
 
 const MainTab = () => {
   const {rootScope, apiManagerProxy} = useHotReloadGuard();

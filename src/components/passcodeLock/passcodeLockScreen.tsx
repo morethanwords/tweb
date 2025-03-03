@@ -1,10 +1,12 @@
-import {Component, createEffect, createResource, onMount} from 'solid-js';
+import {Component, createEffect, createResource, on, onMount} from 'solid-js';
 import {createMutable} from 'solid-js/store';
 
 import {logger} from '../../lib/logger';
 import AccountController from '../../lib/accounts/accountController';
 import {i18n} from '../../lib/langPack';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
+import {usePasscodeActions} from '../../lib/passcode/actions';
+import {MAX_PASSCODE_LENGTH} from '../../lib/passcode/constants';
 
 import ripple from '../ripple'; ripple; // keep
 import Space from '../space';
@@ -26,9 +28,13 @@ type StateStore = {
 const log = logger('my-debug');
 
 
-const PasscodeLockScreen: Component<{}> = (props) => {
+const PasscodeLockScreen: Component<{
+  onUnlock: () => void;
+}> = (props) => {
   let container: HTMLDivElement;
   let passwordInputField: PasswordInputField;
+
+  const {isMyPasscode, unlockWithPasscode} = usePasscodeActions();
 
   const store = createMutable<StateStore>({
     isMobile: mediaSizes.activeScreen === ScreenSize.mobile,
@@ -36,7 +42,8 @@ const PasscodeLockScreen: Component<{}> = (props) => {
     passcode: ''
   });
 
-  const [totalAccounts] = createResource(() =>  AccountController.getTotalAccounts());
+  // const [totalAccounts] = createResource(() => AccountController.getTotalAccounts());
+  const [totalAccounts] = [() => 1];
 
   onMount(() => {
     setTimeout(() => {
@@ -44,10 +51,24 @@ const PasscodeLockScreen: Component<{}> = (props) => {
     }, 500);
   });
 
-  createEffect(() => {
-    store.passcode;
+  createEffect(on(() => store.passcode, () => {
     store.isError = false;
-  });
+  }));
+
+  const canSubmit = () => !!store.passcode && store.passcode.length <= MAX_PASSCODE_LENGTH;
+
+  const onSubmit = async(e: Event) => {
+    e.preventDefault();
+
+    if(canSubmit() && await isMyPasscode(store.passcode)) {
+      await unlockWithPasscode(store.passcode);
+      store.passcode = '';
+
+      props.onUnlock();
+    } else {
+      store.isError = true;
+    }
+  };
 
   const input = (
     <InputFieldTsx
@@ -58,6 +79,7 @@ const PasscodeLockScreen: Component<{}> = (props) => {
       onRawInput={value => void (store.passcode = value)}
       label="PasscodeLock.EnterYourPasscode"
       errorLabel={store.isError ? 'PasscodeLock.WrongPasscode' : undefined}
+      maxLength={MAX_PASSCODE_LENGTH}
     />
   );
 
@@ -69,16 +91,14 @@ const PasscodeLockScreen: Component<{}> = (props) => {
           passwordInputField={passwordInputField}
         />
         <Space amount="1.125rem" />
-        <form action="" onSubmit={(e) => {
-          e.preventDefault();
-          store.isError = true;
-        }}>
+        <form action="" onSubmit={onSubmit}>
           {input}
           <Space amount="1rem" />
           <button
             use:ripple
             type="submit"
             class="btn-primary btn-color-primary btn-large"
+            disabled={!store.passcode}
           >
             {i18n('DeleteProceedBtn')}
           </button>

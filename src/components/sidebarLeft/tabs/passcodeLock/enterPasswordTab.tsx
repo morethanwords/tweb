@@ -1,6 +1,6 @@
 import {createEffect, createSignal, onCleanup} from 'solid-js';
 
-import {MAX_PASSCODE_LENGTH} from '../../../../lib/passcode';
+import {MAX_PASSCODE_LENGTH} from '../../../../lib/passcode/constants';
 
 import Section from '../../../section';
 import {InputFieldTsx} from '../../../inputFieldTsx';

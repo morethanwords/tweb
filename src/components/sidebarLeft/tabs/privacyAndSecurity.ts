@@ -41,6 +41,7 @@ import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
 import AppPrivacyMessagesTab from './privacy/messages';
 import {AppPasscodeLockTab} from './passcodeLock';
+import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -112,16 +113,16 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
       const passcodeLockRowOptions: ConstructorParameters<typeof Row>[0] = {
         icon: 'key',
-        titleLangKey: 'TwoStepVerification' as LangPackKey,
+        titleLangKey: 'PasscodeLock.Item.Title',
         subtitleLangKey: SUBTITLE,
-        clickable: (e: Event) => {
+        clickable: () => {
           const tab = this.slider.createTab(AppPasscodeLockTab);
           tab.open();
         },
         listenerSetter: this.listenerSetter
       };
       const passcodeLockRow = new Row(passcodeLockRowOptions);
-      // passcodeLockRow.freezed = true;
+      passcodeLockRow.freezed = true;
 
       const activeSessionsRow = this.activeSessionsRow = new Row({
         icon: 'activesessions',
@@ -190,6 +191,18 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         twoFactorRow.freezed = false;
 
         // console.log('password state', state);
+      });
+
+      const setPasscodeEnabledState = (enabled?: boolean) => {
+        replaceContent(passcodeLockRow.subtitle, i18n(enabled ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
+      };
+      this.managers.appStateManager.getState().then((state) => {
+        passcodeLockRow.freezed = false;
+        setPasscodeEnabledState(state.settings?.passcode?.enabled || false);
+      });
+      this.listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
+        if(key === joinDeepPath('settings', 'passcode', 'enabled'))
+          setPasscodeEnabledState(value);
       });
 
       this.updateActiveSessions();

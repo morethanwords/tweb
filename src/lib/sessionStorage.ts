@@ -54,6 +54,14 @@ const sessionStorage = new LocalStorageController<{
   current_account?: number, // 1 if not set
   should_animate_auth?: number,
   should_animate_main?: number
-}>(/* ['kz_version'] */);
+}>([
+  'account1',
+  'account2',
+  'account3',
+  'account4',
+  'auth_key_fingerprint',
+  'user_auth',
+  'dc'
+]);
 MOUNT_CLASS_TO.appStorage = sessionStorage;
 export default sessionStorage;

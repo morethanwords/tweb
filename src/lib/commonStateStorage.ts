@@ -5,11 +5,11 @@ import {StateSettings} from '../config/state';
 
 import AppStorage from './storage';
 import {ActiveAccountNumber} from './accounts/types';
-import DeferredIsUsingPasscode from './passcode/deferred';
+import DeferredIsUsingPasscode from './passcode/deferredIsUsingPasscode';
 
 export type PasscodeStorageValue = {
   /**
-   * Have different salt per user to prevent precomputed attacks
+   * Have different random salt per user to prevent precomputed attacks
    *
    * Used to randomize the verification hash
    */
