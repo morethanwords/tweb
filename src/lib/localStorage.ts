@@ -268,7 +268,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
 
   private static ENCRYPTION_DB = getCommonDatabaseState();
   private static ENCRYPTION_DB_STORE_NAME = 'localStorage__encrypted' as const;
-  // private log = (...args: any[]) => console.log('[SW LS]', ...args);
+
   private log = logger('[local-storage-controller]');
 
   private storage: LocalStorage<Storage>;

@@ -9,7 +9,7 @@ import DeferredIsUsingPasscode from './passcode/deferredIsUsingPasscode';
 
 export type PasscodeStorageValue = {
   /**
-   * Have different random salt per user to prevent precomputed attacks
+   * Have different random hash salt per user to prevent precomputed attacks
    *
    * Used to randomize the verification hash
    */
@@ -19,7 +19,7 @@ export type PasscodeStorageValue = {
    */
   verificationHash: Uint8Array;
   /**
-   * Salt used for getting a hashed passcode that will be used for encryption (instead of passing raw passcode between processes)
+   * Salt used for getting a cryptographic key derived from passcode that will be used for encryption (instead of passing raw passcode between processes)
    *
    * Used to randomize the encryption per user
    */

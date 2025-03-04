@@ -6,23 +6,24 @@ import commonStateStorage from '../commonStateStorage';
 import {useLockScreenHotReloadGuard} from '../solidjs/hotReloadGuard';
 
 import DeferredIsUsingPasscode from './deferredIsUsingPasscode';
-import EncryptionPasscodeHashStore from './hashStore';
-import {createPasscodeHashAndSalt, hashPasscode} from './utils';
+import EncryptionKeyStore from './keyStore';
+import {createEncryptionArtifactsFromPasscode, deriveKey, hashPasscode} from './utils';
 
 
 export function usePasscodeActions() {
   const {rootScope, apiManagerProxy} = useLockScreenHotReloadGuard();
 
   async function enablePasscode(passcode: string) {
-    const encryption = await createPasscodeHashAndSalt(passcode);
-    const verification = await createPasscodeHashAndSalt(passcode);
+    const {verificationHash, verificationSalt, encryptionSalt, encryptionKey} =
+      await createEncryptionArtifactsFromPasscode(passcode);
+
     passcode = ''; // forget
 
     await commonStateStorage.set({
       passcode: {
-        verificationHash: verification.hash,
-        verificationSalt: verification.salt,
-        encryptionSalt: encryption.salt
+        verificationHash,
+        verificationSalt,
+        encryptionSalt
       }
     });
 
@@ -32,13 +33,12 @@ export function usePasscodeActions() {
 
     await apiManagerProxy.invoke('toggleUsingPasscode', {
       isUsingPasscode: true,
-      encryptionHash: encryption.hash,
-      encryptionSalt: encryption.salt
+      encryptionKey
     });
 
     // The session storage should first get encrypted in the mtproto worker, then we can use start using the encrypted proxy here
     DeferredIsUsingPasscode.resolveDeferred(true);
-    EncryptionPasscodeHashStore.setHashAndSalt(encryption);
+    EncryptionKeyStore.save(encryptionKey);
 
     await AccountController.updateStorageForLegacy(null); // remove access keys from unencrypted local storage
 
@@ -60,7 +60,7 @@ export function usePasscodeActions() {
     rootScope.dispatchEvent('toggle_using_passcode', false);
     await apiManagerProxy.invoke('toggleUsingPasscode', {isUsingPasscode: false});
     // sessionStorage.decryptEncryptable();
-    EncryptionPasscodeHashStore.setHashAndSalt(null);
+    EncryptionKeyStore.save(null);
     DeferredIsUsingPasscode.resolveDeferred(false);
     commonStateStorage.delete('passcode');
   }
@@ -69,21 +69,19 @@ export function usePasscodeActions() {
    * Note: Re-encrypts everything with a different hash even if the passcode is the same
    */
   async function changePasscode(passcode: string) {
-    const encryption = await createPasscodeHashAndSalt(passcode);
-    const verification = await createPasscodeHashAndSalt(passcode);
-
+    const {verificationHash, verificationSalt, encryptionSalt, encryptionKey} =
+      await createEncryptionArtifactsFromPasscode(passcode);
     passcode = ''; // forget
 
     const toStore = {
-      verificationHash: verification.hash,
-      verificationSalt: verification.salt,
-      encryptionSalt: encryption.salt
+      verificationHash,
+      verificationSalt,
+      encryptionSalt
     }
 
     await apiManagerProxy.invoke('changePasscode', {
       toStore,
-      encryptionHash: encryption.hash,
-      encryptionSalt: encryption.salt
+      encryptionKey
     });
     // Just to set local cache, not really needed)
     await commonStateStorage.set({
@@ -95,14 +93,11 @@ export function usePasscodeActions() {
     const passcodeData = await commonStateStorage.get('passcode', false);
     if(!passcodeData?.encryptionSalt) throw new Error('No encryption salt found in storage');
 
-    const encryptionHash = await hashPasscode(passcode, passcodeData.encryptionSalt);
+    const encryptionKey = await deriveKey(passcode, passcodeData.encryptionSalt);
     passcode = ''; // forget;
 
-    EncryptionPasscodeHashStore.setHashAndSalt({
-      hash: encryptionHash,
-      salt: passcodeData.encryptionSalt
-    });
-    await apiManagerProxy.invoke('saveEncryptionHash', {encryptionSalt: passcodeData.encryptionSalt, encryptionHash});
+    EncryptionKeyStore.save(encryptionKey);
+    await apiManagerProxy.invoke('saveEncryptionKey', encryptionKey);
     apiManagerProxy.invokeVoid('toggleLockOthers', false);
   }
 

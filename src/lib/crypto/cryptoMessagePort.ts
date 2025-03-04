@@ -10,8 +10,10 @@ import {Awaited} from '../../types';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import {IS_WORKER} from '../../helpers/context';
 
+
 type CryptoEvent = {
-  invoke: <T extends keyof CryptoMethods>(payload: {method: T, args: Parameters<CryptoMethods[T]>}) => ReturnType<CryptoMethods[T]>,
+  invoke: <T extends keyof CryptoMethods>(payload: {method: T, args: Parameters<CryptoMethods[T]>}) =>
+    SuperMessagePort.TransferableResultValue<ReturnType<CryptoMethods[T]>>,
   port: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
   terminate: () => void
 };
@@ -29,7 +31,7 @@ export class CryptoMessagePort<Master extends boolean = false> extends SuperMess
     method: T,
     args: Parameters<CryptoMethods[T]>,
     transfer?: Transferable[]
-  }): Promise<Awaited<ReturnType<CryptoMethods[T]>>> {
+  }): Promise<Awaited<SuperMessagePort.TransferableResultValue<ReturnType<CryptoMethods[T]>>>> {
     const payload = {method, args};
     const listeners = this.listeners['invoke'];
     if(listeners?.size) { // already in worker
@@ -52,7 +54,7 @@ export class CryptoMessagePort<Master extends boolean = false> extends SuperMess
     return this.invoke('invoke', payload, undefined, this.sendPorts[sendPortIndex], transfer);
   }
 
-  public invokeCrypto<T extends keyof CryptoMethods>(method: T, ...args: Parameters<CryptoMethods[T]>): Promise<Awaited<ReturnType<CryptoMethods[T]>>> {
+  public invokeCrypto<T extends keyof CryptoMethods>(method: T, ...args: Parameters<CryptoMethods[T]>) {
     return this.invokeCryptoNew({method, args});
   }
 }

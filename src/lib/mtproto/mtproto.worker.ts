@@ -23,7 +23,7 @@ import {ActiveAccountNumber} from '../accounts/types';
 import commonStateStorage from '../commonStateStorage';
 import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import AppStorage from '../storage';
-import EncryptionPasscodeHashStore from '../passcode/hashStore';
+import EncryptionKeyStore from '../passcode/keyStore';
 import sessionStorage from '../sessionStorage';
 
 
@@ -137,10 +137,7 @@ port.addMultipleEventsListeners({
   toggleUsingPasscode: async(payload) => {
     DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
 
-    EncryptionPasscodeHashStore.setHashAndSalt(payload.isUsingPasscode ? {
-      hash: payload.encryptionHash,
-      salt: payload.encryptionSalt
-    } : null);
+    EncryptionKeyStore.save(payload.isUsingPasscode ? payload.encryptionKey : null);
 
     await Promise.all([
       AppStorage.toggleEncryptedForAll(payload.isUsingPasscode),
@@ -152,26 +149,23 @@ port.addMultipleEventsListeners({
     isLocked = false;
   },
 
-  changePasscode: async({toStore, encryptionHash, encryptionSalt}) => {
+  changePasscode: async({toStore, encryptionKey}) => {
     await commonStateStorage.set({passcode: toStore});
 
-    EncryptionPasscodeHashStore.setHashAndSalt({hash: encryptionHash, salt: encryptionSalt});
+    EncryptionKeyStore.save(encryptionKey);
     await Promise.all([
       AppStorage.reEncryptEncrypted(),
       sessionStorage.reEncryptEncryptable()
     ]);
 
-    await port.invokeExceptSourceAsync('saveEncryptionHash', {encryptionHash, encryptionSalt});
+    await port.invokeExceptSourceAsync('saveEncryptionKey', encryptionKey);
   },
 
   isLocked: async(_, source) => {
     const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
     if(isUsingPasscode) {
       if(!isLocked) {
-        await port.invoke('saveEncryptionHash', {
-          encryptionHash: await EncryptionPasscodeHashStore.getHash(),
-          encryptionSalt: await EncryptionPasscodeHashStore.getSalt()
-        }, undefined, source);
+        await port.invoke('saveEncryptionKey', await EncryptionKeyStore.get(), undefined, source);
       }
       return isLocked;
     }
@@ -184,10 +178,10 @@ port.addMultipleEventsListeners({
     port.invokeExceptSource('toggleLock', value, source);
   },
 
-  saveEncryptionHash: async(payload, source) => {
-    EncryptionPasscodeHashStore.setHashAndSalt({hash: payload.encryptionHash, salt: payload.encryptionSalt});
+  saveEncryptionKey: async(payload, source) => {
+    EncryptionKeyStore.save(payload);
     isLocked = false;
-    await port.invokeExceptSourceAsync('saveEncryptionHash', payload, source);
+    await port.invokeExceptSourceAsync('saveEncryptionKey', payload, source);
   },
 
   localStorageEncryptedProxy: (payload) => {

@@ -96,7 +96,7 @@ import {addShortcutListener} from '../mediaEditor/shortcutListener';
 import tsNow from '../../helpers/tsNow';
 import {toastNew} from '../toast';
 import DeferredIsUsingPasscode from '../../lib/passcode/deferredIsUsingPasscode';
-import EncryptionPasscodeHashStore from '../../lib/passcode/hashStore';
+import EncryptionKeyStore from '../../lib/passcode/keyStore';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -515,7 +515,7 @@ export class AppSidebarLeft extends SidebarSlider {
     const WIDTH_WHEN_COLLAPSED = 80;
     const FULL_WIDTH = 420;
     const ANIMATION_TIME = 200;
-    // Need to wait until the sliding animation is finish, this one needs to be faster to avoid random layout shifting
+    // Need to wait until the sliding animation is finished, this one needs to be faster to avoid random layout shifting
     const DELAY_AFTER_ANIMATION = 150;
 
     if(isFloating) {
@@ -901,8 +901,12 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const openTabs = apiManagerProxy.getOpenTabsCount();
 
+    const key = await EncryptionKeyStore.get();
+    const exportedKey = await crypto.subtle.exportKey('raw', key);
+    const base64Key = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
+
     openTabs <= 1 && await sessionStorage.set({
-      encryption_hash: [...await EncryptionPasscodeHashStore.getHash()]
+      encryption_key: base64Key
     });
   }
 

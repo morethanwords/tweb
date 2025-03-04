@@ -7,8 +7,7 @@ import LockScreenHotReloadGuardProvider from '../../lib/solidjs/lockScreenHotRel
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import StaticUtilityClass from '../../lib/staticUtilityClass';
 import sessionStorage from '../../lib/sessionStorage';
-import commonStateStorage from '../../lib/commonStateStorage';
-import EncryptionPasscodeHashStore from '../../lib/passcode/hashStore';
+import EncryptionKeyStore from '../../lib/passcode/keyStore';
 
 
 export default class PasscodeLockScreenController extends StaticUtilityClass {
@@ -19,25 +18,25 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
 
 
   private static async tryGetStoredEncryptionHash() {
-    const storedEncryptionHash = await sessionStorage.get('encryption_hash');
+    const storedBase64Key = await sessionStorage.get('encryption_key');
 
-    if(storedEncryptionHash) {
-      sessionStorage.delete('encryption_hash');
+    if(storedBase64Key) {
+      sessionStorage.delete('encryption_key');
 
-      const isValid = storedEncryptionHash instanceof Array && storedEncryptionHash.every((num) => typeof num === 'number');
+      const isValid = typeof storedBase64Key === 'string'; // storedEncryptionHash instanceof Array && storedEncryptionHash.every((num) => typeof num === 'number');
       if(!isValid) return false;
 
-      const encryptionHash = new Uint8Array(storedEncryptionHash);
-      const passcodeData = await commonStateStorage.get('passcode');
+      const keyAsBuffer = new Uint8Array(atob(storedBase64Key).split('').map(c => c.charCodeAt(0)));
+      const importedKey =  await crypto.subtle.importKey(
+        'raw',
+        keyAsBuffer,
+        {name: 'AES-GCM'},
+        true,
+        ['encrypt', 'decrypt']
+      );
 
-      await apiManagerProxy.invoke('saveEncryptionHash', {
-        encryptionHash,
-        encryptionSalt: passcodeData.encryptionSalt
-      });
-      EncryptionPasscodeHashStore.setHashAndSalt({
-        hash: encryptionHash,
-        salt: passcodeData.encryptionSalt
-      });
+      await apiManagerProxy.invoke('saveEncryptionKey', importedKey);
+      EncryptionKeyStore.save(importedKey);
 
       return true;
     }
@@ -51,7 +50,7 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
     const isLocked = hasStoredEncryptionHash ?
       false :
       await apiManagerProxy.invoke('isLocked', undefined);
-    console.log('isLocked :>> ', isLocked);
+
     if(isLocked) {
       await isLockedCallback();
       await this.lock();

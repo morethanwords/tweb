@@ -58,7 +58,7 @@ import {appSettings, setAppSettingsSilent} from '../../stores/appSettings';
 import {unwrap} from 'solid-js/store';
 import createNotificationImage from '../../helpers/createNotificationImage';
 import PasscodeLockScreenController from '../../components/passcodeLock/passcodeLockScreenController';
-import EncryptionPasscodeHashStore from '../passcode/hashStore';
+import EncryptionKeyStore from '../passcode/keyStore';
 import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 
 
@@ -317,11 +317,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
         }
       },
 
-      saveEncryptionHash: (payload) => {
-        EncryptionPasscodeHashStore.setHashAndSalt({
-          hash: payload.encryptionHash,
-          salt: payload.encryptionSalt
-        });
+      saveEncryptionKey: (payload) => {
+        EncryptionKeyStore.save(payload);
       },
 
       toggleLock: (isLocked) => {
@@ -781,7 +778,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return Promise.all(promises);
   }
 
-  public invokeCrypto<Method extends keyof CryptoMethods>(method: Method, ...args: Parameters<CryptoMethods[typeof method]>): Promise<Awaited<ReturnType<CryptoMethods[typeof method]>>> {
+  public invokeCrypto<Method extends keyof CryptoMethods>(method: Method, ...args: Parameters<CryptoMethods[typeof method]>) {
     if(!import.meta.env.VITE_MTPROTO_WORKER) {
       return;
     }

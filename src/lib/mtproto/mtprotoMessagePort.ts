@@ -29,8 +29,7 @@ type MTProtoBroadcastEvent = {
 
 type ToggleUsingPasscodePayload = {
   isUsingPasscode: true;
-  encryptionHash: Uint8Array;
-  encryptionSalt: Uint8Array;
+  encryptionKey: CryptoKey;
 } | {
   isUsingPasscode: false;
 };
@@ -51,8 +50,8 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   clearInterval: (intervalId: number) => void,
   terminate: () => void,
   toggleUsingPasscode: (payload: ToggleUsingPasscodePayload) => void,
-  changePasscode: (payload: {toStore: PasscodeStorageValue, encryptionHash: Uint8Array, encryptionSalt: Uint8Array}, source: MessageEventSource) => void,
-  saveEncryptionHash: (payload: {encryptionHash: Uint8Array, encryptionSalt: Uint8Array}, source: MessageEventSource) => void,
+  changePasscode: (payload: {toStore: PasscodeStorageValue, encryptionKey: CryptoKey}, source: MessageEventSource) => void,
+  saveEncryptionKey: (payload: CryptoKey, source: MessageEventSource) => void,
   isLocked: (payload: void, source: MessageEventSource) => Promise<boolean>,
   toggleLockOthers: (isLocked: boolean, source: MessageEventSource) => void
   localStorageEncryptedProxy: (payload: LocalStorageEncryptedProxyTaskPayload) => Promise<any>
@@ -68,7 +67,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   callNotification: (payload: CallNotificationPayload) => void,
   intervalCallback: (intervalId: number) => void,
   toggleLock: (isLocked: boolean) => void,
-  saveEncryptionHash: (payload: {encryptionHash: Uint8Array, encryptionSalt: Uint8Array}, source: MessageEventSource) => void
+  saveEncryptionKey: (payload: CryptoKey, source: MessageEventSource) => void
 } & MTProtoBroadcastEvent, Master> {
   private static INSTANCE: MTProtoMessagePort;
 

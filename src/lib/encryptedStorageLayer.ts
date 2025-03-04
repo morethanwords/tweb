@@ -6,7 +6,7 @@ import asyncThrottle from '../helpers/schedulers/asyncThrottle';
 import cryptoMessagePort from './crypto/cryptoMessagePort';
 import IDBStorage from './files/idb';
 import {logger, Logger} from './logger';
-import EncryptionPasscodeHashStore from './passcode/hashStore';
+import EncryptionKeyStore from './passcode/keyStore';
 
 
 export interface StorageLayer {
@@ -54,15 +54,13 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   private static async encrypt(data: StoredData): Promise<Uint8Array | null> {
     if(!Object.keys(data).length) return null;
 
-    const passcodeHash = await EncryptionPasscodeHashStore.getHash();
-    const salt = await EncryptionPasscodeHashStore.getSalt();
+    const key = await EncryptionKeyStore.get();
     const dataAsBuffer = convertToUint8Array(JSON.stringify(data));
 
     const result = await cryptoMessagePort.invokeCryptoNew({
       method: 'aes-local-encrypt',
       args: [{
-        passcodeHash,
-        salt,
+        key,
         data: dataAsBuffer
       }],
       transfer: [dataAsBuffer.buffer]
@@ -72,21 +70,18 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   }
 
   private static async decrypt(data: Uint8Array): Promise<StoredData> {
-    const passcodeHash = await EncryptionPasscodeHashStore.getHash();
-    const salt = await EncryptionPasscodeHashStore.getSalt();
-
+    const key = await EncryptionKeyStore.get();
     const result = await cryptoMessagePort.invokeCryptoNew({
       method: 'aes-local-decrypt',
       args: [{
-        passcodeHash,
-        salt,
+        key,
         encryptedData: data
       }],
       transfer: [data.buffer]
     });
-    // console.timeEnd('loadEncrypted ' + this.db.name + this.encryptedStoreName);
 
-    return JSON.parse(result);
+    const decoded = new TextDecoder().decode(result);
+    return JSON.parse(decoded);
   }
 
   public loadEncrypted() {

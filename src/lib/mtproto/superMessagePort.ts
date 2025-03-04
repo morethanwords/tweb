@@ -100,7 +100,8 @@ const USE_BATCHING = true;
 // const PING_INTERVAL = DEBUG && false ? 0x7FFFFFFF : 5000;
 // const PING_TIMEOUT = DEBUG && false ? 0x7FFFFFFF : 10000;
 
-export default class SuperMessagePort<
+
+class SuperMessagePort<
   Workers extends Listeners,
   Masters extends Listeners,
   IsMaster extends boolean,
@@ -493,6 +494,7 @@ export default class SuperMessagePort<
     }
 
     let isPromise: boolean;
+
     try {
       const listeners = this.listeners[innerTask.type];
       if(!listeners?.size) {
@@ -522,6 +524,11 @@ export default class SuperMessagePort<
 
       if(isPromise) {
         result = await result;
+      }
+
+      if(result instanceof SuperMessagePort.TransferableResult) {
+        resultTask.transfer = result.transferables;
+        result = result.value;
       }
 
       resultTaskPayload.result = result;
@@ -634,3 +641,13 @@ export default class SuperMessagePort<
     await Promise.all(ports.map((target) => this.invoke(type, payload, undefined, target)));
   }
 }
+
+namespace SuperMessagePort {
+  export type TransferableResultValue<T> = T extends MaybePromise<TransferableResult<infer U>> ? U : T;
+
+  export class TransferableResult<T> {
+    constructor(public value: T, public transferables: Transferable[]) { }
+  };
+}
+
+export default SuperMessagePort;
