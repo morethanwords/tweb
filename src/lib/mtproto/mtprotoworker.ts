@@ -57,6 +57,9 @@ import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
 import {appSettings, setAppSettingsSilent} from '../../stores/appSettings';
 import {unwrap} from 'solid-js/store';
 import createNotificationImage from '../../helpers/createNotificationImage';
+import PasscodeLockScreenController from '../../components/passcodeLock/passcodeLockScreenController';
+import EncryptionPasscodeHashStore from '../passcode/hashStore';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 
 
 export type Mirrors = {
@@ -312,6 +315,19 @@ class ApiManagerProxy extends MTProtoMessagePort {
         if(callback) {
           callback();
         }
+      },
+
+      saveEncryptionHash: (payload) => {
+        EncryptionPasscodeHashStore.setHashAndSalt({
+          hash: payload.encryptionHash,
+          salt: payload.encryptionSalt
+        });
+      },
+
+      toggleLock: (isLocked) => {
+        if(isLocked) {} else {
+          PasscodeLockScreenController.unlock();
+        }
       }
 
       // hello: () => {
@@ -425,12 +441,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
       setAppSettingsSilent(/* key,  */settings);
     });
 
-    // TODO: encrypted storages should not be in the window client, just in the shared worker to avoid any data mismatches
-    // NO NO NO ->  X X X Now doesn't seem like any ecryptable storages are in the window client so shouldn't be a problem~~
-    // rootScope.addEventListener('toggle_using_passcode', (value) => {
-    //   DeferredIsUsingPasscode.resolveDeferred(value);
-    //   AppStorage.toggleEncryptedForAll(value);
-    // });
+    rootScope.addEventListener('toggle_using_passcode', (value) => {
+      DeferredIsUsingPasscode.resolveDeferred(value);
+    });
 
     idleController.addEventListener('change', (idle) => {
       this.updateTabStateIdle(idle);
@@ -747,6 +760,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   public hasTabOpenFor(accountNumber: ActiveAccountNumber) {
     return !!this.allTabStates.find((tab) => tab.accountNumber === accountNumber);
+  }
+
+  public getOpenTabsCount() {
+    return this.allTabStates.length;
   }
 
   public sendAllStates(loadedStates: Awaited<ReturnType<ApiManagerProxy['loadAllStates']>>) {

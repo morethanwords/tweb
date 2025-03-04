@@ -48,7 +48,7 @@ const MainTab = () => {
   return (
     <Show when={enabled.state === 'ready'}>
       {
-        enabled ?
+        enabled() ?
           <PasscodeSetContent /> :
           <NoPasscodeContent />
       }

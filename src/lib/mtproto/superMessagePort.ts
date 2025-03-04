@@ -626,4 +626,11 @@ export default class SuperMessagePort<
       this.invokeVoid(type, payload, target);
     });
   }
+
+  public async invokeExceptSourceAsync<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], source?: SendPort) {
+    const ports = this.sendPorts.slice();
+    indexOfAndSplice(ports, source);
+
+    await Promise.all(ports.map((target) => this.invoke(type, payload, undefined, target)));
+  }
 }

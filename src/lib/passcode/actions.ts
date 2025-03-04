@@ -103,6 +103,7 @@ export function usePasscodeActions() {
       salt: passcodeData.encryptionSalt
     });
     await apiManagerProxy.invoke('saveEncryptionHash', {encryptionSalt: passcodeData.encryptionSalt, encryptionHash});
+    apiManagerProxy.invokeVoid('toggleLockOthers', false);
   }
 
   return {

@@ -94,8 +94,6 @@ class LocalStorage<Storage extends Record<string, any>> {
     for(const key in obj) {
       if(obj.hasOwnProperty(key)) {
         const value = obj[key];
-        // TODO: check that all window clients receive the cache
-        console.log('[my-debug] setting value to local storage cache :>> ', obj);
         this.cache[key] = value;
 
         if(!onlyLocal) {

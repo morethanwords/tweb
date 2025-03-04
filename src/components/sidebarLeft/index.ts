@@ -95,6 +95,8 @@ import AppEditFolderTab from './tabs/editFolder';
 import {addShortcutListener} from '../mediaEditor/shortcutListener';
 import tsNow from '../../helpers/tsNow';
 import {toastNew} from '../toast';
+import DeferredIsUsingPasscode from '../../lib/passcode/deferredIsUsingPasscode';
+import EncryptionPasscodeHashStore from '../../lib/passcode/hashStore';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -709,7 +711,10 @@ export class AppSidebarLeft extends SidebarSlider {
         }
 
         localStorage.setItem('previous-account', getCurrentAccount() + '');
-        const newTab = e.ctrlKey || e.metaKey;
+        const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+        const openTabs = apiManagerProxy.getOpenTabsCount();
+
+        const newTab = e.ctrlKey || e.metaKey || (openTabs <= 1 && isUsingPasscode);
         if(!newTab) {
           appImManager.goOffline();
 
@@ -862,6 +867,8 @@ export class AppSidebarLeft extends SidebarSlider {
                   await doubleRaf();
                   chatListEl.classList.add('chatlist-exiting');
                   await pause(200);
+
+                  await this.setEncryptionHashBeforeSwitchingAccounts();
                 }
                 changeAccount(accountNumber, newTab);
               }
@@ -886,6 +893,17 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     return buttonMenuToggle;
+  }
+
+  private async setEncryptionHashBeforeSwitchingAccounts() {
+    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+    if(!isUsingPasscode) return;
+
+    const openTabs = apiManagerProxy.getOpenTabsCount();
+
+    openTabs <= 1 && await sessionStorage.set({
+      encryption_hash: [...await EncryptionPasscodeHashStore.getHash()]
+    });
   }
 
 

@@ -21,6 +21,7 @@ type StorageValues = {
   account3: AccountSessionData,
   account4: AccountSessionData,
 
+  encryption_hash?: number[], // Will be quickly set and removed when switching between accounts
 
   server_time_offset: number,
   xt_instance: AppInstance,

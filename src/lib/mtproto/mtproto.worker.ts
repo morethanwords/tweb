@@ -160,11 +160,21 @@ port.addMultipleEventsListeners({
       AppStorage.reEncryptEncrypted(),
       sessionStorage.reEncryptEncryptable()
     ]);
+
+    await port.invokeExceptSourceAsync('saveEncryptionHash', {encryptionHash, encryptionSalt});
   },
 
-  isLocked: async() => {
+  isLocked: async(_, source) => {
     const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
-    if(isUsingPasscode) return isLocked;
+    if(isUsingPasscode) {
+      if(!isLocked) {
+        await port.invoke('saveEncryptionHash', {
+          encryptionHash: await EncryptionPasscodeHashStore.getHash(),
+          encryptionSalt: await EncryptionPasscodeHashStore.getSalt()
+        }, undefined, source);
+      }
+      return isLocked;
+    }
 
     return false;
   },
@@ -174,8 +184,10 @@ port.addMultipleEventsListeners({
     port.invokeExceptSource('toggleLock', value, source);
   },
 
-  saveEncryptionHash: (payload) => {
+  saveEncryptionHash: async(payload, source) => {
     EncryptionPasscodeHashStore.setHashAndSalt({hash: payload.encryptionHash, salt: payload.encryptionSalt});
+    isLocked = false;
+    await port.invokeExceptSourceAsync('saveEncryptionHash', payload, source);
   },
 
   localStorageEncryptedProxy: (payload) => {
