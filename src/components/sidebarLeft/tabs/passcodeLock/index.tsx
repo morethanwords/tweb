@@ -43,6 +43,7 @@ function scaffoldSolidJSTab<Payload = void>({
       this.dispose = render(() => (
         <SolidJSHotReloadGuardProvider>
           <PromiseCollector onCollect={(promise) => collectPromise(promise)}>
+            {/* Provide other tabs here to avoid circular imports */}
             <SuperTabProvider self={this} allTabs={allTabs}>
               <Component />
             </SuperTabProvider>

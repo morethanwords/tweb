@@ -1,4 +1,4 @@
-import {batch, createEffect, on, onCleanup, onMount} from 'solid-js';
+import {createEffect, on, onCleanup, onMount} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 
 import {SETTINGS_INIT} from '../../config/state';
@@ -157,12 +157,10 @@ const Background = () => {
       setOpacityTo?.style.setProperty('--opacity-max', '' + opacityMax);
     }
 
-    batch(() => {
-      setStore({
-        gradientCanvas,
-        patternCanvas,
-        image
-      });
+    setStore({
+      gradientCanvas,
+      patternCanvas,
+      image
     });
 
     return {patternRenderer};
@@ -181,6 +179,7 @@ const Background = () => {
 
   createEffect(on(() => store.isMobile, () => {
     if(store.isMobile) return;
+
     const promise = createBackground();
 
     onCleanup(() => {

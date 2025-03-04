@@ -1,5 +1,6 @@
 import {Database} from '../config/databases';
 import toArray from '../helpers/array/toArray';
+import convertToUint8Array from '../helpers/bytes/convertToUint8Array';
 import asyncThrottle from '../helpers/schedulers/asyncThrottle';
 
 import cryptoMessagePort from './crypto/cryptoMessagePort';
@@ -50,22 +51,37 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
     return `${dbName}**${storeName}`;
   }
 
-  private static async encrypt(data: StoredData): Promise<Uint8Array> {
-    const hash = await EncryptionPasscodeHashStore.getValue();
+  private static async encrypt(data: StoredData): Promise<Uint8Array | null> {
+    if(!Object.keys(data).length) return null;
+
+    const passcodeHash = await EncryptionPasscodeHashStore.getHash();
+    const salt = await EncryptionPasscodeHashStore.getSalt();
+    const dataAsBuffer = convertToUint8Array(JSON.stringify(data));
+
     const result = await cryptoMessagePort.invokeCryptoNew({
       method: 'aes-local-encrypt',
-      args: [hash, JSON.stringify(data)]
+      args: [{
+        passcodeHash,
+        salt,
+        data: dataAsBuffer
+      }],
+      transfer: [dataAsBuffer.buffer]
     });
 
     return result;
   }
 
   private static async decrypt(data: Uint8Array): Promise<StoredData> {
-    const hash = await EncryptionPasscodeHashStore.getValue();
+    const passcodeHash = await EncryptionPasscodeHashStore.getHash();
+    const salt = await EncryptionPasscodeHashStore.getSalt();
 
     const result = await cryptoMessagePort.invokeCryptoNew({
       method: 'aes-local-decrypt',
-      args: [hash, data],
+      args: [{
+        passcodeHash,
+        salt,
+        encryptedData: data
+      }],
       transfer: [data.buffer]
     });
     // console.timeEnd('loadEncrypted ' + this.db.name + this.encryptedStoreName);
@@ -116,13 +132,14 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   private async loadFromIDB() {
     try {
       const storageData = await this.storage.get(EncryptedStorageLayer.STORAGE_KEY);
-      if(!(storageData instanceof Uint8Array)) throw new Error('Stored data in encrypted store is not a Uint8Array');
+      if(storageData === null) throw null;
+      if(!(storageData instanceof Uint8Array)) throw new Error('Stored data in encrypted store is not a Uint8Array'); // Should not happen but anyway))
 
       const decrypted = await EncryptedStorageLayer.decrypt(storageData);
       this.data = decrypted;
     } catch(error) {
-      this.log(error);
-      this.data = {}; // Should not happen but anyway))
+      if(error) this.log(error);
+      this.data = {};
     }
 
     return this.data;

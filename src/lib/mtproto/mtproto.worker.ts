@@ -137,7 +137,10 @@ port.addMultipleEventsListeners({
   toggleUsingPasscode: async(payload) => {
     DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
 
-    EncryptionPasscodeHashStore.setValue(payload.isUsingPasscode ? payload.encryptionHash : null);
+    EncryptionPasscodeHashStore.setHashAndSalt(payload.isUsingPasscode ? {
+      hash: payload.encryptionHash,
+      salt: payload.encryptionSalt
+    } : null);
 
     await Promise.all([
       AppStorage.toggleEncryptedForAll(payload.isUsingPasscode),
@@ -149,10 +152,10 @@ port.addMultipleEventsListeners({
     isLocked = false;
   },
 
-  changePasscode: async({toStore, encryptionHash}) => {
+  changePasscode: async({toStore, encryptionHash, encryptionSalt}) => {
     await commonStateStorage.set({passcode: toStore});
 
-    EncryptionPasscodeHashStore.setValue(encryptionHash);
+    EncryptionPasscodeHashStore.setHashAndSalt({hash: encryptionHash, salt: encryptionSalt});
     await Promise.all([
       AppStorage.reEncryptEncrypted(),
       sessionStorage.reEncryptEncryptable()
@@ -171,8 +174,8 @@ port.addMultipleEventsListeners({
     port.invokeExceptSource('toggleLock', value, source);
   },
 
-  saveEncryptionHash: (value) => {
-    EncryptionPasscodeHashStore.setValue(value);
+  saveEncryptionHash: (payload) => {
+    EncryptionPasscodeHashStore.setHashAndSalt({hash: payload.encryptionHash, salt: payload.encryptionSalt});
   },
 
   localStorageEncryptedProxy: (payload) => {

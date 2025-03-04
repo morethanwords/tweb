@@ -26,7 +26,7 @@ const MainTab = () => {
   const {rootScope, apiManagerProxy} = useHotReloadGuard();
   const promiseColletor = usePromiseCollector();
 
-  const [enabled, {mutate}] = createResource(() => {
+  const [enabled, {mutate: mutateEnabled}] = createResource(() => {
     const promise = apiManagerProxy.getState().then(state =>
       state.settings?.passcode?.enabled || false
     );
@@ -38,7 +38,7 @@ const MainTab = () => {
 
   listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
     if(key === joinDeepPath('settings', 'passcode', 'enabled')) {
-      mutate(value);
+      mutateEnabled(value);
     }
   });
   onCleanup(() => {
@@ -47,9 +47,11 @@ const MainTab = () => {
 
   return (
     <Show when={enabled.state === 'ready'}>
-      <Show when={enabled()} fallback={<NoPasscodeContent />}>
-        <PasscodeSetContent />
-      </Show>
+      {
+        enabled ?
+          <PasscodeSetContent /> :
+          <NoPasscodeContent />
+      }
     </Show>
   );
 };
@@ -187,7 +189,7 @@ const PasscodeSetContent = () => {
       },
       buttonText: 'PasscodeLock.TurnOff',
       inputLabel: 'PasscodeLock.EnterYourPasscode'
-    });
+    }, 'PasscodeLock.TurnOff');
   };
 
   const caption = (

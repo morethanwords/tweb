@@ -24,6 +24,7 @@ export class CryptoMessagePort<Master extends boolean = false> extends SuperMess
     this.lastIndex = -1;
   }
 
+  // TODO: Transfer transferables on result tasks?
   public invokeCryptoNew<T extends keyof CryptoMethods>({method, args, transfer}: {
     method: T,
     args: Parameters<CryptoMethods[T]>,

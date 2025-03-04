@@ -33,7 +33,7 @@ const EnterPasswordTab = () => {
 
   setTimeout(() => {
     inputField.input.focus();
-  }, 200);
+  }, 400); // Smaller timeout will make the tab animation jerky
 
   onCleanup(() => {
     // Just in case

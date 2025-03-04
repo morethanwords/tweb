@@ -1,5 +1,34 @@
-const SALT_LENGTH = 16;
+import compareUint8Arrays from '../../../helpers/bytes/compareUint8Arrays';
+
+import StaticUtilityClass from '../../staticUtilityClass';
+
+
 const IV_LENGTH = 12;
+
+
+type SaltedDerivedKeyCacheEntry = {
+  salt: Uint8Array;
+  operationPromise: Promise<CryptoKey>;
+};
+
+class SaltedDerivedKeyCache extends StaticUtilityClass {
+  private static cache: SaltedDerivedKeyCacheEntry[] = [];
+
+  public static requestOperation(salt: Uint8Array, operation: () => Promise<CryptoKey>) {
+    const entry = this.cache.find(entry => compareUint8Arrays(salt, entry.salt));
+
+    if(entry) return entry.operationPromise;
+
+    const newEntry = {
+      salt: new Uint8Array(salt),
+      operationPromise: operation()
+    };
+    this.cache.push(newEntry);
+
+    return newEntry.operationPromise;
+  }
+}
+
 
 async function deriveKey(passcodeHash: Uint8Array, salt: Uint8Array): Promise<CryptoKey> {
   const keyMaterial = await crypto.subtle.importKey(
@@ -11,36 +40,41 @@ async function deriveKey(passcodeHash: Uint8Array, salt: Uint8Array): Promise<Cr
   );
 }
 
-export async function encryptLocalData(passcodeHash: Uint8Array, data: string) {
-  const encoder = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+export type EncryptLocalDataArgs = {
+  passcodeHash: Uint8Array;
+  salt: Uint8Array;
+  data: Uint8Array;
+};
+
+export async function encryptLocalData({passcodeHash, salt, data}: EncryptLocalDataArgs) {
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
 
-  const key = await deriveKey(passcodeHash, salt);
+  const key = await SaltedDerivedKeyCache.requestOperation(salt, () => deriveKey(passcodeHash, salt));
   const encrypted = await crypto.subtle.encrypt(
     {name: 'AES-GCM', iv},
     key,
-    encoder.encode(data)
+    data
   );
 
-  /**
-   * Have different salt and IV per encryption to prevent precomputed attacks
-   */
-  const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
-  combined.set(salt, 0);
-  combined.set(iv, salt.length);
-  combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.length);
 
   return combined;
 }
 
-export async function decryptLocalData(passcodeHash: Uint8Array, encryptedData: ArrayBuffer) {
-  const data = new Uint8Array(encryptedData);
-  const salt = data.slice(0, SALT_LENGTH);
-  const iv = data.slice(SALT_LENGTH, IV_LENGTH + SALT_LENGTH);
-  const ciphertext = data.slice(IV_LENGTH + SALT_LENGTH);
 
-  const key = await deriveKey(passcodeHash, salt);
+export type DecryptLocalDataArgs = {
+  passcodeHash: Uint8Array;
+  salt: Uint8Array;
+  encryptedData: Uint8Array;
+};
+
+export async function decryptLocalData({passcodeHash, salt, encryptedData}: DecryptLocalDataArgs) {
+  const iv = encryptedData.slice(0, IV_LENGTH);
+  const ciphertext = encryptedData.slice(IV_LENGTH);
+
+  const key = await SaltedDerivedKeyCache.requestOperation(salt, () => deriveKey(passcodeHash, salt));
   const decrypted = await crypto.subtle.decrypt(
     {name: 'AES-GCM', iv},
     key,

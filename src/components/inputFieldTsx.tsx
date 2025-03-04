@@ -16,7 +16,7 @@ export interface InputFieldTsxProps<T extends typeof InputField> extends InputFi
   errorLabel?: LangPackKey
 }
 
-export const InputFieldTsx = <T extends typeof InputField, >(inProps: InputFieldTsxProps<T>) => {
+export const InputFieldTsx = <T extends typeof InputField>(inProps: InputFieldTsxProps<T>) => {
   const props = mergeProps({InputFieldClass: InputField}, inProps);
 
   const [, options] = splitProps(props, ['class', 'value', 'InputFieldClass', 'errorLabel'])

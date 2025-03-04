@@ -105,11 +105,11 @@ export default class AppStorage<
   private async getStorage(): Promise<StorageLayer> {
     if(this.storage) return this.storage;
 
-    const isUsingPasscode = this.isEncryptable ?
+    const isEncryptable = this.isEncryptable ?
       await DeferredIsUsingPasscode.isUsingPasscode() :
       false;
 
-    const storage = this.storage = isUsingPasscode ?
+    const storage = this.storage = isEncryptable ?
       EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName) :
       new IDBStorage(this.db, this.storeName);
 
@@ -370,7 +370,7 @@ export default class AppStorage<
     this.savingFreezed = prevFreezed;
   }
 
-  // public close() { // This closes the whole database, not just the store!
+  // public close() { // This closes the whole database, not the store!
   //   return this.getStorage().then(storage => storage.close());
   // }
 

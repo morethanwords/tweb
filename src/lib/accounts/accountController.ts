@@ -19,6 +19,10 @@ export class AccountController extends StaticUtilityClass {
     return allAccountsData.filter((accountData) => !!accountData?.userId).length;
   }
 
+  static async getUnencryptedTotalAccounts() {
+    return sessionStorage.get('number_of_accounts');
+  }
+
   static async getUserIds() {
     const promises = ([1, 2, 3, 4] as const).map((accountNumber) => sessionStorage.get(`account${accountNumber}`));
 
@@ -58,6 +62,13 @@ export class AccountController extends StaticUtilityClass {
       await this.updateStorageForLegacy(updatedData);
     }
 
+    (async() => {
+      const numberOfAccounts = await this.getTotalAccounts();
+      await sessionStorage.set({
+        number_of_accounts: numberOfAccounts
+      });
+    })();
+
     return updatedData;
   }
 
@@ -75,8 +86,13 @@ export class AccountController extends StaticUtilityClass {
     }
   }
 
-  static async updateStorageForLegacy(accountData: Partial<AccountSessionData>) {
-    if(await DeferredIsUsingPasscode.isUsingPasscode()) return; // We can't expose keys if there's a passcode set
+  /**
+   * Use `null` when needing to remove the values (e.g. when enabling passcode)
+   */
+  static async updateStorageForLegacy(accountData: Partial<AccountSessionData> | null) {
+    if(accountData !== null && await DeferredIsUsingPasscode.isUsingPasscode()) return; // We can't expose keys if there's a passcode set
+
+    if(accountData === null) accountData = {};
 
     const obj: Parameters<typeof sessionStorage['set']>[0] = {};
     const toClear: (keyof typeof obj)[] = [];

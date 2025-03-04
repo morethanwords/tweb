@@ -57,8 +57,7 @@ import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
 import {appSettings, setAppSettingsSilent} from '../../stores/appSettings';
 import {unwrap} from 'solid-js/store';
 import createNotificationImage from '../../helpers/createNotificationImage';
-import AppStorage from '../storage';
-import DeferredIsUsingPasscode from '../passcode/deferred';
+
 
 export type Mirrors = {
   state: State,
@@ -264,8 +263,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       },
 
       localStorageProxy: (payload) => {
-        const storageTask = payload;
-        return (sessionStorage[storageTask.type] as any)(...storageTask.args);
+        return sessionStorage.localStorageProxy(payload.type, ...payload.args);
       },
 
       mirror: this.onMirrorTask,
@@ -429,10 +427,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     // TODO: encrypted storages should not be in the window client, just in the shared worker to avoid any data mismatches
     // NO NO NO ->  X X X Now doesn't seem like any ecryptable storages are in the window client so shouldn't be a problem~~
-    rootScope.addEventListener('toggle_using_passcode', (value) => {
-      DeferredIsUsingPasscode.overrideCurrentValue(value);
-      AppStorage.toggleEncryptedForAll(value);
-    });
+    // rootScope.addEventListener('toggle_using_passcode', (value) => {
+    //   DeferredIsUsingPasscode.resolveDeferred(value);
+    //   AppStorage.toggleEncryptedForAll(value);
+    // });
 
     idleController.addEventListener('change', (idle) => {
       this.updateTabStateIdle(idle);

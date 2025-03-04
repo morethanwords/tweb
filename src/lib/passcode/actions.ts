@@ -1,12 +1,13 @@
+import compareUint8Arrays from '../../helpers/bytes/compareUint8Arrays';
 import {joinDeepPath} from '../../helpers/object/setDeepProperty';
 
+import AccountController from '../accounts/accountController';
 import commonStateStorage from '../commonStateStorage';
-import sessionStorage from '../sessionStorage';
 import {useLockScreenHotReloadGuard} from '../solidjs/hotReloadGuard';
 
 import DeferredIsUsingPasscode from './deferredIsUsingPasscode';
 import EncryptionPasscodeHashStore from './hashStore';
-import {compareUint8Arrays, createPasscodeHashAndSalt, hashPasscode} from './utils';
+import {createPasscodeHashAndSalt, hashPasscode} from './utils';
 
 
 export function usePasscodeActions() {
@@ -31,12 +32,15 @@ export function usePasscodeActions() {
 
     await apiManagerProxy.invoke('toggleUsingPasscode', {
       isUsingPasscode: true,
-      encryptionHash: encryption.hash
+      encryptionHash: encryption.hash,
+      encryptionSalt: encryption.salt
     });
 
     // The session storage should first get encrypted in the mtproto worker, then we can use start using the encrypted proxy here
     DeferredIsUsingPasscode.resolveDeferred(true);
-    EncryptionPasscodeHashStore.setValue(encryption.hash);
+    EncryptionPasscodeHashStore.setHashAndSalt(encryption);
+
+    await AccountController.updateStorageForLegacy(null); // remove access keys from unencrypted local storage
 
     // TODO: Tell other window clients that encryption is enabled
   }
@@ -56,7 +60,7 @@ export function usePasscodeActions() {
     rootScope.dispatchEvent('toggle_using_passcode', false);
     await apiManagerProxy.invoke('toggleUsingPasscode', {isUsingPasscode: false});
     // sessionStorage.decryptEncryptable();
-    EncryptionPasscodeHashStore.setValue(null);
+    EncryptionPasscodeHashStore.setHashAndSalt(null);
     DeferredIsUsingPasscode.resolveDeferred(false);
     commonStateStorage.delete('passcode');
   }
@@ -78,12 +82,13 @@ export function usePasscodeActions() {
 
     await apiManagerProxy.invoke('changePasscode', {
       toStore,
-      encryptionHash: encryption.hash
+      encryptionHash: encryption.hash,
+      encryptionSalt: encryption.salt
     });
     // Just to set local cache, not really needed)
     await commonStateStorage.set({
       passcode: toStore
-    });
+    }, true);
   }
 
   async function unlockWithPasscode(passcode: string) {
@@ -93,8 +98,11 @@ export function usePasscodeActions() {
     const encryptionHash = await hashPasscode(passcode, passcodeData.encryptionSalt);
     passcode = ''; // forget;
 
-    EncryptionPasscodeHashStore.setValue(encryptionHash);
-    apiManagerProxy.invokeVoid('saveEncryptionHash', encryptionHash);
+    EncryptionPasscodeHashStore.setHashAndSalt({
+      hash: encryptionHash,
+      salt: passcodeData.encryptionSalt
+    });
+    await apiManagerProxy.invoke('saveEncryptionHash', {encryptionSalt: passcodeData.encryptionSalt, encryptionHash});
   }
 
   return {

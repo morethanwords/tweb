@@ -98,6 +98,8 @@ export type PickByType<T, Value> = {
 
 export type InstanceOf<T> = T extends new (...args: any[]) => infer R ? R : never;
 
+export type StringKey<T extends keyof any> = T extends string ? T : never;
+
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn | AuthState.signImport;
 export namespace AuthState {
   export type signIn = {

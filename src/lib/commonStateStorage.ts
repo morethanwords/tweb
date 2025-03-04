@@ -21,7 +21,7 @@ export type PasscodeStorageValue = {
   /**
    * Salt used for getting a hashed passcode that will be used for encryption (instead of passing raw passcode between processes)
    *
-   * Used to randomize the encryption hash
+   * Used to randomize the encryption per user
    */
   encryptionSalt: Uint8Array;
 };

@@ -30,7 +30,7 @@ import singleInstance, {InstanceDeactivateReason} from './lib/mtproto/singleInst
 import {parseUriParamsLine} from './helpers/string/parseUriParams';
 import Modes from './config/modes';
 import {AuthState} from './types';
-import {IS_BETA} from './config/debug';
+import DEBUG, {IS_BETA} from './config/debug';
 import IS_INSTALL_PROMPT_SUPPORTED from './environment/installPrompt';
 import cacheInstallPrompt from './helpers/dom/installPrompt';
 import {fillLocalizedDates} from './helpers/date';
@@ -49,6 +49,21 @@ import listenForWindowPrint from './helpers/dom/windowPrint';
 import cancelImageEvents from './helpers/dom/cancelImageEvents';
 import PopupElement from './components/popups';
 import appRuntimeManager from './lib/appManagers/appRuntimeManager';
+import PasscodeLockScreenController from './components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
+import type {LangPackDifference} from './layer';
+import commonStateStorage from './lib/commonStateStorage';
+
+// import commonStateStorage from './lib/commonStateStorage';
+// import { STATE_INIT } from './config/state';
+
+// if(DEBUG) {
+//   (async() => {
+//     const {attachDevtoolsOverlay} = await import('@solid-devtools/overlay');
+
+//     attachDevtoolsOverlay();
+//   })();
+// }
+
 
 IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   mimeTypes.forEach((mimeType) => {
@@ -275,6 +290,19 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
   popup.show();
 };
 
+const TIME_LABEL = 'Elapsed time since unlocked';
+
+function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDifference) {
+  if(langPack.lang_code === 'ar' || langPack.lang_code === 'fa' && IS_BETA && false) {
+    document.documentElement.classList.add('is-rtl');
+    document.documentElement.dir = 'rtl';
+    document.documentElement.lang = langPack.lang_code;
+    I18n.setRTL(true);
+  } else {
+    document.documentElement.dir = 'ltr';
+  }
+}
+
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
   const perf = performance.now();
   randomlyChooseVersionFromSearch();
@@ -293,6 +321,21 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
     cacheInstallPrompt();
   }
 
+  await PasscodeLockScreenController.waitForUnlock(async() => {
+    rootScope.settings = await commonStateStorage.get('settings');
+    themeController.setThemeListener();
+
+    const langPack = await I18n.getCacheLangPack();
+    setDocumentLangPackProperties(langPack);
+
+    if(IS_BETA) import('./pages/pageIm'); // cache it
+    // const settings = await commonStateStorage.get('settings');
+    // const timeFormat =
+    // I18n.setTimeFormat(settings?.timeFormat || STATE_INIT.settings?.timeFormat);
+  });
+
+  console.time(TIME_LABEL);
+
   // * (1) load states
   // * (2) check app version
   // * (3) send all states if updated
@@ -302,9 +345,13 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
   const allStates = await apiManagerProxy.loadAllStates();
   const stateResult = allStates[getCurrentAccount()];
 
+  console.timeLog(TIME_LABEL, 'allStates loaded');
+
   // * (2)
   singleInstance.addEventListener('deactivated', onInstanceDeactivated);
   await singleInstance.start();
+  console.timeLog(TIME_LABEL, 'singleInstance started');
+
   const sendAllStatesPromise = singleInstance.deactivatedReason !== 'version' && apiManagerProxy.sendAllStates(allStates);
   if(singleInstance.deactivatedReason) {
     onInstanceDeactivated(singleInstance.deactivatedReason);
@@ -312,7 +359,10 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
 
   // * (3)
   await sendAllStatesPromise;
+  console.timeLog(TIME_LABEL, 'sent all states (1)');
+
   const langPack = await I18n.getCacheLangPack();
+  console.timeLog(TIME_LABEL, 'await I18n.getCacheLangPack()');
   I18n.setTimeFormat(rootScope.settings.timeFormat);
 
   // * (4)
@@ -321,6 +371,8 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
   }
 
   await apiManagerProxy.sendAllStates(allStates);
+
+  console.timeLog(TIME_LABEL, 'sent all states (2)');
 
   document.body.classList.toggle('has-folders-sidebar', rootScope.settings.tabsInSidebar);
 
@@ -365,14 +417,10 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
 
   await IMAGE_MIME_TYPES_SUPPORTED_PROMISE;
 
-  if(langPack.lang_code === 'ar' || langPack.lang_code === 'fa' && IS_BETA && false) {
-    document.documentElement.classList.add('is-rtl');
-    document.documentElement.dir = 'rtl';
-    document.documentElement.lang = langPack.lang_code;
-    I18n.setRTL(true);
-  } else {
-    document.documentElement.dir = 'ltr';
-  }
+  console.timeLog(TIME_LABEL, 'IMAGE_MIME_TYPES_SUPPORTED_PROMISE');
+
+
+  setDocumentLangPackProperties(langPack);
 
   let authState = stateResult.state.authState;
 
@@ -557,8 +605,13 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
       await sessionStorage.delete('should_animate_main');
       page.pageEl.classList.add('main-screen-enter');
 
+      console.log('[my-debug] mounting page');
       await page.mount();
+      console.timeLog(TIME_LABEL, 'await page.mount()');
+
       await fontsPromise;
+      console.timeLog(TIME_LABEL, 'await fontsPromise');
+
 
       await doubleRaf();
       page.pageEl.classList.add('main-screen-entering');

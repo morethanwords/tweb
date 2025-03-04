@@ -42,8 +42,7 @@ const PasscodeLockScreen: Component<{
     passcode: ''
   });
 
-  // const [totalAccounts] = createResource(() => AccountController.getTotalAccounts());
-  const [totalAccounts] = [() => 1];
+  const [totalAccounts] = createResource(() => AccountController.getUnencryptedTotalAccounts());
 
   onMount(() => {
     setTimeout(() => {

@@ -30,6 +30,7 @@ type MTProtoBroadcastEvent = {
 type ToggleUsingPasscodePayload = {
   isUsingPasscode: true;
   encryptionHash: Uint8Array;
+  encryptionSalt: Uint8Array;
 } | {
   isUsingPasscode: false;
 };
@@ -50,8 +51,8 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   clearInterval: (intervalId: number) => void,
   terminate: () => void,
   toggleUsingPasscode: (payload: ToggleUsingPasscodePayload) => void,
-  changePasscode: (payload: {toStore: PasscodeStorageValue, encryptionHash: Uint8Array}) => void,
-  saveEncryptionHash: (encryptionHash: Uint8Array) => void,
+  changePasscode: (payload: {toStore: PasscodeStorageValue, encryptionHash: Uint8Array, encryptionSalt: Uint8Array}) => void,
+  saveEncryptionHash: (payload: {encryptionHash: Uint8Array, encryptionSalt: Uint8Array}) => void,
   isLocked: () => Promise<boolean>,
   toggleLockOthers: (isLocked: boolean, source: MessageEventSource) => void
   localStorageEncryptedProxy: (payload: LocalStorageEncryptedProxyTaskPayload) => Promise<any>

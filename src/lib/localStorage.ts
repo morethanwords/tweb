@@ -14,7 +14,7 @@ import Modes from '../config/modes';
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import {IS_WORKER} from '../helpers/context';
 import makeError from '../helpers/makeError';
-import {WorkerTaskTemplate} from '../types';
+import {StringKey, WorkerTaskTemplate} from '../types';
 import EncryptedStorageLayer from './encryptedStorageLayer';
 import {logger} from './logger';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
@@ -307,7 +307,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     return isUsingPasscode && isEncryptable;
   }
 
-  private async localStorageProxy<T>(type: LocalStorageProxyTask['payload']['type'], ...args: LocalStorageProxyTask['payload']['args']): Promise<T> {
+  public async localStorageProxy<T>(type: LocalStorageProxyTask['payload']['type'], ...args: LocalStorageProxyTask['payload']['args']): Promise<T> {
     if(IS_WORKER) {
       const port = MTProtoMessagePort.getInstance<false>();
       return port.invoke('localStorageProxy', {type, args});
@@ -346,7 +346,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
   //   return this.encryptionMethods[type](...args);
   // }
 
-  public async get<Key extends string>(key: Key, useCache?: boolean) {
+  public async get<Key extends keyof Storage>(key: StringKey<Key>, useCache?: boolean) {
     if(this.encryptionDeferred) await this.encryptionDeferred;
 
     if(await this.shouldUseEncryptableStorage(key)) {
@@ -377,7 +377,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     }
   }
 
-  public async delete(key: string) {
+  public async delete(key: StringKey<keyof Storage>) {
     if(this.encryptionDeferred) await this.encryptionDeferred;
 
     if(await this.shouldUseEncryptableStorage(key)) {
@@ -446,7 +446,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     await this.encryptedStorage.loadDecrypted(data);
 
     // Let window clients have the values in cache while we delete them
-    // await Promise.all(filteredEntries.map(([key]) => this.localStorageProxy('set', key, /* onlyLocal = */true)));
+    await Promise.all(filteredEntries.map(([key]) => this.localStorageProxy('set', key, /* onlyLocal = */true)));
 
     await Promise.all(filteredEntries.map(([key]) => this.localStorageProxy('delete', key)));
 
@@ -479,6 +479,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     const data = Object.fromEntries(filteredEntries);
 
     await this.localStorageProxy('set', data);
+    await encryptedStorage.clear();
 
     this.encryptionDeferred?.resolve();
     this.encryptionDeferred = undefined;

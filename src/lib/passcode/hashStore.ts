@@ -2,20 +2,24 @@ import deferredPromise from '../../helpers/cancellablePromise';
 import StaticUtilityClass from '../staticUtilityClass';
 
 
-/**
- * Need to store the encryption hash in window client, shared worker, service worker (in memory only)
- */
 export default class EncryptionPasscodeHashStore extends StaticUtilityClass {
-  private static value: Uint8Array | null;
+  private static hash: Uint8Array | null;
+  private static salt: Uint8Array | null;
+
   private static deferred = deferredPromise<void>();
 
-  public static async getValue() {
+  public static async getHash() {
     if(this.deferred) await this.deferred;
-    return this.value;
+    return this.hash;
+  }
+  public static async getSalt() {
+    if(this.deferred) await this.deferred;
+    return this.salt;
   }
 
-  public static setValue(hash: Uint8Array | null) {
-    this.value = hash;
+  public static setHashAndSalt(values: {hash: Uint8Array, salt: Uint8Array} | null) {
+    this.hash = values?.hash || null;
+    this.salt = values?.salt || null;
     this.deferred?.resolve();
     this.deferred = undefined;
   }
