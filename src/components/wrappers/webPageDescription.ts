@@ -7,30 +7,24 @@
 import limitSymbols from '../../helpers/string/limitSymbols';
 import {WebPage} from '../../layer';
 import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
+import {appState} from '../../stores/appState';
+import {untrack} from 'solid-js';
 
 export default function wrapWebPageDescription(
   webPage: WebPage.webPage,
   richTextOptions?: WrapRichTextOptions,
-  noLimit?: boolean
+  isSponsored?: boolean
 ) {
-  if(noLimit) {
+  if(isSponsored) {
     return wrapRichText(webPage.description || '', {
       ...richTextOptions,
       entities: webPage.entities
     });
   }
 
+  richTextOptions ??= {};
+  richTextOptions.whitelistedDomains ??= untrack(() => appState.appConfig?.whitelisted_domains);
+
   const shortDescriptionText = limitSymbols(webPage.description || '', 150, 180);
-  // const siteName = webPage.site_name;
-  // let contextHashtag = '';
-  // if(siteName === 'GitHub') {
-  //   const matches = apiWebPage.url.match(/(https?:\/\/github\.com\/[^\/]+\/[^\/]+)/);
-  //   if(matches) {
-  //     contextHashtag = matches[0] + '/issues/{1}';
-  //   }
-  // }
-  return wrapRichText(shortDescriptionText, richTextOptions/* , {
-    contextSite: siteName || 'external',
-    contextHashtag: contextHashtag
-  } */);
+  return wrapRichText(shortDescriptionText, richTextOptions);
 }

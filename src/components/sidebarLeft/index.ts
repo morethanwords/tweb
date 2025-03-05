@@ -450,7 +450,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.initSearch().open();
     });
 
-    addShortcutListener(['ctrl+0', 'alt+0', 'meta+0'], () => {
+    addShortcutListener(['ctrl+0', 'meta+0'], () => {
       if(appNavigationController.findItemByType('popup') ||
         appImManager.chat.peerId === appImManager.myId) return;
       appImManager.setPeer({

@@ -12,7 +12,7 @@ import AutocompleteHelperController from './autocompleteHelperController';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {CustomEmojiRendererElement} from '../../lib/customEmoji/renderer';
 import mediaSizes from '../../helpers/mediaSizes';
-import {Middleware} from '../../helpers/middleware';
+import {getMiddleware, Middleware} from '../../helpers/middleware';
 import CustomEmojiElement from '../../lib/customEmoji/element';
 import attachStickerViewerListeners from '../stickerViewer';
 import ListenerSetter from '../../helpers/listenerSetter';
@@ -20,6 +20,7 @@ import rootScope from '../../lib/rootScope';
 
 export default class EmojiHelper extends AutocompleteHelper {
   private scrollable: ScrollableX;
+  private innerList: HTMLElement;
 
   constructor(
     appendTo: HTMLElement,
@@ -33,7 +34,8 @@ export default class EmojiHelper extends AutocompleteHelper {
       listType: 'x',
       onSelect: (target) => {
         chatInput.onEmojiSelected(getEmojiFromElement(target as any), true);
-      }
+      },
+      getNavigationList: () => this.innerList
     });
 
     this.container.classList.add('emoji-helper');
@@ -54,9 +56,11 @@ export default class EmojiHelper extends AutocompleteHelper {
     });
   }
 
-  private renderEmojis(emojis: AppEmoji[], middleware: Middleware) {
+  private async renderEmojis(emojis: AppEmoji[], middleware: Middleware) {
+    const container = this.list.cloneNode() as HTMLElement;
     const customEmojis: Parameters<CustomEmojiRendererElement['add']>[0]['addCustomEmojis'] = new Map();
-    this.list.replaceChildren();
+    const inner = this.innerList = document.createElement('span');
+    container.append(inner);
 
     if(!rootScope.premium) {
       emojis = emojis.filter((emoji) => this.chatInput.emoticonsDropdown.canUseEmoji(emoji, false));
@@ -64,7 +68,7 @@ export default class EmojiHelper extends AutocompleteHelper {
 
     emojis.forEach((emoji) => {
       const wrapped = wrapAppEmoji(emoji, true);
-      this.list.append(wrapped);
+      inner.append(wrapped);
 
       if(emoji.docId) {
         const customEmojiElement = wrapped.firstElementChild as CustomEmojiElement;
@@ -75,32 +79,44 @@ export default class EmojiHelper extends AutocompleteHelper {
     });
 
     if(customEmojis.size) {
+      const _middleware = getMiddleware();
+      middleware.create().get().onClean(() => {
+        setTimeout(() => _middleware.destroy(), 500); // * fix video flick
+      });
+
       const customEmojiRenderer = CustomEmojiRendererElement.create({
         animationGroup: 'INLINE-HELPER',
         customEmojiSize: mediaSizes.active.esgCustomEmoji,
         textColor: 'primary-text-color',
         observeResizeElement: false,
-        middleware: middleware.create().get()
+        middleware: _middleware.get()
       });
 
-      this.list.prepend(customEmojiRenderer);
+      container.prepend(customEmojiRenderer);
 
       customEmojiRenderer.setDimensionsFromRect({
         width: (emojis.length * 42) + 8,
         height: 42
       });
 
-      customEmojiRenderer.add({
+      const listenerSetter = new ListenerSetter();
+      middleware.onClean(() => {
+        listenerSetter.removeAll();
+        if(this.innerList === inner) {
+          this.innerList = undefined;
+        }
+      });
+      attachStickerViewerListeners({listenTo: this.container, listenerSetter});
+
+      await customEmojiRenderer.add({
         addCustomEmojis: customEmojis
       });
-
-      const listenerSetter = new ListenerSetter();
-      middleware.onClean(() => listenerSetter.removeAll());
-      attachStickerViewerListeners({listenTo: this.container, listenerSetter});
     }
+
+    return container;
   }
 
-  public render(emojis: AppEmoji[], waitForKey: boolean, middleware: Middleware) {
+  public async render(emojis: AppEmoji[], waitForKey: boolean, middleware: Middleware) {
     if(this.init) {
       if(!emojis.length) {
         return;
@@ -110,14 +126,24 @@ export default class EmojiHelper extends AutocompleteHelper {
       this.init = null;
     }
 
-    emojis = emojis.slice(0, 80);
-
-    if(emojis.length) {
-      this.renderEmojis(emojis, middleware);
+    if(!emojis.length) {
+      this.toggle(true);
+      return;
     }
 
+    emojis = emojis.slice(0, 80);
+
+    const container = await this.renderEmojis(emojis, middleware);
+    if(!middleware()) {
+      return;
+    }
+
+    this.list.replaceWith(container);
+    this.list = container;
     this.waitForKey = waitForKey ? ['ArrowUp', 'ArrowDown'] : undefined;
-    this.toggle(!emojis.length);
+
+    this.toggle(false);
+    this.scrollable.scrollPosition = 0;
 
     /* window.requestAnimationFrame(() => {
       this.container.style.width = (3 * 2) + (emojis.length * 44) + 'px';

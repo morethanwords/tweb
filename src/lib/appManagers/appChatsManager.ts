@@ -794,6 +794,13 @@ export class AppChatsManager extends AppManager {
     //   ]
     // });
 
+    // * don't show sponsored messages in own channels
+    if(this.appMessagesManager.canSendToPeer(chatId.toPeerId(true))) {
+      return Promise.resolve({
+        _: 'messages.sponsoredMessagesEmpty'
+      });
+    }
+
     const promise = this.apiManager.invokeApiCacheable('channels.getSponsoredMessages', {
       channel: this.getChannelInput(chatId)
     }, {cacheSeconds: 300});
