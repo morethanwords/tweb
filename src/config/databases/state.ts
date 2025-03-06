@@ -38,7 +38,7 @@ export const getOldDatabaseState = (): AccountDatabase => ({
 
 export const getCommonDatabaseState = (): CommonDatabase => ({
   name: `tweb-common`,
-  version: 7,
+  version: 8,
   stores: [
     {
       name: 'session'

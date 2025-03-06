@@ -7,7 +7,7 @@ import {useLockScreenHotReloadGuard} from '../solidjs/hotReloadGuard';
 
 import DeferredIsUsingPasscode from './deferredIsUsingPasscode';
 import EncryptionKeyStore from './keyStore';
-import {createEncryptionArtifactsFromPasscode, deriveKey, hashPasscode} from './utils';
+import {createEncryptionArtifactsForPasscode, deriveKey, hashPasscode} from './utils';
 
 
 export function usePasscodeActions() {
@@ -15,7 +15,7 @@ export function usePasscodeActions() {
 
   async function enablePasscode(passcode: string) {
     const {verificationHash, verificationSalt, encryptionSalt, encryptionKey} =
-      await createEncryptionArtifactsFromPasscode(passcode);
+      await createEncryptionArtifactsForPasscode(passcode);
 
     passcode = ''; // forget
 
@@ -29,20 +29,18 @@ export function usePasscodeActions() {
 
     await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'enabled'), true);
 
-    rootScope.dispatchEvent('toggle_using_passcode', true); // Probably not needed
-
     await apiManagerProxy.invoke('toggleUsingPasscode', {
       isUsingPasscode: true,
       encryptionKey
     });
+
+    rootScope.dispatchEvent('toggle_using_passcode', true);
 
     // The session storage should first get encrypted in the mtproto worker, then we can use start using the encrypted proxy here
     DeferredIsUsingPasscode.resolveDeferred(true);
     EncryptionKeyStore.save(encryptionKey);
 
     await AccountController.updateStorageForLegacy(null); // remove access keys from unencrypted local storage
-
-    // TODO: Tell other window clients that encryption is enabled
   }
 
   async function isMyPasscode(passcode: string) {
@@ -70,7 +68,7 @@ export function usePasscodeActions() {
    */
   async function changePasscode(passcode: string) {
     const {verificationHash, verificationSalt, encryptionSalt, encryptionKey} =
-      await createEncryptionArtifactsFromPasscode(passcode);
+      await createEncryptionArtifactsForPasscode(passcode);
     passcode = ''; // forget
 
     const toStore = {

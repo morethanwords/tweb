@@ -322,7 +322,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
       },
 
       toggleLock: (isLocked) => {
-        if(isLocked) {} else {
+        if(isLocked) {
+          PasscodeLockScreenController.lock();
+        } else {
           PasscodeLockScreenController.unlock();
         }
       }

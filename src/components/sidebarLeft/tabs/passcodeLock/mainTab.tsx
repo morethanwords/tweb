@@ -4,13 +4,14 @@ import {IS_MOBILE} from '../../../../environment/userAgent';
 import ListenerSetter from '../../../../helpers/listenerSetter';
 import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import {i18n} from '../../../../lib/langPack';
+import {i18n, LangPackKey} from '../../../../lib/langPack';
 import {usePasscodeActions} from '../../../../lib/passcode/actions';
 
 import Section from '../../../section';
 import Space from '../../../space';
 import ripple from '../../../ripple'; ripple; // keep
 import RowTsx from '../../../rowTsx';
+import type SliderSuperTab from '../../../sliderTab';
 
 import LottieAnimation from './lottieAnimation';
 import {useSuperTab} from './superTabProvider';
@@ -21,6 +22,17 @@ import {usePromiseCollector} from './promiseCollector';
 
 import commonStyles from './common.module.scss';
 import styles from './mainTab.module.scss';
+
+
+const getHintParams = (tab: SliderSuperTab, title: LangPackKey) => ({
+  appendTo: tab.scrollable.container,
+  duration: 2500,
+  from: 'bottom',
+  textElement: i18n(title),
+  icon: 'lock',
+  class: styles.Hint,
+  canCloseOnPeerChange: false
+} as const);
 
 const MainTab = () => {
   const {rootScope, apiManagerProxy} = useHotReloadGuard();
@@ -43,7 +55,7 @@ const MainTab = () => {
   });
   onCleanup(() => {
     listenerSetter.removeAll();
-  })
+  });
 
   return (
     <Show when={enabled.state === 'ready'}>
@@ -59,6 +71,7 @@ const MainTab = () => {
 const NoPasscodeContent = () => {
   const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab}] = useSuperTab();
   const {enablePasscode} = usePasscodeActions();
+  const {setQuizHint} = useHotReloadGuard();
 
   const onEnable = () => {
     tab.slider.createTab(AppPasscodeEnterPasswordTab)
@@ -81,6 +94,8 @@ const NoPasscodeContent = () => {
         passcode = '';
         otherTab.slider.sliceTabsUntilTab(AppPasscodeLockTab, otherTab);
         otherTab.close();
+
+        setQuizHint(getHintParams(tab, 'PasscodeLock.PasscodeHasBeenSet'));
       },
       buttonText: 'PasscodeLock.SetPasscode',
       inputLabel: 'PasscodeLock.ReEnterPasscode'
@@ -114,6 +129,7 @@ const NoPasscodeContent = () => {
 const PasscodeSetContent = () => {
   const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab}] = useSuperTab();
   const {isMyPasscode, disablePasscode, changePasscode} = usePasscodeActions();
+  const {setQuizHint} = useHotReloadGuard();
 
   const [checked, setChecked] = createSignal(false);
   const [value, setValue] = createSignal('disabled');
@@ -169,6 +185,8 @@ const PasscodeSetContent = () => {
         passcode = ''; // forget
         otherTab.slider.sliceTabsUntilTab(AppPasscodeLockTab, otherTab);
         otherTab.close();
+
+        setQuizHint(getHintParams(tab, 'PasscodeLock.PasscodeHasBeenChanged'));
       },
       buttonText: 'PasscodeLock.SetPasscode',
       inputLabel: 'PasscodeLock.ReEnterPasscode'
@@ -186,6 +204,8 @@ const PasscodeSetContent = () => {
         await disablePasscode();
         otherTab.slider.sliceTabsUntilTab(AppPasscodeLockTab, otherTab);
         otherTab.close();
+
+        setQuizHint(getHintParams(tab, 'PasscodeLock.PasscodeHasBeenDisabled'));
       },
       buttonText: 'PasscodeLock.TurnOff',
       inputLabel: 'PasscodeLock.EnterYourPasscode'
@@ -234,9 +254,8 @@ const PasscodeSetContent = () => {
               parent={autoCloseRowEl()}
             />
           }
-          clickable={(e) => {
+          clickable={() => {
             setIsOpen(true);
-            console.log('setting isOpen to true');
           }}
         />
         <Show when={canShowShortcut}>

@@ -1,12 +1,12 @@
-import {Component, createEffect, createResource, on, onMount} from 'solid-js';
+import {Component, createEffect, createResource, on, onCleanup, onMount} from 'solid-js';
 import {createMutable} from 'solid-js/store';
 
 import {logger} from '../../lib/logger';
 import AccountController from '../../lib/accounts/accountController';
 import {i18n} from '../../lib/langPack';
-import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import {usePasscodeActions} from '../../lib/passcode/actions';
 import {MAX_PASSCODE_LENGTH} from '../../lib/passcode/constants';
+import pause from '../../helpers/schedulers/pause';
 
 import ripple from '../ripple'; ripple; // keep
 import Space from '../space';
@@ -20,7 +20,7 @@ import styles from './passcodeLockScreen.module.scss';
 
 
 type StateStore = {
-  isMobile: boolean;
+  isMonkeyHidden: boolean;
   isError: boolean;
   passcode: string;
 };
@@ -30,14 +30,16 @@ const log = logger('my-debug');
 
 const PasscodeLockScreen: Component<{
   onUnlock: () => void;
+  fromLockIcon?: HTMLElement;
 }> = (props) => {
   let container: HTMLDivElement;
   let passwordInputField: PasswordInputField;
+  let passwordMonkeyContainer: HTMLDivElement;
 
   const {isMyPasscode, unlockWithPasscode} = usePasscodeActions();
 
   const store = createMutable<StateStore>({
-    isMobile: mediaSizes.activeScreen === ScreenSize.mobile,
+    isMonkeyHidden: !!props.fromLockIcon,
     isError: false,
     passcode: ''
   });
@@ -48,11 +50,35 @@ const PasscodeLockScreen: Component<{
     setTimeout(() => {
       passwordInputField.input.focus();
     }, 500);
+
+    const lockIcon = props.fromLockIcon;
+    if(lockIcon) (async() => {
+      const lockIconRect = lockIcon.getBoundingClientRect();
+      const rect = passwordMonkeyContainer.getBoundingClientRect();
+
+      lockIcon.style.setProperty('--x', (rect.left + (rect.width / 2)) + 'px');
+      lockIcon.style.setProperty('--y', (rect.top + (rect.height / 2)) + 'px');
+      lockIcon.style.setProperty('--scale', (rect.width / lockIconRect.width) + '');
+      lockIcon.classList.add('passcode-lock-screen__animated-lock-icon--shift-body')
+
+      await pause(500);
+
+      lockIcon.classList.add('passcode-lock-screen__animated-lock-icon--disappear')
+      store.isMonkeyHidden = false;
+
+      await pause(400);
+      lockIcon.remove();
+    })();
   });
 
   createEffect(on(() => store.passcode, () => {
     store.isError = false;
   }));
+
+  onCleanup(() => {
+    store.passcode = '';
+    (passwordInputField.input as HTMLInputElement).value = '';
+  });
 
   const canSubmit = () => !!store.passcode && store.passcode.length <= MAX_PASSCODE_LENGTH;
 
@@ -61,7 +87,6 @@ const PasscodeLockScreen: Component<{
 
     if(canSubmit() && await isMyPasscode(store.passcode)) {
       await unlockWithPasscode(store.passcode);
-      store.passcode = '';
 
       props.onUnlock();
     } else {
@@ -87,6 +112,8 @@ const PasscodeLockScreen: Component<{
       <Background />
       <div class={styles.Card}>
         <PasswordMonkeyTsx
+          hidden={store.isMonkeyHidden}
+          ref={passwordMonkeyContainer}
           passwordInputField={passwordInputField}
         />
         <Space amount="1.125rem" />

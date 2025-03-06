@@ -16,6 +16,7 @@ import type {AppImManager} from '../appManagers/appImManager';
 import type {RootScope} from '../rootScope';
 import type lottieLoader from '../rlottie/lottieLoader';
 import type apiManagerProxy from '../mtproto/mtprotoworker';
+import type {setQuizHint} from '../../components/poll';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -30,6 +31,7 @@ export type SolidJSHotReloadGuardContextValue = {
   themeController: ThemeController;
   appImManager: AppImManager;
   apiManagerProxy: typeof apiManagerProxy;
+  setQuizHint: typeof setQuizHint;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

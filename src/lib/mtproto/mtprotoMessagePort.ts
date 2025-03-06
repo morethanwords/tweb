@@ -6,7 +6,6 @@
 
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import type {getEnvironment} from '../../environment/utils';
-import type {StoragesResults} from '../appManagers/utils/storages/loadStorages';
 import type {LocalStorageEncryptedProxyTaskPayload, LocalStorageProxyTask} from '../localStorage';
 import type {MirrorTaskPayload, NotificationBuildTaskPayload, TabState} from './mtprotoworker';
 import type toggleStorages from '../../helpers/toggleStorages';

@@ -97,6 +97,7 @@ import tsNow from '../../helpers/tsNow';
 import {toastNew} from '../toast';
 import DeferredIsUsingPasscode from '../../lib/passcode/deferredIsUsingPasscode';
 import EncryptionKeyStore from '../../lib/passcode/keyStore';
+import createLockButton from './lockButton';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -219,6 +220,9 @@ export class AppSidebarLeft extends SidebarSlider {
     let statusMiddlewareHelper: MiddlewareHelper, fireOnNew: boolean;
     const premiumMiddlewareHelper = this.getMiddleware().create();
     const statusBtnIcon = ButtonIcon(' sidebar-emoji-status', {noRipple: true});
+
+    const lockButton = createLockButton();
+
     attachClickEvent(statusBtnIcon, () => {
       const emojiTab = new EmojiTab({
         noRegularEmoji: true,
@@ -360,6 +364,7 @@ export class AppSidebarLeft extends SidebarSlider {
         await wrapStatus((statusMiddlewareHelper = middleware.create()).get());
         if(!middleware()) return;
         sidebarHeader.append(statusBtnIcon);
+        toggleRightButtons(true, await DeferredIsUsingPasscode.isUsingPasscode());
 
         const onEmojiStatusChange = () => {
           const oldStatusMiddlewareHelper = statusMiddlewareHelper;
@@ -375,14 +380,26 @@ export class AppSidebarLeft extends SidebarSlider {
           rootScope.removeEventListener('emoji_status_change', onEmojiStatusChange);
         });
       } else {
-        statusBtnIcon.remove();
+        toggleRightButtons(false, await DeferredIsUsingPasscode.isUsingPasscode());
       }
 
       appDialogsManager.resizeStoriesList?.();
     };
 
+    const toggleRightButtons = (isPremium: boolean, isUsingPasscode: boolean) => {
+      if(isPremium) sidebarHeader.append(statusBtnIcon);
+      else statusBtnIcon.remove();
+
+      if(isUsingPasscode) sidebarHeader.append(lockButton.element);
+      else lockButton.element.remove();
+    };
+
     appImManager.addEventListener('premium_toggle', onPremium);
-    if(rootScope.premium) onPremium(true);
+    rootScope.addEventListener('toggle_using_passcode', (isUsingPasscode) => {
+      toggleRightButtons(rootScope.premium, isUsingPasscode);
+    });
+
+    toggleRightButtons(rootScope.premium, rootScope.settings?.passcode?.enabled);
 
     this.managers.appUsersManager.getTopPeers('correspondents');
 

@@ -1,14 +1,15 @@
 import {SALT_LENGTH} from './constants';
 
+const ITERATIONS = 100000;
 
 export async function hashPasscode(passcode: string, salt: Uint8Array) {
   const encoder = new TextEncoder();
   const passcodeBytes = encoder.encode(passcode);
 
-  const key = await crypto.subtle.importKey('raw', passcodeBytes, {name: 'PBKDF2'}, false, ['deriveBits']);
+  const wrappedPasscode = await crypto.subtle.importKey('raw', passcodeBytes, {name: 'PBKDF2'}, false, ['deriveBits']);
   const derivedBits = await crypto.subtle.deriveBits(
-    {name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256'},
-    key,
+    {name: 'PBKDF2', salt, iterations: ITERATIONS, hash: 'SHA-256'},
+    wrappedPasscode,
     256
   );
 
@@ -22,12 +23,12 @@ export async function deriveKey(passcode: string, salt: Uint8Array): Promise<Cry
   passcode = '';
 
   return crypto.subtle.deriveKey(
-    {name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256'},
+    {name: 'PBKDF2', salt, iterations: ITERATIONS, hash: 'SHA-256'},
     wrappedPasscode, {name: 'AES-GCM', length: 256}, true, ['encrypt', 'decrypt']
   );
 }
 
-export async function createEncryptionArtifactsFromPasscode(passcode: string) {
+export async function createEncryptionArtifactsForPasscode(passcode: string) {
   const encryptionSalt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
   const verificationSalt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
 

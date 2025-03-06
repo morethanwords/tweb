@@ -3129,7 +3129,7 @@ const lang = {
   'PlaybackRateNormal': 'Normal',
   'PlaybackRateDragTip': 'Hold and move the cursor left or right to change the speed.',
   'Text.Context.Copy.Email': 'Copy Email',
-  'PasscodeLock.ItemTitle': 'Passcode Lock',
+
   'PasscodeLock.Title': 'Passcode',
   'PasscodeLock.Item.Title': 'Passcode Lock',
   'PasscodeLock.Item.On': 'On',
@@ -3153,7 +3153,11 @@ const lang = {
   'PasscodeLock.Proceed': 'Proceed',
   'PasscodeLock.ForgotPasscode.OneAccount': 'Note: If you forgot your passcode, you need to [log out]().',
   'PasscodeLock.ForgotPasscode.MultipleAccounts': 'Note: If you forgot your passcode, you need to [log out]() from all your current accounts.',
-  'PasscodeLock.WrongPasscode': 'Wrong passcode. Please try again.'
+  'PasscodeLock.WrongPasscode': 'Wrong passcode. Please try again.',
+  'PasscodeLock.PasscodeHasBeenSet': 'Passcode has been set.',
+  'PasscodeLock.TapToLock': 'Tap to lock Telegram.',
+  'PasscodeLock.PasscodeHasBeenChanged': 'Passcode has been changed.',
+  'PasscodeLock.PasscodeHasBeenDisabled': 'Passcode has been disabled.'
 };
 
 export default lang;

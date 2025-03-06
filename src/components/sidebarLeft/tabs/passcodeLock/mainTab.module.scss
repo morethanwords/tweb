@@ -44,3 +44,16 @@
     opacity: 0;
   }
 }
+
+.Hint {
+  padding: 0 1.5rem;
+
+  &:global(.from-bottom) {
+    bottom: 1.5rem;
+    --push-quiz: 1.75rem;
+  }
+
+  :global(.quiz-hint-container) {
+    flex: 1;
+  }
+}

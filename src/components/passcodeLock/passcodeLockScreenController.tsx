@@ -3,6 +3,7 @@ import {render} from 'solid-js/web';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import pause from '../../helpers/schedulers/pause';
 import deferredPromise from '../../helpers/cancellablePromise';
+import {doubleRaf} from '../../helpers/schedulers';
 import LockScreenHotReloadGuardProvider from '../../lib/solidjs/lockScreenHotReloadGuardProvider';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import StaticUtilityClass from '../../lib/staticUtilityClass';
@@ -65,8 +66,14 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
     await this.appStartupDeferred;
   }
 
-  public static async lock() {
+  public static async lockOtherTabs() {
+    await apiManagerProxy.invoke('toggleLockOthers', true);
+  }
+
+  public static async lock(fromLockIcon?: HTMLElement) {
     if(this.mountedElement) return;
+
+    const shouldAnimateIn = !!fromLockIcon;
 
     const importPasscodeLockScreen = () => import('./passcodeLockScreen');
 
@@ -74,20 +81,56 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
 
     this.mountedElement = document.createElement('div');
     this.mountedElement.classList.add('passcode-lock-screen');
+
+
+    const clonedLockIcon = fromLockIcon ? this.cloneLockIcon(fromLockIcon) : undefined;
+    if(clonedLockIcon) this.mountedElement.append(clonedLockIcon);
+
+    if(shouldAnimateIn) {
+      this.mountedElement.classList.add('passcode-lock-screen--hidden');
+    }
     document.body.append(this.mountedElement);
 
     const {default: PasscodeLockScreen} = await importPasscodeLockScreen();
 
     this.dispose = render(() => (
       <LockScreenHotReloadGuardProvider>
-        <PasscodeLockScreen onUnlock={() => this.unlock()} />
+        <PasscodeLockScreen onUnlock={() => this.unlock()} fromLockIcon={clonedLockIcon} />
       </LockScreenHotReloadGuardProvider>
     ), this.mountedElement);
+
+    if(shouldAnimateIn) {
+      doubleRaf().then(() => {
+        this.mountedElement.classList.remove('passcode-lock-screen--hidden');
+      });
+    }
+  }
+
+  private static cloneLockIcon(icon?: HTMLElement) {
+    const clonedLockIcon = icon.cloneNode(true) as HTMLElement;
+    clonedLockIcon.classList.add('passcode-lock-screen__animated-lock-icon');
+
+    const rect = icon.getBoundingClientRect();
+
+    clonedLockIcon.style.setProperty('--x', (rect.left + rect.width / 2) + 'px');
+    clonedLockIcon.style.setProperty('--y', (rect.top + rect.height / 2) + 'px');
+
+    return clonedLockIcon;
   }
 
   public static unlock() {
-    this.dispose?.();
-    this.mountedElement?.remove();
+    const element = this.mountedElement;
+    this.mountedElement = undefined;
+
+    if(element) (async() => {
+      await element.animate({
+        opacity: [1, 0]
+      }, {duration: 200, easing: 'ease-out'}).finished;
+
+      this.dispose?.();
+      element?.remove();
+    })();
+
     this.appStartupDeferred?.resolve();
     this.appStartupDeferred = undefined;
   }

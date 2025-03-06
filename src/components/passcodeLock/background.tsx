@@ -49,7 +49,7 @@ const Background = () => {
       const backgroundUrl = await getBackgroundURL(slug);
       return backgroundUrl;
     } catch{
-      return undefined;
+      return getBackgroundURL(DEFAULT_BACKGROUND_SLUG);
     }
   }
 

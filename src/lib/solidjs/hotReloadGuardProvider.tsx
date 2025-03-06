@@ -6,6 +6,7 @@ import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import EmoticonsSearch from '../../components/emoticonsDropdown/search';
 import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import showLimitPopup from '../../components/popups/limit';
+import {setQuizHint} from '../../components/poll';
 import themeController from '../../helpers/themeController';
 
 import apiManagerProxy from '../mtproto/mtprotoworker';
@@ -29,7 +30,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       lottieLoader,
       themeController,
       appImManager,
-      apiManagerProxy
+      apiManagerProxy,
+      setQuizHint
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>
