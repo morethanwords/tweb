@@ -403,20 +403,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.managers.appUsersManager.getTopPeers('correspondents');
 
-    // Focus search input by pressing Escape
-    const navigationItem: NavigationItem = {
-      type: 'global-search-focus',
-      onPop: () => {
-        setTimeout(() => {
-          if(this.isAnimatingCollapse) return;
-          this.initSearch().open();
-        }, 0);
-
-        return false;
-      },
-      noHistory: true
-    };
-    appNavigationController.pushItem(navigationItem);
+    this.initNavigation();
 
     apiManagerProxy.getState().then((state) => {
       const CHECK_UPDATE_INTERVAL = 1800e3;
@@ -476,6 +463,26 @@ export class AppSidebarLeft extends SidebarSlider {
         peerId: appImManager.myId
       });
     });
+  }
+
+  /**
+   * Focus search input by pressing Escape
+   */
+  public initNavigation() {
+    const navigationItem: NavigationItem = {
+      type: 'global-search-focus',
+      onPop: () => {
+        setTimeout(() => {
+          if(this.isAnimatingCollapse) return;
+          this.initSearch().open();
+        }, 0);
+
+        return false;
+      },
+      noHistory: true
+    };
+    appNavigationController.removeByType('global-search-focus');
+    appNavigationController.pushItem(navigationItem);
   }
 
   public isCollapsed() {
