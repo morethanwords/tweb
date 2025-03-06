@@ -57,6 +57,10 @@ export class CryptoMessagePort<Master extends boolean = false> extends SuperMess
   public invokeCrypto<T extends keyof CryptoMethods>(method: T, ...args: Parameters<CryptoMethods[T]>) {
     return this.invokeCryptoNew({method, args});
   }
+
+  public sendToOnePort(port: MessagePort) {
+    this.invokeVoid('port', undefined, this.sendPorts[0], [port]);
+  }
 }
 
 const cryptoMessagePort = new CryptoMessagePort<false>();

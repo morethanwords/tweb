@@ -60,6 +60,7 @@ import createNotificationImage from '../../helpers/createNotificationImage';
 import PasscodeLockScreenController from '../../components/passcodeLock/passcodeLockScreenController';
 import EncryptionKeyStore from '../passcode/keyStore';
 import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+import CacheStorageController from '../files/cacheStorage';
 
 
 export type Mirrors = {
@@ -245,7 +246,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
       'notification_count_update',
       'account_logged_in',
       'notification_cancel',
-      'toggle_using_passcode'
+      'toggle_using_passcode',
+      'toggle_locked'
     ]);
 
     // const perf = performance.now();
@@ -327,6 +329,15 @@ class ApiManagerProxy extends MTProtoMessagePort {
         } else {
           PasscodeLockScreenController.unlock();
         }
+      },
+
+      toggleCacheStorage: (enabled) => {
+        CacheStorageController.temporarilyToggle(enabled);
+      },
+
+      toggleUsingPasscode: (payload) => {
+        DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
+        EncryptionKeyStore.save(payload.isUsingPasscode ? payload.encryptionKey : null);
       }
 
       // hello: () => {
@@ -502,6 +513,13 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.serviceMessagePort.attachSendPort(this.lastServiceWorker = serviceWorker);
     this.serviceMessagePort.invokeVoid('hello', undefined);
     this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
+
+    DeferredIsUsingPasscode.isUsingPasscode().then((value) => {
+      if(!value) {
+        // When value=true we'll send it and the encryption key after unlocking the screen
+        this.serviceMessagePort.invokeVoid('toggleUsingPasscode', {isUsingPasscode: false});
+      }
+    });
   }
 
   private _registerServiceWorker() {
@@ -599,6 +617,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
           this.invokeVoid('serviceWorkerPort', undefined, undefined, [event.ports[0]]);
         },
 
+        cryptoPort: (_, __, event) => {
+          cryptoMessagePort.sendToOnePort(event.ports[0]);
+        },
+
         hello: (payload, source) => {
           this.log('got hello from service worker');
           this.serviceMessagePort.resendLockTask(source);
@@ -657,8 +679,12 @@ class ApiManagerProxy extends MTProtoMessagePort {
     const constructor = IS_SHARED_WORKER_SUPPORTED ? SharedWorker : Worker;
 
     // let cryptoWorkers = workers.length;
+    // cryptoMessagePort.addEventListener('servicePort', (payload, source, event) => {
+    //   this.serviceMessagePort.invokeVoid('cryptoPort', undefined, undefined, [event.ports[0]]);
+    // });
     cryptoMessagePort.addEventListener('port', (payload, source, event) => {
       this.invokeVoid('cryptoPort', undefined, undefined, [event.ports[0]]);
+
       // .then((attached) => {
       //   if(!attached && cryptoWorkers-- > 1) {
       //     this.log.error('terminating unneeded crypto worker');

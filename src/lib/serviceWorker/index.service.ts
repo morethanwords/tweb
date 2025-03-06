@@ -23,6 +23,9 @@ import {onHlsStreamFetch} from '../hls/onHlsStreamFetch';
 import {onHlsPlaylistFetch} from '../hls/onHlsPlaylistFetch';
 import {watchHlsStreamChunksLifetime} from '../hls/fetchAndConcatFileParts';
 import {setEnvironment} from '../../environment/utils';
+import cryptoMessagePort from '../crypto/cryptoMessagePort';
+import EncryptionKeyStore from '../passcode/keyStore';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -46,10 +49,37 @@ export const invokeVoidAll: ServiceMessagePort['invokeVoid'] = (...args) => {
 
 log('init');
 
+// setTimeout(async() => {
+//   const salt = new Uint8Array([1, 2, 3]);
+//   const passcode = 'ab';
+//   log('hello from sw started encryption');
+
+//   const wrappedPasscode = await crypto.subtle.importKey(
+//     'raw', new TextEncoder().encode(passcode), {name: 'PBKDF2'}, false, ['deriveKey']
+//   );
+
+//   const key = await crypto.subtle.deriveKey(
+//     {name: 'PBKDF2', salt, iterations: 1000, hash: 'SHA-256'},
+//     wrappedPasscode, {name: 'AES-GCM', length: 256}, true, ['encrypt', 'decrypt']
+//   );
+
+//   const enc = await cryptoMessagePort.invokeCryptoNew({
+//     method: 'aes-local-encrypt',
+//     args: [{data: new Uint8Array([1, 2, 3]), key}]
+//   });
+
+//   log('hello from sw data:>>', enc);
+// }, 1000);
+
 const sendMessagePort = (source: MessageSendPort) => {
   const channel = new MessageChannel();
   serviceMessagePort.attachPort(_mtprotoMessagePort = channel.port1);
   serviceMessagePort.invokeVoid('port', undefined, source, [channel.port2]);
+
+  // TODO: What if shared workers are not supported?
+  const channel2 = new MessageChannel();
+  cryptoMessagePort.attachPort(channel2.port1);
+  serviceMessagePort.invokeVoid('cryptoPort', undefined, source, [channel2.port2]);
 };
 
 const sendMessagePortIfNeeded = (source: MessageSendPort) => {
@@ -99,7 +129,27 @@ serviceMessagePort.addMultipleEventsListeners({
   shownNotification: onShownNotification,
   leaveRtmpCall: onRtmpLeftCall,
 
-  toggleStreamInUse
+  toggleStreamInUse,
+
+  // cryptoPort: (_, __, event) => {
+  //   log('hello from sw attaching crypto port', event.ports.length)
+  //   if(!event.ports.length) return;
+  //   const port = event.ports[0]
+  //   cryptoMessagePort.attachPort(port);
+  // },
+
+  toggleCacheStorage: (enabled) => {
+    CacheStorageController.temporarilyToggle(enabled);
+  },
+
+  toggleUsingPasscode: (payload) => {
+    DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
+    EncryptionKeyStore.save(payload.isUsingPasscode ? payload.encryptionKey : null);
+  },
+
+  saveEncryptionKey: (payload) => {
+    EncryptionKeyStore.save(payload);
+  }
 });
 
 const {

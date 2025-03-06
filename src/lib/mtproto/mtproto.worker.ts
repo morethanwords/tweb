@@ -25,6 +25,7 @@ import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import AppStorage from '../storage';
 import EncryptionKeyStore from '../passcode/keyStore';
 import sessionStorage from '../sessionStorage';
+import CacheStorageController from '../files/cacheStorage';
 
 
 const log = logger('MTPROTO');
@@ -134,9 +135,8 @@ port.addMultipleEventsListeners({
     }
   },
 
-  toggleUsingPasscode: async(payload) => {
+  toggleUsingPasscode: async(payload, source) => {
     DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
-
     EncryptionKeyStore.save(payload.isUsingPasscode ? payload.encryptionKey : null);
 
     await Promise.all([
@@ -145,6 +145,8 @@ port.addMultipleEventsListeners({
         sessionStorage.encryptEncryptable() :
         sessionStorage.decryptEncryptable()
     ]);
+
+    await port.invokeExceptSourceAsync('toggleUsingPasscode', payload, source);
 
     isLocked = false;
   },
@@ -186,6 +188,11 @@ port.addMultipleEventsListeners({
 
   localStorageEncryptedProxy: (payload) => {
     return sessionStorage.encryptedStorageProxy(payload.type, ...payload.args);
+  },
+
+  toggleCacheStorage: async(enabled: boolean, source) => {
+    CacheStorageController.temporarilyToggle(enabled);
+    await port.invokeExceptSourceAsync('toggleCacheStorage', enabled, source);
   }
 
   // localStorageEncryptionMethodsProxy: (payload) => {

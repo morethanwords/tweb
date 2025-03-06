@@ -26,7 +26,7 @@ type MTProtoBroadcastEvent = {
   event: (payload: {name: string, args: any[], accountNumber: ActiveAccountNumber}, source: MessageEventSource) => void
 };
 
-type ToggleUsingPasscodePayload = {
+export type ToggleUsingPasscodePayload = {
   isUsingPasscode: true;
   encryptionKey: CryptoKey;
 } | {
@@ -48,12 +48,13 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   setInterval: (timeout: number) => number,
   clearInterval: (intervalId: number) => void,
   terminate: () => void,
-  toggleUsingPasscode: (payload: ToggleUsingPasscodePayload) => void,
+  toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
   changePasscode: (payload: {toStore: PasscodeStorageValue, encryptionKey: CryptoKey}, source: MessageEventSource) => void,
   saveEncryptionKey: (payload: CryptoKey, source: MessageEventSource) => void,
   isLocked: (payload: void, source: MessageEventSource) => Promise<boolean>,
   toggleLockOthers: (isLocked: boolean, source: MessageEventSource) => void
-  localStorageEncryptedProxy: (payload: LocalStorageEncryptedProxyTaskPayload) => Promise<any>
+  localStorageEncryptedProxy: (payload: LocalStorageEncryptedProxyTaskPayload) => Promise<any>,
+  toggleCacheStorage: (value: boolean, source: MessageEventSource) => void
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
@@ -66,7 +67,9 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   callNotification: (payload: CallNotificationPayload) => void,
   intervalCallback: (intervalId: number) => void,
   toggleLock: (isLocked: boolean) => void,
-  saveEncryptionKey: (payload: CryptoKey, source: MessageEventSource) => void
+  saveEncryptionKey: (payload: CryptoKey, source: MessageEventSource) => void,
+  toggleCacheStorage: (value: boolean, source: MessageEventSource) => void,
+  toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
 } & MTProtoBroadcastEvent, Master> {
   private static INSTANCE: MTProtoMessagePort;
 

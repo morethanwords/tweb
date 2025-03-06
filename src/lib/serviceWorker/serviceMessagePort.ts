@@ -11,6 +11,7 @@ import type {Document, InputFileLocation, InputGroupCall} from '../../layer';
 import type {GroupCallRtmpState} from '../appManagers/appGroupCallsManager';
 import type {ActiveAccountNumber} from '../accounts/types';
 import type {getEnvironment} from '../../environment/utils';
+import type {ToggleUsingPasscodePayload} from '../mtproto/mtprotoMessagePort';
 import SuperMessagePort from '../mtproto/superMessagePort';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 
@@ -57,12 +58,15 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   shownNotification: (payload: string) => void,
   leaveRtmpCall: (payload: [Long, boolean]) => void,
   toggleStreamInUse: (payload: {url: string, inUse: boolean, accountNumber: ActiveAccountNumber}) => void,
+  toggleCacheStorage: (value: boolean) => void,
+  toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
+  saveEncryptionKey: (payload: CryptoKey) => void,
 
   // from mtproto worker
   download: (payload: ServiceDownloadTaskPayload) => void,
   downloadChunk: (payload: {id: ServiceDownloadTaskPayload['id'], chunk: Uint8Array}) => void
   downloadFinalize: (payload: ServiceDownloadTaskPayload['id']) => void,
-  downloadCancel: (payload: ServiceDownloadTaskPayload['id']) => void
+  downloadCancel: (payload: ServiceDownloadTaskPayload['id']) => void,
 }, {
   // to main thread
   pushClick: (payload: PushNotificationObject) => void,
@@ -71,6 +75,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   rtmpStreamTime: (payload: {callId: Long, time: string}) => void,
   rtmpStreamDestroyed: (payload: Long) => void,
   downloadRequestReceived: (payload: string) => void,
+  cryptoPort: (payload: undefined, source: MessageEventSource, event: MessageEvent) => void,
 
   // to mtproto worker
   requestFilePart: (payload: ServiceRequestFilePartTaskPayload) => MaybePromise<MyUploadFile>,

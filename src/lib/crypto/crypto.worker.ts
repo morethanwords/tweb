@@ -59,6 +59,10 @@ cryptoMessagePort.addMultipleEventsListeners({
 
   terminate: () => {
     ctx.close();
+  },
+
+  port: (_, __, event) => {
+    cryptoMessagePort.attachPort(event.ports[0]);
   }
 });
 

@@ -3,6 +3,7 @@ import {joinDeepPath} from '../../helpers/object/setDeepProperty';
 
 import AccountController from '../accounts/accountController';
 import commonStateStorage from '../commonStateStorage';
+import CacheStorageController from '../files/cacheStorage';
 import {useLockScreenHotReloadGuard} from '../solidjs/hotReloadGuard';
 
 import DeferredIsUsingPasscode from './deferredIsUsingPasscode';
@@ -12,6 +13,23 @@ import {createEncryptionArtifactsForPasscode, deriveKey, hashPasscode} from './u
 
 export function usePasscodeActions() {
   const {rootScope, apiManagerProxy} = useLockScreenHotReloadGuard();
+
+
+  async function disableCacheStorages() {
+    CacheStorageController.temporarilyToggle(false);
+    await apiManagerProxy.invoke('toggleCacheStorage', false);
+    await apiManagerProxy.serviceMessagePort.invoke('toggleCacheStorage', false);
+  }
+
+  async function enableCacheStorages() {
+    CacheStorageController.temporarilyToggle(true);
+    await apiManagerProxy.invoke('toggleCacheStorage', true);
+    await apiManagerProxy.serviceMessagePort.invoke('toggleCacheStorage', true);
+  }
+
+  async function clearCacheStorages() {
+    await CacheStorageController.clearEncryptableStorages();
+  }
 
   async function enablePasscode(passcode: string) {
     const {verificationHash, verificationSalt, encryptionSalt, encryptionKey} =
@@ -29,16 +47,24 @@ export function usePasscodeActions() {
 
     await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'enabled'), true);
 
-    await apiManagerProxy.invoke('toggleUsingPasscode', {
+    await disableCacheStorages();
+
+    const togglePayload = {
       isUsingPasscode: true,
       encryptionKey
-    });
+    };
+    await apiManagerProxy.invoke('toggleUsingPasscode', togglePayload);
+    await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', togglePayload);
+
+    await clearCacheStorages();
 
     rootScope.dispatchEvent('toggle_using_passcode', true);
 
     // The session storage should first get encrypted in the mtproto worker, then we can use start using the encrypted proxy here
     DeferredIsUsingPasscode.resolveDeferred(true);
     EncryptionKeyStore.save(encryptionKey);
+
+    await enableCacheStorages();
 
     await AccountController.updateStorageForLegacy(null); // remove access keys from unencrypted local storage
   }
@@ -56,10 +82,18 @@ export function usePasscodeActions() {
   async function disablePasscode() {
     rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'enabled'), false);
     rootScope.dispatchEvent('toggle_using_passcode', false);
+
+    await disableCacheStorages();
+    await clearCacheStorages();
+
     await apiManagerProxy.invoke('toggleUsingPasscode', {isUsingPasscode: false});
-    // sessionStorage.decryptEncryptable();
+    await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', {isUsingPasscode: false});
+
     EncryptionKeyStore.save(null);
     DeferredIsUsingPasscode.resolveDeferred(false);
+
+    await enableCacheStorages();
+
     commonStateStorage.delete('passcode');
   }
 
@@ -77,10 +111,19 @@ export function usePasscodeActions() {
       encryptionSalt
     }
 
+    await disableCacheStorages();
+
+    await clearCacheStorages();
+
     await apiManagerProxy.invoke('changePasscode', {
       toStore,
       encryptionKey
     });
+    await apiManagerProxy.serviceMessagePort.invoke('saveEncryptionKey', encryptionKey);
+
+    EncryptionKeyStore.save(encryptionKey);
+
+    await enableCacheStorages();
     // Just to set local cache, not really needed)
     await commonStateStorage.set({
       passcode: toStore
@@ -96,7 +139,11 @@ export function usePasscodeActions() {
 
     EncryptionKeyStore.save(encryptionKey);
     await apiManagerProxy.invoke('saveEncryptionKey', encryptionKey);
+    // Make sure we resolve the DeferredIsUsingPasscode as there is no storage available in SW to get the value
+    await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', {isUsingPasscode: true, encryptionKey});
+
     apiManagerProxy.invokeVoid('toggleLockOthers', false);
+    rootScope.dispatchEvent('toggle_locked', false);
   }
 
   return {
