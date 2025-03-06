@@ -3157,7 +3157,9 @@ const lang = {
   'PasscodeLock.PasscodeHasBeenSet': 'Passcode has been set.',
   'PasscodeLock.TapToLock': 'Tap to lock Telegram.',
   'PasscodeLock.PasscodeHasBeenChanged': 'Passcode has been changed.',
-  'PasscodeLock.PasscodeHasBeenDisabled': 'Passcode has been disabled.'
+  'PasscodeLock.PasscodeHasBeenDisabled': 'Passcode has been disabled.',
+  'PasscodeLock.NotificationTitle': 'User',
+  'PasscodeLock.NotificationDescription': 'New message'
 };
 
 export default lang;
