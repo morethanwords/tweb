@@ -1,6 +1,7 @@
 import {createRoot, createSignal, createEffect, onCleanup} from 'solid-js';
 
 import {i18n} from '../../lib/langPack';
+import rootScope from '../../lib/rootScope';
 
 import PasscodeLockScreenController from '../passcodeLock/passcodeLockScreenController';
 import showTooltip from '../tooltip';
@@ -34,7 +35,11 @@ const LockButton = () => {
     onClick={() => {
       PasscodeLockScreenController.lock(iconWrapper);
       PasscodeLockScreenController.lockOtherTabs();
-      clearTooltipVisible();
+
+      setTimeout(() => {
+        clearTooltipVisible();
+        rootScope.dispatchEvent('toggle_locked', true);
+      }, 400);
     }}
     onMouseEnter={() => {
       tooltipShowTimeout = window.setTimeout(() => {
@@ -58,7 +63,8 @@ const LockButton = () => {
       mountOn: button.parentElement,
       vertical: 'bottom',
       textElement: i18n('PasscodeLock.TapToLock'),
-      onClose: () => {}
+      onClose: () => {},
+      lighter: true
     });
 
     onCleanup(() => {

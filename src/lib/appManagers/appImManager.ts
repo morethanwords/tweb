@@ -448,6 +448,19 @@ export class AppImManager extends EventListenerBase<{
       });
     });
 
+    rootScope.addEventListener('toggle_locked', (isLocked) => {
+      if(isLocked) {
+        this.setPeer({}, false);
+        appNavigationController.overrideHash();
+        appNavigationController.replaceState();
+        PopupElement.destroyAll();
+        appNavigationController.spliceItems(0, Infinity);
+        appSidebarLeft.closeSearch();
+      } else {
+        appSidebarLeft.initNavigation();
+      }
+    });
+
     (window as any).onSpoilerClick = (e: MouseEvent) => {
       const spoiler = findUpClassName(e.target, 'spoiler');
       const parentElement = findUpClassName(spoiler, 'spoilers-container') || spoiler.parentElement;

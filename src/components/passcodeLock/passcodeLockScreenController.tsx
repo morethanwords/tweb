@@ -9,6 +9,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import StaticUtilityClass from '../../lib/staticUtilityClass';
 import sessionStorage from '../../lib/sessionStorage';
 import EncryptionKeyStore from '../../lib/passcode/keyStore';
+import appNavigationController from '../appNavigationController';
 
 
 export default class PasscodeLockScreenController extends StaticUtilityClass {
@@ -17,6 +18,12 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
 
   private static appStartupDeferred = deferredPromise<void>();
 
+  private static isLocked?: boolean;
+  private static savedHash: string = '';
+
+  public static getIsLocked() {
+    return this.isLocked;
+  }
 
   private static async tryGetStoredEncryptionHash() {
     const storedBase64Key = await sessionStorage.get('encryption_key');
@@ -52,6 +59,8 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
       false :
       await apiManagerProxy.invoke('isLocked', undefined);
 
+    this.isLocked = isLocked;
+
     if(isLocked) {
       await isLockedCallback();
       await this.lock();
@@ -64,6 +73,7 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
   public static async waitForUnlock(isLockedCallback: () => Promise<void>) {
     this.checkLockState(isLockedCallback);
     await this.appStartupDeferred;
+    this.isLocked = false;
   }
 
   public static async lockOtherTabs() {
@@ -72,6 +82,13 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
 
   public static async lock(fromLockIcon?: HTMLElement) {
     if(this.mountedElement) return;
+
+    this.isLocked = true;
+
+    if(this.appStartupDeferred) {
+      this.savedHash = window.location.hash;
+      window.location.hash = '';
+    }
 
     const shouldAnimateIn = !!fromLockIcon;
 
@@ -121,6 +138,13 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
   public static unlock() {
     const element = this.mountedElement;
     this.mountedElement = undefined;
+
+    this.isLocked = false;
+    if(this.savedHash) {
+      // window.location.hash = this.savedHash;
+      appNavigationController.overrideHash(this.savedHash)
+      appNavigationController.replaceState();
+    }
 
     if(element) (async() => {
       await element.animate({

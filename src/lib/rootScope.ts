@@ -210,7 +210,8 @@ export type BroadcastEvents = {
 
   'chat_background_set': void,
 
-  'toggle_using_passcode': boolean
+  'toggle_using_passcode': boolean,
+  'toggle_locked': boolean
 };
 
 export type BroadcastEventsListeners = {
