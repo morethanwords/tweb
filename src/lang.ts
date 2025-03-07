@@ -3164,7 +3164,8 @@ const lang = {
   'PasscodeLock.PasscodeHasBeenDisabled': 'Passcode has been disabled.',
   'PasscodeLock.NotificationTitle': 'User',
   'PasscodeLock.NotificationDescription': 'New message',
-  'PasscodeLock.Disabled': 'Disabled'
+  'PasscodeLock.Disabled': 'Disabled',
+  'PasscodeLock.TooManyAttempts': 'Too many attempts, try again later'
 };
 
 export default lang;

@@ -6,6 +6,7 @@ import AccountController from '../../lib/accounts/accountController';
 import {i18n} from '../../lib/langPack';
 import {usePasscodeActions} from '../../lib/passcode/actions';
 import {MAX_PASSCODE_LENGTH} from '../../lib/passcode/constants';
+import commonStateStorage from '../../lib/commonStateStorage';
 import pause from '../../helpers/schedulers/pause';
 
 import ripple from '../ripple'; ripple; // keep
@@ -22,10 +23,15 @@ import styles from './passcodeLockScreen.module.scss';
 type StateStore = {
   isMonkeyHidden: boolean;
   isError: boolean;
+  tooManyAttempts: boolean;
   passcode: string;
 };
 
 const log = logger('my-debug');
+
+
+const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS_TIMEOUT_SEC = 60;
 
 
 const PasscodeLockScreen: Component<{
@@ -36,17 +42,22 @@ const PasscodeLockScreen: Component<{
   let passwordInputField: PasswordInputField;
   let passwordMonkeyContainer: HTMLDivElement;
 
+  let attempts = 0;
+
   const {isMyPasscode, unlockWithPasscode} = usePasscodeActions();
 
   const store = createMutable<StateStore>({
     isMonkeyHidden: !!props.fromLockIcon,
     isError: false,
+    tooManyAttempts: false,
     passcode: ''
   });
 
   const [totalAccounts] = createResource(() => AccountController.getUnencryptedTotalAccounts());
 
   onMount(() => {
+    attempts = 0;
+
     setTimeout(() => {
       passwordInputField.input.focus();
     }, 500);
@@ -73,6 +84,7 @@ const PasscodeLockScreen: Component<{
 
   createEffect(on(() => store.passcode, () => {
     store.isError = false;
+    store.tooManyAttempts = false;
   }));
 
   onCleanup(() => {
@@ -82,6 +94,20 @@ const PasscodeLockScreen: Component<{
 
   const canSubmit = () => !!store.passcode && store.passcode.length <= MAX_PASSCODE_LENGTH;
 
+  const canAttempt = async() => {
+    const settings = structuredClone(await commonStateStorage.get('settings', false));
+    const canAttemptAgainOn = settings?.passcode?.canAttemptAgainOn;
+    if(!canAttemptAgainOn) return true;
+
+    if(canAttemptAgainOn > Date.now()) return false;
+
+    store.tooManyAttempts = false;
+    attempts = 0;
+    settings.passcode.canAttemptAgainOn = null;
+    commonStateStorage.set({settings});
+    return true;
+  };
+
   let isSubmiting = false;
   const onSubmit = async(e?: Event) => {
     e?.preventDefault();
@@ -90,11 +116,20 @@ const PasscodeLockScreen: Component<{
     isSubmiting = true;
 
     try {
-      if(canSubmit() && await isMyPasscode(store.passcode)) {
+      if(!(await canAttempt())) {
+        store.tooManyAttempts = true;
+      } else if(canSubmit() && await isMyPasscode(store.passcode)) {
         await unlockWithPasscode(store.passcode);
         props.onUnlock();
       } else {
+        attempts ++;
         store.isError = true;
+        if(attempts > MAX_ATTEMPTS) {
+          store.tooManyAttempts = true;
+          const settings = structuredClone(await commonStateStorage.get('settings', false));
+          settings.passcode.canAttemptAgainOn = Date.now() + MAX_ATTEMPTS_TIMEOUT_SEC * 1000;
+          await commonStateStorage.set({settings});
+        }
       }
     } catch{
       store.isError = true;
@@ -107,11 +142,16 @@ const PasscodeLockScreen: Component<{
     <InputFieldTsx
       InputFieldClass={PasswordInputField}
       instanceRef={(value) => void (passwordInputField = value)}
-
       value={store.passcode}
-      onRawInput={value => void (store.passcode = value)}
+      onRawInput={(value) => void (store.passcode = value)}
       label="PasscodeLock.EnterYourPasscode"
-      errorLabel={store.isError ? 'PasscodeLock.WrongPasscode' : undefined}
+      errorLabel={
+        store.tooManyAttempts ?
+          'PasscodeLock.TooManyAttempts' :
+          store.isError ?
+            'PasscodeLock.WrongPasscode' :
+            undefined
+      }
       maxLength={MAX_PASSCODE_LENGTH}
     />
   );
@@ -130,7 +170,7 @@ const PasscodeLockScreen: Component<{
           {input}
           <Space amount="1rem" />
           <button
-            type="submit"
+            type='button'
             onMouseDown={() => {
               onSubmit();
             }}
@@ -139,6 +179,7 @@ const PasscodeLockScreen: Component<{
           >
             {i18n('DeleteProceedBtn')}
           </button>
+          <button hidden style={{visibility: 'hidden', height: '0', width: '0'}} type='submit' />
         </form>
         <Space amount="1.625rem" />
         <div class={styles.Description}>
