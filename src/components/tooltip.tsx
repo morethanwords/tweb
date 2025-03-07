@@ -21,6 +21,7 @@ export default function showTooltip({
   textElement,
   subtitleElement,
   paddingX = 0,
+  offsetY = 0,
   centerVertically,
   onClose,
   icon,
@@ -34,6 +35,7 @@ export default function showTooltip({
   textElement?: HTMLElement,
   subtitleElement?: HTMLElement,
   paddingX?: number,
+  offsetY?: number,
   centerVertically?: boolean,
   onClose?: () => void,
   icon?: Icon,
@@ -64,7 +66,7 @@ export default function showTooltip({
       const centerX = elementRect.left + (elementRect.width - rect.width) / 2;
       const left = clamp(centerX, minX, maxX);
       const verticalOffset = 12;
-      if(vertical === 'top') css.top = (centerVertically ? elementRect.top + elementRect.height / 2 : elementRect.top) - rect.height - verticalOffset + 'px';
+      if(vertical === 'top') css.top = (centerVertically ? elementRect.top + elementRect.height / 2 : elementRect.top) - rect.height - verticalOffset + offsetY + 'px';
       else css.top = elementRect.bottom + verticalOffset + 'px';
       css.left = left + 'px';
 
