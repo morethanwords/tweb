@@ -617,7 +617,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
           this.invokeVoid('serviceWorkerPort', undefined, undefined, [event.ports[0]]);
         },
 
-        cryptoPort: (_, __, event) => {
+        serviceCryptoPort: (_, __, event) => {
           cryptoMessagePort.sendToOnePort(event.ports[0]);
         },
 

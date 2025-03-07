@@ -27,9 +27,13 @@ export class AppTabsManager {
       const tab = this.tabs.get(source);
       tab.state = state;
 
+      this.onTabStateChange();
+
       port.invokeVoid('tabsUpdated', [...this.tabs.values()].map(({state}) => state));
     });
   }
+
+  public onTabStateChange = () => {};
 
   public getTabs() {
     return [...this.tabs.values()].filter((tab) => !!tab.state);

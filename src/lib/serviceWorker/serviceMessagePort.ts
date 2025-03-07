@@ -75,7 +75,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   rtmpStreamTime: (payload: {callId: Long, time: string}) => void,
   rtmpStreamDestroyed: (payload: Long) => void,
   downloadRequestReceived: (payload: string) => void,
-  cryptoPort: (payload: undefined, source: MessageEventSource, event: MessageEvent) => void,
+  serviceCryptoPort: (payload: undefined, source: MessageEventSource, event: MessageEvent) => void,
 
   // to mtproto worker
   requestFilePart: (payload: ServiceRequestFilePartTaskPayload) => MaybePromise<MyUploadFile>,

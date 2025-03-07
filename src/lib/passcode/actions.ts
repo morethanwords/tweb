@@ -48,6 +48,7 @@ export function usePasscodeActions() {
     await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'enabled'), true);
 
     await disableCacheStorages();
+    await clearCacheStorages();
 
     const togglePayload = {
       isUsingPasscode: true,
@@ -56,7 +57,6 @@ export function usePasscodeActions() {
     await apiManagerProxy.invoke('toggleUsingPasscode', togglePayload);
     await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', togglePayload);
 
-    await clearCacheStorages();
 
     rootScope.dispatchEvent('toggle_using_passcode', true);
 
@@ -112,7 +112,6 @@ export function usePasscodeActions() {
     }
 
     await disableCacheStorages();
-
     await clearCacheStorages();
 
     await apiManagerProxy.invoke('changePasscode', {

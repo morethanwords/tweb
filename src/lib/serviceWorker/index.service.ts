@@ -38,6 +38,8 @@ const ctx = self as any as ServiceWorkerGlobalScope;
 let _mtprotoMessagePort: MessagePort;
 export const getMtprotoMessagePort = () => _mtprotoMessagePort;
 
+let _cryptoMessagePort: MessagePort;
+
 export const invokeVoidAll: ServiceMessagePort['invokeVoid'] = (...args) => {
   getWindowClients().then((windowClients) => {
     windowClients.forEach((windowClient) => {
@@ -76,10 +78,9 @@ const sendMessagePort = (source: MessageSendPort) => {
   serviceMessagePort.attachPort(_mtprotoMessagePort = channel.port1);
   serviceMessagePort.invokeVoid('port', undefined, source, [channel.port2]);
 
-  // TODO: What if shared workers are not supported?
   const channel2 = new MessageChannel();
-  cryptoMessagePort.attachPort(channel2.port1);
-  serviceMessagePort.invokeVoid('cryptoPort', undefined, source, [channel2.port2]);
+  cryptoMessagePort.attachPort(_cryptoMessagePort = channel2.port1);
+  serviceMessagePort.invokeVoid('serviceCryptoPort', undefined, source, [channel2.port2]);
 };
 
 const sendMessagePortIfNeeded = (source: MessageSendPort) => {
@@ -183,6 +184,10 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
     if(_mtprotoMessagePort) {
       serviceMessagePort.detachPort(_mtprotoMessagePort);
       _mtprotoMessagePort = undefined;
+    }
+    if(_cryptoMessagePort) {
+      cryptoMessagePort.detachPort(_cryptoMessagePort);
+      _cryptoMessagePort = undefined;
     }
 
     onDownloadClosedWindows();

@@ -5,6 +5,7 @@ const ITERATIONS = 100000;
 export async function hashPasscode(passcode: string, salt: Uint8Array) {
   const encoder = new TextEncoder();
   const passcodeBytes = encoder.encode(passcode);
+  passcode = '';
 
   const wrappedPasscode = await crypto.subtle.importKey('raw', passcodeBytes, {name: 'PBKDF2'}, false, ['deriveBits']);
   const derivedBits = await crypto.subtle.deriveBits(
@@ -17,10 +18,13 @@ export async function hashPasscode(passcode: string, salt: Uint8Array) {
 }
 
 export async function deriveKey(passcode: string, salt: Uint8Array): Promise<CryptoKey> {
-  const wrappedPasscode = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(passcode), {name: 'PBKDF2'}, false, ['deriveKey']
-  );
+  const encoder = new TextEncoder();
+  const passcodeBytes = encoder.encode(passcode);
   passcode = '';
+
+  const wrappedPasscode = await crypto.subtle.importKey(
+    'raw', passcodeBytes, {name: 'PBKDF2'}, false, ['deriveKey']
+  );
 
   return crypto.subtle.deriveKey(
     {name: 'PBKDF2', salt, iterations: ITERATIONS, hash: 'SHA-256'},
@@ -34,6 +38,7 @@ export async function createEncryptionArtifactsForPasscode(passcode: string) {
 
   const encryptionKey = await deriveKey(passcode, encryptionSalt);
   const verificationHash = await hashPasscode(passcode, verificationSalt);
+  passcode = '';
 
   return {verificationHash, verificationSalt, encryptionSalt, encryptionKey};
 }

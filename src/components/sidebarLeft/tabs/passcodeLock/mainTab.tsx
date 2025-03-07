@@ -1,4 +1,4 @@
-import {createResource, createSignal, onCleanup, Show} from 'solid-js';
+import {createEffect, createResource, createSignal, onCleanup, Show} from 'solid-js';
 
 import {IS_MOBILE} from '../../../../environment/userAgent';
 import ListenerSetter from '../../../../helpers/listenerSetter';
@@ -35,11 +35,11 @@ const getHintParams = (tab: SliderSuperTab, title: LangPackKey) => ({
 } as const);
 
 const MainTab = () => {
-  const {rootScope, apiManagerProxy} = useHotReloadGuard();
+  const {rootScope} = useHotReloadGuard();
   const promiseColletor = usePromiseCollector();
 
   const [enabled, {mutate: mutateEnabled}] = createResource(() => {
-    const promise = apiManagerProxy.getState().then(state =>
+    const promise = rootScope.managers.appStateManager.getState().then(state =>
       state.settings?.passcode?.enabled || false
     );
     promiseColletor.collect(promise);
@@ -129,24 +129,68 @@ const NoPasscodeContent = () => {
 const PasscodeSetContent = () => {
   const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab}] = useSuperTab();
   const {isMyPasscode, disablePasscode, changePasscode} = usePasscodeActions();
-  const {setQuizHint} = useHotReloadGuard();
+  const {rootScope, setQuizHint} = useHotReloadGuard();
 
-  const [checked, setChecked] = createSignal(false);
-  const [value, setValue] = createSignal('disabled');
   const options = [
-    {value: 'disabled', label: 'Disabled'},
-    {value: 1, label: '1 min'},
-    {value: 5, label: '5 min'},
-    {value: 10, label: '10 min'},
-    {value: 15, label: '15 min'},
-    {value: 30, label: '30 min'}
+    {value: null, label: () => i18n('PasscodeLock.Disabled')},
+    {value: 1, label: () => i18n('MinutesShort', [1])},
+    {value: 5, label: () => i18n('MinutesShort', [5])},
+    {value: 10, label: () => i18n('MinutesShort', [10])},
+    {value: 15, label: () => i18n('MinutesShort', [15])},
+    {value: 30, label: () => i18n('MinutesShort', [30])}
   ];
 
   const [autoCloseRowEl, setAutoCloseRowEl] = createSignal<HTMLElement>();
   const [isOpen, setIsOpen] = createSignal(false);
-  const [keys, setKeys] = createSignal<ShortcutKey[]>(['Alt']);
 
-  const canShowShortcut = !IS_MOBILE;
+  const [lockTimeout, {mutate: mutateLockTimeout}] = createResource(() => rootScope.managers.appStateManager.getState().then(state =>
+    state?.settings?.passcode?.autoLockTimeoutMins || null
+  ));
+
+  const [shortcutEnabled, {mutate: mutateShortcutEnabled}] = createResource(() =>
+    rootScope.managers.appStateManager.getState().then(state =>
+      state?.settings?.passcode?.lockShortcutEnabled || false
+    )
+  );
+
+  const [shortcutKeys, {mutate: mutateShortcutKeys}] = createResource(() =>
+    rootScope.managers.appStateManager.getState().then(state =>
+      state?.settings?.passcode?.lockShortcut || []
+    )
+  );
+
+  const listenerSetter = new ListenerSetter();
+
+  listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
+    if(key === joinDeepPath('settings', 'passcode', 'lockShortcut')) {
+      mutateShortcutKeys(value);
+    } else if(key === joinDeepPath('settings', 'passcode', 'lockShortcutEnabled')) {
+      mutateShortcutEnabled(value);
+    } else if(key === joinDeepPath('settings', 'passcode', 'autoLockTimeoutMins')) {
+      mutateLockTimeout(value);
+    }
+  });
+
+  function setShortcutKeys(value: ShortcutKey[]) {
+    mutateShortcutKeys(value);
+    rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'lockShortcut'), value);
+  }
+
+  function setShortcutEnabled(value: boolean) {
+    mutateShortcutEnabled(value);
+    rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'lockShortcutEnabled'), value);
+  }
+
+  function setLockTimeout(value: number | null) {
+    mutateLockTimeout(value);
+    rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'autoLockTimeoutMins'), value);
+  }
+
+  onCleanup(() => {
+    listenerSetter.removeAll();
+  });
+
+  const canShowShortcut = () => !IS_MOBILE && shortcutKeys.state === 'ready' && shortcutEnabled.state === 'ready';
 
 
   const onPasscodeChange = () => {
@@ -239,38 +283,40 @@ const PasscodeSetContent = () => {
         />
       </Section>
 
-      <Section caption={canShowShortcut ? 'PasscodeLock.LockShortcutDescription' : undefined}>
-        <RowTsx
-          ref={setAutoCloseRowEl}
-          classList={{[styles.Row]: true}}
-          title={i18n('PasscodeLock.AutoLock')}
-          rightContent={
-            <InlineSelect
-              value={value()}
-              onClose={() => setIsOpen(false)}
-              options={options}
-              onChange={setValue}
-              isOpen={isOpen()}
-              parent={autoCloseRowEl()}
-            />
-          }
-          clickable={() => {
-            setIsOpen(true);
-          }}
-        />
-        <Show when={canShowShortcut}>
+      <Section caption={canShowShortcut() ? 'PasscodeLock.LockShortcutDescription' : undefined}>
+        <Show when={lockTimeout.state === 'ready'}>
+          <RowTsx
+            ref={setAutoCloseRowEl}
+            classList={{[styles.Row]: true}}
+            title={i18n('PasscodeLock.AutoLock')}
+            rightContent={
+              <InlineSelect
+                value={lockTimeout()}
+                onClose={() => setIsOpen(false)}
+                options={options}
+                onChange={setLockTimeout}
+                isOpen={isOpen()}
+                parent={autoCloseRowEl()}
+              />
+            }
+            clickable={() => {
+              setIsOpen(true);
+            }}
+          />
+        </Show>
+        <Show when={canShowShortcut()}>
           <RowTsx
             title={i18n('PasscodeLock.EnableLockShortcut')}
             classList={{[styles.Row]: true}}
             rightContent={
-              <StaticSwitch checked={checked()} />
+              <StaticSwitch checked={shortcutEnabled()} />
             }
             clickable={(e) => {
-              setChecked(p => !p)
+              setShortcutEnabled(!shortcutEnabled());
             }}
           />
-          <div class={styles.ShortcutBuilderRow} classList={{[styles.collapsed]: !checked()}}>
-            <ShortcutBuilder value={keys()} onChange={setKeys} key="L" />
+          <div class={styles.ShortcutBuilderRow} classList={{[styles.collapsed]: !shortcutEnabled()}}>
+            <ShortcutBuilder value={shortcutKeys() || []} onChange={setShortcutKeys} key="L" />
           </div>
         </Show>
       </Section>

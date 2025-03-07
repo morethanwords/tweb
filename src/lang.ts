@@ -1298,6 +1298,10 @@ const lang = {
     'one_value': '%1$d year',
     'other_value': '%1$d years'
   },
+  'MinutesShort': {
+    'one_value': '%1$d min',
+    'other_value': '%1$d min'
+  },
   'TodayAtFormattedWithToday': 'today at %1$s',
   'formatDateAtTime': '%1$s at %2$s',
   'JoinByPeekChannelTitle': 'Join Channel',
@@ -3159,7 +3163,8 @@ const lang = {
   'PasscodeLock.PasscodeHasBeenChanged': 'Passcode has been changed.',
   'PasscodeLock.PasscodeHasBeenDisabled': 'Passcode has been disabled.',
   'PasscodeLock.NotificationTitle': 'User',
-  'PasscodeLock.NotificationDescription': 'New message'
+  'PasscodeLock.NotificationDescription': 'New message',
+  'PasscodeLock.Disabled': 'Disabled'
 };
 
 export default lang;

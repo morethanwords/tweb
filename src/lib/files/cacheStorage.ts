@@ -23,17 +23,17 @@ type CacheStorageDbConfigEntry = {
 };
 
 const cacheStorageDbConfig = {
+  cachedAssets: {
+    encryptable: false
+  },
+  cachedBackgrounds: {
+    encryptable: false
+  },
   cachedFiles: {
     encryptable: true
   },
   cachedStreamChunks: {
     encryptable: true
-  },
-  cachedBackgrounds: {
-    encryptable: false
-  },
-  cachedAssets: {
-    encryptable: false
   },
   cachedHlsQualityFiles: {
     encryptable: true

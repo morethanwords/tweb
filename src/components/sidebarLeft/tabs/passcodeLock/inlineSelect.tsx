@@ -1,4 +1,4 @@
-import {Component, createSelector, createSignal, For, JSX, onCleanup, onMount} from 'solid-js';
+import {Component, createEffect, createMemo, createSelector, createSignal, For, JSX, onCleanup, onMount} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 
@@ -12,14 +12,20 @@ import styles from './inlineSelect.module.scss';
 const InlineSelect: Component<{
   isOpen?: boolean;
   onClose?: () => void;
-  value: string;
+  value: any;
   onChange: (value: any) => void;
-  options: {value: any; label: JSX.Element}[];
+  options: {value: any; label: () => JSX.Element}[];
   parent: HTMLElement;
 }> = (props) => {
   let valueEl: HTMLDivElement;
 
-  const value = () => props.options.find((option) => option.value === props.value)?.label;
+  const value = createMemo(() => props.options.find((option) => option.value === props.value)?.label);
+
+  const [valueLabel, setValueLabel] = createSignal<JSX.Element>(); // Doesn't work without intermediary signal
+  createEffect(() => {
+    setValueLabel(value()());
+  });
+
   const isSelected = createSelector(() => props.value);
 
   const [selectEl, setSelectEl] = createSignal<HTMLDivElement>();
@@ -114,7 +120,7 @@ const InlineSelect: Component<{
   return (
     <>
       <div ref={valueEl} class={styles.Value}>
-        {value()}
+        {valueLabel()}
       </div>
 
       <Portal>
@@ -140,7 +146,7 @@ const InlineSelect: Component<{
                         }}
                         onClick={[props.onChange, option.value]}
                       >
-                        <span>{option.label}</span>
+                        <span>{option.label()}</span>
                       </div>
                     )}
                   </For>

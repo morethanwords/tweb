@@ -82,15 +82,24 @@ const PasscodeLockScreen: Component<{
 
   const canSubmit = () => !!store.passcode && store.passcode.length <= MAX_PASSCODE_LENGTH;
 
-  const onSubmit = async(e: Event) => {
-    e.preventDefault();
+  let isSubmiting = false;
+  const onSubmit = async(e?: Event) => {
+    e?.preventDefault();
+    if(isSubmiting) return;
 
-    if(canSubmit() && await isMyPasscode(store.passcode)) {
-      await unlockWithPasscode(store.passcode);
+    isSubmiting = true;
 
-      props.onUnlock();
-    } else {
+    try {
+      if(canSubmit() && await isMyPasscode(store.passcode)) {
+        await unlockWithPasscode(store.passcode);
+        props.onUnlock();
+      } else {
+        store.isError = true;
+      }
+    } catch{
       store.isError = true;
+    } finally {
+      isSubmiting = false;
     }
   };
 
@@ -121,8 +130,10 @@ const PasscodeLockScreen: Component<{
           {input}
           <Space amount="1rem" />
           <button
-            use:ripple
             type="submit"
+            onMouseDown={() => {
+              onSubmit();
+            }}
             class="btn-primary btn-color-primary btn-large"
             disabled={!store.passcode}
           >

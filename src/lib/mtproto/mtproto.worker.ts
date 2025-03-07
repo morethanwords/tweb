@@ -229,6 +229,44 @@ function resetNotificationsCount() {
   });
 }
 
+let autoLockTimeout: number;
+let prevAllIdle: boolean;
+
+const areAllTabsIdle = () => {
+  const tabs = appTabsManager.getTabs();
+  return tabs.every(tab => !!tab.state.idleStartTime);
+};
+
+appTabsManager.onTabStateChange = async() => {
+  const areAllIdle = areAllTabsIdle();
+
+  if(prevAllIdle === areAllIdle) return;
+  prevAllIdle = areAllIdle;
+
+  self.clearTimeout(autoLockTimeout);
+
+  const settings = await commonStateStorage.get('settings', false);
+  const passcodeEnabled = settings?.passcode?.enabled || false;
+  const timoeutMins = settings?.passcode?.autoLockTimeoutMins || null;
+
+  if(!timoeutMins || !passcodeEnabled) return;
+
+  if(areAllIdle && !isLocked) {
+    autoLockTimeout = self.setTimeout(() => {
+      if(!areAllTabsIdle() || isLocked) return;
+
+      port.invokeVoid('toggleLock', true);
+      port.invokeVoid('event', {
+        name: 'toggle_locked',
+        args: [true],
+        accountNumber: undefined
+      });
+
+      isLocked = true;
+    }, timoeutMins * 1000 * 60);
+  }
+};
+
 listenMessagePort(port, (source) => {
   appTabsManager.addTab(source);
   if(isFirst) {
@@ -254,3 +292,4 @@ listenMessagePort(port, (source) => {
 }, (source) => {
   appTabsManager.deleteTab(source);
 });
+
