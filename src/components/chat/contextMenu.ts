@@ -74,6 +74,7 @@ import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import deepEqual from '../../helpers/object/deepEqual';
 import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
 import flatten from '../../helpers/array/flatten';
+import getUniqueCustomEmojisFromMessage from '../../lib/appManagers/utils/messages/getUniqueCustomEmojisFromMessage';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -917,23 +918,7 @@ export default class ChatContextMenu {
   }
 
   private getUniqueCustomEmojisFromMessage() {
-    const docIds: DocId[] = [];
-
-    const message = this.getMessageWithText();
-
-    const entities = (message as Message.message).entities;
-    if(entities) {
-      const filtered = entities.filter((entity) => entity._ === 'messageEntityCustomEmoji') as MessageEntity.messageEntityCustomEmoji[];
-      docIds.push(...filtered.map((entity) => entity.document_id));
-    }
-
-    const reactions = (message as Message.message).reactions;
-    if(reactions) {
-      const results = reactions.results.filter((reactionCount) => reactionCount.reaction._ === 'reactionCustomEmoji');
-      docIds.push(...results.map((reactionCount) => (reactionCount.reaction as Reaction.reactionCustomEmoji).document_id));
-    }
-
-    return filterUnique(docIds);
+    return getUniqueCustomEmojisFromMessage(this.getMessageWithText());
   }
 
   private async init() {
