@@ -19,28 +19,14 @@ export async function onHlsStreamFetch(event: FetchEvent, inParams: string, sear
     const {docId, dcId, size, mimeType}: HlsStreamUrlParams = JSON.parse(decodeURIComponent(inParams));
     const range = parseRange(event.request.headers.get('Range'));
 
-    swLog('docId, dcId, range', docId, dcId, range);
     const client = await ctx.clients.get(event.clientId);
     const accountNumber = getCurrentAccountFromURL(client.url);
 
-    // const sourceHls = sourceHlsQuality.get(docId);
-
-    // log('sourceHls', sourceHls);
 
     const [lowerBound, upperBound] = range;
-
-    const {ranges, alignedLowerBound, alignedUpperBound} = splitRangeForGettingFileParts(lowerBound, upperBound);
+    const {ranges, alignedLowerBound} = splitRangeForGettingFileParts(lowerBound, upperBound);
 
     const filePart = await fetchAndConcatFileParts({docId, dcId, accountNumber}, ranges);
-    // deferred.resolve()
-    // const base = 512 * 4;
-
-    // const [offset, limit] = [range[0], range[1] - range[0] + 1];
-    // const fetchLimit = offset === 0 ? 512 * 8 : limit;
-    // const alignedOffset = alignOffset(offset);
-    // const alignedLimit = Math.max(alignLimit(fetchLimit + (offset % base)), 512 * 8);
-
-    // log('alignedOffset, alignedLimit', alignedOffset, alignedLimit)
 
     const headers: Record<string, string> = {
       'Accept-Ranges': 'bytes',
@@ -48,28 +34,17 @@ export async function onHlsStreamFetch(event: FetchEvent, inParams: string, sear
       'Content-Length': `${upperBound - lowerBound + 1}`
     };
 
-    // if(this.info.mimeType) {
     headers['Content-Type'] = mimeType;
-    // }
 
-    // simulate slow connection
-    // setTimeout(() => {
-    // const {bytes} = await serviceMessagePort.invoke('requestFilePart', {
-    //   accountNumber,
-    //   dcId,
-    //   docId,
-    //   limit: alignedLimit,
-    //   offset: alignedOffset
-    // });
+    const resultingBuffer = filePart.slice(lowerBound - alignedLowerBound, upperBound - alignedLowerBound + 1);
 
-    // tryPatchMp4(bytes);
-    // log('successfully received bytes', offset, limit, bytes.length);
-
-    deferred.resolve(new Response(filePart.slice(lowerBound - alignedLowerBound, upperBound - alignedLowerBound + 1), {
-      status: 206,
-      statusText: 'Partial Content',
-      headers
-    }));
+    deferred.resolve(
+      new Response(resultingBuffer, {
+        status: 206,
+        statusText: 'Partial Content',
+        headers
+      })
+    );
   } catch(e) {
     deferred.resolve(get500ErrorResponse());
     swLog.error(e);
