@@ -7,6 +7,8 @@ import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
 import rootScope from '../../rootScope';
 
+import appImManager from '../appImManager';
+
 const _useLockScreenShortcut = () => {
   const [locked, setLocked] = createSignal(PasscodeLockScreenController.getIsLocked());
 
@@ -53,21 +55,31 @@ const _useLockScreenShortcut = () => {
 
     if(!shortcutKeys()?.length) return;
 
-    // TODO: Shift+L prevent trigger when using is focused on input
-
     const combo = [...shortcutKeys(), 'L'].join('+');
 
-    const removeListener = addShortcutListener([combo], () => {
-      PasscodeLockScreenController.lock(true);
-      PasscodeLockScreenController.lockOtherTabs();
+    const isShiftLockShortcut = combo === 'Shift+L';
+    appImManager.isShiftLockShortcut = isShiftLockShortcut;
 
-      setTimeout(() => {
+    const removeListener = addShortcutListener([combo], (_, event) => {
+      const activeElement = document.activeElement as HTMLElement;
+
+      if(
+        isShiftLockShortcut &&
+        activeElement &&
+        (activeElement.isContentEditable || ['INPUT', 'TEXTAREA'].includes(activeElement.tagName))
+      ) return;
+
+      event.preventDefault();
+
+      PasscodeLockScreenController.lock(true, () => {
         rootScope.dispatchEvent('toggle_locked', true);
-      }, 400);
-    });
+      });
+      // PasscodeLockScreenController.lockOtherTabs();
+    }, false);
 
     onCleanup(() => {
       removeListener();
+      appImManager.isShiftLockShortcut = false;
     });
   });
 };

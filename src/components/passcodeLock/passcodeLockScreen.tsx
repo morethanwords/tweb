@@ -35,6 +35,7 @@ const MAX_ATTEMPTS_TIMEOUT_SEC = 60;
 const PasscodeLockScreen: Component<{
   onUnlock: () => void;
   fromLockIcon?: HTMLElement;
+  onAnimationEnd?: () => void;
 }> = (props) => {
   let container: HTMLDivElement;
   let passwordInputField: PasswordInputField;
@@ -80,8 +81,8 @@ const PasscodeLockScreen: Component<{
       store.isMonkeyHidden = false;
 
       await pause(400);
-      appRuntimeManager.reload();
       lockIcon.remove();
+      props.onAnimationEnd?.();
     })();
   });
 

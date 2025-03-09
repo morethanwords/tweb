@@ -50,13 +50,11 @@ const LockButton = () => {
     ref={button}
     class="btn-icon sidebar-lock-button"
     onClick={() => {
-      PasscodeLockScreenController.lock(iconWrapper);
-      PasscodeLockScreenController.lockOtherTabs();
-
-      setTimeout(() => {
-        clearTooltipVisible();
+      PasscodeLockScreenController.lock(iconWrapper, () => {
         rootScope.dispatchEvent('toggle_locked', true);
-      }, 400);
+        clearTooltipVisible();
+      });
+      // PasscodeLockScreenController.lockOtherTabs();
     }}
     onMouseEnter={() => {
       tooltipShowTimeout = window.setTimeout(() => {

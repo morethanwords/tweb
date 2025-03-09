@@ -199,6 +199,8 @@ export class AppImManager extends EventListenerBase<{
   public cacheStorage = new CacheStorageController('cachedFiles');
   public customEmojiSize: MediaSize;
 
+  public isShiftLockShortcut = false;
+
   private chatPositions: {
     [peerId_threadId: string]: ChatSavedPosition;
   };
@@ -449,7 +451,8 @@ export class AppImManager extends EventListenerBase<{
       });
     });
 
-    // rootScope.addEventListener('toggle_locked', (isLocked) => {
+    rootScope.addEventListener('toggle_locked', (isLocked) => {
+      if(isLocked) appRuntimeManager.reload();
     //   (() => {
     //     if(isLocked) {
     //       [
@@ -472,7 +475,7 @@ export class AppImManager extends EventListenerBase<{
     //       appSidebarLeft.initNavigation();
     //     }
     //   })()
-    // });
+    });
 
     useLockScreenShortcut();
 
@@ -1171,6 +1174,8 @@ export class AppImManager extends EventListenerBase<{
       // this.log('onkeydown', e, document.activeElement);
 
       const chat = this.chat;
+
+      if(this.isShiftLockShortcut && e.shiftKey) return;
 
       if((key.startsWith('Arrow') || (e.shiftKey && key === 'Shift')) && !isSelectionCollapsed) {
         return;

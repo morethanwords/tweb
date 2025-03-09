@@ -1,4 +1,4 @@
-export function addShortcutListener(combos: string[], callback: (combo: string) => void) {
+export function addShortcutListener(combos: string[], callback: (combo: string, event: KeyboardEvent) => void, preventByDefault = true) {
   const listener = (event: KeyboardEvent) => {
     const pairs = combos
     .map((combo) => [combo, combo.toLowerCase().split('+')] as const)
@@ -17,8 +17,8 @@ export function addShortcutListener(combos: string[], callback: (combo: string) 
       });
 
       if(isComboMatched) {
-        event.preventDefault();
-        callback(combo);
+        preventByDefault && event.preventDefault();
+        callback(combo, event);
         break;
       }
     }

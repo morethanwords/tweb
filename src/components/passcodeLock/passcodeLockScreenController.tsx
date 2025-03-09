@@ -80,7 +80,7 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
     await apiManagerProxy.invoke('toggleLockOthers', true);
   }
 
-  public static async lock(fromLockIcon?: HTMLElement | boolean) {
+  public static async lock(fromLockIcon?: HTMLElement | boolean, onAnimationEnd?: () => void) {
     if(this.mountedElement) return;
 
     this.isLocked = true;
@@ -112,13 +112,21 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
 
     this.dispose = render(() => (
       <LockScreenHotReloadGuardProvider>
-        <PasscodeLockScreen onUnlock={() => this.unlock()} fromLockIcon={clonedLockIcon} />
+        <PasscodeLockScreen
+          onUnlock={() => this.unlock()}
+          fromLockIcon={clonedLockIcon}
+          onAnimationEnd={onAnimationEnd}
+        />
       </LockScreenHotReloadGuardProvider>
     ), this.mountedElement);
 
     if(shouldAnimateIn) {
-      doubleRaf().then(() => {
+      doubleRaf().then(async() => {
         this.mountedElement.classList.remove('passcode-lock-screen--hidden');
+
+        if(!clonedLockIcon) pause(200).then(() => {
+          onAnimationEnd();
+        });
       });
     }
   }
