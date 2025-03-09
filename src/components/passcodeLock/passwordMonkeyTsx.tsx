@@ -1,4 +1,4 @@
-import {Component, createRenderEffect, createSignal, mergeProps, onCleanup, Ref} from 'solid-js';
+import {Component, createRenderEffect, createSignal, mergeProps, onCleanup, Ref, Show} from 'solid-js';
 
 import PasswordInputField from '../passwordInputField';
 import PasswordMonkey from '../monkeys/password';
@@ -15,10 +15,11 @@ const PasswordMonkeyTsx: Component<{
   const props = mergeProps({size: 100}, inProps);
 
   const [monkey, setMonkey] = createSignal<PasswordMonkey>();
+  const [monkeyLoaded, setMonkeyLoaded] = createSignal(false);
 
   createRenderEffect(() => {
     const monkey = new PasswordMonkey(props.passwordInputField, props.size);
-    monkey.load();
+    monkey.load().then(() => setMonkeyLoaded(true));
     setMonkey(monkey);
 
     onCleanup(() => {
@@ -36,6 +37,11 @@ const PasswordMonkeyTsx: Component<{
       style={{'--size': props.size + 'px'}}
     >
       {monkey().container}
+
+      {/* Prevent the monkey blinking when reloading the page */}
+      <Show when={!monkeyLoaded()}>
+        <img class={styles.MonkeyImage} src="assets/img/password-monkey-closed.png" />
+      </Show>
     </div>
   );
 };

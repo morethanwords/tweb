@@ -20,4 +20,12 @@ export default class DeferredIsUsingPasscode extends StaticUtilityClass {
 
     return this.value;
   }
+
+  /**
+   * Mainly for Service worker
+   */
+  public static resetDeferred() {
+    this.value = undefined;
+    this.deferred = deferredPromise();
+  }
 }

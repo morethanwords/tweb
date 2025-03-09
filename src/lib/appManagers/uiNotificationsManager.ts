@@ -106,8 +106,8 @@ export class UiNotificationsManager {
 
   public static byAccount = {} as Record<ActiveAccountNumber, UiNotificationsManager>;
 
-  static async getNotificationsCountForAllAccounts() {
-    return commonStateStorage.get('notificationsCount', false);
+  static async getNotificationsCountForAllAccounts(): Promise<Partial<Record<ActiveAccountNumber, number>>> {
+    return (await commonStateStorage.get('notificationsCount', false)) || {};
   }
 
   static async getNotificationsCountForAllAccountsForTitle() {
@@ -126,7 +126,7 @@ export class UiNotificationsManager {
 
   async getNotificationsCount() {
     const notificationsCount = await UiNotificationsManager.getNotificationsCountForAllAccounts();
-    return notificationsCount[this.accountNumber];
+    return notificationsCount?.[this.accountNumber] || 0;
   }
 
   async setNotificationCount(valueOrFn: number | ((prev: number) => number)) {

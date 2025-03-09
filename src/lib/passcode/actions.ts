@@ -8,7 +8,7 @@ import {useLockScreenHotReloadGuard} from '../solidjs/hotReloadGuard';
 
 import DeferredIsUsingPasscode from './deferredIsUsingPasscode';
 import EncryptionKeyStore from './keyStore';
-import {createEncryptionArtifactsForPasscode, deriveKey, hashPasscode} from './utils';
+import {createEncryptionArtifactsForPasscode, deriveEncryptionKey, hashPasscode} from './utils';
 
 
 export function usePasscodeActions() {
@@ -129,11 +129,14 @@ export function usePasscodeActions() {
     }, true);
   }
 
+  /**
+   * Warning! don't call on an unverified password
+   */
   async function unlockWithPasscode(passcode: string) {
     const passcodeData = await commonStateStorage.get('passcode', false);
     if(!passcodeData?.encryptionSalt) throw new Error('No encryption salt found in storage');
 
-    const encryptionKey = await deriveKey(passcode, passcodeData.encryptionSalt);
+    const encryptionKey = await deriveEncryptionKey(passcode, passcodeData.encryptionSalt);
     passcode = ''; // forget;
 
     EncryptionKeyStore.save(encryptionKey);

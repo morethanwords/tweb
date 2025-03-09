@@ -40,6 +40,8 @@ import commonStateStorage from '../commonStateStorage';
 import CacheStorageController from '../files/cacheStorage';
 import {ActiveAccountNumber} from '../accounts/types';
 import makeError from '../../helpers/makeError';
+import EncryptedStorageLayer from '../encryptedStorageLayer';
+import {getCommonDatabaseState} from '../../config/databases/state';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -312,7 +314,11 @@ export class ApiManager extends ApiManagerMethods {
       }
     }
 
+    let wasCleared = false; // Prevent double logout 2 accounts in a row
     const clear = async() => {
+      if(wasCleared) return;
+      wasCleared = true;
+
       this.baseDcId = undefined;
       // this.telegramMeNotify(false);
       if(totalAccounts === 1 && accountNumber === 1 && !migrateAccountTo) {
@@ -337,7 +343,9 @@ export class ApiManager extends ApiManagerMethods {
             return Promise.all(keys.map((key) => sessionStorage.delete(key)));
           })(),
           AppStoragesManager.clearAllStoresForAccount(1),
+          AppStoragesManager.clearSessionStores(),
           commonStateStorage.clear(),
+          EncryptedStorageLayer.getInstance(getCommonDatabaseState(), 'localStorage__encrypted').clear(),
           CacheStorageController.deleteAllStorages()
         ]);
       } else {

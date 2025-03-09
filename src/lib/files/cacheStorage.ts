@@ -257,9 +257,12 @@ export default class CacheStorageController implements FileStorage {
     return Promise.resolve();
   }
 
-  public static deleteAllStorages() {
-    return Promise.all(this.STORAGES.map((storage) => {
-      return storage.deleteAll();
+  public static async deleteAllStorages() {
+    const storageNames = Object.keys(cacheStorageDbConfig) as CacheStorageDbName[];
+
+    await Promise.all(storageNames.map(async(storageName) => {
+      const storage = new CacheStorageController(storageName);
+      await storage.deleteAll();
     }));
   }
 
@@ -282,6 +285,7 @@ export default class CacheStorageController implements FileStorage {
       // Make sure we have all encryptable storages in current thread, can't get from .STORAGES
       const storage = new CacheStorageController(storageName);
 
+      // await storage.deleteAll();
       await storage.timeoutOperation(async(cache) => {
         const keys = await cache.keys();
         await Promise.all(keys.map(request => cache.delete(request)));

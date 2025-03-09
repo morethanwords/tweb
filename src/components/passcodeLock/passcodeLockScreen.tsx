@@ -1,21 +1,22 @@
 import {Component, createEffect, createResource, on, onCleanup, onMount} from 'solid-js';
 import {createMutable} from 'solid-js/store';
 
-import {logger} from '../../lib/logger';
+import appRuntimeManager from '../../lib/appManagers/appRuntimeManager';
 import AccountController from '../../lib/accounts/accountController';
-import {i18n} from '../../lib/langPack';
-import {usePasscodeActions} from '../../lib/passcode/actions';
 import {MAX_PASSCODE_LENGTH} from '../../lib/passcode/constants';
+import {usePasscodeActions} from '../../lib/passcode/actions';
 import commonStateStorage from '../../lib/commonStateStorage';
+import {i18n} from '../../lib/langPack';
+import {logger} from '../../lib/logger';
 import pause from '../../helpers/schedulers/pause';
 
+import PasswordInputField from '../passwordInputField';
+import {InputFieldTsx} from '../inputFieldTsx';
 import ripple from '../ripple'; ripple; // keep
 import Space from '../space';
-import {InputFieldTsx} from '../inputFieldTsx';
-import PasswordInputField from '../passwordInputField';
 
-import Background from './background';
 import PasswordMonkeyTsx from './passwordMonkeyTsx';
+import Background from './background';
 
 import styles from './passcodeLockScreen.module.scss';
 
@@ -58,9 +59,12 @@ const PasscodeLockScreen: Component<{
   onMount(() => {
     attempts = 0;
 
-    setTimeout(() => {
+    (async() => {
+      await pause(0);
       passwordInputField.input.focus();
-    }, 500);
+      await pause(0);
+      passwordInputField.toggleForceFocus(false);
+    })();
 
     const lockIcon = props.fromLockIcon;
     if(lockIcon) (async() => {
@@ -78,6 +82,7 @@ const PasscodeLockScreen: Component<{
       store.isMonkeyHidden = false;
 
       await pause(400);
+      appRuntimeManager.reload();
       lockIcon.remove();
     })();
   });
@@ -155,6 +160,9 @@ const PasscodeLockScreen: Component<{
       maxLength={MAX_PASSCODE_LENGTH}
     />
   );
+
+  passwordInputField.toggleForceFocus(true);
+
 
   return (
     <div ref={container} class={styles.Container}>

@@ -131,6 +131,7 @@ import {openWebAppInAppBrowser} from '../../components/browser';
 import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
 import {createProxiedManagersForAccount} from './getProxiedManagers';
 import ChatBackgroundStore from '../chatBackgroundStore';
+import useLockScreenShortcut from './utils/useLockScreenShortcut';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -448,18 +449,32 @@ export class AppImManager extends EventListenerBase<{
       });
     });
 
-    rootScope.addEventListener('toggle_locked', (isLocked) => {
-      if(isLocked) {
-        this.setPeer({}, false);
-        appNavigationController.overrideHash();
-        appNavigationController.replaceState();
-        PopupElement.destroyAll();
-        appNavigationController.spliceItems(0, Infinity);
-        appSidebarLeft.closeSearch();
-      } else {
-        appSidebarLeft.initNavigation();
-      }
-    });
+    // rootScope.addEventListener('toggle_locked', (isLocked) => {
+    //   (() => {
+    //     if(isLocked) {
+    //       [
+    //         () => this.setPeer({}, false),
+    //         () => appNavigationController.overrideHash(),
+    //         () => appNavigationController.replaceState(),
+    //         () => PopupElement.destroyAll(),
+    //         () => appNavigationController.spliceItems(0, Infinity),
+    //         () => appSidebarLeft.closeEverythingInside(),
+    //         () => this.topbarCall?.hangUp(),
+    //         () => AppMediaViewerBase.closeAll()
+    //       ].forEach(callback => {
+    //         try {
+    //           callback();
+    //         } catch(e) {
+    //           console.error(e);
+    //         }
+    //       });
+    //     } else {
+    //       appSidebarLeft.initNavigation();
+    //     }
+    //   })()
+    // });
+
+    useLockScreenShortcut();
 
     (window as any).onSpoilerClick = (e: MouseEvent) => {
       const spoiler = findUpClassName(e.target, 'spoiler');

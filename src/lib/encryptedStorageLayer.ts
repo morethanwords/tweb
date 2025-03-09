@@ -1,15 +1,20 @@
 import {Database} from '../config/databases';
+import DEBUG from '../config/debug';
 import toArray from '../helpers/array/toArray';
 import convertToUint8Array from '../helpers/bytes/convertToUint8Array';
+import {IS_WORKER} from '../helpers/context';
+import formatBytesPure from '../helpers/formatBytesPure';
 import asyncThrottle from '../helpers/schedulers/asyncThrottle';
 
 import cryptoMessagePort from './crypto/cryptoMessagePort';
 import IDBStorage from './files/idb';
 import {logger, Logger} from './logger';
+import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import EncryptionKeyStore from './passcode/keyStore';
 
 
-export interface StorageLayer {
+export interface StorageLayer
+{
   save: (entryName: string | string[], value: any | any[]) => Promise<unknown>;
   get: <T>(entryNames: string[]) => Promise<T[]>;
   getAllEntries: () => Promise<IDBStorage.Entries>;
@@ -20,9 +25,15 @@ export interface StorageLayer {
 
 type StoredData = Record<string, any>;
 
-export default class EncryptedStorageLayer<T extends Database<any>> implements StorageLayer {
+export default class EncryptedStorageLayer<T extends Database<any>> implements StorageLayer
+{
   private static STORAGE_KEY = 'data';
-  private static STORAGE_THROTTLE_TIME_MS = 250;
+  // private static STORAGE_THROTTLE_TIME_MS = 250;
+  /**
+   * Having a delay here can break the app after logout, due to the fact that some updates might be queued in here before the
+   * storages were disabled, and the after timeout it will save the data anyway (that might have been cleared for logout)
+   */
+  private static STORAGE_THROTTLE_TIME_MS = 0;
 
   private static instances = new Map<string, EncryptedStorageLayer<Database<any>>>();
 
@@ -71,6 +82,7 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
 
   private static async decrypt(data: Uint8Array): Promise<StoredData> {
     const key = await EncryptionKeyStore.get();
+
     const result = await cryptoMessagePort.invokeCryptoNew({
       method: 'aes-local-decrypt',
       args: [{
@@ -85,20 +97,11 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   }
 
   public loadEncrypted() {
-    this.loadingDataPromise = this.loadFromIDB();
-    this.loadingDataPromise.then(() => {
+    (async() => {
+      this.loadingDataPromise = this.loadFromIDB();
+      await this.loadingDataPromise;
       this.loadingDataPromise = undefined;
-    });
-    // const loadingDataKey = EncryptedStorageLayer.getStorageKey(this.db.name, this.storeName);
-    // const promise = this.loadingDataPromise = EncryptedStorageLayer.loadingDataMap.get(loadingDataKey);
-    // if(promise) {
-    //   promise.then((data) => {
-    //     this.data = data;
-    //     this.loadingDataPromise = undefined;
-    //   }); // instant for already loaded data, we're not clearing anything
-    // } else {
-    //   EncryptedStorageLayer.loadingDataMap.set(loadingDataKey, this.loadFromIDB());
-    // }
+    })();
   }
 
   public async loadDecrypted(data: StoredData) {
@@ -114,9 +117,32 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   private saveToIDB = async() => {
     await this.waitToLoad();
 
-    // TODO: Check performance;
+    const startTime = performance.now();
+
+
     const encryptedData = await EncryptedStorageLayer.encrypt(this.data);
+    const encryptedDataSize = encryptedData.length;
+
+    const encryptionTime = performance.now();
+
     await this.storage.save(EncryptedStorageLayer.STORAGE_KEY, encryptedData);
+
+
+    const endTime = performance.now();
+
+    if(DEBUG && IS_WORKER) {
+      /**
+       * The time it takes is very random, it might be because of the busy-ness of the crypto worker and the indexed DB
+       *
+       * Can be a log for 5.5 KB in 8ms, and then another for 40 KB in just 3ms
+       * Or a whole MegaByte in just 20ms which is not proportional at all
+       */
+      const f = (n: number) => n.toFixed(2);
+      const port = MTProtoMessagePort.getInstance<false>();
+      port.invokeVoid('log', `[${this.db.name}-${this.encryptedStoreName}] Encrypted and saved ` +
+        `${encryptedDataSize} bytes (${formatBytesPure(encryptedDataSize, 2)}) of data in ${f(endTime - startTime)}ms ` +
+        `-- (encrypted in ${f(encryptionTime - startTime)}ms, saved in ${f(endTime - encryptionTime)}ms)`)
+    }
   };
 
   private saveToIDBThrottled = asyncThrottle(
@@ -125,14 +151,18 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   );
 
   private async loadFromIDB() {
-    try {
+    try
+    {
       const storageData = await this.storage.get(EncryptedStorageLayer.STORAGE_KEY);
+
       if(storageData === null) throw null;
       if(!(storageData instanceof Uint8Array)) throw new Error('Stored data in encrypted store is not a Uint8Array'); // Should not happen but anyway))
 
       const decrypted = await EncryptedStorageLayer.decrypt(storageData);
       this.data = decrypted;
-    } catch(error) {
+    }
+    catch(error)
+    {
       if(error) this.log(error);
       this.data = {};
     }

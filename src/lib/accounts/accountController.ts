@@ -63,9 +63,8 @@ export class AccountController extends StaticUtilityClass {
     }
 
     (async() => {
-      const numberOfAccounts = await this.getTotalAccounts();
-      await sessionStorage.set({
-        number_of_accounts: numberOfAccounts
+      sessionStorage.set({
+        number_of_accounts: await this.getTotalAccounts()
       });
     })();
 

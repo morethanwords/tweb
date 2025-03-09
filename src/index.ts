@@ -52,6 +52,7 @@ import appRuntimeManager from './lib/appManagers/appRuntimeManager';
 import PasscodeLockScreenController from './components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
 import type {LangPackDifference} from './layer';
 import commonStateStorage from './lib/commonStateStorage';
+import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './components/sidebarLeft/constants';
 
 // import commonStateStorage from './lib/commonStateStorage';
 // import { STATE_INIT } from './config/state';
@@ -166,10 +167,18 @@ function setViewportHeightListeners() {
 function setSidebarLeftWidth() {
   const sidebarEl = document.getElementById('column-left');
   const storedWidth = localStorage.getItem('sidebar-left-width');
-  if(storedWidth === '0') {
+
+  let validatedWidth = parseInt(storedWidth);
+  if(validatedWidth > MAX_SIDEBAR_WIDTH) validatedWidth = MAX_SIDEBAR_WIDTH;
+  else if(validatedWidth < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR) validatedWidth = 0;
+  else if(validatedWidth < MIN_SIDEBAR_WIDTH) validatedWidth = MIN_SIDEBAR_WIDTH;
+
+  if(String(validatedWidth) !== storedWidth) localStorage.setItem('sidebar-left-width', validatedWidth + '');
+
+  if(validatedWidth === 0) {
     sidebarEl.classList.add('is-collapsed');
-  } else if(storedWidth) {
-    document.documentElement.style.setProperty('--current-sidebar-left-width', storedWidth + 'px');
+  } else if(validatedWidth) {
+    document.documentElement.style.setProperty('--current-sidebar-left-width', validatedWidth + 'px');
   }
 }
 

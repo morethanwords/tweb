@@ -309,7 +309,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       },
 
       log: (payload) => {
-        console.log('Received log from shared worker', payload);
+        console.log('[SharedWorker]', payload);
       },
 
       intervalCallback: (intervalId) => {
@@ -441,7 +441,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         history.replaceState(null, '', url);
 
         // Make sure managers don't have any obsolete data
-        this.closeMTProtoWorker();
+        this.closeMTProtoWorker(); // might be useless because of the above `this.invokeVoid('terminate', undefined)` ⬆️
 
         appRuntimeManager.reload();
       });

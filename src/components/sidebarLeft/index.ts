@@ -98,6 +98,7 @@ import {toastNew} from '../toast';
 import DeferredIsUsingPasscode from '../../lib/passcode/deferredIsUsingPasscode';
 import EncryptionKeyStore from '../../lib/passcode/keyStore';
 import createLockButton from './lockButton';
+import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './constants';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -630,9 +631,6 @@ export class AppSidebarLeft extends SidebarSlider {
       this.onSomethingOpenInsideChange();
     }
 
-    const MIN_SIDEBAR_WIDTH = 260;
-    const MAX_SIDEBAR_WIDTH = 420;
-
     const resizeHandle = document.createElement('div');
     resizeHandle.classList.add('sidebar-resize-handle');
     this.sidebarEl.append(resizeHandle);
@@ -660,7 +658,7 @@ export class AppSidebarLeft extends SidebarSlider {
         rootScope.dispatchEvent('resizing_left_sidebar');
 
         const wasCollapsed = this.isCollapsed();
-        const isCollapsed = !this.hasSomethingOpenInside() && width < MIN_SIDEBAR_WIDTH * 0.65;
+        const isCollapsed = !this.hasSomethingOpenInside() && width < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR;
         this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
 
         if(isCollapsed !== wasCollapsed)

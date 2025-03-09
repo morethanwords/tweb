@@ -132,13 +132,6 @@ serviceMessagePort.addMultipleEventsListeners({
 
   toggleStreamInUse,
 
-  // cryptoPort: (_, __, event) => {
-  //   log('hello from sw attaching crypto port', event.ports.length)
-  //   if(!event.ports.length) return;
-  //   const port = event.ports[0]
-  //   cryptoMessagePort.attachPort(port);
-  // },
-
   toggleCacheStorage: (enabled) => {
     CacheStorageController.temporarilyToggle(enabled);
   },
@@ -180,6 +173,9 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
   log('window disconnected, left', connectedWindows.size);
   if(!connectedWindows.size) {
     log.warn('no windows left');
+
+    EncryptionKeyStore.resetDeferred();
+    DeferredIsUsingPasscode.resetDeferred();
 
     if(_mtprotoMessagePort) {
       serviceMessagePort.detachPort(_mtprotoMessagePort);

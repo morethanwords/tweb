@@ -29,9 +29,26 @@ const LockButton = () => {
     tooltipShowTimeout = undefined;
   };
 
+  createEffect(() => {
+    if(!isTooltipVisible()) return;
+
+    const {close} = showTooltip({
+      element: button,
+      mountOn: button.parentElement,
+      vertical: 'bottom',
+      textElement: i18n('PasscodeLock.TapToLock'),
+      onClose: () => {},
+      lighter: true
+    });
+
+    onCleanup(() => {
+      close();
+    });
+  });
+
   <button
     ref={button}
-    class="btn-icon"
+    class="btn-icon sidebar-lock-button"
     onClick={() => {
       PasscodeLockScreenController.lock(iconWrapper);
       PasscodeLockScreenController.lockOtherTabs();
@@ -54,23 +71,6 @@ const LockButton = () => {
       <LockIcon />
     </span>
   </button>
-
-  createEffect(() => {
-    if(!isTooltipVisible()) return;
-
-    const {close} = showTooltip({
-      element: button,
-      mountOn: button.parentElement,
-      vertical: 'bottom',
-      textElement: i18n('PasscodeLock.TapToLock'),
-      onClose: () => {},
-      lighter: true
-    });
-
-    onCleanup(() => {
-      close();
-    });
-  });
 
   return button;
 };

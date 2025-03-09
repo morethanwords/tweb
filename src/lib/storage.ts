@@ -349,14 +349,27 @@ export default class AppStorage<
     return this.useStorage ? this.deleteDeferred : Promise.resolve();
   }
 
-  public clear(saveLocal = false) {
+  public async clear(saveLocal = false) {
     if(!saveLocal) {
       for(const i in this.cache) {
         delete this.cache[i];
       }
     }
 
-    return this.getStorage().then(storage => storage.clear().catch(noop));
+    try {
+      const currentStorage = await this.getStorage();
+      await currentStorage.clear();
+    } catch{}
+
+    // // Make sure we clear the other store so we don't have any trash there, especially on logout
+    // if(currentStorage instanceof EncryptedStorageLayer) {
+    //   const otherStorage = new IDBStorage(this.db, this.storeName);
+    //   await otherStorage.clear();
+    // } else if(this.isEncryptable) {
+    //   const otherStorage = EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName);
+    //   await otherStorage.clear();
+    // }
+    // return this.getStorage().then(storage => storage.clear().catch(noop));
   }
 
   public async unfreezeAsync(callback: () => Promise<unknown>) {

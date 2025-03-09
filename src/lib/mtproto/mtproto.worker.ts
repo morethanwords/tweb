@@ -151,7 +151,7 @@ port.addMultipleEventsListeners({
     isLocked = false;
   },
 
-  changePasscode: async({toStore, encryptionKey}) => {
+  changePasscode: async({toStore, encryptionKey}, source) => {
     await commonStateStorage.set({passcode: toStore});
 
     EncryptionKeyStore.save(encryptionKey);
@@ -160,7 +160,7 @@ port.addMultipleEventsListeners({
       sessionStorage.reEncryptEncryptable()
     ]);
 
-    await port.invokeExceptSourceAsync('saveEncryptionKey', encryptionKey);
+    await port.invokeExceptSourceAsync('saveEncryptionKey', encryptionKey, source);
   },
 
   isLocked: async(_, source) => {
@@ -247,9 +247,9 @@ appTabsManager.onTabStateChange = async() => {
 
   const settings = await commonStateStorage.get('settings', false);
   const passcodeEnabled = settings?.passcode?.enabled || false;
-  const timoeutMins = settings?.passcode?.autoLockTimeoutMins || null;
+  const timeoutMins = settings?.passcode?.autoLockTimeoutMins || null;
 
-  if(!timoeutMins || !passcodeEnabled) return;
+  if(!timeoutMins || !passcodeEnabled) return;
 
   if(areAllIdle && !isLocked) {
     autoLockTimeout = self.setTimeout(() => {
@@ -263,7 +263,7 @@ appTabsManager.onTabStateChange = async() => {
       });
 
       isLocked = true;
-    }, timoeutMins * 1000 * 60);
+    }, timeoutMins * 1000 * 60);
   }
 };
 

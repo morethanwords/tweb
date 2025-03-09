@@ -53,9 +53,11 @@ const _useLockScreenShortcut = () => {
 
     if(!shortcutKeys()?.length) return;
 
-    const combos = shortcutKeys().map(key => key + '+L');
+    // TODO: Shift+L prevent trigger when using is focused on input
 
-    const removeListener = addShortcutListener(combos, () => {
+    const combo = [...shortcutKeys(), 'L'].join('+');
+
+    const removeListener = addShortcutListener([combo], () => {
       PasscodeLockScreenController.lock(true);
       PasscodeLockScreenController.lockOtherTabs();
 

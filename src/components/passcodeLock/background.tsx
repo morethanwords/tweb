@@ -38,7 +38,7 @@ const Background = () => {
 
   async function getBackgroundURL(slug: string) {
     if(slug === DEFAULT_BACKGROUND_SLUG) {
-      return '/assets/img/pattern.svg' // ChatBackgroundStore.getWallPaperStorageUrl(slug);
+      return 'assets/img/pattern.svg' // ChatBackgroundStore.getWallPaperStorageUrl(slug);
     }
 
     return ChatBackgroundStore.getBackground({slug});

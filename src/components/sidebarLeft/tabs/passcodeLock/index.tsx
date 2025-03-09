@@ -38,7 +38,9 @@ function scaffoldSolidJSTab<Payload = void>({
       const {default: Component} = await getComponentModule();
 
       const loadPromises: Promise<any>[] = [];
-      let collectPromise = (promise: Promise<any>): void => void loadPromises.push(promise);
+      let collectPromise = (promise: Promise<any>) => {
+        loadPromises.push(promise);
+      };
 
       this.dispose = render(() => (
         <SolidJSHotReloadGuardProvider>
