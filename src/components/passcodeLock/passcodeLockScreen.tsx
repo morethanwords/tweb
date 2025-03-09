@@ -1,17 +1,16 @@
 import {Component, createEffect, createResource, on, onCleanup, onMount} from 'solid-js';
 import {createMutable} from 'solid-js/store';
 
+import {useLockScreenHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
 import appRuntimeManager from '../../lib/appManagers/appRuntimeManager';
 import AccountController from '../../lib/accounts/accountController';
 import {MAX_PASSCODE_LENGTH} from '../../lib/passcode/constants';
 import {usePasscodeActions} from '../../lib/passcode/actions';
 import commonStateStorage from '../../lib/commonStateStorage';
-import {i18n} from '../../lib/langPack';
-import {logger} from '../../lib/logger';
 import pause from '../../helpers/schedulers/pause';
+import {i18n} from '../../lib/langPack';
 
-import PasswordInputField from '../passwordInputField';
-import {InputFieldTsx} from '../inputFieldTsx';
+import type PasswordInputField from '../passwordInputField';
 import ripple from '../ripple'; ripple; // keep
 import Space from '../space';
 
@@ -27,8 +26,6 @@ type StateStore = {
   tooManyAttempts: boolean;
   passcode: string;
 };
-
-const log = logger('my-debug');
 
 
 const MAX_ATTEMPTS = 5;
@@ -46,6 +43,7 @@ const PasscodeLockScreen: Component<{
   let attempts = 0;
 
   const {isMyPasscode, unlockWithPasscode} = usePasscodeActions();
+  const {InputFieldTsx, PasswordInputField} = useLockScreenHotReloadGuard();
 
   const store = createMutable<StateStore>({
     isMonkeyHidden: !!props.fromLockIcon,

@@ -1,13 +1,16 @@
 import {ParentProps} from 'solid-js';
 
-import appSidebarLeft from '../../components/sidebarLeft';
 import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
+import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import EmoticonsSearch from '../../components/emoticonsDropdown/search';
-import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
-import showLimitPopup from '../../components/popups/limit';
-import {setQuizHint} from '../../components/poll';
+import PasswordInputField from '../../components/passwordInputField';
+import PasswordMonkey from '../../components/monkeys/password';
+import {InputFieldTsx} from '../../components/inputFieldTsx';
 import themeController from '../../helpers/themeController';
+import showLimitPopup from '../../components/popups/limit';
+import appSidebarLeft from '../../components/sidebarLeft';
+import {setQuizHint} from '../../components/poll';
 
 import apiManagerProxy from '../mtproto/mtprotoworker';
 import appImManager from '../appManagers/appImManager';
@@ -31,7 +34,10 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       themeController,
       appImManager,
       apiManagerProxy,
-      setQuizHint
+      setQuizHint,
+      InputFieldTsx,
+      PasswordInputField,
+      PasswordMonkey
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

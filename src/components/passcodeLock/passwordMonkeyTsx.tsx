@@ -1,7 +1,9 @@
 import {Component, createRenderEffect, createSignal, mergeProps, onCleanup, Ref, Show} from 'solid-js';
 
-import PasswordInputField from '../passwordInputField';
-import PasswordMonkey from '../monkeys/password';
+import {useLockScreenHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
+
+import type PasswordInputField from '../passwordInputField';
+import type PasswordMonkey from '../monkeys/password';
 
 import styles from './passwordMonkeyTsx.module.scss';
 
@@ -13,6 +15,8 @@ const PasswordMonkeyTsx: Component<{
   size?: number;
 }> = (inProps) => {
   const props = mergeProps({size: 100}, inProps);
+
+  const {PasswordMonkey} = useLockScreenHotReloadGuard();
 
   const [monkey, setMonkey] = createSignal<PasswordMonkey>();
   const [monkeyLoaded, setMonkeyLoaded] = createSignal(false);
