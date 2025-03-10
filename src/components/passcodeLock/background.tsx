@@ -41,8 +41,11 @@ const Background = () => {
       return 'assets/img/pattern.svg'
     }
 
-    const hasInCache = await ChatBackgroundStore.hasWallPaperStorageUrl(slug);
-    if(!hasInCache) throw new Error('No background with this slug found in cache');
+    /**
+     * This delays when the background appears and makes it blink after refresh ☹️
+     */
+    // const hasInCache = await ChatBackgroundStore.hasWallPaperStorageUrl(slug);
+    // if(!hasInCache) throw new Error('No background with this slug found in cache');
 
     return ChatBackgroundStore.getWallPaperStorageUrl(slug);
   }
