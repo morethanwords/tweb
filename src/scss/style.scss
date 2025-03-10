@@ -208,6 +208,8 @@
   @include respond-to(only-medium-screens) {
     --right-column-width: 25vw;
   }
+
+  --passcode-lock-screen-z-index: 100000;
 }
 
 @mixin splitColor($property, $color, $light: true, $dark: true, $light-filled: false, $dark-filled: false, $rgb: false, $alpha: $hover-alpha) {
@@ -496,6 +498,8 @@
 @import "partials/pages/authCode";
 @import "partials/pages/chats";
 @import "partials/pages/password";
+
+@import "partials/passcodeLockScreen";
 
 html,
 body {
@@ -2674,75 +2678,4 @@ hr {
     margin-right: .25rem;
     font-size: 1.125rem;
   }
-}
-
-.passcode-lock-screen {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-
-  /* Just in case, as the passcode module is dynamically imported */
-  background-color: var(--surface-color);
-
-  z-index: 100000;
-
-  transition: opacity .4s;
-  opacity: 1;
-
-  &--hidden {
-    opacity: 0;
-  }
-
-  &__animated-lock-icon {
-    position: absolute;
-    left: var(--x);
-    top: var(--y);
-    width: 1.5rem;
-    height: 1.5rem;
-
-    color: var(--secondary-text-color);
-
-    z-index: 10;
-
-    --transition-time-move: .3s;
-    --transition-time: .4s;
-    transition: transform var(--transition-time), left var(--transition-time-move) ease-out, top var(--transition-time-move) ease-out, opacity var(--transition-time);
-
-    --actual-scale: var(--scale, 1);
-    transform: translate(-50%, -50%) scale(var(--actual-scale, 1));
-
-    // .lock-icon-shackle {
-    //   transition: transform var(--transition-time);
-    //   transition-delay: .2s;
-    // }
-
-    svg {
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-
-    &--shift-body {
-      .night & {
-        color: var(--primary-text-color);
-      }
-
-      svg {
-        left: 3px;
-      }
-
-      .lock-icon-shackle {
-        transform-origin: center;
-        transform: rotateY(180deg) translate(-3.25px, 1px);
-      }
-    }
-
-    &--disappear {
-      opacity: 0;
-      --actual-scale: calc(var(--scale, 1) * 1.075);
-    }
-  }
-
 }
