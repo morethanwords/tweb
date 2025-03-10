@@ -426,7 +426,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
         let url = new URL(location.href);
 
         const currentAccount = getCurrentAccount();
-        if(currentAccount > accountNumber) {
+        if(!accountNumber) {
+          url.hash = '';
+          url.search = '';
+        } else if(currentAccount > accountNumber) {
           const newAccountNumber = currentAccount - 1;
           url = createAppURLForAccount(newAccountNumber as ActiveAccountNumber, undefined, true);
           //

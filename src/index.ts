@@ -168,12 +168,13 @@ function setSidebarLeftWidth() {
   const sidebarEl = document.getElementById('column-left');
   const storedWidth = localStorage.getItem('sidebar-left-width');
 
-  let validatedWidth = parseInt(storedWidth);
+  let validatedWidth = parseInt(storedWidth) || undefined;
   if(validatedWidth > MAX_SIDEBAR_WIDTH) validatedWidth = MAX_SIDEBAR_WIDTH;
   else if(validatedWidth < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR) validatedWidth = 0;
   else if(validatedWidth < MIN_SIDEBAR_WIDTH) validatedWidth = MIN_SIDEBAR_WIDTH;
 
-  if(String(validatedWidth) !== storedWidth) localStorage.setItem('sidebar-left-width', validatedWidth + '');
+  if(typeof validatedWidth === 'number' && String(validatedWidth) !== storedWidth)
+    localStorage.setItem('sidebar-left-width', validatedWidth + '');
 
   if(validatedWidth === 0) {
     sidebarEl.classList.add('is-collapsed');

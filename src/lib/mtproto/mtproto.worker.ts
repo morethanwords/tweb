@@ -26,6 +26,7 @@ import AppStorage from '../storage';
 import EncryptionKeyStore from '../passcode/keyStore';
 import sessionStorage from '../sessionStorage';
 import CacheStorageController from '../files/cacheStorage';
+import {ApiManager} from './apiManager';
 
 
 const log = logger('MTPROTO');
@@ -193,6 +194,10 @@ port.addMultipleEventsListeners({
   toggleCacheStorage: async(enabled: boolean, source) => {
     CacheStorageController.temporarilyToggle(enabled);
     await port.invokeExceptSourceAsync('toggleCacheStorage', enabled, source);
+  },
+
+  forceLogout: async() => {
+    await ApiManager.forceLogOutAll();
   }
 
   // localStorageEncryptionMethodsProxy: (payload) => {

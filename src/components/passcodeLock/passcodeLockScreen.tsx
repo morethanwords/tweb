@@ -1,4 +1,4 @@
-import {Component, createEffect, createResource, on, onCleanup, onMount} from 'solid-js';
+import {Component, createEffect, createResource, on, onCleanup, onMount, Show} from 'solid-js';
 import {createMutable} from 'solid-js/store';
 
 import {useLockScreenHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
@@ -15,6 +15,7 @@ import ripple from '../ripple'; ripple; // keep
 import Space from '../space';
 
 import PasswordMonkeyTsx from './passwordMonkeyTsx';
+import SimplePopup from './simplePopup';
 import Background from './background';
 
 import styles from './passcodeLockScreen.module.scss';
@@ -25,6 +26,7 @@ type StateStore = {
   isError: boolean;
   tooManyAttempts: boolean;
   passcode: string;
+  isLogoutPopupOpen: boolean;
 };
 
 
@@ -44,13 +46,14 @@ const PasscodeLockScreen: Component<{
   let attempts = 0;
 
   const {isMyPasscode, unlockWithPasscode} = usePasscodeActions();
-  const {InputFieldTsx, PasswordInputField} = useLockScreenHotReloadGuard();
+  const {InputFieldTsx, PasswordInputField, apiManagerProxy} = useLockScreenHotReloadGuard();
 
   const store = createMutable<StateStore>({
     isMonkeyHidden: !!props.fromLockIcon,
     isError: false,
     tooManyAttempts: false,
-    passcode: ''
+    passcode: '',
+    isLogoutPopupOpen: false
   });
 
   const [totalAccounts] = createResource(() => AccountController.getUnencryptedTotalAccounts());
@@ -198,12 +201,27 @@ const PasscodeLockScreen: Component<{
               [
                 <button
                   class={styles.LogoutButton}
+                  onClick={() => {
+                    store.isLogoutPopupOpen = true;
+                  }}
                 /> as HTMLButtonElement
               ]
             )
           }
         </div>
       </div>
+
+      <SimplePopup
+        visible={store.isLogoutPopupOpen}
+        title={i18n('LogOut')}
+        description={i18n('PasscodeLock.LogoutPopup.Description')}
+        confirmButtonContent={i18n('LogOut')}
+        onConfirm={() => {
+          apiManagerProxy.invokeVoid('forceLogout', undefined);
+          // store.isLogoutPopupOpen = false
+        }}
+        onClose={() => void(store.isLogoutPopupOpen = false)}
+      />
     </div>
   );
 };

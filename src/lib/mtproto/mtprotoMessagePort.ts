@@ -54,7 +54,8 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   isLocked: (payload: void, source: MessageEventSource) => Promise<boolean>,
   toggleLockOthers: (isLocked: boolean, source: MessageEventSource) => void
   localStorageEncryptedProxy: (payload: LocalStorageEncryptedProxyTaskPayload) => Promise<any>,
-  toggleCacheStorage: (value: boolean, source: MessageEventSource) => void
+  toggleCacheStorage: (value: boolean, source: MessageEventSource) => void,
+  forceLogout: () => void
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,

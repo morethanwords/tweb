@@ -3165,7 +3165,8 @@ const lang = {
   'PasscodeLock.NotificationTitle': 'User',
   'PasscodeLock.NotificationDescription': 'New message',
   'PasscodeLock.Disabled': 'Disabled',
-  'PasscodeLock.TooManyAttempts': 'Too many attempts, try again later'
+  'PasscodeLock.TooManyAttempts': 'Too many attempts, try again later',
+  'PasscodeLock.LogoutPopup.Description': 'Are you sure you want to log out?'
 };
 
 export default lang;

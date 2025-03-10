@@ -42,6 +42,10 @@ import {ActiveAccountNumber} from '../accounts/types';
 import makeError from '../../helpers/makeError';
 import EncryptedStorageLayer from '../encryptedStorageLayer';
 import {getCommonDatabaseState} from '../../config/databases/state';
+/**
+ * To not be used in an ApiManager instance
+ */
+import globalRootScope from '../rootScope';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -365,6 +369,22 @@ export class ApiManager extends ApiManagerMethods {
     }).finally(clear)/* .then(() => {
       location.pathname = '/';
     }) */;
+  }
+
+  public static async forceLogOutAll() {
+    const clearAllStoresPromises = ([1, 2, 3, 4] as ActiveAccountNumber[])
+    .map(accountNumber => AppStoragesManager.clearAllStoresForAccount(accountNumber));
+
+    await Promise.all([
+      sessionStorage.localStorageProxy('clear'),
+      commonStateStorage.clear(),
+      EncryptedStorageLayer.getInstance(getCommonDatabaseState(), 'localStorage__encrypted').clear(),
+      ...clearAllStoresPromises,
+      CacheStorageController.deleteAllStorages()
+    ]);
+
+    IDB.closeDatabases();
+    globalRootScope.dispatchEvent('logging_out', {});
   }
 
   private generateNetworkerGetKey(dcId: DcId, transportType: TransportType, connectionType: ConnectionType) {

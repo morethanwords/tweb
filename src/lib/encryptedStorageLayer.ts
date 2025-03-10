@@ -217,7 +217,7 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   }
 
   public async clear(): Promise<void> {
-    await this.waitToLoad();
+    // await this.waitToLoad();
 
     this.data = {};
     await this.storage.clear();

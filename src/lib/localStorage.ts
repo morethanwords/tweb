@@ -32,7 +32,7 @@ class LocalStorage<Storage extends Record<string, any>> {
     }
   }
 
-  public get<T extends keyof Storage>(key: T, useCache = true): Promise<Storage[T]> {
+  public get<T extends keyof Storage>(key: T, useCache = true): Storage[T] {
     if(this.cache.hasOwnProperty(key) && useCache) {
       return this.cache[key];
     } else if(this.useStorage) {
@@ -105,29 +105,27 @@ class LocalStorage<Storage extends Record<string, any>> {
     // }
   }
 
-  /* public clear(preserveKeys: (keyof Storage)[] = this.preserveKeys) {
-    // if(this.useStorage) {
-      try {
-        let obj: Partial<Storage> = {};
-        if(preserveKeys) {
-          preserveKeys.forEach((key) => {
-            const value = this.get(key);
-            if(value !== undefined) {
-              obj[key] = value;
-            }
-          });
-        }
-
-        localStorage.clear();
-
-        if(preserveKeys) {
-          this.set(obj);
-        }
-      } catch(err) {
-
+  public clear(preserveKeys: (keyof Storage)[] = []) {
+    try {
+      const obj: Partial<Storage> = {};
+      if(preserveKeys?.length) {
+        preserveKeys.forEach((key) => {
+          const value = this.get(key);
+          if(value !== undefined) {
+            obj[key] = value;
+          }
+        });
       }
-    // }
-  } */
+
+      localStorage.clear();
+
+      if(preserveKeys?.length) {
+        this.set(obj);
+      }
+    } catch(err) {
+
+    }
+  }
 
   public toggleStorage(enabled: boolean, clearWrite: boolean) {
     this.useStorage = enabled;
@@ -145,7 +143,7 @@ class LocalStorage<Storage extends Record<string, any>> {
 export interface LocalStorageProxyTask extends WorkerTaskTemplate {
   type: 'localStorageProxy',
   payload: {
-    type: 'set' | 'get' | 'delete' /* | 'clear'  */| 'toggleStorage',
+    type: 'set' | 'get' | 'delete' | 'clear' | 'toggleStorage',
     args: any[]
   }
 };
