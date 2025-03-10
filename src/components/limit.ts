@@ -38,17 +38,19 @@ export default class LimitLine {
       icon: Icon,
       content?: HTMLElement | string,
       noStartEnd?: boolean
+      renderInsideTrack?: boolean
     },
     slider?: (progress: number) => void
     sliderValue?: number
   }) {
     let container: HTMLElement;
+    let hint: HTMLElement;
 
     if(options.hint) {
       container = document.createElement('div');
       container.classList.add('limit-line-container');
 
-      const hint = this.hint = document.createElement('div');
+      hint = this.hint = document.createElement('div');
       hint.classList.add('limit-line-hint', 'is-locked');
       const i = Icon(options.hint.icon, 'limit-line-hint-icon');
       hint.append(i);
@@ -58,7 +60,6 @@ export default class LimitLine {
       }
 
       this.hintNoStartEnd = options.hint.noStartEnd;
-
       container.append(hint);
     }
 

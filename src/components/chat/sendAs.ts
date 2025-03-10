@@ -10,6 +10,7 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import liteMode from '../../helpers/liteMode';
 import {getMiddleware} from '../../helpers/middleware';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
+import safeAssign from '../../helpers/object/safeAssign.js';
 import {Chat} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
@@ -28,6 +29,13 @@ import getChatMembersString from '../wrappers/getChatMembersString';
 
 const SEND_AS_ANIMATION_DURATION = 300;
 
+export interface ChatSendAsOptions {
+  managers: AppManagers;
+  onReady: (container: HTMLElement, skipAnimation?: boolean) => void,
+  onChange: (sendAsPeerId: PeerId) => void
+  forPaidReaction?: boolean,
+}
+
 export default class ChatSendAs {
   private avatar: ReturnType<typeof avatarNew>;
   private container: HTMLElement;
@@ -42,11 +50,13 @@ export default class ChatSendAs {
   private addedListener: boolean;
   private buttons: ButtonMenuItemOptions[];
 
-  constructor(
-    private managers: AppManagers,
-    private onReady: (container: HTMLElement, skipAnimation?: boolean) => void,
-    private onChange: (sendAsPeerId: PeerId) => void
-  ) {
+  private managers: ChatSendAsOptions['managers'];
+  private onReady: ChatSendAsOptions['onReady'];
+  private onChange: ChatSendAsOptions['onChange'];
+  private forPaidReaction: ChatSendAsOptions['forPaidReaction'];
+
+  constructor(options: ChatSendAsOptions) {
+    safeAssign(this, options);
     this.middlewareHelper = getMiddleware();
     this.listenerSetter = new ListenerSetter();
     this.construct();
@@ -61,7 +71,7 @@ export default class ChatSendAs {
     this.closeBtn.append(Icon('close'));
 
     const sendAsButtons: ButtonMenuItemOptions[] = [{
-      text: 'SendMessageAsTitle',
+      text: this.forPaidReaction ? 'SendReactionAsTitle' : 'SendMessageAsTitle',
       onClick: undefined
     }];
 
@@ -69,6 +79,9 @@ export default class ChatSendAs {
 
     let previousAvatar: ChatSendAs['avatar'];
     const onSendAsMenuToggle = (visible: boolean) => {
+      if(this.forPaidReaction) {
+        return;
+      }
       if(visible) {
         previousAvatar = this.avatar;
       }
@@ -98,7 +111,7 @@ export default class ChatSendAs {
       buttonOptions: {noRipple: true},
       listenerSetter: this.listenerSetter,
       container: this.container,
-      direction: 'top-right',
+      direction: this.forPaidReaction ? 'bottom-right' : 'top-right',
       buttons: sendAsButtons,
       onOpenBefore: () => {
         onSendAsMenuToggle(true);
@@ -174,8 +187,9 @@ export default class ChatSendAs {
             executeButtonsUpdate();
           }
 
-          // return;
-          this.managers.appMessagesManager.saveDefaultSendAs(currentPeerId, sendAsPeerId);
+          if(!this.forPaidReaction) {
+            this.managers.appMessagesManager.saveDefaultSendAs(currentPeerId, sendAsPeerId);
+          }
         } : undefined,
         textElement
       };
@@ -258,7 +272,12 @@ export default class ChatSendAs {
   }
 
   private getDefaultSendAs(): Promise<AckedResult<PeerId>> {
-    // return rootScope.myId;
+    if(this.forPaidReaction) {
+      return Promise.resolve({
+        cached: true,
+        result: Promise.resolve(rootScope.myId)
+      });
+    }
     return this.managers.acknowledged.appProfileManager.getChannelFull(this.peerId.toChatId()).then((acked) => {
       return {
         cached: acked.cached,
@@ -298,7 +317,21 @@ export default class ChatSendAs {
       if(!middleware()) return;
 
       Promise.all([
-        this.managers.appChatsManager.getSendAs(chatId),
+        this.forPaidReaction ?
+          // todo: needs layer 199
+          Promise.resolve([
+            {
+              _: 'sendAsPeer',
+              peer: {_: 'peerUser', user_id: rootScope.myId},
+              pFlags: {}
+            },
+            {
+              _: 'sendAsPeer',
+              peer: {_: 'peerChannel', channel_id: chatId},
+              pFlags: {}
+            }
+          ] as ReturnType<typeof this.managers.appChatsManager.getSendAs>) :
+          this.managers.appChatsManager.getSendAs(chatId),
         apiManagerProxy.isPremiumFeaturesHidden()
       ]).then(([sendAsPeers, isPremiumFeaturesHidden]) => {
         if(!middleware()) return;
@@ -372,6 +405,10 @@ export default class ChatSendAs {
     this.middlewareHelper.clean();
     this.updatingPromise = undefined;
     this.peerId = peerId;
+  }
+
+  public getSendAsPeerId() {
+    return this.sendAsPeerId;
   }
 
   public destroy() {

@@ -1,0 +1,48 @@
+
+.animated-super {
+  &-row {
+    --translateY: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    transition: transform var(--pm-transition), opacity var(--pm-transition);
+
+    body.animation-level-0 & {
+      transition: none;
+    }
+
+    &.is-hiding {
+      opacity: 0;
+
+      &.from-top {
+        transform: translate3d(0, calc(var(--translateY) * -1), 0);
+      }
+
+      &.from-bottom {
+        transform: translate3d(0, var(--translateY), 0);
+      }
+    }
+  }
+}
+
+.animated-counter {
+  display: inline-flex;
+
+  &-decimal {
+    position: relative;
+
+    &-placeholder {
+      color: transparent;
+    }
+
+    &-wrapper {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      right: 0;
+    }
+  }
+}

@@ -19,6 +19,7 @@
 
   &-block {
     margin-top: -.125rem;
+    position: relative;
   }
 
   &-renderer {
@@ -56,8 +57,8 @@
     white-space: nowrap;
     cursor: default;
 
-    &-text {
-
+    &.paid-reaction-tooltip {
+      top: -6.25rem;
     }
 
     &-undo {
@@ -74,6 +75,7 @@
         width: 1.5rem;
         height: 1.5rem;
         position: relative;
+        overflow: hidden;
 
         &-svg {
           transform: scaleX(-1);

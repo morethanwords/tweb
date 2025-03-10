@@ -75,6 +75,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
 import flatten from '../../helpers/array/flatten';
 import PopupStarReaction from '../popups/starReaction';
+import {PENDING_PAID_REACTIONS} from './reactions.js';
 import getUniqueCustomEmojisFromMessage from '../../lib/appManagers/utils/messages/getUniqueCustomEmojisFromMessage';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
@@ -214,7 +215,8 @@ export default class ChatContextMenu {
     }
 
     const paidReactionElement = (e.target as HTMLElement).closest('.reaction.is-paid');
-    if(paidReactionElement && !findUpClassName(e.target, 'tooltip')) {
+    if(paidReactionElement) {
+      PENDING_PAID_REACTIONS.forEach(it => it.abortController.abort());
       PopupElement.createPopup(PopupStarReaction, bubble.dataset.peerId.toPeerId(), mid);
       return;
     }
@@ -1107,6 +1109,12 @@ export default class ChatContextMenu {
           contextMenuController.close();
           reaction = await reaction;
           if(!reaction) {
+            return;
+          }
+
+          if(reaction._ === 'reactionPaid') {
+            PENDING_PAID_REACTIONS.forEach(it => it.abortController.abort());
+            PopupElement.createPopup(PopupStarReaction, reactionsMessage.peerId, reactionsMessage.mid);
             return;
           }
 

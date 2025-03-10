@@ -170,9 +170,23 @@
       --chosen-background-color: #FFBC2E !important;
       --background-color: rgba(255, 188, 46, .2) !important;
       color: #E98111;
+      transition: scale .2s ease-in-out;
+      z-index: 1;
 
       .currency-star-icon {
         transform: translateX(1px);
+      }
+
+      .reaction-sticker {
+        overflow: visible;
+        z-index: 2;
+      }
+
+      .reaction-sticker-activate {
+        width: 4rem;
+        height: 4rem;
+        inset: -1.25rem;
+        z-index: 2;
       }
 
       &.is-chosen {
@@ -180,6 +194,14 @@
 
         .reaction-paid-background {
           fill: #fff6ec;
+        }
+      }
+
+      &.effect-active {
+        scale: 1.5;
+        .paid-reaction-counter {
+          opacity: 1;
+          transform: translate(-50%, 0);
         }
       }
     }
@@ -322,5 +344,35 @@
     left: 50%;
     transform: translateX(-50%);
     fill: #E78510;
+  }
+
+  .paid-reaction-counter {
+    &::before {
+      content: "+ ";
+    }
+
+    position: absolute;
+    top: -1.75rem;
+    left: 50%;
+    transform: translate(-50%, 0.5rem);
+    z-index: 0;
+
+    opacity: 0;
+    transition: opacity .2s ease-in-out, transform .2s ease-in-out;
+
+    font-family: var(--font-rounded);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.45rem;
+    line-height: 1.75rem;
+    letter-spacing: 0.04em;
+
+    &:before, .animated-super-row {
+      -webkit-text-stroke: 1px #E58E0D;
+      background: linear-gradient(180deg, #FFD55D 0%, #FFBF3E 100%);
+      color: transparent;
+      -webkit-background-clip: text;
+      -moz-background-clip: text;
+      background-clip: text;
+    }
   }
 }

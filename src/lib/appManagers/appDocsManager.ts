@@ -29,6 +29,7 @@ import tsNow from '../../helpers/tsNow';
 import appManagersManager from './appManagersManager';
 import tryPatchMp4 from '../../helpers/fixChromiumMp4';
 import {isDocumentHlsQualityFile} from '../hls/common';
+import {PAID_REACTION_EMOJI_DOCID} from '../customEmoji/constants.js';
 
 export type MyDocument = Document.document;
 

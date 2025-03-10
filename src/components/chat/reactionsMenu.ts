@@ -36,6 +36,7 @@ import PopupPremium from '../popups/premium';
 import contextMenuController from '../../helpers/contextMenuController';
 import callbackify from '../../helpers/callbackify';
 import partition from '../../helpers/array/partition';
+import {PAID_REACTION_EMOJI_DOCID} from '../../lib/customEmoji/constants.js';
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
@@ -312,6 +313,7 @@ export class ChatReactionsMenu {
   // };
 
   private reactionToDocId = (reaction: Reaction) => {
+    if(reaction._ === 'reactionPaid') return PAID_REACTION_EMOJI_DOCID;
     let docId = (reaction as Reaction.reactionCustomEmoji).document_id;
     if(!docId) {
       const availableReaction = this.availableReactions.find((_reaction) => _reaction.reaction === (reaction as Reaction.reactionEmoji).emoticon);
@@ -390,13 +392,21 @@ export class ChatReactionsMenu {
           }
         }
 
-        const reaction: Reaction = emoji.docId ? {
-          _: 'reactionCustomEmoji',
-          document_id: emoji.docId
-        } : {
-          _: 'reactionEmoji',
-          emoticon: emoji.emoji
-        };
+        let reaction: Reaction;
+        if(emoji.docId === PAID_REACTION_EMOJI_DOCID) {
+          reaction = {_: 'reactionPaid'};
+        } else if(emoji.docId) {
+          reaction = {
+            _: 'reactionCustomEmoji',
+            document_id: emoji.docId
+          };
+        } else {
+          reaction = {
+            _: 'reactionEmoji',
+            emoticon: emoji.emoji
+          };
+        }
+
         deferred.resolve(reaction);
         emoticonsDropdown.hideAndDestroy();
       },
@@ -507,7 +517,40 @@ export class ChatReactionsMenu {
     };
 
     this.container.append(reactionDiv);
-    if(!this.canUseAnimations() || !availableReaction) {
+    if(reaction._ === 'reactionPaid') {
+      loadPromises.push(lottieLoader.loadAnimationAsAsset({
+        container: appearWrapper,
+        loop: false,
+        autoplay: true,
+        width: size,
+        height: size,
+        skipRatio: 1,
+        middleware,
+        group: this.animationGroup
+      }, 'StarReactionAppear').then(player => {
+        players.appear = player
+
+
+        const selectLoadPromise = lottieLoader.loadAnimationAsAsset({
+          container: selectWrapper,
+          loop: false,
+          autoplay: false,
+          ...options
+        }, 'StarReactionSelect')
+
+        player.addEventListener('enterFrame', (frameNo) => {
+          if(player.maxFrame === frameNo) {
+            selectLoadPromise.then((selectPlayer) => {
+              assumeType<RLottiePlayer>(selectPlayer);
+              appearWrapper.classList.add('hide');
+              selectWrapper.classList.remove('hide');
+
+              players.select = selectPlayer;
+            }, noop);
+          }
+        });
+      }));
+    } else if(!this.canUseAnimations() || !availableReaction) {
       delete options.needFadeIn;
       delete options.withThumb;
 

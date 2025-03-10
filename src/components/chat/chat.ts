@@ -65,6 +65,7 @@ import PopupElement from '../popups';
 import PopupStars from '../popups/stars';
 import {getPendingPaidReactionKey, PENDING_PAID_REACTIONS} from './reactions';
 import tsNow from '../../helpers/tsNow';
+import {doubleRaf} from '../../helpers/schedulers.js';
 
 export enum ChatType {
   Chat = 'chat',
@@ -1288,9 +1289,17 @@ export default class Chat extends EventListenerBase<{
     const isPaidReaction = options.reaction._ === 'reactionPaid';
     const count = options.count ?? 1;
     if(isPaidReaction) {
+      const key = getPendingPaidReactionKey(options.message as Message.message);
+      let pending = PENDING_PAID_REACTIONS.get(key);
       if(!this.stars()) {
+        let count = 1
+        if(pending) {
+          count += pending.count();
+          pending.abortController.abort();
+        }
+
         PopupElement.createPopup(PopupStars, {
-          itemPrice: 1,
+          itemPrice: count,
           onTopup: () => {
             this.sendReaction(options);
           },
@@ -1301,28 +1310,29 @@ export default class Chat extends EventListenerBase<{
         return;
       }
 
-      const key = getPendingPaidReactionKey(options.message as Message.message);
-      let pending = PENDING_PAID_REACTIONS.get(key);
       if(!pending) {
         const [count, setCount] = createSignal(0);
         const [sendTime, setSendTime] = createSignal(0);
+        const abortController = new AbortController();
+        abortController.signal.addEventListener('abort', () => {
+          clearTimeout(pending.sendTimeout);
+          pending.setSendTime(0);
+          PENDING_PAID_REACTIONS.delete(key);
+          setReservedStars((reservedStars) => reservedStars - pending.count());
+          rootScope.dispatchEventSingle('messages_reactions', [{
+            message: this.getMessageByPeer(options.message.peerId, options.message.mid) as Message.message,
+            changedResults: [],
+            removedResults: []
+          }]);
+        });
+
         PENDING_PAID_REACTIONS.set(key, pending = {
           count,
           setCount,
           sendTime,
           setSendTime,
           sendTimeout: 0,
-          cancel: () => {
-            clearTimeout(pending.sendTimeout);
-            pending.setSendTime(0);
-            PENDING_PAID_REACTIONS.delete(key);
-            setReservedStars((reservedStars) => reservedStars - pending.count());
-            rootScope.dispatchEventSingle('messages_reactions', [{
-              message: this.getMessageByPeer(options.message.peerId, options.message.mid) as Message.message,
-              changedResults: [],
-              removedResults: []
-            }]);
-          }
+          abortController
         });
       } else {
         clearTimeout(pending.sendTimeout);
@@ -1331,8 +1341,13 @@ export default class Chat extends EventListenerBase<{
       pending.setCount((_count) => _count + count);
       pending.setSendTime(Date.now() + SEND_PAID_REACTION_DELAY);
       pending.sendTimeout = window.setTimeout(() => {
-        pending.cancel();
-        // alert('yeah');
+        const count = pending.count();
+        pending.abortController.abort();
+        this.managers.appReactionsManager.sendReaction({
+          sendAsPeerId: this.getMessageSendingParams().sendAsPeerId,
+          ...options,
+          count
+        });
       }, SEND_PAID_REACTION_DELAY);
 
       setReservedStars((reservedStars) => reservedStars + count);

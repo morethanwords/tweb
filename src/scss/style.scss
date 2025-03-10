@@ -32,6 +32,12 @@
 
 @import "mixins";
 
+@font-face {
+  font-family: 'Numbers Rounded';
+  src: url('assets/fonts/Numbers-Rounded.woff2') format('woff2');
+  unicode-range: U+0030-0039, U+002B, U+002D;
+}
+
 :root {
   --vh: 1vh;
   --z-below: -1;
@@ -120,6 +126,7 @@
   --menu-backdrop-filter: blur(50px);
   --font-regular: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   --font-monospace: 'Roboto Mono', monospace;
+  --font-rounded: -ui-rounded, "Numbers Rounded", "Roboto", "Helvetica Neue", sans-serif;
   --font-weight-bold: 500;
   --font-weight-normal: 400;
   --selection-background-color: rgba(var(--primary-color-rgb), .4);
@@ -454,6 +461,8 @@
 @import "partials/mediaEditor";
 @import "partials/foldersSidebar";
 @import "partials/limitLine";
+@import "partials/animatedSuper";
+@import "partials/sparkles";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -1296,91 +1305,6 @@ not screen and (                min-resolution: 2dppx) {
       text-shadow: 0px 0 3px rgba(0, 0, 0, 0.45);
     }
   }
-}
-
-.animated-super {
-  &-row {
-    --translateY: 100%;
-    position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    transition: transform var(--pm-transition), opacity var(--pm-transition);
-
-    body.animation-level-0 & {
-      transition: none;
-    }
-
-    /* &:not(.is-hiding) {
-      transform: none !important;
-    } */
-
-    &.is-hiding {
-      opacity: 0;
-
-      &.from-top {
-        transform: translate3d(0, calc(var(--translateY) * -1), 0);
-        //transform: translateY(calc(var(--translateY) * -1));
-        //transform: translateY(-100%);
-      }
-
-      &.from-bottom {
-        transform: translate3d(0, var(--translateY), 0);
-        //transform: translateY(var(--translateY));
-        //transform: translateY(100%);
-      }
-
-      /* &.backwards {
-        opacity: 1;
-        transform: translateY(0) !important;
-      } */
-    }
-  }
-}
-
-.animated-counter {
-  display: inline-flex;
-
-  &-decimal {
-    position: relative;
-
-    &-placeholder {
-      color: transparent;
-    }
-
-    &-wrapper {
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      right: 0;
-    }
-
-    /* &:not(:first-child) {
-      .animated-super {
-        &-row {
-          &.is-hiding {
-            &.from-top {
-              transform: translateY(100%);
-            }
-
-            &.from-bottom {
-              transform: translateY(-100%);
-            }
-          }
-        }
-      }
-    } */
-  }
-
-  /* &.from-top {
-    .animated-super-row.is-hiding {
-      &.from-top {
-        transform: translateY(100%) !important;
-      }
-    }
-  } */
 }
 
 // *:not(input):not(textarea) {

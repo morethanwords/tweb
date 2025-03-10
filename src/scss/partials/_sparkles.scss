@@ -1,0 +1,25 @@
+.sparkles-container {
+  pointer-events: none;
+
+  font-size: 0.5rem;
+}
+
+.sparkles-sparkle {
+  position: absolute;
+
+  animation: sparkle 5s infinite;
+}
+
+@keyframes sparkle {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--sparkle-tx), var(--sparkle-ty));
+  }
+}

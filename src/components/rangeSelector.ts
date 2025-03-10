@@ -144,7 +144,7 @@ export default class RangeSelector {
     if(this.useTransform) {
       this.filled.style.transform = `scaleX(${percents})`;
     } else if(this.useProperty) {
-      this.filled.style.setProperty('--progress', '' + percents);
+      this.container.style.setProperty('--progress', '' + percents);
     } else {
       this.filled.style.width = (percents * 100) + '%';
     }

@@ -13,6 +13,7 @@ import {SEND_PAID_REACTION_DELAY} from '../../lib/mtproto/mtproto_config';
 import showTooltip from '../tooltip';
 import type {PendingPaidReaction} from './reactions';
 import type ReactionsElement from './reactions';
+import {AnimatedCounter} from '../animatedCounter.js';
 
 export default function showPaidReactionTooltip(props: {
   reactionsElement: ReactionsElement,
@@ -60,16 +61,20 @@ export default function showPaidReactionTooltip(props: {
     const radius = 10;
     const circumference = radius * 2 * Math.PI;
 
+    const countdown = new AnimatedCounter({reverse: false})
+    createEffect(() => countdown.setCount(secondsLeft()))
+
     const {close} = showTooltip({
-      element: props.reactionElement,
+      element: props.reactionsElement,
       container: props.reactionsElement,
       vertical: 'top',
+      class: 'paid-reaction-tooltip',
       textElement: title.element,
       subtitleElement: subtitle.element,
       rightElement: (
         <span
           class="tooltip-undo"
-          onClick={() => props.pending.cancel()}
+          onClick={() => props.pending.abortController.abort()}
         >
           {i18n('StarsSentUndo')}
           <span class="tooltip-undo-timer">
@@ -83,12 +88,14 @@ export default function showPaidReactionTooltip(props: {
                 stroke-dasharray={`${progressCircumference()} ${circumference}`}
               ></circle>
             </svg>
-            <span class="tooltip-undo-timer-number">{'' + secondsLeft()}</span>
+            <span class="tooltip-undo-timer-number">
+              {countdown.container}
+            </span>
           </span>
         </span>
       ),
       icon: 'star',
-      mountOn: props.reactionElement,
+      mountOn: props.reactionsElement,
       relative: true
     });
   });

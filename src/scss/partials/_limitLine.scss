@@ -163,28 +163,4 @@
     color: #fff;
     --limit-background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
   }
-
-  &-slider {
-    --height: 1.875rem;
-    --thumb-size: 1.625rem;
-    --focus-scale: 1;
-    width: 100%;
-    border-radius: 1rem;
-    background-color: var(--limit-line-empty-background);
-
-    .progress-line {
-      &__filled {
-        border-radius: inherit;
-        min-width: var(--height);
-        background: linear-gradient(90deg, #FFAA00, #FFCD3A);
-        width: calc(var(--progress) * 100% + var(--height) * (1 - var(--progress)));
-
-        &:after {
-          background-color: #fff;
-          inset-inline-end: .9375rem;
-          box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, .1);
-        }
-      }
-    }
-  }
 }

@@ -16,6 +16,7 @@ const KEEP_TOOLTIP = true;
 const tooltipOverlayClickHandler = new OverlayClickHandler(undefined, true);
 export default function showTooltip({
   element,
+  class: className,
   container = element.parentElement,
   vertical,
   textElement,
@@ -31,6 +32,7 @@ export default function showTooltip({
   rightElement
 }: {
   element: HTMLElement,
+  class?: string,
   container?: HTMLElement,
   vertical: 'top' | 'bottom',
   textElement?: HTMLElement,
@@ -82,7 +84,7 @@ export default function showTooltip({
     const tooltip = (
       <div
         ref={div}
-        class={classNames('tooltip', 'tooltip-' + vertical, icon && 'tooltip-with-icon')}
+        class={classNames('tooltip', 'tooltip-' + vertical, icon && 'tooltip-with-icon', className)}
         style={!relative && getStyle()}
       >
         <div class="tooltip-part tooltip-background"></div>

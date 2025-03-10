@@ -36,7 +36,7 @@ export type PendingPaidReaction = {
   sendTime: Accessor<number>,
   setSendTime: Setter<number>,
   sendTimeout: number,
-  cancel: () => void
+  abortController: AbortController,
 };
 
 const PENDING_PAID_REACTIONS: Map<string, PendingPaidReaction> = new Map();
@@ -307,11 +307,19 @@ export default class ReactionsElement extends HTMLElement {
 
     if(pendingPaidReaction) {
       paidReactionElement.style.setProperty('--width', paidReactionElement.getBoundingClientRect().width + 'px');
-      !this.hasPaidTooltip && showPaidReactionTooltip({
-        pending: pendingPaidReaction,
-        reactionElement: paidReactionElement,
-        reactionsElement: this
-      });
+      paidReactionElement.paidReactionCounter.setCount(pendingPaidReaction.count());
+      if(!this.hasPaidTooltip) {
+        paidReactionElement.classList.add('effect-active');
+        pendingPaidReaction.abortController.signal.addEventListener('abort', () => {
+          paidReactionElement.classList.remove('effect-active');
+          paidReactionElement.querySelectorAll('.reaction-sticker-activate').forEach((it) => it.remove());
+        });
+        showPaidReactionTooltip({
+          pending: pendingPaidReaction,
+          reactionElement: paidReactionElement,
+          reactionsElement: this
+        })
+      }
     }
 
     callbackifyAll(customEmojiElements, (customEmojiElements) => {
