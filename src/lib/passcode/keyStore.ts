@@ -12,6 +12,16 @@ export default class EncryptionKeyStore extends StaticUtilityClass {
     return this.key;
   }
 
+  public static async getAsBase64() {
+    const key = await this.get();
+    if(!key) return null;
+
+    const exportedKey = await crypto.subtle.exportKey('raw', key);
+    const base64Key = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
+
+    return base64Key;
+  }
+
   public static save(key: CryptoKey | null) {
     this.key = key;
     this.deferred?.resolve();

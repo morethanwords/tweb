@@ -42,8 +42,10 @@ import {ActiveAccountNumber} from '../accounts/types';
 import makeError from '../../helpers/makeError';
 import EncryptedStorageLayer from '../encryptedStorageLayer';
 import {getCommonDatabaseState} from '../../config/databases/state';
+import EncryptionKeyStore from '../passcode/keyStore';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 /**
- * To not be used in an ApiManager instance
+ * To not be used in an ApiManager instance as there is no account number attached to it
  */
 import globalRootScope from '../rootScope';
 
@@ -355,6 +357,13 @@ export class ApiManager extends ApiManagerMethods {
       } else {
         await AccountController.shiftAccounts(accountNumber);
         await AppStoragesManager.shiftStorages(accountNumber);
+
+        if(await DeferredIsUsingPasscode.isUsingPasscode()) {
+          // Keep the screen unlocked even if the user logs out
+          await sessionStorage.set({
+            encryption_key: await EncryptionKeyStore.getAsBase64()
+          });
+        }
       }
       IDB.closeDatabases();
       this.rootScope.dispatchEvent('logging_out', {accountNumber, migrateTo: migrateAccountTo});

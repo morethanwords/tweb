@@ -890,7 +890,7 @@ export class AppSidebarLeft extends SidebarSlider {
                   chatListEl.classList.add('chatlist-exiting');
                   await pause(200);
 
-                  await this.setEncryptionHashBeforeSwitchingAccounts();
+                  await this.saveEncryptionKeyBeforeSwitchingAccounts();
                 }
                 changeAccount(accountNumber, newTab);
               }
@@ -917,18 +917,14 @@ export class AppSidebarLeft extends SidebarSlider {
     return buttonMenuToggle;
   }
 
-  private async setEncryptionHashBeforeSwitchingAccounts() {
+  private async saveEncryptionKeyBeforeSwitchingAccounts() {
     const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
     if(!isUsingPasscode) return;
 
     const openTabs = apiManagerProxy.getOpenTabsCount();
 
-    const key = await EncryptionKeyStore.get();
-    const exportedKey = await crypto.subtle.exportKey('raw', key);
-    const base64Key = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
-
     openTabs <= 1 && await sessionStorage.set({
-      encryption_key: base64Key
+      encryption_key: await EncryptionKeyStore.getAsBase64()
     });
   }
 
