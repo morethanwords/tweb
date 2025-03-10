@@ -6,11 +6,12 @@
 
 import ctx from '../../environment/ctx';
 import {IS_SAFARI} from '../../environment/userAgent';
+import assumeType from '../../helpers/assumeType';
 import safeAssign from '../../helpers/object/safeAssign';
 import debounce from '../../helpers/schedulers/debounce';
 import {GroupCallParticipantVideoSourceGroup, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, Update} from '../../layer';
 import {emojiFromCodePoints} from '../../vendor/emoji';
-import type {CallId} from '../appManagers/appCallsManager';
+import type {AppCallsManager, CallId} from '../appManagers/appCallsManager';
 import type {AppManagers} from '../appManagers/managers';
 import {logger} from '../logger';
 import apiManagerProxy from '../mtproto/mtprotoworker';
@@ -59,7 +60,7 @@ export default class CallInstance extends CallInstanceBase<{
 
   public createdAt: number;
   public connectedAt: number;
-  public discardReason: string;
+  public discardReason: PhoneCallDiscardReason;
 
   private managers: AppManagers;
 
@@ -298,7 +299,7 @@ export default class CallInstance extends CallInstanceBase<{
     return this.connectionInstance?.description;
   }
 
-  public setHangUpTimeout(timeout: number, reason: PhoneCallDiscardReason['_']) {
+  public setHangUpTimeout(timeout: number, reason: Parameters<CallInstance['hangUp']>[0]) {
     this.clearHangUpTimeout();
     this.hangUpTimeout = ctx.setTimeout(() => {
       this.hangUpTimeout = undefined;
@@ -637,10 +638,16 @@ export default class CallInstance extends CallInstanceBase<{
     });
   }
 
-  public async hangUp(discardReason?: PhoneCallDiscardReason['_'], discardedByOtherParty?: boolean) {
+  public async hangUp(
+    discardReason?: PhoneCallDiscardReason | Exclude<PhoneCallDiscardReason['_'], PhoneCallDiscardReason.phoneCallDiscardReasonAllowGroupCall['_']>,
+    discardedByOtherParty?: boolean
+  ) {
     if(this.isClosing) {
       return;
     }
+
+    discardReason = typeof(discardReason) === 'string' ? {_: discardReason} : discardReason;
+    assumeType<PhoneCallDiscardReason>(discardReason);
 
     this.discardReason = discardReason;
     this.log('hangUp', discardReason);

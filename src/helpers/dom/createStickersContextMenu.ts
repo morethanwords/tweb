@@ -64,7 +64,7 @@ export default function createStickersContextMenu({
 
   const updateEmojiStatusUntil = async(duration: number) => {
     updateEmojiStatus({
-      _: 'emojiStatusUntil',
+      _: 'emojiStatus',
       document_id: doc.id,
       until: tsNow(true) + duration
     });

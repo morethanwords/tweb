@@ -39,6 +39,7 @@ import liteMode from '../../helpers/liteMode';
 import PeerTitle from '../peerTitle';
 import rootScope from '../../lib/rootScope';
 import {IconTsx} from '../iconTsx';
+import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
 
 export default class PopupStarsPay extends PopupElement<{
   finish: (result: PopupPaymentResult) => void
@@ -175,7 +176,7 @@ export default class PopupStarsPay extends PopupElement<{
     } else if(this.subscription) {
       amount = this.subscription.pricing.amount;
     } else {
-      amount = this.transaction.stars;
+      amount = formatStarsAmount(this.transaction.stars);
     }
 
     if(this.isReceipt) {
@@ -266,7 +267,7 @@ export default class PopupStarsPay extends PopupElement<{
     } else if(this.transaction && this.transaction.pFlags.reaction) {
       title = i18n('StarsReactionTitle');
     } else if(this.transaction?.giveaway_post_id) {
-      title = i18n(!this.transaction.id ? 'Stars' : 'StarsGiveawayPrizeReceived', [this.transaction.stars]);
+      title = i18n(!this.transaction.id ? 'Stars' : 'StarsGiveawayPrizeReceived', [formatStarsAmount(this.transaction.stars)]);
       if(!this.transaction.id) {
         subtitle = (
           <span class="popup-stars-pay-boosts">

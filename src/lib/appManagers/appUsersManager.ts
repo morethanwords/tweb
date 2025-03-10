@@ -17,7 +17,7 @@ import cleanUsername from '../../helpers/cleanUsername';
 import tsNow from '../../helpers/tsNow';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {AccountEmojiStatuses, Chat, ContactsResolvedPeer, EmojiStatus, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus} from '../../layer';
+import {AccountEmojiStatuses, Chat, ContactsResolvedPeer, EmojiStatus, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, RequirementToContact, UserProfilePhoto, UserStatus} from '../../layer';
 import parseEntities from '../richTextProcessor/parseEntities';
 import wrapUrl from '../richTextProcessor/wrapUrl';
 import SearchIndex from '../searchIndex';
@@ -58,8 +58,8 @@ export class AppUsersManager extends AppManager {
   private defaultEmojiStatuses: MaybePromise<AccountEmojiStatuses>;
   private recentEmojiStatuses: MaybePromise<AccountEmojiStatuses>;
 
-  private isPremiumRequiredToContactUserIds: Map<UserId, CancellablePromise<boolean>>;
-  private isPremiumRequiredToContactUserIdsProcessing: boolean;
+  private requirementsToContactPromises: Map<UserId, CancellablePromise<RequirementToContact>>;
+  private requirementsToContactProcessing: boolean;
 
   protected after() {
     this.clear(true);
@@ -231,8 +231,8 @@ export class AppUsersManager extends AppManager {
     } else {
       this.users = {};
       this.usernames = {};
-      this.isPremiumRequiredToContactUserIds = new Map();
-      this.isPremiumRequiredToContactUserIdsProcessing = false;
+      this.requirementsToContactPromises = new Map();
+      this.requirementsToContactProcessing = false;
     }
 
     this.getTopPeersPromises = {};
@@ -1226,56 +1226,65 @@ export class AppUsersManager extends AppManager {
     });
   }
 
-  public isPremiumRequiredToContact(userId: UserId, onlyCached?: boolean) {
+  public getRequirementToContact(userId: UserId, onlyCached?: boolean): MaybePromise<RequirementToContact> {
     const user = this.getUser(userId);
-    if(!user || this.rootScope.premium || !user.pFlags.contact_require_premium) {
-      return false;
+    const empty: RequirementToContact = {_: 'requirementToContactEmpty'};
+    if(!user) {
+      return empty;
+    }
+
+    if(!user.send_paid_messages_stars && (!user.pFlags.contact_require_premium || this.rootScope.premium)) {
+      return empty;
     }
 
     const userFull = this.appProfileManager.getCachedFullUser(userId);
-    if(userFull?.pFlags?.contact_require_premium) {
-      return true;
+    if(userFull) {
+      if(userFull.pFlags.contact_require_premium) {
+        return {_: 'requirementToContactPremium'};
+      } else if(userFull.send_paid_messages_stars) {
+        return {_: 'requirementToContactPaidMessages', stars_amount: userFull.send_paid_messages_stars};
+      }
     }
 
     const historyStorage = this.appMessagesManager.getHistoryStorage(userId.toPeerId(false));
-    if(historyStorage.count) {
-      return false;
+    if(historyStorage.count && !user.send_paid_messages_stars) {
+      return empty;
     }
 
     if(onlyCached) {
       return;
     }
 
-    let promise = this.isPremiumRequiredToContactUserIds.get(userId);
+    let promise = this.requirementsToContactPromises.get(userId);
     if(!promise) {
-      this.isPremiumRequiredToContactUserIds.set(userId, promise = deferredPromise());
+      this.requirementsToContactPromises.set(userId, promise = deferredPromise());
     }
 
-    this.getIsPremiumRequiredToContact();
+    this.getRequirementsToContact();
     return promise;
   }
 
-  private getIsPremiumRequiredToContact() {
-    if(this.isPremiumRequiredToContactUserIdsProcessing) {
+  private getRequirementsToContact() {
+    if(this.requirementsToContactProcessing) {
       return;
     }
 
-    this.isPremiumRequiredToContactUserIdsProcessing = true;
+    this.requirementsToContactProcessing = true;
     pause(0).then(() => {
-      const userIds = [...this.isPremiumRequiredToContactUserIds.keys()];
-      this.apiManager.invokeApi('users.getIsPremiumRequiredToContact', {
+      const userIds = [...this.requirementsToContactPromises.keys()];
+      this.apiManager.invokeApi('users.getRequirementsToContact', {
         id: userIds.map((userId) => this.getUserInput(userId))
       }).then((result) => {
-        result.forEach((isPremiumRequired, index) => {
+        result.forEach((requirement, index) => {
           const userId = userIds[index];
-          const promise = this.isPremiumRequiredToContactUserIds.get(userId);
-          promise.resolve(isPremiumRequired);
-          this.isPremiumRequiredToContactUserIds.delete(userId);
+          const promise = this.requirementsToContactPromises.get(userId);
+          promise.resolve(requirement);
+          this.requirementsToContactPromises.delete(userId);
         });
       }).finally(() => {
-        this.isPremiumRequiredToContactUserIdsProcessing = false;
-        if(this.isPremiumRequiredToContactUserIds.size) {
-          this.getIsPremiumRequiredToContact();
+        this.requirementsToContactProcessing = false;
+        if(this.requirementsToContactPromises.size) {
+          this.getRequirementsToContact();
         }
       });
     });

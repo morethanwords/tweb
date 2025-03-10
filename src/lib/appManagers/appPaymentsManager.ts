@@ -7,6 +7,7 @@
 import {HelpPremiumPromo, InputInvoice, InputPaymentCredentials, InputStorePaymentPurpose, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsPaymentResult, PaymentsStarsStatus, StarsTransactionPeer, Update} from '../../layer';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
+import formatStarsAmount from './utils/payments/formatStarsAmount';
 
 export default class AppPaymentsManager extends AppManager {
   private premiumPromo: MaybePromise<HelpPremiumPromo>;
@@ -97,15 +98,9 @@ export default class AppPaymentsManager extends AppManager {
     });
   }
 
-  public getPremiumGiftCodeOptions(peerId: PeerId) {
-    return this.apiManager.invokeApiSingleProcess({
-      method: 'payments.getPremiumGiftCodeOptions',
-      params: {
-        boost_peer: this.appPeersManager.getInputPeerById(peerId)
-      },
-      processResult: (premiumGiftCodeOptions) => {
-        return premiumGiftCodeOptions/* .filter((option) => !option.store_product) */;
-      }
+  public getPremiumGiftCodeOptions(peerId?: PeerId) {
+    return this.apiManager.invokeApiCacheable('payments.getPremiumGiftCodeOptions', {
+      boost_peer: peerId !== undefined ? this.appPeersManager.getInputPeerById(peerId) : undefined
     });
   }
 
@@ -322,6 +317,6 @@ export default class AppPaymentsManager extends AppManager {
     }
 
     (starsStatus as PaymentsStarsStatus).balance = update.balance;
-    this.rootScope.dispatchEvent('stars_balance', update.balance);
+    this.rootScope.dispatchEvent('stars_balance', formatStarsAmount(update.balance));
   };
 }

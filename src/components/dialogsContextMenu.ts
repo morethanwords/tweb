@@ -194,7 +194,7 @@ export default class DialogsContextMenu {
       verify: () => {
         return this.canManageTopics && !!(this.dialog as ForumTopic.forumTopic).pFlags.closed;
       }
-    }, {
+    }, /* {
       icon: 'folder',
       text: 'FilterAddTo',
       onClick: () => {},
@@ -213,7 +213,7 @@ export default class DialogsContextMenu {
         };
       },
       verify: () => false
-    }, {
+    },  */{
       icon: 'delete',
       className: 'danger',
       text: 'Delete',

@@ -34,6 +34,7 @@ import ListenerSetter from '../../../helpers/listenerSetter';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 import appImManager from '../../../lib/appManagers/appImManager';
 import PopupPayment from '../../popups/payment';
+import formatStarsAmount from '../../../lib/appManagers/utils/payments/formatStarsAmount';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
@@ -329,7 +330,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
                     }
                   },
                   pFlags: {},
-                  stars: boost.stars,
+                  stars: formatStarsAmount(boost.stars),
                   giveaway_post_id: boost.giveaway_msg_id
                 },
                 boost

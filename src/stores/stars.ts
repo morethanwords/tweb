@@ -2,11 +2,12 @@ import {Accessor, createMemo, createReaction, createRoot, createSignal, onCleanu
 import {Middleware} from '../helpers/middleware';
 import useDynamicCachedValue from '../helpers/solid/useDynamicCachedValue';
 import rootScope from '../lib/rootScope';
+import formatStarsAmount from '../lib/appManagers/utils/payments/formatStarsAmount';
 
 const [stars, setStars] = createSignal<Long>();
 const [reservedStars, setReservedStars] = createSignal<number>(0);
 
-const fetchStars = () => rootScope.managers.appPaymentsManager.getStarsStatus(true).then((starsStatus) => setStars(starsStatus.balance));
+const fetchStars = () => rootScope.managers.appPaymentsManager.getStarsStatus(true).then((starsStatus) => setStars(formatStarsAmount(starsStatus.balance)));
 
 export function prefetchStars(middleware: Middleware) {
   return createRoot((dispose) => {

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document, MessagesSavedReactionTags, SavedReactionTag, AvailableEffect, MessagesAvailableEffects, MessageReactions} from '../../layer';
+import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document, MessagesSavedReactionTags, SavedReactionTag, AvailableEffect, MessagesAvailableEffects, MessageReactions, PaidReactionPrivacy} from '../../layer';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import assumeType from '../../helpers/assumeType';
@@ -57,7 +57,6 @@ export type SendReactionOptions = {
   onlyLocal?: boolean,
   onlyReturn?: boolean,
   sendAsPeerId?: PeerId,
-  private?: boolean,
   count?: number
 };
 
@@ -443,7 +442,6 @@ export class AppReactionsManager extends AppManager {
     onlyLocal,
     onlyReturn,
     sendAsPeerId,
-    private: _private,
     count
   }: SendReactionOptions): Promise<MessageReactions> {
     message = this.appMessagesManager.getMessageByPeer(message.peerId, message.mid) as Message.message;
@@ -584,7 +582,7 @@ export class AppReactionsManager extends AppManager {
             count: 0,
             pFlags: {
               my: true,
-              anonymous: _private || undefined
+              anonymous: sendAsPeerId === undefined ? true : undefined
             }
           };
         }
@@ -691,12 +689,21 @@ export class AppReactionsManager extends AppManager {
       const uniqueId = bigInt(currentTime).shiftLeft(32).or(randomPart);
       const randomId = uniqueId.toString();
 
+      let privacy: PaidReactionPrivacy;
+      if(sendAsPeerId === undefined) {
+        privacy = {_: 'paidReactionPrivacyAnonymous'};
+      } else if(sendAsPeerId === this.appPeersManager.peerId) {
+        privacy = {_: 'paidReactionPrivacyDefault'};
+      } else {
+        privacy = {_: 'paidReactionPrivacyPeer', peer: this.appPeersManager.getInputPeerById(sendAsPeerId)};
+      }
+
       this.apiManager.invokeApi('messages.sendPaidReaction', {
         count,
         msg_id: msgId,
         peer: this.appPeersManager.getInputPeerById(peerId),
         random_id: randomId,
-        private: _private
+        private: privacy
       }).then(onUpdates);
       return;
     }

@@ -1,4 +1,5 @@
 import {JSX} from 'solid-js';
+import type {MiddlewareHelper} from '../../../helpers/middleware';
 
 export type FolderItemPayload = {
   id?: number,
@@ -8,5 +9,6 @@ export type FolderItemPayload = {
     count: number,
     muted: boolean
   },
-  chatsCount?: number | null
-}
+  chatsCount?: number | null,
+  middlewareHelper?: MiddlewareHelper
+};

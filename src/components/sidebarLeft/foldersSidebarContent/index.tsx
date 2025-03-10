@@ -2,7 +2,7 @@ import {createEffect, createRoot, createSignal, For, onCleanup, onMount} from 's
 import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
 
-import {Middleware} from '../../../helpers/middleware';
+import {getMiddleware, Middleware} from '../../../helpers/middleware';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 import pause from '../../../helpers/schedulers/pause';
@@ -23,6 +23,8 @@ import ripple from '../../ripple';
 import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
 import type {FolderItemPayload} from './types';
 import FolderItem from './folderItem';
+import wrapFolderTitle from '../../wrappers/folderTitle';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
 
 
 export function FoldersSidebarContent(props: {
@@ -35,6 +37,8 @@ export function FoldersSidebarContent(props: {
     AppEditFolderTab,
     showLimitPopup
   } = useHotReloadGuard();
+
+  const middlewareHelper = createMiddleware();
 
   const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
   const [folderItems, setFolderItems] = createStore<FolderItemPayload[]>([]);
@@ -54,7 +58,12 @@ export function FoldersSidebarContent(props: {
 
   function updateFolderItem(folderId: number, payload: Partial<FolderItemPayload>) {
     const idx = folderItems.findIndex((item) => item.id === folderId);
+    if(idx === -1) {
+      return;
+    }
+
     const folderItem = folderItems[idx];
+    folderItem.middlewareHelper?.destroy();
     setFolderItems(idx, reconcile({...folderItem, ...payload}));
   }
 
@@ -74,24 +83,28 @@ export function FoldersSidebarContent(props: {
   }
 
   async function makeFolderItemPayload(filter: MyDialogFilter): Promise<FolderItemPayload> {
-    function wrapTitle(title: string) {
+    function wrapTitle(title: DocumentFragment) {
       const span = document.createElement('span');
       // Needs to be in an actual element
-      span.append(wrapEmojiText(title));
+      span.append(title);
       return span;
     }
 
-    const [notifications, folder] = await Promise.all([
+    const _middlewareHelper = middlewareHelper.get().create();
+
+    const [notifications, folder, title] = await Promise.all([
       getNotificationCountForFilter(filter.id, rootScope.managers),
-      rootScope.managers.dialogsStorage.getFolder(filter.id)
+      rootScope.managers.dialogsStorage.getFolder(filter.id),
+      filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapFolderTitle(filter.title, _middlewareHelper.get()).then(wrapTitle)
     ]);
 
     return {
       id: filter.id,
-      name: filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapTitle(filter.title),
+      name: title,
       icon: getIconForFilter(filter),
       notifications: notifications,
-      chatsCount: folder?.dialogs?.length || 0
+      chatsCount: folder?.dialogs?.length || 0,
+      middlewareHelper: _middlewareHelper
     };
   }
 
@@ -119,6 +132,8 @@ export function FoldersSidebarContent(props: {
 
     if(existingItemIndex === -1) return;
 
+    const item = items[existingItemIndex];
+    item.middlewareHelper?.destroy();
     items.splice(existingItemIndex, 1);
     setFolderItems(items);
   }

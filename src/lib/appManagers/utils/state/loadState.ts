@@ -177,6 +177,8 @@ const STATE_STEPS = {
     if(writer.state.version !== STATE_VERSION || writer.state.build !== BUILD/*  || true */) {
       if(writer.state.build < 526) { // * drop all previous migrations
         writer.reset();
+      } else if(writer.state.build < 562) { // * drop filtersArr
+        writer.push('filtersArr', copy(STATE_INIT.filtersArr));
       }
 
       if(compareVersion(writer.state.version, STATE_VERSION) !== 0) {

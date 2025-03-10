@@ -128,7 +128,12 @@ export class AppCallsManager extends AppManager {
     return this.savePhonePhoneCall(phonePhoneCall);
   }
 
-  public async discardCall(callId: CallId, duration: number, reason: PhoneCallDiscardReason['_'], video?: boolean) {
+  public async discardCall(
+    callId: CallId,
+    duration: number,
+    reason: PhoneCallDiscardReason,
+    video?: boolean
+  ) {
     if(!this.getCall(callId)) {
       return;
     }
@@ -137,9 +142,7 @@ export class AppCallsManager extends AppManager {
       video,
       peer: this.getCallInput(callId),
       duration,
-      reason: {
-        _: reason
-      },
+      reason,
       connection_id: '0'
     });
 

@@ -845,7 +845,7 @@ export default class Chat extends EventListenerBase<{
       this.managers.appPeersManager.isBot(peerId),
       this.managers.appMessagesManager.isAnonymousSending(peerId),
       peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),
-      peerId.isUser() && this.managers.appUsersManager.isPremiumRequiredToContact(peerId.toUserId(), true)
+      this.isPremiumRequiredToContact(peerId)
     ]));
 
     // ! WARNING: TEMPORARY, HAVE TO GET TOPIC
@@ -1172,12 +1172,13 @@ export default class Chat extends EventListenerBase<{
     });
   }
 
-  public isPremiumRequiredToContact() {
-    if(!this.peerId.isUser()) {
+  public isPremiumRequiredToContact(peerId = this.peerId) {
+    if(!peerId.isUser()) {
       return Promise.resolve(false);
     }
 
-    return this.managers.appUsersManager.isPremiumRequiredToContact(this.peerId.toUserId(), true);
+    return this.managers.appUsersManager.getRequirementToContact(peerId.toUserId(), true)
+    .then((requirement) => requirement._ === 'requirementToContactPremium');
   }
 
   public getMessageSendingParams(): MessageSendingParams {
