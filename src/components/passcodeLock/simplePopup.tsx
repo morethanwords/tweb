@@ -1,13 +1,13 @@
 import {Component, JSX, onCleanup, onMount} from 'solid-js';
+import {Transition} from 'solid-transition-group';
 import {Portal} from 'solid-js/web';
 
+import pause from '../../helpers/schedulers/pause';
 import {i18n} from '../../lib/langPack';
 
 import ripple from '../ripple'; ripple; // keep
 
 import styles from './simplePopup.module.scss';
-import {Transition} from 'solid-transition-group';
-import pause from '../../helpers/schedulers/pause';
 
 const SimplePopup: Component<{
   visible?: boolean;
