@@ -26,6 +26,7 @@ import {setEnvironment} from '../../environment/utils';
 import cryptoMessagePort from '../crypto/cryptoMessagePort';
 import EncryptionKeyStore from '../passcode/keyStore';
 import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+import {onBackgroundsFetch} from './backgrounds';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -253,6 +254,11 @@ const onFetch = (event: FetchEvent): void => {
 
       case 'hls_stream': {
         onHlsStreamFetch(event, params, search);
+        break;
+      }
+
+      case 'backgrounds': {
+        onBackgroundsFetch(event);
         break;
       }
 

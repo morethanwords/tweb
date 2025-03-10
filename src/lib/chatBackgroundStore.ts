@@ -37,6 +37,11 @@ class ChatBackgroundStore extends StaticUtilityClass {
     return `backgrounds/${slug}${blur ? '?blur' : ''}`;
   }
 
+  public static hasWallPaperStorageUrl(slug: string, blur?: boolean) {
+    const storageUrl = this.getWallPaperStorageUrl(slug, blur);
+    return this.cacheStorage.has(storageUrl);
+  }
+
   public static getBackground({
     slug,
     canDownload,

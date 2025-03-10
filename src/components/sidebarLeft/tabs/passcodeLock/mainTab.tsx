@@ -132,7 +132,7 @@ const PasscodeSetContent = () => {
   const {rootScope, setQuizHint} = useHotReloadGuard();
 
   const options = [
-    {value: null, label: () => i18n('PasscodeLock.Disabled')},
+    {value: 0, label: () => i18n('PasscodeLock.Disabled')},
     {value: 1, label: () => i18n('MinutesShort', [1])},
     {value: 5, label: () => i18n('MinutesShort', [5])},
     {value: 10, label: () => i18n('MinutesShort', [10])},
@@ -144,7 +144,7 @@ const PasscodeSetContent = () => {
   const [isOpen, setIsOpen] = createSignal(false);
 
   const [lockTimeout, {mutate: mutateLockTimeout}] = createResource(() => rootScope.managers.appStateManager.getState().then(state =>
-    state?.settings?.passcode?.autoLockTimeoutMins || null
+    state?.settings?.passcode?.autoLockTimeoutMins || 0
   ));
 
   const [shortcutEnabled, {mutate: mutateShortcutEnabled}] = createResource(() =>

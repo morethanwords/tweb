@@ -1,15 +1,14 @@
-import {createEffect, on, onCleanup, onMount} from 'solid-js';
+import {createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 
-import {SETTINGS_INIT} from '../../config/state';
-import {DEFAULT_BACKGROUND_SLUG} from '../../config/app';
 import {useLockScreenHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
-import ChatBackgroundStore from '../../lib/chatBackgroundStore';
-import {logger} from '../../lib/logger';
-import ListenerSetter from '../../helpers/listenerSetter';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
-import {getColorsFromWallPaper} from '../../helpers/color';
+import ChatBackgroundStore from '../../lib/chatBackgroundStore';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
+import {getColorsFromWallPaper} from '../../helpers/color';
+import ListenerSetter from '../../helpers/listenerSetter';
+import {DEFAULT_BACKGROUND_SLUG} from '../../config/app';
+import {SETTINGS_INIT} from '../../config/state';
 import {WallPaper} from '../../layer';
 
 import ChatBackgroundGradientRenderer from '../chat/gradientRenderer';
@@ -24,7 +23,6 @@ type StateStore = {
   gradientCanvas?: HTMLCanvasElement;
 };
 
-const log = logger('my-debug');
 
 const Background = () => {
   const {themeController} = useLockScreenHotReloadGuard();
@@ -36,12 +34,17 @@ const Background = () => {
     isMobile: mediaSizes.activeScreen === ScreenSize.mobile
   });
 
+  const [url, setUrl] = createSignal<string>();
+
   async function getBackgroundURL(slug: string) {
     if(slug === DEFAULT_BACKGROUND_SLUG) {
-      return 'assets/img/pattern.svg' // ChatBackgroundStore.getWallPaperStorageUrl(slug);
+      return 'assets/img/pattern.svg'
     }
 
-    return ChatBackgroundStore.getBackground({slug});
+    const hasInCache = await ChatBackgroundStore.hasWallPaperStorageUrl(slug);
+    if(!hasInCache) throw new Error('No background with this slug found in cache');
+
+    return ChatBackgroundStore.getWallPaperStorageUrl(slug);
   }
 
   async function tryGetBackgroundURL(slug: string) {
@@ -102,6 +105,8 @@ const Background = () => {
       intensity,
       wallPaper
     } = await getBackgroundParameters();
+
+    setUrl(backgroundUrl);
 
     let
       image: HTMLImageElement,
@@ -203,6 +208,7 @@ const Background = () => {
       {store.gradientCanvas}
       {store.patternCanvas}
       {store.image}
+      {url() && <img class={styles.CanvasCommon} style={{visibility: 'hidden'}} src={url()} />}
     </div>
   );
 };

@@ -2605,7 +2605,6 @@ export class AppDialogsManager {
 
     let placeholder: ReturnType<AppDialogsManager['generateEmptyPlaceholder']>, type: 'dialogs' | 'folder';
     if(!this.filterId) {
-      // Check here for placeholder too
       placeholder = this.generateEmptyPlaceholder({
         title: 'ChatList.Main.EmptyPlaceholder.Title',
         classNameType: type = 'dialogs'

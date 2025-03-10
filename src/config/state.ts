@@ -100,7 +100,7 @@ export type StateSettings = {
   chatContextMenuHintWasShown: boolean,
   passcode: {
     enabled: boolean,
-    autoLockTimeoutMins: number | null,
+    autoLockTimeoutMins: number, // number | null is not working, gets reset after reloading the page
     lockShortcutEnabled: boolean,
     lockShortcut: PasscodeLockShortcutKey[],
     canAttemptAgainOn: number | null
@@ -352,7 +352,7 @@ export const SETTINGS_INIT: StateSettings = {
   },
   passcode: {
     enabled: false,
-    autoLockTimeoutMins: null,
+    autoLockTimeoutMins: 0,
     lockShortcutEnabled: false,
     lockShortcut: ['Alt'],
     canAttemptAgainOn: null

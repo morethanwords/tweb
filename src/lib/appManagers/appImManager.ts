@@ -452,7 +452,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('toggle_locked', (isLocked) => {
-      if(isLocked) appRuntimeManager.reload();
+      if(isLocked) appRuntimeManager.reload(false);
     //   (() => {
     //     if(isLocked) {
     //       [

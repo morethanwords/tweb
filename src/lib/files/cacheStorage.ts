@@ -129,6 +129,11 @@ export default class CacheStorageController implements FileStorage {
     return caches.delete(this.dbName);
   }
 
+  public async has(entryName: string) {
+    const response = await this.timeoutOperation((cache) => cache.match('/' + entryName));
+    return !!response;
+  }
+
   public async get(entryName: string) {
     await this.waitToEnable();
 
