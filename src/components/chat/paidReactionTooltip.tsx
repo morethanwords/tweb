@@ -12,8 +12,8 @@ import {SEND_PAID_REACTION_DELAY} from '../../lib/mtproto/mtproto_config';
 import showTooltip from '../tooltip';
 import type {PendingPaidReaction} from './reactions';
 import type ReactionsElement from './reactions';
-import {AnimatedCounter} from '../animatedCounter.js';
-import appImManager from '../../lib/appManagers/appImManager.js';
+import {AnimatedCounter} from '../animatedCounter';
+import appImManager from '../../lib/appManagers/appImManager';
 
 export default function showPaidReactionTooltip(props: {
   reactionsElement: ReactionsElement,

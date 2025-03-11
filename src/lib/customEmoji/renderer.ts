@@ -25,8 +25,8 @@ import CustomEmojiElement, {CustomEmojiElements} from './element';
 import assumeType from '../../helpers/assumeType';
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
 import {observeResize, unobserveResize} from '../../components/resizeObserver';
-import {PAID_REACTION_EMOJI_DOCID} from './constants.js';
-import lottieLoader from '../rlottie/lottieLoader.js';
+import {PAID_REACTION_EMOJI_DOCID} from './constants';
+import lottieLoader from '../rlottie/lottieLoader';
 
 const globalLazyLoadQueue = new LazyLoadQueue();
 

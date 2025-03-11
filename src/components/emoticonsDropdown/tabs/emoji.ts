@@ -49,7 +49,7 @@ import EmoticonsTabC from '../tab';
 import flatten from '../../../helpers/array/flatten';
 import SuperStickerRenderer from './SuperStickerRenderer';
 import StickersTab from './stickers';
-import {PAID_REACTION_EMOJI_DOCID} from '../../../lib/customEmoji/constants.js';
+import {PAID_REACTION_EMOJI_DOCID} from '../../../lib/customEmoji/constants';
 
 
 const loadedURLs: Set<string> = new Set();

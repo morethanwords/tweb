@@ -51,8 +51,6 @@ import {Accessor, createEffect, createRoot, createSignal, on, untrack} from 'sol
 import TopbarSearch from './topbarSearch';
 import createUnifiedSignal from '../../helpers/solid/createUnifiedSignal';
 import liteMode from '../../helpers/liteMode';
-import deepEqual from '../../helpers/object/deepEqual';
-import getSearchType from '../../lib/appManagers/utils/messages/getSearchType';
 import {useFullPeer} from '../../stores/fullPeers';
 import {useAppState} from '../../stores/appState';
 import {unwrap} from 'solid-js/store';
@@ -64,8 +62,6 @@ import useStars, {setReservedStars} from '../../stores/stars';
 import PopupElement from '../popups';
 import PopupStars from '../popups/stars';
 import {getPendingPaidReactionKey, PENDING_PAID_REACTIONS} from './reactions';
-import tsNow from '../../helpers/tsNow';
-import {doubleRaf} from '../../helpers/schedulers.js';
 
 export enum ChatType {
   Chat = 'chat',

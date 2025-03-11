@@ -32,9 +32,9 @@ import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {savedReactionTags} from './reactions';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 import {StarsStar} from '../popups/stars';
-import {Sparkles} from '../sparkles.js';
-import {AnimatedCounter} from '../animatedCounter.js';
-import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt.js';
+import {Sparkles} from '../sparkles';
+import {AnimatedCounter} from '../animatedCounter';
+import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';

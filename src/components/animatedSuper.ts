@@ -1,4 +1,4 @@
-import {getMiddleware, MiddlewareHelper} from '../helpers/middleware.js';
+import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
 
 export interface AnimatedSuperOptions {
   duration?: number;

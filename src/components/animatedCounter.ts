@@ -1,5 +1,5 @@
-import {fastRaf} from '../helpers/schedulers.js';
-import {AnimatedSuper} from './animatedSuper.js';
+import {fastRaf} from '../helpers/schedulers';
+import {AnimatedSuper} from './animatedSuper';
 
 export interface AnimatedCounterOptions {
   reverse?: boolean;

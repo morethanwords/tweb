@@ -36,7 +36,7 @@ import PopupPremium from '../popups/premium';
 import contextMenuController from '../../helpers/contextMenuController';
 import callbackify from '../../helpers/callbackify';
 import partition from '../../helpers/array/partition';
-import {PAID_REACTION_EMOJI_DOCID} from '../../lib/customEmoji/constants.js';
+import {PAID_REACTION_EMOJI_DOCID} from '../../lib/customEmoji/constants';
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';

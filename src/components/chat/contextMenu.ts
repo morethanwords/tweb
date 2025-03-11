@@ -75,7 +75,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
 import flatten from '../../helpers/array/flatten';
 import PopupStarReaction from '../popups/starReaction';
-import {PENDING_PAID_REACTIONS} from './reactions.js';
+import {PENDING_PAID_REACTIONS} from './reactions';
 import getUniqueCustomEmojisFromMessage from '../../lib/appManagers/utils/messages/getUniqueCustomEmojisFromMessage';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {

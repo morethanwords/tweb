@@ -24,8 +24,8 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import {Message} from '../../layer';
 import {logger} from '../../lib/logger';
 import PopupElement from '../popups';
-import {AnimatedSuper} from '../animatedSuper.js';
-import {AnimatedCounter} from '../animatedCounter.js';
+import {AnimatedSuper} from '../animatedSuper';
+import {AnimatedCounter} from '../animatedCounter';
 
 const ALWAYS_FLOATING = false;
 

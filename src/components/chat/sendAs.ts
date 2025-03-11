@@ -10,7 +10,7 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import liteMode from '../../helpers/liteMode';
 import {getMiddleware} from '../../helpers/middleware';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
-import safeAssign from '../../helpers/object/safeAssign.js';
+import safeAssign from '../../helpers/object/safeAssign';
 import {Chat} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
