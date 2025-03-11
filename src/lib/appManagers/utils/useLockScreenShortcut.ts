@@ -55,9 +55,9 @@ const _useLockScreenShortcut = () => {
 
     if(!shortcutKeys()?.length) return;
 
-    const combo = [...shortcutKeys(), 'L'].join('+');
+    const combo = [...shortcutKeys(), 'KeyL'].join('+');
 
-    const isShiftLockShortcut = combo === 'Shift+L';
+    const isShiftLockShortcut = combo === 'Shift+KeyL';
     appImManager.isShiftLockShortcut = isShiftLockShortcut;
 
     const removeListener = addShortcutListener([combo], (_, event) => {
