@@ -7,13 +7,13 @@
 import {createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
 import {animate} from '../../helpers/animation';
 import eachSecond from '../../helpers/eachSecond';
-import tsNow from '../../helpers/tsNow';
 import I18n, {i18n} from '../../lib/langPack';
 import {SEND_PAID_REACTION_DELAY} from '../../lib/mtproto/mtproto_config';
 import showTooltip from '../tooltip';
 import type {PendingPaidReaction} from './reactions';
 import type ReactionsElement from './reactions';
 import {AnimatedCounter} from '../animatedCounter.js';
+import appImManager from '../../lib/appManagers/appImManager.js';
 
 export default function showPaidReactionTooltip(props: {
   reactionsElement: ReactionsElement,
@@ -65,8 +65,10 @@ export default function showPaidReactionTooltip(props: {
     createEffect(() => countdown.setCount(secondsLeft()))
 
     const {close} = showTooltip({
-      element: props.reactionsElement,
-      container: props.reactionsElement,
+      element: appImManager.chat.bubbles.container,
+      container: appImManager.chat.bubbles.container,
+      mountOn: appImManager.chat.bubbles.container,
+      relative: true,
       vertical: 'top',
       class: 'paid-reaction-tooltip',
       textElement: title.element,
@@ -94,9 +96,7 @@ export default function showPaidReactionTooltip(props: {
           </span>
         </span>
       ),
-      icon: 'star',
-      mountOn: props.reactionsElement,
-      relative: true
+      icon: 'star'
     });
   });
 }

@@ -53,6 +53,7 @@ export type PeerAvailableReactions = {
 
 export type SendReactionOptions = {
   message: Message.message | ReactionsContext,
+  privacy?: PaidReactionPrivacy,
   reaction?: Reaction | AvailableReaction,
   onlyLocal?: boolean,
   onlyReturn?: boolean,
@@ -69,7 +70,7 @@ export class AppReactionsManager extends AppManager {
   // private lastSendingTimes: Map<string, number>;
   private reactions: {[key in 'recent' | 'top' | 'tags']?: Reaction[]};
   private savedReactionsTags: Map<PeerId, MaybePromise<SavedReactionTag[]>>;
-  private paidReactionPrivacy?: Update.updatePaidReactionPrivacy
+  private paidReactionPrivacy?: PaidReactionPrivacy
 
   protected after() {
     this.clear(true);
@@ -115,7 +116,7 @@ export class AppReactionsManager extends AppManager {
         this.setSavedReactionTags(savedPeerId, tags);
       },
       updatePaidReactionPrivacy: (upd) => {
-        this.paidReactionPrivacy = upd
+        this.paidReactionPrivacy = upd.private
       }
     });
 
@@ -944,7 +945,7 @@ export class AppReactionsManager extends AppManager {
     })
 
     const upd = (res as Updates.updates).updates[0] as Update.updatePaidReactionPrivacy
-    this.paidReactionPrivacy = upd
-    return upd
+    this.paidReactionPrivacy = upd.private
+    return upd.private
   }
 }

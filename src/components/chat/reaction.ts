@@ -376,7 +376,7 @@ export default class ReactionElement extends HTMLElement {
       this.stickerContainer.append(StarsStar() as HTMLElement);
 
 
-      this.paidReactionCounter = new AnimatedCounter({reverse: false});
+      this.paidReactionCounter = new AnimatedCounter({reverse: false, prefix: '+'});
       this.paidReactionCounter.setCount(0);
       this.paidReactionCounter.container.classList.add('paid-reaction-counter');
       this.appendChild(this.paidReactionCounter.container);

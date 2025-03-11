@@ -1,8 +1,11 @@
+import {animateSingle} from '../helpers/animation.js';
+import {fastRaf} from '../helpers/schedulers.js';
 import {AnimatedSuper} from './animatedSuper.js';
 
 export interface AnimatedCounterOptions {
   reverse?: boolean;
   duration?: number;
+  prefix?: string
 }
 
 export class AnimatedCounter {
@@ -14,6 +17,7 @@ export class AnimatedCounter {
     placeholder: HTMLElement,
     animatedSuper: AnimatedSuper
   }[] = [];
+  prefixContainer?: HTMLElement;
   previousNumber = 0;
   clearTimeout: number;
 
@@ -25,6 +29,14 @@ export class AnimatedCounter {
     this.duration = options.duration ?? AnimatedSuper.DEFAULT_DURATION;
     this.container = document.createElement('div');
     this.container.className = AnimatedCounter.BASE_CLASS;
+
+    if(options.prefix) {
+      const prefixContainer = document.createElement('div');
+      prefixContainer.className = AnimatedCounter.BASE_CLASS + '-decimal-prefix';
+      prefixContainer.innerText = options.prefix;
+      this.container.append(prefixContainer);
+      this.prefixContainer = prefixContainer;
+    }
   }
 
   getDecimal(index: number) {
@@ -76,6 +88,7 @@ export class AnimatedCounter {
   setCount(number: number) {
     // this.prepareNumber(number);
 
+    const nextRows: HTMLElement[] = [];
     const previousByDecimal = Array.from('' + this.previousNumber).map((n) => +n);
     const byDecimal = Array.from('' + number).map((n) => +n);
     byDecimal.forEach((decimalNumber, idx) => {
@@ -83,8 +96,17 @@ export class AnimatedCounter {
       const row = decimal.animatedSuper.getRow(decimalNumber, true);
       const previousDecimalNumber = previousByDecimal[idx] ?? AnimatedCounter.EMPTY_INDEX;
       row.innerText = decimal.placeholder.innerText = '' + decimalNumber;
+      nextRows.push(row);
       decimal.animatedSuper.animate(decimalNumber, previousDecimalNumber, this.reverse ? number < this.previousNumber : number > this.previousNumber, true);
     });
+
+    fastRaf(() => {
+      let nextWidth = nextRows.reduce((sum, row) => sum + row.clientWidth, 0);
+      if(this.prefixContainer) {
+        nextWidth += this.prefixContainer.clientWidth;
+      }
+      this.container.style.setProperty('--width', nextWidth + 'px');
+    })
 
     this.hideLeft(number);
     // this.clear(number);

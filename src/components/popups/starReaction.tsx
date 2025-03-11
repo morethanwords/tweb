@@ -8,13 +8,13 @@ import PopupElement from '.';
 import I18n, {i18n} from '../../lib/langPack';
 import wrapPeerTitle, {PeerTitleTsx} from '../wrappers/peerTitle';
 import {StarsBalance} from './stars';
-import {createEffect, createMemo, createSignal, For, onMount, Show} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import {easeOutCircApply} from '../../helpers/easing/easeOutCirc';
 import RowTsx from '../rowTsx';
 import CheckboxField from '../checkboxField';
 import {replaceButtonIcon} from '../button';
 import rootScope from '../../lib/rootScope.js';
-import {Message} from '../../layer.js';
+import {Message, MessageReactor, PaidReactionPrivacy} from '../../layer.js';
 import {AvatarNewTsx} from '../avatarNew.jsx';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId.js';
 import {IconTsx} from '../iconTsx.jsx';
@@ -29,7 +29,8 @@ import debounce from '../../helpers/schedulers/debounce.js';
 import {Sparkles} from '../sparkles.js';
 import ChatSendAs from '../chat/sendAs.js';
 import Icon from '../icon.js';
-import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent.js';
+import {attachClickEvent} from '../../helpers/dom/clickEvent.js';
+import {lerp} from '../mediaEditor/utils.js';
 
 export default class PopupStarReaction extends PopupElement {
   constructor(private peerId: PeerId, private mid: number) {
@@ -49,11 +50,11 @@ export default class PopupStarReaction extends PopupElement {
   }
 
   private _construct(params: {
-    defaultSendAs?: PeerId | 'anonymous',
+    defaultSendAs?: PaidReactionPrivacy,
     peerTitle: HTMLElement,
     message: Message.message
   }) {
-    const {defaultSendAs = rootScope.myId, peerTitle, message} = params;
+    const {defaultSendAs, peerTitle, message} = params;
     this.footer.append(this.btnConfirm);
     this.body.after(this.footer);
 
@@ -64,16 +65,17 @@ export default class PopupStarReaction extends PopupElement {
 
     const sendAsContainer = document.createElement('div');
     sendAsContainer.classList.add('popup-stars-send-as');
-    attachClickEvent(sendAsContainer, () => {
-      simulateClickEvent(sendAsContainer.querySelector('.btn-menu-toggle') as HTMLElement);
-    });
     this.header.append(sendAsContainer);
 
     this.header.append(StarsBalance() as HTMLElement);
 
     const maximumStars = 2500;
     const [starsSliderValue, setStarsSliderValue] = createSignal<number>(0.1983); // 50 stars
-    const [sendAsPeerId, setSendAsPeerId] = createSignal(defaultSendAs);
+    const [sendAsPeerId, setSendAsPeerId] = createSignal<'anonymous' | PeerId>(
+      (!defaultSendAs || defaultSendAs._ === 'paidReactionPrivacyDefault') ? rootScope.myId :
+        defaultSendAs._ === 'paidReactionPrivacyAnonymous' ? 'anonymous' :
+          getPeerId(defaultSendAs.peer)
+    );
 
     const starsCount = () => {
       const value$ = starsSliderValue();
@@ -86,7 +88,6 @@ export default class PopupStarReaction extends PopupElement {
       const sendAsPeerId$ = sendAsPeerId();
       this.managers.appReactionsManager.sendReaction({
         sendAsPeerId: sendAsPeerId$ === 'anonymous' ? undefined : sendAsPeerId$,
-        private: sendAsPeerId$ === 'anonymous', // todo layer 199
         message,
         reaction: {_: 'reactionPaid'},
         count: starsCount()
@@ -108,7 +109,7 @@ export default class PopupStarReaction extends PopupElement {
 
     const checkboxField = new CheckboxField({
       text: 'StarsReactionShowMeInTopSenders',
-      checked: defaultSendAs !== 'anonymous'
+      checked: defaultSendAs?._ !== 'paidReactionPrivacyAnonymous'
     });
     checkboxField.input.addEventListener('change', () => {
       setSendAsPeerId(checkboxField.checked ? sendAs.getSendAsPeerId() : 'anonymous')
@@ -122,6 +123,7 @@ export default class PopupStarReaction extends PopupElement {
 
     const sendAs = new ChatSendAs({
       managers: this.managers,
+      menuContainer: sendAsContainer,
       onReady: (el) => {
         sendAsContainer.replaceChildren(
           el,
@@ -147,22 +149,25 @@ export default class PopupStarReaction extends PopupElement {
       const sliderTipPosition = starsSliderValue$ * parentWidth + 30 * (1 - starsSliderValue$) - 15;
 
       const hintLeft = sliderTipPosition - hintWidth / 2
-      const maxHintLeft = parentWidth - hintWidth;
-      const hintLeftClamped = clamp(hintLeft, 0, maxHintLeft)
+      const maxHintLeft = parentWidth - hintWidth - 8;
+      const hintLeftClamped = clamp(hintLeft, 8, maxHintLeft)
       hintRef.style.setProperty('--left', hintLeftClamped + 'px');
 
       const halfTailWidth = 23;
       const tailLeft = sliderTipPosition - halfTailWidth;
-      tailRef.style.setProperty('--tail-left', tailLeft + 'px');
+      tailRef.style.setProperty('--tail-left', clamp(tailLeft, 0, parentWidth - 46) + 'px');
       tailRef.style.setProperty('--tail-left-relative', String(clamp((sliderTipPosition - hintLeftClamped) / hintWidth, 0, 1)));
 
-      const radiusLeftBottom = tailLeft > 12 ? 24 : clamp(tailLeft * 2, 4, 24);
 
+      const leftProgress = tailLeft < 16 ? (8 + tailLeft) / 24 : 1;
       const tailRight = parentWidth - tailLeft - 46
-      tailRef.style.setProperty('--tail-right', tailRight + 'px')
-      const radiusRightBottom = tailRight > 12 ? 24 : clamp(tailRight * 2, 4, 24);
+      const rightProgress = tailRight < 16 ? (8 + tailRight) / 24 : 1;
+
+      const radiusLeftBottom = leftProgress === 1 ? 24 : lerp(0, 24, leftProgress)
+      const radiusRightBottom = rightProgress === 1 ? 24 : lerp(0, 24, rightProgress);
 
       hintRef.style.setProperty('--border-radius', `24px 24px ${radiusRightBottom}px ${radiusLeftBottom}px`);
+      tailRef.style.setProperty('--translate-y', lerp(-20, 0, Math.min(leftProgress, rightProgress)) + 'px');
     }
 
     const updateCounterDebounced = debounce(hintCounter.setCount.bind(hintCounter), 10, true, true);
@@ -216,7 +221,7 @@ export default class PopupStarReaction extends PopupElement {
         mode="progress"
       />
     )
-    range.container.appendChild(sparkles as HTMLElement);
+    range.container.querySelector('.progress-line__filled').appendChild(sparkles as HTMLElement);
 
     return (
       <>
@@ -241,10 +246,10 @@ export default class PopupStarReaction extends PopupElement {
           </div>
           <div class="popup-star-reaction-senders-list">
             <For each={topSendersWithMe()}>
-              {(sender) => {
+              {(sender: MessageReactor.messageReactor) => {
                 const peerId = getPeerId(sender.peer_id);
                 const anonymous = sender.pFlags.anonymous;
-                const res = (
+                let ret = (
                   <div
                     class={classNames('popup-star-reaction-senders-item', !anonymous && 'is-clickable')}
                     onClick={() => {
@@ -278,13 +283,15 @@ export default class PopupStarReaction extends PopupElement {
                   </div>
                 );
 
-                if(anonymous) return res
+                if(!anonymous) {
+                  ret = (
+                    <Ripple>
+                      {ret}
+                    </Ripple>
+                  )
+                }
 
-                return (
-                  <Ripple>
-                    {res}
-                  </Ripple>
-                )
+                return ret;
               }}
             </For>
           </div>
@@ -309,8 +316,7 @@ export default class PopupStarReaction extends PopupElement {
     this.appendSolid(() => this._construct({
       peerTitle,
       message: message as Message.message,
-      // todo: send as peer (needs layer 199)
-      defaultSendAs: privacy.private ? 'anonymous' : undefined
+      defaultSendAs: privacy
     }));
     this.show();
   }

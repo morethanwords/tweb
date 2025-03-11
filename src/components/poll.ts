@@ -147,7 +147,7 @@ export const setQuizHint = (options: {
   onHide?: () => void,
   appendTo: HTMLElement,
   from: 'top' | 'bottom',
-  duration: number,
+  duration?: number,
   icon?: Icon
 }) => {
   if(prevQuizHint) {
@@ -199,7 +199,7 @@ export const setQuizHint = (options: {
 
   prevQuizHint = element;
   prevQuizHintOnHide = options.onHide;
-  const timeout = prevQuizHintTimeout = window.setTimeout(hide, options.duration);
+  const timeout = prevQuizHintTimeout = options.duration && window.setTimeout(hide, options.duration);
 
   if(!isListenerSet) {
     isListenerSet = true;

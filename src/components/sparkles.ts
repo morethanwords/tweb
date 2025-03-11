@@ -1,4 +1,5 @@
 import {createEffect, on} from 'solid-js';
+import {template} from 'solid-js/web'
 
 export interface Sparkle {
   x: number;
@@ -39,17 +40,16 @@ export function generateProgressSparkle(): Sparkle {
 }
 
 
+const sparkleTemplate = template(`<svg class="sparkles-sparkle" viewBox="0 0 7 7" xmlns="http://www.w3.org/2000/svg" height="1em" width="1em"><use href="#star-sparkle"></use></svg>`);
 function renderSparkle(sparkle: Sparkle) {
-  const div = document.createElement('div');
-  div.classList.add('sparkles-sparkle');
-  div.style.setProperty('--sparkle-tx', sparkle.translateX + '%');
-  div.style.setProperty('--sparkle-ty', sparkle.translateY + '%');
-  div.style.transform = `scale(${sparkle.scale})`;
-  div.style.top = sparkle.y + '%';
-  div.style.left = sparkle.x + '%';
-  div.style.animationDelay = '-' + sparkle.delay + 'ms';
-  div.textContent = '✦'
-  return div;
+  const svg = sparkleTemplate() as HTMLElement;
+  svg.style.setProperty('--sparkle-tx', sparkle.translateX + '%');
+  svg.style.setProperty('--sparkle-ty', sparkle.translateY + '%');
+  svg.style.transform = `scale(${sparkle.scale})`;
+  svg.style.top = sparkle.y + '%';
+  svg.style.left = sparkle.x + '%';
+  svg.style.animationDelay = '-' + sparkle.delay + 'ms';
+  return svg;
 }
 
 export type SparklesProps =

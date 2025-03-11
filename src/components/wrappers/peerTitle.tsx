@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createEffect, createResource, JSX, on, Suspense} from 'solid-js';
+import {createEffect, createResource, JSX, on, onMount, Suspense} from 'solid-js';
 import PeerTitle, {PeerTitleOptions} from '../peerTitle';
 
 export default async function wrapPeerTitle(options: PeerTitleOptions) {
@@ -14,10 +14,7 @@ export default async function wrapPeerTitle(options: PeerTitleOptions) {
 }
 
 export function PeerTitleTsx(props: PeerTitleOptions & { fallback?: JSX.Element }) {
-  const [resource] = createResource(() => wrapPeerTitle(props));
-  return (
-    <Suspense fallback={props.fallback}>
-      {resource()}
-    </Suspense>
-  )
+  const peerTitle = new PeerTitle();
+  createEffect(() => peerTitle.update(props));
+  return peerTitle.element;
 }

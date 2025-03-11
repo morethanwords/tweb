@@ -34,6 +34,7 @@ export interface ChatSendAsOptions {
   onReady: (container: HTMLElement, skipAnimation?: boolean) => void,
   onChange: (sendAsPeerId: PeerId) => void
   forPaidReaction?: boolean,
+  menuContainer?: HTMLElement
 }
 
 export default class ChatSendAs {
@@ -54,6 +55,7 @@ export default class ChatSendAs {
   private onReady: ChatSendAsOptions['onReady'];
   private onChange: ChatSendAsOptions['onChange'];
   private forPaidReaction: ChatSendAsOptions['forPaidReaction'];
+  private menuContainer: ChatSendAsOptions['menuContainer'];
 
   constructor(options: ChatSendAsOptions) {
     safeAssign(this, options);
@@ -110,8 +112,8 @@ export default class ChatSendAs {
     ButtonMenuToggle({
       buttonOptions: {noRipple: true},
       listenerSetter: this.listenerSetter,
-      container: this.container,
-      direction: this.forPaidReaction ? 'bottom-right' : 'top-right',
+      container: this.menuContainer ?? this.container,
+      direction: this.forPaidReaction ? 'bottom-center' : 'top-right',
       buttons: sendAsButtons,
       onOpenBefore: () => {
         onSendAsMenuToggle(true);
@@ -317,21 +319,7 @@ export default class ChatSendAs {
       if(!middleware()) return;
 
       Promise.all([
-        this.forPaidReaction ?
-          // todo: needs layer 199
-          Promise.resolve([
-            {
-              _: 'sendAsPeer',
-              peer: {_: 'peerUser', user_id: rootScope.myId},
-              pFlags: {}
-            },
-            {
-              _: 'sendAsPeer',
-              peer: {_: 'peerChannel', channel_id: chatId},
-              pFlags: {}
-            }
-          ] as ReturnType<typeof this.managers.appChatsManager.getSendAs>) :
-          this.managers.appChatsManager.getSendAs(chatId),
+        this.managers.appChatsManager.getSendAs(chatId, this.forPaidReaction),
         apiManagerProxy.isPremiumFeaturesHidden()
       ]).then(([sendAsPeers, isPremiumFeaturesHidden]) => {
         if(!middleware()) return;
