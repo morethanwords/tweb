@@ -28,7 +28,6 @@ import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 import tsNow from '../../helpers/tsNow';
 import appManagersManager from './appManagersManager';
 import tryPatchMp4 from '../../helpers/fixChromiumMp4';
-import {isDocumentHlsQualityFile} from '../hls/common';
 
 export type MyDocument = Document.document;
 

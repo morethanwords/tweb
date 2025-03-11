@@ -1886,9 +1886,9 @@ export default class ChatInput {
 
     if(this.chat && (this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion)) {
       let firstChange = true;
-      this.sendAs = new ChatSendAs(
-        this.managers,
-        (container, skipAnimation) => {
+      this.sendAs = new ChatSendAs({
+        managers: this.managers,
+        onReady: (container, skipAnimation) => {
           let useRafs = 0;
           if(!container.parentElement) {
             this.newMessageWrapper.prepend(container);
@@ -1897,7 +1897,7 @@ export default class ChatInput {
 
           this.updateOffset('as', true, skipAnimation, useRafs);
         },
-        (sendAsPeerId) => {
+        onChange: (sendAsPeerId) => {
           this.sendAsPeerId = sendAsPeerId;
 
           // do not change placeholder earlier than finishPeerChange does
@@ -1910,7 +1910,7 @@ export default class ChatInput {
             this.updateMessageInputPlaceholder(params);
           });
         }
-      );
+      });
     } else {
       this.sendAs = undefined;
     }

@@ -26,11 +26,15 @@ import deferredPromise from '../../helpers/cancellablePromise';
 import callbackifyAll from '../../helpers/callbackifyAll';
 import BezierEasing from '../../vendor/bezierEasing';
 import safePlay from '../../helpers/dom/safePlay';
-import lottieLoader from '../../lib/rlottie/lottieLoader';
+import lottieLoader, {LottieAssetName} from '../../lib/rlottie/lottieLoader';
 import Scrollable from '../scrollable';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {savedReactionTags} from './reactions';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
+import {StarsStar} from '../popups/stars';
+import {Sparkles} from '../sparkles';
+import {AnimatedCounter} from '../animatedCounter';
+import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -261,6 +265,7 @@ export default class ReactionElement extends HTMLElement {
   public hasAroundAnimation: Promise<void>;
   public isUnread: boolean;
   private hasTitle: boolean;
+  public paidReactionCounter: AnimatedCounter;
 
   constructor() {
     super();
@@ -365,6 +370,16 @@ export default class ReactionElement extends HTMLElement {
 
       this.customEmojiElement.docId = reaction.document_id;
       return this.customEmojiElement;
+    } else if(reaction._ === 'reactionPaid') {
+      this.classList.add('is-paid');
+      this.appendChild(Sparkles({mode: 'button', isDiv: true}));
+      this.stickerContainer.append(StarsStar() as HTMLElement);
+
+
+      this.paidReactionCounter = new AnimatedCounter({reverse: false, prefix: '+'});
+      this.paidReactionCounter.setCount(0);
+      this.paidReactionCounter.container.classList.add('paid-reaction-counter');
+      this.appendChild(this.paidReactionCounter.container);
     }
   }
 
@@ -529,12 +544,14 @@ export default class ReactionElement extends HTMLElement {
       availableReaction,
       genericEffect,
       sticker,
-      onlyAround
+      onlyAround,
+      assetName
     }: {
       availableReaction?: AvailableReaction,
       genericEffect?: Document.document,
       sticker?: Document.document,
       onlyAround?: boolean
+      assetName?: LottieAssetName
     }) => {
       const size = genericEffect ? options.sizes.genericEffect : options.sizes.size;
       const div = genericEffect ? undefined : document.createElement('div');
@@ -546,7 +563,7 @@ export default class ReactionElement extends HTMLElement {
       const textColor = options.textColor || 'primary-text-color';
 
       const aroundParams: Parameters<typeof wrapStickerAnimation>[0] = {
-        doc: genericEffect || availableReaction.around_animation,
+        doc: genericEffect || availableReaction?.around_animation,
         size: genericEffect ? genericEffectSize : options.sizes.effectSize,
         target: options.stickerContainer,
         side: 'center',
@@ -557,7 +574,15 @@ export default class ReactionElement extends HTMLElement {
         scrollable: options.scrollable
       };
 
-      const aroundResult = wrapStickerAnimation(aroundParams);
+      const aroundResult = assetName ? lottieLoader.loadAnimationAsAsset({
+        width: options.sizes.effectSize,
+        height: options.sizes.effectSize,
+        skipRatio: 1,
+        autoplay: false,
+        middleware: options.middleware,
+        container: div,
+        noCache: true
+      }, assetName) : wrapStickerAnimation(aroundParams).stickerPromise;
       const genericResult = genericEffect && wrapStickerAnimation({
         ...aroundParams,
         doc: isGenericMasked ? aroundParams.doc : sticker,
@@ -589,7 +614,7 @@ export default class ReactionElement extends HTMLElement {
           genericResult.stickerPromise :
           stickerResult,
 
-        aroundResult.stickerPromise,
+        aroundResult,
 
         stickerResult as any as Promise<(HTMLImageElement | HTMLVideoElement)[]>,
 
@@ -762,7 +787,11 @@ export default class ReactionElement extends HTMLElement {
     if(reaction._ === 'reactionEmoji') {
       promise = onEmoticon(undefined, reaction.emoticon);
     } else if(reaction._ === 'reactionPaid') {
-      promise = Promise.resolve();
+      promise = Promise.resolve()
+      onAvailableReaction({
+        onlyAround: true,
+        assetName: `StarReactionEffect${getUnsafeRandomInt(1, 3)}` as LottieAssetName
+      })
     } else {
       promise = callbackify(options.managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id), (doc) => {
         return onEmoticon(doc);

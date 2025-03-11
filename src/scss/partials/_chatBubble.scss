@@ -2661,6 +2661,10 @@
       }
     }
   }
+
+  &:has(.reaction.is-paid.effect-active) {
+    z-index: 3;
+  }
 }
 
 .webpage {

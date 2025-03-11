@@ -11,6 +11,7 @@ import clamp from '../helpers/number/clamp';
 import {doubleRaf} from '../helpers/schedulers';
 import {_i18n, i18n} from '../lib/langPack';
 import Icon from './icon';
+import RangeSelector from './rangeSelector';
 
 type LimitLineProgressElements = {
   from1: HTMLElement,
@@ -22,7 +23,6 @@ type LimitLineProgressElements = {
 export default class LimitLine {
   public container: HTMLElement;
   protected line: HTMLElement;
-  protected progressLimitLine: LimitLine;
   protected left: HTMLElement;
   protected right: HTMLElement;
   protected hint: HTMLElement;
@@ -38,15 +38,19 @@ export default class LimitLine {
       icon: Icon,
       content?: HTMLElement | string,
       noStartEnd?: boolean
-    }
+      renderInsideTrack?: boolean
+    },
+    slider?: (progress: number) => void
+    sliderValue?: number
   }) {
     let container: HTMLElement;
+    let hint: HTMLElement;
 
     if(options.hint) {
       container = document.createElement('div');
       container.classList.add('limit-line-container');
 
-      const hint = this.hint = document.createElement('div');
+      hint = this.hint = document.createElement('div');
       hint.classList.add('limit-line-hint', 'is-locked');
       const i = Icon(options.hint.icon, 'limit-line-hint-icon');
       hint.append(i);
@@ -56,10 +60,17 @@ export default class LimitLine {
       }
 
       this.hintNoStartEnd = options.hint.noStartEnd;
-
       container.append(hint);
     }
 
+    const limit = options.slider ? this.constructSlider(options) : this.constructLine(options, container);
+    this.container = container || limit;
+    if(container) {
+      if(limit) container.append(limit);
+    }
+  }
+
+  private constructLine(options: ConstructorParameters<typeof LimitLine>[0], container?: HTMLElement) {
     const limit = this.line = document.createElement('div');
     limit.classList.add('limit-line');
 
@@ -96,8 +107,25 @@ export default class LimitLine {
     }
 
     limit.append(left, right);
-    this.container = container || limit;
-    container && container.append(limit);
+    return limit;
+  }
+
+  private constructSlider(options: ConstructorParameters<typeof LimitLine>[0]) {
+    const range = new RangeSelector({
+      step: 0.0001,
+      min: 0,
+      max: 1,
+      useProperty: true,
+      offsetAxisValue: 30
+    }, options.sliderValue ?? 0);
+    range.setListeners();
+    range.setHandlers({
+      onScrub: options.slider
+    });
+
+    range.container.classList.add('limit-line-slider');
+
+    return this.line = range.container;
   }
 
   public setProgressElements(progress: LimitLineProgressElements) {
@@ -106,7 +134,11 @@ export default class LimitLine {
   }
 
   // [0..1]
-  public setProgress(progress: number, hintContent?: HTMLElement | string, elements?: LimitLineProgressElements) {
+  public setProgress(
+    progress: number,
+    hintContent?: HTMLElement | string,
+    elements?: LimitLineProgressElements
+  ) {
     const lastProgress = this.lastProgress;
     if(this.hint) {
       this.hint.classList.remove('is-locked');

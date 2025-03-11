@@ -53,6 +53,7 @@ export type PeerAvailableReactions = {
 
 export type SendReactionOptions = {
   message: Message.message | ReactionsContext,
+  privacy?: PaidReactionPrivacy,
   reaction?: Reaction | AvailableReaction,
   onlyLocal?: boolean,
   onlyReturn?: boolean,
@@ -69,6 +70,7 @@ export class AppReactionsManager extends AppManager {
   // private lastSendingTimes: Map<string, number>;
   private reactions: {[key in 'recent' | 'top' | 'tags']?: Reaction[]};
   private savedReactionsTags: Map<PeerId, MaybePromise<SavedReactionTag[]>>;
+  private paidReactionPrivacy?: PaidReactionPrivacy
 
   protected after() {
     this.clear(true);
@@ -112,6 +114,9 @@ export class AppReactionsManager extends AppManager {
         }
 
         this.setSavedReactionTags(savedPeerId, tags);
+      },
+      updatePaidReactionPrivacy: (upd) => {
+        this.paidReactionPrivacy = upd.private
       }
     });
 
@@ -226,8 +231,10 @@ export class AppReactionsManager extends AppManager {
       }
 
       let filteredChatReactions: Reaction[] = [];
+      let paidAvailable = false;
       if(chatAvailableReactions._ === 'chatReactionsAll') {
         filteredChatReactions = topReactions;
+        paidAvailable = true;
       } else if(chatAvailableReactions._ === 'chatReactionsSome') {
         const filteredChatAvailableReactions = chatAvailableReactions.reactions.map((reaction) => {
           return activeAvailableReactions.find((availableReaction) => availableReaction.reaction === (reaction as Reaction.reactionEmoji).emoticon) || reaction;
@@ -246,6 +253,10 @@ export class AppReactionsManager extends AppManager {
 
       if(chatAvailableReactions._ === 'chatReactionsAll' && unshiftQuickReaction) {
         this.unshiftQuickReactionInner(p, quickReaction);
+      }
+
+      if(chatFull._ === 'channelFull' && Boolean(chatFull.pFlags.paid_reactions_available)) {
+        p.reactions.unshift({_: 'reactionPaid'})
       }
 
       return p;
@@ -921,5 +932,20 @@ export class AppReactionsManager extends AppManager {
       tags,
       savedPeerId
     });
+  }
+
+  public async getPaidReactionPrivacy() {
+    if(this.paidReactionPrivacy) {
+      return this.paidReactionPrivacy
+    }
+
+    const res = await this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getPaidReactionPrivacy',
+      params: {}
+    })
+
+    const upd = (res as Updates.updates).updates[0] as Update.updatePaidReactionPrivacy
+    this.paidReactionPrivacy = upd.private
+    return upd.private
   }
 }

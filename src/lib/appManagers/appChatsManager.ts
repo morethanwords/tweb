@@ -725,7 +725,7 @@ export class AppChatsManager extends AppManager {
     }).then(this.onChatUpdated.bind(this, id));
   }
 
-  public getSendAs(channelId: ChatId) {
+  public getSendAs(channelId: ChatId, forPaidReactions: boolean = false) {
     const onResult = (sendAsPeers: ChannelsSendAsPeers) => {
       this.appUsersManager.saveApiUsers(sendAsPeers.users);
       this.saveApiChats(sendAsPeers.chats);
@@ -735,6 +735,7 @@ export class AppChatsManager extends AppManager {
 
     const inputPeer = this.getChannelInputPeer(channelId);
     const result = this.apiManager.invokeApiCacheable('channels.getSendAs', {
+      for_paid_reactions: forPaidReactions,
       peer: inputPeer
     }, {cacheSeconds: 60, syncIfHasResult: true});
     return callbackify(result, onResult);

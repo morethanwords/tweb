@@ -71,7 +71,7 @@ export default function ButtonMenuToggle({
   buttonOptions?: Parameters<typeof ButtonIcon>[1],
   listenerSetter?: ListenerSetter,
   container?: HTMLElement
-  direction: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right',
+  direction: 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right',
   buttons: ButtonMenuItemOptionsVerifiable[],
   onOpenBefore?: (e: Event) => any,
   onOpen?: (e: Event, element: HTMLElement) => any,
@@ -118,6 +118,9 @@ export default function ButtonMenuToggle({
       });
       if(_tempId !== tempId) return;
       _element.classList.add(direction);
+      if(direction === 'bottom-center') {
+        _element.style.setProperty('--parent-half-width', (container.clientWidth / 2) + 'px');
+      }
 
       await onOpen?.(e, _element);
       if(_tempId !== tempId) return;

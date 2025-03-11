@@ -331,7 +331,7 @@ export default function Giveaway(props: {
         {middle}
       </div>
       <div class="bubble-giveaway-row">
-        <div class="bubble-giveaway-row-title">{i18n(isResults ? 'Giveaway.Results.Footer' : 'BoostingWinnersDate', [quantity])}</div>
+        <div class="bubble-giveaway-row-title">{i18n(isResults ? (giveaway.stars ? 'Giveaway.Results.Stars.Winners' : 'Giveaway.Results.Footer') : 'BoostingWinnersDate', [quantity, giveaway.stars])}</div>
         {!isResults && formatFullSentTime(giveaway.until_date)}
       </div>
     </div>
