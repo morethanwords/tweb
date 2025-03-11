@@ -111,7 +111,7 @@ export default class ChatPinnedMessage {
     this.animatedMedia.container.classList.add('pinned-message-media-container');
     dAC.content.prepend(this.animatedMedia.container);
 
-    this.animatedCounter = new AnimatedCounter({reverse: true});
+    this.animatedCounter = new AnimatedCounter({reverse: true, staticWidth: true});
     dAC.title.append(i18n('PinnedMessage'), ' ', this.animatedCounter.container);
 
     const btnClose = this.pinnedMessageContainer.btnClose.cloneNode(true) as HTMLElement;

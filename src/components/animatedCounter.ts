@@ -1,11 +1,11 @@
-import {animateSingle} from '../helpers/animation.js';
 import {fastRaf} from '../helpers/schedulers.js';
 import {AnimatedSuper} from './animatedSuper.js';
 
 export interface AnimatedCounterOptions {
   reverse?: boolean;
   duration?: number;
-  prefix?: string
+  prefix?: string;
+  staticWidth?: boolean;
 }
 
 export class AnimatedCounter {
@@ -23,12 +23,18 @@ export class AnimatedCounter {
 
   reverse: AnimatedCounterOptions['reverse'];
   duration: AnimatedCounterOptions['duration'];
+  staticWidth: AnimatedCounterOptions['staticWidth'];
 
   constructor(options: AnimatedCounterOptions) {
     this.reverse = options.reverse;
     this.duration = options.duration ?? AnimatedSuper.DEFAULT_DURATION;
+    this.staticWidth = options.staticWidth;
     this.container = document.createElement('div');
     this.container.className = AnimatedCounter.BASE_CLASS;
+
+    if(!this.staticWidth) {
+      this.container.classList.add('is-dynamic-width');
+    }
 
     if(options.prefix) {
       const prefixContainer = document.createElement('div');
@@ -100,7 +106,7 @@ export class AnimatedCounter {
       decimal.animatedSuper.animate(decimalNumber, previousDecimalNumber, this.reverse ? number < this.previousNumber : number > this.previousNumber, true);
     });
 
-    fastRaf(() => {
+    if(!this.staticWidth) fastRaf(() => {
       let nextWidth = nextRows.reduce((sum, row) => sum + row.clientWidth, 0);
       if(this.prefixContainer) {
         nextWidth += this.prefixContainer.clientWidth;

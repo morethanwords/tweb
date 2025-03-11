@@ -29,10 +29,13 @@
 
 .animated-counter {
   display: inline-flex;
-  width: 100vw;
-  max-width: var(--width);
-  overflow: hidden;
-  transition: max-width 200ms ease-in-out;
+
+  &.is-dynamic-width {
+    width: 100vw;
+    max-width: var(--width);
+    overflow: hidden;
+    transition: max-width 200ms ease-in-out;
+  }
 
   &-decimal {
     position: relative;
