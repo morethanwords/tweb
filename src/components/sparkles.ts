@@ -1,5 +1,5 @@
 import {createEffect, on} from 'solid-js';
-import {template} from 'solid-js/web'
+import {template} from 'solid-js/web';
 
 export interface Sparkle {
   x: number;
@@ -22,7 +22,7 @@ const BUTTON_SPARKLES: Sparkle[] = [
   {x: 70, y: 65, scale: 1, delay: 4500},
   {x: 80, y: 10, scale: 0.75, delay: 1500},
   {x: 80, y: 45, scale: 1.25, delay: 0}
-].map(it => ({
+].map((it) => ({
   ...it,
   translateX: Math.cos(Math.atan2(-50 + it.y, -50 + it.x)) * 100,
   translateY: Math.sin(Math.atan2(-50 + it.y, -50 + it.x)) * 100
@@ -36,38 +36,44 @@ export function generateProgressSparkle(): Sparkle {
     translateY: (Math.random() * 10 - 5) * 100,
     scale: (Math.random() * 0.5 + 0.5),
     delay: Math.random() * 5000
+  };
+}
+
+
+const sparkleTemplate = template(`<svg viewBox="0 0 7 7" xmlns="http://www.w3.org/2000/svg" height="1em" width="1em"><use href="#star-sparkle"></use></svg>`);
+function renderSparkle(sparkle: Sparkle, isDiv?: boolean) {
+  let element: HTMLElement;
+  if(isDiv) {
+    element = document.createElement('div');
+    element.textContent = '✦';
+  } else {
+    element = sparkleTemplate() as HTMLElement;
   }
+
+  element.classList.add('sparkles-sparkle');
+  element.style.setProperty('--sparkle-tx', sparkle.translateX + '%');
+  element.style.setProperty('--sparkle-ty', sparkle.translateY + '%');
+  element.style.transform = `scale(${sparkle.scale})`;
+  element.style.top = sparkle.y + '%';
+  element.style.left = sparkle.x + '%';
+  element.style.animationDelay = '-' + sparkle.delay + 'ms';
+  return element;
 }
 
-
-const sparkleTemplate = template(`<svg class="sparkles-sparkle" viewBox="0 0 7 7" xmlns="http://www.w3.org/2000/svg" height="1em" width="1em"><use href="#star-sparkle"></use></svg>`);
-function renderSparkle(sparkle: Sparkle) {
-  const svg = sparkleTemplate() as HTMLElement;
-  svg.style.setProperty('--sparkle-tx', sparkle.translateX + '%');
-  svg.style.setProperty('--sparkle-ty', sparkle.translateY + '%');
-  svg.style.transform = `scale(${sparkle.scale})`;
-  svg.style.top = sparkle.y + '%';
-  svg.style.left = sparkle.x + '%';
-  svg.style.animationDelay = '-' + sparkle.delay + 'ms';
-  return svg;
-}
-
-export type SparklesProps =
-  | { mode: 'button' }
-  | { mode: 'progress', count: number };
+export type SparklesProps = {isDiv?: boolean} & ({mode: 'button'} | {mode: 'progress', count: number});
 
 export function Sparkles(props: SparklesProps): HTMLDivElement {
   const container = document.createElement('div');
   container.classList.add('sparkles-container');
 
   if(props.mode === 'button') {
-    container.append(...BUTTON_SPARKLES.map(renderSparkle));
+    container.append(...BUTTON_SPARKLES.map((sparkle) => renderSparkle(sparkle, props.isDiv)));
   } else {
     createEffect(on(() => props.count, (next, prev = 0) => {
       const diff = next - prev;
       if(diff > 0) {
         for(let i = 0; i < diff; i++) {
-          container.appendChild(renderSparkle(generateProgressSparkle()));
+          container.appendChild(renderSparkle(generateProgressSparkle(), props.isDiv));
         }
       } else if(diff < 0) {
         for(let i = 0; i < -diff; i++) {
@@ -75,7 +81,7 @@ export function Sparkles(props: SparklesProps): HTMLDivElement {
           div.remove();
         }
       }
-    }))
+    }));
   }
 
   return container;

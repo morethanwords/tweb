@@ -372,7 +372,7 @@ export default class ReactionElement extends HTMLElement {
       return this.customEmojiElement;
     } else if(reaction._ === 'reactionPaid') {
       this.classList.add('is-paid');
-      this.appendChild(Sparkles({mode: 'button'}));
+      this.appendChild(Sparkles({mode: 'button', isDiv: true}));
       this.stickerContainer.append(StarsStar() as HTMLElement);
 
 
