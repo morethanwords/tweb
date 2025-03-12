@@ -1,16 +1,15 @@
-import {AdjustmentsConfig} from '../adjustments';
-import {MediaEditorContextValue} from '../context';
-import {initPositionBuffer, initTextureBuffer} from './initBuffers';
+import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 
+import {initPositionBuffer, initTextureBuffer} from './initBuffers';
 import {initShaderProgram} from './initShaderProgram';
 import {loadTexture} from './loadTexture';
 
 export type RenderingPayload = Awaited<ReturnType<typeof initWebGL>>;
 
-export async function initWebGL(gl: WebGLRenderingContext, context: MediaEditorContextValue) {
+export async function initWebGL(gl: WebGLRenderingContext, imageSrc: string) {
   const [{vertexShaderSource, fragmentShaderSource}, {texture, image}] = await Promise.all([
     import('./shaderSources'),
-    loadTexture(gl, context.imageSrc)
+    loadTexture(gl, imageSrc)
   ]);
 
   const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
@@ -38,7 +37,7 @@ export async function initWebGL(gl: WebGLRenderingContext, context: MediaEditorC
       uScale: gl.getUniformLocation(shaderProgram, 'uScale'),
       uImageSize: gl.getUniformLocation(shaderProgram, 'uImageSize'),
       ...(Object.fromEntries(
-        context.adjustments.map(({uniform}) => [uniform, gl.getUniformLocation(shaderProgram, uniform)])
+        adjustmentsConfig.map(({uniform}) => [uniform, gl.getUniformLocation(shaderProgram, uniform)])
       ) as Record<AdjustmentsConfig[number]['uniform'], WebGLUniformLocation>)
     }
   };

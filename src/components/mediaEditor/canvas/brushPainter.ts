@@ -1,13 +1,14 @@
 import deferredPromise from '../../../helpers/cancellablePromise';
 import {hexaToRgba} from '../../../helpers/color';
 
+import {NumberPair} from '../types';
 import {animateValue, delay, distance} from '../utils';
 
 export type BrushDrawnLine = {
   color: string;
   brush: string;
   size: number;
-  points: [number, number][];
+  points: NumberPair[];
 };
 
 type BrushPainterOptions = {

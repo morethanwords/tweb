@@ -1,76 +1,60 @@
-import {batch, createEffect, createMemo, createSignal, on, onCleanup, onMount, useContext} from 'solid-js';
+import {batch, createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
+import {modifyMutable, produce} from 'solid-js/store';
 
 import createElementFromMarkup from '../../../helpers/createElementFromMarkup';
 import {i18n} from '../../../lib/langPack';
 
-import MediaEditorContext from '../context';
 import {ResizableLayer, ResizableLayerProps, TextLayerInfo, TextRenderingInfo, TextRenderingInfoLine} from '../types';
 import {fontInfoMap, getContrastColor} from '../utils';
+import {useMediaEditorContext} from '../context';
 
 import {ResizableContainer} from './resizableLayers';
 
 export default function TextLayerContent(props: ResizableLayerProps) {
-  const context = useContext(MediaEditorContext);
-  const [selectedResizableLayer, setSelectedResizableLayer] = context.selectedResizableLayer;
-  const [currentTextLayerInfo, setCurrentTextLayerInfo] = context.currentTextLayerInfo;
-  const [textLayersInfo, setTextLayersInfo] = context.textLayersInfo;
-  const [, setLayers] = context.resizableLayers;
+  const {editorState, mediaState} = useMediaEditorContext();
 
-  const [layer, setLayer] = props.layerSignal;
-
-  if(!layer().textInfo) return;
+  if(!props.layer.textInfo) return;
 
   const onFocus = () => {
-    batch(() => {
-      setSelectedResizableLayer(layer().id);
-      setCurrentTextLayerInfo({
-        color: layer().textInfo.color,
-        alignment: layer().textInfo.alignment,
-        style: layer().textInfo.style,
-        size: layer().textInfo.size,
-        font: layer().textInfo.font
-      });
-    });
+    modifyMutable(editorState, produce(s => {
+      s.selectedResizableLayer;
+      s.currentTextLayerInfo = props.layer.textInfo;
+    }));
   };
 
-  const fontInfo = () => fontInfoMap[layer().textInfo.font];
+  const fontInfo = () => fontInfoMap[props.layer.textInfo.font];
 
   function deleteThisLayer() {
-    let position = -1;
-    let deletedLayer: ResizableLayer;
+    // let position = -1;
+    // let deletedLayer: ResizableLayer;
 
-    setTextLayersInfo((prev) => ({
-      ...prev,
-      [layer().id]: undefined as TextRenderingInfo
-    }));
+    editorState.textLayersInfo[props.layer.id] = undefined;
 
-    setLayers((prev) => {
-      prev = [...prev];
-      position = prev.findIndex((other) => other[0]().id === layer().id);
-      if(position > -1) deletedLayer = prev.splice(position, 1)?.[0][0]?.();
-      return prev;
-    });
+    const layers = mediaState.resizableLayers;
+    const idx = layers.findIndex(layer => layer.id === props.layer.id);
+    if(idx < 0) return;
+    const deletedLayer = layers.splice(idx, 1)[0];
 
-    context.pushToHistory({
-      undo() {
-        batch(() => {
-          setLayers((prev) => {
-            prev = [...prev];
-            if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
-            return prev;
-          });
-          setSelectedResizableLayer(deletedLayer.id);
-        });
-      },
-      redo() {
-        setLayers((prev) => {
-          prev = [...prev];
-          position = prev.findIndex((layer) => layer[0]().id === deletedLayer.id);
-          if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
-          return prev;
-        });
-      }
-    });
+    // context.pushToHistory({
+    //   undo() {
+    //     batch(() => {
+    //       setLayers((prev) => {
+    //         prev = [...prev];
+    //         if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
+    //         return prev;
+    //       });
+    //       setSelectedResizableLayer(deletedLayer.id);
+    //     });
+    //   },
+    //   redo() {
+    //     setLayers((prev) => {
+    //       prev = [...prev];
+    //       position = prev.findIndex((layer) => layer[0]().id === deletedLayer.id);
+    //       if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
+    //       return prev;
+    //     });
+    //   }
+    // });
   }
 
   function updateBackground() {
@@ -117,21 +101,18 @@ export default function TextLayerContent(props: ResizableLayerProps) {
     }
 
     container.querySelector('.media-editor__text-layer-background')?.remove();
-    const lines = getLinesRenderingInfo(contentEditable, layer().textInfo.alignment);
+    const lines = getLinesRenderingInfo(contentEditable, props.layer.textInfo.alignment);
     const path = createTextBackgroundPath(lines);
 
-    if(layer().textInfo.style === 'background') updateBackgroundStyle(container, path.join(' '), layer().textInfo);
-    if(layer().textInfo.style === 'outline') updateOutlineStyle(container, contentEditable, layer().textInfo);
+    if(props.layer.textInfo.style === 'background') updateBackgroundStyle(container, path.join(' '), props.layer.textInfo);
+    if(props.layer.textInfo.style === 'outline') updateOutlineStyle(container, contentEditable, props.layer.textInfo);
 
-    setTextLayersInfo((prev) => ({
-      ...prev,
-      [layer().id]: {
-        width: container.clientWidth,
-        height: container.clientHeight,
-        path,
-        lines
-      }
-    }));
+    editorState.textLayersInfo[props.layer.id] = {
+      width: container.clientWidth,
+      height: container.clientHeight,
+      path,
+      lines
+    };
   }
 
   function selectAll() {
@@ -146,7 +127,7 @@ export default function TextLayerContent(props: ResizableLayerProps) {
     updateBackground();
   });
 
-  const isThisLayerSelected = createMemo(() => layer().id === selectedResizableLayer());
+  const isThisLayerSelected = createMemo(() => props.layer.id === editorState.selectedResizableLayer);
 
   onMount(() => {
     if(isThisLayerSelected()) selectAll();
@@ -164,12 +145,9 @@ export default function TextLayerContent(props: ResizableLayerProps) {
   });
 
   createEffect(
-    on(currentTextLayerInfo, () => {
-      if(selectedResizableLayer() !== layer().id) return;
-      setLayer((prev) => ({
-        ...prev,
-        textInfo: currentTextLayerInfo()
-      }));
+    on(() => editorState.currentTextLayerInfo, () => {
+      if(editorState.selectedResizableLayer !== props.layer.id) return;
+      props.layer.textInfo = editorState.currentTextLayerInfo;
     })
   );
 
@@ -183,12 +161,12 @@ export default function TextLayerContent(props: ResizableLayerProps) {
   let contentEditable: HTMLDivElement;
 
   const color = () => {
-    if(layer().textInfo.style === 'normal') return layer().textInfo.color;
-    return getContrastColor(layer().textInfo.color);
+    if(props.layer.textInfo.style === 'normal') return props.layer.textInfo.color;
+    return getContrastColor(props.layer.textInfo.color);
   };
 
   const intialContent = (() => {
-    const layerInfo = textLayersInfo()[layer().id];
+    const layerInfo = editorState.textLayersInfo[props.layer.id];
     if(!layerInfo) return <div>{i18n('MediaEditor.TypeSomething')}</div>;
     return layerInfo.lines.map((line) => <div>{line.content}</div>);
   })();
@@ -198,14 +176,14 @@ export default function TextLayerContent(props: ResizableLayerProps) {
       ref={container}
       class="media-editor__text-layer"
       classList={{
-        'media-editor__text-layer--with-bg': layer().textInfo.style === 'background'
+        'media-editor__text-layer--with-bg': props.layer.textInfo.style === 'background'
       }}
       style={{
         'color': color(),
-        'font-size': layer().textInfo.size + 'px',
+        'font-size': props.layer.textInfo.size + 'px',
         'font-family': fontInfo().fontFamily,
         'font-weight': fontInfo().fontWeight,
-        '--align-items': flexAlignMap[layer().textInfo.alignment]
+        '--align-items': flexAlignMap[props.layer.textInfo.alignment]
       }}
     >
       <div
@@ -221,7 +199,7 @@ export default function TextLayerContent(props: ResizableLayerProps) {
   ); // Needs to be rendered here for hot reload to work properly
 
   return (
-    <ResizableContainer layerSignal={props.layerSignal} onDoubleClick={() => selectAll()}>
+    <ResizableContainer layer={props.layer}>
       {children}
     </ResizableContainer>
   );

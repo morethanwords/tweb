@@ -1,24 +1,23 @@
-import {createEffect, createReaction, onMount, useContext} from 'solid-js';
+import {createEffect, createReaction, onMount} from 'solid-js';
+import {modifyMutable, produce} from 'solid-js/store';
 
-import MediaEditorContext from '../context';
-import {AdjustmentsConfig} from '../adjustments';
+import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
+import {useMediaEditorContext} from '../context';
 import {initWebGL} from '../webgl/initWebGL';
 import {draw} from '../webgl/draw';
 
 function drawAdjustedImage(gl: WebGLRenderingContext) {
-  const context = useContext(MediaEditorContext);
-  const [renderingPayload] = context.renderingPayload;
-  const [finalTransform] = context.finalTransform;
+  const {editorState, mediaState} = useMediaEditorContext();
 
-  const payload = renderingPayload();
+  const payload = editorState.renderingPayload;
   if(!payload) return;
 
   draw(gl, payload, {
-    ...finalTransform(),
+    ...editorState.finalTransform,
     imageSize: [payload.image.width, payload.image.height],
     ...(Object.fromEntries(
-      context.adjustments.map(({key, signal, to100}) => {
-        const value = signal[0]();
+      adjustmentsConfig.map(({key, to100}) => {
+        const value = mediaState.adjustments[key];
         return [key, value / (to100 ? 100 : 50)];
       })
     ) as Record<AdjustmentsConfig[number]['key'], number>)
@@ -26,38 +25,34 @@ function drawAdjustedImage(gl: WebGLRenderingContext) {
 }
 
 export default function ImageCanvas() {
-  const context = useContext(MediaEditorContext);
-  const [isReady] = context.isReady;
-  const [canvasSize] = context.canvasSize;
-  const [currentImageRatio, setCurrentImageRatio] = context.currentImageRatio;
-  const [, setImageSize] = context.imageSize;
-  const [, setImageCanvas] = context.imageCanvas;
-  const [, setRenderingPayload] = context.renderingPayload;
+  const {editorState, imageSrc} = useMediaEditorContext();
 
   const canvas = (
-    <canvas width={canvasSize()[0] * context.pixelRatio} height={canvasSize()[1] * context.pixelRatio} />
+    <canvas width={editorState.canvasSize[0] * editorState.pixelRatio} height={editorState.canvasSize[1] * editorState.pixelRatio} />
   ) as HTMLCanvasElement;
   const gl = canvas.getContext('webgl', {
     preserveDrawingBuffer: true
   });
 
-  setImageCanvas(canvas);
+  editorState.imageCanvas = canvas;
 
   async function init() {
-    const payload = await initWebGL(gl, context);
-    setRenderingPayload(payload);
-    setImageSize([payload.image.width, payload.image.height]);
-    if(!currentImageRatio()) setCurrentImageRatio(payload.image.width / payload.image.height);
+    const payload = await initWebGL(gl, imageSrc);
+    modifyMutable(editorState, produce(state => {
+      state.renderingPayload = payload;
+      state.imageSize = [payload.image.width, payload.image.height];
+      state.currentImageRatio = payload.image.width / payload.image.height;
+    }));
   }
 
   onMount(() => {
-    if(isReady()) init(); // When hot reloading
+    if(editorState.isReady) init(); // When hot reloading
     else {
       const track = createReaction(() => {
         init();
       });
 
-      track(isReady);
+      track(() => editorState.isReady);
     }
   });
 

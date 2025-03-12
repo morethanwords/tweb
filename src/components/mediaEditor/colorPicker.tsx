@@ -1,12 +1,13 @@
-import {batch, createEffect, createMemo, createSignal, on, onCleanup, onMount, useContext} from 'solid-js';
+import {createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
 
+import {doubleRaf} from '../../helpers/schedulers';
 import {hexToRgb} from '../../helpers/color';
 import _ColorPicker from '../colorPicker';
 import ripple from '../ripple';
 
+import {useMediaEditorContext} from './context';
 import {delay} from './utils';
-import MediaEditorContext from './context';
-import {doubleRaf} from '../../helpers/schedulers';
+
 
 export const colorPickerSwatches = [
   '#ffffff',
@@ -22,8 +23,8 @@ export const colorPickerSwatches = [
 const PICKER_WIDTH_PX = 200;
 const PICKER_HEIGHT_PX = 120;
 const SLIDER_WIDTH_PX = 304;
+const DEFAULT_SIZE_PX = 384;
 
-const DEFAULT_SIZE = 384;
 
 export default function ColorPicker(props: {
   value: string;
@@ -31,12 +32,12 @@ export default function ColorPicker(props: {
   colorKey?: string; // Just for reaction, not used to access anything
   previousColor?: string;
 }) {
-  const context = useContext(MediaEditorContext);
+  const {actions} = useMediaEditorContext();
 
   const [collapsed, setCollapsed] = createSignal(colorPickerSwatches.includes(props.value));
   const [collapsing, setCollapsing] = createSignal(false);
 
-  const [containerSize, setContainerSize] = createSignal(DEFAULT_SIZE);
+  const [containerSize, setContainerSize] = createSignal(DEFAULT_SIZE_PX);
 
   let sizeContainer: HTMLDivElement;
 
@@ -101,14 +102,14 @@ export default function ColorPicker(props: {
             </div>
           ) as HTMLDivElement;
         },
-        pickerBoxWidth: PICKER_WIDTH_PX + containerSize() - DEFAULT_SIZE,
+        pickerBoxWidth: PICKER_WIDTH_PX + containerSize() - DEFAULT_SIZE_PX,
         pickerBoxHeight: PICKER_HEIGHT_PX,
-        sliderWidth: SLIDER_WIDTH_PX + containerSize() - DEFAULT_SIZE,
+        sliderWidth: SLIDER_WIDTH_PX + containerSize() - DEFAULT_SIZE_PX,
         thickSlider: true
       });
       colorPicker.onChange = (color) => {
         if(color.hex !== props.value) props.onChange(color.hex);
-        context.abortDrawerSlide();
+        actions.abortDrawerSlide();
       };
       colorPicker.container.querySelectorAll('.media-editor__color-picker-swatch').forEach((element) => {
         ripple(element as HTMLElement);

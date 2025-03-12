@@ -1,7 +1,7 @@
-import {MediaEditorContextValue} from './context';
+import {StandaloneSignal} from './types';
 
-export default function RenderProgressCircle(props: {context: MediaEditorContextValue}) {
-  const [progress] = props.context.gifCreationProgress;
+export default function RenderProgressCircle(props: {gifCreationProgress: StandaloneSignal<number>}) {
+  const [progress] = props.gifCreationProgress.signal;
   // const [progress, setProgress] = createSignal(0); // Progress signal from 0 to 100
 
   const radius = 52;

@@ -1,15 +1,14 @@
-import {useContext} from 'solid-js';
-
-import MediaEditorContext from '../context';
+import {useMediaEditorContext} from '../context';
 import {snapToViewport} from '../utils';
+import {NumberPair} from '../types';
 
 import {useCropOffset} from './useCropOffset';
 
 type Options = {
   rotation: number;
-  translation: [number, number];
+  translation: NumberPair;
   scale: number;
-  extendCrop?: [[number, number], [number, number]];
+  extendCrop?: [NumberPair, NumberPair];
 };
 
 export default function getConvenientPositioning({
@@ -21,13 +20,11 @@ export default function getConvenientPositioning({
     [0, 0]
   ]
 }: Options) {
-  const context = useContext(MediaEditorContext);
-  const [currentImageRatio] = context.currentImageRatio;
-  const [imageSize] = context.imageSize;
+  const {editorState} = useMediaEditorContext();
 
   const cropOffset = useCropOffset();
 
-  const [w, h] = imageSize();
+  const [w, h] = editorState.imageSize;
   const [imageWidth, imageHeight] = snapToViewport(w / h, cropOffset().width, cropOffset().height);
 
   const imageLeftTop = [-imageWidth / 2, imageHeight / 2];
@@ -46,7 +43,7 @@ export default function getConvenientPositioning({
     return point;
   });
 
-  const [cropWidth, cropHeight] = snapToViewport(currentImageRatio(), cropOffset().width, cropOffset().height);
+  const [cropWidth, cropHeight] = snapToViewport(editorState.currentImageRatio, cropOffset().width, cropOffset().height);
 
   const cropLeftTop = [-cropWidth / 2, cropHeight / 2];
   const cropPoints = [

@@ -1,18 +1,19 @@
-import {useContext} from 'solid-js';
+import {unwrap} from 'solid-js/store';
 
-import MediaEditorContext, {StandaloneContext} from '../context';
-import {AdjustmentsConfig} from '../adjustments';
-import {draw} from '../webgl/draw';
-import {initWebGL} from '../webgl/initWebGL';
-import BrushPainter from '../canvas/brushPainter';
 import {useCropOffset} from '../canvas/useCropOffset';
+import BrushPainter from '../canvas/brushPainter';
+import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
+import {EditingMediaState, useMediaEditorContext} from '../context';
+import {initWebGL} from '../webgl/initWebGL';
+import {StandaloneSignal} from '../types';
+import {draw} from '../webgl/draw';
 
-import getResultSize from './getResultSize';
-import getResultTransform from './getResultTransform';
 import getScaledLayersAndLines from './getScaledLayersAndLines';
+import spawnAnimatedPreview from './spawnAnimatedPreview';
+import getResultTransform from './getResultTransform';
+import getResultSize from './getResultSize';
 import renderToVideo from './renderToVideo';
 import renderToImage from './renderToImage';
-import spawnAnimatedPreview from './spawnAnimatedPreview';
 
 export type MediaEditorFinalResult = {
   preview: Blob;
@@ -21,18 +22,21 @@ export type MediaEditorFinalResult = {
   width: number;
   height: number;
   originalSrc: string;
-  standaloneContext: StandaloneContext;
+  editingMediaState: EditingMediaState;
   animatedPreview?: HTMLImageElement;
+  gifCreationProgress?: StandaloneSignal<number>;
 };
 
-export async function createFinalResult(standaloneContext: StandaloneContext): Promise<MediaEditorFinalResult> {
-  const context = useContext(MediaEditorContext);
-  const [resizableLayers] = context.resizableLayers;
+export async function createFinalResult(): Promise<MediaEditorFinalResult> {
+  const context = useMediaEditorContext();
+  const {mediaState, imageSrc} = context;
+  const {resizableLayers} = mediaState;
+  const {adjustments} = mediaState;
 
   const cropOffset = useCropOffset();
 
-  const hasAnimatedStickers = !!resizableLayers().find((layerSignal) =>
-    [2, 3].includes(layerSignal[0]().sticker?.sticker)
+  const hasAnimatedStickers = !!resizableLayers.find((layer) =>
+    [2, 3].includes(layer.sticker?.sticker)
   );
 
   const [scaledWidth, scaledHeight] = getResultSize(hasAnimatedStickers);
@@ -45,7 +49,7 @@ export async function createFinalResult(standaloneContext: StandaloneContext): P
     preserveDrawingBuffer: true
   });
 
-  const payload = await initWebGL(gl, context);
+  const payload = await initWebGL(gl, imageSrc);
 
   const finalTransform = getResultTransform({
     context,
@@ -60,8 +64,8 @@ export async function createFinalResult(standaloneContext: StandaloneContext): P
     ...finalTransform,
     imageSize: [payload.image.width, payload.image.height],
     ...(Object.fromEntries(
-      context.adjustments.map(({key, signal, to100}) => {
-        const value = signal[0]();
+      adjustmentsConfig.map(({key, to100}) => {
+        const value = adjustments[key];
         return [key, value / (to100 ? 100 : 50)];
       })
     ) as Record<AdjustmentsConfig[number]['key'], number>)
@@ -118,6 +122,6 @@ export async function createFinalResult(standaloneContext: StandaloneContext): P
     width: scaledWidth,
     height: scaledHeight,
     originalSrc: context.imageSrc,
-    standaloneContext
+    editingMediaState: unwrap(mediaState)
   };
 }

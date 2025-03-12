@@ -1,12 +1,14 @@
-import {batch, createEffect, createSignal, on, onCleanup, onMount, useContext} from 'solid-js';
+import {batch, createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
+import {modifyMutable, produce} from 'solid-js/store';
 
 import clamp from '../../../helpers/number/clamp';
 
 import {ButtonIconTsx} from '../../buttonIconTsx';
 import SwipeHandler from '../../swipeHandler';
 
-import MediaEditorContext from '../context';
 import {animateValue, lerp, withCurrentOwner} from '../utils';
+import {useMediaEditorContext} from '../context';
+import {NumberPair} from '../types';
 
 import {animateToNewRotationOrRatio} from './animateToNewRotationOrRatio';
 import getConvenientPositioning from './getConvenientPositioning';
@@ -22,23 +24,18 @@ function rotationFromMove(amount: number) {
 }
 
 export default function RotationWheel() {
-  const context = useContext(MediaEditorContext);
-  const [currentTab] = context.currentTab;
-  const isCroping = () => currentTab() === 'crop';
-  const [rotation, setRotation] = context.rotation;
-  const [flip, setFlip] = context.flip;
-  const [fixedImageRatioKey] = context.fixedImageRatioKey;
+  const {editorState, mediaState, actions} = useMediaEditorContext();
+
+  const isCroping = () => editorState.currentTab === 'crop';
+
   const [moved, setMoved] = createSignal(0);
   const [movedDiff, setMovedDiff] = createSignal(0);
-  const [scale, setScale] = context.scale;
-  const [translation, setTranslation] = context.translation;
-  const [, setIsMoving] = context.isMoving;
 
   let swiperEl: HTMLDivElement;
 
   onMount(() => {
-    const snappedRotation = (Math.round((rotation() / Math.PI) * 2) * Math.PI) / 2;
-    setMoved((((snappedRotation - rotation()) * 180) / Math.PI / DEGREE_STEP) * DEGREE_DIST_PX);
+    const snappedRotation = (Math.round((mediaState.rotation / Math.PI) * 2) * Math.PI) / 2;
+    setMoved((((snappedRotation - mediaState.rotation) * 180) / Math.PI / DEGREE_STEP) * DEGREE_DIST_PX);
     prevRotation = rotationFromMove(moved());
 
     let currentDiff: number;
@@ -78,13 +75,13 @@ export default function RotationWheel() {
     new SwipeHandler({
       element: swiperEl,
       onStart() {
-        initialScale = scale();
+        initialScale = mediaState.scale;
         currentDiff = movedDiff();
         targetDiff = currentDiff;
         isAnimating = false;
         isSnapped = false;
         prevShouldSnap = getShouldSnap();
-        setIsMoving(true);
+        editorState.isMoving = true;
       },
       onSwipe(xDiff) {
         targetDiff = currentDiff = clamp(moved() + xDiff, -MAX_DEGREES_DIST_PX, MAX_DEGREES_DIST_PX) - moved();
@@ -131,7 +128,7 @@ export default function RotationWheel() {
         batch(() => {
           setMoved(newMoved);
           setMovedDiff(0);
-          setIsMoving(false);
+          editorState.isMoving = false;
         });
       }
     });
@@ -143,23 +140,24 @@ export default function RotationWheel() {
   const onSwipe = withCurrentOwner(() => {
     const rotationFromSwiper = rotationFromMove(moved() + movedDiff());
     const rotationDiff = rotationFromSwiper - prevRotation;
-    setRotation((prev) => {
-      return prev - rotationDiff;
-    });
+
+    const targetRotation = mediaState.rotation - rotationDiff;
+
     const r = [Math.cos(rotationDiff), Math.sin(rotationDiff)];
 
-    setTranslation((translation) => [
-      translation[0] * r[0] + translation[1] * r[1],
-      translation[1] * r[0] - translation[0] * r[1]
-    ]);
+    const targetTranslation: NumberPair = [
+      mediaState.translation[0] * r[0] + mediaState.translation[1] * r[1],
+      mediaState.translation[1] * r[0] - mediaState.translation[0] * r[1]
+    ];
+
     prevRotation = rotationFromSwiper;
 
     if(!initialScale) return;
     const {cropMinX, cropMaxX, cropMinY, cropMaxY, imageMinX, imageMaxX, imageMinY, imageMaxY} =
       getConvenientPositioning({
         scale: initialScale,
-        rotation: rotation(),
-        translation: translation()
+        rotation: targetRotation,
+        translation: targetTranslation
       });
 
     const halfImageWidth = (imageMaxX - imageMinX) / 2,
@@ -175,9 +173,14 @@ export default function RotationWheel() {
     if(imageMaxY < cropMaxY)
       additionalScale = Math.max((cropMaxY - imageCenter[1]) / halfImageHeight, additionalScale);
 
-    if(additionalScale > 1) {
-      setScale(initialScale * additionalScale);
-    }
+
+    modifyMutable(mediaState, produce(s => {
+      s.rotation = targetRotation;
+      s.translation = targetTranslation;
+      if(additionalScale > 1) {
+        s.scale = initialScale * additionalScale;
+      }
+    }));
   });
 
   function resetWheelWithAnimation() {
@@ -190,14 +193,14 @@ export default function RotationWheel() {
     });
   }
 
-  context.resetRotationWheel = () => resetWheelWithAnimation();
+  actions.resetRotationWheel = () => resetWheelWithAnimation();
   onCleanup(() => {
-    context.resetRotationWheel = () => {}
+    actions.resetRotationWheel = () => {}
   });
 
   let isFirstEffect = true;
   createEffect(
-    on(fixedImageRatioKey, () => {
+    on(() => editorState.fixedImageRatioKey, () => {
       if(isFirstEffect) {
         isFirstEffect = false;
         return;
@@ -207,7 +210,7 @@ export default function RotationWheel() {
   );
 
   function rotateLeft() {
-    const newRotation = (Math.round((rotation() / Math.PI) * 2) * Math.PI) / 2 - Math.PI / 2;
+    const newRotation = (Math.round((mediaState.rotation / Math.PI) * 2) * Math.PI) / 2 - Math.PI / 2;
 
     animateToNewRotationOrRatio(newRotation);
 
@@ -215,15 +218,15 @@ export default function RotationWheel() {
   }
 
   function flipImage() {
-    setIsMoving(true);
-    const isReversedRatio = Math.abs(Math.round((rotation() / Math.PI) * 2)) & 1;
+    editorState.isMoving = true;
+    const isReversedRatio = Math.abs(Math.round((mediaState.rotation / Math.PI) * 2)) & 1;
     const snapTo1 = (value: number) => value < 0 ? -1 : 1;
-    const targetFlip = [
-      snapTo1(flip()[0]) * (isReversedRatio ? 1 : -1),
-      snapTo1(flip()[1]) * (isReversedRatio ? -1 : 1)
+    const targetFlip: NumberPair = [
+      snapTo1(mediaState.flip[0]) * (isReversedRatio ? 1 : -1),
+      snapTo1(mediaState.flip[1]) * (isReversedRatio ? -1 : 1)
     ];
-    animateValue(flip(), targetFlip, 200, setFlip, {
-      onEnd: () => setIsMoving(false)
+    animateValue(mediaState.flip, targetFlip, 200, (value) => void (mediaState.flip = value), {
+      onEnd: () => void (editorState.isMoving = false)
     });
   }
 

@@ -1,14 +1,15 @@
 import {getOwner, runWithOwner} from 'solid-js';
 
 import BezierEasing from '../../vendor/bezierEasing';
-import {logger} from '../../lib/logger';
 import {hexaToHsla} from '../../helpers/color';
+import {logger} from '../../lib/logger';
 
-import {FontInfo, FontKey} from './types';
-
-export const delay = (timeout: number) => new Promise((resolve) => setTimeout(resolve, timeout));
+import {FontInfo, FontKey, NumberPair} from './types';
 
 export const log = logger('Media editor');
+
+
+export const delay = (timeout: number) => new Promise((resolve) => setTimeout(resolve, timeout));
 
 export function withCurrentOwner<Args extends Array<unknown>, Result>(fn: (...args: Args) => Result) {
   const owner = getOwner();
@@ -17,7 +18,7 @@ export function withCurrentOwner<Args extends Array<unknown>, Result>(fn: (...ar
   };
 }
 
-export function distance(p1: [number, number], p2: [number, number]) {
+export function distance(p1: NumberPair, p2: NumberPair) {
   return Math.hypot(p1[0] - p2[0], p1[1] - p2[1]);
 }
 
@@ -25,7 +26,7 @@ export function snapToViewport(ratio: number, vw: number, vh: number) {
   if(vw / ratio > vh) vw = vh * ratio;
   else vh = vw / ratio;
 
-  return [vw, vh] as [number, number];
+  return [vw, vh] as NumberPair;
 }
 
 export function getSnappedViewportsScale(ratio: number, vw1: number, vh1: number, vw2: number, vh2: number) {
@@ -45,6 +46,28 @@ export function lerp(min: number, max: number, progress: number) {
 
 export function lerpArray(min: number[], max: number[], progress: number) {
   return min.map((start, index) => start + (max[index] - start) * progress);
+}
+
+
+const isPureObject = (obj: any) => [Object.prototype, null].includes(Object.getPrototypeOf(obj));
+
+const COMPARISON_ERROR = 0.00001;
+
+export function approximateDeepEqual(x: any, y: any): boolean {
+  if(typeof x === 'number' && typeof y === 'number') return Math.abs(x - y) < COMPARISON_ERROR;
+
+  if(x === y) return true;
+
+  if(x instanceof Array && y instanceof Array)
+    return x.length === y.length && x
+    .every((value, idx) => approximateDeepEqual(value, y[idx]));
+
+  if(isPureObject(x) && isPureObject(y))
+    return Array
+    .from(new Set([...Object.keys(x), ...Object.keys(y)]))
+    .every(key => x[key] === y[key])
+
+  return false;
 }
 
 

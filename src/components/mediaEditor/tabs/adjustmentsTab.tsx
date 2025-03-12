@@ -1,17 +1,17 @@
-import {createEffect, createSignal, on, onCleanup, useContext} from 'solid-js';
+import {createEffect, createSignal, on, onCleanup} from 'solid-js';
 
 import Space from '../../space';
 
-import RangeInput from '../rangeInput';
-import MediaEditorContext from '../context';
+import {adjustmentsConfig} from '../adjustments';
+import {useMediaEditorContext} from '../context';
 import useIsMobile from '../useIsMobile';
+import RangeInput from '../rangeInput';
+
 
 const ADJUST_TIMEOUT = 800;
 
 export default function AdjustmentsTab() {
-  const context = useContext(MediaEditorContext);
-  const {adjustments} = context;
-  const [, setIsAdjusting] = context.isAdjusting;
+  const {editorState, mediaState} = useMediaEditorContext();
 
   const isMobile = useIsMobile();
 
@@ -19,18 +19,20 @@ export default function AdjustmentsTab() {
   function removeIsAdjusting() {
     window.clearTimeout(timeoutId);
     timeoutId = window.setTimeout(() => {
-      setIsAdjusting(false);
+      editorState.isAdjusting = false;
     }, ADJUST_TIMEOUT);
   }
 
   return (
     <>
       <Space amount="16px" />
-      {adjustments.map((item) => {
-        const [value, setValue] = item.signal;
+      {adjustmentsConfig.map((item) => {
         const [container, setContainer] = createSignal<HTMLDivElement>();
 
         const [showGhost, setShowGhost] = createSignal(false);
+
+        const value = () => mediaState.adjustments[item.key];
+        const setValue = (v: number): void => void (mediaState.adjustments[item.key] = v);
 
         createEffect(
           on(showGhost, () => {
@@ -83,22 +85,22 @@ export default function AdjustmentsTab() {
               onChange={(v) => {
                 setValue(v);
                 setShowGhost(true);
-                setIsAdjusting(true);
+                editorState.isAdjusting = true;
                 removeGhost();
                 removeIsAdjusting();
               }}
               label={item.label()}
               onChangeFinish={(prevValue, currentValue) => {
                 setShowGhost(false);
-                setIsAdjusting(false);
-                context.pushToHistory({
-                  undo() {
-                    setValue(prevValue);
-                  },
-                  redo() {
-                    setValue(currentValue);
-                  }
-                });
+                editorState.isAdjusting = false;
+                // context.pushToHistory({
+                //   undo() {
+                //     setValue(prevValue);
+                //   },
+                //   redo() {
+                //     setValue(currentValue);
+                //   }
+                // });
               }}
               min={item.to100 ? 0 : -50}
               max={item.to100 ? 100 : 50}

@@ -21,12 +21,11 @@ export default async function spawnAnimatedPreview({
   scaledHeight,
   previewBlob
 }: SpawnAnimatedPreviewOptions) {
-  const [currentTab] = context.currentTab;
+  const {editorState: {currentTab, imageCanvas}} = context;
 
-  const isCroping = currentTab() === 'crop';
+  const isCroping = currentTab === 'crop';
 
-  const [positionCanvas] = context.imageCanvas;
-  const bcr = positionCanvas().getBoundingClientRect();
+  const bcr = imageCanvas.getBoundingClientRect();
   const animatedImg = new Image();
   animatedImg.src = await apiManagerProxy.invoke('createObjectURL', previewBlob);
   animatedImg.style.position = 'fixed';

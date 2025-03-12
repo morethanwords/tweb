@@ -2,10 +2,12 @@ import {Signal} from 'solid-js';
 
 import {Document} from '../../layer';
 
+export type NumberPair = [number, number];
+
 export type ResizableLayer = {
   id: number;
   type: 'text' | 'sticker';
-  position: [number, number];
+  position: NumberPair;
   rotation: number;
   scale: number;
 
@@ -44,7 +46,7 @@ export type TextLayerInfo = {
 };
 
 export type ResizableLayerProps = {
-  layerSignal: Signal<ResizableLayer>;
+  layer: ResizableLayer;
 };
 
 export type FontInfo = {
@@ -52,3 +54,8 @@ export type FontInfo = {
   fontWeight: number;
   baseline: number;
 };
+
+export type StandaloneSignal<T> = {
+  dispose: () => void;
+  signal: Signal<T>;
+}

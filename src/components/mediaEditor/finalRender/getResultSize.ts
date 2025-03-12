@@ -1,6 +1,4 @@
-import {useContext} from 'solid-js';
-
-import MediaEditorContext from '../context';
+import {useMediaEditorContext} from '../context';
 import {snapToViewport} from '../utils';
 
 const SIDE_MAX = 2560;
@@ -9,16 +7,13 @@ const VIDEO_WIDTH_MAX = 1280;
 const VIDEO_HEIGHT_MAX = 720;
 
 export default function getResultSize(hasAnimatedStickers: boolean) {
-  const context = useContext(MediaEditorContext);
-  const [currentImageRatio] = context.currentImageRatio;
-  const [scale] = context.scale;
-  const [renderingPayload] = context.renderingPayload;
+  const {editorState: {currentImageRatio, renderingPayload}, mediaState: {scale}} = useMediaEditorContext();
 
-  const imageWidth = renderingPayload().image.width;
+  const imageWidth = renderingPayload.image.width;
 
-  const newRatio = currentImageRatio();
+  const newRatio = currentImageRatio;
 
-  let scaledWidth = imageWidth / scale(),
+  let scaledWidth = imageWidth / scale,
     scaledHeight = scaledWidth / newRatio;
 
   if(Math.max(scaledWidth, scaledHeight) < SIDE_MIN) {

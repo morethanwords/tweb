@@ -674,8 +674,6 @@ export default class PopupNewMedia extends PopupElement {
   };
 
   private prepareEditedFileForSending(params: SendFileParams): File | undefined {
-    params.editResult?.standaloneContext?.dispose();
-
     const editResult = params.editResult?.getResult();
     if(!editResult || editResult instanceof Promise) return undefined;
 
@@ -884,12 +882,13 @@ export default class PopupNewMedia extends PopupElement {
         await putImage(editResult.preview);
 
         const div = document.createElement('div');
-        const dispose = render(() => RenderProgressCircle({context: editResult.standaloneContext.value}), div);
+        const dispose = render(() => RenderProgressCircle({gifCreationProgress: editResult.gifCreationProgress}), div);
         itemDiv.append(div);
 
         (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
         resultBlob.then(async(videoBlob) => {
           dispose();
+          editResult.gifCreationProgress?.dispose();
           await putVideo(videoBlob);
           const gifLabel = i18n('AttachGif');
           gifLabel.classList.add('gif-label');
@@ -1086,7 +1085,7 @@ export default class PopupNewMedia extends PopupElement {
                 await delay(120);
                 animatedImg.remove();
               },
-              standaloneContext: params.editResult?.standaloneContext,
+              editingMediaState: params.editResult?.editingMediaState,
               onClose: (hasGif) => {
                 if(!hasGif)
                   (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
@@ -1114,7 +1113,7 @@ export default class PopupNewMedia extends PopupElement {
           if(idx >= 0) {
             hideActions();
             this.files.splice(idx, 1);
-            params.editResult?.standaloneContext?.dispose();
+            params.editResult?.gifCreationProgress?.dispose();
             this.files.length ? this.attachFiles() : this.destroy();
           }
         });

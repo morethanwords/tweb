@@ -11,13 +11,13 @@ export default function drawStickerLayer(
   source: CanvasImageSource,
   ratio: number
 ) {
-  const [stickersLayersInfo] = context.stickersLayersInfo;
+  const {editorState: {stickersLayersInfo, pixelRatio}} = context;
 
-  const {container} = stickersLayersInfo()[layer.id];
+  const {container} = stickersLayersInfo[layer.id];
   const stickerChild = container?.lastElementChild;
   if(!stickerChild) return;
 
-  const size = STICKER_SIZE * layer.scale * context.pixelRatio;
+  const size = STICKER_SIZE * layer.scale * pixelRatio;
 
   ctx.save();
   ctx.translate(layer.position[0], layer.position[1]);

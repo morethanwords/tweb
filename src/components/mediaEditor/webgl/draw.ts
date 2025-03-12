@@ -1,13 +1,16 @@
-import {AdjustmentsConfig} from '../adjustments';
+import {AdjustmentKey} from '../adjustments';
+import {NumberPair} from '../types';
+
 import {RenderingPayload} from './initWebGL';
+
 
 type DrawingParameters = {
   rotation: number;
   scale: number;
-  translation: [number, number];
-  imageSize: [number, number];
-  flip: [number, number];
-} & Record<AdjustmentsConfig[number]['key'], number>;
+  translation: NumberPair;
+  imageSize: NumberPair;
+  flip: NumberPair;
+} & Record<AdjustmentKey, number>;
 
 export function draw(gl: WebGLRenderingContext, payload: RenderingPayload, parameters: DrawingParameters) {
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);

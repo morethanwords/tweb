@@ -1,78 +1,54 @@
-import {
-  Accessor,
-  batch,
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-  on,
-  onCleanup,
-  onMount,
-  ParentProps,
-  Show,
-  Signal,
-  useContext
-} from 'solid-js';
+import {Accessor, batch, createEffect, createMemo, For, on, onCleanup, onMount, ParentProps, Show} from 'solid-js';
+import {createMutable, modifyMutable, produce} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
-import {createMutable} from 'solid-js/store';
 
 import createContextMenu from '../../../helpers/dom/createContextMenu';
 
 import SwipeHandler, {getEvent} from '../../swipeHandler';
 import {observeResize} from '../../resizeObserver';
 
+import {NumberPair, ResizableLayer, ResizableLayerProps} from '../types';
+import {useMediaEditorContext} from '../context';
 import {withCurrentOwner} from '../utils';
-import MediaEditorContext from '../context';
-import {ResizableLayer} from '../types';
 import useIsMobile from '../useIsMobile';
 
-import TextLayerContent from './textLayerContent';
 import StickerLayerContent from './stickerLayerContent';
 import useNormalizePoint from './useNormalizePoint';
+import TextLayerContent from './textLayerContent';
 import useProcessPoint from './useProcessPoint';
 
-type ResizableContainerProps = {
-  layerSignal: Signal<ResizableLayer>;
-  onDoubleClick?: () => void;
-};
 
 type ProcessedLayer = {
-  position: [number, number];
+  position: NumberPair;
   rotation: number;
   scale: number;
 }
 
 export default function ResizableLayers() {
-  const context = useContext(MediaEditorContext);
-  const [layers, setLayers] = context.resizableLayers;
-  const [currentTab] = context.currentTab;
-  const isTextTab = () => currentTab() === 'text';
-  const canClick = () => ['stickers', 'text', 'adjustments'].includes(currentTab());
-  const [currentTextLayerInfo] = context.currentTextLayerInfo;
-  const [selectedResizableLayer, setSelectedResizableLayer] = context.selectedResizableLayer;
-  const [isAdjusting] = context.isAdjusting;
-  const [finalTransform] = context.finalTransform;
+  const context = useMediaEditorContext();
+  const {editorState, mediaState} = context;
+  const isTextTab = () => editorState.currentTab === 'text';
+  const canClick = () => ['stickers', 'text', 'adjustments'].includes(editorState.currentTab);
+
+
+  function moveSelectedLayerOnTop() {
+    const layers = mediaState.resizableLayers;
+    const idx = layers.findIndex(layer => layer.id === editorState.selectedResizableLayer);
+    if(idx < 0) return;
+    const layer = layers.splice(idx, 1)[0];
+    layer && layers.push(layer);
+  }
 
   createEffect(
-    on(selectedResizableLayer, () => {
-      setLayers((prev) => {
-        const res = [...(prev || [])];
-        const idx = res.findIndex((layer) => layer[0]().id === selectedResizableLayer());
-        if(idx > -1) {
-          const signal = res[idx];
-          res.splice(idx, 1);
-          res.push(signal);
-          return res;
-        }
-        return prev;
-      });
+    on(() => editorState.selectedResizableLayer, () => {
+      moveSelectedLayerOnTop();
     })
   );
 
   createEffect(() => {
-    currentTab();
+    editorState.currentTab;
     onCleanup(() => {
-      setSelectedResizableLayer();
+      editorState.selectedResizableLayer = undefined;
     });
   });
 
@@ -82,15 +58,15 @@ export default function ResizableLayers() {
 
   function addLayer(e: MouseEvent) {
     if(e.target !== container) return;
-    if(selectedResizableLayer()) {
-      setSelectedResizableLayer();
+    if(editorState.selectedResizableLayer) {
+      editorState.selectedResizableLayer = undefined;
       return;
     }
 
     if(!isTextTab()) return;
 
     const bcr = container.getBoundingClientRect();
-    const transform = finalTransform();
+    const transform = editorState.finalTransform;
 
     const newResizableLayer = {
       id: context.resizableLayersSeed++,
@@ -98,33 +74,33 @@ export default function ResizableLayers() {
       rotation: -transform.rotation,
       scale: 1 / transform.scale,
       type: 'text',
-      textInfo: currentTextLayerInfo()
+      textInfo: editorState.currentTextLayerInfo
     } as ResizableLayer;
 
     batch(() => {
-      setLayers((prev) => [...prev, createSignal<ResizableLayer>({...newResizableLayer})]);
-      setSelectedResizableLayer(newResizableLayer.id);
+      mediaState.resizableLayers.push(newResizableLayer);
+      editorState.selectedResizableLayer = newResizableLayer.id;
     });
 
-    let position = -1;
+    // let position = -1;
     let deletedLayer: ResizableLayer;
-    context.pushToHistory({
-      undo() {
-        setLayers((prev) => {
-          prev = [...prev];
-          position = prev.findIndex((layer) => layer[0]().id === newResizableLayer.id);
-          if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
-          return prev;
-        });
-      },
-      redo() {
-        setLayers((prev) => {
-          prev = [...prev];
-          if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
-          return prev;
-        });
-      }
-    });
+    // context.pushToHistory({
+    //   undo() {
+    //     setLayers((prev) => {
+    //       prev = [...prev];
+    //       position = prev.findIndex((layer) => layer[0]().id === newResizableLayer.id);
+    //       if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
+    //       return prev;
+    //     });
+    //   },
+    //   redo() {
+    //     setLayers((prev) => {
+    //       prev = [...prev];
+    //       if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
+    //       return prev;
+    //     });
+    //   }
+    // });
   }
 
   return (
@@ -134,7 +110,7 @@ export default function ResizableLayers() {
         'media-editor__resizable-layers--active': canClick()
       }}
       style={{
-        cursor: !selectedResizableLayer() && isTextTab() ? 'text' : undefined
+        cursor: !editorState.selectedResizableLayer && isTextTab() ? 'text' : undefined
       }}
     >
       <div
@@ -142,17 +118,17 @@ export default function ResizableLayers() {
         class="media-editor__resizable-layers-inner"
         onClick={withCurrentOwner(addLayer)}
         style={{
-          'opacity': isAdjusting() ? 0 : 1
+          'opacity': editorState.isAdjusting ? 0 : 1
         }}
       >
-        <For each={layers()}>
-          {(layerSignal) => (
+        <For each={mediaState.resizableLayers}>
+          {(layer) => (
             <>
-              <Show when={layerSignal[0]().type === 'text'}>
-                <TextLayerContent layerSignal={layerSignal} />
+              <Show when={layer.type === 'text'}>
+                <TextLayerContent layer={layer} />
               </Show>
-              <Show when={layerSignal[0]().type === 'sticker'}>
-                <StickerLayerContent layerSignal={layerSignal} />
+              <Show when={layer.type === 'sticker'}>
+                <StickerLayerContent layer={layer} />
               </Show>
             </>
           )}
@@ -162,23 +138,17 @@ export default function ResizableLayers() {
   );
 }
 
-export function ResizableContainer(props: ParentProps<ResizableContainerProps>) {
-  const context = useContext(MediaEditorContext);
-  const [rotation] = context.rotation;
-  const [selectedResizableLayer, setSelectedResizableLayer] = context.selectedResizableLayer;
-  const [finalTransform] = context.finalTransform;
-  const [resizeHandlesContainer] = context.resizeHandlesContainer;
+export function ResizableContainer(props: ParentProps<ResizableLayerProps>) {
+  const {editorState, mediaState} = useMediaEditorContext();
 
   const isMobile = useIsMobile();
   const processPoint = useProcessPoint(false);
-
-  const [layer] = props.layerSignal;
 
 
   const handleTyping = (): HTMLDivElement | undefined => undefined;
 
   const store = createMutable({
-    diff: [0, 0] as [number, number],
+    diff: [0, 0] as NumberPair,
     containerWidth: 0,
     containerHeight: 0,
     leftTopEl: handleTyping(),
@@ -188,12 +158,12 @@ export function ResizableContainer(props: ParentProps<ResizableContainerProps>) 
   });
 
   const circleOffset = () => (isMobile() ? '-6px' : '-4px');
-  const canShowHandles = () => resizeHandlesContainer() && layer().id === selectedResizableLayer();
+  const canShowHandles = () => editorState.resizeHandlesContainer && props.layer.id === editorState.selectedResizableLayer;
 
   const processedLayer = createMemo(() => ({
-    position: processPoint(layer().position),
-    rotation: layer().rotation + rotation(),
-    scale: finalTransform().scale * layer().scale
+    position: processPoint(props.layer.position),
+    rotation: props.layer.rotation + mediaState.rotation,
+    scale: editorState.finalTransform.scale * props.layer.scale
   }));
 
 
@@ -207,13 +177,12 @@ export function ResizableContainer(props: ParentProps<ResizableContainerProps>) 
       rightBottomEl: () => store.rightBottomEl,
       rightTopEl: () => store.rightTopEl,
 
-      onDiffChange: (diff) => store.diff = diff,
-      layerSignal: props.layerSignal,
-      diff: () => store.diff,
+      layer: props.layer,
+      diff: store.diff,
       processedLayer
     });
 
-    useContextMenu({container, layer});
+    useContextMenu({container, layer: props.layer});
 
     const unobserve = observeResize(container, () => {
       store.containerWidth = container.clientWidth;
@@ -235,13 +204,13 @@ export function ResizableContainer(props: ParentProps<ResizableContainerProps>) 
         '--scale': processedLayer().scale
       }}
       onClick={() => {
-        setSelectedResizableLayer(layer().id);
+        editorState.selectedResizableLayer = props.layer.id;
       }}
       ref={container}
     >
       {props.children}
 
-      {canShowHandles() && <Portal mount={resizeHandlesContainer()}>
+      {canShowHandles() && <Portal mount={editorState.resizeHandlesContainer}>
         <div
           class="media-editor__resizable-container-handles"
           style={{
@@ -302,9 +271,8 @@ type UseResizeArgs = {
   leftBottomEl: () => HTMLDivElement;
   rightBottomEl: () => HTMLDivElement;
 
-  diff: Accessor<[number, number]>;
-  onDiffChange: (diff: [number, number]) => void;
-  layerSignal: Signal<ResizableLayer>;
+  diff: NumberPair;
+  layer: ResizableLayer;
   processedLayer: Accessor<ProcessedLayer>;
 };
 
@@ -315,18 +283,12 @@ function useResizeHandles({
   leftBottomEl,
   rightBottomEl,
   diff,
-  onDiffChange,
-  layerSignal,
+  layer,
   processedLayer
 }: UseResizeArgs) {
-  const context = useContext(MediaEditorContext);
-  const [rotation] = context.rotation;
-  const [, setSelectedResizableLayer] = context.selectedResizableLayer;
-  const [finalTransform] = context.finalTransform;
+  const {editorState, mediaState} = useMediaEditorContext();
 
   const normalizePoint = useNormalizePoint();
-
-  const [layer, setLayer] = layerSignal;
 
 
   let firstTarget: EventTarget;
@@ -356,8 +318,8 @@ function useResizeHandles({
           if(firstTarget !== element) return;
 
           const initialVector = [
-            (container.clientWidth / 2) * x * finalTransform().scale,
-            (container.clientHeight / 2) * y * finalTransform().scale
+            (container.clientWidth / 2) * x * editorState.finalTransform.scale,
+            (container.clientHeight / 2) * y * editorState.finalTransform.scale
           ];
           const bcr = container.getBoundingClientRect();
           const resizedVector = [bcr.left + bcr.width / 2 - e.clientX, bcr.top + bcr.height / 2 - e.clientY];
@@ -366,7 +328,10 @@ function useResizeHandles({
             Math.atan2(resizedVector[1], resizedVector[0]) - Math.atan2(initialVector[1], initialVector[0]) + Math.PI;
           const scale = Math.hypot(resizedVector[0], resizedVector[1]) / Math.hypot(initialVector[0], initialVector[1]);
 
-          setLayer((prev) => ({...prev, rotation: rotationFromHorizon - rotation(), scale}));
+          modifyMutable(layer, produce(s => {
+            s.rotation = rotationFromHorizon - mediaState.rotation;
+            s.scale = scale;
+          }));
         },
         onReset() {
           element.classList.remove('media-editor__resizable-container-circle--anti-flicker');
@@ -389,17 +354,14 @@ function useResizeHandles({
       if(!swipeStarted) {
         // onStart messes up the typing
         swipeStarted = true;
-        setSelectedResizableLayer(layer().id);
+        editorState.selectedResizableLayer = layer.id;
       }
 
-      onDiffChange([xDiff, yDiff]);
+      diff.splice(0, 2, xDiff, yDiff);
     },
     onReset() {
-      setLayer((prev) => ({
-        ...prev,
-        position: normalizePoint([processedLayer().position[0] + diff()[0], processedLayer().position[1] + diff()[1]])
-      }));
-      onDiffChange([0, 0]);
+      layer.position = normalizePoint([processedLayer().position[0] + diff[0], processedLayer().position[1] + diff[1]]);
+      diff.splice(0, 2, 0, 0);
       swipeStarted = false;
       firstTarget = undefined;
     }
@@ -413,43 +375,39 @@ function useResizeHandles({
 
 type UseContextMenuArgs = {
   container: HTMLDivElement;
-  layer: Accessor<ResizableLayer>;
+  layer: ResizableLayer;
 }
 
 function useContextMenu({container, layer}: UseContextMenuArgs) {
-  const context = useContext(MediaEditorContext);
-  const [, setSelectedResizableLayer] = context.selectedResizableLayer;
-  const [, setLayers] = context.resizableLayers;
+  const {editorState, mediaState} = useMediaEditorContext();
 
   function onClick() {
-    let position = -1;
-    let deletedLayer: ResizableLayer;
+    // let position = -1;
+    // let deletedLayer: ResizableLayer;
 
-    setLayers((prev) => {
-      prev = [...prev];
-      position = prev.findIndex((other) => other[0]().id === layer().id);
-      if(position > -1) deletedLayer = prev.splice(position, 1)?.[0][0]?.();
-      return prev;
-    });
-    setSelectedResizableLayer();
+    const layers = mediaState.resizableLayers;
+    const idx = layers.findIndex(otherLayer => otherLayer.id === layer.id);
+    if(idx < 0) return;
+    const deletedLayer = layers.splice(idx, 1)[0];
+    editorState.selectedResizableLayer = undefined;
 
-    context.pushToHistory({
-      undo() {
-        setLayers((prev) => {
-          prev = [...prev];
-          if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
-          return prev;
-        });
-      },
-      redo() {
-        setLayers((prev) => {
-          prev = [...prev];
-          position = prev.findIndex((layer) => layer[0]().id === deletedLayer.id);
-          if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
-          return prev;
-        });
-      }
-    });
+    // context.pushToHistory({
+    //   undo() {
+    //     setLayers((prev) => {
+    //       prev = [...prev];
+    //       if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
+    //       return prev;
+    //     });
+    //   },
+    //   redo() {
+    //     setLayers((prev) => {
+    //       prev = [...prev];
+    //       position = prev.findIndex((layer) => layer[0]().id === deletedLayer.id);
+    //       if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
+    //       return prev;
+    //     });
+    //   }
+    // });
   }
 
   const contextMenu = createContextMenu({

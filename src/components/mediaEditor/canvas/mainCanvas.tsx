@@ -1,31 +1,26 @@
-import {onCleanup, onMount, Show, useContext} from 'solid-js';
+import {onCleanup, onMount, Show} from 'solid-js';
 
 import {hexToRgb} from '../../../helpers/color';
 
-import MediaEditorContext from '../context';
+import {useMediaEditorContext} from '../context';
 
-import CropHandles from './cropHandles';
-import RotationWheel from './rotationWheel';
+import useFinalTransform from './useFinalTransform';
 import ResizableLayers from './resizableLayers';
+import RotationWheel from './rotationWheel';
+import CropHandles from './cropHandles';
 import BrushCanvas from './brushCanvas';
 import ImageCanvas from './imageCanvas';
-import useFinalTransform from './useFinalTransform';
 
 export default function MainCanvas() {
   let container: HTMLDivElement;
-  const context = useContext(MediaEditorContext);
-  const [isReady] = context.isReady;
-  const [canvasSize, setCanvasSize] = context.canvasSize;
-  const [previewBrushSize] = context.previewBrushSize;
-  const [currentBrush] = context.currentBrush;
-  const [, setResizeHandlesContainer] = context.resizeHandlesContainer;
+  const {editorState} = useMediaEditorContext();
 
   useFinalTransform();
 
   onMount(() => {
     const listener = () => {
       const bcr = container.getBoundingClientRect();
-      setCanvasSize([bcr.width, bcr.height]);
+      editorState.canvasSize = [bcr.width, bcr.height];
     };
     listener();
     window.addEventListener('resize', listener);
@@ -36,24 +31,25 @@ export default function MainCanvas() {
 
   return (
     <div ref={container} class="media-editor__main-canvas">
-      <Show when={canvasSize()}>
+      <Show when={editorState.canvasSize}>
         <ImageCanvas />
-        <Show when={isReady()}>
+        <Show when={editorState.isReady}>
           <BrushCanvas />
           <ResizableLayers />
-          {previewBrushSize() && (
+          {editorState.previewBrushSize && (
             <div
               class="media-editor__preview-brush-size"
               style={{
-                '--color': !['blur', 'eraser'].includes(currentBrush().brush) ?
-                  hexToRgb(currentBrush().color).join(',') :
+                '--color': !['blur', 'eraser'].includes(editorState.currentBrush.brush) ?
+                  hexToRgb(editorState.currentBrush.color).join(',') :
                   undefined,
-                'width': previewBrushSize() + 'px',
-                'height': previewBrushSize() + 'px'
+                'width': editorState.previewBrushSize + 'px',
+                'height': editorState.previewBrushSize + 'px'
               }}
             />
           )}
-          <div ref={setResizeHandlesContainer} class="media-editor__resize-handles-overlay" />
+          {/* WTF ref causes infinite loop when passed without callback */}
+          <div ref={(el) => void (editorState.resizeHandlesContainer = el)} class="media-editor__resize-handles-overlay" />
           <CropHandles />
           <RotationWheel />
         </Show>

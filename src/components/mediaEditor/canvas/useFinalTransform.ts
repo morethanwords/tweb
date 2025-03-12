@@ -1,33 +1,25 @@
-import {batch, createEffect, createMemo, createSignal, on, onCleanup, useContext} from 'solid-js';
+import {batch, createEffect, createMemo, createSignal, on, onCleanup} from 'solid-js';
+import {modifyMutable, produce} from 'solid-js/store';
 
-import MediaEditorContext from '../context';
-import {animateValue, getSnappedViewportsScale, lerp, lerpArray, snapToViewport} from '../utils';
+import {animateValue, getSnappedViewportsScale, lerp, lerpArray} from '../utils';
+import {useMediaEditorContext} from '../context';
+import {NumberPair} from '../types';
 
 import {useCropOffset} from './useCropOffset';
 
 export type FinalTransform = {
-  flip: [number, number];
-  translation: [number, number];
+  flip: NumberPair;
+  translation: NumberPair;
   rotation: number;
   scale: number;
 };
 
 export default function useFinalTransform() {
-  const context = useContext(MediaEditorContext);
-  const [canvasSize] = context.canvasSize;
-  const [currentTab] = context.currentTab;
-  const [currentImageRatio] = context.currentImageRatio;
-  const [translation, setTranslation] = context.translation;
-  const [scale, setScale] = context.scale;
-  const [rotation] = context.rotation;
-  const [flip] = context.flip;
-  const [renderingPayload] = context.renderingPayload;
-  const [, setFinalTransform] = context.finalTransform;
-  const [, setIsMoving] = context.isMoving;
+  const {editorState, mediaState} = useMediaEditorContext();
 
   const cropOffset = useCropOffset();
 
-  const isCroping = createMemo(() => currentTab() === 'crop');
+  const isCroping = createMemo(() => editorState.currentTab === 'crop');
 
   const [cropTabAnimationProgress, setCropTabAnimationProgress] = createSignal(0);
 
@@ -39,30 +31,31 @@ export default function useFinalTransform() {
         return;
       }
 
-      setIsMoving(true);
+      editorState.isMoving = true;
+
       const cancel = animateValue(cropTabAnimationProgress(), isCroping() ? 1 : 0, 200, setCropTabAnimationProgress, {
-        onEnd: () => setIsMoving(false)
+        onEnd: () => editorState.isMoving = false
       });
 
       onCleanup(cancel);
     })
   );
 
-  const [prevCanvasSize, setPrevCanvasSize] = createSignal<[number, number]>();
-  const [prevCropTranslation, setPrevCropTranslation] = createSignal<[number, number]>();
+  const [prevCanvasSize, setPrevCanvasSize] = createSignal<NumberPair>();
+  const [prevCropTranslation, setPrevCropTranslation] = createSignal<NumberPair>();
   const [prevAdditionalScale, setPrevAdditionalScale] = createSignal<number>();
 
   const additionalImageScales = createMemo(() => {
-    const payload = renderingPayload();
-    if(!payload) return;
+    const payload = editorState.renderingPayload;
+    if(!payload || !editorState.canvasSize) return;
 
-    const [w, h] = canvasSize();
+    const [w, h] = editorState.canvasSize;
 
     const imageRatio = payload.image.width / payload.image.height;
 
     const toCropScale = getSnappedViewportsScale(imageRatio, cropOffset().width, cropOffset().height, w, h);
     const fromCroppedScale =
-      1 / getSnappedViewportsScale(currentImageRatio(), cropOffset().width, cropOffset().height, w, h);
+      1 / getSnappedViewportsScale(editorState.currentImageRatio, cropOffset().width, cropOffset().height, w, h);
 
     const snappedImageScale = Math.min(w / payload.image.width, h / payload.image.height);
 
@@ -74,26 +67,26 @@ export default function useFinalTransform() {
   });
 
   const cropTrnsl = createMemo(() => {
-    if(!canvasSize() || !additionalImageScales()) return;
+    if(!editorState.canvasSize || !additionalImageScales()) return;
     const {fromCroppedScale} = additionalImageScales();
 
-    return translation().map((x) => x * fromCroppedScale - x) as [number, number];
+    return mediaState.translation.map((x) => x * fromCroppedScale - x) as NumberPair;
   });
 
   const cropTranslation = createMemo(() => {
-    if(!canvasSize() || !additionalImageScales()) return;
-    const [, h] = canvasSize();
+    if(!editorState.canvasSize || !additionalImageScales()) return;
+    const [, h] = editorState.canvasSize;
     const {fromCroppedScale} = additionalImageScales();
 
     return lerpArray(
-      translation().map((x) => x * fromCroppedScale - x),
+      mediaState.translation.map((x) => x * fromCroppedScale - x),
       [0, cropOffset().left + cropOffset().height / 2 - h / 2],
       cropTabAnimationProgress()
-    ) as [number, number];
+    ) as NumberPair;
   });
 
   let prevScale: number;
-  let prevTranslation: [number, number];
+  let prevTranslation: NumberPair;
 
   function updatePrevValues() {
     if(!additionalImageScales() || !cropTrnsl()) return;
@@ -108,15 +101,15 @@ export default function useFinalTransform() {
     })
   );
   createEffect(
-    on(currentImageRatio, () => {
+    on(() => editorState.currentImageRatio, () => {
       updatePrevValues();
     })
   );
 
   createEffect(
-    on(canvasSize, () => {
-      if(!canvasSize() || !additionalImageScales()) return;
-      const prevSize = canvasSize();
+    on(() => editorState.canvasSize, () => {
+      if(!editorState.canvasSize || !additionalImageScales()) return;
+      const prevSize = editorState.canvasSize;
       const {toCropScale, fromCroppedScale, snappedImageScale} = additionalImageScales();
       prevScale = toCropScale * snappedImageScale * fromCroppedScale;
       prevTranslation = cropTrnsl();
@@ -134,12 +127,12 @@ export default function useFinalTransform() {
   createEffect(
     on(prevCanvasSize, () => {
       if(!prevCanvasSize || !prevAdditionalScale()) return;
-      const currentSize = canvasSize();
+      const currentSize = editorState.canvasSize;
       const {toCropScale, fromCroppedScale, snappedImageScale} = additionalImageScales();
       const currentAdditionalScale = toCropScale * snappedImageScale * fromCroppedScale;
 
       const scaleToChange = getSnappedViewportsScale(
-        currentImageRatio(),
+        editorState.currentImageRatio,
         currentSize[0],
         currentSize[1],
         prevCanvasSize()[0],
@@ -155,21 +148,15 @@ export default function useFinalTransform() {
       // ];
       // console.log('translationDiff', translationDiff)
 
-      batch(() => {
-        setScale((prev) => prev * totalScale);
-        setTranslation((prev) => {
-          prev = prev.map((v) => v * totalScale) as [number, number];
-          // return [prev[0] + translationDiff[0]/*  * 0 */, prev[1] + translationDiff[1]/*  * 0 */];
-          return prev;
-        });
-      });
+      modifyMutable(mediaState, produce((state) => {
+        state.scale = state.scale * totalScale,
+        state.translation = state.translation.map((v) => v * totalScale) as NumberPair
+      }));
     })
   );
-  (window as any).setScale = setScale;
-  (window as any).canvasSize = canvasSize;
 
   createEffect(() => {
-    const payload = renderingPayload();
+    const payload = editorState.renderingPayload;
     if(!payload) return;
 
     let {fromCroppedScale, toCropScale, snappedImageScale} = additionalImageScales();
@@ -183,13 +170,13 @@ export default function useFinalTransform() {
     // );
     // console.log('cropTranslation', cropTranslation)
 
-    setFinalTransform({
-      flip: flip(),
-      rotation: rotation(),
-      scale: scale() * context.pixelRatio * snappedImageScale * toCropScale,
-      translation: [cropTranslation()[0] + translation()[0], cropTranslation()[1] + translation()[1]].map(
-        (v) => v * context.pixelRatio
-      ) as [number, number]
-    });
+    modifyMutable(editorState.finalTransform, produce(t => {
+      t.flip = mediaState.flip,
+      t.rotation = mediaState.rotation,
+      t.scale = mediaState.scale * editorState.pixelRatio * snappedImageScale * toCropScale;
+      t.translation = [cropTranslation()[0] + mediaState.translation[0], cropTranslation()[1] + mediaState.translation[1]].map(
+        (v) => v * editorState.pixelRatio
+      ) as NumberPair
+    }));
   });
 }

@@ -1,3 +1,4 @@
+import {createRoot, createSignal} from 'solid-js';
 import {ArrayBufferTarget, Muxer} from 'mp4-muxer';
 
 import {MediaEditorContextValue} from '../context';
@@ -33,7 +34,14 @@ export default async function renderToVideo({
   brushCanvas,
   resultCanvas
 }: RenderToVideoArgs) {
-  const [, setProgress] = context.gifCreationProgress;
+  const {editorState: {pixelRatio}} = context;
+
+  const gifCreationProgress = createRoot(dispose => {
+    const signal = createSignal(0);
+    return {signal, dispose};
+  });
+
+  const [, setProgress] = gifCreationProgress.signal;
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
 
@@ -52,7 +60,7 @@ export default async function renderToVideo({
       if(!renderer) return;
 
       renderers.set(layer.id, renderer);
-      await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * context.pixelRatio);
+      await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * pixelRatio);
       maxFrames = Math.max(maxFrames, renderer.getTotalFrames());
     })
   );
@@ -138,7 +146,8 @@ export default async function renderToVideo({
     isGif: true,
     getResult: () => {
       return result ?? resultPromise;
-    }
+    },
+    gifCreationProgress
   };
 
   // const div = document.createElement('div')
