@@ -2,11 +2,11 @@
 import {createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
 
 import accumulate from '../../helpers/array/accumulate';
+import DEBUG from '../../config/debug';
 
 import commonStateStorage from '../commonStateStorage';
 
 import type MTProtoMessagePort from './mtprotoMessagePort';
-import DEBUG from '../../config/debug';
 
 
 type UseAutoLockArgs = {
@@ -55,8 +55,8 @@ export const useAutoLock = ({getPort, getIsLocked, setIsLocked}: UseAutoLockArgs
         });
 
         setIsLocked(true);
-      // }, timeoutMins * 1000 * 60);
-      }, timeoutMins * 1000 * 10);
+      }, timeoutMins * 1000 * 60);
+      // }, timeoutMins * 1000 * 10); Please don't forget to comment this back))
     })();
   });
 
