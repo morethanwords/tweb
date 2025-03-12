@@ -2,7 +2,6 @@ import {Component, createEffect, createResource, on, onCleanup, onMount, Show} f
 import {createMutable} from 'solid-js/store';
 
 import {useLockScreenHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
-import appRuntimeManager from '../../lib/appManagers/appRuntimeManager';
 import AccountController from '../../lib/accounts/accountController';
 import {MAX_PASSCODE_LENGTH} from '../../lib/passcode/constants';
 import {usePasscodeActions} from '../../lib/passcode/actions';
@@ -10,7 +9,9 @@ import commonStateStorage from '../../lib/commonStateStorage';
 import pause from '../../helpers/schedulers/pause';
 import {i18n} from '../../lib/langPack';
 
+import ChatBackgroundGradientRenderer from '../chat/gradientRenderer';
 import type PasswordInputField from '../passwordInputField';
+import {animateValue} from '../mediaEditor/utils';
 import ripple from '../ripple'; ripple; // keep
 import Space from '../space';
 
@@ -19,6 +20,7 @@ import SimplePopup from './simplePopup';
 import Background from './background';
 
 import styles from './passcodeLockScreen.module.scss';
+import focusInput from '../../helpers/dom/focusInput';
 
 
 type StateStore = {
@@ -27,6 +29,7 @@ type StateStore = {
   tooManyAttempts: boolean;
   passcode: string;
   isLogoutPopupOpen: boolean;
+  gradientRenderer?: ChatBackgroundGradientRenderer;
 };
 
 
@@ -61,13 +64,6 @@ const PasscodeLockScreen: Component<{
   onMount(() => {
     attempts = 0;
 
-    (async() => {
-      await pause(0);
-      passwordInputField.input.focus();
-      await pause(0);
-      passwordInputField.toggleForceFocus(false);
-    })();
-
     const lockIcon = props.fromLockIcon;
     if(lockIcon) (async() => {
       const lockIconRect = lockIcon.getBoundingClientRect();
@@ -87,9 +83,32 @@ const PasscodeLockScreen: Component<{
       lockIcon.remove();
       props.onAnimationEnd?.();
     })();
+
+    const listener = (e: KeyboardEvent) => {
+      if(document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      focusInput(passwordInputField.input, e);
+    };
+    document.addEventListener('keydown', listener);
+    onCleanup(() => {
+      document.removeEventListener('keydown', listener);
+    });
   });
 
+  let cancelAnimation: () => void;
+
+  function rotateBackgroundGradient() {
+    cancelAnimation?.();
+
+    if(store.gradientRenderer) {
+      let progress = 0;
+      cancelAnimation = animateValue(0, 1, 200, (p) => progress = p);
+      store.gradientRenderer.toNextPosition(() => progress);
+    }
+  }
+
   createEffect(on(() => store.passcode, () => {
+    rotateBackgroundGradient();
+
     store.isError = false;
     store.tooManyAttempts = false;
   }));
@@ -149,6 +168,7 @@ const PasscodeLockScreen: Component<{
     <InputFieldTsx
       InputFieldClass={PasswordInputField}
       instanceRef={(value) => void (passwordInputField = value)}
+      class={styles.Input}
       value={store.passcode}
       onRawInput={(value) => void (store.passcode = value)}
       label="PasscodeLock.EnterYourPasscode"
@@ -163,12 +183,10 @@ const PasscodeLockScreen: Component<{
     />
   );
 
-  passwordInputField.toggleForceFocus(true);
-
 
   return (
     <div ref={container} class={styles.Container}>
-      <Background />
+      <Background gradientRendererRef={(value) => void(store.gradientRenderer = value)} />
       <div class={styles.Card}>
         <PasswordMonkeyTsx
           hidden={store.isMonkeyHidden}
@@ -184,10 +202,10 @@ const PasscodeLockScreen: Component<{
             onMouseDown={() => {
               onSubmit();
             }}
-            class="btn-primary btn-color-primary btn-large"
+            class={`btn-primary btn-color-primary btn-large ${styles.SubmitButton}`}
             disabled={!store.passcode}
           >
-            {i18n('DeleteProceedBtn')}
+            {i18n('PasscodeLock.Proceed')}
           </button>
           <button hidden style={{visibility: 'hidden', height: '0', width: '0'}} type='submit' />
         </form>

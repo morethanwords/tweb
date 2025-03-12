@@ -1,4 +1,4 @@
-import {createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
+import {createEffect, createSignal, on, onCleanup, onMount, Component} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 
 import {useLockScreenHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
@@ -24,7 +24,9 @@ type StateStore = {
 };
 
 
-const Background = () => {
+const Background: Component<{
+  gradientRendererRef: (value: ChatBackgroundGradientRenderer | undefined) => void
+}> = (props) => {
   const {themeController} = useLockScreenHotReloadGuard();
 
   let container: HTMLDivElement;
@@ -143,7 +145,9 @@ const Background = () => {
 
     const colors = getColorsFromWallPaper(wallPaper);
     if(colors) {
-      gradientCanvas = ChatBackgroundGradientRenderer.create(colors).canvas;
+      const {canvas, gradientRenderer} = ChatBackgroundGradientRenderer.create(colors);
+      gradientCanvas = canvas;
+      props.gradientRendererRef(gradientRenderer);
       gradientCanvas.classList.add(styles.CanvasCommon);
     }
 
@@ -195,6 +199,8 @@ const Background = () => {
       promise.then(({patternRenderer}) => {
         patternRenderer?.cleanup(patternCanvas);
       });
+
+      props.gradientRendererRef(undefined);
 
       setStore(reconcile({
         isMobile: store.isMobile

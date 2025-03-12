@@ -1,4 +1,4 @@
-import {createEffect, createResource, createSignal, onCleanup, Show} from 'solid-js';
+import {Component, createResource, createSignal, onCleanup, Show} from 'solid-js';
 
 import {IS_MOBILE} from '../../../../environment/userAgent';
 import ListenerSetter from '../../../../helpers/listenerSetter';
@@ -7,11 +7,12 @@ import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {i18n, LangPackKey} from '../../../../lib/langPack';
 import {usePasscodeActions} from '../../../../lib/passcode/actions';
 
-import Section from '../../../section';
-import Space from '../../../space';
-import ripple from '../../../ripple'; ripple; // keep
-import RowTsx from '../../../rowTsx';
+import confirmationPopup from '../../../confirmationPopup';
 import type SliderSuperTab from '../../../sliderTab';
+import ripple from '../../../ripple'; ripple; // keep
+import Section from '../../../section';
+import RowTsx from '../../../rowTsx';
+import Space from '../../../space';
 
 import LottieAnimation from './lottieAnimation';
 import {useSuperTab} from './superTabProvider';
@@ -20,9 +21,12 @@ import InlineSelect from './inlineSelect';
 import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
 import {usePromiseCollector} from './promiseCollector';
 
+import type {AppPasscodeLockTab} from '.';
+
 import commonStyles from './common.module.scss';
 import styles from './mainTab.module.scss';
 
+type AppPasscodeLockTabType = typeof AppPasscodeLockTab;
 
 const getHintParams = (tab: SliderSuperTab, title: LangPackKey) => ({
   appendTo: tab.scrollable.container,
@@ -46,6 +50,8 @@ const MainTab = () => {
     return promise;
   });
 
+  const [isDisabling, setIsDisabling] = createSignal(false);
+
   const listenerSetter = new ListenerSetter();
 
   listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
@@ -60,8 +66,8 @@ const MainTab = () => {
   return (
     <Show when={enabled.state === 'ready'}>
       {
-        enabled() ?
-          <PasscodeSetContent /> :
+        enabled() || isDisabling() ?
+          <PasscodeSetContent onDisable={() => setIsDisabling(true)} /> :
           <NoPasscodeContent />
       }
     </Show>
@@ -126,9 +132,11 @@ const NoPasscodeContent = () => {
 };
 
 
-const PasscodeSetContent = () => {
-  const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab}] = useSuperTab();
-  const {isMyPasscode, disablePasscode, changePasscode} = usePasscodeActions();
+const PasscodeSetContent: Component<{
+  onDisable: () => void;
+}> = (props) => {
+  const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab}] = useSuperTab<AppPasscodeLockTabType>();
+  const {disablePasscode, changePasscode} = usePasscodeActions();
   const {rootScope, setQuizHint} = useHotReloadGuard();
 
   const options = [
@@ -196,21 +204,6 @@ const PasscodeSetContent = () => {
   const onPasscodeChange = () => {
     tab.slider.createTab(AppPasscodeEnterPasswordTab)
     .open({
-      onSubmit: async(passcode) => {
-        const isCorrect = await isMyPasscode(passcode);
-        passcode = ''; // forget
-        if(!isCorrect) throw {};
-
-        onChangeSecondStep();
-      },
-      buttonText: 'PasscodeLock.Next',
-      inputLabel: 'PasscodeLock.EnterYourPasscode'
-    }, 'PasscodeLock.EnterYourCurrentPasscode');
-  };
-
-  const onChangeSecondStep = () => {
-    tab.slider.createTab(AppPasscodeEnterPasswordTab)
-    .open({
       onSubmit: (passcode) => {
         onChangeThirdStep(passcode);
         passcode = ''; // forget
@@ -238,22 +231,23 @@ const PasscodeSetContent = () => {
   };
 
   const onDisable = () => {
-    tab.slider.createTab(AppPasscodeEnterPasswordTab)
-    .open({
-      onSubmit: async(passcode, otherTab) => {
-        const isCorrect = await isMyPasscode(passcode);
-        passcode = '';
-        if(!isCorrect) throw {};
-
-        await disablePasscode();
-        otherTab.slider.sliceTabsUntilTab(AppPasscodeLockTab, otherTab);
-        otherTab.close();
-
-        setQuizHint(getHintParams(tab, 'PasscodeLock.PasscodeHasBeenDisabled'));
-      },
-      buttonText: 'PasscodeLock.TurnOff',
-      inputLabel: 'PasscodeLock.EnterYourPasscode'
-    }, 'PasscodeLock.TurnOff');
+    confirmationPopup({
+      title: i18n('PasscodeLock.TurnOff.Title'),
+      description: i18n('PasscodeLock.TurnOff.Description'),
+      button: {
+        text: i18n('PasscodeLock.TurnOff'),
+        isDanger: true
+      }
+    })
+    .then(async() => {
+      props.onDisable();
+      await disablePasscode();
+      tab.close();
+      setQuizHint(getHintParams(
+        tab.slider.getTab(tab.payload.AppPrivacyAndSecurityTab), 'PasscodeLock.PasscodeHasBeenDisabled'
+      ));
+    })
+    .catch(() => {});
   };
 
   const caption = (
@@ -272,7 +266,7 @@ const PasscodeSetContent = () => {
         <Space amount="1.125rem" />
 
         <RowTsx
-          title={i18n('PasscodeLock.TurnOff')}
+          title={i18n('PasscodeLock.TurnOff.Title')}
           icon="lockoff"
           clickable={onDisable}
         />

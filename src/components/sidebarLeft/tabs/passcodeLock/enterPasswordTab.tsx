@@ -1,6 +1,7 @@
 import {createEffect, createSignal, onCleanup} from 'solid-js';
 
 import {MAX_PASSCODE_LENGTH} from '../../../../lib/passcode/constants';
+import {usePasscodeActions} from '../../../../lib/passcode/actions';
 
 import Section from '../../../section';
 import {InputFieldTsx} from '../../../inputFieldTsx';
@@ -20,6 +21,7 @@ type AppPasscodeEnterPasswordTabClass = typeof AppPasscodeEnterPasswordTab;
 
 const EnterPasswordTab = () => {
   const [tab] = useSuperTab<AppPasscodeEnterPasswordTabClass>();
+  const actions = usePasscodeActions();
 
   let inputField: PasswordInputField;
 
@@ -49,7 +51,7 @@ const EnterPasswordTab = () => {
     if(!canSubmit()) return;
 
     try {
-      await tab.payload.onSubmit(value(), tab);
+      await tab.payload.onSubmit(value(), tab, actions);
     } catch{
       setIsError(true);
     }

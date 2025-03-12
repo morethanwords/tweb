@@ -3140,7 +3140,8 @@ const lang = {
   'PasscodeLock.Item.Off': 'Off',
   'PasscodeLock.Description': 'When a passcode is set, a lock icon appears above your chat list. Tap it to lock your Telegram.',
   'PasscodeLock.TurnOn': 'Turn Passcode On',
-  'PasscodeLock.TurnOff': 'Turn Passcode Off',
+  'PasscodeLock.TurnOff': 'Turn Off',
+  'PasscodeLock.TurnOff.Title': 'Turn Passcode Off',
   'PasscodeLock.Notice': 'Note: If you forget your passcode, you\'ll need to log out.',
   'PasscodeLock.AutoLock': 'Auto-lock after',
   'PasscodeLock.EnableLockShortcut': 'Enable lock shortcut',
@@ -3166,7 +3167,8 @@ const lang = {
   'PasscodeLock.NotificationDescription': 'New message',
   'PasscodeLock.Disabled': 'Disabled',
   'PasscodeLock.TooManyAttempts': 'Too many attempts, try again later',
-  'PasscodeLock.LogoutPopup.Description': 'Are you sure you want to log out?'
+  'PasscodeLock.LogoutPopup.Description': 'Are you sure you want to log out?',
+  'PasscodeLock.TurnOff.Description': 'Are you sure you want to turn passcode off?'
 };
 
 export default lang;

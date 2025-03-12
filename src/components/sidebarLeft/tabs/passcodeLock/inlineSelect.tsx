@@ -59,17 +59,29 @@ const InlineSelect: Component<{
     const distToOptionCenter = optionTop + selectedOptionRect.height / 2;
 
     const x = valueRect.left + valueRect.width / 2;
-    const y = valueRect.top + valueRect.height / 2 - distToOptionCenter;
+    let y = valueRect.top + valueRect.height / 2 - distToOptionCenter;
 
-    const maxDist = Math.max(optionTop, selectRect.height - optionBottom);
+    const isOverflowing = y + selectRect.height > window.innerHeight || y < 0;
+
+    if(isOverflowing) {
+      y +=
+        Math.max(0, -y) +
+        Math.min(0, window.innerHeight - (y + selectRect.height));
+    }
 
     selectEl.style.setProperty('--x', '' + x);
     selectEl.style.setProperty('--y', '' + y);
 
+
+    selectEl.animate({opacity: [0, 1]}, {duration: 120}).finished.then(() => {
+      if(isOverflowing) done();
+    });
+
+    if(isOverflowing) return;
+
+    const maxDist = Math.max(optionTop, selectRect.height - optionBottom);
     const getPath = (dist: number) =>
       `polygon(0% ${optionTop - dist}px, 100% ${optionTop - dist}px, 100% ${optionBottom + dist}px, 0px ${optionBottom + dist}px)`;
-
-    selectEl.animate({opacity: [0, 1]}, {duration: 120});
 
     animateValue(
       0,

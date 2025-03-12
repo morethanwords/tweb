@@ -2,17 +2,21 @@ import {Component} from 'solid-js';
 import {render} from 'solid-js/web';
 
 import SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
+import {PasscodeActions} from '../../../../lib/passcode/actions';
 import {LangPackKey} from '../../../../lib/langPack';
 import {InstanceOf} from '../../../../types';
 
 import {SliderSuperTab} from '../../../slider';
 
+import type AppPrivacyAndSecurityTab from '../privacyAndSecurity';
+
 import {PromiseCollector} from './promiseCollector';
 import {SuperTabProvider} from './superTabProvider';
 
-type ScaffoldSolidJSTabArgs = {
+type ScaffoldSolidJSTabArgs<Payload> = {
   title: LangPackKey;
   getComponentModule: () => MaybePromise<{default: Component}>;
+  onOpenAfterTimeout?: (this: InstanceOf<ScaffoledClass<Payload>>) => void;
 };
 
 type ScaffoledClass<Payload = void> = new (...args: ConstructorParameters<typeof SliderSuperTab>) => SliderSuperTab & {
@@ -22,8 +26,9 @@ type ScaffoledClass<Payload = void> = new (...args: ConstructorParameters<typeof
 
 function scaffoldSolidJSTab<Payload = void>({
   title,
-  getComponentModule
-}: ScaffoldSolidJSTabArgs): ScaffoledClass<Payload> {
+  getComponentModule,
+  onOpenAfterTimeout
+}: ScaffoldSolidJSTabArgs<Payload>): ScaffoledClass<Payload> {
   return class extends SliderSuperTab {
     public payload: Payload;
 
@@ -65,17 +70,32 @@ function scaffoldSolidJSTab<Payload = void>({
       this.dispose?.();
       super.onCloseAfterTimeout();
     }
+
+    protected onOpenAfterTimeout() {
+      onOpenAfterTimeout?.call?.(this);
+    }
   } as ScaffoledClass<Payload>;
 }
 
+type AppPasscodeLockTabPayload = {
+  AppPrivacyAndSecurityTab: typeof AppPrivacyAndSecurityTab;
+};
+
 export const AppPasscodeLockTab =
-  scaffoldSolidJSTab({
+  scaffoldSolidJSTab<AppPasscodeLockTabPayload>({
     title: 'PasscodeLock.Title',
-    getComponentModule: () => import('./mainTab')
+    getComponentModule: () => import('./mainTab'),
+    onOpenAfterTimeout: async function() {
+      // Remove the previous enter password tab
+      this.slider.sliceTabsUntilTab(
+        this.payload.AppPrivacyAndSecurityTab,
+        this
+      );
+    }
   });
 
 type AppPasscodeEnterPasswordTabPayload = {
-  onSubmit: (passcode: string, tab: InstanceOf<typeof AppPasscodeEnterPasswordTab>) => MaybePromise<void>;
+  onSubmit: (passcode: string, tab: InstanceOf<typeof AppPasscodeEnterPasswordTab>, passcodeActions: PasscodeActions) => MaybePromise<void>;
 
   inputLabel: LangPackKey;
   buttonText: LangPackKey;

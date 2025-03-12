@@ -154,15 +154,18 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
       appNavigationController.replaceState();
     }
 
+
     if(element) (async() => {
       element.style.setProperty('transition-time', '.12s');
-      await pause(80);
+      await pause(120);
+      if(document.startViewTransition) document.startViewTransition();
       element.classList.add('passcode-lock-screen--hidden');
       await pause(120);
 
       this.dispose?.();
       element?.remove();
     })();
+
     this.appStartupDeferred?.resolve();
     this.appStartupDeferred = undefined;
   }

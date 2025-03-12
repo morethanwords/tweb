@@ -10,6 +10,7 @@ import DeferredIsUsingPasscode from './deferredIsUsingPasscode';
 import EncryptionKeyStore from './keyStore';
 import {createEncryptionArtifactsForPasscode, deriveEncryptionKey, hashPasscode} from './utils';
 
+export type PasscodeActions = ReturnType<typeof usePasscodeActions>;
 
 export function usePasscodeActions() {
   const {rootScope, apiManagerProxy} = useLockScreenHotReloadGuard();

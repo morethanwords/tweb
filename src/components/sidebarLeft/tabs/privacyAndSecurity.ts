@@ -40,7 +40,7 @@ import PopupPremium from '../../popups/premium';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
 import AppPrivacyMessagesTab from './privacy/messages';
-import {AppPasscodeLockTab} from './passcodeLock';
+import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab} from './passcodeLock';
 import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
@@ -116,8 +116,22 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         titleLangKey: 'PasscodeLock.Item.Title',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          const tab = this.slider.createTab(AppPasscodeLockTab);
-          tab.open();
+          if(passcodeEnabled) {
+            this.slider.createTab(AppPasscodeEnterPasswordTab)
+            .open({
+              buttonText: 'PasscodeLock.Next',
+              inputLabel: 'PasscodeLock.EnterYourPasscode',
+              onSubmit: async(passcode, _, {isMyPasscode}) => {
+                const isCorrect = await isMyPasscode(passcode);
+                passcode = '';
+                if(!isCorrect) throw {};
+
+                this.slider.createTab(AppPasscodeLockTab).open({AppPrivacyAndSecurityTab});
+              }
+            })
+          } else {
+            this.slider.createTab(AppPasscodeLockTab).open({AppPrivacyAndSecurityTab});
+          }
         },
         listenerSetter: this.listenerSetter
       };
@@ -193,7 +207,9 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         // console.log('password state', state);
       });
 
+      let passcodeEnabled: boolean;
       const setPasscodeEnabledState = (enabled?: boolean) => {
+        passcodeEnabled = enabled;
         replaceContent(passcodeLockRow.subtitle, i18n(enabled ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
       };
       this.managers.appStateManager.getState().then((state) => {
