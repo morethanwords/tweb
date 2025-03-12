@@ -27,6 +27,7 @@ import EncryptionKeyStore from '../passcode/keyStore';
 import sessionStorage from '../sessionStorage';
 import CacheStorageController from '../files/cacheStorage';
 import {ApiManager} from './apiManager';
+import {useAutoLock} from './useAutoLock';
 
 
 const log = logger('MTPROTO');
@@ -198,6 +199,10 @@ port.addMultipleEventsListeners({
 
   forceLogout: async() => {
     await ApiManager.forceLogOutAll();
+  },
+
+  toggleUninteruptableActivity: ({activity, active}, source) => {
+    autoLockController.toggleUninteruptableActivity(source, activity, active);
   }
 
   // localStorageEncryptionMethodsProxy: (payload) => {
@@ -234,42 +239,17 @@ function resetNotificationsCount() {
   });
 }
 
-let autoLockTimeout: number;
-let prevAllIdle: boolean;
-
-const areAllTabsIdle = () => {
-  const tabs = appTabsManager.getTabs();
-  return tabs.every(tab => !!tab.state.idleStartTime);
-};
+const autoLockController = useAutoLock({
+  getIsLocked: () => isLocked,
+  setIsLocked: (value) => void (isLocked = value),
+  getPort: () => port
+});
 
 appTabsManager.onTabStateChange = async() => {
-  const areAllIdle = areAllTabsIdle();
+  const tabs = appTabsManager.getTabs();
+  const areAllIdle = tabs.every(tab => !!tab.state.idleStartTime);
 
-  if(prevAllIdle === areAllIdle) return;
-  prevAllIdle = areAllIdle;
-
-  self.clearTimeout(autoLockTimeout);
-
-  const settings = await commonStateStorage.get('settings', false);
-  const passcodeEnabled = settings?.passcode?.enabled || false;
-  const timeoutMins = settings?.passcode?.autoLockTimeoutMins || null;
-
-  if(!timeoutMins || !passcodeEnabled) return;
-
-  if(areAllIdle && !isLocked) {
-    autoLockTimeout = self.setTimeout(() => {
-      if(!areAllTabsIdle() || isLocked) return;
-
-      port.invokeVoid('toggleLock', true);
-      port.invokeVoid('event', {
-        name: 'toggle_locked',
-        args: [true],
-        accountNumber: undefined
-      });
-
-      isLocked = true;
-    }, timeoutMins * 1000 * 60);
-  }
+  autoLockController.setAreAllIdle(areAllIdle)
 };
 
 listenMessagePort(port, (source) => {
@@ -296,5 +276,6 @@ listenMessagePort(port, (source) => {
   // }
 }, (source) => {
   appTabsManager.deleteTab(source);
+  autoLockController.removeTab(source);
 });
 
