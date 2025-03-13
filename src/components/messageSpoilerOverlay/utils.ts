@@ -52,7 +52,7 @@ export function computeMaxDistToMargin(e: MouseEvent, parentRect: DOMRect, rects
 }
 
 export function getTimeForDist(dist: number) {
-  return Math.max(400, (dist / 160) * 200);
+  return Math.max(600, Math.sqrt((dist / 160)) * 350);
 }
 
 export function toDOMRectArray(list: DOMRectList) {
