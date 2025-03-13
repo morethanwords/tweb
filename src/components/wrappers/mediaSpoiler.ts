@@ -61,7 +61,7 @@ export function onMediaSpoilerClick(options: {
   const {mediaSpoiler, event} = options;
   cancelEvent(event);
 
-  if(mediaSpoiler.classList.contains('is-revealing')) {
+  if(mediaSpoiler.classList.contains('is-revealing') || mediaSpoiler.dataset.isRevealing) {
     return;
   }
 
@@ -71,7 +71,10 @@ export function onMediaSpoilerClick(options: {
     safePlay(video);
   }
 
-  if(revealSpoilerWithAnimation({mediaSpoiler, event})) return;
+  if(revealSpoilerWithAnimation({mediaSpoiler, event})) {
+    mediaSpoiler.dataset.isRevealing = 'true';
+    return;
+  }
 
   toggleMediaSpoiler({
     mediaSpoiler,
