@@ -202,7 +202,7 @@ port.addMultipleEventsListeners({
   },
 
   toggleUninteruptableActivity: ({activity, active}, source) => {
-    autoLockController.toggleUninteruptableActivity(source, activity, active);
+    autoLockControls.toggleUninteruptableActivity(source, activity, active);
   }
 
   // localStorageEncryptionMethodsProxy: (payload) => {
@@ -239,7 +239,7 @@ function resetNotificationsCount() {
   });
 }
 
-const autoLockController = useAutoLock({
+const autoLockControls = useAutoLock({
   getIsLocked: () => isLocked,
   setIsLocked: (value) => void (isLocked = value),
   getPort: () => port
@@ -249,7 +249,7 @@ appTabsManager.onTabStateChange = async() => {
   const tabs = appTabsManager.getTabs();
   const areAllIdle = tabs.every(tab => !!tab.state.idleStartTime);
 
-  autoLockController.setAreAllIdle(areAllIdle)
+  autoLockControls.setAreAllIdle(areAllIdle)
 };
 
 listenMessagePort(port, (source) => {
@@ -276,6 +276,6 @@ listenMessagePort(port, (source) => {
   // }
 }, (source) => {
   appTabsManager.deleteTab(source);
-  autoLockController.removeTab(source);
+  autoLockControls.removeTab(source);
 });
 

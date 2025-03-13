@@ -168,7 +168,9 @@ function setSidebarLeftWidth() {
   const sidebarEl = document.getElementById('column-left');
   const storedWidth = localStorage.getItem('sidebar-left-width');
 
-  let validatedWidth = parseInt(storedWidth) || undefined;
+  let validatedWidth = parseInt(storedWidth);
+  validatedWidth = isNaN(validatedWidth) ? undefined : validatedWidth;
+
   if(validatedWidth > MAX_SIDEBAR_WIDTH) validatedWidth = MAX_SIDEBAR_WIDTH;
   else if(validatedWidth < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR) validatedWidth = 0;
   else if(validatedWidth < MIN_SIDEBAR_WIDTH) validatedWidth = MIN_SIDEBAR_WIDTH;
