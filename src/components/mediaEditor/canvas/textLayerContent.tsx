@@ -28,8 +28,6 @@ export default function TextLayerContent(props: ResizableLayerProps) {
     // let position = -1;
     // let deletedLayer: ResizableLayer;
 
-    editorState.textLayersInfo[props.layer.id] = undefined;
-
     const layers = mediaState.resizableLayers;
     const idx = layers.findIndex(layer => layer.id === props.layer.id);
     if(idx < 0) return;
@@ -107,7 +105,7 @@ export default function TextLayerContent(props: ResizableLayerProps) {
     if(props.layer.textInfo.style === 'background') updateBackgroundStyle(container, path.join(' '), props.layer.textInfo);
     if(props.layer.textInfo.style === 'outline') updateOutlineStyle(container, contentEditable, props.layer.textInfo);
 
-    editorState.textLayersInfo[props.layer.id] = {
+    props.layer.textRenderingInfo =  {
       width: container.clientWidth,
       height: container.clientHeight,
       path,
@@ -166,7 +164,7 @@ export default function TextLayerContent(props: ResizableLayerProps) {
   };
 
   const intialContent = (() => {
-    const layerInfo = editorState.textLayersInfo[props.layer.id];
+    const layerInfo = props.layer.textRenderingInfo;
     if(!layerInfo) return <div>{i18n('MediaEditor.TypeSomething')}</div>;
     return layerInfo.lines.map((line) => <div>{line.content}</div>);
   })();

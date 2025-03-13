@@ -9,9 +9,9 @@ export default function drawTextLayer(
 ) {
   if(layer.type !== 'text') return;
 
-  const {editorState: {textLayersInfo, pixelRatio}} = context;
+  const {editorState: {pixelRatio}} = context;
 
-  const renderingInfo = {...textLayersInfo[layer.id]};
+  const renderingInfo = {...layer.textRenderingInfo};
   const scale = layer.scale * pixelRatio;
   renderingInfo.height *= scale;
   renderingInfo.width *= scale;

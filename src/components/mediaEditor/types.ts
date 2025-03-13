@@ -14,6 +14,7 @@ export type ResizableLayer = {
   sticker?: Document.document;
 
   textInfo?: TextLayerInfo;
+  textRenderingInfo?: TextRenderingInfo;
 };
 
 export type TextRenderingInfo = {

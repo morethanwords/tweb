@@ -122,6 +122,6 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     width: scaledWidth,
     height: scaledHeight,
     originalSrc: context.imageSrc,
-    editingMediaState: unwrap(mediaState)
+    editingMediaState: structuredClone(unwrap(mediaState))
   };
 }

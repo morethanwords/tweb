@@ -43,7 +43,6 @@ export type MediaEditorState = {
 
   currentTextLayerInfo: TextLayerInfo;
   selectedResizableLayer?: number;
-  textLayersInfo: Record<number, TextRenderingInfo>;
   stickersLayersInfo: Record<number, StickerRenderingInfo>;
 
   imageCanvas?: HTMLCanvasElement;
@@ -109,7 +108,6 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
     size: 40
   },
   selectedResizableLayer: undefined,
-  textLayersInfo: {},
   stickersLayersInfo: {},
 
   imageCanvas: undefined,
@@ -154,7 +152,11 @@ export type HistoryItem = {
 const MediaEditorContext = createContext<MediaEditorContextValue>();
 
 export function createContextValue(props: MediaEditorProps): MediaEditorContextValue {
-  const mediaStateInit = props.editingMediaState || getDefaultEditingMediaState()
+  const mediaStateInit = props.editingMediaState ?
+    structuredClone(props.editingMediaState) : // Prevent mutable store being synchronized with the passed object reference
+    getDefaultEditingMediaState();
+
+
   const mediaState = createMutable(mediaStateInit);
   const editorState = createMutable(getDefaultMediaEditorState());
 
@@ -176,7 +178,7 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
     hasModifications,
 
-    resizableLayersSeed: 1,
+    resizableLayersSeed: mediaState.resizableLayers.reduce((prev, current) => Math.max(prev, current.id), 0) + 1,
 
     gifCreationProgress: createSignal(0)
   };
