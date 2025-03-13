@@ -1,4 +1,12 @@
-export function addShortcutListener(combos: string[], callback: (combo: string) => void) {
+const positionKeyRegexp = /^key[a-zA-Z]$/i;
+
+function matchNonMetaKey(event: KeyboardEvent, key: string) {
+  if(positionKeyRegexp.test(key)) return event.code.toLowerCase() === key.toLowerCase();
+
+  return event.key.toLowerCase() === key.toLowerCase();
+}
+
+export function addShortcutListener(combos: string[], callback: (combo: string, event: KeyboardEvent) => void, preventByDefault = true) {
   const listener = (event: KeyboardEvent) => {
     const pairs = combos
     .map((combo) => [combo, combo.toLowerCase().split('+')] as const)
@@ -12,13 +20,13 @@ export function addShortcutListener(combos: string[], callback: (combo: string) 
           (key === 'alt' && event.altKey) ||
           (key === 'meta' && event.metaKey) ||
           (key === 'anymeta' && (event.ctrlKey || event.shiftKey || event.altKey || event.metaKey)) ||
-          event.key.toLowerCase() === key
+          matchNonMetaKey(event, key)
         );
       });
 
       if(isComboMatched) {
-        event.preventDefault();
-        callback(combo);
+        preventByDefault && event.preventDefault();
+        callback(combo, event);
         break;
       }
     }

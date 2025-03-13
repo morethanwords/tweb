@@ -720,4 +720,8 @@ export default class InputField {
   public setError(label?: LangPackKey) {
     this.setState(InputState.Error, label);
   }
+
+  public toggleForceFocus(enabled: boolean) {
+    this.input.classList.toggle('force-focus', enabled)
+  }
 }

@@ -12,10 +12,10 @@
 import appNavigationController from '../../components/appNavigationController';
 
 export class AppRuntimeManager {
-  public reload() {
+  public reload(removeHash = true) {
     try {
       appNavigationController.spliceItems(0, Infinity);
-      appNavigationController.overrideHash();
+      removeHash && appNavigationController.overrideHash();
       location.reload();
     } catch(e) {};
 

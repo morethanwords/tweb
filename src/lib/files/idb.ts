@@ -26,6 +26,7 @@ export type IDBIndex = {
 
 export type IDBStore = {
   name: string,
+  encryptedName?: string,
   indexes?: IDBIndex[]
 };
 
@@ -181,6 +182,10 @@ export class IDB {
             const os = txn.objectStore(store.name);
             createIndexes(os, store);
           }
+
+          if(store.encryptedName && !db.objectStoreNames.contains(store.encryptedName)) {
+            db.createObjectStore(store.encryptedName);
+          }
         });
       };
     }).then((db) => this.openDbPromise = db);
@@ -258,12 +263,12 @@ namespace IDBStorage {
   export type Entries = Array<[IDBValidKey, any]>
 }
 
-class IDBStorage<T extends Database<any>, StoreName extends string = T['stores'][0]['name']> {
+class IDBStorage<T extends Database<any>, StoreName extends string = T['stores'][number]['name']> {
   private log: ReturnType<typeof logger>;
   private storeName: T['stores'][0]['name'];
   private idb: IDB;
 
-  constructor(db: T, storeName: typeof db['stores'][0]['name']) {
+  constructor(db: T, storeName: T['stores'][0]['name' | 'encryptedName']) {
     this.storeName = storeName;
     this.log = logger(['IDB', db.name, storeName].join('-'));
     this.idb = IDB.create(db);

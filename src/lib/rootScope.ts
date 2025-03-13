@@ -184,7 +184,7 @@ export type BroadcastEvents = {
 
   'service_notification': Update.updateServiceNotification,
 
-  'logging_out': {accountNumber: ActiveAccountNumber, migrateTo?: ActiveAccountNumber},
+  'logging_out': {accountNumber?: ActiveAccountNumber, migrateTo?: ActiveAccountNumber},
 
   'payment_sent': {peerId: PeerId, mid: number, receiptMessage: Message.messageService},
 
@@ -208,7 +208,10 @@ export type BroadcastEvents = {
 
   'resizing_left_sidebar': void,
 
-  'chat_background_set': void
+  'chat_background_set': void,
+
+  'toggle_using_passcode': boolean,
+  'toggle_locked': boolean
 };
 
 export type BroadcastEventsListeners = {

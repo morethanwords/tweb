@@ -7,6 +7,11 @@
 
   --background: #212121;
   --background-hover: #272727;
+  
+  .night & {
+    --background: #141414;
+    --background-hover: #1b1b1b;
+  }
 
   background-color: var(--background);
   color: #717579;
@@ -178,9 +183,4 @@
       font-size: 30px;
     }
   }
-}
-
-.night .folders-sidebar {
-  --background: #141414;
-  --background-hover: #1b1b1b;
 }

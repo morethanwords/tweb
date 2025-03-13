@@ -6,12 +6,12 @@
 
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import type {getEnvironment} from '../../environment/utils';
-import type {StoragesResults} from '../appManagers/utils/storages/loadStorages';
-import type {LocalStorageProxyTask} from '../localStorage';
+import type {LocalStorageEncryptedProxyTaskPayload, LocalStorageProxyTask} from '../localStorage';
 import type {MirrorTaskPayload, NotificationBuildTaskPayload, TabState} from './mtprotoworker';
 import type toggleStorages from '../../helpers/toggleStorages';
 import type {ActiveAccountNumber} from '../accounts/types';
 import type {LoadStateResult} from '../appManagers/utils/state/loadState';
+import type {PasscodeStorageValue} from '../commonStateStorage';
 import SuperMessagePort from './superMessagePort';
 
 export type MTProtoManagerTaskPayload = {name: string, method: string, args: any[], accountNumber: ActiveAccountNumber};
@@ -24,6 +24,13 @@ type CallNotificationPayload = {
 
 type MTProtoBroadcastEvent = {
   event: (payload: {name: string, args: any[], accountNumber: ActiveAccountNumber}, source: MessageEventSource) => void
+};
+
+export type ToggleUsingPasscodePayload = {
+  isUsingPasscode: true;
+  encryptionKey: CryptoKey;
+} | {
+  isUsingPasscode: false;
 };
 
 export default class MTProtoMessagePort<Master extends boolean = true> extends SuperMessagePort<{
@@ -40,7 +47,16 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   createProxyWorkerURLs: (payload: {originalUrl: string, blob: Blob}) => string[],
   setInterval: (timeout: number) => number,
   clearInterval: (intervalId: number) => void,
-  terminate: () => void
+  terminate: () => void,
+  toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
+  changePasscode: (payload: {toStore: PasscodeStorageValue, encryptionKey: CryptoKey}, source: MessageEventSource) => void,
+  saveEncryptionKey: (payload: CryptoKey, source: MessageEventSource) => void,
+  isLocked: (payload: void, source: MessageEventSource) => Promise<boolean>,
+  toggleLockOthers: (isLocked: boolean, source: MessageEventSource) => void
+  localStorageEncryptedProxy: (payload: LocalStorageEncryptedProxyTaskPayload) => Promise<any>,
+  toggleCacheStorage: (value: boolean, source: MessageEventSource) => void,
+  forceLogout: () => void,
+  toggleUninteruptableActivity: (payload: {activity: string, active: boolean}, source: MessageEventSource) => void
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
@@ -48,11 +64,14 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   mirror: (payload: MirrorTaskPayload) => void,
   notificationBuild: (payload: NotificationBuildTaskPayload) => void,
   receivedServiceMessagePort: (payload: void) => void,
-  log: (payload: any) => void
+  log: (payload: any) => void,
   tabsUpdated: (payload: TabState[]) => void,
   callNotification: (payload: CallNotificationPayload) => void,
-  intervalCallback: (intervalId: number) => void
-  // hello: () => void
+  intervalCallback: (intervalId: number) => void,
+  toggleLock: (isLocked: boolean) => void,
+  saveEncryptionKey: (payload: CryptoKey, source: MessageEventSource) => void,
+  toggleCacheStorage: (value: boolean, source: MessageEventSource) => void,
+  toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
 } & MTProtoBroadcastEvent, Master> {
   private static INSTANCE: MTProtoMessagePort;
 

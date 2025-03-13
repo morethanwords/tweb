@@ -4,11 +4,11 @@ import {i18n} from '../../../lib/langPack';
 
 import ripple from '../../ripple';
 import {IconTsx} from '../../iconTsx';
+import Space from '../../space';
 
 import ColorPicker from '../colorPicker';
 import RangeInput from '../rangeInput';
 import LargeButton from '../largeButton';
-import Space from '../space';
 import MediaEditorContext from '../context';
 import {createStoredColor} from '../createStoredColor';
 import {fontInfoMap} from '../utils';

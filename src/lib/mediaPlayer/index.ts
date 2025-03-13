@@ -34,6 +34,7 @@ import {createQualityLevelsSwitchButton} from './qualityLevelsSwitchButton';
 import {createPlaybackRateButton} from './playbackRateButton';
 import {createSpeedDragHandler} from './speedDragHandler';
 import {VideoTimestamp} from '../../components/appMediaViewerBase';
+import apiManagerProxy from '../mtproto/mtprotoworker';
 
 
 export default class VideoPlayer extends ControlsHover {
@@ -209,10 +210,10 @@ export default class VideoPlayer extends ControlsHover {
           safePlay(video);
         }
       }).finally(() => { // due to autoplay, play will not call
-        this.setIsPlaing(!this.video.paused);
+        this.setIsPlaying(!this.video.paused);
       });
     } else {
-      this.setIsPlaing(!this.video.paused);
+      this.setIsPlaying(!this.video.paused);
     }
   }
 
@@ -224,12 +225,14 @@ export default class VideoPlayer extends ControlsHover {
     return this.video.videoHeight || this._height;
   }
 
-  private setIsPlaing(isPlaying: boolean) {
+  private setIsPlaying(isPlaying: boolean) {
     if(this.isPlaying === isPlaying) {
       return;
     }
 
     this.isPlaying = isPlaying;
+
+    this.toggleActivity(isPlaying);
 
     if(this.live && !isPlaying) {
       return;
@@ -437,12 +440,12 @@ export default class VideoPlayer extends ControlsHover {
     }
 
     listenerSetter.add(video)('play', () => {
-      this.setIsPlaing(true);
+      this.setIsPlaying(true);
       onPlayCallbacks.forEach((cb) => cb());
     });
 
     listenerSetter.add(video)('pause', () => {
-      this.setIsPlaing(false);
+      this.setIsPlaying(false);
       onPauseCallbacks.forEach((cb) => cb());
     });
 
@@ -620,6 +623,13 @@ export default class VideoPlayer extends ControlsHover {
     }
   }
 
+  private toggleActivity(active: boolean) {
+    apiManagerProxy.invokeVoid('toggleUninteruptableActivity', {
+      activity: 'UsingVideoPlayer',
+      active
+    });
+  }
+
   public isFullScreen() {
     return isFullScreen();
   }
@@ -664,6 +674,8 @@ export default class VideoPlayer extends ControlsHover {
       undefined;
 
     this.progress?.cleanup();
+
+    this.toggleActivity(false);
   }
 
   public unmount() {

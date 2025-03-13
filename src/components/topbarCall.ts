@@ -34,6 +34,7 @@ import {AppMediaViewerRtmp} from './appMediaViewerRtmp';
 import {AnyClass} from '../types';
 import RtmpDescriptionElement from './rtmp/description';
 import RTMP_STATE from '../lib/calls/rtmpState';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {
@@ -78,6 +79,12 @@ export default class TopbarCall {
 
   private instance: GroupCallInstance | CallInstance | RtmpCallInstance;
   private instanceListenerSetter: ListenerSetter;
+
+  /**
+   * The class name as string of the current instance to count whether the user has uninteruptable activities
+   * so we don't auto-lock the screen after the timeout if enabled in settings
+   */
+  private currentActivityName: string;
 
   constructor(
     private managers: AppManagers
@@ -214,8 +221,12 @@ export default class TopbarCall {
     }
 
     if(isClosed) {
+      this.toggleActivity(false);
       return;
     }
+
+    this.currentActivityName = (instance as Object)?.constructor?.name;
+    this.toggleActivity(true);
 
     weave.setCurrentState(
       instance instanceof RtmpCallInstance ? 'rtmp' : 'group',
@@ -343,4 +354,25 @@ export default class TopbarCall {
     document.getElementById('column-center').prepend(container);
     weave.componentDidMount();
   }
+
+  private toggleActivity(active: boolean) {
+    if(!this.currentActivityName) return;
+
+    apiManagerProxy.invoke('toggleUninteruptableActivity', {
+      activity: this.currentActivityName,
+      active
+    });
+  }
+
+  // public hangUp() {
+  //   const instance = this.instance;
+
+  //   if(instance instanceof RtmpCallInstance) {
+  //     rtmpCallsController.leaveCall();
+  //   } else if(instance instanceof GroupCallInstance) {
+  //     instance.hangUp();
+  //   } else {
+  //     instance?.hangUp('phoneCallDiscardReasonHangup');
+  //   }
+  // }
 }

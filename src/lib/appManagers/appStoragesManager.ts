@@ -79,6 +79,20 @@ export class AppStoragesManager extends AppManager {
     await Promise.all(promises);
   }
 
+  /**
+   * The session storage is populated by default for all accounts even if there is no user logged for them
+   *
+   * It's more for the case when there was a passcode activated so we don't leave the encrypted data there
+   */
+  public static async clearSessionStores() {
+    const promises = ([/* 1, */2, 3, 4] as ActiveAccountNumber[]).map(async(accountNumber) => {
+      const storage = new AppStorage(getDatabaseState(accountNumber), 'session');
+      await storage.clear();
+    });
+
+    await Promise.all(promises);
+  }
+
   public static async shiftStorages(upTo: ActiveAccountNumber) {
     for(let i = upTo; i <= MAX_ACCOUNTS; i++) {
       await this.clearAllStoresForAccount(i);

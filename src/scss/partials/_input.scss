@@ -207,12 +207,12 @@
       border-color: var(--primary-color);
     }
 
-    &:focus ~ label {
+    &:focus ~ label, &.force-focus ~ label {
       color: var(--primary-color);
       font-weight: var(--font-weight-bold);
     }
 
-    &:focus ~ .input-field-border {
+    &:focus ~ .input-field-border, &.force-focus ~ .input-field-border {
       opacity: 1;
     }
 
@@ -225,7 +225,8 @@
     &:focus ~ label,
     &:valid ~ label,
     &:not(.is-empty) ~ label,
-    &:disabled ~ label {
+    &:disabled ~ label,
+    &.force-focus ~ label {
       transform: translate(calc(-.1875rem + (1rem - var(--padding-horizontal))), calc(var(--height) / -2 + .0625rem)) scale(.75);
       padding: 0 .3125rem;
       opacity: 1;
@@ -564,6 +565,10 @@ button:focus {
       html.is-ios & {
         // ! меньше 1rem будет зумить поле
         font-size: 1rem;
+      }
+
+      &::-ms-reveal {
+        display: none; // Remove the reveal password eye in Edge browsers
       }
     }
   }

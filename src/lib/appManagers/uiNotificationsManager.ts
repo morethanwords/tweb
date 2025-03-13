@@ -40,6 +40,7 @@ import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
 import createNotificationImage from '../../helpers/createNotificationImage';
 import {getMiddleware} from '../../helpers/middleware';
 import {FOLDER_ID_ALL} from '../mtproto/mtproto_config';
+import PasscodeLockScreenController from '../../components/passcodeLock/passcodeLockScreenController';
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -105,8 +106,8 @@ export class UiNotificationsManager {
 
   public static byAccount = {} as Record<ActiveAccountNumber, UiNotificationsManager>;
 
-  static async getNotificationsCountForAllAccounts() {
-    return commonStateStorage.get('notificationsCount', false);
+  static async getNotificationsCountForAllAccounts(): Promise<Partial<Record<ActiveAccountNumber, number>>> {
+    return (await commonStateStorage.get('notificationsCount', false)) || {};
   }
 
   static async getNotificationsCountForAllAccountsForTitle() {
@@ -125,7 +126,7 @@ export class UiNotificationsManager {
 
   async getNotificationsCount() {
     const notificationsCount = await UiNotificationsManager.getNotificationsCountForAllAccounts();
-    return notificationsCount[this.accountNumber];
+    return notificationsCount?.[this.accountNumber] || 0;
   }
 
   async setNotificationCount(valueOrFn: number | ((prev: number) => number)) {
@@ -295,7 +296,9 @@ export class UiNotificationsManager {
     let notificationMessage: string;
     let wrappedMessage = false;
 
-    if(peerTypeNotifySettings.show_previews) {
+    const isLocked = PasscodeLockScreenController.getIsLocked();
+
+    if(peerTypeNotifySettings.show_previews && !isLocked) {
       if(message._ === 'message' && message.fwd_from && fwdCount > 1) {
         notificationMessage = I18n.format('Notifications.Forwarded', true, [fwdCount]);
       } else {
@@ -392,7 +395,7 @@ export class UiNotificationsManager {
     notification.tag = peerString;
     notification.silent = true;// message.pFlags.silent || false;
 
-    notification.image = await createNotificationImage(this.managers, peerId, peerTitle);
+    notification.image = !isLocked ? await createNotificationImage(this.managers, peerId, peerTitle) : undefined;
     if(!peerReaction) { // ! WARNING, message can be already read
       message = await this.managers.appMessagesManager.getMessageByPeer(message.peerId, message.mid);
       if(!message || !message.pFlags.unread) return;
@@ -410,6 +413,11 @@ export class UiNotificationsManager {
       random_id: 0,
       title: ''
     };
+
+    if(isLocked) {
+      notification.title = I18n.format('PasscodeLock.NotificationTitle', true);
+      notification.message = I18n.format('PasscodeLock.NotificationDescription', true);
+    }
 
     const result = await this.notify(notification, pushData);
     if(result && this.registeredDevice) {

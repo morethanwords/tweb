@@ -1,21 +1,44 @@
-import {createEffect, on, splitProps} from 'solid-js';
-import InputField, {InputFieldOptions} from './inputField';
+import {createEffect, mergeProps, on, splitProps} from 'solid-js';
 
-export interface InputFieldTsxProps extends InputFieldOptions {
+import {LangPackKey} from '../lib/langPack';
+import {InstanceOf} from '../types';
+
+import InputField, {InputFieldOptions, InputState} from './inputField';
+
+export interface InputFieldTsxProps<T extends typeof InputField> extends InputFieldOptions {
+  InputFieldClass?: T
+
+  instanceRef?: (value: InstanceOf<T>) => void
+
   class?: string
   value?: string
   onRawInput?: (value: string) => void
+  errorLabel?: LangPackKey
 }
 
-export const InputFieldTsx = (props: InputFieldTsxProps) => {
-  const [, rest] = splitProps(props, ['class', 'value'])
-  const obj = new InputField(rest)
+export const InputFieldTsx = <T extends typeof InputField>(inProps: InputFieldTsxProps<T>) => {
+  const props = mergeProps({InputFieldClass: InputField}, inProps);
+
+  const [, options] = splitProps(props, ['class', 'value', 'InputFieldClass', 'errorLabel'])
+
+  const obj = new props.InputFieldClass(options)
+  props.instanceRef?.(obj as InstanceOf<T>)
 
   createEffect(on(
     () => props.class,
     (value, prev) => {
       obj.container.classList.remove(prev)
       obj.container.classList.add(value)
+    }
+  ))
+
+  createEffect(on(
+    () => props.errorLabel,
+    (value, prev) => {
+      if(!value && !prev) return // Prevent setting error first render
+
+      if(value) obj.setError(value)
+      else obj.setState(InputState.Neutral)
     }
   ))
 

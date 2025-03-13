@@ -9,7 +9,7 @@ import {ActiveAccountNumber} from '../../lib/accounts/types';
 import {MOUNT_CLASS_TO} from '../debug';
 
 export type AccountDatabase = Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'>;
-export type CommonDatabase = Database<'session'>;
+export type CommonDatabase = Database<'session' | 'localStorage'>;
 
 export const getOldDatabaseState = (): AccountDatabase => ({
   name: `tweb`,
@@ -36,12 +36,16 @@ export const getOldDatabaseState = (): AccountDatabase => ({
   ]
 });
 
-export const getCommonDatabaseState = (): Database<'session'> => ({
+export const getCommonDatabaseState = (): CommonDatabase => ({
   name: `tweb-common`,
-  version: 7,
+  version: 8,
   stores: [
     {
       name: 'session'
+    },
+    {
+      name: 'localStorage', // not used (
+      encryptedName: 'localStorage__encrypted'
     }
   ]
 });
@@ -50,25 +54,31 @@ export const getDatabaseState = (
   accountNumber: ActiveAccountNumber
 ): Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> => ({
   name: `tweb-account-${accountNumber}`,
-  version: 7,
+  version: 8,
   stores: [
     {
-      name: 'session'
+      name: 'session',
+      encryptedName: 'session__encrypted'
     },
     {
-      name: 'stickerSets'
+      name: 'stickerSets',
+      encryptedName: 'stickerSets__encrypted'
     },
     {
-      name: 'users'
+      name: 'users',
+      encryptedName: 'users__encrypted'
     },
     {
-      name: 'chats'
+      name: 'chats',
+      encryptedName: 'chats__encrypted'
     },
     {
-      name: 'dialogs'
+      name: 'dialogs',
+      encryptedName: 'dialogs__encrypted'
     },
     {
-      name: 'messages'
+      name: 'messages',
+      encryptedName: 'messages__encrypted'
     }
   ]
 });

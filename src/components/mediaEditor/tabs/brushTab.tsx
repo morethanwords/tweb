@@ -2,9 +2,10 @@ import {createEffect, createMemo, JSX, useContext} from 'solid-js';
 
 import {i18n} from '../../../lib/langPack';
 
+import Space from '../../space';
+
 import ColorPicker from '../colorPicker';
 import RangeInput from '../rangeInput';
-import Space from '../space';
 import LargeButton from '../largeButton';
 import {ArrowBrush, BlurBrush, EraserBrush, MarkerBrush, NeonBrush, PenBrush} from '../brushesSvg';
 import MediaEditorContext from '../context';

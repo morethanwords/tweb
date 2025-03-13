@@ -18,14 +18,35 @@ import App from '../../config/app';
 import rootScope from '../rootScope';
 import toArray from '../../helpers/array/toArray';
 
-export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
-  'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' |
-  'TwoFactorSetupMonkeyCloseAndPeekToIdle' | 'TwoFactorSetupMonkeyIdle' |
-  'TwoFactorSetupMonkeyPeek' | 'TwoFactorSetupMonkeyTracking' |
-  'voice_outlined2' | 'voip_filled' | 'voice_mini' | 'jolly_roger' |
-  'Gift3' | 'Gift6' | 'Gift12' | 'Folders_Shared' | 'UtyanSearch' |
-  'UtyanDiscussion' | 'UtyanLinks' | 'UtyanStories' | 'ReactionGeneric' |
-  'StatsEmoji' | 'Congratulations' | 'large_lastseen' | 'large_readtime';
+export type LottieAssetName =
+  | 'EmptyFolder'
+  | 'Folders_1'
+  | 'Folders_2'
+  | 'TwoFactorSetupMonkeyClose'
+  | 'TwoFactorSetupMonkeyCloseAndPeek'
+  | 'TwoFactorSetupMonkeyCloseAndPeekToIdle'
+  | 'TwoFactorSetupMonkeyIdle'
+  | 'TwoFactorSetupMonkeyPeek'
+  | 'TwoFactorSetupMonkeyTracking'
+  | 'voice_outlined2'
+  | 'voip_filled'
+  | 'voice_mini'
+  | 'jolly_roger'
+  | 'Gift3'
+  | 'Gift6'
+  | 'Gift12'
+  | 'Folders_Shared'
+  | 'UtyanSearch'
+  | 'UtyanDiscussion'
+  | 'UtyanLinks'
+  | 'UtyanStories'
+  | 'ReactionGeneric'
+  | 'StatsEmoji'
+  | 'Congratulations'
+  | 'large_lastseen'
+  | 'large_readtime'
+  | 'UtyanPasscode'
+;
 
 export class LottieLoader {
   private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject(makeError('NO_WASM')) : undefined;

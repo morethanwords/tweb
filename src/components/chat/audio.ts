@@ -26,6 +26,7 @@ import {replaceButtonIcon} from '../button';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 import toHHMMSS from '../../helpers/string/toHHMMSS';
 import {PlaybackRateButton} from '../../components/playbackRateButton';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -130,6 +131,27 @@ export default class ChatAudio extends PinnedContainer {
     this.progressLine.container.classList.add('pinned-audio-progress');
     progressWrapper.append(this.progressLine.container);
     this.wrapper.insertBefore(progressWrapper, this.wrapperUtils);
+
+    const toggleActivity = (active: boolean) => {
+      apiManagerProxy.invokeVoid('toggleUninteruptableActivity', {
+        activity: 'PlayingMedia',
+        active
+      });
+    };
+
+    this.topbar.listenerSetter.add(appMediaPlaybackController)('play', () => {
+      // console.log('[my-debug] media play');
+      toggleActivity(true);
+    });
+
+    this.topbar.listenerSetter.add(appMediaPlaybackController)('pause', () => {
+      // console.log('[my-debug] media paused');
+      toggleActivity(false);
+    });
+    this.topbar.listenerSetter.add(appMediaPlaybackController)('stop', () => {
+      // console.log('[my-debug] media stopped');
+      toggleActivity(false);
+    });
 
     this.topbar.listenerSetter.add(appMediaPlaybackController)('play', this.onMediaPlay);
     this.topbar.listenerSetter.add(appMediaPlaybackController)('pause', this.onPause);

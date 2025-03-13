@@ -102,17 +102,17 @@ function clearOldChunks() {
 
     const currentTimeSeconds = Date.now() / 1000 | 0;
 
-    for(const request of requests) {
+    await Promise.all(requests.map(async(request) => {
       const response = await cache.match(request);
-      if(!response) continue;
+      if(!response) return;
 
       const savedTimeSeconds = +response.headers.get(CHUNK_CACHED_TIME_HEADER);
-      if(!savedTimeSeconds) continue;
-      if(savedTimeSeconds + CHUNK_LIFETIME_SECONDS > currentTimeSeconds) continue;
+      if(!savedTimeSeconds) return;
+      if(savedTimeSeconds + CHUNK_LIFETIME_SECONDS > currentTimeSeconds) return;
 
       swLog('deleting cached stream chunk', request.url);
-      cache.delete(request);
-    }
+      await cache.delete(request);
+    }));
   });
 };
 

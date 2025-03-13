@@ -11,6 +11,18 @@ import findUpAsChild from '../helpers/dom/findUpAsChild';
 import {fastRaf} from '../helpers/schedulers';
 import liteMode from '../helpers/liteMode';
 
+
+declare module 'solid-js' {
+  namespace JSX {
+    interface Directives {
+      /**
+       * To be used in solid-js as `<button use:ripple />`
+       */
+      ripple: true;
+    }
+  }
+}
+
 let rippleClickId = 0;
 export default function ripple(
   elem: HTMLElement,

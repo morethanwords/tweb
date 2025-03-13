@@ -42,6 +42,10 @@
     background-color: rgba(29, 29, 29, .74);
   }
 
+  .night &-lighter &-background, .night &-lighter &-notch {
+    background-color: rgba(45, 45, 45, .74);
+  }
+
   &-part {
     opacity: 0;
     // transform: scale(0.4);

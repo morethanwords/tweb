@@ -1,0 +1,14 @@
+.LottieAnimation {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-width: var(--size, 100%);
+
+  margin: 0 auto;
+  margin-top: 1rem;
+
+  cursor: pointer;
+}
+
+.AdditionalPadding {
+  padding: 0 1rem;
+}

@@ -1,7 +1,8 @@
 import {createEffect, createSignal, on, onCleanup, useContext} from 'solid-js';
 
+import Space from '../../space';
+
 import RangeInput from '../rangeInput';
-import Space from '../space';
 import MediaEditorContext from '../context';
 import useIsMobile from '../useIsMobile';
 

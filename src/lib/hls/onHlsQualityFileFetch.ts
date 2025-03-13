@@ -20,9 +20,6 @@ export type HlsStreamUrlParams = {
 };
 
 
-/**
- * To be used in the service worker
- */
 export async function onHlsQualityFileFetch(event: FetchEvent, params: string, search: string) {
   const deferred = deferredPromise<Response>();
   event.respondWith(deferred);
@@ -49,10 +46,8 @@ async function fetchAndProcessQualityFile(docId: string, accountNumber: ActiveAc
   const file = await getHlsQualityFile(docId, accountNumber);
   const fileString = await file.text();
 
-  // log.info('original hls quality file', fileString);
 
   const replacedContent = await replaceQualityFileWithLocalURLs(fileString, accountNumber);
-  // log.info('replaced hls quality file', replacedContent);
 
   return replacedContent;
 }

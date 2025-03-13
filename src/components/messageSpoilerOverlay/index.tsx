@@ -355,7 +355,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
       if(!initialCoords) {
         drawImageFromSource(offScreenCtx, sourceCanvas, ...timesDpr(x, y, dw, dh, x, y, dw, dh));
       } else {
-        const scaledProgress = progress ** 2 * Math.sqrt(progress) * 0.125;
+        const scaledProgress = progress ** 2 /* * Math.sqrt(progress) */ * 0.4;
         drawImageFromSource(
           offScreenCtx,
           sourceCanvas,
@@ -393,7 +393,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     ctx.save();
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = 'white';
-    ctx.shadowBlur = 100 * dpr() * progress + 30;
+    ctx.shadowBlur = radius / 3.5 * dpr() * progress;
     ctx.shadowColor = 'white';
     ctx.beginPath();
     ctx.arc(...timesDpr(initialCoords[0], initialCoords[1], radius * progress), 0, 2 * Math.PI);
