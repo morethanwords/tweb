@@ -56,7 +56,7 @@ export const useAutoLock = ({getPort, getIsLocked, setIsLocked}: UseAutoLockArgs
 
         setIsLocked(true);
       }, timeoutMins * 1000 * 60);
-      // }, timeoutMins * 1000 * 10); Please don't forget to comment this back))
+      // }, timeoutMins * 1000 * 10); // Please don't forget to comment this back))
     })();
   });
 

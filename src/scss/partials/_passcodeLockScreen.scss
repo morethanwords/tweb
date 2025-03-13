@@ -39,10 +39,10 @@
     --actual-scale: var(--scale, 1);
     transform: translate(-50%, -50%) scale(var(--actual-scale, 1));
 
-    .lock-icon-shackle {
-      transition: transform var(--transition-time-move);
-      transition-delay: .2s;
-    }
+    // .lock-icon-shackle {
+    //   transition: transform .1s;
+    //   transition-delay: .3s;
+    // }
 
     svg {
       position: absolute;
@@ -61,7 +61,7 @@
 
       .lock-icon-shackle {
         transform-origin: 56.5% center;
-        transform: rotateY(180deg) translate(/* -3.25px */0, 1px);
+        transform: rotateY(180deg) translate(/* -3.25px */ 0, 1px);
       }
     }
 
