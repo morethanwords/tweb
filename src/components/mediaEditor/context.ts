@@ -1,30 +1,51 @@
 import {Accessor, createContext, createMemo, createSignal, Signal, useContext} from 'solid-js';
-import {createMutable, Store} from 'solid-js/store';
+import {createMutable, modifyMutable, produce, Store, unwrap} from 'solid-js/store';
 
-import {AppManagers} from '../../lib/appManagers/managers';
+import type {AppManagers} from '../../lib/appManagers/managers';
+import type {ObjectPath} from '../../types';
 
-import {NumberPair, ResizableLayer, StickerRenderingInfo, TextLayerInfo, TextRenderingInfo} from './types';
+import {NumberPair, ResizableLayer, StickerRenderingInfo, TextLayerInfo} from './types';
 import {AdjustmentKey, adjustmentsConfig} from './adjustments';
 import {FinalTransform} from './canvas/useFinalTransform';
 import {BrushDrawnLine} from './canvas/brushPainter';
 import type {MediaEditorProps} from './mediaEditor';
 import {RenderingPayload} from './webgl/initWebGL';
-import {approximateDeepEqual} from './utils';
+import {approximateDeepEqual, exceptKeys, log} from './utils';
 
 
-export type EditingMediaState = {
+type EditingMediaStateWithoutHistory = {
   scale: number;
   rotation: number;
   translation: NumberPair;
   flip: NumberPair;
+  currentImageRatio: number;
 
   adjustments: Record<AdjustmentKey, number>;
 
   resizableLayers: ResizableLayer[];
   brushDrawnLines: BrushDrawnLine[];
+};
 
+export type EditingMediaState = EditingMediaStateWithoutHistory & {
   history: HistoryItem[];
   redoHistory: HistoryItem[];
+};
+
+export type KeyofEditingMediaState = ObjectPath<EditingMediaStateWithoutHistory>;
+
+export namespace HistoryItem {
+  export const RemoveArrayItem = 'SSBiZWxpZXZlIEkgY2FuIGZseSwgSSBiZWxpZXZlIEkgY2FuIHRvdWNoIHRoZSBza3kh'; // Symbol('Remove'); Symbol cannot be structuredClone :(
+}
+
+export type HistoryItem = {
+  path: KeyofEditingMediaState;
+  newValue: any;
+  oldValue: any;
+
+  // Resizable layers can change order!
+  findBy?: {
+    id: any;
+  };
 };
 
 export type MediaEditorState = {
@@ -37,7 +58,6 @@ export type MediaEditorState = {
 
   imageSize?: NumberPair;
   canvasSize?: NumberPair;
-  currentImageRatio: number;
   fixedImageRatioKey?: string;
   finalTransform: FinalTransform;
 
@@ -60,6 +80,7 @@ export type MediaEditorState = {
 };
 
 export type EditorOverridableGlobalActions = {
+  pushToHistory: (item: HistoryItem) => void;
   redrawBrushes: () => void;
   abortDrawerSlide: () => void;
   resetRotationWheel: () => void;
@@ -71,6 +92,7 @@ const getDefaultEditingMediaState = (): EditingMediaState => ({
   rotation: 0,
   translation: [0, 0],
   flip: [1, 1],
+  currentImageRatio: 0,
 
   adjustments: Object.fromEntries(adjustmentsConfig.map(entry => [entry.key, 0])) as Record<AdjustmentKey, number>,
 
@@ -91,7 +113,6 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
 
   imageSize: undefined,
   canvasSize: undefined,
-  currentImageRatio: 0,
   fixedImageRatioKey: undefined,
   finalTransform: {
     flip: [1, 1],
@@ -139,15 +160,6 @@ export type MediaEditorContextValue = {
   gifCreationProgress: Signal<number>;
 };
 
-export namespace HistoryItem {
-  export const Remove = Symbol('Remove');
-}
-
-export type HistoryItem = {
-  path: (keyof any)[];
-  newValue: any;
-  oldValue: any;
-};
 
 const MediaEditorContext = createContext<MediaEditorContextValue>();
 
@@ -156,17 +168,35 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     structuredClone(props.editingMediaState) : // Prevent mutable store being synchronized with the passed object reference
     getDefaultEditingMediaState();
 
+  const mediaStateInitClone = structuredClone(mediaStateInit);
+
 
   const mediaState = createMutable(mediaStateInit);
   const editorState = createMutable(getDefaultMediaEditorState());
 
   const actions = {
+    pushToHistory: (item: HistoryItem) => {
+      modifyMutable(mediaState, produce(({history, redoHistory}) => {
+        history.push(item);
+        redoHistory.length && redoHistory.splice(0, Infinity);
+      }));
+    },
     redrawBrushes: () => {},
     abortDrawerSlide: () => {},
     resetRotationWheel: () => {}
   };
 
-  const hasModifications = createMemo(() => !approximateDeepEqual(mediaStateInit, mediaState));
+  // TODO: Throttle to save computation power on animations
+  const hasModifications = createMemo(() => {
+    // log('mediaStateInitClone, mediaState :>> ', mediaStateInitClone, unwrap(mediaState), !approximateDeepEqual(mediaStateInitClone, mediaState));
+    return !approximateDeepEqual(
+      exceptKeys(mediaStateInitClone, ['history', 'redoHistory']),
+      exceptKeys(mediaState, ['history', 'redoHistory'])
+    );
+  });
+
+  (window as any).mediaState = mediaState;
+  (window as any).unwrap = unwrap;
 
   return {
     managers: props.managers,
@@ -178,7 +208,7 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
     hasModifications,
 
-    resizableLayersSeed: mediaState.resizableLayers.reduce((prev, current) => Math.max(prev, current.id), 0) + 1,
+    resizableLayersSeed: Math.random(), // [0-1] make sure it's different even after reopening the editor, note that there might be some items in history!
 
     gifCreationProgress: createSignal(0)
   };

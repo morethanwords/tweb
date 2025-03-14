@@ -5,6 +5,7 @@ import {hexaToHsla} from '../../helpers/color';
 import {logger} from '../../lib/logger';
 
 import {FontInfo, FontKey, NumberPair} from './types';
+import {HistoryItem} from './context';
 
 export const log = logger('Media editor');
 
@@ -49,9 +50,10 @@ export function lerpArray(min: number[], max: number[], progress: number) {
 }
 
 
-const isPureObject = (obj: any) => [Object.prototype, null].includes(Object.getPrototypeOf(obj));
+// const isPureObject = (obj: any) => [Object.prototype, null].includes(Object.getPrototypeOf(obj));
+const isObject = (obj: any) => obj instanceof Object;
 
-const COMPARISON_ERROR = 0.00001;
+const COMPARISON_ERROR = 0.001;
 
 export function approximateDeepEqual(x: any, y: any): boolean {
   if(typeof x === 'number' && typeof y === 'number') return Math.abs(x - y) < COMPARISON_ERROR;
@@ -62,12 +64,26 @@ export function approximateDeepEqual(x: any, y: any): boolean {
     return x.length === y.length && x
     .every((value, idx) => approximateDeepEqual(value, y[idx]));
 
-  if(isPureObject(x) && isPureObject(y))
+
+  if(isObject(x) && isObject(y))
     return Array
     .from(new Set([...Object.keys(x), ...Object.keys(y)]))
-    .every(key => x[key] === y[key])
+    .every(key => approximateDeepEqual(x[key], y[key]))
+
 
   return false;
+}
+
+export function exceptKeys<T extends object, Key extends keyof T>(obj: T, keys: Key[]) {
+  const set = new Set<any>(keys);
+  const res = {};
+
+  Object.keys(obj).forEach((key) => {
+    if(set.has(key)) return;
+    (res as any)[key] = (obj as any)[key];
+  });
+
+  return res as Exclude<T, Key>;
 }
 
 
@@ -116,6 +132,45 @@ export function animateValue<T extends number | number[]>(
   return () => {
     canceled = true;
   };
+}
+
+export function processHistoryItem(item: HistoryItem, mediaState: any)
+{
+  const path = [...item.path].reverse() as (keyof any)[];
+  if(!path?.length) return;
+
+  let obj = mediaState;
+
+  while(path.length > 1)
+  {
+    obj = obj[path.pop()];
+  }
+
+  let key = path.pop();
+
+  if(obj instanceof Array)
+  {
+    key = key as number;
+    if(item.findBy) key = obj.findIndex((value) => value?.id === item.findBy.id);
+    if(key === -1) key = obj.length;
+
+    if(item.newValue === HistoryItem.RemoveArrayItem)
+    {
+      obj.splice(key, 0, item.oldValue);
+    }
+    else if(item.oldValue === HistoryItem.RemoveArrayItem)
+    {
+      obj.splice(key, 1);
+    }
+    else
+    {
+      obj[key] = item.oldValue;
+    }
+  }
+  else
+  {
+    obj[key] = item.oldValue;
+  }
 }
 
 export const fontInfoMap: Record<FontKey, FontInfo> = {

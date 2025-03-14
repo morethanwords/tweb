@@ -1,58 +1,43 @@
-import {batch, createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
-import {modifyMutable, produce} from 'solid-js/store';
+import {batch, createEffect, createMemo, on, onCleanup, onMount} from 'solid-js';
 
 import createElementFromMarkup from '../../../helpers/createElementFromMarkup';
 import {i18n} from '../../../lib/langPack';
 
-import {ResizableLayer, ResizableLayerProps, TextLayerInfo, TextRenderingInfo, TextRenderingInfoLine} from '../types';
-import {fontInfoMap, getContrastColor} from '../utils';
-import {useMediaEditorContext} from '../context';
+import {ResizableLayerProps, TextLayerInfo, TextRenderingInfoLine} from '../types';
+import {fontInfoMap, getContrastColor, log} from '../utils';
+import {HistoryItem, useMediaEditorContext} from '../context';
 
 import {ResizableContainer} from './resizableLayers';
 
 export default function TextLayerContent(props: ResizableLayerProps) {
-  const {editorState, mediaState} = useMediaEditorContext();
+  const {editorState, mediaState, actions} = useMediaEditorContext();
 
   if(!props.layer.textInfo) return;
 
   const onFocus = () => {
-    modifyMutable(editorState, produce(s => {
-      s.selectedResizableLayer;
-      s.currentTextLayerInfo = props.layer.textInfo;
-    }));
+    batch(() => {
+      editorState.selectedResizableLayer = props.layer.id;
+      editorState.currentTextLayerInfo = {...props.layer.textInfo};
+    });
   };
 
   const fontInfo = () => fontInfoMap[props.layer.textInfo.font];
 
   function deleteThisLayer() {
-    // let position = -1;
-    // let deletedLayer: ResizableLayer;
-
     const layers = mediaState.resizableLayers;
     const idx = layers.findIndex(layer => layer.id === props.layer.id);
     if(idx < 0) return;
     const deletedLayer = layers.splice(idx, 1)[0];
+    deletedLayer.textRenderingInfo = undefined;
 
-    // context.pushToHistory({
-    //   undo() {
-    //     batch(() => {
-    //       setLayers((prev) => {
-    //         prev = [...prev];
-    //         if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
-    //         return prev;
-    //       });
-    //       setSelectedResizableLayer(deletedLayer.id);
-    //     });
-    //   },
-    //   redo() {
-    //     setLayers((prev) => {
-    //       prev = [...prev];
-    //       position = prev.findIndex((layer) => layer[0]().id === deletedLayer.id);
-    //       if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
-    //       return prev;
-    //     });
-    //   }
-    // });
+    actions.pushToHistory({
+      path: ['resizableLayers', idx],
+      newValue: HistoryItem.RemoveArrayItem,
+      oldValue: deletedLayer,
+      findBy: {
+        id: deletedLayer.id
+      }
+    });
   }
 
   function updateBackground() {
@@ -143,9 +128,9 @@ export default function TextLayerContent(props: ResizableLayerProps) {
   });
 
   createEffect(
-    on(() => editorState.currentTextLayerInfo, () => {
+    on(() => ({...editorState.currentTextLayerInfo}), () => {
       if(editorState.selectedResizableLayer !== props.layer.id) return;
-      props.layer.textInfo = editorState.currentTextLayerInfo;
+      props.layer.textInfo = {...editorState.currentTextLayerInfo};
     })
   );
 

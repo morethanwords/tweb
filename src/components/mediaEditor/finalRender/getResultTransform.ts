@@ -21,8 +21,8 @@ export default function getResultTransform({
   cropOffset
 }: GetResultTransformArgs): FinalTransform {
   const {
-    editorState: {canvasSize, currentImageRatio},
-    mediaState: {scale, translation, rotation, flip}
+    editorState: {canvasSize},
+    mediaState: {scale, translation, rotation, flip, currentImageRatio}
   } = context;
 
   const initialCanvasWidth = canvasSize[0];

@@ -11,7 +11,7 @@ import RangeInput from '../rangeInput';
 const ADJUST_TIMEOUT = 800;
 
 export default function AdjustmentsTab() {
-  const {editorState, mediaState} = useMediaEditorContext();
+  const {editorState, mediaState, actions} = useMediaEditorContext();
 
   const isMobile = useIsMobile();
 
@@ -93,14 +93,12 @@ export default function AdjustmentsTab() {
               onChangeFinish={(prevValue, currentValue) => {
                 setShowGhost(false);
                 editorState.isAdjusting = false;
-                // context.pushToHistory({
-                //   undo() {
-                //     setValue(prevValue);
-                //   },
-                //   redo() {
-                //     setValue(currentValue);
-                //   }
-                // });
+
+                actions.pushToHistory({
+                  path: ['adjustments', item.key],
+                  newValue: currentValue,
+                  oldValue: prevValue
+                });
               }}
               min={item.to100 ? 0 : -50}
               max={item.to100 ? 100 : 50}

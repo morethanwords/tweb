@@ -8,7 +8,7 @@ import SwipeHandler, {getEvent} from '../../swipeHandler';
 import {observeResize} from '../../resizeObserver';
 
 import {NumberPair, ResizableLayer, ResizableLayerProps} from '../types';
-import {useMediaEditorContext} from '../context';
+import {HistoryItem, useMediaEditorContext} from '../context';
 import {withCurrentOwner} from '../utils';
 import useIsMobile from '../useIsMobile';
 
@@ -26,7 +26,7 @@ type ProcessedLayer = {
 
 export default function ResizableLayers() {
   const context = useMediaEditorContext();
-  const {editorState, mediaState} = context;
+  const {editorState, mediaState, actions} = context;
   const isTextTab = () => editorState.currentTab === 'text';
   const canClick = () => ['stickers', 'text', 'adjustments'].includes(editorState.currentTab);
 
@@ -74,33 +74,22 @@ export default function ResizableLayers() {
       rotation: -transform.rotation,
       scale: 1 / transform.scale,
       type: 'text',
-      textInfo: editorState.currentTextLayerInfo
+      textInfo: {...editorState.currentTextLayerInfo}
     } as ResizableLayer;
 
     batch(() => {
       mediaState.resizableLayers.push(newResizableLayer);
       editorState.selectedResizableLayer = newResizableLayer.id;
-    });
 
-    // let position = -1;
-    let deletedLayer: ResizableLayer;
-    // context.pushToHistory({
-    //   undo() {
-    //     setLayers((prev) => {
-    //       prev = [...prev];
-    //       position = prev.findIndex((layer) => layer[0]().id === newResizableLayer.id);
-    //       if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
-    //       return prev;
-    //     });
-    //   },
-    //   redo() {
-    //     setLayers((prev) => {
-    //       prev = [...prev];
-    //       if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
-    //       return prev;
-    //     });
-    //   }
-    // });
+      actions.pushToHistory({
+        path: ['resizableLayers', mediaState.resizableLayers.length - 1],
+        newValue: newResizableLayer,
+        oldValue: HistoryItem.RemoveArrayItem,
+        findBy: {
+          id: newResizableLayer.id
+        }
+      });
+    });
   }
 
   return (
@@ -379,35 +368,26 @@ type UseContextMenuArgs = {
 }
 
 function useContextMenu({container, layer}: UseContextMenuArgs) {
-  const {editorState, mediaState} = useMediaEditorContext();
+  const {editorState, mediaState, actions} = useMediaEditorContext();
 
   function onClick() {
-    // let position = -1;
-    // let deletedLayer: ResizableLayer;
-
     const layers = mediaState.resizableLayers;
     const idx = layers.findIndex(otherLayer => otherLayer.id === layer.id);
     if(idx < 0) return;
-    const deletedLayer = layers.splice(idx, 1)[0];
-    editorState.selectedResizableLayer = undefined;
 
-    // context.pushToHistory({
-    //   undo() {
-    //     setLayers((prev) => {
-    //       prev = [...prev];
-    //       if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
-    //       return prev;
-    //     });
-    //   },
-    //   redo() {
-    //     setLayers((prev) => {
-    //       prev = [...prev];
-    //       position = prev.findIndex((layer) => layer[0]().id === deletedLayer.id);
-    //       if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
-    //       return prev;
-    //     });
-    //   }
-    // });
+    batch(() => {
+      editorState.selectedResizableLayer = undefined;
+      const deletedLayer = layers.splice(idx, 1)[0];
+
+      actions.pushToHistory({
+        path: ['resizableLayers', idx],
+        newValue: HistoryItem.RemoveArrayItem,
+        oldValue: deletedLayer,
+        findBy: {
+          id: deletedLayer.id
+        }
+      });
+    });
   }
 
   const contextMenu = createContextMenu({

@@ -55,7 +55,7 @@ export default function useFinalTransform() {
 
     const toCropScale = getSnappedViewportsScale(imageRatio, cropOffset().width, cropOffset().height, w, h);
     const fromCroppedScale =
-      1 / getSnappedViewportsScale(editorState.currentImageRatio, cropOffset().width, cropOffset().height, w, h);
+      1 / getSnappedViewportsScale(mediaState.currentImageRatio, cropOffset().width, cropOffset().height, w, h);
 
     const snappedImageScale = Math.min(w / payload.image.width, h / payload.image.height);
 
@@ -101,7 +101,7 @@ export default function useFinalTransform() {
     })
   );
   createEffect(
-    on(() => editorState.currentImageRatio, () => {
+    on(() => mediaState.currentImageRatio, () => {
       updatePrevValues();
     })
   );
@@ -132,7 +132,7 @@ export default function useFinalTransform() {
       const currentAdditionalScale = toCropScale * snappedImageScale * fromCroppedScale;
 
       const scaleToChange = getSnappedViewportsScale(
-        editorState.currentImageRatio,
+        mediaState.currentImageRatio,
         currentSize[0],
         currentSize[1],
         prevCanvasSize()[0],

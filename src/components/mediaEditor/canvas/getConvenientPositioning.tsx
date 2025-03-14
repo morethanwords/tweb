@@ -20,7 +20,7 @@ export default function getConvenientPositioning({
     [0, 0]
   ]
 }: Options) {
-  const {editorState} = useMediaEditorContext();
+  const {editorState, mediaState} = useMediaEditorContext();
 
   const cropOffset = useCropOffset();
 
@@ -43,7 +43,7 @@ export default function getConvenientPositioning({
     return point;
   });
 
-  const [cropWidth, cropHeight] = snapToViewport(editorState.currentImageRatio, cropOffset().width, cropOffset().height);
+  const [cropWidth, cropHeight] = snapToViewport(mediaState.currentImageRatio, cropOffset().width, cropOffset().height);
 
   const cropLeftTop = [-cropWidth / 2, cropHeight / 2];
   const cropPoints = [

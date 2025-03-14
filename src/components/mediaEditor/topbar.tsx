@@ -1,50 +1,54 @@
-import {onCleanup, onMount} from 'solid-js';
+import {batch, onCleanup, onMount} from 'solid-js';
 
 import {addShortcutListener} from '../../helpers/shortcutListener';
 import {i18n} from '../../lib/langPack';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import ripple from '../ripple';
 
-import {useMediaEditorContext} from './context';
+import {HistoryItem, useMediaEditorContext} from './context';
+import {processHistoryItem} from './utils';
 
 export default function Topbar(props: {onClose: () => void; onFinish: () => void}) {
+  const {hasModifications, mediaState, editorState} = useMediaEditorContext();
+
   let doneButton: HTMLDivElement;
 
-  const {hasModifications, mediaState} = useMediaEditorContext();
+
+  function processHistory(history: HistoryItem[], otherHistory: HistoryItem[]) {
+    batch(() => {
+      const item = history.pop();
+      if(!item) return;
+
+      otherHistory.push({
+        ...item,
+        path: item.path,
+        newValue: item.oldValue,
+        oldValue: item.newValue
+      });
+
+      processHistoryItem(item, mediaState);
+
+      editorState.selectedResizableLayer = undefined;
+    });
+  }
 
   function onUndo() {
-    // if(!history().length) return;
-    // const item = history()[history().length - 1];
-    // setRedoHistory((prev) => [...prev, item]);
-    // setHistory((prev) => {
-    //   prev.pop();
-    //   return [...prev];
-    // });
-    // item.undo();
+    processHistory(mediaState.history, mediaState.redoHistory);
   }
 
   function onRedo() {
-    // if(!redoHistory().length) return;
-    // const item = redoHistory()[redoHistory().length - 1];
-    // setHistory((prev) => [...prev, item]);
-    // setRedoHistory((prev) => {
-    //   prev.pop();
-    //   return [...prev];
-    // });
-    // item.redo();
+    processHistory(mediaState.redoHistory, mediaState.history);
   }
-
-  // const canFinish = useCanFinish();
 
   onMount(() => {
     ripple(doneButton);
 
-    const removeListeners = addShortcutListener(['ctrl+z', 'ctrl+shift+z', 'ctrl+y'], (combo) => {
-      // if(combo === 'ctrl+z') {
-      //   onUndo();
-      // } else {
-      //   onRedo();
-      // }
+    const removeListeners = addShortcutListener(['Ctrl+KeyZ', 'Ctrl+Shift+keyZ', 'Ctrl+KeyY'], (combo) => {
+      if(combo === 'Ctrl+KeyZ') {
+        onUndo();
+      } else {
+        onRedo();
+      }
     });
 
     onCleanup(() => removeListeners());

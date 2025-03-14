@@ -28,7 +28,7 @@ export default function CropHandles() {
   const getConvenientPositioning = withCurrentOwner(_getConvenientPositioning);
 
   const getNewLeftTopAndSize = () => {
-    const [width, height] = snapToViewport(editorState.currentImageRatio, cropOffset().width, cropOffset().height);
+    const [width, height] = snapToViewport(mediaState.currentImageRatio, cropOffset().width, cropOffset().height);
 
     return {
       leftTop: [
@@ -72,7 +72,7 @@ export default function CropHandles() {
   }
 
   createEffect(
-    on(() => editorState.currentImageRatio, () => {
+    on(() => mediaState.currentImageRatio, () => {
       resetSizeWithAnimation();
     })
   );
@@ -111,7 +111,7 @@ export default function CropHandles() {
           if(firstTarget !== el) return;
 
           const fixed = editorState.fixedImageRatioKey;
-          let ratio = editorState.currentImageRatio;
+          let ratio = mediaState.currentImageRatio;
           if(left < 0) {
             ratio = -ratio;
           }
@@ -204,7 +204,7 @@ export default function CropHandles() {
           const newRatio = newWidth / newHeight;
 
           const upScale = Math.min(cropOffset().width / newWidth, cropOffset().height / newHeight);
-          editorState.currentImageRatio = newRatio;
+          mediaState.currentImageRatio = newRatio;
           resetSizeWithAnimation();
 
           const initialScale = mediaState.scale;
@@ -304,7 +304,7 @@ export default function CropHandles() {
   const croppedSizeFull = () => {
     const [cw, ch] = editorState.canvasSize;
     let [w, h] = [cw, ch];
-    const ratio = editorState.currentImageRatio;
+    const ratio = mediaState.currentImageRatio;
 
     if(w / ratio > h) w = h * ratio;
     else h = w / ratio;

@@ -13,7 +13,7 @@ import {IconTsx} from '../../iconTsx';
 import Space from '../../space';
 
 import useNormalizePoint from '../canvas/useNormalizePoint';
-import {useMediaEditorContext} from '../context';
+import {HistoryItem, useMediaEditorContext} from '../context';
 import {ResizableLayer} from '../types';
 import {delay} from '../utils';
 
@@ -24,7 +24,7 @@ export default function StickersTab() {
   const context = useMediaEditorContext();
   const {container, scrollAmount} = useContext(TabContentContext);
 
-  const {managers, editorState, mediaState} = context;
+  const {managers, editorState, mediaState, actions} = context;
 
   const normalizePoint = useNormalizePoint();
 
@@ -125,28 +125,16 @@ export default function StickersTab() {
       batch(() => {
         mediaState.resizableLayers.push(newLayer);
         editorState.selectedResizableLayer = id;
+
+        actions.pushToHistory({
+          path: ['resizableLayers', mediaState.resizableLayers.length - 1],
+          newValue: newLayer,
+          oldValue: HistoryItem.RemoveArrayItem,
+          findBy: {
+            id: newLayer.id
+          }
+        })
       });
-
-      // let position = 0;
-      // let deletedLayer: ResizableLayer;
-
-      // context.pushToHistory({
-      //   undo() {
-      //     setLayers((prev) => {
-      //       prev = [...prev];
-      //       position = prev.findIndex((layer) => layer[0]().id === newLayer.id);
-      //       if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
-      //       return prev;
-      //     });
-      //   },
-      //   redo() {
-      //     setLayers((prev) => {
-      //       prev = [...prev];
-      //       if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
-      //       return prev;
-      //     });
-      //   }
-      // });
     }
 
     return <div ref={container} class="media-editor__stickers-grid-item" onClick={onClick} />;

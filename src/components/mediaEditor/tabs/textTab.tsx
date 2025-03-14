@@ -1,4 +1,4 @@
-import {onMount, Accessor, JSX, createEffect} from 'solid-js';
+import {onMount, Accessor, JSX, createEffect, untrack} from 'solid-js';
 
 import {i18n} from '../../../lib/langPack';
 
@@ -21,7 +21,7 @@ export default function TextTab() {
 
   editorState.currentTextLayerInfo.color = savedColor().value;
   createEffect(() => {
-    editorState.currentTextLayerInfo.color = savedColor().value;
+    untrack(() => editorState.currentTextLayerInfo).color = savedColor().value;
   });
 
 

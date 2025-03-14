@@ -39,10 +39,8 @@ export function animateToNewRotationOrRatio(newRotation: number) {
   const targetTranslation = [0, 0];
   const targetRotation = snappedRotation;
 
-  modifyMutable(editorState, produce((state) => {
-    state.currentImageRatio = ratio;
-    state.isMoving = true;
-  }));
+  mediaState.currentImageRatio = ratio;
+  editorState.isMoving = true;
 
   animateValue(
     0,
@@ -56,7 +54,10 @@ export function animateToNewRotationOrRatio(newRotation: number) {
       }));
     },
     {
-      onEnd: () => editorState.isMoving = false
+      onEnd: () => {
+        editorState.isMoving = false;
+        mediaState.rotation = mediaState.rotation % (Math.PI * 2);
+      }
     }
   );
 }

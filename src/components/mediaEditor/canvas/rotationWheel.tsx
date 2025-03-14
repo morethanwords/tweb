@@ -129,6 +129,7 @@ export default function RotationWheel() {
           setMoved(newMoved);
           setMovedDiff(0);
           editorState.isMoving = false;
+          mediaState.rotation = mediaState.rotation % (Math.PI * 2)
         });
       }
     });

@@ -25,7 +25,7 @@ function drawAdjustedImage(gl: WebGLRenderingContext) {
 }
 
 export default function ImageCanvas() {
-  const {editorState, imageSrc} = useMediaEditorContext();
+  const {editorState, mediaState, imageSrc} = useMediaEditorContext();
 
   const canvas = (
     <canvas width={editorState.canvasSize[0] * editorState.pixelRatio} height={editorState.canvasSize[1] * editorState.pixelRatio} />
@@ -38,11 +38,14 @@ export default function ImageCanvas() {
 
   async function init() {
     const payload = await initWebGL(gl, imageSrc);
+
     modifyMutable(editorState, produce(state => {
       state.renderingPayload = payload;
       state.imageSize = [payload.image.width, payload.image.height];
-      state.currentImageRatio = payload.image.width / payload.image.height;
     }));
+
+    if(!mediaState.currentImageRatio)
+      mediaState.currentImageRatio = payload.image.width / payload.image.height;
   }
 
   onMount(() => {

@@ -2,7 +2,7 @@ import {createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'so
 
 import SwipeHandler from '../../swipeHandler';
 
-import {useMediaEditorContext} from '../context';
+import {HistoryItem, useMediaEditorContext} from '../context';
 import {initWebGL, RenderingPayload} from '../webgl/initWebGL';
 import {draw} from '../webgl/draw';
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
@@ -215,25 +215,17 @@ export default function BrushCanvas() {
     let builtUpDistance = 0;
 
     function saveLastLine() {
-      const prevLines = [...mediaState.brushDrawnLines];
-      const newLines = [...mediaState.brushDrawnLines, lastLine()];
-      mediaState.brushDrawnLines = newLines;
+      mediaState.brushDrawnLines.push(lastLine());
+      actions.pushToHistory({
+        path: ['brushDrawnLines', mediaState.brushDrawnLines.length - 1],
+        newValue: lastLine(),
+        oldValue: HistoryItem.RemoveArrayItem
+      });
 
       fullBrushPainter.updateBlurredImage();
       fullBrushPainter.drawLine(processLineForFullImage(lastLine()));
       resetLastLine();
       brushPainter.saveLastLine();
-
-      // context.pushToHistory({
-      //   undo() {
-      //     setLines(prevLines);
-      //     context.redrawBrushes();
-      //   },
-      //   redo() {
-      //     setLines(newLines);
-      //     context.redrawBrushes();
-      //   }
-      // });
 
       points = [];
       initialPosition = undefined;
