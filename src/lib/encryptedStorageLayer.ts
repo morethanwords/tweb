@@ -32,7 +32,7 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   // private static STORAGE_THROTTLE_TIME_MS = 250;
   /**
    * Having a delay here can break the app after logout, due to the fact that some updates might be queued in here before the
-   * storages were disabled, and the after timeout it will save the data anyway (that might have been cleared for logout)
+   * storages were disabled, and after the timeout it will save the data anyway (that might have been cleared for logout)
    */
   private static STORAGE_THROTTLE_TIME_MS = 0;
 
