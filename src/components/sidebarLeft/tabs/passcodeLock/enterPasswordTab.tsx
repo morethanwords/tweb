@@ -10,9 +10,10 @@ import {i18n} from '../../../../lib/langPack';
 import ripple from '../../../ripple'; ripple; // keep
 import PasswordInputField from '../../../passwordInputField';
 
-import {useSuperTab} from './superTabProvider';
+import type {AppPasscodeEnterPasswordTab} from '../solidJsTabs';
+import {useSuperTab} from '../solidJsTabs/superTabProvider';
+
 import LottieAnimation from './lottieAnimation';
-import type {AppPasscodeEnterPasswordTab} from '.';
 
 import commonStyles from './common.module.scss';
 

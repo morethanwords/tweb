@@ -40,10 +40,10 @@ import PopupPremium from '../../popups/premium';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
 import AppPrivacyMessagesTab from './privacy/messages';
-import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab} from './passcodeLock';
+import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, providedTabs} from './solidJsTabs';
 import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
-export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
+class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
   private authorizations: Authorization.authorization[];
 
@@ -126,11 +126,11 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
                 passcode = '';
                 if(!isCorrect) throw {};
 
-                this.slider.createTab(AppPasscodeLockTab).open({AppPrivacyAndSecurityTab});
+                this.slider.createTab(AppPasscodeLockTab).open();
               }
             })
           } else {
-            this.slider.createTab(AppPasscodeLockTab).open({AppPrivacyAndSecurityTab});
+            this.slider.createTab(AppPasscodeLockTab).open();
           }
         },
         listenerSetter: this.listenerSetter
@@ -604,3 +604,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     });
   }
 }
+
+providedTabs.AppPrivacyAndSecurityTab = AppPrivacyAndSecurityTab;
+
+export default AppPrivacyAndSecurityTab;

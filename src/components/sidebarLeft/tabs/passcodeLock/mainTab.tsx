@@ -1,11 +1,11 @@
 import {Component, createResource, createSignal, onCleanup, Show} from 'solid-js';
 
-import {IS_MOBILE} from '../../../../environment/userAgent';
-import ListenerSetter from '../../../../helpers/listenerSetter';
-import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import {i18n, LangPackKey} from '../../../../lib/langPack';
+import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
 import {usePasscodeActions} from '../../../../lib/passcode/actions';
+import ListenerSetter from '../../../../helpers/listenerSetter';
+import {IS_MOBILE} from '../../../../environment/userAgent';
+import {i18n, LangPackKey} from '../../../../lib/langPack';
 
 import confirmationPopup from '../../../confirmationPopup';
 import type SliderSuperTab from '../../../sliderTab';
@@ -14,14 +14,15 @@ import Section from '../../../section';
 import RowTsx from '../../../rowTsx';
 import Space from '../../../space';
 
+import {usePromiseCollector} from '../solidJsTabs/promiseCollector';
+import {useSuperTab} from '../solidJsTabs/superTabProvider';
+import type {AppPasscodeLockTab} from '../solidJsTabs';
+
+import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
 import LottieAnimation from './lottieAnimation';
-import {useSuperTab} from './superTabProvider';
 import StaticSwitch from './staticSwitch';
 import InlineSelect from './inlineSelect';
-import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
-import {usePromiseCollector} from './promiseCollector';
 
-import type {AppPasscodeLockTab} from '.';
 
 import commonStyles from './common.module.scss';
 import styles from './mainTab.module.scss';
@@ -135,7 +136,7 @@ const NoPasscodeContent = () => {
 const PasscodeSetContent: Component<{
   onDisable: () => void;
 }> = (props) => {
-  const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab}] = useSuperTab<AppPasscodeLockTabType>();
+  const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppPrivacyAndSecurityTab}] = useSuperTab<AppPasscodeLockTabType>();
   const {disablePasscode, changePasscode} = usePasscodeActions();
   const {rootScope, setQuizHint} = useHotReloadGuard();
 
@@ -244,7 +245,7 @@ const PasscodeSetContent: Component<{
       await disablePasscode();
       tab.close();
       setQuizHint(getHintParams(
-        tab.slider.getTab(tab.payload.AppPrivacyAndSecurityTab), 'PasscodeLock.PasscodeHasBeenDisabled'
+        tab.slider.getTab(AppPrivacyAndSecurityTab), 'PasscodeLock.PasscodeHasBeenDisabled'
       ));
     })
     .catch(() => {});

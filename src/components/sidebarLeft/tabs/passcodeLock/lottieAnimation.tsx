@@ -4,9 +4,10 @@ import type {LottieAssetName} from '../../../../lib/rlottie/lottieLoader';
 import type RLottiePlayer from '../../../../lib/rlottie/rlottiePlayer';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 
-import {usePromiseCollector} from './promiseCollector';
+import {usePromiseCollector} from '../solidJsTabs/promiseCollector';
 
 import styles from './common.module.scss';
+
 
 const LottieAnimation: Component<{
   class?: string;
