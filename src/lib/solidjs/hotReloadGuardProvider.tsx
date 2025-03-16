@@ -9,6 +9,7 @@ import PasswordMonkey from '../../components/monkeys/password';
 import {InputFieldTsx} from '../../components/inputFieldTsx';
 import themeController from '../../helpers/themeController';
 import showLimitPopup from '../../components/popups/limit';
+import PopupPremium from '../../components/popups/premium';
 import appSidebarLeft from '../../components/sidebarLeft';
 import {setQuizHint} from '../../components/poll';
 
@@ -37,7 +38,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       setQuizHint,
       InputFieldTsx,
       PasswordInputField,
-      PasswordMonkey
+      PasswordMonkey,
+      PopupPremium
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

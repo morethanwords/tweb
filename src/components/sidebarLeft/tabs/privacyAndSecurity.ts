@@ -39,11 +39,11 @@ import AppPrivacyAboutTab from './privacy/about';
 import PopupPremium from '../../popups/premium';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
-import AppPrivacyMessagesTab from './privacy/messages';
+import {AppPrivacyMessagesTab} from './solidJsTabs';
 import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, providedTabs} from './solidJsTabs';
 import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
-class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
+export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
   private authorizations: Authorization.authorization[];
 
@@ -238,7 +238,7 @@ class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       }> = {};
 
       const openTabWithGlobalPrivacy = async(
-        constructor: typeof AppPrivacyLastSeenTab | typeof AppPrivacyMessagesTab,
+        constructor: typeof AppPrivacyLastSeenTab/*  | typeof AppPrivacyMessagesTab */,
         key: RowKey
       ) => {
         const globalPrivacy = await p.globalPrivacy;
@@ -340,7 +340,8 @@ class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         title: createPremiumTitle('PrivacyMessagesTitle'),
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          openTabWithGlobalPrivacy(AppPrivacyMessagesTab, 'new_noncontact_peers_require_premium');
+          this.slider.createTab(AppPrivacyMessagesTab).open();
+          // openTabWithGlobalPrivacy(AppPrivacyMessagesTab, 'new_noncontact_peers_require_premium');
         },
         listenerSetter: this.listenerSetter
       });
@@ -606,5 +607,3 @@ class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 }
 
 providedTabs.AppPrivacyAndSecurityTab = AppPrivacyAndSecurityTab;
-
-export default AppPrivacyAndSecurityTab;

@@ -3176,7 +3176,15 @@ const lang = {
   'PasscodeLock.Disabled': 'Disabled',
   'PasscodeLock.TooManyAttempts': 'Too many attempts, try again later',
   'PasscodeLock.LogoutPopup.Description': 'Are you sure you want to log out?',
-  'PasscodeLock.TurnOff.Description': 'Are you sure you want to turn passcode off?'
+  'PasscodeLock.TurnOff.Description': 'Are you sure you want to turn passcode off?',
+
+  'PaidMessages.ChargeForMessages': 'Charge for Messages',
+  'PaidMessages.ChargeForMessagesDescription': 'Charge a fee for messages from people outside your contacts or who you haven\'t messaged first',
+  'PaidMessages.SetPrice': 'Set your price per message',
+  'PaidMessages.Stars': '%d Stars',
+  'PaidMessages.SetPriceDescription': 'You will receive 85% of the selected fee (~%d$) for each incoming messages',
+  'PaidMessages.RemoveFee': 'Remove Fee',
+  'PaidMessages.RemoveFeeDescription': 'Add users or entire groups who won\'t have to pay to send you messages'
 };
 
 export default lang;

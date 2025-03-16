@@ -9,6 +9,7 @@ import {InstanceOf} from '../../../../types';
 import {SliderSuperTab} from '../../../slider';
 
 import type AppPrivacyAndSecurityTab from '../privacyAndSecurity';
+import type AppAddMembersTab from '../addMembers';
 
 import {PromiseCollector} from './promiseCollector';
 import {SuperTabProvider} from './superTabProvider';
@@ -78,6 +79,10 @@ function scaffoldSolidJSTab<Payload = void>({
   } as ScaffoledClass<Payload>;
 }
 
+
+// ---
+
+
 export const AppPasscodeLockTab =
   scaffoldSolidJSTab({
     title: 'PasscodeLock.Title',
@@ -104,6 +109,15 @@ export const AppPasscodeEnterPasswordTab =
     getComponentModule: () => import('../passcodeLock/enterPasswordTab')
   });
 
+export const AppPrivacyMessagesTab =
+  scaffoldSolidJSTab({
+    title: 'PrivacyMessages',
+    getComponentModule: () => import('../privacy/messages/tab')
+  });
+
+
+// ---
+
 
 export type ProvidedTabs = {
   AppPasscodeLockTab: typeof AppPasscodeLockTab;
@@ -111,6 +125,7 @@ export type ProvidedTabs = {
 
   // Other tabs
   AppPrivacyAndSecurityTab: typeof AppPrivacyAndSecurityTab;
+  AppAddMembersTab: typeof AppAddMembersTab;
 };
 
 /**
