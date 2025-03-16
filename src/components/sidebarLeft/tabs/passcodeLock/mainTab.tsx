@@ -10,6 +10,7 @@ import {i18n, LangPackKey} from '../../../../lib/langPack';
 import confirmationPopup from '../../../confirmationPopup';
 import type SliderSuperTab from '../../../sliderTab';
 import ripple from '../../../ripple'; ripple; // keep
+import StaticSwitch from '../../../staticSwitch';
 import Section from '../../../section';
 import RowTsx from '../../../rowTsx';
 import Space from '../../../space';
@@ -20,7 +21,6 @@ import type {AppPasscodeLockTab} from '../solidJsTabs';
 
 import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
 import LottieAnimation from './lottieAnimation';
-import StaticSwitch from './staticSwitch';
 import InlineSelect from './inlineSelect';
 
 
