@@ -48,7 +48,8 @@ const REFRESH_TAGS_INTERVAL = 10 * 60e3;
 
 export type PeerAvailableReactions = {
   type: ChatReactions['_'],
-  reactions: Reaction[]
+  reactions: Reaction[],
+  trulyAll?: boolean
 };
 
 export type SendReactionOptions = {
@@ -221,18 +222,18 @@ export class AppReactionsManager extends AppManager {
     ]) => {
       let chatAvailableReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
 
+      let trulyAll: boolean;
       if(chatAvailableReactions._ === 'chatReactionsAll' && !chatAvailableReactions.pFlags.allow_custom) {
         chatAvailableReactions = {
           _: 'chatReactionsSome',
           reactions: activeAvailableReactions.map(availableReactionToReaction)
         };
+        trulyAll = true;
       }
 
       let filteredChatReactions: Reaction[] = [];
-      let paidAvailable = false;
       if(chatAvailableReactions._ === 'chatReactionsAll') {
         filteredChatReactions = topReactions;
-        paidAvailable = true;
       } else if(chatAvailableReactions._ === 'chatReactionsSome') {
         const filteredChatAvailableReactions = chatAvailableReactions.reactions.map((reaction) => {
           return activeAvailableReactions.find((availableReaction) => availableReaction.reaction === (reaction as Reaction.reactionEmoji).emoticon) || reaction;
@@ -246,7 +247,8 @@ export class AppReactionsManager extends AppManager {
 
       const p: PeerAvailableReactions = {
         type: chatAvailableReactions._,
-        reactions: filteredChatReactions
+        reactions: filteredChatReactions,
+        trulyAll
       };
 
       if(chatAvailableReactions._ === 'chatReactionsAll' && unshiftQuickReaction) {
@@ -367,11 +369,17 @@ export class AppReactionsManager extends AppManager {
       this.getAvailableReactionsForPeer(peerId, unshiftQuickReaction),
       (peerAvailableReactions) => {
         const messageReactionsResults = message.reactions?.results;
-        if(messageReactionsResults) {
+        if(
+          messageReactionsResults &&
+          peerAvailableReactions.type === 'chatReactionsSome' &&
+          !peerAvailableReactions.trulyAll
+        ) {
           peerAvailableReactions.reactions.sort((a, b) => {
+            if(a._ === 'reactionPaid') return -Infinity;
+            else if(a._ === 'reactionEmoji') return Infinity;
             const idx1 = messageReactionsResults.findIndex((reactionCount) => reactionsEqual(reactionCount.reaction, a));
             const idx2 = messageReactionsResults.findIndex((reactionCount) => reactionsEqual(reactionCount.reaction, b));
-            return idx1 - idx2;
+            return (idx1 === -1 ? Infinity : idx1) - (idx2 === -1 ? Infinity : idx2);
           });
         }
 
