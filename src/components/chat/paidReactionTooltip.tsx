@@ -11,13 +11,10 @@ import I18n, {i18n} from '../../lib/langPack';
 import {SEND_PAID_REACTION_DELAY} from '../../lib/mtproto/mtproto_config';
 import showTooltip from '../tooltip';
 import type {PendingPaidReaction} from './reactions';
-import type ReactionsElement from './reactions';
 import {AnimatedCounter} from '../animatedCounter';
 import appImManager from '../../lib/appManagers/appImManager';
 
 export default function showPaidReactionTooltip(props: {
-  reactionsElement: ReactionsElement,
-  reactionElement: HTMLElement,
   pending: PendingPaidReaction
 }) {
   createRoot((dispose) => {
@@ -35,7 +32,7 @@ export default function showPaidReactionTooltip(props: {
     });
 
     createEffect(() => {
-      if(!(props.reactionsElement.hasPaidTooltip = !!props.pending.sendTime())) {
+      if(!(!!props.pending.sendTime())) {
         dispose();
         close();
       } else {
@@ -61,8 +58,8 @@ export default function showPaidReactionTooltip(props: {
     const radius = 10;
     const circumference = radius * 2 * Math.PI;
 
-    const countdown = new AnimatedCounter({reverse: false})
-    createEffect(() => countdown.setCount(secondsLeft()))
+    const countdown = new AnimatedCounter({reverse: false});
+    createEffect(() => countdown.setCount(secondsLeft()));
 
     const {close} = showTooltip({
       element: appImManager.chat.bubbles.container,

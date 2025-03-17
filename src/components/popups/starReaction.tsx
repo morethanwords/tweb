@@ -8,13 +8,13 @@ import PopupElement from '.';
 import I18n, {i18n} from '../../lib/langPack';
 import wrapPeerTitle, {PeerTitleTsx} from '../wrappers/peerTitle';
 import {StarsBalance} from './stars';
-import {Accessor, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show} from 'solid-js';
 import {easeOutCircApply} from '../../helpers/easing/easeOutCirc';
 import RowTsx from '../rowTsx';
 import CheckboxField from '../checkboxField';
 import {replaceButtonIcon} from '../button';
 import rootScope from '../../lib/rootScope';
-import {Message, MessageReactor, PaidReactionPrivacy} from '../../layer';
+import {Message, MessageReactor, PaidReactionPrivacy, Peer} from '../../layer';
 import {AvatarNewTsx} from '../avatarNew.jsx';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {IconTsx} from '../iconTsx.jsx';
@@ -31,9 +31,14 @@ import ChatSendAs from '../chat/sendAs';
 import Icon from '../icon';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {lerp} from '../mediaEditor/utils';
+import {useAppState} from '../../stores/appState';
+import {SEND_PAID_REACTION_ANONYMOUS_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import type Chat from '../chat/chat';
+import {PENDING_PAID_REACTIONS} from '../chat/reactions';
+import findAndSplice from '../../helpers/array/findAndSplice';
 
 export default class PopupStarReaction extends PopupElement {
-  constructor(private peerId: PeerId, private mid: number) {
+  constructor(private peerId: PeerId, private mid: number, private chat: Chat) {
     super('popup-stars popup-star-reaction', {
       closable: true,
       overlayClosable: true,
@@ -45,6 +50,9 @@ export default class PopupStarReaction extends PopupElement {
     });
 
     this.footer.classList.add('abitlarger');
+
+    // * cancel all pending paid reactions
+    PENDING_PAID_REACTIONS.forEach((it) => it.abortController.abort());
 
     this.construct();
   }
@@ -69,13 +77,25 @@ export default class PopupStarReaction extends PopupElement {
 
     this.header.append(StarsBalance() as HTMLElement);
 
-    const maximumStars = 2500;
-    const [starsSliderValue, setStarsSliderValue] = createSignal<number>(0.1983); // 50 stars
-    const [sendAsPeerId, setSendAsPeerId] = createSignal<'anonymous' | PeerId>(
+    const [appState] = useAppState();
+    const maximumStars = appState.appConfig.stars_paid_reaction_amount_max;
+    const [starsSliderValue, setStarsSliderValue] = createSignal<number>(0.1); // 50 stars
+    const [sendAsPeerId, setSendAsPeerId] = createSignal<PeerId>(
       (!defaultSendAs || defaultSendAs._ === 'paidReactionPrivacyDefault') ? rootScope.myId :
-        defaultSendAs._ === 'paidReactionPrivacyAnonymous' ? 'anonymous' :
+        defaultSendAs._ === 'paidReactionPrivacyAnonymous' ? SEND_PAID_REACTION_ANONYMOUS_PEER_ID :
           getPeerId(defaultSendAs.peer)
     );
+    const topSenders = () => {
+      return message.reactions ? message.reactions.top_reactors.slice() : [];
+    };
+
+    let defaultSendAsPeerId: PeerId;
+    const myReactor = topSenders().find((sender) => sender.pFlags.my);
+    if(myReactor) {
+      defaultSendAsPeerId = getPeerId(myReactor.peer_id);
+    } else {
+      defaultSendAsPeerId = rootScope.myId;
+    }
 
     const starsCount = () => {
       const value$ = starsSliderValue();
@@ -83,17 +103,15 @@ export default class PopupStarReaction extends PopupElement {
       return Math.max(1, Math.round((1 - v) * maximumStars));
     };
 
-
     attachClickEvent(this.btnConfirm, () => {
-      const sendAsPeerId$ = sendAsPeerId();
-      this.managers.appReactionsManager.sendReaction({
-        sendAsPeerId: sendAsPeerId$ === 'anonymous' ? undefined : sendAsPeerId$,
+      this.chat.sendReaction({
+        sendAsPeerId: sendAsPeerId(),
         message,
         reaction: {_: 'reactionPaid'},
         count: starsCount()
       });
       this.destroy();
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     const range = new RangeSelector({
       step: 0.0001,
@@ -109,15 +127,17 @@ export default class PopupStarReaction extends PopupElement {
 
     const checkboxField = new CheckboxField({
       text: 'StarsReactionShowMeInTopSenders',
-      checked: defaultSendAs?._ !== 'paidReactionPrivacyAnonymous'
+      checked: myReactor ? !myReactor.pFlags.anonymous : defaultSendAs?._ !== 'paidReactionPrivacyAnonymous'
     });
     checkboxField.input.addEventListener('change', () => {
-      setSendAsPeerId(checkboxField.checked ? sendAs.getSendAsPeerId() : 'anonymous')
-    })
+      const sendAsPeerId$ = checkboxField.checked ? sendAs.getSendAsPeerId() : SEND_PAID_REACTION_ANONYMOUS_PEER_ID;
+      setSendAsPeerId(sendAsPeerId$);
+    });
 
     const hintCounter = new AnimatedCounter({
       reverse: true,
-      duration: 50
+      duration: 50,
+      calculateWidth: true
     });
     hintCounter.setCount(starsCount());
 
@@ -128,16 +148,26 @@ export default class PopupStarReaction extends PopupElement {
         sendAsContainer.replaceChildren(
           el,
           Icon('down')
-        )
+        );
       },
       onChange: (peerId) => {
-        if(sendAsPeerId() === 'anonymous') return
-        setSendAsPeerId(peerId)
+        if(sendAsPeerId() === SEND_PAID_REACTION_ANONYMOUS_PEER_ID) return;
+        setSendAsPeerId(peerId);
       },
-      forPaidReaction: true
-    })
-    sendAs.setPeerId(message.peerId)
-    sendAs.update(true)
+      forPaidReaction: true,
+      defaultPeerId: defaultSendAsPeerId
+    });
+    sendAs.setPeerId(message.peerId);
+    sendAs.update(true);
+
+    // * modify privacy
+    if(myReactor) createEffect(on(sendAsPeerId, (sendAsPeerId$) => {
+      this.managers.appReactionsManager.togglePaidReactionPrivacy(
+        message.peerId,
+        message.mid,
+        sendAsPeerId$
+      );
+    }, {defer: true}));
 
     let hintRef!: HTMLDivElement;
     let tailRef!: HTMLDivElement;
@@ -185,43 +215,90 @@ export default class PopupStarReaction extends PopupElement {
     });
     const resizeObserver = new ResizeObserver(updateHintPosition);
 
-    const topSendersWithMe = createMemo(() => {
-      const topSenders = message.reactions?.top_reactors.slice() ?? [];
-      const sendAsPeerId$ = sendAsPeerId()
+    const mySender = createMemo(() => {
+      const existing = topSenders().find((sender) => sender.pFlags.my);
+      const sendAsPeerId$ = sendAsPeerId();
+      const anonymous = sendAsPeerId$ === SEND_PAID_REACTION_ANONYMOUS_PEER_ID;
+      const peerId: Peer = anonymous ? undefined : (
+        sendAsPeerId$ === rootScope.myId ?
+          {_: 'peerUser', user_id: rootScope.myId} :
+          {_: 'peerChannel', channel_id: sendAsPeerId$}
+      );
 
-      if(sendAsPeerId$ === 'anonymous') {
-        topSenders.push({
-          _: 'messageReactor',
-          pFlags: {my: true, anonymous: true},
-          count: starsCount()
-        });
-      } else {
-        const existingIdx = topSenders.findIndex((sender) => getPeerId(sender.peer_id) === sendAsPeerId$ && !sender.pFlags.anonymous);
-        if(existingIdx !== -1) {
-          topSenders[existingIdx] = {...topSenders[existingIdx], count: topSenders[existingIdx].count + starsCount()};
-        } else {
-          topSenders.push({
-            _: 'messageReactor',
-            pFlags: {my: true},
-            peer_id: sendAsPeerId$ === rootScope.myId ?
-                {_: 'peerUser', user_id: rootScope.myId} :
-                {_: 'peerChannel', channel_id: sendAsPeerId$},
-            count: starsCount()
-          });
+      const reactor: MessageReactor = {
+        _: 'messageReactor',
+        pFlags: {my: true, anonymous: anonymous || undefined},
+        peer_id: peerId,
+        get count() {
+          return (existing?.count || 0) + starsCount();
         }
-      }
+      };
 
+      return reactor;
+    });
 
-      return topSenders.sort((a, b) => b.count - a.count).slice(0, 3);
-    })
+    const topSendersWithMe = createMemo(() => {
+      const topSenders$ = topSenders();
+      findAndSplice(topSenders$, (sender) => sender.pFlags.my);
+      topSenders$.push(mySender());
+      return topSenders$.sort((a, b) => b.count - a.count).slice(0, 3);
+    });
 
     const sparkles = (
       <Sparkles
         count={clamp(starsCount(), 20, 100)}
         mode="progress"
       />
-    )
+    );
     range.container.querySelector('.progress-line__filled').appendChild(sparkles as HTMLElement);
+
+    const renderSender = (sender: MessageReactor.messageReactor) => {
+      const peerId = getPeerId(sender.peer_id);
+      const anonymous = sender.pFlags.anonymous;
+      let ret = (
+        <div
+          class={classNames('popup-star-reaction-senders-item', !anonymous && 'is-clickable')}
+          onClick={() => {
+            if(anonymous) return;
+            appImManager.setInnerPeer({peerId});
+            this.hide();
+          }}
+        >
+          <div class="popup-star-reaction-senders-avatar-wrap">
+            {anonymous ? (
+              <div class="popup-star-reaction-senders-item-anonymous">
+                <img src="/assets/img/anon_paid_reaction.png" alt="Anonymous" />
+              </div>
+            ) : (
+              <AvatarNewTsx peerId={peerId} size={60} />
+            )}
+            <div class="popup-star-reaction-senders-amount">
+              <IconTsx icon="star" />
+              {sender.count}
+            </div>
+          </div>
+          {anonymous ? (
+            <div class="peer-title">
+              {i18n('AuthorHiddenShort')}
+            </div>
+          ) : (
+            <PeerTitleTsx
+              peerId={peerId}
+            />
+          )}
+        </div>
+      );
+
+      if(!anonymous) {
+        ret = (
+          <Ripple>
+            {ret}
+          </Ripple>
+        );
+      }
+
+      return ret;
+    };
 
     return (
       <>
@@ -246,53 +323,7 @@ export default class PopupStarReaction extends PopupElement {
           </div>
           <div class="popup-star-reaction-senders-list">
             <For each={topSendersWithMe()}>
-              {(sender: MessageReactor.messageReactor) => {
-                const peerId = getPeerId(sender.peer_id);
-                const anonymous = sender.pFlags.anonymous;
-                let ret = (
-                  <div
-                    class={classNames('popup-star-reaction-senders-item', !anonymous && 'is-clickable')}
-                    onClick={() => {
-                      if(anonymous) return
-                      appImManager.setInnerPeer({peerId})
-                      this.hide();
-                    }}
-                  >
-                    <div class="popup-star-reaction-senders-avatar-wrap">
-                      {sender.pFlags.anonymous ? (
-                        <div class="popup-star-reaction-senders-item-anonymous">
-                          <img src="/assets/img/anon_paid_reaction.png" alt="Anonymous" />
-                        </div>
-                      ) : (
-                        <AvatarNewTsx peerId={peerId} size={60} />
-                      )}
-                      <div class="popup-star-reaction-senders-amount">
-                        <IconTsx icon="star" />
-                        {sender.count}
-                      </div>
-                    </div>
-                    {sender.pFlags.anonymous ? (
-                      <div class="peer-title">
-                        {i18n('AuthorHiddenShort')}
-                      </div>
-                    ) : (
-                      <PeerTitleTsx
-                        peerId={peerId}
-                      />
-                    )}
-                  </div>
-                );
-
-                if(!anonymous) {
-                  ret = (
-                    <Ripple>
-                      {ret}
-                    </Ripple>
-                  )
-                }
-
-                return ret;
-              }}
+              {renderSender}
             </For>
           </div>
         </div>

@@ -62,6 +62,7 @@ import useStars, {setReservedStars} from '../../stores/stars';
 import PopupElement from '../popups';
 import PopupStars from '../popups/stars';
 import {getPendingPaidReactionKey, PENDING_PAID_REACTIONS} from './reactions';
+import showPaidReactionTooltip from './paidReactionTooltip';
 
 export enum ChatType {
   Chat = 'chat',
@@ -1287,10 +1288,10 @@ export default class Chat extends EventListenerBase<{
     if(isPaidReaction) {
       const key = getPendingPaidReactionKey(options.message as Message.message);
       let pending = PENDING_PAID_REACTIONS.get(key);
-      if(!this.stars()) {
-        let count = 1
+      const hadPending = !!pending;
+      const requiredStars = (pending ? pending.count() : 0) + count;
+      if(+this.stars() < requiredStars) {
         if(pending) {
-          count += pending.count();
           pending.abortController.abort();
         }
 
@@ -1340,17 +1341,21 @@ export default class Chat extends EventListenerBase<{
         const count = pending.count();
         pending.abortController.abort();
         this.managers.appReactionsManager.sendReaction({
-          sendAsPeerId: this.getMessageSendingParams().sendAsPeerId,
           ...options,
           count
         });
       }, SEND_PAID_REACTION_DELAY);
 
       setReservedStars((reservedStars) => reservedStars + count);
+
+      if(!hadPending) {
+        showPaidReactionTooltip({
+          pending
+        });
+      }
     }
 
     const messageReactions = await this.managers.appReactionsManager.sendReaction({
-      sendAsPeerId: this.getMessageSendingParams().sendAsPeerId,
       ...options,
       count: isPaidReaction ? 0 : count,
       onlyReturn: isPaidReaction

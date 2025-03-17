@@ -265,7 +265,7 @@ export default class ReactionElement extends HTMLElement {
   public hasAroundAnimation: Promise<void>;
   public isUnread: boolean;
   private hasTitle: boolean;
-  public paidReactionCounter: AnimatedCounter;
+  private paidReactionCounter: AnimatedCounter;
 
   constructor() {
     super();
@@ -372,14 +372,36 @@ export default class ReactionElement extends HTMLElement {
       return this.customEmojiElement;
     } else if(reaction._ === 'reactionPaid') {
       this.classList.add('is-paid');
-      this.appendChild(Sparkles({mode: 'button', isDiv: true}));
+      this.append(Sparkles({mode: 'button', isDiv: true}));
       this.stickerContainer.append(StarsStar() as HTMLElement);
+    }
+  }
 
+  public setPaidReactionCounter(count: number) {
+    if(!this.paidReactionCounter) {
+      this.paidReactionCounter = new AnimatedCounter({
+        reverse: false,
+        prefix: '+',
+        calculateWidth: true
+        // calculateWidth: (text) => {
+        //   return getTextWidth(text, `400 24 ${customProperties.getProperty('font-rounded')}`) * 1.5;
+        // }
+      });
+      this.paidReactionCounter.container.classList.add('reaction-paid-counter');
+      this.append(this.paidReactionCounter.container);
+      this.paidReactionCounter.setCount(count, true);
+    } else {
+      this.paidReactionCounter.setCount(count);
+    }
+  }
 
-      this.paidReactionCounter = new AnimatedCounter({reverse: false, prefix: '+'});
-      this.paidReactionCounter.setCount(0);
-      this.paidReactionCounter.container.classList.add('paid-reaction-counter');
-      this.appendChild(this.paidReactionCounter.container);
+  public destroyPaidReactionCounter() {
+    if(this.paidReactionCounter) {
+      const {container} = this.paidReactionCounter;
+      this.paidReactionCounter = undefined;
+      setTimeout(() => {
+        container.remove();
+      }, 300);
     }
   }
 

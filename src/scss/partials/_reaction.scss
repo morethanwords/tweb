@@ -170,7 +170,7 @@
       --chosen-background-color: #FFBC2E !important;
       --background-color: rgba(255, 188, 46, .2) !important;
       color: #E98111;
-      transition: transform .2s ease-in-out;
+      transition: transform var(--reaction-paid-transition);
       z-index: 2;
 
       .currency-star-icon {
@@ -189,24 +189,23 @@
         z-index: 2;
       }
 
-      &.is-chosen {
+      &.is-chosen:not(.backwards) {
         color: #fff;
-
-        .reaction-paid-background {
-          fill: #fff6ec;
-        }
       }
 
       &.effect-active {
+        // filter: drop-shadow(0 0 .25rem 0 rgba(0, 0, 0, .25));
+        box-shadow: 0 0 .25rem 0 rgba(0, 0, 0, .2), 0 0 1.25rem 0 rgba(0, 0, 0, .2);
         transform: scale3d(1.5, 1.5, 1.5);
-        .paid-reaction-counter {
+
+        .reaction-paid-counter {
           opacity: 1;
           transform: translate(-50%, 0);
         }
       }
 
       .reaction-counter {
-        transition: color var(--transition-standard-in);
+        transition: color var(--reaction-paid-transition);
       }
     }
   }
@@ -350,7 +349,8 @@
     fill: #E78510;
   }
 
-  .paid-reaction-counter {
+  &-paid-counter {
+    width: auto !important;
     position: absolute;
     top: -2rem;
     left: 50%;
@@ -358,13 +358,17 @@
     z-index: 2;
 
     opacity: 0;
-    transition: opacity .2s ease-in-out, transform .2s ease-in-out, max-width 200ms ease-in-out;
+    transition: opacity var(--reaction-paid-transition), transform var(--reaction-paid-transition), max-width var(--reaction-paid-transition) !important;
 
     font-family: var(--font-rounded);
-    font-size: 1.45rem;
+    font-size: 1.625rem;
     line-height: 1.75rem;
 
-    .animated-super-row, .animated-counter-decimal-prefix {
+    filter: drop-shadow(0 0 1.25rem rgba(0, 0, 0, .5));
+    pointer-events: none;
+
+    .animated-super-row,
+    .animated-counter-decimal-prefix {
       -webkit-text-stroke: 1px #E58E0D;
       background: linear-gradient(180deg, #FFD55D 0%, #FFBF3E 100%);
       color: transparent;

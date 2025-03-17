@@ -1,12 +1,8 @@
-
 .animated-super {
   &-row {
     --translateY: 100%;
     position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     transition: transform var(--pm-transition), opacity var(--pm-transition);
 
     body.animation-level-0 & {
@@ -30,11 +26,11 @@
 .animated-counter {
   display: inline-flex;
 
-  &.is-dynamic-width {
+  &-dynamic-width {
     width: 100vw;
     max-width: var(--width);
-    overflow: hidden;
-    transition: max-width 200ms ease-in-out;
+    // overflow: hidden;
+    transition: max-width var(--pm-transition);
   }
 
   &-decimal {
@@ -48,10 +44,7 @@
 
     &-wrapper {
       position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      right: 0;
+      inset: 0;
     }
   }
 }

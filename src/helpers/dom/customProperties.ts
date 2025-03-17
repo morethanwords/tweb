@@ -46,7 +46,7 @@ export class CustomProperties {
     }
 
     this.computedStyle ??= window.getComputedStyle(document.documentElement);
-    this.nightComputedStyle ??= window.getComputedStyle(this.nightElement)
+    this.nightComputedStyle ??= window.getComputedStyle(this.nightElement);
 
     const value = (night ? this.nightComputedStyle : this.computedStyle).getPropertyValue('--' + name).trim();
     return this.setPropertyCache(name, value, night);

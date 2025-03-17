@@ -5,7 +5,7 @@ export interface AnimatedCounterOptions {
   reverse?: boolean;
   duration?: number;
   prefix?: string;
-  staticWidth?: boolean;
+  calculateWidth?: ((text: string) => number) | true;
 }
 
 export class AnimatedCounter {
@@ -21,25 +21,26 @@ export class AnimatedCounter {
   previousNumber = 0;
   clearTimeout: number;
 
+  prefix?: AnimatedCounterOptions['prefix'];
   reverse: AnimatedCounterOptions['reverse'];
   duration: AnimatedCounterOptions['duration'];
-  staticWidth: AnimatedCounterOptions['staticWidth'];
+  calculateWidth?: AnimatedCounterOptions['calculateWidth'];
 
   constructor(options: AnimatedCounterOptions) {
     this.reverse = options.reverse;
     this.duration = options.duration ?? AnimatedSuper.DEFAULT_DURATION;
-    this.staticWidth = options.staticWidth;
     this.container = document.createElement('div');
     this.container.className = AnimatedCounter.BASE_CLASS;
+    this.calculateWidth = options.calculateWidth;
 
-    if(!this.staticWidth) {
-      this.container.classList.add('is-dynamic-width');
+    if(this.calculateWidth) {
+      this.container.classList.add('animated-counter-dynamic-width');
     }
 
     if(options.prefix) {
       const prefixContainer = document.createElement('div');
       prefixContainer.className = AnimatedCounter.BASE_CLASS + '-decimal-prefix';
-      prefixContainer.innerText = options.prefix;
+      prefixContainer.innerText = this.prefix = options.prefix;
       this.container.append(prefixContainer);
       this.prefixContainer = prefixContainer;
     }
@@ -91,9 +92,10 @@ export class AnimatedCounter {
     this.clear(number);
   }
 
-  setCount(number: number) {
+  setCount(number: number, noRaf?: boolean) {
     // this.prepareNumber(number);
 
+    const texts: string[] = [];
     const nextRows: HTMLElement[] = [];
     const previousByDecimal = Array.from('' + this.previousNumber).map((n) => +n);
     const byDecimal = Array.from('' + number).map((n) => +n);
@@ -101,18 +103,37 @@ export class AnimatedCounter {
       const decimal = this.getDecimal(idx);
       const row = decimal.animatedSuper.getRow(decimalNumber, true);
       const previousDecimalNumber = previousByDecimal[idx] ?? AnimatedCounter.EMPTY_INDEX;
-      row.innerText = decimal.placeholder.innerText = '' + decimalNumber;
+      const text = '' + decimalNumber;
+      row.innerText = decimal.placeholder.innerText = text;
+      texts.push(text);
       nextRows.push(row);
-      decimal.animatedSuper.animate(decimalNumber, previousDecimalNumber, this.reverse ? number < this.previousNumber : number > this.previousNumber, true);
+      decimal.animatedSuper.animate(
+        decimalNumber,
+        previousDecimalNumber,
+        this.reverse ? number < this.previousNumber : number > this.previousNumber,
+        true
+      );
     });
 
-    if(!this.staticWidth) fastRaf(() => {
-      let nextWidth = nextRows.reduce((sum, row) => sum + row.clientWidth, 0);
-      if(this.prefixContainer) {
-        nextWidth += this.prefixContainer.clientWidth;
+    const setWidth = () => {
+      let width: number;
+      if(typeof(calculateWidth) === 'boolean') {
+        width = nextRows.reduce((sum, row) => sum + row.clientWidth, 0);
+        if(this.prefixContainer) {
+          width += this.prefixContainer.clientWidth;
+        }
+      } else {
+        const text = (this.prefix || '') + texts.join('');
+        width = calculateWidth(text);
       }
-      this.container.style.setProperty('--width', nextWidth + 'px');
-    })
+
+      this.container.style.setProperty('--width', width + 'px');
+    };
+
+    const {calculateWidth} = this;
+    if(calculateWidth) {
+      noRaf ? setWidth() : fastRaf(setWidth);
+    }
 
     this.hideLeft(number);
     // this.clear(number);

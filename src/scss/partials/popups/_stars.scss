@@ -394,23 +394,11 @@
   #{$parent} {
     &-header {
       margin-bottom: -.25rem;
-      overflow: visible;
-      z-index: 1;
+      z-index: 2;
     }
 
     &-body {
       background-color: var(--surface-color);
-      overflow: visible;
-      z-index: 0;
-
-      .scrollable-y {
-        border: none;
-        overflow: visible;
-      }
-
-      .scrollable-thumb-container {
-        display: none;
-      }
     }
 
     &-footer {
@@ -550,14 +538,13 @@
       flex-direction: column;
       align-items: center;
       gap: 0.5rem;
-      width: 3.75rem;
       overflow: hidden;
+      padding: 0.5rem 0.75rem;
+      margin: -0.5rem -0.75rem;
+      width: 5.25rem;
 
       &.is-clickable {
         cursor: pointer;
-        padding: 0.5rem 0.75rem;
-        margin: -0.5rem -0.75rem;
-        width: 5.25rem;
         border-radius: 0.75rem;
 
         &:hover {

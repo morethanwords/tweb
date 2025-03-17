@@ -35,6 +35,7 @@ export interface ChatSendAsOptions {
   onChange: (sendAsPeerId: PeerId) => void
   forPaidReaction?: boolean,
   menuContainer?: HTMLElement
+  defaultPeerId?: PeerId
 }
 
 export default class ChatSendAs {
@@ -56,6 +57,7 @@ export default class ChatSendAs {
   private onChange: ChatSendAsOptions['onChange'];
   private forPaidReaction: ChatSendAsOptions['forPaidReaction'];
   private menuContainer: ChatSendAsOptions['menuContainer'];
+  private defaultPeerId: ChatSendAsOptions['defaultPeerId'];
 
   constructor(options: ChatSendAsOptions) {
     safeAssign(this, options);
@@ -277,9 +279,10 @@ export default class ChatSendAs {
     if(this.forPaidReaction) {
       return Promise.resolve({
         cached: true,
-        result: Promise.resolve(rootScope.myId)
+        result: Promise.resolve(this.defaultPeerId)
       });
     }
+
     return this.managers.acknowledged.appProfileManager.getChannelFull(this.peerId.toChatId()).then((acked) => {
       return {
         cached: acked.cached,

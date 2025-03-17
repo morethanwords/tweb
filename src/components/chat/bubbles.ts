@@ -1990,7 +1990,7 @@ export default class ChatBubbles {
       apiManagerProxy.getAvailableReactions(),
       pause(400)
     ]).then(async([{reactions}, availableReactions]) => {
-      const reaction = reactions[0];
+      const reaction = reactions.find((reaction) => reaction._ !== 'reactionPaid');
       if(!reaction) {
         hoverReaction.remove();
         return;

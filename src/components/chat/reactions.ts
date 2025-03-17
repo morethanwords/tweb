@@ -80,8 +80,6 @@ export default class ReactionsElement extends HTMLElement {
   private lazyLoadQueue: LazyLoadQueue;
   private forceCounter: boolean;
 
-  public hasPaidTooltip: boolean;
-
   constructor() {
     super();
     this.classList.add(CLASS_NAME);
@@ -289,7 +287,11 @@ export default class ReactionsElement extends HTMLElement {
       reactionElement.renderCounter(this.forceCounter);
       reactionElement.renderAvatars(recentReactions);
       reactionElement.isUnread = isUnread;
-      reactionElement.setIsChosen(!!pending || undefined);
+      reactionElement.setIsChosen(
+        isPaidReaction ?
+          !!pending || reactions.top_reactors.some((reactor) => reactor.pFlags.my && reactor.count) :
+          undefined
+      );
 
       if(wasUnread && !isUnread && !changedResults?.includes(reactionCount)) {
         (changedResults ??= []).push(reactionCount);
@@ -306,19 +308,16 @@ export default class ReactionsElement extends HTMLElement {
     });
 
     if(pendingPaidReaction) {
-      paidReactionElement.style.setProperty('--width', paidReactionElement.getBoundingClientRect().width + 'px');
-      paidReactionElement.paidReactionCounter.setCount(pendingPaidReaction.count());
-      if(!this.hasPaidTooltip) {
+      const {width} = paidReactionElement.getBoundingClientRect();
+      paidReactionElement.style.setProperty('--width', width + 'px');
+      paidReactionElement.setPaidReactionCounter(pendingPaidReaction.count());
+      if(!paidReactionElement.classList.contains('effect-active')) {
         paidReactionElement.classList.add('effect-active');
         pendingPaidReaction.abortController.signal.addEventListener('abort', () => {
           paidReactionElement.classList.remove('effect-active');
           paidReactionElement.querySelectorAll('.reaction-sticker-activate').forEach((it) => it.remove());
+          paidReactionElement.destroyPaidReactionCounter();
         });
-        showPaidReactionTooltip({
-          pending: pendingPaidReaction,
-          reactionElement: paidReactionElement,
-          reactionsElement: this
-        })
       }
     }
 
