@@ -31,6 +31,8 @@ import useIsPremium from './useIsPremium';
 
 const log = logger('my-debug');
 
+const TRANSITION_TIME = 120;
+
 const privacyRulesInputKey = 'inputPrivacyKeyNoPaidMessages' satisfies InputPrivacyKey['_'];
 
 const defaultPrivacyRules: InputPrivacyRule[] = [
@@ -270,13 +272,13 @@ const MessagesTab = () => {
         mode="outin"
         onEnter={async(_el, done) => {
           const el = _el as HTMLElement;
-          await el.animate({opacity: [0, 1]}, {duration: 200}).finished;
+          await el.animate({opacity: [0, 1]}, {duration: TRANSITION_TIME}).finished;
           done();
         }}
         onExit={async(_el, done) => {
           const el = _el as HTMLElement;
 
-          await (exitAnimationPromise = el.animate({opacity: [1, 0]}, {duration: 200}).finished);
+          await (exitAnimationPromise = el.animate({opacity: [1, 0]}, {duration: TRANSITION_TIME}).finished);
           done();
         }}
       >
@@ -365,12 +367,12 @@ const MessagesTab = () => {
           const el = _el as HTMLElement;
           el.style.opacity = '0';
           await exitAnimationPromise;
-          await el.animate({opacity: [0, 1]}, {duration: 80}).finished;
+          await el.animate({opacity: [0, 1]}, {duration: TRANSITION_TIME}).finished;
           el.style.removeProperty('opacity');
           done();
         }}
         onExit={async(el, done) => {
-          await el.animate({opacity: [1, 0]}, {duration: 80}).finished;
+          await el.animate({opacity: [1, 0]}, {duration: TRANSITION_TIME}).finished;
           done();
         }}
       >

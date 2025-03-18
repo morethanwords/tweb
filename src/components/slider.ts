@@ -102,7 +102,7 @@ export default class SidebarSlider {
               this.onTabsCountChange?.();
 
               this.closeTab(undefined, undefined, true);
-            });
+            }, () => {});
 
             return false;
           }
