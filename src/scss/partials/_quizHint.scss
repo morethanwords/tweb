@@ -19,12 +19,12 @@
 
   &.from-top {
     top: .5rem;
-    transform: translate3d(0, calc(-100% - 10px), 0);
+    transform: translate3d(0, calc(-100% - var(--push-quiz, 10px)), 0);
   }
 
   &.from-bottom {
     bottom: .5rem;
-    transform: translate3d(0, calc(100% + 10px), 0);
+    transform: translate3d(0, calc(100% + var(--push-quiz, 10px)), 0);
   }
 
 	&.active {

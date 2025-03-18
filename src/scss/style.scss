@@ -216,6 +216,8 @@
   @include respond-to(only-medium-screens) {
     --right-column-width: 25vw;
   }
+
+  --passcode-lock-screen-z-index: 100000;
 }
 
 @mixin splitColor($property, $color, $light: true, $dark: true, $light-filled: false, $dark-filled: false, $rgb: false, $alpha: $hover-alpha) {
@@ -507,6 +509,8 @@
 @import "partials/pages/authCode";
 @import "partials/pages/chats";
 @import "partials/pages/password";
+
+@import "partials/passcodeLockScreen";
 
 html,
 body {

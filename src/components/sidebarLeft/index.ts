@@ -95,6 +95,10 @@ import AppEditFolderTab from './tabs/editFolder';
 import {addShortcutListener} from '../mediaEditor/shortcutListener';
 import tsNow from '../../helpers/tsNow';
 import {toastNew} from '../toast';
+import DeferredIsUsingPasscode from '../../lib/passcode/deferredIsUsingPasscode';
+import EncryptionKeyStore from '../../lib/passcode/keyStore';
+import createLockButton from './lockButton';
+import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './constants';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -217,6 +221,9 @@ export class AppSidebarLeft extends SidebarSlider {
     let statusMiddlewareHelper: MiddlewareHelper, fireOnNew: boolean;
     const premiumMiddlewareHelper = this.getMiddleware().create();
     const statusBtnIcon = ButtonIcon(' sidebar-emoji-status', {noRipple: true});
+
+    const lockButton = createLockButton();
+
     attachClickEvent(statusBtnIcon, () => {
       const emojiTab = new EmojiTab({
         noRegularEmoji: true,
@@ -358,6 +365,7 @@ export class AppSidebarLeft extends SidebarSlider {
         await wrapStatus((statusMiddlewareHelper = middleware.create()).get());
         if(!middleware()) return;
         sidebarHeader.append(statusBtnIcon);
+        toggleRightButtons(true, await DeferredIsUsingPasscode.isUsingPasscode());
 
         const onEmojiStatusChange = () => {
           const oldStatusMiddlewareHelper = statusMiddlewareHelper;
@@ -373,31 +381,30 @@ export class AppSidebarLeft extends SidebarSlider {
           rootScope.removeEventListener('emoji_status_change', onEmojiStatusChange);
         });
       } else {
-        statusBtnIcon.remove();
+        toggleRightButtons(false, await DeferredIsUsingPasscode.isUsingPasscode());
       }
 
       appDialogsManager.resizeStoriesList?.();
     };
 
+    const toggleRightButtons = (isPremium: boolean, isUsingPasscode: boolean) => {
+      if(isPremium) sidebarHeader.append(statusBtnIcon);
+      else statusBtnIcon.remove();
+
+      if(isUsingPasscode) sidebarHeader.append(lockButton.element);
+      else lockButton.element.remove();
+    };
+
     appImManager.addEventListener('premium_toggle', onPremium);
-    if(rootScope.premium) onPremium(true);
+    rootScope.addEventListener('toggle_using_passcode', (isUsingPasscode) => {
+      toggleRightButtons(rootScope.premium, isUsingPasscode);
+    });
+
+    toggleRightButtons(rootScope.premium, rootScope.settings?.passcode?.enabled);
 
     this.managers.appUsersManager.getTopPeers('correspondents');
 
-    // Focus search input by pressing Escape
-    const navigationItem: NavigationItem = {
-      type: 'global-search-focus',
-      onPop: () => {
-        setTimeout(() => {
-          if(this.isAnimatingCollapse) return;
-          this.initSearch().open();
-        }, 0);
-
-        return false;
-      },
-      noHistory: true
-    };
-    appNavigationController.pushItem(navigationItem);
+    this.initNavigation();
 
     apiManagerProxy.getState().then((state) => {
       const CHECK_UPDATE_INTERVAL = 1800e3;
@@ -459,6 +466,26 @@ export class AppSidebarLeft extends SidebarSlider {
     });
   }
 
+  /**
+   * Focus search input by pressing Escape
+   */
+  public initNavigation() {
+    const navigationItem: NavigationItem = {
+      type: 'global-search-focus',
+      onPop: () => {
+        setTimeout(() => {
+          if(this.isAnimatingCollapse) return;
+          this.initSearch().open();
+        }, 0);
+
+        return false;
+      },
+      noHistory: true
+    };
+    appNavigationController.removeByType('global-search-focus');
+    appNavigationController.pushItem(navigationItem);
+  }
+
   public isCollapsed() {
     return this.sidebarEl.classList.contains('is-collapsed');
   }
@@ -513,7 +540,7 @@ export class AppSidebarLeft extends SidebarSlider {
     const WIDTH_WHEN_COLLAPSED = 80;
     const FULL_WIDTH = 420;
     const ANIMATION_TIME = 200;
-    // Need to wait until the sliding animation is finish, this one needs to be faster to avoid random layout shifting
+    // Need to wait until the sliding animation is finished, this one needs to be faster to avoid random layout shifting
     const DELAY_AFTER_ANIMATION = 150;
 
     if(isFloating) {
@@ -604,9 +631,6 @@ export class AppSidebarLeft extends SidebarSlider {
       this.onSomethingOpenInsideChange();
     }
 
-    const MIN_SIDEBAR_WIDTH = 260;
-    const MAX_SIDEBAR_WIDTH = 420;
-
     const resizeHandle = document.createElement('div');
     resizeHandle.classList.add('sidebar-resize-handle');
     this.sidebarEl.append(resizeHandle);
@@ -634,7 +658,7 @@ export class AppSidebarLeft extends SidebarSlider {
         rootScope.dispatchEvent('resizing_left_sidebar');
 
         const wasCollapsed = this.isCollapsed();
-        const isCollapsed = !this.hasSomethingOpenInside() && width < MIN_SIDEBAR_WIDTH * 0.65;
+        const isCollapsed = !this.hasSomethingOpenInside() && width < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR;
         this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
 
         if(isCollapsed !== wasCollapsed)
@@ -709,7 +733,10 @@ export class AppSidebarLeft extends SidebarSlider {
         }
 
         localStorage.setItem('previous-account', getCurrentAccount() + '');
-        const newTab = e.ctrlKey || e.metaKey;
+        const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+        const openTabs = apiManagerProxy.getOpenTabsCount();
+
+        const newTab = e.ctrlKey || e.metaKey || (openTabs <= 1 && isUsingPasscode);
         if(!newTab) {
           appImManager.goOffline();
 
@@ -862,6 +889,8 @@ export class AppSidebarLeft extends SidebarSlider {
                   await doubleRaf();
                   chatListEl.classList.add('chatlist-exiting');
                   await pause(200);
+
+                  await this.saveEncryptionKeyBeforeSwitchingAccounts();
                 }
                 changeAccount(accountNumber, newTab);
               }
@@ -886,6 +915,17 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     return buttonMenuToggle;
+  }
+
+  private async saveEncryptionKeyBeforeSwitchingAccounts() {
+    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+    if(!isUsingPasscode) return;
+
+    const openTabs = apiManagerProxy.getOpenTabsCount();
+
+    openTabs <= 1 && await sessionStorage.set({
+      encryption_key: await EncryptionKeyStore.getAsBase64()
+    });
   }
 
 

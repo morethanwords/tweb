@@ -13,7 +13,7 @@ export type SectionOptions = {
   name?: LangPackKey | HTMLElement | DocumentFragment,
   nameArgs?: FormatterArguments,
   nameRight?: JSX.Element,
-  caption?: LangPackKey,
+  caption?: LangPackKey | Exclude<JSX.Element, string>,
   captionArgs?: FormatterArguments,
   captionOld?: boolean,
   captionRef?: Ref<HTMLDivElement>,
@@ -35,7 +35,9 @@ const SectionContent: ParentComponent<JSX.HTMLAttributes<HTMLDivElement>> = (pro
 const SectionCaption = (props: Pick<SectionOptions, 'caption' | 'captionArgs' | 'captionRef'>) => {
   return (
     <SectionContent ref={props.captionRef} class={className + '-caption'}>
-      {i18n(props.caption, props.captionArgs)}
+      {typeof props.caption === 'string' ?
+        i18n(props.caption, props.captionArgs) :
+        props.caption}
     </SectionContent>
   );
 };

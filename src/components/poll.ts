@@ -148,7 +148,9 @@ export const setQuizHint = (options: {
   appendTo: HTMLElement,
   from: 'top' | 'bottom',
   duration?: number,
-  icon?: Icon
+  icon?: Icon,
+  class?: string,
+  canCloseOnPeerChange?: boolean
 }) => {
   if(prevQuizHint) {
     hideQuizHint(prevQuizHint, prevQuizHintOnHide, prevQuizHintTimeout);
@@ -156,6 +158,7 @@ export const setQuizHint = (options: {
 
   const element = document.createElement('div');
   element.classList.add('quiz-hint', 'from-' + options.from);
+  options.class && element.classList.add(options.class);
 
   const container = document.createElement('div');
   container.classList.add('quiz-hint-container');
@@ -201,10 +204,14 @@ export const setQuizHint = (options: {
   prevQuizHintOnHide = options.onHide;
   const timeout = prevQuizHintTimeout = options.duration && window.setTimeout(hide, options.duration);
 
+  options.canCloseOnPeerChange ??= true;
+  if(!options.canCloseOnPeerChange)
+    element.dataset.dontCloseOnPeerChange = '1';
+
   if(!isListenerSet) {
     isListenerSet = true;
     appImManager.addEventListener('peer_changed', () => {
-      if(prevQuizHint) {
+      if(prevQuizHint && prevQuizHint.dataset.dontCloseOnPeerChange !== '1') {
         hideQuizHint(prevQuizHint, prevQuizHintOnHide, prevQuizHintTimeout);
       }
     });

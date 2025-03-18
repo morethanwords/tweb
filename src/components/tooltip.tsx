@@ -29,6 +29,7 @@ export default function showTooltip({
   auto,
   mountOn = document.body,
   relative,
+  lighter,
   rightElement
 }: {
   element: HTMLElement,
@@ -45,7 +46,8 @@ export default function showTooltip({
   icon?: Icon,
   auto?: boolean,
   mountOn?: HTMLElement,
-  relative?: boolean
+  relative?: boolean,
+  lighter?: boolean // When opening a tooltip in dark mode on a surface
 }) {
   const containerRect = !relative && container.getBoundingClientRect();
   const elementRect = !relative &&  element.getBoundingClientRect();
@@ -84,7 +86,7 @@ export default function showTooltip({
     const tooltip = (
       <div
         ref={div}
-        class={classNames('tooltip', 'tooltip-' + vertical, icon && 'tooltip-with-icon', className)}
+        class={classNames('tooltip', 'tooltip-' + vertical, icon && 'tooltip-with-icon', className, lighter && 'tooltip-lighter')}
         style={!relative && getStyle()}
       >
         <div class="tooltip-part tooltip-background"></div>

@@ -53,7 +53,7 @@ export class AppManagersManager {
       2: new AppStateManager(2),
       3: new AppStateManager(3),
       4: new AppStateManager(4)
-    } as StateManagersByAccount;
+    };
 
     const managersByAccountAsArray = Object.values(this.stateManagersByAccount)
 

@@ -40,6 +40,14 @@ import commonStateStorage from '../commonStateStorage';
 import CacheStorageController from '../files/cacheStorage';
 import {ActiveAccountNumber} from '../accounts/types';
 import makeError from '../../helpers/makeError';
+import EncryptedStorageLayer from '../encryptedStorageLayer';
+import {getCommonDatabaseState} from '../../config/databases/state';
+import EncryptionKeyStore from '../passcode/keyStore';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+/**
+ * To not be used in an ApiManager instance as there is no account number attached to it
+ */
+import globalRootScope from '../rootScope';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -312,7 +320,11 @@ export class ApiManager extends ApiManagerMethods {
       }
     }
 
+    let wasCleared = false; // Prevent double logout 2 accounts in a row
     const clear = async() => {
+      if(wasCleared) return;
+      wasCleared = true;
+
       this.baseDcId = undefined;
       // this.telegramMeNotify(false);
       if(totalAccounts === 1 && accountNumber === 1 && !migrateAccountTo) {
@@ -337,12 +349,21 @@ export class ApiManager extends ApiManagerMethods {
             return Promise.all(keys.map((key) => sessionStorage.delete(key)));
           })(),
           AppStoragesManager.clearAllStoresForAccount(1),
+          AppStoragesManager.clearSessionStores(),
           commonStateStorage.clear(),
+          EncryptedStorageLayer.getInstance(getCommonDatabaseState(), 'localStorage__encrypted').clear(),
           CacheStorageController.deleteAllStorages()
         ]);
       } else {
         await AccountController.shiftAccounts(accountNumber);
         await AppStoragesManager.shiftStorages(accountNumber);
+
+        if(await DeferredIsUsingPasscode.isUsingPasscode()) {
+          // Keep the screen unlocked even if the user logs out
+          await sessionStorage.set({
+            encryption_key: await EncryptionKeyStore.getAsBase64()
+          });
+        }
       }
       IDB.closeDatabases();
       this.rootScope.dispatchEvent('logging_out', {accountNumber, migrateTo: migrateAccountTo});
@@ -357,6 +378,22 @@ export class ApiManager extends ApiManagerMethods {
     }).finally(clear)/* .then(() => {
       location.pathname = '/';
     }) */;
+  }
+
+  public static async forceLogOutAll() {
+    const clearAllStoresPromises = ([1, 2, 3, 4] as ActiveAccountNumber[])
+    .map(accountNumber => AppStoragesManager.clearAllStoresForAccount(accountNumber));
+
+    await Promise.all([
+      sessionStorage.localStorageProxy('clear'),
+      commonStateStorage.clear(),
+      EncryptedStorageLayer.getInstance(getCommonDatabaseState(), 'localStorage__encrypted').clear(),
+      ...clearAllStoresPromises,
+      CacheStorageController.deleteAllStorages()
+    ]);
+
+    IDB.closeDatabases();
+    globalRootScope.dispatchEvent('logging_out', {});
   }
 
   private generateNetworkerGetKey(dcId: DcId, transportType: TransportType, connectionType: ConnectionType) {

@@ -5,11 +5,10 @@ import pause from '../../helpers/schedulers/pause';
 import {Message} from '../../layer';
 import {i18n} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
-import BezierEasing from '../../vendor/bezierEasing';
 
 import appMediaPlaybackController, {MediaSearchContext} from '../appMediaPlaybackController';
 import Icon from '../icon';
-import {animateValue, lerp} from '../mediaEditor/utils';
+import {animateValue, lerp, simpleEasing} from '../mediaEditor/utils';
 import PopupPremium from '../popups/premium';
 import {hideToast, toastNew} from '../toast';
 import wrapDocument from '../wrappers/document';
@@ -22,7 +21,6 @@ type WrapRoundVideoBubbleOptions = {
 };
 
 const ANIMATION_TIME = 180;
-const simpleEasing = BezierEasing(0.25, 0.1, 0.25, 1);
 
 export function wrapRoundVideoBubble({
   bubble,
