@@ -8,11 +8,12 @@ import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import anchorCallback from '../../../../../helpers/dom/anchorCallback';
 import throttle from '../../../../../helpers/schedulers/throttle';
 import deepEqual from '../../../../../helpers/object/deepEqual';
-import {logger} from '../../../../../lib/logger';
 import {i18n, join} from '../../../../../lib/langPack';
+import {logger} from '../../../../../lib/logger';
 
 import confirmationPopup, {ConfirmationPopupRejectReason} from '../../../../confirmationPopup';
 import {PopupPeerOptions} from '../../../../popups/peer';
+import {hideToast, toastNew} from '../../../../toast';
 import StaticRadio from '../../../../staticRadio';
 import ripple from '../../../../ripple'; ripple; // keep
 import {IconTsx} from '../../../../iconTsx';
@@ -25,6 +26,7 @@ import {useSuperTab} from '../../solidJsTabs/superTabProvider';
 
 import AppearZoomTransition from './appearZoomTransition';
 import StarRangeInput from './starsRangeInput';
+import useIsPremium from './useIsPremium';
 
 
 const log = logger('my-debug');
@@ -59,11 +61,14 @@ type StateStore = {
   chosenPeers?: PeerId[];
 };
 
+
 const MessagesTab = () => {
   const {PopupPremium, rootScope} = useHotReloadGuard();
 
   const [tab, {AppAddMembersTab}] = useSuperTab();
   const promiseCollector = usePromiseCollector();
+
+  const isPremium = useIsPremium();
 
   const [privacyRules] = createResource(() => {
     const promise = rootScope.managers.appPrivacyManager.getPrivacy(privacyRulesInputKey);
@@ -81,6 +86,8 @@ const MessagesTab = () => {
 
 
   const currentOption = () => {
+    if(!isPremium()) return MessagesPrivacyOption.Everybody;
+
     if(globalPrivacy().noncontact_peers_paid_stars) return MessagesPrivacyOption.Paid;
 
     if(globalPrivacy().pFlags.new_noncontact_peers_require_premium) return MessagesPrivacyOption.ContactsAndPremium;
@@ -232,6 +239,23 @@ const MessagesTab = () => {
   };
 
 
+  const handlePremiumOptionClick = (callback: () => void) => () => {
+    if(isPremium()) return callback();
+
+    toastNew({
+      langPackKey: 'PrivacySettings.Messages.PremiumError',
+      langPackArguments: [
+        anchorCallback(() => {
+          hideToast();
+          PopupPremium.show({
+            feature: 'message_privacy'
+          });
+        })
+      ]
+    });
+  };
+
+
   let captionContainer: HTMLDivElement;
   let heightMeasure: HTMLDivElement;
 
@@ -310,26 +334,28 @@ const MessagesTab = () => {
         />
         <RowTsx
           checkboxField={
-            <StaticRadio
+            isPremium() && <StaticRadio
               floating
               checked={store.option === MessagesPrivacyOption.ContactsAndPremium}
             />
           }
-          clickable={() => {
+          icon={!isPremium() ? 'premium_lock' : undefined}
+          clickable={handlePremiumOptionClick(() => {
             setStore('option', MessagesPrivacyOption.ContactsAndPremium);
-          }}
+          })}
           title={i18n('Privacy.ContactsAndPremium')}
         />
         <RowTsx
           checkboxField={
-            <StaticRadio floating checked={isPaid()} />
+            isPremium() && <StaticRadio floating checked={isPaid()} />
           }
-          clickable={() => {
+          icon={!isPremium() ? 'premium_lock' : undefined}
+          clickable={handlePremiumOptionClick(() => {
             setStore(prev => ({
               option: MessagesPrivacyOption.Paid,
               stars: prev.stars || 1
             }));
-          }}
+          })}
           title={i18n('PaidMessages.ChargeForMessages')}
         />
       </Section>
