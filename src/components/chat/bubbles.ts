@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppImManager, ChatSavedPosition, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
+import type {AppImManager, ChatSavedPosition, ChatSetInnerPeerOptions, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
 import type {HistoryResult, MyMessage} from '../../lib/appManagers/appMessagesManager';
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import type Chat from './chat';
@@ -2223,6 +2223,9 @@ export default class ChatBubbles {
       }
     } catch(err) {}
 
+    const stack = this.chat.appImManager.getStackFromElement(target);
+    const additionalSetPeerProps: Partial<ChatSetInnerPeerOptions> = {stack};
+
     if(!bubble && !this.chat.selection.isSelecting) {
       const avatar = findUpClassName(target, 'user-avatar');
       if(!avatar) {
@@ -2239,7 +2242,7 @@ export default class ChatBubbles {
 
       const peerId = avatar.dataset.peerId.toPeerId();
       if(peerId !== NULL_PEER_ID) {
-        this.chat.appImManager.setInnerPeer({peerId});
+        this.chat.appImManager.setInnerPeer({...additionalSetPeerProps, peerId});
       } else {
         toast(I18n.format('HidAccount', true));
       }
@@ -2305,6 +2308,7 @@ export default class ChatBubbles {
       const peerId = contactDiv.dataset.peerId.toPeerId();
       if(peerId) {
         this.chat.appImManager.setInnerPeer({
+          ...additionalSetPeerProps,
           peerId
         });
       } else {
@@ -2492,6 +2496,7 @@ export default class ChatBubbles {
         if(replies) {
           this.managers.appMessagesManager.getDiscussionMessage(this.peerId, message.mid).then((message) => {
             this.chat.appImManager.setInnerPeer({
+              ...additionalSetPeerProps,
               peerId: replies.channel_id.toPeerId(true),
               type: ChatType.Discussion,
               threadId: (message as MyMessage).mid
@@ -2537,15 +2542,15 @@ export default class ChatBubbles {
             }
           } else {
             this.chat.appImManager.setInnerPeer({
+              ...additionalSetPeerProps,
               peerId: peerId.toPeerId(),
-              lastMsgId: +mid,
-              stack: this.chat.appImManager.getStackFromElement(target)
+              lastMsgId: +mid
             });
           }
         } else {
           const peerId = peerIdStr.toPeerId();
           if(peerId !== NULL_PEER_ID) {
-            this.chat.appImManager.setInnerPeer({peerId});
+            this.chat.appImManager.setInnerPeer({...additionalSetPeerProps, peerId});
             this.chat.appImManager.clickIfSponsoredMessage((bubble as any).message);
           } else {
             toast(I18n.format('HidAccount', true));
@@ -2633,6 +2638,7 @@ export default class ChatBubbles {
         const savedFrom = bubble.dataset.savedFrom as FullMid;
         const {peerId, mid} = splitFullMid(savedFrom);
         this.chat.appImManager.setInnerPeer({
+          ...additionalSetPeerProps,
           peerId: peerId.toPeerId(),
           lastMsgId: +mid
         });
@@ -2694,6 +2700,7 @@ export default class ChatBubbles {
         this.followStack.push(bubbleFullMid);
 
         this.chat.appImManager.setInnerPeer({
+          ...additionalSetPeerProps,
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
           type: this.chat.type,
@@ -4120,7 +4127,7 @@ export default class ChatBubbles {
     }
 
     if(samePeer && sameSearch) {
-      if(stack && lastMsgFullMid !== EMPTY_FULL_MID) {
+      if(stack && lastMsgFullMid !== EMPTY_FULL_MID && stack.peerId === peerId) {
         this.followStack.push(makeFullMid(stack.peerId, stack.mid));
       }
 

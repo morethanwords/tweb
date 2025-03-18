@@ -702,9 +702,9 @@ export class AppChatsManager extends AppManager {
     else return this.deleteChatUser(id, isObject(participant) ? getParticipantPeerId(participant) : (participant as PeerId).toUserId());
   }
 
-  public resolveChannel(id: ChatId) {
+  public resolveChannel(id: ChatId | InputChannel) {
     return this.apiManager.invokeApiSingle('channels.getChannels', {
-      id: [{
+      id: [isObject(id) ? id : {
         _: 'inputChannel',
         channel_id: id,
         access_hash: '0'

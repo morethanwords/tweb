@@ -1,6 +1,6 @@
 import type ListenerSetter from './helpers/listenerSetter';
 import type {Middleware, MiddlewareHelper} from './helpers/middleware';
-import type {Chat, Document, User} from './layer';
+import type {Chat, Document, Message, User} from './layer';
 import type {MediaSize} from './helpers/mediaSize';
 import type {AnimationItemGroup} from './components/animationIntersector';
 import type LazyLoadQueue from './components/lazyLoadQueue';
@@ -26,6 +26,7 @@ declare global {
     timeAppenders?: {element: HTMLElement, callback: () => void}[];
     timeSpan?: HTMLElement;
     onMiniVideoMouseMove?: (e: MouseEvent) => void;
+    message?: Message;
     // middleware?: Middleware;
   }
 

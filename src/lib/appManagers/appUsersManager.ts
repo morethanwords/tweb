@@ -739,9 +739,9 @@ export class AppUsersManager extends AppManager {
     return this.isRegularUser(id) && !this.users[id].pFlags.self && this.users[id].status;
   }
 
-  public getApiUsers(userIds: UserId[]) {
+  public getApiUsers(userIds: (UserId | InputUser)[]) {
     return this.apiManager.invokeApi('users.getUsers', {
-      id: userIds.map((userId) => this.getUserInput(userId))
+      id: userIds.map((userId) => isObject(userId) ? userId : this.getUserInput(userId))
     }).then((users) => {
       this.saveApiUsers(users);
       return users;

@@ -280,7 +280,13 @@ export default class PopupStarReaction extends PopupElement {
           class={classNames('popup-star-reaction-senders-item', !anonymous && 'is-clickable')}
           onClick={() => {
             if(anonymous) return;
-            appImManager.setInnerPeer({peerId});
+            appImManager.setInnerPeer({
+              peerId,
+              stack: {
+                peerId: this.peerId,
+                mid: this.mid
+              }
+            });
             this.hide();
           }}
         >

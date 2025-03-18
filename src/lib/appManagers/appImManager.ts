@@ -1106,18 +1106,29 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public getStackFromElement(element: HTMLElement): ChatSetPeerOptions['stack'] {
-    const possibleBubble = findUpClassName(element, 'bubble');
-    const chatContainer = possibleBubble && findUpClassName(possibleBubble, 'chat');
+    let possibleBubble = findUpClassName(element, 'bubble');
+    if(!possibleBubble) {
+      const group = findUpClassName(element, 'bubbles-group');
+      if(group) {
+        possibleBubble = group.querySelector('.bubble');
+      }
+    }
+
+    if(!possibleBubble) {
+      return;
+    }
+
+    const chatContainer = findUpClassName(possibleBubble, 'chat');
     const chat = chatContainer && this.chats.find((chat) => chat.container === chatContainer);
     const peerId = chat?.peerId;
-    const mid = possibleBubble && +possibleBubble.dataset.mid;
-    const message: Message.message = (possibleBubble as any)?.message || (peerId && apiManagerProxy.getMessageByPeer(peerId, mid))
-    return possibleBubble ? {
+    const mid = +possibleBubble.dataset.mid;
+    const message = possibleBubble.message || (peerId && apiManagerProxy.getMessageByPeer(peerId, mid));
+    return {
       peerId,
       mid,
-      message,
-      isOut: message ? !!message.pFlags.out : undefined
-    } : undefined;
+      message: message as Message.message,
+      isOut: message ? !!(message as Message.message).pFlags.out : undefined
+    };
   }
 
   private deleteFilesIterative(callback: (response: Response) => boolean) {
@@ -2212,6 +2223,27 @@ export class AppImManager extends EventListenerBase<{
     options.peerId = await this.managers.appPeersManager.getPeerMigratedTo(options.peerId) || options.peerId;
 
     const {peerId, lastMsgId, threadId} = options;
+
+    // * replenish `min` peer
+    if(peerId && options.stack) {
+      const peer = apiManagerProxy.getPeer(peerId);
+      const isMin = peer && (peer as User.user).pFlags.min;
+      if(isMin && peerId.isUser()) {
+        await this.managers.appUsersManager.getApiUsers([{
+          _: 'inputUserFromMessage',
+          msg_id: getServerMessageId(options.stack.mid),
+          peer: await this.managers.appPeersManager.getInputPeerById(options.stack.peerId),
+          user_id: peerId.toUserId()
+        }]);
+      } else if(isMin) {
+        await this.managers.appChatsManager.resolveChannel({
+          _: 'inputChannelFromMessage',
+          msg_id: getServerMessageId(options.stack.mid),
+          peer: await this.managers.appPeersManager.getInputPeerById(options.stack.peerId),
+          channel_id: peerId.toChatId()
+        });
+      }
+    }
 
     const chat = this.chat;
     const chatIndex = this.chats.indexOf(chat);
