@@ -4,9 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {ButtonMenuItemOptions} from '../components/buttonMenu';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import findUpClassName from './dom/findUpClassName';
 import mediaSizes from './mediaSizes';
 import OverlayClickHandler from './overlayClickHandler';
 import overlayCounter from './overlayCounter';
@@ -92,8 +90,9 @@ class ContextMenuController extends OverlayClickHandler {
 
   public close() {
     if(this.element) {
+      const {parentElement} = this.element;
       this.element.classList.remove('active');
-      this.element.parentElement.classList.remove('menu-open');
+      parentElement && parentElement.classList.remove('menu-open');
 
       if(this.element.classList.contains('night')) {
         const element = this.element;
@@ -127,8 +126,9 @@ class ContextMenuController extends OverlayClickHandler {
 
     super.open(element);
 
+    const {parentElement} = this.element;
     this.element.classList.add('active', 'was-open');
-    this.element.parentElement.classList.add('menu-open');
+    parentElement.classList.add('menu-open');
 
     if(onClose) {
       this.addEventListener('toggle', onClose, {once: true});

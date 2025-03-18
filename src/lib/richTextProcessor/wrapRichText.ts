@@ -33,6 +33,7 @@ import findIndexFrom from '../../helpers/array/findIndexFrom';
 import {observeResize} from '../../components/resizeObserver';
 import createElementFromMarkup from '../../helpers/createElementFromMarkup';
 import DotRenderer from '../../components/dotRenderer';
+import isMixedScriptUrl from '../../helpers/string/isMixedScriptUrl';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -543,6 +544,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
               masked = true;
             }
           } else {
+            masked = isMixedScriptUrl(url);
             // inner = encodeEntities(replaceUrlEncodings(entityText));
           }
 

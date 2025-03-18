@@ -60,7 +60,7 @@ export class CallsController extends EventListenerBase<{
       switch(call._) {
         case 'phoneCallDiscarded': {
           if(instance) {
-            instance.hangUp(call.reason?._, true);
+            instance.hangUp(call.reason, true);
           }
 
           break;
@@ -187,7 +187,7 @@ export class CallsController extends EventListenerBase<{
           } else if(call.wasTryingToJoin && !hasConnected) { // something has happened during the key exchanging
             this.audioAsset.playSound('voip_failed.mp3');
           } else {
-            this.audioAsset.playSound(call.discardReason === 'phoneCallDiscardReasonBusy' ? 'call_busy.mp3' : 'call_end.mp3');
+            this.audioAsset.playSound(call.discardReason._ === 'phoneCallDiscardReasonBusy' ? 'call_busy.mp3' : 'call_end.mp3');
           }
         } else if(state === CALL_STATE.PENDING) {
           this.audioAsset.playSound(call.isOutgoing ? 'call_outgoing.mp3' : 'call_incoming.mp3', true);

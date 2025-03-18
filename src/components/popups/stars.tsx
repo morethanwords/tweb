@@ -43,6 +43,7 @@ import {MTAppConfig} from '../../lib/mtproto/appConfig';
 import {toastNew} from '../toast';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {createMoreButton} from '../sidebarRight/tabs/statistics';
+import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
 
 export function StarsStrokeStar(props: {stroke?: boolean, style?: JSX.HTMLAttributes<HTMLDivElement>['style']}) {
   return (
@@ -412,7 +413,7 @@ export default class PopupStars extends PopupElement {
               transaction
             });
           }}
-          rightContent={<StarsChange stars={transaction.stars} />}
+          rightContent={<StarsChange stars={formatStarsAmount(transaction.stars)} />}
         />
       );
 

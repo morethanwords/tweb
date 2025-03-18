@@ -342,7 +342,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     });
 
     this.listenerSetter.add(this.nameInputField.input)('input', () => {
-      this.filter.title = this.nameInputField.value;
+      this.filter.title = {_: 'textWithEntities', text: this.nameInputField.value, entities: []};
       this.editCheckForChange();
     });
 
@@ -408,7 +408,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
         };
 
         const updateLink = (row: Row, chatlistInvite: ExportedChatlistInvite) => {
-          const title = chatlistInvite.title && chatlistInvite.title !== this.filter.title ?
+          const title = chatlistInvite.title && chatlistInvite.title !== this.filter.title.text ?
             wrapEmojiText(chatlistInvite.title) :
             chatlistInvite.url.replace(/(.+?):\/\//, '');
           const subtitle = i18n('SharedFolder.Includes', [i18n('Chats', [chatlistInvite.peers.length])]);
@@ -590,7 +590,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }
 
     const filter = this.filter;
-    this.nameInputField.value = wrapDraftText(filter.title);
+    this.nameInputField.value = wrapDraftText(filter.title.text);
 
     const pFlags = (filter as DialogFilter.dialogFilter).pFlags;
     for(const flag in this.flags) {
@@ -728,7 +728,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.setFilter({
         _: 'dialogFilter',
         id: 0,
-        title: '',
+        title: {_: 'textWithEntities', text: '', entities: []},
         pFlags: {},
         pinned_peers: [],
         include_peers: [],

@@ -1711,6 +1711,10 @@
       opacity: .4;
     }
 
+    .reaction-block.is-paid {
+      --background-color: #fff6e3 !important;
+    }
+
     .reaction-block {
       &:not(.is-chosen) {
         @include hover() {
@@ -2660,6 +2664,10 @@
         }
       }
     }
+  }
+
+  &:has(.reaction.is-paid.effect-active) {
+    z-index: 3;
   }
 }
 

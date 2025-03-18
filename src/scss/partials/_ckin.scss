@@ -267,6 +267,7 @@ video::-webkit-media-controls-enclosure {
   --height: 5px;
   --border-radius: 6px;
   --thumb-size: 13px;
+  --focus-scale: 1.125;
   border-radius: var(--border-radius);
   height: var(--height);
   position: relative;
@@ -366,7 +367,7 @@ video::-webkit-media-controls-enclosure {
   }
 
   &.is-focused .progress-line__filled:not(.progress-line__loaded):after {
-    transform: translateX(calc(var(--thumb-size) / 2 * var(--reflect))) scale(1.125);
+    transform: translateX(calc(var(--thumb-size) / 2 * var(--reflect))) scale(var(--focus-scale));
   }
 
   &__loaded,

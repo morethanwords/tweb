@@ -301,7 +301,7 @@ export default class PopupReportAd extends PopupElement {
       PopupReportAd,
       'ad',
       (option) => {
-        return rootScope.managers.appChatsManager.reportSponsoredMessage(peerId.toChatId(), sponsoredMessage.random_id, option);
+        return rootScope.managers.appMessagesManager.reportSponsoredMessage(peerId, sponsoredMessage.random_id, option);
       },
       onAdHide
     );

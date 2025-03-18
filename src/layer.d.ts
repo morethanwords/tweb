@@ -185,6 +185,8 @@ export namespace InputMedia {
     mime_type: string,
     attributes: Array<DocumentAttribute>,
     stickers?: Array<InputDocument>,
+    video_cover?: InputPhoto,
+    video_timestamp?: number,
     ttl_seconds?: number
   };
 
@@ -195,6 +197,8 @@ export namespace InputMedia {
       spoiler?: true,
     }>,
     id: InputDocument,
+    video_cover?: InputPhoto,
+    video_timestamp?: number,
     ttl_seconds?: number,
     query?: string
   };
@@ -226,7 +230,9 @@ export namespace InputMedia {
       spoiler?: true,
     }>,
     url: string,
-    ttl_seconds?: number
+    ttl_seconds?: number,
+    video_cover?: InputPhoto,
+    video_timestamp?: number
   };
 
   export type inputMediaGame = {
@@ -575,6 +581,8 @@ export namespace User {
     color?: PeerColor,
     profile_color?: PeerColor,
     bot_active_users?: number,
+    bot_verification_icon?: string | number,
+    send_paid_messages_stars?: string | number,
     sortName?: string
   };
 }
@@ -734,7 +742,9 @@ export namespace Chat {
     profile_color?: PeerColor,
     emoji_status?: EmojiStatus,
     level?: number,
-    subscription_until_date?: number
+    subscription_until_date?: number,
+    bot_verification_icon?: string | number,
+    send_paid_messages_stars?: string | number
   };
 
   export type channelForbidden = {
@@ -807,6 +817,8 @@ export namespace ChatFull {
       paid_media_allowed?: true,
       can_view_stars_revenue?: true,
       paid_reactions_available?: true,
+      stargifts_available?: true,
+      paid_messages_available?: true,
     }>,
     flags2?: number,
     id: string | number,
@@ -849,7 +861,9 @@ export namespace ChatFull {
     wallpaper?: WallPaper,
     boosts_applied?: number,
     boosts_unrestrict?: number,
-    emojiset?: StickerSet
+    emojiset?: StickerSet,
+    bot_verification?: BotVerification,
+    stargifts_count?: number
   };
 }
 
@@ -954,6 +968,7 @@ export namespace Message {
       noforwards?: true,
       invert_media?: true,
       offline?: true,
+      video_processing_pending?: true,
       unread?: true,
       is_outgoing?: true,
       is_scheduled?: true,
@@ -986,6 +1001,8 @@ export namespace Message {
     quick_reply_shortcut_id?: number,
     effect?: string | number,
     factcheck?: FactCheck,
+    report_delivery_until_date?: number,
+    paid_message_stars?: string | number,
     mid?: number,
     peerId?: PeerId,
     fromId?: PeerId,
@@ -1013,6 +1030,7 @@ export namespace Message {
       out?: true,
       mentioned?: true,
       media_unread?: true,
+      reactions_are_possible?: true,
       silent?: true,
       post?: true,
       legacy?: true,
@@ -1027,6 +1045,7 @@ export namespace Message {
     reply_to?: MessageReplyHeader,
     date: number,
     action: MessageAction,
+    reactions?: MessageReactions,
     ttl_period?: number,
     mid?: number,
     deleted?: boolean,
@@ -1093,6 +1112,8 @@ export namespace MessageMedia {
     }>,
     document?: Document,
     alt_documents?: Array<Document>,
+    video_cover?: Photo,
+    video_timestamp?: number,
     ttl_seconds?: number
   };
 
@@ -1232,7 +1253,7 @@ export namespace MessageMedia {
 /**
  * @link https://core.telegram.org/type/MessageAction
  */
-export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionGroupCallScheduled | MessageAction.messageActionSetChatTheme | MessageAction.messageActionChatJoinedByRequest | MessageAction.messageActionWebViewDataSentMe | MessageAction.messageActionWebViewDataSent | MessageAction.messageActionGiftPremium | MessageAction.messageActionTopicCreate | MessageAction.messageActionTopicEdit | MessageAction.messageActionSuggestProfilePhoto | MessageAction.messageActionRequestedPeer | MessageAction.messageActionSetChatWallPaper | MessageAction.messageActionGiftCode | MessageAction.messageActionGiveawayLaunch | MessageAction.messageActionGiveawayResults | MessageAction.messageActionBoostApply | MessageAction.messageActionRequestedPeerSentMe | MessageAction.messageActionPaymentRefunded | MessageAction.messageActionGiftStars | MessageAction.messageActionPrizeStars | MessageAction.messageActionStarGift | MessageAction.messageActionDiscussionStarted | MessageAction.messageActionChannelJoined | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
+export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionGroupCallScheduled | MessageAction.messageActionSetChatTheme | MessageAction.messageActionChatJoinedByRequest | MessageAction.messageActionWebViewDataSentMe | MessageAction.messageActionWebViewDataSent | MessageAction.messageActionGiftPremium | MessageAction.messageActionTopicCreate | MessageAction.messageActionTopicEdit | MessageAction.messageActionSuggestProfilePhoto | MessageAction.messageActionRequestedPeer | MessageAction.messageActionSetChatWallPaper | MessageAction.messageActionGiftCode | MessageAction.messageActionGiveawayLaunch | MessageAction.messageActionGiveawayResults | MessageAction.messageActionBoostApply | MessageAction.messageActionRequestedPeerSentMe | MessageAction.messageActionPaymentRefunded | MessageAction.messageActionGiftStars | MessageAction.messageActionPrizeStars | MessageAction.messageActionStarGift | MessageAction.messageActionStarGiftUnique | MessageAction.messageActionDiscussionStarted | MessageAction.messageActionChannelJoined | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
 
 export namespace MessageAction {
   export type messageActionEmpty = {
@@ -1316,7 +1337,8 @@ export namespace MessageAction {
     payload: Uint8Array,
     info?: PaymentRequestedInfo,
     shipping_option_id?: string,
-    charge: PaymentCharge
+    charge: PaymentCharge,
+    subscription_until_date?: number
   };
 
   export type messageActionPaymentSent = {
@@ -1328,7 +1350,8 @@ export namespace MessageAction {
     }>,
     currency: string,
     total_amount: string | number,
-    invoice_slug?: string
+    invoice_slug?: string,
+    subscription_until_date?: number
   };
 
   export type messageActionPhoneCall = {
@@ -1563,10 +1586,35 @@ export namespace MessageAction {
       name_hidden?: true,
       saved?: true,
       converted?: true,
+      upgraded?: true,
+      refunded?: true,
+      can_upgrade?: true,
     }>,
     gift: StarGift,
     message?: TextWithEntities,
-    convert_stars: string | number
+    convert_stars?: string | number,
+    upgrade_msg_id?: number,
+    upgrade_stars?: string | number,
+    from_id?: Peer,
+    peer?: Peer,
+    saved_id?: string | number
+  };
+
+  export type messageActionStarGiftUnique = {
+    _: 'messageActionStarGiftUnique',
+    flags?: number,
+    pFlags: Partial<{
+      upgrade?: true,
+      transferred?: true,
+      saved?: true,
+      refunded?: true,
+    }>,
+    gift: StarGift,
+    can_export_at?: number,
+    transfer_stars?: string | number,
+    from_id?: Peer,
+    peer?: Peer,
+    saved_id?: string | number
   };
 
   export type messageActionDiscussionStarted = {
@@ -1970,7 +2018,12 @@ export namespace PeerSettings {
     request_chat_title?: string,
     request_chat_date?: number,
     business_bot_id?: string | number,
-    business_bot_manage_url?: string
+    business_bot_manage_url?: string,
+    charge_paid_message_stars?: string | number,
+    registration_month?: string,
+    phone_country?: string,
+    name_change_date?: number,
+    photo_change_date?: number
   };
 }
 
@@ -2079,6 +2132,8 @@ export namespace UserFull {
       contact_require_premium?: true,
       read_dates_private?: true,
       sponsored_enabled?: true,
+      can_view_revenue?: true,
+      bot_can_manage_emoji_status?: true,
     }>,
     flags2?: number,
     id: string | number,
@@ -2097,7 +2152,6 @@ export namespace UserFull {
     private_forward_name?: string,
     bot_group_admin_rights?: ChatAdminRights,
     bot_broadcast_admin_rights?: ChatAdminRights,
-    premium_gifts?: Array<PremiumGiftOption>,
     wallpaper?: WallPaper,
     stories?: PeerStories,
     business_work_hours?: BusinessWorkHours,
@@ -2108,7 +2162,10 @@ export namespace UserFull {
     birthday?: Birthday,
     personal_channel_id?: string | number,
     personal_channel_message?: number,
-    stargifts_count?: number
+    stargifts_count?: number,
+    starref_program?: StarRefProgram,
+    bot_verification?: BotVerification,
+    send_paid_messages_stars?: string | number
   };
 }
 
@@ -2903,8 +2960,10 @@ export namespace Update {
 
   export type updateDeleteScheduledMessages = {
     _: 'updateDeleteScheduledMessages',
+    flags?: number,
     peer: Peer,
-    messages: Array<number>
+    messages: Array<number>,
+    sent_messages?: Array<number>
   };
 
   export type updateTheme = {
@@ -3033,7 +3092,8 @@ export namespace Update {
 
   export type updateGroupCall = {
     _: 'updateGroupCall',
-    chat_id: string | number,
+    flags?: number,
+    chat_id?: string | number,
     call: GroupCall
   };
 
@@ -3390,7 +3450,7 @@ export namespace Update {
 
   export type updateStarsBalance = {
     _: 'updateStarsBalance',
-    balance: string | number
+    balance: StarsAmount
   };
 
   export type updateBusinessBotCallbackQuery = {
@@ -3420,7 +3480,7 @@ export namespace Update {
 
   export type updatePaidReactionPrivacy = {
     _: 'updatePaidReactionPrivacy',
-    private: boolean
+    private: PaidReactionPrivacy
   };
 
   export type updateNewDiscussionMessage = {
@@ -4178,7 +4238,7 @@ export namespace ContactsFound {
 /**
  * @link https://core.telegram.org/type/InputPrivacyKey
  */
-export type InputPrivacyKey = InputPrivacyKey.inputPrivacyKeyStatusTimestamp | InputPrivacyKey.inputPrivacyKeyChatInvite | InputPrivacyKey.inputPrivacyKeyPhoneCall | InputPrivacyKey.inputPrivacyKeyPhoneP2P | InputPrivacyKey.inputPrivacyKeyForwards | InputPrivacyKey.inputPrivacyKeyProfilePhoto | InputPrivacyKey.inputPrivacyKeyPhoneNumber | InputPrivacyKey.inputPrivacyKeyAddedByPhone | InputPrivacyKey.inputPrivacyKeyVoiceMessages | InputPrivacyKey.inputPrivacyKeyAbout | InputPrivacyKey.inputPrivacyKeyBirthday;
+export type InputPrivacyKey = InputPrivacyKey.inputPrivacyKeyStatusTimestamp | InputPrivacyKey.inputPrivacyKeyChatInvite | InputPrivacyKey.inputPrivacyKeyPhoneCall | InputPrivacyKey.inputPrivacyKeyPhoneP2P | InputPrivacyKey.inputPrivacyKeyForwards | InputPrivacyKey.inputPrivacyKeyProfilePhoto | InputPrivacyKey.inputPrivacyKeyPhoneNumber | InputPrivacyKey.inputPrivacyKeyAddedByPhone | InputPrivacyKey.inputPrivacyKeyVoiceMessages | InputPrivacyKey.inputPrivacyKeyAbout | InputPrivacyKey.inputPrivacyKeyBirthday | InputPrivacyKey.inputPrivacyKeyStarGiftsAutoSave | InputPrivacyKey.inputPrivacyKeyNoPaidMessages;
 
 export namespace InputPrivacyKey {
   export type inputPrivacyKeyStatusTimestamp = {
@@ -4224,12 +4284,20 @@ export namespace InputPrivacyKey {
   export type inputPrivacyKeyBirthday = {
     _: 'inputPrivacyKeyBirthday'
   };
+
+  export type inputPrivacyKeyStarGiftsAutoSave = {
+    _: 'inputPrivacyKeyStarGiftsAutoSave'
+  };
+
+  export type inputPrivacyKeyNoPaidMessages = {
+    _: 'inputPrivacyKeyNoPaidMessages'
+  };
 }
 
 /**
  * @link https://core.telegram.org/type/PrivacyKey
  */
-export type PrivacyKey = PrivacyKey.privacyKeyStatusTimestamp | PrivacyKey.privacyKeyChatInvite | PrivacyKey.privacyKeyPhoneCall | PrivacyKey.privacyKeyPhoneP2P | PrivacyKey.privacyKeyForwards | PrivacyKey.privacyKeyProfilePhoto | PrivacyKey.privacyKeyPhoneNumber | PrivacyKey.privacyKeyAddedByPhone | PrivacyKey.privacyKeyVoiceMessages | PrivacyKey.privacyKeyAbout | PrivacyKey.privacyKeyBirthday;
+export type PrivacyKey = PrivacyKey.privacyKeyStatusTimestamp | PrivacyKey.privacyKeyChatInvite | PrivacyKey.privacyKeyPhoneCall | PrivacyKey.privacyKeyPhoneP2P | PrivacyKey.privacyKeyForwards | PrivacyKey.privacyKeyProfilePhoto | PrivacyKey.privacyKeyPhoneNumber | PrivacyKey.privacyKeyAddedByPhone | PrivacyKey.privacyKeyVoiceMessages | PrivacyKey.privacyKeyAbout | PrivacyKey.privacyKeyBirthday | PrivacyKey.privacyKeyStarGiftsAutoSave | PrivacyKey.privacyKeyNoPaidMessages;
 
 export namespace PrivacyKey {
   export type privacyKeyStatusTimestamp = {
@@ -4275,12 +4343,20 @@ export namespace PrivacyKey {
   export type privacyKeyBirthday = {
     _: 'privacyKeyBirthday'
   };
+
+  export type privacyKeyStarGiftsAutoSave = {
+    _: 'privacyKeyStarGiftsAutoSave'
+  };
+
+  export type privacyKeyNoPaidMessages = {
+    _: 'privacyKeyNoPaidMessages'
+  };
 }
 
 /**
  * @link https://core.telegram.org/type/InputPrivacyRule
  */
-export type InputPrivacyRule = InputPrivacyRule.inputPrivacyValueAllowContacts | InputPrivacyRule.inputPrivacyValueAllowAll | InputPrivacyRule.inputPrivacyValueAllowUsers | InputPrivacyRule.inputPrivacyValueDisallowContacts | InputPrivacyRule.inputPrivacyValueDisallowAll | InputPrivacyRule.inputPrivacyValueDisallowUsers | InputPrivacyRule.inputPrivacyValueAllowChatParticipants | InputPrivacyRule.inputPrivacyValueDisallowChatParticipants | InputPrivacyRule.inputPrivacyValueAllowCloseFriends | InputPrivacyRule.inputPrivacyValueAllowPremium;
+export type InputPrivacyRule = InputPrivacyRule.inputPrivacyValueAllowContacts | InputPrivacyRule.inputPrivacyValueAllowAll | InputPrivacyRule.inputPrivacyValueAllowUsers | InputPrivacyRule.inputPrivacyValueDisallowContacts | InputPrivacyRule.inputPrivacyValueDisallowAll | InputPrivacyRule.inputPrivacyValueDisallowUsers | InputPrivacyRule.inputPrivacyValueAllowChatParticipants | InputPrivacyRule.inputPrivacyValueDisallowChatParticipants | InputPrivacyRule.inputPrivacyValueAllowCloseFriends | InputPrivacyRule.inputPrivacyValueAllowPremium | InputPrivacyRule.inputPrivacyValueAllowBots | InputPrivacyRule.inputPrivacyValueDisallowBots;
 
 export namespace InputPrivacyRule {
   export type inputPrivacyValueAllowContacts = {
@@ -4326,12 +4402,20 @@ export namespace InputPrivacyRule {
   export type inputPrivacyValueAllowPremium = {
     _: 'inputPrivacyValueAllowPremium'
   };
+
+  export type inputPrivacyValueAllowBots = {
+    _: 'inputPrivacyValueAllowBots'
+  };
+
+  export type inputPrivacyValueDisallowBots = {
+    _: 'inputPrivacyValueDisallowBots'
+  };
 }
 
 /**
  * @link https://core.telegram.org/type/PrivacyRule
  */
-export type PrivacyRule = PrivacyRule.privacyValueAllowContacts | PrivacyRule.privacyValueAllowAll | PrivacyRule.privacyValueAllowUsers | PrivacyRule.privacyValueDisallowContacts | PrivacyRule.privacyValueDisallowAll | PrivacyRule.privacyValueDisallowUsers | PrivacyRule.privacyValueAllowChatParticipants | PrivacyRule.privacyValueDisallowChatParticipants | PrivacyRule.privacyValueAllowCloseFriends | PrivacyRule.privacyValueAllowPremium;
+export type PrivacyRule = PrivacyRule.privacyValueAllowContacts | PrivacyRule.privacyValueAllowAll | PrivacyRule.privacyValueAllowUsers | PrivacyRule.privacyValueDisallowContacts | PrivacyRule.privacyValueDisallowAll | PrivacyRule.privacyValueDisallowUsers | PrivacyRule.privacyValueAllowChatParticipants | PrivacyRule.privacyValueDisallowChatParticipants | PrivacyRule.privacyValueAllowCloseFriends | PrivacyRule.privacyValueAllowPremium | PrivacyRule.privacyValueAllowBots | PrivacyRule.privacyValueDisallowBots;
 
 export namespace PrivacyRule {
   export type privacyValueAllowContacts = {
@@ -4376,6 +4460,14 @@ export namespace PrivacyRule {
 
   export type privacyValueAllowPremium = {
     _: 'privacyValueAllowPremium'
+  };
+
+  export type privacyValueAllowBots = {
+    _: 'privacyValueAllowBots'
+  };
+
+  export type privacyValueDisallowBots = {
+    _: 'privacyValueDisallowBots'
   };
 }
 
@@ -4567,6 +4659,7 @@ export namespace WebPage {
     flags?: number,
     pFlags: Partial<{
       has_large_media?: true,
+      video_cover_photo?: true,
     }>,
     id: string | number,
     url: string,
@@ -4788,7 +4881,8 @@ export namespace ChatInvite {
     participants?: Array<User>,
     color: number,
     subscription_pricing?: StarsSubscriptionPricing,
-    subscription_form_id?: string | number
+    subscription_form_id?: string | number,
+    bot_verification?: BotVerification
   };
 
   export type chatInvitePeek = {
@@ -4936,7 +5030,9 @@ export namespace BotInfo {
     description_document?: Document,
     commands?: Array<BotCommand>,
     menu_button?: BotMenuButton,
-    privacy_policy_url?: string
+    privacy_policy_url?: string,
+    app_settings?: BotAppSettings,
+    verifier_settings?: BotVerifierSettings
   };
 }
 
@@ -6759,7 +6855,7 @@ export namespace PageBlock {
 /**
  * @link https://core.telegram.org/type/PhoneCallDiscardReason
  */
-export type PhoneCallDiscardReason = PhoneCallDiscardReason.phoneCallDiscardReasonMissed | PhoneCallDiscardReason.phoneCallDiscardReasonDisconnect | PhoneCallDiscardReason.phoneCallDiscardReasonHangup | PhoneCallDiscardReason.phoneCallDiscardReasonBusy;
+export type PhoneCallDiscardReason = PhoneCallDiscardReason.phoneCallDiscardReasonMissed | PhoneCallDiscardReason.phoneCallDiscardReasonDisconnect | PhoneCallDiscardReason.phoneCallDiscardReasonHangup | PhoneCallDiscardReason.phoneCallDiscardReasonBusy | PhoneCallDiscardReason.phoneCallDiscardReasonAllowGroupCall;
 
 export namespace PhoneCallDiscardReason {
   export type phoneCallDiscardReasonMissed = {
@@ -6776,6 +6872,11 @@ export namespace PhoneCallDiscardReason {
 
   export type phoneCallDiscardReasonBusy = {
     _: 'phoneCallDiscardReasonBusy'
+  };
+
+  export type phoneCallDiscardReasonAllowGroupCall = {
+    _: 'phoneCallDiscardReasonAllowGroupCall',
+    encrypted_key: Uint8Array
   };
 }
 
@@ -6828,7 +6929,8 @@ export namespace Invoice {
     prices: Array<LabeledPrice>,
     max_tip_amount?: string | number,
     suggested_tip_amounts?: Array<string | number>,
-    terms_url?: string
+    terms_url?: string,
+    subscription_period?: number
   };
 }
 
@@ -7231,7 +7333,8 @@ export namespace PhoneCall {
     admin_id: string | number,
     participant_id: string | number,
     protocol: PhoneCallProtocol,
-    receive_date?: number
+    receive_date?: number,
+    conference_call?: InputGroupCall
   };
 
   export type phoneCallRequested = {
@@ -7246,7 +7349,8 @@ export namespace PhoneCall {
     admin_id: string | number,
     participant_id: string | number,
     g_a_hash: Uint8Array,
-    protocol: PhoneCallProtocol
+    protocol: PhoneCallProtocol,
+    conference_call?: InputGroupCall
   };
 
   export type phoneCallAccepted = {
@@ -7261,7 +7365,8 @@ export namespace PhoneCall {
     admin_id: string | number,
     participant_id: string | number,
     g_b: Uint8Array,
-    protocol: PhoneCallProtocol
+    protocol: PhoneCallProtocol,
+    conference_call?: InputGroupCall
   };
 
   export type phoneCall = {
@@ -7281,7 +7386,8 @@ export namespace PhoneCall {
     protocol: PhoneCallProtocol,
     connections: Array<PhoneConnection>,
     start_date: number,
-    custom_parameters?: DataJSON
+    custom_parameters?: DataJSON,
+    conference_call?: InputGroupCall
   };
 
   export type phoneCallDiscarded = {
@@ -7294,7 +7400,8 @@ export namespace PhoneCall {
     }>,
     id: string | number,
     reason?: PhoneCallDiscardReason,
-    duration?: number
+    duration?: number,
+    conference_call?: InputGroupCall
   };
 }
 
@@ -9432,7 +9539,7 @@ export namespace ThemeSettings {
 /**
  * @link https://core.telegram.org/type/WebPageAttribute
  */
-export type WebPageAttribute = WebPageAttribute.webPageAttributeTheme | WebPageAttribute.webPageAttributeStory | WebPageAttribute.webPageAttributeStickerSet;
+export type WebPageAttribute = WebPageAttribute.webPageAttributeTheme | WebPageAttribute.webPageAttributeStory | WebPageAttribute.webPageAttributeStickerSet | WebPageAttribute.webPageAttributeUniqueStarGift;
 
 export namespace WebPageAttribute {
   export type webPageAttributeTheme = {
@@ -9458,6 +9565,11 @@ export namespace WebPageAttribute {
       text_color?: true,
     }>,
     stickers: Array<Document>
+  };
+
+  export type webPageAttributeUniqueStarGift = {
+    _: 'webPageAttributeUniqueStarGift',
+    gift: StarGift
   };
 }
 
@@ -9522,10 +9634,11 @@ export namespace DialogFilter {
       exclude_muted?: true,
       exclude_read?: true,
       exclude_archived?: true,
+      title_noanimate?: true,
       exclude_unarchived?: true,
     }>,
     id: number,
-    title: string,
+    title: TextWithEntities,
     emoticon?: string,
     color?: number,
     pinned_peers: Array<InputPeer>,
@@ -9547,9 +9660,10 @@ export namespace DialogFilter {
     flags?: number,
     pFlags: Partial<{
       has_my_invites?: true,
+      title_noanimate?: true,
     }>,
     id: number,
-    title: string,
+    title: TextWithEntities,
     emoticon?: string,
     color?: number,
     pinned_peers: Array<InputPeer>,
@@ -9812,7 +9926,8 @@ export namespace GlobalPrivacySettings {
       keep_archived_folders?: true,
       hide_read_marks?: true,
       new_noncontact_peers_require_premium?: true,
-    }>
+    }>,
+    noncontact_peers_paid_stars?: string | number
   };
 }
 
@@ -10032,7 +10147,8 @@ export namespace GroupCall {
     schedule_date?: number,
     unmuted_video_count?: number,
     unmuted_video_limit: number,
-    version: number
+    version: number,
+    conference_from_call?: string | number
   };
 }
 
@@ -10841,6 +10957,7 @@ export namespace WebViewResult {
     flags?: number,
     pFlags: Partial<{
       fullsize?: true,
+      fullscreen?: true,
     }>,
     query_id?: string | number,
     url: string
@@ -10970,7 +11087,7 @@ export namespace AttachMenuPeerType {
 /**
  * @link https://core.telegram.org/type/InputInvoice
  */
-export type InputInvoice = InputInvoice.inputInvoiceMessage | InputInvoice.inputInvoiceSlug | InputInvoice.inputInvoicePremiumGiftCode | InputInvoice.inputInvoiceStars | InputInvoice.inputInvoiceChatInviteSubscription | InputInvoice.inputInvoiceStarGift;
+export type InputInvoice = InputInvoice.inputInvoiceMessage | InputInvoice.inputInvoiceSlug | InputInvoice.inputInvoicePremiumGiftCode | InputInvoice.inputInvoiceStars | InputInvoice.inputInvoiceChatInviteSubscription | InputInvoice.inputInvoiceStarGift | InputInvoice.inputInvoiceStarGiftUpgrade | InputInvoice.inputInvoiceStarGiftTransfer | InputInvoice.inputInvoicePremiumGiftStars;
 
 export namespace InputInvoice {
   export type inputInvoiceMessage = {
@@ -11005,9 +11122,33 @@ export namespace InputInvoice {
     flags?: number,
     pFlags: Partial<{
       hide_name?: true,
+      include_upgrade?: true,
     }>,
-    user_id: InputUser,
+    peer: InputPeer,
     gift_id: string | number,
+    message?: TextWithEntities
+  };
+
+  export type inputInvoiceStarGiftUpgrade = {
+    _: 'inputInvoiceStarGiftUpgrade',
+    flags?: number,
+    pFlags: Partial<{
+      keep_original_details?: true,
+    }>,
+    stargift: InputSavedStarGift
+  };
+
+  export type inputInvoiceStarGiftTransfer = {
+    _: 'inputInvoiceStarGiftTransfer',
+    stargift: InputSavedStarGift,
+    to_id: InputPeer
+  };
+
+  export type inputInvoicePremiumGiftStars = {
+    _: 'inputInvoicePremiumGiftStars',
+    flags?: number,
+    user_id: InputUser,
+    months: number,
     message?: TextWithEntities
   };
 }
@@ -11145,23 +11286,6 @@ export namespace InputStorePaymentPurpose {
 }
 
 /**
- * @link https://core.telegram.org/type/PremiumGiftOption
- */
-export type PremiumGiftOption = PremiumGiftOption.premiumGiftOption;
-
-export namespace PremiumGiftOption {
-  export type premiumGiftOption = {
-    _: 'premiumGiftOption',
-    flags?: number,
-    months: number,
-    currency: string,
-    amount: string | number,
-    bot_url: string,
-    store_product?: string
-  };
-}
-
-/**
  * @link https://core.telegram.org/type/PaymentFormMethod
  */
 export type PaymentFormMethod = PaymentFormMethod.paymentFormMethod;
@@ -11177,7 +11301,7 @@ export namespace PaymentFormMethod {
 /**
  * @link https://core.telegram.org/type/EmojiStatus
  */
-export type EmojiStatus = EmojiStatus.emojiStatusEmpty | EmojiStatus.emojiStatus | EmojiStatus.emojiStatusUntil;
+export type EmojiStatus = EmojiStatus.emojiStatusEmpty | EmojiStatus.emojiStatus | EmojiStatus.emojiStatusCollectible | EmojiStatus.inputEmojiStatusCollectible;
 
 export namespace EmojiStatus {
   export type emojiStatusEmpty = {
@@ -11186,13 +11310,31 @@ export namespace EmojiStatus {
 
   export type emojiStatus = {
     _: 'emojiStatus',
-    document_id: string | number
+    flags?: number,
+    document_id: string | number,
+    until?: number
   };
 
-  export type emojiStatusUntil = {
-    _: 'emojiStatusUntil',
+  export type emojiStatusCollectible = {
+    _: 'emojiStatusCollectible',
+    flags?: number,
+    collectible_id: string | number,
     document_id: string | number,
-    until: number
+    title: string,
+    slug: string,
+    pattern_document_id: string | number,
+    center_color: number,
+    edge_color: number,
+    pattern_color: number,
+    text_color: number,
+    until?: number
+  };
+
+  export type inputEmojiStatusCollectible = {
+    _: 'inputEmojiStatusCollectible',
+    flags?: number,
+    collectible_id: string | number,
+    until?: number
   };
 }
 
@@ -11869,7 +12011,10 @@ export namespace ChatlistsChatlistInvite {
   export type chatlistsChatlistInvite = {
     _: 'chatlists.chatlistInvite',
     flags?: number,
-    title: string,
+    pFlags: Partial<{
+      title_noanimate?: true,
+    }>,
+    title: TextWithEntities,
     emoticon?: string,
     peers: Array<Peer>,
     chats: Array<Chat>,
@@ -12194,7 +12339,7 @@ export namespace MediaAreaCoordinates {
 /**
  * @link https://core.telegram.org/type/MediaArea
  */
-export type MediaArea = MediaArea.mediaAreaVenue | MediaArea.inputMediaAreaVenue | MediaArea.mediaAreaGeoPoint | MediaArea.mediaAreaSuggestedReaction | MediaArea.mediaAreaChannelPost | MediaArea.inputMediaAreaChannelPost | MediaArea.mediaAreaUrl | MediaArea.mediaAreaWeather;
+export type MediaArea = MediaArea.mediaAreaVenue | MediaArea.inputMediaAreaVenue | MediaArea.mediaAreaGeoPoint | MediaArea.mediaAreaSuggestedReaction | MediaArea.mediaAreaChannelPost | MediaArea.inputMediaAreaChannelPost | MediaArea.mediaAreaUrl | MediaArea.mediaAreaWeather | MediaArea.mediaAreaStarGift;
 
 export namespace MediaArea {
   export type mediaAreaVenue = {
@@ -12260,6 +12405,12 @@ export namespace MediaArea {
     emoji: string,
     temperature_c: number,
     color: number
+  };
+
+  export type mediaAreaStarGift = {
+    _: 'mediaAreaStarGift',
+    coordinates: MediaAreaCoordinates,
+    slug: string
   };
 }
 
@@ -13671,7 +13822,7 @@ export namespace FactCheck {
 /**
  * @link https://core.telegram.org/type/StarsTransactionPeer
  */
-export type StarsTransactionPeer = StarsTransactionPeer.starsTransactionPeerUnsupported | StarsTransactionPeer.starsTransactionPeerAppStore | StarsTransactionPeer.starsTransactionPeerPlayMarket | StarsTransactionPeer.starsTransactionPeerPremiumBot | StarsTransactionPeer.starsTransactionPeerFragment | StarsTransactionPeer.starsTransactionPeer | StarsTransactionPeer.starsTransactionPeerAds;
+export type StarsTransactionPeer = StarsTransactionPeer.starsTransactionPeerUnsupported | StarsTransactionPeer.starsTransactionPeerAppStore | StarsTransactionPeer.starsTransactionPeerPlayMarket | StarsTransactionPeer.starsTransactionPeerPremiumBot | StarsTransactionPeer.starsTransactionPeerFragment | StarsTransactionPeer.starsTransactionPeer | StarsTransactionPeer.starsTransactionPeerAds | StarsTransactionPeer.starsTransactionPeerAPI;
 
 export namespace StarsTransactionPeer {
   export type starsTransactionPeerUnsupported = {
@@ -13701,6 +13852,10 @@ export namespace StarsTransactionPeer {
 
   export type starsTransactionPeerAds = {
     _: 'starsTransactionPeerAds'
+  };
+
+  export type starsTransactionPeerAPI = {
+    _: 'starsTransactionPeerAPI'
   };
 }
 
@@ -13738,9 +13893,10 @@ export namespace StarsTransaction {
       failed?: true,
       gift?: true,
       reaction?: true,
+      stargift_upgrade?: true,
     }>,
     id: string,
-    stars: string | number,
+    stars: StarsAmount,
     date: number,
     peer: StarsTransactionPeer,
     title?: string,
@@ -13753,7 +13909,13 @@ export namespace StarsTransaction {
     extended_media?: Array<MessageMedia>,
     subscription_period?: number,
     giveaway_post_id?: number,
-    stargift?: StarGift
+    stargift?: StarGift,
+    floodskip_number?: number,
+    starref_commission_permille?: number,
+    starref_peer?: Peer,
+    starref_amount?: StarsAmount,
+    paid_messages?: number,
+    premium_gift_months?: number
   };
 }
 
@@ -13766,7 +13928,7 @@ export namespace PaymentsStarsStatus {
   export type paymentsStarsStatus = {
     _: 'payments.starsStatus',
     flags?: number,
-    balance: string | number,
+    balance: StarsAmount,
     subscriptions?: Array<StarsSubscription>,
     subscriptions_next_offset?: string,
     subscriptions_missing_balance?: string | number,
@@ -13835,9 +13997,9 @@ export namespace StarsRevenueStatus {
     pFlags: Partial<{
       withdrawal_enabled?: true,
     }>,
-    current_balance: string | number,
-    available_balance: string | number,
-    overall_revenue: string | number,
+    current_balance: StarsAmount,
+    available_balance: StarsAmount,
+    overall_revenue: StarsAmount,
     next_withdrawal_at?: number
   };
 }
@@ -13981,12 +14143,16 @@ export namespace StarsSubscription {
       canceled?: true,
       can_refulfill?: true,
       missing_balance?: true,
+      bot_canceled?: true,
     }>,
     id: string,
     peer: Peer,
     until_date: number,
     pricing: StarsSubscriptionPricing,
-    chat_invite_hash?: string
+    chat_invite_hash?: string,
+    title?: string,
+    photo?: WebDocument,
+    invoice_slug?: string
   };
 }
 
@@ -14051,7 +14217,7 @@ export namespace StarsGiveawayWinnersOption {
 /**
  * @link https://core.telegram.org/type/StarGift
  */
-export type StarGift = StarGift.starGift;
+export type StarGift = StarGift.starGift | StarGift.starGiftUnique;
 
 export namespace StarGift {
   export type starGift = {
@@ -14060,6 +14226,7 @@ export namespace StarGift {
     pFlags: Partial<{
       limited?: true,
       sold_out?: true,
+      birthday?: true,
     }>,
     id: string | number,
     sticker: Document,
@@ -14068,7 +14235,24 @@ export namespace StarGift {
     availability_total?: number,
     convert_stars: string | number,
     first_sale_date?: number,
-    last_sale_date?: number
+    last_sale_date?: number,
+    upgrade_stars?: string | number
+  };
+
+  export type starGiftUnique = {
+    _: 'starGiftUnique',
+    flags?: number,
+    id: string | number,
+    title: string,
+    slug: string,
+    num: number,
+    owner_id?: Peer,
+    owner_name?: string,
+    owner_address?: string,
+    attributes: Array<StarGiftAttribute>,
+    availability_issued: number,
+    availability_total: number,
+    gift_address?: string
   };
 }
 
@@ -14086,44 +14270,6 @@ export namespace PaymentsStarGifts {
     _: 'payments.starGifts',
     hash: number,
     gifts: Array<StarGift>
-  };
-}
-
-/**
- * @link https://core.telegram.org/type/UserStarGift
- */
-export type UserStarGift = UserStarGift.userStarGift;
-
-export namespace UserStarGift {
-  export type userStarGift = {
-    _: 'userStarGift',
-    flags?: number,
-    pFlags: Partial<{
-      name_hidden?: true,
-      unsaved?: true,
-    }>,
-    from_id?: string | number,
-    date: number,
-    gift: StarGift,
-    message?: TextWithEntities,
-    msg_id?: number,
-    convert_stars?: string | number
-  };
-}
-
-/**
- * @link https://core.telegram.org/type/payments.UserStarGifts
- */
-export type PaymentsUserStarGifts = PaymentsUserStarGifts.paymentsUserStarGifts;
-
-export namespace PaymentsUserStarGifts {
-  export type paymentsUserStarGifts = {
-    _: 'payments.userStarGifts',
-    flags?: number,
-    count: number,
-    gifts: Array<UserStarGift>,
-    next_offset?: string,
-    users: Array<User>
   };
 }
 
@@ -14163,6 +14309,412 @@ export namespace ReportResult {
 
   export type reportResultReported = {
     _: 'reportResultReported'
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.BotPreparedInlineMessage
+ */
+export type MessagesBotPreparedInlineMessage = MessagesBotPreparedInlineMessage.messagesBotPreparedInlineMessage;
+
+export namespace MessagesBotPreparedInlineMessage {
+  export type messagesBotPreparedInlineMessage = {
+    _: 'messages.botPreparedInlineMessage',
+    id: string,
+    expire_date: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.PreparedInlineMessage
+ */
+export type MessagesPreparedInlineMessage = MessagesPreparedInlineMessage.messagesPreparedInlineMessage;
+
+export namespace MessagesPreparedInlineMessage {
+  export type messagesPreparedInlineMessage = {
+    _: 'messages.preparedInlineMessage',
+    query_id: string | number,
+    result: BotInlineResult,
+    peer_types: Array<InlineQueryPeerType>,
+    cache_time: number,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BotAppSettings
+ */
+export type BotAppSettings = BotAppSettings.botAppSettings;
+
+export namespace BotAppSettings {
+  export type botAppSettings = {
+    _: 'botAppSettings',
+    flags?: number,
+    placeholder_path?: Uint8Array,
+    background_color?: number,
+    background_dark_color?: number,
+    header_color?: number,
+    header_dark_color?: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/StarRefProgram
+ */
+export type StarRefProgram = StarRefProgram.starRefProgram;
+
+export namespace StarRefProgram {
+  export type starRefProgram = {
+    _: 'starRefProgram',
+    flags?: number,
+    bot_id: string | number,
+    commission_permille: number,
+    duration_months?: number,
+    end_date?: number,
+    daily_revenue_per_user?: StarsAmount
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/ConnectedBotStarRef
+ */
+export type ConnectedBotStarRef = ConnectedBotStarRef.connectedBotStarRef;
+
+export namespace ConnectedBotStarRef {
+  export type connectedBotStarRef = {
+    _: 'connectedBotStarRef',
+    flags?: number,
+    pFlags: Partial<{
+      revoked?: true,
+    }>,
+    url: string,
+    date: number,
+    bot_id: string | number,
+    commission_permille: number,
+    duration_months?: number,
+    participants: string | number,
+    revenue: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.ConnectedStarRefBots
+ */
+export type PaymentsConnectedStarRefBots = PaymentsConnectedStarRefBots.paymentsConnectedStarRefBots;
+
+export namespace PaymentsConnectedStarRefBots {
+  export type paymentsConnectedStarRefBots = {
+    _: 'payments.connectedStarRefBots',
+    count: number,
+    connected_bots: Array<ConnectedBotStarRef>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.SuggestedStarRefBots
+ */
+export type PaymentsSuggestedStarRefBots = PaymentsSuggestedStarRefBots.paymentsSuggestedStarRefBots;
+
+export namespace PaymentsSuggestedStarRefBots {
+  export type paymentsSuggestedStarRefBots = {
+    _: 'payments.suggestedStarRefBots',
+    flags?: number,
+    count: number,
+    suggested_bots: Array<StarRefProgram>,
+    users: Array<User>,
+    next_offset?: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/StarsAmount
+ */
+export type StarsAmount = StarsAmount.starsAmount;
+
+export namespace StarsAmount {
+  export type starsAmount = {
+    _: 'starsAmount',
+    amount: string | number,
+    nanos: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.FoundStickers
+ */
+export type MessagesFoundStickers = MessagesFoundStickers.messagesFoundStickersNotModified | MessagesFoundStickers.messagesFoundStickers;
+
+export namespace MessagesFoundStickers {
+  export type messagesFoundStickersNotModified = {
+    _: 'messages.foundStickersNotModified',
+    flags?: number,
+    next_offset?: number
+  };
+
+  export type messagesFoundStickers = {
+    _: 'messages.foundStickers',
+    flags?: number,
+    next_offset?: number,
+    hash: string | number,
+    stickers: Array<Document>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BotVerifierSettings
+ */
+export type BotVerifierSettings = BotVerifierSettings.botVerifierSettings;
+
+export namespace BotVerifierSettings {
+  export type botVerifierSettings = {
+    _: 'botVerifierSettings',
+    flags?: number,
+    pFlags: Partial<{
+      can_modify_custom_description?: true,
+    }>,
+    icon: string | number,
+    company: string,
+    custom_description?: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/BotVerification
+ */
+export type BotVerification = BotVerification.botVerification;
+
+export namespace BotVerification {
+  export type botVerification = {
+    _: 'botVerification',
+    bot_id: string | number,
+    icon: string | number,
+    description: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/StarGiftAttribute
+ */
+export type StarGiftAttribute = StarGiftAttribute.starGiftAttributeModel | StarGiftAttribute.starGiftAttributePattern | StarGiftAttribute.starGiftAttributeBackdrop | StarGiftAttribute.starGiftAttributeOriginalDetails;
+
+export namespace StarGiftAttribute {
+  export type starGiftAttributeModel = {
+    _: 'starGiftAttributeModel',
+    name: string,
+    document: Document,
+    rarity_permille: number
+  };
+
+  export type starGiftAttributePattern = {
+    _: 'starGiftAttributePattern',
+    name: string,
+    document: Document,
+    rarity_permille: number
+  };
+
+  export type starGiftAttributeBackdrop = {
+    _: 'starGiftAttributeBackdrop',
+    name: string,
+    center_color: number,
+    edge_color: number,
+    pattern_color: number,
+    text_color: number,
+    rarity_permille: number
+  };
+
+  export type starGiftAttributeOriginalDetails = {
+    _: 'starGiftAttributeOriginalDetails',
+    flags?: number,
+    sender_id?: Peer,
+    recipient_id: Peer,
+    date: number,
+    message?: TextWithEntities
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.StarGiftUpgradePreview
+ */
+export type PaymentsStarGiftUpgradePreview = PaymentsStarGiftUpgradePreview.paymentsStarGiftUpgradePreview;
+
+export namespace PaymentsStarGiftUpgradePreview {
+  export type paymentsStarGiftUpgradePreview = {
+    _: 'payments.starGiftUpgradePreview',
+    sample_attributes: Array<StarGiftAttribute>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/users.Users
+ */
+export type UsersUsers = UsersUsers.usersUsers | UsersUsers.usersUsersSlice;
+
+export namespace UsersUsers {
+  export type usersUsers = {
+    _: 'users.users',
+    users: Array<User>
+  };
+
+  export type usersUsersSlice = {
+    _: 'users.usersSlice',
+    count: number,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.UniqueStarGift
+ */
+export type PaymentsUniqueStarGift = PaymentsUniqueStarGift.paymentsUniqueStarGift;
+
+export namespace PaymentsUniqueStarGift {
+  export type paymentsUniqueStarGift = {
+    _: 'payments.uniqueStarGift',
+    gift: StarGift,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.WebPagePreview
+ */
+export type MessagesWebPagePreview = MessagesWebPagePreview.messagesWebPagePreview;
+
+export namespace MessagesWebPagePreview {
+  export type messagesWebPagePreview = {
+    _: 'messages.webPagePreview',
+    media: MessageMedia,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/SavedStarGift
+ */
+export type SavedStarGift = SavedStarGift.savedStarGift;
+
+export namespace SavedStarGift {
+  export type savedStarGift = {
+    _: 'savedStarGift',
+    flags?: number,
+    pFlags: Partial<{
+      name_hidden?: true,
+      unsaved?: true,
+      refunded?: true,
+      can_upgrade?: true,
+      pinned_to_top?: true,
+    }>,
+    from_id?: Peer,
+    date: number,
+    gift: StarGift,
+    message?: TextWithEntities,
+    msg_id?: number,
+    saved_id?: string | number,
+    convert_stars?: string | number,
+    upgrade_stars?: string | number,
+    can_export_at?: number,
+    transfer_stars?: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.SavedStarGifts
+ */
+export type PaymentsSavedStarGifts = PaymentsSavedStarGifts.paymentsSavedStarGifts;
+
+export namespace PaymentsSavedStarGifts {
+  export type paymentsSavedStarGifts = {
+    _: 'payments.savedStarGifts',
+    flags?: number,
+    count: number,
+    chat_notifications_enabled?: boolean,
+    gifts: Array<SavedStarGift>,
+    next_offset?: string,
+    chats: Array<Chat>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/InputSavedStarGift
+ */
+export type InputSavedStarGift = InputSavedStarGift.inputSavedStarGiftUser | InputSavedStarGift.inputSavedStarGiftChat;
+
+export namespace InputSavedStarGift {
+  export type inputSavedStarGiftUser = {
+    _: 'inputSavedStarGiftUser',
+    msg_id: number
+  };
+
+  export type inputSavedStarGiftChat = {
+    _: 'inputSavedStarGiftChat',
+    peer: InputPeer,
+    saved_id: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.StarGiftWithdrawalUrl
+ */
+export type PaymentsStarGiftWithdrawalUrl = PaymentsStarGiftWithdrawalUrl.paymentsStarGiftWithdrawalUrl;
+
+export namespace PaymentsStarGiftWithdrawalUrl {
+  export type paymentsStarGiftWithdrawalUrl = {
+    _: 'payments.starGiftWithdrawalUrl',
+    url: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/PaidReactionPrivacy
+ */
+export type PaidReactionPrivacy = PaidReactionPrivacy.paidReactionPrivacyDefault | PaidReactionPrivacy.paidReactionPrivacyAnonymous | PaidReactionPrivacy.paidReactionPrivacyPeer;
+
+export namespace PaidReactionPrivacy {
+  export type paidReactionPrivacyDefault = {
+    _: 'paidReactionPrivacyDefault'
+  };
+
+  export type paidReactionPrivacyAnonymous = {
+    _: 'paidReactionPrivacyAnonymous'
+  };
+
+  export type paidReactionPrivacyPeer = {
+    _: 'paidReactionPrivacyPeer',
+    peer: InputPeer
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/account.PaidMessagesRevenue
+ */
+export type AccountPaidMessagesRevenue = AccountPaidMessagesRevenue.accountPaidMessagesRevenue;
+
+export namespace AccountPaidMessagesRevenue {
+  export type accountPaidMessagesRevenue = {
+    _: 'account.paidMessagesRevenue',
+    stars_amount: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/RequirementToContact
+ */
+export type RequirementToContact = RequirementToContact.requirementToContactEmpty | RequirementToContact.requirementToContactPremium | RequirementToContact.requirementToContactPaidMessages;
+
+export namespace RequirementToContact {
+  export type requirementToContactEmpty = {
+    _: 'requirementToContactEmpty'
+  };
+
+  export type requirementToContactPremium = {
+    _: 'requirementToContactPremium'
+  };
+
+  export type requirementToContactPaidMessages = {
+    _: 'requirementToContactPaidMessages',
+    stars_amount: string | number
   };
 }
 
@@ -15160,7 +15712,6 @@ export interface ConstructorDeclMap {
   'inputStorePaymentPremiumSubscription': InputStorePaymentPurpose.inputStorePaymentPremiumSubscription,
   'inputStorePaymentGiftPremium': InputStorePaymentPurpose.inputStorePaymentGiftPremium,
   'messageActionGiftPremium': MessageAction.messageActionGiftPremium,
-  'premiumGiftOption': PremiumGiftOption.premiumGiftOption,
   'inputStickerSetPremiumGifts': InputStickerSet.inputStickerSetPremiumGifts,
   'updateReadFeaturedEmojiStickers': Update.updateReadFeaturedEmojiStickers,
   'inputPrivacyKeyVoiceMessages': InputPrivacyKey.inputPrivacyKeyVoiceMessages,
@@ -15169,7 +15720,6 @@ export interface ConstructorDeclMap {
   'inputWebFileAudioAlbumThumbLocation': InputWebFileLocation.inputWebFileAudioAlbumThumbLocation,
   'emojiStatusEmpty': EmojiStatus.emojiStatusEmpty,
   'emojiStatus': EmojiStatus.emojiStatus,
-  'emojiStatusUntil': EmojiStatus.emojiStatusUntil,
   'updateUserEmojiStatus': Update.updateUserEmojiStatus,
   'updateRecentEmojiStatuses': Update.updateRecentEmojiStatuses,
   'account.emojiStatusesNotModified': AccountEmojiStatuses.accountEmojiStatusesNotModified,
@@ -15519,12 +16069,62 @@ export interface ConstructorDeclMap {
   'inputInvoiceStarGift': InputInvoice.inputInvoiceStarGift,
   'payments.paymentFormStarGift': PaymentsPaymentForm.paymentsPaymentFormStarGift,
   'messageActionStarGift': MessageAction.messageActionStarGift,
-  'userStarGift': UserStarGift.userStarGift,
-  'payments.userStarGifts': PaymentsUserStarGifts.paymentsUserStarGifts,
   'messageReportOption': MessageReportOption.messageReportOption,
   'reportResultChooseOption': ReportResult.reportResultChooseOption,
   'reportResultAddComment': ReportResult.reportResultAddComment,
   'reportResultReported': ReportResult.reportResultReported,
+  'starsTransactionPeerAPI': StarsTransactionPeer.starsTransactionPeerAPI,
+  'messages.botPreparedInlineMessage': MessagesBotPreparedInlineMessage.messagesBotPreparedInlineMessage,
+  'messages.preparedInlineMessage': MessagesPreparedInlineMessage.messagesPreparedInlineMessage,
+  'botAppSettings': BotAppSettings.botAppSettings,
+  'inputPrivacyValueAllowBots': InputPrivacyRule.inputPrivacyValueAllowBots,
+  'inputPrivacyValueDisallowBots': InputPrivacyRule.inputPrivacyValueDisallowBots,
+  'privacyValueAllowBots': PrivacyRule.privacyValueAllowBots,
+  'privacyValueDisallowBots': PrivacyRule.privacyValueDisallowBots,
+  'inputPrivacyKeyStarGiftsAutoSave': InputPrivacyKey.inputPrivacyKeyStarGiftsAutoSave,
+  'privacyKeyStarGiftsAutoSave': PrivacyKey.privacyKeyStarGiftsAutoSave,
+  'starRefProgram': StarRefProgram.starRefProgram,
+  'connectedBotStarRef': ConnectedBotStarRef.connectedBotStarRef,
+  'payments.connectedStarRefBots': PaymentsConnectedStarRefBots.paymentsConnectedStarRefBots,
+  'payments.suggestedStarRefBots': PaymentsSuggestedStarRefBots.paymentsSuggestedStarRefBots,
+  'starsAmount': StarsAmount.starsAmount,
+  'messages.foundStickersNotModified': MessagesFoundStickers.messagesFoundStickersNotModified,
+  'messages.foundStickers': MessagesFoundStickers.messagesFoundStickers,
+  'phoneCallDiscardReasonAllowGroupCall': PhoneCallDiscardReason.phoneCallDiscardReasonAllowGroupCall,
+  'botVerifierSettings': BotVerifierSettings.botVerifierSettings,
+  'botVerification': BotVerification.botVerification,
+  'starGiftAttributeModel': StarGiftAttribute.starGiftAttributeModel,
+  'starGiftAttributePattern': StarGiftAttribute.starGiftAttributePattern,
+  'starGiftAttributeBackdrop': StarGiftAttribute.starGiftAttributeBackdrop,
+  'starGiftAttributeOriginalDetails': StarGiftAttribute.starGiftAttributeOriginalDetails,
+  'starGiftUnique': StarGift.starGiftUnique,
+  'messageActionStarGiftUnique': MessageAction.messageActionStarGiftUnique,
+  'inputInvoiceStarGiftUpgrade': InputInvoice.inputInvoiceStarGiftUpgrade,
+  'inputInvoiceStarGiftTransfer': InputInvoice.inputInvoiceStarGiftTransfer,
+  'payments.starGiftUpgradePreview': PaymentsStarGiftUpgradePreview.paymentsStarGiftUpgradePreview,
+  'users.users': UsersUsers.usersUsers,
+  'users.usersSlice': UsersUsers.usersUsersSlice,
+  'payments.uniqueStarGift': PaymentsUniqueStarGift.paymentsUniqueStarGift,
+  'webPageAttributeUniqueStarGift': WebPageAttribute.webPageAttributeUniqueStarGift,
+  'mediaAreaStarGift': MediaArea.mediaAreaStarGift,
+  'messages.webPagePreview': MessagesWebPagePreview.messagesWebPagePreview,
+  'emojiStatusCollectible': EmojiStatus.emojiStatusCollectible,
+  'inputEmojiStatusCollectible': EmojiStatus.inputEmojiStatusCollectible,
+  'savedStarGift': SavedStarGift.savedStarGift,
+  'payments.savedStarGifts': PaymentsSavedStarGifts.paymentsSavedStarGifts,
+  'inputSavedStarGiftUser': InputSavedStarGift.inputSavedStarGiftUser,
+  'inputSavedStarGiftChat': InputSavedStarGift.inputSavedStarGiftChat,
+  'payments.starGiftWithdrawalUrl': PaymentsStarGiftWithdrawalUrl.paymentsStarGiftWithdrawalUrl,
+  'paidReactionPrivacyDefault': PaidReactionPrivacy.paidReactionPrivacyDefault,
+  'paidReactionPrivacyAnonymous': PaidReactionPrivacy.paidReactionPrivacyAnonymous,
+  'paidReactionPrivacyPeer': PaidReactionPrivacy.paidReactionPrivacyPeer,
+  'inputPrivacyKeyNoPaidMessages': InputPrivacyKey.inputPrivacyKeyNoPaidMessages,
+  'privacyKeyNoPaidMessages': PrivacyKey.privacyKeyNoPaidMessages,
+  'account.paidMessagesRevenue': AccountPaidMessagesRevenue.accountPaidMessagesRevenue,
+  'requirementToContactEmpty': RequirementToContact.requirementToContactEmpty,
+  'requirementToContactPremium': RequirementToContact.requirementToContactPremium,
+  'requirementToContactPaidMessages': RequirementToContact.requirementToContactPaidMessages,
+  'inputInvoicePremiumGiftStars': InputInvoice.inputInvoicePremiumGiftStars,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -15807,7 +16407,8 @@ export type MessagesSendMessage = {
   schedule_date?: number,
   send_as?: InputPeer,
   quick_reply_shortcut?: InputQuickReplyShortcut,
-  effect?: string | number
+  effect?: string | number,
+  allow_paid_stars?: string | number
 };
 
 export type MessagesSendMedia = {
@@ -15829,7 +16430,8 @@ export type MessagesSendMedia = {
   schedule_date?: number,
   send_as?: InputPeer,
   quick_reply_shortcut?: InputQuickReplyShortcut,
-  effect?: string | number
+  effect?: string | number,
+  allow_paid_stars?: string | number
 };
 
 export type MessagesForwardMessages = {
@@ -15848,7 +16450,9 @@ export type MessagesForwardMessages = {
   top_msg_id?: number,
   schedule_date?: number,
   send_as?: InputPeer,
-  quick_reply_shortcut?: InputQuickReplyShortcut
+  quick_reply_shortcut?: InputQuickReplyShortcut,
+  video_timestamp?: number,
+  allow_paid_stars?: string | number
 };
 
 export type MessagesReportSpam = {
@@ -16112,7 +16716,9 @@ export type InvokeWithLayer = {
 };
 
 export type ContactsResolveUsername = {
-  username: string
+  flags?: number,
+  username: string,
+  referer?: string
 };
 
 export type AccountSendChangePhoneCode = {
@@ -16427,7 +17033,8 @@ export type MessagesSendInlineBotResult = {
   id: string,
   schedule_date?: number,
   send_as?: InputPeer,
-  quick_reply_shortcut?: InputQuickReplyShortcut
+  quick_reply_shortcut?: InputQuickReplyShortcut,
+  allow_paid_stars?: string | number
 };
 
 export type ChannelsExportMessageLink = {
@@ -16787,6 +17394,7 @@ export type PhoneRequestCall = {
   flags?: number,
   video?: boolean,
   user_id: InputUser,
+  conference_call?: InputGroupCall,
   random_id: number,
   g_a_hash: Uint8Array,
   protocol: PhoneCallProtocol
@@ -16972,7 +17580,8 @@ export type MessagesSendMultiMedia = {
   schedule_date?: number,
   send_as?: InputPeer,
   quick_reply_shortcut?: InputQuickReplyShortcut,
-  effect?: string | number
+  effect?: string | number,
+  allow_paid_stars?: string | number
 };
 
 export type MessagesUploadEncryptedFile = {
@@ -17629,6 +18238,7 @@ export type PhoneJoinGroupCall = {
   call: InputGroupCall,
   join_as: InputPeer,
   invite_hash?: string,
+  key_fingerprint?: string | number,
   params: DataJSON
 };
 
@@ -17872,15 +18482,6 @@ export type MessagesSetChatTheme = {
   emoticon: string
 };
 
-export type ChannelsViewSponsoredMessage = {
-  channel: InputChannel,
-  random_id: Uint8Array
-};
-
-export type ChannelsGetSponsoredMessages = {
-  channel: InputChannel
-};
-
 export type MessagesGetMessageReadParticipants = {
   peer: InputPeer,
   msg_id: number
@@ -17929,6 +18530,8 @@ export type MessagesSaveDefaultSendAs = {
 };
 
 export type ChannelsGetSendAs = {
+  flags?: number,
+  for_paid_reactions?: boolean,
   peer: InputPeer
 };
 
@@ -18052,6 +18655,7 @@ export type MessagesRequestWebView = {
   from_bot_menu?: boolean,
   silent?: boolean,
   compact?: boolean,
+  fullscreen?: boolean,
   peer: InputPeer,
   bot: InputUser,
   url?: string,
@@ -18077,6 +18681,7 @@ export type MessagesRequestSimpleWebView = {
   from_switch_webview?: boolean,
   from_side_menu?: boolean,
   compact?: boolean,
+  fullscreen?: boolean,
   bot: InputUser,
   url?: string,
   start_param?: string,
@@ -18450,6 +19055,7 @@ export type MessagesRequestAppWebView = {
   flags?: number,
   write_allowed?: boolean,
   compact?: boolean,
+  fullscreen?: boolean,
   peer: InputPeer,
   app: InputBotApp,
   start_param?: string,
@@ -18554,14 +19160,6 @@ export type MessagesSetChatWallPaper = {
 
 export type AccountInvalidateSignInCodes = {
   codes: Array<string>
-};
-
-export type ChannelsClickSponsoredMessage = {
-  flags?: number,
-  media?: boolean,
-  fullscreen?: boolean,
-  channel: InputChannel,
-  random_id: Uint8Array
 };
 
 export type ContactsEditCloseFriends = {
@@ -18932,10 +19530,6 @@ export type MessagesGetOutboxReadDate = {
   msg_id: number
 };
 
-export type UsersGetIsPremiumRequiredToContact = {
-  id: Array<InputUser>
-};
-
 export type ChannelsSetBoostsToUnblockRestrictions = {
   channel: InputChannel,
   boosts: number
@@ -19129,25 +19723,19 @@ export type AccountUpdatePersonalChannel = {
   channel: InputChannel
 };
 
-export type ChannelsReportSponsoredMessage = {
-  channel: InputChannel,
-  random_id: Uint8Array,
-  option: Uint8Array
-};
-
 export type StatsGetBroadcastRevenueStats = {
   flags?: number,
   dark?: boolean,
-  channel: InputChannel
+  peer: InputPeer
 };
 
 export type StatsGetBroadcastRevenueWithdrawalUrl = {
-  channel: InputChannel,
+  peer: InputPeer,
   password: InputCheckPasswordSRP
 };
 
 export type StatsGetBroadcastRevenueTransactions = {
-  channel: InputChannel,
+  peer: InputPeer,
   offset: number,
   limit: number
 };
@@ -19257,6 +19845,7 @@ export type StoriesSearchPosts = {
   flags?: number,
   hashtag?: string,
   area?: MediaArea,
+  peer?: InputPeer,
   offset: string,
   limit: number
 };
@@ -19329,6 +19918,7 @@ export type BotsGetPreviewMedias = {
 export type MessagesRequestMainWebView = {
   flags?: number,
   compact?: boolean,
+  fullscreen?: boolean,
   peer: InputPeer,
   bot: InputUser,
   start_param?: string,
@@ -19361,13 +19951,13 @@ export type MessagesSendPaidReaction = {
   msg_id: number,
   count: number,
   random_id: string | number,
-  private?: boolean
+  private?: PaidReactionPrivacy
 };
 
 export type MessagesTogglePaidReactionPrivacy = {
   peer: InputPeer,
   msg_id: number,
-  private: boolean
+  private: PaidReactionPrivacy
 };
 
 export type PaymentsGetStarsGiveawayOptions = {
@@ -19382,22 +19972,232 @@ export type PaymentsGetStarGifts = {
   hash: number
 };
 
-export type PaymentsGetUserStarGifts = {
+export type PaymentsSaveStarGift = {
+  flags?: number,
+  unsave?: boolean,
+  stargift: InputSavedStarGift
+};
+
+export type PaymentsConvertStarGift = {
+  stargift: InputSavedStarGift
+};
+
+export type MessagesViewSponsoredMessage = {
+  peer: InputPeer,
+  random_id: Uint8Array
+};
+
+export type MessagesClickSponsoredMessage = {
+  flags?: number,
+  media?: boolean,
+  fullscreen?: boolean,
+  peer: InputPeer,
+  random_id: Uint8Array
+};
+
+export type MessagesReportSponsoredMessage = {
+  peer: InputPeer,
+  random_id: Uint8Array,
+  option: Uint8Array
+};
+
+export type MessagesGetSponsoredMessages = {
+  peer: InputPeer
+};
+
+export type MessagesSavePreparedInlineMessage = {
+  flags?: number,
+  result: InputBotInlineResult,
   user_id: InputUser,
+  peer_types?: Array<InlineQueryPeerType>
+};
+
+export type MessagesGetPreparedInlineMessage = {
+  bot: InputUser,
+  id: string
+};
+
+export type BotsUpdateUserEmojiStatus = {
+  user_id: InputUser,
+  emoji_status: EmojiStatus
+};
+
+export type BotsToggleUserEmojiStatusPermission = {
+  bot: InputUser,
+  enabled: boolean
+};
+
+export type BotsCheckDownloadFileParams = {
+  bot: InputUser,
+  file_name: string,
+  url: string
+};
+
+export type PaymentsBotCancelStarsSubscription = {
+  flags?: number,
+  restore?: boolean,
+  user_id: InputUser,
+  charge_id: string
+};
+
+export type BotsGetAdminedBots = {
+
+};
+
+export type BotsUpdateStarRefProgram = {
+  flags?: number,
+  bot: InputUser,
+  commission_permille: number,
+  duration_months?: number
+};
+
+export type PaymentsGetConnectedStarRefBots = {
+  flags?: number,
+  peer: InputPeer,
+  offset_date?: number,
+  offset_link?: string,
+  limit: number
+};
+
+export type PaymentsGetConnectedStarRefBot = {
+  peer: InputPeer,
+  bot: InputUser
+};
+
+export type PaymentsGetSuggestedStarRefBots = {
+  flags?: number,
+  order_by_revenue?: boolean,
+  order_by_date?: boolean,
+  peer: InputPeer,
   offset: string,
   limit: number
 };
 
-export type PaymentsSaveStarGift = {
-  flags?: number,
-  unsave?: boolean,
-  user_id: InputUser,
-  msg_id: number
+export type PaymentsConnectStarRefBot = {
+  peer: InputPeer,
+  bot: InputUser
 };
 
-export type PaymentsConvertStarGift = {
-  user_id: InputUser,
-  msg_id: number
+export type PaymentsEditConnectedStarRefBot = {
+  flags?: number,
+  revoked?: boolean,
+  peer: InputPeer,
+  link: string
+};
+
+export type MessagesSearchStickers = {
+  flags?: number,
+  emojis?: boolean,
+  q: string,
+  emoticon: string,
+  lang_code: Array<string>,
+  offset: number,
+  limit: number,
+  hash: string | number
+};
+
+export type PhoneCreateConferenceCall = {
+  peer: InputPhoneCall,
+  key_fingerprint: string | number
+};
+
+export type MessagesReportMessagesDelivery = {
+  flags?: number,
+  push?: boolean,
+  peer: InputPeer,
+  id: Array<number>
+};
+
+export type BotsSetCustomVerification = {
+  flags?: number,
+  enabled?: boolean,
+  bot?: InputUser,
+  peer: InputPeer,
+  custom_description?: string
+};
+
+export type PaymentsGetStarGiftUpgradePreview = {
+  gift_id: string | number
+};
+
+export type PaymentsUpgradeStarGift = {
+  flags?: number,
+  keep_original_details?: boolean,
+  stargift: InputSavedStarGift
+};
+
+export type PaymentsTransferStarGift = {
+  stargift: InputSavedStarGift,
+  to_id: InputPeer
+};
+
+export type BotsGetBotRecommendations = {
+  bot: InputUser
+};
+
+export type PaymentsGetUniqueStarGift = {
+  slug: string
+};
+
+export type AccountGetCollectibleEmojiStatuses = {
+  hash: string | number
+};
+
+export type PaymentsGetSavedStarGifts = {
+  flags?: number,
+  exclude_unsaved?: boolean,
+  exclude_saved?: boolean,
+  exclude_unlimited?: boolean,
+  exclude_limited?: boolean,
+  exclude_unique?: boolean,
+  sort_by_value?: boolean,
+  peer: InputPeer,
+  offset: string,
+  limit: number
+};
+
+export type PaymentsGetSavedStarGift = {
+  stargift: Array<InputSavedStarGift>
+};
+
+export type PaymentsGetStarGiftWithdrawalUrl = {
+  stargift: InputSavedStarGift,
+  password: InputCheckPasswordSRP
+};
+
+export type PaymentsToggleChatStarGiftNotifications = {
+  flags?: number,
+  enabled?: boolean,
+  peer: InputPeer
+};
+
+export type InvokeWithReCaptcha = {
+  token: string,
+  query: any
+};
+
+export type AccountAddNoPaidMessagesException = {
+  flags?: number,
+  refund_charged?: boolean,
+  user_id: InputUser
+};
+
+export type AccountGetPaidMessagesRevenue = {
+  user_id: InputUser
+};
+
+export type ChannelsUpdatePaidMessagesPrice = {
+  channel: InputChannel,
+  send_paid_messages_stars: string | number
+};
+
+export type UsersGetRequirementsToContact = {
+  id: Array<InputUser>
+};
+
+export type PaymentsToggleStarGiftsPinnedToTop = {
+  peer: InputPeer,
+  stargift: Array<InputSavedStarGift>
 };
 
 export interface MethodDeclMap {
@@ -19496,7 +20296,7 @@ export interface MethodDeclMap {
   'messages.getAllStickers': {req: MessagesGetAllStickers, res: MessagesAllStickers},
   'account.updateDeviceLocked': {req: AccountUpdateDeviceLocked, res: boolean},
   'auth.importBotAuthorization': {req: AuthImportBotAuthorization, res: AuthAuthorization},
-  'messages.getWebPagePreview': {req: MessagesGetWebPagePreview, res: MessageMedia},
+  'messages.getWebPagePreview': {req: MessagesGetWebPagePreview, res: MessagesWebPagePreview},
   'account.getAuthorizations': {req: AccountGetAuthorizations, res: AccountAuthorizations},
   'account.resetAuthorization': {req: AccountResetAuthorization, res: boolean},
   'account.getPassword': {req: AccountGetPassword, res: AccountPassword},
@@ -19791,8 +20591,6 @@ export interface MethodDeclMap {
   'auth.checkRecoveryPassword': {req: AuthCheckRecoveryPassword, res: boolean},
   'account.getChatThemes': {req: AccountGetChatThemes, res: AccountThemes},
   'messages.setChatTheme': {req: MessagesSetChatTheme, res: Updates},
-  'channels.viewSponsoredMessage': {req: ChannelsViewSponsoredMessage, res: boolean},
-  'channels.getSponsoredMessages': {req: ChannelsGetSponsoredMessages, res: MessagesSponsoredMessages},
   'messages.getMessageReadParticipants': {req: MessagesGetMessageReadParticipants, res: Array<ReadParticipantDate>},
   'messages.getSearchResultsCalendar': {req: MessagesGetSearchResultsCalendar, res: MessagesSearchResultsCalendar},
   'messages.getSearchResultsPositions': {req: MessagesGetSearchResultsPositions, res: MessagesSearchResultsPositions},
@@ -19911,7 +20709,6 @@ export interface MethodDeclMap {
   'bots.toggleUsername': {req: BotsToggleUsername, res: boolean},
   'messages.setChatWallPaper': {req: MessagesSetChatWallPaper, res: Updates},
   'account.invalidateSignInCodes': {req: AccountInvalidateSignInCodes, res: boolean},
-  'channels.clickSponsoredMessage': {req: ChannelsClickSponsoredMessage, res: boolean},
   'contacts.editCloseFriends': {req: ContactsEditCloseFriends, res: boolean},
   'stories.canSendStory': {req: StoriesCanSendStory, res: boolean},
   'stories.sendStory': {req: StoriesSendStory, res: Updates},
@@ -19974,7 +20771,6 @@ export interface MethodDeclMap {
   'messages.updateSavedReactionTag': {req: MessagesUpdateSavedReactionTag, res: boolean},
   'messages.getDefaultTagReactions': {req: MessagesGetDefaultTagReactions, res: MessagesReactions},
   'messages.getOutboxReadDate': {req: MessagesGetOutboxReadDate, res: OutboxReadDate},
-  'users.getIsPremiumRequiredToContact': {req: UsersGetIsPremiumRequiredToContact, res: Array<boolean>},
   'channels.setBoostsToUnblockRestrictions': {req: ChannelsSetBoostsToUnblockRestrictions, res: Updates},
   'channels.setEmojiStickers': {req: ChannelsSetEmojiStickers, res: boolean},
   'smsjobs.isEligibleToJoin': {req: SmsjobsIsEligibleToJoin, res: SmsjobsEligibilityToJoin},
@@ -20016,7 +20812,6 @@ export interface MethodDeclMap {
   'account.getBusinessChatLinks': {req: AccountGetBusinessChatLinks, res: AccountBusinessChatLinks},
   'account.resolveBusinessChatLink': {req: AccountResolveBusinessChatLink, res: AccountResolvedBusinessChatLinks},
   'account.updatePersonalChannel': {req: AccountUpdatePersonalChannel, res: boolean},
-  'channels.reportSponsoredMessage': {req: ChannelsReportSponsoredMessage, res: ChannelsSponsoredMessageReportResult},
   'stats.getBroadcastRevenueStats': {req: StatsGetBroadcastRevenueStats, res: StatsBroadcastRevenueStats},
   'stats.getBroadcastRevenueWithdrawalUrl': {req: StatsGetBroadcastRevenueWithdrawalUrl, res: StatsBroadcastRevenueWithdrawalUrl},
   'stats.getBroadcastRevenueTransactions': {req: StatsGetBroadcastRevenueTransactions, res: StatsBroadcastRevenueTransactions},
@@ -20061,8 +20856,44 @@ export interface MethodDeclMap {
   'payments.getStarsGiveawayOptions': {req: PaymentsGetStarsGiveawayOptions, res: Array<StarsGiveawayOption>},
   'messages.getPaidReactionPrivacy': {req: MessagesGetPaidReactionPrivacy, res: Updates},
   'payments.getStarGifts': {req: PaymentsGetStarGifts, res: PaymentsStarGifts},
-  'payments.getUserStarGifts': {req: PaymentsGetUserStarGifts, res: PaymentsUserStarGifts},
   'payments.saveStarGift': {req: PaymentsSaveStarGift, res: boolean},
   'payments.convertStarGift': {req: PaymentsConvertStarGift, res: boolean},
+  'messages.viewSponsoredMessage': {req: MessagesViewSponsoredMessage, res: boolean},
+  'messages.clickSponsoredMessage': {req: MessagesClickSponsoredMessage, res: boolean},
+  'messages.reportSponsoredMessage': {req: MessagesReportSponsoredMessage, res: ChannelsSponsoredMessageReportResult},
+  'messages.getSponsoredMessages': {req: MessagesGetSponsoredMessages, res: MessagesSponsoredMessages},
+  'messages.savePreparedInlineMessage': {req: MessagesSavePreparedInlineMessage, res: MessagesBotPreparedInlineMessage},
+  'messages.getPreparedInlineMessage': {req: MessagesGetPreparedInlineMessage, res: MessagesPreparedInlineMessage},
+  'bots.updateUserEmojiStatus': {req: BotsUpdateUserEmojiStatus, res: boolean},
+  'bots.toggleUserEmojiStatusPermission': {req: BotsToggleUserEmojiStatusPermission, res: boolean},
+  'bots.checkDownloadFileParams': {req: BotsCheckDownloadFileParams, res: boolean},
+  'payments.botCancelStarsSubscription': {req: PaymentsBotCancelStarsSubscription, res: boolean},
+  'bots.getAdminedBots': {req: BotsGetAdminedBots, res: Array<User>},
+  'bots.updateStarRefProgram': {req: BotsUpdateStarRefProgram, res: StarRefProgram},
+  'payments.getConnectedStarRefBots': {req: PaymentsGetConnectedStarRefBots, res: PaymentsConnectedStarRefBots},
+  'payments.getConnectedStarRefBot': {req: PaymentsGetConnectedStarRefBot, res: PaymentsConnectedStarRefBots},
+  'payments.getSuggestedStarRefBots': {req: PaymentsGetSuggestedStarRefBots, res: PaymentsSuggestedStarRefBots},
+  'payments.connectStarRefBot': {req: PaymentsConnectStarRefBot, res: PaymentsConnectedStarRefBots},
+  'payments.editConnectedStarRefBot': {req: PaymentsEditConnectedStarRefBot, res: PaymentsConnectedStarRefBots},
+  'messages.searchStickers': {req: MessagesSearchStickers, res: MessagesFoundStickers},
+  'phone.createConferenceCall': {req: PhoneCreateConferenceCall, res: PhonePhoneCall},
+  'messages.reportMessagesDelivery': {req: MessagesReportMessagesDelivery, res: boolean},
+  'bots.setCustomVerification': {req: BotsSetCustomVerification, res: boolean},
+  'payments.getStarGiftUpgradePreview': {req: PaymentsGetStarGiftUpgradePreview, res: PaymentsStarGiftUpgradePreview},
+  'payments.upgradeStarGift': {req: PaymentsUpgradeStarGift, res: Updates},
+  'payments.transferStarGift': {req: PaymentsTransferStarGift, res: Updates},
+  'bots.getBotRecommendations': {req: BotsGetBotRecommendations, res: UsersUsers},
+  'payments.getUniqueStarGift': {req: PaymentsGetUniqueStarGift, res: PaymentsUniqueStarGift},
+  'account.getCollectibleEmojiStatuses': {req: AccountGetCollectibleEmojiStatuses, res: AccountEmojiStatuses},
+  'payments.getSavedStarGifts': {req: PaymentsGetSavedStarGifts, res: PaymentsSavedStarGifts},
+  'payments.getSavedStarGift': {req: PaymentsGetSavedStarGift, res: PaymentsSavedStarGifts},
+  'payments.getStarGiftWithdrawalUrl': {req: PaymentsGetStarGiftWithdrawalUrl, res: PaymentsStarGiftWithdrawalUrl},
+  'payments.toggleChatStarGiftNotifications': {req: PaymentsToggleChatStarGiftNotifications, res: boolean},
+  'invokeWithReCaptcha': {req: InvokeWithReCaptcha, res: any},
+  'account.addNoPaidMessagesException': {req: AccountAddNoPaidMessagesException, res: boolean},
+  'account.getPaidMessagesRevenue': {req: AccountGetPaidMessagesRevenue, res: AccountPaidMessagesRevenue},
+  'channels.updatePaidMessagesPrice': {req: ChannelsUpdatePaidMessagesPrice, res: Updates},
+  'users.getRequirementsToContact': {req: UsersGetRequirementsToContact, res: Array<RequirementToContact>},
+  'payments.toggleStarGiftsPinnedToTop': {req: PaymentsToggleStarGiftsPinnedToTop, res: boolean},
 }
 

@@ -30,6 +30,7 @@ import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 import RadioField from '../../radioField';
 import appImManager from '../../../lib/appManagers/appImManager';
 import appSidebarLeft from '..';
+import wrapFolderTitle from '../../wrappers/folderTitle';
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -102,7 +103,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     if(!row) {
       const isSuggested = dialogFilter._ === 'dialogFilterSuggested';
       row = new Row({
-        title: filter.id === FOLDER_ID_ALL && !isSuggested ? i18n('FilterAllChats') : wrapEmojiText(filter.title),
+        title: filter.id === FOLDER_ID_ALL && !isSuggested ? i18n('FilterAllChats') : await wrapFolderTitle(filter.title, this.middlewareHelper.get()),
         subtitle: description,
         clickable: true,
         buttonRightLangKey: isSuggested ? 'Add' : undefined
@@ -130,7 +131,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     } else {
       if(filter.id !== FOLDER_ID_ALL) {
-        replaceContent(row.title, wrapEmojiText(filter.title));
+        replaceContent(row.title, await wrapFolderTitle(filter.title, this.middlewareHelper.get()));
       }
 
       row.subtitle.textContent = '';

@@ -889,6 +889,11 @@ export const AvatarNew = (props: {
   return ret;
 };
 
+export function AvatarNewTsx(props: Parameters<typeof AvatarNew>[0]) {
+  const el = AvatarNew(props);
+  return el.element;
+}
+
 export function avatarNew(props: {
   middleware: Middleware
 } & Parameters<typeof AvatarNew>[0]) {

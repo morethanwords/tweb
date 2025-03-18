@@ -25,6 +25,7 @@ import SettingSection from '../../settingSection';
 import {DialogFilter} from '../../../layer';
 import Icon from '../../icon';
 import showLimitPopup from '../../popups/limit';
+import wrapFolderTitle from '../../wrappers/folderTitle';
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -150,7 +151,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     // const other = this.type === 'included' ? this.filter.exclude_peers : this.filter.include_peers;
 
     await this.managers.appUsersManager.getContacts();
-    peerIds.forEach((peerId) => {
+    const promises = peerIds.map(async(peerId) => {
       // if(other.includes(peerId)) return;
 
       const dialogElement = appDialogsManager.addDialogNew({
@@ -171,19 +172,23 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       // if(selected) dom.listEl.classList.add('active');
 
       const foundInFilters: HTMLElement[] = [];
-      this.dialogsByFilters.forEach((dialogs, filter) => {
+      const promises = [...this.dialogsByFilters.entries()].map(async([filter, dialogs]) => {
         if(dialogs.has(peerId)) {
           const span = document.createElement('span');
-          setInnerHTML(span, wrapEmojiText(filter.title));
+          span.append(await wrapFolderTitle(filter.title, this.middlewareHelper.get()));
           foundInFilters.push(span);
         }
       });
+
+      await Promise.all(promises);
 
       const joined = join(foundInFilters, false);
       joined.forEach((el) => {
         dom.lastMessageSpan.append(el);
       });
     });
+
+    await Promise.all(promises);
   };
 
   onOpen() {

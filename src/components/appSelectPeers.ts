@@ -279,7 +279,8 @@ export default class AppSelectPeers {
       if(this.chatRightsActions?.some((action) => action.startsWith('send_'))) {
         filterAsync(peerIds, async(peerId) => {
           const userId = peerId.toUserId();
-          return this.managers.appUsersManager.isPremiumRequiredToContact(userId);
+          const requirement = await this.managers.appUsersManager.getRequirementToContact(userId);
+          return requirement._ === 'requirementToContactPremium';
         }).then((userIds) => {
           for(const userId of userIds) {
             const element = this.getElementByPeerId(userId.toPeerId(false));

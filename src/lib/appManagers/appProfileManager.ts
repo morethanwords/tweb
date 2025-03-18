@@ -886,10 +886,13 @@ export class AppProfileManager extends AppManager {
       return false;
     }
 
-    return callbackify(this.getProfile(userId), (userFull) => {
-      const user = this.appUsersManager.getUser(userId);
-      return !!userFull.premium_gifts && !user?.pFlags?.premium;
-    });
+    return callbackify(
+      this.appPaymentsManager.getPremiumGiftCodeOptions(),
+      (premiumGiftCodeOptions) => {
+        const user = this.appUsersManager.getUser(userId);
+        return premiumGiftCodeOptions.some((p) => p.users === 1) && !user?.pFlags?.premium;
+      }
+    );
   }
 
   public canViewStatistics(peerId: PeerId) {

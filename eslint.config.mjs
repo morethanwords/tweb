@@ -148,7 +148,7 @@ export default [{
     '@typescript-eslint/await-thenable': 'error'
   }
 }, {
-  files: ['**/*.ts'],
+  files: ['**/*.ts', '**/*.tsx'],
 
   languageOptions: {
     ecmaVersion: 5,

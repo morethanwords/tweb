@@ -19,12 +19,11 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import windowSize from '../helpers/windowSize';
-import {Message, MessageEntity, MessageMedia, PollResults, TextWithEntities} from '../layer';
+import {Message, MessageEntity, MessageMedia, Poll, PollResults, TextWithEntities} from '../layer';
 import toHHMMSS from '../helpers/string/toHHMMSS';
 import StackedAvatars from './stackedAvatars';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import {AppManagers} from '../lib/appManagers/managers';
-import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import liteMode from '../helpers/liteMode';
 import getPeerId from '../lib/appManagers/utils/peers/getPeerId';
@@ -32,6 +31,8 @@ import Icon from './icon';
 import htmlToDocumentFragment from '../helpers/dom/htmlToDocumentFragment';
 import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
 import TranslatableMessage from './translatableMessage';
+import ListenerSetter from '../helpers/listenerSetter';
+import showTooltip from './tooltip';
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -106,6 +107,8 @@ rootScope.addEventListener('poll_update', ({poll, results}) => {
   const pollElements = Array.from(document.querySelectorAll(`poll-element[poll-id="${poll.id}"]`)) as PollElement[];
   pollElements.forEach((pollElement) => {
     // console.log('poll_update', poll, results);
+    pollElement._poll = poll;
+    pollElement._results = results;
     pollElement.isClosed = !!poll.pFlags.closed;
     pollElement.performResults(results, poll.chosenIndexes);
   });
@@ -144,7 +147,7 @@ export const setQuizHint = (options: {
   onHide?: () => void,
   appendTo: HTMLElement,
   from: 'top' | 'bottom',
-  duration: number,
+  duration?: number,
   icon?: Icon,
   class?: string,
   canCloseOnPeerChange?: boolean
@@ -199,7 +202,7 @@ export const setQuizHint = (options: {
 
   prevQuizHint = element;
   prevQuizHintOnHide = options.onHide;
-  const timeout = prevQuizHintTimeout = window.setTimeout(hide, options.duration);
+  const timeout = prevQuizHintTimeout = options.duration && window.setTimeout(hide, options.duration);
 
   options.canCloseOnPeerChange ??= true;
   if(!options.canCloseOnPeerChange)
@@ -244,9 +247,14 @@ export default class PollElement extends HTMLElement {
   public message: Message.message;
   public managers: AppManagers;
 
+  public _poll: Poll;
+  public _results: PollResults;
+
   public middlewareHelper: MiddlewareHelper;
   public translatableParams: Parameters<typeof TranslatableMessage>[0];
   public richTextOptions: Parameters<typeof wrapRichText>[1];
+
+  private listenerSetter: ListenerSetter;
 
   private quizInterval: number;
   private quizTimer: SVGSVGElement;
@@ -256,8 +264,6 @@ export default class PollElement extends HTMLElement {
 
   private sendVotePromise: Promise<void>;
   private sentVote = false;
-
-  private detachClickEvent: () => void;
 
   public static setMaxLength() {
     const width = windowSize.width <= 360 ? windowSize.width - 120 : mediaSizes.active.poll.width;
@@ -279,6 +285,11 @@ export default class PollElement extends HTMLElement {
     // браузер вызывает этот метод при добавлении элемента в документ
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
 
+    this.listenerSetter = new ListenerSetter();
+    this.middlewareHelper.get().onClean(() => {
+      this.listenerSetter.removeAll();
+    });
+
     if(!lineTotalLength) {
       lineTotalLength = (document.getElementById('poll-line') as any as SVGPathElement).getTotalLength();
       // console.log('line total length:', lineTotalLength);
@@ -286,7 +297,7 @@ export default class PollElement extends HTMLElement {
     }
 
     // const {poll, results} = this.managers.appPollsManager.getPoll(pollId);
-    const {poll, results} = this.message.media as MessageMedia.messageMediaPoll;
+    const {poll, results} = this;
 
     /* const timestamp = Date.now() / 1000 | 0;
     if(timestamp < this.message.date) { */
@@ -461,13 +472,13 @@ export default class PollElement extends HTMLElement {
     footerDiv.append(this.viewResults, this.votersCountDiv);
     this.append(footerDiv);
 
-    this.viewResults.addEventListener('click', (e) => {
+    attachClickEvent(this.viewResults, (e) => {
       cancelEvent(e);
 
       if(!appSidebarRight.isTabExists(AppPollResultsTab)) {
         appSidebarRight.createTab(AppPollResultsTab).open(this.message);
       }
-    });
+    }, {listenerSetter: this.listenerSetter});
     ripple(this.viewResults);
 
     if(this.isMultiple) {
@@ -494,7 +505,7 @@ export default class PollElement extends HTMLElement {
             });
           });
         }
-      });
+      }, {listenerSetter: this.listenerSetter});
 
       footerDiv.append(this.sendVoteBtn);
     }
@@ -503,15 +514,28 @@ export default class PollElement extends HTMLElement {
     // const width = mediaSizes.active.poll.width;
     // this.maxLength = width + tailLength + this.maxOffset + -13.7; // 13 - position left
 
-    const canVote = !(poll.chosenIndexes.length || this.isClosed);
+    const {canVote} = this;
     if(!canVote || this.isPublic) {
       this.performResults(results, poll.chosenIndexes, false);
     }
 
     if(canVote) {
       this.setVotersCount(results);
-      this.detachClickEvent = attachClickEvent(this, this.clickHandler);
     }
+
+    attachClickEvent(this, this.clickHandler, {listenerSetter: this.listenerSetter});
+  }
+
+  get poll() {
+    return this._poll || (this.message.media as MessageMedia.messageMediaPoll).poll;
+  }
+
+  get results() {
+    return this._results || (this.message.media as MessageMedia.messageMediaPoll).results;
+  }
+
+  get canVote() {
+    return !(this.poll.chosenIndexes.length || this.isClosed);
   }
 
   wrapSomeText(text: string | TextWithEntities, entities?: MessageEntity[], middleware = this.middlewareHelper.get()) {
@@ -564,7 +588,7 @@ export default class PollElement extends HTMLElement {
             toggleHint.classList.remove('active');
           }
         });
-      });
+      }, {listenerSetter: this.listenerSetter});
 
       if(this.sentVote) {
         const correctResult = results.results.find((r) => r.pFlags.correct);
@@ -582,7 +606,23 @@ export default class PollElement extends HTMLElement {
     }
 
     cancelEvent(e);
+
     const answerIndex = +target.dataset.index;
+
+    if(!this.canVote) {
+      const results = this.results;
+      const result = results.results[answerIndex];
+      showTooltip({
+        element: target,
+        container: target.parentElement,
+        vertical: 'top',
+        textElement: i18n('Chat.Poll.TotalVotes1', [result.voters]),
+        offsetY: 12,
+        auto: true
+      });
+      return;
+    }
+
     if(this.isMultiple) {
       target.classList.toggle('is-chosing');
 
@@ -665,13 +705,6 @@ export default class PollElement extends HTMLElement {
     if(this.chosenIndexes.length !== chosenIndexes.length || this.isClosed) { // if we voted
       this.isRetracted = this.chosenIndexes.length && !chosenIndexes.length;
       this.chosenIndexes = chosenIndexes.slice();
-
-      if(this.isRetracted) {
-        this.detachClickEvent = attachClickEvent(this, this.clickHandler);
-      } else {
-        this.detachClickEvent?.();
-        this.detachClickEvent = undefined;
-      }
     }
 
     // is need update

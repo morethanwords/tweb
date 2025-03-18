@@ -188,6 +188,7 @@ import {MediaSearchContext} from '../appMediaPlaybackController';
 import {wrapRoundVideoBubble} from './roundVideoBubble';
 import {createMessageSpoilerOverlay} from '../messageSpoilerOverlay';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -1700,7 +1701,7 @@ export default class ChatBubbles {
         }
 
         sponsoredMessage.viewed = true;
-        this.managers.appChatsManager.viewSponsoredMessage(this.peerId.toChatId(), sponsoredMessage.random_id);
+        this.managers.appMessagesManager.viewSponsoredMessage(this.peerId, sponsoredMessage.random_id);
       }
     }
   };
@@ -1989,7 +1990,7 @@ export default class ChatBubbles {
       apiManagerProxy.getAvailableReactions(),
       pause(400)
     ]).then(async([{reactions}, availableReactions]) => {
-      const reaction = reactions[0];
+      const reaction = reactions.find((reaction) => reaction._ !== 'reactionPaid');
       if(!reaction) {
         hoverReaction.remove();
         return;
@@ -2371,6 +2372,10 @@ export default class ChatBubbles {
 
     const reactionElement = findUpTag(target, 'REACTION-ELEMENT') as ReactionElement;
     if(reactionElement) {
+      if(findUpClassName(target, 'tooltip')) {
+        return;
+      }
+
       cancelEvent(e);
       if(reactionElement.classList.contains('is-inactive')) {
         return;
@@ -5305,7 +5310,7 @@ export default class ChatBubbles {
                   pFlags: {
                     gift: isPrize ? undefined : true
                   },
-                  stars: action.stars,
+                  stars: formatStarsAmount(action.stars),
                   giveaway_post_id: isPrize ? action.giveaway_msg_id : undefined
                 }
               });
@@ -8449,7 +8454,8 @@ export default class ChatBubbles {
       } else if(rootScope.myId === this.peerId) {
         renderPromise = this.renderEmptyPlaceholder('saved', bubble, message, elements);
       } else if(this.peerId.isUser() && !isBot && await m(this.chat.canSend()) && this.chat.type === ChatType.Chat) {
-        if(await this.managers.appUsersManager.isPremiumRequiredToContact(this.peerId.toUserId())) {
+        const requirement = await this.managers.appUsersManager.getRequirementToContact(this.peerId.toUserId());
+        if(requirement._ === 'requirementToContactPremium') {
           renderPromise = this.renderEmptyPlaceholder('premiumRequired', bubble, message, elements);
         } else {
           renderPromise = this.renderEmptyPlaceholder('greeting', bubble, message, elements);
@@ -8698,7 +8704,7 @@ export default class ChatBubbles {
         return this.scrollable.loadedAll.bottom && this.getSponsoredMessagePromise === promise;
       });
 
-      const promise = this.getSponsoredMessagePromise = this.managers.appChatsManager.getSponsoredMessage(this.peerId.toChatId())
+      const promise = this.getSponsoredMessagePromise = this.managers.appMessagesManager.getSponsoredMessage(this.peerId)
       .then((sponsoredMessages) => {
         if(!middleware() || sponsoredMessages._ === 'messages.sponsoredMessagesEmpty') {
           return;

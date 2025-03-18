@@ -40,7 +40,7 @@ import debounce from '../../helpers/schedulers/debounce';
 import pause from '../../helpers/schedulers/pause';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
-import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import {NULL_PEER_ID, STARS_CURRENCY} from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import {ONE_DAY} from '../../helpers/date';
 import TopbarCall from '../../components/topbarCall';
@@ -336,6 +336,11 @@ export class AppImManager extends EventListenerBase<{
     };
 
     this.addEventListener('peer_changed', onPeerChanged);
+
+    // * prefetch some data
+    this.addEventListener('peer_changed', () => {
+      this.managers.appReactionsManager.getPaidReactionPrivacy();
+    }, {once: true});
 
     rootScope.addEventListener('theme_changed', () => {
       this.applyCurrentTheme({
@@ -1088,7 +1093,7 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    this.managers.appChatsManager.clickSponsoredMessage(message.peerId.toChatId(), sponsoredMessage.random_id);
+    this.managers.appMessagesManager.clickSponsoredMessage(message.peerId, sponsoredMessage.random_id);
   }
 
   public async openStoriesFromAvatar(avatar: HTMLElement) {
@@ -2671,8 +2676,12 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public giftPremium(peerId: PeerId) {
-    this.managers.appProfileManager.getProfile(peerId.toUserId()).then((profile) => {
-      PopupElement.createPopup(PopupGiftPremium, peerId, profile.premium_gifts);
+    this.managers.appPaymentsManager.getPremiumGiftCodeOptions().then((giftCodeOptions) => {
+      PopupElement.createPopup(
+        PopupGiftPremium,
+        peerId,
+        giftCodeOptions.filter((option) => option.users === 1 && option.currency !== STARS_CURRENCY)
+      );
     });
   }
 

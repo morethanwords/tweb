@@ -115,6 +115,7 @@ import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
 import {WrapRichTextOptions} from '../richTextProcessor/wrapRichText';
 import createFolderContextMenu from '../../helpers/dom/createFolderContextMenu';
 import {useAppSettings} from '../../stores/appSettings';
+import wrapFolderTitle from '../../components/wrappers/folderTitle';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -1736,7 +1737,8 @@ type FilterRendered = {
   topNotificationData?: {
     _: 'chatlistUpdates',
     chatlistUpdates: ChatlistsChatlistUpdates
-  }
+  },
+  middlewareHelper: MiddlewareHelper,
 };
 
 const TEST_TOP_NOTIFICATION = true ? undefined : (): ChatlistsChatlistUpdates => ({
@@ -1887,7 +1889,7 @@ export class AppDialogsManager {
     this.setFilterId(FOLDER_ID_ALL);
     this.addFilter({
       id: FOLDER_ID_ALL,
-      title: '',
+      title: {_: 'textWithEntities', text: '', entities: []},
       localId: FOLDER_ID_ALL
     });
 
@@ -2105,7 +2107,7 @@ export class AppDialogsManager {
       }
 
       const elements = this.filtersRendered[filter.id];
-      setInnerHTML(elements.title, wrapEmojiText(filter.title));
+      setInnerHTML(elements.title, await wrapFolderTitle(filter.title, elements.middlewareHelper.get()));
     });
 
     rootScope.addEventListener('filter_delete', (filter) => {
@@ -2116,6 +2118,7 @@ export class AppDialogsManager {
       // (this.folders.menu.firstElementChild.children[Math.max(0, filter.id - 2)] as HTMLElement).click();
       elements.container.remove();
       elements.menu.remove();
+      elements.middlewareHelper.destroy();
 
       this.xds[filter.id].destroy();
       delete this.xds[filter.id];
@@ -2472,6 +2475,8 @@ export class AppDialogsManager {
       return;
     }
 
+    const middlewareHelper = getMiddleware();
+
     const menuTab = document.createElement('div');
     menuTab.classList.add('menu-horizontal-div-item');
     const span = document.createElement('span');
@@ -2479,7 +2484,7 @@ export class AppDialogsManager {
     const titleSpan = document.createElement('span');
     titleSpan.classList.add('text-super');
     if(id === FOLDER_ID_ALL) titleSpan.append(this.allChatsIntlElement.element);
-    else setInnerHTML(titleSpan, wrapEmojiText(filter.title));
+    else setInnerHTML(titleSpan, wrapFolderTitle(filter.title, middlewareHelper.get(), true));
     const unreadSpan = createBadge('div', 20, 'primary');
     const i = document.createElement('i');
     span.append(titleSpan, unreadSpan, i);
@@ -2518,7 +2523,8 @@ export class AppDialogsManager {
       container: div,
       unread: unreadSpan,
       title: titleSpan,
-      scrollable
+      scrollable,
+      middlewareHelper
     };
 
     this.onFiltersLengthChange();

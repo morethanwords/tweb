@@ -1486,6 +1486,7 @@ const lang = {
   'ResetAutomaticMediaDownloadAlert': 'Are you sure you want to reset auto-download settings?',
   'Reset': 'Reset',
   'SendMessageAsTitle': 'Send message as...',
+  'SendReactionAsTitle': 'Send reaction as...',
   'Devices': 'Devices',
   'LanguageName': 'English',
   'EditCantEditPermissionsPublic': 'This permission is not available in public groups.',
@@ -2502,6 +2503,7 @@ const lang = {
   'StarsReactionText': 'Choose how many stars you want to send to **%s** to support this post.',
   'StarsReactionTopSenders': 'Top Senders',
   'StarsReactionShowMeInTopSenders': 'Show me in Top Senders',
+  'PaidReaction.Send': 'Send %d',
   'StarsReactionAnonymous': 'Anonymous',
   'StarsGiveawayPrizeReceived': 'Received Prize',
   'BoostingBoostsCountTitle': {

@@ -39,7 +39,7 @@ export default async function generateTitleIcons({
   if(!noPremiumIcon && wrapOptions?.middleware) {
     const emojiStatus = (peer as User.user | Chat.channel).emoji_status;
     const isPremiumFeaturesHidden = await apiManagerProxy.isPremiumFeaturesHidden();
-    if(emojiStatus && emojiStatus._ !== 'emojiStatusEmpty' && !isPremiumFeaturesHidden) {
+    if(emojiStatus && 'document_id' in emojiStatus && !isPremiumFeaturesHidden) {
       const {middleware} = wrapOptions;
       const container = await wrapEmojiStatus({
         emojiStatus,

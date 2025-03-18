@@ -16,25 +16,31 @@ const KEEP_TOOLTIP = true;
 const tooltipOverlayClickHandler = new OverlayClickHandler(undefined, true);
 export default function showTooltip({
   element,
+  class: className,
   container = element.parentElement,
   vertical,
   textElement,
   subtitleElement,
   paddingX = 0,
+  offsetY = 0,
   centerVertically,
   onClose,
   icon,
   auto,
   mountOn = document.body,
   relative,
-  lighter
+  lighter,
+  rightElement
 }: {
   element: HTMLElement,
+  class?: string,
   container?: HTMLElement,
   vertical: 'top' | 'bottom',
   textElement?: HTMLElement,
   subtitleElement?: HTMLElement,
+  rightElement?: JSX.Element,
   paddingX?: number,
+  offsetY?: number,
   centerVertically?: boolean,
   onClose?: () => void,
   icon?: Icon,
@@ -66,7 +72,7 @@ export default function showTooltip({
       const centerX = elementRect.left + (elementRect.width - rect.width) / 2;
       const left = clamp(centerX, minX, maxX);
       const verticalOffset = 12;
-      if(vertical === 'top') css.top = (centerVertically ? elementRect.top + elementRect.height / 2 : elementRect.top) - rect.height - verticalOffset + 'px';
+      if(vertical === 'top') css.top = (centerVertically ? elementRect.top + elementRect.height / 2 : elementRect.top) - rect.height - verticalOffset + offsetY + 'px';
       else css.top = elementRect.bottom + verticalOffset + 'px';
       css.left = left + 'px';
 
@@ -80,7 +86,7 @@ export default function showTooltip({
     const tooltip = (
       <div
         ref={div}
-        class={classNames('tooltip', 'tooltip-' + vertical, icon && 'tooltip-with-icon', lighter && 'tooltip-lighter')}
+        class={classNames('tooltip', 'tooltip-' + vertical, icon && 'tooltip-with-icon', className, lighter && 'tooltip-lighter')}
         style={!relative && getStyle()}
       >
         <div class="tooltip-part tooltip-background"></div>
@@ -94,6 +100,7 @@ export default function showTooltip({
             </>
           ) : textElement}
         </div>
+        {rightElement && <div class="tooltip-part tooltip-right">{rightElement}</div>}
       </div>
     );
 

@@ -31,7 +31,7 @@ const LOCAL_FILTER: DialogFilter.dialogFilter = {
   _: 'dialogFilter',
   pFlags: {},
   id: 0,
-  title: '',
+  title: {_: 'textWithEntities', text: '', entities: []},
   exclude_peers: [],
   include_peers: [],
   pinned_peers: [],
@@ -573,7 +573,7 @@ export default class FiltersStorage extends AppManager {
       method: 'chatlists.exportChatlistInvite',
       params: {
         chatlist: this.getChatlistInput(filter.id),
-        title: filter.title,
+        title: filter.title.text,
         peers: filter.include_peers
       },
       processResult: (exportedChatlistInvite) => {

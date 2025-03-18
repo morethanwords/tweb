@@ -45,6 +45,12 @@ export type LottieAssetName =
   | 'Congratulations'
   | 'large_lastseen'
   | 'large_readtime'
+  | 'StarReaction'
+  | 'StarReactionAppear'
+  | 'StarReactionSelect'
+  | 'StarReactionEffect1'
+  | 'StarReactionEffect2'
+  | 'StarReactionEffect3'
   | 'UtyanPasscode'
 ;
 
