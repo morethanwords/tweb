@@ -3184,7 +3184,10 @@ const lang = {
   'PaidMessages.Stars': '%d Stars',
   'PaidMessages.SetPriceDescription': 'You will receive 85% of the selected fee (~%d$) for each incoming messages',
   'PaidMessages.RemoveFee': 'Remove Fee',
-  'PaidMessages.RemoveFeeDescription': 'Add users or entire groups who won\'t have to pay to send you messages'
+  'PaidMessages.RemoveFeeDescription': 'Add users or entire groups who won\'t have to pay to send you messages',
+
+  'UnsavedChanges': 'Unsaved Changes',
+  'PrivacyUnsavedChangesDescription': 'You have changed some privacy settings. Save changes?'
 };
 
 export default lang;

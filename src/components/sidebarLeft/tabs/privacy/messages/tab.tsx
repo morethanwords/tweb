@@ -3,38 +3,49 @@ import {createStore, reconcile} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {Portal} from 'solid-js/web';
 
+import {InputPrivacyKey, InputPrivacyRule, InputUser} from '../../../../../layer';
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import anchorCallback from '../../../../../helpers/dom/anchorCallback';
-// import deepEqual from '../../../../../helpers/object/solidDeepEqual';
+import throttle from '../../../../../helpers/schedulers/throttle';
 import deepEqual from '../../../../../helpers/object/deepEqual';
-import {InputPrivacyRule} from '../../../../../layer';
 import {logger} from '../../../../../lib/logger';
-import {i18n} from '../../../../../lib/langPack';
+import {i18n, join} from '../../../../../lib/langPack';
 
+import confirmationPopup, {ConfirmationPopupRejectReason} from '../../../../confirmationPopup';
+import {PopupPeerOptions} from '../../../../popups/peer';
 import StaticRadio from '../../../../staticRadio';
 import ripple from '../../../../ripple'; ripple; // keep
 import {IconTsx} from '../../../../iconTsx';
 import Section from '../../../../section';
 import RowTsx from '../../../../rowTsx';
 
+
 import {usePromiseCollector} from '../../solidJsTabs/promiseCollector';
 import {useSuperTab} from '../../solidJsTabs/superTabProvider';
 
 import AppearZoomTransition from './appearZoomTransition';
 import StarRangeInput from './starsRangeInput';
-import throttle from '../../../../../helpers/schedulers/throttle';
 
 
 const log = logger('my-debug');
 
+const privacyRulesInputKey = 'inputPrivacyKeyNoPaidMessages' satisfies InputPrivacyKey['_'];
+
 const defaultPrivacyRules: InputPrivacyRule[] = [
   {
     _: 'inputPrivacyValueAllowContacts'
-  },
-  {
-    _: 'inputPrivacyValueDisallowAll'
   }
+  // One the time the Android App has set this for some reason 🤔
+  // {
+  //   _: 'inputPrivacyValueDisallowAll'
+  // }
 ];
+
+// Note: after saving privacy rules, the cached users are objects instead of being numbers
+const getUserId = (user: InputUser.inputUser | string | number) => {
+  if(user instanceof Object) return user.user_id?.toPeerId(true);
+  return user.toPeerId(true);
+};
 
 enum MessagesPrivacyOption {
   Everybody = 1,
@@ -45,7 +56,7 @@ enum MessagesPrivacyOption {
 type StateStore = {
   option?: MessagesPrivacyOption;
   stars?: number;
-  excludedPeers?: PeerId[];
+  chosenPeers?: PeerId[];
 };
 
 const MessagesTab = () => {
@@ -55,7 +66,7 @@ const MessagesTab = () => {
   const promiseCollector = usePromiseCollector();
 
   const [privacyRules] = createResource(() => {
-    const promise = rootScope.managers.appPrivacyManager.getPrivacy('inputPrivacyKeyNoPaidMessages');
+    const promise = rootScope.managers.appPrivacyManager.getPrivacy(privacyRulesInputKey);
     promiseCollector.collect(promise);
     return promise;
   });
@@ -85,7 +96,13 @@ const MessagesTab = () => {
   const currentAllowedChats = () =>
     privacyRules()
     ?.find((rule) => rule._ === 'privacyValueAllowChatParticipants')?.chats
-    ?.map(user => user.toPeerId(true)) || [];
+    ?.map(getUserId)
+    ?.filter((v) => v !== undefined) || [];
+
+  const chosenPeersByType = () => ({
+    chats: store.chosenPeers.filter(peer => peer.isAnyChat()).map(peer => peer.toChatId()),
+    users: store.chosenPeers.filter(peer => peer.isUser())
+  });
 
   createEffect(() => {
     log('privacyRules() :>> ', privacyRules());
@@ -101,7 +118,7 @@ const MessagesTab = () => {
     initialState = {
       option: currentOption(),
       stars: Number(globalPrivacy().noncontact_peers_paid_stars) || undefined,
-      excludedPeers: [...currentAllowedUsers(), ...currentAllowedChats()]
+      chosenPeers: [...currentAllowedUsers(), ...currentAllowedChats()]
     };
 
     setStore(reconcile(structuredClone(initialState)));
@@ -114,9 +131,11 @@ const MessagesTab = () => {
   const [hasChanges, setHasChanges] = createSignal(false);
   const throttledSetHasChanges = throttle(setHasChanges, 200, true);
 
-  // The header is jerking if changing the hasChanges too quickly WTF
+  // The header is jerking if updating the hasChanges too quickly WTF
   createEffect(() => {
-    throttledSetHasChanges(!deepEqual(store, initialState));
+    const ignoreKeys: (keyof StateStore)[] = !!!isPaid() ? ['chosenPeers', 'stars'] : [];
+
+    throttledSetHasChanges(!deepEqual(store, initialState, ignoreKeys));
   });
 
 
@@ -127,10 +146,89 @@ const MessagesTab = () => {
       title: 'PaidMessages.RemoveFee',
       placeholder: 'PrivacyModal.Search.Placeholder',
       takeOut: (newPeerIds) => {
-        setStore('excludedPeers', newPeerIds);
+        setStore('chosenPeers', newPeerIds);
       },
-      selectedPeerIds: [...store.excludedPeers]
+      selectedPeerIds: [...store.chosenPeers]
     });
+  };
+
+  const saveGlobalSettings = () => {
+    const settings = structuredClone(globalPrivacy());
+
+    settings.noncontact_peers_paid_stars = isPaid() ? store.stars : undefined;
+    if(settings.pFlags) {
+      settings.pFlags.new_noncontact_peers_require_premium =
+        store.option === MessagesPrivacyOption.ContactsAndPremium || undefined;
+    }
+
+    log('saving settings :>> ', settings);
+
+
+    return rootScope.managers.appPrivacyManager.setGlobalPrivacySettings(settings);
+  };
+
+  const savePrivacyRules = async() => {
+    const rules: InputPrivacyRule[] = [];
+
+    const {chats, users} = chosenPeersByType();
+
+    if(chats.length) rules.push({
+      _: 'inputPrivacyValueAllowChatParticipants',
+      chats
+    });
+    if(users.length) rules.push({
+      _: 'inputPrivacyValueAllowUsers',
+      users: await Promise.all(users.map((id) => rootScope.managers.appUsersManager.getUserInput(id)))
+    });
+
+    rules.push(...defaultPrivacyRules);
+
+    log('saving rules :>> ', rules);
+
+    return rootScope.managers.appPrivacyManager.setPrivacy(privacyRulesInputKey, rules);
+  };
+
+  let isSaving = false;
+
+  const saveAllSettings = async() => {
+    if(isSaving || !hasChanges()) return;
+    isSaving = true;
+
+    try {
+      await Promise.all([
+        saveGlobalSettings(),
+        isPaid() ? savePrivacyRules() : undefined
+      ]);
+      tab.close();
+    } finally {
+      isSaving = false; // Idk let the user retry if it somewhy fails)
+    }
+  };
+
+  tab.isConfirmationNeededOnClose = async() => {
+    if(!hasChanges()) return;
+
+    const saveButton: PopupPeerOptions['buttons'][number] = {
+      langKey: 'Save'
+    };
+
+    try {
+      await confirmationPopup({
+        titleLangKey: 'UnsavedChanges',
+        descriptionLangKey: 'PrivacyUnsavedChangesDescription',
+        button: saveButton,
+        buttons: [
+          saveButton,
+          {isCancel: true, langKey: 'Discard'}
+        ],
+        rejectWithReason: true
+      });
+      saveAllSettings();
+    } catch(_reason: any) {
+      const reason: ConfirmationPopupRejectReason = _reason;
+
+      if(reason === 'closed') throw new Error();
+    }
   };
 
 
@@ -167,12 +265,27 @@ const MessagesTab = () => {
     </div>
   );
 
+  const chosenPeersLabel = () => {
+    if(!store.chosenPeers.length) return i18n('PrivacySettingsController.AddUsers');
+
+    const {users, chats} = chosenPeersByType();
+
+    return join([
+      users.length ? i18n('Users', [users.length]) : null,
+      chats.length ? i18n('Chats', [chats.length]) : null
+    ].filter(Boolean), false);
+  };
+
   return (
     <Show when={isReady()}>
       <Portal mount={tab.header}>
         <AppearZoomTransition>
           <Show when={hasChanges()}>
-            <button use:ripple class="btn-icon blue">
+            <button
+              use:ripple
+              class="btn-icon blue"
+              onClick={() => void saveAllSettings()}
+            >
               <IconTsx icon="check" />
             </button>
           </Show>
@@ -244,14 +357,7 @@ const MessagesTab = () => {
             <Section name="PrivacyExceptions" caption="PaidMessages.RemoveFeeDescription">
               <RowTsx
                 title={i18n('PaidMessages.RemoveFee')}
-                rightContent={(() => {
-                  const el = store.excludedPeers.length ?
-                    i18n('Users', [store.excludedPeers.length]) :
-                    i18n('PrivacySettingsController.AddUsers');
-
-                  el.classList.add('primary');
-                  return el;
-                })()}
+                rightContent={<span class="primary">{chosenPeersLabel()}</span>}
                 clickable={onExceptionsClick}
               />
             </Section>
