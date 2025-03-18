@@ -206,7 +206,7 @@ export default function Giveaway(props: {
   const middleware = createMiddleware().get();
   const giveaway = props.giveaway;
   const isResults = giveaway._ === 'messageMediaGiveawayResults';
-  const quantity = isResults ? giveaway.winners_count : giveaway.stars ?? giveaway.quantity;
+  const quantity = isResults ? giveaway.stars ?? giveaway.winners_count : giveaway.stars ?? giveaway.quantity;
   const countriesElements = !isResults && giveaway.countries_iso2?.map((iso2) => {
     const span = document.createElement('span');
     span.classList.add('bubble-giveaway-country');
@@ -228,7 +228,7 @@ export default function Giveaway(props: {
     );
     header = (
       <>
-        {i18n('Giveaway.Results.Subtitle', [quantity, a])}
+        {i18n('Giveaway.Results.Subtitle', [giveaway.winners_count, a])}
       </>
     );
   } else {
@@ -323,15 +323,19 @@ export default function Giveaway(props: {
         </div>
       </div>
       <div class="bubble-giveaway-row">
-        <div class="bubble-giveaway-row-title">{i18n(isResults ? 'Giveaway.Results.Title' : 'BoostingGiveawayPrizes', [quantity])}</div>
+        <div class="bubble-giveaway-row-title">{i18n(isResults ? 'Giveaway.Results.Title' : 'BoostingGiveawayPrizes', [isResults ? giveaway.winners_count : quantity])}</div>
         {header}
       </div>
       <div class="bubble-giveaway-row">
-        <div class="bubble-giveaway-row-title">{i18n(isResults ? 'BoostingGiveawayResultsMsgWinners' : 'BoostingGiveawayMsgParticipants', [quantity])}</div>
+        <div class="bubble-giveaway-row-title">{i18n(isResults ? 'BoostingGiveawayResultsMsgWinners' : 'BoostingGiveawayMsgParticipants', [isResults ? giveaway.winners_count : quantity])}</div>
         {middle}
       </div>
       <div class="bubble-giveaway-row">
-        <div class="bubble-giveaway-row-title">{i18n(isResults ? (giveaway.stars ? 'Giveaway.Results.Stars.Winners' : 'Giveaway.Results.Footer') : 'BoostingWinnersDate', [quantity, giveaway.stars])}</div>
+        <div class="bubble-giveaway-row-title">
+          {isResults && giveaway.stars ?
+            i18n(giveaway.winners_count > 1 ? 'Giveaway.Results.Stars.Winners.Single' : 'Giveaway.Results.Stars.Winners.Single', [i18n('Giveaway.Results.Stars.Winners.Stars', [quantity])]) :
+            i18n(isResults ? 'Giveaway.Results.Footer' : 'BoostingWinnersDate', [quantity, giveaway.stars])}
+        </div>
         {!isResults && formatFullSentTime(giveaway.until_date)}
       </div>
     </div>

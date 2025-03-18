@@ -456,6 +456,12 @@ const lang = {
     'one_value': '%1$d winner of the **[Giveaway]()** was randomly selected by Telegram.',
     'other_value': '%1$d winners of the **[Giveaway]()** were randomly selected by Telegram.'
   },
+  'Giveaway.Results.Stars.Winners.Single': 'The winner received **%s**.',
+  'Giveaway.Results.Stars.Winners.Plural': 'All winners received a total of **%s**.',
+  'Giveaway.Results.Stars.Winners.Stars': {
+    'one_value': '%d Star',
+    'other_value': '%d Stars'
+  },
   'Giveaway.Results.Footer': {
     'one_value': 'The winner received their gift link in a private message.',
     'other_value': 'All winners received their gift links in private messages.'

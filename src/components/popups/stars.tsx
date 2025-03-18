@@ -386,7 +386,7 @@ export default class PopupStars extends PopupElement {
         midtitle = i18n('StarsReactionTitle');
       } else if(transaction.giveaway_post_id) {
         midtitle = i18n('StarsGiveawayPrizeReceived');
-      } else if(+transaction.stars > 0) {
+      } else if(formatStarsAmount(transaction.stars) > 0) {
         midtitle = transaction.pFlags.gift ? i18n('StarsGiftReceived') : i18n('Stars.TopUp');
       } else if(transaction.subscription_period) {
         midtitle = i18n('Stars.Subscription.Title');
