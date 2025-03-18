@@ -40,6 +40,8 @@ import PopupPremium from '../../popups/premium';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
 import AppPrivacyMessagesTab from './privacy/messages';
+import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab} from './passcodeLock';
+import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -109,6 +111,33 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       const twoFactorRow = new Row(twoFactorRowOptions);
       twoFactorRow.freezed = true;
 
+      const passcodeLockRowOptions: ConstructorParameters<typeof Row>[0] = {
+        icon: 'key',
+        titleLangKey: 'PasscodeLock.Item.Title',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          if(passcodeEnabled) {
+            this.slider.createTab(AppPasscodeEnterPasswordTab)
+            .open({
+              buttonText: 'PasscodeLock.Next',
+              inputLabel: 'PasscodeLock.EnterYourPasscode',
+              onSubmit: async(passcode, _, {isMyPasscode}) => {
+                const isCorrect = await isMyPasscode(passcode);
+                passcode = '';
+                if(!isCorrect) throw {};
+
+                this.slider.createTab(AppPasscodeLockTab).open({AppPrivacyAndSecurityTab});
+              }
+            })
+          } else {
+            this.slider.createTab(AppPasscodeLockTab).open({AppPrivacyAndSecurityTab});
+          }
+        },
+        listenerSetter: this.listenerSetter
+      };
+      const passcodeLockRow = new Row(passcodeLockRowOptions);
+      passcodeLockRow.freezed = true;
+
       const activeSessionsRow = this.activeSessionsRow = new Row({
         icon: 'activesessions',
         titleLangKey: 'SessionsTitle',
@@ -140,7 +169,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       });
       websitesRow.freezed = true;
 
-      section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionsRow.container, websitesRow.container);
+      section.content.append(blockedUsersRow.container, passcodeLockRow.container, twoFactorRow.container, activeSessionsRow.container, websitesRow.container);
       this.scrollable.append(section.container);
 
       const setBlockedCount = (count: number) => {
@@ -176,6 +205,20 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         twoFactorRow.freezed = false;
 
         // console.log('password state', state);
+      });
+
+      let passcodeEnabled: boolean;
+      const setPasscodeEnabledState = (enabled?: boolean) => {
+        passcodeEnabled = enabled;
+        replaceContent(passcodeLockRow.subtitle, i18n(enabled ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
+      };
+      this.managers.appStateManager.getState().then((state) => {
+        passcodeLockRow.freezed = false;
+        setPasscodeEnabledState(state.settings?.passcode?.enabled || false);
+      });
+      this.listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
+        if(key === joinDeepPath('settings', 'passcode', 'enabled'))
+          setPasscodeEnabledState(value);
       });
 
       this.updateActiveSessions();

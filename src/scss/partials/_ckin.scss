@@ -11,7 +11,7 @@
     &.ckin__fullscreen {
       position: fixed;
       inset: 0;
-      z-index: 10000000;
+      z-index: 10000; // TODO: Check if it's big enough
       background: #000;
       border-radius: 0 !important;
       display: flex;

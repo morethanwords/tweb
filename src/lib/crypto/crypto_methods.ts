@@ -12,6 +12,7 @@ import type computeDhKey from './computeDhKey';
 import type generateDh from './generateDh';
 import type computeSRP from './srp';
 import type {aesEncryptSync, aesDecryptSync} from './utils/aesIGE';
+import type {encryptLocalData, decryptLocalData} from './utils/aesLocal';
 import type factorizeBrentPollardPQ from './utils/factorize/BrentPollard';
 import type pbkdf2 from './utils/pbkdf2';
 import type rsaEncrypt from './utils/rsa';
@@ -35,5 +36,7 @@ export type CryptoMethods = {
   'get-emojis-fingerprint': typeof getEmojisFingerprint,
   'aes-ctr-prepare': typeof aesCtrPrepare,
   'aes-ctr-process': typeof aesCtrProcess,
-  'aes-ctr-destroy': typeof aesCtrDestroy
+  'aes-ctr-destroy': typeof aesCtrDestroy,
+  'aes-local-encrypt': typeof encryptLocalData,
+  'aes-local-decrypt': typeof decryptLocalData
 };

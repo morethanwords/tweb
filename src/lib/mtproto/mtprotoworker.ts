@@ -57,6 +57,11 @@ import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
 import {appSettings, setAppSettingsSilent} from '../../stores/appSettings';
 import {unwrap} from 'solid-js/store';
 import createNotificationImage from '../../helpers/createNotificationImage';
+import PasscodeLockScreenController from '../../components/passcodeLock/passcodeLockScreenController';
+import EncryptionKeyStore from '../passcode/keyStore';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+import CacheStorageController from '../files/cacheStorage';
+
 
 export type Mirrors = {
   state: State,
@@ -231,7 +236,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.registerServiceWorker();
     this.registerCryptoWorker();
 
-    const commonEventNames: Set<keyof BroadcastEvents> = new Set([
+    const commonEventNames = new Set<keyof BroadcastEvents>([
       'language_change',
       'settings_updated',
       'theme_changed',
@@ -240,7 +245,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
       'logging_out',
       'notification_count_update',
       'account_logged_in',
-      'notification_cancel'
+      'notification_cancel',
+      'toggle_using_passcode',
+      'toggle_locked'
     ]);
 
     // const perf = performance.now();
@@ -261,8 +268,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       },
 
       localStorageProxy: (payload) => {
-        const storageTask = payload;
-        return (sessionStorage[storageTask.type] as any)(...storageTask.args);
+        return sessionStorage.localStorageProxy(payload.type, ...payload.args);
       },
 
       mirror: this.onMirrorTask,
@@ -303,7 +309,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       },
 
       log: (payload) => {
-        console.log('Received log from shared worker', payload);
+        console.log('[SharedWorker]', payload);
       },
 
       intervalCallback: (intervalId) => {
@@ -311,6 +317,27 @@ class ApiManagerProxy extends MTProtoMessagePort {
         if(callback) {
           callback();
         }
+      },
+
+      saveEncryptionKey: (payload) => {
+        EncryptionKeyStore.save(payload);
+      },
+
+      toggleLock: (isLocked) => {
+        if(isLocked) {
+          PasscodeLockScreenController.lock();
+        } else {
+          PasscodeLockScreenController.unlock();
+        }
+      },
+
+      toggleCacheStorage: (enabled) => {
+        CacheStorageController.temporarilyToggle(enabled);
+      },
+
+      toggleUsingPasscode: (payload) => {
+        DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
+        EncryptionKeyStore.save(payload.isUsingPasscode ? payload.encryptionKey : null);
       }
 
       // hello: () => {
@@ -399,7 +426,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
         let url = new URL(location.href);
 
         const currentAccount = getCurrentAccount();
-        if(currentAccount > accountNumber) {
+        if(!accountNumber) {
+          url.hash = '';
+          url.search = '';
+        } else if(currentAccount > accountNumber) {
           const newAccountNumber = currentAccount - 1;
           url = createAppURLForAccount(newAccountNumber as ActiveAccountNumber, undefined, true);
           //
@@ -414,7 +444,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         history.replaceState(null, '', url);
 
         // Make sure managers don't have any obsolete data
-        this.closeMTProtoWorker();
+        this.closeMTProtoWorker(); // might be useless because of the above `this.invokeVoid('terminate', undefined)` ⬆️
 
         appRuntimeManager.reload();
       });
@@ -422,6 +452,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     rootScope.addEventListener('settings_updated', ({key, settings}) => {
       setAppSettingsSilent(/* key,  */settings);
+    });
+
+    rootScope.addEventListener('toggle_using_passcode', (value) => {
+      DeferredIsUsingPasscode.resolveDeferred(value);
     });
 
     idleController.addEventListener('change', (idle) => {
@@ -482,6 +516,13 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.serviceMessagePort.attachSendPort(this.lastServiceWorker = serviceWorker);
     this.serviceMessagePort.invokeVoid('hello', undefined);
     this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
+
+    DeferredIsUsingPasscode.isUsingPasscode().then((value) => {
+      if(!value) {
+        // When value=true we'll send it and the encryption key after unlocking the screen
+        this.serviceMessagePort.invokeVoid('toggleUsingPasscode', {isUsingPasscode: false});
+      }
+    });
   }
 
   private _registerServiceWorker() {
@@ -579,6 +620,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
           this.invokeVoid('serviceWorkerPort', undefined, undefined, [event.ports[0]]);
         },
 
+        serviceCryptoPort: (_, __, event) => {
+          cryptoMessagePort.sendToOnePort(event.ports[0]);
+        },
+
         hello: (payload, source) => {
           this.log('got hello from service worker');
           this.serviceMessagePort.resendLockTask(source);
@@ -637,8 +682,12 @@ class ApiManagerProxy extends MTProtoMessagePort {
     const constructor = IS_SHARED_WORKER_SUPPORTED ? SharedWorker : Worker;
 
     // let cryptoWorkers = workers.length;
+    // cryptoMessagePort.addEventListener('servicePort', (payload, source, event) => {
+    //   this.serviceMessagePort.invokeVoid('cryptoPort', undefined, undefined, [event.ports[0]]);
+    // });
     cryptoMessagePort.addEventListener('port', (payload, source, event) => {
       this.invokeVoid('cryptoPort', undefined, undefined, [event.ports[0]]);
+
       // .then((attached) => {
       //   if(!attached && cryptoWorkers-- > 1) {
       //     this.log.error('terminating unneeded crypto worker');
@@ -741,6 +790,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return !!this.allTabStates.find((tab) => tab.accountNumber === accountNumber);
   }
 
+  public getOpenTabsCount() {
+    return this.allTabStates.length;
+  }
+
   public sendAllStates(loadedStates: Awaited<ReturnType<ApiManagerProxy['loadAllStates']>>) {
     const promises: Promise<any>[] = [];
     for(let i = 1; i <= 4; i++) {
@@ -756,7 +809,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return Promise.all(promises);
   }
 
-  public invokeCrypto<Method extends keyof CryptoMethods>(method: Method, ...args: Parameters<CryptoMethods[typeof method]>): Promise<Awaited<ReturnType<CryptoMethods[typeof method]>>> {
+  public invokeCrypto<Method extends keyof CryptoMethods>(method: Method, ...args: Parameters<CryptoMethods[typeof method]>) {
     if(!import.meta.env.VITE_MTPROTO_WORKER) {
       return;
     }

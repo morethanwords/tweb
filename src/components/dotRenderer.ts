@@ -11,12 +11,14 @@ import {IS_MOBILE} from '../environment/userAgent';
 import {animate} from '../helpers/animation';
 import callbackify from '../helpers/callbackify';
 import callbackifyAll from '../helpers/callbackifyAll';
+import deferredPromise from '../helpers/cancellablePromise';
 import {Middleware} from '../helpers/middleware';
 import clamp from '../helpers/number/clamp';
 import getUnsafeRandomInt from '../helpers/number/getUnsafeRandomInt';
 import {applyColorOnContext} from '../lib/rlottie/rlottiePlayer';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from './animationIntersector';
 import BluffSpoilerController from './bluffSpoilerController';
+import {animateValue, simpleEasing} from './mediaEditor/utils';
 
 export class AnimationItemNested implements AnimationItemWrapper {
   public autoplay = true;
@@ -73,6 +75,8 @@ export default class DotRenderer implements AnimationItemWrapper {
 
   private static imageSpoilerInstance: DotRenderer;
   private static textSpoilerInstance: DotRenderer;
+
+  private static createdImageSpoilers = new WeakMap<HTMLCanvasElement, ReturnType<(typeof DotRenderer)['create']>>();
 
   private drawCallbacks: Map<HTMLElement, () => void> = new Map();
   private targetCanvasesCount = 0;
@@ -498,22 +502,62 @@ export default class DotRenderer implements AnimationItemWrapper {
       canvas.style.transform = transforms.join(' ');
     }
 
+    let revealAnimation: {
+      underlyingCanvasClickCoords: {x: number, y: number},
+      transformedCoords: {x: number, y: number},
+      progress: number,
+      maxDist: number,
+      maxDistUnderlyingCanvas: number,
+      underLyingCtx: CanvasRenderingContext2D
+    };
+
     const x = getUnsafeRandomInt(0, instance.canvas.width - canvas.width);
     const y = getUnsafeRandomInt(0, instance.canvas.height - canvas.height);
+
+    function drawClippingCircle(ctx: CanvasRenderingContext2D, progress: number, coords: {x: number, y: number}, maxDist: number) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = 'white';
+      ctx.shadowBlur = maxDist / 3.5 * instance.dpr * progress;
+      ctx.shadowColor = 'white';
+      ctx.beginPath();
+      ctx.arc(coords.x, coords.y, maxDist * progress, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
+    }
+
     const draw = () => {
       const {width, height} = canvas;
+      const isRevealed = revealAnimation?.progress >= 1;
+
+      if(isRevealed) return;
+
       context.clearRect(0, 0, width, height);
-      context.drawImage(
-        instance.canvas,
-        x,
-        y,
-        width,
-        height,
-        0,
-        0,
-        width,
-        height
-      );
+
+      if(!revealAnimation) {
+        context.drawImage(instance.canvas, x, y, width, height, 0, 0, width, height);
+      } else {
+        const {
+          progress,
+          transformedCoords,
+          underLyingCtx,
+          maxDist,
+          maxDistUnderlyingCanvas,
+          underlyingCanvasClickCoords
+        } = revealAnimation;
+
+        // Zoom (push) the particles
+        const scaledProgress = progress ** 2 /* * Math.sqrt(progress) */ * 0.5;
+        context.drawImage(instance.canvas,
+          x + transformedCoords.x * scaledProgress, y + transformedCoords.y * scaledProgress, width * (1 - scaledProgress), height * (1 - scaledProgress),
+          0, 0, width, height
+        );
+
+        // Draw a clipping circle growing from where the user clicked
+        drawClippingCircle(context, progress, transformedCoords, maxDist);
+        drawClippingCircle(underLyingCtx, progress, underlyingCanvasClickCoords, maxDistUnderlyingCanvas);
+      }
 
       if(config?.color) {
         applyColorOnContext(context, '#' + config.color.toString(16), 0, 0, width, height);
@@ -548,10 +592,70 @@ export default class DotRenderer implements AnimationItemWrapper {
       type: 'dots'
     });
 
-    return {
+    function revealWithAnimation(event: Event, underLyingCanvas: HTMLCanvasElement) {
+      if(!('clientX' in event && 'clientY' in event)) return false;
+      const bcr = canvas.getBoundingClientRect();
+
+      const rectX = event.clientX as number - bcr.left;
+      const rectY = event.clientY as number - bcr.top;
+      let transX = rectX, transY = rectY;
+
+      if(Number(rotate) + Number(flipX) === 1) {
+        transX = bcr.width - rectX;
+      }
+      if(Number(rotate) + Number(flipY) === 1) {
+        transY = bcr.height - rectY;
+      }
+
+      const distToMargin = Math.max(
+        Math.hypot(rectX, rectY),
+        Math.hypot(bcr.width - rectX, rectY),
+        Math.hypot(rectX, bcr.height - rectY),
+        Math.hypot(bcr.width - rectX, bcr.height - rectY),
+      );
+      const maxDist = distToMargin * instance.dpr + 50;
+
+      revealAnimation = {
+        underlyingCanvasClickCoords: {
+          x: rectX * underLyingCanvas.width / bcr.width,
+          y: rectY * underLyingCanvas.height / bcr.height
+        },
+        transformedCoords: {
+          x: transX * instance.dpr,
+          y: transY * instance.dpr
+        },
+        maxDist,
+        maxDistUnderlyingCanvas: maxDist / canvas.width * underLyingCanvas.width,
+        underLyingCtx: underLyingCanvas.getContext('2d'),
+        progress: 0
+      };
+
+      const deferred = deferredPromise<void>();
+
+      animateValue(0, 1, 800 + (400/* px/ms */ - distToMargin),
+        (v) => void (revealAnimation.progress = v),
+        {
+          onEnd: () => void deferred.resolve(),
+          easing: simpleEasing
+        }
+      );
+
+      return deferred;
+    }
+
+    const result = {
       canvas,
-      readyResult: width && (/* dotRenderer.resize(width, height, multiply, config),  */instance.init())
+      readyResult: width && (/* dotRenderer.resize(width, height, multiply, config),  */instance.init()),
+      revealWithAnimation
     };
+
+    this.createdImageSpoilers.set(canvas, result);
+
+    return result;
+  }
+
+  public static getImageSpoilerByElement(element: HTMLElement) {
+    return this.createdImageSpoilers.get(element as HTMLCanvasElement);
   }
 
   private static getTextSpoilerInstance() {

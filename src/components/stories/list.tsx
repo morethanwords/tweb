@@ -81,6 +81,12 @@ export const PeerTitleTsx = (props: {
   );
 };
 
+const ITEM_MARGIN = 0;
+const ITEM_WIDTH = 74 + ITEM_MARGIN * 2;
+const ITEM_AVATAR_SIZE = 54;
+const STACKED_LENGTH = 3;
+const SMALL_SIDEBAR_WIDTH = 348;
+
 function _StoriesList(props: {
   foldInto: HTMLElement,
   setScrolledOn: HTMLElement,
@@ -95,6 +101,10 @@ function _StoriesList(props: {
   const [viewerPeer, setViewerPeer] = createSignal<PeerStories>();
   const [containerRect, setContainerRect] = createSignal<DOMRect>();
   const [hasTransition, setHasTransition] = createSignal(true); // to make it smooth when resizing the left sidebar
+
+  const maxStackedItems = createMemo(() =>
+    containerRect()?.width > SMALL_SIDEBAR_WIDTH ? STACKED_LENGTH : 1
+  );
 
   const peers = createMemo(() => {
     const peers = stories.peers;
@@ -147,12 +157,7 @@ function _StoriesList(props: {
     setViewerPeer(peer);
   };
 
-  const ITEM_MARGIN = 0;
-  const ITEM_WIDTH = 74 + ITEM_MARGIN * 2;
-  const ITEM_AVATAR_SIZE = 54;
-  const STACKED_LENGTH = 3;
-
-  const foldedLength = createMemo(() => Math.min(STACKED_LENGTH, peers().length - (myIndex() !== -1 ? 1 : 0)));
+  const foldedLength = createMemo(() => Math.min(maxStackedItems(), peers().length - (myIndex() !== -1 ? 1 : 0)));
   const indexes = createMemo(() => {
     return {
       min: myIndex() === 0 && peers().length > 1 ? 1 : 0,

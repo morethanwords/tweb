@@ -1,0 +1,73 @@
+@import "../../../../scss/variables";
+@import "../../../../scss/mixins";
+
+.Overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 0;
+
+  z-index: 4;
+}
+
+.Value {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 400;
+
+  color: var(--primary-color);
+}
+
+.Select {
+  &Clip {
+    position: absolute;
+    left: calc(var(--x) * 1px);
+    top: calc(var(--y) * 1px);
+    transform: translateX(-50%);
+
+    padding: 2rem;
+  }
+
+  overflow: hidden;
+
+  min-width: 114px;
+  border-radius: 8px;
+
+  padding: 0.25rem 0;
+
+  display: flex;
+  flex-direction: column;
+
+  background-color: rgba(var(--surface-color-rgb), 0.75);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--menu-box-shadow);
+
+  :global(html.no-backdrop) & {
+    background-color: var(--surface-color);
+    backdrop-filter: none;
+  }
+}
+
+.Option {
+  position: relative;
+  height: 40px;
+  overflow: hidden;
+
+  font-size: 16px;
+  font-weight: 400;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: var(--primary-text-color);
+
+  cursor: pointer;
+
+  &.selected {
+    color: var(--primary-color);
+  }
+
+  @include hover-global(filled-gray, background-color);
+}

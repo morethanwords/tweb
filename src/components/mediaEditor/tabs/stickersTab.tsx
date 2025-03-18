@@ -10,9 +10,9 @@ import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {IconTsx} from '../../iconTsx';
 import {ScrollableX} from '../../scrollable';
 import SuperStickerRenderer from '../../emoticonsDropdown/tabs/SuperStickerRenderer';
+import Space from '../../space';
 
 import useNormalizePoint from '../canvas/useNormalizePoint';
-import Space from '../space';
 import MediaEditorContext from '../context';
 import {ResizableLayer} from '../types';
 import {delay} from '../utils';
@@ -72,6 +72,7 @@ export default function StickersTab() {
   function StickerSetThumb(props: {set: StickerSet.stickerSet}) {
     let renderContainer: HTMLDivElement;
 
+    const middleware = createMiddleware();
     onMount(() => {
       wrapStickerSetThumb({
         container: renderContainer,
@@ -80,10 +81,14 @@ export default function StickersTab() {
         width: 30,
         height: 30,
         lazyLoadQueue,
-        middleware: createMiddleware().get(),
+        middleware: middleware.get(),
         set: props.set,
         managers,
         textColor: 'white'
+      });
+
+      onCleanup(() => {
+        middleware.destroy();
       });
     });
 

@@ -1298,6 +1298,10 @@ const lang = {
     'one_value': '%1$d year',
     'other_value': '%1$d years'
   },
+  'MinutesShort': {
+    'one_value': '%1$d min',
+    'other_value': '%1$d min'
+  },
   'TodayAtFormattedWithToday': 'today at %1$s',
   'formatDateAtTime': '%1$s at %2$s',
   'JoinByPeekChannelTitle': 'Join Channel',
@@ -3130,7 +3134,43 @@ const lang = {
   'Hls.SaveIn1080': 'Save in 1080p',
   'PlaybackRateNormal': 'Normal',
   'PlaybackRateDragTip': 'Hold and move the cursor left or right to change the speed.',
-  'Text.Context.Copy.Email': 'Copy Email'
+  'Text.Context.Copy.Email': 'Copy Email',
+
+  'PasscodeLock.Title': 'Passcode',
+  'PasscodeLock.Item.Title': 'Passcode Lock',
+  'PasscodeLock.Item.On': 'On',
+  'PasscodeLock.Item.Off': 'Off',
+  'PasscodeLock.Description': 'When a passcode is set, a lock icon appears above your chat list. Tap it to lock your Telegram.',
+  'PasscodeLock.TurnOn': 'Turn Passcode On',
+  'PasscodeLock.TurnOff': 'Turn Off',
+  'PasscodeLock.TurnOff.Title': 'Turn Passcode Off',
+  'PasscodeLock.Notice': 'Note: If you forget your passcode, you\'ll need to log out.',
+  'PasscodeLock.AutoLock': 'Auto-lock after',
+  'PasscodeLock.EnableLockShortcut': 'Enable lock shortcut',
+  'PasscodeLock.LockShortcutDescription': 'Play around to find the perfect shortcut to work for your browser.',
+  'PasscodeLock.PasscodesDontMatch': 'Passcodes don’t match, try again',
+  'PasscodeLock.SetPasscode': 'Set passcode',
+  'PasscodeLock.Next': 'Next',
+  'PasscodeLock.ReEnterPasscode': 'Re-enter the passcode',
+  'PasscodeLock.EnterAPasscode': 'Enter a passcode',
+  'PasscodeLock.EnterANewPasscode': 'Enter a new passcode',
+  'PasscodeLock.ChangePasscode': 'Change passcode',
+  'PasscodeLock.EnterYourPasscode': 'Enter your passcode',
+  'PasscodeLock.EnterYourCurrentPasscode': 'Enter your current passcode',
+  'PasscodeLock.Proceed': 'Proceed',
+  'PasscodeLock.ForgotPasscode.OneAccount': 'Note: If you forgot your passcode, you need to [log out]().',
+  'PasscodeLock.ForgotPasscode.MultipleAccounts': 'Note: If you forgot your passcode, you need to [log out]() from all your current accounts.',
+  'PasscodeLock.WrongPasscode': 'Wrong passcode. Please try again.',
+  'PasscodeLock.PasscodeHasBeenSet': 'Passcode has been set.',
+  'PasscodeLock.TapToLock': 'Tap to lock Telegram.',
+  'PasscodeLock.PasscodeHasBeenChanged': 'Passcode has been changed.',
+  'PasscodeLock.PasscodeHasBeenDisabled': 'Passcode has been disabled.',
+  'PasscodeLock.NotificationTitle': 'User',
+  'PasscodeLock.NotificationDescription': 'New message',
+  'PasscodeLock.Disabled': 'Disabled',
+  'PasscodeLock.TooManyAttempts': 'Too many attempts, try again later',
+  'PasscodeLock.LogoutPopup.Description': 'Are you sure you want to log out?',
+  'PasscodeLock.TurnOff.Description': 'Are you sure you want to turn passcode off?'
 };
 
 export default lang;

@@ -10,7 +10,7 @@
  */
 
 import {Database} from '../config/databases';
-import {MOUNT_CLASS_TO} from '../config/debug';
+import DEBUG, {MOUNT_CLASS_TO} from '../config/debug';
 // import DATABASE_SESSION from "../config/databases/session";
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import {IS_WORKER} from '../helpers/context';
@@ -18,6 +18,8 @@ import throttleWith from '../helpers/schedulers/throttleWith';
 // import { WorkerTaskTemplate } from "../types";
 import IDBStorage from './files/idb';
 import {logger} from './logger';
+import DeferredIsUsingPasscode from './passcode/deferredIsUsingPasscode';
+import EncryptedStorageLayer, {StorageLayer} from './encryptedStorageLayer';
 
 function noop() {}
 
@@ -46,7 +48,8 @@ export default class AppStorage<
   T extends Database<any>
 > {
   private static STORAGES: AppStorage<any, Database<any>>[] = [];
-  private storage: IDBStorage<T>;// new CacheStorageController('session');
+
+  private storage: StorageLayer;
 
   // private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
   private cache: Partial<Storage>;
@@ -64,10 +67,12 @@ export default class AppStorage<
   private deleteThrottled: () => void;
   private deleteDeferred: CancellablePromise<void>;
 
+  private isEncryptable: boolean;
+  private encryptedStoreName?: T['stores'][number]['encryptedName'];
+
   private log: ReturnType<typeof logger>;
 
-  constructor(private db: T, private storeName: typeof db['stores'][number]['name']) {
-    this.storage = new IDBStorage<T>(db, storeName);
+  constructor(private db: T, private storeName: T['stores'][number]['name']) {
     this.log = logger(`AS-${db.name}-${storeName}`);
 
     this.cache = {};
@@ -76,6 +81,10 @@ export default class AppStorage<
     this.saveDeferred = deferredPromise();
     this.keysToDelete = new Set();
     this.deleteDeferred = deferredPromise();
+
+    const store = db.stores.find(store => store.name === storeName);
+    this.isEncryptable = !!store?.encryptedName;
+    this.encryptedStoreName = store?.encryptedName;
 
     if(AppStorage.STORAGES.length) {
       this.useStorage = AppStorage.STORAGES[0].useStorage;
@@ -90,6 +99,23 @@ export default class AppStorage<
     this.saveThrottled = throttleWith(queueMicrotask, this._save, /* THROTTLE_TIME,  */false);
     this.deleteThrottled = throttleWith(queueMicrotask, this._delete, /* THROTTLE_TIME,  */false);
     this.getThrottled = throttleWith(queueMicrotask, this._get, /* THROTTLE_TIME,  */false);
+  }
+
+
+  private async getStorage(): Promise<StorageLayer> {
+    if(this.storage) return this.storage;
+
+    const isEncryptable = this.isEncryptable ?
+      await DeferredIsUsingPasscode.isUsingPasscode() :
+      false;
+
+    const storage = this.storage = isEncryptable ?
+      EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName) :
+      new IDBStorage(this.db, this.storeName);
+
+    if(storage instanceof EncryptedStorageLayer) storage.loadEncrypted();
+
+    return storage;
   }
 
   private _save = async() => {
@@ -118,7 +144,8 @@ export default class AppStorage<
           } as LocalStorageProxySetTask);
         } */
 
-        await this.storage.save(keys, values);
+        const storage = await this.getStorage();
+        storage.save(keys, values);
         // console.log('setItem: have set', key/* , value */);
       } catch(e) {
         // this.useCS = false;
@@ -153,7 +180,8 @@ export default class AppStorage<
           } as LocalStorageProxyDeleteTask);
         } */
 
-        await this.storage.delete(keys);
+        const storage = await this.getStorage();
+        storage.delete(keys);
       } catch(e) {
         this.log.error('delete error', e, keys);
       }
@@ -169,8 +197,8 @@ export default class AppStorage<
   private _get = async() => {
     const keys = Array.from(this.getPromises.keys());
 
-    // const perf = performance.now();
-    this.storage.get(keys as string[]).then((values) => {
+    const storage = await this.getStorage();
+    storage.get(keys as string[]).then((values) => {
       for(let i = 0, length = keys.length; i < length; ++i) {
         const key = keys[i];
         const deferred = this.getPromises.get(key);
@@ -239,18 +267,32 @@ export default class AppStorage<
     } */
   }
 
-  public getAll(): Promise<any[]> {
-    return this.storage.getAll().catch(() => [] as any[]);
+  public async getAll(): Promise<any[]> {
+    const storage = await this.getStorage();
+    return storage.getAll().catch(() => [] as any[]);
   }
 
-  public getAllEntries() {
-    return this.storage.getAllEntries().catch(() => [] as IDBStorage.Entries);
+  public async getAllEntries() {
+    const storage = await this.getStorage();
+    return storage.getAllEntries().catch(() => [] as IDBStorage.Entries);
+  }
+
+  private warnAboutSaving() {
+    // TODO: Save data only in worker
+    // if(DEBUG && typeof window !== 'undefined' && this.isEncryptable) {
+    //   const message = 'Encryptable storages should not be used in a window client, only in the shared worker. This avoids data mismatches when the lock screen feature is activated';
+    //   this.log.error(message);
+    //   throw new Error(message);
+    // }
   }
 
   public set(obj: Partial<Storage>, onlyLocal = false) {
     // console.log('storageSetValue', obj, callback, arguments);
 
     const canUseStorage = this.useStorage && !onlyLocal && !this.savingFreezed;
+
+    this.warnAboutSaving();
+
     let setSomething = false;
     for(const key in obj) {
       if(obj.hasOwnProperty(key)) {
@@ -289,6 +331,8 @@ export default class AppStorage<
       return;
     } */
 
+    this.warnAboutSaving();
+
     // ! it is needed here
     key = '' + (key as string);
 
@@ -305,19 +349,46 @@ export default class AppStorage<
     return this.useStorage ? this.deleteDeferred : Promise.resolve();
   }
 
-  public clear(saveLocal = false) {
+  public async clear(saveLocal = false) {
     if(!saveLocal) {
       for(const i in this.cache) {
         delete this.cache[i];
       }
     }
 
-    return this.storage.clear().catch(noop);
+    try
+    {
+      const currentStorage = await this.getStorage();
+      await currentStorage.clear();
+
+      if(currentStorage instanceof EncryptedStorageLayer)
+      {
+        const otherStorage = new IDBStorage(this.db, this.storeName);
+        await otherStorage.clear();
+      }
+      else if(this.isEncryptable)
+      {
+        const otherStorage = EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName);
+        await otherStorage.clear();
+      }
+    }
+    catch{}
   }
 
-  public close() {
-    return this.storage.close();
+  public async unfreezeAsync(callback: () => Promise<unknown>) {
+    const prevFreezed = this.savingFreezed;
+    this.savingFreezed = false;
+    try {
+      await callback();
+    } catch(err) {
+      console.error('unfreezeAsync callback error:', err);
+    }
+    this.savingFreezed = prevFreezed;
   }
+
+  // public close() { // This closes the whole database, not the store!
+  //   return this.getStorage().then(storage => storage.close());
+  // }
 
   public static toggleStorage(enabled: boolean, clearWrite: boolean) {
     return Promise.all(this.STORAGES.map((storage) => {
@@ -346,6 +417,63 @@ export default class AppStorage<
       console.error('freezeSaving callback error:', err);
     }
     this.STORAGES.forEach((storage) => storage.savingFreezed = false);
+  }
+
+  public static async freezeSavingAsync(callback: () => Promise<unknown>) {
+    this.STORAGES.forEach((storage) => storage.savingFreezed = true);
+    try {
+      await callback();
+    } catch(err) {
+      console.error('freezeSavingAsync callback error:', err);
+    }
+    this.STORAGES.forEach((storage) => storage.savingFreezed = false);
+  }
+
+  private async toggleEncrypted(shouldEncrypt: boolean) {
+    if(!this.isEncryptable) return;
+
+    const isEncrypted = this.storage instanceof EncryptedStorageLayer;
+    if(shouldEncrypt === isEncrypted) return;
+
+    const entries = await this.getAllEntries();
+
+    await this.storage.clear();
+
+    if(shouldEncrypt) {
+      const storage = this.storage = EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName);
+      const data = Object.fromEntries(entries);
+
+      await storage.loadDecrypted(data);
+    } else {
+      const storage = this.storage = new IDBStorage(this.db, this.storeName);
+      const keys = entries.map(entry => entry[0] as string);
+      const values = entries.map(entry => entry[1]);
+
+      await storage.save(keys, values);
+    }
+  }
+
+  private async reEncrypt() {
+    if(!(this.storage instanceof EncryptedStorageLayer)) return;
+
+    await this.storage.reEncrypt();
+  }
+
+  public static async toggleEncryptedForAll(shouldEncrypt: boolean) {
+    // this.freezeSaving()
+    this.freezeSavingAsync(async() => {
+      await Promise.all(
+        this.STORAGES.map((storage) => storage.toggleEncrypted(shouldEncrypt))
+      );
+    });
+  }
+
+  public static async reEncryptEncrypted() {
+    this.freezeSavingAsync(async() => {
+      await Promise.all(
+        this.STORAGES.map((storage) => storage.reEncrypt())
+      );
+    });
   }
 
   /* public deleteDatabase() {

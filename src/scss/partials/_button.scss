@@ -1143,3 +1143,11 @@ $btn-menu-z-index: 4;
   /* left: var(--offset); */
   inset-inline-end: auto !important;
 }
+
+.btn-large {
+  height: 3.375rem;
+  font-size: 1rem;
+
+  text-transform: uppercase;
+  font-weight: 600;
+}

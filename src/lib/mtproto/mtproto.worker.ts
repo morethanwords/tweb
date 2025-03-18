@@ -15,18 +15,28 @@ import MTProtoMessagePort from './mtprotoMessagePort';
 import appManagersManager from '../appManagers/appManagersManager';
 import listenMessagePort from '../../helpers/listenMessagePort';
 import {logger} from '../logger';
-import {State} from '../../config/state';
 import toggleStorages from '../../helpers/toggleStorages';
 import appTabsManager from '../appManagers/appTabsManager';
 import callbackify from '../../helpers/callbackify';
 import Modes from '../../config/modes';
 import {ActiveAccountNumber} from '../accounts/types';
 import commonStateStorage from '../commonStateStorage';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+import AppStorage from '../storage';
+import EncryptionKeyStore from '../passcode/keyStore';
+import sessionStorage from '../sessionStorage';
+import CacheStorageController from '../files/cacheStorage';
+import {ApiManager} from './apiManager';
+import {useAutoLock} from './useAutoLock';
+
 
 const log = logger('MTPROTO');
 // let haveState = false;
 
 const port = new MTProtoMessagePort<false>();
+
+let isLocked = true;
+
 port.addMultipleEventsListeners({
   environment: (environment) => {
     setEnvironment(environment);
@@ -125,7 +135,79 @@ port.addMultipleEventsListeners({
     if(typeof(SharedWorkerGlobalScope) !== 'undefined') {
       self.close();
     }
+  },
+
+  toggleUsingPasscode: async(payload, source) => {
+    DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
+    EncryptionKeyStore.save(payload.isUsingPasscode ? payload.encryptionKey : null);
+
+    await Promise.all([
+      AppStorage.toggleEncryptedForAll(payload.isUsingPasscode),
+      payload.isUsingPasscode ?
+        sessionStorage.encryptEncryptable() :
+        sessionStorage.decryptEncryptable()
+    ]);
+
+    await port.invokeExceptSourceAsync('toggleUsingPasscode', payload, source);
+
+    isLocked = false;
+  },
+
+  changePasscode: async({toStore, encryptionKey}, source) => {
+    await commonStateStorage.set({passcode: toStore});
+
+    EncryptionKeyStore.save(encryptionKey);
+    await Promise.all([
+      AppStorage.reEncryptEncrypted(),
+      sessionStorage.reEncryptEncryptable()
+    ]);
+
+    await port.invokeExceptSourceAsync('saveEncryptionKey', encryptionKey, source);
+  },
+
+  isLocked: async(_, source) => {
+    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+    if(isUsingPasscode) {
+      if(!isLocked) {
+        await port.invoke('saveEncryptionKey', await EncryptionKeyStore.get(), undefined, source);
+      }
+      return isLocked;
+    }
+
+    return false;
+  },
+
+  toggleLockOthers: (value, source) => {
+    isLocked = value;
+    port.invokeExceptSource('toggleLock', value, source);
+  },
+
+  saveEncryptionKey: async(payload, source) => {
+    EncryptionKeyStore.save(payload);
+    isLocked = false;
+    await port.invokeExceptSourceAsync('saveEncryptionKey', payload, source);
+  },
+
+  localStorageEncryptedProxy: (payload) => {
+    return sessionStorage.encryptedStorageProxy(payload.type, ...payload.args);
+  },
+
+  toggleCacheStorage: async(enabled: boolean, source) => {
+    CacheStorageController.temporarilyToggle(enabled);
+    await port.invokeExceptSourceAsync('toggleCacheStorage', enabled, source);
+  },
+
+  forceLogout: async() => {
+    await ApiManager.forceLogOutAll();
+  },
+
+  toggleUninteruptableActivity: ({activity, active}, source) => {
+    autoLockControls.toggleUninteruptableActivity(source, activity, active);
   }
+
+  // localStorageEncryptionMethodsProxy: (payload) => {
+  //   return sessionStorage.encryptionMethodsProxy(payload.type, ...payload.args);
+  // }
 
   // socketProxy: (task) => {
   //   const socketTask = task.payload;
@@ -157,6 +239,19 @@ function resetNotificationsCount() {
   });
 }
 
+const autoLockControls = useAutoLock({
+  getIsLocked: () => isLocked,
+  setIsLocked: (value) => void (isLocked = value),
+  getPort: () => port
+});
+
+appTabsManager.onTabStateChange = async() => {
+  const tabs = appTabsManager.getTabs();
+  const areAllIdle = tabs.every(tab => !!tab.state.idleStartTime);
+
+  autoLockControls.setAreAllIdle(areAllIdle)
+};
+
 listenMessagePort(port, (source) => {
   appTabsManager.addTab(source);
   if(isFirst) {
@@ -181,4 +276,6 @@ listenMessagePort(port, (source) => {
   // }
 }, (source) => {
   appTabsManager.deleteTab(source);
+  autoLockControls.removeTab(source);
 });
+
