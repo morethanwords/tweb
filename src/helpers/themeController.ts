@@ -256,7 +256,7 @@ export class ThemeController {
       void document.documentElement.offsetLeft; // reflow
     }
 
-    const transition = (document as any).startViewTransition(() => {
+    const transition = document.startViewTransition(() => {
       this._setTheme();
     });
 

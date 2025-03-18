@@ -21,6 +21,7 @@ import Background from './background';
 
 import styles from './passcodeLockScreen.module.scss';
 import focusInput from '../../helpers/dom/focusInput';
+import throttle from '../../helpers/schedulers/throttle';
 
 
 type StateStore = {
@@ -106,8 +107,10 @@ const PasscodeLockScreen: Component<{
     }
   }
 
+  const rotateBackgroundGradientThrottled = throttle(rotateBackgroundGradient, 100, true);
+
   createEffect(on(() => store.passcode, () => {
-    rotateBackgroundGradient();
+    rotateBackgroundGradientThrottled();
 
     store.isError = false;
     store.tooManyAttempts = false;

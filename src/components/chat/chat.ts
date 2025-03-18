@@ -1181,7 +1181,7 @@ export default class Chat extends EventListenerBase<{
     }
 
     return this.managers.appUsersManager.getRequirementToContact(peerId.toUserId(), true)
-    .then((requirement) => requirement._ === 'requirementToContactPremium');
+    .then((requirement) => requirement?._ === 'requirementToContactPremium');
   }
 
   public getMessageSendingParams(): MessageSendingParams {

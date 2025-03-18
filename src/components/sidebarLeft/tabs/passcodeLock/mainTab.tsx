@@ -33,7 +33,7 @@ const getHintParams = (tab: SliderSuperTab, title: LangPackKey) => ({
   duration: 2500,
   from: 'bottom',
   textElement: i18n(title),
-  icon: 'lock',
+  icon: 'premium_lock',
   class: styles.Hint,
   canCloseOnPeerChange: false
 } as const);
