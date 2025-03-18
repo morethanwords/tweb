@@ -39,10 +39,6 @@ const defaultPrivacyRules: InputPrivacyRule[] = [
   {
     _: 'inputPrivacyValueAllowContacts'
   }
-  // One the time the Android App has set this for some reason 🤔
-  // {
-  //   _: 'inputPrivacyValueDisallowAll'
-  // }
 ];
 
 // Note: after saving privacy rules, the cached users are objects instead of being numbers
