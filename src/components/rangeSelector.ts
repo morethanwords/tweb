@@ -32,7 +32,9 @@ export default class RangeSelector {
   protected max: number;
   protected withTransition = false;
   protected useTransform = false;
+  protected useProperty = false;
   protected vertical = false;
+  protected offsetAxisValue = 0;
 
   constructor(
     options: {
@@ -41,7 +43,9 @@ export default class RangeSelector {
       max?: RangeSelector['max'],
       withTransition?: RangeSelector['withTransition'],
       useTransform?: RangeSelector['useTransform'],
-      vertical?: RangeSelector['vertical']
+      vertical?: RangeSelector['vertical'],
+      useProperty?: RangeSelector['useProperty'],
+      offsetAxisValue?: RangeSelector['offsetAxisValue']
     },
     value = 0
   ) {
@@ -139,17 +143,24 @@ export default class RangeSelector {
     // using scaleX and width even with vertical because it will be rotated
     if(this.useTransform) {
       this.filled.style.transform = `scaleX(${percents})`;
+    } else if(this.useProperty) {
+      this.container.style.setProperty('--progress', '' + percents);
     } else {
       this.filled.style.width = (percents * 100) + '%';
     }
   }
 
   protected scrub(event: GrabEvent, snapValue?: (value: number) => number) {
-    const rectMax = this.vertical ? this.rect.height : this.rect.width;
+    let rectMax = this.vertical ? this.rect.height : this.rect.width;
+
+    if(this.offsetAxisValue) {
+      rectMax -= this.offsetAxisValue;
+    }
+
     let offsetAxisValue = clamp(
       this.vertical ?
         -(event.y - this.rect.bottom) :
-        event.x - this.rect.left,
+        event.x - this.rect.left - this.offsetAxisValue / 2/*  - 30 */,
       0,
       rectMax
     );

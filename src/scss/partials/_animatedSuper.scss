@@ -1,0 +1,50 @@
+.animated-super {
+  &-row {
+    --translateY: 100%;
+    position: absolute;
+    inset: 0;
+    transition: transform var(--pm-transition), opacity var(--pm-transition);
+
+    body.animation-level-0 & {
+      transition: none;
+    }
+
+    &.is-hiding {
+      opacity: 0;
+
+      &.from-top {
+        transform: translate3d(0, calc(var(--translateY) * -1), 0);
+      }
+
+      &.from-bottom {
+        transform: translate3d(0, var(--translateY), 0);
+      }
+    }
+  }
+}
+
+.animated-counter {
+  display: inline-flex;
+
+  &-dynamic-width {
+    width: 100vw;
+    max-width: var(--width);
+    // overflow: hidden;
+    transition: max-width var(--pm-transition);
+  }
+
+  &-decimal {
+    position: relative;
+    flex-shrink: 0;
+
+    &-placeholder {
+      color: transparent;
+      flex-shrink: 0;
+    }
+
+    &-wrapper {
+      position: absolute;
+      inset: 0;
+    }
+  }
+}

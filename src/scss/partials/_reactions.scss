@@ -19,6 +19,7 @@
 
   &-block {
     margin-top: -.125rem;
+    position: relative;
   }
 
   &-renderer {
@@ -46,8 +47,73 @@
   // }
 
   .tooltip {
+    --notch-offset: calc(38px + (var(--width) - 53.5px) / 2);
     height: 3.25rem;
     display: flex;
     align-items: center;
+    inset-inline-start: -1.3125rem;
+    position: absolute;
+    top: -4.25rem;
+    white-space: nowrap;
+    cursor: default;
+  }
+}
+
+// todo: we should probably refactor this into a "tooltip at the top of the chat" component and also use it instead of setQuizHint
+.paid-reaction-tooltip {
+  top: 0.25rem;
+  left: 50%;
+  display: flex;
+  align-items: center;
+
+  .tooltip-notch { display: none; }
+
+  &.tooltip {
+    transform: translate(-50%, 0);
+    &.is-visible:not(.backwards) {
+      transform: translate(-50%, 0);
+    }
+    &.mounted {
+      transform: translate(-50%, -1rem);
+    }
+  }
+
+  .tooltip-undo {
+    display: flex;
+    color: #8EDEFF;
+    align-items: center;
+    gap: .5rem;
+    text-transform: uppercase;
+    margin-inline-start: 2.5rem;
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+
+    &-timer {
+      width: 1.5rem;
+      height: 1.5rem;
+      position: relative;
+      overflow: hidden;
+
+      &-svg {
+        transform: scaleX(-1);
+      }
+
+      &-circle {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.5;
+        stroke-linecap: round;
+      }
+
+      &-number {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: var(--font-size-14);
+        margin-top: .5px;
+        margin-inline-start: -.25px;
+      }
+    }
   }
 }

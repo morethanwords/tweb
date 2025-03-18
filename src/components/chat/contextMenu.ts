@@ -74,6 +74,7 @@ import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import deepEqual from '../../helpers/object/deepEqual';
 import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
 import flatten from '../../helpers/array/flatten';
+import PopupStarReaction from '../popups/starReaction';
 import getUniqueCustomEmojisFromMessage from '../../lib/appManagers/utils/messages/getUniqueCustomEmojisFromMessage';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
@@ -209,6 +210,12 @@ export default class ChatContextMenu {
 
     if(avatar && !avatar.dataset.peerId) {
       toastNew({langPackKey: 'HidAccount'});
+      return;
+    }
+
+    const paidReactionElement = (e.target as HTMLElement).closest('.reaction.is-paid');
+    if(paidReactionElement) {
+      PopupElement.createPopup(PopupStarReaction, bubble.dataset.peerId.toPeerId(), mid, this.chat);
       return;
     }
 
@@ -1100,6 +1107,11 @@ export default class ChatContextMenu {
           contextMenuController.close();
           reaction = await reaction;
           if(!reaction) {
+            return;
+          }
+
+          if(reaction._ === 'reactionPaid') {
+            PopupElement.createPopup(PopupStarReaction, reactionsMessage.peerId, reactionsMessage.mid, this.chat);
             return;
           }
 

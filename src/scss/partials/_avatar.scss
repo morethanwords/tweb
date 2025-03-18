@@ -388,6 +388,11 @@
     --size: 16px;
     --multiplier: 3.375;
   }
+
+  .emoji-image {
+    width: calc(1.125rem / var(--multiplier));
+    height: calc(1.125rem / var(--multiplier));
+  }
 }
 
 .avatar-relative {

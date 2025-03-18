@@ -1990,7 +1990,7 @@ export default class ChatBubbles {
       apiManagerProxy.getAvailableReactions(),
       pause(400)
     ]).then(async([{reactions}, availableReactions]) => {
-      const reaction = reactions[0];
+      const reaction = reactions.find((reaction) => reaction._ !== 'reactionPaid');
       if(!reaction) {
         hoverReaction.remove();
         return;
@@ -2372,6 +2372,10 @@ export default class ChatBubbles {
 
     const reactionElement = findUpTag(target, 'REACTION-ELEMENT') as ReactionElement;
     if(reactionElement) {
+      if(findUpClassName(target, 'tooltip')) {
+        return;
+      }
+
       cancelEvent(e);
       if(reactionElement.classList.contains('is-inactive')) {
         return;

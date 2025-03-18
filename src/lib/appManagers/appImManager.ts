@@ -330,6 +330,11 @@ export class AppImManager extends EventListenerBase<{
 
     this.addEventListener('peer_changed', onPeerChanged);
 
+    // * prefetch some data
+    this.addEventListener('peer_changed', () => {
+      this.managers.appReactionsManager.getPaidReactionPrivacy();
+    }, {once: true});
+
     rootScope.addEventListener('theme_changed', () => {
       this.applyCurrentTheme({
         broadcastEvent: true,

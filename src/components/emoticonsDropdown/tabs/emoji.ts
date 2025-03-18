@@ -49,6 +49,8 @@ import EmoticonsTabC from '../tab';
 import flatten from '../../../helpers/array/flatten';
 import SuperStickerRenderer from './SuperStickerRenderer';
 import StickersTab from './stickers';
+import {PAID_REACTION_EMOJI_DOCID} from '../../../lib/customEmoji/constants';
+
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(_emoji: AppEmoji, unify = false) {
@@ -67,22 +69,15 @@ export function appendEmoji(_emoji: AppEmoji, unify = false) {
   const spanEmoji = document.createElement('span');
   spanEmoji.classList.add('super-emoji', 'super-emoji-regular');
 
-  let kek: DocumentFragment;
+  let el: DocumentFragment;
   if(unify && !IS_EMOJI_SUPPORTED) {
-    kek = wrapSingleEmoji(emoji);
+    el = wrapSingleEmoji(emoji);
   } else {
     emoji = fixEmoji(emoji);
-    kek = wrapEmojiText(emoji);
+    el = wrapEmojiText(emoji);
   }
 
-  /* if(!kek.includes('emoji')) {
-    console.log(emoji, kek, spanEmoji, emoji.length, new TextEncoder().encode(emoji), emojiUnicode(emoji));
-    return;
-  } */
-
-  // console.log(kek);
-
-  spanEmoji.append(kek);
+  spanEmoji.append(el);
 
   if(spanEmoji.children.length > 1) {
     const first = spanEmoji.firstElementChild;
@@ -913,6 +908,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   // }
 
   public canUseEmoji(emoji: ReturnType<typeof getEmojiFromElement>, category?: EmojiTabCategory, showToast?: boolean) {
+    if(emoji.docId === PAID_REACTION_EMOJI_DOCID) return true
     if(
       emoji.docId &&
       !rootScope.premium && (
