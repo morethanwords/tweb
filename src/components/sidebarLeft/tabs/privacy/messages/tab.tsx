@@ -259,6 +259,8 @@ const MessagesTab = () => {
   let captionContainer: HTMLDivElement;
   let heightMeasure: HTMLDivElement;
 
+  let exitAnimationPromise: Promise<any>;
+
   const caption = () => (
     <div ref={captionContainer}>
       <div ref={heightMeasure} style="height: 0; overflow: hidden; visibility: hidden" tabIndex={-1}>
@@ -273,11 +275,9 @@ const MessagesTab = () => {
         }}
         onExit={async(_el, done) => {
           const el = _el as HTMLElement;
-          if(isPaid()) captionContainer.style.height = heightMeasure.scrollHeight + 'px';
-          if(!isPaid()) await el.animate({opacity: [1, 0]}, {duration: 200}).finished;
 
+          await (exitAnimationPromise = el.animate({opacity: [1, 0]}, {duration: 200}).finished);
           done();
-          captionContainer.style.removeProperty('height');
         }}
       >
         {
@@ -361,8 +361,12 @@ const MessagesTab = () => {
       </Section>
 
       <Transition
-        onEnter={async(el, done) => {
+        onEnter={async(_el, done) => {
+          const el = _el as HTMLElement;
+          el.style.opacity = '0';
+          await exitAnimationPromise;
           await el.animate({opacity: [0, 1]}, {duration: 80}).finished;
+          el.style.removeProperty('opacity');
           done();
         }}
         onExit={async(el, done) => {
