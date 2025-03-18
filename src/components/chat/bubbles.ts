@@ -2522,12 +2522,17 @@ export default class ChatBubbles {
       }
     }
 
-    const nameDiv = findUpClassName(target, 'peer-title') || findUpAvatar(target) || findUpClassName(target, 'selector-user') || findUpAttribute(target, 'data-saved-from');
+    const nameDiv = findUpClassName(target, 'peer-title') ||
+      findUpAvatar(target) ||
+      findUpClassName(target, 'selector-user') ||
+      findUpAttribute(target, 'data-saved-from') ||
+      findUpAttribute(target, 'data-follow');
     if(nameDiv && nameDiv !== bubble) {
       target = nameDiv || target;
-      const peerIdStr = target.dataset.peerId || target.getAttribute('peer') || target.dataset.key/*  || (target as AvatarElement).peerId */;
+      const peerIdStr = target.dataset.peerId || target.getAttribute('peer') || target.dataset.key || target.dataset.follow/*  || (target as AvatarElement).peerId */;
       const savedFrom = target.dataset.savedFrom as FullMid;
       if(typeof(peerIdStr) === 'string' || savedFrom) {
+        cancelEvent(e);
         if(savedFrom) {
           const {peerId, mid} = splitFullMid(savedFrom);
           if(target.classList.contains('is-receipt-link')) {
@@ -4566,6 +4571,7 @@ export default class ChatBubbles {
         this.chat.setMessageId({lastMsgId: replyToMid, mediaTimestamp: timestamp});
       } else {
         this.chat.appImManager.setInnerPeer({
+          stack: this.chat.appImManager.getStackFromElement(bubble),
           peerId: replyToPeerId,
           mediaTimestamp: timestamp
         });

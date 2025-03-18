@@ -431,8 +431,12 @@ export default class ChatContextMenu {
 
     if(this.avatarPeerId !== undefined) {
       const openPeer = () => {
-        this.chat.appImManager.setInnerPeer({peerId: this.avatarPeerId});
+        this.chat.appImManager.setInnerPeer({
+          peerId: this.avatarPeerId,
+          stack: this.chat.appImManager.getStackFromElement(this.target)
+        });
       };
+
       this.buttons = [{
         icon: 'message',
         text: 'SendMessage',

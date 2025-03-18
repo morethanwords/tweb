@@ -574,8 +574,8 @@ export class AppMessagesManager extends AppManager {
   };
 
   public getInputEntities(entities: MessageEntity[]) {
-    const sendEntites = copy(entities);
-    forEachReverse(sendEntites, (entity, idx, arr) => {
+    const sendEntities = copy(entities);
+    forEachReverse(sendEntities, (entity, idx, arr) => {
       if(LOCAL_ENTITIES.has(entity._)) {
         arr.splice(idx, 1);
       } else if(entity._ === 'messageEntityMentionName') {
@@ -583,7 +583,12 @@ export class AppMessagesManager extends AppManager {
         (entity as any as MessageEntity.inputMessageEntityMentionName).user_id = this.appUsersManager.getUserInput(entity.user_id);
       }
     });
-    return sendEntites;
+
+    if(!sendEntities.length) {
+      return;
+    }
+
+    return sendEntities;
   }
 
   public invokeAfterMessageIsSent(tempId: number, callbackName: string, callback: (message: MyMessage) => Promise<any>) {
@@ -622,10 +627,7 @@ export class AppMessagesManager extends AppManager {
       [text, entities] = parseMarkdown(text, entities);
     }
 
-    let sendEntites = this.getInputEntities(entities);
-    if(!sendEntites.length) {
-      sendEntites = undefined;
-    }
+    const sendEntities = this.getInputEntities(entities);
 
     const inputMediaWebPage = this.getInputMediaWebPage(options);
 
@@ -635,7 +637,7 @@ export class AppMessagesManager extends AppManager {
       id: message.id,
       message: text,
       media: options.newMedia,
-      entities: sendEntites,
+      entities: sendEntities,
       no_webpage: options.noWebPage,
       schedule_date,
       invert_media: options.invertMedia,
@@ -743,10 +745,7 @@ export class AppMessagesManager extends AppManager {
       [text, entities] = parseMarkdown(text, entities);
     }
 
-    let sendEntites = this.getInputEntities(entities);
-    if(!sendEntites.length) {
-      sendEntites = undefined;
-    }
+    const sendEntities = this.getInputEntities(entities);
 
     const message = this.generateOutgoingMessage(peerId, options);
     message.entities = entities;
@@ -788,7 +787,7 @@ export class AppMessagesManager extends AppManager {
           message: text,
           random_id: message.random_id,
           reply_to: replyTo,
-          entities: sendEntites,
+          entities: sendEntities,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate || undefined,
           silent: options.silent,
@@ -1157,10 +1156,7 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    let sendEntites = this.getInputEntities(entities);
-    if(!sendEntites.length) {
-      sendEntites = undefined;
-    }
+    const sendEntities = this.getInputEntities(entities);
 
     const uploadingFileName = !isDocument ? getFileNameForUpload(file as File | Blob) : undefined;
     if(uploadingFileName) {
@@ -1331,7 +1327,7 @@ export class AppMessagesManager extends AppManager {
           reply_to: options.replyTo,
           schedule_date: options.scheduleDate,
           silent: options.silent,
-          entities: sendEntites,
+          entities: sendEntities,
           clear_draft: options.clearDraft,
           send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
           update_stickersets_order: options.updateStickersetOrder,
@@ -1420,9 +1416,6 @@ export class AppMessagesManager extends AppManager {
     }
 
     let sendEntities = this.getInputEntities(entities);
-    if(!sendEntities.length) {
-      sendEntities = undefined;
-    }
 
     const log = this.log.bindPrefix('sendGrouped');
     log(options);

@@ -308,7 +308,13 @@ export default class PopupStarsPay extends PopupElement<{
       peerId,
       onClick: () => {
         hidePopupsWithCallback(() => {
-          appImManager.setInnerPeer({peerId})
+          appImManager.setInnerPeer({
+            peerId,
+            stack: this.message ? {
+              peerId: this.message.peerId,
+              mid: this.message.mid
+            } : undefined
+          });
         });
       }
     });
