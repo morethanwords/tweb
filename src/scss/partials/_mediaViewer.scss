@@ -829,6 +829,7 @@ $inactive-opacity: .4;
 
 .speed-drag-handler {
   &__speed {
+    color: #fff;
     position: absolute;
     left: 50%;
     top: 16px;
@@ -851,7 +852,6 @@ $inactive-opacity: .4;
     display: inline-flex;
     height: 12px;
 
-    color: white;
     font-size: 15px;
     font-weight: 600;
     line-height: 12px;
@@ -868,7 +868,7 @@ $inactive-opacity: .4;
     animation: speed-drag-handler-arrow-right-animation 1s infinite;
     animation-duration: calc(2s / var(--animation-duration-multiplier, 1));
 
-    &:nth-of-type(2) {
+    &-last {
       animation-delay: 0.25s;
     }
   }
@@ -891,6 +891,7 @@ $inactive-opacity: .4;
     pointer-events: none;
     
     transition: opacity 0.2s;
+    color: white;
     
     &--visible {
       opacity: 0.7;
@@ -909,8 +910,6 @@ $inactive-opacity: .4;
     line-height: 19px;
     font-weight: 400;
     text-align: center;
-
-    color: white;
   }
 
 }
