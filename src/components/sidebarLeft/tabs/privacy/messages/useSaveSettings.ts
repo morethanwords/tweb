@@ -2,6 +2,7 @@ import {Accessor} from 'solid-js';
 
 import {GlobalPrivacySettings, InputPrivacyRule} from '../../../../../layer';
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
+import setBooleanFlag from '../../../../../helpers/object/setBooleanFlag';
 import {logger} from '../../../../../lib/logger';
 
 import {useSuperTab} from '../../solidJsTabs/superTabProvider';
@@ -29,13 +30,12 @@ const useSaveSettings = ({store, globalPrivacy, isPaid, hasChanges, chosenPeersB
     const settings = structuredClone(globalPrivacy());
 
     settings.noncontact_peers_paid_stars = isPaid() ? store.stars : undefined;
-    if(settings.pFlags) {
-      settings.pFlags.new_noncontact_peers_require_premium =
-        store.option === MessagesPrivacyOption.ContactsAndPremium || undefined;
-    }
+
+    settings.pFlags ??= {};
+    setBooleanFlag(settings.pFlags, 'new_noncontact_peers_require_premium', store.option === MessagesPrivacyOption.ContactsAndPremium);
+
 
     log('saving settings :>> ', settings);
-
 
     return rootScope.managers.appPrivacyManager.setGlobalPrivacySettings(settings);
   };
@@ -55,6 +55,7 @@ const useSaveSettings = ({store, globalPrivacy, isPaid, hasChanges, chosenPeersB
       _: 'inputPrivacyValueAllowUsers',
       users: await Promise.all(users.map((id) => rootScope.managers.appUsersManager.getUserInput(id)))
     });
+
 
     log('saving rules :>> ', rules);
 

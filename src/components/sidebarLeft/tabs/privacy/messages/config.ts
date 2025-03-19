@@ -15,7 +15,7 @@ export type MessagesTabStateStore = {
 export const privacyRulesInputKey = 'inputPrivacyKeyNoPaidMessages' satisfies InputPrivacyKey['_'];
 
 export const defaultPrivacyRules: InputPrivacyRule[] = [
-  // Why the API won't accept this??? It comes by default when setting messages privacy from other device
+  // This is set by default on the server, there's an error thrown if we try to set it ourselves
   // {
   //   _: 'inputPrivacyValueDisallowAll'
   // },
