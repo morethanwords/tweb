@@ -205,7 +205,7 @@ export function SpeedDragHandler(props: InternalSpeedDragHandlerProps) {
   const formattedSpeed = () => currentSpeed().toFixed(1).replace(/\.0$/, '');
 
   return (
-    <Show when={showSpeed() || true}>
+    <Show when={showSpeed()}>
       <div
         class="speed-drag-handler__speed"
         style={{
