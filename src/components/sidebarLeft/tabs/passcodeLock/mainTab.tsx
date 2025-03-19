@@ -41,13 +41,13 @@ const getHintParams = (tab: SliderSuperTab, title: LangPackKey) => ({
 
 const MainTab = () => {
   const {rootScope} = useHotReloadGuard();
-  const promiseColletor = usePromiseCollector();
+  const promiseCollector = usePromiseCollector();
 
   const [enabled, {mutate: mutateEnabled}] = createResource(() => {
     const promise = rootScope.managers.appStateManager.getState().then(state =>
       state.settings?.passcode?.enabled || false
     );
-    promiseColletor.collect(promise);
+    promiseCollector.collect(promise);
     return promise;
   });
 
@@ -206,7 +206,7 @@ const PasscodeSetContent: Component<{
     tab.slider.createTab(AppPasscodeEnterPasswordTab)
     .open({
       onSubmit: (passcode) => {
-        onChangeThirdStep(passcode);
+        onChangeSecondStep(passcode);
         passcode = ''; // forget
       },
       buttonText: 'PasscodeLock.Next',
@@ -214,7 +214,7 @@ const PasscodeSetContent: Component<{
     }, 'PasscodeLock.EnterANewPasscode');
   };
 
-  const onChangeThirdStep = (firstPasscode: string) => {
+  const onChangeSecondStep = (firstPasscode: string) => {
     tab.slider.createTab(AppPasscodeEnterPasswordTab)
     .open({
       onSubmit: async(passcode, otherTab) => {
@@ -311,7 +311,7 @@ const PasscodeSetContent: Component<{
             }}
           />
           <div class={styles.ShortcutBuilderRow} classList={{[styles.collapsed]: !shortcutEnabled()}}>
-            <ShortcutBuilder value={shortcutKeys() || []} onChange={setShortcutKeys} key="L" />
+            <ShortcutBuilder class={styles.ShortcutBuilderRowChild} value={shortcutKeys() || []} onChange={setShortcutKeys} key="L" />
           </div>
         </Show>
       </Section>

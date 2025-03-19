@@ -54,14 +54,12 @@
   }
 
   /* Increase the clickable area on mobile devices */
-  :global(.is-mobile) & {
-    &::before {
-      content: '';
-      position: absolute;
-      left: -0.5rem;
-      right: -0.5rem;
-      top: -0.5rem;
-      bottom: -0.5rem;
-    }
+  :global(.is-mobile) &::before {
+    content: '';
+    position: absolute;
+    left: -0.5rem;
+    right: -0.5rem;
+    top: -0.5rem;
+    bottom: -0.5rem;
   }
 }

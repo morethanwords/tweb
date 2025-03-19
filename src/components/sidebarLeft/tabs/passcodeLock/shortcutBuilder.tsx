@@ -13,6 +13,7 @@ export type ShortcutKey = 'Ctrl' | 'Alt' | 'Shift' | 'Meta';
 const shortcutKeys: ShortcutKey[] = ['Ctrl', 'Alt', 'Shift', 'Meta'];
 
 const ShortcutBuilder: Component<{
+  class?: string;
   value: ShortcutKey[];
   onChange: (value: ShortcutKey[]) => void;
   key: string;
@@ -42,13 +43,17 @@ const ShortcutBuilder: Component<{
   };
 
   return (
-    <div class={styles.Container}>
+    <div class={styles.Container} classList={{[props.class]: !!props.class}}>
       <div class={styles.KeysContainer}>
-        {shortcutKeys.map((key) => (
+        {shortcutKeys.map((key, idx, array) => (
           <button
             use:ripple
             class={styles.KeyButton}
-            classList={{[styles.selected]: isSelected(key)}}
+            classList={{
+              [styles.selected]: isSelected(key),
+              [styles.KeyButtonFirst]: idx === 0,
+              [styles.KeyButtonLast]: idx === array.length - 1
+            }}
             onClick={[onKeyClick, key]}
           >
             {getKeyContent(key)}

@@ -254,37 +254,26 @@ const MessagesTab = () => {
   };
 
 
-  let captionContainer: HTMLDivElement;
-  let heightMeasure: HTMLDivElement;
-
   let exitAnimationPromise: Promise<any>;
 
   const caption = () => (
-    <div ref={captionContainer}>
-      <div ref={heightMeasure} style="height: 0; overflow: hidden; visibility: hidden" tabIndex={-1}>
-        {i18n('PaidMessages.ChargeForMessagesDescription')}
-      </div>
-      <Transition
-        mode="outin"
-        onEnter={async(_el, done) => {
-          const el = _el as HTMLElement;
-          await el.animate({opacity: [0, 1]}, {duration: TRANSITION_TIME}).finished;
-          done();
-        }}
-        onExit={async(_el, done) => {
-          const el = _el as HTMLElement;
-
-          await (exitAnimationPromise = el.animate({opacity: [1, 0]}, {duration: TRANSITION_TIME}).finished);
-          done();
-        }}
-      >
-        {
-          !isPaid() ?
-            i18n('Privacy.MessagesInfo', [anchorCallback(() => void PopupPremium.show())]) :
-            i18n('PaidMessages.ChargeForMessagesDescription')
-        }
-      </Transition>
-    </div>
+    <Transition
+      mode="outin"
+      onEnter={async(el, done) => {
+        await el.animate({opacity: [0, 1]}, {duration: TRANSITION_TIME}).finished;
+        done();
+      }}
+      onExit={async(el, done) => {
+        await (exitAnimationPromise = el.animate({opacity: [1, 0]}, {duration: TRANSITION_TIME}).finished);
+        done();
+      }}
+    >
+      {
+        !isPaid() ?
+          i18n('Privacy.MessagesInfo', [anchorCallback(() => void PopupPremium.show())]) :
+          i18n('PaidMessages.ChargeForMessagesDescription')
+      }
+    </Transition>
   );
 
   const chosenPeersLabel = () => {

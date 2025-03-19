@@ -68,12 +68,13 @@
   }
 
   --bigger-radius: 8px;
-  &:first-child {
+
+  &First {
     border-top-left-radius: var(--bigger-radius);
     border-bottom-left-radius: var(--bigger-radius);
   }
 
-  &:last-child {
+  &Last {
     border-top-right-radius: var(--bigger-radius);
     border-bottom-right-radius: var(--bigger-radius);
   }

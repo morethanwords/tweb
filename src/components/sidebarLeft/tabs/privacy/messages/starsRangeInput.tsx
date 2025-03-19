@@ -78,7 +78,7 @@ const StarRangeInput: Component<{
         <div class={styles.Value}>{i18n('PaidMessages.Stars', [
           numberThousandSplitterForStars(parseInt(props.value.toFixed(0)))
         ])}</div>
-        <div class={styles.Limit}>{numberThousandSplitterForStars(totalStars)}</div>
+        <div class={`${styles.Limit} ${styles.LimitLast}`}>{numberThousandSplitterForStars(totalStars)}</div>
       </div>
       <div class={styles.InputWrapper}>
         <input
