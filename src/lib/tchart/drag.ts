@@ -41,7 +41,7 @@ export default class TDrag {
     this.isTouch = isTouchDevice();
     this.skipMoveEnd = true;
 
-    const $global = opts.useElForMove ? opts.$el : window;
+    const $global: HTMLElement | Window = opts.useElForMove ? opts.$el : window;
 
     opts.$el.addEventListener(this.isTouch ? 'touchstart' : 'mousedown', this.onDragStart, {
       passive: false
