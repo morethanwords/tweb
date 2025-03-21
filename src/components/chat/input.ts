@@ -124,9 +124,12 @@ import eachSecond from '../../helpers/eachSecond';
 import {wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
 import showTooltip from '../tooltip';
 import createContextMenu from '../../helpers/dom/createContextMenu';
-import {Accessor, createEffect, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
+import {createStore} from 'solid-js/store';
 import SelectedEffect from './selectedEffect';
 import windowSize from '../../helpers/windowSize';
+import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
+import accumulate from '../../helpers/array/accumulate';
 
 // console.log('Recorder', Recorder);
 
@@ -288,6 +291,8 @@ export default class ChatInput {
   private rowsWrapperWrapper: HTMLDivElement;
   private controlContainer: HTMLElement;
   private fakeSelectionWrapper: HTMLDivElement;
+  private starsBadge: HTMLElement;
+  private starsBadgeStars: HTMLElement;
 
   private fakeWrapperTo: HTMLElement;
   private toggleControlButtonDisability: () => void;
@@ -1110,6 +1115,8 @@ export default class ChatInput {
       ['forward_filled', 'forward']
     ];
     this.btnSend.append(...icons.map(([name, type]) => Icon(name, 'animated-button-icon-icon', 'btn-send-icon-' + type)));
+
+    this.addStarsBadge();
 
     this.btnSendContainer.append(this.recordRippleEl, this.btnSend);
 
@@ -2187,10 +2194,17 @@ export default class ChatInput {
     this.updateOffset('commands', forwards, skipAnimation, useRafs, true);
   }
 
+  private async shouldSendWithStars() {
+    const requirement = await this.managers.appUsersManager.getRequirementToContact(this.chat.peerId.toUserId()); // should be cached probably here
+    const starsAmount = requirement._ === 'requirementToContactPaidMessages' ? Number(requirement.stars_amount) : 0;
+
+    return starsAmount;
+  }
+
   private async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
     canSend ??= await this.chat.canSend('send_plain');
     const {peerId, threadId, isForum, type} = this.chat;
-    let key: LangPackKey, args: FormatterArguments;
+    let key: LangPackKey, args: FormatterArguments, starsAmount: number;
     if(!canSend) {
       key = 'Channel.Persmission.MessageBlock';
     } else if(threadId && !isForum && !peerId.isUser()) {
@@ -2212,6 +2226,14 @@ export default class ChatInput {
       } else {
         key = 'Message';
       }
+    } else if(starsAmount = await this.shouldSendWithStars()) {
+      this.starsMessageState.set({starsAmount});
+
+      key = 'PaidMessages.MessageForStars';
+      const starsElement = document.createElement('span');
+      starsElement.classList.add('input-message-placeholder-stars');
+      starsElement.append(Icon('star'), numberThousandSplitterForStars(starsAmount));
+      args = [starsElement];
     } else {
       key = 'Message';
     }
@@ -2487,7 +2509,7 @@ export default class ChatInput {
     const [value, markdownEntities] = parseMarkdown(richValue, markdownEntities1, true);
     const entities = mergeEntities(markdownEntities, parseEntities(value));
 
-    // this.chat.log('messageInput entities', richValue, value, markdownEntities, caretPos);
+    this.starsMessageState.set({hasMessage: !!richValue.trim()});
 
     maybeClearUndoHistory(this.messageInput);
 
@@ -3382,6 +3404,7 @@ export default class ChatInput {
     return isInputEmpty(this.messageInput);
   }
 
+  // Update send button
   public updateSendBtn() {
     let icon: ChatSendBtnIcon;
 
@@ -3396,6 +3419,11 @@ export default class ChatInput {
       this.btnSend.classList.toggle(i, icon === i);
     });
 
+    this.starsMessageState.set({
+      hasSendButton: icon === 'send',
+      forwarding: accumulate(Object.values(this.forwarding || {}).map(messages => messages.length), 0)
+    })
+
     if(this.btnScheduled) {
       this.btnScheduled.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled);
     }
@@ -3406,6 +3434,50 @@ export default class ChatInput {
 
     this.onUpdateSendBtn?.(icon);
   }
+
+  private async addStarsBadge() {
+    const starsBadge = this.starsBadge = document.createElement('span');
+    starsBadge.classList.add('btn-send-stars-badge');
+
+    const starsBadgeStars = this.starsBadgeStars = document.createElement('span');
+
+    starsBadge.append(
+      Icon('star', 'btn-send-stars-badge__icon'),
+      starsBadgeStars
+    );
+
+    this.btnSendContainer.append(starsBadge);
+  }
+
+  private starsMessageState = createRoot((dispose) => {
+    const middleware = this.getMiddleware();
+    middleware.onDestroy(() => void dispose());
+
+    const [store, set] = createStore({
+      hasSendButton: false,
+      hasMessage: false,
+      forwarding: 0,
+      starsAmount: 0
+    });
+
+    // createEffect(() => {
+    //   console.log('{...store} :>> ', {...store});
+    // });
+
+    const isVisible = createMemo(() => store.hasSendButton && !!store.starsAmount && (store.hasMessage || !!store.forwarding));
+    const totalStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding + Number(store.hasMessage)));
+
+    createEffect(() => {
+      // console.log('isVisible() :>> ', isVisible());
+      this.starsBadge.classList.toggle('btn-send-stars-badge--active', isVisible());
+    });
+
+    createEffect(() => {
+      this.starsBadgeStars.innerText = numberThousandSplitterForStars(totalStarsAmount());
+    });
+
+    return {store, set};
+  });
 
   private getValueAndEntities(input: HTMLElement) {
     const {entities: apiEntities, value} = getRichValueWithCaret(input, true, false);

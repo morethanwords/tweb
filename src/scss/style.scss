@@ -806,6 +806,11 @@ input:-webkit-autofill:active {
   }
 }
 
+.overflow-hidden {
+  overflow: hidden;
+}
+
+
 @keyframes thumbnail-fade-in-opacity {
   0% {
     opacity: 0;

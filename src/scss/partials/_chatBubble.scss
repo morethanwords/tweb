@@ -1037,7 +1037,7 @@
         }
       }
 
-      &-premiumRequired {
+      &-premiumRequired, &-paidMessages {
         .service-msg {
           max-width: 200px;
         }
@@ -1054,6 +1054,18 @@
 
         .bubble-service-button {
           margin: 0 auto;
+        }
+
+        .empty-bubble-placeholder-stars {
+          display: inline-flex;
+          align-items: center;
+          vertical-align: -0.2em;
+          font-weight: 600;
+          // line-height: 1em;
+          height: 1em;
+        }
+        .empty-bubble-placeholder-star-icon {
+          font-size: 16px;
         }
       }
 
