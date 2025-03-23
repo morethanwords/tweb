@@ -206,7 +206,7 @@ export function wrapRoundVideoBubble({
           hideToast();
           PopupPremium.show({feature: 'voice_to_text'});
         })]
-      })
+      });
       return;
     }
 
@@ -220,15 +220,15 @@ export function wrapRoundVideoBubble({
       const transcribedText = document.createElement('div');
       transcribedText.classList.add('video-transcribed-text');
       try {
-        const transcribeResult = await rootScope.managers.appMessagesManager.transcribeAudio(message);
+        const transcribeResult = await rootScope.managers.appMessagesManager.transcribeAudio(message, true);
         if(!transcribeResult.text) throw '';
         transcribedText.innerText = transcribeResult.text;
-      } catch{
+      } catch(err) {
         transcribedText.append(i18n('Chat.Voice.Transribe.Error'));
       }
       audioMessageContainer.append(transcribedText);
       transcribedText.append(audioSentTime);
-      transcribedText.append(createElementFromMarkup(`<span class="clearfix"></span>`))
+      transcribedText.append(createElementFromMarkup(`<span class="clearfix"></span>`));
 
       spinner.remove();
     }

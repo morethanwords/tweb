@@ -368,6 +368,8 @@ export class AppMessagesManager extends AppManager {
 
   private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
 
+  private waitingTranscriptions: Map<string, CancellablePromise<MessagesTranscribedAudio>>;
+
   protected after() {
     this.clear(true);
 
@@ -553,6 +555,7 @@ export class AppMessagesManager extends AppManager {
   public clear = (init?: boolean) => {
     if(this.middleware) {
       this.middleware.clean();
+      this.waitingTranscriptions.forEach((promise) => promise.reject());
     } else {
       this.middleware = getMiddleware();
       this.uploadFilePromises = {};
@@ -568,6 +571,7 @@ export class AppMessagesManager extends AppManager {
     this.threadsServiceMessagesIdsStorage = {};
     this.threadsToReplies = {};
     this.references = {};
+    this.waitingTranscriptions = new Map();
 
     this.dialogsStorage && this.dialogsStorage.clear(init);
     this.filtersStorage && this.filtersStorage.clear(init);
@@ -660,7 +664,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public async transcribeAudio(message: Message.message): Promise<MessagesTranscribedAudio> {
+  public async transcribeAudio(message: Message.message, noPending?: boolean): Promise<MessagesTranscribedAudio> {
     const {id, peerId} = message;
 
     const process = (result: MessagesTranscribedAudio) => {
@@ -672,18 +676,29 @@ export class AppMessagesManager extends AppManager {
         text: result.text,
         transcription_id: result.transcription_id
       });
+
+      return result;
     };
 
-    return this.apiManager.invokeApiSingleProcess({
+    const key = `${peerId}_${message.mid}`;
+    let promise: CancellablePromise<MessagesTranscribedAudio>;
+    if(noPending) {
+      promise = this.waitingTranscriptions.get(key);
+      if(!promise) {
+        this.waitingTranscriptions.set(key, promise = deferredPromise());
+        promise.finally(() => {
+          this.waitingTranscriptions.delete(key);
+        });
+      }
+    }
+
+    const ret = this.apiManager.invokeApiSingleProcess({
       method: 'messages.transcribeAudio',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         msg_id: id
       },
-      processResult: (result) => {
-        process(result);
-        return result;
-      },
+      processResult: process,
       processError: (error) => {
         if(error.type === 'TRANSCRIPTION_FAILED' || error.type === 'MSG_VOICE_MISSING') {
           process({
@@ -697,6 +712,8 @@ export class AppMessagesManager extends AppManager {
         throw error;
       }
     });
+
+    return promise || ret;
   }
 
   public async sendText(
@@ -6709,6 +6726,17 @@ export class AppMessagesManager extends AppManager {
     const peerId = this.appPeersManager.getPeerId(update.peer);
     const text = update.text;
     const mid = this.appMessagesIdsManager.generateMessageId(update.msg_id, channelId);
+
+    const key = `${peerId}_${mid}`;
+    const waitingPromise = this.waitingTranscriptions.get(key);
+    if(!update.pFlags.pending && waitingPromise) {
+      waitingPromise.resolve({
+        _: 'messages.transcribedAudio',
+        pFlags: {},
+        text,
+        transcription_id: update.transcription_id
+      });
+    }
 
     this.rootScope.dispatchEvent('message_transcribed', {peerId, mid, text, pending: update.pFlags.pending});
   };
