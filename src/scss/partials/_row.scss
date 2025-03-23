@@ -270,7 +270,7 @@ $row-border-radius: $border-radius-medium;
   &-clickable {
     cursor: pointer;
     overflow: hidden;
-    
+
     @include respond-to(not-handhelds) {
       border-radius: $row-border-radius;
     }

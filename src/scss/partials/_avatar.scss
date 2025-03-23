@@ -7,7 +7,7 @@
 .avatar-like {
   --size: 54px;
   --multiplier: 1;
-  color: #fff;
+  color: #fff !important;
   width: var(--size);
   height: var(--size);
   line-height: var(--size) !important;

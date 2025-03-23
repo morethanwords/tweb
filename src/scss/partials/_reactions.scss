@@ -65,6 +65,8 @@
   left: 50%;
   display: flex;
   align-items: center;
+  width: max-content;
+  max-width: calc(100% - 1rem);
 
   .tooltip-notch { display: none; }
 
@@ -87,6 +89,7 @@
     margin-inline-start: 2.5rem;
     font-weight: var(--font-weight-bold);
     cursor: pointer;
+    white-space: nowrap;
 
     &-timer {
       width: 1.5rem;

@@ -827,6 +827,13 @@ $btn-menu-z-index: 4;
       padding: 0 .125rem;
       margin-inline-end: .25rem;
     }
+
+    // * for mobiles
+    .currency-star-icon {
+      width: 100%;
+      height: 100%;
+      padding: .0625rem;
+    }
   }
 }
 

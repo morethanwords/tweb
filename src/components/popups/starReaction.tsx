@@ -293,7 +293,7 @@ export default class PopupStarReaction extends PopupElement {
           <div class="popup-star-reaction-senders-avatar-wrap">
             {anonymous ? (
               <div class="popup-star-reaction-senders-item-anonymous">
-                <img src="/assets/img/anon_paid_reaction.png" alt="Anonymous" />
+                <img src="assets/img/anon_paid_reaction.png" alt="Anonymous" />
               </div>
             ) : (
               <AvatarNewTsx peerId={peerId} size={60} />

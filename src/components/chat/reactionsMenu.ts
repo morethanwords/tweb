@@ -37,6 +37,7 @@ import contextMenuController from '../../helpers/contextMenuController';
 import callbackify from '../../helpers/callbackify';
 import partition from '../../helpers/array/partition';
 import {PAID_REACTION_EMOJI_DOCID} from '../../lib/customEmoji/constants';
+import {StarsStar} from '../popups/stars';
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
@@ -516,9 +517,14 @@ export class ChatReactionsMenu {
       loadPromises
     };
 
+    const canUseAnimations = this.canUseAnimations();
+    const isPaidReaction = reaction._ === 'reactionPaid';
+
     this.container.append(reactionDiv);
-    if(reaction._ === 'reactionPaid') {
-      loadPromises.push(lottieLoader.loadAnimationAsAsset({
+    if(isPaidReaction && !canUseAnimations) {
+      appearWrapper.append(StarsStar() as HTMLElement);
+    } else if(isPaidReaction && canUseAnimations) {
+      const promise = lottieLoader.loadAnimationAsAsset({
         container: appearWrapper,
         loop: false,
         autoplay: true,
@@ -527,16 +533,15 @@ export class ChatReactionsMenu {
         skipRatio: 1,
         middleware,
         group: this.animationGroup
-      }, 'StarReactionAppear').then(player => {
-        players.appear = player
-
+      }, 'StarReactionAppear').then((player) => {
+        players.appear = player;
 
         const selectLoadPromise = lottieLoader.loadAnimationAsAsset({
           container: selectWrapper,
           loop: false,
           autoplay: false,
           ...options
-        }, 'StarReactionSelect')
+        }, 'StarReactionSelect');
 
         player.addEventListener('enterFrame', (frameNo) => {
           if(player.maxFrame === frameNo) {
@@ -549,8 +554,10 @@ export class ChatReactionsMenu {
             }, noop);
           }
         });
-      }));
-    } else if(!this.canUseAnimations() || !availableReaction) {
+      });
+
+      loadPromises.push(promise);
+    } else if(!canUseAnimations || !availableReaction) {
       delete options.needFadeIn;
       delete options.withThumb;
 

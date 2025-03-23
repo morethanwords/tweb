@@ -35,6 +35,7 @@ import {StarsStar} from '../popups/stars';
 import {Sparkles} from '../sparkles';
 import {AnimatedCounter} from '../animatedCounter';
 import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt';
+import {IS_MOBILE} from '../../environment/userAgent';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -372,7 +373,7 @@ export default class ReactionElement extends HTMLElement {
       return this.customEmojiElement;
     } else if(reaction._ === 'reactionPaid') {
       this.classList.add('is-paid');
-      this.append(Sparkles({mode: 'button', isDiv: true}));
+      if(!IS_MOBILE) this.append(Sparkles({mode: 'button', isDiv: true}));
       this.stickerContainer.append(StarsStar() as HTMLElement);
     }
   }
