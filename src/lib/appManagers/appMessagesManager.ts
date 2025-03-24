@@ -8725,6 +8725,16 @@ export class AppMessagesManager extends AppManager {
       random_id: randomId
     });
   }
+
+  public async getHistoryMessagesCount(peerId: PeerId): Promise<number> {
+    const storage = this.getHistoryMessagesStorage(peerId);
+    if(!storage) {
+      return 0;
+    }
+
+    const history = getObjectKeysAndSort(storage, 'desc');
+    return history.length;
+  }
 }
 
 class Batcher<Key, Id, Result> {

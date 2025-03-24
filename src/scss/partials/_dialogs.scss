@@ -1,0 +1,24 @@
+.dialog {
+  .dialog-messages-count-badge {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    background-color: var(--primary-color);
+    color: var(--light-primary-color);
+    border-radius: 0.5rem;
+    padding: 0.125rem 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease-out;
+    
+    &.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+}

@@ -137,6 +137,7 @@ export type DialogDom = {
   listEl: HTMLElement,
   subtitleEl: HTMLElement,
   mutedIcon?: HTMLElement,
+  messagesCountBadge?: HTMLElement,
 
   setLastMessagePromise?: CancellablePromise<void>,
   setUnreadMessagePromise?: CancellablePromise<void>
@@ -482,8 +483,15 @@ export class DialogElement extends Row {
     this.dom.subtitleEl.append(badge);
   }
 
+  public createMessagesCountBadge() {
+    if(this.dom.messagesCountBadge) return;
+    const badge = this.dom.messagesCountBadge = document.createElement('div');
+    badge.className = `dialog-subtitle-badge badge badge-${BADGE_SIZE} messages-count-badge`;
+    this.dom.subtitleEl.append(badge);
+  }
+
   public toggleBadgeByKey(
-    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pinnedBadge'>,
+    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pinnedBadge' | 'messagesCountBadge'>,
     hasBadge: boolean,
     justCreated: boolean,
     batch?: boolean
@@ -3358,6 +3366,8 @@ export class AppDialogsManager {
     return this.setUnreadMessages(options).catch(() => {});
   }
 
+
+
   private async setUnreadMessages({
     dialog,
     dialogElement,
@@ -3386,6 +3396,7 @@ export class AppDialogsManager {
       !isSaved ? this.getLastMessageForDialog(dialog) : undefined,
       isTopic || isSaved ? !!dialog.pFlags.pinned : this.managers.dialogsStorage.isDialogPinned(peerId, this.filterId),
       this.managers.appMessagesManager.isDialogUnread(dialog),
+      this.managers.appMessagesManager.getHistoryMessagesCount(peerId), 
       peerId.isAnyChat() && !isTopic ? this.managers.acknowledged.dialogsStorage.getForumUnreadCount(peerId, true).then((result) => {
         if(result.cached) {
           return result.result;
@@ -3399,7 +3410,7 @@ export class AppDialogsManager {
       }).catch(() => undefined as {count: number, hasUnmuted: boolean}) : undefined
     ]);
 
-    let [isMuted, m, isPinned, isDialogUnread, forumUnreadCount] = await middleware(promises);
+    let [isMuted, m, isPinned, isDialogUnread, messagesCount, forumUnreadCount] = await middleware(promises);
     const wasMuted = dom.listEl.classList.contains('is-muted') && !dom.listEl.classList.contains('backwards');
 
     const {count: unreadTopicsCount, hasUnmuted: hasUnmutedTopic} = forumUnreadCount || {};
@@ -3490,7 +3501,13 @@ export class AppDialogsManager {
       dialogElement.createReactionsBadge();
     }
 
-    const badgesLength = [hasPinnedBadge, hasUnreadBadge, hasMentionsBadge, hasReactionsBadge].filter(Boolean).length;
+    const hasMessagesCountBadge = !isSaved && messagesCount > 0;
+    const isMessagesCountBadgeMounted = !!dom.messagesCountBadge;
+    if(hasMessagesCountBadge) {
+      dialogElement.createMessagesCountBadge();
+    }
+
+    const badgesLength = [hasPinnedBadge, hasUnreadBadge, hasMentionsBadge, hasReactionsBadge, hasMessagesCountBadge].filter(Boolean).length;
     SetTransition({
       element: dialogElement.subtitleRow,
       className: 'has-only-pinned-badge',
@@ -3503,7 +3520,8 @@ export class AppDialogsManager {
       ['unreadBadge', hasUnreadBadge, isUnreadBadgeMounted],
       ['unreadAvatarBadge', hasUnreadAvatarBadge, isUnreadAvatarBadgeMounted],
       ['mentionsBadge', hasMentionsBadge, isMentionsBadgeMounted],
-      ['reactionsBadge', hasReactionsBadge, isReactionsBadgeMounted]
+      ['reactionsBadge', hasReactionsBadge, isReactionsBadgeMounted],
+      ['messagesCountBadge', hasMessagesCountBadge, isMessagesCountBadgeMounted]
     ];
 
     a.forEach(([key, hasBadge, isBadgeMounted]) => {
@@ -3560,6 +3578,10 @@ export class AppDialogsManager {
     //     dom.unreadBadge.replaceChildren();
     //   }
     // }
+
+    if(hasMessagesCountBadge) {
+      dom.messagesCountBadge.innerText = formatNumber(messagesCount, 1);
+    }
 
     deferred.resolve();
   }
