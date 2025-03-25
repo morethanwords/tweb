@@ -220,7 +220,8 @@ export type MessageSendingParams = Partial<{
   updateStickersetOrder: boolean,
   savedReaction: Reaction[],
   invertMedia: boolean,
-  effect: DocId
+  effect: DocId,
+  allowPaidStars: number
 }>;
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -796,7 +797,8 @@ export class AppMessagesManager extends AppManager {
           query_id: options.queryId,
           id: options.resultId,
           clear_draft: options.clearDraft,
-          send_as: sendAs
+          send_as: sendAs,
+          allow_paid_stars: options.allowPaidStars || undefined
         }, sentRequestOptions);
       } else {
         const commonOptions: Partial<MessagesSendMessage | MessagesSendMedia> = {
@@ -811,7 +813,8 @@ export class AppMessagesManager extends AppManager {
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
-          effect: options.effect
+          effect: options.effect,
+          allow_paid_stars: options.allowPaidStars || undefined
         };
 
         const mergedOptions: MessagesSendMessage | MessagesSendMedia = {
@@ -1349,7 +1352,8 @@ export class AppMessagesManager extends AppManager {
           send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
-          effect: options.effect
+          effect: options.effect,
+          allow_paid_stars: options.allowPaidStars || undefined
         }).then((updates) => {
           this.apiUpdatesManager.processUpdateMessage(updates);
         });
@@ -1529,6 +1533,7 @@ export class AppMessagesManager extends AppManager {
             update_stickersets_order: options.updateStickersetOrder,
             invert_media: options.invertMedia,
             effect: options.effect,
+            allow_paid_stars: options.allowPaidStars || undefined,
             ...(options.stars ? {
               media: multiMedia[0].media,
               message: multiMedia[0].message,
@@ -1801,7 +1806,8 @@ export class AppMessagesManager extends AppManager {
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
           silent: options.silent,
-          send_as: sendAs
+          send_as: sendAs,
+          allow_paid_stars: options.allowPaidStars || undefined
         }, sentRequestOptions);
       } else {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendMedia', {
@@ -1814,7 +1820,8 @@ export class AppMessagesManager extends AppManager {
           schedule_date: options.scheduleDate,
           silent: options.silent,
           send_as: sendAs,
-          update_stickersets_order: options.updateStickersetOrder
+          update_stickersets_order: options.updateStickersetOrder,
+          allow_paid_stars: options.allowPaidStars || undefined
         }, sentRequestOptions);
       }
 
@@ -2042,7 +2049,8 @@ export class AppMessagesManager extends AppManager {
       replies: this.generateReplies(peerId, options.replyTo),
       views: isBroadcast && 1,
       pending: true,
-      effect: options.effect
+      effect: options.effect,
+      paid_message_stars: options.allowPaidStars || undefined
     };
 
     defineNotNumerableProperties(message, ['send', 'promise']);

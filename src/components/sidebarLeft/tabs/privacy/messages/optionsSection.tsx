@@ -15,6 +15,8 @@ import {MessagesPrivacyOption, MessagesTabStateStore, TRANSITION_TIME} from './c
 import useIsPremium from './useIsPremium';
 
 
+const DEFAULT_STARS_AMOUNT = 10;
+
 const OptionsSection: Component<{
   store: MessagesTabStateStore;
   setStore: SetStoreFunction<MessagesTabStateStore>;
@@ -102,7 +104,7 @@ const OptionsSection: Component<{
         clickable={handlePremiumOptionClick(() => {
           props.setStore(prev => ({
             option: MessagesPrivacyOption.Paid,
-            stars: prev.stars || 1
+            stars: prev.stars || DEFAULT_STARS_AMOUNT
           }));
         })}
         title={i18n('PaidMessages.ChargeForMessages')}

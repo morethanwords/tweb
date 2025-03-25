@@ -64,7 +64,7 @@ import PopupStars from '../popups/stars';
 import {getPendingPaidReactionKey, PENDING_PAID_REACTIONS} from './reactions';
 import ChatBackgroundStore from '../../lib/chatBackgroundStore';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
-import showPaidReactionTooltip from './paidReactionTooltip';
+import showUndoablePaidTooltip, {paidReactionLangKeys} from './undoablePaidTooltip';
 
 export enum ChatType {
   Chat = 'chat',
@@ -142,6 +142,8 @@ export default class Chat extends EventListenerBase<{
   public isAnonymousSending: boolean;
   public isUserBlocked: boolean;
   public isPremiumRequired: boolean;
+
+  public starsAmount: number | undefined;
 
   public animationGroup: AnimationItemGroup;
 
@@ -835,7 +837,8 @@ export default class Chat extends EventListenerBase<{
       isBot,
       isAnonymousSending,
       isUserBlocked,
-      isPremiumRequired
+      isPremiumRequired,
+      starsAmount
     ] = await m(Promise.all([
       this.managers.appPeersManager.noForwards(peerId),
       this.managers.appPeersManager.isPeerRestricted(peerId),
@@ -848,7 +851,8 @@ export default class Chat extends EventListenerBase<{
       this.managers.appPeersManager.isBot(peerId),
       this.managers.appMessagesManager.isAnonymousSending(peerId),
       peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),
-      this.isPremiumRequiredToContact(peerId)
+      this.isPremiumRequiredToContact(peerId),
+      this.managers.appPeersManager.getStarsAmount(peerId)
     ]));
 
     // ! WARNING: TEMPORARY, HAVE TO GET TOPIC
@@ -869,6 +873,7 @@ export default class Chat extends EventListenerBase<{
     this.isAnonymousSending = isAnonymousSending;
     this.isUserBlocked = isUserBlocked;
     this.isPremiumRequired = isPremiumRequired;
+    this.starsAmount = starsAmount;
 
     if(this.selection) {
       this.selection.isScheduled = type === ChatType.Scheduled;
@@ -1196,7 +1201,8 @@ export default class Chat extends EventListenerBase<{
         sendAsPeerId: this.input.sendAsPeerId,
         effect: this.input.effect()
       }),
-      savedReaction: this.savedReaction
+      savedReaction: this.savedReaction,
+      allowPaidStars: this.starsAmount
     };
   }
 
@@ -1354,8 +1360,12 @@ export default class Chat extends EventListenerBase<{
       setReservedStars((reservedStars) => reservedStars + count);
 
       if(!hadPending) {
-        showPaidReactionTooltip({
-          pending
+        showUndoablePaidTooltip({
+          titleCount: pending.count,
+          subtitleCount: pending.count,
+          sendTime: pending.sendTime,
+          onUndo: () => void pending.abortController.abort(),
+          ...paidReactionLangKeys
         });
       }
     }

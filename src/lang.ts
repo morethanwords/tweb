@@ -2504,7 +2504,6 @@ const lang = {
     'one_value': 'You reacted with **%d** star.',
     'other_value': 'You reacted with **%d** stars.'
   },
-  'StarsSentUndo': 'Undo',
   'StarsReactionTitle': 'Star Reaction',
   'StarsReactionText': 'Choose how many stars you want to send to **%s** to support this post.',
   'StarsReactionTopSenders': 'Top Senders',
@@ -3181,16 +3180,37 @@ const lang = {
   'PaidMessages.ChargeForMessages': 'Charge for Messages',
   'PaidMessages.ChargeForMessagesDescription': 'Charge a fee for messages from people outside your contacts or who you haven\'t messaged first',
   'PaidMessages.SetPrice': 'Set your price per message',
-  'PaidMessages.Stars': '%d Stars',
   'PaidMessages.SetPriceDescription': 'You will receive 85% of the selected fee (~%d$) for each incoming messages',
   'PaidMessages.RemoveFee': 'Remove Fee',
   'PaidMessages.RemoveFeeDescription': 'Add users or entire groups who won\'t have to pay to send you messages',
   'PaidMessages.NewChatDescription': '%s charges %d for each message',
   'PaidMessages.MessageForStars': 'Message for %d',
+  'PaidMessages.UserChargesForOneMessageWarning': '**%s** charges **%s** per incoming message. Would you like to pay **%s** to send one message?',
+  'PaidMessages.UserChargesForMultipleMessageWarning': '**%s** charges **%s** per incoming message. Would you like to pay **%s** to send **%d messages**?',
+  'PaidMessages.PayForMessages': {
+    'one_value': 'Pay for %d message',
+    'other_value': 'Pay for %d messages'
+  },
+  'PaidMessages.MessagesSent': {
+    'one_value': '%d Message sent!',
+    'other_value': '%d Messages sent!'
+  },
+  'PaidMessages.YouPaidForMessages': {
+    'one_value': 'You paid %d Star.',
+    'other_value': 'You paid %d Stars.'
+  },
+  'PaidMessages.YouPaidToSendMessages': {
+    'one_value': 'You paid **%2$s** to send a message',
+    'other_value': 'You paid **%2$s** to send %1$d messages.'
+  },
+  'PaidMessages.YouReceivedStarsFrom': 'You received **%s** from %s',
 
   'BuyStars': 'Buy Stars',
   'UnsavedChanges': 'Unsaved Changes',
-  'PrivacyUnsavedChangesDescription': 'You have changed some privacy settings. Save changes?'
+  'PrivacyUnsavedChangesDescription': 'You have changed some privacy settings. Save changes?',
+  'DontAskAgain': 'Don\'t ask again',
+  'ConfirmPayment': 'Confirm Payment',
+  'Undo': 'Undo'
 };
 
 export default lang;

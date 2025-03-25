@@ -185,12 +185,13 @@ import findAndSplice from '../../helpers/array/findAndSplice';
 import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
 import icon from '../icon';
 import {MediaSearchContext} from '../appMediaPlaybackController';
-import {wrapRoundVideoBubble} from './roundVideoBubble';
+import {wrapRoundVideoBubble} from './bubbleParts/roundVideoBubble';
 import {createMessageSpoilerOverlay} from '../messageSpoilerOverlay';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
 import {Sparkles} from '../sparkles';
 import PopupStars from '../popups/stars';
+import addPaidServiceMessage from './bubbleParts/paidServiceMessage';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -5219,6 +5220,8 @@ export default class ChatBubbles {
     contentWrapper.append(bubbleContainer);
     bubble.append(contentWrapper);
 
+    await addPaidServiceMessage({bubble, message, our});
+
 
     let isInUnread = !our &&
       !message.pFlags.out &&
@@ -5252,6 +5255,7 @@ export default class ChatBubbles {
     const isStoryMention = isMessage && (message.media as MessageMedia.messageMediaStory)?.pFlags?.via_mention;
     const regularAsService = !!isStoryMention;
     let returnService: boolean;
+
     if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
       const action = (message as Message.messageService).action;
       if(action) {
