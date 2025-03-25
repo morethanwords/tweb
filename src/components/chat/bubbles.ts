@@ -5220,7 +5220,7 @@ export default class ChatBubbles {
     contentWrapper.append(bubbleContainer);
     bubble.append(contentWrapper);
 
-    await addPaidServiceMessage({bubble, message, our});
+    await addPaidServiceMessage({bubble, message, our, peerId: this.peerId});
 
 
     let isInUnread = !our &&

@@ -6,9 +6,10 @@ type Args = {
   bubble: HTMLElement;
   message: Message.message | Message.messageService;
   our: boolean;
+  peerId: PeerId;
 };
 
-export default async function addPaidServiceMessage({bubble, message, our}: Args) {
+export default async function addPaidServiceMessage({bubble, message, our, peerId}: Args) {
   const paidStars = Number((message as Message.message).paid_message_stars)
 
   if(paidStars) {
@@ -21,7 +22,7 @@ export default async function addPaidServiceMessage({bubble, message, our}: Args
     paidServiceMessage.append(
       our ?
         i18n('PaidMessages.YouPaidToSendMessages', [1, i18n('Stars', [paidStars])]) :
-        i18n('PaidMessages.YouReceivedStarsFrom', [i18n('Stars', [paidStars, await wrapPeerTitle({peerId: message.peerId})])])
+        i18n('PaidMessages.YouReceivedStarsFrom', [i18n('Stars', [paidStars]), await wrapPeerTitle({peerId: peerId, onlyFirstName: true})])
     );
 
     bubble.prepend(paidServiceMessage);
