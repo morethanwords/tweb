@@ -130,6 +130,7 @@ import SelectedEffect from './selectedEffect';
 import windowSize from '../../helpers/windowSize';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import accumulate from '../../helpers/array/accumulate';
+import confirmationPopup from '../confirmationPopup';
 
 // console.log('Recorder', Recorder);
 
@@ -2110,6 +2111,9 @@ export default class ChatInput {
 
       this._center(neededFakeContainer, false);
 
+      this.starsBadgeState.set({starsAmount: this.chat.starsAmount}); // should reset when undefined
+
+
       // console.warn('[input] finishpeerchange ends');
     };
   }
@@ -2194,17 +2198,14 @@ export default class ChatInput {
     this.updateOffset('commands', forwards, skipAnimation, useRafs, true);
   }
 
-  private async shouldSendWithStars() {
-    const requirement = await this.managers.appUsersManager.getRequirementToContact(this.chat.peerId.toUserId()); // should be cached probably here
-    const starsAmount = requirement._ === 'requirementToContactPaidMessages' ? Number(requirement.stars_amount) : 0;
-
-    return starsAmount;
+  private async getStarsAmount() {
+    return this.managers.appPeersManager.getStarsAmount(this.chat.peerId);
   }
 
   private async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
     canSend ??= await this.chat.canSend('send_plain');
     const {peerId, threadId, isForum, type} = this.chat;
-    let key: LangPackKey, args: FormatterArguments, starsAmount: number;
+    let key: LangPackKey, args: FormatterArguments;
     if(!canSend) {
       key = 'Channel.Persmission.MessageBlock';
     } else if(threadId && !isForum && !peerId.isUser()) {
@@ -2226,13 +2227,11 @@ export default class ChatInput {
       } else {
         key = 'Message';
       }
-    } else if(starsAmount = await this.shouldSendWithStars()) {
-      this.starsMessageState.set({starsAmount});
-
+    } else if(this.chat.starsAmount) {
       key = 'PaidMessages.MessageForStars';
       const starsElement = document.createElement('span');
       starsElement.classList.add('input-message-placeholder-stars');
-      starsElement.append(Icon('star'), numberThousandSplitterForStars(starsAmount));
+      starsElement.append(Icon('star'), numberThousandSplitterForStars(this.chat.starsAmount));
       args = [starsElement];
     } else {
       key = 'Message';
@@ -2509,7 +2508,7 @@ export default class ChatInput {
     const [value, markdownEntities] = parseMarkdown(richValue, markdownEntities1, true);
     const entities = mergeEntities(markdownEntities, parseEntities(value));
 
-    this.starsMessageState.set({hasMessage: !!richValue.trim()});
+    this.starsBadgeState.set({hasMessage: !!richValue.trim()});
 
     maybeClearUndoHistory(this.messageInput);
 
@@ -2939,6 +2938,7 @@ export default class ChatInput {
     }
 
     this.recording = value;
+    this.starsBadgeState.set({isRecording: value});
     this.setShrinking(this.recording, ['is-recording']);
     this.updateSendBtn();
     this.onRecording?.(value);
@@ -3419,10 +3419,10 @@ export default class ChatInput {
       this.btnSend.classList.toggle(i, icon === i);
     });
 
-    this.starsMessageState.set({
+    this.starsBadgeState.set({
       hasSendButton: icon === 'send',
       forwarding: accumulate(Object.values(this.forwarding || {}).map(messages => messages.length), 0)
-    })
+    });
 
     if(this.btnScheduled) {
       this.btnScheduled.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled);
@@ -3449,13 +3449,14 @@ export default class ChatInput {
     this.btnSendContainer.append(starsBadge);
   }
 
-  private starsMessageState = createRoot((dispose) => {
+  private starsBadgeState = createRoot((dispose) => {
     const middleware = this.getMiddleware();
     middleware.onDestroy(() => void dispose());
 
     const [store, set] = createStore({
       hasSendButton: false,
       hasMessage: false,
+      isRecording: false,
       forwarding: 0,
       starsAmount: 0
     });
@@ -3464,7 +3465,11 @@ export default class ChatInput {
     //   console.log('{...store} :>> ', {...store});
     // });
 
-    const isVisible = createMemo(() => store.hasSendButton && !!store.starsAmount && (store.hasMessage || !!store.forwarding));
+    const canSend = createMemo(() => store.hasSendButton && !!store.starsAmount);
+    const hasSomethingToSend = createMemo(() => store.hasMessage || !!store.forwarding || store.isRecording);
+
+    const isVisible = createMemo(() => canSend() && hasSomethingToSend());
+
     const totalStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding + Number(store.hasMessage)));
 
     createEffect(() => {
@@ -3634,6 +3639,53 @@ export default class ChatInput {
     }
 
     // this.onMessageSent();
+  }
+
+  private async checkIfUserReallyWantsToPay(args: {
+    peerId: PeerId;
+    messagesCount: number;
+    starsAmount: number;
+  }) {
+    const {peerId, messagesCount, starsAmount} = args;
+    const totalStarsAmount = starsAmount * messagesCount;
+
+    const {dontShowPaidMessageWarningFor = []} = await this.managers.appStateManager.getState();
+    const shouldShowWarning = !dontShowPaidMessageWarningFor?.includes(peerId);
+
+    if(!shouldShowWarning) return true;
+
+    try {
+      const dontShowAgain = await confirmationPopup({
+        titleLangKey: 'ConfirmPayment',
+        descriptionLangKey: messagesCount > 1 ?
+          'PaidMessages.UserChargesForMultipleMessageWarning' :
+          'PaidMessages.UserChargesForOneMessageWarning',
+        descriptionLangArgs: [
+          await wrapPeerTitle({peerId}),
+          i18n('Stars', [starsAmount]),
+          i18n('Stars', [totalStarsAmount]),
+          ...(messagesCount > 1 ? [messagesCount] : [])
+        ],
+        checkbox: {
+          text: 'DontAskAgain'
+        },
+        button: {
+          langKey: 'PaidMessages.PayForMessages',
+          langArgs: [messagesCount]
+        }
+      });
+
+      if(dontShowAgain)
+        this.managers.appStateManager.setByKey(
+          'dontShowPaidMessageWarningFor',
+          [...dontShowPaidMessageWarningFor, peerId]
+        );
+    }
+    catch{
+      return false;
+    }
+
+    return true;
   }
 
   public async sendMessageWithDocument({
