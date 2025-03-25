@@ -2122,15 +2122,19 @@
     display: none;
   }
 
-  &.can-have-tail.is-group-last .bubble-tail {
-    position: absolute;
-    bottom: 0;
-    width: 11px;
-    height: 20px;
-    z-index: -2;
-    display: block;
-    fill: var(--message-background-color);
-    transform: translateY(1px) scaleX(var(--reflect));
+  &.can-have-tail {
+    &.is-forced-rounded, &.is-group-last {
+      .bubble-tail {
+        position: absolute;
+        bottom: 0;
+        width: 11px;
+        height: 20px;
+        z-index: -2;
+        display: block;
+        fill: var(--message-background-color);
+        transform: translateY(1px) scaleX(var(--reflect));
+      }
+    }
   }
 
   &.photo, 
@@ -3282,11 +3286,11 @@
     }
   }
 
-  &.is-group-first {
+  &.is-group-first, &.is-forced-rounded {
     --border-start-start-radius: #{$bubble-border-radius-big};
   }
 
-  &.is-group-last {
+  &.is-group-last, &.is-forced-rounded {
     &.can-have-tail {
       --border-end-start-radius: 0 !important;
 
@@ -3430,11 +3434,11 @@
     }
   } */
     
-  &.is-group-first {
+  &.is-group-first, &.is-forced-rounded {
     --border-start-end-radius: #{$bubble-border-radius-big};
   }
-    
-  &.is-group-last {
+
+  &.is-group-last, &.is-forced-rounded {
     &.can-have-tail {
       --border-end-end-radius: 0 !important;
 

@@ -8346,8 +8346,7 @@ export default class ChatBubbles {
       stickerDiv.classList.add(BASE_CLASS + '-sticker');
       stickerDiv.append(Icon('premium_restrict'));
 
-      const requirement = await this.managers.appUsersManager.getRequirementToContact(this.peerId.toUserId()); // should be cached probably here
-      const starsAmount = requirement._ === 'requirementToContactPaidMessages' ? Number(requirement.stars_amount) : 0;
+      const starsAmount = await this.managers.appPeersManager.getStarsAmount(this.peerId); // should be cached probably here
 
       const starsElement = document.createElement('span');
       starsElement.classList.add(BASE_CLASS + '-stars')
