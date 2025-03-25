@@ -22,7 +22,7 @@ import ReactionElement, {ReactionLayoutType, REACTIONS_DISPLAY_COUNTER_AT, REACT
 import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
 import pause from '../../helpers/schedulers/pause';
 import {Accessor, Setter} from 'solid-js';
-import showPaidReactionTooltip from './paidReactionTooltip';
+
 
 const CLASS_NAME = 'reactions';
 const TAG_NAME = CLASS_NAME + '-element';
