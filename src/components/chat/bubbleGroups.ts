@@ -174,13 +174,11 @@ export class BubbleGroup {
     //   return;
     // }
 
-    const both = (el: HTMLElement, what: 'add' | 'remove' = 'add') =>
-      el.classList[what]('is-group-first', 'is-group-last');
-
     const first = items[length - 1].bubble;
 
-    if(items.length === 1 || first.dataset.isPaid) {
-      both(first);
+    if(items.length === 1) {
+      first.classList.add('is-group-first', 'is-group-last');
+      // this.setClipIfNeeded(first);
       return;
     } else {
       first.classList.remove('is-group-last');
@@ -190,17 +188,13 @@ export class BubbleGroup {
 
     for(let i = 1, _length = length - 1; i < _length; ++i) {
       const bubble = items[i].bubble;
-      both(bubble, bubble.dataset.isPaid ? 'add' : 'remove');
+      bubble.classList.remove('is-group-last', 'is-group-first');
       // this.setClipIfNeeded(bubble, true);
     }
 
     const last = items[0].bubble;
-    if(last.dataset.isPaid) {
-      both(last);
-    } else {
-      last.classList.remove('is-group-first');
-      last.classList.add('is-group-last');
-    }
+    last.classList.remove('is-group-first');
+    last.classList.add('is-group-last');
     // this.setClipIfNeeded(last);
   }
 
