@@ -6,7 +6,7 @@
 
 import {Accessor, createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
 
-import {SEND_PAID_REACTION_DELAY} from '../../lib/mtproto/mtproto_config';
+import {SEND_PAID_WITH_STARS_DELAY} from '../../lib/mtproto/mtproto_config';
 import appImManager from '../../lib/appManagers/appImManager';
 import I18n, {i18n, LangPackKey} from '../../lib/langPack';
 import eachSecond from '../../helpers/eachSecond';
@@ -61,7 +61,7 @@ export default function showUndoablePaidTooltip(props: {
         });
 
         animate(() => {
-          const progress = (props.sendTime() - Date.now()) / SEND_PAID_REACTION_DELAY;
+          const progress = (props.sendTime() - Date.now()) / SEND_PAID_WITH_STARS_DELAY;
           setProgressCircumference(progress * circumference);
           return !cleaned;
         });

@@ -79,14 +79,16 @@ import getUnreadReactions from './utils/messages/getUnreadReactions';
 import isMentionUnread from './utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
 import commonStateStorage from '../commonStateStorage';
+import PaidMessagesQueue from './utils/messages/paidMessagesQueue';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
 
-const APITIMEOUT = 0;
 const DO_NOT_READ_HISTORY = false;
 const DO_NOT_SEND_MESSAGES = false;
+const SEND_MESSAGES_TO_PAID_QUEUE = false;
 const DO_NOT_DELETE_MESSAGES = false;
+
 const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
 
 export enum HistoryType {
@@ -370,6 +372,7 @@ export class AppMessagesManager extends AppManager {
   private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
 
   private waitingTranscriptions: Map<string, CancellablePromise<MessagesTranscribedAudio>>;
+  private paidMessagesQueue = new PaidMessagesQueue;
 
   protected after() {
     this.clear(true);
@@ -1983,8 +1986,11 @@ export class AppMessagesManager extends AppManager {
         if(options.clearDraft) {
           this.appDraftsManager.clearDraft(peerId, options.threadId);
         }
+        if(DO_NOT_SEND_MESSAGES) return;
 
-        if(!DO_NOT_SEND_MESSAGES) {
+        if(SEND_MESSAGES_TO_PAID_QUEUE || message.paid_message_stars) {
+          this.paidMessagesQueue.add(peerId, message);
+        } else {
           message.send();
         }
       });
@@ -8757,6 +8763,17 @@ export class AppMessagesManager extends AppManager {
     return this.apiManager.invokeApiSingle('messages.clickSponsoredMessage', {
       random_id: randomId
     });
+  }
+
+  public sendQueuedPaidMessages(peerId: PeerId) {
+    this.paidMessagesQueue.send(peerId);
+  }
+
+  public cancelQueuedPaidMessages(peerId: PeerId) {
+    this.paidMessagesQueue.forEachOf(peerId, (message) => {
+      this.cancelPendingMessage(message.random_id);
+    });
+    this.paidMessagesQueue.remove(peerId);
   }
 }
 

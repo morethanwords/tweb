@@ -17,7 +17,7 @@ import ChatContextMenu from './contextMenu';
 import ChatInput from './input';
 import ChatSelection from './selection';
 import ChatTopbar from './topbar';
-import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_REACTION_DELAY} from '../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY} from '../../lib/mtproto/mtproto_config';
 import SetTransition from '../singleTransition';
 import AppPrivateSearchTab from '../sidebarRight/tabs/search';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
@@ -1347,7 +1347,7 @@ export default class Chat extends EventListenerBase<{
       }
 
       pending.setCount((_count) => _count + count);
-      pending.setSendTime(Date.now() + SEND_PAID_REACTION_DELAY);
+      pending.setSendTime(Date.now() + SEND_PAID_WITH_STARS_DELAY);
       pending.sendTimeout = window.setTimeout(() => {
         const count = pending.count();
         pending.abortController.abort();
@@ -1355,7 +1355,7 @@ export default class Chat extends EventListenerBase<{
           ...options,
           count
         });
-      }, SEND_PAID_REACTION_DELAY);
+      }, SEND_PAID_WITH_STARS_DELAY);
 
       setReservedStars((reservedStars) => reservedStars + count);
 

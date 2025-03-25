@@ -60,7 +60,7 @@ import PopupDeleteMessages from '../popups/deleteMessages';
 import fixSafariStickyInputFocusing, {IS_STICKY_INPUT_BUGGED} from '../../helpers/dom/fixSafariStickyInputFocusing';
 import PopupPeer from '../popups/peer';
 import appMediaPlaybackController from '../appMediaPlaybackController';
-import {BOT_START_PARAM, GENERAL_TOPIC_ID, NULL_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
+import {BOT_START_PARAM, GENERAL_TOPIC_ID, NULL_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import setCaretAt from '../../helpers/dom/setCaretAt';
 import DropdownHover from '../../helpers/dropdownHover';
 import findUpTag from '../../helpers/dom/findUpTag';
@@ -131,6 +131,9 @@ import windowSize from '../../helpers/windowSize';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import accumulate from '../../helpers/array/accumulate';
 import confirmationPopup from '../confirmationPopup';
+import useStars, {setReservedStars} from '../../stores/stars';
+import PopupStars from '../popups/stars';
+import showUndoablePaidTooltip, {paidMessagesLangKeys} from './undoablePaidTooltip';
 
 // console.log('Recorder', Recorder);
 
@@ -2113,6 +2116,15 @@ export default class ChatInput {
 
       this.starsBadgeState.set({starsAmount: this.chat.starsAmount}); // should reset when undefined
 
+      (window as any).showUndoablePaidTooltip = (count: number) => showUndoablePaidTooltip({
+        sendTime: ((date) => () => date + 5000)(Date.now()),
+        titleCount: () => count,
+        subtitleCount: () => count * 250,
+        onUndo: () => {
+          console.log('showUndoablePaidTooltip Undone');
+        },
+        ...paidMessagesLangKeys
+      })
 
       // console.warn('[input] finishpeerchange ends');
     };
@@ -3453,6 +3465,7 @@ export default class ChatInput {
     const middleware = this.getMiddleware();
     middleware.onDestroy(() => void dispose());
 
+    console.log('[my-debug] starsBadgeState created');
     const [store, set] = createStore({
       hasSendButton: false,
       hasMessage: false,
@@ -3461,9 +3474,9 @@ export default class ChatInput {
       starsAmount: 0
     });
 
-    // createEffect(() => {
-    //   console.log('{...store} :>> ', {...store});
-    // });
+    createEffect(() => {
+      console.log('{...store} :>> ', {...store});
+    });
 
     const canSend = createMemo(() => store.hasSendButton && !!store.starsAmount);
     const hasSomethingToSend = createMemo(() => store.hasMessage || !!store.forwarding || store.isRecording);
@@ -3473,7 +3486,7 @@ export default class ChatInput {
     const totalStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding + Number(store.hasMessage)));
 
     createEffect(() => {
-      // console.log('isVisible() :>> ', isVisible());
+      console.log('isVisible() :>> ', isVisible());
       this.starsBadge.classList.toggle('btn-send-stars-badge--active', isVisible());
     });
 
@@ -3544,32 +3557,57 @@ export default class ChatInput {
     const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
     const trimmedValue = value.trim();
 
+    let messagesCount = 0;
+
     if(chat.type !== ChatType.Scheduled && !editMsgId) {
-      let count = 0;
       if(this.forwarding) {
         for(const fromPeerId in this.forwarding) {
-          count += this.forwarding[fromPeerId].length;
+          messagesCount += this.forwarding[fromPeerId].length;
         }
       }
 
-      count += +!!trimmedValue;
+      messagesCount += +!!trimmedValue;
 
       const config = await this.managers.apiManager.getConfig();
       const MAX_LENGTH = config.message_length_max;
       const textOverflow = value.length > MAX_LENGTH;
+
+      // TODO: Check what's up with the slow mode???
       if(textOverflow) {
-        ++count;
+        ++messagesCount;
       }
 
       if(await this.showSlowModeTooltipIfNeeded({
-        sendingFew: count > 1,
+        sendingFew: messagesCount > 1,
         textOverflow
       })) {
         return;
       }
     }
 
-    // return;
+    const starsAmount = await this.getStarsAmount() || undefined;
+
+    const totalStarsAmount = messagesCount * starsAmount;
+
+    const starsBalance = +useStars()();
+
+    if(starsAmount && starsBalance < totalStarsAmount) {
+      this.pendingUndoableMessage.abort();
+      PopupElement.createPopup(PopupStars);
+      return;
+    }
+
+    if(starsAmount) {
+      const wantsToPay = await this.checkIfUserReallyWantsToPay({peerId, messagesCount, starsAmount});
+      if(!wantsToPay) return;
+
+      setReservedStars(prev => prev + starsAmount);
+      this.pendingUndoableMessage.setReserved(prev => prev + starsAmount * messagesCount);
+
+      this.triggerUndoableMessages(messagesCount);
+    }
+
+
     if(editMsgId) {
       const message = this.editMessage;
       if(trimmedValue || message.media) {
@@ -3639,6 +3677,83 @@ export default class ChatInput {
     }
 
     // this.onMessageSent();
+  }
+
+  private pendingUndoableMessage = createRoot(dispose => {
+    this.getMiddleware().onDestroy(() => void dispose());
+
+    const [messageCount, setMessageCount] = createSignal(0);
+    const [sendTime, setSendTime] = createSignal(0);
+
+    const [reserved, setReserved] = createSignal(0);
+
+    let abortController = new AbortController;
+
+    return {
+      timeoutId: 0,
+
+      messageCount,
+      setMessageCount,
+      sendTime,
+      setSendTime,
+      reserved,
+      setReserved,
+
+      abort() {
+        abortController.abort();
+      },
+
+      get signal() {
+        return abortController.signal;
+      },
+
+      softReset() {
+        self.clearTimeout(this.timeoutId);
+        this.timeoutId = 0;
+
+        abortController = new AbortController;
+      },
+
+      reset() {
+        this.softReset();
+
+        setSendTime(0);
+        setMessageCount(0);
+
+        setReservedStars(prev => prev - reserved());
+        setReserved(0);
+      }
+    };
+  });
+
+
+  private triggerUndoableMessages(messageCount: number) {
+    const {peerId, starsAmount/*  = 24 */} = this.chat;
+
+    this.pendingUndoableMessage.setMessageCount(prev => prev + messageCount);
+    this.pendingUndoableMessage.setSendTime(Date.now() + SEND_PAID_WITH_STARS_DELAY);
+
+    if(!this.pendingUndoableMessage.timeoutId) {
+      showUndoablePaidTooltip({
+        sendTime: this.pendingUndoableMessage.sendTime,
+        titleCount: this.pendingUndoableMessage.messageCount,
+        subtitleCount: () => this.pendingUndoableMessage.messageCount() * starsAmount,
+        onUndo: () => void this.pendingUndoableMessage.abort(),
+        ...paidMessagesLangKeys
+      });
+    }
+
+    this.pendingUndoableMessage.softReset();
+
+    this.pendingUndoableMessage.signal.addEventListener('abort', () => {
+      this.managers.appMessagesManager.cancelQueuedPaidMessages(peerId);
+      this.pendingUndoableMessage.reset();
+    });
+
+    this.pendingUndoableMessage.timeoutId = self.setTimeout(() => {
+      this.managers.appMessagesManager.sendQueuedPaidMessages(peerId);
+      this.pendingUndoableMessage.reset();
+    }, SEND_PAID_WITH_STARS_DELAY);
   }
 
   private async checkIfUserReallyWantsToPay(args: {
