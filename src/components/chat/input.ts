@@ -133,6 +133,8 @@ import accumulate from '../../helpers/array/accumulate';
 import showUndoablePaidTooltip, {paidMessagesLangKeys} from './undoablePaidTooltip';
 import splitStringByLength from '../../helpers/string/splitStringByLength';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
+import throttle from '../../helpers/schedulers/throttle';
+import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
 
 // console.log('Recorder', Recorder);
 
@@ -2529,7 +2531,7 @@ export default class ChatInput {
     const [value, markdownEntities] = parseMarkdown(richValue, markdownEntities1, true);
     const entities = mergeEntities(markdownEntities, parseEntities(value));
 
-    this.starsBadgeState.set({hasMessage: !!richValue.trim()});
+    this.throttledSetMessageCountToBadgeState(richValue);
 
     maybeClearUndoHistory(this.messageInput);
 
@@ -3468,43 +3470,60 @@ export default class ChatInput {
     );
 
     this.btnSendContainer.append(starsBadge);
+
+    this.starsBadgeState.set({inited: true});
   }
 
   private starsBadgeState = createRoot((dispose) => {
     const middleware = this.getMiddleware();
     middleware.onDestroy(() => void dispose());
 
-    console.log('[my-debug] starsBadgeState created');
+    // console.log('[my-debug] starsBadgeState created');
     const [store, set] = createStore({
+      inited: false,
+
       hasSendButton: false,
-      hasMessage: false,
+      messageCount: 0,
       isRecording: false,
       forwarding: 0,
       starsAmount: 0
     });
 
-    createEffect(() => {
-      console.log('{...store} :>> ', {...store});
-    });
+    // createEffect(() => {
+    //   console.log('[my-debug] {...store} :>> ', {...store});
+    // });
 
     const canSend = createMemo(() => store.hasSendButton && !!store.starsAmount);
-    const hasSomethingToSend = createMemo(() => store.hasMessage || !!store.forwarding || store.isRecording);
+    const hasSomethingToSend = createMemo(() => !!store.messageCount || !!store.forwarding || store.isRecording);
 
     const isVisible = createMemo(() => canSend() && hasSomethingToSend());
 
-    const totalStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding + Number(store.hasMessage)));
+    const totalStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding + store.messageCount));
 
     createEffect(() => {
-      console.log('isVisible() :>> ', isVisible());
-      this.starsBadge?.classList.toggle('btn-send-stars-badge--active', isVisible());
+      if(!store.inited) return;
+      this.starsBadge.classList.toggle('btn-send-stars-badge--active', isVisible());
     });
 
     createEffect(() => {
+      if(!store.inited) return;
       this.starsBadgeStars.innerText = numberThousandSplitterForStars(totalStarsAmount());
     });
 
     return {store, set};
   });
+
+  private throttledSetMessageCountToBadgeState = asyncThrottle(async(value: string) => {
+    if(!value?.trim()) {
+      this.starsBadgeState.set({messageCount: 0});
+      return;
+    }
+
+    const config = await this.managers.apiManager.getConfig();
+    const splitted = splitStringByLength(value, config.message_length_max);
+
+    this.starsBadgeState.set({messageCount: splitted.length});
+  }, 120);
 
   private getValueAndEntities(input: HTMLElement) {
     const {entities: apiEntities, value} = getRichValueWithCaret(input, true, false);
