@@ -1201,8 +1201,7 @@ export default class Chat extends EventListenerBase<{
         sendAsPeerId: this.input.sendAsPeerId,
         effect: this.input.effect()
       }),
-      savedReaction: this.savedReaction,
-      allowPaidStars: this.starsAmount
+      savedReaction: this.savedReaction
     };
   }
 

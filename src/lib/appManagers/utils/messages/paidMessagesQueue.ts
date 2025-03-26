@@ -1,24 +1,28 @@
-import {Message} from '../../../../layer';
-
 import {SEND_PAID_WITH_STARS_DELAY} from '../../../mtproto/mtproto_config';
 
 
 const FALLBACK_TIMEOUT = SEND_PAID_WITH_STARS_DELAY + 2e3;
 
+
+type PaidMessagesQueueItem = {
+  send?: () => void;
+  cancel?: () => void;
+};
+
 export default class PaidMessagesQueue {
-  queued = new Map<PeerId, Message.message[]>();
+  queued = new Map<PeerId, PaidMessagesQueueItem[]>();
   /**
    * In case the client doesn't handle the sending properly
    */
   fallbackTimeouts = new Map<PeerId, number>();
 
-  add(peerId: PeerId, message: Message.message) {
+  add(peerId: PeerId, item: PaidMessagesQueueItem) {
     const queuedForThisPeer = this.queued.get(peerId) || [];
     const timeout = this.fallbackTimeouts.get(peerId);
 
     self.clearTimeout(timeout);
 
-    queuedForThisPeer.push(message);
+    queuedForThisPeer.push(item);
 
     this.queued.set(peerId, queuedForThisPeer);
     this.fallbackTimeouts.set(
@@ -37,17 +41,23 @@ export default class PaidMessagesQueue {
     this.fallbackTimeouts.delete(peerId);
   }
 
-  send(peerId: PeerId) {
+  sendFor(peerId: PeerId) {
     const queuedForThisPeer = this.queued.get(peerId) || [];
 
-    queuedForThisPeer.forEach((message) => {
-      message.send?.();
+    queuedForThisPeer.forEach((item) => {
+      item.send?.();
     });
 
     this.remove(peerId);
   }
 
-  forEachOf(peerId: PeerId, callback: (message: Message.message) => void) {
-    (this.queued.get(peerId) || []).forEach(callback);
+  cancelFor(peerId: PeerId) {
+    const queuedForThisPeer = this.queued.get(peerId) || [];
+
+    queuedForThisPeer.forEach((item) => {
+      item.cancel?.();
+    });
+
+    this.remove(peerId);
   }
 }

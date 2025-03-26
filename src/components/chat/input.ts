@@ -130,10 +130,9 @@ import SelectedEffect from './selectedEffect';
 import windowSize from '../../helpers/windowSize';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import accumulate from '../../helpers/array/accumulate';
-import confirmationPopup from '../confirmationPopup';
-import useStars, {setReservedStars} from '../../stores/stars';
-import PopupStars from '../popups/stars';
 import showUndoablePaidTooltip, {paidMessagesLangKeys} from './undoablePaidTooltip';
+import splitStringByLength from '../../helpers/string/splitStringByLength';
+import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
 
 // console.log('Recorder', Recorder);
 
@@ -349,6 +348,8 @@ export default class ChatInput {
 
   private fileSelectionPromise: CancellablePromise<File[]>;
 
+  private paidMessageInterceptor: PaidMessagesInterceptor;
+
   constructor(
     public chat: Chat,
     private appImManager: AppImManager,
@@ -360,6 +361,12 @@ export default class ChatInput {
     this.excludeParts = {};
     this.isFocused = false;
     this.emoticonsDropdown = emoticonsDropdown;
+
+    this.paidMessageInterceptor = new PaidMessagesInterceptor(chat, managers);
+
+    this.getMiddleware().onDestroy(() => {
+      this.paidMessageInterceptor.dispose();
+    });
   }
 
   public construct() {
@@ -874,7 +881,7 @@ export default class ChatInput {
       this.recordRippleEl.style.transform = '';
     };
 
-    this.recorder.ondataavailable = (typedArray: Uint8Array) => {
+    this.recorder.ondataavailable = async(typedArray: Uint8Array) => {
       if(this.releaseMediaPlayback) {
         this.releaseMediaPlayback();
         this.releaseMediaPlayback = undefined;
@@ -895,6 +902,12 @@ export default class ChatInput {
       }
 
       const sendingParams = this.chat.getMessageSendingParams();
+
+      const preparedStars = await this.paidMessageInterceptor.prepareStarsForPayment(1)
+      if(preparedStars === PAYMENT_REJECTED) return;
+
+      sendingParams.allowPaidStars = preparedStars;
+
       const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
       const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
       opusDecodeController.decode(typedArray, true).then((result) => {
@@ -2210,10 +2223,6 @@ export default class ChatInput {
     this.updateOffset('commands', forwards, skipAnimation, useRafs, true);
   }
 
-  private async getStarsAmount() {
-    return this.managers.appPeersManager.getStarsAmount(this.chat.peerId);
-  }
-
   private async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
     canSend ??= await this.chat.canSend('send_plain');
     const {peerId, threadId, isForum, type} = this.chat;
@@ -3487,7 +3496,7 @@ export default class ChatInput {
 
     createEffect(() => {
       console.log('isVisible() :>> ', isVisible());
-      this.starsBadge.classList.toggle('btn-send-stars-badge--active', isVisible());
+      this.starsBadge?.classList.toggle('btn-send-stars-badge--active', isVisible());
     });
 
     createEffect(() => {
@@ -3557,56 +3566,37 @@ export default class ChatInput {
     const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
     const trimmedValue = value.trim();
 
-    let messagesCount = 0;
-
+    let messageCount = 0;
     if(chat.type !== ChatType.Scheduled && !editMsgId) {
       if(this.forwarding) {
         for(const fromPeerId in this.forwarding) {
-          messagesCount += this.forwarding[fromPeerId].length;
+          messageCount += this.forwarding[fromPeerId].length;
         }
       }
-
-      messagesCount += +!!trimmedValue;
 
       const config = await this.managers.apiManager.getConfig();
       const MAX_LENGTH = config.message_length_max;
       const textOverflow = value.length > MAX_LENGTH;
 
-      // TODO: Check what's up with the slow mode???
-      if(textOverflow) {
-        ++messagesCount;
-      }
+      messageCount += trimmedValue ?
+        splitStringByLength(value, MAX_LENGTH).length :
+        0;
 
       if(await this.showSlowModeTooltipIfNeeded({
-        sendingFew: messagesCount > 1,
+        sendingFew: messageCount > 1,
         textOverflow
       })) {
         return;
       }
     }
 
-    const starsAmount = await this.getStarsAmount() || undefined;
+    const preparedStars = !editMsgId ?
+      await this.paidMessageInterceptor.prepareStarsForPayment(messageCount) :
+      undefined;
 
-    const totalStarsAmount = messagesCount * starsAmount;
+    if(preparedStars === PAYMENT_REJECTED) return;
 
-    const starsBalance = +useStars()();
-
-    if(starsAmount && starsBalance < totalStarsAmount) {
-      this.pendingUndoableMessage.abort();
-      PopupElement.createPopup(PopupStars);
-      return;
-    }
-
-    if(starsAmount) {
-      const wantsToPay = await this.checkIfUserReallyWantsToPay({peerId, messagesCount, starsAmount});
-      if(!wantsToPay) return;
-
-      setReservedStars(prev => prev + starsAmount);
-      this.pendingUndoableMessage.setReserved(prev => prev + starsAmount * messagesCount);
-
-      this.triggerUndoableMessages(messagesCount);
-    }
-
+    sendingParams.allowPaidStars = preparedStars;
 
     if(editMsgId) {
       const message = this.editMessage;
@@ -3679,129 +3669,6 @@ export default class ChatInput {
     // this.onMessageSent();
   }
 
-  private pendingUndoableMessage = createRoot(dispose => {
-    this.getMiddleware().onDestroy(() => void dispose());
-
-    const [messageCount, setMessageCount] = createSignal(0);
-    const [sendTime, setSendTime] = createSignal(0);
-
-    const [reserved, setReserved] = createSignal(0);
-
-    let abortController = new AbortController;
-
-    return {
-      timeoutId: 0,
-
-      messageCount,
-      setMessageCount,
-      sendTime,
-      setSendTime,
-      reserved,
-      setReserved,
-
-      abort() {
-        abortController.abort();
-      },
-
-      get signal() {
-        return abortController.signal;
-      },
-
-      softReset() {
-        self.clearTimeout(this.timeoutId);
-        this.timeoutId = 0;
-
-        abortController = new AbortController;
-      },
-
-      reset() {
-        this.softReset();
-
-        setSendTime(0);
-        setMessageCount(0);
-
-        setReservedStars(prev => prev - reserved());
-        setReserved(0);
-      }
-    };
-  });
-
-
-  private triggerUndoableMessages(messageCount: number) {
-    const {peerId, starsAmount/*  = 24 */} = this.chat;
-
-    this.pendingUndoableMessage.setMessageCount(prev => prev + messageCount);
-    this.pendingUndoableMessage.setSendTime(Date.now() + SEND_PAID_WITH_STARS_DELAY);
-
-    if(!this.pendingUndoableMessage.timeoutId) {
-      showUndoablePaidTooltip({
-        sendTime: this.pendingUndoableMessage.sendTime,
-        titleCount: this.pendingUndoableMessage.messageCount,
-        subtitleCount: () => this.pendingUndoableMessage.messageCount() * starsAmount,
-        onUndo: () => void this.pendingUndoableMessage.abort(),
-        ...paidMessagesLangKeys
-      });
-    }
-
-    this.pendingUndoableMessage.softReset();
-
-    this.pendingUndoableMessage.signal.addEventListener('abort', () => {
-      this.managers.appMessagesManager.cancelQueuedPaidMessages(peerId);
-      this.pendingUndoableMessage.reset();
-    });
-
-    this.pendingUndoableMessage.timeoutId = self.setTimeout(() => {
-      this.managers.appMessagesManager.sendQueuedPaidMessages(peerId);
-      this.pendingUndoableMessage.reset();
-    }, SEND_PAID_WITH_STARS_DELAY);
-  }
-
-  private async checkIfUserReallyWantsToPay(args: {
-    peerId: PeerId;
-    messagesCount: number;
-    starsAmount: number;
-  }) {
-    const {peerId, messagesCount, starsAmount} = args;
-    const totalStarsAmount = starsAmount * messagesCount;
-
-    const {dontShowPaidMessageWarningFor = []} = await this.managers.appStateManager.getState();
-    const shouldShowWarning = !dontShowPaidMessageWarningFor?.includes(peerId);
-
-    if(!shouldShowWarning) return true;
-
-    try {
-      const dontShowAgain = await confirmationPopup({
-        titleLangKey: 'ConfirmPayment',
-        descriptionLangKey: messagesCount > 1 ?
-          'PaidMessages.UserChargesForMultipleMessageWarning' :
-          'PaidMessages.UserChargesForOneMessageWarning',
-        descriptionLangArgs: [
-          await wrapPeerTitle({peerId}),
-          i18n('Stars', [starsAmount]),
-          i18n('Stars', [totalStarsAmount]),
-          ...(messagesCount > 1 ? [messagesCount] : [])
-        ],
-        checkbox: {
-          text: 'DontAskAgain'
-        },
-        button: {
-          langKey: 'PaidMessages.PayForMessages',
-          langArgs: [messagesCount]
-        }
-      });
-
-      if(dontShowAgain)
-        this.managers.appStateManager.setByKey(
-          'dontShowPaidMessageWarningFor',
-          [...dontShowPaidMessageWarningFor, peerId]
-        );
-    }
-    catch{
-      return false;
-    }
-
-    return true;
-  }
 
   public async sendMessageWithDocument({
     document,
@@ -3844,8 +3711,15 @@ export default class ChatInput {
       return false;
     }
 
+    const sendingParams = this.chat.getMessageSendingParams();
+
+    const preparedStars = await this.paidMessageInterceptor.prepareStarsForPayment(1);
+    if(preparedStars === PAYMENT_REJECTED) return;
+
+    sendingParams.allowPaidStars = preparedStars;
+
     this.managers.appMessagesManager.sendFile({
-      ...this.chat.getMessageSendingParams(),
+      ...sendingParams,
       file: document,
       isMedia: true,
       clearDraft,

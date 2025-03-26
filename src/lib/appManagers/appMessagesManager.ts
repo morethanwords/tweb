@@ -1989,7 +1989,10 @@ export class AppMessagesManager extends AppManager {
         if(DO_NOT_SEND_MESSAGES) return;
 
         if(SEND_MESSAGES_TO_PAID_QUEUE || message.paid_message_stars) {
-          this.paidMessagesQueue.add(peerId, message);
+          this.paidMessagesQueue.add(peerId, {
+            send: () => void message?.send?.(),
+            cancel: () => void this.cancelPendingMessage(message?.random_id)
+          });
         } else {
           message.send();
         }
@@ -2792,7 +2795,8 @@ export class AppMessagesManager extends AppManager {
           text: originalMessage.message,
           entities: originalMessage.entities,
           scheduleDate: options.scheduleDate,
-          silent: options.silent
+          silent: options.silent,
+          allowPaidStars: options.allowPaidStars
         });
 
         mids.splice(i--, 1);
@@ -2928,7 +2932,7 @@ export class AppMessagesManager extends AppManager {
       sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
     }
 
-    const promise = /* true ? Promise.resolve() :  */this.apiManager.invokeApiAfter('messages.forwardMessages', {
+    const send = () => this.apiManager.invokeApiAfter('messages.forwardMessages', {
       from_peer: this.appPeersManager.getInputPeerById(fromPeerId),
       id: mids.map((mid) => getServerMessageId(mid)),
       random_id: newMessages.map((message) => message.random_id),
@@ -2939,7 +2943,8 @@ export class AppMessagesManager extends AppManager {
       drop_author: options.dropAuthor,
       drop_media_captions: options.dropCaptions,
       send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
-      top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined
+      top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined,
+      allow_paid_stars: options.allowPaidStars ? options.allowPaidStars * mids.length : undefined
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates);
@@ -2952,9 +2957,28 @@ export class AppMessagesManager extends AppManager {
       }
     });
 
+    const cancel = () => {
+      newMessages.forEach(message => this.cancelPendingMessage(message.random_id));
+    };
+
     this.pendingAfterMsgs[peerId] = sentRequestOptions;
 
-    const promises: (typeof promise)[] = [promise];
+    if(options.allowPaidStars) {
+      this.paidMessagesQueue.add(peerId, {
+        send: () => void send(),
+        cancel
+      });
+      this.forwardMessages({
+        ...options,
+        peerId,
+        fromPeerId,
+        mids: overflowMids
+      });
+
+      return;
+    }
+
+    const promises: Promise<any>[] = [send()];
     if(overflowMids.length) {
       promises.push(this.forwardMessages({
         ...options,
@@ -8766,14 +8790,11 @@ export class AppMessagesManager extends AppManager {
   }
 
   public sendQueuedPaidMessages(peerId: PeerId) {
-    this.paidMessagesQueue.send(peerId);
+    this.paidMessagesQueue.sendFor(peerId);
   }
 
   public cancelQueuedPaidMessages(peerId: PeerId) {
-    this.paidMessagesQueue.forEachOf(peerId, (message) => {
-      this.cancelPendingMessage(message.random_id);
-    });
-    this.paidMessagesQueue.remove(peerId);
+    this.paidMessagesQueue.cancelFor(peerId);
   }
 }
 
