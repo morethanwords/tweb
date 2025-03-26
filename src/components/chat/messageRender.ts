@@ -31,6 +31,7 @@ import wrapStickerAnimation from '../wrappers/stickerAnimation';
 import Scrollable from '../scrollable';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 
 const NBSP = '&nbsp;';
 
@@ -238,6 +239,13 @@ export namespace MessageRender {
       if(message.effect) {
         effectSpan = makeEffect({onlyElement: true});
         args.push(effectSpan);
+      }
+
+      if(message.paid_message_stars && options.chat.isAnyGroup) {
+        const inlineStars = document.createElement('span');
+        inlineStars.classList.add('inline-message-stars');
+        inlineStars.append(numberThousandSplitterForStars(+message.paid_message_stars), Icon('star'));
+        args.push(inlineStars)
       }
 
       // if(USER_REACTIONS_INLINE && message.peer_id._ === 'peerUser'/*  && message.reactions?.results?.length */) {

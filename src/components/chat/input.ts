@@ -130,10 +130,8 @@ import SelectedEffect from './selectedEffect';
 import windowSize from '../../helpers/windowSize';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import accumulate from '../../helpers/array/accumulate';
-import showUndoablePaidTooltip, {paidMessagesLangKeys} from './undoablePaidTooltip';
 import splitStringByLength from '../../helpers/string/splitStringByLength';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
-import throttle from '../../helpers/schedulers/throttle';
 import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
 
 // console.log('Recorder', Recorder);
@@ -2131,16 +2129,6 @@ export default class ChatInput {
 
       this.starsBadgeState.set({starsAmount: this.chat.starsAmount}); // should reset when undefined
 
-      (window as any).showUndoablePaidTooltip = (count: number) => showUndoablePaidTooltip({
-        sendTime: ((date) => () => date + 5000)(Date.now()),
-        titleCount: () => count,
-        subtitleCount: () => count * 250,
-        onUndo: () => {
-          console.log('showUndoablePaidTooltip Undone');
-        },
-        ...paidMessagesLangKeys
-      })
-
       // console.warn('[input] finishpeerchange ends');
     };
   }
@@ -3483,8 +3471,8 @@ export default class ChatInput {
       inited: false,
 
       hasSendButton: false,
-      messageCount: 0,
       isRecording: false,
+      messageCount: 0,
       forwarding: 0,
       starsAmount: 0
     });

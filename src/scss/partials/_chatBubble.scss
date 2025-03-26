@@ -3741,3 +3741,12 @@
     stroke-dasharray: 32.98 32.98;
   }
 }
+
+.inline-message-stars {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 1px;
+  vertical-align: -0.2em;
+  margin-right: 6px;
+}

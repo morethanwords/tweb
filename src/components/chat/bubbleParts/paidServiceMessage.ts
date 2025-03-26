@@ -13,7 +13,7 @@ export default async function addPaidServiceMessage({bubble, message, our, peerI
   const paidStars = Number((message as Message.message).paid_message_stars)
 
   if(paidStars) {
-    bubble.classList.add('has-fake-service', 'is-forced-rounded', 'can-have-tail');
+    bubble.classList.add('has-fake-service', 'is-forced-rounded');
     bubble.dataset.isPaid = '1';
 
     const paidServiceMessage = document.createElement('div');
