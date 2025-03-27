@@ -66,6 +66,8 @@ import {IS_MOBILE} from '../../environment/userAgent';
 import deferredPromise from '../../helpers/cancellablePromise';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import throttle from '../../helpers/schedulers/throttle';
+import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
+import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -759,6 +761,12 @@ export default class PopupNewMedia extends PopupElement {
 
     const {length} = sendFileDetails;
     const sendingParams = this.chat.getMessageSendingParams();
+
+    const preparedStars = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages());
+    if(preparedStars === PAYMENT_REJECTED) return;
+
+    sendingParams.allowPaidStars = preparedStars;
+
     let effect = this.effect();
     this.iterate((sendFileParams) => {
       if(caption && sendFileParams.length !== length) {
@@ -1308,7 +1316,7 @@ export default class PopupNewMedia extends PopupElement {
     const span = document.createElement('span');
     span.classList.add('popup-confirm-btn-inner');
 
-    span.append(Icon('star'), stars + '');
+    span.append(Icon('star'), numberThousandSplitterForStars(stars) + '');
 
     replaceContent(
       this.btnConfirm,
@@ -1326,14 +1334,15 @@ export default class PopupNewMedia extends PopupElement {
       starsAmount: this.chat.starsAmount || 0
     });
 
-    const shouldCountMessage = () => +store.hasMessage * +!!!store.isGrouped;
-    const totalStars = createMemo(() => store.starsAmount * (+shouldCountMessage() + store.attachedFiles))
+    const shouldCountMessage = () => +store.hasMessage * +(!store.isGrouped && store.attachedFiles > 1);
+    const totalMessages = createMemo(() => +shouldCountMessage() + store.attachedFiles);
+    const totalStars = createMemo(() => store.starsAmount * totalMessages());
 
     createEffect(() => {
       this.updateConfirmBtnContent(totalStars());
     });
 
-    return {store, set};
+    return {store, set, totalMessages};
   });
 
   private setTitle() {

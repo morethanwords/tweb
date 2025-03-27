@@ -348,7 +348,7 @@ export default class ChatInput {
 
   private fileSelectionPromise: CancellablePromise<File[]>;
 
-  private paidMessageInterceptor: PaidMessagesInterceptor;
+  public readonly paidMessageInterceptor: PaidMessagesInterceptor;
 
   constructor(
     public chat: Chat,
