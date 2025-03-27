@@ -1,0 +1,103 @@
+import {Component, ComponentProps, createComputed, createEffect, createSignal, Show} from 'solid-js';
+import {render} from 'solid-js/web';
+import {Transition} from 'solid-transition-group';
+
+import type SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
+import {i18n} from '../../../../lib/langPack';
+
+import StarRangeInput from '../../../sidebarLeft/tabs/privacy/messages/starsRangeInput';
+import StaticSwitch from '../../../staticSwitch';
+import Section from '../../../section';
+import RowTsx from '../../../rowTsx';
+
+
+const TRANSITION_TIME = 200;
+
+const ChargeForMessasgesSection: Component<{
+  initialStars: number;
+  onStarsChange: (amount: number) => void;
+}> = (props) => {
+  const [checked, setChecked] = createSignal(!!props.initialStars);
+  const [stars, setStars] = createSignal(props.initialStars || 0);
+
+  createComputed(() => {
+    if(checked()) {
+      setStars(prev => prev || props.initialStars || 1);
+    } else {
+      setStars(0);
+    }
+  });
+
+  let first = true;
+  createEffect(() => {
+    if(first) {
+      first = false;
+      stars();
+      return;
+    }
+
+    props.onStarsChange(stars());
+  });
+
+  return (
+    <>
+      <Section caption='PaidMessages.ChargeForGroupMessagesDescription'>
+        <RowTsx
+          rightContent={
+            <StaticSwitch checked={checked()} />
+          }
+          clickable={() => {setChecked(p => !p)}}
+          title={i18n('PaidMessages.ChargeForMessages')}
+        />
+      </Section>
+      <Transition
+        onEnter={async(el, done) => {
+          const height = el.scrollHeight;
+          await el.animate({height: ['0px', height + 'px']}, {duration: TRANSITION_TIME}).finished;
+
+          done();
+        }}
+        onExit={async(el, done) => {
+          const height = el.clientHeight;
+          await el.animate({
+            height: [height + 'px', '0px'],
+            opacity: [1, 0]
+          }, {duration: TRANSITION_TIME}).finished;
+
+          done();
+        }}
+      >
+        <Show when={checked()}>
+          <Section
+            name='PaidMessages.SetPrice'
+            class='overflow-hidden'
+            caption='PaidMessages.SetPriceGroupDescription'
+            captionArgs={[10.12]}
+          >
+            <StarRangeInput value={stars()} onChange={setStars} />
+          </Section>
+        </Show>
+      </Transition>
+    </>
+  );
+};
+
+const createChargeForMessasgesSection = (
+  props: ComponentProps<typeof ChargeForMessasgesSection>,
+  HotReloadProvider: typeof SolidJSHotReloadGuardProvider
+) => {
+  const element = document.createElement('div');
+
+  const dispose = render(() => (
+    <HotReloadProvider>
+      <ChargeForMessasgesSection {...props} />
+    </HotReloadProvider>
+  ), element);
+
+  return {
+    element,
+    dispose
+  }
+};
+
+export default createChargeForMessasgesSection;

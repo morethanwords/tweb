@@ -4,34 +4,35 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ChatRights} from '../../../lib/appManagers/appChatsManager';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import findUpTag from '../../../helpers/dom/findUpTag';
-import replaceContent from '../../../helpers/dom/replaceContent';
-import ListenerSetter from '../../../helpers/listenerSetter';
-import ScrollableLoader from '../../../helpers/scrollableLoader';
-import {ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights} from '../../../layer';
-import appDialogsManager, {DialogDom, DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appManagers/appDialogsManager';
-import {AppManagers} from '../../../lib/appManagers/managers';
-import combineParticipantBannedRights from '../../../lib/appManagers/utils/chats/combineParticipantBannedRights';
-import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
-import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
-import {i18n, join, LangPackKey} from '../../../lib/langPack';
-import rootScope from '../../../lib/rootScope';
-import PopupPickUser from '../../popups/pickUser';
-import Row from '../../row';
-import SettingSection from '../../settingSection';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import {toast} from '../../toast';
-import AppUserPermissionsTab from './userPermissions';
-import CheckboxFields, {CheckboxFieldsField} from '../../checkboxFields';
-import PopupElement from '../../popups';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
-import RangeStepsSelector from '../../rangeStepsSelector';
-import formatDuration from '../../../helpers/formatDuration';
-import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
+import type {ChatRights} from '../../../../lib/appManagers/appChatsManager';
+import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
+import findUpTag from '../../../../helpers/dom/findUpTag';
+import replaceContent from '../../../../helpers/dom/replaceContent';
+import ListenerSetter from '../../../../helpers/listenerSetter';
+import ScrollableLoader from '../../../../helpers/scrollableLoader';
+import {ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights} from '../../../../layer';
+import appDialogsManager, {DialogDom, DIALOG_LIST_ELEMENT_TAG} from '../../../../lib/appManagers/appDialogsManager';
+import {AppManagers} from '../../../../lib/appManagers/managers';
+import combineParticipantBannedRights from '../../../../lib/appManagers/utils/chats/combineParticipantBannedRights';
+import hasRights from '../../../../lib/appManagers/utils/chats/hasRights';
+import getPeerActiveUsernames from '../../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
+import getPeerId from '../../../../lib/appManagers/utils/peers/getPeerId';
+import {i18n, join, LangPackKey} from '../../../../lib/langPack';
+import rootScope from '../../../../lib/rootScope';
+import PopupPickUser from '../../../popups/pickUser';
+import Row from '../../../row';
+import SettingSection from '../../../settingSection';
+import {SliderSuperTabEventable} from '../../../sliderTab';
+import {toast} from '../../../toast';
+import AppUserPermissionsTab from '../userPermissions';
+import CheckboxFields, {CheckboxFieldsField} from '../../../checkboxFields';
+import PopupElement from '../../../popups';
+import wrapPeerTitle from '../../../wrappers/peerTitle';
+import apiManagerProxy from '../../../../lib/mtproto/mtprotoworker';
+import RangeStepsSelector from '../../../rangeStepsSelector';
+import formatDuration from '../../../../helpers/formatDuration';
+import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
+import SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
 
 type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],
@@ -312,6 +313,31 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       this.scrollable.append(section.container);
     }
 
+    const chat = apiManagerProxy.getChat(this.chatId);
+    if(chat._ === 'channel') {
+      const {default: createChargeForMessasgesSection} = await import('./chargeForMessasgesSection');
+
+      let stars: number;
+      const initialStars = stars = +chat?.send_paid_messages_stars || 0;
+
+      const {element, dispose} = createChargeForMessasgesSection(
+        {
+          initialStars: stars,
+          onStarsChange: (value) => void(stars = value)
+        },
+        SolidJSHotReloadGuardProvider
+      );
+
+      this.scrollable.append(element);
+
+      this.middlewareHelper.get().onDestroy(() => void dispose());
+
+      this.eventListener.addEventListener('destroy', () => {
+        if(initialStars === stars) return;
+        this.managers.appChatsManager.updateChannelPaidMessagesPrice(chat.id.toChatId(), stars);
+      }, {once: true});
+    }
+
     {
       const section = new SettingSection({
         name: 'Slowmode',
@@ -367,6 +393,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         const {value} = range;
         if(value !== initialValue) {
           this.managers.appChatsManager.toggleSlowMode(this.chatId, range.value);
+          this.managers.appChatsManager.editChatDefaultBannedRights // (this.chatId, range.value);
         }
       }, {once: true});
 

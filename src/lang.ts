@@ -3179,8 +3179,10 @@ const lang = {
 
   'PaidMessages.ChargeForMessages': 'Charge for Messages',
   'PaidMessages.ChargeForMessagesDescription': 'Charge a fee for messages from people outside your contacts or who you haven\'t messaged first',
+  'PaidMessages.ChargeForGroupMessagesDescription': 'If you turn this on, regular members of the group will have to pay Stars to send messages.',
   'PaidMessages.SetPrice': 'Set your price per message',
   'PaidMessages.SetPriceDescription': 'You will receive 85% of the selected fee (~%d$) for each incoming messages',
+  'PaidMessages.SetPriceGroupDescription': 'Your group will receive 85% of the selected fee (~%d$) for each incoming messages',
   'PaidMessages.RemoveFee': 'Remove Fee',
   'PaidMessages.RemoveFeeDescription': 'Add users or entire groups who won\'t have to pay to send you messages',
   'PaidMessages.NewChatDescription': '%s charges %d for each message',
