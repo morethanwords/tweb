@@ -5,6 +5,7 @@
  */
 
 import {render} from 'solid-js/web';
+import {createStore} from 'solid-js/store';
 
 import type Chat from '../chat/chat';
 import type {SendFileDetails} from '../../lib/appManagers/appMessagesManager';
@@ -52,7 +53,7 @@ import wrapDraft from '../wrappers/draft';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {ChatType} from '../chat/chat';
 import pause from '../../helpers/schedulers/pause';
-import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '../chat/selectedEffect';
 import PopupMakePaid from './makePaid';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
@@ -64,6 +65,7 @@ import {animateValue, delay, lerp, snapToViewport} from '../mediaEditor/utils';
 import {IS_MOBILE} from '../../environment/userAgent';
 import deferredPromise from '../../helpers/cancellablePromise';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import throttle from '../../helpers/schedulers/throttle';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -298,6 +300,12 @@ export default class PopupNewMedia extends PopupElement {
     this.messageInputField.input.dataset.animationGroup = this.animationGroup;
     this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
     this.listenerSetter.add(this.messageInputField.input)('scroll', this.onScroll);
+
+    this.listenerSetter.add(this.messageInputField.input)('input', throttle((e) => {
+      const {value} = getRichValueWithCaret(this.messageInputField.input);
+
+      this.starsState.set({hasMessage: !!value.trim()})
+    }, 120, true));
 
     this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
     this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
@@ -1294,6 +1302,39 @@ export default class PopupNewMedia extends PopupElement {
     this.show();
   }
 
+  private updateConfirmBtnContent(stars: number): void {
+    if(!stars) return void replaceContent(this.btnConfirm, i18n('Modal.Send'));
+
+    const span = document.createElement('span');
+    span.classList.add('popup-confirm-btn-inner');
+
+    span.append(Icon('star'), stars + '');
+
+    replaceContent(
+      this.btnConfirm,
+      span
+    );
+  }
+
+  private starsState = createRoot(dispose => {
+    this.middlewareHelper.get().onDestroy(() => void dispose());
+
+    const [store, set] = createStore({
+      hasMessage: false,
+      isGrouped: true,
+      attachedFiles: this.files.length,
+      starsAmount: this.chat.starsAmount || 0
+    });
+
+    const shouldCountMessage = () => +store.hasMessage * +!!!store.isGrouped;
+    const totalStars = createMemo(() => store.starsAmount * (+shouldCountMessage() + store.attachedFiles))
+
+    createEffect(() => {
+      this.updateConfirmBtnContent(totalStars());
+    });
+
+    return {store, set};
+  });
 
   private setTitle() {
     const {willAttach, title, files} = this;
@@ -1387,6 +1428,7 @@ export default class PopupNewMedia extends PopupElement {
 
     Promise.all(promises).then(() => {
       mediaContainer.replaceChildren();
+      this.starsState.set({attachedFiles: files.length, isGrouped: this.willAttach?.group && !this.hasGif()});
 
       if(!files.length) {
         return;

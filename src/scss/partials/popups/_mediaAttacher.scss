@@ -53,6 +53,12 @@
       user-select: none;
       position: relative;
     }
+
+    &-confirm-btn-inner {
+      display: flex;
+      align-items: center;
+      gap: 0.125em;
+    }
   }
 
   .scrollable {

@@ -2968,7 +2968,8 @@ export class AppMessagesManager extends AppManager {
         send: () => void send(),
         cancel
       });
-      this.forwardMessages({
+
+      if(overflowMids.length) this.forwardMessages({
         ...options,
         peerId,
         fromPeerId,
