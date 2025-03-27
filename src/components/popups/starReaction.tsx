@@ -86,7 +86,7 @@ export default class PopupStarReaction extends PopupElement {
           getPeerId(defaultSendAs.peer)
     );
     const topSenders = () => {
-      return message.reactions ? message.reactions.top_reactors.slice() : [];
+      return message.reactions?.top_reactors?.slice() ?? [];
     };
 
     let defaultSendAsPeerId: PeerId;
