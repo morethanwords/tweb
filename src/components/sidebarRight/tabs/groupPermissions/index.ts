@@ -393,7 +393,6 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         const {value} = range;
         if(value !== initialValue) {
           this.managers.appChatsManager.toggleSlowMode(this.chatId, range.value);
-          this.managers.appChatsManager.editChatDefaultBannedRights // (this.chatId, range.value);
         }
       }, {once: true});
 
