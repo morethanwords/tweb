@@ -399,7 +399,6 @@
 @import "fonts/mediaEditorFonts";
 @import "partials/input";
 @import "partials/button";
-@import "partials/table";
 @import "partials/animatedIcon";
 @import "partials/autocompleteHelper";
 @import "partials/autocompletePeerHelper";
@@ -466,6 +465,7 @@
 @import "partials/limitLine";
 @import "partials/animatedSuper";
 @import "partials/sparkles";
+@import "partials/starGift";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -504,6 +504,8 @@
 @import "partials/popups/stars";
 @import "partials/popups/makePaid";
 @import "partials/popups/accountsLimit";
+@import "partials/popups/starGiftInfo";
+@import "partials/popups/sendGift";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";

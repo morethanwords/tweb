@@ -45,6 +45,7 @@ import {SHOULD_HANDLE_VIDEO_LEAK, attachVideoLeakListeners, leakVideoFallbacks, 
 import noop from '../../helpers/noop';
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
 import toArray from '../../helpers/array/toArray';
+import {createEffect, createSignal, onMount} from 'solid-js';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -669,7 +670,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
                 if(media.duration < 1 ||
                   media.getVideoPlaybackQuality().totalVideoFrames < 10) {
                   const detach = attachVideoLeakListeners(media);
-                  middleware.onClean(detach);
+                  middleware?.onClean(detach);
                 }
               }
 
@@ -835,4 +836,33 @@ function attachStickerEffectHandler(options: Omit<Parameters<typeof fireStickerE
   });
 
   options.middleware.onDestroy(detach);
+}
+
+export type StickerTsxExtraOptions = Omit<Parameters<typeof wrapSticker>[0], 'doc' | 'div'>;
+export function StickerTsx(props: {
+  sticker: MyDocument
+  width: number
+  height: number
+  class?: string
+  extraOptions?: StickerTsxExtraOptions
+  onRender?: (player: RLottiePlayer | HTMLVideoElement[] | HTMLImageElement[]) => void
+}) {
+  const div = document.createElement('div');
+  div.classList.add(props.class);
+
+  onMount(() => {
+    wrapSticker({
+      ...props.extraOptions,
+      width: props.width,
+      height: props.height,
+      div,
+      doc: props.sticker
+    }).then(res => {
+      res.render.then(it => {
+        it && props.onRender?.(it);
+      });
+    })
+  })
+
+  return div
 }

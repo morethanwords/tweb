@@ -65,6 +65,7 @@ import PinnedContainer from './pinnedContainer';
 import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
 import ChatTranslation from './translation';
 import {useAppSettings} from '../../stores/appSettings';
+import SendGiftPopup from '../popups/sendGift';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -529,9 +530,9 @@ export default class ChatTopbar {
       verify: async() => rootScope.myId !== this.peerId && this.peerId.isUser() && (await this.managers.appPeersManager.isContact(this.peerId)) && !!(await this.managers.appUsersManager.getUser(this.peerId.toUserId())).phone
     }, {
       icon: 'gift',
-      text: 'GiftPremium',
-      onClick: () => this.chat.appImManager.giftPremium(this.peerId),
-      verify: () => this.chat.canGiftPremium()
+      text: 'Chat.Menu.SendGift',
+      onClick: () => PopupElement.createPopup(SendGiftPopup, this.peerId),
+      verify: () => this.chat.peerId.isUser()
     }, {
       icon: 'statistics',
       text: 'Statistics',

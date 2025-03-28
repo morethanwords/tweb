@@ -51,3 +51,10 @@ export function setButtonLoader(elem: HTMLButtonElement, icon: Icon = 'check') {
     to[match[1]] = el as HTMLElement;
   });
 } */
+
+export function PreloaderTsx() {
+  const div = document.createElement('div');
+  div.classList.add('preloader');
+  putPreloader(div);
+  return div;
+}

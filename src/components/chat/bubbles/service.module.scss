@@ -1,0 +1,53 @@
+.wrap {
+  max-width: 100%;
+  padding: 0 2rem;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.text {
+  color: #fff;
+  background-color: var(--message-highlighting-color);
+  font-size: var(--messages-service-text-size);
+  padding: 0.28125rem 0.625rem;
+  line-height: calc(var(--messages-service-text-size) + 5px);
+  border-radius: 9999px;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  word-break: break-word;
+}
+
+.addon {
+  border-radius: 1.25rem;
+  background: var(--message-highlighting-color);
+  align-items: center;
+  justify-content: center;
+  padding: .28125rem .625rem;
+  color: #fff;
+  font-size: var(--messages-service-text-size);
+  line-height: calc(var(--messages-service-text-size) + 5px);
+  text-align: center;
+  text-wrap: balance;
+
+  :global(.has-service-before) & {
+    margin-top: .5rem !important;
+  }
+
+  :global(.bubble-service-button) {
+    overflow: hidden;
+  }
+
+  :global(.bubble-service-button):hover {
+    background-color: var(--message-highlighting-hover-color);
+  }
+
+  :global(.peer-title):hover {
+    text-decoration: underline;
+  }
+}
