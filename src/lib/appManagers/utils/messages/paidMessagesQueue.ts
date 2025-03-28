@@ -1,20 +1,19 @@
 import {SEND_PAID_WITH_STARS_DELAY} from '../../../mtproto/mtproto_config';
 
 
-const FALLBACK_TIMEOUT = SEND_PAID_WITH_STARS_DELAY + 2e3;
-
-
 type PaidMessagesQueueItem = {
   send?: () => void;
   cancel?: () => void;
 };
 
+const FALLBACK_TIMEOUT = SEND_PAID_WITH_STARS_DELAY + 2e3;
+
 export default class PaidMessagesQueue {
-  queued = new Map<PeerId, PaidMessagesQueueItem[]>();
+  private queued = new Map<PeerId, PaidMessagesQueueItem[]>();
   /**
    * In case the client doesn't handle the sending properly
    */
-  fallbackTimeouts = new Map<PeerId, number>();
+  private fallbackTimeouts = new Map<PeerId, number>();
 
   add(peerId: PeerId, item: PaidMessagesQueueItem) {
     const queuedForThisPeer = this.queued.get(peerId) || [];

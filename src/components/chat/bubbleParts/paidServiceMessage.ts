@@ -1,15 +1,18 @@
-import wrapPeerTitle from '../../wrappers/peerTitle';
 import {i18n} from '../../../lib/langPack';
 import {Message} from '../../../layer';
+
+import wrapPeerTitle from '../../wrappers/peerTitle';
+
 
 type Args = {
   bubble: HTMLElement;
   message: Message.message | Message.messageService;
   our: boolean;
   peerId: PeerId;
+  groupedMessages?: Message.message[];
 };
 
-export default async function addPaidServiceMessage({bubble, message, our, peerId}: Args) {
+export default async function addPaidServiceMessage({bubble, message, our, peerId, groupedMessages}: Args) {
   const paidStars = Number((message as Message.message).paid_message_stars)
 
   if(paidStars) {
@@ -19,10 +22,13 @@ export default async function addPaidServiceMessage({bubble, message, our, peerI
     const paidServiceMessage = document.createElement('div');
     paidServiceMessage.classList.add('service-msg');
 
+    const messageCount = groupedMessages?.length || 1;
+    const totalStars = paidStars * messageCount;
+
     paidServiceMessage.append(
       our ?
-        i18n('PaidMessages.YouPaidToSendMessages', [1, i18n('Stars', [paidStars])]) :
-        i18n('PaidMessages.YouReceivedStarsFrom', [i18n('Stars', [paidStars]), await wrapPeerTitle({peerId: peerId, onlyFirstName: true})])
+        i18n('PaidMessages.YouPaidToSendMessages', [messageCount, i18n('Stars', [totalStars])]) :
+        i18n('PaidMessages.YouReceivedStarsFrom', [i18n('Stars', [totalStars]), await wrapPeerTitle({peerId: peerId, onlyFirstName: true})])
     );
 
     bubble.prepend(paidServiceMessage);

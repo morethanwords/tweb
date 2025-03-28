@@ -1213,7 +1213,7 @@ export class AppMessagesManager extends AppManager {
     let uploaded = false,
       uploadPromise: ReturnType<ApiFileManager['upload']> = null;
 
-    const send = () => {
+    const upload = () => {
       if(isDocument) {
         const inputMedia: InputMedia = {
           _: 'inputMediaDocument',
@@ -1330,8 +1330,11 @@ export class AppMessagesManager extends AppManager {
       return sentDeferred;
     };
 
-    !hadMessageBefore && (message.send = send);
-    !hadMessageBefore && this.beforeMessageSending(message, {
+    if(!hadMessageBefore && !options.allowPaidStars) {
+      message.send = upload;
+    }
+
+    if(!hadMessageBefore) this.beforeMessageSending(message, {
       isGroupedItem: options.isGroupedItem,
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
@@ -1340,7 +1343,7 @@ export class AppMessagesManager extends AppManager {
     });
 
     if(!options.isGroupedItem) {
-      const cb = (inputMedia: Awaited<typeof sentDeferred>) => {
+      const invokeSend = (inputMedia: Awaited<typeof sentDeferred>) => {
         return this.apiManager.invokeApi('messages.sendMedia', {
           background: options.background,
           peer: this.appPeersManager.getInputPeerById(peerId),
@@ -1362,45 +1365,61 @@ export class AppMessagesManager extends AppManager {
         });
       };
 
-      sentDeferred.then((inputMedia) => {
-        this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+      const send = () => {
+        sentDeferred.then((inputMedia) => {
+          this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
 
-        let promise: Promise<void>;
-        if(inputMedia._ === 'inputMediaDocument') {
-          promise = this.apiFileManager.invokeApiWithReference({
-            context: inputMedia.id as InputDocument.inputDocument,
-            callback: () => cb(inputMedia)
-          });
-        } else {
-          promise = cb(inputMedia);
-        }
-
-        return promise.catch((error: ApiError) => {
-          if(attachType === 'photo' &&
-            (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
-            error.type === 'PHOTO_SAVE_FILE_INVALID')) {
-            error.handled = true;
-            attachType = 'document';
-            message.send();
-            return;
+          let promise: Promise<void>;
+          if(inputMedia._ === 'inputMediaDocument') {
+            promise = this.apiFileManager.invokeApiWithReference({
+              context: inputMedia.id as InputDocument.inputDocument,
+              callback: () => invokeSend(inputMedia)
+            });
+          } else {
+            promise = invokeSend(inputMedia);
           }
 
-          toggleError(error);
-          throw error;
-        });
-      });
+          return promise.catch((error: ApiError) => {
+            if(attachType === 'photo' &&
+              (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
+              error.type === 'PHOTO_SAVE_FILE_INVALID')) {
+              error.handled = true;
+              attachType = 'document';
+              message.send();
+              return;
+            }
 
-      const messagePromise = message.promise as CancellablePromise<void>;
-      sentDeferred.then(
-        () => messagePromise.resolve(),
-        (err) => messagePromise.reject(err)
-      );
+            toggleError(error);
+            throw error;
+          });
+        });
+
+        const messagePromise = message.promise as CancellablePromise<void>;
+        sentDeferred.then(
+          () => messagePromise.resolve(),
+          (err) => messagePromise.reject(err)
+        );
+      };
+
+      if(options.allowPaidStars) {
+        upload();
+
+        this.paidMessagesQueue.add(peerId, {
+          send,
+          cancel: () => {
+            this.cancelPendingMessage(message.random_id);
+            (message.promise as CancellablePromise<void>)?.reject();
+          }
+        });
+      } else {
+        send();
+      }
     }
 
     const ret: {
       message: typeof message,
       promise: typeof sentDeferred,
-      send: typeof send,
+      send: typeof upload,
       media: typeof media,
       uploadingFileName: typeof uploadingFileName
     } = {
@@ -1411,7 +1430,7 @@ export class AppMessagesManager extends AppManager {
 
     defineNotNumerableProperties(ret, ['promise', 'send']);
     ret.promise = sentDeferred;
-    ret.send = send;
+    ret.send = upload;
 
     return ret;
   }
@@ -1483,6 +1502,7 @@ export class AppMessagesManager extends AppManager {
 
       if(idx === 0) {
         firstMessage = result.message;
+        firstMessage.paid_message_stars = options.allowPaidStars;
       }
 
       return result;
@@ -1536,7 +1556,7 @@ export class AppMessagesManager extends AppManager {
             update_stickersets_order: options.updateStickersetOrder,
             invert_media: options.invertMedia,
             effect: options.effect,
-            allow_paid_stars: options.allowPaidStars || undefined,
+            allow_paid_stars: options.allowPaidStars * multiMedia.length || undefined,
             ...(options.stars ? {
               media: multiMedia[0].media,
               message: multiMedia[0].message,
@@ -1639,6 +1659,13 @@ export class AppMessagesManager extends AppManager {
         };
       }
 
+      if(options.allowPaidStars) {
+        this.paidMessagesQueue.add(peerId, {
+          send: () => void invoke(inputs),
+          cancel: () => results.forEach(({message}) => this.cancelPendingMessage(message.random_id))
+        });
+        return;
+      }
       return invoke(inputs);
     });
   }
