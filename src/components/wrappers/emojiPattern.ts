@@ -8,6 +8,7 @@ import customProperties from '../../helpers/dom/customProperties';
 import {Middleware} from '../../helpers/middleware';
 import noop from '../../helpers/noop';
 import pause from '../../helpers/schedulers/pause';
+import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import {applyColorOnContext} from '../../lib/rlottie/rlottiePlayer';
 import rootScope from '../../lib/rootScope';
 import wrapSticker from './sticker';
@@ -25,7 +26,7 @@ export default async function wrapEmojiPattern({
   emojiSize,
   onCacheStatus: onCacheStatus
 }: {
-  docId: DocId,
+  docId: DocId | MyDocument,
   middleware: Middleware,
   useHighlightingColor?: boolean,
   colorAsOut?: boolean,
@@ -37,9 +38,15 @@ export default async function wrapEmojiPattern({
   emojiSize: number,
   onCacheStatus?: (cached: boolean) => void
 }) {
-  const result = await rootScope.managers.acknowledged.appEmojiManager.getCustomEmojiDocument(docId);
-  if(!result.cached) onCacheStatus?.(false);
-  const doc = await result.result;
+  let doc: MyDocument;
+  if(typeof docId  === 'object') {
+    doc = docId;
+  } else {
+    const result = await rootScope.managers.acknowledged.appEmojiManager.getCustomEmojiDocument(docId);
+    if(!result.cached) onCacheStatus?.(false);
+    doc = await result.result;
+  }
+
   const d = document.createElement('div');
   return wrapSticker({
     doc,

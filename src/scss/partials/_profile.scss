@@ -553,7 +553,7 @@
     font-size: var(--font-size-20);
     line-height: var(--line-height-20);
     font-weight: var(--font-weight-bold);
-	  overflow: hidden;
+	  min-width: 0;
     max-width: 21.25rem;
     margin: 0 auto;
     color: var(--primary-text-color);
@@ -565,7 +565,7 @@
       min-width: min-content;
     }
 
-    .peer-title {
+    .peer-title:not(.with-icons) {
       @include text-overflow(false);
     }
 
@@ -623,5 +623,52 @@
   &-subtitle, 
   &-avatar {
     flex: 0 0 auto;
+  }
+
+  &-pinned-gifts {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    top: 4.5rem;
+    left: 50%;
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+    transition: opacity 100ms ease-in-out, transform 100ms ease-in-out;
+    transform-origin: center;
+
+    @include respond-to(handhelds) {
+      // костыль из-за того что аватар в мобилке имеет странные размеры
+      top: calc(4.5rem + 5vw);
+      width: 28.5%;
+      height: auto;
+      aspect-ratio: 1/1;
+    }
+
+    .profile-container:not(.is-collapsed) & {
+      opacity: 0;
+      transform: translateX(-50%) scale(1.2);
+    }
+  }
+
+  &-pinned-gift {
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      background: var(--halo-color);
+      border-radius: 50%;
+      filter: blur(15px) saturate(1.5);
+    }
+
+    position: absolute;
+    width: 30px;
+    height: 30px;
+
+    &[data-idx="0"] { left: -36px; top: -3px; }
+    &[data-idx="1"] { left: -96px; top: 57px; }
+    &[data-idx="2"] { left: -31px; top: 87px; }
+    &[data-idx="3"] { right: -54px; top: 17px; }
+    &[data-idx="4"] { right: -114px; top: 37px; }
+    &[data-idx="5"] { right: -84px; top: 87px; }
   }
 }

@@ -22,6 +22,7 @@ import SimplePopup from './simplePopup';
 import Background from './background';
 
 import styles from './passcodeLockScreen.module.scss';
+import {ChatBackground} from '../chat/bubbles/chatBackground';
 
 
 type StateStore = {

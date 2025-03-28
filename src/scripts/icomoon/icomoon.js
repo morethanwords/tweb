@@ -318,6 +318,9 @@ async function pipeline(options = {}) {
     });
   } catch(error) {
     console.error(error);
+    if (error?.message?.includes(PAGE.GLYPH_SET)) {
+      console.log('perhaps some icon is invalid (e.g. contains a stroke)?')
+    }
   }
 }
 

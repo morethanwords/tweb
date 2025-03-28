@@ -163,6 +163,14 @@ export function hexToRgb(hex: string) {
   return hexaToRgba(hex.slice(0, 7)) as any as ColorRgb;
 }
 
+export function rgbIntToHex(int: number, alpha?: number) {
+  let str = `#${int.toString(16).padStart(6, '0')}`;
+  if(alpha !== undefined) {
+    str += `${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
+  }
+  return str;
+}
+
 export function hexaToHsla(hexa: string) {
   const rgba = hexaToRgba(hexa);
   return rgbaToHsla(rgba[0], rgba[1], rgba[2], rgba[3]);

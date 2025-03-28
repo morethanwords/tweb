@@ -57,6 +57,8 @@ import {render} from 'solid-js/web';
 import detectLanguageForTranslation from '../helpers/detectLanguageForTranslation';
 import PopupPremium from './popups/premium';
 import PopupTranslate from './popups/translate';
+import wrapSticker from './wrappers/sticker';
+import {rgbIntToHex} from '../helpers/color';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   setInnerHTML(row.title, text || undefined);
@@ -99,6 +101,8 @@ export default class PeerProfile {
 
   private bioLanguage: Promise<TranslatableLanguageISO>;
   private bioText: string;
+
+  private pinnedGiftsContainer: HTMLDivElement;
 
   constructor(
     private managers: AppManagers,
@@ -153,6 +157,9 @@ export default class PeerProfile {
 
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add('profile-subtitle');
+
+    this.pinnedGiftsContainer = document.createElement('div');
+    this.pinnedGiftsContainer.classList.add('profile-pinned-gifts');
 
     this.setCollapsedOn.classList.add('profile-container');
 
@@ -586,6 +593,7 @@ export default class PeerProfile {
           nameCallback();
 
           this.avatars.info.append(this.name, this.subtitle);
+          this.avatars.container.append(this.pinnedGiftsContainer);
 
           if(this.avatar) this.avatar.node.remove();
           this.avatar = undefined;
@@ -742,6 +750,33 @@ export default class PeerProfile {
     });
   }
 
+  private async fillPinnedGifts() {
+    const {peerId} = this.getDetailsForUse();
+    if(!peerId.isUser()) return;
+
+    const pinnedGifts = await this.managers.appGiftsManager.getPinnedGifts(peerId);
+    const middleware = this.middlewareHelper.get();
+    const stickers = await Promise.all(pinnedGifts.map(async(gift, idx) => {
+      const div = document.createElement('div');
+      div.className = 'profile-pinned-gift';
+      div.setAttribute('data-idx', idx.toString());
+      div.style.setProperty('--halo-color', rgbIntToHex(gift.collectibleAttributes.backdrop.center_color))
+      await wrapSticker({
+        doc: gift.sticker,
+        static: true,
+        middleware,
+        width: 30,
+        height: 30,
+        div
+      }).then(r => r.render)
+      return div
+    }));
+
+    return () => {
+      this.pinnedGiftsContainer.replaceChildren(...stickers);
+    }
+  }
+
   public async fillProfileElements() {
     if(!this.cleaned) return;
     this.cleaned = false;
@@ -755,6 +790,7 @@ export default class PeerProfile {
 
     const callbacks = await Promise.all([
       this.setAvatar(true),
+      this.fillPinnedGifts(),
       this.fillRows(deferred)
     ]);
 

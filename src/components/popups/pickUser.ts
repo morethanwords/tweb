@@ -329,21 +329,25 @@ export default class PopupPickUser extends PopupElement {
     multiSelect,
     limit,
     limitCallback,
-    titleLangKey
+    titleLangKey,
+    placeholder,
+    exceptSelf
   }: {
     peerType?: SelectSearchPeerType[],
     filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'],
     chatRightsActions?: PopupPickUserOptions['chatRightsActions'],
+    placeholder?: LangPackKey,
     multiSelect?: T,
     limit?: number,
     limitCallback?: () => void,
-    titleLangKey?: LangPackKey
+    titleLangKey?: LangPackKey,
+    exceptSelf?: boolean
   }) {
     return new Promise<T extends false ? PeerId : PeerId[]>((resolve, reject) => {
       let resolved = false;
       const popup = PopupElement.createPopup(PopupPickUser, {
         peerType,
-        placeholder: 'SelectChat',
+        placeholder: placeholder || 'SelectChat',
         onSelect: multiSelect ? undefined : (peerId) => {
           resolve(peerId as any);
           resolved = true;
@@ -354,7 +358,8 @@ export default class PopupPickUser extends PopupElement {
         } : undefined,
         filterPeerTypeBy,
         chatRightsActions,
-        titleLangKey
+        titleLangKey,
+        exceptSelf
       });
 
       if(limit) {
