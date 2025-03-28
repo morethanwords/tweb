@@ -320,13 +320,15 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       let stars: number;
       const initialStars = stars = +chat?.send_paid_messages_stars || 0;
 
-      const {element, dispose} = createChargeForMessasgesSection(
+      const {element, dispose, promise} = createChargeForMessasgesSection(
         {
           initialStars: stars,
           onStarsChange: (value) => void(stars = value)
         },
         SolidJSHotReloadGuardProvider
       );
+
+      await promise;
 
       this.scrollable.append(element);
 

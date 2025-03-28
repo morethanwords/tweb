@@ -5,6 +5,8 @@ import {Transition} from 'solid-transition-group';
 import type SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
 import {i18n} from '../../../../lib/langPack';
 
+import useStarsComissionAndWithdrawalPrice from '../../../sidebarLeft/tabs/privacy/messages/useStarsComissionAndWithdrawalPrice';
+import {PromiseCollector} from '../../../sidebarLeft/tabs/solidJsTabs/promiseCollector';
 import StarRangeInput from '../../../sidebarLeft/tabs/privacy/messages/starsRangeInput';
 import StaticSwitch from '../../../staticSwitch';
 import Section from '../../../section';
@@ -19,6 +21,8 @@ const ChargeForMessasgesSection: Component<{
 }> = (props) => {
   const [checked, setChecked] = createSignal(!!props.initialStars);
   const [stars, setStars] = createSignal(props.initialStars || 0);
+
+  const {commissionPercents, willReceiveDollars} = useStarsComissionAndWithdrawalPrice(stars);
 
   createComputed(() => {
     if(checked()) {
@@ -72,7 +76,10 @@ const ChargeForMessasgesSection: Component<{
             name='PaidMessages.SetPrice'
             class='overflow-hidden'
             caption='PaidMessages.SetPriceGroupDescription'
-            captionArgs={[10.12]}
+            captionArgs={[
+              commissionPercents(),
+              willReceiveDollars()
+            ]}
           >
             <StarRangeInput value={stars()} onChange={setStars} />
           </Section>
@@ -88,15 +95,20 @@ const createChargeForMessasgesSection = (
 ) => {
   const element = document.createElement('div');
 
+  const promiseCollectorHelper = PromiseCollector.createHelper();
+
   const dispose = render(() => (
     <HotReloadProvider>
-      <ChargeForMessasgesSection {...props} />
+      <PromiseCollector onCollect={promiseCollectorHelper.onCollect}>
+        <ChargeForMessasgesSection {...props} />
+      </PromiseCollector>
     </HotReloadProvider>
   ), element);
 
   return {
     element,
-    dispose
+    dispose,
+    promise: promiseCollectorHelper.await()
   }
 };
 

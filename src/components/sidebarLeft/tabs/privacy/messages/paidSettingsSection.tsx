@@ -9,6 +9,7 @@ import RowTsx from '../../../../rowTsx';
 
 import {useSuperTab} from '../../solidJsTabs/superTabProvider';
 
+import useStarsComissionAndWithdrawalPrice from './useStarsComissionAndWithdrawalPrice';
 import {MessagesTabStateStore, TRANSITION_TIME} from './config';
 import {ChosenPeersByType} from './useStateStore';
 import StarRangeInput from './starsRangeInput';
@@ -22,6 +23,8 @@ const PaidSettingsSection: Component<{
   exitAnimationPromise: Promise<any>;
 }> = (props) => {
   const [tab, {AppAddMembersTab}] = useSuperTab();
+
+  const {commissionPercents, willReceiveDollars} = useStarsComissionAndWithdrawalPrice(() => props.store.stars);
 
   const onExceptionsClick = () => {
     tab.slider.createTab(AppAddMembersTab).open({
@@ -68,7 +71,10 @@ const PaidSettingsSection: Component<{
           <Section
             name="PaidMessages.SetPrice"
             caption="PaidMessages.SetPriceDescription"
-            captionArgs={[10.12]}
+            captionArgs={[
+              commissionPercents(),
+              willReceiveDollars()
+            ]}
           >
             <StarRangeInput value={props.store.stars} onChange={props.setStore.bind(null, 'stars')} />
           </Section>

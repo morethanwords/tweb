@@ -44,14 +44,11 @@ function scaffoldSolidJSTab<Payload = void>({
 
       const {default: Component} = await getComponentModule();
 
-      const loadPromises: Promise<any>[] = [];
-      let collectPromise = (promise: Promise<any>) => {
-        loadPromises.push(promise);
-      };
+      const promiseCollectorHelper = PromiseCollector.createHelper();
 
       this.dispose = render(() => (
         <SolidJSHotReloadGuardProvider>
-          <PromiseCollector onCollect={(promise) => collectPromise(promise)}>
+          <PromiseCollector onCollect={promiseCollectorHelper.onCollect}>
             {/* Providing other tabs here to avoid circular imports */}
             <SuperTabProvider self={this} allTabs={providedTabs}>
               <Component />
@@ -60,12 +57,9 @@ function scaffoldSolidJSTab<Payload = void>({
         </SolidJSHotReloadGuardProvider>
       ), div);
 
-      collectPromise = () => {}; // lose reference to the promises array
-      // console.log('loadPromises.length :>> ', loadPromises.length);
-
       this.scrollable.append(div);
 
-      await Promise.all(loadPromises);
+      await promiseCollectorHelper.await();
     }
 
     protected onCloseAfterTimeout() {
