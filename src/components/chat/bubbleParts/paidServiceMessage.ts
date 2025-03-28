@@ -5,6 +5,7 @@ import wrapPeerTitle from '../../wrappers/peerTitle';
 
 
 type Args = {
+  isAnyGroup: boolean;
   bubble: HTMLElement;
   message: Message.message | Message.messageService;
   our: boolean;
@@ -12,10 +13,10 @@ type Args = {
   groupedMessages?: Message.message[];
 };
 
-export default async function addPaidServiceMessage({bubble, message, our, peerId, groupedMessages}: Args) {
+export default async function addPaidServiceMessage({isAnyGroup, bubble, message, our, peerId, groupedMessages}: Args) {
   const paidStars = Number((message as Message.message).paid_message_stars)
 
-  if(paidStars) {
+  if(paidStars && !isAnyGroup) {
     bubble.classList.add('has-fake-service', 'is-forced-rounded');
     bubble.dataset.isPaid = '1';
 
