@@ -177,6 +177,7 @@ export default class ChatInput {
   private btnToggleEmoticons: HTMLButtonElement;
   private btnToggleReplyMarkup: HTMLButtonElement;
   public btnSendContainer: HTMLDivElement;
+  private inputStarsCount: HTMLElement;
 
   private replyKeyboard: ReplyKeyboard;
 
@@ -402,6 +403,8 @@ export default class ChatInput {
 
     this.inputContainer.append(this.rowsWrapperWrapper, fakeRowsWrapper, fakeSelectionWrapper);
     this.chatInput.append(this.inputContainer);
+
+    this.inputStarsCount = document.createElement('span');
 
     if(!this.excludeParts.downButton) {
       this.constructGoDownButton();
@@ -2242,7 +2245,7 @@ export default class ChatInput {
       key = 'PaidMessages.MessageForStars';
       const starsElement = document.createElement('span');
       starsElement.classList.add('input-message-placeholder-stars');
-      starsElement.append(Icon('star'), numberThousandSplitterForStars(this.chat.starsAmount));
+      starsElement.append(Icon('star'), this.inputStarsCount);
       args = [starsElement];
     } else {
       key = 'Message';
@@ -3487,6 +3490,7 @@ export default class ChatInput {
     const isVisible = createMemo(() => canSend() && hasSomethingToSend());
 
     const totalStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding + store.messageCount));
+    const forwardedMessagesStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding));
 
     createEffect(() => {
       if(!store.inited) return;
@@ -3496,6 +3500,11 @@ export default class ChatInput {
     createEffect(() => {
       if(!store.inited) return;
       this.starsBadgeStars.innerText = numberThousandSplitterForStars(totalStarsAmount());
+    });
+
+    createEffect(() => {
+      if(!store.inited) return;
+      this.inputStarsCount.innerText = numberThousandSplitterForStars(forwardedMessagesStarsAmount());
     });
 
     return {store, set};
