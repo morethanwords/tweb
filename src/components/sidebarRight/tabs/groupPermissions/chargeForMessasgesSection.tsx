@@ -5,7 +5,7 @@ import {Transition} from 'solid-transition-group';
 import type SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
 import {i18n} from '../../../../lib/langPack';
 
-import useStarsComissionAndWithdrawalPrice from '../../../sidebarLeft/tabs/privacy/messages/useStarsComissionAndWithdrawalPrice';
+import useStarsCommissionAndWithdrawalPrice from '../../../sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
 import {PromiseCollector} from '../../../sidebarLeft/tabs/solidJsTabs/promiseCollector';
 import StarRangeInput from '../../../sidebarLeft/tabs/privacy/messages/starsRangeInput';
 import StaticSwitch from '../../../staticSwitch';
@@ -22,7 +22,7 @@ const ChargeForMessasgesSection: Component<{
   const [checked, setChecked] = createSignal(!!props.initialStars);
   const [stars, setStars] = createSignal(props.initialStars || 0);
 
-  const {commissionPercents, willReceiveDollars} = useStarsComissionAndWithdrawalPrice(stars);
+  const {commissionPercents, willReceiveDollars} = useStarsCommissionAndWithdrawalPrice(stars);
 
   createComputed(() => {
     if(checked()) {

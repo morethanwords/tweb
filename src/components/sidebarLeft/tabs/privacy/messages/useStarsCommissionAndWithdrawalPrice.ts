@@ -3,7 +3,7 @@ import {Accessor, createMemo} from 'solid-js';
 import useAppConfig from './useAppConfig';
 
 
-const useStarsComissionAndWithdrawalPrice = (stars: Accessor<number>) => {
+const useStarsCommissionAndWithdrawalPrice = (stars: Accessor<number>) => {
   const [appConfig] = useAppConfig();
 
   const commission = createMemo(() => (+appConfig()?.stars_paid_message_commission_permille || 0) / 1000);
@@ -18,4 +18,4 @@ const useStarsComissionAndWithdrawalPrice = (stars: Accessor<number>) => {
   }
 };
 
-export default useStarsComissionAndWithdrawalPrice;
+export default useStarsCommissionAndWithdrawalPrice;
