@@ -906,7 +906,7 @@ export default class ChatInput {
 
       const sendingParams = this.chat.getMessageSendingParams();
 
-      const preparedStars = await this.paidMessageInterceptor.prepareStarsForPayment(1)
+      const preparedStars = await this.paidMessageInterceptor.prepareStarsForPayment(1);
       if(preparedStars === PAYMENT_REJECTED) return;
 
       sendingParams.allowPaidStars = preparedStars;
@@ -2130,7 +2130,7 @@ export default class ChatInput {
 
       this._center(neededFakeContainer, false);
 
-      this.starsBadgeState.set({starsAmount: this.chat.starsAmount}); // should reset when undefined
+      this.starsState.set({inited: true, starsAmount: this.chat.starsAmount}); // should reset when undefined
 
       // console.warn('[input] finishpeerchange ends');
     };
@@ -2245,7 +2245,9 @@ export default class ChatInput {
       key = 'PaidMessages.MessageForStars';
       const starsElement = document.createElement('span');
       starsElement.classList.add('input-message-placeholder-stars');
-      starsElement.append(Icon('star'), this.inputStarsCount);
+      const span = document.createElement('span');
+      this.starsState.set({inputStarsCountEl: span});
+      starsElement.append(Icon('star'), span);
       args = [starsElement];
     } else {
       key = 'Message';
@@ -2952,7 +2954,7 @@ export default class ChatInput {
     }
 
     this.recording = value;
-    this.starsBadgeState.set({isRecording: value});
+    this.starsState.set({isRecording: value});
     this.setShrinking(this.recording, ['is-recording']);
     this.updateSendBtn();
     this.onRecording?.(value);
@@ -3433,7 +3435,7 @@ export default class ChatInput {
       this.btnSend.classList.toggle(i, icon === i);
     });
 
-    this.starsBadgeState.set({
+    this.starsState.set({
       hasSendButton: icon === 'send',
       forwarding: accumulate(Object.values(this.forwarding || {}).map(messages => messages.length), 0)
     });
@@ -3462,16 +3464,16 @@ export default class ChatInput {
 
     this.btnSendContainer.append(starsBadge);
 
-    this.starsBadgeState.set({inited: true});
+    this.starsState.set({inited: true});
   }
 
-  private starsBadgeState = createRoot((dispose) => {
+  private starsState = createRoot(dispose => {
     const middleware = this.getMiddleware();
     middleware.onDestroy(() => void dispose());
 
-    // console.log('[my-debug] starsBadgeState created');
     const [store, set] = createStore({
       inited: false,
+      inputStarsCountEl: null as null | HTMLElement,
 
       hasSendButton: false,
       isRecording: false,
@@ -3479,10 +3481,6 @@ export default class ChatInput {
       forwarding: 0,
       starsAmount: 0
     });
-
-    // createEffect(() => {
-    //   console.log('[my-debug] {...store} :>> ', {...store});
-    // });
 
     const canSend = createMemo(() => store.hasSendButton && !!store.starsAmount);
     const hasSomethingToSend = createMemo(() => !!store.messageCount || !!store.forwarding || store.isRecording);
@@ -3503,8 +3501,8 @@ export default class ChatInput {
     });
 
     createEffect(() => {
-      if(!store.inited) return;
-      this.inputStarsCount.innerText = numberThousandSplitterForStars(forwardedMessagesStarsAmount());
+      if(!store.inited || !store.inputStarsCountEl) return;
+      store.inputStarsCountEl.innerText = numberThousandSplitterForStars(forwardedMessagesStarsAmount());
     });
 
     return {store, set};
@@ -3512,14 +3510,14 @@ export default class ChatInput {
 
   private throttledSetMessageCountToBadgeState = asyncThrottle(async(value: string) => {
     if(!value?.trim()) {
-      this.starsBadgeState.set({messageCount: 0});
+      this.starsState.set({messageCount: 0});
       return;
     }
 
     const config = await this.managers.apiManager.getConfig();
     const splitted = splitStringByLength(value, config.message_length_max);
 
-    this.starsBadgeState.set({messageCount: splitted.length});
+    this.starsState.set({messageCount: splitted.length});
   }, 120);
 
   private getValueAndEntities(input: HTMLElement) {
