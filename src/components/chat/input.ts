@@ -2042,7 +2042,7 @@ export default class ChatInput {
       previousSendAs?.destroy();
       setSendAsCallback?.();
       replyKeyboard?.setPeer(peerId);
-      sendMenu?.setPeerId(peerId);
+      sendMenu?.setPeerParams({peerId, isPaid: !!this.chat.starsAmount});
 
       let haveSomethingInControl = false;
       if(this.chat && this.joinBtn) {

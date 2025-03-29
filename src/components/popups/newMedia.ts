@@ -379,7 +379,7 @@ export default class PopupNewMedia extends PopupElement {
         onEffect: this.setEffect
       });
 
-      sendMenu.setPeerId(this.chat.peerId);
+      sendMenu?.setPeerParams({peerId: this.chat.peerId, isPaid: !!this.chat.starsAmount});
     }
 
     currentPopup = this;

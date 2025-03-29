@@ -101,7 +101,7 @@ export default class PopupCreatePoll extends PopupElement {
         }
       });
 
-      sendMenu.setPeerId(this.chat.peerId);
+      sendMenu?.setPeerParams({peerId: this.chat.peerId, isPaid: !!this.chat.starsAmount});
     }
 
     this.header.append(this.questionInputField.container);
