@@ -6,6 +6,7 @@ import setBooleanFlag from '../../../../../helpers/object/setBooleanFlag';
 import {logger} from '../../../../../lib/logger';
 
 import {useSuperTab} from '../../solidJsTabs/superTabProvider';
+import type {AppPrivacyMessagesTab} from '../../solidJsTabs';
 
 import {MessagesTabStateStore, MessagesPrivacyOption, defaultPrivacyRules, privacyRulesInputKey} from './config';
 import {ChosenPeersByType} from './useStateStore';
@@ -13,6 +14,7 @@ import {ChosenPeersByType} from './useStateStore';
 
 const log = logger('useSaveSettings');
 
+type AppPrivacyMessagesTabType = typeof AppPrivacyMessagesTab;
 
 type UseSaveSettingsArgs = {
   store: MessagesTabStateStore;
@@ -24,7 +26,7 @@ type UseSaveSettingsArgs = {
 
 const useSaveSettings = ({store, globalPrivacy, isPaid, hasChanges, chosenPeersByType}: UseSaveSettingsArgs) => {
   const {rootScope} = useHotReloadGuard();
-  const [tab] = useSuperTab();
+  const [tab] = useSuperTab<AppPrivacyMessagesTabType>();
 
   const saveGlobalSettings = () => {
     const settings = structuredClone(globalPrivacy());
@@ -37,7 +39,11 @@ const useSaveSettings = ({store, globalPrivacy, isPaid, hasChanges, chosenPeersB
 
     log('saving settings :>> ', settings);
 
-    return rootScope.managers.appPrivacyManager.setGlobalPrivacySettings(settings);
+    const promise = rootScope.managers.appPrivacyManager.setGlobalPrivacySettings(settings);
+
+    tab.payload.onSaved(promise);
+
+    return promise;
   };
 
   const savePrivacyRules = async() => {

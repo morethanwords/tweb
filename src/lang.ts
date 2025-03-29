@@ -2948,6 +2948,7 @@ const lang = {
   'PrivacySettingsController.Everbody': 'Everybody',
   'PrivacySettingsController.MyContacts': 'My Contacts',
   'PrivacySettingsController.Nobody': 'Nobody',
+  'PrivacySettingsController.Paid': 'Paid',
   'PrivacySettingsController.NeverShare': 'Never Share With',
   'PrivacySettingsController.AlwaysShare': 'Always Share With',
   'PrivacySettingsController.NeverAllow': 'Never Allow',

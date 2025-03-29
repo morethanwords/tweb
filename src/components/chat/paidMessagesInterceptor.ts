@@ -81,7 +81,7 @@ export default class PaidMessagesInterceptor {
           'PaidMessages.UserChargesForMultipleMessageWarning' :
           'PaidMessages.UserChargesForOneMessageWarning',
         descriptionLangArgs: [
-          await wrapPeerTitle({peerId}),
+          await wrapPeerTitle({peerId, onlyFirstName: true}),
           i18n('Stars', [starsAmount]),
           i18n('Stars', [totalStarsAmount]),
           ...(messageCount > 1 ? [messageCount] : [])

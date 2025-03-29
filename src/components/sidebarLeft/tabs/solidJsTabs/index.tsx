@@ -2,7 +2,9 @@ import {Component} from 'solid-js';
 import {render} from 'solid-js/web';
 
 import SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
+import {CancellablePromise} from '../../../../helpers/cancellablePromise';
 import type {PasscodeActions} from '../../../../lib/passcode/actions';
+import {GlobalPrivacySettings} from '../../../../layer';
 import {LangPackKey} from '../../../../lib/langPack';
 import {InstanceOf} from '../../../../types';
 
@@ -103,8 +105,12 @@ export const AppPasscodeEnterPasswordTab =
     getComponentModule: () => import('../passcodeLock/enterPasswordTab')
   });
 
+type AppPrivacyMessagesTabPayload = {
+  onSaved: (globalPrivacy: CancellablePromise<GlobalPrivacySettings.globalPrivacySettings>) => void;
+};
+
 export const AppPrivacyMessagesTab =
-  scaffoldSolidJSTab({
+  scaffoldSolidJSTab<AppPrivacyMessagesTabPayload>({
     title: 'PrivacyMessages',
     getComponentModule: () => import('../privacy/messages/tab')
   });
