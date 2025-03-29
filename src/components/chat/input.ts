@@ -177,7 +177,6 @@ export default class ChatInput {
   private btnToggleEmoticons: HTMLButtonElement;
   private btnToggleReplyMarkup: HTMLButtonElement;
   public btnSendContainer: HTMLDivElement;
-  private inputStarsCount: HTMLElement;
 
   private replyKeyboard: ReplyKeyboard;
 
@@ -403,8 +402,6 @@ export default class ChatInput {
 
     this.inputContainer.append(this.rowsWrapperWrapper, fakeRowsWrapper, fakeSelectionWrapper);
     this.chatInput.append(this.inputContainer);
-
-    this.inputStarsCount = document.createElement('span');
 
     if(!this.excludeParts.downButton) {
       this.constructGoDownButton();
@@ -2219,7 +2216,7 @@ export default class ChatInput {
   private async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
     canSend ??= await this.chat.canSend('send_plain');
     const {peerId, threadId, isForum, type} = this.chat;
-    let key: LangPackKey, args: FormatterArguments;
+    let key: LangPackKey, args: FormatterArguments, inputStarsCountEl: HTMLElement;
     if(!canSend) {
       key = 'Channel.Persmission.MessageBlock';
     } else if(threadId && !isForum && !peerId.isUser()) {
@@ -2245,18 +2242,17 @@ export default class ChatInput {
       key = 'PaidMessages.MessageForStars';
       const starsElement = document.createElement('span');
       starsElement.classList.add('input-message-placeholder-stars');
-      const span = document.createElement('span');
-      this.starsState.set({inputStarsCountEl: span});
+      const span = inputStarsCountEl = document.createElement('span');
       starsElement.append(Icon('star'), span);
       args = [starsElement];
     } else {
       key = 'Message';
     }
 
-    return {key, args};
+    return {key, args, inputStarsCountEl};
   }
 
-  private updateMessageInputPlaceholder({key, args = []}: {key: LangPackKey, args?: FormatterArguments}) {
+  private updateMessageInputPlaceholder({key, args = [], inputStarsCountEl}: {key: LangPackKey, args?: FormatterArguments, inputStarsCountEl?: HTMLElement}) {
     // console.warn('[input] update placeholder');
     // const i = I18n.weakMap.get(this.messageInput) as I18n.IntlElement;
     const i = I18n.weakMap.get(this.messageInputField.placeholder) as I18n.IntlElement;
@@ -2266,7 +2262,8 @@ export default class ChatInput {
 
     const oldKey = i.key;
     const oldArgs = i.args;
-    i.compareAndUpdate({key, args});
+    i.compareAndUpdateBool({key, args}) &&
+    this.starsState.set({inputStarsCountEl});
 
     return {oldKey, oldArgs};
   }
@@ -3488,7 +3485,7 @@ export default class ChatInput {
     const isVisible = createMemo(() => canSend() && hasSomethingToSend());
 
     const totalStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding + store.messageCount));
-    const forwardedMessagesStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding));
+    const forwardedMessagesStarsAmount = createMemo(() => store.starsAmount /* * Math.max(1, store.forwarding) */);
 
     createEffect(() => {
       if(!store.inited) return;
@@ -3501,8 +3498,9 @@ export default class ChatInput {
     });
 
     createEffect(() => {
-      if(!store.inited || !store.inputStarsCountEl) return;
-      store.inputStarsCountEl.innerText = numberThousandSplitterForStars(forwardedMessagesStarsAmount());
+      if(!store.inited || !store.inputStarsCountEl || !forwardedMessagesStarsAmount()) return;
+
+      store.inputStarsCountEl.textContent = numberThousandSplitterForStars(forwardedMessagesStarsAmount());
     });
 
     return {store, set};
