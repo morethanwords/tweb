@@ -1696,9 +1696,9 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 }
 
 .input-message-placeholder-stars {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: -0.2em;
+  line-height: inherit;
+  vertical-align: bottom;
+  margin-inline-end: 0.125rem;
 }
 
 .bubbles {

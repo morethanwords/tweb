@@ -2241,9 +2241,9 @@ export default class ChatInput {
     } else if(this.chat.starsAmount) {
       key = 'PaidMessages.MessageForStars';
       const starsElement = document.createElement('span');
-      starsElement.classList.add('input-message-placeholder-stars');
       const span = inputStarsCountEl = document.createElement('span');
-      starsElement.append(Icon('star'), span);
+      starsElement.append(Icon('star', 'input-message-placeholder-stars'), span);
+
       args = [starsElement];
     } else {
       key = 'Message';
