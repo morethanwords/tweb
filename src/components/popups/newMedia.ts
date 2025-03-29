@@ -68,6 +68,7 @@ import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvi
 import throttle from '../../helpers/schedulers/throttle';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
+import ListenerSetter from '../../helpers/listenerSetter';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -335,6 +336,7 @@ export default class PopupNewMedia extends PopupElement {
     this.addEventListener('close', () => {
       this.files.length = 0;
       this.willAttach.sendFileDetails.length = 0;
+      this.hideActiveActionsMenu();
 
       if(currentPopup === this) {
         currentPopup = undefined;
@@ -1010,6 +1012,8 @@ export default class PopupNewMedia extends PopupElement {
       }
     }
     {
+      const listenerSetter = new ListenerSetter();
+
       const showActions = async() => {
         if(this.activeActionsMenu === itemDiv || !this.canShowActions) return;
         hideActions();
@@ -1127,24 +1131,19 @@ export default class PopupNewMedia extends PopupElement {
         const listener = (e: MouseEvent) => {
           if((e.target as HTMLElement)?.closest?.('.popup-item-media-action-menu') || e.target === itemDiv || itemDiv.contains(e.target as Node)) return;
           hideActions();
-          document.removeEventListener('pointermove', listener);
-          if(IS_MOBILE) {
-            document.body.removeEventListener('pointerdown', listener);
-          }
         }
-        document.addEventListener('pointermove', listener);
+        listenerSetter.add(document)('pointermove', listener);
+        listenerSetter.add(document)('keydown', () => {
+          hideActions();
+        }, {capture: true});
         if(IS_MOBILE) {
-          document.body.addEventListener('pointerdown', listener);
+          listenerSetter.add(document)('pointerdown', listener);
         }
       }
 
       const hideActions = () => {
-        document.querySelectorAll('.popup-item-media-action-menu')?.forEach(async(el) => {
-          this.activeActionsMenu = undefined;
-          (el as HTMLElement).style.opacity = '0';
-          await delay(200);
-          el?.remove();
-        });
+        listenerSetter.removeAll();
+        this.hideActiveActionsMenu();
       }
 
       itemDiv.addEventListener('pointermove', showActions);
@@ -1152,6 +1151,15 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     return promise;
+  }
+
+  private hideActiveActionsMenu() {
+    document.querySelectorAll('.popup-item-media-action-menu')?.forEach(async(el) => {
+      this.activeActionsMenu = undefined;
+      (el as HTMLElement).style.opacity = '0';
+      await delay(200);
+      el?.remove();
+    });
   }
 
   private wrapMediaEditorBlobInFile(originalFile: File, editedBlob: Blob, isGif: boolean) {
