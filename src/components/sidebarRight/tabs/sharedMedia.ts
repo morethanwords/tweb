@@ -621,7 +621,12 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       this.editBtn.classList.toggle('hide', !show);
     };
 
-    return manual ? callback : callback() as any;
+    if(manual) {
+      return callback as T extends true ? () => void : void;
+    } else {
+      callback();
+      return undefined as T extends true ? () => void : void;
+    }
   }
 
   public loadSidebarMedia(single: boolean, justLoad?: boolean) {

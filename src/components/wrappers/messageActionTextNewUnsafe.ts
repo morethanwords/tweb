@@ -78,7 +78,8 @@ export async function wrapTopicIcon<T extends WrapTopicIconOptions>(options: T):
   }
 
   return options.plain ?
-    rootScope.managers.appEmojiManager.getCustomEmojiDocument(iconEmojiId).then((doc) => doc.stickerEmojiRaw) :
+    rootScope.managers.appEmojiManager.getCustomEmojiDocument(iconEmojiId)
+    .then((doc) => doc.stickerEmojiRaw as T['plain'] extends true ? string : HTMLElement | DocumentFragment) :
     wrapCustomEmojiAwaited({
       ...options,
       docIds: [iconEmojiId]
