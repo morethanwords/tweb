@@ -644,7 +644,11 @@ export default class PeerProfile {
 
   private setAvatar<T extends boolean>(manual?: T): T extends true ? Promise<() => void> : Promise<void> {
     const promise = this._setAvatar();
-    return manual ? promise : promise.then((callback) => callback()) as any;
+    if(manual) {
+      return promise as T extends true ? Promise<() => void> : Promise<void>;
+    } else {
+      return promise.then((callback) => callback()) as T extends true ? Promise<() => void> : Promise<void>;
+    }
   }
 
   private getUsernamesAlso(usernames: string[]) {

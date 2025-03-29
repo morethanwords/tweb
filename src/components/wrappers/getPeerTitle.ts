@@ -67,5 +67,5 @@ export default async function getPeerTitle<
     title = _limitSymbols(title, limitSymbols, limitSymbols);
   }
 
-  return plainText ? title : wrapEmojiText(title) as any;
+  return plainText ? title as R : wrapEmojiText(title) as any;
 }

@@ -21,6 +21,6 @@ export default async function wrapMessageActionTextNew<T extends WrapMessageActi
     return await wrapMessageActionTextNewUnsafe(options) as any;
   } catch(err) {
     console.error('wrapMessageActionTextNewUnsafe error:', err);
-    return options.plain ? '' : document.createElement('span') as any;
+    return options.plain ? '' as T['plain'] extends true ? string : HTMLElement : document.createElement('span') as any;
   }
 }
