@@ -288,14 +288,14 @@ export default class AppSelectPeers {
           });
 
           return {peerId, userId, requirement, requiredStars: starsAmount};
-        })).then((requirements) => {
-          for(const {peerId, requirement, requiredStars} of requirements) {
+        })).then((result) => {
+          for(const {peerId, requirement, requiredStars} of result) {
             const element = this.getElementByPeerId(peerId.toPeerId(false));
             if(!element) {
               continue;
             }
 
-            if(requirement._ === 'requirementToContactPremium') {
+            if(requirement?._ === 'requirementToContactPremium') {
               const lock = Icon('premium_lock', 'selector-premium-lock');
               element.append(lock);
               element.classList.add('is-premium-locked');

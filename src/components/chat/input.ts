@@ -2127,8 +2127,7 @@ export default class ChatInput {
 
       this._center(neededFakeContainer, false);
 
-      this.starsState.set({inited: true, starsAmount: this.chat.starsAmount}); // should reset when undefined
-
+      this.setStarsAmount(this.chat.starsAmount); // should reset when undefined
       // console.warn('[input] finishpeerchange ends');
     };
   }
@@ -2992,6 +2991,7 @@ export default class ChatInput {
 
     const chatId = peerId.toChatId();
     const chat = apiManagerProxy.getChat(chatId) as MTChat.channel;
+
     if(!chat.pFlags.slowmode_enabled) {
       return false;
     }
@@ -3462,6 +3462,13 @@ export default class ChatInput {
     this.btnSendContainer.append(starsBadge);
 
     this.starsState.set({inited: true});
+  }
+
+  public async setStarsAmount(starsAmount: number | undefined) {
+    this.starsState.set({starsAmount});
+
+    const params = await this.getPlaceholderParams(await this.chat?.canSend('send_plain') || true);
+    this.updateMessageInputPlaceholder(params);
   }
 
   private starsState = createRoot(dispose => {

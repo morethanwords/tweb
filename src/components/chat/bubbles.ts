@@ -192,6 +192,8 @@ import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsA
 import {Sparkles} from '../sparkles';
 import PopupStars from '../popups/stars';
 import addPaidServiceMessage from './bubbleParts/paidServiceMessage';
+import namedPromises from '../../helpers/namedPromises';
+import {getCurrentNewMediaPopup} from '../popups/newMedia';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -1426,14 +1428,21 @@ export default class ChatBubbles {
       }
 
       const middleware = this.getMiddleware();
-      const [isUserBlocked, isPremiumRequired] = await Promise.all([
-        this.managers.appProfileManager.isCachedUserBlocked(userId),
-        this.chat.isPremiumRequiredToContact()
-      ]);
+      const {
+        isUserBlocked,
+        isPremiumRequired,
+        starsAmount
+      } = await namedPromises({
+        isUserBlocked: this.managers.appProfileManager.isCachedUserBlocked(userId),
+        isPremiumRequired: this.chat.isPremiumRequiredToContact(),
+        starsAmount: this.managers.appUsersManager.getStarsAmount(userId)
+      });
+
       if(!middleware()) return;
 
       const wasUserBlocked = this.chat.isUserBlocked;
       const wasPremiumRequired = this.chat.isPremiumRequired;
+      const wasStarsAmount = this.chat.starsAmount;
       let refreshing = false;
       // do not refresh if had no status since input is shown by default
       if(wasUserBlocked === undefined ? isUserBlocked : wasUserBlocked !== isUserBlocked) {
@@ -1441,11 +1450,20 @@ export default class ChatBubbles {
         refreshing = true;
       }
 
-      if(wasPremiumRequired === undefined ? isPremiumRequired : wasPremiumRequired !== isPremiumRequired) {
+      const hasPremiumChanged = wasPremiumRequired === undefined ? isPremiumRequired : wasPremiumRequired !== isPremiumRequired;
+      const hasStarsAmountChanged = wasStarsAmount === undefined ? starsAmount : wasStarsAmount !== starsAmount;
+
         this.chat.isPremiumRequired = isPremiumRequired;
+      this.chat.starsAmount = starsAmount;
+
+      if(hasPremiumChanged || hasStarsAmountChanged) {
         refreshing = true;
         this.cleanupPlaceholders();
         this.checkIfEmptyPlaceholderNeeded();
+      }
+
+      if(hasStarsAmountChanged) {
+        getCurrentNewMediaPopup()?.setStarsAmount(starsAmount);
       }
 
       if(refreshing) {

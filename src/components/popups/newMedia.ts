@@ -619,6 +619,7 @@ export default class PopupNewMedia extends PopupElement {
   public changeGroup(group: boolean) {
     this.willAttach.group = group;
     this.attachFiles();
+    this.starsState.set({isGrouped: group});
   }
 
   public changeSpoilers(toggle: boolean) {
@@ -1352,6 +1353,10 @@ export default class PopupNewMedia extends PopupElement {
 
     return {store, set, totalMessages};
   });
+
+  public setStarsAmount(starsAmount: number) {
+    this.starsState.set({starsAmount});
+  }
 
   private setTitle() {
     const {willAttach, title, files} = this;

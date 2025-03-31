@@ -64,7 +64,8 @@ import PopupStars from '../popups/stars';
 import {getPendingPaidReactionKey, PENDING_PAID_REACTIONS} from './reactions';
 import ChatBackgroundStore from '../../lib/chatBackgroundStore';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
-import showUndoablePaidTooltip, {paidReactionLangKeys} from './undoablePaidTooltip';
+import namedPromises from '../../helpers/namedPromises';
+import {getCurrentNewMediaPopup} from '../popups/newMedia';
 
 export enum ChatType {
   Chat = 'chat',
@@ -626,9 +627,19 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
       const {peerId} = this;
       if(peerId.isAnyChat() && peerId.toChatId() === chatId) {
-        const isAnonymousSending = await this.managers.appMessagesManager.isAnonymousSending(peerId);
+        const {
+          starsAmount,
+          isAnonymousSending
+        } = await namedPromises({
+          starsAmount: this.managers.appChatsManager.getStarsAmount(chatId),
+          isAnonymousSending: this.managers.appMessagesManager.isAnonymousSending(peerId)
+        });
+
         if(peerId === this.peerId) {
           this.isAnonymousSending = isAnonymousSending;
+          this.starsAmount = starsAmount;
+          this.input.setStarsAmount(starsAmount);
+          getCurrentNewMediaPopup()?.setStarsAmount(starsAmount);
         }
       }
     });

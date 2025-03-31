@@ -254,7 +254,7 @@ $row-border-radius: $border-radius-medium;
       }
 
       &-stars-color {
-        color: #fecf16;
+        color: var(--star-golden-color);
       }
     }
 

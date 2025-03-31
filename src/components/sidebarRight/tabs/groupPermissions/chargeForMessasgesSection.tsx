@@ -13,7 +13,7 @@ import Section from '../../../section';
 import RowTsx from '../../../rowTsx';
 
 
-const TRANSITION_TIME = 200;
+const TRANSITION_PARAMS: KeyframeAnimationOptions = {duration: 200, easing: 'ease-out'};
 
 const ChargeForMessasgesSection: Component<{
   initialStars: number;
@@ -57,7 +57,7 @@ const ChargeForMessasgesSection: Component<{
       <Transition
         onEnter={async(el, done) => {
           const height = el.scrollHeight;
-          await el.animate({height: ['0px', height + 'px']}, {duration: TRANSITION_TIME}).finished;
+          await el.animate({height: ['0px', height + 'px']}, TRANSITION_PARAMS).finished;
 
           done();
         }}
@@ -66,7 +66,7 @@ const ChargeForMessasgesSection: Component<{
           await el.animate({
             height: [height + 'px', '0px'],
             opacity: [1, 0]
-          }, {duration: TRANSITION_TIME}).finished;
+          }, TRANSITION_PARAMS).finished;
 
           done();
         }}

@@ -1332,7 +1332,7 @@ export class AppMessagesManager extends AppManager {
       return sentDeferred;
     };
 
-    if(!hadMessageBefore && !options.confirmedPaymentResult.canUndo) {
+    if(!hadMessageBefore && !options.confirmedPaymentResult?.canUndo) {
       message.send = upload;
     }
 
@@ -1403,7 +1403,7 @@ export class AppMessagesManager extends AppManager {
         );
       };
 
-      if(options.confirmedPaymentResult.canUndo) {
+      if(options.confirmedPaymentResult?.canUndo) {
         upload();
 
         this.paidMessagesQueue.add(peerId, {
