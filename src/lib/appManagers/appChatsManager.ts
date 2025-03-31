@@ -321,7 +321,7 @@ export class AppChatsManager extends AppManager {
     const chat = this.getChat(chatId);
     if(chat?._ !== 'channel') return;
 
-    return Number(chat.send_paid_messages_stars) || undefined;
+    return !chat.admin_rights && +chat.send_paid_messages_stars || undefined;
   }
 
   public isPublic(id: ChatId) {

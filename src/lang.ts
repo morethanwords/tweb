@@ -3207,6 +3207,12 @@ const lang = {
     'other_value': 'You paid **%2$s** to send %1$d messages.'
   },
   'PaidMessages.YouReceivedStarsFrom': 'You received **%s** from %s',
+  'PaidMessages.FeeForMessages': {
+    'one_value': 'Fee for %d message',
+    'other_value': 'Fee for %d messages'
+  },
+  'PaidMessages.YouReceiveWithCommissionNotice': 'You receive %d% of the price that you charge for each incoming message.',
+  'PaidMessages.FullPrice': 'Full Price',
 
   'BuyStars': 'Buy Stars',
   'UnsavedChanges': 'Unsaved Changes',
