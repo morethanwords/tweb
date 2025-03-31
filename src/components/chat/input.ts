@@ -903,10 +903,10 @@ export default class ChatInput {
 
       const sendingParams = this.chat.getMessageSendingParams();
 
-      const preparedStars = await this.paidMessageInterceptor.prepareStarsForPayment(1);
-      if(preparedStars === PAYMENT_REJECTED) return;
+      const preparedPaymentResult = await this.paidMessageInterceptor.prepareStarsForPayment(1);
+      if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
-      sendingParams.allowPaidStars = preparedStars;
+      sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
       const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
       const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
@@ -2356,7 +2356,7 @@ export default class ChatInput {
     this.listenerSetter.add(this.messageInput)('keydown', (e) => {
       const key = e.key;
 
-      if(isSendShortcutPressed(e)) {
+      if(e.isTrusted && isSendShortcutPressed(e)) {
         cancelEvent(e);
         this.sendMessage();
       } else if(e.ctrlKey || e.metaKey) {
@@ -3450,12 +3450,12 @@ export default class ChatInput {
 
   private async addStarsBadge() {
     const starsBadge = this.starsBadge = document.createElement('span');
-    starsBadge.classList.add('btn-send-stars-badge');
+    starsBadge.classList.add('btn-send-stars-badge', 'stars-badge-base');
 
     const starsBadgeStars = this.starsBadgeStars = document.createElement('span');
 
     starsBadge.append(
-      Icon('star', 'btn-send-stars-badge__icon'),
+      Icon('star', 'stars-badge-base__icon'),
       starsBadgeStars
     );
 
@@ -3602,13 +3602,13 @@ export default class ChatInput {
       }
     }
 
-    const preparedStars = !editMsgId ?
+    const preparedPaymentResult = !editMsgId && messageCount ?
       await this.paidMessageInterceptor.prepareStarsForPayment(messageCount) :
       undefined;
 
-    if(preparedStars === PAYMENT_REJECTED) return;
+    if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
-    sendingParams.allowPaidStars = preparedStars;
+    sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
     if(editMsgId) {
       const message = this.editMessage;
@@ -3725,10 +3725,10 @@ export default class ChatInput {
 
     const sendingParams = this.chat.getMessageSendingParams();
 
-    const preparedStars = await this.paidMessageInterceptor.prepareStarsForPayment(1);
-    if(preparedStars === PAYMENT_REJECTED) return;
+    const preparedPaymentResult = await this.paidMessageInterceptor.prepareStarsForPayment(1);
+    if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
-    sendingParams.allowPaidStars = preparedStars;
+    sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
     this.managers.appMessagesManager.sendFile({
       ...sendingParams,

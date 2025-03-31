@@ -65,6 +65,7 @@ import PinnedContainer from './pinnedContainer';
 import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
 import ChatTranslation from './translation';
 import {useAppSettings} from '../../stores/appSettings';
+import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -498,7 +499,17 @@ export default class ChatTopbar {
       onClick: () => {
         const contactPeerId = this.peerId;
         PopupPickUser.createSharingPicker({
-          onSelect: (peerId) => {
+          onSelect: async(peerId) => {
+            const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
+            if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
+
+            const send = () => {
+              this.managers.appMessagesManager.sendContact(peerId, contactPeerId, preparedPaymentResult);
+              this.chat.appImManager.setInnerPeer({peerId});
+            };
+
+            if(preparedPaymentResult) return void send();
+
             return new Promise((resolve, reject) => {
               PopupElement.createPopup(PopupPeer, '', {
                 titleLangKey: 'SendMessageTitle',
@@ -506,11 +517,9 @@ export default class ChatTopbar {
                 descriptionLangArgs: [new PeerTitle({peerId, dialog: true}).element],
                 buttons: [{
                   langKey: 'Send',
-                  callback: () => {
+                  callback: async() => {
                     resolve();
-
-                    this.managers.appMessagesManager.sendContact(peerId, contactPeerId);
-                    this.chat.appImManager.setInnerPeer({peerId});
+                    send();
                   }
                 }, {
                   langKey: 'Cancel',
@@ -552,6 +561,7 @@ export default class ChatTopbar {
       icon: 'bots',
       text: 'Settings',
       onClick: () => {
+        // [ ] Bot with paid stars?
         this.managers.appMessagesManager.sendText({peerId: this.peerId, text: '/settings'});
       },
       verify: async() => {

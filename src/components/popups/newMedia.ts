@@ -764,10 +764,10 @@ export default class PopupNewMedia extends PopupElement {
     const {length} = sendFileDetails;
     const sendingParams = this.chat.getMessageSendingParams();
 
-    const preparedStars = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages());
-    if(preparedStars === PAYMENT_REJECTED) return;
+    const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages());
+    if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
-    sendingParams.allowPaidStars = preparedStars;
+    sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
     let effect = this.effect();
     this.iterate((sendFileParams) => {
@@ -1324,7 +1324,7 @@ export default class PopupNewMedia extends PopupElement {
     const span = document.createElement('span');
     span.classList.add('popup-confirm-btn-inner');
 
-    span.append(Icon('star'), numberThousandSplitterForStars(stars) + '');
+    span.append(Icon('star', 'popup-confirm-btn-inner-star'), numberThousandSplitterForStars(stars) + '');
 
     replaceContent(
       this.btnConfirm,

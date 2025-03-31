@@ -24,6 +24,7 @@ import {ExportedChatInvite} from '../layer';
 import rootScope from '../lib/rootScope';
 import PopupPickUser from './popups/pickUser';
 import wrapPeerTitle from './wrappers/peerTitle';
+import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './chat/paidMessagesInterceptor';
 
 const REJOIN_INTERVAL = 15000;
 
@@ -88,15 +89,22 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
   }
 
   private onForward = async() => {
-    const peerId = await PopupPickUser.createSharingPicker2();
-    rootScope.managers.appMessagesManager.sendText({
-      peerId,
-      text: this.shareUrl
-    });
+    PopupPickUser.createSharingPicker({
+      onSelect: async(peerId) => {
+        const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
+        if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
 
-    toastNew({
-      langPackKey: 'InviteLinkSentSingle',
-      langPackArguments: [await wrapPeerTitle({peerId, dialog: true})]
+        rootScope.managers.appMessagesManager.sendText({
+          peerId,
+          text: this.shareUrl,
+          confirmedPaymentResult: preparedPaymentResult
+        });
+
+        toastNew({
+          langPackKey: 'InviteLinkSentSingle',
+          langPackArguments: [await wrapPeerTitle({peerId, dialog: true})]
+        });
+      }
     });
   };
 

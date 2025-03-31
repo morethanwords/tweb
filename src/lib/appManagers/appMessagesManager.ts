@@ -80,6 +80,7 @@ import isMentionUnread from './utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
 import commonStateStorage from '../commonStateStorage';
 import PaidMessagesQueue from './utils/messages/paidMessagesQueue';
+import type {ConfirmedPaymentResult} from '../../components/chat/paidMessagesInterceptor';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -223,7 +224,7 @@ export type MessageSendingParams = Partial<{
   savedReaction: Reaction[],
   invertMedia: boolean,
   effect: DocId,
-  allowPaidStars: number
+  confirmedPaymentResult: ConfirmedPaymentResult
 }>;
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -801,7 +802,7 @@ export class AppMessagesManager extends AppManager {
           id: options.resultId,
           clear_draft: options.clearDraft,
           send_as: sendAs,
-          allow_paid_stars: options.allowPaidStars || undefined
+          allow_paid_stars: options.confirmedPaymentResult?.starsAmount || undefined
         }, sentRequestOptions);
       } else {
         const commonOptions: Partial<MessagesSendMessage | MessagesSendMedia> = {
@@ -817,7 +818,7 @@ export class AppMessagesManager extends AppManager {
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
           effect: options.effect,
-          allow_paid_stars: options.allowPaidStars || undefined
+          allow_paid_stars: options.confirmedPaymentResult?.starsAmount || undefined
         };
 
         const mergedOptions: MessagesSendMessage | MessagesSendMedia = {
@@ -898,7 +899,8 @@ export class AppMessagesManager extends AppManager {
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
       clearDraft: options.clearDraft,
-      sequential: true
+      sequential: true,
+      confirmedPaymentResult: options.confirmedPaymentResult
     });
 
     const promises: ReturnType<AppMessagesManager['sendText']>[] = [message.promise];
@@ -1330,7 +1332,7 @@ export class AppMessagesManager extends AppManager {
       return sentDeferred;
     };
 
-    if(!hadMessageBefore && !options.allowPaidStars) {
+    if(!hadMessageBefore && !options.confirmedPaymentResult.canUndo) {
       message.send = upload;
     }
 
@@ -1359,7 +1361,7 @@ export class AppMessagesManager extends AppManager {
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
           effect: options.effect,
-          allow_paid_stars: options.allowPaidStars || undefined
+          allow_paid_stars: options.confirmedPaymentResult?.starsAmount || undefined
         }).then((updates) => {
           this.apiUpdatesManager.processUpdateMessage(updates);
         });
@@ -1401,7 +1403,7 @@ export class AppMessagesManager extends AppManager {
         );
       };
 
-      if(options.allowPaidStars) {
+      if(options.confirmedPaymentResult.canUndo) {
         upload();
 
         this.paidMessagesQueue.add(peerId, {
@@ -1502,7 +1504,7 @@ export class AppMessagesManager extends AppManager {
 
       if(idx === 0) {
         firstMessage = result.message;
-        firstMessage.paid_message_stars = options.allowPaidStars;
+        firstMessage.paid_message_stars = options.confirmedPaymentResult?.starsAmount;
       }
 
       return result;
@@ -1556,7 +1558,7 @@ export class AppMessagesManager extends AppManager {
             update_stickersets_order: options.updateStickersetOrder,
             invert_media: options.invertMedia,
             effect: options.effect,
-            allow_paid_stars: options.allowPaidStars * multiMedia.length || undefined,
+            allow_paid_stars: options.confirmedPaymentResult?.starsAmount * multiMedia.length || undefined,
             ...(options.stars ? {
               media: multiMedia[0].media,
               message: multiMedia[0].message,
@@ -1659,7 +1661,7 @@ export class AppMessagesManager extends AppManager {
         };
       }
 
-      if(options.allowPaidStars) {
+      if(options.confirmedPaymentResult?.canUndo) {
         this.paidMessagesQueue.add(peerId, {
           send: () => void invoke(inputs),
           cancel: () => results.forEach(({message}) => this.cancelPendingMessage(message.random_id))
@@ -1670,8 +1672,8 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public sendContact(peerId: PeerId, contactPeerId: PeerId) {
-    return this.sendOther({peerId, inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId)});
+  public sendContact(peerId: PeerId, contactPeerId: PeerId, confirmedPaymentResult?: ConfirmedPaymentResult) {
+    return this.sendOther({peerId, inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId), confirmedPaymentResult});
   }
 
   public sendOther(
@@ -1837,7 +1839,7 @@ export class AppMessagesManager extends AppManager {
           schedule_date: options.scheduleDate,
           silent: options.silent,
           send_as: sendAs,
-          allow_paid_stars: options.allowPaidStars || undefined
+          allow_paid_stars: options.confirmedPaymentResult?.starsAmount || undefined
         }, sentRequestOptions);
       } else {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendMedia', {
@@ -1851,7 +1853,7 @@ export class AppMessagesManager extends AppManager {
           silent: options.silent,
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder,
-          allow_paid_stars: options.allowPaidStars || undefined
+          allow_paid_stars: options.confirmedPaymentResult?.starsAmount || undefined
         }, sentRequestOptions);
       }
 
@@ -1884,7 +1886,8 @@ export class AppMessagesManager extends AppManager {
       threadId: options.threadId,
       clearDraft: options.clearDraft,
       sequential: true,
-      noOutgoingMessage
+      noOutgoingMessage,
+      confirmedPaymentResult: options.confirmedPaymentResult
     });
 
     const promise = message.promise;
@@ -1927,7 +1930,7 @@ export class AppMessagesManager extends AppManager {
     // }
   }
 
-  private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction'> & Partial<{
+  private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction' | 'confirmedPaymentResult'> & Partial<{
     isGroupedItem: boolean,
     isScheduled: boolean,
     clearDraft: boolean,
@@ -2015,7 +2018,7 @@ export class AppMessagesManager extends AppManager {
         }
         if(DO_NOT_SEND_MESSAGES) return;
 
-        if(SEND_MESSAGES_TO_PAID_QUEUE || message.paid_message_stars) {
+        if(SEND_MESSAGES_TO_PAID_QUEUE || options.confirmedPaymentResult?.canUndo) {
           this.paidMessagesQueue.add(peerId, {
             send: () => void message?.send?.(),
             cancel: () => void this.cancelPendingMessage(message?.random_id)
@@ -2086,7 +2089,7 @@ export class AppMessagesManager extends AppManager {
       views: isBroadcast && 1,
       pending: true,
       effect: options.effect,
-      paid_message_stars: options.allowPaidStars || undefined
+      paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined
     };
 
     defineNotNumerableProperties(message, ['send', 'promise']);
@@ -2823,7 +2826,7 @@ export class AppMessagesManager extends AppManager {
           entities: originalMessage.entities,
           scheduleDate: options.scheduleDate,
           silent: options.silent,
-          allowPaidStars: options.allowPaidStars
+          confirmedPaymentResult: options.confirmedPaymentResult
         });
 
         mids.splice(i--, 1);
@@ -2950,7 +2953,8 @@ export class AppMessagesManager extends AppManager {
       this.beforeMessageSending(message, {
         isScheduled: !!options.scheduleDate || undefined,
         sequential: true,
-        threadId: message.peerId === this.appPeersManager.peerId ? fromPeerId : undefined
+        threadId: message.peerId === this.appPeersManager.peerId ? fromPeerId : undefined,
+        confirmedPaymentResult: options.confirmedPaymentResult
       });
     });
 
@@ -2971,7 +2975,7 @@ export class AppMessagesManager extends AppManager {
       drop_media_captions: options.dropCaptions,
       send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
       top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined,
-      allow_paid_stars: options.allowPaidStars ? options.allowPaidStars * mids.length : undefined
+      allow_paid_stars: options.confirmedPaymentResult ? options.confirmedPaymentResult?.starsAmount * mids.length : undefined
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates);
@@ -2990,7 +2994,7 @@ export class AppMessagesManager extends AppManager {
 
     this.pendingAfterMsgs[peerId] = sentRequestOptions;
 
-    if(options.allowPaidStars) {
+    if(options.confirmedPaymentResult?.canUndo) {
       this.paidMessagesQueue.add(peerId, {
         send: () => void send(),
         cancel

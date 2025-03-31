@@ -8510,7 +8510,10 @@ export default class ChatBubbles {
         const requirement = await this.managers.appUsersManager.getRequirementToContact(this.peerId.toUserId());
         if(requirement._ === 'requirementToContactPremium') {
           renderPromise = this.renderEmptyPlaceholder('premiumRequired', bubble, message, elements);
-        } else if(requirement._ === 'requirementToContactPaidMessages') {
+        } else if(
+          requirement._ === 'requirementToContactPaidMessages' &&
+          !(await this.managers.appProfileManager.hasBussinesIntro(this.peerId.toUserId()) && this.chat.starsAmount <= +this.chat.stars())
+        ) {
           renderPromise = this.renderEmptyPlaceholder('paidMessages', bubble, message, elements);
         } else {
           renderPromise = this.renderEmptyPlaceholder('greeting', bubble, message, elements);

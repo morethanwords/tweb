@@ -27,7 +27,7 @@ export default class PaidMessagesQueue {
     this.fallbackTimeouts.set(
       peerId,
       self.setTimeout(() => {
-        this.remove(peerId);
+        this.cancelFor(peerId);
       }, FALLBACK_TIMEOUT)
     );
   }

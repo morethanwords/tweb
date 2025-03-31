@@ -65,6 +65,7 @@
   left: 50%;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   width: max-content;
   max-width: calc(100% - 1rem);
 
@@ -78,6 +79,10 @@
     &.mounted {
       transform: translate(-50%, -1rem);
     }
+  }
+
+  &--a-little-wider {
+    min-width: 300px;
   }
 
   .tooltip-undo {

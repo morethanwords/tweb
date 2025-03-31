@@ -103,6 +103,7 @@ import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import wrapUrl from '../../lib/richTextProcessor/wrapUrl';
 import PopupReportAd from '../popups/reportAd';
 import {useAppSettings} from '../../stores/appSettings';
+import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -939,6 +940,10 @@ const Stories = (props: {
     const popup = PopupPickUser.createSharingPicker({
       onSelect: async(peerId) => {
         const storyPeerId = props.state.peerId;
+
+        const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
+        if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
+
         const inputPeer = await rootScope.managers.appPeersManager.getInputPeerById(storyPeerId);
         rootScope.managers.appMessagesManager.sendOther({
           peerId,
@@ -946,7 +951,8 @@ const Stories = (props: {
             _: 'inputMediaStory',
             id: currentStory().id,
             peer: inputPeer
-          }
+          },
+          confirmedPaymentResult: preparedPaymentResult
         });
 
         showMessageSentTooltip(

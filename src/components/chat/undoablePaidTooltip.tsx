@@ -9,6 +9,7 @@ import {Accessor, createEffect, createRoot, createSignal, onCleanup} from 'solid
 import {SEND_PAID_WITH_STARS_DELAY} from '../../lib/mtproto/mtproto_config';
 import appImManager from '../../lib/appManagers/appImManager';
 import I18n, {i18n, LangPackKey} from '../../lib/langPack';
+import classNames from '../../helpers/string/classNames';
 import eachSecond from '../../helpers/eachSecond';
 import {animate} from '../../helpers/animation';
 
@@ -37,6 +38,7 @@ export default function showUndoablePaidTooltip(props: {
   titleCount: Accessor<number>;
   subtitleCount: Accessor<number>;
   onUndo: () => void;
+  wider?: boolean;
 } & LangKeys) {
   createRoot((dispose) => {
     const [secondsLeft, setSecondsLeft] = createSignal<number>();
@@ -87,7 +89,7 @@ export default function showUndoablePaidTooltip(props: {
       mountOn: appImManager.chat.bubbles.container,
       relative: true,
       vertical: 'top',
-      class: 'paid-reaction-tooltip',
+      class: classNames('paid-reaction-tooltip', props.wider && 'paid-reaction-tooltip--a-little-wider'),
       textElement: title.element,
       subtitleElement: subtitle.element,
       rightElement: (

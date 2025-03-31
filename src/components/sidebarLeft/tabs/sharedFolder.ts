@@ -26,6 +26,7 @@ import AppSelectPeers from '../../appSelectPeers';
 import Button from '../../button';
 import ButtonIcon from '../../buttonIcon';
 import ButtonMenuToggle from '../../buttonMenuToggle';
+import type {ConfirmedPaymentResult} from '../../chat/paidMessagesInterceptor';
 import confirmationPopup from '../../confirmationPopup';
 import PopupPickUser from '../../popups/pickUser';
 import ripple from '../../ripple';
@@ -129,8 +130,18 @@ export class InviteLink {
 
   public shareLink = (url: string = this.url) => {
     PopupPickUser.createSharingPicker({
-      onSelect: (peerId) => {
-        rootScope.managers.appMessagesManager.sendText({peerId, text: url});
+      onSelect: async(peerId) => {
+        // Cannot use normal import here :(
+        const {default: PaidMessagesInterceptor, PAYMENT_REJECTED} = await import('../../chat/paidMessagesInterceptor');
+
+        const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
+        if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
+
+        rootScope.managers.appMessagesManager.sendText({
+          peerId,
+          text: url,
+          confirmedPaymentResult: preparedPaymentResult as ConfirmedPaymentResult
+        });
         appImManager.setInnerPeer({peerId});
       }
     });

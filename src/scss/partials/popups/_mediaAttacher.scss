@@ -57,7 +57,11 @@
     &-confirm-btn-inner {
       display: flex;
       align-items: center;
-      gap: 0.125em;
+      gap: 0.125rem;
+
+      &-star {
+        font-size: 1.125rem;
+      }
     }
   }
 

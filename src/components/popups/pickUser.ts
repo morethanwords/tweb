@@ -22,6 +22,7 @@ import {makeMediaSize} from '../../helpers/mediaSize';
 import getDialogIndex from '../../lib/appManagers/utils/dialogs/getDialogIndex';
 import {Middleware} from '../../helpers/middleware';
 import deferredPromise from '../../helpers/cancellablePromise';
+import {MOUNT_CLASS_TO} from '../../config/debug';
 
 type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelectPeers>[0], {
   multiSelect?: never,
@@ -446,3 +447,5 @@ export default class PopupPickUser extends PopupElement {
     });
   }
 }
+
+MOUNT_CLASS_TO.PopupPickUser = PopupPickUser;
