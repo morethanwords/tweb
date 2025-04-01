@@ -5404,6 +5404,20 @@ export default class ChatBubbles {
           const peerTitle = new PeerTitle();
           promise = peerTitle.update({peerId: action.channel_id.toPeerId(true), wrapOptions});
           s.append(i18n('ChatMigration.To', [peerTitle.element]));
+        } else if(action._ === 'messageActionPaidMessagesPrice') {
+          const isFree = !+action.stars;
+          s.append(i18n(
+            isFree ? 'PaidMessages.GroupPriceChangedFree' : 'PaidMessages.GroupPriceChanged',
+            [+action.stars]
+          ));
+        } else if(action._ === 'messageActionPaidMessagesRefunded') {
+          const peerTitle = new PeerTitle();
+          promise = peerTitle.update({peerId: this.peerId, onlyFirstName: true, wrapOptions});
+
+          s.append(i18n(
+            our ? 'PaidMessages.StarsRefundedByYou' : 'PaidMessages.StarsRefundedToYou',
+            [+action.stars, peerTitle.element]
+          ));
         } else {
           promise = wrapMessageActionTextNew({
             message,
