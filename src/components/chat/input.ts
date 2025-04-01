@@ -3417,7 +3417,6 @@ export default class ChatInput {
     return isInputEmpty(this.messageInput);
   }
 
-  // Update send button
   public updateSendBtn() {
     let icon: ChatSendBtnIcon;
 
