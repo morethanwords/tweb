@@ -2452,3 +2452,15 @@ hr {
     font-size: 1.125rem;
   }
 }
+
+.appear-zoom {
+  transform: scale(0);
+
+  @include animation-level(2) {
+    transition: transform 0.1s;
+  }
+
+  &--active {
+    transform: scale(1);
+  }
+}

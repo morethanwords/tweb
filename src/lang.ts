@@ -3216,7 +3216,8 @@ const lang = {
 
   'BuyStars': 'Buy Stars',
   'UnsavedChanges': 'Unsaved Changes',
-  'PrivacyUnsavedChangesDescription': 'You have changed some privacy settings. Save changes?',
+  'UnsavedChangesDescription.Privacy': 'You have changed some privacy settings. Save changes?',
+  'UnsavedChangesDescription.Group': 'You have changed some settings in this group. Save changes?',
   'DontAskAgain': 'Don\'t ask again',
   'ConfirmPayment': 'Confirm Payment',
   'Undo': 'Undo'

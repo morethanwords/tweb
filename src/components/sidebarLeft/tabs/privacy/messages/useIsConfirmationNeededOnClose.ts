@@ -18,7 +18,7 @@ const useIsConfirmationNeededOnClose = ({hasChanges, saveAllSettings}: UseIsConf
   try {
     await confirmationPopup({
       titleLangKey: 'UnsavedChanges',
-      descriptionLangKey: 'PrivacyUnsavedChangesDescription',
+      descriptionLangKey: 'UnsavedChangesDescription.Privacy',
       button: saveButton,
       buttons: [
         saveButton,
