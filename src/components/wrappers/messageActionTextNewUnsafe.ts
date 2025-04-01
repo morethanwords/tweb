@@ -641,6 +641,19 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionPaidMessagesPrice': {
+        const isFree = !+action.stars;
+        langPackKey = isFree ? 'PaidMessages.GroupPriceChangedFree' : 'PaidMessages.GroupPriceChanged';
+        args = [+action.stars]
+        break;
+      }
+
+      case 'messageActionPaidMessagesRefunded': {
+        langPackKey = 'PaidMessages.StarsRefundedShort';
+        args = [+action.stars];
+        break;
+      }
+
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;

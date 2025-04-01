@@ -3213,6 +3213,23 @@ const lang = {
   },
   'PaidMessages.YouReceiveWithCommissionNotice': 'You receive %d% of the price that you charge for each incoming message.',
   'PaidMessages.FullPrice': 'Full Price',
+  'PaidMessages.GroupPriceChangedFree': 'Messages in this group are now free',
+  'PaidMessages.GroupPriceChanged': {
+    'one_value': 'Messages now cost %d Star in this group',
+    'other_value': 'Messages now cost %d Stars in this group'
+  },
+  'PaidMessages.StarsRefundedToYou': {
+    'one_value': '%2$s refunded **%1$d** Star to you',
+    'other_value': '%2$s refunded **%1$d** Stars to you'
+  },
+  'PaidMessages.StarsRefundedByYou': {
+    'one_value': 'You refunded **%1$d** Star to %2$s',
+    'other_value': 'You refunded **%1$d** Stars to %2$s'
+  },
+  'PaidMessages.StarsRefundedShort': {
+    'one_value': '**%1$d** Star refunded',
+    'other_value': '**%1$d** Stars refunded'
+  },
 
   'BuyStars': 'Buy Stars',
   'UnsavedChanges': 'Unsaved Changes',
