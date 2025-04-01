@@ -8648,9 +8648,8 @@ export class AppMessagesManager extends AppManager {
     return this.factCheckBatcher.addToBatch(peerId, mid);
   }
 
-  public reportSponsoredMessage(peerId: PeerId, randomId: SponsoredMessage['random_id'], option: Uint8Array) {
+  public reportSponsoredMessage(randomId: SponsoredMessage['random_id'], option: Uint8Array) {
     return this.apiManager.invokeApi('messages.reportSponsoredMessage', {
-      peer: this.appPeersManager.getInputPeerById(peerId),
       random_id: randomId,
       option
     });
@@ -8740,16 +8739,14 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public viewSponsoredMessage(peerId: PeerId, randomId: SponsoredMessage['random_id']) {
+  public viewSponsoredMessage(randomId: SponsoredMessage['random_id']) {
     return this.apiManager.invokeApiSingle('messages.viewSponsoredMessage', {
-      peer: this.appPeersManager.getInputPeerById(peerId),
       random_id: randomId
     });
   }
 
-  public clickSponsoredMessage(peerId: PeerId, randomId: SponsoredMessage['random_id']) {
+  public clickSponsoredMessage(randomId: SponsoredMessage['random_id']) {
     return this.apiManager.invokeApiSingle('messages.clickSponsoredMessage', {
-      peer: this.appPeersManager.getInputPeerById(peerId),
       random_id: randomId
     });
   }

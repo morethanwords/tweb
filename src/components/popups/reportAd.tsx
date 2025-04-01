@@ -293,7 +293,6 @@ export default class PopupReportAd extends PopupElement {
   }
 
   public static createAdReport(
-    peerId: PeerId,
     sponsoredMessage: SponsoredMessage,
     onAdHide?: () => void
   ) {
@@ -301,7 +300,7 @@ export default class PopupReportAd extends PopupElement {
       PopupReportAd,
       'ad',
       (option) => {
-        return rootScope.managers.appMessagesManager.reportSponsoredMessage(peerId, sponsoredMessage.random_id, option);
+        return rootScope.managers.appMessagesManager.reportSponsoredMessage(sponsoredMessage.random_id, option);
       },
       onAdHide
     );

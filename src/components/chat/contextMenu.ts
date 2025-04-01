@@ -842,7 +842,7 @@ export default class ChatContextMenu {
       text: 'ReportAd',
       onClick: () => {
         const {peerId, mid} = this.message;
-        PopupReportAd.createAdReport(this.peerId, this.sponsoredMessage, () => {
+        PopupReportAd.createAdReport(this.sponsoredMessage, () => {
           this.chat.bubbles.deleteMessagesByIds([makeFullMid(peerId, mid)], true)
         });
       },

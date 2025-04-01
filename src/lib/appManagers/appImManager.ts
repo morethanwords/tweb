@@ -1093,7 +1093,7 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    this.managers.appMessagesManager.clickSponsoredMessage(message.peerId, sponsoredMessage.random_id);
+    this.managers.appMessagesManager.clickSponsoredMessage(sponsoredMessage.random_id);
   }
 
   public async openStoriesFromAvatar(avatar: HTMLElement) {

@@ -1701,7 +1701,7 @@ export default class ChatBubbles {
         }
 
         sponsoredMessage.viewed = true;
-        this.managers.appMessagesManager.viewSponsoredMessage(this.peerId, sponsoredMessage.random_id);
+        this.managers.appMessagesManager.viewSponsoredMessage(sponsoredMessage.random_id);
       }
     }
   };
