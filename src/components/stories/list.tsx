@@ -28,6 +28,8 @@ import {subscribeOn} from '../../helpers/solid/subscribeOn';
 import {useCollapsable} from '../../hooks/useCollapsable';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import ListenerSetter from '../../helpers/listenerSetter';
+import {PeerTitleTsx} from '../peerTitleTsx';
+
 
 const TEST_COUNT = 0;
 
@@ -57,29 +59,6 @@ export const ScrollableXTsx = (props: {
   return ret;
 };
 
-export const PeerTitleTsx = (props: {
-  peerId: PeerId,
-  onlyFirstName?: boolean
-}) => {
-  const peerTitle = new PeerTitle();
-
-  const [loaded] = createResource(
-    () => props.peerId,
-    (peerId) => {
-      // console.log('peer title', props.peerId);
-      // return new Promise((resolve) => setTimeout(resolve, 1e3)).then(() => {
-      // console.log('finished timeout');
-      return peerTitle.update({peerId, dialog: false, onlyFirstName: props.onlyFirstName}).then(() => true);
-      // });
-    }
-  );
-
-  return (
-    <>
-      {loaded() && peerTitle.element}
-    </>
-  );
-};
 
 const ITEM_MARGIN = 0;
 const ITEM_WIDTH = 74 + ITEM_MARGIN * 2;

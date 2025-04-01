@@ -45,7 +45,7 @@ export const InputFieldTsx = <T extends typeof InputField>(inProps: InputFieldTs
   createEffect(on(
     () => props.value,
     (value) => {
-      if(value !== obj.value) {
+      if(value !== obj.value && value !== undefined) {
         obj.value = value
       }
     }

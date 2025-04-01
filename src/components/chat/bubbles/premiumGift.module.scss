@@ -1,0 +1,24 @@
+.bubble {
+  min-width: 12.5rem;
+  max-width: 15rem !important;
+  min-height: 12.875rem;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: .625rem !important;
+  align-items: center;
+}
+
+.sticker {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin-bottom: 10px;
+  margin-top: -20px;
+}
+
+.subtitle {
+  max-width: 100%;
+  text-wrap: balance;
+  word-wrap: break-word;
+  overflow: hidden;
+}

@@ -143,6 +143,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       ['stories', 'StoriesCount'],
       ['members', 'Members'],
       ['media', 'MediaFiles'],
+      ['gifts', 'StarGiftsCount'],
       ['saved', 'SavedMessagesCount'],
       ['files', 'Files'],
       ['links', 'Links'],
@@ -313,6 +314,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         inputFilter: 'inputMessagesFilterPhotoVideo',
         name: 'SharedMediaTab2',
         type: 'media'
+      }, {
+        name: 'SharedMedia.Gifts',
+        type: 'gifts'
       }, {
         inputFilter: 'inputMessagesFilterEmpty',
         name: 'SharedMedia.Saved',
@@ -621,7 +625,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       this.editBtn.classList.toggle('hide', !show);
     };
 
-    return manual ? callback : callback() as any;
+    return (manual ? callback : callback()) as any;
   }
 
   public loadSidebarMedia(single: boolean, justLoad?: boolean) {

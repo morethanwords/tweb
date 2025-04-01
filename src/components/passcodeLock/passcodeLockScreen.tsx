@@ -22,6 +22,7 @@ import Background from './background';
 import styles from './passcodeLockScreen.module.scss';
 import focusInput from '../../helpers/dom/focusInput';
 import throttle from '../../helpers/schedulers/throttle';
+import {ChatBackground} from '../chat/bubbles/chatBackground';
 
 
 type StateStore = {

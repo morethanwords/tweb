@@ -153,7 +153,7 @@ const transitions: {[type in TransitionSliderType]?: TransitionFunction} = {
 
 type TransitionSliderType = 'tabs' | 'premiumTabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'topics' | 'none' | 'fade' /*  | 'counter' */;
 
-type TransitionSliderOptions = {
+export type TransitionSliderOptions = {
   content: HTMLElement,
   type: TransitionSliderType,
   transitionTime: number,
