@@ -1453,7 +1453,7 @@ export default class ChatBubbles {
       const hasPremiumChanged = wasPremiumRequired === undefined ? isPremiumRequired : wasPremiumRequired !== isPremiumRequired;
       const hasStarsAmountChanged = wasStarsAmount === undefined ? starsAmount : wasStarsAmount !== starsAmount;
 
-        this.chat.isPremiumRequired = isPremiumRequired;
+      this.chat.isPremiumRequired = isPremiumRequired;
       this.chat.starsAmount = starsAmount;
 
       if(hasPremiumChanged || hasStarsAmountChanged) {
@@ -5863,6 +5863,7 @@ export default class ChatBubbles {
       timeSpan = bubble.timeSpan = MessageRender.setTime({
         chat: this.chat,
         chatType: this.chat.type,
+        groupedMessagesCount: groupedMessages?.length,
         message,
         reactionsMessage,
         isOut,

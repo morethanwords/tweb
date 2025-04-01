@@ -179,12 +179,13 @@ export namespace MessageRender {
     chat: Chat,
     chatType: ChatType,
     message: Message.message | Message.messageService,
+    groupedMessagesCount?: number,
     reactionsMessage?: Message.message,
     isOut: boolean,
     middleware: Middleware,
     loadPromises?: Promise<any>[]
   }) => {
-    const {chatType, message} = options;
+    const {chatType, message, groupedMessagesCount} = options;
     const isMessage = !('action' in message)/*  && !isSponsored */;
     const includeDate = message.peerId === rootScope.myId && (!options.isOut/*  || !!options.chat.threadId */);
     const args: (HTMLElement | string)[] = [];
@@ -244,7 +245,10 @@ export namespace MessageRender {
       if(message.paid_message_stars && options.chat.isAnyGroup) {
         const inlineStars = document.createElement('span');
         inlineStars.classList.add('inline-message-stars');
-        inlineStars.append(numberThousandSplitterForStars(+message.paid_message_stars), Icon('star'));
+        inlineStars.append(
+          numberThousandSplitterForStars(+message.paid_message_stars * Math.max(groupedMessagesCount || 0, 1)),
+          Icon('star')
+        );
         args.push(inlineStars)
       }
 
