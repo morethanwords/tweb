@@ -64,6 +64,7 @@ import PopupStars from '../popups/stars';
 import {getPendingPaidReactionKey, PENDING_PAID_REACTIONS} from './reactions';
 import ChatBackgroundStore from '../../lib/chatBackgroundStore';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import showUndoablePaidTooltip, {paidReactionLangKeys} from './undoablePaidTooltip';
 import namedPromises from '../../helpers/namedPromises';
 import {getCurrentNewMediaPopup} from '../popups/newMedia';
 
