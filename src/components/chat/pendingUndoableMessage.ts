@@ -36,13 +36,17 @@ const createPendingUndoableMessage = () => createRoot(dispose => {
       abortController = new AbortController;
     },
 
+
+    resetGlobalReserved() {
+      setReservedStars(prev => prev - reserved());
+    },
+
     reset() {
       this.softReset();
 
       setSendTime(0);
       setMessageCount(0);
 
-      setReservedStars(prev => prev - reserved());
       setReserved(0);
     },
 

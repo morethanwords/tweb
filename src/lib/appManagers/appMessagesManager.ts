@@ -782,6 +782,8 @@ export class AppMessagesManager extends AppManager {
       this.rootScope.dispatchEvent('messages_pending');
     };
 
+    const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
+
     message.send = () => {
       toggleError();
       const sentRequestOptions: PendingAfterMsg = {};
@@ -802,7 +804,7 @@ export class AppMessagesManager extends AppManager {
           id: options.resultId,
           clear_draft: options.clearDraft,
           send_as: sendAs,
-          allow_paid_stars: options.confirmedPaymentResult?.starsAmount || undefined
+          allow_paid_stars: paidStars
         }, sentRequestOptions);
       } else {
         const commonOptions: Partial<MessagesSendMessage | MessagesSendMedia> = {
@@ -818,7 +820,7 @@ export class AppMessagesManager extends AppManager {
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
           effect: options.effect,
-          allow_paid_stars: options.confirmedPaymentResult?.starsAmount || undefined
+          allow_paid_stars: paidStars
         };
 
         const mergedOptions: MessagesSendMessage | MessagesSendMedia = {
@@ -881,6 +883,10 @@ export class AppMessagesManager extends AppManager {
 
         if(updates) {
           this.apiUpdatesManager.processUpdateMessage(updates);
+          this.apiUpdatesManager.processPaidMessageUpdate({
+            paidStars,
+            wereStarsReserved: options.confirmedPaymentResult?.canUndo
+          });
         }
 
         message.promise.resolve();
@@ -1346,6 +1352,7 @@ export class AppMessagesManager extends AppManager {
 
     if(!options.isGroupedItem) {
       const invokeSend = (inputMedia: Awaited<typeof sentDeferred>) => {
+        const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
         return this.apiManager.invokeApi('messages.sendMedia', {
           background: options.background,
           peer: this.appPeersManager.getInputPeerById(peerId),
@@ -1361,9 +1368,13 @@ export class AppMessagesManager extends AppManager {
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
           effect: options.effect,
-          allow_paid_stars: options.confirmedPaymentResult?.starsAmount || undefined
+          allow_paid_stars: paidStars
         }).then((updates) => {
-          this.apiUpdatesManager.processUpdateMessage(updates);
+          this.apiUpdatesManager.processUpdateMessage(updates)
+          this.apiUpdatesManager.processPaidMessageUpdate({
+            paidStars,
+            wereStarsReserved: options.confirmedPaymentResult?.canUndo
+          });
         });
       };
 
@@ -1548,6 +1559,7 @@ export class AppMessagesManager extends AppManager {
       const deferred = deferredPromise<void>();
       this.sendSmthLazyLoadQueue.push({
         load: () => {
+          const paidStars = options.confirmedPaymentResult?.starsAmount * multiMedia.length || undefined
           return this.apiManager.invokeApi(options.stars ? 'messages.sendMedia' : 'messages.sendMultiMedia', {
             peer: inputPeer,
             reply_to: options.replyTo,
@@ -1558,7 +1570,7 @@ export class AppMessagesManager extends AppManager {
             update_stickersets_order: options.updateStickersetOrder,
             invert_media: options.invertMedia,
             effect: options.effect,
-            allow_paid_stars: options.confirmedPaymentResult?.starsAmount * multiMedia.length || undefined,
+            allow_paid_stars: paidStars,
             ...(options.stars ? {
               media: multiMedia[0].media,
               message: multiMedia[0].message,
@@ -1569,6 +1581,11 @@ export class AppMessagesManager extends AppManager {
             })
           }).then((updates) => {
             this.apiUpdatesManager.processUpdateMessage(updates);
+            this.apiUpdatesManager.processPaidMessageUpdate({
+              paidStars,
+              wereStarsReserved: options.confirmedPaymentResult?.canUndo
+            });
+
             deferred.resolve();
           }, (error: ApiError) => {
             results.forEach(({message}) => toggleError(message, error));
@@ -1826,6 +1843,8 @@ export class AppMessagesManager extends AppManager {
         sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
       }
 
+      const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
+
       const sendAs = options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined;
       let apiPromise: Promise<any>;
       if(options.viaBotId) {
@@ -1839,7 +1858,7 @@ export class AppMessagesManager extends AppManager {
           schedule_date: options.scheduleDate,
           silent: options.silent,
           send_as: sendAs,
-          allow_paid_stars: options.confirmedPaymentResult?.starsAmount || undefined
+          allow_paid_stars: paidStars
         }, sentRequestOptions);
       } else {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendMedia', {
@@ -1853,7 +1872,7 @@ export class AppMessagesManager extends AppManager {
           silent: options.silent,
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder,
-          allow_paid_stars: options.confirmedPaymentResult?.starsAmount || undefined
+          allow_paid_stars: paidStars
         }, sentRequestOptions);
       }
 
@@ -1869,6 +1888,10 @@ export class AppMessagesManager extends AppManager {
         }
 
         this.apiUpdatesManager.processUpdateMessage(updates);
+        this.apiUpdatesManager.processPaidMessageUpdate({
+          paidStars,
+          wereStarsReserved: options.confirmedPaymentResult?.canUndo
+        });
         promise.resolve();
       }, (error: ApiError) => {
         toggleError(error);
@@ -2963,6 +2986,8 @@ export class AppMessagesManager extends AppManager {
       sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
     }
 
+    const paidStars = options.confirmedPaymentResult ? options.confirmedPaymentResult?.starsAmount * mids.length : undefined;
+
     const send = () => this.apiManager.invokeApiAfter('messages.forwardMessages', {
       from_peer: this.appPeersManager.getInputPeerById(fromPeerId),
       id: mids.map((mid) => getServerMessageId(mid)),
@@ -2975,10 +3000,14 @@ export class AppMessagesManager extends AppManager {
       drop_media_captions: options.dropCaptions,
       send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
       top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined,
-      allow_paid_stars: options.confirmedPaymentResult ? options.confirmedPaymentResult?.starsAmount * mids.length : undefined
+      allow_paid_stars: paidStars
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processPaidMessageUpdate({
+        paidStars,
+        wereStarsReserved: options.confirmedPaymentResult?.canUndo
+      });
     }, (error: ApiError) => {
       this.onMessagesSendError(newMessages, error);
       throw error;

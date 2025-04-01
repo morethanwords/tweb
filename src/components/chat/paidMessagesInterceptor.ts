@@ -222,6 +222,7 @@ export default class PaidMessagesInterceptor {
 
     this.pendingUndoableMessage.signal.addEventListener('abort', () => {
       this.managers.appMessagesManager.cancelQueuedPaidMessages(peerId);
+      this.pendingUndoableMessage.resetGlobalReserved();
       this.pendingUndoableMessage.reset();
     });
 

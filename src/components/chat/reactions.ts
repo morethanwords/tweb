@@ -40,7 +40,8 @@ export type PendingPaidReaction = {
 };
 
 const PENDING_PAID_REACTIONS: Map<string, PendingPaidReaction> = new Map();
-export {PENDING_PAID_REACTIONS};
+const PENDING_PAID_REACTION_SENT_ABORT_REASON = Symbol('Reaction was sent');
+export {PENDING_PAID_REACTIONS, PENDING_PAID_REACTION_SENT_ABORT_REASON};
 
 export function getPendingPaidReactionKey(message: ReactionsContext) {
   return message.peerId + '_' + message.mid;

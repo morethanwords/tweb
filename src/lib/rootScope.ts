@@ -196,7 +196,7 @@ export type BroadcastEvents = {
   'saved_tags': {savedPeerId: PeerId, tags: SavedReactionTag[]},
   'saved_tags_clear': void,
 
-  'stars_balance': Long,
+  'stars_balance': {balance: Long, fulfilledReservedStars?: number},
 
   'file_speed_limited': {increaseTimes: number, isUpload: boolean},
 

@@ -21,6 +21,8 @@ import ctx from '../../environment/ctx';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import applyMixins from '../../helpers/applyMixins';
 import tsNow from '../../helpers/tsNow';
+import formatStarsAmount from './utils/payments/formatStarsAmount';
+import debounce from '../../helpers/schedulers/debounce';
 
 type UpdatesState = {
   pendingPtsUpdates: (Update & {pts: number, pts_count: number})[],
@@ -251,6 +253,30 @@ class ApiUpdatesManager {
         log.warn('unknown update message', updateMessage);
     }
   };
+
+  public processPaidMessageUpdate(options: {paidStars: number, wereStarsReserved: boolean}) {
+    const starsStatus = this.appPaymentsManager.getCachedStarsStatus();
+
+    if(options.paidStars && starsStatus) {
+      const currentBalance = formatStarsAmount(starsStatus.balance);
+      const newBalance = currentBalance - options.paidStars;
+
+      this.appPaymentsManager.updateLocalStarsBalance(
+        formatStarsAmount(newBalance),
+        options.wereStarsReserved ? options.paidStars : undefined
+      );
+
+      this.debouncedUpdateStarsBalance();
+    }
+  }
+
+  private debouncedUpdateStarsBalance = debounce(() => {
+    const promise = this.appPaymentsManager.getStarsStatus(true);
+
+    if(promise instanceof Promise) promise.then(newStarsStatus => {
+      this.appPaymentsManager.updateLocalStarsBalance(newStarsStatus.balance);
+    });
+  }, 1_000, false, true);
 
   private getDifference(first = false): Promise<void> {
     const log = this.log.bindPrefix('getDifference');

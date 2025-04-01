@@ -1,4 +1,4 @@
-import {Accessor, createMemo, createReaction, createRoot, createSignal, onCleanup} from 'solid-js';
+import {Accessor, batch, createMemo, createReaction, createRoot, createSignal, onCleanup} from 'solid-js';
 import {Middleware} from '../helpers/middleware';
 import useDynamicCachedValue from '../helpers/solid/useDynamicCachedValue';
 import rootScope from '../lib/rootScope';
@@ -33,7 +33,12 @@ function _useStars() {
 
   return useDynamicCachedValue(() => _useStars.name, () => {
     fetchStars();
-    rootScope.addEventListener('stars_balance', setStars);
+    rootScope.addEventListener('stars_balance', ({balance, fulfilledReservedStars}) => {
+      batch(() => {
+        setStars(balance);
+        if(fulfilledReservedStars) setReservedStars(prev => Math.max(0, prev - fulfilledReservedStars));
+      });
+    });
 
     // const interval = setInterval(() => {
     //   fetchStars();

@@ -61,7 +61,7 @@ import useIsNightTheme from '../../hooks/useIsNightTheme';
 import useStars, {setReservedStars} from '../../stores/stars';
 import PopupElement from '../popups';
 import PopupStars from '../popups/stars';
-import {getPendingPaidReactionKey, PENDING_PAID_REACTIONS} from './reactions';
+import {getPendingPaidReactionKey, PENDING_PAID_REACTION_SENT_ABORT_REASON, PENDING_PAID_REACTIONS} from './reactions';
 import ChatBackgroundStore from '../../lib/chatBackgroundStore';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import showUndoablePaidTooltip, {paidReactionLangKeys} from './undoablePaidTooltip';
@@ -1337,7 +1337,11 @@ export default class Chat extends EventListenerBase<{
           clearTimeout(pending.sendTimeout);
           pending.setSendTime(0);
           PENDING_PAID_REACTIONS.delete(key);
-          setReservedStars((reservedStars) => reservedStars - pending.count());
+
+          if(abortController.signal.reason !== PENDING_PAID_REACTION_SENT_ABORT_REASON) {
+            setReservedStars((reservedStars) => reservedStars - pending.count());
+          }
+
           rootScope.dispatchEventSingle('messages_reactions', [{
             message: this.getMessageByPeer(options.message.peerId, options.message.mid) as Message.message,
             changedResults: [],
@@ -1361,7 +1365,7 @@ export default class Chat extends EventListenerBase<{
       pending.setSendTime(Date.now() + SEND_PAID_WITH_STARS_DELAY);
       pending.sendTimeout = window.setTimeout(() => {
         const count = pending.count();
-        pending.abortController.abort();
+        pending.abortController.abort(PENDING_PAID_REACTION_SENT_ABORT_REASON);
         this.managers.appReactionsManager.sendReaction({
           ...options,
           count
