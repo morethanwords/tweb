@@ -22,6 +22,6 @@
   }
   100% {
     opacity: 0;
-    transform: translate(var(--sparkle-tx), var(--sparkle-ty));
+    transform: translate(var(--sparkle-tx), var(--sparkle-ty)) scale(var(--sparkle-scale)) rotate(var(--sparkle-rotate)) translate(calc(0.05 * var(--sparkle-tx)), calc(0.05 * var(--sparkle-ty)));
   }
 }

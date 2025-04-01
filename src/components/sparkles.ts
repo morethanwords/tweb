@@ -53,6 +53,8 @@ function renderSparkle(sparkle: Sparkle, isDiv?: boolean) {
   element.classList.add('sparkles-sparkle');
   element.style.setProperty('--sparkle-tx', sparkle.translateX + '%');
   element.style.setProperty('--sparkle-ty', sparkle.translateY + '%');
+  element.style.setProperty('--sparkle-scale', sparkle.scale * (Math.random() * 0.5 + 0.25) + '');
+  element.style.setProperty('--sparkle-rotate', (Math.random() * 90 - 45) * 4 + 'deg');
   element.style.transform = `scale(${sparkle.scale})`;
   element.style.top = sparkle.y + '%';
   element.style.left = sparkle.x + '%';
