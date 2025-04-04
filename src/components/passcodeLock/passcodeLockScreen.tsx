@@ -6,6 +6,8 @@ import AccountController from '../../lib/accounts/accountController';
 import {MAX_PASSCODE_LENGTH} from '../../lib/passcode/constants';
 import {usePasscodeActions} from '../../lib/passcode/actions';
 import commonStateStorage from '../../lib/commonStateStorage';
+import throttle from '../../helpers/schedulers/throttle';
+import focusInput from '../../helpers/dom/focusInput';
 import pause from '../../helpers/schedulers/pause';
 import {i18n} from '../../lib/langPack';
 
@@ -20,8 +22,6 @@ import SimplePopup from './simplePopup';
 import Background from './background';
 
 import styles from './passcodeLockScreen.module.scss';
-import focusInput from '../../helpers/dom/focusInput';
-import throttle from '../../helpers/schedulers/throttle';
 
 
 type StateStore = {

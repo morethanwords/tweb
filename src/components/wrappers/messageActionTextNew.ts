@@ -14,13 +14,15 @@ export type WrapMessageActionTextOptions = {
   noTextFormat?: boolean
 } & WrapSomethingOptions;
 
-export default async function wrapMessageActionTextNew<T extends WrapMessageActionTextOptions>(
-  options: T
-): Promise<T['plain'] extends true ? string : HTMLElement> {
+export default async function wrapMessageActionTextNew(options: WrapMessageActionTextOptions & {plain: true}): Promise<string>;
+export default async function wrapMessageActionTextNew(options: WrapMessageActionTextOptions & {plain?: false}): Promise<HTMLElement>;
+export default async function wrapMessageActionTextNew(options: WrapMessageActionTextOptions): Promise<string | HTMLElement>;
+
+export default async function wrapMessageActionTextNew(options: WrapMessageActionTextOptions): Promise<string | HTMLElement> {
   try {
-    return await wrapMessageActionTextNewUnsafe(options) as any;
+    return await wrapMessageActionTextNewUnsafe(options);
   } catch(err) {
     console.error('wrapMessageActionTextNewUnsafe error:', err);
-    return options.plain ? '' : document.createElement('span') as any;
+    return options.plain ? '' : document.createElement('span');
   }
 }
