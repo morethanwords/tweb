@@ -50,7 +50,12 @@ type WrapTopicIconOptions = {
   topic: Pick<ForumTopic.forumTopic, 'icon_color' | 'icon_emoji_id' | 'title' | 'id'>,
   plain?: boolean
 } & WrapSomethingOptions;
-export async function wrapTopicIcon<T extends WrapTopicIconOptions>(options: T): Promise<T['plain'] extends true ? string : HTMLElement | DocumentFragment> {
+
+export async function wrapTopicIcon(options: WrapTopicIconOptions & {plain: true}): Promise<string>;
+export async function wrapTopicIcon(options: WrapTopicIconOptions & {plain?: false}): Promise<HTMLElement | DocumentFragment>;
+export async function wrapTopicIcon(options: WrapTopicIconOptions): Promise<string | HTMLElement | DocumentFragment>;
+
+export async function wrapTopicIcon(options: WrapTopicIconOptions): Promise<string | HTMLElement | DocumentFragment> {
   const topic = options.topic;
 
   let iconEmojiId = topic?.icon_emoji_id;
@@ -85,7 +90,7 @@ export async function wrapTopicIcon<T extends WrapTopicIconOptions>(options: T):
     }).then((fragment) => {
       fragment.lastElementChild.classList.add('topic-icon');
       return fragment;
-    }) as any;
+    });
 }
 
 function wrapMessageActionTopicIcon(options: WrapMessageActionTextOptions) {

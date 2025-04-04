@@ -21,12 +21,11 @@ type GetPeerTitleOptions = {
   useManagers?: boolean
 } & Pick<WrapSomethingOptions, 'managers'>;
 
-export default async function getPeerTitle<
-  T extends GetPeerTitleOptions,
-  R = T['plainText'] extends true ? string : DocumentFragment
->(
-  options: T
-): Promise<R> {
+export default async function getPeerTitle(options: GetPeerTitleOptions & {plainText: true}): Promise<string>;
+export default async function getPeerTitle(options: GetPeerTitleOptions & {plainText?: false}): Promise<DocumentFragment>;
+export default async function getPeerTitle(options: GetPeerTitleOptions): Promise<string | DocumentFragment>;
+
+export default async function getPeerTitle(options: GetPeerTitleOptions): Promise<string | DocumentFragment> {
   const {
     peerId = rootScope.myId,
     plainText,
@@ -67,5 +66,5 @@ export default async function getPeerTitle<
     title = _limitSymbols(title, limitSymbols, limitSymbols);
   }
 
-  return plainText ? title : wrapEmojiText(title) as any;
+  return plainText ? title : wrapEmojiText(title);
 }
