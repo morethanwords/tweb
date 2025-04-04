@@ -27,6 +27,7 @@ import cryptoMessagePort from '../crypto/cryptoMessagePort';
 import EncryptionKeyStore from '../passcode/keyStore';
 import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import {onBackgroundsFetch} from './backgrounds';
+import {watchMtprotoOnDev} from './watchMtprotoOnDev';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -193,6 +194,8 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
 // #endif
 
 watchHlsStreamChunksLifetime();
+
+watchMtprotoOnDev({connectedWindows, onWindowConnected});
 
 const onFetch = (event: FetchEvent): void => {
   if(
