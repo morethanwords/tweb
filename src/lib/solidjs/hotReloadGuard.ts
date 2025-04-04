@@ -11,9 +11,10 @@ import type EmoticonsSearch from '../../components/emoticonsDropdown/search';
 import type PasswordInputField from '../../components/passwordInputField';
 import type {ThemeController} from '../../helpers/themeController';
 import type {InputFieldTsx} from '../../components/inputFieldTsx';
-import type {AppSidebarLeft} from '../../components/sidebarLeft';
-import type showLimitPopup from '../../components/popups/limit';
 import type PasswordMonkey from '../../components/monkeys/password';
+import type {AppSidebarLeft} from '../../components/sidebarLeft';
+import type PopupPremium from '../../components/popups/premium';
+import type showLimitPopup from '../../components/popups/limit';
 import type {setQuizHint} from '../../components/poll';
 
 import type {AppImManager} from '../appManagers/appImManager';
@@ -37,6 +38,7 @@ export type SolidJSHotReloadGuardContextValue = {
   PasswordInputField: typeof PasswordInputField;
   InputFieldTsx: typeof InputFieldTsx;
   PasswordMonkey: typeof PasswordMonkey;
+  PopupPremium: typeof PopupPremium;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

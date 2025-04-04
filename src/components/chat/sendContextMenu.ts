@@ -18,6 +18,7 @@ import {ChatReactionsMenu} from './reactionsMenu';
 
 export default class SendMenu {
   private type: 'schedule' | 'reminder';
+  private isPaid: boolean;
   private middlewareHelper: MiddlewareHelper;
 
   constructor(private options: {
@@ -38,8 +39,9 @@ export default class SendMenu {
     this.createMenu();
   }
 
-  public setPeerId(peerId: PeerId) {
-    this.type = peerId === rootScope.myId ? 'reminder' : 'schedule';
+  public setPeerParams(params: {peerId: PeerId, isPaid: boolean}) {
+    this.type = params.peerId === rootScope.myId ? 'reminder' : 'schedule';
+    this.isPaid = params.isPaid;
   }
 
   private createButtons(): ButtonMenuItemOptionsVerifiable[] {
@@ -52,7 +54,7 @@ export default class SendMenu {
       icon: 'schedule',
       text: 'Chat.Send.ScheduledMessage',
       onClick: this.options.onScheduleClick,
-      verify: () => this.type === 'schedule'
+      verify: () => this.type === 'schedule' && !this.isPaid
     }, {
       icon: 'schedule',
       text: 'Chat.Send.SetReminder',
@@ -62,7 +64,7 @@ export default class SendMenu {
       icon: 'online',
       text: 'Schedule.SendWhenOnline',
       onClick: this.options.onSendWhenOnlineClick,
-      verify: () => this.type === 'schedule' && this.options.canSendWhenOnline?.()
+      verify: () => this.type === 'schedule' && this.options.canSendWhenOnline?.() && !this.isPaid
     }, {
       icon: 'crossround',
       text: 'Effect.Remove',

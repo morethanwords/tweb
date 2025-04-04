@@ -1,0 +1,50 @@
+@import '../scss/variables';
+@import '../scss/mixins';
+
+.Radio {
+  --size: 1.375rem;
+
+  display: inline-block;
+  position: relative;
+
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+
+  border: 2px solid var(--secondary-text-color);
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0);
+
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+
+    background: var(--primary-color);
+
+    @include animation-level-global(2) {
+      transition: transform 0.1s;
+    }
+  }
+
+  @include animation-level-global(2) {
+    transition: border-color 0.1s;
+  }
+
+  &.floating {
+    position: absolute;
+    inset-inline-start: var(--offset-left);
+  }
+
+  &.checked {
+    border-color: var(--primary-color);
+
+    &::before {
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+}

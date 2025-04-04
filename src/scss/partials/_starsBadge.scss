@@ -1,0 +1,65 @@
+.stars-badge-base {
+  position: absolute;
+
+  height: 20px;
+  border-radius: 10px;
+
+  padding-left: 5px;
+  padding-right: 6px;
+
+  display: flex;
+  align-items: center;
+  gap: 2px;
+
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+
+  color: white;
+  background: linear-gradient(to right, #ffcd3a, #ffaa00);
+
+  pointer-events: none;
+
+  &__icon {
+    font-size: 14px;
+  }
+}
+
+.btn-send-stars-badge {
+  top: 0;
+  left: 50%;
+
+  --scale: 0;
+
+  transform: translate(-50%, -11px) scale(var(--scale));
+  transform-origin: center 50px;
+  transition: transform 0.2s;
+
+  z-index: 4;
+
+  &--active {
+    --scale: 1;
+  }
+
+  &--active .stars-badge-base__icon {
+    animation: btn-send-stars-badge-icon-rotate 1.25s ease forwards;
+  }
+
+  @keyframes btn-send-stars-badge-icon-rotate {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+.dialog-stars-badge {
+  top: 2px;
+  left: 58px;
+
+  transform: translate(-100%);
+
+  // z-index: 4;
+}

@@ -146,7 +146,7 @@ export default function createStickersContextMenu({
     icon: 'schedule',
     text: 'Chat.Send.ScheduledMessage',
     onClick: () => chatInput.scheduleSending(() => chatInput.sendMessageWithDocument({document: doc, target})),
-    verify: () => chatInput && !!chatInput.chat.peerId
+    verify: () => chatInput && !!chatInput.chat.peerId && !chatInput.chat.starsAmount
   }];
 
   if(canHaveEmojiTimer) buttons = [{

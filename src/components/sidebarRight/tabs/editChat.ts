@@ -14,7 +14,7 @@ import {Chat, ChatFull, ChatParticipants} from '../../../layer';
 import AppChatTypeTab from './chatType';
 import rootScope from '../../../lib/rootScope';
 import AppGroupPermissionsTab from './groupPermissions';
-import {i18n, LangPackKey} from '../../../lib/langPack';
+import I18n, {i18n, join, LangPackKey} from '../../../lib/langPack';
 import PopupDeleteDialog from '../../popups/deleteDialog';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
@@ -307,7 +307,10 @@ export default class AppEditChatTab extends SliderSuperTab {
         });
 
         const setPermissionsLength = () => {
-          permissionsRow.subtitle.textContent = flags.reduce((acc, f) => acc + +hasRights(chat, f, (chat as Chat.chat).default_banned_rights), 0) + '/' + flags.length;
+          const permissions = flags.reduce((acc, f) => acc + +hasRights(chat, f, (chat as Chat.chat).default_banned_rights), 0) + '/' + flags.length;
+          const paid = !!+(chat as Chat.channel)?.send_paid_messages_stars ? I18n.format('PrivacySettingsController.Paid', true) : undefined;
+          permissionsRow.subtitle.innerHTML = '';
+          permissionsRow.subtitle.append(...join([permissions, paid].filter(Boolean)));
         };
 
         setPermissionsLength();

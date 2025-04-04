@@ -4,13 +4,14 @@ import {InstanceOf} from '../../../../types';
 
 import type SliderSuperTab from '../../../sliderTab';
 
-import type {AllPasscodeLockTabs} from '.';
+import type {ProvidedTabs} from '.';
 
-const SuperTabContext = createContext<[SliderSuperTab, AllPasscodeLockTabs]>(null);
+
+const SuperTabContext = createContext<[SliderSuperTab, ProvidedTabs]>();
 
 type SuperTabProviderProps = {
   self: SliderSuperTab;
-  allTabs: AllPasscodeLockTabs;
+  allTabs: ProvidedTabs;
 };
 
 export const SuperTabProvider: ParentComponent<SuperTabProviderProps> = (props) => {
@@ -22,4 +23,4 @@ export const SuperTabProvider: ParentComponent<SuperTabProviderProps> = (props) 
 };
 
 export const useSuperTab = <TabClass extends typeof SliderSuperTab>() =>
-  useContext(SuperTabContext) as [InstanceOf<TabClass>, AllPasscodeLockTabs];
+  useContext(SuperTabContext) as [InstanceOf<TabClass>, ProvidedTabs];

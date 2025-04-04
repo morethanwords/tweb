@@ -254,7 +254,7 @@ $row-border-radius: $border-radius-medium;
       }
 
       &-stars-color {
-        color: #fecf16;
+        color: var(--star-golden-color);
       }
     }
 
@@ -347,7 +347,8 @@ $row-border-radius: $border-radius-medium;
   }
   
   .radio-field,
-  .checkbox-field {
+  .checkbox-field,
+  .offset-left {
     --offset-left: 1rem;
   }
 

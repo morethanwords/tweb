@@ -1,0 +1,106 @@
+@import '../../../../../scss/variables';
+@import '../../../../../scss/mixins';
+
+.Container {
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.Row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 0.75rem;
+
+  font-size: 14px;
+}
+
+.Limit {
+  flex: 1;
+  color: var(--secondary-text-color);
+
+  &Last {
+    text-align: right;
+  }
+}
+
+.Value {
+  display: flex;
+  justify-content: center;
+
+  color: var(--primary-color);
+}
+
+.InputWrapper {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+
+  input {
+    opacity: 0;
+
+    width: 100%;
+    padding: 0;
+    margin: 0;
+
+    position: absolute;
+    top: -12px;
+    bottom: -12px;
+
+    cursor: pointer;
+  }
+
+  &:active .Thumb {
+    --scale: calc(24 / 20);
+  }
+}
+
+.Thumb {
+  pointer-events: none;
+  position: absolute;
+
+  --size: 20px;
+
+  width: var(--size);
+  height: var(--size);
+  top: 50%;
+  left: calc((100% - var(--size)) * var(--normalized) + var(--size) / 2);
+
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(var(--scale, 1));
+  background-color: var(--primary-color);
+
+  @include animation-level-global(2) {
+    transition:
+      width 0.1s,
+      height 0.1s,
+      box-shadow 0.1s;
+  }
+}
+
+.Background {
+  pointer-events: none;
+  position: absolute;
+
+  height: 4px;
+  border-radius: 2px;
+
+  background-color: var(--secondary-color);
+
+  left: 0;
+  width: 100%;
+}
+
+.Progress {
+  pointer-events: none;
+  position: absolute;
+
+  height: 4px;
+  border-radius: 2px;
+
+  width: var(--w);
+  left: 0;
+
+  background-color: var(--primary-color);
+}

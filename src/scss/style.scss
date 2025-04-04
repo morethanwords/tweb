@@ -218,6 +218,8 @@
   }
 
   --passcode-lock-screen-z-index: 100000;
+
+  --star-golden-color: #fecf16;
 }
 
 @mixin splitColor($property, $color, $light: true, $dark: true, $light-filled: false, $dark-filled: false, $rgb: false, $alpha: $hover-alpha) {
@@ -466,6 +468,7 @@
 @import "partials/limitLine";
 @import "partials/animatedSuper";
 @import "partials/sparkles";
+@import "partials/starsBadge";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -805,6 +808,11 @@ input:-webkit-autofill:active {
     stroke: var(--primary-color);
   }
 }
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
 
 @keyframes thumbnail-fade-in-opacity {
   0% {
@@ -2442,5 +2450,17 @@ hr {
   &-icon {
     margin-right: .25rem;
     font-size: 1.125rem;
+  }
+}
+
+.appear-zoom {
+  transform: scale(0);
+
+  @include animation-level(2) {
+    transition: transform 0.1s;
+  }
+
+  &--active {
+    transform: scale(1);
   }
 }

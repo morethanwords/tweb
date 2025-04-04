@@ -2,20 +2,24 @@ import {Component} from 'solid-js';
 import {render} from 'solid-js/web';
 
 import SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
-import {PasscodeActions} from '../../../../lib/passcode/actions';
+import {CancellablePromise} from '../../../../helpers/cancellablePromise';
+import type {PasscodeActions} from '../../../../lib/passcode/actions';
+import {GlobalPrivacySettings} from '../../../../layer';
 import {LangPackKey} from '../../../../lib/langPack';
 import {InstanceOf} from '../../../../types';
 
 import {SliderSuperTab} from '../../../slider';
 
 import type AppPrivacyAndSecurityTab from '../privacyAndSecurity';
+import type AppAddMembersTab from '../addMembers';
 
 import {PromiseCollector} from './promiseCollector';
 import {SuperTabProvider} from './superTabProvider';
 
+
 type ScaffoldSolidJSTabArgs<Payload> = {
   title: LangPackKey;
-  getComponentModule: () => MaybePromise<{default: Component}>;
+  getComponentModule: () => Promise<{default: Component}>;
   onOpenAfterTimeout?: (this: InstanceOf<ScaffoledClass<Payload>>) => void;
 };
 
@@ -42,28 +46,22 @@ function scaffoldSolidJSTab<Payload = void>({
 
       const {default: Component} = await getComponentModule();
 
-      const loadPromises: Promise<any>[] = [];
-      let collectPromise = (promise: Promise<any>) => {
-        loadPromises.push(promise);
-      };
+      const promiseCollectorHelper = PromiseCollector.createHelper();
 
       this.dispose = render(() => (
         <SolidJSHotReloadGuardProvider>
-          <PromiseCollector onCollect={(promise) => collectPromise(promise)}>
-            {/* Provide other tabs here to avoid circular imports */}
-            <SuperTabProvider self={this} allTabs={allTabs}>
+          <PromiseCollector onCollect={promiseCollectorHelper.onCollect}>
+            {/* Providing other tabs here to avoid circular imports */}
+            <SuperTabProvider self={this} allTabs={providedTabs}>
               <Component />
             </SuperTabProvider>
           </PromiseCollector>
         </SolidJSHotReloadGuardProvider>
       ), div);
 
-      collectPromise = () => {}; // lose reference to the promises array
-      // console.log('loadPromises.length :>> ', loadPromises.length);
-
       this.scrollable.append(div);
 
-      await Promise.all(loadPromises);
+      await promiseCollectorHelper.await();
     }
 
     protected onCloseAfterTimeout() {
@@ -77,18 +75,18 @@ function scaffoldSolidJSTab<Payload = void>({
   } as ScaffoledClass<Payload>;
 }
 
-type AppPasscodeLockTabPayload = {
-  AppPrivacyAndSecurityTab: typeof AppPrivacyAndSecurityTab;
-};
+
+// ---
+
 
 export const AppPasscodeLockTab =
-  scaffoldSolidJSTab<AppPasscodeLockTabPayload>({
+  scaffoldSolidJSTab({
     title: 'PasscodeLock.Title',
-    getComponentModule: () => import('./mainTab'),
+    getComponentModule: () => import('../passcodeLock/mainTab'),
     onOpenAfterTimeout: async function() {
       // Remove the previous enter password tab
       this.slider.sliceTabsUntilTab(
-        this.payload.AppPrivacyAndSecurityTab,
+        providedTabs.AppPrivacyAndSecurityTab,
         this
       );
     }
@@ -104,13 +102,39 @@ type AppPasscodeEnterPasswordTabPayload = {
 export const AppPasscodeEnterPasswordTab =
   scaffoldSolidJSTab<AppPasscodeEnterPasswordTabPayload>({
     title: 'PasscodeLock.Title',
-    getComponentModule: () => import('./enterPasswordTab')
+    getComponentModule: () => import('../passcodeLock/enterPasswordTab')
+  });
+
+type AppPrivacyMessagesTabPayload = {
+  onSaved: (globalPrivacy: CancellablePromise<GlobalPrivacySettings.globalPrivacySettings>) => void;
+};
+
+export const AppPrivacyMessagesTab =
+  scaffoldSolidJSTab<AppPrivacyMessagesTabPayload>({
+    title: 'PrivacyMessages',
+    getComponentModule: () => import('../privacy/messages/tab')
   });
 
 
-export type AllPasscodeLockTabs = typeof allTabs;
+// ---
 
-const allTabs = {
+
+export type ProvidedTabs = {
+  AppPasscodeLockTab: typeof AppPasscodeLockTab;
+  AppPasscodeEnterPasswordTab: typeof AppPasscodeEnterPasswordTab;
+
+  // Other tabs
+  AppPrivacyAndSecurityTab: typeof AppPrivacyAndSecurityTab;
+  AppAddMembersTab: typeof AppAddMembersTab;
+};
+
+/**
+ * To avoid circular imports, other tabs should be assigned elsewhere in the app (they can be assigned in the module of the tab itself)
+ */
+// eslint-disable-next-line prefer-const
+export let providedTabs = {
   AppPasscodeLockTab,
   AppPasscodeEnterPasswordTab
-};
+
+  // Others to be assigned...
+} as ProvidedTabs;

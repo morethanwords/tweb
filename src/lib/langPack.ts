@@ -554,6 +554,15 @@ namespace I18n {
       }
     }
 
+    public compareAndUpdateBool(options?: IntlElementOptions): boolean {
+      if(this.key === options.key && deepEqual(this.args, options.args)) {
+        return false;
+      }
+
+      this.update(options);
+      return true;
+    }
+
     public compareAndUpdate(options?: IntlElementOptions) {
       if(this.key === options.key && deepEqual(this.args, options.args)) {
         return;

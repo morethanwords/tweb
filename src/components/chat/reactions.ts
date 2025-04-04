@@ -22,7 +22,7 @@ import ReactionElement, {ReactionLayoutType, REACTIONS_DISPLAY_COUNTER_AT, REACT
 import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
 import pause from '../../helpers/schedulers/pause';
 import {Accessor, Setter} from 'solid-js';
-import showPaidReactionTooltip from './paidReactionTooltip';
+
 
 const CLASS_NAME = 'reactions';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -40,7 +40,8 @@ export type PendingPaidReaction = {
 };
 
 const PENDING_PAID_REACTIONS: Map<string, PendingPaidReaction> = new Map();
-export {PENDING_PAID_REACTIONS};
+const PENDING_PAID_REACTION_SENT_ABORT_REASON = Symbol('Reaction was sent');
+export {PENDING_PAID_REACTIONS, PENDING_PAID_REACTION_SENT_ABORT_REASON};
 
 export function getPendingPaidReactionKey(message: ReactionsContext) {
   return message.peerId + '_' + message.mid;

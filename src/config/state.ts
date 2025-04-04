@@ -142,6 +142,8 @@ export type State = {
   appConfig: MTAppConfig,
   accountThemes: AccountThemes.accountThemes,
   shownUploadSpeedTimestamp?: number,
+  dontShowPaidMessageWarningFor: PeerId[]
+
   // playbackParams?: StateSettings['playbackParams'], // ! MIGRATED TO SETTINGS
   // chatContextMenuHintWasShown?: StateSettings['chatContextMenuHintWasShown'], // ! MIGRATED TO SETTINGS
   // seenTooltips?: StateSettings['seenTooltips'], // ! MIGRATED TO SETTINGS
@@ -384,7 +386,8 @@ export const STATE_INIT: State = {
   confirmedWebViews: [],
   hiddenSimilarChannels: [],
   appConfig: {} as any,
-  accountThemes: {} as any
+  accountThemes: {} as any,
+  dontShowPaidMessageWarningFor: []
 };
 
 export const COMMON_STATE_INIT: CommonState = {

@@ -1,27 +1,28 @@
 import {Component, createResource, createSignal, onCleanup, Show} from 'solid-js';
 
-import {IS_MOBILE} from '../../../../environment/userAgent';
-import ListenerSetter from '../../../../helpers/listenerSetter';
-import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import {i18n, LangPackKey} from '../../../../lib/langPack';
+import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
 import {usePasscodeActions} from '../../../../lib/passcode/actions';
+import ListenerSetter from '../../../../helpers/listenerSetter';
+import {IS_MOBILE} from '../../../../environment/userAgent';
+import {i18n, LangPackKey} from '../../../../lib/langPack';
 
 import confirmationPopup from '../../../confirmationPopup';
 import type SliderSuperTab from '../../../sliderTab';
 import ripple from '../../../ripple'; ripple; // keep
+import StaticSwitch from '../../../staticSwitch';
 import Section from '../../../section';
 import RowTsx from '../../../rowTsx';
 import Space from '../../../space';
 
-import LottieAnimation from './lottieAnimation';
-import {useSuperTab} from './superTabProvider';
-import StaticSwitch from './staticSwitch';
-import InlineSelect from './inlineSelect';
-import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
-import {usePromiseCollector} from './promiseCollector';
+import {usePromiseCollector} from '../solidJsTabs/promiseCollector';
+import {useSuperTab} from '../solidJsTabs/superTabProvider';
+import type {AppPasscodeLockTab} from '../solidJsTabs';
 
-import type {AppPasscodeLockTab} from '.';
+import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
+import LottieAnimation from './lottieAnimation';
+import InlineSelect from './inlineSelect';
+
 
 import commonStyles from './common.module.scss';
 import styles from './mainTab.module.scss';
@@ -40,13 +41,13 @@ const getHintParams = (tab: SliderSuperTab, title: LangPackKey) => ({
 
 const MainTab = () => {
   const {rootScope} = useHotReloadGuard();
-  const promiseColletor = usePromiseCollector();
+  const promiseCollector = usePromiseCollector();
 
   const [enabled, {mutate: mutateEnabled}] = createResource(() => {
     const promise = rootScope.managers.appStateManager.getState().then(state =>
       state.settings?.passcode?.enabled || false
     );
-    promiseColletor.collect(promise);
+    promiseCollector.collect(promise);
     return promise;
   });
 
@@ -135,7 +136,7 @@ const NoPasscodeContent = () => {
 const PasscodeSetContent: Component<{
   onDisable: () => void;
 }> = (props) => {
-  const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab}] = useSuperTab<AppPasscodeLockTabType>();
+  const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppPrivacyAndSecurityTab}] = useSuperTab<AppPasscodeLockTabType>();
   const {disablePasscode, changePasscode} = usePasscodeActions();
   const {rootScope, setQuizHint} = useHotReloadGuard();
 
@@ -205,7 +206,7 @@ const PasscodeSetContent: Component<{
     tab.slider.createTab(AppPasscodeEnterPasswordTab)
     .open({
       onSubmit: (passcode) => {
-        onChangeThirdStep(passcode);
+        onChangeSecondStep(passcode);
         passcode = ''; // forget
       },
       buttonText: 'PasscodeLock.Next',
@@ -213,7 +214,7 @@ const PasscodeSetContent: Component<{
     }, 'PasscodeLock.EnterANewPasscode');
   };
 
-  const onChangeThirdStep = (firstPasscode: string) => {
+  const onChangeSecondStep = (firstPasscode: string) => {
     tab.slider.createTab(AppPasscodeEnterPasswordTab)
     .open({
       onSubmit: async(passcode, otherTab) => {
@@ -244,7 +245,7 @@ const PasscodeSetContent: Component<{
       await disablePasscode();
       tab.close();
       setQuizHint(getHintParams(
-        tab.slider.getTab(tab.payload.AppPrivacyAndSecurityTab), 'PasscodeLock.PasscodeHasBeenDisabled'
+        tab.slider.getTab(AppPrivacyAndSecurityTab), 'PasscodeLock.PasscodeHasBeenDisabled'
       ));
     })
     .catch(() => {});
@@ -310,7 +311,7 @@ const PasscodeSetContent: Component<{
             }}
           />
           <div class={styles.ShortcutBuilderRow} classList={{[styles.collapsed]: !shortcutEnabled()}}>
-            <ShortcutBuilder value={shortcutKeys() || []} onChange={setShortcutKeys} key="L" />
+            <ShortcutBuilder class={styles.ShortcutBuilderRowChild} value={shortcutKeys() || []} onChange={setShortcutKeys} key="L" />
           </div>
         </Show>
       </Section>

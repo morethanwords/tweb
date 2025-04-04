@@ -15,7 +15,7 @@ import safeAssign from '../../helpers/object/safeAssign';
 import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, MessageExtendedMedia, Photo, Document, ChatInvite, StarsSubscription, Chat, MessageAction, Boost, WebDocument} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import {i18n} from '../../lib/langPack';
+import I18n, {i18n} from '../../lib/langPack';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import {replaceButtonIcon} from '../button';
@@ -40,6 +40,7 @@ import PeerTitle from '../peerTitle';
 import rootScope from '../../lib/rootScope';
 import {IconTsx} from '../iconTsx';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 export default class PopupStarsPay extends PopupElement<{
   finish: (result: PopupPaymentResult) => void
@@ -287,6 +288,18 @@ export default class PopupStarsPay extends PopupElement<{
       title = i18n('Stars.Subscription');
       subtitle = i18n('Stars.Subscription.Fee', [StarsAmount({stars: amount}) as HTMLElement]);
       (subtitle as HTMLElement).classList.add('secondary');
+    } else if(this.transaction?.paid_messages) {
+      title = i18n('PaidMessages.FeeForMessages', [this.transaction.paid_messages]);
+      if(!this.transaction.pFlags.refund && +amount > 0) {
+        subtitle = i18n('PaidMessages.YouReceiveWithCommissionNotice');
+        Promise.resolve(apiManagerProxy.getAppConfig()).then((config) => {
+          const intlElement = I18n.weakMap.get(subtitle as HTMLElement) as I18n.IntlElement;
+          intlElement.compareAndUpdate({
+            key: 'PaidMessages.YouReceiveWithCommissionNotice',
+            args: [Math.round(config.stars_paid_message_commission_permille / 10)]
+          })
+        });
+      }
     } else {
       title = this.isReceipt ? wrapEmojiText(this.form.title) : i18n('StarsConfirmPurchaseTitle');
       subtitle = this.isReceipt ? wrapEmojiText(this.form.description) : i18n('StarsConfirmPurchaseText', [amount, wrapEmojiText(this.paymentForm.title), _title]);
@@ -346,11 +359,19 @@ export default class PopupStarsPay extends PopupElement<{
         ['StarsTransactionDate',  formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
       ];
     } else if(this.isReceipt) {
+      const realAmount = this.transaction?.paid_messages &&
+        !this.transaction.pFlags.refund &&
+        this.transaction.starref_amount &&
+        this.transaction.stars &&
+        +amount > 0 &&
+        (formatStarsAmount(this.transaction.starref_amount) + formatStarsAmount(this.transaction.stars));
+
       tableContent = [
         this.peerId ? [
           this.transaction?.subscription_period ? 'Stars.Subscription' : 'BoostingTo',
           tablePeer
         ] : ['Stars.Via', _title],
+        realAmount && ['PaidMessages.FullPrice', <StarsChange reverse noSign inline stars={realAmount} />],
         this.transaction && (this.transaction.extended_media || this.transaction.pFlags.reaction) && messageAnchor && [this.transaction.pFlags.reaction ? 'Message' : 'StarsTransactionMedia', messageAnchor],
         ['StarsTransactionID', transactionIdSpan],
         ['StarsTransactionDate', formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]

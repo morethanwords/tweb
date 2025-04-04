@@ -4,44 +4,66 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
-import {animate} from '../../helpers/animation';
-import eachSecond from '../../helpers/eachSecond';
-import I18n, {i18n} from '../../lib/langPack';
-import {SEND_PAID_REACTION_DELAY} from '../../lib/mtproto/mtproto_config';
-import showTooltip from '../tooltip';
-import type {PendingPaidReaction} from './reactions';
-import {AnimatedCounter} from '../animatedCounter';
-import appImManager from '../../lib/appManagers/appImManager';
+import {Accessor, createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
 
-export default function showPaidReactionTooltip(props: {
-  pending: PendingPaidReaction
-}) {
+import {SEND_PAID_WITH_STARS_DELAY} from '../../lib/mtproto/mtproto_config';
+import appImManager from '../../lib/appManagers/appImManager';
+import I18n, {i18n, LangPackKey} from '../../lib/langPack';
+import classNames from '../../helpers/string/classNames';
+import eachSecond from '../../helpers/eachSecond';
+import {animate} from '../../helpers/animation';
+
+import {AnimatedCounter} from '../animatedCounter';
+import showTooltip from '../tooltip';
+
+
+type LangKeys = {
+  titleKey: LangPackKey;
+  subtitleKey: LangPackKey;
+};
+
+export const paidReactionLangKeys: LangKeys = {
+  titleKey: 'PaidReaction.Sent',
+  subtitleKey: 'StarsSentText'
+};
+
+export const paidMessagesLangKeys: LangKeys = {
+  titleKey: 'PaidMessages.MessagesSent',
+  subtitleKey: 'PaidMessages.YouPaidForMessages'
+};
+
+
+export default function showUndoablePaidTooltip(props: {
+  sendTime: Accessor<number>;
+  titleCount: Accessor<number>;
+  subtitleCount: Accessor<number>;
+  onUndo: () => void;
+  wider?: boolean;
+} & LangKeys) {
   createRoot((dispose) => {
     const [secondsLeft, setSecondsLeft] = createSignal<number>();
     const [progressCircumference, setProgressCircumference] = createSignal<number>();
 
-    const title = new I18n.IntlElement({key: 'PaidReaction.Sent'});
-    const subtitle = new I18n.IntlElement({key: 'StarsSentText'});
+    const title = new I18n.IntlElement({key: props.titleKey});
+    const subtitle = new I18n.IntlElement({key: props.subtitleKey});
     title.element.classList.add('text-bold');
 
     createEffect(() => {
-      [title, subtitle].forEach((el) => {
-        el.compareAndUpdate({args: [props.pending.count()]});
-      });
+      title.compareAndUpdate({args: [props.titleCount()]});
+      subtitle.compareAndUpdate({args: [props.subtitleCount()]});
     });
 
     createEffect(() => {
-      if(!(!!props.pending.sendTime())) {
+      if(!(!!props.sendTime())) {
         dispose();
         close();
       } else {
         const disposeTimer = eachSecond(() => {
-          setSecondsLeft((props.pending.sendTime() - Date.now()) / 1000 | 0);
+          setSecondsLeft((props.sendTime() - Date.now()) / 1000 | 0);
         });
 
         animate(() => {
-          const progress = (props.pending.sendTime() - Date.now()) / SEND_PAID_REACTION_DELAY;
+          const progress = (props.sendTime() - Date.now()) / SEND_PAID_WITH_STARS_DELAY;
           setProgressCircumference(progress * circumference);
           return !cleaned;
         });
@@ -67,15 +89,15 @@ export default function showPaidReactionTooltip(props: {
       mountOn: appImManager.chat.bubbles.container,
       relative: true,
       vertical: 'top',
-      class: 'paid-reaction-tooltip',
+      class: classNames('paid-reaction-tooltip', props.wider && 'paid-reaction-tooltip--a-little-wider'),
       textElement: title.element,
       subtitleElement: subtitle.element,
       rightElement: (
         <span
           class="tooltip-undo"
-          onClick={() => props.pending.abortController.abort()}
+          onClick={() => void props.onUndo()}
         >
-          {i18n('StarsSentUndo')}
+          {i18n('Undo')}
           <span class="tooltip-undo-timer">
             <svg class="tooltip-undo-timer-svg" width={size + 'px'} height={size + 'px'}>
               <circle

@@ -259,6 +259,14 @@
 
         .popup-stars-pay-amount {
           display: flex;
+
+          &.reverse {
+            flex-direction: row-reverse;
+          }
+
+          &.inline {
+            display: inline-flex;
+          }
         }
       }
 

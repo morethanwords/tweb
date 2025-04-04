@@ -743,6 +743,10 @@ export class AppReactionsManager extends AppManager {
       }
 
       this.apiUpdatesManager.processUpdateMessage(updates);
+      if(isPaidReaction) this.apiUpdatesManager.processPaidMessageUpdate({
+        paidStars: count,
+        wereStarsReserved: true
+      });
     };
 
     const msgId = getServerMessageId(mid);

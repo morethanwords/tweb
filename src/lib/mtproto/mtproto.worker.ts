@@ -249,7 +249,7 @@ appTabsManager.onTabStateChange = async() => {
   const tabs = appTabsManager.getTabs();
   const areAllIdle = tabs.every(tab => !!tab.state.idleStartTime);
 
-  autoLockControls.setAreAllIdle(areAllIdle)
+  autoLockControls.setAreAllIdle(areAllIdle);
 };
 
 listenMessagePort(port, (source) => {

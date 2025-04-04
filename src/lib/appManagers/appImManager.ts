@@ -132,6 +132,7 @@ import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
 import {createProxiedManagersForAccount} from './getProxiedManagers';
 import ChatBackgroundStore from '../chatBackgroundStore';
 import useLockScreenShortcut from './utils/useLockScreenShortcut';
+import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../../components/chat/paidMessagesInterceptor';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -706,7 +707,10 @@ export class AppImManager extends EventListenerBase<{
           const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
           PopupElement.createPopup(PopupNewMedia, this.chat, share.files, foundMedia ? 'media' : 'document');
         } else {
-          this.managers.appMessagesManager.sendText({peerId, text: share.text});
+          const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
+          if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
+
+          this.managers.appMessagesManager.sendText({peerId, text: share.text, confirmedPaymentResult: preparedPaymentResult});
         }
       });
     }

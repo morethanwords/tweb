@@ -205,6 +205,14 @@ export class AppProfileManager extends AppManager {
     });
   }
 
+  public async hasBussinesIntro(id: UserId, override?: true) {
+    const profile = await this.getProfile(id, override);
+
+    const intro = profile?.business_intro;
+
+    return intro && (intro.title || intro.description || intro.sticker);
+  }
+
   public getProfileByPeerId(peerId: PeerId, override?: true) {
     if(this.appPeersManager.isAnyChat(peerId)) return this.getChatFull(peerId.toChatId(), override);
     else return this.getProfile(peerId.toUserId(), override);

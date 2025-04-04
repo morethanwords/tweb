@@ -5,6 +5,7 @@
  */
 
 import {render} from 'solid-js/web';
+import {createStore} from 'solid-js/store';
 
 import type Chat from '../chat/chat';
 import type {SendFileDetails} from '../../lib/appManagers/appMessagesManager';
@@ -52,7 +53,7 @@ import wrapDraft from '../wrappers/draft';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {ChatType} from '../chat/chat';
 import pause from '../../helpers/schedulers/pause';
-import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '../chat/selectedEffect';
 import PopupMakePaid from './makePaid';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
@@ -64,6 +65,10 @@ import {animateValue, delay, lerp, snapToViewport} from '../mediaEditor/utils';
 import {IS_MOBILE} from '../../environment/userAgent';
 import deferredPromise from '../../helpers/cancellablePromise';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import throttle from '../../helpers/schedulers/throttle';
+import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
+import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
+import ListenerSetter from '../../helpers/listenerSetter';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -299,6 +304,12 @@ export default class PopupNewMedia extends PopupElement {
     this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
     this.listenerSetter.add(this.messageInputField.input)('scroll', this.onScroll);
 
+    this.listenerSetter.add(this.messageInputField.input)('input', throttle((e) => {
+      const {value} = getRichValueWithCaret(this.messageInputField.input);
+
+      this.starsState.set({hasMessage: !!value.trim()})
+    }, 120, true));
+
     this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
     this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
 
@@ -325,6 +336,7 @@ export default class PopupNewMedia extends PopupElement {
     this.addEventListener('close', () => {
       this.files.length = 0;
       this.willAttach.sendFileDetails.length = 0;
+      this.hideActiveActionsMenu();
 
       if(currentPopup === this) {
         currentPopup = undefined;
@@ -367,7 +379,7 @@ export default class PopupNewMedia extends PopupElement {
         onEffect: this.setEffect
       });
 
-      sendMenu.setPeerId(this.chat.peerId);
+      sendMenu?.setPeerParams({peerId: this.chat.peerId, isPaid: !!this.chat.starsAmount});
     }
 
     currentPopup = this;
@@ -607,6 +619,7 @@ export default class PopupNewMedia extends PopupElement {
   public changeGroup(group: boolean) {
     this.willAttach.group = group;
     this.attachFiles();
+    this.starsState.set({isGrouped: group});
   }
 
   public changeSpoilers(toggle: boolean) {
@@ -751,6 +764,12 @@ export default class PopupNewMedia extends PopupElement {
 
     const {length} = sendFileDetails;
     const sendingParams = this.chat.getMessageSendingParams();
+
+    const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages());
+    if(preparedPaymentResult === PAYMENT_REJECTED) return;
+
+    sendingParams.confirmedPaymentResult = preparedPaymentResult;
+
     let effect = this.effect();
     this.iterate((sendFileParams) => {
       if(caption && sendFileParams.length !== length) {
@@ -994,6 +1013,8 @@ export default class PopupNewMedia extends PopupElement {
       }
     }
     {
+      const listenerSetter = new ListenerSetter();
+
       const showActions = async() => {
         if(this.activeActionsMenu === itemDiv || !this.canShowActions) return;
         hideActions();
@@ -1111,24 +1132,19 @@ export default class PopupNewMedia extends PopupElement {
         const listener = (e: MouseEvent) => {
           if((e.target as HTMLElement)?.closest?.('.popup-item-media-action-menu') || e.target === itemDiv || itemDiv.contains(e.target as Node)) return;
           hideActions();
-          document.removeEventListener('pointermove', listener);
-          if(IS_MOBILE) {
-            document.body.removeEventListener('pointerdown', listener);
-          }
         }
-        document.addEventListener('pointermove', listener);
+        listenerSetter.add(document)('pointermove', listener);
+        listenerSetter.add(document)('keydown', () => {
+          hideActions();
+        }, {capture: true});
         if(IS_MOBILE) {
-          document.body.addEventListener('pointerdown', listener);
+          listenerSetter.add(document)('pointerdown', listener);
         }
       }
 
       const hideActions = () => {
-        document.querySelectorAll('.popup-item-media-action-menu')?.forEach(async(el) => {
-          this.activeActionsMenu = undefined;
-          (el as HTMLElement).style.opacity = '0';
-          await delay(200);
-          el?.remove();
-        });
+        listenerSetter.removeAll();
+        this.hideActiveActionsMenu();
       }
 
       itemDiv.addEventListener('pointermove', showActions);
@@ -1136,6 +1152,15 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     return promise;
+  }
+
+  private hideActiveActionsMenu() {
+    document.querySelectorAll('.popup-item-media-action-menu')?.forEach(async(el) => {
+      this.activeActionsMenu = undefined;
+      (el as HTMLElement).style.opacity = '0';
+      await delay(200);
+      el?.remove();
+    });
   }
 
   private wrapMediaEditorBlobInFile(originalFile: File, editedBlob: Blob, isGif: boolean) {
@@ -1294,6 +1319,44 @@ export default class PopupNewMedia extends PopupElement {
     this.show();
   }
 
+  private updateConfirmBtnContent(stars: number): void {
+    if(!stars) return void replaceContent(this.btnConfirm, i18n('Modal.Send'));
+
+    const span = document.createElement('span');
+    span.classList.add('popup-confirm-btn-inner');
+
+    span.append(Icon('star', 'popup-confirm-btn-inner-star'), numberThousandSplitterForStars(stars) + '');
+
+    replaceContent(
+      this.btnConfirm,
+      span
+    );
+  }
+
+  private starsState = createRoot(dispose => {
+    this.middlewareHelper.get().onDestroy(() => void dispose());
+
+    const [store, set] = createStore({
+      hasMessage: false,
+      isGrouped: true,
+      attachedFiles: this.files.length,
+      starsAmount: this.chat.starsAmount || 0
+    });
+
+    const shouldCountMessage = () => +store.hasMessage * +(!store.isGrouped && store.attachedFiles > 1);
+    const totalMessages = createMemo(() => +shouldCountMessage() + store.attachedFiles);
+    const totalStars = createMemo(() => store.starsAmount * totalMessages());
+
+    createEffect(() => {
+      this.updateConfirmBtnContent(totalStars());
+    });
+
+    return {store, set, totalMessages};
+  });
+
+  public setStarsAmount(starsAmount: number) {
+    this.starsState.set({starsAmount});
+  }
 
   private setTitle() {
     const {willAttach, title, files} = this;
@@ -1387,6 +1450,7 @@ export default class PopupNewMedia extends PopupElement {
 
     Promise.all(promises).then(() => {
       mediaContainer.replaceChildren();
+      this.starsState.set({attachedFiles: files.length, isGrouped: this.willAttach?.group && !this.hasGif()});
 
       if(!files.length) {
         return;

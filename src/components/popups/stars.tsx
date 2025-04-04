@@ -133,9 +133,9 @@ export function StarsAmount(props: {stars: Long}) {
   );
 }
 
-export function StarsChange(props: {stars: Long, isRefund?: boolean, noSign?: boolean}) {
+export function StarsChange(props: {stars: Long, isRefund?: boolean, noSign?: boolean, reverse?: boolean, inline?: boolean}) {
   return (
-    <div class={classNames('popup-stars-pay-amount', +props.stars > 0 ? 'green' : 'danger')}>
+    <div class={classNames('popup-stars-pay-amount', +props.stars > 0 ? 'green' : 'danger', props.reverse && 'reverse', props.inline && 'inline')}>
       {`${+props.stars > 0 && !props.noSign ? '+' : ''}${props.stars}`}
       <StarsStar />
       {props.isRefund && <span class="popup-stars-pay-amount-status">{i18n('StarsRefunded')}</span>}
@@ -386,6 +386,8 @@ export default class PopupStars extends PopupElement {
         midtitle = i18n('StarsReactionTitle');
       } else if(transaction.giveaway_post_id) {
         midtitle = i18n('StarsGiveawayPrizeReceived');
+      } else if(transaction.paid_messages) {
+        midtitle = i18n('PaidMessages.FeeForMessages', [transaction.paid_messages]);
       } else if(formatStarsAmount(transaction.stars) > 0) {
         midtitle = transaction.pFlags.gift ? i18n('StarsGiftReceived') : i18n('Stars.TopUp');
       } else if(transaction.subscription_period) {

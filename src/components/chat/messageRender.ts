@@ -31,6 +31,7 @@ import wrapStickerAnimation from '../wrappers/stickerAnimation';
 import Scrollable from '../scrollable';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 
 const NBSP = '&nbsp;';
 
@@ -178,12 +179,13 @@ export namespace MessageRender {
     chat: Chat,
     chatType: ChatType,
     message: Message.message | Message.messageService,
+    groupedMessagesCount?: number,
     reactionsMessage?: Message.message,
     isOut: boolean,
     middleware: Middleware,
     loadPromises?: Promise<any>[]
   }) => {
-    const {chatType, message} = options;
+    const {chatType, message, groupedMessagesCount} = options;
     const isMessage = !('action' in message)/*  && !isSponsored */;
     const includeDate = message.peerId === rootScope.myId && (!options.isOut/*  || !!options.chat.threadId */);
     const args: (HTMLElement | string)[] = [];
@@ -238,6 +240,16 @@ export namespace MessageRender {
       if(message.effect) {
         effectSpan = makeEffect({onlyElement: true});
         args.push(effectSpan);
+      }
+
+      if(message.paid_message_stars && options.chat.isAnyGroup) {
+        const inlineStars = document.createElement('span');
+        inlineStars.classList.add('inline-message-stars');
+        inlineStars.append(
+          numberThousandSplitterForStars(+message.paid_message_stars * Math.max(groupedMessagesCount || 0, 1)),
+          Icon('star')
+        );
+        args.push(inlineStars)
       }
 
       // if(USER_REACTIONS_INLINE && message.peer_id._ === 'peerUser'/*  && message.reactions?.results?.length */) {

@@ -39,8 +39,8 @@ import AppPrivacyAboutTab from './privacy/about';
 import PopupPremium from '../../popups/premium';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
-import AppPrivacyMessagesTab from './privacy/messages';
-import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab} from './passcodeLock';
+import {AppPrivacyMessagesTab} from './solidJsTabs';
+import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, providedTabs} from './solidJsTabs';
 import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
@@ -126,11 +126,11 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
                 passcode = '';
                 if(!isCorrect) throw {};
 
-                this.slider.createTab(AppPasscodeLockTab).open({AppPrivacyAndSecurityTab});
+                this.slider.createTab(AppPasscodeLockTab).open();
               }
             })
           } else {
-            this.slider.createTab(AppPasscodeLockTab).open({AppPrivacyAndSecurityTab});
+            this.slider.createTab(AppPasscodeLockTab).open();
           }
         },
         listenerSetter: this.listenerSetter
@@ -238,7 +238,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       }> = {};
 
       const openTabWithGlobalPrivacy = async(
-        constructor: typeof AppPrivacyLastSeenTab | typeof AppPrivacyMessagesTab,
+        constructor: typeof AppPrivacyLastSeenTab,
         key: RowKey
       ) => {
         const globalPrivacy = await p.globalPrivacy;
@@ -340,7 +340,12 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         title: createPremiumTitle('PrivacyMessagesTitle'),
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          openTabWithGlobalPrivacy(AppPrivacyMessagesTab, 'new_noncontact_peers_require_premium');
+          this.slider.createTab(AppPrivacyMessagesTab).open({
+            onSaved: (updatedPrivacy) => {
+              p.globalPrivacy = updatedPrivacy;
+              updatePrivacyRow('new_noncontact_peers_require_premium');
+            }
+          });
         },
         listenerSetter: this.listenerSetter
       });
@@ -357,9 +362,19 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           [PrivacyType.Nobody]: 'PrivacySettingsController.Nobody'
         };
 
+        const getLangKeyForMessagesPrivacy = (globalPrivacy: GlobalPrivacySettings.globalPrivacySettings): LangPackKey => {
+          if(!rootScope.premium) return map[PrivacyType.Everybody];
+
+          if(+globalPrivacy.noncontact_peers_paid_stars) return 'PrivacySettingsController.Paid';
+
+          if(globalPrivacy.pFlags.new_noncontact_peers_require_premium) return 'Privacy.ContactsAndPremium';
+
+          return map[PrivacyType.Everybody];
+        };
+
         if(!key.startsWith('inputPrivacy')) {
           p.globalPrivacy.then((globalPrivacy) => {
-            const langKey = globalPrivacy.pFlags.new_noncontact_peers_require_premium ? 'Privacy.ContactsAndPremium' : map[PrivacyType.Everybody];
+            const langKey = getLangKeyForMessagesPrivacy(globalPrivacy);
             row.subtitle.replaceChildren(i18n(langKey));
           });
           return;
@@ -604,3 +619,5 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     });
   }
 }
+
+providedTabs.AppPrivacyAndSecurityTab = AppPrivacyAndSecurityTab;

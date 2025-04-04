@@ -171,6 +171,15 @@ export class AppPeersManager extends AppManager {
     return !!(peerId === this.peerId && threadId);
   }
 
+  /**
+   * The amount of stars necessary to be paid for every message if the target peer had enabled it
+   */
+  public async getStarsAmount(peerId: PeerId): Promise<number | undefined> {
+    if(peerId.isUser()) return this.appUsersManager.getStarsAmount(peerId.toUserId());
+
+    return this.appChatsManager.getStarsAmount(peerId.toChatId());
+  }
+
   public getRestrictionReasonText(peerId: PeerId) {
     const peer = this.getPeer(peerId) as Chat.channel | User.user;
     const reason = peer.restriction_reason ? getRestrictionReason(peer.restriction_reason) : undefined;

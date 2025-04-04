@@ -170,7 +170,7 @@ import getUnreadReactions from '../../lib/appManagers/utils/messages/getUnreadRe
 import {setPeerLanguageLoaded} from '../../stores/peerLanguage';
 import ButtonIcon from '../buttonIcon';
 import PopupAboutAd from '../popups/aboutAd';
-import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
+import numberThousandSplitter, {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import wrapGeo from '../wrappers/geo';
 import wrapKeyboardButton from '../wrappers/keyboardButton';
 import safePlay from '../../helpers/dom/safePlay';
@@ -185,10 +185,15 @@ import findAndSplice from '../../helpers/array/findAndSplice';
 import generatePhotoForExtendedMediaPreview from '../../lib/appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
 import icon from '../icon';
 import {MediaSearchContext} from '../appMediaPlaybackController';
-import {wrapRoundVideoBubble} from './roundVideoBubble';
+import {wrapRoundVideoBubble} from './bubbleParts/roundVideoBubble';
 import {createMessageSpoilerOverlay} from '../messageSpoilerOverlay';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
+import {Sparkles} from '../sparkles';
+import PopupStars from '../popups/stars';
+import addPaidServiceMessage from './bubbleParts/paidServiceMessage';
+import namedPromises from '../../helpers/namedPromises';
+import {getCurrentNewMediaPopup} from '../popups/newMedia';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -1423,14 +1428,21 @@ export default class ChatBubbles {
       }
 
       const middleware = this.getMiddleware();
-      const [isUserBlocked, isPremiumRequired] = await Promise.all([
-        this.managers.appProfileManager.isCachedUserBlocked(userId),
-        this.chat.isPremiumRequiredToContact()
-      ]);
+      const {
+        isUserBlocked,
+        isPremiumRequired,
+        starsAmount
+      } = await namedPromises({
+        isUserBlocked: this.managers.appProfileManager.isCachedUserBlocked(userId),
+        isPremiumRequired: this.chat.isPremiumRequiredToContact(),
+        starsAmount: this.managers.appUsersManager.getStarsAmount(userId)
+      });
+
       if(!middleware()) return;
 
       const wasUserBlocked = this.chat.isUserBlocked;
       const wasPremiumRequired = this.chat.isPremiumRequired;
+      const wasStarsAmount = this.chat.starsAmount;
       let refreshing = false;
       // do not refresh if had no status since input is shown by default
       if(wasUserBlocked === undefined ? isUserBlocked : wasUserBlocked !== isUserBlocked) {
@@ -1438,11 +1450,20 @@ export default class ChatBubbles {
         refreshing = true;
       }
 
-      if(wasPremiumRequired === undefined ? isPremiumRequired : wasPremiumRequired !== isPremiumRequired) {
-        this.chat.isPremiumRequired = isPremiumRequired;
+      const hasPremiumChanged = wasPremiumRequired === undefined ? isPremiumRequired : wasPremiumRequired !== isPremiumRequired;
+      const hasStarsAmountChanged = wasStarsAmount === undefined ? starsAmount : wasStarsAmount !== starsAmount;
+
+      this.chat.isPremiumRequired = isPremiumRequired;
+      this.chat.starsAmount = starsAmount;
+
+      if(hasPremiumChanged || hasStarsAmountChanged) {
         refreshing = true;
         this.cleanupPlaceholders();
         this.checkIfEmptyPlaceholderNeeded();
+      }
+
+      if(hasStarsAmountChanged) {
+        getCurrentNewMediaPopup()?.setStarsAmount(starsAmount);
       }
 
       if(refreshing) {
@@ -5217,6 +5238,15 @@ export default class ChatBubbles {
     contentWrapper.append(bubbleContainer);
     bubble.append(contentWrapper);
 
+    await addPaidServiceMessage({
+      isAnyGroup: this.chat.isAnyGroup,
+      bubble,
+      message,
+      our,
+      peerId: this.peerId,
+      groupedMessages
+    });
+
 
     let isInUnread = !our &&
       !message.pFlags.out &&
@@ -5250,6 +5280,7 @@ export default class ChatBubbles {
     const isStoryMention = isMessage && (message.media as MessageMedia.messageMediaStory)?.pFlags?.via_mention;
     const regularAsService = !!isStoryMention;
     let returnService: boolean;
+
     if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
       const action = (message as Message.messageService).action;
       if(action) {
@@ -5373,6 +5404,20 @@ export default class ChatBubbles {
           const peerTitle = new PeerTitle();
           promise = peerTitle.update({peerId: action.channel_id.toPeerId(true), wrapOptions});
           s.append(i18n('ChatMigration.To', [peerTitle.element]));
+        } else if(action._ === 'messageActionPaidMessagesPrice') {
+          const isFree = !+action.stars;
+          s.append(i18n(
+            isFree ? 'PaidMessages.GroupPriceChangedFree' : 'PaidMessages.GroupPriceChanged',
+            [+action.stars]
+          ));
+        } else if(action._ === 'messageActionPaidMessagesRefunded') {
+          const peerTitle = new PeerTitle();
+          promise = peerTitle.update({peerId: this.peerId, onlyFirstName: true, wrapOptions});
+
+          s.append(i18n(
+            our ? 'PaidMessages.StarsRefundedByYou' : 'PaidMessages.StarsRefundedToYou',
+            [+action.stars, peerTitle.element]
+          ));
         } else {
           promise = wrapMessageActionTextNew({
             message,
@@ -5818,6 +5863,7 @@ export default class ChatBubbles {
       timeSpan = bubble.timeSpan = MessageRender.setTime({
         chat: this.chat,
         chatType: this.chat.type,
+        groupedMessagesCount: groupedMessages?.length,
         message,
         reactionsMessage,
         isOut,
@@ -8193,7 +8239,7 @@ export default class ChatBubbles {
   }
 
   private async renderEmptyPlaceholder(
-    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted' | 'premiumRequired',
+    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted' | 'premiumRequired' | 'paidMessages',
     bubble: HTMLElement,
     message: any,
     elements: (Node | string)[]
@@ -8335,6 +8381,33 @@ export default class ChatBubbles {
       });
 
       elements.push(stickerDiv, subtitle, button);
+    } else if(type === 'paidMessages') {
+      const stickerDiv = document.createElement('div');
+      stickerDiv.classList.add(BASE_CLASS + '-sticker');
+      stickerDiv.append(Icon('premium_restrict'));
+
+      const starsAmount = await this.managers.appPeersManager.getStarsAmount(this.peerId); // should be cached probably here
+
+      const starsElement = document.createElement('span');
+      starsElement.classList.add(BASE_CLASS + '-stars')
+      starsElement.append(
+        Icon('star', BASE_CLASS + '-star-icon'),
+        numberThousandSplitterForStars(starsAmount)
+      );
+
+      const subtitle = i18n('PaidMessages.NewChatDescription', [
+        await wrapPeerTitle({peerId: this.peerId, onlyFirstName: true}),
+        starsElement
+      ]);
+      subtitle.classList.add('center', BASE_CLASS + '-subtitle');
+
+      const button = Button('bubble-service-button overflow-hidden', {noRipple: true, text: 'BuyStars'});
+      button.append(Sparkles({isDiv: true, mode: 'button'}));
+      attachClickEvent(button, () => {
+        PopupElement.createPopup(PopupStars);
+      });
+
+      elements.push(stickerDiv, subtitle, button);
     }
 
     if(listElements) {
@@ -8470,6 +8543,11 @@ export default class ChatBubbles {
         const requirement = await this.managers.appUsersManager.getRequirementToContact(this.peerId.toUserId());
         if(requirement._ === 'requirementToContactPremium') {
           renderPromise = this.renderEmptyPlaceholder('premiumRequired', bubble, message, elements);
+        } else if(
+          requirement._ === 'requirementToContactPaidMessages' &&
+          !(await this.managers.appProfileManager.hasBussinesIntro(this.peerId.toUserId()) && this.chat.starsAmount <= +this.chat.stars())
+        ) {
+          renderPromise = this.renderEmptyPlaceholder('paidMessages', bubble, message, elements);
         } else {
           renderPromise = this.renderEmptyPlaceholder('greeting', bubble, message, elements);
         }

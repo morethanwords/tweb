@@ -79,14 +79,17 @@ import getUnreadReactions from './utils/messages/getUnreadReactions';
 import isMentionUnread from './utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
 import commonStateStorage from '../commonStateStorage';
+import PaidMessagesQueue from './utils/messages/paidMessagesQueue';
+import type {ConfirmedPaymentResult} from '../../components/chat/paidMessagesInterceptor';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
 
-const APITIMEOUT = 0;
 const DO_NOT_READ_HISTORY = false;
 const DO_NOT_SEND_MESSAGES = false;
+const SEND_MESSAGES_TO_PAID_QUEUE = false;
 const DO_NOT_DELETE_MESSAGES = false;
+
 const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
 
 export enum HistoryType {
@@ -220,7 +223,8 @@ export type MessageSendingParams = Partial<{
   updateStickersetOrder: boolean,
   savedReaction: Reaction[],
   invertMedia: boolean,
-  effect: DocId
+  effect: DocId,
+  confirmedPaymentResult: ConfirmedPaymentResult
 }>;
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -369,6 +373,7 @@ export class AppMessagesManager extends AppManager {
   private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
 
   private waitingTranscriptions: Map<string, CancellablePromise<MessagesTranscribedAudio>>;
+  private paidMessagesQueue = new PaidMessagesQueue;
 
   protected after() {
     this.clear(true);
@@ -777,6 +782,8 @@ export class AppMessagesManager extends AppManager {
       this.rootScope.dispatchEvent('messages_pending');
     };
 
+    const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
+
     message.send = () => {
       toggleError();
       const sentRequestOptions: PendingAfterMsg = {};
@@ -796,7 +803,8 @@ export class AppMessagesManager extends AppManager {
           query_id: options.queryId,
           id: options.resultId,
           clear_draft: options.clearDraft,
-          send_as: sendAs
+          send_as: sendAs,
+          allow_paid_stars: paidStars
         }, sentRequestOptions);
       } else {
         const commonOptions: Partial<MessagesSendMessage | MessagesSendMedia> = {
@@ -811,7 +819,8 @@ export class AppMessagesManager extends AppManager {
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
-          effect: options.effect
+          effect: options.effect,
+          allow_paid_stars: paidStars
         };
 
         const mergedOptions: MessagesSendMessage | MessagesSendMedia = {
@@ -874,6 +883,10 @@ export class AppMessagesManager extends AppManager {
 
         if(updates) {
           this.apiUpdatesManager.processUpdateMessage(updates);
+          this.apiUpdatesManager.processPaidMessageUpdate({
+            paidStars,
+            wereStarsReserved: options.confirmedPaymentResult?.canUndo
+          });
         }
 
         message.promise.resolve();
@@ -892,7 +905,8 @@ export class AppMessagesManager extends AppManager {
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
       clearDraft: options.clearDraft,
-      sequential: true
+      sequential: true,
+      confirmedPaymentResult: options.confirmedPaymentResult
     });
 
     const promises: ReturnType<AppMessagesManager['sendText']>[] = [message.promise];
@@ -1207,7 +1221,7 @@ export class AppMessagesManager extends AppManager {
     let uploaded = false,
       uploadPromise: ReturnType<ApiFileManager['upload']> = null;
 
-    const send = () => {
+    const upload = () => {
       if(isDocument) {
         const inputMedia: InputMedia = {
           _: 'inputMediaDocument',
@@ -1324,8 +1338,11 @@ export class AppMessagesManager extends AppManager {
       return sentDeferred;
     };
 
-    !hadMessageBefore && (message.send = send);
-    !hadMessageBefore && this.beforeMessageSending(message, {
+    if(!hadMessageBefore && !options.confirmedPaymentResult?.canUndo) {
+      message.send = upload;
+    }
+
+    if(!hadMessageBefore) this.beforeMessageSending(message, {
       isGroupedItem: options.isGroupedItem,
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
@@ -1334,7 +1351,8 @@ export class AppMessagesManager extends AppManager {
     });
 
     if(!options.isGroupedItem) {
-      const cb = (inputMedia: Awaited<typeof sentDeferred>) => {
+      const invokeSend = (inputMedia: Awaited<typeof sentDeferred>) => {
+        const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
         return this.apiManager.invokeApi('messages.sendMedia', {
           background: options.background,
           peer: this.appPeersManager.getInputPeerById(peerId),
@@ -1349,51 +1367,72 @@ export class AppMessagesManager extends AppManager {
           send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
-          effect: options.effect
+          effect: options.effect,
+          allow_paid_stars: paidStars
         }).then((updates) => {
-          this.apiUpdatesManager.processUpdateMessage(updates);
+          this.apiUpdatesManager.processUpdateMessage(updates)
+          this.apiUpdatesManager.processPaidMessageUpdate({
+            paidStars,
+            wereStarsReserved: options.confirmedPaymentResult?.canUndo
+          });
         });
       };
 
-      sentDeferred.then((inputMedia) => {
-        this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+      const send = () => {
+        sentDeferred.then((inputMedia) => {
+          this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
 
-        let promise: Promise<void>;
-        if(inputMedia._ === 'inputMediaDocument') {
-          promise = this.apiFileManager.invokeApiWithReference({
-            context: inputMedia.id as InputDocument.inputDocument,
-            callback: () => cb(inputMedia)
-          });
-        } else {
-          promise = cb(inputMedia);
-        }
-
-        return promise.catch((error: ApiError) => {
-          if(attachType === 'photo' &&
-            (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
-            error.type === 'PHOTO_SAVE_FILE_INVALID')) {
-            error.handled = true;
-            attachType = 'document';
-            message.send();
-            return;
+          let promise: Promise<void>;
+          if(inputMedia._ === 'inputMediaDocument') {
+            promise = this.apiFileManager.invokeApiWithReference({
+              context: inputMedia.id as InputDocument.inputDocument,
+              callback: () => invokeSend(inputMedia)
+            });
+          } else {
+            promise = invokeSend(inputMedia);
           }
 
-          toggleError(error);
-          throw error;
-        });
-      });
+          return promise.catch((error: ApiError) => {
+            if(attachType === 'photo' &&
+              (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
+              error.type === 'PHOTO_SAVE_FILE_INVALID')) {
+              error.handled = true;
+              attachType = 'document';
+              message.send();
+              return;
+            }
 
-      const messagePromise = message.promise as CancellablePromise<void>;
-      sentDeferred.then(
-        () => messagePromise.resolve(),
-        (err) => messagePromise.reject(err)
-      );
+            toggleError(error);
+            throw error;
+          });
+        });
+
+        const messagePromise = message.promise as CancellablePromise<void>;
+        sentDeferred.then(
+          () => messagePromise.resolve(),
+          (err) => messagePromise.reject(err)
+        );
+      };
+
+      if(options.confirmedPaymentResult?.canUndo) {
+        upload();
+
+        this.paidMessagesQueue.add(peerId, {
+          send,
+          cancel: () => {
+            this.cancelPendingMessage(message.random_id);
+            (message.promise as CancellablePromise<void>)?.reject();
+          }
+        });
+      } else {
+        send();
+      }
     }
 
     const ret: {
       message: typeof message,
       promise: typeof sentDeferred,
-      send: typeof send,
+      send: typeof upload,
       media: typeof media,
       uploadingFileName: typeof uploadingFileName
     } = {
@@ -1404,7 +1443,7 @@ export class AppMessagesManager extends AppManager {
 
     defineNotNumerableProperties(ret, ['promise', 'send']);
     ret.promise = sentDeferred;
-    ret.send = send;
+    ret.send = upload;
 
     return ret;
   }
@@ -1476,6 +1515,7 @@ export class AppMessagesManager extends AppManager {
 
       if(idx === 0) {
         firstMessage = result.message;
+        firstMessage.paid_message_stars = options.confirmedPaymentResult?.starsAmount;
       }
 
       return result;
@@ -1519,6 +1559,7 @@ export class AppMessagesManager extends AppManager {
       const deferred = deferredPromise<void>();
       this.sendSmthLazyLoadQueue.push({
         load: () => {
+          const paidStars = options.confirmedPaymentResult?.starsAmount * multiMedia.length || undefined
           return this.apiManager.invokeApi(options.stars ? 'messages.sendMedia' : 'messages.sendMultiMedia', {
             peer: inputPeer,
             reply_to: options.replyTo,
@@ -1529,6 +1570,7 @@ export class AppMessagesManager extends AppManager {
             update_stickersets_order: options.updateStickersetOrder,
             invert_media: options.invertMedia,
             effect: options.effect,
+            allow_paid_stars: paidStars,
             ...(options.stars ? {
               media: multiMedia[0].media,
               message: multiMedia[0].message,
@@ -1539,6 +1581,11 @@ export class AppMessagesManager extends AppManager {
             })
           }).then((updates) => {
             this.apiUpdatesManager.processUpdateMessage(updates);
+            this.apiUpdatesManager.processPaidMessageUpdate({
+              paidStars,
+              wereStarsReserved: options.confirmedPaymentResult?.canUndo
+            });
+
             deferred.resolve();
           }, (error: ApiError) => {
             results.forEach(({message}) => toggleError(message, error));
@@ -1631,12 +1678,19 @@ export class AppMessagesManager extends AppManager {
         };
       }
 
+      if(options.confirmedPaymentResult?.canUndo) {
+        this.paidMessagesQueue.add(peerId, {
+          send: () => void invoke(inputs),
+          cancel: () => results.forEach(({message}) => this.cancelPendingMessage(message.random_id))
+        });
+        return;
+      }
       return invoke(inputs);
     });
   }
 
-  public sendContact(peerId: PeerId, contactPeerId: PeerId) {
-    return this.sendOther({peerId, inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId)});
+  public sendContact(peerId: PeerId, contactPeerId: PeerId, confirmedPaymentResult?: ConfirmedPaymentResult) {
+    return this.sendOther({peerId, inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId), confirmedPaymentResult});
   }
 
   public sendOther(
@@ -1789,6 +1843,8 @@ export class AppMessagesManager extends AppManager {
         sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
       }
 
+      const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
+
       const sendAs = options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined;
       let apiPromise: Promise<any>;
       if(options.viaBotId) {
@@ -1801,7 +1857,8 @@ export class AppMessagesManager extends AppManager {
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
           silent: options.silent,
-          send_as: sendAs
+          send_as: sendAs,
+          allow_paid_stars: paidStars
         }, sentRequestOptions);
       } else {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendMedia', {
@@ -1814,7 +1871,8 @@ export class AppMessagesManager extends AppManager {
           schedule_date: options.scheduleDate,
           silent: options.silent,
           send_as: sendAs,
-          update_stickersets_order: options.updateStickersetOrder
+          update_stickersets_order: options.updateStickersetOrder,
+          allow_paid_stars: paidStars
         }, sentRequestOptions);
       }
 
@@ -1830,6 +1888,10 @@ export class AppMessagesManager extends AppManager {
         }
 
         this.apiUpdatesManager.processUpdateMessage(updates);
+        this.apiUpdatesManager.processPaidMessageUpdate({
+          paidStars,
+          wereStarsReserved: options.confirmedPaymentResult?.canUndo
+        });
         promise.resolve();
       }, (error: ApiError) => {
         toggleError(error);
@@ -1847,7 +1909,8 @@ export class AppMessagesManager extends AppManager {
       threadId: options.threadId,
       clearDraft: options.clearDraft,
       sequential: true,
-      noOutgoingMessage
+      noOutgoingMessage,
+      confirmedPaymentResult: options.confirmedPaymentResult
     });
 
     const promise = message.promise;
@@ -1890,7 +1953,7 @@ export class AppMessagesManager extends AppManager {
     // }
   }
 
-  private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction'> & Partial<{
+  private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction' | 'confirmedPaymentResult'> & Partial<{
     isGroupedItem: boolean,
     isScheduled: boolean,
     clearDraft: boolean,
@@ -1976,8 +2039,14 @@ export class AppMessagesManager extends AppManager {
         if(options.clearDraft) {
           this.appDraftsManager.clearDraft(peerId, options.threadId);
         }
+        if(DO_NOT_SEND_MESSAGES) return;
 
-        if(!DO_NOT_SEND_MESSAGES) {
+        if(SEND_MESSAGES_TO_PAID_QUEUE || options.confirmedPaymentResult?.canUndo) {
+          this.paidMessagesQueue.add(peerId, {
+            send: () => void message?.send?.(),
+            cancel: () => void this.cancelPendingMessage(message?.random_id)
+          });
+        } else {
           message.send();
         }
       });
@@ -2042,7 +2111,8 @@ export class AppMessagesManager extends AppManager {
       replies: this.generateReplies(peerId, options.replyTo),
       views: isBroadcast && 1,
       pending: true,
-      effect: options.effect
+      effect: options.effect,
+      paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined
     };
 
     defineNotNumerableProperties(message, ['send', 'promise']);
@@ -2778,7 +2848,8 @@ export class AppMessagesManager extends AppManager {
           text: originalMessage.message,
           entities: originalMessage.entities,
           scheduleDate: options.scheduleDate,
-          silent: options.silent
+          silent: options.silent,
+          confirmedPaymentResult: options.confirmedPaymentResult
         });
 
         mids.splice(i--, 1);
@@ -2905,7 +2976,8 @@ export class AppMessagesManager extends AppManager {
       this.beforeMessageSending(message, {
         isScheduled: !!options.scheduleDate || undefined,
         sequential: true,
-        threadId: message.peerId === this.appPeersManager.peerId ? fromPeerId : undefined
+        threadId: message.peerId === this.appPeersManager.peerId ? fromPeerId : undefined,
+        confirmedPaymentResult: options.confirmedPaymentResult
       });
     });
 
@@ -2914,7 +2986,9 @@ export class AppMessagesManager extends AppManager {
       sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
     }
 
-    const promise = /* true ? Promise.resolve() :  */this.apiManager.invokeApiAfter('messages.forwardMessages', {
+    const paidStars = options.confirmedPaymentResult ? options.confirmedPaymentResult?.starsAmount * mids.length : undefined;
+
+    const send = () => this.apiManager.invokeApiAfter('messages.forwardMessages', {
       from_peer: this.appPeersManager.getInputPeerById(fromPeerId),
       id: mids.map((mid) => getServerMessageId(mid)),
       random_id: newMessages.map((message) => message.random_id),
@@ -2925,10 +2999,15 @@ export class AppMessagesManager extends AppManager {
       drop_author: options.dropAuthor,
       drop_media_captions: options.dropCaptions,
       send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
-      top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined
+      top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined,
+      allow_paid_stars: paidStars
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processPaidMessageUpdate({
+        paidStars,
+        wereStarsReserved: options.confirmedPaymentResult?.canUndo
+      });
     }, (error: ApiError) => {
       this.onMessagesSendError(newMessages, error);
       throw error;
@@ -2938,9 +3017,29 @@ export class AppMessagesManager extends AppManager {
       }
     });
 
+    const cancel = () => {
+      newMessages.forEach(message => this.cancelPendingMessage(message.random_id));
+    };
+
     this.pendingAfterMsgs[peerId] = sentRequestOptions;
 
-    const promises: (typeof promise)[] = [promise];
+    if(options.confirmedPaymentResult?.canUndo) {
+      this.paidMessagesQueue.add(peerId, {
+        send: () => void send(),
+        cancel
+      });
+
+      if(overflowMids.length) this.forwardMessages({
+        ...options,
+        peerId,
+        fromPeerId,
+        mids: overflowMids
+      });
+
+      return;
+    }
+
+    const promises: Promise<any>[] = [send()];
     if(overflowMids.length) {
       promises.push(this.forwardMessages({
         ...options,
@@ -8749,6 +8848,14 @@ export class AppMessagesManager extends AppManager {
     return this.apiManager.invokeApiSingle('messages.clickSponsoredMessage', {
       random_id: randomId
     });
+  }
+
+  public sendQueuedPaidMessages(peerId: PeerId) {
+    this.paidMessagesQueue.sendFor(peerId);
+  }
+
+  public cancelQueuedPaidMessages(peerId: PeerId) {
+    this.paidMessagesQueue.cancelFor(peerId);
   }
 }
 
