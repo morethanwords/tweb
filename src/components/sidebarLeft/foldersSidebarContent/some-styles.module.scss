@@ -1,0 +1,38 @@
+.Popup {
+  position: fixed;
+  left: 50%;
+  top: 40px;
+  bottom: 40px;
+
+  transform: translateX(-50%);
+
+  width: 420px;
+
+  background: white;
+  border-radius: 16px;
+
+  overflow: hidden;
+}
+
+.VirtualList {
+  height: 100%;
+  overflow: scroll;
+}
+
+.VirtualListInner {
+  position: relative;
+}
+
+.Item {
+  position: absolute;
+  height: 72px;
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &Odd {
+    background-color: rgb(228, 240, 218);
+  }
+}
