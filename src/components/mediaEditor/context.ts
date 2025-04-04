@@ -81,6 +81,7 @@ export type MediaEditorState = {
 
 export type EditorOverridableGlobalActions = {
   pushToHistory: (item: HistoryItem) => void;
+  setInitialImageRatio: (ratio: number) => void;
   redrawBrushes: () => void;
   abortDrawerSlide: () => void;
   resetRotationWheel: () => void;
@@ -174,12 +175,15 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
   const mediaState = createMutable(mediaStateInit);
   const editorState = createMutable(getDefaultMediaEditorState());
 
-  const actions = {
+  const actions: EditorOverridableGlobalActions = {
     pushToHistory: (item: HistoryItem) => {
       modifyMutable(mediaState, produce(({history, redoHistory}) => {
         history.push(item);
         redoHistory.length && redoHistory.splice(0, Infinity);
       }));
+    },
+    setInitialImageRatio: (ratio: number) => {
+      mediaStateInitClone.currentImageRatio = ratio;
     },
     redrawBrushes: () => {},
     abortDrawerSlide: () => {},
@@ -195,8 +199,8 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     );
   });
 
-  (window as any).mediaState = mediaState;
-  (window as any).unwrap = unwrap;
+  // (window as any).mediaState = mediaState;
+  // (window as any).unwrap = unwrap;
 
   return {
     managers: props.managers,
