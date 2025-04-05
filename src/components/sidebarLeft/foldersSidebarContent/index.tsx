@@ -2,30 +2,39 @@ import {createEffect, createRoot, createSelector, createSignal, For, onCleanup, 
 import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
 
+import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
+import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 import {getMiddleware, Middleware} from '../../../helpers/middleware';
 import ListenerSetter from '../../../helpers/listenerSetter';
-import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 import pause from '../../../helpers/schedulers/pause';
-import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
 
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
-import {i18n} from '../../../lib/langPack';
-import {MyDialogFilter} from '../../../lib/storages/filters';
 import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
+import {MyDialogFilter} from '../../../lib/storages/filters';
+import {i18n} from '../../../lib/langPack';
 
-import Scrollable from '../../scrollable2';
+import wrapFolderTitle from '../../wrappers/folderTitle';
 import Animated from '../../../helpers/solid/animations';
+import Scrollable from '../../scrollable2';
 import {IconTsx} from '../../iconTsx';
 import ripple from '../../ripple';
 
 import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
 import type {FolderItemPayload} from './types';
 import FolderItem from './folderItem';
-import wrapFolderTitle from '../../wrappers/folderTitle';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
+import {Sample} from './vertical-virtual-list';
 
+function renderVirtualListSample() {
+  const element = document.createElement('div');
+  document.body.append(element);
+
+
+  render(() => (
+    <Sample />
+  ), element);
+}
 
 export function FoldersSidebarContent(props: {
   notificationsElement: HTMLElement
@@ -44,6 +53,8 @@ export function FoldersSidebarContent(props: {
   const [folderItems, setFolderItems] = createStore<FolderItemPayload[]>([]);
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
   const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
+
+  renderVirtualListSample();
 
   const showAddFolders = () => canShowAddFolders() &&
     selectedFolderId() &&
