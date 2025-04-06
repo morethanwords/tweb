@@ -1747,13 +1747,6 @@ export default class AppSearchSuper {
       return this._loadSavedDialogs(side);
     }
 
-    const list = appDialogsManager.createChatList();
-    appDialogsManager.setListClickListener({
-      list,
-      withContext: true,
-      openInner: this.openSavedDialogsInner
-    });
-
     const xd = new Some4();
     xd.scrollable = this.scrollable;
     xd.sortedList = new SortedDialogList({
@@ -1763,6 +1756,14 @@ export default class AppSearchSuper {
       scrollable: this.scrollable,
       indexKey: 'index_0',
       virtualFilterId: rootScope.myId
+    });
+
+    const list = xd.sortedList.list;
+
+    appDialogsManager.setListClickListener({
+      list,
+      withContext: true,
+      openInner: this.openSavedDialogsInner
     });
 
     const getCount = async() => {

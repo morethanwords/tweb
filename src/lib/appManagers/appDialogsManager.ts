@@ -255,7 +255,7 @@ export class SortedDialogList {
   public async add(key: any) {
     const item = await this.createItemForKey(key);
     this.virtualList.addItems([item]);
-    this.virtualList.setTotalCount(prev => prev + 1);
+    // this.virtualList.setTotalCount(prev => prev + 1);
   }
 
   public delete(key: any) {
@@ -1171,6 +1171,7 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     if(this.loadDialogsDeferred?.isRejected) throw new Error();
 
+    this.loadedDialogsAtLeastOnce = true;
     this.sortedList.updateTotalCount(result.count);
     this.sortedList.addDeferredItems(items);
 
