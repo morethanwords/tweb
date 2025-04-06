@@ -7,10 +7,12 @@ import {animate} from '../animation';
 
 export default function createAnimatedValue(value: Accessor<number>, time: number, easing = simpleEasing) {
   const [current, setCurrent] = createSignal(value());
+  const [animating, setAnimating] = createSignal(false);
 
   createEffect(on(value, () => {
     const startValue = current();
     const startTime = performance.now();
+    setAnimating(true);
 
     let cleaned = false;
 
@@ -21,13 +23,22 @@ export default function createAnimatedValue(value: Accessor<number>, time: numbe
 
       setCurrent((value() - startValue) * progress + startValue);
 
-      return progress < 1;
+      if(progress < 1) return true;
+      setAnimating(false);
     });
 
-    onCleanup(() => void (cleaned = true));
+    onCleanup(() => {
+      cleaned = true;
+      setAnimating(false);
+    });
   }, {
     defer: true
   }));
 
-  return current;
+
+  const result = current as Accessor<number> & {animating: Accessor<boolean>};
+
+  result.animating = animating;
+
+  return result;
 }

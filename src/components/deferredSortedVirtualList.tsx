@@ -90,7 +90,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
   let list: HTMLUListElement;
 
-  const InnerItem = (props: {value: T, top: number}) => {
+  const InnerItem = (props: {value: T, top: number, animating: boolean}) => {
     const element = createMemo(() => {
       const element = getItemElement(props.value);
       element?.classList.add(styles.ChatlistItem);
@@ -99,6 +99,13 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
     createRenderEffect(() => {
       element()?.style.setProperty('top', props.top + 'px');
+    });
+
+    createEffect(() => {
+      if(props.animating)
+        element()?.style.setProperty('--background', /* 'red' */'var(--surface-color)');
+      else
+        element()?.style.removeProperty('--background');
     });
 
     return <>{element()}</>;
@@ -117,7 +124,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
             <div class={styles.LoadingItem} style={{top: props.top + 'px'}}>Loading...</div>
           </>
         }>
-          <InnerItem value={props.item?.value} top={props.top} />
+          <InnerItem value={props.item?.value} top={props.top} animating={props.animating} />
         </Show>
       );
     }}
