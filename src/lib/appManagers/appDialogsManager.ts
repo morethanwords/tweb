@@ -118,7 +118,7 @@ import {useAppSettings} from '../../stores/appSettings';
 import wrapFolderTitle from '../../components/wrappers/folderTitle';
 import namedPromises from '../../helpers/namedPromises';
 import {createDeferredSortedVirtualList, DeferredSortedVirtualListItem} from '../../components/deferredSortedVirtualList';
-import {SequentialCursorFetcher} from '../../helpers/sequentialCursorFetcher';
+import {SequentialCursorFetcher, SequentialCursorFetcherResult} from '../../helpers/sequentialCursorFetcher';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -244,7 +244,7 @@ export class SortedDialogList {
     return dialogElement;
   }
 
-  public addItems(items: DeferredSortedVirtualListItem<DialogElement>[]) {
+  public addDeferredItems(items: DeferredSortedVirtualListItem<DialogElement>[]) {
     this.virtualList.addItems(items);
   }
 
@@ -255,10 +255,12 @@ export class SortedDialogList {
   public async add(key: any) {
     const item = await this.createItemForKey(key);
     this.virtualList.addItems([item]);
+    this.virtualList.setTotalCount(prev => prev + 1);
   }
 
   public delete(key: any) {
     this.virtualList.removeItem(key);
+    this.virtualList.setTotalCount(prev => prev - 1);
   }
 
   public has(key: any) {
@@ -279,7 +281,7 @@ export class SortedDialogList {
   }
 
   public clear() {
-    // this.virtualList.clear();
+    this.virtualList.clear();
     // this.list?.replaceChildren();
   }
 
@@ -966,37 +968,17 @@ class Some<T extends AnyDialog = AnyDialog> {
     return placeholder;
   }
 
+  private loadDialogsDeferred: CancellablePromise<SequentialCursorFetcherResult<number>>;
+
   public async loadDialogs(offsetIndex: number) {
+    this.loadDialogsDeferred = deferredPromise();
+
+    this.loadDialogsInner(offsetIndex).then(this.loadDialogsDeferred.resolve.bind(this.loadDialogsDeferred));
+
+    return this.loadDialogsDeferred;
     /* if(testScroll) {
       return;
     } */
-    console.log('[my-debug] loadDialogs offsetIndex :>> ', offsetIndex);
-
-    console.log('[my-debug] loadDialogs before', offsetIndex);
-    const ackedResult = await this.loadDialogsInner(offsetIndex);
-    const result = await ackedResult.result;
-
-    const newOffsetIndex = result.dialogs.reduce((prev, curr) => {
-      const index = getDialogIndex(curr, this.indexKey)
-      return index < prev ? index : prev;
-    }, offsetIndex || Infinity);
-
-    console.log('[my-debug] loadDialogs after', result);
-    const items = await Promise.all(result.dialogs.map(async dialog => {
-      const key = this.getDialogKey(dialog as T);
-
-      return this.sortedList.createItemForKey(key);
-    }));
-
-    this.sortedList.updateTotalCount(result.count);
-    this.sortedList.addItems(items);
-
-    console.log('[my-debug] loadDialogs newOffsetIndex :>> ', newOffsetIndex);
-
-    return {
-      cursor: newOffsetIndex === Infinity ? undefined : newOffsetIndex,
-      count: result.dialogs.length
-    }
     // const log = this.log.bindPrefix('load-' + getUnsafeRandomInt(1000, 9999));
     // log('try', side);
 
@@ -1161,15 +1143,41 @@ class Some<T extends AnyDialog = AnyDialog> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 
-  public loadDialogsInner(offsetIndex: number) {
+  public async loadDialogsInner(offsetIndex: number) {
+    console.log('[my-debug] loadDialogs offsetIndex :>> ', offsetIndex);
+
     const filterId = this.getFilterId();
 
-    return this.managers.acknowledged.dialogsStorage.getDialogs({
+    const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
       offsetIndex,
       limit: 20,
       filterId,
       skipMigrated: true // TODO: CAN_HIDE_TOPIC
     });
+
+    const result = await ackedResult.result;
+
+    const newOffsetIndex = result.dialogs.reduce((prev, curr) => {
+      const index = getDialogIndex(curr, this.indexKey)
+      return index < prev ? index : prev;
+    }, offsetIndex || Infinity);
+
+    console.log('[my-debug] loadDialogs after', result);
+    const items = await Promise.all(result.dialogs.map(async dialog => {
+      const key = this.getDialogKey(dialog as T);
+
+      return this.sortedList.createItemForKey(key);
+    }));
+
+    if(this.loadDialogsDeferred?.isRejected) throw new Error();
+
+    this.sortedList.updateTotalCount(result.count);
+    this.sortedList.addDeferredItems(items);
+
+    return {
+      cursor: newOffsetIndex === Infinity ? undefined : newOffsetIndex,
+      count: result.dialogs.length
+    };
   }
 
   public async setTyping(dialog: T) {
@@ -1227,6 +1235,8 @@ class Some<T extends AnyDialog = AnyDialog> {
   public clear() {
     this.sortedList.clear();
     this.placeholder?.remove();
+    this.loadDialogsDeferred?.reject();
+    this.cursorFetcher.reset();
   }
 
   public reset() {
