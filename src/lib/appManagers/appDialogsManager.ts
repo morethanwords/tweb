@@ -116,8 +116,9 @@ import {WrapRichTextOptions} from '../richTextProcessor/wrapRichText';
 import createFolderContextMenu from '../../helpers/dom/createFolderContextMenu';
 import {useAppSettings} from '../../stores/appSettings';
 import wrapFolderTitle from '../../components/wrappers/folderTitle';
-import {createDeferredSortedVirtualList, DeferredSortedVirtualListItem, SequentialCursorFetcher} from '../../components/sidebarLeft/foldersSidebarContent/vertical-virtual-list';
 import namedPromises from '../../helpers/namedPromises';
+import {createDeferredSortedVirtualList, DeferredSortedVirtualListItem} from '../../components/deferredSortedVirtualList';
+import {SequentialCursorFetcher} from '../../helpers/sequentialCursorFetcher';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 

@@ -4,57 +4,27 @@ import {render} from 'solid-js/web';
 
 import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
-import {getMiddleware, Middleware} from '../../../helpers/middleware';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
 import ListenerSetter from '../../../helpers/listenerSetter';
+import Animated from '../../../helpers/solid/animations';
+import {Middleware} from '../../../helpers/middleware';
 import pause from '../../../helpers/schedulers/pause';
 
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, MUTE_UNTIL, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
 import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import {MyDialogFilter} from '../../../lib/storages/filters';
 import {i18n} from '../../../lib/langPack';
 
 import wrapFolderTitle from '../../wrappers/folderTitle';
-import Animated from '../../../helpers/solid/animations';
 import Scrollable from '../../scrollable2';
 import {IconTsx} from '../../iconTsx';
-import ripple from '../../ripple';
+import ripple from '../../ripple'; ripple; // keep
 
 import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
 import type {FolderItemPayload} from './types';
 import FolderItem from './folderItem';
-import {Sample} from './vertical-virtual-list';
-import {MOUNT_CLASS_TO} from '../../../config/debug';
-import {withCurrentOwner} from '../../mediaEditor/utils';
 
-function renderVirtualListSample() {
-  const element = document.createElement('div');
-  document.body.append(element);
-
-
-  render(() => (
-    <Sample />
-  ), element);
-}
-
-async function crazyScript() {
-  const {
-    rootScope
-  } = useHotReloadGuard();
-
-  const recommendations = await rootScope.managers.appChatsManager.getGenericChannelRecommendations();
-
-  if(!recommendations.chats.length) return;
-
-  for(let i = 0; i < 10 && i < recommendations.chats.length; i++) {
-    const peerId = recommendations.chats[i]?.id;
-    await rootScope.managers.appChatsManager.joinChannel(peerId.toChatId())
-    await pause(3000);
-    await rootScope.managers.appMessagesManager.mutePeer({peerId: peerId.toPeerId(true), muteUntil: MUTE_UNTIL});
-    await pause(12000);
-  }
-}
 
 export function FoldersSidebarContent(props: {
   notificationsElement: HTMLElement
@@ -74,9 +44,6 @@ export function FoldersSidebarContent(props: {
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
   const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
 
-  // MOUNT_CLASS_TO.crazyScript = withCurrentOwner(crazyScript)
-  // renderVirtualListSample();
-
   const showAddFolders = () => canShowAddFolders() &&
     selectedFolderId() &&
     !REAL_FOLDERS.has(selectedFolderId()) &&
@@ -88,7 +55,6 @@ export function FoldersSidebarContent(props: {
 
   let menuRef: HTMLDivElement;
   let folderItemsContainer: HTMLDivElement;
-  let showAddFoldersButton: HTMLDivElement;
 
   function updateFolderItem(folderId: number, payload: Partial<FolderItemPayload>) {
     const idx = folderItems.findIndex((item) => item.id === folderId);
@@ -266,10 +232,6 @@ export function FoldersSidebarContent(props: {
     });
   });
 
-  createEffect(() => {
-    if(showAddFolders()) ripple(showAddFoldersButton);
-  });
-
   const updateCanShowAddFolders = () => {
     const selectedItem = folderItemRefs[selectedFolderId()];
 
@@ -316,7 +278,7 @@ export function FoldersSidebarContent(props: {
 
         <Animated type="cross-fade" mode="add-remove">
           {showAddFolders() && <div
-            ref={showAddFoldersButton}
+            use:ripple
             class="folders-sidebar__add-folders-button"
             onClick={() => contextMenu.openSettingsForFilter(selectedFolderId())}
             style={{

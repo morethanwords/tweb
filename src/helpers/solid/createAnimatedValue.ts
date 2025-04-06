@@ -1,8 +1,8 @@
 import {createSignal, onCleanup, Accessor, createEffect, on} from 'solid-js';
 
-import {animate} from '../../../helpers/animation';
+import {simpleEasing} from '../../components/mediaEditor/utils';
 
-import {simpleEasing} from '../../mediaEditor/utils';
+import {animate} from '../animation';
 
 
 export default function createAnimatedValue(value: Accessor<number>, time: number, easing = simpleEasing) {
