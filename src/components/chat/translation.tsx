@@ -14,7 +14,6 @@ import I18n, {i18n} from '../../lib/langPack';
 import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import SearchIndex from '../../lib/searchIndex';
 import Languages from '../../lib/tinyld/languages';
-import {useAppState} from '../../stores/appState';
 import usePremium from '../../stores/premium';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import Icon from '../icon';
@@ -25,6 +24,7 @@ import Row from '../row';
 import Chat from './chat';
 import PinnedContainer from './pinnedContainer';
 import ChatTopbar from './topbar';
+import {useAppSettings} from '../../stores/appSettings';
 
 export function pickLanguage<T extends boolean>(
   multi?: T,
@@ -155,8 +155,8 @@ export default class ChatTranslation extends PinnedContainer {
         icon: 'hand',
         textElement: i.element,
         onClick: () => {
-          const [_, setAppState] = useAppState();
-          setAppState('translations', 'doNotTranslate', (arr) => [...arr, peerTranslation().peerLanguage()]);
+          const [_, setAppSettings] = useAppSettings();
+          setAppSettings('translations', 'doNotTranslate', (arr) => [...arr, peerTranslation().peerLanguage()]);
         },
         verify: isPremium,
         separatorDown: true

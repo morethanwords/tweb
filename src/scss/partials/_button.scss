@@ -101,6 +101,7 @@ $btn-menu-z-index: 4;
 }
 
 .btn-menu {
+  --transform-extra: translateX(0);
   --transform-origin-x: center;
   --transform-origin-y: center;
   position: absolute;
@@ -126,7 +127,7 @@ $btn-menu-z-index: 4;
   &-transition {
     visibility: hidden;
     opacity: 0;
-    transform: scale(.8);
+    transform: var(--transform-extra) scale(.8);
     transition: opacity var(--btn-menu-transition), transform var(--btn-menu-transition), visibility var(--btn-menu-transition);
 
     body.animation-level-0 & {
@@ -208,14 +209,14 @@ $btn-menu-z-index: 4;
     .btn-menu-transition {
       visibility: visible;
       opacity: 1;
-      transform: scale3d(1, 1, 1); // * scale3d (NOT scale) will fix jumping text
+      transform: var(--transform-extra) scale3d(1, 1, 1); // * scale3d (NOT scale) will fix jumping text
     }
   }
 
   .is-mobile &.was-open {
     &,
     .btn-menu-transition {
-      transform: scale3d(1, 1, 1); // * scale3d (NOT scale) will fix jumping text
+      transform: var(--transform-extra) scale3d(1, 1, 1); // * scale3d (NOT scale) will fix jumping text
     }
   }
 
@@ -242,6 +243,9 @@ $btn-menu-z-index: 4;
   &.bottom-center {
     --transform-origin-x: center;
     --transform-origin-y: top;
+    --transform-extra: translateX(calc(-50% + var(--parent-half-width)));
+    inset-block: 100% auto;
+    inset-inline: 0 auto;
   }
 
   &.top-left {
@@ -313,7 +317,10 @@ $btn-menu-z-index: 4;
       transition: transform .1s var(--transition-standard-easing);
     }
 
-    &:active {
+    &.disable-click {
+      cursor: default !important;
+    }
+    &:not(.disable-click):active {
       transform: scale(.96);
     }
 
@@ -464,6 +471,27 @@ $btn-menu-z-index: 4;
     .checkbox-field-toggle {
       padding: 0;
     }
+
+    &-avatar {
+      // width: 1.5rem !important;
+      // height: 1.5rem !important;
+      // display: flex;
+      // align-items: center;
+      // justify-content: center;
+      // position: relative;
+
+      &.active:before {
+        --offset: -3px;
+        content: " ";
+        position: absolute;
+        top: var(--offset);
+        right: var(--offset);
+        bottom: var(--offset);
+        left: var(--offset);
+        border: 1.5px solid var(--primary-color);
+        border-radius: inherit;
+      }
+    }
   }
 
   &-items {
@@ -511,7 +539,7 @@ $btn-menu-z-index: 4;
   }
 
   &-footer {
-    height: 2.5rem;
+    height: 2rem;
     // background: var(--background-color-true);
     display: flex;
     align-items: center;
@@ -519,7 +547,9 @@ $btn-menu-z-index: 4;
     border-bottom-left-radius: inherit;
     border-bottom-right-radius: inherit;
     font-size: .875rem;
-    color: currentColor;
+    color: #a2acb4;
+    font-weight: 500;
+    font-size: 12px;
     // cursor: default;
 
     /* &-text {
@@ -534,7 +564,6 @@ $btn-menu-z-index: 4;
 
     margin-left: auto;
     margin-right: auto;
-    width: calc(100% - 1.875rem);
     opacity: .6;
   }
 
@@ -781,15 +810,11 @@ $btn-menu-z-index: 4;
         }
       }
 
-      .media-sticker-wrapper {
+      .btn-menu-reactions-reaction-appear,
+      .btn-menu-reactions-reaction-select {
         position: relative;
         width: 100%;
         height: 100%;
-        /* position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0; */
       }
     }
 
@@ -802,6 +827,39 @@ $btn-menu-z-index: 4;
       padding: 0 .125rem;
       margin-inline-end: .25rem;
     }
+
+    // * for mobiles
+    .currency-star-icon {
+      width: 100%;
+      height: 100%;
+      padding: .0625rem;
+    }
+  }
+}
+
+.btn-menu-item-with-auxiliary-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  min-width: 114px;
+}
+
+.btn-menu-item-auxiliary-text {
+  font-weight: 400;
+  opacity: 0.5;
+}
+
+.floating-button-menu-container {
+  position: fixed;
+  transition: .2s;
+
+  z-index: 10;
+
+  &--minimized#{&}--right-start {
+    transform-origin: 0 0;
+    transform: scale(0.5);
+    opacity: 0;
   }
 }
 
@@ -1091,4 +1149,12 @@ $btn-menu-z-index: 4;
   /* margin-right: calc(var(--size) + 0.5rem); */
   /* left: var(--offset); */
   inset-inline-end: auto !important;
+}
+
+.btn-large {
+  height: 3.375rem;
+  font-size: 1rem;
+
+  text-transform: uppercase;
+  font-weight: 600;
 }

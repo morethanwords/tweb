@@ -18,7 +18,7 @@ import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '../hooks/useHeav
 import I18n, {LangPackKey, i18n, join} from '../lib/langPack';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant, Document, Message, MessageMedia, MessagesChats, Photo, StoryItem, Update, User, WebPage} from '../layer';
+import {ChannelParticipant, Chat, ChatFull, ChatParticipant, Document, Message, MessageMedia, MessagesChats, Peer, Photo, StoryItem, Update, User, WebPage} from '../layer';
 import SortedUserList from './sortedUserList';
 import findUpTag from '../helpers/dom/findUpTag';
 import appSidebarRight from './sidebarRight';
@@ -91,6 +91,8 @@ import getFwdFromName from '../lib/appManagers/utils/messages/getFwdFromName';
 import SidebarSlider from './slider';
 import setBlankToAnchor from '../lib/richTextProcessor/setBlankToAnchor';
 import cancelClickOrNextIfNotClick from '../helpers/dom/cancelClickOrNextIfNotClick';
+import createElementFromMarkup from '../helpers/createElementFromMarkup';
+import numberThousandSplitter from '../helpers/number/numberThousandSplitter';
 
 // const testScroll = false;
 
@@ -110,7 +112,7 @@ export type SearchSuperContext = {
 
 export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
   'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar' |
-  'savedDialogs' | 'saved';
+  'savedDialogs' | 'saved' | 'channels' | 'apps';
 export type SearchSuperMediaTab = {
   inputFilter?: SearchSuperType,
   name: LangPackKey,
@@ -1215,7 +1217,7 @@ export default class AppSearchSuper {
 
     if(!length && !contentTab.childElementCount) {
       const div = document.createElement('div');
-      div.innerText = 'Nothing interesting here yet...';
+      div.append(i18n('Chat.Search.NothingFound'));
       div.classList.add('position-center', 'text-center', 'content-empty', 'no-select');
 
       parent.append(div);
@@ -1787,6 +1789,180 @@ export default class AppSearchSuper {
     return xd.onChatsScroll();
   }
 
+
+  private appendShowMoreButton(group: SearchGroup, toggleClassName = 'is-short-5') {
+    let shouldShowMore = false;
+
+    const showMoreButton: HTMLDivElement = createElementFromMarkup(`
+      <div class="search-group__show-more"></div>
+    `);
+    group.nameEl.append(showMoreButton);
+
+    updateShowMoreContent();
+
+    attachClickEvent(showMoreButton, () => {
+      shouldShowMore = !shouldShowMore;
+      updateShowMoreContent();
+    });
+    function updateShowMoreContent() {
+      showMoreButton.replaceChildren(i18n(shouldShowMore ? 'Separator.ShowLess' : 'Separator.ShowMore'));
+      group.container.classList.toggle(toggleClassName, !shouldShowMore);
+    }
+  }
+
+  private async renderPeerDialogs(peerIds: PeerId[], group: SearchGroup, middleware: Middleware, type?: 'bots' | 'channels') {
+    if(!middleware()) return;
+
+    for(const peerId of peerIds) {
+      const {dom} = appDialogsManager.addDialogNew({
+        peerId,
+        container: group.list,
+        avatarSize: 'abitbigger',
+        wrapOptions: {
+          middleware
+        }
+      });
+
+      const peer = await this.managers.appPeersManager.getPeer(peerId);
+      const username = await this.managers.appPeersManager.getPeerUsername(peerId);
+
+      if('participants_count' in peer) {
+        dom.lastMessageSpan.append(await getChatMembersString(peerId.toChatId()));
+      } else if('bot_active_users' in peer) {
+        dom.lastMessageSpan.append(i18n('BotUsers', [numberThousandSplitter(peer.bot_active_users)]));
+      } else if(username) {
+        dom.lastMessageSpan.append('@' + username);
+      } else if(type === 'bots') {
+        dom.lastMessageSpan.append(i18n('UnknownBotUsers'));
+      }
+    };
+  }
+
+  private async loadChannels({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    if(this.searchContext.query) {
+      const group = new SearchGroup('Channels', 'channels');
+      group.setActive();
+      group.nameEl.style.display = 'none';
+
+      const SEARCH_LIMIT = 200; // will get filtered anyway
+      const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT);
+      const filteredResultsWithUndefined = await Promise.all(
+        globalResults.map(async(user) => await this.managers.appPeersManager.isBroadcast(user) ? user : undefined)
+      );
+      const filteredResults = filteredResultsWithUndefined.filter(Boolean);
+
+      this.renderPeerDialogs(filteredResults.map((user) => user.toPeerId(true)), group, middleware);
+
+      if(filteredResults.length) {
+        mediaTab.contentTab.append(group.container);
+      }
+      this.afterPerforming(filteredResults.length, mediaTab.contentTab);
+
+      this.loaded[mediaTab.type] = true;
+      return;
+    }
+
+    const dialogs = await this.managers.dialogsStorage.getCachedDialogs();
+    const channelDialogsWithUndefined = await Promise.all(dialogs.map(async(dialog) => await this.managers.appPeersManager.isBroadcast(dialog.peerId) ? dialog : undefined));
+    const channelDialogs = channelDialogsWithUndefined.filter(Boolean);
+
+    if(channelDialogs.length) {
+      const group = new SearchGroup('Chat.Search.JoinedChannels', 'channels');
+      group.setActive();
+      mediaTab.contentTab.append(group.container);
+
+      const SHOW_MORE_LIMIT = 5;
+      if(channelDialogs.length > SHOW_MORE_LIMIT) this.appendShowMoreButton(group);
+
+      this.renderPeerDialogs(channelDialogs.map((dialog) => dialog.peerId), group, middleware);
+    }
+
+    const recommendations = await this.managers.appChatsManager.getGenericChannelRecommendations();
+
+    if(recommendations.chats.length) {
+      const group = new SearchGroup('SimilarChannels', 'channels');
+      group.setActive();
+      mediaTab.contentTab.append(group.container);
+
+      this.renderPeerDialogs(recommendations.chats.map((chat) => chat.id.toPeerId(true)), group, middleware);
+    }
+
+    this.afterPerforming(1, mediaTab.contentTab);
+    this.loaded[mediaTab.type] = true;
+  }
+
+  private async loadApps({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    if(this.searchContext.query) {
+      const group = new SearchGroup('ChatList.Filter.Bots', 'apps');
+      group.setActive();
+
+      const SEARCH_LIMIT = 200; // will get filtered anyway
+      const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT);
+      const filteredResultsWithUndefined = await Promise.all(
+        globalResults.map(async(user) => await this.managers.appPeersManager.isBot(user) ? user : undefined)
+      );
+      const filteredResults = filteredResultsWithUndefined.filter(Boolean);
+
+      this.renderPeerDialogs(filteredResults.map((user) => user.toPeerId(false)), group, middleware, 'bots');
+
+      if(filteredResults.length) {
+        mediaTab.contentTab.append(group.container);
+      }
+      this.afterPerforming(filteredResults.length, mediaTab.contentTab);
+
+      this.loaded[mediaTab.type] = true;
+      return;
+    }
+
+    const myTopApps = await rootScope.managers.appUsersManager.getTopPeers('bots_app');
+
+    if(myTopApps.length) {
+      const group = new SearchGroup('MiniApps.Apps', 'apps');
+      group.setActive();
+      mediaTab.contentTab.append(group.container);
+
+      const SHOW_MORE_LIMIT = 5;
+      if(myTopApps.length > SHOW_MORE_LIMIT)  this.appendShowMoreButton(group);
+
+      this.renderPeerDialogs(myTopApps.map((app) => app.id.toPeerId(false)), group, middleware, 'bots');
+    }
+
+    const group = new SearchGroup('MiniApps.Popular', 'apps');
+    group.setActive();
+    mediaTab.contentTab.append(group.container);
+
+    type GetPopularAppsResult = ReturnType<typeof rootScope.managers.appAttachMenuBotsManager.getPopularAppBots>;
+    let currentOffset: string | null = '', loadPromise: GetPopularAppsResult;
+    const APPS_LIMIT_PER_LOAD = 20;
+
+    const loadMoreApps = async() => {
+      if(loadPromise || !middleware() || currentOffset === null) return;
+
+      loadPromise = rootScope.managers.appAttachMenuBotsManager.getPopularAppBots(currentOffset, APPS_LIMIT_PER_LOAD);
+      const {nextOffset, userIds} = await loadPromise;
+
+      await this.renderPeerDialogs(userIds.map((id) => id.toPeerId(false)), group, middleware, 'bots');
+
+      currentOffset = nextOffset || null;
+      loadPromise = undefined;
+    }
+
+    const scrollTarget = this.scrollable.container;
+
+    scrollTarget.addEventListener('scroll', () => {
+      const offset = 120;
+      if(this.mediaTab !== mediaTab) return; // There is one scrollable for all tabs
+      if(scrollTarget.scrollTop + scrollTarget.clientHeight >= scrollTarget.scrollHeight - offset) {
+        loadMoreApps();
+      }
+    });
+
+    await loadMoreApps();
+
+    this.afterPerforming(1, mediaTab.contentTab);
+    this.loaded[mediaTab.type] = true;
+  }
+
   private loadType(options: SearchSuperLoadTypeOptions) {
     const {
       mediaTab,
@@ -1796,6 +1972,7 @@ export default class AppSearchSuper {
       side
     } = options;
     const {type, inputFilter} = mediaTab;
+
 
     let promise = this.loadPromises[type];
     if(promise) {
@@ -1810,6 +1987,10 @@ export default class AppSearchSuper {
       promise = this.loadSimilarChannels(options);
     } else if(type === 'savedDialogs') {
       promise = this.loadSavedDialogs(options);
+    } else if(type === 'channels') {
+      promise = this.loadChannels(options);
+    } else if(type === 'apps') {
+      promise = this.loadApps(options);
     }
 
     if(promise) {
@@ -2321,7 +2502,7 @@ export default class AppSearchSuper {
         return;
       }
 
-      if(!this.historyStorage[tab.inputFilter]) {
+      if(tab.inputFilter && !this.historyStorage[tab.inputFilter]) {
         const parent = tab.contentTab.parentElement;
         // if(!testScroll) {
         if(!parent.querySelector('.preloader')) {

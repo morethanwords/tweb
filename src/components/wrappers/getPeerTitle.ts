@@ -17,27 +17,28 @@ type GetPeerTitleOptions = {
   plainText?: boolean,
   onlyFirstName?: boolean,
   limitSymbols?: number,
-  threadId?: number
+  threadId?: number,
+  useManagers?: boolean
 } & Pick<WrapSomethingOptions, 'managers'>;
 
-export default async function getPeerTitle<
-  T extends GetPeerTitleOptions,
-  R = T['plainText'] extends true ? string : DocumentFragment
->(
-  options: T
-): Promise<R> {
+export default async function getPeerTitle(options: GetPeerTitleOptions & {plainText: true}): Promise<string>;
+export default async function getPeerTitle(options: GetPeerTitleOptions & {plainText?: false}): Promise<DocumentFragment>;
+export default async function getPeerTitle(options: GetPeerTitleOptions): Promise<string | DocumentFragment>;
+
+export default async function getPeerTitle(options: GetPeerTitleOptions): Promise<string | DocumentFragment> {
   const {
     peerId = rootScope.myId,
     plainText,
     onlyFirstName,
     limitSymbols,
     managers = rootScope.managers,
+    useManagers,
     threadId
   } = options;
 
   let title = '';
   if(peerId.isUser()) {
-    const user = apiManagerProxy.getUser(peerId.toUserId());
+    const user = useManagers ? await managers.appUsersManager.getUser(peerId.toUserId()) : apiManagerProxy.getUser(peerId.toUserId());
     if(user) {
       if(user.first_name) title += user.first_name;
       if(user.last_name && (!onlyFirstName || !title)) title += ' ' + user.last_name;
@@ -52,7 +53,7 @@ export default async function getPeerTitle<
     }
 
     if(!title) {
-      const chat = apiManagerProxy.getChat(peerId.toChatId()) as Chat.chat;
+      const chat = (useManagers ? managers.appChatsManager.getChat(peerId.toChatId()) : apiManagerProxy.getChat(peerId.toChatId())) as Chat.chat;
       title = chat?.title || '';
     }
 
@@ -65,5 +66,5 @@ export default async function getPeerTitle<
     title = _limitSymbols(title, limitSymbols, limitSymbols);
   }
 
-  return plainText ? title : wrapEmojiText(title) as any;
+  return plainText ? title : wrapEmojiText(title);
 }

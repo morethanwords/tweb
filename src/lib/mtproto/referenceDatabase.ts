@@ -26,7 +26,8 @@ export type ReferenceContext =
   ReferenceContext.referenceContextBotApp |
   ReferenceContext.referenceContextChatInvite |
   ReferenceContext.referenceContextEffects |
-  ReferenceContext.referenceContextStarsTransaction;
+  ReferenceContext.referenceContextStarsTransaction |
+  ReferenceContext.referenceContextSavedGifs;
 
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
@@ -103,6 +104,10 @@ export namespace ReferenceContext {
     peerId: PeerId,
     mid: number
   };
+
+  export type referenceContextSavedGifs = {
+    type: 'savedGifs'
+  };
 }
 
 export type ReferenceBytes = Photo.photo['file_reference'];
@@ -173,6 +178,7 @@ export class ReferenceDatabase extends AppManager {
           contexts.delete(_context);
           if(!contexts.size) {
             this.contexts.delete(reference);
+            this.apiFileManager.cancelDownloadByReference(reference);
             delete this.links[bytesToHex(reference)];
           }
           return true;
@@ -195,6 +201,7 @@ export class ReferenceDatabase extends AppManager {
       [context, reference] = c;
     }
 
+    const hex = bytesToHex(reference);
     let promise: Promise<any>;
     switch(context?.type) {
       case 'message': {
@@ -262,15 +269,20 @@ export class ReferenceDatabase extends AppManager {
         break;
       }
 
+      case 'savedGifs': {
+        promise = Promise.resolve(this.appGifsManager.getGifs(true));
+        break;
+      }
+
       default: {
         this.log.warn('refreshReference: not implemented context', context);
         return Promise.reject();
       }
     }
 
-    const hex = bytesToHex(reference);
     this.log('refreshReference: refreshing reference:', hex);
-    return promise.then(() => {
+
+    const onFinish = () => {
       const newHex = bytesToHex(reference);
       this.log('refreshReference: refreshed, reference before:', hex, 'after:', newHex);
       if(hex !== newHex) {
@@ -287,7 +299,9 @@ export class ReferenceDatabase extends AppManager {
       this.log.error('refreshReference: no new context, reference before:', hex, 'after:', newHex, context);
 
       throw makeError('NO_NEW_CONTEXT');
-    });
+    };
+
+    return promise.then(onFinish, onFinish);
   }
 
   /* public replaceReference(oldReference: ReferenceBytes, newReference: ReferenceBytes) {

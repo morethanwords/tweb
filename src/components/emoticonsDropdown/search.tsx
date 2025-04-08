@@ -16,6 +16,7 @@ import rootScope from '../../lib/rootScope';
 import InputSearch from '../inputSearch';
 import {ScrollableXTsx} from '../stories/list';
 import wrapSticker from '../wrappers/sticker';
+import {AnimationItemGroup} from '../animationIntersector';
 
 /* @refresh reload */
 
@@ -23,7 +24,9 @@ function addSearchCategories(props: {
   type: Parameters<typeof EmoticonsSearch>[0]['type'],
   searching: Accessor<boolean>,
   inputSearch: InputSearch,
-  onGroup: (group: EmojiGroup) => void
+  onGroup: (group: EmojiGroup) => void,
+  animatedItemGroup?: AnimationItemGroup,
+  color?: string
 }) {
   const {inputSearch} = props;
   const [emojiGroups, setEmojiGroups] = createSignal<Awaited<ReturnType<AppEmojiManager['getEmojiGroups']>>>([]);
@@ -64,9 +67,10 @@ function addSearchCategories(props: {
       div: stickerContainer,
       width: 24,
       height: 24,
-      group: 'emoticons-dropdown',
+      group: props.animatedItemGroup,
       play: true,
-      middleware: createMiddleware().get()
+      middleware: createMiddleware().get(),
+      textColor: props.color
     });
 
     return ret;
@@ -135,7 +139,9 @@ export default function EmoticonsSearch(props: {
   loading?: Accessor<boolean>,
   onValue: (value: string) => void,
   onFocusChange?: ConstructorParameters<typeof InputSearch>[0]['onFocusChange'],
-  onGroup?: (group: EmojiGroup) => void
+  onGroup?: (group: EmojiGroup) => void,
+  animatedItemGroup?: AnimationItemGroup,
+  categoryColor?: string
 }) {
   const [searching, setSearching] = createSignal(false);
   const [debounced, setDebounced] = createSignal(false);
@@ -170,7 +176,9 @@ export default function EmoticonsSearch(props: {
       type: props.type,
       searching,
       inputSearch,
-      onGroup: props.onGroup
+      onGroup: props.onGroup,
+      animatedItemGroup: props.animatedItemGroup,
+      color: props.categoryColor
     });
   }
 

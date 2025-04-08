@@ -9,3 +9,8 @@ export function numberThousandSplitterForWatching(x: number) {
   if(x === undefined) return '';
   return numberThousandSplitter(x, ',');
 }
+
+export function numberThousandSplitterForStars(x: number) {
+  if(x === undefined) return '';
+  return numberThousandSplitter(x, ',');
+}

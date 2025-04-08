@@ -74,7 +74,7 @@ export function createListTransition<T extends object>(
     }
 
     if(elsToRemove.length) {
-      const next = prev.filter(e => !elsToRemove.includes(e));
+      const next = prev.filter((e) => !elsToRemove.includes(e));
       elsToRemove.length = 0;
       onChange({list: next, added: [], removed: [], unchanged: next, finishRemoved});
       return next;

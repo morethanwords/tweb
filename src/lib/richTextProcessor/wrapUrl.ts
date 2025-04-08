@@ -48,6 +48,7 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
       case 'invoice':
       case 'boost':
       case 'giftcode':
+      case 'share':
         if(path.length !== 1 && !prefix) {
           onclick = path[0];
           break;

@@ -185,7 +185,7 @@ export default class PopupBoost extends PopupPeer {
       }]));
     };
 
-    const handleErrorType = (type: ApiError['type']) => {
+    const handleErrorType = (type: ErrorType) => {
       if(type === 'PREMIUM_ACCOUNT_REQUIRED') {
         showPremiumNeeded();
       }/*  else if(type === 'BOOST_NOT_MODIFIED') {

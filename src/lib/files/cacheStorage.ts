@@ -6,19 +6,53 @@
 
 import Modes from '../../config/modes';
 import blobConstruct from '../../helpers/blob/blobConstruct';
-import MemoryWriter from './memoryWriter';
-import FileManager from './memoryWriter';
-import FileStorage from './fileStorage';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import makeError from '../../helpers/makeError';
-import deferredPromise from '../../helpers/cancellablePromise';
+import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
 
-export type CacheStorageDbName = 'cachedFiles' | 'cachedStreamChunks' | 'cachedAssets';
+import EncryptionKeyStore from '../passcode/keyStore';
+import cryptoMessagePort from '../crypto/cryptoMessagePort';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+
+import MemoryWriter from './memoryWriter';
+import FileStorage from './fileStorage';
+
+
+type CacheStorageDbConfigEntry = {
+  encryptable: boolean;
+};
+
+const cacheStorageDbConfig = {
+  cachedAssets: {
+    encryptable: false
+  },
+  cachedBackgrounds: {
+    encryptable: false
+  },
+  cachedFiles: {
+    encryptable: true
+  },
+  cachedStreamChunks: {
+    encryptable: true
+  },
+  cachedHlsQualityFiles: {
+    encryptable: true
+  },
+  cachedHlsStreamChunks: {
+    encryptable: true
+  }
+} satisfies Record<string, CacheStorageDbConfigEntry>;
+
+export type CacheStorageDbName = keyof typeof cacheStorageDbConfig;
 
 export default class CacheStorageController implements FileStorage {
   private static STORAGES: CacheStorageController[] = [];
   private openDbPromise: Promise<Cache>;
+  private config: CacheStorageDbConfigEntry;
 
   private useStorage = true;
+
+  private static disabledPromise: CancellablePromise<void>;
 
   // private log: ReturnType<typeof logger> = logger('CS');
 
@@ -31,8 +65,56 @@ export default class CacheStorageController implements FileStorage {
       this.useStorage = CacheStorageController.STORAGES[0].useStorage;
     }
 
+    this.config = Object.entries(cacheStorageDbConfig).find(([name]) => name === dbName)?.[1];
+
     this.openDatabase();
     CacheStorageController.STORAGES.push(this);
+  }
+
+  private static async encrypt(blob: Blob) {
+    const key = await EncryptionKeyStore.get();
+    const dataAsBuffer = await readBlobAsUint8Array(blob);
+
+    const type = blob.type;
+
+    console.log('[my-debug] encryption started');
+    const result = await cryptoMessagePort.invokeCryptoNew({
+      method: 'aes-local-encrypt',
+      args: [{
+        key,
+        data: dataAsBuffer
+      }],
+      transfer: [dataAsBuffer.buffer]
+    });
+    console.log('[my-debug] encryption ended');
+
+    return new Blob([result], {type});
+  }
+
+  private static async decrypt(blob: Blob) {
+    const key = await EncryptionKeyStore.get();
+    const dataAsBuffer = await readBlobAsUint8Array(blob);
+
+    const type = blob.type;
+
+    console.log('[my-debug] decryption started');
+
+    const result = await cryptoMessagePort.invokeCryptoNew({
+      method: 'aes-local-decrypt',
+      args: [{
+        key,
+        encryptedData: dataAsBuffer
+      }],
+      transfer: [dataAsBuffer.buffer]
+    });
+
+    console.log('[my-debug] decryption ended');
+
+    return new Blob([result], {type});
+  }
+
+  private async waitToEnable() {
+    if(CacheStorageController.disabledPromise) await CacheStorageController.disabledPromise;
   }
 
   private openDatabase(): Promise<Cache> {
@@ -47,13 +129,48 @@ export default class CacheStorageController implements FileStorage {
     return caches.delete(this.dbName);
   }
 
-  public get(entryName: string) {
-    return this.timeoutOperation((cache) => cache.match('/' + entryName));
+  public async has(entryName: string) {
+    const response = await this.timeoutOperation((cache) => cache.match('/' + entryName));
+    return !!response;
   }
 
-  public save(entryName: string, response: Response) {
-    // return new Promise((resolve) => {}); // DEBUG
-    return this.timeoutOperation((cache) => cache.put('/' + entryName, response));
+  public async get(entryName: string) {
+    await this.waitToEnable();
+
+    const response = await this.timeoutOperation((cache) => cache.match('/' + entryName));
+    if(!response) return undefined;
+
+    if(this.config?.encryptable && await DeferredIsUsingPasscode.isUsingPasscode()) {
+      return new Response(
+        await CacheStorageController.decrypt(await response.blob()),
+        {
+          headers: response.headers,
+          status: response.status,
+          statusText: response.statusText
+        }
+      );
+    }
+
+    return response;
+  }
+
+  public async save(entryName: string, response: Response) {
+    await this.waitToEnable();
+
+    let result = response;
+
+    if(this.config?.encryptable && await DeferredIsUsingPasscode.isUsingPasscode()) {
+      result = new Response(
+        await CacheStorageController.encrypt(await response.blob()),
+        {
+          headers: response.headers,
+          status: response.status,
+          statusText: response.statusText
+        }
+      );
+    }
+
+    return this.timeoutOperation((cache) => cache.put('/' + entryName, result));
   }
 
   public getFile(fileName: string, method: 'blob' | 'json' | 'text' = 'blob'): Promise<any> {
@@ -138,17 +255,46 @@ export default class CacheStorageController implements FileStorage {
     };
   }
 
-  public static toggleStorage(enabled: boolean, clearWrite: boolean) {
-    return Promise.all(this.STORAGES.map((storage) => {
+  public static toggleStorage(enabled: boolean, _clearWrite: boolean) {
+    this.STORAGES.forEach((storage) => {
       storage.useStorage = enabled;
+    });
+    return Promise.resolve();
+  }
 
-      if(!clearWrite) {
-        return;
-      }
+  public static async deleteAllStorages() {
+    const storageNames = Object.keys(cacheStorageDbConfig) as CacheStorageDbName[];
 
-      if(!enabled) {
-        return storage.deleteAll();
-      }
+    await Promise.all(storageNames.map(async(storageName) => {
+      const storage = new CacheStorageController(storageName);
+      await storage.deleteAll();
+    }));
+  }
+
+
+  public static temporarilyToggle(enabled: boolean) {
+    if(enabled) {
+      this.disabledPromise?.resolve();
+      this.disabledPromise = undefined;
+    } else {
+      this.disabledPromise = deferredPromise();
+    }
+  }
+
+  public static async clearEncryptableStorages() {
+    const encryptableStorageNames = Object.entries(cacheStorageDbConfig)
+    .filter(([, {encryptable}]) => encryptable)
+    .map(([name]) => name) as CacheStorageDbName[];
+
+    await Promise.all(encryptableStorageNames.map(async(storageName) => {
+      // Make sure we have all encryptable storages in current thread, can't get from .STORAGES
+      const storage = new CacheStorageController(storageName);
+
+      // await storage.deleteAll();
+      await storage.timeoutOperation(async(cache) => {
+        const keys = await cache.keys();
+        await Promise.all(keys.map(request => cache.delete(request)));
+      });
     }));
   }
 }

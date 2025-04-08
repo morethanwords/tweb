@@ -17,6 +17,11 @@ const ACTIVE_CLASS_NAME = 'active';
 const AXIS_Y_KEYS: ArrowKey[] = ['ArrowUp', 'ArrowDown'];
 const AXIS_X_KEYS: ArrowKey[] = ['ArrowLeft', 'ArrowRight'];
 
+const PROPERTY_NEXT = 'nextElementSibling';
+const PROPERTY_PREV = 'previousElementSibling';
+const PROPERTY_FIRST = 'firstElementChild';
+const PROPERTY_LAST = 'lastElementChild';
+
 export type ListNavigationOptions = {
   list: HTMLElement,
   type: 'xy' | 'x' | 'y',
@@ -42,7 +47,7 @@ export default function attachListNavigation({
   const keyNames = new Set(type === 'xy' ? AXIS_Y_KEYS.concat(AXIS_X_KEYS) : (type === 'x' ? AXIS_X_KEYS : AXIS_Y_KEYS));
 
   const getCurrentTarget = () => {
-    return target || list.querySelector('.' + activeClassName) || list.firstElementChild;
+    return target || list.querySelector('.' + activeClassName) || list[PROPERTY_FIRST];
   };
 
   const setCurrentTarget = (_target: Element, scrollTo: boolean) => {
@@ -71,17 +76,17 @@ export default function attachListNavigation({
     }
   };
 
-  const getNextTargetX = (currentTarget: Element, isNext: boolean) => {
+  const getNextTargetX = (currentTarget: Element, isNext: boolean): Element => {
     let nextTarget: Element;
-    if(isNext) nextTarget = currentTarget.nextElementSibling || list.firstElementChild;
-    else nextTarget = currentTarget.previousElementSibling || list.lastElementChild;
+    if(isNext) nextTarget = currentTarget[PROPERTY_NEXT] || list[PROPERTY_FIRST];
+    else nextTarget = currentTarget[PROPERTY_PREV] || list[PROPERTY_LAST];
 
     return nextTarget;
   };
 
   const getNextTargetY = (currentTarget: Element, isNext: boolean) => {
-    const property = isNext ? 'nextElementSibling' : 'previousElementSibling';
-    const endProperty = isNext ? 'firstElementChild' : 'lastElementChild';
+    const property = isNext ? PROPERTY_NEXT : PROPERTY_PREV;
+    const endProperty = isNext ? PROPERTY_FIRST : PROPERTY_LAST;
     const currentRect = currentTarget.getBoundingClientRect();
 
     let nextTarget = currentTarget[property] || list[endProperty];
@@ -183,7 +188,7 @@ export default function attachListNavigation({
 
   const resetTarget = () => {
     if(waitForKeySet) return;
-    setCurrentTarget(list.firstElementChild, false);
+    setCurrentTarget(list[PROPERTY_FIRST], false);
   };
 
   if(waitForKeySet) {

@@ -60,14 +60,15 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
   }
 
   private async onConfirmClick() {
-    const filtered = this.fields.filter((field) => field.checkboxField.checked && field.peerId);
-    const byPeers = filtered.reduce((acc, field) => {
+    const byPeers = this.fields.reduce((acc, field) => {
       let set = acc.get(field.peerId);
       if(!set) {
         acc.set(field.peerId, set = new Set());
       }
 
-      set.add(field.action);
+      if(field.checkboxField.checked) {
+        set.add(field.action);
+      }
       return acc;
     }, new Map<PeerId, Set<DeleteCheckboxFieldsField['action']>>());
 
@@ -84,15 +85,15 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
       }
 
       if(actions.has('report')) {
-        promises.push(managers.appMessagesManager.reportMessages(peerId, mids, 'inputReportReasonSpam'));
+        promises.push(managers.appMessagesManager.reportSpamMessages(peerId, fromId, mids));
       }
 
       if(actions.has('delete')) {
         promises.push(managers.appMessagesManager.doFlushHistory(peerId, false, true, undefined, fromId));
-      } else {
-        promises.push(managers.appMessagesManager.deleteMessages(peerId, mids, true));
       }
     }
+
+    managers.appMessagesManager.deleteMessages(peerId, mids, true);
 
     this.onConfirm?.();
     return true;

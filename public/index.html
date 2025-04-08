@@ -41,10 +41,10 @@
     <link rel="canonical" href="https://web.telegram.org/">
 
     <link rel="manifest" id="manifest">
-    <script type="module" crossorigin src="./index-BkeszwBR.js"></script>
-    <link rel="stylesheet" crossorigin href="./index-CAoGqTOW.css">
+    <script type="module" crossorigin src="./index-_cjUYlWT.js"></script>
+    <link rel="stylesheet" crossorigin href="./index-Qgkpb2PD.css">
   </head>
-  <body class="animation-level-2">
+  <body class="animation-level-2 has-auth-pages">
     <!--[if IE]>
       <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience and security.</p>
     <![endif]-->
@@ -74,6 +74,9 @@
             <path d="M-6 16h6v17c-.193-2.84-.876-5.767-2.05-8.782-.904-2.325-2.446-4.485-4.625-6.48A1 1 0 01-6 16z" transform="matrix(1 0 0 -1 0 49)" id="corner-fill" fill="inherit"/>
           </g>
         </symbol>
+        <symbol id="star-sparkle" viewBox="0 0 7 7">
+          <path d="M3.49852 6.5C3.64328 6.5 3.75554 6.39655 3.77917 6.24581C4.04505 4.27438 4.31979 3.99655 6.23412 3.78374C6.38479 3.76601 6.5 3.64483 6.5 3.5C6.5 3.35222 6.38774 3.23399 6.23708 3.21626C4.3257 2.98867 4.06278 2.72266 3.77917 0.754187C3.75554 0.603448 3.64033 0.5 3.49852 0.5C3.35672 0.5 3.24151 0.603448 3.21787 0.754187C2.95199 2.72562 2.67725 3.00345 0.765879 3.21626C0.61226 3.23399 0.5 3.35222 0.5 3.5C0.5 3.64483 0.609306 3.76305 0.762925 3.78374C2.6743 4.04089 2.92541 4.27734 3.21787 6.24581C3.24446 6.39655 3.35968 6.5 3.49852 6.5Z" fill="currentColor"/>
+        </symbol>
         <linearGradient id="paint0_linear_6651_5783" x1="12.1999" y1="-1.71024" x2="12.1999" y2="25.2914" gradientUnits="userSpaceOnUse">
           <stop stop-color="#FFF0C2"/>
           <stop offset="1" stop-color="#FFEBBA"/>
@@ -101,6 +104,7 @@
       </defs>
     </svg>
     <div class="whole" id="auth-pages" style="display: none;">
+      <div id="auth-pages-close" style="display: none;"></div>
       <div class="scrollable scrollable-y">
         <div class="tabs-container auth-pages__container" data-animation="tabs">
           <div class="tabs-tab page-signImport">
@@ -136,12 +140,15 @@
         </div>
       </div>
     </div>
+    <div class="sidebar-left-overlay"></div>
     <div class="whole page-chats" style="display: none;" id="page-chats">
       <div id="main-columns" class="tabs-container" data-animation="navigation">
-        <div class="tabs-tab chatlist-container sidebar sidebar-left main-column" id="column-left">
+        <div class="folders-sidebar sidebar-left-common" id="folders-sidebar"></div>
+        <div class="sidebar-left-placeholder"></div>
+        <div class="tabs-tab chatlist-container sidebar sidebar-left main-column sidebar-left-common" id="column-left">
           <div class="sidebar-slider tabs-container">
             <div class="tabs-tab sidebar-slider-item item-main">
-              <div class="sidebar-header can-have-forum">
+              <div class="sidebar-header main-search-sidebar-header can-have-forum">
                 <div class="sidebar-header__btn-container">
                   <div class="animated-menu-icon"></div>
                   <div class="btn-icon sidebar-back-button"></div>

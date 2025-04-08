@@ -25,6 +25,8 @@ import CustomEmojiElement, {CustomEmojiElements} from './element';
 import assumeType from '../../helpers/assumeType';
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
 import {observeResize, unobserveResize} from '../../components/resizeObserver';
+import {PAID_REACTION_EMOJI_DOCID} from './constants';
+import lottieLoader from '../rlottie/lottieLoader';
 
 const globalLazyLoadQueue = new LazyLoadQueue();
 
@@ -388,8 +390,29 @@ export class CustomEmojiRendererElement extends HTMLElement {
     }
   };
 
+  private async wrapPaidReactionEmoji(element: CustomEmojiElement): ReturnType<typeof wrapSticker> {
+    const size = this.size;
+    const player = await lottieLoader.loadAnimationAsAsset({
+      container: element,
+      width: size.width,
+      height: size.height,
+      loop: true,
+      autoplay: CUSTOM_EMOJI_INSTANT_PLAY,
+      sync: true
+    }, 'StarReaction')
+
+    return {
+      width: size.width,
+      height: size.height,
+      downloaded: true,
+      load: () => Promise.resolve(player),
+      render: undefined as any
+    }
+  }
+
   private wrap({
     doc,
+    isPaidReactionEmoji,
     addCustomEmojis,
     usingOwnQueue,
     lazyLoadQueue,
@@ -398,6 +421,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     loadPromises
   }: {
     doc: MyDocument,
+    isPaidReactionEmoji?: boolean,
     addCustomEmojis: Parameters<typeof wrapRichText>[1]['customEmojis'],
     usingOwnQueue?: boolean,
     lazyLoadQueue?: LazyLoadQueue | false,
@@ -428,7 +452,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     }) : undefined;
 
     const _loadPromises: Promise<any>[] = [];
-    const promise = wrapSticker({
+    const promise = isPaidReactionEmoji ? this.wrapPaidReactionEmoji(newElementsArray[0]) : wrapSticker({
       div: newElementsArray,
       doc,
       width: size.width,
@@ -490,7 +514,6 @@ export class CustomEmojiRendererElement extends HTMLElement {
       return promise.then((res) => ({...res, ...addition}));
     }
 
-    // eslint-disable-next-line prefer-const
     addition.onRender = (_p) => Promise.all(_loadPromises).then(() => {
       if(!middleware() || !doc.animated) {
         return;
@@ -679,7 +702,20 @@ export class CustomEmojiRendererElement extends HTMLElement {
       const missing: DocId[] = [];
       const cachedPromises = docs.map((doc, idx) => {
         if(!doc) {
-          missing.push(docIds[idx]);
+          const docId = docIds[idx];
+          if(docId === PAID_REACTION_EMOJI_DOCID) {
+            return this.wrap({
+              ...wrapOptions,
+              doc: {
+                _: 'document',
+                id: docId,
+                attributes: []
+              } as MyDocument,
+              isPaidReactionEmoji: true,
+              loadPromises
+            });
+          }
+          missing.push(docId);
           return;
         }
 

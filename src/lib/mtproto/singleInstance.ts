@@ -62,12 +62,13 @@ export class SingleInstance extends EventListenerBase<{
       this.started = true;
 
       idleController.addEventListener('change', this.checkInstance);
-      setInterval(this.checkInstance, CHECK_INSTANCE_INTERVAL);
-      this.checkInstance();
+      apiManagerProxy.setInterval(this.checkInstance, CHECK_INSTANCE_INTERVAL);
 
       try {
         document.documentElement.addEventListener('beforeunload', this.clearInstance);
       } catch(e) {}
+
+      return this.checkInstance();
     }
   }
 

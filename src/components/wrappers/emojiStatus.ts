@@ -17,7 +17,7 @@ export default async function wrapEmojiStatus({
   size = mediaSizes.active.emojiStatus
 }: {
   wrapOptions: WrapSomethingOptions,
-  emojiStatus: EmojiStatus.emojiStatus | EmojiStatus.emojiStatusUntil,
+  emojiStatus: EmojiStatus.emojiStatus | EmojiStatus.emojiStatusCollectible,
   size?: MediaSize
 }) {
   const {middleware, animationGroup, textColor} = wrapOptions;

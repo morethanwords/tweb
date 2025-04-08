@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {render} from 'solid-js/web';
 import PopupElement from '.';
 import I18n, {FormatterArguments, LangPackKey, _i18n, i18n, join} from '../../lib/langPack';
 import Row from '../row';
@@ -20,7 +19,7 @@ import Icon from '../icon';
 import {AvatarNew} from '../avatarNew';
 import Button from '../button';
 import PeerTitle from '../peerTitle';
-import {HelpCountry, InputInvoice, InputStorePaymentPurpose, PremiumGiftCodeOption, PrepaidGiveaway} from '../../layer';
+import {HelpCountry, InputInvoice, InputStorePaymentPurpose, PremiumGiftCodeOption, PrepaidGiveaway, StarsGiveawayOption, StarsGiveawayWinnersOption} from '../../layer';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import PopupPremium from './premium';
 import {premiumOptionsForm} from '../premium/promoSlideTab';
@@ -45,6 +44,11 @@ import {IconTsx} from '../iconTsx';
 import {CPrepaidGiveaway} from '../sidebarRight/tabs/boosts';
 import isObject from '../../helpers/object/isObject';
 import classNames from '../../helpers/string/classNames';
+import RowTsx from '../rowTsx';
+import {StarsStackedStars} from './stars';
+import numberThousandSplitter, {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import flatten from '../../helpers/array/flatten';
 
 export const BoostsBadge = (props: {boosts: number}) => {
   return (
@@ -70,6 +74,7 @@ export const BoostsConfirmButton = (props: {
 
 export default class PopupBoostsViaGifts extends PopupElement {
   private premiumGiftCodeOptions: PremiumGiftCodeOption[];
+  private starsOptions: StarsGiveawayOption[];
   private appConfig: MTAppConfig;
   private channelsLimit: number;
   private subscribersLimit: number;
@@ -95,10 +100,13 @@ export default class PopupBoostsViaGifts extends PopupElement {
   }
 
   private _construct() {
-    const [count, setCount] = createSignal(0);
+    const [subscriptionsCount, setSubscriptionsCount] = createSignal(10);
     const [expiration, setExpiration] = createSignal(tsNow(true) + 3 * 86400);
     const [peerIds, setPeerIds] = createSignal<PeerId[]>([this.peerId]);
     const [specificPeerIds, setSpecificPeerIds] = createSignal<PeerId[]>([]);
+    const [stars, setStars] = createSignal(this.prepaidGiveaway?._ === 'prepaidStarsGiveaway');
+    const [starsOption, setStarsOption] = createSignal<StarsGiveawayOption>(this.starsOptions?.[0]);
+    const [starsWinner, setStarsWinner] = createSignal<StarsGiveawayWinnersOption>(starsOption() && starsOption().winners[0]);
     const [specific, setSpecific] = createSignal(false);
     const [durationForm, setDurationForm] = createSignal<JSX.Element>();
     const [option, setOption] = createSignal<PremiumGiftCodeOption>();
@@ -108,25 +116,47 @@ export default class PopupBoostsViaGifts extends PopupElement {
     const [additionalPrize, setAdditionalPrize] = createSignal('');
     const [showPrizes, setShowPrizes] = createSignal(true);
     const isPrepaid = createMemo(() => !!this.prepaidGiveaway);
-    const boosts = createMemo(() => count() * (this.appConfig.giveaway_boosts_per_premium ?? 1));
+    const count = createMemo(() => stars() ? starsWinner().users : subscriptionsCount());
+    const boosts = createMemo(() => stars() ? starsOption().yearly_boosts : count() * (this.appConfig.giveaway_boosts_per_premium ?? 1));
 
-    const range: RangeStepsSelector<number> = new RangeStepsSelector({
-      generateStep: (value) => ['' + value, value],
-      onValue: (value) => {
-        setCount(value);
-      },
-      middleware: this.middlewareHelper.get(),
-      noFirstLast: true
-    });
+    let range: RangeStepsSelector<number>;
+    if(!isPrepaid()) {
+      range = new RangeStepsSelector({
+        generateStep: (value) => ['' + value, value],
+        onValue: (value) => {
+          if(stars()) {
+            setStarsWinner(starsOption().winners.find((winner) => winner.users === value));
+          } else {
+            setSubscriptionsCount(value);
+          }
+        },
+        middleware: this.middlewareHelper.get(),
+        noFirstLast: true
+      });
 
-    // const stepValues = filterUnique(this.premiumGiftCodeOptions.map((o) => o.users));
-    const stepValues = [1, 3, 5, 7, 10, 25, 50, 100].filter((v) => this.premiumGiftCodeOptions.some((o) => o.users === v));
-    const steps = range.generateSteps(stepValues);
-    if(isPrepaid()) {
-      setCount(this.prepaidGiveaway.quantity);
+      createEffect(() => {
+        if(stars()) {
+          const stepValues = starsOption().winners.map((winner) => winner.users);
+          const steps = range.generateSteps(stepValues);
+          const winner = untrack(starsWinner);
+          let index = stepValues.findIndex((v) => v >= winner.users);
+          if(index === -1) {
+            index = stepValues.length - 1;
+          } else if(stepValues[index] !== winner.users) {
+            index = Math.max(0, index - 1);
+          }
+          range.setSteps(steps, index);
+          return;
+        }
+
+        // const stepValues = filterUnique(this.premiumGiftCodeOptions.map((o) => o.users));
+        const stepValues = [1, 3, 5, 7, 10, 25, 50, 100].filter((v) => this.premiumGiftCodeOptions.some((o) => o.users === v));
+        const steps = range.generateSteps(stepValues);
+        const focusValue = untrack(subscriptionsCount);
+        range.setSteps(steps, stepValues.indexOf(focusValue));
+      });
     } else {
-      const focusValue = 10;
-      range.setSteps(steps, stepValues.indexOf(focusValue));
+      setSubscriptionsCount(this.prepaidGiveaway.quantity);
     }
 
     const radioOptions: ConstructorParameters<typeof CheckboxField>[0] = {
@@ -160,7 +190,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
     });
 
     const updateSpecific = (specific: boolean) => {
-      setCount(specific ? specificPeerIds().length : range.value);
+      setSubscriptionsCount(specific ? specificPeerIds().length : range?.value);
       setSpecific(specific);
       this.scrollable.updateThumb();
     };
@@ -169,7 +199,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
 
     let prepaidRowContainer: HTMLElement,
       createRowContainer: HTMLElement,
-      specificRowContainer: HTMLElement;
+      starsRowContainer: HTMLElement;
     if(this.prepaidGiveaway) {
       prepaidRowContainer = CPrepaidGiveaway({
         giveaway: this.prepaidGiveaway,
@@ -177,29 +207,14 @@ export default class PopupBoostsViaGifts extends PopupElement {
       });
     } else {
       const createRow = new Row({
-        titleLangKey: 'BoostsViaGifts.Create',
-        subtitleLangKey: 'BoostsViaGifts.CreateSubtitle',
-        clickable: () => {
-          updateSpecific(false);
-        },
-        checkboxField: new CheckboxField({
-          ...radioOptions,
-          checked: !specific(),
-          name: 'giveaway-type'
-        }),
-        listenerSetter: this.listenerSetter
-      });
-
-      const createMedia = createRow.createMedia('abitbigger');
-      const createAvatar = AvatarNew({size: 42});
-      createAvatar.set({icon: 'gift_premium'});
-      createMedia.append(createAvatar.node);
-      createRowContainer = createRow.container;
-
-      const specificRow = new Row({
-        titleLangKey: 'BoostsViaGifts.Specific',
+        titleLangKey: 'BoostingPremium',
         subtitle: true,
         clickable: (e) => {
+          if(stars()) {
+            setStars(false);
+            return;
+          }
+
           cancelEvent(e);
           const popup = PopupElement.createPopup(
             PopupPickUser,
@@ -209,7 +224,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
               onMultiSelect: (peerIds) => {
                 setSpecificPeerIds(peerIds);
                 updateSpecific(true);
-                specificRow.checkboxField.setValueSilently(true);
+                starsRow.checkboxField.setValueSilently(true);
               },
               placeholder: 'SearchPlaceholder',
               exceptSelf: true,
@@ -224,7 +239,27 @@ export default class PopupBoostsViaGifts extends PopupElement {
         },
         checkboxField: new CheckboxField({
           ...radioOptions,
-          checked: specific(),
+          checked: !stars(),
+          name: 'giveaway-type'
+        }),
+        listenerSetter: this.listenerSetter
+      });
+
+      const createMedia = createRow.createMedia('abitbigger');
+      const createAvatar = AvatarNew({size: 42});
+      createAvatar.set({icon: 'gift_premium', color: 'premium'});
+      createMedia.append(createAvatar.node);
+      createRowContainer = createRow.container;
+
+      const starsRow = new Row({
+        titleLangKey: 'BoostingStars',
+        subtitleLangKey: 'BoostsViaGifts.CreateSubtitle',
+        clickable: (e) => {
+          setStars(true);
+        },
+        checkboxField: new CheckboxField({
+          ...radioOptions,
+          checked: stars(),
           name: 'giveaway-type'
         }),
         listenerSetter: this.listenerSetter
@@ -233,14 +268,14 @@ export default class PopupBoostsViaGifts extends PopupElement {
       createEffect(() => {
         const peerIds = specificPeerIds();
         const showTitles = !(!peerIds.length || peerIds.length > 2);
-        specificRow.subtitle.classList.toggle('is-flex', !showTitles);
+        createRow.subtitle.classList.toggle('is-flex', !showTitles);
         if(!showTitles) {
-          specificRow.subtitle.replaceChildren(
-            i18n(peerIds.length > 2 ? 'Recipient' : 'BoostsViaGifts.SpecificSubtitle', [peerIds.length]),
+          createRow.subtitle.replaceChildren(
+            i18n(peerIds.length > 2 ? 'Recipient' : 'BoostsViaGifts.CreateSubtitle', [peerIds.length]),
             createNextIcon()
           );
         } else {
-          specificRow.subtitle.classList.remove('is-flex');
+          createRow.subtitle.classList.remove('is-flex');
           const titles = peerIds.map((peerId) => {
             const peerTitle = new PeerTitle({
               peerId
@@ -249,20 +284,20 @@ export default class PopupBoostsViaGifts extends PopupElement {
             return peerTitle.element;
           });
 
-          specificRow.subtitle.replaceChildren(...join(titles, false));
+          createRow.subtitle.replaceChildren(...join(titles, false));
         }
       });
 
-      specificRow.subtitle.classList.add('primary');
+      createRow.subtitle.classList.add('primary');
 
-      const specificMedia = specificRow.createMedia('abitbigger');
+      const specificMedia = starsRow.createMedia('abitbigger');
       const specificAvatar = AvatarNew({size: 42});
-      specificAvatar.set({icon: 'newgroup_filled', color: 'pink'});
+      specificAvatar.set({icon: 'star', color: 'stars'});
       specificMedia.append(specificAvatar.node);
-      specificRowContainer = specificRow.container;
+      starsRowContainer = starsRow.container;
 
-      specificRowContainer.classList.add('popup-boosts-type', 'popup-boosts-specific');
-      createRowContainer.classList.add('popup-boosts-type');
+      starsRowContainer.classList.add('popup-boosts-type');
+      createRowContainer.classList.add('popup-boosts-type', 'popup-boosts-specific');
     }
 
     const createNextIcon = () => Icon('next', 'popup-boosts-specific-next');
@@ -273,7 +308,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
 
     let lastOptionIndex: number;
     createEffect(() => {
-      const _count = count();
+      const _count = subscriptionsCount();
       const periods = new Map<number, PremiumGiftCodeOption>();
       this.premiumGiftCodeOptions.forEach((option, _, arr) => {
         const months = option.months;
@@ -444,11 +479,59 @@ export default class PopupBoostsViaGifts extends PopupElement {
 
     const notSpecific = (
       <>
+        {!isPrepaid() && stars() && (
+          <Section
+            name="BoostingStarsOptions"
+            caption="BoostingStarsOptionsInfo"
+            captionOld={true}
+          >
+            <form>
+              <For each={this.starsOptions}>
+                {(option) => {
+                  const checkboxField = new CheckboxField({
+                    ...radioOptions,
+                    checked: starsOption() === option,
+                    name: 'giveaway-stars-quantity'
+                  });
+
+                  const subtitle = createMemo(() => {
+                    const winner = option.winners.find((winner) => winner.users === starsWinner().users);
+                    if(!winner) {
+                      return;
+                    }
+
+                    return i18n('BoostingStarOptionPerUser', [numberThousandSplitterForStars(+winner.per_user_stars)]);
+                  });
+
+                  return (
+                    <RowTsx
+                      classList={{'popup-boosts-stars-row': true}}
+                      title={
+                        <span class="popup-boosts-stars-amount text-bold">
+                          <StarsStackedStars stars={+option.stars} size={18} />
+                          {' '}
+                          {i18n('Stars', [numberThousandSplitterForStars(+option.stars)])}
+                        </span>
+                      }
+                      subtitle={subtitle()}
+                      rightContent={paymentsWrapCurrencyAmount(option.amount, option.currency)}
+                      checkboxField={checkboxField.label}
+                      noRipple
+                      clickable={() => {
+                        setStarsOption(option);
+                      }}
+                    />
+                  );
+                }}
+              </For>
+            </form>
+          </Section>
+        )}
         {!isPrepaid() && (
           <Section
-            name="BoostsViaGifts.Quantity"
-            nameRight={<BoostsBadge boosts={boosts()} />}
-            caption="BoostsViaGifts.QuantitySubtitle"
+            name={stars() ? 'BoostingStarsQuantityPrizes' : 'BoostsViaGifts.Quantity'}
+            nameRight={!stars() && <BoostsBadge boosts={boosts()} />}
+            caption={stars() ? 'BoostingStarsQuantityPrizesInfo' : 'BoostsViaGifts.QuantitySubtitle'}
             captionOld={true}
           >
             {range.container}
@@ -552,13 +635,18 @@ export default class PopupBoostsViaGifts extends PopupElement {
     const notSpecific2 = (
       <>
         <Section
-          caption={additionalPrizes() ? 'BoostsViaGifts.AdditionalPrizesSubtitle' : 'BoostsViaGifts.AdditionalPrizesSubtitleOff'}
-          captionArgs={additionalPrizes() ? [
+          caption={additionalPrizes() ? 'BoostsViaGifts.AdditionalPrizesSubtitle' : (stars() ? 'BoostingStarsGiveawayAdditionPrizeHint' : 'BoostsViaGifts.AdditionalPrizesSubtitleOff')}
+          captionArgs={additionalPrizes() ? (stars () ? [
+            i18n(
+              additionalPrize() ? 'BoostsViaGifts.AdditionalStarsPrizesDetailedWith' : 'BoostsViaGifts.AdditionalStarsPrizesDetailed',
+              [starsOption().stars, count(), additionalPrize()].filter(Boolean)
+            )
+          ] : [
             i18n(
               additionalPrize() ? 'BoostsViaGifts.AdditionalPrizesDetailedWith' : 'BoostsViaGifts.AdditionalPrizesDetailed',
-              [count(), additionalPrize(), formatMonthsDuration(option().months, true)].filter(Boolean)
+              [subscriptionsCount(), additionalPrize(), formatMonthsDuration(option().months, true)].filter(Boolean)
             )
-          ] : undefined}
+          ]) : undefined}
           captionOld={true}
         >
           {new Row({
@@ -592,8 +680,8 @@ export default class PopupBoostsViaGifts extends PopupElement {
         </Section>
         <Section
           name="BoostsViaGifts.End"
-          caption="BoostsViaGifts.EndSubtitle"
-          captionArgs={[boosts()]}
+          caption={stars() ? 'BoostsViaGifts.Stars.EndSubtitle' : 'BoostsViaGifts.EndSubtitle'}
+          captionArgs={[count()]}
           captionOld={true}
         >
           {expirationRow.container}
@@ -606,17 +694,17 @@ export default class PopupBoostsViaGifts extends PopupElement {
         <Section noDelimiter={true}>
           <div class="popup-boosts-star-container"><img class="popup-boosts-star" ref={img} /></div>
           <div class="popup-boosts-title">{i18n('BoostsViaGifts.Title')}</div>
-          <div class="popup-boosts-subtitle">{i18n('BoostsViaGifts.Subtitle')}</div>
+          <div class="popup-boosts-subtitle">{i18n(isPrepaid() && this.prepaidGiveaway._ === 'prepaidGiveaway' ? 'BoostingGetMoreBoosts' : 'BoostingGetMoreBoosts2')}</div>
           {isPrepaid() && prepaidRowContainer}
           {!isPrepaid() && (
             <form>
               {createRowContainer}
-              {specificRowContainer}
+              {starsRowContainer}
             </form>
           )}
         </Section>
         {!specific() && notSpecific}
-        {!isPrepaid() && (
+        {!isPrepaid() && !stars() && (
           <Section
             name="BoostsViaGifts.Duration"
             caption="BoostsViaGifts.DurationSubtitle"
@@ -642,22 +730,34 @@ export default class PopupBoostsViaGifts extends PopupElement {
     this.footer.classList.add('abitlarger');
 
     const createGiveawayStoreInput = async(): Promise<InputStorePaymentPurpose> => {
-      const {amount, currency} = option();
       const peers = await Promise.all(peerIds().map((peerId) => this.managers.appPeersManager.getInputPeerById(peerId)));
-      return {
-        _: 'inputStorePaymentPremiumGiveaway',
+
+      const common = {
         pFlags: {
           only_new_subscribers: onlyNewSubscribers() || undefined,
           winners_are_visible: showPrizes() || undefined
         },
-        amount,
-        currency,
         boost_peer: peers[0],
         random_id: randomLong(),
         until_date: expiration(),
         additional_peers: peers.length > 1 ? peers.slice(1) : undefined,
         countries_iso2: countries()?.length ? countries() : undefined,
         prize_description: (additionalPrizes() && additionalPrize()) || undefined
+      };
+
+      if(stars()) {
+        return {
+          ...starsOption(),
+          ...common,
+          _: 'inputStorePaymentStarsGiveaway',
+          users: starsWinner().users
+        };
+      }
+
+      return {
+        ...option(),
+        ...common,
+        _: 'inputStorePaymentPremiumGiveaway'
       };
     };
 
@@ -688,7 +788,10 @@ export default class PopupBoostsViaGifts extends PopupElement {
     };
 
     const continueWithCreating = async(purpose: InputStorePaymentPurpose) => {
-      const inputInvoice: InputInvoice.inputInvoicePremiumGiftCode = {
+      const inputInvoice: InputInvoice = purpose._ === 'inputStorePaymentStarsGiveaway' ? {
+        _: 'inputInvoiceStars',
+        purpose
+      } : {
         _: 'inputInvoicePremiumGiftCode',
         purpose,
         option: option()
@@ -732,12 +835,14 @@ export default class PopupBoostsViaGifts extends PopupElement {
   }
 
   private async construct() {
-    const [giftCodeOptions, appConfig] = await Promise.all([
+    const [giftCodeOptions, appConfig, starsOptions] = await Promise.all([
       this.managers.appPaymentsManager.getPremiumGiftCodeOptions(this.peerId),
-      this.managers.apiManager.getAppConfig()
+      this.managers.apiManager.getAppConfig(),
+      this.managers.appPaymentsManager.getStarsGiveawayOptions()
     ]);
     this.premiumGiftCodeOptions = giftCodeOptions;
     this.appConfig = appConfig;
+    this.starsOptions = starsOptions;
     this.subscribersLimit = this.channelsLimit = appConfig.giveaway_add_peers_max ?? 10;
     this.countriesLimit = appConfig.giveaway_countries_max ?? 10;
     this.appendSolid(() => this._construct());

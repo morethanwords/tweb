@@ -54,7 +54,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
         caption: 'ClearOtherSessionsHelp'
       });
 
-      const auth = findAndSplice(authorizations, auth => auth.pFlags.current);
+      const auth = findAndSplice(authorizations, (auth) => auth.pFlags.current);
       const session = Session(auth);
 
       section.content.append(session.container);

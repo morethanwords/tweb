@@ -1,0 +1,166 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.limit-line {
+  height: 2rem;
+  border-radius: $border-radius-medium;
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  overflow: hidden;
+  position: relative;
+
+  &.is-alone,
+  &-container {
+    --limit-progress: 50%;
+  }
+
+  &-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: .75rem .5rem;
+    position: relative;
+
+    .limit-line {
+      align-self: stretch;
+      margin: 3rem 0 0;
+    }
+  }
+
+  &-hint {
+    --translateX: 0;
+    --height: 2rem;
+    height: var(--height);
+    border-radius: calc(var(--height) / 2);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-weight-bold);
+    transform: scale(.6) translate(-280px, 16px) rotate(-30deg);
+
+    @include animation-level(2) {
+      transition: transform .3s cubic-bezier(.12, 1.1, .56, 1.2)/* , left .3s cubic-bezier(.12, 1.1, .56, 1.2) */;
+    }
+
+    &.active {
+      transform: scale(1) translate(var(--translateX), 0) rotate(0);
+    }
+
+    &:not(.is-locked) {
+      --translateX: -50%;
+      left: var(--limit-progress);
+      padding: 0 .75rem;
+      position: absolute;
+      background: linear-gradient(73.4deg, #6C93FF -7.21%, #976FFF 114.57%, #DF69D1 241.52%);
+      background-size: 200px var(--height);
+  
+      &:after {
+        display: block;
+        content: " ";
+        width: 100%; // 26
+        height: 9px;
+        position: absolute;
+        bottom: -9px;
+        clip-path: path("M0 0H26H24.4853C22.894 0 21.3679 0.632141 20.2426 1.75736L14.4142 7.58579C13.6332 8.36684 12.3668 8.36683 11.5858 7.58579L5.75736 1.75736C4.63214 0.632139 3.10602 0 1.51472 0H0Z");
+        background: inherit;
+        background-size: inherit;
+        background-position-x: calc(-50% + -86px);
+        background-repeat: no-repeat;
+        left: 50%;
+        margin-left: -13px;
+      }
+    }
+
+    &.is-locked {
+      --height: 2.75rem;
+      padding: 0 1.25rem 0 1rem;
+      margin-right: -.25rem;
+      background-color: var(--primary-color);
+    }
+
+    &.is-start {
+      left: 0;
+      border-bottom-left-radius: 0;
+
+      &:after {
+        transform: scaleX(-1);
+        left: 0;
+        transform-origin: left center;
+        margin-left: 20.6px;
+        background-position-x: -5%;
+      }
+    }
+
+    &.is-end {
+      right: 0;
+      left: auto;
+      border-bottom-right-radius: 0;
+      background-position-x: 100% !important;
+      min-width: 66px;
+
+      &:after {
+        left: 100%;
+        margin-left: -20.6px;
+        background-position-x: 134%;
+      }
+    }
+
+    &.is-end,
+    &.is-start {
+      --translateX: 0;
+      background: linear-gradient(84.4deg,#6c93ff -4.85%,#976fff 51.72%,#df69d1 110.7%);
+      background-size: 200px var(--height);
+
+      @include animation-level(2) {
+        transition: transform .3s cubic-bezier(.12, 1.1, .56, 1.1);
+      }
+
+      &:after {
+        height: 12px;
+        bottom: -11.3px;
+        clip-path: path("M8.44528 0.5H20.5V10.1943C20.5 10.9154 19.9154 11.5 19.1943 11.5C18.8178 11.5 18.4597 11.3375 18.2117 11.0541L10.2274 1.92918C9.75146 1.38523 9.18812 0.924478 8.56057 0.565879L8.44528 0.5Z");
+      }
+    }
+
+    &-icon {
+      font-size: 1.25rem;
+      margin-right: .25rem;
+      display: flex;
+    }
+  }
+
+  &-part {
+    color: var(--primary-text-color);
+    background: var(--limit-background, var(--limit-line-empty-background));
+    flex: 1 1 0;
+    padding: 0 .75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &-absolute {
+    position: absolute;
+    inset: 0;
+    -webkit-mask-image: linear-gradient(
+      to right,
+      rgb(0, 0, 0) var(--limit-progress),
+      rgba(0, 0, 0, 0) calc(var(--limit-progress) + 0.01%)
+    );
+
+    // &-container {
+    //   position: absolute;
+    //   inset: 0;
+    //   overflow: hidden;
+    // }
+  }
+
+  &-filled {
+    color: #fff;
+    --limit-background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
+  }
+}

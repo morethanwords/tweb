@@ -1,0 +1,110 @@
+.Container {
+  display: flex;
+  align-items: center;
+
+  gap: 0.75rem;
+}
+
+.KeysContainer {
+  display: flex;
+  align-items: center;
+
+  gap: 1px;
+}
+
+.KeyButton {
+  position: relative;
+  overflow: hidden;
+
+  width: 2.5rem;
+  height: 2.25rem;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  :global(.tgico) {
+    font-size: 20px;
+  }
+
+  border-radius: 2px;
+
+  color: white;
+  // background-color: #e0e3e5;
+  background-color: hsl(from var(--secondary-color) h s calc(l + 8));
+
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: hsl(from var(--secondary-color) h s calc(l + 6));
+  }
+
+  &.selected {
+    background-color: hsl(from var(--primary-color) h s calc(l + 5));
+  }
+
+  &.selected:hover {
+    background-color: hsl(from var(--primary-color) h s calc(l + 10));
+  }
+
+  :global(.night) & {
+    background-color: hsl(from var(--secondary-color) h s calc(l - 23));
+
+    &:hover {
+      background-color: hsl(from var(--secondary-color) h s calc(l - 16));
+    }
+
+    &.selected {
+      // background-color: hsl(from var(--primary-color) h s calc(l + 5));
+      background-color: var(--primary-color);
+    }
+
+    &.selected:hover {
+      background-color: hsl(from var(--primary-color) h s calc(l + 4));
+    }
+  }
+
+  --bigger-radius: 8px;
+
+  &First {
+    border-top-left-radius: var(--bigger-radius);
+    border-bottom-left-radius: var(--bigger-radius);
+  }
+
+  &Last {
+    border-top-right-radius: var(--bigger-radius);
+    border-bottom-right-radius: var(--bigger-radius);
+  }
+}
+
+.PlusIcon {
+  font-size: 1.25rem;
+  color: var(--secondary-text-color);
+}
+
+.TargetKey {
+  width: 2.25rem;
+  height: 2.25rem;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  --border-color: #efefef;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+
+  box-shadow: inset 0 0 1px rgba(0, 0, 0, 0.15);
+
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--secondary-text-color);
+
+  :global(.night) & {
+    border-color: hsl(from var(--border-color) h s calc(l - 40));
+  }
+}

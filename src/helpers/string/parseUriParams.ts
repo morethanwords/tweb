@@ -5,7 +5,17 @@
  */
 
 export default function parseUriParams(uri: string, splitted = uri.split('?')) {
-  return parseUriParamsLine(splitted?.[1]);
+  try {
+    const url = new URL(uri);
+    const obj: any = {};
+    for(const [key, value] of url.searchParams.entries()) {
+      obj[key] = value;
+    }
+
+    return obj;
+  } catch(err) {
+    return parseUriParamsLine(splitted?.[1]);
+  }
 }
 
 export function parseUriParamsLine(line: string) {

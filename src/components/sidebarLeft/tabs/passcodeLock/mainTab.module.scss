@@ -1,0 +1,59 @@
+@import "../../../../scss/mixins";
+@import "../../../../scss/variables";
+
+.MainDescription {
+  color: var(--secondary-text-color);
+
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+  padding: 1rem;
+}
+
+.FirstSection {
+  :global(.sidebar-left-section-caption) {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.Row {
+  @include respond-to(handhelds) {
+    :global(.row-right) {
+      margin-inline-end: 1rem;
+    }
+  }
+}
+
+.ShortcutBuilderRow {
+  height: 48px;
+  padding: 0 1rem;
+
+  overflow: hidden;
+
+  // display: flex;
+  // align-items: center;
+
+  transition: opacity 0.1s, height 0.2s ease-out;
+
+  &Child {
+    margin-top: 0.375rem; // can't use padding on container because it will break the height transition
+  }
+
+  &.collapsed {
+    height: 0px;
+    opacity: 0;
+  }
+}
+
+.Hint {
+  padding: 0 1.5rem;
+
+  &:global(.from-bottom) {
+    bottom: 1.5rem;
+    --push-quiz: 1.75rem;
+  }
+
+  :global(.quiz-hint-container) {
+    flex: 1;
+  }
+}

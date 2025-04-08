@@ -1,6 +1,6 @@
 import type ListenerSetter from './helpers/listenerSetter';
 import type {Middleware, MiddlewareHelper} from './helpers/middleware';
-import type {Chat, Document, User} from './layer';
+import type {Chat, Document, Message, User} from './layer';
 import type {MediaSize} from './helpers/mediaSize';
 import type {AnimationItemGroup} from './components/animationIntersector';
 import type LazyLoadQueue from './components/lazyLoadQueue';
@@ -25,6 +25,8 @@ declare global {
     middlewareHelper?: MiddlewareHelper;
     timeAppenders?: {element: HTMLElement, callback: () => void}[];
     timeSpan?: HTMLElement;
+    onMiniVideoMouseMove?: (e: MouseEvent) => void;
+    message?: Message;
     // middleware?: Middleware;
   }
 
@@ -36,9 +38,22 @@ declare global {
   interface HTMLVideoElement {
     _loop?: boolean | number;
     _autoplay?: boolean;
+    mini?: boolean;
+  }
 
-    sinkId?: string;
-    setSinkId?: (sinkId: string) => any;
+  interface Window {
+    Prism?: {
+      manual?: boolean
+    };
+  }
+
+  interface NotificationAction {
+    action: string;
+    title: string;
+  }
+
+  interface NotificationOptions {
+    actions?: NotificationAction[];
   }
 
   // typescript is lack of types
@@ -68,7 +83,8 @@ declare global {
   type MTMimeType = 'video/quicktime' | 'image/gif' | 'image/jpeg' | 'application/pdf' |
     'video/mp4' | 'image/webp' | 'audio/mpeg' | 'audio/ogg' | 'application/octet-stream' |
     'application/x-tgsticker' | 'video/webm' | 'image/svg+xml' | 'image/png' | 'application/json' |
-    'application/x-tgwallpattern' | 'audio/wav' | 'image/avif' | 'image/jxl' | 'image/bmp';
+    'application/x-tgwallpattern' | 'audio/wav' | 'image/avif' | 'image/jxl' | 'image/bmp' |
+    'application/x-mpegurl';
 
   type MTFileExtension = 'mov' | 'gif' | 'pdf' | 'jpg' | 'jpeg' | 'wav' |
     'tgv' | 'tgs' | 'svg' | 'mp4' | 'webm' | 'webp' | 'mp3' | 'ogg' | 'json' |
@@ -77,12 +93,12 @@ declare global {
   type ApiFileManagerError = 'DOWNLOAD_CANCELED' | 'UPLOAD_CANCELED' | 'FILE_TOO_BIG' | 'REFERENCE_IS_NOT_REFRESHED';
   type StorageError = 'STORAGE_OFFLINE' | 'NO_ENTRY_FOUND' | 'IDB_CREATE_TIMEOUT';
   type ReferenceError = 'NO_NEW_CONTEXT';
-  type NetworkerError = 'NETWORK_BAD_RESPONSE';
+  type NetworkerError = 'NETWORK_BAD_RESPONSE' | 'NETWORK_BAD_REQUEST';
   type FiltersError = 'PINNED_DIALOGS_TOO_MUCH';
 
   type LocalFileError = ApiFileManagerError | ReferenceError | StorageError;
   type LocalErrorType = LocalFileError | NetworkerError | FiltersError |
-    'UNKNOWN' | 'NO_DOC' | 'MIDDLEWARE' | 'PORT_DISCONNECTED' | 'NO_AUTO_DOWNLOAD' | 'CHAT_PRIVATE' | 'NO_WASM';
+    'UNKNOWN' | 'NO_DOC' | 'MIDDLEWARE' | 'PORT_DISCONNECTED' | 'NO_AUTO_DOWNLOAD' | 'CHAT_PRIVATE' | 'NO_WASM' | 'CANCELED';
 
   type ServerErrorType = 'FILE_REFERENCE_EXPIRED' | 'SESSION_REVOKED' | 'AUTH_KEY_DUPLICATED' |
     'SESSION_PASSWORD_NEEDED' | 'CONNECTION_NOT_INITED' | 'ERROR_EMPTY' | 'MTPROTO_CLUSTER_INVALID' |
@@ -103,7 +119,11 @@ declare global {
     'SAVED_DIALOGS_UNSUPPORTED' | 'YOUR_PRIVACY_RESTRICTED' | 'INVITE_REQUEST_SENT' | 'GROUPCALL_INVALID' |
     'TIME_TOO_BIG' | 'TIME_TOO_SMALL' | 'TIME_INVALID' | 'GROUPCALL_FORBIDDEN' | 'VIDEO_CHANNEL_INVALID' |
     'GROUPCALL_JOIN_MISSING' | `SLOWMODE_WAIT_${number}` | 'BALANCE_TOO_LOW' | 'FORM_EXPIRED' |
-    `FLOOD_PREMIUM_WAIT_${number}` | 'STORY_ID_TOO_MANY' | `FILE_REFERENCE_${number}_EXPIRED`;
+    `FLOOD_PREMIUM_WAIT_${number}` | 'STORY_ID_TOO_MANY' | `FILE_REFERENCE_${number}_EXPIRED` |
+    'ADDRESS_STREET_LINE1_INVALID' | 'ADDRESS_STREET_LINE2_INVALID' | 'ADDRESS_COUNTRY_INVALID' |
+    'ADDRESS_CITY_INVALID' | 'ADDRESS_STATE_INVALID' | 'ADDRESS_POSTCODE_INVALID' |
+    'REQ_INFO_NAME_INVALID' | 'REQ_INFO_EMAIL_INVALID' | 'REQ_INFO_PHONE_INVALID' |
+    'FILE_REFERENCE_INVALID';
 
   type ErrorType = LocalErrorType | ServerErrorType;
 
@@ -111,21 +131,14 @@ declare global {
 
   type TranslatableLanguageISO = typeof Languages[number][0];
 
-  interface Error {
-    type?: ErrorType;
-  }
-
-  type ApiError = Partial<{
-    code: number,
+  type ApiError = {
     type: ErrorType,
-    description: string,
-    originalError: any,
     stack: string,
-    handled: boolean,
-    input: string,
-    message: ApiError,
-    limit: number
-  }>;
+    message?: string,
+    code?: number,
+    handled?: boolean,
+    originalError?: any,
+  };
 
   declare const electronHelpers: {
     openExternal(url): void;

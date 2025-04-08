@@ -44,7 +44,7 @@ export async function reencodeOpusToFlac(params: OpusReencodeOptions) {
     pendingPcmsCount += samplesDecoded;
     totalPcmCount += samplesDecoded;
 
-    if(pcms === null) pcms = Array.from({length: channelData.length}, () => []);
+    if(pcms === null) pcms = Array.from({length: channelData.length}, () => [] as any);
     for(let i = 0; i < channelData.length; i++) {
       pcms[i].push(floatPcmTo16BitPcm(channelData[i]));
     }

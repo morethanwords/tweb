@@ -9,7 +9,7 @@ import rootScope from '../../lib/rootScope';
 import {SearchGroup} from '../appSearch';
 import Scrollable, {ScrollableX} from '../scrollable';
 import InputSearch from '../inputSearch';
-import SidebarSlider from '../slider';
+import SidebarSlider, {SliderSuperTab} from '../slider';
 import TransitionSlider from '../transition';
 import AppNewGroupTab from './tabs/newGroup';
 import AppSearchSuper from '../appSearchSuper.';
@@ -21,10 +21,8 @@ import AppContactsTab from './tabs/contacts';
 import AppArchivedTab from './tabs/archivedTab';
 import AppAddMembersTab from './tabs/addMembers';
 import I18n, {i18n} from '../../lib/langPack';
-import AppPeopleNearbyTab from './tabs/peopleNearby';
-import {ButtonMenuItemOptions} from '../buttonMenu';
-import CheckboxField from '../checkboxField';
-import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
+import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '../buttonMenu';
+import {IS_APPLE, IS_MOBILE_SAFARI} from '../../environment/userAgent';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import findUpTag from '../../helpers/dom/findUpTag';
@@ -34,7 +32,6 @@ import sessionStorage from '../../lib/sessionStorage';
 import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import ButtonIcon from '../buttonIcon';
 import confirmationPopup from '../confirmationPopup';
-import IS_GEOLOCATION_SUPPORTED from '../../environment/geolocationSupport';
 import type SortedUserList from '../sortedUserList';
 import Button, {ButtonOptions, replaceButtonIcon} from '../button';
 import noop from '../../helpers/noop';
@@ -49,7 +46,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import SettingSection, {SettingSectionOptions} from '../settingSection';
 import {FOLDER_ID_ARCHIVE, TEST_NO_STORIES} from '../../lib/mtproto/mtproto_config';
 import mediaSizes from '../../helpers/mediaSizes';
-import {fastRaf} from '../../helpers/schedulers';
+import {doubleRaf, fastRaf} from '../../helpers/schedulers';
 import {getInstallPrompt} from '../../helpers/dom/installPrompt';
 import liteMode from '../../helpers/liteMode';
 import AppPowerSavingTab from './tabs/powerSaving';
@@ -66,31 +63,74 @@ import flatten from '../../helpers/array/flatten';
 import EmojiTab from '../emoticonsDropdown/tabs/emoji';
 import {EmoticonsDropdown} from '../emoticonsDropdown';
 import cloneDOMRect from '../../helpers/dom/cloneDOMRect';
-import {AccountEmojiStatuses, Document, EmojiStatus} from '../../layer';
+import {AccountEmojiStatuses, EmojiStatus, User} from '../../layer';
 import filterUnique from '../../helpers/array/filterUnique';
 import {Middleware, MiddlewareHelper} from '../../helpers/middleware';
 import wrapEmojiStatus from '../wrappers/emojiStatus';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import ReactionElement from '../chat/reaction';
 import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
+import AccountController from '../../lib/accounts/accountController';
+import {ActiveAccountNumber} from '../../lib/accounts/types';
+import {MAX_ACCOUNTS, MAX_ACCOUNTS_FREE} from '../../lib/accounts/constants';
+import {getCurrentAccount} from '../../lib/accounts/getCurrentAccount';
+import {createProxiedManagersForAccount} from '../../lib/appManagers/getProxiedManagers';
+import limitSymbols from '../../helpers/string/limitSymbols';
+import attachFloatingButtonMenu from '../floatingButtonMenu';
+import filterAsync from '../../helpers/array/filterAsync';
+import pause from '../../helpers/schedulers/pause';
+import AccountsLimitPopup from './accountsLimitPopup';
+import {changeAccount} from '../../lib/accounts/changeAccount';
+import {UiNotificationsManager} from '../../lib/appManagers/uiNotificationsManager';
+import {renderFoldersSidebarContent} from './foldersSidebarContent';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import SwipeHandler, {getEvent} from '../swipeHandler';
+import clamp from '../../helpers/number/clamp';
+import {animateValue} from '../mediaEditor/utils';
+import throttle from '../../helpers/schedulers/throttle';
+import AppChatFoldersTab from './tabs/chatFolders';
+import {SliderSuperTabConstructable} from '../sliderTab';
+import SettingsSliderPopup from './settingsSliderPopup';
+import AppEditFolderTab from './tabs/editFolder';
+import {addShortcutListener} from '../mediaEditor/shortcutListener';
+import tsNow from '../../helpers/tsNow';
+import {toastNew} from '../toast';
+import DeferredIsUsingPasscode from '../../lib/passcode/deferredIsUsingPasscode';
+import EncryptionKeyStore from '../../lib/passcode/keyStore';
+import createLockButton from './lockButton';
+import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './constants';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
+type SearchInitResult = {
+  open: (focus?: boolean) => void;
+  close: () => void;
+}
+
 export class AppSidebarLeft extends SidebarSlider {
+  private chatListContainer: HTMLElement;
+  private buttonsContainer: HTMLElement;
   private toolsBtn: HTMLElement;
   private backBtn: HTMLButtonElement;
   public inputSearch: InputSearch;
 
   public archivedCount: HTMLSpanElement;
+  private totalNotificationsCount: HTMLSpanElement;
+  private totalNotificationsCountSidebar: HTMLSpanElement;
   public rect: DOMRect;
 
   private newBtnMenu: HTMLElement;
 
   private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
   private searchSuper: AppSearchSuper;
+  private searchInitResult: SearchInitResult;
+  private isSearchActive = false;
+  private searchTriggerWhenCollapsed: HTMLElement;
 
   private updateBtn: HTMLElement;
   private hasUpdate: boolean;
+
+  private onResize: () => void;
 
   constructor() {
     super({
@@ -103,254 +143,50 @@ export class AppSidebarLeft extends SidebarSlider {
     this.managers = managers;
     // this._selectTab(0); // make first tab as default
 
+    this.chatListContainer = document.getElementById('chatlist-container');
     this.inputSearch = new InputSearch();
     (this.inputSearch.input as HTMLInputElement).placeholder = ' ';
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
     sidebarHeader.append(this.inputSearch.container);
 
-    const onNewGroupClick = () => {
-      this.createTab(AppAddMembersTab).open({
-        type: 'chat',
-        skippable: true,
-        takeOut: (peerIds) => this.createTab(AppNewGroupTab).open({peerIds}),
-        title: 'GroupAddMembers',
-        placeholder: 'SendMessageTo'
-      });
-    };
-
-    const onContactsClick = () => {
-      this.createTab(AppContactsTab).open();
-    };
-
     // this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
 
-    const btnArchive: typeof menuButtons[0] = {
-      icon: 'archive',
-      text: 'ArchivedChats',
-      onClick: () => {
-        this.createTab(AppArchivedTab).open();
-      },
-      verify: async() => {
-        const folder = await this.managers.dialogsStorage.getFolderDialogs(FOLDER_ID_ARCHIVE, false);
-        const hasArchiveStories = await this.managers.appStoriesManager.hasArchive();
-        return !!folder.length || hasArchiveStories || !(await this.managers.dialogsStorage.isDialogsLoaded(FOLDER_ID_ARCHIVE));
-      }
-    };
+    this.toolsBtn = this.createToolsMenu();
+    this.toolsBtn.classList.add('sidebar-tools-button', 'is-visible');
+    this.totalNotificationsCount = createBadge('span', 20, 'primary');
+    this.totalNotificationsCount.classList.add('sidebar-tools-button-notifications');
+    this.totalNotificationsCountSidebar = this.totalNotificationsCount.cloneNode(true) as HTMLElement;
+    this.toolsBtn.append(this.totalNotificationsCount);
 
-    const themeCheckboxField = new CheckboxField({
-      toggle: true,
-      checked: themeController.getTheme().name === 'night'
+    const mainMiddleware = this.middlewareHelper.get();
+    const foldersSidebar = document.getElementById('folders-sidebar');
+    renderFoldersSidebarContent(foldersSidebar, this.totalNotificationsCountSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
+
+    // If it has z-index to early, the browser makes it shift a few times before showing it properly in its position (on very large screens)
+    // Doesn't solve the blinking, which doesn't seem to appear when the project is built
+    pause(1000).then(() => {
+      this.sidebarEl.classList.add('can-menu-have-z-index');
     });
-    themeCheckboxField.input.addEventListener('change', () => {
-      const item = findUpClassName(themeCheckboxField.label, 'btn-menu-item');
-      const icon = item.querySelector('.tgico');
-      const rect = icon.getBoundingClientRect();
-      themeController.switchTheme(themeCheckboxField.checked ? 'night' : 'day', {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2
+
+    rootScope.addEventListener('notification_count_update', async() => {
+      const notificationsCount = await UiNotificationsManager.getNotificationsCountForAllAccounts();
+      const count = Object.entries(notificationsCount).reduce(
+        (prev, [accountNumber, count]) =>
+          prev +
+          (+accountNumber !== getCurrentAccount() ? count || 0 : 0)
+        , 0);
+
+      [this.totalNotificationsCount, this.totalNotificationsCountSidebar].forEach((el) => {
+        setBadgeContent(el, '' + (count || ''));
       });
     });
 
-    rootScope.addEventListener('theme_changed', () => {
-      themeCheckboxField.setValueSilently(themeController.getTheme().name === 'night');
-    });
-
-    const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
-      icon: 'savedmessages',
-      text: 'SavedMessages',
-      onClick: () => {
-        setTimeout(() => { // menu doesn't close if no timeout (lol)
-          appImManager.setPeer({
-            peerId: appImManager.myId
-          });
-        }, 0);
-      }
-    }, btnArchive, {
-      icon: 'stories',
-      text: 'MyStories.Title',
-      onClick: () => {
-        this.createTab(AppMyStoriesTab).open();
-      },
-      verify: () => !TEST_NO_STORIES
-    }, {
-      icon: 'user',
-      text: 'Contacts',
-      onClick: onContactsClick
-    }, IS_GEOLOCATION_SUPPORTED ? {
-      icon: 'group',
-      text: 'PeopleNearby',
-      onClick: () => {
-        this.createTab(AppPeopleNearbyTab).open();
-      }
-    } : undefined, {
-      icon: 'settings',
-      text: 'Settings',
-      onClick: () => {
-        this.createTab(AppSettingsTab).open();
-      }
-    }, {
-      icon: 'darkmode',
-      text: 'DarkMode',
-      onClick: () => {
-
-      },
-      checkboxField: themeCheckboxField
-    }, {
-      icon: 'animations',
-      text: 'Animations',
-      onClick: () => {
-
-      },
-      checkboxField: new CheckboxField({
-        toggle: true,
-        checked: liteMode.isAvailable('animations'),
-        stateKey: joinDeepPath('settings', 'liteMode', 'animations'),
-        stateValueReverse: true
-      }),
-      verify: () => !liteMode.isEnabled()
-    }, {
-      icon: 'animations',
-      text: 'LiteMode.Title',
-      onClick: () => {
-        this.createTab(AppPowerSavingTab).open();
-      },
-      verify: () => liteMode.isEnabled()
-    }, {
-      icon: 'help',
-      text: 'TelegramFeatures',
-      onClick: () => {
-        const url = I18n.format('TelegramFeaturesUrl', true);
-        appImManager.openUrl(url);
-      }
-    }, {
-      icon: 'bug',
-      text: 'ReportBug',
-      onClick: () => {
-        const a = document.createElement('a');
-        setBlankToAnchor(a);
-        a.href = 'https://bugs.telegram.org/?tag_ids=40&sort=time';
-        document.body.append(a);
-        a.click();
-        setTimeout(() => {
-          a.remove();
-        }, 0);
-      }
-    }, {
-      icon: 'char' as Icon,
-      className: 'a',
-      text: 'ChatList.Menu.SwitchTo.A',
-      onClick: () => {
-        Promise.all([
-          sessionStorage.set({kz_version: 'Z'}),
-          sessionStorage.delete('tgme_sync')
-        ]).then(() => {
-          location.href = 'https://web.telegram.org/a/';
-        });
-      },
-      verify: () => App.isMainDomain
-    }, /* {
-      icon: 'char w',
-      text: 'ChatList.Menu.SwitchTo.Webogram',
-      onClick: () => {
-        sessionStorage.delete('tgme_sync').then(() => {
-          location.href = 'https://web.telegram.org/?legacy=1';
-        });
-      },
-      verify: () => App.isMainDomain
-    }, */ {
-      icon: 'plusround',
-      text: 'PWA.Install',
-      onClick: () => {
-        const installPrompt = getInstallPrompt();
-        installPrompt?.();
-      },
-      verify: () => !!getInstallPrompt()
-    }];
-
-    const filteredButtons = menuButtons.filter(Boolean);
-    const filteredButtonsSliced = filteredButtons.slice();
-    this.toolsBtn = ButtonMenuToggle({
-      direction: 'bottom-right',
-      buttons: filteredButtons,
-      onOpenBefore: async() => {
-        const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
-        const buttons = filteredButtonsSliced.slice();
-        const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
-          return attachMenuBot.pFlags.show_in_side_menu;
-        }).map((attachMenuBot) => {
-          const icon = getAttachMenuBotIcon(attachMenuBot);
-          const button: typeof buttons[0] = {
-            regularText: wrapEmojiText(attachMenuBot.short_name),
-            onClick: () => {
-              appImManager.openWebApp({
-                attachMenuBot,
-                botId: attachMenuBot.bot_id,
-                isSimpleWebView: true,
-                fromSideMenu: true
-              });
-            },
-            iconDoc: icon?.icon as MyDocument,
-            new: attachMenuBot.pFlags.side_menu_disclaimer_needed || attachMenuBot.pFlags.inactive
-          };
-
-          return button;
-        });
-
-        buttons.splice(3, 0, ...attachMenuBotsButtons);
-        filteredButtons.splice(0, filteredButtons.length, ...buttons);
-      },
-      onOpen: (e, btnMenu) => {
-        const btnMenuFooter = document.createElement('a');
-        btnMenuFooter.href = 'https://github.com/morethanwords/tweb/blob/master/CHANGELOG.md';
-        setBlankToAnchor(btnMenuFooter);
-        btnMenuFooter.classList.add('btn-menu-footer');
-        btnMenuFooter.addEventListener(CLICK_EVENT_NAME, (e) => {
-          e.stopPropagation();
-          contextMenuController.close();
-        });
-        const t = document.createElement('span');
-        t.classList.add('btn-menu-footer-text');
-        t.textContent = 'Telegram Web' + App.suffix + ' '/* ' alpha ' */ + App.versionFull;
-        btnMenuFooter.append(t);
-        btnMenu.classList.add('has-footer');
-        btnMenu.append(btnMenuFooter);
-
-        const a = btnMenu.querySelector('.a .btn-menu-item-icon');
-        if(a) a.textContent = 'A';
-
-        btnArchive.element?.append(this.archivedCount);
-      },
-      noIcon: true
-    });
-    this.toolsBtn.classList.add('sidebar-tools-button', 'is-visible');
-
     this.backBtn.parentElement.insertBefore(this.toolsBtn, this.backBtn);
 
-    this.newBtnMenu = ButtonMenuToggle({
-      direction: 'top-left',
-      buttons: [{
-        icon: 'newchannel',
-        text: 'NewChannel',
-        onClick: () => {
-          this.createTab(AppNewChannelTab).open();
-        }
-      }, {
-        icon: 'newgroup',
-        text: 'NewGroup',
-        onClick: onNewGroupClick
-      }, {
-        icon: 'newprivate',
-        text: 'NewPrivateChat',
-        onClick: onContactsClick
-      }],
-      noIcon: true
-    });
-    this.newBtnMenu.className = 'btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
-    this.newBtnMenu.tabIndex = -1;
-    const icons: Icon[] = ['newchat_filled', 'close'];
-    this.newBtnMenu.prepend(...icons.map((icon, idx) => Icon(icon, 'animated-button-icon-icon', 'animated-button-icon-icon-' + (idx === 0 ? 'first' : 'last'))));
-    this.newBtnMenu.id = 'new-menu';
+    this.buttonsContainer = this.backBtn.parentElement;
+
+    this.newBtnMenu = this.createNewChatsMenuButton();
     sidebarHeader.nextElementSibling.append(this.newBtnMenu);
 
     this.updateBtn = document.createElement('div');
@@ -385,6 +221,9 @@ export class AppSidebarLeft extends SidebarSlider {
     let statusMiddlewareHelper: MiddlewareHelper, fireOnNew: boolean;
     const premiumMiddlewareHelper = this.getMiddleware().create();
     const statusBtnIcon = ButtonIcon(' sidebar-emoji-status', {noRipple: true});
+
+    const lockButton = createLockButton();
+
     attachClickEvent(statusBtnIcon, () => {
       const emojiTab = new EmojiTab({
         noRegularEmoji: true,
@@ -526,6 +365,7 @@ export class AppSidebarLeft extends SidebarSlider {
         await wrapStatus((statusMiddlewareHelper = middleware.create()).get());
         if(!middleware()) return;
         sidebarHeader.append(statusBtnIcon);
+        toggleRightButtons(true, await DeferredIsUsingPasscode.isUsingPasscode());
 
         const onEmojiStatusChange = () => {
           const oldStatusMiddlewareHelper = statusMiddlewareHelper;
@@ -541,36 +381,32 @@ export class AppSidebarLeft extends SidebarSlider {
           rootScope.removeEventListener('emoji_status_change', onEmojiStatusChange);
         });
       } else {
-        statusBtnIcon.remove();
+        toggleRightButtons(false, await DeferredIsUsingPasscode.isUsingPasscode());
       }
 
       appDialogsManager.resizeStoriesList?.();
     };
 
+    const toggleRightButtons = (isPremium: boolean, isUsingPasscode: boolean) => {
+      if(isPremium) sidebarHeader.append(statusBtnIcon);
+      else statusBtnIcon.remove();
+
+      if(isUsingPasscode) sidebarHeader.append(lockButton.element);
+      else lockButton.element.remove();
+    };
+
     appImManager.addEventListener('premium_toggle', onPremium);
-    if(rootScope.premium) onPremium(true);
+    rootScope.addEventListener('toggle_using_passcode', (isUsingPasscode) => {
+      toggleRightButtons(rootScope.premium, isUsingPasscode);
+    });
+
+    toggleRightButtons(rootScope.premium, rootScope.settings?.passcode?.enabled);
 
     this.managers.appUsersManager.getTopPeers('correspondents');
 
-    // Focus search input by pressing Escape
-    const navigationItem: NavigationItem = {
-      type: 'global-search-focus',
-      onPop: () => {
-        setTimeout(() => {
-          this.inputSearch.input.focus();
-        }, 0);
-
-        return false;
-      },
-      noHistory: true
-    };
-    appNavigationController.pushItem(navigationItem);
+    this.initNavigation();
 
     apiManagerProxy.getState().then((state) => {
-      if(!state.keepSigned) {
-        return;
-      }
-
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
         fetch('version', {cache: 'no-cache'})
@@ -589,16 +425,768 @@ export class AppSidebarLeft extends SidebarSlider {
       }, CHECK_UPDATE_INTERVAL);
     });
 
-    const onResize = () => {
+    this.onResize = () => {
       const rect = this.rect = this.tabsContainer.getBoundingClientRect();
       document.documentElement.style.setProperty('--left-column-width', rect.width + 'px');
     };
 
-    fastRaf(onResize);
-    mediaSizes.addEventListener('resize', onResize);
+    fastRaf(this.onResize);
+    mediaSizes.addEventListener('resize', this.onResize);
+
+    this.searchTriggerWhenCollapsed = document.createElement('div');
+    this.searchTriggerWhenCollapsed.className = 'sidebar-header-search-trigger';
+    this.searchTriggerWhenCollapsed.append(ButtonIcon('search'));
+    this.searchTriggerWhenCollapsed.addEventListener('click', () => {
+      this.initSearch().open();
+    });
+
+    this.buttonsContainer.parentElement.prepend(this.searchTriggerWhenCollapsed);
+
+    const sidebarOverlay = document.querySelector('.sidebar-left-overlay');
+    sidebarOverlay.addEventListener('click', () => {
+      this.closeEverythingInside();
+    });
+
+    this.initSidebarResize();
+    appDialogsManager.onForumTabToggle = () => {
+      this.onSomethingOpenInsideChange();
+    }
+
+    addShortcutListener(['ctrl+f', 'alt+f', 'meta+f'], () => {
+      if(appNavigationController.findItemByType('popup')) return;
+      this.initSearch().open();
+    });
+
+    addShortcutListener(['ctrl+0', 'meta+0'], () => {
+      if(appNavigationController.findItemByType('popup') ||
+        appImManager.chat.peerId === appImManager.myId) return;
+      appImManager.setPeer({
+        peerId: appImManager.myId
+      });
+    });
+  }
+
+  /**
+   * Focus search input by pressing Escape
+   */
+  public initNavigation() {
+    const navigationItem: NavigationItem = {
+      type: 'global-search-focus',
+      onPop: () => {
+        setTimeout(() => {
+          if(this.isAnimatingCollapse) return;
+          this.initSearch().open();
+        }, 0);
+
+        return false;
+      },
+      noHistory: true
+    };
+    appNavigationController.removeByType('global-search-focus');
+    appNavigationController.pushItem(navigationItem);
+  }
+
+  public isCollapsed() {
+    return this.sidebarEl.classList.contains('is-collapsed');
+  }
+
+  public hasFoldersSidebar() {
+    return document.body.classList.contains('has-folders-sidebar');
+  }
+
+  public onCollapsedChange(canShowCtrlFTip = false) {
+    this.chatListContainer.parentElement.classList.toggle('fade', this.isCollapsed());
+    this.chatListContainer.parentElement.classList.toggle('zoom-fade', !this.isCollapsed());
+    appDialogsManager.xd.toggleAvatarUnreadBadges(this.isCollapsed(), undefined);
+
+    if(canShowCtrlFTip && this.isCollapsed() && !this.hasFoldersSidebar()) {
+      this.showCtrlFTip();
+    }
+  }
+
+  public hasSomethingOpenInside() {
+    return this.hasTabsInNavigation() || this.isSearchActive || !!appDialogsManager.forumTab;
+  }
+
+  public closeEverythingInside() {
+    this.closeSearch();
+    appDialogsManager.toggleForumTab();
+    return this.closeAllTabs();
+  }
+
+  private isAnimatingCollapse = false;
+  private onSomethingOpenInsideChange = (closingSearch = false, force = false) => {
+    const wasFloating = this.sidebarEl.classList.contains('has-open-tabs');
+    const isFloating = force || this.hasSomethingOpenInside();
+    const isCollapsed = this.isCollapsed();
+
+    this.sidebarEl.classList.toggle('has-open-tabs', isFloating);
+    this.sidebarEl.classList.toggle('has-real-tabs', this.hasTabsInNavigation());
+    this.sidebarEl.classList.toggle('has-forum-open', !!appDialogsManager.forumTab);
+
+    const sidebarPlaceholder = document.querySelector('.sidebar-left-placeholder');
+
+    if(!isCollapsed && !this.hasSomethingOpenInside()) {
+      pause(300).then(() => {
+        // Mainly for stories when changing tabs view left <-> top
+        rootScope.dispatchEvent('resizing_left_sidebar');
+      });
+      return;
+    }
+
+    if(wasFloating === isFloating) return;
+
+
+    const WIDTH_WHEN_COLLAPSED = 80;
+    const FULL_WIDTH = 420;
+    const ANIMATION_TIME = 200;
+    // Need to wait until the sliding animation is finished, this one needs to be faster to avoid random layout shifting
+    const DELAY_AFTER_ANIMATION = 150;
+
+    if(isFloating) {
+      this.sidebarEl.classList.add(
+        'force-hide-large-content',
+        'force-hide-menu',
+        'force-chatlist-thin'
+      );
+      !this.isSearchActive && this.sidebarEl.classList.add('force-hide-search');
+
+      this.isAnimatingCollapse = true;
+      animateValue(WIDTH_WHEN_COLLAPSED, FULL_WIDTH, ANIMATION_TIME, (value) => {
+        this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
+      }, {
+        onEnd: async() => {
+          await pause(DELAY_AFTER_ANIMATION);
+          this.isAnimatingCollapse = false;
+          this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
+          this.sidebarEl.classList.remove(
+            'force-hide-large-content',
+            'force-hide-menu',
+            'force-hide-search',
+            'force-chatlist-thin'
+          );
+        }
+      });
+      appDialogsManager.xd.toggleAvatarUnreadBadges(false, undefined);
+    } else {
+      sidebarPlaceholder.classList.add('keep-active');
+      this.sidebarEl.classList.add(
+        'force-fixed',
+        'hide-add-folders',
+        'force-chatlist-thin'
+      );
+      closingSearch && this.sidebarEl.classList.add('animate-search-out');
+
+      this.buttonsContainer.classList.add('force-static', 'is-visible');
+      closingSearch && this.hasFoldersSidebar() && this.toolsBtn.parentElement.firstElementChild.classList.add('state-back');
+
+      this.isAnimatingCollapse = true;
+      animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, ANIMATION_TIME, (value) => {
+        this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
+      }, {
+        onEnd: async() => {
+          await pause(DELAY_AFTER_ANIMATION);
+          this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
+          this.sidebarEl.classList.remove(
+            'force-fixed',
+            'hide-add-folders',
+            'animate-search-out',
+            'force-chatlist-thin'
+          );
+          sidebarPlaceholder.classList.remove('keep-active');
+
+          appDialogsManager.xd.toggleAvatarUnreadBadges(true, undefined);
+          this.buttonsContainer.classList.remove('force-static');
+          this.buttonsContainer.classList.remove('is-visible');
+          this.buttonsContainer.style.transition = 'none';
+
+          pause(200).then(() => {
+            this.buttonsContainer.style.removeProperty('transition');
+            this.isAnimatingCollapse = false;
+            if(this.isSearchActive) return;
+            this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', false);
+          });
+        }
+      });
+    }
+  }
+
+  public showCtrlFTip() {
+    const DATE_KEY = 'ctrlf-toast-to-show-again';
+    const showAgain = parseInt(localStorage.getItem(DATE_KEY));
+    const now = tsNow(true);
+
+    if(showAgain && now < showAgain) return;
+
+    toastNew({
+      langPackKey: IS_APPLE ? 'CtrlFSearchTipMac' : 'CtrlFSearchTip'
+    });
+    // Show once between 1 week to 2 months
+    const waitSeconds = (Math.round(Math.random() * 7 * 7) + 7) * 24 * 60 * 60;
+    localStorage.setItem(DATE_KEY, now + waitSeconds + '');
+  }
+
+  private initSidebarResize() {
+    this.onTabsCountChange = () => {
+      this.onSomethingOpenInsideChange();
+    }
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.classList.add('sidebar-resize-handle');
+    this.sidebarEl.append(resizeHandle);
+
+    const throttledSetToStorage = throttle((width: number) => {
+      localStorage.setItem('sidebar-left-width', width + '');
+    }, 200);
+
+    new SwipeHandler({
+      element: resizeHandle,
+      setCursorTo: document.body,
+      onStart: () => {
+        resizeHandle.classList.add('is-active');
+        document.body.classList.add('resizing-left-sidebar');
+      },
+      onSwipe: (_, __, _e) => {
+        const e = getEvent(_e);
+        const rect = this.sidebarEl.getBoundingClientRect();
+
+        const width = Math.round(e.clientX - rect.left);
+        const clampedWidth = clamp(width % 2 ? width + 1 : width, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
+
+        document.documentElement.style.setProperty('--current-sidebar-left-width', clampedWidth + 'px');
+        this.onResize();
+        rootScope.dispatchEvent('resizing_left_sidebar');
+
+        const wasCollapsed = this.isCollapsed();
+        const isCollapsed = !this.hasSomethingOpenInside() && width < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR;
+        this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
+
+        if(isCollapsed !== wasCollapsed)
+          this.onCollapsedChange(true);
+
+        appImManager.adjustChatPatternBackground();
+
+
+        throttledSetToStorage(isCollapsed ? 0 : clampedWidth);
+      },
+      onReset: () => {
+        resizeHandle.classList.remove('is-active');
+        document.body.classList.remove('resizing-left-sidebar');
+      }
+    })
+  }
+
+  public createToolsMenu(mountTo?: HTMLElement, closeBefore?: boolean) {
+    const closeTabsBefore = async(clb: () => void) => {
+      if(closeBefore) {
+        this.closeEverythingInside() && await pause(200);
+      }
+
+      clb();
+    }
+
+    const btnArchive: typeof menuButtons[0] = {
+      icon: 'archive',
+      text: 'ArchivedChats',
+      onClick: () => {
+        closeTabsBefore(() => {
+          this.createTab(AppArchivedTab).open();
+        });
+      },
+      verify: async() => {
+        const folder = await this.managers.dialogsStorage.getFolderDialogs(FOLDER_ID_ARCHIVE, false);
+        const hasArchiveStories = await this.managers.appStoriesManager.hasArchive();
+        return !!folder.length || hasArchiveStories || !(await this.managers.dialogsStorage.isDialogsLoaded(FOLDER_ID_ARCHIVE));
+      }
+    };
+
+    const onContactsClick = () => {
+      closeTabsBefore(() => {
+        this.createTab(AppContactsTab).open();
+      });
+    };
+
+    const moreSubmenu = this.createSubmenuHelper({
+      text: 'MultiAccount.More',
+      icon: 'more'
+    }, () => this.createMoreSubmenu(moreSubmenu, closeTabsBefore));
+
+    const newSubmenu = this.createSubmenuHelper({
+      text: 'CreateANew',
+      icon: 'edit',
+      verify: () => this.isCollapsed(),
+      separator: true
+    }, () => this.createNewChatsSubmenu());
+
+    const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
+      icon: 'plus',
+      text: 'MultiAccount.AddAccount',
+      onClick: async(e) => {
+        const totalAccounts = await AccountController.getTotalAccounts();
+        if(totalAccounts >= MAX_ACCOUNTS) return;
+
+        const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
+
+        if(totalAccounts === MAX_ACCOUNTS_FREE && !hasSomeonePremium) {
+          new AccountsLimitPopup().show();
+          return;
+        }
+
+        localStorage.setItem('previous-account', getCurrentAccount() + '');
+        const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+        const openTabs = apiManagerProxy.getOpenTabsCount();
+
+        const newTab = e.ctrlKey || e.metaKey || (openTabs <= 1 && isUsingPasscode);
+        if(!newTab) {
+          appImManager.goOffline();
+
+          localStorage.setItem('should-animate-auth', 'true');
+
+          const chatsPageEl = document.querySelector('.page-chats');
+          chatsPageEl.classList.add('main-screen-exit');
+          await doubleRaf();
+          chatsPageEl.classList.add('main-screen-exiting');
+          await pause(200);
+        }
+
+        changeAccount((totalAccounts + 1) as ActiveAccountNumber, newTab);
+      },
+      verify: async() => {
+        const totalAccounts = await AccountController.getTotalAccounts();
+        return totalAccounts < MAX_ACCOUNTS;
+      }
+    }, newSubmenu.menuBtnOptions, {
+      icon: 'savedmessages',
+      text: 'SavedMessages',
+      onClick: () => {
+        setTimeout(() => { // menu doesn't close if no timeout (lol)
+          appImManager.setPeer({
+            peerId: appImManager.myId
+          });
+        }, 0);
+      },
+      separator: true
+    }, btnArchive, {
+      icon: 'stories',
+      text: 'MyStories.Title',
+      onClick: () => {
+        closeTabsBefore(() => {
+          this.createTab(AppMyStoriesTab).open();
+        });
+      },
+      verify: () => !TEST_NO_STORIES
+    }, {
+      icon: 'user',
+      text: 'Contacts',
+      onClick: onContactsClick
+    }, {
+      id: 'settings',
+      icon: 'settings',
+      text: 'Settings',
+      separator: true,
+      onClick: () => {
+        closeTabsBefore(() => {
+          this.createTab(AppSettingsTab).open();
+        });
+      }
+    }, moreSubmenu.menuBtnOptions];
+
+    const filteredButtons = menuButtons.filter(Boolean);
+    const filteredButtonsSliced = filteredButtons.slice();
+    const buttonMenuToggle = ButtonMenuToggle({
+      direction: 'bottom-right',
+      buttons: filteredButtons,
+      container: mountTo,
+      onOpenBefore: async() => {
+        const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
+        const buttons = filteredButtonsSliced.slice();
+        const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
+          return attachMenuBot.pFlags.show_in_side_menu;
+        }).map((attachMenuBot) => {
+          const icon = getAttachMenuBotIcon(attachMenuBot);
+          const button: typeof buttons[0] = {
+            regularText: wrapEmojiText(attachMenuBot.short_name),
+            onClick: () => {
+              appImManager.openWebApp({
+                attachMenuBot,
+                botId: attachMenuBot.bot_id,
+                isSimpleWebView: true,
+                fromSideMenu: true
+              });
+            },
+            iconDoc: icon?.icon as MyDocument,
+            new: attachMenuBot.pFlags.side_menu_disclaimer_needed || attachMenuBot.pFlags.inactive
+          };
+
+          return button;
+        });
+
+        function wrapUserName(user: User.user) {
+          let name = user.first_name;
+          if(user.last_name) name += ' ' + user.last_name;
+
+          name = limitSymbols(name, 15, 18);
+          return wrapEmojiText(name);
+        }
+
+        const targetIdx = buttons.findIndex((btn) => btn.id === 'settings');
+        buttons[targetIdx].separator = !!attachMenuBotsButtons.length;
+        buttons.splice(targetIdx, 0, ...attachMenuBotsButtons);
+        buttons[targetIdx].separator = true;
+
+        const [totalAccounts, notificationsCount] = await Promise.all([
+          AccountController.getTotalAccounts(),
+          UiNotificationsManager.getNotificationsCountForAllAccounts()
+        ]);
+        const accountButtons: typeof buttons = [];
+        for(let i = 1; i <= totalAccounts; i++) {
+          const accountNumber = i as ActiveAccountNumber;
+          if(accountNumber === getCurrentAccount()) {
+            const user = await this.managers.appUsersManager.getSelf();
+            accountButtons.push({
+              avatarInfo: {
+                accountNumber: getCurrentAccount(),
+                peerId: rootScope.myId.toPeerId(),
+                active: true
+              },
+              regularText: wrapUserName(user),
+              onClick: () => {
+                closeTabsBefore(() => {
+                  this.createTab(AppSettingsTab).open();
+                });
+              }
+            });
+          } else {
+            const otherManagers = createProxiedManagersForAccount(accountNumber);
+            const accountData = await AccountController.get(accountNumber);
+            const peerId = accountData?.userId?.toPeerId();
+            const user = await otherManagers.appUsersManager.getSelf();
+
+            const content = document.createElement('span');
+            content.append(wrapUserName(user));
+
+            if(notificationsCount[accountNumber]) {
+              const badge = createBadge('span', 20, 'primary');
+              setBadgeContent(badge, '' + notificationsCount[accountNumber]);
+              content.append(badge);
+            }
+
+            accountButtons.push({
+              avatarInfo: {
+                accountNumber,
+                peerId,
+                peer: user
+              },
+              className: 'btn-menu-account-item',
+              regularText: content,
+              onClick: async(e) => {
+                const newTab = e.ctrlKey || e.metaKey;
+                if(!newTab) {
+                  appImManager.goOffline();
+
+                  const chatListEl = document.querySelector('.chatlist-container')?.firstElementChild;
+                  chatListEl.classList.add('chatlist-exit');
+                  await doubleRaf();
+                  chatListEl.classList.add('chatlist-exiting');
+                  await pause(200);
+
+                  await this.saveEncryptionKeyBeforeSwitchingAccounts();
+                }
+                changeAccount(accountNumber, newTab);
+              }
+            });
+          }
+        }
+
+        buttons.splice(0, 0, ...accountButtons);
+
+        filteredButtons.splice(0, filteredButtons.length, ...buttons);
+      },
+      onOpen: () => {
+        moreSubmenu.onOpen();
+        newSubmenu.onOpen();
+        btnArchive.element?.append(this.archivedCount);
+      },
+      onClose: () => {
+        moreSubmenu.onClose();
+        newSubmenu.onClose();
+      },
+      noIcon: true
+    });
+
+    return buttonMenuToggle;
+  }
+
+  private async saveEncryptionKeyBeforeSwitchingAccounts() {
+    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+    if(!isUsingPasscode) return;
+
+    const openTabs = apiManagerProxy.getOpenTabsCount();
+
+    openTabs <= 1 && await sessionStorage.set({
+      encryption_key: await EncryptionKeyStore.getAsBase64()
+    });
+  }
+
+
+  private async createMoreSubmenu(
+    submenu: ReturnType<typeof this.createSubmenuHelper>,
+    closeTabsBefore: (clb: () => void) => void
+  ) {
+    const isDarkModeEnabled = () => themeController.getTheme().name === 'night';
+    const toggleTheme = () => {
+      const item = btns[0].element;
+      const icon = item.querySelector('.tgico');
+      const rect = icon.getBoundingClientRect();
+      themeController.switchTheme(isDarkModeEnabled() ? 'day' : 'night', {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      });
+    };
+
+    const darkModeText = document.createElement('span');
+    darkModeText.append(i18n(isDarkModeEnabled() ? 'DisableDarkMode': 'EnableDarkMode'));
+    const animationsText = document.createElement('span');
+
+    const btns: ButtonMenuItemOptionsVerifiable[] = [{
+      icon: 'darkmode',
+      regularText: darkModeText,
+      onClick: () => {}
+    }, {
+      id: 'animations-toggle',
+      icon: 'animations',
+      regularText: animationsText,
+      onClick: () => {
+        toggleAnimations();
+      },
+      verify: () => !liteMode.isEnabled()
+    }, {
+      icon: 'animations',
+      text: 'LiteMode.Title',
+      onClick: () => {
+        closeTabsBefore(() => {
+          this.createTab(AppPowerSavingTab).open();
+        });
+      },
+      verify: () => liteMode.isEnabled()
+    }, {
+      icon: 'aversion',
+      text: 'ChatList.Menu.SwitchTo.A',
+      onClick: () => {
+        Promise.all([
+          sessionStorage.set({kz_version: 'Z'}),
+          sessionStorage.delete('tgme_sync')
+        ]).then(() => {
+          location.href = 'https://web.telegram.org/a/';
+        });
+      },
+      separator: App.isMainDomain,
+      verify: () => App.isMainDomain
+    }, {
+      icon: 'help',
+      text: 'TelegramFeatures',
+      onClick: () => {
+        const url = I18n.format('TelegramFeaturesUrl', true);
+        appImManager.openUrl(url);
+      },
+      separator: !App.isMainDomain
+    }, {
+      icon: 'bug',
+      text: 'ReportBug',
+      onClick: () => {
+        const a = document.createElement('a');
+        setBlankToAnchor(a);
+        a.href = 'https://bugs.telegram.org/?tag_ids=40&sort=time';
+        document.body.append(a);
+        a.click();
+        setTimeout(() => {
+          a.remove();
+        }, 0);
+      }
+    }, {
+      icon: 'plusround',
+      text: 'PWA.Install',
+      onClick: () => {
+        const installPrompt = getInstallPrompt();
+        installPrompt?.();
+      },
+      verify: () => !!getInstallPrompt()
+    }];
+
+
+    async function hasAnimations() {
+      return !rootScope.settings.liteMode.animations;
+    }
+
+    async function initAnimationsToggleIcon() {
+      updateAnimationsToggleButton(await hasAnimations());
+    }
+
+    async function toggleAnimations() {
+      updateAnimationsToggleButton(!(await hasAnimations()));
+      rootScope.managers.appStateManager.setByKey(
+        joinDeepPath('settings', 'liteMode', 'animations'),
+        await hasAnimations() // The value is already reversed
+      );
+    }
+
+    async function updateAnimationsToggleButton(enabled: boolean) {
+      const animationToggleButton = btns.find((button) => button.id === 'animations-toggle')?.element;
+      if(!animationToggleButton) return;
+
+      const icon = animationToggleButton.querySelector('.tgico');
+      enabled ?
+        icon?.classList.add('animations-icon-off') :
+        icon?.classList.remove('animations-icon-off');
+
+      animationsText.replaceChildren(i18n(enabled ? 'DisableAnimations' : 'EnableAnimations'));
+    }
+
+    const filtered = await filterAsync(btns, (button) => button?.verify ? button.verify() ?? false : true);
+    const menu = await ButtonMenu({
+      buttons: filtered
+    });
+
+    menu.append(getVersionLink());
+    menu.classList.add('sidebar-tools-submenu');
+
+    const darkModeBtn = btns[0].element;
+    darkModeBtn.addEventListener(CLICK_EVENT_NAME, (e) => {
+      e.stopPropagation();
+      toggleTheme();
+      pause(20).then(() => contextMenuController.close());
+    }, true);
+
+    initAnimationsToggleIcon();
+
+    return menu;
+  }
+
+  private static submenuHelperIdSeed = 0;
+  private createSubmenuHelper(
+    options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'icon' | 'verify' | 'separator'>,
+    createSubmenu: () => MaybePromise<HTMLElement>
+  ) {
+    const menuBtnOptions: ButtonMenuItemOptionsVerifiable = {
+      ...options,
+
+      // * fix langpack
+      get regularText() {
+        const content = document.createElement('span');
+        content.classList.add('submenu-label');
+        content.append(i18n(options.text), Icon('arrowhead'));
+        return content;
+      },
+      onClick: noop,
+      id: AppSidebarLeft.submenuHelperIdSeed++
+    };
+
+    delete menuBtnOptions.text;
+
+    let isDisabled = false;
+
+    const onOpen = () => {
+      if(!menuBtnOptions.element) return;
+
+      menuBtnOptions.element.addEventListener(CLICK_EVENT_NAME, (e) => {
+        e.stopPropagation();
+      }, true);
+      menuBtnOptions.element.classList.add('disable-click');
+
+      attachFloatingButtonMenu({
+        element: menuBtnOptions.element,
+        direction: 'right-start',
+        createMenu: createSubmenu,
+        offset: [-5, -5],
+        level: 2,
+        triggerEvent: 'mouseenter',
+        canOpen: () => !isDisabled
+      });
+    };
+
+    const onClose = async() => {
+      // Prevents hover from triggering when the menu is closing
+      isDisabled = true;
+      await pause(200);
+      isDisabled = false;
+    }
+
+    return {
+      menuBtnOptions,
+      onOpen,
+      onClose
+    }
+  }
+
+  private createNewChatsMenuOptions(closeBefore?: boolean, singular?: boolean): ButtonMenuItemOptionsVerifiable[]  {
+    const closeTabsBefore = async(clb: () => void) => {
+      if(closeBefore) {
+        this.closeEverythingInside() && await pause(200);
+      }
+      clb();
+    }
+
+    const onNewGroupClick = () => {
+      closeTabsBefore(() => {
+        this.createTab(AppAddMembersTab).open({
+          type: 'chat',
+          skippable: true,
+          takeOut: (peerIds) => this.createTab(AppNewGroupTab).open({peerIds}),
+          title: 'GroupAddMembers',
+          placeholder: 'SendMessageTo'
+        });
+      });
+    };
+
+    const onContactsClick = () => {
+      closeTabsBefore(() => {
+        this.createTab(AppContactsTab).open();
+      });
+    };
+
+    return [{
+      icon: 'newchannel',
+      text: singular ? 'Channel' : 'NewChannel',
+      onClick: () => {
+        closeTabsBefore(() => {
+          this.createTab(AppNewChannelTab).open();
+        });
+      }
+    }, {
+      icon: 'newgroup',
+      text: singular ? 'Group' : 'NewGroup',
+      onClick: onNewGroupClick
+    }, {
+      icon: 'newprivate',
+      text: singular ? 'PrivateChat' : 'NewPrivateChat',
+      onClick: onContactsClick
+    }];
+  }
+
+  private createNewChatsMenuButton() {
+    const btnMenu = ButtonMenuToggle({
+      direction: 'top-left',
+      buttons: this.createNewChatsMenuOptions(false),
+      noIcon: true
+    });
+    btnMenu.className = 'btn-new-menu btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
+    btnMenu.tabIndex = -1;
+    const icons: Icon[] = ['newchat_filled', 'close'];
+    btnMenu.prepend(...icons.map((icon, idx) => Icon(icon, 'animated-button-icon-icon', 'animated-button-icon-icon-' + (idx === 0 ? 'first' : 'last'))));
+    btnMenu.id = 'new-menu';
+
+    return btnMenu;
+  }
+
+  private createNewChatsSubmenu() {
+    return ButtonMenu({
+      buttons: this.createNewChatsMenuOptions(true, true)
+    });
   }
 
   private initSearch() {
+    if(this.searchInitResult) return this.searchInitResult;
+
     const searchContainer = this.sidebarEl.querySelector('#search-container') as HTMLDivElement;
 
     const scrollable = new Scrollable(searchContainer);
@@ -617,11 +1205,19 @@ export class AppSidebarLeft extends SidebarSlider {
       recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
     };
 
+    // bots.getPopularAppBots
+
     const searchSuper = this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
         inputFilter: 'inputMessagesFilterEmpty',
         name: 'FilterChats',
         type: 'chats'
+      }, {
+        name: 'ChannelsTab',
+        type: 'channels'
+      }, {
+        name: 'MiniApps.AppsSearch',
+        type: 'apps'
       }, {
         inputFilter: 'inputMessagesFilterPhotoVideo',
         name: 'SharedMediaTab2',
@@ -650,6 +1246,8 @@ export class AppSidebarLeft extends SidebarSlider {
       showSender: true,
       managers: this.managers
     });
+
+    this.watchChannelsTabVisibility();
 
     searchContainer.prepend(searchSuper.nav.parentElement.parentElement);
     scrollable.append(searchSuper.container);
@@ -875,6 +1473,7 @@ export class AppSidebarLeft extends SidebarSlider {
       if(!IS_MOBILE_SAFARI && !appNavigationController.findItemByType(navigationType)) {
         appNavigationController.pushItem({
           onPop: () => {
+            if(this.isAnimatingCollapse) return false;
             close();
           },
           type: navigationType
@@ -882,6 +1481,10 @@ export class AppSidebarLeft extends SidebarSlider {
       }
 
       transition(1);
+
+      this.buttonsContainer.classList.add('is-visible');
+      this.isSearchActive = true;
+      this.onSomethingOpenInsideChange();
     };
 
     this.inputSearch.input.addEventListener('focus', onFocus);
@@ -895,6 +1498,10 @@ export class AppSidebarLeft extends SidebarSlider {
       appNavigationController.removeByType('global-search');
 
       transition(0);
+
+      this.buttonsContainer.classList.remove('is-visible');
+      this.isSearchActive = false;
+      this.onSomethingOpenInsideChange(true);
     });
 
     const clearRecentSearchBtn = ButtonIcon('close');
@@ -912,6 +1519,63 @@ export class AppSidebarLeft extends SidebarSlider {
         });
       });
     });
+
+    return this.searchInitResult = {
+      open: (focus = true) => {
+        onFocus();
+        focus && this.inputSearch.input.focus();
+      },
+      close: () => {
+        close();
+      }
+    };
+  }
+
+  private async watchChannelsTabVisibility() {
+    const checkChannelsVisiblity = async() => {
+      const dialogs = await this.managers.dialogsStorage.getCachedDialogs();
+
+      let hasChannels = false;
+      for(const dialog of dialogs) {
+        hasChannels = await this.managers.appPeersManager.isBroadcast(dialog.peerId);
+        if(hasChannels) break;
+      }
+
+      const channelsTab = this.searchSuper.mediaTabs.find((tab) => tab.type === 'channels');
+      channelsTab.menuTab?.classList.toggle('hide', !hasChannels);
+    };
+
+    checkChannelsVisiblity();
+
+    rootScope.addEventListener('channel_update', () => {
+      pause(200).then(() => checkChannelsVisiblity());
+    });
+    rootScope.addEventListener('peer_deleted', () => {
+      checkChannelsVisiblity();
+    });
+  }
+
+  public closeSearch() {
+    simulateClickEvent(this.backBtn);
+  }
+
+  public createTab<T extends SliderSuperTab>(
+    ctor: SliderSuperTabConstructable<T>,
+    destroyable = true,
+    doNotAppend?: boolean
+  ) {
+    const ctorsToOpenInPopup = [AppSettingsTab, AppEditFolderTab, AppChatFoldersTab]
+    if(this.isCollapsed() && !mediaSizes.isLessThanFloatingLeftSidebar && ctorsToOpenInPopup.includes(ctor as any)) {
+      const popup = new SettingsSliderPopup(this.managers);
+      popup.show();
+      return popup.slider.createTab(ctor, destroyable, doNotAppend);
+    }
+    return super.createTab(ctor, destroyable, doNotAppend);
+  }
+
+  public async closeTabsBefore(clb: () => void) {
+    this.closeEverythingInside() && await pause(200);
+    clb();
   }
 }
 
@@ -937,3 +1601,25 @@ export class SettingChatListSection extends SettingSection {
 const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
 export default appSidebarLeft;
+
+function getVersionLink() {
+  const btnMenuFooter = document.createElement('a');
+  btnMenuFooter.href = 'https://github.com/morethanwords/tweb/blob/master/CHANGELOG.md';
+  setBlankToAnchor(btnMenuFooter);
+  btnMenuFooter.classList.add('btn-menu-footer');
+  btnMenuFooter.addEventListener(CLICK_EVENT_NAME, (e) => {
+    e.stopPropagation();
+    contextMenuController.close();
+  });
+  const t = document.createElement('span');
+  t.classList.add('btn-menu-footer-text');
+  t.textContent = `Telegram Web${App.suffix} ${App.version} (${App.build})`;
+  btnMenuFooter.append(t);
+
+  return btnMenuFooter;
+  // btnMenu.classList.add('has-footer');
+  // btnMenu.append(btnMenuFooter);
+
+  // const a = btnMenu.querySelector('.a .btn-menu-item-icon');
+  // if(a) a.textContent = 'A';
+}

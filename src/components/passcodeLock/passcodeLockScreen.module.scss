@@ -1,0 +1,65 @@
+@import '../../scss/variables';
+@import '../../scss/mixins';
+
+.Container {
+  position: relative;
+  height: 100%;
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: var(--surface-color);
+}
+
+.Card {
+  z-index: 1;
+
+  width: 320px;
+  max-width: 100%;
+  padding: 16px 24px;
+  border-radius: 20px;
+
+  background-color: var(--surface-color);
+
+  @include respond-to(handhelds) {
+    width: 100%;
+  }
+}
+
+.Description {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--secondary-text-color);
+  padding: 0 .5rem;
+}
+
+.Input {
+  --height: 3rem;
+}
+
+.SubmitButton {
+  height: 3rem;
+}
+
+.LogoutButton {
+  position: relative;
+  color: inherit;
+  text-decoration: underline;
+
+  transition: color 0.1s;
+  &:hover {
+    color: hsl(from currentColor h s calc(l - 15));
+  }
+
+  /* Increase the clickable area on mobile devices */
+  :global(.is-mobile) &::before {
+    content: '';
+    position: absolute;
+    left: -0.5rem;
+    right: -0.5rem;
+    top: -0.5rem;
+    bottom: -0.5rem;
+  }
+}

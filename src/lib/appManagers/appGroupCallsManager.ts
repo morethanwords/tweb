@@ -420,7 +420,7 @@ export class AppGroupCallsManager extends AppManager {
     } catch(error) {
       assumeType<ApiError>(error);
 
-      if(error.code === 400 && error.type.indexOf('CALL_MIGRATE') === 0) {
+      if(error.type?.indexOf('CALL_MIGRATE') === 0) {
         const dcId = +error.type.match(/^(CALL_MIGRATE_)(\d+)/)[2] as DcId;
         return this._fetchRtmpState(call, retry, dcId);
       }

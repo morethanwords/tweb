@@ -110,6 +110,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
   protected middlewareHelper: MiddlewareHelper;
   protected destroyed: boolean;
+  protected shown: boolean;
 
   protected night: boolean;
 
@@ -320,6 +321,11 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   }
 
   public show() {
+    if(this.shown) {
+      return;
+    }
+
+    this.shown = true;
     this.navigationItem = {
       type: 'popup',
       onPop: () => {

@@ -18,6 +18,8 @@ import fixBase64String from '../helpers/fixBase64String';
 import bytesCmp from '../helpers/bytes/bytesCmp';
 import bytesToBase64 from '../helpers/bytes/bytesToBase64';
 import textToSvgURL from '../helpers/textToSvgURL';
+import AccountController from '../lib/accounts/accountController';
+import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
 
 const FETCH_INTERVAL = 3;
 
@@ -33,7 +35,9 @@ const onFirstMount = async() => {
   const btnBack = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Cancel'});
   inputWrapper.append(btnBack);
 
-  getLanguageChangeButton(inputWrapper);
+  if(getCurrentAccount() === 1) {
+    getLanguageChangeButton(inputWrapper);
+  }
 
   const container = imageDiv.parentElement;
 
@@ -61,7 +65,7 @@ const onFirstMount = async() => {
   const QRCodeStyling = results[0].default;
 
   let stop = false;
-  rootScope.addEventListener('user_auth', () => {
+  rootScope.addEventListener('user_auth', (auth) => {
     stop = true;
     cachedPromise = null;
   }, {once: true});
@@ -71,10 +75,12 @@ const onFirstMount = async() => {
 
   const iterate = async(isLoop: boolean) => {
     try {
+      const userIds = await AccountController.getUserIds();
       let loginToken = await rootScope.managers.apiManager.invokeApi('auth.exportLoginToken', {
         api_id: App.id,
         api_hash: App.hash,
-        except_ids: []
+        except_ids: userIds.map((userId) => userId.toUserId())
+        // except_ids: []
       }, {ignoreErrors: true});
 
       if(loginToken._ === 'auth.loginTokenMigrateTo') {
@@ -192,7 +198,6 @@ const onFirstMount = async() => {
     } catch(err) {
       switch((err as ApiError).type) {
         case 'SESSION_PASSWORD_NEEDED':
-          (err as ApiError).handled = true;
           import('./pagePassword').then((m) => m.default.mount());
           stop = true;
           cachedPromise = null;

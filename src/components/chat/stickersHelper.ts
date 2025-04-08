@@ -20,8 +20,6 @@ import AutocompleteHelperController from './autocompleteHelperController';
 
 export default class StickersHelper extends AutocompleteHelper {
   private scrollable: Scrollable;
-  private superStickerRenderer: SuperStickerRenderer;
-  private lazyLoadQueue: LazyLoadQueue;
   private onChangeScreen: () => void;
   private listenerSetter: ListenerSetter;
 
@@ -67,8 +65,6 @@ export default class StickersHelper extends AutocompleteHelper {
   public checkEmoticon(emoticon: string) {
     const middleware = this.controller.getMiddleware();
 
-    this.lazyLoadQueue?.clear();
-
     preloadAnimatedEmojiSticker(emoticon);
     this.managers.appStickersManager.getStickersByEmoticon({
       emoticon,
@@ -88,19 +84,26 @@ export default class StickersHelper extends AutocompleteHelper {
 
       let ready: Promise<void>;
 
-      this.lazyLoadQueue.clear();
       if(stickers.length) {
+        const lazyLoadQueue = new LazyLoadQueue();
+        const superStickerRenderer = new SuperStickerRenderer({
+          regularLazyLoadQueue: lazyLoadQueue,
+          group: this.chat.animationGroup,
+          managers: this.managers
+        });
+
         ready = new Promise<void>((resolve) => {
           const promises: Promise<any>[] = [];
           stickers.forEach((sticker) => {
-            container.append(this.superStickerRenderer.renderSticker(sticker as MyDocument, undefined, promises));
+            container.append(superStickerRenderer.renderSticker(sticker as MyDocument, undefined, promises));
           });
 
           (Promise.all(promises) as Promise<any>).finally(resolve);
         });
 
         middleware.onClean(() => {
-          this.superStickerRenderer.clear();
+          lazyLoadQueue.clear();
+          setTimeout(() => superStickerRenderer.destroy(), 500); // * fix video flick
         });
       } else {
         ready = Promise.resolve();
@@ -136,11 +139,5 @@ export default class StickersHelper extends AutocompleteHelper {
     this.container.append(this.list);
 
     this.scrollable = new Scrollable(this.container);
-    this.lazyLoadQueue = new LazyLoadQueue();
-    this.superStickerRenderer = new SuperStickerRenderer({
-      regularLazyLoadQueue: this.lazyLoadQueue,
-      group: this.chat.animationGroup,
-      managers: this.managers
-    });
   }
 }

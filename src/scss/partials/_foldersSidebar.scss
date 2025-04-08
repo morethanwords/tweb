@@ -1,0 +1,186 @@
+.folders-sidebar {
+  position: relative;
+  flex: 5rem 0 0;
+
+  display: flex;
+  flex-direction: column;
+
+  --background: #212121;
+  --background-hover: #272727;
+  
+  .night & {
+    --background: #141414;
+    --background-hover: #1b1b1b;
+  }
+
+  background-color: var(--background);
+  color: #717579;
+
+  z-index: 4;
+
+  --folder-item-ripple-color: rgba(255, 255, 255, #{$hover-alpha});
+
+  @include respond-to(until-floating-left-sidebar) {
+    display: none;
+  }
+
+  body:not(.has-folders-sidebar) & {
+    display: none;
+  }
+
+  &__scrollable {
+    --border-color: rgba(255, 255, 255, .2);
+    
+    .night & {
+      --border-color: rgba(255, 255, 255, .1);
+    }
+
+    &-position {
+      position: relative;
+      flex: 1;
+  
+      --scrollbar-color: rgba(255, 255, 255, .2);
+    }
+  }
+
+  &__folder-item {
+    --ripple-color: var(--folder-item-ripple-color) !important;
+    position: relative;
+    flex-shrink: 0;
+    flex-grow: 0;
+
+    overflow: hidden;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background-color: var(--background);
+
+    flex-direction: column;
+    gap: .375rem;
+
+    padding: .75rem 0;
+    min-height: 3.5rem;
+
+    font-size: 10px;
+    line-height: 12px;
+    font-weight: var(--font-weight-bold);
+    
+    cursor: pointer;
+
+    @include hover() {
+      --background: var(--background-hover);
+    }
+
+    &-icon {
+      font-size: 1.875rem;
+    }
+
+    &-badge {
+      position: absolute;
+      top: 6px;
+      right: 19px;
+
+      font-size: 12px;
+      line-height: 18px !important;
+
+      box-shadow: 0 0 0 1px var(--background);
+
+      transition: none !important;
+
+      &.badge-gray {
+        background-color: #717579;
+      }
+    }
+
+    &-name {
+      max-width: 80%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &--selected {
+      color: var(--primary-color);
+    }
+  }
+
+  &__menu-button {
+    .folders-sidebar__folder-item-icon {
+      font-size: 1.5rem;
+    }
+
+    .btn-menu {
+      inset-inline: 3rem auto;
+    }
+  }
+
+  .btn-new-menu {
+    display: none;
+    position: absolute !important;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%) !important;
+
+    .btn-menu.top-left {
+      --transform-origin-x: var(--transform-origin-inline-start);
+      inset-inline: 0 auto;
+      inset-block: auto 120%;
+    }
+
+    @include respond-to(no-floating-left-sidebar) {
+      html:has(#column-left.is-collapsed) & {
+        display: flex;
+      }
+    }
+  }
+
+  &__add-folders-button {
+    position: absolute;
+    top: calc(var(--offset) * 1px);
+    right: 0;
+    transform: translate(100%, -50%);
+
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .375rem;
+
+    width: 4.5rem;
+    height: 5.5rem;
+    border-top-right-radius: $border-radius;
+    border-bottom-right-radius: $border-radius;
+    background-color: var(--background);
+
+    mask-image: url('/assets/img/add-chats-to-folder-shape.svg');
+
+    font-size: 10px;
+    line-height: 12px;
+    font-weight: var(--font-weight-bold);
+
+    color: #aaaaaa;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+
+    transition: opacity .2s;
+
+    cursor: pointer;
+
+    @include hover() {
+      --background: var(--background-hover);
+    }
+
+    :has(#column-left.is-collapsed:not(.has-open-tabs)) & {
+      display: flex;
+    }
+
+    body:has(.hide-add-folders) & {
+      opacity: 0 !important;
+    }
+
+    &-icon {
+      font-size: 30px;
+    }
+  }
+}

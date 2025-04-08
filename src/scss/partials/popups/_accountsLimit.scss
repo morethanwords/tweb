@@ -1,0 +1,143 @@
+.accounts-limit-popup {
+  .popup-header {
+    margin-bottom: 0px;
+  }
+  .popup-title {
+    padding: 0 12px;
+    line-height: 40px;
+  }
+  .popup-container {
+    padding: 12px;
+    max-width: 360px;
+    border-radius: 16px;
+  }
+
+  .popup-body {
+    padding-top: 12px;
+  }
+}
+
+.accounts-limit {
+  &__pin-container {
+    position: relative;
+    display: flex;
+    margin: 0 auto;
+    width: min-content;
+    margin-bottom: 8px;
+
+    transform-origin: 50% 100%;
+
+    animation: accounts-limit-pin-animation 0.8s forwards linear;
+  }
+
+  &__pin-icon {
+    position: absolute;
+    top: 6px;
+    left: 12px;
+    font-size: 20px;
+    color: white;
+  }
+  &__pin-count {
+    position: absolute;
+    top: 6px;
+    right: 12px;
+    font-size: 16px;
+    line-height: 20px;
+    color: white;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(100%);
+    animation: accounts-limit-pin-count-animation 0.12s forwards 0.4s;
+  }
+
+  &__bar {
+    display: flex;
+    height: 2rem;
+    margin: 0 4px;
+    margin-bottom: 8px;
+
+    font-size: 16px;
+    line-height: 20px;
+    font-weight: 500;
+
+    --radius: 10px;
+  }
+
+  &__bar-left {
+    flex: 1;
+    padding: 6px 12px;
+    background-color: var(--limit-line-empty-background);
+    border-top-left-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+  }
+
+  &__bar-right {
+    flex: 1;
+    padding: 6px 12px;
+    color: white;
+    background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
+    border-top-right-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__description {
+    padding: 16px 12px;
+
+    b {
+      font-weight: 700;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 4px 8px;
+
+    .popup-button {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-inline-end: 0 !important;
+    }
+  }
+}
+
+@keyframes accounts-limit-pin-animation {
+  0% {
+    transform: translateX(-160px) rotate(-16deg);
+    opacity: 0.5;
+  }
+
+  30% {
+    transform: translateX(0px) rotate(-16deg);
+    opacity: 1;
+  }
+
+  50% {
+    transform: translateX(0px) rotate(12deg);
+  }
+
+  75% {
+    transform: rotate(-2deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes accounts-limit-pin-count-animation {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0%);
+  }
+}

@@ -1043,7 +1043,6 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
 
     this.scrollable.append(element);
     promise.then(async([_, __, loaded]) => {
-      console.log(this.stats, this.messages, this.stories);
       const div = document.createElement('div');
       this.scrollable.append(div);
       const dispose = render(() => this._construct(...loaded), div);

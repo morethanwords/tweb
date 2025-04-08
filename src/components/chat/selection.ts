@@ -691,9 +691,9 @@ export class SearchSelection extends AppSelection {
     const peerId = [...this.selectedMids.keys()][0] || this.searchSuper.searchContext.peerId;
     const promise = this.managers.appStoriesManager.togglePinnedToTop(peerId, ids, pin);
     this.cancelSelection();
-    promise.catch((err) => {
-      if((err as ApiError).type === 'STORY_ID_TOO_MANY') {
-        toastNew({langPackKey: 'StoriesPinLimit', langPackArguments: [(err as ApiError).limit]});
+    promise.catch((err: ApiError) => {
+      if(err.type === 'STORY_ID_TOO_MANY') {
+        toastNew({langPackKey: 'StoriesPinLimit', langPackArguments: [+err.message]});
       }
     });
   };

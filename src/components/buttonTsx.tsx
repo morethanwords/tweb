@@ -1,9 +1,10 @@
-import {JSX} from 'solid-js';
+import {JSX, Ref} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
 import {IconTsx} from './iconTsx';
 
 export default function Button(props: Partial<{
+  ref: Ref<HTMLElement>,
   asLink: boolean,
   asDiv: boolean,
   class: string,
@@ -16,6 +17,7 @@ export default function Button(props: Partial<{
 }> = {}): JSX.Element {
   return (
     <Dynamic
+      ref={props.ref as Ref<any>}
       component={props.asLink ? 'a' : (props.asDiv ? 'div' : 'button')}
       class={props.class}
       disabled={props.disabled}

@@ -80,7 +80,6 @@ const submitCode = (code: string) => {
       case 'SESSION_PASSWORD_NEEDED':
         // console.warn('pageAuthCode: SESSION_PASSWORD_NEEDED');
         good = true;
-        err.handled = true;
         await (await import('./pagePassword')).default.mount(); // lol
         setTimeout(() => {
           codeInput.value = '';

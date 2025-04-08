@@ -116,7 +116,7 @@ const TRANSITION_MODE_MAP = {
  *
  * @param props {@link TransitionProps}
  */
-export const Transition: FlowComponent<TransitionProps> = props => {
+export const Transition: FlowComponent<TransitionProps> = (props) => {
   const classnames = createClassnames(props);
 
   return createSwitchTransition(

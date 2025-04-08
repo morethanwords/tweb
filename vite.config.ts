@@ -36,8 +36,9 @@ const SOLID_PATH = USE_SOLID_SRC ? SOLID_SRC_PATH : SOLID_BUILT_PATH;
 const USE_OWN_SOLID = existsSync(resolve(rootDir, SOLID_PATH));
 
 const USE_SSL = false;
+const USE_SSL_CERTS = false;
 const NO_MINIFY = false;
-const SSL_CONFIG: any = undefined && USE_SSL && {
+const SSL_CONFIG: any = USE_SSL_CERTS && USE_SSL && {
   name: '192.168.95.17',
   certDir: './certs/'
 };
@@ -62,7 +63,8 @@ export default defineConfig({
       typescript: true,
       eslint: {
         // for example, lint .ts and .tsx
-        lintCommand: 'eslint "./src/**/*.{ts,tsx}" --ignore-pattern "/src/solid/*"'
+        lintCommand: 'eslint "./src/**/*.{ts,tsx}" --ignore-pattern "/src/solid/*"',
+        useFlatConfig: true
       }
     }),
     solidPlugin(),

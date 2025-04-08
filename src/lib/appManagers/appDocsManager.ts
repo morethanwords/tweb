@@ -12,7 +12,7 @@
 import type {ThumbCache} from '../storages/thumbs';
 import {Document, DocumentAttribute, PhotoSize, WallPaper} from '../../layer';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
-import {getFullDate} from '../../helpers/date';
+import {getFullDate} from '../../helpers/date/getFullDate';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceArrayInObject from '../../helpers/object/safeReplaceArrayInObject';
 import {AppManager} from './manager';
@@ -53,11 +53,14 @@ export class AppDocsManager extends AppManager {
 
   private requestingDocParts: {[docId: DocId]: Set<() => void>};
 
+  public altDocsByMainMediaDocument: {[docId: DocId]: Document.document[]};
+
   protected after() {
     this.docs = {};
     this.uploadingWallPapers = {};
     this.fixingChromiumMp4 = {};
     this.requestingDocParts = {};
+    this.altDocsByMainMediaDocument = {};
 
     MTProtoMessagePort.getInstance<false>().addEventListener('serviceWorkerOnline', (online) => {
       if(!online) {
@@ -77,9 +80,18 @@ export class AppDocsManager extends AppManager {
     }
   };
 
-  public saveDoc(doc: Document, context?: ReferenceContext): MyDocument {
+  public saveDoc(doc: Document, context?: ReferenceContext, altDocuments?: Document[]): MyDocument {
     if(!doc || doc._ === 'documentEmpty') {
       return;
+    }
+
+    // * force it to be string everywhere, at least for HLS streaming
+    doc.id = doc.id.toString();
+
+    if(altDocuments) {
+      const saved = altDocuments.map((altDoc) => this.saveDoc(altDoc, context)).filter(Boolean);
+      this.altDocsByMainMediaDocument[doc.id] = saved;
+      altDocuments.splice(0, altDocuments.length, ...saved);
     }
 
     const oldDoc = this.docs[doc.id];
@@ -242,12 +254,25 @@ export class AppDocsManager extends AppManager {
       doc.file_name = `${doc.type}_${date}${ext ? '.' + ext : ''}`;
     }
 
-    if(appManagersManager.isServiceWorkerOnline && ((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video')/*  || doc.mime_type.indexOf('video/') === 0 */) {
+    if(
+      appManagersManager.isServiceWorkerOnline &&
+      (
+        (doc.type === 'gif' && doc.size > 8e6) ||
+        doc.type === 'audio' ||
+        doc.type === 'video'
+      )/*  || doc.mime_type.indexOf('video/') === 0 */
+    ) {
       doc.supportsStreaming = true;
 
       const cacheContext = this.thumbsStorage.getCacheContext(doc);
-      if(!cacheContext.url) {
-        this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc), 0);
+      // const supportsHlsStreaming = (altDocuments || []).some((doc) => isDocumentHlsQualityFile(doc));
+
+      /**
+       * Need to override when supportsHlsStreaming=true as for some reason the message.media
+       * comes first without alt_documents, and later comes with them
+       */
+      if(!cacheContext.url/*  || supportsHlsStreaming */) {
+        this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc/* , {supportsHlsStreaming} */), 0);
       }
     } else {
       doc.supportsStreaming = false;
@@ -425,5 +450,9 @@ export class AppDocsManager extends AppManager {
       tryPatchMp4(u8);
       return this.fixingChromiumMp4[src] = URL.createObjectURL(new Blob([u8]));
     });
+  }
+
+  public getAltDocsByDocument(docId: DocId) {
+    return this.altDocsByMainMediaDocument[docId];
   }
 }

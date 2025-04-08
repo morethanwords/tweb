@@ -39,7 +39,9 @@ import AppPrivacyAboutTab from './privacy/about';
 import PopupPremium from '../../popups/premium';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
-import AppPrivacyMessagesTab from './privacy/messages';
+import {AppPrivacyMessagesTab} from './solidJsTabs';
+import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, providedTabs} from './solidJsTabs';
+import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -109,6 +111,33 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       const twoFactorRow = new Row(twoFactorRowOptions);
       twoFactorRow.freezed = true;
 
+      const passcodeLockRowOptions: ConstructorParameters<typeof Row>[0] = {
+        icon: 'key',
+        titleLangKey: 'PasscodeLock.Item.Title',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          if(passcodeEnabled) {
+            this.slider.createTab(AppPasscodeEnterPasswordTab)
+            .open({
+              buttonText: 'PasscodeLock.Next',
+              inputLabel: 'PasscodeLock.EnterYourPasscode',
+              onSubmit: async(passcode, _, {isMyPasscode}) => {
+                const isCorrect = await isMyPasscode(passcode);
+                passcode = '';
+                if(!isCorrect) throw {};
+
+                this.slider.createTab(AppPasscodeLockTab).open();
+              }
+            })
+          } else {
+            this.slider.createTab(AppPasscodeLockTab).open();
+          }
+        },
+        listenerSetter: this.listenerSetter
+      };
+      const passcodeLockRow = new Row(passcodeLockRowOptions);
+      passcodeLockRow.freezed = true;
+
       const activeSessionsRow = this.activeSessionsRow = new Row({
         icon: 'activesessions',
         titleLangKey: 'SessionsTitle',
@@ -140,7 +169,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       });
       websitesRow.freezed = true;
 
-      section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionsRow.container, websitesRow.container);
+      section.content.append(blockedUsersRow.container, passcodeLockRow.container, twoFactorRow.container, activeSessionsRow.container, websitesRow.container);
       this.scrollable.append(section.container);
 
       const setBlockedCount = (count: number) => {
@@ -178,6 +207,20 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         // console.log('password state', state);
       });
 
+      let passcodeEnabled: boolean;
+      const setPasscodeEnabledState = (enabled?: boolean) => {
+        passcodeEnabled = enabled;
+        replaceContent(passcodeLockRow.subtitle, i18n(enabled ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
+      };
+      this.managers.appStateManager.getState().then((state) => {
+        passcodeLockRow.freezed = false;
+        setPasscodeEnabledState(state.settings?.passcode?.enabled || false);
+      });
+      this.listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
+        if(key === joinDeepPath('settings', 'passcode', 'enabled'))
+          setPasscodeEnabledState(value);
+      });
+
       this.updateActiveSessions();
       promises.push(this.updateActiveWebsites(p.webAuthorizations));
     }
@@ -195,7 +238,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       }> = {};
 
       const openTabWithGlobalPrivacy = async(
-        constructor: typeof AppPrivacyLastSeenTab | typeof AppPrivacyMessagesTab,
+        constructor: typeof AppPrivacyLastSeenTab,
         key: RowKey
       ) => {
         const globalPrivacy = await p.globalPrivacy;
@@ -297,7 +340,12 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         title: createPremiumTitle('PrivacyMessagesTitle'),
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          openTabWithGlobalPrivacy(AppPrivacyMessagesTab, 'new_noncontact_peers_require_premium');
+          this.slider.createTab(AppPrivacyMessagesTab).open({
+            onSaved: (updatedPrivacy) => {
+              p.globalPrivacy = updatedPrivacy;
+              updatePrivacyRow('new_noncontact_peers_require_premium');
+            }
+          });
         },
         listenerSetter: this.listenerSetter
       });
@@ -314,9 +362,19 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           [PrivacyType.Nobody]: 'PrivacySettingsController.Nobody'
         };
 
+        const getLangKeyForMessagesPrivacy = (globalPrivacy: GlobalPrivacySettings.globalPrivacySettings): LangPackKey => {
+          if(!rootScope.premium) return map[PrivacyType.Everybody];
+
+          if(+globalPrivacy.noncontact_peers_paid_stars) return 'PrivacySettingsController.Paid';
+
+          if(globalPrivacy.pFlags.new_noncontact_peers_require_premium) return 'Privacy.ContactsAndPremium';
+
+          return map[PrivacyType.Everybody];
+        };
+
         if(!key.startsWith('inputPrivacy')) {
           p.globalPrivacy.then((globalPrivacy) => {
-            const langKey = globalPrivacy.pFlags.new_noncontact_peers_require_premium ? 'Privacy.ContactsAndPremium' : map[PrivacyType.Everybody];
+            const langKey = getLangKeyForMessagesPrivacy(globalPrivacy);
             row.subtitle.replaceChildren(i18n(langKey));
           });
           return;
@@ -561,3 +619,5 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     });
   }
 }
+
+providedTabs.AppPrivacyAndSecurityTab = AppPrivacyAndSecurityTab;

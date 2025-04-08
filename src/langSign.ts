@@ -2,7 +2,6 @@ const lang = {
   'Login.Title': 'Sign in to Telegram',
   'Login.PhoneLabel': 'Phone Number',
   'Login.PhoneLabelInvalid': 'Phone Number Invalid',
-  'Login.KeepSigned': 'Keep me signed in',
   'Login.StartText': 'Please confirm your country code\nand enter your phone number.',
   'Login.Code.SentSms': 'We have sent you an SMS\nwith the code.',
   'Login.Code.SentInApp': 'We have sent you a message in Telegram\nwith the code.',

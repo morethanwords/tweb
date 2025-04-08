@@ -64,7 +64,7 @@ export default function createStickersContextMenu({
 
   const updateEmojiStatusUntil = async(duration: number) => {
     updateEmojiStatus({
-      _: 'emojiStatusUntil',
+      _: 'emojiStatus',
       document_id: doc.id,
       until: tsNow(true) + duration
     });
@@ -146,7 +146,7 @@ export default function createStickersContextMenu({
     icon: 'schedule',
     text: 'Chat.Send.ScheduledMessage',
     onClick: () => chatInput.scheduleSending(() => chatInput.sendMessageWithDocument({document: doc, target})),
-    verify: () => chatInput && !!chatInput.chat.peerId
+    verify: () => chatInput && !!chatInput.chat.peerId && !chatInput.chat.starsAmount
   }];
 
   if(canHaveEmojiTimer) buttons = [{

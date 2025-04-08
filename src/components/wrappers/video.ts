@@ -53,7 +53,7 @@ import ButtonIcon from '../buttonIcon';
 import overlayCounter from '../../helpers/overlayCounter';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
-const USE_OBSERVER = false;
+export const USE_VIDEO_OBSERVER = false;
 
 let roundVideoCircumference = 0;
 mediaSizes.addEventListener('changeScreen', (from, to) => {
@@ -82,7 +82,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
 
 let turnedObserverOn = false;
 
-export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName}: {
+export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName, onGlobalMedia, onLoad}: {
   doc: MyDocument,
   altDoc?: MyDocument,
   container?: HTMLElement,
@@ -111,7 +111,9 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   useBlur?: boolean | number,
   observer?: SuperIntersectionObserver,
   setShowControlsOn?: HTMLElement,
-  uploadingFileName?: string
+  uploadingFileName?: string,
+  onGlobalMedia?: (media: HTMLMediaElement) => void,
+  onLoad?: () => void
 }) {
   const supportsStreaming = doc.supportsStreaming && !ignoreStreaming;
   if(!supportsStreaming && altDoc && !onlyPreview && !IS_H265_SUPPORTED) {
@@ -149,7 +151,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
       if(!noPlayButton && doc.type !== 'round') {
         if(canAutoplay && !noAutoDownload) {
-          if(observer && USE_OBSERVER) {
+          if(observer && USE_VIDEO_OBSERVER) {
             willObserveSound = true;
             // noAutoplayAttribute = true;
             originalMiddleware = middleware;
@@ -261,6 +263,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     const onLoad = () => {
       const message: Message.message = (divRound as any).message;
       const globalVideo = appMediaPlaybackController.addMedia(message, !noAutoDownload) as HTMLVideoElement;
+      onGlobalMedia?.(globalVideo);
       const clear = () => {
         (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
           if(isInDOM(globalVideo)) {
@@ -654,6 +657,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
         }
 
         attachSoundObserver?.();
+        onLoad?.();
       }, onError);
 
       if(altDoc && altCacheContext) {
@@ -705,7 +709,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   }
 
   const attachSoundObserver = willObserveSound ? () => {
-    (video as any).mini = true;
+    video.mini = true;
     video.pause();
     // const button = ButtonIcon('zoomin video-to-viewer', {noRipple: true});
     // container.append(button);
@@ -805,7 +809,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     const debouncedDestroy = debounce(destroyPlayer, 1000, false, true);
 
     let videoPlayer: VideoPlayer, releasePromise: CancellablePromise<void>/* , changedVolume = false */;
-    (container as any).onMouseMove = (e: MouseEvent) => {
+    container.onMiniVideoMouseMove = (e: MouseEvent) => {
       if(videoPlayer) {
         return;
       }
@@ -915,7 +919,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       // detachClickEvent();
       releaseSingleMedia?.();
       observer.unobserve(video, onIntersection);
-      delete (container as any).onMouseMove;
+      delete container.onMiniVideoMouseMove;
       appMediaPlaybackController.removeEventListener('toggleVideoAutoplaySound', onAutoplaySound);
       // appMediaPlaybackController.removeEventListener('singleMedia', onSingleMedia);
       appMediaPlaybackController.removeEventListener('playbackParams', onPlaybackMediaParams);

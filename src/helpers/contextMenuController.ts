@@ -4,14 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {ButtonMenuItemOptions} from '../components/buttonMenu';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import findUpClassName from './dom/findUpClassName';
 import mediaSizes from './mediaSizes';
 import OverlayClickHandler from './overlayClickHandler';
 import overlayCounter from './overlayCounter';
+import pause from './schedulers/pause';
+
+type AdditionalMenuItem = {
+  level: number,
+  element: HTMLElement,
+  triggerElement: HTMLElement,
+  close: () => void,
+}
 
 class ContextMenuController extends OverlayClickHandler {
+  protected additionalMenus: AdditionalMenuItem[] = [];
+
   constructor() {
     super('menu', true);
 
@@ -34,26 +42,57 @@ class ContextMenuController extends OverlayClickHandler {
   }
 
   private onMouseMove = (e: MouseEvent) => {
-    const element = findUpClassName(e.target, 'btn-menu-item');
-    const inner = (element as any)?.inner as ButtonMenuItemOptions['inner'];
+    const allMenus = [
+      ...[...this.additionalMenus].reverse(),
+      {
+        triggerElement: undefined,
+        level: 0,
+        element: this.element,
+        close: () => this.close()
+      }
+    ];
 
-    const rect = this.element.getBoundingClientRect();
-    const {clientX, clientY} = e;
+    function isFartherThan(element: HTMLElement, distance: number) {
+      const {clientX, clientY} = e;
 
-    const diffX = clientX >= rect.right ? clientX - rect.right : rect.left - clientX;
-    const diffY = clientY >= rect.bottom ? clientY - rect.bottom : rect.top - clientY;
+      const rect = element.getBoundingClientRect();
 
-    if(diffX >= 100 || diffY >= 100) {
-      this.close();
-      // openedMenu.parentElement.click();
+      const diffX = clientX >= rect.right ? clientX - rect.right : rect.left - clientX;
+      const diffY = clientY >= rect.bottom ? clientY - rect.bottom : rect.top - clientY;
+
+      return diffX >= distance || diffY >= distance;
     }
-    // console.log('mousemove', diffX, diffY);
+
+    for(const item of allMenus) {
+      if(item.triggerElement && !isFartherThan(item.triggerElement, 40)) break;
+
+      if(isFartherThan(item.element, item.level === 0 ? 100 : 40)) {
+        this.closeAndRemoveMenu(item);
+      } else {
+        break;
+      }
+    }
   };
+
+  protected closeAndRemoveMenu(item: AdditionalMenuItem) {
+    item.close();
+    const idx = this.additionalMenus.indexOf(item);
+    if(idx > -1) this.additionalMenus.splice(idx, 1);
+  }
+
+  public closeMenusByLevel(level: number) {
+    this.additionalMenus.filter((menu) => menu.level === level).forEach((item) => {
+      item.close();
+      const idx = this.additionalMenus.indexOf(item);
+      if(idx > -1) this.additionalMenus.splice(idx, 1);
+    });
+  }
 
   public close() {
     if(this.element) {
+      const {parentElement} = this.element;
       this.element.classList.remove('active');
-      this.element.parentElement.classList.remove('menu-open');
+      parentElement && parentElement.classList.remove('menu-open');
 
       if(this.element.classList.contains('night')) {
         const element = this.element;
@@ -66,6 +105,12 @@ class ContextMenuController extends OverlayClickHandler {
         }, 400);
       }
     }
+
+    this.additionalMenus.forEach((menu) => {
+      menu.close();
+    });
+
+    this.additionalMenus = [];
 
     super.close();
 
@@ -81,8 +126,9 @@ class ContextMenuController extends OverlayClickHandler {
 
     super.open(element);
 
+    const {parentElement} = this.element;
     this.element.classList.add('active', 'was-open');
-    this.element.parentElement.classList.add('menu-open');
+    parentElement.classList.add('menu-open');
 
     if(onClose) {
       this.addEventListener('toggle', onClose, {once: true});
@@ -90,6 +136,26 @@ class ContextMenuController extends OverlayClickHandler {
 
     if(!IS_TOUCH_SUPPORTED) {
       window.addEventListener('mousemove', this.onMouseMove);
+    }
+  }
+
+  public addAdditionalMenu(element: HTMLElement, triggerElement: HTMLElement, level: number, onClose?: () => void) {
+    this.closeMenusByLevel(level);
+
+    this.additionalMenus.push({
+      element,
+      triggerElement,
+      level,
+      close: () => {
+        element.classList.remove('active');
+        pause(400).then(() => element.remove());
+        onClose();
+      }
+    });
+    element.classList.add('active', 'was-open');
+
+    if(onClose) {
+      this.addEventListener('toggle', onClose, {once: true});
     }
   }
 }

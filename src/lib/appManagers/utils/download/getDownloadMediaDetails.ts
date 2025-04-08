@@ -17,7 +17,7 @@ export default function getDownloadMediaDetails(options: DownloadMediaOptions) {
   const {media, thumb, queueId, onlyCache} = options;
 
   let downloadOptions: DownloadOptions;
-  if(media._ === 'document') downloadOptions = getDocumentDownloadOptions(media, thumb as any, queueId, onlyCache);
+  if(media._ === 'document') downloadOptions = getDocumentDownloadOptions(media, {thumb: thumb as any, queueId, onlyCache});
   else if(media._ === 'photo') downloadOptions = getPhotoDownloadOptions(media, thumb as any, queueId, onlyCache);
   else if(isWebDocument(media)) downloadOptions = getWebDocumentDownloadOptions(media);
   else if(isWebFileLocation(media)) downloadOptions = getWebFileDownloadOptions(media);

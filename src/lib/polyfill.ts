@@ -22,8 +22,8 @@ Uint8Array.prototype.toJSON = function() {
 Promise.prototype.finally = Promise.prototype.finally || function<T>(this: Promise<T>, fn: () => any) {
   const onFinally = (callback: typeof fn) => Promise.resolve(fn()).then(callback);
   return this.then(
-    result => onFinally(() => result),
-    reason => onFinally(() => Promise.reject(reason))
+    (result) => onFinally(() => result),
+    (reason) => onFinally(() => Promise.reject(reason))
   );
 };
 

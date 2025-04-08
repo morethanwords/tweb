@@ -101,7 +101,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
     return;
   }
 
-  const attribute = doc.attributes.find(a => a._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji
+  const attribute = doc.attributes.find((a) => a._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji
   // as thumb will be used first sticker
   wrapSticker({
     doc,

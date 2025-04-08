@@ -307,11 +307,7 @@ const lang = {
   'OnlyNewSubscribers': 'Only New Subscribers',
   'Ends': 'Ends',
   'BoostsViaGifts.Title': 'Boosts via Gifts',
-  'BoostsViaGifts.Subtitle': 'Get more boosts for your channel by gifting Premium to your subscribers.',
-  'BoostsViaGifts.Create': 'Create Giveaway',
   'BoostsViaGifts.CreateSubtitle': 'winners are chosen randomly',
-  'BoostsViaGifts.Specific': 'Award Specific Users',
-  'BoostsViaGifts.SpecificSubtitle': 'select recipients',
   'BoostsViaGifts.Prepaid': 'Prepaid Giveaways',
   'BoostsViaGifts.PrepaidSubtitle': {
     'one_value': '%d subscription for %s',
@@ -330,6 +326,10 @@ const lang = {
   'BoostsViaGifts.EndSubtitle': {
     'one_value': 'Choose when %d subscriber of your channel will receive Telegram Premium.',
     'other_value': 'Choose when %d subscribers of your channel will be randomly selected to receive Telegram Premium.'
+  },
+  'BoostsViaGifts.Stars.EndSubtitle': {
+    'one_value': 'Choose when %d subscriber of your channel will receive Stars.',
+    'other_value': 'Choose when %d subscribers of your channel will be randomly selected to receive Stars.'
   },
   'BoostsViaGifts.Duration': 'Duration of premium subscriptions',
   'BoostsViaGifts.DurationSubtitle': 'You can review the list of features and terms of use for Telegram Premium [here]().',
@@ -394,6 +394,7 @@ const lang = {
     'one_value': 'Due to the giveaway terms, no winner could be selected by Telegram, **1** gift link was forwarded to channel administrators.',
     'other_value': 'Due to the giveaway terms, no winners could be selected by Telegram, all **%d** gift links were forwarded to channel administrators.'
   },
+  'Giveaway.Results.NoWinners.Stars': 'Due to the giveaway terms, no winners could be selected by Telegram, all stars were credited to channel administrators.',
   'Giveaway.Results.Combined': '%s\n%s',
   'SimilarChannels': 'Similar Channels',
   'Premium.Promo.Colors.Title': 'Name and Profile Colors',
@@ -415,12 +416,20 @@ const lang = {
   'BoostsViaGifts.AdditionalPrizesSubtitle': 'All prizes: %s',
   'BoostsViaGifts.AdditionalPrizesSubtitleOff': 'Turn this on if you want to give the winners your own prizes in addition to Telegram Premium subscriptions.',
   'BoostsViaGifts.AdditionalPrizesDetailed': {
-    'one_value': '**%d** Telegram Premium subscription for %s',
-    'other_value': '**%d** Telegram Premium subscriptions for %s'
+    'one_value': '**%d** Telegram Premium subscription for %s.',
+    'other_value': '**%d** Telegram Premium subscriptions for %s.'
   },
   'BoostsViaGifts.AdditionalPrizesDetailedWith': {
-    'one_value': '**%d** %s with Telegram Premium subscription for %s',
-    'other_value': '**%d** %s with Telegram Premium subscriptions for %s'
+    'one_value': '**%d** %s with Telegram Premium subscription for %s.',
+    'other_value': '**%d** %s with Telegram Premium subscriptions for %s.'
+  },
+  'BoostsViaGifts.AdditionalStarsPrizesDetailed': {
+    'one_value': '**%1$d** Star.',
+    'other_value': '**%1$d** Stars.'
+  },
+  'BoostsViaGifts.AdditionalStarsPrizesDetailedWith': {
+    'one_value': '**%d** %s with %1$d Star.',
+    'other_value': '**%d** %s with %1$d Stars.'
   },
   'Giveaway.AlsoPrizes': '**%s** also included **%d** **%s** in the prizes. %s',
   'Giveaway.AlsoPrizes2': {
@@ -430,6 +439,14 @@ const lang = {
   'Giveaway.With': 'with',
   'Giveaway.WithSubscriptionsSingle': 'Telegram Premium subscription for %s',
   'Giveaway.WithSubscriptionsPlural': 'Telegram Premium subscriptions for %s',
+  'Giveaway.WithStars': {
+    'one_value': '%s will be distributed to %1$d winner',
+    'other_value': '%s will be distributed to %1$d winners'
+  },
+  'Giveaway.WithStars.Stars': {
+    'one_value': '**%d** Star',
+    'other_value': '**%d** Stars'
+  },
   'Giveaway.Results.Title': {
     'one_value': '**Winner Selected!**',
     'other_value': '**Winners Selected!**'
@@ -438,6 +455,12 @@ const lang = {
   'Giveaway.Results.Subtitle': {
     'one_value': '%1$d winner of the **[Giveaway]()** was randomly selected by Telegram.',
     'other_value': '%1$d winners of the **[Giveaway]()** were randomly selected by Telegram.'
+  },
+  'Giveaway.Results.Stars.Winners.Single': 'The winner received **%s**.',
+  'Giveaway.Results.Stars.Winners.Plural': 'All winners received a total of **%s**.',
+  'Giveaway.Results.Stars.Winners.Stars': {
+    'one_value': '%d Star',
+    'other_value': '%d Stars'
   },
   'Giveaway.Results.Footer': {
     'one_value': 'The winner received their gift link in a private message.',
@@ -806,6 +829,58 @@ const lang = {
   'Stars.TopUp.Reaction': 'Buy **Stars** and send them to **%s** to support their posts.',
   'Stars.TopUp.Label_default': 'Buy Stars to unlock content and service\nin miniapps on Telegram.',
   'Stars.TopUp.Enough': 'You have enough Stars at the moment. [Buy anyway]()',
+  'Action.StarGiveawayPrize': {
+    'one_value': 'You won a prize in a giveaway organized by **%s**.\n\nYour prize is **%1$d Star**.',
+    'other_value': 'You won a prize in a giveaway organized by **%s**.\n\nYour prize is **%1$d Stars**.'
+  },
+  'Giveaway.Prize': 'Prize',
+  'Giveaway.Prepaid.For': {
+    'one_value': 'for %d user',
+    'other_value': 'for %d users'
+  },
+  'MediaEditor.Free': 'Free',
+  'MediaEditor.Original': 'Original',
+  'MediaEditor.Square': 'Square',
+  'MediaEditor.AspectRatio': 'Aspect ratio',
+  'MediaEditor.Size': 'Size',
+  'MediaEditor.Font': 'Font',
+  'MediaEditor.TypeSomething': 'Type something...',
+  'MediaEditor.Fonts.Roboto': 'Roboto',
+  'MediaEditor.Fonts.SuezOne': 'Suez One',
+  'MediaEditor.Fonts.RubikBubbles': 'Rubik Bubbles',
+  'MediaEditor.Fonts.Playwrite': 'Playwrite',
+  'MediaEditor.Fonts.Chewy': 'Chewy',
+  'MediaEditor.Fonts.CourierPrime': 'Courier Prime',
+  'MediaEditor.Fonts.FugazOne': 'Fugaz One',
+  'MediaEditor.Fonts.Sedan': 'Sedan',
+  'MediaEditor.Tool': 'Tool',
+  'MediaEditor.Brushes.Pen': 'Pen',
+  'MediaEditor.Brushes.Arrow': 'Arrow',
+  'MediaEditor.Brushes.Brush': 'Brush',
+  'MediaEditor.Brushes.Neon': 'Neon',
+  'MediaEditor.Brushes.Blur': 'Blur',
+  'MediaEditor.Brushes.Eraser': 'Eraser',
+  'MediaEditor.RecentlyUsed': 'Recently Used',
+  'MediaEditor.Adjustments.Enhance': 'Enhance',
+  'MediaEditor.Adjustments.Brightness': 'Brightness',
+  'MediaEditor.Adjustments.Contrast': 'Contrast',
+  'MediaEditor.Adjustments.Saturation': 'Saturation',
+  'MediaEditor.Adjustments.Warmth': 'Warmth',
+  'MediaEditor.Adjustments.Fade': 'Fade',
+  'MediaEditor.Adjustments.Highlights': 'Highlights',
+  'MediaEditor.Adjustments.Shadows': 'Shadows',
+  'MediaEditor.Adjustments.Vignette': 'Vignette',
+  'MediaEditor.Adjustments.Grain': 'Grain',
+  'MediaEditor.Adjustments.Sharpen': 'Sharpen',
+  'MediaEditor.DiscardChanges': 'Discard Changes',
+  'MediaEditor.DiscardWarning': 'Are you sure you want to discard your changes?',
+  'MultiAccount.AddAccount': 'Add Account',
+  'MultiAccount.More': 'More',
+  'MultiAccount.ShowNotificationsFrom': 'Show Notifications From',
+  'MultiAccount.ShowNotificationsFromCaption': 'Turn this off if you want to receive notifications only from the account you are currently using.',
+  'MultiAccount.AllAccounts': 'All Accounts',
+  'MultiAccount.AccountsLimitDescription': 'You have reached the limit of **3** connected accounts. You can add more by subscribing to **Telegram Premium**.',
+  'CtrlFSearchTipMac': 'Tip: Use **Cmd+F** to open Search',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1229,6 +1304,10 @@ const lang = {
     'one_value': '%1$d year',
     'other_value': '%1$d years'
   },
+  'MinutesShort': {
+    'one_value': '%1$d min',
+    'other_value': '%1$d min'
+  },
   'TodayAtFormattedWithToday': 'today at %1$s',
   'formatDateAtTime': '%1$s at %2$s',
   'JoinByPeekChannelTitle': 'Join Channel',
@@ -1413,6 +1492,7 @@ const lang = {
   'ResetAutomaticMediaDownloadAlert': 'Are you sure you want to reset auto-download settings?',
   'Reset': 'Reset',
   'SendMessageAsTitle': 'Send message as...',
+  'SendReactionAsTitle': 'Send reaction as...',
   'Devices': 'Devices',
   'LanguageName': 'English',
   'EditCantEditPermissionsPublic': 'This permission is not available in public groups.',
@@ -1856,6 +1936,14 @@ const lang = {
     'one_value': 'New subscribers of the channel:',
     'other_value': 'New subscribers of the channels:'
   },
+  'BoostingStarsGiveawayMsgInfoPlural1': {
+    'one_value': '**%1$d Star** will be distributed',
+    'other_value': '**%1$d Stars** will be distributed'
+  },
+  'BoostingStarsGiveawayMsgInfoPlural2': {
+    'one_value': 'to the **%1$d** winner.',
+    'other_value': 'among **%1$d** winners.'
+  },
   'BoostingHowItWork': 'LEARN MORE',
   'BoldMonths': {
     'one_value': '**%1$d** month',
@@ -1871,9 +1959,17 @@ const lang = {
     'one_value': 'This giveaway is sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscription for %4$s for its followers.',
     'other_value': 'This giveaway is sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscriptions for %4$s for its followers.'
   },
+  'BoostingStarsGiveawayHowItWorksText': {
+    'one_value': 'This giveaway is sponsored by the admins of **%2$s**, who acquired **%1$d Star** for its followers.',
+    'other_value': 'This giveaway is sponsored by the admins of **%2$s**, who acquired **%1$d Stars** for its followers.'
+  },
   'BoostingGiveawayHowItWorksTextEnd': {
     'one_value': 'This giveaway was sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscription for %4$s for its followers.',
     'other_value': 'This giveaway was sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscriptions for %4$s for its followers.'
+  },
+  'BoostingStarsGiveawayHowItWorksTextEnd': {
+    'one_value': 'This giveaway was sponsored by the admins of **%2$s**, who acquired **%1$d Star** for its followers.',
+    'other_value': 'This giveaway was sponsored by the admins of **%2$s**, who acquired **%1$d Stars** for its followers.'
   },
   'BoostingGiveawayYouNotWon': 'You didn\'t win a prize in this giveaway.',
   'BoostingGiveawayNotEligible': 'You are not eligible to participate in this giveaway, because you joined this channel on **%1$s**, which is before the contest started.',
@@ -1912,6 +2008,21 @@ const lang = {
   'BoostingIncompleteGiveaway': 'Incomplete Giveaway',
   'BoostingNoRecipient': 'No recipient',
   'BoostingUseLink': 'Use Link',
+  'BoostingPremium': 'Telegram Premium',
+  'BoostingStars': 'Telegram Stars',
+  'BoostingStarsQuantityPrizes': 'Number of winners',
+  'BoostingStarsQuantityPrizesInfo': 'Choose how many winners you want to distribute stars among.',
+  'BoostingStarsGiveawayAdditionPrizeHint': 'Turn this on if you want to give the winners your own prizes in addition to Stars.',
+  'BoostingGetMoreBoosts2': 'Get more boosts and subscribers for your channel by giving away prizes.',
+  'BoostingStarsOptions': 'Stars to distribute',
+  'BoostingStarOptionPerUser': {
+    'other_value': '%d per user'
+  },
+  'BoostingStarsOptionsInfo': 'Choose how many stars to give away and how many boosts to receive for 1 year.',
+  'BoostingStarsGiveawayJustStarted': {
+    'one_value': '%2$s just started a giveaway of %1$d Star to its followers.',
+    'other_value': '%2$s just started a giveaway of %1$d Stars to its followers.'
+  },
   'GrowthChartTitle': 'Growth',
   'FollowersChartTitle': 'Followers',
   'InteractionsChartTitle': 'Interactions',
@@ -2393,12 +2504,23 @@ const lang = {
     'one_value': 'You reacted with **%d** star.',
     'other_value': 'You reacted with **%d** stars.'
   },
-  'StarsSentUndo': 'Undo',
   'StarsReactionTitle': 'Star Reaction',
   'StarsReactionText': 'Choose how many stars you want to send to **%s** to support this post.',
   'StarsReactionTopSenders': 'Top Senders',
   'StarsReactionShowMeInTopSenders': 'Show me in Top Senders',
+  'PaidReaction.Send': 'Send %d',
   'StarsReactionAnonymous': 'Anonymous',
+  'StarsGiveawayPrizeReceived': 'Received Prize',
+  'BoostingBoostsCountTitle': {
+    'one_value': '%d boost',
+    'other_value': '%d boosts'
+  },
+  'Report2Comment': 'Add Comment',
+  'Report2CommentOptional': 'Add Comment (Optional)',
+  'Report2Send': 'Send Report',
+  'Reported2': 'Telegram moderators will review your report. Thank you!',
+  'UnreadMessages': 'Unread Messages',
+  'ChannelsTab': 'Channels',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2826,6 +2948,7 @@ const lang = {
   'PrivacySettingsController.Everbody': 'Everybody',
   'PrivacySettingsController.MyContacts': 'My Contacts',
   'PrivacySettingsController.Nobody': 'Nobody',
+  'PrivacySettingsController.Paid': 'Paid',
   'PrivacySettingsController.NeverShare': 'Never Share With',
   'PrivacySettingsController.AlwaysShare': 'Always Share With',
   'PrivacySettingsController.NeverAllow': 'Never Allow',
@@ -2990,7 +3113,131 @@ const lang = {
   'Chat.UploadLimit.Text': {
     'one_value': 'Subscribe to [Telegram Premium]() to increase upload speeds %d time.',
     'other_value': 'Subscribe to [Telegram Premium]() to increase upload speeds %d times.'
-  }
+  },
+  'Chat.Service.Refund': '%@ refunded %@',
+  'EnableDarkMode': 'Enable Dark Mode',
+  'DisableDarkMode': 'Disable Dark Mode',
+  'DisableAnimations': 'Disable Animations',
+  'RoundVideoTranscription.PremiumAlert': 'Subscribe to Telegram Premium to unlock video and audio transcription. [Read More]()',
+  'Chat.Search.JoinedChannels': 'Channels you joined',
+  'Chat.Search.NothingFound': 'Nothing interesting here yet...',
+  'UnknownBotUsers': 'Unknown users',
+  'FiltersView': 'Folders view',
+  'FiltersOnLeft': 'Folders on the Left',
+  'FiltersOnTop': 'Folders above chats',
+  'ManageFilters': 'Manage Folders',
+  'CtrlFSearchTip': 'Tip: Use **Ctrl+F** to open Search',
+  'CreateANew': 'Create a New',
+  'PrivateChat': 'Private Chat',
+  'Channel': 'Channel',
+  'Group': 'Group',
+  'Hls.ResolutionHeightAuto': 'Auto',
+  'Hls.ResolutionHeightName480': 'Low',
+  'Hls.ResolutionHeightName720': 'Medium',
+  'Hls.ResolutionHeightName1080': 'High',
+  'Hls.SaveIn480': 'Save in 480p',
+  'Hls.SaveIn720': 'Save in 720p',
+  'Hls.SaveIn1080': 'Save in 1080p',
+  'PlaybackRateNormal': 'Normal',
+  'PlaybackRateDragTip': 'Hold and move the cursor left or right to change the speed.',
+  'Text.Context.Copy.Email': 'Copy Email',
+
+  'PasscodeLock.Title': 'Passcode',
+  'PasscodeLock.Item.Title': 'Passcode Lock',
+  'PasscodeLock.Item.On': 'On',
+  'PasscodeLock.Item.Off': 'Off',
+  'PasscodeLock.Description': 'When a passcode is set, a lock icon appears above your chat list. Tap it to lock your Telegram.',
+  'PasscodeLock.TurnOn': 'Turn Passcode On',
+  'PasscodeLock.TurnOff': 'Turn Off',
+  'PasscodeLock.TurnOff.Title': 'Turn Passcode Off',
+  'PasscodeLock.Notice': 'Note: If you forget your passcode, you\'ll need to log out.',
+  'PasscodeLock.AutoLock': 'Auto-lock after',
+  'PasscodeLock.EnableLockShortcut': 'Enable lock shortcut',
+  'PasscodeLock.LockShortcutDescription': 'Play around to find the perfect shortcut to work for your browser.',
+  'PasscodeLock.PasscodesDontMatch': 'Passcodes don’t match, try again',
+  'PasscodeLock.SetPasscode': 'Set passcode',
+  'PasscodeLock.Next': 'Next',
+  'PasscodeLock.ReEnterPasscode': 'Re-enter the passcode',
+  'PasscodeLock.EnterAPasscode': 'Enter a passcode',
+  'PasscodeLock.EnterANewPasscode': 'Enter a new passcode',
+  'PasscodeLock.ChangePasscode': 'Change passcode',
+  'PasscodeLock.EnterYourPasscode': 'Enter your passcode',
+  'PasscodeLock.EnterYourCurrentPasscode': 'Enter your current passcode',
+  'PasscodeLock.Proceed': 'Proceed',
+  'PasscodeLock.ForgotPasscode.OneAccount': 'Note: if you forget your passcode, you\'ll need to [log out]().',
+  'PasscodeLock.ForgotPasscode.MultipleAccounts': 'Note: if you forget your passcode, you\'ll need to [log out]() from all your current accounts.',
+  'PasscodeLock.WrongPasscode': 'Wrong passcode. Please try again.',
+  'PasscodeLock.PasscodeHasBeenSet': 'Passcode has been set.',
+  'PasscodeLock.TapToLock': 'Tap to lock Telegram.',
+  'PasscodeLock.PasscodeHasBeenChanged': 'Passcode has been changed.',
+  'PasscodeLock.PasscodeHasBeenDisabled': 'Passcode has been disabled.',
+  'PasscodeLock.NotificationTitle': 'User',
+  'PasscodeLock.NotificationDescription': 'New message',
+  'PasscodeLock.Disabled': 'Disabled',
+  'PasscodeLock.TooManyAttempts': 'Too many attempts, try again later',
+  'PasscodeLock.LogoutPopup.Description': 'Are you sure you want to log out?',
+  'PasscodeLock.TurnOff.Description': 'Are you sure you want to turn passcode off?',
+
+  'PaidMessages.ChargeForMessages': 'Charge for Messages',
+  'PaidMessages.ChargeForMessagesDescription': 'Charge a fee for messages from people outside your contacts or who you haven\'t messaged first',
+  'PaidMessages.ChargeForGroupMessagesDescription': 'If you turn this on, regular members of the group will have to pay Stars to send messages.',
+  'PaidMessages.SetPrice': 'Set your price per message',
+  'PaidMessages.SetPriceDescription': 'You will receive %d% of the selected fee (~%d$) for each incoming messages',
+  'PaidMessages.SetPriceGroupDescription': 'Your group will receive %d% of the selected fee (~%d$) for each incoming messages',
+  'PaidMessages.RemoveFee': 'Remove Fee',
+  'PaidMessages.RemoveFeeDescription': 'Add users or entire groups who won\'t have to pay to send you messages',
+  'PaidMessages.NewChatDescription': '%s charges %d for each message',
+  'PaidMessages.MessageForStars': 'Message for %d',
+  'PaidMessages.UserChargesForOneMessageWarning': '**%s** charges **%s** per incoming message. Would you like to pay **%s** to send one message?',
+  'PaidMessages.UserChargesForMultipleMessageWarning': '**%s** charges **%s** per incoming message. Would you like to pay **%s** to send **%d messages**?',
+  'PaidMessages.PayForMessages': {
+    'one_value': 'Pay for %d message',
+    'other_value': 'Pay for %d messages'
+  },
+  'PaidMessages.MessagesSent': {
+    'one_value': '%d Message sent!',
+    'other_value': '%d Messages sent!'
+  },
+  'PaidMessages.YouPaidForMessages': {
+    'one_value': 'You paid %d Star.',
+    'other_value': 'You paid %d Stars.'
+  },
+  'PaidMessages.YouPaidToSendMessages': {
+    'one_value': 'You paid **%2$s** to send a message',
+    'other_value': 'You paid **%2$s** to send %1$d messages.'
+  },
+  'PaidMessages.YouReceivedStarsFrom': 'You received **%s** from %s',
+  'PaidMessages.FeeForMessages': {
+    'one_value': 'Fee for %d message',
+    'other_value': 'Fee for %d messages'
+  },
+  'PaidMessages.YouReceiveWithCommissionNotice': 'You receive %d% of the price that you charge for each incoming message.',
+  'PaidMessages.FullPrice': 'Full Price',
+  'PaidMessages.GroupPriceChangedFree': 'Messages in this group are now free',
+  'PaidMessages.GroupPriceChanged': {
+    'one_value': 'Messages now cost **%d Star** in this group',
+    'other_value': 'Messages now cost **%d Stars** in this group'
+  },
+  'PaidMessages.StarsRefundedToYou': {
+    'one_value': '%2$s refunded **%1$d Star** to you',
+    'other_value': '%2$s refunded **%1$d Stars** to you'
+  },
+  'PaidMessages.StarsRefundedByYou': {
+    'one_value': 'You refunded **%1$d Star** to %2$s',
+    'other_value': 'You refunded **%1$d Stars** to %2$s'
+  },
+  'PaidMessages.StarsRefundedShort': {
+    'one_value': '%d Star refunded',
+    'other_value': '%d Stars refunded'
+  },
+
+  'BuyStars': 'Buy Stars',
+  'UnsavedChanges': 'Unsaved Changes',
+  'UnsavedChangesDescription.Privacy': 'You have changed some privacy settings. Save changes?',
+  'UnsavedChangesDescription.Group': 'You have changed some settings in this group. Save changes?',
+  'DontAskAgain': 'Don\'t ask again',
+  'ConfirmPayment': 'Confirm Payment',
+  'Undo': 'Undo'
 };
 
 export default lang;

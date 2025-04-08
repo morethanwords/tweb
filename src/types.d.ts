@@ -1,5 +1,6 @@
 import {AuthSentCode} from './layer';
 import type {ApiError} from './lib/mtproto/apiManager';
+import {ActiveAccountNumber} from './lib/sessionStorage';
 
 export type DcId = number;
 export type TrueDcId = 1 | 2 | 3 | 4 | 5;
@@ -8,6 +9,7 @@ export type DcServerSalt = `dc${TrueDcId}_server_salt`;
 
 export type InvokeApiOptions = Partial<{
   dcId: DcId,
+  accountNumber: ActiveAccountNumber,
   floodMaxTimeout: number,
   noErrorBox: true,
   fileUpload: true,
@@ -93,6 +95,10 @@ export type MaybePromise<T> = T | Promise<T>;
 export type PickByType<T, Value> = {
   [P in keyof T as T[P] extends Value | undefined ? P : never]: T[P]
 };
+
+export type InstanceOf<T> = T extends new (...args: any[]) => infer R ? R : never;
+
+export type StringKey<T extends keyof any> = T extends string ? T : never;
 
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn | AuthState.signImport;
 export namespace AuthState {

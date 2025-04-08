@@ -4,9 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {HelpPremiumPromo, InputInvoice, InputPaymentCredentials, InputStorePaymentPurpose, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsPaymentResult, PaymentsStarsStatus, StarsTransactionPeer, Update} from '../../layer';
+import {
+  HelpPremiumPromo,
+  InputInvoice,
+  InputPaymentCredentials,
+  InputStorePaymentPurpose,
+  PaymentRequestedInfo,
+  PaymentsPaymentForm,
+  PaymentsPaymentResult,
+  PaymentsStarsStatus,
+  StarsAmount,
+  StarsTransactionPeer,
+  Update
+} from '../../layer';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
+import formatStarsAmount from './utils/payments/formatStarsAmount';
 
 export default class AppPaymentsManager extends AppManager {
   private premiumPromo: MaybePromise<HelpPremiumPromo>;
@@ -43,8 +56,10 @@ export default class AppPaymentsManager extends AppManager {
       invoice,
       theme_params: this.apiManager.getThemeParams()
     }).then((paymentForm) => {
-      this.appPeersManager.saveApiPeers(paymentForm);
-      paymentForm.photo = this.appWebDocsManager.saveWebDocument(paymentForm.photo);
+      if(paymentForm._ !== 'payments.paymentFormStarGift') {
+        this.appPeersManager.saveApiPeers(paymentForm);
+        paymentForm.photo = this.appWebDocsManager.saveWebDocument(paymentForm.photo);
+      }
 
       return paymentForm;
     });
@@ -95,15 +110,9 @@ export default class AppPaymentsManager extends AppManager {
     });
   }
 
-  public getPremiumGiftCodeOptions(peerId: PeerId) {
-    return this.apiManager.invokeApiSingleProcess({
-      method: 'payments.getPremiumGiftCodeOptions',
-      params: {
-        boost_peer: this.appPeersManager.getInputPeerById(peerId)
-      },
-      processResult: (premiumGiftCodeOptions) => {
-        return premiumGiftCodeOptions/* .filter((option) => !option.store_product) */;
-      }
+  public getPremiumGiftCodeOptions(peerId?: PeerId) {
+    return this.apiManager.invokeApiCacheable('payments.getPremiumGiftCodeOptions', {
+      boost_peer: peerId !== undefined ? this.appPeersManager.getInputPeerById(peerId) : undefined
     });
   }
 
@@ -213,6 +222,11 @@ export default class AppPaymentsManager extends AppManager {
     return starsStatus;
   };
 
+  public getCachedStarsStatus() {
+    if(this.starsStatus instanceof Promise) return;
+    return this.starsStatus;
+  }
+
   public getStarsStatus(overwrite?: boolean) {
     if(overwrite) {
       this.starsStatus = undefined;
@@ -287,8 +301,22 @@ export default class AppPaymentsManager extends AppManager {
     }).then(this.processPaymentResult);
   }
 
+  public getStarsTransactionsByID(transactionId: string) {
+    if(!transactionId) return;
+    return this.apiManager.invokeApi('payments.getStarsTransactionsByID', {
+      peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
+      id: [{_: 'inputStarsTransaction', pFlags: {}, id: transactionId}]
+    }).then((starsStatus) => {
+      return starsStatus.history?.[0];
+    });
+  }
+
   public getStarsGiftOptions(userId: UserId) {
     return this.apiManager.invokeApi('payments.getStarsGiftOptions', {user_id: this.appUsersManager.getUserInput(userId)});
+  }
+
+  public getStarsGiveawayOptions() {
+    return this.apiManager.invokeApi('payments.getStarsGiveawayOptions');
   }
 
   private processPaymentResult = (result: PaymentsPaymentResult) => {
@@ -299,13 +327,22 @@ export default class AppPaymentsManager extends AppManager {
     return result;
   };
 
+  public updateLocalStarsBalance(balance: StarsAmount.starsAmount, fulfilledReservedStars?: number) {
+    const {starsStatus} = this;
+
+    (starsStatus as PaymentsStarsStatus).balance = balance;
+    this.rootScope.dispatchEvent('stars_balance', {
+      balance: formatStarsAmount(balance),
+      fulfilledReservedStars
+    });
+  }
+
   private onUpdateStarsBalance = (update: Update.updateStarsBalance) => {
     const {starsStatus} = this;
     if(!starsStatus || starsStatus instanceof Promise) {
       return;
     }
 
-    (starsStatus as PaymentsStarsStatus).balance = update.balance;
-    this.rootScope.dispatchEvent('stars_balance', update.balance);
+    this.updateLocalStarsBalance(update.balance);
   };
 }

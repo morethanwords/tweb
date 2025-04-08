@@ -18,6 +18,13 @@ const TRANSITION_TIME = 250;
 
 export {SliderSuperTab};
 
+export type SidebarSliderOptions = {
+  sidebarEl: SidebarSlider['sidebarEl'],
+  tabs?: SidebarSlider['tabs'],
+  canHideFirst?: SidebarSlider['canHideFirst'],
+  navigationType: SidebarSlider['navigationType']
+}
+
 export default class SidebarSlider {
   protected _selectTab: ReturnType<typeof horizontalMenu>;
   protected historyTabIds: (number | SliderSuperTab)[] = []; // * key is any, since right sidebar is ugly nowz
@@ -29,13 +36,9 @@ export default class SidebarSlider {
   protected managers: AppManagers;
   protected middlewareHelper: MiddlewareHelper;
   public onOpenTab: () => MaybePromise<void>;
+  public onTabsCountChange?: () => void;
 
-  constructor(options: {
-    sidebarEl: SidebarSlider['sidebarEl'],
-    tabs?: SidebarSlider['tabs'],
-    canHideFirst?: SidebarSlider['canHideFirst'],
-    navigationType: SidebarSlider['navigationType']
-  }) {
+  constructor(options: SidebarSliderOptions) {
     safeAssign(this, options);
 
     this.tabs ??= new Map();
@@ -65,6 +68,7 @@ export default class SidebarSlider {
     const item = appNavigationController.findItemByType(this.navigationType);
     if(item) {
       appNavigationController.back(this.navigationType);
+      this.onTabsCountChange?.();
     } else if(this.historyTabIds.length) {
       this.closeTab(this.historyTabIds[this.historyTabIds.length - 1]);
     }
@@ -95,20 +99,24 @@ export default class SidebarSlider {
           if(result) {
             Promise.resolve(result).then(() => {
               appNavigationController.removeItem(navigationItem);
+              this.onTabsCountChange?.();
+
               this.closeTab(undefined, undefined, true);
-            });
+            }, () => {});
 
             return false;
           }
         }
 
         this.closeTab(undefined, canAnimate, true);
+        this.onTabsCountChange?.();
         return true;
       }
     };
 
     // if(!this.canHideFirst || this.historyTabIds.length) {
     appNavigationController.pushItem(navigationItem);
+    this.onTabsCountChange?.();
     // }
   }
 
@@ -149,6 +157,16 @@ export default class SidebarSlider {
     this.onCloseTab(id, undefined);
   }
 
+  public closeAllTabs() {
+    const hasTabs = this.hasTabsInNavigation();
+    for(let i = this.historyTabIds.length - 1; i >= 0; --i) {
+      const tabId = this.historyTabIds[i];
+      const tab = tabId instanceof SliderSuperTab ? tabId : this.tabs.get(tabId);
+      tab.close();
+    }
+    return hasTabs;
+  }
+
   public sliceTabsUntilTab(tabConstructor: SliderSuperTabConstructable, preserveTab: SliderSuperTab) {
     for(let i = this.historyTabIds.length - 1; i >= 0; --i) {
       const tab = this.historyTabIds[i];
@@ -177,6 +195,7 @@ export default class SidebarSlider {
   protected onCloseTab(id: number | SliderSuperTab, animate: boolean, isNavigation?: boolean) {
     if(!isNavigation) {
       appNavigationController.removeByType(this.navigationType, true);
+      this.onTabsCountChange?.();
     }
 
     const tab: SliderSuperTab = id instanceof SliderSuperTab ? id : this.tabs.get(id);
@@ -220,5 +239,9 @@ export default class SidebarSlider {
     const tab = new ctor(doNotAppend ? undefined : this, destroyable);
     tab.managers = this.managers;
     return tab;
+  }
+
+  public hasTabsInNavigation() {
+    return !!appNavigationController.findItemByType(this.navigationType);
   }
 }

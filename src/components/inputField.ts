@@ -166,7 +166,7 @@ let init = () => {
     let text: string, entities: MessageEntity[];
 
     // @ts-ignore
-    let plainText: string = (e.originalEvent || e).clipboardData.getData('text/plain');
+    let plainText: string = (e.originalEvent || e).clipboardData.getData('text/plain').replace(/\r/g, '');
     let usePlainText = true;
 
     // @ts-ignore
@@ -184,8 +184,9 @@ let init = () => {
       // console.log(html.replace(/ (style|class|id)=".+?"/g, ''));
 
       html = html.replace(/<style([\s\S]*)<\/style>/, '');
-      html = html.replace(/<!--([\s\S]*)-->/, '');
+      html = html.replace(/<!--([\s\S]*?)-->/g, '');
       html = html.replace('<br class="Apple-interchange-newline">', '');
+      html = html.replace(/\r/g, '');
 
       const match = html.match(/<body>([\s\S]*)<\/body>/);
       if(match) {
@@ -718,5 +719,9 @@ export default class InputField {
 
   public setError(label?: LangPackKey) {
     this.setState(InputState.Error, label);
+  }
+
+  public toggleForceFocus(enabled: boolean) {
+    this.input.classList.toggle('force-focus', enabled)
   }
 }

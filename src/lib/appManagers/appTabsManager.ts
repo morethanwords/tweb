@@ -26,8 +26,14 @@ export class AppTabsManager {
     port.addEventListener('tabState', (state, source) => {
       const tab = this.tabs.get(source);
       tab.state = state;
+
+      this.onTabStateChange();
+
+      port.invokeVoid('tabsUpdated', [...this.tabs.values()].map(({state}) => state));
     });
   }
+
+  public onTabStateChange = () => {};
 
   public getTabs() {
     return [...this.tabs.values()].filter((tab) => !!tab.state);
@@ -40,10 +46,13 @@ export class AppTabsManager {
     };
 
     this.tabs.set(source, tab);
+    this.onTabStateChange();
   }
 
   public deleteTab(source: MessageEventSource) {
     this.tabs.delete(source);
+    this.onTabStateChange();
+    MTProtoMessagePort.getInstance<false>().invokeVoid('tabsUpdated', [...this.tabs.values()].map(({state}) => state));
   }
 }
 

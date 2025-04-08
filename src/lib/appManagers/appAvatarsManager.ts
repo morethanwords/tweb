@@ -43,7 +43,8 @@ export class AppAvatarsManager extends AppManager {
       delete this.savedAvatarURLs[peerId];
       MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
         name: 'avatars',
-        key: '' + peerId
+        key: '' + peerId,
+        accountNumber: this.getAccountNumber()
       });
     }
   }
@@ -75,7 +76,8 @@ export class AppAvatarsManager extends AppManager {
       MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
         name: 'avatars',
         key: joinDeepPath(peerId, size),
-        value: url
+        value: url,
+        accountNumber: this.getAccountNumber()
       });
 
       return url;

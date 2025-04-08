@@ -41,6 +41,9 @@ import pause from '../../helpers/schedulers/pause';
 import {getEnvironment} from '../../environment/utils';
 import {TimeManager} from './timeManager';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {ActiveAccountNumber} from '../accounts/types';
+import AccountController from '../accounts/accountController';
+import makeError from '../../helpers/makeError';
 
 // console.error('networker included!', new Error().stack);
 
@@ -209,6 +212,7 @@ export default class MTPNetworker {
     private authKey: Uint8Array,
     private authKeyId: Uint8Array,
     serverSalt: Uint8Array,
+    private accountNumber: ActiveAccountNumber,
     options: InvokeApiOptions = {}
   ) {
     this.authKeyUint8 = convertToUint8Array(this.authKey);
@@ -550,10 +554,15 @@ export default class MTPNetworker {
     }
   }
 
-  private sendPingDelayDisconnect = () => {
+  public sendPingDelayDisconnect = () => {
     // return;
 
-    if(this.pingDelayDisconnectDeferred || !this.transport || !this.transport.connected) return;
+    if(
+      this.pingDelayDisconnectDeferred ||
+      !this.transport ||
+      !this.transport.connected ||
+      this.isStopped()
+    ) return;
 
     /* if(!this.isOnline) {
       if((this.transport as TcpObfuscated).connected) {
@@ -596,7 +605,11 @@ export default class MTPNetworker {
     const onTimeout = () => {
       clearTimeout(rejectTimeout);
       const transport = this.transport as TcpObfuscated;
-      if(this.pingDelayDisconnectDeferred !== deferred || !transport?.connection) {
+      if(
+        this.pingDelayDisconnectDeferred !== deferred ||
+        !transport?.connection ||
+        this.isStopped()
+      ) {
         return;
       }
 
@@ -642,7 +655,7 @@ export default class MTPNetworker {
     log('check', this.longPollPending);
 
     const isClean = this.cleanupSent();
-    sessionStorage.get('dc').then((baseDcId) => {
+    this.getBaseDcId().then((baseDcId) => {
       if(isClean && (
         baseDcId !== this.dcId ||
           (this.sleepAfter && Date.now() > this.sleepAfter)
@@ -849,6 +862,11 @@ export default class MTPNetworker {
     }
 
     return promise;
+  }
+
+  private async getBaseDcId() {
+    const accountData = await AccountController.get(this.accountNumber);
+    return accountData?.dcId;
   }
 
   public attachPromise(promise: Promise<any>, message: MTMessage) {
@@ -1364,12 +1382,8 @@ export default class MTPNetworker {
       return promise;
     }
 
-    const baseError: ApiError = {
-      code: 406,
-      type: 'NETWORK_BAD_RESPONSE',
-      // @ts-ignore
-      transport: this.transport
-    };
+    const baseError = makeError('NETWORK_BAD_RESPONSE');
+    baseError.code = 406;
 
     return promise.then((result) => {
       if(!result?.byteLength) {
@@ -1379,11 +1393,10 @@ export default class MTPNetworker {
       // this.debug && this.log.debug('sendEncryptedRequest: got response for:', message, [message.msg_id].concat(message.inner || []));
       return result;
     }, (error) => {
-      if(!error.message && !error.type) {
-        error = Object.assign(baseError, {
-          type: 'NETWORK_BAD_REQUEST',
-          originalError: error
-        });
+      if(error !== baseError) {
+        const newError = makeError('NETWORK_BAD_REQUEST');
+        newError.originalError = error;
+        error = newError;
       }
 
       throw error;
@@ -1523,7 +1536,7 @@ export default class MTPNetworker {
   private applyServerSalt(newServerSalt: string) {
     const serverSalt = longToBytes(newServerSalt);
 
-    sessionStorage.set({
+    AccountController.update(this.accountNumber, {
       ['dc' + this.dcId + '_server_salt']: bytesToHex(serverSalt)
     });
 
@@ -1691,16 +1704,17 @@ export default class MTPNetworker {
     }
   }
 
-  private processError(rawError: {error_message: string, error_code: number}): ApiError {
+  private processError(rawError: {error_message: string, error_code: number}) {
     const matches = (rawError.error_message || '').match(/^([A-Z_0-9]+\b)(: (.+))?/) || [];
     rawError.error_code = rawError.error_code;
 
-    return {
-      code: !rawError.error_code || rawError.error_code <= 0 ? 500 : rawError.error_code,
-      type: matches[1] as any || 'UNKNOWN',
-      description: matches[3] || ('CODE#' + rawError.error_code + ' ' + rawError.error_message),
-      originalError: rawError
-    };
+    const error = makeError(
+      matches[1] as any || 'UNKNOWN',
+      matches[3] || ('CODE#' + rawError.error_code + ' ' + rawError.error_message)
+    );
+    error.originalError = rawError;
+    error.code = !rawError.error_code || rawError.error_code <= 0 ? 500 : rawError.error_code;
+    return error;
   }
 
   public resend() {
@@ -1871,7 +1885,7 @@ export default class MTPNetworker {
         this.processMessageAck(message.first_msg_id);
         this.applyServerSalt(message.server_salt);
 
-        sessionStorage.get('dc').then((baseDcId) => {
+        this.getBaseDcId().then((baseDcId) => {
           if(baseDcId === this.dcId && !this.isFileNetworker) {
             this.networkerFactory.updatesProcessor?.(message);
           }

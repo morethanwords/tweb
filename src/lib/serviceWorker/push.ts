@@ -10,7 +10,7 @@
  */
 
 import {Database} from '../../config/databases';
-import DATABASE_STATE from '../../config/databases/state';
+import {AccountDatabase, getDatabaseState} from '../../config/databases/state';
 import {NOTIFICATION_BADGE_PATH, NOTIFICATION_ICON_PATH} from '../../config/notifications';
 import {IS_FIREFOX} from '../../environment/userAgent';
 import deepEqual from '../../helpers/object/deepEqual';
@@ -126,7 +126,8 @@ const defaults: PushStorage = {
   push_settings: {}
 };
 
-const getter = new SomethingGetter<typeof DATABASE_STATE, PushStorage>(DATABASE_STATE, 'session', defaults);
+// Warning: Push API temporarily disabled
+const getter = new SomethingGetter<AccountDatabase, PushStorage>(getDatabaseState(1), 'session', defaults);
 
 // fill cache
 for(const i in defaults) {

@@ -26,11 +26,17 @@ import Sortable from '../../../helpers/dom/sortable';
 import whichChild from '../../../helpers/dom/whichChild';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 import showLimitPopup from '../../popups/limit';
+import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
+import RadioField from '../../radioField';
+import appImManager from '../../../lib/appManagers/appImManager';
+import appSidebarLeft from '..';
+import wrapFolderTitle from '../../wrappers/folderTitle';
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
   private foldersSection: SettingSection;
   private suggestedSection: SettingSection;
+  private viewSection: SettingSection;
   private stickerContainer: HTMLElement;
   private animation: RLottiePlayer;
   private list: HTMLElement;
@@ -97,7 +103,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     if(!row) {
       const isSuggested = dialogFilter._ === 'dialogFilterSuggested';
       row = new Row({
-        title: filter.id === FOLDER_ID_ALL && !isSuggested ? i18n('FilterAllChats') : wrapEmojiText(filter.title),
+        title: filter.id === FOLDER_ID_ALL && !isSuggested ? i18n('FilterAllChats') : await wrapFolderTitle(filter.title, this.middlewareHelper.get()),
         subtitle: description,
         clickable: true,
         buttonRightLangKey: isSuggested ? 'Add' : undefined
@@ -125,7 +131,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     } else {
       if(filter.id !== FOLDER_ID_ALL) {
-        replaceContent(row.title, wrapEmojiText(filter.title));
+        replaceContent(row.title, await wrapFolderTitle(filter.title, this.middlewareHelper.get()));
       }
 
       row.subtitle.textContent = '';
@@ -178,12 +184,53 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     });
     this.suggestedSection.container.classList.add('hide');
 
+    this.viewSection = new SettingSection({
+      name: 'FiltersView'
+    });
+
+    const form = document.createElement('form');
+
+    const name = 'theme';
+    const stateKey = joinDeepPath('settings', 'tabsInSidebar');
+
+    const onLeftRow = new Row({
+      radioField: new RadioField({
+        langKey: 'FiltersOnLeft',
+        name,
+        value: 'true',
+        valueForState: true,
+        stateKey
+      })
+    });
+
+    const nonTopRow = new Row({
+      radioField: new RadioField({
+        langKey: 'FiltersOnTop',
+        name,
+        value: 'false',
+        valueForState: false,
+        stateKey
+      })
+    });
+
+    this.listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
+      if(key === stateKey) {
+        document.body.classList.toggle('has-folders-sidebar', value);
+        appImManager.adjustChatPatternBackground();
+        if(!value) appSidebarLeft.showCtrlFTip();
+      }
+    });
+
+    form.append(onLeftRow.container, nonTopRow.container);
+    this.viewSection.content.append(form);
+
     this.scrollable.append(
       this.stickerContainer,
       caption,
       this.createFolderBtn,
       this.foldersSection.container,
-      this.suggestedSection.container
+      this.suggestedSection.container,
+      this.viewSection.container
     );
 
     attachClickEvent(this.createFolderBtn, async() => {

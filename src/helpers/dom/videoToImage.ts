@@ -6,7 +6,7 @@ export async function videoToImage(video: HTMLVideoElement): Promise<Blob> {
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
   return new Promise((resolve, reject) => {
-    canvas.toBlob(blob => {
+    canvas.toBlob((blob) => {
       if(blob) {
         resolve(blob);
       } else {

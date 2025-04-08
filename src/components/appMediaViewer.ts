@@ -262,7 +262,12 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
   };
 
-  onDownloadClick = () => {
+  onDownloadClick = async(_: any, docId?: DocId) => {
+    if(docId) {
+      const doc = await this.managers.appDocsManager.getDoc(docId);
+      appDownloadManager.downloadToDisc({media: doc, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
+      return;
+    }
     const {message, index} = this.target;
     const media = getMediaFromMessage(message, true, index);
     if(!media) return;
@@ -276,13 +281,15 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
 
     const media = getMediaFromMessage(message, true);
+    const loadPromises: Promise<any>[] = [];
     const richTextOptions: Parameters<typeof wrapRichText>[1] = {
       maxMediaTimestamp: ((media as MyDocument)?.type === 'video' && (media as MyDocument).duration) || undefined,
-      textColor: 'white'
+      textColor: 'white',
+      loadPromises
     };
 
     let hasCaption: boolean;
-    let html: Parameters<typeof setInnerHTML>[1];
+    let html: HTMLElement;
     if(isSponsored) {
       const sponsoredMessage = (message as Message.message).sponsoredMessage;
       const webPage = ((message as Message.message).media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage;
@@ -313,11 +320,44 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         middleware: this.content.mover.middlewareHelper.get(),
         richTextOptions
       });
+      this.saveTimestamps(html, loadPromises);
     }
 
     setInnerHTML(this.content.caption.firstElementChild, html);
     this.content.caption.classList.toggle('hide', !hasCaption);
     // this.content.container.classList.toggle('with-caption', !!caption);
+  }
+
+  private removeTimestamps() {
+    this.videoTimestamps = [];
+  }
+
+  private async saveTimestamps(messageContent: HTMLElement, loadPromises: Promise<any>[]) {
+    loadPromises && await Promise.all(loadPromises);
+    const timestampElements = Array.from(messageContent.querySelectorAll('.timestamp[data-timestamp]'));
+
+    this.videoTimestamps = timestampElements.map((element) => ({
+      time: +(element as HTMLElement).dataset.timestamp,
+      text: this.extractTimestampText(element)
+    }));
+  }
+
+  private extractTimestampText(element: Element) {
+    const result: string[] = [];
+    let current = element.nextSibling;
+    while(current) {
+      if(current instanceof HTMLElement && current.classList.contains('timestamp')) break;
+
+      const text = current.textContent;
+
+      const shouldBreak = text.includes('\n');
+      result.push(text.split('\n')[0].trim());
+
+      if(shouldBreak) break;
+      current = current.nextSibling;
+    }
+
+    return result.filter(Boolean).join(' ');
   }
 
   public setSearchContext(context: MediaSearchContext) {
@@ -376,7 +416,9 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     this.wholeDiv.classList.toggle('no-forwards', cantDownloadMessage);
 
+    this.removeTimestamps();
     this.setCaption(message);
+
     const promise = super._openMedia({
       media: media as MyPhoto | MyDocument,
       timestamp: message.date,

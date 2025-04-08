@@ -5,36 +5,82 @@
  */
 
 import type {Database} from '.';
-import type {IDBIndex} from '../../lib/files/idb';
+import {ActiveAccountNumber} from '../../lib/accounts/types';
+import {MOUNT_CLASS_TO} from '../debug';
 
-const DATABASE_STATE: Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> = {
-  name: 'tweb',
+export type AccountDatabase = Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'>;
+export type CommonDatabase = Database<'session' | 'localStorage'>;
+
+export const getOldDatabaseState = (): AccountDatabase => ({
+  name: `tweb`,
   version: 7,
-  stores: [{
-    name: 'session'
-  }, {
-    name: 'stickerSets'
-  }, {
-    name: 'users'
-  }, {
-    name: 'chats'
-  }, {
-    name: 'dialogs'
-    // indexes: [
-    //   ...(new Array(20 + 2).fill(0)).map((_, idx) => {
-    //     const name = `index_${idx}`;
-    //     const index: IDBIndex = {
-    //       indexName: name,
-    //       keyPath: name,
-    //       objectParameters: {}
-    //     };
+  stores: [
+    {
+      name: 'session'
+    },
+    {
+      name: 'stickerSets'
+    },
+    {
+      name: 'users'
+    },
+    {
+      name: 'chats'
+    },
+    {
+      name: 'dialogs'
+    },
+    {
+      name: 'messages'
+    }
+  ]
+});
 
-    //     return index
-    //   })
-    // ]
-  }, {
-    name: 'messages'
-  }]
-};
+export const getCommonDatabaseState = (): CommonDatabase => ({
+  name: `tweb-common`,
+  version: 8,
+  stores: [
+    {
+      name: 'session'
+    },
+    {
+      name: 'localStorage', // not used (
+      encryptedName: 'localStorage__encrypted'
+    }
+  ]
+});
 
-export default DATABASE_STATE;
+export const getDatabaseState = (
+  accountNumber: ActiveAccountNumber
+): Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> => ({
+  name: `tweb-account-${accountNumber}`,
+  version: 8,
+  stores: [
+    {
+      name: 'session',
+      encryptedName: 'session__encrypted'
+    },
+    {
+      name: 'stickerSets',
+      encryptedName: 'stickerSets__encrypted'
+    },
+    {
+      name: 'users',
+      encryptedName: 'users__encrypted'
+    },
+    {
+      name: 'chats',
+      encryptedName: 'chats__encrypted'
+    },
+    {
+      name: 'dialogs',
+      encryptedName: 'dialogs__encrypted'
+    },
+    {
+      name: 'messages',
+      encryptedName: 'messages__encrypted'
+    }
+  ]
+});
+
+MOUNT_CLASS_TO.getDatabaseState = getDatabaseState;

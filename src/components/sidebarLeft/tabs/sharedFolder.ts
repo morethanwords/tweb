@@ -26,12 +26,14 @@ import AppSelectPeers from '../../appSelectPeers';
 import Button from '../../button';
 import ButtonIcon from '../../buttonIcon';
 import ButtonMenuToggle from '../../buttonMenuToggle';
+import type {ConfirmedPaymentResult} from '../../chat/paidMessagesInterceptor';
 import confirmationPopup from '../../confirmationPopup';
 import PopupPickUser from '../../popups/pickUser';
 import ripple from '../../ripple';
 import SettingSection from '../../settingSection';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import {toastNew} from '../../toast';
+import wrapFolderTitle from '../../wrappers/folderTitle';
 import getChatMembersString from '../../wrappers/getChatMembersString';
 
 export class InviteLink {
@@ -128,8 +130,18 @@ export class InviteLink {
 
   public shareLink = (url: string = this.url) => {
     PopupPickUser.createSharingPicker({
-      onSelect: (peerId) => {
-        rootScope.managers.appMessagesManager.sendText({peerId, text: url});
+      onSelect: async(peerId) => {
+        // Cannot use normal import here :(
+        const {default: PaidMessagesInterceptor, PAYMENT_REJECTED} = await import('../../chat/paidMessagesInterceptor');
+
+        const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
+        if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
+
+        rootScope.managers.appMessagesManager.sendText({
+          peerId,
+          text: url,
+          confirmedPaymentResult: preparedPaymentResult as ConfirmedPaymentResult
+        });
         appImManager.setInnerPeer({peerId});
       }
     });
@@ -143,6 +155,7 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
   private caption: HTMLElement;
   private stickerContainer: HTMLElement;
   private descriptionI18n: I18n.IntlElement;
+  private descriptionTitle: HTMLElement;
   private chatsTitleI18n: I18n.IntlElement;
   private confirmBtn: HTMLElement;
 
@@ -311,7 +324,7 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
         this.filter.id,
         this.chatlistInvite.url,
         [...this.selector.selected] as PeerId[],
-        this.filter.title
+        this.filter.title.text
       ).then((chatlistInvite) => {
         this.eventListener.dispatchEvent('edit', chatlistInvite);
         this.close();
@@ -327,8 +340,6 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
       linkSection?.container
     ].filter(Boolean));
 
-    this.updateDescription();
-
     return Promise.all([
       this.loadAnimationPromise = p.animationData.then(async(cb) => {
         const player = await cb({
@@ -342,6 +353,12 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
         this.animation = player;
 
         return lottieLoader.waitForFirstFrame(player);
+      }),
+
+      wrapFolderTitle(this.filter.title, this.middlewareHelper.get()).then((title) => {
+        this.descriptionTitle = document.createElement('span');
+        this.descriptionTitle.append(title);
+        this.updateDescription();
       })
     ]);
   }
@@ -421,7 +438,7 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
       this.descriptionI18n.update({
         key: 'SharedFolder.Edit.Description',
         args: [
-          wrapEmojiText(this.filter.title),
+          this.descriptionTitle,
           i18n('Chats', [length])
         ]
       });

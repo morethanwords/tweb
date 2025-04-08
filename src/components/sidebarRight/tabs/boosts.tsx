@@ -33,6 +33,8 @@ import {toastNew} from '../../toast';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 import appImManager from '../../../lib/appManagers/appImManager';
+import PopupPayment from '../../popups/payment';
+import formatStarsAmount from '../../../lib/appManagers/utils/payments/formatStarsAmount';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
@@ -49,21 +51,28 @@ export const CPrepaidGiveaway = (props: {
   clickable?: true | (() => void),
   listenerSetter?: ListenerSetter
 }) => {
-  const {quantity, months} = props.giveaway;
+  const {quantity} = props.giveaway;
+  const stars = (props.giveaway as PrepaidGiveaway.prepaidStarsGiveaway).stars;
+  const months = (props.giveaway as PrepaidGiveaway.prepaidGiveaway).months;
+  const boosts = stars ? (props.giveaway as PrepaidGiveaway.prepaidStarsGiveaway).boosts : (props.appConfig.giveaway_boosts_per_premium || 1) * quantity;
   const row = new Row({
-    titleLangKey: 'BoostingGiveawayMsgInfoPlural1',
-    titleLangArgs: [quantity],
-    subtitleLangKey: 'Giveaway.Prepaid.Subtitle',
+    titleLangKey: stars ? 'Stars' : 'BoostingGiveawayMsgInfoPlural1',
+    titleLangArgs: [stars || quantity],
+    subtitleLangKey: stars ? 'Giveaway.Prepaid.For' : 'Giveaway.Prepaid.Subtitle',
     subtitleLangArgs: [quantity, i18n('Giveaway.Prepaid.Period', [months])],
     clickable: props.clickable,
     listenerSetter: props.listenerSetter,
-    rightContent: BoostsBadge({boosts: (props.appConfig.giveaway_boosts_per_premium || 1) * quantity}) as HTMLElement
+    rightContent: BoostsBadge({boosts}) as HTMLElement
   });
 
   row.title.classList.add('text-bold');
   const media = row.createMedia('abitbigger');
   const avatar = AvatarNew({size: 42});
-  avatar.set({icon: 'gift_premium', color: getColorByMonths(months)});
+  if(stars) {
+    avatar.set({icon: 'star', color: 'stars'});
+  } else {
+    avatar.set({icon: 'gift_premium', color: getColorByMonths(months)});
+  }
   media.append(avatar.node);
 
   return row.container;
@@ -306,6 +315,29 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
               return;
             }
 
+            if(boost.stars) {
+              PopupPayment.create({
+                noPaymentForm: true,
+                transaction: {
+                  _: 'starsTransaction',
+                  date: boost.date,
+                  id: '',
+                  peer: {
+                    _: 'starsTransactionPeer',
+                    peer: {
+                      _: 'peerChannel',
+                      channel_id: this.peerId.toChatId()
+                    }
+                  },
+                  pFlags: {},
+                  stars: formatStarsAmount(boost.stars),
+                  giveaway_post_id: boost.giveaway_msg_id
+                },
+                boost
+              });
+              return;
+            }
+
             const slug = boost.used_gift_slug;
             const peerId = boost.user_id?.toPeerId(false);
             if(peerId && !boost.pFlags.gift && !boost.pFlags.unclaimed && !boost.pFlags.giveaway) {
@@ -377,12 +409,14 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
     if(peerId) {
       title = await wrapPeerTitle({peerId});
       title.classList.add('boosts-user-name');
+    } else if(boost.stars) {
+      title = i18n('Stars', [boost.stars]);
     } else {
       title = i18n(boost.pFlags.unclaimed ? 'BoostingUnclaimed' : 'BoostingToBeDistributed');
     }
 
     let subtitle: HTMLElement;
-    if(peerId) {
+    if(peerId || boost.stars) {
       subtitle = i18n('BoostsExpiration', [boosts, formatFullSentTime(boost.expires, undefined, true)]);
     } else {
       subtitle = document.createElement('span');
@@ -430,6 +464,11 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
 
     if(peerId) {
       await avatar.readyThumbPromise;
+    } else if(boost.stars) {
+      avatar.set({
+        icon: 'star',
+        color: 'stars'
+      });
     } else {
       avatar.set({
         icon: boost.pFlags.unclaimed ? 'deleteuser' : 'noncontacts',

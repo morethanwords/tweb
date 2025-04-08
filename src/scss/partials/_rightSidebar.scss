@@ -43,6 +43,7 @@
   
     .sidebar-content {
       min-width: var(--right-column-width);
+      width: var(--right-column-width);
     }
   
     /* &:not(.active) {
@@ -729,6 +730,11 @@
 
   .search-group.is-short {
     .chatlist-chat:nth-child(n + 4) {
+      display: none;
+    }
+  }
+  .search-group.is-short-5 {
+    .chatlist-chat:nth-child(n + 6) {
       display: none;
     }
   }

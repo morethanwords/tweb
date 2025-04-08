@@ -417,11 +417,11 @@ export default class Scrollable extends ScrollableBase {
     const cb = this.onAdditionalScroll;
     this.onAdditionalScroll = () => {
       cb?.();
-      setClassOn.classList.toggle('scrolled-top', !this.scrollPosition);
-      setClassOn.classList.toggle('scrolled-bottom', this.isScrolledToEnd);
+      setClassOn.classList.toggle('scrolled-start', !this.scrollPosition);
+      setClassOn.classList.toggle('scrolled-end', this.isScrolledToEnd);
     };
 
-    setClassOn.classList.add('scrolled-top', 'scrolled-bottom', 'scrollable-y-bordered');
+    setClassOn.classList.add('scrolled-start', 'scrolled-end', 'scrollable-y-bordered');
   }
 
   public setVirtualContainer(el?: HTMLElement) {

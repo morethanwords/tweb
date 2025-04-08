@@ -13,17 +13,30 @@ import setInnerHTML from '../helpers/dom/setInnerHTML';
 import ListenerSetter from '../helpers/listenerSetter';
 import {_i18n, FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
 import CheckboxField from './checkboxField';
-import {Document} from '../layer';
+import {Chat, Document, User} from '../layer';
 import {IS_MOBILE} from '../environment/userAgent';
 import ripple from './ripple';
 import Icon from './icon';
 import RadioForm from './radioForm';
 import wrapAttachBotIcon from './wrappers/attachBotIcon';
+import {createRoot} from 'solid-js';
+import {AvatarNew} from './avatarNew';
+import {ActiveAccountNumber} from '../lib/accounts/types';
 
 type ButtonMenuItemInner = Omit<Parameters<typeof ButtonMenuSync>[0], 'listenerSetter'>;
+type AvatarInfo = {
+  accountNumber?: ActiveAccountNumber,
+  peerId?: PeerId,
+  peer?: Chat.channel | Chat.chat | User.user,
+  active?: boolean
+};
+
 export type ButtonMenuItemOptions = {
+  id?: any;
   icon?: Icon,
+  emptyIcon?: boolean,
   iconDoc?: Document.document,
+  avatarInfo?: AvatarInfo,
   danger?: boolean,
   new?: boolean,
   className?: string,
@@ -45,7 +58,8 @@ export type ButtonMenuItemOptions = {
   loadPromise?: Promise<any>,
   waitForAnimation?: boolean,
   radioGroup?: string,
-  inner?: (() => MaybePromise<ButtonMenuItemInner>) | ButtonMenuItemInner
+  inner?: (() => MaybePromise<ButtonMenuItemInner>) | ButtonMenuItemInner,
+  dispose?: () => void
   /* , cancelEvent?: true */
 };
 
@@ -56,7 +70,17 @@ export type ButtonMenuItemOptionsVerifiable = ButtonMenuItemOptions & {
 function ButtonMenuItem(options: ButtonMenuItemOptions) {
   if(options.element) return [options.separator as HTMLElement, options.element].filter(Boolean);
 
-  const {icon, iconDoc, className, text, onClick, checkboxField, noCheckboxClickListener} = options;
+  const {
+    icon,
+    iconDoc,
+    avatarInfo,
+    className,
+    text,
+    onClick,
+    checkboxField,
+    noCheckboxClickListener,
+    emptyIcon
+  } = options;
   const el = document.createElement('div');
   const iconSplitted = icon?.split(' ');
   el.className = 'btn-menu-item rp-overflow' +
@@ -70,6 +94,10 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
 
   if(iconSplitted) {
     el.append(Icon(iconSplitted[0] as Icon, 'btn-menu-item-icon'));
+  } else if(emptyIcon) {
+    const iconPlaceholder = document.createElement('span');
+    iconPlaceholder.classList.add('btn-menu-item-icon');
+    el.append(iconPlaceholder);
   }
 
   let textElement = options.textElement;
@@ -95,6 +123,21 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
       textColor: () => isMobile() ? 'secondary-text-color' : 'primary-text-color',
       strokeWidth: () => isMobile() ? .625 : .375
     });
+  }
+
+  if(avatarInfo) {
+    const avatar = createRoot((dispose) => {
+      options.dispose = dispose;
+      return AvatarNew({
+        size: /* avatarInfo.active ? 22 :  */24,
+        ...avatarInfo
+      });
+    });
+    avatar.node.classList.add('btn-menu-item-icon', 'is-external', 'btn-menu-item-avatar');
+    if(avatarInfo.active) {
+      avatar.node.classList.add('active');
+    }
+    el.append(avatar.node);
   }
 
   textElement.classList.add('btn-menu-item-text');

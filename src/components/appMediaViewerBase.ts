@@ -19,7 +19,7 @@ import rootScope from '../lib/rootScope';
 import animationIntersector from './animationIntersector';
 import appMediaPlaybackController, {AppMediaPlaybackController} from './appMediaPlaybackController';
 import ButtonIcon from './buttonIcon';
-import {ButtonMenuItemOptions} from './buttonMenu';
+import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from './buttonMenu';
 import ButtonMenuToggle from './buttonMenuToggle';
 import ProgressivePreloader from './preloader';
 import SwipeHandler, {ZoomDetails} from './swipeHandler';
@@ -69,6 +69,11 @@ import {MediaSize} from '../helpers/mediaSize';
 import {getRtmpStreamUrl} from '../lib/rtmp/url';
 import boxBlurCanvasRGB from '../vendor/fastBlur';
 import {i18n} from '../lib/langPack';
+import {getQualityFilesEntries} from '../lib/hls/createHlsVideoSource';
+import {snapQualityHeight} from '../lib/hls/snapQualityHeight';
+import {ButtonMenuItemWithAuxiliaryText} from '../lib/mediaPlayer/qualityLevelsSwitchButton';
+import formatBytes from '../helpers/formatBytes';
+import getDocumentURL from '../lib/appManagers/utils/docs/getDocumentURL';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -84,6 +89,11 @@ type Transform = {
   x: number;
   y: number;
   scale: number;
+};
+
+export type VideoTimestamp = {
+  time: number;
+  text?: string;
 };
 
 export default class AppMediaViewerBase<
@@ -127,7 +137,12 @@ export default class AppMediaViewerBase<
 
   protected streamEnded: boolean = false;
 
-  protected onDownloadClick: (e: MouseEvent) => void;
+  protected downloadQualityMenuOptions: ButtonMenuItemOptionsVerifiable[] = [];
+  protected get hasQualityOptions() {
+    return this.downloadQualityMenuOptions.length > 0;
+  }
+
+  protected onDownloadClick: (e: MouseEvent | TouchEvent, docId?: DocId) => void;
   protected onPrevClick: (target: TargetType) => void;
   protected onNextClick: (target: TargetType) => void;
 
@@ -169,6 +184,8 @@ export default class AppMediaViewerBase<
   protected middlewareHelper: MiddlewareHelper;
 
   protected overlayActive: boolean;
+
+  protected videoTimestamps: VideoTimestamp[] = [];
 
   get target() {
     return this.listLoader.current;
@@ -324,7 +341,17 @@ export default class AppMediaViewerBase<
   }
 
   protected setListeners() {
-    attachClickEvent(this.buttons.download, this.onDownloadClick);
+    attachClickEvent(this.buttons.download, (e) => {
+      if(this.hasQualityOptions) return;
+      this.onDownloadClick(e);
+    });
+    this.buttons.download.classList.add('quality-download-options-button-menu');
+    ButtonMenuToggle({
+      container: this.buttons.download,
+      buttons: this.downloadQualityMenuOptions,
+      direction: 'bottom-left'
+    });
+
     [this.buttons.close, this.buttons['mobile-close'], this.preloaderStreamable.preloader].forEach((el) => {
       attachClickEvent(el, this.close.bind(this));
     });
@@ -1551,6 +1578,48 @@ export default class AppMediaViewerBase<
     );
   }
 
+  protected removeQualityOptions() {
+    this.downloadQualityMenuOptions.splice(0);
+  }
+
+  protected async loadQualityLevelsDownloadOptions(doc: MyDocument) {
+    this.removeQualityOptions();
+
+    const altDocs = await this.managers.appDocsManager.getAltDocsByDocument(doc.id);
+    if(!altDocs) return;
+
+    const qualityEntries = getQualityFilesEntries(altDocs);
+    if(!qualityEntries.length) return;
+
+    const availableHeights = Array.from(new Set(qualityEntries.map((entry) => snapQualityHeight(entry.h))))
+    .sort((a, b) => b - a);
+
+    const filteredEntries = availableHeights.map((height) => {
+      let chosenEntry: (typeof qualityEntries)[number];
+      for(const entry of qualityEntries) {
+        if(snapQualityHeight(entry.h) !== height) continue;
+        if(!chosenEntry || entry.bandwidth < chosenEntry.bandwidth) chosenEntry = entry;
+      }
+      return chosenEntry;
+    });
+
+    if(filteredEntries.length <= 1) return;
+
+    const options: ButtonMenuItemOptionsVerifiable[] = await Promise.all(filteredEntries.map(async(entry) => {
+      const doc = await this.managers.appDocsManager.getDoc(entry.id);
+      const snappedHeight = snapQualityHeight(entry.h);
+
+      return ({
+        regularText: ButtonMenuItemWithAuxiliaryText(`Hls.SaveIn${snappedHeight}`, formatBytes(doc.size, 1)) as HTMLElement,
+        onClick: (e) => {
+          this.onDownloadClick(e, entry.id);
+        }
+      });
+    }));
+
+    this.downloadQualityMenuOptions.push(...options);
+  }
+
   protected async _openMedia({
     media,
     mediaThumbnail,
@@ -1594,6 +1663,7 @@ export default class AppMediaViewerBase<
     const isLiveStream = media._ === 'inputGroupCall';
     const isDocument = media._ === 'document';
     const isVideo = isDocument && media.mime_type && ((['video', 'gif'] as MyDocument['type'][]).includes(media.type) || media.mime_type.indexOf('video/') === 0);
+    let isHlsStream: boolean;
 
     this.log('openMedia', media, fromId, prevTargets, nextTargets, isLiveStream, isDocument, isVideo);
 
@@ -1631,7 +1701,11 @@ export default class AppMediaViewerBase<
       container.replaceChildren();
     }
 
-    // ok set
+    let changeQualityOptionsPromise: Promise<void>;
+    if(media._ === 'document')
+      changeQualityOptionsPromise = this.loadQualityLevelsDownloadOptions(media);
+    else
+      changeQualityOptionsPromise = Promise.resolve(this.removeQualityOptions());
 
     const wasActive = fromRight !== 0;
     if(wasActive) {
@@ -1738,6 +1812,7 @@ export default class AppMediaViewerBase<
 
     const getCacheContext = (type = size?.type) => {
       if(isLiveStream) return {url: getRtmpStreamUrl(media)};
+      if(isHlsStream) return {url: getDocumentURL(media as MyDocument, {supportsHlsStreaming: true})};
       return this.managers.thumbsStorage.getCacheContext(media, type);
     };
 
@@ -1762,6 +1837,8 @@ export default class AppMediaViewerBase<
       // return; // set and don't move
       // if(wasActive) return;
         // return;
+
+        isHlsStream = this.hasQualityOptions;
 
         onMoverSet?.();
 
@@ -1826,6 +1903,7 @@ export default class AppMediaViewerBase<
           // const play = useController ? appMediaPlaybackController.willBePlayedMedia === video : true;
           const play = !isLiveStream;
           const player = this.videoPlayer = new VideoPlayer({
+            videoTimestamps: this.videoTimestamps,
             video,
             play,
             streamable: supportsStreaming,
@@ -1876,6 +1954,8 @@ export default class AppMediaViewerBase<
             listenKeyboardEvents: 'always',
             useGlobalVolume: 'auto'
           });
+          this.videoPlayer?.loadQualityLevels();
+
           player.addEventListener('toggleControls', (show) => {
             this.wholeDiv.classList.toggle('has-video-controls', show);
           });
@@ -2016,6 +2096,7 @@ export default class AppMediaViewerBase<
               // }
             } else {
               renderImageFromUrl(video, url);
+              this.videoPlayer?.loadQualityLevels();
             }
 
             // * have to set options (especially playbackRate) after src
@@ -2045,7 +2126,7 @@ export default class AppMediaViewerBase<
         // } else createPlayer();
       });
 
-      setMoverPromise = thumbPromise.then(set);
+      setMoverPromise = Promise.all([thumbPromise, changeQualityOptionsPromise]).then(set);
     } else {
       const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
       // return; // set and don't move

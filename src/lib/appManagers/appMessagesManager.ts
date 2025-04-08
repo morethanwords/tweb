@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
 import {randomLong} from '../../helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia} from '../../layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '../../types';
 import {logger, LogTypes} from '../logger';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -78,14 +78,18 @@ import getMainGroupedMessage from './utils/messages/getMainGroupedMessage';
 import getUnreadReactions from './utils/messages/getUnreadReactions';
 import isMentionUnread from './utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
+import commonStateStorage from '../commonStateStorage';
+import PaidMessagesQueue from './utils/messages/paidMessagesQueue';
+import type {ConfirmedPaymentResult} from '../../components/chat/paidMessagesInterceptor';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
 
-const APITIMEOUT = 0;
 const DO_NOT_READ_HISTORY = false;
 const DO_NOT_SEND_MESSAGES = false;
+const SEND_MESSAGES_TO_PAID_QUEUE = false;
 const DO_NOT_DELETE_MESSAGES = false;
+
 const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
 
 export enum HistoryType {
@@ -219,7 +223,8 @@ export type MessageSendingParams = Partial<{
   updateStickersetOrder: boolean,
   savedReaction: Reaction[],
   invertMedia: boolean,
-  effect: DocId
+  effect: DocId,
+  confirmedPaymentResult: ConfirmedPaymentResult
 }>;
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -317,6 +322,8 @@ export class AppMessagesManager extends AppManager {
   private fetchSingleMessagesPromise: Promise<void>;
   private extendedMedia: Map<PeerId, Map<number, CancellablePromise<void>>> = new Map();
 
+  private deletedMessages: Set<string> = new Set();
+
   private maxSeenId = 0;
 
   public migratedFromTo: {[peerId: PeerId]: PeerId} = {};
@@ -364,6 +371,9 @@ export class AppMessagesManager extends AppManager {
   private historyMaxIdSubscribed: Map<HistoryStorageKey, number> = new Map();
 
   private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
+
+  private waitingTranscriptions: Map<string, CancellablePromise<MessagesTranscribedAudio>>;
+  private paidMessagesQueue = new PaidMessagesQueue;
 
   protected after() {
     this.clear(true);
@@ -531,8 +541,7 @@ export class AppMessagesManager extends AppManager {
         // @ts-ignore
         const result = details.callback(details.batch);
         if(result && (!(result instanceof Array) || result.length)) {
-          // @ts-ignore
-          rootScope.dispatchEvent(event as keyof BatchUpdates, result);
+          this.rootScope.dispatchEvent(event as keyof BatchUpdates, result as any);
         }
       }
     }, 33, false, true);
@@ -551,6 +560,7 @@ export class AppMessagesManager extends AppManager {
   public clear = (init?: boolean) => {
     if(this.middleware) {
       this.middleware.clean();
+      this.waitingTranscriptions.forEach((promise) => promise.reject());
     } else {
       this.middleware = getMiddleware();
       this.uploadFilePromises = {};
@@ -566,14 +576,15 @@ export class AppMessagesManager extends AppManager {
     this.threadsServiceMessagesIdsStorage = {};
     this.threadsToReplies = {};
     this.references = {};
+    this.waitingTranscriptions = new Map();
 
     this.dialogsStorage && this.dialogsStorage.clear(init);
     this.filtersStorage && this.filtersStorage.clear(init);
   };
 
   public getInputEntities(entities: MessageEntity[]) {
-    const sendEntites = copy(entities);
-    forEachReverse(sendEntites, (entity, idx, arr) => {
+    const sendEntities = copy(entities);
+    forEachReverse(sendEntities, (entity, idx, arr) => {
       if(LOCAL_ENTITIES.has(entity._)) {
         arr.splice(idx, 1);
       } else if(entity._ === 'messageEntityMentionName') {
@@ -581,7 +592,12 @@ export class AppMessagesManager extends AppManager {
         (entity as any as MessageEntity.inputMessageEntityMentionName).user_id = this.appUsersManager.getUserInput(entity.user_id);
       }
     });
-    return sendEntites;
+
+    if(!sendEntities.length) {
+      return;
+    }
+
+    return sendEntities;
   }
 
   public invokeAfterMessageIsSent(tempId: number, callbackName: string, callback: (message: MyMessage) => Promise<any>) {
@@ -620,10 +636,7 @@ export class AppMessagesManager extends AppManager {
       [text, entities] = parseMarkdown(text, entities);
     }
 
-    let sendEntites = this.getInputEntities(entities);
-    if(!sendEntites.length) {
-      sendEntites = undefined;
-    }
+    const sendEntities = this.getInputEntities(entities);
 
     const inputMediaWebPage = this.getInputMediaWebPage(options);
 
@@ -633,7 +646,7 @@ export class AppMessagesManager extends AppManager {
       id: message.id,
       message: text,
       media: options.newMedia,
-      entities: sendEntites,
+      entities: sendEntities,
       no_webpage: options.noWebPage,
       schedule_date,
       invert_media: options.invertMedia,
@@ -656,7 +669,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public async transcribeAudio(message: Message.message): Promise<MessagesTranscribedAudio> {
+  public async transcribeAudio(message: Message.message, noPending?: boolean): Promise<MessagesTranscribedAudio> {
     const {id, peerId} = message;
 
     const process = (result: MessagesTranscribedAudio) => {
@@ -668,18 +681,29 @@ export class AppMessagesManager extends AppManager {
         text: result.text,
         transcription_id: result.transcription_id
       });
+
+      return result;
     };
 
-    return this.apiManager.invokeApiSingleProcess({
+    const key = `${peerId}_${message.mid}`;
+    let promise: CancellablePromise<MessagesTranscribedAudio>;
+    if(noPending) {
+      promise = this.waitingTranscriptions.get(key);
+      if(!promise) {
+        this.waitingTranscriptions.set(key, promise = deferredPromise());
+        promise.finally(() => {
+          this.waitingTranscriptions.delete(key);
+        });
+      }
+    }
+
+    const ret = this.apiManager.invokeApiSingleProcess({
       method: 'messages.transcribeAudio',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         msg_id: id
       },
-      processResult: (result) => {
-        process(result);
-        return result;
-      },
+      processResult: process,
       processError: (error) => {
         if(error.type === 'TRANSCRIPTION_FAILED' || error.type === 'MSG_VOICE_MISSING') {
           process({
@@ -693,6 +717,8 @@ export class AppMessagesManager extends AppManager {
         throw error;
       }
     });
+
+    return promise || ret;
   }
 
   public async sendText(
@@ -741,10 +767,7 @@ export class AppMessagesManager extends AppManager {
       [text, entities] = parseMarkdown(text, entities);
     }
 
-    let sendEntites = this.getInputEntities(entities);
-    if(!sendEntites.length) {
-      sendEntites = undefined;
-    }
+    const sendEntities = this.getInputEntities(entities);
 
     const message = this.generateOutgoingMessage(peerId, options);
     message.entities = entities;
@@ -758,6 +781,8 @@ export class AppMessagesManager extends AppManager {
       this.onMessagesSendError([message], error);
       this.rootScope.dispatchEvent('messages_pending');
     };
+
+    const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
 
     message.send = () => {
       toggleError();
@@ -778,7 +803,8 @@ export class AppMessagesManager extends AppManager {
           query_id: options.queryId,
           id: options.resultId,
           clear_draft: options.clearDraft,
-          send_as: sendAs
+          send_as: sendAs,
+          allow_paid_stars: paidStars
         }, sentRequestOptions);
       } else {
         const commonOptions: Partial<MessagesSendMessage | MessagesSendMedia> = {
@@ -786,14 +812,15 @@ export class AppMessagesManager extends AppManager {
           message: text,
           random_id: message.random_id,
           reply_to: replyTo,
-          entities: sendEntites,
+          entities: sendEntities,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate || undefined,
           silent: options.silent,
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
-          effect: options.effect
+          effect: options.effect,
+          allow_paid_stars: paidStars
         };
 
         const mergedOptions: MessagesSendMessage | MessagesSendMedia = {
@@ -856,6 +883,10 @@ export class AppMessagesManager extends AppManager {
 
         if(updates) {
           this.apiUpdatesManager.processUpdateMessage(updates);
+          this.apiUpdatesManager.processPaidMessageUpdate({
+            paidStars,
+            wereStarsReserved: options.confirmedPaymentResult?.canUndo
+          });
         }
 
         message.promise.resolve();
@@ -874,7 +905,8 @@ export class AppMessagesManager extends AppManager {
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
       clearDraft: options.clearDraft,
-      sequential: true
+      sequential: true,
+      confirmedPaymentResult: options.confirmedPaymentResult
     });
 
     const promises: ReturnType<AppMessagesManager['sendText']>[] = [message.promise];
@@ -911,11 +943,16 @@ export class AppMessagesManager extends AppManager {
     // ! only for internal use
     processAfter?: typeof processAfter
   }>) {
-    const file = options.file;
+    let file = options.file;
     let {peerId} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     this.checkSendOptions(options);
+
+    const isDocument = !(file instanceof File) && !(file instanceof Blob);
+    if(isDocument) {
+      file = this.appDocsManager.getDoc((file as MyDocument).id) || file;
+    }
 
     const hadMessageBefore = !!options.groupedMessage;
     const message = options.groupedMessage || this.generateOutgoingMessage(peerId, options);
@@ -924,7 +961,6 @@ export class AppMessagesManager extends AppManager {
 
     const fileType = (file as Document.document).mime_type || file.type;
     const fileName = file instanceof File ? file.name : '';
-    const isDocument = !(file instanceof File) && !(file instanceof Blob);
     let caption = options.caption || '';
 
     this.log('sendFile', file, fileType);
@@ -1151,12 +1187,9 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    let sendEntites = this.getInputEntities(entities);
-    if(!sendEntites.length) {
-      sendEntites = undefined;
-    }
+    const sendEntities = this.getInputEntities(entities);
 
-    const uploadingFileName = !isDocument ? getFileNameForUpload(file) : undefined;
+    const uploadingFileName = !isDocument ? getFileNameForUpload(file as File | Blob) : undefined;
     if(uploadingFileName) {
       this.uploadFilePromises[uploadingFileName] = sentDeferred;
     }
@@ -1188,11 +1221,11 @@ export class AppMessagesManager extends AppManager {
     let uploaded = false,
       uploadPromise: ReturnType<ApiFileManager['upload']> = null;
 
-    const send = () => {
+    const upload = () => {
       if(isDocument) {
         const inputMedia: InputMedia = {
           _: 'inputMediaDocument',
-          id: getDocumentInput(file),
+          id: getDocumentInput(file as MyDocument),
           pFlags: {}
         };
 
@@ -1305,8 +1338,11 @@ export class AppMessagesManager extends AppManager {
       return sentDeferred;
     };
 
-    !hadMessageBefore && (message.send = send);
-    !hadMessageBefore && this.beforeMessageSending(message, {
+    if(!hadMessageBefore && !options.confirmedPaymentResult?.canUndo) {
+      message.send = upload;
+    }
+
+    if(!hadMessageBefore) this.beforeMessageSending(message, {
       isGroupedItem: options.isGroupedItem,
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
@@ -1315,9 +1351,8 @@ export class AppMessagesManager extends AppManager {
     });
 
     if(!options.isGroupedItem) {
-      sentDeferred.then((inputMedia) => {
-        this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
-
+      const invokeSend = (inputMedia: Awaited<typeof sentDeferred>) => {
+        const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
         return this.apiManager.invokeApi('messages.sendMedia', {
           background: options.background,
           peer: this.appPeersManager.getInputPeerById(peerId),
@@ -1327,52 +1362,88 @@ export class AppMessagesManager extends AppManager {
           reply_to: options.replyTo,
           schedule_date: options.scheduleDate,
           silent: options.silent,
-          entities: sendEntites,
+          entities: sendEntities,
           clear_draft: options.clearDraft,
           send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
-          effect: options.effect
+          effect: options.effect,
+          allow_paid_stars: paidStars
         }).then((updates) => {
-          this.apiUpdatesManager.processUpdateMessage(updates);
-        }, (error: ApiError) => {
-          if(attachType === 'photo' &&
-            error.code === 400 &&
-            (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
-            error.type === 'PHOTO_SAVE_FILE_INVALID')) {
-            error.handled = true;
-            attachType = 'document';
-            message.send();
-            return;
+          this.apiUpdatesManager.processUpdateMessage(updates)
+          this.apiUpdatesManager.processPaidMessageUpdate({
+            paidStars,
+            wereStarsReserved: options.confirmedPaymentResult?.canUndo
+          });
+        });
+      };
+
+      const send = () => {
+        sentDeferred.then((inputMedia) => {
+          this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+
+          let promise: Promise<void>;
+          if(inputMedia._ === 'inputMediaDocument') {
+            promise = this.apiFileManager.invokeApiWithReference({
+              context: inputMedia.id as InputDocument.inputDocument,
+              callback: () => invokeSend(inputMedia)
+            });
+          } else {
+            promise = invokeSend(inputMedia);
           }
 
-          toggleError(error);
-          throw error;
-        });
-      });
+          return promise.catch((error: ApiError) => {
+            if(attachType === 'photo' &&
+              (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
+              error.type === 'PHOTO_SAVE_FILE_INVALID')) {
+              error.handled = true;
+              attachType = 'document';
+              message.send();
+              return;
+            }
 
-      const messagePromise = message.promise as CancellablePromise<void>;
-      sentDeferred.then(
-        () => messagePromise.resolve(),
-        (err) => messagePromise.reject(err)
-      );
+            toggleError(error);
+            throw error;
+          });
+        });
+
+        const messagePromise = message.promise as CancellablePromise<void>;
+        sentDeferred.then(
+          () => messagePromise.resolve(),
+          (err) => messagePromise.reject(err)
+        );
+      };
+
+      if(options.confirmedPaymentResult?.canUndo) {
+        upload();
+
+        this.paidMessagesQueue.add(peerId, {
+          send,
+          cancel: () => {
+            this.cancelPendingMessage(message.random_id);
+            (message.promise as CancellablePromise<void>)?.reject();
+          }
+        });
+      } else {
+        send();
+      }
     }
 
     const ret: {
       message: typeof message,
       promise: typeof sentDeferred,
-      send: typeof send,
+      send: typeof upload,
       media: typeof media,
       uploadingFileName: typeof uploadingFileName
     } = {
       message,
       media,
-      send,
       uploadingFileName
     } as any;
 
     defineNotNumerableProperties(ret, ['promise', 'send']);
     ret.promise = sentDeferred;
+    ret.send = upload;
 
     return ret;
   }
@@ -1401,9 +1472,6 @@ export class AppMessagesManager extends AppManager {
     }
 
     let sendEntities = this.getInputEntities(entities);
-    if(!sendEntities.length) {
-      sendEntities = undefined;
-    }
 
     const log = this.log.bindPrefix('sendGrouped');
     log(options);
@@ -1447,6 +1515,7 @@ export class AppMessagesManager extends AppManager {
 
       if(idx === 0) {
         firstMessage = result.message;
+        firstMessage.paid_message_stars = options.confirmedPaymentResult?.starsAmount;
       }
 
       return result;
@@ -1490,6 +1559,7 @@ export class AppMessagesManager extends AppManager {
       const deferred = deferredPromise<void>();
       this.sendSmthLazyLoadQueue.push({
         load: () => {
+          const paidStars = options.confirmedPaymentResult?.starsAmount * multiMedia.length || undefined
           return this.apiManager.invokeApi(options.stars ? 'messages.sendMedia' : 'messages.sendMultiMedia', {
             peer: inputPeer,
             reply_to: options.replyTo,
@@ -1500,6 +1570,7 @@ export class AppMessagesManager extends AppManager {
             update_stickersets_order: options.updateStickersetOrder,
             invert_media: options.invertMedia,
             effect: options.effect,
+            allow_paid_stars: paidStars,
             ...(options.stars ? {
               media: multiMedia[0].media,
               message: multiMedia[0].message,
@@ -1510,6 +1581,11 @@ export class AppMessagesManager extends AppManager {
             })
           }).then((updates) => {
             this.apiUpdatesManager.processUpdateMessage(updates);
+            this.apiUpdatesManager.processPaidMessageUpdate({
+              paidStars,
+              wereStarsReserved: options.confirmedPaymentResult?.canUndo
+            });
+
             deferred.resolve();
           }, (error: ApiError) => {
             results.forEach(({message}) => toggleError(message, error));
@@ -1534,7 +1610,7 @@ export class AppMessagesManager extends AppManager {
         if(!isUploadCanceled) {
           log.error('upload item error:', err, message);
         }
-        toggleError(message, err);
+        toggleError(message, err as ApiError);
         throw err;
       }
 
@@ -1546,7 +1622,7 @@ export class AppMessagesManager extends AppManager {
         });
       } catch(err) {
         log.error('uploadMedia error:', err, message);
-        toggleError(message, err);
+        toggleError(message, err as ApiError);
         throw err;
       }
 
@@ -1602,12 +1678,19 @@ export class AppMessagesManager extends AppManager {
         };
       }
 
+      if(options.confirmedPaymentResult?.canUndo) {
+        this.paidMessagesQueue.add(peerId, {
+          send: () => void invoke(inputs),
+          cancel: () => results.forEach(({message}) => this.cancelPendingMessage(message.random_id))
+        });
+        return;
+      }
       return invoke(inputs);
     });
   }
 
-  public sendContact(peerId: PeerId, contactPeerId: PeerId) {
-    return this.sendOther({peerId, inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId)});
+  public sendContact(peerId: PeerId, contactPeerId: PeerId, confirmedPaymentResult?: ConfirmedPaymentResult) {
+    return this.sendOther({peerId, inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId), confirmedPaymentResult});
   }
 
   public sendOther(
@@ -1760,6 +1843,8 @@ export class AppMessagesManager extends AppManager {
         sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
       }
 
+      const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
+
       const sendAs = options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined;
       let apiPromise: Promise<any>;
       if(options.viaBotId) {
@@ -1772,7 +1857,8 @@ export class AppMessagesManager extends AppManager {
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
           silent: options.silent,
-          send_as: sendAs
+          send_as: sendAs,
+          allow_paid_stars: paidStars
         }, sentRequestOptions);
       } else {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendMedia', {
@@ -1785,7 +1871,8 @@ export class AppMessagesManager extends AppManager {
           schedule_date: options.scheduleDate,
           silent: options.silent,
           send_as: sendAs,
-          update_stickersets_order: options.updateStickersetOrder
+          update_stickersets_order: options.updateStickersetOrder,
+          allow_paid_stars: paidStars
         }, sentRequestOptions);
       }
 
@@ -1801,6 +1888,10 @@ export class AppMessagesManager extends AppManager {
         }
 
         this.apiUpdatesManager.processUpdateMessage(updates);
+        this.apiUpdatesManager.processPaidMessageUpdate({
+          paidStars,
+          wereStarsReserved: options.confirmedPaymentResult?.canUndo
+        });
         promise.resolve();
       }, (error: ApiError) => {
         toggleError(error);
@@ -1818,7 +1909,8 @@ export class AppMessagesManager extends AppManager {
       threadId: options.threadId,
       clearDraft: options.clearDraft,
       sequential: true,
-      noOutgoingMessage
+      noOutgoingMessage,
+      confirmedPaymentResult: options.confirmedPaymentResult
     });
 
     const promise = message.promise;
@@ -1861,7 +1953,7 @@ export class AppMessagesManager extends AppManager {
     // }
   }
 
-  private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction'> & Partial<{
+  private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction' | 'confirmedPaymentResult'> & Partial<{
     isGroupedItem: boolean,
     isScheduled: boolean,
     clearDraft: boolean,
@@ -1947,8 +2039,14 @@ export class AppMessagesManager extends AppManager {
         if(options.clearDraft) {
           this.appDraftsManager.clearDraft(peerId, options.threadId);
         }
+        if(DO_NOT_SEND_MESSAGES) return;
 
-        if(!DO_NOT_SEND_MESSAGES) {
+        if(SEND_MESSAGES_TO_PAID_QUEUE || options.confirmedPaymentResult?.canUndo) {
+          this.paidMessagesQueue.add(peerId, {
+            send: () => void message?.send?.(),
+            cancel: () => void this.cancelPendingMessage(message?.random_id)
+          });
+        } else {
           message.send();
         }
       });
@@ -2013,7 +2111,8 @@ export class AppMessagesManager extends AppManager {
       replies: this.generateReplies(peerId, options.replyTo),
       views: isBroadcast && 1,
       pending: true,
-      effect: options.effect
+      effect: options.effect,
+      paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined
     };
 
     defineNotNumerableProperties(message, ['send', 'promise']);
@@ -2749,7 +2848,8 @@ export class AppMessagesManager extends AppManager {
           text: originalMessage.message,
           entities: originalMessage.entities,
           scheduleDate: options.scheduleDate,
-          silent: options.silent
+          silent: options.silent,
+          confirmedPaymentResult: options.confirmedPaymentResult
         });
 
         mids.splice(i--, 1);
@@ -2876,7 +2976,8 @@ export class AppMessagesManager extends AppManager {
       this.beforeMessageSending(message, {
         isScheduled: !!options.scheduleDate || undefined,
         sequential: true,
-        threadId: message.peerId === this.appPeersManager.peerId ? fromPeerId : undefined
+        threadId: message.peerId === this.appPeersManager.peerId ? fromPeerId : undefined,
+        confirmedPaymentResult: options.confirmedPaymentResult
       });
     });
 
@@ -2885,7 +2986,9 @@ export class AppMessagesManager extends AppManager {
       sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
     }
 
-    const promise = /* true ? Promise.resolve() :  */this.apiManager.invokeApiAfter('messages.forwardMessages', {
+    const paidStars = options.confirmedPaymentResult ? options.confirmedPaymentResult?.starsAmount * mids.length : undefined;
+
+    const send = () => this.apiManager.invokeApiAfter('messages.forwardMessages', {
       from_peer: this.appPeersManager.getInputPeerById(fromPeerId),
       id: mids.map((mid) => getServerMessageId(mid)),
       random_id: newMessages.map((message) => message.random_id),
@@ -2896,10 +2999,15 @@ export class AppMessagesManager extends AppManager {
       drop_author: options.dropAuthor,
       drop_media_captions: options.dropCaptions,
       send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
-      top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined
+      top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined,
+      allow_paid_stars: paidStars
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processPaidMessageUpdate({
+        paidStars,
+        wereStarsReserved: options.confirmedPaymentResult?.canUndo
+      });
     }, (error: ApiError) => {
       this.onMessagesSendError(newMessages, error);
       throw error;
@@ -2909,9 +3017,29 @@ export class AppMessagesManager extends AppManager {
       }
     });
 
+    const cancel = () => {
+      newMessages.forEach(message => this.cancelPendingMessage(message.random_id));
+    };
+
     this.pendingAfterMsgs[peerId] = sentRequestOptions;
 
-    const promises: (typeof promise)[] = [promise];
+    if(options.confirmedPaymentResult?.canUndo) {
+      this.paidMessagesQueue.add(peerId, {
+        send: () => void send(),
+        cancel
+      });
+
+      if(overflowMids.length) this.forwardMessages({
+        ...options,
+        peerId,
+        fromPeerId,
+        mids: overflowMids
+      });
+
+      return;
+    }
+
+    const promises: Promise<any>[] = [send()];
     if(overflowMids.length) {
       promises.push(this.forwardMessages({
         ...options,
@@ -3056,7 +3184,9 @@ export class AppMessagesManager extends AppManager {
         const {mid} = message;
 
         let inserted = true;
-        if(first.isEnd(SliceEnd.Bottom) && first[0] < mid) {
+        if(first.isEnd(SliceEnd.Both) && first[0] === undefined) {
+          searchStorage.history.unshift(mid);
+        } else if(first.isEnd(SliceEnd.Bottom) && first[0] < mid) {
           searchStorage.history.unshift(mid);
         } else if(last.isEnd(SliceEnd.Top) && last[last.length - 1] > mid) {
           searchStorage.history.push(mid);
@@ -3117,7 +3247,8 @@ export class AppMessagesManager extends AppManager {
 
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
       name: 'messages',
-      value: mirror
+      value: mirror,
+      accountNumber: this.getAccountNumber()
     }, port);
   }
 
@@ -3157,7 +3288,8 @@ export class AppMessagesManager extends AppManager {
       MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
         name: 'messages',
         key: joinDeepPath(storage.key, mid),
-        value: message
+        value: message,
+        accountNumber: this.getAccountNumber()
       });
     }
 
@@ -3177,7 +3309,8 @@ export class AppMessagesManager extends AppManager {
     if(storage.type !== 'grouped') {
       MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
         name: 'messages',
-        key: joinDeepPath(storage.key, mid)
+        key: joinDeepPath(storage.key, mid),
+        accountNumber: this.getAccountNumber()
       });
     }
 
@@ -3831,7 +3964,7 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    const mediaContext: ReferenceContext = {
+    const mediaContext: ReferenceContext = options.isOutgoing ? undefined : {
       type: 'message',
       peerId,
       messageId: mid
@@ -3953,11 +4086,12 @@ export class AppMessagesManager extends AppManager {
       let migrateFrom: PeerId, migrateTo: PeerId;
 
       if((action as MessageAction.messageActionChatEditPhoto).photo) {
-        (action as MessageAction.messageActionChatEditPhoto).photo = this.appPhotosManager.savePhoto((action as MessageAction.messageActionChatEditPhoto).photo, mediaContext);
+        (action as MessageAction.messageActionChatEditPhoto).photo =
+          this.appPhotosManager.savePhoto((action as MessageAction.messageActionChatEditPhoto).photo, mediaContext);
       }
 
-      if((action as any).document) {
-        (action as any).document = this.appDocsManager.saveDoc((action as any).photo, mediaContext);
+      if('document' in action) {
+        action.document = this.appDocsManager.saveDoc(action.document as Document, mediaContext);
       }
 
       switch(action._) {
@@ -4074,6 +4208,13 @@ export class AppMessagesManager extends AppManager {
               )
             );
           break;
+
+        case 'messageActionPrizeStars':
+          action.giveaway_msg_id = this.appMessagesIdsManager.generateMessageId(
+            action.giveaway_msg_id,
+            this.appPeersManager.getPeerId(action.boost_peer).toChatId()
+          );
+          break;
       }
 
       if(migrateFrom &&
@@ -4153,8 +4294,8 @@ export class AppMessagesManager extends AppManager {
           unsupported = true;
         } else {
           const originalDoc = media.document;
-          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext); // 11.04.2020 warning
-          media.alt_document &&= this.appDocsManager.saveDoc(media.alt_document, mediaContext); // 11.04.2020 warning
+
+          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext, media.alt_documents);
 
           if(!media.document && originalDoc._ !== 'documentEmpty') {
             unsupported = true;
@@ -4262,14 +4403,20 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public reportMessages(peerId: PeerId, mids: number[], reason: ReportReason['_'], message?: string) {
+  public reportMessages(peerId: PeerId, mids: number[], option: Uint8Array, message?: string) {
     return this.apiManager.invokeApiSingle('messages.report', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       id: mids.map((mid) => getServerMessageId(mid)),
-      reason: {
-        _: reason
-      },
+      option,
       message
+    });
+  }
+
+  public reportSpamMessages(peerId: PeerId, participantPeerId: PeerId, mids: number[]) {
+    return this.apiManager.invokeApiSingle('channels.reportSpam', {
+      channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
+      participant: this.appPeersManager.getInputPeerById(participantPeerId),
+      id: mids.map((mid) => getServerMessageId(mid))
     });
   }
 
@@ -6220,7 +6367,7 @@ export class AppMessagesManager extends AppManager {
         }
       }
 
-      this.rootScope.dispatchEvent('notification_cancel', 'msg' + mid);
+      this.rootScope.dispatchEvent('notification_cancel', `msg_${this.getAccountNumber()}_${peerId}_${mid}`);
     }
 
     if(isOut) historyStorage.readOutboxMaxId = maxId;
@@ -6579,11 +6726,7 @@ export class AppMessagesManager extends AppManager {
         }, storage);
       }
 
-      delete this.pinnedMessages[this.getPinnedMessagesKey(peerId)];
-      this.appStateManager.getState().then((state) => {
-        delete state.hiddenPinnedMessages[peerId];
-        this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, mids, pinned});
-      });
+      this.resetPinnedMessagesCache(peerId, mids, pinned);
     });
   };
 
@@ -6682,6 +6825,17 @@ export class AppMessagesManager extends AppManager {
     const peerId = this.appPeersManager.getPeerId(update.peer);
     const text = update.text;
     const mid = this.appMessagesIdsManager.generateMessageId(update.msg_id, channelId);
+
+    const key = `${peerId}_${mid}`;
+    const waitingPromise = this.waitingTranscriptions.get(key);
+    if(!update.pFlags.pending && waitingPromise) {
+      waitingPromise.resolve({
+        _: 'messages.transcribedAudio',
+        pFlags: {},
+        text,
+        transcription_id: update.transcription_id
+      });
+    }
 
     this.rootScope.dispatchEvent('message_transcribed', {peerId, mid, text, pending: update.pFlags.pending});
   };
@@ -7100,7 +7254,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  private notifyAboutMessage(message: MyMessage, options: Partial<{
+  private async notifyAboutMessage(message: MyMessage, options: Partial<{
     fwdCount: number,
     peerReaction: MessagePeerReaction,
     peerTypeNotifySettings: PeerNotifySettings
@@ -7111,20 +7265,32 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    const tabs = appTabsManager.getTabs();
+    const settings = await commonStateStorage.get('settings', false);
+
+    let tabs = appTabsManager.getTabs();
+    if(!settings.notifyAllAccounts)
+      tabs = tabs.filter((tab) => tab.state.accountNumber === this.getAccountNumber());
+
+    tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
+
     let tab = tabs.find((tab) => {
-      const {chatPeerIds} = tab.state;
-      return chatPeerIds[chatPeerIds.length - 1] === peerId;
+      const {chatPeerIds, accountNumber} = tab.state;
+      return accountNumber === this.getAccountNumber() && chatPeerIds[chatPeerIds.length - 1] === peerId;
     });
 
+    if(!tab) {
+      tab = tabs.find((tab) => tab.state.accountNumber === this.getAccountNumber());
+    }
+
     if(!tab && tabs.length) {
-      tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
       tab = !tabs[0].state.idleStartTime ? tabs[0] : tabs[tabs.length - 1];
     }
 
     const port = MTProtoMessagePort.getInstance<false>();
     port.invokeVoid('notificationBuild', {
       message,
+      accountNumber: this.getAccountNumber(),
+      isOtherTabActive: !!tab.state.idleStartTime,
       ...options
     }, tab?.source);
   }
@@ -7510,7 +7676,10 @@ export class AppMessagesManager extends AppManager {
     }
 
     let slice: Slice<any>, hadSlice: boolean;
-    if(searchSlicedArray) {
+    if(!count) {
+      slice = slicedArray.slice;
+      hadSlice = true;
+    } else if(searchSlicedArray) {
       let full = messages.map((message) => `${(message as Message.message).peerId}_${message.mid}`) as `${PeerId}_${number}`[];
       full = full.filter((str) => !searchSlicedArray.first.includes(str));
       slice = searchSlicedArray.insertSlice(full);
@@ -7994,6 +8163,8 @@ export class AppMessagesManager extends AppManager {
 
           if(map.size) {
             for(const [mid, promise] of map) {
+              const deletedPeerId = peerId.isAnyChat() && isLegacyMessageId(mid) ? GLOBAL_HISTORY_PEER_ID : peerId;
+              this.deletedMessages.add(`${deletedPeerId}_${mid}`);
               promise.resolve(this.generateEmptyMessage(mid));
             }
           }
@@ -8027,7 +8198,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     const message = this.getMessageByPeer(peerId, mid);
-    if(message && !overwrite) {
+    if(this.deletedMessages.has(`${peerId}_${mid}`) || (message && !overwrite)) {
       this.rootScope.dispatchEvent('messages_downloaded', {peerId, mids: [mid]});
       return Promise.resolve(message);
     } else {
@@ -8097,6 +8268,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public fetchMessageReplyTo(message: MyMessage) {
+    message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
     if(!message.reply_to) return Promise.resolve(this.generateEmptyMessage(0));
     const replyTo = message.reply_to;
     if(replyTo._ === 'messageReplyStoryHeader') {
@@ -8233,11 +8405,20 @@ export class AppMessagesManager extends AppManager {
 
       this.handleReleasingMessage(message, storage);
 
+      {
+        const deletedPeerId = peerId.isAnyChat() && isLegacyMessageId(mid) ? GLOBAL_HISTORY_PEER_ID : peerId;
+        this.deletedMessages.add(`${deletedPeerId}_${message.mid}`);
+      }
+
+      if((message as Message.message).pFlags.pinned) {
+        this.resetPinnedMessagesCache(peerId, [mid], false);
+      }
+
       this.updateMessageRepliesIfNeeded(message, false);
 
       if(!message.pFlags.out && !message.pFlags.is_outgoing && message.pFlags.unread) {
         ++history.unread;
-        this.rootScope.dispatchEvent('notification_cancel', 'msg' + mid);
+        this.rootScope.dispatchEvent('notification_cancel', `msg_${this.getAccountNumber()}_${peerId}_${mid}`);
 
         if(isMentionUnread(message)) {
           ++history.unreadMentions;
@@ -8384,6 +8565,14 @@ export class AppMessagesManager extends AppManager {
       details.batch.set(key, getElementCallback ? getElementCallback() : undefined);
       this.batchUpdatesDebounced();
     }
+  }
+
+  private resetPinnedMessagesCache(peerId: PeerId, mids: number[], pinned: boolean) {
+    delete this.pinnedMessages[this.getPinnedMessagesKey(peerId)];
+    this.appStateManager.getState().then((state) => {
+      delete state.hiddenPinnedMessages[peerId];
+      this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, mids, pinned});
+    });
   }
 
   private getMessagesFromMap<T extends Map<any, any>>(map: T) {
@@ -8556,6 +8745,117 @@ export class AppMessagesManager extends AppManager {
     }
 
     return this.factCheckBatcher.addToBatch(peerId, mid);
+  }
+
+  public reportSponsoredMessage(randomId: SponsoredMessage['random_id'], option: Uint8Array) {
+    return this.apiManager.invokeApi('messages.reportSponsoredMessage', {
+      random_id: randomId,
+      option
+    });
+  }
+
+  public getSponsoredMessage(peerId: PeerId): Promise<MessagesSponsoredMessages> {
+    // let promise: Promise<MessagesSponsoredMessages>;
+    // if(TEST_SPONSORED) promise = Promise.resolve({
+    //   '_': 'messages.sponsoredMessages',
+    //   'messages': [
+    //     {
+    //       '_': 'sponsoredMessage',
+    //       'pFlags': {},
+    //       'flags': 9,
+    //       'random_id': new Uint8Array([80, 5, 249, 174, 44, 73, 173, 14, 246, 81, 187, 182, 223, 5, 4, 128]),
+    //       'from_id': {
+    //         '_': 'peerUser',
+    //         'user_id': 983000232
+    //       },
+    //       'start_param': 'GreatMinds',
+    //       'message': 'This is a long sponsored message. In fact, it has the maximum length allowed on the platform – 160 characters 😬😬. It\'s promoting a bot with a start parameter.' + chatId
+    //     }
+    //   ],
+    //   'chats': [],
+    //   'users': [
+    //     {
+    //       '_': 'user',
+    //       'pFlags': {
+    //         'bot': true,
+    //         'verified': true,
+    //         'apply_min_photo': true
+    //       },
+    //       'flags': 34226219,
+    //       'id': 983000232,
+    //       'access_hash': '-294959558742535650',
+    //       'first_name': 'Quiz Bot',
+    //       'username': 'QuizBot',
+    //       'photo': {
+    //         '_': 'userProfilePhoto',
+    //         'pFlags': {},
+    //         'flags': 2,
+    //         'photo_id': '4221953848856651689',
+    //         'stripped_thumb': new Uint8Array([1, 8, 8, 155, 247, 95, 103, 255, 0, 110, 138, 40, 174, 132, 142, 6, 238, 127]),
+    //         'dc_id': 2
+    //       },
+    //       'bot_info_version': 11,
+    //       'bot_inline_placeholder': 'Search a quiz...',
+    //       'sortName': 'quiz bot'
+    //     }
+    //   ]
+    // });
+
+    // * don't show sponsored messages in own channels
+    if(!peerId.isUser() && this.canSendToPeer(peerId)) {
+      return Promise.resolve({
+        _: 'messages.sponsoredMessagesEmpty'
+      });
+    }
+
+    const promise = this.apiManager.invokeApiCacheable('messages.getSponsoredMessages', {
+      peer: this.appPeersManager.getInputPeerById(peerId)
+    }, {cacheSeconds: 300});
+
+    return promise.then((sponsoredMessages) => {
+      if(sponsoredMessages._ !== 'messages.sponsoredMessages') {
+        return sponsoredMessages;
+      }
+
+      this.appPeersManager.saveApiPeers(sponsoredMessages);
+
+      const sponsoredMessage = sponsoredMessages.messages.shift();
+      sponsoredMessages.messages.push(sponsoredMessage);
+
+      sponsoredMessages.messages.forEach((sponsoredMessage) => {
+        if(sponsoredMessage.photo) {
+          sponsoredMessage.photo = this.appPhotosManager.savePhoto(sponsoredMessage.photo);
+        }
+
+        if(sponsoredMessage.media) {
+          this.saveMessageMedia(sponsoredMessage, undefined);
+        }
+
+        // sponsoredMessage.pFlags.can_report = true;
+      });
+
+      return sponsoredMessages;
+    });
+  }
+
+  public viewSponsoredMessage(randomId: SponsoredMessage['random_id']) {
+    return this.apiManager.invokeApiSingle('messages.viewSponsoredMessage', {
+      random_id: randomId
+    });
+  }
+
+  public clickSponsoredMessage(randomId: SponsoredMessage['random_id']) {
+    return this.apiManager.invokeApiSingle('messages.clickSponsoredMessage', {
+      random_id: randomId
+    });
+  }
+
+  public sendQueuedPaidMessages(peerId: PeerId) {
+    this.paidMessagesQueue.sendFor(peerId);
+  }
+
+  public cancelQueuedPaidMessages(peerId: PeerId) {
+    this.paidMessagesQueue.cancelFor(peerId);
   }
 }
 

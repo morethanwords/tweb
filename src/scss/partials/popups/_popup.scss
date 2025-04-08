@@ -152,7 +152,7 @@ $popup-footer-abitlarger-padding: 1rem;
         }
       }
 
-      &:not(.scrolled-top) {
+      &:not(.scrolled-start) {
         .popup-title,
         .popup-header-background {
           opacity: 1;

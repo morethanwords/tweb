@@ -13,32 +13,36 @@ export type SectionOptions = {
   name?: LangPackKey | HTMLElement | DocumentFragment,
   nameArgs?: FormatterArguments,
   nameRight?: JSX.Element,
-  caption?: LangPackKey,
+  caption?: LangPackKey | Exclude<JSX.Element, string>,
   captionArgs?: FormatterArguments,
   captionOld?: boolean,
+  captionRef?: Ref<HTMLDivElement>,
   noDelimiter?: boolean,
   fakeGradientDelimiter?: boolean,
   noShadow?: boolean,
   class?: JSX.HTMLAttributes<HTMLDivElement>['class']
+  ref?: Ref<HTMLDivElement>
 };
 
 const className = 'sidebar-left-section';
 const SectionContent: ParentComponent<JSX.HTMLAttributes<HTMLDivElement>> = (props) => {
   return (
-    <div class={classNames(className + '-content', props.class)}>
+    <div ref={props.ref} class={classNames(className + '-content', props.class)}>
       {props.children}
     </div>
   );
 };
-const SectionCaption = (props: Pick<SectionOptions, 'caption' | 'captionArgs'>) => {
+const SectionCaption = (props: Pick<SectionOptions, 'caption' | 'captionArgs' | 'captionRef'>) => {
   return (
-    <SectionContent class={className + '-caption'}>
-      {i18n(props.caption, props.captionArgs)}
+    <SectionContent ref={props.captionRef} class={className + '-caption'}>
+      {typeof props.caption === 'string' ?
+        i18n(props.caption, props.captionArgs) :
+        props.caption}
     </SectionContent>
   );
 };
-const Section: ParentComponent<SectionOptions & {ref?: Ref<HTMLDivElement>} & JSX.HTMLAttributes<HTMLDivElement>> = (props) => {
-  const [, rest] = splitProps(props, ['name', 'nameArgs', 'nameRight', 'caption', 'captionArgs', 'captionOld', 'noDelimiter', 'fakeGradientDelimiter', 'noShadow', 'class']);
+const Section: ParentComponent<SectionOptions & JSX.HTMLAttributes<HTMLDivElement>> = (props) => {
+  const [, rest] = splitProps(props, ['name', 'nameArgs', 'nameRight', 'caption', 'captionArgs', 'captionOld', 'captionRef', 'noDelimiter', 'fakeGradientDelimiter', 'noShadow', 'class']);
   return (
     <div
       class={classNames(className + '-container', props.class)}

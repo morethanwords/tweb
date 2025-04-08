@@ -146,7 +146,7 @@ export default class PopupPaymentShipping extends PopupElement<{
 
           this.hide();
         } catch(err: any) {
-          const errorMap: {[err: string]: InputField} = {
+          const errorMap: {[err in ErrorType]?: InputField} = {
             ADDRESS_STREET_LINE1_INVALID: address1InputField,
             ADDRESS_STREET_LINE2_INVALID: address2InputField,
             ADDRESS_COUNTRY_INVALID: countryInputField,
@@ -162,7 +162,7 @@ export default class PopupPaymentShipping extends PopupElement<{
           const inputField = errorMap[(err as ApiError).type];
           if(inputField) {
             inputField.setError();
-            (err as any).handled = true;
+            (err as ApiError).handled = true;
           }
 
           throw err;

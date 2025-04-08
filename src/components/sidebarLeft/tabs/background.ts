@@ -5,7 +5,6 @@
  */
 
 import {averageColor, averageColorFromCanvas} from '../../../helpers/averageColor';
-import blur from '../../../helpers/blur';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
@@ -24,7 +23,7 @@ import ProgressivePreloader from '../../preloader';
 import {SliderSuperTab} from '../../slider';
 import AppBackgroundColorTab from './backgroundColor';
 import choosePhotoSize from '../../../lib/appManagers/utils/photos/choosePhotoSize';
-import {STATE_INIT, AppTheme} from '../../../config/state';
+import {AppTheme, SETTINGS_INIT} from '../../../config/state';
 import themeController from '../../../helpers/themeController';
 import requestFile from '../../../helpers/files/requestFile';
 import {renderImageFromUrlPromise} from '../../../helpers/dom/renderImageFromUrl';
@@ -34,7 +33,7 @@ import wrapPhoto from '../../wrappers/photo';
 import {CreateRowFromCheckboxField} from '../../row';
 import {generateSection} from '../../settingSection';
 import {getColorsFromWallPaper} from '../../../helpers/color';
-import {DEFAULT_BACKGROUND_SLUG} from '../../../config/app';
+import ChatBackgroundStore from '../../../lib/chatBackgroundStore';
 
 const needBlur = (wallPaper: WallPaper, respectPattern = true) => {
   const blur = (wallPaper as WallPaper.wallPaper)?.settings?.pFlags?.blur;
@@ -179,7 +178,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
   };
 
   private onResetClick = () => {
-    const defaultTheme = STATE_INIT.settings.themes.find((t) => t.name === this.theme.name);
+    const defaultTheme = SETTINGS_INIT.themes.find((t) => t.name === this.theme.name);
     if(defaultTheme) {
       ++AppBackgroundTab.tempId;
       this.theme.settings = copy(defaultTheme.settings);
@@ -423,7 +422,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         const slug = (wallPaper as WallPaper.wallPaper).slug;
         Promise.all([
           getPixelPromise,
-          appImManager.saveWallPaperToCache(slug, url)
+          ChatBackgroundStore.saveWallPaperToCache(slug, url)
         ]).then(([pixel]) => {
           if(!middleware()) {
             deferred.resolve();
@@ -455,7 +454,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       const cacheContext = await rootScope.managers.thumbsStorage.getCacheContext(doc);
       if(needBlur(wallPaper)) {
         setTimeout(() => {
-          appImManager.blurWallPaperImage(cacheContext.url).then((url) => {
+          ChatBackgroundStore.blurWallPaperImage(cacheContext.url).then((url) => {
             if(!middleware()) {
               deferred.resolve();
               return;

@@ -7,21 +7,21 @@
 import PopupElement from '.';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {PremiumGiftOption} from '../../layer';
-import appImManager from '../../lib/appManagers/appImManager';
+import {PremiumGiftCodeOption} from '../../layer';
 import I18n, {i18n, _i18n} from '../../lib/langPack';
 import {avatarNew} from '../avatarNew';
 import Button from '../button';
 import CheckboxField from '../checkboxField';
 import Row from '../row';
 import wrapPeerTitle from '../wrappers/peerTitle';
+import PopupPayment from './payment';
 
 const className = 'popup-gift-premium';
 
 export default class PopupGiftPremium extends PopupElement {
   constructor(
     private peerId: PeerId,
-    private giftOptions: PremiumGiftOption[]
+    private giftOptions: PremiumGiftCodeOption[]
   ) {
     super(className, {closable: true, overlayClosable: true, body: true, scrollable: true});
 
@@ -101,9 +101,20 @@ export default class PopupGiftPremium extends PopupElement {
     const giftButton = Button(`btn-primary ${className}-confirm shimmer`);
     giftButton.append(buttonText.element);
 
-    attachClickEvent(giftButton, () => {
+    attachClickEvent(giftButton, async() => {
       const giftOption = getSelectedOption();
-      appImManager.openUrl(giftOption.bot_url);
+      PopupPayment.create({
+        inputInvoice: {
+          _: 'inputInvoicePremiumGiftCode',
+          option: giftOption,
+          purpose: {
+            _: 'inputStorePaymentPremiumGiftCode',
+            amount: giftOption.amount,
+            currency: giftOption.currency,
+            users: [await this.managers.appUsersManager.getUserInput(peerId.toUserId())]
+          }
+        }
+      });
       this.hide();
     }, {listenerSetter: this.listenerSetter});
 

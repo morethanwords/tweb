@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Message, MessageAction, MessageMedia, Peer, WebPage, WebPageAttribute} from '../../../../layer';
+import {Message, MessageAction, MessageMedia, MessageReplyHeader, Peer, WebPage, WebPageAttribute} from '../../../../layer';
 import getPeerId from '../peers/getPeerId';
 
 export default function getPeerIdsFromMessage(message: Message.message | Message.messageService) {
@@ -66,7 +66,7 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     peerIds.push(...chatIds.filter(Boolean).map((chatId) => chatId.toPeerId(true)));
 
     const peers: Peer[] = [
-      (action as MessageAction.messageActionGiftCode).boost_peer,
+      (action as MessageAction.messageActionGiftCode | MessageAction.messageActionPrizeStars).boost_peer,
       ...(action as MessageAction.messageActionRequestedPeer).peers || [],
       (action as MessageAction.messageActionGeoProximityReached).from_id,
       (action as MessageAction.messageActionGeoProximityReached).to_id
@@ -84,14 +84,23 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     peerIds.push(getPeerId(savedPeerId));
   }
 
-  const fwdHeader = (message as Message.message).fwd_from;
-  if(fwdHeader) {
+  const replyHeader = (message as Message.message).reply_to;
+  if(replyHeader) {
+    peerIds.push(...[
+      (replyHeader as MessageReplyHeader.messageReplyHeader).reply_to_peer_id
+    ].filter(Boolean).map((peer) => getPeerId(peer)));
+  }
+
+  [
+    (message as Message.message).fwd_from,
+    (replyHeader as MessageReplyHeader.messageReplyHeader)?.reply_from
+  ].filter(Boolean).forEach((fwdHeader) => {
     peerIds.push(...[
       fwdHeader.from_id,
       fwdHeader.saved_from_id,
       fwdHeader.saved_from_peer
     ].filter(Boolean).map((peer) => getPeerId(peer)));
-  }
+  });
 
   return new Set(peerIds.filter(Boolean));
 }

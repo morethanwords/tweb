@@ -50,6 +50,8 @@ import {hideToast, toastNew} from './toast';
 import wrapPeerTitle from './wrappers/peerTitle';
 import anchorCallback from '../helpers/dom/anchorCallback';
 import PopupPremium from './popups/premium';
+import formatNumber from '../helpers/number/formatNumber';
+import namedPromises from '../helpers/namedPromises';
 
 export type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants' | 'custom';
 export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>) => boolean;
@@ -277,19 +279,42 @@ export default class AppSelectPeers {
       }
 
       if(this.chatRightsActions?.some((action) => action.startsWith('send_'))) {
-        filterAsync(peerIds, async(peerId) => {
+        Promise.all(peerIds.map(async(peerId) => {
           const userId = peerId.toUserId();
-          return this.managers.appUsersManager.isPremiumRequiredToContact(userId);
-        }).then((userIds) => {
-          for(const userId of userIds) {
-            const element = this.getElementByPeerId(userId.toPeerId(false));
+
+          const {requirement, starsAmount} = await namedPromises({
+            requirement: this.managers.appUsersManager.getRequirementToContact(userId),
+            starsAmount: this.managers.appPeersManager.getStarsAmount(peerId)
+          });
+
+          return {peerId, userId, requirement, requiredStars: starsAmount};
+        })).then((result) => {
+          for(const {peerId, requirement, requiredStars} of result) {
+            const element = this.getElementByPeerId(peerId.toPeerId(false));
             if(!element) {
               continue;
             }
 
-            const lock = Icon('premium_lock', 'selector-premium-lock');
-            element.append(lock);
-            element.classList.add('is-premium-locked');
+            if(requirement?._ === 'requirementToContactPremium') {
+              const lock = Icon('premium_lock', 'selector-premium-lock');
+              element.append(lock);
+              element.classList.add('is-premium-locked');
+            } else if(+requiredStars) {
+              const starsAmount = formatNumber(+requiredStars, 1);
+
+              const starsBadge = document.createElement('span');
+              starsBadge.classList.add('stars-badge-base', 'dialog-stars-badge');
+
+              const starsBadgeStars = document.createElement('span');
+              starsBadgeStars.append(starsAmount + '');
+
+              starsBadge.append(
+                Icon('star', 'stars-badge-base__icon'),
+                starsBadgeStars
+              );
+
+              element.append(starsBadge);
+            }
           }
         });
       }

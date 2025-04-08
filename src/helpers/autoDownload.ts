@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {State} from '../config/state';
+import type {StateSettings} from '../config/state';
 import rootScope from '../lib/rootScope';
 
 export type ChatAutoDownloadSettings = {
@@ -14,7 +14,7 @@ export type ChatAutoDownloadSettings = {
 };
 
 export default async function getAutoDownloadSettingsByPeerId(peerId: PeerId): Promise<ChatAutoDownloadSettings> {
-  let type: keyof State['settings']['autoDownload'];
+  let type: keyof StateSettings['autoDownload'];
 
   let photoSizeMax = 0, videoSizeMax = 0, fileSizeMax = 0;
   const settings = rootScope.settings;

@@ -649,45 +649,53 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		filter: brightness(.8);
 	}
 
-	@include respond-to(no-floating-left-sidebar) {
-		&:not(.active) {
-			transform: translate3d(calc((100vw - min(calc(100vw * .4), 420px)) * -.25), 0, 0);
+  &:not(.active) {
+    transform: translate3d(calc(min(#{calc($large-screen / 4)}, 25vw) * -1), 0, 0);
 
-			&:last-child { // * 420px - max left sidebar width, .4 - left sidebar width percents
-				transform: translate3d(calc(100vw - min(calc(100vw * .4), 420px)), 0, 0);
-			}
-		}
-	}
+    &:last-child {
+      transform: translate3d(100%, 0, 0);
+    }
+  }
 
-	@include respond-to(large-screens) {
-		&:not(.active) {
-			transform: translate3d(calc((#{$large-screen} - var(--right-column-width)) * -.25), 0, 0);
+	// @include respond-to(no-floating-left-sidebar) {
+	// 	&:not(.active) {
+	// 		transform: translate3d(calc((100vw - min(calc(100vw * .4), 420px)) * -.25), 0, 0);
 
-			&:last-child {
-				transform: translate3d(calc(#{$large-screen} - var(--right-column-width)), 0, 0);
-			}
-		}
-	}
+	// 		&:last-child { // * 420px - max left sidebar width, .4 - left sidebar width percents
+	// 			transform: translate3d(calc(100vw - min(calc(100vw * .4), 420px)), 0, 0);
+	// 		}
+	// 	}
+	// }
+
+	// @include respond-to(large-screens) {
+	// 	&:not(.active) {
+	// 		transform: translate3d(calc((#{$large-screen} - var(--right-column-width)) * -.25), 0, 0);
+
+	// 		&:last-child {
+	// 			transform: translate3d(calc(#{$large-screen} - var(--right-column-width)), 0, 0);
+	// 		}
+	// 	}
+	// }
 	
-	@include respond-to(only-medium-screens) {
-		&:not(.active) {
-			transform: translate3d(-25vw, 0, 0);
+	// @include respond-to(only-medium-screens) {
+	// 	&:not(.active) {
+	// 		transform: translate3d(-25vw, 0, 0);
 
-			&:last-child {
-				transform: translate3d(75vw, 0, 0);
-			}
-		}
-	}
+	// 		&:last-child {
+	// 			transform: translate3d(75vw, 0, 0);
+	// 		}
+	// 	}
+	// }
 
-	@include respond-to(until-floating-left-sidebar) {
-		&:not(.active) {
-			transform: translate3d(-25vw, 0, 0);
+	// @include respond-to(until-floating-left-sidebar) {
+	// 	&:not(.active) {
+	// 		transform: translate3d(-25vw, 0, 0);
 
-			&:last-child {
-				transform: translate3d(100vw, 0, 0);
-			}
-		}
-	}
+	// 		&:last-child {
+	// 			transform: translate3d(100vw, 0, 0);
+	// 		}
+	// 	}
+	// }
 
 	&-background {
 		overflow: hidden;
@@ -757,8 +765,12 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
             transition: transform var(--transition-standard-out), opacity var(--transition-standard-out) !important;
           }
   
-          body.animation-level-2.is-right-column-shown & {
-            transform: scale(.666666667);
+          body.is-right-column-shown.resizing-left-sidebar & {
+            // When collapsing sidebar, for a moment there is a black stripe on right, so we're extending the bg a little to avoid this
+            --additional-chat-bg-proportion: #{calc($large-screen / 8)}; // sidebar left width '/ 4', and half of it '/ 2'
+          }
+          body.animation-level-2.is-right-column-shown .chat.active {
+            transform: scaleX(calc(1 - var(--right-column-proportion, 0) + var(--additional-chat-bg-proportion, 0)));
             transition: transform var(--transition-standard-in), opacity var(--transition-standard-in) !important;
           }
         }
@@ -1441,18 +1453,6 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
             &-icon {
               margin-inline-end: calc(var(--icon-margin) - .5rem);
-
-              &.active:before {
-                --offset: -.125rem;
-                content: " ";
-                position: absolute;
-                top: var(--offset);
-                right: var(--offset);
-                bottom: var(--offset);
-                left: var(--offset);
-                border: .0625rem solid var(--primary-color);
-                border-radius: inherit;
-              }
             }
 
             &-text {
@@ -1638,6 +1638,12 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   @include animation-level(2) {
     transition: height $input-half-transition-time;
   }
+}
+
+.input-message-placeholder-stars {
+  line-height: inherit;
+  vertical-align: bottom;
+  margin-inline-end: 0.125rem;
 }
 
 .bubbles {

@@ -17,11 +17,12 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import isInputEmpty from '../../helpers/dom/isInputEmpty';
 import whichChild from '../../helpers/dom/whichChild';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {Poll} from '../../layer';
+import {Poll, PollAnswer} from '../../layer';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import confirmationPopup from '../confirmationPopup';
 import ButtonIcon from '../buttonIcon';
 import {ChatType} from '../chat/chat';
+import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;
@@ -101,7 +102,7 @@ export default class PopupCreatePoll extends PopupElement {
         }
       });
 
-      sendMenu.setPeerId(this.chat.peerId);
+      sendMenu?.setPeerParams({peerId: this.chat.peerId, isPaid: !!this.chat.starsAmount});
     }
 
     this.header.append(this.questionInputField.container);
@@ -272,7 +273,6 @@ export default class PopupCreatePoll extends PopupElement {
     }
 
     this.sent = true;
-    this.hide();
 
     // const randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
     // const randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
@@ -296,7 +296,7 @@ export default class PopupCreatePoll extends PopupElement {
       pFlags,
       question: {_: 'textWithEntities', text: question, entities: []},
       answers: answers.map((value, idx) => {
-        return {
+        const pollAnswer: PollAnswer = {
           _: 'pollAnswer',
           text: {
             _: 'textWithEntities',
@@ -305,6 +305,8 @@ export default class PopupCreatePoll extends PopupElement {
           },
           option: new Uint8Array([idx])
         };
+
+        return pollAnswer;
       }),
       id: undefined
     };
@@ -319,8 +321,17 @@ export default class PopupCreatePoll extends PopupElement {
 
     // console.log('Will try to create poll:', inputMediaPoll);
 
+    const sendingParams = this.chat.getMessageSendingParams();
+
+    const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
+    if(preparedPaymentResult === PAYMENT_REJECTED) return;
+
+    sendingParams.confirmedPaymentResult = preparedPaymentResult;
+
+    this.hide();
+
     this.chat.managers.appMessagesManager.sendOther({
-      ...this.chat.getMessageSendingParams(),
+      ...sendingParams,
       inputMedia: inputMediaPoll
     });
 

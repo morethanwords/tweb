@@ -1,6 +1,9 @@
-const CACHED_ERRORS: {[key in Error['type']]?: ApiError} = {};
-export default function makeError(type: Error['type']) {
-  return CACHED_ERRORS[type] ??= {
-    type
-  };
+export default function makeError(type: ErrorType, message?: string): ApiError {
+  const realError = new Error();
+  const error: ApiError = {type, stack: realError.stack};
+  if(message) {
+    error.message = message;
+  }
+
+  return error;
 }

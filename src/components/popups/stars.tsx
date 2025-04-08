@@ -8,7 +8,7 @@
 
 import PopupElement from '.';
 import maybe2x from '../../helpers/maybe2x';
-import {InputInvoice, MessageMedia, PaymentsPaymentForm, Photo, Document, StarsTopupOption, StarsTransaction, StarsTransactionPeer, MessageExtendedMedia, ChatInvite, StarsSubscription, StarsGiftOption, InputStorePaymentPurpose} from '../../layer';
+import {InputInvoice, MessageMedia, PaymentsPaymentForm, Photo, Document, StarsTopupOption, StarsTransaction, StarsTransactionPeer, MessageExtendedMedia, ChatInvite, StarsSubscription, StarsGiftOption, InputStorePaymentPurpose, WebDocument} from '../../layer';
 import I18n, {i18n, LangPackKey} from '../../lib/langPack';
 import Section from '../section';
 import {createMemo, createRoot, createSignal, For, JSX, untrack} from 'solid-js';
@@ -43,6 +43,7 @@ import {MTAppConfig} from '../../lib/mtproto/appConfig';
 import {toastNew} from '../toast';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {createMoreButton} from '../sidebarRight/tabs/statistics';
+import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
 
 export function StarsStrokeStar(props: {stroke?: boolean, style?: JSX.HTMLAttributes<HTMLDivElement>['style']}) {
   return (
@@ -72,6 +73,43 @@ export function StarsStrokeStar(props: {stroke?: boolean, style?: JSX.HTMLAttrib
   );
 }
 
+export function StarsStackedStars(props: {stars: number, size: number}) {
+  let icons = 1;
+  if(props.stars >= 2500) icons = 6;
+  else if(props.stars >= 1000) icons = 5;
+  else if(props.stars >= 500) icons = 4;
+  else if(props.stars >= 250) icons = 3;
+  else if(props.stars >= 50) icons = 2;
+  let iconsElements: JSX.Element;
+  const m = props.size + (props.size === 18 ? 4 : 6);
+  if(icons > 1) {
+    iconsElements = [];
+    for(let i = 0; i < icons; ++i) iconsElements.push((
+      <StarsStrokeStar
+        stroke={i !== (icons - 1)}
+        style={{
+          'margin-right': (Math.min(i, 1) * -m) + 'px'
+        }}
+      />
+    ));
+  } else {
+    iconsElements = <StarsStrokeStar />;
+  }
+
+  iconsElements = (
+    <div
+      class="stars-stacked"
+      style={{
+        'width': `${props.size + (icons - 1) * 6}px`,
+        '--size': props.size + 'px'
+      }}
+    >
+      {iconsElements}
+    </div>
+  );
+  return iconsElements;
+}
+
 export function StarsStar() {
   return currencyStarIcon();
 }
@@ -95,9 +133,9 @@ export function StarsAmount(props: {stars: Long}) {
   );
 }
 
-export function StarsChange(props: {stars: Long, isRefund?: boolean, noSign?: boolean}) {
+export function StarsChange(props: {stars: Long, isRefund?: boolean, noSign?: boolean, reverse?: boolean, inline?: boolean}) {
   return (
-    <div class={classNames('popup-stars-pay-amount', +props.stars > 0 ? 'green' : 'danger')}>
+    <div class={classNames('popup-stars-pay-amount', +props.stars > 0 ? 'green' : 'danger', props.reverse && 'reverse', props.inline && 'inline')}>
       {`${+props.stars > 0 && !props.noSign ? '+' : ''}${props.stars}`}
       <StarsStar />
       {props.isRefund && <span class="popup-stars-pay-amount-status">{i18n('StarsRefunded')}</span>}
@@ -160,7 +198,8 @@ export async function getStarsTransactionTitleAndMedia({
   paidMedia,
   paidMediaPeerId,
   chatInvite,
-  subscription
+  subscription,
+  photo
 }: {
   transaction: StarsTransaction,
   middleware: Middleware,
@@ -168,7 +207,8 @@ export async function getStarsTransactionTitleAndMedia({
   paidMedia?: MessageMedia.messageMediaPaidMedia,
   paidMediaPeerId?: PeerId,
   chatInvite?: ChatInvite.chatInvite,
-  subscription?: StarsSubscription
+  subscription?: StarsSubscription,
+  photo?: WebDocument.webDocument
 }) {
   const [title, media] = await Promise.all([
     (() => {
@@ -184,8 +224,10 @@ export async function getStarsTransactionTitleAndMedia({
         return wrapPeerTitle({peerId: paidMediaPeerId || getPeerId((transaction.peer as StarsTransactionPeer.starsTransactionPeer).peer)});
       }
 
-      if(transaction.peer._ === 'starsTransactionPeer') {
-        return wrapPeerTitle({peerId: getPeerId(transaction.peer.peer)});
+      if(!transaction || transaction.peer._ === 'starsTransactionPeer') {
+        return wrapPeerTitle({
+          peerId: transaction ? getPeerId((transaction.peer as StarsTransactionPeer.starsTransactionPeer).peer) : paidMediaPeerId
+        });
       }
 
       return getStarsTransactionTitle(transaction);
@@ -200,11 +242,19 @@ export async function getStarsTransactionTitleAndMedia({
           boxHeight: size,
           middleware,
           loadPromises,
-          withoutPreloader: true
+          withoutPreloader: true,
+          size: photo._ === 'webDocument' ? {_: 'photoSizeEmpty', type: ''} : undefined
         });
 
         await Promise.all(loadPromises);
       };
+
+      if(photo) {
+        const container = document.createElement('div');
+        container.classList.add('popup-stars-pay-item');
+        await _wrapPhoto(container, photo);
+        return container;
+      }
 
       if(chatInvite) {
         const avatar = await wrapChatInviteAvatar(chatInvite, middleware, 90);
@@ -261,8 +311,10 @@ export async function getStarsTransactionTitleAndMedia({
       let peerId: PeerId;
       if(subscription) {
         peerId = getPeerId(subscription.peer);
-      } else if(transaction.peer._ === 'starsTransactionPeer') {
+      } else if(transaction && transaction.peer._ === 'starsTransactionPeer') {
         peerId = getPeerId(transaction.peer.peer);
+      } else if(paidMediaPeerId) {
+        peerId = paidMediaPeerId;
       }
 
       if(peerId) {
@@ -332,7 +384,11 @@ export default class PopupStars extends PopupElement {
         midtitle = wrapEmojiText(transaction.description);
       } else if(transaction.pFlags.reaction) {
         midtitle = i18n('StarsReactionTitle');
-      } else if(+transaction.stars > 0) {
+      } else if(transaction.giveaway_post_id) {
+        midtitle = i18n('StarsGiveawayPrizeReceived');
+      } else if(transaction.paid_messages) {
+        midtitle = i18n('PaidMessages.FeeForMessages', [transaction.paid_messages]);
+      } else if(formatStarsAmount(transaction.stars) > 0) {
         midtitle = transaction.pFlags.gift ? i18n('StarsGiftReceived') : i18n('Stars.TopUp');
       } else if(transaction.subscription_period) {
         midtitle = i18n('Stars.Subscription.Title');
@@ -359,7 +415,7 @@ export default class PopupStars extends PopupElement {
               transaction
             });
           }}
-          rightContent={<StarsChange stars={transaction.stars} />}
+          rightContent={<StarsChange stars={formatStarsAmount(transaction.stars)} />}
         />
       );
 
@@ -478,7 +534,7 @@ export default class PopupStars extends PopupElement {
         }
       }
 
-      subtitle = i18n(langPackKey, [peerTitle]);
+      subtitle = i18n(langPackKey as LangPackKey, [peerTitle]);
     } else if(this.itemPrice) {
       subtitle = i18n(this.paymentForm ? 'StarsNeededText' : 'Stars.Subscribe.Need', [peerTitle]);
     } else {
@@ -508,24 +564,7 @@ export default class PopupStars extends PopupElement {
               return index() === (alwaysVisible.length - 1);
             });
 
-            const stars = +option.stars;
-            let icons = 1;
-            if(stars >= 2500) icons = 6;
-            else if(stars >= 1000) icons = 5;
-            else if(stars >= 500) icons = 4;
-            else if(stars >= 250) icons = 3;
-            else if(stars >= 50) icons = 2;
-            let iconsElements: JSX.Element;
-            if(icons > 1) {
-              iconsElements = [];
-              for(let i = 0; i < icons; ++i) iconsElements.push((
-                <StarsStrokeStar stroke={i !== (icons - 1)} style={{'margin-right': (Math.min(i, 1) * -32) + 'px'}} />
-              ));
-            } else {
-              iconsElements = <StarsStrokeStar />;
-            }
-
-            iconsElements = <div class="popup-stars-option-stars" style={`width: ${26 + (icons - 1) * 6}px`}>{iconsElements}</div>;
+            const iconsElements = StarsStackedStars({stars: +option.stars, size: 26});
 
             return (
               <div

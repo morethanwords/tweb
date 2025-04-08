@@ -4,7 +4,7 @@ import {Message} from '../layer';
 import I18n from '../lib/langPack';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import detectLanguage from '../lib/tinyld/detect';
-import {useAppState} from './appState';
+import {useAppSettings} from './appSettings';
 
 // https://core.telegram.org/api/translation
 export const MIN_TOTAL_PROCESSED_MESSAGES = 8;
@@ -29,10 +29,10 @@ let _createStore = () => {
   [state, setState] = createStore({});
 
   createRoot(() => {
-    const [appState] = useAppState();
+    const [appSettings] = useAppSettings();
     myLanguages = createMemo(() => {
       const myLanguages = new Set(
-        appState.translations.doNotTranslate.concat(
+        appSettings.translations.doNotTranslate.concat(
           navigator.language.split('-')[0] as TranslatableLanguageISO,
           I18n.langCodeNormalized()
         )

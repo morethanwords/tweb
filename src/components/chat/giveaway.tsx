@@ -23,15 +23,16 @@ import PopupElement from '../popups';
 import PopupGiftLink from '../popups/giftLink';
 import classNames from '../../helpers/string/classNames';
 import createMiddleware from '../../helpers/solid/createMiddleware';
+import {IconTsx} from '../iconTsx';
 
-export function getGiftAssetName(months: number) {
+export function getGiftAssetName(months?: number) {
   const durationAssetMap: {[key: number]: LottieAssetName} = {
     3: 'Gift3',
     6: 'Gift6',
     12: 'Gift12'
   };
 
-  return durationAssetMap[clamp(months, 3, 12)];
+  return durationAssetMap[clamp(months ?? 0, 3, 12)];
 }
 
 export function DelimiterWithText(props: {langKey: LangPackKey}) {
@@ -56,6 +57,7 @@ export async function onGiveawayClick(message: Message.message) {
   const isRefunded = isResults && giveawayInfo.pFlags.refunded;
   const isWinner = !isRefunded && isResults && giveawayInfo.pFlags.winner;
   const isParticipating = !isResults && giveawayInfo.pFlags.participating;
+  const isStars = !!giveaway.stars;
   const onlyNewSubscribers = giveaway.pFlags.only_new_subscribers;
   const quantity = isMediaResults ? giveaway.winners_count + giveaway.unclaimed_count : giveaway.quantity;
   const additionalPeersLength = isMediaResults ? giveaway.additional_peers_count || 0 : giveaway.channels.length - 1;
@@ -121,10 +123,17 @@ export async function onGiveawayClick(message: Message.message) {
     }
   }
 
+  let titleLangPackKey: LangPackKey;
+  if(isStars) {
+    titleLangPackKey = isResults ? 'BoostingStarsGiveawayHowItWorksTextEnd' : 'BoostingStarsGiveawayHowItWorksText';
+  } else {
+    titleLangPackKey = isResults ? 'BoostingGiveawayHowItWorksTextEnd' : 'BoostingGiveawayHowItWorksText';
+  }
+
   const title = i18n(
-    isResults ? 'BoostingGiveawayHowItWorksTextEnd' : 'BoostingGiveawayHowItWorksText',
+    titleLangPackKey,
     [
-      undefined,
+      giveaway.stars || quantity,
       await wrapPeerTitle({peerId: giveawayPeerId}),
       quantity,
       duration
@@ -197,7 +206,7 @@ export default function Giveaway(props: {
   const middleware = createMiddleware().get();
   const giveaway = props.giveaway;
   const isResults = giveaway._ === 'messageMediaGiveawayResults';
-  const quantity = isResults ? giveaway.winners_count : giveaway.quantity;
+  const quantity = isResults ? giveaway.stars ?? giveaway.winners_count : giveaway.stars ?? giveaway.quantity;
   const countriesElements = !isResults && giveaway.countries_iso2?.map((iso2) => {
     const span = document.createElement('span');
     span.classList.add('bubble-giveaway-country');
@@ -219,7 +228,7 @@ export default function Giveaway(props: {
     );
     header = (
       <>
-        {i18n('Giveaway.Results.Subtitle', [quantity, a])}
+        {i18n('Giveaway.Results.Subtitle', [giveaway.winners_count, a])}
       </>
     );
   } else {
@@ -228,13 +237,15 @@ export default function Giveaway(props: {
         <b>{`${quantity} `}</b>
         {wrapEmojiText(giveaway.prize_description)}
         <DelimiterWithText langKey="Giveaway.With" />
-        {i18n(quantity > 1 ? 'Giveaway.WithSubscriptionsPlural' : 'Giveaway.WithSubscriptionsSingle', [headerDuration])}
+        {giveaway.stars ?
+          i18n('Giveaway.WithStars', [giveaway.quantity, i18n('Giveaway.WithStars.Stars', [+giveaway.stars])]) :
+          i18n(+quantity > 1 ? 'Giveaway.WithSubscriptionsPlural' : 'Giveaway.WithSubscriptionsSingle', [headerDuration])}
       </>
     ) : (
       <>
-        {i18n('BoostingGiveawayMsgInfoPlural1', [quantity])}
+        {i18n(giveaway.stars ? 'BoostingStarsGiveawayMsgInfoPlural1' : 'BoostingGiveawayMsgInfoPlural1', [quantity])}
         <br/>
-        {i18n('BoostingGiveawayMsgInfoPlural2', [headerDuration])}
+        {i18n(giveaway.stars ? 'BoostingStarsGiveawayMsgInfoPlural2' : 'BoostingGiveawayMsgInfoPlural2', [giveaway.stars ? giveaway.quantity : headerDuration])}
       </>
     );
   }
@@ -306,18 +317,25 @@ export default function Giveaway(props: {
   const ret = (
     <div class={classNames('bubble-giveaway', 'no-select', 'disable-hover', isResults && 'bubble-giveaway-results')}>
       <div ref={stickerDiv} class="bubble-giveaway-sticker">
-        <div class="bubble-giveaway-sticker-counter">{`X${quantity}`}</div>
+        <div class={classNames('bubble-giveaway-sticker-counter', giveaway.stars && 'bubble-giveaway-sticker-counter-stars')}>
+          {giveaway.stars && <IconTsx icon="star" />}
+          {giveaway.stars ? ` ${quantity}` : `X${quantity}`}
+        </div>
       </div>
       <div class="bubble-giveaway-row">
-        <div class="bubble-giveaway-row-title">{i18n(isResults ? 'Giveaway.Results.Title' : 'BoostingGiveawayPrizes', [quantity])}</div>
+        <div class="bubble-giveaway-row-title">{i18n(isResults ? 'Giveaway.Results.Title' : 'BoostingGiveawayPrizes', [isResults ? giveaway.winners_count : quantity])}</div>
         {header}
       </div>
       <div class="bubble-giveaway-row">
-        <div class="bubble-giveaway-row-title">{i18n(isResults ? 'BoostingGiveawayResultsMsgWinners' : 'BoostingGiveawayMsgParticipants', [quantity])}</div>
+        <div class="bubble-giveaway-row-title">{i18n(isResults ? 'BoostingGiveawayResultsMsgWinners' : 'BoostingGiveawayMsgParticipants', [isResults ? giveaway.winners_count : quantity])}</div>
         {middle}
       </div>
       <div class="bubble-giveaway-row">
-        <div class="bubble-giveaway-row-title">{i18n(isResults ? 'Giveaway.Results.Footer' : 'BoostingWinnersDate', [quantity])}</div>
+        <div class="bubble-giveaway-row-title">
+          {isResults && giveaway.stars ?
+            i18n(giveaway.winners_count > 1 ? 'Giveaway.Results.Stars.Winners.Single' : 'Giveaway.Results.Stars.Winners.Single', [i18n('Giveaway.Results.Stars.Winners.Stars', [quantity])]) :
+            i18n(isResults ? 'Giveaway.Results.Footer' : 'BoostingWinnersDate', [quantity, giveaway.stars])}
+        </div>
         {!isResults && formatFullSentTime(giveaway.until_date)}
       </div>
     </div>

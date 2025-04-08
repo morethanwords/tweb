@@ -31,6 +31,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import DotRenderer from '../dotRenderer';
 import themeController from '../../helpers/themeController';
 import Table, {TablePeer} from '../table';
+import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
 
 export default class PopupGiftLink extends PopupElement {
   private isInChat: boolean;
@@ -217,23 +218,30 @@ export default class PopupGiftLink extends PopupElement {
     this.show();
   }
 
-  public static async shareGiftLink(url: string, openAfter?: boolean) {
-    const peerId = await PopupPickUser.createSharingPicker2();
-    rootScope.managers.appMessagesManager.sendText({
-      peerId,
-      text: url
-    });
+  public static shareGiftLink(url: string, openAfter?: boolean) {
+    PopupPickUser.createSharingPicker({
+      onSelect: async(peerId) => {
+        const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
+        if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
 
-    if(openAfter) {
-      appImManager.setInnerPeer({peerId});
-    } else {
-      toastNew({
-        langPackKey: rootScope.myId === peerId ?
-          'BoostingGiftLinkForwardedToSavedMsg' :
-          'BoostingGiftLinkForwardedTo',
-        langPackArguments: [await wrapPeerTitle({peerId})]
-      });
-    }
+        rootScope.managers.appMessagesManager.sendText({
+          peerId,
+          text: url,
+          confirmedPaymentResult: preparedPaymentResult
+        });
+
+        if(openAfter) {
+          appImManager.setInnerPeer({peerId});
+        } else {
+          toastNew({
+            langPackKey: rootScope.myId === peerId ?
+              'BoostingGiftLinkForwardedToSavedMsg' :
+              'BoostingGiftLinkForwardedTo',
+            langPackArguments: [await wrapPeerTitle({peerId})]
+          });
+        }
+      }
+    });
   }
 
   public static async applyGiftCode(slug: string, button: HTMLElement, popup: PopupElement) {

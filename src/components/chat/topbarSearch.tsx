@@ -766,7 +766,7 @@ export default function TopbarSearch(props: {
       return;
     }
 
-    setLoadMore(() => undefined);
+    setLoadMore(() => undefined as any);
     setMessages();
     setSendersPeerIds();
     setTarget();

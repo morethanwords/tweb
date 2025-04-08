@@ -19,13 +19,14 @@ import replaceContent from '../../helpers/dom/replaceContent';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {formatPhoneNumber} from '../../helpers/formatPhoneNumber';
+import makeError from '../../helpers/makeError';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import safeAssign from '../../helpers/object/safeAssign';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import ScrollSaver from '../../helpers/scrollSaver';
 import {_tgico} from '../../helpers/tgico';
 import tsNow from '../../helpers/tsNow';
-import {AccountTmpPassword, ChatInvite, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageAction, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption, StarsSubscription, StarsTransaction} from '../../layer';
+import {AccountTmpPassword, Boost, ChatInvite, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageAction, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption, StarsSubscription, StarsTransaction} from '../../layer';
 import I18n, {i18n, LangPackKey, _i18n} from '../../lib/langPack';
 import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -199,7 +200,8 @@ export default class PopupPayment extends PopupElement<{
     chatInvite?: ChatInvite.chatInvite,
     noPaymentForm?: boolean,
     subscription?: StarsSubscription,
-    giftAction?: MessageAction.messageActionGiftStars
+    giftAction?: MessageAction.messageActionGiftStars,
+    boost?: Boost
   }) {
     super('popup-payment', {
       closable: true,
@@ -249,6 +251,9 @@ export default class PopupPayment extends PopupElement<{
     };
 
     const {paymentForm, message} = this;
+    if(paymentForm._ === 'payments.paymentFormStarGift') {
+      throw new Error('not implemented');
+    }
 
     if(message) {
       this.listenerSetter.add(rootScope)('payment_sent', ({peerId, mid}) => {
@@ -268,7 +273,7 @@ export default class PopupPayment extends PopupElement<{
     const isTest = mediaInvoice ? mediaInvoice.pFlags.test : paymentForm.invoice.pFlags.test;
     const isStars = paymentForm._ === 'payments.paymentFormStars';
 
-    const photo = mediaInvoice ? mediaInvoice.photo : paymentForm.photo;
+    const photo = mediaInvoice ? mediaInvoice.photo : (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).photo;
     const title = mediaInvoice ? mediaInvoice.title : paymentForm.title;
     const description = mediaInvoice ? mediaInvoice.description : paymentForm.description;
 
@@ -902,7 +907,7 @@ export default class PopupPayment extends PopupElement<{
                 if(confirmed) {
                   resolve();
                 } else {
-                  const err = new Error('payment not finished');
+                  const err = makeError(undefined, 'payment not finished');
                   (err as ApiError).handled = true;
                   reject(err);
                   this.result = 'failed';

@@ -89,7 +89,7 @@ export class UsernameInputField extends InputField {
       if(this.getValue() !== username) return;
 
       this.error = err;
-      switch((err as ApiError).type) {
+      switch(this.error.type) {
         case 'USERNAME_PURCHASE_AVAILABLE': {
           this.setError(this.options.takenText);
           break;

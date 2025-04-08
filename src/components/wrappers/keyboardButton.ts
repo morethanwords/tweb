@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {copyTextToClipboard} from '../../helpers/clipboard';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
 import toggleDisability from '../../helpers/dom/toggleDisability';
@@ -337,6 +338,17 @@ export default function wrapKeyboardButton({
         });
       };
 
+      break;
+    }
+
+    case 'keyboardButtonCopy': {
+      buttonEl = document.createElement('button');
+      buttonIcon = Icon('copy');
+
+      onClick = () => {
+        copyTextToClipboard(button.copy_text);
+        toastNew({langPackKey: 'TextCopied'});
+      };
       break;
     }
 

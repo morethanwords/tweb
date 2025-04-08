@@ -217,7 +217,8 @@ export class AppChatsManager extends AppManager {
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
       name: 'peers',
       key: '' + chat.id.toPeerId(true),
-      value: chat
+      value: chat,
+      accountNumber: this.getAccountNumber()
     });
   }
 
@@ -252,6 +253,13 @@ export class AppChatsManager extends AppManager {
     return this.apiManager.invokeApi('messages.editChatDefaultBannedRights', {
       peer: this.appPeersManager.getInputPeerById(id.toPeerId(true)),
       banned_rights
+    }).then(this.onChatUpdated.bind(this, id));
+  }
+
+  public updateChannelPaidMessagesPrice(id: ChatId, stars: number) {
+    return this.apiManager.invokeApi('channels.updatePaidMessagesPrice', {
+      channel: this.getChannelInput(id),
+      send_paid_messages_stars: stars
     }).then(this.onChatUpdated.bind(this, id));
   }
 
@@ -304,6 +312,16 @@ export class AppChatsManager extends AppManager {
     }
 
     return good;
+  }
+
+  /**
+   * The amount of stars necessary to be paid for every message if the target chat had enabled it
+   */
+  public async getStarsAmount(chatId: ChatId): Promise<number | undefined> {
+    const chat = this.getChat(chatId);
+    if(chat?._ !== 'channel') return;
+
+    return !chat.admin_rights && +chat.send_paid_messages_stars || undefined;
   }
 
   public isPublic(id: ChatId) {
@@ -701,9 +719,9 @@ export class AppChatsManager extends AppManager {
     else return this.deleteChatUser(id, isObject(participant) ? getParticipantPeerId(participant) : (participant as PeerId).toUserId());
   }
 
-  public resolveChannel(id: ChatId) {
+  public resolveChannel(id: ChatId | InputChannel) {
     return this.apiManager.invokeApiSingle('channels.getChannels', {
-      id: [{
+      id: [isObject(id) ? id : {
         _: 'inputChannel',
         channel_id: id,
         access_hash: '0'
@@ -724,7 +742,7 @@ export class AppChatsManager extends AppManager {
     }).then(this.onChatUpdated.bind(this, id));
   }
 
-  public getSendAs(channelId: ChatId) {
+  public getSendAs(channelId: ChatId, forPaidReactions: boolean = false) {
     const onResult = (sendAsPeers: ChannelsSendAsPeers) => {
       this.appUsersManager.saveApiUsers(sendAsPeers.users);
       this.saveApiChats(sendAsPeers.chats);
@@ -734,6 +752,7 @@ export class AppChatsManager extends AppManager {
 
     const inputPeer = this.getChannelInputPeer(channelId);
     const result = this.apiManager.invokeApiCacheable('channels.getSendAs', {
+      for_paid_reactions: forPaidReactions,
       peer: inputPeer
     }, {cacheSeconds: 60, syncIfHasResult: true});
     return callbackify(result, onResult);
@@ -743,97 +762,6 @@ export class AppChatsManager extends AppManager {
     return this.apiManager.invokeApi('channels.checkUsername', {
       channel: this.getChannelInput(chatId),
       username
-    });
-  }
-
-  public getSponsoredMessage(chatId: ChatId): Promise<MessagesSponsoredMessages> {
-    // let promise: Promise<MessagesSponsoredMessages>;
-    // if(TEST_SPONSORED) promise = Promise.resolve({
-    //   '_': 'messages.sponsoredMessages',
-    //   'messages': [
-    //     {
-    //       '_': 'sponsoredMessage',
-    //       'pFlags': {},
-    //       'flags': 9,
-    //       'random_id': new Uint8Array([80, 5, 249, 174, 44, 73, 173, 14, 246, 81, 187, 182, 223, 5, 4, 128]),
-    //       'from_id': {
-    //         '_': 'peerUser',
-    //         'user_id': 983000232
-    //       },
-    //       'start_param': 'GreatMinds',
-    //       'message': 'This is a long sponsored message. In fact, it has the maximum length allowed on the platform – 160 characters 😬😬. It\'s promoting a bot with a start parameter.' + chatId
-    //     }
-    //   ],
-    //   'chats': [],
-    //   'users': [
-    //     {
-    //       '_': 'user',
-    //       'pFlags': {
-    //         'bot': true,
-    //         'verified': true,
-    //         'apply_min_photo': true
-    //       },
-    //       'flags': 34226219,
-    //       'id': 983000232,
-    //       'access_hash': '-294959558742535650',
-    //       'first_name': 'Quiz Bot',
-    //       'username': 'QuizBot',
-    //       'photo': {
-    //         '_': 'userProfilePhoto',
-    //         'pFlags': {},
-    //         'flags': 2,
-    //         'photo_id': '4221953848856651689',
-    //         'stripped_thumb': new Uint8Array([1, 8, 8, 155, 247, 95, 103, 255, 0, 110, 138, 40, 174, 132, 142, 6, 238, 127]),
-    //         'dc_id': 2
-    //       },
-    //       'bot_info_version': 11,
-    //       'bot_inline_placeholder': 'Search a quiz...',
-    //       'sortName': 'quiz bot'
-    //     }
-    //   ]
-    // });
-
-    const promise = this.apiManager.invokeApiCacheable('channels.getSponsoredMessages', {
-      channel: this.getChannelInput(chatId)
-    }, {cacheSeconds: 300});
-
-    return promise.then((sponsoredMessages) => {
-      if(sponsoredMessages._ !== 'messages.sponsoredMessages') {
-        return sponsoredMessages;
-      }
-
-      this.appPeersManager.saveApiPeers(sponsoredMessages);
-
-      const sponsoredMessage = sponsoredMessages.messages.shift();
-      sponsoredMessages.messages.push(sponsoredMessage);
-
-      sponsoredMessages.messages.forEach((sponsoredMessage) => {
-        if(sponsoredMessage.photo) {
-          sponsoredMessage.photo = this.appPhotosManager.savePhoto(sponsoredMessage.photo);
-        }
-
-        if(sponsoredMessage.media) {
-          this.appMessagesManager.saveMessageMedia(sponsoredMessage, undefined);
-        }
-
-        // sponsoredMessage.pFlags.can_report = true;
-      });
-
-      return sponsoredMessages;
-    });
-  }
-
-  public viewSponsoredMessage(chatId: ChatId, randomId: SponsoredMessage['random_id']) {
-    return this.apiManager.invokeApiSingle('channels.viewSponsoredMessage', {
-      channel: this.getChannelInput(chatId),
-      random_id: randomId
-    });
-  }
-
-  public clickSponsoredMessage(chatId: ChatId, randomId: SponsoredMessage['random_id']) {
-    return this.apiManager.invokeApiSingle('channels.clickSponsoredMessage', {
-      channel: this.getChannelInput(chatId),
-      random_id: randomId
     });
   }
 
@@ -1046,6 +974,17 @@ export class AppChatsManager extends AppManager {
     });
   }
 
+  public getGenericChannelRecommendations() {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'channels.getChannelRecommendations',
+      params: {},
+      processResult: (messagesChats) => {
+        this.saveApiChats(messagesChats.chats);
+        return messagesChats;
+      }
+    });
+  }
+
   public getChannelRecommendations(chatId: ChatId) {
     const result = this.recommendations[chatId];
     if(result) {
@@ -1069,14 +1008,6 @@ export class AppChatsManager extends AppManager {
     });
 
     return promise;
-  }
-
-  public reportSponsoredMessage(chatId: ChatId, randomId: SponsoredMessage['random_id'], option: Uint8Array) {
-    return this.apiManager.invokeApi('channels.reportSponsoredMessage', {
-      channel: this.getChannelInput(chatId),
-      random_id: randomId,
-      option
-    });
   }
 
   private onUpdateChannelParticipant = (update: Update.updateChannelParticipant) => {

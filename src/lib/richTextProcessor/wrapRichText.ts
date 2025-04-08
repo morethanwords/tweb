@@ -31,6 +31,9 @@ import {CodeLanguageAliases, highlightCode} from '../../codeLanguages';
 import callbackify from '../../helpers/callbackify';
 import findIndexFrom from '../../helpers/array/findIndexFrom';
 import {observeResize} from '../../components/resizeObserver';
+import createElementFromMarkup from '../../helpers/createElementFromMarkup';
+import DotRenderer from '../../components/dotRenderer';
+import isMixedScriptUrl from '../../helpers/string/isMixedScriptUrl';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -541,6 +544,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
               masked = true;
             }
           } else {
+            masked = isMixedScriptUrl(url);
             // inner = encodeEntities(replaceUrlEncodings(entityText));
           }
 
@@ -639,6 +643,16 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
             ++nasty.i;
             nasty.lastEntity = n;
             nextEntity = entities[nasty.i + 1];
+          }
+
+          if(!IS_FIREFOX) { // Firefox has very poor performance when drawing on canvas
+            element = document.createElement('span');
+            element.append(...partText.split('').map((encodedLetter, i) => createElementFromMarkup(`<span class="bluff-spoiler" style="--index:${i}">${encodedLetter}</span>`)))
+            fragment.append(element);
+
+            DotRenderer.attachBluffTextSpoilerTarget(element);
+
+            usedText = true;
           }
         } else if(options.wrappingDraft) {
           element = createMarkupFormatting('spoiler');

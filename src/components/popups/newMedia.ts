@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {render} from 'solid-js/web';
+import {createStore} from 'solid-js/store';
+
 import type Chat from '../chat/chat';
 import type {SendFileDetails} from '../../lib/appManagers/appMessagesManager';
 import type {ChatRights} from '../../lib/appManagers/appChatsManager';
@@ -28,8 +31,6 @@ import onMediaLoad from '../../helpers/onMediaLoad';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {SEND_WHEN_ONLINE_TIMESTAMP, SERVER_IMAGE_MIME_TYPES, STARS_CURRENCY, THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
 import wrapDocument from '../wrappers/document';
-import createContextMenu from '../../helpers/dom/createContextMenu';
-import findUpClassName from '../../helpers/dom/findUpClassName';
 import wrapMediaSpoiler, {toggleMediaSpoiler} from '../wrappers/mediaSpoiler';
 import {MiddlewareHelper} from '../../helpers/middleware';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
@@ -52,10 +53,22 @@ import wrapDraft from '../wrappers/draft';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {ChatType} from '../chat/chat';
 import pause from '../../helpers/schedulers/pause';
-import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '../chat/selectedEffect';
 import PopupMakePaid from './makePaid';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import Icon from '../icon';
+import {openMediaEditor} from '../mediaEditor/mediaEditor';
+import {MediaEditorFinalResult} from '../mediaEditor/finalRender/createFinalResult';
+import RenderProgressCircle from '../mediaEditor/renderProgressCircle';
+import {animateValue, delay, lerp, snapToViewport} from '../mediaEditor/utils';
+import {IS_MOBILE} from '../../environment/userAgent';
+import deferredPromise from '../../helpers/cancellablePromise';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import throttle from '../../helpers/schedulers/throttle';
+import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
+import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
+import ListenerSetter from '../../helpers/listenerSetter';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -63,8 +76,8 @@ type SendFileParams = SendFileDetails & {
   noSound?: boolean,
   itemDiv: HTMLElement,
   mediaSpoiler?: HTMLElement,
-  middlewareHelper: MiddlewareHelper
-  // strippedBytes?: PhotoSize.photoStrippedSize['bytes']
+  middlewareHelper: MiddlewareHelper,
+  editResult?: MediaEditorFinalResult
 };
 
 let currentPopup: PopupNewMedia;
@@ -93,6 +106,11 @@ export default class PopupNewMedia extends PopupElement {
   private captionLengthMax: number;
 
   private animationGroup: AnimationItemGroup;
+
+  private activeActionsMenu: HTMLElement;
+  private canShowActions = false;
+
+  private cachedMediaEditorFiles = new WeakMap<Blob, File>;
 
   constructor(
     private chat: Chat,
@@ -204,12 +222,12 @@ export default class PopupNewMedia extends PopupElement {
         icon: 'groupmedia',
         text: 'Popup.Attach.GroupMedia',
         onClick: () => this.changeGroup(true),
-        verify: () => !this.willAttach.group && this.canGroupSomething()
+        verify: () => !this.hasGif() && !this.willAttach.group && this.canGroupSomething()
       }, {
         icon: 'groupmediaoff',
         text: 'Popup.Attach.UngroupMedia',
         onClick: () => this.changeGroup(false),
-        verify: () => this.willAttach.group && this.canGroupSomething()
+        verify: () => !this.hasGif() && this.willAttach.group && this.canGroupSomething()
       }, {
         icon: 'mediaspoiler',
         text: 'EnablePhotoSpoiler',
@@ -286,6 +304,12 @@ export default class PopupNewMedia extends PopupElement {
     this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
     this.listenerSetter.add(this.messageInputField.input)('scroll', this.onScroll);
 
+    this.listenerSetter.add(this.messageInputField.input)('input', throttle((e) => {
+      const {value} = getRichValueWithCaret(this.messageInputField.input);
+
+      this.starsState.set({hasMessage: !!value.trim()})
+    }, 120, true));
+
     this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
     this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
 
@@ -312,36 +336,10 @@ export default class PopupNewMedia extends PopupElement {
     this.addEventListener('close', () => {
       this.files.length = 0;
       this.willAttach.sendFileDetails.length = 0;
+      this.hideActiveActionsMenu();
 
       if(currentPopup === this) {
         currentPopup = undefined;
-      }
-    });
-
-    let target: HTMLElement, isMedia: boolean, item: SendFileParams;
-    createContextMenu({
-      buttons: [{
-        icon: 'mediaspoiler',
-        text: 'EnablePhotoSpoiler',
-        onClick: () => {
-          this.applyMediaSpoiler(item);
-        },
-        verify: () => isMedia && !item.mediaSpoiler && !this.willAttach.stars
-      }, {
-        icon: 'mediaspoileroff',
-        text: 'DisablePhotoSpoiler',
-        onClick: () => {
-          this.removeMediaSpoiler(item);
-        },
-        verify: () => !!(isMedia && item.mediaSpoiler) && !this.willAttach.stars
-      }],
-      listenTo: this.mediaContainer,
-      listenerSetter: this.listenerSetter,
-      findElement: (e) => {
-        target = findUpClassName(e.target, 'popup-item');
-        isMedia = target.classList.contains('popup-item-media');
-        item = this.willAttach.sendFileDetails.find((i) => i.itemDiv === target);
-        return target;
       }
     });
 
@@ -381,7 +379,7 @@ export default class PopupNewMedia extends PopupElement {
         onEffect: this.setEffect
       });
 
-      sendMenu.setPeerId(this.chat.peerId);
+      sendMenu?.setPeerParams({peerId: this.chat.peerId, isPaid: !!this.chat.starsAmount});
     }
 
     currentPopup = this;
@@ -425,11 +423,23 @@ export default class PopupNewMedia extends PopupElement {
     const {input} = this.messageInputField;
     this.scrollable.onAdditionalScroll();
     if(input.scrollTop > 0 && input.scrollHeight > 130) {
-      this.scrollable.container.classList.remove('scrolled-bottom');
+      this.scrollable.container.classList.remove('scrolled-end');
     }
+
+    this.scrollable.container.addEventListener('scroll', () => {
+      const actions = document.querySelector('.popup-item-media-action-menu') as HTMLElement;
+      if(!actions || !this.activeActionsMenu) return;
+      const bcr = this.activeActionsMenu.getBoundingClientRect();
+      actions.style.left = bcr.left + bcr.width / 2 + 'px';
+      actions.style.top = bcr.bottom + 'px';
+    });
   };
 
   private async applyMediaSpoiler(item: SendFileParams, noAnimation?: boolean) {
+    const spoilerToggle: HTMLElement = item.itemDiv.querySelector('.spoiler-toggle');
+    if(spoilerToggle) spoilerToggle.dataset.disabled = 'true';
+
+
     const middleware = item.middlewareHelper.get();
     const {width: widthStr, height: heightStr} = item.itemDiv.style;
 
@@ -504,14 +514,27 @@ export default class PopupNewMedia extends PopupElement {
       mediaSpoiler,
       reveal: false
     });
+
+    if(spoilerToggle) {
+      spoilerToggle.dataset.toggled = 'true';
+      delete spoilerToggle.dataset.disabled;
+    }
   }
 
   private removeMediaSpoiler(item: SendFileParams) {
+    const spoilerToggle: HTMLElement = item.itemDiv.querySelector('.spoiler-toggle');
+    if(spoilerToggle) spoilerToggle.dataset.disabled = 'true';
+
     toggleMediaSpoiler({
       mediaSpoiler: item.mediaSpoiler,
       reveal: true,
       destroyAfter: true
     });
+
+    if(spoilerToggle) {
+      delete spoilerToggle.dataset.toggled;
+      delete spoilerToggle.dataset.disabled;
+    }
 
     item.mediaSpoiler = undefined;
   }
@@ -596,6 +619,7 @@ export default class PopupNewMedia extends PopupElement {
   public changeGroup(group: boolean) {
     this.willAttach.group = group;
     this.attachFiles();
+    this.starsState.set({isGrouped: group});
   }
 
   public changeSpoilers(toggle: boolean) {
@@ -648,6 +672,15 @@ export default class PopupNewMedia extends PopupElement {
       placeCaretAtEnd(input);
     }
   };
+
+  private prepareEditedFileForSending(params: SendFileParams): File | undefined {
+    params.editResult?.standaloneContext?.dispose();
+
+    const editResult = params.editResult?.getResult();
+    if(!editResult || editResult instanceof Promise) return undefined;
+
+    return this.wrapMediaEditorBlobInFile(params.file, editResult, params.editResult?.isGif);
+  }
 
   private async send(force = false) {
     let {value: caption, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
@@ -731,6 +764,12 @@ export default class PopupNewMedia extends PopupElement {
 
     const {length} = sendFileDetails;
     const sendingParams = this.chat.getMessageSendingParams();
+
+    const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages());
+    if(preparedPaymentResult === PAYMENT_REJECTED) return;
+
+    sendingParams.confirmedPaymentResult = preparedPaymentResult;
+
     let effect = this.effect();
     this.iterate((sendFileParams) => {
       if(caption && sendFileParams.length !== length) {
@@ -750,8 +789,11 @@ export default class PopupNewMedia extends PopupElement {
       const d: SendFileDetails[] = sendFileParams.map((params) => {
         return {
           ...params,
-          file: params.scaledBlob || params.file,
-          spoiler: willSendPaidMedia ? undefined : !!params.mediaSpoiler
+          file: this.prepareEditedFileForSending(params) || params.scaledBlob || params.file,
+          width: params.editResult?.width || params.width,
+          height: params.editResult?.height || params.height,
+          spoiler: willSendPaidMedia ? undefined : !!params.mediaSpoiler,
+          editResult: undefined as MediaEditorFinalResult
         };
       });
 
@@ -821,7 +863,83 @@ export default class PopupNewMedia extends PopupElement {
     const file = params.file;
     const isVideo = file.type.startsWith('video/');
 
-    if(isVideo) {
+    const editResult = params.editResult;
+
+    let promise: Promise<void>;
+
+    if(editResult) {
+      const resultBlob = editResult.getResult();
+
+      if(resultBlob instanceof Blob) {
+        if(editResult.isGif) {
+          await putImage(editResult.preview),
+          await putVideo(resultBlob)
+          const gifLabel = i18n('AttachGif');
+          gifLabel.classList.add('gif-label');
+          itemDiv.append(gifLabel);
+        } else {
+          await putImage(resultBlob, true);
+        }
+      } else {
+        await putImage(editResult.preview);
+
+        const div = document.createElement('div');
+        const dispose = render(() => RenderProgressCircle({context: editResult.standaloneContext.value}), div);
+        itemDiv.append(div);
+
+        (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
+        resultBlob.then(async(videoBlob) => {
+          dispose();
+          await putVideo(videoBlob);
+          const gifLabel = i18n('AttachGif');
+          gifLabel.classList.add('gif-label');
+          itemDiv.append(gifLabel);
+          (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
+        });
+      }
+
+      async function putImage(blob: Blob, saveObjectURL = false) {
+        const url = await apiManagerProxy.invoke('createObjectURL', blob);
+        if(saveObjectURL) params.objectURL = url;
+
+        const img = new Image();
+        await renderImageFromUrlPromise(img, url);
+
+        img.className = 'popup-item-media-extend-full';
+
+        itemDiv.append(img);
+
+        params.width = editResult.width;
+        params.height = editResult.height;
+      }
+
+      async function putVideo(blob: Blob) {
+        const video = createVideo({middleware: params.middlewareHelper.get()});
+        const url = await apiManagerProxy.invoke('createObjectURL', blob);
+        video.src = params.objectURL = url;
+        video.autoplay = true;
+        video.controls = false;
+        video.muted = true;
+        video.loop = true;
+
+        video.className = 'popup-item-media-extend-full';
+
+        itemDiv.append(video);
+
+        await onMediaLoad(video as HTMLMediaElement)
+
+        params.width = editResult.width;
+        params.height = editResult.height;
+        params.duration = video.duration;
+        params.noSound = true;
+
+        const thumb = await createPosterFromVideo(video);
+        params.thumb = {
+          url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
+          ...thumb
+        };
+      }
+    } else if(isVideo) {
       const video = createVideo({middleware: params.middlewareHelper.get()});
       video.src = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
       video.autoplay = true;
@@ -836,7 +954,7 @@ export default class PopupNewMedia extends PopupElement {
 
       let error: Error;
       try {
-        const promise = onMediaLoad(video);
+        const promise = onMediaLoad(video as HTMLMediaElement);
         await handleVideoLeak(video, promise);
       } catch(err) {
         error = err as any;
@@ -863,9 +981,10 @@ export default class PopupNewMedia extends PopupElement {
     } else {
       const img = new Image();
       itemDiv.append(img);
-      const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
 
+      const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
       await renderImageFromUrlPromise(img, url);
+
       const mimeType = params.file.type as MTMimeType;
       const scaled = await this.scaleImageForTelegram(img, mimeType, true);
       if(scaled) {
@@ -879,7 +998,7 @@ export default class PopupNewMedia extends PopupElement {
       if(file.type === 'image/gif') {
         params.noSound = true;
 
-        return Promise.all([
+        promise = Promise.all([
           getGifDuration(img).then((duration) => {
             params.duration = Math.ceil(duration);
           }),
@@ -893,12 +1012,178 @@ export default class PopupNewMedia extends PopupElement {
         ]).then(() => {});
       }
     }
+    {
+      const listenerSetter = new ListenerSetter();
+
+      const showActions = async() => {
+        if(this.activeActionsMenu === itemDiv || !this.canShowActions) return;
+        hideActions();
+        this.activeActionsMenu = itemDiv;
+        const actions = document.createElement('div');
+        actions.classList.add('popup-item-media-action-menu');
+        const itemCls = 'popup-item-media-action';
+
+        let equalizeIcon: HTMLSpanElement;
+        if(!this.willAttach.stars && !isVideo && file.type !== 'image/gif') {
+          equalizeIcon = Icon('equalizer', itemCls);
+          equalizeIcon.addEventListener('click', () => {
+            hideActions();
+
+            (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
+            const img = itemDiv.querySelector('img');
+            if(!img) return;
+            const animatedImg = img.cloneNode() as HTMLImageElement;
+            const bcr = itemDiv.getBoundingClientRect();
+            animatedImg.style.position = 'fixed';
+            const left = bcr.left + bcr.width / 2, top = bcr.top + bcr.height / 2, width = bcr.width, height = bcr.height;
+            animatedImg.style.left = left + 'px';
+            animatedImg.style.top = top + 'px';
+            animatedImg.style.width = width + 'px';
+            animatedImg.style.height = height + 'px';
+            animatedImg.style.transform = 'translate(-50%, -50%)';
+            animatedImg.style.objectFit = 'cover';
+            animatedImg.style.zIndex = '1000';
+
+            document.body.append(animatedImg);
+
+            openMediaEditor({
+              imageURL: params.editResult?.originalSrc || params.objectURL,
+              managers: this.managers,
+              onEditFinish: (result) => {
+                params.editResult = result;
+                this.attachFiles();
+              },
+              onCanvasReady: (canvas) => {
+                const canvasBcr = canvas.getBoundingClientRect();
+                const leftDiff = (canvasBcr.left + canvasBcr.width / 2) - left;
+                const topDiff = (canvasBcr.top + canvasBcr.height / 2) - top;
+                const [scaledWidth, scaledHeight] = snapToViewport(img.naturalWidth / img.naturalHeight, canvasBcr.width, canvasBcr.height);
+
+                const deferred = deferredPromise<void>();
+
+                animateValue(
+                  0, 1, 200,
+                  (progress) => {
+                    animatedImg.style.transform = `translate(calc(${
+                      progress * leftDiff
+                    }px - 50%), calc(${
+                      progress * topDiff
+                    }px - 50%))`;
+                    animatedImg.style.width = lerp(width, scaledWidth, progress) + 'px';
+                    animatedImg.style.height = lerp(height, scaledHeight, progress) + 'px';
+                  },
+                  {
+                    onEnd: () => deferred.resolve()
+                  }
+                );
+                return deferred;
+              },
+              onImageRendered: async() => {
+                animatedImg.style.opacity = '1';
+                animatedImg.style.transition = '.12s';
+                await doubleRaf();
+                animatedImg.style.opacity = '0';
+                await delay(120);
+                animatedImg.remove();
+              },
+              standaloneContext: params.editResult?.standaloneContext,
+              onClose: (hasGif) => {
+                if(!hasGif)
+                  (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
+              }
+            }, SolidJSHotReloadGuardProvider);
+          });
+        }
+
+        let spoilerToggle: HTMLSpanElement;
+        if(!this.willAttach.stars) {
+          spoilerToggle = document.createElement('span');
+          spoilerToggle.classList.add(itemCls, 'spoiler-toggle');
+          if(params.mediaSpoiler) spoilerToggle.dataset.toggled = 'true';
+          spoilerToggle.append(Icon('mediaspoiler'), Icon('mediaspoileroff'));
+          spoilerToggle.addEventListener('click', () => {
+            if(spoilerToggle.dataset.disabled) return; // Prevent double clicks
+            spoilerToggle.dataset.toggled = spoilerToggle.dataset.toggled === 'true' ? 'false' : 'true'
+            !params.mediaSpoiler ? this.applyMediaSpoiler(params) : this.removeMediaSpoiler(params);
+          });
+        }
+
+        const deleteIcon = Icon('delete', itemCls);
+        deleteIcon.addEventListener('click', () => {
+          const idx = this.files.findIndex((file) => file === params.file);
+          if(idx >= 0) {
+            hideActions();
+            this.files.splice(idx, 1);
+            params.editResult?.standaloneContext?.dispose();
+            this.files.length ? this.attachFiles() : this.destroy();
+          }
+        });
+
+        actions.append(...[equalizeIcon, spoilerToggle, deleteIcon].filter(Boolean));
+
+        const bcr = itemDiv.getBoundingClientRect();
+        actions.style.left = bcr.left + bcr.width / 2 + 'px';
+        actions.style.top = bcr.bottom + 'px';
+
+        document.body.append(actions);
+        await doubleRaf();
+        actions.style.opacity = '1';
+
+        const listener = (e: MouseEvent) => {
+          if((e.target as HTMLElement)?.closest?.('.popup-item-media-action-menu') || e.target === itemDiv || itemDiv.contains(e.target as Node)) return;
+          hideActions();
+        }
+        listenerSetter.add(document)('pointermove', listener);
+        listenerSetter.add(document)('keydown', () => {
+          hideActions();
+        }, {capture: true});
+        if(IS_MOBILE) {
+          listenerSetter.add(document)('pointerdown', listener);
+        }
+      }
+
+      const hideActions = () => {
+        listenerSetter.removeAll();
+        this.hideActiveActionsMenu();
+      }
+
+      itemDiv.addEventListener('pointermove', showActions);
+      itemDiv.addEventListener('pointerup', showActions);
+    }
+
+    return promise;
   }
+
+  private hideActiveActionsMenu() {
+    document.querySelectorAll('.popup-item-media-action-menu')?.forEach(async(el) => {
+      this.activeActionsMenu = undefined;
+      (el as HTMLElement).style.opacity = '0';
+      await delay(200);
+      el?.remove();
+    });
+  }
+
+  private wrapMediaEditorBlobInFile(originalFile: File, editedBlob: Blob, isGif: boolean) {
+    if(this.cachedMediaEditorFiles.has(editedBlob)) return this.cachedMediaEditorFiles.get(editedBlob);
+
+    let name = originalFile.name;
+    if(isGif) name = name.replace(/\.[^.]+$/, '.mp4');
+
+    const result = new File([editedBlob], name, {type: editedBlob.type});
+    this.cachedMediaEditorFiles.set(editedBlob, result);
+
+    return result;
+  }
+
 
   private async attachDocument(params: SendFileParams): ReturnType<PopupNewMedia['attachMedia']> {
     const {itemDiv} = params;
     itemDiv.classList.add('popup-item-document');
-    const file = params.file;
+
+    const editedBlob = await params.editResult?.getResult();
+    const file = editedBlob ?
+      this.wrapMediaEditorBlobInFile(params.file, editedBlob, params.editResult?.isGif) :
+      params.file;
 
     const isPhoto = file.type.startsWith('image/');
     const isAudio = AUDIO_MIME_TYPES_SUPPORTED.has(file.type as any);
@@ -912,7 +1197,7 @@ export default class PopupNewMedia extends PopupElement {
     if(isPhoto && params.objectURL) {
       img = new Image();
       await renderImageFromUrlPromise(img, params.objectURL);
-      const scaled = await this.scaleImageForTelegram(img, params.file.type as MTMimeType);
+      const scaled = await this.scaleImageForTelegram(img, file.type as MTMimeType);
       if(scaled) {
         params.objectURL = scaled.url;
       }
@@ -986,7 +1271,7 @@ export default class PopupNewMedia extends PopupElement {
     itemDiv.append(docDiv);
   }
 
-  private attachFile = (file: File) => {
+  private attachFile = (file: File, oldParams?: Partial<SendFileParams>) => {
     const willAttach = this.willAttach;
     const shouldCompress = this.shouldCompress(file.type);
 
@@ -994,7 +1279,8 @@ export default class PopupNewMedia extends PopupElement {
     itemDiv.classList.add('popup-item');
 
     const params: SendFileParams = {
-      file
+      file,
+      ...(oldParams || {})
     } as any;
 
     // do not pass these properties to worker
@@ -1031,6 +1317,45 @@ export default class PopupNewMedia extends PopupElement {
       }
     });
     this.show();
+  }
+
+  private updateConfirmBtnContent(stars: number): void {
+    if(!stars) return void replaceContent(this.btnConfirm, i18n('Modal.Send'));
+
+    const span = document.createElement('span');
+    span.classList.add('popup-confirm-btn-inner');
+
+    span.append(Icon('star', 'popup-confirm-btn-inner-star'), numberThousandSplitterForStars(stars) + '');
+
+    replaceContent(
+      this.btnConfirm,
+      span
+    );
+  }
+
+  private starsState = createRoot(dispose => {
+    this.middlewareHelper.get().onDestroy(() => void dispose());
+
+    const [store, set] = createStore({
+      hasMessage: false,
+      isGrouped: true,
+      attachedFiles: this.files.length,
+      starsAmount: this.chat.starsAmount || 0
+    });
+
+    const shouldCountMessage = () => +store.hasMessage * +(!store.isGrouped && store.attachedFiles > 1);
+    const totalMessages = createMemo(() => +shouldCountMessage() + store.attachedFiles);
+    const totalStars = createMemo(() => store.starsAmount * totalMessages());
+
+    createEffect(() => {
+      this.updateConfirmBtnContent(totalStars());
+    });
+
+    return {store, set, totalMessages};
+  });
+
+  public setStarsAmount(starsAmount: number) {
+    this.starsState.set({starsAmount});
   }
 
   private setTitle() {
@@ -1073,9 +1398,15 @@ export default class PopupNewMedia extends PopupElement {
     this.mediaContainer.append(params.itemDiv);
   }
 
+  private hasGif() {
+    const {sendFileDetails} = this.willAttach;
+    return sendFileDetails.some((params) => params.editResult?.isGif);
+  }
+
   private iterate(cb: (sendFileDetails: SendFileParams[]) => void) {
     const {sendFileDetails} = this.willAttach;
-    if(!this.willAttach.group) {
+
+    if(!this.willAttach.group || this.hasGif()) {
       sendFileDetails.forEach((p) => cb([p]));
       return;
     }
@@ -1105,10 +1436,21 @@ export default class PopupNewMedia extends PopupElement {
       params.middlewareHelper.destroy();
     });
 
-    const promises = files.map((file) => this.attachFile(file));
+    const promises = files.map((file) => {
+      const oldParams = oldSendFileDetails.find((o) => o.file === file);
+      return this.attachFile(
+        file,
+        oldParams?.editResult ? {
+          editResult: oldParams.editResult
+        } : undefined
+      );
+    });
+
+    this.canShowActions = false;
 
     Promise.all(promises).then(() => {
       mediaContainer.replaceChildren();
+      this.starsState.set({attachedFiles: files.length, isGrouped: this.willAttach?.group && !this.hasGif()});
 
       if(!files.length) {
         return;
@@ -1154,6 +1496,43 @@ export default class PopupNewMedia extends PopupElement {
     }).then(() => {
       this.onRender();
       this.onScroll();
+      doubleRaf().then(() => this.afterRender());
+    });
+  }
+
+  private afterRender() {
+    setTimeout(() => {
+      this.canShowActions = true;
+    }, 200);
+
+    this.willAttach.sendFileDetails.forEach((params) => {
+      const editResult = params.editResult;
+      if(editResult?.animatedPreview) {
+        const img = editResult.animatedPreview;
+        const bcr = img.getBoundingClientRect();
+        const left = bcr.left + bcr.width / 2, top = bcr.top + bcr.height / 2, width = bcr.width, height = bcr.height;
+        const targetBcr = params.itemDiv.getBoundingClientRect();
+        const leftDiff = (targetBcr.left + targetBcr.width / 2) - left;
+        const topDiff = (targetBcr.top + targetBcr.height / 2) - top;
+        animateValue(
+          0, 1, 200,
+          (progress) => {
+            img.style.transform = `translate(calc(${
+              progress * leftDiff
+            }px - 50%), calc(${
+              progress * topDiff
+            }px - 50%))`;
+            img.style.width = lerp(width, targetBcr.width, progress) + 'px';
+            img.style.height = lerp(height, targetBcr.height, progress) + 'px';
+          },
+          {
+            onEnd: () => {
+              img.remove();
+              editResult.animatedPreview = undefined;
+            }
+          }
+        )
+      }
     });
   }
 }

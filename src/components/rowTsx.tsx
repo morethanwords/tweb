@@ -1,4 +1,4 @@
-import {JSX, Ref} from 'solid-js';
+import {children, JSX, Ref} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import classNames from '../helpers/string/classNames';
@@ -53,6 +53,7 @@ export default function RowTsx(props: Partial<{
   // contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
   asLabel: boolean,
   // checkboxKeys: [LangPackKey, LangPackKey],
+  classList: {[key: string]: boolean}
 }> = {}) {
   const RowRowPart = (props: {
     class: string,
@@ -95,6 +96,8 @@ export default function RowTsx(props: Partial<{
   const titleRow = <RowRow class="title" left={props.title} right={props.titleRight || props.checkboxFieldToggle} rightSecondary={props.titleRightSecondary} />;
   const subtitleRow = <RowRow class="subtitle" left={props.subtitle} right={props.subtitleRight} />;
 
+  const rightContent = children(() => props.rightContent); // Prevent recreating the children when accessing props.rightContent
+
   const isCheckbox = () => !!(props.checkboxField || props.checkboxFieldToggle || props.radioField);
   const isClickable = () => !!(props.clickable || isCheckbox());
   const haveRipple = () => !!(!props.noRipple && isClickable());
@@ -119,8 +122,9 @@ export default function RowTsx(props: Partial<{
         [`row-clickable hover-${props.color ? props.color + '-' : ''}effect`]: isClickable(),
         'is-disabled': props.disabled,
         'is-fake-disabled': props.fakeDisabled,
-        'row-grid': !!props.rightContent,
-        'with-midtitle': !!props.midtitle
+        'row-grid': !!rightContent(),
+        'with-midtitle': !!props.midtitle,
+        ...(props.classList || {})
       }}
       onClick={typeof(props.clickable) !== 'boolean' && props.clickable}
     >
@@ -131,7 +135,7 @@ export default function RowTsx(props: Partial<{
         <IconTsx icon={props.icon} class={classNames('row-icon', ...(props.iconClasses || []))} />
       )}
       {props.checkboxField || props.radioField}
-      {props.rightContent && (<div class="row-right">{props.rightContent}</div>)}
+      {rightContent() && (<div class="row-right">{rightContent()}</div>)}
       {props.media && (<div class={classNames('row-media', props.mediaSize && `row-media-${props.mediaSize}`)}>{props.media}</div>)}
     </Dynamic>
   );

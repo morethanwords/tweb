@@ -113,6 +113,7 @@ export interface MTAppConfig {
   stars_subscription_amount_max?:            number;
   stars_usd_sell_rate_x1000?:                number;
   stars_usd_withdraw_rate_x1000?:            number;
+  stars_paid_message_commission_permille?:   number;
 }
 
 export interface EmojiesSendDiceSuccess {

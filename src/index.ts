@@ -8,7 +8,6 @@
 
 import App from './config/app';
 import blurActiveElement from './helpers/dom/blurActiveElement';
-import cancelEvent from './helpers/dom/cancelEvent';
 import {IS_STICKY_INPUT_BUGGED} from './helpers/dom/fixSafariStickyInputFocusing';
 import loadFonts from './helpers/dom/loadFonts';
 import IS_EMOJI_SUPPORTED from './environment/emojiSupport';
@@ -20,18 +19,18 @@ import setWorkerProxy from './helpers/setWorkerProxy';
 import toggleAttributePolyfill from './helpers/dom/toggleAttributePolyfill';
 import rootScope from './lib/rootScope';
 import IS_TOUCH_SUPPORTED from './environment/touchSupport';
-import I18n from './lib/langPack';
+import I18n, {i18n} from './lib/langPack';
 import './helpers/peerIdPolyfill';
 import './lib/polyfill';
 import apiManagerProxy from './lib/mtproto/mtprotoworker';
 import getProxiedManagers from './lib/appManagers/getProxiedManagers';
 import themeController from './helpers/themeController';
 import overlayCounter from './helpers/overlayCounter';
-import singleInstance from './lib/mtproto/singleInstance';
+import singleInstance, {InstanceDeactivateReason} from './lib/mtproto/singleInstance';
 import {parseUriParamsLine} from './helpers/string/parseUriParams';
 import Modes from './config/modes';
 import {AuthState} from './types';
-import {IS_BETA} from './config/debug';
+import DEBUG, {IS_BETA} from './config/debug';
 import IS_INSTALL_PROMPT_SUPPORTED from './environment/installPrompt';
 import cacheInstallPrompt from './helpers/dom/installPrompt';
 import {fillLocalizedDates} from './helpers/date';
@@ -39,7 +38,33 @@ import {nextRandomUint} from './helpers/random';
 import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from './environment/overlayScrollSupport';
 import IMAGE_MIME_TYPES_SUPPORTED, {IMAGE_MIME_TYPES_SUPPORTED_PROMISE} from './environment/imageMimeTypesSupport';
 import MEDIA_MIME_TYPES_SUPPORTED from './environment/mediaMimeTypesSupport';
-// import appNavigationController from './components/appNavigationController';
+import {doubleRaf} from './helpers/schedulers';
+import {getCurrentAccount} from './lib/accounts/getCurrentAccount';
+import AccountController from './lib/accounts/accountController';
+import {changeAccount} from './lib/accounts/changeAccount';
+import {MAX_ACCOUNTS_FREE, MAX_ACCOUNTS_PREMIUM} from './lib/accounts/constants';
+import sessionStorage from './lib/sessionStorage';
+import replaceChildrenPolyfill from './helpers/dom/replaceChildrenPolyfill';
+import listenForWindowPrint from './helpers/dom/windowPrint';
+import cancelImageEvents from './helpers/dom/cancelImageEvents';
+import PopupElement from './components/popups';
+import appRuntimeManager from './lib/appManagers/appRuntimeManager';
+import PasscodeLockScreenController from './components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
+import type {LangPackDifference} from './layer';
+import commonStateStorage from './lib/commonStateStorage';
+import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './components/sidebarLeft/constants';
+
+// import commonStateStorage from './lib/commonStateStorage';
+// import { STATE_INIT } from './config/state';
+
+// if(DEBUG) {
+//   (async() => {
+//     const {attachDevtoolsOverlay} = await import('@solid-devtools/overlay');
+
+//     attachDevtoolsOverlay();
+//   })();
+// }
+
 
 IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   mimeTypes.forEach((mimeType) => {
@@ -51,8 +76,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   apiManagerProxy.sendEnvironment();
 });
 
-/* false &&  */document.addEventListener('DOMContentLoaded', async() => {
-  // * Randomly choose a version if user came from google
+// * Randomly choose a version if user came from a search engine
+function randomlyChooseVersionFromSearch() {
   try {
     if(
       App.isMainDomain &&
@@ -68,29 +93,14 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
       }
     }
   } catch(err) {}
+}
 
-  toggleAttributePolyfill();
-
-  // polyfill for replaceChildren
-  if((Node as any).prototype.replaceChildren === undefined) {
-    (Node as any).prototype.replaceChildren = function(...nodes: any[]) {
-      this.textContent = '';
-      // while(this.lastChild) {
-      //   this.removeChild(this.lastChild);
-      // }
-      if(nodes) {
-        this.append(...nodes);
-      }
-    }
-  }
-
-  rootScope.managers = getProxiedManagers();
-
+function setManifest() {
   const manifest = document.getElementById('manifest') as HTMLLinkElement;
   if(manifest) manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=jw3mK7G9Aq`;
+}
 
-  singleInstance.start();
-
+function setViewportHeightListeners() {
   // We listen to the resize event (https://css-tricks.com/the-trick-to-viewport-units-on-mobile/)
   const w = window.visualViewport || window; // * handle iOS keyboard
   let setViewportVH = false/* , hasFocus = false */;
@@ -119,52 +129,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     } */
   };
 
-  setWorkerProxy;
-
-  // const [_, touchSupport, userAgent, _rootScope, _appStateManager, _I18n, __/* , ___ */] = await Promise.all([
-  //   import('./lib/polyfill'),
-  //   import('./environment/touchSupport'),
-  //   import('./environment/userAgent'),
-  //   import('./lib/rootScope'),
-  //   import('./lib/appManagers/appStateManager'),
-  //   import('./lib/langPack'),
-  //   import('./helpers/peerIdPolyfill'),
-  //   // import('./helpers/cacheFunctionPolyfill')
-  // ]);
-
-  /* const {IS_TOUCH_SUPPORTED} = touchSupport;
-  const {IS_FIREFOX, IS_MOBILE, IS_APPLE, IS_SAFARI, IS_APPLE_MOBILE, IS_ANDROID} = userAgent;
-  const rootScope = _rootScope.default;
-  const appStateManager = _appStateManager.default;
-  const I18n = _I18n.default; */
-
   window.addEventListener('resize', setVH);
   setVH();
-
-  const preparePrint = () => {
-    const chat = document.querySelector('.chat.active');
-    if(!chat) {
-      return;
-    }
-
-    const chatClone = chat.cloneNode(true) as HTMLElement;
-    chatClone.querySelectorAll('.chat-input, .chat-background').forEach((element) => element.remove());
-    const bubbles = chatClone.querySelector('.bubbles');
-    const bubblesInner = bubbles.querySelector('.bubbles-inner');
-    bubbles.replaceChildren(bubblesInner);
-    const video = bubbles.querySelectorAll<HTMLVideoElement>('video');
-    video.forEach((video) => (video.muted = true));
-    const printable = document.createElement('div');
-    printable.setAttribute('id', 'printable');
-    printable.append(chatClone);
-    document.body.append(printable);
-  };
-  const removePrint = () => {
-    const printContent = document.getElementById('printable');
-    printContent?.remove();
-  };
-  window.addEventListener('beforeprint', preparePrint);
-  window.addEventListener('afterprint', removePrint);
 
   if(IS_STICKY_INPUT_BUGGED) {
     const toggleResizeMode = () => {
@@ -196,68 +162,68 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
       toggleResizeMode();
     });
   }
+}
 
-  if(IS_FIREFOX && !IS_EMOJI_SUPPORTED) {
-    document.addEventListener('dragstart', (e) => {
-      const target = e.target as HTMLElement;
-      if(target.tagName === 'IMG' && target.classList.contains('emoji')) {
-        cancelEvent(e);
-        return false;
-      }
-    });
+function setSidebarLeftWidth() {
+  const sidebarEl = document.getElementById('column-left');
+  const storedWidth = localStorage.getItem('sidebar-left-width');
+
+  let validatedWidth = parseInt(storedWidth);
+  validatedWidth = isNaN(validatedWidth) ? undefined : validatedWidth;
+
+  if(validatedWidth > MAX_SIDEBAR_WIDTH) validatedWidth = MAX_SIDEBAR_WIDTH;
+  else if(validatedWidth < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR) validatedWidth = 0;
+  else if(validatedWidth < MIN_SIDEBAR_WIDTH) validatedWidth = MIN_SIDEBAR_WIDTH;
+
+  if(typeof validatedWidth === 'number' && String(validatedWidth) !== storedWidth)
+    localStorage.setItem('sidebar-left-width', validatedWidth + '');
+
+  if(validatedWidth === 0) {
+    sidebarEl.classList.add('is-collapsed');
+  } else if(validatedWidth) {
+    document.documentElement.style.setProperty('--current-sidebar-left-width', validatedWidth + 'px');
   }
+}
+
+function setRootClasses() {
+  const add: string[] = [];
 
   if(IS_EMOJI_SUPPORTED) {
-    document.documentElement.classList.add('native-emoji');
+    add.push('native-emoji');
   }
 
   if(USE_NATIVE_SCROLL) {
-    document.documentElement.classList.add('native-scroll');
+    add.push('native-scroll');
   } else if(IS_OVERLAY_SCROLL_SUPPORTED) {
-    document.documentElement.classList.add('overlay-scroll');
+    add.push('overlay-scroll');
   } else if(USE_CUSTOM_SCROLL) {
-    document.documentElement.classList.add('custom-scroll');
+    add.push('custom-scroll');
   }
 
-  // document.documentElement.style.setProperty('--quote-icon', `"${getIconContent('quote')}"`);
-
-  // prevent firefox image dragging
-  document.addEventListener('dragstart', (e) => {
-    if((e.target as HTMLElement)?.tagName === 'IMG') {
-      e.preventDefault();
-      return false;
-    }
-  });
-
-  // restrict contextmenu on images (e.g. webp stickers)
-  document.addEventListener('contextmenu', (e) => {
-    if((e.target as HTMLElement).tagName === 'IMG' && !(window as any).appMediaViewer) {
-      cancelEvent(e);
-    }
-  });
+  // root.style.setProperty('--quote-icon', `"${getIconContent('quote')}"`);
 
   if(IS_FIREFOX) {
-    document.documentElement.classList.add('is-firefox', 'no-backdrop');
+    add.push('is-firefox', 'no-backdrop');
   }
 
   if(IS_MOBILE) {
-    document.documentElement.classList.add('is-mobile');
+    add.push('is-mobile');
   }
 
   if(IS_APPLE) {
     if(IS_SAFARI) {
-      document.documentElement.classList.add('is-safari');
+      add.push('is-safari');
     }
 
-    // document.documentElement.classList.add('emoji-supported');
+    // root.classList.add('emoji-supported');
 
     if(IS_APPLE_MOBILE) {
-      document.documentElement.classList.add('is-ios');
+      add.push('is-ios');
     } else {
-      document.documentElement.classList.add('is-mac');
+      add.push('is-mac');
     }
   } else if(IS_ANDROID) {
-    document.documentElement.classList.add('is-android');
+    add.push('is-android');
 
     // force losing focus on input blur
     // focusin and focusout are not working on mobile
@@ -287,9 +253,9 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   }
 
   if(!IS_TOUCH_SUPPORTED) {
-    document.documentElement.classList.add('no-touch');
+    add.push('no-touch');
   } else {
-    document.documentElement.classList.add('is-touch');
+    add.push('is-touch');
     /* document.addEventListener('touchmove', (event: any) => {
       event = event.originalEvent || event;
       if(event.scale && event.scale !== 1) {
@@ -298,22 +264,129 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     }, {capture: true, passive: false}); */
   }
 
+  document.documentElement.classList.add(...add);
+}
+
+function onInstanceDeactivated(reason: InstanceDeactivateReason) {
+  const isUpdated = reason === 'version';
+  const popup = PopupElement.createPopup(PopupElement, 'popup-instance-deactivated', {overlayClosable: true});
+  const c = document.createElement('div');
+  c.classList.add('instance-deactivated-container');
+  (popup as any).container.replaceWith(c);
+
+  const header = document.createElement('div');
+  header.classList.add('header');
+  header.append(i18n(isUpdated ? 'Deactivated.Version.Title' : 'Deactivated.Title'));
+
+  const subtitle = document.createElement('div');
+  subtitle.classList.add('subtitle');
+  subtitle.append(i18n(isUpdated ? 'Deactivated.Version.Subtitle' : 'Deactivated.Subtitle'));
+
+  c.append(header, subtitle);
+
+  document.body.classList.add('deactivated');
+
+  const onClose = isUpdated ? () => {
+    appRuntimeManager.reload();
+  } : () => {
+    document.body.classList.add('deactivated-backwards');
+
+    singleInstance.activateInstance();
+
+    setTimeout(() => {
+      document.body.classList.remove('deactivated', 'deactivated-backwards');
+    }, 333);
+  };
+
+  popup.addEventListener('close', onClose);
+  popup.show();
+};
+
+const TIME_LABEL = 'Elapsed time since unlocked';
+
+function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDifference) {
+  if(langPack.lang_code === 'ar' || langPack.lang_code === 'fa' && IS_BETA && false) {
+    document.documentElement.classList.add('is-rtl');
+    document.documentElement.dir = 'rtl';
+    document.documentElement.lang = langPack.lang_code;
+    I18n.setRTL(true);
+  } else {
+    document.documentElement.dir = 'ltr';
+  }
+}
+
+/* false &&  */document.addEventListener('DOMContentLoaded', async() => {
+  const perf = performance.now();
+  randomlyChooseVersionFromSearch();
+  setSidebarLeftWidth();
+  toggleAttributePolyfill();
+  replaceChildrenPolyfill();
+  rootScope.managers = getProxiedManagers();
+  setManifest();
+  setViewportHeightListeners();
+  setWorkerProxy; // * just to import
+  listenForWindowPrint();
+  cancelImageEvents();
+  setRootClasses();
+
   if(IS_INSTALL_PROMPT_SUPPORTED) {
     cacheInstallPrompt();
   }
 
-  const perf = performance.now();
+  await PasscodeLockScreenController.waitForUnlock(async() => {
+    rootScope.settings = await commonStateStorage.get('settings');
+    themeController.setThemeListener();
 
-  // await pause(1000000);
+    const langPack = await I18n.getCacheLangPack();
+    setDocumentLangPackProperties(langPack);
 
-  const langPromise = I18n.getCacheLangPack();
+    if(IS_BETA) import('./pages/pageIm'); // cache it
+    // const settings = await commonStateStorage.get('settings');
+    // const timeFormat =
+    // I18n.setTimeFormat(settings?.timeFormat || STATE_INIT.settings?.timeFormat);
+  });
 
-  const [stateResult, langPack] = await Promise.all([
-    // loadState(),
-    apiManagerProxy.sendState().then(([stateResult]) => stateResult),
-    langPromise
-  ]);
-  I18n.setTimeFormat(stateResult.state.settings.timeFormat);
+  console.time(TIME_LABEL);
+
+  // * (1) load states
+  // * (2) check app version
+  // * (3) send all states if updated
+  // * (4) exit if not updated
+
+  // * (1)
+  const allStates = await apiManagerProxy.loadAllStates();
+  const stateResult = allStates[getCurrentAccount()];
+
+  console.timeLog(TIME_LABEL, 'allStates loaded');
+
+  // * (2)
+  singleInstance.addEventListener('deactivated', onInstanceDeactivated);
+  await singleInstance.start();
+  console.timeLog(TIME_LABEL, 'singleInstance started');
+
+  const sendAllStatesPromise = singleInstance.deactivatedReason !== 'version' && apiManagerProxy.sendAllStates(allStates);
+  if(singleInstance.deactivatedReason) {
+    onInstanceDeactivated(singleInstance.deactivatedReason);
+  }
+
+  // * (3)
+  await sendAllStatesPromise;
+  console.timeLog(TIME_LABEL, 'sent all states (1)');
+
+  const langPack = await I18n.getCacheLangPack();
+  console.timeLog(TIME_LABEL, 'await I18n.getCacheLangPack()');
+  I18n.setTimeFormat(rootScope.settings.timeFormat);
+
+  // * (4)
+  if(!sendAllStatesPromise) {
+    return;
+  }
+
+  await apiManagerProxy.sendAllStates(allStates);
+
+  console.timeLog(TIME_LABEL, 'sent all states (2)');
+
+  document.body.classList.toggle('has-folders-sidebar', rootScope.settings.tabsInSidebar);
 
   rootScope.managers.rootScope.getPremium().then((isPremium) => {
     rootScope.premium = isPremium;
@@ -321,14 +394,22 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
 
   themeController.setThemeListener();
 
+  const setUnreadMessagesText = () => {
+    const text = I18n.format('UnreadMessages', true);
+    document.documentElement.style.setProperty('--unread-messages-text', `"${text}"`);
+  };
+
+  setUnreadMessagesText();
   if(langPack.appVersion !== App.langPackVersion) {
-    I18n.getLangPack(langPack.lang_code);
+    I18n.getLangPack(langPack.lang_code).finally(setUnreadMessagesText);
   } else {
     fillLocalizedDates();
   }
 
-  rootScope.addEventListener('language_change', () => {
+  rootScope.addEventListener('language_change', (langCode) => {
+    I18n.getLangPack(langCode);
     fillLocalizedDates();
+    setUnreadMessagesText();
   });
 
   /**
@@ -348,14 +429,10 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
 
   await IMAGE_MIME_TYPES_SUPPORTED_PROMISE;
 
-  if(langPack.lang_code === 'ar' || langPack.lang_code === 'fa' && IS_BETA && false) {
-    document.documentElement.classList.add('is-rtl');
-    document.documentElement.dir = 'rtl';
-    document.documentElement.lang = langPack.lang_code;
-    I18n.setRTL(true);
-  } else {
-    document.documentElement.dir = 'ltr';
-  }
+  console.timeLog(TIME_LABEL, 'IMAGE_MIME_TYPES_SUPPORTED_PROMISE');
+
+
+  setDocumentLangPackProperties(langPack);
 
   let authState = stateResult.state.authState;
 
@@ -391,9 +468,43 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   if(authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {
     console.log('Will mount auth page:', authState._, Date.now() / 1000);
 
+    (async() => {
+      const totalAccounts = await AccountController.getTotalAccounts();
+      const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
+      const maxAccountNumber = hasSomeonePremium ? MAX_ACCOUNTS_PREMIUM : MAX_ACCOUNTS_FREE;
+
+      const currentAccount = getCurrentAccount();
+
+      if(currentAccount > Math.min(maxAccountNumber, totalAccounts + 1)) {
+        changeAccount(1);
+      }
+    })();
+
     const el = document.getElementById('auth-pages');
     let scrollable: HTMLElement;
+
+    let isEnteringAnimationFinished = false;
+
+    const finishEnteringAnimation = async() => {
+      if(isEnteringAnimationFinished) return;
+      isEnteringAnimationFinished = true;
+
+      await doubleRaf();
+      el.classList.add('auth-pages-entering');
+
+      await pause(1000); // Need a little more time for the animation to finish
+      el.classList.remove('auth-pages-enter', 'auth-pages-entering');
+    }
+
     if(el) {
+      if(await sessionStorage.get('should_animate_auth')) {
+        await sessionStorage.delete('should_animate_auth');
+        el.classList.add('auth-pages-enter');
+
+        // Just in case
+        pause(1000).then(() => finishEnteringAnimation());
+      }
+
       scrollable = el.querySelector('.scrollable') as HTMLElement;
       if((!IS_TOUCH_SUPPORTED || IS_MOBILE_SAFARI)) {
         scrollable.classList.add('no-scrollbar');
@@ -457,6 +568,12 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
           document.fonts.ready
         ]) :
         Promise.resolve();
+
+      promise.then(async() => {
+        await pause(20);
+        finishEnteringAnimation();
+      });
+
       fadeInWhenFontsReady(scrollable, promise);
     }
 
@@ -488,7 +605,33 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     }, 500); */
   } else {
     console.log('Will mount IM page:', Date.now() / 1000);
-    fadeInWhenFontsReady(document.getElementById('main-columns'), loadFonts());
-    (await import('./pages/pageIm')).default.mount();
+
+    const fontsPromise = loadFonts();
+    fadeInWhenFontsReady(document.getElementById('main-columns'), fontsPromise);
+
+    const [page, shouldAnimate] = await Promise.all([
+      import('./pages/pageIm').then((module) => module.default),
+      sessionStorage.get('should_animate_main')
+    ]);
+    if(shouldAnimate) {
+      await sessionStorage.delete('should_animate_main');
+      page.pageEl.classList.add('main-screen-enter');
+
+      console.log('[my-debug] mounting page');
+      await page.mount();
+      console.timeLog(TIME_LABEL, 'await page.mount()');
+
+      await fontsPromise;
+      console.timeLog(TIME_LABEL, 'await fontsPromise');
+
+
+      await doubleRaf();
+      page.pageEl.classList.add('main-screen-entering');
+      await pause(200);
+
+      page.pageEl.classList.remove('main-screen-enter', 'main-screen-entering');
+    } else {
+      await page.mount();
+    }
   }
 });

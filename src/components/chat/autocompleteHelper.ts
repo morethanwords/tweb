@@ -30,6 +30,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
   protected controller: AutocompleteHelperController;
   protected listType: 'xy' | 'x' | 'y';
   protected onSelect: ListNavigationOptions['onSelect'];
+  protected getNavigationList?: () => HTMLElement;
   protected waitForKey?: string[];
 
   protected navigationItem: NavigationItem;
@@ -39,7 +40,8 @@ export default class AutocompleteHelper extends EventListenerBase<{
     controller?: AutocompleteHelper['controller'],
     listType: AutocompleteHelper['listType'],
     onSelect: AutocompleteHelper['onSelect'],
-    waitForKey?: AutocompleteHelper['waitForKey']
+    waitForKey?: AutocompleteHelper['waitForKey'],
+    getNavigationList?: AutocompleteHelper['getNavigationList']
   }) {
     super(false);
 
@@ -68,7 +70,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
 
     const list = this.list;
     const {attach, detach, resetTarget} = attachListNavigation({
-      list,
+      list: this.getNavigationList?.() || list,
       type: this.listType,
       onSelect: this.onSelect,
       once: true,

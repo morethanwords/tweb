@@ -1,0 +1,59 @@
+@import '../scss/variables';
+@import '../scss/mixins';
+
+.StaticSwitch {
+  --color: var(--secondary-color);
+  position: relative;
+
+  width: 36px;
+  height: 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-right: 2px;
+
+  &.checked {
+    --color: var(--primary-color);
+
+    .Handle {
+      left: calc(100% - var(--size));
+    }
+  }
+}
+
+.Background {
+  --width: 30px;
+
+  width: var(--width);
+  height: 14px;
+
+  border-radius: 30px;
+
+  background-color: var(--color);
+
+  @include animation-level-global(2) {
+    transition: background-color 0.2s;
+  }
+}
+
+.Handle {
+  --size: 20px;
+
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+
+  border-radius: var(--size);
+  background-color: var(--surface-color);
+
+  border: 2px solid var(--color);
+  
+  @include animation-level-global(2) {
+    transition: left 0.1s cubic-bezier(0.22, 0.75, 0.7, 1.3);
+  }
+}

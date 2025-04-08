@@ -618,8 +618,7 @@ export default class AppStoriesManager extends AppManager {
     const appConfig = await this.apiManager.getAppConfig();
     const limit = appConfig.stories_pinned_to_top_count_max ?? 3;
     if(newPins.length > limit) {
-      const error = makeError('STORY_ID_TOO_MANY');
-      error.limit = limit;
+      const error = makeError('STORY_ID_TOO_MANY', '' + limit);
       throw error;
     }
 
@@ -938,13 +937,13 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
-  public report(peerId: PeerId, id: number[], reason: ReportReason['_'], message?: string) {
+  public report(peerId: PeerId, id: number[], option: Uint8Array, message?: string) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.report',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         id,
-        reason: {_: reason},
+        option,
         message
       }
     });

@@ -105,7 +105,7 @@
   }
 
   &-button {
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
 
@@ -140,6 +140,30 @@
 
     &-input {
       flex: 1 1 auto;
+    }
+  }
+
+  &-stars {
+    &-row {
+      .row-right {
+        color: var(--secondary-text-color);
+      }
+
+      @include hover() {
+        .stars-stacked {
+          --star-background-color: var(--background-color);
+        }
+      }
+    }
+
+    &-amount {
+      .stars-stacked {
+        --star-background-color: var(--surface-color);
+        --background-offset: 11px;
+        display: inline-flex;
+        vertical-align: middle;
+        margin-inline-start: -.25rem;
+      }
     }
   }
 

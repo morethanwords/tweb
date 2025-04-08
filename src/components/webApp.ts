@@ -550,7 +550,7 @@ export default class WebApp {
             params
           );
         } catch(_error) {
-          error = _error;
+          error = _error as ApiError;
         }
 
         telegramWebView.dispatchWebViewEvent('custom_method_invoked', {
@@ -573,14 +573,17 @@ export default class WebApp {
     }
   }
 
-  public async getTitle<T extends boolean>(plain: T): Promise<T extends true ? string : HTMLElement> {
+  public async getTitle(plain: true): Promise<string>;
+  public async getTitle(plain: false): Promise<HTMLElement | DocumentFragment>;
+
+  public async getTitle(plain: boolean): Promise<string | HTMLElement | DocumentFragment> {
     if(!this.attachMenuBot) {
       const peerId = this.getPeerId();
       if(plain) return getPeerTitle({peerId, plainText: true});
-      else return wrapPeerTitle({peerId}) as any;
+      else return wrapPeerTitle({peerId});
     } else {
-      if(plain) return this.attachMenuBot.short_name as any;
-      else return wrapEmojiText(this.attachMenuBot.short_name) as any;
+      if(plain) return this.attachMenuBot.short_name;
+      else return wrapEmojiText(this.attachMenuBot.short_name);
     }
   }
 

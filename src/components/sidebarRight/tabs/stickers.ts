@@ -219,7 +219,7 @@ export default class AppStickersTab extends SliderSuperTab {
     coveredSets = coveredSets.slice();
 
     const children = Array.from(this.setsDiv.children) as HTMLElement[];
-    forEachReverse(children, el => {
+    forEachReverse(children, (el) => {
       const id = el.dataset.stickerSet;
       const index = coveredSets.findIndex((covered) => covered.set.id === id);
 

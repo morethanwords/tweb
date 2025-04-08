@@ -4,11 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {AuthBackButton} from '../components/authBackButton';
+import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
 import pagesManager from './pagesManager';
 
 export default class Page {
   public pageEl: HTMLDivElement;
-  private installed = false;
+  private installPromise: Promise<void>;
 
   constructor(
     className: string,
@@ -30,21 +32,33 @@ export default class Page {
       }
     }
 
-    if(!this.installed) {
-      if(this.onFirstMount) {
-        try {
-          const res = this.onFirstMount(...args);
-          if(res instanceof Promise) {
-            await res;
-          }
-        } catch(err) {
-          console.error('PAGE MOUNT ERROR:', err);
-        }
-      }
-
-      this.installed = true;
-    }
+    this.installPromise ??= this.install(...args);
+    await this.installPromise;
 
     pagesManager.setPage(this);
+  }
+
+  private async install(...args: any[]) {
+    if(this.onFirstMount) {
+      try {
+        const res = this.onFirstMount(...args);
+        if(res instanceof Promise) {
+          await res;
+        }
+      } catch(err) {
+        console.error('PAGE MOUNT ERROR:', err);
+      }
+    }
+
+    this.mountBackButtonIfAuth();
+  }
+
+  private mountBackButtonIfAuth() {
+    if(!this.isAuthPage || getCurrentAccount() === 1) return;
+
+    const closeContainer = document.getElementById('auth-pages-close');
+    closeContainer?.style.removeProperty('display');
+    closeContainer?.replaceChildren();
+    closeContainer?.append(AuthBackButton());
   }
 }

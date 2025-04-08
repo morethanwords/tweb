@@ -17,6 +17,17 @@ import {MessageSendPort} from '../mtproto/superMessagePort';
 import handleDownload from './download';
 import onShareFetch, {checkWindowClientForDeferredShare} from './share';
 import {onRtmpFetch, onRtmpLeftCall} from './rtmp';
+import {onHlsQualityFileFetch} from '../hls/onHlsQualityFileFetch';
+import {get500ErrorResponse} from './errors';
+import {onHlsStreamFetch} from '../hls/onHlsStreamFetch';
+import {onHlsPlaylistFetch} from '../hls/onHlsPlaylistFetch';
+import {watchHlsStreamChunksLifetime} from '../hls/fetchAndConcatFileParts';
+import {setEnvironment} from '../../environment/utils';
+import cryptoMessagePort from '../crypto/cryptoMessagePort';
+import EncryptionKeyStore from '../passcode/keyStore';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+import {onBackgroundsFetch} from './backgrounds';
+import {watchMtprotoOnDev} from './watchMtprotoOnDev';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -29,6 +40,8 @@ const ctx = self as any as ServiceWorkerGlobalScope;
 let _mtprotoMessagePort: MessagePort;
 export const getMtprotoMessagePort = () => _mtprotoMessagePort;
 
+let _cryptoMessagePort: MessagePort;
+
 export const invokeVoidAll: ServiceMessagePort['invokeVoid'] = (...args) => {
   getWindowClients().then((windowClients) => {
     windowClients.forEach((windowClient) => {
@@ -40,10 +53,36 @@ export const invokeVoidAll: ServiceMessagePort['invokeVoid'] = (...args) => {
 
 log('init');
 
+// setTimeout(async() => {
+//   const salt = new Uint8Array([1, 2, 3]);
+//   const passcode = 'ab';
+//   log('hello from sw started encryption');
+
+//   const wrappedPasscode = await crypto.subtle.importKey(
+//     'raw', new TextEncoder().encode(passcode), {name: 'PBKDF2'}, false, ['deriveKey']
+//   );
+
+//   const key = await crypto.subtle.deriveKey(
+//     {name: 'PBKDF2', salt, iterations: 1000, hash: 'SHA-256'},
+//     wrappedPasscode, {name: 'AES-GCM', length: 256}, true, ['encrypt', 'decrypt']
+//   );
+
+//   const enc = await cryptoMessagePort.invokeCryptoNew({
+//     method: 'aes-local-encrypt',
+//     args: [{data: new Uint8Array([1, 2, 3]), key}]
+//   });
+
+//   log('hello from sw data:>>', enc);
+// }, 1000);
+
 const sendMessagePort = (source: MessageSendPort) => {
   const channel = new MessageChannel();
   serviceMessagePort.attachPort(_mtprotoMessagePort = channel.port1);
   serviceMessagePort.invokeVoid('port', undefined, source, [channel.port2]);
+
+  const channel2 = new MessageChannel();
+  cryptoMessagePort.attachPort(_cryptoMessagePort = channel2.port1);
+  serviceMessagePort.invokeVoid('serviceCryptoPort', undefined, source, [channel2.port2]);
 };
 
 const sendMessagePortIfNeeded = (source: MessageSendPort) => {
@@ -70,7 +109,12 @@ const onWindowConnected = (source: WindowClient) => {
 };
 
 export const serviceMessagePort = new ServiceMessagePort<false>();
+
 serviceMessagePort.addMultipleEventsListeners({
+  environment: (environment) => {
+    setEnvironment(environment);
+  },
+
   notificationsClear: closeAllNotifications,
 
   toggleStorages: ({enabled, clearWrite}) => {
@@ -88,7 +132,20 @@ serviceMessagePort.addMultipleEventsListeners({
   shownNotification: onShownNotification,
   leaveRtmpCall: onRtmpLeftCall,
 
-  toggleStreamInUse
+  toggleStreamInUse,
+
+  toggleCacheStorage: (enabled) => {
+    CacheStorageController.temporarilyToggle(enabled);
+  },
+
+  toggleUsingPasscode: (payload) => {
+    DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
+    EncryptionKeyStore.save(payload.isUsingPasscode ? payload.encryptionKey : null);
+  },
+
+  saveEncryptionKey: (payload) => {
+    EncryptionKeyStore.save(payload);
+  }
 });
 
 const {
@@ -119,15 +176,26 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
   if(!connectedWindows.size) {
     log.warn('no windows left');
 
+    EncryptionKeyStore.resetDeferred();
+    DeferredIsUsingPasscode.resetDeferred();
+
     if(_mtprotoMessagePort) {
       serviceMessagePort.detachPort(_mtprotoMessagePort);
       _mtprotoMessagePort = undefined;
+    }
+    if(_cryptoMessagePort) {
+      cryptoMessagePort.detachPort(_cryptoMessagePort);
+      _cryptoMessagePort = undefined;
     }
 
     onDownloadClosedWindows();
   }
 });
 // #endif
+
+watchHlsStreamChunksLifetime();
+
+watchMtprotoOnDev({connectedWindows, onWindowConnected});
 
 const onFetch = (event: FetchEvent): void => {
   if(
@@ -177,6 +245,26 @@ const onFetch = (event: FetchEvent): void => {
         break;
       }
 
+      case 'hls': {
+        onHlsPlaylistFetch(event, params, search);
+        break;
+      }
+
+      case 'hls_quality_file': {
+        onHlsQualityFileFetch(event, params, search);
+        break;
+      }
+
+      case 'hls_stream': {
+        onHlsStreamFetch(event, params, search);
+        break;
+      }
+
+      case 'backgrounds': {
+        onBackgroundsFetch(event);
+        break;
+      }
+
       // default: {
       //   event.respondWith(fetch(event.request));
       //   break;
@@ -184,11 +272,7 @@ const onFetch = (event: FetchEvent): void => {
     }
   } catch(err) {
     log.error('fetch error', err);
-    event.respondWith(new Response('', {
-      status: 500,
-      statusText: 'Internal Server Error',
-      headers: {'Cache-Control': 'no-cache'}
-    }));
+    event.respondWith(get500ErrorResponse());
   }
 };
 

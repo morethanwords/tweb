@@ -50,7 +50,12 @@ type WrapTopicIconOptions = {
   topic: Pick<ForumTopic.forumTopic, 'icon_color' | 'icon_emoji_id' | 'title' | 'id'>,
   plain?: boolean
 } & WrapSomethingOptions;
-export async function wrapTopicIcon<T extends WrapTopicIconOptions>(options: T): Promise<T['plain'] extends true ? string : HTMLElement | DocumentFragment> {
+
+export async function wrapTopicIcon(options: WrapTopicIconOptions & {plain: true}): Promise<string>;
+export async function wrapTopicIcon(options: WrapTopicIconOptions & {plain?: false}): Promise<HTMLElement | DocumentFragment>;
+export async function wrapTopicIcon(options: WrapTopicIconOptions): Promise<string | HTMLElement | DocumentFragment>;
+
+export async function wrapTopicIcon(options: WrapTopicIconOptions): Promise<string | HTMLElement | DocumentFragment> {
   const topic = options.topic;
 
   let iconEmojiId = topic?.icon_emoji_id;
@@ -85,7 +90,7 @@ export async function wrapTopicIcon<T extends WrapTopicIconOptions>(options: T):
     }).then((fragment) => {
       fragment.lastElementChild.classList.add('topic-icon');
       return fragment;
-    }) as any;
+    });
 }
 
 function wrapMessageActionTopicIcon(options: WrapMessageActionTextOptions) {
@@ -124,7 +129,7 @@ export function wrapMessageGiveawayResults(action: MessageAction.messageActionGi
   };
 
   if(!action.winners_count) {
-    langPackKey = 'Giveaway.Results.NoWinners';
+    langPackKey = (action as MessageAction.messageActionGiveawayResults).pFlags.stars ? 'Giveaway.Results.NoWinners.Stars' : 'Giveaway.Results.NoWinners';
     args = [action.unclaimed_count];
   } else if(action.unclaimed_count) {
     setCombined('Giveaway.Results.Unclaimed', [action.unclaimed_count]);
@@ -310,7 +315,16 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
-      case 'messageActionGiveawayLaunch':
+      case 'messageActionGiveawayLaunch': {
+        langPackKey = action.stars ? 'BoostingStarsGiveawayJustStarted' : 'BoostingGiveawayJustStarted';
+        args = [getNameDivHTML(message.fromId, plain)];
+
+        if(action.stars) {
+          args.unshift(+action.stars);
+        }
+        break;
+      }
+
       case 'messageActionContactSignUp':
       case 'messageActionChatReturn':
       case 'messageActionChatLeave':
@@ -406,6 +420,13 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           }
         }
 
+        break;
+      }
+
+      case 'messageActionPaymentRefunded': {
+        const price = paymentsWrapCurrencyAmount(action.total_amount, action.currency, undefined, undefined, plain);
+        args = [getNameDivHTML(message.fromId, plain), price];
+        langPackKey = 'Chat.Service.Refund';
         break;
       }
 
@@ -530,6 +551,11 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionPrizeStars': {
+        langPackKey = 'BoostingReceivedGiftNoName';
+        break;
+      }
+
       case 'messageActionGiftStars':
       case 'messageActionGiftCode':
       case 'messageActionGiftPremium': {
@@ -617,6 +643,19 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           'ActionSetWallpaperForThisGroup' :
           'ActionSetWallpaperForThisGroupByUser';
 
+        break;
+      }
+
+      case 'messageActionPaidMessagesPrice': {
+        const isFree = !+action.stars;
+        langPackKey = isFree ? 'PaidMessages.GroupPriceChangedFree' : 'PaidMessages.GroupPriceChanged';
+        args = [+action.stars]
+        break;
+      }
+
+      case 'messageActionPaidMessagesRefunded': {
+        langPackKey = 'PaidMessages.StarsRefundedShort';
+        args = [+action.stars];
         break;
       }
 

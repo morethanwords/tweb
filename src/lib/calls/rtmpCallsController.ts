@@ -189,7 +189,7 @@ export class RtmpCallsController extends EventListenerBase<{
         time_ms: time
       }, state.dcId);
       return 'alive';
-    } catch(e: any) {
+    } catch(e) {
       if((e as ApiError).type === 'GROUPCALL_JOIN_MISSING' && !triedRejoin) {
         try {
           await this.rejoinCall();

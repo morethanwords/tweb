@@ -24,6 +24,6 @@ export default class DownloadWriter implements StreamWriter {
   }
 
   public finalize(saveToStorage?: boolean): Promise<Blob> {
-    return this.serviceMessagePort.invoke('downloadFinalize', this.downloadId).then(() => undefined);
+    return this.serviceMessagePort.invoke('downloadFinalize', this.downloadId).then(() => undefined as Blob);
   }
 }

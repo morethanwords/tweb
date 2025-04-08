@@ -620,6 +620,7 @@
 
   .pinned-container-wrapper {
     overflow: visible !important;
+    z-index: 1 !important;
 
     > .btn-icon {
       margin-inline-start: 0 !important;

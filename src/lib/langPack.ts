@@ -9,7 +9,6 @@ import type langSign from '../langSign';
 import type {State} from '../config/state';
 import DEBUG, {MOUNT_CLASS_TO} from '../config/debug';
 import {HelpCountriesList, HelpCountry, LangPackDifference, LangPackString} from '../layer';
-import stateStorage from './stateStorage';
 import App from '../config/app';
 import rootScope from './rootScope';
 import {IS_MOBILE} from '../environment/userAgent';
@@ -21,6 +20,7 @@ import wrapUrl from './richTextProcessor/wrapUrl';
 import {setDirection} from '../helpers/dom/setInnerHTML';
 import setBlankToAnchor from './richTextProcessor/setBlankToAnchor';
 import {createSignal} from 'solid-js';
+import commonStateStorage from './commonStateStorage';
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   'messageActionChatCreate': 'ActionCreateGroup',
@@ -48,7 +48,6 @@ export const langPack: {[actionType: string]: LangPackKey} = {
   'messageActionChannelDeletePhoto': 'Chat.Service.Channel.RemovedPhoto',
   'messageActionHistoryClear': 'HistoryCleared',
   'messageActionDiscussionStarted': 'DiscussionStarted',
-  'messageActionGiveawayLaunch': 'BoostingGiveawayJustStarted',
   'messageActionChannelJoined': 'ChannelJoined',
 
   'messageActionChannelMigrateFrom': 'ActionMigrateFromGroup',
@@ -107,7 +106,7 @@ namespace I18n {
   export function getCacheLangPack(): Promise<LangPackDifference> {
     if(cacheLangPackPromise) return cacheLangPackPromise;
     return cacheLangPackPromise = Promise.all([
-      stateStorage.get('langPack') as Promise<LangPackDifference>,
+      commonStateStorage.get('langPack') as Promise<LangPackDifference>,
       polyfillPromise
     ]).then(([langPack]) => {
       if(!langPack/*  || true */) {
@@ -266,7 +265,7 @@ namespace I18n {
   export function saveLangPack(langPack: LangPackDifference) {
     langPack.appVersion = App.langPackVersion;
 
-    return stateStorage.set({langPack}).then(() => {
+    return commonStateStorage.set({langPack}).then(() => {
       applyLangPack(langPack);
       return langPack;
     });
@@ -534,6 +533,11 @@ namespace I18n {
     public update(options?: IntlElementOptions) {
       safeAssign(this, options);
 
+      if(!this.key) {
+        this.element.replaceChildren();
+        return;
+      }
+
       if(this.property === 'innerHTML') {
         this.element.replaceChildren(...format(this.key, false, this.args) as any);
         if(this.args?.length) {
@@ -548,6 +552,15 @@ namespace I18n {
         if(v === undefined) this.element.dataset[this.property] = formatted;
         else (this.element as HTMLInputElement)[this.property] = formatted;
       }
+    }
+
+    public compareAndUpdateBool(options?: IntlElementOptions): boolean {
+      if(this.key === options.key && deepEqual(this.args, options.args)) {
+        return false;
+      }
+
+      this.update(options);
+      return true;
     }
 
     public compareAndUpdate(options?: IntlElementOptions) {

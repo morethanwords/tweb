@@ -205,6 +205,14 @@ export class AppProfileManager extends AppManager {
     });
   }
 
+  public async hasBussinesIntro(id: UserId, override?: true) {
+    const profile = await this.getProfile(id, override);
+
+    const intro = profile?.business_intro;
+
+    return intro && (intro.title || intro.description || intro.sticker);
+  }
+
   public getProfileByPeerId(peerId: PeerId, override?: true) {
     if(this.appPeersManager.isAnyChat(peerId)) return this.getChatFull(peerId.toChatId(), override);
     else return this.getProfile(peerId.toUserId(), override);
@@ -445,7 +453,7 @@ export class AppProfileManager extends AppManager {
       try {
         sendAsPeersResult = this.appChatsManager.getSendAs(id);
         if(sendAsPeersResult instanceof Promise) {
-          sendAsPeersResult = sendAsPeersResult.catch(() => undefined);
+          sendAsPeersResult = sendAsPeersResult.catch(() => undefined as any);
         }
       } catch(err) {
 
@@ -886,10 +894,13 @@ export class AppProfileManager extends AppManager {
       return false;
     }
 
-    return callbackify(this.getProfile(userId), (userFull) => {
-      const user = this.appUsersManager.getUser(userId);
-      return !!userFull.premium_gifts && !user?.pFlags?.premium;
-    });
+    return callbackify(
+      this.appPaymentsManager.getPremiumGiftCodeOptions(),
+      (premiumGiftCodeOptions) => {
+        const user = this.appUsersManager.getUser(userId);
+        return premiumGiftCodeOptions.some((p) => p.users === 1) && !user?.pFlags?.premium;
+      }
+    );
   }
 
   public canViewStatistics(peerId: PeerId) {

@@ -44,6 +44,7 @@ import isWebFileLocation from '../appManagers/utils/webFiles/isWebFileLocation';
 import appManagersManager from '../appManagers/appManagersManager';
 import clamp from '../../helpers/number/clamp';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
+import {ActiveAccountNumber} from '../accounts/types';
 
 export type DownloadOptions = {
   dcId: DcId,
@@ -54,7 +55,8 @@ export type DownloadOptions = {
   limitPart?: number,
   queueId?: number,
   onlyCache?: boolean,
-  downloadId?: string
+  downloadId?: string,
+  accountNumber?: ActiveAccountNumber
   // getFileMethod: Parameters<CacheStorageController['getFile']>[1]
 };
 
@@ -107,6 +109,8 @@ export class ApiFileManager extends AppManager {
   private downloadPromises: {
     [fileName: string]: DownloadPromise
   } = {};
+
+  private requestFilePartReferences: Map<ReferenceBytes, Set<CancellablePromise<any>>> = new Map();
 
   // private downloadToDiscPromises: {
   //   [fileName: string]: DownloadPromise
@@ -253,7 +257,7 @@ export class ApiFileManager extends AppManager {
 
       // networkPromise.resolve();
     }, (error: ApiError) => {
-      if(!error?.type || !IGNORE_ERRORS.has(error.type)) {
+      if(!IGNORE_ERRORS.has(error?.type)) {
         this.log.error('downloadCheck error:', error);
       }
 
@@ -287,6 +291,15 @@ export class ApiFileManager extends AppManager {
     }
 
     return canceled;
+  }
+
+  public cancelDownloadByReference(reference: ReferenceBytes) {
+    const set = this.requestFilePartReferences.get(reference);
+    if(set) {
+      for(const promise of set) {
+        promise.reject(makeError('DOWNLOAD_CANCELED'));
+      }
+    }
   }
 
   public requestWebFilePart({
@@ -368,52 +381,26 @@ export class ApiFileManager extends AppManager {
     floodMaxTimeout?: number,
     priority?: number
   }) {
+    const cb = () => this.invokeApiWithReference({
+      context: location as InputFileLocation.inputDocumentFileLocation,
+      callback: () => {
+        return this.apiManager.invokeApi('upload.getFile', {
+          location,
+          offset,
+          limit
+        }, {
+          dcId,
+          fileDownload: true,
+          floodMaxTimeout
+        }) as Promise<MyUploadFile>;
+      },
+      checkCancel
+    });
+
     return this.downloadRequest({
       dcId,
       id,
-      cb: async() => { // do not remove async, because checkCancel will throw an error
-        checkCancel?.();
-
-        const invoke = async(): Promise<MyUploadFile> => {
-          checkCancel?.(); // do not remove async, because checkCancel will throw an error
-
-          // * IMPORTANT: reference can be changed in previous request
-          const reference = (location as InputFileLocation.inputDocumentFileLocation).file_reference?.slice();
-
-          const promise = // pause(offset > (100 * 1024 * 1024) ? 10000000 : 0).then(() =>
-          this.apiManager.invokeApi('upload.getFile', {
-            location,
-            offset,
-            limit
-          }, {
-            dcId,
-            fileDownload: true,
-            floodMaxTimeout
-          }) as Promise<MyUploadFile>/* ) */;
-
-          return promise.catch((err: ApiError) => {
-            checkCancel?.();
-
-            if(err.type === 'FILE_REFERENCE_EXPIRED') {
-              return this.refreshReference(location as InputFileLocation.inputDocumentFileLocation, reference).then(invoke);
-            }
-
-            throw err;
-          });
-        };
-
-        assumeType<InputFileLocation.inputDocumentFileLocation>(location);
-        const reference = location.file_reference;
-        if(reference && !location.checkedReference) { // check stream's location because it's new every call
-          location.checkedReference = true;
-          const hex = bytesToHex(reference);
-          if(this.refreshReferencePromises[hex]) {
-            return this.refreshReference(location, reference).then(invoke);
-          }
-        }
-
-        return invoke();
-      },
+      cb,
       activeDelta: this.getDelta(limit),
       queueId,
       priority
@@ -482,8 +469,85 @@ export class ApiFileManager extends AppManager {
     return instance.invoke('convertOpus', {fileName, bytes});
   };
 
+  // * will handle file deletion from the other side
+  private useReference<T>(context: {file_reference: ReferenceBytes}, promise: Promise<T>) {
+    const reference = context?.file_reference;
+    if(!reference) {
+      return;
+    }
+
+    const deferred = deferredPromise<T>();
+    promise.then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
+
+    let set = this.requestFilePartReferences.get(reference);
+    if(!set) {
+      this.requestFilePartReferences.set(reference, set = new Set());
+    }
+
+    set.add(deferred);
+
+    deferred.finally(() => {
+      set.delete(deferred);
+      if(!set.size) {
+        this.requestFilePartReferences.delete(reference);
+      }
+    });
+
+    const refreshReference = () => {
+      return this.refreshReference(context, reference);
+    };
+
+    return {deferred, refreshReference};
+  }
+
+  // do not remove async, because checkCancel will throw an error
+  public async invokeApiWithReference<T>({
+    context,
+    callback,
+    checkCancel
+  }: {
+    context: {file_reference: ReferenceBytes, checkedReference?: boolean},
+    callback: () => Promise<T>,
+    checkCancel?: () => void
+  }) {
+    checkCancel?.();
+
+    const invoke = async(): Promise<T> => {
+      checkCancel?.(); // do not remove async, because checkCancel will throw an error
+
+      let promise = callback();
+      let refreshReference: () => Promise<void>;
+      if(reference) {
+        const {deferred, refreshReference: r} = this.useReference(context, promise);
+        promise = deferred;
+        refreshReference = r;
+      }
+
+      return promise.catch((err: ApiError) => {
+        checkCancel?.();
+
+        if(err.type === 'FILE_REFERENCE_EXPIRED' || err.type === 'FILE_REFERENCE_INVALID') {
+          return refreshReference().then(invoke);
+        }
+
+        throw err;
+      });
+    };
+
+    const reference = context?.file_reference;
+    if(reference && !context.checkedReference) { // check stream's context because it's new every call
+      context.checkedReference = true;
+      const hex = bytesToHex(reference);
+      if(this.refreshReferencePromises[hex]) {
+        return this.refreshReference(context, reference).then(invoke);
+      }
+    }
+
+    return invoke();
+  }
+
   private refreshReference(
-    inputFileLocation: InputFileLocation.inputDocumentFileLocation,
+    inputFileLocation: {file_reference: ReferenceBytes},
     reference: typeof inputFileLocation['file_reference'],
     hex = bytesToHex(reference)
   ) {

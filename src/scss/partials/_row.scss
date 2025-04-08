@@ -115,6 +115,8 @@ $row-border-radius: $border-radius-medium;
       grid-area: left;
       width: 3.5rem;
       position: relative !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
 
     // .row-media {
@@ -252,7 +254,7 @@ $row-border-radius: $border-radius-medium;
       }
 
       &-stars-color {
-        color: #fecf16;
+        color: var(--star-golden-color);
       }
     }
 
@@ -268,7 +270,7 @@ $row-border-radius: $border-radius-medium;
   &-clickable {
     cursor: pointer;
     overflow: hidden;
-    
+
     @include respond-to(not-handhelds) {
       border-radius: $row-border-radius;
     }
@@ -345,7 +347,8 @@ $row-border-radius: $border-radius-medium;
   }
   
   .radio-field,
-  .checkbox-field {
+  .checkbox-field,
+  .offset-left {
     --offset-left: 1rem;
   }
 

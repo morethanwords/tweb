@@ -8,6 +8,8 @@ import {getEnvironment} from '../../environment/utils';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import {nextRandomUint} from '../../helpers/random';
 import {InputPhoneCall, MessagesDhConfig, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, PhonePhoneCall} from '../../layer';
+import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import appTabsManager from './appTabsManager';
 import {AppManager} from './manager';
 
 export type CallId = PhoneCall['id'];
@@ -56,7 +58,25 @@ export class AppCallsManager extends AppManager {
       this.calls.set(call.id, call as any);
     }
 
-    this.rootScope.dispatchEvent('call_update', call);
+    const tabs = appTabsManager.getTabs();
+    tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
+    const tab = tabs.find((tab) => tab.state.accountNumber === this.getAccountNumber());
+    const anyTab = tabs[0];
+    // this.rootScope.dispatchEvent('call_update', call);
+
+    if(tab) {
+      MTProtoMessagePort.getInstance<false>().invokeVoid('event', {
+        name: 'call_update',
+        args: [call],
+        accountNumber: this.getAccountNumber()
+      }, tab.source);
+    } else if(anyTab && call._ !== 'phoneCallEmpty' && call._ !== 'phoneCallDiscarded') {
+      MTProtoMessagePort.getInstance<false>().invokeVoid('callNotification', {
+        callerId: call.admin_id,
+        callId: call.id,
+        accountNumber: this.getAccountNumber()
+      });
+    }
 
     return call;
   }
@@ -108,7 +128,12 @@ export class AppCallsManager extends AppManager {
     return this.savePhonePhoneCall(phonePhoneCall);
   }
 
-  public async discardCall(callId: CallId, duration: number, reason: PhoneCallDiscardReason['_'], video?: boolean) {
+  public async discardCall(
+    callId: CallId,
+    duration: number,
+    reason: PhoneCallDiscardReason,
+    video?: boolean
+  ) {
     if(!this.getCall(callId)) {
       return;
     }
@@ -117,9 +142,7 @@ export class AppCallsManager extends AppManager {
       video,
       peer: this.getCallInput(callId),
       duration,
-      reason: {
-        _: reason
-      },
+      reason,
       connection_id: '0'
     });
 

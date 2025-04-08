@@ -543,6 +543,39 @@ export class InternalLinkProcessor {
         return this.processInternalLink(link);
       }
     });
+
+    // t.me/share/url?url=...&text=...
+    addAnchorListener<{pathnameParams: ['share', 'url'], uriParams: {url?: string, text?: string}}>({
+      name: 'share',
+      callback: ({pathnameParams, uriParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.SHARE,
+          url: uriParams.url,
+          text: uriParams.text
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
+
+    addAnchorListener<{
+      uriParams: {
+        url?: string,
+        text?: string
+      }
+    }>({
+      name: 'msg_url',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.SHARE,
+          url: uriParams.url,
+          text: uriParams.text
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
   }
 
   private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {
@@ -944,6 +977,14 @@ export class InternalLinkProcessor {
     });
   };
 
+  public processShareLink = async(link: InternalLink.InternalLinkShare) => {
+    const peerId = await PopupPickUser.createSharingPicker2();
+    appImManager.setInnerPeer({
+      peerId,
+      text: [link.url, link.text].filter(Boolean).join('\n')
+    });
+  };
+
   public processInternalLink(link: InternalLink) {
     const map: {
       [key in InternalLink['_']]?: (link: any) => any
@@ -964,7 +1005,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.PREMIUM_FEATURES]: this.processPremiumFeaturesLink,
       [INTERNAL_LINK_TYPE.GIFT_CODE]: this.processGiftCodeLink,
       [INTERNAL_LINK_TYPE.BUSINESS_CHAT]: this.processBusinessChatLink,
-      [INTERNAL_LINK_TYPE.STARS_TOPUP]: this.processStarsTopupLink
+      [INTERNAL_LINK_TYPE.STARS_TOPUP]: this.processStarsTopupLink,
+      [INTERNAL_LINK_TYPE.SHARE]: this.processShareLink
     };
 
     const processor = map[link._];

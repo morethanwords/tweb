@@ -7,7 +7,7 @@
 .avatar-like {
   --size: 54px;
   --multiplier: 1;
-  color: #fff;
+  color: #fff !important;
   width: var(--size);
   height: var(--size);
   line-height: var(--size) !important;
@@ -66,6 +66,11 @@
   &[data-color="premium"] {
     --color-bottom: #db5c9d;
     --color-top: #a767ff;
+  }
+
+  &[data-color="stars"] {
+    --color-bottom: #FFAA00;
+    --color-top: #FFCD3A;
   }
 }
 
@@ -382,6 +387,11 @@
   &-16 {
     --size: 16px;
     --multiplier: 3.375;
+  }
+
+  .emoji-image {
+    width: calc(1.125rem / var(--multiplier));
+    height: calc(1.125rem / var(--multiplier));
   }
 }
 

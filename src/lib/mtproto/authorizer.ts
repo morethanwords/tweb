@@ -612,7 +612,7 @@ export class Authorizer extends AppManager {
           resolve(await promise);
           return;
         } catch(err) {
-          error = err;
+          error = err as ApiError;
         }
       }
 

@@ -36,7 +36,7 @@ import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import replaceContent from '../../helpers/dom/replaceContent';
 import ConnectionStatusComponent from '../../components/connectionStatus';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
-import {fastRafConventional, fastRafPromise} from '../../helpers/schedulers';
+import {doubleRaf, fastRafConventional, fastRafPromise} from '../../helpers/schedulers';
 import SortedUserList from '../../components/sortedUserList';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import handleTabSwipe from '../../helpers/dom/handleTabSwipe';
@@ -89,14 +89,12 @@ import safeAssign from '../../helpers/object/safeAssign';
 import ListenerSetter from '../../helpers/listenerSetter';
 import ButtonMenuToggle from '../../components/buttonMenuToggle';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
-import findUpClassName from '../../helpers/dom/findUpClassName';
 import formatNumber from '../../helpers/number/formatNumber';
 import AppSharedMediaTab from '../../components/sidebarRight/tabs/sharedMedia';
 import {dispatchHeavyAnimationEvent} from '../../hooks/useHeavyAnimationCheck';
 import shake from '../../helpers/dom/shake';
 import AppEditTopicTab from '../../components/sidebarRight/tabs/editTopic';
 import getServerMessageId from './utils/messageId/getServerMessageId';
-import createContextMenu from '../../helpers/dom/createContextMenu';
 import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import eachTimeout from '../../helpers/eachTimeout';
 import PopupSharedFolderInvite from '../../components/popups/sharedFolderInvite';
@@ -114,6 +112,10 @@ import {ChatType} from '../../components/chat/chat';
 import PopupDeleteDialog from '../../components/popups/deleteDialog';
 import rtmpCallsController from '../calls/rtmpCallsController';
 import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
+import {WrapRichTextOptions} from '../richTextProcessor/wrapRichText';
+import createFolderContextMenu from '../../helpers/dom/createFolderContextMenu';
+import {useAppSettings} from '../../stores/appSettings';
+import wrapFolderTitle from '../../components/wrappers/folderTitle';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -1735,7 +1737,8 @@ type FilterRendered = {
   topNotificationData?: {
     _: 'chatlistUpdates',
     chatlistUpdates: ChatlistsChatlistUpdates
-  }
+  },
+  middlewareHelper: MiddlewareHelper,
 };
 
 const TEST_TOP_NOTIFICATION = true ? undefined : (): ChatlistsChatlistUpdates => ({
@@ -1747,6 +1750,7 @@ const TEST_TOP_NOTIFICATION = true ? undefined : (): ChatlistsChatlistUpdates =>
     user_id: rootScope.myId.toUserId()
   }]
 });
+
 
 export class AppDialogsManager {
   public chatsContainer = document.getElementById('chatlist-container') as HTMLDivElement;
@@ -1885,7 +1889,7 @@ export class AppDialogsManager {
     this.setFilterId(FOLDER_ID_ALL);
     this.addFilter({
       id: FOLDER_ID_ALL,
-      title: '',
+      title: {_: 'textWithEntities', text: '', entities: []},
       localId: FOLDER_ID_ALL
     });
 
@@ -1898,6 +1902,8 @@ export class AppDialogsManager {
 
       const _id = id;
       id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
+
+      rootScope.dispatchEventSingle('changing_folder_from_chatlist', id);
 
       const isFilterAvailable = this.filterId === -1 || REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
       if(!isFilterAvailable) {
@@ -1945,54 +1951,21 @@ export class AppDialogsManager {
       }
     }, undefined, foldersScrollable);
 
-    let clickFilterId: number;
-    createContextMenu({
-      buttons: [{
-        icon: 'edit',
-        text: 'FilterEdit',
-        onClick: () => {
-          this.managers.filtersStorage.getFilter(clickFilterId).then((filter) => {
-            const tab = appSidebarLeft.createTab(AppEditFolderTab);
-            tab.setInitFilter(filter);
-            tab.open();
-          });
-        },
-        verify: () => clickFilterId !== FOLDER_ID_ALL
-      }, {
-        icon: 'edit',
-        text: 'FilterEditAll',
-        onClick: () => {
-          appSidebarLeft.createTab(AppChatFoldersTab).open();
-        },
-        verify: () => clickFilterId === FOLDER_ID_ALL
-      }, {
-        icon: 'readchats',
-        text: 'MarkAllAsRead',
-        onClick: () => {
-          this.managers.dialogsStorage.markFolderAsRead(clickFilterId);
-        },
-        verify: async() => !!(await this.managers.dialogsStorage.getFolderUnreadCount(clickFilterId)).unreadCount
-      }, {
-        icon: 'delete',
-        className: 'danger',
-        text: 'Delete',
-        onClick: () => {
-          AppEditFolderTab.deleteFolder(clickFilterId);
-        },
-        verify: () => clickFilterId !== FOLDER_ID_ALL
-      }],
-      listenTo: this.folders.menu,
-      findElement: (e) => findUpClassName(e.target, 'menu-horizontal-div-item'),
-      onOpen: (e, target) => {
-        clickFilterId = +target.dataset.filterId;
-      }
+    createFolderContextMenu({
+      appSidebarLeft,
+      AppChatFoldersTab,
+      AppEditFolderTab,
+      managers: this.managers,
+      className: 'menu-horizontal-div-item',
+      listenTo: this.folders.menu
     });
 
     apiManagerProxy.getState().then((state) => {
+      const [appSettings, setAppSettings] = useAppSettings();
       // * it should've had a better place :(
-      appMediaPlaybackController.setPlaybackParams(state.playbackParams);
+      appMediaPlaybackController.setPlaybackParams(appSettings.playbackParams);
       appMediaPlaybackController.addEventListener('playbackParams', (params) => {
-        this.managers.appStateManager.pushToState('playbackParams', params);
+        setAppSettings('playbackParams', params);
       });
 
       return this.onStateLoaded(state);
@@ -2037,6 +2010,8 @@ export class AppDialogsManager {
 
     this.xd = this.xds[this.filterId];
 
+
+    appSidebarLeft.onCollapsedChange();
     // selectTab(0, false);
   }
 
@@ -2132,7 +2107,7 @@ export class AppDialogsManager {
       }
 
       const elements = this.filtersRendered[filter.id];
-      setInnerHTML(elements.title, wrapEmojiText(filter.title));
+      setInnerHTML(elements.title, await wrapFolderTitle(filter.title, elements.middlewareHelper.get()));
     });
 
     rootScope.addEventListener('filter_delete', (filter) => {
@@ -2143,6 +2118,7 @@ export class AppDialogsManager {
       // (this.folders.menu.firstElementChild.children[Math.max(0, filter.id - 2)] as HTMLElement).click();
       elements.container.remove();
       elements.menu.remove();
+      elements.middlewareHelper.destroy();
 
       this.xds[filter.id].destroy();
       delete this.xds[filter.id];
@@ -2188,6 +2164,11 @@ export class AppDialogsManager {
     rootScope.addEventListener('filter_joined', (filter) => {
       const filterRendered = this.filtersRendered[filter.id];
       this.selectTab(filterRendered.menu);
+    });
+
+    rootScope.addEventListener('changing_folder_from_sidebar', ({id, dontAnimate}) => {
+      const filterRendered = this.filtersRendered[id];
+      this.selectTab(filterRendered.menu, !dontAnimate);
     });
   }
 
@@ -2494,6 +2475,8 @@ export class AppDialogsManager {
       return;
     }
 
+    const middlewareHelper = getMiddleware();
+
     const menuTab = document.createElement('div');
     menuTab.classList.add('menu-horizontal-div-item');
     const span = document.createElement('span');
@@ -2501,7 +2484,7 @@ export class AppDialogsManager {
     const titleSpan = document.createElement('span');
     titleSpan.classList.add('text-super');
     if(id === FOLDER_ID_ALL) titleSpan.append(this.allChatsIntlElement.element);
-    else setInnerHTML(titleSpan, wrapEmojiText(filter.title));
+    else setInnerHTML(titleSpan, wrapFolderTitle(filter.title, middlewareHelper.get(), true));
     const unreadSpan = createBadge('div', 20, 'primary');
     const i = document.createElement('i');
     span.append(titleSpan, unreadSpan, i);
@@ -2540,7 +2523,8 @@ export class AppDialogsManager {
       container: div,
       unread: unreadSpan,
       title: titleSpan,
-      scrollable
+      scrollable,
+      middlewareHelper
     };
 
     this.onFiltersLengthChange();
@@ -2764,7 +2748,7 @@ export class AppDialogsManager {
       fakeGradientDelimiter: true
     });
 
-    section.container.classList.add('hide');
+    section.container.classList.add('sidebar-left-contacts-section', 'hide');
 
     this.managers.appUsersManager.getContactsPeerIds(undefined, undefined, 'online').then((contacts) => {
       let ready = false;
@@ -2837,6 +2821,8 @@ export class AppDialogsManager {
     return isContact && !dialog;
   };
 
+  public onForumTabToggle?: () => void;
+
   public async toggleForumTab(newTab?: ForumTab, hideTab = this.forumTab) {
     if(!hideTab && !newTab) {
       return;
@@ -2857,6 +2843,7 @@ export class AppDialogsManager {
     const promise = newTab?.toggle(true);
     if(hideTab === this.forumTab) {
       this.forumTab = newTab;
+      this.onForumTabToggle?.();
     }
 
     if(newTab) {
@@ -3010,12 +2997,13 @@ export class AppDialogsManager {
     const findAvatarWithStories = (target: EventTarget) => {
       return (target as HTMLElement).closest('.avatar.has-stories') as HTMLElement;
     };
+    const isOpeningStoriesDisabled = () => appSidebarLeft.isCollapsed() && !appSidebarLeft.hasSomethingOpenInside();
 
     list.dataset.autonomous = '' + +autonomous;
     list.addEventListener('mousedown', (e) => {
       if(
         e.button !== 0 ||
-        findAvatarWithStories(e.target)
+        (!isOpeningStoriesDisabled() && findAvatarWithStories(e.target))
       ) {
         return;
       }
@@ -3083,6 +3071,7 @@ export class AppDialogsManager {
         cancelEvent(e);
       }
 
+      if(isOpeningStoriesDisabled()) return;
       const avatar = findAvatarWithStories(e.target);
       avatar && appImManager.openStoriesFromAvatar(avatar);
     }, {capture: true});
@@ -3296,7 +3285,7 @@ export class AppDialogsManager {
       }
 
       const withoutMediaType = !!mediaContainer && !!(lastMessage as Message.message)?.message;
-      const wrapMessageForReplyOptions: Partial<WrapMessageForReplyOptions> = {
+      const wrapMessageForReplyOptions: Partial<WrapMessageForReplyOptions & WrapRichTextOptions> = {
         textColor: this.getTextColor(dom.listEl.classList.contains('active'))
       };
 
@@ -3482,7 +3471,8 @@ export class AppDialogsManager {
       dialogElement.createUnreadBadge();
     }
 
-    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && !!this.forumTab && this.xd.getDialogElement(peerId) === dialogElement && isDialogUnread;
+    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && (!!this.forumTab || appSidebarLeft.isCollapsed()) && this.xd.getDialogElement(peerId) === dialogElement && isDialogUnread;
+
     const isUnreadAvatarBadgeMounted = !!dom.unreadAvatarBadge;
     if(hasUnreadAvatarBadge) {
       dialogElement.createUnreadAvatarBadge();
@@ -3702,6 +3692,7 @@ export class AppDialogsManager {
     // return this.addDialog(options.peerId, options.container, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName, options.noIcons);
   }
 }
+
 
 const appDialogsManager = new AppDialogsManager();
 MOUNT_CLASS_TO.appDialogsManager = appDialogsManager;

@@ -31,6 +31,29 @@ export function toggleMediaSpoiler(options: {
   });
 }
 
+
+function revealSpoilerWithAnimation(options: {
+  mediaSpoiler: HTMLElement,
+  event: Event
+}) {
+  const {mediaSpoiler, event} = options;
+
+  const thumbnailCanvas = mediaSpoiler.querySelector('canvas.media-spoiler-thumbnail') as HTMLCanvasElement;
+  const canvas = mediaSpoiler.querySelector('canvas.canvas-dots') as HTMLElement;
+
+  const controls = DotRenderer.getImageSpoilerByElement(canvas);
+
+  if(!controls || !thumbnailCanvas) return false;
+
+  const result = controls.revealWithAnimation(event, thumbnailCanvas);
+  if(!result) return false;
+
+  return result.then(() => {
+    mediaSpoiler?.remove?.();
+    mediaSpoiler?.middlewareHelper?.destroy?.();
+  });
+}
+
 export function onMediaSpoilerClick(options: {
   mediaSpoiler: HTMLElement,
   event: Event
@@ -38,7 +61,7 @@ export function onMediaSpoilerClick(options: {
   const {mediaSpoiler, event} = options;
   cancelEvent(event);
 
-  if(mediaSpoiler.classList.contains('is-revealing')) {
+  if(mediaSpoiler.classList.contains('is-revealing') || mediaSpoiler.dataset.isRevealing) {
     return;
   }
 
@@ -46,6 +69,11 @@ export function onMediaSpoilerClick(options: {
   if(video && !mediaSpoiler.parentElement.querySelector('.video-play')) {
     video.autoplay = true;
     safePlay(video);
+  }
+
+  if(revealSpoilerWithAnimation({mediaSpoiler, event})) {
+    mediaSpoiler.dataset.isRevealing = 'true';
+    return;
   }
 
   toggleMediaSpoiler({

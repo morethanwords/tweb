@@ -1,0 +1,27 @@
+.sparkles-container {
+  pointer-events: none;
+
+  font-size: 0.5rem;
+}
+
+.sparkles-sparkle {
+  position: absolute;
+
+  animation: sparkle 5s infinite;
+  width: 1em;
+  height: 1em;
+}
+
+@keyframes sparkle {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--sparkle-tx), var(--sparkle-ty)) scale(var(--sparkle-scale)) /* rotate(var(--sparkle-rotate)) translate(calc(0.05 * var(--sparkle-tx)), calc(0.05 * var(--sparkle-ty))) */;
+  }
+}

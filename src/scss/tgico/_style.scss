@@ -1,11 +1,11 @@
-@import "variables";
+@use "variables" as *;
 
 @font-face {
   font-family: '#{$tgico-font-family}';
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?nsmda7') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?nsmda7') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?nsmda7##{$tgico-font-family}') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?8qotpj') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?8qotpj') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?8qotpj##{$tgico-font-family}') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;

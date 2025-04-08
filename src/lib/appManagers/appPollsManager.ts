@@ -194,7 +194,7 @@ export class AppPollsManager extends AppManager {
       newMedia: this.getInputMediaPoll(newPoll)
     }).then(() => {
       // console.log('stopped poll');
-    }, err => {
+    }, (err) => {
       this.log.error('stopPoll error:', err);
     });
   }

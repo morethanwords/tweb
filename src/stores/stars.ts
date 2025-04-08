@@ -1,12 +1,13 @@
-import {Accessor, createMemo, createReaction, createRoot, createSignal, onCleanup} from 'solid-js';
+import {Accessor, batch, createMemo, createReaction, createRoot, createSignal, onCleanup} from 'solid-js';
 import {Middleware} from '../helpers/middleware';
 import useDynamicCachedValue from '../helpers/solid/useDynamicCachedValue';
 import rootScope from '../lib/rootScope';
+import formatStarsAmount from '../lib/appManagers/utils/payments/formatStarsAmount';
 
 const [stars, setStars] = createSignal<Long>();
 const [reservedStars, setReservedStars] = createSignal<number>(0);
 
-const fetchStars = () => rootScope.managers.appPaymentsManager.getStarsStatus(true).then((starsStatus) => setStars(starsStatus.balance));
+const fetchStars = () => rootScope.managers.appPaymentsManager.getStarsStatus(true).then((starsStatus) => setStars(formatStarsAmount(starsStatus.balance)));
 
 export function prefetchStars(middleware: Middleware) {
   return createRoot((dispose) => {
@@ -32,7 +33,12 @@ function _useStars() {
 
   return useDynamicCachedValue(() => _useStars.name, () => {
     fetchStars();
-    rootScope.addEventListener('stars_balance', setStars);
+    rootScope.addEventListener('stars_balance', ({balance, fulfilledReservedStars}) => {
+      batch(() => {
+        setStars(balance);
+        if(fulfilledReservedStars) setReservedStars(prev => Math.max(0, prev - fulfilledReservedStars));
+      });
+    });
 
     // const interval = setInterval(() => {
     //   fetchStars();

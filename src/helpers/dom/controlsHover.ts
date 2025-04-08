@@ -17,6 +17,7 @@ export default class ControlsHover extends EventListenerBase<{
   protected controlsLocked: boolean;
 
   protected canHideControls: () => boolean;
+  protected canShowControls: () => boolean;
   protected element: HTMLElement;
   protected listenerSetter: ListenerSetter;
   protected showOnLeaveToClassName: string;
@@ -31,6 +32,7 @@ export default class ControlsHover extends EventListenerBase<{
     element: HTMLElement,
     listenerSetter: ListenerSetter,
     canHideControls?: () => boolean,
+    canShowControls?: () => boolean,
     showOnLeaveToClassName?: string,
     ignoreClickClassName?: string
   }) {
@@ -102,6 +104,8 @@ export default class ControlsHover extends EventListenerBase<{
   };
 
   public showControls = (setHideTimeout = true) => {
+    if(!(this.canShowControls?.() ?? true)) return;
+
     if(this.hideControlsTimeout) {
       clearTimeout(this.hideControlsTimeout);
       this.hideControlsTimeout = 0;

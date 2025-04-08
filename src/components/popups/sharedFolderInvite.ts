@@ -16,6 +16,7 @@ import I18n, {i18n, _i18n} from '../../lib/langPack';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import AppSelectPeers from '../appSelectPeers';
 import Button from '../button';
+import wrapFolderTitle from '../wrappers/folderTitle';
 import showLimitPopup from './limit';
 
 const CLASS_NAME = 'popup-chatlist-invite';
@@ -82,7 +83,7 @@ export default class PopupSharedFolderInvite extends PopupElement {
     const activeItem = makeItem();
     activeItem.parentElement.classList.add('active');
     activeItem.append(
-      wrapEmojiText(filter ? filter.title : (chatlistInvite as ChatlistsChatlistInvite.chatlistsChatlistInvite).title),
+      await wrapFolderTitle(filter ? filter.title : (chatlistInvite as ChatlistsChatlistInvite.chatlistsChatlistInvite).title, this.middlewareHelper.get()),
       document.createElement('i')
     );
     makeItem().append(i18n('FilterPersonal'));
@@ -94,13 +95,15 @@ export default class PopupSharedFolderInvite extends PopupElement {
 
     const description = document.createElement('div');
     description.classList.add(CLASS_NAME + '-description', 'subtitle');
-    let descriptionAddI18n: I18n.IntlElement
+    let descriptionAddI18n: I18n.IntlElement, descriptionAddTitle: HTMLElement;
     if(deleting) {
-      _i18n(description, 'SharedFolder.Link.DescriptionRemove', [wrapEmojiText(filter.title)]);
+      _i18n(description, 'SharedFolder.Link.DescriptionRemove', [await wrapFolderTitle(filter.title, this.middlewareHelper.get())]);
     } else if(!isJoining) {
       _i18n(description, isAlready ? 'SharedFolder.Link.DescriptionAlready' : 'SharedFolder.Link.Description');
     } else {
       descriptionAddI18n = new I18n.IntlElement();
+      descriptionAddTitle = document.createElement('span');
+      descriptionAddTitle.append(await wrapFolderTitle(filter.title, this.middlewareHelper.get()));
     }
 
     const counterI18n = new I18n.IntlElement();
@@ -121,7 +124,7 @@ export default class PopupSharedFolderInvite extends PopupElement {
 
       descriptionAddI18n?.update({
         key: 'SharedFolder.Link.DescriptionAdd',
-        args: [i18n('Chats', [length]), wrapEmojiText(filter.title)]
+        args: [i18n('Chats', [length]), descriptionAddTitle]
       });
 
       if(selectAllI18n) {
