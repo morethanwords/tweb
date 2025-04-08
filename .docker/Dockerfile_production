@@ -21,7 +21,9 @@ RUN node build
 
 
 #pull nginx as webser and load balancer
-FROM nginx:stable-alpine3.19-slim
+FROM nginx:stable-alpine3.20-slim
+
+RUN apk update && apk upgrade --no-cache
 
 # copy the build files to nginx entry point
 COPY ./public /usr/share/nginx/html
