@@ -30,6 +30,27 @@ import PopupPickUser from './pickUser';
 import PopupPayment from './payment';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import PopupPremium from './premium';
+import showTooltip from '../tooltip';
+import {transferStarGift} from '../../lib/appManagers/utils/gifts/transferStarGift';
+import {wearStarGift} from '../../lib/appManagers/utils/gifts/wearStarGift';
+
+function AttributeTableButton(props: { permille: number }) {
+  return (
+    <TableButton
+      onClick={(evt) => {
+        showTooltip({
+          element: evt.target as HTMLElement,
+          vertical: 'top',
+          container: document.body,
+          class: 'popup-star-gift-info-tooltip',
+          textElement: i18n('StarGiftAttributeTooltip', [`${props.permille / 10}%`])
+        })
+      }}
+    >
+      {props.permille / 10}%
+    </TableButton>
+  )
+}
 
 export default class PopupStarGiftInfo extends PopupElement {
   constructor(
@@ -81,7 +102,13 @@ export default class PopupStarGiftInfo extends PopupElement {
         if(gift.owner_id) {
           rows.push([
             'StarGiftOwner',
-            <TablePeer peerId={getPeerId(gift.owner_id)} />
+            <TablePeer
+              peerId={getPeerId(gift.owner_id)}
+              onClick={() => {
+                appImManager.setInnerPeer({peerId: getPeerId(gift.owner_id)})
+                this.hide()
+              }}
+            />
           ])
         }
 
@@ -89,9 +116,7 @@ export default class PopupStarGiftInfo extends PopupElement {
           'StarGiftModel',
           <>
             {collectibleAttributes.model.name}
-            <TableButton disabled>
-              {collectibleAttributes.model.rarity_permille / 10}%
-            </TableButton>
+            <AttributeTableButton permille={collectibleAttributes.model.rarity_permille} />
           </>
         ])
 
@@ -99,9 +124,7 @@ export default class PopupStarGiftInfo extends PopupElement {
           'StarGiftBackdrop',
           <>
             {collectibleAttributes.backdrop.name}
-            <TableButton disabled>
-              {collectibleAttributes.backdrop.rarity_permille / 10}%
-            </TableButton>
+            <AttributeTableButton permille={collectibleAttributes.backdrop.rarity_permille} />
           </>
         ])
 
@@ -109,17 +132,15 @@ export default class PopupStarGiftInfo extends PopupElement {
           'StarGiftPattern',
           <>
             {collectibleAttributes.pattern.name}
-            <TableButton disabled>
-              {collectibleAttributes.pattern.rarity_permille / 10}%
-            </TableButton>
+            <AttributeTableButton permille={collectibleAttributes.pattern.rarity_permille} />
           </>
         ])
 
         rows.push([
           'StarGiftAvailability',
           i18n('StarGiftAvailabilityIssued', [
-            gift.availability_issued,
-            gift.availability_total
+            numberThousandSplitter(gift.availability_issued),
+            numberThousandSplitter(gift.availability_total)
           ])
         ])
 
@@ -179,7 +200,7 @@ export default class PopupStarGiftInfo extends PopupElement {
         <>
           <StarsStar />
           {starsValue}
-          {saved?.convert_stars && !isConverted && (
+          {saved?.convert_stars && isIncoming && !isConverted && (
             <TableButton
               text="StarGiftConvertButton"
               textArgs={[saved.convert_stars]}
@@ -254,46 +275,17 @@ export default class PopupStarGiftInfo extends PopupElement {
         args.push(formatDate(new Date(collectibleAttributes.original.date * 1000)));
 
         if(collectibleAttributes.original.message) {
-          args.push(wrapRichText(collectibleAttributes.original.message.text, {entities: collectibleAttributes.original.message.entities}));
+          const span = document.createElement('span')
+          span.append(wrapRichText(collectibleAttributes.original.message.text, {entities: collectibleAttributes.original.message.entities}))
+          args.push(span)
         }
 
         return <I18nTsx class="popup-star-gift-info-original" key={key} args={args} />
       }
-      if(saved.message) {
+
+      if(saved?.message) {
         return wrapRichText(saved.message.text, {entities: saved.message.entities})
       }
-    }
-
-    const handleTransfer = () => {
-      PopupPickUser.createPicker2({
-        filterPeerTypeBy: ['isRegularUser'],
-        placeholder: 'StarGiftTransferTo',
-        exceptSelf: true
-      }).then(async(peerId) => {
-        const inputPeer = await this.managers.appUsersManager.getUserInputPeer(peerId)
-
-        if(Number(saved.transfer_stars) !== 0) {
-          const popup = await PopupPayment.create({
-            inputInvoice: {
-              _: 'inputInvoiceStarGiftTransfer',
-              stargift: input,
-              to_id: inputPeer
-            }
-          })
-
-          popup.addEventListener('finish', (result) => {
-            if(result === 'paid') {
-              this.hide()
-            }
-          })
-        } else {
-          await this.managers.apiManager.invokeApiSingle('payments.transferStarGift', {
-            stargift: input,
-            to_id: inputPeer
-          })
-          this.hide()
-        }
-      })
     }
 
     const handleShare = () => {
@@ -327,7 +319,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               {
                 icon: saved?.pFlags.pinned_to_top ? 'unpin' : 'pin',
                 text: saved?.pFlags.pinned_to_top ? 'StarGiftUnpin' : 'StarGiftPin',
-                verify: () => canSave,
+                verify: () => isOwnedUniqueGift,
                 onClick: () => {
                   this.managers.appGiftsManager.togglePinnedGift(input).then(() => {
                     this.hide();
@@ -399,27 +391,22 @@ export default class PopupStarGiftInfo extends PopupElement {
                 class="popup-star-gift-info-action"
                 icon="gem_transfer"
                 text="StarGiftTransfer"
-                onClick={handleTransfer}
+                onClick={() => transferStarGift(this.gift).then((ok) => {
+                  if(ok) {
+                    this.hide();
+                  }
+                })}
               />
               <Button
                 class="popup-star-gift-info-action"
                 icon="crown"
                 text="StarGiftWear"
                 onClick={() => {
-                  if(!rootScope.premium) {
-                    PopupElement.createPopup(PopupPremium);
-                    return
-                  }
-
-                  this.managers.appUsersManager.updateEmojiStatus({
-                    _: 'inputEmojiStatusCollectible',
-                    collectible_id: gift.id
-                  }).then(() => {
-                    toastNew({langPackKey: 'SetAsEmojiStatusInfo'});
-                    this.hide();
-                  }).catch(() => {
-                    toastNew({langPackKey: 'Error.AnError'});
-                  });
+                  wearStarGift(gift.id).then((ok) => {
+                    if(ok) {
+                      this.hide();
+                    }
+                  })
                 }}
               />
               <Button
@@ -436,7 +423,8 @@ export default class PopupStarGiftInfo extends PopupElement {
           <Table
             content={tableContent()}
             footer={tableFooter()}
-            footerAlt={gift._ === 'starGiftUnique'}
+            cellClass="popup-star-gift-info-table-cell"
+            footerClass={gift._ === 'starGiftUnique' ? 'popup-star-gift-info-footer-unique' : undefined}
           />
         </div>
 

@@ -6,6 +6,13 @@
   grid-template-columns: 1fr 1fr 1fr;
   padding: 1rem;
   gap: 0.625rem;
+  flex: 1 0 auto;
+
+  &.viewProfile {
+    @include respond-to(handhelds) {
+      max-width: 380px;
+    }
+  }
 }
 
 .gridItem {
@@ -18,6 +25,7 @@
   position: relative;
   border-radius: 0.625rem;
   cursor: pointer;
+  background: var(--surface-color);
 
   &::before {
     content: "";
@@ -26,19 +34,6 @@
     background: var(--light-filled-secondary-text-color);
     opacity: 0;
     pointer-events: none;
-  }
-
-
-  &:hover::before {
-    opacity: 0.5;
-  }
-
-  &.viewProfile {
-    background: var(--light-filled-secondary-text-color);
-  }
-
-  &.viewList {
-    background: var(--surface-color);
   }
 }
 
@@ -114,8 +109,7 @@
   background: linear-gradient(180deg, #FF5B54 1.72%, #ED1C26 94.83%)!important;;
 }
 
-.badgeNumber {
-  background: rgba(0, 0, 0, .1)!important;
+.badgeUnique {
   color: #fff;
 }
 

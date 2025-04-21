@@ -14,6 +14,16 @@ import {StarGiftBadge} from './stargiftBadge';
 import {StarGiftBackdrop} from './stargiftBackdrop';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import {IconTsx} from '../iconTsx';
+import formatNumber from '../../helpers/number/formatNumber';
+import {rgbIntToHex} from '../../helpers/color';
+import createContextMenu from '../../helpers/dom/createContextMenu';
+import PopupPickUser from '../popups/pickUser';
+import appImManager from '../../lib/appManagers/appImManager';
+import {StarGift} from '../../layer';
+import {copyTextToClipboard} from '../../helpers/clipboard';
+import {toastNew} from '../toast';
+import {transferStarGift} from '../../lib/appManagers/utils/gifts/transferStarGift';
+import {wearStarGift} from '../../lib/appManagers/utils/gifts/wearStarGift';
 
 function StarGiftGridItem(props: {
   item: MyStarGift,
@@ -21,11 +31,67 @@ function StarGiftGridItem(props: {
   onClick?: () => void
   renderer: SuperStickerRenderer
 }) {
+  let containerRef!: HTMLDivElement;
   let stickerRef!: HTMLDivElement;
 
   onMount(() => {
     props.renderer.renderSticker(props.item.sticker, stickerRef);
     props.renderer.observeAnimated(stickerRef);
+
+    if(props.view === 'profile') {
+      const {raw, saved, input} = props.item;
+      const isOwnedUniqueGift = raw._ === 'starGiftUnique' && getPeerId(raw.owner_id) === rootScope.myId && saved !== undefined
+
+      createContextMenu({
+        listenTo: containerRef,
+        buttons: [
+          {
+            icon: 'forward',
+            text: 'ShareFile',
+            verify: () => raw._ === 'starGiftUnique',
+            onClick: () => {
+              PopupPickUser.createSharingPicker2().then((peerId) => {
+                rootScope.managers.appMessagesManager.sendText({peerId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
+                appImManager.setInnerPeer({peerId});
+              });
+            }
+          },
+          {
+            icon: saved?.pFlags.pinned_to_top ? 'unpin' : 'pin',
+            text: saved?.pFlags.pinned_to_top ? 'StarGiftUnpin' : 'StarGiftPin',
+            verify: () => isOwnedUniqueGift,
+            onClick: () => {
+              rootScope.managers.appGiftsManager.togglePinnedGift(input)
+            }
+          },
+          {
+            icon: 'link',
+            text: 'CopyLink',
+            verify: () => raw._ === 'starGiftUnique',
+            onClick: () => {
+              copyTextToClipboard('https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug);
+              toastNew({langPackKey: 'LinkCopied'});
+            }
+          },
+          {
+            icon: 'gem_transfer',
+            text: 'StarGiftTransferFull',
+            verify: () => isOwnedUniqueGift,
+            onClick: () => {
+              transferStarGift(props.item)
+            }
+          },
+          {
+            icon: 'crown',
+            text: 'StarGiftWearFull',
+            verify: () => isOwnedUniqueGift,
+            onClick: () => {
+              wearStarGift(raw.id)
+            }
+          }
+        ]
+      })
+    }
   })
 
   const isPinned = () => props.item.saved?.pFlags.pinned_to_top;
@@ -37,6 +103,7 @@ function StarGiftGridItem(props: {
         props.view === 'profile' ? styles.viewProfile : styles.viewList
       )}
       onClick={props.onClick}
+      ref={containerRef}
     >
 
       {props.item.collectibleAttributes && (
@@ -88,15 +155,14 @@ function StarGiftGridItem(props: {
       {(() => {
         const gift = props.item.raw;
         if(gift._ !== 'starGift') {
-          if(isPinned()) {
-            return (
-              <StarGiftBadge class={/* @once */ styles.badgeNumber}>
-                #{gift.num}
-              </StarGiftBadge>
-            );
-          }
-
-          return null;
+          return (
+            <StarGiftBadge
+              class={/* @once */ styles.badgeUnique}
+              backdropAttr={props.item.collectibleAttributes.backdrop}
+            >
+              {isPinned() ? `#${gift.num}` : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.num, 1)])}
+            </StarGiftBadge>
+          );
         };
 
         if(props.view === 'list' && gift.availability_remains === 0) {

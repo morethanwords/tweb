@@ -16,16 +16,8 @@ import {StarGiftBadge} from '../../stargifts/stargiftBadge';
 import {StarGiftBackdrop} from '../../stargifts/stargiftBackdrop';
 import {MyDocument} from '../../../lib/appManagers/appDocsManager';
 import numberThousandSplitter from '../../../helpers/number/numberThousandSplitter';
-import PopupElement from '../../popups';
-import PopupStarGiftInfo from '../../popups/starGiftInfo';
-
-function shortNumberFormat(num: number) {
-  if(num > 1000) {
-    const thousands = Math.floor(num / 1000);
-    return thousands + 'k';
-  }
-  return String(num)
-}
+import {simulateClickEvent} from '../../../helpers/dom/clickEvent';
+import formatNumber from '../../../helpers/number/formatNumber';
 
 export function StarGiftBubble(props: {
   gift: MyStarGift
@@ -88,10 +80,10 @@ export function StarGiftBubble(props: {
         />
       ) : (
         <I18nTsx
-          key="StarGiftDefaultMessageConvertable"
+          key="StarGiftDefaultMessageConvertableOut"
           args={[
             <PeerTitleTsx peerId={props.ownerId} />,
-            <span>{props.gift.raw.convert_stars}</span>
+            `${props.gift.raw.convert_stars}`
           ]}
         />
       );
@@ -114,10 +106,13 @@ export function StarGiftBubble(props: {
       stylesCommon.addon
     )}>
       {props.gift.raw.availability_total && (
-        <StarGiftBadge class={/* @once */ styles.badge}>
+        <StarGiftBadge
+          class={/* @once */ styles.badge}
+          backdropAttr={props.gift.collectibleAttributes?.backdrop}
+        >
           <I18nTsx
             key="StarGiftLimitedBadgeNum"
-            args={[shortNumberFormat(props.gift.raw.availability_total)]}
+            args={[formatNumber(props.gift.raw.availability_total)]}
           />
         </StarGiftBadge>
       )}
@@ -180,9 +175,7 @@ export function UniqueStarGiftWebPageBox(props: {
   return (
     <div
       class={/* @once */ styles.webPageBox}
-      onClick={() => {
-        PopupElement.createPopup(PopupStarGiftInfo, props.gift);
-      }}
+      onClick={(evt) => simulateClickEvent(evt.target.closest('.webpage-quote'))}
     >
       <StarGiftBackdrop
         class={/* @once */ styles.webPageBackdrop}

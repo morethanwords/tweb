@@ -36,6 +36,7 @@ import {TransitionSliderTsx} from '../transitionTsx';
 import maybe2x from '../../helpers/maybe2x';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import {StarGiftBadge} from '../stargifts/stargiftBadge';
+import Scrollable from '../scrollable2';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
@@ -81,7 +82,7 @@ function GiftOptionsPage(props: {
                   lottieLoader={lottieLoader}
                   class="popup-send-gift-premium-option-sticker"
                   name={`Gift${option.months}`}
-                  size={90}
+                  size={84}
                 />
                 <div class="popup-send-gift-premium-option-title">
                   {formatMonthsDuration(option.months, false)}
@@ -164,8 +165,7 @@ function GiftOptionsPage(props: {
   })
 
   return (
-    <div
-      class="popup-send-gift-main"
+    <Scrollable
       ref={container}
       onScroll={() => {
         container.classList.toggle('is-scrolled', container.scrollTop > 0);
@@ -178,47 +178,51 @@ function GiftOptionsPage(props: {
         container.classList.toggle('has-pinned-categories', isPinned);
       }}
     >
-      <div class="popup-send-gift-main-header">
-        <ButtonIconTsx icon="close" onClick={props.onClose} />
-        <div class="popup-title">
+      <div class="popup-send-gift-main">
+        <div class="popup-send-gift-main-header">
+          <ButtonIconTsx icon="close" onClick={props.onClose} />
+          <div class="popup-title">
+            {i18n('Chat.Menu.SendGift')}
+          </div>
+        </div>
+
+        <div class="popup-send-gift-avatar">
+          <img
+            class="popup-send-gift-image"
+            src={`assets/img/${maybe2x('stars_pay')}.png`}
+          />
+          <AvatarNewTsx peerId={props.peerId} size={100} />
+        </div>
+
+        {giftPremiumSection}
+
+        <div class="popup-send-gift-title">
           {i18n('Chat.Menu.SendGift')}
         </div>
-      </div>
+        <div class="popup-send-gift-subtitle">
+          {i18n('SendStarGiftSubtitle', [props.peer._ === 'user' ? props.peer.first_name : props.peer.title])}
+        </div>
 
-      <div class="popup-send-gift-avatar">
-        <img
-          class="popup-send-gift-image"
-          src={`assets/img/${maybe2x('stars_pay')}.png`}
+        <div class="popup-send-gift-categories" ref={categoriesContainer}>
+          <Scrollable axis="x">
+            {wrapCategory('All')}
+            {wrapCategory('Limited')}
+            {wrapCategory('InStock')}
+            <For each={availableCategories}>
+              {wrapCategory}
+            </For>
+          </Scrollable>
+        </div>
+
+        <StarGiftsGrid
+          class="popup-send-gift-gifts"
+          items={filteredGiftOptions()}
+          view="list"
+          scrollParent={container}
+          onClick={handleGiftClick}
         />
-        <AvatarNewTsx peerId={props.peerId} size={100} />
       </div>
-
-      {giftPremiumSection}
-
-      <div class="popup-send-gift-title">
-        {i18n('Chat.Menu.SendGift')}
-      </div>
-      <div class="popup-send-gift-subtitle">
-        {i18n('SendStarGiftSubtitle', [props.peer._ === 'user' ? props.peer.first_name : props.peer.title])}
-      </div>
-
-      <div class="popup-send-gift-categories" ref={categoriesContainer}>
-        {wrapCategory('All')}
-        {wrapCategory('Limited')}
-        {wrapCategory('InStock')}
-        <For each={availableCategories}>
-          {wrapCategory}
-        </For>
-      </div>
-
-      <StarGiftsGrid
-        class="popup-send-gift-gifts"
-        items={filteredGiftOptions()}
-        view="list"
-        scrollParent={container}
-        onClick={handleGiftClick}
-      />
-    </div>
+    </Scrollable>
   )
 }
 
@@ -341,124 +345,129 @@ function ChosenGiftPage(props: {
       </div>
 
       <div class="popup-send-gift-form-body">
-        <FakeBubbles peerId={props.peerId} class="popup-send-gift-bubbles">
-          <ServiceBubble message={message()}>
-            {props.chosenGift.type === 'stargift' ? (
-            <StarGiftBubble
-              gift={props.chosenGift}
-              fromId={rootScope.myId}
-              asUpgrade={withUpgrade()}
-              ownerId={props.peerId}
-              message={textWithEntities()}
-              wrapStickerOptions={{play: true, loop: false}}
-            />
-          ) : (
-            <PremiumGiftBubble
-              title={i18n('ActionGiftPremiumTitle', [formatMonthsDuration(props.chosenGift.months, false)])}
-              subtitle={
-                textWithEntities() ?
-                  wrapRichText(textWithEntities().text, {entities: textWithEntities().entities}) :
-                  i18n('ActionGiftPremiumSubtitle')
-              }
-              buttonText={i18n('ActionGiftPremiumView')}
-              assetName={`Gift${props.chosenGift.months}`}
-            />
-          )}
-          </ServiceBubble>
-        </FakeBubbles>
-
-        <div class="popup-send-gift-form-sheet">
-          {props.chosenGift.type === 'stargift' && (props.chosenGift.raw as StarGift.starGift).availability_total && (
-            <StarGiftLimitedProgress gift={props.chosenGift.raw as StarGift.starGift} />
-          )}
-          <InputFieldTsx
-            class="popup-send-gift-form-input"
-            placeholder='StarGiftMessagePlaceholder'
-            instanceRef={(input) => {
-              input.input.addEventListener('input', () => {
-                const value = getRichValueWithCaret(input.input, true)
-                setTextWithEntities(value.value ? {
-                  _: 'textWithEntities',
-                  text: value.value,
-                  entities: value.entities
-                } : undefined)
-              })
-            }}
-            maxLength={100} // todo: what's the correct limit here?
-          />
-          {props.chosenGift.type === 'stargift' && (
-            <RowTsx
-              title={i18n('StarGiftHideMyName')}
-              checkboxFieldToggle={
-                <CheckboxFieldTsx
-                  checked={anonymous()}
-                  toggle
-                  onChange={setAnonymous}
-                />
-              }
-            />
-          )}
-          {'months' in props.chosenGift && props.chosenGift.priceStars && (
-            <RowTsx
-              title={
-                <I18nTsx
-                  key="PayWithStars"
-                  args={[
-                    <StarsStar />,
-                    numberThousandSplitterForStars(props.chosenGift.priceStars)
-                  ]}
-                />
-              }
-              checkboxFieldToggle={
-                <CheckboxFieldTsx
-                  checked={payWithStars()}
-                  toggle
-                  onChange={setPayWithStars}
-                />
-              }
-            />
-          )}
-        </div>
-        <div class="popup-send-gift-form-hint">
-          {props.chosenGift.type === 'stargift' ? i18n('StarGiftHideMyNameHint', [props.peerName, props.peerName]) : ''}
-        </div>
-
-        {props.chosenGift.type === 'stargift' && (props.chosenGift.raw as StarGift.starGift).upgrade_stars && (
-          <>
-            <div class="popup-send-gift-form-sheet">
-              <RowTsx
-                title={
-                  <I18nTsx
-                    key="StarGiftMakeUnique"
-                    args={[
-                      <StarsStar />,
-                      numberThousandSplitterForStars((props.chosenGift.raw as StarGift.starGift).upgrade_stars)
-                    ]}
-                  >
-                  </I18nTsx>
+        <Scrollable>
+          <FakeBubbles peerId={props.peerId} class="popup-send-gift-bubbles">
+            <ServiceBubble message={message()}>
+              {props.chosenGift.type === 'stargift' ? (
+              <StarGiftBubble
+                gift={props.chosenGift}
+                fromId={rootScope.myId}
+                asUpgrade={withUpgrade()}
+                ownerId={props.peerId}
+                message={textWithEntities()}
+                wrapStickerOptions={{play: true, loop: false}}
+              />
+            ) : (
+              <PremiumGiftBubble
+                title={i18n('ActionGiftPremiumTitle', [formatMonthsDuration(props.chosenGift.months, false)])}
+                subtitle={
+                  textWithEntities() ?
+                    wrapRichText(textWithEntities().text, {entities: textWithEntities().entities}) :
+                    i18n('ActionGiftPremiumSubtitle')
                 }
+                buttonText={i18n('ActionGiftPremiumView')}
+                assetName={`Gift${props.chosenGift.months}`}
+              />
+            )}
+            </ServiceBubble>
+          </FakeBubbles>
+
+          <div class="popup-send-gift-form-sheet">
+            {props.chosenGift.type === 'stargift' && (props.chosenGift.raw as StarGift.starGift).availability_total && (
+              <StarGiftLimitedProgress gift={props.chosenGift.raw as StarGift.starGift} />
+            )}
+            <InputFieldTsx
+              class="popup-send-gift-form-input"
+              placeholder='StarGiftMessagePlaceholder'
+              instanceRef={(input) => {
+                input.input.addEventListener('input', () => {
+                  const value = getRichValueWithCaret(input.input, true)
+                  setTextWithEntities(value.value ? {
+                    _: 'textWithEntities',
+                    text: value.value,
+                    entities: value.entities
+                  } : undefined)
+                })
+              }}
+              maxLength={100} // todo: what's the correct limit here?
+            />
+            {props.chosenGift.type === 'stargift' && (
+              <RowTsx
+                title={i18n('StarGiftHideMyName')}
                 checkboxFieldToggle={
                   <CheckboxFieldTsx
-                    checked={withUpgrade()}
+                    checked={anonymous()}
                     toggle
-                    onChange={setWithUpgrade}
+                    onChange={setAnonymous}
                   />
                 }
               />
-            </div>
-            <div class="popup-send-gift-form-hint">
-              <I18nTsx
-                key="StarGiftMakeUniqueHint"
-                args={[
-                  props.peerName,
-                  <a href="#" onClick={() => alert('todo')}>
-                    {i18n('StarGiftMakeUniqueLink')}
-                  </a>
-                ]}
+            )}
+            {'months' in props.chosenGift && props.chosenGift.priceStars && (
+              <RowTsx
+                title={
+                  <I18nTsx
+                    key="PayWithStars"
+                    args={[
+                      <StarsStar />,
+                      numberThousandSplitterForStars(props.chosenGift.priceStars)
+                    ]}
+                  />
+                }
+                checkboxFieldToggle={
+                  <CheckboxFieldTsx
+                    checked={payWithStars()}
+                    toggle
+                    onChange={setPayWithStars}
+                  />
+                }
               />
-            </div>
-          </>
-        )}
+            )}
+          </div>
+          <div class="popup-send-gift-form-hint">
+            {props.chosenGift.type === 'stargift' ? i18n('StarGiftHideMyNameHint', [
+              wrapRichText(props.peerName),
+              wrapRichText(props.peerName)
+            ]) : ''}
+          </div>
+
+          {props.chosenGift.type === 'stargift' && (props.chosenGift.raw as StarGift.starGift).upgrade_stars && (
+            <>
+              <div class="popup-send-gift-form-sheet">
+                <RowTsx
+                  title={
+                    <I18nTsx
+                      key="StarGiftMakeUnique"
+                      args={[
+                        <StarsStar />,
+                        numberThousandSplitterForStars((props.chosenGift.raw as StarGift.starGift).upgrade_stars)
+                      ]}
+                    >
+                    </I18nTsx>
+                  }
+                  checkboxFieldToggle={
+                    <CheckboxFieldTsx
+                      checked={withUpgrade()}
+                      toggle
+                      onChange={setWithUpgrade}
+                    />
+                  }
+                />
+              </div>
+              <div class="popup-send-gift-form-hint">
+                <I18nTsx
+                  key="StarGiftMakeUniqueHint"
+                  args={[
+                    wrapRichText(props.peerName),
+                    <a href="#" onClick={() => alert('todo')}>
+                      {i18n('StarGiftMakeUniqueLink')}
+                    </a>
+                  ]}
+                />
+              </div>
+            </>
+          )}
+        </Scrollable>
       </div>
 
       <Button
@@ -556,6 +565,9 @@ export default class PopupSendGift extends PopupElement {
           type="navigation"
           transitionTime={150}
           animateFirst={false}
+          onTransitionStart={(id) => {
+            this.container.classList.toggle('is-chosen-gift', id === 1);
+          }}
           onTransitionEnd={(id) => {
             if(id === 0) {
               this.setChosenGift(undefined);

@@ -672,3 +672,10 @@
     &[data-idx="5"] { right: -84px; top: 87px; }
   }
 }
+
+.star-gifts-profile-tab {
+  background-color: var(--background-color);
+  display: flex;
+  justify-content: center;
+  height: 100%;
+}

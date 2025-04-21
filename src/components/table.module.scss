@@ -61,11 +61,11 @@
   line-height: 0.5625rem;
   padding: 0.28125rem 0.375rem 0.34375rem 0.375rem;
   border-radius: 999px;
-  color: #4E8EE5;
-  background: rgba(78, 142, 229, 0.1);
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), .1);
 
   &:not([disabled]):hover {
-    background: rgba(78, 142, 229, 0.2);
+    background: rgba(var(--primary-color-rgb), .2);
   }
 
   &[disabled] {

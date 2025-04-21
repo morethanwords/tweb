@@ -17,7 +17,8 @@ export default function Table(props: {
   content: TableRow[]
   boldKey?: boolean
   footer?: JSX.Element
-  footerAlt?: boolean
+  footerClass?: string
+  cellClass?: string
 }) {
   return (
     <table
@@ -30,8 +31,8 @@ export default function Table(props: {
       <For each={props.content}>
         {([key, value]) => (
           <tr class={/* @once */ styles.row}>
-            <td class={/* @once */ keyCellClass}>{i18n(key)}</td>
-            <td class={/* @once */ styles.cell}>
+            <td class={classNames(keyCellClass, props.cellClass)}>{i18n(key)}</td>
+            <td class={classNames(styles.cell, props.cellClass)}>
               <div class={/* @once */ styles.value}>
                 {value}
               </div>
@@ -41,7 +42,7 @@ export default function Table(props: {
       </For>
       {props.footer && (
         <tr class={/* @once */ styles.row}>
-          <td class={props.footerAlt ? keyCellClass : styles.cell} colspan={2}>
+          <td class={props.footerClass ?? classNames(styles.cell, props.cellClass)} colspan={2}>
             {props.footer}
           </td>
         </tr>

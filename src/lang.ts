@@ -2597,7 +2597,9 @@ const lang = {
   'StarGiftOwner': 'Owner',
   'StarGiftCollectibleNum': 'Collectible #%s',
   'StarGiftTransfer': 'transfer',
+  'StarGiftTransferFull': 'Transfer',
   'StarGiftWear': 'wear',
+  'StarGiftWearFull': 'Wear',
   'StarGiftShare': 'share',
   'StarGiftPin': 'Pin',
   'StarGiftUnpin': 'Unpin',
@@ -2607,6 +2609,7 @@ const lang = {
   'StarGiftOriginalDetailsSender': 'Gifted by %s to %s on %s.',
   'StarGiftOriginalDetailsComment': 'Gifted to %s on %s with the comment “%s”.',
   'StarGiftOriginalDetailsSenderComment': 'Gifted by %s to %s on %s with the comment “%s”.',
+  'StarGiftAttributeTooltip': 'Only %s of such collectibles have this attribute.',
   'ActionGiftStarsTitle': {
     'one_value': '%d Star',
     'other_value': '%d Stars'

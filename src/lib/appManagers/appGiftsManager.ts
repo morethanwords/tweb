@@ -210,8 +210,8 @@ export default class AppGiftsManager extends AppManager {
   async getProfileGifts(params: { peerId: PeerId, offset?: string, limit?: number }) {
     const isUser = params.peerId.isUser();
     const inputPeer = isUser ?
-      this.appUsersManager.getUserInputPeer(params.peerId) :
-      this.appChatsManager.getChatInputPeer(params.peerId);
+      this.appUsersManager.getUserInputPeer(params.peerId.toUserId()) :
+      this.appChatsManager.getChannelInputPeer(params.peerId.toChatId());
     const res = await this.apiManager.invokeApiSingleProcess({
       method: 'payments.getSavedStarGifts',
       params: {

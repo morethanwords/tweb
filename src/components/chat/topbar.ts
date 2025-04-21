@@ -541,7 +541,7 @@ export default class ChatTopbar {
       icon: 'gift',
       text: 'Chat.Menu.SendGift',
       onClick: () => PopupElement.createPopup(PopupSendGift, this.peerId),
-      verify: () => this.chat.peerId.isUser()
+      verify: async() => this.chat.isChannel || (this.chat.peerId.isUser() && this.managers.appUsersManager.isRegularUser(this.peerId))
     }, {
       icon: 'statistics',
       text: 'Statistics',

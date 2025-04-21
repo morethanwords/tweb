@@ -521,12 +521,9 @@ export default class PopupStarsPay extends PopupElement<{
           return;
         }
 
-        return this.managers.apiManager.invokeApi('channels.exportMessageLink', {
-          channel: await this.managers.appChatsManager.getChannelInput(this.peerId.toChatId()),
-          id: getServerMessageId(this.transaction.msg_id || this.transaction.giveaway_post_id)
-        }).then((exportedMessageLink) => {
-          return exportedMessageLink.link;
-        }, () => undefined as string);
+        const channelId = this.peerId.toChatId()
+        const serverMsgId = getServerMessageId(this.transaction.msg_id || this.transaction.giveaway_post_id)
+        return `https://t.me/c/${channelId}/${serverMsgId}`;
       })()
     ]);
     this.body.classList.toggle('is-receipt', this.isReceipt);
