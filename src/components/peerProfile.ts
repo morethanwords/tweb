@@ -790,7 +790,6 @@ export default class PeerProfile {
 
     const callbacks = await Promise.all([
       this.setAvatar(true),
-      this.fillPinnedGifts(),
       this.fillRows(deferred)
     ]);
 
@@ -1001,6 +1000,10 @@ export default class PeerProfile {
     });
 
     this.setMoreDetailsTimeout = window.setTimeout(() => this.setMoreDetails(true), 60e3);
+
+    if((peerFull._ === 'userFull' || peerFull._ === 'channelFull') && peerFull.stargifts_count > 0) {
+      callbacks.push(await m(this.fillPinnedGifts()));
+    }
 
     return () => {
       callbacks.forEach((callback) => callback());

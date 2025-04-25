@@ -7,14 +7,17 @@
       background: var(--light-filled-secondary-text-color);
       margin-top: 3.625rem;
       height: calc(100vh - 6.5rem);
-      transition: height var(--transition-standard-out), margin-top var(--transition-standard-out);
+      transition: var(--transition-standard-out);
+      transition-property: height, margin-top, max-height;
       padding: 0;
       overflow: visible;
       border-radius: 14px;
+      max-height: 100%;
 
       &.is-chosen-gift {
         margin-top: 0rem;
         height: calc(100vh - 2.875rem);
+        max-height: 800px;
       }
     }
   }
@@ -274,8 +277,7 @@
 
 .popup-send-gift-gifts {
   width: 100%;
-  min-height: calc(var(--height) - 4.75rem);
-  grid-template-rows: max-content;
+  min-height: calc(var(--height) - 5.75rem);
   margin-top: -0.25rem;
 }
 
@@ -307,6 +309,7 @@
   gap: 1.5rem;
   border-top-right-radius: 14px;
   border-top-left-radius: 14px;
+  background: var(--surface-color);
 }
 
 .popup-send-gift-bubbles {
@@ -318,7 +321,6 @@
 .popup-send-gift-form-sheet {
   padding: 0.5rem;
   background-color: var(--surface-color);
-  border-radius: 14px;
 
   .i18n {
     display: flex;
@@ -328,7 +330,6 @@
     .currency-star-icon { 
       width: 1rem;
       height: 1rem;
-      margin-inline-end: .25rem;
     }
   }
 }
@@ -388,7 +389,9 @@
 .popup-send-gift-form-send {
   margin: 1rem;
   width: auto;
+  height: 3rem;
   flex-shrink: 0;
+  text-transform: uppercase;
 
   .i18n, .xtr {
     white-space: pre-wrap;

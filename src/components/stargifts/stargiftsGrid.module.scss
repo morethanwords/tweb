@@ -7,6 +7,7 @@
   padding: 1rem;
   gap: 0.625rem;
   flex: 1 0 auto;
+  height: min-content;
 
   &.viewProfile {
     @include respond-to(handhelds) {

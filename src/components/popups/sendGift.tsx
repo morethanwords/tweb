@@ -13,7 +13,7 @@ import lottieLoader from '../../lib/rlottie/lottieLoader';
 import classNames from '../../helpers/string/classNames';
 import sortLongsArray from '../../helpers/long/sortLongsArray';
 import {StarGiftsGrid} from '../stargifts/stargiftsGrid';
-import {fastRaf} from '../../helpers/schedulers';
+import {doubleRaf, fastRaf} from '../../helpers/schedulers';
 import PopupStarGiftInfo from './starGiftInfo';
 import {FakeBubbles} from '../chat/bubbles/fakeBubbles';
 import {ServiceBubble} from '../chat/bubbles/service';
@@ -37,6 +37,11 @@ import maybe2x from '../../helpers/maybe2x';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import {StarGiftBadge} from '../stargifts/stargiftBadge';
 import Scrollable from '../scrollable2';
+import {PeerTitleTsx} from '../wrappers/peerTitle';
+import {approxEquals} from '../../helpers/number/approxEquals';
+import getVisibleRect from '../../helpers/dom/getVisibleRect';
+import fastSmoothScroll from '../../helpers/fastSmoothScroll';
+import clamp from '../../helpers/number/clamp';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
@@ -63,6 +68,7 @@ function GiftOptionsPage(props: {
   const [category, setCategory] = createSignal<string>('All');
 
   let categoriesContainer!: HTMLDivElement;
+  let categoriesScrollable!: HTMLDivElement
   let container!: HTMLDivElement;
 
   const giftPremiumSection = props.peer._ === 'user' && (
@@ -71,7 +77,10 @@ function GiftOptionsPage(props: {
         {i18n('GiftPremium')}
       </div>
       <div class="popup-send-gift-subtitle">
-        {i18n('GiftTelegramPremiumDescription', [props.peer.first_name])}
+        <I18nTsx
+          key="GiftTelegramPremiumDescription"
+          args={<PeerTitleTsx peerId={props.peerId} onlyFirstName={props.peer._ === 'user'} />}
+        />
       </div>
       <div class="popup-send-gift-premium-options">
         <For each={props.premiumOptions}>
@@ -124,11 +133,25 @@ function GiftOptionsPage(props: {
     <div
       class={classNames('popup-send-gift-category', category() === it && 'active')}
       onClick={(event: MouseEvent) => {
-        if(!categoriesContainer.classList.contains('is-pinned')) {
-          container.scrollTo({top: categoriesContainer.offsetTop, behavior: 'smooth'});
-        }
-        (event.target as HTMLElement).scrollIntoView({behavior: 'smooth'});
+        const wasPinned = categoriesContainer.classList.contains('is-pinned');
         setCategory(it)
+        const categoryEl = (event.target as HTMLElement).closest('.popup-send-gift-category') as HTMLElement;
+        fastRaf(() => {
+          if(!categoriesContainer.classList.contains('is-pinned')) {
+            container.scrollTo({top: categoriesContainer.offsetTop - 56, behavior: wasPinned ? 'instant' : 'smooth'});
+          }
+
+          const categoryRect = categoryEl.getBoundingClientRect();
+          const visibleRect = getVisibleRect(categoryEl, categoriesScrollable, false, categoryRect);
+          if(!visibleRect || visibleRect.overflow.horizontal) {
+            fastSmoothScroll({
+              element: categoryEl,
+              container: categoriesScrollable,
+              position: 'center',
+              axis: 'x'
+            })
+          }
+        })
       }}
     >
       {it in STATIC_CATEGORIES ? i18n(STATIC_CATEGORIES[it]) : (
@@ -172,7 +195,7 @@ function GiftOptionsPage(props: {
 
         const containerRect = container.getBoundingClientRect();
         const rect = categoriesContainer.getBoundingClientRect();
-        const isPinned = rect.top - containerRect.top === 56
+        const isPinned = approxEquals(rect.top - containerRect.top, 56, 0.1)
 
         categoriesContainer.classList.toggle('is-pinned', isPinned);
         container.classList.toggle('has-pinned-categories', isPinned);
@@ -200,11 +223,14 @@ function GiftOptionsPage(props: {
           {i18n('Chat.Menu.SendGift')}
         </div>
         <div class="popup-send-gift-subtitle">
-          {i18n('SendStarGiftSubtitle', [props.peer._ === 'user' ? props.peer.first_name : props.peer.title])}
+          <I18nTsx
+            key="SendStarGiftSubtitle"
+            args={<PeerTitleTsx peerId={props.peerId} onlyFirstName={props.peer._ === 'user'} />}
+          />
         </div>
 
         <div class="popup-send-gift-categories" ref={categoriesContainer}>
-          <Scrollable axis="x">
+          <Scrollable axis="x" ref={categoriesScrollable}>
             {wrapCategory('All')}
             {wrapCategory('Limited')}
             {wrapCategory('InStock')}
@@ -214,13 +240,15 @@ function GiftOptionsPage(props: {
           </Scrollable>
         </div>
 
-        <StarGiftsGrid
-          class="popup-send-gift-gifts"
-          items={filteredGiftOptions()}
-          view="list"
-          scrollParent={container}
-          onClick={handleGiftClick}
-        />
+        <div class="popup-send-gift-gifts">
+          <StarGiftsGrid
+            class="popup-send-gift-gifts-grid"
+            items={filteredGiftOptions()}
+            view="list"
+            scrollParent={container}
+            onClick={handleGiftClick}
+          />
+        </div>
       </div>
     </Scrollable>
   )
@@ -359,11 +387,11 @@ function ChosenGiftPage(props: {
               />
             ) : (
               <PremiumGiftBubble
-                title={i18n('ActionGiftPremiumTitle', [formatMonthsDuration(props.chosenGift.months, false)])}
+                title={i18n('ActionGiftPremiumTitle2', [formatMonthsDuration(props.chosenGift.months, false)])}
                 subtitle={
                   textWithEntities() ?
                     wrapRichText(textWithEntities().text, {entities: textWithEntities().entities}) :
-                    i18n('ActionGiftPremiumSubtitle')
+                    i18n('ActionGiftPremiumSubtitle2')
                 }
                 buttonText={i18n('ActionGiftPremiumView')}
                 assetName={`Gift${props.chosenGift.months}`}

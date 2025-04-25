@@ -39,7 +39,7 @@ function StarGiftGridItem(props: {
     props.renderer.observeAnimated(stickerRef);
 
     if(props.view === 'profile') {
-      const {raw, saved, input} = props.item;
+      const {raw, saved, input, isIncoming} = props.item;
       const isOwnedUniqueGift = raw._ === 'starGiftUnique' && getPeerId(raw.owner_id) === rootScope.myId && saved !== undefined
 
       createContextMenu({
@@ -87,6 +87,14 @@ function StarGiftGridItem(props: {
             verify: () => isOwnedUniqueGift,
             onClick: () => {
               wearStarGift(raw.id)
+            }
+          },
+          {
+            icon: saved.pFlags.unsaved ? 'eye' : 'eyecross_outline',
+            text: saved.pFlags.unsaved ? 'Show' : 'Hide',
+            verify: () => isOwnedUniqueGift || isIncoming,
+            onClick: () => {
+              rootScope.managers.appGiftsManager.toggleGiftHidden(input, !saved.pFlags.unsaved)
             }
           }
         ]
@@ -160,7 +168,7 @@ function StarGiftGridItem(props: {
               class={/* @once */ styles.badgeUnique}
               backdropAttr={props.item.collectibleAttributes.backdrop}
             >
-              {isPinned() ? `#${gift.num}` : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.num, 1)])}
+              {isPinned() ? `#${gift.num}` : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.availability_total, 1)])}
             </StarGiftBadge>
           );
         };
@@ -173,11 +181,13 @@ function StarGiftGridItem(props: {
           )
         }
 
-        return props.item.raw.availability_total && (
-          <StarGiftBadge>
-            {i18n('StarGiftLimitedBadge')}
-          </StarGiftBadge>
-        )
+        if(props.item.raw.availability_total) {
+          return (
+            <StarGiftBadge>
+              {props.view === 'list' ? i18n('StarGiftLimitedBadge') : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.availability_total, 1)])}
+            </StarGiftBadge>
+          )
+        }
       })()}
     </div>
   );

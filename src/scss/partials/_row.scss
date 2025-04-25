@@ -150,6 +150,11 @@ $row-border-radius: $border-radius-medium;
       white-space: nowrap;
       min-width: 0;
       flex: 1 1 auto;
+
+      .peer-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
     }
   }
 

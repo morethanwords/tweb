@@ -64,6 +64,8 @@ export default function Scrollable(props: {
   const [isScrolledToStart, setIsScrolledToStart] = createSignal(true);
   const [isScrolledToEnd, setIsScrolledToEnd] = createSignal(true);
 
+  let onScrollMeasure = 0;
+
   const removeHeavyAnimationListener = useHeavyAnimationCheck(() => {
     isHeavyAnimationInProgress = true;
 
@@ -82,7 +84,6 @@ export default function Scrollable(props: {
 
   onCleanup(removeHeavyAnimationListener);
 
-  let onScrollMeasure = 0;
   const onScroll = () => {
     // if(this.debug) {
     // this.log('onScroll call', this.onScrollMeasure);
