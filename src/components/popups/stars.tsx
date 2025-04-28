@@ -338,15 +338,18 @@ export default class PopupStars extends PopupElement {
   private paymentForm: PaymentsPaymentForm.paymentsPaymentFormStars;
   private itemPrice: number;
   private onTopup: (amount: number) => void;
-  private purpose: 'reaction' | (string & {});
+  private onCancel: () => void;
+  private purpose: 'reaction' | 'stargift' | (string & {});
   private giftPeerId: PeerId;
   private peerId: PeerId;
   private appConfig: MTAppConfig;
+  private toppedUp: boolean;
 
   constructor(options: {
     paymentForm?: PaymentsPaymentForm.paymentsPaymentFormStars,
     itemPrice?: number,
     onTopup?: (amount: number) => void,
+    onCancel?: () => void,
     purpose?: PopupStars['purpose'],
     giftPeerId?: PeerId,
     peerId?: PeerId
@@ -501,7 +504,7 @@ export default class PopupStars extends PopupElement {
     let busy = false;
 
     let title: JSX.Element;
-    if(this.giftPeerId) {
+    if(this.giftPeerId && !this.itemPrice) {
       title = i18n('GiftStarsTitle');
     } else if(this.itemPrice) {
       title = i18n('StarsNeededTitle', [starsNeeded()]);
@@ -510,7 +513,7 @@ export default class PopupStars extends PopupElement {
     }
 
     let subtitle: JSX.Element;
-    if(this.giftPeerId) {
+    if(this.giftPeerId && !this.purpose) {
       subtitle = (
         <>
           {i18n('GiftStarsSubtitle', [peerTitle])}
@@ -604,6 +607,8 @@ export default class PopupStars extends PopupElement {
 
                     popup.addEventListener('finish', (result) => {
                       if(result === 'paid') {
+                        this.toppedUp = true;
+
                         if(this.onTopup) {
                           this.hide();
                           this.onTopup(+option.amount);
@@ -757,7 +762,7 @@ export default class PopupStars extends PopupElement {
                     toastNew({
                       langPackKey: 'StarsGiftSentPopupInfo',
                       langPackArguments: [stars, await wrapPeerTitle({peerId})]
-                    })
+                    });
                   }
                 });
               }}
@@ -785,7 +790,7 @@ export default class PopupStars extends PopupElement {
         await renderImageFromUrlPromise(img, `assets/img/${maybe2x(this.giftPeerId ? 'stars_pay' : 'stars')}.png`);
         return img;
       })(),
-      this.peerId || this.paymentForm || this.giftPeerId ? wrapPeerTitle({peerId: this.peerId || this.giftPeerId || this.paymentForm.bot_id.toPeerId(false)}) : undefined,
+      this.peerId || this.paymentForm?.bot_id || this.giftPeerId ? wrapPeerTitle({peerId: this.peerId || this.giftPeerId || this.paymentForm.bot_id.toPeerId(false)}) : undefined,
       this.giftPeerId ? this.managers.appPaymentsManager.getStarsGiftOptions(this.giftPeerId.toUserId()) : this.managers.appPaymentsManager.getStarsTopupOptions(),
       this.giftPeerId && (async() => {
         const avatar = avatarNew({peerId: this.giftPeerId, size: 100, middleware: this.middlewareHelper.get()});
@@ -799,6 +804,11 @@ export default class PopupStars extends PopupElement {
     this.options = options;
     this.appConfig = appConfig;
     this.appendSolid(() => this._construct(image, peerTitle, avatar));
+    this.addEventListener('close', () => {
+      if(!this.toppedUp && this.onCancel) {
+        this.onCancel();
+      }
+    });
     this.show();
   }
 }

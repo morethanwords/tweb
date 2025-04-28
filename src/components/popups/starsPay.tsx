@@ -41,6 +41,10 @@ import rootScope from '../../lib/rootScope';
 import {IconTsx} from '../iconTsx';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import DEBUG from '../../config/debug';
+import makeError from '../../helpers/makeError';
+
+const TEST_FIRST_TIME = DEBUG && false;
 
 export default class PopupStarsPay extends PopupElement<{
   finish: (result: PopupPaymentResult) => void
@@ -61,6 +65,10 @@ export default class PopupStarsPay extends PopupElement<{
   private subscription: StarsSubscription;
   private isOutGift: boolean;
   private boost: Boost;
+  private noShowIfStars: boolean;
+  private purpose: ConstructorParameters<typeof PopupPayment>[0]['purpose'];
+
+  private onConfirm: () => void;
 
   constructor(options: ConstructorParameters<typeof PopupPayment>[0]) {
     super('popup-stars popup-stars-pay', {
@@ -76,8 +84,9 @@ export default class PopupStarsPay extends PopupElement<{
     safeAssign(this, options);
     this.footer.classList.add('abitlarger');
     this.result = 'cancelled';
+    let test = TEST_FIRST_TIME;
 
-    const onConfirm = async() => {
+    const onConfirm = this.onConfirm = async() => {
       const {paymentForm} = this;
       if(this.isReceipt || (!paymentForm && !this.chatInvite && !this.subscription)) {
         this.hide();
@@ -89,7 +98,11 @@ export default class PopupStarsPay extends PopupElement<{
       this.result = 'pending';
 
       let result: Promise<any>;
-      if(this.subscription) {
+      if(test) {
+        test = false;
+        result = Promise.reject(makeError('BALANCE_TOO_LOW'));
+        // result = Promise.resolve();
+      } else if(this.subscription) {
         result = this.managers.appPaymentsManager.changeStarsSubscription(
           this.subscription.id,
           !this.subscription.pFlags.canceled
@@ -114,7 +127,12 @@ export default class PopupStarsPay extends PopupElement<{
             onTopup: async() => {
               await this.reloadForm();
               onConfirm();
-            }
+            },
+            onCancel: () => {
+              this.result = 'cancelled';
+              this.hide();
+            },
+            purpose: this.purpose
           });
         } else if((err as ApiError).type === 'FORM_EXPIRED') {
           await this.reloadForm();
@@ -528,6 +546,10 @@ export default class PopupStarsPay extends PopupElement<{
     ]);
     this.body.classList.toggle('is-receipt', this.isReceipt);
     this.appendSolid(() => this._construct(image, title, media, link));
-    this.show();
+    if(this.noShowIfStars) {
+      this.onConfirm();
+    } else {
+      this.show();
+    }
   }
 }

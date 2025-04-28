@@ -46,6 +46,7 @@ import PopupPaymentCardConfirmation from './paymentCardConfirmation';
 import PopupPaymentShipping, {PaymentShippingAddress} from './paymentShipping';
 import PopupPaymentShippingMethods from './paymentShippingMethods';
 import PopupPaymentVerification from './paymentVerification';
+import type PopupStars from './stars';
 import PopupStarsPay from './starsPay';
 
 const USE_NATIVE_SYMBOL = true;
@@ -201,7 +202,10 @@ export default class PopupPayment extends PopupElement<{
     noPaymentForm?: boolean,
     subscription?: StarsSubscription,
     giftAction?: MessageAction.messageActionGiftStars,
-    boost?: Boost
+    boost?: Boost,
+    giftPeerId?: PeerId,
+    noShowIfStars?: boolean,
+    purpose?: ConstructorParameters<typeof PopupStars>[0]['purpose']
   }) {
     super('popup-payment', {
       closable: true,

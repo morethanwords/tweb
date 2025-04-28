@@ -234,7 +234,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     // profileSection.content.append(this.profile.element);
 
     this.premiumRow = new Row({
-      titleLangKey: 'ActionGiftPremiumTitle',
+      titleLangKey: 'Premium.Boarding.Title',
       icon: 'star',
       iconClasses: ['row-icon-premium-color'],
       clickable: () => {

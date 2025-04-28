@@ -39,6 +39,7 @@
     text-align: center;
     padding-inline: 1rem;
     position: relative;
+    width: 100%;
   }
 
   &-close {
@@ -112,7 +113,7 @@
     &-title {
       font-size: var(--font-size-15);
       line-height: var(--line-height-15);
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
     }
 
     &-text {

@@ -27,7 +27,6 @@ import EventListenerBase, {EventListenerListeners} from '../helpers/eventListene
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {ActiveAccountNumber} from './accounts/types';
-import {MyStarGift} from './appManagers/appGiftsManager';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,

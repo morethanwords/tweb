@@ -5427,11 +5427,11 @@ export default class ChatBubbles {
           const months = action.months;
           const assetName = getGiftAssetName(months);
 
-          const title = i18n('ActionGiftPremiumTitle', [formatMonthsDuration(months, false)]);
+          const title = i18n('ActionGiftPremiumTitle2', [formatMonthsDuration(months, false)]);
           const subtitle =
             action.message ?
               wrapRichText(action.message.text, {entities: action.message.entities}) :
-              i18n('ActionGiftPremiumSubtitle');
+              i18n('ActionGiftPremiumSubtitle2');
 
           this.wrapSomeSolid(() => PremiumGiftBubble({
             rlottieOptions: {middleware},

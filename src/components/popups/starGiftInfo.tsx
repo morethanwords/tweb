@@ -1,14 +1,13 @@
-import {createMemo, JSX, onMount, Show} from 'solid-js';
+import {createMemo, JSX, Show} from 'solid-js';
 import PopupElement from '.';
-import {Message, MessageAction, Peer, StarGift} from '../../layer';
+import {Peer, StarGift} from '../../layer';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import wrapSticker, {StickerTsx} from '../wrappers/sticker';
+import {StickerTsx} from '../wrappers/sticker';
 import {i18n, LangPackKey} from '../../lib/langPack';
 import {StarsStar} from './stars';
-import {AvatarNewTsx} from '../avatarNew';
 import {PeerTitleTsx} from '../peerTitleTsx';
 import Button from '../buttonTsx';
-import {formatDate, formatDateAccordingToTodayNew, formatTime} from '../../helpers/date';
+import {formatDate, formatFullSentTime, formatTime} from '../../helpers/date';
 import appImManager from '../../lib/appManagers/appImManager';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
@@ -17,22 +16,21 @@ import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import PopupSendGift from './sendGift';
 import Table, {TableButton, TablePeer, TableRow} from '../table';
-import {NULL_PEER_ID, STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import PopupStarGiftUpgrade from './starGiftUpgrade';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import {StarGiftBackdrop} from '../stargifts/stargiftBackdrop';
 import {ButtonMenuToggleTsx} from '../buttonMenuToggleTsx';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import PopupPickUser from './pickUser';
-import PopupPayment from './payment';
 import {I18nTsx} from '../../helpers/solid/i18n';
-import PopupPremium from './premium';
 import showTooltip from '../tooltip';
-import {transferStarGift} from '../../lib/appManagers/utils/gifts/transferStarGift';
-import {wearStarGift} from '../../lib/appManagers/utils/gifts/wearStarGift';
+import {wearStarGift} from './wearStarGift';
+import tsNow from '../../helpers/tsNow';
+import {useAppState} from '../../stores/appState';
+import transferStarGift from './transferStarGift';
 
 function AttributeTableButton(props: { permille: number }) {
   return (
@@ -49,7 +47,7 @@ function AttributeTableButton(props: { permille: number }) {
     >
       {props.permille / 10}%
     </TableButton>
-  )
+  );
 }
 
 export default class PopupStarGiftInfo extends PopupElement {
@@ -96,7 +94,7 @@ export default class PopupStarGiftInfo extends PopupElement {
     }
 
     const tableContent = createMemo(() => {
-      const rows: TableRow[] = []
+      const rows: TableRow[] = [];
 
       if(gift._ === 'starGiftUnique') {
         if(gift.owner_id) {
@@ -109,7 +107,7 @@ export default class PopupStarGiftInfo extends PopupElement {
                 this.hide()
               }}
             />
-          ])
+          ]);
         }
 
         rows.push([
@@ -118,7 +116,7 @@ export default class PopupStarGiftInfo extends PopupElement {
             {collectibleAttributes.model.name}
             <AttributeTableButton permille={collectibleAttributes.model.rarity_permille} />
           </>
-        ])
+        ]);
 
         rows.push([
           'StarGiftBackdrop',
@@ -126,7 +124,7 @@ export default class PopupStarGiftInfo extends PopupElement {
             {collectibleAttributes.backdrop.name}
             <AttributeTableButton permille={collectibleAttributes.backdrop.rarity_permille} />
           </>
-        ])
+        ]);
 
         rows.push([
           'StarGiftPattern',
@@ -134,7 +132,7 @@ export default class PopupStarGiftInfo extends PopupElement {
             {collectibleAttributes.pattern.name}
             <AttributeTableButton permille={collectibleAttributes.pattern.rarity_permille} />
           </>
-        ])
+        ]);
 
         rows.push([
           'StarGiftAvailability',
@@ -142,7 +140,7 @@ export default class PopupStarGiftInfo extends PopupElement {
             numberThousandSplitter(gift.availability_issued),
             numberThousandSplitter(gift.availability_total)
           ])
-        ])
+        ]);
 
         return rows;
       }
@@ -160,47 +158,42 @@ export default class PopupStarGiftInfo extends PopupElement {
               }}
             />
           </>
-        ])
+        ]);
       }
 
       if(date) {
         rows.push([
           'StarGiftDate',
-          i18n('formatDateAtTime', [
-            formatDateAccordingToTodayNew(date),
-            formatTime(date)
-          ])
-        ])
+          <span>{formatFullSentTime(date.getTime() / 1000 | 0)}</span>
+        ]);
       }
 
       if(isUnavailable) {
         if(firstSaleDate) {
           rows.push([
             'StarGiftUnavailableFirstSale',
-            i18n('formatDateAtTime', [
-              formatDateAccordingToTodayNew(firstSaleDate),
-              formatTime(firstSaleDate)
-            ])
-          ])
+            <span>{formatFullSentTime(firstSaleDate.getTime() / 1000 | 0)}</span>
+          ]);
         }
 
         if(lastSaleDate) {
           rows.push([
             'StarGiftUnavailableLastSale',
-            i18n('formatDateAtTime', [
-              formatDateAccordingToTodayNew(lastSaleDate),
-              formatTime(lastSaleDate)
-            ])
-          ])
+            <span>{formatFullSentTime(lastSaleDate.getTime() / 1000 | 0)}</span>
+          ]);
         }
       }
 
+      const canConvert = saved?.convert_stars &&
+        isIncoming &&
+        !isConverted &&
+        (tsNow(true) - (date.getTime() / 1000 | 0)) < useAppState()[0].appConfig.stargifts_convert_period_max;
       rows.push([
         'StarGiftValue',
         <>
           <StarsStar />
           {starsValue}
-          {saved?.convert_stars && isIncoming && !isConverted && (
+          {canConvert && (
             <TableButton
               text="StarGiftConvertButton"
               textArgs={[saved.convert_stars]}
@@ -215,7 +208,7 @@ export default class PopupStarGiftInfo extends PopupElement {
             />
           )}
         </>
-      ])
+      ]);
 
       if(gift.availability_total > 0) {
         rows.push([
@@ -224,7 +217,7 @@ export default class PopupStarGiftInfo extends PopupElement {
             numberThousandSplitter((gift as StarGift.starGift).availability_remains ?? 0),
             numberThousandSplitter(gift.availability_total)
           ])
-        ])
+        ]);
       }
 
       if(gift._ === 'starGift' && saved?.pFlags.can_upgrade) {
@@ -239,7 +232,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               />
             )}
           </>
-        ])
+        ]);
       }
 
       return rows;
@@ -259,7 +252,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               }}
             />
           );
-        }
+        };
 
         let key: LangPackKey;
         const args: JSX.Element[] = [];
@@ -275,16 +268,16 @@ export default class PopupStarGiftInfo extends PopupElement {
         args.push(formatDate(new Date(collectibleAttributes.original.date * 1000)));
 
         if(collectibleAttributes.original.message) {
-          const span = document.createElement('span')
-          span.append(wrapRichText(collectibleAttributes.original.message.text, {entities: collectibleAttributes.original.message.entities}))
-          args.push(span)
+          const span = document.createElement('span');
+          span.append(wrapRichText(collectibleAttributes.original.message.text, {entities: collectibleAttributes.original.message.entities}));
+          args.push(span);
         }
 
-        return <I18nTsx class="popup-star-gift-info-original" key={key} args={args} />
+        return <I18nTsx class="popup-star-gift-info-original" key={key} args={args} />;
       }
 
       if(saved?.message) {
-        return wrapRichText(saved.message.text, {entities: saved.message.entities})
+        return wrapRichText(saved.message.text, {entities: saved.message.entities});
       }
     }
 

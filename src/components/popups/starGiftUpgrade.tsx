@@ -1,29 +1,28 @@
-import {createEffect, createMemo, createResource, createSignal} from 'solid-js';
+import {createEffect, createSignal} from 'solid-js';
 import PopupElement from '.';
 import {MyStarGift, StarGiftUpgradePreview} from '../../lib/appManagers/appGiftsManager';
 import {StarGift, StarGiftAttribute} from '../../layer';
-import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt';
-import {randomItem, randomItemExcept} from '../../helpers/array/randomItem';
+import {randomItemExcept} from '../../helpers/array/randomItem';
 import {i18n} from '../../lib/langPack';
 import {IconTsx} from '../iconTsx';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import {StarGiftBackdrop} from '../stargifts/stargiftBackdrop';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {rgbIntToHex} from '../../helpers/color';
 import wrapSticker from '../wrappers/sticker';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import RowTsx from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
 import {ButtonIconTsx} from '../buttonIconTsx';
-import Icon from '../icon';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import {STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import PopupPayment from './payment';
+import wrapPeerTitle from '../wrappers/peerTitle';
 
 export default class PopupStarGiftUpgrade extends PopupElement {
   private constructor(
     private gift: MyStarGift,
+    private descriptionForPeerId?: PeerId
   ) {
     super('popup-star-gift-upgrade', {
       closable: true,
@@ -35,25 +34,30 @@ export default class PopupStarGiftUpgrade extends PopupElement {
     });
   }
 
-  private _construct(preview: StarGiftUpgradePreview) {
+  private _construct(preview: StarGiftUpgradePreview, peerTitle?: HTMLElement) {
     this.header.remove();
-    this.btnConfirm.replaceChildren(
-      this.gift.isUpgradedBySender ? i18n('StarGiftUpgradeFree') : i18n('StarGiftUpgrade', [
-        paymentsWrapCurrencyAmount((this.gift.raw as StarGift.starGift).upgrade_stars, STARS_CURRENCY)
-      ])
-    )
+    this.footer.classList.add('abitlarger');
+    const freeUpgrade = this.gift.isUpgradedBySender || this.gift.saved?.upgrade_stars !== undefined;
+    if(this.descriptionForPeerId) {
+      this.btnConfirm.replaceChildren(i18n('OK'));
+    } else {
+      this.btnConfirm.replaceChildren(
+        freeUpgrade ? i18n('StarGiftUpgradeFree') : i18n('StarGiftUpgrade', [
+          paymentsWrapCurrencyAmount((this.gift.raw as StarGift.starGift).upgrade_stars, STARS_CURRENCY)
+        ])
+      );
+    }
 
     const keepInfoSignal = createSignal(true);
 
     attachClickEvent(this.btnConfirm, () => {
-      if(this.gift.isUpgradedBySender) {
-        this.managers.apiManager.invokeApiSingleProcess({
-          method: 'payments.upgradeStarGift',
-          params: {
-            stargift: this.gift.input,
-            keep_original_details: keepInfoSignal[0]()
-          }
-        }).then(() => this.hide());
+      if(this.descriptionForPeerId) {
+        this.hide();
+      } else if(freeUpgrade) {
+        this.managers.appGiftsManager.upgradeStarGift(
+          this.gift.input,
+          keepInfoSignal[0]()
+        ).then(() => this.hide());
       } else {
         PopupPayment.create({
           inputInvoice: {
@@ -63,7 +67,7 @@ export default class PopupStarGiftUpgrade extends PopupElement {
               keep_original_details: keepInfoSignal[0]() ? true : undefined
             }
           }
-        }).then(popup => {
+        }).then((popup) => {
           popup.addEventListener('finish', (result) => {
             if(result === 'paid') {
               this.hide();
@@ -71,7 +75,7 @@ export default class PopupStarGiftUpgrade extends PopupElement {
           });
         });
       }
-    })
+    });
 
     const [model, setModel] = createSignal<StarGiftAttribute.starGiftAttributeModel>();
     const [backdrop, setBackdrop] = createSignal<StarGiftAttribute.starGiftAttributeBackdrop>();
@@ -95,7 +99,7 @@ export default class PopupStarGiftUpgrade extends PopupElement {
         play: true,
         loop: false,
         middleware: this.middlewareHelper.get()
-      }).then(({render}) => render).then((player_)=> {
+      }).then(({render}) => render).then((player_) => {
         const player = player_ as RLottiePlayer;
         player.playOrRestart();
         player.addEventListener('enterFrame', (frameNo) => {
@@ -103,9 +107,9 @@ export default class PopupStarGiftUpgrade extends PopupElement {
             player.stop(false);
             randomize();
           }
-        })
+        });
       });
-    })
+    });
 
     let stickerContainer!: HTMLDivElement;
 
@@ -127,10 +131,10 @@ export default class PopupStarGiftUpgrade extends PopupElement {
             ref={stickerContainer}
           />
           <div class="popup-star-gift-upgrade-title">
-            {i18n('StarGiftUpgradeTitle')}
+            {i18n(this.descriptionForPeerId ? 'StarGiftUpgradeTitleFor' : 'StarGiftUpgradeTitle')}
           </div>
           <div class="popup-star-gift-upgrade-subtitle">
-            {i18n('StarGiftUpgradeSubtitle')}
+            {i18n(this.descriptionForPeerId ? 'StarGiftUpgradeSubtitleFor' : 'StarGiftUpgradeSubtitle', [peerTitle])}
           </div>
         </div>
         <div class="popup-star-gift-upgrade-body">
@@ -156,24 +160,27 @@ export default class PopupStarGiftUpgrade extends PopupElement {
             </div>
           </div>
         </div>
-        <div class='popup-star-gift-upgrade-footer'>
-          <RowTsx
-            checkboxField={
-              <CheckboxFieldTsx
-                text="StarGiftUpgradeKeepInfo"
-                signal={keepInfoSignal}
-              />
-            }
-          />
-        </div>
+        {!this.descriptionForPeerId && (
+          <div class='popup-star-gift-upgrade-footer'>
+            <RowTsx
+              checkboxField={
+                <CheckboxFieldTsx
+                  text="StarGiftUpgradeKeepInfo"
+                  signal={keepInfoSignal}
+                />
+              }
+            />
+          </div>
+        )}
       </div>
     );
   }
 
-  static async create(gift: MyStarGift) {
-    const popup = new PopupStarGiftUpgrade(gift);
+  static async create(gift: MyStarGift, descriptionForPeerId?: PeerId) {
+    const popup = new PopupStarGiftUpgrade(gift, descriptionForPeerId);
     const preview = await popup.managers.appGiftsManager.getUpgradePreview(gift.raw.id);
-    popup.appendSolid(() => popup._construct(preview));
+    const peerTitle = descriptionForPeerId ? await wrapPeerTitle({peerId: descriptionForPeerId}) : undefined;
+    popup.appendSolid(() => popup._construct(preview, peerTitle));
 
     popup.show();
   }

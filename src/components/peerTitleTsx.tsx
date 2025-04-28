@@ -1,4 +1,4 @@
-import {createResource} from 'solid-js';
+import {createResource, onCleanup} from 'solid-js';
 import PeerTitle from './peerTitle';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 
@@ -14,7 +14,8 @@ export const PeerTitleTsx = (props: {
     async(peerId) => {
       await peerTitle.update({peerId, dialog: false, onlyFirstName: props.onlyFirstName});
       if(props.onClick) {
-        attachClickEvent(peerTitle.element, props.onClick);
+        const detach = attachClickEvent(peerTitle.element, props.onClick);
+        onCleanup(detach);
       }
       return true;
     }

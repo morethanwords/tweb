@@ -760,7 +760,7 @@ export default class PeerProfile {
       const div = document.createElement('div');
       div.className = 'profile-pinned-gift';
       div.setAttribute('data-idx', idx.toString());
-      div.style.setProperty('--halo-color', rgbIntToHex(gift.collectibleAttributes.backdrop.center_color))
+      div.style.setProperty('--halo-color', rgbIntToHex(gift.collectibleAttributes.backdrop.center_color));
       await wrapSticker({
         doc: gift.sticker,
         static: true,
@@ -768,13 +768,13 @@ export default class PeerProfile {
         width: 30,
         height: 30,
         div
-      }).then(r => r.render)
-      return div
+      }).then((r) => r.render);
+      return div;
     }));
 
     return () => {
       this.pinnedGiftsContainer.replaceChildren(...stickers);
-    }
+    };
   }
 
   public async fillProfileElements() {

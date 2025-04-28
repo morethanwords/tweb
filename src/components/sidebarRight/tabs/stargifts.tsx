@@ -1,12 +1,11 @@
 import {createSignal, onCleanup, onMount, Show} from 'solid-js';
-import {InputSavedStarGift, Message, SavedStarGift, StarGift} from '../../../layer';
 import rootScope from '../../../lib/rootScope';
 import {PreloaderTsx} from '../../putPreloader';
-import {inputStarGiftEquals, MyStarGift} from '../../../lib/appManagers/appGiftsManager';
+import {MyStarGift} from '../../../lib/appManagers/appGiftsManager';
+import {inputStarGiftEquals} from '../../../lib/appManagers/utils/gifts/inputStarGiftEquals';
 import PopupElement from '../../popups';
 import PopupStarGiftInfo from '../../popups/starGiftInfo';
 import ListenerSetter from '../../../helpers/listenerSetter';
-import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 import {StarGiftsGrid} from '../../stargifts/stargiftsGrid';
 
 export function StarGiftsProfileTab(props: {
@@ -17,22 +16,21 @@ export function StarGiftsProfileTab(props: {
   const [list, setList] = createSignal<MyStarGift[]>([]);
   const [hasMore, setHasMore] = createSignal(true);
 
-  let currentOffset = ''
-  let isLoading = false
+  let currentOffset = '';
+  let isLoading = false;
   async function loadNext() {
-    if(isLoading || !hasMore()) return
-    isLoading = true
+    if(isLoading || !hasMore()) return;
+    isLoading = true;
     const res = await rootScope.managers.appGiftsManager.getProfileGifts({
       peerId: props.peerId,
       offset: currentOffset,
       limit: 99 // divisible by 3 to avoid grid jumping
     });
-    console.log('meow', res)
     currentOffset = res.next;
     setList(list().concat(res.gifts));
     setHasMore(Boolean(res.next))
     props.onCountChange?.(res.count);
-    isLoading = false
+    isLoading = false;
   }
 
   function onScroll(event: Event) {
@@ -43,38 +41,38 @@ export function StarGiftsProfileTab(props: {
     }
   }
 
-  const listenerSetter = new ListenerSetter()
+  const listenerSetter = new ListenerSetter();
 
   onMount(() => {
     loadNext()
     listenerSetter.add(rootScope)('star_gift_update', ({input, unsaved, converted, togglePinned}) => {
-      const idx = list().findIndex((it) => inputStarGiftEquals(it.input, input))
+      const idx = list().findIndex((it) => inputStarGiftEquals(it.input, input));
       if(idx !== -1) {
-        let newList = list().slice()
+        let newList = list().slice();
         // create a new object to force re-render
-        const newItem = {...newList[idx]}
-        newList[idx] = newItem
+        const newItem = {...newList[idx]};
+        newList[idx] = newItem;
 
         if(unsaved !== undefined) {
-          newList[idx].saved.pFlags.unsaved = unsaved ? true : undefined
+          newList[idx].saved.pFlags.unsaved = unsaved ? true : undefined;
         }
         if(converted !== undefined) {
-          newItem.isConverted = converted
+          newItem.isConverted = converted;
         }
         if(togglePinned) {
-          newItem.saved.pFlags.pinned_to_top = newItem.saved.pFlags.pinned_to_top ? undefined : true
+          newItem.saved.pFlags.pinned_to_top = newItem.saved.pFlags.pinned_to_top ? undefined : true;
           newList = newList.sort((a, b) => {
-            if(a.saved.pFlags.pinned_to_top && !b.saved.pFlags.pinned_to_top) return -1
-            if(!a.saved.pFlags.pinned_to_top && b.saved.pFlags.pinned_to_top) return 1
-            return b.saved.date - a.saved.date
+            if(a.saved.pFlags.pinned_to_top && !b.saved.pFlags.pinned_to_top) return -1;
+            if(!a.saved.pFlags.pinned_to_top && b.saved.pFlags.pinned_to_top) return 1;
+            return b.saved.date - a.saved.date;
           })
         }
-        setList(newList)
+        setList(newList);
       }
-    })
-  })
+    });
+  });
 
-  onCleanup(() => listenerSetter.removeAll())
+  onCleanup(() => listenerSetter.removeAll());
 
   const render = (
     <div class="star-gifts-profile-tab" onScroll={onScroll}>
@@ -90,7 +88,7 @@ export function StarGiftsProfileTab(props: {
         }}
       />
     </div>
-  )
+  );
 
-  return {render, loadNext}
+  return {render, loadNext};
 }

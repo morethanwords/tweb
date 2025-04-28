@@ -22,8 +22,8 @@ import appImManager from '../../lib/appManagers/appImManager';
 import {StarGift} from '../../layer';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import {toastNew} from '../toast';
-import {transferStarGift} from '../../lib/appManagers/utils/gifts/transferStarGift';
-import {wearStarGift} from '../../lib/appManagers/utils/gifts/wearStarGift';
+import {wearStarGift} from '../popups/wearStarGift';
+import transferStarGift from '../popups/transferStarGift';
 
 function StarGiftGridItem(props: {
   item: MyStarGift,
@@ -40,7 +40,7 @@ function StarGiftGridItem(props: {
 
     if(props.view === 'profile') {
       const {raw, saved, input, isIncoming} = props.item;
-      const isOwnedUniqueGift = raw._ === 'starGiftUnique' && getPeerId(raw.owner_id) === rootScope.myId && saved !== undefined
+      const isOwnedUniqueGift = raw._ === 'starGiftUnique' && getPeerId(raw.owner_id) === rootScope.myId && saved !== undefined;
 
       createContextMenu({
         listenTo: containerRef,
@@ -61,7 +61,7 @@ function StarGiftGridItem(props: {
             text: saved?.pFlags.pinned_to_top ? 'StarGiftUnpin' : 'StarGiftPin',
             verify: () => isOwnedUniqueGift,
             onClick: () => {
-              rootScope.managers.appGiftsManager.togglePinnedGift(input)
+              rootScope.managers.appGiftsManager.togglePinnedGift(input);
             }
           },
           {
@@ -78,7 +78,7 @@ function StarGiftGridItem(props: {
             text: 'StarGiftTransferFull',
             verify: () => isOwnedUniqueGift,
             onClick: () => {
-              transferStarGift(props.item)
+              transferStarGift(props.item);
             }
           },
           {
@@ -86,7 +86,7 @@ function StarGiftGridItem(props: {
             text: 'StarGiftWearFull',
             verify: () => isOwnedUniqueGift,
             onClick: () => {
-              wearStarGift(raw.id)
+              wearStarGift(raw.id);
             }
           },
           {
@@ -94,7 +94,7 @@ function StarGiftGridItem(props: {
             text: saved.pFlags.unsaved ? 'Show' : 'Hide',
             verify: () => isOwnedUniqueGift || isIncoming,
             onClick: () => {
-              rootScope.managers.appGiftsManager.toggleGiftHidden(input, !saved.pFlags.unsaved)
+              rootScope.managers.appGiftsManager.toggleGiftHidden(input, !saved.pFlags.unsaved);
             }
           }
         ]

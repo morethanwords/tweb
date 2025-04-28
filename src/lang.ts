@@ -829,7 +829,8 @@ const lang = {
     'other_value': 'Stars sent anonymously!'
   },
   'Stars.TopUp.Reaction': 'Buy **Stars** and send them to **%s** to support their posts.',
-  'Stars.TopUp.Label_default': 'Buy Stars to unlock content and service\nin miniapps on Telegram.',
+  'Stars.TopUp.Label_default': 'Buy **Stars** to unlock content and service\nin miniapps on Telegram.',
+  'Stars.TopUp.Label_stargift': 'Buy **Stars** to send gifts.',
   'Stars.TopUp.Enough': 'You have enough Stars at the moment. [Buy anyway]()',
   'Action.StarGiveawayPrize': {
     'one_value': 'You won a prize in a giveaway organized by **%s**.\n\nYour prize is **%1$d Star**.',
@@ -2581,7 +2582,9 @@ const lang = {
   'StarGiftStatusNonUnique': 'Non-Unique',
   'StarGiftStatusUpgrade': 'upgrade',
   'StarGiftUpgradeTitle': 'Upgrade Gift',
+  'StarGiftUpgradeTitleFor': 'Make Unique',
   'StarGiftUpgradeSubtitle': 'Turn your gift into a unique collectible that you can transfer or auction.',
+  'StarGiftUpgradeSubtitleFor': 'Let %s turn your gift into a unique collectible.',
   'StarGiftUpgradeUniqueTitle': 'Unique',
   'StarGiftUpgradeUniqueText': 'Get a unique number, model, backdrop and symbol for your gift.',
   'StarGiftUpgradeTransferableTitle': 'Transferable',

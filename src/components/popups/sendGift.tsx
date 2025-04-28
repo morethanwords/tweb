@@ -13,7 +13,7 @@ import lottieLoader from '../../lib/rlottie/lottieLoader';
 import classNames from '../../helpers/string/classNames';
 import sortLongsArray from '../../helpers/long/sortLongsArray';
 import {StarGiftsGrid} from '../stargifts/stargiftsGrid';
-import {doubleRaf, fastRaf} from '../../helpers/schedulers';
+import {fastRaf} from '../../helpers/schedulers';
 import PopupStarGiftInfo from './starGiftInfo';
 import {FakeBubbles} from '../chat/bubbles/fakeBubbles';
 import {ServiceBubble} from '../chat/bubbles/service';
@@ -41,7 +41,9 @@ import {PeerTitleTsx} from '../wrappers/peerTitle';
 import {approxEquals} from '../../helpers/number/approxEquals';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import fastSmoothScroll from '../../helpers/fastSmoothScroll';
-import clamp from '../../helpers/number/clamp';
+import {useAppState} from '../../stores/appState';
+import PopupStarGiftUpgrade from './starGiftUpgrade';
+import anchorCallback from '../../helpers/dom/anchorCallback';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
@@ -49,7 +51,7 @@ const STATIC_CATEGORIES: Record<string, LangPackKey> = {
   All: 'StarGiftCategoryAll',
   Limited: 'StarGiftCategoryLimited',
   InStock: 'StarGiftCategoryInStock'
-}
+};
 
 function GiftOptionsPage(props: {
   peer: User.user | Chat.channel
@@ -59,16 +61,16 @@ function GiftOptionsPage(props: {
   onGiftChosen: (item: GiftOption) => void
   onClose: () => void
 }) {
-  const availableCategoriesSet = new Set<string>()
+  const availableCategoriesSet = new Set<string>();
   for(const option of props.giftOptions) {
-    availableCategoriesSet.add(String((option.raw as StarGift.starGift).stars))
+    availableCategoriesSet.add(String((option.raw as StarGift.starGift).stars));
   }
-  const availableCategories = sortLongsArray([...availableCategoriesSet.values()])
+  const availableCategories = sortLongsArray([...availableCategoriesSet.values()]);
 
   const [category, setCategory] = createSignal<string>('All');
 
   let categoriesContainer!: HTMLDivElement;
-  let categoriesScrollable!: HTMLDivElement
+  let categoriesScrollable!: HTMLDivElement;
   let container!: HTMLDivElement;
 
   const giftPremiumSection = props.peer._ === 'user' && (
@@ -127,7 +129,7 @@ function GiftOptionsPage(props: {
         </For>
       </div>
     </>
-  )
+  );
 
   const wrapCategory = (it: string) => (
     <div
@@ -149,9 +151,9 @@ function GiftOptionsPage(props: {
               container: categoriesScrollable,
               position: 'center',
               axis: 'x'
-            })
+            });
           }
-        })
+        });
       }}
     >
       {it in STATIC_CATEGORIES ? i18n(STATIC_CATEGORIES[it]) : (
@@ -161,31 +163,31 @@ function GiftOptionsPage(props: {
           </>
         )}
     </div>
-  )
+  );
 
   const filteredGiftOptions = createMemo(() => {
-    const category$ = category()
-    if(category$ === 'All') return props.giftOptions
-    if(category$ === 'Limited') return props.giftOptions.filter((it) => (it.raw as StarGift.starGift).availability_total)
-    if(category$ === 'InStock') return props.giftOptions.filter((it) => (it.raw as StarGift.starGift).availability_remains > 0)
-    return props.giftOptions.filter((it) => (it.raw as StarGift.starGift).stars.toString() === category$)
-  })
+    const category$ = category();
+    if(category$ === 'All') return props.giftOptions;
+    if(category$ === 'Limited') return props.giftOptions.filter((it) => (it.raw as StarGift.starGift).availability_total);
+    if(category$ === 'InStock') return props.giftOptions.filter((it) => (it.raw as StarGift.starGift).availability_remains > 0);
+    return props.giftOptions.filter((it) => (it.raw as StarGift.starGift).stars.toString() === category$);
+  });
 
   const handleGiftClick = (item: MyStarGift) => {
     if((item.raw as StarGift.starGift).availability_remains === 0) {
-      PopupElement.createPopup(PopupStarGiftInfo, item)
-      return
+      PopupElement.createPopup(PopupStarGiftInfo, item);
+      return;
     }
 
     props.onGiftChosen(item);
-  }
+  };
 
 
   onMount(() => {
     fastRaf(() => {
       container.style.setProperty('--height', `${container.offsetHeight}px`);
-    })
-  })
+    });
+  });
 
   return (
     <Scrollable
@@ -251,17 +253,17 @@ function GiftOptionsPage(props: {
         </div>
       </div>
     </Scrollable>
-  )
+  );
 }
 
 function StarGiftLimitedProgress(props: {
   gift: StarGift.starGift
 }) {
   // NB: deliberately not reactive, gift won't change
-  const left = i18n('StarGiftLimitedLeft', [props.gift.availability_remains])
-  left.classList.add('popup-send-gift-limited-progress-left')
+  const left = i18n('StarGiftLimitedLeft', [props.gift.availability_remains]);
+  left.classList.add('popup-send-gift-limited-progress-left');
 
-  const progress = 100 * props.gift.availability_remains / props.gift.availability_total
+  const progress = 100 * props.gift.availability_remains / props.gift.availability_total;
 
   return (
     <div class="popup-send-gift-limited-progress-wrap">
@@ -275,7 +277,7 @@ function StarGiftLimitedProgress(props: {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function ChosenGiftPage(props: {
@@ -289,6 +291,7 @@ function ChosenGiftPage(props: {
   const [anonymous, setAnonymous] = createSignal(false);
   const [payWithStars, setPayWithStars] = createSignal(false);
   const [withUpgrade, setWithUpgrade] = createSignal(false);
+  const [sending, setSending] = createSignal(false);
 
   const message = createMemo<Message.messageService>(() => ({
     _: 'messageService',
@@ -306,14 +309,15 @@ function ChosenGiftPage(props: {
       amount: payWithStars() ? props.chosenGift.priceStars : props.chosenGift.price,
       months: props.chosenGift.months
     }
-  }))
+  }));
 
   async function handleSubmit() {
-    let invoice: InputInvoice
+    setSending(true);
+    let invoice: InputInvoice;
     if(props.chosenGift.type === 'stargift') {
       const peer = props.peerId.isUser() ?
         await rootScope.managers.appUsersManager.getUserInputPeer(props.peerId.toUserId()) :
-        await rootScope.managers.appChatsManager.getChannelInputPeer(props.peerId.toChatId())
+        await rootScope.managers.appChatsManager.getChannelInputPeer(props.peerId.toChatId());
       invoice = {
         _: 'inputInvoiceStarGift',
         pFlags: {
@@ -323,17 +327,17 @@ function ChosenGiftPage(props: {
         message: textWithEntities(),
         peer,
         gift_id: props.chosenGift.raw.id
-      }
+      };
     } else {
-      const payWithStars$ = payWithStars()
-      const inputUser = await rootScope.managers.appUsersManager.getUserInput(props.peerId.toUserId())
+      const payWithStars$ = payWithStars();
+      const inputUser = await rootScope.managers.appUsersManager.getUserInput(props.peerId.toUserId());
       if(payWithStars$) {
         invoice = {
           _: 'inputInvoicePremiumGiftStars',
           user_id: inputUser,
           months: props.chosenGift.months,
           message: textWithEntities()
-        }
+        };
       } else {
         invoice = {
           _: 'inputInvoicePremiumGiftCode',
@@ -345,18 +349,22 @@ function ChosenGiftPage(props: {
             message: textWithEntities()
           },
           option: props.chosenGift.raw
-        }
+        };
       }
     }
 
     const popup = await PopupPayment.create({
-      inputInvoice: invoice
-    })
+      inputInvoice: invoice,
+      noShowIfStars: true,
+      purpose: 'stargift'
+    });
     popup.addEventListener('finish', (result) => {
       if(result === 'paid' || result === 'pending') {
         props.onClose();
+      } else {
+        setSending(false);
       }
-    })
+    });
   }
 
   return (
@@ -417,7 +425,7 @@ function ChosenGiftPage(props: {
                   } : undefined)
                 })
               }}
-              maxLength={100} // todo: what's the correct limit here?
+              maxLength={useAppState()[0].appConfig.stargifts_message_length_max}
             />
             {props.chosenGift.type === 'stargift' && (
               <RowTsx
@@ -487,9 +495,11 @@ function ChosenGiftPage(props: {
                   key="StarGiftMakeUniqueHint"
                   args={[
                     wrapRichText(props.peerName),
-                    <a href="#" onClick={() => alert('todo')}>
-                      {i18n('StarGiftMakeUniqueLink')}
-                    </a>
+                    (() => {
+                      const a = anchorCallback(() => PopupStarGiftUpgrade.create(props.chosenGift as MyStarGift, props.peerId));
+                      a.append(i18n('StarGiftMakeUniqueLink'));
+                      return a;
+                    })()
                   ]}
                 />
               </div>
@@ -501,6 +511,7 @@ function ChosenGiftPage(props: {
       <Button
         class="popup-send-gift-form-send btn-primary btn-color-primary"
         onClick={handleSubmit}
+        disabled={sending()}
       >
         <I18nTsx
           key="StarGiftSend"
@@ -511,20 +522,20 @@ function ChosenGiftPage(props: {
               if(withUpgrade()) {
                 stars = bigInt(stars as string).add(gift.upgrade_stars).toString();
               }
-              return paymentsWrapCurrencyAmount(stars, STARS_CURRENCY)
+              return paymentsWrapCurrencyAmount(stars, STARS_CURRENCY);
             }
 
             if(payWithStars()) {
               return paymentsWrapCurrencyAmount(
                 props.chosenGift.priceStars,
                 STARS_CURRENCY
-              )
+              );
             }
 
             return paymentsWrapCurrencyAmount(
               props.chosenGift.price,
               props.chosenGift.currency
-            )
+            );
           })()
           ]}
         />
@@ -551,7 +562,7 @@ function StarsBalanceAlt() {
         {i18n('GetMoreStars')}
       </a>
     </div>
-  )
+  );
 }
 
 export default class PopupSendGift extends PopupElement {
@@ -578,7 +589,7 @@ export default class PopupSendGift extends PopupElement {
       this.peerId.isUser() ? this.managers.appGiftsManager.getPremiumGiftOptions() : [] as MyPremiumGiftOption[],
       this.managers.appGiftsManager.getStarGiftOptions(),
       this.managers.appPeersManager.getPeer(this.peerId)
-    ])
+    ]);
 
     const [chosenGift, setChosenGift] = createSignal<GiftOption>();
     this.chosenGift = chosenGift;
@@ -586,7 +597,7 @@ export default class PopupSendGift extends PopupElement {
 
     const [currentPage, setCurrentPage] = createSignal(0);
 
-    this.container.replaceChildren()
+    this.container.replaceChildren();
     const dispose = render(() => (
       <>
         <TransitionSliderTsx
@@ -626,7 +637,7 @@ export default class PopupSendGift extends PopupElement {
         </TransitionSliderTsx>
         <StarsBalanceAlt />
       </>
-    ), this.container)
+    ), this.container);
 
     this.addEventListener('closeAfterTimeout', dispose);
     this.show();

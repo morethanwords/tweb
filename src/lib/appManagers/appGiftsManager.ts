@@ -5,23 +5,10 @@
  */
 
 import bigInt from 'big-integer';
-import {InputSavedStarGift, Message, MessageAction, PaymentsStarGifts, Peer, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, WebPageAttribute} from '../../layer';
+import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, WebPageAttribute} from '../../layer';
 import {STARS_CURRENCY} from '../mtproto/mtproto_config';
 import {MyDocument} from './appDocsManager';
 import {AppManager} from './manager';
-import getPeerId from './utils/peers/getPeerId';
-
-const MAX_PINNED_GIFTS = 6;
-
-export function inputStarGiftEquals(a: InputSavedStarGift, b: InputSavedStarGift) {
-  if(a._ === 'inputSavedStarGiftChat' && b._ === 'inputSavedStarGiftChat') {
-    return a.saved_id === b.saved_id && getPeerId(a.peer) === getPeerId(b.peer)
-  }
-  if(a._ === 'inputSavedStarGiftUser' && b._ === 'inputSavedStarGiftUser') {
-    return a.msg_id === b.msg_id
-  }
-  return false
-}
 
 export interface MyStarGift {
   type: 'stargift',
@@ -66,14 +53,14 @@ function mapPremiumOptions(premiumOptions: PremiumGiftCodeOption.premiumGiftCode
     if(map.has(option.months)) {
       const oldOption = map.get(option.months);
       if(oldOption.currency === STARS_CURRENCY) {
-        oldOption.priceStars = oldOption.price
-        oldOption.price = option.amount
-        oldOption.currency = option.currency
-        oldOption.raw = option
+        oldOption.priceStars = oldOption.price;
+        oldOption.price = option.amount;
+        oldOption.currency = option.currency;
+        oldOption.raw = option;
       } else if(option.currency === STARS_CURRENCY) {
-        oldOption.priceStars = option.amount
+        oldOption.priceStars = option.amount;
       }
-      continue
+      continue;
     }
 
     map.set(option.months, {
@@ -89,9 +76,9 @@ function mapPremiumOptions(premiumOptions: PremiumGiftCodeOption.premiumGiftCode
   const threePrice = bigInt(map.get(3).price as number);
   const calcDiscount = (option: MyPremiumGiftOption, mul: number) => {
     const optionPrice = option.price;
-    const rawPrice = threePrice.multiply(mul)
+    const rawPrice = threePrice.multiply(mul);
 
-    if(rawPrice.lt(optionPrice)) return
+    if(rawPrice.lt(optionPrice)) return;
     option.discountPercent = rawPrice.subtract(optionPrice).toJSNumber() / rawPrice.toJSNumber() * 100;
   }
 
@@ -116,29 +103,29 @@ export default class AppGiftsManager extends AppManager {
         type: 'stargift',
         raw: gift,
         sticker: this.appDocsManager.saveDoc(gift.sticker)
-      }
+      };
     } else {
-      let attrModel: StarGiftAttribute.starGiftAttributeModel
-      let attrBackdrop: StarGiftAttribute.starGiftAttributeBackdrop
-      let attrPatern: StarGiftAttribute.starGiftAttributePattern
-      let attrOrig: StarGiftAttribute.starGiftAttributeOriginalDetails
+      let attrModel: StarGiftAttribute.starGiftAttributeModel;
+      let attrBackdrop: StarGiftAttribute.starGiftAttributeBackdrop;
+      let attrPatern: StarGiftAttribute.starGiftAttributePattern;
+      let attrOrig: StarGiftAttribute.starGiftAttributeOriginalDetails;
 
       for(const attr of gift.attributes) {
         switch(attr._) {
           case 'starGiftAttributeModel':
-            this.appDocsManager.saveDoc(attr.document);
-            attrModel = attr
-            break
+            attr.document = this.appDocsManager.saveDoc(attr.document);
+            attrModel = attr;
+            break;
           case 'starGiftAttributeBackdrop':
-            attrBackdrop = attr
-            break
+            attrBackdrop = attr;
+            break;
           case 'starGiftAttributePattern':
-            this.appDocsManager.saveDoc(attr.document);
-            attrPatern = attr
-            break
+            attr.document = this.appDocsManager.saveDoc(attr.document);
+            attrPatern = attr;
+            break;
           case 'starGiftAttributeOriginalDetails':
-            attrOrig = attr
-            break
+            attrOrig = attr;
+            break;
         }
       }
 
@@ -152,7 +139,7 @@ export default class AppGiftsManager extends AppManager {
           pattern: attrPatern,
           original: attrOrig
         }
-      }
+      };
     }
   }
 
@@ -191,23 +178,23 @@ export default class AppGiftsManager extends AppManager {
         _: 'inputSavedStarGiftUser',
         msg_id: message.id
       }
-    }
+    };
   }
 
   async wrapGiftFromWebPage(attr: WebPageAttribute.webPageAttributeUniqueStarGift) {
-    return this.wrapGift(attr.gift)
+    return this.wrapGift(attr.gift);
   }
 
   async getPinnedGifts(peerId: PeerId) {
     const res = await this.getProfileGifts({
       peerId,
-      limit: MAX_PINNED_GIFTS
+      limit: (await this.apiManager.getAppConfig()).stargifts_pinned_to_top_limit
     });
 
-    return res.gifts.filter(it => it.saved.pFlags.pinned_to_top)
+    return res.gifts.filter((it) => it.saved.pFlags.pinned_to_top);
   }
 
-  async getProfileGifts(params: { peerId: PeerId, offset?: string, limit?: number }) {
+  async getProfileGifts(params: {peerId: PeerId, offset?: string, limit?: number}) {
     const isUser = params.peerId.isUser();
     const inputPeer = isUser ?
       this.appUsersManager.getUserInputPeer(params.peerId.toUserId()) :
@@ -219,10 +206,9 @@ export default class AppGiftsManager extends AppManager {
         offset: params.offset ?? '',
         limit: params.limit ?? 50
       }
-    })
+    });
 
-    this.appUsersManager.saveApiUsers(res.users);
-    this.appChatsManager.saveApiChats(res.chats);
+    this.appPeersManager.saveApiPeers(res);
 
     const wrapped: MyStarGift[] = [];
     for(const it of res.gifts) {
@@ -245,11 +231,11 @@ export default class AppGiftsManager extends AppManager {
       next: res.next_offset,
       gifts: wrapped,
       count: res.count
-    }
+    };
   }
 
-  private cachedStarGiftOptions?: MyStarGift[]
-  private cachedStarGiftOptionsHash = 0
+  private cachedStarGiftOptions?: MyStarGift[];
+  private cachedStarGiftOptionsHash = 0;
   async getStarGiftOptions(): Promise<MyStarGift[]> {
     const res = await this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarGifts',
@@ -257,10 +243,10 @@ export default class AppGiftsManager extends AppManager {
     });
 
     if(res._ === 'payments.starGiftsNotModified') {
-      return this.cachedStarGiftOptions
+      return this.cachedStarGiftOptions;
     }
 
-    return this.cachedStarGiftOptions = res.gifts.map(it => this.wrapGift(it))
+    return this.cachedStarGiftOptions = res.gifts.map((it) => this.wrapGift(it));
   }
 
   async toggleGiftHidden(gift: InputSavedStarGift, hidden: boolean) {
@@ -286,7 +272,7 @@ export default class AppGiftsManager extends AppManager {
   async getUpgradePreview(giftId: Long): Promise<StarGiftUpgradePreview> {
     const res = await this.apiManager.invokeApiSingle('payments.getStarGiftUpgradePreview', {
       gift_id: giftId
-    })
+    });
 
     const models: StarGiftAttribute.starGiftAttributeModel[] = [];
     const backdrops: StarGiftAttribute.starGiftAttributeBackdrop[] = [];
@@ -295,7 +281,7 @@ export default class AppGiftsManager extends AppManager {
     for(const attribute of res.sample_attributes) {
       switch(attribute._) {
         case 'starGiftAttributeModel': {
-          this.appDocsManager.saveDoc(attribute.document);
+          attribute.document = this.appDocsManager.saveDoc(attribute.document);
           models.push(attribute);
           break;
         }
@@ -306,7 +292,7 @@ export default class AppGiftsManager extends AppManager {
         }
 
         case 'starGiftAttributePattern': {
-          this.appDocsManager.saveDoc(attribute.document);
+          attribute.document = this.appDocsManager.saveDoc(attribute.document);
           patterns.push(attribute);
           break;
         }
@@ -321,11 +307,11 @@ export default class AppGiftsManager extends AppManager {
   }
 
   async getGiftBySlug(slug: string) {
-    const result = await this.apiManager.invokeApiSingle('payments.getUniqueStarGift', {slug})
+    const result = await this.apiManager.invokeApiSingle('payments.getUniqueStarGift', {slug});
 
     this.appUsersManager.saveApiUsers(result.users);
 
-    return this.wrapGift(result.gift)
+    return this.wrapGift(result.gift);
   }
 
   async togglePinnedGift(gift: InputSavedStarGift) {
@@ -334,5 +320,26 @@ export default class AppGiftsManager extends AppManager {
       stargift: [gift]
     });
     this.rootScope.dispatchEvent('star_gift_update', {input: gift, togglePinned: true});
+  }
+
+  upgradeStarGift(input: InputSavedStarGift, keepDetails: boolean) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.upgradeStarGift',
+      params: {
+        stargift: input,
+        keep_original_details: keepDetails
+      }
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  transferStarGift(input: InputSavedStarGift, toId: PeerId) {
+    return this.apiManager.invokeApiSingle('payments.transferStarGift', {
+      stargift: input,
+      to_id: this.appPeersManager.getInputPeerById(toId)
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    });
   }
 }
