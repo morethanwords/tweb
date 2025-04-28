@@ -1,0 +1,149 @@
+@import "../../scss/variables.scss";
+@import "../../scss/mixins/respondTo";
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 1rem;
+  gap: 0.625rem;
+  flex: 1 0 auto;
+  height: min-content;
+
+  &.viewProfile {
+    @include respond-to(handhelds) {
+      max-width: 380px;
+    }
+  }
+}
+
+.gridItem {
+  padding: 0.625rem;
+  padding-top: 0.875rem;
+  gap: 0.625rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  border-radius: 0.625rem;
+  cursor: pointer;
+  background: var(--surface-color);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--light-filled-secondary-text-color);
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.itemPrice {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.125rem;
+  color: #E88011;
+  font-weight: 500;
+  font-size: var(--font-size-16);
+  line-height: 1;
+  padding: 0.4375rem 0.75rem 0.4375rem 0.625rem;
+  position: relative;
+  z-index: 1;
+
+  :global(.currency-star-icon) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  :global(.sparkles-container) {
+    font-size: 6px;
+    opacity: 0.5;
+  }
+
+  .viewList & {
+    overflow: hidden;
+    background: #FFBB2D33;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 500;
+    transition: background-color var(--transition-standard-in);
+
+    &:hover {
+      background: #FFBB2D50;
+    }
+  }
+}
+
+.itemFrom {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0.125rem;
+  z-index: 1;
+}
+
+.itemFromAnonymous {
+  background: linear-gradient(180deg, #6ED2FF 1.72%, #34A4FC 94.83%);
+  border-radius: 50%;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+
+  img {
+    width: 1rem;
+    object-fit: contain;
+  }
+}
+
+.itemBackdrop {
+  position: absolute;
+  inset: 0;
+  --stargift-backdrop-offset-y: -50px;
+  border-radius: 0.625rem;
+}
+
+.badgeSoldout {
+  background: linear-gradient(180deg, #FF5B54 1.72%, #ED1C26 94.83%)!important;;
+}
+
+.badgeUnique {
+  color: #fff;
+}
+
+.itemSticker {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  z-index: 1;
+
+  @include respond-to(handhelds) {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+.itemPin {
+  position: absolute;
+  left: 0.125rem;
+  top: 0.125rem;
+  z-index: 1;
+  font-size: 2rem;
+  color: #fff;
+}
+
+.itemUnsaved {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  font-size: 1rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  padding: 0.5rem;
+}

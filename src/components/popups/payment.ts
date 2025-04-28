@@ -973,7 +973,8 @@ export default class PopupPayment extends PopupElement<{
       options.transaction ||
       options.giftAction ||
       paymentForm._ === 'payments.paymentFormStars' ||
-      paymentForm._ === 'payments.paymentReceiptStars' ? PopupStarsPay : PopupPayment;
+      paymentForm._ === 'payments.paymentReceiptStars' ||
+      paymentForm._ === 'payments.paymentFormStarGift' ? PopupStarsPay : PopupPayment;
 
     const popup = PopupElement.createPopup(constructor as any, options) as PopupStarsPay | PopupPayment;
     popup.setPaymentForm(paymentForm as any);

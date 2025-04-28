@@ -45,7 +45,10 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 export default class PopupStarsPay extends PopupElement<{
   finish: (result: PopupPaymentResult) => void
 }> {
-  private paymentForm: PaymentsPaymentForm.paymentsPaymentFormStars | PaymentsPaymentReceipt.paymentsPaymentReceiptStars;
+  private paymentForm:
+    | PaymentsPaymentForm.paymentsPaymentFormStars
+    | PaymentsPaymentReceipt.paymentsPaymentReceiptStars
+    | PaymentsPaymentForm.paymentsPaymentFormStarGift;
   private result: PopupPaymentResult;
   private inputInvoice: InputInvoice;
   private isReceipt: boolean;
@@ -278,6 +281,9 @@ export default class PopupStarsPay extends PopupElement<{
         );
         noStarsChange = true;
       }
+    } else if(this.form._ === 'payments.paymentFormStarGift') {
+      title = i18n('StarsConfirmPurchaseTitle');
+      subtitle = i18n('StarGiftConfirmPurchaseText', [amount]);
     } else if(this.transaction && !this.form.title) {
       title = i18n(this.transaction.subscription_period ? 'Stars.Subscription.Title' : 'Stars.TopUp');
     } else if(this.chatInvite) {
@@ -302,7 +308,9 @@ export default class PopupStarsPay extends PopupElement<{
       }
     } else {
       title = this.isReceipt ? wrapEmojiText(this.form.title) : i18n('StarsConfirmPurchaseTitle');
-      subtitle = this.isReceipt ? wrapEmojiText(this.form.description) : i18n('StarsConfirmPurchaseText', [amount, wrapEmojiText(this.paymentForm.title), _title]);
+      subtitle = this.isReceipt ?
+        wrapEmojiText(this.form.description) :
+        i18n('StarsConfirmPurchaseText', [amount, wrapEmojiText((this.paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars).title), _title]);
     }
 
     const transactionId = this.transaction?.id ?? (this.paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceiptStars)?.transaction_id;
@@ -430,7 +438,7 @@ export default class PopupStarsPay extends PopupElement<{
         {subtitle && <div class={classNames('popup-stars-subtitle', tableContent && !this.subscription && !this.boost && 'mt')}>{subtitle}</div>}
         {tableContent && (
           <>
-            <Table content={tableContent.filter(Boolean)} />
+            <Table class="popup-stars-pay-table" content={tableContent.filter(Boolean)} />
             <div class="popup-stars-pay-tos">{i18n('Stars.TransactionTOS')}</div>
             {this.subscription && (
               <div class={classNames('popup-stars-pay-tos', 'popup-stars-pay-tos2', this.subscription.pFlags.canceled && 'danger')}>{
@@ -449,7 +457,7 @@ export default class PopupStarsPay extends PopupElement<{
   }
 
   private async construct() {
-    if(this.chatInvite) {
+    if(this.chatInvite || this.paymentForm?._ === 'payments.paymentFormStarGift') {
       this.peerId = NULL_PEER_ID;
     } else if(this.paymentForm) {
       this.peerId = this.paymentForm.bot_id.toPeerId(false);
@@ -475,7 +483,7 @@ export default class PopupStarsPay extends PopupElement<{
           paidMediaPeerId: this.message ? this.message.fwdFromId || this.message.fromId : this.peerId,
           chatInvite: this.chatInvite,
           subscription: this.subscription,
-          photo: this.form?.photo as WebDocument.webDocument
+          photo: this.form._ === 'payments.paymentFormStarGift' ? undefined : this.form?.photo as WebDocument.webDocument
         });
 
         if(this.boost) {
@@ -513,12 +521,9 @@ export default class PopupStarsPay extends PopupElement<{
           return;
         }
 
-        return this.managers.apiManager.invokeApi('channels.exportMessageLink', {
-          channel: await this.managers.appChatsManager.getChannelInput(this.peerId.toChatId()),
-          id: getServerMessageId(this.transaction.msg_id || this.transaction.giveaway_post_id)
-        }).then((exportedMessageLink) => {
-          return exportedMessageLink.link;
-        }, () => undefined as string);
+        const channelId = this.peerId.toChatId()
+        const serverMsgId = getServerMessageId(this.transaction.msg_id || this.transaction.giveaway_post_id)
+        return `https://t.me/c/${channelId}/${serverMsgId}`;
       })()
     ]);
     this.body.classList.toggle('is-receipt', this.isReceipt);

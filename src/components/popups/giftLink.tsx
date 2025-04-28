@@ -13,7 +13,6 @@ import {InviteLink} from '../sidebarLeft/tabs/sharedFolder';
 import {For, JSX} from 'solid-js';
 import {formatFullSentTime, formatMonthsDuration} from '../../helpers/date';
 import {AvatarNew} from '../avatarNew';
-import {PeerTitleTsx} from '../stories/list';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import appImManager, {ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
 import rootScope from '../../lib/rootScope';
@@ -148,7 +147,7 @@ export default class PopupGiftLink extends PopupElement {
           </div>
         </div>
         {inviteLink.container}
-        <Table content={content} />
+        <Table boldKey content={content} />
         {(!this.isInChat || !isUsed) && (
           <div class="popup-gift-link-share">
             {isUsed ?

@@ -1,5 +1,6 @@
-import {createEffect, on, splitProps} from 'solid-js'
+import {splitProps} from 'solid-js'
 import ButtonMenuToggle from './buttonMenuToggle'
+import {attachClassName} from '../helpers/solid/classname'
 
 export type ButtonMenuToggleProps = Parameters<typeof ButtonMenuToggle>[0] & {
   class?: string
@@ -9,13 +10,7 @@ export const ButtonMenuToggleTsx = (props: ButtonMenuToggleProps) => {
   const [, rest] = splitProps(props, ['class'])
   const res = ButtonMenuToggle(rest)
 
-  createEffect(on(
-    () => props.class,
-    (value, prev) => {
-      res.classList.remove(prev)
-      res.classList.add(value)
-    }
-  ))
+  attachClassName(res, () => props.class)
 
   return res
 }

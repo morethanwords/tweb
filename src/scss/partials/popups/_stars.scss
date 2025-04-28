@@ -387,12 +387,8 @@
     font-size: 2.5rem;
   }
 
-  .table {
-    margin-top: 1.375rem;
-
-    &-key {
-      font-weight: var(--font-weight-normal);
-    }
+  .popup-stars-pay-table {
+    margin-block: 1.375rem 1rem;
   }
 }
 

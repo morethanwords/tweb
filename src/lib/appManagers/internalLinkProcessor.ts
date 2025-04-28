@@ -36,6 +36,7 @@ import type {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import {prefetchStars} from '../../stores/stars';
 import {getMiddleware} from '../../helpers/middleware';
 import anchorCallback from '../../helpers/dom/anchorCallback';
+import PopupStarGiftInfo from '../../components/popups/starGiftInfo';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -187,6 +188,19 @@ export class InternalLinkProcessor {
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.JOIN_CHAT,
           invite: pathnameParams[1] || decodeURIComponent(pathnameParams[0]).slice(1)
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
+
+    // t.me/nft/asdasd-1
+    addAnchorListener<{pathnameParams: ['nft', string]}>({
+      name: 'nft',
+      callback: ({pathnameParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT,
+          slug: pathnameParams[1]
         };
 
         return this.processInternalLink(link);
@@ -985,6 +999,13 @@ export class InternalLinkProcessor {
     });
   };
 
+  public processUniqueStarGiftLink = async(link: InternalLink.InternalLinkUniqueStarGift) => {
+    const gift = await this.managers.appGiftsManager.getGiftBySlug(link.slug);
+    if(!gift) return
+
+    PopupElement.createPopup(PopupStarGiftInfo, gift);
+  }
+
   public processInternalLink(link: InternalLink) {
     const map: {
       [key in InternalLink['_']]?: (link: any) => any
@@ -1006,7 +1027,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.GIFT_CODE]: this.processGiftCodeLink,
       [INTERNAL_LINK_TYPE.BUSINESS_CHAT]: this.processBusinessChatLink,
       [INTERNAL_LINK_TYPE.STARS_TOPUP]: this.processStarsTopupLink,
-      [INTERNAL_LINK_TYPE.SHARE]: this.processShareLink
+      [INTERNAL_LINK_TYPE.SHARE]: this.processShareLink,
+      [INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT]: this.processUniqueStarGiftLink
     };
 
     const processor = map[link._];

@@ -401,7 +401,6 @@
 @import "fonts/mediaEditorFonts";
 @import "partials/input";
 @import "partials/button";
-@import "partials/table";
 @import "partials/animatedIcon";
 @import "partials/autocompleteHelper";
 @import "partials/autocompletePeerHelper";
@@ -469,6 +468,7 @@
 @import "partials/animatedSuper";
 @import "partials/sparkles";
 @import "partials/starsBadge";
+@import "partials/starGift";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -507,6 +507,9 @@
 @import "partials/popups/stars";
 @import "partials/popups/makePaid";
 @import "partials/popups/accountsLimit";
+@import "partials/popups/starGiftInfo";
+@import "partials/popups/starGiftUpgrade";
+@import "partials/popups/sendGift";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -1780,6 +1783,13 @@ hr {
   width: 1.125rem;
   height: 1.125rem;
   margin-inline-start: .25rem;
+
+  .sparkles-container {
+    color: var(--sparkles-color, var(--primary-text-color));
+    font-size: 0.375rem;
+    position: absolute;
+    inset: 0;
+  }
 }
 
 .premium-icon {
@@ -1803,7 +1813,11 @@ hr {
   &.with-icons {
     display: flex;
     align-items: center;
-    overflow: hidden;
+    min-width: 0;
+
+    .sparkles-container {
+      transform: translateY(-0.5rem);
+    }
   }
 
   &-inner {

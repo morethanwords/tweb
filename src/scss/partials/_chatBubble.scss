@@ -2440,31 +2440,6 @@
     }
   }
 
-  &-premium-gift {
-    &-container {
-      min-width: 12.5rem;
-      max-width: 15rem !important;
-      min-height: 12.875rem;
-
-      &.has-service-before {
-        margin-top: .5rem !important;
-      }
-    }
-
-    &-wrapper {
-      flex-direction: column;
-      min-width: inherit;
-      max-width: inherit;
-      min-height: inherit;
-      padding-bottom: .625rem !important;
-    }
-
-    &-sticker {
-      margin-bottom: 10px;
-      margin-top: -20px;
-    }
-  }
-
   &-service-button {
     min-height: 34px;
     font-weight: var(--font-weight-bold);
