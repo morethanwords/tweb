@@ -18,6 +18,7 @@ import {STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import PopupPayment from './payment';
 import wrapPeerTitle from '../wrappers/peerTitle';
+import toggleDisability from '../../helpers/dom/toggleDisability';
 
 export default class PopupStarGiftUpgrade extends PopupElement {
   private constructor(
@@ -54,11 +55,13 @@ export default class PopupStarGiftUpgrade extends PopupElement {
       if(this.descriptionForPeerId) {
         this.hide();
       } else if(freeUpgrade) {
+        const toggle = toggleDisability(this.btnConfirm, true);
         this.managers.appGiftsManager.upgradeStarGift(
           this.gift.input,
           keepInfoSignal[0]()
-        ).then(() => this.hide());
+        ).then(() => this.hide(), toggle);
       } else {
+        const toggle = toggleDisability(this.btnConfirm, true);
         PopupPayment.create({
           inputInvoice: {
             _: 'inputInvoiceStarGiftUpgrade',
@@ -66,11 +69,14 @@ export default class PopupStarGiftUpgrade extends PopupElement {
             pFlags: {
               keep_original_details: keepInfoSignal[0]() ? true : undefined
             }
-          }
+          },
+          noShowIfStars: true
         }).then((popup) => {
           popup.addEventListener('finish', (result) => {
             if(result === 'paid') {
               this.hide();
+            } else {
+              toggle();
             }
           });
         });
