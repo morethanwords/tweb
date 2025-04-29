@@ -18,7 +18,7 @@ import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import addAnchorListener from '../../helpers/addAnchorListener';
 import assumeType from '../../helpers/assumeType';
 import findUpClassName from '../../helpers/dom/findUpClassName';
-import {ChatInvite, User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite, Chat, InputInvoice} from '../../layer';
+import {User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite, Chat, InputInvoice} from '../../layer';
 import {i18n, LangPackKey, _i18n} from '../langPack';
 import {PHONE_NUMBER_REG_EXP} from '../richTextProcessor';
 import {isWebAppNameValid} from '../richTextProcessor/validators';
@@ -37,6 +37,7 @@ import {prefetchStars} from '../../stores/stars';
 import {getMiddleware} from '../../helpers/middleware';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import PopupStarGiftInfo from '../../components/popups/starGiftInfo';
+import noop from '../../helpers/noop';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -188,19 +189,6 @@ export class InternalLinkProcessor {
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.JOIN_CHAT,
           invite: pathnameParams[1] || decodeURIComponent(pathnameParams[0]).slice(1)
-        };
-
-        return this.processInternalLink(link);
-      }
-    });
-
-    // t.me/nft/asdasd-1
-    addAnchorListener<{pathnameParams: ['nft', string]}>({
-      name: 'nft',
-      callback: ({pathnameParams}) => {
-        const link: InternalLink = {
-          _: INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT,
-          slug: pathnameParams[1]
         };
 
         return this.processInternalLink(link);
@@ -587,6 +575,33 @@ export class InternalLinkProcessor {
           text: uriParams.text
         };
 
+        return this.processInternalLink(link);
+      }
+    });
+
+    // t.me/nft/asdasd-1
+    addAnchorListener<{pathnameParams: ['nft', string]}>({
+      name: 'nft',
+      callback: ({pathnameParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT,
+          slug: pathnameParams.slice(1).join('/') // support unescaped slash
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
+
+    // tg://nft?slug=...
+    addAnchorListener<{
+      uriParams: {
+        slug: string
+      }
+    }>({
+      name: 'nft',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT, uriParams);
         return this.processInternalLink(link);
       }
     });
@@ -1000,8 +1015,11 @@ export class InternalLinkProcessor {
   };
 
   public processUniqueStarGiftLink = async(link: InternalLink.InternalLinkUniqueStarGift) => {
-    const gift = await this.managers.appGiftsManager.getGiftBySlug(link.slug);
-    if(!gift) return
+    const gift = await this.managers.appGiftsManager.getGiftBySlug(link.slug).catch(noop);
+    if(!gift) {
+      toastNew({langPackKey: 'Error.AnError'});
+      return;
+    }
 
     PopupElement.createPopup(PopupStarGiftInfo, gift);
   }
