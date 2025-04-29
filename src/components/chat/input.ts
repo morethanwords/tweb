@@ -348,7 +348,9 @@ export default class ChatInput {
 
   private fileSelectionPromise: CancellablePromise<File[]>;
 
-  public readonly paidMessageInterceptor: PaidMessagesInterceptor;
+  public paidMessageInterceptor: PaidMessagesInterceptor;
+
+  private starsState: ReturnType<ChatInput['constructStarsState']>;
 
   constructor(
     public chat: Chat,
@@ -361,12 +363,6 @@ export default class ChatInput {
     this.excludeParts = {};
     this.isFocused = false;
     this.emoticonsDropdown = emoticonsDropdown;
-
-    this.paidMessageInterceptor = new PaidMessagesInterceptor(chat, managers);
-
-    this.getMiddleware().onDestroy(() => {
-      this.paidMessageInterceptor.dispose();
-    });
   }
 
   public construct() {
@@ -477,6 +473,13 @@ export default class ChatInput {
     const c = this.controlContainer = document.createElement('div');
     c.classList.add('chat-input-control', 'chat-input-wrapper');
     this.inputContainer.append(c);
+
+    this.paidMessageInterceptor = new PaidMessagesInterceptor(this.chat, this.managers);
+    this.getMiddleware().onDestroy(() => {
+      this.paidMessageInterceptor.dispose();
+    });
+
+    this.starsState = this.constructStarsState();
   }
 
   public freezeFocused(focused: boolean) {
@@ -3470,7 +3473,7 @@ export default class ChatInput {
     this.updateMessageInputPlaceholder(params);
   }
 
-  private starsState = createRoot(dispose => {
+  private constructStarsState = () => createRoot((dispose) => {
     const middleware = this.getMiddleware();
     middleware.onDestroy(() => void dispose());
 
