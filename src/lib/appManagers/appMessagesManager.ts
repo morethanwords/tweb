@@ -4378,7 +4378,7 @@ export class AppMessagesManager extends AppManager {
 
         if(good) {
           if(await this.canEditMessage(message, 'text')) {
-            goodMessage = message;
+            goodMessage = this.getGroupsFirstMessage(message as Message.message);
             break;
           }
 

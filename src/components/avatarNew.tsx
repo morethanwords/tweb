@@ -826,7 +826,7 @@ export const AvatarNew = (props: {
         {storiesCircle()}
         {props.isStoryFolded !== undefined && <div class="avatar-background"></div>}
         <div
-          class={`avatar avatar-like avatar-${storyDimensions().willBeSize}`}
+          class={`avatar avatar-like avatar-${storyDimensions().willBeSize} avatar-gradient`}
           classList={innerClassList()}
           data-color={color()}
         >
