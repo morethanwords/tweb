@@ -1,2 +1,0 @@
-import{dh as n,Z as a,R as s}from"./index-BisvWswr.js";import{u as r,L as m}from"./appDialogsManager-D2zOoR-q.js";import{c}from"./chatBackground-D9OaT0tf.js";const d="_LottieAnimation_r3b7k_1",l="_AdditionalPadding_r3b7k_10",L={LottieAnimation:d,AdditionalPadding:l},_=t=>{const{lottieLoader:o}=n(),i=r();return a(m,s({lottieLoader:o,onPromise:e=>i.collect(e),get class(){return c(t.class,L.LottieAnimation)},restartOnClick:!0},t))};export{_ as L,L as c};
-//# sourceMappingURL=lottieAnimation-DJeWK9rV.js.map

@@ -1006,7 +1006,7 @@ export default class PeerProfile {
     }
 
     return () => {
-      callbacks.forEach((callback) => callback());
+      callbacks.forEach((callback) => callback?.());
     };
   }
 
