@@ -159,7 +159,9 @@ body.is-right-column-shown {
 
 	.peer-title, 
 	.info {
-		@include text-overflow();
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		min-width: 0;
 		line-height: var(--line-height);
 	}
 

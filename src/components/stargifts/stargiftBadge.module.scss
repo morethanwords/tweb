@@ -1,0 +1,21 @@
+.badge {
+  position: absolute;
+  top: -0.125rem;
+  right: -0.25rem;
+  width: 3.625rem;
+  height: 3.625rem;
+  z-index: 1;
+
+  background: linear-gradient(180deg, #6ED2FF 1.72%, #34A4FC 94.83%);
+  clip-path: path("M51.8187 26.4853L28.8481 3.51472C26.5977 1.26428 23.5454 0 20.3628 0H2.1618C0.379992 0 -0.51234 2.15429 0.74759 3.41422L51.9192 54.5858C53.1791 55.8457 55.3334 54.9534 55.3334 53.1716V34.9706C55.3334 31.788 54.0691 28.7357 51.8187 26.4853Z");
+}
+
+.text {
+  transform: rotate(45deg) translate(15px, 10px);
+  width: 60px;
+  color: #fff;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 600;
+}

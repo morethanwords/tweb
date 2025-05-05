@@ -1,0 +1,61 @@
+@property --stargift-backdrop-edge-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: black;
+}
+
+@property --stargift-backdrop-center-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: white;
+}
+
+@property --stargift-backdrop-offset-y {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: -100px;
+}
+
+.wrap {
+  background-color: var(--stargift-backdrop-edge-color);
+  transition-property: background-color;
+  transition-duration: 0.5s;
+  transition-timing-function: ease-in-out;
+  overflow: hidden;
+}
+
+.halo {
+  width: 400px;
+  height: 400px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: var(--stargift-backdrop-offset-y);
+  transition-property: --stargift-backdrop-edge-color, --stargift-backdrop-center-color;
+  transition-duration: 0.5s;
+  transition-timing-function: ease-in-out;
+  background: radial-gradient(var(--stargift-backdrop-center-color) 0%, var(--stargift-backdrop-edge-color) 50%);
+}
+
+.haloSmall {
+  width: 200px;
+  height: 200px;
+}
+
+.canvas {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
+  transform-origin: center;
+  will-change: transform;
+  transform: translateX(-50%) scale(1);
+
+  &:global(.s-enter),
+  &:global(.s-exit-to) {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.9);
+  }
+}

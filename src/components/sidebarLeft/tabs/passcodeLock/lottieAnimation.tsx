@@ -3,63 +3,30 @@ import {Component, createRenderEffect, mergeProps, onCleanup} from 'solid-js';
 import type {LottieAssetName} from '../../../../lib/rlottie/lottieLoader';
 import type RLottiePlayer from '../../../../lib/rlottie/rlottiePlayer';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-
+import LottieAnimationBase from '../../../lottieAnimation';
 import {usePromiseCollector} from '../solidJsTabs/promiseCollector';
 
 import styles from './common.module.scss';
+import classNames from '../../../../helpers/string/classNames';
 
 
 const LottieAnimation: Component<{
   class?: string;
   name: LottieAssetName;
   size?: number;
-}> = (inProps) => {
-  const props = mergeProps({size: 100}, inProps);
-
+}> = (props) => {
   const {lottieLoader} = useHotReloadGuard();
   const promiseCollector = usePromiseCollector();
 
-  let animationPromise: Promise<RLottiePlayer>;
-
-  const div = (
-    <div
-      class={styles.LottieAnimation}
-      classList={{
-        [props.class]: !!props.class
-      }}
-      style={{
-        '--size': props.size + 'px'
-      }}
-      onClick={() => {
-        animationPromise?.then((animation) => {
-          animation.playOrRestart();
-        });
-      }}
+  return (
+    <LottieAnimationBase
+      lottieLoader={lottieLoader}
+      onPromise={(promise) => promiseCollector.collect(promise)}
+      class={classNames(props.class, styles.LottieAnimation)}
+      restartOnClick
+      {...props}
     />
-  ) as HTMLDivElement;
-
-  createRenderEffect(() => {
-    animationPromise = lottieLoader.loadAnimationAsAsset(
-      {
-        container: div,
-        loop: false,
-        autoplay: true,
-        width: props.size,
-        height: props.size
-      },
-      props.name
-    );
-
-    onCleanup(() => {
-      animationPromise?.then((animation) => {
-        animation.remove();
-      });
-    });
-  });
-
-  promiseCollector.collect(animationPromise);
-
-  return div;
+  );
 }
 
 export default LottieAnimation;

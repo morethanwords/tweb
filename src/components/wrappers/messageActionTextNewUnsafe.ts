@@ -10,7 +10,7 @@ import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import setInnerHTML, {setDirection} from '../../helpers/dom/setInnerHTML';
 import {wrapCallDuration} from './wrapDuration';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {ForumTopic, Message, MessageAction, MessageMedia, MessageReplyHeader} from '../../layer';
+import {ForumTopic, Message, MessageAction, MessageMedia, MessageReplyHeader, StarGift} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '../../lib/langPack';
 import {GENERAL_TOPIC_ID} from '../../lib/mtproto/mtproto_config';
@@ -145,8 +145,8 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
   // this.log('message action:', action);
 
-  if((action as MessageAction.messageActionCustomAction).message) {
-    const unsafeMessage = (action as MessageAction.messageActionCustomAction).message;
+  if(action._ === 'messageActionCustomAction' && action.message) {
+    const unsafeMessage = action.message;
     if(plain) {
       return wrapPlainText(unsafeMessage);
     } else {
@@ -658,6 +658,23 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         args = [+action.stars];
         break;
       }
+      case 'messageActionStarGift':
+        if(message.pFlags.out) {
+          langPackKey = 'StarGiftSentMessageOutgoing'
+          args = [(action.gift as StarGift.starGift).stars];
+        } else {
+          langPackKey = 'StarGiftSentMessageIncoming'
+          args = [getNameDivHTML(message.fromId, plain), (action.gift as StarGift.starGift).stars];
+        }
+        break;
+      case 'messageActionStarGiftUnique':
+        if(action.pFlags.upgrade) {
+          langPackKey = message.pFlags.out ? 'ActionGiftUpgradedOutbound' : 'ActionGiftUpgradedInbound'
+        } else {
+          langPackKey = message.pFlags.out ? 'ActionGiftTransferredOutbound' : 'ActionGiftTransferredInbound'
+        }
+        args = [getNameDivHTML(message.peerId, plain)];
+        break;
 
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;

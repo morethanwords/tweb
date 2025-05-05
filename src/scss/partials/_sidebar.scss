@@ -130,4 +130,12 @@
       width: 100%;
     } */
   }
+
+  &-emoji-status-emoji {
+    .sparkles-container {
+      color: var(--sparkles-color, var(--primary-text-color));
+      font-size: 6px;
+      opacity: 0.5;
+    }
+  }
 }

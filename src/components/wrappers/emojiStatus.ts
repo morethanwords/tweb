@@ -5,10 +5,12 @@
  */
 
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
+import {rgbIntToHex} from '../../helpers/color';
 import {MediaSize} from '../../helpers/mediaSize';
 import mediaSizes from '../../helpers/mediaSizes';
 import {EmojiStatus, DocumentAttribute, Document} from '../../layer';
 import rootScope from '../../lib/rootScope';
+import {Sparkles} from '../sparkles';
 import wrapSticker from './sticker';
 
 export default async function wrapEmojiStatus({
@@ -51,6 +53,11 @@ export default async function wrapEmojiStatus({
     if(!middleware()) return;
     await Promise.all(loadPromises);
   };
+
+  if(emojiStatus._ === 'emojiStatusCollectible') {
+    container.appendChild(Sparkles({mode: 'button', isDiv: true}));
+    container.style.setProperty('--sparkles-color', rgbIntToHex(emojiStatus.center_color));
+  }
 
   if(!middleware()) {
     return container;

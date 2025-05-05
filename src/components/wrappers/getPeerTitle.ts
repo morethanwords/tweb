@@ -53,7 +53,7 @@ export default async function getPeerTitle(options: GetPeerTitleOptions): Promis
     }
 
     if(!title) {
-      const chat = (useManagers ? managers.appChatsManager.getChat(peerId.toChatId()) : apiManagerProxy.getChat(peerId.toChatId())) as Chat.chat;
+      const chat = (useManagers ? await managers.appChatsManager.getChat(peerId.toChatId()) : apiManagerProxy.getChat(peerId.toChatId())) as Chat.chat;
       title = chat?.title || '';
     }
 

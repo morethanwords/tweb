@@ -1,8 +1,10 @@
 import {createEffect, createSignal, JSX, Signal, untrack} from 'solid-js';
 import {subscribeOn} from '../helpers/solid/subscribeOn';
 import CheckboxField from './checkboxField';
+import {LangPackKey} from '../lib/langPack';
 
 export default function CheckboxFieldTsx(props: {
+  text?: LangPackKey
   signal?: Signal<boolean>,
   checked?: boolean,
   toggle?: boolean,
@@ -11,6 +13,7 @@ export default function CheckboxFieldTsx(props: {
   const [checked, setChecked] = props.signal ?? createSignal(props.checked);
 
   const checkboxField = new CheckboxField({
+    text: props.text,
     toggle: props.toggle
   });
 

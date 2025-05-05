@@ -352,10 +352,6 @@ ul.chatlist {
       width: 18px;
       height: 18px;
     }
-
-    .peer-title {
-      @include text-overflow();
-    }
   }
 
   .user-last-message {

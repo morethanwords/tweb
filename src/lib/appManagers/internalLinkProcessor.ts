@@ -18,7 +18,7 @@ import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import addAnchorListener from '../../helpers/addAnchorListener';
 import assumeType from '../../helpers/assumeType';
 import findUpClassName from '../../helpers/dom/findUpClassName';
-import {ChatInvite, User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite, Chat, InputInvoice} from '../../layer';
+import {User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite, Chat, InputInvoice} from '../../layer';
 import {i18n, LangPackKey, _i18n} from '../langPack';
 import {PHONE_NUMBER_REG_EXP} from '../richTextProcessor';
 import {isWebAppNameValid} from '../richTextProcessor/validators';
@@ -36,6 +36,8 @@ import type {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import {prefetchStars} from '../../stores/stars';
 import {getMiddleware} from '../../helpers/middleware';
 import anchorCallback from '../../helpers/dom/anchorCallback';
+import PopupStarGiftInfo from '../../components/popups/starGiftInfo';
+import noop from '../../helpers/noop';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -576,6 +578,33 @@ export class InternalLinkProcessor {
         return this.processInternalLink(link);
       }
     });
+
+    // t.me/nft/asdasd-1
+    addAnchorListener<{pathnameParams: ['nft', string]}>({
+      name: 'nft',
+      callback: ({pathnameParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT,
+          slug: pathnameParams.slice(1).join('/') // support unescaped slash
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
+
+    // tg://nft?slug=...
+    addAnchorListener<{
+      uriParams: {
+        slug: string
+      }
+    }>({
+      name: 'nft',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT, uriParams);
+        return this.processInternalLink(link);
+      }
+    });
   }
 
   private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {
@@ -985,6 +1014,16 @@ export class InternalLinkProcessor {
     });
   };
 
+  public processUniqueStarGiftLink = async(link: InternalLink.InternalLinkUniqueStarGift) => {
+    const gift = await this.managers.appGiftsManager.getGiftBySlug(link.slug).catch(noop);
+    if(!gift) {
+      toastNew({langPackKey: 'Error.AnError'});
+      return;
+    }
+
+    PopupElement.createPopup(PopupStarGiftInfo, gift);
+  }
+
   public processInternalLink(link: InternalLink) {
     const map: {
       [key in InternalLink['_']]?: (link: any) => any
@@ -1006,7 +1045,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.GIFT_CODE]: this.processGiftCodeLink,
       [INTERNAL_LINK_TYPE.BUSINESS_CHAT]: this.processBusinessChatLink,
       [INTERNAL_LINK_TYPE.STARS_TOPUP]: this.processStarsTopupLink,
-      [INTERNAL_LINK_TYPE.SHARE]: this.processShareLink
+      [INTERNAL_LINK_TYPE.SHARE]: this.processShareLink,
+      [INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT]: this.processUniqueStarGiftLink
     };
 
     const processor = map[link._];

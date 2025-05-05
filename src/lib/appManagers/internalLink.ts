@@ -26,7 +26,8 @@ export enum INTERNAL_LINK_TYPE {
   GIFT_CODE,
   BUSINESS_CHAT,
   STARS_TOPUP,
-  SHARE
+  SHARE,
+  UNIQUE_STAR_GIFT
 };
 
 export type InternalLink =
@@ -47,7 +48,8 @@ export type InternalLink =
   InternalLink.InternalLinkGiftCode |
   InternalLink.InternalLinkBusinessChat |
   InternalLink.InternalLinkStarsTopup |
-  InternalLink.InternalLinkShare;
+  InternalLink.InternalLinkShare |
+  InternalLink.InternalLinkUniqueStarGift;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -172,6 +174,11 @@ export namespace InternalLink {
     url?: string,
     text?: string
   }
+
+  export interface InternalLinkUniqueStarGift {
+    _: INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT,
+    slug: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -192,5 +199,6 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.GIFT_CODE]: InternalLink.InternalLinkGiftCode,
   [INTERNAL_LINK_TYPE.BUSINESS_CHAT]: InternalLink.InternalLinkBusinessChat,
   [INTERNAL_LINK_TYPE.STARS_TOPUP]: InternalLink.InternalLinkStarsTopup,
-  [INTERNAL_LINK_TYPE.SHARE]: InternalLink.InternalLinkShare
+  [INTERNAL_LINK_TYPE.SHARE]: InternalLink.InternalLinkShare,
+  [INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT]: InternalLink.InternalLinkUniqueStarGift
 };

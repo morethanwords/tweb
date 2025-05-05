@@ -55,7 +55,8 @@ import type AppStatisticsManager from './appStatisticsManager';
 import type AppBusinessManager from './appBusinessManager';
 import type AppTranslationsManager from './appTranslationsManager';
 import type {AppManagers} from './managers';
-import AppGifsManager from './appGifsManager';
+import type AppGifsManager from './appGifsManager';
+import type AppGiftsManager from './appGiftsManager';
 import {ActiveAccountNumber} from '../accounts/types';
 
 export class AppManager {
@@ -113,6 +114,7 @@ export class AppManager {
   protected appBusinessManager: AppBusinessManager;
   protected appTranslationsManager: AppTranslationsManager;
   protected appGifsManager: AppGifsManager;
+  protected appGiftsManager: AppGiftsManager;
 
   public clear: (init?: boolean) => void;
 

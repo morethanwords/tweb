@@ -143,6 +143,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       ['stories', 'StoriesCount'],
       ['members', 'Members'],
       ['media', 'MediaFiles'],
+      ['gifts', 'StarGiftsCount'],
       ['saved', 'SavedMessagesCount'],
       ['files', 'Files'],
       ['links', 'Links'],
@@ -313,6 +314,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         inputFilter: 'inputMessagesFilterPhotoVideo',
         name: 'SharedMediaTab2',
         type: 'media'
+      }, {
+        name: 'SharedMedia.Gifts',
+        type: 'gifts'
       }, {
         inputFilter: 'inputMessagesFilterEmpty',
         name: 'SharedMedia.Saved',

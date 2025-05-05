@@ -114,6 +114,10 @@ export interface MTAppConfig {
   stars_usd_sell_rate_x1000?:                number;
   stars_usd_withdraw_rate_x1000?:            number;
   stars_paid_message_commission_permille?:   number;
+  stargifts_blocked?:                        boolean;
+  stargifts_convert_period_max?:             number;
+  stargifts_message_length_max?:             number;
+  stargifts_pinned_to_top_limit?:            number;
 }
 
 export interface EmojiesSendDiceSuccess {

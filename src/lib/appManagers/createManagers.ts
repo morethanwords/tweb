@@ -59,6 +59,7 @@ import AppTranslationsManager from './appTranslationsManager';
 import AppGifsManager from './appGifsManager';
 import {ActiveAccountNumber} from '../accounts/types';
 import {AppManager} from './manager';
+import AppGiftsManager from './appGiftsManager';
 
 export default function createManagers(
   appStoragesManager: AppStoragesManager,
@@ -117,7 +118,8 @@ export default function createManagers(
     appStatisticsManager: new AppStatisticsManager,
     appBusinessManager: new AppBusinessManager,
     appTranslationsManager: new AppTranslationsManager,
-    appGifsManager: new AppGifsManager
+    appGifsManager: new AppGifsManager,
+    appGiftsManager: new AppGiftsManager
   };
 
   type T = typeof managers;

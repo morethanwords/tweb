@@ -11,6 +11,7 @@ export default function Button(props: Partial<{
   disabled: boolean,
   children: JSX.Element,
   icon: Icon,
+  iconAfter: Icon,
   onClick: (e: MouseEvent) => void,
   text: LangPackKey,
   textArgs: FormatterArguments
@@ -25,6 +26,7 @@ export default function Button(props: Partial<{
     >
       {props.icon && <IconTsx icon={props.icon} class="button-icon" />}
       {props.text ? i18n(props.text, props.textArgs) : props.children}
+      {props.iconAfter && <IconTsx icon={props.iconAfter} class="button-icon" />}
     </Dynamic>
   );
 }

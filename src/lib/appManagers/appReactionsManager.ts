@@ -339,7 +339,7 @@ export class AppReactionsManager extends AppManager {
   // }
 
   public getAvailableReactionsByMessage(
-    message: Message.message,
+    message?: Message.message,
     unshiftQuickReaction?: boolean
   ): ReturnType<AppReactionsManager['getAvailableReactionsForPeer']> {
     // if(!message) return {type: 'chatReactionsNone', reactions: []};
@@ -368,7 +368,7 @@ export class AppReactionsManager extends AppManager {
     return callbackify(
       this.getAvailableReactionsForPeer(peerId, unshiftQuickReaction),
       (peerAvailableReactions) => {
-        const messageReactionsResults = message.reactions?.results;
+        const messageReactionsResults = message?.reactions?.results;
         if(
           messageReactionsResults &&
           peerAvailableReactions.type === 'chatReactionsSome' &&

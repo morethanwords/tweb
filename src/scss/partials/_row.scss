@@ -145,8 +145,16 @@ $row-border-radius: $border-radius-medium;
 
     .row-title,
     .row-subtitle {
-      @include text-overflow(true);
+      overflow: visible;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
       flex: 1 1 auto;
+
+      .peer-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
     }
   }
 

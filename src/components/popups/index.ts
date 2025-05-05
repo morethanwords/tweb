@@ -321,7 +321,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   }
 
   public show() {
-    if(this.shown) {
+    if(this.shown || this.destroyed) {
       return;
     }
 
@@ -382,7 +382,12 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   }
 
   public hide() {
-    if(this.destroyed || !this.navigationItem) {
+    if(this.destroyed) {
+      return;
+    }
+
+    if(!this.navigationItem) {
+      this.destroy();
       return;
     }
 

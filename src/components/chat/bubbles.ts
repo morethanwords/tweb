@@ -28,7 +28,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement, {setQuizHint} from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, BotApp, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, BotApp, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, StarGift} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -194,6 +194,9 @@ import PopupStars from '../popups/stars';
 import addPaidServiceMessage from './bubbleParts/paidServiceMessage';
 import namedPromises from '../../helpers/namedPromises';
 import {getCurrentNewMediaPopup} from '../popups/newMedia';
+import PopupStarGiftInfo from '../popups/starGiftInfo';
+import {StarGiftBubble, UniqueStarGiftWebPageBox} from './bubbles/starGift';
+import {PremiumGiftBubble} from './bubbles/premiumGift';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -258,7 +261,8 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_channel_boost: 'BoostLinkButton',
   telegram_giftcode: 'Open',
   telegram_chat: 'OpenGroup',
-  telegram_livestream: 'VoipChannelJoinVoiceChatUrl'
+  telegram_livestream: 'VoipChannelJoinVoiceChatUrl',
+  telegram_nft: 'StarGiftLinkButton'
 };
 
 const webPageTypesSiteNames: {[type in WebPage.webPage['type']]?: LangPackKey} = {
@@ -5307,9 +5311,7 @@ export default class ChatBubbles {
         if(action._ === 'messageActionGiftStars' || action._ === 'messageActionPrizeStars') {
           const content = bubbleContainer.cloneNode(false) as HTMLElement;
           content.classList.add('has-service-before');
-          const service = s.cloneNode(false) as HTMLElement;
 
-          // s.append(i18n(message.fromId === rootScope.myId ? 'ActionGiftOutbound' : 'ActionGiftInbound', [await wrapPeerTitle({peerId: message.peerId}), paymentsWrapCurrencyAmount(action.amount, action.currency)]));
           s.append(await wrapMessageActionTextNew({message, middleware}));
 
           const isSent = message.fromId === rootScope.myId;
@@ -5325,17 +5327,14 @@ export default class ChatBubbles {
             subtitle = i18n(isSent ? 'ActionGiftStarsSubtitle' : 'ActionGiftStarsSubtitleYou', [await wrapPeerTitle({peerId: message.peerId})]);
           }
 
-          const title = i18n(isPrize ? 'BoostingCongratulations' : 'ActionGiftStarsTitle', [action.stars]);
-          title.classList.add('text-bold');
-          this.wrapGift({
-            content,
-            service,
-            middleware,
-            loadPromises,
+          this.wrapSomeSolid(() => PremiumGiftBubble({
+            rlottieOptions: {
+              middleware
+            },
             assetName: 'Gift3',
-            title,
+            title: i18n(isPrize ? 'BoostingCongratulations' : 'ActionGiftStarsTitle', [action.stars]),
             subtitle,
-            buttonText: 'ActionGiftPremiumView',
+            buttonText: i18n('ActionGiftPremiumView'),
             buttonCallback: async() => {
               PopupPayment.create({
                 message: message as Message.message,
@@ -5359,9 +5358,8 @@ export default class ChatBubbles {
                 }
               });
             }
-          });
+          }), content, middleware);
 
-          content.append(service);
           bubbleContainer.after(content);
         } else if(isGiftCode && !shouldDisplayGiftCodeAsGift(action)) {
           const isUnclaimed = action.pFlags.unclaimed;
@@ -5383,19 +5381,16 @@ export default class ChatBubbles {
 
           const assetName = getGiftAssetName(action.months);
 
-          this.wrapGift({
-            content: bubbleContainer,
-            service: s,
-            middleware,
-            loadPromises,
+          this.wrapSomeSolid(() => PremiumGiftBubble({
+            rlottieOptions: {middleware},
             assetName,
             title,
             subtitle,
-            buttonText: 'BoostingReceivedGiftOpenBtn',
+            buttonText: i18n('BoostingReceivedGiftOpenBtn'),
             buttonCallback: () => {
               PopupElement.createPopup(PopupGiftLink, action.slug);
             }
-          });
+          }), bubbleContainer, middleware);
         } else if(action._ === 'messageActionChannelMigrateFrom') {
           const peerTitle = new PeerTitle();
           promise = peerTitle.update({peerId: action.chat_id.toPeerId(true), wrapOptions});
@@ -5428,23 +5423,22 @@ export default class ChatBubbles {
         if(action._ === 'messageActionGiftPremium' || (isGiftCode && shouldDisplayGiftCodeAsGift(action))) {
           const content = bubbleContainer.cloneNode(false) as HTMLElement;
           content.classList.add('has-service-before');
-          const service = s.cloneNode(false) as HTMLElement;
 
           const months = action.months;
           const assetName = getGiftAssetName(months);
 
-          const title = i18n('ActionGiftPremiumTitle');
-          const subtitle = i18n('ActionGiftPremiumSubtitle', [formatMonthsDuration(months, false)]);
+          const title = i18n('ActionGiftPremiumTitle2', [formatMonthsDuration(months, false)]);
+          const subtitle =
+            action.message ?
+              wrapRichText(action.message.text, {entities: action.message.entities}) :
+              i18n('ActionGiftPremiumSubtitle2');
 
-          this.wrapGift({
-            content,
-            service,
-            middleware,
-            loadPromises,
+          this.wrapSomeSolid(() => PremiumGiftBubble({
+            rlottieOptions: {middleware},
             assetName,
             title,
             subtitle,
-            buttonText: isGiftCode && message.fromId === message.peerId ? 'GiftPremiumUseGiftBtn' : 'ActionGiftPremiumView',
+            buttonText: i18n(isGiftCode && message.fromId === message.peerId ? 'GiftPremiumUseGiftBtn' : 'ActionGiftPremiumView'),
             buttonCallback: () => {
               if(isGiftCode) {
                 const link: InternalLink.InternalLinkGiftCode = {
@@ -5463,9 +5457,8 @@ export default class ChatBubbles {
                 isOut: !!message.pFlags.out
               });
             }
-          });
+          }), content, middleware);
 
-          content.append(service);
           bubbleContainer.after(content);
         } else if(action._ === 'messageActionChannelJoined') {
           bubble.classList.add('is-similar-channels');
@@ -5562,6 +5555,36 @@ export default class ChatBubbles {
           );
 
           loadPromises.push(deferred);
+        } else if(action._ === 'messageActionStarGift' || action._ === 'messageActionStarGiftUnique') {
+          const container = document.createElement('div');
+          container.classList.add('bubble-star-gift-container');
+          bubbleContainer.after(container);
+
+          const gift = await this.managers.appGiftsManager.wrapGiftFromMessage(message as Message.messageService)
+          this.wrapSomeSolid(() => StarGiftBubble({
+            gift,
+            fromId: getPeerId(gift.saved.from_id),
+            asUpgrade: gift.isIncoming && gift.isUpgradedBySender && !(action._ === 'messageActionStarGift' && action.pFlags.upgraded),
+            ownerId: gift.isIncoming ? undefined : message.peerId,
+            wrapStickerOptions: {
+              middleware,
+              lazyLoadQueue: this.lazyLoadQueue,
+              group: this.chat.animationGroup,
+              scrollable: this.scrollable,
+              liteModeKey: 'stickers_chat',
+              play: true,
+              loop: false
+            },
+            onViewClick: async() => {
+              if(action._ === 'messageActionStarGift' && action.upgrade_msg_id) {
+                const upgradeMsg = await this.managers.appMessagesManager.getMessageById(action.upgrade_msg_id);
+                const upgradedGift = await this.managers.appGiftsManager.wrapGiftFromMessage(upgradeMsg as Message.messageService);
+                PopupElement.createPopup(PopupStarGiftInfo, upgradedGift);
+              } else {
+                PopupElement.createPopup(PopupStarGiftInfo, gift)
+              }
+            }
+          }), container, middleware)
         }
 
         loadPromises.push(promise);
@@ -6208,6 +6231,8 @@ export default class ChatBubbles {
             }
           }
 
+          const starGiftAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeUniqueStarGift')
+
           const props: Parameters<typeof WebPageBox>[0] = {};
           const boxRefs: ((box: HTMLAnchorElement) => void)[] = [];
 
@@ -6279,7 +6304,7 @@ export default class ChatBubbles {
           // const willHaveSponsoredAvatar = sponsoredMessage && (getPeerId(sponsoredMessage.from_id) !== NULL_PEER_ID || sponsoredPhoto);
           // const willHaveSponsoredPhoto = sponsoredMessage && sponsoredMessage.pFlags.show_peer_photo && willHaveSponsoredAvatar;
           const willHaveSponsoredPhoto = !!sponsoredPhoto;
-          const willHaveMedia = !!(photo || doc || storyAttribute || willHaveSponsoredPhoto);
+          const willHaveMedia = !!(photo || doc || storyAttribute || willHaveSponsoredPhoto || starGiftAttribute);
           if(willHaveMedia) {
             preview = document.createElement('div');
             props.media = {
@@ -6380,7 +6405,7 @@ export default class ChatBubbles {
           }
 
           let isSquare = false;
-          if(willHaveSponsoredPhoto || (photo && !doc)) {
+          if(willHaveSponsoredPhoto || (photo && !doc && !starGiftAttribute)) {
             bubble.classList.add('photo');
 
             const squareBoxSize = 48;
@@ -6470,6 +6495,25 @@ export default class ChatBubbles {
               boxWidth: size.width,
               boxHeight: size.height
             });
+          }
+
+          if(starGiftAttribute) {
+            bubble.classList.add('gift');
+            const gift = await this.managers.appGiftsManager.wrapGiftFromWebPage(starGiftAttribute);
+            preview.style.width = '240px';
+            preview.style.height = '240px';
+            this.wrapSomeSolid(() => UniqueStarGiftWebPageBox({
+              gift,
+              wrapStickerOptions: {
+                play: true,
+                loop: false,
+                managers: this.managers,
+                middleware,
+                lazyLoadQueue,
+                group: this.chat.animationGroup
+              }
+            }), preview, middleware)
+            props.text = undefined
           }
 
           if(preview) {
@@ -7708,60 +7752,6 @@ export default class ChatBubbles {
 
       return container;
     }
-  }
-
-  private wrapGift({
-    content,
-    service,
-    middleware,
-    loadPromises,
-    assetName,
-    title,
-    subtitle,
-    buttonText,
-    buttonCallback
-  }: {
-    content: HTMLElement,
-    service: HTMLElement,
-    middleware: Middleware,
-    loadPromises: Promise<any>[],
-    assetName: LottieAssetName,
-    title: HTMLElement,
-    subtitle: HTMLElement,
-    buttonText?: LangPackKey,
-    buttonCallback?: () => void
-  }) {
-    content.classList.add('bubble-premium-gift-container');
-    service.classList.add('bubble-premium-gift-wrapper');
-    title.classList.add('text-bold');
-
-    const size = 160;
-
-    const promise = wrapLocalSticker({
-      width: size,
-      height: size,
-      assetName,
-      middleware,
-      loop: false,
-      autoplay: liteMode.isAvailable('stickers_chat')
-    }).then(({container, promise}) => {
-      container.classList.add('bubble-premium-gift-sticker');
-      container.style.position = 'relative';
-      container.style.width = container.style.height = size + 'px';
-      service.prepend(container);
-      return promise;
-    });
-
-    const button = buttonText &&
-      Button('bubble-service-button', {noRipple: true, text: buttonText});
-
-    if(button && buttonCallback) {
-      attachClickEvent(button, buttonCallback);
-    }
-
-    service.append(title, subtitle);
-    button && service.append(button);
-    loadPromises.push(promise);
   }
 
   private wrapSomeSolid(func: () => JSX.Element, container: HTMLElement, middleware: Middleware) {
