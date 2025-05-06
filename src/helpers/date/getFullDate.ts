@@ -1,11 +1,12 @@
 import {months} from './common';
 
 export const getFullDate = (date: Date, options: Partial<{
-  noTime: true;
-  noSeconds: true;
-  monthAsNumber: true;
-  leadingZero: true;
-  shortYear: boolean;
+  noTime: boolean,
+  noSeconds: boolean,
+  monthAsNumber: boolean,
+  leadingZero: boolean,
+  shortYear: boolean,
+  timeJoiner: string
 }> = {}) => {
   const joiner = options.monthAsNumber ? '.' : ' ';
   const time = ('0' + date.getHours()).slice(-2) + ':' +
@@ -16,5 +17,5 @@ export const getFullDate = (date: Date, options: Partial<{
   return (options.leadingZero ? ('0' + date.getDate()).slice(-2) : date.getDate()) +
     joiner + (options.monthAsNumber ? ('0' + (date.getMonth() + 1)).slice(-2) : months[date.getMonth()]) +
     joiner + (('' + fullYear).slice(options.shortYear ? 2 : 0)) +
-    (options.noTime ? '' : ', ' + time);
+    (options.noTime ? '' : (options.timeJoiner || ', ') + time);
 };

@@ -76,6 +76,8 @@ import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
 import flatten from '../../helpers/array/flatten';
 import PopupStarReaction from '../popups/starReaction';
 import getUniqueCustomEmojisFromMessage from '../../lib/appManagers/utils/messages/getUniqueCustomEmojisFromMessage';
+import getPeerTitle from '../wrappers/getPeerTitle';
+import {getFullDate} from '../../helpers/date/getFullDate';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -1256,18 +1258,31 @@ export default class ChatContextMenu {
       fullMids = flatten(f);
     }
 
-    let messages: (Message.message | SponsoredMessage.sponsoredMessage)[];
+    let rawMessages: (Message.message | SponsoredMessage.sponsoredMessage)[];
     if(this.isSponsored) {
-      messages = [this.sponsoredMessage];
+      rawMessages = [this.sponsoredMessage];
     } else {
-      messages = fullMids.map((fullMid) => this.chat.getMessage(fullMid) as Message.message);
+      rawMessages = fullMids.map((fullMid) => this.chat.getMessage(fullMid) as Message.message);
     }
 
-    const htmlParts = messages.map((message) => {
-      if(!message?.message) {
-        return;
-      }
+    const messages = rawMessages.filter((message) => message?.message) as Message.message[];
+    const meta = messages.length > 1 ? await Promise.all(messages.map(async(message) => {
+      const peerTitle = await getPeerTitle({
+        peerId: message.fromId,
+        plainText: true
+      });
 
+      const date = getFullDate(new Date(message.date * 1000), {
+        noSeconds: true,
+        monthAsNumber: true,
+        timeJoiner: ' ',
+        leadingZero: true
+      });
+
+      return peerTitle + ', [' + date + ']';
+    })) : [];
+
+    const htmlParts = messages.map((message) => {
       const wrapped = wrapRichText(message.message, {
         entities: (message as Message.message).totalEntities || message.entities,
         wrappingDraft: true
@@ -1276,12 +1291,18 @@ export default class ChatContextMenu {
     });
 
     const parts: string[] = messages.map((message) => {
-      return message?.message;
+      return message.message;
     });
 
+    const prepare = (smth: string[]) => {
+      return smth.map((str, idx) => {
+        return meta[idx] ? meta[idx] + '\n' + str : str;
+      }).join('\n\n');
+    };
+
     return {
-      text: parts.filter(Boolean).join('\n'),
-      html: htmlParts.filter(Boolean).join('\n')
+      text: prepare(parts),
+      html: prepare(htmlParts)
     };
   }
 
