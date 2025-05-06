@@ -12,6 +12,7 @@ export interface VideoStreamInfo {
   container: string;
   activeMask: number;
   events: VideoStreamEvent[];
+  bytes: Uint8Array;
 }
 
 export function parseVideoStreamInfo(buf: Uint8Array) {
@@ -41,6 +42,7 @@ export function parseVideoStreamInfo(buf: Uint8Array) {
     contentOffset: r.getOffset(),
     container,
     activeMask,
-    events
+    events,
+    bytes: buf
   };
 }

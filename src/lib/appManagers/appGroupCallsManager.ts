@@ -19,6 +19,7 @@ import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
 import {DcId} from '../../types';
 import assumeType from '../../helpers/assumeType';
+import {parseVideoStreamInfo} from '../calls/videoStreamInfo';
 
 export type GroupCallId = GroupCall['id'];
 export type MyGroupCall = GroupCall | InputGroupCall;
@@ -461,6 +462,13 @@ export class AppGroupCallsManager extends AppManager {
       limit: 512 * 1024,
       priority: 32,
       floodMaxTimeout: 0
+    }).then((result) => {
+      if(!result.bytes.length) {
+        return;
+      }
+
+      const info = parseVideoStreamInfo(result.bytes);
+      return info;
     });
   }
 

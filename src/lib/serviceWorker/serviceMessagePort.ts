@@ -12,6 +12,7 @@ import type {GroupCallRtmpState} from '../appManagers/appGroupCallsManager';
 import type {ActiveAccountNumber} from '../accounts/types';
 import type {getEnvironment} from '../../environment/utils';
 import type {ToggleUsingPasscodePayload} from '../mtproto/mtprotoMessagePort';
+import type {VideoStreamInfo} from '../calls/videoStreamInfo';
 import SuperMessagePort from '../mtproto/superMessagePort';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 
@@ -81,7 +82,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   requestFilePart: (payload: ServiceRequestFilePartTaskPayload) => MaybePromise<MyUploadFile>,
   cancelFilePartRequests: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => void,
   requestRtmpState: (payload: {call: InputGroupCall, accountNumber: ActiveAccountNumber}) => MaybePromise<GroupCallRtmpState>,
-  requestRtmpPart: (payload: ServiceRequestRtmpPartTaskPayload) => MaybePromise<MyUploadFile>,
+  requestRtmpPart: (payload: ServiceRequestRtmpPartTaskPayload) => MaybePromise<VideoStreamInfo>,
   downloadDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Blob>,
   requestDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Document.document>,
   requestAltDocsByDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Document.document[]>,

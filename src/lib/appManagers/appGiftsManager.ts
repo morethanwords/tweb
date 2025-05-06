@@ -93,11 +93,14 @@ function mapPremiumOptions(premiumOptions: PremiumGiftCodeOption.premiumGiftCode
 }
 
 export default class AppGiftsManager extends AppManager {
+  private cachedStarGiftOptions?: MyStarGift[];
+  private cachedStarGiftOptionsHash = 0;
+
   protected after() {
 
   }
 
-  wrapGift(gift: StarGift): MyStarGift {
+  private wrapGift(gift: StarGift): MyStarGift {
     if(gift._ === 'starGift') {
       return {
         type: 'stargift',
@@ -143,7 +146,7 @@ export default class AppGiftsManager extends AppManager {
     }
   }
 
-  async wrapGiftFromMessage(message: Message.messageService): Promise<MyStarGift> {
+  public async wrapGiftFromMessage(message: Message.messageService): Promise<MyStarGift> {
     const action = message.action as MessageAction.messageActionStarGift | MessageAction.messageActionStarGiftUnique;
     const gift = action.gift;
     const baseWrap = this.wrapGift(action.gift);
@@ -181,11 +184,11 @@ export default class AppGiftsManager extends AppManager {
     };
   }
 
-  async wrapGiftFromWebPage(attr: WebPageAttribute.webPageAttributeUniqueStarGift) {
+  public async wrapGiftFromWebPage(attr: WebPageAttribute.webPageAttributeUniqueStarGift) {
     return this.wrapGift(attr.gift);
   }
 
-  async getPinnedGifts(peerId: PeerId) {
+  public async getPinnedGifts(peerId: PeerId) {
     const res = await this.getProfileGifts({
       peerId,
       limit: (await this.apiManager.getAppConfig()).stargifts_pinned_to_top_limit
@@ -194,7 +197,7 @@ export default class AppGiftsManager extends AppManager {
     return res.gifts.filter((it) => it.saved.pFlags.pinned_to_top);
   }
 
-  async getProfileGifts(params: {peerId: PeerId, offset?: string, limit?: number}) {
+  public async getProfileGifts(params: {peerId: PeerId, offset?: string, limit?: number}) {
     const isUser = params.peerId.isUser();
     const inputPeer = isUser ?
       this.appUsersManager.getUserInputPeer(params.peerId.toUserId()) :
@@ -234,9 +237,7 @@ export default class AppGiftsManager extends AppManager {
     };
   }
 
-  private cachedStarGiftOptions?: MyStarGift[];
-  private cachedStarGiftOptionsHash = 0;
-  async getStarGiftOptions(): Promise<MyStarGift[]> {
+  public async getStarGiftOptions(): Promise<MyStarGift[]> {
     const res = await this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarGifts',
       params: {hash: this.cachedStarGiftOptionsHash}
@@ -249,7 +250,7 @@ export default class AppGiftsManager extends AppManager {
     return this.cachedStarGiftOptions = res.gifts.map((it) => this.wrapGift(it));
   }
 
-  async toggleGiftHidden(gift: InputSavedStarGift, hidden: boolean) {
+  public async toggleGiftHidden(gift: InputSavedStarGift, hidden: boolean) {
     this.rootScope.dispatchEvent('star_gift_update', {input: gift, unsaved: hidden});
     await this.apiManager.invokeApiSingle('payments.saveStarGift', {
       stargift: gift,
@@ -257,19 +258,19 @@ export default class AppGiftsManager extends AppManager {
     });
   }
 
-  async convertGift(gift: InputSavedStarGift) {
+  public async convertGift(gift: InputSavedStarGift) {
     this.rootScope.dispatchEvent('star_gift_update', {input: gift, converted: true});
     await this.apiManager.invokeApiSingle('payments.convertStarGift', {
       stargift: gift
     });
   }
 
-  async getPremiumGiftOptions(): Promise<MyPremiumGiftOption[]> {
+  public async getPremiumGiftOptions(): Promise<MyPremiumGiftOption[]> {
     const res = await this.apiManager.invokeApiCacheable('payments.getPremiumGiftCodeOptions');
     return mapPremiumOptions(res);
   }
 
-  async getUpgradePreview(giftId: Long): Promise<StarGiftUpgradePreview> {
+  public async getUpgradePreview(giftId: Long): Promise<StarGiftUpgradePreview> {
     const res = await this.apiManager.invokeApiSingle('payments.getStarGiftUpgradePreview', {
       gift_id: giftId
     });
@@ -306,7 +307,7 @@ export default class AppGiftsManager extends AppManager {
     };
   }
 
-  async getGiftBySlug(slug: string) {
+  public async getGiftBySlug(slug: string) {
     const result = await this.apiManager.invokeApiSingle('payments.getUniqueStarGift', {slug});
 
     this.appUsersManager.saveApiUsers(result.users);
@@ -314,7 +315,7 @@ export default class AppGiftsManager extends AppManager {
     return this.wrapGift(result.gift);
   }
 
-  async togglePinnedGift(gift: InputSavedStarGift) {
+  public async togglePinnedGift(gift: InputSavedStarGift) {
     await this.apiManager.invokeApiSingle('payments.toggleStarGiftsPinnedToTop', {
       peer: {_:'inputPeerSelf'},
       stargift: [gift]
@@ -322,7 +323,7 @@ export default class AppGiftsManager extends AppManager {
     this.rootScope.dispatchEvent('star_gift_update', {input: gift, togglePinned: true});
   }
 
-  upgradeStarGift(input: InputSavedStarGift, keepDetails: boolean) {
+  public upgradeStarGift(input: InputSavedStarGift, keepDetails: boolean) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'payments.upgradeStarGift',
       params: {
@@ -334,7 +335,7 @@ export default class AppGiftsManager extends AppManager {
     });
   }
 
-  transferStarGift(input: InputSavedStarGift, toId: PeerId) {
+  public transferStarGift(input: InputSavedStarGift, toId: PeerId) {
     return this.apiManager.invokeApiSingle('payments.transferStarGift', {
       stargift: input,
       to_id: this.appPeersManager.getInputPeerById(toId)

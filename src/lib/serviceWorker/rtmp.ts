@@ -1,9 +1,9 @@
 import type {OpusDecodedAudio} from '../../vendor/opus';
 import type {GroupCallRtmpState} from '../appManagers/appGroupCallsManager';
+import type {VideoStreamInfo} from '../calls/videoStreamInfo';
 import {InputGroupCall} from '../../layer';
 import {DcId} from '../../types';
 import {RTMP_UNIFIED_CHANNEL_ID, RTMP_UNIFIED_QUALITY} from '../calls/constants';
-import {parseVideoStreamInfo} from '../calls/videoStreamInfo';
 import {Fmp4InitChunkInfo, generateFmp4Init, generateFmp4Segment} from '../rtmp/fmp4';
 import ISOBoxer from '../rtmp/isoboxer';
 import {serviceMessagePort, log, invokeVoidAll} from './index.service';
@@ -154,7 +154,7 @@ class RtmpStream {
     this._lastRequestedTime = time;
     log(`starting fetch time=${time}`);
     const now = Date.now();
-    const chunk = await serviceMessagePort.invoke('requestRtmpPart', {
+    const info = await serviceMessagePort.invoke('requestRtmpPart', {
       dcId: this._dcId,
       accountNumber: this.accountNumber,
       request: {
@@ -165,27 +165,22 @@ class RtmpStream {
         video_channel: RTMP_UNIFIED_CHANNEL_ID,
         video_quality: RTMP_UNIFIED_QUALITY
       }
-    });
+    }) as VideoStreamInfo;
     const rtt = Date.now() - now;
     this.updateRtt(rtt);
     log(`ended fetch time=${time}, rtt=${rtt}`);
 
-    if(chunk._ !== 'upload.file') {
-      throw new Error('Invalid file');
-    }
-
     // empty chunk (e.g. stream has just started)
-    if(!chunk.bytes.length) {
+    if(!info) {
       log.warn('no bytes');
       return;
     }
 
-    const info = parseVideoStreamInfo(chunk.bytes);
     if(info.container !== 'mp4') {
       throw new Error('Invalid container');
     }
 
-    const iso = ISOBoxer.parseBuffer(chunk.bytes.slice(info.contentOffset).buffer);
+    const iso = ISOBoxer.parseBuffer(info.bytes.slice(info.contentOffset).buffer);
     return iso;
   }
 
