@@ -1,12 +1,17 @@
-import {createSignal, Index, onCleanup, onMount, Component, createSelector, createMemo, createRenderEffect, For, Show} from 'solid-js';
+import {createSignal, Index, onCleanup, onMount, Component, createSelector, createMemo, createRenderEffect, For, Show, Accessor, createEffect, on} from 'solid-js';
 import {} from 'solid-js/store';
 import {render, style} from 'solid-js/web';
 
+import classNames from '../../../helpers/string/classNames';
+import {MOUNT_CLASS_TO} from '../../../config/debug';
+
 import {observeResize} from '../../resizeObserver';
+import Scrollable from '../../scrollable2';
+
+import createAnimatedValue from './createAnimatedValue';
 
 import styles from './some-styles.module.scss';
-import classNames from '../../../helpers/string/classNames';
-import Scrollable from '../../scrollable2';
+
 
 const emptyArrayOf = (count: number) => new Array(count).fill(null);
 
@@ -55,8 +60,10 @@ const VerticalVirtualList: Component<{
   const Item: Component<{idx: number, item: any}> = (itemProps) => {
     const element = props.renderItem(itemProps.item);
 
+    const animatedTop = createAnimatedValue(() => itemProps.idx * props.itemHeight, 120);
+
     createRenderEffect(() => {
-      element.style.setProperty('top', itemProps.idx * props.itemHeight + 'px');
+      element.style.setProperty('top', animatedTop() + 'px');
     });
 
     return element;
@@ -82,17 +89,51 @@ const VerticalVirtualList: Component<{
 export default VerticalVirtualList;
 
 export function Sample() {
-  const items = new Array(10000).fill(null).map((_, idx) => ({
+  const [items, setItems] = createSignal(new Array(10000).fill(null).map((_, idx) => ({
     name: `Row ${idx + 1}`,
     even: !!(idx & 1)
-  }));
+  })));
+
+  function swap(i1: number, i2: number) {
+    const cpy = [...items()];
+    const tmp = cpy[i1];
+    cpy[i1] = cpy[i2];
+    cpy[i2] = tmp;
+
+    setItems(cpy);
+  }
+
+  function deleteItem(i1: number) {
+    const cpy = [...items()];
+    cpy.splice(i1, 1);
+    setItems(cpy);
+  }
+
+  function moveItem(i1: number, i2: number) {
+    const cpy = [...items()];
+    const item = cpy.splice(i1, 1)[0];
+
+    cpy.splice(/* i1 < i2 ? i2 - 1 :  */i2, 0, item);
+    setItems(cpy);
+  }
+
+  function addItem(i1: number, item: {name: string, even: boolean}) {
+    const cpy = [...items()];
+    cpy.splice(i1, 0, item);
+    setItems(cpy);
+  }
+
+  MOUNT_CLASS_TO.swapItems = swap
+  MOUNT_CLASS_TO.deleteItem = deleteItem
+  MOUNT_CLASS_TO.moveItem = moveItem
+  MOUNT_CLASS_TO.addItem = addItem
 
   return (
     <div class={styles.Popup}>
       <VerticalVirtualList
-        list={items}
+        list={items()}
         itemHeight={72}
-        approximateInitialHostHeight={1200}
+        approximateInitialHostHeight={window.innerHeight}
         renderItem={(item: any) => <div class={classNames(styles.Item, !item.even && styles.ItemOdd)}>{item.name}</div> as HTMLElement}
         thresholdPadding={72 * 3}
       />
