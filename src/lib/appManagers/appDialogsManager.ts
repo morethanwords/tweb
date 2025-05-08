@@ -2359,7 +2359,7 @@ export class AppDialogsManager {
     }
 
     this.doNotRenderChatList = true;
-    const loadDialogsPromise = this.xd.onChatsScroll();
+    // const loadDialogsPromise = this.xd.onChatsScroll();
     const m = middlewarePromise(middleware);
     try {
       // await m(loadDialogsPromise);

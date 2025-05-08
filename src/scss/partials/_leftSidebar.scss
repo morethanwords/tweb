@@ -42,6 +42,11 @@
       #chatlist-container .chatlist {
         padding: 0;
       }
+
+      #chatlist-container .virtual-chatlist {
+        margin: 0 !important;
+      }
+
       #chatlist-container .chatlist-chat {
         padding-inline-end: 0;
         border-radius: 0;
