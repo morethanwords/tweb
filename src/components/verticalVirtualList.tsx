@@ -9,6 +9,7 @@ export type VerticalVirtualListItemProps<T = any> = {
   item: T;
   top: number;
   idx: number;
+  animating: boolean;
 };
 
 const VerticalVirtualList: Component<{
@@ -64,6 +65,7 @@ const VerticalVirtualList: Component<{
         idx={itemProps.idx}
         item={itemProps.item}
         top={animatedTop()}
+        animating={animatedTop.animating()}
       />
     );
   };
