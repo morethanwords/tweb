@@ -8,7 +8,7 @@ import {getMiddleware, Middleware} from '../../../helpers/middleware';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import pause from '../../../helpers/schedulers/pause';
 
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, MUTE_UNTIL, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
 import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
@@ -25,6 +25,8 @@ import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} 
 import type {FolderItemPayload} from './types';
 import FolderItem from './folderItem';
 import {Sample} from './vertical-virtual-list';
+import {MOUNT_CLASS_TO} from '../../../config/debug';
+import {withCurrentOwner} from '../../mediaEditor/utils';
 
 function renderVirtualListSample() {
   const element = document.createElement('div');
@@ -34,6 +36,24 @@ function renderVirtualListSample() {
   render(() => (
     <Sample />
   ), element);
+}
+
+async function crazyScript() {
+  const {
+    rootScope
+  } = useHotReloadGuard();
+
+  const recommendations = await rootScope.managers.appChatsManager.getGenericChannelRecommendations();
+
+  if(!recommendations.chats.length) return;
+
+  for(let i = 0; i < 10 && i < recommendations.chats.length; i++) {
+    const peerId = recommendations.chats[i]?.id;
+    await rootScope.managers.appChatsManager.joinChannel(peerId.toChatId())
+    await pause(3000);
+    await rootScope.managers.appMessagesManager.mutePeer({peerId: peerId.toPeerId(true), muteUntil: MUTE_UNTIL});
+    await pause(12000);
+  }
 }
 
 export function FoldersSidebarContent(props: {
@@ -54,7 +74,8 @@ export function FoldersSidebarContent(props: {
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
   const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
 
-  renderVirtualListSample();
+  // MOUNT_CLASS_TO.crazyScript = withCurrentOwner(crazyScript)
+  // renderVirtualListSample();
 
   const showAddFolders = () => canShowAddFolders() &&
     selectedFolderId() &&

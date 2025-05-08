@@ -36,3 +36,24 @@
     background-color: rgb(228, 240, 218);
   }
 }
+
+.ChatlistItem {
+  position: absolute;
+  width: 100%;
+}
+
+.LoadingItem {
+  position: absolute;
+  background: teal;
+  height: 72px;
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-weight: bold;
+  font-size: 1.75rem;
+
+  color: white;
+}

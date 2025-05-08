@@ -1761,7 +1761,8 @@ export default class AppSearchSuper {
     xd.sortedList = new SortedDialogList({
       managers: this.managers,
       log: this.log,
-      list,
+      requestItemForIdx: xd.requestItemForIdx,
+      scrollable: this.scrollable,
       indexKey: 'index_0',
       virtualFilterId: rootScope.myId
     });
@@ -1782,7 +1783,7 @@ export default class AppSearchSuper {
     mediaTab.contentTab.append(list);
     this.afterPerforming(1, mediaTab.contentTab);
 
-    this._loadSavedDialogs = xd.onChatsScroll.bind(xd);
+    this._loadSavedDialogs = () => Promise.resolve(xd.onChatsScroll());
     middleware.onClean(() => {
       xd.destroy();
       this._loadSavedDialogs = undefined;

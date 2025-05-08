@@ -498,6 +498,13 @@ ul.chatlist {
   }
 }
 
+.virtual-chatlist {
+  position: relative;
+  margin: 0 0.5rem !important;
+  padding: 0 !important;
+  width: auto !important;
+}
+
 .dialog {
   &-title {
     &-details {

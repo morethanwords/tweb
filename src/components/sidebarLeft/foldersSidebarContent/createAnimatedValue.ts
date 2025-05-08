@@ -1,4 +1,3 @@
-
 import {createSignal, onCleanup, Accessor, createEffect, on} from 'solid-js';
 
 import {animate} from '../../../helpers/animation';
