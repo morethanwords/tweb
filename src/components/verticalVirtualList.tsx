@@ -1,6 +1,7 @@
 import {createSignal, onCleanup, onMount, Component, createSelector, createMemo, For, Show, Ref} from 'solid-js';
 
 import createAnimatedValue from '../helpers/solid/createAnimatedValue';
+import ListenerSetter from '../helpers/listenerSetter';
 
 import {observeResize} from './resizeObserver';
 
@@ -36,11 +37,14 @@ const VerticalVirtualList: Component<{
       setHostHeight(entry.contentRect.height);
     });
 
-    props.scrollableHost.addEventListener('scroll', () => {
+    const listenerSetter = new ListenerSetter();
+
+    listenerSetter.add(props.scrollableHost)('scroll', () => {
       setScrollAmount(props.scrollableHost.scrollTop);
     });
 
     onCleanup(() => {
+      listenerSetter.removeAll();
       unobserve();
     });
   });
@@ -71,9 +75,13 @@ const VerticalVirtualList: Component<{
   };
 
   return (
-    <ul ref={props.ref} class={props.class} style={{
-      height: totalCount() * props.itemHeight + 'px'
-    }}>
+    <ul
+      ref={props.ref}
+      class={props.class}
+      style={{
+        height: totalCount() * props.itemHeight + 'px'
+      }}
+    >
       <For each={props.list}>
         {(item, idx) => (
           <Show when={isVisible(idx())}>

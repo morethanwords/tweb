@@ -67,7 +67,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const updateItem = (id: any, index: number) => {
     setItems(prev => {
       const foundItem = prev.find(item => item.id === id);
-      if(foundItem) foundItem.index = index;
+      if(foundItem) foundItem.index = index; // we're not spreading here as we want to keep the same object reference for the animation to trigger
       return [...prev];
     });
   };
@@ -93,7 +93,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const InnerItem = (props: {value: T, top: number, animating: boolean}) => {
     const element = createMemo(() => {
       const element = getItemElement(props.value);
-      element?.classList.add(styles.ChatlistItem);
+      element?.classList.add(styles.Item);
       return element;
     });
 
