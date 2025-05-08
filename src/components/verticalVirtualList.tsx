@@ -22,6 +22,8 @@ const VerticalVirtualList: Component<{
 
   itemHeight: number;
   thresholdPadding: number;
+
+  forceHostHeight?: boolean;
 }> = (props) => {
   const totalCount = createMemo(() => props.list.length);
 
@@ -65,12 +67,15 @@ const VerticalVirtualList: Component<{
     );
   };
 
+  const height = createMemo(() => props.forceHostHeight ? hostSize.height : totalCount() * props.itemHeight);
+
   return (
     <ul
       ref={props.ref}
       class={props.class}
       style={{
-        height: totalCount() * props.itemHeight + 'px'
+        height: height() + 'px',
+        overflow: props.forceHostHeight ? 'hidden' : undefined
       }}
     >
       <For each={props.list}>

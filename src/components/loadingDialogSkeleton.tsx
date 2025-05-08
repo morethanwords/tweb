@@ -1,5 +1,5 @@
 
-import {Component, JSX} from 'solid-js';
+import {Component, createSignal, JSX, onCleanup} from 'solid-js';
 
 import styles from './loadingDialogSkeleton.module.scss';
 
@@ -20,13 +20,25 @@ const LoadingDialogSkeleton: Component<{
   size: LoadingDialogSkeletonSize;
   seed: number;
 }> = (props) => {
+  const [animating, setAnimating] = createSignal(false);
+
+  // Add the animation after timeout to save some performance while quickly scrolling
+  const timeout = self.setTimeout(() => {
+    setAnimating(true);
+  }, 1500);
+
+  onCleanup(() => {
+    self.clearTimeout(timeout);
+  });
+
   return (
     <div
       class={`${styles.Container} loading-dialog-skeleton`}
       classList={{
         [props.class]: !!props.class,
         [styles['size' + props.size]]: true,
-        [styles.noAvatar]: props.noAvatar
+        [styles.noAvatar]: props.noAvatar,
+        [styles.shimmer]: animating()
       }}
       style={props.style}
     >

@@ -56,7 +56,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const itemsMap = createMemo(() => new Map(items().map(item => [item.id, item.value])));
 
   const fullItems = createMemo(() => {
-    if(!wasAtLeastOnceFetched()) return new Array(scrollableSize.height / itemSize | 0).fill(null);
+    if(!wasAtLeastOnceFetched()) return new Array((scrollableSize.height + itemSize - 1) / itemSize | 0).fill(null);
 
     const realItems = sortedItems();
 
@@ -178,6 +178,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     ref={list}
     itemHeight={itemSize}
     list={fullItems()}
+    forceHostHeight={!wasAtLeastOnceFetched()}
     ListItem={(props: VerticalVirtualListItemProps<DeferredSortedVirtualListItem<T> | null>) => {
       const isRevealed = createMemo(() => revealIdx() > props.idx);
       const canShow = createMemo(() => props.item && isRevealed());
