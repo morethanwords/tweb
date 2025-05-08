@@ -1,6 +1,7 @@
 export type SequentialCursorFetcherResult<T> = {
   cursor: T;
   count: number;
+  totalCount?: number;
 };
 
 export class SequentialCursorFetcher<T> {
@@ -33,10 +34,14 @@ export class SequentialCursorFetcher<T> {
 
   private async fetchUntilNeededCount() {
     while(this.fetchedItemsCount < this.neededCount) {
-      const {cursor, count} = await this.fetcher(this.cursor);
+      const {cursor, count, totalCount} = await this.fetcher(this.cursor);
       if(count === 0) break;
       this.cursor = cursor;
-      this.fetchedItemsCount += count;
+
+      if(totalCount !== undefined)
+        this.fetchedItemsCount = totalCount;
+      else
+        this.fetchedItemsCount += count;
     }
   }
 }

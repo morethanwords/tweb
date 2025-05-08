@@ -1,5 +1,8 @@
-import {createSignal, createMemo, createRenderEffect, Show, createEffect, on, createRoot, batch} from 'solid-js';
+import {createSignal, createMemo, createRenderEffect, Show, createEffect, createRoot, batch, untrack} from 'solid-js';
 
+import useElementSize from '../hooks/useElementSize';
+
+import LoadingDialogSkeleton, {LoadingDialogSkeletonSize} from './loadingDialogSkeleton';
 import VerticalVirtualList, {VerticalVirtualListItemProps} from './verticalVirtualList';
 
 import styles from './deferredSortedVirtualList.module.scss';
@@ -10,7 +13,9 @@ type CreateDeferredSortedVirtualListArgs<T> = {
   getItemElement: (item: T) => HTMLElement;
   requestItemForIdx: (idx: number) => void;
   sortWith: (a: number, b: number) => number;
-  onLengthChange?: () => void;
+  itemSize: LoadingDialogSkeletonSize;
+  noAvatar?: boolean;
+  onListLengthChange?: () => void;
 };
 
 export type DeferredSortedVirtualListItem<T> = {
@@ -25,18 +30,23 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     getItemElement,
     requestItemForIdx,
     sortWith,
-    onLengthChange
+    itemSize,
+    onListLengthChange,
+    noAvatar
   } = args;
 
   const [items, setItems] = createSignal<DeferredSortedVirtualListItem<T>[]>([]);
-
   const [totalCount, setTotalCount] = createSignal(0);
+  const [wasAtLeastOnceFetched, setWasAtLeastOnceFetched] = createSignal(false);
 
+  const scrollableSize = useElementSize(() => scrollable);
 
   const sortedItems = createMemo(() => items().slice().sort((a, b) => sortWith(a.index, b.index)));
   const itemsMap = createMemo(() => new Map(items().map(item => [item.id, item.value])));
 
   const fullItems = createMemo(() => {
+    if(!wasAtLeastOnceFetched()) return new Array(scrollableSize.height / itemSize | 0).fill(null);
+
     const realItems = sortedItems();
 
     return new Array(Math.max(totalCount(), realItems.length))
@@ -46,11 +56,13 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
   const itemsLength = createMemo(() => items().length);
 
+  createEffect(() => {
+    if(!wasAtLeastOnceFetched()) return;
 
-  createEffect(on(itemsLength, () => {
-    onLengthChange?.();
-  }, {defer: false}));
-
+    itemsLength();
+    untrack(() => onListLengthChange?.());
+    console.log('[my-debug] solid-root on length change');
+  });
 
   const addItems = (newItems: DeferredSortedVirtualListItem<T>[]) => {
     const ids = new Set(newItems.map(item => item.id));
@@ -84,6 +96,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     batch(() => {
       setItems([]);
       setTotalCount(0);
+      setWasAtLeastOnceFetched(false);
     });
   };
 
@@ -113,15 +126,20 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
   <VerticalVirtualList
     ref={list}
-    approximateInitialHostHeight={window.innerHeight}
-    itemHeight={72}
+    itemHeight={itemSize}
     list={fullItems()}
     ListItem={(props: VerticalVirtualListItemProps<DeferredSortedVirtualListItem<T> | null>) => {
       return (
         <Show when={props.item} fallback={
           <>
             {void requestItemForIdx(props.idx)}
-            <div class={styles.LoadingItem} style={{top: props.top + 'px'}}>Loading...</div>
+            <LoadingDialogSkeleton
+              class={styles.Item}
+              style={{top: props.top + 'px'}}
+              seed={props.idx}
+              size={itemSize}
+              noAvatar={noAvatar}
+            />
           </>
         }>
           <InnerItem value={props.item?.value} top={props.top} animating={props.animating} />
@@ -139,9 +157,11 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
     setTotalCount,
 
+    itemsLength,
     addItems,
     updateItem,
     removeItem,
+    setWasAtLeastOnceFetched,
 
     clear,
     has,

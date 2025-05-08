@@ -2,8 +2,7 @@ import {createSignal, onCleanup, onMount, Component, createSelector, createMemo,
 
 import createAnimatedValue from '../helpers/solid/createAnimatedValue';
 import ListenerSetter from '../helpers/listenerSetter';
-
-import {observeResize} from './resizeObserver';
+import useElementSize from '../hooks/useElementSize';
 
 
 export type VerticalVirtualListItemProps<T = any> = {
@@ -22,21 +21,14 @@ const VerticalVirtualList: Component<{
   scrollableHost: HTMLElement;
 
   itemHeight: number;
-  approximateInitialHostHeight: number;
   thresholdPadding: number;
 }> = (props) => {
   const totalCount = createMemo(() => props.list.length);
 
   const [scrollAmount, setScrollAmount] = createSignal(0);
-  const [hostHeight, setHostHeight] = createSignal(props.approximateInitialHostHeight);
+  const hostSize = useElementSize(() => props.scrollableHost);
 
   onMount(() => {
-    setHostHeight(props.scrollableHost.getBoundingClientRect().height);
-
-    const unobserve = observeResize(props.scrollableHost, (entry) => {
-      setHostHeight(entry.contentRect.height);
-    });
-
     const listenerSetter = new ListenerSetter();
 
     listenerSetter.add(props.scrollableHost)('scroll', () => {
@@ -45,12 +37,11 @@ const VerticalVirtualList: Component<{
 
     onCleanup(() => {
       listenerSetter.removeAll();
-      unobserve();
     });
   });
 
   const isVisible = createSelector(
-    () => [scrollAmount(), hostHeight(), props.itemHeight, props.thresholdPadding] as const,
+    () => [scrollAmount(), hostSize.height, props.itemHeight, props.thresholdPadding] as const,
     (
       idx: number,
       [scrollAmount, hostHeight, itemHeight, padding]

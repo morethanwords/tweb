@@ -1,0 +1,74 @@
+@mixin common($is-bar: true) {
+  background-color: var(--background-color);
+  border-radius: 1000px;
+
+  @if ($is-bar) {
+    height: 10px;
+    width: var(--width);
+  }
+}
+
+.Container {
+  display: flex;
+  align-items: center;
+
+  --background-color: var(--background-color-true);
+
+  padding: 16px;
+  padding-left: 9px;
+
+  &.size72 {
+    height: 72px;
+
+    .Avatar {
+      width: 54px;
+      height: 54px;
+    }
+  }
+
+  &.size64 {
+    height: 64px;
+
+    .Avatar {
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  &.noAvatar {
+    .Avatar {
+      display: none;
+    }
+  }
+}
+
+.Avatar {
+  @include common(false);
+  margin-right: 9px;
+}
+
+.Content {
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 18px;
+}
+
+.Title {
+  display: flex;
+  justify-content: space-between;
+
+  &Left {
+    @include common;
+  }
+
+  &Right {
+    @include common;
+  }
+}
+
+.Subtitle {
+  @include common;
+}

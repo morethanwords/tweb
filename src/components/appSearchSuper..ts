@@ -5,7 +5,7 @@
  */
 
 import type {AppMessagesManager, MyInputMessagesFilter, MyMessage} from '../lib/appManagers/appMessagesManager';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, Some4, SortedDialogList} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, Some4} from '../lib/appManagers/appDialogsManager';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
 import {SearchGroup, SearchGroupType} from './appSearch';
@@ -95,6 +95,7 @@ import createElementFromMarkup from '../helpers/createElementFromMarkup';
 import numberThousandSplitter from '../helpers/number/numberThousandSplitter';
 import {StarGiftsProfileTab} from './sidebarRight/tabs/stargifts';
 import {getFirstChild, resolveFirst} from '@solid-primitives/refs';
+import SortedDialogList from './sortedDialogList';
 
 // const testScroll = false;
 
@@ -1752,9 +1753,11 @@ export default class AppSearchSuper {
     const xd = new Some4();
     xd.scrollable = this.scrollable;
     xd.sortedList = new SortedDialogList({
+      appDialogsManager,
       managers: this.managers,
       log: this.log,
       requestItemForIdx: xd.requestItemForIdx,
+      itemSize: 72,
       scrollable: this.scrollable,
       indexKey: 'index_0',
       virtualFilterId: rootScope.myId
