@@ -121,7 +121,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
       setWasAtLeastOnceFetched(false);
       setRevealIdx(Infinity);
     });
-    onListLengthChange?.();
+    // onListLengthChange?.();
   };
 
 

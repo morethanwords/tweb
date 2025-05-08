@@ -69,7 +69,7 @@ export default class AppArchivedTab extends SliderSuperTab {
   // вообще, так делать нельзя, но нет времени чтобы переделать главный чатлист на слайд...
   onOpenAfterTimeout() {
     this.renderStories();
-    appDialogsManager.xds[this.wasFilterId].clear();
+    // appDialogsManager.xds[this.wasFilterId].clear(); // hz why this was needed, cuz this can trigger the loading placeholder + animation again for the main chatlist
   }
 
   onClose() {
@@ -80,7 +80,8 @@ export default class AppArchivedTab extends SliderSuperTab {
   onCloseAfterTimeout() {
     this.disposeStories?.();
     this.disposeStories = undefined;
-    appDialogsManager.xds[AppArchivedTab.filterId].clear();
+    appDialogsManager.xds[AppArchivedTab.filterId].destroy();
+    appDialogsManager.xds[AppArchivedTab.filterId] = undefined;
     return super.onCloseAfterTimeout();
   }
 }
