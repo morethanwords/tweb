@@ -15,3 +15,6 @@ stats.html
 ssh.json
 archive.zip
 .idea
+
+# Throw files you don't need in this folder
+ignore
