@@ -1726,7 +1726,8 @@ export class AppDialogsManager {
 
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
-    this.onListLengthChange = debounce(this._onListLengthChange, 100, false, true);
+    // this.onListLengthChange = debounce(this._onListLengthChange, 100, false, true);
+    this.onListLengthChange = () => void this._onListLengthChange();
 
     const bottomPart = this.bottomPart = document.createElement('div');
     bottomPart.classList.add('connection-status-bottom');
@@ -2632,19 +2633,21 @@ export class AppDialogsManager {
 
     if(this.filterId !== FOLDER_ID_ALL) return;
 
+    // return;
     const chatList = this.chatList;
-    const count = chatList.childElementCount;
+    const count = this.xd?.sortedList.itemsLength() || 0;
 
     const parts = chatList.parentElement.parentElement;
     const bottom = chatList.parentElement.nextElementSibling as HTMLElement;
     const hasContacts = !!bottom.childElementCount;
+
     if(count >= 10) {
       if(hasContacts) {
         this.removeContactsPlaceholder();
       }
 
       return;
-    } else if(hasContacts || !this.xd.scrollable.loadedAll.bottom) return;
+    } else if(hasContacts) return;
 
     parts.classList.add('with-contacts');
 
