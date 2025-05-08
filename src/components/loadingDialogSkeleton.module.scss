@@ -44,7 +44,8 @@
 
 .Avatar {
   @include common(false);
-  margin-right: 9px;
+  margin-right: 14px;
+  flex-shrink: 0;
 }
 
 .Content {

@@ -22,7 +22,7 @@ const LoadingDialogSkeleton: Component<{
 }> = (props) => {
   return (
     <div
-      class={styles.Container}
+      class={`${styles.Container} loading-dialog-skeleton`}
       classList={{
         [props.class]: !!props.class,
         [styles['size' + props.size]]: true,
@@ -33,10 +33,10 @@ const LoadingDialogSkeleton: Component<{
       <div class={styles.Avatar} />
       <div class={styles.Content}>
         <div class={styles.Title}>
-          <div class={styles.TitleLeft} style={{'--width': (pseudoRandomRange(props.seed, 100, 160) | 0) + 'px'}} />
+          <div class={styles.TitleLeft} style={{'--width': (pseudoRandomRange(props.seed, 100, 120) | 0) + 'px'}} />
           <div class={styles.TitleRight} style={{'--width': (pseudoRandomRange(props.seed, 20, 60) | 0) + 'px'}} />
         </div>
-        <div class={styles.Subtitle} style={{'--width': (pseudoRandomRange(props.seed, 60, 240) | 0) + 'px'}} />
+        <div class={styles.Subtitle} style={{'--width': (pseudoRandomRange(props.seed, 60, 200) | 0) + 'px'}} />
       </div>
     </div>
   );

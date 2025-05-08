@@ -52,7 +52,8 @@ export default class SortedDialogList {
       requestItemForIdx: options.requestItemForIdx,
       sortWith: (a, b) => b - a,
       itemSize: options.itemSize,
-      noAvatar: options.noAvatar
+      noAvatar: options.noAvatar,
+      onListLengthChange: options.onListLengthChange
     });
 
     this.list = this.virtualList.list;
