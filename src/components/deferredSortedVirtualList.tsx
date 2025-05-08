@@ -64,14 +64,12 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     setItems(prev => prev.filter(item => id !== item.id));
   };
 
-  const updateItem = (id: any, index: number, value?: T) => {
-    setItems(prev =>
-      prev.map(
-        item => item.id === id ?
-          {id, index, value: value || item.value} :
-          item
-      )
-    );
+  const updateItem = (id: any, index: number) => {
+    setItems(prev => {
+      const foundItem = prev.find(item => item.id === id);
+      if(foundItem) foundItem.index = index;
+      return [...prev];
+    });
   };
 
   const has = (id: any) => {

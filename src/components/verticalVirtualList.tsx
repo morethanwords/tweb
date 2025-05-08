@@ -56,6 +56,18 @@ const VerticalVirtualList: Component<{
   );
 
 
+  const Item: Component<{idx: number, item: any}> = (itemProps) => {
+    const animatedTop = createAnimatedValue(() => itemProps.idx * props.itemHeight, 120);
+
+    return (
+      <props.ListItem
+        idx={itemProps.idx}
+        item={itemProps.item}
+        top={animatedTop()}
+      />
+    );
+  };
+
   return (
     <ul ref={props.ref} class={props.class} style={{
       height: totalCount() * props.itemHeight + 'px'
@@ -63,11 +75,7 @@ const VerticalVirtualList: Component<{
       <For each={props.list}>
         {(item, idx) => (
           <Show when={isVisible(idx())}>
-            <props.ListItem
-              idx={idx()}
-              item={item}
-              top={createAnimatedValue(() => idx() * props.itemHeight, 120)()}
-            />
+            <Item idx={idx()} item={item} />
           </Show>
         )}
       </For>
