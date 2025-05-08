@@ -90,12 +90,21 @@ export default VerticalVirtualList;
 
 export function Sample() {
   const [items, setItems] = createSignal(new Array(10000).fill(null).map((_, idx) => ({
-    name: `Row ${idx + 1}`,
+    id: idx + 1,
     even: !!(idx & 1)
   })));
 
+  const f = (i: number) => {
+    i = items().findIndex(({id}) => id === i);
+    if(i === -1) throw 'WTF?'
+    return i;
+  }
+
   function swap(i1: number, i2: number) {
     const cpy = [...items()];
+    i1 = f(i1);
+    i2 = f(i2);
+
     const tmp = cpy[i1];
     cpy[i1] = cpy[i2];
     cpy[i2] = tmp;
@@ -105,20 +114,24 @@ export function Sample() {
 
   function deleteItem(i1: number) {
     const cpy = [...items()];
+    i1 = f(i1);
     cpy.splice(i1, 1);
     setItems(cpy);
   }
 
   function moveItem(i1: number, i2: number) {
     const cpy = [...items()];
+    i1 = f(i1);
+    i2 = f(i2);
     const item = cpy.splice(i1, 1)[0];
 
     cpy.splice(/* i1 < i2 ? i2 - 1 :  */i2, 0, item);
     setItems(cpy);
   }
 
-  function addItem(i1: number, item: {name: string, even: boolean}) {
+  function addItem(i1: number, item: {id: number, even: boolean}) {
     const cpy = [...items()];
+    i1 = f(i1);
     cpy.splice(i1, 0, item);
     setItems(cpy);
   }
@@ -134,7 +147,7 @@ export function Sample() {
         list={items()}
         itemHeight={72}
         approximateInitialHostHeight={window.innerHeight}
-        renderItem={(item: any) => <div class={classNames(styles.Item, !item.even && styles.ItemOdd)}>{item.name}</div> as HTMLElement}
+        renderItem={(item: any) => <div class={classNames(styles.Item, !item.even && styles.ItemOdd)}>Row {item.id}</div> as HTMLElement}
         thresholdPadding={72 * 3}
       />
     </div>
