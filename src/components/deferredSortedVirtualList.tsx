@@ -1,4 +1,14 @@
-import {createSignal, createMemo, createRenderEffect, Show, createEffect, createRoot, batch, untrack} from 'solid-js';
+import {
+  createSignal,
+  createMemo,
+  createRenderEffect,
+  Show,
+  createEffect,
+  createRoot,
+  batch,
+  untrack,
+  onCleanup
+} from 'solid-js';
 
 import useElementSize from '../hooks/useElementSize';
 
@@ -38,6 +48,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const [items, setItems] = createSignal<DeferredSortedVirtualListItem<T>[]>([]);
   const [totalCount, setTotalCount] = createSignal(0);
   const [wasAtLeastOnceFetched, setWasAtLeastOnceFetched] = createSignal(false);
+  const [revealIdx, setRevealIdx] = createSignal(Infinity);
 
   const scrollableSize = useElementSize(() => scrollable);
 
@@ -61,7 +72,18 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
     itemsLength();
     untrack(() => onListLengthChange?.());
-    console.log('[my-debug] solid-root on length change');
+  });
+
+  createEffect(() => {
+    if(revealIdx() !== Infinity) return;
+
+    const timeout = self.setTimeout(() => {
+      setRevealIdx(items().length);
+    }, 50);
+
+    onCleanup(() => {
+      self.clearTimeout(timeout);
+    });
   });
 
   const addItems = (newItems: DeferredSortedVirtualListItem<T>[]) => {
@@ -97,7 +119,9 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
       setItems([]);
       setTotalCount(0);
       setWasAtLeastOnceFetched(false);
+      setRevealIdx(Infinity);
     });
+    onListLengthChange?.();
   };
 
 
@@ -124,13 +148,54 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     return <>{element()}</>;
   };
 
+  const [queuedToBeRevealed, setQueuedToBeRevealed] = createSignal<number[]>([]);
+
+  const minQueuedToBeRevealed = createMemo(() =>
+    !queuedToBeRevealed().length ?
+      null :
+      Math.min(...queuedToBeRevealed())
+  );
+
+
+  createEffect(() => {
+    const mn = minQueuedToBeRevealed();
+
+    if(mn === null) return;
+
+    const timeout = self.setTimeout(() => {
+      batch(() => {
+        setRevealIdx(prev => Math.max(mn + 1, prev));
+        setQueuedToBeRevealed(prev => prev.filter(n => revealIdx() <= n))
+      });
+    }, 1000 / 60 / 2);
+
+    onCleanup(() => {
+      self.clearTimeout(timeout);
+    });
+  });
+
   <VerticalVirtualList
     ref={list}
     itemHeight={itemSize}
     list={fullItems()}
     ListItem={(props: VerticalVirtualListItemProps<DeferredSortedVirtualListItem<T> | null>) => {
+      const isRevealed = createMemo(() => revealIdx() > props.idx);
+      const canShow = createMemo(() => props.item && isRevealed());
+
+      createEffect(() => {
+        if(!props.item || isRevealed()) return;
+
+        const idx = props.idx;
+
+        setQueuedToBeRevealed(prev => [...prev, idx]);
+
+        onCleanup(() => {
+          setQueuedToBeRevealed(prev => prev.filter(n => n !== idx));
+        });
+      });
+
       return (
-        <Show when={props.item} fallback={
+        <Show when={canShow()} fallback={
           <>
             {void requestItemForIdx(props.idx)}
             <LoadingDialogSkeleton
