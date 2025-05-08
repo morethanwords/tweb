@@ -1,3 +1,8 @@
+export type SequentialCursorFetcherResult<T> = {
+  cursor: T;
+  count: number;
+};
+
 export class SequentialCursorFetcher<T> {
   private fetchedItemsCount = 0;
   private neededCount = 0;
@@ -6,7 +11,7 @@ export class SequentialCursorFetcher<T> {
 
   private isFetching = false;
 
-  constructor(private fetcher: (cursor: T | undefined) => Promise<{cursor: T, count: number}>) {}
+  constructor(private fetcher: (cursor: T | undefined) => Promise<SequentialCursorFetcherResult<T>>) {}
 
   public fetchUntil(neededCount: number) {
     this.neededCount = Math.max(this.neededCount, neededCount);
@@ -14,9 +19,16 @@ export class SequentialCursorFetcher<T> {
     if(this.isFetching) return;
 
     this.isFetching = true;
-    this.fetchUntilNeededCount().finally(() => {
+    this.fetchUntilNeededCount().catch(() => {}).finally(() => {
       this.isFetching = false;
     });
+  }
+
+  public reset() {
+    this.fetchedItemsCount = 0;
+    this.neededCount = 0;
+    this.isFetching = false;
+    this.cursor = undefined;
   }
 
   private async fetchUntilNeededCount() {
