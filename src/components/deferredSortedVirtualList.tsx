@@ -21,6 +21,7 @@ import styles from './deferredSortedVirtualList.module.scss';
 type CreateDeferredSortedVirtualListArgs<T> = {
   scrollable: HTMLElement;
   getItemElement: (item: T, id: any) => HTMLElement;
+  onItemUnmount?: (item: T) => void;
   requestItemForIdx: (idx: number) => void;
   sortWith: (a: number, b: number) => number;
   itemSize: LoadingDialogSkeletonSize;
@@ -38,6 +39,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const {
     scrollable,
     getItemElement,
+    onItemUnmount,
     requestItemForIdx,
     sortWith,
     itemSize,
@@ -131,6 +133,11 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     const element = createMemo(() => {
       const element = getItemElement(props.value, props.id);
       element?.classList.add(styles.Item);
+
+      onCleanup(() => {
+        onItemUnmount?.(props.value);
+      });
+
       return element;
     });
 

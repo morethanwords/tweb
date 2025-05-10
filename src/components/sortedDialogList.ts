@@ -1,6 +1,6 @@
 import {batch} from 'solid-js';
 
-import type {default as appDialogsManager, DialogElement} from '../lib/appManagers/appDialogsManager';
+import {default as appDialogsManager, DialogElement} from '../lib/appManagers/appDialogsManager';
 import getDialogIndexKey from '../lib/appManagers/utils/dialogs/getDialogIndexKey';
 import {AppManagers} from '../lib/appManagers/managers';
 import safeAssign from '../helpers/object/safeAssign';
@@ -23,6 +23,13 @@ export default class SortedDialogList {
   public virtualFilterId: PeerId;
 
   private virtualList: ReturnType<typeof createDeferredSortedVirtualList<DialogElement>>;
+
+  /**
+   * The custom emoji from the last message gets destroyed completely when removing the dialog
+   * element from the DOM, with no easy way of re-initializing them, so we need to forcefully
+   * re-initialize the last message
+   */
+  private unmountedDialogElements = new WeakMap<DialogElement, boolean>;
 
   constructor(options: {
     appDialogsManager: SortedDialogList['appDialogsManager'],
@@ -49,9 +56,20 @@ export default class SortedDialogList {
     this.virtualList = createDeferredSortedVirtualList({
       scrollable: options.scrollable.container,
       getItemElement: (item, key) => {
-        const {options} = this.getDialogOptions(key);
-        this.appDialogsManager.initDialog(item, options);
+        if(this.unmountedDialogElements.get(item)) {
+          const {options} = this.getDialogOptions(key);
+          this.appDialogsManager.initDialog(item, options)
+          .then(
+            () => {
+              this.unmountedDialogElements.delete(item);
+            },
+            () => {}
+          );
+        }
         return item.dom.listEl;
+      },
+      onItemUnmount: (item) => {
+        this.unmountedDialogElements.set(item, true);
       },
       requestItemForIdx: options.requestItemForIdx,
       sortWith: (a, b) => b - a,
