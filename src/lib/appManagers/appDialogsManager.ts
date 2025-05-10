@@ -3521,37 +3521,43 @@ export class AppDialogsManager {
     const ret = this.addDialogNew(options);
 
     if(ret) {
-      const {peerId} = options;
-      const getDialogPromise = this.getDialog(peerId, options.threadId);
-      const promise = getDialogPromise.then((dialog) => {
-        const promises: (Promise<any> | void)[] = [];
-        const isUser = peerId.isUser();
-        if(!isUser && isDialog(dialog)) {
-          promises.push(this.xd.processDialogForCallStatus(peerId, ret.dom));
-        }
-
-        if(peerId !== rootScope.myId && isUser) {
-          promises.push(this.managers.appUsersManager.getUserStatus(peerId.toUserId()).then((status) => {
-            if(status?._ === 'userStatusOnline') {
-              this.xd.setOnlineStatus(ret.dom.avatarEl.node, true);
-            }
-          }));
-        }
-
-        promises.push(this.setLastMessageN({
-          dialog,
-          dialogElement: ret,
-          isBatch: options.isBatch,
-          setUnread: true
-        }));
-
-        return Promise.all(promises);
-      });
-
+      const promise = this.initDialog(ret, options);
       options.loadPromises?.push(promise);
     }
 
     return ret;
+  }
+
+  public initDialog(dialogElement: DialogElement, options: Parameters<AppDialogsManager['addDialogNew']>[0] & {isBatch?: boolean}) {
+    const {peerId} = options;
+    const getDialogPromise = this.getDialog(peerId, options.threadId);
+
+    const promise = getDialogPromise.then((dialog) => {
+      const promises: (Promise<any> | void)[] = [];
+      const isUser = peerId.isUser();
+      if(!isUser && isDialog(dialog)) {
+        promises.push(this.xd.processDialogForCallStatus(peerId, dialogElement.dom));
+      }
+
+      if(peerId !== rootScope.myId && isUser) {
+        promises.push(this.managers.appUsersManager.getUserStatus(peerId.toUserId()).then((status) => {
+          if(status?._ === 'userStatusOnline') {
+            this.xd.setOnlineStatus(dialogElement.dom.avatarEl.node, true);
+          }
+        }));
+      }
+
+      promises.push(this.setLastMessageN({
+        dialog,
+        dialogElement: dialogElement,
+        isBatch: options.isBatch,
+        setUnread: true
+      }));
+
+      return Promise.all(promises);
+    });
+
+    return promise;
   }
 
   /**

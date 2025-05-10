@@ -1,4 +1,4 @@
-import {batch, createEffect, createRoot, createSignal, untrack} from 'solid-js';
+import {batch} from 'solid-js';
 
 import type {default as appDialogsManager, DialogElement} from '../lib/appManagers/appDialogsManager';
 import getDialogIndexKey from '../lib/appManagers/utils/dialogs/getDialogIndexKey';
@@ -48,7 +48,11 @@ export default class SortedDialogList {
 
     this.virtualList = createDeferredSortedVirtualList({
       scrollable: options.scrollable.container,
-      getItemElement: (item) => item.dom.listEl,
+      getItemElement: (item, key) => {
+        const {options} = this.getDialogOptions(key);
+        this.appDialogsManager.initDialog(item, options);
+        return item.dom.listEl;
+      },
       requestItemForIdx: options.requestItemForIdx,
       sortWith: (a, b) => b - a,
       itemSize: options.itemSize,
@@ -79,10 +83,10 @@ export default class SortedDialogList {
     return {id: key, index, value};
   }
 
-  public async createElementForKey(key: any) {
+  private getDialogOptions(key: any) {
     const loadPromises: Promise<any>[] = [];
 
-    const dialogElement = this.appDialogsManager.addListDialog({
+    const options: Parameters<typeof appDialogsManager['addListDialog']>[0] = {
       peerId: this.virtualFilterId ?? key,
       loadPromises,
       isBatch: true,
@@ -90,7 +94,15 @@ export default class SortedDialogList {
       isMainList: this.indexKey === 'index_0',
       controlled: true,
       wrapOptions: undefined
-    });
+    };
+
+    return {options, loadPromises};
+  }
+
+  public async createElementForKey(key: any) {
+    const {options, loadPromises} = this.getDialogOptions(key);
+
+    const dialogElement = this.appDialogsManager.addListDialog(options);
 
     await Promise.all(loadPromises);
 

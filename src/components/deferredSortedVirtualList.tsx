@@ -20,7 +20,7 @@ import styles from './deferredSortedVirtualList.module.scss';
 
 type CreateDeferredSortedVirtualListArgs<T> = {
   scrollable: HTMLElement;
-  getItemElement: (item: T) => HTMLElement;
+  getItemElement: (item: T, id: any) => HTMLElement;
   requestItemForIdx: (idx: number) => void;
   sortWith: (a: number, b: number) => number;
   itemSize: LoadingDialogSkeletonSize;
@@ -127,9 +127,9 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
   let list: HTMLUListElement;
 
-  const InnerItem = (props: {value: T, top: number, animating: boolean}) => {
+  const InnerItem = (props: {id: any, value: T, top: number, animating: boolean}) => {
     const element = createMemo(() => {
-      const element = getItemElement(props.value);
+      const element = getItemElement(props.value, props.id);
       element?.classList.add(styles.Item);
       return element;
     });
@@ -195,10 +195,16 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
         });
       });
 
+      createEffect(() => {
+        if(canShow()) return;
+
+        requestItemForIdx(props.idx);
+      });
+
       return (
-        <Show when={canShow()} fallback={
-          <>
-            {void requestItemForIdx(props.idx)}
+        <Show
+          when={canShow()}
+          fallback={
             <LoadingDialogSkeleton
               class={styles.Item}
               style={{top: props.top + 'px'}}
@@ -206,9 +212,14 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
               size={itemSize}
               noAvatar={noAvatar}
             />
-          </>
-        }>
-          <InnerItem value={props.item?.value} top={props.top} animating={props.animating} />
+          }
+        >
+          <InnerItem
+            id={props.item?.id}
+            value={props.item?.value}
+            top={props.top}
+            animating={props.animating}
+          />
         </Show>
       );
     }}
