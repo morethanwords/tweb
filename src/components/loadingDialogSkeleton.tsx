@@ -1,4 +1,3 @@
-
 import {Component, createSignal, JSX, onCleanup} from 'solid-js';
 
 import styles from './loadingDialogSkeleton.module.scss';
