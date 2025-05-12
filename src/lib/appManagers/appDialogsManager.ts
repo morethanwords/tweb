@@ -759,6 +759,9 @@ class Some<T extends AnyDialog = AnyDialog> {
       onRemove: () => {
         if(this.placeholder === placeholder) {
           this.placeholder = undefined;
+
+          // The dialogs placeholder is a little taller than the container, so we need to update the scrollbar
+          this.scrollable?.onScroll?.();
         }
       },
       blockScrollable: this.scrollable
