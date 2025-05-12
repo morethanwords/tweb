@@ -7,10 +7,10 @@ import {
   createRoot,
   batch,
   untrack,
-  onCleanup
+  onCleanup,
+  createComputed,
+  on
 } from 'solid-js';
-
-import useElementSize from '../hooks/useElementSize';
 
 import LoadingDialogSkeleton, {LoadingDialogSkeletonSize} from './loadingDialogSkeleton';
 import VerticalVirtualList, {VerticalVirtualListItemProps} from './verticalVirtualList';
@@ -52,13 +52,13 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const [wasAtLeastOnceFetched, setWasAtLeastOnceFetched] = createSignal(false);
   const [revealIdx, setRevealIdx] = createSignal(Infinity);
 
-  const scrollableSize = useElementSize(() => scrollable);
+  // const scrollableSize = useElementSize(() => scrollable);
 
   const sortedItems = createMemo(() => items().slice().sort((a, b) => sortWith(a.index, b.index)));
   const itemsMap = createMemo(() => new Map(items().map(item => [item.id, item.value])));
 
   const fullItems = createMemo(() => {
-    if(!wasAtLeastOnceFetched()) return new Array((scrollableSize.height + itemSize - 1) / itemSize | 0).fill(null);
+    // if(!wasAtLeastOnceFetched()) return new Array((scrollableSize.height + itemSize - 1) / itemSize | 0).fill(null);
 
     const realItems = sortedItems();
 
@@ -76,17 +76,11 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     untrack(() => onListLengthChange?.());
   });
 
-  createEffect(() => {
-    if(revealIdx() !== Infinity) return;
+  createComputed(on(wasAtLeastOnceFetched, () => {
+    if(!wasAtLeastOnceFetched()) return;
 
-    const timeout = self.setTimeout(() => {
-      setRevealIdx(items().length);
-    }, 50);
-
-    onCleanup(() => {
-      self.clearTimeout(timeout);
-    });
-  });
+    setRevealIdx(items().length);
+  }));
 
   const addItems = (newItems: DeferredSortedVirtualListItem<T>[]) => {
     const ids = new Set(newItems.map(item => item.id));

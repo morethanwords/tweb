@@ -777,7 +777,6 @@ class Some<T extends AnyDialog = AnyDialog> {
       this.loadDialogsDeferred.resolve.bind(this.loadDialogsDeferred),
       this.loadDialogsDeferred.reject.bind(this.loadDialogsDeferred)
     );
-    // this.createPlaceholder();
 
     return this.loadDialogsDeferred;
     /* if(testScroll) {
@@ -938,6 +937,8 @@ class Some<T extends AnyDialog = AnyDialog> {
   public async loadDialogsInner(offsetIndex: number): Promise<SequentialCursorFetcherResult<number>> {
     console.log('[my-debug] loadDialogs offsetIndex :>> ', offsetIndex);
 
+    if(!this.placeholder && !this.loadedDialogsAtLeastOnce) this.placeholder = this.createPlaceholder();
+
     const filterId = this.getFilterId();
 
     const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
@@ -965,6 +966,8 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     this.loadedDialogsAtLeastOnce = true;
     this.sortedList.addDeferredItems(items, result.count);
+
+    this.placeholder?.detach(this.sortedList.itemsLength());
 
     return {
       cursor: newOffsetIndex === Infinity ? undefined : newOffsetIndex,

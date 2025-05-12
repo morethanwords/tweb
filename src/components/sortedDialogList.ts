@@ -135,7 +135,6 @@ export default class SortedDialogList {
     });
   }
 
-
   public async add(key: any) {
     const item = await this.createItemForKey(key);
     this.virtualList.addItems([item]);
