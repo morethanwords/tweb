@@ -696,6 +696,8 @@ class Some<T extends AnyDialog = AnyDialog> {
 
   protected cursorFetcher = new SequentialCursorFetcher((cursor: number) => this.loadDialogs(cursor));
 
+  protected skipMigrated = true;
+
   public requestItemForIdx = (idx: number, itemsLength?: number) => {
     this.cursorFetcher.fetchUntil(idx + 1, itemsLength);
   }
@@ -743,11 +745,8 @@ class Some<T extends AnyDialog = AnyDialog> {
     return this.onChatsScroll('top');
   };
 
-  public onChatsScroll(side: SliceSides = 'bottom') {
+  public onChatsScroll(_: SliceSides = 'bottom') {
     this.requestItemForIdx(0);
-    // setTimeout(() => {
-    // }, 2000)
-    // return this.loadDialogs(side);
   };
 
   public createPlaceholder(): DialogsPlaceholder {
@@ -782,139 +781,6 @@ class Some<T extends AnyDialog = AnyDialog> {
     );
 
     return this.loadDialogsDeferred;
-    /* if(testScroll) {
-      return;
-    } */
-    // const log = this.log.bindPrefix('load-' + getUnsafeRandomInt(1000, 9999));
-    // log('try', side);
-
-    // if(this.loadDialogsPromise || this.loadDialogsRenderPromise/*  || 1 === 1 */) return this.loadDialogsPromise;
-    // else if(this.scrollable.loadedAll[side]) {
-    //   return Promise.resolve({
-    //     cached: true,
-    //     renderPromise: Promise.resolve()
-    //   });
-    // }
-
-    // log.warn('start', side);
-    // const middlewareError = makeError('MIDDLEWARE');
-
-    // const cachedInfoPromise = deferredPromise<boolean>();
-    // const renderPromise = new Promise<void>(async(resolve, reject) => {
-    //   const chatList = this.sortedList.list;
-
-    //   let placeholder = this.placeholder;
-    //   try {
-    //     const getConversationsResult = this.loadDialogsInner(side, offset, limit);
-    //     const a = await getConversationsResult;
-
-    //     if(
-    //       !chatList.childElementCount &&
-    //       !placeholder &&
-    //       (
-    //         (!this.loadedDialogsAtLeastOnce && this.needPlaceholderAtFirstTime) ||
-    //         !a.cached
-    //       )
-    //     ) {
-    //       if(this.loadDialogsRenderPromise !== renderPromise) {
-    //         throw middlewareError;
-    //       }
-
-    //       placeholder = this.createPlaceholder();
-
-    //       cachedInfoPromise.resolve(false);
-    //     }
-
-    //     const result = await a.result;
-    //     console.log('result.count :>> ', result.count);
-    //     // await pause(5000);
-    //     if(this.loadDialogsRenderPromise !== renderPromise) {
-    //       throw middlewareError;
-    //     }
-
-    //     cachedInfoPromise.resolve(a.cached);
-
-    //     // console.timeEnd('getDialogs time');
-
-    //     // * loaded all
-    //     // if(!result.dialogs.length || chatList.childElementCount === result.count) {
-    //     // !result.dialogs.length не подходит, так как при супердревном диалоге getConversations его не выдаст.
-    //     // if(chatList.childElementCount === result.count) {
-    //     if(side === 'bottom') {
-    //       if(result.isEnd) {
-    //         this.scrollable.loadedAll[side] = true;
-    //       }
-    //     } else if(result.isTopEnd) {
-    //       this.scrollable.loadedAll[side] = true;
-    //     }
-
-    //     const length = result.dialogs.length;
-    //     log(`will render ${length} dialogs`);
-    //     if(length) {
-    //       const dialogs = side === 'top' ? result.dialogs.slice().reverse() : result.dialogs;
-
-    //       const loadPromises = dialogs.map((dialog) => {
-    //         return this.sortedList.add(this.getDialogKey(dialog as T));
-    //       });
-
-    //       await Promise.all(loadPromises).catch()
-    //       if(this.loadDialogsRenderPromise !== renderPromise) {
-    //         throw middlewareError;
-    //       }
-    //     }
-
-    //     const offsetDialog = result.dialogs[side === 'top' ? 0 : length - 1];
-    //     if(offsetDialog) {
-    //       this.offsets[side] = getDialogIndex(offsetDialog, this.indexKey);
-    //     }
-
-    //     // don't set it before - no need to fire length change with every dialog
-    //     this.loadedDialogsAtLeastOnce = true;
-    //     appDialogsManager.onListLengthChange();
-
-    //     log('getDialogs', result, chatList.childElementCount);
-
-    //     setTimeout(() => {
-    //       this.scrollable.onScroll();
-    //     }, 0);
-
-    //     if(placeholder) {
-    //       // await pause(500);
-    //       placeholder.detach(chatList.childElementCount);
-    //     }
-    //   } catch(err) {
-    //     if((err as ApiError)?.type !== 'MIDDLEWARE') {
-    //       log.error(err);
-    //     }
-
-    //     reject(err);
-    //     cachedInfoPromise.reject(err);
-    //     return;
-    //   }
-
-    //   resolve();
-    // }).finally(() => {
-    //   if(this.loadDialogsRenderPromise === renderPromise) {
-    //     log('end');
-    //     this.loadDialogsRenderPromise = undefined;
-    //   } else {
-    //     log('has been cleared');
-    //   }
-    // });
-
-    // this.loadDialogsRenderPromise = renderPromise;
-    // const loadDialogsPromise = this.loadDialogsPromise = cachedInfoPromise.then((cached) => {
-    //   return {
-    //     cached,
-    //     renderPromise
-    //   };
-    // }).finally(() => {
-    //   if(this.loadDialogsPromise === loadDialogsPromise) {
-    //     this.loadDialogsPromise = undefined;
-    //   }
-    // });
-
-    // return loadDialogsPromise;
   }
 
   public getDialogKey(dialog: T): DialogKey {
@@ -946,9 +812,9 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
       offsetIndex,
-      limit: 20, // 20,
+      limit: 20,
       filterId,
-      skipMigrated: true // TODO: CAN_HIDE_TOPIC
+      skipMigrated: this.skipMigrated
     });
 
     const result = await ackedResult.result;
@@ -1059,6 +925,8 @@ class Some<T extends AnyDialog = AnyDialog> {
 class Some3 extends Some<ForumTopic> {
   constructor(public peerId: PeerId, public paddingX: number) {
     super();
+
+    this.skipMigrated = !!CAN_HIDE_TOPIC;
 
     this.placeholderOptions = {
       avatarSize: 0,
@@ -1173,38 +1041,9 @@ class Some3 extends Some<ForumTopic> {
   protected getFilterId() {
     return this.peerId;
   }
-
-  // public async loadDialogsInner(side: SliceSides, offset: number, limit: number) {
-  //   super.loadDialogsInner(offset, limit);
-  //   const {indexKey} = this;
-  //   // let loadCount = windowSize.height / 64 * 1.25 | 0;
-  //   // let offsetIndex = 0;
-
-  //   const filterId = this.peerId;
-  //   // const {index: currentOffsetIndex} = this.getOffsetIndex(side);
-  //   // offsetIndex = currentOffsetIndex;
-  //   // if(currentOffsetIndex) {
-  //   //   if(side === 'top') {
-  //   const storage = await this.managers.dialogsStorage.getFolderDialogs(filterId, true);
-  //   const index = storage.findIndex((dialog) => getDialogIndex(dialog, indexKey) <= currentOffsetIndex);
-  //   // const needIndex = Math.max(0, index - loadCount);
-  //   //     loadCount = index - needIndex;
-  //   //     offsetIndex = getDialogIndex(storage[needIndex], indexKey) + 1;
-  //   //   } else {
-  //   //     offsetIndex = currentOffsetIndex;
-  //   //   }
-  //   // }
-
-  //   return this.managers.acknowledged.dialogsStorage.getDialogs({
-  //     offsetIndex: offset,
-  //     limit,
-  //     filterId,
-  //     skipMigrated: !!CAN_HIDE_TOPIC
-  //   });
-  // }
 }
 
-class Some2 extends Some<Dialog> {
+export class Some2 extends Some<Dialog> {
   constructor(protected filterId: number) {
     super();
 
@@ -1335,41 +1174,6 @@ class Some2 extends Some<Dialog> {
   protected getFilterId() {
     return this.filterId;
   }
-
-  // public async loadDialogsInner(side: SliceSides, offset: number, limit: number) {
-  //   const {filterId, indexKey} = this;
-  //   // let loadCount = windowSize.height / 72 * 1.25 | 0;
-  //   // let offsetIndex = 0;
-
-  //   const doNotRenderChatList = appDialogsManager.doNotRenderChatList; // cache before awaits
-
-  //   // const {index: currentOffsetIndex} = this.getOffsetIndex(side);
-  //   // if(currentOffsetIndex) {
-  //   //   if(side === 'top') {
-  //   //     const storage = await this.managers.dialogsStorage.getFolderDialogs(filterId, true);
-  //   //     const index = storage.findIndex((dialog) => getDialogIndex(dialog, indexKey) <= currentOffsetIndex);
-  //   //     const needIndex = Math.max(0, index - loadCount);
-  //   //     loadCount = index - needIndex;
-  //   //     offsetIndex = getDialogIndex(storage[needIndex], indexKey) + 1;
-  //   //   } else {
-  //   //     offsetIndex = currentOffsetIndex;
-  //   //   }
-  //   // }
-
-  //   const promise = this.managers.acknowledged.dialogsStorage.getDialogs({
-  //     offsetIndex: offset,
-  //     limit,
-  //     filterId,
-  //     skipMigrated: true
-  //   });
-
-  //   const a = await promise;
-  //   if(doNotRenderChatList) {
-  //     a.result = Promise.reject(makeError('MIDDLEWARE'));
-  //   }
-
-  //   return a;
-  // }
 
   public setOnlineStatus(element: HTMLElement, online: boolean) {
     const className = 'is-online';
@@ -1595,34 +1399,6 @@ export class Some4 extends Some<SavedDialog> {
   protected getFilterId() {
     return rootScope.myId;
   }
-
-  // public async loadDialogsInner(side: SliceSides, offset: number, limit: number) {
-  //   // const {indexKey} = this;
-  //   // let loadCount = windowSize.height / 72 * 1.25 | 0;
-  //   // let offsetIndex = 0;
-
-  //   const filterId = rootScope.myId;
-  //   // const {index: currentOffsetIndex} = this.getOffsetIndex(side);
-  //   // offsetIndex = currentOffsetIndex;
-  //   // if(currentOffsetIndex) {
-  //   //   if(side === 'top') {
-  //   //     const storage = await this.managers.dialogsStorage.getFolderDialogs(filterId);
-  //   //     const index = storage.findIndex((dialog) => getDialogIndex(dialog, indexKey) <= currentOffsetIndex);
-  //   //     const needIndex = Math.max(0, index - loadCount);
-  //   //     loadCount = index - needIndex;
-  //   //     offsetIndex = getDialogIndex(storage[needIndex], indexKey) + 1;
-  //   //   } else {
-  //   //     offsetIndex = currentOffsetIndex;
-  //   //   }
-  //   // }
-
-  //   return this.managers.acknowledged.dialogsStorage.getDialogs({
-  //     offsetIndex: offset,
-  //     limit,
-  //     filterId,
-  //     skipMigrated: true
-  //   });
-  // }
 
   public getDialogKey(dialog: SavedDialog) {
     return dialog.savedPeerId;
