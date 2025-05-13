@@ -83,6 +83,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   }));
 
   const addItems = (newItems: DeferredSortedVirtualListItem<T>[]) => {
+    if(!newItems.length) return;
     const ids = new Set(newItems.map(item => item.id));
     setItems(prev => [
       ...prev.filter(item => !ids.has(item.id)),
