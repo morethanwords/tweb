@@ -72,7 +72,7 @@ export default class SortedDialogList {
               },
               () => {}
             );
-          }, 500);
+          }, 200);
 
           onCleanup(() => {
             self.clearTimeout(timeout);
