@@ -1,4 +1,4 @@
-import {batch} from 'solid-js';
+import {batch, onCleanup} from 'solid-js';
 
 import {default as appDialogsManager, DialogElement} from '../lib/appManagers/appDialogsManager';
 import getDialogIndexKey from '../lib/appManagers/utils/dialogs/getDialogIndexKey';
@@ -58,13 +58,25 @@ export default class SortedDialogList {
       getItemElement: (item, key) => {
         if(this.unmountedDialogElements.get(item)) {
           const {options} = this.getDialogOptions(key);
-          this.appDialogsManager.initDialog(item, options)
-          .then(
-            () => {
-              this.unmountedDialogElements.delete(item);
-            },
-            () => {}
-          );
+
+          /**
+           * Re-initing the dialog is pretty expensive on performance,
+           * so we wait a little bit before it, in case the user scrolls
+           * like crazy up and down
+           */
+          const timeout = self.setTimeout(() => {
+            this.appDialogsManager.initDialog(item, options)
+            .then(
+              () => {
+                this.unmountedDialogElements.delete(item);
+              },
+              () => {}
+            );
+          }, 500);
+
+          onCleanup(() => {
+            self.clearTimeout(timeout);
+          });
         }
         return item.dom.listEl;
       },
