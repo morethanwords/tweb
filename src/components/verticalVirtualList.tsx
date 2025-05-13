@@ -164,6 +164,11 @@ function useShouldAnimate({list, scrollAmount, hostHeight, itemHeight, onScrollS
       }
     }
 
+    if(!visiblePrevAndNow.length) {
+      allChangedTheSameAmount = false;
+      prevDiff = 0;
+    }
+
     setShouldAnimate(!allChangedTheSameAmount);
 
     if(allChangedTheSameAmount) {
