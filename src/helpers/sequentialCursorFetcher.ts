@@ -14,8 +14,9 @@ export class SequentialCursorFetcher<T> {
 
   constructor(private fetcher: (cursor: T | undefined) => Promise<SequentialCursorFetcherResult<T>>) {}
 
-  public fetchUntil(neededCount: number) {
+  public fetchUntil(neededCount: number, currentCount?: number) {
     this.neededCount = Math.max(this.neededCount, neededCount);
+    if(typeof currentCount !== 'undefined') this.fetchedItemsCount = currentCount;
 
     if(this.isFetching) return;
 

@@ -40,7 +40,7 @@ export default class SortedDialogList {
     virtualFilterId?: SortedDialogList['virtualFilterId'],
 
     scrollable: Scrollable,
-    requestItemForIdx: (idx: number) => void,
+    requestItemForIdx: (idx: number, itemsLength: number) => void,
     itemSize: LoadingDialogSkeletonSize,
     noAvatar?: boolean // For the loading skeleton placeholder
   }) {

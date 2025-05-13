@@ -696,8 +696,8 @@ class Some<T extends AnyDialog = AnyDialog> {
 
   protected cursorFetcher = new SequentialCursorFetcher((cursor: number) => this.loadDialogs(cursor));
 
-  public requestItemForIdx = (idx: number) => {
-    this.cursorFetcher.fetchUntil(idx + 1);
+  public requestItemForIdx = (idx: number, itemsLength?: number) => {
+    this.cursorFetcher.fetchUntil(idx + 1, itemsLength);
   }
 
   constructor() {

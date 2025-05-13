@@ -22,7 +22,7 @@ type CreateDeferredSortedVirtualListArgs<T> = {
   scrollable: HTMLElement;
   getItemElement: (item: T, id: any) => HTMLElement;
   onItemUnmount?: (item: T) => void;
-  requestItemForIdx: (idx: number) => void;
+  requestItemForIdx: (idx: number, itemsLength: number) => void;
   sortWith: (a: number, b: number) => number;
   itemSize: LoadingDialogSkeletonSize;
   noAvatar?: boolean;
@@ -120,6 +120,14 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     // onListLengthChange?.();
   };
 
+  // createEffect(() => {
+  //   console.log('[my-debug-1] ------ LOG --------');
+  //   console.log('[my-debug-1] itemsLength()', itemsLength());
+  //   console.log('[my-debug-1] totalCount()', totalCount());
+  //   console.log('[my-debug-1] revealIdx()', revealIdx());
+  //   console.log('[my-debug-1] queuedToBeRevealed()', queuedToBeRevealed());
+  // })
+
 
   let list: HTMLUListElement;
 
@@ -199,7 +207,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
       createEffect(() => {
         if(canShow()) return;
 
-        requestItemForIdx(props.idx);
+        requestItemForIdx(props.idx, items().length);
       });
 
       return (
