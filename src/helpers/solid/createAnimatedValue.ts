@@ -5,11 +5,16 @@ import {simpleEasing} from '../../components/mediaEditor/utils';
 import {animate} from '../animation';
 
 
-export default function createAnimatedValue(value: Accessor<number>, time: number, easing = simpleEasing) {
+export default function createAnimatedValue(value: Accessor<number>, time: number, easing = simpleEasing, shouldAnimate: Accessor<boolean> = () => true) {
   const [current, setCurrent] = createSignal(value());
   const [animating, setAnimating] = createSignal(false);
 
   createEffect(on(value, () => {
+    if(!shouldAnimate()) {
+      setCurrent(value());
+      return;
+    }
+
     const startValue = current();
     const startTime = performance.now();
     setAnimating(true);
