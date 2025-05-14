@@ -1,0 +1,106 @@
+@import "../scss/variables.scss";
+@import "../scss/mixins.scss";
+
+
+@mixin common($is-bar: true) {
+  background-color: var(--background-color);
+  border-radius: 1000px;
+
+  @if ($is-bar) {
+    height: 10px;
+    width: var(--width);
+  }
+}
+
+.Container {
+  display: flex;
+  align-items: center;
+
+  --background-color: var(--background-color-true);
+
+  padding: 16px;
+  padding-left: 9px;
+
+  &.size72 {
+    height: 72px;
+
+    .Avatar {
+      width: 54px;
+      height: 54px;
+    }
+  }
+
+  &.size64 {
+    height: 64px;
+
+    .Avatar { // Those values were randomly set, adjust as needed)
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  &.noAvatar {
+    .Avatar {
+      display: none;
+    }
+  }
+
+  &.shimmer {
+    @include animation-level-global {
+      mask-image: linear-gradient(
+        to right,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(0, 0, 0, 1) 25%,
+        rgba(0, 0, 0, 1) 75%,
+        rgba(0, 0, 0, 0) 100%
+      );
+      
+      mask-size: 200% 100%;
+      
+      animation: shimmer 2.25s infinite linear;
+      
+      mask-position: 50% 0;
+    }
+  }
+}
+
+.Avatar {
+  @include common(false);
+  margin-right: 14px;
+  flex-shrink: 0;
+}
+
+.Content {
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 18px;
+}
+
+.Title {
+  display: flex;
+  justify-content: space-between;
+
+  &Left {
+    @include common;
+  }
+
+  &Right {
+    @include common;
+  }
+}
+
+.Subtitle {
+  @include common;
+}
+
+@keyframes shimmer {
+  0% {
+    mask-position: 50% 0;
+  }
+  100% {
+    mask-position: -150% 0;
+  }
+}

@@ -23,9 +23,9 @@ import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
 import LottieAnimation from './lottieAnimation';
 import InlineSelect from './inlineSelect';
 
-
 import commonStyles from './common.module.scss';
 import styles from './mainTab.module.scss';
+
 
 type AppPasscodeLockTabType = typeof AppPasscodeLockTab;
 
