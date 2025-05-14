@@ -430,7 +430,7 @@ ul.chatlist {
     &.with-contacts {
       .chatlist-top:not(.with-placeholder) {
         height: auto;
-        padding-bottom: .5rem;
+        // padding-bottom: .5rem;
       }
 
       .chatlist-top.with-placeholder {

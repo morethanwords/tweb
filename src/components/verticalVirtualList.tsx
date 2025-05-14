@@ -24,6 +24,7 @@ const VerticalVirtualList: Component<{
   thresholdPadding: number;
 
   forceHostHeight?: boolean;
+  extraPaddingBottom?: number;
 }> = (props) => {
   const totalCount = createMemo(() => props.list.length);
 
@@ -82,7 +83,9 @@ const VerticalVirtualList: Component<{
     );
   };
 
-  const height = createMemo(() => props.forceHostHeight ? hostSize.height : totalCount() * props.itemHeight);
+  const computedItemsHeight = () => totalCount() * props.itemHeight + Number(!!totalCount()) * (props.extraPaddingBottom || 0);
+
+  const height = createMemo(() => props.forceHostHeight ? hostSize.height : computedItemsHeight());
 
   return (
     <ul

@@ -235,6 +235,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     }}
     scrollableHost={scrollable}
     thresholdPadding={72 * 4}
+    extraPaddingBottom={8} // 0.5rem
   />;
 
   return {
