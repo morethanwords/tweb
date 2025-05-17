@@ -3,6 +3,9 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {i18n} from '../../lib/langPack';
 
+import confirmationPopup from '../confirmationPopup';
+import wrapPeerTitle from '../wrappers/peerTitle';
+import PeerTitle from '../peerTitle';
 import Icon from '../icon';
 
 import PinnedContainer from './pinnedContainer';
@@ -11,8 +14,6 @@ import Chat from './chat';
 
 import styles from './removeFee.module.scss';
 import Button from '../button';
-import PeerTitle from '../peerTitle';
-import confirmationPopup from '../confirmationPopup';
 
 
 export default class ChatRemoveFee extends PinnedContainer {
@@ -22,28 +23,20 @@ export default class ChatRemoveFee extends PinnedContainer {
       chat,
       listenerSetter: topbar.listenerSetter,
       className: 'remove-fee',
-      // divAndCaption: new DivAndCaption(
-      //   'pinned-requests',
-      //   (options) => {
-      //     // replaceContent(this.divAndCaption.title, options.title);
-      //     // replaceContent(this.divAndCaption.subtitle, options.subtitle);
-      //   }
-      // ),
-      onClose: () => {
-        // apiManagerProxy.getState().then((state) => {
-        //   state.hideChatJoinRequests[this.peerId] = Date.now();
-        //   this.managers.appStateManager.pushToState('hideChatJoinRequests', state.hideChatJoinRequests);
-        // });
-      },
+      onClose: () => {},
       floating: true,
       height: 64
     });
   }
 
+  private hide() {
+    this.toggle(true);
+    this.wrapper.replaceChildren();
+  }
+
   private hideCallback() {
     return () => {
-      this.toggle(true);
-      this.wrapper.replaceChildren();
+      this.hide();
     };
   }
 
@@ -53,14 +46,11 @@ export default class ChatRemoveFee extends PinnedContainer {
     const fullUser = await this.chat.managers.appProfileManager.getProfile(peerId.toUserId());
     const starsCharged = +fullUser?.settings?.charge_paid_message_stars;
 
-    console.log('[my-debug] starsCharged :>> ', starsCharged);
-
     if(!starsCharged) return this.hideCallback();
 
     return () => {
       this.toggle(false);
 
-      console.log('[my-debug] initing remove fee :>> ', starsCharged);
       const content = document.createElement('div');
       content.classList.add(styles.Content);
 
@@ -79,28 +69,44 @@ export default class ChatRemoveFee extends PinnedContainer {
       const button = Button(`btn primary ${styles.RemoveFeeButton}`, {text: 'PaidMessages.RemoveFee'})
       content.append(button);
 
-      attachClickEvent(button, () => {});
+      let disabled = false;
+
+      attachClickEvent(button, () => {
+        if(disabled) return;
+        disabled = true;
+
+        this.openRemoveFeeModal(peerId).finally(() => {
+          disabled = false;
+        });
+      });
 
       this.container.replaceChildren(content);
     };
   }
 
-  private async openRemoveFeeModal(userId: UserId) {
+  private async openRemoveFeeModal(peerId: PeerId) {
+    const userId = peerId.toUserId();
     const revenue = await this.managers.appUsersManager.getPaidMessagesRevenue(userId);
 
-    const shouldRefund = await confirmationPopup({
-      titleLangKey: 'PaidMessages.RemoveFee',
-      descriptionLangKey: 'PaidMessage.RemoveFeeWarning',
-      checkbox: revenue ? {
-        text: 'PaidMessage.RemoveFeeRefund',
-        textArgs: [i18n('Stars', [revenue])]
-      } : undefined,
-      button: {
-        langKey: 'Confirm'
-      }
-    });
+    try {
+      const shouldRefund = await confirmationPopup({
+        className: styles.ConfirmationPopup,
+        titleLangKey: 'PaidMessages.RemoveFee',
+        descriptionLangKey: 'PaidMessage.RemoveFeeWarning',
+        descriptionLangArgs: [await wrapPeerTitle({peerId, onlyFirstName: true})],
+        checkbox: revenue ? {
+          text: 'PaidMessage.RemoveFeeRefund',
+          textArgs: [i18n('Stars', [revenue])]
+        } : undefined,
+        button: {
+          langKey: 'Confirm'
+        }
+      });
 
-    // if(withDontShowAgain && dontShowAgain) onNotShowAgain();
+      await this.managers.appUsersManager.addNoPaidMessagesException(userId, shouldRefund);
+
+      this.hide();
+    } catch{}
   }
 }
 

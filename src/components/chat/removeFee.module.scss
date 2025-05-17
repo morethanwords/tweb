@@ -24,3 +24,10 @@
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
 }
+
+.ConfirmationPopup {
+  :global(.popup-container) {
+    width: unset;
+    max-width: 360px;
+  }
+}

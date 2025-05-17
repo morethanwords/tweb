@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import classNames from '../helpers/string/classNames';
 import PopupElement, {addCancelButton} from './popups';
 import PopupPeer, {PopupPeerCheckboxOptions, PopupPeerOptions} from './popups/peer';
 
@@ -14,7 +15,8 @@ export type PopupConfirmationOptions = PopupPeerOptions & {
   button: PopupPeerOptions['buttons'][0],
   checkbox?: PopupPeerOptions['checkboxes'][0],
   inputField?: PopupPeerOptions['inputField'],
-  rejectWithReason?: boolean
+  rejectWithReason?: boolean,
+  className?: string;
 };
 
 export default function confirmationPopup<T extends PopupConfirmationOptions>(
@@ -39,7 +41,7 @@ export default function confirmationPopup<T extends PopupConfirmationOptions>(
     options.buttons = buttons;
     options.checkboxes ??= checkbox && [checkbox];
 
-    const popup = PopupElement.createPopup(PopupPeer, 'popup-confirmation', options);
+    const popup = PopupElement.createPopup(PopupPeer, classNames('popup-confirmation', options.className), options);
     popup.addEventListener('closeAfterTimeout', () => {
       reject(rejectWithReason ? 'closed' : undefined);
     });
