@@ -1,0 +1,26 @@
+.Container {
+  --container-height: 64px;
+}
+
+.Content {
+  display: flex;
+  width: 100%;
+
+  flex-direction: column;
+  // justify-content: space-between;
+  align-items: center;
+  gap: 0.125rem;
+
+  padding-top: 0.25rem;
+
+  font-size: 14px;
+  color: var(--secondary-text-color);
+}
+
+.RemoveFeeButton {
+  overflow: hidden;
+
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}

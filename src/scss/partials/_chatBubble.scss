@@ -3717,10 +3717,15 @@
   }
 }
 
-.inline-message-stars {
+.inline-stars {
   display: inline-flex;
   align-items: center;
 
-  // gap: 1px;
+  .tgico {
+    line-height: unset;
+  }
+}
+
+.bubble-meta-inline-stars {
   margin-right: 6px;
 }

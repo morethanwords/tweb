@@ -1299,4 +1299,16 @@ export class AppUsersManager extends AppManager {
       });
     });
   }
+
+  public async getPaidMessagesRevenue(userId: UserId) {
+    const revenue = await this.apiManager.invokeApi('account.getPaidMessagesRevenue', {user_id: this.getUserInput(userId)});
+    return +revenue.stars_amount;
+  }
+
+  public async addNoPaidMessagesException(userId: UserId, refundCharged: boolean) {
+    return this.apiManager.invokeApi('account.addNoPaidMessagesException', {
+      user_id: this.getUserInput(userId),
+      refund_charged: refundCharged
+    });
+  }
 }
