@@ -244,7 +244,7 @@ export namespace MessageRender {
 
       if(message.paid_message_stars && options.chat.isAnyGroup) {
         const inlineStars = document.createElement('span');
-        inlineStars.classList.add('inline-message-stars');
+        inlineStars.classList.add('inline-stars', 'bubble-meta-inline-stars');
         inlineStars.append(
           numberThousandSplitterForStars(+message.paid_message_stars * Math.max(groupedMessagesCount || 0, 1)),
           Icon('star')
