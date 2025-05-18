@@ -6,6 +6,7 @@ import {i18n} from '../../lib/langPack';
 import confirmationPopup from '../confirmationPopup';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import PeerTitle from '../peerTitle';
+import Button from '../button';
 import Icon from '../icon';
 
 import PinnedContainer from './pinnedContainer';
@@ -13,7 +14,6 @@ import type ChatTopbar from './topbar';
 import Chat from './chat';
 
 import styles from './removeFee.module.scss';
-import Button from '../button';
 
 
 export default class ChatRemoveFee extends PinnedContainer {
