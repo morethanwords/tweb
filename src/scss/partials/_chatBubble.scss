@@ -3724,6 +3724,11 @@
   .tgico {
     line-height: unset;
   }
+
+  &--reversed {
+    vertical-align: -0.175em;
+    flex-direction: row-reverse;
+  }
 }
 
 .bubble-meta-inline-stars {

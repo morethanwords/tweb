@@ -880,4 +880,5 @@
 .pinned-remove-fee {
   --container-height: 64px;
   cursor: initial;
+  @include sidebar-transform(1, true);
 }

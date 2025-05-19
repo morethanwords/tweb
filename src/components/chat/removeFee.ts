@@ -55,7 +55,7 @@ export default class ChatRemoveFee extends PinnedContainer {
       content.classList.add(styles.Content);
 
       const inlineStars = document.createElement('span');
-      inlineStars.classList.add('inline-stars');
+      inlineStars.classList.add('inline-stars', 'inline-stars--reversed');
       inlineStars.append(
         numberThousandSplitterForStars(+starsCharged),
         Icon('star')

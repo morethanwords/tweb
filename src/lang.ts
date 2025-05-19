@@ -3349,7 +3349,7 @@ const lang = {
     'one_value': '%d Star refunded',
     'other_value': '%d Stars refunded'
   },
-  'PaidMessage.UserPaysForMessagesNotice': '%s must pay %d for each message to you',
+  'PaidMessage.UserPaysForMessagesNotice': '%s must pay %d for each message to you.',
   'PaidMessage.RemoveFeeWarning': 'Are you sure you want to allow %s to message you for free?',
   'PaidMessage.RemoveFeeRefund': 'Refund the %d already paid',
 
