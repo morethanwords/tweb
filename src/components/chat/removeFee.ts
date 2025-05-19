@@ -1,6 +1,7 @@
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {AppManagers} from '../../lib/appManagers/managers';
+import callbackify from '../../helpers/callbackify';
 import {i18n} from '../../lib/langPack';
 
 import confirmationPopup from '../confirmationPopup';
@@ -29,7 +30,7 @@ export default class ChatRemoveFee extends PinnedContainer {
     });
   }
 
-  private hide() {
+  public hide() {
     this.toggle(true);
     this.wrapper.replaceChildren();
   }
@@ -40,47 +41,56 @@ export default class ChatRemoveFee extends PinnedContainer {
     };
   }
 
-  public async setPeerId(peerId: PeerId) {
-    if(!peerId.isUser()) return this.hideCallback();
+  private set(peerId: PeerId, starsCharged: number) {
+    this.toggle(false);
 
-    const fullUser = await this.chat.managers.appProfileManager.getProfile(peerId.toUserId());
-    const starsCharged = +fullUser?.settings?.charge_paid_message_stars;
+    const content = document.createElement('div');
+    content.classList.add(styles.Content);
 
-    if(!starsCharged) return this.hideCallback();
+    const inlineStars = document.createElement('span');
+    inlineStars.classList.add('inline-stars', 'inline-stars--reversed');
+    inlineStars.append(
+      numberThousandSplitterForStars(+starsCharged),
+      Icon('star')
+    );
 
-    return () => {
-      this.toggle(false);
+    const peerTitle = new PeerTitle();
+    peerTitle.update({peerId, onlyFirstName: true});
 
-      const content = document.createElement('div');
-      content.classList.add(styles.Content);
+    content.append(i18n('PaidMessage.UserPaysForMessagesNotice', [peerTitle.element, inlineStars]));
 
-      const inlineStars = document.createElement('span');
-      inlineStars.classList.add('inline-stars', 'inline-stars--reversed');
-      inlineStars.append(
-        numberThousandSplitterForStars(+starsCharged),
-        Icon('star')
-      );
+    const button = Button(`btn primary ${styles.RemoveFeeButton}`, {text: 'PaidMessages.RemoveFee'})
+    content.append(button);
 
-      const peerTitle = new PeerTitle();
-      peerTitle.update({peerId, onlyFirstName: true});
+    let disabled = false;
 
-      content.append(i18n('PaidMessage.UserPaysForMessagesNotice', [peerTitle.element, inlineStars]));
+    attachClickEvent(button, () => {
+      if(disabled) return;
+      disabled = true;
 
-      const button = Button(`btn primary ${styles.RemoveFeeButton}`, {text: 'PaidMessages.RemoveFee'})
-      content.append(button);
-
-      let disabled = false;
-
-      attachClickEvent(button, () => {
-        if(disabled) return;
-        disabled = true;
-
-        this.openRemoveFeeModal(peerId).finally(() => {
-          disabled = false;
-        });
+      this.openRemoveFeeModal(peerId).finally(() => {
+        disabled = false;
       });
+    });
 
-      this.container.replaceChildren(content);
+    this.container.replaceChildren(content);
+  }
+
+  public async setPeerId(peerId: PeerId) {
+    if(!peerId.isUser()) return {
+      cached: true,
+      result: Promise.resolve(this.hideCallback())
+    };
+
+    const ackedFullUser = await this.chat.managers.acknowledged.appProfileManager.getProfile(peerId.toUserId());
+
+    return {
+      cached: ackedFullUser.cached,
+      result: callbackify(ackedFullUser.result, (fullUser) => {
+        const starsCharged = +fullUser?.settings?.charge_paid_message_stars;
+        if(!starsCharged) return this.hideCallback();
+        return (): void => void this.set(peerId, starsCharged);
+      })
     };
   }
 

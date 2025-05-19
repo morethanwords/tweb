@@ -973,7 +973,7 @@ export default class ChatTopbar {
       apiManagerProxy.getState(),
       modifyAckedPromise(this.chatRequests?.setPeerId(peerId)),
       modifyAckedPromise(this.chatActions?.setPeerId(peerId)),
-      this.chatRemoveFee?.setPeerId(peerId)
+      modifyAckedPromise(this.chatRemoveFee?.setPeerId(peerId))
     ] as const;
 
     const [
@@ -1074,10 +1074,13 @@ export default class ChatTopbar {
         this.chatActions.unset(peerId);
       }
 
-      setChatRemoveFeeCallback?.();
+      if(setChatRemoveFeeCallback.result instanceof Promise) {
+        this.chatRemoveFee.hide();
+      }
 
       this.chatLive?.setPeerId(peerId);
       this.chatTranslation?.setPeerId(peerId);
+      this.chatRemoveFee?.setPeerId(peerId);
 
       callbackify(setRequestsCallback.result, (callback) => {
         if(!middleware()) {
@@ -1088,6 +1091,14 @@ export default class ChatTopbar {
       });
 
       callbackify(setActionsCallback.result, (callback) => {
+        if(!middleware()) {
+          return;
+        }
+
+        callback();
+      });
+
+      callbackify(setChatRemoveFeeCallback.result, (callback) => {
         if(!middleware()) {
           return;
         }
