@@ -67,6 +67,7 @@ import ChatTranslation from './translation';
 import {useAppSettings} from '../../stores/appSettings';
 import PopupSendGift from '../popups/sendGift';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
+import ChatRemoveFee from './removeFee';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -93,6 +94,7 @@ export default class ChatTopbar {
 
   private chatActions: ChatActions;
   private chatRequests: ChatRequests;
+  private chatRemoveFee: ChatRemoveFee;
   private chatAudio: ChatAudio;
   private chatLive: ChatLive;
   private chatTranslation: ChatTranslation;
@@ -174,6 +176,7 @@ export default class ChatTopbar {
     this.chatAudio = new ChatAudio(this, this.chat, this.managers);
     this.chatRequests = new ChatRequests(this, this.chat, this.managers);
     this.chatActions = new ChatActions(this, this.chat, this.managers);
+    this.chatRemoveFee = new ChatRemoveFee(this, this.chat, this.managers);
     if(IS_LIVE_STREAM_SUPPORTED) this.chatLive = new ChatLive(this, this.chat, this.managers);
     this.chatTranslation = new ChatTranslation(this, this.chat, this.managers);
 
@@ -221,7 +224,8 @@ export default class ChatTopbar {
       this.chatRequests,
       this.chatActions,
       this.chatLive,
-      this.chatTranslation
+      this.chatTranslation,
+      this.chatRemoveFee
     ].filter(Boolean);
     this.container.append(...pinnedContainers.map((pinnedContainer) => pinnedContainer.container));
 
@@ -901,6 +905,7 @@ export default class ChatTopbar {
     delete this.chatActions;
     delete this.chatLive;
     delete this.chatTranslation;
+    delete this.chatRemoveFee;
   }
 
   public cleanup() {
@@ -967,7 +972,8 @@ export default class ChatTopbar {
       status?.prepare(true),
       apiManagerProxy.getState(),
       modifyAckedPromise(this.chatRequests?.setPeerId(peerId)),
-      modifyAckedPromise(this.chatActions?.setPeerId(peerId))
+      modifyAckedPromise(this.chatActions?.setPeerId(peerId)),
+      modifyAckedPromise(this.chatRemoveFee?.setPeerId(peerId))
     ] as const;
 
     const [
@@ -979,7 +985,8 @@ export default class ChatTopbar {
       setStatusCallback,
       state,
       setRequestsCallback,
-      setActionsCallback
+      setActionsCallback,
+      setChatRemoveFeeCallback
     ] = await Promise.all(promises);
 
     if(!middleware() && newAvatarMiddlewareHelper) {
@@ -1053,6 +1060,7 @@ export default class ChatTopbar {
 
       setTitleCallback();
       setStatusCallback?.();
+
       this.subtitle.classList.toggle('hide', !setStatusCallback);
       this.setMutedState();
 
@@ -1066,8 +1074,13 @@ export default class ChatTopbar {
         this.chatActions.unset(peerId);
       }
 
+      if(setChatRemoveFeeCallback.result instanceof Promise) {
+        this.chatRemoveFee.hide();
+      }
+
       this.chatLive?.setPeerId(peerId);
       this.chatTranslation?.setPeerId(peerId);
+      this.chatRemoveFee?.setPeerId(peerId);
 
       callbackify(setRequestsCallback.result, (callback) => {
         if(!middleware()) {
@@ -1078,6 +1091,14 @@ export default class ChatTopbar {
       });
 
       callbackify(setActionsCallback.result, (callback) => {
+        if(!middleware()) {
+          return;
+        }
+
+        callback();
+      });
+
+      callbackify(setChatRemoveFeeCallback.result, (callback) => {
         if(!middleware()) {
           return;
         }

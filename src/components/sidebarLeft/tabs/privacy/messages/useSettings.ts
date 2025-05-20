@@ -43,7 +43,8 @@ const useSettings = () => {
 
   const currentAllowedUsers = () =>
     privacyRules()
-    ?.find((rule) => rule._ === 'privacyValueAllowUsers')?.users
+    ?.filter((rule) => rule._ === 'privacyValueAllowUsers')
+    ?.map(rule => rule?.users).flat()
     ?.map(user => user.toPeerId()) || [];
 
   const currentAllowedChats = () =>

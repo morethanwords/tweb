@@ -3717,10 +3717,20 @@
   }
 }
 
-.inline-message-stars {
+.inline-stars {
   display: inline-flex;
   align-items: center;
 
-  // gap: 1px;
+  .tgico {
+    line-height: unset;
+  }
+
+  &--reversed {
+    vertical-align: -0.175em;
+    flex-direction: row-reverse;
+  }
+}
+
+.bubble-meta-inline-stars {
   margin-right: 6px;
 }
