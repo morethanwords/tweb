@@ -1093,6 +1093,9 @@ const lang = {
   'WhoCanAddMe': 'Who can add me to group chats?',
   'ArchivedChats': 'Archived Chats',
   'Cancel': 'Cancel',
+  'Confirm': 'Confirm',
+  'Decline': 'Decline',
+  'Allow': 'Allow',
   'HistoryCleared': 'History was cleared',
   'Archive': 'Archive',
   'Unarchive': 'Unarchive',
@@ -3360,7 +3363,17 @@ const lang = {
   'DontAskAgain': 'Don\'t ask again',
   'ConfirmPayment': 'Confirm Payment',
   'Undo': 'Undo',
-  'Confirm': 'Confirm'
+
+  'BotSetEmojiStatusText': 'Do you want to set this emoji status suggested by **%s**?',
+  'BotSetEmojiStatusTextFor': 'Do you want to set this emoji status suggested by **%s** for **%s**?',
+  'BotSetEmojiStatusOffline': '**%s** requests access to your **emoji status**. You can revoke this access anytime on the profile page of **%s**.',
+  'BotLocationAccessText': '**%s** requests access to your location. You can revoke this access anytime on the profile page of **%s**.',
+  'BotAllowAccessTo': 'Allow access to',
+  'BotAllowAccessToEmojiStatus': 'Emoji status',
+  'BotAllowAccessToLocation': 'Location',
+  'BotDownloadPromptTitle': 'Download file',
+  'BotDownloadPromptText': '**%s** is asking to download a file with name **%s**',
+  'BotDownloadAccept': 'Download'
 };
 
 export default lang;

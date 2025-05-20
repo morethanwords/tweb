@@ -272,6 +272,11 @@ export default class AppStorage<
     return storage.getAll().catch(() => [] as any[]);
   }
 
+  public async getAllKeys(): Promise<IDBValidKey[]> {
+    const storage = await this.getStorage();
+    return storage.getAllKeys().catch(() => [] as IDBValidKey[]);
+  }
+
   public async getAllEntries() {
     const storage = await this.getStorage();
     return storage.getAllEntries().catch(() => [] as IDBStorage.Entries);
