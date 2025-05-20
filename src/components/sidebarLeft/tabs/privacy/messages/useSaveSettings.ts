@@ -31,7 +31,7 @@ const useSaveSettings = ({store, globalPrivacy, isPaid, hasChanges, chosenPeersB
   const saveGlobalSettings = () => {
     const settings = structuredClone(globalPrivacy());
 
-    settings.noncontact_peers_paid_stars = isPaid() ? store.stars : undefined;
+    settings.noncontact_peers_paid_stars = isPaid() ? store.stars : 0;
 
     settings.pFlags ??= {};
     setBooleanFlag(settings.pFlags, 'new_noncontact_peers_require_premium', store.option === MessagesPrivacyOption.ContactsAndPremium);
