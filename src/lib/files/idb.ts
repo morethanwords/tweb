@@ -502,6 +502,10 @@ class IDBStorage<T extends Database<any>, StoreName extends string = T['stores']
     return this.getObjectStore<T[]>('readonly', (objectStore) => objectStore.getAll(), DEBUG ? 'getAll' : '', storeName);
   }
 
+  public getAllKeys(storeName?: StoreName): Promise<IDBValidKey[]> {
+    return this.getObjectStore<IDBValidKey[]>('readonly', (objectStore) => objectStore.getAllKeys(), DEBUG ? 'getAll' : '', storeName);
+  }
+
   public getAllEntries(storeName?: StoreName) {
     const entries: IDBStorage.Entries = [];
     return new Promise<IDBStorage.Entries>((resolve, reject) => {

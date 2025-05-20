@@ -510,8 +510,9 @@ function Browser(props: {
       <div
         class={styles.BrowserBody}
         style={{
-          width: movableState().width + 'px',
-          height: movableState().height - additionalHeight + 'px'
+          'width': movableState().width + 'px',
+          '--browser-width': movableState().width + 'px',
+          'height': movableState().height - additionalHeight + 'px'
         }}
       >
         <For each={state.pages}>{(page) => {

@@ -6,6 +6,7 @@
 
 import PopupElement from '.';
 import safeAssign from '../../helpers/object/safeAssign';
+import {fastRaf} from '../../helpers/schedulers';
 import {AttachMenuBot} from '../../layer';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import WebApp from '../webApp';
@@ -49,6 +50,9 @@ export default class PopupWebApp extends PopupElement {
 
     this.webApp.init(() => {
       this.show();
+      fastRaf(() => {
+        this.container.style.setProperty('--browser-width', `${this.container.clientWidth}px`);
+      })
     });
   }
 
