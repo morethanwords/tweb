@@ -2,29 +2,28 @@ import {createEffect, createRoot, createSelector, createSignal, For, onCleanup, 
 import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
 
-import {getMiddleware, Middleware} from '../../../helpers/middleware';
-import ListenerSetter from '../../../helpers/listenerSetter';
-import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
-import pause from '../../../helpers/schedulers/pause';
 import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
-
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
-import {i18n} from '../../../lib/langPack';
-import {MyDialogFilter} from '../../../lib/storages/filters';
-import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-
-import Scrollable from '../../scrollable2';
+import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
+import ListenerSetter from '../../../helpers/listenerSetter';
 import Animated from '../../../helpers/solid/animations';
+import {Middleware} from '../../../helpers/middleware';
+import pause from '../../../helpers/schedulers/pause';
+
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
+import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
+import {MyDialogFilter} from '../../../lib/storages/filters';
+import {i18n} from '../../../lib/langPack';
+
+import wrapFolderTitle from '../../wrappers/folderTitle';
+import Scrollable from '../../scrollable2';
 import {IconTsx} from '../../iconTsx';
-import ripple from '../../ripple';
+import ripple from '../../ripple'; ripple; // keep
 
 import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
 import type {FolderItemPayload} from './types';
 import FolderItem from './folderItem';
-import wrapFolderTitle from '../../wrappers/folderTitle';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
 
 
 export function FoldersSidebarContent(props: {
@@ -56,7 +55,6 @@ export function FoldersSidebarContent(props: {
 
   let menuRef: HTMLDivElement;
   let folderItemsContainer: HTMLDivElement;
-  let showAddFoldersButton: HTMLDivElement;
 
   function updateFolderItem(folderId: number, payload: Partial<FolderItemPayload>) {
     const idx = folderItems.findIndex((item) => item.id === folderId);
@@ -234,10 +232,6 @@ export function FoldersSidebarContent(props: {
     });
   });
 
-  createEffect(() => {
-    if(showAddFolders()) ripple(showAddFoldersButton);
-  });
-
   const updateCanShowAddFolders = () => {
     const selectedItem = folderItemRefs[selectedFolderId()];
 
@@ -284,7 +278,7 @@ export function FoldersSidebarContent(props: {
 
         <Animated type="cross-fade" mode="add-remove">
           {showAddFolders() && <div
-            ref={showAddFoldersButton}
+            use:ripple
             class="folders-sidebar__add-folders-button"
             onClick={() => contextMenu.openSettingsForFilter(selectedFolderId())}
             style={{

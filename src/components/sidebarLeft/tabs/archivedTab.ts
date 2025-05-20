@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager, {type Some2} from '../../../lib/appManagers/appDialogsManager';
 import {SliderSuperTab} from '../../slider';
 import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '../../../lib/mtproto/mtproto_config';
 import StoriesList from '../../stories/list';
@@ -16,6 +16,8 @@ export default class AppArchivedTab extends SliderSuperTab {
 
   private storiesListContainer: HTMLDivElement;
   private disposeStories: () => void;
+
+  private chatListManager: Some2;
 
   public init() {
     this.wasFilterId = appDialogsManager.filterId;
@@ -35,21 +37,23 @@ export default class AppArchivedTab extends SliderSuperTab {
       scrollable.append(ul);
     }
 
+    this.chatListManager = appDialogsManager.xds[AppArchivedTab.filterId];
+
     const storiesListContainer = this.storiesListContainer = document.createElement('div');
     storiesListContainer.classList.add('stories-list');
 
     this.header.after(storiesListContainer);
 
-    const scrollable = appDialogsManager.xds[AppArchivedTab.filterId].scrollable;
+    const scrollable = this.chatListManager.scrollable;
     this.scrollable.container.replaceWith(scrollable.container);
     scrollable.attachBorderListeners(this.container);
     // ! DO NOT UNCOMMENT NEXT LINE - chats will stop loading on scroll after closing the tab
     // this.scrollable = scrollable;
 
-    return appDialogsManager.setFilterIdAndChangeTab(AppArchivedTab.filterId).then(({cached, renderPromise}) => {
-      if(cached) {
-        return renderPromise;
-      }
+    return appDialogsManager.setFilterIdAndChangeTab(AppArchivedTab.filterId).then((/* {cached, renderPromise} */) => {
+      // if(cached) {
+      //   return renderPromise;
+      // }
     });
   }
 
@@ -58,7 +62,7 @@ export default class AppArchivedTab extends SliderSuperTab {
       return StoriesList({
         foldInto: this.header,
         setScrolledOn: this.container,
-        getScrollable: () => appDialogsManager.xds[AppArchivedTab.filterId].scrollable.container,
+        getScrollable: () => this.chatListManager.scrollable.container,
         listenWheelOn: this.content,
         archive: true,
         offsetX: -84
@@ -73,6 +77,7 @@ export default class AppArchivedTab extends SliderSuperTab {
   }
 
   onClose() {
+    appDialogsManager.xds[AppArchivedTab.filterId] = undefined;
     this.scrollable.onAdditionalScroll = undefined;
     appDialogsManager.setFilterIdAndChangeTab(this.wasFilterId);
   }
@@ -80,7 +85,8 @@ export default class AppArchivedTab extends SliderSuperTab {
   onCloseAfterTimeout() {
     this.disposeStories?.();
     this.disposeStories = undefined;
-    appDialogsManager.xds[AppArchivedTab.filterId].clear();
+    this.chatListManager.destroy();
+    this.chatListManager = undefined;
     return super.onCloseAfterTimeout();
   }
 }
