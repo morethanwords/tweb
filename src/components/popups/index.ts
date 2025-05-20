@@ -446,6 +446,11 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.addEventListener('closeAfterTimeout', dispose as any);
   }
 
+  protected appendSolidBody(callback: () => JSX.Element) {
+    const dispose = render(callback, this.body);
+    this.addEventListener('closeAfterTimeout', dispose as any);
+  }
+
   public static reAppend() {
     this.POPUPS.forEach((popup) => {
       const {element, container} = popup;

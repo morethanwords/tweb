@@ -37,13 +37,13 @@ import maybe2x from '../../helpers/maybe2x';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import {StarGiftBadge} from '../stargifts/stargiftBadge';
 import Scrollable from '../scrollable2';
-import {PeerTitleTsx} from '../wrappers/peerTitle';
 import {approxEquals} from '../../helpers/number/approxEquals';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import fastSmoothScroll from '../../helpers/fastSmoothScroll';
 import {useAppState} from '../../stores/appState';
 import PopupStarGiftUpgrade from './starGiftUpgrade';
 import anchorCallback from '../../helpers/dom/anchorCallback';
+import {PeerTitleTsx} from '../peerTitleTsx';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 

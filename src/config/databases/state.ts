@@ -8,7 +8,7 @@ import type {Database} from '.';
 import {ActiveAccountNumber} from '../../lib/accounts/types';
 import {MOUNT_CLASS_TO} from '../debug';
 
-export type AccountDatabase = Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'>;
+export type AccountDatabase = Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs' | 'webapp'>;
 export type CommonDatabase = Database<'session' | 'localStorage'>;
 
 export const getOldDatabaseState = (): AccountDatabase => ({
@@ -52,9 +52,9 @@ export const getCommonDatabaseState = (): CommonDatabase => ({
 
 export const getDatabaseState = (
   accountNumber: ActiveAccountNumber
-): Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> => ({
+): Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs' | 'webapp'> => ({
   name: `tweb-account-${accountNumber}`,
-  version: 8,
+  version: 9,
   stores: [
     {
       name: 'session',
@@ -79,6 +79,10 @@ export const getDatabaseState = (
     {
       name: 'messages',
       encryptedName: 'messages__encrypted'
+    },
+    {
+      name: 'webapp',
+      encryptedName: 'webapp__encrypted'
     }
   ]
 });

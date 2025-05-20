@@ -29,3 +29,16 @@ export default function getPathFromBytes(bytes: Uint8Array) {
 
   return path;
 }
+
+export function createSvgFromBytes(bytes: Uint8Array, width = 512, height = 512) {
+  const d = getPathFromBytes(bytes);
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttributeNS(null, 'viewBox', `0 0 ${width} ${height}`);
+
+  const path = document.createElementNS(ns, 'path');
+  path.setAttributeNS(null, 'd', d);
+  svg.append(path);
+
+  return {svg, path};
+}

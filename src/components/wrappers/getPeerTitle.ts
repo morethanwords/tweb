@@ -16,6 +16,7 @@ type GetPeerTitleOptions = {
   peerId: PeerId,
   plainText?: boolean,
   onlyFirstName?: boolean,
+  username?: boolean,
   limitSymbols?: number,
   threadId?: number,
   useManagers?: boolean

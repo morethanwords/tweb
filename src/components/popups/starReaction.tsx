@@ -6,7 +6,7 @@
 
 import PopupElement from '.';
 import I18n, {i18n} from '../../lib/langPack';
-import wrapPeerTitle, {PeerTitleTsx} from '../wrappers/peerTitle';
+import wrapPeerTitle from '../wrappers/peerTitle';
 import {StarsBalance} from './stars';
 import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show} from 'solid-js';
 import {easeOutCircApply} from '../../helpers/easing/easeOutCirc';
@@ -36,6 +36,7 @@ import {SEND_PAID_REACTION_ANONYMOUS_PEER_ID} from '../../lib/mtproto/mtproto_co
 import type Chat from '../chat/chat';
 import {PENDING_PAID_REACTIONS} from '../chat/reactions';
 import findAndSplice from '../../helpers/array/findAndSplice';
+import {PeerTitleTsx} from '../peerTitleTsx';
 
 export default class PopupStarReaction extends PopupElement {
   constructor(private peerId: PeerId, private mid: number, private chat: Chat) {

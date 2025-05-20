@@ -211,7 +211,7 @@ export class InternalLinkProcessor {
     type K1 = {thread?: string, comment?: string, t?: string};
     type K2 = {thread?: string, comment?: string, start?: string, t?: string, text?: string};
     type K3 = {startattach?: string, attach?: string, choose?: TelegramChoosePeerType};
-    type K4 = {startapp?: string, mode?: 'compact'};
+    type K4 = {startapp?: string, mode?: 'compact' | 'fullscreen'};
     type K5 = {story?: string};
     type K6 = {boost?: string};
     type K7 = {voicechat?: string, videochat?: string, livestream?: string};
@@ -827,6 +827,7 @@ export class InternalLinkProcessor {
     const botId = user.id;
     const commonOptions: Partial<RequestWebViewOptions> = {
       compact: link.mode === 'compact',
+      fullscreen: link.mode === 'fullscreen',
       startParam: link.startapp,
       botId
     };

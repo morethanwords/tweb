@@ -19,6 +19,7 @@ export interface StorageLayer
   get: <T>(entryNames: string[]) => Promise<T[]>;
   getAllEntries: () => Promise<IDBStorage.Entries>;
   getAll: <T>() => Promise<T[]>;
+  getAllKeys: () => Promise<IDBValidKey[]>;
   delete: (entryName: string | string[]) => Promise<void>;
   clear: () => Promise<void>;
 };
@@ -203,6 +204,12 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
     await this.waitToLoad();
 
     return Object.values(this.data);
+  }
+
+  public async getAllKeys(): Promise<IDBValidKey[]> {
+    await this.waitToLoad();
+
+    return Object.keys(this.data);
   }
 
   public async delete(entryName: string | string[]): Promise<void> {
