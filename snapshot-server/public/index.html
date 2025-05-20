@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Storage Snapshots</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="container">
+    <h1>Storage Snapshot Manager</h1>
+    <button id="snapshotBtn">📸 Take Snapshot</button>
+
+    <h2>Saved Snapshots</h2>
+    <ul id="snapshotList"></ul>
+  </div>
+
+  <script src="client.js"></script>
+  <script>
+    // Actively unregister any existing service worker
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for (let reg of regs) {
+          reg.unregister();
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
