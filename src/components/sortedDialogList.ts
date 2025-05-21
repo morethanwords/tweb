@@ -170,6 +170,10 @@ export default class SortedDialogList {
     return this.virtualList.getAll();
   }
 
+  public getSortedItems() {
+    return this.virtualList.sortedItems();
+  }
+
   public async update(key: any) {
     const index = await this.getIndexForKey(key);
     this.virtualList.updateItem(key, index);

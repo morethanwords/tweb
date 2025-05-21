@@ -723,9 +723,13 @@ class Some<T extends AnyDialog = AnyDialog> {
 
   public updateDialog(dialog: T) {
     const key = this.getDialogKey(dialog);
-    if(!this.sortedList.has(key) && this.loadedDialogsAtLeastOnce) {
-      this.sortedList.add(key);
-      return;
+    if(this.canUpdateDialog(dialog)) {
+      if(!this.sortedList.has(key) && this.loadedDialogsAtLeastOnce) {
+        this.sortedList.add(key);
+        return;
+      }
+    } else {
+      this.deleteDialog(dialog);
     }
 
     const dialogElement = this.getDialogElement(key);
@@ -739,6 +743,16 @@ class Some<T extends AnyDialog = AnyDialog> {
       setUnread: true
     });
     this.sortedList.update(key);
+  }
+
+  protected canUpdateDialog(dialog: T) {
+    const sortedItems = this.sortedList.getSortedItems();
+    const last = sortedItems[sortedItems.length - 1];
+
+    const bottomIndex = last?.index;
+    const dialogIndex = getDialogIndex(dialog);
+
+    return !last || dialogIndex >= bottomIndex;
   }
 
   public onChatsScrollTop() {
@@ -771,7 +785,7 @@ class Some<T extends AnyDialog = AnyDialog> {
 
   private loadDialogsDeferred: CancellablePromise<SequentialCursorFetcherResult<number>>;
 
-  public async loadDialogs(offsetIndex: number) {
+  public async loadDialogs(offsetIndex?: number) {
     this.loadDialogsDeferred = deferredPromise();
 
     this.loadDialogsInner(offsetIndex)
@@ -803,10 +817,14 @@ class Some<T extends AnyDialog = AnyDialog> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 
-  public async loadDialogsInner(offsetIndex: number): Promise<SequentialCursorFetcherResult<number>> {
+  public checkForDialogsPlaceholder() {
+    if(!this.placeholder && !this.loadedDialogsAtLeastOnce) this.placeholder = this.createPlaceholder();
+  }
+
+  public async loadDialogsInner(offsetIndex?: number): Promise<SequentialCursorFetcherResult<number>> {
     console.log('[my-debug] loadDialogs offsetIndex :>> ', offsetIndex);
 
-    if(!this.placeholder && !this.loadedDialogsAtLeastOnce) this.placeholder = this.createPlaceholder();
+    this.checkForDialogsPlaceholder();
 
     const filterId = this.getFilterId();
 
@@ -818,6 +836,9 @@ class Some<T extends AnyDialog = AnyDialog> {
     });
 
     const result = await ackedResult.result;
+
+    // if(appDialogsManager.doNotRenderChatList) throw new Error('First load of dialogs canceled');
+    // if(appDialogsManager.doNotRenderChatList) await pause(1000);
 
     const newOffsetIndex = result.dialogs.reduce((prev, curr) => {
       const index = getDialogIndex(curr, this.indexKey)
@@ -1040,6 +1061,11 @@ class Some3 extends Some<ForumTopic> {
 
   protected getFilterId() {
     return this.peerId;
+  }
+
+  protected canUpdateDialog(dialog: ForumTopic): boolean {
+    if(dialog.pFlags.hidden) return false;
+    return super.canUpdateDialog(dialog);
   }
 }
 
@@ -1351,6 +1377,11 @@ export class Some2 extends Some<Dialog> {
 
   public getDialogFromElement(element: HTMLElement) {
     return rootScope.managers.appMessagesManager.getDialogOnly(element.dataset.peerId.toPeerId());
+  }
+
+  protected canUpdateDialog(dialog: Dialog): boolean {
+    if(dialog.migratedTo !== undefined || !this.testDialogForFilter(dialog)) return false;
+    return super.canUpdateDialog(dialog);
   }
 }
 
@@ -1926,8 +1957,10 @@ export class AppDialogsManager {
 
     this.doNotRenderChatList = true;
     // const loadDialogsPromise = this.xd.onChatsScroll();
+    // this.xd.checkForDialogsPlaceholder();
     const m = middlewarePromise(middleware);
     try {
+      await this.xd.loadDialogs();
       // await m(loadDialogsPromise);
     } catch(err) {
 
