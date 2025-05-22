@@ -12,7 +12,7 @@ cd ./snapshot-server
 pnpm start --port=8080 # Make sure the port matches your usual development port, don't specify if you want the 8080 default
 ```
 
-Go to `http://localhost:8080`, then in `chrome://inspect` (or your browser's equivalent) immediately kill the service worker, or any other workers for the localhost if there are any. Note that the workers may interfere with the read/write operations in the indexed DB.
+Go to `http://localhost:8080`, then in `chrome://inspect` (or your browser's equivalent), just in case check if there is no active service worker, or any other workers for the localhost if there are any. Note that the workers may interfere with the read/write operations in the indexed DB.
 
 Here you can take and manage snapshots of the local storage and indexed DB, that will be saved locally under `./snapshot-server/snapshots/**`.
 

@@ -49,7 +49,7 @@ Source maps are included in production build for your convenience.
 Should be applied like that: http://localhost:8080/?test=1
 
 #### Taking local storage snapshots
-You can also take and load snapshots of the local storage and indexed DB using the `./snapshot-server` mini-app. Check the `README.md` under this folder for more details.
+You can also take and load snapshots of the local storage and indexed DB using the `./snapshot-server` [mini-app](/snapshot-server/README.md). Check the `README.md` under this folder for more details.
 
 ### Troubleshooting & Suggesting
 
