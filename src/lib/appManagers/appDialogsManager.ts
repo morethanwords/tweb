@@ -721,16 +721,27 @@ class Some<T extends AnyDialog = AnyDialog> {
     return this.deleteDialogByKey(this.getDialogKey(dialog));
   }
 
+  /**
+   * @returns {boolean} Returns true if a new dialog was just added
+   */
+  private addOrDeleteDialogIfNeeded(dialog: T, key: any) {
+    if(!this.canUpdateDialog(dialog)) {
+      this.deleteDialog(dialog);
+      return false;
+    }
+
+    if(!this.sortedList.has(key)) {
+      this.sortedList.add(key);
+      return true;
+    }
+
+    return false;
+  }
+
   public updateDialog(dialog: T) {
     const key = this.getDialogKey(dialog);
-    if(this.canUpdateDialog(dialog)) {
-      if(!this.sortedList.has(key) && this.loadedDialogsAtLeastOnce) {
-        this.sortedList.add(key);
-        return;
-      }
-    } else {
-      this.deleteDialog(dialog);
-    }
+
+    if(this.addOrDeleteDialogIfNeeded(dialog, key)) return;
 
     const dialogElement = this.getDialogElement(key);
     if(!dialogElement) {
@@ -818,15 +829,49 @@ class Some<T extends AnyDialog = AnyDialog> {
   }
 
   public checkForDialogsPlaceholder() {
-    if(!this.placeholder && !this.loadedDialogsAtLeastOnce) this.placeholder = this.createPlaceholder();
+    if(this.placeholder || this.loadedDialogsAtLeastOnce) return;
+
+    this.placeholder = this.createPlaceholder();
   }
 
-  public async loadDialogsInner(offsetIndex?: number): Promise<SequentialCursorFetcherResult<number>> {
-    console.log('[my-debug] loadDialogs offsetIndex :>> ', offsetIndex);
+  public async preloadDialogs() {
+    const filterId = this.getFilterId();
+
+    await this.managers.acknowledged.dialogsStorage.getDialogs({
+      offsetIndex: 0,
+      limit: 20,
+      filterId,
+      skipMigrated: this.skipMigrated
+    });
 
     this.checkForDialogsPlaceholder();
+  }
 
+  // /**
+  //  * The request might randomly get delayed even if it is cached, so it is good to have a placholder in this case
+  //  */
+  // private putPlaceholderIfRequestIsTooLong<T>(promise: Promise<T> | T) {
+  //   if(!(promise instanceof Promise)) return promise;
+
+  //   const SMALL_TIMEOUT = 5;
+
+  //   const timeout = self.setTimeout(() => {
+  //     if(this.sortedList.itemsLength()) return;
+
+  //     this.placeholder = this.createPlaceholder();
+  //   }, SMALL_TIMEOUT);
+
+  //   promise?.finally(() => {
+  //     self.clearTimeout(timeout);
+  //   });
+
+  //   return promise;
+  // }
+
+  public async loadDialogsInner(offsetIndex?: number): Promise<SequentialCursorFetcherResult<number>> {
     const filterId = this.getFilterId();
+
+    this.checkForDialogsPlaceholder();
 
     const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
       offsetIndex,
@@ -837,15 +882,11 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     const result = await ackedResult.result;
 
-    // if(appDialogsManager.doNotRenderChatList) throw new Error('First load of dialogs canceled');
-    // if(appDialogsManager.doNotRenderChatList) await pause(1000);
-
     const newOffsetIndex = result.dialogs.reduce((prev, curr) => {
       const index = getDialogIndex(curr, this.indexKey)
       return index < prev ? index : prev;
     }, offsetIndex || Infinity);
 
-    console.log('[my-debug] loadDialogs after', result);
     const items = await Promise.all(result.dialogs.map(async dialog => {
       const key = this.getDialogKey(dialog as T);
 
@@ -1956,12 +1997,10 @@ export class AppDialogsManager {
     }
 
     this.doNotRenderChatList = true;
-    // const loadDialogsPromise = this.xd.onChatsScroll();
-    // this.xd.checkForDialogsPlaceholder();
-    const m = middlewarePromise(middleware);
+
+    const wrapPromiseWithMiddleware = middlewarePromise(middleware);
     try {
-      await this.xd.loadDialogs();
-      // await m(loadDialogsPromise);
+      await wrapPromiseWithMiddleware(this.xd.preloadDialogs());
     } catch(err) {
 
     }
@@ -1971,7 +2010,7 @@ export class AppDialogsManager {
       this.selectTab(0, false);
     }
 
-    addFiltersPromise && await m(addFiltersPromise);
+    addFiltersPromise && await wrapPromiseWithMiddleware(addFiltersPromise);
     // this.folders.menu.children[0].classList.add('active');
 
     this.renderStories();
@@ -1985,7 +2024,7 @@ export class AppDialogsManager {
       this.initedListeners = true;
     }
 
-    haveFilters && this.showFiltersPromise && await m(this.showFiltersPromise);
+    haveFilters && this.showFiltersPromise && await wrapPromiseWithMiddleware(this.showFiltersPromise);
 
     this.managers.appNotificationsManager.getNotifyPeerTypeSettings();
 
