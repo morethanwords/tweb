@@ -18,10 +18,18 @@ app.use(express.text({type: 'text/plain', limit: '100mb'}));
 
 // List all snapshots
 app.get('/api/snapshots', (req, res) => {
+  const getComment = (f) => {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(SNAPSHOT_DIR, f)))?.comment || '';
+    } catch{
+      return '';
+    }
+  }
   const files = fs.readdirSync(SNAPSHOT_DIR)
   .filter(f => f.endsWith('.json'))
   .map(f => ({
     name: f,
+    comment: getComment(f),
     timestamp: fs.statSync(path.join(SNAPSHOT_DIR, f)).mtimeMs
   }))
   .sort((a, b) => b.timestamp - a.timestamp);

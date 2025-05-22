@@ -1,5 +1,6 @@
 const snapshotBtn = document.getElementById('snapshotBtn');
 const snapshotList = document.getElementById('snapshotList');
+const snapshotComment = document.getElementById('snapshotComment');
 
 snapshotBtn.addEventListener('click', async() => {
   const snapshot = await takeSnapshot();
@@ -15,6 +16,8 @@ snapshotBtn.addEventListener('click', async() => {
     alert('Something went wrong while saving the snapshot: ' + res.statusText);
   }
 });
+
+snapshotComment.innerHTML = `Taken on ${new Date().toDateString()}`;
 
 async function takeSnapshot() {
   const localStorageData = {};
@@ -43,6 +46,7 @@ async function takeSnapshot() {
   }
 
   return {
+    comment: snapshotComment.innerHTML,
     localStorage: localStorageData,
     indexedDB: indexedDBData
   };
@@ -70,9 +74,17 @@ async function loadSnapshots() {
 
   snapshotList.innerHTML = '';
 
-  snapshots.forEach(({name}) => {
-    const li = document.createElement('li');
-    li.textContent = name;
+  snapshots.forEach(({name, comment}) => {
+    const li = document.createElement('div');
+    li.classList.add('snapshot-item')
+
+    const nameEl = document.createElement('span');
+    nameEl.textContent = name;
+    nameEl.classList.add('snapshot-name');
+
+    const commentEl = document.createElement('div');
+    commentEl.innerHTML = comment;
+    commentEl.classList.add('snapshot-item-comment');
 
     const loadBtn = document.createElement('button');
     loadBtn.textContent = 'Load';
@@ -81,13 +93,17 @@ async function loadSnapshots() {
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'Delete';
     deleteBtn.onclick = async() => {
+      const confirmed = confirm('Are you sure you want to delete this snapshot?');
+      if(!confirmed) return;
       await fetch(`/api/snapshots/${name}`, {method: 'DELETE'});
       loadSnapshots();
     };
 
+    li.appendChild(nameEl)
     li.appendChild(loadBtn);
     li.appendChild(deleteBtn);
     snapshotList.appendChild(li);
+    if((comment || '').trim()) snapshotList.appendChild(commentEl);
   });
 }
 
