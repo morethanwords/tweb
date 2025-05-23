@@ -1,0 +1,308 @@
+// Подключаем шрифт Eurocine через Google Fonts
+@import url('https://fonts.googleapis.com/css2?family=Eurocine:wght@400;500&display=swap');
+
+.header {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  transition: background-color 0.2s ease;
+
+  // Цвета для разных тем
+  background-color: #3390EC; // Светлая тема
+  
+  .night & {
+    background-color: #2B2D2F; // Темная тема
+  }
+
+  // Логотип
+  &-logo {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+
+      svg {
+        width: 100%;
+        height: 100%;
+      }
+    }
+
+    &-text-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    &-text {
+      font-family: Eurocine, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-weight: 500;
+      font-size: 20.17px;
+      line-height: 100%;
+      letter-spacing: 0px;
+      color: white;
+      user-select: none;
+    }
+  }
+
+  // Текст неофициальной версии - над логотипом
+  &-unofficial-text {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 400;
+    line-height: 1;
+    white-space: nowrap;
+    margin-bottom: 2px;
+  }
+
+  // Кнопка покупки звезд
+  &-bot-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 0 16px;
+    border-radius: 6px;
+    height: 30px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    &-icon {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+
+  // Правая секция
+  &-right-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  // Разделительная линия
+  &-divider {
+    width: 1px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+  }
+
+  // Поиск
+  &-search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &-search-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 6px 40px 6px 36px;
+    color: white;
+    font-size: 14px;
+    width: 200px;
+    height: 30px;
+    outline: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    &:focus {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  &-search-icon {
+    position: absolute;
+    left: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  &-search-slash {
+    position: absolute;
+    right: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+
+  // Кнопка переключения темы
+  &-theme-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    flex-shrink: 0;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    &:active {
+      transform: scale(0.95);
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    svg {
+      width: 20px;
+      height: 20px;
+      display: block;
+    }
+  }
+
+  // Адаптивность
+  @media (max-width: 768px) {
+    padding: 0 12px;
+
+    &-logo {
+      gap: 6px;
+
+      &-text {
+        font-size: 18px;
+      }
+    }
+
+    &-unofficial-text {
+      font-size: 9px;
+    }
+
+    &-bot-button {
+      font-size: 13px;
+      padding: 0 12px;
+      gap: 6px;
+      height: 28px;
+    }
+
+    &-search-input {
+      width: 160px;
+    }
+
+    &-theme-button {
+      width: 28px;
+      height: 28px;
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    &-right-section {
+      gap: 8px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    padding: 0 8px;
+    
+    &-logo {
+      &-text {
+        font-size: 16px;
+      }
+    }
+
+    &-unofficial-text {
+      font-size: 8px;
+    }
+
+    &-bot-button {
+      font-size: 12px;
+      padding: 0 10px;
+      gap: 4px;
+      height: 26px;
+    }
+
+    &-search-input {
+      width: 120px;
+      font-size: 13px;
+    }
+
+    &-right-section {
+      gap: 6px;
+    }
+  }
+
+  @media (max-width: 360px) {
+    &-search-container {
+      display: none;
+    }
+
+    &-bot-button {
+      font-size: 11px;
+      padding: 0 8px;
+      gap: 2px;
+      height: 24px;
+    }
+  }
+}
+
+// Сдвигаем основной контент вниз из-за фиксированного хедера
+body.has-header {
+  padding-top: 46px;
+
+  // Для страниц аутентификации
+  &.has-auth-pages {
+    .whole#auth-pages {
+
+    }
+  }
+
+  // Для основных страниц чатов
+  .whole#page-chats {
+  }
+
+  // Для главных колонок
+  #main-columns {
+
+  }
+} 

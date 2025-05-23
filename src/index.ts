@@ -53,6 +53,7 @@ import PasscodeLockScreenController from './components/passcodeLock/passcodeLock
 import type {LangPackDifference} from './layer';
 import commonStateStorage from './lib/commonStateStorage';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './components/sidebarLeft/constants';
+import Header from './components/header';
 
 // import commonStateStorage from './lib/commonStateStorage';
 // import { STATE_INIT } from './config/state';
@@ -433,6 +434,11 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
 
 
   setDocumentLangPackProperties(langPack);
+
+  // Инициализируем хедер
+  const header = new Header();
+  document.body.prepend(header.getElement());
+  document.body.classList.add('has-header');
 
   let authState = stateResult.state.authState;
 

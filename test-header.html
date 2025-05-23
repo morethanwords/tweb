@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест хедера</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Eurocine:wght@400;500&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f0f0;
+            padding-top: 46px;
+        }
+        
+        body.night {
+            background: #1a1a1a;
+            color: white;
+        }
+        
+        .header {
+            height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            transition: background-color 0.2s ease;
+            background-color: #3390EC;
+        }
+        
+        .night .header {
+            background-color: #2B2D2F;
+        }
+        
+        .header-logo {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .header-logo-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+        }
+        
+        .header-logo-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .header-logo-text-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .header-logo-text {
+            font-family: Eurocine, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 500;
+            font-size: 20.17px;
+            line-height: 100%;
+            letter-spacing: 0px;
+            color: white;
+            user-select: none;
+        }
+        
+        .header-unofficial-text {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 400;
+            line-height: 1;
+            white-space: nowrap;
+            margin-bottom: 2px;
+        }
+        
+        .header-bot-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            font-weight: 500;
+            font-size: 14px;
+            padding: 0 16px;
+            border-radius: 6px;
+            height: 30px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .header-bot-button-icon {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .header-bot-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .header-bot-button:active {
+            transform: translateY(0);
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .header-right-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        
+        .header-divider {
+            width: 1px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+        
+        .header-search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        
+        .header-search-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 6px 40px 6px 36px;
+            color: white;
+            font-size: 14px;
+            width: 200px;
+            height: 30px;
+            outline: none;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        
+        .header-search-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .header-search-input:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .header-search-icon {
+            position: absolute;
+            left: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        
+        .header-search-slash {
+            position: absolute;
+            right: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-weight: 500;
+            pointer-events: none;
+        }
+        
+        .header-theme-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            flex-shrink: 0;
+        }
+        
+        .header-theme-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .header-theme-button:active {
+            transform: scale(0.95);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .header-theme-button svg {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+        
+        .content {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .night .card {
+            background: #2a2a2a;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                padding: 0 12px;
+            }
+            
+            .header-logo {
+                gap: 6px;
+            }
+            
+            .header-logo-text {
+                font-size: 18px;
+            }
+            
+            .header-unofficial-text {
+                font-size: 9px;
+            }
+            
+            .header-bot-button {
+                font-size: 13px;
+                padding: 0 12px;
+                gap: 6px;
+                height: 28px;
+            }
+            
+            .header-search-input {
+                width: 160px;
+            }
+            
+            .header-search-input:focus {
+                width: 180px;
+            }
+            
+            .header-theme-button {
+                width: 28px;
+                height: 28px;
+            }
+            
+            .header-theme-button svg {
+                width: 18px;
+                height: 18px;
+            }
+            
+            .header-right-section {
+                gap: 8px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header {
+                padding: 0 8px;
+            }
+            
+            .header-logo-text {
+                font-size: 16px;
+            }
+            
+            .header-unofficial-text {
+                font-size: 8px;
+            }
+            
+            .header-bot-button {
+                font-size: 12px;
+                padding: 0 10px;
+                gap: 4px;
+                height: 26px;
+            }
+            
+            .header-search-input {
+                width: 120px;
+                font-size: 13px;
+            }
+            
+            .header-search-input:focus {
+                width: 140px;
+            }
+            
+            .header-right-section {
+                gap: 6px;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .header-search-container {
+                display: none;
+            }
+            
+            .header-bot-button {
+                font-size: 11px;
+                padding: 0 8px;
+                gap: 2px;
+                height: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-logo">
+            <div class="header-logo-icon">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14.6667 1.83333H7.33333C3.66667 1.83333 1.83333 3.66667 1.83333 7.33333V19.25C1.83333 19.7542 2.24583 20.1667 2.75 20.1667H14.6667C18.3333 20.1667 20.1667 18.3333 20.1667 14.6667V7.33333C20.1667 3.66667 18.3333 1.83333 14.6667 1.83333ZM12.8333 13.9792H6.41667C6.04083 13.9792 5.72917 13.6675 5.72917 13.2917C5.72917 12.9158 6.04083 12.6042 6.41667 12.6042H12.8333C13.2092 12.6042 13.5208 12.9158 13.5208 13.2917C13.5208 13.6675 13.2092 13.9792 12.8333 13.9792ZM15.5833 9.39583H6.41667C6.04083 9.39583 5.72917 9.08417 5.72917 8.70833C5.72917 8.3325 6.04083 8.02083 6.41667 8.02083H15.5833C15.9592 8.02083 16.2708 8.3325 16.2708 8.70833C16.2708 9.08417 15.9592 9.39583 15.5833 9.39583Z" fill="white"/>
+                </svg>
+            </div>
+            <div class="header-logo-text-container">
+                <span class="header-unofficial-text">*неофициальная версия</span>
+                <span class="header-logo-text">Telegram</span>
+            </div>
+        </div>
+        
+        <button class="header-bot-button" id="botButton">
+            <span class="header-bot-button-icon">
+                <svg width="21" height="20" viewBox="0 0 21 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8.48345 6.58093C9.38066 4.97142 9.82927 4.16667 10.5 4.16667C11.1707 4.16667 11.6193 4.97142 12.5165 6.58093L12.7486 6.99733C13.0035 7.4547 13.131 7.68339 13.3298 7.83428C13.5286 7.98517 13.7761 8.04118 14.2712 8.1532L14.722 8.25519C16.4642 8.64939 17.3354 8.8465 17.5426 9.51298C17.7499 10.1795 17.156 10.8739 15.9682 12.2629L15.6609 12.6222C15.3234 13.0169 15.1546 13.2142 15.0787 13.4584C15.0028 13.7025 15.0283 13.9658 15.0793 14.4924L15.1258 14.9719C15.3054 16.825 15.3952 17.7516 14.8526 18.1635C14.31 18.5754 13.4943 18.1998 11.863 17.4487L11.441 17.2544C10.9774 17.041 10.7456 16.9343 10.5 16.9343C10.2543 16.9343 10.0225 17.041 9.55893 17.2544L9.13689 17.4487C7.5056 18.1998 6.68996 18.5754 6.14736 18.1635C5.60475 17.7516 5.69454 16.825 5.87411 14.9719L5.92057 14.4924C5.9716 13.9658 5.99712 13.7025 5.9212 13.4584C5.84527 13.2142 5.67651 13.0169 5.33898 12.6222L5.03169 12.2629C3.84393 10.8739 3.25004 10.1795 3.4573 9.51298C3.66455 8.8465 4.53569 8.64939 6.27796 8.25519L6.72871 8.1532C7.22381 8.04118 7.47136 7.98517 7.67013 7.83428C7.86889 7.68339 7.99637 7.4547 8.25133 6.99733L8.48345 6.58093Z" fill="#FFCC00"/>
+                    <path d="M4.13944 2.08365C4.16443 1.9955 4.3209 1.99497 4.34649 2.08295C4.46332 2.48471 4.67997 3.07856 5.00757 3.40396C5.33518 3.72936 5.93047 3.94198 6.33301 4.0561C6.42117 4.0811 6.42169 4.23757 6.33371 4.26315C5.93195 4.37999 5.33811 4.59663 5.01271 4.92424C4.68731 5.25184 4.47468 5.84714 4.36056 6.24968C4.33557 6.33783 4.1791 6.33836 4.15351 6.25038C4.03668 5.84862 3.82003 5.25477 3.49243 4.92937C3.16482 4.60398 2.56953 4.39135 2.16699 4.27723C2.07883 4.25224 2.07831 4.09577 2.16629 4.07018C2.56805 3.95334 3.16189 3.7367 3.48729 3.40909C3.81269 3.08149 4.02532 2.48619 4.13944 2.08365Z" fill="#FFCC00"/>
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M15.9166 2.70833C16.2618 2.70833 16.5416 2.98816 16.5416 3.33333V3.54167H16.75C17.0952 3.54167 17.375 3.82149 17.375 4.16667C17.375 4.51184 17.0952 4.79167 16.75 4.79167H16.5416V5C16.5416 5.34518 16.2618 5.625 15.9166 5.625C15.5715 5.625 15.2916 5.34518 15.2916 5V4.79167H15.0833C14.7381 4.79167 14.4583 4.51184 14.4583 4.16667C14.4583 3.82149 14.7381 3.54167 15.0833 3.54167H15.2916V3.33333C15.2916 2.98816 15.5715 2.70833 15.9166 2.70833Z" fill="#FFCC00"/>
+                </svg>
+            </span>
+            <span>Купить 50 звёзд за 79 руб.</span>
+        </button>
+        
+        <div class="header-right-section">
+            <div class="header-search-container">
+                <div class="header-search-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                        <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </div>
+                <input type="text" class="header-search-input" placeholder="База знаний...">
+                <div class="header-search-slash">/</div>
+            </div>
+            
+            <div class="header-divider"></div>
+            
+            <button class="header-theme-button" id="themeButton">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 14.875C11.6924 14.875 13.875 12.6924 13.875 10C13.875 7.30761 11.6924 5.125 9 5.125C6.30761 5.125 4.125 7.30761 4.125 10C4.125 12.6924 6.30761 14.875 9 14.875Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M14.355 15.355L14.2575 15.2575M14.2575 4.7425L14.355 4.645L14.2575 4.7425ZM3.645 15.355L3.7425 15.2575L3.645 15.355ZM9 2.56V2.5V2.56ZM9 17.5V17.44V17.5ZM1.56 10H1.5H1.56ZM16.5 10H16.44H16.5ZM3.7425 4.7425L3.645 4.645L3.7425 4.7425Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+    
+    <div class="content">
+        <div class="card">
+            <h1>Тест хедера Telegram Web K</h1>
+            <p>Этот хедер имеет следующие особенности:</p>
+            <ul>
+                <li>Высота 46 пикселей</li>
+                <li>Логотип Telegram с шрифтом Eurocine</li>
+                <li>Надпись "*неофициальная версия" поверх текста Telegram</li>
+                <li>Кнопка "Купить 50 звёзд за 79 руб." со звездочкой по центру</li>
+                <li>Поле поиска "База знаний..." с символом "/" справа</li>
+                <li>Кнопка переключения темы справа</li>
+                <li>Адаптивный дизайн для мобильных устройств</li>
+                <li>Цвета: #3390EC для светлой темы, #2B2D2F для темной</li>
+            </ul>
+        </div>
+        
+        <div class="card">
+            <h2>Функциональность</h2>
+            <p>Нажмите на кнопку переключения темы в правом верхнем углу, чтобы переключиться между светлой и темной темами.</p>
+        </div>
+        
+        <div class="card">
+            <h2>Адаптивность</h2>
+            <p>Попробуйте изменить размер окна браузера, чтобы увидеть, как хедер адаптируется к разным размерам экрана.</p>
+        </div>
+    </div>
+    
+    <script>
+        const themeButton = document.getElementById('themeButton');
+        const botButton = document.getElementById('botButton');
+        const body = document.body;
+        let isDark = false;
+        
+        const lightIcon = `
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 14.875C11.6924 14.875 13.875 12.6924 13.875 10C13.875 7.30761 11.6924 5.125 9 5.125C6.30761 5.125 4.125 7.30761 4.125 10C4.125 12.6924 6.30761 14.875 9 14.875Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M14.355 15.355L14.2575 15.2575M14.2575 4.7425L14.355 4.645L14.2575 4.7425ZM3.645 15.355L3.7425 15.2575L3.645 15.355ZM9 2.56V2.5V2.56ZM9 17.5V17.44V17.5ZM1.56 10H1.5H1.56ZM16.5 10H16.44H16.5ZM3.7425 4.7425L3.645 4.645L3.7425 4.7425Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+        
+        const darkIcon = `
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1.52257 10.315C1.79257 14.1775 5.07007 17.32 8.99257 17.4925C11.7601 17.6125 14.2351 16.3225 15.7201 14.29C16.3351 13.4575 16.0051 12.9025 14.9776 13.09C14.4751 13.18 13.9576 13.2175 13.4176 13.195C9.75007 13.045 6.75007 9.9775 6.73507 6.355C6.72757 5.38 6.93007 4.4575 7.29757 3.6175C7.70257 2.6875 7.21507 2.245 6.27757 2.6425C3.30757 3.895 1.27507 6.8875 1.52257 10.315Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+        
+        function updateThemeButton() {
+            themeButton.innerHTML = isDark ? lightIcon : darkIcon;
+            themeButton.title = isDark ? 'Переключить на светлую тему' : 'Переключить на темную тему';
+        }
+        
+        // Обработчик для кнопки переключения темы
+        themeButton.addEventListener('click', () => {
+            isDark = !isDark;
+            body.classList.toggle('night', isDark);
+            updateThemeButton();
+        });
+        
+        // Обработчик для кнопки бота
+        botButton.addEventListener('click', () => {
+            window.open('https://t.me/StarsotekaRobot', '_blank');
+        });
+        
+        updateThemeButton();
+    </script>
+</body>
+</html> 
