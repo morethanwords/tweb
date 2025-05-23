@@ -45,4 +45,8 @@ export class SequentialCursorFetcher<T> {
         this.fetchedItemsCount += count;
     }
   }
+
+  public updateFetchedItemsCount(count: number) {
+    this.fetchedItemsCount = count;
+  }
 }

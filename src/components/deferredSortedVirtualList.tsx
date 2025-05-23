@@ -245,6 +245,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
     setTotalCount,
 
+    sortedItems,
     itemsLength,
     addItems,
     updateItem,
