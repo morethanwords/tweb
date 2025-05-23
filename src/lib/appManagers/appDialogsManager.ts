@@ -873,6 +873,19 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     this.checkForDialogsPlaceholder();
 
+    console.log('[my-debug] loadDialogs offsetIndex :>> ', offsetIndex);
+
+    /**
+     * The first time getDialogs might return `count: null`, which is not good for this
+     * infinite loading implementation, that's why we're refetching after 0.5 seconds to
+     * make sure we get the latest total count of dialogs to properly render the whole list
+     */
+    let shouldRefetch = false;
+    if(appDialogsManager.isFirstDialogsLoad && !offsetIndex) {
+      appDialogsManager.isFirstDialogsLoad = false;
+      shouldRefetch = true;
+    }
+
     const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
       offsetIndex,
       limit: 20,
@@ -881,6 +894,16 @@ class Some<T extends AnyDialog = AnyDialog> {
     });
 
     const result = await ackedResult.result;
+
+    console.log('[my-debug] loadDialogs result :>> ', result);
+
+    if(shouldRefetch) {
+      setTimeout(async() => {
+        console.log('[my-debug] Refetching dialogs bug');
+        const {totalCount} = await this.loadDialogsInner();
+        this.cursorFetcher.updateFetchedItemsCount(totalCount);
+      }, 500);
+    }
 
     const newOffsetIndex = result.dialogs.reduce((prev, curr) => {
       const index = getDialogIndex(curr, this.indexKey)
@@ -896,7 +919,7 @@ class Some<T extends AnyDialog = AnyDialog> {
     if(this.loadDialogsDeferred?.isRejected) throw new Error();
 
     this.loadedDialogsAtLeastOnce = true;
-    this.sortedList.addDeferredItems(items, result.count);
+    this.sortedList.addDeferredItems(items, result.count || 0);
 
     this.placeholder?.detach(this.sortedList.itemsLength());
 
@@ -1552,6 +1575,7 @@ export class AppDialogsManager {
   private selectTab: ReturnType<typeof horizontalMenu>;
 
   public doNotRenderChatList: boolean;
+  public isFirstDialogsLoad: boolean;
 
   private stateMiddlewareHelper: MiddlewareHelper;
 
@@ -1572,7 +1596,6 @@ export class AppDialogsManager {
   public resizeStoriesList: () => void;
 
   public start() {
-    console.log('[my-debug] app dialogs manager started');
     const managers = this.managers = getProxiedManagers();
 
     this.contextMenu = new DialogsContextMenu(managers);
@@ -1997,6 +2020,7 @@ export class AppDialogsManager {
     }
 
     this.doNotRenderChatList = true;
+    this.isFirstDialogsLoad = true;
 
     const wrapPromiseWithMiddleware = middlewarePromise(middleware);
     try {
