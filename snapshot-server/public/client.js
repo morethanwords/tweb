@@ -96,6 +96,7 @@ async function loadSnapshots() {
       const confirmed = confirm('Are you sure you want to delete this snapshot?');
       if(!confirmed) return;
       await fetch(`/api/snapshots/${name}`, {method: 'DELETE'});
+      alert('Snapshot successfully deleted');
       loadSnapshots();
     };
 
@@ -103,7 +104,7 @@ async function loadSnapshots() {
     li.appendChild(loadBtn);
     li.appendChild(deleteBtn);
     snapshotList.appendChild(li);
-    if((comment || '').trim()) snapshotList.appendChild(commentEl);
+    if((comment || '').trim?.()) snapshotList.appendChild(commentEl);
   });
 }
 

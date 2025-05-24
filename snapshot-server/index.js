@@ -1,7 +1,10 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-// const bodyParser = require('body-parser');
+
+const {parser} = require('stream-json');
+const {streamObject} = require('stream-json/streamers/StreamObject');
+
 
 const app = express();
 const PORT = 8080;
@@ -17,23 +20,20 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.text({type: 'text/plain', limit: '100mb'}));
 
 // List all snapshots
-app.get('/api/snapshots', (req, res) => {
-  const getComment = (f) => {
-    try {
-      return JSON.parse(fs.readFileSync(path.join(SNAPSHOT_DIR, f)))?.comment || '';
-    } catch{
-      return '';
-    }
-  }
-  const files = fs.readdirSync(SNAPSHOT_DIR)
-  .filter(f => f.endsWith('.json'))
-  .map(f => ({
+app.get('/api/snapshots', async(req, res) => {
+  const jsonFiles = fs.readdirSync(SNAPSHOT_DIR)
+  .filter(f => f.endsWith('.json'));
+
+  const meta = await Promise.all(jsonFiles.map(async f => ({
     name: f,
-    comment: getComment(f),
+    comment: await getComment(f),
     timestamp: fs.statSync(path.join(SNAPSHOT_DIR, f)).mtimeMs
-  }))
+  })));
+
+  const sorted = meta
   .sort((a, b) => b.timestamp - a.timestamp);
-  res.json(files);
+
+  res.json(sorted);
 });
 
 // Save a new snapshot
@@ -93,3 +93,32 @@ function getFormattedDate() {
   const time = [pad(d.getHours()), pad(d.getMinutes()), pad(d.getSeconds())].join('-');
   return `${date}_${time}`;
 }
+
+const getComment = (f) => new Promise((_resolve) => {
+  const timeout = setTimeout(() => {_resolve('')}, 500); // Don't let it stall
+
+  const resolve = (value) => {
+    _resolve(value);
+    clearTimeout(timeout);
+    pipeline.destroy(); // Stop once we get the value
+  };
+
+  const pipeline = fs.createReadStream(path.join(SNAPSHOT_DIR, f))
+  .pipe(parser())
+  .pipe(streamObject())
+
+  // Assuming comment is positioned first in the json
+
+  pipeline.on('data', ({key, value}) => {
+    if(key === 'comment') resolve(value);
+    else resolve('');
+  });
+
+  pipeline.on('close', () => {
+    resolve('');
+  });
+
+  pipeline.on('error', () => {
+    resolve('')
+  });
+});
