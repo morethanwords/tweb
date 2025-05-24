@@ -315,6 +315,11 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
   }
 }
 
+(window as any)['showIconLibrary'] = async() => {
+  const {showIconLibrary} = await import('./components/iconLibrary/trigger');
+  showIconLibrary();
+};
+
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
   const perf = performance.now();
   randomlyChooseVersionFromSearch();

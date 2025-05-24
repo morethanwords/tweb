@@ -1,0 +1,50 @@
+.Popup {
+  position: fixed;
+  z-index: 1000000;
+
+  right: 2rem;
+  bottom: 2rem;
+
+  height: 520px;
+  width: 520px;
+  border-radius: 1rem;
+  background-color: var(--surface-color);
+
+  --size: 2.5rem;
+
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  padding: 2rem;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.Scrollable {
+  position: relative; 
+  flex: 1;
+}
+
+.Name {
+  padding: 0 0.25rem;
+  border-bottom: 1px solid hsl(from var(--secondary-color) h s calc(l - 16));
+  color: var(--secondary-text-color);
+  font-family: 'Courier New', Courier, monospace;
+  margin-bottom: 1rem;
+}
+
+.Grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--size), 1fr));
+  grid-auto-rows: var(--size);
+  place-content: center;
+}
+
+.Icon {
+  color: var(--secondary-text-color);
+  font-size: calc(var(--size) * 0.75);
+  line-height: 1em;
+  pointer-events: initial !important;
+
+  cursor: pointer;
+}
