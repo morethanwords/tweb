@@ -116,8 +116,10 @@ import {useAppSettings} from '../../stores/appSettings';
 import wrapFolderTitle from '../../components/wrappers/folderTitle';
 import {SequentialCursorFetcher, SequentialCursorFetcherResult} from '../../helpers/sequentialCursorFetcher';
 import SortedDialogList from '../../components/sortedDialogList';
+import throttle from '../../helpers/schedulers/throttle';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
+const DIALOG_LOAD_COUNT = 20;
 
 export type DialogDom = {
   avatarEl: ReturnType<typeof avatarNew>,
@@ -695,6 +697,7 @@ class Some<T extends AnyDialog = AnyDialog> {
   protected placeholderOptions: ConstructorParameters<typeof DialogsPlaceholder>[0];
 
   protected cursorFetcher = new SequentialCursorFetcher((cursor: number) => this.loadDialogs(cursor));
+  protected hasReachedTheEnd = false;
 
   protected skipMigrated = true;
 
@@ -763,16 +766,16 @@ class Some<T extends AnyDialog = AnyDialog> {
     const bottomIndex = last?.index;
     const dialogIndex = getDialogIndex(dialog);
 
-    return !last || dialogIndex >= bottomIndex;
+    return !last || dialogIndex >= bottomIndex || this.hasReachedTheEnd;
   }
 
-  public onChatsScrollTop() {
-    return this.onChatsScroll('top');
-  };
-
-  public onChatsScroll(_: SliceSides = 'bottom') {
+  public onChatsScroll() {
     this.requestItemForIdx(0);
   };
+
+  protected onScrolledBottom() {
+    this.cursorFetcher.tryToFetchMore();
+  }
 
   public createPlaceholder(): DialogsPlaceholder {
     const placeholder = this.placeholder = new DialogsPlaceholder(this.placeholderOptions);
@@ -839,7 +842,7 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     await this.managers.acknowledged.dialogsStorage.getDialogs({
       offsetIndex: 0,
-      limit: 20,
+      limit: DIALOG_LOAD_COUNT,
       filterId,
       skipMigrated: this.skipMigrated
     });
@@ -888,7 +891,7 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
       offsetIndex,
-      limit: 20,
+      limit: DIALOG_LOAD_COUNT,
       filterId,
       skipMigrated: this.skipMigrated
     });
@@ -919,6 +922,8 @@ class Some<T extends AnyDialog = AnyDialog> {
     if(this.loadDialogsDeferred?.isRejected) throw new Error();
 
     this.loadedDialogsAtLeastOnce = true;
+    this.hasReachedTheEnd = !!result.isEnd;
+
     this.sortedList.addDeferredItems(items, result.count || 0);
 
     this.placeholder?.detach(this.sortedList.itemsLength());
@@ -977,8 +982,9 @@ class Some<T extends AnyDialog = AnyDialog> {
   }
 
   public bindScrollable() {
-    this.scrollable.onScrolledTop = this.onChatsScrollTop.bind(this);
-    this.scrollable.onScrolledBottom = this.onChatsScroll.bind(this);
+    this.scrollable.onScrolledBottom = throttle(() => {
+      this.onScrolledBottom();
+    }, 200, false);
   }
 
   public clear() {
@@ -986,6 +992,7 @@ class Some<T extends AnyDialog = AnyDialog> {
     this.placeholder?.remove();
     this.loadDialogsDeferred?.reject();
     this.cursorFetcher.reset();
+    this.hasReachedTheEnd = false;
   }
 
   public reset() {
@@ -1384,13 +1391,12 @@ export class Some2 extends Some<Dialog> {
     this.setCallStatus(dom, !!(chat.pFlags.call_active && chat.pFlags.call_not_empty));
   }
 
-  public onChatsScroll(side: SliceSides = 'bottom') {
-    if(this.scrollable.loadedAll[side]) {
+  protected onScrolledBottom() {
+    super.onScrolledBottom();
+
+    if(this.hasReachedTheEnd) {
       appDialogsManager.loadContacts?.();
     }
-
-    this.log('onChatsScroll', side);
-    return super.onChatsScroll(side);
   }
 
   public toggleAvatarUnreadBadges(value: boolean, useRafs: number) {

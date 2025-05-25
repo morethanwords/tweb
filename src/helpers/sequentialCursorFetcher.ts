@@ -12,18 +12,24 @@ export class SequentialCursorFetcher<T> {
 
   private isFetching = false;
 
+  private needToFetchMore = false;
+
   constructor(private fetcher: (cursor: T | undefined) => Promise<SequentialCursorFetcherResult<T>>) {}
 
   public fetchUntil(neededCount: number, currentCount?: number) {
     this.neededCount = Math.max(this.neededCount, neededCount);
     if(typeof currentCount !== 'undefined') this.fetchedItemsCount = currentCount;
 
-    if(this.isFetching) return;
+    this.triggerFetching();
+  }
 
-    this.isFetching = true;
-    this.fetchUntilNeededCount().catch(() => {}).finally(() => {
-      this.isFetching = false;
-    });
+  public tryToFetchMore() {
+    this.needToFetchMore = true;
+    this.triggerFetching();
+  }
+
+  public updateFetchedItemsCount(count: number) {
+    this.fetchedItemsCount = count;
   }
 
   public reset() {
@@ -33,9 +39,22 @@ export class SequentialCursorFetcher<T> {
     this.cursor = undefined;
   }
 
+  private triggerFetching() {
+    if(this.isFetching) return;
+
+    this.isFetching = true;
+    this.fetchUntilNeededCount().catch(() => {}).finally(() => {
+      this.isFetching = false;
+    });
+  }
+
   private async fetchUntilNeededCount() {
-    while(this.fetchedItemsCount < this.neededCount) {
+    while(this.fetchedItemsCount < this.neededCount || this.needToFetchMore) {
+      console.log('[my-debug] fetching until needed count this.fetchedItemsCount, this.neededCount, this.needToFetchMore', this.fetchedItemsCount, this.neededCount, this.needToFetchMore);
       const {cursor, count, totalCount} = await this.fetcher(this.cursor);
+
+      this.needToFetchMore = false;
+
       if(count === 0) break;
       this.cursor = cursor;
 
@@ -44,9 +63,5 @@ export class SequentialCursorFetcher<T> {
       else
         this.fetchedItemsCount += count;
     }
-  }
-
-  public updateFetchedItemsCount(count: number) {
-    this.fetchedItemsCount = count;
   }
 }
