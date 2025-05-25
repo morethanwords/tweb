@@ -837,12 +837,17 @@ class Some<T extends AnyDialog = AnyDialog> {
     this.placeholder = this.createPlaceholder();
   }
 
+  private guessLoadCount() {
+    // Make sure we have some scroll even when the screen is very huge
+    return Math.max(windowSize.height / 64 * 1.25 | 0, DIALOG_LOAD_COUNT);
+  }
+
   public async preloadDialogs() {
     const filterId = this.getFilterId();
 
     await this.managers.acknowledged.dialogsStorage.getDialogs({
       offsetIndex: 0,
-      limit: DIALOG_LOAD_COUNT,
+      limit: this.guessLoadCount(),
       filterId,
       skipMigrated: this.skipMigrated
     });
@@ -891,7 +896,7 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
       offsetIndex,
-      limit: DIALOG_LOAD_COUNT,
+      limit: this.guessLoadCount(),
       filterId,
       skipMigrated: this.skipMigrated
     });
