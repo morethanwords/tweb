@@ -95,7 +95,7 @@ function getFormattedDate() {
 }
 
 const getComment = (f) => new Promise((_resolve) => {
-  const timeout = setTimeout(() => {_resolve('')}, 500); // Don't let it stall
+  const timeout = setTimeout(() => {resolve('')}, 500); // Don't let it stall
 
   const resolve = (value) => {
     _resolve(value);
