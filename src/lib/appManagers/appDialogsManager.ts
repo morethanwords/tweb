@@ -119,7 +119,7 @@ import SortedDialogList from '../../components/sortedDialogList';
 import throttle from '../../helpers/schedulers/throttle';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
-const DIALOG_LOAD_COUNT = 20;
+const DIALOG_LOAD_COUNT = 10;
 
 export type DialogDom = {
   avatarEl: ReturnType<typeof avatarNew>,
