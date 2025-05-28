@@ -507,6 +507,7 @@ class ForumTab extends SliderSuperTabEventable {
       managers: this.managers,
       log: this.log,
       requestItemForIdx: this.xd.requestItemForIdx,
+      onListShrinked: this.xd.onListShrinked,
       indexKey: 'index_0',
       virtualFilterId: this.peerId
     });
@@ -705,6 +706,20 @@ class Some<T extends AnyDialog = AnyDialog> {
     this.cursorFetcher.fetchUntil(idx + 1, itemsLength);
   }
 
+  public onListShrinked = () => {
+    const items = this.sortedList.getSortedItems();
+    const last = items[items.length - 2];
+
+    console.log('[my-debug] list shrinked: count, index :>> ', items.length, last?.index);
+
+    this.cursorFetcher.setFetchedItemsCount(items.length);
+    this.cursorFetcher.setNeededCount(items.length);
+    this.cursorFetcher.setCursor(last?.index);
+
+    // Make sure the current request is canceled so the cursor is not overriden to a bigger page
+    this.loadDialogsDeferred.reject();
+  }
+
   constructor() {
     this.log = logger('CL');
     this.managers = rootScope.managers;
@@ -774,6 +789,7 @@ class Some<T extends AnyDialog = AnyDialog> {
   };
 
   protected onScrolledBottom() {
+    console.log('[my-debug] try to fetch more');
     this.cursorFetcher.tryToFetchMore();
   }
 
@@ -909,7 +925,7 @@ class Some<T extends AnyDialog = AnyDialog> {
       setTimeout(async() => {
         console.log('[my-debug] Refetching dialogs bug');
         const {totalCount} = await this.loadDialogsInner();
-        this.cursorFetcher.updateFetchedItemsCount(totalCount);
+        this.cursorFetcher.setFetchedItemsCount(totalCount);
       }, 500);
     }
 
@@ -1307,6 +1323,7 @@ export class Some2 extends Some<Dialog> {
       scrollable: scrollable,
       indexKey,
       requestItemForIdx: this.requestItemForIdx,
+      onListShrinked: this.onListShrinked,
       itemSize: 72,
       onListLengthChange: () => {
         console.log('[my-debug] onListLengthChange :>> ', sortedDialogList.itemsLength());

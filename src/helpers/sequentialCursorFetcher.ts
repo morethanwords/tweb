@@ -28,8 +28,16 @@ export class SequentialCursorFetcher<T> {
     this.triggerFetching();
   }
 
-  public updateFetchedItemsCount(count: number) {
+  public setFetchedItemsCount(count: number) {
     this.fetchedItemsCount = count;
+  }
+
+  public setNeededCount(count: number) {
+    this.neededCount = count;
+  }
+
+  public setCursor(cursor: T) {
+    this.cursor = cursor;
   }
 
   public reset() {
