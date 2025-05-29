@@ -1588,6 +1588,7 @@ export class AppMessagesManager extends AppManager {
 
             deferred.resolve();
           }, (error: ApiError) => {
+            MTProtoMessagePort.getInstance<false>().invoke('log', {message: '[my-debug] error sendMultiMedia', error})
             results.forEach(({message}) => toggleError(message, error));
             deferred.reject(error);
           });
@@ -2455,6 +2456,7 @@ export class AppMessagesManager extends AppManager {
     this.scheduleHandleNewDialogs(message.peerId, dialog);
   }
 
+  // HERE Example
   public cancelPendingMessage(randomId: string) {
     const pendingData = this.pendingByRandomId[randomId];
 

@@ -3360,6 +3360,9 @@ const lang = {
   'PaidMessage.UserPaysForMessagesNotice': '%s must pay %d for each message to you.',
   'PaidMessage.RemoveFeeWarning': 'Are you sure you want to allow %s to message you for free?',
   'PaidMessage.RemoveFeeRefund': 'Refund the %d already paid',
+  'PaidMessage.PriceChanged': 'Price changed to %d Stars',
+  'PaidMessage.PriceChangedTooltipAction': 'Resend',
+  'PaidMessage.ConfirmPriceChangedRepay': 'Are you sure you want to pay **%d** after the price changed to **%d**?',
 
   'BuyStars': 'Buy Stars',
   'UnsavedChanges': 'Unsaved Changes',
