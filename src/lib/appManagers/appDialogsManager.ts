@@ -708,7 +708,7 @@ class Some<T extends AnyDialog = AnyDialog> {
 
   public onListShrinked = () => {
     const items = this.sortedList.getSortedItems();
-    const last = items[items.length - 2];
+    const last = items[items.length - 1];
 
     console.log('[my-debug] list shrinked: count, index :>> ', items.length, last?.index);
 

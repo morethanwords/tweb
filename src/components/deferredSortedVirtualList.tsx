@@ -197,20 +197,30 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     console.log('[my-debug] list length and last index :>> ', itemsLength(), sortedItems()[sortedItems().length - 1]?.index);
   });
 
-  createEffect(on(visibleItems, () => {
-    const maxVisible = Math.max(0, ...Array.from(visibleItems().values()));
-
-    // const extraItems = Math.max(EXTRA_ITEMS_TO_KEEP, window.innerHeight / itemSize * 2);
+  function checkShrink(visibleItems: Set<number>, itemsLength: number) {
+    const maxVisible = Math.max(0, ...Array.from(visibleItems.values()));
 
     const toKeep = maxVisible + EXTRA_ITEMS_TO_KEEP;
 
-    if(itemsLength() > toKeep) {
+    if(itemsLength > toKeep) {
+      console.log('[my-debug] shrinking list maxVisible, visibleItems, itemsLength(), toKeep :>> ', maxVisible, visibleItems, itemsLength, toKeep);
       batch(() => {
-        setItems((items) => items.slice(0, toKeep));
+        // Should be sortedItems() here, because the updated cursor is based on the last item from the list, and might skip a few dialogs if wasn't set the right cursor
+        setItems(sortedItems().slice(0, toKeep));
         setRevealIdx(toKeep);
       });
       onListShrinked();
     }
+  }
+
+  let shrinkTimeout: number;
+
+  createEffect(on(visibleItems, () => {
+    self.clearTimeout(shrinkTimeout);
+
+    shrinkTimeout = self.setTimeout(() => {
+      checkShrink(visibleItems(), itemsLength());
+    }, 0);
   }));
 
   <VerticalVirtualList
