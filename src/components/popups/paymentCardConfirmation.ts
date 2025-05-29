@@ -25,7 +25,7 @@ export default class PopupPaymentCardConfirmation extends PopupElement<{
     });
 
     const section = new SettingSection({noDelimiter: true, noShadow: true, caption: 'Checkout.PasswordEntry.Text', captionArgs: [card]});
-    const passwordInputField = new PasswordInputField({labelText: passwordState.hint});
+    const passwordInputField = new PasswordInputField({labelText: passwordState.hint ?? ''});
     section.content.append(passwordInputField.container);
     this.scrollable.append(section.container);
 
