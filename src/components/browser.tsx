@@ -510,8 +510,9 @@ function Browser(props: {
       <div
         class={styles.BrowserBody}
         style={{
-          width: movableState().width + 'px',
-          height: movableState().height - additionalHeight + 'px'
+          'width': movableState().width + 'px',
+          '--browser-width': movableState().width + 'px',
+          'height': movableState().height - additionalHeight + 'px'
         }}
       >
         <For each={state.pages}>{(page) => {
@@ -608,7 +609,6 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
     header: document.createElement('div'),
     title: document.createElement('div'),
     body: document.createElement('div'),
-    footer: document.createElement('div'),
     forceHide: () => setDestroy(true),
     onBackStatus: setNeedBackButton
   });
@@ -631,12 +631,7 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
       menuButtons: webApp.getMenuButtons(),
       dispose,
       isConfirmationNeededOnClose: webApp.isConfirmationNeededOnClose,
-      content: (
-        <>
-          {webApp.body}
-          {webApp.footer}
-        </>
-      ),
+      content: webApp.body,
       get needBackButton() {
         return needBackButton();
       },
@@ -660,6 +655,10 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
     } else {
       openInAppBrowser(initialState);
     }
+
+    createEffect(on(() => lastContext[0].collapsed, (collapsed) => {
+      webApp.notifyVisible(!collapsed);
+    }))
   });
 }
 

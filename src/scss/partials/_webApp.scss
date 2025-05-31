@@ -12,17 +12,50 @@
     }
   }
 
+  &-fullscreen-buttons {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 999;
+    flex-direction: row;
+    gap: .5rem;
+    display: none;
+
+    .btn-icon {
+      background-color: #00000040;
+      color: #fff;
+
+      html.no-touch &:hover {
+        background-color: #00000060;
+      }
+    }
+  }
+
   &-body {
     flex: 1 1 auto;
     height: 1px;
+    display: flex;
+    flex-direction: column;
+
+    &.is-fullscreen {
+      --browser-width: 100vw;
+
+      .web-app-fullscreen-buttons {
+        display: flex;
+      }
+    }
   }
 
   &-footer {
+    --row-count: 1;
     background-color: var(--surface-color);
-    padding: 0 #{$popup-footer-padding};
     height: 0;
     flex: 0 0 auto;
     position: relative;
+
+    &.position-top, &.position-bottom {
+      --row-count: 2;
+    }
 
     &:before {
       position: absolute;
@@ -39,16 +72,12 @@
       }
     }
 
-    .btn-primary {
-      margin: #{$popup-footer-padding} 0;
-    }
-
     @include animation-level(2) {
       transition: height var(--transition-standard-in);
     }
 
     &.is-visible {
-      height: calc(#{$popup-footer-button-size} + #{$popup-footer-padding} * 2 + 1px);
+      height: calc(#{$popup-footer-button-size} * var(--row-count) + #{$popup-footer-padding} * (var(--row-count) + 1) + 1px);
 
       &:before {
         transform: translateY(0);
@@ -66,6 +95,8 @@
     pointer-events: none;
     opacity: 1;
 
+    color: var(--secondary-text-color);
+
     @include animation-level(2) {
       transition: opacity var(--transition-standard-in);
     }
@@ -82,6 +113,72 @@
     padding: 0 1.0625rem;
     height: 44px;
     line-height: 44px;
-    margin-top: 1px;
+
+    position: absolute;
+    left: 0.5rem;
+    top: 0.5rem;
+    width: calc(var(--browser-width) - 1rem);
+    color: var(--text-color);
+
+    .has-two-buttons & {
+      width: calc(var(--browser-width) / 2 - 0.75rem);
+      left: calc(var(--browser-width) / 2 + 0.25rem);
+
+      &.web-app-button-secondary {
+        left: 0.5rem;
+      }
+    }
+
+    .position-right & {
+      left: 0.5rem;
+
+      &.web-app-button-secondary {
+        left: calc(var(--browser-width) / 2 + 0.25rem);
+      }
+    }
+
+    .position-top & {
+      width: calc(var(--browser-width) - 1rem);
+      left: 0.5rem;
+      top: 60px;
+
+      &.web-app-button-secondary {
+        top: 0.5rem;
+      }
+    }
+
+    .position-bottom & {
+      width: calc(var(--browser-width) - 1rem);
+      left: 0.5rem;
+      top: 0.5rem;
+
+      &.web-app-button-secondary {
+        top: 60px;
+      }
+    }
+
+    .preloader {
+      width: 2rem;
+      height: 2rem;
+      
+      .preloader-path {
+        stroke: var(--text-color);
+      }
+    }
+
+    @include animation-level(2) {
+      transition-duration: 0.3s!important;
+      transition-timing-function: var(--transition-standard-easing)!important;
+      transition-property: opacity, transform, top, left, width!important;
+      opacity: 0;
+      transform: scale(0.9);
+      pointer-events: none;
+
+      &.is-visible {
+        opacity: 1;
+        transform: scale(1);
+        pointer-events: auto;
+      }
+    }
   }
 }

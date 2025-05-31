@@ -557,7 +557,7 @@ export default class InputField {
       this.container.append(border);
     }
 
-    if(label) {
+    if(label != null) {
       this.label = document.createElement('label');
       this.setLabel();
       this.container.append(this.label);
@@ -636,6 +636,7 @@ export default class InputField {
     } else {
       this.label.append(i18n(this.options.label, this.options.labelOptions));
     }
+    this.label.style.visibility = this.label.textContent ? 'visible' : 'hidden';
   }
 
   get value(): string {
@@ -709,6 +710,7 @@ export default class InputField {
     if(label) {
       this.label.textContent = '';
       this.label.append(i18n(label, this.options.labelOptions));
+      this.label.style.visibility = 'visible';
     } else {
       this.setLabel();
     }

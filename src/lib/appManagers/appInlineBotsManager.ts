@@ -256,9 +256,11 @@ export class AppInlineBotsManager extends AppManager {
     peerId: PeerId,
     botId: BotId,
     queryAndResultIds: string,
-    options: Parameters<AppMessagesManager['sendOther']>[0] = {}
+    options: Parameters<AppMessagesManager['sendOther']>[0] & {
+      inlineResult?: BotInlineResult
+    } = {}
   ) {
-    const inlineResult = this.inlineResults[queryAndResultIds];
+    const inlineResult = options.inlineResult ?? this.inlineResults[queryAndResultIds];
     if(!inlineResult) {
       return;
     }

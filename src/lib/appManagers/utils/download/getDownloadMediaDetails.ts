@@ -20,7 +20,10 @@ export default function getDownloadMediaDetails(options: DownloadMediaOptions) {
   if(media._ === 'document') downloadOptions = getDocumentDownloadOptions(media, {thumb: thumb as any, queueId, onlyCache});
   else if(media._ === 'photo') downloadOptions = getPhotoDownloadOptions(media, thumb as any, queueId, onlyCache);
   else if(isWebDocument(media)) downloadOptions = getWebDocumentDownloadOptions(media);
-  else if(isWebFileLocation(media)) downloadOptions = getWebFileDownloadOptions(media);
+  else if(isWebFileLocation(media)) {
+    downloadOptions = getWebFileDownloadOptions(media);
+    if(options.fileName) downloadOptions.fileName = options.fileName;
+  }
 
   downloadOptions.downloadId = options.downloadId;
 
