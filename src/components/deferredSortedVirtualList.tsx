@@ -22,6 +22,7 @@ type CreateDeferredSortedVirtualListArgs<T> = {
   scrollable: HTMLElement;
   getItemElement: (item: T, id: any) => HTMLElement;
   onItemUnmount?: (item: T) => void;
+  onListShrinked: () => void;
   requestItemForIdx: (idx: number, itemsLength: number) => void;
   sortWith: (a: number, b: number) => number;
   itemSize: LoadingDialogSkeletonSize;
@@ -35,11 +36,16 @@ export type DeferredSortedVirtualListItem<T> = {
   value: T;
 };
 
+
+const EXTRA_ITEMS_TO_KEEP = 50;
+
+
 export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedVirtualListArgs<T>) => createRoot(dispose => {
   const {
     scrollable,
     getItemElement,
     onItemUnmount,
+    onListShrinked,
     requestItemForIdx,
     sortWith,
     itemSize,
@@ -51,6 +57,8 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const [totalCount, setTotalCount] = createSignal(0);
   const [wasAtLeastOnceFetched, setWasAtLeastOnceFetched] = createSignal(false);
   const [revealIdx, setRevealIdx] = createSignal(Infinity);
+
+  const [visibleItems, setVisibleItems] = createSignal(new Set<number>(), {equals: false});
 
   // const scrollableSize = useElementSize(() => scrollable);
 
@@ -184,13 +192,44 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     });
   });
 
+
+  createEffect(() => {
+    console.log('[my-debug] list length and last index :>> ', itemsLength(), sortedItems()[sortedItems().length - 1]?.index);
+  });
+
+  function checkShrink(visibleItems: Set<number>, itemsLength: number) {
+    const maxVisible = Math.max(0, ...Array.from(visibleItems.values()));
+
+    const toKeep = maxVisible + EXTRA_ITEMS_TO_KEEP;
+
+    if(itemsLength > toKeep) {
+      console.log('[my-debug] shrinking list maxVisible, visibleItems, itemsLength(), toKeep :>> ', maxVisible, visibleItems, itemsLength, toKeep);
+      batch(() => {
+        // Should be sortedItems() here, because the updated cursor is based on the last item from the list, and might skip a few dialogs if wasn't set the right cursor
+        setItems(sortedItems().slice(0, toKeep));
+        setRevealIdx(toKeep);
+      });
+      onListShrinked();
+    }
+  }
+
+  let shrinkTimeout: number;
+
+  createEffect(on(visibleItems, () => {
+    self.clearTimeout(shrinkTimeout);
+
+    shrinkTimeout = self.setTimeout(() => {
+      checkShrink(visibleItems(), itemsLength());
+    }, 0);
+  }));
+
   <VerticalVirtualList
     ref={list}
     itemHeight={itemSize}
     list={fullItems()}
     forceHostHeight={!wasAtLeastOnceFetched()}
     ListItem={(props: VerticalVirtualListItemProps<DeferredSortedVirtualListItem<T> | null>) => {
-      const isRevealed = createMemo(() => revealIdx() > props.idx);
+      const isRevealed = createMemo(() => props.idx < revealIdx());
       const canShow = createMemo(() => props.item && isRevealed());
 
       createEffect(() => {
@@ -209,6 +248,18 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
         if(canShow()) return;
 
         requestItemForIdx(props.idx, items().length);
+      });
+
+      createComputed(() => {
+        const idx = props.idx;
+        setVisibleItems(prev => prev.add(idx));
+
+        onCleanup(() => {
+          setVisibleItems(prev => {
+            prev.delete(idx);
+            return prev;
+          });
+        });
       });
 
       return (
@@ -245,6 +296,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
     setTotalCount,
 
+    sortedItems,
     itemsLength,
     addItems,
     updateItem,

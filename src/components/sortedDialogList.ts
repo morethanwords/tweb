@@ -41,6 +41,7 @@ export default class SortedDialogList {
 
     scrollable: Scrollable,
     requestItemForIdx: (idx: number, itemsLength: number) => void,
+    onListShrinked: () => void,
     itemSize: LoadingDialogSkeletonSize,
     noAvatar?: boolean // For the loading skeleton placeholder
   }) {
@@ -83,6 +84,7 @@ export default class SortedDialogList {
       onItemUnmount: (item) => {
         this.unmountedDialogElements.set(item, true);
       },
+      onListShrinked: options.onListShrinked,
       requestItemForIdx: options.requestItemForIdx,
       sortWith: (a, b) => b - a,
       itemSize: options.itemSize,
@@ -168,6 +170,10 @@ export default class SortedDialogList {
 
   public getAll() {
     return this.virtualList.getAll();
+  }
+
+  public getSortedItems() {
+    return this.virtualList.sortedItems();
   }
 
   public async update(key: any) {

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Storage Snapshots</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="container">
+    <div class="snapshot-header">
+      <h2>Storage Snapshot Manager</h2>
+      <button id="snapshotBtn">📸 Take Snapshot</button>
+    </div>
+    
+    <div>
+      <label class="comment-label" for="snapshotComment">Comment</label>
+      <div class="comment-box" id="snapshotComment" contenteditable>
+    
+      </div>
+      </div>
+      
+      <h3>Saved Snapshots</h3>
+      <div id="snapshotList"></div>
+  </div>
+
+  <script src="client.js"></script>
+  <script>
+    // Actively unregister any existing service worker
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for (let reg of regs) {
+          reg.unregister().then((success) => {
+            success &&
+              window.location.reload();
+          });
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>

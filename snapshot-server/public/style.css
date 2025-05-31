@@ -1,0 +1,119 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background: #f9f9f9;
+  margin: 0;
+  padding: 2rem;
+  color: #333;
+
+  min-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.container {
+  max-width: 600px;
+  margin: auto;
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,.1);
+}
+
+h1, h2 {
+  margin: 0;
+  color: #222;
+}
+
+.snapshot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 2rem;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: #007bff;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: background 0.25s ease;
+}
+
+button:hover {
+  background: #0056b3;
+}
+
+#snapshotBtn {
+  background: #28a745;
+}
+
+#snapshotBtn:hover {
+  background: #1e7e34;
+}
+
+.comment-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.comment-box {
+  padding: 0.5rem;
+
+  background: #efefef;
+  border-radius: 0.5rem;
+
+  border: 1.5px solid #e4e4e4;
+
+  margin-bottom: 2rem;
+
+  outline: none;
+
+  transition: 0.1s;
+}
+
+.comment-box:hover:not(:focus) {
+  border-color: #bcbcbc;
+}
+
+.comment-box:focus {
+  border-color: #76adbc;
+}
+
+.snapshot-item {
+  display: flex;
+  align-items: center;
+  margin-top: 0.75rem;
+  background: #fafafa;
+  padding: 0.5rem 1rem;
+  gap: 0.5rem;
+}
+
+.snapshot-name {
+  flex: 1;
+  word-wrap: break-word;
+
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.snapshot-item-comment {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid #e4e4e4;
+  font-size: 12px;
+}
