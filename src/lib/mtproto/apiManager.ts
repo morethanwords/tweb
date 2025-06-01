@@ -49,6 +49,7 @@ import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
  */
 import globalRootScope from '../rootScope';
 import MTProtoMessagePort from './mtprotoMessagePort';
+import RepayRequestHandler from './repayRequestHandler';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -63,9 +64,6 @@ import MTProtoMessagePort from './mtprotoMessagePort';
 const PREMIUM_FILE_NETWORKERS_COUNT = 6;
 const REGULAR_FILE_NETWORKERS_COUNT = 3;
 const DESTROY_NETWORKERS = true;
-
-const INSUFFICIENT_STARS_FOR_MESSAGE_PREFIX = 'ALLOW_PAYMENT_REQUIRED_';
-const INSUFFICIENT_STARS_FOR_MESSAGE_TIMEOUT = 20e3; // In case the user doesn't resend the messages
 
 export class ApiManager extends ApiManagerMethods {
   private cachedNetworkers: {
@@ -97,6 +95,7 @@ export class ApiManager extends ApiManagerMethods {
 
   private loggingOut: boolean;
 
+  private repayRequestHandler: RepayRequestHandler;
   private deferredRequestsSeed = 0;
   private deferredRequests = new Map<number, CancellablePromise<void>>();
 
@@ -128,6 +127,11 @@ export class ApiManager extends ApiManagerMethods {
 
   protected after() {
     const result = super.after();
+
+    this.repayRequestHandler = new RepayRequestHandler({
+      apiManager: this,
+      rootScope: this.rootScope
+    });
 
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateConfig: () => {
@@ -768,55 +772,8 @@ export class ApiManager extends ApiManagerMethods {
           return pause(options.waitTime * 1000).then(() => performRequest());
         } else if(error.type === 'UNKNOWN' || error.type === 'MTPROTO_CLUSTER_INVALID') { // cluster invalid - request from regular user to premium endpoint
           return pause(1000).then(() => performRequest());
-        } else if(error.code === 403 && error.type?.startsWith(INSUFFICIENT_STARS_FOR_MESSAGE_PREFIX)) {
-          const requiredStars = +error.type.replace(INSUFFICIENT_STARS_FOR_MESSAGE_PREFIX, '');
-          if(isNaN(requiredStars)) throw error;
-
-          const requestId = ++this.deferredRequestsSeed;
-          const waitingConfirmationPromise = deferredPromise<any>();
-
-          this.deferredRequests.set(requestId, waitingConfirmationPromise);
-
-          MTProtoMessagePort.getInstance<false>().invoke('log', {
-            message: '[my-debug] catching too many stars',
-            payload: {
-              requiredStars,
-              requestId,
-              invokeApiArgs: [method, params, options]
-            }
-          })
-
-          this.rootScope.dispatchEvent('insufficent_stars_for_message', {
-            requiredStars,
-            requestId,
-            invokeApiArgs: [method, params, options]
-          });
-
-          const timeout = self.setTimeout(() => {
-            waitingConfirmationPromise.reject();
-          }, INSUFFICIENT_STARS_FOR_MESSAGE_TIMEOUT);
-
-          const result = waitingConfirmationPromise
-          .finally(() => {
-            self.clearTimeout(timeout);
-            this.deferredRequests.delete(requestId);
-          })
-          .then(() => {
-            const newParams = {...params, allow_paid_stars: requiredStars};
-            MTProtoMessagePort.getInstance<false>().invoke('log', {
-              message: '[my-debug] requesting again',
-              payload: {
-                requiredStars,
-                requestId,
-                invokeApiArgs: [method, newParams, options]
-              }
-            })
-            return this.invokeApi(method, newParams, options);
-          }, () => {
-            throw error;
-          });
-
-          return result;
+        } else if(this.repayRequestHandler.canHandleError(error)) {
+          return this.repayRequestHandler.handleError({error, invokeApiArgs: [method, params, options]});
         } else {
           throw error;
         }
@@ -844,20 +801,20 @@ export class ApiManager extends ApiManagerMethods {
   }
 
   public confirmRepayRequest(requestId: number) {
-    const deferred = this.deferredRequests.get(requestId);
     MTProtoMessagePort.getInstance<false>().invoke('log', {
       message: '[my-debug] ApiManager.confirmRepayRequest',
       requestId
     });
-    if(deferred) deferred.resolve();
+
+    this.repayRequestHandler.confirmRepayRequest(requestId);
   }
 
   public cancelRepayRequest(requestId: number) {
-    const deferred = this.deferredRequests.get(requestId);
     MTProtoMessagePort.getInstance<false>().invoke('log', {
       message: '[my-debug] ApiManager.cancelRepayRequest',
       requestId
     });
-    if(deferred) deferred.reject();
+
+    this.repayRequestHandler.cancelRepayRequest(requestId);
   }
 }

@@ -3363,6 +3363,7 @@ const lang = {
   'PaidMessage.PriceChanged': 'Price changed to %d Stars',
   'PaidMessage.PriceChangedTooltipAction': 'Resend',
   'PaidMessage.ConfirmPriceChangedRepay': 'Are you sure you want to pay **%d** after the price changed to **%d**?',
+  'PaidMessage.ConfirmPriceChangedRepayShort': 'Are you sure you want to pay **%d** after the price changed?',
 
   'BuyStars': 'Buy Stars',
   'UnsavedChanges': 'Unsaved Changes',

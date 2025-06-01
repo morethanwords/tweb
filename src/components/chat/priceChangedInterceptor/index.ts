@@ -138,7 +138,9 @@ class PriceChangedInterceptor {
 
     await confirmationPopup({
       titleLangKey: 'ConfirmPayment',
-      descriptionLangKey: 'PaidMessage.ConfirmPriceChangedRepay',
+      descriptionLangKey: totalStarsToRepay !== newPrice ?
+        'PaidMessage.ConfirmPriceChangedRepay' :
+        'PaidMessage.ConfirmPriceChangedRepayShort',
       descriptionLangArgs: [
         i18n('Stars', [totalStarsToRepay]),
         i18n('Stars', [newPrice])
