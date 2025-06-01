@@ -63,6 +63,7 @@ export type DownloadOptions = {
 export type DownloadMediaOptions = {
   media: Photo.photo | Document.document | WebDocument | InputWebFileLocation,
   thumb?: PhotoSize | Extract<VideoSize, VideoSize.videoSize>,
+  fileName?: string
   queueId?: number,
   onlyCache?: boolean,
   downloadId?: string
@@ -343,6 +344,44 @@ export class ApiFileManager extends AppManager {
               };
               return ret;
             });
+          } else if(this.isWebAppExtFile(url)) {
+            const url_ = url.replace('web-app-ext:', '');
+            const res = await fetch(url_, {
+              method: 'GET',
+              headers: {
+                'Range': `bytes=${offset}-${offset + limit - 1}`
+              }
+            });
+            const arrayBuffer = await res.arrayBuffer();
+
+            const rangesHeader = res.headers.get('content-range');
+            let totalSize = parseInt(rangesHeader?.split('/')[1] ?? '0');
+            if(offset == 0) {
+              if(totalSize === 0) {
+              // try issuing a HEAD request
+                const resHead = await fetch(url_, {method: 'HEAD'}).catch((): null => null);
+                if(resHead && resHead.status === 200) {
+                  totalSize = parseInt(resHead.headers.get('content-length') ?? '0');
+                }
+
+                if(totalSize === 0) {
+                // try issuing a GET request and skip reading the body
+                  const resGet = await fetch(url_, {method: 'GET'}).catch((): null => null);
+                  if(resGet && resGet.status === 200) {
+                    totalSize = parseInt(resGet.headers.get('content-length') ?? '0');
+                  }
+                }
+              }
+            }
+
+            return {
+              _: 'upload.webFile',
+              size: totalSize,
+              mime_type: res.headers.get('content-type') ?? 'application/octet-stream',
+              file_type: {_: 'storage.fileUnknown'},
+              mtime: 0,
+              bytes: new Uint8Array(arrayBuffer)
+            } satisfies UploadWebFile.uploadWebFile;
           }
         }
 
@@ -619,9 +658,13 @@ export class ApiFileManager extends AppManager {
     return url?.startsWith('assets/');
   }
 
+  private isWebAppExtFile(url: string) {
+    return url?.startsWith('web-app-ext:');
+  }
+
   public download(options: DownloadOptions): DownloadPromise {
     const log = this.log.bindPrefix('download');
-    const size = options.size ?? 0;
+    let size = options.size ?? 0;
     const {dcId, location} = options;
     let {downloadId} = options;
     if(downloadId && !appManagersManager.getServiceMessagePort()) {
@@ -683,6 +726,7 @@ export class ApiFileManager extends AppManager {
 
     const isWebFile = isWebFileLocation(location);
     const isLocalWebFile = isWebFile && this.isLocalWebFile((location as InputWebFileLocation.inputWebFileLocation).url);
+    const isWebAppExtFile = isWebFile && this.isWebAppExtFile((location as InputWebFileLocation.inputWebFileLocation).url);
     const id = this.tempId++;
     const limitPart = isLocalWebFile ?
       size :
@@ -800,7 +844,7 @@ export class ApiFileManager extends AppManager {
 
       const requestPart = (isWebFile ? this.requestWebFilePart : this.requestFilePart).bind(this);
 
-      if(isWebFile && this.webFileDcId === undefined && !isLocalWebFile) {
+      if(isWebFile && this.webFileDcId === undefined && !isLocalWebFile && !isWebAppExtFile) {
         await this.apiManager.getConfig();
         checkCancel();
       }
@@ -849,6 +893,11 @@ export class ApiFileManager extends AppManager {
 
           const byteLength = bytes.byteLength;
           log('requestPart result', fileName, result);
+
+          if(size === 0 && result._ === 'upload.webFile' && result.size > 0) {
+            size = result.size;
+          }
+
           const isFinal = (offset + limitPart) >= size || !byteLength;
           if(byteLength) {
             done += byteLength;

@@ -24,6 +24,7 @@ import getDocumentDownloadOptions from './utils/docs/getDocumentDownloadOptions'
 import getPhotoDownloadOptions from './utils/photos/getPhotoDownloadOptions';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
+import isWebFileLocation from './utils/webFiles/isWebFileLocation';
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -238,7 +239,8 @@ export class AppDownloadManager {
   public downloadToDisc(options: DownloadMediaOptions, justAttach?: boolean) {
     const media = options.media;
     const isDocument = media._ === 'document';
-    if(!isDocument && !options.thumb) {
+    const isWebFile = isWebFileLocation(media);
+    if(!isDocument && !isWebFile && !options.thumb) {
       options.thumb = (media as Photo.photo).sizes.slice().pop() as PhotoSize.photoSize;
     }
 
@@ -246,6 +248,7 @@ export class AppDownloadManager {
     // const USE_SW = true;
 
     const getOutFileName = () => {
+      if(options.fileName) return options.fileName;
       const downloadOptions = isDocument ?
         getDocumentDownloadOptions(media) :
         getPhotoDownloadOptions(media as any, options.thumb as PhotoSize.photoSize);

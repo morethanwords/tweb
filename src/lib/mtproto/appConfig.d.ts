@@ -118,6 +118,7 @@ export interface MTAppConfig {
   stargifts_convert_period_max?:             number;
   stargifts_message_length_max?:             number;
   stargifts_pinned_to_top_limit?:            number;
+  web_app_allowed_protocols?:                string[];
 }
 
 export interface EmojiesSendDiceSuccess {

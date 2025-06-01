@@ -6,6 +6,7 @@
 
 import PopupElement from '.';
 import safeAssign from '../../helpers/object/safeAssign';
+import {fastRaf} from '../../helpers/schedulers';
 import {AttachMenuBot} from '../../layer';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import WebApp from '../webApp';
@@ -22,7 +23,6 @@ export default class PopupWebApp extends PopupElement {
       closable: true,
       overlayClosable: true,
       body: true,
-      footer: true,
       title: true,
       onBackClick: () => this.webApp.onBackClick(),
       isConfirmationNeededOnClose: () => this.webApp.isConfirmationNeededOnClose()
@@ -35,7 +35,6 @@ export default class PopupWebApp extends PopupElement {
       header: this.header,
       title: this.title,
       body: this.body,
-      footer: this.footer,
       forceHide: this.forceHide,
       onBackStatus: (visible) => this.btnCloseAnimatedIcon.classList.toggle('state-back', visible)
     });
@@ -49,6 +48,9 @@ export default class PopupWebApp extends PopupElement {
 
     this.webApp.init(() => {
       this.show();
+      fastRaf(() => {
+        this.container.style.setProperty('--browser-width', `${this.container.clientWidth}px`);
+      })
     });
   }
 

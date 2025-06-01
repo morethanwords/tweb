@@ -8,7 +8,7 @@ import type RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import type {ThumbCache} from '../../lib/storages/thumbs';
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
-import getPathFromBytes from '../../helpers/bytes/getPathFromBytes';
+import getPathFromBytes, {createSvgFromBytes} from '../../helpers/bytes/getPathFromBytes';
 import deferredPromise from '../../helpers/cancellablePromise';
 import computeLockColor from '../../helpers/computeLockColor';
 import cancelEvent from '../../helpers/dom/cancelEvent';
@@ -45,7 +45,8 @@ import {SHOULD_HANDLE_VIDEO_LEAK, attachVideoLeakListeners, leakVideoFallbacks, 
 import noop from '../../helpers/noop';
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
 import toArray from '../../helpers/array/toArray';
-import {createEffect, createSignal, onMount} from 'solid-js';
+import {createEffect, createSignal, on, onCleanup, onMount, Ref} from 'solid-js';
+import createMiddleware from '../../helpers/solid/createMiddleware';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -287,11 +288,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
           thumb = doc.thumbs.find((t) => (t as PhotoSize.photoStrippedSize).bytes?.length) || thumb;
         }
 
-        const d = getPathFromBytes((thumb as PhotoSize.photoStrippedSize).bytes);
-        const ns = 'http://www.w3.org/2000/svg';
-        const svg = document.createElementNS(ns, 'svg');
+        const {svg} = createSvgFromBytes((thumb as PhotoSize.photoStrippedSize).bytes, doc.w, doc.h);
         svg.classList.add('rlottie-vector', 'media-sticker', 'thumbnail');
-        svg.setAttributeNS(null, 'viewBox', `0 0 ${doc.w || 512} ${doc.h || 512}`);
 
         // const defs = document.createElementNS(ns, 'defs');
         // const linearGradient = document.createElementNS(ns, 'linearGradient');
@@ -327,10 +325,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         // defs.append(linearGradient);
         // svg.append(defs);
 
-        const path = document.createElementNS(ns, 'path');
-        path.setAttributeNS(null, 'd', d);
         // if(liteMode.isAvailable('animations') && !isCustomEmoji) path.setAttributeNS(null, 'fill', 'url(#g)');
-        svg.append(path);
         div.forEach((div, idx) => div.append(idx > 0 ? svg.cloneNode(true) : svg));
         haveThumbCached = true;
         loadThumbPromise.resolve();
@@ -840,29 +835,48 @@ function attachStickerEffectHandler(options: Omit<Parameters<typeof fireStickerE
 
 export type StickerTsxExtraOptions = Omit<Parameters<typeof wrapSticker>[0], 'doc' | 'div'>;
 export function StickerTsx(props: {
+  ref?: Ref<HTMLElement>,
   sticker: MyDocument
   width: number
   height: number
+  autoStyle?: boolean
   class?: string
   extraOptions?: StickerTsxExtraOptions
   onRender?: (player: RLottiePlayer | HTMLVideoElement[] | HTMLImageElement[]) => void
 }) {
   const div = document.createElement('div');
-  div.classList.add(props.class);
+  props.class && div.classList.add(props.class);
 
-  onMount(() => {
-    wrapSticker({
+  const middleware = createMiddleware()
+
+  if(props.autoStyle) {
+    div.style.width = props.width + 'px';
+    div.style.height = props.height + 'px';
+    div.style.position = 'relative';
+  }
+
+  let lastRender = Promise.resolve();
+  createEffect(on(() => props.sticker, async(doc) => {
+    await lastRender;
+    if(doc !== props.sticker) return
+
+    lastRender = wrapSticker({
+      middleware: middleware.get(),
       ...props.extraOptions,
       width: props.width,
       height: props.height,
       div,
-      doc: props.sticker
-    }).then(res => {
-      res.render.then(it => {
-        it && props.onRender?.(it);
-      });
+      doc
+    }).then(res => res.render).then(it => {
+      it && props.onRender?.(it);
     })
-  })
+  }))
+
+  onCleanup(() => middleware.destroy())
+
+  if(typeof props.ref === 'function') {
+    props.ref(div);
+  }
 
   return div
 }

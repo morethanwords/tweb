@@ -127,7 +127,7 @@ export namespace InternalLink {
     appname: string,
     startapp?: string,
     masked?: boolean,
-    mode?: 'compact'
+    mode?: 'compact' | 'fullscreen'
   }
 
   export interface InternalLinkAddList {
