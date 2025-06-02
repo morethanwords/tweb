@@ -10,18 +10,18 @@ import styles from './priceChangedTooltip.module.scss';
 
 type ShowPriceChangedTooltipArgs = {
   chat: Chat;
-  amount: number;
+  starsAmount: number;
   onResend: () => void;
 };
 
-export default function showPriceChangedTooltip({chat, amount, onResend}: ShowPriceChangedTooltipArgs) {
+export default function showPriceChangedTooltip({chat, starsAmount, onResend}: ShowPriceChangedTooltipArgs) {
   return showTooltip({
     element: chat.bubbles.container,
     container: chat.bubbles.container,
     mountOn: chat.bubbles.container,
     relative: true,
     vertical: 'top',
-    textElement: i18n('PaidMessage.PriceChanged', [amount]),
+    textElement: i18n('PaidMessage.PriceChanged', [starsAmount]),
     rightElement: (
       <Button
         class={`btn ${styles.Button}`}

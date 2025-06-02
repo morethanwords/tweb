@@ -221,7 +221,7 @@ export type BroadcastEvents = {
     togglePinned?: boolean
   },
 
-  'insufficent_stars_for_message': {requiredStars: number, requestId: number, invokeApiArgs: Parameters<ApiManager['invokeApi']>};
+  'insufficent_stars_for_message': {messageCount: number, requestId: number, invokeApiArgs: Parameters<ApiManager['invokeApi']>};
 
   'confirm_insufficent_stars_for_message_update': {requestId: number};
 };

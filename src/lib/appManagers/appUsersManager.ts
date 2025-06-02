@@ -1268,6 +1268,13 @@ export class AppUsersManager extends AppManager {
     return promise;
   }
 
+  public updateCachedUserFullStarsAmount(userId: UserId, starsAmount: number) {
+    const userFull = this.appProfileManager.getCachedFullUser(userId);
+    if(!userFull) return;
+
+    userFull.send_paid_messages_stars = starsAmount;
+  }
+
   /**
    * The amount of stars necessary to be paid for every message if the target user had enabled it
    */

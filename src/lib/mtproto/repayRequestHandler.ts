@@ -14,14 +14,14 @@ const INSUFFICIENT_STARS_FOR_MESSAGE_PREFIX = 'ALLOW_PAYMENT_REQUIRED_';
 type InvokeApiParams = MethodDeclMap[keyof MethodDeclMap]['req'];
 type InvokeApiArgs = Parameters<ApiManager['invokeApi']>;
 
-type HandleErrorArgs = {
-  error: ApiError;
-  invokeApiArgs: InvokeApiArgs;
-};
-
 type ConstructorArgs = {
   apiManager: ApiManager;
   rootScope: RootScope;
+};
+
+type HandleErrorArgs = {
+  error: ApiError;
+  invokeApiArgs: InvokeApiArgs;
 };
 
 type ConfirmationPromiseResult = {
@@ -41,7 +41,13 @@ export default class RepayRequestHandler {
   }
 
   private getMessageCount(params: InvokeApiParams) {
-    return 1;  // TODO: Compute message count for more messages
+    // In case of forwarding a few messages
+    if('random_id' in params && params.random_id instanceof Array) return params.random_id.length;
+
+    // When sending one message with multiple media
+    if('multi_media' in params && params.multi_media instanceof Array) return params.multi_media.length;
+
+    return 1;
   }
 
   public canHandleError(error: ApiError) {
@@ -72,7 +78,7 @@ export default class RepayRequestHandler {
     });
 
     this.rootScope.dispatchEvent('insufficent_stars_for_message', {
-      requiredStars,
+      messageCount,
       requestId,
       invokeApiArgs
     });

@@ -96,8 +96,6 @@ export class ApiManager extends ApiManagerMethods {
   private loggingOut: boolean;
 
   private repayRequestHandler: RepayRequestHandler;
-  private deferredRequestsSeed = 0;
-  private deferredRequests = new Map<number, CancellablePromise<void>>();
 
   constructor() {
     super();
@@ -800,13 +798,13 @@ export class ApiManager extends ApiManagerMethods {
     return deferred;
   }
 
-  public confirmRepayRequest(requestId: number) {
+  public confirmRepayRequest(requestId: number, starsAmount: number) {
     MTProtoMessagePort.getInstance<false>().invoke('log', {
       message: '[my-debug] ApiManager.confirmRepayRequest',
       requestId
     });
 
-    this.repayRequestHandler.confirmRepayRequest(requestId);
+    this.repayRequestHandler.confirmRepayRequest(requestId, starsAmount);
   }
 
   public cancelRepayRequest(requestId: number) {
