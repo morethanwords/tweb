@@ -2509,7 +2509,6 @@ export class AppMessagesManager extends AppManager {
     this.scheduleHandleNewDialogs(message.peerId, dialog);
   }
 
-  // HERE Example
   public cancelPendingMessage(randomId: string) {
     const pendingData = this.pendingByRandomId[randomId];
 

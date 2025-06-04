@@ -129,37 +129,3 @@
     }
   }
 }
-
-.insufficient-stars-tooltip {
-  top: 0.25rem;
-  left: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: max-content;
-  max-width: calc(100% - 1rem);
-
-  .tooltip-notch { display: none; }
-
-  &.tooltip {
-    transform: translate(-50%, 0);
-    &.is-visible:not(.backwards) {
-      transform: translate(-50%, 0);
-    }
-    &.mounted {
-      transform: translate(-50%, -1rem);
-    }
-  }
-
-  .tooltip-undo {
-    display: flex;
-    color: #8EDEFF;
-    align-items: center;
-    gap: .5rem;
-    text-transform: uppercase;
-    margin-inline-start: 2.5rem;
-    font-weight: var(--font-weight-bold);
-    cursor: pointer;
-    white-space: nowrap;
-  }
-}

@@ -15,10 +15,7 @@ import {animate} from '../../helpers/animation';
 
 import {AnimatedCounter} from '../animatedCounter';
 import showTooltip from '../tooltip';
-import createElementFromMarkup from '../../helpers/createElementFromMarkup';
-import Button from '../buttonTsx';
 
-import styles from './priceChangedInterceptor/priceChangedTooltip.module.scss';
 
 type LangKeys = {
   titleKey: LangPackKey;
@@ -34,23 +31,6 @@ export const paidMessagesLangKeys: LangKeys = {
   titleKey: 'PaidMessages.MessagesSent',
   subtitleKey: 'PaidMessages.YouPaidForMessages'
 };
-
-(window as any).showTooltip = (args: any) => showTooltip({
-  element: appImManager.chat.bubbles.container,
-  container: appImManager.chat.bubbles.container,
-  mountOn: appImManager.chat.bubbles.container,
-  relative: true,
-  vertical: 'top',
-  textElement: createElementFromMarkup('<span>Price changed to 30 Stars</span>'),
-  rightElement: <Button
-    class={`btn ${styles.Button}`}
-    onClick={() => void 0}
-  >
-    {i18n('Undo')}</Button>,
-  class: styles.Tooltip,
-  icon: 'sendingerror',
-  ...args
-});
 
 
 export default function showUndoablePaidTooltip(props: {
