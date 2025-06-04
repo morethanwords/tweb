@@ -3357,13 +3357,14 @@ const lang = {
     'one_value': '%d Star refunded',
     'other_value': '%d Stars refunded'
   },
-  'PaidMessage.UserPaysForMessagesNotice': '%s must pay %d for each message to you.',
-  'PaidMessage.RemoveFeeWarning': 'Are you sure you want to allow %s to message you for free?',
-  'PaidMessage.RemoveFeeRefund': 'Refund the %d already paid',
-  'PaidMessage.PriceChanged': 'Price changed to %d Stars',
-  'PaidMessage.PriceChangedTooltipAction': 'Resend',
-  'PaidMessage.ConfirmPriceChangedRepay': 'Are you sure you want to pay **%d** after the price changed to **%d**?',
-  'PaidMessage.ConfirmPriceChangedRepayShort': 'Are you sure you want to pay **%d** after the price changed?',
+  'PaidMessages.UserPaysForMessagesNotice': '%s must pay %d for each message to you.',
+  'PaidMessages.RemoveFeeWarning': 'Are you sure you want to allow %s to message you for free?',
+  'PaidMessages.RemoveFeeRefund': 'Refund the %d already paid',
+  'PaidMessages.PriceChanged': 'Price changed to %s',
+  'PaidMessages.FailedToPayForMessage': {
+    'one_value': 'You failed to pay **%2$s** to send a message',
+    'other_value': 'You failed to pay **%2$s** to send %1$d messages.'
+  },
 
   'BuyStars': 'Buy Stars',
   'UnsavedChanges': 'Unsaved Changes',
@@ -3372,6 +3373,7 @@ const lang = {
   'DontAskAgain': 'Don\'t ask again',
   'ConfirmPayment': 'Confirm Payment',
   'Undo': 'Undo',
+  'Resend': 'Resend',
 
   'BotSetEmojiStatusTitle': 'Set Emoji Status',
   'BotSetEmojiStatusText': 'Do you want to set this emoji status suggested by **%s**?',

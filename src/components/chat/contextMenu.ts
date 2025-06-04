@@ -78,6 +78,7 @@ import PopupStarReaction from '../popups/starReaction';
 import getUniqueCustomEmojisFromMessage from '../../lib/appManagers/utils/messages/getUniqueCustomEmojisFromMessage';
 import getPeerTitle from '../wrappers/getPeerTitle';
 import {getFullDate} from '../../helpers/date/getFullDate';
+import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -801,6 +802,11 @@ export default class ChatContextMenu {
         (!!(this.message as Message.message).reactions?.recent_reactions?.length || this.managers.appMessagesManager.canViewMessageReadParticipants(this.message)),
       notDirect: () => true,
       localName: 'views'
+    }, {
+      icon: 'rotate_right',
+      text: 'Resend',
+      onClick: () => this.handleRepay(),
+      verify: () => 'repayRequest' in this.message && !!this.message.repayRequest
     }, {
       icon: 'delete',
       className: 'danger',
@@ -1527,6 +1533,18 @@ export default class ChatContextMenu {
     this.chat.topbar.appSidebarRight.createTab(AppStatisticsTab).open(this.messagePeerId.toChatId(), this.mid);
     this.chat.topbar.appSidebarRight.toggleSidebar(true);
   };
+
+  private async handleRepay() {
+    if(!('repayRequest' in this.message) || !this.message.repayRequest) return;
+
+    const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(
+      this.message.repayRequest.messageCount
+    );
+
+    if(preparedPaymentResult === PAYMENT_REJECTED) return;
+
+    this.managers.appMessagesManager.confirmRepayRequest(this.message.repayRequest.id, preparedPaymentResult);
+  }
 
   public static onDownloadClick(messages: MyMessage | MyMessage[], noForwards?: boolean): DownloadBlob | DownloadBlob[] {
     if(Array.isArray(messages)) {

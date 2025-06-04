@@ -1,12 +1,13 @@
-import type {AppManagers} from '../../../lib/appManagers/managers';
+import accumulate from '../../../helpers/array/accumulate';
 import type ListenerSetter from '../../../helpers/listenerSetter';
 import safeAssign from '../../../helpers/object/safeAssign';
-import accumulate from '../../../helpers/array/accumulate';
-import rootScope from '../../../lib/rootScope';
 import type {InputPeer} from '../../../layer';
+import type {AppManagers} from '../../../lib/appManagers/managers';
+import rootScope from '../../../lib/rootScope';
+import {setReservedStars} from '../../../stores/stars';
 
-import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../paidMessagesInterceptor';
 import type Chat from '../chat';
+import {PAYMENT_REJECTED} from '../paidMessagesInterceptor';
 
 import showPriceChangedTooltip from './priceChangedTooltip';
 
@@ -46,13 +47,14 @@ class PriceChangedInterceptor {
 
   private openedTooltip?: OpenedTooltip;
 
-
   constructor(args: ConstructorArgs) {
     safeAssign(this, args);
   }
 
   init() {
-    this.listenerSetter.add(rootScope)('insufficent_stars_for_message', async({requestId, messageCount, invokeApiArgs}) => {
+    this.listenerSetter.add(rootScope)('insufficent_stars_for_message', async({requestId, messageCount, invokeApiArgs, paidStars}) => {
+      setReservedStars(prev => Math.max(0, prev - paidStars));
+
       if(!this.chat.peerId.isUser()) return;
 
       const apiCallParams = invokeApiArgs[1];
@@ -71,15 +73,20 @@ class PriceChangedInterceptor {
 
       console.log('[my-debug] from client: requestId, messageCount :>> ', requestId, messageCount);
 
-      this.handlePriceChanged({
+      this.handleNewRepayRequest({
         starsAmount,
         requestId,
         messageCount
       });
     });
+
+    this.listenerSetter.add(rootScope)('fulfill_repaid_message', ({requestId}) => {
+      this.pendingRequests = this.pendingRequests.filter(r => r.id !== requestId);
+      if(!this.pendingRequests.length) this.closeTooltip();
+    });
   }
 
-  private handlePriceChanged({starsAmount, messageCount, requestId}: OpenTooltipArgs) {
+  private handleNewRepayRequest({starsAmount, messageCount, requestId}: OpenTooltipArgs) {
     if(this.openedTooltip && this.openedTooltip.withStarsAmount !== starsAmount) {
       this.closeTooltip();
     }
@@ -116,33 +123,19 @@ class PriceChangedInterceptor {
     this.openedTooltip = undefined;
   }
 
-  private cancelPendingRequests() {
-    this.pendingRequests?.forEach(({id}) => {
-      this.managers.apiManager.cancelRepayRequest(id);
-    });
-  }
-
   private async confirmResend({pendingRequests}: ConfirmResendArgs) {
     const messageCount = accumulate(pendingRequests.map(r => r.messageCount), 0);
 
-    const paymentConfirmation = await PaidMessagesInterceptor.prepareStarsForPayment({
-      peerId: this.chat.peerId,
-      messageCount
-    });
+    const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(messageCount);
 
-    if(paymentConfirmation === PAYMENT_REJECTED) return;
+    if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
-    const starsAmount = this.chat.starsAmount;
-
-    await Promise.all(pendingRequests.map(({id}) => this.managers.apiManager.confirmRepayRequest(id, starsAmount)));
+    await Promise.all(pendingRequests.map(({id}) => this.managers.appMessagesManager.confirmRepayRequest(id, preparedPaymentResult)));
   }
 
   cleanup() {
     this.pendingRequests = [];
     this.closeTooltip();
-    // this.cancelPendingRequests();
-
-    // TODO: resend button on each message?
   }
 }
 

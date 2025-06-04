@@ -1,11 +1,13 @@
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import {ConfirmedPaymentResult} from '../../components/chat/paidMessagesInterceptor';
+import assumeType from '../../helpers/assumeType';
 import safeAssign from '../../helpers/object/safeAssign';
 import {MethodDeclMap} from '../../layer';
 
+import {MessageSendingParams} from '../appManagers/appMessagesManager';
 import type {RootScope} from '../rootScope';
 
-import MTProtoMessagePort from './mtprotoMessagePort';
 import type {ApiManager} from './apiManager';
+import MTProtoMessagePort from './mtprotoMessagePort';
 
 
 const INSUFFICIENT_STARS_FOR_MESSAGE_PREFIX = 'ALLOW_PAYMENT_REQUIRED_';
@@ -15,115 +17,100 @@ type InvokeApiParams = MethodDeclMap[keyof MethodDeclMap]['req'];
 type InvokeApiArgs = Parameters<ApiManager['invokeApi']>;
 
 type ConstructorArgs = {
-  apiManager: ApiManager;
   rootScope: RootScope;
 };
 
 type HandleErrorArgs = {
   error: ApiError;
-  invokeApiArgs: InvokeApiArgs;
+  messageCount: number;
+  repayCallback: RepayRequestCallback;
+  paidStars: number;
 };
 
 type ConfirmationPromiseResult = {
   starsAmount: number; // The stars amount for just one message
 };
 
+export type RepayRequest = {
+  id: number;
+  messageCount: number;
+};
+
+type RepayRequestCallback = (args: Pick<MessageSendingParams, 'confirmedPaymentResult'>) => void;
+
+type ApiErrorWithInvokeArgs = ApiError & {
+  invokeApiArgs: InvokeApiArgs;
+};
 
 export default class RepayRequestHandler {
-  private apiManager: ApiManager;
   private rootScope: RootScope;
 
-  private deferredRequestsSeed = 0;
-  private deferredRequests = new Map<number, CancellablePromise<ConfirmationPromiseResult>>();
+  private repayRequestsSeed = 0;
+  private repayRequests = new Map<number, RepayRequestCallback>();
 
   constructor(args: ConstructorArgs) {
     safeAssign(this, args);
   }
 
-  private getMessageCount(params: InvokeApiParams) {
-    // In case of forwarding a few messages
-    if('random_id' in params && params.random_id instanceof Array) return params.random_id.length;
-
-    // When sending one message with multiple media
-    if('multi_media' in params && params.multi_media instanceof Array) return params.multi_media.length;
-
-    return 1;
-  }
-
-  public canHandleError(error: ApiError) {
+  public static canHandleError(error: ApiError) {
     return error.code === 403 && error.type?.startsWith(INSUFFICIENT_STARS_FOR_MESSAGE_PREFIX);
   }
 
-  public handleError({error, invokeApiArgs}: HandleErrorArgs) {
-    if(!this.canHandleError(error)) throw error;
+  public static attachInvokeArgsToError(error: ApiError, invokeApiArgs: InvokeApiArgs): ApiErrorWithInvokeArgs  {
+    return {
+      ...error,
+      invokeApiArgs: invokeApiArgs
+    };
+  }
 
-    const [method, params, options] = invokeApiArgs;
+  public tryRegisterRequest({error, messageCount, repayCallback, paidStars}: HandleErrorArgs) {
+    assumeType<ApiErrorWithInvokeArgs>(error);
+
+    if(!RepayRequestHandler.canHandleError(error) || !error.invokeApiArgs) return;
 
     const requiredStars = +error.type.replace(INSUFFICIENT_STARS_FOR_MESSAGE_PREFIX, '');
-    if(isNaN(requiredStars)) throw error; // return false;
+    if(isNaN(requiredStars)) return;
 
-    const requestId = ++this.deferredRequestsSeed;
-    const waitingConfirmationPromise = deferredPromise<ConfirmationPromiseResult>();
-
-    const messageCount = this.getMessageCount(params)
-    this.deferredRequests.set(requestId, waitingConfirmationPromise);
+    const requestId = ++this.repayRequestsSeed;
+    this.repayRequests.set(requestId, repayCallback);
 
     MTProtoMessagePort.getInstance<false>().invoke('log', {
       message: '[my-debug] catching too many stars',
       payload: {
         requiredStars,
         requestId,
-        invokeApiArgs
+        messageCount
       }
     });
 
     this.rootScope.dispatchEvent('insufficent_stars_for_message', {
       messageCount,
       requestId,
-      invokeApiArgs
+      invokeApiArgs: error.invokeApiArgs,
+      paidStars
     });
 
-    // const timeout = self.setTimeout(() => {
-    //   waitingConfirmationPromise.reject();
-    // }, INSUFFICIENT_STARS_FOR_MESSAGE_TIMEOUT);
-
-    const result = waitingConfirmationPromise
-    .finally(() => {
-      // self.clearTimeout(timeout);
-      this.deferredRequests.delete(requestId);
-    })
-    .then(({starsAmount}) => {
-      // We want to make sure we use the starsAmount from the moment of confirmation rather
-      // than the one that was returned by the server, as it might change a few times before this
-
-      const newParams = {...params, allow_paid_stars: messageCount * starsAmount};
-
-      MTProtoMessagePort.getInstance<false>().invoke('log', {
-        message: '[my-debug] requesting again',
-        payload: {
-          requiredStars,
-          requestId,
-          invokeApiArgs: [method, newParams, options]
-        }
-      })
-      return this.apiManager.invokeApi(method, newParams, options);
-    }, () => {
-      // Throw the original error if the repay request was canceled for some reason
-      throw error;
-    });
-
-    return result;
+    return {
+      id: requestId,
+      messageCount
+    };
   }
 
-  public confirmRepayRequest(requestId: number, starsAmount: number) {
+  private removeRepayRequest(requestId: number) {
+    this.repayRequests.delete(requestId) &&
+    this.rootScope.dispatchEvent('fulfill_repaid_message', {requestId});
+  }
+
+  public confirmRepayRequest(requestId: number, confirmedPaymentResult: ConfirmedPaymentResult) {
     MTProtoMessagePort.getInstance<false>().invoke('log', {
       message: '[my-debug] ApiManager.confirmRepayRequest',
       requestId
     });
 
-    const deferredPromise = this.deferredRequests.get(requestId);
+    const repayCallback = this.repayRequests.get(requestId);
+    this.removeRepayRequest(requestId);
 
-    deferredPromise.resolve({starsAmount});
+    repayCallback?.({confirmedPaymentResult});
   }
 
   public cancelRepayRequest(requestId: number) {
@@ -132,9 +119,6 @@ export default class RepayRequestHandler {
       requestId
     });
 
-    const deferredPromise = this.deferredRequests.get(requestId);
-    this.deferredRequests.delete(requestId);
-
-    deferredPromise.reject();
+    this.removeRepayRequest(requestId);
   }
 }

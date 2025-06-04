@@ -95,8 +95,6 @@ export class ApiManager extends ApiManagerMethods {
 
   private loggingOut: boolean;
 
-  private repayRequestHandler: RepayRequestHandler;
-
   constructor() {
     super();
     this.log = logger('API');
@@ -125,11 +123,6 @@ export class ApiManager extends ApiManagerMethods {
 
   protected after() {
     const result = super.after();
-
-    this.repayRequestHandler = new RepayRequestHandler({
-      apiManager: this,
-      rootScope: this.rootScope
-    });
 
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateConfig: () => {
@@ -770,9 +763,10 @@ export class ApiManager extends ApiManagerMethods {
           return pause(options.waitTime * 1000).then(() => performRequest());
         } else if(error.type === 'UNKNOWN' || error.type === 'MTPROTO_CLUSTER_INVALID') { // cluster invalid - request from regular user to premium endpoint
           return pause(1000).then(() => performRequest());
-        } else if(this.repayRequestHandler.canHandleError(error)) {
-          return this.repayRequestHandler.handleError({error, invokeApiArgs: [method, params, options]});
         } else {
+          if(RepayRequestHandler.canHandleError(error))
+            error = RepayRequestHandler.attachInvokeArgsToError(error, [method, params, options]);
+
           throw error;
         }
       });
@@ -796,23 +790,5 @@ export class ApiManager extends ApiManagerMethods {
     .catch(deferred.reject.bind(deferred));
 
     return deferred;
-  }
-
-  public confirmRepayRequest(requestId: number, starsAmount: number) {
-    MTProtoMessagePort.getInstance<false>().invoke('log', {
-      message: '[my-debug] ApiManager.confirmRepayRequest',
-      requestId
-    });
-
-    this.repayRequestHandler.confirmRepayRequest(requestId, starsAmount);
-  }
-
-  public cancelRepayRequest(requestId: number) {
-    MTProtoMessagePort.getInstance<false>().invoke('log', {
-      message: '[my-debug] ApiManager.cancelRepayRequest',
-      requestId
-    });
-
-    this.repayRequestHandler.cancelRepayRequest(requestId);
   }
 }
