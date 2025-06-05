@@ -1,5 +1,6 @@
 import accumulate from '../../../helpers/array/accumulate';
 import type ListenerSetter from '../../../helpers/listenerSetter';
+import memoizeAsyncWithTTL from '../../../helpers/memoizeAsyncWithTTL';
 import safeAssign from '../../../helpers/object/safeAssign';
 import type {InputPeer} from '../../../layer';
 import type {AppManagers} from '../../../lib/appManagers/managers';
@@ -47,13 +48,21 @@ class PriceChangedInterceptor {
 
   private openedTooltip?: OpenedTooltip;
 
+  private getStarsAmountForUser: AppManagers['appUsersManager']['getStarsAmount'];
+
   constructor(args: ConstructorArgs) {
     safeAssign(this, args);
+
+    this.getStarsAmountForUser = memoizeAsyncWithTTL(
+      (userId: UserId) => this.managers.appUsersManager.getStarsAmount(userId, true),
+      (userId) => userId,
+      1_000
+    );
   }
 
   init() {
-    this.listenerSetter.add(rootScope)('insufficent_stars_for_message', async({requestId, messageCount, invokeApiArgs, paidStars}) => {
-      setReservedStars(prev => Math.max(0, prev - paidStars));
+    this.listenerSetter.add(rootScope)('insufficent_stars_for_message', async({requestId, messageCount, invokeApiArgs, reservedStars}) => {
+      reservedStars && setReservedStars(prev => Math.max(0, prev - reservedStars));
 
       if(!this.chat.peerId.isUser()) return;
 
@@ -65,8 +74,7 @@ class PriceChangedInterceptor {
       const peerId = await this.managers.appPeersManager.getPeerId(peer as InputPeer);
       if(peerId !== this.chat.peerId) return;
 
-      // TODO: Throttle this request or somehow unite for multiple messages sent
-      const starsAmount = await this.managers.appUsersManager.getStarsAmount(peerId.toUserId(), true);
+      const starsAmount = await this.getStarsAmountForUser(peerId.toUserId());
 
       await this.managers.appUsersManager.updateCachedUserFullStarsAmount(peerId.toUserId(), starsAmount);
       this.chat.updateStarsAmount(starsAmount);

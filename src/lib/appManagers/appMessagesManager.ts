@@ -905,7 +905,8 @@ export class AppMessagesManager extends AppManager {
             this.cancelPendingMessage(message.random_id);
             this.sendText({...options, ...override})
           },
-          paidStars
+          paidStars,
+          wereStarsReserved: options.confirmedPaymentResult?.canUndo
         });
 
         MTProtoMessagePort.getInstance<false>().invoke('log', {
@@ -1434,7 +1435,8 @@ export class AppMessagesManager extends AppManager {
               repayCallback: (override) => {
                 this.cancelPendingMessage(message.random_id);
                 this.sendFile({...options, ...override});
-              }
+              },
+              wereStarsReserved: options.confirmedPaymentResult?.canUndo
             });
 
             toggleError(error, repayRequest);
@@ -1630,7 +1632,8 @@ export class AppMessagesManager extends AppManager {
               repayCallback: (override) => {
                 results.forEach(({message}) => this.cancelPendingMessage(message.random_id));
                 this.sendGrouped({...options, ...override});
-              }
+              },
+              wereStarsReserved: options.confirmedPaymentResult?.canUndo
             });
             MTProtoMessagePort.getInstance<false>().invoke('log', {message: '[my-debug] error sendMultiMedia', error})
             results.forEach(({message}) => toggleError(message, error, repayRequest));
@@ -1946,7 +1949,8 @@ export class AppMessagesManager extends AppManager {
           repayCallback: (override) => {
             this.cancelPendingMessage(message.random_id);
             this.sendOther({...options, ...override});
-          }
+          },
+          wereStarsReserved: options.confirmedPaymentResult?.canUndo
         });
         toggleError(error, repayRequest);
         promise.reject(error);
@@ -3072,7 +3076,8 @@ export class AppMessagesManager extends AppManager {
             this.cancelPendingMessage(message.random_id);
           });
           this.forwardMessagesInner({...options, mids, ...override});
-        }
+        },
+        wereStarsReserved: options.confirmedPaymentResult?.canUndo
       });
 
       this.onMessagesSendError(newMessages, error, repayRequest);

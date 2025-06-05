@@ -11,9 +11,8 @@ import MTProtoMessagePort from './mtprotoMessagePort';
 
 
 const INSUFFICIENT_STARS_FOR_MESSAGE_PREFIX = 'ALLOW_PAYMENT_REQUIRED_';
-// const INSUFFICIENT_STARS_FOR_MESSAGE_TIMEOUT = 20e3; // In case the user doesn't resend the messages
 
-type InvokeApiParams = MethodDeclMap[keyof MethodDeclMap]['req'];
+
 type InvokeApiArgs = Parameters<ApiManager['invokeApi']>;
 
 type ConstructorArgs = {
@@ -25,10 +24,7 @@ type HandleErrorArgs = {
   messageCount: number;
   repayCallback: RepayRequestCallback;
   paidStars: number;
-};
-
-type ConfirmationPromiseResult = {
-  starsAmount: number; // The stars amount for just one message
+  wereStarsReserved: boolean;
 };
 
 export type RepayRequest = {
@@ -41,6 +37,7 @@ type RepayRequestCallback = (args: Pick<MessageSendingParams, 'confirmedPaymentR
 type ApiErrorWithInvokeArgs = ApiError & {
   invokeApiArgs: InvokeApiArgs;
 };
+
 
 export default class RepayRequestHandler {
   private rootScope: RootScope;
@@ -63,7 +60,7 @@ export default class RepayRequestHandler {
     };
   }
 
-  public tryRegisterRequest({error, messageCount, repayCallback, paidStars}: HandleErrorArgs) {
+  public tryRegisterRequest({error, messageCount, repayCallback, paidStars, wereStarsReserved}: HandleErrorArgs) {
     assumeType<ApiErrorWithInvokeArgs>(error);
 
     if(!RepayRequestHandler.canHandleError(error) || !error.invokeApiArgs) return;
@@ -87,7 +84,7 @@ export default class RepayRequestHandler {
       messageCount,
       requestId,
       invokeApiArgs: error.invokeApiArgs,
-      paidStars
+      reservedStars: wereStarsReserved ? paidStars : undefined
     });
 
     return {
