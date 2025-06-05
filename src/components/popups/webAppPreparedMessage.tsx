@@ -63,7 +63,7 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
                 return false
               },
               chatRightsActions: ['send_inline']
-            }).catch(() => null);
+            }).catch(() => undefined as PeerId);
 
             if(!chosenPeerId) {
               return false;

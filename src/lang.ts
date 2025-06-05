@@ -417,12 +417,12 @@ const lang = {
   'BoostsViaGifts.AdditionalPrizesSubtitle': 'All prizes: %s',
   'BoostsViaGifts.AdditionalPrizesSubtitleOff': 'Turn this on if you want to give the winners your own prizes in addition to Telegram Premium subscriptions.',
   'BoostsViaGifts.AdditionalPrizesDetailed': {
-    'one_value': '**%d** Telegram Premium subscription for %s.',
-    'other_value': '**%d** Telegram Premium subscriptions for %s.'
+    'one_value': '**%d** Telegram Premium subscription for %s',
+    'other_value': '**%d** Telegram Premium subscriptions for %s'
   },
   'BoostsViaGifts.AdditionalPrizesDetailedWith': {
-    'one_value': '**%d** %s with Telegram Premium subscription for %s.',
-    'other_value': '**%d** %s with Telegram Premium subscriptions for %s.'
+    'one_value': '**%d** %s with Telegram Premium subscription for %s',
+    'other_value': '**%d** %s with Telegram Premium subscriptions for %s'
   },
   'BoostsViaGifts.AdditionalStarsPrizesDetailed': {
     'one_value': '**%1$d** Star.',
@@ -588,7 +588,7 @@ const lang = {
   'Rtmp.MediaViewer.Menu.EndLiveStream': 'End Live Stream',
   'Rtmp.StreamPopup.Title': 'Stream With...',
   'Rtmp.StreamPopup.TitleSettings': 'Stream Settings',
-  'Rtmp.StreamPopup.Description': 'To stream video with another app, enter these Server URL and Stream Key in your streaming app. Software encoding recommended (x264 in OBS).',
+  'Rtmp.StreamPopup.Description': 'To stream video with another app, enter this Server URL and Stream Key in your streaming app. Software encoding recommended (x264 in OBS).',
   'Rtmp.StreamPopup.ServerURL': 'Server URL',
   'Rtmp.StreamPopup.StreamKey': 'Stream Key',
   'Rtmp.StreamPopup.Hint': 'Once you start broadcasting in your streaming app, click Start Streaming below.',
@@ -829,7 +829,7 @@ const lang = {
     'other_value': 'Stars sent anonymously!'
   },
   'Stars.TopUp.Reaction': 'Buy **Stars** and send them to **%s** to support their posts.',
-  'Stars.TopUp.Label_default': 'Buy **Stars** to unlock content and service\nin miniapps on Telegram.',
+  'Stars.TopUp.Label_default': 'Buy Stars to unlock content and services\nin mini apps on Telegram.',
   'Stars.TopUp.Label_stargift': 'Buy **Stars** to send gifts.',
   'Stars.TopUp.Enough': 'You have enough Stars at the moment. [Buy anyway]()',
   'Action.StarGiveawayPrize': {
@@ -859,7 +859,7 @@ const lang = {
   'MediaEditor.Tool': 'Tool',
   'MediaEditor.Brushes.Pen': 'Pen',
   'MediaEditor.Brushes.Arrow': 'Arrow',
-  'MediaEditor.Brushes.Brush': 'Brush',
+  'MediaEditor.Brushes.Brush': 'Marker',
   'MediaEditor.Brushes.Neon': 'Neon',
   'MediaEditor.Brushes.Blur': 'Blur',
   'MediaEditor.Brushes.Eraser': 'Eraser',
@@ -1423,7 +1423,7 @@ const lang = {
   'RestrictSavingContentInfoChannel': 'Subscribers won\'t be able to copy, save or forward content from this channel.',
   'ClearOtherSessionsHelp': 'Logs out all devices except for this one.',
   'SessionsListInfo': 'The official Telegram app is available for Android, iPhone, iPad, Windows, macOS and Linux.',
-  'SponsoredMessage': 'sponsored',
+  'SponsoredMessage': 'ad',
   'OpenChannelPost': 'VIEW POST',
   'FilterNameHint': 'Folder name',
   'BotStart': 'START',
@@ -2288,7 +2288,7 @@ const lang = {
   'PremiumPreviewLastSeen': 'Last Seen Times',
   'PremiumPreviewLastSeenDescription': 'View the last seen and read times of others even if you hide yours.',
   'PremiumPreviewMessagePrivacy': 'Message Privacy',
-  'PremiumPreviewMessagePrivacyDescription': 'Restrict people you don\'t know from sending you messages.',
+  'PremiumPreviewMessagePrivacyDescription': 'Limit messages from strangers or charge for incoming messages.',
   'PremiumPreviewTags': 'Tags for Messages',
   'PremiumPreviewTagsDescription2': 'Organize your Saved Messages with tags for quicker access.',
   'MessageContainsReactionPack': 'This reaction is an emoji from %s pack.',
@@ -2417,7 +2417,7 @@ const lang = {
     'other_value': 'What can %1$s selected users do?'
   },
   'TelegramStars': 'Telegram Stars',
-  'TelegramStarsInfo': 'Buy Stars to unlock content and service\nin miniapps on Telegram.',
+  'TelegramStarsInfo': 'Buy Stars to unlock content and services\nin mini apps on Telegram.',
   'StarsBalance': 'Balance',
   'StarsBalanceLong': 'Your balance is %s %s',
   'GetMoreStars': 'Get More Stars >',
@@ -2437,8 +2437,8 @@ const lang = {
     'one_value': '%d Star Needed',
     'other_value': '%d Stars Needed'
   },
-  'StarsNeededText': 'Buy **Stars** and use them on **%s** and other miniapps.',
-  'MenuTelegramStars': 'Your Stars',
+  'StarsNeededText': 'Buy **Stars** and use them on **%s** and other mini apps.',
+  'MenuTelegramStars': 'My Stars',
   'StarsCount': {
     'one_value': '%d Star',
     'other_value': '%d Stars'
@@ -2522,39 +2522,42 @@ const lang = {
   },
   'StarGiftFrom': 'Gift from %s',
   'StarGiftDefaultMessage': 'You can add this gift to your profile.',
-  'StarGiftDefaultMessageOut': '%s can display this gift on their page.',
+  'StarGiftDefaultMessageOut': '%s can display this gift on their profile.',
   'StarGiftDefaultMessageConvertable': {
-    'one_value': 'Display this gift on your page or convert it to %d Star.',
-    'other_value': 'Display this gift on your page or convert it to %d Stars.'
+    'one_value': 'Add this gift to your profile or convert it to %d Star.',
+    'other_value': 'Add this gift to your profile or convert it to %d Stars.'
   },
   'StarGiftDefaultMessageConvertableOut': {
-    'one_value': '%s can display this gift on their page or convert it to %d Star.',
-    'other_value': '%s can display this gift on their page or convert it to %d Stars.'
+    'one_value': '%s can add this gift on their profile or convert it to %d Star.',
+    'other_value': '%s can add this gift on their profile or convert it to %d Stars.'
   },
   'StarGiftDefaultMessageUpgrade': 'Upgrade this gift to a unique collectible.',
   'StarGiftDefaultMessageUpgradeOut': '%s can turn this gift to a unique collectible.',
   'StarGiftReceivedTitle': 'Received Gift',
   'StarGiftTitle': 'Gift',
   'StarGiftReceivedSubtitle': {
-    'one_value': 'You can keep this gift in your Profile or convert it to %d Star.',
-    'other_value': 'You can keep this gift in your Profile or convert it to %d Stars.'
+    'one_value': 'You can add this gift to your profile or convert it to %d Star.',
+    'other_value': 'You can add this gift to your profile or convert it to %d Stars.'
   },
   'StarGiftReceivedSubtitleLink': 'More About Stars >',
   'StarGiftDisplayOnMyPage': 'Display on my Page',
   'StarGiftHideFromMyPage': 'Hide from my Page',
   'StarGiftHiddenHint': 'This gift is hidden. Only you can see it.',
-  'StarGiftVisibleHint': 'The gift is visible on your page.',
+  'StarGiftVisibleHint': 'The gift is visible on your profile.',
   'StarGiftVisibleHintLink': 'View >',
   'StarGiftFromShort': 'From',
   'StarGiftSendInline': 'send a gift',
   'StarGiftDate': 'Date',
   'StarGiftValue': 'Value',
+  'StarGiftSendGift': 'Send a Gift',
   'StarGiftAvailability': 'Availability',
-  'StarGiftAvailabilityValue': '%1$d of %2$d left',
+  'StarGiftAvailabilityValue2': {
+    'other_value': '%1$d of %2$d left'
+  },
   'StarGiftAvailabilityIssued': '%1$d/%2$d issued',
   'StarGiftConvertButton': {
-    'one_value': 'sale for %d Star',
-    'other_value': 'sale for %d Stars'
+    'one_value': 'sell for %d Star',
+    'other_value': 'sell for %d Stars'
   },
   'StarGiftsCount': {
     'one_value': '%d gift',
@@ -2576,7 +2579,9 @@ const lang = {
   'StarGiftHideMyNameHint': 'Hide my name and message from visitors to %s’s profile. %s will still see your name and message.',
   'StarGiftSend': 'Send a Gift for %s',
   'StarGiftLimitedLeft': '%d left',
-  'StarGiftLimitedSold': '%d sold',
+  'StarGiftLimitedSold2': {
+    'other_value': '%d sold'
+  },
   'StarGiftMakeUnique': 'Make Unique for %s %s',
   'StarGiftMakeUniqueHint': 'Enable this to let %s turn your gift into a unique collectible. %s',
   'StarGiftMakeUniqueLink': 'Learn more >',
@@ -2826,7 +2831,7 @@ const lang = {
   'Chat.Message.ViewGroup': 'VIEW GROUP',
   'Chat.Message.SendMessage': 'SEND MESSAGE',
   'Chat.Message.Sponsored.What': 'What are sponsored messages?',
-  'Chat.Message.Sponsored.Link': 'https://promote.telegram.org',
+  'Chat.Message.Sponsored.Link': 'https://ads.telegram.org',
   'Chat.Voice.Transribe.Error': 'No speech detected',
   'Chat.VoiceChat.JoinLink.Participants_ZeroValueHolder': 'no one joined yet',
   'Checkout.2FA.Text': 'Saving payment details is only available with 2-Step Verification.',
@@ -3054,7 +3059,7 @@ const lang = {
   'PrivacyAndSecurity.Item.On': 'On',
   'PrivacyAndSecurity.Item.Off': 'Off',
   'PrivacyAndSecurity.SensitiveText': 'Disable filtering',
-  'PrivacyAndSecurity.SensitiveDesc': 'Display sensitive media in public channels on all your Telegram devices.',
+  'PrivacyAndSecurity.SensitiveDesc': 'Do not hide media that contains content suitable only for adults.',
   'PrivacySettings.VoiceCalls': 'Calls',
   'PrivacySettings.Forwards': 'Forwarded Messages',
   'PrivacySettings.Groups': 'Groups and Channels',
@@ -3108,7 +3113,7 @@ const lang = {
   'Schedule.SendDate': 'Send on %@ at %@',
   'Schedule.SendWhenOnline': 'Send When Online',
   'Story.Tooltip.MessageSent': 'Message Sent.',
-  'Sticker.Premium.Click.Info': 'This pack contains premium stickers like this one. [View Pack]()',
+  'Sticker.Premium.Click.Info': 'This set contains premium stickers like this one. [View Set]()',
   'Stickers.Recent': 'Recent',
   // "Stickers.Favorite": "Favorite",
   'StickerSet.DontExist': 'Sorry, this sticker set doesn\'t seem to exist.',
@@ -3304,7 +3309,7 @@ const lang = {
   'PaidMessages.ChargeForMessagesDescription': 'Charge a fee for messages from people outside your contacts or who you haven\'t messaged first',
   'PaidMessages.ChargeForGroupMessagesDescription': 'If you turn this on, regular members of the group will have to pay Stars to send messages.',
   'PaidMessages.SetPrice': 'Set your price per message',
-  'PaidMessages.SetPriceDescription': 'You will receive %d% of the selected fee (~%d$) for each incoming messages',
+  'PaidMessages.SetPriceDescription': 'You will receive %d% of the selected fee (~%d$) for each incoming message',
   'PaidMessages.SetPriceGroupDescription': 'Your group will receive %d% of the selected fee (~%d$) for each incoming messages',
   'PaidMessages.RemoveFee': 'Remove Fee',
   'PaidMessages.RemoveFeeDescription': 'Add users or entire groups who won\'t have to pay to send you messages',

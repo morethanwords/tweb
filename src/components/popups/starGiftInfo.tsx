@@ -213,7 +213,7 @@ export default class PopupStarGiftInfo extends PopupElement {
       if(gift.availability_total > 0) {
         rows.push([
           'StarGiftAvailability',
-          i18n('StarGiftAvailabilityValue', [
+          i18n('StarGiftAvailabilityValue2', [
             numberThousandSplitter((gift as StarGift.starGift).availability_remains ?? 0),
             numberThousandSplitter(gift.availability_total)
           ])

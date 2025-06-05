@@ -207,7 +207,7 @@ function GiftOptionsPage(props: {
         <div class="popup-send-gift-main-header">
           <ButtonIconTsx icon="close" onClick={props.onClose} />
           <div class="popup-title">
-            {i18n('Chat.Menu.SendGift')}
+            {i18n('StarGiftSendGift')}
           </div>
         </div>
 
@@ -222,7 +222,7 @@ function GiftOptionsPage(props: {
         {giftPremiumSection}
 
         <div class="popup-send-gift-title">
-          {i18n('Chat.Menu.SendGift')}
+          {i18n('StarGiftSendGift')}
         </div>
         <div class="popup-send-gift-subtitle">
           <I18nTsx
@@ -273,7 +273,7 @@ function StarGiftLimitedProgress(props: {
           'background-image': `linear-gradient(90deg, #fff ${progress}%, var(--secondary-text-color) ${progress}%)`
         }}>
           {left}
-          {i18n('StarGiftLimitedSold', [props.gift.availability_total - props.gift.availability_remains])}
+          {i18n('StarGiftLimitedSold2', [props.gift.availability_total - props.gift.availability_remains])}
         </div>
       </div>
     </div>
@@ -375,7 +375,7 @@ function ChosenGiftPage(props: {
           onClick={props.onBack}
         />
         <div class="popup-title">
-          {i18n('Chat.Menu.SendGift')}
+          {i18n('StarGiftSendGift')}
         </div>
         {StarsBalance()}
       </div>
@@ -570,7 +570,7 @@ export default class PopupSendGift extends PopupElement {
   private setChosenGift: Setter<MyStarGift | MyPremiumGiftOption>;
   constructor(readonly peerId: PeerId) {
     super('popup-send-gift', {
-      title: 'Chat.Menu.SendGift',
+      title: 'StarGiftSendGift',
       closable: true,
       overlayClosable: true,
       body: true,
