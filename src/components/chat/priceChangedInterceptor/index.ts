@@ -64,8 +64,6 @@ class PriceChangedInterceptor {
     this.listenerSetter.add(rootScope)('insufficent_stars_for_message', async({requestId, messageCount, invokeApiArgs, reservedStars}) => {
       reservedStars && setReservedStars(prev => Math.max(0, prev - reservedStars));
 
-      if(!this.chat.peerId.isUser()) return;
-
       const apiCallParams = invokeApiArgs[1];
 
       const peer = 'peer' in apiCallParams ? apiCallParams.peer : 'to_peer' in apiCallParams ? apiCallParams.to_peer : undefined;
@@ -74,9 +72,8 @@ class PriceChangedInterceptor {
       const peerId = await this.managers.appPeersManager.getPeerId(peer as InputPeer);
       if(peerId !== this.chat.peerId) return;
 
-      const starsAmount = await this.getStarsAmountForUser(peerId.toUserId());
+      const starsAmount = await this.getAndUpdateStarsAmountIfNecessary(peerId);
 
-      await this.managers.appUsersManager.updateCachedUserFullStarsAmount(peerId.toUserId(), starsAmount);
       this.chat.updateStarsAmount(starsAmount);
 
       console.log('[my-debug] from client: requestId, messageCount :>> ', requestId, messageCount);
@@ -92,6 +89,16 @@ class PriceChangedInterceptor {
       this.pendingRequests = this.pendingRequests.filter(r => r.id !== requestId);
       if(!this.pendingRequests.length) this.closeTooltip();
     });
+  }
+
+  private async getAndUpdateStarsAmountIfNecessary(peerId: PeerId) {
+    if(!peerId.isUser()) return this.managers.appPeersManager.getStarsAmount(peerId);
+
+    const starsAmount = await this.getStarsAmountForUser(peerId.toUserId());
+
+    await this.managers.appUsersManager.updateCachedUserFullStarsAmount(peerId.toUserId(), starsAmount);
+
+    return starsAmount;
   }
 
   private handleNewRepayRequest({starsAmount, messageCount, requestId}: OpenTooltipArgs) {
