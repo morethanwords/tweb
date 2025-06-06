@@ -133,6 +133,7 @@ import {createProxiedManagersForAccount} from './getProxiedManagers';
 import ChatBackgroundStore from '../chatBackgroundStore';
 import useLockScreenShortcut from './utils/useLockScreenShortcut';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../../components/chat/paidMessagesInterceptor';
+import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -894,7 +895,7 @@ export class AppImManager extends EventListenerBase<{
         attachMenuBot: options.attachMenuBot,
         cacheKey
       };
-      if(IS_TOUCH_SUPPORTED) {
+      if(!IS_WEB_APP_BROWSER_SUPPORTED) {
         PopupElement.createPopup(PopupWebApp, webAppOptions);
       } else {
         openWebAppInAppBrowser(webAppOptions);

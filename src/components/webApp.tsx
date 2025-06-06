@@ -50,6 +50,8 @@ import type {RequestWebViewOptions} from '../lib/appManagers/appAttachMenuBotsMa
 import getPathFromBytes, {createSvgFromBytes} from '../helpers/bytes/getPathFromBytes';
 import PopupWebAppPreparedMessage from './popups/webAppPreparedMessage';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import IS_WEB_APP_BROWSER_SUPPORTED from '../environment/webAppBrowserSupport';
 
 const SANDBOX_ATTRIBUTES = [
   'allow-scripts',
@@ -1218,7 +1220,7 @@ export default class WebApp {
   }
 
   public async init(mountCallback: () => MaybePromise<void>) {
-    if(!this.attachMenuBot) {
+    if(!this.attachMenuBot || !IS_WEB_APP_BROWSER_SUPPORTED) {
       this.title.append(await this.getTitle(false));
     }
 
@@ -1243,7 +1245,7 @@ export default class WebApp {
     } catch(err) {}
 
 
-    const {bot_info: botInfo} = await this.managers.appProfileManager.getCachedFullUser(this.webViewOptions.botId);
+    const {bot_info: botInfo} = await this.managers.appProfileManager.getProfile(this.webViewOptions.botId);
 
 
     const bodyColorFromSettings = themeController.isNight() ? botInfo.app_settings?.background_dark_color : botInfo.app_settings?.background_color;
