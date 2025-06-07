@@ -48,6 +48,7 @@ import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
  * To not be used in an ApiManager instance as there is no account number attached to it
  */
 import globalRootScope from '../rootScope';
+import RepayRequestHandler from './repayRequestHandler';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -762,6 +763,9 @@ export class ApiManager extends ApiManagerMethods {
         } else if(error.type === 'UNKNOWN' || error.type === 'MTPROTO_CLUSTER_INVALID') { // cluster invalid - request from regular user to premium endpoint
           return pause(1000).then(() => performRequest());
         } else {
+          if(RepayRequestHandler.canHandleError(error))
+            error = RepayRequestHandler.attachInvokeArgsToError(error, [method, params, options]);
+
           throw error;
         }
       });

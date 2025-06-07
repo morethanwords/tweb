@@ -81,6 +81,7 @@ import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
 import commonStateStorage from '../commonStateStorage';
 import PaidMessagesQueue from './utils/messages/paidMessagesQueue';
 import type {ConfirmedPaymentResult} from '../../components/chat/paidMessagesInterceptor';
+import RepayRequestHandler, {RepayRequest} from '../mtproto/repayRequestHandler';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -375,8 +376,14 @@ export class AppMessagesManager extends AppManager {
   private waitingTranscriptions: Map<string, CancellablePromise<MessagesTranscribedAudio>>;
   private paidMessagesQueue = new PaidMessagesQueue;
 
+  private repayRequestHandler: RepayRequestHandler;
+
   protected after() {
     this.clear(true);
+
+    this.repayRequestHandler = new RepayRequestHandler({
+      rootScope: this.rootScope
+    });
 
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateMessageID: this.onUpdateMessageId,
@@ -777,8 +784,8 @@ export class AppMessagesManager extends AppManager {
 
     const webPageSend = this.generateOutgoingWebPage(message, options);
 
-    const toggleError = (error?: ApiError) => {
-      this.onMessagesSendError([message], error);
+    const toggleError = (error?: ApiError, repayRequest?: RepayRequest) => {
+      this.onMessagesSendError([message], error, repayRequest);
       this.rootScope.dispatchEvent('messages_pending');
     };
 
@@ -891,7 +898,25 @@ export class AppMessagesManager extends AppManager {
 
         message.promise.resolve();
       }, (error: ApiError) => {
-        toggleError(error);
+        const repayRequest = this.repayRequestHandler.tryRegisterRequest({
+          error,
+          messageCount: 1,
+          repayCallback: (override) => {
+            this.cancelPendingMessage(message.random_id);
+            this.sendText({...options, ...override})
+          },
+          paidStars,
+          wereStarsReserved: options.confirmedPaymentResult?.canUndo
+        });
+
+        MTProtoMessagePort.getInstance<false>().invoke('log', {
+          message: '[my-debug] Catching message error',
+          messageObj: message,
+          error,
+          repayRequest
+        });
+
+        toggleError(error, repayRequest);
         message.promise.reject(error);
         throw error;
       }).finally(() => {
@@ -1213,8 +1238,8 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    const toggleError = (error?: ApiError) => {
-      this.onMessagesSendError([message], error);
+    const toggleError = (error?: ApiError, repayRequest?: RepayRequest) => {
+      this.onMessagesSendError([message], error, repayRequest);
       this.rootScope.dispatchEvent('messages_pending');
     };
 
@@ -1351,8 +1376,9 @@ export class AppMessagesManager extends AppManager {
     });
 
     if(!options.isGroupedItem) {
+      const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
+
       const invokeSend = (inputMedia: Awaited<typeof sentDeferred>) => {
-        const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
         return this.apiManager.invokeApi('messages.sendMedia', {
           background: options.background,
           peer: this.appPeersManager.getInputPeerById(peerId),
@@ -1402,7 +1428,18 @@ export class AppMessagesManager extends AppManager {
               return;
             }
 
-            toggleError(error);
+            const repayRequest = this.repayRequestHandler.tryRegisterRequest({
+              error,
+              messageCount: 1,
+              paidStars,
+              repayCallback: (override) => {
+                this.cancelPendingMessage(message.random_id);
+                this.sendFile({...options, ...override});
+              },
+              wereStarsReserved: options.confirmedPaymentResult?.canUndo
+            });
+
+            toggleError(error, repayRequest);
             throw error;
           });
         });
@@ -1543,12 +1580,12 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    const toggleError = (message: Message.message, error?: ApiError) => {
+    const toggleError = (message: Message.message, error?: ApiError, repayRequest?: RepayRequest) => {
       if(message.error === error) {
         return;
       }
 
-      this.onMessagesSendError([message], error);
+      this.onMessagesSendError([message], error, repayRequest);
       this.rootScope.dispatchEvent('messages_pending');
     };
 
@@ -1588,7 +1625,18 @@ export class AppMessagesManager extends AppManager {
 
             deferred.resolve();
           }, (error: ApiError) => {
-            results.forEach(({message}) => toggleError(message, error));
+            const repayRequest = this.repayRequestHandler.tryRegisterRequest({
+              error,
+              paidStars,
+              messageCount: multiMedia.length,
+              repayCallback: (override) => {
+                results.forEach(({message}) => this.cancelPendingMessage(message.random_id));
+                this.sendGrouped({...options, ...override});
+              },
+              wereStarsReserved: options.confirmedPaymentResult?.canUndo
+            });
+            MTProtoMessagePort.getInstance<false>().invoke('log', {message: '[my-debug] error sendMultiMedia', error})
+            results.forEach(({message}) => toggleError(message, error, repayRequest));
             deferred.reject(error);
           });
         }
@@ -1832,8 +1880,8 @@ export class AppMessagesManager extends AppManager {
 
     message.media = media;
 
-    const toggleError = (error?: ApiError) => {
-      this.onMessagesSendError([message], error);
+    const toggleError = (error?: ApiError, repayRequest?: RepayRequest) => {
+      this.onMessagesSendError([message], error, repayRequest);
       this.rootScope.dispatchEvent('messages_pending');
     };
 
@@ -1894,7 +1942,17 @@ export class AppMessagesManager extends AppManager {
         });
         promise.resolve();
       }, (error: ApiError) => {
-        toggleError(error);
+        const repayRequest = this.repayRequestHandler.tryRegisterRequest({
+          error,
+          paidStars,
+          messageCount: 1,
+          repayCallback: (override) => {
+            this.cancelPendingMessage(message.random_id);
+            this.sendOther({...options, ...override});
+          },
+          wereStarsReserved: options.confirmedPaymentResult?.canUndo
+        });
+        toggleError(error, repayRequest);
         promise.reject(error);
         throw error;
       }).finally(() => {
@@ -3009,7 +3067,20 @@ export class AppMessagesManager extends AppManager {
         wereStarsReserved: options.confirmedPaymentResult?.canUndo
       });
     }, (error: ApiError) => {
-      this.onMessagesSendError(newMessages, error);
+      const repayRequest = this.repayRequestHandler.tryRegisterRequest({
+        error,
+        messageCount: newMessages.length,
+        paidStars,
+        repayCallback: (override) => {
+          newMessages.forEach(message => {
+            this.cancelPendingMessage(message.random_id);
+          });
+          this.forwardMessagesInner({...options, mids, ...override});
+        },
+        wereStarsReserved: options.confirmedPaymentResult?.canUndo
+      });
+
+      this.onMessagesSendError(newMessages, error, repayRequest);
       throw error;
     }).finally(() => {
       if(this.pendingAfterMsgs[peerId] === sentRequestOptions) {
@@ -3081,7 +3152,7 @@ export class AppMessagesManager extends AppManager {
     // };
   }
 
-  private onMessagesSendError(messages: Message.message[], error?: ApiError) {
+  private onMessagesSendError(messages: Message.message[], error?: ApiError, repayRequest?: RepayRequest) {
     messages.forEach((message) => {
       if(message.error === error) {
         return;
@@ -3098,8 +3169,10 @@ export class AppMessagesManager extends AppManager {
       this.modifyMessage(message, (message) => {
         if(error) {
           message.error = error;
+          message.repayRequest = repayRequest;
         } else {
           delete message.error;
+          delete message.repayRequest;
         }
       }, undefined, true);
 
@@ -8856,6 +8929,24 @@ export class AppMessagesManager extends AppManager {
 
   public cancelQueuedPaidMessages(peerId: PeerId) {
     this.paidMessagesQueue.cancelFor(peerId);
+  }
+
+  public confirmRepayRequest(requestId: number, confirmedPaymentResult: ConfirmedPaymentResult) {
+    MTProtoMessagePort.getInstance<false>().invoke('log', {
+      message: '[my-debug] ApiManager.confirmRepayRequest',
+      requestId
+    });
+
+    this.repayRequestHandler.confirmRepayRequest(requestId, confirmedPaymentResult);
+  }
+
+  public cancelRepayRequest(requestId: number) {
+    MTProtoMessagePort.getInstance<false>().invoke('log', {
+      message: '[my-debug] ApiManager.cancelRepayRequest',
+      requestId
+    });
+
+    this.repayRequestHandler.cancelRepayRequest(requestId);
   }
 }
 

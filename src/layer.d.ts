@@ -1013,6 +1013,10 @@ export namespace Message {
     clear_history?: boolean,
     pending?: boolean,
     error?: ApiError,
+    repayRequest?: {
+      id: number,
+      messageCount: number
+    },
     send?: () => Promise<any>,
     totalEntities?: MessageEntity[],
     reply_to_mid?: number,
@@ -21026,4 +21030,3 @@ export interface MethodDeclMap {
   'payments.canPurchaseStore': {req: PaymentsCanPurchaseStore, res: boolean},
   'contacts.getSponsoredPeers': {req: ContactsGetSponsoredPeers, res: ContactsSponsoredPeers},
 }
-

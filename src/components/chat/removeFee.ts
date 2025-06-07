@@ -57,7 +57,7 @@ export default class ChatRemoveFee extends PinnedContainer {
     const peerTitle = new PeerTitle();
     peerTitle.update({peerId, onlyFirstName: true});
 
-    content.append(i18n('PaidMessage.UserPaysForMessagesNotice', [peerTitle.element, inlineStars]));
+    content.append(i18n('PaidMessages.UserPaysForMessagesNotice', [peerTitle.element, inlineStars]));
 
     const button = Button(`btn primary ${styles.RemoveFeeButton}`, {text: 'PaidMessages.RemoveFee'})
     content.append(button);
@@ -102,10 +102,10 @@ export default class ChatRemoveFee extends PinnedContainer {
       const shouldRefund = await confirmationPopup({
         className: styles.ConfirmationPopup,
         titleLangKey: 'PaidMessages.RemoveFee',
-        descriptionLangKey: 'PaidMessage.RemoveFeeWarning',
+        descriptionLangKey: 'PaidMessages.RemoveFeeWarning',
         descriptionLangArgs: [await wrapPeerTitle({peerId, onlyFirstName: true})],
         checkbox: revenue ? {
-          text: 'PaidMessage.RemoveFeeRefund',
+          text: 'PaidMessages.RemoveFeeRefund',
           textArgs: [i18n('Stars', [revenue])]
         } : undefined,
         button: {
@@ -119,4 +119,3 @@ export default class ChatRemoveFee extends PinnedContainer {
     } catch{}
   }
 }
-

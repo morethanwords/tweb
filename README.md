@@ -51,6 +51,9 @@ Should be applied like that: http://localhost:8080/?test=1
 #### Taking local storage snapshots
 You can also take and load snapshots of the local storage and indexed DB using the `./snapshot-server` [mini-app](/snapshot-server/README.md). Check the `README.md` under this folder for more details.
 
+#### Preview all icons
+You can see all the available svg icons by calling the `showIconLibrary()` global function in the browser's console.
+
 ### Troubleshooting & Suggesting
 
 If you find an issue with this app or wish something to be added, let Telegram know using the [Suggestions Platform](https://bugs.telegram.org/c/4002).

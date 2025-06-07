@@ -826,11 +826,25 @@ export default class ChatBubbles {
       const bubble = this.getBubble(fullTempMid);
       if(!bubble) return;
 
+
       await getHeavyAnimationPromise();
       if(this.getBubble(fullTempMid) !== bubble) return;
 
       bubble.classList.remove('is-outgoing');
       this.setBubbleSendingStatus(bubble, 'error');
+
+      const message = apiManagerProxy.getMessageById(+bubble.dataset.mid);
+      if(!('repayRequest' in message) || !message.repayRequest) return;
+
+      const serviceMsgText = bubble.querySelector('.service-msg-i18n-element');
+      if(!serviceMsgText) return;
+
+      const i18nElement = I18n.weakMap.get(serviceMsgText as HTMLElement);
+      if(!(i18nElement instanceof I18n.IntlElement)) return;
+
+      i18nElement.update({
+        key: 'PaidMessages.FailedToPayForMessage'
+      });
     });
 
     this.listenerSetter.add(rootScope)('replies_short_update', (message) => {
