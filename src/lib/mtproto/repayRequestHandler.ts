@@ -1,7 +1,6 @@
 import {ConfirmedPaymentResult} from '../../components/chat/paidMessagesInterceptor';
 import assumeType from '../../helpers/assumeType';
 import safeAssign from '../../helpers/object/safeAssign';
-import {MethodDeclMap} from '../../layer';
 
 import {MessageSendingParams} from '../appManagers/appMessagesManager';
 import type {RootScope} from '../rootScope';

@@ -48,7 +48,6 @@ import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
  * To not be used in an ApiManager instance as there is no account number attached to it
  */
 import globalRootScope from '../rootScope';
-import MTProtoMessagePort from './mtprotoMessagePort';
 import RepayRequestHandler from './repayRequestHandler';
 
 /* class RotatableArray<T> {
