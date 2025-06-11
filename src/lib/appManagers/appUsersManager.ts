@@ -1233,6 +1233,8 @@ export class AppUsersManager extends AppManager {
       return empty;
     }
 
+    if('' + user.id === '' + this.getSelf().id) return empty;
+
     if(!user.send_paid_messages_stars && (!user.pFlags.contact_require_premium || this.rootScope.premium)) {
       return empty;
     }
