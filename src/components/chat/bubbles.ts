@@ -4626,11 +4626,12 @@ export default class ChatBubbles {
         const map: Map<PeerId, Set<number>> = new Map();
         for(const fullMid of rendered) {
           let message = this.chat.getMessage(fullMid);
-          if(message?._ !== 'message') {
-            continue;
+          if(!message) continue
+
+          if(message._ === 'message') {
+            message = apiManagerProxy.getGroupsFirstMessage(message);
           }
 
-          message = apiManagerProxy.getGroupsFirstMessage(message);
           const {peerId, mid} = message;
 
           let mids = map.get(peerId);
@@ -5216,8 +5217,9 @@ export default class ChatBubbles {
     // await pause(1000);
 
     const isMessage = message._ === 'message';
+    const hasReactions = message._ === 'message' || (message._ === 'messageService' && message.pFlags.reactions_are_possible)
     const groupedId = isMessage && message.grouped_id;
-    let groupedMids: number[], reactionsMessage: Message.message;
+    let groupedMids: number[], reactionsMessage: Message.message | Message.messageService;
     const groupedMessages = groupedId ? apiManagerProxy.getMessagesByGroupedId(groupedId) : undefined;
 
     const groupedMustBeRenderedFull = this.chat.type !== ChatType.Pinned;
@@ -5233,7 +5235,7 @@ export default class ChatBubbles {
     const maxBubbleMid = groupedMids ? Math.max(...groupedMids) : message.mid;
     (bubble as any).maxBubbleMid = maxBubbleMid;
 
-    if(isMessage) {
+    if(hasReactions) {
       reactionsMessage = groupedId ? getMainGroupedMessage(groupedMessages) : message;
     }
 
@@ -5710,6 +5712,9 @@ export default class ChatBubbles {
     const isBroadcast = this.chat.isBroadcast;
     if(returnService) {
       setUnreadObserver?.();
+      if(hasReactions) {
+        this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
+      }
       return ret;
     }
 
@@ -7591,7 +7596,7 @@ export default class ChatBubbles {
       this.setBubbleRepliesCount(bubble, replies.replies);
     }
 
-    if(isMessage) {
+    if(hasReactions) {
       this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
     }
 
@@ -7688,8 +7693,8 @@ export default class ChatBubbles {
 
   private appendReactionsElementToBubble(
     bubble: HTMLElement,
-    message: Message.message,
-    reactionsMessage: Message.message,
+    message: Message.message | Message.messageService,
+    reactionsMessage: Message.message | Message.messageService,
     changedResults?: ReactionCount[],
     loadPromises?: Promise<any>[]
   ) {
@@ -7713,7 +7718,7 @@ export default class ChatBubbles {
     });
     reactionsElement.render(changedResults);
 
-    if(bubble.classList.contains('has-floating-time')) {
+    if(bubble.classList.contains('has-floating-time') || bubble.classList.contains('service')) {
       bubble.querySelector('.bubble-content-wrapper').append(reactionsElement);
     } else {
       const timeSpan = bubble.timeSpan;

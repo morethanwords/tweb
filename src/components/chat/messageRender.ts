@@ -180,7 +180,7 @@ export namespace MessageRender {
     chatType: ChatType,
     message: Message.message | Message.messageService,
     groupedMessagesCount?: number,
-    reactionsMessage?: Message.message,
+    reactionsMessage?: Message.message | Message.messageService,
     isOut: boolean,
     middleware: Middleware,
     loadPromises?: Promise<any>[]

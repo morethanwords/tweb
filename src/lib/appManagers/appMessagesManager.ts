@@ -6119,7 +6119,6 @@ export class AppMessagesManager extends AppManager {
 
     if(message?._ !== 'message') {
       this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, force: true});
-      return;
     }
 
     const modifyUnreadReactions = (add: boolean) => {

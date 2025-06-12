@@ -221,7 +221,7 @@ export class ChatReactionsMenu {
     return this.render(renderPromises, availableEffects.length > REACTIONS_MAX_LENGTH);
   }
 
-  private async prepareReactions(message?: Message.message) {
+  private async prepareReactions(message?: Message.message | Message.messageService) {
     const middleware = this.middlewareHelper.get();
     const availableReactionsResult = apiManagerProxy.getAvailableReactions();
     const peerAvailableReactionsResult = await this.managers.acknowledged.appReactionsManager.getAvailableReactionsByMessage(message);
@@ -272,7 +272,7 @@ export class ChatReactionsMenu {
     return [cached, renderPromise] as const;
   }
 
-  public async init(message?: Message.message) {
+  public async init(message?: Message.message | Message.messageService) {
     let cached: boolean, renderPromise: Promise<() => void>;
     if(this.isEffects) {
       [cached, renderPromise] = await this.prepareEffects();

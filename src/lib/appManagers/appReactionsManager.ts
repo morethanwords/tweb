@@ -53,7 +53,7 @@ export type PeerAvailableReactions = {
 };
 
 export type SendReactionOptions = {
-  message: Message.message | ReactionsContext,
+  message: Message.message | Message.messageService | ReactionsContext,
   reaction?: Reaction | AvailableReaction,
   onlyLocal?: boolean,
   onlyLocalWithUpdate?: boolean,
@@ -339,13 +339,15 @@ export class AppReactionsManager extends AppManager {
   // }
 
   public getAvailableReactionsByMessage(
-    message?: Message.message,
+    message?: Message.message | Message.messageService,
     unshiftQuickReaction?: boolean
   ): ReturnType<AppReactionsManager['getAvailableReactionsForPeer']> {
     // if(!message) return {type: 'chatReactionsNone', reactions: []};
     let peerId: PeerId;
     if(!message) {
       peerId = NULL_PEER_ID;
+    } else if(message._ === 'messageService') {
+      peerId = message.peerId;
     } else {
       peerId = (
         message.fwd_from?.channel_post &&
@@ -901,7 +903,7 @@ export class AppReactionsManager extends AppManager {
         message,
         changedResults,
         removedResults,
-        savedPeerId: this.appPeersManager.getPeerId(message.saved_peer_id)
+        savedPeerId: message._ === 'message' ? this.appPeersManager.getPeerId(message.saved_peer_id) : undefined
       });
     }
 
