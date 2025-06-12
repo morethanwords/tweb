@@ -1,16 +1,17 @@
 import {Accessor, createContext, createMemo, createSignal, Signal, useContext} from 'solid-js';
-import {createMutable, modifyMutable, produce, Store, unwrap} from 'solid-js/store';
+import {createMutable, modifyMutable, produce, Store} from 'solid-js/store';
 
+import exceptKeys from '../../helpers/object/exceptKeys';
 import type {AppManagers} from '../../lib/appManagers/managers';
 import type {ObjectPath} from '../../types';
 
-import {NumberPair, ResizableLayer, StickerRenderingInfo, TextLayerInfo} from './types';
 import {AdjustmentKey, adjustmentsConfig} from './adjustments';
-import {FinalTransform} from './canvas/useFinalTransform';
 import {BrushDrawnLine} from './canvas/brushPainter';
+import {FinalTransform} from './canvas/useFinalTransform';
 import type {MediaEditorProps} from './mediaEditor';
+import {NumberPair, ResizableLayer, StickerRenderingInfo, TextLayerInfo} from './types';
+import {approximateDeepEqual} from './utils';
 import {RenderingPayload} from './webgl/initWebGL';
-import {approximateDeepEqual, exceptKeys, log} from './utils';
 
 
 type EditingMediaStateWithoutHistory = {

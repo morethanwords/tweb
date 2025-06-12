@@ -74,18 +74,6 @@ export function approximateDeepEqual(x: any, y: any): boolean {
   return false;
 }
 
-export function exceptKeys<T extends object, Key extends keyof T>(obj: T, keys: Key[]) {
-  const set = new Set<any>(keys);
-  const res = {};
-
-  Object.keys(obj).forEach((key) => {
-    if(set.has(key)) return;
-    (res as any)[key] = (obj as any)[key];
-  });
-
-  return res as Exclude<T, Key>;
-}
-
 
 type AnimateValueOptions = {
   easing?: (progress: number) => number;
@@ -134,41 +122,29 @@ export function animateValue<T extends number | number[]>(
   };
 }
 
-export function processHistoryItem(item: HistoryItem, mediaState: any)
-{
+export function processHistoryItem(item: HistoryItem, mediaState: any) {
   const path = [...item.path].reverse() as (keyof any)[];
   if(!path?.length) return;
 
   let obj = mediaState;
 
   while(path.length > 1)
-  {
     obj = obj[path.pop()];
-  }
 
   let key = path.pop();
 
-  if(obj instanceof Array)
-  {
+  if(obj instanceof Array) {
     key = key as number;
     if(item.findBy) key = obj.findIndex((value) => value?.id === item.findBy.id);
     if(key === -1) key = obj.length;
 
     if(item.newValue === HistoryItem.RemoveArrayItem)
-    {
       obj.splice(key, 0, item.oldValue);
-    }
     else if(item.oldValue === HistoryItem.RemoveArrayItem)
-    {
       obj.splice(key, 1);
-    }
     else
-    {
       obj[key] = item.oldValue;
-    }
-  }
-  else
-  {
+  } else {
     obj[key] = item.oldValue;
   }
 }

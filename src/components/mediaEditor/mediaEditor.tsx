@@ -104,7 +104,8 @@ export function MediaEditor(props: MediaEditorProps) {
               if(isFinishing) return;
               isFinishing = true;
 
-              const result = await createFinalResult().finally(() => (isFinishing = false));
+              const result = await createFinalResult()
+              .finally(() => { isFinishing = false; });
 
               props.onEditFinish(result);
               handleClose(true, result.isGif);

@@ -2,13 +2,14 @@ import {onCleanup, onMount, Show} from 'solid-js';
 
 import {useMediaEditorContext} from '../context';
 
-import useFinalTransform from './useFinalTransform';
+import BrushCanvas from './brushCanvas';
+import CropHandles from './cropHandles';
+import ImageCanvas from './imageCanvas';
 import PreviewBrushSize from './previewBrushSize';
 import ResizableLayers from './resizableLayers';
 import RotationWheel from './rotationWheel';
-import CropHandles from './cropHandles';
-import BrushCanvas from './brushCanvas';
-import ImageCanvas from './imageCanvas';
+import useFinalTransform from './useFinalTransform';
+import VideoControls from './videoControls';
 
 
 export default function MainCanvas() {
@@ -41,6 +42,7 @@ export default function MainCanvas() {
           <div ref={(el) => void (editorState.resizeHandlesContainer = el)} class="media-editor__resize-handles-overlay" />
           <CropHandles />
           <RotationWheel />
+          <VideoControls />
         </Show>
       </Show>
     </div>

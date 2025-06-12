@@ -1,16 +1,23 @@
+@import "../../../scss/variables.scss";
+@import "../../../scss/mixins.scss";
+
 .Container {
   position: absolute;
 
   bottom: 0;
   left: 50%;
 
-  height: 48px;
-  width: 584px;
   max-width: 100%;
 
   padding: 24px;
 
   transform: translateX(-50%);
+}
+
+.InnerContainer {
+  height: 48px;
+  width: 584px;
+  max-width: 100%;
 
   display: flex;
   gap: 12px;
@@ -18,37 +25,115 @@
 
 .IconButton {
   flex: none;
-
+  overflow: hidden;
   padding: 0.75rem;
+
+  color: white;
+}
+
+.MuteButton {
+  --bg-color: #3e3f3f;
+  --mult: 1;
+  background-color: var(--bg-color);
+
+  @include hover-global(hsl(from var(--bg-color) h s calc(l + 7 * var(--mult))), background-color, true);
+
+  &.muted {
+    --bg-color: white;
+    --mult: -2;
+    --ripple-color: rgba(0, 0, 0, .175);
+
+    color: black;
+  }
+}
+
+.PlayButton {
+
 }
 
 .Frames {
   position: relative;
   height: 100%;
   flex: 1;
+
+  --start: 0.2;
+  --length: 0.6;
+  --current-time: 0.4;
+  --thumbnail-time: 0.45;
+  --handle-width: 9px;
 }
 
 .Cropper {
-  --left: 0px;
-  --width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+
+  border-radius: 8px;
+  background-color: gray;
+
+  overflow: hidden;
 
   &Bg {
     position: absolute;
     height: 100%;
     width: 100%;
 
-    background-color:;
+    background-color: rgba(0, 0, 0, 0.65);
 
     &Left {
+      left: calc((100% - 2 * var(--handle-width)) * var(--start) + var(--handle-width));
+      transform: translateX(-100%);
     }
     &Right {
+      left: calc((100% - 2 * var(--handle-width)) * (var(--start) + var(--length)) + var(--handle-width));
     }
   }
 
+  &HorizontalBorder {
+    position: absolute;
+
+    left: calc((100% - 2 * var(--handle-width)) * var(--start) + var(--handle-width));
+    width: calc((100% - 2 * var(--handle-width)) * var(--length));
+
+    height: 100%;
+
+    border-top: 2px solid white;
+    border-bottom: 2px solid white;
+  }
+
   &Handle {
+    position: absolute;
+    height: 100%;
+    width: var(--handle-width);
+
+    background-color: white;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    &::before {
+      content: '';
+      display: block;
+
+      height: 16px;
+      width: 3px;
+      border-radius: 5px;
+
+      background-color: #212121;
+    }
+
     &Left {
+      left: calc((100% - 2 * var(--handle-width)) * var(--start));
+      border-top-left-radius: var(--handle-width);
+      border-bottom-left-radius: var(--handle-width);
     }
     &Right {
+      left: calc((100% - 2 * var(--handle-width)) * (var(--start) + var(--length)) + var(--handle-width));
+      border-top-right-radius: var(--handle-width);
+      border-bottom-right-radius: var(--handle-width);
     }
   }
 }
@@ -57,10 +142,25 @@
 }
 
 .TimeStick {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 60px;
+
+  transform: translate(-50%, -50%);
+  left: calc((100% - 2 * var(--handle-width)) * var(--current-time) + var(--handle-width));
 }
 
 .IconButton {
 }
 
 .ThumbnailMark {
+  position: absolute;
+  top: 0;
+
+  width: 20px;
+  height: 25px;
+
+  transform: translate(-50%, calc(-100% - 8px));
+  left: calc((100% - 2 * var(--handle-width)) * var(--thumbnail-time) + var(--handle-width));
 }
