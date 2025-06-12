@@ -157,14 +157,15 @@ export default class PeerTitle {
         getTopicIconPromise
       ]);
 
-      if(icons?.length || topicIcon) {
+      if(icons?.elements?.length || icons?.botVerification || topicIcon) {
         const inner = document.createElement('span');
         inner.classList.add('peer-title-inner');
         hasInner = true;
         setInnerHTML(inner, title);
 
         const fragment = document.createDocumentFragment();
-        fragment.append(...[topicIcon, inner, ...(icons ?? [])].filter(Boolean));
+        fragment.append(...[icons.botVerification, topicIcon, inner, ...(icons.elements ?? [])].filter(Boolean));
+
         setInnerHTML(this.element, fragment);
       } else {
         setInnerHTML(this.element, title);

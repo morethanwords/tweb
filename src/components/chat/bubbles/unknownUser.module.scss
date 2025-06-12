@@ -67,11 +67,15 @@
   font-size: 14px;
   line-height: 20px;
   color: #ffffffcc;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
 
-  :global(.custom-emoji-renderer) {
+  :global(.tgico), :global(.custom-emoji) {
+    margin-right: 0.375rem;
+    display: inline-block;
+    vertical-align: middle;
+    margin-bottom: 4px;
+  }
+
+  :global(.custom-emoji) {
     opacity: 0.8;
   }
 }
@@ -81,7 +85,11 @@
   font-weight: 500;
 }
 
-.spacer {
+.spacerTop {
+  flex: 2;
+}
+
+.spacerBottom {
   flex: 1;
   min-height: 0.75rem;
 }
@@ -92,7 +100,7 @@
   gap: 0.25rem;
   align-items: center;
 
-  &:hover :global(.tgico) {
+  &:hover :global(.i18n) {
     text-decoration: underline;
   }
 

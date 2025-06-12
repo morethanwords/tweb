@@ -3390,8 +3390,7 @@ const lang = {
   'UnknownUserSharedGroups': 'Shared groups',
   'UnknownUserUnofficial': 'Not an official account',
   'UnknownUserName': 'User updated name %s ago',
-  'UnknownUserPhoto': 'User updated photo %s ago',
-  'UnknownUserVerifiedBot': 'This user was verified by the organization "%s".'
+  'UnknownUserPhoto': 'User updated photo %s ago'
 };
 
 export default lang;

@@ -4010,6 +4010,7 @@ export default class ChatBubbles {
     this.emptyPlaceholderBubble = undefined;
     this.sponsoredMessage = undefined;
     this.previousStickyDate = undefined;
+    this.peerSettings = undefined;
 
     this.scrollingToBubble = undefined;
     // //console.timeEnd('appImManager cleanup');
@@ -8950,6 +8951,7 @@ export default class ChatBubbles {
         middleware.onDestroy(cleanup);
 
         this.chatInner.prepend(bubble);
+        this.emptyPlaceholderBubble = bubble;
         return result;
       },
       canAnimateLadder: true

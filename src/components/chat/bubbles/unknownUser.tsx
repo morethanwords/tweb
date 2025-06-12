@@ -15,11 +15,11 @@ import {monthsLocalized} from '../../../helpers/date';
 import {IconTsx} from '../../iconTsx';
 import formatDuration from '../../../helpers/formatDuration';
 import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
-import wrapCustomEmoji from '../../wrappers/customEmoji';
-import mediaSizes from '../../../helpers/mediaSizes';
 import rootScope from '../../../lib/rootScope';
 import appSidebarRight from '../../sidebarRight';
 import {StackedAvatarsTsx} from '../../stackedAvatars';
+import {wrapAdaptiveCustomEmoji} from '../../wrappers/customEmojiSimple';
+import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
 
 export function UnknownUserBubble(props: {
   peerId: PeerId
@@ -47,7 +47,7 @@ export function UnknownUserBubble(props: {
 
   return (
     <Show when={props.peerSettings?.phone_country || props.peerSettings?.registration_month}>
-      <div class={/* @once */ styles.spacer} />
+      <div class={/* @once */ styles.spacerTop} />
       <div class={/* @once */ classNames(stylesCommon.addon, styles.bubble)}>
         <div class={/* @once */ styles.head}>
           <PeerTitleTsx
@@ -103,20 +103,20 @@ export function UnknownUserBubble(props: {
         )}
         {props.user.bot_verification_icon && (
           <div class={/* @once */ styles.footer}>
-            {wrapCustomEmoji({
-              docIds: [props.user.bot_verification_icon],
-              customEmojiSize: mediaSizes.active.customEmoji,
-              textColor: 'white'
-            })}
-            <I18nTsx
-              key="UnknownUserVerifiedBot"
-              args={[props.userFull.bot_verification.description]}
-            />
+            {wrapAdaptiveCustomEmoji({
+              docId: props.user.bot_verification_icon,
+              size: 32,
+              as: 'span',
+              wrapOptions: {
+                textColor: 'white'
+              }
+            }).container}
+            {wrapRichText(props.userFull.bot_verification.description)}
           </div>
         )}
       </div>
 
-      <div class={/* @once */ styles.spacer} />
+      <div class={/* @once */ styles.spacerBottom} />
 
       {props.peerSettings?.name_change_date && (
         <div class={/* @once */ classNames(stylesCommon.text, styles.text)}>
