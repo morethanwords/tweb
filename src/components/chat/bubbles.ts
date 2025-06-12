@@ -28,7 +28,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement, {setQuizHint} from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, BotApp, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, StarGift} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, BotApp, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, StarGift, PeerSettings} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -135,7 +135,7 @@ import SwipeHandler from '../swipeHandler';
 import getSelectedText from '../../helpers/dom/getSelectedText';
 import {createStoriesViewerWithPeer} from '../stories/viewer';
 import {render} from 'solid-js/web';
-import {createRoot, createEffect, createSignal} from 'solid-js';
+import {createRoot, createEffect, createSignal, Signal} from 'solid-js';
 import {StoryPreview, wrapStoryMedia} from '../stories/preview';
 import wrapReply from '../wrappers/reply';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
@@ -197,6 +197,7 @@ import {getCurrentNewMediaPopup} from '../popups/newMedia';
 import PopupStarGiftInfo from '../popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from './bubbles/starGift';
 import {PremiumGiftBubble} from './bubbles/premiumGift';
+import {UnknownUserBubble} from './bubbles/unknownUser';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -329,6 +330,10 @@ const EMPTY_FULL_MID = makeFullMid(NULL_PEER_ID, 0);
 function appendBubbleTime(bubble: HTMLElement, element: HTMLElement, callback: () => void) {
   (bubble.timeAppenders ??= []).unshift({element, callback});
   callback();
+}
+
+function shouldShowUnknownUserPlaceholder(peerSettings?: PeerSettings) {
+  return peerSettings?.phone_country || peerSettings?.registration_month;
 }
 
 type AddMessageSpoilerOverlayParams = {
@@ -464,6 +469,8 @@ export default class ChatBubbles {
   private batchingModifying: Array<() => void>;
 
   private changedMids: Map<number, number>; // used when message is sent faster than temporary one was rendered
+
+  private peerSettings: PeerSettings;
 
   constructor(
     private chat: Chat,
@@ -3570,6 +3577,9 @@ export default class ChatBubbles {
         setPaddingTo.style.paddingTop = clientHeight + 'px';
         this.scrollable.setScrollPositionSilently(scrollHeight);
         this.isTopPaddingSet = true;
+        if(shouldShowUnknownUserPlaceholder(this.peerSettings)) {
+          setPaddingTo.style.minHeight = clientHeight + 'px';
+        }
       }
     }
 
@@ -3581,6 +3591,7 @@ export default class ChatBubbles {
         }
 
         setPaddingTo.style.paddingTop = '';
+        setPaddingTo.style.minHeight = '';
         this.isTopPaddingSet = false;
       } : undefined
     };
@@ -8770,6 +8781,10 @@ export default class ChatBubbles {
       if(side === 'top' && value && this.chat.isBot) {
         return this.renderBotPlaceholder();
       }
+
+      if(side === 'top' && value && shouldShowUnknownUserPlaceholder(this.peerSettings)) {
+        return this.renderUnknownUserPlaceholder();
+      }
     }
 
     return this.checkIfEmptyPlaceholderNeeded();
@@ -8894,10 +8909,53 @@ export default class ChatBubbles {
     return processPromise;
   }
 
+  private async renderUnknownUserPlaceholder() {
+    const middleware = this.getMiddleware();
+
+    const [
+      user,
+      userFull
+    ] = await Promise.all([
+      this.managers.appUsersManager.getUser(this.peerId.toUserId()),
+      this.managers.appProfileManager.getProfile(this.peerId.toUserId())
+    ])
+    if(!middleware()) return
+
+    const message = await this.generateLocalFirstMessage(true);
+
+    // return this.processLocalMessageRender(message, true);
+    return this.safeRenderMessage({
+      message,
+      reverse: true,
+      updatePosition: false,
+      processResult: async(result) => {
+        const {bubble} = await result;
+
+        bubble.classList.add('unknown-user-bubble');
+
+        const content = bubble.querySelector('.bubble-content');
+        content.replaceChildren()
+
+        const cleanup = render(() => UnknownUserBubble({
+          peerId: this.peerId,
+          user,
+          userFull,
+          peerSettings: this.peerSettings
+        }), content);
+        middleware.onDestroy(cleanup);
+
+        this.chatInner.prepend(bubble);
+        return result;
+      },
+      canAnimateLadder: true
+    });
+  }
+
   public async checkIfEmptyPlaceholderNeeded() {
     if(this.scrollable.loadedAll.top &&
       this.scrollable.loadedAll.bottom &&
       this.emptyPlaceholderBubble === undefined &&
+      !shouldShowUnknownUserPlaceholder(this.peerSettings) &&
       (
         this.chat.isRestricted ||
         (
@@ -9231,6 +9289,18 @@ export default class ChatBubbles {
 
     this.checkIfEmptyPlaceholderNeeded();
     this.setStickyDateManually();
+  }
+
+  public async setPeerSettings(peerId: PeerId, peerSettings: PeerSettings) {
+    if(this.peerId !== peerId) return;
+
+    this.peerSettings = peerSettings;
+
+    if(shouldShowUnknownUserPlaceholder(peerSettings)) {
+      console.trace('set peer settings', peerSettings);
+      this.cleanupPlaceholders()
+      this.renderUnknownUserPlaceholder();
+    }
   }
 }
 

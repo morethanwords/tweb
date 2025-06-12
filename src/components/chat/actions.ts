@@ -178,6 +178,7 @@ export default class ChatActions extends PinnedContainer {
 
       this.wrapper.replaceChildren(...buttons, this.wrapperUtils);
       this.toggle(false);
+      this.chat.bubbles.setPeerSettings(peerId, settings);
     };
   }
 

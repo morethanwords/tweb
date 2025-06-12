@@ -3383,7 +3383,15 @@ const lang = {
   'BotDownloadAccept': 'Download',
   'BotStorySharingNotSupported': 'Sharing to Stories is not supported in the Web app. Please use one of Telegram\'s mobile apps.',
   'BotSharePreparedMessageTitle': 'Share Message',
-  'BotSharePreparedMessageText': '**%s** suggests you to send this message to a chat you select.'
+  'BotSharePreparedMessageText': '**%s** suggests you to send this message to a chat you select.',
+  'UnknownUserNotAContact': 'Not a contact',
+  'UnknownUserPhoneNumber': 'Phone number',
+  'UnknownUserRegistrationDate': 'Registration date',
+  'UnknownUserSharedGroups': 'Shared groups',
+  'UnknownUserUnofficial': 'Not an official account',
+  'UnknownUserName': 'User updated name %s ago',
+  'UnknownUserPhoto': 'User updated photo %s ago',
+  'UnknownUserVerifiedBot': 'This user was verified by the organization "%s".'
 };
 
 export default lang;
