@@ -1,4 +1,4 @@
-import {Component} from 'solid-js';
+import {Component, createSignal} from 'solid-js';
 
 import ripple from '../../ripple'; ripple; // keep
 import {IconTsx} from '../../iconTsx';
@@ -7,6 +7,8 @@ import styles from './videoControls.module.scss';
 
 
 const VideoControls: Component<{}> = () => {
+  const [paused, setPaused] = createSignal(true);
+
   return (
     <div class={styles.Container}>
       <div class={styles.InnerContainer}>
@@ -40,10 +42,14 @@ const VideoControls: Component<{}> = () => {
         <button
           use:ripple
           class={`btn-icon ${styles.IconButton} ${styles.PlayButton}`}
-          onClick={() => {}}
+          onClick={() => {
+            setPaused(!paused());
+          }}
           tabIndex={-1}
         >
-          <PausePlay />
+          <span class={styles.PlayButtonInner}> {/* <span> prevents duplicating the svg on hot reload */}
+            <PausePlay paused={paused()} />
+          </span>
         </button>
       </div>
     </div>
@@ -67,15 +73,29 @@ const TimeStick = () => {
   )
 };
 
-export const PausePlay = () => {
+export const PausePlay: Component<{
+  paused: boolean;
+}> = (props) => {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Probably pause */}
-      <path d="M8.5 3H5C4.44772 3 4 3.44772 4 4V20C4 20.5523 4.44772 21 5 21H8.5C9.05228 21 9.5 20.5523 9.5 20V4C9.5 3.44772 9.05228 3 8.5 3Z" fill="white"/>
-      <path d="M19 3H15.5C14.9477 3 14.5 3.44772 14.5 4V20C14.5 20.5523 14.9477 21 15.5 21H19C19.5523 21 20 20.5523 20 20V4C20 3.44772 19.5523 3 19 3Z" fill="white"/>
+    <svg
+      class={styles.PausePlaySvg}
+      classList={{
+        [styles.paused]: props.paused
+      }}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <clipPath id="playSymbolClipPath">
+        <path class={styles.PausePlaySvgPlay}  d="M5 19.9138V4.0862C5 2.83455 6.44254 2.13342 7.42673 2.90672L17.4988 10.8205C18.2632 11.4211 18.2632 12.5789 17.4988 13.1795L7.42673 21.0933C6.44254 21.8666 5 21.1655 5 19.9138Z" fill="black" /* transform="translate(8, 12) scale(1.4) translate(-8, -12)" */ />
+      </clipPath>
 
-      {/* Probably play */}
-      <path d="M5 19.9138V4.0862C5 2.83455 6.44254 2.13342 7.42673 2.90672L17.4988 10.8205C18.2632 11.4211 18.2632 12.5789 17.4988 13.1795L7.42673 21.0933C6.44254 21.8666 5 21.1655 5 19.9138Z" fill="white"/>
+      <g class={styles.PausePlaySvgPause} id="pauseSymbol" clip-path='url(#playSymbolClipPath)'>
+        <path class={styles.PausePlaySvgPauseLeft} d="M8.5 3H5C4.44772 3 4 3.44772 4 4V20C4 20.5523 4.44772 21 5 21H8.5C9.05228 21 9.5 20.5523 9.5 20V4C9.5 3.44772 9.05228 3 8.5 3Z" fill="white"/>
+        <path class={styles.PausePlaySvgPauseRight} d="M19 3H15.5C14.9477 3 14.5 3.44772 14.5 4V20C14.5 20.5523 14.9477 21 15.5 21H19C19.5523 21 20 20.5523 20 20V4C20 3.44772 19.5523 3 19 3Z" fill="white"/>
+      </g>
     </svg>
   );
 }

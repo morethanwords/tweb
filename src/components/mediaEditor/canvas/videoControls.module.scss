@@ -114,6 +114,8 @@
     justify-content: center;
     align-items: center;
 
+    cursor: ew-resize;
+
     &::before {
       content: '';
       display: block;
@@ -151,7 +153,14 @@
   left: calc((100% - 2 * var(--handle-width)) * var(--current-time) + var(--handle-width));
 }
 
-.IconButton {
+.PlayButton {
+  background-color: var(--primary-color);
+
+  @include hover-global(hsl(from var(--primary-color) h s calc(l - 7)), background-color, true);
+
+  &Inner {
+    display: inline-flex;
+  }
 }
 
 .ThumbnailMark {
@@ -163,4 +172,44 @@
 
   transform: translate(-50%, calc(-100% - 8px));
   left: calc((100% - 2 * var(--handle-width)) * var(--thumbnail-time) + var(--handle-width));
+}
+
+.PausePlaySvg {
+  --play-scale: 2.2;
+  --pause-scale-x: 1;
+  --pause-scale-y: 1;
+  --pause-rotation: 0deg;
+  --pause-left-translate: 12px;
+  --pause-right-translate: 12px;
+
+  &Play {
+    transform: translate(8px, 12px) scale(var(--play-scale)) translate(-8px, -12px);
+    transition: transform .3s;
+  }
+
+  &Pause {
+    &Left, &Right {
+      transition: transform .3s;
+    }
+  }
+
+  &.paused {
+    --play-scale: 1;
+    --pause-scale-x: 2;
+    --pause-scale-y: 3;
+    --pause-rotation: 90deg;
+    --pause-left-translate: 24px;
+    --pause-right-translate: 0px;
+  }
+
+  &Pause {
+    &Left {
+      transform: translate(12px, var(--pause-left-translate)) scale(var(--pause-scale-x), var(--pause-scale-y)) rotate(var(--pause-rotation)) translate(-12px, -12px);
+    }
+
+    &Right {
+      transform: translate(12px, var(--pause-right-translate)) scale(var(--pause-scale-x), var(--pause-scale-y)) rotate(var(--pause-rotation)) translate(-12px, -12px);
+    }
+  }
+
 }
