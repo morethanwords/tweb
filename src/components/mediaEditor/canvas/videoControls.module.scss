@@ -12,6 +12,12 @@
   padding: 24px;
 
   transform: translateX(-50%);
+
+  --start: 0.2;
+  --length: 0.6;
+  --current-time: 0.4;
+  --thumbnail-time: 0.45;
+  --handle-width: 9px;
 }
 
 .InnerContainer {
@@ -47,20 +53,10 @@
   }
 }
 
-.PlayButton {
-
-}
-
 .Frames {
   position: relative;
   height: 100%;
   flex: 1;
-
-  --start: 0.2;
-  --length: 0.6;
-  --current-time: 0.4;
-  --thumbnail-time: 0.45;
-  --handle-width: 9px;
 }
 
 .Cropper {
@@ -94,13 +90,19 @@
   &HorizontalBorder {
     position: absolute;
 
-    left: calc((100% - 2 * var(--handle-width)) * var(--start) + var(--handle-width));
-    width: calc((100% - 2 * var(--handle-width)) * var(--length));
+    left: calc((100% - 2 * var(--handle-width)) * var(--start) + var(--handle-width) - 1px);
+    width: calc((100% - 2 * var(--handle-width)) * var(--length) + 2px);
 
     height: 100%;
 
     border-top: 2px solid white;
     border-bottom: 2px solid white;
+
+    cursor: pointer;
+
+    &.dragging {
+      cursor: grabbing;
+    }
   }
 
   &Handle {
@@ -151,6 +153,8 @@
 
   transform: translate(-50%, -50%);
   left: calc((100% - 2 * var(--handle-width)) * var(--current-time) + var(--handle-width));
+
+  pointer-events: none;
 }
 
 .PlayButton {
@@ -171,7 +175,30 @@
   height: 25px;
 
   transform: translate(-50%, calc(-100% - 8px));
-  left: calc((100% - 2 * var(--handle-width)) * var(--thumbnail-time) + var(--handle-width));
+  left: calc((100% - 2 * var(--handle-width)) * var(--position) + var(--handle-width));
+
+  opacity: 0;
+
+  &.ghost.visible {
+    opacity: 0.5;
+  }
+
+  &.visible {
+    opacity: 1;
+  }
+}
+
+.ThumbnailTrack {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  width: 100%;
+  height: 32px;
+
+  transform: translateY(calc(-4px - 100%));
+
+  cursor: pointer;
 }
 
 .PausePlaySvg {
@@ -195,8 +222,8 @@
 
   &.paused {
     --play-scale: 1;
-    --pause-scale-x: 2;
-    --pause-scale-y: 3;
+    --pause-scale-x: 1;
+    --pause-scale-y: 4.5;
     --pause-rotation: 90deg;
     --pause-left-translate: 24px;
     --pause-right-translate: 0px;
@@ -211,5 +238,4 @@
       transform: translate(12px, var(--pause-right-translate)) scale(var(--pause-scale-x), var(--pause-scale-y)) rotate(var(--pause-rotation)) translate(-12px, -12px);
     }
   }
-
 }
