@@ -203,6 +203,7 @@
 
 .PausePlaySvg {
   --play-scale: 2.2;
+  --play-translate-x: -8px;
   --pause-scale-x: 1;
   --pause-scale-y: 1;
   --pause-rotation: 0deg;
@@ -210,7 +211,7 @@
   --pause-right-translate: 12px;
 
   &Play {
-    transform: translate(8px, 12px) scale(var(--play-scale)) translate(-8px, -12px);
+    transform: translate(8px, 12px) scale(var(--play-scale)) translate(var(--play-translate-x), -12px);
     transition: transform .3s;
   }
 
@@ -227,6 +228,7 @@
     --pause-rotation: 90deg;
     --pause-left-translate: 24px;
     --pause-right-translate: 0px;
+    --play-translate-x: -6px;
   }
 
   &Pause {
