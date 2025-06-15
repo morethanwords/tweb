@@ -59,6 +59,7 @@ import PopupPremium from './popups/premium';
 import PopupTranslate from './popups/translate';
 import wrapSticker from './wrappers/sticker';
 import {rgbIntToHex} from '../helpers/color';
+import {wrapAdaptiveCustomEmoji} from './wrappers/customEmojiSimple';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   setInnerHTML(row.title, text || undefined);
@@ -105,6 +106,8 @@ export default class PeerProfile {
 
   private bioLanguage: Promise<TranslatableLanguageISO>;
   private bioText: string;
+
+  private botVerification: HTMLDivElement;
 
   private pinnedGiftsContainer: HTMLDivElement;
 
@@ -354,6 +357,9 @@ export default class PeerProfile {
 
     this.businessLocation.container.classList.add('business-location');
 
+    this.botVerification = document.createElement('div');
+    this.botVerification.classList.add('profile-bot-verification');
+
     this.section.content.append(
       this.phone.container,
       this.username.container,
@@ -431,6 +437,7 @@ export default class PeerProfile {
     this.element.append(
       this.personalChannelSection.container,
       this.section.container,
+      this.botVerification,
       this.botPermissionsSection.container,
     );
 
@@ -593,6 +600,8 @@ export default class PeerProfile {
     ].forEach((row) => {
       row.container.style.display = 'none';
     });
+
+    this.botVerification.style.display = 'none';
 
     if(this.notifications) {
       this.notifications.container.style.display = '';
@@ -1063,6 +1072,28 @@ export default class PeerProfile {
           this.botPermissionsLocation.checkboxField.checked = locationPermission === 'true';
         });
       }
+    }
+
+    if((peerFull._ === 'userFull' || peerFull._ === 'channelFull') && peerFull.bot_verification) {
+      callbacks.push(() => {
+        this.botVerification.style.display = '';
+
+        const content = document.createElement('div');
+        content.classList.add('profile-bot-verification-content');
+        content.append(wrapRichText(peerFull.bot_verification.description));
+
+        this.botVerification.replaceChildren(
+          wrapAdaptiveCustomEmoji({
+            docId: peerFull.bot_verification.icon,
+            size: 32,
+            wrapOptions: {
+              middleware,
+              textColor: 'secondary-text-color'
+            }
+          }).container,
+          content
+        );
+      })
     }
 
     return () => {

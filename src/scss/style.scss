@@ -1823,6 +1823,11 @@ hr {
   &-inner {
     @include text-overflow();
   }
+
+  &-bot-verification {
+    --custom-emoji-size: 1rem;
+    margin-inline-end: .25rem;
+  }
 }
 
 .chatlist-chat {

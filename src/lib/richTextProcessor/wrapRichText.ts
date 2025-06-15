@@ -69,6 +69,7 @@ export type WrapRichTextOptions = Partial<{
   customWraps?: Set<HTMLElement>,
   ignoreNextIndex?: number,
   doubleLinebreak?: number
+  textColor?: string
 }> & CustomEmojiRendererElementOptions;
 
 function createMarkupFormatting(formatting: string) {
@@ -852,6 +853,10 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
     if(!renderer) {
       renderer = CustomEmojiRendererElement.create(options);
       fragment.prepend(renderer);
+    }
+
+    if(options.textColor) {
+      renderer.setTextColor(options.textColor);
     }
 
     const loadPromise = renderer.add({

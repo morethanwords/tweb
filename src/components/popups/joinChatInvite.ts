@@ -68,12 +68,13 @@ export async function wrapChatInviteTitle(
   });
 
   const titleFragment = wrapEmojiText(chatInvite.title);
-  if(icons.length) {
+  if(icons.elements.length || icons.botVerification) {
     title.classList.add('with-icons');
     const titleInner = document.createElement('span');
     titleInner.classList.add('peer-title-inner');
     titleInner.append(titleFragment);
-    title.append(titleInner, ...icons);
+    if(icons.botVerification) titleInner.append(icons.botVerification);
+    title.append(titleInner, ...icons.elements);
   } else {
     setInnerHTML(title, titleFragment);
   }

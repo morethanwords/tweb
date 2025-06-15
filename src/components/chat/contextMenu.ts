@@ -1094,16 +1094,18 @@ export default class ChatContextMenu {
     let reactionsMenu: ChatReactionsMenu;
     let reactionsMenuPosition: 'horizontal' | 'vertical';
     if(
-      this.message?._ === 'message' &&
+      (this.message._ === 'message' || (this.message._ === 'messageService' && this.message.pFlags.reactions_are_possible)) &&
       !this.chat.selection.isSelecting &&
       !this.message.pFlags.is_outgoing &&
-      !this.message.pFlags.is_scheduled &&
+      !(this.message._ === 'message' && this.message.pFlags.is_scheduled) &&
       !this.message.pFlags.local &&
       !this.reactionElement
     ) {
       const reactions = this.message.reactions;
       const tags = this.message.peerId === rootScope.myId && (!reactions || reactions.pFlags.reactions_as_tags);
-      const reactionsMessage = await this.managers.appMessagesManager.getGroupsFirstMessage(this.message);
+      const reactionsMessage = this.message._ === 'message' ?
+        await this.managers.appMessagesManager.getGroupsFirstMessage(this.message) :
+        this.message;
       reactionsMenuPosition = (IS_APPLE || IS_TOUCH_SUPPORTED) || true/*  && false */ ? 'horizontal' : 'vertical';
       reactionsMenu = this.reactionsMenu = new ChatReactionsMenu({
         managers: this.managers,
