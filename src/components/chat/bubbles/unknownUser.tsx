@@ -1,5 +1,5 @@
-import {createEffect, createResource, Show} from 'solid-js'
-import {PeerSettings, User, UserFull} from '../../../layer'
+import {createResource, Show, JSX} from 'solid-js';
+import {PeerSettings, User, UserFull} from '../../../layer';
 
 import classNames from '../../../helpers/string/classNames';
 import {PeerTitleTsx} from '../../peerTitleTsx';
@@ -22,15 +22,15 @@ import {wrapAdaptiveCustomEmoji} from '../../wrappers/customEmojiSimple';
 import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
 
 export function UnknownUserBubble(props: {
-  peerId: PeerId
-  user: User.user
-  userFull: UserFull
+  peerId: PeerId,
+  user: User.user,
+  userFull: UserFull,
   peerSettings?: PeerSettings
 }) {
   const countryName = () => {
-    const country = I18n.countriesList.find(it => it.iso2 === props.peerSettings.phone_country);
+    const country = I18n.countriesList.find((it) => it.iso2 === props.peerSettings.phone_country);
     return country?.name ?? country?.default_name;
-  }
+  };
 
   const registrationDate = () => {
     const m = props.peerSettings.registration_month.match(/^(\d{2})\.(\d{4})$/);
@@ -38,12 +38,24 @@ export function UnknownUserBubble(props: {
 
     const [, month, year] = m;
     return monthsLocalized[Number(month) - 1] + ' ' + year;
-  }
+  };
 
   const [commonChats] = createResource(() => {
     if(!props.userFull.common_chats_count) return;
     return rootScope.managers.appUsersManager.getCommonChats(props.peerId.toUserId(), 3, 0);
-  })
+  });
+
+  const Footer = (props: {
+    icon: JSX.Element,
+    text: JSX.Element
+  }) => {
+    return (
+      <div class={/* @once */ styles.footer}>
+        <span class={/* @once */ styles.footerIcon}>{props.icon}</span>
+        <span class={/* @once */ styles.footerText}>{props.text}</span>
+      </div>
+    );
+  };
 
   return (
     <Show when={props.peerSettings?.phone_country || props.peerSettings?.registration_month}>
@@ -90,20 +102,20 @@ export function UnknownUserBubble(props: {
                   peerIds={commonChats()?.chats.map((chat) => chat.id.toPeerId(true)) ?? []}
                   avatarSize={18}
                 />
-                <IconTsx icon="next" />
+                <IconTsx class={styles.commonChatsArrow} icon="next" />
               </div>
             )}
           </div>
         </div>
         {!props.user.pFlags.verified && !props.user.pFlags.support && !props.user.bot_verification_icon && (
-          <div class={/* @once */ styles.footer}>
-            <IconTsx icon="info2" />
-            <I18nTsx key="UnknownUserUnofficial" />
-          </div>
+          <Footer
+            icon={<IconTsx icon="info2" />}
+            text={<I18nTsx key="UnknownUserUnofficial" />}
+          />
         )}
         {props.user.bot_verification_icon && (
-          <div class={/* @once */ styles.footer}>
-            {wrapAdaptiveCustomEmoji({
+          <Footer
+            icon={wrapAdaptiveCustomEmoji({
               docId: props.user.bot_verification_icon,
               size: 32,
               as: 'span',
@@ -111,8 +123,8 @@ export function UnknownUserBubble(props: {
                 textColor: 'white'
               }
             }).container}
-            {wrapRichText(props.userFull.bot_verification.description)}
-          </div>
+            text={wrapRichText(props.userFull.bot_verification.description)}
+          />
         )}
       </div>
 
