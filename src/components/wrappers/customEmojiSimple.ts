@@ -11,6 +11,10 @@ export function wrapAdaptiveCustomEmoji(options: {
   const container = document.createElement(as || 'div');
   container.classList.add('custom-emoji');
 
+  if(wrapOptions?.textColor) {
+    container.classList.add('emoji-status-text-color')
+  }
+
   const loadPromise = (async() => {
     const doc = await rootScope.managers.appEmojiManager.getCustomEmojiDocument(docId);
     await wrapSticker({

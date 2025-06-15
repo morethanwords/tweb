@@ -11,6 +11,7 @@
     display: flex;
     flex-wrap: wrap;
     margin-top: calc(var(--margin-vertical) / -2);
+    position: relative;
 
     &.has-no-reactions {
       display: unset;
@@ -22,12 +23,8 @@
     position: relative;
   }
 
-  &-renderer {
-    inset: auto !important;
-
-    &-canvas {
-      z-index: 1 !important;
-    }
+  &-renderer-canvas {
+    z-index: 1 !important;
   }
 
   &-tag {

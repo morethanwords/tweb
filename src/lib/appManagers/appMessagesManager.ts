@@ -6232,9 +6232,9 @@ export class AppMessagesManager extends AppManager {
 
     let dispatchEditEvent = true;
     // no sense in dispatching message_edit since only reactions have changed
-    if(oldMessage?._ === 'message' && !deepEqual(oldMessage.reactions, (newMessage as Message.message).reactions)) {
-      const newReactions = (newMessage as Message.message).reactions;
-      (newMessage as Message.message).reactions = oldMessage.reactions;
+    if(oldMessage && !deepEqual(oldMessage.reactions, (newMessage as Message.message | Message.messageService).reactions)) {
+      const newReactions = (newMessage as Message.message | Message.messageService).reactions;
+      (newMessage as Message.message | Message.messageService).reactions = oldMessage.reactions;
       this.apiUpdatesManager.processLocalUpdate({
         _: 'updateMessageReactions',
         peer: this.appPeersManager.getOutputPeer(peerId),

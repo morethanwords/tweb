@@ -62,7 +62,7 @@ export default async function generateTitleIcons({
 
   let botVerification: HTMLElement;
   if((peer as User.user | Chat.channel).bot_verification_icon && !noBotVerifiedIcon) {
-    const {container, loadPromise} = wrapAdaptiveCustomEmoji({
+    const {container} = wrapAdaptiveCustomEmoji({
       docId: (peer as User.user | Chat.channel).bot_verification_icon,
       size: 24,
       wrapOptions
