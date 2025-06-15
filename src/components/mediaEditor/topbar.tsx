@@ -43,7 +43,7 @@ export default function Topbar(props: {onClose: () => void; onFinish: () => void
   onMount(() => {
     ripple(doneButton);
 
-    const removeListeners = addShortcutListener(['Ctrl+KeyZ', 'Ctrl+Shift+keyZ', 'Ctrl+KeyY'], (combo) => {
+    const removeListener = addShortcutListener(['Ctrl+KeyZ', 'Ctrl+Shift+KeyZ', 'Ctrl+KeyY'], (combo) => {
       if(combo === 'Ctrl+KeyZ') {
         onUndo();
       } else {
@@ -51,7 +51,7 @@ export default function Topbar(props: {onClose: () => void; onFinish: () => void
       }
     });
 
-    onCleanup(() => removeListeners());
+    onCleanup(() => removeListener());
   });
 
   return (
