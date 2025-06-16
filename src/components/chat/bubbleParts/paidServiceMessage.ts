@@ -1,8 +1,8 @@
-import {i18n} from '../../../lib/langPack';
+import assumeType from '../../../helpers/assumeType';
 import {Message} from '../../../layer';
+import {i18n} from '../../../lib/langPack';
 
 import wrapPeerTitle from '../../wrappers/peerTitle';
-import assumeType from '../../../helpers/assumeType';
 
 
 type Args = {
@@ -16,6 +16,7 @@ type Args = {
 
 export default async function addPaidServiceMessage({isAnyGroup, bubble, message, our, peerId, groupedMessages}: Args) {
   assumeType<Message.message>(message);
+
   const paidStars = Number(message.paid_message_stars)
   const repayRequest = message.repayRequest;
 
