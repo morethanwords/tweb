@@ -14,7 +14,7 @@ function drawAdjustedImage(gl: WebGLRenderingContext) {
 
   draw(gl, payload, {
     ...editorState.finalTransform,
-    imageSize: [payload.image.width, payload.image.height],
+    imageSize: [payload.media.width, payload.media.height],
     ...(Object.fromEntries(
       adjustmentsConfig.map(({key, to100}) => {
         const value = mediaState.adjustments[key];
@@ -25,7 +25,7 @@ function drawAdjustedImage(gl: WebGLRenderingContext) {
 }
 
 export default function ImageCanvas() {
-  const {editorState, mediaState, imageSrc, actions} = useMediaEditorContext();
+  const {editorState, mediaState, mediaSrc, mediaType, actions} = useMediaEditorContext();
 
   const canvas = (
     <canvas width={editorState.canvasSize[0] * editorState.pixelRatio} height={editorState.canvasSize[1] * editorState.pixelRatio} />
@@ -37,15 +37,15 @@ export default function ImageCanvas() {
   editorState.imageCanvas = canvas;
 
   async function init() {
-    const payload = await initWebGL(gl, imageSrc);
+    const payload = await initWebGL({gl, mediaSrc, mediaType});
 
     modifyMutable(editorState, produce(state => {
       state.renderingPayload = payload;
-      state.imageSize = [payload.image.width, payload.image.height];
+      state.imageSize = [payload.media.width, payload.media.height];
     }));
 
     if(!mediaState.currentImageRatio) {
-      const ratio = payload.image.width / payload.image.height;
+      const ratio = payload.media.width / payload.media.height;
       actions.setInitialImageRatio(ratio)
       mediaState.currentImageRatio = ratio;
     }

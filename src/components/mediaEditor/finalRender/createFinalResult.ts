@@ -29,7 +29,7 @@ export type MediaEditorFinalResult = {
 
 export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const context = useMediaEditorContext();
-  const {mediaState, imageSrc} = context;
+  const {mediaState, mediaSrc, mediaType} = context;
   const {resizableLayers} = mediaState;
   const {adjustments} = mediaState;
 
@@ -49,20 +49,20 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     preserveDrawingBuffer: true
   });
 
-  const payload = await initWebGL(gl, imageSrc);
+  const payload = await initWebGL({gl, mediaSrc, mediaType});
 
   const finalTransform = getResultTransform({
     context,
     scaledWidth,
     scaledHeight,
-    imageWidth: payload.image.width,
-    imageHeight: payload.image.height,
+    imageWidth: payload.media.width,
+    imageHeight: payload.media.height,
     cropOffset
   });
 
   draw(gl, payload, {
     ...finalTransform,
-    imageSize: [payload.image.width, payload.image.height],
+    imageSize: [payload.media.width, payload.media.height],
     ...(Object.fromEntries(
       adjustmentsConfig.map(({key, to100}) => {
         const value = adjustments[key];
@@ -121,7 +121,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     animatedPreview,
     width: scaledWidth,
     height: scaledHeight,
-    originalSrc: context.imageSrc,
+    originalSrc: context.mediaSrc,
     editingMediaState: structuredClone(unwrap(mediaState))
   };
 }

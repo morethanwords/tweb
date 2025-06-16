@@ -1023,30 +1023,37 @@ export default class PopupNewMedia extends PopupElement {
         const itemCls = 'popup-item-media-action';
 
         let equalizeIcon: HTMLSpanElement;
-        if(!this.willAttach.stars && !isVideo && file.type !== 'image/gif') {
+        if(!this.willAttach.stars && file.type !== 'image/gif') {
           equalizeIcon = Icon('equalizer', itemCls);
           equalizeIcon.addEventListener('click', () => {
             hideActions();
 
             (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
-            const img = itemDiv.querySelector('img');
+            const img = itemDiv.querySelector('img') || itemDiv.querySelector('video');
             if(!img) return;
-            const animatedImg = img.cloneNode() as HTMLImageElement;
-            const bcr = itemDiv.getBoundingClientRect();
-            animatedImg.style.position = 'fixed';
-            const left = bcr.left + bcr.width / 2, top = bcr.top + bcr.height / 2, width = bcr.width, height = bcr.height;
-            animatedImg.style.left = left + 'px';
-            animatedImg.style.top = top + 'px';
-            animatedImg.style.width = width + 'px';
-            animatedImg.style.height = height + 'px';
-            animatedImg.style.transform = 'translate(-50%, -50%)';
-            animatedImg.style.objectFit = 'cover';
-            animatedImg.style.zIndex = '1000';
+            // TODO: Set limit to canvas size, e.g. when it's bigger than the screen
+            const animatedCanvas = document.createElement('canvas');
+            const [sourceWidth, sourceHeight] = [animatedCanvas.width, animatedCanvas.height] = [params.width, params.height];
 
-            document.body.append(animatedImg);
+            const ctx = animatedCanvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, animatedCanvas.width, animatedCanvas.height);
+
+            const bcr = itemDiv.getBoundingClientRect();
+            animatedCanvas.style.position = 'fixed';
+            const left = bcr.left + bcr.width / 2, top = bcr.top + bcr.height / 2, width = bcr.width, height = bcr.height;
+            animatedCanvas.style.left = left + 'px';
+            animatedCanvas.style.top = top + 'px';
+            animatedCanvas.style.width = width + 'px';
+            animatedCanvas.style.height = height + 'px';
+            animatedCanvas.style.transform = 'translate(-50%, -50%)';
+            animatedCanvas.style.objectFit = 'cover';
+            animatedCanvas.style.zIndex = '1000';
+
+            document.body.append(animatedCanvas);
 
             openMediaEditor({
-              imageURL: params.editResult?.originalSrc || params.objectURL,
+              type: isVideo ? 'video' : 'image',
+              objectURL: params.editResult?.originalSrc || params.objectURL,
               managers: this.managers,
               onEditFinish: (result) => {
                 params.editResult = result;
@@ -1056,20 +1063,20 @@ export default class PopupNewMedia extends PopupElement {
                 const canvasBcr = canvas.getBoundingClientRect();
                 const leftDiff = (canvasBcr.left + canvasBcr.width / 2) - left;
                 const topDiff = (canvasBcr.top + canvasBcr.height / 2) - top;
-                const [scaledWidth, scaledHeight] = snapToViewport(img.naturalWidth / img.naturalHeight, canvasBcr.width, canvasBcr.height);
+                const [scaledWidth, scaledHeight] = snapToViewport(sourceWidth / sourceHeight, canvasBcr.width, canvasBcr.height);
 
                 const deferred = deferredPromise<void>();
 
                 animateValue(
                   0, 1, 200,
                   (progress) => {
-                    animatedImg.style.transform = `translate(calc(${
+                    animatedCanvas.style.transform = `translate(calc(${
                       progress * leftDiff
                     }px - 50%), calc(${
                       progress * topDiff
                     }px - 50%))`;
-                    animatedImg.style.width = lerp(width, scaledWidth, progress) + 'px';
-                    animatedImg.style.height = lerp(height, scaledHeight, progress) + 'px';
+                    animatedCanvas.style.width = lerp(width, scaledWidth, progress) + 'px';
+                    animatedCanvas.style.height = lerp(height, scaledHeight, progress) + 'px';
                   },
                   {
                     onEnd: () => deferred.resolve()
@@ -1078,12 +1085,12 @@ export default class PopupNewMedia extends PopupElement {
                 return deferred;
               },
               onImageRendered: async() => {
-                animatedImg.style.opacity = '1';
-                animatedImg.style.transition = '.12s';
+                animatedCanvas.style.opacity = '1';
+                animatedCanvas.style.transition = '.12s';
                 await doubleRaf();
-                animatedImg.style.opacity = '0';
+                animatedCanvas.style.opacity = '0';
                 await delay(120);
-                animatedImg.remove();
+                animatedCanvas.remove();
               },
               editingMediaState: params.editResult?.editingMediaState,
               onClose: (hasGif) => {

@@ -1,21 +1,21 @@
 import {createEffect, onCleanup, onMount} from 'solid-js';
 import {render} from 'solid-js/web';
 
-import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
-import {AppManagers} from '../../lib/appManagers/managers';
 import {doubleRaf} from '../../helpers/schedulers';
+import {AppManagers} from '../../lib/appManagers/managers';
 import {i18n} from '../../lib/langPack';
+import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import confirmationPopup from '../confirmationPopup';
 
-import {createFinalResult, MediaEditorFinalResult} from './finalRender/createFinalResult';
-import MediaEditorContext, {createContextValue, EditingMediaState} from './context';
-import {withCurrentOwner} from './utils';
 import MainCanvas from './canvas/mainCanvas';
+import MediaEditorContext, {createContextValue, EditingMediaState} from './context';
+import {createFinalResult, MediaEditorFinalResult} from './finalRender/createFinalResult';
 import FinishButton from './finishButton';
-import {delay} from './utils';
 import Toolbar from './toolbar';
+import {MediaType} from './types';
+import {delay, withCurrentOwner} from './utils';
 
 
 export type MediaEditorProps = {
@@ -24,7 +24,8 @@ export type MediaEditorProps = {
   onEditFinish: (result: MediaEditorFinalResult) => void;
   onCanvasReady: (canvas: HTMLCanvasElement) => Promise<void>;
   onImageRendered: () => void;
-  imageURL: string;
+  objectURL: string;
+  type: MediaType;
   editingMediaState?: EditingMediaState
 };
 
@@ -138,5 +139,6 @@ export function openMediaEditor(props: MediaEditorProps, HotReloadGuardProvider:
   function onClose(hasGif: boolean) {
     props.onClose(hasGif);
     dispose();
+    element.remove();
   }
 }

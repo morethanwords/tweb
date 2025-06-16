@@ -4,6 +4,8 @@ import {Document} from '../../layer';
 
 export type NumberPair = [number, number];
 
+export type MediaType = 'image' | 'video';
+
 export type ResizableLayer = {
   id: number;
   type: 'text' | 'sticker';

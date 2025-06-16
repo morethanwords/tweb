@@ -1,4 +1,5 @@
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
+import {MediaType} from '../types';
 
 import {initPositionBuffer, initTextureBuffer} from './initBuffers';
 import {initShaderProgram} from './initShaderProgram';
@@ -6,23 +7,29 @@ import {loadTexture} from './loadTexture';
 
 export type RenderingPayload = Awaited<ReturnType<typeof initWebGL>>;
 
-export async function initWebGL(gl: WebGLRenderingContext, imageSrc: string) {
-  const [{vertexShaderSource, fragmentShaderSource}, {texture, image}] = await Promise.all([
+type InitWebGLArgs = {
+  gl: WebGLRenderingContext;
+  mediaSrc: string;
+  mediaType: MediaType;
+};
+
+export async function initWebGL({gl, mediaSrc, mediaType}: InitWebGLArgs) {
+  const [{vertexShaderSource, fragmentShaderSource}, {texture, media}] = await Promise.all([
     import('./shaderSources'),
-    loadTexture(gl, imageSrc)
+    loadTexture({gl, mediaSrc, mediaType})
   ]);
 
   const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
 
   const buffers = {
-    position: initPositionBuffer(gl, image.width, image.height),
+    position: initPositionBuffer(gl, media.width, media.height),
     texture: initTextureBuffer(gl)
   };
 
   return {
     program: shaderProgram,
     buffers,
-    image,
+    media,
     texture,
     attribs: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),

@@ -51,13 +51,13 @@ export default function useFinalTransform() {
 
     const [w, h] = editorState.canvasSize;
 
-    const imageRatio = payload.image.width / payload.image.height;
+    const imageRatio = payload.media.width / payload.media.height;
 
     const toCropScale = getSnappedViewportsScale(imageRatio, cropOffset().width, cropOffset().height, w, h);
     const fromCroppedScale =
       1 / getSnappedViewportsScale(mediaState.currentImageRatio, cropOffset().width, cropOffset().height, w, h);
 
-    const snappedImageScale = Math.min(w / payload.image.width, h / payload.image.height);
+    const snappedImageScale = Math.min(w / payload.media.width, h / payload.media.height);
 
     return {
       toCropScale,

@@ -9,7 +9,7 @@ const VIDEO_HEIGHT_MAX = 720;
 export default function getResultSize(hasAnimatedStickers: boolean) {
   const {editorState: {renderingPayload}, mediaState: {scale, currentImageRatio}} = useMediaEditorContext();
 
-  const imageWidth = renderingPayload.image.width;
+  const imageWidth = renderingPayload.media.width;
 
   const newRatio = currentImageRatio;
 

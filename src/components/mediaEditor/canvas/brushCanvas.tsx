@@ -23,7 +23,7 @@ function drawAdjustedImage(gl: WebGLRenderingContext, payload: RenderingPayload)
     rotation: 0,
     scale: 1,
     translation: [0, 0],
-    imageSize: [payload.image.width, payload.image.height],
+    imageSize: [payload.media.width, payload.media.height],
     ...(Object.fromEntries(
       adjustmentsConfig.map(({key, to100}) => {
         const value = mediaState.adjustments[key];
@@ -34,7 +34,7 @@ function drawAdjustedImage(gl: WebGLRenderingContext, payload: RenderingPayload)
 }
 
 export default function BrushCanvas() {
-  const {editorState, mediaState, actions, imageSrc} = useMediaEditorContext();
+  const {editorState, mediaState, actions, mediaSrc, mediaType} = useMediaEditorContext();
 
   const [fullImageGLPayload, setFullImageGLPayload] = createSignal<RenderingPayload>();
 
@@ -92,7 +92,7 @@ export default function BrushCanvas() {
   let fullBrushPainter: BrushPainter;
 
   onMount(async() => {
-    setFullImageGLPayload(await initWebGL(gl, imageSrc));
+    setFullImageGLPayload(await initWebGL({gl, mediaSrc, mediaType}));
   });
 
   createEffect(() => {

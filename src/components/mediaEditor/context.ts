@@ -9,7 +9,7 @@ import {AdjustmentKey, adjustmentsConfig} from './adjustments';
 import {BrushDrawnLine} from './canvas/brushPainter';
 import {FinalTransform} from './canvas/useFinalTransform';
 import type {MediaEditorProps} from './mediaEditor';
-import {NumberPair, ResizableLayer, StickerRenderingInfo, TextLayerInfo} from './types';
+import {MediaType, NumberPair, ResizableLayer, StickerRenderingInfo, TextLayerInfo} from './types';
 import {approximateDeepEqual} from './utils';
 import {RenderingPayload} from './webgl/initWebGL';
 
@@ -149,7 +149,8 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
 
 export type MediaEditorContextValue = {
   managers: AppManagers;
-  imageSrc: string;
+  mediaSrc: string;
+  mediaType: MediaType;
 
   mediaState: Store<EditingMediaState>;
   editorState: Store<MediaEditorState>;
@@ -205,7 +206,8 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
   return {
     managers: props.managers,
-    imageSrc: props.imageURL,
+    mediaSrc: props.objectURL,
+    mediaType: props.type,
 
     mediaState,
     editorState,
