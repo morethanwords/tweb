@@ -206,8 +206,8 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
   return {
     managers: props.managers,
-    mediaSrc: props.objectURL,
-    mediaType: props.type,
+    mediaSrc: props.mediaSrc,
+    mediaType: props.mediaType,
 
     mediaState,
     editorState,

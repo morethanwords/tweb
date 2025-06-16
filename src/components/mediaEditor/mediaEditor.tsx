@@ -24,8 +24,8 @@ export type MediaEditorProps = {
   onEditFinish: (result: MediaEditorFinalResult) => void;
   onCanvasReady: (canvas: HTMLCanvasElement) => Promise<void>;
   onImageRendered: () => void;
-  objectURL: string;
-  type: MediaType;
+  mediaSrc: string;
+  mediaType: MediaType;
   editingMediaState?: EditingMediaState
 };
 

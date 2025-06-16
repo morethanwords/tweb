@@ -1052,8 +1052,8 @@ export default class PopupNewMedia extends PopupElement {
             document.body.append(animatedCanvas);
 
             openMediaEditor({
-              type: isVideo ? 'video' : 'image',
-              objectURL: params.editResult?.originalSrc || params.objectURL,
+              mediaType: isVideo ? 'video' : 'image',
+              mediaSrc: params.editResult?.originalSrc || params.objectURL,
               managers: this.managers,
               onEditFinish: (result) => {
                 params.editResult = result;
