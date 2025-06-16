@@ -671,6 +671,18 @@
     &[data-idx="4"] { right: -114px; top: 37px; }
     &[data-idx="5"] { right: -84px; top: 87px; }
   }
+
+  &-bot-verification {
+    --custom-emoji-size: 1rem;
+    font-size: 14px;
+    line-height: 16px;
+    padding-inline: 1rem;
+    margin-bottom: 0.75rem;
+    color: var(--secondary-text-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
 }
 
 .star-gifts-profile-tab {

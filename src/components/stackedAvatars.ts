@@ -5,8 +5,9 @@
  */
 
 import type LazyLoadQueue from './lazyLoadQueue';
-import {Middleware, MiddlewareHelper} from '../helpers/middleware';
+import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
 import {avatarNew} from './avatarNew';
+import {createEffect, on, onCleanup} from 'solid-js';
 
 const CLASS_NAME = 'stacked-avatars';
 const AVATAR_CLASS_NAME = CLASS_NAME + '-avatar';
@@ -72,6 +73,7 @@ export default class StackedAvatars {
       }
 
       avatarContainer.classList.toggle('is-first', idx === 0);
+      avatarContainer.classList.toggle('is-last', idx === peerIds.length - 1);
     });
 
     // if were 3 and became 2
@@ -82,4 +84,25 @@ export default class StackedAvatars {
 
     return Promise.all(loadPromises);
   }
+}
+
+export function StackedAvatarsTsx(props: {
+  peerIds: PeerId[],
+  avatarSize: number,
+  lazyLoadQueue?: StackedAvatars['lazyLoadQueue'],
+}) {
+  const middleware = getMiddleware()
+  const stackedAvatars = new StackedAvatars({
+    avatarSize: props.avatarSize,
+    lazyLoadQueue: props.lazyLoadQueue,
+    middleware: middleware.get()
+  });
+
+  onCleanup(() => middleware.destroy());
+
+  createEffect(on(() => props.peerIds, (peerIds) => {
+    stackedAvatars.render(peerIds);
+  }));
+
+  return stackedAvatars.container;
 }

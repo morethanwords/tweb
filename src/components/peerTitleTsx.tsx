@@ -1,8 +1,10 @@
 import {createResource, onCleanup} from 'solid-js';
 import PeerTitle from './peerTitle';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
+import {attachClassName} from '../helpers/solid/classname';
 
 export const PeerTitleTsx = (props: {
+  class?: string
   peerId: PeerId,
   onlyFirstName?: boolean
   onClick?: () => void
@@ -20,6 +22,8 @@ export const PeerTitleTsx = (props: {
       return true;
     }
   );
+
+  attachClassName(peerTitle.element, () => props.class);
 
   return (
     <>
