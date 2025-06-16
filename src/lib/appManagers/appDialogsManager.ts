@@ -710,8 +710,6 @@ class Some<T extends AnyDialog = AnyDialog> {
     const items = this.sortedList.getSortedItems();
     const last = items[items.length - 1];
 
-    console.log('[my-debug] list shrinked: count, index :>> ', items.length, last?.index);
-
     this.cursorFetcher.setFetchedItemsCount(items.length);
     this.cursorFetcher.setNeededCount(items.length);
     this.cursorFetcher.setCursor(last?.index);
@@ -789,7 +787,6 @@ class Some<T extends AnyDialog = AnyDialog> {
   };
 
   protected onScrolledBottom() {
-    console.log('[my-debug] try to fetch more');
     this.cursorFetcher.tryToFetchMore();
   }
 
@@ -897,8 +894,6 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     this.checkForDialogsPlaceholder();
 
-    console.log('[my-debug] loadDialogs offsetIndex :>> ', offsetIndex);
-
     /**
      * The first time getDialogs might return `count: null`, which is not good for this
      * infinite loading implementation, that's why we're refetching after 0.5 seconds to
@@ -919,11 +914,8 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     const result = await ackedResult.result;
 
-    console.log('[my-debug] loadDialogs result :>> ', result);
-
     if(shouldRefetch) {
       setTimeout(async() => {
-        console.log('[my-debug] Refetching dialogs bug');
         const {totalCount} = await this.loadDialogsInner();
         this.cursorFetcher.setFetchedItemsCount(totalCount);
       }, 500);
@@ -1314,7 +1306,6 @@ export class Some2 extends Some<Dialog> {
     const scrollable = new Scrollable(null, 'CL', 500);
     scrollable.container.dataset.filterId = '' + filterId;
 
-    console.log('[my-debug] sorted dialog list created');
     const indexKey = getDialogIndexKey(filter.localId);
     const sortedDialogList = new SortedDialogList({
       appDialogsManager,
@@ -1326,7 +1317,6 @@ export class Some2 extends Some<Dialog> {
       onListShrinked: this.onListShrinked,
       itemSize: 72,
       onListLengthChange: () => {
-        console.log('[my-debug] onListLengthChange :>> ', sortedDialogList.itemsLength());
         scrollable.onSizeChange();
         appDialogsManager.onListLengthChange?.();
       }

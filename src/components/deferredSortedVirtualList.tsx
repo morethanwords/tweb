@@ -129,14 +129,6 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     // onListLengthChange?.();
   };
 
-  // createEffect(() => {
-  //   console.log('[my-debug-1] ------ LOG --------');
-  //   console.log('[my-debug-1] itemsLength()', itemsLength());
-  //   console.log('[my-debug-1] totalCount()', totalCount());
-  //   console.log('[my-debug-1] revealIdx()', revealIdx());
-  //   console.log('[my-debug-1] queuedToBeRevealed()', queuedToBeRevealed());
-  // })
-
 
   let list: HTMLUListElement;
 
@@ -193,17 +185,12 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   });
 
 
-  createEffect(() => {
-    console.log('[my-debug] list length and last index :>> ', itemsLength(), sortedItems()[sortedItems().length - 1]?.index);
-  });
-
   function checkShrink(visibleItems: Set<number>, itemsLength: number) {
     const maxVisible = Math.max(0, ...Array.from(visibleItems.values()));
 
     const toKeep = maxVisible + EXTRA_ITEMS_TO_KEEP;
 
     if(itemsLength > toKeep) {
-      console.log('[my-debug] shrinking list maxVisible, visibleItems, itemsLength(), toKeep :>> ', maxVisible, visibleItems, itemsLength, toKeep);
       batch(() => {
         // Should be sortedItems() here, because the updated cursor is based on the last item from the list, and might skip a few dialogs if wasn't set the right cursor
         setItems(sortedItems().slice(0, toKeep));

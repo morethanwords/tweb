@@ -76,8 +76,6 @@ class PriceChangedInterceptor {
 
       this.chat.updateStarsAmount(starsAmount);
 
-      console.log('[my-debug] from client: requestId, messageCount :>> ', requestId, messageCount);
-
       this.handleNewRepayRequest({
         starsAmount,
         requestId,

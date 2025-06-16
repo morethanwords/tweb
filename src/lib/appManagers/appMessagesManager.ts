@@ -909,13 +909,6 @@ export class AppMessagesManager extends AppManager {
           wereStarsReserved: options.confirmedPaymentResult?.canUndo
         });
 
-        MTProtoMessagePort.getInstance<false>().invoke('log', {
-          message: '[my-debug] Catching message error',
-          messageObj: message,
-          error,
-          repayRequest
-        });
-
         toggleError(error, repayRequest);
         message.promise.reject(error);
         throw error;
@@ -1635,7 +1628,7 @@ export class AppMessagesManager extends AppManager {
               },
               wereStarsReserved: options.confirmedPaymentResult?.canUndo
             });
-            MTProtoMessagePort.getInstance<false>().invoke('log', {message: '[my-debug] error sendMultiMedia', error})
+
             results.forEach(({message}) => toggleError(message, error, repayRequest));
             deferred.reject(error);
           });
@@ -8932,20 +8925,10 @@ export class AppMessagesManager extends AppManager {
   }
 
   public confirmRepayRequest(requestId: number, confirmedPaymentResult: ConfirmedPaymentResult) {
-    MTProtoMessagePort.getInstance<false>().invoke('log', {
-      message: '[my-debug] ApiManager.confirmRepayRequest',
-      requestId
-    });
-
     this.repayRequestHandler.confirmRepayRequest(requestId, confirmedPaymentResult);
   }
 
   public cancelRepayRequest(requestId: number) {
-    MTProtoMessagePort.getInstance<false>().invoke('log', {
-      message: '[my-debug] ApiManager.cancelRepayRequest',
-      requestId
-    });
-
     this.repayRequestHandler.cancelRepayRequest(requestId);
   }
 }

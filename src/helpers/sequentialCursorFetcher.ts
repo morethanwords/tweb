@@ -58,7 +58,6 @@ export class SequentialCursorFetcher<T> {
 
   private async fetchUntilNeededCount() {
     while(this.fetchedItemsCount < this.neededCount || this.needToFetchMore) {
-      console.log('[my-debug] fetching until needed count this.fetchedItemsCount, this.neededCount, this.needToFetchMore', this.fetchedItemsCount, this.neededCount, this.needToFetchMore);
       const {cursor, count, totalCount} = await this.fetcher(this.cursor);
 
       this.needToFetchMore = false;

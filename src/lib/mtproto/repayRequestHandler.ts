@@ -70,15 +70,6 @@ export default class RepayRequestHandler {
     const requestId = ++this.repayRequestsSeed;
     this.repayRequests.set(requestId, repayCallback);
 
-    MTProtoMessagePort.getInstance<false>().invoke('log', {
-      message: '[my-debug] catching too many stars',
-      payload: {
-        requiredStars,
-        requestId,
-        messageCount
-      }
-    });
-
     this.rootScope.dispatchEvent('insufficent_stars_for_message', {
       messageCount,
       requestId,
@@ -98,11 +89,6 @@ export default class RepayRequestHandler {
   }
 
   public confirmRepayRequest(requestId: number, confirmedPaymentResult: ConfirmedPaymentResult) {
-    MTProtoMessagePort.getInstance<false>().invoke('log', {
-      message: '[my-debug] ApiManager.confirmRepayRequest',
-      requestId
-    });
-
     const repayCallback = this.repayRequests.get(requestId);
     this.removeRepayRequest(requestId);
 
@@ -110,11 +96,6 @@ export default class RepayRequestHandler {
   }
 
   public cancelRepayRequest(requestId: number) {
-    MTProtoMessagePort.getInstance<false>().invoke('log', {
-      message: '[my-debug] ApiManager.cancelRepayRequest',
-      requestId
-    });
-
     this.removeRepayRequest(requestId);
   }
 }

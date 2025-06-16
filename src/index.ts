@@ -622,7 +622,6 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
       await sessionStorage.delete('should_animate_main');
       page.pageEl.classList.add('main-screen-enter');
 
-      console.log('[my-debug] mounting page');
       await page.mount();
       console.timeLog(TIME_LABEL, 'await page.mount()');
 
