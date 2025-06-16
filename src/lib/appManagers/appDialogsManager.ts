@@ -117,6 +117,7 @@ import wrapFolderTitle from '../../components/wrappers/folderTitle';
 import {SequentialCursorFetcher, SequentialCursorFetcherResult} from '../../helpers/sequentialCursorFetcher';
 import SortedDialogList from '../../components/sortedDialogList';
 import throttle from '../../helpers/schedulers/throttle';
+import {MAX_SIDEBAR_WIDTH} from '../../components/sidebarLeft/constants';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 const DIALOG_LOAD_COUNT = 10;
@@ -497,7 +498,7 @@ class ForumTab extends SliderSuperTabEventable {
     this.title.replaceWith(this.rows);
     this.rows.append(this.title, this.subtitle);
 
-    this.xd = new Some3(this.peerId, isFloating ? 80 : 0);
+    this.xd = new Some3(this.peerId, isFloating);
     this.xd.scrollable = this.scrollable;
     this.xd.sortedList = new SortedDialogList({
       itemSize: 64,
@@ -740,7 +741,7 @@ class Some<T extends AnyDialog = AnyDialog> {
   }
 
   /**
-   * @returns {boolean} Returns true if a new dialog was just added
+   * @returns Returns `true` if a new dialog was just added
    */
   private addOrDeleteDialogIfNeeded(dialog: T, key: any) {
     if(!this.canUpdateDialog(dialog)) {
@@ -897,8 +898,6 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     this.checkForDialogsPlaceholder();
 
-    console.log('[my-debug] loadDialogs offsetIndex :>> ', offsetIndex);
-
     /**
      * The first time getDialogs might return `count: null`, which is not good for this
      * infinite loading implementation, that's why we're refetching after 0.5 seconds to
@@ -919,11 +918,8 @@ class Some<T extends AnyDialog = AnyDialog> {
 
     const result = await ackedResult.result;
 
-    console.log('[my-debug] loadDialogs result :>> ', result);
-
     if(shouldRefetch) {
       setTimeout(async() => {
-        console.log('[my-debug] Refetching dialogs bug');
         const {totalCount} = await this.loadDialogsInner();
         this.cursorFetcher.setFetchedItemsCount(totalCount);
       }, 500);
@@ -1036,7 +1032,7 @@ class Some<T extends AnyDialog = AnyDialog> {
 }
 
 class Some3 extends Some<ForumTopic> {
-  constructor(public peerId: PeerId, public paddingX: number) {
+  constructor(public peerId: PeerId, public isFloating: boolean) {
     super();
 
     this.skipMigrated = !!CAN_HIDE_TOPIC;
@@ -1064,7 +1060,7 @@ class Some3 extends Some<ForumTopic> {
     });
 
     this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
-      for(const [peerId, {dialog, topics}] of dialogs) {
+      for(const [peerId, {topics}] of dialogs) {
         if(peerId !== this.peerId || !topics?.size) {
           continue;
         }
@@ -1111,7 +1107,7 @@ class Some3 extends Some<ForumTopic> {
       this.deleteDialogByKey(this.getDialogKey(dialog));
     });
 
-    this.listenerSetter.add(rootScope)('dialog_draft', ({dialog, drop, peerId}) => {
+    this.listenerSetter.add(rootScope)('dialog_draft', ({dialog, drop}) => {
       if(!isForumTopic(dialog) || dialog.peerId !== this.peerId) {
         return;
       }
@@ -1136,12 +1132,15 @@ class Some3 extends Some<ForumTopic> {
     return (): DOMRectEditable => {
       const sidebarRect = appSidebarLeft.rect;
       const paddingY = 56;
+      const paddingX = this.isFloating ? 80 : 0;
+      const width = this.isFloating ? MAX_SIDEBAR_WIDTH - paddingX : sidebarRect.width;
+
       return {
         top: paddingY,
         right: sidebarRect.right,
         bottom: 0,
-        left: this.paddingX,
-        width: sidebarRect.width - this.paddingX,
+        left: paddingX,
+        width,
         height: sidebarRect.height - paddingY
       };
     };
