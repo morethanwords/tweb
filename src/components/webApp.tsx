@@ -229,7 +229,7 @@ export default class WebApp {
           disabled={!secondaryButtonState().is_active}
           onClick={() => this.telegramWebView.dispatchWebViewEvent('secondary_button_pressed', undefined)}
         >
-          <Transition name="fade">
+          <Transition name="fade" mode="outin">
             {secondaryButtonState().is_progress_visible ?
               <PreloaderTsx /> :
               <EmojiTextTsx text={secondaryButtonState().text} />
@@ -247,7 +247,7 @@ export default class WebApp {
           disabled={!mainButtonState().is_active}
           onClick={() => this.telegramWebView.dispatchWebViewEvent('main_button_pressed', undefined)}
         >
-          <Transition name="fade">
+          <Transition name="fade" mode="outin">
             {mainButtonState().is_progress_visible ?
               <PreloaderTsx /> :
               <EmojiTextTsx text={mainButtonState().text} />

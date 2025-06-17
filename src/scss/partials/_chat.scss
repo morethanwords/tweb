@@ -1828,6 +1828,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	transform: translateY(0);
 	/* transition: margin-top var(--layer-transition);
 	transition-delay: .2s; */
+  box-sizing: content-box;
 	
 	@include animation-level(0) {
 		transition: none !important;

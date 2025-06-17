@@ -99,6 +99,7 @@
   user-select: none;
   display: flex;
   flex-wrap: wrap;
+  box-sizing: border-box;
   //flex-direction: column; // fix 'Unread messages', still need to refactor it
 
   &.is-sponsored {
@@ -3224,6 +3225,10 @@
       margin-bottom: 3px;
     }
   }
+
+  .reactions-like-block {
+    justify-content: center;
+  }
 }
 
 .bubble.has-fake-service {
@@ -3733,4 +3738,21 @@
 
 .bubble-meta-inline-stars {
   margin-right: 6px;
+}
+
+.unknown-user-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  margin: 0;
+
+  .bubble-content,
+  .bubble-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
 }

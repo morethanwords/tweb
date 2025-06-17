@@ -13,7 +13,8 @@ export default function wrapCustomEmoji({
   middleware,
   lazyLoadQueue,
   customEmojiSize,
-  animationGroup
+  animationGroup,
+  textColor
 }: {
   docIds: DocId[],
   loadPromises?: Promise<any>[]
@@ -35,7 +36,8 @@ export default function wrapCustomEmoji({
     animationGroup,
     customEmojiSize,
     middleware,
-    lazyLoadQueue
+    lazyLoadQueue,
+    textColor
   });
 
   return wrapped;

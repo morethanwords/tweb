@@ -96,7 +96,7 @@ export type BroadcastEvents = {
   'message_error': {storageKey: MessagesStorageKey, peerId: PeerId, tempId: number, error: ApiError},
   'message_transcribed': {peerId: PeerId, mid: number, text: string, pending?: boolean},
   'messages_views': {peerId: PeerId, mid: number, views: number}[],
-  'messages_reactions': {message: Message.message, changedResults: ReactionCount[], removedResults: ReactionCount[]}[],
+  'messages_reactions': {message: Message.message | Message.messageService, changedResults: ReactionCount[], removedResults: ReactionCount[]}[],
   'messages_pending': void,
   'messages_read': void,
   'messages_downloaded': {peerId: PeerId, mids: number[]},

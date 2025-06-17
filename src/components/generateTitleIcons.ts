@@ -9,11 +9,13 @@ import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import generateFakeIcon from './generateFakeIcon';
 import generatePremiumIcon from './generatePremiumIcon';
 import generateVerifiedIcon from './generateVerifiedIcon';
+import {wrapAdaptiveCustomEmoji} from './wrappers/customEmojiSimple';
 import wrapEmojiStatus from './wrappers/emojiStatus';
 
 export default async function generateTitleIcons({
   peerId,
   noVerifiedIcon,
+  noBotVerifiedIcon,
   noFakeIcon,
   noPremiumIcon,
   peer,
@@ -22,14 +24,15 @@ export default async function generateTitleIcons({
   peerId: PeerId,
   wrapOptions: WrapSomethingOptions,
   noVerifiedIcon?: boolean,
+  noBotVerifiedIcon?: boolean,
   noFakeIcon?: boolean,
   noPremiumIcon?: boolean,
   peer?: Chat | User
-}) {
+}): Promise<{ elements: HTMLElement[]; botVerification?: HTMLElement; }> {
   peer ??= apiManagerProxy.getPeer(peerId);
   const elements: HTMLElement[] = [];
   if(!peer) {
-    return elements;
+    return {elements};
   }
 
   if(((peer as Chat.channel).pFlags.fake || (peer as User.user).pFlags.scam) && !noFakeIcon) {
@@ -46,7 +49,7 @@ export default async function generateTitleIcons({
         wrapOptions
       });
 
-      if(!middleware()) return elements;
+      if(!middleware()) return {elements};
       elements.push(container);
     } else if((peer as User.user).pFlags.premium && !isPremiumFeaturesHidden) {
       elements.push(generatePremiumIcon());
@@ -57,5 +60,16 @@ export default async function generateTitleIcons({
     elements.push(generateVerifiedIcon());
   }
 
-  return elements;
+  let botVerification: HTMLElement;
+  if((peer as User.user | Chat.channel).bot_verification_icon && !noBotVerifiedIcon) {
+    const {container} = wrapAdaptiveCustomEmoji({
+      docId: (peer as User.user | Chat.channel).bot_verification_icon,
+      size: 24,
+      wrapOptions
+    })
+    botVerification = container;
+    container.classList.add('peer-title-bot-verification');
+  }
+
+  return {elements, botVerification};
 }
