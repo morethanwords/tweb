@@ -1,9 +1,9 @@
-export default function asyncThrottle<Callaback extends(...args: any[]) => Promise<void>>(
-  callback: Callaback,
+export default function asyncThrottle<Callback extends(...args: any[]) => Promise<void>>(
+  callback: Callback,
   timeoutMs: number
   // shouldRunFirst = false // TO BE IMPLEMENTED:) but default to false
 ) {
-  type Args = Parameters<Callaback>
+  type Args = Parameters<Callback>;
 
   let lastArgs: Args;
   let timeoutId: number;

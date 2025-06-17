@@ -77,7 +77,6 @@ export default class CacheStorageController implements FileStorage {
 
     const type = blob.type;
 
-    console.log('[my-debug] encryption started');
     const result = await cryptoMessagePort.invokeCryptoNew({
       method: 'aes-local-encrypt',
       args: [{
@@ -86,7 +85,6 @@ export default class CacheStorageController implements FileStorage {
       }],
       transfer: [dataAsBuffer.buffer]
     });
-    console.log('[my-debug] encryption ended');
 
     return new Blob([result], {type});
   }
@@ -97,8 +95,6 @@ export default class CacheStorageController implements FileStorage {
 
     const type = blob.type;
 
-    console.log('[my-debug] decryption started');
-
     const result = await cryptoMessagePort.invokeCryptoNew({
       method: 'aes-local-decrypt',
       args: [{
@@ -107,8 +103,6 @@ export default class CacheStorageController implements FileStorage {
       }],
       transfer: [dataAsBuffer.buffer]
     });
-
-    console.log('[my-debug] decryption ended');
 
     return new Blob([result], {type});
   }

@@ -140,16 +140,13 @@ export default class ChatAudio extends PinnedContainer {
     };
 
     this.topbar.listenerSetter.add(appMediaPlaybackController)('play', () => {
-      // console.log('[my-debug] media play');
       toggleActivity(true);
     });
 
     this.topbar.listenerSetter.add(appMediaPlaybackController)('pause', () => {
-      // console.log('[my-debug] media paused');
       toggleActivity(false);
     });
     this.topbar.listenerSetter.add(appMediaPlaybackController)('stop', () => {
-      // console.log('[my-debug] media stopped');
       toggleActivity(false);
     });
 

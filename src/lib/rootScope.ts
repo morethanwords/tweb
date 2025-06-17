@@ -27,6 +27,7 @@ import EventListenerBase, {EventListenerListeners} from '../helpers/eventListene
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {ActiveAccountNumber} from './accounts/types';
+import type {ApiManager} from './mtproto/apiManager';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -219,6 +220,10 @@ export type BroadcastEvents = {
     converted?: boolean
     togglePinned?: boolean
   },
+
+  'insufficent_stars_for_message': {messageCount: number, requestId: number, invokeApiArgs: Parameters<ApiManager['invokeApi']>, reservedStars?: number};
+
+  'fulfill_repaid_message': {requestId: number},
 };
 
 export type BroadcastEventsListeners = {

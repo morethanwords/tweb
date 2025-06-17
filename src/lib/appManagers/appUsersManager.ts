@@ -1257,6 +1257,10 @@ export class AppUsersManager extends AppManager {
       return;
     }
 
+    return this.fetchRequirementToContact(userId);
+  }
+
+  private fetchRequirementToContact(userId: UserId) {
     let promise = this.requirementsToContactPromises.get(userId);
     if(!promise) {
       this.requirementsToContactPromises.set(userId, promise = deferredPromise());
@@ -1266,11 +1270,18 @@ export class AppUsersManager extends AppManager {
     return promise;
   }
 
+  public updateCachedUserFullStarsAmount(userId: UserId, starsAmount: number) {
+    const userFull = this.appProfileManager.getCachedFullUser(userId);
+    if(!userFull) return;
+
+    userFull.send_paid_messages_stars = starsAmount;
+  }
+
   /**
    * The amount of stars necessary to be paid for every message if the target user had enabled it
    */
-  public async getStarsAmount(userId: UserId): Promise<number | undefined> {
-    const requirement = await this.getRequirementToContact(userId);
+  public async getStarsAmount(userId: UserId, forceFetch = false): Promise<number | undefined> {
+    const requirement = forceFetch ? await this.fetchRequirementToContact(userId) : await this.getRequirementToContact(userId);
     const starsAmount = requirement?._ === 'requirementToContactPaidMessages' ? Number(requirement.stars_amount) : undefined;
 
     return starsAmount;
