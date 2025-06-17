@@ -21,6 +21,7 @@ $bubble-overflow-big: math.div($bubble-margin-big, 2);
 $bubble-beside-button-width: 38px;
 $bubble-border-radius-medium: 5px;
 $bubble-border-radius-big: 15px;
+$bubble-inner-move: 1.25rem;
 $message-padding-top: 4px;
 $message-padding-bottom: 5px;
 $message-padding-horizontal: 8px;
@@ -416,7 +417,8 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   --padding-bottom: #{$chat-padding-handhelds};
   //--bottom: clamp(var(--padding-bottom), env(safe-area-inset-bottom), 1.3125rem);
   --bottom: var(--padding-bottom);
-  padding-top: .25rem;
+  // padding-top: .25rem;
+  margin-top: calc(var(--chat-input-border-radius) * -1);
   transition: transform var(--transition-standard-out);
   transform: translate3d(0, var(--translateY), 0);
   z-index: 2; // fix safari topbar bug
@@ -836,8 +838,12 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     --wrapper-padding: 15px;
   }
 
-  &[data-type="chat"] .bubbles.is-chat-input-hidden .bubbles-group-last .bubble.is-group-last {
-    margin-bottom: 1.25rem;
+  // &[data-type="chat"] .bubbles.is-chat-input-hidden .bubbles-group-last .bubble.is-group-last {
+  //   margin-bottom: 1.25rem;
+  // }
+
+  &[data-type="chat"] .bubbles.is-chat-input-hidden .bubbles-inner {
+    padding-bottom: 0;
   }
 
   &.is-search-active {
@@ -1821,6 +1827,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	min-height: 100%;
 	justify-content: flex-end;
 	// padding: 0 $chat-padding;
+  padding-bottom: var(--chat-input-border-radius);
 	max-width: Min(calc(100% - var(--chat-input-padding) * 2), calc(var(--messages-container-width) - #{$chat-padding * 2}));
 
 	//padding-top: 10000px;
@@ -1842,10 +1849,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	// }
 
   // * fix useless scroll in empty chats
-  &:after {
-    content: " ";
-    height: $bubble-overflow;
-  }
+  // &:after {
+  //   content: " ";
+  //   height: $bubble-overflow;
+  // }
 
 	&.is-chat .is-in/* ,
   .bubbles-group-sponsored */ {

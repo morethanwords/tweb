@@ -51,7 +51,8 @@
   &-avatar {
     position: sticky !important;
     top: 0;
-    bottom: $bubble-overflow-big;
+    // bottom: $bubble-overflow-big;
+    bottom: calc(#{$bubble-margin-big} + var(--chat-input-border-radius));
     cursor: pointer;
     pointer-events: all;
     overflow: hidden;
@@ -3120,20 +3121,20 @@
 // }
 
 // * fix scroll with only 1 bubble
-.bubbles-group-last {
-  .bubble.is-group-last {
-    // margin-bottom: $bubble-overflow;
-    margin-bottom: 0;
-    /* &:after, .document-container:last-of-type .document-selection {
-      bottom: 0 !important;
-    } */
+// .bubbles-group-last {
+//   .bubble.is-group-last {
+//     // margin-bottom: $bubble-overflow;
+//     margin-bottom: 0;
+//     /* &:after, .document-container:last-of-type .document-selection {
+//       bottom: 0 !important;
+//     } */
 
-    &:after,
-    .document-container.is-last .document-selection {
-      bottom: #{-$bubble-overflow};
-    }
-  }
-}
+//     &:after,
+//     .document-container.is-last .document-selection {
+//       bottom: #{-$bubble-overflow};
+//     }
+//   }
+// }
 
 // .bubble-content-wrapper,
 // .bubbles-group-avatar,
@@ -3255,17 +3256,21 @@
 
   .bubble-content {
     &-wrapper {
+      margin-inline-start: #{$bubble-inner-move};
+
       &.can-zoom-fade {
         transform-origin: var(--transform-origin-left-center);
       }
     }
   }
 
-  &.is-group-first, &.is-forced-rounded {
+  &.is-group-first,
+  &.is-forced-rounded {
     --border-start-start-radius: #{$bubble-border-radius-big};
   }
 
-  &.is-group-last, &.is-forced-rounded {
+  &.is-group-last,
+  &.is-forced-rounded {
     &.can-have-tail {
       --border-end-start-radius: 0 !important;
 
@@ -3370,35 +3375,37 @@
     }
 
     /* html:not(.is-firefox) */ &-wrapper {
+      margin-inline-end: calc((var(--chat-input-size) + #{$btn-send-margin} + #{$bubble-inner-move}) * var(--reflect));
+
       &.can-zoom-fade {
         transform-origin: var(--transform-origin-right-center);
       }
 
-      @include respond-to(medium-screens) {
-        transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1)) scale(1);
+      // @include respond-to(medium-screens) {
+      //   transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1)) scale(1);
 
-        &.zoom-fade {
-          transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1)) scale3d(.8, .8, 1);
-        }
+      //   &.zoom-fade {
+      //     transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1)) scale3d(.8, .8, 1);
+      //   }
 
-        @include animation-level(2) {
-          transition: var(--bubble-transition-out);
-        }
+      //   @include animation-level(2) {
+      //     transition: var(--bubble-transition-out);
+      //   }
 
-        //@include respond-to(no-floating-left-sidebar) {
-          body.is-right-column-shown & {
-            transform: translateX(0) scale(1);
+      //   //@include respond-to(no-floating-left-sidebar) {
+      //     body.is-right-column-shown & {
+      //       transform: translateX(0) scale(1);
             
-            @include animation-level(2) {
-              transition: var(--bubble-transition-in);
-            }
+      //       @include animation-level(2) {
+      //         transition: var(--bubble-transition-in);
+      //       }
   
-            &.zoom-fade {
-              transform: translateX(0) scale3d(.8, .8, 1);
-            }
-          }
-        //}
-      }
+      //       &.zoom-fade {
+      //         transform: translateX(0) scale3d(.8, .8, 1);
+      //       }
+      //     }
+      //   //}
+      // }
     }
   }
 
@@ -3409,11 +3416,13 @@
     }
   } */
     
-  &.is-group-first, &.is-forced-rounded {
+  &.is-group-first,
+  &.is-forced-rounded {
     --border-start-end-radius: #{$bubble-border-radius-big};
   }
 
-  &.is-group-last, &.is-forced-rounded {
+  &.is-group-last,
+  &.is-forced-rounded {
     &.can-have-tail {
       --border-end-end-radius: 0 !important;
 
