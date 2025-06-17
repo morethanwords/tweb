@@ -32,8 +32,12 @@
       z-index: 1;
       pointer-events: all;
       border-inline-start: 1px solid var(--border-color);
+
+      .sidebar-content, .sidebar-header {
+        width: calc(var(--sidebar-max-width) - var(--offset) - 1px);
+      }
     }
-  
+
     &.is-visible {
       &:not(.backwards) {
         transform: translateX(0);
@@ -41,7 +45,7 @@
 
       &.animating {
         transition: transform var(--transition-standard-in);
-  
+
         &.backwards {
           transition: transform var(--transition-standard-out);
         }
@@ -156,23 +160,23 @@
       // fill: url(#topic-icon-gradient);
       // stroke: #000;
     }
-  
+
     // &-gradient {
     //   &-stop-1 {
     //     stop-color: var(--color-top);
     //   }
-  
+
     //   &-stop-2 {
     //     stop-color: var(--color-bottom);
     //   }
     // }
-  
+
     &-content {
       // position: absolute;
       // top: 50%;
       // left: 50%;
       // transform: translate(-50%, -50%);
-  
+
       position: relative;
       // display: inline-block;
       // width: inherit;
