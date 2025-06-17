@@ -1056,7 +1056,7 @@ export default class PeerProfile {
     this.setMoreDetailsTimeout = window.setTimeout(() => this.setMoreDetails(true), 60e3);
 
     if((peerFull._ === 'userFull' || peerFull._ === 'channelFull') && peerFull.stargifts_count > 0) {
-      callbacks.push(await m(this.fillPinnedGifts()));
+      callbacks.push(() => m(this.fillPinnedGifts()).then(clb => clb()));
     }
 
     if(peerFull._ === 'userFull' && peerFull.bot_info) {
