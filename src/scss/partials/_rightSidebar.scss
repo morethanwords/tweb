@@ -38,7 +38,7 @@
     position: absolute;
     inset-inline-end: 0;
     z-index: 3;
-    transform: translate3d(calc(var(--right-column-width) * var(--reflect)), 0, 0);
+    transform: translate3d(calc((var(--right-column-width) + 0.5rem) * var(--reflect)), 0, 0);
     //transform: translate3d(calc(var(--right-column-width) + 1px), 0, 0);
   
     .sidebar-content {
