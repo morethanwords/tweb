@@ -19,6 +19,30 @@ Open http://localhost:8080/ in your browser.
 
 Run `node build` to build the minimized production version of the app. Copy `public` folder contents to your web server.
 
+### Running in docker
+
+#### Developing: 
+* Install dependencies `docker-compose up tweb.dependencies`.
+* Run develop container `docker-compose up tweb.develop `.
+* Open http://localhost:8080/ in your browser. 
+
+#### Production:
+* Run `docker-compose up tweb.production -d` nginx image and container to serve the build
+* Open http://localhost:80/ in your browser.
+
+
+I also created an image https://hub.docker.com/r/elgammalx/tweb/tags  based on Nginx ready to be deployed.
+
+You can use `docker build -f ./.docker/Dockerfile_production -t {dockerhub-username}/{imageName}:{latest} .` to build your production ready image.
+
+My build use in `docker-compose.yaml` file
+```yaml
+services:
+  tweb.production:
+    image: elgammalx/tweb
+    ports:
+      - 80:80
+```
 
 ### Dependencies
 * [BigInteger.js](https://github.com/peterolson/BigInteger.js) ([Unlicense](https://github.com/peterolson/BigInteger.js/blob/master/LICENSE))
