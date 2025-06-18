@@ -6183,8 +6183,9 @@ export class AppMessagesManager extends AppManager {
     const peerId = this.appPeersManager.getPeerId(peer);
     const message: MyMessage = this.getMessageByPeer(peerId, mid);
 
-    if(message?._ !== 'message') {
+    if(!message) {
       this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, force: true});
+      return;
     }
 
     const modifyUnreadReactions = (add: boolean) => {
