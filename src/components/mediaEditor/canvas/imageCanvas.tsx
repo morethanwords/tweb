@@ -1,10 +1,13 @@
-import {createEffect, createReaction, onMount} from 'solid-js';
+import {createEffect, createReaction, onCleanup, onMount} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
+
+import {animate} from '../../../helpers/animation';
 
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 import {useMediaEditorContext} from '../context';
-import {initWebGL} from '../webgl/initWebGL';
+import {withCurrentOwner} from '../utils';
 import {draw} from '../webgl/draw';
+import {initWebGL} from '../webgl/initWebGL';
 
 function drawAdjustedImage(gl: WebGLRenderingContext) {
   const {editorState, mediaState} = useMediaEditorContext();
@@ -36,6 +39,35 @@ export default function ImageCanvas() {
 
   editorState.imageCanvas = canvas;
 
+  const hey = withCurrentOwner((): void => void drawAdjustedImage(gl));
+
+  const initVideoThing = withCurrentOwner(() => {
+    const {editorState: {renderingPayload}} = useMediaEditorContext();
+
+    const fn = () => {
+      gl.bindTexture(gl.TEXTURE_2D, renderingPayload.texture);
+      // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
+
+      hey();
+      console.log('[my-debug] drawing');
+    }
+
+    let cleaned = false;
+    const video = renderingPayload.media.video;
+    // video?.addEventListener('timeupdate', fn);
+
+    animate(() => {
+      fn();
+      return !cleaned;
+    });
+
+    onCleanup(() => {
+      cleaned = true;
+      // video?.removeEventListener('timeupdate', fn);
+    });
+  });
+
   async function init() {
     const payload = await initWebGL({gl, mediaSrc, mediaType});
 
@@ -49,6 +81,8 @@ export default function ImageCanvas() {
       actions.setInitialImageRatio(ratio)
       mediaState.currentImageRatio = ratio;
     }
+
+    initVideoThing();
   }
 
   onMount(() => {

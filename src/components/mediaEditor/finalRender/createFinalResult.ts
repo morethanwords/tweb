@@ -14,6 +14,7 @@ import getResultTransform from './getResultTransform';
 import getResultSize from './getResultSize';
 import renderToVideo from './renderToVideo';
 import renderToImage from './renderToImage';
+import renderToActualVideo from './renderToActualVideo';
 
 export type MediaEditorFinalResult = {
   preview: Blob;
@@ -30,16 +31,16 @@ export type MediaEditorFinalResult = {
 export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const context = useMediaEditorContext();
   const {mediaState, mediaSrc, mediaType} = context;
-  const {resizableLayers} = mediaState;
-  const {adjustments} = mediaState;
+  const {resizableLayers, adjustments} = mediaState;
 
   const cropOffset = useCropOffset();
 
   const hasAnimatedStickers = !!resizableLayers.find((layer) =>
     [2, 3].includes(layer.sticker?.sticker)
   );
+  const willResultInVideo = hasAnimatedStickers || mediaType === 'video';
 
-  const [scaledWidth, scaledHeight] = getResultSize(hasAnimatedStickers);
+  const [scaledWidth, scaledHeight] = getResultSize(willResultInVideo);
 
   const imageCanvas = document.createElement('canvas');
   imageCanvas.width = scaledWidth;
@@ -60,16 +61,20 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     cropOffset
   });
 
-  draw(gl, payload, {
-    ...finalTransform,
-    imageSize: [payload.media.width, payload.media.height],
-    ...(Object.fromEntries(
-      adjustmentsConfig.map(({key, to100}) => {
-        const value = adjustments[key];
-        return [key, value / (to100 ? 100 : 50)];
-      })
-    ) as Record<AdjustmentsConfig[number]['key'], number>)
-  });
+  const drawToImageCanvas = () => {
+    draw(gl, payload, {
+      ...finalTransform,
+      imageSize: [payload.media.width, payload.media.height],
+      ...(Object.fromEntries(
+        adjustmentsConfig.map(({key, to100}) => {
+          const value = adjustments[key];
+          return [key, value / (to100 ? 100 : 50)];
+        })
+      ) as Record<AdjustmentsConfig[number]['key'], number>)
+    });
+  };
+
+  if(mediaType === 'image') drawToImageCanvas();
 
   const {scaledLayers, scaledLines} = getScaledLayersAndLines(context, finalTransform, scaledWidth, scaledHeight);
 
@@ -86,7 +91,19 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   resultCanvas.height = scaledHeight;
   const ctx = resultCanvas.getContext('2d', {willReadFrequently: true});
 
-  const renderPromise = hasAnimatedStickers ?
+  const renderPromise = mediaType === 'video' ?
+    renderToActualVideo({
+      context,
+      scaledWidth,
+      scaledHeight,
+      scaledLayers,
+      imageCanvasGL: gl,
+      imageCanvas,
+      drawToImageCanvas,
+      resultCanvas,
+      brushCanvas,
+      ctx
+    }) : hasAnimatedStickers ?
     renderToVideo({
       context,
       scaledWidth,

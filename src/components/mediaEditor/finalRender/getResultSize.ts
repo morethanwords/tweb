@@ -6,7 +6,7 @@ const SIDE_MIN = 400;
 const VIDEO_WIDTH_MAX = 1280;
 const VIDEO_HEIGHT_MAX = 720;
 
-export default function getResultSize(hasAnimatedStickers: boolean) {
+export default function getResultSize(willResultInVideo: boolean) {
   const {editorState: {renderingPayload}, mediaState: {scale, currentImageRatio}} = useMediaEditorContext();
 
   const imageWidth = renderingPayload.media.width;
@@ -19,10 +19,10 @@ export default function getResultSize(hasAnimatedStickers: boolean) {
   if(Math.max(scaledWidth, scaledHeight) < SIDE_MIN) {
     [scaledWidth, scaledHeight] = snapToViewport(newRatio, SIDE_MIN, SIDE_MIN);
   }
-  if(hasAnimatedStickers && (scaledWidth > VIDEO_WIDTH_MAX || scaledHeight > VIDEO_HEIGHT_MAX)) {
+  if(willResultInVideo && (scaledWidth > VIDEO_WIDTH_MAX || scaledHeight > VIDEO_HEIGHT_MAX)) {
     [scaledWidth, scaledHeight] = snapToViewport(newRatio, VIDEO_WIDTH_MAX, VIDEO_HEIGHT_MAX);
   }
-  if(!hasAnimatedStickers && Math.max(scaledWidth, scaledHeight) > SIDE_MAX) {
+  if(!willResultInVideo && Math.max(scaledWidth, scaledHeight) > SIDE_MAX) {
     [scaledWidth, scaledHeight] = snapToViewport(newRatio, SIDE_MAX, SIDE_MAX);
   }
 
