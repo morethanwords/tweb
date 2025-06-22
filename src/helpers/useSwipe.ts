@@ -1,7 +1,7 @@
 import {StandardLonghandPropertiesHyphen} from 'csstype';
 import {Accessor, onCleanup} from 'solid-js';
+import useGlobalDocumentEvent from './useGlobalDocumentEvent';
 
-import ListenerSetter from './listenerSetter';
 
 export type SwipeDirectiveArgs = {
   globalCursor?: StandardLonghandPropertiesHyphen['cursor'];
@@ -22,8 +22,6 @@ export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiv
   let isDragging = false;
   let initialX: number, initialY: number;
 
-  const listenerSetter = new ListenerSetter;
-
   const getDiff = (e: PointerEvent) => [
     e.clientX - initialX,
     e.clientY - initialY
@@ -40,14 +38,14 @@ export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiv
     globalCursor && document.body.style.setProperty('cursor', globalCursor, 'important');
   });
 
-  listenerSetter.add(document)('pointermove', (e) => {
+  useGlobalDocumentEvent('pointermove', (e) => {
     if(!isDragging) return;
 
     const {onMove} = args();
     onMove?.(...getDiff(e), e);
   });
 
-  listenerSetter.add(document)('pointerup', (e) => {
+  useGlobalDocumentEvent('pointerup', (e) => {
     if(!isDragging) return;
 
     const {onEnd, globalCursor} = args();
@@ -56,9 +54,5 @@ export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiv
 
     isDragging = false;
     initialX = initialY = undefined;
-  });
-
-  onCleanup(() => {
-    listenerSetter.removeAll();
   });
 }
