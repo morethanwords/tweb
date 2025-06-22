@@ -40,6 +40,15 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
     video.removeEventListener('seeked', seekListener);
   });
 
+
+  createEffect(() => {
+    if(editorState.currentTab !== 'adjustments') return;
+
+    onCleanup(() => {
+      editorState.isPlaying = false;
+    });
+  });
+
   createEffect(() => {
     if(!editorState.isPlaying) return;
 

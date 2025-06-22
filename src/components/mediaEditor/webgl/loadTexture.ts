@@ -1,7 +1,5 @@
 import deferredPromise from '../../../helpers/cancellablePromise';
-import handleVideoLeak from '../../../helpers/dom/handleVideoLeak';
-import onMediaLoad from '../../../helpers/onMediaLoad';
-
+import createVideoForDrawing from '../canvas/createVideoForDrawing';
 import {MediaType} from '../types';
 
 
@@ -43,21 +41,7 @@ export async function loadTexture({gl, mediaSrc, mediaType}: LoadTextureArgs): P
       height: image.naturalHeight
     };
   } else {
-    const video = document.createElement('video');
-    video.src = mediaSrc;
-    video.autoplay = true;
-    video.controls = false;
-
-    video.addEventListener('timeupdate', () => {
-      video.pause();
-      video.currentTime = 0;
-    }, {once: true});
-
-    // Theoretically we should not have any errors here as this is handled in the media popup
-    try {
-      const promise = onMediaLoad(video);
-      await handleVideoLeak(video, promise);
-    } catch{}
+    const video = await createVideoForDrawing(mediaSrc);
 
     media = {
       video,

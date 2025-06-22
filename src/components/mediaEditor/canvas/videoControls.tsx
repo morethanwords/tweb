@@ -9,13 +9,15 @@ import ripple from '../../ripple'; ripple; // keep
 
 import {useMediaEditorContext} from '../context';
 
+import useVideoControlsCanvas from './useVideoControlsCanvas';
+
 import styles from './videoControls.module.scss';
 
 
 const HANDLE_WIDTH_PX = 9;
 
 const VideoControls: Component<{}> = () => {
-  const {editorState, actions} = useMediaEditorContext();
+  const {editorState, actions, mediaSrc} = useMediaEditorContext();
 
   const [cropper, setCropper] = createSignal<HTMLDivElement>();
 
@@ -24,8 +26,16 @@ const VideoControls: Component<{}> = () => {
   const cropperSize = useElementSize(cropper);
   const strippedWidth = () => cropperSize.width - 2 * HANDLE_WIDTH_PX;
 
-  let initialStart: number;
-  let initialLength: number;
+  let
+    canvas: HTMLCanvasElement,
+    initialStart: number,
+    initialLength: number
+  ;
+
+  useVideoControlsCanvas({
+    getCanvas: () => canvas,
+    size: cropperSize
+  });
 
   const leftHandleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: 'ew-resize',
@@ -48,6 +58,7 @@ const VideoControls: Component<{}> = () => {
     globalCursor: 'ew-resize',
     onStart: () => {
       initialLength = editorState.videoCropLength;
+      editorState.isPlaying = false;
     },
     onMove: (xDiff) => void batch(() => {
       // TODO: minimum video length
@@ -109,7 +120,7 @@ const VideoControls: Component<{}> = () => {
 
         <div class={styles.Frames}>
           <div ref={setCropper} class={styles.Cropper}>
-            <canvas class={styles.Images} />
+            <canvas ref={canvas} class={styles.Images} width={cropperSize.width} height={cropperSize.height} />
 
             <div class={`${styles.CropperBg} ${styles.CropperBgLeft}`} />
             <div class={`${styles.CropperBg} ${styles.CropperBgRight}`} />

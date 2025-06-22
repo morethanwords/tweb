@@ -42,7 +42,7 @@ export default function MainCanvas() {
           <div ref={(el) => void (editorState.resizeHandlesContainer = el)} class="media-editor__resize-handles-overlay" />
           <CropHandles />
           <RotationWheel />
-          <Show when={mediaType === 'video'}>
+          <Show when={mediaType === 'video' && editorState.currentTab === 'adjustments'}>
             <VideoControls />
           </Show>
         </Show>
