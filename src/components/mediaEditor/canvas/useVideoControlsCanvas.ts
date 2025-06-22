@@ -40,7 +40,7 @@ export default function useVideoControlsCanvas({getCanvas, size}: Args) {
 
     (async() => {
       const video = await createVideoForDrawing(mediaSrc);
-      (window as any).myWeakRef = new WeakRef(video);
+      // (window as any).myWeakRef = new WeakRef(video); // works
 
       if(cleaned) return;
 
