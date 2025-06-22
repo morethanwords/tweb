@@ -14,7 +14,7 @@ import VideoControls from './videoControls';
 
 export default function MainCanvas() {
   let container: HTMLDivElement;
-  const {editorState} = useMediaEditorContext();
+  const {editorState, mediaType} = useMediaEditorContext();
 
   useFinalTransform();
 
@@ -42,7 +42,9 @@ export default function MainCanvas() {
           <div ref={(el) => void (editorState.resizeHandlesContainer = el)} class="media-editor__resize-handles-overlay" />
           <CropHandles />
           <RotationWheel />
-          <VideoControls />
+          <Show when={mediaType === 'video'}>
+            <VideoControls />
+          </Show>
         </Show>
       </Show>
     </div>

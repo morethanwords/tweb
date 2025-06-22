@@ -48,7 +48,10 @@ export async function loadTexture({gl, mediaSrc, mediaType}: LoadTextureArgs): P
     video.autoplay = true;
     video.controls = false;
 
-    video.addEventListener('timeupdate', () => void video.pause());
+    video.addEventListener('timeupdate', () => {
+      video.pause();
+      video.currentTime = 0;
+    }, {once: true});
 
     // Theoretically we should not have any errors here as this is handled in the media popup
     try {

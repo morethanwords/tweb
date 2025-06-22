@@ -7,16 +7,15 @@ import useElementSize from '../../../hooks/useElementSize';
 import {IconTsx} from '../../iconTsx';
 import ripple from '../../ripple'; ripple; // keep
 
+import {useMediaEditorContext} from '../context';
+
 import styles from './videoControls.module.scss';
 
 
 const HANDLE_WIDTH_PX = 9;
 
 const VideoControls: Component<{}> = () => {
-  const [paused, setPaused] = createSignal(true);
-  const [start, setStart] = createSignal(0);
-  const [length, setLength] = createSignal(0.5);
-  const [currentTime, setCurrentTime] = createSignal(0);
+  const {editorState, actions} = useMediaEditorContext();
 
   const [cropper, setCropper] = createSignal<HTMLDivElement>();
 
@@ -31,16 +30,16 @@ const VideoControls: Component<{}> = () => {
   const leftHandleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: 'ew-resize',
     onStart: () => {
-      initialStart = start();
-      initialLength = length();
+      initialStart = editorState.videoCropStart;
+      initialLength = editorState.videoCropLength;
     },
     onMove: (xDiff) => void batch(() => {
       // TODO: minimum video length
       const diff = clamp(initialStart + xDiff / strippedWidth(), 0, initialStart + initialLength) - initialStart;
       batch(() => {
-        setStart(initialStart + diff);
-        setLength(initialLength - diff);
-        setCurrentTime(start());
+        editorState.videoCropStart = (initialStart + diff);
+        editorState.videoCropLength = (initialLength - diff);
+        actions.setVideoTime(editorState.videoCropStart);
       });
     })
   };
@@ -48,13 +47,13 @@ const VideoControls: Component<{}> = () => {
   const rightHandleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: 'ew-resize',
     onStart: () => {
-      initialLength = length();
+      initialLength = editorState.videoCropLength;
     },
     onMove: (xDiff) => void batch(() => {
       // TODO: minimum video length
       batch(() => {
-        setLength(clamp(initialLength + xDiff / strippedWidth(), 0, 1 - start()));
-        setCurrentTime(start() + length());
+        editorState.videoCropLength = (clamp(initialLength + xDiff / strippedWidth(), 0, 1 - editorState.videoCropStart));
+        actions.setVideoTime(editorState.videoCropStart + editorState.videoCropLength);
       });
     })
   };
@@ -62,18 +61,18 @@ const VideoControls: Component<{}> = () => {
   const middleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: 'grabbing',
     onStart: () => {
-      initialStart = start();
-      initialLength = length();
+      initialStart = editorState.videoCropStart;
+      initialLength = editorState.videoCropLength;
     },
     onMove: (xDiff) => void batch(() => {
       setIsDraggingMiddle(true);
       // TODO: minimum video length
       const startDiff = clamp(initialStart + xDiff / strippedWidth(), 0, 1) - initialStart;
       batch(() => {
-        setStart(initialStart + startDiff);
-        setLength(clamp(initialLength - startDiff + xDiff / strippedWidth(), 0, 1 - start()));
+        editorState.videoCropStart = (initialStart + startDiff);
+        editorState.videoCropLength = (clamp(initialLength - startDiff + xDiff / strippedWidth(), 0, 1 - editorState.videoCropStart));
 
-        setCurrentTime(start());
+        actions.setVideoTime(editorState.videoCropStart);
       });
     }),
     onEnd: () => {
@@ -86,16 +85,16 @@ const VideoControls: Component<{}> = () => {
   const onMiddlePartClick = (e: MouseEvent) => {
     if(!cropper() || isDraggingMiddle()) return;
 
-    setCurrentTime(clamp(getPositionInCropper(e, cropper()), start(), start() + length()));
+    actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), editorState.videoCropStart, editorState.videoCropStart + editorState.videoCropLength));
   };
 
   return (
     <div
       class={styles.Container}
       style={{
-        '--start': start(),
-        '--length': length(),
-        '--current-time': currentTime()
+        '--start': editorState.videoCropStart,
+        '--length': editorState.videoCropLength,
+        '--current-time': editorState.currentVideoTime
       }}
     >
       <div class={styles.InnerContainer}>
@@ -137,12 +136,12 @@ const VideoControls: Component<{}> = () => {
           use:ripple
           class={`btn-icon ${styles.IconButton} ${styles.PlayButton}`}
           onClick={() => {
-            setPaused(!paused());
+            editorState.isPlaying = !editorState.isPlaying;
           }}
           tabIndex={-1}
         >
           <span class={styles.PlayButtonInner}> {/* <span> prevents duplicating the svg on hot reload */}
-            <PausePlay paused={paused()} />
+            <PausePlay paused={!editorState.isPlaying} />
           </span>
         </button>
       </div>

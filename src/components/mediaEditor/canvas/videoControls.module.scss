@@ -210,14 +210,16 @@
   --pause-left-translate: 12px;
   --pause-right-translate: 12px;
 
+  --transition-time: 0.2s;
+
   &Play {
     transform: translate(8px, 12px) scale(var(--play-scale)) translate(var(--play-translate-x), -12px);
-    transition: transform .3s;
+    transition: transform var(--transition-time);
   }
 
   &Pause {
     &Left, &Right {
-      transition: transform .3s;
+      transition: transform var(--transition-time);
     }
   }
 

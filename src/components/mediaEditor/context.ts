@@ -62,6 +62,10 @@ export type MediaEditorState = {
   fixedImageRatioKey?: string;
   finalTransform: FinalTransform;
 
+  currentVideoTime: number;
+  videoCropStart: number;
+  videoCropLength: number;
+
   currentTextLayerInfo: TextLayerInfo;
   selectedResizableLayer?: number;
   stickersLayersInfo: Record<number, StickerRenderingInfo>;
@@ -78,6 +82,7 @@ export type MediaEditorState = {
 
   isAdjusting: boolean;
   isMoving: boolean;
+  isPlaying: boolean;
 };
 
 export type EditorOverridableGlobalActions = {
@@ -86,6 +91,7 @@ export type EditorOverridableGlobalActions = {
   redrawBrushes: () => void;
   abortDrawerSlide: () => void;
   resetRotationWheel: () => void;
+  setVideoTime: (time: number) => void;
 };
 
 
@@ -123,6 +129,10 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
     translation: [0, 0]
   },
 
+  currentVideoTime: 0,
+  videoCropStart: 0,
+  videoCropLength: 1,
+
   currentTextLayerInfo: {
     alignment: 'left',
     style: 'outline',
@@ -144,7 +154,8 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
   resizeHandlesContainer: undefined,
 
   isAdjusting: false,
-  isMoving: false
+  isMoving: false,
+  isPlaying: false
 });
 
 export type MediaEditorContextValue = {
@@ -159,8 +170,6 @@ export type MediaEditorContextValue = {
   hasModifications: Accessor<boolean>;
 
   resizableLayersSeed: number;
-
-  gifCreationProgress: Signal<number>;
 };
 
 
@@ -189,7 +198,8 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     },
     redrawBrushes: () => {},
     abortDrawerSlide: () => {},
-    resetRotationWheel: () => {}
+    resetRotationWheel: () => {},
+    setVideoTime: () => {}
   };
 
   // TODO: Throttle to save computation power on animations
@@ -215,9 +225,8 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
     hasModifications,
 
-    resizableLayersSeed: Math.random(), // [0-1] make sure it's different even after reopening the editor, note that there might be some items in history!
-
-    gifCreationProgress: createSignal(0)
+    // [0-1] make sure it's different even after reopening the editor, note that there might be some items in history!
+    resizableLayersSeed: Math.random()
   };
 }
 
