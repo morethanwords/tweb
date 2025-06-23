@@ -7,6 +7,7 @@ import ListenerSetter from '../../../helpers/listenerSetter';
 
 import {MediaEditorContextValue} from '../context';
 import {delay} from '../utils';
+import {RenderingPayload} from '../webgl/initWebGL';
 
 import calcBitrate, {BITRATE_TARGET_FPS} from './calcBitrate';
 import {FRAMES_PER_SECOND, STICKER_SIZE} from './constants';
@@ -21,6 +22,8 @@ import VideoStickerFrameByFrameRenderer from './videoStickerFrameByFrameRenderer
 
 export type RenderToActualVideoArgs = {
   context: MediaEditorContextValue;
+  renderingPayload: RenderingPayload;
+  hasAnimatedStickers: boolean;
   scaledLayers: ScaledLayersAndLines['scaledLayers'];
   scaledWidth: number;
   scaledHeight: number;
@@ -39,6 +42,8 @@ const hasAnimatedStickers = true; // TODO: handle this based on browser too
 
 export default async function renderToActualVideo({
   context,
+  renderingPayload,
+  hasAnimatedStickers,
   scaledWidth,
   scaledHeight,
   scaledLayers,
@@ -49,7 +54,7 @@ export default async function renderToActualVideo({
   brushCanvas,
   resultCanvas
 }: RenderToActualVideoArgs) {
-  const {editorState: {pixelRatio, renderingPayload}, mediaState: {videoCropStart, videoCropLength}} = context;
+  const {editorState: {pixelRatio}, mediaState: {videoCropStart, videoCropLength}} = context;
   const {media: {video}} = renderingPayload;
 
   const startTime = video.duration * videoCropStart;
@@ -84,20 +89,6 @@ export default async function renderToActualVideo({
   const listenerSetter = new ListenerSetter;
 
   let currentVideoFrameDeferred: CancellablePromise<number>;
-
-  if(video) {
-    video.pause();
-    // video.playbackRate = 0.25;
-    if(video.currentTime !== startTime) {
-      const deferred = deferredPromise<void>();
-      video.addEventListener('seeked', () => {
-        deferred?.resolve();
-      }, {once: true});
-
-      video.currentTime = startTime;
-      await deferred;
-    }
-  }
 
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),

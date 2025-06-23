@@ -1,16 +1,14 @@
-import {createEffect, createReaction, onCleanup, onMount} from 'solid-js';
+import {createEffect, createReaction, onMount} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
-
-import {animate} from '../../../helpers/animation';
-import clamp from '../../../helpers/number/clamp';
 
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 import {useMediaEditorContext} from '../context';
 import {withCurrentOwner} from '../utils';
 import {draw} from '../webgl/draw';
 import {initWebGL} from '../webgl/initWebGL';
-import {setTimeout} from 'node:timers';
+
 import initVideoPlayback from './initVideoPlayback';
+
 
 function drawAdjustedImage(gl: WebGLRenderingContext) {
   const {editorState, mediaState} = useMediaEditorContext();
@@ -50,7 +48,7 @@ export default function ImageCanvas() {
   );
 
   async function init() {
-    const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: editorState.currentVideoTime});
+    const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.videoCropStart});
 
     modifyMutable(editorState, produce(state => {
       state.renderingPayload = payload;

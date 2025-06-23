@@ -1,5 +1,7 @@
 import {unwrap} from 'solid-js/store';
 
+import {IS_FIREFOX} from '../../../environment/userAgent';
+
 import {useCropOffset} from '../canvas/useCropOffset';
 import BrushPainter from '../canvas/brushPainter';
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
@@ -15,6 +17,7 @@ import getResultSize from './getResultSize';
 import renderToVideo from './renderToVideo';
 import renderToImage from './renderToImage';
 import renderToActualVideo from './renderToActualVideo';
+
 
 export type MediaEditorFinalResult = {
   preview: Blob;
@@ -35,9 +38,11 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
 
   const cropOffset = useCropOffset();
 
-  const hasAnimatedStickers = !!resizableLayers.find((layer) =>
-    [2, 3].includes(layer.sticker?.sticker)
-  );
+  const hasAnimatedStickers = !!resizableLayers.find((layer) => {
+    const stickerType = layer.sticker?.sticker;
+    return stickerType === 2 || (!IS_FIREFOX && stickerType === 3);
+  });
+
   const willResultInVideo = hasAnimatedStickers || mediaType === 'video';
 
   const [scaledWidth, scaledHeight] = getResultSize(willResultInVideo);
@@ -50,7 +55,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     preserveDrawingBuffer: true
   });
 
-  const payload = await initWebGL({gl, mediaSrc, mediaType});
+  const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.videoCropStart});
 
   const finalTransform = getResultTransform({
     context,
@@ -94,6 +99,8 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const renderPromise = mediaType === 'video' ?
     renderToActualVideo({
       context,
+      renderingPayload: payload,
+      hasAnimatedStickers,
       scaledWidth,
       scaledHeight,
       scaledLayers,

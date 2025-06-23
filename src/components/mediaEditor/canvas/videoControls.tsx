@@ -80,7 +80,7 @@ const VideoControls: Component<{}> = () => {
       canMove = false;
     },
     onMove: (xDiff) => void batch(() => {
-      if(xDiff > MOVE_ACTIVATION_THRESHOLD_PX) canMove = true;
+      if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX) canMove = true;
       if(!canMove) return;
 
       setIsDraggingMiddle(true);
