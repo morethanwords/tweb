@@ -10,7 +10,7 @@ type Args = {
 };
 
 export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
-  const {editorState, actions} = useMediaEditorContext();
+  const {editorState, mediaState, actions} = useMediaEditorContext();
   const {renderingPayload} = editorState;
   const video = renderingPayload.media.video;
 
@@ -68,8 +68,8 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
     }
 
     const timeout = self.setTimeout(() => {
-      if(editorState.currentVideoTime >= editorState.videoCropStart + editorState.videoCropLength)
-        actions.setVideoTime(editorState.videoCropStart);
+      if(editorState.currentVideoTime >= mediaState.videoCropStart + mediaState.videoCropLength)
+        actions.setVideoTime(mediaState.videoCropStart);
 
       frameCallbackId = video.requestVideoFrameCallback(frameCallback);
       video.play();
@@ -82,10 +82,10 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
 
         editorState.currentVideoTime = video.currentTime / video.duration || 0;
 
-        if(video.ended || video.paused || editorState.currentVideoTime >= editorState.videoCropStart + editorState.videoCropLength) {
+        if(video.ended || video.paused || editorState.currentVideoTime >= mediaState.videoCropStart + mediaState.videoCropLength) {
           playing = false;
           editorState.isPlaying = false;
-          editorState.currentVideoTime = clamp(editorState.currentVideoTime, editorState.videoCropStart, editorState.videoCropStart + editorState.videoCropLength);
+          editorState.currentVideoTime = clamp(editorState.currentVideoTime, mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength);
         }
 
         return playing;

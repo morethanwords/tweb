@@ -1,6 +1,7 @@
 import {ArrayBufferTarget, Muxer} from 'mp4-muxer';
 import {createRoot, createSignal} from 'solid-js';
 
+import {animate} from '../../../helpers/animation';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
 import ListenerSetter from '../../../helpers/listenerSetter';
 
@@ -15,7 +16,6 @@ import ImageStickerFrameByFrameRenderer from './imageStickerFrameByFrameRenderer
 import LottieStickerFrameByFrameRenderer from './lottieStickerFrameByFrameRenderer';
 import {StickerFrameByFrameRenderer} from './types';
 import VideoStickerFrameByFrameRenderer from './videoStickerFrameByFrameRenderer';
-import {animate} from '../../../helpers/animation';
 
 
 export type RenderToActualVideoArgs = {
@@ -48,8 +48,11 @@ export default async function renderToActualVideo({
   brushCanvas,
   resultCanvas
 }: RenderToActualVideoArgs) {
-  const {editorState: {pixelRatio, renderingPayload}} = context;
+  const {editorState: {pixelRatio, renderingPayload}, mediaState: {videoCropStart, videoCropLength}} = context;
   const {media: {video}} = renderingPayload;
+
+  const startTime = video.duration * videoCropStart;
+  const endTime = video.duration * (videoCropStart + videoCropLength);
 
   const gifCreationProgress = createRoot(dispose => {
     const signal = createSignal(0);
@@ -93,13 +96,13 @@ export default async function renderToActualVideo({
   if(video) {
     video.pause();
     // video.playbackRate = 0.25;
-    if(video.currentTime !== 0) {
+    if(video.currentTime !== startTime) {
       const deferred = deferredPromise<void>();
       video.addEventListener('seeked', () => {
         deferred?.resolve();
       }, {once: true});
 
-      video.currentTime = 0;
+      video.currentTime = startTime;
       await deferred;
     }
   }
@@ -123,7 +126,7 @@ export default async function renderToActualVideo({
     codec: 'avc1.42001f',
     width: scaledWidth,
     height: scaledHeight,
-    bitrate: 8e6
+    bitrate: 8e6 // TODO: Make this dynamic
   });
   // 1. remove frame rate
   // 2. dynamic timestamp / duration
@@ -174,7 +177,7 @@ export default async function renderToActualVideo({
       // gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
     }
 
-    const currentTime = frameNo === 0 ? 0 : video.currentTime;
+    const currentTime = frameNo === 0 ? 0 : video.currentTime - startTime;
 
     console.log('[my-debug] additional frame currentTime, lastTime ', currentTime, lastTime);
     // Fill static frame with stickers frames
@@ -244,20 +247,16 @@ export default async function renderToActualVideo({
     let frameNo = 0;
 
     let done = false;
-    let skip = 0;
 
     animate(() => {
-      skip = (skip + 1) % 5;
-      if(skip) return true;
-
-      if(video.currentTime >= video.duration - 0.0001) {
+      if(video.currentTime >= endTime - 0.0001) {
         done = true;
         currentVideoFrameDeferred.resolve();
       }
       return !done;
     });
 
-    while(video.currentTime < video.duration - 0.0001) {
+    while(video.currentTime < endTime - 0.0001) {
     // for(let frameNo = 1; frameNo <= maxFrames; frameNo++) {
       // console.log('rendering frameNo', frameNo)
       try {
@@ -266,7 +265,7 @@ export default async function renderToActualVideo({
         setProgress(1);
         break;
       }
-      setProgress(video.currentTime / video.duration);
+      setProgress((video.currentTime - startTime) / (endTime - startTime));
       frameNo++;
     }
     done = true;

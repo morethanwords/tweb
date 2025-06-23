@@ -15,9 +15,10 @@ import styles from './videoControls.module.scss';
 
 
 const HANDLE_WIDTH_PX = 9;
+const MOVE_ACTIVATION_THRESHOLD_PX = 2;
 
 const VideoControls: Component<{}> = () => {
-  const {editorState, actions, mediaSrc} = useMediaEditorContext();
+  const {editorState, mediaState, actions, mediaSrc} = useMediaEditorContext();
 
   const [cropper, setCropper] = createSignal<HTMLDivElement>();
 
@@ -40,16 +41,16 @@ const VideoControls: Component<{}> = () => {
   const leftHandleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: 'ew-resize',
     onStart: () => {
-      initialStart = editorState.videoCropStart;
-      initialLength = editorState.videoCropLength;
+      initialStart = mediaState.videoCropStart;
+      initialLength = mediaState.videoCropLength;
     },
     onMove: (xDiff) => void batch(() => {
       // TODO: minimum video length
       const diff = clamp(initialStart + xDiff / strippedWidth(), 0, initialStart + initialLength) - initialStart;
       batch(() => {
-        editorState.videoCropStart = (initialStart + diff);
-        editorState.videoCropLength = (initialLength - diff);
-        actions.setVideoTime(editorState.videoCropStart);
+        mediaState.videoCropStart = (initialStart + diff);
+        mediaState.videoCropLength = (initialLength - diff);
+        actions.setVideoTime(mediaState.videoCropStart);
       });
     })
   };
@@ -57,33 +58,39 @@ const VideoControls: Component<{}> = () => {
   const rightHandleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: 'ew-resize',
     onStart: () => {
-      initialLength = editorState.videoCropLength;
+      initialLength = mediaState.videoCropLength;
       editorState.isPlaying = false;
     },
     onMove: (xDiff) => void batch(() => {
       // TODO: minimum video length
       batch(() => {
-        editorState.videoCropLength = (clamp(initialLength + xDiff / strippedWidth(), 0, 1 - editorState.videoCropStart));
-        actions.setVideoTime(editorState.videoCropStart + editorState.videoCropLength);
+        mediaState.videoCropLength = (clamp(initialLength + xDiff / strippedWidth(), 0, 1 - mediaState.videoCropStart));
+        actions.setVideoTime(mediaState.videoCropStart + mediaState.videoCropLength);
       });
     })
   };
 
+  let canMove = false;
+
   const middleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: 'grabbing',
     onStart: () => {
-      initialStart = editorState.videoCropStart;
-      initialLength = editorState.videoCropLength;
+      initialStart = mediaState.videoCropStart;
+      initialLength = mediaState.videoCropLength;
+      canMove = false;
     },
     onMove: (xDiff) => void batch(() => {
+      if(xDiff > MOVE_ACTIVATION_THRESHOLD_PX) canMove = true;
+      if(!canMove) return;
+
       setIsDraggingMiddle(true);
       // TODO: minimum video length
       const startDiff = clamp(initialStart + xDiff / strippedWidth(), 0, 1) - initialStart;
       batch(() => {
-        editorState.videoCropStart = (initialStart + startDiff);
-        editorState.videoCropLength = (clamp(initialLength - startDiff + xDiff / strippedWidth(), 0, 1 - editorState.videoCropStart));
+        mediaState.videoCropStart = (initialStart + startDiff);
+        mediaState.videoCropLength = (clamp(initialLength - startDiff + xDiff / strippedWidth(), 0, 1 - mediaState.videoCropStart));
 
-        actions.setVideoTime(editorState.videoCropStart);
+        actions.setVideoTime(mediaState.videoCropStart);
       });
     }),
     onEnd: () => {
@@ -96,17 +103,18 @@ const VideoControls: Component<{}> = () => {
   const onMiddlePartClick = (e: MouseEvent) => {
     if(!cropper() || isDraggingMiddle()) return;
 
-    actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), editorState.videoCropStart, editorState.videoCropStart + editorState.videoCropLength));
+    actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength));
   };
 
   return (
     <div
       class={styles.Container}
       style={{
-        '--start': editorState.videoCropStart,
-        '--length': editorState.videoCropLength,
+        '--start': mediaState.videoCropStart,
+        '--length': mediaState.videoCropLength,
         '--current-time': editorState.currentVideoTime,
-        'opacity': editorState.currentTab === 'adjustments' ? 1 : 0
+        'opacity': editorState.currentTab === 'adjustments' ? 1 : 0,
+        'pointer-events': editorState.currentTab === 'adjustments' ? undefined : 'none'
       }}
     >
       <div class={styles.InnerContainer}>
@@ -187,7 +195,7 @@ const ThumbnailTrack: Component<{
     setGhostThumbnailPosition();
   };
 
-  const dragArgs: SwipeDirectiveArgs = {
+  const swipeArgs: SwipeDirectiveArgs = {
     onStart: (e) => {
       void setIsDragging(true);
       if(!props.cropper) return;
@@ -207,7 +215,7 @@ const ThumbnailTrack: Component<{
 
       <div
         class={styles.ThumbnailTrack}
-        use:swipe={dragArgs}
+        use:swipe={swipeArgs}
         onPointerMove={onPointerMove}
         onPointerOut={onPointerOut}
         onClick={onClick}
