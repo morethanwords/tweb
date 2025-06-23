@@ -11,12 +11,13 @@ type InitWebGLArgs = {
   gl: WebGLRenderingContext;
   mediaSrc: string;
   mediaType: MediaType;
+  videoTime: number;
 };
 
-export async function initWebGL({gl, mediaSrc, mediaType}: InitWebGLArgs) {
+export async function initWebGL({gl, mediaSrc, mediaType, videoTime}: InitWebGLArgs) {
   const [{vertexShaderSource, fragmentShaderSource}, {texture, media}] = await Promise.all([
     import('./shaderSources'),
-    loadTexture({gl, mediaSrc, mediaType})
+    loadTexture({gl, mediaSrc, mediaType, videoTime})
   ]);
 
   const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);

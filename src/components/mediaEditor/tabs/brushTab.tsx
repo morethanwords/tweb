@@ -12,7 +12,7 @@ import LargeButton from '../largeButton';
 import RangeInput from '../rangeInput';
 
 export default function BrushTab() {
-  const {editorState, mediaState} = useMediaEditorContext();
+  const {editorState, mediaType} = useMediaEditorContext();
 
   const savedBrushColors = {
     pen: createStoredColor('media-editor-pen-color', '#fe4438'),
@@ -116,7 +116,7 @@ export default function BrushTab() {
       {brushButton(i18n('MediaEditor.Brushes.Arrow'), <ArrowBrush />, 'arrow')}
       {brushButton(i18n('MediaEditor.Brushes.Brush'), <MarkerBrush />, 'brush')}
       {brushButton(i18n('MediaEditor.Brushes.Neon'), <NeonBrush />, 'neon')}
-      {brushButton(i18n('MediaEditor.Brushes.Blur'), <BlurBrush />, 'blur')}
+      {mediaType === 'image' && brushButton(i18n('MediaEditor.Brushes.Blur'), <BlurBrush />, 'blur')}
       {brushButton(i18n('MediaEditor.Brushes.Eraser'), <EraserBrush />, 'eraser')}
     </>
   );

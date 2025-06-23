@@ -7,6 +7,7 @@ type LoadTextureArgs = {
   gl: WebGLRenderingContext;
   mediaSrc: string;
   mediaType: MediaType;
+  videoTime: number;
 };
 
 type LoadTextureMedia = {
@@ -21,7 +22,7 @@ type LoadTextureResult = {
   media: LoadTextureMedia;
 };
 
-export async function loadTexture({gl, mediaSrc, mediaType}: LoadTextureArgs): Promise<LoadTextureResult> {
+export async function loadTexture({gl, mediaSrc, mediaType, videoTime}: LoadTextureArgs): Promise<LoadTextureResult> {
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
 
@@ -41,7 +42,7 @@ export async function loadTexture({gl, mediaSrc, mediaType}: LoadTextureArgs): P
       height: image.naturalHeight
     };
   } else {
-    const video = await createVideoForDrawing(mediaSrc);
+    const video = await createVideoForDrawing(mediaSrc, videoTime);
 
     media = {
       video,

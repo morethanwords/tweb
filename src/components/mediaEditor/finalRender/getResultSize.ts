@@ -3,8 +3,8 @@ import {snapToViewport} from '../utils';
 
 const SIDE_MAX = 2560;
 const SIDE_MIN = 400;
-const VIDEO_WIDTH_MAX = 1280;
-const VIDEO_HEIGHT_MAX = 720;
+export const VIDEO_WIDTH_MAX = 1280;
+export const VIDEO_HEIGHT_MAX = 720;
 
 export default function getResultSize(willResultInVideo: boolean) {
   const {editorState: {renderingPayload}, mediaState: {scale, currentImageRatio}} = useMediaEditorContext();

@@ -50,7 +50,7 @@ export default function ImageCanvas() {
   );
 
   async function init() {
-    const payload = await initWebGL({gl, mediaSrc, mediaType});
+    const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: editorState.currentVideoTime});
 
     modifyMutable(editorState, produce(state => {
       state.renderingPayload = payload;

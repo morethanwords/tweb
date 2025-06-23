@@ -92,7 +92,8 @@ export default function BrushCanvas() {
   let fullBrushPainter: BrushPainter;
 
   onMount(async() => {
-    setFullImageGLPayload(await initWebGL({gl, mediaSrc, mediaType}));
+    if(mediaType !== 'image') return;
+    setFullImageGLPayload(await initWebGL({gl, mediaSrc, mediaType, videoTime: 0}));
   });
 
   createEffect(() => {

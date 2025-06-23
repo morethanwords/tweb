@@ -8,6 +8,7 @@ import ListenerSetter from '../../../helpers/listenerSetter';
 import {MediaEditorContextValue} from '../context';
 import {delay} from '../utils';
 
+import calcBitrate, {BITRATE_TARGET_FPS} from './calcBitrate';
 import {FRAMES_PER_SECOND, STICKER_SIZE} from './constants';
 import drawStickerLayer from './drawStickerLayer';
 import drawTextLayer from './drawTextLayer';
@@ -63,8 +64,6 @@ export default async function renderToActualVideo({
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
 
-  let maxFrames = 0;
-
   await Promise.all(
     scaledLayers.map(async(layer) => {
       if(!layer.sticker) return;
@@ -79,19 +78,12 @@ export default async function renderToActualVideo({
 
       renderers.set(layer.id, renderer);
       await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * pixelRatio);
-      maxFrames = Math.max(maxFrames, renderer.getTotalFrames());
     })
   );
 
-  if(video?.duration) maxFrames = video.duration * FRAMES_PER_SECOND / 2;
-  // maxFrames = Math.min(640, maxFrames);
-
   const listenerSetter = new ListenerSetter;
 
-  let currentVideoFrameDeferred: CancellablePromise<void>;
-  // video.addEventListener('seeked', () => {
-  //   currentVideoFrameDeferred?.resolve();
-  // });
+  let currentVideoFrameDeferred: CancellablePromise<number>;
 
   if(video) {
     video.pause();
@@ -126,60 +118,36 @@ export default async function renderToActualVideo({
     codec: 'avc1.42001f',
     width: scaledWidth,
     height: scaledHeight,
-    bitrate: 8e6 // TODO: Make this dynamic
+    bitrate: calcBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS, 1)
   });
-  // 1. remove frame rate
-  // 2. dynamic timestamp / duration
-  // 3. play/pause
-
-  // const tmpCanvas = document.createElement('canvas');
-  // [tmpCanvas.width, tmpCanvas.height] = [scaledWidth, scaledHeight];
-  // const tmpCtx = tmpCanvas.getContext('2d');
 
   let lastTime = 0;
 
   async function renderFrame(frameNo: number, appendToMuxer = true) {
     console.time('videoFrame' + frameNo);
-    if(video) {
-      currentVideoFrameDeferred = deferredPromise();
-      // video.currentTime = frameNo / FRAMES_PER_SECOND;
-      const clb = () => {
-        // tmpCtx.clearRect(0, 0, scaledWidth, scaledHeight);
-        // tmpCtx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
+    currentVideoFrameDeferred = deferredPromise();
 
-        video.pause();
-        gl.bindTexture(gl.TEXTURE_2D, renderingPayload.texture);
-        // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
-        // video.pause();
+    const callback = (mediaTime: number) => {
+      video.pause();
+      gl.bindTexture(gl.TEXTURE_2D, renderingPayload.texture);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
 
-        currentVideoFrameDeferred.resolve();
-        // requestAnimationFrame(async() => {
-        //   console.timeLog('renderFrame' + frameNo, 'seeked video');
-        //   console.timeLog('renderFrame' + frameNo, 'loaded texture');
-        // });
-      };
+      currentVideoFrameDeferred.resolve(mediaTime);
+    };
 
-      if(frameNo === 0) clb();
-      else {
-        video.requestVideoFrameCallback(clb);
-        if(video.paused && appendToMuxer) video.play();
-        // requestAnimationFrame(clb);
-      }
-
-      // video.play();
-      // video.currentTime = frameNo / FRAMES_PER_SECOND * 2;
-
-      await currentVideoFrameDeferred;
-      console.timeEnd('videoFrame' + frameNo);
-      // gl.bindTexture(gl.TEXTURE_2D, renderingPayload.texture);
-      // // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
-      // gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
+    if(frameNo === 0) callback(0);
+    else {
+      video.requestVideoFrameCallback((_, {mediaTime}) => void callback(mediaTime));
+      if(video.paused && appendToMuxer) video.play();
     }
 
-    const currentTime = frameNo === 0 ? 0 : video.currentTime - startTime;
+    const mediaTime = await currentVideoFrameDeferred;
+    console.timeEnd('videoFrame' + frameNo);
+
+    const currentTime = frameNo === 0 ? 0 : mediaTime - startTime;
 
     console.log('[my-debug] additional frame currentTime, lastTime ', currentTime, lastTime);
+
     // Fill static frame with stickers frames
     if(hasAnimatedStickers) {
       const untilFrame = Math.round(currentTime * STICKER_FPS);
@@ -224,10 +192,8 @@ export default async function renderToActualVideo({
 
     if(!appendToMuxer) return;
 
-    const videoFrame = new VideoFrame(resultCanvas, {
-      timestamp
-      // duration: 1e6 / FRAMES_PER_SECOND
-    });
+    const videoFrame = new VideoFrame(resultCanvas, {timestamp});
+
     encoder.encode(videoFrame);
     videoFrame.close();
     console.timeLog('renderFrame2' + frameNo, 'encoded frame');
@@ -251,20 +217,13 @@ export default async function renderToActualVideo({
     animate(() => {
       if(video.currentTime >= endTime - 0.0001) {
         done = true;
-        currentVideoFrameDeferred.resolve();
+        currentVideoFrameDeferred.resolve(endTime);
       }
       return !done;
     });
 
     while(video.currentTime < endTime - 0.0001) {
-    // for(let frameNo = 1; frameNo <= maxFrames; frameNo++) {
-      // console.log('rendering frameNo', frameNo)
-      try {
-        await renderFrame(frameNo);
-      } catch{
-        setProgress(1);
-        break;
-      }
+      await renderFrame(frameNo);
       setProgress((video.currentTime - startTime) / (endTime - startTime));
       frameNo++;
     }
