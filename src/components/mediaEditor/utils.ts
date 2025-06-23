@@ -149,6 +149,11 @@ export function processHistoryItem(item: HistoryItem, mediaState: any) {
   }
 }
 
+export function traverseObjectDeep(obj: any) {
+  if(obj instanceof Array) obj.forEach(val => traverseObjectDeep(val));
+  else if(obj instanceof Object) Object.values(obj).forEach(val => traverseObjectDeep(val));
+}
+
 export const fontInfoMap: Record<FontKey, FontInfo> = {
   roboto: {
     fontFamily: '\'Roboto\'',

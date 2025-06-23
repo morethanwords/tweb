@@ -1,7 +1,8 @@
-import {Accessor, createContext, createMemo, createSignal, Signal, useContext} from 'solid-js';
+import {Accessor, createContext, createEffect, createSignal, on, useContext} from 'solid-js';
 import {createMutable, modifyMutable, produce, Store} from 'solid-js/store';
 
 import exceptKeys from '../../helpers/object/exceptKeys';
+import debounce from '../../helpers/schedulers/debounce';
 import type {AppManagers} from '../../lib/appManagers/managers';
 import type {ObjectPath} from '../../types';
 
@@ -10,7 +11,7 @@ import {BrushDrawnLine} from './canvas/brushPainter';
 import {FinalTransform} from './canvas/useFinalTransform';
 import type {MediaEditorProps} from './mediaEditor';
 import {MediaType, NumberPair, ResizableLayer, StickerRenderingInfo, TextLayerInfo} from './types';
-import {approximateDeepEqual} from './utils';
+import {approximateDeepEqual, traverseObjectDeep} from './utils';
 import {RenderingPayload} from './webgl/initWebGL';
 
 
@@ -206,14 +207,22 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     setVideoTime: () => {}
   };
 
-  // TODO: Throttle to save computation power on animations
-  const hasModifications = createMemo(() => {
-    // log('mediaStateInitClone, mediaState :>> ', mediaStateInitClone, unwrap(mediaState), !approximateDeepEqual(mediaStateInitClone, mediaState));
-    return !approximateDeepEqual(
-      exceptKeys(mediaStateInitClone, ['history', 'redoHistory']),
-      exceptKeys(mediaState, ['history', 'redoHistory'])
+  const [hasModifications, setHasModifications] = createSignal(false);
+
+  const keysToExcept = ['history', 'redoHistory'] satisfies (keyof EditingMediaState)[];
+
+  const debouncedUpdateHasModifications = debounce(() => {
+    setHasModifications(
+      !approximateDeepEqual(
+        exceptKeys(mediaStateInitClone, keysToExcept),
+        exceptKeys(mediaState, keysToExcept)
+      )
     );
-  });
+  }, 100, false, true);
+
+  createEffect(on(() => traverseObjectDeep(exceptKeys(mediaState, keysToExcept)), () => {
+    debouncedUpdateHasModifications();
+  }));
 
   // (window as any).mediaState = mediaState;
   // (window as any).unwrap = unwrap;
