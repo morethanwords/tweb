@@ -29,6 +29,7 @@ export function registerGlobalDocumentEvent<Key extends keyof DocumentEventMap>(
       value.callbacks = value.callbacks.filter(clb => clb !== callback);
       if(value.callbacks.length) return;
 
+      eventsMap.delete(eventName);
       document.removeEventListener(eventName, value.listener);
     }
   }

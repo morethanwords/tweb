@@ -105,7 +105,8 @@ const VideoControls: Component<{}> = () => {
       style={{
         '--start': editorState.videoCropStart,
         '--length': editorState.videoCropLength,
-        '--current-time': editorState.currentVideoTime
+        '--current-time': editorState.currentVideoTime,
+        'opacity': editorState.currentTab === 'adjustments' ? 1 : 0
       }}
     >
       <div class={styles.InnerContainer}>
