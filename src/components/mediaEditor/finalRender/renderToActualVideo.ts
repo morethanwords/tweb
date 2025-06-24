@@ -1,21 +1,19 @@
 import {ArrayBufferTarget, Muxer} from 'mp4-muxer';
 import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
-import {unwrap} from 'solid-js/store';
 
 import {animate} from '../../../helpers/animation';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
 import ListenerSetter from '../../../helpers/listenerSetter';
 
-import {useCropOffset} from '../canvas/useCropOffset';
-import useProcessPoint from '../canvas/useProcessPoint';
-import {MediaEditorContextValue, useMediaEditorContext} from '../context';
-import {delay, snapToViewport} from '../utils';
+import {MediaEditorContextValue} from '../context';
+import {delay} from '../utils';
 import {RenderingPayload} from '../webgl/initWebGL';
 
 import calcBitrate, {BITRATE_TARGET_FPS} from './calcBitrate';
 import {FRAMES_PER_SECOND, STICKER_SIZE} from './constants';
 import drawStickerLayer from './drawStickerLayer';
 import drawTextLayer from './drawTextLayer';
+import {generateVideoPreview} from './generateVideoPreview';
 import {ScaledLayersAndLines} from './getScaledLayersAndLines';
 import ImageStickerFrameByFrameRenderer from './imageStickerFrameByFrameRenderer';
 import LottieStickerFrameByFrameRenderer from './lottieStickerFrameByFrameRenderer';
@@ -197,7 +195,7 @@ export default async function renderToActualVideo({
 
   setProgress(0);
 
-  const preview = await runWithOwner(owner, () => genPreview({scaledWidth, scaledHeight}));
+  const preview = await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
 
   const resultPromise = new Promise<Blob>(async(resolve) => {
     await delay(200);
@@ -269,100 +267,4 @@ export default async function renderToActualVideo({
   // img.style.maxWidth = '450px'
   // div.append(img)
   // document.body.append(div)
-}
-
-type Args = {
-  scaledWidth: number;
-  scaledHeight: number;
-};
-
-async function genPreview({scaledWidth, scaledHeight}: Args) {
-  const context = useMediaEditorContext();
-
-  const {
-    editorState: {
-      canvasSize: [cw, ch],
-      imageCanvas,
-      brushCanvas,
-      currentTab,
-      stickersLayersInfo,
-      finalTransform: {scale}
-    },
-    mediaState: {
-      resizableLayers,
-      rotation
-    }
-  } = context;
-
-  const processPoint = useProcessPoint(false);
-  const cropOffset = useCropOffset();
-
-  const isCropping = currentTab === 'crop';
-
-  const ratio = scaledWidth / scaledHeight;
-
-  const [previewWidth, previewHeight] = snapToViewport(ratio, isCropping ? cropOffset().width : cw, isCropping ? cropOffset().height : ch);
-
-  const mirrorCanvas = document.createElement('canvas');
-  [mirrorCanvas.width, mirrorCanvas.height] = [cw, ch];
-
-  const previewCanvas = document.createElement('canvas');
-  [previewCanvas.width, previewCanvas.height] = [previewWidth, previewHeight];
-
-
-  const previewCtx = previewCanvas.getContext('2d');
-  const mirrorCtx = mirrorCanvas.getContext('2d');
-
-  mirrorCtx.drawImage(imageCanvas, 0, 0, cw, ch);
-  mirrorCtx.drawImage(brushCanvas, 0, 0, cw, ch);
-
-  const processedLayers = unwrap(resizableLayers).map(layer => ({
-    ...layer,
-    position: processPoint(layer.position),
-    rotation: layer.rotation + rotation,
-    scale: layer.scale * scale,
-    textInfo: layer.textInfo ? {
-      ...layer.textInfo,
-      size: layer.textInfo.size * layer.scale * scale
-    } : undefined
-  }));
-
-  processedLayers.forEach((layer) => {
-    if(layer.type === 'text') drawTextLayer(context, mirrorCtx, layer, false);
-    // TODO: Sticker type 3 on Firefox
-    if(layer.type === 'sticker') {
-      const {container} = stickersLayersInfo[layer.id];
-      const stickerChild = container?.lastElementChild;
-
-      let ratio: number;
-
-      if(stickerChild instanceof HTMLImageElement)
-        ratio = stickerChild.naturalWidth / stickerChild.naturalHeight;
-      else if(stickerChild instanceof HTMLCanvasElement)
-        ratio = 1;
-      else if(stickerChild instanceof HTMLVideoElement)
-        ratio = stickerChild.videoWidth / stickerChild.videoHeight;
-      else return;
-
-      drawStickerLayer(context, mirrorCtx, layer, stickerChild, ratio, false);
-    }
-  });
-
-  if(isCropping) {
-    previewCtx.drawImage(
-      mirrorCanvas,
-      cropOffset().left + (cropOffset().width - previewWidth) / 2, cropOffset().top + (cropOffset().height - previewHeight) / 2, previewWidth, previewHeight,
-      0, 0, previewWidth, previewHeight
-    );
-  } else {
-    previewCtx.drawImage(
-      mirrorCanvas,
-      (cw - previewWidth) / 2, (ch - previewHeight) / 2, previewWidth, previewHeight,
-      0, 0, previewWidth, previewHeight
-    );
-  }
-
-  const previewBlob = await new Promise<Blob>((resolve) => previewCanvas.toBlob(resolve));
-
-  return previewBlob;
 }

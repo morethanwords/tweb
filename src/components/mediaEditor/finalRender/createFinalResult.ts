@@ -99,32 +99,36 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   resultCanvas.height = scaledHeight;
   const ctx = resultCanvas.getContext('2d', {willReadFrequently: true});
 
-  const renderPromise = mediaType === 'video' ?
-    runWithOwner(owner, () => renderToActualVideo({
-      context,
-      renderingPayload: payload,
-      hasAnimatedStickers,
-      scaledWidth,
-      scaledHeight,
-      scaledLayers,
-      imageCanvasGL: gl,
-      imageCanvas,
-      drawToImageCanvas,
-      resultCanvas,
-      brushCanvas,
-      ctx
-    })) : hasAnimatedStickers ?
-    renderToVideo({
-      context,
-      scaledWidth,
-      scaledHeight,
-      scaledLayers,
-      imageCanvas,
-      resultCanvas,
-      brushCanvas,
-      ctx
-    }) :
-    renderToImage({
+  const renderPromise = (() => {
+    if(mediaType === 'video')
+      return runWithOwner(owner, () => renderToActualVideo({
+        context,
+        renderingPayload: payload,
+        hasAnimatedStickers,
+        scaledWidth,
+        scaledHeight,
+        scaledLayers,
+        imageCanvasGL: gl,
+        imageCanvas,
+        drawToImageCanvas,
+        resultCanvas,
+        brushCanvas,
+        ctx
+      }));
+
+    if(hasAnimatedStickers)
+      return renderToVideo({
+        context,
+        scaledWidth,
+        scaledHeight,
+        scaledLayers,
+        imageCanvas,
+        resultCanvas,
+        brushCanvas,
+        ctx
+      });
+
+    return renderToImage({
       context,
       scaledLayers,
       imageCanvas,
@@ -132,6 +136,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
       brushCanvas,
       ctx
     });
+  })();
 
   const renderResult = await renderPromise;
 
