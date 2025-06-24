@@ -1054,6 +1054,7 @@ export default class PopupNewMedia extends PopupElement {
             openMediaEditor({
               mediaType: isVideo ? 'video' : 'image',
               mediaSrc: params.editResult?.originalSrc || params.objectURL,
+              mediaBlob: file,
               managers: this.managers,
               onEditFinish: (result) => {
                 params.editResult = result;

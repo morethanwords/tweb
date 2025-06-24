@@ -52,7 +52,7 @@ export default async function renderToActualVideo({
   brushCanvas,
   resultCanvas
 }: RenderToActualVideoArgs) {
-  const {editorState: {pixelRatio}, mediaState: {videoCropStart, videoCropLength}} = context;
+  const {editorState: {pixelRatio}, mediaState: {videoCropStart, videoCropLength}, mediaBlob} = context;
   const {media: {video}} = renderingPayload;
 
   const owner = getOwner();
@@ -90,12 +90,19 @@ export default async function renderToActualVideo({
 
   let currentVideoFrameDeferred: CancellablePromise<number>;
 
+  const audioBuffer = await extractAudioFragment(mediaBlob, startTime, endTime);
+
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),
     video: {
       codec: 'avc',
       width: scaledWidth,
       height: scaledHeight
+    },
+    audio: {
+      codec: 'opus',
+      sampleRate: audioBuffer.sampleRate,
+      numberOfChannels: audioBuffer.numberOfChannels
     },
     fastStart: 'in-memory'
   });
@@ -222,7 +229,11 @@ export default async function renderToActualVideo({
 
     console.log('[my-debug] before flushing');
 
+    await encodeAndMuxAudio(audioBuffer, (chunk) => muxer.addAudioChunk(chunk));
+
     await encoder.flush();
+
+
     console.log('[my-debug] flushed');
     muxer.finalize();
     console.log('[my-debug] finalized');
@@ -267,4 +278,125 @@ export default async function renderToActualVideo({
   // img.style.maxWidth = '450px'
   // div.append(img)
   // document.body.append(div)
+}
+
+async function extractAudioFragment(blob: Blob, startTime: number, endTime: number) {
+  const audioContext: AudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const arrayBuffer = await blob.arrayBuffer();
+  const fullAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+  const sampleRate = fullAudioBuffer.sampleRate;
+  const startSample = Math.floor(startTime * sampleRate);
+  const endSample = Math.floor(endTime * sampleRate);
+  const frameCount = endSample - startSample;
+
+  const numChannels = fullAudioBuffer.numberOfChannels;
+
+  console.log('[my-debug] fullAudioBuffer.numberOfChannels :>> ', fullAudioBuffer.numberOfChannels);
+
+  const fragmentBuffer = audioContext.createBuffer(numChannels, frameCount, sampleRate);
+
+  for(let ch = 0; ch < numChannels; ch++) {
+    const fullData = fullAudioBuffer.getChannelData(ch);
+    fragmentBuffer.copyToChannel(fullData.subarray(startSample, endSample), ch);
+  }
+
+  return fragmentBuffer;
+}
+
+// TODO: Delete this thing, used for test
+async function extractAudioFragmentNoise(blob: Blob, startTime: number, endTime: number) {
+  const audioContext: AudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+  const sampleRate = audioContext.sampleRate;
+  // const startSample = Math.floor(startTime * sampleRate);
+  // const endSample = Math.floor(endTime * sampleRate);
+  // const frameCount = endSample - startSample;
+
+  const myArrayBuffer = audioContext.createBuffer(
+    2,
+    audioContext.sampleRate * (endTime - startTime),
+    audioContext.sampleRate,
+  );
+
+  // Fill the buffer with white noise;
+  // just random values between -1.0 and 1.0
+  for(let channel = 0; channel < myArrayBuffer.numberOfChannels; channel++) {
+    // This gives us the actual ArrayBuffer that contains the data
+    const nowBuffering = myArrayBuffer.getChannelData(channel);
+    for(let i = 0; i < myArrayBuffer.length; i++) {
+      // Math.random() is in [0; 1.0]
+      // audio needs to be in [-1.0; 1.0]
+      nowBuffering[i] = Math.random() * 2 - 1;
+    }
+  }
+
+  return myArrayBuffer;
+}
+
+async function encodeAndMuxAudio(audioBuffer: AudioBuffer, onChunk: (ch: EncodedAudioChunk) => void) {
+  const sampleRate = audioBuffer.sampleRate;
+  const numChannels = audioBuffer.numberOfChannels;
+  const totalFrames = audioBuffer.length;
+
+
+  console.log('[my-debug] audioBuffer.numberOfChannels :>> ', audioBuffer.numberOfChannels);
+
+  // Interleave audio for WebCodecs
+  const interleaved = new Float32Array(totalFrames * numChannels);
+  for(let ch = 0; ch < numChannels; ch++) {
+    const channelData = audioBuffer.getChannelData(ch);
+    for(let i = 0; i < totalFrames; i++) {
+      interleaved[i * numChannels + ch] = channelData[i];
+    }
+  }
+
+  const encoder = new AudioEncoder({
+    output: onChunk,
+    // (chunk) => {
+    //   encodedChunks.push(chunk);
+    // },
+    error: (e) => console.error('AudioEncoder error:', e)
+  });
+
+  console.log('[my-debug] configure channel :>> ', {
+    sampleRate,
+    numberOfChannels: numChannels,
+    numberOfFrames: totalFrames,
+    expectedLength: totalFrames * numChannels,
+    actualLength: interleaved.length,
+    byteLength: interleaved.byteLength
+  });
+
+  // TODO: Need to check support for this thing and fallback to other codecs
+  const supported = await AudioEncoder.isConfigSupported({
+    codec: 'opus',
+    sampleRate,
+    numberOfChannels: audioBuffer.numberOfChannels,
+    bitrate: 128000
+  });
+
+  console.log('audio encoder supported config', supported)
+
+  encoder.configure({
+    codec: 'opus',
+    sampleRate,
+    numberOfChannels: audioBuffer.numberOfChannels,
+    bitrate: 128000
+  });
+
+  const audioData = new AudioData({
+    format: 'f32',
+    sampleRate,
+    numberOfFrames: audioBuffer.duration * audioBuffer.sampleRate,
+    numberOfChannels: audioBuffer.numberOfChannels,
+    timestamp: 0,
+    data: interleaved
+  });
+
+  console.log('[my-debug] audioData.numberOfChannels', audioData.numberOfChannels);
+
+
+  encoder.encode(audioData);
+  await encoder.flush();
 }

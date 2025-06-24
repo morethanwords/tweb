@@ -164,6 +164,7 @@ export type MediaEditorContextValue = {
   managers: AppManagers;
   mediaSrc: string;
   mediaType: MediaType;
+  mediaBlob: Blob;
 
   mediaState: Store<EditingMediaState>;
   editorState: Store<MediaEditorState>;
@@ -226,8 +227,10 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
   return {
     managers: props.managers,
+
     mediaSrc: props.mediaSrc,
     mediaType: props.mediaType,
+    mediaBlob: props.mediaBlob,
 
     mediaState,
     editorState,
