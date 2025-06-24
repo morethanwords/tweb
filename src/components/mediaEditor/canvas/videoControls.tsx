@@ -112,7 +112,7 @@ const VideoControls: Component<{}> = () => {
       style={{
         '--start': mediaState.videoCropStart,
         '--length': mediaState.videoCropLength,
-        '--current-time': editorState.currentVideoTime,
+        '--current-time': mediaState.currentVideoTime,
         'opacity': editorState.currentTab === 'adjustments' ? 1 : 0,
         'pointer-events': editorState.currentTab === 'adjustments' ? undefined : 'none'
       }}

@@ -22,6 +22,7 @@ type EditingMediaStateWithoutHistory = {
   flip: NumberPair;
   currentImageRatio: number;
 
+  currentVideoTime: number;
   videoCropStart: number;
   videoCropLength: number;
 
@@ -66,8 +67,6 @@ export type MediaEditorState = {
   fixedImageRatioKey?: string;
   finalTransform: FinalTransform;
 
-  currentVideoTime: number;
-
   currentTextLayerInfo: TextLayerInfo;
   selectedResizableLayer?: number;
   stickersLayersInfo: Record<number, StickerRenderingInfo>;
@@ -106,6 +105,7 @@ const getDefaultEditingMediaState = (): EditingMediaState => ({
   flip: [1, 1],
   currentImageRatio: 0,
 
+  currentVideoTime: 0,
   videoCropStart: 0,
   videoCropLength: 1,
 
@@ -135,8 +135,6 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
     scale: 1,
     translation: [0, 0]
   },
-
-  currentVideoTime: 0,
 
   currentTextLayerInfo: {
     alignment: 'left',
@@ -189,8 +187,6 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
   const mediaState = createMutable(mediaStateInit);
   const editorState = createMutable(getDefaultMediaEditorState());
-
-  editorState.currentVideoTime = mediaState.videoCropStart;
 
   const actions: EditorOverridableGlobalActions = {
     pushToHistory: (item: HistoryItem) => {

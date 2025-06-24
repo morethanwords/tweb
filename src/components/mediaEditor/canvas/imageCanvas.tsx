@@ -48,7 +48,7 @@ export default function ImageCanvas() {
   );
 
   async function init() {
-    const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.videoCropStart});
+    const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.currentVideoTime});
 
     modifyMutable(editorState, produce(state => {
       state.renderingPayload = payload;

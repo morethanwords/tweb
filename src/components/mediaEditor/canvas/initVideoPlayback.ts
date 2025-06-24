@@ -20,7 +20,7 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
   let pendingSeek = false;
 
   actions.setVideoTime = (time: number, redraw = true) => {
-    editorState.currentVideoTime = time;
+    mediaState.currentVideoTime = time;
     video.currentTime = time * video.duration;
     if(redraw) pendingSeek = true;
   };
@@ -68,7 +68,7 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
     }
 
     const timeout = self.setTimeout(() => {
-      if(editorState.currentVideoTime >= mediaState.videoCropStart + mediaState.videoCropLength)
+      if(mediaState.currentVideoTime >= mediaState.videoCropStart + mediaState.videoCropLength)
         actions.setVideoTime(mediaState.videoCropStart);
 
       frameCallbackId = video.requestVideoFrameCallback(frameCallback);
@@ -80,12 +80,12 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
         if(skip) return true;
         if(!playing) return false;
 
-        editorState.currentVideoTime = video.currentTime / video.duration || 0;
+        mediaState.currentVideoTime = video.currentTime / video.duration || 0;
 
-        if(video.ended || video.paused || editorState.currentVideoTime >= mediaState.videoCropStart + mediaState.videoCropLength) {
+        if(video.ended || video.paused || mediaState.currentVideoTime >= mediaState.videoCropStart + mediaState.videoCropLength) {
           playing = false;
           editorState.isPlaying = false;
-          editorState.currentVideoTime = clamp(editorState.currentVideoTime, mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength);
+          mediaState.currentVideoTime = clamp(mediaState.currentVideoTime, mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength);
         }
 
         return playing;
