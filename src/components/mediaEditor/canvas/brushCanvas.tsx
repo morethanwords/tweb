@@ -69,6 +69,8 @@ export default function BrushCanvas() {
   ) as HTMLCanvasElement;
   const ctx = canvas.getContext('2d');
 
+  editorState.brushCanvas = canvas;
+
   const fullImageMultiplier = () =>
     Math.min(
       editorState.canvasSize?.[0] / editorState.imageSize?.[0],

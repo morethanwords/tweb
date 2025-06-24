@@ -73,6 +73,8 @@ export type MediaEditorState = {
   stickersLayersInfo: Record<number, StickerRenderingInfo>;
 
   imageCanvas?: HTMLCanvasElement;
+  brushCanvas?: HTMLCanvasElement;
+
   currentBrush: {
     color: string;
     size: number;
@@ -146,7 +148,6 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
   selectedResizableLayer: undefined,
   stickersLayersInfo: {},
 
-  imageCanvas: undefined,
   currentBrush: {
     brush: 'pen',
     color: '#fe4438',

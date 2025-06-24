@@ -9,7 +9,8 @@ export default function drawStickerLayer(
   ctx: CanvasRenderingContext2D,
   layer: ResizableLayer,
   source: CanvasImageSource,
-  ratio: number
+  ratio: number,
+  densityAware = true
 ) {
   const {editorState: {stickersLayersInfo, pixelRatio}} = context;
 
@@ -17,7 +18,7 @@ export default function drawStickerLayer(
   const stickerChild = container?.lastElementChild;
   if(!stickerChild) return;
 
-  const size = STICKER_SIZE * layer.scale * pixelRatio;
+  const size = STICKER_SIZE * layer.scale * (densityAware ? pixelRatio : 1);
 
   ctx.save();
   ctx.translate(layer.position[0], layer.position[1]);

@@ -1,3 +1,4 @@
+import {getOwner, runWithOwner} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 
 import {IS_FIREFOX} from '../../../environment/userAgent';
@@ -35,6 +36,8 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const context = useMediaEditorContext();
   const {mediaState, mediaSrc, mediaType} = context;
   const {resizableLayers, adjustments} = mediaState;
+
+  const owner = getOwner();
 
   const cropOffset = useCropOffset();
 
@@ -97,7 +100,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const ctx = resultCanvas.getContext('2d', {willReadFrequently: true});
 
   const renderPromise = mediaType === 'video' ?
-    renderToActualVideo({
+    runWithOwner(owner, () => renderToActualVideo({
       context,
       renderingPayload: payload,
       hasAnimatedStickers,
@@ -110,7 +113,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
       resultCanvas,
       brushCanvas,
       ctx
-    }) : hasAnimatedStickers ?
+    })) : hasAnimatedStickers ?
     renderToVideo({
       context,
       scaledWidth,
