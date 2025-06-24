@@ -19,13 +19,13 @@ export default function useFinalTransform() {
 
   const cropOffset = useCropOffset();
 
-  const isCroping = createMemo(() => editorState.currentTab === 'crop');
+  const isCropping = createMemo(() => editorState.currentTab === 'crop');
 
   const [cropTabAnimationProgress, setCropTabAnimationProgress] = createSignal(0);
 
   let isFirstEffect = true;
   createEffect(
-    on(isCroping, () => {
+    on(isCropping, () => {
       if(isFirstEffect) {
         isFirstEffect = false;
         return;
@@ -33,7 +33,7 @@ export default function useFinalTransform() {
 
       editorState.isMoving = true;
 
-      const cancel = animateValue(cropTabAnimationProgress(), isCroping() ? 1 : 0, 200, setCropTabAnimationProgress, {
+      const cancel = animateValue(cropTabAnimationProgress(), isCropping() ? 1 : 0, 200, setCropTabAnimationProgress, {
         onEnd: () => editorState.isMoving = false
       });
 

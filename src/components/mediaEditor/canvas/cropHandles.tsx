@@ -16,7 +16,7 @@ const MAX_SCALE = 20;
 export default function CropHandles() {
   const {editorState, mediaState} = useMediaEditorContext();
 
-  const isCroping = () => editorState.currentTab === 'crop';
+  const isCropping = () => editorState.currentTab === 'crop';
 
   const cropOffset = useCropOffset();
 
@@ -327,18 +327,18 @@ export default function CropHandles() {
   const coverAnimatedStyle = () =>
     ({
       'transition': 'opacity 0.2s',
-      'transition-timing-function': isCroping() ? 'ease-in' : 'ease-out',
-      'pointer-events': isCroping() ? 'none' : undefined,
-      'opacity': isCroping() ? 0 : 1
+      'transition-timing-function': isCropping() ? 'ease-in' : 'ease-out',
+      'pointer-events': isCropping() ? 'none' : undefined,
+      'opacity': isCropping() ? 0 : 1
     }) as const;
 
   const controlsAnimatedStyle = () =>
     ({
       'transition': 'transform 0.2s, opacity 0.2s',
-      'transition-timing-function': isCroping() ? 'ease-out' : 'ease-in',
-      'pointer-events': isCroping() ? undefined : 'none',
-      'opacity': isCroping() ? 1 : 0,
-      'transform': isCroping() ? undefined : 'scale(1.05)'
+      'transition-timing-function': isCropping() ? 'ease-out' : 'ease-in',
+      'pointer-events': isCropping() ? undefined : 'none',
+      'opacity': isCropping() ? 1 : 0,
+      'transform': isCropping() ? undefined : 'scale(1.05)'
     }) as const;
 
   return (

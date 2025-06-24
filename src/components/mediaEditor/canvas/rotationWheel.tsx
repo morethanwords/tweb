@@ -26,7 +26,7 @@ function rotationFromMove(amount: number) {
 export default function RotationWheel() {
   const {editorState, mediaState, actions} = useMediaEditorContext();
 
-  const isCroping = () => editorState.currentTab === 'crop';
+  const isCropping = () => editorState.currentTab === 'crop';
 
   const [moved, setMoved] = createSignal(0);
   const [movedDiff, setMovedDiff] = createSignal(0);
@@ -238,7 +238,7 @@ export default function RotationWheel() {
     .replace(/^-0$/, '0');
 
   return (
-    <div class="media-editor__rotation-wheel" style={{display: isCroping() ? undefined : 'none'}}>
+    <div class="media-editor__rotation-wheel" style={{display: isCropping() ? undefined : 'none'}}>
       <ButtonIconTsx onClick={withCurrentOwner(rotateLeft)} class="media-editor__rotation-wheel-button" icon="rotate" />
       <div class="media-editor__rotation-wheel-swiper-wrapper">
         <div
