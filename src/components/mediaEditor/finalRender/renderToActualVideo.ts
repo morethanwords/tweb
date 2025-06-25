@@ -4,6 +4,7 @@ import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
 import {animate} from '../../../helpers/animation';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
 import ListenerSetter from '../../../helpers/listenerSetter';
+import clamp from '../../../helpers/number/clamp';
 
 import {MediaEditorContextValue} from '../context';
 import {delay} from '../utils';
@@ -52,11 +53,12 @@ export default async function renderToActualVideo({
   brushCanvas,
   resultCanvas
 }: RenderToActualVideoArgs) {
-  const {editorState: {pixelRatio}, mediaState: {videoCropStart, videoCropLength}, mediaBlob} = context;
+  const {editorState: {pixelRatio}, mediaState: {videoCropStart, videoCropLength, videoMuted}, mediaBlob} = context;
   const {media: {video}} = renderingPayload;
 
   const owner = getOwner();
 
+  video.muted = true;
   const startTime = video.duration * videoCropStart;
   const endTime = video.duration * (videoCropStart + videoCropLength);
 
@@ -90,7 +92,11 @@ export default async function renderToActualVideo({
 
   let currentVideoFrameDeferred: CancellablePromise<number>;
 
-  const audioBuffer = await extractAudioFragment(mediaBlob, startTime, endTime);
+  let audioBuffer: AudioBuffer;
+
+  if(!videoMuted) try {
+    audioBuffer = await extractAudioFragment(mediaBlob, startTime, endTime);
+  } catch{}
 
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),
@@ -99,11 +105,11 @@ export default async function renderToActualVideo({
       width: scaledWidth,
       height: scaledHeight
     },
-    audio: {
+    audio: audioBuffer ? {
       codec: 'opus',
       sampleRate: audioBuffer.sampleRate,
       numberOfChannels: audioBuffer.numberOfChannels
-    },
+    } : undefined,
     fastStart: 'in-memory'
   });
 
@@ -222,7 +228,7 @@ export default async function renderToActualVideo({
 
     while(video.currentTime < endTime - 0.0001) {
       await renderFrame(frameNo);
-      setProgress((video.currentTime - startTime) / (endTime - startTime));
+      setProgress(clamp((video.currentTime - startTime) / (endTime - startTime), 0, 1));
       frameNo++;
     }
     done = true;

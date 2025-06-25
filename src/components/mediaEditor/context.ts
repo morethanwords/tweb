@@ -25,6 +25,7 @@ type EditingMediaStateWithoutHistory = {
   currentVideoTime: number;
   videoCropStart: number;
   videoCropLength: number;
+  videoMuted: boolean;
 
   adjustments: Record<AdjustmentKey, number>;
 
@@ -108,6 +109,7 @@ const getDefaultEditingMediaState = (): EditingMediaState => ({
   currentVideoTime: 0,
   videoCropStart: 0,
   videoCropLength: 1,
+  videoMuted: false,
 
   adjustments: Object.fromEntries(adjustmentsConfig.map(entry => [entry.key, 0])) as Record<AdjustmentKey, number>,
 
@@ -207,7 +209,7 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
   const [hasModifications, setHasModifications] = createSignal(false);
 
-  const keysToExcept = ['history', 'redoHistory'] satisfies (keyof EditingMediaState)[];
+  const keysToExcept = ['history', 'redoHistory', 'currentVideoTime'] satisfies (keyof EditingMediaState)[];
 
   const debouncedUpdateHasModifications = debounce(() => {
     setHasModifications(

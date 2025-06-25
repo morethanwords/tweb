@@ -50,6 +50,10 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
   });
 
   createEffect(() => {
+    video.muted = mediaState.videoMuted;
+  });
+
+  createEffect(() => {
     if(!editorState.isPlaying) return;
 
     let

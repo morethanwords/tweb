@@ -3,9 +3,11 @@ import {batch, Component, createMemo, createSignal} from 'solid-js';
 import clamp from '../../../helpers/number/clamp';
 import swipe, {SwipeDirectiveArgs} from '../../../helpers/useSwipe'; swipe; // keep
 import useElementSize from '../../../hooks/useElementSize';
+import {i18n} from '../../../lib/langPack';
 
 import {IconTsx} from '../../iconTsx';
 import ripple from '../../ripple'; ripple; // keep
+import showTooltip from '../../tooltip';
 
 import {useMediaEditorContext} from '../context';
 
@@ -18,10 +20,9 @@ const HANDLE_WIDTH_PX = 9;
 const MOVE_ACTIVATION_THRESHOLD_PX = 2;
 
 const VideoControls: Component<{}> = () => {
-  const {editorState, mediaState, actions, mediaSrc} = useMediaEditorContext();
+  const {editorState, mediaState, actions} = useMediaEditorContext();
 
   const [cropper, setCropper] = createSignal<HTMLDivElement>();
-
   const [isDraggingMiddle, setIsDraggingMiddle] = createSignal(false);
 
   const cropperSize = useElementSize(cropper);
@@ -106,6 +107,17 @@ const VideoControls: Component<{}> = () => {
     actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength));
   };
 
+  const showMutedTooltip = (el: HTMLElement) => showTooltip({
+    element: el,
+    mountOn: el.parentElement.parentElement.parentElement,
+    vertical: 'top',
+    textElement: i18n('MediaEditor.VideoMutedTooltip'),
+    lighter: true,
+    auto: true
+  });
+
+  let closeTooltip: () => void;
+
   return (
     <div
       class={styles.Container}
@@ -120,11 +132,20 @@ const VideoControls: Component<{}> = () => {
       <div class={styles.InnerContainer}>
         <button
           use:ripple
-          class={`btn-icon ${styles.IconButton} ${styles.MuteButton} ${styles.muted}`}
-          onClick={() => {}}
+          class={`btn-icon ${styles.IconButton} ${styles.MuteButton}`}
+          classList={{
+            [styles.muted]: mediaState.videoMuted
+          }}
+          onClick={(e) => {
+            mediaState.videoMuted = !mediaState.videoMuted;
+            if(mediaState.videoMuted) {
+              closeTooltip?.();
+              closeTooltip = showMutedTooltip(e.currentTarget).close;
+            }
+          }}
           tabIndex={-1}
         >
-          <IconTsx icon="volume_up" />
+          <IconTsx icon={mediaState.videoMuted ? 'volume_off' : 'volume_up'} />
         </button>
 
         <div class={styles.Frames}>
@@ -145,7 +166,6 @@ const VideoControls: Component<{}> = () => {
 
             <div class={`${styles.CropperHandle} ${styles.CropperHandleLeft}`} use:swipe={leftHandleSwipeArgs} />
             <div class={`${styles.CropperHandle} ${styles.CropperHandleRight}`} use:swipe={rightHandleSwipeArgs} />
-
           </div>
 
           <TimeStick />
