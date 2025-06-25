@@ -25,6 +25,7 @@ type EditingMediaStateWithoutHistory = {
   currentVideoTime: number;
   videoCropStart: number;
   videoCropLength: number;
+  videoThumbnailPosition: number;
   videoMuted: boolean;
 
   adjustments: Record<AdjustmentKey, number>;
@@ -89,13 +90,19 @@ export type MediaEditorState = {
   isPlaying: boolean;
 };
 
+export enum SetVideoTimeFlags {
+  Redraw = 0b001,
+  UpdateCursor = 0b010,
+  UpdateVideo = 0b100,
+};
+
 export type EditorOverridableGlobalActions = {
   pushToHistory: (item: HistoryItem) => void;
   setInitialImageRatio: (ratio: number) => void;
   redrawBrushes: () => void;
   abortDrawerSlide: () => void;
   resetRotationWheel: () => void;
-  setVideoTime: (time: number) => void;
+  setVideoTime: (time: number, flags?: SetVideoTimeFlags) => void;
 };
 
 
@@ -109,6 +116,7 @@ const getDefaultEditingMediaState = (): EditingMediaState => ({
   currentVideoTime: 0,
   videoCropStart: 0,
   videoCropLength: 1,
+  videoThumbnailPosition: 0,
   videoMuted: false,
 
   adjustments: Object.fromEntries(adjustmentsConfig.map(entry => [entry.key, 0])) as Record<AdjustmentKey, number>,

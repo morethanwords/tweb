@@ -1,5 +1,5 @@
 import {createEffect, onCleanup} from 'solid-js';
-import {useMediaEditorContext} from '../context';
+import {SetVideoTimeFlags, useMediaEditorContext} from '../context';
 import {animate} from '../../../helpers/animation';
 import clamp from '../../../helpers/number/clamp';
 
@@ -19,10 +19,10 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
   // We don't want this 'seeked' event to be fired when generating the final result
   let pendingSeek = false;
 
-  actions.setVideoTime = (time: number, redraw = true) => {
-    mediaState.currentVideoTime = time;
-    video.currentTime = time * video.duration;
-    if(redraw) pendingSeek = true;
+  actions.setVideoTime = (time: number, flags = SetVideoTimeFlags.Redraw | SetVideoTimeFlags.UpdateVideo | SetVideoTimeFlags.UpdateCursor) => {
+    if(flags & SetVideoTimeFlags.UpdateCursor) mediaState.currentVideoTime = time;
+    if(flags & SetVideoTimeFlags.UpdateVideo) video.currentTime = time * video.duration;
+    if(flags & SetVideoTimeFlags.Redraw) pendingSeek = true;
   };
 
   const seekListener = () => {

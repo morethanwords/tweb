@@ -109,6 +109,8 @@ export type SendFileDetails = {
   height: number,
   objectURL: string,
   thumb: {
+    isCover?: boolean;
+
     blob: Blob,
     url: string,
     size: MediaSize

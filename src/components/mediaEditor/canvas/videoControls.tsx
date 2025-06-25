@@ -9,7 +9,7 @@ import {IconTsx} from '../../iconTsx';
 import ripple from '../../ripple'; ripple; // keep
 import showTooltip from '../../tooltip';
 
-import {useMediaEditorContext} from '../context';
+import {SetVideoTimeFlags, useMediaEditorContext} from '../context';
 
 import useVideoControlsCanvas from './useVideoControlsCanvas';
 
@@ -192,8 +192,9 @@ const VideoControls: Component<{}> = () => {
 const ThumbnailTrack: Component<{
   cropper: HTMLDivElement;
 }> = (props) => {
+  const {actions, editorState, mediaState} = useMediaEditorContext();
+
   const [ghostThumbnailPosition, setGhostThumbnailPosition] = createSignal<number>();
-  const [thumbnailPosition, setThumbnailPosition] = createSignal(0);
 
   const [isDragging, setIsDragging] = createSignal(false);
 
@@ -202,35 +203,50 @@ const ThumbnailTrack: Component<{
   const onClick = (e: MouseEvent) => {
     if(!props.cropper) return;
 
-    setThumbnailPosition(getPositionInCropper(e, props.cropper));
+    mediaState.videoThumbnailPosition = getPositionInCropper(e, props.cropper);
   };
 
-  const onPointerMove = (e: PointerEvent) => {
-    if(!props.cropper) return;
+  let canPreviewFrame = false, previewFrameTimeout: number;
 
-    setGhostThumbnailPosition(getPositionInCropper(e, props.cropper));
+  const onPointerMove = (e: PointerEvent) => {
+    if(!props.cropper || editorState.isPlaying) return;
+
+    if(!previewFrameTimeout) previewFrameTimeout = self.setTimeout(() => {
+      canPreviewFrame = true;
+    }, 200);
+
+    if(canPreviewFrame) {
+      const position = getPositionInCropper(e, props.cropper);
+      setGhostThumbnailPosition(position);
+      actions.setVideoTime(position, SetVideoTimeFlags.UpdateVideo | SetVideoTimeFlags.Redraw);
+    }
   };
 
   const onPointerOut = () => {
+    if(canPreviewFrame) actions.setVideoTime(mediaState.currentVideoTime, SetVideoTimeFlags.UpdateVideo | SetVideoTimeFlags.Redraw);
+
     setGhostThumbnailPosition();
+    canPreviewFrame = false;
+    self.clearTimeout(previewFrameTimeout);
+    previewFrameTimeout = undefined;
   };
 
   const swipeArgs: SwipeDirectiveArgs = {
     onStart: (e) => {
       void setIsDragging(true);
       if(!props.cropper) return;
-      setThumbnailPosition(getPositionInCropper(e, props.cropper));
+      mediaState.videoThumbnailPosition = getPositionInCropper(e, props.cropper);
     },
     onMove: (_, __, e) => {
       if(!props.cropper) return;
-      setThumbnailPosition(getPositionInCropper(e, props.cropper));
+      mediaState.videoThumbnailPosition = getPositionInCropper(e, props.cropper);
     },
     onEnd: () => void setIsDragging(false)
   };
 
   return (
     <>
-      <ThumbnailMark position={thumbnailPosition()} visible />
+      <ThumbnailMark position={mediaState.videoThumbnailPosition} visible />
       <ThumbnailMark position={ghostThumbnailPosition() || 0} ghost visible={isGhostThumbnailVisible()} />
 
       <div

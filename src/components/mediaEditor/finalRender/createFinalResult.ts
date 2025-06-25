@@ -2,6 +2,7 @@ import {getOwner, runWithOwner} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 
 import {IS_FIREFOX} from '../../../environment/userAgent';
+import {MediaSize} from '../../../helpers/mediaSize';
 
 import {useCropOffset} from '../canvas/useCropOffset';
 import BrushPainter from '../canvas/brushPainter';
@@ -20,9 +21,17 @@ import renderToImage from './renderToImage';
 import renderToActualVideo from './renderToActualVideo';
 
 
+export type MediaEditorFinalResultPayload = {
+  blob: Blob;
+  thumb?: {
+    blob: Blob;
+    size: MediaSize;
+  }
+};
+
 export type MediaEditorFinalResult = {
   preview: Blob;
-  getResult: () => Blob | Promise<Blob>;
+  getResult: () => MediaEditorFinalResultPayload | Promise<MediaEditorFinalResultPayload>;
   isVideo: boolean;
   hasSound: boolean;
   width: number;

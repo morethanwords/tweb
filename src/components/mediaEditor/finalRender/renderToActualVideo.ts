@@ -4,14 +4,16 @@ import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
 import {animate} from '../../../helpers/animation';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
 import ListenerSetter from '../../../helpers/listenerSetter';
+import {MediaSize} from '../../../helpers/mediaSize';
 import clamp from '../../../helpers/number/clamp';
 
 import {MediaEditorContextValue} from '../context';
-import {delay} from '../utils';
+import {delay, snapToViewport} from '../utils';
 import {RenderingPayload} from '../webgl/initWebGL';
 
 import calcBitrate, {BITRATE_TARGET_FPS} from './calcBitrate';
 import {FRAMES_PER_SECOND, STICKER_SIZE} from './constants';
+import {MediaEditorFinalResultPayload} from './createFinalResult';
 import drawStickerLayer from './drawStickerLayer';
 import drawTextLayer from './drawTextLayer';
 import {generateVideoPreview} from './generateVideoPreview';
@@ -37,7 +39,10 @@ export type RenderToActualVideoArgs = {
   resultCanvas: HTMLCanvasElement;
 };
 
-const STICKER_FPS = 30;
+const EXPECTED_FPS = 30;
+const VIDEO_COMPARISON_ERROR = 0.0001;
+
+const THUMBNAIL_MAX_SIZE = 400;
 
 export default async function renderToActualVideo({
   context,
@@ -53,7 +58,7 @@ export default async function renderToActualVideo({
   brushCanvas,
   resultCanvas
 }: RenderToActualVideoArgs) {
-  const {editorState: {pixelRatio}, mediaState: {videoCropStart, videoCropLength, videoMuted}, mediaBlob} = context;
+  const {editorState: {pixelRatio}, mediaState: {videoCropStart, videoCropLength, videoMuted, videoThumbnailPosition}, mediaBlob} = context;
   const {media: {video}} = renderingPayload;
 
   const owner = getOwner();
@@ -70,6 +75,13 @@ export default async function renderToActualVideo({
   const [, setProgress] = gifCreationProgress.signal;
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
+
+  const thumbnailCanvas = document.createElement('canvas');
+  [thumbnailCanvas.width, thumbnailCanvas.height] = snapToViewport(scaledWidth / scaledHeight, THUMBNAIL_MAX_SIZE, THUMBNAIL_MAX_SIZE);
+  const thumbnailCtx = thumbnailCanvas.getContext('2d');
+
+  const thumbnailTime = videoThumbnailPosition * video.duration;
+  let drewThumbnail = false;
 
   await Promise.all(
     scaledLayers.map(async(layer) => {
@@ -125,16 +137,18 @@ export default async function renderToActualVideo({
     bitrate: calcBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS, 1)
   });
 
-  let lastTime = 0;
+  let lastTime = 0, frameCallbackId: number;
+
+  function drawToTexture() {
+    gl.bindTexture(gl.TEXTURE_2D, renderingPayload.texture);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
+  }
 
   async function renderFrame(frameNo: number, appendToMuxer = true) {
-    console.time('videoFrame' + frameNo);
     currentVideoFrameDeferred = deferredPromise();
 
     const callback = (mediaTime: number) => {
-      gl.bindTexture(gl.TEXTURE_2D, renderingPayload.texture);
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
-
+      drawToTexture();
       video.pause();
 
       currentVideoFrameDeferred.resolve(mediaTime);
@@ -142,28 +156,31 @@ export default async function renderToActualVideo({
 
     if(frameNo === 0) callback(0);
     else {
-      video.requestVideoFrameCallback((_, {mediaTime}) => void callback(mediaTime));
+      frameCallbackId = video.requestVideoFrameCallback((_, {mediaTime}) => void callback(mediaTime));
       if(video.paused && appendToMuxer) video.play();
     }
 
     const mediaTime = await currentVideoFrameDeferred;
-    console.timeEnd('videoFrame' + frameNo);
 
     const currentTime = frameNo === 0 ? 0 : mediaTime - startTime;
 
-    console.log('[my-debug] additional frame currentTime, lastTime ', currentTime, lastTime);
-
     // Fill static frame with stickers frames
     if(hasAnimatedStickers) {
-      const untilFrame = Math.round(currentTime * STICKER_FPS);
-      for(let frame = Math.round(lastTime * STICKER_FPS) + 1; frame < untilFrame; frame++) {
-        await renderFrame2(frame / STICKER_FPS * FRAMES_PER_SECOND | 0, frame / STICKER_FPS * 1e6 | 0, true);
+      const untilFrame = Math.round(currentTime * EXPECTED_FPS);
+      for(let frame = Math.round(lastTime * EXPECTED_FPS) + 1; frame < untilFrame; frame++) {
+        await renderFrame2(frame / EXPECTED_FPS * FRAMES_PER_SECOND | 0, frame / EXPECTED_FPS * 1e6 | 0, true);
       }
     }
 
     lastTime = currentTime;
 
     await renderFrame2(currentTime * FRAMES_PER_SECOND | 0, currentTime * 1e6 | 0, appendToMuxer);
+
+    // Save the thumbnail if it's more or less in the same frame as the current time
+    if(!drewThumbnail && thumbnailTime - 0.5 / EXPECTED_FPS <= currentTime && currentTime <= thumbnailTime + 0.5 / EXPECTED_FPS) {
+      drewThumbnail = true;
+      thumbnailCtx.drawImage(resultCanvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
+    }
   }
 
 
@@ -210,7 +227,7 @@ export default async function renderToActualVideo({
 
   const preview = await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
 
-  const resultPromise = new Promise<Blob>(async(resolve) => {
+  const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve) => {
     await delay(200);
     video.play();
 
@@ -219,23 +236,41 @@ export default async function renderToActualVideo({
     let done = false;
 
     animate(() => {
-      if(video.currentTime >= endTime - 0.0001) {
+      if(video.currentTime >= endTime - VIDEO_COMPARISON_ERROR) {
         done = true;
         currentVideoFrameDeferred.resolve(endTime);
       }
       return !done;
     });
 
-    while(video.currentTime < endTime - 0.0001) {
+    while(video.currentTime < endTime - VIDEO_COMPARISON_ERROR) {
       await renderFrame(frameNo);
       setProgress(clamp((video.currentTime - startTime) / (endTime - startTime), 0, 1));
       frameNo++;
     }
     done = true;
+    video.cancelVideoFrameCallback(frameCallbackId);
+    video.pause();
+
+    if(!drewThumbnail) {
+      const deferred = deferredPromise<void>();
+
+      video.addEventListener('seeked', () => {
+        deferred.resolve();
+      }, {once: true});
+      video.currentTime = thumbnailTime;
+
+      await Promise.race([deferred, delay(2_000)]); // just in case you know
+
+      drawToTexture();
+      await renderFrame2(thumbnailTime * FRAMES_PER_SECOND | 0, 0, false);
+      thumbnailCtx.drawImage(resultCanvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
+    }
+
 
     console.log('[my-debug] before flushing');
 
-    if(audioBuffer)  await encodeAndMuxAudio(audioBuffer, (chunk) => muxer.addAudioChunk(chunk));
+    if(audioBuffer) await encodeAndMuxAudio(audioBuffer, (chunk) => muxer.addAudioChunk(chunk));
 
     await encoder.flush();
 
@@ -251,14 +286,22 @@ export default async function renderToActualVideo({
 
     setProgress(1);
 
+    const thumbBlob = await new Promise<Blob>(resolve => thumbnailCanvas.toBlob(resolve));
+
     console.log('[my-debug] before resolve');
-    resolve(new Blob([buffer], {type: 'video/mp4'}));
+    resolve({
+      blob: new Blob([buffer], {type: 'video/mp4'}),
+      thumb: {
+        blob: thumbBlob,
+        size: new MediaSize(thumbnailCanvas.width, thumbnailCanvas.height)
+      }
+    });
     console.log('[my-debug] resolved');
   });
 
-  let result: Blob;
+  let result: MediaEditorFinalResultPayload;
 
-  resultPromise.then((blob) => (result = blob));
+  resultPromise.then((value) => (result = value));
 
   return {
     preview,

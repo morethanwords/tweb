@@ -1,4 +1,5 @@
 import {MediaEditorContextValue} from '../context';
+import {MediaEditorFinalResultPayload} from './createFinalResult';
 
 import drawStickerLayer from './drawStickerLayer';
 import drawTextLayer from './drawTextLayer';
@@ -37,10 +38,10 @@ export default async function renderToImage({
     }
   });
 
-  const result = await new Promise<Blob>((resolve) => resultCanvas.toBlob(resolve));
+  const result = await new Promise<MediaEditorFinalResultPayload>((resolve) => resultCanvas.toBlob(blob => resolve({blob})));
 
   return {
-    preview: result,
+    preview: result.blob,
     isVideo: false,
     hasSound: false,
     getResult: () => result

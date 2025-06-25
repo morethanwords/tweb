@@ -1,17 +1,18 @@
-import {createRoot, createSignal} from 'solid-js';
 import {ArrayBufferTarget, Muxer} from 'mp4-muxer';
+import {createRoot, createSignal} from 'solid-js';
 
 import {MediaEditorContextValue} from '../context';
 import {delay} from '../utils';
 
-import {StickerFrameByFrameRenderer} from './types';
+import {FRAMES_PER_SECOND, STICKER_SIZE} from './constants';
+import {MediaEditorFinalResultPayload} from './createFinalResult';
+import drawStickerLayer from './drawStickerLayer';
+import drawTextLayer from './drawTextLayer';
+import {ScaledLayersAndLines} from './getScaledLayersAndLines';
 import ImageStickerFrameByFrameRenderer from './imageStickerFrameByFrameRenderer';
 import LottieStickerFrameByFrameRenderer from './lottieStickerFrameByFrameRenderer';
+import {StickerFrameByFrameRenderer} from './types';
 import VideoStickerFrameByFrameRenderer from './videoStickerFrameByFrameRenderer';
-import {FRAMES_PER_SECOND, STICKER_SIZE} from './constants';
-import {ScaledLayersAndLines} from './getScaledLayersAndLines';
-import drawTextLayer from './drawTextLayer';
-import drawStickerLayer from './drawStickerLayer';
 
 export type RenderToVideoArgs = {
   context: MediaEditorContextValue;
@@ -120,7 +121,7 @@ export default async function renderToVideo({
 
   const preview = await new Promise<Blob>((resolve) => resultCanvas.toBlob(resolve));
 
-  const resultPromise = new Promise<Blob>(async(resolve) => {
+  const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve) => {
     await delay(200);
     for(let frameNo = 1; frameNo <= maxFrames; frameNo++) {
       // console.log('rendering frameNo', frameNo)
@@ -134,12 +135,12 @@ export default async function renderToVideo({
     Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
 
     const {buffer} = muxer.target;
-    resolve(new Blob([buffer], {type: 'video/mp4'}));
+    resolve({blob: new Blob([buffer], {type: 'video/mp4'})});
   });
 
-  let result: Blob;
+  let result: MediaEditorFinalResultPayload;
 
-  resultPromise.then((blob) => (result = blob));
+  resultPromise.then((value) => (result = value));
 
   return {
     preview,

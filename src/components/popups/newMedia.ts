@@ -59,7 +59,7 @@ import PopupMakePaid from './makePaid';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import Icon from '../icon';
 import {openMediaEditor} from '../mediaEditor/mediaEditor';
-import {MediaEditorFinalResult} from '../mediaEditor/finalRender/createFinalResult';
+import {MediaEditorFinalResult, MediaEditorFinalResultPayload} from '../mediaEditor/finalRender/createFinalResult';
 import RenderProgressCircle from '../mediaEditor/renderProgressCircle';
 import {animateValue, delay, lerp, snapToViewport} from '../mediaEditor/utils';
 import {IS_MOBILE} from '../../environment/userAgent';
@@ -678,7 +678,7 @@ export default class PopupNewMedia extends PopupElement {
     const editResult = params.editResult?.getResult();
     if(!editResult || editResult instanceof Promise) return undefined;
 
-    return this.wrapMediaEditorBlobInFile(params.file, editResult, params.editResult?.isVideo);
+    return this.wrapMediaEditorBlobInFile(params.file, editResult.blob, params.editResult?.isVideo);
   }
 
   private async send(force = false) {
@@ -867,17 +867,17 @@ export default class PopupNewMedia extends PopupElement {
     let promise: Promise<void>;
 
     if(editResult) {
-      const resultBlob = editResult.getResult();
+      const result = editResult.getResult();
 
-      if(resultBlob instanceof Blob) {
+      if(!(result instanceof Promise)) {
         if(editResult.isVideo) {
           await putImage(editResult.preview);
-          await putVideo(resultBlob);
+          await putVideo(result);
           const gifLabel = i18n('AttachGif');
           gifLabel.classList.add('gif-label');
           itemDiv.append(gifLabel);
         } else {
-          await putImage(resultBlob, true);
+          await putImage(result.blob, true);
         }
       } else {
         await putImage(editResult.preview);
@@ -887,11 +887,11 @@ export default class PopupNewMedia extends PopupElement {
         itemDiv.append(div);
 
         (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
-        resultBlob.then(async(videoBlob) => {
+        result.then(async(result) => {
           dispose();
           editResult.gifCreationProgress?.dispose();
-          await putVideo(videoBlob);
-          if(canVideoBeAnimated(!editResult.hasSound, videoBlob.size)) {
+          await putVideo(result);
+          if(canVideoBeAnimated(!editResult.hasSound, result.blob.size)) {
             const gifLabel = i18n('AttachGif');
             gifLabel.classList.add('gif-label');
             itemDiv.append(gifLabel);
@@ -915,9 +915,9 @@ export default class PopupNewMedia extends PopupElement {
         params.height = editResult.height;
       }
 
-      async function putVideo(blob: Blob) {
+      async function putVideo(result: MediaEditorFinalResultPayload) {
         const video = createVideo({middleware: params.middlewareHelper.get()});
-        const url = await apiManagerProxy.invoke('createObjectURL', blob);
+        const url = await apiManagerProxy.invoke('createObjectURL', result.blob);
         video.src = params.objectURL = url;
         video.autoplay = true;
         video.controls = false;
@@ -935,9 +935,10 @@ export default class PopupNewMedia extends PopupElement {
         params.duration = video.duration;
         params.noSound = !editResult.hasSound;
 
-        const thumb = await createPosterFromVideo(video);
+        const thumb = result.thumb || await createPosterFromVideo(video);
         params.thumb = {
           url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
+          isCover: !!result.thumb,
           ...thumb
         };
       }
@@ -1190,9 +1191,9 @@ export default class PopupNewMedia extends PopupElement {
     const {itemDiv} = params;
     itemDiv.classList.add('popup-item-document');
 
-    const editedBlob = await params.editResult?.getResult();
-    const file = editedBlob ?
-      this.wrapMediaEditorBlobInFile(params.file, editedBlob, params.editResult?.isVideo) :
+    const editResult = await params.editResult?.getResult();
+    const file = editResult ?
+      this.wrapMediaEditorBlobInFile(params.file, editResult.blob, params.editResult?.isVideo) :
       params.file;
 
     const isPhoto = file.type.startsWith('image/');
