@@ -110,7 +110,7 @@ export function MediaEditor(props: MediaEditorProps) {
               .finally(() => { isFinishing = false; });
 
               props.onEditFinish(result);
-              handleClose(true, result.isGif);
+              handleClose(true, result.isVideo);
             });
 
             return (

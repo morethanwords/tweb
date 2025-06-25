@@ -143,7 +143,8 @@ export default async function renderToVideo({
 
   return {
     preview,
-    isGif: true,
+    isVideo: true,
+    hasSound: false,
     getResult: () => {
       return result ?? resultPromise;
     },

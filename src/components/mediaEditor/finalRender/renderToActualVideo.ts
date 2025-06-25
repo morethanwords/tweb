@@ -235,10 +235,9 @@ export default async function renderToActualVideo({
 
     console.log('[my-debug] before flushing');
 
-    await encodeAndMuxAudio(audioBuffer, (chunk) => muxer.addAudioChunk(chunk));
+    if(audioBuffer)  await encodeAndMuxAudio(audioBuffer, (chunk) => muxer.addAudioChunk(chunk));
 
     await encoder.flush();
-
 
     console.log('[my-debug] flushed');
     muxer.finalize();
@@ -263,7 +262,8 @@ export default async function renderToActualVideo({
 
   return {
     preview,
-    isGif: true,
+    isVideo: true,
+    hasSound: !!audioBuffer,
     getResult: () => {
       return result ?? resultPromise;
     },

@@ -82,6 +82,7 @@ import commonStateStorage from '../commonStateStorage';
 import PaidMessagesQueue from './utils/messages/paidMessagesQueue';
 import type {ConfirmedPaymentResult} from '../../components/chat/paidMessagesInterceptor';
 import RepayRequestHandler, {RepayRequest} from '../mtproto/repayRequestHandler';
+import canVideoBeAnimated from './utils/docs/canVideoBeAnimated';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -1082,9 +1083,7 @@ export class AppMessagesManager extends AppManager {
       attributes.push(videoAttribute);
 
       // * must follow after video attribute
-      if(options.noSound &&
-        file.size > (10 * 1024) &&
-        file.size < (10 * 1024 * 1024)) {
+      if(canVideoBeAnimated(options.noSound, file.size)) {
         attributes.push({
           _: 'documentAttributeAnimated'
         });

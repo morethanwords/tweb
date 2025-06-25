@@ -41,7 +41,8 @@ export default async function renderToImage({
 
   return {
     preview: result,
-    isGif: false,
+    isVideo: false,
+    hasSound: false,
     getResult: () => result
   };
 }

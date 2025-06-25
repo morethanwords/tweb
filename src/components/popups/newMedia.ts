@@ -69,6 +69,7 @@ import throttle from '../../helpers/schedulers/throttle';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
 import ListenerSetter from '../../helpers/listenerSetter';
+import canVideoBeAnimated from '../../lib/appManagers/utils/docs/canVideoBeAnimated';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -677,7 +678,7 @@ export default class PopupNewMedia extends PopupElement {
     const editResult = params.editResult?.getResult();
     if(!editResult || editResult instanceof Promise) return undefined;
 
-    return this.wrapMediaEditorBlobInFile(params.file, editResult, params.editResult?.isGif);
+    return this.wrapMediaEditorBlobInFile(params.file, editResult, params.editResult?.isVideo);
   }
 
   private async send(force = false) {
@@ -869,9 +870,9 @@ export default class PopupNewMedia extends PopupElement {
       const resultBlob = editResult.getResult();
 
       if(resultBlob instanceof Blob) {
-        if(editResult.isGif) {
-          await putImage(editResult.preview),
-          await putVideo(resultBlob)
+        if(editResult.isVideo) {
+          await putImage(editResult.preview);
+          await putVideo(resultBlob);
           const gifLabel = i18n('AttachGif');
           gifLabel.classList.add('gif-label');
           itemDiv.append(gifLabel);
@@ -890,9 +891,11 @@ export default class PopupNewMedia extends PopupElement {
           dispose();
           editResult.gifCreationProgress?.dispose();
           await putVideo(videoBlob);
-          const gifLabel = i18n('AttachGif');
-          gifLabel.classList.add('gif-label');
-          itemDiv.append(gifLabel);
+          if(canVideoBeAnimated(!editResult.hasSound, videoBlob.size)) {
+            const gifLabel = i18n('AttachGif');
+            gifLabel.classList.add('gif-label');
+            itemDiv.append(gifLabel);
+          }
           (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
         });
       }
@@ -930,7 +933,7 @@ export default class PopupNewMedia extends PopupElement {
         params.width = editResult.width;
         params.height = editResult.height;
         params.duration = video.duration;
-        params.noSound = true;
+        params.noSound = !editResult.hasSound;
 
         const thumb = await createPosterFromVideo(video);
         params.thumb = {
@@ -1170,11 +1173,11 @@ export default class PopupNewMedia extends PopupElement {
     });
   }
 
-  private wrapMediaEditorBlobInFile(originalFile: File, editedBlob: Blob, isGif: boolean) {
+  private wrapMediaEditorBlobInFile(originalFile: File, editedBlob: Blob, isVideo: boolean) {
     if(this.cachedMediaEditorFiles.has(editedBlob)) return this.cachedMediaEditorFiles.get(editedBlob);
 
     let name = originalFile.name;
-    if(isGif) name = name.replace(/\.[^.]+$/, '.mp4');
+    if(isVideo) name = name.replace(/\.[^.]+$/, '.mp4');
 
     const result = new File([editedBlob], name, {type: editedBlob.type});
     this.cachedMediaEditorFiles.set(editedBlob, result);
@@ -1189,7 +1192,7 @@ export default class PopupNewMedia extends PopupElement {
 
     const editedBlob = await params.editResult?.getResult();
     const file = editedBlob ?
-      this.wrapMediaEditorBlobInFile(params.file, editedBlob, params.editResult?.isGif) :
+      this.wrapMediaEditorBlobInFile(params.file, editedBlob, params.editResult?.isVideo) :
       params.file;
 
     const isPhoto = file.type.startsWith('image/');
@@ -1407,7 +1410,7 @@ export default class PopupNewMedia extends PopupElement {
 
   private hasGif() {
     const {sendFileDetails} = this.willAttach;
-    return sendFileDetails.some((params) => params.editResult?.isGif);
+    return sendFileDetails.some((params) => params.editResult?.isVideo);
   }
 
   private iterate(cb: (sendFileDetails: SendFileParams[]) => void) {

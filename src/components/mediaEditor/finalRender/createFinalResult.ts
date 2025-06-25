@@ -23,7 +23,8 @@ import renderToActualVideo from './renderToActualVideo';
 export type MediaEditorFinalResult = {
   preview: Blob;
   getResult: () => Blob | Promise<Blob>;
-  isGif: boolean;
+  isVideo: boolean;
+  hasSound: boolean;
   width: number;
   height: number;
   originalSrc: string;
