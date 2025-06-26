@@ -936,9 +936,11 @@ export default class PopupNewMedia extends PopupElement {
         params.noSound = !editResult.hasSound;
 
         const thumb = result.thumb || await createPosterFromVideo(video);
+        const canBeAnimated = canVideoBeAnimated(!editResult.hasSound, result.blob.size);
+
         params.thumb = {
           url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
-          isCover: !!result.thumb,
+          isCover: !canBeAnimated && !!result.thumb,
           ...thumb
         };
       }
