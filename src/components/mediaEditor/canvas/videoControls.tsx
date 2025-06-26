@@ -144,10 +144,8 @@ const VideoControls: Component<{}> = () => {
           }}
           onClick={(e) => {
             mediaState.videoMuted = !mediaState.videoMuted;
-            if(mediaState.videoMuted) {
-              closeTooltip?.();
-              closeTooltip = showMutedTooltip(e.currentTarget).close;
-            }
+            closeTooltip?.();
+            if(mediaState.videoMuted) closeTooltip = showMutedTooltip(e.currentTarget).close;
           }}
           tabIndex={-1}
         >
