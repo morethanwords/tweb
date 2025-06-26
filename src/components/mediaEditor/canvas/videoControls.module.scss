@@ -13,6 +13,18 @@
 
   transform: translateX(-50%);
 
+  animation: container-fade-in 0.2s forwards;
+
+  @keyframes container-fade-in {
+    from {opacity: 0;}
+    to {opacity: 1;}
+  }
+
+  &.hidden {
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+
   --start: 0.2;
   --length: 0.6;
   --current-time: 0.4;

@@ -126,12 +126,13 @@ const VideoControls: Component<{}> = () => {
   return (
     <div
       class={styles.Container}
+      classList={{
+        [styles.hidden]: editorState.currentTab !== 'adjustments'
+      }}
       style={{
         '--start': mediaState.videoCropStart,
         '--length': mediaState.videoCropLength,
-        '--current-time': mediaState.currentVideoTime,
-        'opacity': editorState.currentTab === 'adjustments' ? 1 : 0,
-        'pointer-events': editorState.currentTab === 'adjustments' ? undefined : 'none'
+        '--current-time': mediaState.currentVideoTime
       }}
     >
       <div class={styles.InnerContainer}>

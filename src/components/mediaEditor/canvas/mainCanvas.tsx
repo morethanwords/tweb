@@ -31,11 +31,6 @@ export default function MainCanvas() {
     });
   });
 
-  const videoControlsTransition = (children: JSX.Element) => !import.meta.hot ?
-    <Transition name="fade">
-      {children}
-    </Transition> : children;
-
   return (
     <div ref={container} class="media-editor__main-canvas">
       <Show when={editorState.canvasSize}>
@@ -48,11 +43,9 @@ export default function MainCanvas() {
           <div ref={(el) => void (editorState.resizeHandlesContainer = el)} class="media-editor__resize-handles-overlay" />
           <CropHandles />
           <RotationWheel />
-          {videoControlsTransition(
-            <Show when={mediaType === 'video' && !!editorState.renderingPayload}>
-              <VideoControls />
-            </Show>
-          )}
+          <Show when={mediaType === 'video' && !!editorState.renderingPayload}>
+            <VideoControls />
+          </Show>
         </Show>
       </Show>
     </div>
