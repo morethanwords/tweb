@@ -2,7 +2,7 @@ import {Accessor, createContext, createEffect, createSignal, on, useContext} fro
 import {createMutable, modifyMutable, produce, Store} from 'solid-js/store';
 
 import exceptKeys from '../../helpers/object/exceptKeys';
-import debounce from '../../helpers/schedulers/debounce';
+import throttle from '../../helpers/schedulers/throttle';
 import type {AppManagers} from '../../lib/appManagers/managers';
 import type {ObjectPath} from '../../types';
 
@@ -219,17 +219,17 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
   const keysToExcept = ['history', 'redoHistory', 'currentVideoTime'] satisfies (keyof EditingMediaState)[];
 
-  const debouncedUpdateHasModifications = debounce(() => {
+  const throttledUpdateHasModifications = throttle(() => {
     setHasModifications(
       !approximateDeepEqual(
         exceptKeys(mediaStateInitClone, keysToExcept),
         exceptKeys(mediaState, keysToExcept)
       )
     );
-  }, 100, false, true);
+  }, 200, false);
 
   createEffect(on(() => traverseObjectDeep(exceptKeys(mediaState, keysToExcept)), () => {
-    debouncedUpdateHasModifications();
+    throttledUpdateHasModifications();
   }));
 
   // (window as any).mediaState = mediaState;
