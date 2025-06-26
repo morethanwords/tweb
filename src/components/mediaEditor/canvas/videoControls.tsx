@@ -1,4 +1,4 @@
-import {batch, Component, createMemo, createSignal} from 'solid-js';
+import {batch, Component, createEffect, createMemo, createSignal} from 'solid-js';
 
 import clamp from '../../../helpers/number/clamp';
 import swipe, {SwipeDirectiveArgs} from '../../../helpers/useSwipe'; swipe; // keep
@@ -28,6 +28,12 @@ const VideoControls: Component<{}> = () => {
   const cropperSize = useElementSize(cropper);
   const strippedWidth = () => cropperSize.width - 2 * HANDLE_WIDTH_PX;
 
+  const minLength = createMemo(() => {
+    const duration = editorState.renderingPayload?.media?.video?.duration;
+    if(!duration) return 0;
+    return Math.min(1, 0.5 / duration);
+  });
+
   let
     canvas: HTMLCanvasElement,
     initialStart: number,
@@ -46,8 +52,7 @@ const VideoControls: Component<{}> = () => {
       initialLength = mediaState.videoCropLength;
     },
     onMove: (xDiff) => void batch(() => {
-      // TODO: minimum video length
-      const diff = clamp(initialStart + xDiff / strippedWidth(), 0, initialStart + initialLength) - initialStart;
+      const diff = clamp(initialStart + xDiff / strippedWidth(), 0, Math.max(0, initialStart + initialLength - minLength())) - initialStart;
       batch(() => {
         mediaState.videoCropStart = (initialStart + diff);
         mediaState.videoCropLength = (initialLength - diff);
@@ -63,9 +68,9 @@ const VideoControls: Component<{}> = () => {
       editorState.isPlaying = false;
     },
     onMove: (xDiff) => void batch(() => {
-      // TODO: minimum video length
       batch(() => {
-        mediaState.videoCropLength = (clamp(initialLength + xDiff / strippedWidth(), 0, 1 - mediaState.videoCropStart));
+        const maxLength = 1 - mediaState.videoCropStart;
+        mediaState.videoCropLength = (clamp(initialLength + xDiff / strippedWidth(), Math.min(minLength(), maxLength), maxLength));
         actions.setVideoTime(mediaState.videoCropStart + mediaState.videoCropLength);
       });
     })
@@ -85,11 +90,11 @@ const VideoControls: Component<{}> = () => {
       if(!canMove) return;
 
       setIsDraggingMiddle(true);
-      // TODO: minimum video length
-      const startDiff = clamp(initialStart + xDiff / strippedWidth(), 0, 1) - initialStart;
+
+      const startDiff = clamp(initialStart + xDiff / strippedWidth(), 0, Math.max(0, 1 - minLength())) - initialStart;
       batch(() => {
-        mediaState.videoCropStart = (initialStart + startDiff);
-        mediaState.videoCropLength = (clamp(initialLength - startDiff + xDiff / strippedWidth(), 0, 1 - mediaState.videoCropStart));
+        mediaState.videoCropStart = initialStart + startDiff;
+        mediaState.videoCropLength = clamp(initialLength - startDiff + xDiff / strippedWidth(), Math.min(1, minLength()), 1 - mediaState.videoCropStart);
 
         actions.setVideoTime(mediaState.videoCropStart);
       });
@@ -169,7 +174,7 @@ const VideoControls: Component<{}> = () => {
           </div>
 
           <TimeStick />
-          <ThumbnailTrack cropper={cropper()} />
+          <ThumbnailTrack cropper={cropper()} isDraggingMiddle={isDraggingMiddle()} />
         </div>
 
         <button
@@ -191,6 +196,7 @@ const VideoControls: Component<{}> = () => {
 
 const ThumbnailTrack: Component<{
   cropper: HTMLDivElement;
+  isDraggingMiddle: boolean;
 }> = (props) => {
   const {actions, editorState, mediaState} = useMediaEditorContext();
 
@@ -198,7 +204,7 @@ const ThumbnailTrack: Component<{
 
   const [isDragging, setIsDragging] = createSignal(false);
 
-  const isGhostThumbnailVisible = createMemo(() => !isDragging() && !isNaN(ghostThumbnailPosition()));
+  const isGhostThumbnailVisible = createMemo(() => !props.isDraggingMiddle && !isDragging() && !isNaN(ghostThumbnailPosition()));
 
   const onClick = (e: MouseEvent) => {
     if(!props.cropper) return;
@@ -209,7 +215,7 @@ const ThumbnailTrack: Component<{
   let canPreviewFrame = false, previewFrameTimeout: number;
 
   const onPointerMove = (e: PointerEvent) => {
-    if(!props.cropper || editorState.isPlaying) return;
+    if(!props.cropper || editorState.isPlaying || props.isDraggingMiddle) return;
 
     if(!previewFrameTimeout) previewFrameTimeout = self.setTimeout(() => {
       canPreviewFrame = true;
