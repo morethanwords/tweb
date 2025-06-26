@@ -2,8 +2,20 @@ import deferredPromise from '../../../helpers/cancellablePromise';
 import handleVideoLeak from '../../../helpers/dom/handleVideoLeak';
 import onMediaLoad from '../../../helpers/onMediaLoad';
 
-export default async function createVideoForDrawing(mediaSrc: string, currentTime = 0) {
+type Options = {
+  /**
+   * [0, 1] will be multiplied by duration
+   */
+  currentTime?: number;
+
+  waitToSeek?: boolean;
+};
+
+export default async function createVideoForDrawing(mediaSrc: string, options: Options = {}) {
   const deferred = deferredPromise<void>();
+
+  const currentTime = options.currentTime ?? 0;
+  const waitToSeek = options.waitToSeek ?? true;
 
   const video = document.createElement('video');
   video.src = mediaSrc;
@@ -14,6 +26,8 @@ export default async function createVideoForDrawing(mediaSrc: string, currentTim
 
   video.addEventListener('timeupdate', () => {
     video.pause();
+
+    if(!waitToSeek) return;
 
     video.addEventListener('seeked', () => void deferred.resolve(), {once: true});
     timeout = self.setTimeout(() => deferred.resolve(), 500); // just in case
@@ -30,7 +44,7 @@ export default async function createVideoForDrawing(mediaSrc: string, currentTim
     deferred.reject();
   }
 
-  await deferred;
+  if(waitToSeek) await deferred;
   self.clearTimeout(timeout);
 
   return video;

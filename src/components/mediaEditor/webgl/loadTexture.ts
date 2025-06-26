@@ -8,6 +8,7 @@ type LoadTextureArgs = {
   mediaSrc: string;
   mediaType: MediaType;
   videoTime: number;
+  waitToSeek?: boolean;
 };
 
 type LoadTextureMedia = {
@@ -22,7 +23,7 @@ type LoadTextureResult = {
   media: LoadTextureMedia;
 };
 
-export async function loadTexture({gl, mediaSrc, mediaType, videoTime}: LoadTextureArgs): Promise<LoadTextureResult> {
+export async function loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSeek}: LoadTextureArgs): Promise<LoadTextureResult> {
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
 
@@ -42,7 +43,7 @@ export async function loadTexture({gl, mediaSrc, mediaType, videoTime}: LoadText
       height: image.naturalHeight
     };
   } else {
-    const video = await createVideoForDrawing(mediaSrc, videoTime);
+    const video = await createVideoForDrawing(mediaSrc, {currentTime: videoTime, waitToSeek});
 
     media = {
       video,

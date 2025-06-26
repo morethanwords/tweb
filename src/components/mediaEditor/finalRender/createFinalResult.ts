@@ -68,7 +68,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     preserveDrawingBuffer: true
   });
 
-  const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.videoCropStart});
+  const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.videoCropStart, waitToSeek: false});
 
   const finalTransform = getResultTransform({
     context,

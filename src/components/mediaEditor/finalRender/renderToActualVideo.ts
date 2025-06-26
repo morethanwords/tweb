@@ -83,23 +83,6 @@ export default async function renderToActualVideo({
   const thumbnailTime = videoThumbnailPosition * video.duration;
   let drewThumbnail = false;
 
-  await Promise.all(
-    scaledLayers.map(async(layer) => {
-      if(!layer.sticker) return;
-
-      const stickerType = layer.sticker?.sticker;
-      let renderer: StickerFrameByFrameRenderer;
-
-      if(stickerType === 1) renderer = new ImageStickerFrameByFrameRenderer();
-      if(stickerType === 2) renderer = new LottieStickerFrameByFrameRenderer();
-      if(stickerType === 3) renderer = new VideoStickerFrameByFrameRenderer();
-      if(!renderer) return;
-
-      renderers.set(layer.id, renderer);
-      await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * pixelRatio);
-    })
-  );
-
   const listenerSetter = new ListenerSetter;
 
   let currentVideoFrameDeferred: CancellablePromise<number>;
@@ -142,6 +125,25 @@ export default async function renderToActualVideo({
   function drawToTexture() {
     gl.bindTexture(gl.TEXTURE_2D, renderingPayload.texture);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
+  }
+
+  async function initStickerRenderers() {
+    await Promise.all(
+      scaledLayers.map(async(layer) => {
+        if(!layer.sticker) return;
+
+        const stickerType = layer.sticker?.sticker;
+        let renderer: StickerFrameByFrameRenderer;
+
+        if(stickerType === 1) renderer = new ImageStickerFrameByFrameRenderer();
+        if(stickerType === 2) renderer = new LottieStickerFrameByFrameRenderer();
+        if(stickerType === 3) renderer = new VideoStickerFrameByFrameRenderer();
+        if(!renderer) return;
+
+        renderers.set(layer.id, renderer);
+        await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * pixelRatio);
+      })
+    );
   }
 
   async function renderFrame(frameNo: number, appendToMuxer = true) {
@@ -228,8 +230,11 @@ export default async function renderToActualVideo({
   const preview = await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
 
   const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve) => {
-    await delay(200);
-    video.play();
+    const firstFrameSeekDeferred = deferredPromise<void>();
+    video.currentTime = video.duration * videoCropStart;
+    video.addEventListener('seeked', () => void firstFrameSeekDeferred.resolve(), {once: true});
+
+    await Promise.all([delay(200), firstFrameSeekDeferred, initStickerRenderers()]);
 
     let frameNo = 0;
 
@@ -263,7 +268,7 @@ export default async function renderToActualVideo({
       await Promise.race([deferred, delay(2_000)]); // just in case you know
 
       drawToTexture();
-      await renderFrame2(thumbnailTime * FRAMES_PER_SECOND | 0, 0, false);
+      await renderFrame2(0, 0, false);
       thumbnailCtx.drawImage(resultCanvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
     }
 
