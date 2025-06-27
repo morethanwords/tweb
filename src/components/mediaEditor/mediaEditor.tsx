@@ -17,6 +17,8 @@ import Toolbar from './toolbar';
 import {MediaType} from './types';
 import {delay, withCurrentOwner} from './utils';
 
+import './mediaEditor.scss';
+
 
 export type MediaEditorProps = {
   onClose: (hasGif: boolean) => void;

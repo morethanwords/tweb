@@ -1,13 +1,13 @@
-import {ArrayBufferTarget, Muxer} from 'mp4-muxer';
-import {createRoot, createSignal} from 'solid-js';
+import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
 
-import {MediaEditorContextValue} from '../context';
+import {useMediaEditorContext} from '../context';
 import {delay} from '../utils';
 
 import {FRAMES_PER_SECOND, STICKER_SIZE} from './constants';
 import {MediaEditorFinalResultPayload} from './createFinalResult';
 import drawStickerLayer from './drawStickerLayer';
 import drawTextLayer from './drawTextLayer';
+import {generateVideoPreview} from './generateVideoPreview';
 import {ScaledLayersAndLines} from './getScaledLayersAndLines';
 import ImageStickerFrameByFrameRenderer from './imageStickerFrameByFrameRenderer';
 import LottieStickerFrameByFrameRenderer from './lottieStickerFrameByFrameRenderer';
@@ -15,7 +15,6 @@ import {StickerFrameByFrameRenderer} from './types';
 import VideoStickerFrameByFrameRenderer from './videoStickerFrameByFrameRenderer';
 
 export type RenderToVideoArgs = {
-  context: MediaEditorContextValue;
   scaledLayers: ScaledLayersAndLines['scaledLayers'];
   scaledWidth: number;
   scaledHeight: number;
@@ -26,7 +25,6 @@ export type RenderToVideoArgs = {
 };
 
 export default async function renderToVideo({
-  context,
   scaledWidth,
   scaledHeight,
   scaledLayers,
@@ -35,6 +33,9 @@ export default async function renderToVideo({
   brushCanvas,
   resultCanvas
 }: RenderToVideoArgs) {
+  const owner = getOwner();
+  const context = useMediaEditorContext();
+
   const {editorState: {pixelRatio}} = context;
 
   const gifCreationProgress = createRoot(dispose => {
@@ -46,50 +47,7 @@ export default async function renderToVideo({
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
 
-  let maxFrames = 0;
-
-  await Promise.all(
-    scaledLayers.map(async(layer) => {
-      if(!layer.sticker) return;
-
-      const stickerType = layer.sticker?.sticker;
-      let renderer: StickerFrameByFrameRenderer;
-
-      if(stickerType === 1) renderer = new ImageStickerFrameByFrameRenderer();
-      if(stickerType === 2) renderer = new LottieStickerFrameByFrameRenderer();
-      if(stickerType === 3) renderer = new VideoStickerFrameByFrameRenderer();
-      if(!renderer) return;
-
-      renderers.set(layer.id, renderer);
-      await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * pixelRatio);
-      maxFrames = Math.max(maxFrames, renderer.getTotalFrames());
-    })
-  );
-
-  const muxer = new Muxer({
-    target: new ArrayBufferTarget(),
-    video: {
-      codec: 'avc',
-      width: scaledWidth,
-      height: scaledHeight,
-      frameRate: FRAMES_PER_SECOND
-    },
-    fastStart: 'in-memory'
-  });
-
-  const encoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error: (e) => console.error(e)
-  });
-
-  encoder.configure({
-    codec: 'avc1.42001f',
-    width: scaledWidth,
-    height: scaledHeight,
-    bitrate: 1e6
-  });
-
-  async function renderFrame(frameNo: number) {
+  async function renderFrame(encoder: VideoEncoder, frameNo: number) {
     const promises = Array.from(renderers.values()).map((renderer) =>
       renderer.renderFrame(frameNo % (renderer.getTotalFrames() + 1))
     );
@@ -115,17 +73,55 @@ export default async function renderToVideo({
     videoFrame.close();
   }
 
-  setProgress(0);
-
-  await renderFrame(0);
-
-  const preview = await new Promise<Blob>((resolve) => resultCanvas.toBlob(resolve));
-
   const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve) => {
-    await delay(200);
-    for(let frameNo = 1; frameNo <= maxFrames; frameNo++) {
+    let maxFrames = 0;
+
+    const [{ArrayBufferTarget, Muxer}] = await Promise.all([
+      import('mp4-muxer'),
+      ...scaledLayers.map(async(layer) => {
+        if(!layer.sticker) return;
+
+        const stickerType = layer.sticker?.sticker;
+        let renderer: StickerFrameByFrameRenderer;
+
+        if(stickerType === 1) renderer = new ImageStickerFrameByFrameRenderer();
+        if(stickerType === 2) renderer = new LottieStickerFrameByFrameRenderer();
+        if(stickerType === 3) renderer = new VideoStickerFrameByFrameRenderer();
+        if(!renderer) return;
+
+        renderers.set(layer.id, renderer);
+        await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * pixelRatio);
+        maxFrames = Math.max(maxFrames, renderer.getTotalFrames());
+      }),
+      delay(200)
+    ]);
+
+    const muxer = new Muxer({
+      target: new ArrayBufferTarget(),
+      video: {
+        codec: 'avc',
+        width: scaledWidth,
+        height: scaledHeight,
+        frameRate: FRAMES_PER_SECOND
+      },
+      fastStart: 'in-memory'
+    });
+
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => console.error(e)
+    });
+
+    encoder.configure({
+      codec: 'avc1.42001f',
+      width: scaledWidth,
+      height: scaledHeight,
+      bitrate: 1e6
+    });
+
+    for(let frameNo = 0; frameNo <= maxFrames; frameNo++) {
       // console.log('rendering frameNo', frameNo)
-      await renderFrame(frameNo);
+      await renderFrame(encoder, frameNo);
       setProgress(frameNo / maxFrames);
     }
 
@@ -135,7 +131,10 @@ export default async function renderToVideo({
     Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
 
     const {buffer} = muxer.target;
-    resolve({blob: new Blob([buffer], {type: 'video/mp4'})});
+    resolve({
+      blob: new Blob([buffer], {type: 'video/mp4'}),
+      hasSound: false
+    });
   });
 
   let result: MediaEditorFinalResultPayload;
@@ -143,9 +142,8 @@ export default async function renderToVideo({
   resultPromise.then((value) => (result = value));
 
   return {
-    preview,
+    preview: await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight})),
     isVideo: true,
-    hasSound: false,
     getResult: () => {
       return result ?? resultPromise;
     },

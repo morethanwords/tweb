@@ -1,4 +1,3 @@
-import {ArrayBufferTarget, Muxer} from 'mp4-muxer';
 import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
 
 import {animate} from '../../../helpers/animation';
@@ -7,7 +6,7 @@ import ListenerSetter from '../../../helpers/listenerSetter';
 import {MediaSize} from '../../../helpers/mediaSize';
 import clamp from '../../../helpers/number/clamp';
 
-import {MediaEditorContextValue} from '../context';
+import {MediaEditorContextValue, useMediaEditorContext} from '../context';
 import {delay, snapToViewport} from '../utils';
 import {RenderingPayload} from '../webgl/initWebGL';
 
@@ -25,7 +24,6 @@ import VideoStickerFrameByFrameRenderer from './videoStickerFrameByFrameRenderer
 
 
 export type RenderToActualVideoArgs = {
-  context: MediaEditorContextValue;
   renderingPayload: RenderingPayload;
   hasAnimatedStickers: boolean;
   scaledLayers: ScaledLayersAndLines['scaledLayers'];
@@ -45,7 +43,6 @@ const VIDEO_COMPARISON_ERROR = 0.0001;
 const THUMBNAIL_MAX_SIZE = 400;
 
 export default async function renderToActualVideo({
-  context,
   renderingPayload,
   hasAnimatedStickers,
   scaledWidth,
@@ -58,7 +55,14 @@ export default async function renderToActualVideo({
   brushCanvas,
   resultCanvas
 }: RenderToActualVideoArgs) {
-  const {editorState: {pixelRatio}, mediaState: {videoCropStart, videoCropLength, videoMuted, videoThumbnailPosition}, mediaBlob} = context;
+  const context = useMediaEditorContext();
+
+  const {
+    editorState: {pixelRatio},
+    mediaState: {videoCropStart, videoCropLength, videoMuted, videoThumbnailPosition},
+    mediaBlob
+  } = context;
+
   const {media: {video}} = renderingPayload;
 
   const owner = getOwner();
@@ -81,46 +85,55 @@ export default async function renderToActualVideo({
   const thumbnailCtx = thumbnailCanvas.getContext('2d');
 
   const thumbnailTime = videoThumbnailPosition * video.duration;
-  let drewThumbnail = false;
 
   const listenerSetter = new ListenerSetter;
 
-  let currentVideoFrameDeferred: CancellablePromise<number>;
+  let
+    currentVideoFrameDeferred: CancellablePromise<number>,
+    lastTime = 0,
+    frameCallbackId: number,
+    drewThumbnail = false
+  ;
 
-  let audioBuffer: AudioBuffer;
 
-  if(!videoMuted) try {
-    audioBuffer = await extractAudioFragment(mediaBlob, startTime, endTime);
-  } catch{}
+  async function initMuxerAndEncoder() {
+    const {Muxer, ArrayBufferTarget} = await import('mp4-muxer');
 
-  const muxer = new Muxer({
-    target: new ArrayBufferTarget(),
-    video: {
-      codec: 'avc',
+    let audioBuffer: AudioBuffer;
+
+    if(!videoMuted) try {
+      audioBuffer = await extractAudioFragment(mediaBlob, startTime, endTime);
+    } catch{}
+
+    const muxer = new Muxer({
+      target: new ArrayBufferTarget(),
+      video: {
+        codec: 'avc',
+        width: scaledWidth,
+        height: scaledHeight
+      },
+      audio: audioBuffer ? {
+        codec: 'opus',
+        sampleRate: audioBuffer.sampleRate,
+        numberOfChannels: audioBuffer.numberOfChannels
+      } : undefined,
+      fastStart: 'in-memory'
+    });
+
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => console.error(e)
+    });
+
+    encoder.configure({
+      codec: 'avc1.42001f',
       width: scaledWidth,
-      height: scaledHeight
-    },
-    audio: audioBuffer ? {
-      codec: 'opus',
-      sampleRate: audioBuffer.sampleRate,
-      numberOfChannels: audioBuffer.numberOfChannels
-    } : undefined,
-    fastStart: 'in-memory'
-  });
+      height: scaledHeight,
+      bitrate: calcBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS, 1)
+    });
 
-  const encoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error: (e) => console.error(e)
-  });
-
-  encoder.configure({
-    codec: 'avc1.42001f',
-    width: scaledWidth,
-    height: scaledHeight,
-    bitrate: calcBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS, 1)
-  });
-
-  let lastTime = 0, frameCallbackId: number;
+    return {muxer, encoder, audioBuffer};
+  }
 
   function drawToTexture() {
     gl.bindTexture(gl.TEXTURE_2D, renderingPayload.texture);
@@ -146,7 +159,7 @@ export default async function renderToActualVideo({
     );
   }
 
-  async function renderFrame(frameNo: number, appendToMuxer = true) {
+  async function prepareAndRenderFrame(encoder: VideoEncoder, frameNo: number) {
     currentVideoFrameDeferred = deferredPromise();
 
     const callback = (mediaTime: number) => {
@@ -159,7 +172,7 @@ export default async function renderToActualVideo({
     if(frameNo === 0) callback(0);
     else {
       frameCallbackId = video.requestVideoFrameCallback((_, {mediaTime}) => void callback(mediaTime));
-      if(video.paused && appendToMuxer) video.play();
+      if(video.paused) video.play();
     }
 
     const mediaTime = await currentVideoFrameDeferred;
@@ -170,13 +183,23 @@ export default async function renderToActualVideo({
     if(hasAnimatedStickers) {
       const untilFrame = Math.round(currentTime * EXPECTED_FPS);
       for(let frame = Math.round(lastTime * EXPECTED_FPS) + 1; frame < untilFrame; frame++) {
-        await renderFrame2(frame / EXPECTED_FPS * FRAMES_PER_SECOND | 0, frame / EXPECTED_FPS * 1e6 | 0, true);
+        await renderFrame({
+          frameNo: frame / EXPECTED_FPS * FRAMES_PER_SECOND | 0,
+          timestamp: frame / EXPECTED_FPS * 1e6 | 0,
+          appendToMuxer: true,
+          encoder
+        });
       }
     }
 
     lastTime = currentTime;
 
-    await renderFrame2(currentTime * FRAMES_PER_SECOND | 0, currentTime * 1e6 | 0, appendToMuxer);
+    await renderFrame({
+      frameNo: currentTime * FRAMES_PER_SECOND | 0,
+      timestamp: currentTime * 1e6 | 0,
+      appendToMuxer: true,
+      encoder
+    });
 
     // Save the thumbnail if it's more or less in the same frame as the current time
     if(!drewThumbnail && thumbnailTime - 0.5 / EXPECTED_FPS <= currentTime && currentTime <= thumbnailTime + 0.5 / EXPECTED_FPS) {
@@ -186,7 +209,14 @@ export default async function renderToActualVideo({
   }
 
 
-  async function renderFrame2(frameNo: number, timestamp: number, appendToMuxer: boolean) {
+  type RenderFrameArgs = {
+    frameNo: number;
+    timestamp: number;
+    appendToMuxer: boolean;
+    encoder: VideoEncoder;
+  };
+
+  async function renderFrame({frameNo, timestamp, appendToMuxer, encoder}: RenderFrameArgs) {
     console.log('[my-debug] additional frame frameNo, timestamp ', frameNo, timestamp);
     console.time('renderFrame2' + frameNo);
 
@@ -234,7 +264,12 @@ export default async function renderToActualVideo({
     video.currentTime = video.duration * videoCropStart;
     video.addEventListener('seeked', () => void firstFrameSeekDeferred.resolve(), {once: true});
 
-    await Promise.all([delay(200), firstFrameSeekDeferred, initStickerRenderers()]);
+    const [{muxer, encoder, audioBuffer}] = await Promise.all([
+      initMuxerAndEncoder(),
+      delay(200),
+      firstFrameSeekDeferred,
+      initStickerRenderers()
+    ]);
 
     let frameNo = 0;
 
@@ -249,10 +284,11 @@ export default async function renderToActualVideo({
     });
 
     while(video.currentTime < endTime - VIDEO_COMPARISON_ERROR) {
-      await renderFrame(frameNo);
+      await prepareAndRenderFrame(encoder, frameNo);
       setProgress(clamp((video.currentTime - startTime) / (endTime - startTime), 0, 1));
       frameNo++;
     }
+
     done = true;
     video.cancelVideoFrameCallback(frameCallbackId);
     video.pause();
@@ -268,7 +304,8 @@ export default async function renderToActualVideo({
       await Promise.race([deferred, delay(2_000)]); // just in case you know
 
       drawToTexture();
-      await renderFrame2(0, 0, false);
+      await renderFrame({frameNo: 0, timestamp: 0, appendToMuxer: false, encoder});
+
       thumbnailCtx.drawImage(resultCanvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
     }
 
@@ -296,6 +333,7 @@ export default async function renderToActualVideo({
     console.log('[my-debug] before resolve');
     resolve({
       blob: new Blob([buffer], {type: 'video/mp4'}),
+      hasSound: !!audioBuffer,
       thumb: {
         blob: thumbBlob,
         size: new MediaSize(thumbnailCanvas.width, thumbnailCanvas.height)
@@ -311,7 +349,6 @@ export default async function renderToActualVideo({
   return {
     preview,
     isVideo: true,
-    hasSound: !!audioBuffer,
     getResult: () => {
       return result ?? resultPromise;
     },

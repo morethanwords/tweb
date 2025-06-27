@@ -23,6 +23,7 @@ import renderToActualVideo from './renderToActualVideo';
 
 export type MediaEditorFinalResultPayload = {
   blob: Blob;
+  hasSound: boolean;
   thumb?: {
     blob: Blob;
     size: MediaSize;
@@ -33,7 +34,6 @@ export type MediaEditorFinalResult = {
   preview: Blob;
   getResult: () => MediaEditorFinalResultPayload | Promise<MediaEditorFinalResultPayload>;
   isVideo: boolean;
-  hasSound: boolean;
   width: number;
   height: number;
   originalSrc: string;
@@ -112,7 +112,6 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const renderPromise = (() => {
     if(mediaType === 'video')
       return runWithOwner(owner, () => renderToActualVideo({
-        context,
         renderingPayload: payload,
         hasAnimatedStickers,
         scaledWidth,
@@ -127,8 +126,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
       }));
 
     if(hasAnimatedStickers)
-      return renderToVideo({
-        context,
+      return runWithOwner(owner, () => renderToVideo({
         scaledWidth,
         scaledHeight,
         scaledLayers,
@@ -136,7 +134,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
         resultCanvas,
         brushCanvas,
         ctx
-      });
+      }));
 
     return renderToImage({
       context,

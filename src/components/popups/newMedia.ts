@@ -58,12 +58,10 @@ import SelectedEffect from '../chat/selectedEffect';
 import PopupMakePaid from './makePaid';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import Icon from '../icon';
-import {openMediaEditor} from '../mediaEditor/mediaEditor';
 import {MediaEditorFinalResult, MediaEditorFinalResultPayload} from '../mediaEditor/finalRender/createFinalResult';
 import RenderProgressCircle from '../mediaEditor/renderProgressCircle';
-import {animateValue, delay, lerp, snapToViewport} from '../mediaEditor/utils';
+import {animateValue, delay, lerp} from '../mediaEditor/utils';
 import {IS_MOBILE} from '../../environment/userAgent';
-import deferredPromise from '../../helpers/cancellablePromise';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import throttle from '../../helpers/schedulers/throttle';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
@@ -891,7 +889,7 @@ export default class PopupNewMedia extends PopupElement {
           dispose();
           editResult.gifCreationProgress?.dispose();
           await putVideo(result);
-          if(canVideoBeAnimated(!editResult.hasSound, result.blob.size)) {
+          if(canVideoBeAnimated(!result.hasSound, result.blob.size)) {
             const gifLabel = i18n('AttachGif');
             gifLabel.classList.add('gif-label');
             itemDiv.append(gifLabel);
@@ -933,10 +931,10 @@ export default class PopupNewMedia extends PopupElement {
         params.width = editResult.width;
         params.height = editResult.height;
         params.duration = video.duration;
-        params.noSound = !editResult.hasSound;
+        params.noSound = !result.hasSound;
 
         const thumb = result.thumb || await createPosterFromVideo(video);
-        const canBeAnimated = canVideoBeAnimated(!editResult.hasSound, result.blob.size);
+        const canBeAnimated = canVideoBeAnimated(!result.hasSound, result.blob.size);
 
         params.thumb = {
           url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
@@ -1030,34 +1028,22 @@ export default class PopupNewMedia extends PopupElement {
 
         let equalizeIcon: HTMLSpanElement;
         if(!this.willAttach.stars && file.type !== 'image/gif') {
+          import('../mediaEditor'); // prefetch
+
           equalizeIcon = Icon('equalizer', itemCls);
-          equalizeIcon.addEventListener('click', () => {
+          equalizeIcon.addEventListener('click', async() => {
             hideActions();
 
             (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
-            const img = itemDiv.querySelector('img') || itemDiv.querySelector('video');
-            if(!img) return;
-            // TODO: Set limit to canvas size, e.g. when it's bigger than the screen
-            const animatedCanvas = document.createElement('canvas');
-            const [sourceWidth, sourceHeight] = [animatedCanvas.width, animatedCanvas.height] = [params.width, params.height];
+            const source = itemDiv.querySelector('video') || itemDiv.querySelector('img');
+            if(!source) return;
 
-            const ctx = animatedCanvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, animatedCanvas.width, animatedCanvas.height);
+            const {openMediaEditorFromMedia} = await import('../mediaEditor');
 
-            const bcr = itemDiv.getBoundingClientRect();
-            animatedCanvas.style.position = 'fixed';
-            const left = bcr.left + bcr.width / 2, top = bcr.top + bcr.height / 2, width = bcr.width, height = bcr.height;
-            animatedCanvas.style.left = left + 'px';
-            animatedCanvas.style.top = top + 'px';
-            animatedCanvas.style.width = width + 'px';
-            animatedCanvas.style.height = height + 'px';
-            animatedCanvas.style.transform = 'translate(-50%, -50%)';
-            animatedCanvas.style.objectFit = 'cover';
-            animatedCanvas.style.zIndex = '1000';
-
-            document.body.append(animatedCanvas);
-
-            openMediaEditor({
+            openMediaEditorFromMedia({
+              source,
+              element: itemDiv,
+              size: [params.width, params.height],
               mediaType: isVideo ? 'video' : 'image',
               mediaSrc: params.editResult?.originalSrc || params.objectURL,
               mediaBlob: file,
@@ -1066,45 +1052,12 @@ export default class PopupNewMedia extends PopupElement {
                 params.editResult = result;
                 this.attachFiles();
               },
-              onCanvasReady: (canvas) => {
-                const canvasBcr = canvas.getBoundingClientRect();
-                const leftDiff = (canvasBcr.left + canvasBcr.width / 2) - left;
-                const topDiff = (canvasBcr.top + canvasBcr.height / 2) - top;
-                const [scaledWidth, scaledHeight] = snapToViewport(sourceWidth / sourceHeight, canvasBcr.width, canvasBcr.height);
-
-                const deferred = deferredPromise<void>();
-
-                animateValue(
-                  0, 1, 200,
-                  (progress) => {
-                    animatedCanvas.style.transform = `translate(calc(${
-                      progress * leftDiff
-                    }px - 50%), calc(${
-                      progress * topDiff
-                    }px - 50%))`;
-                    animatedCanvas.style.width = lerp(width, scaledWidth, progress) + 'px';
-                    animatedCanvas.style.height = lerp(height, scaledHeight, progress) + 'px';
-                  },
-                  {
-                    onEnd: () => deferred.resolve()
-                  }
-                );
-                return deferred;
-              },
-              onImageRendered: async() => {
-                animatedCanvas.style.opacity = '1';
-                animatedCanvas.style.transition = '.12s';
-                await doubleRaf();
-                animatedCanvas.style.opacity = '0';
-                await delay(120);
-                animatedCanvas.remove();
-              },
               editingMediaState: params.editResult?.editingMediaState,
               onClose: (hasGif) => {
                 if(!hasGif)
                   (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
               }
-            }, SolidJSHotReloadGuardProvider);
+            });
           });
         }
 
@@ -1171,6 +1124,7 @@ export default class PopupNewMedia extends PopupElement {
     document.querySelectorAll('.popup-item-media-action-menu')?.forEach(async(el) => {
       this.activeActionsMenu = undefined;
       (el as HTMLElement).style.opacity = '0';
+      (el as HTMLElement).style.pointerEvents = 'none';
       await delay(200);
       el?.remove();
     });

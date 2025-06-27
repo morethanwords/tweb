@@ -38,12 +38,16 @@ export default async function renderToImage({
     }
   });
 
-  const result = await new Promise<MediaEditorFinalResultPayload>((resolve) => resultCanvas.toBlob(blob => resolve({blob})));
+  const result = await new Promise<MediaEditorFinalResultPayload>((resolve) =>
+    resultCanvas.toBlob(blob => resolve({
+      blob,
+      hasSound: false
+    }))
+  );
 
   return {
     preview: result.blob,
     isVideo: false,
-    hasSound: false,
     getResult: () => result
   };
 }
