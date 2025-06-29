@@ -175,6 +175,7 @@ export default async function renderToActualVideo({
     const mediaTime = await currentVideoFrameDeferred;
 
     const currentTime = frameNo === 0 ? 0 : mediaTime - startTime;
+    if(currentTime < lastTime) throw new Error('Current time is less than last time!');
 
     // Fill static frame with stickers frames
     if(hasAnimatedStickers) {
@@ -285,7 +286,11 @@ export default async function renderToActualVideo({
         return;
       }
 
-      await prepareAndRenderFrame(encoder, frameNo);
+      try {
+        await prepareAndRenderFrame(encoder, frameNo);
+      } catch{
+        break;
+      }
       setProgress(clamp((video.currentTime - startTime) / (endTime - startTime), 0, 1));
       frameNo++;
     }
