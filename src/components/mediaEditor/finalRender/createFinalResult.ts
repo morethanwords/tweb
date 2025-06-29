@@ -9,11 +9,11 @@ import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 import BrushPainter from '../canvas/brushPainter';
 import {useCropOffset} from '../canvas/useCropOffset';
 import {EditingMediaState, useMediaEditorContext} from '../context';
-import {StandaloneSignal} from '../types';
+import {NumberPair, StandaloneSignal} from '../types';
 import {draw} from '../webgl/draw';
 import {initWebGL} from '../webgl/initWebGL';
 
-import {cleanupWebGl} from '../utils';
+import {checkIfHasAnimatedStickers, cleanupWebGl, snapToAvailableQuality} from '../utils';
 import getResultSize from './getResultSize';
 import getResultTransform from './getResultTransform';
 import getScaledLayersAndLines from './getScaledLayersAndLines';
@@ -40,6 +40,7 @@ export type MediaEditorFinalResult = {
   width: number;
   height: number;
   originalSrc: string;
+  originalSize?: NumberPair;
   editingMediaState: EditingMediaState;
   animatedPreview?: HTMLImageElement;
   creationProgress?: StandaloneSignal<number>;
@@ -47,21 +48,35 @@ export type MediaEditorFinalResult = {
 
 export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const context = useMediaEditorContext();
-  const {mediaState, mediaSrc, mediaType} = context;
+  const {editorState, mediaState, mediaSrc, mediaType} = context;
   const {resizableLayers, adjustments} = mediaState;
 
   const owner = getOwner();
 
   const cropOffset = useCropOffset();
 
-  const hasAnimatedStickers = !!resizableLayers.find((layer) => {
-    const stickerType = layer.sticker?.sticker;
-    return stickerType === 2 || (!IS_FIREFOX && stickerType === 3);
-  });
+  const hasAnimatedStickers = checkIfHasAnimatedStickers(resizableLayers);
 
   const willResultInVideo = hasAnimatedStickers || mediaType === 'video';
 
-  const [scaledWidth, scaledHeight] = getResultSize(willResultInVideo);
+  const videoType = mediaType === 'video' ? 'video' : hasAnimatedStickers ? 'gif' : undefined;
+
+  const [, maxHeight] = getResultSize({
+    imageWidth: editorState.renderingPayload?.media.width,
+    newRatio: mediaState.currentImageRatio,
+    scale: mediaState.scale,
+    videoType
+  });
+
+  const maxQuality = snapToAvailableQuality(maxHeight);
+
+  const [scaledWidth, scaledHeight] = getResultSize({
+    imageWidth: editorState.renderingPayload?.media.width,
+    newRatio: mediaState.currentImageRatio,
+    scale: mediaState.scale,
+    videoType,
+    quality: willResultInVideo ? Math.min(maxQuality, mediaState.videoQuality) : undefined
+  });
 
   const imageCanvas = document.createElement('canvas');
   imageCanvas.width = scaledWidth;
@@ -169,6 +184,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     width: scaledWidth,
     height: scaledHeight,
     originalSrc: context.mediaSrc,
+    originalSize: [payload.media.width, payload.media.height],
     editingMediaState: structuredClone(unwrap(mediaState))
   };
 }

@@ -17,6 +17,8 @@ type Args = {
   mediaType: MediaType;
   mediaSrc: string;
   mediaBlob: Blob;
+  mediaSize: NumberPair;
+
   size: NumberPair;
 
   editingMediaState: EditingMediaState;
@@ -31,6 +33,7 @@ export function openMediaEditorFromMedia({
   mediaType,
   mediaSrc,
   mediaBlob,
+  mediaSize,
   size,
   editingMediaState,
   onEditFinish,
@@ -62,6 +65,7 @@ export function openMediaEditorFromMedia({
     mediaSrc,
     mediaBlob,
     managers,
+    mediaSize,
     onEditFinish,
 
     onCanvasReady: (canvas) => {

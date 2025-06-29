@@ -4,8 +4,9 @@ import BezierEasing from '../../vendor/bezierEasing';
 import {hexaToHsla} from '../../helpers/color';
 import {logger} from '../../lib/logger';
 
-import {FontInfo, FontKey, NumberPair} from './types';
+import {FontInfo, FontKey, NumberPair, ResizableLayer} from './types';
 import {HistoryItem} from './context';
+import {IS_FIREFOX} from '../../environment/userAgent';
 
 export const log = logger('Media editor');
 
@@ -157,6 +158,35 @@ export function traverseObjectDeep(obj: any) {
 export function cleanupWebGl(gl: WebGLRenderingContext) {
   gl.getExtension('WEBGL_lose_context')?.loseContext();
 }
+
+export const availableQualityHeights = [
+  240,
+  360,
+  480,
+  600, // non-standard, but prevents big quality jumps
+  720,
+  1080
+];
+
+export function snapToAvailableQuality(videoHeight: number) {
+  const ALLOWED_THRESHOLD = 0.8;
+
+  for(let i = availableQualityHeights.length - 1; i > 0; i--) {
+    const higher = availableQualityHeights[i], lower = availableQualityHeights[i - 1];
+    const diff = higher - lower;
+
+    if(videoHeight > lower + diff * ALLOWED_THRESHOLD) return higher;
+  }
+
+  return availableQualityHeights[0];
+}
+
+export function checkIfHasAnimatedStickers(layers: ResizableLayer[]) {
+  return !!layers.find((layer) => {
+    const stickerType = layer.sticker?.sticker;
+    return stickerType === 2 || (!IS_FIREFOX && stickerType === 3);
+  });
+};
 
 export const fontInfoMap: Record<FontKey, FontInfo> = {
   roboto: {

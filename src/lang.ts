@@ -3377,6 +3377,7 @@ const lang = {
   'ConfirmPayment': 'Confirm Payment',
   'Undo': 'Undo',
   'Resend': 'Resend',
+  'Quality': 'Quality',
 
   'BotSetEmojiStatusTitle': 'Set Emoji Status',
   'BotSetEmojiStatusText': 'Do you want to set this emoji status suggested by **%s**?',

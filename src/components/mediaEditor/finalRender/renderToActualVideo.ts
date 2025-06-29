@@ -10,7 +10,7 @@ import {useMediaEditorContext} from '../context';
 import {delay, snapToViewport} from '../utils';
 import {RenderingPayload} from '../webgl/initWebGL';
 
-import calcBitrate, {BITRATE_TARGET_FPS} from './calcBitrate';
+import calcCodecAndBitrate, {BITRATE_TARGET_FPS} from './calcCodecAndBitrate';
 import {FRAMES_PER_SECOND, STICKER_SIZE} from './constants';
 import {MediaEditorFinalResultPayload} from './createFinalResult';
 import drawStickerLayer from './drawStickerLayer';
@@ -124,10 +124,9 @@ export default async function renderToActualVideo({
     });
 
     encoder.configure({
-      codec: 'avc1.42001f',
       width: scaledWidth,
       height: scaledHeight,
-      bitrate: calcBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS, 1)
+      ...calcCodecAndBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS)
     });
 
     return {muxer, encoder, audioBuffer};

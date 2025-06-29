@@ -14,7 +14,7 @@ import MediaEditorContext, {createContextValue, EditingMediaState} from './conte
 import {createFinalResult, MediaEditorFinalResult} from './finalRender/createFinalResult';
 import FinishButton from './finishButton';
 import Toolbar from './toolbar';
-import {MediaType} from './types';
+import {MediaType, NumberPair} from './types';
 import {delay, withCurrentOwner} from './utils';
 
 import './mediaEditor.scss';
@@ -29,6 +29,7 @@ export type MediaEditorProps = {
   mediaSrc: string;
   mediaType: MediaType;
   mediaBlob: Blob;
+  mediaSize: NumberPair;
   editingMediaState?: EditingMediaState
 };
 

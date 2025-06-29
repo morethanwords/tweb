@@ -15,6 +15,7 @@ import ImageStickerFrameByFrameRenderer from './imageStickerFrameByFrameRenderer
 import LottieStickerFrameByFrameRenderer from './lottieStickerFrameByFrameRenderer';
 import {StickerFrameByFrameRenderer} from './types';
 import VideoStickerFrameByFrameRenderer from './videoStickerFrameByFrameRenderer';
+import calcCodecAndBitrate, {BITRATE_TARGET_FPS} from './calcCodecAndBitrate';
 
 type Args = {
   scaledLayers: ScaledLayersAndLines['scaledLayers'];
@@ -122,10 +123,9 @@ export default async function renderToVideoGIF({
     });
 
     encoder.configure({
-      codec: 'avc1.42001f',
       width: scaledWidth,
       height: scaledHeight,
-      bitrate: 1e6
+      ...calcCodecAndBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS)
     });
 
     for(let frameNo = 0; frameNo <= maxFrames; frameNo++) {

@@ -1,4 +1,6 @@
-import {createEffect, createSignal, on, onCleanup} from 'solid-js';
+import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid-js';
+
+import {i18n} from '../../../lib/langPack';
 
 import Space from '../../space';
 
@@ -6,12 +8,15 @@ import {adjustmentsConfig} from '../adjustments';
 import {useMediaEditorContext} from '../context';
 import useIsMobile from '../useIsMobile';
 import RangeInput from '../rangeInput';
+import StepInput, {StepInputStep} from '../stepInput';
+import {availableQualityHeights, checkIfHasAnimatedStickers, snapToAvailableQuality} from '../utils';
+import getResultSize from '../finalRender/getResultSize';
 
 
 const ADJUST_TIMEOUT = 800;
 
 export default function AdjustmentsTab() {
-  const {editorState, mediaState, actions} = useMediaEditorContext();
+  const {editorState, mediaState, actions, mediaSize, mediaType} = useMediaEditorContext();
 
   const isMobile = useIsMobile();
 
@@ -23,9 +28,39 @@ export default function AdjustmentsTab() {
     }, ADJUST_TIMEOUT);
   }
 
+  const maxVideoQuality = createMemo(() =>
+    snapToAvailableQuality(
+      getResultSize({
+        imageWidth: mediaSize[0],
+        scale: mediaState.scale,
+        newRatio: mediaState.currentImageRatio,
+        videoType: mediaType === 'video' ? 'video' : 'gif'
+      })[1]
+    )
+  );
+
+  const steps = createMemo((): StepInputStep[] =>
+    availableQualityHeights
+    .filter(height => height <= maxVideoQuality())
+    .map(height => ({value: height, label: height + 'p'}))
+  );
+
+  const canShowQualityInput = createMemo(() => (mediaType === 'video' || checkIfHasAnimatedStickers(mediaState.resizableLayers)) && steps().length > 1);
+
   return (
     <>
       <Space amount="16px" />
+
+      <Show when={canShowQualityInput()}>
+        <StepInput
+          label={i18n('Quality')}
+          steps={steps()}
+          value={Math.min(maxVideoQuality(), mediaState.videoQuality)}
+          onChange={(value) => void(mediaState.videoQuality = value)}
+        />
+        <Space amount="32px" />
+      </Show>
+
       {adjustmentsConfig.map((item) => {
         const [container, setContainer] = createSignal<HTMLDivElement>();
 

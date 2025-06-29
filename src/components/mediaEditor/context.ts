@@ -11,7 +11,7 @@ import {BrushDrawnLine} from './canvas/brushPainter';
 import {FinalTransform} from './canvas/useFinalTransform';
 import type {MediaEditorProps} from './mediaEditor';
 import {MediaType, NumberPair, ResizableLayer, StickerRenderingInfo, TextLayerInfo} from './types';
-import {approximateDeepEqual, traverseObjectDeep} from './utils';
+import {approximateDeepEqual, snapToAvailableQuality, traverseObjectDeep} from './utils';
 import {RenderingPayload} from './webgl/initWebGL';
 
 
@@ -27,6 +27,7 @@ type EditingMediaStateWithoutHistory = {
   videoCropLength: number;
   videoThumbnailPosition: number;
   videoMuted: boolean;
+  videoQuality: number;
 
   adjustments: Record<AdjustmentKey, number>;
 
@@ -106,7 +107,7 @@ export type EditorOverridableGlobalActions = {
 };
 
 
-const getDefaultEditingMediaState = (): EditingMediaState => ({
+const getDefaultEditingMediaState = (props: MediaEditorProps): EditingMediaState => ({
   scale: 1,
   rotation: 0,
   translation: [0, 0],
@@ -118,6 +119,7 @@ const getDefaultEditingMediaState = (): EditingMediaState => ({
   videoCropLength: 1,
   videoThumbnailPosition: 0,
   videoMuted: false,
+  videoQuality: snapToAvailableQuality(props.mediaSize[1]),
 
   adjustments: Object.fromEntries(adjustmentsConfig.map(entry => [entry.key, 0])) as Record<AdjustmentKey, number>,
 
@@ -172,9 +174,11 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
 
 export type MediaEditorContextValue = {
   managers: AppManagers;
+
   mediaSrc: string;
   mediaType: MediaType;
   mediaBlob: Blob;
+  mediaSize: NumberPair;
 
   mediaState: Store<EditingMediaState>;
   editorState: Store<MediaEditorState>;
@@ -191,7 +195,7 @@ const MediaEditorContext = createContext<MediaEditorContextValue>();
 export function createContextValue(props: MediaEditorProps): MediaEditorContextValue {
   const mediaStateInit = props.editingMediaState ?
     structuredClone(props.editingMediaState) : // Prevent mutable store being synchronized with the passed object reference
-    getDefaultEditingMediaState();
+    getDefaultEditingMediaState(props);
 
   const mediaStateInitClone = structuredClone(mediaStateInit);
 
@@ -241,6 +245,7 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     mediaSrc: props.mediaSrc,
     mediaType: props.mediaType,
     mediaBlob: props.mediaBlob,
+    mediaSize: props.mediaSize,
 
     mediaState,
     editorState,

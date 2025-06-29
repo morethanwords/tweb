@@ -68,6 +68,7 @@ import {numberThousandSplitterForStars} from '../../helpers/number/numberThousan
 import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
 import ListenerSetter from '../../helpers/listenerSetter';
 import canVideoBeAnimated from '../../lib/appManagers/utils/docs/canVideoBeAnimated';
+import {NumberPair} from '../mediaEditor/types';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -1060,6 +1061,8 @@ export default class PopupNewMedia extends PopupElement {
 
             const {openMediaEditorFromMedia} = await import('../mediaEditor');
 
+            const sourceSize: NumberPair = source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalHeight, source.naturalHeight];
+
             openMediaEditorFromMedia({
               source,
               element: itemDiv,
@@ -1067,6 +1070,7 @@ export default class PopupNewMedia extends PopupElement {
               mediaType: isVideo ? 'video' : 'image',
               mediaSrc: params.editResult?.originalSrc || params.objectURL,
               mediaBlob: file,
+              mediaSize: params.editResult?.originalSize || sourceSize,
               managers: this.managers,
               onEditFinish: (result) => {
                 params.editResult = result;

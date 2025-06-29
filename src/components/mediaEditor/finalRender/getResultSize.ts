@@ -1,29 +1,42 @@
-import {useMediaEditorContext} from '../context';
 import {snapToViewport} from '../utils';
+import {defaultCodec, highResCodec} from './calcCodecAndBitrate';
 
 const SIDE_MAX = 2560;
 const SIDE_MIN = 400;
-export const VIDEO_WIDTH_MAX = 1280;
-export const VIDEO_HEIGHT_MAX = 720;
 
-export default function getResultSize(willResultInVideo: boolean) {
-  const {editorState: {renderingPayload}, mediaState: {scale, currentImageRatio}} = useMediaEditorContext();
+export const VIDEO_WIDTH_MAX = highResCodec.width;
+export const VIDEO_HEIGHT_MAX = highResCodec.height;
 
-  const imageWidth = renderingPayload.media.width;
+type Args = {
+  videoType: 'video' | 'gif';
+  imageWidth: number;
+  newRatio: number;
+  scale: number;
+  quality?: number;
+};
 
-  const newRatio = currentImageRatio;
-
+export default function getResultSize({imageWidth, newRatio, scale, videoType, quality}: Args) {
   let scaledWidth = imageWidth / scale,
     scaledHeight = scaledWidth / newRatio;
+
+  const willResultInVideo = !!videoType;
 
   if(Math.max(scaledWidth, scaledHeight) < SIDE_MIN) {
     [scaledWidth, scaledHeight] = snapToViewport(newRatio, SIDE_MIN, SIDE_MIN);
   }
-  if(willResultInVideo && (scaledWidth > VIDEO_WIDTH_MAX || scaledHeight > VIDEO_HEIGHT_MAX)) {
-    [scaledWidth, scaledHeight] = snapToViewport(newRatio, VIDEO_WIDTH_MAX, VIDEO_HEIGHT_MAX);
+  if(videoType === 'gif' && (scaledWidth > defaultCodec.width || scaledHeight > defaultCodec.height)) {
+    [scaledWidth, scaledHeight] = snapToViewport(newRatio, defaultCodec.width, defaultCodec.height);
+  }
+  if(videoType === 'video' && (scaledWidth > highResCodec.width || scaledHeight > highResCodec.height)) {
+    [scaledWidth, scaledHeight] = snapToViewport(newRatio, highResCodec.width, highResCodec.height);
   }
   if(!willResultInVideo && Math.max(scaledWidth, scaledHeight) > SIDE_MAX) {
     [scaledWidth, scaledHeight] = snapToViewport(newRatio, SIDE_MAX, SIDE_MAX);
+  }
+
+  if(quality) {
+    scaledHeight = quality;
+    scaledWidth = quality * newRatio;
   }
 
   scaledWidth = Math.floor(scaledWidth);
