@@ -224,12 +224,12 @@ export default class PopupNewMedia extends PopupElement {
         icon: 'groupmedia',
         text: 'Popup.Attach.GroupMedia',
         onClick: () => this.changeGroup(true),
-        verify: () => !this.willAttach.group && this.canGroupSomething()
+        verify: () => !this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif()
       }, {
         icon: 'groupmediaoff',
         text: 'Popup.Attach.UngroupMedia',
         onClick: () => this.changeGroup(false),
-        verify: () => this.willAttach.group && this.canGroupSomething()
+        verify: () => this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif()
       }, {
         icon: 'mediaspoiler',
         text: 'EnablePhotoSpoiler',
@@ -870,13 +870,18 @@ export default class PopupNewMedia extends PopupElement {
     if(editResult) {
       const result = editResult.getResult();
 
+      function addGifLabel(result: MediaEditorFinalResultPayload) {
+        if(!canVideoBeAnimated(!result.hasSound, result.blob.size)) return;
+        const gifLabel = i18n('AttachGif');
+        gifLabel.classList.add('gif-label');
+        itemDiv.append(gifLabel);
+      }
+
       if(!(result instanceof Promise)) {
         if(editResult.isVideo) {
           await putEditedImage(editResult.preview);
           await putEditedVideo(result);
-          const gifLabel = i18n('AttachGif');
-          gifLabel.classList.add('gif-label');
-          itemDiv.append(gifLabel);
+          addGifLabel(result);
         } else {
           await putEditedImage(result.blob, true);
         }
@@ -889,16 +894,8 @@ export default class PopupNewMedia extends PopupElement {
 
         (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
 
-        result.then(async(result) => {
-          await putEditedVideo(result);
-
-          this.starsState.set({isGrouped: this.willAttach?.group && !this.hasGif()});
-
-          if(canVideoBeAnimated(!result.hasSound, result.blob.size)) {
-            const gifLabel = i18n('AttachGif');
-            gifLabel.classList.add('gif-label');
-            itemDiv.append(gifLabel);
-          }
+        result.then(() => {
+          pause(0).then(() => this.attachFiles());
         }).catch(async() => {
           params.editResult = undefined;
           pause(0).then(() => this.attachFiles());
@@ -1401,6 +1398,12 @@ export default class PopupNewMedia extends PopupElement {
 
       return canVideoBeAnimated(!result.hasSound, result.blob.size);
     });
+  }
+
+  private canCheckIfHasGif() {
+    const {sendFileDetails} = this.willAttach;
+
+    return sendFileDetails.every((params) => !(params?.editResult?.getResult() instanceof Promise));
   }
 
   private iterate(cb: (sendFileDetails: SendFileParams[]) => void) {
