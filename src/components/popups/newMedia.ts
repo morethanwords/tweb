@@ -431,7 +431,10 @@ export default class PopupNewMedia extends PopupElement {
     this.scrollable.container.addEventListener('scroll', () => {
       const actions = this.activeActionsMenu;
       if(!actions || !this.activeActionsMenuItemDiv) return;
+
       const bcr = this.activeActionsMenuItemDiv.getBoundingClientRect();
+      if(!this.canShowActionsForBcr(bcr)) return void this.hideActiveActionsMenu();
+
       actions.style.left = bcr.left + bcr.width / 2 + 'px';
       actions.style.top = bcr.bottom + 'px';
     });
@@ -1031,6 +1034,9 @@ export default class PopupNewMedia extends PopupElement {
     {
       const showActions = async() => {
         if(this.activeActionsMenuItemDiv === itemDiv || !this.canShowActions) return;
+        const bcr = itemDiv.getBoundingClientRect();
+        if(!this.canShowActionsForBcr(bcr)) return;
+
         this.hideActiveActionsMenu();
 
         this.activeActionsMenuItemDiv = itemDiv;
@@ -1113,7 +1119,6 @@ export default class PopupNewMedia extends PopupElement {
 
         actions.append(...[cancelBtn, equalizeIcon, spoilerToggle, deleteIcon].filter(Boolean));
 
-        const bcr = itemDiv.getBoundingClientRect();
         actions.style.left = bcr.left + bcr.width / 2 + 'px';
         actions.style.top = bcr.bottom + 'px';
 
@@ -1501,6 +1506,13 @@ export default class PopupNewMedia extends PopupElement {
       this.onScroll();
       doubleRaf().then(() => this.afterRender());
     });
+  }
+
+  private canShowActionsForBcr(bcr: DOMRect) {
+    const scrollableBcr = this.scrollable.container.getBoundingClientRect();
+    const approximateCenterY = bcr.bottom - 20;
+
+    return approximateCenterY >= scrollableBcr.top && approximateCenterY <= scrollableBcr.bottom;
   }
 
   private afterRender() {
