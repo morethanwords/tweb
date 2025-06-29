@@ -2452,8 +2452,8 @@ const lang = {
   'FactCheckWhat': 'what’s this?',
   'FactCheckDialog': 'Fact Check',
   'FactCheckPlaceholder': 'Add Fact or Context',
-  'FactCheckToast': 'This clarification was provided by a fact checking agency assigned by the department of the government of your country (%s) responsible for combating misinformation.',
-  'FactCheckFooter': 'This clarification was provided by a fact checking agency assigned by the department of the government of your country (%s) responsible for combating misinformation.',
+  'FactCheckToast': 'This clarification was provided by Telegram.',
+  'FactCheckFooter': 'This clarification was provided by Telegram.',
   'FactCheckEdited': 'Fact check updated.',
   'FactCheckDeleted': 'Fact check removed.',
   'CaptionAbove': 'Move Caption Up',
@@ -3333,7 +3333,7 @@ const lang = {
     'one_value': 'You paid **%2$s** to send a message',
     'other_value': 'You paid **%2$s** to send %1$d messages.'
   },
-  'PaidMessages.YouReceivedStarsFrom': 'You received **%s** from %s',
+  'PaidMessages.YouReceivedStarsFrom': '%1$s paid %2$s to send a message',
   'PaidMessages.FeeForMessages': {
     'one_value': 'Fee for %d message',
     'other_value': 'Fee for %d messages'
@@ -3382,7 +3382,7 @@ const lang = {
   'BotLocationAccessText': '**%s** requests access to your location. You can revoke this access anytime on the profile page of **%s**.',
   'BotAllowAccessTo': 'Allow access to',
   'BotAllowAccessToEmojiStatus': 'Emoji status',
-  'BotAllowAccessToLocation': 'Location',
+  'BotAllowAccessToLocation': 'Geolocation',
   'BotDownloadPromptTitle': 'Download file',
   'BotDownloadPromptText': '**%s** is asking to download a file with name **%s**',
   'BotDownloadPromptManual': 'Failed to download the file directly. Click "Confirm" to open the file in a new tab.',
