@@ -154,6 +154,10 @@ export function traverseObjectDeep(obj: any) {
   else if(obj instanceof Object) Object.values(obj).forEach(val => traverseObjectDeep(val));
 }
 
+export function cleanupWebGl(gl: WebGLRenderingContext) {
+  gl.getExtension('WEBGL_lose_context')?.loseContext();
+}
+
 export const fontInfoMap: Record<FontKey, FontInfo> = {
   roboto: {
     fontFamily: '\'Roboto\'',

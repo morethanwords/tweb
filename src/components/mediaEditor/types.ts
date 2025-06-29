@@ -61,4 +61,4 @@ export type FontInfo = {
 export type StandaloneSignal<T> = {
   dispose: () => void;
   signal: Signal<T>;
-}
+};

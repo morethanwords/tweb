@@ -3,22 +3,24 @@ import {unwrap} from 'solid-js/store';
 
 import {IS_FIREFOX} from '../../../environment/userAgent';
 import {MediaSize} from '../../../helpers/mediaSize';
+import noop from '../../../helpers/noop';
 
-import {useCropOffset} from '../canvas/useCropOffset';
-import BrushPainter from '../canvas/brushPainter';
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
+import BrushPainter from '../canvas/brushPainter';
+import {useCropOffset} from '../canvas/useCropOffset';
 import {EditingMediaState, useMediaEditorContext} from '../context';
-import {initWebGL} from '../webgl/initWebGL';
 import {StandaloneSignal} from '../types';
 import {draw} from '../webgl/draw';
+import {initWebGL} from '../webgl/initWebGL';
 
-import getScaledLayersAndLines from './getScaledLayersAndLines';
-import spawnAnimatedPreview from './spawnAnimatedPreview';
-import getResultTransform from './getResultTransform';
+import {cleanupWebGl} from '../utils';
 import getResultSize from './getResultSize';
-import renderToVideo from './renderToVideo';
-import renderToImage from './renderToImage';
+import getResultTransform from './getResultTransform';
+import getScaledLayersAndLines from './getScaledLayersAndLines';
 import renderToActualVideo from './renderToActualVideo';
+import renderToImage from './renderToImage';
+import renderToVideoGIF from './renderToVideoGIF';
+import spawnAnimatedPreview from './spawnAnimatedPreview';
 
 
 export type MediaEditorFinalResultPayload = {
@@ -33,13 +35,14 @@ export type MediaEditorFinalResultPayload = {
 export type MediaEditorFinalResult = {
   preview: Blob;
   getResult: () => MediaEditorFinalResultPayload | Promise<MediaEditorFinalResultPayload>;
+  cancel?: () => void;
   isVideo: boolean;
   width: number;
   height: number;
   originalSrc: string;
   editingMediaState: EditingMediaState;
   animatedPreview?: HTMLImageElement;
-  gifCreationProgress?: StandaloneSignal<number>;
+  creationProgress?: StandaloneSignal<number>;
 };
 
 export async function createFinalResult(): Promise<MediaEditorFinalResult> {
@@ -126,7 +129,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
       }));
 
     if(hasAnimatedStickers)
-      return runWithOwner(owner, () => renderToVideo({
+      return runWithOwner(owner, () => renderToVideoGIF({
         scaledWidth,
         scaledHeight,
         scaledLayers,
@@ -154,7 +157,11 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     scaledWidth,
     scaledHeight,
     previewBlob: renderResult.preview
-  })
+  });
+
+  Promise.resolve(renderResult.getResult())?.catch(noop)?.finally(() => {
+    cleanupWebGl(gl);
+  });
 
   return {
     ...renderResult,

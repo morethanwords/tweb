@@ -2,11 +2,11 @@ import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
 
 import {animate} from '../../../helpers/animation';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
-import ListenerSetter from '../../../helpers/listenerSetter';
 import {MediaSize} from '../../../helpers/mediaSize';
+import noop from '../../../helpers/noop';
 import clamp from '../../../helpers/number/clamp';
 
-import {MediaEditorContextValue, useMediaEditorContext} from '../context';
+import {useMediaEditorContext} from '../context';
 import {delay, snapToViewport} from '../utils';
 import {RenderingPayload} from '../webgl/initWebGL';
 
@@ -23,7 +23,7 @@ import {StickerFrameByFrameRenderer} from './types';
 import VideoStickerFrameByFrameRenderer from './videoStickerFrameByFrameRenderer';
 
 
-export type RenderToActualVideoArgs = {
+type Args = {
   renderingPayload: RenderingPayload;
   hasAnimatedStickers: boolean;
   scaledLayers: ScaledLayersAndLines['scaledLayers'];
@@ -54,7 +54,7 @@ export default async function renderToActualVideo({
   drawToImageCanvas,
   brushCanvas,
   resultCanvas
-}: RenderToActualVideoArgs) {
+}: Args) {
   const context = useMediaEditorContext();
 
   const {
@@ -71,12 +71,12 @@ export default async function renderToActualVideo({
   const startTime = video.duration * videoCropStart;
   const endTime = video.duration * (videoCropStart + videoCropLength);
 
-  const gifCreationProgress = createRoot(dispose => {
+  const creationProgress = createRoot(dispose => {
     const signal = createSignal(0);
     return {signal, dispose};
   });
 
-  const [, setProgress] = gifCreationProgress.signal;
+  const [, setProgress] = creationProgress.signal;
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
 
@@ -86,15 +86,13 @@ export default async function renderToActualVideo({
 
   const thumbnailTime = videoThumbnailPosition * video.duration;
 
-  const listenerSetter = new ListenerSetter;
-
   let
     currentVideoFrameDeferred: CancellablePromise<number>,
     lastTime = 0,
     frameCallbackId: number,
-    drewThumbnail = false
+    drewThumbnail = false,
+    canceled = false
   ;
-
 
   async function initMuxerAndEncoder() {
     const {Muxer, ArrayBufferTarget} = await import('mp4-muxer');
@@ -208,7 +206,6 @@ export default async function renderToActualVideo({
     }
   }
 
-
   type RenderFrameArgs = {
     frameNo: number;
     timestamp: number;
@@ -217,9 +214,6 @@ export default async function renderToActualVideo({
   };
 
   async function renderFrame({frameNo, timestamp, appendToMuxer, encoder}: RenderFrameArgs) {
-    console.log('[my-debug] additional frame frameNo, timestamp ', frameNo, timestamp);
-    console.time('renderFrame2' + frameNo);
-
     const promises = Array.from(renderers.values()).map((renderer) =>
       renderer.renderFrame(frameNo % (renderer.getTotalFrames()))
     );
@@ -227,13 +221,10 @@ export default async function renderToActualVideo({
     await Promise.all(promises);
 
     drawToImageCanvas();
-    console.timeLog('renderFrame2' + frameNo, 'drew image to canvas');
 
     ctx.clearRect(0, 0, scaledWidth, scaledHeight);
     ctx.drawImage(imageCanvas, 0, 0);
     ctx.drawImage(brushCanvas, 0, 0);
-
-    console.timeLog('renderFrame2' + frameNo, 'drew everything to canvas');
 
     scaledLayers.forEach((layer) => {
       if(layer.type === 'text') drawTextLayer(context, ctx, layer);
@@ -243,23 +234,24 @@ export default async function renderToActualVideo({
       }
     });
 
-    console.timeLog('renderFrame2' + frameNo, 'drew layers');
-
     if(!appendToMuxer) return;
 
     const videoFrame = new VideoFrame(resultCanvas, {timestamp});
 
     encoder.encode(videoFrame);
     videoFrame.close();
-    console.timeLog('renderFrame2' + frameNo, 'encoded frame');
-    console.timeEnd('renderFrame2' + frameNo);
+  }
+
+  function cleanup(encoder: VideoEncoder) {
+    encoder.close();
+    Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
   }
 
   setProgress(0);
 
   const preview = await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
 
-  const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve) => {
+  const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve, reject) => {
     const firstFrameSeekDeferred = deferredPromise<void>();
     video.currentTime = video.duration * videoCropStart;
     video.addEventListener('seeked', () => void firstFrameSeekDeferred.resolve(), {once: true});
@@ -284,6 +276,16 @@ export default async function renderToActualVideo({
     });
 
     while(video.currentTime < endTime - VIDEO_COMPARISON_ERROR) {
+      if(canceled) {
+        reject();
+
+        done = true;
+        video.pause(); video.src = '';
+
+        cleanup(encoder);
+        return;
+      }
+
       await prepareAndRenderFrame(encoder, frameNo);
       setProgress(clamp((video.currentTime - startTime) / (endTime - startTime), 0, 1));
       frameNo++;
@@ -309,20 +311,13 @@ export default async function renderToActualVideo({
       thumbnailCtx.drawImage(resultCanvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
     }
 
-
-    console.log('[my-debug] before flushing');
-
     if(audioBuffer) await encodeAndMuxAudio(audioBuffer, (chunk) => muxer.addAudioChunk(chunk));
 
     await encoder.flush();
 
-    console.log('[my-debug] flushed');
     muxer.finalize();
-    console.log('[my-debug] finalized');
 
-    Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
-
-    listenerSetter.removeAll();
+    cleanup(encoder);
 
     const {buffer} = muxer.target;
 
@@ -330,7 +325,6 @@ export default async function renderToActualVideo({
 
     const thumbBlob = await new Promise<Blob>(resolve => thumbnailCanvas.toBlob(resolve));
 
-    console.log('[my-debug] before resolve');
     resolve({
       blob: new Blob([buffer], {type: 'video/mp4'}),
       hasSound: !!audioBuffer,
@@ -339,12 +333,11 @@ export default async function renderToActualVideo({
         size: new MediaSize(thumbnailCanvas.width, thumbnailCanvas.height)
       }
     });
-    console.log('[my-debug] resolved');
   });
 
   let result: MediaEditorFinalResultPayload;
 
-  resultPromise.then((value) => (result = value));
+  resultPromise.then((value) => (result = value)).catch(noop);
 
   return {
     preview,
@@ -352,7 +345,10 @@ export default async function renderToActualVideo({
     getResult: () => {
       return result ?? resultPromise;
     },
-    gifCreationProgress
+    cancel: () => {
+      canceled = true;
+    },
+    creationProgress
   };
 
   // const div = document.createElement('div')
@@ -383,8 +379,6 @@ async function extractAudioFragment(blob: Blob, startTime: number, endTime: numb
 
   const numChannels = fullAudioBuffer.numberOfChannels;
 
-  console.log('[my-debug] fullAudioBuffer.numberOfChannels :>> ', fullAudioBuffer.numberOfChannels);
-
   const fragmentBuffer = audioContext.createBuffer(numChannels, frameCount, sampleRate);
 
   for(let ch = 0; ch < numChannels; ch++) {
@@ -395,43 +389,11 @@ async function extractAudioFragment(blob: Blob, startTime: number, endTime: numb
   return fragmentBuffer;
 }
 
-// TODO: Delete this thing, used for test
-async function extractAudioFragmentNoise(blob: Blob, startTime: number, endTime: number) {
-  const audioContext: AudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-
-  const sampleRate = audioContext.sampleRate;
-  // const startSample = Math.floor(startTime * sampleRate);
-  // const endSample = Math.floor(endTime * sampleRate);
-  // const frameCount = endSample - startSample;
-
-  const myArrayBuffer = audioContext.createBuffer(
-    2,
-    audioContext.sampleRate * (endTime - startTime),
-    audioContext.sampleRate,
-  );
-
-  // Fill the buffer with white noise;
-  // just random values between -1.0 and 1.0
-  for(let channel = 0; channel < myArrayBuffer.numberOfChannels; channel++) {
-    // This gives us the actual ArrayBuffer that contains the data
-    const nowBuffering = myArrayBuffer.getChannelData(channel);
-    for(let i = 0; i < myArrayBuffer.length; i++) {
-      // Math.random() is in [0; 1.0]
-      // audio needs to be in [-1.0; 1.0]
-      nowBuffering[i] = Math.random() * 2 - 1;
-    }
-  }
-
-  return myArrayBuffer;
-}
-
 async function encodeAndMuxAudio(audioBuffer: AudioBuffer, onChunk: (ch: EncodedAudioChunk) => void) {
   const sampleRate = audioBuffer.sampleRate;
   const numChannels = audioBuffer.numberOfChannels;
   const totalFrames = audioBuffer.length;
 
-
-  console.log('[my-debug] audioBuffer.numberOfChannels :>> ', audioBuffer.numberOfChannels);
 
   // Interleave audio for WebCodecs
   const interleaved = new Float32Array(totalFrames * numChannels);
@@ -450,24 +412,13 @@ async function encodeAndMuxAudio(audioBuffer: AudioBuffer, onChunk: (ch: Encoded
     error: (e) => console.error('AudioEncoder error:', e)
   });
 
-  console.log('[my-debug] configure channel :>> ', {
-    sampleRate,
-    numberOfChannels: numChannels,
-    numberOfFrames: totalFrames,
-    expectedLength: totalFrames * numChannels,
-    actualLength: interleaved.length,
-    byteLength: interleaved.byteLength
-  });
-
   // TODO: Need to check support for this thing and fallback to other codecs
-  const supported = await AudioEncoder.isConfigSupported({
-    codec: 'opus',
-    sampleRate,
-    numberOfChannels: audioBuffer.numberOfChannels,
-    bitrate: 128000
-  });
-
-  console.log('audio encoder supported config', supported)
+  // const supported = await AudioEncoder.isConfigSupported({
+  //   codec: 'opus',
+  //   sampleRate,
+  //   numberOfChannels: audioBuffer.numberOfChannels,
+  //   bitrate: 128000
+  // });
 
   encoder.configure({
     codec: 'opus',
@@ -485,9 +436,9 @@ async function encodeAndMuxAudio(audioBuffer: AudioBuffer, onChunk: (ch: Encoded
     data: interleaved
   });
 
-  console.log('[my-debug] audioData.numberOfChannels', audioData.numberOfChannels);
-
-
   encoder.encode(audioData);
+  audioData.close();
+
   await encoder.flush();
+  encoder.close();
 }

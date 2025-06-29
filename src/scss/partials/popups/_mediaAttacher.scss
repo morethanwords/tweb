@@ -18,7 +18,7 @@
       //max-height: unquote('min(640px, 100%)');
       max-height: 100%;
 
-      img, 
+      img,
       video {
         border-radius: inherit;
       }
@@ -32,7 +32,7 @@
       margin-bottom: 9px;
       padding: 12px 20px 15px;
       position: relative;
-  
+
       .btn-primary {
         width: auto;
         height: 2.25rem;
@@ -197,7 +197,7 @@
       position: absolute;
     }
 
-    img, 
+    img,
     video {
       object-fit: cover;
       width: 100%;
@@ -398,6 +398,24 @@
 
   opacity: 0;
   z-index: 5;
+
+  &-cancel {
+    .popup-item-media-action {
+      display: none;
+    }
+
+    &-btn {
+      cursor: pointer;
+      pointer-events: initial !important;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 3px 6px;
+
+      &:hover {
+        color: #ffffff;
+      }
+    }
+  }
 }
 
 .popup-item-media-action {

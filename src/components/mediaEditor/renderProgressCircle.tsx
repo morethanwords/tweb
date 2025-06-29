@@ -1,7 +1,7 @@
 import {StandaloneSignal} from './types';
 
-export default function RenderProgressCircle(props: {gifCreationProgress: StandaloneSignal<number>}) {
-  const [progress] = props.gifCreationProgress.signal;
+export default function RenderProgressCircle(props: {creationProgress: StandaloneSignal<number>}) {
+  const [progress] = props.creationProgress.signal;
   // const [progress, setProgress] = createSignal(0); // Progress signal from 0 to 100
 
   const radius = 52;

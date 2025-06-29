@@ -1,5 +1,7 @@
 import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
 
+import noop from '../../../helpers/noop';
+
 import {useMediaEditorContext} from '../context';
 import {delay} from '../utils';
 
@@ -14,7 +16,7 @@ import LottieStickerFrameByFrameRenderer from './lottieStickerFrameByFrameRender
 import {StickerFrameByFrameRenderer} from './types';
 import VideoStickerFrameByFrameRenderer from './videoStickerFrameByFrameRenderer';
 
-export type RenderToVideoArgs = {
+type Args = {
   scaledLayers: ScaledLayersAndLines['scaledLayers'];
   scaledWidth: number;
   scaledHeight: number;
@@ -24,7 +26,7 @@ export type RenderToVideoArgs = {
   resultCanvas: HTMLCanvasElement;
 };
 
-export default async function renderToVideo({
+export default async function renderToVideoGIF({
   scaledWidth,
   scaledHeight,
   scaledLayers,
@@ -32,20 +34,22 @@ export default async function renderToVideo({
   imageCanvas,
   brushCanvas,
   resultCanvas
-}: RenderToVideoArgs) {
+}: Args) {
   const owner = getOwner();
   const context = useMediaEditorContext();
 
   const {editorState: {pixelRatio}} = context;
 
-  const gifCreationProgress = createRoot(dispose => {
+  const creationProgress = createRoot(dispose => {
     const signal = createSignal(0);
     return {signal, dispose};
   });
 
-  const [, setProgress] = gifCreationProgress.signal;
+  const [, setProgress] = creationProgress.signal;
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
+
+  let canceled = false;
 
   async function renderFrame(encoder: VideoEncoder, frameNo: number) {
     const promises = Array.from(renderers.values()).map((renderer) =>
@@ -73,7 +77,12 @@ export default async function renderToVideo({
     videoFrame.close();
   }
 
-  const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve) => {
+  function cleanup(encoder: VideoEncoder) {
+    encoder.close();
+    Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
+  }
+
+  const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve, reject) => {
     let maxFrames = 0;
 
     const [{ArrayBufferTarget, Muxer}] = await Promise.all([
@@ -120,7 +129,11 @@ export default async function renderToVideo({
     });
 
     for(let frameNo = 0; frameNo <= maxFrames; frameNo++) {
-      // console.log('rendering frameNo', frameNo)
+      if(canceled) {
+        reject();
+        cleanup(encoder);
+      }
+
       await renderFrame(encoder, frameNo);
       setProgress(frameNo / maxFrames);
     }
@@ -128,7 +141,7 @@ export default async function renderToVideo({
     await encoder.flush();
     muxer.finalize();
 
-    Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
+    cleanup(encoder);
 
     const {buffer} = muxer.target;
     resolve({
@@ -139,7 +152,7 @@ export default async function renderToVideo({
 
   let result: MediaEditorFinalResultPayload;
 
-  resultPromise.then((value) => (result = value));
+  resultPromise.then((value) => (result = value)).catch(noop);
 
   return {
     preview: await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight})),
@@ -147,7 +160,10 @@ export default async function renderToVideo({
     getResult: () => {
       return result ?? resultPromise;
     },
-    gifCreationProgress
+    cancel: () => {
+      canceled = true;
+    },
+    creationProgress
   };
 
   // const div = document.createElement('div')

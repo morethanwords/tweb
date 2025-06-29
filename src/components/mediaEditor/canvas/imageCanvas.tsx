@@ -1,9 +1,9 @@
-import {createEffect, createReaction, onMount} from 'solid-js';
+import {createEffect, createReaction, onCleanup, onMount} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
 
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 import {useMediaEditorContext} from '../context';
-import {withCurrentOwner} from '../utils';
+import {cleanupWebGl, withCurrentOwner} from '../utils';
 import {draw} from '../webgl/draw';
 import {initWebGL} from '../webgl/initWebGL';
 
@@ -77,6 +77,10 @@ export default function ImageCanvas() {
 
   createEffect(() => {
     drawAdjustedImage(gl);
+  });
+
+  onCleanup(() => {
+    cleanupWebGl(gl);
   });
 
   return <>{canvas}</>;
