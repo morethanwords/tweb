@@ -7,6 +7,7 @@ import noop from '../../../helpers/noop';
 import clamp from '../../../helpers/number/clamp';
 
 import {useMediaEditorContext} from '../context';
+import {supportsAudioEncoding} from '../support';
 import {delay, snapToViewport} from '../utils';
 import {RenderingPayload} from '../webgl/initWebGL';
 
@@ -99,7 +100,7 @@ export default async function renderToActualVideo({
 
     let audioBuffer: AudioBuffer;
 
-    if(!videoMuted) try {
+    if(!videoMuted && await supportsAudioEncoding()) try {
       audioBuffer = await extractAudioFragment(mediaBlob, startTime, endTime);
     } catch{}
 
@@ -275,6 +276,10 @@ export default async function renderToActualVideo({
       return !done;
     });
 
+    // let avg = 0, cnt = 0;
+
+    // const startrendering = performance.now();
+
     while(video.currentTime < endTime - VIDEO_COMPARISON_ERROR) {
       if(canceled) {
         reject();
@@ -287,7 +292,12 @@ export default async function renderToActualVideo({
       }
 
       try {
+        // const start = performance.now();
         await prepareAndRenderFrame(encoder, frameNo);
+        // const end = performance.now();
+        // const time = end - start;
+        // cnt++;
+        // avg += (time - avg) / cnt;
       } catch{
         break;
       }
@@ -298,6 +308,8 @@ export default async function renderToActualVideo({
     done = true;
     video.cancelVideoFrameCallback(frameCallbackId);
     video.pause();
+
+    // const endrendering = performance.now();
 
     if(!drewThumbnail) {
       const deferred = deferredPromise<void>();
@@ -337,6 +349,13 @@ export default async function renderToActualVideo({
         size: new MediaSize(thumbnailCanvas.width, thumbnailCanvas.height)
       }
     });
+
+    // alert(JSON.stringify({
+    //   avg,
+    //   total: endrendering - startrendering,
+    //   frameNo,
+    //   duration: video.duration
+    // }, null, 2));
   });
 
   let result: MediaEditorFinalResultPayload;

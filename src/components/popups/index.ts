@@ -26,6 +26,7 @@ import Icon from '../icon';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {JSX} from 'solid-js';
 import {render} from 'solid-js/web';
+import MarkupTooltip from '../chat/markupTooltip';
 
 export type PopupButton = {
   text?: HTMLElement | DocumentFragment | Text,
@@ -414,6 +415,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.element.classList.remove('active');
     this.listenerSetter.removeAll();
     this.middlewareHelper.destroy();
+    MarkupTooltip.getInstance().hide();
 
     if(!this.withoutOverlay) {
       overlayCounter.isOverlayActive = false;

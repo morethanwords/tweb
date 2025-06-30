@@ -69,6 +69,8 @@ import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
 import ListenerSetter from '../../helpers/listenerSetter';
 import canVideoBeAnimated from '../../lib/appManagers/utils/docs/canVideoBeAnimated';
 import {NumberPair} from '../mediaEditor/types';
+import MarkupTooltip from '../chat/markupTooltip';
+import {supportsVideoEncoding} from '../mediaEditor/support';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -1047,13 +1049,16 @@ export default class PopupNewMedia extends PopupElement {
         actions.classList.add('popup-item-media-action-menu');
         const itemCls = 'popup-item-media-action';
 
+        const canEditVideo = await supportsVideoEncoding();
+
         let equalizeIcon: HTMLSpanElement;
-        if(!this.willAttach.stars && file.type !== 'image/gif') {
+        if(!this.willAttach.stars && file.type !== 'image/gif' && (!isVideo || canEditVideo)) {
           import('../mediaEditor'); // prefetch
 
           equalizeIcon = Icon('equalizer', itemCls);
           equalizeIcon.addEventListener('click', async() => {
             this.hideActiveActionsMenu();
+            MarkupTooltip.getInstance().hide();
 
             (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
             const source = itemDiv.querySelector('video') || itemDiv.querySelector('img');
