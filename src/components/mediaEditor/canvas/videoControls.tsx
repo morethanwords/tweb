@@ -37,7 +37,8 @@ const VideoControls: Component<{}> = () => {
   let
     canvas: HTMLCanvasElement,
     initialStart: number,
-    initialLength: number
+    initialLength: number,
+    swiping: 'left' | 'middle' | 'right'
   ;
 
   useVideoControlsCanvas({
@@ -48,10 +49,12 @@ const VideoControls: Component<{}> = () => {
   const leftHandleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: 'ew-resize',
     onStart: () => {
+      swiping = 'left';
       initialStart = mediaState.videoCropStart;
       initialLength = mediaState.videoCropLength;
     },
     onMove: (xDiff) => void batch(() => {
+      if(swiping !== 'left') return;
       const diff = clamp(initialStart + xDiff / strippedWidth(), 0, Math.max(0, initialStart + initialLength - minLength())) - initialStart;
       batch(() => {
         mediaState.videoCropStart = (initialStart + diff);
@@ -64,15 +67,15 @@ const VideoControls: Component<{}> = () => {
   const rightHandleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: 'ew-resize',
     onStart: () => {
+      swiping = 'right';
       initialLength = mediaState.videoCropLength;
       editorState.isPlaying = false;
     },
     onMove: (xDiff) => void batch(() => {
-      batch(() => {
-        const maxLength = 1 - mediaState.videoCropStart;
-        mediaState.videoCropLength = (clamp(initialLength + xDiff / strippedWidth(), Math.min(minLength(), maxLength), maxLength));
-        actions.setVideoTime(mediaState.videoCropStart + mediaState.videoCropLength);
-      });
+      if(swiping !== 'right') return;
+      const maxLength = 1 - mediaState.videoCropStart;
+      mediaState.videoCropLength = (clamp(initialLength + xDiff / strippedWidth(), Math.min(minLength(), maxLength), maxLength));
+      actions.setVideoTime(mediaState.videoCropStart + mediaState.videoCropLength);
     })
   };
 
@@ -81,6 +84,7 @@ const VideoControls: Component<{}> = () => {
   const middleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: 'grabbing',
     onStart: () => {
+      swiping = 'middle';
       initialStart = mediaState.videoCropStart;
       initialLength = mediaState.videoCropLength;
       canMove = false;
@@ -88,6 +92,7 @@ const VideoControls: Component<{}> = () => {
     onMove: (xDiff) => void batch(() => {
       if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX) canMove = true;
       if(!canMove) return;
+      if(swiping !== 'middle') return;
 
       setIsDraggingMiddle(true);
 
@@ -213,7 +218,7 @@ const ThumbnailTrack: Component<{
 
   let canPreviewFrame = false, previewFrameTimeout: number;
 
-  const onPointerMove = (e: PointerEvent) => {
+  const onPointerMove = (e: PointerEvent | TouchEvent) => {
     if(!props.cropper || editorState.isPlaying || props.isDraggingMiddle) return;
 
     if(!previewFrameTimeout) previewFrameTimeout = self.setTimeout(() => {
@@ -258,7 +263,9 @@ const ThumbnailTrack: Component<{
         class={styles.ThumbnailTrack}
         use:swipe={swipeArgs}
         onPointerMove={onPointerMove}
+        onTouchMove={onPointerMove}
         onPointerOut={onPointerOut}
+        onTouchEnd={onPointerOut}
         onClick={onClick}
       />
     </>
@@ -327,9 +334,11 @@ export const PausePlay: Component<{
   );
 };
 
-function getPositionInCropper(e: { clientX: number }, cropper: HTMLDivElement) {
+function getPositionInCropper(e: PointerEvent | MouseEvent | TouchEvent, cropper: HTMLDivElement) {
+  const clientX = e instanceof TouchEvent ? e.changedTouches[0].clientX : e.clientX;
+
   const bcr = cropper.getBoundingClientRect();
-  const x = e.clientX - bcr.left - HANDLE_WIDTH_PX;
+  const x = clientX - bcr.left - HANDLE_WIDTH_PX;
   const pos = x / (bcr.width - 2 * HANDLE_WIDTH_PX);
 
   return clamp(pos, 0, 1);
