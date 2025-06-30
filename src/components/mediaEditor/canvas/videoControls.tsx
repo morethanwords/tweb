@@ -225,11 +225,11 @@ const ThumbnailTrack: Component<{
       canPreviewFrame = true;
     }, 200);
 
-    if(canPreviewFrame) {
-      const position = getPositionInCropper(e, props.cropper);
-      setGhostThumbnailPosition(position);
-      actions.setVideoTime(position, SetVideoTimeFlags.UpdateVideo | SetVideoTimeFlags.Redraw);
-    }
+    const position = getPositionInCropper(e, props.cropper);
+
+    setGhostThumbnailPosition(position);
+
+    if(canPreviewFrame) actions.setVideoTime(position, SetVideoTimeFlags.UpdateVideo | SetVideoTimeFlags.Redraw);
   };
 
   const onPointerOut = () => {
