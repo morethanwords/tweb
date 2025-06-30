@@ -5,6 +5,8 @@ let
   supportsAudio: boolean
 ;
 
+export const MAX_EDITABLE_VIDEO_SIZE = 100 * 1024 * 1024;
+
 export const supportsVideoEncoding = () => supportsVideo ?? (async() => {
   const configs: VideoEncoderConfig[] = [highResCodec, defaultCodec];
 

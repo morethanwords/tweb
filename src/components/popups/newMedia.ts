@@ -70,7 +70,7 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import canVideoBeAnimated from '../../lib/appManagers/utils/docs/canVideoBeAnimated';
 import {NumberPair} from '../mediaEditor/types';
 import MarkupTooltip from '../chat/markupTooltip';
-import {supportsVideoEncoding} from '../mediaEditor/support';
+import {MAX_EDITABLE_VIDEO_SIZE, supportsVideoEncoding} from '../mediaEditor/support';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -1049,7 +1049,7 @@ export default class PopupNewMedia extends PopupElement {
         actions.classList.add('popup-item-media-action-menu');
         const itemCls = 'popup-item-media-action';
 
-        const canEditVideo = await supportsVideoEncoding();
+        const canEditVideo = await supportsVideoEncoding() && file.size <= MAX_EDITABLE_VIDEO_SIZE;
 
         let equalizeIcon: HTMLSpanElement;
         if(!this.willAttach.stars && file.type !== 'image/gif' && (!isVideo || canEditVideo)) {
