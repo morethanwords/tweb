@@ -77,7 +77,7 @@ export default async function renderToActualVideo({
     return {signal, dispose};
   });
 
-  const [, setProgress] = creationProgress.signal;
+  const [progress, setProgress] = creationProgress.signal;
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
 
@@ -92,7 +92,8 @@ export default async function renderToActualVideo({
     lastTime = 0,
     frameCallbackId: number,
     drewThumbnail = false,
-    canceled = false
+    canceled = false,
+    progressRAF = 0
   ;
 
   async function initMuxerAndEncoder() {
@@ -243,9 +244,26 @@ export default async function renderToActualVideo({
     videoFrame.close();
   }
 
+  function updateProgress(targetProgress: number) {
+    const speed = 0.05;
+    const currentProgress = progress();
+
+    const delta = targetProgress - currentProgress;
+
+    if(delta < 0.0025) { // fourth of a percent
+      setProgress(targetProgress);
+      return;
+    }
+
+    setProgress(currentProgress + delta * speed);
+
+    progressRAF = requestAnimationFrame(() => updateProgress(targetProgress));
+  }
+
   function cleanup(encoder: VideoEncoder) {
     encoder.close();
     Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
+    cancelAnimationFrame(progressRAF);
   }
 
   setProgress(0);
@@ -301,7 +319,7 @@ export default async function renderToActualVideo({
       } catch{
         break;
       }
-      setProgress(clamp((video.currentTime - startTime) / (endTime - startTime), 0, 1));
+      updateProgress(clamp((video.currentTime - startTime) / (endTime - startTime), 0, 1));
       frameNo++;
     }
 
