@@ -3756,3 +3756,8 @@
     align-items: center;
   }
 }
+
+.bubble .bubble.is-sponsored {
+  margin-top: 0.25rem;
+  --border-end-start-radius: 0;
+}

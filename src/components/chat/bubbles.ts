@@ -426,7 +426,6 @@ export default class ChatBubbles {
   private getSponsoredMessagePromise: Promise<void>;
 
   private previousStickyDate: HTMLElement;
-  private sponsoredMessage: SponsoredMessage.sponsoredMessage;
 
   private hoverBubble: HTMLElement;
   private hoverReaction: HTMLElement;
@@ -1738,16 +1737,19 @@ export default class ChatBubbles {
       this.observer.unobserve(entry.target, this.viewsObserverCallback);
 
       if(fullMid) {
-        this.viewsMids.add(fullMid);
-        this.sendViewCountersDebounced();
-      } else {
-        const {sponsoredMessage} = this;
-        if(!sponsoredMessage || sponsoredMessage.viewed) {
-          return;
+        if(this.sponsoredMessagesMids.includes(fullMid)) {
+          const {mid} = splitFullMid(fullMid);
+          const msg = this.sponsoredMessages.find((msg) => msg.mid === mid);
+          const sponsoredMessage = (msg as Message.message)?.sponsoredMessage
+
+          if(sponsoredMessage && !sponsoredMessage.viewed) {
+            this.managers.appMessagesManager.viewSponsoredMessage(sponsoredMessage.random_id)
+          }
+          return
         }
 
-        sponsoredMessage.viewed = true;
-        this.managers.appMessagesManager.viewSponsoredMessage(sponsoredMessage.random_id);
+        this.viewsMids.add(fullMid);
+        this.sendViewCountersDebounced();
       }
     }
   };
@@ -3996,8 +3998,12 @@ export default class ChatBubbles {
 
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
     this.fetchNewPromise = undefined;
-    this.getSponsoredMessagePromise = undefined;
     this.updateGradient = undefined;
+
+    this.getSponsoredMessagePromise = undefined;
+    this.sponsoredMessagesLoaded = false;
+    this.sponsoredMessagesMids = [];
+    this.sponsoredMessagesAvailable = [];
 
     if(this.stickyIntersector) {
       this.stickyIntersector.disconnect();
@@ -4022,7 +4028,6 @@ export default class ChatBubbles {
     this.resolveLadderAnimation = undefined;
     this.attachPlaceholderOnRender = undefined;
     this.emptyPlaceholderBubble = undefined;
-    this.sponsoredMessage = undefined;
     this.previousStickyDate = undefined;
     this.peerSettings = undefined;
 
@@ -4354,6 +4359,10 @@ export default class ChatBubbles {
         if(ackedResult.cached) {
           await m(setRanksPromise);
         }
+      }
+
+      if(this.chat.isBroadcast && this.chat.type === ChatType.Chat/*  && false */) {
+        this.loadSponsoredMessages();
       }
     }
 
@@ -7658,6 +7667,26 @@ export default class ChatBubbles {
       });
     }
 
+    if(this.sponsoredAfterMids.size > 0) {
+      const sponsoredMessageAfterMid = groupedMids ? groupedMids.find(it => this.sponsoredAfterMids.has(it)) : message.mid
+      const sponsoredMessage = this.sponsoredAfterMids.get(sponsoredMessageAfterMid);
+      if(sponsoredMessage) {
+        const sponsoredBubblePromise = this.safeRenderMessage({
+          message: sponsoredMessage,
+          reverse: false,
+          updatePosition: false,
+          processResult: async(res) => {
+            const bubble = (await res).bubble;
+            ;(bubble as any).message = sponsoredMessage;
+            ret.bubble.appendChild(bubble);
+            return res
+          },
+          canAnimateLadder: true
+        });
+        ret.promises.push(sponsoredBubblePromise);
+      }
+    }
+
     this.addMessageSpoilerOverlay({
       mid: message.mid,
       messageDiv,
@@ -7973,6 +8002,38 @@ export default class ChatBubbles {
 
     if(setLoadedPromises.length) {
       await Promise.all(setLoadedPromises);
+    }
+
+    if(this.sponsoredMessageEvery && this.sponsoredMessagesAvailable.length) {
+      const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId);
+      let prevGroupedId: Long | undefined
+
+      for(const mid_ of (reverse ? history.reverse() : history)) {
+        const mid = typeof(mid_) === 'number' ? mid_ : mid_.mid;
+        if(mid <= readMaxId) continue
+
+        const msg = typeof mid_ === 'number' ? this.chat.getMessage(mid) : mid_;
+        const groupedId = msg._ === 'message' ? msg.grouped_id : undefined;
+        if(groupedId && prevGroupedId === groupedId) continue
+
+        prevGroupedId = groupedId
+        let add = 1
+        if(!groupedId && (
+          msg._ === 'messageService' ||
+          (msg._ === 'message' && !msg.media && msg.message.length < 100)
+        )) {
+          add = 0.2
+        }
+
+        this.messagesSinceLastSponsored += add;
+
+        if(this.messagesSinceLastSponsored >= this.sponsoredMessageEvery) {
+          this.messagesSinceLastSponsored = 0;
+          // this.log('will render sponsored message after mid', mid);
+          this.sponsoredAfterMids.set(mid, this.sponsoredMessagesAvailable.shift())
+          if(!this.sponsoredMessagesAvailable.length) break
+        }
+      }
     }
 
     let promises: Promise<any>[] = [];
@@ -8518,36 +8579,9 @@ export default class ChatBubbles {
       } else if(isSponsored) {
         bubble.classList.add('avoid-selection');
 
-        /* const sponsoredMessage =  */this.sponsoredMessage = (message as Message.message).sponsoredMessage;
-        // const peerId = getPeerId(sponsoredMessage.from_id);
-        // const photo = getSponsoredPhoto(sponsoredMessage);
-        // const willHaveAvatar = peerId !== NULL_PEER_ID || photo;
-        // if(sponsoredMessage.pFlags.show_peer_photo && willHaveAvatar) {
-        //   const photoIsPeer = photo && photo._ !== 'photo';
-        //   const bubbleGroup = new BubbleGroup(this.chat);
-        //   appendWhat = bubbleGroup.container;
-        //   bubbleGroup.container.classList.add('bubbles-group-sponsored');
-        //   bubbleGroup.createAvatar(message as Message.message, {
-        //     peerId: photoIsPeer ? photo.id.toPeerId(true) : (!photo ? peerId : undefined),
-        //     peer: photoIsPeer ? photo : undefined
-        //   });
-
-        //   if(photo && !photoIsPeer) {
-        //     wrapPhotoToAvatar(bubbleGroup.avatar, photo as Photo.photo);
-        //   }
-
-        //   if(photo) {
-        //     bubbleGroup.container.dataset.toCallback = '1';
-        //   }
-
-        //   bubbleGroup.container.append(bubble);
-        // }
-
         appendTo = this.chatInner;
         method = 'append';
         animate = false;
-
-        // return result;
       } else if(isBot && message._ === 'message') {
         const b = document.createElement('b');
         b.append(i18n('BotInfoTitle'));
@@ -8794,8 +8828,10 @@ export default class ChatBubbles {
     }
 
     if(!this.chat.isRestricted) {
-      if(side === 'bottom' && this.chat.isBroadcast && this.chat.type === ChatType.Chat/*  && false */) {
-        this.toggleSponsoredMessage(value);
+      if(side === 'bottom' && this.sponsoredMessagesAvailable.length > 0) {
+        Promise.all([this.getHistoryTopPromise, this.messagesQueuePromise]).then(() => {
+          this.performHistoryResult({history: [this.sponsoredMessagesAvailable.shift()]}, false);
+        })
       }
 
       if(side === 'top' && value && this.chat.isBot) {
@@ -8810,81 +8846,104 @@ export default class ChatBubbles {
     return this.checkIfEmptyPlaceholderNeeded();
   }
 
-  private async toggleSponsoredMessage(value: boolean) {
+  private sponsoredMessagesMids: FullMid[] = [];
+  private sponsoredMessages: MyMessage[] = [];
+  private sponsoredMessagesAvailable: MyMessage[] = [];
+  private sponsoredMessageEvery = 0;
+  private messagesSinceLastSponsored = 0;
+  private sponsoredAfterMids = new Map<number, MyMessage>();
+  private sponsoredMessagesLoaded = false;
+
+  private async generateSponsoredMessage(sponsoredMessage: SponsoredMessage.sponsoredMessage, idx: number) {
+    const offset = SPONSORED_MESSAGE_ID_OFFSET + idx
+
+    const msg = await this.generateLocalFirstMessage(false, (message) => {
+      message.message = '';
+      message.from_id = {_: 'peerUser', user_id: NULL_PEER_ID};
+      message.pFlags.sponsored = true;
+      message.pFlags.invert_media = true;
+      message.sponsoredMessage = sponsoredMessage;
+
+      const sponsoredMedia = sponsoredMessage.media;
+
+      const localWebPage: WebPage.webPage = {
+        _: 'webPage',
+        id: message.mid,
+        pFlags: {
+          has_large_media: !!sponsoredMedia || undefined
+        },
+        url: '',
+        display_url: '',
+        hash: 0,
+        description: sponsoredMessage.message,
+        entities: sponsoredMessage.entities,
+        document: (sponsoredMedia as MessageMedia.messageMediaDocument)?.document,
+        photo: (sponsoredMedia as MessageMedia.messageMediaPhoto)?.photo
+      };
+
+      message.media = {
+        _: 'messageMediaWebPage',
+        pFlags: {
+          force_large_media: !!sponsoredMedia || undefined
+        },
+        webpage: localWebPage
+      };
+    }, offset)
+
+    this.sponsoredMessagesMids.push(makeFullMid(this.peerId, msg.mid));
+
+    return msg;
+  }
+  private async loadSponsoredMessages() {
+    if(this.sponsoredMessagesLoaded) return;
+
     const log = this.log.bindPrefix('sponsored-' + (Math.random() * 1000 | 0));
-    log('checking', value);
-    const {mid} = this.generateLocalMessageId(SPONSORED_MESSAGE_ID_OFFSET);
-    const fullMid = makeFullMid(this.peerId, mid);
-    if(value) {
-      const middleware = this.getMiddleware(() => {
-        return this.scrollable.loadedAll.bottom && this.getSponsoredMessagePromise === promise;
-      });
 
-      const promise = this.getSponsoredMessagePromise = this.managers.appMessagesManager.getSponsoredMessage(this.peerId)
-      .then((sponsoredMessages) => {
-        if(!middleware() || sponsoredMessages._ === 'messages.sponsoredMessagesEmpty') {
-          return;
-        }
+    const middleware = this.getMiddleware(() => this.getSponsoredMessagePromise === promise);
 
-        const sponsoredMessage = sponsoredMessages.messages[0];
-        if(!sponsoredMessage) {
-          log('no message');
-          return;
-        }
+    const promise = this.getSponsoredMessagePromise = this.managers.appMessagesManager.getSponsoredMessage(this.peerId)
+    .then((sponsoredMessages) => {
+      if(!middleware() || sponsoredMessages._ === 'messages.sponsoredMessagesEmpty') {
+        return;
+      }
+      log('sponsored messages:', sponsoredMessages);
 
-        const messagePromise = this.generateLocalFirstMessage(false, (message) => {
-          message.message = '';
-          message.from_id = {_: 'peerUser', user_id: NULL_PEER_ID};
-          message.pFlags.sponsored = true;
-          message.pFlags.invert_media = true;
-          message.sponsoredMessage = sponsoredMessage;
-
-          const sponsoredMedia = sponsoredMessage.media;
-
-          const localWebPage: WebPage.webPage = {
-            _: 'webPage',
-            id: message.mid,
-            pFlags: {
-              has_large_media: !!sponsoredMedia || undefined
-            },
-            url: '',
-            display_url: '',
-            hash: 0,
-            description: sponsoredMessage.message,
-            entities: sponsoredMessage.entities,
-            document: (sponsoredMedia as MessageMedia.messageMediaDocument)?.document,
-            photo: (sponsoredMedia as MessageMedia.messageMediaPhoto)?.photo
-          };
-
-          message.media = {
-            _: 'messageMediaWebPage',
-            pFlags: {
-              force_large_media: !!sponsoredMedia || undefined
-            },
-            webpage: localWebPage
-          };
-        }, SPONSORED_MESSAGE_ID_OFFSET);
-
-        return Promise.all([
-          messagePromise,
-          this.getHistoryTopPromise, // wait for top load and execute rendering after or with it
-          this.messagesQueuePromise
-        ]).then(([message]) => {
-          if(!middleware()) return;
-          // this.processLocalMessageRender(message);
-          log('rendering', message);
-          return this.performHistoryResult({history: [message]}, false);
+      if(sponsoredMessages.posts_between) {
+        this.sponsoredMessageEvery = sponsoredMessages.posts_between;
+        Promise.all(sponsoredMessages.messages.map((it, idx) => this.generateSponsoredMessage(it, idx))).then((msgs) => {
+          this.messagesSinceLastSponsored = 0;
+          this.sponsoredMessages = this.sponsoredMessagesAvailable = msgs
+          if(this.scrollable.loadedAll.bottom) {
+            this.performHistoryResult({history: [msgs.shift()]}, false);
+          }
         });
-      }).finally(() => {
-        if(this.getSponsoredMessagePromise === promise) {
-          this.getSponsoredMessagePromise = undefined;
-        }
+        return;
+      }
+
+      const sponsoredMessage = sponsoredMessages.messages[0];
+      if(!sponsoredMessage) {
+        log('no message');
+        return;
+      }
+
+      const messagePromise = this.generateSponsoredMessage(sponsoredMessage, 0);
+
+      return Promise.all([
+        messagePromise,
+        this.getHistoryTopPromise, // wait for top load and execute rendering after or with it
+        this.messagesQueuePromise
+      ]).then(([message]) => {
+        if(!middleware()) return;
+        // this.processLocalMessageRender(message);
+        log('rendering', message);
+        return this.performHistoryResult({history: [message]}, false);
       });
-    } else {
-      log('clearing rendered', mid);
-      this.getSponsoredMessagePromise = undefined;
-      this.deleteMessagesByIds([fullMid], false);
-    }
+    }).finally(() => {
+      if(this.getSponsoredMessagePromise === promise) {
+        this.getSponsoredMessagePromise = undefined;
+        this.sponsoredMessagesLoaded = true;
+      }
+    });
   }
 
   private async renderBotPlaceholder() {
@@ -8943,7 +9002,6 @@ export default class ChatBubbles {
 
     const message = await this.generateLocalFirstMessage(true);
 
-    // return this.processLocalMessageRender(message, true);
     return this.safeRenderMessage({
       message,
       reverse: true,
@@ -9318,7 +9376,6 @@ export default class ChatBubbles {
     this.peerSettings = peerSettings;
 
     if(shouldShowUnknownUserPlaceholder(peerSettings)) {
-      console.trace('set peer settings', peerSettings);
       this.cleanupPlaceholders()
       this.renderUnknownUserPlaceholder();
     }

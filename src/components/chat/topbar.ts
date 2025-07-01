@@ -68,6 +68,7 @@ import {useAppSettings} from '../../stores/appSettings';
 import PopupSendGift from '../popups/sendGift';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
 import ChatRemoveFee from './removeFee';
+import ChatTopbarSponsored from './topbarSponsored';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -98,6 +99,7 @@ export default class ChatTopbar {
   private chatAudio: ChatAudio;
   private chatLive: ChatLive;
   private chatTranslation: ChatTranslation;
+  private chatSponsored: ChatTopbarSponsored;
   public pinnedMessage: ChatPinnedMessage;
   private pinnedContainers: PinnedContainer[];
 
@@ -179,6 +181,7 @@ export default class ChatTopbar {
     this.chatRemoveFee = new ChatRemoveFee(this, this.chat, this.managers);
     if(IS_LIVE_STREAM_SUPPORTED) this.chatLive = new ChatLive(this, this.chat, this.managers);
     this.chatTranslation = new ChatTranslation(this, this.chat, this.managers);
+    this.chatSponsored = new ChatTopbarSponsored(this, this.chat, this.managers);
 
     if(this.menuButtons.length) {
       this.btnMore = ButtonMenuToggle({
@@ -225,7 +228,8 @@ export default class ChatTopbar {
       this.chatActions,
       this.chatLive,
       this.chatTranslation,
-      this.chatRemoveFee
+      this.chatRemoveFee,
+      this.chatSponsored
     ].filter(Boolean);
     this.container.append(...pinnedContainers.map((pinnedContainer) => pinnedContainer.container));
 
@@ -1081,6 +1085,7 @@ export default class ChatTopbar {
       this.chatLive?.setPeerId(peerId);
       this.chatTranslation?.setPeerId(peerId);
       this.chatRemoveFee?.setPeerId(peerId);
+      this.chatSponsored?.setPeerId(peerId);
 
       callbackify(setRequestsCallback.result, (callback) => {
         if(!middleware()) {
@@ -1236,9 +1241,13 @@ export default class ChatTopbar {
       }
 
       if(isFloating) {
-        floatingHeight += container.height;
+        let height = container.height;
+        if(height === 'auto') {
+          height = container.container.offsetHeight;
+        }
+        floatingHeight += height;
         container.container.style.top = top + 'px';
-        top += container.height;
+        top += height;
       } else {
         container.container.style.top = '';
       }

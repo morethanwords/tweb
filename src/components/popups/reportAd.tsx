@@ -293,7 +293,7 @@ export default class PopupReportAd extends PopupElement {
   }
 
   public static createAdReport(
-    sponsoredMessage: SponsoredMessage,
+    sponsoredMessage: { random_id: Uint8Array },
     onAdHide?: () => void
   ) {
     PopupElement.createPopup(

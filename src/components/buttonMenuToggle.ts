@@ -17,11 +17,13 @@ import callbackify from '../helpers/callbackify';
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({
   el,
+  appendTo,
   onOpen,
   options,
   onClose
 }: {
   el: HTMLElement,
+  appendTo: HTMLElement,
   onOpen?: (e: Event) => any,
   options?: AttachClickOptions,
   onClose?: () => void
@@ -38,7 +40,7 @@ export function ButtonMenuToggleHandler({
     } else {
       const result = onOpen?.(e);
       const open = () => {
-        const openedMenu = el.querySelector('.btn-menu') as HTMLDivElement;
+        const openedMenu = appendTo.querySelector('.btn-menu') as HTMLDivElement;
         if(!openedMenu) {
           return;
         }
@@ -66,11 +68,13 @@ export default function ButtonMenuToggle({
   onClose,
   onCloseAfter,
   noIcon,
-  icon = 'more'
+  icon = 'more',
+  appendTo
 }: {
   buttonOptions?: Parameters<typeof ButtonIcon>[1],
   listenerSetter?: ListenerSetter,
   container?: HTMLElement
+  appendTo?: HTMLElement,
   direction: 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right',
   buttons: ButtonMenuItemOptionsVerifiable[],
   onOpenBefore?: (e: Event) => any,
@@ -85,6 +89,7 @@ export default function ButtonMenuToggle({
   }
 
   const button = container ?? ButtonIcon(noIcon ? undefined : icon, buttonOptions);
+  appendTo ??= button
   button.classList.add('btn-menu-toggle');
 
   const listenerSetter = new ListenerSetter();
@@ -97,6 +102,7 @@ export default function ButtonMenuToggle({
   let element: HTMLElement, closeTimeout: number, tempId = 0;
   ButtonMenuToggleHandler({
     el: button,
+    appendTo,
     onOpen: async(e) => {
       const _tempId = ++tempId;
       await onOpenBefore?.(e);
@@ -125,7 +131,7 @@ export default function ButtonMenuToggle({
       await onOpen?.(e, _element);
       if(_tempId !== tempId) return;
 
-      button.append(_element);
+      appendTo.append(_element);
       await doubleRaf();
       if(_tempId !== tempId) {
         _element.remove();

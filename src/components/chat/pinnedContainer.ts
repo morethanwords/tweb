@@ -42,7 +42,7 @@ export default class PinnedContainer {
 
   public onClose?: () => void | Promise<boolean>;
 
-  public height: number;
+  public height: number | 'auto';
 
   constructor(options: {
     topbar: PinnedContainer['topbar'],
@@ -52,7 +52,7 @@ export default class PinnedContainer {
     divAndCaption?: PinnedContainer['divAndCaption'],
     onClose?: PinnedContainer['onClose'],
     floating?: PinnedContainer['floating'],
-    height: number
+    height: number | 'auto'
   }) {
     safeAssign(this, options);
 

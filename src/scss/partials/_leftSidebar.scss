@@ -1723,3 +1723,22 @@
     height: 1.5rem;
   }
 }
+
+.sponsored-peer-chip {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  background: rgba(var(--primary-color-rgb), 0.1);
+  padding-block: 0.125rem;
+  padding-inline: 0.5rem 0.25rem;
+  border-radius: 9999px!important;
+  color: var(--primary-color);
+
+  .btn-menu {
+    height: fit-content;
+  }
+
+  html.no-touch &:hover {
+    background: rgba(var(--primary-color-rgb), 0.15);
+  }
+}

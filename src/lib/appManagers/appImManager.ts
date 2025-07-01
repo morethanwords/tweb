@@ -25,7 +25,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor} from '../../layer';
+import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor, SponsoredMessage} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -1361,15 +1361,20 @@ export class AppImManager extends EventListenerBase<{
 
   public onSponsoredBoxClick = (message: Message.message) => {
     const sponsoredMessage = message.sponsoredMessage;
-    const wrapped = wrapUrl(sponsoredMessage.url);
-    this.clickIfSponsoredMessage(message as Message.message);
+    if(!sponsoredMessage) return;
+    this.onSponsoredMessageClick(sponsoredMessage);
+  };
+
+  public onSponsoredMessageClick = (message: SponsoredMessage) => {
+    this.managers.appMessagesManager.clickSponsoredMessage(message.random_id);
+    const wrapped = wrapUrl(message.url);
 
     if(wrapped.onclick) {
-      this.chat.appImManager.openUrl(sponsoredMessage.url);
+      this.chat.appImManager.openUrl(message.url);
     } else {
       safeWindowOpen(wrapped.url);
     }
-  };
+  }
 
   public async open(options: Omit<Parameters<AppImManager['op']>[0], 'peer'> & {peerId: PeerId}) {
     return this.op({

@@ -90,7 +90,7 @@ export async function processMessageForTranslation(peerId: PeerId, mid: number) 
   }
 
   const message = apiManagerProxy.getMessageByPeer(peerId, mid);
-  const text = (message as Message.message).message;
+  const text = (message as Message.message)?.message;
   if(!text) {
     return;
   }
