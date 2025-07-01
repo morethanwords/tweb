@@ -5,20 +5,22 @@ import {i18n} from '../../../lib/langPack';
 import Space from '../../space';
 
 import {adjustmentsConfig} from '../adjustments';
+import {useCropOffset} from '../canvas/useCropOffset';
 import {useMediaEditorContext} from '../context';
-import useIsMobile from '../useIsMobile';
+import getResultSize from '../finalRender/getResultSize';
 import RangeInput from '../rangeInput';
 import StepInput, {StepInputStep} from '../stepInput';
+import useIsMobile from '../useIsMobile';
 import {availableQualityHeights, checkIfHasAnimatedStickers, snapToAvailableQuality} from '../utils';
-import getResultSize from '../finalRender/getResultSize';
 
 
 const ADJUST_TIMEOUT = 800;
 
 export default function AdjustmentsTab() {
-  const {editorState, mediaState, actions, mediaSize, mediaType} = useMediaEditorContext();
+  const {editorState, mediaState, actions, mediaSize, mediaType, imageRatio} = useMediaEditorContext();
 
   const isMobile = useIsMobile();
+  const cropOffset = useCropOffset();
 
   let timeoutId = 0;
   function removeIsAdjusting() {
@@ -28,16 +30,23 @@ export default function AdjustmentsTab() {
     }, ADJUST_TIMEOUT);
   }
 
-  const maxVideoQuality = createMemo(() =>
-    snapToAvailableQuality(
-      getResultSize({
-        imageWidth: mediaSize[0],
-        scale: mediaState.scale,
-        newRatio: mediaState.currentImageRatio,
-        videoType: mediaType === 'video' ? 'video' : 'gif'
-      })[1]
-    )
+  const resultingSize = createMemo(() =>
+    getResultSize({
+      imageWidth: mediaSize[0],
+      scale: mediaState.scale,
+      newRatio: mediaState.currentImageRatio || imageRatio,
+      videoType: mediaType === 'video' ? 'video' : 'gif',
+      imageRatio,
+      cropOffset: !cropOffset().width ? {width: 1, height: 1} : cropOffset()
+    })
   );
+
+  createEffect(() => {
+    resultingSize();
+    (window as any).debugResultingSize && console.log('resultingSize', resultingSize());
+  });
+
+  const maxVideoQuality = createMemo(() => snapToAvailableQuality(resultingSize()[1]));
 
   const steps = createMemo((): StepInputStep[] =>
     availableQualityHeights

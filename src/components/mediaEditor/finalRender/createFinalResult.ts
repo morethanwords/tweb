@@ -48,7 +48,7 @@ export type MediaEditorFinalResult = {
 
 export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const context = useMediaEditorContext();
-  const {editorState, mediaState, mediaSrc, mediaType} = context;
+  const {editorState, mediaState, mediaSrc, mediaType, imageRatio} = context;
   const {resizableLayers, adjustments} = mediaState;
 
   const owner = getOwner();
@@ -65,7 +65,9 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     imageWidth: editorState.renderingPayload?.media.width,
     newRatio: mediaState.currentImageRatio,
     scale: mediaState.scale,
-    videoType
+    videoType,
+    imageRatio: imageRatio,
+    cropOffset: cropOffset()
   });
 
   const maxQuality = snapToAvailableQuality(maxHeight);
@@ -75,6 +77,8 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     newRatio: mediaState.currentImageRatio,
     scale: mediaState.scale,
     videoType,
+    imageRatio,
+    cropOffset: cropOffset(),
     quality: willResultInVideo ? Math.min(maxQuality, mediaState.videoQuality) : undefined
   });
 

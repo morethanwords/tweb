@@ -2,7 +2,7 @@ import {snapToViewport} from '../utils';
 import {defaultCodec, highResCodec} from './calcCodecAndBitrate';
 
 const SIDE_MAX = 2560;
-const SIDE_MIN = 400;
+const SIDE_MIN = 240;
 
 export const VIDEO_WIDTH_MAX = highResCodec.width;
 export const VIDEO_HEIGHT_MAX = highResCodec.height;
@@ -10,13 +10,18 @@ export const VIDEO_HEIGHT_MAX = highResCodec.height;
 type Args = {
   videoType: 'video' | 'gif';
   imageWidth: number;
+  imageRatio: number;
+  cropOffset: { width: number; height: number; };
   newRatio: number;
   scale: number;
   quality?: number;
 };
 
-export default function getResultSize({imageWidth, newRatio, scale, videoType, quality}: Args) {
-  let scaledWidth = imageWidth / scale,
+export default function getResultSize({imageWidth, cropOffset, imageRatio, newRatio, scale, videoType, quality}: Args) {
+  const [w] = snapToViewport(imageRatio, cropOffset.width, cropOffset.height);
+  const [cw] = snapToViewport(newRatio, cropOffset.width, cropOffset.height);
+
+  let scaledWidth = cw / (w * scale) * imageWidth,
     scaledHeight = scaledWidth / newRatio;
 
   const willResultInVideo = !!videoType;

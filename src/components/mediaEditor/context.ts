@@ -1,4 +1,4 @@
-import {Accessor, createContext, createEffect, createSignal, on, useContext} from 'solid-js';
+import {Accessor, createContext, createEffect, createSignal, on, useContext, createMemo} from 'solid-js';
 import {createMutable, modifyMutable, produce, Store} from 'solid-js/store';
 
 import exceptKeys from '../../helpers/object/exceptKeys';
@@ -185,6 +185,7 @@ export type MediaEditorContextValue = {
   actions: EditorOverridableGlobalActions;
 
   hasModifications: Accessor<boolean>;
+  imageRatio: number;
 
   resizableLayersSeed: number;
 };
@@ -252,6 +253,7 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     actions,
 
     hasModifications,
+    imageRatio: props.mediaSize[0] / props.mediaSize[1],
 
     // [0-1] make sure it's different even after reopening the editor, note that there might be some items in history!
     resizableLayersSeed: Math.random()
