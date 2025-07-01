@@ -165,7 +165,7 @@ class RtmpStream {
         video_channel: RTMP_UNIFIED_CHANNEL_ID,
         video_quality: RTMP_UNIFIED_QUALITY
       }
-    }) as VideoStreamInfo;
+    });
     const rtt = Date.now() - now;
     this.updateRtt(rtt);
     log(`ended fetch time=${time}, rtt=${rtt}`);

@@ -1,4 +1,4 @@
-import {TLDeserialization} from '../mtproto/tl_utils'
+import {TLDeserialization} from '../mtproto/tl_utils';
 
 export interface VideoStreamEvent {
   offsetValue: number;
@@ -16,6 +16,7 @@ export interface VideoStreamInfo {
 }
 
 export function parseVideoStreamInfo(buf: Uint8Array) {
+  const originalBuf = buf;
   if(buf.length % 4 !== 0) {
     buf = buf.subarray(0, buf.length - buf.length % 4);
   }
@@ -43,6 +44,6 @@ export function parseVideoStreamInfo(buf: Uint8Array) {
     container,
     activeMask,
     events,
-    bytes: buf
+    bytes: originalBuf
   };
 }
