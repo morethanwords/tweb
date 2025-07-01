@@ -2492,12 +2492,8 @@ export default class AppSearchSuper {
 
   public async getGiftsCount() {
     const {peerId} = this.searchContext
-    const full =
-      peerId.isUser() ?
-        await this.managers.appProfileManager.getProfile(peerId.toUserId()) :
-        await this.managers.appProfileManager.getChannelFull(peerId.toChatId());
-
-    return full.stargifts_count ?? 0;
+    const full = await this.managers.appProfileManager.getProfileByPeerId(peerId);
+    return (full as UserFull | ChatFull.channelFull).stargifts_count ?? 0;
   }
 
   public cleanup() {
