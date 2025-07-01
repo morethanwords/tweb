@@ -10,6 +10,7 @@ import {simulateClickEvent, attachClickEvent} from '../helpers/dom/clickEvent';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import getVisibleRect from '../helpers/dom/getVisibleRect';
+import isInDOM from '../helpers/dom/isInDOM';
 import safePlay from '../helpers/dom/safePlay';
 import ListenerSetter from '../helpers/listenerSetter';
 import {makeMediaSize} from '../helpers/mediaSize';
@@ -353,6 +354,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
     const onMouseUp = () => {
       isMouseUp = true;
       clearTimeout(timeout);
+      clearInterval(unmountInterval);
       // _middleware.clean();
 
       if(container) {
@@ -380,5 +382,10 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
 
     document.addEventListener('mousemove', onMousePreMove);
     document.addEventListener('mouseup', onMouseUp, {once: true, capture: true});
+    const unmountInterval = setInterval(() => {
+      if(!isInDOM(mediaContainer)) {
+        onMouseUp();
+      }
+    }, 100);
   });
 }
