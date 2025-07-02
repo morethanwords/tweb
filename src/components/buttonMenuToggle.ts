@@ -17,13 +17,11 @@ import callbackify from '../helpers/callbackify';
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({
   el,
-  appendTo,
   onOpen,
   options,
   onClose
 }: {
   el: HTMLElement,
-  appendTo: HTMLElement,
   onOpen?: (e: Event) => any,
   options?: AttachClickOptions,
   onClose?: () => void
@@ -39,8 +37,8 @@ export function ButtonMenuToggleHandler({
       contextMenuController.close();
     } else {
       const result = onOpen?.(e);
-      const open = () => {
-        const openedMenu = appendTo.querySelector('.btn-menu') as HTMLDivElement;
+      const open = (element?: HTMLElement) => {
+        const openedMenu = element ?? el.querySelector('.btn-menu') as HTMLDivElement;
         if(!openedMenu) {
           return;
         }
@@ -102,7 +100,6 @@ export default function ButtonMenuToggle({
   let element: HTMLElement, closeTimeout: number, tempId = 0;
   ButtonMenuToggleHandler({
     el: button,
-    appendTo,
     onOpen: async(e) => {
       const _tempId = ++tempId;
       await onOpenBefore?.(e);
@@ -136,6 +133,8 @@ export default function ButtonMenuToggle({
       if(_tempId !== tempId) {
         _element.remove();
       }
+
+      return _element
     },
     options: {
       listenerSetter: attachListenerSetter

@@ -1,7 +1,14 @@
+@import "../../scss/variables";
+@import "../../scss/mixins";
+
 :global(.pinned-sponsored) {
   --container-height: auto;
+  transition: padding-right var(--transition-standard-out);
 
-  &:before { border-top: none!important; }
+  :global(body.is-right-column-shown) & {
+    padding-right: var(--right-column-width);
+    transition: padding-right var(--transition-standard-in);
+  }
 }
 
 .container {
@@ -50,7 +57,7 @@
 
   & :global(.btn-icon) {
     color: var(--primary-color);
-    padding: 0.375rem;
+    padding: 0.25rem;
 
     html:global(.no-touch) &:hover {
       background-color: rgba(var(--primary-color-rgb), 0.1)

@@ -1727,11 +1727,11 @@
 .sponsored-peer-chip {
   display: flex;
   align-items: center;
-  font-size: 13px;
+  font-size: 11px;
   background: rgba(var(--primary-color-rgb), 0.1);
   padding-block: 0.125rem;
-  padding-inline: 0.5rem 0.25rem;
-  border-radius: 9999px!important;
+  padding-inline: 5px 2px;
+  border-radius: 9999px !important;
   color: var(--primary-color);
 
   .btn-menu {

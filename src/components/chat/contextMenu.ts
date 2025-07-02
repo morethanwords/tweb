@@ -90,7 +90,7 @@ type ChatContextMenuButton = ButtonMenuItemOptions & {
 };
 
 export function getSponsoredMessageButtons(options: {
-  message: SponsoredMessage | MySponsoredPeer,
+  message?: SponsoredMessage | MySponsoredPeer,
   handleReportAd: () => void,
   handleCopy?: () => void,
   extraVerify?: () => boolean,
@@ -101,6 +101,7 @@ export function getSponsoredMessageButtons(options: {
     handleReportAd,
     handleCopy
   } = options;
+  if(!message) return []
 
   const canReport = message._ === 'sponsoredPeer' ? true : message.pFlags.can_report;
 

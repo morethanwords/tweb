@@ -8005,10 +8005,14 @@ export default class ChatBubbles {
     }
 
     if(this.sponsoredMessageEvery && this.sponsoredMessagesAvailable.length) {
-      const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId);
+      const [readMaxId, chatMaxId] = await Promise.all([
+        this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId),
+        this.chat.getHistoryMaxId()
+      ])
       let prevGroupedId: Long | undefined
+      debugger
 
-      for(const mid_ of (reverse ? history.reverse() : history)) {
+      for(const mid_ of history) {
         const mid = typeof(mid_) === 'number' ? mid_ : mid_.mid;
         if(mid <= readMaxId) continue
 
@@ -8027,9 +8031,10 @@ export default class ChatBubbles {
 
         this.messagesSinceLastSponsored += add;
 
-        if(this.messagesSinceLastSponsored >= this.sponsoredMessageEvery) {
+        const addOffset = (reverse ? 1 : 0) // because we display *after* and reverse is before
+        if(this.messagesSinceLastSponsored >= (this.sponsoredMessageEvery + addOffset)) {
           this.messagesSinceLastSponsored = 0;
-          // this.log('will render sponsored message after mid', mid);
+          this.log('will render sponsored message after mid', mid);
           this.sponsoredAfterMids.set(mid, this.sponsoredMessagesAvailable.shift())
           if(!this.sponsoredMessagesAvailable.length) break
         }
