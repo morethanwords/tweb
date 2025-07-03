@@ -4,8 +4,6 @@ import {defaultCodec, highResCodec} from './calcCodecAndBitrate';
 const SIDE_MAX = 2560;
 const SIDE_MIN = 240;
 
-export const VIDEO_WIDTH_MAX = highResCodec.width;
-export const VIDEO_HEIGHT_MAX = highResCodec.height;
 
 type Args = {
   videoType: 'video' | 'gif';

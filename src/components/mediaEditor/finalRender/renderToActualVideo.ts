@@ -447,19 +447,8 @@ async function encodeAndMuxAudio(audioBuffer: AudioBuffer, onChunk: (ch: Encoded
 
   const encoder = new AudioEncoder({
     output: onChunk,
-    // (chunk) => {
-    //   encodedChunks.push(chunk);
-    // },
     error: (e) => console.error('AudioEncoder error:', e)
   });
-
-  // TODO: Need to check support for this thing and fallback to other codecs
-  // const supported = await AudioEncoder.isConfigSupported({
-  //   codec: 'opus',
-  //   sampleRate,
-  //   numberOfChannels: audioBuffer.numberOfChannels,
-  //   bitrate: 128000
-  // });
 
   encoder.configure({
     codec: 'opus',

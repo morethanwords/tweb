@@ -25,10 +25,6 @@
     pointer-events: none;
   }
 
-  --start: 0.2;
-  --length: 0.6;
-  --current-time: 0.4;
-  --thumbnail-time: 0.45;
   --handle-width: 9px;
 }
 
@@ -152,9 +148,6 @@
       border-bottom-right-radius: var(--handle-width);
     }
   }
-}
-
-.Images {
 }
 
 .TimeStick {
