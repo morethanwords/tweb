@@ -116,11 +116,12 @@ const VideoControls: Component<{}> = () => {
     },
     onMove: (xDiff, _, e) => void batch((): void => {
       if(swiping !== 'middle') return;
-      if(initialLength === 1) return void  handleCursorMove(xDiff, e);
+
       if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX) canMove = true;
       if(!canMove) return;
-
       setIsDraggingSomething(true);
+
+      if(initialLength === 1) return void handleCursorMove(xDiff, e);
 
       const startDiff = clamp(initialStart + xDiff / strippedWidth(), 0, Math.max(0, 1 - Math.max(initialLength, minLength()))) - initialStart;
       batch(() => {
