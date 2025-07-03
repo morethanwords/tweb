@@ -268,7 +268,7 @@ export default function BrushCanvas() {
       endSwipe();
     });
 
-    new SwipeHandler({
+    const swipeHandler = new SwipeHandler({
       element: canvas,
       cursor: '',
       onSwipe: (xDiff, yDiff, _e) => {
@@ -298,6 +298,10 @@ export default function BrushCanvas() {
         })();
       }
     });
+
+    onCleanup(() => {
+      swipeHandler.removeListeners();
+    })
   });
 
   return <>{canvas}</>;

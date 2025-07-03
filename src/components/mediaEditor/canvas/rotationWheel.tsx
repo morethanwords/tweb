@@ -72,7 +72,7 @@ export default function RotationWheel() {
       }, 750);
     }
 
-    new SwipeHandler({
+    const swipeHandler = new SwipeHandler({
       element: swiperEl,
       onStart() {
         initialScale = mediaState.scale;
@@ -132,6 +132,10 @@ export default function RotationWheel() {
           mediaState.rotation = mediaState.rotation % (Math.PI * 2)
         });
       }
+    });
+
+    onCleanup(() => {
+      swipeHandler.removeListeners();
     });
   });
 
