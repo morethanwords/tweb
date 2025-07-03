@@ -2,7 +2,7 @@ import {createEffect, onCleanup} from 'solid-js';
 import deferredPromise from '../../../helpers/cancellablePromise';
 import createSolidMiddleware from '../../../helpers/solid/createSolidMiddleware';
 import {useMediaEditorContext} from '../context';
-import {snapToViewport} from '../utils';
+import {delay, snapToViewport} from '../utils';
 import createVideoForDrawing from './createVideoForDrawing';
 import styles from './videoControls.module.scss';
 
@@ -70,7 +70,7 @@ export default function useVideoControlsCanvas({getCanvas, size}: Args) {
 
         canvas.after(fade);
 
-        fade.animate({opacity: [1, 0]}, {duration: 420}).finished
+        fade.animate({opacity: [1, 0]}, {duration: 500, easing: 'ease-in-out'}).finished
         .then(() => fade.remove());
       }
     })();
