@@ -44,8 +44,20 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
   createEffect(() => {
     if(editorState.currentTab !== 'adjustments') return;
 
+    const listener = (event: KeyboardEvent) => {
+      const el = (event.target as HTMLElement);
+
+      if(event.code === 'Space' && !el.isContentEditable) {
+        event.preventDefault(); // stop page from scrolling, idk if needed
+        editorState.isPlaying = !editorState.isPlaying;
+      }
+    };
+
+    document.addEventListener('keydown', listener);
+
     onCleanup(() => {
       editorState.isPlaying = false;
+      document.removeEventListener('keydown', listener);
     });
   });
 

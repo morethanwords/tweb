@@ -117,6 +117,8 @@ export default class PopupNewMedia extends PopupElement {
 
   private actionsMenuListenerSetter = new ListenerSetter;
 
+  private isMediaEditorOpen = false;
+
   constructor(
     private chat: Chat,
     private files: File[],
@@ -672,7 +674,7 @@ export default class PopupNewMedia extends PopupElement {
     const target = e.target as HTMLElement;
     const {input} = this.messageInputField;
     if(target !== input) {
-      if(target.tagName === 'INPUT' || target.isContentEditable) {
+      if(target.tagName === 'INPUT' || target.isContentEditable || this.isMediaEditorOpen) {
         return;
       }
 
@@ -1067,6 +1069,7 @@ export default class PopupNewMedia extends PopupElement {
             const {openMediaEditorFromMedia} = await import('../mediaEditor');
 
             const sourceSize: NumberPair = source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalWidth, source.naturalHeight];
+            this.isMediaEditorOpen = true;
 
             openMediaEditorFromMedia({
               source,
@@ -1083,6 +1086,7 @@ export default class PopupNewMedia extends PopupElement {
               },
               editingMediaState: params.editResult?.editingMediaState,
               onClose: (hasGif) => {
+                this.isMediaEditorOpen = false;
                 if(!hasGif)
                   (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
               }
