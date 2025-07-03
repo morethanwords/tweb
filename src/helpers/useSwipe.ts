@@ -41,7 +41,10 @@ export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiv
     const {onStart, globalCursor} = args();
     onStart?.(e);
 
-    globalCursor && document.body.style.setProperty('cursor', globalCursor(), 'important');
+    if(globalCursor) {
+      document.body.style.setProperty('cursor', globalCursor(), 'important');
+      element.style.setProperty('cursor', globalCursor(), 'important');
+    }
   }
 
   function handleMove(e: PointerEvent | TouchEvent, diff: readonly [number, number]) {
@@ -56,7 +59,10 @@ export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiv
 
     const {onEnd, globalCursor} = args();
     onEnd?.(...diff, e);
-    globalCursor && document.body.style.removeProperty('cursor');
+    if(globalCursor) {
+      document.body.style.removeProperty('cursor');
+      element.style.removeProperty('cursor');
+    }
 
     isDragging = false;
     initialX = initialY = undefined;

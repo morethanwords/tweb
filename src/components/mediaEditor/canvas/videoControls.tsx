@@ -23,10 +23,31 @@ const VideoControls: Component<{}> = () => {
   const {editorState, mediaState, actions} = useMediaEditorContext();
 
   const [cropper, setCropper] = createSignal<HTMLDivElement>();
-  const [isDraggingMiddle, setIsDraggingMiddle] = createSignal(false);
+  const [isDraggingSomething, setIsDraggingSomething] = createSignal(false);
 
   const cropperSize = useElementSize(cropper);
   const strippedWidth = () => cropperSize.width - 2 * HANDLE_WIDTH_PX;
+
+  const shouldShowTime = () => isDraggingSomething() && (swiping === 'left' || swiping === 'right');
+
+  const formattedResultingTime = createMemo(() => {
+    if(!shouldShowTime()) return '';
+    const video = editorState.renderingPayload?.media?.video;
+    if(!video) return '';
+
+    const totalSeconds = mediaState.videoCropLength * video.duration;
+    let ts = totalSeconds;
+
+    const hh = (Math.floor(ts / 3600) + '').padStart(2, '0');
+    ts -= +hh * 3600;
+    const mm = (Math.floor(ts / 60) + '').padStart(2, '0');
+    ts -= +mm * 60;
+    const ss = (Math.floor(ts) + '').padStart(2, '0');
+    ts -= +ss;
+    const decimal = (Math.floor(ts * 4) * 25 + '').replace(/0$/, '');
+
+    return (+hh ? `${hh}:` : '') + `${mm}:${ss}` + (decimal && totalSeconds < 10 ? `.${decimal}` : '');
+  });
 
   const minLength = createMemo(() => {
     const duration = editorState.renderingPayload?.media?.video?.duration;
@@ -52,6 +73,7 @@ const VideoControls: Component<{}> = () => {
       swiping = 'left';
       initialStart = mediaState.videoCropStart;
       initialLength = mediaState.videoCropLength;
+      setIsDraggingSomething(true);
     },
     onMove: (xDiff) => void batch(() => {
       if(swiping !== 'left') return;
@@ -61,7 +83,8 @@ const VideoControls: Component<{}> = () => {
         mediaState.videoCropLength = (initialLength - diff);
         actions.setVideoTime(mediaState.videoCropStart);
       });
-    })
+    }),
+    onEnd: () => void setIsDraggingSomething(false)
   };
 
   const rightHandleSwipeArgs: SwipeDirectiveArgs = {
@@ -70,13 +93,15 @@ const VideoControls: Component<{}> = () => {
       swiping = 'right';
       initialLength = mediaState.videoCropLength;
       editorState.isPlaying = false;
+      setIsDraggingSomething(true);
     },
     onMove: (xDiff) => void batch(() => {
       if(swiping !== 'right') return;
       const maxLength = 1 - mediaState.videoCropStart;
       mediaState.videoCropLength = (clamp(initialLength + xDiff / strippedWidth(), Math.min(minLength(), maxLength), maxLength));
       actions.setVideoTime(mediaState.videoCropStart + mediaState.videoCropLength);
-    })
+    }),
+    onEnd: () => void setIsDraggingSomething(false)
   };
 
   let canMove = false;
@@ -95,7 +120,7 @@ const VideoControls: Component<{}> = () => {
       if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX) canMove = true;
       if(!canMove) return;
 
-      setIsDraggingMiddle(true);
+      setIsDraggingSomething(true);
 
       const startDiff = clamp(initialStart + xDiff / strippedWidth(), 0, Math.max(0, 1 - Math.max(initialLength, minLength()))) - initialStart;
       batch(() => {
@@ -107,7 +132,7 @@ const VideoControls: Component<{}> = () => {
     }),
     onEnd: () => {
       self.setTimeout(() => {
-        setIsDraggingMiddle(false);
+        setIsDraggingSomething(false);
       }, 0); // prevent trigger click after finishing dragging
     }
   };
@@ -116,13 +141,15 @@ const VideoControls: Component<{}> = () => {
     globalCursor: () => 'col-resize',
     onStart: () => {
       swiping = 'cursor';
+      setIsDraggingSomething(true);
     },
     onMove: (xDiff, __, e) => {
       if(swiping !== 'cursor') return;
       // if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX)
       editorState.isPlaying = false;
       handleCursorMove(xDiff, e);
-    }
+    },
+    onEnd: () => void setIsDraggingSomething(false)
   };
 
   const handleCursorMove = (xDiff: number, e: PointerEvent | TouchEvent) => {
@@ -130,7 +157,7 @@ const VideoControls: Component<{}> = () => {
   };
 
   const onMiddlePartClick = (e: MouseEvent) => {
-    if(!cropper() || isDraggingMiddle()) return;
+    if(!cropper() || isDraggingSomething()) return;
 
     actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength));
   };
@@ -186,7 +213,7 @@ const VideoControls: Component<{}> = () => {
             <div
               class={styles.CropperHorizontalBorder}
               classList={{
-                [styles.dragging]: isDraggingMiddle()
+                [styles.dragging]: isDraggingSomething()
               }}
               use:swipe={middleSwipeArgs}
               onClick={onMiddlePartClick}
@@ -197,7 +224,15 @@ const VideoControls: Component<{}> = () => {
           </div>
 
           <TimeStick swipe={cursorSwipeArgs} />
-          <ThumbnailTrack cropper={cropper()} isDraggingMiddle={isDraggingMiddle()} />
+          <ThumbnailTrack
+            cropper={cropper()}
+            isDraggingSomething={isDraggingSomething()}
+            hidden={shouldShowTime()}
+          />
+          <div class={styles.CroppedTime} classList={{[styles.visible]: shouldShowTime()}}>
+            {formattedResultingTime()}
+          </div>
+
         </div>
 
         <button
@@ -219,7 +254,8 @@ const VideoControls: Component<{}> = () => {
 
 const ThumbnailTrack: Component<{
   cropper: HTMLDivElement;
-  isDraggingMiddle: boolean;
+  isDraggingSomething: boolean;
+  hidden: boolean;
 }> = (props) => {
   const {actions, editorState, mediaState} = useMediaEditorContext();
 
@@ -227,7 +263,7 @@ const ThumbnailTrack: Component<{
 
   const [isDragging, setIsDragging] = createSignal(false);
 
-  const isGhostThumbnailVisible = createMemo(() => !props.isDraggingMiddle && !isDragging() && !isNaN(ghostThumbnailPosition()));
+  const isGhostThumbnailVisible = createMemo(() => !props.isDraggingSomething && !isDragging() && !isNaN(ghostThumbnailPosition()));
 
   const onClick = (e: MouseEvent) => {
     if(!props.cropper) return;
@@ -238,7 +274,7 @@ const ThumbnailTrack: Component<{
   let canPreviewFrame = false, previewFrameTimeout: number;
 
   const onPointerMove = (e: PointerEvent | TouchEvent) => {
-    if(!props.cropper || editorState.isPlaying || props.isDraggingMiddle) return;
+    if(!props.cropper || editorState.isPlaying || props.isDraggingSomething) return;
 
     if(!previewFrameTimeout) previewFrameTimeout = self.setTimeout(() => {
       canPreviewFrame = true;
@@ -261,6 +297,7 @@ const ThumbnailTrack: Component<{
   };
 
   const swipeArgs: SwipeDirectiveArgs = {
+    globalCursor: () => 'grabbing',
     onStart: (e) => {
       void setIsDragging(true);
       if(!props.cropper) return;
@@ -275,11 +312,14 @@ const ThumbnailTrack: Component<{
 
   return (
     <>
-      <ThumbnailMark position={mediaState.videoThumbnailPosition} visible />
-      <ThumbnailMark position={ghostThumbnailPosition() || 0} ghost visible={isGhostThumbnailVisible()} />
+      <ThumbnailMark position={mediaState.videoThumbnailPosition} visible={!props.hidden} withTransition />
+      <ThumbnailMark position={ghostThumbnailPosition() || 0} ghost visible={!props.hidden && isGhostThumbnailVisible()} />
 
       <div
         class={styles.ThumbnailTrack}
+        classList={{
+          [styles.disabled]: props.isDraggingSomething
+        }}
         use:swipe={swipeArgs}
         onPointerMove={onPointerMove}
         onTouchMove={onPointerMove}
@@ -295,13 +335,15 @@ const ThumbnailMark: Component<{
   position: number;
   visible: boolean;
   ghost?: boolean;
+  withTransition?: boolean;
 }> = (props) => {
   return (
     <svg
       class={styles.ThumbnailMark}
       classList={{
         [styles.ghost]: props.ghost,
-        [styles.visible]: props.visible
+        [styles.visible]: props.visible,
+        [styles.withTransition]: props.withTransition
       }}
       style={{
         '--position': props.position

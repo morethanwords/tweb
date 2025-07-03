@@ -186,6 +186,26 @@
   }
 }
 
+.CroppedTime {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, calc(-100% - 2px));
+
+  font-size: 13px;
+  font-weight: 500;
+
+  text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);
+
+  transition: opacity .3s ease-in;
+
+  opacity: 0;
+
+  &.visible {
+    opacity: 1;
+  }
+}
+
 .ThumbnailMark {
   position: absolute;
   top: 0;
@@ -205,6 +225,10 @@
   &.visible {
     opacity: 1;
   }
+
+  &.withTransition {
+    transition: opacity .2s ease-out;
+  }
 }
 
 .ThumbnailTrack {
@@ -218,6 +242,10 @@
   transform: translateY(calc(-4px - 100%));
 
   cursor: pointer;
+
+  &.disabled {
+    pointer-events: none;
+  }
 }
 
 .PausePlaySvg {
