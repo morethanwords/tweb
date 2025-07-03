@@ -1,19 +1,16 @@
 import {getOwner, runWithOwner} from 'solid-js';
 import {unwrap} from 'solid-js/store';
-
-import {IS_FIREFOX} from '../../../environment/userAgent';
 import {MediaSize} from '../../../helpers/mediaSize';
 import noop from '../../../helpers/noop';
-
+import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 import BrushPainter from '../canvas/brushPainter';
 import {useCropOffset} from '../canvas/useCropOffset';
 import {EditingMediaState, useMediaEditorContext} from '../context';
 import {NumberPair, StandaloneSignal} from '../types';
+import {checkIfHasAnimatedStickers, cleanupWebGl, snapToAvailableQuality} from '../utils';
 import {draw} from '../webgl/draw';
 import {initWebGL} from '../webgl/initWebGL';
-
-import {checkIfHasAnimatedStickers, cleanupWebGl, snapToAvailableQuality} from '../utils';
 import getResultSize from './getResultSize';
 import getResultTransform from './getResultTransform';
 import getScaledLayersAndLines from './getScaledLayersAndLines';
@@ -90,7 +87,9 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     preserveDrawingBuffer: true
   });
 
-  const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.videoCropStart, waitToSeek: false});
+  const middleware = createMiddleware();
+
+  const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.videoCropStart, waitToSeek: false, middleware: middleware.get()});
 
   const finalTransform = getResultTransform({
     context,
@@ -180,6 +179,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
 
   Promise.resolve(renderResult.getResult())?.catch(noop)?.finally(() => {
     cleanupWebGl(gl);
+    middleware.destroy();
   });
 
   return {

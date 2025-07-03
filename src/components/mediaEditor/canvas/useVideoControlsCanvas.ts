@@ -1,5 +1,6 @@
 import {createEffect, onCleanup} from 'solid-js';
 import deferredPromise from '../../../helpers/cancellablePromise';
+import createSolidMiddleware from '../../../helpers/solid/createSolidMiddleware';
 import {useMediaEditorContext} from '../context';
 import {snapToViewport} from '../utils';
 import createVideoForDrawing from './createVideoForDrawing';
@@ -19,11 +20,9 @@ export default function useVideoControlsCanvas({getCanvas, size}: Args) {
   createEffect(() => {
     const media = editorState.renderingPayload?.media;
     const canvas = getCanvas();
-    if(!media || !canvas) return;
+    if(!media || !canvas || !size.width || !size.height) return;
 
     const ratio = media.width / media.height;
-
-    size.width; size.height; // reactivity
 
     const ctx = canvas.getContext('2d');
 
@@ -38,13 +37,13 @@ export default function useVideoControlsCanvas({getCanvas, size}: Args) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     });
 
+    const middleware = createSolidMiddleware();
+
     (async() => {
-      const video = await createVideoForDrawing(mediaSrc);
-      video.muted = true;
+      const video = await createVideoForDrawing(mediaSrc, {currentTime: 0, middleware});
       // (window as any).myWeakRef = new WeakRef(video); // works
 
       if(cleaned) return;
-
 
       video.addEventListener('seeked', () => {
         deferred?.resolve();

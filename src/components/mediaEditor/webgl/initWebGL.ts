@@ -1,3 +1,4 @@
+import {Middleware} from '../../../helpers/middleware';
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 import {MediaType} from '../types';
 
@@ -13,12 +14,14 @@ type InitWebGLArgs = {
   mediaType: MediaType;
   videoTime: number;
   waitToSeek?: boolean;
+
+  middleware: Middleware;
 };
 
-export async function initWebGL({gl, mediaSrc, mediaType, videoTime, waitToSeek}: InitWebGLArgs) {
+export async function initWebGL({gl, mediaSrc, mediaType, videoTime, waitToSeek, middleware}: InitWebGLArgs) {
   const [{vertexShaderSource, fragmentShaderSource}, {texture, media}] = await Promise.all([
     import('./shaderSources'),
-    loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSeek})
+    loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSeek, middleware})
   ]);
 
   const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);

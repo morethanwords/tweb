@@ -1,17 +1,16 @@
 import {createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
-
+import createSolidMiddleware from '../../../helpers/solid/createSolidMiddleware';
 import SwipeHandler from '../../swipeHandler';
-
-import {HistoryItem, useMediaEditorContext} from '../context';
-import {initWebGL, RenderingPayload} from '../webgl/initWebGL';
-import {draw} from '../webgl/draw';
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
+import {HistoryItem, useMediaEditorContext} from '../context';
 import {NumberPair} from '../types';
 import {distance} from '../utils';
-
+import {draw} from '../webgl/draw';
+import {initWebGL, RenderingPayload} from '../webgl/initWebGL';
 import BrushPainter, {BrushDrawnLine} from './brushPainter';
 import useNormalizePoint from './useNormalizePoint';
 import useProcessPoint from './useProcessPoint';
+
 
 function drawAdjustedImage(gl: WebGLRenderingContext, payload: RenderingPayload) {
   const {mediaState} = useMediaEditorContext();
@@ -95,7 +94,8 @@ export default function BrushCanvas() {
 
   onMount(async() => {
     if(mediaType !== 'image') return;
-    setFullImageGLPayload(await initWebGL({gl, mediaSrc, mediaType, videoTime: 0}));
+    const middleware = createSolidMiddleware();
+    setFullImageGLPayload(await initWebGL({gl, mediaSrc, mediaType, videoTime: 0, middleware}));
   });
 
   createEffect(() => {

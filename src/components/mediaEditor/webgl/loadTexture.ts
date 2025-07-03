@@ -1,4 +1,5 @@
 import deferredPromise from '../../../helpers/cancellablePromise';
+import {Middleware} from '../../../helpers/middleware';
 import createVideoForDrawing from '../canvas/createVideoForDrawing';
 import {MediaType} from '../types';
 
@@ -9,6 +10,8 @@ type LoadTextureArgs = {
   mediaType: MediaType;
   videoTime: number;
   waitToSeek?: boolean;
+
+  middleware: Middleware;
 };
 
 type LoadTextureMedia = {
@@ -23,7 +26,7 @@ type LoadTextureResult = {
   media: LoadTextureMedia;
 };
 
-export async function loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSeek}: LoadTextureArgs): Promise<LoadTextureResult> {
+export async function loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSeek, middleware}: LoadTextureArgs): Promise<LoadTextureResult> {
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
 
@@ -43,7 +46,7 @@ export async function loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSee
       height: image.naturalHeight
     };
   } else {
-    const video = await createVideoForDrawing(mediaSrc, {currentTime: videoTime, waitToSeek});
+    const video = await createVideoForDrawing(mediaSrc, {currentTime: videoTime, waitToSeek, middleware});
 
     media = {
       video,
