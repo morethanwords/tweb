@@ -39,7 +39,7 @@ type Args = {
 const EXPECTED_FPS = 30;
 const VIDEO_COMPARISON_ERROR = 0.0001;
 
-const THUMBNAIL_MAX_SIZE = 400;
+const THUMBNAIL_MAX_SIZE = 720;
 
 const log = logger('MediaEditor.createFinalResult.renderToActualVideo');
 
@@ -82,7 +82,7 @@ export default async function renderToActualVideo({
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
 
   const thumbnailCanvas = document.createElement('canvas');
-  [thumbnailCanvas.width, thumbnailCanvas.height] = snapToViewport(scaledWidth / scaledHeight, THUMBNAIL_MAX_SIZE, THUMBNAIL_MAX_SIZE);
+  [thumbnailCanvas.width, thumbnailCanvas.height] = snapToViewport(scaledWidth / scaledHeight, Math.min(scaledWidth, THUMBNAIL_MAX_SIZE), Math.min(scaledHeight, THUMBNAIL_MAX_SIZE));
   const thumbnailCtx = thumbnailCanvas.getContext('2d');
 
   const thumbnailTime = videoThumbnailPosition * video.duration;
