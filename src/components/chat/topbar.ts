@@ -223,7 +223,6 @@ export default class ChatTopbar {
     }
 
     const pinnedContainers = this.pinnedContainers = [
-      this.chatAudio,
       this.chatRequests,
       this.chatActions,
       this.chatLive,
@@ -232,6 +231,7 @@ export default class ChatTopbar {
       this.chatSponsored
     ].filter(Boolean);
     this.container.append(...pinnedContainers.map((pinnedContainer) => pinnedContainer.container));
+    this.chat.container.prepend(this.chatAudio.container);
 
     // * construction end
 
@@ -1255,7 +1255,7 @@ export default class ChatTopbar {
       return acc + +isFloating;
     }, 0);
     this.container.dataset.floating = '' + count;
-    this.container.style.setProperty('--pinned-floating-height', `calc(${floatingHeight}px + var(--topbar-floating-call-height)`);
+    this.container.style.setProperty('--pinned-floating-height', `calc(${floatingHeight}px + var(--topbar-floating-call-height) + var(--topbar-audio-height))`);
   };
 
   private messagesCounter(middleware: Middleware, key: LangPackKey, minusFirst?: boolean) {

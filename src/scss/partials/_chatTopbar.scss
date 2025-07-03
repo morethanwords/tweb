@@ -4,34 +4,36 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-body.is-calling {
-  .topbar {
-    &, 
-    &-call-container {
-      transform: translateY(0);
-    }
-  }
-
-  &.animation-level-2 {
-    .topbar {
-      &,
-      &-call-container {
-        transition: transform var(--transition-standard-out);
-      }
-    }
-  }
-
+body.is-calling,
+body.is-pinned-audio-shown {
   &:not(.backwards) {
-    .topbar {
-      &, 
-      &-call-container {
-        transform: translateY(var(--topbar-call-height));
-      }
+    .topbar, 
+    .topbar-call-container,
+    .is-pinned-audio-shown {
+      transform: translateY(calc(var(--topbar-floating-call-height) + var(--topbar-audio-height)));
     }
+  }
+}
 
-    &:not(.animating) {
-      --topbar-floating-call-height: var(--topbar-call-height);
-    }
+body.is-calling:not(.backwards):not(.animating) {
+  --topbar-floating-call-height: var(--topbar-call-height);
+}
+
+body.is-pinned-audio-shown {
+  --topbar-audio-height: 3.25rem;
+}
+
+.topbar, 
+.topbar-call-container,
+.pinned-audio {
+  transform: translateY(0);
+}
+
+body.animation-level-2 { 
+  .topbar, 
+  .topbar-call-container,
+  .pinned-audio {
+    transition: transform var(--transition-standard-out);
   }
 }
 
@@ -65,7 +67,7 @@ body.is-right-column-shown {
 	&:before {
 		content: " ";
 		position: absolute;
-		height: calc(var(--topbar-height) + var(--pinned-floating-height) - var(--topbar-floating-call-height));
+		height: calc(var(--topbar-height) + var(--pinned-floating-height) - var(--topbar-floating-call-height) - var(--topbar-audio-height));
 		top: 0;
 		right: 0;
 		left: 0;

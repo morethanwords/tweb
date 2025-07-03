@@ -602,21 +602,19 @@
 
 .pinned-audio {
   --progress-height: .25rem;
+  --container-height: 3.25rem;
 
-  &.is-floating {
-    --container-height: var(--pinned-audio-height);
-    // z-index: 1; // fix z-index for volume selector
+  z-index: 3;
+
+  transform: translateY(-3.25rem);
+
+  body.is-pinned-audio-shown & {
+    transform: translateY(0);
   }
 
-  &:not(.is-floating) {
-    padding-inline-end: 1.75rem;
-    max-width: 210px;
-    position: relative;
+  body.animation-level-2 & {
+    transition: transform var(--transition-standard-out);
   }
-
-  /* &.is-floating .pinned-audio-ico {
-    margin-left: -.25rem;
-  } */
 
   .pinned-container-wrapper {
     overflow: visible !important;
@@ -625,6 +623,12 @@
     > .btn-icon {
       margin-inline-start: 0 !important;
     }
+  }
+
+  &:before {
+    border-top: none!important;
+    border-bottom: 1px solid var(--border-color);
+    border-left: 1px solid var(--border-color);
   }
 
   &-title {

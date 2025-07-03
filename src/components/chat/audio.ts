@@ -27,6 +27,7 @@ import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName'
 import toHHMMSS from '../../helpers/string/toHHMMSS';
 import {PlaybackRateButton} from '../../components/playbackRateButton';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import {doubleRaf, fastRaf} from '../../helpers/schedulers';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -160,6 +161,34 @@ export default class ChatAudio extends PinnedContainer {
       this.onMediaPlay(playingDetails);
       this.onPlaybackParams(playingDetails.playbackParams);
     }
+
+    this.container.classList.add('is-floating')
+  }
+
+  public toggle(hide?: boolean): void {
+    const current = this.container.classList.contains('hide');
+    if(hide === undefined) {
+      hide = !current;
+    }
+
+    if(hide === current) return;
+
+    if(hide) {
+      this.container.classList.add('animating');
+      setTimeout(() => {
+        this.container.classList.remove('animating');
+        this.container.classList.add('hide');
+      }, 250);
+    } else {
+      this.container.classList.remove('hide');
+    }
+
+    doubleRaf().then(() => {
+      document.body.classList.toggle('is-pinned-audio-shown', !hide);
+    })
+
+    this.topbar.setFloating();
+    this.topbar.setUtilsWidth();
   }
 
   public destroy() {
