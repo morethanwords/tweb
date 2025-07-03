@@ -65,7 +65,7 @@ export default function useVideoControlsCanvas({getCanvas, size}: Args) {
         fade.classList.add(styles.FrameFade);
         fade.style.top = '0px';
         fade.style.left = x + 'px';
-        fade.style.width = chunkWidth + 'px';
+        fade.style.width = chunkWidth + 0.5 + 'px'; // add a few px to prevent unexpected borders
         fade.style.height = chunkHeight + 'px';
 
         canvas.after(fade);
