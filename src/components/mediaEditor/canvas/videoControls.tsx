@@ -144,7 +144,8 @@ const VideoControls: Component<{}> = () => {
     <div
       class={styles.Container}
       classList={{
-        [styles.hidden]: editorState.currentTab !== 'adjustments'
+        [styles.hidden]: editorState.currentTab !== 'adjustments',
+        [styles.changed]: mediaState.videoCropLength !== 1
       }}
       style={{
         '--start': mediaState.videoCropStart,

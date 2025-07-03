@@ -25,8 +25,13 @@
     pointer-events: none;
   }
 
+  &.changed {
+    --cropper-color: #F0DB56;
+  }
+
   --handle-width: 9px;
   --cropper-default-bg: #212121;
+  --cropper-color: white;
   /* --cropper-default-bg: gray; */
 }
 
@@ -112,8 +117,9 @@
 
     height: 100%;
 
-    border-top: 2px solid white;
-    border-bottom: 2px solid white;
+    border-top: 2px solid var(--cropper-color);
+    border-bottom: 2px solid var(--cropper-color);
+    transition: border-color .2s;
 
     cursor: pointer;
 
@@ -127,7 +133,8 @@
     height: 100%;
     width: var(--handle-width);
 
-    background-color: white;
+    background-color: var(--cropper-color);
+    transition: background-color .2s;
 
     display: flex;
     justify-content: center;
