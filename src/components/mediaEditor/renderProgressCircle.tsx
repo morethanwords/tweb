@@ -32,7 +32,7 @@ export default function RenderProgressCircle(props: {creationProgress: Standalon
           'max-width': '80%',
           'max-height': '80%',
           'aspect-ratio': '1 / 1',
-          'z-index': 4
+          'z-index': 2
         }
       }}
     >
