@@ -1,5 +1,4 @@
 import {createMemo, createSelector, For, JSX} from 'solid-js';
-
 import clamp from '../../helpers/number/clamp';
 
 

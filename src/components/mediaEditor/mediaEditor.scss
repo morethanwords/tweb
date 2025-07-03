@@ -363,10 +363,11 @@
       align-items: center;
 
       display: flex;
-      gap: 4px;
+      gap: 6px;
     }
 
     &-dot {
+      pointer-events: none;
       flex: 0 0 8px;
       height: 8px;
 
@@ -380,11 +381,16 @@
       }
     }
 
-    &-wrapper:active &-dot--selected {
+    &-dot--selected {
       transform: scale(1.75);
     }
 
+    &-wrapper:active &-dot--selected {
+      transform: scale(2);
+    }
+
     &-separator {
+      pointer-events: none;
       flex: 1;
       height: 4px;
 
