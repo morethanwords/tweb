@@ -38,7 +38,7 @@ const VideoControls: Component<{}> = () => {
     canvas: HTMLCanvasElement,
     initialStart: number,
     initialLength: number,
-    swiping: 'left' | 'middle' | 'right'
+    swiping: 'left' | 'middle' | 'right' | 'cursor';
   ;
 
   useVideoControlsCanvas({
@@ -111,6 +111,18 @@ const VideoControls: Component<{}> = () => {
     }
   };
 
+  const cursorSwipeArgs: SwipeDirectiveArgs = {
+    globalCursor: 'col-resize',
+    onStart: () => {
+      swiping = 'cursor';
+    },
+    onMove: (xDiff, __, e) => {
+      if(swiping !== 'cursor') return;
+      if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX) editorState.isPlaying = false;
+      actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength));
+    }
+  };
+
   const onMiddlePartClick = (e: MouseEvent) => {
     if(!cropper() || isDraggingMiddle()) return;
 
@@ -177,7 +189,7 @@ const VideoControls: Component<{}> = () => {
             <div class={`${styles.CropperHandle} ${styles.CropperHandleRight}`} use:swipe={rightHandleSwipeArgs} />
           </div>
 
-          <TimeStick />
+          <TimeStick swipe={cursorSwipeArgs} />
           <ThumbnailTrack cropper={cropper()} isDraggingMiddle={isDraggingMiddle()} />
         </div>
 
@@ -299,9 +311,9 @@ const ThumbnailMark: Component<{
   );
 }
 
-const TimeStick = () => {
+const TimeStick = (props: {swipe: SwipeDirectiveArgs}) => {
   return (
-    <svg class={styles.TimeStick} width="6" height="60" viewBox="0 0 6 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg class={styles.TimeStick} use:swipe={props.swipe} width="6" height="60" viewBox="0 0 6 60" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M4 0.75C4.69036 0.75 5.25 1.30964 5.25 2V3.29297C5.24998 3.812 5.04377 4.30975 4.67676 4.67676C4.40352 4.95 4.25002 5.32061 4.25 5.70703V54.293C4.25002 54.6794 4.40352 55.05 4.67676 55.3232C5.04377 55.6903 5.24998 56.188 5.25 56.707V58C5.25 58.6904 4.69036 59.25 4 59.25H2C1.30964 59.25 0.75 58.6904 0.75 58V56.707C0.75002 56.188 0.956231 55.6903 1.32324 55.3232C1.59648 55.05 1.74998 54.6794 1.75 54.293V5.70703C1.74998 5.32061 1.59648 4.95 1.32324 4.67676C0.956231 4.30975 0.75002 3.812 0.75 3.29297V2C0.75 1.30964 1.30964 0.75 2 0.75H4Z" fill="white" stroke="#212121" stroke-width="0.5"/>
     </svg>
   )
