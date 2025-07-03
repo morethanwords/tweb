@@ -1,16 +1,14 @@
 import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
-
 import {animate} from '../../../helpers/animation';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
 import {MediaSize} from '../../../helpers/mediaSize';
 import noop from '../../../helpers/noop';
 import clamp from '../../../helpers/number/clamp';
-
+import {logger} from '../../../lib/logger';
 import {useMediaEditorContext} from '../context';
 import {supportsAudioEncoding} from '../support';
 import {delay, snapToViewport} from '../utils';
 import {RenderingPayload} from '../webgl/initWebGL';
-
 import calcCodecAndBitrate, {BITRATE_TARGET_FPS} from './calcCodecAndBitrate';
 import {FRAMES_PER_SECOND, STICKER_SIZE} from './constants';
 import {MediaEditorFinalResultPayload} from './createFinalResult';
@@ -42,6 +40,8 @@ const EXPECTED_FPS = 30;
 const VIDEO_COMPARISON_ERROR = 0.0001;
 
 const THUMBNAIL_MAX_SIZE = 400;
+
+const log = logger('MediaEditor.createFinalResult.renderToActualVideo');
 
 export default async function renderToActualVideo({
   renderingPayload,
@@ -264,6 +264,8 @@ export default async function renderToActualVideo({
     encoder.close();
     Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
     cancelAnimationFrame(progressRAF);
+    video.src = '';
+    video.load();
   }
 
   setProgress(0);
@@ -303,7 +305,7 @@ export default async function renderToActualVideo({
         reject();
 
         done = true;
-        video.pause(); video.src = '';
+        video.pause();
 
         cleanup(encoder);
         return;
@@ -311,6 +313,7 @@ export default async function renderToActualVideo({
 
       try {
         // const start = performance.now();
+        log('prepareAndRenderFrame', frameNo);
         await prepareAndRenderFrame(encoder, frameNo);
         // const end = performance.now();
         // const time = end - start;

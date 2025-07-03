@@ -15,7 +15,7 @@ type InitWebGLArgs = {
   videoTime: number;
   waitToSeek?: boolean;
 
-  middleware: Middleware;
+  middleware?: Middleware;
 };
 
 export async function initWebGL({gl, mediaSrc, mediaType, videoTime, waitToSeek, middleware}: InitWebGLArgs) {

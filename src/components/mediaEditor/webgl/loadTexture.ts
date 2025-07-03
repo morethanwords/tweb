@@ -11,7 +11,7 @@ type LoadTextureArgs = {
   videoTime: number;
   waitToSeek?: boolean;
 
-  middleware: Middleware;
+  middleware?: Middleware;
 };
 
 type LoadTextureMedia = {

@@ -2,7 +2,7 @@ import {getOwner, runWithOwner} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {MediaSize} from '../../../helpers/mediaSize';
 import noop from '../../../helpers/noop';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
+import {logger} from '../../../lib/logger';
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 import BrushPainter from '../canvas/brushPainter';
 import {useCropOffset} from '../canvas/useCropOffset';
@@ -42,6 +42,8 @@ export type MediaEditorFinalResult = {
   animatedPreview?: HTMLImageElement;
   creationProgress?: StandaloneSignal<number>;
 };
+
+const log = logger('MediaEditor.createFinalResult');
 
 export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const context = useMediaEditorContext();
@@ -87,9 +89,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     preserveDrawingBuffer: true
   });
 
-  const middleware = createMiddleware();
-
-  const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.videoCropStart, waitToSeek: false, middleware: middleware.get()});
+  const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.videoCropStart, waitToSeek: false});
 
   const finalTransform = getResultTransform({
     context,
@@ -179,7 +179,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
 
   Promise.resolve(renderResult.getResult())?.catch(noop)?.finally(() => {
     cleanupWebGl(gl);
-    middleware.destroy();
+    log('cleaning up webgl')
   });
 
   return {
