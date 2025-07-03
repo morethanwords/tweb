@@ -4,7 +4,7 @@ import createSolidMiddleware from '../../../helpers/solid/createSolidMiddleware'
 import {useMediaEditorContext} from '../context';
 import {snapToViewport} from '../utils';
 import createVideoForDrawing from './createVideoForDrawing';
-
+import styles from './videoControls.module.scss';
 
 type Args = {
   getCanvas: () => HTMLCanvasElement;
@@ -59,6 +59,19 @@ export default function useVideoControlsCanvas({getCanvas, size}: Args) {
         if(cleaned) return;
 
         ctx.drawImage(video, x, 0, chunkWidth, chunkHeight);
+
+        const fade = document.createElement('div');
+
+        fade.classList.add(styles.FrameFade);
+        fade.style.top = '0px';
+        fade.style.left = x + 'px';
+        fade.style.width = chunkWidth + 'px';
+        fade.style.height = chunkHeight + 'px';
+
+        canvas.after(fade);
+
+        fade.animate({opacity: [1, 0]}, {duration: 420}).finished
+        .then(() => fade.remove());
       }
     })();
   });

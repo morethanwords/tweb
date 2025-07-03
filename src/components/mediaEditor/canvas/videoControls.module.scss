@@ -26,6 +26,8 @@
   }
 
   --handle-width: 9px;
+  --cropper-default-bg: #212121;
+  /* --cropper-default-bg: gray; */
 }
 
 .InnerContainer {
@@ -67,6 +69,13 @@
   flex: 1;
 }
 
+.FrameFade {
+  position: absolute;
+  background-color: var(--cropper-default-bg);
+
+  box-shadow: 0px 0px 8px var(--cropper-default-bg);
+}
+
 .Cropper {
   position: absolute;
   top: 0;
@@ -75,7 +84,7 @@
   height: 100%;
 
   border-radius: 9px;
-  background-color: gray;
+  background-color: var(--cropper-default-bg);
 
   overflow: hidden;
 

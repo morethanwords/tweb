@@ -1,4 +1,4 @@
-import {batch, Component, createEffect, createMemo, createSignal} from 'solid-js';
+import {batch, Component, createMemo, createSignal} from 'solid-js';
 
 import clamp from '../../../helpers/number/clamp';
 import swipe, {SwipeDirectiveArgs} from '../../../helpers/useSwipe'; swipe; // keep
