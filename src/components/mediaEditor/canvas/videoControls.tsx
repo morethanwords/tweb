@@ -47,7 +47,7 @@ const VideoControls: Component<{}> = () => {
   });
 
   const leftHandleSwipeArgs: SwipeDirectiveArgs = {
-    globalCursor: 'ew-resize',
+    globalCursor: () => 'ew-resize',
     onStart: () => {
       swiping = 'left';
       initialStart = mediaState.videoCropStart;
@@ -65,7 +65,7 @@ const VideoControls: Component<{}> = () => {
   };
 
   const rightHandleSwipeArgs: SwipeDirectiveArgs = {
-    globalCursor: 'ew-resize',
+    globalCursor: () => 'ew-resize',
     onStart: () => {
       swiping = 'right';
       initialLength = mediaState.videoCropLength;
@@ -82,24 +82,25 @@ const VideoControls: Component<{}> = () => {
   let canMove = false;
 
   const middleSwipeArgs: SwipeDirectiveArgs = {
-    globalCursor: 'grabbing',
+    globalCursor: () => initialLength === 1 ? 'col-resize' : 'grabbing',
     onStart: () => {
       swiping = 'middle';
       initialStart = mediaState.videoCropStart;
       initialLength = mediaState.videoCropLength;
       canMove = false;
     },
-    onMove: (xDiff) => void batch(() => {
+    onMove: (xDiff, _, e) => void batch((): void => {
+      if(swiping !== 'middle') return;
+      if(initialLength === 1) return void  handleCursorMove(xDiff, e);
       if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX) canMove = true;
       if(!canMove) return;
-      if(swiping !== 'middle') return;
 
       setIsDraggingMiddle(true);
 
-      const startDiff = clamp(initialStart + xDiff / strippedWidth(), 0, Math.max(0, 1 - minLength())) - initialStart;
+      const startDiff = clamp(initialStart + xDiff / strippedWidth(), 0, Math.max(0, 1 - Math.max(initialLength, minLength()))) - initialStart;
       batch(() => {
         mediaState.videoCropStart = initialStart + startDiff;
-        mediaState.videoCropLength = clamp(initialLength - startDiff + xDiff / strippedWidth(), Math.min(1, minLength()), 1 - mediaState.videoCropStart);
+        // mediaState.videoCropLength = clamp(initialLength - startDiff + xDiff / strippedWidth(), Math.min(1, minLength()), 1 - mediaState.videoCropStart);
 
         actions.setVideoTime(mediaState.videoCropStart);
       });
@@ -112,15 +113,20 @@ const VideoControls: Component<{}> = () => {
   };
 
   const cursorSwipeArgs: SwipeDirectiveArgs = {
-    globalCursor: 'col-resize',
+    globalCursor: () => 'col-resize',
     onStart: () => {
       swiping = 'cursor';
     },
     onMove: (xDiff, __, e) => {
       if(swiping !== 'cursor') return;
-      if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX) editorState.isPlaying = false;
-      actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength));
+      // if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX)
+      editorState.isPlaying = false;
+      handleCursorMove(xDiff, e);
     }
+  };
+
+  const handleCursorMove = (xDiff: number, e: PointerEvent | TouchEvent) => {
+    actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength));
   };
 
   const onMiddlePartClick = (e: MouseEvent) => {

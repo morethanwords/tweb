@@ -4,7 +4,7 @@ import useGlobalDocumentEvent from './useGlobalDocumentEvent';
 
 
 export type SwipeDirectiveArgs = {
-  globalCursor?: StandardLonghandPropertiesHyphen['cursor'];
+  globalCursor?: Accessor<StandardLonghandPropertiesHyphen['cursor']>;
   onStart?: (e: PointerEvent | TouchEvent) => void;
   onMove?: (xDiff: number, yDiff: number, e: PointerEvent | TouchEvent) => void;
   onEnd?: (xDiff: number, yDiff: number, e: PointerEvent | TouchEvent) => void;
@@ -41,7 +41,7 @@ export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiv
     const {onStart, globalCursor} = args();
     onStart?.(e);
 
-    globalCursor && document.body.style.setProperty('cursor', globalCursor, 'important');
+    globalCursor && document.body.style.setProperty('cursor', globalCursor(), 'important');
   }
 
   function handleMove(e: PointerEvent | TouchEvent, diff: readonly [number, number]) {
