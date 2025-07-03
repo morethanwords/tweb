@@ -1036,7 +1036,7 @@ export default class PopupNewMedia extends PopupElement {
     }
     {
       const showActions = async() => {
-        if(this.activeActionsMenuItemDiv === itemDiv || !this.canShowActions) return;
+        if(this.activeActionsMenuItemDiv === itemDiv || !this.canShowActions || this.destroyed) return;
         const bcr = itemDiv.getBoundingClientRect();
         if(!this.canShowActionsForBcr(bcr)) return;
 
@@ -1558,6 +1558,11 @@ export default class PopupNewMedia extends PopupElement {
         )
       }
     });
+  }
+
+  protected destroy() {
+    super.destroy();
+    this.hideActiveActionsMenu();
   }
 }
 
