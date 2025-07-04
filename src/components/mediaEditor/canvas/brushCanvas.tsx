@@ -4,7 +4,7 @@ import SwipeHandler from '../../swipeHandler';
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 import {HistoryItem, useMediaEditorContext} from '../context';
 import {NumberPair} from '../types';
-import {distance} from '../utils';
+import {cleanupWebGl, distance} from '../utils';
 import {draw} from '../webgl/draw';
 import {initWebGL, RenderingPayload} from '../webgl/initWebGL';
 import BrushPainter, {BrushDrawnLine} from './brushPainter';
@@ -96,6 +96,10 @@ export default function BrushCanvas() {
     if(mediaType !== 'image') return;
     const middleware = createSolidMiddleware();
     setFullImageGLPayload(await initWebGL({gl, mediaSrc, mediaType, videoTime: 0, middleware}));
+  });
+
+  onCleanup(() => {
+    cleanupWebGl(gl);
   });
 
   createEffect(() => {
