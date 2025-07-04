@@ -1,0 +1,29 @@
+# Base image
+FROM node:18
+
+# Set the working directory in the container
+WORKDIR /app
+
+# copy src
+COPY .. .
+
+# install pnpm
+RUN npm install -g pnpm
+
+# install initial depenancies
+RUN pnpm install
+
+# install production depencancies
+RUN pnpm install --production
+
+# build
+RUN node build
+
+
+#pull nginx as webser and load balancer
+FROM nginx:stable-alpine3.20-slim
+
+RUN apk update && apk upgrade --no-cache
+
+# copy the build files to nginx entry point
+COPY ./public /usr/share/nginx/html
