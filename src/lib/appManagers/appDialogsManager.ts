@@ -31,7 +31,7 @@ import lottieLoader from '../rlottie/lottieLoader';
 import wrapPhoto from '../../components/wrappers/photo';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import appSidebarLeft from '../../components/sidebarLeft';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import replaceContent from '../../helpers/dom/replaceContent';
 import ConnectionStatusComponent from '../../components/connectionStatus';
@@ -2828,6 +2828,19 @@ export class AppDialogsManager {
       const peerId = elem.dataset.peerId.toPeerId();
       const lastMsgId = +elem.dataset.mid || undefined;
       const threadId = +elem.dataset.threadId || undefined;
+
+      const isSponsored = elem.dataset.sponsored === 'true';
+      if(isSponsored) {
+        const chip = elem.querySelector('.sponsored-peer-chip');
+        // if click was inside chip, open menu
+        const rect = chip.getBoundingClientRect();
+        if(e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+          if(!IS_TOUCH_SUPPORTED) {
+            simulateClickEvent(chip as HTMLElement);
+          }
+          return;
+        }
+      }
 
       if(onFound?.(elem) === false) {
         return;

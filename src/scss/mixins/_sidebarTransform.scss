@@ -27,3 +27,27 @@
 		@content;
 	}
 }
+
+@mixin sidebar-transform-global($centered: 0, $transform: true) {
+	@include respond-to(medium-screens) {
+		transition: transform var(--transition-standard-out);
+
+		:global(body.is-right-column-shown) & {
+      @if $transform {
+        @if $centered != 0 {
+          transform: translate3d(calc(var(--right-column-width) * #{$centered} * -.5 * var(--reflect)), 0, 0);
+        } @else {
+          transform: translate3d(calc(var(--right-column-width) * -1 * var(--reflect)), 0, 0);
+        }
+      }
+
+			transition: transform var(--transition-standard-in);
+		}
+
+		:global(body.animation-level-0) & {
+			transition: none;
+		}
+
+		@content;
+	}
+}

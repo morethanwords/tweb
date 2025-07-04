@@ -8821,23 +8821,23 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getSponsoredMessage(peerId: PeerId): Promise<MessagesSponsoredMessages> {
-    // let promise: Promise<MessagesSponsoredMessages>;
-    // if(TEST_SPONSORED) promise = Promise.resolve({
+    // return Promise.resolve({
     //   '_': 'messages.sponsoredMessages',
-    //   'messages': [
-    //     {
-    //       '_': 'sponsoredMessage',
-    //       'pFlags': {},
-    //       'flags': 9,
-    //       'random_id': new Uint8Array([80, 5, 249, 174, 44, 73, 173, 14, 246, 81, 187, 182, 223, 5, 4, 128]),
-    //       'from_id': {
-    //         '_': 'peerUser',
-    //         'user_id': 983000232
-    //       },
-    //       'start_param': 'GreatMinds',
-    //       'message': 'This is a long sponsored message. In fact, it has the maximum length allowed on the platform – 160 characters 😬😬. It\'s promoting a bot with a start parameter.' + chatId
-    //     }
-    //   ],
+    //   'posts_between': 5,
+    //   'messages': Array.from({length: 5}, () => ({
+    //     '_': 'sponsoredMessage',
+    //     'pFlags': {},
+    //     'flags': 9,
+    //     'random_id': new Uint8Array([80, 5, 249, 174, 44, 73, 173, 14, 246, 81, 187, 182, 223, 5, 4, 128]),
+    //     'from_id': {
+    //       '_': 'peerUser',
+    //       'user_id': 983000232
+    //     },
+    //     'message': 'This is a long sponsored message. In fact, it has the maximum length allowed on the platform – 160 characters 😬😬. It\'s promoting a bot with a start parameter.' + peerId,
+    //     'url': 'https://t.me/QuizBot?start=GreatMinds',
+    //     'title': 'QuizBot',
+    //     'button_text': 'Start'
+    //   })),
     //   'chats': [],
     //   'users': [
     //     {

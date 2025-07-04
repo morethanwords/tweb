@@ -37,8 +37,8 @@ export function ButtonMenuToggleHandler({
       contextMenuController.close();
     } else {
       const result = onOpen?.(e);
-      const open = () => {
-        const openedMenu = el.querySelector('.btn-menu') as HTMLDivElement;
+      const open = (element?: HTMLElement) => {
+        const openedMenu = element ?? el.querySelector('.btn-menu') as HTMLDivElement;
         if(!openedMenu) {
           return;
         }
@@ -66,11 +66,13 @@ export default function ButtonMenuToggle({
   onClose,
   onCloseAfter,
   noIcon,
-  icon = 'more'
+  icon = 'more',
+  appendTo
 }: {
   buttonOptions?: Parameters<typeof ButtonIcon>[1],
   listenerSetter?: ListenerSetter,
   container?: HTMLElement
+  appendTo?: HTMLElement,
   direction: 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right',
   buttons: ButtonMenuItemOptionsVerifiable[],
   onOpenBefore?: (e: Event) => any,
@@ -85,6 +87,7 @@ export default function ButtonMenuToggle({
   }
 
   const button = container ?? ButtonIcon(noIcon ? undefined : icon, buttonOptions);
+  appendTo ??= button
   button.classList.add('btn-menu-toggle');
 
   const listenerSetter = new ListenerSetter();
@@ -125,11 +128,13 @@ export default function ButtonMenuToggle({
       await onOpen?.(e, _element);
       if(_tempId !== tempId) return;
 
-      button.append(_element);
+      appendTo.append(_element);
       await doubleRaf();
       if(_tempId !== tempId) {
         _element.remove();
       }
+
+      return _element
     },
     options: {
       listenerSetter: attachListenerSetter

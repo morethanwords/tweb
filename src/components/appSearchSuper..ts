@@ -5,7 +5,7 @@
  */
 
 import type {AppMessagesManager, MyInputMessagesFilter, MyMessage} from '../lib/appManagers/appMessagesManager';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, Some4} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom, Some4} from '../lib/appManagers/appDialogsManager';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
 import {SearchGroup, SearchGroupType} from './appSearch';
@@ -74,7 +74,7 @@ import wrapVideo from './wrappers/video';
 import noop from '../helpers/noop';
 import wrapMediaSpoiler, {onMediaSpoilerClick} from './wrappers/mediaSpoiler';
 import filterAsync from '../helpers/array/filterAsync';
-import ChatContextMenu from './chat/contextMenu';
+import ChatContextMenu, {getSponsoredMessageButtons} from './chat/contextMenu';
 import PopupElement from './popups';
 import getParticipantRank from '../lib/appManagers/utils/chats/getParticipantRank';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
@@ -96,6 +96,10 @@ import numberThousandSplitter from '../helpers/number/numberThousandSplitter';
 import {StarGiftsProfileTab} from './sidebarRight/tabs/stargifts';
 import {getFirstChild, resolveFirst} from '@solid-primitives/refs';
 import SortedDialogList from './sortedDialogList';
+import Icon from './icon';
+import PopupReportAd from './popups/reportAd';
+import createContextMenu from '../helpers/dom/createContextMenu';
+import ButtonMenuToggle from './buttonMenuToggle';
 
 // const testScroll = false;
 
@@ -1188,7 +1192,7 @@ export default class AppSearchSuper {
 
           appDialogsManager.setListClickListener({
             list: chatlist,
-            onFound: () => {
+            onFound: (el) => {
               if(this.selection.isSelecting) {
                 return false;
               }
@@ -1239,6 +1243,38 @@ export default class AppSearchSuper {
 
     const query = this.searchContext.query;
     if(query) {
+      const addDialogSubtitle = async(dom: DialogDom, peerId: PeerId) => {
+        const peer = await this.managers.appPeersManager.getPeer(peerId);
+        if(peerId === rootScope.myId) {
+          dom.lastMessageSpan.append(i18n('Presence.YourChat'));
+        } else {
+          let username = await this.managers.appPeersManager.getPeerUsername(peerId);
+          if(!username) {
+            const user = await this.managers.appUsersManager.getUser(peerId);
+            if(user?.phone) {
+              username = '+' + formatPhoneNumber(user.phone).formatted;
+            }
+          } else {
+            username = '@' + username;
+          }
+
+          // if(query) {
+          //   const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(cleanSearchText(query))})`, 'gi');
+          //   dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
+          // }
+
+          const toJoin: (Node | string)[] = [
+            username
+          ];
+
+          if(/* showMembersCount &&  */((peer as Chat.channel).participants_count || (peer as any).participants)) {
+            toJoin.push(await getChatMembersString(peerId.toChatId()));
+          }
+
+          dom.lastMessageSpan.append(...join(toJoin.filter(Boolean), false));
+        }
+      }
+
       const setResults = (results: PeerId[], group: SearchGroup, showMembersCount = false) => {
         results.map((peerId) => {
           if(renderedPeerIds.has(peerId)) {
@@ -1259,37 +1295,7 @@ export default class AppSearchSuper {
           });
 
           return {dom, peerId};
-        }).filter(Boolean).forEach(async({dom, peerId}) => {
-          const peer = await this.managers.appPeersManager.getPeer(peerId);
-          if(peerId === rootScope.myId) {
-            dom.lastMessageSpan.append(i18n('Presence.YourChat'));
-          } else {
-            let username = await this.managers.appPeersManager.getPeerUsername(peerId);
-            if(!username) {
-              const user = await this.managers.appUsersManager.getUser(peerId);
-              if(user?.phone) {
-                username = '+' + formatPhoneNumber(user.phone).formatted;
-              }
-            } else {
-              username = '@' + username;
-            }
-
-            // if(query) {
-            //   const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(cleanSearchText(query))})`, 'gi');
-            //   dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
-            // }
-
-            const toJoin: (Node | string)[] = [
-              username
-            ];
-
-            if(/* showMembersCount &&  */((peer as Chat.channel).participants_count || (peer as any).participants)) {
-              toJoin.push(await getChatMembersString(peerId.toChatId()));
-            }
-
-            dom.lastMessageSpan.append(...join(toJoin.filter(Boolean), false));
-          }
-        });
+        }).filter(Boolean).forEach(async({dom, peerId}) => addDialogSubtitle(dom, peerId));
 
         group.toggle();
       };
@@ -1310,6 +1316,56 @@ export default class AppSearchSuper {
         .then((contacts) => {
           if(contacts) {
             setResults(contacts, this.searchGroups.contacts, true);
+          }
+        }),
+
+        this.managers.appChatsManager.getSponsoredPeers(query)
+        .then(onLoad)
+        .then((peers) => {
+          if(!peers?.length) return;
+
+          for(const peer of peers.reverse()) {
+            const {dom} = appDialogsManager.addDialogNew({
+              peerId: peer.peer,
+              container: this.searchGroups.globalContacts.list,
+              append: false,
+              avatarSize: 'abitbigger',
+              autonomous: this.searchGroups.globalContacts.autonomous,
+              wrapOptions: {
+                middleware
+              }
+            });
+
+            dom.containerEl.dataset.sponsored = 'true';
+
+            const chip = ButtonMenuToggle({
+              listenerSetter: this.listenerSetter,
+              appendTo: document.body,
+              buttons: getSponsoredMessageButtons({
+                message: peer,
+                handleReportAd: () => {
+                  PopupReportAd.createAdReport(peer);
+                }
+              }),
+              onOpen: (e, element) => {
+                // position menu
+                const rect = chip.getBoundingClientRect();
+                const bodyRect = document.body.getBoundingClientRect();
+                element.style.right = `${bodyRect.width - (rect.left + rect.width)}px`;
+                element.style.top = `${rect.top + rect.height + 8}px`;
+              },
+              direction: 'bottom-left'
+            });
+            chip.classList.add('sponsored-peer-chip');
+
+            chip.replaceChildren(
+              i18n('SponsoredMessageAd'),
+              Icon('more')
+            )
+
+            dom.lastTimeSpan.appendChild(chip)
+
+            addDialogSubtitle(dom, peer.peer);
           }
         }),
 

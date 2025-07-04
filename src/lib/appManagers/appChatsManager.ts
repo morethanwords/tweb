@@ -12,7 +12,7 @@
 import deepEqual from '../../helpers/object/deepEqual';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {ChannelParticipant, ChannelsCreateChannel, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesChats, MessagesSponsoredMessages, Peer, SponsoredMessage, Update, Updates} from '../../layer';
+import {ChannelParticipant, ChannelsCreateChannel, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesChats, MessagesSponsoredMessages, Peer, SponsoredMessage, SponsoredPeer, Update, Updates} from '../../layer';
 import {AppManager} from './manager';
 import hasRights from './utils/chats/hasRights';
 import getParticipantPeerId from './utils/chats/getParticipantPeerId';
@@ -31,6 +31,8 @@ export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRight
   'invite_links' | 'create_giveaway'/*  | 'view_statistics' */;
 
 const TEST_SPONSORED = false;
+
+export type MySponsoredPeer = Omit<SponsoredPeer, 'peer'> & {peer: PeerId};
 
 export class AppChatsManager extends AppManager {
   private storage: AppStoragesManager['storages']['chats'];
@@ -1008,6 +1010,22 @@ export class AppChatsManager extends AppManager {
     });
 
     return promise;
+  }
+
+  public getSponsoredPeers(q: string) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'contacts.getSponsoredPeers',
+      params: {q},
+      processResult: (result) => {
+        if(result._ === 'contacts.sponsoredPeersEmpty') return []
+        this.appUsersManager.saveApiUsers(result.users);
+        this.appChatsManager.saveApiChats(result.chats);
+        return result.peers.map((peer) => ({
+          ...peer,
+          peer: getPeerId(peer.peer)
+        }));
+      }
+    })
   }
 
   private onUpdateChannelParticipant = (update: Update.updateChannelParticipant) => {

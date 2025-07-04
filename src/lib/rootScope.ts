@@ -208,6 +208,7 @@ export type BroadcastEvents = {
   'account_logged_in': {accountNumber: ActiveAccountNumber, userId: UserId},
 
   'resizing_left_sidebar': void,
+  'right_sidebar_toggle': boolean,
 
   'chat_background_set': void,
 

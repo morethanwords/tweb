@@ -4,34 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-body.is-calling {
+body.is-calling:not(.backwards):not(.animating) {
+  --topbar-floating-call-height: var(--topbar-call-height);
+}
+
+body.is-pinned-audio-shown {
+  --topbar-floating-audio-height: var(--topbar-audio-height);
+}
+
+// * fix blank space underneath topbar when animating
+body.is-pinned-audio-shown, body.is-calling:not(.backwards) {
   .topbar {
-    &, 
-    &-call-container {
-      transform: translateY(0);
-    }
+    transition-delay: 0s, .25s !important;
   }
+}
 
-  &.animation-level-2 {
-    .topbar {
-      &,
-      &-call-container {
-        transition: transform var(--transition-standard-out);
-      }
-    }
-  }
-
-  &:not(.backwards) {
-    .topbar {
-      &, 
-      &-call-container {
-        transform: translateY(var(--topbar-call-height));
-      }
-    }
-
-    &:not(.animating) {
-      --topbar-floating-call-height: var(--topbar-call-height);
-    }
+.topbar-call-container,
+.pinned-audio {
+  @include animation-level(2) {
+    transition: transform var(--transition-standard-out);
   }
 }
 
@@ -61,11 +52,16 @@ body.is-right-column-shown {
 	margin-bottom: var(--pinned-floating-height);
 	position: relative;
 	cursor: pointer !important;
+  transform: translateY(calc(var(--topbar-floating-call-height) + var(--topbar-floating-audio-height)));
+
+  @include animation-level(2) {
+    transition: transform var(--transition-standard-out), margin-bottom 0s 0s;
+  }
 
 	&:before {
 		content: " ";
 		position: absolute;
-		height: calc(var(--topbar-height) + var(--pinned-floating-height) - var(--topbar-floating-call-height));
+		height: calc(var(--topbar-height) + var(--pinned-floating-height) - var(--topbar-floating-call-height) - var(--topbar-floating-audio-height));
 		top: 0;
 		right: 0;
 		left: 0;
@@ -322,10 +318,11 @@ body.is-right-column-shown {
       top: calc(var(--topbar-call-height) * -1);
       inset-inline: 1px 0; // because I have border-right on left sidebar that "pushes" the chat
       color: #fff;
-      z-index: 2;
+      z-index: 3;
       cursor: pointer !important;
+      transform: translateY(var(--topbar-floating-call-height));
 
-      body:not(.has-chat) & {
+      body:not(.has-chat):not(.is-pinned-audio-shown) & {
         background: none !important;
       }
 

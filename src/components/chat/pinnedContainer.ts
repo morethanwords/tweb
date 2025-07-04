@@ -32,7 +32,7 @@ export default class PinnedContainer {
   public container: HTMLElement;
   protected wrapper: HTMLElement;
 
-  protected topbar: ChatTopbar;
+  protected topbar?: ChatTopbar;
   protected chat: Chat;
   protected listenerSetter: ListenerSetter;
   public className: string;
@@ -42,7 +42,7 @@ export default class PinnedContainer {
 
   public onClose?: () => void | Promise<boolean>;
 
-  public height: number;
+  public height: number | 'auto';
 
   constructor(options: {
     topbar: PinnedContainer['topbar'],
@@ -52,7 +52,7 @@ export default class PinnedContainer {
     divAndCaption?: PinnedContainer['divAndCaption'],
     onClose?: PinnedContainer['onClose'],
     floating?: PinnedContainer['floating'],
-    height: number
+    height: number | 'auto'
   }) {
     safeAssign(this, options);
 
@@ -116,7 +116,7 @@ export default class PinnedContainer {
     this.container.classList.toggle('is-floating', isFloating);
     this.container.classList.toggle('hide', hide);
 
-    this.topbar.container.classList.toggle(`is-pinned-${this.className}-shown`, !hide);
+    (this.topbar ? this.topbar.container : document.body).classList.toggle(`is-pinned-${this.className}-shown`, !hide);
 
     // const active = classNames.filter((className) => this.topbar.container.classList.contains(className));
     // const maxActive = hide ? 0 : 1;
@@ -126,8 +126,10 @@ export default class PinnedContainer {
     //   scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
     // }
 
-    this.topbar.setFloating();
-    this.topbar.setUtilsWidth();
+    if(this.topbar) {
+      this.topbar.setFloating();
+      this.topbar.setUtilsWidth();
+    }
   }
 
   public isVisible() {
@@ -143,6 +145,6 @@ export default class PinnedContainer {
     this.container.dataset.peerId = '' + message.peerId;
     this.container.dataset.mid = '' + message.mid;
     this.divAndCaption.fill(options);
-    this.topbar.setUtilsWidth();
+    this.topbar?.setUtilsWidth();
   }
 }
