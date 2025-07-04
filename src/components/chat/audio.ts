@@ -4,11 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatTopbar from './topbar';
 import appMediaPlaybackController, {AppMediaPlaybackController} from '../appMediaPlaybackController';
 import DivAndCaption from '../divAndCaption';
 import PinnedContainer from './pinnedContainer';
-import Chat from './chat';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import replaceContent from '../../helpers/dom/replaceContent';
@@ -27,7 +25,11 @@ import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName'
 import toHHMMSS from '../../helpers/string/toHHMMSS';
 import {PlaybackRateButton} from '../../components/playbackRateButton';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import {doubleRaf, fastRaf} from '../../helpers/schedulers';
+import {doubleRaf} from '../../helpers/schedulers';
+import ListenerSetter from '../../helpers/listenerSetter';
+import SetTransition from '../singleTransition';
+import {ChatType} from './chat';
+import type {AppImManager} from '../../lib/appManagers/appImManager';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -38,11 +40,11 @@ export default class ChatAudio extends PinnedContainer {
   private time: HTMLElement;
   private duration: number;
 
-  constructor(protected topbar: ChatTopbar, protected chat: Chat, protected managers: AppManagers) {
+  constructor(protected appImManager: AppImManager, protected managers: AppManagers) {
     super({
-      topbar,
-      chat,
-      listenerSetter: topbar.listenerSetter,
+      topbar: undefined,
+      chat: undefined,
+      listenerSetter: new ListenerSetter(),
       className: 'audio',
       divAndCaption: new DivAndCaption(
         'pinned-audio',
@@ -74,7 +76,7 @@ export default class ChatAudio extends PinnedContainer {
       attachClickEvent(elem, (e) => {
         cancelEvent(e);
         callback();
-      }, {listenerSetter: this.topbar.listenerSetter});
+      }, {listenerSetter: this.listenerSetter});
     };
 
     attachClick(prevEl, () => {
@@ -83,6 +85,18 @@ export default class ChatAudio extends PinnedContainer {
 
     attachClick(nextEl, () => {
       appMediaPlaybackController.next();
+    });
+
+    attachClick(this.container, () => {
+      const mid = +this.container.dataset.mid;
+      const peerId = this.container.dataset.peerId.toPeerId();
+      const searchContext = appMediaPlaybackController.getSearchContext();
+      this.appImManager.setInnerPeer({
+        peerId,
+        lastMsgId: mid,
+        type: searchContext.isScheduled ? ChatType.Scheduled : undefined,
+        threadId: searchContext.threadId
+      });
     });
 
     this.toggleEl = ButtonIcon('', {noRipple: true});
@@ -140,21 +154,21 @@ export default class ChatAudio extends PinnedContainer {
       });
     };
 
-    this.topbar.listenerSetter.add(appMediaPlaybackController)('play', () => {
+    this.listenerSetter.add(appMediaPlaybackController)('play', () => {
       toggleActivity(true);
     });
 
-    this.topbar.listenerSetter.add(appMediaPlaybackController)('pause', () => {
+    this.listenerSetter.add(appMediaPlaybackController)('pause', () => {
       toggleActivity(false);
     });
-    this.topbar.listenerSetter.add(appMediaPlaybackController)('stop', () => {
+    this.listenerSetter.add(appMediaPlaybackController)('stop', () => {
       toggleActivity(false);
     });
 
-    this.topbar.listenerSetter.add(appMediaPlaybackController)('play', this.onMediaPlay);
-    this.topbar.listenerSetter.add(appMediaPlaybackController)('pause', this.onPause);
-    this.topbar.listenerSetter.add(appMediaPlaybackController)('stop', this.onStop);
-    this.topbar.listenerSetter.add(appMediaPlaybackController)('playbackParams', this.onPlaybackParams);
+    this.listenerSetter.add(appMediaPlaybackController)('play', this.onMediaPlay);
+    this.listenerSetter.add(appMediaPlaybackController)('pause', this.onPause);
+    this.listenerSetter.add(appMediaPlaybackController)('stop', this.onStop);
+    this.listenerSetter.add(appMediaPlaybackController)('playbackParams', this.onPlaybackParams);
 
     const playingDetails = appMediaPlaybackController.getPlayingDetails();
     if(playingDetails) {
@@ -162,33 +176,25 @@ export default class ChatAudio extends PinnedContainer {
       this.onPlaybackParams(playingDetails.playbackParams);
     }
 
-    this.container.classList.add('is-floating')
+    this.container.classList.add('is-floating');
+    this.container.classList.remove('hide');
   }
 
   public toggle(hide?: boolean): void {
-    const current = this.container.classList.contains('hide');
-    if(hide === undefined) {
-      hide = !current;
-    }
+    const current = !this.container.classList.contains('is-visible');
+    if((hide ??= !current) === current) return;
 
-    if(hide === current) return;
-
-    if(hide) {
-      this.container.classList.add('animating');
-      setTimeout(() => {
-        this.container.classList.remove('animating');
-        this.container.classList.add('hide');
-      }, 250);
-    } else {
-      this.container.classList.remove('hide');
-    }
-
-    doubleRaf().then(() => {
-      document.body.classList.toggle('is-pinned-audio-shown', !hide);
-    })
-
-    this.topbar.setFloating();
-    this.topbar.setUtilsWidth();
+    SetTransition({
+      element: this.container,
+      duration: 250,
+      className: 'is-visible',
+      forwards: !hide,
+      onTransitionStart: () => {
+        doubleRaf().then(() => {
+          document.body.classList.toggle('is-pinned-audio-shown', !hide);
+        });
+      }
+    });
   }
 
   public destroy() {

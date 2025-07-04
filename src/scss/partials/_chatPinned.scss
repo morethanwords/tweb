@@ -602,31 +602,31 @@
 
 .pinned-audio {
   --progress-height: .25rem;
-  --container-height: 3.25rem;
+  --container-height: var(--topbar-audio-height);
 
-  z-index: 3;
+  z-index: 2;
+  top: calc(var(--topbar-audio-height) * -1) !important;
+  transform: translateY(calc(var(--topbar-floating-audio-height) + var(--topbar-floating-call-height)));
 
-  transform: translateY(-3.25rem);
-
-  body.is-pinned-audio-shown & {
-    transform: translateY(0);
+  &:not(.is-visible) {
+    display: none !important;
   }
 
-  body.animation-level-2 & {
-    transition: transform var(--transition-standard-out);
-  }
-
-  .pinned-container-wrapper {
+  &-wrapper {
     overflow: visible !important;
     z-index: 1 !important;
 
     > .btn-icon {
       margin-inline-start: 0 !important;
     }
+
+    &-utils {
+      @include sidebar-transform(0, true);
+    }
   }
 
   &:before {
-    border-top: none!important;
+    border-top: none !important;
     border-bottom: 1px solid var(--border-color);
     border-left: 1px solid var(--border-color);
   }

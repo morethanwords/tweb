@@ -96,7 +96,6 @@ export default class ChatTopbar {
   private chatActions: ChatActions;
   private chatRequests: ChatRequests;
   private chatRemoveFee: ChatRemoveFee;
-  private chatAudio: ChatAudio;
   private chatLive: ChatLive;
   private chatTranslation: ChatTranslation;
   private chatSponsored: ChatTopbarSponsored;
@@ -175,7 +174,6 @@ export default class ChatTopbar {
     this.chatUtils = document.createElement('div');
     this.chatUtils.classList.add('chat-utils');
 
-    this.chatAudio = new ChatAudio(this, this.chat, this.managers);
     this.chatRequests = new ChatRequests(this, this.chat, this.managers);
     this.chatActions = new ChatActions(this, this.chat, this.managers);
     this.chatRemoveFee = new ChatRemoveFee(this, this.chat, this.managers);
@@ -231,7 +229,6 @@ export default class ChatTopbar {
       this.chatSponsored
     ].filter(Boolean);
     this.container.append(...pinnedContainers.map((pinnedContainer) => pinnedContainer.container));
-    this.chat.container.prepend(this.chatAudio.container);
 
     // * construction end
 
@@ -264,15 +261,6 @@ export default class ChatTopbar {
           // if(!this.pinnedMessage.locked) {
           this.pinnedMessage.followPinnedMessage(mid);
           // }
-        } else if(container.dataset.peerId) {
-          const peerId = container.dataset.peerId.toPeerId();
-          const searchContext = appMediaPlaybackController.getSearchContext();
-          this.chat.appImManager.setInnerPeer({
-            peerId,
-            lastMsgId: mid,
-            type: searchContext.isScheduled ? ChatType.Scheduled : undefined,
-            threadId: searchContext.threadId
-          });
         }
       } else {
         const avatar = findUpAvatar(e.target);
@@ -904,7 +892,6 @@ export default class ChatTopbar {
     this.pinnedContainers?.forEach((pinnedContainer) => pinnedContainer.destroy());
 
     delete this.pinnedMessage;
-    delete this.chatAudio;
     delete this.chatRequests;
     delete this.chatActions;
     delete this.chatLive;
@@ -1255,7 +1242,7 @@ export default class ChatTopbar {
       return acc + +isFloating;
     }, 0);
     this.container.dataset.floating = '' + count;
-    this.container.style.setProperty('--pinned-floating-height', `calc(${floatingHeight}px + var(--topbar-floating-call-height) + var(--topbar-audio-height))`);
+    this.container.style.setProperty('--pinned-floating-height', `calc(${floatingHeight}px + var(--topbar-floating-call-height) + var(--topbar-floating-audio-height))`);
   };
 
   private messagesCounter(middleware: Middleware, key: LangPackKey, minusFirst?: boolean) {

@@ -134,6 +134,7 @@ import ChatBackgroundStore from '../chatBackgroundStore';
 import useLockScreenShortcut from './utils/useLockScreenShortcut';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../../components/chat/paidMessagesInterceptor';
 import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport';
+import ChatAudio from '../../components/chat/audio';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -193,6 +194,7 @@ export class AppImManager extends EventListenerBase<{
   private backgroundPromises: {[url: string]: MaybePromise<string>};
 
   private topbarCall: TopbarCall;
+  private chatAudio: ChatAudio;
 
   public lastBackgroundUrl: string;
 
@@ -607,6 +609,9 @@ export class AppImManager extends EventListenerBase<{
     if(IS_CALL_SUPPORTED || IS_GROUP_CALL_SUPPORTED) {
       this.topbarCall = new TopbarCall(managers);
     }
+
+    this.chatAudio = new ChatAudio(this, managers);
+    this.columnEl.append(this.chatAudio.container);
 
     if(IS_CALL_SUPPORTED) {
       callsController.addEventListener('instance', ({instance/* , hasCurrent */}) => {
