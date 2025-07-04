@@ -108,20 +108,25 @@ const VideoControls: Component<{}> = () => {
 
   const middleSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: () => initialLength === 1 ? 'col-resize' : 'grabbing',
-    onStart: () => {
+    onStart: (e) => {
       swiping = 'middle';
       initialStart = mediaState.videoCropStart;
       initialLength = mediaState.videoCropLength;
       canMove = false;
+
+      if(initialLength === 1) {
+        setIsDraggingSomething(true);
+        canMove = true;
+        handleCursorMove(e);
+      }
     },
     onMove: (xDiff, _, e) => void batch((): void => {
       if(swiping !== 'middle') return;
+      if(initialLength === 1) return void handleCursorMove(e);
 
       if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX) canMove = true;
       if(!canMove) return;
       setIsDraggingSomething(true);
-
-      if(initialLength === 1) return void handleCursorMove(xDiff, e);
 
       const startDiff = clamp(initialStart + xDiff / strippedWidth(), 0, Math.max(0, 1 - Math.max(initialLength, minLength()))) - initialStart;
       batch(() => {
@@ -148,12 +153,12 @@ const VideoControls: Component<{}> = () => {
       if(swiping !== 'cursor') return;
       // if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX)
       editorState.isPlaying = false;
-      handleCursorMove(xDiff, e);
+      handleCursorMove(e);
     },
     onEnd: () => void setIsDraggingSomething(false)
   };
 
-  const handleCursorMove = (xDiff: number, e: PointerEvent | TouchEvent) => {
+  const handleCursorMove = (e: PointerEvent | TouchEvent) => {
     actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength));
   };
 
