@@ -792,6 +792,10 @@ export default class ChatTopbar {
       callback();
     });
 
+    this.listenerSetter.add(rootScope)('right_sidebar_toggle', () => {
+      this.setFloating(); // * to calculate sponsored height
+    });
+
     this.chat.addEventListener('setPeer', (mid, isTopMessage) => {
       const middleware = this.chat.bubbles.getMiddleware();
       apiManagerProxy.getState().then((state) => {

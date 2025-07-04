@@ -124,6 +124,7 @@ export class AppSidebarRight extends SidebarSlider {
   public hide() {
     document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     appNavigationController.removeByType('right');
+    rootScope.dispatchEventSingle('right_sidebar_toggle', false);
   }
 
   public toggleSidebar(enable?: boolean, animate?: boolean) {
@@ -159,6 +160,7 @@ export class AppSidebarRight extends SidebarSlider {
       if(!appNavigationController.findItemByType('right')) {
         this.pushNavigationItem(this.sharedMediaTab);
       }
+      rootScope.dispatchEventSingle('right_sidebar_toggle', true);
     }
     return animationPromise;
 
