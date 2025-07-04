@@ -21,22 +21,21 @@ export default async function spawnAnimatedPreview({
   scaledHeight,
   previewBlob
 }: SpawnAnimatedPreviewOptions) {
-  const [currentTab] = context.currentTab;
+  const {editorState: {currentTab, imageCanvas}} = context;
 
-  const isCroping = currentTab() === 'crop';
+  const isCropping = currentTab === 'crop';
 
-  const [positionCanvas] = context.imageCanvas;
-  const bcr = positionCanvas().getBoundingClientRect();
+  const bcr = imageCanvas.getBoundingClientRect();
   const animatedImg = new Image();
   animatedImg.src = await apiManagerProxy.invoke('createObjectURL', previewBlob);
   animatedImg.style.position = 'fixed';
-  const left = bcr.left + (isCroping ? cropOffset().left + cropOffset().width / 2 : bcr.width / 2),
-    top = bcr.top + (isCroping ? cropOffset().top + cropOffset().height / 2 : bcr.height / 2);
+  const left = bcr.left + (isCropping ? cropOffset().left + cropOffset().width / 2 : bcr.width / 2),
+    top = bcr.top + (isCropping ? cropOffset().top + cropOffset().height / 2 : bcr.height / 2);
 
   const [width, height] = snapToViewport(
     scaledWidth / scaledHeight,
-    isCroping ? cropOffset().width : bcr.width,
-    isCroping ? cropOffset().height : bcr.height
+    isCropping ? cropOffset().width : bcr.width,
+    isCropping ? cropOffset().height : bcr.height
   );
   animatedImg.style.left = left + 'px';
   animatedImg.style.top = top + 'px';

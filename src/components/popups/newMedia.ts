@@ -58,17 +58,19 @@ import SelectedEffect from '../chat/selectedEffect';
 import PopupMakePaid from './makePaid';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import Icon from '../icon';
-import {openMediaEditor} from '../mediaEditor/mediaEditor';
-import {MediaEditorFinalResult} from '../mediaEditor/finalRender/createFinalResult';
+import {MediaEditorFinalResult, MediaEditorFinalResultPayload} from '../mediaEditor/finalRender/createFinalResult';
 import RenderProgressCircle from '../mediaEditor/renderProgressCircle';
-import {animateValue, delay, lerp, snapToViewport} from '../mediaEditor/utils';
+import {animateValue, delay, lerp} from '../mediaEditor/utils';
 import {IS_MOBILE} from '../../environment/userAgent';
-import deferredPromise from '../../helpers/cancellablePromise';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import throttle from '../../helpers/schedulers/throttle';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
 import ListenerSetter from '../../helpers/listenerSetter';
+import canVideoBeAnimated from '../../lib/appManagers/utils/docs/canVideoBeAnimated';
+import {NumberPair} from '../mediaEditor/types';
+import MarkupTooltip from '../chat/markupTooltip';
+import {MAX_EDITABLE_VIDEO_SIZE, supportsVideoEncoding} from '../mediaEditor/support';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -107,10 +109,15 @@ export default class PopupNewMedia extends PopupElement {
 
   private animationGroup: AnimationItemGroup;
 
+  private activeActionsMenuItemDiv: HTMLElement;
   private activeActionsMenu: HTMLElement;
   private canShowActions = false;
 
   private cachedMediaEditorFiles = new WeakMap<Blob, File>;
+
+  private actionsMenuListenerSetter = new ListenerSetter;
+
+  private isMediaEditorOpen = false;
 
   constructor(
     private chat: Chat,
@@ -222,12 +229,12 @@ export default class PopupNewMedia extends PopupElement {
         icon: 'groupmedia',
         text: 'Popup.Attach.GroupMedia',
         onClick: () => this.changeGroup(true),
-        verify: () => !this.hasGif() && !this.willAttach.group && this.canGroupSomething()
+        verify: () => !this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif()
       }, {
         icon: 'groupmediaoff',
         text: 'Popup.Attach.UngroupMedia',
         onClick: () => this.changeGroup(false),
-        verify: () => !this.hasGif() && this.willAttach.group && this.canGroupSomething()
+        verify: () => this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif()
       }, {
         icon: 'mediaspoiler',
         text: 'EnablePhotoSpoiler',
@@ -427,9 +434,12 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     this.scrollable.container.addEventListener('scroll', () => {
-      const actions = document.querySelector('.popup-item-media-action-menu') as HTMLElement;
-      if(!actions || !this.activeActionsMenu) return;
-      const bcr = this.activeActionsMenu.getBoundingClientRect();
+      const actions = this.activeActionsMenu;
+      if(!actions || !this.activeActionsMenuItemDiv) return;
+
+      const bcr = this.activeActionsMenuItemDiv.getBoundingClientRect();
+      if(!this.canShowActionsForBcr(bcr)) return void this.hideActiveActionsMenu();
+
       actions.style.left = bcr.left + bcr.width / 2 + 'px';
       actions.style.top = bcr.bottom + 'px';
     });
@@ -664,7 +674,7 @@ export default class PopupNewMedia extends PopupElement {
     const target = e.target as HTMLElement;
     const {input} = this.messageInputField;
     if(target !== input) {
-      if(target.tagName === 'INPUT' || target.isContentEditable) {
+      if(target.tagName === 'INPUT' || target.isContentEditable || this.isMediaEditorOpen) {
         return;
       }
 
@@ -674,12 +684,10 @@ export default class PopupNewMedia extends PopupElement {
   };
 
   private prepareEditedFileForSending(params: SendFileParams): File | undefined {
-    params.editResult?.standaloneContext?.dispose();
-
     const editResult = params.editResult?.getResult();
     if(!editResult || editResult instanceof Promise) return undefined;
 
-    return this.wrapMediaEditorBlobInFile(params.file, editResult, params.editResult?.isGif);
+    return this.wrapMediaEditorBlobInFile(params.file, editResult.blob, params.editResult?.isVideo);
   }
 
   private async send(force = false) {
@@ -868,37 +876,50 @@ export default class PopupNewMedia extends PopupElement {
     let promise: Promise<void>;
 
     if(editResult) {
-      const resultBlob = editResult.getResult();
+      const result = editResult.getResult();
 
-      if(resultBlob instanceof Blob) {
-        if(editResult.isGif) {
-          await putImage(editResult.preview),
-          await putVideo(resultBlob)
-          const gifLabel = i18n('AttachGif');
-          gifLabel.classList.add('gif-label');
-          itemDiv.append(gifLabel);
+      function addGifLabel(result: MediaEditorFinalResultPayload) {
+        if(!canVideoBeAnimated(!result.hasSound, result.blob.size)) return;
+        const gifLabel = i18n('AttachGif');
+        gifLabel.classList.add('gif-label');
+        itemDiv.append(gifLabel);
+      }
+
+      if(!(result instanceof Promise)) {
+        if(editResult.isVideo) {
+          await putEditedImage(editResult.preview);
+          await putEditedVideo(result);
+          addGifLabel(result);
         } else {
-          await putImage(resultBlob, true);
+          await putEditedImage(result.blob, true);
         }
       } else {
-        await putImage(editResult.preview);
+        await putEditedImage(editResult.preview);
 
         const div = document.createElement('div');
-        const dispose = render(() => RenderProgressCircle({context: editResult.standaloneContext.value}), div);
+        const dispose = render(() => RenderProgressCircle({creationProgress: editResult.creationProgress}), div);
         itemDiv.append(div);
 
         (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
-        resultBlob.then(async(videoBlob) => {
+
+        result.then(() => {
+          pause(0).then(() => this.attachFiles());
+        }).catch(async() => {
+          params.editResult = undefined;
+          pause(0).then(() => this.attachFiles());
+
+          this.hideActiveActionsMenu();
+        }).finally(() => {
+          editResult.creationProgress?.dispose();
+          div?.remove();
           dispose();
-          await putVideo(videoBlob);
-          const gifLabel = i18n('AttachGif');
-          gifLabel.classList.add('gif-label');
-          itemDiv.append(gifLabel);
           (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
+
+          this.hideActiveActionsMenu();
         });
       }
 
-      async function putImage(blob: Blob, saveObjectURL = false) {
+      async function putEditedImage(blob: Blob, saveObjectURL = false) {
         const url = await apiManagerProxy.invoke('createObjectURL', blob);
         if(saveObjectURL) params.objectURL = url;
 
@@ -913,9 +934,9 @@ export default class PopupNewMedia extends PopupElement {
         params.height = editResult.height;
       }
 
-      async function putVideo(blob: Blob) {
+      async function putEditedVideo(result: MediaEditorFinalResultPayload) {
         const video = createVideo({middleware: params.middlewareHelper.get()});
-        const url = await apiManagerProxy.invoke('createObjectURL', blob);
+        const url = await apiManagerProxy.invoke('createObjectURL', result.blob);
         video.src = params.objectURL = url;
         video.autoplay = true;
         video.controls = false;
@@ -931,11 +952,14 @@ export default class PopupNewMedia extends PopupElement {
         params.width = editResult.width;
         params.height = editResult.height;
         params.duration = video.duration;
-        params.noSound = true;
+        params.noSound = !result.hasSound;
 
-        const thumb = await createPosterFromVideo(video);
+        const thumb = result.thumb || await createPosterFromVideo(video);
+        const canBeAnimated = canVideoBeAnimated(!result.hasSound, result.blob.size);
+
         params.thumb = {
           url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
+          isCover: !canBeAnimated && !!result.thumb,
           ...thumb
         };
       }
@@ -1013,85 +1037,60 @@ export default class PopupNewMedia extends PopupElement {
       }
     }
     {
-      const listenerSetter = new ListenerSetter();
-
       const showActions = async() => {
-        if(this.activeActionsMenu === itemDiv || !this.canShowActions) return;
-        hideActions();
-        this.activeActionsMenu = itemDiv;
+        if(this.activeActionsMenuItemDiv === itemDiv || !this.canShowActions || this.destroyed) return;
+        const bcr = itemDiv.getBoundingClientRect();
+        if(!this.canShowActionsForBcr(bcr)) return;
+
+        this.hideActiveActionsMenu();
+
+        this.activeActionsMenuItemDiv = itemDiv;
+
         const actions = document.createElement('div');
+        this.activeActionsMenu = actions;
         actions.classList.add('popup-item-media-action-menu');
         const itemCls = 'popup-item-media-action';
 
+        const canEditVideo = await supportsVideoEncoding() && file.size <= MAX_EDITABLE_VIDEO_SIZE;
+
         let equalizeIcon: HTMLSpanElement;
-        if(!this.willAttach.stars && !isVideo && file.type !== 'image/gif') {
+        if(!this.willAttach.stars && file.type !== 'image/gif' && (!isVideo || canEditVideo)) {
+          import('../mediaEditor'); // prefetch
+
           equalizeIcon = Icon('equalizer', itemCls);
-          equalizeIcon.addEventListener('click', () => {
-            hideActions();
+          equalizeIcon.addEventListener('click', async() => {
+            this.hideActiveActionsMenu();
+            MarkupTooltip.getInstance().hide();
 
             (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
-            const img = itemDiv.querySelector('img');
-            if(!img) return;
-            const animatedImg = img.cloneNode() as HTMLImageElement;
-            const bcr = itemDiv.getBoundingClientRect();
-            animatedImg.style.position = 'fixed';
-            const left = bcr.left + bcr.width / 2, top = bcr.top + bcr.height / 2, width = bcr.width, height = bcr.height;
-            animatedImg.style.left = left + 'px';
-            animatedImg.style.top = top + 'px';
-            animatedImg.style.width = width + 'px';
-            animatedImg.style.height = height + 'px';
-            animatedImg.style.transform = 'translate(-50%, -50%)';
-            animatedImg.style.objectFit = 'cover';
-            animatedImg.style.zIndex = '1000';
+            const source = itemDiv.querySelector('video') || itemDiv.querySelector('img');
+            if(!source) return;
 
-            document.body.append(animatedImg);
+            const {openMediaEditorFromMedia} = await import('../mediaEditor');
 
-            openMediaEditor({
-              imageURL: params.editResult?.originalSrc || params.objectURL,
+            const sourceSize: NumberPair = source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalWidth, source.naturalHeight];
+            this.isMediaEditorOpen = true;
+
+            openMediaEditorFromMedia({
+              source,
+              element: itemDiv,
+              size: [params.width, params.height],
+              mediaType: isVideo ? 'video' : 'image',
+              mediaSrc: params.editResult?.originalSrc || params.objectURL,
+              mediaBlob: file,
+              mediaSize: params.editResult?.originalSize || sourceSize,
               managers: this.managers,
               onEditFinish: (result) => {
                 params.editResult = result;
                 this.attachFiles();
               },
-              onCanvasReady: (canvas) => {
-                const canvasBcr = canvas.getBoundingClientRect();
-                const leftDiff = (canvasBcr.left + canvasBcr.width / 2) - left;
-                const topDiff = (canvasBcr.top + canvasBcr.height / 2) - top;
-                const [scaledWidth, scaledHeight] = snapToViewport(img.naturalWidth / img.naturalHeight, canvasBcr.width, canvasBcr.height);
-
-                const deferred = deferredPromise<void>();
-
-                animateValue(
-                  0, 1, 200,
-                  (progress) => {
-                    animatedImg.style.transform = `translate(calc(${
-                      progress * leftDiff
-                    }px - 50%), calc(${
-                      progress * topDiff
-                    }px - 50%))`;
-                    animatedImg.style.width = lerp(width, scaledWidth, progress) + 'px';
-                    animatedImg.style.height = lerp(height, scaledHeight, progress) + 'px';
-                  },
-                  {
-                    onEnd: () => deferred.resolve()
-                  }
-                );
-                return deferred;
-              },
-              onImageRendered: async() => {
-                animatedImg.style.opacity = '1';
-                animatedImg.style.transition = '.12s';
-                await doubleRaf();
-                animatedImg.style.opacity = '0';
-                await delay(120);
-                animatedImg.remove();
-              },
-              standaloneContext: params.editResult?.standaloneContext,
+              editingMediaState: params.editResult?.editingMediaState,
               onClose: (hasGif) => {
+                this.isMediaEditorOpen = false;
                 if(!hasGif)
                   (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
               }
-            }, SolidJSHotReloadGuardProvider);
+            });
           });
         }
 
@@ -1112,16 +1111,27 @@ export default class PopupNewMedia extends PopupElement {
         deleteIcon.addEventListener('click', () => {
           const idx = this.files.findIndex((file) => file === params.file);
           if(idx >= 0) {
-            hideActions();
+            this.hideActiveActionsMenu();
             this.files.splice(idx, 1);
-            params.editResult?.standaloneContext?.dispose();
+            params.editResult?.creationProgress?.dispose();
             this.files.length ? this.attachFiles() : this.destroy();
           }
         });
 
-        actions.append(...[equalizeIcon, spoilerToggle, deleteIcon].filter(Boolean));
+        const resultPromise = params?.editResult?.getResult();
+        let cancelBtn: HTMLDivElement;
+        if(resultPromise instanceof Promise) {
+          actions.classList.add('popup-item-media-action-menu-cancel');
+          cancelBtn = document.createElement('div');
+          cancelBtn.append(i18n('Cancel'));
+          cancelBtn.classList.add('popup-item-media-action-menu-cancel-btn');
+          cancelBtn.addEventListener('click', () => {
+            params?.editResult.cancel?.();
+          });
+        }
 
-        const bcr = itemDiv.getBoundingClientRect();
+        actions.append(...[cancelBtn, equalizeIcon, spoilerToggle, deleteIcon].filter(Boolean));
+
         actions.style.left = bcr.left + bcr.width / 2 + 'px';
         actions.style.top = bcr.bottom + 'px';
 
@@ -1131,20 +1141,15 @@ export default class PopupNewMedia extends PopupElement {
 
         const listener = (e: MouseEvent) => {
           if((e.target as HTMLElement)?.closest?.('.popup-item-media-action-menu') || e.target === itemDiv || itemDiv.contains(e.target as Node)) return;
-          hideActions();
+          this.hideActiveActionsMenu();
         }
-        listenerSetter.add(document)('pointermove', listener);
-        listenerSetter.add(document)('keydown', () => {
-          hideActions();
+        this.actionsMenuListenerSetter.add(document)('pointermove', listener);
+        this.actionsMenuListenerSetter.add(document)('keydown', () => {
+          this.hideActiveActionsMenu();
         }, {capture: true});
         if(IS_MOBILE) {
-          listenerSetter.add(document)('pointerdown', listener);
+          this.actionsMenuListenerSetter.add(document)('pointerdown', listener);
         }
-      }
-
-      const hideActions = () => {
-        listenerSetter.removeAll();
-        this.hideActiveActionsMenu();
       }
 
       itemDiv.addEventListener('pointermove', showActions);
@@ -1154,20 +1159,24 @@ export default class PopupNewMedia extends PopupElement {
     return promise;
   }
 
-  private hideActiveActionsMenu() {
-    document.querySelectorAll('.popup-item-media-action-menu')?.forEach(async(el) => {
-      this.activeActionsMenu = undefined;
-      (el as HTMLElement).style.opacity = '0';
-      await delay(200);
-      el?.remove();
-    });
+  private async hideActiveActionsMenu() {
+    this.actionsMenuListenerSetter.removeAll();
+
+    const el = this.activeActionsMenu;
+    this.activeActionsMenu = this.activeActionsMenuItemDiv = undefined;
+
+    if(!el) return;
+    el.style.opacity = '0';
+    el.style.pointerEvents = 'none';
+    await delay(200);
+    el?.remove();
   }
 
-  private wrapMediaEditorBlobInFile(originalFile: File, editedBlob: Blob, isGif: boolean) {
+  private wrapMediaEditorBlobInFile(originalFile: File, editedBlob: Blob, isVideo: boolean) {
     if(this.cachedMediaEditorFiles.has(editedBlob)) return this.cachedMediaEditorFiles.get(editedBlob);
 
     let name = originalFile.name;
-    if(isGif) name = name.replace(/\.[^.]+$/, '.mp4');
+    if(isVideo) name = name.replace(/\.[^.]+$/, '.mp4');
 
     const result = new File([editedBlob], name, {type: editedBlob.type});
     this.cachedMediaEditorFiles.set(editedBlob, result);
@@ -1180,9 +1189,9 @@ export default class PopupNewMedia extends PopupElement {
     const {itemDiv} = params;
     itemDiv.classList.add('popup-item-document');
 
-    const editedBlob = await params.editResult?.getResult();
-    const file = editedBlob ?
-      this.wrapMediaEditorBlobInFile(params.file, editedBlob, params.editResult?.isGif) :
+    const editResult = await params.editResult?.getResult();
+    const file = editResult ?
+      this.wrapMediaEditorBlobInFile(params.file, editResult.blob, params.editResult?.isVideo) :
       params.file;
 
     const isPhoto = file.type.startsWith('image/');
@@ -1400,7 +1409,19 @@ export default class PopupNewMedia extends PopupElement {
 
   private hasGif() {
     const {sendFileDetails} = this.willAttach;
-    return sendFileDetails.some((params) => params.editResult?.isGif);
+
+    return sendFileDetails.some((params) => {
+      const result = params.editResult?.getResult();
+      if(!result || result instanceof Promise) return false;
+
+      return canVideoBeAnimated(!result.hasSound, result.blob.size);
+    });
+  }
+
+  private canCheckIfHasGif() {
+    const {sendFileDetails} = this.willAttach;
+
+    return sendFileDetails.every((params) => !(params?.editResult?.getResult() instanceof Promise));
   }
 
   private iterate(cb: (sendFileDetails: SendFileParams[]) => void) {
@@ -1500,6 +1521,13 @@ export default class PopupNewMedia extends PopupElement {
     });
   }
 
+  private canShowActionsForBcr(bcr: DOMRect) {
+    const scrollableBcr = this.scrollable.container.getBoundingClientRect();
+    const approximateCenterY = bcr.bottom - 20;
+
+    return approximateCenterY >= scrollableBcr.top && approximateCenterY <= scrollableBcr.bottom;
+  }
+
   private afterRender() {
     setTimeout(() => {
       this.canShowActions = true;
@@ -1534,6 +1562,11 @@ export default class PopupNewMedia extends PopupElement {
         )
       }
     });
+  }
+
+  protected destroy() {
+    super.destroy();
+    this.hideActiveActionsMenu();
   }
 }
 

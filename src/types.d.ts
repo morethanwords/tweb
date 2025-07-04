@@ -100,6 +100,16 @@ export type InstanceOf<T> = T extends new (...args: any[]) => infer R ? R : neve
 
 export type StringKey<T extends keyof any> = T extends string ? T : never;
 
+export type ObjectPath<T extends object> =
+{
+  [Key in (T extends any[] ? (keyof T & number) : (keyof T & (number | string)))]:
+    | [Key]
+    | (T[Key] extends object ? [Key, ...ObjectPath<T[Key]>] : never)
+}[
+  T extends any[] ? (keyof T & number) : (keyof T & (number | string))
+];
+
+
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn | AuthState.signImport;
 export namespace AuthState {
   export type signIn = {

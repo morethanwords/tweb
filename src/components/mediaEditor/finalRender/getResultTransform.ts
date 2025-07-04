@@ -1,7 +1,7 @@
+import {FinalTransform} from '../canvas/useFinalTransform';
+import {useCropOffset} from '../canvas/useCropOffset';
 import {MediaEditorContextValue} from '../context';
 import {getSnappedViewportsScale} from '../utils';
-import {useCropOffset} from '../canvas/useCropOffset';
-import {FinalTransform} from '../canvas/useFinalTransform';
 
 export type GetResultTransformArgs = {
   context: MediaEditorContextValue;
@@ -20,15 +20,13 @@ export default function getResultTransform({
   imageHeight,
   cropOffset
 }: GetResultTransformArgs): FinalTransform {
-  const [canvasSize] = context.canvasSize;
-  const [currentImageRatio] = context.currentImageRatio;
-  const [translation] = context.translation;
-  const [scale] = context.scale;
-  const [rotation] = context.rotation;
-  const [flip] = context.flip;
+  const {
+    editorState: {canvasSize},
+    mediaState: {scale, translation, rotation, flip, currentImageRatio}
+  } = context;
 
-  const initialCanvasWidth = canvasSize()[0];
-  const initialCanvasHeight = canvasSize()[1];
+  const initialCanvasWidth = canvasSize[0];
+  const initialCanvasHeight = canvasSize[1];
 
   const imageRatio = imageWidth / imageHeight;
 
@@ -48,7 +46,7 @@ export default function getResultTransform({
   const fromCroppedScale =
     1 /
     getSnappedViewportsScale(
-      currentImageRatio(),
+      currentImageRatio,
       cropOffset().width,
       cropOffset().height,
       snappedCanvasWidth,
@@ -59,12 +57,12 @@ export default function getResultTransform({
 
   const snappedImageScale = Math.min(snappedCanvasWidth / imageWidth, snappedCanvasHeight / imageHeight);
 
-  const cropTranslation = translation().map((x) => x * fromCroppedScale - x);
+  const cropTranslation = translation.map((x) => x * fromCroppedScale - x);
 
   return {
-    flip: flip(),
-    rotation: rotation(),
-    scale: scale() * snappedImageScale * toCropScale,
-    translation: [cropTranslation[0] + translation()[0], cropTranslation[1] + translation()[1]]
+    flip: flip,
+    rotation: rotation,
+    scale: scale * snappedImageScale * toCropScale,
+    translation: [cropTranslation[0] + translation[0], cropTranslation[1] + translation[1]]
   };
 }

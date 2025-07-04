@@ -6,6 +6,17 @@ function matchNonMetaKey(event: KeyboardEvent, key: string) {
   return event.key.toLowerCase() === key.toLowerCase();
 }
 
+function matchComboKey(event: KeyboardEvent, key: string) {
+  return (
+    (key === 'ctrl' && event.ctrlKey) ||
+    (key === 'shift' && event.shiftKey) ||
+    (key === 'alt' && event.altKey) ||
+    (key === 'meta' && event.metaKey) ||
+    (key === 'anymeta' && (event.ctrlKey || event.shiftKey || event.altKey || event.metaKey)) ||
+    matchNonMetaKey(event, key)
+  );
+}
+
 export function addShortcutListener(combos: string[], callback: (combo: string, event: KeyboardEvent) => void, preventByDefault = true) {
   const listener = (event: KeyboardEvent) => {
     const pairs = combos
@@ -13,16 +24,7 @@ export function addShortcutListener(combos: string[], callback: (combo: string, 
     .sort((a, b) => b[1].length - a[1].length);
 
     for(const [combo, keys] of pairs) {
-      const isComboMatched = keys.every((key) => {
-        return (
-          (key === 'ctrl' && event.ctrlKey) ||
-          (key === 'shift' && event.shiftKey) ||
-          (key === 'alt' && event.altKey) ||
-          (key === 'meta' && event.metaKey) ||
-          (key === 'anymeta' && (event.ctrlKey || event.shiftKey || event.altKey || event.metaKey)) ||
-          matchNonMetaKey(event, key)
-        );
-      });
+      const isComboMatched = keys.every((key) => matchComboKey(event, key));
 
       if(isComboMatched) {
         preventByDefault && event.preventDefault();
@@ -31,6 +33,7 @@ export function addShortcutListener(combos: string[], callback: (combo: string, 
       }
     }
   };
+
   document.addEventListener('keydown', listener);
 
   return () => document.removeEventListener('keydown', listener);

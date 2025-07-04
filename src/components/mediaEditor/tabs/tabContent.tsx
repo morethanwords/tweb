@@ -1,10 +1,10 @@
-import {Accessor, createContext, createEffect, createSignal, JSX, onCleanup, onMount, useContext} from 'solid-js';
+import {Accessor, createContext, createEffect, createSignal, JSX, onCleanup, onMount} from 'solid-js';
 
 import {doubleRaf} from '../../../helpers/schedulers';
 import Scrollable from '../../scrollable';
 
+import {useMediaEditorContext} from '../context';
 import {delay} from '../utils';
-import MediaEditorContext from '../context';
 
 import {mediaEditorTabsOrder} from './tabs';
 
@@ -19,27 +19,26 @@ export default function TabContent(props: {
   onContainer: (el: HTMLDivElement) => void;
   onScroll: () => void;
 }) {
-  const context = useContext(MediaEditorContext);
-  const [tab] = context.currentTab;
+  const {editorState} = useMediaEditorContext();
 
   const [container, setContainer] = createSignal<HTMLDivElement>();
   const [scrollAmount, setScrollAmount] = createSignal(0);
   let prevElement: HTMLDivElement;
-  let prevTab = tab();
+  let prevTab = editorState.currentTab;
   let scrollable: Scrollable;
 
   createEffect(async() => {
-    if(prevTab === tab()) return;
+    if(prevTab === editorState.currentTab) return;
 
-    const toRight = mediaEditorTabsOrder.indexOf(tab()) > mediaEditorTabsOrder.indexOf(prevTab);
-    prevTab = tab();
+    const toRight = mediaEditorTabsOrder.indexOf(editorState.currentTab) > mediaEditorTabsOrder.indexOf(prevTab);
+    prevTab = editorState.currentTab;
 
     scrollable.destroy();
     const newElement = (
       <div>
         <div class="media-editor__tab-content-scrollable-content">
           <TabContentContext.Provider value={{container, scrollAmount}}>
-            {props.tabs[tab()]()}
+            {props.tabs[editorState.currentTab]()}
           </TabContentContext.Provider>
         </div>
       </div>
@@ -71,7 +70,7 @@ export default function TabContent(props: {
     prevElement = newElement;
   });
 
-  const initialTab = props.tabs[tab()]();
+  const initialTab = props.tabs[editorState.currentTab]();
 
   function setScrollable(element: HTMLElement) {
     // TODO: Scrollable thumb not showing

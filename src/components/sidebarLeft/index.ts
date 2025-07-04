@@ -92,7 +92,7 @@ import AppChatFoldersTab from './tabs/chatFolders';
 import {SliderSuperTabConstructable} from '../sliderTab';
 import SettingsSliderPopup from './settingsSliderPopup';
 import AppEditFolderTab from './tabs/editFolder';
-import {addShortcutListener} from '../mediaEditor/shortcutListener';
+import {addShortcutListener} from '../../helpers/shortcutListener';
 import tsNow from '../../helpers/tsNow';
 import {toastNew} from '../toast';
 import DeferredIsUsingPasscode from '../../lib/passcode/deferredIsUsingPasscode';

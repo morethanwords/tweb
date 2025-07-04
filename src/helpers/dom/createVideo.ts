@@ -16,7 +16,7 @@ export default function createVideo({
   middleware
 }: {
   pip?: boolean,
-  middleware: Middleware
+  middleware?: Middleware
 }) {
   const video = document.createElement('video');
   if(!pip) video.disablePictureInPicture = true;

@@ -1,26 +1,24 @@
-import {batch, createEffect, createSignal, on, onCleanup, onMount, useContext} from 'solid-js';
+import {batch, createEffect, createMemo, createSignal, JSX, on, onCleanup, onMount} from 'solid-js';
 
 import {doubleRaf} from '../../helpers/schedulers';
 
-import Topbar from './topbar';
-import Tabs from './tabs/tabs';
-import TabContent from './tabs/tabContent';
 import AdjustmentsTab from './tabs/adjustmentsTab';
+import {animateValue, delay, lerp} from './utils';
+import {useMediaEditorContext} from './context';
+import StickersTab from './tabs/stickersTab';
+import TabContent from './tabs/tabContent';
+import useIsMobile from './useIsMobile';
+import BrushTab from './tabs/brushTab';
 import CropTab from './tabs/cropTab';
 import TextTab from './tabs/textTab';
-import BrushTab from './tabs/brushTab';
-import StickersTab from './tabs/stickersTab';
-import MediaEditorContext from './context';
-import {animateValue, delay, lerp} from './utils';
-import useIsMobile from './useIsMobile';
+import Tabs from './tabs/tabs';
+import Topbar from './topbar';
+
 
 export default function Toolbar(props: {onFinish: () => void; onClose: () => void}) {
   let toolbar: HTMLDivElement;
 
-  const context = useContext(MediaEditorContext);
-  const [isAdjusting] = context.isAdjusting;
-  const [currentTab] = context.currentTab;
-  const [renderingPayload] = context.renderingPayload;
+  const {editorState, actions} = useMediaEditorContext();
 
   const [move, setMove] = createSignal(0);
   const [isCollapsed, setIsCollapsed] = createSignal(false);
@@ -48,7 +46,7 @@ export default function Toolbar(props: {onFinish: () => void; onClose: () => voi
       isResetting = false;
     }, 200);
   }
-  context.abortDrawerSlide = () => resetMove();
+  actions.abortDrawerSlide = () => resetMove();
 
   onMount(() => {
     function startDrag(y: number) {
@@ -129,11 +127,11 @@ export default function Toolbar(props: {onFinish: () => void; onClose: () => voi
   );
 
   createEffect(() => {
-    if(currentTab() !== 'crop') setIsCollapsed(false);
+    if(editorState.currentTab !== 'crop') setIsCollapsed(false);
   });
 
   createEffect(() => {
-    if(renderingPayload() && shouldHide()) {
+    if(editorState.renderingPayload && shouldHide()) {
       (async() => {
         toolbar.style.transition = '.2s';
         await doubleRaf();
@@ -146,19 +144,20 @@ export default function Toolbar(props: {onFinish: () => void; onClose: () => voi
 
   const totalMove = () => extraMove() + move();
 
+  const style = createMemo((): JSX.CSSProperties => {
+    if(isMobile()) return {
+      'opacity': editorState.isAdjusting ? 0 : 1,
+      'transform': shouldHide() ?
+        'translate(-50%, 100%)' :
+        `translate(-50%, ${totalMove()}px)`
+    };
+  });
+
   return (
     <div
       ref={toolbar}
       class="media-editor__toolbar"
-      style={{
-        'opacity': isMobile() && isAdjusting() ? 0 : 1,
-        'transform':
-          shouldHide() && isMobile() ?
-            'translate(-50%, 100%)' :
-            isMobile() ?
-              `translate(-50%, ${totalMove()}px)` :
-              undefined
-      }}
+      style={style()}
     >
       <div class="media-editor__toolbar-draggable" />
       <Topbar onClose={() => props.onClose()} onFinish={props.onFinish} />

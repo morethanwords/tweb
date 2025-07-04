@@ -1,36 +1,82 @@
-import {createEffect, createSignal, on, onCleanup, useContext} from 'solid-js';
+import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid-js';
+
+import {i18n} from '../../../lib/langPack';
 
 import Space from '../../space';
 
+import {adjustmentsConfig} from '../adjustments';
+import {useCropOffset} from '../canvas/useCropOffset';
+import {useMediaEditorContext} from '../context';
+import getResultSize from '../finalRender/getResultSize';
 import RangeInput from '../rangeInput';
-import MediaEditorContext from '../context';
+import StepInput, {StepInputStep} from '../stepInput';
 import useIsMobile from '../useIsMobile';
+import {availableQualityHeights, checkIfHasAnimatedStickers, snapToAvailableQuality} from '../utils';
+
 
 const ADJUST_TIMEOUT = 800;
 
 export default function AdjustmentsTab() {
-  const context = useContext(MediaEditorContext);
-  const {adjustments} = context;
-  const [, setIsAdjusting] = context.isAdjusting;
+  const {editorState, mediaState, actions, mediaSize, mediaType, imageRatio} = useMediaEditorContext();
 
   const isMobile = useIsMobile();
+  const cropOffset = useCropOffset();
 
   let timeoutId = 0;
   function removeIsAdjusting() {
     window.clearTimeout(timeoutId);
     timeoutId = window.setTimeout(() => {
-      setIsAdjusting(false);
+      editorState.isAdjusting = false;
     }, ADJUST_TIMEOUT);
   }
+
+  const resultingSize = createMemo(() =>
+    getResultSize({
+      imageWidth: mediaSize[0],
+      scale: mediaState.scale,
+      newRatio: mediaState.currentImageRatio || imageRatio,
+      videoType: mediaType === 'video' ? 'video' : 'gif',
+      imageRatio,
+      cropOffset: !cropOffset().width ? {width: 1, height: 1} : cropOffset()
+    })
+  );
+
+  createEffect(() => {
+    resultingSize();
+    (window as any).debugResultingSize && console.log('resultingSize', resultingSize());
+  });
+
+  const maxVideoQuality = createMemo(() => snapToAvailableQuality(resultingSize()[1]));
+
+  const steps = createMemo((): StepInputStep[] =>
+    availableQualityHeights
+    .filter(height => height <= maxVideoQuality())
+    .map(height => ({value: height, label: height + 'p'}))
+  );
+
+  const canShowQualityInput = createMemo(() => (mediaType === 'video' || checkIfHasAnimatedStickers(mediaState.resizableLayers)) && steps().length > 1);
 
   return (
     <>
       <Space amount="16px" />
-      {adjustments.map((item) => {
-        const [value, setValue] = item.signal;
+
+      <Show when={canShowQualityInput()}>
+        <StepInput
+          label={i18n('Quality')}
+          steps={steps()}
+          value={Math.min(maxVideoQuality(), mediaState.videoQuality)}
+          onChange={(value) => void(mediaState.videoQuality = value)}
+        />
+        <Space amount="32px" />
+      </Show>
+
+      {adjustmentsConfig.map((item) => {
         const [container, setContainer] = createSignal<HTMLDivElement>();
 
         const [showGhost, setShowGhost] = createSignal(false);
+
+        const value = () => mediaState.adjustments[item.key];
+        const setValue = (v: number): void => void (mediaState.adjustments[item.key] = v);
 
         createEffect(
           on(showGhost, () => {
@@ -83,21 +129,19 @@ export default function AdjustmentsTab() {
               onChange={(v) => {
                 setValue(v);
                 setShowGhost(true);
-                setIsAdjusting(true);
+                editorState.isAdjusting = true;
                 removeGhost();
                 removeIsAdjusting();
               }}
               label={item.label()}
               onChangeFinish={(prevValue, currentValue) => {
                 setShowGhost(false);
-                setIsAdjusting(false);
-                context.pushToHistory({
-                  undo() {
-                    setValue(prevValue);
-                  },
-                  redo() {
-                    setValue(currentValue);
-                  }
+                editorState.isAdjusting = false;
+
+                actions.pushToHistory({
+                  path: ['adjustments', item.key],
+                  newValue: currentValue,
+                  oldValue: prevValue
                 });
               }}
               min={item.to100 ? 0 : -50}

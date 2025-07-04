@@ -1,15 +1,14 @@
-import {useContext} from 'solid-js';
-
-import MediaEditorContext from '../context';
+import {useMediaEditorContext} from '../context';
 
 export function useCropOffset() {
-  const [canvasSize] = useContext(MediaEditorContext).canvasSize;
+  const {editorState} = useMediaEditorContext();
 
   return () => {
-    if(!canvasSize()) return {left: 0, top: 0, width: 0, height: 0};
+    const {canvasSize} = editorState;
+    if(!canvasSize) return {left: 0, top: 0, width: 0, height: 0};
 
-    const w = canvasSize()[0],
-      h = canvasSize()[1];
+    const w = canvasSize[0],
+      h = canvasSize[1];
 
     return {
       left: 60,

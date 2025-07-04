@@ -1,26 +1,24 @@
-import {onCleanup, onMount, useContext} from 'solid-js';
+import {onCleanup, onMount} from 'solid-js';
 
 import createMiddleware from '../../../helpers/solid/createMiddleware';
 import wrapSticker from '../../wrappers/sticker';
 
-import MediaEditorContext from '../context';
+import {useMediaEditorContext} from '../context';
 import {ResizableLayerProps} from '../types';
 
 import {ResizableContainer} from './resizableLayers';
 
 export default function StickerLayerContent(props: ResizableLayerProps) {
-  const context = useContext(MediaEditorContext);
-  const [, setStickersLayersInfo] = context.stickersLayersInfo;
+  const {editorState} = useMediaEditorContext();
 
   let container: HTMLDivElement;
-  const [layer] = props.layerSignal;
 
   onMount(() => {
     const middleware = createMiddleware();
 
     wrapSticker({
       div: container,
-      doc: layer().sticker,
+      doc: props.layer.sticker,
       group: 'none',
       width: 500,
       height: 500,
@@ -30,10 +28,7 @@ export default function StickerLayerContent(props: ResizableLayerProps) {
       middleware: middleware.get()
     });
 
-    setStickersLayersInfo((prev) => ({
-      ...prev,
-      [layer().id]: {container}
-    }));
+    editorState.stickersLayersInfo[props.layer.id] = {container};
 
     onCleanup(() => {
       middleware.destroy();
@@ -45,7 +40,7 @@ export default function StickerLayerContent(props: ResizableLayerProps) {
   ); // Needs to be rendered here for hot reload to work properly
 
   return (
-    <ResizableContainer layerSignal={props.layerSignal}>
+    <ResizableContainer layer={props.layer}>
       {children}
     </ResizableContainer>
   );

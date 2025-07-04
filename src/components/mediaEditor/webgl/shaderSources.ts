@@ -33,7 +33,7 @@ void main(void) {
   position += uResolution / 2.0;
 
   // Translate and normalize
-  position = ((position + uTranslation) / uResolution) * 2.0 - 1.0;  
+  position = ((position + uTranslation) / uResolution) * 2.0 - 1.0;
 
   gl_Position = vec4(position * vec2(1, -1), 0.0, 1.0);
   vTextureCoord = aTextureCoord;
@@ -86,7 +86,7 @@ highp vec3 yuvToRgb(vec3 yuv){
     highp float y = yuv.x;
     highp float u = yuv.y;
     highp float v = yuv.z;
-    
+
     highp vec3 r = vec3(
         y + 1.0/0.877*v,
         y - 0.39393*u - 0.58081*v,
@@ -107,12 +107,12 @@ float easeInOutSigmoid(float x, float k) {
 
 highp vec4 rnm(in highp vec2 tc) {
   highp float noise = sin(dot(tc,vec2(12.9898,78.233))) * 43758.5453;
-  
+
   highp float noiseR = fract(noise)*2.0-1.0;
   highp float noiseG = fract(noise*1.2154)*2.0-1.0;
   highp float noiseB = fract(noise*1.3453)*2.0-1.0;
   highp float noiseA = fract(noise*1.3647)*2.0-1.0;
-  
+
   return vec4(noiseR,noiseG,noiseB,noiseA);
 }
 
@@ -123,44 +123,44 @@ highp float fade(in highp float t) {
 highp float pnoise3D(in highp vec3 p) {
   highp vec3 pi = permTexUnit*floor(p)+permTexUnitHalf;
   highp vec3 pf = fract(p);
-  
+
   // Noise contributions from (x=0, y=0), z=0 and z=1
   highp float perm00 = rnm(pi.xy).a ;
   highp vec3  grad000 = rnm(vec2(perm00, pi.z)).rgb * 4.0 - 1.0;
   highp float n000 = dot(grad000, pf);
   highp vec3  grad001 = rnm(vec2(perm00, pi.z + permTexUnit)).rgb * 4.0 - 1.0;
   highp float n001 = dot(grad001, pf - vec3(0.0, 0.0, 1.0));
-  
+
   // Noise contributions from (x=0, y=1), z=0 and z=1
   highp float perm01 = rnm(pi.xy + vec2(0.0, permTexUnit)).a ;
   highp vec3  grad010 = rnm(vec2(perm01, pi.z)).rgb * 4.0 - 1.0;
   highp float n010 = dot(grad010, pf - vec3(0.0, 1.0, 0.0));
   highp vec3  grad011 = rnm(vec2(perm01, pi.z + permTexUnit)).rgb * 4.0 - 1.0;
   highp float n011 = dot(grad011, pf - vec3(0.0, 1.0, 1.0));
-  
+
   // Noise contributions from (x=1, y=0), z=0 and z=1
   highp float perm10 = rnm(pi.xy + vec2(permTexUnit, 0.0)).a ;
   highp vec3  grad100 = rnm(vec2(perm10, pi.z)).rgb * 4.0 - 1.0;
   highp float n100 = dot(grad100, pf - vec3(1.0, 0.0, 0.0));
   highp vec3  grad101 = rnm(vec2(perm10, pi.z + permTexUnit)).rgb * 4.0 - 1.0;
   highp float n101 = dot(grad101, pf - vec3(1.0, 0.0, 1.0));
-  
+
   // Noise contributions from (x=1, y=1), z=0 and z=1
   highp float perm11 = rnm(pi.xy + vec2(permTexUnit, permTexUnit)).a ;
   highp vec3  grad110 = rnm(vec2(perm11, pi.z)).rgb * 4.0 - 1.0;
   highp float n110 = dot(grad110, pf - vec3(1.0, 1.0, 0.0));
   highp vec3  grad111 = rnm(vec2(perm11, pi.z + permTexUnit)).rgb * 4.0 - 1.0;
   highp float n111 = dot(grad111, pf - vec3(1.0, 1.0, 1.0));
-  
+
   // Blend contributions along x
   highp vec4 n_x = mix(vec4(n000, n001, n010, n011), vec4(n100, n101, n110, n111), fade(pf.x));
-  
+
   // Blend contributions along y
   highp vec2 n_xy = mix(n_x.xy, n_x.zw, fade(pf.y));
-  
+
   // Blend contributions along z
   highp float n_xyz = mix(n_xy.x, n_xy.y, fade(pf.z));
-  
+
   return n_xyz;
 }
 
@@ -184,9 +184,12 @@ vec4 brightness(vec4 color, float value) {
     exppower = 1.0 / exppower;
   }
 
-  color.r = 1.0 - pow((1.0 - color.r), exppower);
-  color.g = 1.0 - pow((1.0 - color.g), exppower);
-  color.b = 1.0 - pow((1.0 - color.b), exppower);
+  color.r = 1.0 - pow((1.0 - color.r + 1e-4), exppower);
+  color.g = 1.0 - pow((1.0 - color.g + 1e-4), exppower);
+  color.b = 1.0 - pow((1.0 - color.b + 1e-4), exppower);
+
+  color.rgb = clamp(color.rgb, 0.0, 1.0);
+
   return color;
 }
 
@@ -222,18 +225,18 @@ vec4 fade(vec4 color, float value) {
   highp vec3 co2 = vec3(1.708);
   highp vec3 co3 = vec3(-0.1603);
   highp vec3 co4 = vec3(0.2878);
-  
+
   highp vec3 comp1 = co1 * pow(color.rgb, vec3(3.0));
   highp vec3 comp2 = co2 * pow(color.rgb, vec3(2.0));
   highp vec3 comp3 = co3 * color.rgb;
   highp vec3 comp4 = co4;
-  
+
   highp vec3 finalComponent = comp1 + comp2 + comp3 + comp4;
   highp vec3 difference = finalComponent - color.rgb;
   highp vec3 scalingValue = vec3(0.9);
-  
+
   highp vec3 faded = color.rgb + (difference * scalingValue);
-  
+
   return vec4((color.rgb * (1.0 - value)) + (faded * value), color.a);
 }
 
@@ -243,7 +246,7 @@ vec4 highlights(vec4 color, float highlights, float shadows) {
   mediump float shadow = clamp((pow(hsLuminance, 1.0 / shadows) + (-0.76) * pow(hsLuminance, 2.0 / shadows)) - hsLuminance, 0.0, 1.0);
   mediump float highlight = clamp((1.0 - (pow(1.0 - hsLuminance, 1.0 / (2.0 - highlights)) + (-0.8) * pow(1.0 - hsLuminance, 2.0 / (2.0 - highlights)))) - hsLuminance, -1.0, 0.0);
   lowp vec3 hsresult = vec3(0.0, 0.0, 0.0) + ((hsLuminance + shadow + highlight) - 0.0) * ((color.rgb - vec3(0.0, 0.0, 0.0)) / (hsLuminance - 0.0));
-  
+
   mediump float contrastedLuminance = ((hsLuminance - 0.5) * 1.5) + 0.5;
   mediump float whiteInterp = contrastedLuminance * contrastedLuminance * contrastedLuminance;
   mediump float whiteTarget = clamp(highlights, 1.0, 2.0) - 1.0;
@@ -262,7 +265,7 @@ vec4 vignette(vec4 color, float value) {
 
   const lowp float midpoint = 0.7;
   const lowp float fuzziness = 0.62;
-  
+
   lowp float radDist = length(coord - 0.5) / sqrt(0.5);
   lowp float mag = easeInOutSigmoid(radDist * midpoint, fuzziness) * value * 0.645;
   color.rgb = mix(pow(color.rgb, vec3(1.0 / (1.0 - mag))), vec3(0.0), mag * mag);
@@ -276,12 +279,12 @@ vec4 grain(vec4 color, float value) {
   highp vec3 rotOffset = vec3(1.425, 3.892, 5.835);
   highp vec2 rotCoordsR = coordRot(coord, rotOffset.x);
   highp vec3 noise = vec3(pnoise3D(vec3(rotCoordsR * vec2(uImageSize.x / grainsize, uImageSize.y / grainsize),0.0)));
-  
+
   lowp vec3 lumcoeff = vec3(0.299,0.587,0.114);
   lowp float luminance = dot(color.rgb, lumcoeff);
   lowp float lum = smoothstep(0.2, 0.0, luminance);
   lum += luminance;
-  
+
   noise = mix(noise,vec3(0.0),pow(lum,4.0));
   color.rgb = color.rgb + noise * value;
   return color;
@@ -315,7 +318,7 @@ void main(void) {
   color = saturation(color, uSaturation + uEnhance * .2);
   color = warmth(color, uWarmth);
   color = fade(color, uFade);
-  
+
   color = highlights(color, (uHighlights + uEnhance * 0.15) * 0.75 + 1.0, (uShadows - uEnhance * 0.075) * 0.55 + 1.0);
   color = contrast(color, uContrast + uEnhance * 0.1);
 

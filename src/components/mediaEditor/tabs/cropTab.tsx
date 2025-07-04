@@ -1,11 +1,11 @@
-import {JSX, splitProps, useContext} from 'solid-js';
+import {JSX, splitProps} from 'solid-js';
 
 import {i18n} from '../../../lib/langPack';
 import {IconTsx} from '../../iconTsx';
 
-import LargeButton, {MediaEditorLargeButtonProps} from '../largeButton';
-import MediaEditorContext from '../context';
 import {animateToNewRotationOrRatio} from '../canvas/animateToNewRotationOrRatio';
+import LargeButton, {MediaEditorLargeButtonProps} from '../largeButton';
+import {useMediaEditorContext} from '../context';
 import {withCurrentOwner} from '../utils';
 
 const ratioRects = {
@@ -47,16 +47,14 @@ function Item(
 }
 
 export default function CropTab() {
-  const context = useContext(MediaEditorContext);
-  const [fixedImageRatioKey, setFixedImageRatioKey] = context.fixedImageRatioKey;
-  const [rotation] = context.rotation;
+  const {editorState, mediaState, actions} = useMediaEditorContext();
 
-  const isActive = (what?: string) => fixedImageRatioKey() === what;
+  const isActive = (what?: string) => editorState.fixedImageRatioKey === what;
 
   const onRatioClick = withCurrentOwner((ratio?: string) => {
-    setFixedImageRatioKey(ratio);
-    animateToNewRotationOrRatio(rotation());
-    context.resetRotationWheel();
+    editorState.fixedImageRatioKey = ratio;
+    animateToNewRotationOrRatio(mediaState.rotation);
+    actions.resetRotationWheel();
   });
 
   return (

@@ -1,19 +1,19 @@
-import {createEffect, createResource, createSignal, For, onCleanup, onMount, Show, useContext} from 'solid-js';
+import {batch, createEffect, createResource, createSignal, For, onCleanup, onMount, Show, useContext} from 'solid-js';
 
-import {Document, EmojiGroup, StickerSet} from '../../../layer';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import {i18n} from '../../../lib/langPack';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
+import {Document, EmojiGroup, StickerSet} from '../../../layer';
+import {i18n} from '../../../lib/langPack';
 
-import LazyLoadQueue from '../../lazyLoadQueue';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
-import {IconTsx} from '../../iconTsx';
-import {ScrollableX} from '../../scrollable';
 import SuperStickerRenderer from '../../emoticonsDropdown/tabs/SuperStickerRenderer';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
+import LazyLoadQueue from '../../lazyLoadQueue';
+import {ScrollableX} from '../../scrollable';
+import {IconTsx} from '../../iconTsx';
 import Space from '../../space';
 
 import useNormalizePoint from '../canvas/useNormalizePoint';
-import MediaEditorContext from '../context';
+import {HistoryItem, useMediaEditorContext} from '../context';
 import {ResizableLayer} from '../types';
 import {delay} from '../utils';
 
@@ -21,14 +21,10 @@ import {TabContentContext} from './tabContent';
 
 export default function StickersTab() {
   const {wrapStickerSetThumb, EmoticonsSearch} = useHotReloadGuard();
-  const context = useContext(MediaEditorContext);
+  const context = useMediaEditorContext();
   const {container, scrollAmount} = useContext(TabContentContext);
 
-  const {managers} = context;
-  const [, setLayers] = context.resizableLayers;
-  const [canvasSize] = context.canvasSize;
-  const [, setSelectedResizableLayer] = context.selectedResizableLayer;
-  const [finalTransform] = context.finalTransform;
+  const {managers, editorState, mediaState, actions} = context;
 
   const normalizePoint = useNormalizePoint();
 
@@ -116,37 +112,28 @@ export default function StickersTab() {
 
     function onClick() {
       const id = context.resizableLayersSeed++;
-      const transform = finalTransform();
+      const transform = editorState.finalTransform;
       const newLayer = {
         id,
-        position: normalizePoint([canvasSize()[0] / 2, canvasSize()[1] / 2]),
+        position: normalizePoint([editorState.canvasSize[0] / 2, editorState.canvasSize[1] / 2]),
         rotation: -transform.rotation,
         scale: 1 / transform.scale,
         type: 'sticker',
         sticker: props.doc
       } as ResizableLayer;
-      setLayers((prev) => [...prev, createSignal<ResizableLayer>({...newLayer})]);
-      setSelectedResizableLayer(id);
 
-      let position = 0;
-      let deletedLayer: ResizableLayer;
+      batch(() => {
+        mediaState.resizableLayers.push(newLayer);
+        editorState.selectedResizableLayer = id;
 
-      context.pushToHistory({
-        undo() {
-          setLayers((prev) => {
-            prev = [...prev];
-            position = prev.findIndex((layer) => layer[0]().id === newLayer.id);
-            if(position > -1) deletedLayer = prev.splice(position, 1)[0]?.[0]();
-            return prev;
-          });
-        },
-        redo() {
-          setLayers((prev) => {
-            prev = [...prev];
-            if(position > -1) prev.splice(position, 0, createSignal({...deletedLayer}));
-            return prev;
-          });
-        }
+        actions.pushToHistory({
+          path: ['resizableLayers', mediaState.resizableLayers.length - 1],
+          newValue: newLayer,
+          oldValue: HistoryItem.RemoveArrayItem,
+          findBy: {
+            id: newLayer.id
+          }
+        })
       });
     }
 

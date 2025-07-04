@@ -82,6 +82,8 @@ import commonStateStorage from '../commonStateStorage';
 import PaidMessagesQueue from './utils/messages/paidMessagesQueue';
 import type {ConfirmedPaymentResult} from '../../components/chat/paidMessagesInterceptor';
 import RepayRequestHandler, {RepayRequest} from '../mtproto/repayRequestHandler';
+import canVideoBeAnimated from './utils/docs/canVideoBeAnimated';
+import getPhotoInput from './utils/photos/getPhotoInput';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -108,6 +110,8 @@ export type SendFileDetails = {
   height: number,
   objectURL: string,
   thumb: {
+    isCover?: boolean;
+
     blob: Blob,
     url: string,
     size: MediaSize
@@ -271,6 +275,17 @@ type GetUnreadMentionsOptions = {
   peerId: PeerId,
   threadId?: number,
   isReaction?: boolean
+};
+
+type UploadThumbAndCoverArgs = {
+  peer: InputPeer;
+  blob: Blob;
+  isCover: boolean;
+};
+
+type UploadVideoCoverArgs = {
+  peer: InputPeer;
+  file: InputFile;
 };
 
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
@@ -1082,9 +1097,7 @@ export class AppMessagesManager extends AppManager {
       attributes.push(videoAttribute);
 
       // * must follow after video attribute
-      if(options.noSound &&
-        file.size > (10 * 1024) &&
-        file.size < (10 * 1024 * 1024)) {
+      if(canVideoBeAnimated(options.noSound, file.size)) {
         attributes.push({
           _: 'documentAttributeAnimated'
         });
@@ -1236,8 +1249,10 @@ export class AppMessagesManager extends AppManager {
       this.rootScope.dispatchEvent('messages_pending');
     };
 
-    let uploaded = false,
-      uploadPromise: ReturnType<ApiFileManager['upload']> = null;
+    let
+      uploaded = false,
+      uploadPromise: ReturnType<ApiFileManager['upload']> = null
+    ;
 
     const upload = () => {
       if(isDocument) {
@@ -1281,9 +1296,13 @@ export class AppMessagesManager extends AppManager {
             sentDeferred.notifyAll({done: 0, total: file.size});
           }
 
-          let thumbUploadPromise: typeof uploadPromise;
+          let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
           if(attachType === 'video' && options.objectURL && options.thumb?.blob) {
-            thumbUploadPromise = this.apiFileManager.upload({file: options.thumb.blob});
+            thumbUploadPromise = this.uploadThumbAndCover({
+              blob: options.thumb.blob,
+              isCover: !!options.thumb.isCover,
+              peer: this.appPeersManager.getInputPeerById(peerId)
+            });
           }
 
           uploadPromise && uploadPromise.then(async(inputFile) => {
@@ -1329,8 +1348,11 @@ export class AppMessagesManager extends AppManager {
 
             if(thumbUploadPromise) {
               try {
-                const inputFile = await thumbUploadPromise;
-                (inputMedia as InputMedia.inputMediaUploadedDocument).thumb = inputFile;
+                const thumbUploadResult = await thumbUploadPromise;
+                assumeType<InputMedia.inputMediaUploadedDocument>(inputMedia);
+
+                inputMedia.thumb = thumbUploadResult.file;
+                inputMedia.video_cover = thumbUploadResult.coverPhoto;
               } catch(err) {
                 this.log.error('sendFile thumb upload error:', err);
               }
@@ -1476,6 +1498,37 @@ export class AppMessagesManager extends AppManager {
     ret.send = upload;
 
     return ret;
+  }
+
+  private async uploadThumbAndCover({blob, isCover, peer}: UploadThumbAndCoverArgs) {
+    const file = await this.apiFileManager.upload({file: blob});
+
+    if(!isCover) return {file};
+
+    try {
+      const coverPhoto = await this.uploadVideoCover({file, peer});
+      return {file, coverPhoto};
+    } catch(err) {
+      this.log.error('uploadVideoCover error:', err);
+    }
+
+    return {file};
+  }
+
+  private async uploadVideoCover({file, peer}: UploadVideoCoverArgs) {
+    const media: InputMedia.inputMediaUploadedPhoto = {
+      _: 'inputMediaUploadedPhoto',
+      file,
+      pFlags: {}
+    };
+
+    const messageMedia = await this.apiManager.invokeApi('messages.uploadMedia', {peer, media});
+
+    if(messageMedia._ !== 'messageMediaPhoto') throw new Error('Uploaded video cover is not a photo');
+
+    const photo = this.appPhotosManager.savePhoto(messageMedia.photo);
+
+    return getPhotoInput(photo);
   }
 
   public async sendGrouped(options: MessageSendingParams & {

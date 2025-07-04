@@ -1,10 +1,12 @@
-import {batch, createEffect, createSignal, on, onCleanup, onMount, useContext} from 'solid-js';
+import {batch, createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
+import {modifyMutable, produce} from 'solid-js/store';
 
 import SwipeHandler from '../../swipeHandler';
 
 import {animateValue, lerp, lerpArray, snapToViewport} from '../utils';
-import MediaEditorContext from '../context';
+import {useMediaEditorContext} from '../context';
 import {withCurrentOwner} from '../utils';
+import {NumberPair} from '../types';
 
 import {useCropOffset} from './useCropOffset';
 import _getConvenientPositioning from './getConvenientPositioning';
@@ -12,16 +14,9 @@ import _getConvenientPositioning from './getConvenientPositioning';
 const MAX_SCALE = 20;
 
 export default function CropHandles() {
-  const context = useContext(MediaEditorContext);
-  const [canvasSize] = context.canvasSize;
-  const [currentTab] = context.currentTab;
-  const isCroping = () => currentTab() === 'crop';
-  const [currentImageRatio, setCurrentImageRatio] = context.currentImageRatio;
-  const [scale, setScale] = context.scale;
-  const [rotation] = context.rotation;
-  const [translation, setTranslation] = context.translation;
-  const [fixedImageRatioKey] = context.fixedImageRatioKey;
-  const [, setIsMoving] = context.isMoving;
+  const {editorState, mediaState} = useMediaEditorContext();
+
+  const isCropping = () => editorState.currentTab === 'crop';
 
   const cropOffset = useCropOffset();
 
@@ -33,7 +28,7 @@ export default function CropHandles() {
   const getConvenientPositioning = withCurrentOwner(_getConvenientPositioning);
 
   const getNewLeftTopAndSize = () => {
-    const [width, height] = snapToViewport(currentImageRatio(), cropOffset().width, cropOffset().height);
+    const [width, height] = snapToViewport(mediaState.currentImageRatio, cropOffset().width, cropOffset().height);
 
     return {
       leftTop: [
@@ -68,16 +63,16 @@ export default function CropHandles() {
 
     cancelSizeAnimation = animateValue(0, 1, 200, (progress) => {
       batch(() => {
-        setDiff(lerpArray(initialDiff, targetDiff, progress) as [number, number]);
-        setLeftTopDiff(lerpArray(initialLeftTopDiff, targetLeftTopDiff, progress) as [number, number]);
-        setLeftTop(lerpArray(initialLeftTop, targetLeftTop, progress) as [number, number]);
-        setSize(lerpArray(initialSize, targetSize, progress) as [number, number]);
+        setDiff(lerpArray(initialDiff, targetDiff, progress) as NumberPair);
+        setLeftTopDiff(lerpArray(initialLeftTopDiff, targetLeftTopDiff, progress) as NumberPair);
+        setLeftTop(lerpArray(initialLeftTop, targetLeftTop, progress) as NumberPair);
+        setSize(lerpArray(initialSize, targetSize, progress) as NumberPair);
       });
     });
   }
 
   createEffect(
-    on(currentImageRatio, () => {
+    on(() => mediaState.currentImageRatio, () => {
       resetSizeWithAnimation();
     })
   );
@@ -95,9 +90,9 @@ export default function CropHandles() {
       {el: bottomHandle, left: 0, top: 1}
     ];
 
-    let boundDiff: [number, number];
+    let boundDiff: NumberPair;
     let initialScale: number;
-    let initialTranslation: [number, number];
+    let initialTranslation: NumberPair;
     let firstTarget: EventTarget;
 
     const resizeSwipeHandlers = multipliers.map(({el, left, top}) => {
@@ -105,17 +100,18 @@ export default function CropHandles() {
         element: el,
         setCursorTo: document.body,
         onStart() {
-          initialScale = scale();
-          initialTranslation = translation();
-          setIsMoving(true);
+          initialScale = mediaState.scale;
+          initialTranslation = mediaState.translation;
+          editorState.isMoving = true;
+
           el.classList.add('media-editor__crop-handles-circle--anti-flicker');
         },
         onSwipe(xDiff, yDiff, e) {
           if(!firstTarget) firstTarget = e.target;
           if(firstTarget !== el) return;
 
-          const fixed = fixedImageRatioKey();
-          let ratio = currentImageRatio();
+          const fixed = editorState.fixedImageRatioKey;
+          let ratio = mediaState.currentImageRatio;
           if(left < 0) {
             ratio = -ratio;
           }
@@ -156,7 +152,7 @@ export default function CropHandles() {
           const {cropMinX, cropMaxX, cropMinY, cropMaxY, imageMinX, imageMaxX, imageMinY, imageMaxY} =
             getConvenientPositioning({
               scale: initialScale,
-              rotation: rotation(),
+              rotation: mediaState.rotation,
               translation: initialTranslation,
               extendCrop: [
                 [
@@ -183,7 +179,7 @@ export default function CropHandles() {
 
           const additionalScale = Math.max(additionalScaleX, additionalScaleY);
           if(additionalScale > 1) {
-            setScale(initialScale * additionalScale);
+            mediaState.scale = initialScale * additionalScale;
           }
 
           let boundDiff = [0, 0];
@@ -193,11 +189,11 @@ export default function CropHandles() {
           if(imageMinY > cropMinY) boundDiff[1] += imageMinY - cropMinY;
           if(imageMaxY < cropMaxY) boundDiff[1] += imageMaxY - cropMaxY;
 
-          const r = [Math.sin(rotation()), Math.cos(rotation())];
+          const r = [Math.sin(mediaState.rotation), Math.cos(mediaState.rotation)];
 
           boundDiff = [boundDiff[0] * r[1] - boundDiff[1] * r[0], boundDiff[1] * r[1] + boundDiff[0] * r[0]];
 
-          setTranslation([initialTranslation[0] - boundDiff[0] / 2, initialTranslation[1] - boundDiff[1] / 2]);
+          mediaState.translation = [initialTranslation[0] - boundDiff[0] / 2, initialTranslation[1] - boundDiff[1] / 2];
         },
         onReset() {
           if(firstTarget !== el) return (firstTarget = undefined);
@@ -208,16 +204,16 @@ export default function CropHandles() {
           const newRatio = newWidth / newHeight;
 
           const upScale = Math.min(cropOffset().width / newWidth, cropOffset().height / newHeight);
-          setCurrentImageRatio(newRatio);
+          mediaState.currentImageRatio = newRatio;
           resetSizeWithAnimation();
 
-          const initialScale = scale();
-          const initialTranslation = translation();
+          const initialScale = mediaState.scale;
+          const initialTranslation = mediaState.translation;
 
-          const targetScale = scale() * upScale;
+          const targetScale = mediaState.scale * upScale;
           const targetTranslation = [
-            upScale * (translation()[0] + -diff()[0] * left * 0.5),
-            upScale * (translation()[1] + -diff()[1] * top * 0.5)
+            upScale * (mediaState.translation[0] + -diff()[0] * left * 0.5),
+            upScale * (mediaState.translation[1] + -diff()[1] * top * 0.5)
           ];
 
           animateValue(
@@ -225,13 +221,13 @@ export default function CropHandles() {
             1,
             200,
             (progress) => {
-              batch(() => {
-                setScale(lerp(initialScale, targetScale, progress));
-                setTranslation(lerpArray(initialTranslation, targetTranslation, progress) as [number, number]);
-              });
+              modifyMutable(mediaState, produce((state) => {
+                state.scale = lerp(initialScale, targetScale, progress);
+                state.translation = lerpArray(initialTranslation, targetTranslation, progress) as NumberPair;
+              }));
             },
             {
-              onEnd: () => setIsMoving(false)
+              onEnd: () => editorState.isMoving = false
             }
           );
 
@@ -243,8 +239,8 @@ export default function CropHandles() {
     const translationSwipeHandler = new SwipeHandler({
       element: cropArea,
       onStart() {
-        initialTranslation = translation();
-        setIsMoving(true);
+        initialTranslation = mediaState.translation;
+        editorState.isMoving = true;
       },
       onSwipe(xDiff, yDiff, e) {
         if(!firstTarget) firstTarget = e.target;
@@ -252,8 +248,8 @@ export default function CropHandles() {
 
         const {cropMinX, cropMaxX, cropMinY, cropMaxY, imageMinX, imageMaxX, imageMinY, imageMaxY} =
           getConvenientPositioning({
-            scale: scale(),
-            rotation: rotation(),
+            scale: mediaState.scale,
+            rotation: mediaState.rotation,
             translation: [initialTranslation[0] + xDiff, initialTranslation[1] + yDiff]
           });
 
@@ -264,29 +260,29 @@ export default function CropHandles() {
         if(imageMinY > cropMinY) boundDiff[1] = imageMinY - cropMinY;
         if(imageMaxY < cropMaxY) boundDiff[1] = imageMaxY - cropMaxY;
 
-        const r = [Math.sin(rotation()), Math.cos(rotation())];
+        const r = [Math.sin(mediaState.rotation), Math.cos(mediaState.rotation)];
 
         boundDiff = [boundDiff[0] * r[1] - boundDiff[1] * r[0], boundDiff[1] * r[1] + boundDiff[0] * r[0]];
 
         const resistance = 4;
-        setTranslation([
+        mediaState.translation = [
           initialTranslation[0] + xDiff - (boundDiff[0] - boundDiff[0] / resistance),
           initialTranslation[1] + yDiff - (boundDiff[1] - boundDiff[1] / resistance)
-        ]);
+        ]
         boundDiff = [boundDiff[0] / resistance, boundDiff[1] / resistance];
       },
       onReset() {
         if(firstTarget !== cropArea) return (firstTarget = undefined);
         firstTarget = undefined;
 
-        const prevTranslation = translation();
+        const prevTranslation = mediaState.translation;
         animateValue(
           prevTranslation,
-          [prevTranslation[0] - boundDiff[0], prevTranslation[1] - boundDiff[1]],
+          [prevTranslation[0] - boundDiff[0], prevTranslation[1] - boundDiff[1]] as const,
           120,
-          setTranslation,
+          (value) => mediaState.translation = value,
           {
-            onEnd: () => setIsMoving(false)
+            onEnd: () => editorState.isMoving = false
           }
         );
       }
@@ -306,9 +302,9 @@ export default function CropHandles() {
   const bottom = () => top() + height();
 
   const croppedSizeFull = () => {
-    const [cw, ch] = canvasSize();
+    const [cw, ch] = editorState.canvasSize;
     let [w, h] = [cw, ch];
-    const ratio = currentImageRatio();
+    const ratio = mediaState.currentImageRatio;
 
     if(w / ratio > h) w = h * ratio;
     else h = w / ratio;
@@ -331,18 +327,18 @@ export default function CropHandles() {
   const coverAnimatedStyle = () =>
     ({
       'transition': 'opacity 0.2s',
-      'transition-timing-function': isCroping() ? 'ease-in' : 'ease-out',
-      'pointer-events': isCroping() ? 'none' : undefined,
-      'opacity': isCroping() ? 0 : 1
+      'transition-timing-function': isCropping() ? 'ease-in' : 'ease-out',
+      'pointer-events': isCropping() ? 'none' : undefined,
+      'opacity': isCropping() ? 0 : 1
     }) as const;
 
   const controlsAnimatedStyle = () =>
     ({
       'transition': 'transform 0.2s, opacity 0.2s',
-      'transition-timing-function': isCroping() ? 'ease-out' : 'ease-in',
-      'pointer-events': isCroping() ? undefined : 'none',
-      'opacity': isCroping() ? 1 : 0,
-      'transform': isCroping() ? undefined : 'scale(1.05)'
+      'transition-timing-function': isCropping() ? 'ease-out' : 'ease-in',
+      'pointer-events': isCropping() ? undefined : 'none',
+      'opacity': isCropping() ? 1 : 0,
+      'transform': isCropping() ? undefined : 'scale(1.05)'
     }) as const;
 
   return (

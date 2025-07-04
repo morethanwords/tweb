@@ -2,20 +2,23 @@ import {createEffect, onCleanup, onMount} from 'solid-js';
 import {render} from 'solid-js/web';
 
 import {doubleRaf} from '../../helpers/schedulers';
-import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {i18n} from '../../lib/langPack';
+import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import confirmationPopup from '../confirmationPopup';
 
-import {delay} from './utils';
-import MediaEditorContext, {createStandaloneContextValue, StandaloneContext} from './context';
 import MainCanvas from './canvas/mainCanvas';
-import FinishButton from './finishButton';
-import {withCurrentOwner} from './utils';
+import MediaEditorContext, {createContextValue, EditingMediaState} from './context';
 import {createFinalResult, MediaEditorFinalResult} from './finalRender/createFinalResult';
+import FinishButton from './finishButton';
 import Toolbar from './toolbar';
+import {MediaType, NumberPair} from './types';
+import {delay, withCurrentOwner} from './utils';
+
+import './mediaEditor.scss';
+
 
 export type MediaEditorProps = {
   onClose: (hasGif: boolean) => void;
@@ -23,24 +26,17 @@ export type MediaEditorProps = {
   onEditFinish: (result: MediaEditorFinalResult) => void;
   onCanvasReady: (canvas: HTMLCanvasElement) => Promise<void>;
   onImageRendered: () => void;
-  imageURL: string;
-  standaloneContext?: StandaloneContext;
+  mediaSrc: string;
+  mediaType: MediaType;
+  mediaBlob: Blob;
+  mediaSize: NumberPair;
+  editingMediaState?: EditingMediaState
 };
 
 export function MediaEditor(props: MediaEditorProps) {
-  const standaloneContext = props.standaloneContext || createStandaloneContextValue(props);
+  const contextValue = createContextValue(props);
 
-  const [, setIsReady] = standaloneContext.value.isReady;
-  const [, setRenderingPayload] = standaloneContext.value.renderingPayload;
-  const [, setCanvasSize] = standaloneContext.value.canvasSize;
-  const [, setCurretTab] = standaloneContext.value.currentTab;
-  setIsReady(false);
-  setRenderingPayload();
-  setCanvasSize();
-  setCurretTab('adjustments');
-
-  const [imageCanvas] = standaloneContext.value.imageCanvas;
-  const [renderingPayload] = standaloneContext.value.renderingPayload;
+  const {editorState, hasModifications} = contextValue;
 
   let overlay: HTMLDivElement;
 
@@ -65,49 +61,46 @@ export function MediaEditor(props: MediaEditorProps) {
   });
 
   createEffect(() => {
-    if(!imageCanvas()) return;
-    props.onCanvasReady(imageCanvas()).then(() => setIsReady(true));
+    if(!editorState.imageCanvas) return;
+
+    (async() =>{
+      await props.onCanvasReady(editorState.imageCanvas);
+      editorState.isReady = true;
+    })();
   });
 
   createEffect(() => {
-    if(!renderingPayload()) return;
+    if(!editorState.renderingPayload) return;
     props.onImageRendered();
   });
 
+  async function performClose(hasGif = false) {
+    overlay.classList.add('media-editor__overlay--hidden');
+    await delay(200);
+    props.onClose(hasGif);
+  }
+
   function handleClose(finished = false, hasGif = false) {
-    async function performClose(dispose = false) {
-      overlay.classList.add('media-editor__overlay--hidden');
-      await delay(200);
-      props.onClose(hasGif);
-      if(dispose) standaloneContext.dispose();
+    if(finished || !hasModifications()) {
+      performClose(hasGif);
+      return;
     }
 
-    if(finished || props.standaloneContext) {
-      performClose();
-      return;
-    }
-    if(!standaloneContext.value.history[0]().length) {
-      performClose(true);
-      return;
-    }
     confirmationPopup({
       title: i18n('MediaEditor.DiscardChanges'),
       description: i18n('MediaEditor.DiscardWarning'),
       button: {
         text: i18n('Discard')
       }
-    })
-    .then(() => {
-      performClose(true);
-    })
-    .catch(() => {});
+    }).then(() => performClose(), () => {});
+
     return false;
   }
 
   let isFinishing = false;
 
   return (
-    <MediaEditorContext.Provider value={standaloneContext.value}>
+    <MediaEditorContext.Provider value={contextValue}>
       <div ref={overlay} class="media-editor__overlay night">
         <div class="media-editor__container">
           {(() => {
@@ -116,10 +109,11 @@ export function MediaEditor(props: MediaEditorProps) {
               if(isFinishing) return;
               isFinishing = true;
 
-              const result = await createFinalResult(standaloneContext).finally(() => (isFinishing = false));
+              const result = await createFinalResult()
+              .finally(() => { isFinishing = false; });
 
               props.onEditFinish(result);
-              handleClose(true, result.isGif);
+              handleClose(true, result.isVideo);
             });
 
             return (
@@ -149,5 +143,6 @@ export function openMediaEditor(props: MediaEditorProps, HotReloadGuardProvider:
   function onClose(hasGif: boolean) {
     props.onClose(hasGif);
     dispose();
+    element.remove();
   }
 }

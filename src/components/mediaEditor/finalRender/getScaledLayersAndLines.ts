@@ -1,5 +1,8 @@
-import {MediaEditorContextValue} from '../context';
+import {unwrap} from 'solid-js/store';
+
 import {FinalTransform} from '../canvas/useFinalTransform';
+import {MediaEditorContextValue} from '../context';
+import {NumberPair} from '../types';
 
 export type ScaledLayersAndLines = ReturnType<typeof getScaledLayersAndLines>;
 
@@ -9,10 +12,9 @@ export default function getScaledLayersAndLines(
   width: number,
   height: number
 ) {
-  const [resizableLayers] = context.resizableLayers;
-  const [lines] = context.brushDrawnLines;
+  const {mediaState: {resizableLayers, brushDrawnLines}, editorState: {pixelRatio}} = context;
 
-  function processPoint(point: [number, number]) {
+  function processPoint(point: NumberPair) {
     const r = [Math.sin(-finalTransform.rotation), Math.cos(-finalTransform.rotation)];
     point = [point[0] * r[1] + point[1] * r[0], point[1] * r[1] - point[0] * r[0]];
     point = [
@@ -22,20 +24,21 @@ export default function getScaledLayersAndLines(
     return point;
   }
 
-  const scaledLines = lines().map(({size, points, ...line}) => ({
+  const scaledLines = brushDrawnLines.map(({size, points, ...line}) => ({
     ...line,
     size: size * finalTransform.scale,
     points: points.map(processPoint)
   }));
-  const scaledLayers = resizableLayers().map((layerSignal) => {
-    const layer = {...layerSignal[0]()};
+  const scaledLayers = resizableLayers.map((layerStore) => {
+    const layer = {...unwrap(layerStore)};
+
     layer.position = processPoint(layer.position);
     layer.rotation += finalTransform.rotation;
     layer.scale *= finalTransform.scale;
 
     if(layer.textInfo) {
       layer.textInfo = {...layer.textInfo};
-      layer.textInfo.size *= layer.scale * context.pixelRatio;
+      layer.textInfo.size *= layer.scale * pixelRatio;
     }
     return layer;
   });
