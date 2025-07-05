@@ -1,0 +1,28 @@
+.Container {
+  overflow: hidden;
+}
+
+.ScrollableContainer {
+  padding: inherit;
+  position: relative;
+  height: calc(32px * var(--max-visible-items, 8) + 10px);
+}
+
+.Label {
+  font-size: 12px;
+  font-weight: 500;
+  
+  padding: 0 16px;
+  padding-bottom: 4px;
+  
+  color: var(--secondary-text-color);
+  
+  text-align: center;
+}
+
+.Input {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}

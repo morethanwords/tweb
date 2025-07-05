@@ -3378,6 +3378,8 @@ const lang = {
   'Undo': 'Undo',
   'Resend': 'Resend',
   'Quality': 'Quality',
+  'AddToFolder': 'Add to Folder',
+  'AddToFolderSearch': 'Type to search quickly',
 
   'BotSetEmojiStatusTitle': 'Set Emoji Status',
   'BotSetEmojiStatusText': 'Do you want to set this emoji status suggested by **%s**?',

@@ -59,7 +59,9 @@ export type ButtonMenuItemOptions = {
   waitForAnimation?: boolean,
   radioGroup?: string,
   inner?: (() => MaybePromise<ButtonMenuItemInner>) | ButtonMenuItemInner,
-  dispose?: () => void
+  dispose?: () => void,
+  onOpen?: () => void,
+  onClose?: () => void
   /* , cancelEvent?: true */
 };
 
@@ -67,7 +69,7 @@ export type ButtonMenuItemOptionsVerifiable = ButtonMenuItemOptions & {
   verify?: () => boolean | Promise<boolean>
 };
 
-function ButtonMenuItem(options: ButtonMenuItemOptions) {
+export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   if(options.element) return [options.separator as HTMLElement, options.element].filter(Boolean);
 
   const {

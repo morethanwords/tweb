@@ -26,6 +26,8 @@ import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import appImManager from '../lib/appManagers/appImManager';
 import assumeType from '../helpers/assumeType';
 import {isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
+import createSubmenuTrigger from '../createSubmenuTrigger';
+import AddToFolderDropdownMenu, {fetchDialogFolders} from './customSolidElements/addToFolderDropdownMenu';
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -56,6 +58,7 @@ export default class DialogsContextMenu {
         this.canManageTopics = isForumTopic(this.dialog) ? await this.managers.dialogsStorage.canManageTopic(this.dialog) : undefined;
       },
       onOpenBefore: async() => {
+        this.buttons?.forEach(button => button?.onOpen?.());
         // delete button
         const langPackKey: LangPackKey = this.threadId ? 'Delete' : await this.managers.appPeersManager.getDeleteButtonText(this.peerId);
         const lastButton = this.buttons[this.buttons.length - 1];
@@ -64,6 +67,7 @@ export default class DialogsContextMenu {
         }
       },
       onClose: () => {
+        this.buttons?.forEach(button => button?.onClose?.());
         this.li.classList.remove('menu-open');
         this.li = this.peerId = this.dialog = this.filterId = this.threadId = this.canManageTopics = undefined;
       },
@@ -113,7 +117,10 @@ export default class DialogsContextMenu {
       text: 'MarkAsRead',
       onClick: this.onUnreadClick,
       verify: () => this.managers.appMessagesManager.isDialogUnread(this.dialog)
-    }, {
+    }, createSubmenuTrigger({
+      icon: 'folder',
+      text: 'AddToFolder'
+    }, this.createAddToFolderSubmenu), {
       icon: 'pin',
       text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,
@@ -236,6 +243,12 @@ export default class DialogsContextMenu {
     }];
 
     return this.buttons = this.buttons.filter(Boolean);
+  }
+
+  private async createAddToFolderSubmenu() {
+    const menu = new AddToFolderDropdownMenu;
+    menu.feedProps(await fetchDialogFolders());
+    return menu;
   }
 
   private onArchiveClick = async() => {
