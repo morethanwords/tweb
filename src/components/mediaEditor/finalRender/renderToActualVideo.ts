@@ -1,6 +1,7 @@
 import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
 import {animate} from '../../../helpers/animation';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
+import ListenerSetter from '../../../helpers/listenerSetter';
 import {MediaSize} from '../../../helpers/mediaSize';
 import noop from '../../../helpers/noop';
 import clamp from '../../../helpers/number/clamp';
@@ -89,12 +90,27 @@ export default async function renderToActualVideo({
 
   let
     currentVideoFrameDeferred: CancellablePromise<number>,
+    encodingPausedDeferred: CancellablePromise<void>,
     lastTime = 0,
     frameCallbackId: number,
     drewThumbnail = false,
     canceled = false,
     progressRAF = 0
   ;
+
+  const listenerSetter = new ListenerSetter;
+
+  listenerSetter.add(window)('focus', () => {
+    log('window focus changed', 'focused');
+    encodingPausedDeferred?.resolve?.();
+    encodingPausedDeferred = undefined;
+  });
+
+  listenerSetter.add(window)('blur', () => {
+    log('window focus changed', 'blurred');
+    encodingPausedDeferred = deferredPromise();
+    currentVideoFrameDeferred?.reject(ThrowReason.EncodingPaused);
+  });
 
   async function initMuxerAndEncoder() {
     const {Muxer, ArrayBufferTarget} = await import('mp4-muxer');
@@ -158,6 +174,11 @@ export default async function renderToActualVideo({
     );
   }
 
+  enum ThrowReason {
+    EncodingPaused,
+    TimeLoopback
+  };
+
   async function prepareAndRenderFrame(encoder: VideoEncoder, frameNo: number) {
     currentVideoFrameDeferred = deferredPromise();
 
@@ -171,13 +192,32 @@ export default async function renderToActualVideo({
     if(frameNo === 0) callback(0);
     else {
       frameCallbackId = video.requestVideoFrameCallback((_, {mediaTime}) => void callback(mediaTime));
-      if(video.paused) video.play();
+      if(video.paused) await video.play();
     }
 
-    const mediaTime = await currentVideoFrameDeferred;
+    let mediaTime: number;
+    try {
+      mediaTime = await currentVideoFrameDeferred;
+    } catch(e: unknown) {
+      video.pause();
+      if(e === ThrowReason.EncodingPaused && encodingPausedDeferred) {
+        await encodingPausedDeferred;
+        log('paused case was playing', lastTime + startTime);
+        const deferred = deferredPromise<void>();
+
+        listenerSetter.add(video)('seeked', () => {
+          deferred.resolve();
+        }, {once: true});
+
+        video.currentTime = lastTime + startTime;
+
+        await deferred;
+      }
+      throw e;
+    }
 
     const currentTime = frameNo === 0 ? 0 : mediaTime - startTime;
-    if(currentTime < lastTime) throw new Error('Current time is less than last time!');
+    if(currentTime < lastTime) throw ThrowReason.TimeLoopback;
 
     // Fill static frame with stickers frames
     if(hasAnimatedStickers) {
@@ -263,6 +303,7 @@ export default async function renderToActualVideo({
   function cleanup(encoder: VideoEncoder) {
     encoder.close();
     Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
+    listenerSetter.removeAll();
     cancelAnimationFrame(progressRAF);
     video.src = '';
     video.load();
@@ -289,6 +330,8 @@ export default async function renderToActualVideo({
     let done = false;
 
     animate(() => {
+      if(encodingPausedDeferred) return true;
+
       if(video.currentTime >= endTime - VIDEO_COMPARISON_ERROR) {
         done = true;
         currentVideoFrameDeferred.resolve(endTime);
@@ -314,14 +357,22 @@ export default async function renderToActualVideo({
       try {
         // const start = performance.now();
         log('prepareAndRenderFrame', frameNo);
+        if(encodingPausedDeferred) {
+          log('paused case was paused', lastTime + startTime);
+          await encodingPausedDeferred;
+        }
         await prepareAndRenderFrame(encoder, frameNo);
         // const end = performance.now();
         // const time = end - start;
         // cnt++;
         // avg += (time - avg) / cnt;
-      } catch{
-        break;
+      } catch(e: unknown) {
+        if(typeof e !== 'number') break;
+
+        if(e === ThrowReason.EncodingPaused) await encodingPausedDeferred;
+        else if(e === ThrowReason.TimeLoopback) break;
       }
+
       updateProgress(clamp((video.currentTime - startTime) / (endTime - startTime), 0, 1));
       frameNo++;
     }
