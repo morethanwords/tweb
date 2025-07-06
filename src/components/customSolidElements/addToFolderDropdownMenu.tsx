@@ -1,61 +1,69 @@
-import {For, onCleanup, Show} from 'solid-js';
-import {MiddlewareHelper} from '../../helpers/middleware';
+import {createEffect, createResource, For, onCleanup, Show} from 'solid-js';
 import createMiddleware from '../../helpers/solid/createMiddleware';
+import {TextWithEntities} from '../../layer';
 import {i18n} from '../../lib/langPack';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '../../lib/mtproto/mtproto_config';
 import rootScope from '../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
+import {MyDialogFilter} from '../../lib/storages/filters';
 import {ButtonMenuItem} from '../buttonMenu';
 import Scrollable from '../scrollable2';
 import {getIconForFilter} from '../sidebarLeft/foldersSidebarContent/utils';
 import wrapFolderTitle from '../wrappers/folderTitle';
-
 import styles from './addToFolderDropdownMenu.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 
 
 type Props = {
-  folders: FolderItem[];
-  middleware: MiddlewareHelper;
+  filters: MyDialogFilter[];
 };
 
-type FolderItem = {
-  id: number;
-  icon: Icon;
-  title: HTMLElement;
-};
+const MAX_VISIBLE_SCROLL_ITEMS = 6;
+const HAVE_SCROLL_WHEN_ABOVE = 8;
 
-const MAX_VISIBLE_ITEMS = 8;
+function wrapTextNodes(node: Node) {
+  const treeWalker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+  // {
+  //   acceptNode(node) {
+  //     return node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+  //   }
+  // });
 
-export async function fetchDialogFolders() {
+  const nodes: Node[] = [];
+
+  while(treeWalker.nextNode()) {
+    const node = treeWalker.currentNode;
+    nodes.push(node);
+  }
+  nodes.forEach(node => {
+    const fragment = document.createDocumentFragment();
+    const str = node.nodeValue;
+
+    // fragment.append(str[0]);
+    if(str.length) {
+      const el = document.createElement('span');
+      el.style.background = 'green';
+      el.innerText = str;
+      fragment.append(el);
+    }
+    // if(str.length > 1) {
+    //   fragment.append(str[str.length - 1]);
+    // }
+
+    node.parentNode.replaceChild(fragment, node);
+  });
+}
+
+export async function fetchDialogFilters() {
   const filters = await rootScope.managers.filtersStorage.getDialogFilters();
 
-  const necessaryFilters = filters
+  return filters
   .filter(filter => filter.id !== FOLDER_ID_ARCHIVE && filter.id !== FOLDER_ID_ALL)
   .sort((a, b) => {
     if(!a.id || !b.id) return 0;
     return a?.localId - b?.localId;
   });
-
-  const middleware = createMiddleware();
-
-  const folders = await Promise.all(
-    necessaryFilters.map(async(filter): Promise<FolderItem> => ({
-      id: filter.id,
-      icon: getIconForFilter(filter),
-      title: await wrapFolderTitle(filter.title, middleware.get()).then(fragment => {
-        const span = document.createElement('span');
-        span.append(fragment);
-        return span;
-      })
-    }))
-  );
-
-  return {
-    folders,
-    middleware
-  };
 }
 
 const AddToFolderDropdownMenu = defineSolidElement({
@@ -64,11 +72,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
   component: (props: PassedProps<Props>) => {
     props.element.classList.add('btn-menu', styles.Container);
 
-    onCleanup(() => {
-      props.middleware.destroy();
-    });
-
-    const visibleFolders = () => props.folders;
+    const visibleFolders = () => props.filters;
 
     const Content = () => <>
       <div class={styles.Label}>
@@ -84,17 +88,21 @@ const AddToFolderDropdownMenu = defineSolidElement({
       </div>
 
       <For each={visibleFolders()}>
-        {(item) => ButtonMenuItem({
-          icon: item.icon,
-          textElement: item.title,
-          onClick: () => void 0
-        })}
+        {
+          (filter) => (
+            ButtonMenuItem({
+              icon: getIconForFilter(filter),
+              textElement: createFolderTitle(filter.title),
+              onClick: () => void 0
+            })
+          )
+        }
       </For>
     </>;
 
     return (
-      <Show when={visibleFolders().length > MAX_VISIBLE_ITEMS} fallback={<Content />}>
-        <div class={styles.ScrollableContainer} style={{'--max-visible-items': MAX_VISIBLE_ITEMS}}>
+      <Show when={visibleFolders().length > HAVE_SCROLL_WHEN_ABOVE} fallback={<Content />}>
+        <div class={styles.ScrollableContainer} style={{'--max-visible-items': MAX_VISIBLE_SCROLL_ITEMS}}>
           <Scrollable withBorders='both'>
             <Content />
           </Scrollable>
@@ -103,5 +111,43 @@ const AddToFolderDropdownMenu = defineSolidElement({
     );
   }
 });
+
+function ButtonMenuItemTsx(props: {filter: MyDialogFilter}) {
+  onCleanup(() => {
+    console.log('[my-debug] cleaning ButtonMenuItemTsx');
+  })
+  return (
+    <>
+      {ButtonMenuItem({
+        icon: getIconForFilter(props.filter),
+        textElement: createFolderTitle(props.filter.title),
+        onClick: () => void 0
+      })}
+    </>
+  );
+}
+
+function createFolderTitle(title: TextWithEntities.textWithEntities) {
+  const middleware = createMiddleware();
+
+  let span: HTMLSpanElement;
+
+  const [richText] = createResource(() => wrapFolderTitle(title, middleware.get()));
+
+  createEffect(() => {
+    if(!richText() || !span) return;
+
+    wrapTextNodes(span);
+  });
+
+  console.log('[my-debug] creating FolderTitle');
+
+  onCleanup(() => {
+    console.log('[my-debug] destroying FolderTitle');
+    middleware.destroy();
+  });
+
+  return <span ref={span}>{richText()}</span> as HTMLSpanElement;
+}
 
 export default AddToFolderDropdownMenu;

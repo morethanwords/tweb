@@ -187,18 +187,17 @@ export default function defineSolidElement<Props extends Object, ObservedAttribu
       this.initStores();
       if(savedAttributes) Object.assign(this.attributesStore, savedAttributes);
 
-      this.disposeContent = createRoot(dispose => {
-        render(() => ComponentToMount(this.propsStore, this.attributesStore, this.controls), this.mountPoint);
-        return dispose;
-      });
+      // JSX is mandatory here for cleanup to work!
+      this.disposeContent = render(() => <>{ComponentToMount(this.propsStore, this.attributesStore, this.controls)}</>, this.mountPoint);
     }
 
     private unmount() {
-      this.mountPoint.replaceChildren(); // Don't leave trash in there
-
       this.disposeContent?.();
       this.disposeStores?.();
+
       this.disposeStores = this.disposeContent = undefined;
+
+      this.mountPoint.replaceChildren(); // Don't leave trash in there
     }
 
     get [Symbol.toStringTag]() {

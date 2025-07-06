@@ -11,12 +11,12 @@
 .Label {
   font-size: 12px;
   font-weight: 500;
-  
+
   padding: 0 16px;
   padding-bottom: 4px;
-  
+
   color: var(--secondary-text-color);
-  
+
   text-align: center;
 }
 
@@ -24,5 +24,8 @@
   width: 0;
   height: 0;
   opacity: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
   pointer-events: none;
 }

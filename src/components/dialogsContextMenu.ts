@@ -27,7 +27,7 @@ import appImManager from '../lib/appManagers/appImManager';
 import assumeType from '../helpers/assumeType';
 import {isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
 import createSubmenuTrigger from '../createSubmenuTrigger';
-import AddToFolderDropdownMenu, {fetchDialogFolders} from './customSolidElements/addToFolderDropdownMenu';
+import AddToFolderDropdownMenu, {fetchDialogFilters} from './customSolidElements/addToFolderDropdownMenu';
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -247,7 +247,7 @@ export default class DialogsContextMenu {
 
   private async createAddToFolderSubmenu() {
     const menu = new AddToFolderDropdownMenu;
-    menu.feedProps(await fetchDialogFolders());
+    menu.feedProps({filters: await fetchDialogFilters()});
     return menu;
   }
 
