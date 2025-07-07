@@ -55,7 +55,7 @@ function score(str: string, toFind: string, indicies: number[], fm: number, puni
     prevsi = si;
   }
 
-  if(punishLastMissing) result -= (m - fi) * punishments.missing(fm);
+  if(punishLastMissing) result -= (fm - fi) * punishments.missing(fm);
 
   return result;
 }
@@ -63,7 +63,6 @@ function score(str: string, toFind: string, indicies: number[], fm: number, puni
 if(false) {
   const testCases = [
     ['hello world', ['hlo', 'hew', 'wld', 'world', 'xyz']],
-    ['OpenAI GPT', ['open', 'gpt', 'OAI', 'GPTT', '']],
     ['fuzzy finder', ['fzy', 'fin', 'fndr', 'zzi', 'der']],
     ['JavaScript', ['jvs', 'scr', 'java', 'script', 'pt']],
     ['keyboard', ['key', 'kbd', 'brd', 'board', 'z']],

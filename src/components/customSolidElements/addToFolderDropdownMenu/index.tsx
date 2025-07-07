@@ -1,7 +1,9 @@
-import {Accessor, createComputed, createEffect, createResource, createSignal, For, onCleanup, Show} from 'solid-js';
+import {createMemo, createSignal, For, onCleanup, Show} from 'solid-js';
+import {Middleware} from '../../../helpers/middleware';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {TextWithEntities} from '../../../layer';
 import {i18n} from '../../../lib/langPack';
+import {logger, LogTypes} from '../../../lib/logger';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '../../../lib/mtproto/mtproto_config';
 import rootScope from '../../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
@@ -10,6 +12,7 @@ import {ButtonMenuItem} from '../../buttonMenu';
 import Scrollable from '../../scrollable2';
 import {getIconForFilter} from '../../sidebarLeft/foldersSidebarContent/utils';
 import wrapFolderTitle from '../../wrappers/folderTitle';
+import highlightTextNodes from './highlightTextNodes';
 import kindaFuzzyFinder from './kindaFuzzyFinder';
 import styles from './styles.module.scss';
 
@@ -22,51 +25,8 @@ type Props = {
 
 const MAX_VISIBLE_SCROLL_ITEMS = 6;
 const HAVE_SCROLL_WHEN_ABOVE = 8;
+const MIN_FUZZY_SCORE = 0.25;
 
-function highlightTextNodes(node: Node, indicies: number[]) {
-  const treeWalker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-
-  const nodes: Node[] = [];
-
-  while(treeWalker.nextNode()) {
-    const node = treeWalker.currentNode;
-    nodes.push(node);
-  }
-
-  let acc = 0;
-
-  for(const node of nodes) {
-    const n = node.nodeValue.length;
-    const str = node.nodeValue;
-
-    const localIndicies = indicies.filter(i => i >= acc && i < acc + n).map(i => i - acc);
-    acc += n;
-
-    const fragment = document.createDocumentFragment();
-    let prevli = -1, highlight: HTMLElement;
-
-    for(const li of localIndicies) {
-      fragment.append(str.slice(prevli + 1, li));
-
-      if(prevli === -1 || prevli + 1 < li) {
-        highlight = makeHighlight();
-      }
-      highlight.textContent += str[li];
-      prevli = li;
-    }
-
-    fragment.append(str.slice(prevli + 1, n));
-
-    node.parentNode.replaceChild(fragment, node);
-
-    function makeHighlight() {
-      const el = document.createElement('span');
-      el.style.background = 'green';
-      fragment.append(el);
-      return el;
-    }
-  }
-}
 
 export async function fetchDialogFilters() {
   const filters = await rootScope.managers.filtersStorage.getDialogFilters();
@@ -79,6 +39,8 @@ export async function fetchDialogFilters() {
   });
 }
 
+const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);
+
 const AddToFolderDropdownMenu = defineSolidElement({
   name: 'add-to-folder-dropdown-menu',
   observedAttributes: ['size', 'something'],
@@ -86,41 +48,76 @@ const AddToFolderDropdownMenu = defineSolidElement({
     props.element.classList.add('btn-menu', styles.Container);
 
     const [search, setSearch] = createSignal('');
-    const visibleFolders = () => props.filters;
 
-    const Content = () => <>
-      <div class={styles.Label}>
-        {i18n('AddToFolderSearch')}
-        <input
-          class={styles.Input}
-          value={search()}
-          onInput={e => void setSearch(e.target.value)}
-          ref={el => {
-            setTimeout(() => {
-              el.focus();
-            }, 100);
-          }}
-        />
-      </div>
+    const createFolderItems = () => {
+      const middleware = createMiddleware();
+      log.debug('creating folder items');
 
+      onCleanup(() => {
+        log.debug('destroying folder items middleware');
+        middleware.destroy();
+      });
+
+      return props.filters.map(filter => ({
+        filter,
+        icon: getIconForFilter(filter),
+        element: wrapFolderTitleInSpan(filter.title, middleware.get())
+      }));
+    };
+
+    const visibleFolders = createMemo(() => {
+      if(!search()) return createFolderItems();
+
+      const fuzziedFolders = createFolderItems().map((src) => ({
+        finderResult: kindaFuzzyFinder(src.element.textContent, search()),
+        src
+      }));
+
+      const sortedFolders = fuzziedFolders
+      .filter(({finderResult}) => finderResult.score >= MIN_FUZZY_SCORE)
+      .sort(({finderResult: {found: found1, score: score1}}, {finderResult: {found: found2, score: score2}}) =>
+          score1 === score2 ? (found1[0] || 0) - (found2[0] || 0) : score2 - score1
+      );
+
+      return sortedFolders.map(({src, finderResult}) => {
+        highlightTextNodes(src.element, finderResult.found);
+        return src;
+      });
+    });
+
+    const Items = () => (
       <For each={visibleFolders()}>
         {
-          (filter) => (
+          (folder) => (
             ButtonMenuItem({
-              icon: getIconForFilter(filter),
-              textElement: createFolderTitle(filter.title, search),
+              icon: folder.icon,
+              textElement: folder.element,
               onClick: () => void 0
             })
           )
         }
       </For>
-    </>;
+    );
 
     return (
-      <Show when={visibleFolders().length > HAVE_SCROLL_WHEN_ABOVE} fallback={<Content />}>
+      <Show when={props.filters.length > HAVE_SCROLL_WHEN_ABOVE} fallback={<Items />}>
         <div class={styles.ScrollableContainer} style={{'--max-visible-items': MAX_VISIBLE_SCROLL_ITEMS}}>
           <Scrollable withBorders='both'>
-            <Content />
+            <div class={styles.Label}>
+              {i18n('AddToFolderSearch')}
+              <input
+                class={styles.Input}
+                value={search()}
+                onInput={e => void setSearch(e.target.value)}
+                ref={el => {
+                  setTimeout(() => {
+                    el.focus();
+                  }, 100);
+                }}
+              />
+            </div>
+
+            <Items />
           </Scrollable>
         </div>
       </Show>
@@ -128,34 +125,12 @@ const AddToFolderDropdownMenu = defineSolidElement({
   }
 });
 
-function createFolderTitle(title: TextWithEntities.textWithEntities, search: Accessor<string>) {
-  const middleware = createMiddleware();
+function wrapFolderTitleInSpan(title: TextWithEntities.textWithEntities, middleware: Middleware) {
+  const span: HTMLSpanElement = document.createElement('span');
+  const fragment = wrapFolderTitle(title, middleware, true);
 
-  let span: HTMLSpanElement;
-
-  createComputed(() => {
-    search();
-    span?.replaceChildren();
-  });
-
-  const [richText] = createResource(search, () => wrapFolderTitle(title, middleware.get()));
-
-  createEffect(() => {
-    if(!richText() || !span || !search()) return;
-
-    const {found} = kindaFuzzyFinder(span.textContent, search());
-    highlightTextNodes(span, found);
-  });
-
-  console.log('[my-debug] creating FolderTitle');
-
-  onCleanup(() => {
-    console.log('[my-debug] destroying FolderTitle');
-    middleware.destroy();
-  });
-
-  return <span ref={span}>{richText()}</span> as HTMLSpanElement;
+  span.append(fragment);
+  return span;
 }
-
 
 export default AddToFolderDropdownMenu;

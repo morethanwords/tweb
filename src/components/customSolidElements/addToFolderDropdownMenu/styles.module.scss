@@ -29,3 +29,9 @@
   border: none;
   pointer-events: none;
 }
+
+.Highlight {
+  background-color: hsl(from var(--primary-color) h s calc(l + 20) / 0.25);
+  border: 1px solid hsl(from var(--primary-color) h s calc(l + 10));
+  border-radius: 4px;
+}
