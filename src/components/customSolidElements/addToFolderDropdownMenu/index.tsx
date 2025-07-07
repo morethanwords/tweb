@@ -1,4 +1,4 @@
-import {createEffect, createResource, For, onCleanup, Show} from 'solid-js';
+import {Accessor, createComputed, createEffect, createResource, createSignal, For, onCleanup, Show} from 'solid-js';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {TextWithEntities} from '../../../layer';
 import {i18n} from '../../../lib/langPack';
@@ -10,6 +10,7 @@ import {ButtonMenuItem} from '../../buttonMenu';
 import Scrollable from '../../scrollable2';
 import {getIconForFilter} from '../../sidebarLeft/foldersSidebarContent/utils';
 import wrapFolderTitle from '../../wrappers/folderTitle';
+import kindaFuzzyFinder from './kindaFuzzyFinder';
 import styles from './styles.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
@@ -22,13 +23,8 @@ type Props = {
 const MAX_VISIBLE_SCROLL_ITEMS = 6;
 const HAVE_SCROLL_WHEN_ABOVE = 8;
 
-function wrapTextNodes(node: Node) {
+function highlightTextNodes(node: Node, indicies: number[]) {
   const treeWalker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  // {
-  //   acceptNode(node) {
-  //     return node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
-  //   }
-  // });
 
   const nodes: Node[] = [];
 
@@ -36,23 +32,40 @@ function wrapTextNodes(node: Node) {
     const node = treeWalker.currentNode;
     nodes.push(node);
   }
-  nodes.forEach(node => {
-    const fragment = document.createDocumentFragment();
+
+  let acc = 0;
+
+  for(const node of nodes) {
+    const n = node.nodeValue.length;
     const str = node.nodeValue;
 
-    // fragment.append(str[0]);
-    if(str.length) {
-      const el = document.createElement('span');
-      el.style.background = 'green';
-      el.innerText = str;
-      fragment.append(el);
+    const localIndicies = indicies.filter(i => i >= acc && i < acc + n).map(i => i - acc);
+    acc += n;
+
+    const fragment = document.createDocumentFragment();
+    let prevli = -1, highlight: HTMLElement;
+
+    for(const li of localIndicies) {
+      fragment.append(str.slice(prevli + 1, li));
+
+      if(prevli === -1 || prevli + 1 < li) {
+        highlight = makeHighlight();
+      }
+      highlight.textContent += str[li];
+      prevli = li;
     }
-    // if(str.length > 1) {
-    //   fragment.append(str[str.length - 1]);
-    // }
+
+    fragment.append(str.slice(prevli + 1, n));
 
     node.parentNode.replaceChild(fragment, node);
-  });
+
+    function makeHighlight() {
+      const el = document.createElement('span');
+      el.style.background = 'green';
+      fragment.append(el);
+      return el;
+    }
+  }
 }
 
 export async function fetchDialogFilters() {
@@ -72,6 +85,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
   component: (props: PassedProps<Props>) => {
     props.element.classList.add('btn-menu', styles.Container);
 
+    const [search, setSearch] = createSignal('');
     const visibleFolders = () => props.filters;
 
     const Content = () => <>
@@ -79,6 +93,8 @@ const AddToFolderDropdownMenu = defineSolidElement({
         {i18n('AddToFolderSearch')}
         <input
           class={styles.Input}
+          value={search()}
+          onInput={e => void setSearch(e.target.value)}
           ref={el => {
             setTimeout(() => {
               el.focus();
@@ -92,7 +108,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
           (filter) => (
             ButtonMenuItem({
               icon: getIconForFilter(filter),
-              textElement: createFolderTitle(filter.title),
+              textElement: createFolderTitle(filter.title, search),
               onClick: () => void 0
             })
           )
@@ -112,32 +128,23 @@ const AddToFolderDropdownMenu = defineSolidElement({
   }
 });
 
-function ButtonMenuItemTsx(props: {filter: MyDialogFilter}) {
-  onCleanup(() => {
-    console.log('[my-debug] cleaning ButtonMenuItemTsx');
-  })
-  return (
-    <>
-      {ButtonMenuItem({
-        icon: getIconForFilter(props.filter),
-        textElement: createFolderTitle(props.filter.title),
-        onClick: () => void 0
-      })}
-    </>
-  );
-}
-
-function createFolderTitle(title: TextWithEntities.textWithEntities) {
+function createFolderTitle(title: TextWithEntities.textWithEntities, search: Accessor<string>) {
   const middleware = createMiddleware();
 
   let span: HTMLSpanElement;
 
-  const [richText] = createResource(() => wrapFolderTitle(title, middleware.get()));
+  createComputed(() => {
+    search();
+    span?.replaceChildren();
+  });
+
+  const [richText] = createResource(search, () => wrapFolderTitle(title, middleware.get()));
 
   createEffect(() => {
-    if(!richText() || !span) return;
+    if(!richText() || !span || !search()) return;
 
-    wrapTextNodes(span);
+    const {found} = kindaFuzzyFinder(span.textContent, search());
+    highlightTextNodes(span, found);
   });
 
   console.log('[my-debug] creating FolderTitle');
