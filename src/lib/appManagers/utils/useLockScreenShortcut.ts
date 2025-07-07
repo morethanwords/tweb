@@ -1,9 +1,9 @@
 import {createEffect, createResource, createRoot, createSignal, onCleanup} from 'solid-js';
 
 import PasscodeLockScreenController from '../../../components/passcodeLock/passcodeLockScreenController';
-import {addShortcutListener} from '../../../components/mediaEditor/shortcutListener';
-import ListenerSetter from '../../../helpers/listenerSetter';
+import {addShortcutListener} from '../../../helpers/shortcutListener';
 import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
+import ListenerSetter from '../../../helpers/listenerSetter';
 
 import rootScope from '../../rootScope';
 

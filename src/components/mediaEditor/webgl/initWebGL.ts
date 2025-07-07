@@ -1,29 +1,40 @@
-import {AdjustmentsConfig} from '../adjustments';
-import {MediaEditorContextValue} from '../context';
-import {initPositionBuffer, initTextureBuffer} from './initBuffers';
+import {Middleware} from '../../../helpers/middleware';
+import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
+import {MediaType} from '../types';
 
+import {initPositionBuffer, initTextureBuffer} from './initBuffers';
 import {initShaderProgram} from './initShaderProgram';
 import {loadTexture} from './loadTexture';
 
 export type RenderingPayload = Awaited<ReturnType<typeof initWebGL>>;
 
-export async function initWebGL(gl: WebGLRenderingContext, context: MediaEditorContextValue) {
-  const [{vertexShaderSource, fragmentShaderSource}, {texture, image}] = await Promise.all([
+type InitWebGLArgs = {
+  gl: WebGLRenderingContext;
+  mediaSrc: string;
+  mediaType: MediaType;
+  videoTime: number;
+  waitToSeek?: boolean;
+
+  middleware?: Middleware;
+};
+
+export async function initWebGL({gl, mediaSrc, mediaType, videoTime, waitToSeek, middleware}: InitWebGLArgs) {
+  const [{vertexShaderSource, fragmentShaderSource}, {texture, media}] = await Promise.all([
     import('./shaderSources'),
-    loadTexture(gl, context.imageSrc)
+    loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSeek, middleware})
   ]);
 
   const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
 
   const buffers = {
-    position: initPositionBuffer(gl, image.width, image.height),
+    position: initPositionBuffer(gl, media.width, media.height),
     texture: initTextureBuffer(gl)
   };
 
   return {
     program: shaderProgram,
     buffers,
-    image,
+    media,
     texture,
     attribs: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
@@ -38,7 +49,7 @@ export async function initWebGL(gl: WebGLRenderingContext, context: MediaEditorC
       uScale: gl.getUniformLocation(shaderProgram, 'uScale'),
       uImageSize: gl.getUniformLocation(shaderProgram, 'uImageSize'),
       ...(Object.fromEntries(
-        context.adjustments.map(({uniform}) => [uniform, gl.getUniformLocation(shaderProgram, uniform)])
+        adjustmentsConfig.map(({uniform}) => [uniform, gl.getUniformLocation(shaderProgram, uniform)])
       ) as Record<AdjustmentsConfig[number]['uniform'], WebGLUniformLocation>)
     }
   };

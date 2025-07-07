@@ -1,7 +1,7 @@
-import {MediaEditorContextValue} from './context';
+import {StandaloneSignal} from './types';
 
-export default function RenderProgressCircle(props: {context: MediaEditorContextValue}) {
-  const [progress] = props.context.gifCreationProgress;
+export default function RenderProgressCircle(props: {creationProgress: StandaloneSignal<number>}) {
+  const [progress] = props.creationProgress.signal;
   // const [progress, setProgress] = createSignal(0); // Progress signal from 0 to 100
 
   const radius = 52;
@@ -32,7 +32,7 @@ export default function RenderProgressCircle(props: {context: MediaEditorContext
           'max-width': '80%',
           'max-height': '80%',
           'aspect-ratio': '1 / 1',
-          'z-index': 4
+          'z-index': 2
         }
       }}
     >

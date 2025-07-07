@@ -1,8 +1,6 @@
-import {useContext} from 'solid-js';
-
 import {ButtonIconTsx} from '../../buttonIconTsx';
 
-import MediaEditorContext from '../context';
+import {useMediaEditorContext} from '../context';
 
 type ConfigItem = {
   icon: Icon;
@@ -20,8 +18,7 @@ const config: ConfigItem[] = [
 export const mediaEditorTabsOrder = config.map((item) => item.key);
 
 export default function Tabs() {
-  const context = useContext(MediaEditorContext);
-  const [tab, setTab] = context.currentTab;
+  const {editorState} = useMediaEditorContext();
 
   let container: HTMLDivElement;
   let underline: HTMLDivElement;
@@ -29,7 +26,7 @@ export default function Tabs() {
   const tabs = config.map((item) => ({
     ...item,
     element: (
-      <div class="media-editor__tabs-item" classList={{'media-editor__tabs-item--active': tab() === item.key}}>
+      <div class="media-editor__tabs-item" classList={{'media-editor__tabs-item--active': editorState.currentTab === item.key}}>
         <ButtonIconTsx icon={item.icon} onClick={() => onTabClick(item.key)} />
       </div>
     ) as HTMLElement
@@ -42,7 +39,7 @@ export default function Tabs() {
 
     underline.style.setProperty('--left', targetBR.left + targetBR.width / 2 - containerBR.left + 'px');
 
-    setTab(key);
+    editorState.currentTab = key;
   }
 
   return (

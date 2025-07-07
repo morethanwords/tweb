@@ -44,7 +44,7 @@ export default class VideoStickerFrameByFrameRenderer implements StickerFrameByF
   }
 
   getTotalFrames() {
-    return IS_FIREFOX ? 1 : Math.floor(this.duration * 60);
+    return IS_FIREFOX ? 1 : Math.floor(this.duration * FRAMES_PER_SECOND);
   }
 
   async renderFrame(frame: number) {

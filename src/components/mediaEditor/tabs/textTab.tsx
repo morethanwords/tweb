@@ -1,4 +1,4 @@
-import {onMount, Accessor, JSX, useContext, createEffect} from 'solid-js';
+import {onMount, Accessor, JSX, createEffect, untrack} from 'solid-js';
 
 import {i18n} from '../../../lib/langPack';
 
@@ -6,36 +6,33 @@ import ripple from '../../ripple';
 import {IconTsx} from '../../iconTsx';
 import Space from '../../space';
 
-import ColorPicker from '../colorPicker';
-import RangeInput from '../rangeInput';
-import LargeButton from '../largeButton';
-import MediaEditorContext from '../context';
 import {createStoredColor} from '../createStoredColor';
+import {useMediaEditorContext} from '../context';
+import ColorPicker from '../colorPicker';
+import LargeButton from '../largeButton';
+import RangeInput from '../rangeInput';
 import {fontInfoMap} from '../utils';
 import {FontKey} from '../types';
 
 export default function TextTab() {
-  const context = useContext(MediaEditorContext);
-  const [layerInfo, setLayerInfo] = context.currentTextLayerInfo;
+  const {editorState} = useMediaEditorContext();
 
   const [savedColor, setSavedColor] = createStoredColor('media-editor-text-color', '#ffffff');
 
-  setLayerInfo((prev) => ({...prev, color: savedColor().value}));
+  editorState.currentTextLayerInfo.color = savedColor().value;
   createEffect(() => {
-    setLayerInfo((prev) => ({...prev, color: savedColor().value}));
+    untrack(() => editorState.currentTextLayerInfo).color = savedColor().value;
   });
 
+
   function setSize(value: number) {
-    setLayerInfo((prev) => ({...prev, size: value}));
+    editorState.currentTextLayerInfo.size = value;
   }
   function setAlignment(value: string) {
-    setLayerInfo((prev) => ({...prev, alignment: value}));
+    editorState.currentTextLayerInfo.alignment = value;
   }
   function setStyle(value: string) {
-    setLayerInfo((prev) => ({...prev, style: value}));
-  }
-  function setFont(value: FontKey) {
-    setLayerInfo((prev) => ({...prev, font: value}));
+    editorState.currentTextLayerInfo.style = value;
   }
 
   const toggleButton = (
@@ -61,8 +58,8 @@ export default function TextTab() {
 
   const fontButton = (text: JSX.Element, textFont: FontKey) => (
     <LargeButton
-      active={layerInfo()?.font === textFont}
-      onClick={() => setFont(textFont)}
+      active={editorState.currentTextLayerInfo.font === textFont}
+      onClick={() => void (editorState.currentTextLayerInfo.font = textFont)}
       style={{
         'font-family': fontInfoMap[textFont].fontFamily,
         'font-weight': fontInfoMap[textFont].fontWeight
@@ -75,23 +72,23 @@ export default function TextTab() {
   return (
     <>
       <ColorPicker
-        value={layerInfo()?.color}
+        value={editorState.currentTextLayerInfo.color}
         onChange={setSavedColor}
         previousColor={savedColor().previous}
-        colorKey={context.selectedResizableLayer[0]() + ''}
+        colorKey={(editorState.selectedResizableLayer ?? '') + ''}
       />
 
       <div class="media-editor__toggle-group-row">
         <div class="media-editor__toggle-group">
-          {toggleButton('align_left', 'left', () => layerInfo()?.alignment, setAlignment)}
-          {toggleButton('align_center', 'center', () => layerInfo()?.alignment, setAlignment)}
-          {toggleButton('align_right', 'right', () => layerInfo()?.alignment, setAlignment)}
+          {toggleButton('align_left', 'left', () => editorState.currentTextLayerInfo.alignment, setAlignment)}
+          {toggleButton('align_center', 'center', () => editorState.currentTextLayerInfo.alignment, setAlignment)}
+          {toggleButton('align_right', 'right', () => editorState.currentTextLayerInfo.alignment, setAlignment)}
         </div>
 
         <div class="media-editor__toggle-group">
-          {toggleButton('fontframe', 'normal', () => layerInfo()?.style, setStyle)}
-          {toggleButton('fontframe_outline', 'outline', () => layerInfo()?.style, setStyle)}
-          {toggleButton('fontframe_bg', 'background', () => layerInfo()?.style, setStyle)}
+          {toggleButton('fontframe', 'normal', () => editorState.currentTextLayerInfo.style, setStyle)}
+          {toggleButton('fontframe_outline', 'outline', () => editorState.currentTextLayerInfo.style, setStyle)}
+          {toggleButton('fontframe_bg', 'background', () => editorState.currentTextLayerInfo.style, setStyle)}
         </div>
       </div>
 
@@ -99,10 +96,10 @@ export default function TextTab() {
         label={i18n('MediaEditor.Size')}
         min={16}
         max={64}
-        value={layerInfo()?.size}
+        value={editorState.currentTextLayerInfo.size}
         onChange={setSize}
         passiveLabel
-        color={layerInfo()?.color}
+        color={editorState.currentTextLayerInfo.color}
       />
 
       <Space amount="16px" />

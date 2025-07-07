@@ -5,14 +5,15 @@ import {ResizableLayer} from '../types';
 export default function drawTextLayer(
   context: MediaEditorContextValue,
   ctx: CanvasRenderingContext2D,
-  layer: ResizableLayer
+  layer: ResizableLayer,
+  densityAware = true
 ) {
   if(layer.type !== 'text') return;
 
-  const [textLayersInfo] = context.textLayersInfo;
+  const {editorState: {pixelRatio}} = context;
 
-  const renderingInfo = {...textLayersInfo()[layer.id]};
-  const scale = layer.scale * context.pixelRatio;
+  const renderingInfo = {...layer.textRenderingInfo};
+  const scale = layer.scale * (densityAware ? pixelRatio : 1);
   renderingInfo.height *= scale;
   renderingInfo.width *= scale;
   renderingInfo.lines = renderingInfo.lines.map((line) => ({

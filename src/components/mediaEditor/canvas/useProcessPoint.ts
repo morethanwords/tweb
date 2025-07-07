@@ -1,23 +1,22 @@
-import {createMemo, useContext} from 'solid-js';
+import {createMemo} from 'solid-js';
 
-import MediaEditorContext from '../context';
+import {useMediaEditorContext} from '../context';
+import {NumberPair} from '../types';
 
 export default function useProcessPoint(densityAware = true) {
-  const context = useContext(MediaEditorContext);
-  const [canvasSize] = context.canvasSize;
-  const [finalTransform] = context.finalTransform;
+  const {editorState} = useMediaEditorContext();
 
-  const size = createMemo(() => canvasSize().map((x) => x * context.pixelRatio));
+  const size = createMemo(() => editorState.canvasSize.map((x) => x * editorState.pixelRatio));
 
-  return (point: [number, number]) => {
+  return (point: NumberPair) => {
     const [w, h] = size();
 
-    const transform = finalTransform();
+    const transform = editorState.finalTransform;
     const r = [Math.sin(-transform.rotation), Math.cos(-transform.rotation)];
     point = [point[0] * r[1] + point[1] * r[0], point[1] * r[1] - point[0] * r[0]];
     point = [
-      (point[0] * transform.scale + w / 2 + transform.translation[0]) / (densityAware ? 1 : context.pixelRatio),
-      (point[1] * transform.scale + h / 2 + transform.translation[1]) / (densityAware ? 1 : context.pixelRatio)
+      (point[0] * transform.scale + w / 2 + transform.translation[0]) / (densityAware ? 1 : editorState.pixelRatio),
+      (point[1] * transform.scale + h / 2 + transform.translation[1]) / (densityAware ? 1 : editorState.pixelRatio)
     ];
     return point;
   };

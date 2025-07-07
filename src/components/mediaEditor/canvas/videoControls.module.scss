@@ -1,0 +1,293 @@
+@import "../../../scss/variables.scss";
+@import "../../../scss/mixins.scss";
+
+.Container {
+  position: absolute;
+  touch-action: none;
+
+  bottom: 0;
+  left: 50%;
+
+  max-width: 100%;
+
+  padding: 24px 8px;
+
+  transform: translateX(-50%);
+
+  animation: container-fade-in 0.2s forwards;
+
+  @keyframes container-fade-in {
+    from {opacity: 0;}
+    to {opacity: 1;}
+  }
+
+  &.hidden {
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+
+  &.changed {
+    --cropper-color: #F0DB56;
+  }
+
+  --handle-width: 9px;
+  --cropper-default-bg: #212121;
+  --cropper-color: white;
+  /* --cropper-default-bg: gray; */
+}
+
+.InnerContainer {
+  height: 48px;
+  width: 584px;
+  max-width: 100%;
+
+  display: flex;
+  gap: 12px;
+}
+
+.IconButton {
+  flex: none;
+  overflow: hidden;
+  padding: 0.75rem;
+
+  color: white;
+}
+
+.MuteButton {
+  --bg-color: #3e3f3f;
+  --mult: 1;
+  background-color: var(--bg-color);
+
+  @include hover-global(hsl(from var(--bg-color) h s calc(l + 7 * var(--mult))), background-color, true);
+
+  &.muted {
+    --bg-color: white;
+    --mult: -2;
+    --ripple-color: rgba(0, 0, 0, .175);
+
+    color: black;
+  }
+}
+
+.Frames {
+  position: relative;
+  height: 100%;
+  flex: 1;
+}
+
+.FrameFade {
+  position: absolute;
+  background-color: var(--cropper-default-bg);
+}
+
+.Cropper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+
+  border-radius: 9px;
+  background-color: var(--cropper-default-bg);
+
+  overflow: hidden;
+
+  &Bg {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+
+    background-color: rgba(0, 0, 0, 0.65);
+
+    &Left {
+      left: calc((100% - 2 * var(--handle-width)) * var(--start) + var(--handle-width));
+      transform: translateX(-100%);
+    }
+    &Right {
+      left: calc((100% - 2 * var(--handle-width)) * (var(--start) + var(--length)) + var(--handle-width));
+    }
+  }
+
+  &HorizontalBorder {
+    position: absolute;
+
+    left: calc((100% - 2 * var(--handle-width)) * var(--start) + var(--handle-width) - 1px);
+    width: calc((100% - 2 * var(--handle-width)) * var(--length) + 2px);
+
+    height: 100%;
+
+    border-top: 2px solid var(--cropper-color);
+    border-bottom: 2px solid var(--cropper-color);
+    transition: border-color .2s;
+
+    cursor: pointer;
+
+    &.dragging {
+      cursor: grabbing;
+    }
+  }
+
+  &Handle {
+    position: absolute;
+    height: 100%;
+    width: var(--handle-width);
+
+    background-color: var(--cropper-color);
+    transition: background-color .2s;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    cursor: ew-resize;
+
+    &::before {
+      content: '';
+      display: block;
+
+      height: 16px;
+      width: 3px;
+      border-radius: 5px;
+
+      background-color: #212121;
+    }
+
+    &Left {
+      left: calc((100% - 2 * var(--handle-width)) * var(--start));
+      border-top-left-radius: var(--handle-width);
+      border-bottom-left-radius: var(--handle-width);
+    }
+    &Right {
+      left: calc((100% - 2 * var(--handle-width)) * (var(--start) + var(--length)) + var(--handle-width));
+      border-top-right-radius: var(--handle-width);
+      border-bottom-right-radius: var(--handle-width);
+    }
+  }
+}
+
+.TimeStick {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 60px;
+
+  transform: translate(-50%, -50%);
+  left: calc((100% - 2 * var(--handle-width)) * var(--current-time) + var(--handle-width));
+
+  cursor: col-resize;
+}
+
+.PlayButton {
+  background-color: var(--primary-color);
+
+  @include hover-global(hsl(from var(--primary-color) h s calc(l - 7)), background-color, true);
+
+  &Inner {
+    display: inline-flex;
+  }
+}
+
+.CroppedTime {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, calc(-100% - 2px));
+
+  font-size: 13px;
+  font-weight: 500;
+
+  text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);
+
+  transition: opacity .3s ease-in;
+
+  opacity: 0;
+
+  &.visible {
+    opacity: 1;
+  }
+}
+
+.ThumbnailMark {
+  position: absolute;
+  top: 0;
+
+  width: 20px;
+  height: 25px;
+
+  transform: translate(-50%, calc(-100% - 8px));
+  left: calc((100% - 2 * var(--handle-width)) * var(--position) + var(--handle-width));
+
+  opacity: 0;
+
+  &.ghost.visible {
+    opacity: 0.5;
+  }
+
+  &.visible {
+    opacity: 1;
+  }
+
+  &.withTransition {
+    transition: opacity .2s ease-out;
+  }
+}
+
+.ThumbnailTrack {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  width: 100%;
+  height: 32px;
+
+  transform: translateY(calc(-4px - 100%));
+
+  cursor: pointer;
+
+  &.disabled {
+    pointer-events: none;
+  }
+}
+
+.PausePlaySvg {
+  --play-scale: 2.2;
+  --play-translate-x: -8px;
+  --pause-scale-x: 1;
+  --pause-scale-y: 1;
+  --pause-rotation: 0deg;
+  --pause-left-translate: 12px;
+  --pause-right-translate: 12px;
+
+  --transition-time: 0.2s;
+
+  &Play {
+    transform: translate(8px, 12px) scale(var(--play-scale)) translate(var(--play-translate-x), -12px);
+    transition: transform var(--transition-time);
+  }
+
+  &Pause {
+    &Left, &Right {
+      transition: transform var(--transition-time);
+    }
+  }
+
+  &.paused {
+    --play-scale: 1;
+    --pause-scale-x: 1;
+    --pause-scale-y: 4.5;
+    --pause-rotation: 90deg;
+    --pause-left-translate: 24px;
+    --pause-right-translate: 0px;
+    --play-translate-x: -6px;
+  }
+
+  &Pause {
+    &Left {
+      transform: translate(12px, var(--pause-left-translate)) scale(var(--pause-scale-x), var(--pause-scale-y)) rotate(var(--pause-rotation)) translate(-12px, -12px);
+    }
+
+    &Right {
+      transform: translate(12px, var(--pause-right-translate)) scale(var(--pause-scale-x), var(--pause-scale-y)) rotate(var(--pause-rotation)) translate(-12px, -12px);
+    }
+  }
+}

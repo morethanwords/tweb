@@ -877,12 +877,15 @@ const lang = {
   'MediaEditor.Adjustments.Sharpen': 'Sharpen',
   'MediaEditor.DiscardChanges': 'Discard Changes',
   'MediaEditor.DiscardWarning': 'Are you sure you want to discard your changes?',
+  'MediaEditor.VideoMutedTooltip': 'Sound is muted, the video will loop like a GIF if it\'s short enough',
+
   'MultiAccount.AddAccount': 'Add Account',
   'MultiAccount.More': 'More',
   'MultiAccount.ShowNotificationsFrom': 'Show Notifications From',
   'MultiAccount.ShowNotificationsFromCaption': 'Turn this off if you want to receive notifications only from the account you are currently using.',
   'MultiAccount.AllAccounts': 'All Accounts',
   'MultiAccount.AccountsLimitDescription': 'You have reached the limit of **3** connected accounts. You can add more by subscribing to **Telegram Premium**.',
+
   'CtrlFSearchTipMac': 'Tip: Use **Cmd+F** to open Search',
 
   // * android
@@ -3374,6 +3377,7 @@ const lang = {
   'ConfirmPayment': 'Confirm Payment',
   'Undo': 'Undo',
   'Resend': 'Resend',
+  'Quality': 'Quality',
 
   'BotSetEmojiStatusTitle': 'Set Emoji Status',
   'BotSetEmojiStatusText': 'Do you want to set this emoji status suggested by **%s**?',

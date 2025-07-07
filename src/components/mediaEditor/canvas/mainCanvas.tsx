@@ -1,31 +1,28 @@
-import {onCleanup, onMount, Show, useContext} from 'solid-js';
+import {onCleanup, onMount, Show, JSX} from 'solid-js';
+import {Transition} from 'solid-transition-group';
 
-import {hexToRgb} from '../../../helpers/color';
+import {useMediaEditorContext} from '../context';
 
-import MediaEditorContext from '../context';
-
-import CropHandles from './cropHandles';
-import RotationWheel from './rotationWheel';
-import ResizableLayers from './resizableLayers';
 import BrushCanvas from './brushCanvas';
+import CropHandles from './cropHandles';
 import ImageCanvas from './imageCanvas';
+import PreviewBrushSize from './previewBrushSize';
+import ResizableLayers from './resizableLayers';
+import RotationWheel from './rotationWheel';
 import useFinalTransform from './useFinalTransform';
+import VideoControls from './videoControls';
+
 
 export default function MainCanvas() {
   let container: HTMLDivElement;
-  const context = useContext(MediaEditorContext);
-  const [isReady] = context.isReady;
-  const [canvasSize, setCanvasSize] = context.canvasSize;
-  const [previewBrushSize] = context.previewBrushSize;
-  const [currentBrush] = context.currentBrush;
-  const [, setResizeHandlesContainer] = context.resizeHandlesContainer;
+  const {editorState, mediaType} = useMediaEditorContext();
 
   useFinalTransform();
 
   onMount(() => {
     const listener = () => {
       const bcr = container.getBoundingClientRect();
-      setCanvasSize([bcr.width, bcr.height]);
+      editorState.canvasSize = [bcr.width, bcr.height];
     };
     listener();
     window.addEventListener('resize', listener);
@@ -36,26 +33,19 @@ export default function MainCanvas() {
 
   return (
     <div ref={container} class="media-editor__main-canvas">
-      <Show when={canvasSize()}>
+      <Show when={editorState.canvasSize}>
         <ImageCanvas />
-        <Show when={isReady()}>
+        <Show when={editorState.isReady}>
           <BrushCanvas />
           <ResizableLayers />
-          {previewBrushSize() && (
-            <div
-              class="media-editor__preview-brush-size"
-              style={{
-                '--color': !['blur', 'eraser'].includes(currentBrush().brush) ?
-                  hexToRgb(currentBrush().color).join(',') :
-                  undefined,
-                'width': previewBrushSize() + 'px',
-                'height': previewBrushSize() + 'px'
-              }}
-            />
-          )}
-          <div ref={setResizeHandlesContainer} class="media-editor__resize-handles-overlay" />
+          <PreviewBrushSize />
+          {/* WTF ref causes infinite loop when passed without callback */}
+          <div ref={(el) => void (editorState.resizeHandlesContainer = el)} class="media-editor__resize-handles-overlay" />
           <CropHandles />
           <RotationWheel />
+          <Show when={mediaType === 'video' && !!editorState.renderingPayload}>
+            <VideoControls />
+          </Show>
         </Show>
       </Show>
     </div>

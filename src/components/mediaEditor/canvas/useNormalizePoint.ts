@@ -1,19 +1,19 @@
-import {createMemo, useContext} from 'solid-js';
+import {createMemo} from 'solid-js';
 
-import MediaEditorContext from '../context';
+import {useMediaEditorContext} from '../context';
+import {NumberPair} from '../types';
+
 
 export default function useNormalizePoint() {
-  const context = useContext(MediaEditorContext);
-  const [canvasSize] = context.canvasSize;
-  const [finalTransform] = context.finalTransform;
+  const {editorState} = useMediaEditorContext();
 
-  const size = createMemo(() => canvasSize().map((x) => x * context.pixelRatio));
+  const size = createMemo(() => editorState.canvasSize.map((x) => x * editorState.pixelRatio));
 
-  return (point: [number, number]) => {
-    const transform = finalTransform();
+  return (point: NumberPair) => {
+    const transform = editorState.finalTransform;
     const [w, h] = size();
 
-    point = point.map((x) => x * context.pixelRatio) as [number, number];
+    point = point.map((x) => x * editorState.pixelRatio) as NumberPair;
 
     point = [
       (point[0] - transform.translation[0] - w / 2) / transform.scale,

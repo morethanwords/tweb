@@ -1,34 +1,45 @@
-import {useContext} from 'solid-js';
-
-import MediaEditorContext from '../context';
 import {snapToViewport} from '../utils';
+import {defaultCodec, highResCodec} from './calcCodecAndBitrate';
 
 const SIDE_MAX = 2560;
-const SIDE_MIN = 400;
-const VIDEO_WIDTH_MAX = 1280;
-const VIDEO_HEIGHT_MAX = 720;
+const SIDE_MIN = 240;
 
-export default function getResultSize(hasAnimatedStickers: boolean) {
-  const context = useContext(MediaEditorContext);
-  const [currentImageRatio] = context.currentImageRatio;
-  const [scale] = context.scale;
-  const [renderingPayload] = context.renderingPayload;
 
-  const imageWidth = renderingPayload().image.width;
+type Args = {
+  videoType: 'video' | 'gif';
+  imageWidth: number;
+  imageRatio: number;
+  cropOffset: { width: number; height: number; };
+  newRatio: number;
+  scale: number;
+  quality?: number;
+};
 
-  const newRatio = currentImageRatio();
+export default function getResultSize({imageWidth, cropOffset, imageRatio, newRatio, scale, videoType, quality}: Args) {
+  const [w] = snapToViewport(imageRatio, cropOffset.width, cropOffset.height);
+  const [cw] = snapToViewport(newRatio, cropOffset.width, cropOffset.height);
 
-  let scaledWidth = imageWidth / scale(),
+  let scaledWidth = cw / (w * scale) * imageWidth,
     scaledHeight = scaledWidth / newRatio;
+
+  const willResultInVideo = !!videoType;
 
   if(Math.max(scaledWidth, scaledHeight) < SIDE_MIN) {
     [scaledWidth, scaledHeight] = snapToViewport(newRatio, SIDE_MIN, SIDE_MIN);
   }
-  if(hasAnimatedStickers && (scaledWidth > VIDEO_WIDTH_MAX || scaledHeight > VIDEO_HEIGHT_MAX)) {
-    [scaledWidth, scaledHeight] = snapToViewport(newRatio, VIDEO_WIDTH_MAX, VIDEO_HEIGHT_MAX);
+  if(videoType === 'gif' && (scaledWidth > defaultCodec.width || scaledHeight > defaultCodec.height)) {
+    [scaledWidth, scaledHeight] = snapToViewport(newRatio, defaultCodec.width, defaultCodec.height);
   }
-  if(!hasAnimatedStickers && Math.max(scaledWidth, scaledHeight) > SIDE_MAX) {
+  if(videoType === 'video' && (scaledWidth > highResCodec.width || scaledHeight > highResCodec.height)) {
+    [scaledWidth, scaledHeight] = snapToViewport(newRatio, highResCodec.width, highResCodec.height);
+  }
+  if(!willResultInVideo && Math.max(scaledWidth, scaledHeight) > SIDE_MAX) {
     [scaledWidth, scaledHeight] = snapToViewport(newRatio, SIDE_MAX, SIDE_MAX);
+  }
+
+  if(quality) {
+    scaledHeight = quality;
+    scaledWidth = quality * newRatio;
   }
 
   scaledWidth = Math.floor(scaledWidth);

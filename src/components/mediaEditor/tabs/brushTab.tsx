@@ -1,20 +1,18 @@
-import {createEffect, createMemo, JSX, useContext} from 'solid-js';
+import {createEffect, JSX} from 'solid-js';
 
 import {i18n} from '../../../lib/langPack';
 
 import Space from '../../space';
 
-import ColorPicker from '../colorPicker';
-import RangeInput from '../rangeInput';
-import LargeButton from '../largeButton';
 import {ArrowBrush, BlurBrush, EraserBrush, MarkerBrush, NeonBrush, PenBrush} from '../brushesSvg';
-import MediaEditorContext from '../context';
 import {createStoredColor} from '../createStoredColor';
+import {useMediaEditorContext} from '../context';
+import ColorPicker from '../colorPicker';
+import LargeButton from '../largeButton';
+import RangeInput from '../rangeInput';
 
 export default function BrushTab() {
-  const context = useContext(MediaEditorContext);
-  const [currentBrush, setCurrentBrush] = context.currentBrush;
-  const [, setPreviewBrushSize] = context.previewBrushSize;
+  const {editorState, mediaType} = useMediaEditorContext();
 
   const savedBrushColors = {
     pen: createStoredColor('media-editor-pen-color', '#fe4438'),
@@ -28,12 +26,10 @@ export default function BrushTab() {
   }
 
   function updateCurrentBrush() {
-    const [savedColor] = savedBrushSignal(currentBrush().brush) || [];
-    if(!savedColor || currentBrush().color === savedColor().value) return;
-    setCurrentBrush((prev) => ({
-      ...prev,
-      color: savedColor().value
-    }));
+    const [savedColor] = savedBrushSignal(editorState.currentBrush.brush) || [];
+    if(!savedColor || editorState.currentBrush.color === savedColor().value) return;
+
+    editorState.currentBrush.color = savedColor().value;
   }
 
   updateCurrentBrush(); // Change the brush before the ColorPicker is rendered
@@ -42,15 +38,15 @@ export default function BrushTab() {
   });
 
   function setColor(color: string) {
-    const brush = currentBrush().brush;
+    const brush = editorState.currentBrush.brush;
     const [, setSavedColor] = savedBrushSignal(brush) || [];
     setSavedColor?.(color);
   }
 
   const brushButton = (text: JSX.Element, brushSvg: JSX.Element, brush: string) => (
     <LargeButton
-      active={currentBrush().brush === brush}
-      onClick={() => setCurrentBrush((prev) => ({...prev, brush}))}
+      active={editorState.currentBrush.brush === brush}
+      onClick={() => void (editorState.currentBrush.brush = brush)}
       class={`media-editor__brush-button`}
     >
       <div
@@ -65,14 +61,14 @@ export default function BrushTab() {
     </LargeButton>
   );
 
-  const hasColor = () => currentBrush().brush in savedBrushColors;
+  const hasColor = () => editorState.currentBrush.brush in savedBrushColors;
 
   let timeoutId = 0;
   function removeSizePreview() {
     window.clearTimeout(timeoutId);
     timeoutId = window.setTimeout(() => {
-      setPreviewBrushSize();
-    }, 400);
+      editorState.previewBrushSize = undefined;
+    }, 1000);
   }
 
   return (
@@ -91,10 +87,10 @@ export default function BrushTab() {
         }
       >
         <ColorPicker
-          value={currentBrush().color}
+          value={editorState.currentBrush.color}
           onChange={setColor}
-          colorKey={createMemo(() => currentBrush().brush)()}
-          previousColor={savedBrushSignal(currentBrush().brush)?.[0]().previous}
+          colorKey={editorState.currentBrush.brush}
+          previousColor={savedBrushSignal(editorState.currentBrush.brush)?.[0]().previous}
         />
       </div>
       <Space amount="16px" />
@@ -102,17 +98,17 @@ export default function BrushTab() {
         label={i18n('MediaEditor.Size')}
         min={2}
         max={32}
-        value={currentBrush().size}
+        value={editorState.currentBrush.size}
         onChange={(size) => {
-          setCurrentBrush((prev) => ({...prev, size}));
-          setPreviewBrushSize(size);
+          editorState.currentBrush.size = size;
+          editorState.previewBrushSize = size;
           removeSizePreview();
         }}
         onChangeFinish={() => {
-          setPreviewBrushSize();
+          editorState.previewBrushSize = undefined;
         }}
         passiveLabel
-        color={hasColor() ? currentBrush().color : undefined}
+        color={hasColor() ? editorState.currentBrush.color : undefined}
       />
       <Space amount="16px" />
       <div class="media-editor__label">{i18n('MediaEditor.Tool')}</div>
@@ -120,7 +116,7 @@ export default function BrushTab() {
       {brushButton(i18n('MediaEditor.Brushes.Arrow'), <ArrowBrush />, 'arrow')}
       {brushButton(i18n('MediaEditor.Brushes.Brush'), <MarkerBrush />, 'brush')}
       {brushButton(i18n('MediaEditor.Brushes.Neon'), <NeonBrush />, 'neon')}
-      {brushButton(i18n('MediaEditor.Brushes.Blur'), <BlurBrush />, 'blur')}
+      {mediaType === 'image' && brushButton(i18n('MediaEditor.Brushes.Blur'), <BlurBrush />, 'blur')}
       {brushButton(i18n('MediaEditor.Brushes.Eraser'), <EraserBrush />, 'eraser')}
     </>
   );
