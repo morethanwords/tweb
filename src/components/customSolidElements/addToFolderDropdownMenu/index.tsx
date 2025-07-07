@@ -1,16 +1,16 @@
 import {createEffect, createResource, For, onCleanup, Show} from 'solid-js';
-import createMiddleware from '../../helpers/solid/createMiddleware';
-import {TextWithEntities} from '../../layer';
-import {i18n} from '../../lib/langPack';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '../../lib/mtproto/mtproto_config';
-import rootScope from '../../lib/rootScope';
-import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
-import {MyDialogFilter} from '../../lib/storages/filters';
-import {ButtonMenuItem} from '../buttonMenu';
-import Scrollable from '../scrollable2';
-import {getIconForFilter} from '../sidebarLeft/foldersSidebarContent/utils';
-import wrapFolderTitle from '../wrappers/folderTitle';
-import styles from './addToFolderDropdownMenu.module.scss';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
+import {TextWithEntities} from '../../../layer';
+import {i18n} from '../../../lib/langPack';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '../../../lib/mtproto/mtproto_config';
+import rootScope from '../../../lib/rootScope';
+import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
+import {MyDialogFilter} from '../../../lib/storages/filters';
+import {ButtonMenuItem} from '../../buttonMenu';
+import Scrollable from '../../scrollable2';
+import {getIconForFilter} from '../../sidebarLeft/foldersSidebarContent/utils';
+import wrapFolderTitle from '../../wrappers/folderTitle';
+import styles from './styles.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -149,5 +149,6 @@ function createFolderTitle(title: TextWithEntities.textWithEntities) {
 
   return <span ref={span}>{richText()}</span> as HTMLSpanElement;
 }
+
 
 export default AddToFolderDropdownMenu;
