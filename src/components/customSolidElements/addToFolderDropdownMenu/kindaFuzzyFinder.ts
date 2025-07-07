@@ -12,7 +12,7 @@ function kindaFuzzyFinderImpl(str: string, toFind: string, fm: number) {
     for(let i = 0; i < n; i++) {
       if(str[i] !== toFind[j]) continue;
 
-      const {found} = kindaFuzzyFinder(str.slice(i + 1), toFind.slice(j + 1));
+      const {found} = kindaFuzzyFinderImpl(str.slice(i + 1), toFind.slice(j + 1), fm);
       const newIndicies = [i, ...found.map(fi => fi + i + 1)];
 
       const s = score(str, toFind, newIndicies, fm, true) - punishments.missing(fm) * j;
