@@ -133,6 +133,7 @@ import accumulate from '../../helpers/array/accumulate';
 import splitStringByLength from '../../helpers/string/splitStringByLength';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
 import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
+import focusInput from '../../helpers/dom/focusInput';
 
 // console.log('Recorder', Recorder);
 
@@ -2354,11 +2355,20 @@ export default class ChatInput {
     }
   }
 
+  public passEventToInput(e: KeyboardEvent): void {
+    if(!isSendShortcutPressed(e)) return void focusInput(this.messageInput, e);
+
+    this.sendMessage();
+    document.addEventListener('keyup', () => {
+      focusInput(this.messageInput);
+    }, {once: true});
+  }
+
   private attachMessageInputListeners() {
     this.listenerSetter.add(this.messageInput)('keydown', (e) => {
       const key = e.key;
 
-      if(e.isTrusted && isSendShortcutPressed(e)) {
+      if(isSendShortcutPressed(e)) {
         cancelEvent(e);
         this.sendMessage();
       } else if(e.ctrlKey || e.metaKey) {

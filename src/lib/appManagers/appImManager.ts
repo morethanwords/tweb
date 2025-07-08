@@ -108,7 +108,6 @@ import throttle from '../../helpers/schedulers/throttle';
 import appDownloadManager from './appDownloadManager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import {findUpAvatar} from '../../components/avatarNew';
-import focusInput from '../../helpers/dom/focusInput';
 import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
@@ -1239,7 +1238,7 @@ export class AppImManager extends EventListenerBase<{
         !chat.input.recording &&
         chat.input.messageInput.isContentEditable
       ) {
-        focusInput(chat.input.messageInput, e);
+        chat.input.passEventToInput(e);
       }
     };
 
