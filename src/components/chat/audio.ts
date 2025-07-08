@@ -30,6 +30,7 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import SetTransition from '../singleTransition';
 import {ChatType} from './chat';
 import type {AppImManager} from '../../lib/appManagers/appImManager';
+import findUpClassName from '../../helpers/dom/findUpClassName';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -72,10 +73,10 @@ export default class ChatAudio extends PinnedContainer {
     this.time = document.createElement('span');
     this.time.classList.add('pinned-audio-time');
 
-    const attachClick = (elem: HTMLElement, callback: () => void) => {
+    const attachClick = (elem: HTMLElement, callback: (e: MouseEvent) => void) => {
       attachClickEvent(elem, (e) => {
         cancelEvent(e);
-        callback();
+        callback(e);
       }, {listenerSetter: this.listenerSetter});
     };
 
@@ -87,7 +88,15 @@ export default class ChatAudio extends PinnedContainer {
       appMediaPlaybackController.next();
     });
 
-    attachClick(this.container, () => {
+    attachClick(this.container, (e) => {
+      if(
+        findUpClassName(e.target, 'progress-line') ||
+        findUpClassName(e.target, 'pinned-container-wrapper-utils') ||
+        findUpClassName(e.target, 'btn-icon')
+      ) {
+        return;
+      }
+
       const mid = +this.container.dataset.mid;
       const peerId = this.container.dataset.peerId.toPeerId();
       const searchContext = appMediaPlaybackController.getSearchContext();

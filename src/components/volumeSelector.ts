@@ -67,7 +67,7 @@ export default class VolumeSelector extends RangeSelector {
     btn.classList.add('btn-icon', className);
 
     attachClickEvent(btn, (e) => {
-      if(!findUpClassName(e.target, className + '__icon')) {
+      if(!findUpClassName(e.target, className + '__icon') && e.target !== this.btn) {
         return;
       }
 
