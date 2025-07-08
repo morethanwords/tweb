@@ -28,6 +28,8 @@ const HAVE_SCROLL_WHEN_ABOVE = 8;
 const MIN_FUZZY_SCORE = 0.25;
 
 
+const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);
+
 export async function fetchDialogFilters() {
   const filters = await rootScope.managers.filtersStorage.getDialogFilters();
 
@@ -39,11 +41,16 @@ export async function fetchDialogFilters() {
   });
 }
 
-const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);
+function wrapFolderTitleInSpan(title: TextWithEntities.textWithEntities, middleware: Middleware) {
+  const span: HTMLSpanElement = document.createElement('span');
+  const fragment = wrapFolderTitle(title, middleware, true);
+
+  span.append(fragment);
+  return span;
+}
 
 const AddToFolderDropdownMenu = defineSolidElement({
   name: 'add-to-folder-dropdown-menu',
-  observedAttributes: ['size', 'something'],
   component: (props: PassedProps<Props>) => {
     props.element.classList.add('btn-menu', styles.Container);
 
@@ -124,13 +131,5 @@ const AddToFolderDropdownMenu = defineSolidElement({
     );
   }
 });
-
-function wrapFolderTitleInSpan(title: TextWithEntities.textWithEntities, middleware: Middleware) {
-  const span: HTMLSpanElement = document.createElement('span');
-  const fragment = wrapFolderTitle(title, middleware, true);
-
-  span.append(fragment);
-  return span;
-}
 
 export default AddToFolderDropdownMenu;
