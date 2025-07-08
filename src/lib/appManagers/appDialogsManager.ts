@@ -118,6 +118,7 @@ import {SequentialCursorFetcher, SequentialCursorFetcherResult} from '../../help
 import SortedDialogList from '../../components/sortedDialogList';
 import throttle from '../../helpers/schedulers/throttle';
 import {MAX_SIDEBAR_WIDTH} from '../../components/sidebarLeft/constants';
+import {unwrap} from 'solid-js/store';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 const DIALOG_LOAD_COUNT = 10;
@@ -1773,7 +1774,7 @@ export class AppDialogsManager {
     apiManagerProxy.getState().then((state) => {
       const [appSettings, setAppSettings] = useAppSettings();
       // * it should've had a better place :(
-      appMediaPlaybackController.setPlaybackParams(appSettings.playbackParams);
+      appMediaPlaybackController.setPlaybackParams(unwrap(appSettings.playbackParams));
       appMediaPlaybackController.addEventListener('playbackParams', (params) => {
         setAppSettings('playbackParams', params);
       });
