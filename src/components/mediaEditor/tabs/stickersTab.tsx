@@ -68,8 +68,10 @@ export default function StickersTab() {
   function StickerSetThumb(props: {set: StickerSet.stickerSet}) {
     let renderContainer: HTMLDivElement;
 
-    const middleware = createMiddleware();
+
     onMount(() => {
+      const middleware = createMiddleware();
+
       wrapStickerSetThumb({
         container: renderContainer,
         group: 'none',
@@ -81,10 +83,6 @@ export default function StickersTab() {
         set: props.set,
         managers,
         textColor: 'white'
-      });
-
-      onCleanup(() => {
-        middleware.destroy();
       });
     });
 

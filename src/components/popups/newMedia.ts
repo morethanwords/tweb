@@ -1295,7 +1295,7 @@ export default class PopupNewMedia extends PopupElement {
     // do not pass these properties to worker
     defineNotNumerableProperties(params, ['scaledBlob', 'middlewareHelper', 'itemDiv', 'mediaSpoiler']);
 
-    params.middlewareHelper = this.middlewareHelper.get().create();
+    params.middlewareHelper = this.lateMiddlewareHelper.get().create();
     params.itemDiv = itemDiv;
 
     const promise = shouldCompress ? this.attachMedia(params) : this.attachDocument(params);
@@ -1343,7 +1343,7 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private starsState = createRoot(dispose => {
-    this.middlewareHelper.get().onDestroy(() => void dispose());
+    this.lateMiddlewareHelper.get().onDestroy(() => void dispose());
 
     const [store, set] = createStore({
       hasMessage: false,
