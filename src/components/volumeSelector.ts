@@ -110,6 +110,7 @@ export default class VolumeSelector extends RangeSelector {
     e && cancelEvent(e);
 
     const globalMuted = appMediaPlaybackController.muted;
+    const {volume, muted} = this.media ?? {};
 
     if(this.useGlobalVolume) {
       this.modifyGlobal(() => {
@@ -118,8 +119,8 @@ export default class VolumeSelector extends RangeSelector {
     }
 
     this.setVolume({
-      volume: this.media?.volume ?? appMediaPlaybackController.volume,
-      muted: !(this.media?.muted ?? globalMuted),
+      volume: volume ?? appMediaPlaybackController.volume,
+      muted: !(muted ?? globalMuted),
       eventType: 'click'
     });
   }
