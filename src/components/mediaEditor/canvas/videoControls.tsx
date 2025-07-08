@@ -73,7 +73,11 @@ const VideoControls: Component<{}> = () => {
       swiping = 'left';
       initialStart = mediaState.videoCropStart;
       initialLength = mediaState.videoCropLength;
-      setIsDraggingSomething(true);
+
+      batch(() => {
+        setIsDraggingSomething(true);
+        editorState.isPlaying = false;
+      });
     },
     onMove: (xDiff) => void batch(() => {
       if(swiping !== 'left') return;
@@ -92,8 +96,11 @@ const VideoControls: Component<{}> = () => {
     onStart: () => {
       swiping = 'right';
       initialLength = mediaState.videoCropLength;
-      editorState.isPlaying = false;
-      setIsDraggingSomething(true);
+
+      batch(() => {
+        setIsDraggingSomething(true);
+        editorState.isPlaying = false;
+      });
     },
     onMove: (xDiff) => void batch(() => {
       if(swiping !== 'right') return;
@@ -126,10 +133,12 @@ const VideoControls: Component<{}> = () => {
 
       if(Math.abs(xDiff) > MOVE_ACTIVATION_THRESHOLD_PX) canMove = true;
       if(!canMove) return;
-      setIsDraggingSomething(true);
 
       const startDiff = clamp(initialStart + xDiff / strippedWidth(), 0, Math.max(0, 1 - Math.max(initialLength, minLength()))) - initialStart;
       batch(() => {
+        setIsDraggingSomething(true);
+        editorState.isPlaying = false;
+
         mediaState.videoCropStart = initialStart + startDiff;
         // mediaState.videoCropLength = clamp(initialLength - startDiff + xDiff / strippedWidth(), Math.min(1, minLength()), 1 - mediaState.videoCropStart);
 
@@ -159,6 +168,7 @@ const VideoControls: Component<{}> = () => {
   };
 
   const handleCursorMove = (e: PointerEvent | TouchEvent) => {
+    editorState.isPlaying = false;
     actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength));
   };
 
