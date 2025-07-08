@@ -1,5 +1,5 @@
 import {createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
-import createSolidMiddleware from '../../../helpers/solid/createSolidMiddleware';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
 import SwipeHandler from '../../swipeHandler';
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 import {HistoryItem, useMediaEditorContext} from '../context';
@@ -94,7 +94,7 @@ export default function BrushCanvas() {
 
   onMount(async() => {
     if(mediaType !== 'image') return;
-    const middleware = createSolidMiddleware();
+    const middleware = createMiddleware().get();
     setFullImageGLPayload(await initWebGL({gl, mediaSrc, mediaType, videoTime: 0, middleware}));
   });
 

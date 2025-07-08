@@ -1,6 +1,6 @@
 import {createEffect, createReaction, onCleanup, onMount} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
-import createSolidMiddleware from '../../../helpers/solid/createSolidMiddleware';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
 import {useMediaEditorContext} from '../context';
 import {cleanupWebGl, withCurrentOwner} from '../utils';
@@ -46,7 +46,7 @@ export default function ImageCanvas() {
     initVideoPlayback({gl, drawAdjustedImage: ownedDrawAdjustedImage})
   );
 
-  const middleware = createSolidMiddleware();
+  const middleware = createMiddleware().get();
 
   async function init() {
     const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.currentVideoTime, middleware});

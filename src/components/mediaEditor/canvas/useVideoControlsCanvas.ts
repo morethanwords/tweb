@@ -1,8 +1,8 @@
 import {createEffect, onCleanup} from 'solid-js';
 import deferredPromise from '../../../helpers/cancellablePromise';
-import createSolidMiddleware from '../../../helpers/solid/createSolidMiddleware';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {useMediaEditorContext} from '../context';
-import {delay, snapToViewport} from '../utils';
+import {snapToViewport} from '../utils';
 import createVideoForDrawing from './createVideoForDrawing';
 import styles from './videoControls.module.scss';
 
@@ -37,7 +37,7 @@ export default function useVideoControlsCanvas({getCanvas, size}: Args) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     });
 
-    const middleware = createSolidMiddleware();
+    const middleware = createMiddleware().get();
 
     (async() => {
       const video = await createVideoForDrawing(mediaSrc, {currentTime: 0, middleware});
