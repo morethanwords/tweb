@@ -9,6 +9,8 @@
 }
 
 .Label {
+  position: relative;
+
   font-size: 12px;
   font-weight: 500;
 
@@ -17,7 +19,19 @@
 
   color: var(--secondary-text-color);
 
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+
+  &Text {
+    max-width: 100%;
+    padding-right: 4px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .Input {

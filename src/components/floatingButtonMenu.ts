@@ -10,6 +10,7 @@ export type AttachFloatingButtonMenuOptions = {
   offset?: [number, number];
   createMenu: () => HTMLElement | Promise<HTMLElement>;
   canOpen?: () => boolean;
+  onClose?: () => void;
 };
 
 export default function attachFloatingButtonMenu({
@@ -19,7 +20,8 @@ export default function attachFloatingButtonMenu({
   level,
   offset = [0, 0],
   createMenu,
-  canOpen = () => true
+  canOpen = () => true,
+  onClose: onCloseArg
 }: AttachFloatingButtonMenuOptions) {
   let opened = false;
   const listener = (): void => void (async() => {
@@ -32,6 +34,7 @@ export default function attachFloatingButtonMenu({
 
     const onClose = async() => {
       opened = false;
+      onCloseArg?.();
     };
 
     document.body.append(menu);

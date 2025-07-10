@@ -34,6 +34,7 @@ type AvatarInfo = {
 export type ButtonMenuItemOptions = {
   id?: any;
   icon?: Icon,
+  iconElement?: HTMLElement;
   emptyIcon?: boolean,
   iconDoc?: Document.document,
   avatarInfo?: AvatarInfo,
@@ -75,6 +76,7 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   const {
     icon,
     iconDoc,
+    iconElement,
     avatarInfo,
     className,
     text,
@@ -94,7 +96,9 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
     ripple(el);
   }
 
-  if(iconSplitted) {
+  if(iconElement) {
+    el.append(iconElement);
+  } else if(iconSplitted) {
     el.append(Icon(iconSplitted[0] as Icon, 'btn-menu-item-icon'));
   } else if(emptyIcon) {
     const iconPlaceholder = document.createElement('span');

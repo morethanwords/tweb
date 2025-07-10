@@ -27,6 +27,7 @@ import appImManager from '../lib/appManagers/appImManager';
 import assumeType from '../helpers/assumeType';
 import {isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
 import createSubmenuTrigger from '../createSubmenuTrigger';
+import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
 
 
 export default class DialogsContextMenu {
@@ -38,6 +39,7 @@ export default class DialogsContextMenu {
   private dialog: AnyDialog;
   private canManageTopics: boolean;
   private li: HTMLElement;
+  private addToFolderMenu: InstanceType<typeof AddToFolderDropdownMenu>;
 
   constructor(private managers: AppManagers) {
 
@@ -119,7 +121,10 @@ export default class DialogsContextMenu {
       verify: () => this.managers.appMessagesManager.isDialogUnread(this.dialog)
     }, createSubmenuTrigger({
       icon: 'folder',
-      text: 'AddToFolder'
+      text: 'AddToFolder',
+      onClose: () => {
+        this.addToFolderMenu?.controls.closeTooltip?.();
+      }
     }, this.createAddToFolderSubmenu), {
       icon: 'pin',
       text: 'ChatList.Context.Pin',
@@ -245,13 +250,19 @@ export default class DialogsContextMenu {
     return this.buttons = this.buttons.filter(Boolean);
   }
 
-  private async createAddToFolderSubmenu() {
+  private createAddToFolderSubmenu = async() => {
     const {default: AddToFolderDropdownMenu, fetchDialogFilters} = await import('./addToFolderDropdownMenu');
 
     const menu = new AddToFolderDropdownMenu;
-    menu.feedProps({filters: await fetchDialogFilters()});
-    return menu;
-  }
+    menu.feedProps({
+      filters: await fetchDialogFilters(),
+      onCleanup: () => {
+        this.addToFolderMenu = undefined;
+      }
+    });
+
+    return this.addToFolderMenu = menu;
+  };
 
   private onArchiveClick = async() => {
     const dialog = await this.managers.appMessagesManager.getDialogOnly(this.peerId);

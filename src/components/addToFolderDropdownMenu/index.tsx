@@ -5,8 +5,11 @@ import {logger, LogTypes} from '../../lib/logger';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
 import {MyDialogFilter} from '../../lib/storages/filters';
 import {ButtonMenuItem} from '../buttonMenu';
+import Icon from '../icon';
+import {IconTsx} from '../iconTsx';
 import Scrollable from '../scrollable2';
 import {getIconForFilter} from '../sidebarLeft/foldersSidebarContent/utils';
+import showTooltip from '../tooltip';
 import kindaFuzzyFinder from './kindaFuzzyFinder';
 import styles from './styles.module.scss';
 import {fetchDialogFilters, highlightTextNodes, wrapFolderTitleInSpan} from './utils';
@@ -20,16 +23,24 @@ const MIN_FUZZY_SCORE = 0.25;
 
 const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);
 
+/*
+(this.filter as DialogFilter.dialogFilter)[this.type === 'included' ? 'includePeerIds' : 'excludePeerIds'] = peerIds;
+(this.filter as DialogFilter.dialogFilter)[this.type === 'included' ? 'include_peers' : 'exclude_peers'] = await Promise.all(peerIds.map((peerId) => this.managers.appPeersManager.getInputPeerById(peerId)));
+
+'checkround_filled' 'check' 'enter' 'info' 'info2'
+*/
 
 type Props = {
   filters: MyDialogFilter[];
+  onCleanup?: () => void;
 };
 
 const AddToFolderDropdownMenu = defineSolidElement({
   name: 'add-to-folder-dropdown-menu',
-  component: (props: PassedProps<Props>) => {
+  component: (props: PassedProps<Props>, _, controls: {closeTooltip: () => void}) => {
     props.element.classList.add('btn-menu', styles.Container);
 
+    let infoIcon: HTMLElement, label: HTMLDivElement;
     const [search, setSearch] = createSignal('');
 
     const folderItems = createMemo(() => {
@@ -47,7 +58,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
         return {
           textContent: span.textContent,
           buttonMenuItem: ButtonMenuItem({
-            icon: getIconForFilter(filter),
+            iconElement: Icon(getIconForFilter(filter), 'btn-menu-item-icon'),
             textElement: span,
             onClick: () => void 0
           }),
@@ -81,6 +92,37 @@ const AddToFolderDropdownMenu = defineSolidElement({
       });
     });
 
+
+    let closeTooltip = () => {};
+
+    setTimeout(() => {
+      closeTooltip = undefined;
+    }, 200); // wait opening animation
+
+    const onLabelPointerEnter = () => {
+      if(closeTooltip) return;
+      closeTooltip = showTooltip({
+        element: infoIcon,
+        vertical: 'top',
+        textElement: i18n('AddToFolderTip'),
+        lighter: true,
+        auto: true,
+        useOverlay: false,
+        onClose: () => {
+          closeTooltip = undefined;
+        }
+      }).close;
+    };
+
+    controls.closeTooltip = () => {
+      closeTooltip?.();
+    };
+
+    onCleanup(() => {
+      props.onCleanup?.();
+      closeTooltip?.();
+    });
+
     const Items = () => (
       <For each={visibleFolders()}>
         {(folder) => folder.buttonMenuItem}
@@ -91,8 +133,13 @@ const AddToFolderDropdownMenu = defineSolidElement({
       <Show when={props.filters.length > HAVE_SCROLL_WHEN_ABOVE} fallback={<Items />}>
         <div class={styles.ScrollableContainer} style={{'--max-visible-items': MAX_VISIBLE_SCROLL_ITEMS}}>
           <Scrollable withBorders='both'>
-            <div class={styles.Label}>
-              {i18n('AddToFolderSearch')}
+            <div ref={label} class={styles.Label} onPointerEnter={onLabelPointerEnter}>
+              {(() => {
+                const el = i18n('AddToFolderSearch');
+                el.classList.add(styles.LabelText);
+                return el;
+              })()}
+              <IconTsx ref={infoIcon} icon='info' />
               <input
                 class={styles.Input}
                 value={search()}

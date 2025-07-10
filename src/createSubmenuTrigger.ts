@@ -10,7 +10,7 @@ import {i18n} from './lib/langPack';
 let submenuHelperIdSeed = 0;
 
 export default function createSubmenuTrigger(
-  options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'icon' | 'verify' | 'separator'>,
+  options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'icon' | 'verify' | 'separator' | 'onClose'>,
   createSubmenu: () => MaybePromise<HTMLElement>
 ) {
   let isDisabled = false;
@@ -30,7 +30,8 @@ export default function createSubmenuTrigger(
       offset: [-5, -5],
       level: 2,
       triggerEvent: 'mouseenter',
-      canOpen: () => !isDisabled
+      canOpen: () => !isDisabled,
+      onClose: options.onClose
     });
   };
 

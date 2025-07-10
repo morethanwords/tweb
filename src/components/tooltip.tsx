@@ -30,7 +30,8 @@ export default function showTooltip({
   mountOn = document.body,
   relative,
   lighter,
-  rightElement
+  rightElement,
+  useOverlay = mountOn === document.body
 }: {
   element: HTMLElement,
   class?: string,
@@ -47,11 +48,12 @@ export default function showTooltip({
   auto?: boolean,
   mountOn?: HTMLElement,
   relative?: boolean,
-  lighter?: boolean // When opening a tooltip in dark mode on a surface
+  lighter?: boolean, // When opening a tooltip in dark mode on a surface
+  useOverlay?: boolean
 }) {
   const containerRect = !relative && container.getBoundingClientRect();
   const elementRect = !relative &&  element.getBoundingClientRect();
-  const useOverlay = mountOn === document.body;
+
   let close: () => void;
   createRoot((dispose) => {
     const [getRect, setRect] = createSignal<DOMRect>();
