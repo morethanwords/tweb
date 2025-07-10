@@ -1,9 +1,9 @@
 import {onCleanup} from 'solid-js';
-import {Middleware} from '../../../helpers/middleware';
-import {TextWithEntities} from '../../../layer';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '../../../lib/mtproto/mtproto_config';
-import rootScope from '../../../lib/rootScope';
-import wrapFolderTitle from '../../wrappers/folderTitle';
+import {Middleware} from '../../helpers/middleware';
+import {TextWithEntities} from '../../layer';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '../../lib/mtproto/mtproto_config';
+import rootScope from '../../lib/rootScope';
+import wrapFolderTitle from '../wrappers/folderTitle';
 import styles from './styles.module.scss';
 
 

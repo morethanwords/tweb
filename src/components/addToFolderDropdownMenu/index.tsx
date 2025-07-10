@@ -1,12 +1,12 @@
 import {createMemo, createSignal, For, onCleanup, Show} from 'solid-js';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
-import {i18n} from '../../../lib/langPack';
-import {logger, LogTypes} from '../../../lib/logger';
-import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
-import {MyDialogFilter} from '../../../lib/storages/filters';
-import {ButtonMenuItem} from '../../buttonMenu';
-import Scrollable from '../../scrollable2';
-import {getIconForFilter} from '../../sidebarLeft/foldersSidebarContent/utils';
+import createMiddleware from '../../helpers/solid/createMiddleware';
+import {i18n} from '../../lib/langPack';
+import {logger, LogTypes} from '../../lib/logger';
+import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
+import {MyDialogFilter} from '../../lib/storages/filters';
+import {ButtonMenuItem} from '../buttonMenu';
+import Scrollable from '../scrollable2';
+import {getIconForFilter} from '../sidebarLeft/foldersSidebarContent/utils';
 import kindaFuzzyFinder from './kindaFuzzyFinder';
 import styles from './styles.module.scss';
 import {fetchDialogFilters, highlightTextNodes, wrapFolderTitleInSpan} from './utils';
@@ -97,6 +97,9 @@ const AddToFolderDropdownMenu = defineSolidElement({
                 class={styles.Input}
                 value={search()}
                 onInput={e => void setSearch(e.target.value)}
+                onBlur={(e) => {
+                  e.target.focus();
+                }}
                 ref={el => {
                   setTimeout(() => {
                     el.focus();
