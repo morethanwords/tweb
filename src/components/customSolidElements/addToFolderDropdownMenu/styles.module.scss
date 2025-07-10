@@ -30,8 +30,44 @@
   pointer-events: none;
 }
 
-.Highlight {
+.Char {
+  --border-radius: 4px;
+  --border-width: 1px;
+
   background-color: hsl(from var(--primary-color) h s calc(l + 20) / 0.25);
-  border: 1px solid hsl(from var(--primary-color) h s calc(l + 10));
-  border-radius: 4px;
+  border-style: solid;
+  border-color: hsl(from var(--primary-color) h s calc(l + 10));
+  border-width: 0px;
+
+  &.single {
+    border-radius: var(--border-radius);
+    border-width: var(--border-width);
+  }
+
+  &.middle {
+    border-top-width: var(--border-width);
+    border-bottom-width: var(--border-width);
+  }
+
+  &.start {
+    border-top-left-radius: var(--border-radius);
+    border-bottom-left-radius: var(--border-radius);
+
+    border-top-width: var(--border-width);
+    border-bottom-width: var(--border-width);
+    border-left-width: var(--border-width);
+  }
+
+  &.end {
+    border-top-right-radius: var(--border-radius);
+    border-bottom-right-radius: var(--border-radius);
+
+    border-top-width: var(--border-width);
+    border-bottom-width: var(--border-width);
+    border-right-width: var(--border-width);
+  }
+}
+
+.Hidden {
+  display: none;
 }
