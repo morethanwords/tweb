@@ -1,4 +1,4 @@
-import {createComputed, createEffect, createMemo, createSelector, createSignal, For, onCleanup, Show} from 'solid-js';
+import {createComputed, createEffect, createMemo, createSelector, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import assumeType from '../../helpers/assumeType';
@@ -54,7 +54,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
 
     type FolderItem = ReturnType<typeof folderItems>[number];
 
-    let infoIcon: HTMLElement, label: HTMLDivElement;
+    let infoIcon: HTMLElement, label: HTMLDivElement, thumb: HTMLDivElement;
     const [search, setSearch] = createSignal('');
     const [selected, setSelected] = createSignal<number>();
     const [selectableFolders, setSelectableFolders] = createSignal<FolderItem[]>([]);
@@ -250,6 +250,12 @@ const AddToFolderDropdownMenu = defineSolidElement({
       closeTooltip = noop; // prevent further opening of the tooltip
     };
 
+    onMount(() => {
+      thumb?.addEventListener(CLICK_EVENT_NAME, e => {
+        e.stopPropagation();
+      }, true);
+    });
+
     const cleanupEscapeHandler = appNavigationController.registerEscapeHandler(() => !search());
 
     onCleanup(() => {
@@ -281,7 +287,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
               }, 100);
             }}
           />
-          <Scrollable withBorders='both'>
+          <Scrollable thumbRef={(el) => void (thumb = el)} withBorders='both'>
             <div ref={label} class={styles.Label} onPointerEnter={onLabelPointerEnter}>
               {(() => {
                 const el = i18n('AddToFolderSearch');
