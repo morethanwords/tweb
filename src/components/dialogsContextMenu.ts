@@ -255,6 +255,7 @@ export default class DialogsContextMenu {
 
     const menu = new AddToFolderDropdownMenu;
     menu.feedProps({
+      dialog: this.dialog,
       filters: await fetchDialogFilters(),
       onCleanup: () => {
         this.addToFolderMenu = undefined;

@@ -1,18 +1,24 @@
-import {createMemo, createSignal, For, onCleanup, Show} from 'solid-js';
+import {createMemo, createSelector, createSignal, For, onCleanup, Show} from 'solid-js';
+import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
+import assumeType from '../../helpers/assumeType';
+import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
+import noop from '../../helpers/noop';
 import createMiddleware from '../../helpers/solid/createMiddleware';
+import {Dialog} from '../../layer';
 import {i18n} from '../../lib/langPack';
 import {logger, LogTypes} from '../../lib/logger';
+import rootScope from '../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
 import {MyDialogFilter} from '../../lib/storages/filters';
-import {ButtonMenuItem} from '../buttonMenu';
+import {ButtonMenuItem, ButtonMenuItemOptions} from '../buttonMenu';
 import {IconTsx} from '../iconTsx';
 import Scrollable from '../scrollable2';
 import {getIconForFilter} from '../sidebarLeft/foldersSidebarContent/utils';
 import showTooltip from '../tooltip';
 import kindaFuzzyFinder from './kindaFuzzyFinder';
 import styles from './styles.module.scss';
-import {fetchDialogFilters, highlightTextNodes, wrapFolderTitleInSpan} from './utils';
+import {addToFilter, fetchDialogFilters, highlightTextNodes, removeFromFilter, wrapFolderTitleInSpan} from './utils';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -31,9 +37,11 @@ const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);
 */
 
 type Props = {
+  dialog: any; // TODO: What is the difference between Dialog And SavedDialog ??
   filters: MyDialogFilter[];
   onCleanup?: () => void;
 };
+
 
 const AddToFolderDropdownMenu = defineSolidElement({
   name: 'add-to-folder-dropdown-menu',
@@ -43,9 +51,30 @@ const AddToFolderDropdownMenu = defineSolidElement({
     let infoIcon: HTMLElement, label: HTMLDivElement;
     const [search, setSearch] = createSignal('');
 
-    const [selected, setSelected] = createSignal(-1);
+    const isInFilter = createSelector(() => props.dialog, (filter: MyDialogFilter, dialog) => {
+      const key = `index_${filter.localId}` as const;
+      assumeType<Dialog.dialog>(props.dialog);
+      return !!props.dialog?.[key];
+    });
 
-    (window as any).setSelected = setSelected;
+    let hasRequestInProgress = false;
+
+    async function toggleDialogInFilter(filter: MyDialogFilter) {
+      if(hasRequestInProgress) return;
+
+      assumeType<Dialog.dialog>(props.dialog);
+      const unwrapped = unwrap(filter);
+
+      hasRequestInProgress = true;
+
+      try {
+        await (isInFilter(filter) ? removeFromFilter(unwrapped, props.dialog.peerId) : addToFilter(unwrapped, props.dialog.peerId));
+        const newDialog = await rootScope.managers.dialogsStorage.getAnyDialog(props.dialog.peerId);
+        props.dialog = newDialog;
+      } catch{} finally {
+        hasRequestInProgress = false;
+      }
+    }
 
     const folderItems = createMemo(() => {
       const middleware = createMiddleware();
@@ -59,24 +88,38 @@ const AddToFolderDropdownMenu = defineSolidElement({
       return props.filters.map((filter, i) => {
         const {span, charSpansGroups} = wrapFolderTitleInSpan(filter.title, middleware.get());
 
+        const options: ButtonMenuItemOptions = {
+          iconElement: (
+            <span class={`btn-menu-item-icon ${styles.Item}`}>
+              <IconTsx icon={getIconForFilter(filter)} class={styles.ItemIcon} />
+              <Transition
+                enterActiveClass={styles.AppearZoomEnterActive}
+                exitActiveClass={styles.AppearZoomEnterActive}
+                enterClass={styles.AppearZoomEnter}
+                exitToClass={styles.AppearZoomExitTo}
+              >
+                <Show when={isInFilter(filter)}>
+                  <span class={styles.ItemCheck}>
+                    <IconTsx icon='check' />
+                  </span>
+                </Show>
+              </Transition>
+            </span>
+          ) as HTMLSpanElement,
+          textElement: span,
+          onClick: noop
+        };
+
+        const buttonMenuItem = ButtonMenuItem(options);
+
+        options.element?.addEventListener(CLICK_EVENT_NAME, async(e) => {
+          e.stopPropagation();
+          toggleDialogInFilter(filter);
+        }, true);
+
         return {
           textContent: span.textContent,
-          buttonMenuItem: ButtonMenuItem({
-            iconElement: (
-              <span class={`btn-menu-item-icon ${styles.Item}`}>
-                <IconTsx icon={getIconForFilter(filter)} class={styles.ItemIcon} />
-                <Transition enterActiveClass={styles.AppearZoomEnterActive} exitActiveClass={styles.AppearZoomEnterActive} enterClass={styles.AppearZoomEnter} exitToClass={styles.AppearZoomExitTo}>
-                  <Show when={selected() === i}>
-                    <span class={styles.ItemCheck}>
-                      <IconTsx icon='check' />
-                    </span>
-                  </Show>
-                </Transition>
-              </span>
-            ) as HTMLSpanElement,
-            textElement: span,
-            onClick: () => void 0
-          }),
+          buttonMenuItem,
           charSpansGroups
         };
       });
