@@ -13,6 +13,7 @@ import rootScope from '../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
 import {AnyDialog} from '../../lib/storages/dialogs';
 import {MyDialogFilter} from '../../lib/storages/filters';
+import appNavigationController from '../appNavigationController';
 import {ButtonMenuItem, ButtonMenuItemOptions} from '../buttonMenu';
 import {IconTsx} from '../iconTsx';
 import Scrollable from '../scrollable2';
@@ -227,6 +228,11 @@ const AddToFolderDropdownMenu = defineSolidElement({
     const onInputKeyDown = (e: KeyboardEvent) => {
       if(['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'Enter'].includes(e.code)) e.preventDefault();
 
+      if(e.code === 'Escape') {
+        if(search()) setSearch('');
+        else contextMenuController.close();
+      }
+
       if(e.code === 'Enter' && selectedFilter()) {
         toggleDialogInFilter(selectedFilter());
         if(!e.shiftKey) contextMenuController.close();
@@ -244,9 +250,12 @@ const AddToFolderDropdownMenu = defineSolidElement({
       closeTooltip = noop; // prevent further opening of the tooltip
     };
 
+    const cleanupEscapeHandler = appNavigationController.registerEscapeHandler(() => !search());
+
     onCleanup(() => {
       props.onCleanup?.();
       closeTooltip?.();
+      cleanupEscapeHandler();
     });
 
     const Items = () => (
