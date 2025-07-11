@@ -257,6 +257,20 @@ const AddToFolderDropdownMenu = defineSolidElement({
     return (
       <Show when={props.filters.length > HAVE_SCROLL_WHEN_ABOVE} fallback={<Items />}>
         <div class={styles.ScrollableContainer} style={{'--max-visible-items': MAX_VISIBLE_SCROLL_ITEMS}}>
+          <input
+            class={styles.Input}
+            value={search()}
+            onInput={e => void setSearch(e.target.value)}
+            onBlur={(e) => {
+              e.target.focus();
+            }}
+            onKeyDown={onInputKeyDown}
+            ref={el => {
+              setTimeout(() => {
+                el.focus();
+              }, 100);
+            }}
+          />
           <Scrollable withBorders='both'>
             <div ref={label} class={styles.Label} onPointerEnter={onLabelPointerEnter}>
               {(() => {
@@ -265,20 +279,6 @@ const AddToFolderDropdownMenu = defineSolidElement({
                 return el;
               })()}
               <IconTsx ref={infoIcon} icon='info' />
-              <input
-                class={styles.Input}
-                value={search()}
-                onInput={e => void setSearch(e.target.value)}
-                onBlur={(e) => {
-                  e.target.focus();
-                }}
-                onKeyDown={onInputKeyDown}
-                ref={el => {
-                  setTimeout(() => {
-                    el.focus();
-                  }, 100);
-                }}
-              />
             </div>
 
             <Items />
