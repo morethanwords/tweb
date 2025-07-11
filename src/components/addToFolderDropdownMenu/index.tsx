@@ -1,11 +1,11 @@
 import {createMemo, createSignal, For, onCleanup, Show} from 'solid-js';
+import {Transition} from 'solid-transition-group';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import {i18n} from '../../lib/langPack';
 import {logger, LogTypes} from '../../lib/logger';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
 import {MyDialogFilter} from '../../lib/storages/filters';
 import {ButtonMenuItem} from '../buttonMenu';
-import Icon from '../icon';
 import {IconTsx} from '../iconTsx';
 import Scrollable from '../scrollable2';
 import {getIconForFilter} from '../sidebarLeft/foldersSidebarContent/utils';
@@ -43,6 +43,10 @@ const AddToFolderDropdownMenu = defineSolidElement({
     let infoIcon: HTMLElement, label: HTMLDivElement;
     const [search, setSearch] = createSignal('');
 
+    const [selected, setSelected] = createSignal(-1);
+
+    (window as any).setSelected = setSelected;
+
     const folderItems = createMemo(() => {
       const middleware = createMiddleware();
       log.debug('creating folder items');
@@ -52,13 +56,24 @@ const AddToFolderDropdownMenu = defineSolidElement({
         middleware.destroy();
       });
 
-      return props.filters.map(filter => {
+      return props.filters.map((filter, i) => {
         const {span, charSpansGroups} = wrapFolderTitleInSpan(filter.title, middleware.get());
 
         return {
           textContent: span.textContent,
           buttonMenuItem: ButtonMenuItem({
-            iconElement: Icon(getIconForFilter(filter), 'btn-menu-item-icon'),
+            iconElement: (
+              <span class={`btn-menu-item-icon ${styles.Item}`}>
+                <IconTsx icon={getIconForFilter(filter)} class={styles.ItemIcon} />
+                <Transition enterActiveClass={styles.AppearZoomEnterActive} exitActiveClass={styles.AppearZoomEnterActive} enterClass={styles.AppearZoomEnter} exitToClass={styles.AppearZoomExitTo}>
+                  <Show when={selected() === i}>
+                    <span class={styles.ItemCheck}>
+                      <IconTsx icon='check' />
+                    </span>
+                  </Show>
+                </Transition>
+              </span>
+            ) as HTMLSpanElement,
             textElement: span,
             onClick: () => void 0
           }),

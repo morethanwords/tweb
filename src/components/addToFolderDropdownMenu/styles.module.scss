@@ -1,3 +1,6 @@
+@import '../../scss/variables';
+@import '../../scss/mixins';
+
 .Container {
   overflow: hidden;
 }
@@ -84,4 +87,36 @@
 
 .Hidden {
   display: none;
+}
+
+.Item {
+  position: relative;
+
+  &Check {
+    position: absolute;
+    right: -5px;
+    bottom: -2px;
+
+    font-size: 12px;
+    line-height: 1;
+
+    display: flex;
+    color: var(--surface-color);
+    background-color: var(--primary-text-color);
+
+    border-radius: 50%;
+    border: 1px solid var(--surface-color);
+  }
+}
+
+.AppearZoom {
+  &EnterActive, &ExitActive {
+    @include animation-level-global(2) {
+      transition: transform 0.1s ease-out;
+    }
+  }
+
+  &Enter, &ExitTo {
+    transform: scale(0);
+  }
 }
