@@ -2,13 +2,20 @@
 @import '../../scss/mixins';
 
 .Container {
+  min-width: 12rem !important;
   overflow: hidden;
 }
 
 .ScrollableContainer {
   padding: inherit;
   position: relative;
-  height: calc(32px * var(--max-visible-items, 8) + 10px);
+
+  --aditional-height: 18px;
+  height: calc(32px * var(--max-visible-items, 8) + var(--aditional-height, 18px));
+
+  &.mobile {
+    --aditional-height: 0px;
+  }
 }
 
 .Label {

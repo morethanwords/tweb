@@ -1,6 +1,7 @@
 import {createComputed, createEffect, createMemo, createSelector, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
+import {IS_MOBILE} from '../../environment/userAgent';
 import assumeType from '../../helpers/assumeType';
 import contextMenuController from '../../helpers/contextMenuController';
 import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
@@ -200,7 +201,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
     });
 
     createEffect(() => {
-      if(typeof selected() !== 'number') label.scrollIntoView({block: 'center'});
+      if(typeof selected() !== 'number') label?.scrollIntoView({block: 'center'});
     });
 
 
@@ -272,30 +273,40 @@ const AddToFolderDropdownMenu = defineSolidElement({
 
     return (
       <Show when={props.filters.length > HAVE_SCROLL_WHEN_ABOVE} fallback={<Items />}>
-        <div class={styles.ScrollableContainer} style={{'--max-visible-items': MAX_VISIBLE_SCROLL_ITEMS}}>
-          <input
-            class={styles.Input}
-            value={search()}
-            onInput={e => void setSearch(e.target.value)}
-            onBlur={(e) => {
-              e.target.focus();
-            }}
-            onKeyDown={onInputKeyDown}
-            ref={el => {
-              setTimeout(() => {
-                el.focus();
-              }, 100);
-            }}
-          />
+        <div
+          class={styles.ScrollableContainer}
+          classList={{
+            [styles.mobile]: IS_MOBILE
+          }}
+          style={{'--max-visible-items': MAX_VISIBLE_SCROLL_ITEMS}}
+        >
+          <Show when={!IS_MOBILE}>
+            <input
+              class={styles.Input}
+              value={search()}
+              onInput={e => void setSearch(e.target.value)}
+              onBlur={(e) => {
+                e.target.focus();
+              }}
+              onKeyDown={onInputKeyDown}
+              ref={el => {
+                setTimeout(() => {
+                  el.focus();
+                }, 100);
+              }}
+            />
+          </Show>
           <Scrollable thumbRef={(el) => void (thumb = el)} withBorders='both'>
-            <div ref={label} class={styles.Label} onPointerEnter={onLabelPointerEnter}>
-              {(() => {
-                const el = i18n('AddToFolderSearch');
-                el.classList.add(styles.LabelText);
-                return el;
-              })()}
-              <IconTsx ref={infoIcon} icon='info' />
-            </div>
+            <Show when={!IS_MOBILE}>
+              <div ref={label} class={styles.Label} onPointerEnter={onLabelPointerEnter}>
+                {(() => {
+                  const el = i18n('AddToFolderSearch');
+                  el.classList.add(styles.LabelText);
+                  return el;
+                })()}
+                <IconTsx ref={infoIcon} icon='info' />
+              </div>
+            </Show>
 
             <Items />
           </Scrollable>
