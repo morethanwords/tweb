@@ -11,6 +11,7 @@ import {i18n} from '../../lib/langPack';
 import {logger, LogTypes} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
+import {AnyDialog} from '../../lib/storages/dialogs';
 import {MyDialogFilter} from '../../lib/storages/filters';
 import {ButtonMenuItem, ButtonMenuItemOptions} from '../buttonMenu';
 import {IconTsx} from '../iconTsx';
@@ -38,9 +39,10 @@ const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);
 */
 
 type Props = {
-  dialog: any; // TODO: What is the difference between Dialog And SavedDialog ??
+  dialog: AnyDialog; // TODO: What is the difference between Dialog And SavedDialog ??
   filters: MyDialogFilter[];
   onCleanup?: () => void;
+  onNewDialog?: (dialog: AnyDialog) => void;
 };
 
 
@@ -79,6 +81,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
         await (isInFilter(filter) ? removeFromFilter(unwrapped, props.dialog.peerId) : addToFilter(unwrapped, props.dialog.peerId));
         const newDialog = await rootScope.managers.dialogsStorage.getAnyDialog(props.dialog.peerId);
         props.dialog = newDialog;
+        props.onNewDialog?.(newDialog);
       } catch{} finally {
         hasRequestInProgress = false;
       }

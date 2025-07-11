@@ -257,6 +257,9 @@ export default class DialogsContextMenu {
     menu.feedProps({
       dialog: this.dialog,
       filters: await fetchDialogFilters(),
+      onNewDialog: (dialog) => {
+        this.dialog = dialog;
+      },
       onCleanup: () => {
         this.addToFolderMenu = undefined;
       }
