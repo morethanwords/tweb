@@ -90,22 +90,39 @@
 }
 
 .Item {
-  position: relative;
+  &.selected {
+    background-color: var(--light-secondary-text-color);
+  }
 
-  &Check {
-    position: absolute;
-    right: -5px;
-    bottom: -2px;
-
-    font-size: 12px;
-    line-height: 1;
-
+  &Label {
+    width: 100%;
     display: flex;
-    color: var(--surface-color);
-    background-color: var(--primary-text-color);
+    gap: 6px;
+    align-items: center;
+    justify-content: space-between;
 
-    border-radius: 50%;
-    border: 1px solid var(--surface-color);
+    &Enter {
+      opacity: 0.5;
+    }
+  }
+
+  &Icon {
+    position: relative;
+    &Check {
+      position: absolute;
+      right: -5px;
+      bottom: -2px;
+
+      font-size: 12px;
+      line-height: 1;
+
+      display: flex;
+      color: var(--surface-color);
+      background-color: var(--primary-text-color);
+
+      border-radius: 50%;
+      border: 1px solid var(--surface-color);
+    }
   }
 }
 

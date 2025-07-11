@@ -1,7 +1,8 @@
-import {createMemo, createSelector, createSignal, For, onCleanup, Show} from 'solid-js';
+import {createComputed, createEffect, createMemo, createSelector, createSignal, For, onCleanup, Show} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import assumeType from '../../helpers/assumeType';
+import contextMenuController from '../../helpers/contextMenuController';
 import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import noop from '../../helpers/noop';
 import createMiddleware from '../../helpers/solid/createMiddleware';
@@ -48,8 +49,12 @@ const AddToFolderDropdownMenu = defineSolidElement({
   component: (props: PassedProps<Props>, _, controls: {closeTooltip: () => void}) => {
     props.element.classList.add('btn-menu', styles.Container);
 
+    type FolderItem = ReturnType<typeof folderItems>[number];
+
     let infoIcon: HTMLElement, label: HTMLDivElement;
     const [search, setSearch] = createSignal('');
+    const [selected, setSelected] = createSignal<number>();
+    const [selectableFolders, setSelectableFolders] = createSignal<FolderItem[]>([]);
 
     const isInFilter = createSelector(() => props.dialog, (filter: MyDialogFilter, dialog) => {
       const key = `index_${filter.localId}` as const;
@@ -57,10 +62,13 @@ const AddToFolderDropdownMenu = defineSolidElement({
       return !!props.dialog?.[key];
     });
 
+    const selectedFilter = createMemo(() => selectableFolders()[selected()]?.filter);
+    const isSelected = createSelector(() => selectedFilter()?.id);
+
     let hasRequestInProgress = false;
 
     async function toggleDialogInFilter(filter: MyDialogFilter) {
-      if(hasRequestInProgress) return;
+      if(hasRequestInProgress || !filter) return;
 
       assumeType<Dialog.dialog>(props.dialog);
       const unwrapped = unwrap(filter);
@@ -85,13 +93,14 @@ const AddToFolderDropdownMenu = defineSolidElement({
         middleware.destroy();
       });
 
-      return props.filters.map((filter, i) => {
+      return props.filters.map((filter) => {
         const {span, charSpansGroups} = wrapFolderTitleInSpan(filter.title, middleware.get());
+        span.classList.add(styles.ItemLabelText);
 
         const options: ButtonMenuItemOptions = {
           iconElement: (
-            <span class={`btn-menu-item-icon ${styles.Item}`}>
-              <IconTsx icon={getIconForFilter(filter)} class={styles.ItemIcon} />
+            <span class={`btn-menu-item-icon ${styles.ItemIcon}`}>
+              <IconTsx icon={getIconForFilter(filter)} />
               <Transition
                 enterActiveClass={styles.AppearZoomEnterActive}
                 exitActiveClass={styles.AppearZoomEnterActive}
@@ -99,34 +108,53 @@ const AddToFolderDropdownMenu = defineSolidElement({
                 exitToClass={styles.AppearZoomExitTo}
               >
                 <Show when={isInFilter(filter)}>
-                  <span class={styles.ItemCheck}>
+                  <span class={styles.ItemIconCheck}>
                     <IconTsx icon='check' />
                   </span>
                 </Show>
               </Transition>
             </span>
           ) as HTMLSpanElement,
-          textElement: span,
+          textElement: (
+            <span class={styles.ItemLabel}>
+              {span}
+              <Show when={isSelected(filter.id)}>
+                <IconTsx icon='enter' class={styles.ItemLabelEnter} />
+              </Show>
+            </span>
+          ) as HTMLSpanElement,
           onClick: noop
         };
 
         const buttonMenuItem = ButtonMenuItem(options);
 
         options.element?.addEventListener(CLICK_EVENT_NAME, async(e) => {
-          e.stopPropagation();
+          if(e.shiftKey) e.stopPropagation();
           toggleDialogInFilter(filter);
         }, true);
+        options.element?.classList.add(styles.Item);
+
+        createEffect(() => {
+          if(!isSelected(filter.id)) return;
+          options.element?.classList.add(styles.selected);
+          onCleanup(() => void options.element?.classList.remove(styles.selected));
+        });
 
         return {
+          filter,
           textContent: span.textContent,
           buttonMenuItem,
+          element: options.element,
           charSpansGroups
         };
       });
     });
 
-    const visibleFolders = createMemo(() => {
-      if(!search()) return folderItems();
+    const renderedFolders = createMemo(() => {
+      if(!search()) return {
+        folders: folderItems(),
+        visibleFoldersCount: folderItems().length
+      };
 
       const fuzziedFolders = folderItems().map((src) => ({
         finderResult: kindaFuzzyFinder(src.textContent, search()),
@@ -138,20 +166,41 @@ const AddToFolderDropdownMenu = defineSolidElement({
           score1 === score2 ? (found1[0] || 0) - (found2[0] || 0) : score2 - score1
       );
 
-      return sortedFolders.map(({src, finderResult}) => {
-        if(finderResult.score < MIN_FUZZY_SCORE) {
-          src.buttonMenuItem.forEach(el => el.classList.add(styles.Hidden));
-          onCleanup(() => void src.buttonMenuItem.forEach(el => el.classList.remove(styles.Hidden)))
+      setSelected(0);
+      onCleanup(() => void setSelected());
+
+      const visibleFoldersCount = sortedFolders.filter(({src, finderResult}) => {
+        if(finderResult.score >= MIN_FUZZY_SCORE) {
+          createEffect(() => {
+            if(isSelected(src.filter.id)) src.element.scrollIntoView({block: 'center'});
+          });
+
+          highlightTextNodes(src.charSpansGroups, finderResult.found);
+
+          return true;
         }
 
-        highlightTextNodes(src.charSpansGroups, finderResult.found);
+        src.buttonMenuItem.forEach(el => el.classList.add(styles.Hidden));
+        onCleanup(() => void src.buttonMenuItem.forEach(el => el.classList.remove(styles.Hidden)))
+      }).length;
 
-        return src;
-      });
+      return {
+        folders: sortedFolders.map(({src}) => src),
+        visibleFoldersCount
+      };
+    });
+
+    // Prevent calling renderedFolders before initialization
+    createComputed(() => {
+      setSelectableFolders(renderedFolders().folders);
+    });
+
+    createEffect(() => {
+      if(typeof selected() !== 'number') label.scrollIntoView({block: 'center'});
     });
 
 
-    let closeTooltip = () => {};
+    let closeTooltip = () => { };
 
     setTimeout(() => {
       closeTooltip = undefined;
@@ -172,6 +221,21 @@ const AddToFolderDropdownMenu = defineSolidElement({
       }).close;
     };
 
+    const onInputKeyDown = (e: KeyboardEvent) => {
+      if(['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'Enter'].includes(e.code)) e.preventDefault();
+
+      if(e.code === 'Enter' && selectedFilter()) {
+        toggleDialogInFilter(selectedFilter());
+        if(!e.shiftKey) contextMenuController.close();
+        return;
+      }
+
+      if(typeof selected() !== 'number') return;
+
+      const increment = ['ArrowUp', 'ArrowLeft'].includes(e.code) ? -1 : ['ArrowDown', 'ArrowRight'].includes(e.code) ? 1 : 0;
+      setSelected(prev => (prev + increment + renderedFolders().visibleFoldersCount) % renderedFolders().visibleFoldersCount)
+    };
+
     controls.closeTooltip = () => {
       closeTooltip?.();
     };
@@ -182,7 +246,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
     });
 
     const Items = () => (
-      <For each={visibleFolders()}>
+      <For each={renderedFolders().folders}>
         {(folder) => folder.buttonMenuItem}
       </For>
     );
@@ -205,6 +269,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
                 onBlur={(e) => {
                   e.target.focus();
                 }}
+                onKeyDown={onInputKeyDown}
                 ref={el => {
                   setTimeout(() => {
                     el.focus();

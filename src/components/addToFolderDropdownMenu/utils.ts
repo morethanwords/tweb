@@ -2,12 +2,15 @@ import {onCleanup} from 'solid-js';
 import {Middleware} from '../../helpers/middleware';
 import {TextWithEntities} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import {logger, LogTypes} from '../../lib/logger';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '../../lib/mtproto/mtproto_config';
 import rootScope from '../../lib/rootScope';
 import {MyDialogFilter} from '../../lib/storages/filters';
 import wrapFolderTitle from '../wrappers/folderTitle';
 import styles from './styles.module.scss';
 
+
+const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);
 
 export async function fetchDialogFilters() {
   const filters = await rootScope.managers.filtersStorage.getDialogFilters();
@@ -23,6 +26,7 @@ export async function fetchDialogFilters() {
 const p = (p: PeerId) => Math.abs(p);
 
 export async function addToFilter(filter: MyDialogFilter, peerId: PeerId) {
+  log.debug('addToFilter before', filter);
   filter = {...filter};
 
   if(filter._ === 'dialogFilter') {
@@ -37,10 +41,13 @@ export async function addToFilter(filter: MyDialogFilter, peerId: PeerId) {
     filter.include_peers = [...(filter.include_peers || []).filter(inputPeer => p(getPeerId(inputPeer)) !== p(peerId)), await rootScope.managers.appPeersManager.getInputPeerById(peerId)];
   }
 
+  log.debug('addToFilter before', filter);
+
   await rootScope.managers.filtersStorage.updateDialogFilter(filter);
 }
 
 export async function removeFromFilter(filter: MyDialogFilter, peerId: PeerId) {
+  log.debug('removeFromFilter before', filter);
   filter = {...filter};
 
   filter.includePeerIds = filter.includePeerIds?.filter(includedPeerId => p(peerId) !== p(includedPeerId));
@@ -51,8 +58,10 @@ export async function removeFromFilter(filter: MyDialogFilter, peerId: PeerId) {
 
   if(filter._ === 'dialogFilter') {
     filter.excludePeerIds = [...(filter.excludePeerIds || []).filter(excludedPeerId => p(excludedPeerId) !== p(peerId)), peerId];
-    filter.exclude_peers = [...(filter.include_peers || []).filter(inputPeer => p(getPeerId(inputPeer)) !== p(peerId)), await rootScope.managers.appPeersManager.getInputPeerById(peerId)];
+    filter.exclude_peers = [...(filter.exclude_peers || []).filter(inputPeer => p(getPeerId(inputPeer)) !== p(peerId)), await rootScope.managers.appPeersManager.getInputPeerById(peerId)];
   }
+
+  log.debug('removeFromFilter after', filter);
 
   await rootScope.managers.filtersStorage.updateDialogFilter(filter);
 }
