@@ -25,7 +25,7 @@ import IS_SHARED_WORKER_SUPPORTED from '../environment/sharedWorkerSupport';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import appImManager from '../lib/appManagers/appImManager';
 import assumeType from '../helpers/assumeType';
-import {isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
+import {isDialog, isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
 import createSubmenuTrigger from '../createSubmenuTrigger';
 import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
 
@@ -124,7 +124,8 @@ export default class DialogsContextMenu {
       text: 'AddToFolder',
       onClose: () => {
         this.addToFolderMenu?.controls.closeTooltip?.();
-      }
+      },
+      verify: () => isDialog(this.dialog)
     }, this.createAddToFolderSubmenu), {
       icon: 'pin',
       text: 'ChatList.Context.Pin',
@@ -251,6 +252,8 @@ export default class DialogsContextMenu {
   }
 
   private createAddToFolderSubmenu = async() => {
+    if(!isDialog(this.dialog)) return;
+
     const {default: AddToFolderDropdownMenu, fetchDialogFilters} = await import('./addToFolderDropdownMenu');
 
     const menu = new AddToFolderDropdownMenu;
