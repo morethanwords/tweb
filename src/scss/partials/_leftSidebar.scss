@@ -86,6 +86,12 @@
       .stories-list {
         display: none;
       }
+
+      .topics-container.is-floating {
+        .sidebar-content, .sidebar-header {
+          width: calc(var(--sidebar-max-width) - var(--offset) - 1px);
+        }
+      }
     }
 
     &.is-collapsed:not(.has-real-tabs) {
