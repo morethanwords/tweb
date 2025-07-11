@@ -101,6 +101,10 @@
     align-items: center;
     justify-content: space-between;
 
+    &Text {
+      --custom-emoji-size: 1.25em;
+    }
+
     &Enter {
       opacity: 0.5;
     }
@@ -108,6 +112,7 @@
 
   &Icon {
     position: relative;
+
     &Check {
       position: absolute;
       right: -5px;
@@ -129,7 +134,7 @@
 .AppearZoom {
   &EnterActive, &ExitActive {
     @include animation-level-global(2) {
-      transition: transform 0.1s ease-out;
+      transition: transform 0.1s;
     }
   }
 
