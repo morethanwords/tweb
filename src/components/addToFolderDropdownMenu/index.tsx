@@ -203,7 +203,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
     });
 
 
-    let closeTooltip = () => { };
+    let closeTooltip = noop;
 
     setTimeout(() => {
       closeTooltip = undefined;
@@ -241,6 +241,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
 
     controls.closeTooltip = () => {
       closeTooltip?.();
+      closeTooltip = noop; // prevent further opening of the tooltip
     };
 
     onCleanup(() => {
