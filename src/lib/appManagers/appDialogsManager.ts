@@ -445,7 +445,7 @@ class ForumTab extends SliderSuperTabEventable {
 
   private log: ReturnType<typeof logger>;
 
-  private xd: Some3;
+  public xd: Some3;
 
   public async toggle(value: boolean) {
     if(this.init2) {
@@ -1897,11 +1897,13 @@ export class AppDialogsManager {
         }
       }
 
-      const elements = Array.from(document.querySelectorAll(`[data-autonomous="0"] .chatlist-chat[data-peer-id="${peerId}"]`)) as HTMLElement[];
-      elements.forEach((element) => {
-        const elementThreadId = +element.dataset.threadId || undefined;
+      const elements = [this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId)].filter(Boolean);
+
+      elements.forEach(element => {
+        if(!element?.dom?.listEl) return;
+        const elementThreadId = +element?.dom?.listEl?.dataset?.threadId || undefined;
         if(appImManager.isSamePeer({peerId, threadId: elementThreadId}, options)) {
-          this.setDialogActive(element, true);
+          this.setDialogActive(element.dom?.listEl, true);
         }
       });
       // this.log('peer_changed total time:', performance.now() - perf);
