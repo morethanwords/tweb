@@ -154,7 +154,7 @@ function StarGiftGridItem(props: {
             />
           ) : (
             <div class={/* @once */ styles.itemFromAnonymous}>
-              <img src="/assets/img/anon_paid_reaction.png" alt="Anonymous" />
+              <img src="assets/img/anon_paid_reaction.png" alt="Anonymous" />
             </div>
           )}
         </div>
