@@ -10,7 +10,7 @@ import wrapFolderTitle from '../wrappers/folderTitle';
 import styles from './styles.module.scss';
 
 
-const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);
+export const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);
 
 export async function fetchDialogFilters() {
   const filters = await rootScope.managers.filtersStorage.getDialogFilters();
@@ -41,7 +41,7 @@ export async function addToFilter(filter: MyDialogFilter, peerId: PeerId) {
     filter.include_peers = [...(filter.include_peers || []).filter(inputPeer => p(getPeerId(inputPeer)) !== p(peerId)), await rootScope.managers.appPeersManager.getInputPeerById(peerId)];
   }
 
-  log.debug('addToFilter before', filter);
+  log.debug('addToFilter after', filter);
 
   await rootScope.managers.filtersStorage.updateDialogFilter(filter);
 }
