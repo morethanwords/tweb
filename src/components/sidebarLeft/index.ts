@@ -99,6 +99,7 @@ import DeferredIsUsingPasscode from '../../lib/passcode/deferredIsUsingPasscode'
 import EncryptionKeyStore from '../../lib/passcode/keyStore';
 import createLockButton from './lockButton';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './constants';
+import createSubmenuTrigger from '../../createSubmenuTrigger';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -706,12 +707,12 @@ export class AppSidebarLeft extends SidebarSlider {
       });
     };
 
-    const moreSubmenu = this.createSubmenuHelper({
+    const moreSubmenu = createSubmenuTrigger({
       text: 'MultiAccount.More',
       icon: 'more'
     }, () => this.createMoreSubmenu(moreSubmenu, closeTabsBefore));
 
-    const newSubmenu = this.createSubmenuHelper({
+    const newSubmenu = createSubmenuTrigger({
       text: 'CreateANew',
       icon: 'edit',
       verify: () => this.isCollapsed(),
@@ -755,7 +756,7 @@ export class AppSidebarLeft extends SidebarSlider {
         const totalAccounts = await AccountController.getTotalAccounts();
         return totalAccounts < MAX_ACCOUNTS;
       }
-    }, newSubmenu.menuBtnOptions, {
+    }, newSubmenu, {
       icon: 'savedmessages',
       text: 'SavedMessages',
       onClick: () => {
@@ -789,7 +790,7 @@ export class AppSidebarLeft extends SidebarSlider {
           this.createTab(AppSettingsTab).open();
         });
       }
-    }, moreSubmenu.menuBtnOptions];
+    }, moreSubmenu];
 
     const filteredButtons = menuButtons.filter(Boolean);
     const filteredButtonsSliced = filteredButtons.slice();
@@ -930,7 +931,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
 
   private async createMoreSubmenu(
-    submenu: ReturnType<typeof this.createSubmenuHelper>,
+    submenu: ReturnType<typeof createSubmenuTrigger>,
     closeTabsBefore: (clb: () => void) => void
   ) {
     const isDarkModeEnabled = () => themeController.getTheme().name === 'night';
@@ -1060,62 +1061,6 @@ export class AppSidebarLeft extends SidebarSlider {
     initAnimationsToggleIcon();
 
     return menu;
-  }
-
-  private static submenuHelperIdSeed = 0;
-  private createSubmenuHelper(
-    options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'icon' | 'verify' | 'separator'>,
-    createSubmenu: () => MaybePromise<HTMLElement>
-  ) {
-    const menuBtnOptions: ButtonMenuItemOptionsVerifiable = {
-      ...options,
-
-      // * fix langpack
-      get regularText() {
-        const content = document.createElement('span');
-        content.classList.add('submenu-label');
-        content.append(i18n(options.text), Icon('arrowhead'));
-        return content;
-      },
-      onClick: noop,
-      id: AppSidebarLeft.submenuHelperIdSeed++
-    };
-
-    delete menuBtnOptions.text;
-
-    let isDisabled = false;
-
-    const onOpen = () => {
-      if(!menuBtnOptions.element) return;
-
-      menuBtnOptions.element.addEventListener(CLICK_EVENT_NAME, (e) => {
-        e.stopPropagation();
-      }, true);
-      menuBtnOptions.element.classList.add('disable-click');
-
-      attachFloatingButtonMenu({
-        element: menuBtnOptions.element,
-        direction: 'right-start',
-        createMenu: createSubmenu,
-        offset: [-5, -5],
-        level: 2,
-        triggerEvent: 'mouseenter',
-        canOpen: () => !isDisabled
-      });
-    };
-
-    const onClose = async() => {
-      // Prevents hover from triggering when the menu is closing
-      isDisabled = true;
-      await pause(200);
-      isDisabled = false;
-    }
-
-    return {
-      menuBtnOptions,
-      onOpen,
-      onClose
-    }
   }
 
   private createNewChatsMenuOptions(closeBefore?: boolean, singular?: boolean): ButtonMenuItemOptionsVerifiable[]  {

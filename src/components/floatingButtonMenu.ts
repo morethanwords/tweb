@@ -1,6 +1,7 @@
 import contextMenuController from '../helpers/contextMenuController';
 import {doubleRaf} from '../helpers/schedulers';
 
+
 export type AttachFloatingButtonMenuOptions = {
   element: HTMLElement;
   triggerEvent: keyof HTMLElementEventMap;
@@ -9,7 +10,8 @@ export type AttachFloatingButtonMenuOptions = {
   offset?: [number, number];
   createMenu: () => HTMLElement | Promise<HTMLElement>;
   canOpen?: () => boolean;
-}
+  onClose?: () => void;
+};
 
 export default function attachFloatingButtonMenu({
   element,
@@ -18,44 +20,44 @@ export default function attachFloatingButtonMenu({
   level,
   offset = [0, 0],
   createMenu,
-  canOpen = () => true
+  canOpen = () => true,
+  onClose: onCloseArg
 }: AttachFloatingButtonMenuOptions) {
   let opened = false;
-  const listener = () => {
-    (async() => {
-      if(opened || !canOpen()) return;
-      opened = true;
+  const listener = (): void => void (async() => {
+    if(opened || !canOpen()) return;
+    opened = true;
 
-      const triggerBcr = element.getBoundingClientRect();
+    const triggerBcr = element.getBoundingClientRect();
 
-      const menu = await createMenu();
+    const menu = await createMenu();
 
-      const onClose = async() => {
-        opened = false;
-      }
+    const onClose = async() => {
+      opened = false;
+      onCloseArg?.();
+    };
 
-      document.body.append(menu);
+    document.body.append(menu);
 
-      const OFFSET_FROM_WINDOW_MARGIN_PX = 16;
+    const OFFSET_FROM_WINDOW_MARGIN_PX = 16;
 
-      if(direction === 'right-start') {
-        menu.style.transformOrigin = '0 0';
-        let left = triggerBcr.right + offset[0];
-        const right = left + menu.clientWidth; // cannot use .getBoundingClientRect as it has scale
-        if(right + OFFSET_FROM_WINDOW_MARGIN_PX > window.innerWidth) left -= right - window.innerWidth + OFFSET_FROM_WINDOW_MARGIN_PX;
+    if(direction === 'right-start') {
+      menu.style.transformOrigin = '0 0';
+      let left = triggerBcr.right + offset[0];
+      const right = left + menu.clientWidth; // cannot use .getBoundingClientRect as it has scale
+      if(right + OFFSET_FROM_WINDOW_MARGIN_PX > window.innerWidth) left -= right - window.innerWidth + OFFSET_FROM_WINDOW_MARGIN_PX;
 
-        let top = triggerBcr.top + offset[1];
-        const bottom = top + menu.clientHeight;
-        if(bottom + OFFSET_FROM_WINDOW_MARGIN_PX > window.innerHeight) top -= bottom - window.innerHeight + OFFSET_FROM_WINDOW_MARGIN_PX;
+      let top = triggerBcr.top + offset[1];
+      const bottom = top + menu.clientHeight;
+      if(bottom + OFFSET_FROM_WINDOW_MARGIN_PX > window.innerHeight) top -= bottom - window.innerHeight + OFFSET_FROM_WINDOW_MARGIN_PX;
 
-        menu.style.left = left + 'px';
-        menu.style.top = top + 'px';
-      }
+      menu.style.left = left + 'px';
+      menu.style.top = top + 'px';
+    }
 
-      await doubleRaf();
-      contextMenuController.addAdditionalMenu(menu, element, level, onClose);
-    })();
-  };
+    await doubleRaf();
+    contextMenuController.addAdditionalMenu(menu, element, level, onClose);
+  })();
 
   element.addEventListener(triggerEvent, listener);
 

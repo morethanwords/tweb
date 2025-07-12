@@ -28,7 +28,8 @@ if(USE_OWN_SCROLL) {
 
 export default function Scrollable(props: {
   children: JSX.Element,
-  ref?: Ref<HTMLDivElement>
+  ref?: Ref<HTMLDivElement>,
+  thumbRef?: (el: HTMLDivElement) => void,
   class?: string,
   axis?: 'x' | 'y',
   withBorders?: 'both' | 'top' | 'bottom' | 'manual',
@@ -257,7 +258,10 @@ export default function Scrollable(props: {
         <div class="scrollable-thumb-container">
           <div
             class="scrollable-thumb"
-            ref={thumbRef}
+            ref={(el) => {
+              thumbRef = el;
+              props.thumbRef?.(el);
+            }}
             onMouseDown={onThumbMouseDown}
           ></div>
         </div>
