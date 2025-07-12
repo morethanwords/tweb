@@ -6,6 +6,7 @@ import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import noop from '../../helpers/noop';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import {Dialog} from '../../layer';
+import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import {isDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import {i18n} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
@@ -92,7 +93,7 @@ export const createFolderItems = ({filters, isInFilter, isSelected, onToggle}: C
     const buttonMenuItem = ButtonMenuItem(options);
 
     options.element?.addEventListener(CLICK_EVENT_NAME, async(e) => {
-      if(e.shiftKey) e.stopPropagation();
+      if(e.shiftKey && appDialogsManager.filterId !== filter.id) e.stopPropagation();
       onToggle(filter);
     }, true);
     options.element?.classList.add(styles.Item);
@@ -253,7 +254,7 @@ export const useInputKeydown = ({search, setSearch, selected, setSelected, selec
 
     if(e.code === 'Enter' && selectedFilter()) {
       onToggle(selectedFilter());
-      if(!e.shiftKey) contextMenuController.close();
+      if(!e.shiftKey || appDialogsManager.filterId === selectedFilter().id) contextMenuController.close();
       return;
     }
 
