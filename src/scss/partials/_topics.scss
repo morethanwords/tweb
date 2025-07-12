@@ -32,10 +32,6 @@
       z-index: 1;
       pointer-events: all;
       border-inline-start: 1px solid var(--border-color);
-
-      .sidebar-content, .sidebar-header {
-        width: calc(var(--sidebar-max-width) - var(--offset) - 1px);
-      }
     }
 
     &.is-visible {
