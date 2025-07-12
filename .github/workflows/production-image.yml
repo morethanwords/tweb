@@ -1,0 +1,68 @@
+name: Docker Image Build CI
+
+on:
+  push:
+    tags:
+      - 'tag/build-docker-image/*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Read version from .env
+        id: env
+        run: echo "::set-output name=PRODUCTION_BUILD_VERSION::$(grep ^PRODUCTION_BUILD_VERSION= .env | cut -d'=' -f2)"
+
+      - name: Build the Docker image for latest
+        run: docker build -f ./.docker/Dockerfile_production -t ${{ vars.DOCKERHUB_USERNAME}}/tweb:latest .
+
+      - name: Build the Docker image for specific version
+        run: |
+          version=${{ steps.env.outputs.PRODUCTION_BUILD_VERSION }}
+          docker build -f ./.docker/Dockerfile_production -t ${{ vars.DOCKERHUB_USERNAME}}/tweb:${version} .
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ vars.DOCKERHUB_USERNAME}}" --password-stdin
+
+      - name: Push versioned image
+        run: |
+          version=${{ steps.env.outputs.PRODUCTION_BUILD_VERSION }}
+          docker push  ${{ vars.DOCKERHUB_USERNAME}}/tweb:${version}
+
+      - name: Push latest image
+
+        run: |
+          docker push ${{ vars.DOCKERHUB_USERNAME}}/tweb:latest
+
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read version from .env
+        id: env
+        run: echo "::set-output name=PRODUCTION_BUILD_VERSION::$(grep ^PRODUCTION_BUILD_VERSION= .env | cut -d'=' -f2)"
+
+      - name: Pull versioned image
+        run: |
+          version=${{ steps.env.outputs.PRODUCTION_BUILD_VERSION }}
+          docker pull ${{ vars.DOCKERHUB_USERNAME}}/tweb:${version}
+
+      - name: Pull latest image
+        run: docker pull ${{ vars.DOCKERHUB_USERNAME}}/tweb:latest
