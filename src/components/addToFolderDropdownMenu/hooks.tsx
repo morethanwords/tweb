@@ -1,7 +1,6 @@
 import {Accessor, createEffect, createMemo, JSX, onCleanup, Setter, Show} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
-import assumeType from '../../helpers/assumeType';
 import contextMenuController from '../../helpers/contextMenuController';
 import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import noop from '../../helpers/noop';
@@ -116,7 +115,7 @@ export const createFolderItems = ({filters, isInFilter, isSelected, onToggle}: C
 
 
 type UseToggleDialogInFilterArgs = {
-  dialog: Accessor<Dialog>;
+  dialog: Accessor<Dialog.dialog>;
   isInFilter: (filter: MyDialogFilter) => boolean;
   onNewDialog: (dialog: Dialog.dialog) => void;
 };
@@ -127,7 +126,6 @@ export const useToggleDialogInFilter = ({dialog, onNewDialog, isInFilter}: UseTo
   return async(filter: MyDialogFilter) => {
     if(hasRequestInProgress || !filter) return;
 
-    assumeType<Dialog.dialog>(dialog());
     const unwrapped = unwrap(filter);
 
     hasRequestInProgress = true;
@@ -164,7 +162,7 @@ export const createSearchableFolders = ({folderItems, search, isSelected, setSel
 
   const sortedFolders = fuzziedFolders
   .sort(({finderResult: {found: found1, score: score1}}, {finderResult: {found: found2, score: score2}}) =>
-            score1 === score2 ? (found1[0] || 0) - (found2[0] || 0) : score2 - score1
+    score1 === score2 ? (found1[0] || 0) - (found2[0] || 0) : score2 - score1
   );
 
   setSelected(0);
