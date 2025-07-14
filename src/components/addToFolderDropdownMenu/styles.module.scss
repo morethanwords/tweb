@@ -4,6 +4,21 @@
 .Container {
   min-width: 12rem !important;
   overflow: hidden;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.Scrollable {
+  padding-bottom: .3125rem;
+}
+
+// :global(.is-mobile) .Container .Scrollable {
+//   padding-bottom: 0;
+// }
+
+:global(.is-mobile) .Container .Scrollable {
+  padding-top: .5rem;
+  padding-bottom: .5rem;
 }
 
 .ScrollableContainer {
@@ -24,8 +39,7 @@
   font-size: 12px;
   font-weight: 500;
 
-  padding: 0 16px;
-  padding-bottom: 4px;
+  padding: 5px 16px 4px;
 
   color: var(--secondary-text-color);
 
@@ -65,6 +79,7 @@
   padding: 0 24px;
   font-size: 12px;
   text-align: center;
+  word-wrap: break-word;
 }
 
 .Char {

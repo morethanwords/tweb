@@ -139,7 +139,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
               return el;
             })()}
           </Show>
-          <Scrollable thumbRef={(el) => void (thumb = el)}>
+          <Scrollable class={styles.Scrollable} thumbRef={(el) => void (thumb = el)}>
             <Show when={!IS_MOBILE}>
               <div ref={label} class={styles.Label} onPointerEnter={showHint}>
                 {(() => {
