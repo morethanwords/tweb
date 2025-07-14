@@ -6,7 +6,6 @@ import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import noop from '../../helpers/noop';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import {Dialog} from '../../layer';
-import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import {isDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import {i18n} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
@@ -64,6 +63,7 @@ export const createButtonMenuLabel = ({label, isSelected}: CreateButtonMenuLabel
 
 type CreateFolderItemsArgs = {
   filters: Accessor<MyDialogFilter[]>;
+  currentFilter: Accessor<number>;
   isInFilter: (filter: MyDialogFilter) => boolean;
   isSelected: (filterId: number) => boolean;
   onToggle: (filter: MyDialogFilter) => void;
@@ -71,7 +71,7 @@ type CreateFolderItemsArgs = {
 
 export type FolderItem = ReturnType<ReturnType<typeof createFolderItems>>[number];
 
-export const createFolderItems = ({filters, isInFilter, isSelected, onToggle}: CreateFolderItemsArgs) => createMemo(() => {
+export const createFolderItems = ({filters, isInFilter, isSelected, onToggle, currentFilter}: CreateFolderItemsArgs) => createMemo(() => {
   const middleware = createMiddleware();
   log.debug('creating folder items');
 
@@ -93,7 +93,7 @@ export const createFolderItems = ({filters, isInFilter, isSelected, onToggle}: C
     const buttonMenuItem = ButtonMenuItem(options);
 
     options.element?.addEventListener(CLICK_EVENT_NAME, async(e) => {
-      if(e.shiftKey && appDialogsManager.filterId !== filter.id) e.stopPropagation();
+      if(e.shiftKey && currentFilter() !== filter.id) e.stopPropagation();
       onToggle(filter);
     }, true);
     options.element?.classList.add(styles.Item);
@@ -239,11 +239,12 @@ type UseInputKeydownArgs = {
   selected: Accessor<number>;
   setSelected: Setter<number>;
   selectedFilter: Accessor<MyDialogFilter>;
+  currentFilter: Accessor<number>;
   onToggle: (filter: MyDialogFilter) => void;
   visibleFoldersCount: Accessor<number>;
 };
 
-export const useInputKeydown = ({search, setSearch, selected, setSelected, selectedFilter, onToggle, visibleFoldersCount}: UseInputKeydownArgs) => {
+export const useInputKeydown = ({search, setSearch, selected, setSelected, selectedFilter, currentFilter, onToggle, visibleFoldersCount}: UseInputKeydownArgs) => {
   return (e: KeyboardEvent) => {
     if(['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'Enter'].includes(e.code)) e.preventDefault();
 
@@ -254,7 +255,7 @@ export const useInputKeydown = ({search, setSearch, selected, setSelected, selec
 
     if(e.code === 'Enter' && selectedFilter()) {
       onToggle(selectedFilter());
-      if(!e.shiftKey || appDialogsManager.filterId === selectedFilter().id) contextMenuController.close();
+      if(!e.shiftKey || currentFilter() === selectedFilter().id) contextMenuController.close();
       return;
     }
 

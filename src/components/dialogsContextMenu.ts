@@ -261,6 +261,7 @@ export default class DialogsContextMenu {
     menu.feedProps({
       dialog: this.dialog,
       filters: await fetchDialogFilters(),
+      currentFilter: () => appDialogsManager.filterId,
       onNewDialog: (dialog) => {
         this.dialog = dialog;
       },

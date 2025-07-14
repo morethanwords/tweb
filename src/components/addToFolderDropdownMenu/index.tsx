@@ -22,6 +22,7 @@ const HAVE_SCROLL_WHEN_ABOVE = 8; // and search too
 type Props = {
   dialog: Dialog.dialog;
   filters: MyDialogFilter[];
+  currentFilter: () => number;
   onCleanup?: () => void;
   onNewDialog?: (dialog: Dialog.dialog) => void;
 };
@@ -60,7 +61,8 @@ const AddToFolderDropdownMenu = defineSolidElement({
       filters: () => props.filters,
       isInFilter,
       isSelected,
-      onToggle: toggleDialogInFilter
+      onToggle: toggleDialogInFilter,
+      currentFilter: props.currentFilter
     });
 
     const searchableFolders = createSearchableFolders({
@@ -79,6 +81,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
       selected,
       setSelected,
       selectedFilter,
+      currentFilter: props.currentFilter,
       onToggle: toggleDialogInFilter,
       visibleFoldersCount: () => searchableFolders().visibleFoldersCount
     });
