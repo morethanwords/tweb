@@ -829,6 +829,7 @@
     .btn-menu {
       min-width: 200px;
       max-height: calc(100 * var(--vh) - 3.75rem);
+      z-index: 6;
 
       &-item {
         --padding-right: .375rem;
