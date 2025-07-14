@@ -28,6 +28,7 @@ import assumeType from '../helpers/assumeType';
 import {isDialog, isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
 import createSubmenuTrigger from '../createSubmenuTrigger';
 import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
+import memoizeAsyncWithTTL from '../helpers/memoizeAsyncWithTTL';
 
 
 export default class DialogsContextMenu {
@@ -125,7 +126,7 @@ export default class DialogsContextMenu {
       onClose: () => {
         this.addToFolderMenu?.controls.closeTooltip?.();
       },
-      verify: () => isDialog(this.dialog)
+      verify: () => isDialog(this.dialog) && this.hasFilters()
     }, this.createAddToFolderSubmenu), {
       icon: 'pin',
       text: 'ChatList.Context.Pin',
@@ -270,6 +271,11 @@ export default class DialogsContextMenu {
 
     return this.addToFolderMenu = menu;
   };
+
+  private hasFilters = memoizeAsyncWithTTL(async() => {
+    const filters = await this.managers.filtersStorage.getDialogFilters();
+    return !!filters.filter(filter => !REAL_FOLDERS.has(filter.id)).length
+  }, () => 1, 5_000);
 
   private onArchiveClick = async() => {
     const dialog = await this.managers.appMessagesManager.getDialogOnly(this.peerId);
