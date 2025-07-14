@@ -5406,7 +5406,7 @@ export default class ChatBubbles {
                   pFlags: {
                     gift: isPrize ? undefined : true
                   },
-                  stars: formatStarsAmount(action.stars),
+                  amount: formatStarsAmount(action.stars),
                   giveaway_post_id: isPrize ? action.giveaway_msg_id : undefined
                 }
               });

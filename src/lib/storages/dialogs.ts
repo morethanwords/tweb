@@ -17,7 +17,7 @@ import SearchIndex from '../searchIndex';
 import {SliceEnd} from '../../helpers/slicedArray';
 import {MyDialogFilter} from './filters';
 import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, TEST_NO_SAVED} from '../mtproto/mtproto_config';
-import {MaybePromise, NoneToVoidFunction} from '../../types';
+import {MaybePromise, Modify, NoneToVoidFunction} from '../../types';
 import ctx from '../../environment/ctx';
 import AppStorage from '../storage';
 import forEachReverse from '../../helpers/array/forEachReverse';
@@ -2055,9 +2055,10 @@ export default class DialogsStorage extends AppManager {
     if(update.order) {
       this.handleDialogsPinned(folderId, update.order.map((peer) => this.appPeersManager.getPeerId((peer as DialogPeer.dialogPeer).peer)));
     } else {
-      let promise: Promise<MessagesPeerDialogs | MessagesSavedDialogs.messagesSavedDialogs>;
+      type S = Modify<MessagesSavedDialogs.messagesSavedDialogs, {dialogs: Array<SavedDialog>}>;
+      let promise: Promise<MessagesPeerDialogs | S>;
       if(isSaved) {
-        promise = this.apiManager.invokeApi('messages.getPinnedSavedDialogs') as Promise<MessagesSavedDialogs.messagesSavedDialogs>;
+        promise = this.apiManager.invokeApi('messages.getPinnedSavedDialogs') as Promise<S>;
       } else {
         promise = this.apiManager.invokeApi('messages.getPinnedDialogs', {
           folder_id: folderId

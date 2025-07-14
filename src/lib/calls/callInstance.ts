@@ -639,7 +639,7 @@ export default class CallInstance extends CallInstanceBase<{
   }
 
   public async hangUp(
-    discardReason?: PhoneCallDiscardReason | /* Exclude< */PhoneCallDiscardReason['_']/* , PhoneCallDiscardReason.phoneCallDiscardReasonAllowGroupCall['_']> */,
+    discardReason?: PhoneCallDiscardReason | Exclude<PhoneCallDiscardReason['_'], PhoneCallDiscardReason.phoneCallDiscardReasonMigrateConferenceCall['_']>,
     discardedByOtherParty?: boolean
   ) {
     if(this.isClosing) {

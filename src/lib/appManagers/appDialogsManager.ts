@@ -1491,7 +1491,7 @@ export class Some4 extends Some<SavedDialog> {
       for(const [peerId, {saved}] of dialogs) {
         saved?.forEach((dialog) => {
           hasAnyUpdate = true;
-          this.updateDialog(dialog);
+          this.updateDialog(dialog as SavedDialog);
         });
       }
 

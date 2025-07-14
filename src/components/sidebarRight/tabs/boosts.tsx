@@ -330,7 +330,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
                     }
                   },
                   pFlags: {},
-                  stars: formatStarsAmount(boost.stars),
+                  amount: formatStarsAmount(boost.stars),
                   giveaway_post_id: boost.giveaway_msg_id
                 },
                 boost
