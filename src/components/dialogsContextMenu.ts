@@ -26,7 +26,7 @@ import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import appImManager from '../lib/appManagers/appImManager';
 import assumeType from '../helpers/assumeType';
 import {isDialog, isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
-import createSubmenuTrigger from '../createSubmenuTrigger';
+import createSubmenuTrigger from './createSubmenuTrigger';
 import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
 import memoizeAsyncWithTTL from '../helpers/memoizeAsyncWithTTL';
 

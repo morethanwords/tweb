@@ -1,10 +1,10 @@
-import {ButtonMenuItemOptionsVerifiable} from './components/buttonMenu';
-import attachFloatingButtonMenu from './components/floatingButtonMenu';
-import Icon from './components/icon';
-import {CLICK_EVENT_NAME} from './helpers/dom/clickEvent';
-import noop from './helpers/noop';
-import pause from './helpers/schedulers/pause';
-import {i18n} from './lib/langPack';
+import {CLICK_EVENT_NAME} from '../helpers/dom/clickEvent';
+import noop from '../helpers/noop';
+import pause from '../helpers/schedulers/pause';
+import {i18n} from '../lib/langPack';
+import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
+import attachFloatingButtonMenu from './floatingButtonMenu';
+import Icon from './icon';
 
 
 let submenuHelperIdSeed = 0;

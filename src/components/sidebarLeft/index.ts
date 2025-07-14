@@ -99,7 +99,7 @@ import DeferredIsUsingPasscode from '../../lib/passcode/deferredIsUsingPasscode'
 import EncryptionKeyStore from '../../lib/passcode/keyStore';
 import createLockButton from './lockButton';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './constants';
-import createSubmenuTrigger from '../../createSubmenuTrigger';
+import createSubmenuTrigger from '../createSubmenuTrigger';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
