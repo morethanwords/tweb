@@ -3,6 +3,7 @@
 
 :global(.pinned-sponsored) {
   --container-height: auto;
+  z-index: 0;
   // transition: padding-right var(--transition-standard-out);
 
   &:before {
