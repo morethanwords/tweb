@@ -24,6 +24,7 @@ import ripple from '../../ripple'; ripple; // keep
 import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
 import type {FolderItemPayload} from './types';
 import FolderItem from './folderItem';
+import extractEmojiFromFilterTitle, {ExtractEmojiFromFilterTitleResult} from './extractEmojiFromFilterTitle';
 
 
 export function FoldersSidebarContent(props: {
@@ -85,10 +86,16 @@ export function FoldersSidebarContent(props: {
       rootScope.managers.dialogsStorage.getFolder(filter.id)
     ]);
 
-    const rest = filter.id === FOLDER_ID_ALL ? {
+    let cleanTitle: ExtractEmojiFromFilterTitleResult;
+
+    const titleRest = filter.id === FOLDER_ID_ALL ? {
       name: i18n('FilterAllChats')
     } : {
-      title: filter.title
+      title: (cleanTitle = extractEmojiFromFilterTitle(filter.title)).text
+    };
+
+    const iconRest: Pick<FolderItemPayload, 'iconDocId'> = {
+      iconDocId: cleanTitle?.docId
     };
 
     return {
@@ -96,7 +103,8 @@ export function FoldersSidebarContent(props: {
       icon: getIconForFilter(filter),
       notifications: notifications,
       chatsCount: folder?.dialogs?.length || 0,
-      ...rest
+      ...titleRest,
+      ...iconRest
     };
   }
 

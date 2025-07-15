@@ -1,9 +1,13 @@
-import {createMemo, onMount, Show} from 'solid-js';
+import {createEffect, createMemo, createSignal, onCleanup, Show} from 'solid-js';
+import ListenerSetter from '../../../helpers/listenerSetter';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
+import themeController from '../../../helpers/themeController';
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import Badge from '../../badge';
 import {IconTsx} from '../../iconTsx';
-import ripple from '../../ripple';
+import ripple from '../../ripple'; ripple;
 import wrapFolderTitle from '../../wrappers/folderTitle';
+import wrapSticker from '../../wrappers/sticker';
 import {FolderItemPayload} from './types';
 
 
@@ -14,12 +18,14 @@ type FolderItemProps = FolderItemPayload & {
   onClick?: () => void
 };
 
-export default function FolderItem(props: FolderItemProps) {
-  let container: HTMLDivElement;
+const ICON_SIZE = 30;
 
-  onMount(() => {
-    ripple(container);
-  });
+export default function FolderItem(props: FolderItemProps) {
+  const {rootScope} = useHotReloadGuard();
+
+  const [theme, setTheme] = createSignal(themeController.getTheme().name);
+  const [iconContainer, setIconContainer] = createSignal<HTMLDivElement>();
+  const [failedToFetchIconDoc, setFailedToFetchIconDoc] = createSignal(false);
 
   const hasNotifications = () => !!props.notifications?.count;
 
@@ -37,10 +43,57 @@ export default function FolderItem(props: FolderItemProps) {
     return span;
   });
 
+  createEffect(() => {
+    if(!iconContainer() && !props.iconDocId) return;
+    theme();
+    setFailedToFetchIconDoc(false);
+
+    const docId = props.iconDocId;
+    const middleware = createMiddleware().get();
+
+    const listenerSetter = new ListenerSetter;
+
+    listenerSetter.add(rootScope)('theme_changed', () => {
+      setTheme(themeController.getTheme().name);
+    });
+
+    onCleanup(() => {
+      listenerSetter.removeAll();
+    });
+
+    (async() => {
+      try {
+        const doc = await rootScope.managers.appEmojiManager.getCustomEmojiDocument(props.iconDocId);
+
+        if(!doc) {
+          setFailedToFetchIconDoc(true);
+          return;
+        }
+
+        if(!middleware() || !iconContainer() || docId !== props.iconDocId) return;
+
+        wrapSticker({
+          doc,
+          div: iconContainer(),
+          group: 'none',
+          width: ICON_SIZE * window.devicePixelRatio,
+          height: ICON_SIZE * window.devicePixelRatio,
+          play: true,
+          loop: true,
+          withThumb: false,
+          middleware,
+          textColor: 'secondary-color'
+        });
+      } catch{
+        setFailedToFetchIconDoc(true);
+      }
+    })();
+  });
+
   return (
     <div
+      use:ripple
       ref={(el) => {
-        container = el;
         props.ref?.(el);
       }}
       class="folders-sidebar__folder-item"
@@ -54,7 +107,12 @@ export default function FolderItem(props: FolderItemProps) {
       )}
       onClick={props.onClick}
     >
-      <IconTsx icon={props.icon} class="folders-sidebar__folder-item-icon" />
+      <Show
+        when={props.iconDocId && !failedToFetchIconDoc()}
+        fallback={<IconTsx icon={props.icon} class="folders-sidebar__folder-item-icon" />}
+      >
+        <div ref={setIconContainer} class="folders-sidebar__folder-item-animated-icon"></div>
+      </Show>
       <Show when={title()}>
         <div class="folders-sidebar__folder-item-name">{title()}</div>
       </Show>
