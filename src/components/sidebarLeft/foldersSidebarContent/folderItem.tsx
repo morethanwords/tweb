@@ -1,10 +1,11 @@
-import {onMount, Show} from 'solid-js';
-
+import {createMemo, onMount, Show} from 'solid-js';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
+import Badge from '../../badge';
 import {IconTsx} from '../../iconTsx';
 import ripple from '../../ripple';
-import Badge from '../../badge';
-
+import wrapFolderTitle from '../../wrappers/folderTitle';
 import {FolderItemPayload} from './types';
+
 
 type FolderItemProps = FolderItemPayload & {
   ref?: (el: HTMLDivElement | null) => void,
@@ -21,6 +22,21 @@ export default function FolderItem(props: FolderItemProps) {
   });
 
   const hasNotifications = () => !!props.notifications?.count;
+
+  const title = createMemo(() => {
+    if(props.name) return props.name;
+    if(!props.title) return;
+
+    const middleware = createMiddleware().get();
+
+    const span = document.createElement('span');
+    const fragment = wrapFolderTitle(props.title, middleware, true);
+
+    span.append(fragment);
+
+    return span;
+  });
+
   return (
     <div
       ref={(el) => {
@@ -39,8 +55,8 @@ export default function FolderItem(props: FolderItemProps) {
       onClick={props.onClick}
     >
       <IconTsx icon={props.icon} class="folders-sidebar__folder-item-icon" />
-      <Show when={props.name}>
-        <div class="folders-sidebar__folder-item-name">{props.name}</div>
+      <Show when={title()}>
+        <div class="folders-sidebar__folder-item-name">{title()}</div>
       </Show>
       <Show when={hasNotifications()}>
         <Badge

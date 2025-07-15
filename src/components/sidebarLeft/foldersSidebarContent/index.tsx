@@ -37,8 +37,6 @@ export function FoldersSidebarContent(props: {
     showLimitPopup
   } = useHotReloadGuard();
 
-  const middlewareHelper = createMiddleware();
-
   const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
   const [folderItems, setFolderItems] = createStore<FolderItemPayload[]>([]);
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
@@ -63,7 +61,6 @@ export function FoldersSidebarContent(props: {
     }
 
     const folderItem = folderItems[idx];
-    folderItem.middlewareHelper?.destroy();
     setFolderItems(idx, reconcile({...folderItem, ...payload}));
   }
 
@@ -83,28 +80,23 @@ export function FoldersSidebarContent(props: {
   }
 
   async function makeFolderItemPayload(filter: MyDialogFilter): Promise<FolderItemPayload> {
-    function wrapTitle(title: DocumentFragment) {
-      const span = document.createElement('span');
-      // Needs to be in an actual element
-      span.append(title);
-      return span;
-    }
-
-    const _middlewareHelper = middlewareHelper.get().create();
-
-    const [notifications, folder, title] = await Promise.all([
+    const [notifications, folder] = await Promise.all([
       getNotificationCountForFilter(filter.id, rootScope.managers),
-      rootScope.managers.dialogsStorage.getFolder(filter.id),
-      filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapFolderTitle(filter.title, _middlewareHelper.get()).then(wrapTitle)
+      rootScope.managers.dialogsStorage.getFolder(filter.id)
     ]);
+
+    const rest = filter.id === FOLDER_ID_ALL ? {
+      name: i18n('FilterAllChats')
+    } : {
+      title: filter.title
+    };
 
     return {
       id: filter.id,
-      name: title,
       icon: getIconForFilter(filter),
       notifications: notifications,
       chatsCount: folder?.dialogs?.length || 0,
-      middlewareHelper: _middlewareHelper
+      ...rest
     };
   }
 
@@ -133,7 +125,7 @@ export function FoldersSidebarContent(props: {
     if(existingItemIndex === -1) return;
 
     const item = items[existingItemIndex];
-    item.middlewareHelper?.destroy();
+
     items.splice(existingItemIndex, 1);
     setFolderItems(items);
   }
