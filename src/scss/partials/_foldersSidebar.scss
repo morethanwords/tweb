@@ -1,3 +1,7 @@
+:root {
+  --folders-sidebar-item-color: #717579;
+}
+
 .folders-sidebar {
   position: relative;
   flex: 5rem 0 0;
@@ -14,7 +18,7 @@
   }
 
   background-color: var(--background);
-  color: #717579;
+  color: var(--folders-sidebar-item-color);
 
   z-index: 4;
 
@@ -96,7 +100,7 @@
       transition: none !important;
 
       &.badge-gray {
-        background-color: #717579;
+        background-color: var(--folders-sidebar-item-color);
       }
     }
 

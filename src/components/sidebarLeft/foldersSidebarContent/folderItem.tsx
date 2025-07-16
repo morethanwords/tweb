@@ -1,14 +1,14 @@
 import {createEffect, createMemo, createSignal, onCleanup, Show} from 'solid-js';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
-import themeController from '../../../helpers/themeController';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import Badge from '../../badge';
 import {IconTsx} from '../../iconTsx';
-import ripple from '../../ripple'; ripple;
+import ripple from '../../ripple';
 import wrapFolderTitle from '../../wrappers/folderTitle';
 import wrapSticker from '../../wrappers/sticker';
 import {FolderItemPayload} from './types';
+ripple; // keep
 
 
 type FolderItemProps = FolderItemPayload & {
@@ -23,7 +23,6 @@ const ICON_SIZE = 30;
 export default function FolderItem(props: FolderItemProps) {
   const {rootScope} = useHotReloadGuard();
 
-  const [theme, setTheme] = createSignal(themeController.getTheme().name);
   const [iconContainer, setIconContainer] = createSignal<HTMLDivElement>();
   const [failedToFetchIconDoc, setFailedToFetchIconDoc] = createSignal(false);
 
@@ -45,17 +44,12 @@ export default function FolderItem(props: FolderItemProps) {
 
   createEffect(() => {
     if(!iconContainer() && !props.iconDocId) return;
-    theme();
     setFailedToFetchIconDoc(false);
 
     const docId = props.iconDocId;
     const middleware = createMiddleware().get();
 
     const listenerSetter = new ListenerSetter;
-
-    listenerSetter.add(rootScope)('theme_changed', () => {
-      setTheme(themeController.getTheme().name);
-    });
 
     onCleanup(() => {
       listenerSetter.removeAll();
@@ -82,7 +76,7 @@ export default function FolderItem(props: FolderItemProps) {
           loop: true,
           withThumb: false,
           middleware,
-          textColor: 'secondary-color'
+          textColor: 'folders-sidebar-item-color'
         });
       } catch{
         setFailedToFetchIconDoc(true);
