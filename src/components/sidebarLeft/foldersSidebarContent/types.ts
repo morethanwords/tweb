@@ -7,6 +7,7 @@ export type FolderItemPayload = {
   id?: number;
   icon: Icon;
   iconDocId?: DocId;
+  dontAnimate?: boolean;
   name?: JSX.Element;
   title?: TextWithEntities.textWithEntities;
   notifications?: {

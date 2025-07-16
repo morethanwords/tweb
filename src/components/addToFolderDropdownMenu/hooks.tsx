@@ -1,4 +1,4 @@
-import {Accessor, createEffect, createMemo, JSX, onCleanup, Setter, Show} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, JSX, onCleanup, Setter, Show} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import contextMenuController from '../../helpers/contextMenuController';
@@ -12,6 +12,8 @@ import rootScope from '../../lib/rootScope';
 import {MyDialogFilter} from '../../lib/storages/filters';
 import {ButtonMenuItem, ButtonMenuItemOptions} from '../buttonMenu';
 import {IconTsx} from '../iconTsx';
+import extractEmojiFromFilterTitle from '../sidebarLeft/foldersSidebarContent/extractEmojiFromFilterTitle';
+import FolderAnimatedIcon from '../sidebarLeft/foldersSidebarContent/folderAnimatedIcon';
 import {getIconForFilter} from '../sidebarLeft/foldersSidebarContent/utils';
 import showTooltip from '../tooltip';
 import kindaFuzzyFinder from './kindaFuzzyFinder';
@@ -25,25 +27,42 @@ const MIN_FUZZY_SCORE = 0.25;
 type CreateButtonMenuIconArgs = {
   filter: MyDialogFilter;
   isChecked: Accessor<boolean>;
+  docId: DocId;
 }
 
-export const createButtonMenuIcon = ({filter, isChecked}: CreateButtonMenuIconArgs) => (
-  <span class={`btn-menu-item-icon ${styles.ItemIcon}`}>
-    <IconTsx icon={getIconForFilter(filter)} />
-    <Transition
-      enterActiveClass={styles.AppearZoomEnterActive}
-      exitActiveClass={styles.AppearZoomEnterActive}
-      enterClass={styles.AppearZoomEnter}
-      exitToClass={styles.AppearZoomExitTo}
-    >
-      <Show when={isChecked()}>
-        <span class={styles.ItemIconCheck}>
-          <IconTsx icon='check' />
-        </span>
+export const createButtonMenuIcon = ({filter, isChecked, docId}: CreateButtonMenuIconArgs) => {
+  const [failedToFetchIcon, setFailedToFetchIcon] = createSignal(false);
+
+  return (
+    <span class={`btn-menu-item-icon ${styles.ItemIcon}`}>
+      <Show
+        when={docId && !failedToFetchIcon()}
+        fallback={<IconTsx icon={getIconForFilter(filter)} />}
+      >
+        <FolderAnimatedIcon
+          managers={rootScope.managers}
+          color='primary-text-color'
+          docId={docId}
+          size={20}
+          onFail={() => setFailedToFetchIcon(true)}
+          dontAnimate={filter.pFlags?.title_noanimate}
+        />
       </Show>
-    </Transition>
-  </span>
-) as HTMLSpanElement;
+      <Transition
+        enterActiveClass={styles.AppearZoomEnterActive}
+        exitActiveClass={styles.AppearZoomEnterActive}
+        enterClass={styles.AppearZoomEnter}
+        exitToClass={styles.AppearZoomExitTo}
+      >
+        <Show when={isChecked()}>
+          <span class={styles.ItemIconCheck}>
+            <IconTsx icon='check' />
+          </span>
+        </Show>
+      </Transition>
+    </span>
+  ) as HTMLSpanElement
+};
 
 
 type CreateButtonMenuLabelArgs = {
@@ -81,11 +100,12 @@ export const createFolderItems = ({filters, isInFilter, isSelected, onToggle, cu
   });
 
   return filters().map((filter) => {
-    const {span, charSpansGroups} = wrapFolderTitleInSpan(filter.title, middleware.get());
+    const extractedTitle = extractEmojiFromFilterTitle(filter.title);
+    const {span, charSpansGroups} = wrapFolderTitleInSpan(extractedTitle.text, middleware.get());
     span.classList.add(styles.ItemLabelText);
 
     const options: ButtonMenuItemOptions = {
-      iconElement: createButtonMenuIcon({filter, isChecked: () => isInFilter(filter)}),
+      iconElement: createButtonMenuIcon({filter, isChecked: () => isInFilter(filter), docId: extractedTitle.docId}),
       textElement: createButtonMenuLabel({label: span, isSelected: () => isSelected(filter.id)}),
       onClick: noop
     };

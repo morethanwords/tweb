@@ -106,6 +106,7 @@ export function FoldersSidebarContent(props: {
       icon: getIconForFilter(filter),
       notifications: notifications,
       chatsCount: folder?.dialogs?.length || 0,
+      dontAnimate: filter.pFlags?.title_noanimate,
       ...titleRest,
       ...iconRest
     };
