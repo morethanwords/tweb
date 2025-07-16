@@ -1,35 +1,38 @@
-import {createEffect, createRoot, createSelector, createSignal, For, onCleanup, onMount} from 'solid-js';
+import {createEffect, createRoot, createSelector, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
-
-import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
+import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
 import ListenerSetter from '../../../helpers/listenerSetter';
-import Animated from '../../../helpers/solid/animations';
 import {Middleware} from '../../../helpers/middleware';
 import pause from '../../../helpers/schedulers/pause';
-
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
-import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import {MyDialogFilter} from '../../../lib/storages/filters';
+import Animated from '../../../helpers/solid/animations';
 import {i18n} from '../../../lib/langPack';
-
-import wrapFolderTitle from '../../wrappers/folderTitle';
-import Scrollable from '../../scrollable2';
+import {logger, LogTypes} from '../../../lib/logger';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
+import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
+import {MyDialogFilter} from '../../../lib/storages/filters';
+import useHasFoldersSidebar from '../../../stores/foldersSidebar';
 import {IconTsx} from '../../iconTsx';
-import ripple from '../../ripple'; ripple; // keep
-
-import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
-import type {FolderItemPayload} from './types';
-import FolderItem from './folderItem';
+import ripple from '../../ripple';
+import Scrollable from '../../scrollable2';
 import extractEmojiFromFilterTitle, {ExtractEmojiFromFilterTitleResult} from './extractEmojiFromFilterTitle';
+import FolderItem from './folderItem';
+import type {FolderItemPayload} from './types';
+import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
+ripple; // keep
+
+
+const log = logger('FoldersSidebarContent', LogTypes.Debug);
 
 
 export function FoldersSidebarContent(props: {
   notificationsElement: HTMLElement
 }) {
+  log.debug('Rendering FoldersSidebarContent');
+  onCleanup(() => log.debug('Cleaning up FoldersSidebarContent'));
+
   const {
     rootScope,
     appSidebarLeft,
@@ -321,10 +324,13 @@ export function renderFoldersSidebarContent(
   HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
   middleware: Middleware
 ) {
+  const {hasFoldersSidebar} = useHasFoldersSidebar();
   createRoot((dispose) => {
     render(() => (
       <HotReloadGuardProvider>
-        <FoldersSidebarContent notificationsElement={notificationsElement} />
+        <Show when={hasFoldersSidebar()}>
+          <FoldersSidebarContent notificationsElement={notificationsElement} />
+        </Show>
       </HotReloadGuardProvider>
     ), element);
 
