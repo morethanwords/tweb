@@ -42,6 +42,7 @@ export function FoldersSidebarContent(props: {
   const [folderItems, setFolderItems] = createStore<FolderItemPayload[]>([]);
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
   const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
+  const [menuTarget, setMenuTarget] = createSignal<HTMLDivElement>();
 
   const showAddFolders = () => canShowAddFolders() &&
     selectedFolderId() &&
@@ -52,7 +53,6 @@ export function FoldersSidebarContent(props: {
 
   const isSelected = createSelector(selectedFolderId);
 
-  let menuRef: HTMLDivElement;
   let folderItemsContainer: HTMLDivElement;
 
   function updateFolderItem(folderId: number, payload: Partial<FolderItemPayload>) {
@@ -172,13 +172,17 @@ export function FoldersSidebarContent(props: {
     rootScope.dispatchEventSingle('changing_folder_from_sidebar', {id: folderId});
   }
 
+  createEffect(() => {
+    if(!menuTarget()) return;
+
+    appSidebarLeft.createToolsMenu(menuTarget(), true);
+    menuTarget().classList.add('sidebar-tools-button', 'is-visible');
+    menuTarget().append(props.notificationsElement);
+  });
+
   let contextMenu: ReturnType<typeof createFolderContextMenu>;
   onMount(() => {
     const listenerSetter = new ListenerSetter();
-
-    appSidebarLeft.createToolsMenu(menuRef, true);
-    menuRef.classList.add('sidebar-tools-button', 'is-visible');
-    menuRef.append(props.notificationsElement);
 
     contextMenu = createFolderContextMenu({
       appSidebarLeft,
@@ -249,7 +253,7 @@ export function FoldersSidebarContent(props: {
   let openingChatFolders = false;
   return (
     <>
-      <FolderItem ref={(el) => (menuRef = el)} class="folders-sidebar__menu-button" icon="menu" />
+      <FolderItem ref={setMenuTarget} class="folders-sidebar__menu-button" icon="menu" />
 
       <div class="folders-sidebar__scrollable-position">
         <Scrollable
