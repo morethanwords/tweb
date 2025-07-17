@@ -118,7 +118,11 @@ export class BubbleGroup {
       ...(options || this.getAvatarOptions(message))
     });
     this.avatar.node.classList.add('bubbles-group-avatar', 'user-avatar'/* , 'can-zoom-fade' */);
-    message.reply_markup && this.avatar.node.classList.add('avatar-for-reply-markup');
+
+    const replyMarkup = message.reply_markup;
+    let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
+    replyMarkupRows = replyMarkupRows?.filter?.((row) => row.buttons.length);
+    replyMarkupRows?.length && this.avatar.node.classList.add('avatar-for-reply-markup');
 
     // this.avatarLoadPromise = Promise.all([
     //   avatarLoadPromise,
