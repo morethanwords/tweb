@@ -1383,11 +1383,14 @@ export default class ChatBubbles {
       } else {
         this.renderNewMessage(message, true);
       }
+
+      this.updateHasMessages();
     });
 
     this.listenerSetter.add(rootScope)('history_multiappend', (message) => {
       if(this.peerId !== message.peerId || this.chat.type === ChatType.Scheduled) return;
       this.renderNewMessage(message);
+      this.updateHasMessages();
     });
 
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
@@ -4772,11 +4775,13 @@ export default class ChatBubbles {
   }
 
   public async finishPeerChange() {
-    const [isBroadcast, canWrite, isLikeGroup] = await Promise.all([
-      this.chat.isBroadcast,
-      this.chat.canSend(),
-      this.chat.isLikeGroup
-    ]);
+    const {canWrite, hasMessages} = await namedPromises({
+      canWrite: this.chat.canSend(),
+      hasMessages: this.chat.hasMessages()
+    });
+
+    const isBroadcast = this.chat.isBroadcast;
+    const isLikeGroup = this.chat.isLikeGroup;
 
     return () => {
       this.chatInner.classList.toggle('has-rights', canWrite);
@@ -4784,12 +4789,20 @@ export default class ChatBubbles {
 
       [this.chatInner, this.remover].forEach((element) => {
         element.classList.toggle('is-chat', isLikeGroup);
+        element.classList.toggle('no-messages', !hasMessages);
         element.classList.toggle('with-message-avatars', isVerificationBot(this.peerId));
         element.classList.toggle('is-broadcast', isBroadcast);
       });
 
       this.createResizeObserver();
     };
+  }
+
+  public async updateHasMessages() {
+    const hasMessages = await this.chat.hasMessages();
+    [this.chatInner, this.remover].forEach((element) => {
+      element.classList.toggle('no-messages', !hasMessages);
+    });
   }
 
   private processBatch = async(...args: Parameters<ChatBubbles['batchProcessor']['process']>) => {
@@ -8603,6 +8616,8 @@ export default class ChatBubbles {
           const messageText = langPackString.value;
           elements.push(messageText);
           elementsMethod = 'replaceChildren';
+
+          bubble.classList.add('placeholder-when-no-messages');
         } else {
           const b = document.createElement('b');
           b.append(i18n('BotInfoTitle'));

@@ -1863,6 +1863,15 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
    	}
 	}
 
+  &.no-messages .placeholder-when-no-messages {
+   	position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 420px;
+    max-width: 80%;
+  }
+
 	&.is-broadcast {
 		.bubble {
 			--max-width: 100%;
@@ -2029,5 +2038,5 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 }
 
 .avatar-for-reply-markup {
-  margin-bottom: 42px;
+  margin-bottom: 43px;
 }
