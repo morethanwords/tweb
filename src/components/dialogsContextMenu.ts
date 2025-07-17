@@ -25,7 +25,11 @@ import IS_SHARED_WORKER_SUPPORTED from '../environment/sharedWorkerSupport';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import appImManager from '../lib/appManagers/appImManager';
 import assumeType from '../helpers/assumeType';
-import {isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
+import {isDialog, isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
+import createSubmenuTrigger from './createSubmenuTrigger';
+import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
+import memoizeAsyncWithTTL from '../helpers/memoizeAsyncWithTTL';
+
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -36,6 +40,7 @@ export default class DialogsContextMenu {
   private dialog: AnyDialog;
   private canManageTopics: boolean;
   private li: HTMLElement;
+  private addToFolderMenu: InstanceType<typeof AddToFolderDropdownMenu>;
 
   constructor(private managers: AppManagers) {
 
@@ -56,6 +61,7 @@ export default class DialogsContextMenu {
         this.canManageTopics = isForumTopic(this.dialog) ? await this.managers.dialogsStorage.canManageTopic(this.dialog) : undefined;
       },
       onOpenBefore: async() => {
+        this.buttons?.forEach(button => button?.onOpen?.());
         // delete button
         const langPackKey: LangPackKey = this.threadId ? 'Delete' : await this.managers.appPeersManager.getDeleteButtonText(this.peerId);
         const lastButton = this.buttons[this.buttons.length - 1];
@@ -64,6 +70,7 @@ export default class DialogsContextMenu {
         }
       },
       onClose: () => {
+        this.buttons?.forEach(button => button?.onClose?.());
         this.li.classList.remove('menu-open');
         this.li = this.peerId = this.dialog = this.filterId = this.threadId = this.canManageTopics = undefined;
       },
@@ -113,7 +120,14 @@ export default class DialogsContextMenu {
       text: 'MarkAsRead',
       onClick: this.onUnreadClick,
       verify: () => this.managers.appMessagesManager.isDialogUnread(this.dialog)
-    }, {
+    }, createSubmenuTrigger({
+      icon: 'folder',
+      text: 'AddToFolder',
+      onClose: () => {
+        this.addToFolderMenu?.controls.closeTooltip?.();
+      },
+      verify: () => isDialog(this.dialog) && this.hasFilters()
+    }, this.createAddToFolderSubmenu), {
       icon: 'pin',
       text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,
@@ -237,6 +251,32 @@ export default class DialogsContextMenu {
 
     return this.buttons = this.buttons.filter(Boolean);
   }
+
+  private createAddToFolderSubmenu = async() => {
+    if(!isDialog(this.dialog)) return;
+
+    const {default: AddToFolderDropdownMenu, fetchDialogFilters} = await import('./addToFolderDropdownMenu');
+
+    const menu = new AddToFolderDropdownMenu;
+    menu.feedProps({
+      dialog: this.dialog,
+      filters: await fetchDialogFilters(),
+      currentFilter: () => appDialogsManager.filterId,
+      onNewDialog: (dialog) => {
+        this.dialog = dialog;
+      },
+      onCleanup: () => {
+        this.addToFolderMenu = undefined;
+      }
+    });
+
+    return this.addToFolderMenu = menu;
+  };
+
+  private hasFilters = memoizeAsyncWithTTL(async() => {
+    const filters = await this.managers.filtersStorage.getDialogFilters();
+    return !!filters.filter(filter => !REAL_FOLDERS.has(filter.id)).length
+  }, () => 1, 5_000);
 
   private onArchiveClick = async() => {
     const dialog = await this.managers.appMessagesManager.getDialogOnly(this.peerId);

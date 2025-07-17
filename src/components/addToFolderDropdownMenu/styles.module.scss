@@ -1,0 +1,179 @@
+@import '../../scss/variables';
+@import '../../scss/mixins';
+
+.Container {
+  min-width: 12rem !important;
+  overflow: hidden;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.Scrollable {
+  padding-bottom: .3125rem;
+}
+
+// :global(.is-mobile) .Container .Scrollable {
+//   padding-bottom: 0;
+// }
+
+:global(.is-mobile) .Container .Scrollable {
+  padding-top: .5rem;
+  padding-bottom: .5rem;
+}
+
+.ScrollableContainer {
+  padding: inherit;
+  position: relative;
+
+  --aditional-height: 18px;
+  height: calc(32px * var(--max-visible-items, 8) + var(--aditional-height, 18px));
+
+  &.mobile {
+    --aditional-height: 0px;
+  }
+}
+
+.Label {
+  position: relative;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  padding: 5px 16px 4px;
+
+  color: var(--secondary-text-color);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  &Text {
+    max-width: 100%;
+    padding-right: 4px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.Input {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  pointer-events: none;
+  position: absolute;
+}
+
+.EmptySearchTip {
+  position: absolute;
+  width: 100%;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+
+  padding: 0 24px;
+  font-size: 12px;
+  text-align: center;
+  word-wrap: break-word;
+}
+
+.Char {
+  --border-radius: 4px;
+  --border-width: 1px;
+
+  background-color: hsl(from var(--primary-color) h s calc(l + 20) / 0.25);
+  border-style: solid;
+  border-color: hsl(from var(--primary-color) h s calc(l + 10));
+  border-width: 0px;
+
+  &.single {
+    border-radius: var(--border-radius);
+    border-width: var(--border-width);
+  }
+
+  &.middle {
+    border-top-width: var(--border-width);
+    border-bottom-width: var(--border-width);
+  }
+
+  &.start {
+    border-top-left-radius: var(--border-radius);
+    border-bottom-left-radius: var(--border-radius);
+
+    border-top-width: var(--border-width);
+    border-bottom-width: var(--border-width);
+    border-left-width: var(--border-width);
+  }
+
+  &.end {
+    border-top-right-radius: var(--border-radius);
+    border-bottom-right-radius: var(--border-radius);
+
+    border-top-width: var(--border-width);
+    border-bottom-width: var(--border-width);
+    border-right-width: var(--border-width);
+  }
+}
+
+.Hidden {
+  display: none;
+}
+
+.Item {
+  &.selected {
+    background-color: var(--light-secondary-text-color);
+  }
+
+  &Label {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: space-between;
+
+    &Text {
+      --custom-emoji-size: 1.25em;
+    }
+
+    &Enter {
+      opacity: 0.5;
+    }
+  }
+
+  &Icon {
+    position: relative;
+
+    &Check {
+      position: absolute;
+      right: -5px;
+      bottom: -2px;
+
+      font-size: 12px;
+      line-height: 1;
+
+      display: flex;
+      color: var(--surface-color);
+      background-color: var(--primary-text-color);
+
+      border-radius: 50%;
+      border: 1px solid var(--surface-color);
+    }
+  }
+}
+
+.AppearZoom {
+  &EnterActive, &ExitActive {
+    @include animation-level-global(2) {
+      transition: transform 0.1s;
+    }
+  }
+
+  &Enter, &ExitTo {
+    transform: scale(0);
+  }
+}

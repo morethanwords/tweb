@@ -34,6 +34,7 @@ type AvatarInfo = {
 export type ButtonMenuItemOptions = {
   id?: any;
   icon?: Icon,
+  iconElement?: HTMLElement;
   emptyIcon?: boolean,
   iconDoc?: Document.document,
   avatarInfo?: AvatarInfo,
@@ -59,7 +60,9 @@ export type ButtonMenuItemOptions = {
   waitForAnimation?: boolean,
   radioGroup?: string,
   inner?: (() => MaybePromise<ButtonMenuItemInner>) | ButtonMenuItemInner,
-  dispose?: () => void
+  dispose?: () => void,
+  onOpen?: () => void,
+  onClose?: () => void
   /* , cancelEvent?: true */
 };
 
@@ -67,12 +70,13 @@ export type ButtonMenuItemOptionsVerifiable = ButtonMenuItemOptions & {
   verify?: () => boolean | Promise<boolean>
 };
 
-function ButtonMenuItem(options: ButtonMenuItemOptions) {
+export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   if(options.element) return [options.separator as HTMLElement, options.element].filter(Boolean);
 
   const {
     icon,
     iconDoc,
+    iconElement,
     avatarInfo,
     className,
     text,
@@ -92,7 +96,9 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
     ripple(el);
   }
 
-  if(iconSplitted) {
+  if(iconElement) {
+    el.append(iconElement);
+  } else if(iconSplitted) {
     el.append(Icon(iconSplitted[0] as Icon, 'btn-menu-item-icon'));
   } else if(emptyIcon) {
     const iconPlaceholder = document.createElement('span');

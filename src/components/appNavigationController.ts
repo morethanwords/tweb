@@ -33,6 +33,7 @@ export class AppNavigationController {
   private currentHash: string; // have to start with # if not empty
   private overriddenHash: string; // have to start with # if not empty
   private isPossibleSwipe: boolean;
+  private escapeHandlers: Array<() => boolean> = [];
   public onHashChange: () => void;
 
   constructor() {
@@ -99,7 +100,7 @@ export class AppNavigationController {
   private onKeyDown = (e: KeyboardEvent) => {
     const item = this.navigations[this.navigations.length - 1];
     if(!item) return;
-    if(e.key === 'Escape' && (item.onEscape ? item.onEscape() : true)) {
+    if(e.key === 'Escape' && this.canCloseOnEscape() && (item.onEscape ? item.onEscape() : true)) {
       cancelEvent(e);
       this.back(item.type);
     }
@@ -270,6 +271,18 @@ export class AppNavigationController {
         }
       }
     }
+  }
+
+  private canCloseOnEscape() {
+    return this.escapeHandlers.every(fn => fn());
+  }
+
+  public registerEscapeHandler(handler: () => boolean) {
+    this.escapeHandlers.push(handler);
+
+    return () => {
+      this.escapeHandlers = this.escapeHandlers.filter(fn => fn !== handler);
+    };
   }
 }
 

@@ -3378,6 +3378,10 @@ const lang = {
   'Undo': 'Undo',
   'Resend': 'Resend',
   'Quality': 'Quality',
+  'AddToFolder': 'Add to Folder',
+  'AddToFolderSearch': 'Type to search quickly',
+  'AddToFolderTip': 'Hold Shift to select more folders at once',
+  'AddToFolderEmptySearchResult': 'Tip: Use **Escape** to clear the search',
 
   'BotSetEmojiStatusTitle': 'Set Emoji Status',
   'BotSetEmojiStatusText': 'Do you want to set this emoji status suggested by **%s**?',
