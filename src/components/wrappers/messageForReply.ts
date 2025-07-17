@@ -18,7 +18,7 @@ import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import isMessageRestricted from '../../lib/appManagers/utils/messages/isMessageRestricted';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY, FormatterArguments} from '../../lib/langPack';
-import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
 import parseEntities from '../../lib/richTextProcessor/parseEntities';
 import sortEntities from '../../lib/richTextProcessor/sortEntities';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -345,9 +345,13 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
         }
       }
 
-      if((message as Message.message).peerId === SERVICE_PEER_ID &&
+      const messagePeerId = (message as Message.message).peerId;
+      const shouldHideCode = [SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID].includes(messagePeerId);
+      const codeRegex = messagePeerId === SERVICE_PEER_ID ? /[\d\-]{5,7}/ : /[\d\-]{3,8}/;
+
+      if(shouldHideCode &&
         (message as Message.message).fromId === (message as Message.message).peerId) {
-        const match = options.text.match(/[\d\-]{5,7}/);
+        const match = options.text.match(codeRegex);
         if(match) {
           entities = entities.slice();
           entities.push({

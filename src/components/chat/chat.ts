@@ -68,6 +68,7 @@ import showUndoablePaidTooltip, {paidReactionLangKeys} from './undoablePaidToolt
 import namedPromises from '../../helpers/namedPromises';
 import {getCurrentNewMediaPopup} from '../popups/newMedia';
 import PriceChangedInterceptor from './priceChangedInterceptor';
+import {isMessageForVerificationBot} from './utils';
 
 export enum ChatType {
   Chat = 'chat',
@@ -1253,6 +1254,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isAvatarNeeded(message: Message.message | Message.messageService) {
+    if(isMessageForVerificationBot(message)) return true;
     return this.isLikeGroup && !this.isOutMessage(message);
   }
 

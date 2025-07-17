@@ -28,7 +28,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement, {setQuizHint} from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, BotApp, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, StarGift, PeerSettings} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, BotApp, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, StarGift, PeerSettings, LangPackString} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -198,6 +198,7 @@ import PopupStarGiftInfo from '../popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from './bubbles/starGift';
 import {PremiumGiftBubble} from './bubbles/premiumGift';
 import {UnknownUserBubble} from './bubbles/unknownUser';
+import {isMessageForVerificationBot, isVerificationBot} from './utils';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -239,6 +240,7 @@ const DO_NOT_UPDATE_MESSAGE_VIEWS = false;
 const DO_NOT_UPDATE_MESSAGE_REACTIONS = false;
 const DO_NOT_UPDATE_MESSAGE_REPLY = false;
 const GLOBAL_MIDS = true;
+
 
 const BIG_EMOJI_SIZES: {[size: number]: number} = {
   1: 96,
@@ -4782,6 +4784,7 @@ export default class ChatBubbles {
 
       [this.chatInner, this.remover].forEach((element) => {
         element.classList.toggle('is-chat', isLikeGroup);
+        element.classList.toggle('with-message-avatars', isVerificationBot(this.peerId));
         element.classList.toggle('is-broadcast', isBroadcast);
       });
 
@@ -7285,15 +7288,19 @@ export default class ChatBubbles {
       });
     }
 
+    const showNameForVerificationCodes = isMessageForVerificationBot(message) && !message.pFlags.local;
     // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
     const needName = ((message.fromId !== rootScope.myId || !isOut) && this.chat.isLikeGroup) ||
       message.viaBotId ||
-      storyFromPeerId;
+      storyFromPeerId ||
+      (showNameForVerificationCodes && !replyTo);
+
     if(needName || fwdFrom || replyTo || topicNameButtonContainer) { // chat
       let title: HTMLElement;
       let titleVia: typeof title;
       let noColor: boolean;
       const peerIdForColor = message.fromId;
+
 
       const isForwardFromChannel = message.from_id?._ === 'peerChannel' && message.fromId === fwdFromId;
       const fwdFromName = getFwdFromName(fwdFrom);
@@ -7307,7 +7314,7 @@ export default class ChatBubbles {
         titleVia.classList.add('peer-title');
       }
 
-      let isForward = !!(storyFromPeerId || fwdFromId || fwdFrom);
+      let isForward = !!(storyFromPeerId || fwdFromId || fwdFrom) && !showNameForVerificationCodes;
       if(isForward && this.chat.type === ChatType.Saved && fwdFromId === rootScope.myId) {
         isForward = false;
       }
@@ -8578,7 +8585,8 @@ export default class ChatBubbles {
       const appendWhat = bubble;
       let renderPromise: Promise<any>,
         appendTo = this.container,
-        method: 'append' | 'prepend' = 'append';
+        method: 'append' | 'prepend' | 'replaceChildren' = 'append',
+        elementsMethod: 'prepend' | 'replaceChildren' = 'prepend';
       if(this.chat.isRestricted) {
         renderPromise = this.renderEmptyPlaceholder('restricted', bubble, message, elements);
       } else if(isSponsored) {
@@ -8588,11 +8596,21 @@ export default class ChatBubbles {
         method = 'append';
         animate = false;
       } else if(isBot && message._ === 'message') {
-        const b = document.createElement('b');
-        b.append(i18n('BotInfoTitle'));
-        elements.push(b, '\n\n');
-        appendTo = this.chatInner;
+        if(isMessageForVerificationBot(message)) {
+          const langPackString = I18n.strings.get('VerificationCodesBotDescription');
+          assumeType<LangPackString.langPackString>(langPackString);
+
+          const messageText = langPackString.value;
+          elements.push(messageText);
+          elementsMethod = 'replaceChildren';
+        } else {
+          const b = document.createElement('b');
+          b.append(i18n('BotInfoTitle'));
+          elements.push(b, '\n\n');
+        }
+
         method = 'prepend';
+        appendTo = this.chatInner;
       } else if(this.chat.isAnyGroup && (apiManagerProxy.getPeer(this.peerId) as MTChat.chat).pFlags.creator) {
         renderPromise = this.renderEmptyPlaceholder('group', bubble, message, elements);
       } else if(this.chat.type === ChatType.Scheduled) {
@@ -8621,7 +8639,7 @@ export default class ChatBubbles {
 
       if(elements.length) {
         const messageDiv = bubble.querySelector('.message, .service-msg');
-        messageDiv.prepend(...elements);
+        messageDiv[elementsMethod](...elements);
       }
 
       const isWaitingForAnimation = !!this.messagesQueueOnRenderAdditional;
