@@ -68,6 +68,7 @@ import showUndoablePaidTooltip, {paidReactionLangKeys} from './undoablePaidToolt
 import namedPromises from '../../helpers/namedPromises';
 import {getCurrentNewMediaPopup} from '../popups/newMedia';
 import PriceChangedInterceptor from './priceChangedInterceptor';
+import {isMessageForVerificationBot, isVerificationBot} from './utils';
 
 export enum ChatType {
   Chat = 'chat',
@@ -1154,6 +1155,11 @@ export default class Chat extends EventListenerBase<{
     });
   }
 
+  public async hasMessages() {
+    const {history} = await this.getHistoryStorage(true);
+    return !!history.length;
+  }
+
   public getDialogOrTopic() {
     return this.managers.dialogsStorage.getAnyDialog(this.peerId, (this.isForum || this.type === ChatType.Saved) && this.threadId);
   }
@@ -1181,6 +1187,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public canSend(action?: ChatRights) {
+    if(isVerificationBot(this.peerId)) return Promise.resolve(false);
     if(this.type === ChatType.Saved && this.threadId !== this.peerId) {
       return Promise.resolve(false);
     }
@@ -1195,7 +1202,7 @@ export default class Chat extends EventListenerBase<{
       this.getHistoryStorage(true),
       this.peerId.isUser() ? this.managers.appProfileManager.isCachedUserBlocked(this.peerId.toUserId()) : undefined
     ]).then(([isBot, dialog, historyStorage, isUserBlocked]) => {
-      if(!isBot) {
+      if(!isBot || isVerificationBot(this.peerId)) {
         return false;
       }
 
@@ -1253,6 +1260,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isAvatarNeeded(message: Message.message | Message.messageService) {
+    if(isMessageForVerificationBot(message)) return true;
     return this.isLikeGroup && !this.isOutMessage(message);
   }
 

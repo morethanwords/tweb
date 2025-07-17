@@ -3404,7 +3404,9 @@ const lang = {
   'UnknownUserSharedGroups': 'Shared groups',
   'UnknownUserUnofficial': 'Not an official account',
   'UnknownUserName': 'User updated name %s ago',
-  'UnknownUserPhoto': 'User updated photo %s ago'
+  'UnknownUserPhoto': 'User updated photo %s ago',
+
+  'VerificationCodesBotDescription': 'Third-party services, like websites and stores, can send verification codes to your phone number via Telegram instead of SMS. Such codes will appear in this chat.\n\nIf you didn\'t request any codes – don\'t worry! Most likely, someone made a mistake when entering their number.'
 };
 
 export default lang;

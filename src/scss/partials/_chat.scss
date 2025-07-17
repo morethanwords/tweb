@@ -146,7 +146,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 				stroke: var(--secondary-text-color);
 			}
 		}
-		
+
 		&.show.backwards {
 			@include animation-level(2) {
 				animation: hide-icon .4s forwards ease-in-out !important;
@@ -159,7 +159,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		display: none !important;
 		margin: 0 !important;
     margin-inline-end: .75rem !important;
-		
+
 		@include animation-level(2) {
 			animation: grow-icon .4s forwards ease-in-out !important;
 		}
@@ -193,7 +193,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
         &-container {
           --bubble-side-offset: 0;
         }
-    
+
         &-bubble {
           display: none;
         }
@@ -250,7 +250,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		// 	justify-content: center;
 		// }
 
-		&.send .btn-send-icon-send, 
+		&.send .btn-send-icon-send,
 		&.record .btn-send-icon-record,
 		&.edit .btn-send-icon-edit,
 		&.schedule .btn-send-icon-schedule,
@@ -266,7 +266,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		} */
 	}
 
-	.btn-record-cancel, 
+	.btn-record-cancel,
   .btn-send {
 		font-size: 1.5rem;
 		line-height: 1.5rem;
@@ -286,7 +286,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 			border-radius: 50%;
 			margin-inline: 9px;
 			display: inline-block;
-			
+
 			@include animation-level(2) {
 				animation: recordBlink 1.25s infinite;
 			}
@@ -347,11 +347,11 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       }
     }
   }
-	
+
 	&.is-recording {
     &:not(.backwards) {
       // unlock
-      .btn-send, 
+      .btn-send,
       .btn-record-cancel {
         pointer-events: all;
       }
@@ -363,7 +363,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       .attach-file {
         display: none;
       }
-  
+
       .record-time {
         display: block;
       }
@@ -388,7 +388,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	// 		width: 0px;
 	// 	}
 	// }
-	
+
 	.new-message-wrapper {
 		opacity: 1;
 	}
@@ -433,23 +433,23 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
         .new-message-wrapper {
           opacity: 0;
         }
-    
+
         .rows-wrapper {
           max-height: var(--chat-input-size);
           border-bottom-right-radius: $border-radius-big;
-  
+
           .bubble-tail {
             transform: scaleX(-1) translateX(#{.5625rem * 2});
             opacity: 0;
           }
         }
-    
+
         .reply-wrapper {
           height: 0 !important;
           opacity: 0;
           pointer-events: none;
         }
-    
+
         .btn-send {
           transform: scale(0);
         }
@@ -458,12 +458,12 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       &.animating {
         .rows-wrapper {
           transition: transform $input-transition-time, max-height $input-transition-time, border-radius $input-half-transition-time/* , opacity 0s 0s */;
-  
+
           .bubble-tail {
             transition: transform $input-half-transition-time, opacity .025s 0s;
           }
         }
-  
+
         .selection-wrapper {
           transition: opacity $input-half-transition-time .075s;
         }
@@ -551,7 +551,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		.new-message-wrapper {
 			transition: opacity $input-half-transition-time $input-half-transition-time;
 		}
-	
+
 		.selection-wrapper {
 			transition: opacity $input-half-transition-time 0s;
 		}
@@ -676,7 +676,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	// 		}
 	// 	}
 	// }
-	
+
 	// @include respond-to(only-medium-screens) {
 	// 	&:not(.active) {
 	// 		transform: translate3d(-25vw, 0, 0);
@@ -713,7 +713,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 			transition: none !important;
 		}
 
-		&, 
+		&,
     &-item {
 			position: absolute !important;
 			top: 0;
@@ -747,7 +747,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 			@include animation-level(2) {
 				transition: opacity var(--transition-standard-out);
 				opacity: 0;
-				
+
 				&.is-visible:not(.backwards) {
 					transition: opacity var(--transition-standard-in);
 					opacity: 1;
@@ -757,14 +757,14 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       &-scalable {
         @include respond-to(medium-screens) {
           transform-origin: var(--transform-origin-left-center);
-  
+
           @include animation-level(2) {
             // !WARNING, МАГИЧЕСКОЕ ЧИСЛО
             margin: -18.5rem 0 -22rem 0;
             transform: scale(1);
             transition: transform var(--transition-standard-out), opacity var(--transition-standard-out) !important;
           }
-  
+
           body.is-right-column-shown.resizing-left-sidebar & {
             // When collapsing sidebar, for a moment there is a black stripe on right, so we're extending the bg a little to avoid this
             --additional-chat-bg-proportion: #{calc($large-screen / 8)}; // sidebar left width '/ 4', and half of it '/ 2'
@@ -795,7 +795,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
         // height: 100%;
         // transform: scale(1.5);
         // transform: scaleY(1.5);
-        
+
         // mask-repeat: round;
 
         mask-size: cover;
@@ -819,13 +819,13 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
     @include respond-to(medium-screens) {
       //transition: transform var(--layer-transition);
-  
+
       body.is-right-column-shown & {
         //left: calc(var(--right-column-width) / -2);
         inset-inline-end: calc(var(--right-column-width));
       }
     }
-  
+
     @include respond-to(handhelds) {
       --padding: 10px;
     }
@@ -893,7 +893,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	position: relative;
 	z-index: 3;
 
-  // .chat-input-wrapper-background, 
+  // .chat-input-wrapper-background,
   &:before {
     content: " ";
     position: absolute;
@@ -941,7 +941,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   }
 }
 
-.selection-wrapper, 
+.selection-wrapper,
 .fake-selection-wrapper {
 	position: absolute;
 	top: 0;
@@ -982,7 +982,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		align-items: center;
 		width: 100%;
 
-    &-left, 
+    &-left,
     &-right {
       display: flex;
       justify-content: space-between;
@@ -1019,7 +1019,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 				padding: 0 .5rem;
 			}
 
-			@media only screen and (max-width: 380px) { 
+			@media only screen and (max-width: 380px) {
 				font-size: 0;
 
 				.button-icon {
@@ -1067,11 +1067,11 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
           opacity: 0;
         }
       }
-  
+
       ~ .chat-input-control {
         opacity: 1;
         visibility: visible;
-    
+
         &:before {
           opacity: 1;
         }
@@ -1079,7 +1079,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     }
 
     &.animating {
-      .rows-wrapper, 
+      .rows-wrapper,
       ~ .chat-input-control {
         &:before {
           transition: opacity $background-transition-time $background-transition-total-time;
@@ -1111,10 +1111,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		--padding-vertical: 1px;
 	}
 
-	@media only screen and (max-width: 420px) { 
+	@media only screen and (max-width: 420px) {
 		max-width: 100%;
 	}
-	
+
 	@include respond-to(esg-bottom) {
 		--padding-vertical: 1px;
 	}
@@ -1158,7 +1158,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 			opacity: var(--disabled-opacity);
 		}
 	}
-	
+
   &-row {
 		display: flex;
 		justify-content: space-between;
@@ -1170,7 +1170,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		border-radius: var(--chat-input-border-radius);
 		padding: var(--padding);
 	}
-	
+
 	.reply-wrapper {
 		justify-content: flex-start;
 		// overflow: hidden; // ! COMMENTED FOR TESTING
@@ -1217,11 +1217,11 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 			height: #{$chat-helper-size};
 			opacity: 1;
 		}
-		
+
 		/* &.active {
 			height: 39px;
 		} */
-		
+
 		.reply {
 			order: 1;
 			flex: 1 1 auto;
@@ -1532,7 +1532,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
         .toggle-emoticons {
           transform: translateX(calc(var(--offset-translateX) * var(--reflect)));
         }
-  
+
         .input-message-container {
           --translateX: var(--offset-translateX);
           margin-inline-end: var(--translateX);
@@ -1578,7 +1578,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       }
 		}
 	}
-	
+
 	.btn-icon {
 		flex: 0 0 auto;
 		font-size: 1.5rem;
@@ -1634,7 +1634,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     display: inline;
     margin: 0;
   }
-  
+
   @include animation-level(2) {
     transition: height $input-half-transition-time;
   }
@@ -1655,7 +1655,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
 	transform: translate3d(0, var(--translateY), 0);
 	transition: transform var(--transition-standard-out);
-	
+
 	@include animation-level(0) {
 		transition: none !important;
 	}
@@ -1754,7 +1754,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	/* &.is-selecting > .scrollable::-webkit-scrollbar {
 		display: none;
 	} */
-	
+
 	&:not(.scrolled-down):not(.search-results-active) {
 		//> .bubbles-transform-helper {
 			// ! these lines will blur messages if chat input helper is active
@@ -1769,11 +1769,11 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 					//--translateY: 0;
 					opacity: 1;
 					visibility: visible;
-					
+
 					@include animation-level(2) {
 						transition: opacity var(--layer-transition), visibility 0s 0s !important;
 					}
-	
+
 					/* &.is-broadcast {
 						--translateY: 79px !important;
 					} */
@@ -1781,12 +1781,12 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
 				.bubbles-go-mention {
 					--translateY: calc(var(--chat-input-size) * -1 + -.625rem);
-          
+
           &.is-visible + .bubbles-go-reaction {
             --translateY: calc(var(--chat-input-size) * -2 + -.625rem * 2);
           }
 				}
-			} 
+			}
 		//}
 	}
 
@@ -1829,7 +1829,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	/* transition: margin-top var(--layer-transition);
 	transition-delay: .2s; */
   box-sizing: content-box;
-	
+
 	@include animation-level(0) {
 		transition: none !important;
 	}
@@ -1855,11 +1855,22 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
         --max-width: calc(100% - var(--message-handhelds-margin));
       }
     }
-
-    .bubble-content-wrapper {
-      margin-inline-start: 2.875rem;
-    }
 	}
+
+	&.is-chat, &.with-message-avatars {
+  	.is-in .bubble-content-wrapper {
+     	margin-inline-start: 2.875rem;
+   	}
+	}
+
+  &.no-messages .placeholder-when-no-messages {
+   	position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 420px;
+    max-width: 80%;
+  }
 
 	&.is-broadcast {
 		.bubble {
@@ -1886,7 +1897,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
 		html.is-safari & {
 			transform: translateY(calc(var(--translateY) * -1));
-			
+
 			@include animation-level(2) {
 				transition: transform var(--transition-standard-in);
 			}
@@ -1980,7 +1991,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		&.badge-primary:not(.badge-gray) {
 			background-color: var(--primary-color);
 		}
-		
+
 		@include respond-to(handhelds) {
 			top: -.75rem;
 			inset-inline-end: .1875rem;
@@ -2024,4 +2035,8 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       opacity: 1;
     }
   }
+}
+
+.avatar-for-reply-markup {
+  margin-bottom: 43px;
 }
