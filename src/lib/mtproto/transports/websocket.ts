@@ -8,8 +8,10 @@ import {logger, LogTypes} from '../../logger';
 import Modes from '../../../config/modes';
 import EventListenerBase from '../../../helpers/eventListenerBase';
 import {MTConnection} from './transport';
+import ctx from '../../../environment/ctx';
 
 const TEST_NO_WEBSOCKET = false;
+const OPEN_CONNECTION_TIMEOUT = 7e3;
 
 // let closeSocketBefore = Date.now() + 30e3;
 // let closeSocketAfter = Date.now() + 10e3;
@@ -22,6 +24,7 @@ export default class Socket extends EventListenerBase<{
   private ws: WebSocket;
   private log: ReturnType<typeof logger>;
   private debug = Modes.debug && false;
+  private connectionTimeout: number;
 
   constructor(protected dcId: number, protected url: string, logSuffix: string) {
     super();
@@ -40,6 +43,8 @@ export default class Socket extends EventListenerBase<{
   }
 
   private removeListeners() {
+    clearTimeout(this.connectionTimeout);
+
     if(!this.ws) {
       return;
     }
@@ -52,6 +57,7 @@ export default class Socket extends EventListenerBase<{
   }
 
   private connect() {
+    this.log('connecting');
     this.ws = new WebSocket(this.url, 'binary');
     this.ws.binaryType = 'arraybuffer';
     this.ws.addEventListener('open', this.handleOpen);
@@ -59,18 +65,21 @@ export default class Socket extends EventListenerBase<{
     this.ws.addEventListener('error', this.handleError);
     this.ws.addEventListener('message', this.handleMessage);
 
+    clearTimeout(this.connectionTimeout);
+    this.connectionTimeout = ctx.setTimeout(() => this.close('timeout'), OPEN_CONNECTION_TIMEOUT);
+
     // if(Date.now() < closeSocketBefore) {
     // if(Date.now() >= closeSocketAfter) {
     //   this.ws.close();
     // }
   }
 
-  public close() {
+  public close(reason?: string) {
     if(!this.ws) {
       return;
     }
 
-    this.log('close execution');
+    this.log('close execution', reason);
 
     try {
       this.ws.close();
@@ -83,13 +92,15 @@ export default class Socket extends EventListenerBase<{
   private handleOpen = () => {
     this.log('opened');
 
+    clearTimeout(this.connectionTimeout);
     this.debug && this.log.debug('sending init packet');
     this.dispatchEvent('open');
   };
 
   private handleError = (e: Event) => {
     this.log.error('handleError', e);
-    this.close();
+    clearTimeout(this.connectionTimeout);
+    this.close('error');
   };
 
   private handleClose = (e?: CloseEvent) => {
