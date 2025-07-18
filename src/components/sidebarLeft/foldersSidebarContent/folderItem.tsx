@@ -27,7 +27,8 @@ export default function FolderItem(props: FolderItemProps) {
 
   const hasNotifications = () => !!props.notifications?.count;
 
-  const showCustomIcon = () => (props.iconDocId || props.emojiIcon) && !failedToFetchIconDoc();
+  const hasCustomIcon = () => props.iconDocId || props.emojiIcon;
+  const showCustomIcon = () => hasCustomIcon() && !failedToFetchIconDoc();
 
   const title = createMemo(() => {
     if(props.name) return props.name;
@@ -49,7 +50,7 @@ export default function FolderItem(props: FolderItemProps) {
   });
 
   createComputed(() => {
-    props.iconDocId && setFailedToFetchIconDoc(false);
+    hasCustomIcon() && setFailedToFetchIconDoc(false);
   });
 
   return (
