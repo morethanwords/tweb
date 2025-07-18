@@ -1,5 +1,6 @@
-import {createComputed, createMemo, createSignal, Show} from 'solid-js';
+import {createComputed, createEffect, createMemo, createSignal, Show} from 'solid-js';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
+import {CustomEmojiRendererElement} from '../../../lib/customEmoji/renderer';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import Badge from '../../badge';
 import {IconTsx} from '../../iconTsx';
@@ -35,6 +36,11 @@ export default function FolderItem(props: FolderItemProps) {
     const span = document.createElement('span');
     const fragment = wrapFolderTitle(props.title, middleware, true);
 
+    createEffect(() => {
+      const renderer: CustomEmojiRendererElement = span.querySelector('custom-emoji-renderer-element');
+      renderer.setTextColor(props.selected ? 'primary-color' : 'folders-sidebar-item-color')
+    });
+
     span.append(fragment);
 
     return span;
@@ -67,7 +73,7 @@ export default function FolderItem(props: FolderItemProps) {
       >
         <FolderAnimatedIcon
           docId={props.iconDocId}
-          color="folders-sidebar-item-color"
+          color={props.selected ? 'primary-color' : 'folders-sidebar-item-color'}
           managers={rootScope.managers}
           size={ICON_SIZE}
           class="folders-sidebar__folder-item-animated-icon"

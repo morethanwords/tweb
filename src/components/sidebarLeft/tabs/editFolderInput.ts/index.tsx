@@ -65,6 +65,8 @@ const createEmojiDropdownButton = ({inputField}: CreateEmojiDropdownButtonArgs) 
       }
     });
 
+    emoticonsDropdown.getElement()?.classList.add(styles.EmoticonsDropdown);
+
     const textColor = 'primary-text-color';
 
     emoticonsDropdown.setTextColor(textColor);
