@@ -27,22 +27,24 @@ const MIN_FUZZY_SCORE = 0.25;
 type CreateButtonMenuIconArgs = {
   filter: MyDialogFilter;
   isChecked: Accessor<boolean>;
-  docId: DocId;
+  docId?: DocId;
+  emoji?: string;
 }
 
-export const createButtonMenuIcon = ({filter, isChecked, docId}: CreateButtonMenuIconArgs) => {
+export const createButtonMenuIcon = ({filter, isChecked, docId, emoji}: CreateButtonMenuIconArgs) => {
   const [failedToFetchIcon, setFailedToFetchIcon] = createSignal(false);
 
   return (
     <span class={`btn-menu-item-icon ${styles.ItemIcon}`}>
       <Show
-        when={docId && !failedToFetchIcon()}
+        when={(docId || emoji) && !failedToFetchIcon()}
         fallback={<IconTsx icon={getIconForFilter(filter)} />}
       >
         <FolderAnimatedIcon
           managers={rootScope.managers}
           color='primary-text-color'
           docId={docId}
+          emoji={emoji}
           size={20}
           onFail={() => setFailedToFetchIcon(true)}
           dontAnimate={filter.pFlags?.title_noanimate}
@@ -105,7 +107,7 @@ export const createFolderItems = ({filters, isInFilter, isSelected, onToggle, cu
     span.classList.add(styles.ItemLabelText);
 
     const options: ButtonMenuItemOptions = {
-      iconElement: createButtonMenuIcon({filter, isChecked: () => isInFilter(filter), docId: extractedTitle.docId}),
+      iconElement: createButtonMenuIcon({filter, isChecked: () => isInFilter(filter), docId: extractedTitle.docId, emoji: extractedTitle.emoji}),
       textElement: createButtonMenuLabel({label: span, isSelected: () => isSelected(filter.id)}),
       onClick: noop
     };

@@ -1,17 +1,18 @@
 import {createEffect, createSignal, onCleanup} from 'solid-js';
-import ListenerSetter from '../../../helpers/listenerSetter';
 import noop from '../../../helpers/noop';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
 import track from '../../../helpers/solid/track';
 import {DocumentAttribute} from '../../../layer';
 import type {AppManagers} from '../../../lib/appManagers/managers';
+import wrapSingleEmoji from '../../../lib/richTextProcessor/wrapSingleEmoji';
 import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
 import wrapSticker from '../../wrappers/sticker';
 
 
 export default function FolderAnimatedIcon(props: {
   managers: AppManagers;
-  docId: DocId;
+  docId?: DocId;
+  emoji?: string;
   color: string;
   size: number;
   class?: string;
@@ -26,25 +27,24 @@ export default function FolderAnimatedIcon(props: {
     const [playerToColor, setPlayerToColor] = createSignal<RLottiePlayer>();
 
     const docId = props.docId;
+    const emoji = props.emoji;
     const animate = !props.dontAnimate;
 
     track(() => props.size);
 
     const middleware = createMiddleware().get();
 
-    const listenerSetter = new ListenerSetter;
-
     createEffect(() => {
       playerToColor()?.setColor(props.color, true);
     });
 
     onCleanup(() => {
-      listenerSetter.removeAll();
+      iconContainer()?.replaceChildren();
     });
 
-    (async() => {
+    if(docId) (async() => {
       try {
-        const doc = await props.managers.appEmojiManager.getCustomEmojiDocument(props.docId);
+        const doc = await props.managers.appEmojiManager.getCustomEmojiDocument(docId);
 
         if(!doc) {
           props.onFail?.();
@@ -75,6 +75,13 @@ export default function FolderAnimatedIcon(props: {
         props.onFail?.();
       }
     })();
+
+    else if(emoji) {
+      const fragment = wrapSingleEmoji(emoji);
+      iconContainer()?.append(fragment);
+    }
+
+    else props.onFail?.();
   });
 
   return (

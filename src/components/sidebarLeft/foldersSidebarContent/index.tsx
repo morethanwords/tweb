@@ -97,8 +97,9 @@ export function FoldersSidebarContent(props: {
       title: (cleanTitle = extractEmojiFromFilterTitle(filter.title)).text
     };
 
-    const iconRest: Pick<FolderItemPayload, 'iconDocId'> = {
-      iconDocId: cleanTitle?.docId
+    const iconRest: Pick<FolderItemPayload, 'iconDocId' | 'emojiIcon'> = {
+      iconDocId: cleanTitle?.docId,
+      emojiIcon: cleanTitle?.emoji
     };
 
     return {

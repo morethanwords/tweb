@@ -27,6 +27,8 @@ export default function FolderItem(props: FolderItemProps) {
 
   const hasNotifications = () => !!props.notifications?.count;
 
+  const showCustomIcon = () => (props.iconDocId || props.emojiIcon) && !failedToFetchIconDoc();
+
   const title = createMemo(() => {
     if(props.name) return props.name;
     if(!props.title) return;
@@ -68,11 +70,12 @@ export default function FolderItem(props: FolderItemProps) {
       onClick={props.onClick}
     >
       <Show
-        when={props.iconDocId && !failedToFetchIconDoc()}
+        when={showCustomIcon()}
         fallback={<IconTsx icon={props.icon} class="folders-sidebar__folder-item-icon" />}
       >
         <FolderAnimatedIcon
           docId={props.iconDocId}
+          emoji={props.emojiIcon}
           color={props.selected ? 'primary-color' : 'folders-sidebar-item-color'}
           managers={rootScope.managers}
           size={ICON_SIZE}
