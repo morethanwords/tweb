@@ -38,6 +38,9 @@ import PopupSharedFolderInvite from '../../popups/sharedFolderInvite';
 import PopupElement from '../../popups';
 import {TGICO_CLASS} from '../../../helpers/tgico';
 import Icon from '../../icon';
+import {InstanceOf} from '../../../types';
+import EditFolderInput from './editFolderInput.ts';
+import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -54,7 +57,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
   private confirmBtn: HTMLElement;
   private menuBtn: HTMLElement;
-  private nameInputField: InputField;
+  private nameInputField: InstanceType<typeof EditFolderInput>;
 
   private includePeerIds: SettingSection;
   private excludePeerIds: SettingSection;
@@ -150,16 +153,17 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
     const inputSection = new SettingSection({});
 
-    const inputWrapper = document.createElement('div');
-    inputWrapper.classList.add('input-wrapper');
-
-    this.nameInputField = new InputField({
-      label: 'FilterNameHint',
-      maxLength: MAX_FOLDER_NAME_LENGTH
+    this.nameInputField = new EditFolderInput;
+    this.nameInputField.HotReloadGuard = SolidJSHotReloadGuardProvider;
+    this.nameInputField.classList.add('input-wrapper');
+    this.nameInputField.feedProps({
+      onInput: () => {
+        this.filter.title = {_: 'textWithEntities', text: this.nameInputField.controls.inputField.value || '', entities: []};
+        this.editCheckForChange();
+      }
     });
 
-    inputWrapper.append(this.nameInputField.container);
-    inputSection.content.append(inputWrapper);
+    inputSection.content.append(this.nameInputField);
 
     const generateList = (
       className: string,
@@ -269,12 +273,12 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }, {listenerSetter: this.listenerSetter});
 
     const confirmEditing = (closeAfter?: boolean) => {
-      if(this.nameInputField.input.classList.contains('error')) {
+      if(this.nameInputField.controls?.inputField?.input.classList.contains('error') ?? true) {
         return;
       }
 
-      if(!this.nameInputField.value.trim()) {
-        this.nameInputField.input.classList.add('error');
+      if(!this.nameInputField.controls?.inputField?.value.trim()) {
+        this.nameInputField.controls?.inputField?.input.classList.add('error');
         return;
       }
 
@@ -339,11 +343,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
           this.updateFilter(filter);
         }
       }
-    });
-
-    this.listenerSetter.add(this.nameInputField.input)('input', () => {
-      this.filter.title = {_: 'textWithEntities', text: this.nameInputField.value, entities: []};
-      this.editCheckForChange();
     });
 
     const reloadMissingPromises: Promise<any>[] = this.type === 'edit' ? [
@@ -590,7 +589,10 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }
 
     const filter = this.filter;
-    this.nameInputField.value = wrapDraftText(filter.title.text);
+
+    this.nameInputField.feedProps<false>({
+      value: filter.title
+    });
 
     const pFlags = (filter as DialogFilter.dialogFilter).pFlags;
     for(const flag in this.flags) {

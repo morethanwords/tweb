@@ -11,7 +11,7 @@ export interface InputFieldTsxProps<T extends typeof InputField> extends InputFi
   instanceRef?: (value: InstanceOf<T>) => void
 
   class?: string
-  value?: string
+  value?: string | Node
   onRawInput?: (value: string) => void
   errorLabel?: LangPackKey
 }
@@ -27,8 +27,8 @@ export const InputFieldTsx = <T extends typeof InputField>(inProps: InputFieldTs
   createEffect(on(
     () => props.class,
     (value, prev) => {
-      obj.container.classList.remove(prev)
-      obj.container.classList.add(value)
+      prev && obj.container.classList.remove(prev)
+      value && obj.container.classList.add(value)
     }
   ))
 

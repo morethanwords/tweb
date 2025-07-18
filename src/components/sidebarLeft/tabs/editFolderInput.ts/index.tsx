@@ -1,0 +1,152 @@
+import {onCleanup, onMount} from 'solid-js';
+import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
+import cloneDOMRect from '../../../../helpers/dom/cloneDOMRect';
+import {MessageEntity, TextWithEntities} from '../../../../layer';
+import getEmojiEntityFromEmoji from '../../../../lib/richTextProcessor/getEmojiEntityFromEmoji';
+import wrapEmojiText from '../../../../lib/richTextProcessor/wrapEmojiText';
+import rootScope from '../../../../lib/rootScope';
+import defineSolidElement, {PassedProps} from '../../../../lib/solidjs/defineSolidElement';
+import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import ButtonIcon from '../../../buttonIcon';
+import {EmoticonsDropdown} from '../../../emoticonsDropdown';
+import InputField, {insertRichTextAsHTML} from '../../../inputField';
+import {InputFieldTsx} from '../../../inputFieldTsx';
+import styles from './styles.module.scss';
+
+if(import.meta.hot) import.meta.hot.accept();
+
+
+const MAX_FOLDER_NAME_LENGTH = 12;
+
+type Props = {
+  value?: TextWithEntities.textWithEntities;
+  onInput: (value: string) => void;
+};
+
+type Controls = {
+  inputField: InputField;
+};
+
+
+type CreateEmojiDropdownButtonArgs = {
+  inputField: InputField;
+};
+
+const createEmojiDropdownButton = ({inputField}: CreateEmojiDropdownButtonArgs) => {
+  const {EmojiTab, EmoticonsDropdown} = useHotReloadGuard();
+  const button = ButtonIcon('smile ' + styles.EmojiButton);
+
+  let emoticonsDropdown: EmoticonsDropdown;
+
+  attachClickEvent(button, async() => {
+    const emojiTab = new EmojiTab({
+      managers: rootScope.managers,
+      onClick: async(emoji) => {
+        const entity: MessageEntity = emoji.docId ? {
+          _: 'messageEntityCustomEmoji',
+          document_id: emoji.docId,
+          length: emoji.emoji.length,
+          offset: 0
+        } : getEmojiEntityFromEmoji(emoji.emoji);
+
+        insertEmojiIntoField({inputField, text: emoji.emoji, entity});
+      }
+    });
+
+    emoticonsDropdown = new EmoticonsDropdown({
+      tabsToRender: [emojiTab],
+      customParentElement: document.body,
+      getOpenPosition: () => {
+        const rect = button.getBoundingClientRect();
+        const cloned = cloneDOMRect(rect);
+        cloned.left = rect.left + rect.width / 2;
+        cloned.top = rect.top + rect.height / 2;
+        return cloned;
+      }
+    });
+
+    const textColor = 'primary-text-color';
+
+    emoticonsDropdown.setTextColor(textColor);
+
+    emoticonsDropdown.addEventListener('closed', () => {
+      emoticonsDropdown.hideAndDestroy();
+    });
+
+    emoticonsDropdown.onButtonClick();
+  });
+
+  onCleanup(() => {
+    emoticonsDropdown?.hideAndDestroy();
+  });
+
+  return button;
+};
+
+type InsertEmojiIntoFieldArgs = {
+  inputField: InputField;
+  text: string;
+  entity?: MessageEntity;
+};
+
+const insertEmojiIntoField = ({inputField, text, entity}: InsertEmojiIntoFieldArgs) => {
+  insertRichTextAsHTML(inputField.input, text, entity ? [entity] : undefined);
+};
+
+/*
+
+const {value: fullValue, caretPos, entities} = getRichValueWithCaret(this.messageInput);
+const pos = caretPos >= 0 ? caretPos : fullValue.length;
+const prefix = fullValue.substr(0, pos);
+const suffix = fullValue.substr(pos);
+
+const matches = isHelper ? prefix.match(ChatInput.AUTO_COMPLETE_REG_EXP) : null;
+
+const matchIndex = matches ? matches.index + (matches[0].length - matches[2].length) : prefix.length;
+const newPrefix = prefix.slice(0, matchIndex);
+const newValue = newPrefix + insertText + suffix;
+
+if(isHelper && caretPos !== -1) {
+  const match = matches ? matches[2] : fullValue;
+  // const {node, selection} = getCaretPosNew(this.messageInput);
+
+  const selection = document.getSelection();
+  // const range = document.createRange();
+  let counter = 0;
+  while(selection.toString() !== match) {
+    if(++counter >= 10000) {
+      throw new Error('lolwhat');
+    }
+
+    // for(let i = 0; i < match.length; ++i) {
+    selection.modify('extend', 'backward', 'character');
+  }
+}
+
+{
+  // const fragment = wrapDraftText(insertText, {entities: insertEntity ? [insertEntity] : undefined, wrappingForPeerId: this.chat.peerId});
+  insertRichTextAsHTML(this.messageInput, insertText, insertEntity ? [insertEntity] : undefined, this.chat.peerId);
+*/
+
+const EditFolderInput = defineSolidElement({
+  name: 'edit-folder-input',
+  component: (props: PassedProps<Props>, _, controls: Controls) => {
+    onMount(() => {
+      controls.inputField?.input.after(createEmojiDropdownButton({inputField: controls.inputField}));
+    });
+
+    return (
+      <>
+        <InputFieldTsx
+          instanceRef={(value) => void (controls.inputField = value)}
+          label='FilterNameHint'
+          maxLength={MAX_FOLDER_NAME_LENGTH}
+          value={props.value ? wrapEmojiText(props.value.text, true, props.value.entities) : ''}
+          onRawInput={props.onInput}
+        />
+      </>
+    );
+  }
+});
+
+export default EditFolderInput;

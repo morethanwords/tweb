@@ -28,7 +28,7 @@ import wrapDraftText from '../lib/richTextProcessor/wrapDraftText';
 import {createCustomFiller, insertCustomFillers} from '../lib/richTextProcessor/wrapRichText';
 import type {MarkupTooltipTypes} from './chat/markupTooltip';
 
-export async function insertRichTextAsHTML(input: HTMLElement, text: string, entities: MessageEntity[], wrappingForPeerId: PeerId) {
+export async function insertRichTextAsHTML(input: HTMLElement, text: string, entities: MessageEntity[], wrappingForPeerId?: PeerId) {
   const loadPromises: Promise<any>[] = [];
   const wrappingCustomEmoji = entities?.some((entity) => entity._ === 'messageEntityCustomEmoji');
   const renderer = wrappingCustomEmoji ? createCustomEmojiRendererForInput() : undefined;
