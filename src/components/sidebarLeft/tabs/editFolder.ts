@@ -153,7 +153,10 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
     this.header.append(this.confirmBtn, this.menuBtn);
 
-    const inputSection = new SettingSection({});
+    const hasFoldersSidebar = rootScope.settings.tabsInSidebar;
+    const inputSection = new SettingSection({
+      caption: hasFoldersSidebar ? 'EditFolder.EmojiAsIconTip' : undefined
+    });
 
     this.nameInputField = new EditFolderInput;
     this.nameInputField.HotReloadGuard = SolidJSHotReloadGuardProvider;
