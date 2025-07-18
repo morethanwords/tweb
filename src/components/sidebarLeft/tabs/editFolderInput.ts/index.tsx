@@ -95,41 +95,6 @@ const insertEmojiIntoField = ({inputField, text, entity}: InsertEmojiIntoFieldAr
   insertRichTextAsHTML(inputField.input, text, entity ? [entity] : undefined);
 };
 
-/*
-
-const {value: fullValue, caretPos, entities} = getRichValueWithCaret(this.messageInput);
-const pos = caretPos >= 0 ? caretPos : fullValue.length;
-const prefix = fullValue.substr(0, pos);
-const suffix = fullValue.substr(pos);
-
-const matches = isHelper ? prefix.match(ChatInput.AUTO_COMPLETE_REG_EXP) : null;
-
-const matchIndex = matches ? matches.index + (matches[0].length - matches[2].length) : prefix.length;
-const newPrefix = prefix.slice(0, matchIndex);
-const newValue = newPrefix + insertText + suffix;
-
-if(isHelper && caretPos !== -1) {
-  const match = matches ? matches[2] : fullValue;
-  // const {node, selection} = getCaretPosNew(this.messageInput);
-
-  const selection = document.getSelection();
-  // const range = document.createRange();
-  let counter = 0;
-  while(selection.toString() !== match) {
-    if(++counter >= 10000) {
-      throw new Error('lolwhat');
-    }
-
-    // for(let i = 0; i < match.length; ++i) {
-    selection.modify('extend', 'backward', 'character');
-  }
-}
-
-{
-  // const fragment = wrapDraftText(insertText, {entities: insertEntity ? [insertEntity] : undefined, wrappingForPeerId: this.chat.peerId});
-  insertRichTextAsHTML(this.messageInput, insertText, insertEntity ? [insertEntity] : undefined, this.chat.peerId);
-*/
-
 const EditFolderInput = defineSolidElement({
   name: 'edit-folder-input',
   component: (props: PassedProps<Props>, _, controls: Controls) => {
