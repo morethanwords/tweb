@@ -39,6 +39,8 @@ const createEmojiDropdownButton = ({inputField}: CreateEmojiDropdownButtonArgs) 
   let emoticonsDropdown: EmoticonsDropdown;
 
   attachClickEvent(button, async() => {
+    if(emoticonsDropdown) return;
+
     const emojiTab = new EmojiTab({
       managers: rootScope.managers,
       onClick: async(emoji) => {
@@ -73,6 +75,7 @@ const createEmojiDropdownButton = ({inputField}: CreateEmojiDropdownButtonArgs) 
 
     emoticonsDropdown.addEventListener('closed', () => {
       emoticonsDropdown.hideAndDestroy();
+      emoticonsDropdown = undefined;
     });
 
     emoticonsDropdown.onButtonClick();
