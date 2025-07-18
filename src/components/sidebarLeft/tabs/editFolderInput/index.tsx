@@ -110,6 +110,7 @@ const EditFolderInput = defineSolidElement({
           maxLength={MAX_FOLDER_NAME_LENGTH}
           value={props.value ? wrapEmojiText(props.value.text, true, props.value.entities) : ''}
           onRawInput={props.onInput}
+          canWrapCustomEmojis
         />
       </>
     );

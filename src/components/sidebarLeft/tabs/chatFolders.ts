@@ -104,7 +104,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     if(!row) {
       const isSuggested = dialogFilter._ === 'dialogFilterSuggested';
       row = new Row({
-        title: filter.id === FOLDER_ID_ALL && !isSuggested ? i18n('FilterAllChats') : await wrapFolderTitle(filter.title, this.middlewareHelper.get()),
+        title: filter.id === FOLDER_ID_ALL && !isSuggested ? i18n('FilterAllChats') : await wrapFolderTitle(filter.title, this.middlewareHelper.get(), false, {textColor: 'primary-text-color'}),
         subtitle: description,
         clickable: true,
         buttonRightLangKey: isSuggested ? 'Add' : undefined
