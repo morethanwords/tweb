@@ -48,6 +48,8 @@ const AddToFolderDropdownMenu = defineSolidElement({
     const selectedFilter = createMemo(() => selectableFolders()[selected()]?.filter);
     const isSelected = createSelector(() => selectedFilter()?.id);
 
+    const renderAsScrollable = createMemo(() => props.filters.length > HAVE_SCROLL_WHEN_ABOVE);
+
     const toggleDialogInFilter = useToggleDialogInFilter({
       dialog: () => props.dialog,
       onNewDialog: (newDialog) => {
@@ -101,6 +103,10 @@ const AddToFolderDropdownMenu = defineSolidElement({
       if(typeof selected() !== 'number') label?.scrollIntoView({block: 'center'});
     });
 
+    createEffect(() => {
+      props.element.classList.toggle(styles.withScrollable, renderAsScrollable());
+    });
+
     const cleanupEscapeHandler = appNavigationController.registerEscapeHandler(() => !search());
 
     onCleanup(() => {
@@ -115,7 +121,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
     );
 
     return (
-      <Show when={props.filters.length > HAVE_SCROLL_WHEN_ABOVE} fallback={<Items />}>
+      <Show when={renderAsScrollable()} fallback={<Items />}>
         <div
           class={styles.ScrollableContainer}
           classList={{

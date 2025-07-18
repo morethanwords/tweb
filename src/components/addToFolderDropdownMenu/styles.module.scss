@@ -4,8 +4,11 @@
 .Container {
   min-width: 12rem !important;
   overflow: hidden;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
+
+  &.withScrollable {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
 }
 
 .Scrollable {

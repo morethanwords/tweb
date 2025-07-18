@@ -1,25 +1,25 @@
 import {ParentProps} from 'solid-js';
 
-import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
-import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
-import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
+import {EmoticonsDropdown} from '../../components/emoticonsDropdown';
 import EmoticonsSearch from '../../components/emoticonsDropdown/search';
-import PasswordInputField from '../../components/passwordInputField';
-import PasswordMonkey from '../../components/monkeys/password';
+import EmojiTab from '../../components/emoticonsDropdown/tabs/emoji';
 import {InputFieldTsx} from '../../components/inputFieldTsx';
-import themeController from '../../helpers/themeController';
+import PasswordMonkey from '../../components/monkeys/password';
+import PasswordInputField from '../../components/passwordInputField';
+import {setQuizHint} from '../../components/poll';
 import showLimitPopup from '../../components/popups/limit';
 import PopupPremium from '../../components/popups/premium';
 import appSidebarLeft from '../../components/sidebarLeft';
-import {setQuizHint} from '../../components/poll';
-
-import apiManagerProxy from '../mtproto/mtprotoworker';
+import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
+import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
+import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
+import themeController from '../../helpers/themeController';
 import appImManager from '../appManagers/appImManager';
+import apiManagerProxy from '../mtproto/mtprotoworker';
 import lottieLoader from '../rlottie/lottieLoader';
 import rootScope from '../rootScope';
-
-
 import {SolidJSHotReloadGuardContext} from './hotReloadGuard';
+
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
   return (
@@ -39,7 +39,9 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       InputFieldTsx,
       PasswordInputField,
       PasswordMonkey,
-      PopupPremium
+      PopupPremium,
+      EmoticonsDropdown,
+      EmojiTab
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>
