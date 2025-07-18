@@ -42,6 +42,7 @@ import {InstanceOf} from '../../../types';
 import EditFolderInput from './editFolderInput.ts';
 import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
 import getRichValueWithCaret from '../../../helpers/dom/getRichValueWithCaret';
+import trimRichText from '../../../lib/richTextProcessor/trimRichText';
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -160,7 +161,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     this.nameInputField.feedProps({
       onInput: () => {
         const {value, entities} = getRichValueWithCaret(this.nameInputField.controls.inputField.input);
-        this.filter.title = {_: 'textWithEntities', text: value || '', entities: entities || []};
+        this.filter.title = {_: 'textWithEntities', ...trimRichText(value || '', entities || [])};
         this.editCheckForChange();
       }
     });

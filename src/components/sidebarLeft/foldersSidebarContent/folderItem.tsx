@@ -38,7 +38,7 @@ export default function FolderItem(props: FolderItemProps) {
 
     createEffect(() => {
       const renderer: CustomEmojiRendererElement = span.querySelector('custom-emoji-renderer-element');
-      renderer.setTextColor(props.selected ? 'primary-color' : 'folders-sidebar-item-color')
+      renderer?.setTextColor(props.selected ? 'primary-color' : 'folders-sidebar-item-color')
     });
 
     span.append(fragment);
