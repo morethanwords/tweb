@@ -43,6 +43,8 @@ const createEmojiDropdownButton = ({inputField}: CreateEmojiDropdownButtonArgs) 
 
     const emojiTab = new EmojiTab({
       managers: rootScope.managers,
+      noPacks: !rootScope.premium,
+      noSearchGroups: !rootScope.premium,
       onClick: async(emoji) => {
         const entity: MessageEntity = emoji.docId ? {
           _: 'messageEntityCustomEmoji',
