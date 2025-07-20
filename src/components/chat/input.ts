@@ -1310,9 +1310,9 @@ export default class ChatInput {
   }
 
   private setChatListeners() {
-    this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, draft, force}) => {
+    this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, draft}) => {
       if(this.chat.threadId !== threadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
-      this.setDraft(draft, true, force);
+      this.setDraft(draft, true);
     });
 
     this.listenerSetter.add(this.appImManager)('peer_changing', (chat) => {
