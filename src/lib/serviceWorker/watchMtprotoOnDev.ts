@@ -4,7 +4,7 @@ import {IS_BETA} from '../../config/debug';
 import {logger, LogTypes} from '../logger';
 
 
-const logMtprotoBug = logger('SW-mtproto-bug', LogTypes.Debug);
+const logMtprotoBug = logger('SW-mtproto-bug', LogTypes.None);
 
 type Args = {
   connectedWindows: Map<string, WindowClient>;
