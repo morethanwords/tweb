@@ -111,9 +111,11 @@ export default function Scrollable(props: {
       updateThumb(_scrollPosition);
 
       // lastScrollDirection check is useless here, every callback should decide on its own
-      if(true/*  && lastScrollDirection !== 0 */) {
-        onScrollCallbacks().forEach((callback) => callback());
-      }
+      // if(true/*  && lastScrollDirection !== 0 */) {
+      //   onScrollCallbacks().forEach((callback) => callback());
+      // }
+      
+      onScrollCallbacks().forEach((callback) => callback());
 
       checkForTriggers();
     });
