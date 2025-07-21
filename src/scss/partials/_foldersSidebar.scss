@@ -1,3 +1,7 @@
+:root {
+  --folders-sidebar-item-color: #717579;
+}
+
 .folders-sidebar {
   position: relative;
   flex: 5rem 0 0;
@@ -14,7 +18,7 @@
   }
 
   background-color: var(--background);
-  color: #717579;
+  color: var(--folders-sidebar-item-color);
 
   z-index: 4;
 
@@ -44,6 +48,7 @@
   }
 
   &__folder-item {
+    --size: 1.875rem;
     --ripple-color: var(--folder-item-ripple-color) !important;
     position: relative;
     flex-shrink: 0;
@@ -74,7 +79,28 @@
     }
 
     &-icon {
-      font-size: 1.875rem;
+      font-size: var(--size);
+    }
+
+    &-animated-icon {
+      position: relative;
+      width: var(--size);
+      height: var(--size);
+
+      pointer-events: none;
+
+      .emoji-image {
+        width: 100%;
+        height: 100%;
+      }
+
+      .emoji-native {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: var(--size);
+      }
     }
 
     &-badge {
@@ -88,14 +114,22 @@
       box-shadow: 0 0 0 1px var(--background);
 
       transition: none !important;
+      pointer-events: none;
 
       &.badge-gray {
-        background-color: #717579;
+        background-color: var(--folders-sidebar-item-color);
       }
     }
 
     &-name {
       --custom-emoji-size: 1.25em;
+
+      .emoji-image {
+        width: var(--custom-emoji-size);
+        height: var(--custom-emoji-size);
+      }
+
+      pointer-events: none;
 
       max-width: 80%;
       white-space: nowrap;
