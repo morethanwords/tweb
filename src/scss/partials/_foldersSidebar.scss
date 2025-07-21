@@ -48,6 +48,7 @@
   }
 
   &__folder-item {
+    --size: 1.875rem;
     --ripple-color: var(--folder-item-ripple-color) !important;
     position: relative;
     flex-shrink: 0;
@@ -78,19 +79,27 @@
     }
 
     &-icon {
-      font-size: 1.875rem;
+      font-size: var(--size);
     }
 
     &-animated-icon {
       position: relative;
-      width: 1.875rem;
-      height: 1.875rem;
+      width: var(--size);
+      height: var(--size);
 
       pointer-events: none;
 
       .emoji-image {
         width: 100%;
         height: 100%;
+      }
+
+      .emoji-native {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: var(--size);
       }
     }
 
