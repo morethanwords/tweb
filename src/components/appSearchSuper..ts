@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppMessagesManager, MyInputMessagesFilter, MyMessage} from '../lib/appManagers/appMessagesManager';
+import type {AppMessagesManager, MyInputMessagesFilter, MyMessage, RequestHistoryOptions} from '../lib/appManagers/appMessagesManager';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom, Some4} from '../lib/appManagers/appDialogsManager';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
@@ -115,7 +115,7 @@ export type SearchSuperContext = {
   nextRate?: number,
   minDate?: number,
   maxDate?: number
-};
+} & Pick<RequestHistoryOptions, 'chatType'>;
 
 export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
   'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar' |
@@ -2661,7 +2661,7 @@ export default class AppSearchSuper {
     return context;
   }
 
-  public setQuery({peerId, query, threadId, historyStorage, folderId, minDate, maxDate}: {
+  public setQuery({peerId, query, threadId, historyStorage, folderId, minDate, maxDate, chatType}: {
     peerId: PeerId,
     query?: string,
     threadId?: number,
@@ -2669,7 +2669,7 @@ export default class AppSearchSuper {
     folderId?: number,
     minDate?: number,
     maxDate?: number
-  }) {
+  } & Pick<RequestHistoryOptions, 'chatType'>) {
     this.searchContext = {
       peerId,
       query: query || '',
@@ -2677,7 +2677,8 @@ export default class AppSearchSuper {
       threadId,
       folderId,
       minDate,
-      maxDate
+      maxDate,
+      chatType
     };
 
     this.historyStorage = historyStorage ?? {};

@@ -100,6 +100,8 @@ import EncryptionKeyStore from '../../lib/passcode/keyStore';
 import createLockButton from './lockButton';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './constants';
 import createSubmenuTrigger from '../createSubmenuTrigger';
+import ChatTypeMenu from '../chatTypeMenu';
+import {RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -1150,6 +1152,14 @@ export class AppSidebarLeft extends SidebarSlider {
       recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
     };
 
+    const chatTypeMenu = new ChatTypeMenu;
+    chatTypeMenu.feedProps({
+      onChange: (chatType) => void updateSearchQuery({search: this.inputSearch.value, chatType}),
+      selected: 'all'
+    });
+
+    this.searchGroups.messages.nameEl.append(chatTypeMenu);
+
     // bots.getPopularAppBots
 
     const searchSuper = this.searchSuper = new AppSearchSuper({
@@ -1309,11 +1319,22 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     this.inputSearch.onChange = (value) => {
+      updateSearchQuery({search: value, chatType: chatTypeMenu.props.selected});
+    };
+
+    type UpdateSearchQueryArgs = {
+      search?: string;
+      chatType?: RequestHistoryOptions['chatType'];
+    };
+
+    const updateSearchQuery = ({search: value, chatType}: UpdateSearchQueryArgs) => {
+      // spot input
       searchSuper.cleanupHTML();
       searchSuper.setQuery({
         peerId: selectedPeerId,
         folderId: selectedPeerId ? undefined : 0,
         query: value,
+        chatType,
         minDate: selectedMinDate,
         maxDate: selectedMaxDate
       });
@@ -1443,10 +1464,11 @@ export class AppSidebarLeft extends SidebarSlider {
       appNavigationController.removeByType('global-search');
 
       transition(0);
-
       this.buttonsContainer.classList.remove('is-visible');
       this.isSearchActive = false;
       this.onSomethingOpenInsideChange(true);
+
+      chatTypeMenu.props.selected = 'all';
     });
 
     const clearRecentSearchBtn = ButtonIcon('close');
