@@ -80,6 +80,7 @@ import getPeerTitle from '../wrappers/getPeerTitle';
 import {getFullDate} from '../../helpers/date/getFullDate';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
 import {MySponsoredPeer} from '../../lib/appManagers/appChatsManager';
+import {PopupChecklist, PopupChecklistAppend} from '../popups/checklist';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -670,6 +671,15 @@ export default class ChatContextMenu {
       onClick: this.onEditClick,
       verify: async() => (await this.managers.appMessagesManager.canEditMessage(this.message, 'text')) &&
         !!this.chat.input.messageInput
+    }, {
+      icon: 'plusround',
+      text: 'ChecklistAddTasks',
+      onClick: this.onAddTaskClick,
+      verify: async() => {
+        if(this.message._ !== 'message' || this.message.media?._ !== 'messageMediaToDo') return false
+        return this.message.pFlags.out || this.message.media.todo.pFlags.others_can_append
+      }/* ,
+      cancelEvent: true */
     }, {
       icon: 'factcheck',
       text: (this.mainMessage as Message.message)?.factcheck ? 'EditFactCheck' : 'AddFactCheck',
@@ -1375,6 +1385,14 @@ export default class ChatContextMenu {
 
   private onEditClick = () => {
     const message = this.getMessageWithText();
+    if(message._ === 'message' && message.media?._ === 'messageMediaToDo') {
+      PopupElement.createPopup(PopupChecklist, {
+        chat: this.chat,
+        editMessage: message as any
+      }).show();
+      return;
+    }
+
     this.chat.input.initMessageEditing(this.isTargetAGroupedItem ? this.mid : message.mid);
   };
 
@@ -1470,6 +1488,13 @@ export default class ChatContextMenu {
 
   private onStopPoll = () => {
     this.managers.appPollsManager.stopPoll(this.message as Message.message);
+  };
+
+  private onAddTaskClick = () => {
+    PopupElement.createPopup(PopupChecklistAppend, {
+      chat: this.chat,
+      editMessage: this.message as any
+    }).show();
   };
 
   private onForwardClick = async() => {

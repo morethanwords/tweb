@@ -284,6 +284,11 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
           break;
         }
 
+        case 'messageMediaToDo': {
+          addPart(undefined, plain ? media.todo.title.text : wrapEmojiText(media.todo.title.text, false, media.todo.title.entities));
+          break;
+        }
+
         default:
           addPart(UNSUPPORTED_LANG_PACK_KEY);
           options.text = '';

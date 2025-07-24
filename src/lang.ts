@@ -3406,7 +3406,21 @@ const lang = {
   'UnknownUserName': 'User updated name %s ago',
   'UnknownUserPhoto': 'User updated photo %s ago',
 
-  'VerificationCodesBotDescription': 'Third-party services, like websites and stores, can send verification codes to your phone number via Telegram instead of SMS. Such codes will appear in this chat.\n\nIf you didn\'t request any codes – don\'t worry! Most likely, someone made a mistake when entering their number.'
+  'VerificationCodesBotDescription': 'Third-party services, like websites and stores, can send verification codes to your phone number via Telegram instead of SMS. Such codes will appear in this chat.\n\nIf you didn\'t request any codes – don\'t worry! Most likely, someone made a mistake when entering their number.',
+  'NewChecklist': 'New Checklist',
+  'EditChecklist': 'Edit Checklist',
+  'Checklist': 'Checklist',
+  'GroupChecklist': 'Group Checklist',
+  'ChecklistCompleted': '%s of %s tasks completed',
+  'NewChecklist.TitlePlaceholder': 'Title...',
+  'NewChecklist.TaskPlaceholder': 'Task',
+  'ChecklistAddedTask': '**%s** added a new task **"%s"** to **"%s"**.',
+  'ChecklistAddedTaskMany': '**%s** added %s to **"%s"**.',
+  'ChecklistMarkedDone': '**%s** marked %s as done.',
+  'ChecklistMarkedUndone': '**%s** marked %s as not done.',
+  'ChecklistMarkedMixed': '**%s** marked %s as done and %s as not done.',
+  'ChecklistAddTasks': 'Add Tasks',
+  'ChecklistOptions': 'Checklist options'
 };
 
 export default lang;

@@ -199,6 +199,7 @@ import {StarGiftBubble, UniqueStarGiftWebPageBox} from './bubbles/starGift';
 import {PremiumGiftBubble} from './bubbles/premiumGift';
 import {UnknownUserBubble} from './bubbles/unknownUser';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
+import {ChecklistBubble} from './bubbles/checklist';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -460,7 +461,7 @@ export default class ChatBubbles {
   private canShowRanks: boolean;
   // private reactions: Map<number, ReactionsElement>;
 
-  private updateLocationOnEdit: Map<HTMLElement, (message: Message.message) => void> = new Map();
+  private updateLocalOnEdit: Map<HTMLElement, (message: Message.message) => void> = new Map();
   public replySwipeHandler: SwipeHandler;
 
   private remover: HTMLDivElement;
@@ -667,6 +668,10 @@ export default class ChatBubbles {
         });
       }
 
+      if(this.updateLocalOnEdit.has(_bubble)) {
+        this.updateLocalOnEdit.get(_bubble)(message as Message.message);
+      }
+
       if(this.unreadOut.has(tempId)) {
         this.unreadOut.delete(tempId);
         this.unreadOut.add(mid);
@@ -809,7 +814,7 @@ export default class ChatBubbles {
       await getHeavyAnimationPromise();
       if(this.getBubble(fullMid) !== bubble) return;
 
-      const updateLocalOnEdit = this.updateLocationOnEdit.get(bubble);
+      const updateLocalOnEdit = this.updateLocalOnEdit.get(bubble);
       if(updateLocalOnEdit) {
         updateLocalOnEdit(message as Message.message);
         return;
@@ -2713,7 +2718,7 @@ export default class ChatBubbles {
       let isReplyClick = false;
 
       try {
-        isReplyClick = !!findUpClassName(e.target, 'reply');
+        isReplyClick = !!(e.target as HTMLElement).closest('.reply, .bubble.service.is-reply');
       } catch(err) {}
 
       if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
@@ -5638,6 +5643,8 @@ export default class ChatBubbles {
               }
             }
           }), container, middleware)
+        } else if(action._ === 'messageActionTodoAppendTasks' || action._ === 'messageActionTodoCompletions') {
+          bubble.classList.add('is-reply')
         }
 
         loadPromises.push(promise);
@@ -6910,6 +6917,28 @@ export default class ChatBubbles {
 
           break;
         }
+        case 'messageMediaToDo': {
+          mediaRequiresMessageDiv = true;
+
+          const content = document.createElement('div');
+          content.classList.add('checklist-content');
+
+          const messageSignal = createSignal(message);
+          this.updateLocalOnEdit.set(bubble, msg => messageSignal[1](msg));
+          middleware.onClean(() => {
+            this.updateLocalOnEdit.delete(bubble);
+          });
+
+          this.wrapSomeSolid(() => ChecklistBubble({
+            get message() { return messageSignal[0]() as any },
+            chat: this.chat,
+            out: our,
+            richTextOptions: getRichTextOptions()
+          }), content, middleware);
+          messageDiv.prepend(content);
+
+          break;
+        }
 
         case 'messageMediaPaidMedia':
         case 'messageMediaInvoice': {
@@ -7128,7 +7157,7 @@ export default class ChatBubbles {
             messageMedia,
             middleware,
             timeSpan,
-            updateLocationOnEdit: this.updateLocationOnEdit,
+            updateLocationOnEdit: this.updateLocalOnEdit,
             wrapOptions
           });
 

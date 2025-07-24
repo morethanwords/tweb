@@ -10,7 +10,7 @@ import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import setInnerHTML, {setDirection} from '../../helpers/dom/setInnerHTML';
 import {wrapCallDuration} from './wrapDuration';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {ForumTopic, Message, MessageAction, MessageMedia, MessageReplyHeader, StarGift} from '../../layer';
+import {ForumTopic, Message, MessageAction, MessageEntity, MessageMedia, MessageReplyHeader, StarGift, TextWithEntities} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '../../lib/langPack';
 import {GENERAL_TOPIC_ID} from '../../lib/mtproto/mtproto_config';
@@ -27,6 +27,7 @@ import wrapMessageForReply, {WrapMessageForReplyOptions} from './messageForReply
 import wrapPeerTitle from './peerTitle';
 import shouldDisplayGiftCodeAsGift from '../../helpers/shouldDisplayGiftCodeAsGift';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import Icon from '../icon';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -42,8 +43,50 @@ async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   return a;
 }
 
-function wrapSomeText(text: string, plain?: boolean) {
-  return plain ? text : htmlToSpan(wrapEmojiText(text));
+function wrapSomeText(text: string, plain: boolean, entities?: MessageEntity[]) {
+  return plain ? text : htmlToSpan(wrapEmojiText(text, false, entities));
+}
+
+function joinTexts(texts: (string | HTMLElement)[], params: {
+  delimiter: string,
+  wrap?: (text: string | HTMLElement) => string | HTMLElement,
+  prepend?: string,
+  append?: string
+}) {
+  const {delimiter, prepend, append} = params
+  const fragment = document.createDocumentFragment()
+  let first = true
+  for(const it of texts) {
+    if(first) {
+      first = false
+    } else {
+      fragment.append(delimiter)
+    }
+
+    if(prepend) {
+      fragment.append(prepend)
+    }
+    if(params.wrap) {
+      fragment.append(params.wrap(it));
+    } else {
+      fragment.append(it);
+    }
+    if(append) {
+      fragment.append(append)
+    }
+  }
+  return fragment
+}
+
+const TODO_JOIN_OPTIONS: Parameters<typeof joinTexts>[1] = {
+  delimiter: ', ',
+  prepend: '"',
+  append: '"',
+  wrap: el => {
+    const b = document.createElement('b');
+    b.append(el);
+    return b;
+  }
 }
 
 type WrapTopicIconOptions = {
@@ -157,6 +200,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
     let _ = action._;
     // let suffix = '';
     let langPackKey: LangPackKey;
+    let icon: HTMLElement | undefined;
     let args: Array<FormatterArgument | Promise<FormatterArgument>>;
 
     const managers = rootScope.managers;
@@ -676,6 +720,80 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         args = [getNameDivHTML(message.peerId, plain)];
         break;
 
+      case 'messageActionTodoAppendTasks': {
+        let listMsg = await managers.appMessagesManager.getMessageByPeer(message.peerId, message.reply_to_mid);
+        if(!listMsg) {
+          listMsg = await managers.appMessagesManager.fetchMessageReplyTo(message) as Message.message
+        }
+
+        icon = Icon('checklist_add')
+
+        if(listMsg?._ === 'message' && listMsg.media._ === 'messageMediaToDo') {
+          if(action.list.length === 1) {
+            langPackKey = 'ChecklistAddedTask';
+            args = [
+              message.pFlags.out ? i18n('FromYou') : getNameDivHTML(message.fromId, plain),
+              wrapSomeText(action.list[0].title.text, plain, action.list[0].title.entities),
+              wrapSomeText(listMsg.media.todo.title.text, plain, listMsg.media.todo.title.entities)
+            ];
+          } else {
+            langPackKey = 'ChecklistAddedTaskMany';
+            args = [
+              message.pFlags.out ? i18n('FromYou') : getNameDivHTML(message.fromId, plain),
+              joinTexts(action.list.map((it) => wrapSomeText(it.title.text, plain, it.title.entities)), TODO_JOIN_OPTIONS),
+              wrapSomeText(listMsg.media.todo.title.text, plain, listMsg.media.todo.title.entities)
+            ];
+          }
+        }
+        break
+      }
+      case 'messageActionTodoCompletions': {
+        let listMsg = await managers.appMessagesManager.getMessageByPeer(message.peerId, message.reply_to_mid);
+        if(!listMsg) {
+          listMsg = await managers.appMessagesManager.fetchMessageReplyTo(message) as Message.message
+        }
+
+        if(listMsg?._ === 'message' && listMsg.media._ === 'messageMediaToDo') {
+          const list = listMsg.media.todo
+          const itemsMap = new Map<number, TextWithEntities>()
+          for(const it of list.list) {
+            itemsMap.set(it.id, it.title)
+          }
+
+          const completed = action.completed.map((it) => itemsMap.get(it)).filter(Boolean)
+          const incompleted = action.incompleted.map((it) => itemsMap.get(it)).filter(Boolean)
+
+          if(completed.length === 0) {
+            icon = Icon('checklist_undone')
+            langPackKey = 'ChecklistMarkedUndone';
+            args = [
+              message.pFlags.out ? i18n('FromYou') : getNameDivHTML(message.fromId, plain),
+              joinTexts(incompleted.map((it) => wrapSomeText(it.text, plain, it.entities)), TODO_JOIN_OPTIONS)
+            ];
+            break
+          }
+
+          if(incompleted.length === 0) {
+            icon = Icon('checklist_done')
+            langPackKey = 'ChecklistMarkedDone';
+            args = [
+              message.pFlags.out ? i18n('FromYou') : getNameDivHTML(message.fromId, plain),
+              joinTexts(completed.map((it) => wrapSomeText(it.text, plain, it.entities)), TODO_JOIN_OPTIONS)
+            ];
+            break
+          }
+
+          icon = Icon('checklist_done')
+          langPackKey = 'ChecklistMarkedMixed';
+          args = [
+            message.pFlags.out ? i18n('FromYou') : getNameDivHTML(message.fromId, plain),
+            joinTexts(completed.map((it) => wrapSomeText(it.text, plain, it.entities)), TODO_JOIN_OPTIONS),
+            joinTexts(incompleted.map((it) => wrapSomeText(it.text, plain, it.entities)), TODO_JOIN_OPTIONS)
+          ];
+        }
+
+        break
+      }
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;
@@ -697,7 +815,12 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       //   waited = waited.map((arg) => arg instanceof HTMLAnchorElement ? arg.textContent : arg);
       // }
 
-      return _i18n(element, langPackKey, waited);
+      const res = _i18n(element, langPackKey, waited);
+      if(icon) {
+        icon.classList.add('message-action-icon')
+        res.prepend(icon);
+      }
+      return res;
     }
 
     // str = !langPackKey || langPackKey[0].toUpperCase() === langPackKey[0] ? langPackKey : getNameDivHTML(message.fromId) + langPackKey + (suffix ? ' ' : '');
