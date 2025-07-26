@@ -1,0 +1,41 @@
+.Container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 80px 24px;
+}
+
+.LottieAnimation {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: var(--size);
+  max-width: var(--size, 100%);
+
+  cursor: pointer;
+}
+
+.NoResults {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 2px;
+
+  &Title {
+    font-weight: 500;
+    font-size: 18px;
+  }
+
+  &Subtitle {
+    font-size: 14px;
+  }
+}
+
+.ActionButton {
+  position: relative;
+  overflow: hidden;
+
+  font-size: 14px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+}

@@ -1,0 +1,15 @@
+.ButtonMenu {
+  padding: 2px 4px;
+  border-radius: 4px;
+
+  :global(.btn-menu) {
+    min-width: auto;
+  }
+  :global(.btn-menu-item) {
+    padding-right: 24px;
+  }
+}
+
+.hidden {
+  display: none;
+}

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppMessagesManager, MyInputMessagesFilter, MyMessage} from '../lib/appManagers/appMessagesManager';
+import type {AppMessagesManager, MyInputMessagesFilter, MyMessage, RequestHistoryOptions} from '../lib/appManagers/appMessagesManager';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom, Some4} from '../lib/appManagers/appDialogsManager';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
@@ -100,6 +100,7 @@ import Icon from './icon';
 import PopupReportAd from './popups/reportAd';
 import createContextMenu from '../helpers/dom/createContextMenu';
 import ButtonMenuToggle from './buttonMenuToggle';
+import EmptySearchPlaceholder from './emptySearchPlaceholder';
 
 // const testScroll = false;
 
@@ -115,7 +116,7 @@ export type SearchSuperContext = {
   nextRate?: number,
   minDate?: number,
   maxDate?: number
-};
+} & Pick<RequestHistoryOptions, 'chatType'>;
 
 export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
   'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar' |
@@ -813,6 +814,7 @@ export default class AppSearchSuper {
 
     const loadPromises: Promise<any>[] = [];
     const dialogElement = appDialogsManager.addDialogNew({
+      dontSetActive: true,
       peerId,
       container: searchGroup?.list || false,
       avatarSize: 'bigger',
@@ -1143,8 +1145,11 @@ export default class AppSearchSuper {
       elemsToAppend.push(...awaited);
     }
 
-    if(searchGroup && searchGroup.list.childElementCount) {
+    const showSearchGroupAnyway = mediaTab.type === 'chats' && searchGroup.createPlaceholder;
+    if(searchGroup && (searchGroup.list.childElementCount || showSearchGroupAnyway)) {
       searchGroup.setActive();
+
+      if(!searchGroup.list?.childElementCount && searchGroup.createPlaceholder) searchGroup.addPlaceholder(searchGroup.createPlaceholder());
     }
 
     if(this.loadMutex) {
@@ -1160,6 +1165,7 @@ export default class AppSearchSuper {
     }
 
     const length = elemsToAppend.length;
+
     if(length) {
       const method = append ? 'append' : 'prepend';
       const groupByMonth = this.groupByMonth && !isSaved;
@@ -2661,7 +2667,7 @@ export default class AppSearchSuper {
     return context;
   }
 
-  public setQuery({peerId, query, threadId, historyStorage, folderId, minDate, maxDate}: {
+  public setQuery({peerId, query, threadId, historyStorage, folderId, minDate, maxDate, chatType}: {
     peerId: PeerId,
     query?: string,
     threadId?: number,
@@ -2669,7 +2675,7 @@ export default class AppSearchSuper {
     folderId?: number,
     minDate?: number,
     maxDate?: number
-  }) {
+  } & Pick<RequestHistoryOptions, 'chatType'>) {
     this.searchContext = {
       peerId,
       query: query || '',
@@ -2677,7 +2683,8 @@ export default class AppSearchSuper {
       threadId,
       folderId,
       minDate,
-      maxDate
+      maxDate,
+      chatType
     };
 
     this.historyStorage = historyStorage ?? {};

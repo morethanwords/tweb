@@ -1,13 +1,10 @@
-import {Component, createRenderEffect, mergeProps, onCleanup} from 'solid-js';
-
+import {Component} from 'solid-js';
+import classNames from '../../../../helpers/string/classNames';
 import type {LottieAssetName} from '../../../../lib/rlottie/lottieLoader';
-import type RLottiePlayer from '../../../../lib/rlottie/rlottiePlayer';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import LottieAnimationBase from '../../../lottieAnimation';
 import {usePromiseCollector} from '../solidJsTabs/promiseCollector';
-
 import styles from './common.module.scss';
-import classNames from '../../../../helpers/string/classNames';
 
 
 const LottieAnimation: Component<{

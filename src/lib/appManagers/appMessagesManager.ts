@@ -264,6 +264,7 @@ export type RequestHistoryOptions = {
   isPublicHashtag?: boolean,
   isCacheableSearch?: boolean,
   hashtagType?: 'this' | 'my' | 'public',
+  chatType?: 'all' | 'users' | 'groups' | 'channels',
   recursion?: boolean,                  // ! FOR INNER USE ONLY
   historyType?: HistoryType,            // ! FOR INNER USE ONLY
   searchType?: 'cached' | 'uncached'    // ! FOR INNER USE ONLY
@@ -8084,6 +8085,7 @@ export class AppMessagesManager extends AppManager {
     minDate,
     maxDate,
     historyType = this.getHistoryType(peerId, threadId),
+    chatType,
     fromPeerId,
     savedReaction,
     isPublicHashtag
@@ -8148,7 +8150,10 @@ export class AppMessagesManager extends AppManager {
         max_date: maxDate,
         offset_rate: nextRate,
         offset_peer: this.appPeersManager.getInputPeerById(offsetPeerId),
-        folder_id: folderId
+        folder_id: folderId,
+        users_only: chatType === 'users' || undefined,
+        groups_only: chatType === 'groups' || undefined,
+        broadcasts_only: chatType === 'channels' || undefined
       };
 
       method = 'messages.searchGlobal';

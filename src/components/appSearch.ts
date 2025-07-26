@@ -19,6 +19,7 @@ export class SearchGroup {
   container: HTMLDivElement;
   nameEl: HTMLDivElement;
   list: HTMLUListElement;
+  placeholder?: HTMLElement;
 
   constructor(
     public name: LangPackKey | boolean,
@@ -52,8 +53,23 @@ export class SearchGroup {
     }
   }
 
+  public createPlaceholder?: () => HTMLElement;
+
+  addPlaceholder(el: HTMLElement) {
+    this.removePlaceholder();
+    this.placeholder = el;
+    this.container.append(el);
+  }
+
+  removePlaceholder() {
+    this.placeholder?.remove();
+    this.placeholder = undefined;
+  }
+
   clear() {
     this.container.style.display = 'none';
+
+    this.removePlaceholder();
 
     if(this.clearable) {
       Array.from(this.list.children).forEach((el) => {
