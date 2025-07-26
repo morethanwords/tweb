@@ -3411,7 +3411,10 @@ const lang = {
   'AllChats': 'All Chats',
   'UsersOnly': 'Private Chats',
   'GroupsOnly': 'Group Chats',
-  'ChannelsOnly': 'Channels'
+  'ChannelsOnly': 'Channels',
+  'NoResultsTitle': 'No results',
+  'NoResultsSubtitle': 'Try a different search term',
+  'SearchInAllChats': 'Search in All Chats'
 };
 
 export default lang;

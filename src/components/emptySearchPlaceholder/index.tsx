@@ -1,4 +1,5 @@
 import {Show} from 'solid-js';
+import {i18n} from '../../lib/langPack';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
 import LottieAnimation from '../lottieAnimation';
@@ -29,9 +30,10 @@ const EmptySearchPlaceholder = defineSolidElement({
         />
 
         <div class={styles.NoResults}>
-          <div class={styles.NoResultsTitle}>No results</div>
-          <div class={styles.NoResultsSubtitle}>Try a different search term</div>
+          <div class={styles.NoResultsTitle}>{i18n('NoResultsTitle')}</div>
+          <div class={styles.NoResultsSubtitle}>{i18n('NoResultsSubtitle')}</div>
         </div>
+
 
         <Show when={props.onAllChats}>
           <button
@@ -39,7 +41,7 @@ const EmptySearchPlaceholder = defineSolidElement({
             class={`btn primary ${styles.ActionButton}`}
             onClick={props.onAllChats}
           >
-            Search in All Chats
+            {i18n('SearchInAllChats')}
           </button>
         </Show>
       </>
