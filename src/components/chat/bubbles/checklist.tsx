@@ -13,8 +13,10 @@ import {AvatarNewTsx} from '../../avatarNew';
 import classNames from '../../../helpers/string/classNames';
 import {PeerTitleTsx} from '../../peerTitleTsx';
 import {IconTsx} from '../../iconTsx';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
+import {wrapEmojiTextWithEntities} from '../../../lib/richTextProcessor/wrapEmojiText';
 import PopupPremium from '../../popups/premium';
+import {toastNew} from '../../toast';
+import wrapPeerTitle from '../../wrappers/peerTitle';
 
 export function ChecklistBubble(props: {
   out: boolean
@@ -36,10 +38,24 @@ export function ChecklistBubble(props: {
     return results;
   })
 
-  const isReadonly = !props.out && !checklist.todo.pFlags.others_can_complete;
+  const isGroupChecklist = checklist.todo.pFlags.others_can_complete
+  const isReadonly = !props.out && !isGroupChecklist;
 
-  function handleClick(id: number) {
+  async function handleClick(id: number) {
+    if(props.message.fwd_from) {
+      toastNew({
+        langPackKey: 'ChecklistReadonlyForwarded'
+      })
+      return
+    }
+
     if(isReadonly) {
+      toastNew({
+        langPackKey: 'ChecklistReadonlyPersonal',
+        langPackArguments: [
+          await wrapPeerTitle({peerId: props.message.fromId})
+        ]
+      })
       return;
     }
 
@@ -61,10 +77,10 @@ export function ChecklistBubble(props: {
   return (
     <div class={styles.wrap}>
       <div class={styles.title}>
-        {wrapEmojiText(checklist.todo.title.text, false, checklist.todo.title.entities)}
+        {wrapEmojiTextWithEntities(checklist.todo.title)}
       </div>
       <I18nTsx
-        key={props.chat.isAnyGroup ? 'GroupChecklist' : 'Checklist'}
+        key={isGroupChecklist ? 'GroupChecklist' : 'Checklist'}
         class={styles.subtitle}
       />
       <div class={styles.list}>
@@ -89,6 +105,7 @@ export function ChecklistBubble(props: {
                   cancelEvent(evt);
                   handleClick(item.id);
                 }}
+                data-checklist-item-id={item.id}
               >
                 {isReadonly ? (
                   <div class={styles.itemIcon}>
@@ -110,7 +127,7 @@ export function ChecklistBubble(props: {
                   </div>
                 )}
                 <div class={styles.itemTitle}>
-                  {wrapEmojiText(item.title.text, false, item.title.entities)}
+                  {wrapEmojiTextWithEntities(item.title)}
                   <Show when={!isReadonly && completionsById()[item.id]} keyed>
                     {(it) => (
                       <PeerTitleTsx

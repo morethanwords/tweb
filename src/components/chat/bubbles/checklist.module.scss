@@ -30,24 +30,26 @@
   --item-background-color: var(--message-background-color);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding-inline: 0.625rem;
+  gap: 0.625rem;
+  padding: 0.625rem;
+  padding-left: 0.6875rem;
   margin-inline: -0.5rem;
-  height: 2.625rem;
+  min-height: 2.625rem;
   background-color: var(--item-background-color);
-  
-  &.itemClickable {
-    cursor: pointer;
+  cursor: pointer;
 
-    &:hover {
-      --item-background-color: color-mix(in srgb, var(--message-primary-color) 8%, var(--message-background-color));
-    }
+  &:hover {
+    --item-background-color: color-mix(in srgb, var(--message-primary-color) 8%, var(--message-background-color));
   }
+}
+
+.itemCompleted {
+  padding-block: 0.0625rem;
 }
 
 .itemCheckbox {
   position: relative;
-  padding-right: 12px;
+  padding-right: 0.875rem;
 
   :global(.checkbox-field) {
     --size: 1.375rem;
@@ -78,7 +80,7 @@
 
     .itemCompleted & {
       opacity: 1;
-      transform: translateX(12px) scale(1);
+      transform: translateX(14px) scale(1);
     }
   }
 }

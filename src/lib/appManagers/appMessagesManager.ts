@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
 import {randomLong} from '../../helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem} from '../../layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '../../types';
 import {logger, LogTypes} from '../logger';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -388,7 +388,7 @@ export class AppMessagesManager extends AppManager {
   private historyMaxIdSubscribed: Map<HistoryStorageKey, number> = new Map();
 
   private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
-  private checklistBatcher: Batcher<string, { taskId: number, action: 'complete' | 'uncomplete' }, void>;
+  private checklistBatcher: Batcher<string, { taskId: number, oldItem?: TodoCompletion, action: 'complete' | 'uncomplete' }, void>;
 
   private waitingTranscriptions: Map<string, CancellablePromise<MessagesTranscribedAudio>>;
   private paidMessagesQueue = new PaidMessagesQueue;
@@ -9019,7 +9019,7 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    let wasMine = false;
+    let oldItem: TodoCompletion;
     this.modifyMessage(message, (message) => {
       const checklist = message.media as MessageMedia.messageMediaToDo;
       if(!checklist.completions) checklist.completions = []
@@ -9040,7 +9040,7 @@ export class AppMessagesManager extends AppManager {
       } else {
         const existing = checklist.completions.findIndex((completion) => completion.id === params.taskId);
         if(existing !== -1) {
-          wasMine = checklist.completions[existing].completed_by.toPeerId() === this.rootScope.myId;
+          oldItem = checklist.completions[existing];
           checklist.completions.splice(existing, 1);
         }
       }
@@ -9054,7 +9054,7 @@ export class AppMessagesManager extends AppManager {
     })
 
     const key = `${params.peerId}:${params.mid}`;
-    this.checklistBatcher.addToBatch(key, {taskId: params.taskId, action: params.action});
+    this.checklistBatcher.addToBatch(key, {taskId: params.taskId, oldItem, action: params.action});
   }
 
   private processChecklistBatch = async(batch: AppMessagesManager['checklistBatcher']['batchMap']) => {
@@ -9063,16 +9063,21 @@ export class AppMessagesManager extends AppManager {
 
       const completedIds = new Set<number>();
       const incompletedIds = new Set<number>();
+      const incompletedItems = new Map<number, TodoCompletion>();
 
-      for(const [{taskId, action}, promise] of list) {
+      for(const [{taskId, oldItem, action}, promise] of list) {
         promise.resolve();
 
         if(action === 'complete') {
           incompletedIds.delete(taskId);
+          incompletedItems.delete(taskId);
           completedIds.add(taskId);
         } else {
           completedIds.delete(taskId);
           incompletedIds.add(taskId);
+          if(oldItem) {
+            incompletedItems.set(taskId, oldItem);
+          }
         }
       }
 
@@ -9091,6 +9096,38 @@ export class AppMessagesManager extends AppManager {
         this.apiUpdatesManager.processUpdateMessage(updates);
       } catch(e) {
         console.error(e);
+
+        if((e as any).type !== 'MESSAGE_NOT_MODIFIED') {
+        // revert
+          const storage = this.getHistoryMessagesStorage(peerId);
+          const message = this.getMessageFromStorage(storage, mid) as Message.message;
+          if(!message) {
+            return;
+          }
+
+          this.modifyMessage(message, (message) => {
+            const checklist = message.media as MessageMedia.messageMediaToDo;
+            if(!checklist.completions) checklist.completions = []
+
+            for(const oldItem of incompletedItems.values()) {
+              checklist.completions.push(oldItem)
+            }
+
+            for(const taskId of completedIds) {
+              const idx = checklist.completions.findIndex((completion) => completion.id === taskId);
+              if(idx !== -1) {
+                checklist.completions.splice(idx, 1);
+              }
+            }
+          }, storage)
+
+          this.rootScope.dispatchEvent('message_edit', {
+            storageKey: storage.key,
+            peerId,
+            mid,
+            message
+          })
+        }
       }
     }
 

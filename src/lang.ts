@@ -3420,7 +3420,13 @@ const lang = {
   'ChecklistMarkedUndone': '**%s** marked %s as not done.',
   'ChecklistMarkedMixed': '**%s** marked %s as done and %s as not done.',
   'ChecklistAddTasks': 'Add Tasks',
-  'ChecklistOptions': 'Checklist options'
+  'ChecklistOptions': 'Checklist options',
+  'ChecklistReadonlyForwarded': 'You can\'t edit forwarded checklists.',
+  'ChecklistReadonlyPersonal': '**%s** has restricted others from marking tasks as done.',
+  'ChecklistCheck': 'Check',
+  'ChecklistUncheck': 'Uncheck',
+  'ChecklistEditItem': 'Edit Item',
+  'ChecklistDeleteItem': 'Delete Item'
 };
 
 export default lang;
