@@ -891,6 +891,9 @@ export const AvatarNew = (props: {
 
 export function AvatarNewTsx(props: Parameters<typeof AvatarNew>[0]) {
   const el = AvatarNew(props);
+  createEffect(on(() => props.peerId, () => {
+    el.render()
+  }));
   return el.element;
 }
 

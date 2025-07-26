@@ -10,7 +10,7 @@
  */
 
 import DEBUG from '../../config/debug';
-import {ConstructorDeclMap, Message, MessageEntity, MessageFwdHeader, Peer, Update, Updates} from '../../layer';
+import {ConstructorDeclMap, Message, MessageEntity, MessageFwdHeader, Peer, StarsAmount, Update, Updates} from '../../layer';
 import {logger, LogTypes} from '../logger';
 import assumeType from '../../helpers/assumeType';
 import App from '../../config/app';
@@ -273,8 +273,8 @@ class ApiUpdatesManager {
   private debouncedUpdateStarsBalance = debounce(() => {
     const promise = this.appPaymentsManager.getStarsStatus(true);
 
-    if(promise instanceof Promise) promise.then(newStarsStatus => {
-      this.appPaymentsManager.updateLocalStarsBalance(newStarsStatus.balance);
+    if(promise instanceof Promise) promise.then((newStarsStatus) => {
+      this.appPaymentsManager.updateLocalStarsBalance(newStarsStatus.balance as StarsAmount.starsAmount);
     });
   }, 1_000, false, true);
 

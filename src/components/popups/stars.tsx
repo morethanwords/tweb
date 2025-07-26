@@ -391,7 +391,7 @@ export default class PopupStars extends PopupElement {
         midtitle = i18n('StarsGiveawayPrizeReceived');
       } else if(transaction.paid_messages) {
         midtitle = i18n('PaidMessages.FeeForMessages', [transaction.paid_messages]);
-      } else if(formatStarsAmount(transaction.stars) > 0) {
+      } else if(formatStarsAmount(transaction.amount) > 0) {
         midtitle = transaction.pFlags.gift ? i18n('StarsGiftReceived') : i18n('Stars.TopUp');
       } else if(transaction.subscription_period) {
         midtitle = i18n('Stars.Subscription.Title');
@@ -418,7 +418,7 @@ export default class PopupStars extends PopupElement {
               transaction
             });
           }}
-          rightContent={<StarsChange stars={formatStarsAmount(transaction.stars)} />}
+          rightContent={<StarsChange stars={formatStarsAmount(transaction.amount)} />}
         />
       );
 

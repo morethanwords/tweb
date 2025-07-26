@@ -9,7 +9,7 @@ import {AppManagers} from '../../../lib/appManagers/managers';
 import Chat from '../chat';
 import ChatTopbar from '../topbar';
 import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
-import {Chat as MTChat} from '../../../layer';
+import {InputGroupCall, Chat as MTChat} from '../../../layer';
 import appImManager from '../../../lib/appManagers/appImManager';
 import {useChat} from '../../../stores/peers';
 
@@ -57,7 +57,7 @@ export default class ChatLive extends PinnedContainer {
       const fullChat = await getFullChat();
       if(fullChat?._ !== 'channelFull') return;
 
-      if(call.id !== fullChat.call?.id) return;
+      if(call.id !== (fullChat.call as InputGroupCall.inputGroupCall)?.id) return;
 
       setWatching(call.participants_count);
     });
@@ -79,7 +79,9 @@ export default class ChatLive extends PinnedContainer {
         const fullChat = await getFullChat();
         if(fullChat?._ !== 'channelFull' || !fullChat.call) return;
 
-        const call = await rootScope.managers.appGroupCallsManager.getGroupCallFull(fullChat.call.id);
+        const call = await rootScope.managers.appGroupCallsManager.getGroupCallFull(
+          (fullChat.call as InputGroupCall.inputGroupCall).id
+        );
         if(call?._ !== 'groupCall') return;
 
         setWatching(call.participants_count);

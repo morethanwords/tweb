@@ -15,7 +15,7 @@ export class RtmpCallInstance extends EventListenerBase<{
   public chatId: ChatId;
   public peerId: PeerId;
   public call: GroupCall.groupCall;
-  public inputCall: InputGroupCall;
+  public inputCall: InputGroupCall.inputGroupCall;
   public ssrc: number;
   public pip: boolean;
   public admin: boolean;
@@ -27,7 +27,7 @@ export class RtmpCallInstance extends EventListenerBase<{
     chatId: ChatId,
     peerId: PeerId,
     call: GroupCall.groupCall,
-    inputCall: InputGroupCall,
+    inputCall: InputGroupCall.inputGroupCall,
     ssrc: number,
     pip: boolean,
     admin: boolean,
@@ -133,12 +133,17 @@ export class RtmpCallsController extends EventListenerBase<{
       throw new Error('Not a chat');
     }
 
-    const call = await this.managers.appGroupCallsManager.getGroupCallFull(chat.call.id);
+    const callId = (chat.call as InputGroupCall.inputGroupCall)?.id;
+    if(!callId) {
+      throw new Error('No call id');
+    }
+
+    const call = await this.managers.appGroupCallsManager.getGroupCallFull(callId);
     if(call._ !== 'groupCall') {
       throw new Error('Not a group call');
     }
 
-    const update = await this.managers.appGroupCallsManager.joinGroupCall(chat.call.id, data, {type: 'main'});
+    const update = await this.managers.appGroupCallsManager.joinGroupCall(callId, data, {type: 'main'});
     const updateData = JSON.parse(update.params.data);
     if(updateData.rtmp !== true) {
       throw new Error('Not an rtmp call');

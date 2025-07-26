@@ -3231,6 +3231,13 @@
   }
 }
 
+.message-action-icon {
+  margin-right: 0.25rem;
+  margin-bottom: 2.5px;
+  vertical-align: bottom;
+  display: inline-block;
+}
+
 .bubble.has-fake-service {
   padding-top: 2.625rem;
   position: relative;
@@ -3250,6 +3257,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+}
+
+.bubble.service.is-reply .service-msg {
+  cursor: pointer;
 }
 
 .bubble.is-in {

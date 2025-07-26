@@ -113,7 +113,7 @@ export default class ChatRemoveFee extends PinnedContainer {
         }
       });
 
-      await this.managers.appUsersManager.addNoPaidMessagesException(userId, shouldRefund);
+      await this.managers.appUsersManager.addNoPaidMessagesException({userId, refundCharged: shouldRefund});
 
       this.hide();
     } catch{}

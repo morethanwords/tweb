@@ -40,7 +40,7 @@ export default function wrapGeo({
   middleware: Middleware,
   loadPromises: Promise<any>[],
   messageDiv: HTMLElement,
-  updateLocationOnEdit: ChatBubbles['updateLocationOnEdit']
+  updateLocationOnEdit: ChatBubbles['updateLocalOnEdit']
 }) {
   bubble.classList.add('photo');
 

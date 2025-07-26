@@ -1318,10 +1318,22 @@ export class AppUsersManager extends AppManager {
     return +revenue.stars_amount;
   }
 
-  public async addNoPaidMessagesException(userId: UserId, refundCharged: boolean) {
-    return this.apiManager.invokeApi('account.addNoPaidMessagesException', {
+  public async addNoPaidMessagesException({
+    userId,
+    refundCharged,
+    requirePayment,
+    parentPeerId
+  }: {
+    userId: UserId,
+    refundCharged?: boolean,
+    requirePayment?: boolean,
+    parentPeerId?: PeerId
+  }) {
+    return this.apiManager.invokeApi('account.toggleNoPaidMessagesException', {
       user_id: this.getUserInput(userId),
-      refund_charged: refundCharged
+      refund_charged: refundCharged,
+      require_payment: requirePayment,
+      parent_peer: parentPeerId ? this.appPeersManager.getInputPeerById(parentPeerId) : undefined
     });
   }
 }

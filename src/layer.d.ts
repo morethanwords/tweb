@@ -130,7 +130,7 @@ export namespace InputFile {
 /**
  * @link https://core.telegram.org/type/InputMedia
  */
-export type InputMedia = InputMedia.inputMediaEmpty | InputMedia.inputMediaUploadedPhoto | InputMedia.inputMediaPhoto | InputMedia.inputMediaGeoPoint | InputMedia.inputMediaContact | InputMedia.inputMediaUploadedDocument | InputMedia.inputMediaDocument | InputMedia.inputMediaVenue | InputMedia.inputMediaPhotoExternal | InputMedia.inputMediaDocumentExternal | InputMedia.inputMediaGame | InputMedia.inputMediaInvoice | InputMedia.inputMediaGeoLive | InputMedia.inputMediaPoll | InputMedia.inputMediaDice | InputMedia.inputMediaStory | InputMedia.inputMediaWebPage | InputMedia.inputMediaPaidMedia;
+export type InputMedia = InputMedia.inputMediaEmpty | InputMedia.inputMediaUploadedPhoto | InputMedia.inputMediaPhoto | InputMedia.inputMediaGeoPoint | InputMedia.inputMediaContact | InputMedia.inputMediaUploadedDocument | InputMedia.inputMediaDocument | InputMedia.inputMediaVenue | InputMedia.inputMediaPhotoExternal | InputMedia.inputMediaDocumentExternal | InputMedia.inputMediaGame | InputMedia.inputMediaInvoice | InputMedia.inputMediaGeoLive | InputMedia.inputMediaPoll | InputMedia.inputMediaDice | InputMedia.inputMediaStory | InputMedia.inputMediaWebPage | InputMedia.inputMediaPaidMedia | InputMedia.inputMediaTodo;
 
 export namespace InputMedia {
   export type inputMediaEmpty = {
@@ -303,6 +303,11 @@ export namespace InputMedia {
     stars_amount: string | number,
     extended_media: Array<InputMedia>,
     payload?: string
+  };
+
+  export type inputMediaTodo = {
+    _: 'inputMediaTodo',
+    todo: TodoList
   };
 }
 
@@ -723,6 +728,10 @@ export namespace Chat {
       stories_hidden_min?: true,
       stories_unavailable?: true,
       signature_profiles?: true,
+      autotranslation?: true,
+      broadcast_messages_allowed?: true,
+      monoforum?: true,
+      forum_tabs?: true,
     }>,
     flags2?: number,
     id: string | number,
@@ -744,7 +753,8 @@ export namespace Chat {
     level?: number,
     subscription_until_date?: number,
     bot_verification_icon?: string | number,
-    send_paid_messages_stars?: string | number
+    send_paid_messages_stars?: string | number,
+    linked_monoforum_id?: string | number
   };
 
   export type channelForbidden = {
@@ -863,7 +873,8 @@ export namespace ChatFull {
     boosts_unrestrict?: number,
     emojiset?: StickerSet,
     bot_verification?: BotVerification,
-    stargifts_count?: number
+    stargifts_count?: number,
+    send_paid_messages_stars?: string | number
   };
 }
 
@@ -969,6 +980,8 @@ export namespace Message {
       invert_media?: true,
       offline?: true,
       video_processing_pending?: true,
+      paid_suggested_post_stars?: true,
+      paid_suggested_post_ton?: true,
       unread?: true,
       is_outgoing?: true,
       is_scheduled?: true,
@@ -1003,6 +1016,7 @@ export namespace Message {
     factcheck?: FactCheck,
     report_delivery_until_date?: number,
     paid_message_stars?: string | number,
+    suggested_post?: SuggestedPost,
     mid?: number,
     peerId?: PeerId,
     fromId?: PeerId,
@@ -1013,10 +1027,6 @@ export namespace Message {
     clear_history?: boolean,
     pending?: boolean,
     error?: ApiError,
-    repayRequest?: {
-      id: number,
-      messageCount: number
-    },
     send?: () => Promise<any>,
     totalEntities?: MessageEntity[],
     reply_to_mid?: number,
@@ -1024,7 +1034,8 @@ export namespace Message {
     sponsoredMessage?: SponsoredMessage.sponsoredMessage,
     promise?: CancellablePromise<void>,
     uploadingFileName?: string[],
-    storageKey?: MessagesStorageKey
+    storageKey?: MessagesStorageKey,
+    repayRequest?: {id: number, messageCount: number}
   };
 
   export type messageService = {
@@ -1046,6 +1057,7 @@ export namespace Message {
     id: number,
     from_id?: Peer,
     peer_id: Peer,
+    saved_peer_id?: Peer,
     reply_to?: MessageReplyHeader,
     date: number,
     action: MessageAction,
@@ -1069,7 +1081,7 @@ export namespace Message {
 /**
  * @link https://core.telegram.org/type/MessageMedia
  */
-export type MessageMedia = MessageMedia.messageMediaEmpty | MessageMedia.messageMediaPhoto | MessageMedia.messageMediaGeo | MessageMedia.messageMediaContact | MessageMedia.messageMediaUnsupported | MessageMedia.messageMediaDocument | MessageMedia.messageMediaWebPage | MessageMedia.messageMediaVenue | MessageMedia.messageMediaGame | MessageMedia.messageMediaInvoice | MessageMedia.messageMediaGeoLive | MessageMedia.messageMediaPoll | MessageMedia.messageMediaDice | MessageMedia.messageMediaStory | MessageMedia.messageMediaGiveaway | MessageMedia.messageMediaGiveawayResults | MessageMedia.messageMediaPaidMedia | MessageMedia.messageMediaCall | MessageMedia.messageMediaPhotoExternal | MessageMedia.messageMediaDocumentExternal;
+export type MessageMedia = MessageMedia.messageMediaEmpty | MessageMedia.messageMediaPhoto | MessageMedia.messageMediaGeo | MessageMedia.messageMediaContact | MessageMedia.messageMediaUnsupported | MessageMedia.messageMediaDocument | MessageMedia.messageMediaWebPage | MessageMedia.messageMediaVenue | MessageMedia.messageMediaGame | MessageMedia.messageMediaInvoice | MessageMedia.messageMediaGeoLive | MessageMedia.messageMediaPoll | MessageMedia.messageMediaDice | MessageMedia.messageMediaStory | MessageMedia.messageMediaGiveaway | MessageMedia.messageMediaGiveawayResults | MessageMedia.messageMediaPaidMedia | MessageMedia.messageMediaToDo | MessageMedia.messageMediaCall | MessageMedia.messageMediaPhotoExternal | MessageMedia.messageMediaDocumentExternal;
 
 export namespace MessageMedia {
   export type messageMediaEmpty = {
@@ -1238,6 +1250,13 @@ export namespace MessageMedia {
     extended_media: Array<MessageExtendedMedia>
   };
 
+  export type messageMediaToDo = {
+    _: 'messageMediaToDo',
+    flags?: number,
+    todo: TodoList,
+    completions?: Array<TodoCompletion>
+  };
+
   export type messageMediaCall = {
     _: 'messageMediaCall',
     action?: MessageAction.messageActionPhoneCall
@@ -1257,7 +1276,7 @@ export namespace MessageMedia {
 /**
  * @link https://core.telegram.org/type/MessageAction
  */
-export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionGroupCallScheduled | MessageAction.messageActionSetChatTheme | MessageAction.messageActionChatJoinedByRequest | MessageAction.messageActionWebViewDataSentMe | MessageAction.messageActionWebViewDataSent | MessageAction.messageActionGiftPremium | MessageAction.messageActionTopicCreate | MessageAction.messageActionTopicEdit | MessageAction.messageActionSuggestProfilePhoto | MessageAction.messageActionRequestedPeer | MessageAction.messageActionSetChatWallPaper | MessageAction.messageActionGiftCode | MessageAction.messageActionGiveawayLaunch | MessageAction.messageActionGiveawayResults | MessageAction.messageActionBoostApply | MessageAction.messageActionRequestedPeerSentMe | MessageAction.messageActionPaymentRefunded | MessageAction.messageActionGiftStars | MessageAction.messageActionPrizeStars | MessageAction.messageActionStarGift | MessageAction.messageActionStarGiftUnique | MessageAction.messageActionPaidMessagesRefunded | MessageAction.messageActionPaidMessagesPrice | MessageAction.messageActionDiscussionStarted | MessageAction.messageActionChannelJoined | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
+export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionGroupCallScheduled | MessageAction.messageActionSetChatTheme | MessageAction.messageActionChatJoinedByRequest | MessageAction.messageActionWebViewDataSentMe | MessageAction.messageActionWebViewDataSent | MessageAction.messageActionGiftPremium | MessageAction.messageActionTopicCreate | MessageAction.messageActionTopicEdit | MessageAction.messageActionSuggestProfilePhoto | MessageAction.messageActionRequestedPeer | MessageAction.messageActionSetChatWallPaper | MessageAction.messageActionGiftCode | MessageAction.messageActionGiveawayLaunch | MessageAction.messageActionGiveawayResults | MessageAction.messageActionBoostApply | MessageAction.messageActionRequestedPeerSentMe | MessageAction.messageActionPaymentRefunded | MessageAction.messageActionGiftStars | MessageAction.messageActionPrizeStars | MessageAction.messageActionStarGift | MessageAction.messageActionStarGiftUnique | MessageAction.messageActionPaidMessagesRefunded | MessageAction.messageActionPaidMessagesPrice | MessageAction.messageActionConferenceCall | MessageAction.messageActionTodoCompletions | MessageAction.messageActionTodoAppendTasks | MessageAction.messageActionSuggestedPostApproval | MessageAction.messageActionSuggestedPostSuccess | MessageAction.messageActionSuggestedPostRefund | MessageAction.messageActionGiftTon | MessageAction.messageActionDiscussionStarted | MessageAction.messageActionChannelJoined | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
 
 export namespace MessageAction {
   export type messageActionEmpty = {
@@ -1618,7 +1637,10 @@ export namespace MessageAction {
     transfer_stars?: string | number,
     from_id?: Peer,
     peer?: Peer,
-    saved_id?: string | number
+    saved_id?: string | number,
+    resale_stars?: string | number,
+    can_transfer_at?: number,
+    can_resell_at?: number
   };
 
   export type messageActionPaidMessagesRefunded = {
@@ -1629,7 +1651,70 @@ export namespace MessageAction {
 
   export type messageActionPaidMessagesPrice = {
     _: 'messageActionPaidMessagesPrice',
+    flags?: number,
+    pFlags: Partial<{
+      broadcast_messages_allowed?: true,
+    }>,
     stars: string | number
+  };
+
+  export type messageActionConferenceCall = {
+    _: 'messageActionConferenceCall',
+    flags?: number,
+    pFlags: Partial<{
+      missed?: true,
+      active?: true,
+      video?: true,
+    }>,
+    call_id: string | number,
+    duration?: number,
+    other_participants?: Array<Peer>
+  };
+
+  export type messageActionTodoCompletions = {
+    _: 'messageActionTodoCompletions',
+    completed: Array<number>,
+    incompleted: Array<number>
+  };
+
+  export type messageActionTodoAppendTasks = {
+    _: 'messageActionTodoAppendTasks',
+    list: Array<TodoItem>
+  };
+
+  export type messageActionSuggestedPostApproval = {
+    _: 'messageActionSuggestedPostApproval',
+    flags?: number,
+    pFlags: Partial<{
+      rejected?: true,
+      balance_too_low?: true,
+    }>,
+    reject_comment?: string,
+    schedule_date?: number,
+    price?: StarsAmount
+  };
+
+  export type messageActionSuggestedPostSuccess = {
+    _: 'messageActionSuggestedPostSuccess',
+    price: StarsAmount
+  };
+
+  export type messageActionSuggestedPostRefund = {
+    _: 'messageActionSuggestedPostRefund',
+    flags?: number,
+    pFlags: Partial<{
+      payer_initiated?: true,
+    }>
+  };
+
+  export type messageActionGiftTon = {
+    _: 'messageActionGiftTon',
+    flags?: number,
+    currency: string,
+    amount: string | number,
+    crypto_currency: string,
+    crypto_amount: string | number,
+    transaction_id?: string
   };
 
   export type messageActionDiscussionStarted = {
@@ -2491,7 +2576,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateChannelPinnedTopic | Update.updateChannelPinnedTopics | Update.updateUser | Update.updateAutoSaveSettings | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateSmsJob | Update.updateQuickReplies | Update.updateNewQuickReply | Update.updateDeleteQuickReply | Update.updateQuickReplyMessage | Update.updateDeleteQuickReplyMessages | Update.updateBotBusinessConnect | Update.updateBotNewBusinessMessage | Update.updateBotEditBusinessMessage | Update.updateBotDeleteBusinessMessage | Update.updateNewStoryReaction | Update.updateBroadcastRevenueTransactions | Update.updateStarsBalance | Update.updateBusinessBotCallbackQuery | Update.updateStarsRevenueStatus | Update.updateBotPurchasedPaidMedia | Update.updatePaidReactionPrivacy | Update.updateSentPhoneCode | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload | Update.updatePts;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateChannelPinnedTopic | Update.updateChannelPinnedTopics | Update.updateUser | Update.updateAutoSaveSettings | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateSmsJob | Update.updateQuickReplies | Update.updateNewQuickReply | Update.updateDeleteQuickReply | Update.updateQuickReplyMessage | Update.updateDeleteQuickReplyMessages | Update.updateBotBusinessConnect | Update.updateBotNewBusinessMessage | Update.updateBotEditBusinessMessage | Update.updateBotDeleteBusinessMessage | Update.updateNewStoryReaction | Update.updateStarsBalance | Update.updateBusinessBotCallbackQuery | Update.updateStarsRevenueStatus | Update.updateBotPurchasedPaidMedia | Update.updatePaidReactionPrivacy | Update.updateSentPhoneCode | Update.updateGroupCallChainBlocks | Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox | Update.updateMonoForumNoPaidException | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload | Update.updatePts;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -2819,6 +2904,7 @@ export namespace Update {
     flags?: number,
     peer: Peer,
     top_msg_id?: number,
+    saved_peer_id?: Peer,
     draft: DraftMessage,
     local?: boolean,
     threadId?: number
@@ -2921,6 +3007,7 @@ export namespace Update {
     flags?: number,
     channel_id: string | number,
     top_msg_id?: number,
+    saved_peer_id?: Peer,
     messages: Array<number>
   };
 
@@ -2940,7 +3027,8 @@ export namespace Update {
     pFlags: Partial<{
       unread?: true,
     }>,
-    peer: DialogPeer
+    peer: DialogPeer,
+    saved_peer_id?: Peer
   };
 
   export type updateMessagePoll = {
@@ -3203,6 +3291,7 @@ export namespace Update {
     peer: Peer,
     msg_id: number,
     top_msg_id?: number,
+    saved_peer_id?: Peer,
     reactions: MessageReactions,
     pts?: number,
     pts_count?: number,
@@ -3465,12 +3554,6 @@ export namespace Update {
     reaction: Reaction
   };
 
-  export type updateBroadcastRevenueTransactions = {
-    _: 'updateBroadcastRevenueTransactions',
-    peer: Peer,
-    balances: BroadcastRevenueBalances
-  };
-
   export type updateStarsBalance = {
     _: 'updateStarsBalance',
     balance: StarsAmount
@@ -3509,6 +3592,38 @@ export namespace Update {
   export type updateSentPhoneCode = {
     _: 'updateSentPhoneCode',
     sent_code: AuthSentCode
+  };
+
+  export type updateGroupCallChainBlocks = {
+    _: 'updateGroupCallChainBlocks',
+    call: InputGroupCall,
+    sub_chain_id: number,
+    blocks: Array<Uint8Array>,
+    next_offset: number
+  };
+
+  export type updateReadMonoForumInbox = {
+    _: 'updateReadMonoForumInbox',
+    channel_id: string | number,
+    saved_peer_id: Peer,
+    read_max_id: number
+  };
+
+  export type updateReadMonoForumOutbox = {
+    _: 'updateReadMonoForumOutbox',
+    channel_id: string | number,
+    saved_peer_id: Peer,
+    read_max_id: number
+  };
+
+  export type updateMonoForumNoPaidException = {
+    _: 'updateMonoForumNoPaidException',
+    flags?: number,
+    pFlags: Partial<{
+      exception?: true,
+    }>,
+    channel_id: string | number,
+    saved_peer_id: Peer
   };
 
   export type updateNewDiscussionMessage = {
@@ -4923,7 +5038,7 @@ export namespace ChatInvite {
 /**
  * @link https://core.telegram.org/type/InputStickerSet
  */
-export type InputStickerSet = InputStickerSet.inputStickerSetEmpty | InputStickerSet.inputStickerSetID | InputStickerSet.inputStickerSetShortName | InputStickerSet.inputStickerSetAnimatedEmoji | InputStickerSet.inputStickerSetDice | InputStickerSet.inputStickerSetAnimatedEmojiAnimations | InputStickerSet.inputStickerSetPremiumGifts | InputStickerSet.inputStickerSetEmojiGenericAnimations | InputStickerSet.inputStickerSetEmojiDefaultStatuses | InputStickerSet.inputStickerSetEmojiDefaultTopicIcons | InputStickerSet.inputStickerSetEmojiChannelDefaultStatuses;
+export type InputStickerSet = InputStickerSet.inputStickerSetEmpty | InputStickerSet.inputStickerSetID | InputStickerSet.inputStickerSetShortName | InputStickerSet.inputStickerSetAnimatedEmoji | InputStickerSet.inputStickerSetDice | InputStickerSet.inputStickerSetAnimatedEmojiAnimations | InputStickerSet.inputStickerSetPremiumGifts | InputStickerSet.inputStickerSetEmojiGenericAnimations | InputStickerSet.inputStickerSetEmojiDefaultStatuses | InputStickerSet.inputStickerSetEmojiDefaultTopicIcons | InputStickerSet.inputStickerSetEmojiChannelDefaultStatuses | InputStickerSet.inputStickerSetTonGifts;
 
 export namespace InputStickerSet {
   export type inputStickerSetEmpty = {
@@ -4972,6 +5087,10 @@ export namespace InputStickerSet {
 
   export type inputStickerSetEmojiChannelDefaultStatuses = {
     _: 'inputStickerSetEmojiChannelDefaultStatuses'
+  };
+
+  export type inputStickerSetTonGifts = {
+    _: 'inputStickerSetTonGifts'
   };
 }
 
@@ -6383,7 +6502,8 @@ export namespace DraftMessage {
     entities?: Array<MessageEntity>,
     media?: InputMedia,
     date: number,
-    effect?: string | number
+    effect?: string | number,
+    suggested_post?: SuggestedPost
   };
 }
 
@@ -6883,7 +7003,7 @@ export namespace PageBlock {
 /**
  * @link https://core.telegram.org/type/PhoneCallDiscardReason
  */
-export type PhoneCallDiscardReason = PhoneCallDiscardReason.phoneCallDiscardReasonMissed | PhoneCallDiscardReason.phoneCallDiscardReasonDisconnect | PhoneCallDiscardReason.phoneCallDiscardReasonHangup | PhoneCallDiscardReason.phoneCallDiscardReasonBusy;
+export type PhoneCallDiscardReason = PhoneCallDiscardReason.phoneCallDiscardReasonMissed | PhoneCallDiscardReason.phoneCallDiscardReasonDisconnect | PhoneCallDiscardReason.phoneCallDiscardReasonHangup | PhoneCallDiscardReason.phoneCallDiscardReasonBusy | PhoneCallDiscardReason.phoneCallDiscardReasonMigrateConferenceCall;
 
 export namespace PhoneCallDiscardReason {
   export type phoneCallDiscardReasonMissed = {
@@ -6900,6 +7020,11 @@ export namespace PhoneCallDiscardReason {
 
   export type phoneCallDiscardReasonBusy = {
     _: 'phoneCallDiscardReasonBusy'
+  };
+
+  export type phoneCallDiscardReasonMigrateConferenceCall = {
+    _: 'phoneCallDiscardReasonMigrateConferenceCall',
+    slug: string
   };
 }
 
@@ -7356,8 +7481,7 @@ export namespace PhoneCall {
     admin_id: string | number,
     participant_id: string | number,
     protocol: PhoneCallProtocol,
-    receive_date?: number,
-    conference_call?: InputGroupCall
+    receive_date?: number
   };
 
   export type phoneCallRequested = {
@@ -7372,8 +7496,7 @@ export namespace PhoneCall {
     admin_id: string | number,
     participant_id: string | number,
     g_a_hash: Uint8Array,
-    protocol: PhoneCallProtocol,
-    conference_call?: InputGroupCall
+    protocol: PhoneCallProtocol
   };
 
   export type phoneCallAccepted = {
@@ -7388,8 +7511,7 @@ export namespace PhoneCall {
     admin_id: string | number,
     participant_id: string | number,
     g_b: Uint8Array,
-    protocol: PhoneCallProtocol,
-    conference_call?: InputGroupCall
+    protocol: PhoneCallProtocol
   };
 
   export type phoneCall = {
@@ -7398,6 +7520,7 @@ export namespace PhoneCall {
     pFlags: Partial<{
       p2p_allowed?: true,
       video?: true,
+      conference_supported?: true,
     }>,
     id: string | number,
     access_hash: string | number,
@@ -7409,8 +7532,7 @@ export namespace PhoneCall {
     protocol: PhoneCallProtocol,
     connections: Array<PhoneConnection>,
     start_date: number,
-    custom_parameters?: DataJSON,
-    conference_call?: InputGroupCall
+    custom_parameters?: DataJSON
   };
 
   export type phoneCallDiscarded = {
@@ -7423,8 +7545,7 @@ export namespace PhoneCall {
     }>,
     id: string | number,
     reason?: PhoneCallDiscardReason,
-    duration?: number,
-    conference_call?: InputGroupCall
+    duration?: number
   };
 }
 
@@ -7613,7 +7734,7 @@ export namespace LangPackLanguage {
 /**
  * @link https://core.telegram.org/type/ChannelAdminLogEventAction
  */
-export type ChannelAdminLogEventAction = ChannelAdminLogEventAction.channelAdminLogEventActionChangeTitle | ChannelAdminLogEventAction.channelAdminLogEventActionChangeAbout | ChannelAdminLogEventAction.channelAdminLogEventActionChangeUsername | ChannelAdminLogEventAction.channelAdminLogEventActionChangePhoto | ChannelAdminLogEventAction.channelAdminLogEventActionToggleInvites | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSignatures | ChannelAdminLogEventAction.channelAdminLogEventActionUpdatePinned | ChannelAdminLogEventAction.channelAdminLogEventActionEditMessage | ChannelAdminLogEventAction.channelAdminLogEventActionDeleteMessage | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoin | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantLeave | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantInvite | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleBan | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleAdmin | ChannelAdminLogEventAction.channelAdminLogEventActionChangeStickerSet | ChannelAdminLogEventAction.channelAdminLogEventActionTogglePreHistoryHidden | ChannelAdminLogEventAction.channelAdminLogEventActionDefaultBannedRights | ChannelAdminLogEventAction.channelAdminLogEventActionStopPoll | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLinkedChat | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLocation | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSlowMode | ChannelAdminLogEventAction.channelAdminLogEventActionStartGroupCall | ChannelAdminLogEventAction.channelAdminLogEventActionDiscardGroupCall | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantMute | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantUnmute | ChannelAdminLogEventAction.channelAdminLogEventActionToggleGroupCallSetting | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoinByInvite | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteDelete | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteRevoke | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteEdit | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantVolume | ChannelAdminLogEventAction.channelAdminLogEventActionChangeHistoryTTL | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoinByRequest | ChannelAdminLogEventAction.channelAdminLogEventActionToggleNoForwards | ChannelAdminLogEventAction.channelAdminLogEventActionSendMessage | ChannelAdminLogEventAction.channelAdminLogEventActionChangeAvailableReactions | ChannelAdminLogEventAction.channelAdminLogEventActionChangeUsernames | ChannelAdminLogEventAction.channelAdminLogEventActionToggleForum | ChannelAdminLogEventAction.channelAdminLogEventActionCreateTopic | ChannelAdminLogEventAction.channelAdminLogEventActionEditTopic | ChannelAdminLogEventAction.channelAdminLogEventActionDeleteTopic | ChannelAdminLogEventAction.channelAdminLogEventActionPinTopic | ChannelAdminLogEventAction.channelAdminLogEventActionToggleAntiSpam | ChannelAdminLogEventAction.channelAdminLogEventActionChangePeerColor | ChannelAdminLogEventAction.channelAdminLogEventActionChangeProfilePeerColor | ChannelAdminLogEventAction.channelAdminLogEventActionChangeWallpaper | ChannelAdminLogEventAction.channelAdminLogEventActionChangeEmojiStatus | ChannelAdminLogEventAction.channelAdminLogEventActionChangeEmojiStickerSet | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSignatureProfiles | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantSubExtend;
+export type ChannelAdminLogEventAction = ChannelAdminLogEventAction.channelAdminLogEventActionChangeTitle | ChannelAdminLogEventAction.channelAdminLogEventActionChangeAbout | ChannelAdminLogEventAction.channelAdminLogEventActionChangeUsername | ChannelAdminLogEventAction.channelAdminLogEventActionChangePhoto | ChannelAdminLogEventAction.channelAdminLogEventActionToggleInvites | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSignatures | ChannelAdminLogEventAction.channelAdminLogEventActionUpdatePinned | ChannelAdminLogEventAction.channelAdminLogEventActionEditMessage | ChannelAdminLogEventAction.channelAdminLogEventActionDeleteMessage | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoin | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantLeave | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantInvite | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleBan | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleAdmin | ChannelAdminLogEventAction.channelAdminLogEventActionChangeStickerSet | ChannelAdminLogEventAction.channelAdminLogEventActionTogglePreHistoryHidden | ChannelAdminLogEventAction.channelAdminLogEventActionDefaultBannedRights | ChannelAdminLogEventAction.channelAdminLogEventActionStopPoll | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLinkedChat | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLocation | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSlowMode | ChannelAdminLogEventAction.channelAdminLogEventActionStartGroupCall | ChannelAdminLogEventAction.channelAdminLogEventActionDiscardGroupCall | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantMute | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantUnmute | ChannelAdminLogEventAction.channelAdminLogEventActionToggleGroupCallSetting | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoinByInvite | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteDelete | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteRevoke | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteEdit | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantVolume | ChannelAdminLogEventAction.channelAdminLogEventActionChangeHistoryTTL | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoinByRequest | ChannelAdminLogEventAction.channelAdminLogEventActionToggleNoForwards | ChannelAdminLogEventAction.channelAdminLogEventActionSendMessage | ChannelAdminLogEventAction.channelAdminLogEventActionChangeAvailableReactions | ChannelAdminLogEventAction.channelAdminLogEventActionChangeUsernames | ChannelAdminLogEventAction.channelAdminLogEventActionToggleForum | ChannelAdminLogEventAction.channelAdminLogEventActionCreateTopic | ChannelAdminLogEventAction.channelAdminLogEventActionEditTopic | ChannelAdminLogEventAction.channelAdminLogEventActionDeleteTopic | ChannelAdminLogEventAction.channelAdminLogEventActionPinTopic | ChannelAdminLogEventAction.channelAdminLogEventActionToggleAntiSpam | ChannelAdminLogEventAction.channelAdminLogEventActionChangePeerColor | ChannelAdminLogEventAction.channelAdminLogEventActionChangeProfilePeerColor | ChannelAdminLogEventAction.channelAdminLogEventActionChangeWallpaper | ChannelAdminLogEventAction.channelAdminLogEventActionChangeEmojiStatus | ChannelAdminLogEventAction.channelAdminLogEventActionChangeEmojiStickerSet | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSignatureProfiles | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantSubExtend | ChannelAdminLogEventAction.channelAdminLogEventActionToggleAutotranslation;
 
 export namespace ChannelAdminLogEventAction {
   export type channelAdminLogEventActionChangeTitle = {
@@ -7892,6 +8013,11 @@ export namespace ChannelAdminLogEventAction {
     _: 'channelAdminLogEventActionParticipantSubExtend',
     prev_participant: ChannelParticipant,
     new_participant: ChannelParticipant
+  };
+
+  export type channelAdminLogEventActionToggleAutotranslation = {
+    _: 'channelAdminLogEventActionToggleAutotranslation',
+    new_value: boolean
   };
 }
 
@@ -9016,6 +9142,7 @@ export namespace ChatAdminRights {
       post_stories?: true,
       edit_stories?: true,
       delete_stories?: true,
+      manage_direct_messages?: true,
     }>
   };
 }
@@ -9826,11 +9953,14 @@ export namespace HelpPromoData {
       proxy?: true,
     }>,
     expires: number,
-    peer: Peer,
-    chats: Array<Chat>,
-    users: Array<User>,
+    peer?: Peer,
     psa_type?: string,
-    psa_message?: string
+    psa_message?: string,
+    pending_suggestions: Array<string>,
+    dismissed_suggestions: Array<string>,
+    custom_pending_suggestion?: PendingSuggestion,
+    chats: Array<Chat>,
+    users: Array<User>
   };
 }
 
@@ -10162,6 +10292,8 @@ export namespace GroupCall {
       record_video_active?: true,
       rtmp_stream?: true,
       listeners_hidden?: true,
+      conference?: true,
+      creator?: true,
     }>,
     id: string | number,
     access_hash: string | number,
@@ -10173,20 +10305,30 @@ export namespace GroupCall {
     unmuted_video_count?: number,
     unmuted_video_limit: number,
     version: number,
-    conference_from_call?: string | number
+    invite_link?: string
   };
 }
 
 /**
  * @link https://core.telegram.org/type/InputGroupCall
  */
-export type InputGroupCall = InputGroupCall.inputGroupCall;
+export type InputGroupCall = InputGroupCall.inputGroupCall | InputGroupCall.inputGroupCallSlug | InputGroupCall.inputGroupCallInviteMessage;
 
 export namespace InputGroupCall {
   export type inputGroupCall = {
     _: 'inputGroupCall',
     id: string | number,
     access_hash: string | number
+  };
+
+  export type inputGroupCallSlug = {
+    _: 'inputGroupCallSlug',
+    slug: string
+  };
+
+  export type inputGroupCallInviteMessage = {
+    _: 'inputGroupCallInviteMessage',
+    msg_id: number
   };
 }
 
@@ -10591,6 +10733,8 @@ export namespace SponsoredMessage {
     button_text: string,
     sponsor_info?: string,
     additional_info?: string,
+    min_display_duration?: number,
+    max_display_duration?: number,
     viewed?: boolean
   };
 }
@@ -10605,6 +10749,8 @@ export namespace MessagesSponsoredMessages {
     _: 'messages.sponsoredMessages',
     flags?: number,
     posts_between?: number,
+    start_delay?: number,
+    between_delay?: number,
     messages: Array<SponsoredMessage>,
     chats: Array<Chat>,
     users: Array<User>
@@ -11112,7 +11258,7 @@ export namespace AttachMenuPeerType {
 /**
  * @link https://core.telegram.org/type/InputInvoice
  */
-export type InputInvoice = InputInvoice.inputInvoiceMessage | InputInvoice.inputInvoiceSlug | InputInvoice.inputInvoicePremiumGiftCode | InputInvoice.inputInvoiceStars | InputInvoice.inputInvoiceChatInviteSubscription | InputInvoice.inputInvoiceStarGift | InputInvoice.inputInvoiceStarGiftUpgrade | InputInvoice.inputInvoiceStarGiftTransfer | InputInvoice.inputInvoicePremiumGiftStars | InputInvoice.inputInvoiceBusinessBotTransferStars;
+export type InputInvoice = InputInvoice.inputInvoiceMessage | InputInvoice.inputInvoiceSlug | InputInvoice.inputInvoicePremiumGiftCode | InputInvoice.inputInvoiceStars | InputInvoice.inputInvoiceChatInviteSubscription | InputInvoice.inputInvoiceStarGift | InputInvoice.inputInvoiceStarGiftUpgrade | InputInvoice.inputInvoiceStarGiftTransfer | InputInvoice.inputInvoicePremiumGiftStars | InputInvoice.inputInvoiceBusinessBotTransferStars | InputInvoice.inputInvoiceStarGiftResale;
 
 export namespace InputInvoice {
   export type inputInvoiceMessage = {
@@ -11181,6 +11327,12 @@ export namespace InputInvoice {
     _: 'inputInvoiceBusinessBotTransferStars',
     bot: InputUser,
     stars: string | number
+  };
+
+  export type inputInvoiceStarGiftResale = {
+    _: 'inputInvoiceStarGiftResale',
+    slug: string,
+    to_id: InputPeer
   };
 }
 
@@ -12314,7 +12466,7 @@ export namespace StoriesStoryViews {
 /**
  * @link https://core.telegram.org/type/InputReplyTo
  */
-export type InputReplyTo = InputReplyTo.inputReplyToMessage | InputReplyTo.inputReplyToStory;
+export type InputReplyTo = InputReplyTo.inputReplyToMessage | InputReplyTo.inputReplyToStory | InputReplyTo.inputReplyToMonoForum;
 
 export namespace InputReplyTo {
   export type inputReplyToMessage = {
@@ -12325,6 +12477,7 @@ export namespace InputReplyTo {
     quote_text?: string,
     quote_entities?: Array<MessageEntity>,
     quote_offset?: number,
+    monoforum_peer_id?: InputPeer,
     reply_to_peer_id?: PeerId | InputPeer
   };
 
@@ -12332,6 +12485,11 @@ export namespace InputReplyTo {
     _: 'inputReplyToStory',
     peer: InputPeer,
     story_id: number
+  };
+
+  export type inputReplyToMonoForum = {
+    _: 'inputReplyToMonoForum',
+    monoforum_peer_id: InputPeer
   };
 }
 
@@ -12905,7 +13063,7 @@ export namespace StoriesStoryReactionsList {
 /**
  * @link https://core.telegram.org/type/SavedDialog
  */
-export type SavedDialog = SavedDialog.savedDialog;
+export type SavedDialog = SavedDialog.savedDialog | SavedDialog.monoForumDialog;
 
 export namespace SavedDialog {
   export type savedDialog = {
@@ -12919,6 +13077,22 @@ export namespace SavedDialog {
     peerId?: PeerId,
     index_0?: number,
     savedPeerId?: PeerId
+  };
+
+  export type monoForumDialog = {
+    _: 'monoForumDialog',
+    flags?: number,
+    pFlags: Partial<{
+      unread_mark?: true,
+      nopaid_messages_exception?: true,
+    }>,
+    peer: Peer,
+    top_message: number,
+    read_inbox_max_id: number,
+    read_outbox_max_id: number,
+    unread_count: number,
+    unread_reactions_count: number,
+    draft?: DraftMessage
   };
 }
 
@@ -13681,81 +13855,6 @@ export namespace ChannelsSponsoredMessageReportResult {
 }
 
 /**
- * @link https://core.telegram.org/type/stats.BroadcastRevenueStats
- */
-export type StatsBroadcastRevenueStats = StatsBroadcastRevenueStats.statsBroadcastRevenueStats;
-
-export namespace StatsBroadcastRevenueStats {
-  export type statsBroadcastRevenueStats = {
-    _: 'stats.broadcastRevenueStats',
-    top_hours_graph: StatsGraph,
-    revenue_graph: StatsGraph,
-    balances: BroadcastRevenueBalances,
-    usd_rate: number
-  };
-}
-
-/**
- * @link https://core.telegram.org/type/stats.BroadcastRevenueWithdrawalUrl
- */
-export type StatsBroadcastRevenueWithdrawalUrl = StatsBroadcastRevenueWithdrawalUrl.statsBroadcastRevenueWithdrawalUrl;
-
-export namespace StatsBroadcastRevenueWithdrawalUrl {
-  export type statsBroadcastRevenueWithdrawalUrl = {
-    _: 'stats.broadcastRevenueWithdrawalUrl',
-    url: string
-  };
-}
-
-/**
- * @link https://core.telegram.org/type/BroadcastRevenueTransaction
- */
-export type BroadcastRevenueTransaction = BroadcastRevenueTransaction.broadcastRevenueTransactionProceeds | BroadcastRevenueTransaction.broadcastRevenueTransactionWithdrawal | BroadcastRevenueTransaction.broadcastRevenueTransactionRefund;
-
-export namespace BroadcastRevenueTransaction {
-  export type broadcastRevenueTransactionProceeds = {
-    _: 'broadcastRevenueTransactionProceeds',
-    amount: string | number,
-    from_date: number,
-    to_date: number
-  };
-
-  export type broadcastRevenueTransactionWithdrawal = {
-    _: 'broadcastRevenueTransactionWithdrawal',
-    flags?: number,
-    pFlags: Partial<{
-      pending?: true,
-      failed?: true,
-    }>,
-    amount: string | number,
-    date: number,
-    provider: string,
-    transaction_date?: number,
-    transaction_url?: string
-  };
-
-  export type broadcastRevenueTransactionRefund = {
-    _: 'broadcastRevenueTransactionRefund',
-    amount: string | number,
-    date: number,
-    provider: string
-  };
-}
-
-/**
- * @link https://core.telegram.org/type/stats.BroadcastRevenueTransactions
- */
-export type StatsBroadcastRevenueTransactions = StatsBroadcastRevenueTransactions.statsBroadcastRevenueTransactions;
-
-export namespace StatsBroadcastRevenueTransactions {
-  export type statsBroadcastRevenueTransactions = {
-    _: 'stats.broadcastRevenueTransactions',
-    count: number,
-    transactions: Array<BroadcastRevenueTransaction>
-  };
-}
-
-/**
  * @link https://core.telegram.org/type/ReactionNotificationsFrom
  */
 export type ReactionNotificationsFrom = ReactionNotificationsFrom.reactionNotificationsFromContacts | ReactionNotificationsFrom.reactionNotificationsFromAll;
@@ -13783,24 +13882,6 @@ export namespace ReactionsNotifySettings {
     stories_notify_from?: ReactionNotificationsFrom,
     sound: NotificationSound,
     show_previews: boolean
-  };
-}
-
-/**
- * @link https://core.telegram.org/type/BroadcastRevenueBalances
- */
-export type BroadcastRevenueBalances = BroadcastRevenueBalances.broadcastRevenueBalances;
-
-export namespace BroadcastRevenueBalances {
-  export type broadcastRevenueBalances = {
-    _: 'broadcastRevenueBalances',
-    flags?: number,
-    pFlags: Partial<{
-      withdrawal_enabled?: true,
-    }>,
-    current_balance: string | number,
-    available_balance: string | number,
-    overall_revenue: string | number
   };
 }
 
@@ -13936,9 +14017,10 @@ export namespace StarsTransaction {
       reaction?: true,
       stargift_upgrade?: true,
       business_transfer?: true,
+      stargift_resale?: true,
     }>,
     id: string,
-    stars: StarsAmount,
+    amount: StarsAmount,
     date: number,
     peer: StarsTransactionPeer,
     title?: string,
@@ -13957,7 +14039,9 @@ export namespace StarsTransaction {
     starref_peer?: Peer,
     starref_amount?: StarsAmount,
     paid_messages?: number,
-    premium_gift_months?: number
+    premium_gift_months?: number,
+    ads_proceeds_from_date?: number,
+    ads_proceeds_to_date?: number
   };
 }
 
@@ -14054,6 +14138,8 @@ export type PaymentsStarsRevenueStats = PaymentsStarsRevenueStats.paymentsStarsR
 export namespace PaymentsStarsRevenueStats {
   export type paymentsStarsRevenueStats = {
     _: 'payments.starsRevenueStats',
+    flags?: number,
+    top_hours_graph?: StatsGraph,
     revenue_graph: StatsGraph,
     status: StarsRevenueStatus,
     usd_rate: number
@@ -14275,10 +14361,13 @@ export namespace StarGift {
     stars: string | number,
     availability_remains?: number,
     availability_total?: number,
+    availability_resale?: string | number,
     convert_stars: string | number,
     first_sale_date?: number,
     last_sale_date?: number,
-    upgrade_stars?: string | number
+    upgrade_stars?: string | number,
+    resell_min_stars?: string | number,
+    title?: string
   };
 
   export type starGiftUnique = {
@@ -14294,7 +14383,8 @@ export namespace StarGift {
     attributes: Array<StarGiftAttribute>,
     availability_issued: number,
     availability_total: number,
-    gift_address?: string
+    gift_address?: string,
+    resell_stars?: string | number
   };
 }
 
@@ -14472,13 +14562,18 @@ export namespace PaymentsSuggestedStarRefBots {
 /**
  * @link https://core.telegram.org/type/StarsAmount
  */
-export type StarsAmount = StarsAmount.starsAmount;
+export type StarsAmount = StarsAmount.starsAmount | StarsAmount.starsTonAmount;
 
 export namespace StarsAmount {
   export type starsAmount = {
     _: 'starsAmount',
     amount: string | number,
     nanos: number
+  };
+
+  export type starsTonAmount = {
+    _: 'starsTonAmount',
+    amount: string | number
   };
 }
 
@@ -14558,6 +14653,7 @@ export namespace StarGiftAttribute {
   export type starGiftAttributeBackdrop = {
     _: 'starGiftAttributeBackdrop',
     name: string,
+    backdrop_id: number,
     center_color: number,
     edge_color: number,
     pattern_color: number,
@@ -14656,7 +14752,9 @@ export namespace SavedStarGift {
     convert_stars?: string | number,
     upgrade_stars?: string | number,
     can_export_at?: number,
-    transfer_stars?: string | number
+    transfer_stars?: string | number,
+    can_transfer_at?: number,
+    can_resell_at?: number
   };
 }
 
@@ -14681,7 +14779,7 @@ export namespace PaymentsSavedStarGifts {
 /**
  * @link https://core.telegram.org/type/InputSavedStarGift
  */
-export type InputSavedStarGift = InputSavedStarGift.inputSavedStarGiftUser | InputSavedStarGift.inputSavedStarGiftChat;
+export type InputSavedStarGift = InputSavedStarGift.inputSavedStarGiftUser | InputSavedStarGift.inputSavedStarGiftChat | InputSavedStarGift.inputSavedStarGiftSlug;
 
 export namespace InputSavedStarGift {
   export type inputSavedStarGiftUser = {
@@ -14693,6 +14791,11 @@ export namespace InputSavedStarGift {
     _: 'inputSavedStarGiftChat',
     peer: InputPeer,
     saved_id: string | number
+  };
+
+  export type inputSavedStarGiftSlug = {
+    _: 'inputSavedStarGiftSlug',
+    slug: string
   };
 }
 
@@ -14837,6 +14940,151 @@ export namespace ContactsSponsoredPeers {
     peers: Array<SponsoredPeer>,
     chats: Array<Chat>,
     users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/StarGiftAttributeId
+ */
+export type StarGiftAttributeId = StarGiftAttributeId.starGiftAttributeIdModel | StarGiftAttributeId.starGiftAttributeIdPattern | StarGiftAttributeId.starGiftAttributeIdBackdrop;
+
+export namespace StarGiftAttributeId {
+  export type starGiftAttributeIdModel = {
+    _: 'starGiftAttributeIdModel',
+    document_id: string | number
+  };
+
+  export type starGiftAttributeIdPattern = {
+    _: 'starGiftAttributeIdPattern',
+    document_id: string | number
+  };
+
+  export type starGiftAttributeIdBackdrop = {
+    _: 'starGiftAttributeIdBackdrop',
+    backdrop_id: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/StarGiftAttributeCounter
+ */
+export type StarGiftAttributeCounter = StarGiftAttributeCounter.starGiftAttributeCounter;
+
+export namespace StarGiftAttributeCounter {
+  export type starGiftAttributeCounter = {
+    _: 'starGiftAttributeCounter',
+    attribute: StarGiftAttributeId,
+    count: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.ResaleStarGifts
+ */
+export type PaymentsResaleStarGifts = PaymentsResaleStarGifts.paymentsResaleStarGifts;
+
+export namespace PaymentsResaleStarGifts {
+  export type paymentsResaleStarGifts = {
+    _: 'payments.resaleStarGifts',
+    flags?: number,
+    count: number,
+    gifts: Array<StarGift>,
+    next_offset?: string,
+    attributes?: Array<StarGiftAttribute>,
+    attributes_hash?: string | number,
+    chats: Array<Chat>,
+    counters?: Array<StarGiftAttributeCounter>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/stories.CanSendStoryCount
+ */
+export type StoriesCanSendStoryCount = StoriesCanSendStoryCount.storiesCanSendStoryCount;
+
+export namespace StoriesCanSendStoryCount {
+  export type storiesCanSendStoryCount = {
+    _: 'stories.canSendStoryCount',
+    count_remains: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/PendingSuggestion
+ */
+export type PendingSuggestion = PendingSuggestion.pendingSuggestion;
+
+export namespace PendingSuggestion {
+  export type pendingSuggestion = {
+    _: 'pendingSuggestion',
+    suggestion: string,
+    title: TextWithEntities,
+    description: TextWithEntities,
+    url: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/TodoItem
+ */
+export type TodoItem = TodoItem.todoItem;
+
+export namespace TodoItem {
+  export type todoItem = {
+    _: 'todoItem',
+    id: number,
+    title: TextWithEntities
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/TodoList
+ */
+export type TodoList = TodoList.todoList;
+
+export namespace TodoList {
+  export type todoList = {
+    _: 'todoList',
+    flags?: number,
+    pFlags: Partial<{
+      others_can_append?: true,
+      others_can_complete?: true,
+    }>,
+    title: TextWithEntities,
+    list: Array<TodoItem>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/TodoCompletion
+ */
+export type TodoCompletion = TodoCompletion.todoCompletion;
+
+export namespace TodoCompletion {
+  export type todoCompletion = {
+    _: 'todoCompletion',
+    id: number,
+    completed_by: string | number,
+    date: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/SuggestedPost
+ */
+export type SuggestedPost = SuggestedPost.suggestedPost;
+
+export namespace SuggestedPost {
+  export type suggestedPost = {
+    _: 'suggestedPost',
+    flags?: number,
+    pFlags: Partial<{
+      accepted?: true,
+      rejected?: true,
+    }>,
+    price?: StarsAmount,
+    schedule_date?: number
   };
 }
 
@@ -16111,12 +16359,6 @@ export interface ConstructorDeclMap {
   'channels.sponsoredMessageReportResultChooseOption': ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultChooseOption,
   'channels.sponsoredMessageReportResultAdsHidden': ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultAdsHidden,
   'channels.sponsoredMessageReportResultReported': ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultReported,
-  'stats.broadcastRevenueStats': StatsBroadcastRevenueStats.statsBroadcastRevenueStats,
-  'stats.broadcastRevenueWithdrawalUrl': StatsBroadcastRevenueWithdrawalUrl.statsBroadcastRevenueWithdrawalUrl,
-  'broadcastRevenueTransactionProceeds': BroadcastRevenueTransaction.broadcastRevenueTransactionProceeds,
-  'broadcastRevenueTransactionWithdrawal': BroadcastRevenueTransaction.broadcastRevenueTransactionWithdrawal,
-  'broadcastRevenueTransactionRefund': BroadcastRevenueTransaction.broadcastRevenueTransactionRefund,
-  'stats.broadcastRevenueTransactions': StatsBroadcastRevenueTransactions.statsBroadcastRevenueTransactions,
   'webPageAttributeStickerSet': WebPageAttribute.webPageAttributeStickerSet,
   'reactionNotificationsFromContacts': ReactionNotificationsFrom.reactionNotificationsFromContacts,
   'reactionNotificationsFromAll': ReactionNotificationsFrom.reactionNotificationsFromAll,
@@ -16126,8 +16368,6 @@ export interface ConstructorDeclMap {
   'auth.sentCodeTypeSmsPhrase': AuthSentCodeType.authSentCodeTypeSmsPhrase,
   'emojiGroupGreeting': EmojiGroup.emojiGroupGreeting,
   'emojiGroupPremium': EmojiGroup.emojiGroupPremium,
-  'broadcastRevenueBalances': BroadcastRevenueBalances.broadcastRevenueBalances,
-  'updateBroadcastRevenueTransactions': Update.updateBroadcastRevenueTransactions,
   'availableEffect': AvailableEffect.availableEffect,
   'messages.availableEffectsNotModified': MessagesAvailableEffects.messagesAvailableEffectsNotModified,
   'messages.availableEffects': MessagesAvailableEffects.messagesAvailableEffects,
@@ -16257,6 +16497,40 @@ export interface ConstructorDeclMap {
   'contacts.sponsoredPeersEmpty': ContactsSponsoredPeers.contactsSponsoredPeersEmpty,
   'contacts.sponsoredPeers': ContactsSponsoredPeers.contactsSponsoredPeers,
   'inputInvoiceBusinessBotTransferStars': InputInvoice.inputInvoiceBusinessBotTransferStars,
+  'inputGroupCallSlug': InputGroupCall.inputGroupCallSlug,
+  'inputGroupCallInviteMessage': InputGroupCall.inputGroupCallInviteMessage,
+  'updateGroupCallChainBlocks': Update.updateGroupCallChainBlocks,
+  'messageActionConferenceCall': MessageAction.messageActionConferenceCall,
+  'phoneCallDiscardReasonMigrateConferenceCall': PhoneCallDiscardReason.phoneCallDiscardReasonMigrateConferenceCall,
+  'inputSavedStarGiftSlug': InputSavedStarGift.inputSavedStarGiftSlug,
+  'starGiftAttributeIdModel': StarGiftAttributeId.starGiftAttributeIdModel,
+  'starGiftAttributeIdPattern': StarGiftAttributeId.starGiftAttributeIdPattern,
+  'starGiftAttributeIdBackdrop': StarGiftAttributeId.starGiftAttributeIdBackdrop,
+  'starGiftAttributeCounter': StarGiftAttributeCounter.starGiftAttributeCounter,
+  'payments.resaleStarGifts': PaymentsResaleStarGifts.paymentsResaleStarGifts,
+  'inputInvoiceStarGiftResale': InputInvoice.inputInvoiceStarGiftResale,
+  'channelAdminLogEventActionToggleAutotranslation': ChannelAdminLogEventAction.channelAdminLogEventActionToggleAutotranslation,
+  'stories.canSendStoryCount': StoriesCanSendStoryCount.storiesCanSendStoryCount,
+  'pendingSuggestion': PendingSuggestion.pendingSuggestion,
+  'inputReplyToMonoForum': InputReplyTo.inputReplyToMonoForum,
+  'monoForumDialog': SavedDialog.monoForumDialog,
+  'updateReadMonoForumInbox': Update.updateReadMonoForumInbox,
+  'updateReadMonoForumOutbox': Update.updateReadMonoForumOutbox,
+  'todoItem': TodoItem.todoItem,
+  'todoList': TodoList.todoList,
+  'todoCompletion': TodoCompletion.todoCompletion,
+  'inputMediaTodo': InputMedia.inputMediaTodo,
+  'messageMediaToDo': MessageMedia.messageMediaToDo,
+  'messageActionTodoCompletions': MessageAction.messageActionTodoCompletions,
+  'messageActionTodoAppendTasks': MessageAction.messageActionTodoAppendTasks,
+  'updateMonoForumNoPaidException': Update.updateMonoForumNoPaidException,
+  'suggestedPost': SuggestedPost.suggestedPost,
+  'messageActionSuggestedPostApproval': MessageAction.messageActionSuggestedPostApproval,
+  'messageActionSuggestedPostSuccess': MessageAction.messageActionSuggestedPostSuccess,
+  'messageActionSuggestedPostRefund': MessageAction.messageActionSuggestedPostRefund,
+  'starsTonAmount': StarsAmount.starsTonAmount,
+  'messageActionGiftTon': MessageAction.messageActionGiftTon,
+  'inputStickerSetTonGifts': InputStickerSet.inputStickerSetTonGifts,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -16540,7 +16814,8 @@ export type MessagesSendMessage = {
   send_as?: InputPeer,
   quick_reply_shortcut?: InputQuickReplyShortcut,
   effect?: string | number,
-  allow_paid_stars?: string | number
+  allow_paid_stars?: string | number,
+  suggested_post?: SuggestedPost
 };
 
 export type MessagesSendMedia = {
@@ -16563,7 +16838,8 @@ export type MessagesSendMedia = {
   send_as?: InputPeer,
   quick_reply_shortcut?: InputQuickReplyShortcut,
   effect?: string | number,
-  allow_paid_stars?: string | number
+  allow_paid_stars?: string | number,
+  suggested_post?: SuggestedPost
 };
 
 export type MessagesForwardMessages = {
@@ -16580,11 +16856,13 @@ export type MessagesForwardMessages = {
   random_id: Array<string | number>,
   to_peer: InputPeer,
   top_msg_id?: number,
+  reply_to?: InputReplyTo,
   schedule_date?: number,
   send_as?: InputPeer,
   quick_reply_shortcut?: InputQuickReplyShortcut,
   video_timestamp?: number,
-  allow_paid_stars?: string | number
+  allow_paid_stars?: string | number,
+  suggested_post?: SuggestedPost
 };
 
 export type MessagesReportSpam = {
@@ -17278,7 +17556,8 @@ export type MessagesSaveDraft = {
   message: string,
   entities?: Array<MessageEntity>,
   media?: InputMedia,
-  effect?: string | number
+  effect?: string | number,
+  suggested_post?: SuggestedPost
 };
 
 export type MessagesGetAllDrafts = {
@@ -17526,7 +17805,6 @@ export type PhoneRequestCall = {
   flags?: number,
   video?: boolean,
   user_id: InputUser,
-  conference_call?: InputGroupCall,
   random_id: number,
   g_a_hash: Uint8Array,
   protocol: PhoneCallProtocol
@@ -17855,11 +18133,13 @@ export type InvokeWithTakeout = {
 export type MessagesMarkDialogUnread = {
   flags?: number,
   unread?: boolean,
+  parent_peer?: InputPeer,
   peer: InputDialogPeer
 };
 
 export type MessagesGetDialogUnreadMarks = {
-
+  flags?: number,
+  parent_peer?: InputPeer
 };
 
 export type ContactsToggleTopPeers = {
@@ -18351,7 +18631,8 @@ export type StatsGetMessageStats = {
 export type MessagesUnpinAllMessages = {
   flags?: number,
   peer: InputPeer,
-  top_msg_id?: number
+  top_msg_id?: number,
+  saved_peer_id?: InputPeer
 };
 
 export type PhoneCreateGroupCall = {
@@ -18370,7 +18651,8 @@ export type PhoneJoinGroupCall = {
   call: InputGroupCall,
   join_as: InputPeer,
   invite_hash?: string,
-  key_fingerprint?: string | number,
+  public_key?: int256,
+  block?: Uint8Array,
   params: DataJSON
 };
 
@@ -18735,6 +19017,7 @@ export type MessagesGetUnreadReactions = {
   flags?: number,
   peer: InputPeer,
   top_msg_id?: number,
+  saved_peer_id?: InputPeer,
   offset_id: number,
   add_offset: number,
   limit: number,
@@ -18745,7 +19028,8 @@ export type MessagesGetUnreadReactions = {
 export type MessagesReadReactions = {
   flags?: number,
   peer: InputPeer,
-  top_msg_id?: number
+  top_msg_id?: number,
+  saved_peer_id?: InputPeer
 };
 
 export type ContactsResolvePhone = {
@@ -18995,7 +19279,8 @@ export type ChannelsDeactivateAllUsernames = {
 
 export type ChannelsToggleForum = {
   channel: InputChannel,
-  enabled: boolean
+  enabled: boolean,
+  tabs: boolean
 };
 
 export type ChannelsCreateForumTopic = {
@@ -19595,6 +19880,7 @@ export type AccountGetChannelRestrictedStatusEmojis = {
 export type MessagesGetSavedDialogs = {
   flags?: number,
   exclude_pinned?: boolean,
+  parent_peer?: InputPeer,
   offset_date: number,
   offset_id: number,
   offset_peer: InputPeer,
@@ -19603,6 +19889,8 @@ export type MessagesGetSavedDialogs = {
 };
 
 export type MessagesGetSavedHistory = {
+  flags?: number,
+  parent_peer?: InputPeer,
   peer: InputPeer,
   offset_id: number,
   offset_date: number,
@@ -19615,6 +19903,7 @@ export type MessagesGetSavedHistory = {
 
 export type MessagesDeleteSavedHistory = {
   flags?: number,
+  parent_peer?: InputPeer,
   peer: InputPeer,
   max_id: number,
   min_date?: number,
@@ -19851,23 +20140,6 @@ export type AccountUpdatePersonalChannel = {
   channel: InputChannel
 };
 
-export type StatsGetBroadcastRevenueStats = {
-  flags?: number,
-  dark?: boolean,
-  peer: InputPeer
-};
-
-export type StatsGetBroadcastRevenueWithdrawalUrl = {
-  peer: InputPeer,
-  password: InputCheckPasswordSRP
-};
-
-export type StatsGetBroadcastRevenueTransactions = {
-  peer: InputPeer,
-  offset: number,
-  limit: number
-};
-
 export type ChannelsRestrictSponsoredMessages = {
   channel: InputChannel,
   restricted: boolean
@@ -19945,6 +20217,8 @@ export type PaymentsGetStarsTopupOptions = {
 };
 
 export type PaymentsGetStarsStatus = {
+  flags?: number,
+  ton?: boolean,
   peer: InputPeer
 };
 
@@ -19953,6 +20227,7 @@ export type PaymentsGetStarsTransactions = {
   inbound?: boolean,
   outbound?: boolean,
   ascending?: boolean,
+  ton?: boolean,
   subscription_id?: string,
   peer: InputPeer,
   offset: string,
@@ -19981,12 +20256,15 @@ export type StoriesSearchPosts = {
 export type PaymentsGetStarsRevenueStats = {
   flags?: number,
   dark?: boolean,
+  ton?: boolean,
   peer: InputPeer
 };
 
 export type PaymentsGetStarsRevenueWithdrawalUrl = {
+  flags?: number,
+  ton?: boolean,
   peer: InputPeer,
-  stars: string | number,
+  amount?: string | number,
   password: InputCheckPasswordSRP
 };
 
@@ -19995,6 +20273,8 @@ export type PaymentsGetStarsRevenueAdsAccountUrl = {
 };
 
 export type PaymentsGetStarsTransactionsByID = {
+  flags?: number,
+  ton?: boolean,
   peer: InputPeer,
   id: Array<InputStarsTransaction>
 };
@@ -20127,7 +20407,9 @@ export type MessagesReportSponsoredMessage = {
 };
 
 export type MessagesGetSponsoredMessages = {
-  peer: InputPeer
+  flags?: number,
+  peer: InputPeer,
+  msg_id?: number
 };
 
 export type MessagesSavePreparedInlineMessage = {
@@ -20222,8 +20504,14 @@ export type MessagesSearchStickers = {
 };
 
 export type PhoneCreateConferenceCall = {
-  peer: InputPhoneCall,
-  key_fingerprint: string | number
+  flags?: number,
+  muted?: boolean,
+  video_stopped?: boolean,
+  join?: boolean,
+  random_id: number,
+  public_key?: int256,
+  block?: Uint8Array,
+  params?: DataJSON
 };
 
 export type MessagesReportMessagesDelivery = {
@@ -20301,17 +20589,15 @@ export type InvokeWithReCaptcha = {
   query: any
 };
 
-export type AccountAddNoPaidMessagesException = {
-  flags?: number,
-  refund_charged?: boolean,
-  user_id: InputUser
-};
-
 export type AccountGetPaidMessagesRevenue = {
+  flags?: number,
+  parent_peer?: InputPeer,
   user_id: InputUser
 };
 
 export type ChannelsUpdatePaidMessagesPrice = {
+  flags?: number,
+  broadcast_messages_allowed?: boolean,
   channel: InputChannel,
   send_paid_messages_stars: string | number
 };
@@ -20331,6 +20617,106 @@ export type PaymentsCanPurchaseStore = {
 
 export type ContactsGetSponsoredPeers = {
   q: string
+};
+
+export type PhoneDeleteConferenceCallParticipants = {
+  flags?: number,
+  only_left?: boolean,
+  kick?: boolean,
+  call: InputGroupCall,
+  ids: Array<string | number>,
+  block: Uint8Array
+};
+
+export type PhoneSendConferenceCallBroadcast = {
+  call: InputGroupCall,
+  block: Uint8Array
+};
+
+export type PhoneInviteConferenceCallParticipant = {
+  flags?: number,
+  video?: boolean,
+  call: InputGroupCall,
+  user_id: InputUser
+};
+
+export type PhoneDeclineConferenceCallInvite = {
+  msg_id: number
+};
+
+export type PhoneGetGroupCallChainBlocks = {
+  call: InputGroupCall,
+  sub_chain_id: number,
+  offset: number,
+  limit: number
+};
+
+export type PaymentsGetResaleStarGifts = {
+  flags?: number,
+  sort_by_price?: boolean,
+  sort_by_num?: boolean,
+  attributes_hash?: string | number,
+  gift_id: string | number,
+  attributes?: Array<StarGiftAttributeId>,
+  offset: string,
+  limit: number
+};
+
+export type PaymentsUpdateStarGiftPrice = {
+  stargift: InputSavedStarGift,
+  resell_stars: string | number
+};
+
+export type ChannelsToggleAutotranslation = {
+  channel: InputChannel,
+  enabled: boolean
+};
+
+export type MessagesGetSavedDialogsByID = {
+  flags?: number,
+  parent_peer?: InputPeer,
+  ids: Array<InputPeer>
+};
+
+export type MessagesReadSavedHistory = {
+  parent_peer: InputPeer,
+  peer: InputPeer,
+  max_id: number
+};
+
+export type ChannelsGetMessageAuthor = {
+  channel: InputChannel,
+  id: number
+};
+
+export type MessagesToggleTodoCompleted = {
+  peer: InputPeer,
+  msg_id: number,
+  completed: Array<number>,
+  incompleted: Array<number>
+};
+
+export type MessagesAppendTodoList = {
+  peer: InputPeer,
+  msg_id: number,
+  list: Array<TodoItem>
+};
+
+export type AccountToggleNoPaidMessagesException = {
+  flags?: number,
+  refund_charged?: boolean,
+  require_payment?: boolean,
+  parent_peer?: InputPeer,
+  user_id: InputUser
+};
+
+export type MessagesToggleSuggestedPostApproval = {
+  flags?: number,
+  reject?: boolean,
+  peer: InputPeer,
+  msg_id: number,
+  schedule_date?: number,
+  reject_comment?: string
 };
 
 export interface MethodDeclMap {
@@ -20842,7 +21228,7 @@ export interface MethodDeclMap {
   'messages.setChatWallPaper': {req: MessagesSetChatWallPaper, res: Updates},
   'account.invalidateSignInCodes': {req: AccountInvalidateSignInCodes, res: boolean},
   'contacts.editCloseFriends': {req: ContactsEditCloseFriends, res: boolean},
-  'stories.canSendStory': {req: StoriesCanSendStory, res: boolean},
+  'stories.canSendStory': {req: StoriesCanSendStory, res: StoriesCanSendStoryCount},
   'stories.sendStory': {req: StoriesSendStory, res: Updates},
   'stories.editStory': {req: StoriesEditStory, res: Updates},
   'stories.deleteStories': {req: StoriesDeleteStories, res: Array<number>},
@@ -20944,9 +21330,6 @@ export interface MethodDeclMap {
   'account.getBusinessChatLinks': {req: AccountGetBusinessChatLinks, res: AccountBusinessChatLinks},
   'account.resolveBusinessChatLink': {req: AccountResolveBusinessChatLink, res: AccountResolvedBusinessChatLinks},
   'account.updatePersonalChannel': {req: AccountUpdatePersonalChannel, res: boolean},
-  'stats.getBroadcastRevenueStats': {req: StatsGetBroadcastRevenueStats, res: StatsBroadcastRevenueStats},
-  'stats.getBroadcastRevenueWithdrawalUrl': {req: StatsGetBroadcastRevenueWithdrawalUrl, res: StatsBroadcastRevenueWithdrawalUrl},
-  'stats.getBroadcastRevenueTransactions': {req: StatsGetBroadcastRevenueTransactions, res: StatsBroadcastRevenueTransactions},
   'channels.restrictSponsoredMessages': {req: ChannelsRestrictSponsoredMessages, res: Updates},
   'account.toggleSponsoredMessages': {req: AccountToggleSponsoredMessages, res: boolean},
   'stories.togglePinnedToTop': {req: StoriesTogglePinnedToTop, res: boolean},
@@ -21008,7 +21391,7 @@ export interface MethodDeclMap {
   'payments.connectStarRefBot': {req: PaymentsConnectStarRefBot, res: PaymentsConnectedStarRefBots},
   'payments.editConnectedStarRefBot': {req: PaymentsEditConnectedStarRefBot, res: PaymentsConnectedStarRefBots},
   'messages.searchStickers': {req: MessagesSearchStickers, res: MessagesFoundStickers},
-  'phone.createConferenceCall': {req: PhoneCreateConferenceCall, res: PhonePhoneCall},
+  'phone.createConferenceCall': {req: PhoneCreateConferenceCall, res: Updates},
   'messages.reportMessagesDelivery': {req: MessagesReportMessagesDelivery, res: boolean},
   'bots.setCustomVerification': {req: BotsSetCustomVerification, res: boolean},
   'payments.getStarGiftUpgradePreview': {req: PaymentsGetStarGiftUpgradePreview, res: PaymentsStarGiftUpgradePreview},
@@ -21022,11 +21405,26 @@ export interface MethodDeclMap {
   'payments.getStarGiftWithdrawalUrl': {req: PaymentsGetStarGiftWithdrawalUrl, res: PaymentsStarGiftWithdrawalUrl},
   'payments.toggleChatStarGiftNotifications': {req: PaymentsToggleChatStarGiftNotifications, res: boolean},
   'invokeWithReCaptcha': {req: InvokeWithReCaptcha, res: any},
-  'account.addNoPaidMessagesException': {req: AccountAddNoPaidMessagesException, res: boolean},
   'account.getPaidMessagesRevenue': {req: AccountGetPaidMessagesRevenue, res: AccountPaidMessagesRevenue},
   'channels.updatePaidMessagesPrice': {req: ChannelsUpdatePaidMessagesPrice, res: Updates},
   'users.getRequirementsToContact': {req: UsersGetRequirementsToContact, res: Array<RequirementToContact>},
   'payments.toggleStarGiftsPinnedToTop': {req: PaymentsToggleStarGiftsPinnedToTop, res: boolean},
   'payments.canPurchaseStore': {req: PaymentsCanPurchaseStore, res: boolean},
   'contacts.getSponsoredPeers': {req: ContactsGetSponsoredPeers, res: ContactsSponsoredPeers},
+  'phone.deleteConferenceCallParticipants': {req: PhoneDeleteConferenceCallParticipants, res: Updates},
+  'phone.sendConferenceCallBroadcast': {req: PhoneSendConferenceCallBroadcast, res: Updates},
+  'phone.inviteConferenceCallParticipant': {req: PhoneInviteConferenceCallParticipant, res: Updates},
+  'phone.declineConferenceCallInvite': {req: PhoneDeclineConferenceCallInvite, res: Updates},
+  'phone.getGroupCallChainBlocks': {req: PhoneGetGroupCallChainBlocks, res: Updates},
+  'payments.getResaleStarGifts': {req: PaymentsGetResaleStarGifts, res: PaymentsResaleStarGifts},
+  'payments.updateStarGiftPrice': {req: PaymentsUpdateStarGiftPrice, res: Updates},
+  'channels.toggleAutotranslation': {req: ChannelsToggleAutotranslation, res: Updates},
+  'messages.getSavedDialogsByID': {req: MessagesGetSavedDialogsByID, res: MessagesSavedDialogs},
+  'messages.readSavedHistory': {req: MessagesReadSavedHistory, res: boolean},
+  'channels.getMessageAuthor': {req: ChannelsGetMessageAuthor, res: User},
+  'messages.toggleTodoCompleted': {req: MessagesToggleTodoCompleted, res: Updates},
+  'messages.appendTodoList': {req: MessagesAppendTodoList, res: Updates},
+  'account.toggleNoPaidMessagesException': {req: AccountToggleNoPaidMessagesException, res: boolean},
+  'messages.toggleSuggestedPostApproval': {req: MessagesToggleSuggestedPostApproval, res: Updates},
 }
+

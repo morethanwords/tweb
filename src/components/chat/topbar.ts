@@ -28,7 +28,7 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {toast, toastNew} from '../toast';
 import replaceContent from '../../helpers/dom/replaceContent';
-import {ChatFull, Chat as MTChat, GroupCall, Dialog} from '../../layer';
+import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall} from '../../layer';
 import PopupPickUser from '../popups/pickUser';
 import PopupPeer, {PopupPeerCheckboxOptions} from '../popups/peer';
 import AppEditContactTab from '../sidebarRight/tabs/editContact';
@@ -362,7 +362,9 @@ export default class ChatTopbar {
     if(!(chat as MTChat.chat).pFlags?.call_active) return false;
 
     const fullChat = await this.managers.appProfileManager.getChatFull(chatId);
-    const groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(fullChat.call.id);
+    const groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(
+      (fullChat.call as InputGroupCall.inputGroupCall).id
+    );
     if(groupCall?._ !== 'groupCall') return false;
 
     return !groupCall.pFlags.rtmp_stream;

@@ -10,7 +10,7 @@ import Icon from './icon';
 let submenuHelperIdSeed = 0;
 
 export default function createSubmenuTrigger(
-  options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'icon' | 'verify' | 'separator' | 'onClose'>,
+  options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'regularText' | 'icon' | 'verify' | 'separator' | 'separatorDown' | 'onClose'>,
   createSubmenu: () => MaybePromise<HTMLElement>
 ) {
   let isDisabled = false;
@@ -49,7 +49,10 @@ export default function createSubmenuTrigger(
     get regularText() {
       const content = document.createElement('span');
       content.classList.add('submenu-label');
-      content.append(i18n(options.text), Icon('arrowhead'));
+      const text = document.createElement('span');
+      text.classList.add('submenu-label-text');
+      text.append(options.regularText ?? i18n(options.text));
+      content.append(text, Icon('arrowhead'));
       return content;
     },
     onClick: noop,

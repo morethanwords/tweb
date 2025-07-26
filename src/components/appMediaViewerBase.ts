@@ -1638,7 +1638,7 @@ export default class AppMediaViewerBase<
     onBuffering,
     noAuthor
   }: {
-    media: MyDocument | MyPhoto | InputGroupCall,
+    media: MyDocument | MyPhoto | InputGroupCall.inputGroupCall,
     mediaThumbnail?: string,
     timestamp: number,
     fromId: PeerId | string,

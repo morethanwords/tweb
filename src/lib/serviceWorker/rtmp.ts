@@ -97,7 +97,7 @@ class RtmpStream {
 
   private _log: ReturnType<typeof logger>;
 
-  constructor(readonly call: InputGroupCall, readonly accountNumber: ActiveAccountNumber) {
+  constructor(readonly call: InputGroupCall.inputGroupCall, readonly accountNumber: ActiveAccountNumber) {
     this.decodeOpus = this.decodeOpus.bind(this);
     this._log = logger('RTMP-' + (Date.now() + '').slice(-2));
     this._log('constructor', call.id);
