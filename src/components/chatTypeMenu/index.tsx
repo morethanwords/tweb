@@ -1,4 +1,4 @@
-import {createEffect, createMemo, onCleanup} from 'solid-js';
+import {createEffect, createMemo, createRenderEffect, onCleanup} from 'solid-js';
 import type {RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 import {i18n, LangPackKey} from '../../lib/langPack';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
@@ -13,6 +13,7 @@ type ChatType = RequestHistoryOptions['chatType'];
 
 type Props = {
   selected?: ChatType;
+  hidden?: boolean;
   onChange?: (type: ChatType) => void;
 };
 
@@ -50,7 +51,12 @@ const ChatTypeMenu = defineSolidElement({
       });
     });
 
-    const span = <span class={`primary ${styles.Button}`}>{i18n(langKeyMap[selected()])}</span> as HTMLSpanElement;
+    const span = <span
+      class={`primary checkable-button-menu ${styles.Button} ${styles.ButtonMenu}`}
+      classList={{
+        [styles.hidden]: !!props.hidden
+      }}
+    >{i18n(langKeyMap[selected()])}</span> as HTMLSpanElement;
 
     const buttonMenu = ButtonMenuToggle({
       container: span,
@@ -60,8 +66,6 @@ const ChatTypeMenu = defineSolidElement({
         element.style.bottom = 'unset';
       }
     });
-
-    buttonMenu.classList.add(styles.ButtonMenu, 'checkable-button-menu');
 
     return <>{buttonMenu}</>;
   }

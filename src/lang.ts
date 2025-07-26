@@ -3410,7 +3410,7 @@ const lang = {
 
   'AllChats': 'All Chats',
   'UsersOnly': 'Private Chats',
-  'GroupsOnly': 'Groups Chats',
+  'GroupsOnly': 'Group Chats',
   'ChannelsOnly': 'Channels'
 };
 

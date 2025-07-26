@@ -100,6 +100,7 @@ import Icon from './icon';
 import PopupReportAd from './popups/reportAd';
 import createContextMenu from '../helpers/dom/createContextMenu';
 import ButtonMenuToggle from './buttonMenuToggle';
+import EmptySearchPlaceholder from './emptySearchPlaceholder';
 
 // const testScroll = false;
 
@@ -813,6 +814,7 @@ export default class AppSearchSuper {
 
     const loadPromises: Promise<any>[] = [];
     const dialogElement = appDialogsManager.addDialogNew({
+      dontSetActive: true,
       peerId,
       container: searchGroup?.list || false,
       avatarSize: 'bigger',
@@ -1143,8 +1145,11 @@ export default class AppSearchSuper {
       elemsToAppend.push(...awaited);
     }
 
-    if(searchGroup && searchGroup.list.childElementCount) {
+    const showSearchGroupAnyway = mediaTab.type === 'chats' && searchGroup.createPlaceholder;
+    if(searchGroup && (searchGroup.list.childElementCount || showSearchGroupAnyway)) {
       searchGroup.setActive();
+
+      if(!searchGroup.list?.childElementCount && searchGroup.createPlaceholder) searchGroup.addPlaceholder(searchGroup.createPlaceholder());
     }
 
     if(this.loadMutex) {
@@ -1160,6 +1165,7 @@ export default class AppSearchSuper {
     }
 
     const length = elemsToAppend.length;
+
     if(length) {
       const method = append ? 'append' : 'prepend';
       const groupByMonth = this.groupByMonth && !isSaved;

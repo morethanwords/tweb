@@ -192,7 +192,8 @@ type DialogElementOptions = {
   wrapOptions: WrapSomethingOptions,
   isMainList?: boolean,
   withStories?: boolean,
-  controlled?: boolean
+  controlled?: boolean,
+  dontSetActive?: boolean
 };
 export class DialogElement extends Row {
   private static BADGE_ORDER: Parameters<DialogElement['toggleBadgeByKey']>[0][] = ['reactionsBadge', 'mentionsBadge', 'unreadBadge', 'pinnedBadge'];
@@ -213,7 +214,8 @@ export class DialogElement extends Row {
     wrapOptions = {},
     isMainList,
     withStories,
-    controlled
+    controlled,
+    dontSetActive
   }: DialogElementOptions) {
     super({
       clickable: true,
@@ -271,7 +273,7 @@ export class DialogElement extends Row {
 
     this.titleRow.classList.add('dialog-title');
 
-    const isActive = !autonomous &&
+    const isActive = !dontSetActive && !autonomous &&
       appImManager.chat &&
       appImManager.isSamePeer(appImManager.chat, {peerId, threadId: threadId, type: isSavedDialog ? ChatType.Saved : ChatType.Chat});
 
