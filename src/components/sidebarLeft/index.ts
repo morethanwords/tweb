@@ -1155,7 +1155,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.searchGroups.messages.createPlaceholder = () => {
       const placeholder = new EmptySearchPlaceholder;
-      if(chatTypeMenu.props.selected !== 'all')
+      if(chatTypeMenu.props.selected !== 'all' && !chatTypeMenu.props.hidden)
         placeholder.feedProps({
           onAllChats: () => {
             chatTypeMenu.props.selected = 'all';
