@@ -52,7 +52,7 @@ const ChatTypeMenu = defineSolidElement({
     });
 
     const span = <span
-      class={`primary checkable-button-menu ${styles.Button} ${styles.ButtonMenu}`}
+      class={`primary checkable-button-menu ${styles.ButtonMenu}`}
       classList={{
         [styles.hidden]: !!props.hidden
       }}
