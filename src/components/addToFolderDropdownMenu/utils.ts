@@ -2,6 +2,7 @@ import {onCleanup} from 'solid-js';
 import {Middleware} from '../../helpers/middleware';
 import {TextWithEntities} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import {CustomEmojiRendererElement} from '../../lib/customEmoji/renderer';
 import {logger, LogTypes} from '../../lib/logger';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '../../lib/mtproto/mtproto_config';
 import rootScope from '../../lib/rootScope';
@@ -71,6 +72,9 @@ export function wrapFolderTitleInSpan(title: TextWithEntities.textWithEntities, 
   const fragment = wrapFolderTitle(title, middleware, true);
 
   span.append(fragment);
+
+  const renderer: CustomEmojiRendererElement = span.querySelector('custom-emoji-renderer-element');
+  renderer?.setTextColor('primary-text-color');
 
   const treeWalker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
 

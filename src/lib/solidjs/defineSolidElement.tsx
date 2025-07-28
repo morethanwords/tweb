@@ -1,6 +1,7 @@
-import {createEffect, createRoot, JSX} from 'solid-js';
+import {createEffect, createRoot, JSX, ParentProps} from 'solid-js';
 import {createMutable, unwrap} from 'solid-js/store';
 import {render} from 'solid-js/web';
+import type SolidJSHotReloadGuardProvider from './hotReloadGuardProvider';
 
 
 type Args<ObservedAttribute extends string, Props, Controls extends Object = {}> = {
@@ -31,6 +32,7 @@ export type DefinedSolidElement<ObservedAttribute extends string = string, Props
  * Note that it might still need a refresh if you change other parameters except the component logic
  *
  * @example
+ * // your-element.tsx
  * const MyElement = defineSolidElement({
  *   name: 'my-element',
  *   observedAttributes: ['size', 'something-else'],
@@ -45,8 +47,14 @@ export type DefinedSolidElement<ObservedAttribute extends string = string, Props
  *   }
  * });
  *
+ * // used-in-file.ts
+ *
+ * // Some imports might break the HMR, so you can provide this hot reload guard to prevent page reload
+ * import SolidJSHotReloadGuardProvider from './hotReloadGuardProvider';
+ *
  * const el = new MyElement;
  * el.feedProps({fancyProp: new Date});
+ * el.HotReloadGuard = SolidJSHotReloadGuardProvider;
  *
  * // Append to DOM after feeding the props, unless it relies solely on attributes, or handles undefined props
  * otherElement.append(el);
@@ -99,6 +107,8 @@ export default function defineSolidElement<Props extends Object, ObservedAttribu
     } as unknown as PassedProps<Props>))(this);
 
     public readonly controls = {} as Controls;
+
+    public HotReloadGuard?: typeof SolidJSHotReloadGuardProvider;
 
     /**
      * For HMR
@@ -187,8 +197,10 @@ export default function defineSolidElement<Props extends Object, ObservedAttribu
       this.initStores();
       if(savedAttributes) Object.assign(this.attributesStore, savedAttributes);
 
+      const Wrapper = this.HotReloadGuard || ((props: ParentProps) => <>{props.children}</>);
+
       // JSX is mandatory here for cleanup to work!
-      this.disposeContent = render(() => <>{ComponentToMount(this.propsStore, this.attributesStore, this.controls)}</>, this.mountPoint);
+      this.disposeContent = render(() => <Wrapper>{ComponentToMount(this.propsStore, this.attributesStore, this.controls)}</Wrapper>, this.mountPoint);
     }
 
     private unmount() {

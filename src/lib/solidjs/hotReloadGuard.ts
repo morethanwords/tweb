@@ -4,23 +4,25 @@ import {createContext, useContext} from 'solid-js';
  * `import type` is mandatory to avoid reloading the page (not really 😀, vite handles it even without the `import type`)
  */
 
+import type {EmoticonsDropdown} from '../../components/emoticonsDropdown';
+import type EmoticonsSearch from '../../components/emoticonsDropdown/search';
+import type EmojiTab from '../../components/emoticonsDropdown/tabs/emoji';
+import type {InputFieldTsx} from '../../components/inputFieldTsx';
+import type PasswordMonkey from '../../components/monkeys/password';
+import type PasswordInputField from '../../components/passwordInputField';
+import type {setQuizHint} from '../../components/poll';
+import type showLimitPopup from '../../components/popups/limit';
+import type PopupPremium from '../../components/popups/premium';
+import type {AppSidebarLeft} from '../../components/sidebarLeft';
 import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import type wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
-import type EmoticonsSearch from '../../components/emoticonsDropdown/search';
-import type PasswordInputField from '../../components/passwordInputField';
 import type {ThemeController} from '../../helpers/themeController';
-import type {InputFieldTsx} from '../../components/inputFieldTsx';
-import type PasswordMonkey from '../../components/monkeys/password';
-import type {AppSidebarLeft} from '../../components/sidebarLeft';
-import type PopupPremium from '../../components/popups/premium';
-import type showLimitPopup from '../../components/popups/limit';
-import type {setQuizHint} from '../../components/poll';
-
 import type {AppImManager} from '../appManagers/appImManager';
 import type apiManagerProxy from '../mtproto/mtprotoworker';
 import type lottieLoader from '../rlottie/lottieLoader';
 import type {RootScope} from '../rootScope';
+
 
 export type SolidJSHotReloadGuardContextValue = {
   rootScope: RootScope;
@@ -39,6 +41,8 @@ export type SolidJSHotReloadGuardContextValue = {
   InputFieldTsx: typeof InputFieldTsx;
   PasswordMonkey: typeof PasswordMonkey;
   PopupPremium: typeof PopupPremium;
+  EmoticonsDropdown: typeof EmoticonsDropdown;
+  EmojiTab: typeof EmojiTab;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

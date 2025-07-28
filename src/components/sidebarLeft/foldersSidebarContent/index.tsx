@@ -1,34 +1,38 @@
-import {createEffect, createRoot, createSelector, createSignal, For, onCleanup, onMount} from 'solid-js';
+import {createEffect, createRoot, createSelector, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
-
-import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
+import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
 import ListenerSetter from '../../../helpers/listenerSetter';
-import Animated from '../../../helpers/solid/animations';
 import {Middleware} from '../../../helpers/middleware';
 import pause from '../../../helpers/schedulers/pause';
-
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
-import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import {MyDialogFilter} from '../../../lib/storages/filters';
+import Animated from '../../../helpers/solid/animations';
 import {i18n} from '../../../lib/langPack';
-
-import wrapFolderTitle from '../../wrappers/folderTitle';
-import Scrollable from '../../scrollable2';
+import {logger, LogTypes} from '../../../lib/logger';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
+import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
+import {MyDialogFilter} from '../../../lib/storages/filters';
+import useHasFoldersSidebar from '../../../stores/foldersSidebar';
 import {IconTsx} from '../../iconTsx';
-import ripple from '../../ripple'; ripple; // keep
-
-import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
-import type {FolderItemPayload} from './types';
+import ripple from '../../ripple';
+import Scrollable from '../../scrollable2';
+import extractEmojiFromFilterTitle, {ExtractEmojiFromFilterTitleResult} from './extractEmojiFromFilterTitle';
 import FolderItem from './folderItem';
+import type {FolderItemPayload} from './types';
+import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
+ripple; // keep
+
+
+const log = logger('FoldersSidebarContent', LogTypes.Debug);
 
 
 export function FoldersSidebarContent(props: {
   notificationsElement: HTMLElement
 }) {
+  log.debug('Rendering FoldersSidebarContent');
+  onCleanup(() => log.debug('Cleaning up FoldersSidebarContent'));
+
   const {
     rootScope,
     appSidebarLeft,
@@ -37,12 +41,11 @@ export function FoldersSidebarContent(props: {
     showLimitPopup
   } = useHotReloadGuard();
 
-  const middlewareHelper = createMiddleware();
-
   const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
   const [folderItems, setFolderItems] = createStore<FolderItemPayload[]>([]);
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
   const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
+  const [menuTarget, setMenuTarget] = createSignal<HTMLDivElement>();
 
   const showAddFolders = () => canShowAddFolders() &&
     selectedFolderId() &&
@@ -53,7 +56,6 @@ export function FoldersSidebarContent(props: {
 
   const isSelected = createSelector(selectedFolderId);
 
-  let menuRef: HTMLDivElement;
   let folderItemsContainer: HTMLDivElement;
 
   function updateFolderItem(folderId: number, payload: Partial<FolderItemPayload>) {
@@ -63,7 +65,6 @@ export function FoldersSidebarContent(props: {
     }
 
     const folderItem = folderItems[idx];
-    folderItem.middlewareHelper?.destroy();
     setFolderItems(idx, reconcile({...folderItem, ...payload}));
   }
 
@@ -83,28 +84,32 @@ export function FoldersSidebarContent(props: {
   }
 
   async function makeFolderItemPayload(filter: MyDialogFilter): Promise<FolderItemPayload> {
-    function wrapTitle(title: DocumentFragment) {
-      const span = document.createElement('span');
-      // Needs to be in an actual element
-      span.append(title);
-      return span;
-    }
-
-    const _middlewareHelper = middlewareHelper.get().create();
-
-    const [notifications, folder, title] = await Promise.all([
+    const [notifications, folder] = await Promise.all([
       getNotificationCountForFilter(filter.id, rootScope.managers),
-      rootScope.managers.dialogsStorage.getFolder(filter.id),
-      filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapFolderTitle(filter.title, _middlewareHelper.get()).then(wrapTitle)
+      rootScope.managers.dialogsStorage.getFolder(filter.id)
     ]);
+
+    let cleanTitle: ExtractEmojiFromFilterTitleResult;
+
+    const titleRest = filter.id === FOLDER_ID_ALL ? {
+      name: i18n('FilterAllChats')
+    } : {
+      title: (cleanTitle = extractEmojiFromFilterTitle(filter.title)).text
+    };
+
+    const iconRest: Pick<FolderItemPayload, 'iconDocId' | 'emojiIcon'> = {
+      iconDocId: cleanTitle?.docId,
+      emojiIcon: cleanTitle?.emoji
+    };
 
     return {
       id: filter.id,
-      name: title,
       icon: getIconForFilter(filter),
       notifications: notifications,
       chatsCount: folder?.dialogs?.length || 0,
-      middlewareHelper: _middlewareHelper
+      dontAnimate: filter.pFlags?.title_noanimate,
+      ...titleRest,
+      ...iconRest
     };
   }
 
@@ -133,7 +138,7 @@ export function FoldersSidebarContent(props: {
     if(existingItemIndex === -1) return;
 
     const item = items[existingItemIndex];
-    item.middlewareHelper?.destroy();
+
     items.splice(existingItemIndex, 1);
     setFolderItems(items);
   }
@@ -172,13 +177,17 @@ export function FoldersSidebarContent(props: {
     rootScope.dispatchEventSingle('changing_folder_from_sidebar', {id: folderId});
   }
 
+  createEffect(() => {
+    if(!menuTarget()) return;
+
+    appSidebarLeft.createToolsMenu(menuTarget(), true);
+    menuTarget().classList.add('sidebar-tools-button', 'is-visible');
+    menuTarget().append(props.notificationsElement);
+  });
+
   let contextMenu: ReturnType<typeof createFolderContextMenu>;
   onMount(() => {
     const listenerSetter = new ListenerSetter();
-
-    appSidebarLeft.createToolsMenu(menuRef, true);
-    menuRef.classList.add('sidebar-tools-button', 'is-visible');
-    menuRef.append(props.notificationsElement);
 
     contextMenu = createFolderContextMenu({
       appSidebarLeft,
@@ -249,7 +258,7 @@ export function FoldersSidebarContent(props: {
   let openingChatFolders = false;
   return (
     <>
-      <FolderItem ref={(el) => (menuRef = el)} class="folders-sidebar__menu-button" icon="menu" />
+      <FolderItem ref={setMenuTarget} class="folders-sidebar__menu-button" icon="menu" />
 
       <div class="folders-sidebar__scrollable-position">
         <Scrollable
@@ -317,10 +326,13 @@ export function renderFoldersSidebarContent(
   HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
   middleware: Middleware
 ) {
+  const {hasFoldersSidebar} = useHasFoldersSidebar();
   createRoot((dispose) => {
     render(() => (
       <HotReloadGuardProvider>
-        <FoldersSidebarContent notificationsElement={notificationsElement} />
+        <Show when={hasFoldersSidebar()}>
+          <FoldersSidebarContent notificationsElement={notificationsElement} />
+        </Show>
       </HotReloadGuardProvider>
     ), element);
 

@@ -703,7 +703,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
   private getGoodRange() {
     const sel = document.getSelection();
-    if(sel.rangeCount && document.activeElement === this.chatInput.messageInput) {
+    if(sel.rangeCount && document.activeElement === this.chatInput?.messageInput) {
       return sel.getRangeAt(0);
     }
   }

@@ -12,7 +12,7 @@ import type {AnyDialog} from '../storages/dialogs';
 import type {CustomEmojiRendererElement} from '../customEmoji/renderer';
 import PopupElement from '../../components/popups';
 import DialogsContextMenu from '../../components/dialogsContextMenu';
-import {horizontalMenu} from '../../components/horizontalMenu';
+import {horizontalMenu, horizontalMenuObjArgs} from '../../components/horizontalMenu';
 import ripple from '../../components/ripple';
 import Scrollable, {ScrollableX, SliceSides} from '../../components/scrollable';
 import {formatDateAccordingToTodayNew} from '../../helpers/date';
@@ -165,6 +165,10 @@ function setPromiseMiddleware<T extends {[smth in K as K]?: CancellablePromise<v
 
   const middleware = middlewarePromise(() => (obj[key] as any) === deferred);
   return {deferred, middleware};
+}
+
+function getFolderTitleTextColor(active: boolean) {
+  return active ? 'primary-color' : 'secondary-text-color';
 }
 
 const BADGE_SIZE = 22;
@@ -1706,61 +1710,71 @@ export class AppDialogsManager {
 
     const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
     bottomPart.prepend(this.folders.menuScrollContainer);
-    const selectTab = this.selectTab = horizontalMenu(this.folders.menu, this.folders.container, async(id, tabContent) => {
-      /* if(id !== 0) {
-        id += 1;
-      } */
+    const selectTab = this.selectTab = horizontalMenuObjArgs({
+      tabs: this.folders.menu,
+      content: this.folders.container,
+      onClick: async(id, tabContent) => {
+        /* if(id !== 0) {
+          id += 1;
+        } */
 
-      const _id = id;
-      id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
+        const _id = id;
+        id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
 
-      rootScope.dispatchEventSingle('changing_folder_from_chatlist', id);
+        rootScope.dispatchEventSingle('changing_folder_from_chatlist', id);
 
-      const isFilterAvailable = this.filterId === -1 || REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
-      if(!isFilterAvailable) {
-        showLimitPopup('folders');
-        return false;
-      }
+        const isFilterAvailable = this.filterId === -1 || REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
+        if(!isFilterAvailable) {
+          showLimitPopup('folders');
+          return false;
+        }
 
-      const wasFilterId = this.filterId;
-      if(!IS_MOBILE_SAFARI) {
-        if(_id) {
-          if(!this.filtersNavigationItem) {
-            this.filtersNavigationItem = {
-              type: 'filters',
-              onPop: () => {
-                selectTab(0);
-                this.filtersNavigationItem = undefined;
-              }
-            };
+        const wasFilterId = this.filterId;
+        if(!IS_MOBILE_SAFARI) {
+          if(_id) {
+            if(!this.filtersNavigationItem) {
+              this.filtersNavigationItem = {
+                type: 'filters',
+                onPop: () => {
+                  selectTab(0);
+                  this.filtersNavigationItem = undefined;
+                }
+              };
 
-            appNavigationController.spliceItems(1, 0, this.filtersNavigationItem);
+              appNavigationController.spliceItems(1, 0, this.filtersNavigationItem);
+            }
+          } else if(this.filtersNavigationItem) {
+            appNavigationController.removeItem(this.filtersNavigationItem);
+            this.filtersNavigationItem = undefined;
           }
-        } else if(this.filtersNavigationItem) {
-          appNavigationController.removeItem(this.filtersNavigationItem);
-          this.filtersNavigationItem = undefined;
         }
-      }
 
-      if(wasFilterId === id) return;
+        if(wasFilterId === id) return;
 
-      this.xds[id].clear();
-      const promise = this.setFilterIdAndChangeTab(id).then(() => {
-        // if(cached) {
-        //   return renderPromise;
-        // }
-      });
+        this.xds[id].clear();
+        const promise = this.setFilterIdAndChangeTab(id).then(() => {
+          // if(cached) {
+          //   return renderPromise;
+          // }
+        });
 
-      if(wasFilterId !== -1) {
-        return promise;
-      }
-    }, () => {
-      for(const folderId in this.xds) {
-        if(+folderId !== this.filterId) {
-          this.xds[folderId].clear();
+        if(wasFilterId !== -1) {
+          return promise;
         }
+      },
+      onTransitionEnd: () => {
+        for(const folderId in this.xds) {
+          if(+folderId !== this.filterId) {
+            this.xds[folderId].clear();
+          }
+        }
+      },
+      scrollableX: foldersScrollable,
+      onChange: ({element, active}) => {
+        const renderer: CustomEmojiRendererElement = element?.querySelector('custom-emoji-renderer-element');
+        renderer?.setTextColor(getFolderTitleTextColor(active));
       }
-    }, undefined, foldersScrollable);
+    });
 
     createFolderContextMenu({
       appSidebarLeft,
@@ -1920,7 +1934,8 @@ export class AppDialogsManager {
       }
 
       const elements = this.filtersRendered[filter.id];
-      setInnerHTML(elements.title, await wrapFolderTitle(filter.title, elements.middlewareHelper.get()));
+      const active = this.filterId === filter.id;
+      setInnerHTML(elements.title, await wrapFolderTitle(filter.title, elements.middlewareHelper.get(), false, {textColor: getFolderTitleTextColor(active)}));
     });
 
     rootScope.addEventListener('filter_delete', (filter) => {
@@ -2297,7 +2312,7 @@ export class AppDialogsManager {
     const titleSpan = document.createElement('span');
     titleSpan.classList.add('text-super');
     if(id === FOLDER_ID_ALL) titleSpan.append(this.allChatsIntlElement.element);
-    else setInnerHTML(titleSpan, wrapFolderTitle(filter.title, middlewareHelper.get(), true));
+    else setInnerHTML(titleSpan, wrapFolderTitle(filter.title, middlewareHelper.get(), true, {textColor: 'secondary-text-color'}));
     const unreadSpan = createBadge('div', 20, 'primary');
     const i = document.createElement('i');
     span.append(titleSpan, unreadSpan, i);

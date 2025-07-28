@@ -15,6 +15,26 @@ import ListenerSetter from '../helpers/listenerSetter';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import liteMode from '../helpers/liteMode';
 
+type OnChangeArgs = {
+  element: HTMLElement;
+  active: boolean;
+};
+
+type Args = {
+  tabs: HTMLElement;
+  content: HTMLElement,
+  onClick?: (id: number, tabContent: HTMLDivElement, animate: boolean) => void | boolean | Promise<void | boolean>;
+  onTransitionEnd?: () => void;
+  transitionTime?: number;
+  scrollableX?: ScrollableX;
+  listenerSetter?: ListenerSetter;
+  onChange?: (args: OnChangeArgs) => void;
+};
+
+export function horizontalMenuObjArgs({tabs, content, onClick, onTransitionEnd, transitionTime, scrollableX, listenerSetter, onChange}: Args) {
+  return horizontalMenu(tabs, content, onClick, onTransitionEnd, transitionTime, scrollableX, listenerSetter, onChange);
+}
+
 export function horizontalMenu(
   tabs: HTMLElement,
   content: HTMLElement,
@@ -22,7 +42,8 @@ export function horizontalMenu(
   onTransitionEnd?: () => void,
   transitionTime = 200,
   scrollableX?: ScrollableX,
-  listenerSetter?: ListenerSetter
+  listenerSetter?: ListenerSetter,
+  onChange?: (args: OnChangeArgs) => void
 ) {
   const selectTab = TransitionSlider({
     content,
@@ -89,6 +110,7 @@ export function horizontalMenu(
     if(prev) {
       mutateCallback(() => {
         prev.classList.remove('active');
+        onChange?.({element: prev, active: false});
       });
     }
 
@@ -118,6 +140,7 @@ export function horizontalMenu(
 
     mutateCallback(() => {
       target.classList.add('active');
+      onChange?.({element: target, active: true});
     });
 
     selectTab(id, animate);
