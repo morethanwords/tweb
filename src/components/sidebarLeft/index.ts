@@ -100,6 +100,9 @@ import EncryptionKeyStore from '../../lib/passcode/keyStore';
 import createLockButton from './lockButton';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './constants';
 import createSubmenuTrigger from '../createSubmenuTrigger';
+import ChatTypeMenu from '../chatTypeMenu';
+import {RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
+import EmptySearchPlaceholder from '../emptySearchPlaceholder';
 import useHasFoldersSidebar from '../../stores/foldersSidebar';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
@@ -1155,6 +1158,27 @@ export class AppSidebarLeft extends SidebarSlider {
       recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
     };
 
+    this.searchGroups.messages.createPlaceholder = () => {
+      const placeholder = new EmptySearchPlaceholder;
+      if(chatTypeMenu.props.selected !== 'all' && !chatTypeMenu.props.hidden)
+        placeholder.feedProps({
+          onAllChats: () => {
+            chatTypeMenu.props.selected = 'all';
+            updateSearchQuery({search: this.inputSearch.value, chatType: 'all'})
+          }
+        });
+
+      return placeholder;
+    };
+
+    const chatTypeMenu = new ChatTypeMenu;
+    chatTypeMenu.feedProps({
+      onChange: (chatType) => void updateSearchQuery({search: this.inputSearch.value, chatType}),
+      selected: 'all'
+    });
+
+    this.searchGroups.messages.nameEl.append(chatTypeMenu);
+
     // bots.getPopularAppBots
 
     const searchSuper = this.searchSuper = new AppSearchSuper({
@@ -1197,6 +1221,10 @@ export class AppSidebarLeft extends SidebarSlider {
       managers: this.managers
     });
 
+    searchSuper.onChangeTab = () => {
+      searchSuper.searchContext.chatType = 'all';
+    };
+
     this.watchChannelsTabVisibility();
 
     searchContainer.prepend(searchSuper.nav.parentElement.parentElement);
@@ -1227,11 +1255,14 @@ export class AppSidebarLeft extends SidebarSlider {
       });
 
       if(pickedElements.length) {
+        pause(0).then(() => chatTypeMenu.props.hidden = true);
+
         this.inputSearch.input.style.setProperty(
           '--paddingLeft',
           (pickedElements[pickedElements.length - 1].getBoundingClientRect().right - this.inputSearch.input.getBoundingClientRect().left) + 'px'
         );
       } else {
+        chatTypeMenu.props.hidden = false;
         this.inputSearch.input.style.removeProperty('--paddingLeft');
       }
     };
@@ -1314,11 +1345,25 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     this.inputSearch.onChange = (value) => {
+      if(searchSuper.mediaTab.type !== 'chats') {
+        chatTypeMenu.props.selected = 'all';
+      }
+      updateSearchQuery({search: value, chatType: chatTypeMenu.props.selected});
+    };
+
+    type UpdateSearchQueryArgs = {
+      search?: string;
+      chatType?: RequestHistoryOptions['chatType'];
+    };
+
+    const updateSearchQuery = ({search: value, chatType}: UpdateSearchQueryArgs) => {
+      // spot input
       searchSuper.cleanupHTML();
       searchSuper.setQuery({
         peerId: selectedPeerId,
         folderId: selectedPeerId ? undefined : 0,
         query: value,
+        chatType,
         minDate: selectedMinDate,
         maxDate: selectedMaxDate
       });
@@ -1448,10 +1493,11 @@ export class AppSidebarLeft extends SidebarSlider {
       appNavigationController.removeByType('global-search');
 
       transition(0);
-
       this.buttonsContainer.classList.remove('is-visible');
       this.isSearchActive = false;
       this.onSomethingOpenInsideChange(true);
+
+      chatTypeMenu.props.selected = 'all';
     });
 
     const clearRecentSearchBtn = ButtonIcon('close');

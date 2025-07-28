@@ -155,6 +155,14 @@ export default function defineSolidElement<Props extends Object, ObservedAttribu
       this.attributesStore[name] = newValue; // Let's hope this will not trigger infinite loops, as the values are compared before updates
     }
 
+    public get props() {
+      if(this.disposeStores) {
+        return this.propsStore;
+      } else {
+        return this.savedProps;
+      }
+    }
+
     public feedProps<Full extends boolean = true>(props: Full extends true ? Props : Partial<Props>) {
       if(this.disposeStores) {
         Object.assign(this.propsStore, props);
