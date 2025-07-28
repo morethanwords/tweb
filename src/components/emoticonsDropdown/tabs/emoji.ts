@@ -200,6 +200,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private menuInnerScroll: ScrollableX;
   private isStandalone?: boolean;
   private noRegularEmoji?: boolean;
+  private noSearchGroups?: boolean;
   private mainSets: () => (Promise<DocId[]> | Array<Promise<DocId[]>>);
   private additionalSets: () => Promise<StickerSet.stickerSet[]>;
   private additionalLocalStickerSet: () => Promise<{title: LangPackKey, stickers: MyDocument[]}>;
@@ -220,6 +221,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     managers: AppManagers,
     isStandalone?: boolean,
     noRegularEmoji?: boolean,
+    noSearchGroups?: boolean,
     mainSets?: EmojiTab['mainSets'],
     additionalSets?: EmojiTab['additionalSets'],
     additionalLocalStickerSet?: EmojiTab['additionalLocalStickerSet'],
@@ -246,7 +248,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
 
         return {emojis: await this.managers.appEmojiManager.prepareAndSearchEmojis({q: value, limit: Infinity, minChars: 1, addCustom: true})};
       },
-      groupFetcher: options.groupFetcher ? options.groupFetcher : async(group) => {
+      groupFetcher: options.noSearchGroups ? undefined : options.groupFetcher ? options.groupFetcher : async(group) => {
         if(group?._ !== 'emojiGroup') return {emojis: []};
 
         if(options.groupFetcher) {
@@ -593,7 +595,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
 
         if(id !== EMOJI_RECENT_ID && id !== CUSTOM_EMOJI_RECENT_ID) {
           category.menuScroll = this.menuInnerScroll;
-          this.menuInnerScroll.append(category.elements.menuTab);
+          this.menuInnerScroll?.append(category.elements.menuTab);
         }
       });
 
@@ -761,7 +763,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   }
 
   private get peerId() {
-    return this.emoticonsDropdown ? this.emoticonsDropdown.chatInput.chat.peerId : NULL_PEER_ID;
+    return (this.emoticonsDropdown ? this.emoticonsDropdown.chatInput?.chat?.peerId : NULL_PEER_ID) ?? NULL_PEER_ID;
   }
 
   public getCustomCategory() {

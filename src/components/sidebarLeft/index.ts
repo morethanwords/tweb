@@ -103,6 +103,7 @@ import createSubmenuTrigger from '../createSubmenuTrigger';
 import ChatTypeMenu from '../chatTypeMenu';
 import {RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 import EmptySearchPlaceholder from '../emptySearchPlaceholder';
+import useHasFoldersSidebar from '../../stores/foldersSidebar';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -503,7 +504,9 @@ export class AppSidebarLeft extends SidebarSlider {
     this.chatListContainer.parentElement.classList.toggle('zoom-fade', !this.isCollapsed());
     appDialogsManager.xd.toggleAvatarUnreadBadges(this.isCollapsed(), undefined);
 
-    if(canShowCtrlFTip && this.isCollapsed() && !this.hasFoldersSidebar()) {
+    const {hasFoldersSidebar} = useHasFoldersSidebar();
+
+    if(canShowCtrlFTip && this.isCollapsed() && !hasFoldersSidebar()) {
       this.showCtrlFTip();
     }
   }
@@ -573,6 +576,8 @@ export class AppSidebarLeft extends SidebarSlider {
       });
       appDialogsManager.xd.toggleAvatarUnreadBadges(false, undefined);
     } else {
+      const {hasFoldersSidebar} = useHasFoldersSidebar();
+
       sidebarPlaceholder.classList.add('keep-active');
       this.sidebarEl.classList.add(
         'force-fixed',
@@ -582,7 +587,7 @@ export class AppSidebarLeft extends SidebarSlider {
       closingSearch && this.sidebarEl.classList.add('animate-search-out');
 
       this.buttonsContainer.classList.add('force-static', 'is-visible');
-      closingSearch && this.hasFoldersSidebar() && this.toolsBtn.parentElement.firstElementChild.classList.add('state-back');
+      closingSearch && hasFoldersSidebar() && this.toolsBtn.parentElement.firstElementChild.classList.add('state-back');
 
       this.isAnimatingCollapse = true;
       animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, ANIMATION_TIME, (value) => {
