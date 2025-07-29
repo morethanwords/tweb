@@ -389,7 +389,7 @@ export default class ChatContextMenu {
         const media = (this.message as Message.message).media as MessageMedia.messageMediaToDo;
         this.checklistItem = {
           item: media.todo.list.find((item) => item.id === checklistItemId),
-          completion: media.completions.find((completion) => completion.id === checklistItemId)
+          completion: media.completions?.find((completion) => completion.id === checklistItemId)
         }
       } else {
         this.checklistItem = undefined;
@@ -702,6 +702,7 @@ export default class ChatContextMenu {
       onClick: this.onAddTaskClick,
       verify: async() => {
         if(this.message._ !== 'message' || this.message.media?._ !== 'messageMediaToDo') return false
+        if(this.message.pFlags.is_outgoing) return false
         return this.message.pFlags.out || this.message.media.todo.pFlags.others_can_append
       }/* ,
       cancelEvent: true */
@@ -1584,8 +1585,8 @@ export default class ChatContextMenu {
     this.managers.appPollsManager.stopPoll(this.message as Message.message);
   };
 
-  private onAddTaskClick = () => {
-    if(!this.managers.rootScope.premium) {
+  private onAddTaskClick = async() => {
+    if(!rootScope.premium) {
       PopupPremium.show();
       return;
     }

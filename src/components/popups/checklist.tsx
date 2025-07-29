@@ -5,7 +5,7 @@ import {InputFieldTsx} from '../inputFieldTsx';
 import {I18nTsx} from '../../helpers/solid/i18n';
 
 import css from './checklist.module.scss';
-import {createSignal, For} from 'solid-js';
+import {createEffect, createSignal, For, on} from 'solid-js';
 import InputField from '../inputField';
 import RowTsx from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
@@ -21,6 +21,7 @@ import Scrollable from '../scrollable2';
 import Button from '../buttonTsx';
 import classNames from '../../helpers/string/classNames';
 import {fastRaf} from '../../helpers/schedulers';
+import {toastNew} from '../toast';
 
 export class PopupChecklist extends PopupElement {
   private chat: Chat;
@@ -58,6 +59,7 @@ export class PopupChecklist extends PopupElement {
       canBeEdited: !this.appending
     });
 
+    const [pending, setPending] = createSignal(false);
     const [items, setItems] = createSignal<{id: number, existing: boolean, field: InputField}[]>([]);
     const [allowOthersToMarkAsDone, setAllowOthersToMarkAsDone] = createSignal(this.editMessage?.media.todo.pFlags.others_can_complete ?? false);
     const [allowOthersToAddTasks, setAllowOthersToAddTasks] = createSignal(this.editMessage?.media.todo.pFlags.others_can_append ?? false);
@@ -71,7 +73,10 @@ export class PopupChecklist extends PopupElement {
         }
 
         if(items$.length === 0) return false;
-        return items$.every(v => v.field.value.trim());
+        return items$.every(v => {
+          const val = v.field.value.trim();
+          return val.length > 0 && val.length <= props.appConfig.todo_item_length_max;
+        });
       })()
 
       this.btnConfirm.disabled = !valid;
@@ -124,12 +129,12 @@ export class PopupChecklist extends PopupElement {
     }
 
     const handleConfirm = async() => {
+      let promise: Promise<any>;
       if(this.appending) {
         const maxId = this.editMessage?.media.todo.list.reduce((max, item) => Math.max(max, item.id), 0) ?? 0;
         const newItems = items().filter(v => !v.existing);
 
-        this.hide();
-        this.managers.appMessagesManager.appendTodo({
+        promise = this.managers.appMessagesManager.appendTodo({
           peerId: this.chat.peerId,
           mid: this.editMessage.mid,
           tasks: newItems.map((v, idx) => {
@@ -146,69 +151,82 @@ export class PopupChecklist extends PopupElement {
             };
           })
         })
-        return
-      }
-
-      const title = getRichValueWithCaret(titleInput.input, true, false);
-
-      const inputMedia: InputMedia = {
-        _: 'inputMediaTodo',
-        todo: {
-          _: 'todoList',
-          pFlags: {
-            others_can_append: allowOthersToAddTasks() ? true : undefined,
-            others_can_complete: allowOthersToMarkAsDone() ? true : undefined
-          },
-          title: {
-            _: 'textWithEntities',
-            text: title.value,
-            entities: title.entities
-          },
-          list: items().map((v, idx) => {
-            const richValue = getRichValueWithCaret(v.field.input, true, false);
-            return {
-              _: 'todoItem',
-              // ids must be consecutive when creating
-              id: this.editMessage ? v.id : idx + 1,
-              title: {
-                _: 'textWithEntities',
-                text: richValue.value,
-                entities: richValue.entities
-              }
-            };
-          })
-        }
-      }
-
-      if(this.editMessage) {
-        await this.managers.appMessagesManager.editMessage(this.editMessage, this.editMessage.message, {
-          newMedia: inputMedia
-        });
-        this.hide();
       } else {
-        const sendingParams = this.chat.getMessageSendingParams();
+        const title = getRichValueWithCaret(titleInput.input, true, false);
 
-        const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
-        if(preparedPaymentResult === PAYMENT_REJECTED) return;
-
-        sendingParams.confirmedPaymentResult = preparedPaymentResult;
-
-        this.hide();
-
-        this.managers.appMessagesManager.sendOther({
-          ...sendingParams,
-          inputMedia
-        });
-
-        if(this.chat.input.helperType === 'reply') {
-          this.chat.input.clearHelper();
+        const inputMedia: InputMedia = {
+          _: 'inputMediaTodo',
+          todo: {
+            _: 'todoList',
+            pFlags: {
+              others_can_append: allowOthersToAddTasks() ? true : undefined,
+              others_can_complete: allowOthersToMarkAsDone() ? true : undefined
+            },
+            title: {
+              _: 'textWithEntities',
+              text: title.value,
+              entities: title.entities
+            },
+            list: items().map((v, idx) => {
+              const richValue = getRichValueWithCaret(v.field.input, true, false);
+              return {
+                _: 'todoItem',
+                // ids must be consecutive when creating
+                id: this.editMessage ? v.id : idx + 1,
+                title: {
+                  _: 'textWithEntities',
+                  text: richValue.value,
+                  entities: richValue.entities
+                }
+              };
+            })
+          }
         }
 
-        this.chat.input.onMessageSent(false, false);
+        if(this.editMessage) {
+          promise = this.managers.appMessagesManager.editMessage(this.editMessage, this.editMessage.message, {
+            newMedia: inputMedia
+          });
+        } else {
+          const sendingParams = this.chat.getMessageSendingParams();
+
+          const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
+          if(preparedPaymentResult === PAYMENT_REJECTED) return;
+
+          sendingParams.confirmedPaymentResult = preparedPaymentResult;
+
+          this.hide();
+
+          this.managers.appMessagesManager.sendOther({
+            ...sendingParams,
+            inputMedia
+          });
+
+          if(this.chat.input.helperType === 'reply') {
+            this.chat.input.clearHelper();
+          }
+
+          this.chat.input.onMessageSent(false, false);
+        }
+      }
+
+      if(promise) {
+        setPending(true);
+        promise.then(() => {
+          setPending(false);
+          this.hide();
+        }).catch(() => {
+          setPending(false);
+          toastNew({langPackKey: 'Error.AnError'});
+        });
       }
     }
 
     attachClickEvent(this.btnConfirm, handleConfirm, {listenerSetter: this.listenerSetter});
+
+    createEffect(on(pending, (pending) => {
+      this.btnConfirm.disabled = pending;
+    }));
 
     return (
       <>

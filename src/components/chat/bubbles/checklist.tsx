@@ -39,7 +39,7 @@ export function ChecklistBubble(props: {
   })
 
   const isGroupChecklist = checklist.todo.pFlags.others_can_complete
-  const isReadonly = !props.out && !isGroupChecklist;
+  const isReadonly = props.message.fwd_from || !props.out && !isGroupChecklist;
 
   async function handleClick(id: number) {
     if(props.message.fwd_from) {
@@ -127,8 +127,8 @@ export function ChecklistBubble(props: {
                   </div>
                 )}
                 <div class={styles.itemTitle}>
-                  {wrapEmojiTextWithEntities(item.title)}
-                  <Show when={!isReadonly && completionsById()[item.id]} keyed>
+                  <span class={styles.itemTitleText}>{wrapEmojiTextWithEntities(item.title)}</span>
+                  <Show when={isGroupChecklist && completionsById()[item.id]} keyed>
                     {(it) => (
                       <PeerTitleTsx
                         class={styles.itemCompletedBy}

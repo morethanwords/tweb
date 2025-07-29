@@ -84,9 +84,14 @@
 
   :global(.input-field-input) {
     border-bottom: 1px solid transparent;
+    padding-right: 3rem;
 
     &:hover {
-      border-bottom-color: var(--border-color);
+      border-bottom-color: var(--input-search-border-color);
+    }
+
+    &:global(.error) {
+      border-bottom-color: var(--danger-color);
     }
   }
 
@@ -104,7 +109,11 @@
     }
 
     :global(.input-field-input) {
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--input-search-border-color);
+
+      &:global(.error) {
+        border-bottom-color: var(--danger-color);
+      }
     }
   }
 }

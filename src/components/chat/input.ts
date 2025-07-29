@@ -1038,14 +1038,13 @@ export default class ChatInput {
           }
         }
 
-        if(!this.managers.rootScope.premium) {
+        if(!rootScope.premium) {
           PopupPremium.show();
           return;
         }
 
         PopupElement.createPopup(PopupChecklist, {chat: this.chat}).show();
-      },
-      verify: () => this.managers.rootScope.premium
+      }
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();
