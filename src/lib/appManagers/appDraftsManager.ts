@@ -33,8 +33,7 @@ export class AppDraftsManager extends AppManager {
           peerId,
           threadId: update.threadId,
           draft: update.draft,
-          notify: true,
-          force: true
+          notify: true
         });
       }
     });
