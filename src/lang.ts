@@ -3453,6 +3453,11 @@ const lang = {
     'one_value': 'Messages now cost **%d Star** in this group',
     'other_value': 'Messages now cost **%d Stars** in this group'
   },
+  'PaidMessages.ChannelPriceChangedFree': '%s now accepts direct messages for free',
+  'PaidMessages.ChannelPriceChanged': {
+    'one_value': '%2$s now accepts direct messages for **%1$d Star**',
+    'other_value': '%2$s now accepts direct messages for **%1$d Stars**'
+  },
   'PaidMessages.StarsRefundedToYou': {
     'one_value': '%2$s refunded **%1$d Star** to you',
     'other_value': '%2$s refunded **%1$d Stars** to you'
