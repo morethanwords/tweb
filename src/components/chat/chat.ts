@@ -862,13 +862,12 @@ export default class Chat extends EventListenerBase<{
     const type = options.type ?? ChatType.Chat;
     this.setType(type);
 
-    const [
+    const {
       noForwards,
       restrictions,
       isRestricted,
       isLikeGroup,
       isRealGroup,
-      _,
       isMegagroup,
       isBroadcast,
       isChannel,
@@ -877,24 +876,25 @@ export default class Chat extends EventListenerBase<{
       isUserBlocked,
       isPremiumRequired,
       starsAmount,
-      sensitiveContentSettings
-    ] = await m(Promise.all([
-      this.managers.appPeersManager.noForwards(peerId),
-      this.managers.appPeersManager.getPeerRestrictions(peerId),
-      this.managers.appPeersManager.isPeerRestricted(peerId),
-      this._isLikeGroup(peerId),
-      this.managers.appPeersManager.isAnyGroup(peerId),
-      this.setAutoDownloadMedia(),
-      this.managers.appPeersManager.isMegagroup(peerId),
-      this.managers.appPeersManager.isBroadcast(peerId),
-      this.managers.appPeersManager.isChannel(peerId),
-      this.managers.appPeersManager.isBot(peerId),
-      this.managers.appMessagesManager.isAnonymousSending(peerId),
-      peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),
-      this.isPremiumRequiredToContact(peerId),
-      this.managers.appPeersManager.getStarsAmount(peerId),
-      this.sensitiveContentSettings || this.managers.appPrivacyManager.getSensitiveContentSettings()
-    ]));
+      sensitiveContentSettings,
+      chat
+    } = await namedPromises({
+      noForwards: this.managers.appPeersManager.noForwards(peerId),
+      restrictions: this.managers.appPeersManager.getPeerRestrictions(peerId),
+      isRestricted: this.managers.appPeersManager.isPeerRestricted(peerId),
+      isLikeGroup: this._isLikeGroup(peerId),
+      isRealGroup: this.managers.appPeersManager.isAnyGroup(peerId),
+      isMegagroup: this.managers.appPeersManager.isMegagroup(peerId),
+      isBroadcast: this.managers.appPeersManager.isBroadcast(peerId),
+      isChannel: this.managers.appPeersManager.isChannel(peerId),
+      isBot: this.managers.appPeersManager.isBot(peerId),
+      isAnonymousSending: this.managers.appMessagesManager.isAnonymousSending(peerId),
+      isUserBlocked: peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),
+      isPremiumRequired: this.isPremiumRequiredToContact(peerId),
+      starsAmount: this.managers.appPeersManager.getStarsAmount(peerId),
+      sensitiveContentSettings: this.sensitiveContentSettings || this.managers.appPrivacyManager.getSensitiveContentSettings(),
+      chat: peerId.isAnyChat() && this.managers.appChatsManager.getChat(peerId.toChatId())
+    });
 
     // ! WARNING: TEMPORARY, HAVE TO GET TOPIC
     if(isForum && threadId) {
@@ -931,7 +931,8 @@ export default class Chat extends EventListenerBase<{
     if(!this.excludeParts.sharedMedia) {
       this.sharedMediaTab = appSidebarRight.createSharedMediaTab();
       this.sharedMediaTabs.push(this.sharedMediaTab);
-      this.sharedMediaTab.setPeer(peerId, threadId);
+      const linkedMonoforumId = (chat?._ === 'channel' && chat.pFlags?.monoforum && chat.linked_monoforum_id)?.toPeerId(true);
+      this.sharedMediaTab.setPeer(linkedMonoforumId || peerId, threadId);
     }
 
     this.input?.clearHelper(); // костыль
