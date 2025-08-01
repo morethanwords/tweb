@@ -1,0 +1,141 @@
+@import "../../../scss/mixins";
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  user-select: none;
+}
+
+.title {
+  font-size: 16px;
+  line-height: 21px;
+  font-weight: 500;
+  color: var(--primary-text-color);
+}
+
+.subtitle {
+  margin-top: 0.1875rem;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--secondary-text-color);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.125rem;
+}
+
+.item {
+  --item-background-color: var(--message-background-color);
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem;
+  padding-left: 0.6875rem;
+  margin-inline: -0.5rem;
+  min-height: 2.625rem;
+  background-color: var(--item-background-color);
+  cursor: pointer;
+
+  &:hover {
+    --item-background-color: color-mix(in srgb, var(--message-primary-color) 8%, var(--message-background-color));
+  }
+}
+
+.itemCompleted {
+  padding-block: 0.0625rem;
+}
+
+.itemCheckbox {
+  position: relative;
+  padding-right: 0.875rem;
+
+  :global(.checkbox-field) {
+    --size: 1.375rem;
+    margin: 0;
+    z-index: 1;
+
+    :global(.checkbox-box) {
+      border-radius: 50%;
+    }
+
+    :global(.checkbox-box-border) {
+      border-color: var(--message-out-primary-color);
+    }
+
+    .itemCompleted & {
+      box-shadow: 0px 0px 0px 2px var(--item-background-color);
+      border-radius: 50%;
+    }
+
+    :global(html.night .bubble.is-out) & :global(.checkbox-box-check use) {
+      stroke: var(--item-background-color);
+    }
+  }
+
+  :global(.avatar) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    transform: scale(0.75);
+    
+    @include animation-level-global(2) {
+      transition: var(--transition-standard-in);
+      transition-property: opacity, transform;
+    }
+
+    .itemCompleted & {
+      opacity: 1;
+      transform: translateX(14px) scale(1);
+    }
+  }
+}
+
+.itemIcon {
+  color: var(--primary-color);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 0.75rem;
+}
+
+.itemIconDot {
+  width: 0.3125rem;
+  height: 0.3125rem;
+  border-radius: 50%;
+  margin-left: 0.21875rem;
+  background-color: var(--primary-color);
+}
+
+.itemTitle {
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+  line-height: 20px;
+  color: var(--primary-text-color);
+}
+
+.itemReadonly.itemCompleted .itemTitleText {
+  text-decoration: line-through;
+}
+
+.itemCompletedBy {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--secondary-text-color);
+  pointer-events: none;
+  text-decoration: none;
+}
+
+.completed {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--secondary-text-color);
+  text-align: center;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}

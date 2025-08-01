@@ -11,7 +11,7 @@
 
 import type {MyTopPeer} from './appUsersManager';
 import tsNow from '../../helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer} from '../../layer';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall} from '../../layer';
 import SearchIndex from '../searchIndex';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
@@ -331,7 +331,7 @@ export class AppProfileManager extends AppManager {
         }
 
         if(chatFull.call) {
-          this.appGroupCallsManager.saveGroupCall(chatFull.call, id);
+          this.appGroupCallsManager.saveGroupCall(chatFull.call as InputGroupCall.inputGroupCall, id);
         }
 
         // appMessagesManager.savePinnedMessage(peerId, fullChat.pinned_msg_id);
@@ -568,7 +568,7 @@ export class AppProfileManager extends AppManager {
         fullChannel.wallpaper = this.appThemesManager.saveWallPaper(fullChannel.wallpaper);
 
         if(fullChannel.call) {
-          this.appGroupCallsManager.saveGroupCall(fullChannel.call, id);
+          this.appGroupCallsManager.saveGroupCall(fullChannel.call as InputGroupCall.inputGroupCall, id);
         }
 
         this.appNotificationsManager.savePeerSettings({

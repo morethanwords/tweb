@@ -5,7 +5,7 @@
  */
 
 import {createEffect} from 'solid-js';
-import {MessageEntity} from '../../layer';
+import {MessageEntity, TextWithEntities} from '../../layer';
 import parseEntities from './parseEntities';
 import wrapRichText from './wrapRichText';
 
@@ -14,6 +14,10 @@ export default function wrapEmojiText(text: string, isDraft = false, entities?: 
 
   entities ??= parseEntities(text).filter((e) => e._ === 'messageEntityEmoji');
   return wrapRichText(text, {entities, wrappingDraft: isDraft});
+}
+
+export function wrapEmojiTextWithEntities(obj: TextWithEntities, isDraft = false) {
+  return wrapEmojiText(obj.text, isDraft, obj.entities);
 }
 
 export function EmojiTextTsx(props: {

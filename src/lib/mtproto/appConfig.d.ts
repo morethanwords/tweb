@@ -119,6 +119,9 @@ export interface MTAppConfig {
   stargifts_message_length_max?:             number;
   stargifts_pinned_to_top_limit?:            number;
   web_app_allowed_protocols?:                string[];
+  todo_item_length_max?:                     number;
+  todo_items_max?:                           number;
+  todo_title_length_max?:                    number;
 }
 
 export interface EmojiesSendDiceSuccess {

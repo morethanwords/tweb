@@ -198,7 +198,7 @@ export default class PopupStarsPay extends PopupElement<{
     } else if(this.subscription) {
       amount = this.subscription.pricing.amount;
     } else {
-      amount = formatStarsAmount(this.transaction.stars);
+      amount = formatStarsAmount(this.transaction.amount);
     }
 
     if(this.isReceipt) {
@@ -289,7 +289,7 @@ export default class PopupStarsPay extends PopupElement<{
     } else if(this.transaction && this.transaction.pFlags.reaction) {
       title = i18n('StarsReactionTitle');
     } else if(this.transaction?.giveaway_post_id) {
-      title = i18n(!this.transaction.id ? 'Stars' : 'StarsGiveawayPrizeReceived', [formatStarsAmount(this.transaction.stars)]);
+      title = i18n(!this.transaction.id ? 'Stars' : 'StarsGiveawayPrizeReceived', [formatStarsAmount(this.transaction.amount)]);
       if(!this.transaction.id) {
         subtitle = (
           <span class="popup-stars-pay-boosts">
@@ -374,7 +374,7 @@ export default class PopupStarsPay extends PopupElement<{
       tableContent = [
         ['BoostingFrom', tablePeer],
         this.transaction.id && ['BoostingTo', makeTablePeer(rootScope.myId)],
-        [this.transaction.id ? 'BoostingGift' : 'Giveaway.Prize', i18n('Stars', [formatStarsAmount(this.transaction.stars)])],
+        [this.transaction.id ? 'BoostingGift' : 'Giveaway.Prize', i18n('Stars', [formatStarsAmount(this.transaction.amount)])],
         ['BoostingReason', messageAnchor],
         this.transaction.id && ['StarsTransactionID', transactionIdSpan],
         ['StarsTransactionDate',  formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
@@ -388,9 +388,9 @@ export default class PopupStarsPay extends PopupElement<{
       const realAmount = this.transaction?.paid_messages &&
         !this.transaction.pFlags.refund &&
         this.transaction.starref_amount &&
-        this.transaction.stars &&
+        this.transaction.amount &&
         +amount > 0 &&
-        (formatStarsAmount(this.transaction.starref_amount) + formatStarsAmount(this.transaction.stars));
+        (formatStarsAmount(this.transaction.starref_amount) + formatStarsAmount(this.transaction.amount));
 
       tableContent = [
         this.peerId ? [

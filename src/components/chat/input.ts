@@ -134,6 +134,7 @@ import splitStringByLength from '../../helpers/string/splitStringByLength';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
 import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
 import focusInput from '../../helpers/dom/focusInput';
+import {PopupChecklist} from '../popups/checklist';
 
 // console.log('Recorder', Recorder);
 
@@ -1025,6 +1026,25 @@ export default class ChatInput {
         PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
       verify: () => this.chat.peerId.isAnyChat() || this.chat.isBot
+    }, {
+      icon: 'poll',
+      text: 'Checklist',
+      onClick: async() => {
+        if(this.chat.peerId.isAnyChat()) {
+          const action: ChatRights = 'send_polls';
+          if(!(await this.chat.canSend(action))) {
+            toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[action]});
+            return;
+          }
+        }
+
+        if(!rootScope.premium) {
+          PopupPremium.show();
+          return;
+        }
+
+        PopupElement.createPopup(PopupChecklist, {chat: this.chat}).show();
+      }
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();

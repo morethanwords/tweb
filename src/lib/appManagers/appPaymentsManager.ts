@@ -343,6 +343,11 @@ export default class AppPaymentsManager extends AppManager {
       return;
     }
 
+    if(update.balance._ === 'starsTonAmount') {
+      console.warn('No TON support yet');
+      return;
+    }
+
     this.updateLocalStarsBalance(update.balance);
   };
 }
