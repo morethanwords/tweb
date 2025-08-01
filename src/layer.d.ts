@@ -1638,7 +1638,7 @@ export namespace MessageAction {
     from_id?: Peer,
     peer?: Peer,
     saved_id?: string | number,
-    resale_stars?: string | number,
+    resale_amount?: StarsAmount,
     can_transfer_at?: number,
     can_resell_at?: number
   };
@@ -2273,7 +2273,10 @@ export namespace UserFull {
     starref_program?: StarRefProgram,
     bot_verification?: BotVerification,
     send_paid_messages_stars?: string | number,
-    disallowed_gifts?: DisallowedGiftsSettings
+    disallowed_gifts?: DisallowedGiftsSettings,
+    stars_rating?: StarsRating,
+    stars_my_pending_rating?: StarsRating,
+    stars_my_pending_rating_date?: number
   };
 }
 
@@ -2422,6 +2425,7 @@ export namespace MessagesMessages {
     count: number,
     next_rate?: number,
     offset_id_offset?: number,
+    search_flood?: SearchPostsFlood,
     messages: Array<Message>,
     chats: Array<Chat>,
     users: Array<User>
@@ -9689,7 +9693,7 @@ export namespace ThemeSettings {
 /**
  * @link https://core.telegram.org/type/WebPageAttribute
  */
-export type WebPageAttribute = WebPageAttribute.webPageAttributeTheme | WebPageAttribute.webPageAttributeStory | WebPageAttribute.webPageAttributeStickerSet | WebPageAttribute.webPageAttributeUniqueStarGift;
+export type WebPageAttribute = WebPageAttribute.webPageAttributeTheme | WebPageAttribute.webPageAttributeStory | WebPageAttribute.webPageAttributeStickerSet | WebPageAttribute.webPageAttributeUniqueStarGift | WebPageAttribute.webPageAttributeStarGiftCollection;
 
 export namespace WebPageAttribute {
   export type webPageAttributeTheme = {
@@ -9720,6 +9724,11 @@ export namespace WebPageAttribute {
   export type webPageAttributeUniqueStarGift = {
     _: 'webPageAttributeUniqueStarGift',
     gift: StarGift
+  };
+
+  export type webPageAttributeStarGiftCollection = {
+    _: 'webPageAttributeStarGiftCollection',
+    icons: Array<Document>
   };
 }
 
@@ -10206,7 +10215,8 @@ export namespace MessageReplyHeader {
     reply_to_top_id?: number,
     quote_text?: string,
     quote_entities?: Array<MessageEntity>,
-    quote_offset?: number
+    quote_offset?: number,
+    todo_item_id?: number
   };
 
   export type messageReplyStoryHeader = {
@@ -11331,6 +11341,10 @@ export namespace InputInvoice {
 
   export type inputInvoiceStarGiftResale = {
     _: 'inputInvoiceStarGiftResale',
+    flags?: number,
+    pFlags: Partial<{
+      ton?: true,
+    }>,
     slug: string,
     to_id: InputPeer
   };
@@ -12341,6 +12355,7 @@ export namespace StoryItem {
     privacy?: Array<PrivacyRule>,
     views?: StoryViews,
     sent_reaction?: Reaction,
+    albums?: Array<number>,
     pinnedIndex?: number
   };
 }
@@ -12478,6 +12493,7 @@ export namespace InputReplyTo {
     quote_entities?: Array<MessageEntity>,
     quote_offset?: number,
     monoforum_peer_id?: InputPeer,
+    todo_item_id?: number,
     reply_to_peer_id?: PeerId | InputPeer
   };
 
@@ -14018,6 +14034,7 @@ export namespace StarsTransaction {
       stargift_upgrade?: true,
       business_transfer?: true,
       stargift_resale?: true,
+      posts_search?: true,
     }>,
     id: string,
     amount: StarsAmount,
@@ -14355,6 +14372,8 @@ export namespace StarGift {
       limited?: true,
       sold_out?: true,
       birthday?: true,
+      require_premium?: true,
+      limited_per_user?: true,
     }>,
     id: string | number,
     sticker: Document,
@@ -14367,12 +14386,19 @@ export namespace StarGift {
     last_sale_date?: number,
     upgrade_stars?: string | number,
     resell_min_stars?: string | number,
-    title?: string
+    title?: string,
+    released_by?: Peer,
+    per_user_total?: number,
+    per_user_remains?: number
   };
 
   export type starGiftUnique = {
     _: 'starGiftUnique',
     flags?: number,
+    pFlags: Partial<{
+      require_premium?: true,
+      resale_ton_only?: true,
+    }>,
     id: string | number,
     title: string,
     slug: string,
@@ -14384,7 +14410,8 @@ export namespace StarGift {
     availability_issued: number,
     availability_total: number,
     gift_address?: string,
-    resell_stars?: string | number
+    resell_amount?: Array<StarsAmount>,
+    released_by?: Peer
   };
 }
 
@@ -14401,7 +14428,9 @@ export namespace PaymentsStarGifts {
   export type paymentsStarGifts = {
     _: 'payments.starGifts',
     hash: number,
-    gifts: Array<StarGift>
+    gifts: Array<StarGift>,
+    chats: Array<Chat>,
+    users: Array<User>
   };
 }
 
@@ -14754,7 +14783,8 @@ export namespace SavedStarGift {
     can_export_at?: number,
     transfer_stars?: string | number,
     can_transfer_at?: number,
-    can_resell_at?: number
+    can_resell_at?: number,
+    collection_id?: Array<number>
   };
 }
 
@@ -15085,6 +15115,107 @@ export namespace SuggestedPost {
     }>,
     price?: StarsAmount,
     schedule_date?: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/StarsRating
+ */
+export type StarsRating = StarsRating.starsRating;
+
+export namespace StarsRating {
+  export type starsRating = {
+    _: 'starsRating',
+    flags?: number,
+    level: number,
+    current_level_stars: string | number,
+    stars: string | number,
+    next_level_stars?: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/StarGiftCollection
+ */
+export type StarGiftCollection = StarGiftCollection.starGiftCollection;
+
+export namespace StarGiftCollection {
+  export type starGiftCollection = {
+    _: 'starGiftCollection',
+    flags?: number,
+    collection_id: number,
+    title: string,
+    icon?: Document,
+    gifts_count: number,
+    hash: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.StarGiftCollections
+ */
+export type PaymentsStarGiftCollections = PaymentsStarGiftCollections.paymentsStarGiftCollectionsNotModified | PaymentsStarGiftCollections.paymentsStarGiftCollections;
+
+export namespace PaymentsStarGiftCollections {
+  export type paymentsStarGiftCollectionsNotModified = {
+    _: 'payments.starGiftCollectionsNotModified'
+  };
+
+  export type paymentsStarGiftCollections = {
+    _: 'payments.starGiftCollections',
+    collections: Array<StarGiftCollection>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/StoryAlbum
+ */
+export type StoryAlbum = StoryAlbum.storyAlbum;
+
+export namespace StoryAlbum {
+  export type storyAlbum = {
+    _: 'storyAlbum',
+    flags?: number,
+    album_id: number,
+    title: string,
+    icon_photo?: Photo,
+    icon_video?: Document
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/stories.Albums
+ */
+export type StoriesAlbums = StoriesAlbums.storiesAlbumsNotModified | StoriesAlbums.storiesAlbums;
+
+export namespace StoriesAlbums {
+  export type storiesAlbumsNotModified = {
+    _: 'stories.albumsNotModified'
+  };
+
+  export type storiesAlbums = {
+    _: 'stories.albums',
+    hash: string | number,
+    albums: Array<StoryAlbum>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/SearchPostsFlood
+ */
+export type SearchPostsFlood = SearchPostsFlood.searchPostsFlood;
+
+export namespace SearchPostsFlood {
+  export type searchPostsFlood = {
+    _: 'searchPostsFlood',
+    flags?: number,
+    pFlags: Partial<{
+      query_is_free?: true,
+    }>,
+    total_daily: number,
+    remains: number,
+    wait_till?: number,
+    stars_amount: string | number
   };
 }
 
@@ -16531,6 +16662,15 @@ export interface ConstructorDeclMap {
   'starsTonAmount': StarsAmount.starsTonAmount,
   'messageActionGiftTon': MessageAction.messageActionGiftTon,
   'inputStickerSetTonGifts': InputStickerSet.inputStickerSetTonGifts,
+  'starsRating': StarsRating.starsRating,
+  'starGiftCollection': StarGiftCollection.starGiftCollection,
+  'payments.starGiftCollectionsNotModified': PaymentsStarGiftCollections.paymentsStarGiftCollectionsNotModified,
+  'payments.starGiftCollections': PaymentsStarGiftCollections.paymentsStarGiftCollections,
+  'storyAlbum': StoryAlbum.storyAlbum,
+  'stories.albumsNotModified': StoriesAlbums.storiesAlbumsNotModified,
+  'stories.albums': StoriesAlbums.storiesAlbums,
+  'searchPostsFlood': SearchPostsFlood.searchPostsFlood,
+  'webPageAttributeStarGiftCollection': WebPageAttribute.webPageAttributeStarGiftCollection,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -19597,7 +19737,8 @@ export type StoriesSendStory = {
   random_id: string | number,
   period?: number,
   fwd_from_id?: InputPeer,
-  fwd_from_story?: number
+  fwd_from_story?: number,
+  albums?: Array<number>
 };
 
 export type StoriesEditStory = {
@@ -20189,11 +20330,14 @@ export type MessagesGetAvailableEffects = {
 };
 
 export type ChannelsSearchPosts = {
-  hashtag: string,
+  flags?: number,
+  hashtag?: string,
+  query?: string,
   offset_rate: number,
   offset_peer: InputPeer,
   offset_id: number,
-  limit: number
+  limit: number,
+  allow_paid_stars?: string | number
 };
 
 export type MessagesEditFactCheck = {
@@ -20565,6 +20709,7 @@ export type PaymentsGetSavedStarGifts = {
   exclude_unique?: boolean,
   sort_by_value?: boolean,
   peer: InputPeer,
+  collection_id?: number,
   offset: string,
   limit: number
 };
@@ -20664,7 +20809,7 @@ export type PaymentsGetResaleStarGifts = {
 
 export type PaymentsUpdateStarGiftPrice = {
   stargift: InputSavedStarGift,
-  resell_stars: string | number
+  resell_amount: StarsAmount
 };
 
 export type ChannelsToggleAutotranslation = {
@@ -20717,6 +20862,80 @@ export type MessagesToggleSuggestedPostApproval = {
   msg_id: number,
   schedule_date?: number,
   reject_comment?: string
+};
+
+export type PaymentsCreateStarGiftCollection = {
+  peer: InputPeer,
+  title: string,
+  stargift: Array<InputSavedStarGift>
+};
+
+export type PaymentsUpdateStarGiftCollection = {
+  flags?: number,
+  peer: InputPeer,
+  collection_id: number,
+  title?: string,
+  delete_stargift?: Array<InputSavedStarGift>,
+  add_stargift?: Array<InputSavedStarGift>,
+  order?: Array<InputSavedStarGift>
+};
+
+export type PaymentsReorderStarGiftCollections = {
+  peer: InputPeer,
+  order: Array<number>
+};
+
+export type PaymentsDeleteStarGiftCollection = {
+  peer: InputPeer,
+  collection_id: number
+};
+
+export type PaymentsGetStarGiftCollections = {
+  peer: InputPeer,
+  hash: string | number
+};
+
+export type StoriesCreateAlbum = {
+  peer: InputPeer,
+  title: string,
+  stories: Array<number>
+};
+
+export type StoriesUpdateAlbum = {
+  flags?: number,
+  peer: InputPeer,
+  album_id: number,
+  title?: string,
+  delete_stories?: Array<number>,
+  add_stories?: Array<number>,
+  order?: Array<number>
+};
+
+export type StoriesReorderAlbums = {
+  peer: InputPeer,
+  order: Array<number>
+};
+
+export type StoriesDeleteAlbum = {
+  peer: InputPeer,
+  album_id: number
+};
+
+export type StoriesGetAlbums = {
+  peer: InputPeer,
+  hash: string | number
+};
+
+export type StoriesGetAlbumStories = {
+  peer: InputPeer,
+  album_id: number,
+  offset: number,
+  limit: number
+};
+
+export type ChannelsCheckSearchPostsFlood = {
+  flags?: number,
+  query?: string
 };
 
 export interface MethodDeclMap {
@@ -21426,5 +21645,17 @@ export interface MethodDeclMap {
   'messages.appendTodoList': {req: MessagesAppendTodoList, res: Updates},
   'account.toggleNoPaidMessagesException': {req: AccountToggleNoPaidMessagesException, res: boolean},
   'messages.toggleSuggestedPostApproval': {req: MessagesToggleSuggestedPostApproval, res: Updates},
+  'payments.createStarGiftCollection': {req: PaymentsCreateStarGiftCollection, res: StarGiftCollection},
+  'payments.updateStarGiftCollection': {req: PaymentsUpdateStarGiftCollection, res: StarGiftCollection},
+  'payments.reorderStarGiftCollections': {req: PaymentsReorderStarGiftCollections, res: boolean},
+  'payments.deleteStarGiftCollection': {req: PaymentsDeleteStarGiftCollection, res: boolean},
+  'payments.getStarGiftCollections': {req: PaymentsGetStarGiftCollections, res: PaymentsStarGiftCollections},
+  'stories.createAlbum': {req: StoriesCreateAlbum, res: StoryAlbum},
+  'stories.updateAlbum': {req: StoriesUpdateAlbum, res: StoryAlbum},
+  'stories.reorderAlbums': {req: StoriesReorderAlbums, res: boolean},
+  'stories.deleteAlbum': {req: StoriesDeleteAlbum, res: boolean},
+  'stories.getAlbums': {req: StoriesGetAlbums, res: StoriesAlbums},
+  'stories.getAlbumStories': {req: StoriesGetAlbumStories, res: StoriesStories},
+  'channels.checkSearchPostsFlood': {req: ChannelsCheckSearchPostsFlood, res: SearchPostsFlood},
 }
 
