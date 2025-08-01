@@ -31,6 +31,7 @@ import RadioField from '../../radioField';
 import appImManager from '../../../lib/appManagers/appImManager';
 import appSidebarLeft from '..';
 import wrapFolderTitle from '../../wrappers/folderTitle';
+import useHasFoldersSidebar from '../../../stores/foldersSidebar';
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -103,7 +104,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     if(!row) {
       const isSuggested = dialogFilter._ === 'dialogFilterSuggested';
       row = new Row({
-        title: filter.id === FOLDER_ID_ALL && !isSuggested ? i18n('FilterAllChats') : await wrapFolderTitle(filter.title, this.middlewareHelper.get()),
+        title: filter.id === FOLDER_ID_ALL && !isSuggested ? i18n('FilterAllChats') : await wrapFolderTitle(filter.title, this.middlewareHelper.get(), false, {textColor: 'primary-text-color'}),
         subtitle: description,
         clickable: true,
         buttonRightLangKey: isSuggested ? 'Add' : undefined
@@ -215,7 +216,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
     this.listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
       if(key === stateKey) {
-        document.body.classList.toggle('has-folders-sidebar', value);
+        const {setHasFoldersSidebar} = useHasFoldersSidebar();
+        setHasFoldersSidebar(!!value);
         appImManager.adjustChatPatternBackground();
         if(!value) appSidebarLeft.showCtrlFTip();
       }

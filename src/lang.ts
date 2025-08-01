@@ -22,6 +22,7 @@ const lang = {
   'EditProfile.Username.Taken': 'Username is already taken',
   'EditProfile.Username.Invalid': 'Username is invalid',
   'EditFolder.Toast.ChooseChat': 'Please choose at least one chat for this folder.',
+  'EditFolder.EmojiAsIconTip': 'If you put only one emoji at the beginning (or at the end), it will be displayed as the icon in the folders sidebar',
   'EditBot.Title': 'Edit Bot',
   'EditBot.Username.Caption': 'This username cannot be edited.',
   'EditBot.Buttons.Caption': 'Use [@BotFather](https://t.me/botfather) to manage this bot.',
@@ -3426,7 +3427,14 @@ const lang = {
   'ChecklistCheck': 'Check',
   'ChecklistUncheck': 'Uncheck',
   'ChecklistEditItem': 'Edit Item',
-  'ChecklistDeleteItem': 'Delete Item'
+  'ChecklistDeleteItem': 'Delete Item',
+  'AllChats': 'All Chats',
+  'UsersOnly': 'Private Chats',
+  'GroupsOnly': 'Group Chats',
+  'ChannelsOnly': 'Channels',
+  'NoResultsTitle': 'No results',
+  'NoResultsSubtitle': 'Try a different search term',
+  'SearchInAllChats': 'Search in All Chats'
 };
 
 export default lang;

@@ -53,6 +53,7 @@ import PasscodeLockScreenController from './components/passcodeLock/passcodeLock
 import type {LangPackDifference} from './layer';
 import commonStateStorage from './lib/commonStateStorage';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './components/sidebarLeft/constants';
+import useHasFoldersSidebar from './stores/foldersSidebar';
 
 // import commonStateStorage from './lib/commonStateStorage';
 // import { STATE_INIT } from './config/state';
@@ -391,7 +392,8 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
 
   console.timeLog(TIME_LABEL, 'sent all states (2)');
 
-  document.body.classList.toggle('has-folders-sidebar', rootScope.settings.tabsInSidebar);
+  const {setHasFoldersSidebar} = useHasFoldersSidebar();
+  setHasFoldersSidebar(!!rootScope.settings.tabsInSidebar);
 
   rootScope.managers.rootScope.getPremium().then((isPremium) => {
     rootScope.premium = isPremium;
