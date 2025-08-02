@@ -44,13 +44,13 @@
       &.animating:after {
         @include dialog-badge-transition-animating();
       }
-      
+
       &.animating.backwards:after {
         @include dialog-badge-transition-animating-backwards();
       }
     } @else {
       @include dialog-badge-transition-reset();
-      
+
       &.is-visible:not(.backwards) {
         @include dialog-badge-transition-visible();
       }
@@ -61,7 +61,7 @@
 
       &.animating {
         @include dialog-badge-transition-animating();
-        
+
         &.backwards {
           @include dialog-badge-transition-animating-backwards();
         }
@@ -110,7 +110,7 @@
 
       // .search-group__name {
       //   padding-bottom: 17px;
-        
+
       //   @include respond-to(handhelds) {
       //     padding-bottom: 0;
       //   }
@@ -231,7 +231,7 @@ ul.chatlist {
           // min-width: inherit;
           // min-height: inherit;
         // }
-  
+
         &-svg {
           position: relative;
           // top: 0;
@@ -285,11 +285,16 @@ ul.chatlist {
           color: rgba(255, 255, 255, .7);
         }
 
+        .peer-title-direct-badge {
+          color: white;
+          background-color: rgba(255, 255, 255, .2);
+        }
+
         .verified-icon {
           &-background {
             fill: #fff !important;
           }
-  
+
           &-check {
             // fill: var(--primary-color) !important;
             visibility: hidden;
@@ -302,7 +307,7 @@ ul.chatlist {
           border-color: var(--primary-color);
         }
 
-        .badge.unread, 
+        .badge.unread,
         .mention,
         .dialog-subtitle-badge-reaction {
           background-color: #fff !important;
@@ -369,7 +374,7 @@ ul.chatlist {
     } */
   }
 
-  .user-title, 
+  .user-title,
   .user-last-message {
     flex-grow: 1;
     position: relative; // * for custom emoji
@@ -405,7 +410,7 @@ ul.chatlist {
     margin-inline-end: -.125rem;
   }
 
-  .unread, 
+  .unread,
   .is-muted.backwards .unread {
     background-color: var(--chatlist-status-color);
   }
@@ -437,7 +442,7 @@ ul.chatlist {
         &.has-contacts {
           height: 24.125rem;
         }
-  
+
         .empty-placeholder-dialogs {
           top: 50%;
         }
@@ -667,7 +672,7 @@ ul.chatlist {
     z-index: 2;
   }
 
-  &-subtitle-badge, 
+  &-subtitle-badge,
   &-group-call-icon {
     @include dialog-badge-transition();
   }

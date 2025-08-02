@@ -5,6 +5,7 @@
  */
 
 import {Chat, User} from '../layer';
+import {i18n} from '../lib/langPack';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import generateFakeIcon from './generateFakeIcon';
 import generatePremiumIcon from './generatePremiumIcon';
@@ -18,6 +19,7 @@ export default async function generateTitleIcons({
   noBotVerifiedIcon,
   noFakeIcon,
   noPremiumIcon,
+  noDirectMessagesBadge,
   peer,
   wrapOptions
 }: {
@@ -27,6 +29,7 @@ export default async function generateTitleIcons({
   noBotVerifiedIcon?: boolean,
   noFakeIcon?: boolean,
   noPremiumIcon?: boolean,
+  noDirectMessagesBadge?: boolean,
   peer?: Chat | User
 }): Promise<{ elements: HTMLElement[]; botVerification?: HTMLElement; }> {
   peer ??= apiManagerProxy.getPeer(peerId);
@@ -58,6 +61,13 @@ export default async function generateTitleIcons({
 
   if((peer as Chat.channel).pFlags.verified && !noVerifiedIcon) {
     elements.push(generateVerifiedIcon());
+  }
+
+  if(peer?._ === 'channel' && peer.pFlags?.monoforum && !noDirectMessagesBadge) {
+    const span = document.createElement('span');
+    span.append(i18n('ChannelDirectMessagesBadge'));
+    span.classList.add('peer-title-direct-badge');
+    elements.push(span);
   }
 
   let botVerification: HTMLElement;

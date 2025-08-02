@@ -3564,7 +3564,9 @@ const lang = {
   'AgeVerification.Text': 'To access such content, you must confirm that you are at least 18 years old as required by local laws.\n\nThis is a one-time process using your phone\'s camera. Your selfie will not be stored by Telegram.',
   'AgeVerification.TextGB': 'To access such content, you must confirm that you are at least 18 years old as required by UK law.\n\nThis is a one-time process using your phone\'s camera. Your selfie will not be stored by Telegram.',
   'AgeVerification.Action': 'Verify my age',
-  'AgeVerification.Failed': 'Sorry, you can\'t view 18+ content.'
+  'AgeVerification.Failed': 'Sorry, you can\'t view 18+ content.',
+
+  'ChannelDirectMessagesBadge': 'Direct'
 };
 
 export default lang;
