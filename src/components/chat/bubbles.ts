@@ -8401,7 +8401,7 @@ export default class ChatBubbles {
   }
 
   private async renderEmptyPlaceholder(
-    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted' | 'premiumRequired' | 'paidMessages',
+    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted' | 'premiumRequired' | 'paidMessages' | 'directChannelMessages',
     bubble: HTMLElement,
     message: any,
     elements: (Node | string)[]
@@ -8561,7 +8561,7 @@ export default class ChatBubbles {
       const starsAmount = await this.managers.appPeersManager.getStarsAmount(this.peerId); // should be cached probably here
 
       const starsElement = document.createElement('span');
-      starsElement.classList.add(BASE_CLASS + '-stars')
+      starsElement.classList.add(BASE_CLASS + '-stars');
       starsElement.append(
         Icon('star', BASE_CLASS + '-star-icon'),
         numberThousandSplitterForStars(starsAmount)
@@ -8580,6 +8580,37 @@ export default class ChatBubbles {
       });
 
       elements.push(stickerDiv, subtitle, button);
+    } else if(type === 'directChannelMessages') {
+      const stickerDiv = document.createElement('div');
+      stickerDiv.classList.add(BASE_CLASS + '-sticker');
+      stickerDiv.append(Icon('round_chats_filled'));
+
+      const starsAmount = await this.managers.appPeersManager.getStarsAmount(this.peerId);
+
+      let starsElement: HTMLElement;
+
+      if(starsAmount) {
+        starsElement = document.createElement('span');
+        starsElement.classList.add(BASE_CLASS + '-stars');
+        starsElement.append(
+          Icon('star', BASE_CLASS + '-star-icon'),
+          numberThousandSplitterForStars(starsAmount)
+        );
+      }
+
+      const subtitle = i18n(starsAmount ? 'ChannelDirectMessagesWelcomePaid' : 'ChannelDirectMessagesWelcome', [await wrapPeerTitle({peerId: this.peerId}), starsElement]);
+      subtitle.classList.add('center', BASE_CLASS + '-subtitle');
+
+      let button: HTMLElement;
+      if(starsAmount) {
+        button = Button('bubble-service-button overflow-hidden', {noRipple: true, text: 'BuyStars'});
+        button.append(Sparkles({isDiv: true, mode: 'button'}));
+        attachClickEvent(button, () => {
+          PopupElement.createPopup(PopupStars);
+        });
+      }
+
+      elements.push(...[stickerDiv, subtitle, button].filter(Boolean));
     }
 
     if(listElements) {
@@ -8691,6 +8722,8 @@ export default class ChatBubbles {
 
         method = 'prepend';
         appendTo = this.chatInner;
+      } else if(this.chat.isMonoforum) {
+        renderPromise = this.renderEmptyPlaceholder('directChannelMessages', bubble, message, elements);
       } else if(this.chat.isAnyGroup && (apiManagerProxy.getPeer(this.peerId) as MTChat.chat).pFlags.creator) {
         renderPromise = this.renderEmptyPlaceholder('group', bubble, message, elements);
       } else if(this.chat.type === ChatType.Scheduled) {

@@ -3566,7 +3566,9 @@ const lang = {
   'AgeVerification.Action': 'Verify my age',
   'AgeVerification.Failed': 'Sorry, you can\'t view 18+ content.',
 
-  'ChannelDirectMessagesBadge': 'Direct'
+  'ChannelDirectMessagesBadge': 'Direct',
+  'ChannelDirectMessagesWelcome': 'Send a direct message to the administrator of\n%s',
+  'ChannelDirectMessagesWelcomePaid': '%s\ncharges %s per message to its admin'
 };
 
 export default lang;

@@ -151,6 +151,7 @@ export default class Chat extends EventListenerBase<{
   public isAnonymousSending: boolean;
   public isUserBlocked: boolean;
   public isPremiumRequired: boolean;
+  public isMonoforum: boolean;
 
   public starsAmount: number | undefined;
 
@@ -913,6 +914,7 @@ export default class Chat extends EventListenerBase<{
     this.isAnonymousSending = isAnonymousSending;
     this.isUserBlocked = isUserBlocked;
     this.isPremiumRequired = isPremiumRequired;
+    this.isMonoforum = !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
     this.starsAmount = starsAmount;
 
     this.isRestricted = isRestricted;
