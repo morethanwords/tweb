@@ -6,16 +6,18 @@ type Result = {
   args: FormatterArgument[];
 };
 
-export function getPriceChangedActionMessageLangParams(action: MessageAction.messageActionPaidMessagesPrice, peerTitle?: () => Promise<FormatterArgument>): Promise<Result>;
-export function getPriceChangedActionMessageLangParams(action: MessageAction.messageActionPaidMessagesPrice, peerTitle?: () => FormatterArgument): Result;
+export function getPriceChangedActionMessageLangParams(action: MessageAction.messageActionPaidMessagesPrice, isBroadcast: boolean, peerTitle?: () => Promise<FormatterArgument>): Promise<Result>;
+export function getPriceChangedActionMessageLangParams(action: MessageAction.messageActionPaidMessagesPrice, isBroadcast: boolean, peerTitle?: () => FormatterArgument): Result;
 
-export function getPriceChangedActionMessageLangParams(action: MessageAction.messageActionPaidMessagesPrice, peerTitle?: () => Promise<FormatterArgument> | FormatterArgument): Promise<Result> | Result {
+export function getPriceChangedActionMessageLangParams(action: MessageAction.messageActionPaidMessagesPrice, isBroadcast: boolean, peerTitle?: () => Promise<FormatterArgument> | FormatterArgument): Promise<Result> | Result {
   const isFree = !+action?.stars;
-  const isChannel = action?.pFlags?.broadcast_messages_allowed;
+  const allowedDirectMessages = action?.pFlags?.broadcast_messages_allowed;
 
-  if(isChannel) {
+  if(isBroadcast) {
     const peerTitleResult = peerTitle();
-    const langPackKey = isFree ? 'PaidMessages.ChannelPriceChangedFree' : 'PaidMessages.ChannelPriceChanged';
+    const langPackKey: LangPackKey = allowedDirectMessages ?
+      (isFree ? 'PaidMessages.ChannelPriceChangedFree' : 'PaidMessages.ChannelPriceChanged') :
+      'PaidMessages.ChannelPriceDisabled';
 
     if(peerTitleResult instanceof Promise) {
       return (async() => ({

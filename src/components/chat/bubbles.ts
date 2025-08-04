@@ -5475,7 +5475,7 @@ export default class ChatBubbles {
           promise = peerTitle.update({peerId: action.channel_id.toPeerId(true), wrapOptions});
           s.append(i18n('ChatMigration.To', [peerTitle.element]));
         } else if(action._ === 'messageActionPaidMessagesPrice') {
-          const result = getPriceChangedActionMessageLangParams(action, () => {
+          const result = getPriceChangedActionMessageLangParams(action, this.chat.isBroadcast, () => {
             const peerTitle = new PeerTitle();
             promise = peerTitle.update({peerId: message.peerId.toPeerId(true), wrapOptions});
             return peerTitle.element;

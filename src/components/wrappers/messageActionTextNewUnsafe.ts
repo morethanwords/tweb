@@ -693,7 +693,8 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
 
       case 'messageActionPaidMessagesPrice': {
-        const result = await getPriceChangedActionMessageLangParams(action, () => getNameDivHTML(message.fromId, plain));
+        const isBroadcast = await managers.appChatsManager.isBroadcast(message.fromId?.toChatId());
+        const result = await getPriceChangedActionMessageLangParams(action, isBroadcast, () => getNameDivHTML(message.fromId, plain));
         langPackKey = result.langPackKey;
         args = result.args;
         break;
