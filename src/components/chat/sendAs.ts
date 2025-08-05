@@ -10,6 +10,7 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import liteMode from '../../helpers/liteMode';
 import {getMiddleware} from '../../helpers/middleware';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
+import namedPromises from '../../helpers/namedPromises';
 import safeAssign from '../../helpers/object/safeAssign';
 import {Chat} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
@@ -295,7 +296,13 @@ export default class ChatSendAs {
 
   public async updateManual(skipAnimation?: boolean): Promise<() => void> {
     const peerId = this.peerId;
-    if(this.updatingPromise || !(await this.managers.appPeersManager.isChannel(peerId))) {
+
+    const {isChannel, isMonoforum} = await namedPromises({
+      isChannel: this.managers.appPeersManager.isChannel(peerId),
+      isMonoforum: this.managers.appPeersManager.isMonoforum(peerId)
+    });
+
+    if(this.updatingPromise || !isChannel || isMonoforum) {
       return;
     }
 

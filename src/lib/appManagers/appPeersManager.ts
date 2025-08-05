@@ -178,6 +178,10 @@ export class AppPeersManager extends AppManager {
     return !!(peerId === this.peerId && threadId);
   }
 
+  public isMonoforum(peerId: PeerId): boolean {
+    return !peerId.isUser() && this.appChatsManager.isMonoforum(peerId.toChatId());
+  }
+
   /**
    * The amount of stars necessary to be paid for every message if the target peer had enabled it
    */

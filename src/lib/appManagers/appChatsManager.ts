@@ -300,6 +300,11 @@ export class AppChatsManager extends AppManager {
     return this.isChannel(id) && !this.isMegagroup(id);
   }
 
+  public isMonoforum(id: ChatId) {
+    const chat: Chat = this.chats[id];
+    return !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
+  }
+
   public isInChat(id: ChatId) {
     let good = true;
     const chat: Chat = this.getChat(id);
