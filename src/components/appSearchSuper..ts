@@ -710,7 +710,7 @@ export default class AppSearchSuper {
       if(mediaSpoiler) {
         onMediaSpoilerClick({
           event: e,
-          mediaSpoiler
+          mediaSpoiler,
         })
         return;
       }

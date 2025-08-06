@@ -7945,31 +7945,31 @@ export class AppMessagesManager extends AppManager {
     const firstMessage = messages[0] as Message.message;
     const lastMessage = messages[messages.length - 1] as Message.message;
 
-    if(!inputFilter && !isBottomEnd && firstMessage?.grouped_id) {
-      await this.getHistory({
-        ...options,
-        offsetId: firstMessage.mid,
-        limit: 20,
-        addOffset: -10
-      });
+    // if(!inputFilter && !isBottomEnd && firstMessage?.grouped_id) {
+    //   await this.getHistory({
+    //     ...options,
+    //     offsetId: firstMessage.mid,
+    //     limit: 20,
+    //     addOffset: -10
+    //   });
 
-      if(!middleware()) {
-        return;
-      }
-    }
+    //   if(!middleware()) {
+    //     return;
+    //   }
+    // }
 
-    if(!inputFilter && !isTopEnd && lastMessage?.grouped_id && lastMessage.grouped_id !== firstMessage?.grouped_id) {
-      await this.getHistory({
-        ...options,
-        offsetId: lastMessage.mid,
-        limit: 20,
-        addOffset: -10
-      });
+    // if(!inputFilter && !isTopEnd && lastMessage?.grouped_id && lastMessage.grouped_id !== firstMessage?.grouped_id) {
+    //   await this.getHistory({
+    //     ...options,
+    //     offsetId: lastMessage.mid,
+    //     limit: 20,
+    //     addOffset: -10
+    //   });
 
-      if(!middleware()) {
-        return;
-      }
-    }
+    //   if(!middleware()) {
+    //     return;
+    //   }
+    // }
     // * grouped end
 
     if(options.threadId) {

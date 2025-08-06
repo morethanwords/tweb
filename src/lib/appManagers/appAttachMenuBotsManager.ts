@@ -36,7 +36,8 @@ export type RequestWebViewOptions = MessageSendingParams & {
   main?: boolean,
   compact?: boolean,
   fullscreen?: boolean,
-  masked?: boolean
+  masked?: boolean,
+  forcePopup?: boolean
 };
 
 export default class AppAttachMenuBotsManager extends AppManager {

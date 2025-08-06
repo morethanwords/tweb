@@ -8,8 +8,28 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import safePlay from '../../helpers/dom/safePlay';
 import getImageFromStrippedThumb from '../../helpers/getImageFromStrippedThumb';
 import {Document, Photo, PhotoSize} from '../../layer';
+import {SensitiveContentSettings} from '../../lib/appManagers/appPrivacyManager';
+import {i18n} from '../../lib/langPack';
+import rootScope from '../../lib/rootScope';
+import confirmationPopup from '../confirmationPopup';
 import DotRenderer from '../dotRenderer';
+import Icon from '../icon';
+import {AgeVerificationPopup} from '../popups/ageVerification';
 import SetTransition from '../singleTransition';
+import {toastNew} from '../toast';
+
+const sensitiveSpoilers = new Set<HTMLElement>();
+
+export function clearSensitiveSpoilers() {
+  for(const spoiler of sensitiveSpoilers) {
+    toggleMediaSpoiler({
+      mediaSpoiler: spoiler,
+      reveal: true,
+      destroyAfter: true
+    });
+  }
+  sensitiveSpoilers.clear();
+}
 
 export function toggleMediaSpoiler(options: {
   mediaSpoiler: HTMLElement,
@@ -56,12 +76,50 @@ function revealSpoilerWithAnimation(options: {
 
 export function onMediaSpoilerClick(options: {
   mediaSpoiler: HTMLElement,
+  sensitiveSettings: SensitiveContentSettings,
   event: Event
 }) {
-  const {mediaSpoiler, event} = options;
+  const {mediaSpoiler, event, sensitiveSettings} = options;
   cancelEvent(event);
 
   if(mediaSpoiler.classList.contains('is-revealing') || mediaSpoiler.dataset.isRevealing) {
+    return;
+  }
+
+  if(mediaSpoiler.dataset.isSensitive) {
+    if(!sensitiveSettings.sensitiveCanChange) {
+      toastNew({langPackKey: 'SensitiveContentUnavailable'})
+      return
+    }
+
+    if(sensitiveSettings.needAgeVerification && !sensitiveSettings.ageVerified) {
+      AgeVerificationPopup.create().then((verified) => {
+        if(verified) {
+          clearSensitiveSpoilers()
+        }
+      })
+      return;
+    }
+
+    confirmationPopup({
+      titleLangKey: '18Plus',
+      descriptionLangKey: 'SensitiveContentDesc',
+      button: {
+        langKey: 'SensitiveContentConfirm'
+      },
+      checkbox: {
+        text: 'SensitiveContentRemember'
+      }
+    }).then((remember) => {
+      if(remember) {
+        rootScope.managers.appPrivacyManager.setContentSettings({sensitive_enabled: true});
+        clearSensitiveSpoilers()
+        return
+      }
+
+      delete mediaSpoiler.dataset.isSensitive
+      onMediaSpoilerClick(options);
+    })
     return;
   }
 
@@ -109,10 +167,11 @@ function wrapMediaSpoilerWithImage(options: {
 
 export default async function wrapMediaSpoiler(
   options: Omit<Parameters<typeof wrapMediaSpoilerWithImage>[0], 'image'> & {
-    media: Document.document | Photo.photo
+    media: Document.document | Photo.photo,
+    sensitive?: boolean
   }
 ) {
-  const {media} = options;
+  const {media, sensitive} = options;
   const sizes = (media as Photo.photo).sizes || (media as Document.document).thumbs;
   const thumb = sizes.find((size) => size._ === 'photoStrippedSize') as PhotoSize.photoStrippedSize;
   if(!thumb) {
@@ -126,6 +185,18 @@ export default async function wrapMediaSpoiler(
     ...options,
     image
   });
+
+  if(sensitive) {
+    const div = document.createElement('div');
+    div.classList.add('sensitive-content-warning');
+    div.replaceChildren(Icon('eyecross_outline'), i18n('18Plus'));
+    container.prepend(div);
+    container.dataset.isSensitive = 'true';
+    sensitiveSpoilers.add(container);
+    options.middleware.onClean(() => {
+      sensitiveSpoilers.delete(container);
+    });
+  }
 
   if(readyResult instanceof Promise) {
     await readyResult;

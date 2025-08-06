@@ -334,6 +334,10 @@ export type TelegramWebViewEventMap = {
   web_app_send_prepared_message: {id: string},
   web_app_request_fullscreen: void,
   web_app_exit_fullscreen: void,
+  web_app_verify_age: {
+    passed: boolean,
+    age: number,
+  },
   share_score: void,
   share_game: void,
   game_over: void,

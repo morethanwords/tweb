@@ -28,6 +28,7 @@ import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {ActiveAccountNumber} from './accounts/types';
 import type {ApiManager} from './mtproto/apiManager';
+import {SensitiveContentSettings} from './appManagers/appPrivacyManager';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -225,6 +226,8 @@ export type BroadcastEvents = {
   'insufficent_stars_for_message': {messageCount: number, requestId: number, invokeApiArgs: Parameters<ApiManager['invokeApi']>, reservedStars?: number};
 
   'fulfill_repaid_message': {requestId: number},
+
+  'sensitive_content_settings': SensitiveContentSettings,
 };
 
 export type BroadcastEventsListeners = {

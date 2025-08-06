@@ -143,6 +143,11 @@ export type State = {
   accountThemes: AccountThemes.accountThemes,
   shownUploadSpeedTimestamp?: number,
   dontShowPaidMessageWarningFor: PeerId[]
+  ageVerification?: {
+    date: string,
+    layer: number,
+    clientVersion: string,
+  }
 
   // playbackParams?: StateSettings['playbackParams'], // ! MIGRATED TO SETTINGS
   // chatContextMenuHintWasShown?: StateSettings['chatContextMenuHintWasShown'], // ! MIGRATED TO SETTINGS

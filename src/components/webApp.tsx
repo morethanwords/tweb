@@ -68,7 +68,8 @@ export type WebAppLaunchOptions = {
   webViewResultUrl: WebApp['webViewResultUrl'],
   webViewOptions: WebApp['webViewOptions'],
   attachMenuBot?: AttachMenuBot,
-  cacheKey?: string
+  cacheKey?: string,
+  onClose?: () => void
 };
 
 export default class WebApp {
@@ -135,11 +136,6 @@ export default class WebApp {
       direction: 'bottom-left'
     });
     this.fullscreenButtons.append(fullscreenMoreButton, fullscreenCloseButton);
-
-    attachClickEvent(fullscreenCloseButton, () => {
-      document.exitFullscreen();
-      this.forceHide();
-    }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(fullscreenCloseButton, () => {
       document.exitFullscreen();
@@ -1186,7 +1182,19 @@ export default class WebApp {
         });
 
         popup.show();
-      }, 'prepared_message_failed', {error: 'USER_DECLINED'})
+      }, 'prepared_message_failed', {error: 'USER_DECLINED'}),
+      web_app_verify_age: async({passed, age}) => {
+        if(!passed) return;
+        const config = await this.managers.apiManager.getAppConfig();
+        const minAge = config.verify_age_min ?? 18;
+
+        if(age < minAge) {
+          toastNew({langPackKey: 'AgeVerification.Failed'})
+          return
+        }
+
+        await this.managers.appPrivacyManager.notifyAgeVerified();
+      }
     });
 
     telegramWebView.iframe.classList.add('payment-verification');

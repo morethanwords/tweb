@@ -3434,7 +3434,17 @@ const lang = {
   'ChannelsOnly': 'Channels',
   'NoResultsTitle': 'No results',
   'NoResultsSubtitle': 'Try a different search term',
-  'SearchInAllChats': 'Search in All Chats'
+  'SearchInAllChats': 'Search in All Chats',
+  '18Plus': '18+',
+  'SensitiveContentDesc': 'This media may contain sensitive content suitable only for adults. Do you still want to view it?',
+  'SensitiveContentRemember': 'Always show 18+ media',
+  'SensitiveContentUnavailable': 'Unfortunately, this content is not available in your country in accordance with local laws.',
+  'SensitiveContentConfirm': 'View anyway',
+  'AgeVerification.Title': 'Age Verification',
+  'AgeVerification.Text': 'To access such content, you must confirm that you are at least 18 years old as required by local laws.\n\nThis is a one-time process using your phone\'s camera. Your selfie will not be stored by Telegram.',
+  'AgeVerification.TextGB': 'To access such content, you must confirm that you are at least 18 years old as required by UK law.\n\nThis is a one-time process using your phone\'s camera. Your selfie will not be stored by Telegram.',
+  'AgeVerification.Action': 'Verify my age',
+  'AgeVerification.Failed': 'Sorry, you can\'t view 18+ content.'
 };
 
 export default lang;

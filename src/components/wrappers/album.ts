@@ -20,7 +20,7 @@ import wrapMediaSpoiler from './mediaSpoiler';
 import wrapPhoto from './photo';
 import wrapVideo from './video';
 
-export default function wrapAlbum({messages, media, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, autoDownload, managers = rootScope.managers, animationGroup, spoilered, videoTimes, uploadingFileName}: {
+export default function wrapAlbum({messages, media, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, autoDownload, managers = rootScope.managers, animationGroup, spoilered, videoTimes, uploadingFileName, sensitive}: {
   messages?: Message.message[],
   media?: (Photo.photo | Document.document)[],
   attachmentDiv: HTMLElement,
@@ -34,6 +34,7 @@ export default function wrapAlbum({messages, media, attachmentDiv, middleware, u
   managers?: AppManagers,
   animationGroup?: AnimationItemGroup,
   spoilered?: boolean,
+  sensitive?: boolean,
   videoTimes?: HTMLElement[],
   uploadingFileName?: string[]
 }) {
@@ -73,7 +74,7 @@ export default function wrapAlbum({messages, media, attachmentDiv, middleware, u
     const {size, media, message} = item;
 
     const messageMedia = message?.media;
-    const hasSpoiler = spoilered || !!(messageMedia as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument)?.pFlags?.spoiler;
+    const hasSpoiler = spoilered || sensitive || !!(messageMedia as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument)?.pFlags?.spoiler;
 
     const div = attachmentDiv.children[idx] as HTMLElement;
     if(message) {
@@ -138,7 +139,8 @@ export default function wrapAlbum({messages, media, attachmentDiv, middleware, u
           animationGroup,
           middleware,
           width: itemWidth,
-          height: itemHeight
+          height: itemHeight,
+          sensitive
         });
 
         if(!middleware()) {

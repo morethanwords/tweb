@@ -200,6 +200,7 @@ import {PremiumGiftBubble} from './bubbles/premiumGift';
 import {UnknownUserBubble} from './bubbles/unknownUser';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {ChecklistBubble} from './bubbles/checklist';
+import {isSensitive} from '../../helpers/restrictions';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -2427,7 +2428,8 @@ export default class ChatBubbles {
     if(mediaSpoiler) {
       onMediaSpoilerClick({
         event: e,
-        mediaSpoiler
+        mediaSpoiler,
+        sensitiveSettings: this.chat.sensitiveContentSettings
       });
       return;
     }
@@ -5040,12 +5042,14 @@ export default class ChatBubbles {
     media,
     promise,
     middleware,
-    attachmentDiv
+    attachmentDiv,
+    sensitive
   }: {
     media: Photo.photo | MyDocument,
     promise: Promise<any>,
     middleware: Middleware,
-    attachmentDiv: HTMLElement
+    attachmentDiv: HTMLElement,
+    sensitive?: boolean
   }) {
     await promise;
     if(!middleware()) {
@@ -5058,6 +5062,7 @@ export default class ChatBubbles {
       width: parseInt(width),
       height: parseInt(height),
       middleware,
+      sensitive,
       animationGroup: this.chat.animationGroup
     });
 
@@ -6101,6 +6106,9 @@ export default class ChatBubbles {
     }
 
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;
+    const sensitive = !this.chat.sensitiveContentSettings.sensitiveEnabled && (
+      this.chat.isSensitive || (isMessage && message.restriction_reason != null && isSensitive(message.restriction_reason))
+    );
 
     if(isOutgoing && !message.error) {
       bubble.classList.add('is-outgoing');
@@ -6238,7 +6246,8 @@ export default class ChatBubbles {
               lazyLoadQueue: this.lazyLoadQueue,
               chat: this.chat,
               loadPromises,
-              autoDownload: this.chat.autoDownload
+              autoDownload: this.chat.autoDownload,
+              sensitive
             });
 
             break;
@@ -6258,12 +6267,13 @@ export default class ChatBubbles {
             autoDownloadSize: this.chat.autoDownload.photo
           });
 
-          if((messageMedia as MessageMedia.messageMediaPhoto).pFlags?.spoiler) {
+          if((messageMedia as MessageMedia.messageMediaPhoto).pFlags?.spoiler || sensitive) {
             loadPromises.push(this.wrapMediaSpoiler({
               media: photo as Photo.photo,
               promise: p,
               middleware,
-              attachmentDiv
+              attachmentDiv,
+              sensitive
             }));
           }
 
@@ -6696,7 +6706,8 @@ export default class ChatBubbles {
                 lazyLoadQueue: this.lazyLoadQueue,
                 chat: this.chat,
                 loadPromises,
-                autoDownload: this.chat.autoDownload
+                autoDownload: this.chat.autoDownload,
+                spoilered: sensitive
               });
             } else {
               const withTail = !IS_ANDROID && !IS_APPLE && !isRound && canHaveTail && !withReplies && USE_MEDIA_TAILS;
@@ -7051,7 +7062,7 @@ export default class ChatBubbles {
                 chat: this.chat,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
-                spoilered: !isAlreadyPaid,
+                spoilered: !isAlreadyPaid || sensitive,
                 videoTimes,
                 uploadingFileName: (message as Message.message).uploadingFileName
               });

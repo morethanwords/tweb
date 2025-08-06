@@ -11,7 +11,7 @@
 
 import type {Chat, ChatPhoto, DialogPeer, InputChannel, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update, User, UserProfilePhoto} from '../../layer';
 import type {LangPackKey} from '../langPack';
-import {getRestrictionReason} from '../../helpers/restrictions';
+import {getRestrictionReason, isSensitive} from '../../helpers/restrictions';
 import isObject from '../../helpers/object/isObject';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
@@ -161,6 +161,15 @@ export class AppPeersManager extends AppManager {
 
   public isPeerRestricted(peerId: PeerId) {
     return isPeerRestricted(this.getPeer(peerId));
+  }
+
+  public isPeerSensitive(peerId: PeerId) {
+    const peer = this.getPeer(peerId);
+    if('restriction_reason' in peer) {
+      return isSensitive(peer.restriction_reason);
+    }
+
+    return false;
   }
 
   public isPeerPublic(peerId: PeerId) {

@@ -4,14 +4,26 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {InputPrivacyKey, InputPrivacyRule, PrivacyRule, PrivacyKey, GlobalPrivacySettings} from '../../layer';
+import {InputPrivacyKey, InputPrivacyRule, PrivacyRule, PrivacyKey, GlobalPrivacySettings, AccountSetContentSettings, AccountContentSettings} from '../../layer';
 import convertInputKeyToKey from '../../helpers/string/convertInputKeyToKey';
 import {AppManager} from './manager';
+import {MTAppConfig} from '../mtproto/appConfig';
+import App from '../../config/app';
+import Schema from '../mtproto/schema';
+
+export interface SensitiveContentSettings {
+  sensitiveEnabled: boolean;
+  sensitiveCanChange: boolean;
+  needAgeVerification: boolean;
+  ageVerified: boolean;
+}
 
 export class AppPrivacyManager extends AppManager {
   private privacy: Partial<{
     [key in PrivacyKey['_']]: PrivacyRule[] | Promise<PrivacyRule[]>
   }> = {};
+
+  private sensitiveContentSettings: SensitiveContentSettings;
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -20,6 +32,12 @@ export class AppPrivacyManager extends AppManager {
         this.privacy[key] = update.rules;
         this.rootScope.dispatchEvent('privacy_update', update);
       }
+    });
+
+    this.rootScope.addEventListener('app_config', (config) => {
+      if(!this.sensitiveContentSettings) return;
+      this.sensitiveContentSettings.needAgeVerification = config.need_age_video_verification ?? false;
+      this.rootScope.dispatchEvent('sensitive_content_settings', this.sensitiveContentSettings);
     });
   }
 
@@ -79,5 +97,51 @@ export class AppPrivacyManager extends AppManager {
 
   public setGlobalPrivacySettings(settings: GlobalPrivacySettings) {
     return this.apiManager.invokeApi('account.setGlobalPrivacySettings', {settings});
+  }
+
+  public async getSensitiveContentSettings() {
+    if(this.sensitiveContentSettings) return this.sensitiveContentSettings;
+    const [contentSettings, state, appConfig] = await Promise.all([
+      this.apiManager.invokeApi('account.getContentSettings'),
+      this.appStateManager.getState(),
+      this.apiManager.getAppConfig()
+    ]);
+
+    this.sensitiveContentSettings = {
+      sensitiveEnabled: contentSettings.pFlags.sensitive_enabled ?? false,
+      sensitiveCanChange: contentSettings.pFlags.sensitive_can_change ?? false,
+      // needAgeVerification: true,
+      // ageVerified: false
+      needAgeVerification: appConfig.need_age_video_verification ?? false,
+      ageVerified: !!state.ageVerification
+    };
+
+    return this.sensitiveContentSettings;
+  }
+
+  public setContentSettings(settings: AccountSetContentSettings) {
+    if(this.sensitiveContentSettings) {
+      this.sensitiveContentSettings.sensitiveEnabled = settings.sensitive_enabled;
+      this.rootScope.dispatchEvent('sensitive_content_settings', this.sensitiveContentSettings);
+    }
+
+    return this.apiManager.invokeApi('account.setContentSettings', settings);
+  }
+
+  public async notifyAgeVerified() {
+    if(!this.sensitiveContentSettings) {
+      // just in case
+      await this.getSensitiveContentSettings();
+    }
+
+    await this.appStateManager.pushToState('ageVerification', {
+      date: new Date().toISOString(),
+      layer: Schema.layer,
+      clientVersion: App.versionFull
+    });
+    this.sensitiveContentSettings.ageVerified = true;
+    this.sensitiveContentSettings.sensitiveEnabled = true;
+    await this.setContentSettings({sensitive_enabled: true});
+    this.rootScope.dispatchEvent('sensitive_content_settings', this.sensitiveContentSettings);
   }
 }
