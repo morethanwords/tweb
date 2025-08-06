@@ -70,7 +70,7 @@ import {getCurrentNewMediaPopup} from '../popups/newMedia';
 import PriceChangedInterceptor from './priceChangedInterceptor';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {SensitiveContentSettings} from '../../lib/appManagers/appPrivacyManager';
-import {isSensitive} from '../../helpers/restrictions';
+import {ignoreRestrictionReasons, isRestricted, isSensitive} from '../../helpers/restrictions';
 
 export enum ChatType {
   Chat = 'chat',
@@ -662,7 +662,8 @@ export default class Chat extends EventListenerBase<{
 
     this.bubbles.listenerSetter.add(rootScope)('sensitive_content_settings', (settings) => {
       this.sensitiveContentSettings = settings;
-      if(!settings.sensitiveEnabled) {
+      ignoreRestrictionReasons(settings.ignoreRestrictionReasons);
+      if(settings.ignoreRestrictionReasons.includes('sensitive')) {
         this.isSensitive = false;
       }
     });
@@ -863,6 +864,7 @@ export default class Chat extends EventListenerBase<{
 
     const [
       noForwards,
+      restrictions,
       isRestricted,
       isLikeGroup,
       isRealGroup,
@@ -875,10 +877,10 @@ export default class Chat extends EventListenerBase<{
       isUserBlocked,
       isPremiumRequired,
       starsAmount,
-      isSensitive,
       sensitiveContentSettings
     ] = await m(Promise.all([
       this.managers.appPeersManager.noForwards(peerId),
+      this.managers.appPeersManager.getPeerRestrictions(peerId),
       this.managers.appPeersManager.isPeerRestricted(peerId),
       this._isLikeGroup(peerId),
       this.managers.appPeersManager.isAnyGroup(peerId),
@@ -891,7 +893,6 @@ export default class Chat extends EventListenerBase<{
       peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),
       this.isPremiumRequiredToContact(peerId),
       this.managers.appPeersManager.getStarsAmount(peerId),
-      this.managers.appPeersManager.isPeerSensitive(peerId),
       this.sensitiveContentSettings || this.managers.appPrivacyManager.getSensitiveContentSettings()
     ]));
 
@@ -901,7 +902,6 @@ export default class Chat extends EventListenerBase<{
     }
 
     this.noForwards = noForwards;
-    this.isRestricted = isRestricted;
     this.isLikeGroup = isLikeGroup;
     this.isAnyGroup = isRealGroup;
     this.isMegagroup = isMegagroup;
@@ -914,8 +914,11 @@ export default class Chat extends EventListenerBase<{
     this.isUserBlocked = isUserBlocked;
     this.isPremiumRequired = isPremiumRequired;
     this.starsAmount = starsAmount;
+
+    this.isRestricted = isRestricted;
     this.sensitiveContentSettings = sensitiveContentSettings;
-    this.isSensitive = !this.sensitiveContentSettings.sensitiveEnabled && isSensitive;
+    ignoreRestrictionReasons(this.sensitiveContentSettings.ignoreRestrictionReasons);
+    this.isSensitive = isSensitive(restrictions);
 
     if(this.selection) {
       this.selection.isScheduled = type === ChatType.Scheduled;

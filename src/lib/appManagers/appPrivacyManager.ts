@@ -10,10 +10,12 @@ import {AppManager} from './manager';
 import {MTAppConfig} from '../mtproto/appConfig';
 import App from '../../config/app';
 import Schema from '../mtproto/schema';
+import {isSensitive} from '../../helpers/restrictions';
 
 export interface SensitiveContentSettings {
   sensitiveEnabled: boolean;
   sensitiveCanChange: boolean;
+  ignoreRestrictionReasons: string[];
   needAgeVerification: boolean;
   ageVerified: boolean;
 }
@@ -37,6 +39,7 @@ export class AppPrivacyManager extends AppManager {
     this.rootScope.addEventListener('app_config', (config) => {
       if(!this.sensitiveContentSettings) return;
       this.sensitiveContentSettings.needAgeVerification = config.need_age_video_verification ?? false;
+      this.sensitiveContentSettings.ignoreRestrictionReasons = config.ignore_restriction_reasons ?? [];
       this.rootScope.dispatchEvent('sensitive_content_settings', this.sensitiveContentSettings);
     });
   }
@@ -110,6 +113,7 @@ export class AppPrivacyManager extends AppManager {
     this.sensitiveContentSettings = {
       sensitiveEnabled: contentSettings.pFlags.sensitive_enabled ?? false,
       sensitiveCanChange: contentSettings.pFlags.sensitive_can_change ?? false,
+      ignoreRestrictionReasons: appConfig.ignore_restriction_reasons ?? [],
       // needAgeVerification: true,
       // ageVerified: false
       needAgeVerification: appConfig.need_age_video_verification ?? false,
@@ -119,13 +123,14 @@ export class AppPrivacyManager extends AppManager {
     return this.sensitiveContentSettings;
   }
 
-  public setContentSettings(settings: AccountSetContentSettings) {
+  public async setContentSettings(settings: AccountSetContentSettings) {
     if(this.sensitiveContentSettings) {
       this.sensitiveContentSettings.sensitiveEnabled = settings.sensitive_enabled;
       this.rootScope.dispatchEvent('sensitive_content_settings', this.sensitiveContentSettings);
     }
 
-    return this.apiManager.invokeApi('account.setContentSettings', settings);
+    await this.apiManager.invokeApi('account.setContentSettings', settings);
+    await this.apiManager.getAppConfig(true)
   }
 
   public async notifyAgeVerified() {
@@ -142,6 +147,7 @@ export class AppPrivacyManager extends AppManager {
     this.sensitiveContentSettings.ageVerified = true;
     this.sensitiveContentSettings.sensitiveEnabled = true;
     await this.setContentSettings({sensitive_enabled: true});
+    await this.apiManager.getAppConfig(true)
     this.rootScope.dispatchEvent('sensitive_content_settings', this.sensitiveContentSettings);
   }
 }

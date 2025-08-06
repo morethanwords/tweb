@@ -6106,9 +6106,7 @@ export default class ChatBubbles {
     }
 
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;
-    const sensitive = !this.chat.sensitiveContentSettings.sensitiveEnabled && (
-      this.chat.isSensitive || (isMessage && message.restriction_reason != null && isSensitive(message.restriction_reason))
-    );
+    const sensitive = this.chat.isSensitive || (isMessage && message.restriction_reason != null && isSensitive(message.restriction_reason))
 
     if(isOutgoing && !message.error) {
       bubble.classList.add('is-outgoing');

@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {Chat, ChatPhoto, DialogPeer, InputChannel, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update, User, UserProfilePhoto} from '../../layer';
+import type {Chat, ChatPhoto, DialogPeer, InputChannel, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, RestrictionReason, Update, User, UserProfilePhoto} from '../../layer';
 import type {LangPackKey} from '../langPack';
 import {getRestrictionReason, isSensitive} from '../../helpers/restrictions';
 import isObject from '../../helpers/object/isObject';
@@ -159,17 +159,13 @@ export class AppPeersManager extends AppManager {
     return isAnyChat(peerId);
   }
 
-  public isPeerRestricted(peerId: PeerId) {
-    return isPeerRestricted(this.getPeer(peerId));
+  public getPeerRestrictions(peerId: PeerId): RestrictionReason[] {
+    const peer = this.getPeer(peerId) as Chat.channel | User.user;
+    return peer?.restriction_reason ?? [];
   }
 
-  public isPeerSensitive(peerId: PeerId) {
-    const peer = this.getPeer(peerId);
-    if('restriction_reason' in peer) {
-      return isSensitive(peer.restriction_reason);
-    }
-
-    return false;
+  public isPeerRestricted(peerId: PeerId) {
+    return isPeerRestricted(this.getPeer(peerId));
   }
 
   public isPeerPublic(peerId: PeerId) {
