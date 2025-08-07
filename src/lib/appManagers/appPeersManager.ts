@@ -185,16 +185,6 @@ export class AppPeersManager extends AppManager {
     return this.appChatsManager.getStarsAmount(peerId.toChatId());
   }
 
-  public getRestrictionReasonText(peerId: PeerId) {
-    const peer = this.getPeer(peerId) as Chat.channel | User.user;
-    const reason = peer.restriction_reason ? getRestrictionReason(peer.restriction_reason) : undefined;
-    if(reason) {
-      return reason.text;
-    } else {
-      return peerId.isUser() ? 'This user is restricted' : 'This chat is restricted';
-    }
-  }
-
   /* public getInputPeer(peerString: string): InputPeer {
     var firstChar = peerString.charAt(0);
     var peerParams = peerString.substr(1).split('_');

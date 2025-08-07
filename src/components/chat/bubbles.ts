@@ -200,7 +200,7 @@ import {PremiumGiftBubble} from './bubbles/premiumGift';
 import {UnknownUserBubble} from './bubbles/unknownUser';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {ChecklistBubble} from './bubbles/checklist';
-import {isSensitive} from '../../helpers/restrictions';
+import {getRestrictionReason, isSensitive} from '../../helpers/restrictions';
 import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
 
 export const USER_REACTIONS_INLINE = false;
@@ -8411,7 +8411,17 @@ export default class ChatBubbles {
     else if(type === 'noScheduledMessages') title = i18n('NoScheduledMessages');
     else if(type === 'restricted') {
       title = document.createElement('span');
-      title.innerText = await this.managers.appPeersManager.getRestrictionReasonText(this.peerId);
+      const reason = getRestrictionReason(await this.managers.appPeersManager.getPeerRestrictions(this.peerId))
+
+      if(reason) {
+        if(!reason.text && reason.reason === 'sensitive') {
+          title.replaceChildren(i18n('SensitiveChannel'));
+        } else {
+          title.innerText = reason.text;
+        }
+      } else {
+        title.replaceChildren(i18n(this.peerId.isUser() ? 'RestrictedUser' : 'RestrictedChat'));
+      }
     }
 
     if(title) {
