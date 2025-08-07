@@ -8103,8 +8103,8 @@ export class AppMessagesManager extends AppManager {
         return this.getHistory({
           peerId: message.peerId,
           offsetId: message.mid,
-          limit: 20,
-          addOffset: -10
+          limit: (MESSAGES_ALBUM_MAX_SIZE + 1) * 2,
+          addOffset: -(MESSAGES_ALBUM_MAX_SIZE + 1)
         });
       }));
       if(!middleware()) {
