@@ -28,7 +28,7 @@ import {MyDocument} from './appDocsManager';
 import {MyPhoto} from './appPhotosManager';
 import DEBUG from '../../config/debug';
 import SlicedArray, {Slice, SliceEnd} from '../../helpers/slicedArray';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, TEST_NO_SAVED, THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, MESSAGES_ALBUM_MAX_SIZE, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, TEST_NO_SAVED, THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 import {getMiddleware} from '../../helpers/middleware';
 import assumeType from '../../helpers/assumeType';
 import copy from '../../helpers/object/copy';
@@ -7941,33 +7941,58 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    // * load grouped missing messages
-    const firstMessage = messages[0] as Message.message;
-    const lastMessage = messages[messages.length - 1] as Message.message;
+    // * load grouped missing messages (only once per recursion)
+    if(!inputFilter && !recursion) {
+      const firstMessage = messages[0] as Message.message;
+      const lastMessage = messages[messages.length - 1] as Message.message;
 
-    if(!inputFilter && !isBottomEnd && firstMessage?.grouped_id) {
-      await this.getHistory({
-        ...options,
-        offsetId: firstMessage.mid,
-        limit: 20,
-        addOffset: -10
-      });
+      const fillMissingGroupedMessages = async(bottom: boolean) => {
+        if(!middleware()) {
+          return;
+        }
 
-      if(!middleware()) {
-        return;
+        const {
+          isEnd,
+          history,
+          messages = history.map((mid) => this.getMessageByPeer(peerId, mid))
+        } = await this.getHistory({
+          ...options,
+          offsetId: (bottom ? firstMessage : lastMessage).mid,
+          limit: (MESSAGES_ALBUM_MAX_SIZE + 1) * 2,
+          addOffset: -(MESSAGES_ALBUM_MAX_SIZE + 1)
+        });
+
+        if(!middleware()) {
+          return;
+        }
+
+        // * erase unfilled grouped messages if they're last elements in their history slices
+        if(!isEnd[bottom ? 'bottom' : 'top']) {
+          if(!bottom) messages.reverse();
+          const messagesSlice = messages.slice(0, MESSAGES_ALBUM_MAX_SIZE) as Message.message[];
+          const groupedIds = messagesSlice.map((message) => message.grouped_id);
+          const slice = messagesSlice[0] && historyStorage.history.findSlice(messagesSlice[0].mid);
+          if(
+            groupedIds[0] &&
+            groupedIds[0] !== groupedIds[MESSAGES_ALBUM_MAX_SIZE - 1] &&
+            slice?.index === (bottom ? 0 : slice.slice.length - 1)
+          ) {
+            messagesSlice.forEach((message) => {
+              if(message.grouped_id === groupedIds[0]) {
+                historyStorage.history.delete(message.mid);
+              }
+            });
+          }
+        }
+      };
+
+
+      if(!isBottomEnd && firstMessage?.grouped_id) {
+        await fillMissingGroupedMessages(true);
       }
-    }
 
-    if(!inputFilter && !isTopEnd && lastMessage?.grouped_id && lastMessage.grouped_id !== firstMessage?.grouped_id) {
-      await this.getHistory({
-        ...options,
-        offsetId: lastMessage.mid,
-        limit: 20,
-        addOffset: -10
-      });
-
-      if(!middleware()) {
-        return;
+      if(!isTopEnd && lastMessage?.grouped_id && lastMessage.grouped_id !== firstMessage?.grouped_id) {
+        await fillMissingGroupedMessages(false);
       }
     }
     // * grouped end
