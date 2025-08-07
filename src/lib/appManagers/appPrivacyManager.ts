@@ -102,26 +102,31 @@ export class AppPrivacyManager extends AppManager {
     return this.apiManager.invokeApi('account.setGlobalPrivacySettings', {settings});
   }
 
-  public async getSensitiveContentSettings() {
+  private _getSensitiveContentSettingsPromise: Promise<SensitiveContentSettings> | null = null;
+  public getSensitiveContentSettings() {
     if(this.sensitiveContentSettings) return this.sensitiveContentSettings;
-    const [contentSettings, state, appConfig] = await Promise.all([
+    if(this._getSensitiveContentSettingsPromise) return this._getSensitiveContentSettingsPromise;
+
+    return this._getSensitiveContentSettingsPromise = Promise.all([
       this.apiManager.invokeApi('account.getContentSettings'),
       this.appStateManager.getState(),
       this.apiManager.getAppConfig()
-    ]);
+    ]).then(([contentSettings, state, appConfig]) => {
+      this.sensitiveContentSettings = {
+        sensitiveEnabled: contentSettings.pFlags.sensitive_enabled ?? false,
+        sensitiveCanChange: contentSettings.pFlags.sensitive_can_change ?? false,
+        // ignoreRestrictionReasons: [],
+        // needAgeVerification: true,
+        // ageVerified: false
+        ignoreRestrictionReasons: appConfig.ignore_restriction_reasons ?? [],
+        needAgeVerification: appConfig.need_age_video_verification ?? false,
+        ageVerified: !!state.ageVerification
+      };
 
-    this.sensitiveContentSettings = {
-      sensitiveEnabled: contentSettings.pFlags.sensitive_enabled ?? false,
-      sensitiveCanChange: contentSettings.pFlags.sensitive_can_change ?? false,
-      // ignoreRestrictionReasons: [],
-      // needAgeVerification: true,
-      // ageVerified: false
-      ignoreRestrictionReasons: appConfig.ignore_restriction_reasons ?? [],
-      needAgeVerification: appConfig.need_age_video_verification ?? false,
-      ageVerified: !!state.ageVerification
-    };
-
-    return this.sensitiveContentSettings;
+      return this.sensitiveContentSettings;
+    }).finally(() => {
+      this._getSensitiveContentSettingsPromise = null;
+    });;
   }
 
   public async setContentSettings(settings: AccountSetContentSettings) {

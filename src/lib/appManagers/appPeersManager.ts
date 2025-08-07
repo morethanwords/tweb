@@ -23,6 +23,7 @@ import isPeerRestricted from './utils/peers/isPeerRestricted';
 import getPeerPhoto from './utils/peers/getPeerPhoto';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import {SensitiveContentSettings} from './appPrivacyManager';
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog';
 export class AppPeersManager extends AppManager {
@@ -165,7 +166,9 @@ export class AppPeersManager extends AppManager {
   }
 
   public isPeerRestricted(peerId: PeerId) {
-    return isPeerRestricted(this.getPeer(peerId));
+    const settings = this.appPrivacyManager.getSensitiveContentSettings();
+    const canChangeSensitive = (settings as SensitiveContentSettings).sensitiveCanChange ?? false;
+    return isPeerRestricted(this.getPeer(peerId), canChangeSensitive);
   }
 
   public isPeerPublic(peerId: PeerId) {
