@@ -165,6 +165,10 @@ function wrapMediaSpoilerWithImage(options: {
   return {container, readyResult};
 }
 
+export function hasSensitiveSpoiler(container: HTMLElement) {
+  return container.querySelector('.media-spoiler-container[data-is-sensitive]') != null;
+}
+
 export default async function wrapMediaSpoiler(
   options: Omit<Parameters<typeof wrapMediaSpoilerWithImage>[0], 'image'> & {
     media: Document.document | Photo.photo,

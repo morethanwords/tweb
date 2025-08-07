@@ -3074,6 +3074,10 @@ export class AppMessagesManager extends AppManager {
         group.messages.push(message);
       }
 
+      if(originalMessage.restriction_reason) {
+        message.restriction_reason = originalMessage.restriction_reason;
+      }
+
       if(peerId === this.appPeersManager.peerId) {
         message.saved_peer_id = this.appPeersManager.getOutputPeer(fromPeerId);
       }

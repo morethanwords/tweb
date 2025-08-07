@@ -113,9 +113,10 @@ export class AppPrivacyManager extends AppManager {
     this.sensitiveContentSettings = {
       sensitiveEnabled: contentSettings.pFlags.sensitive_enabled ?? false,
       sensitiveCanChange: contentSettings.pFlags.sensitive_can_change ?? false,
-      ignoreRestrictionReasons: appConfig.ignore_restriction_reasons ?? [],
+      // ignoreRestrictionReasons: [],
       // needAgeVerification: true,
       // ageVerified: false
+      ignoreRestrictionReasons: appConfig.ignore_restriction_reasons ?? [],
       needAgeVerification: appConfig.need_age_video_verification ?? false,
       ageVerified: !!state.ageVerification
     };

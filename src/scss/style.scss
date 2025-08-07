@@ -1942,10 +1942,18 @@ hr {
       .tgico {
         font-size: 1.25rem;
       }
+
+      .preloader-container.is-visible ~ & {
+        opacity: 0;
+      }
     }
 
-    &[data-is-revealing] .sensitive-content-warning {
-      opacity: 0;
+    &[data-is-revealing] {
+      pointer-events: none;
+
+      .sensitive-content-warning {
+        opacity: 0;
+      }
     }
   }
 

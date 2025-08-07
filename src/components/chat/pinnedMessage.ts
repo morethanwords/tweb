@@ -26,6 +26,7 @@ import {logger} from '../../lib/logger';
 import PopupElement from '../popups';
 import {AnimatedSuper} from '../animatedSuper';
 import {AnimatedCounter} from '../animatedCounter';
+import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
 
 const ALWAYS_FLOATING = false;
 
@@ -446,6 +447,7 @@ export default class ChatPinnedMessage {
         mediaEl: writeMediaTo,
         loadPromises,
         animationGroup: this.chat.animationGroup,
+        isSensitive: this.chat.isSensitive || isMessageSensitive(message),
         textColor: 'primary-text-color',
         canTranslate: !message.pFlags.out,
         middleware: this.animatedSubtitle.getRow(pinnedIndex).middlewareHelper.get()

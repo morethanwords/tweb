@@ -201,6 +201,7 @@ import {UnknownUserBubble} from './bubbles/unknownUser';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {ChecklistBubble} from './bubbles/checklist';
 import {isSensitive} from '../../helpers/restrictions';
+import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -2848,6 +2849,7 @@ export default class ChatBubbles {
         return media._ === 'photo' || ['video', 'gif'].includes(media.type);
       };
 
+      const skipSensitive = !this.chat.isSensitive && !isMessageSensitive(message);
       const targets: {element: HTMLElement, mid: number, peerId: PeerId, fullMid: string, index?: number}[] = [];
       const fullMids = isSingleMedia ? [fullMessageId] : this.getRenderedHistory('asc').map((fullMid) => {
         const bubble = this.getBubble(fullMid);
@@ -2857,6 +2859,10 @@ export default class ChatBubbles {
 
         const message = this.chat.getMessage(fullMid);
         const media = getMediaFromMessage(message);
+
+        if(skipSensitive && isMessageSensitive(message)) {
+          return;
+        }
 
         return media && f(media) && fullMid;
       }).filter(Boolean) as FullMid[];
@@ -2893,6 +2899,10 @@ export default class ChatBubbles {
         const parents: Set<HTMLElement> = new Set();
         if(documentDiv) {
           elements.forEach((element) => {
+            if(skipSensitive && isMessageSensitive(message)) {
+              return;
+            }
+
             targets.push({
               element: element.querySelector('.document-ico'),
               mid: +element.dataset.mid,
@@ -2948,6 +2958,7 @@ export default class ChatBubbles {
         peerId: this.peerId,
         inputFilter: {_: documentDiv ? 'inputMessagesFilterDocument' : 'inputMessagesFilterPhotoVideo'},
         useSearch: this.chat.type !== ChatType.Scheduled && !isSingleMedia,
+        skipSensitive,
         isScheduled: this.chat.type === ChatType.Scheduled
       })
       .openMedia({
@@ -6106,7 +6117,7 @@ export default class ChatBubbles {
     }
 
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;
-    const sensitive = this.chat.isSensitive || (isMessage && message.restriction_reason != null && isSensitive(message.restriction_reason))
+    const sensitive = this.chat.isSensitive || isMessageSensitive(message);
 
     if(isOutgoing && !message.error) {
       bubble.classList.add('is-outgoing');
@@ -7865,6 +7876,7 @@ export default class ChatBubbles {
         title: isWebPage ? peerTitle : undefined,
         subtitle: isWebPage ? undefined : i18n('ExpiredStorySubtitle', [peerTitle]),
         isStoryExpired: true,
+        isChatSensitive: this.chat.isSensitive,
         noBorder
       });
 

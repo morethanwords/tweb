@@ -23,7 +23,8 @@ export type WrapPinnedContainerOptions = {
   title: string | HTMLElement | DocumentFragment,
   subtitle?: WrapPinnedContainerOptions['title'],
   message?: Message.message | Message.messageService,
-  storyItem?: StoryItem.storyItem
+  storyItem?: StoryItem.storyItem,
+  isChatSensitive?: boolean,
 };
 
 export default class PinnedContainer {

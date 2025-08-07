@@ -47,7 +47,7 @@ import SortedList, {SortedElementBase} from '../../helpers/sortedList';
 import debounce from '../../helpers/schedulers/debounce';
 import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS} from '../mtproto/mtproto_config';
 import groupCallActiveIcon from '../../components/groupCallActiveIcon';
-import {Chat, ChatlistsChatlistUpdates, DialogFilter, Message, MessageReplyHeader} from '../../layer';
+import {Chat, ChatlistsChatlistUpdates, DialogFilter, Message, MessageMedia, MessageReplyHeader} from '../../layer';
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import mediaSizes from '../../helpers/mediaSizes';
 import appNavigationController, {NavigationItem} from '../../components/appNavigationController';
@@ -58,7 +58,7 @@ import appSidebarRight from '../../components/sidebarRight';
 import choosePhotoSize from './utils/photos/choosePhotoSize';
 import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
 import wrapMessageForReply, {WrapMessageForReplyOptions} from '../../components/wrappers/messageForReply';
-import isMessageRestricted from './utils/messages/isMessageRestricted';
+import isMessageRestricted, {isMessageSensitive} from './utils/messages/isMessageRestricted';
 import getMediaFromMessage from './utils/messages/getMediaFromMessage';
 import getMessageSenderPeerIdOrName from './utils/messages/getMessageSenderPeerIdOrName';
 import wrapStickerEmoji from '../../components/wrappers/stickerEmoji';
@@ -119,6 +119,7 @@ import SortedDialogList from '../../components/sortedDialogList';
 import throttle from '../../helpers/schedulers/throttle';
 import {MAX_SIDEBAR_WIDTH} from '../../components/sidebarLeft/constants';
 import {unwrap} from 'solid-js/store';
+import wrapMediaSpoiler from '../../components/wrappers/mediaSpoiler';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 const DIALOG_LOAD_COUNT = 10;
@@ -3048,6 +3049,7 @@ export class AppDialogsManager {
     }
 
     const isRestricted = !!lastMessage && isMessageRestricted(lastMessage as Message.message);
+    const isSensitive = !!lastMessage && isMessageSensitive(lastMessage as Message.message);
 
     /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
       let mediaContainer: HTMLElement;
@@ -3070,6 +3072,7 @@ export class AppDialogsManager {
         const media = getMediaFromMessage(lastMessage, true);
         const videoTypes: Set<MyDocument['type']> = new Set(['video', 'gif', 'round']);
         if(media && (media._ === 'photo' || videoTypes.has(media.type))) {
+          const spoiler = ((lastMessage as Message.message).media as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument)?.pFlags?.spoiler;
           const size = choosePhotoSize(media, 20, 20);
 
           if(size._ !== 'photoSizeEmpty') {
@@ -3086,7 +3089,23 @@ export class AppDialogsManager {
               container: mediaContainer,
               withoutPreloader: true,
               size
-            }).then(() => mediaContainer));
+            }).then(() => {
+              if(spoiler || isSensitive) {
+                return wrapMediaSpoiler({
+                  media: media,
+                  width: 20,
+                  height: 20,
+                  multiply: 0.1,
+                  middleware: this.stateMiddlewareHelper.get(),
+                  animationGroup: 'none'
+                }).then((el) => {
+                  mediaContainer.append(el);
+                  return mediaContainer;
+                });
+              }
+
+              return mediaContainer
+            }));
 
             if(videoTypes.has((media as MyDocument).type)) {
               const playIcon = Icon('play', 'dialog-subtitle-media-play');
