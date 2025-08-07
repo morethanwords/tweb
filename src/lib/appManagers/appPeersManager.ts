@@ -24,7 +24,7 @@ import getServerMessageId from './utils/messageId/getServerMessageId';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import callbackify from '../../helpers/callbackify';
 
-export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog';
+export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog' | 'monoforum';
 export class AppPeersManager extends AppManager {
   public get peerId() {
     return this.appUsersManager.userId.toPeerId();
@@ -301,6 +301,8 @@ export class AppPeersManager extends AppManager {
   public getDialogType(peerId: PeerId, threadId?: number): PeerType {
     if(this.peerId === peerId && threadId) {
       return 'savedDialog';
+    } else if(this.isMonoforum(peerId)) {
+      return 'monoforum';
     } else if(this.isMegagroup(peerId)) {
       return 'megagroup';
     } else if(this.isChannel(peerId)) {
@@ -312,17 +314,20 @@ export class AppPeersManager extends AppManager {
     }
   }
 
-  public getDeleteButtonText(peerId: PeerId): Extract<LangPackKey, 'ChannelDelete' | 'ChatList.Context.LeaveChannel' | 'DeleteMega' | 'ChatList.Context.LeaveGroup' | 'ChatList.Context.DeleteChat'> {
+  public getDeleteButtonText(peerId: PeerId) {
     switch(this.getDialogType(peerId)) {
       case 'channel':
-        return this.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat') ? 'ChannelDelete' : 'ChatList.Context.LeaveChannel';
+        return this.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat') ? 'ChannelDelete' : 'ChatList.Context.LeaveChannel' satisfies LangPackKey;
 
       case 'megagroup':
       case 'group':
-        return this.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat') ? 'DeleteMega' : 'ChatList.Context.LeaveGroup';
+        return this.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat') ? 'DeleteMega' : 'ChatList.Context.LeaveGroup' satisfies LangPackKey;
+
+      case 'monoforum':
+        return 'ChatList.Context.LeaveMonoforum' satisfies LangPackKey;
 
       default:
-        return 'ChatList.Context.DeleteChat';
+        return 'ChatList.Context.DeleteChat' satisfies LangPackKey;
     }
   }
 

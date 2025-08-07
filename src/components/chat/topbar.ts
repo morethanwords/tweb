@@ -362,7 +362,7 @@ export default class ChatTopbar {
     }
 
     const chat = apiManagerProxy.getChat(chatId);
-    if(hasRights(chat, 'manage_call')) {
+    if(hasRights(chat, 'manage_call') && !this.chat.isMonoforum) {
       if(type === 'admin') return !(chat as MTChat.chat).pFlags?.call_active;
     }
     if(!(chat as MTChat.chat).pFlags?.call_active) return false;
@@ -391,6 +391,20 @@ export default class ChatTopbar {
 
     return !!(!chatFull.pFlags.monoforum && chatFull.linked_monoforum_id);
   };
+
+  private verifyIfCanDeleteChat = async() => {
+    if(this.chat.isMonoforum) {
+      const chat = apiManagerProxy.getChat(this.peerId.toChatId());
+      return chat?._ === 'channel' && !chat?.pFlags?.creator && !chat?.pFlags?.left;
+    }
+
+    if(this.chat.type === ChatType.Saved) return true;
+
+    return (
+      this.chat.type === ChatType.Chat &&
+      !!(await this.managers.appMessagesManager.getDialogOnly(this.peerId))
+    );
+  }
 
   public constructUtils() {
     this.menuButtons = [{
@@ -553,7 +567,7 @@ export default class ChatTopbar {
       icon: 'gift',
       text: 'Chat.Menu.SendGift',
       onClick: () => PopupElement.createPopup(PopupSendGift, this.peerId),
-      verify: async() => this.chat.isChannel || (this.chat.peerId.isUser() && this.managers.appUsersManager.isRegularUser(this.peerId))
+      verify: async() => (this.chat.isChannel && !this.chat.isMonoforum) || (this.chat.peerId.isUser() && this.managers.appUsersManager.isRegularUser(this.peerId))
     }, {
       icon: 'statistics',
       text: 'Statistics',
@@ -635,10 +649,7 @@ export default class ChatTopbar {
       onClick: () => {
         PopupElement.createPopup(PopupDeleteDialog, this.peerId, undefined, undefined, this.chat.threadId);
       },
-      verify: async() => this.chat.type === ChatType.Saved || (
-        this.chat.type === ChatType.Chat &&
-        !!(await this.managers.appMessagesManager.getDialogOnly(this.peerId))
-      )
+      verify: this.verifyIfCanDeleteChat
     }];
 
     this.btnSearch = ButtonIcon('search');

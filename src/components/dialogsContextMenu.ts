@@ -39,6 +39,7 @@ export default class DialogsContextMenu {
   private threadId: number;
   private dialog: AnyDialog;
   private canManageTopics: boolean;
+  private canDelete: boolean;
   private li: HTMLElement;
   private addToFolderMenu: InstanceType<typeof AddToFolderDropdownMenu>;
 
@@ -59,6 +60,7 @@ export default class DialogsContextMenu {
         this.dialog = await this.managers.dialogsStorage.getAnyDialog(this.peerId, this.threadId);
         this.filterId = this.threadId ? undefined : appDialogsManager.filterId;
         this.canManageTopics = isForumTopic(this.dialog) ? await this.managers.dialogsStorage.canManageTopic(this.dialog) : undefined;
+        this.canDelete = await this.checkIfCanDelete();
       },
       onOpenBefore: async() => {
         this.buttons?.forEach(button => button?.onOpen?.());
@@ -232,21 +234,7 @@ export default class DialogsContextMenu {
       className: 'danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
-      verify: () => {
-        if(this.threadId) {
-          if(isSavedDialog(this.dialog)) {
-            return true;
-          }
-
-          if(!this.canManageTopics) {
-            return false;
-          }
-
-          return (this.dialog as ForumTopic.forumTopic).id !== GENERAL_TOPIC_ID;
-        }
-
-        return true;
-      }
+      verify: () => this.canDelete
     }];
 
     return this.buttons = this.buttons.filter(Boolean);
@@ -277,6 +265,26 @@ export default class DialogsContextMenu {
     const filters = await this.managers.filtersStorage.getDialogFilters();
     return !!filters.filter(filter => !REAL_FOLDERS.has(filter.id)).length
   }, () => 1, 5_000);
+
+
+  private async checkIfCanDelete() {
+    const chat = await this.managers.appChatsManager.getChat(this.peerId.toChatId());
+    if(chat?._ === 'channel' && chat?.pFlags?.monoforum && (chat?.pFlags?.left || chat?.pFlags?.creator)) return false;
+
+    if(this.threadId) {
+      if(isSavedDialog(this.dialog)) {
+        return true;
+      }
+
+      if(!this.canManageTopics) {
+        return false;
+      }
+
+      return (this.dialog as ForumTopic.forumTopic).id !== GENERAL_TOPIC_ID;
+    }
+
+    return true;
+  }
 
   private onArchiveClick = async() => {
     const dialog = await this.managers.appMessagesManager.getDialogOnly(this.peerId);

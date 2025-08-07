@@ -112,6 +112,18 @@ export default class PopupDeleteDialog {
         break;
       }
 
+      case 'monoforum': {
+        title = 'LeaveMonoforum';
+        description = 'MonoforumLeaveAlertWithName';
+        descriptionArgs = [peerTitleElement];
+        buttons = [{
+          langKey: 'LeaveMonoforum',
+          isDanger: true,
+          callback: callbackLeave
+        }];
+        break;
+      }
+
       /* case 'megagroup': {
         title = 'Leave Group?';
         description = `Are you sure you want to leave this group?`;
