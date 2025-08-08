@@ -46,6 +46,7 @@ const SEEK_OFFSET = 10;
 
 export type MediaSearchContext = SearchSuperContext & Partial<{
   isScheduled: boolean,
+  skipSensitive: boolean,
   useSearch: boolean
 }>;
 

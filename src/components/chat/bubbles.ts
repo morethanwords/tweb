@@ -200,6 +200,8 @@ import {PremiumGiftBubble} from './bubbles/premiumGift';
 import {UnknownUserBubble} from './bubbles/unknownUser';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {ChecklistBubble} from './bubbles/checklist';
+import {getRestrictionReason, isSensitive} from '../../helpers/restrictions';
+import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -2427,7 +2429,8 @@ export default class ChatBubbles {
     if(mediaSpoiler) {
       onMediaSpoilerClick({
         event: e,
-        mediaSpoiler
+        mediaSpoiler,
+        sensitiveSettings: this.chat.sensitiveContentSettings
       });
       return;
     }
@@ -2846,6 +2849,7 @@ export default class ChatBubbles {
         return media._ === 'photo' || ['video', 'gif'].includes(media.type);
       };
 
+      const skipSensitive = !this.chat.isSensitive && !isMessageSensitive(message);
       const targets: {element: HTMLElement, mid: number, peerId: PeerId, fullMid: string, index?: number}[] = [];
       const fullMids = isSingleMedia ? [fullMessageId] : this.getRenderedHistory('asc').map((fullMid) => {
         const bubble = this.getBubble(fullMid);
@@ -2855,6 +2859,10 @@ export default class ChatBubbles {
 
         const message = this.chat.getMessage(fullMid);
         const media = getMediaFromMessage(message);
+
+        if(skipSensitive && isMessageSensitive(message)) {
+          return;
+        }
 
         return media && f(media) && fullMid;
       }).filter(Boolean) as FullMid[];
@@ -2891,6 +2899,10 @@ export default class ChatBubbles {
         const parents: Set<HTMLElement> = new Set();
         if(documentDiv) {
           elements.forEach((element) => {
+            if(skipSensitive && isMessageSensitive(message)) {
+              return;
+            }
+
             targets.push({
               element: element.querySelector('.document-ico'),
               mid: +element.dataset.mid,
@@ -2946,6 +2958,7 @@ export default class ChatBubbles {
         peerId: this.peerId,
         inputFilter: {_: documentDiv ? 'inputMessagesFilterDocument' : 'inputMessagesFilterPhotoVideo'},
         useSearch: this.chat.type !== ChatType.Scheduled && !isSingleMedia,
+        skipSensitive,
         isScheduled: this.chat.type === ChatType.Scheduled
       })
       .openMedia({
@@ -5040,12 +5053,14 @@ export default class ChatBubbles {
     media,
     promise,
     middleware,
-    attachmentDiv
+    attachmentDiv,
+    sensitive
   }: {
     media: Photo.photo | MyDocument,
     promise: Promise<any>,
     middleware: Middleware,
-    attachmentDiv: HTMLElement
+    attachmentDiv: HTMLElement,
+    sensitive?: boolean
   }) {
     await promise;
     if(!middleware()) {
@@ -5058,6 +5073,7 @@ export default class ChatBubbles {
       width: parseInt(width),
       height: parseInt(height),
       middleware,
+      sensitive,
       animationGroup: this.chat.animationGroup
     });
 
@@ -6101,6 +6117,7 @@ export default class ChatBubbles {
     }
 
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;
+    const sensitive = this.chat.isSensitive || isMessageSensitive(message);
 
     if(isOutgoing && !message.error) {
       bubble.classList.add('is-outgoing');
@@ -6238,7 +6255,8 @@ export default class ChatBubbles {
               lazyLoadQueue: this.lazyLoadQueue,
               chat: this.chat,
               loadPromises,
-              autoDownload: this.chat.autoDownload
+              autoDownload: this.chat.autoDownload,
+              sensitive
             });
 
             break;
@@ -6258,12 +6276,13 @@ export default class ChatBubbles {
             autoDownloadSize: this.chat.autoDownload.photo
           });
 
-          if((messageMedia as MessageMedia.messageMediaPhoto).pFlags?.spoiler) {
+          if((messageMedia as MessageMedia.messageMediaPhoto).pFlags?.spoiler || sensitive) {
             loadPromises.push(this.wrapMediaSpoiler({
               media: photo as Photo.photo,
               promise: p,
               middleware,
-              attachmentDiv
+              attachmentDiv,
+              sensitive
             }));
           }
 
@@ -6696,7 +6715,8 @@ export default class ChatBubbles {
                 lazyLoadQueue: this.lazyLoadQueue,
                 chat: this.chat,
                 loadPromises,
-                autoDownload: this.chat.autoDownload
+                autoDownload: this.chat.autoDownload,
+                spoilered: sensitive
               });
             } else {
               const withTail = !IS_ANDROID && !IS_APPLE && !isRound && canHaveTail && !withReplies && USE_MEDIA_TAILS;
@@ -7051,7 +7071,7 @@ export default class ChatBubbles {
                 chat: this.chat,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
-                spoilered: !isAlreadyPaid,
+                spoilered: !isAlreadyPaid || sensitive,
                 videoTimes,
                 uploadingFileName: (message as Message.message).uploadingFileName
               });
@@ -7856,6 +7876,7 @@ export default class ChatBubbles {
         title: isWebPage ? peerTitle : undefined,
         subtitle: isWebPage ? undefined : i18n('ExpiredStorySubtitle', [peerTitle]),
         isStoryExpired: true,
+        isChatSensitive: this.chat.isSensitive,
         noBorder
       });
 
@@ -8390,7 +8411,17 @@ export default class ChatBubbles {
     else if(type === 'noScheduledMessages') title = i18n('NoScheduledMessages');
     else if(type === 'restricted') {
       title = document.createElement('span');
-      title.innerText = await this.managers.appPeersManager.getRestrictionReasonText(this.peerId);
+      const reason = getRestrictionReason(await this.managers.appPeersManager.getPeerRestrictions(this.peerId))
+
+      if(reason) {
+        if(!reason.text && reason.reason === 'sensitive') {
+          title.replaceChildren(i18n('SensitiveChannel'));
+        } else {
+          title.innerText = reason.text;
+        }
+      } else {
+        title.replaceChildren(i18n(this.peerId.isUser() ? 'RestrictedUser' : 'RestrictedChat'));
+      }
     }
 
     if(title) {

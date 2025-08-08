@@ -2,7 +2,7 @@ import {Chat, ChatPhoto, User, UserProfilePhoto} from '../../../../layer';
 import isPeerRestricted from './isPeerRestricted';
 
 export default function getPeerPhoto(peer: User | Chat) {
-  if(!peer || isPeerRestricted(peer)) {
+  if(!peer || isPeerRestricted(peer, false)) {
     return;
   }
 

@@ -1,7 +1,11 @@
 import {isRestricted} from '../../../../helpers/restrictions';
 import {Chat, User} from '../../../../layer';
 
-export default function isPeerRestricted(peer: Chat | User) {
-  const restrictionReasons = (peer as Chat.channel)?.restriction_reason;
-  return !!(restrictionReasons && (peer as Chat.channel).pFlags.restricted && isRestricted(restrictionReasons));
+export default function isPeerRestricted(peer: Chat | User, canChangeSensitive: boolean) {
+  let restrictionReasons = (peer as Chat.channel | User.user)?.restriction_reason;
+  if(!(restrictionReasons && (peer as Chat.channel | User.user).pFlags.restricted)) return false;
+  if(canChangeSensitive) {
+    restrictionReasons = restrictionReasons.filter((reason) => reason.reason !== 'sensitive');
+  }
+  return isRestricted(restrictionReasons);
 }

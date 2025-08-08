@@ -4103,7 +4103,7 @@ export default class ChatInput {
     fastRaf(() => {
       focus && placeCaretAtEnd(this.messageInput);
       this.processingDraftMessage = draftMessage;
-      this.setEffect(draftMessage.effect);
+      if(draftMessage) this.setEffect(draftMessage.effect);
       this.onMessageInput();
       this.processingDraftMessage = undefined;
       this.messageInput.scrollTop = this.messageInput.scrollHeight;

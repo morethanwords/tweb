@@ -685,6 +685,9 @@ export class AppImManager extends EventListenerBase<{
       savedReactionTags.splice(0, savedReactionTags.length, ...tags);
     });
 
+    // * preload sensitive content settings
+    this.managers.appPrivacyManager.getSensitiveContentSettings();
+
     // new PasscodeLockScreenControler().lock();
 
     this.onHashChange(true);
@@ -845,12 +848,17 @@ export class AppImManager extends EventListenerBase<{
     return attachMenuBot;
   }
 
-  public async openWebApp(options: Partial<RequestWebViewOptions>) {
+  public async openWebApp(options: Partial<RequestWebViewOptions> & {
+    onClose?: () => void
+  }) {
     options.botId ??= options.attachMenuBot?.bot_id;
     options.themeParams ??= {
       _: 'dataJSON',
       data: JSON.stringify(themeController.getThemeParamsForWebView())
     };
+
+    const onClose = options.onClose;
+    delete options.onClose; // to avoid passing it to the worker
 
     if(
       !options.attachMenuBot/*  &&
@@ -897,9 +905,10 @@ export class AppImManager extends EventListenerBase<{
         webViewResultUrl,
         webViewOptions: options as RequestWebViewOptions,
         attachMenuBot: options.attachMenuBot,
-        cacheKey
+        cacheKey,
+        onClose
       };
-      if(!IS_WEB_APP_BROWSER_SUPPORTED) {
+      if(!IS_WEB_APP_BROWSER_SUPPORTED || options.forcePopup) {
         PopupElement.createPopup(PopupWebApp, webAppOptions);
       } else {
         openWebAppInAppBrowser(webAppOptions);

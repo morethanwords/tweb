@@ -633,7 +633,10 @@ export default class DotRenderer implements AnimationItemWrapper {
       const deferred = deferredPromise<void>();
 
       animateValue(0, 1, 800 + (400/* px/ms */ - distToMargin),
-        (v) => void (revealAnimation.progress = v),
+        (v) => {
+          revealAnimation.progress = v
+          draw()
+        },
         {
           onEnd: () => void deferred.resolve(),
           easing: simpleEasing

@@ -83,6 +83,8 @@ import {MySponsoredPeer} from '../../lib/appManagers/appChatsManager';
 import {PopupChecklist} from '../popups/checklist';
 import createSubmenuTrigger from '../createSubmenuTrigger';
 import noop from '../../helpers/noop';
+import {isSensitive} from '../../helpers/restrictions';
+import {hasSensitiveSpoiler} from '../wrappers/mediaSpoiler';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -822,8 +824,8 @@ export default class ChatContextMenu {
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
-      onClick: () => ChatContextMenu.onDownloadClick(this.message, this.noForwards),
-      verify: () => ChatContextMenu.canDownload(this.message, this.target, this.noForwards)
+      onClick: () => ChatContextMenu.onDownloadClick(this.message, this.noForwards, this.chat.container),
+      verify: () => ChatContextMenu.canDownload(this.message, this.target, this.noForwards, this.chat.container)
     }, {
       icon: 'checkretract',
       text: 'Chat.Poll.Unvote',
@@ -872,8 +874,8 @@ export default class ChatContextMenu {
     }, {
       icon: 'download',
       text: 'Message.Context.Selection.Download',
-      onClick: () => ChatContextMenu.onDownloadClick(this.selectedMessages, this.noForwards),
-      verify: () => this.selectedMessages && ChatContextMenu.canDownload(this.selectedMessages, undefined, this.noForwards),
+      onClick: () => ChatContextMenu.onDownloadClick(this.selectedMessages, this.noForwards, this.chat.container),
+      verify: () => this.selectedMessages && ChatContextMenu.canDownload(this.selectedMessages, undefined, this.noForwards, this.chat.container),
       withSelection: true
     }, {
       icon: 'flag',
@@ -1029,23 +1031,32 @@ export default class ChatContextMenu {
     })
   }
 
-  public static canDownload(message: MyMessage | MyMessage[], withTarget?: HTMLElement, noForwards?: boolean): boolean {
+  public static canDownload(
+    message: MyMessage | MyMessage[],
+    withTarget?: HTMLElement,
+    noForwards?: boolean,
+    container?: HTMLElement
+  ): boolean {
     if(Array.isArray(message)) {
-      return message.some((message) => ChatContextMenu.canDownload(message, withTarget, noForwards));
+      return message.some((message) => ChatContextMenu.canDownload(message, withTarget, noForwards, container));
     }
 
     if(!canSaveMessageMedia(message) || noForwards) {
       return false;
     }
 
-    const isPhoto: boolean = !!((message as Message.message).media as MessageMedia.messageMediaPhoto)?.photo;
+    const photo = ((message as Message.message).media as MessageMedia.messageMediaPhoto)?.photo as Photo.photo;
+    const document = ((message as Message.message).media as MessageMedia.messageMediaDocument)?.document as Document.document;
+    const isPhoto: boolean = !!photo;
     let isGoodType = false
 
     if(isPhoto) {
       isGoodType = true;
     } else {
-      const doc: MyDocument = ((message as Message.message).media as MessageMedia.messageMediaDocument)?.document as any;
-      if(!doc) return false;
+      if(!document) {
+        return false;
+      }
+
       // isGoodType = doc.type && (['gif', 'video', 'audio', 'voice', 'sticker'] as MyDocument['type'][]).includes(doc.type)
       isGoodType = true;
     }
@@ -1058,6 +1069,11 @@ export default class ChatContextMenu {
         findUpClassName(withTarget, 'media-sticker-wrapper') ||
         findUpClassName(withTarget, 'media-photo') ||
         findUpClassName(withTarget, 'media-video'));
+    }
+
+    if(container && (message as Message.message).restriction_reason && isSensitive((message as Message.message).restriction_reason)) {
+      const item = container.querySelector(`[data-mid="${message.mid}"]`);
+      return item && !hasSensitiveSpoiler(item as HTMLElement);
     }
 
     return isGoodType && hasTarget;
@@ -1703,14 +1719,14 @@ export default class ChatContextMenu {
     this.managers.appMessagesManager.confirmRepayRequest(this.message.repayRequest.id, preparedPaymentResult);
   }
 
-  public static onDownloadClick(messages: MyMessage | MyMessage[], noForwards?: boolean): DownloadBlob | DownloadBlob[] {
+  public static onDownloadClick(messages: MyMessage | MyMessage[], noForwards?: boolean, container?: HTMLElement): DownloadBlob | DownloadBlob[] {
     if(Array.isArray(messages)) {
       return messages.map((message) => {
-        return this.onDownloadClick(message) as any;
+        return this.onDownloadClick(message, noForwards, container) as any;
       });
     }
 
-    if(!this.canDownload(messages, undefined, noForwards)) {
+    if(!this.canDownload(messages, undefined, noForwards, container)) {
       return;
     }
 

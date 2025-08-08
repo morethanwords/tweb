@@ -9,9 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {Chat, ChatPhoto, DialogPeer, InputChannel, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update, User, UserProfilePhoto} from '../../layer';
+import type {Chat, DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, RestrictionReason, User} from '../../layer';
 import type {LangPackKey} from '../langPack';
-import {getRestrictionReason} from '../../helpers/restrictions';
 import isObject from '../../helpers/object/isObject';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
@@ -23,6 +22,7 @@ import isPeerRestricted from './utils/peers/isPeerRestricted';
 import getPeerPhoto from './utils/peers/getPeerPhoto';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import callbackify from '../../helpers/callbackify';
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog';
 export class AppPeersManager extends AppManager {
@@ -159,8 +159,15 @@ export class AppPeersManager extends AppManager {
     return isAnyChat(peerId);
   }
 
+  public getPeerRestrictions(peerId: PeerId): RestrictionReason[] {
+    const peer = this.getPeer(peerId) as Chat.channel | User.user;
+    return peer?.restriction_reason ?? [];
+  }
+
   public isPeerRestricted(peerId: PeerId) {
-    return isPeerRestricted(this.getPeer(peerId));
+    return callbackify(this.appPrivacyManager.getSensitiveContentSettings(), (settings) => {
+      return isPeerRestricted(this.getPeer(peerId), settings.sensitiveCanChange);
+    });
   }
 
   public isPeerPublic(peerId: PeerId) {
@@ -178,16 +185,6 @@ export class AppPeersManager extends AppManager {
     if(peerId.isUser()) return this.appUsersManager.getStarsAmount(peerId.toUserId());
 
     return this.appChatsManager.getStarsAmount(peerId.toChatId());
-  }
-
-  public getRestrictionReasonText(peerId: PeerId) {
-    const peer = this.getPeer(peerId) as Chat.channel | User.user;
-    const reason = peer.restriction_reason ? getRestrictionReason(peer.restriction_reason) : undefined;
-    if(reason) {
-      return reason.text;
-    } else {
-      return peerId.isUser() ? 'This user is restricted' : 'This chat is restricted';
-    }
   }
 
   /* public getInputPeer(peerString: string): InputPeer {

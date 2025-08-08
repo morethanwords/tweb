@@ -17,7 +17,8 @@ export default class PopupWebApp extends PopupElement {
   constructor(options: {
     webViewResultUrl: WebApp['webViewResultUrl'],
     webViewOptions: WebApp['webViewOptions'],
-    attachMenuBot?: AttachMenuBot
+    attachMenuBot?: AttachMenuBot,
+    onClose?: () => void
   }) {
     super('popup-payment popup-payment-verification popup-web-app', {
       closable: true,
@@ -30,12 +31,16 @@ export default class PopupWebApp extends PopupElement {
 
     safeAssign(this, options);
 
+    if(options.onClose) {
+      this.addEventListener('close', options.onClose);
+    }
+
     this.webApp = new WebApp({
       ...options,
       header: this.header,
       title: this.title,
       body: this.body,
-      forceHide: this.forceHide,
+      forceHide: this.forceHide.bind(this),
       onBackStatus: (visible) => this.btnCloseAnimatedIcon.classList.toggle('state-back', visible)
     });
 

@@ -1921,6 +1921,40 @@ hr {
         transition: opacity var(--transition-standard-out);
       }
     }
+
+    .sensitive-content-warning {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #fff;
+      background-color: rgba(0, 0, 0, .6);
+      padding: .5rem .75rem;
+      border-radius: 9999px;
+      display: flex;
+      gap: .5rem;
+      font-size: var(--font-size-14);
+      pointer-events: none;
+      align-items: center;
+      z-index: 2;
+      transition: opacity var(--transition-standard-out);
+
+      .tgico {
+        font-size: 1.25rem;
+      }
+
+      .preloader-container.is-visible ~ & {
+        opacity: 0;
+      }
+    }
+
+    &[data-is-revealing] {
+      pointer-events: none;
+
+      .sensitive-content-warning {
+        opacity: 0;
+      }
+    }
   }
 
   &-thumbnail,

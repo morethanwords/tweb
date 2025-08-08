@@ -1,0 +1,25 @@
+.popup {
+  :global {
+    .popup-container {
+      width: 26.25rem;
+      border-radius: 14px;
+    }
+
+    .popup-header {
+      margin-bottom: 1rem;
+    }
+  }
+}
+
+
+.text {
+  white-space: pre-wrap;
+  text-align: center;
+  text-wrap: balance;
+  font-size: var(--font-size-15);
+}
+
+.button {
+  margin-top: 1.5rem;
+  height: 2.5rem;
+}

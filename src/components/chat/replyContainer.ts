@@ -21,6 +21,8 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import replaceContent from '../../helpers/dom/replaceContent';
 import limitSymbols from '../../helpers/string/limitSymbols';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import wrapMediaSpoiler from '../wrappers/mediaSpoiler';
+import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
 
 const MEDIA_SIZE = 32;
 
@@ -33,6 +35,7 @@ export async function wrapReplyDivAndCaption(options: {
   storyItem?: StoryItem.storyItem,
   mediaEl: HTMLElement,
   isStoryExpired?: boolean,
+  isSensitive?: boolean,
   middleware?: Middleware,
   lazyLoadQueue?: false | LazyLoadQueue,
   replyHeader?: MessageReplyHeader,
@@ -82,6 +85,8 @@ export async function wrapReplyDivAndCaption(options: {
     messageMedia = (messageMedia as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage || messageMedia;
     const photo = (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo;
     const document = (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
+    const spoiler = (messageMedia as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument).pFlags.spoiler;
+
     if(photo || (document && document.thumbs?.length)/* ['video', 'sticker', 'gif', 'round', 'photo', 'audio'].indexOf(document.type) !== -1) */) {
       if(document?.type === 'sticker') {
         await wrapSticker({
@@ -129,6 +134,19 @@ export async function wrapReplyDivAndCaption(options: {
             withoutPreloader: true,
             loadPromises
           });
+
+          if(spoiler || options.isSensitive) {
+            const spoiler = await wrapMediaSpoiler({
+              media: m,
+              width: MEDIA_SIZE,
+              height: MEDIA_SIZE,
+              multiply: 0.1,
+              middleware,
+              animationGroup
+            });
+            mediaEl.append(spoiler);
+          }
+
           setMedia = true;
         } catch(err) {
 
@@ -193,6 +211,7 @@ export default class ReplyContainer extends DivAndCaption<(options: WrapReplyOpt
 
       const isMediaSet = await wrapReplyDivAndCaption({
         ...(options as Modify<typeof options, {message: Message.message | Message.messageService}>),
+        isSensitive: options.isChatSensitive || (options.message && isMessageSensitive(options.message)),
         titleEl: this.title,
         subtitleEl: this.subtitle,
         mediaEl: this.mediaEl

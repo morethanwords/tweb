@@ -9,6 +9,7 @@ import type {SearchSuperContext} from '../components/appSearchSuper.';
 import type {Message} from '../layer';
 import type {MessagesStorageKey, MyMessage} from '../lib/appManagers/appMessagesManager';
 import {AppManagers} from '../lib/appManagers/managers';
+import {isMessageSensitive} from '../lib/appManagers/utils/messages/isMessageRestricted';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import rootScope, {BroadcastEvents} from '../lib/rootScope';
 import forEachReverse from './array/forEachReverse';
@@ -93,7 +94,10 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
 
   protected async filterMids(mids: number[]) {
     const storageKey: MessagesStorageKey = `${this.searchContext.peerId}_${this.searchContext.isScheduled ? 'scheduled' : 'history'}`;
-    const filtered = (await this.managers.appMessagesManager.filterMessagesByInputFilterFromStorage(this.searchContext.inputFilter._, mids, storageKey, mids.length)) as Message.message[];
+    let filtered = (await this.managers.appMessagesManager.filterMessagesByInputFilterFromStorage(this.searchContext.inputFilter._, mids, storageKey, mids.length)) as Message.message[];
+    if(this.searchContext.skipSensitive) {
+      filtered = filtered.filter((message) => !isMessageSensitive(message));
+    }
     return filtered;
   }
 

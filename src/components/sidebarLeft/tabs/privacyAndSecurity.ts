@@ -42,6 +42,10 @@ import Icon from '../../icon';
 import {AppPrivacyMessagesTab} from './solidJsTabs';
 import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, providedTabs} from './solidJsTabs';
 import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import {SensitiveContentSettings} from '../../../lib/appManagers/appPrivacyManager';
+import {AgeVerificationPopup} from '../../popups/ageVerification';
+import {clearSensitiveSpoilers} from '../../wrappers/mediaSpoiler';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -54,7 +58,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     return {
       appConfig: fromTab.managers.apiManager.getAppConfig(),
       globalPrivacy: fromTab.managers.appPrivacyManager.getGlobalPrivacySettings(),
-      contentSettings: fromTab.managers.apiManager.invokeApi('account.getContentSettings'),
+      contentSettings: fromTab.managers.appPrivacyManager.getSensitiveContentSettings(),
       webAuthorizations: fromTab.managers.appSeamlessLoginManager.getWebAuthorizations()
     };
   }
@@ -473,29 +477,48 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         checkboxField
       });
 
+      let contentSettings: SensitiveContentSettings;
+
+      let pendingChange = false;
+      checkboxField.input.addEventListener('change', (evt) => {
+        const newEnabled = checkboxField.checked;
+        if(pendingChange) {
+          checkboxField.input.checked = !newEnabled;
+          return;
+        }
+
+        if(newEnabled && contentSettings.needAgeVerification && !contentSettings.ageVerified) {
+          checkboxField.input.checked = false;
+          AgeVerificationPopup.create().then((verified) => {
+            if(verified) {
+              checkboxField.setValueSilently(true);
+              clearSensitiveSpoilers()
+            }
+          })
+          return;
+        }
+
+        pendingChange = true;
+
+        this.managers.appPrivacyManager.setContentSettings({
+          sensitive_enabled: newEnabled
+        }).catch(() => {
+          toastNew({langPackKey: 'Error.AnError'})
+          checkboxField.setValueSilently(!newEnabled);
+        }).finally(() => {
+          pendingChange = false;
+        });
+      })
+
       section.content.append(row.container);
 
-      let enabled: boolean;
-      this.eventListener.addEventListener('destroy', () => {
-        if(enabled === undefined) return;
-        const _enabled = row.checkboxField.checked;
-        const isChanged = _enabled !== enabled;
-        if(!isChanged) {
-          return;
-        }
-
-        return this.managers.apiManager.invokeApi('account.setContentSettings', {
-          sensitive_enabled: _enabled
-        });
-      }, {once: true});
-
       const promise = p.contentSettings.then((settings) => {
-        if(!settings.pFlags.sensitive_can_change) {
+        if(!settings.sensitiveCanChange) {
           return;
         }
 
-        enabled = !!settings.pFlags.sensitive_enabled;
-        checkboxField.setValueSilently(enabled);
+        contentSettings = settings;
+        checkboxField.setValueSilently(settings.sensitiveEnabled);
         section.container.classList.remove('hide');
       });
 

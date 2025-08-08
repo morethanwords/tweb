@@ -122,6 +122,10 @@ export interface MTAppConfig {
   todo_item_length_max?:                     number;
   todo_items_max?:                           number;
   todo_title_length_max?:                    number;
+  need_age_video_verification?:              boolean;
+  verify_age_min?:                           number;
+  verify_age_bot_username?:                  string;
+  verify_age_country?:                       string;
 }
 
 export interface EmojiesSendDiceSuccess {
