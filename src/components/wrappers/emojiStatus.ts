@@ -13,6 +13,8 @@ import rootScope from '../../lib/rootScope';
 import {Sparkles} from '../sparkles';
 import wrapSticker from './sticker';
 
+const RENDER_SPARKLES = false; // performance issues
+
 export default async function wrapEmojiStatus({
   wrapOptions,
   emojiStatus,
@@ -54,8 +56,12 @@ export default async function wrapEmojiStatus({
     await Promise.all(loadPromises);
   };
 
-  if(emojiStatus._ === 'emojiStatusCollectible') {
-    container.appendChild(Sparkles({mode: 'button', isDiv: true}));
+  if(emojiStatus._ === 'emojiStatusCollectible' && RENDER_SPARKLES) {
+    container.appendChild(Sparkles({
+      mode: 'button',
+      isDiv: true,
+      containerSize: size
+    }));
     container.style.setProperty('--sparkles-color', rgbIntToHex(emojiStatus.center_color));
   }
 

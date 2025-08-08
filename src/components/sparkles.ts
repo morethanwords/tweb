@@ -10,6 +10,11 @@ export interface Sparkle {
   delay: number;
 }
 
+interface ContainerSize {
+  width: number;
+  height: number;
+}
+
 const BUTTON_SPARKLES: Sparkle[] = [
   {x: 20, y: 0, scale: 1, delay: 500},
   {x: 15, y: 15, scale: 0.75, delay: 3500},
@@ -41,7 +46,7 @@ export function generateProgressSparkle(): Sparkle {
 
 
 const sparkleTemplate = template(`<svg viewBox="0 0 7 7" xmlns="http://www.w3.org/2000/svg" height="1em" width="1em"><use href="#star-sparkle"></use></svg>`);
-function renderSparkle(sparkle: Sparkle, isDiv?: boolean) {
+function renderSparkle(sparkle: Sparkle, isDiv?: boolean, containerSize?: ContainerSize) {
   let element: HTMLElement;
   if(isDiv) {
     element = document.createElement('div');
@@ -51,31 +56,34 @@ function renderSparkle(sparkle: Sparkle, isDiv?: boolean) {
   }
 
   element.classList.add('sparkles-sparkle');
-  element.style.setProperty('--sparkle-tx', sparkle.translateX + '%');
-  element.style.setProperty('--sparkle-ty', sparkle.translateY + '%');
+  element.style.setProperty('--sparkle-tx', containerSize ? sparkle.translateX / 100 * containerSize.width + 'px' : sparkle.translateX + '%');
+  element.style.setProperty('--sparkle-ty', containerSize ? sparkle.translateY / 100 * containerSize.height + 'px' : sparkle.translateY + '%');
   element.style.setProperty('--sparkle-scale', sparkle.scale * (Math.random() * 0.5 + 0.25) + '');
   element.style.setProperty('--sparkle-rotate', (Math.random() * 90 - 45) * 4 + 'deg');
   element.style.transform = `scale(${sparkle.scale})`;
-  element.style.top = sparkle.y + '%';
-  element.style.left = sparkle.x + '%';
+  element.style.top = containerSize ? sparkle.y / 100 * containerSize.height + 'px' : sparkle.y + '%';
+  element.style.left = containerSize ? sparkle.x / 100 * containerSize.width + 'px' : sparkle.x + '%';
   element.style.animationDelay = '-' + sparkle.delay + 'ms';
   return element;
 }
 
-export type SparklesProps = {isDiv?: boolean} & ({mode: 'button'} | {mode: 'progress', count: number});
+export type SparklesProps = {
+  isDiv?: boolean,
+  containerSize?: ContainerSize
+} & ({mode: 'button'} | {mode: 'progress', count: number});
 
 export function Sparkles(props: SparklesProps): HTMLDivElement {
   const container = document.createElement('div');
   container.classList.add('sparkles-container');
 
   if(props.mode === 'button') {
-    container.append(...BUTTON_SPARKLES.map((sparkle) => renderSparkle(sparkle, props.isDiv)));
+    container.append(...BUTTON_SPARKLES.map((sparkle) => renderSparkle(sparkle, props.isDiv, props.containerSize)));
   } else {
     createEffect(on(() => props.count, (next, prev = 0) => {
       const diff = next - prev;
       if(diff > 0) {
         for(let i = 0; i < diff; i++) {
-          container.appendChild(renderSparkle(generateProgressSparkle(), props.isDiv));
+          container.appendChild(renderSparkle(generateProgressSparkle(), props.isDiv, props.containerSize));
         }
       } else if(diff < 0) {
         for(let i = 0; i < -diff; i++) {
