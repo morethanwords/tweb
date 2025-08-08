@@ -657,8 +657,12 @@ export class SearchSelection extends AppSelection {
     this.toggleByElement(element);
   };
 
+  private getSelectedStoriesPeerId() {
+    return [...this.selectedMids.keys()][0] || this.searchSuper.searchContext.peerId;
+  }
+
   public onDeleteStoriesClick = async(ids?: number[]) => {
-    const peerId = [...this.selectedMids.keys()][0];
+    const peerId = this.getSelectedStoriesPeerId();
     ids ||= [...this.selectedMids.get(peerId)];
     await confirmationPopup({
       titleLangKey: ids.length === 1 ? 'DeleteStoryTitle' : 'DeleteStoriesTitle',
@@ -673,8 +677,8 @@ export class SearchSelection extends AppSelection {
     this.managers.appStoriesManager.deleteStories(peerId, ids);
   };
 
-  public onPinClick = (ids: number[], pin: boolean) => {
-    const peerId = [...this.selectedMids.keys()][0];
+  public onPinStoriesClick = (ids: number[], pin: boolean) => {
+    const peerId = this.getSelectedStoriesPeerId();
     ids ||= [...this.selectedMids.get(peerId)];
     const promise = this.managers.appStoriesManager.togglePinned(peerId, ids, pin);
     this.cancelSelection();
@@ -687,8 +691,8 @@ export class SearchSelection extends AppSelection {
     });
   };
 
-  public onPinToTopClick = (ids: number[], pin: boolean) => {
-    const peerId = [...this.selectedMids.keys()][0] || this.searchSuper.searchContext.peerId;
+  public onPinStoriesToTopClick = (ids: number[], pin: boolean) => {
+    const peerId = this.getSelectedStoriesPeerId();
     const promise = this.managers.appStoriesManager.togglePinnedToTop(peerId, ids, pin);
     this.cancelSelection();
     promise.catch((err: ApiError) => {
@@ -747,7 +751,7 @@ export class SearchSelection extends AppSelection {
         const attachClickOptions: AttachClickOptions = {listenerSetter: this.listenerSetter};
 
         this.selectionPinBtn = ButtonIcon(`${this.isStoriesArchive ? 'pin' : 'unpin'} ${BASE_CLASS}-pin`);
-        attachClickEvent(this.selectionPinBtn, () => this.onPinClick(undefined, this.isStoriesArchive), attachClickOptions);
+        attachClickEvent(this.selectionPinBtn, () => this.onPinStoriesClick(undefined, this.isStoriesArchive), attachClickOptions);
 
         this.selectionGotoBtn = ButtonIcon(`message ${BASE_CLASS}-goto`);
         attachClickEvent(this.selectionGotoBtn, () => {

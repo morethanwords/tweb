@@ -363,11 +363,11 @@ class SearchContextMenu {
   };
 
   private onStoryTogglePinClick = (pin: boolean) => {
-    this.searchSuper.selection.onPinClick([this.storyItem.id], pin);
+    this.searchSuper.selection.onPinStoriesClick([this.storyItem.id], pin);
   };
 
   private onStoryToggleToTopClick = (pin: boolean) => {
-    this.searchSuper.selection.onPinToTopClick([this.storyItem.id], pin);
+    this.searchSuper.selection.onPinStoriesToTopClick([this.storyItem.id], pin);
   };
 }
 
