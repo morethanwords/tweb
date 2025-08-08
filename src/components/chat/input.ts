@@ -2158,7 +2158,7 @@ export default class ChatInput {
       this.setStarsAmount(this.chat.starsAmount); // should reset when undefined
 
       this.directMessagesHandler.set({
-        canManageDirectMessages,
+        canManageDirectMessages: isMonoforum && canManageDirectMessages,
         isReplying: !!this.helperType
       });
       // console.warn('[input] finishpeerchange ends');
