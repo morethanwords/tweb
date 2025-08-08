@@ -5010,14 +5010,14 @@ export class AppMessagesManager extends AppManager {
     return searchStorage;
   }
 
-  public getSearchCounters(
+  public async getSearchCounters(
     peerId: PeerId,
     filters: MessagesFilter[],
     canCache = true,
     threadId?: number
   ): Promise<MessagesSearchCounter[]> {
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
-    if(this.appPeersManager.isPeerRestricted(peerId)) {
+    if(await this.appPeersManager.isPeerRestricted(peerId)) {
       return Promise.resolve(filters.map((filter) => {
         return {
           _: 'messages.searchCounter',
@@ -7117,8 +7117,8 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public canSendToPeer(peerId: PeerId, threadId?: number, action: ChatRights = 'send_messages') {
-    if(this.appPeersManager.isPeerRestricted(peerId)) {
+  public async canSendToPeer(peerId: PeerId, threadId?: number, action: ChatRights = 'send_messages') {
+    if(await this.appPeersManager.isPeerRestricted(peerId)) {
       return false;
     }
 
@@ -7406,7 +7406,7 @@ export class AppMessagesManager extends AppManager {
   }> = {}) {
     const peerId = this.getMessagePeer(message);
 
-    if(this.appPeersManager.isPeerRestricted(peerId)) {
+    if(await this.appPeersManager.isPeerRestricted(peerId)) {
       return;
     }
 
@@ -7601,7 +7601,10 @@ export class AppMessagesManager extends AppManager {
 
     const {historyStorage, limit, addOffset, offsetId, offsetPeerId, needRealOffsetIdOffset} = options;
 
-    if(this.appPeersManager.isPeerRestricted(options.peerId)) {
+    const isPeerRestrictedPromise = this.appPeersManager.isPeerRestricted(options.peerId);
+    if(isPeerRestrictedPromise instanceof Promise) {
+      return isPeerRestrictedPromise.then(() => this.getHistory(options));
+    } else if(isPeerRestrictedPromise) {
       const first = historyStorage.history.first;
       first.setEnd(SliceEnd.Both);
 

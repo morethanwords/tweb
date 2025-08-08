@@ -865,6 +865,7 @@ export default class Chat extends EventListenerBase<{
     const [
       noForwards,
       restrictions,
+      isRestricted,
       isLikeGroup,
       isRealGroup,
       _,
@@ -880,6 +881,7 @@ export default class Chat extends EventListenerBase<{
     ] = await m(Promise.all([
       this.managers.appPeersManager.noForwards(peerId),
       this.managers.appPeersManager.getPeerRestrictions(peerId),
+      this.managers.appPeersManager.isPeerRestricted(peerId),
       this._isLikeGroup(peerId),
       this.managers.appPeersManager.isAnyGroup(peerId),
       this.setAutoDownloadMedia(),
@@ -913,7 +915,7 @@ export default class Chat extends EventListenerBase<{
     this.isPremiumRequired = isPremiumRequired;
     this.starsAmount = starsAmount;
 
-    this.isRestricted = await this.managers.appPeersManager.isPeerRestricted(peerId); // need sensitiveContentSettings
+    this.isRestricted = isRestricted;
     this.sensitiveContentSettings = sensitiveContentSettings;
     ignoreRestrictionReasons(this.sensitiveContentSettings.ignoreRestrictionReasons);
     this.isSensitive = isSensitive(restrictions);

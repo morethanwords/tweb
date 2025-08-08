@@ -685,6 +685,9 @@ export class AppImManager extends EventListenerBase<{
       savedReactionTags.splice(0, savedReactionTags.length, ...tags);
     });
 
+    // * preload sensitive content settings
+    this.managers.appPrivacyManager.getSensitiveContentSettings();
+
     // new PasscodeLockScreenControler().lock();
 
     this.onHashChange(true);

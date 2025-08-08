@@ -9,9 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {Chat, ChatPhoto, DialogPeer, InputChannel, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, RestrictionReason, Update, User, UserProfilePhoto} from '../../layer';
+import type {Chat, DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, RestrictionReason, User} from '../../layer';
 import type {LangPackKey} from '../langPack';
-import {getRestrictionReason, isSensitive} from '../../helpers/restrictions';
 import isObject from '../../helpers/object/isObject';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
@@ -23,7 +22,7 @@ import isPeerRestricted from './utils/peers/isPeerRestricted';
 import getPeerPhoto from './utils/peers/getPeerPhoto';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
-import {SensitiveContentSettings} from './appPrivacyManager';
+import callbackify from '../../helpers/callbackify';
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog';
 export class AppPeersManager extends AppManager {
@@ -166,9 +165,9 @@ export class AppPeersManager extends AppManager {
   }
 
   public isPeerRestricted(peerId: PeerId) {
-    const settings = this.appPrivacyManager.getSensitiveContentSettings();
-    const canChangeSensitive = (settings as SensitiveContentSettings).sensitiveCanChange ?? false;
-    return isPeerRestricted(this.getPeer(peerId), canChangeSensitive);
+    return callbackify(this.appPrivacyManager.getSensitiveContentSettings(), (settings) => {
+      return isPeerRestricted(this.getPeer(peerId), settings.sensitiveCanChange);
+    });
   }
 
   public isPeerPublic(peerId: PeerId) {
