@@ -182,6 +182,10 @@ export class AppPeersManager extends AppManager {
     return !peerId.isUser() && this.appChatsManager.isMonoforum(peerId.toChatId());
   }
 
+  public canManageDirectMessages(peerId: PeerId) {
+    return !peerId.isUser() && this.appChatsManager.canManageDirectMessages(peerId.toChatId());
+  }
+
   /**
    * The amount of stars necessary to be paid for every message if the target peer had enabled it
    */

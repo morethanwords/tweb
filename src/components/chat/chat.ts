@@ -152,6 +152,7 @@ export default class Chat extends EventListenerBase<{
   public isUserBlocked: boolean;
   public isPremiumRequired: boolean;
   public isMonoforum: boolean;
+  public canManageDirectMessages: boolean;
 
   public starsAmount: number | undefined;
 
@@ -648,13 +649,16 @@ export default class Chat extends EventListenerBase<{
       if(peerId.isAnyChat() && peerId.toChatId() === chatId) {
         const {
           starsAmount,
-          isAnonymousSending
+          isAnonymousSending,
+          canManageDirectMessages
         } = await namedPromises({
           starsAmount: this.managers.appChatsManager.getStarsAmount(chatId),
-          isAnonymousSending: this.managers.appMessagesManager.isAnonymousSending(peerId)
+          isAnonymousSending: this.managers.appMessagesManager.isAnonymousSending(peerId),
+          canManageDirectMessages: this.managers.appPeersManager.canManageDirectMessages(peerId)
         });
 
         if(peerId === this.peerId) {
+          this.canManageDirectMessages = canManageDirectMessages;
           this.isAnonymousSending = isAnonymousSending;
           this.updateStarsAmount(starsAmount);
         }
@@ -878,8 +882,9 @@ export default class Chat extends EventListenerBase<{
       isPremiumRequired,
       starsAmount,
       sensitiveContentSettings,
-      chat
-    } = await namedPromises({
+      chat,
+      canManageDirectMessages
+    } = await m(namedPromises({
       noForwards: this.managers.appPeersManager.noForwards(peerId),
       restrictions: this.managers.appPeersManager.getPeerRestrictions(peerId),
       isRestricted: this.managers.appPeersManager.isPeerRestricted(peerId),
@@ -894,8 +899,9 @@ export default class Chat extends EventListenerBase<{
       isPremiumRequired: this.isPremiumRequiredToContact(peerId),
       starsAmount: this.managers.appPeersManager.getStarsAmount(peerId),
       sensitiveContentSettings: this.sensitiveContentSettings || this.managers.appPrivacyManager.getSensitiveContentSettings(),
-      chat: peerId.isAnyChat() && this.managers.appChatsManager.getChat(peerId.toChatId())
-    });
+      chat: peerId.isAnyChat() && this.managers.appChatsManager.getChat(peerId.toChatId()),
+      canManageDirectMessages: this.managers.appPeersManager.canManageDirectMessages(peerId)
+    }));
 
     // ! WARNING: TEMPORARY, HAVE TO GET TOPIC
     if(isForum && threadId) {
@@ -915,6 +921,7 @@ export default class Chat extends EventListenerBase<{
     this.isUserBlocked = isUserBlocked;
     this.isPremiumRequired = isPremiumRequired;
     this.isMonoforum = !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
+    this.canManageDirectMessages = canManageDirectMessages;
     this.starsAmount = starsAmount;
 
     this.isRestricted = isRestricted;

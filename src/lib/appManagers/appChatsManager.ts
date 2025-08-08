@@ -321,6 +321,13 @@ export class AppChatsManager extends AppManager {
     return good;
   }
 
+  public canManageDirectMessages(chatId: ChatId) {
+    const chat = this.getChat(chatId);
+    if(chat?._ !== 'channel') return false;
+
+    return !!(chat.admin_rights?.pFlags?.manage_direct_messages);
+  }
+
   /**
    * The amount of stars necessary to be paid for every message if the target chat had enabled it
    */
