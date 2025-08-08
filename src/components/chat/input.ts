@@ -6,7 +6,7 @@
 
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import type {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
-import type {AppMessagesManager, MessageSendingParams} from '../../lib/appManagers/appMessagesManager';
+import type {AppMessagesManager, MessageSendingParams, MyMessage} from '../../lib/appManagers/appMessagesManager';
 import type Chat from './chat';
 import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
 import '../../../public/recorder.min';
@@ -153,7 +153,7 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
-export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId'>;
+export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
@@ -227,6 +227,7 @@ export default class ChatInput {
   public replyToStoryId: MessageSendingParams['replyToStoryId'];
   public replyToQuote: MessageSendingParams['replyToQuote'];
   public replyToPeerId: MessageSendingParams['replyToPeerId'];
+  public replyToMonoforumPeerId: MessageSendingParams['replyToMonoforumPeerId'];
   public editMsgId: number;
   public editMessage: Message.message;
   private noWebPage: true;
@@ -3339,8 +3340,6 @@ export default class ChatInput {
 
     this.clearHelper();
     this.updateSendBtn();
-
-    this.directMessagesHandler.set({isReplying: false});
   };
 
   private onHelperClick = (e?: Event) => {
@@ -3412,6 +3411,7 @@ export default class ChatInput {
   public async createReplyPicker(replyTo: ChatInputReplyTo) {
     const peerId = await PopupPickUser.createReplyPicker();
     this.appImManager.setInnerPeer({peerId}).then(() => {
+      // TODO: Need a picker for monoforum threads
       this.appImManager.chat.input.initMessageReply(replyTo);
     });
   }
@@ -3421,8 +3421,8 @@ export default class ChatInput {
       return;
     }
 
-    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId} = this;
-    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId};
+    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId} = this;
+    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId};
   }
 
   public async clearInput(canSetDraft = true, fireEvent = true, clearValue = '') {
@@ -4006,6 +4006,17 @@ export default class ChatInput {
     f();
   }
 
+  public getChatInputReplyToFromMessage(message: MyMessage, quote?: MessageSendingParams['replyToQuote']) {
+    const result: ChatInputReplyTo = {
+      replyToMsgId: message?.mid
+    };
+
+    if(quote) result.replyToQuote = quote;
+    if(message?._ === 'message' && message?.saved_peer_id) result.replyToMonoforumPeerId = getPeerId(message.saved_peer_id);
+
+    return result;
+  }
+
   public async initMessageReply(replyTo: ReturnType<ChatInput['getReplyTo']>) {
     if(deepEqual(this.getReplyTo(), replyTo)) {
       return;
@@ -4076,11 +4087,12 @@ export default class ChatInput {
   }
 
   public setReplyTo(replyTo: ChatInputReplyTo) {
-    const {replyToMsgId, replyToQuote, replyToPeerId, replyToStoryId} = replyTo || {};
+    const {replyToMsgId, replyToQuote, replyToPeerId, replyToStoryId, replyToMonoforumPeerId} = replyTo || {};
     this.replyToMsgId = replyToMsgId;
     this.replyToStoryId = replyToStoryId;
     this.replyToQuote = replyToQuote;
     this.replyToPeerId = replyToPeerId;
+    this.replyToMonoforumPeerId = replyToMonoforumPeerId;
     this.center(true);
   }
 
@@ -4115,6 +4127,8 @@ export default class ChatInput {
       this.chat.container.classList.remove('is-helper-active');
       this.t();
     }
+
+    this.directMessagesHandler.set({isReplying: false});
   }
 
   private t() {

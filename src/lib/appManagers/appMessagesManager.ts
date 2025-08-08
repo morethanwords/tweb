@@ -223,6 +223,7 @@ export type MessageSendingParams = Partial<{
   replyToQuote: {text: string, entities?: MessageEntity[], offset?: number},
   replyToPeerId: PeerId,
   replyTo: InputReplyTo,
+  replyToMonoforumPeerId: PeerId,
   scheduleDate: number,
   silent: boolean,
   sendAsPeerId: number,
@@ -2048,6 +2049,9 @@ export class AppMessagesManager extends AppManager {
     } else if(options.replyToMsgId) {
       return {
         _: 'inputReplyToMessage',
+        monoforum_peer_id: this.appPeersManager.canManageDirectMessages(options.peerId) && options.replyToMonoforumPeerId ?
+          this.appPeersManager.getInputPeerById(options.replyToMonoforumPeerId) :
+          undefined,
         reply_to_msg_id: getServerMessageId(options.replyToMsgId),
         reply_to_peer_id: options.replyToPeerId && this.appPeersManager.getInputPeerById(options.replyToPeerId),
         top_msg_id: options.threadId ? getServerMessageId(options.threadId) : undefined,
@@ -2057,6 +2061,12 @@ export class AppMessagesManager extends AppManager {
           quote_offset: options.replyToQuote.offset
         })
       };
+    } else if(this.appPeersManager.canManageDirectMessages(options.peerId)) {
+      // TODO: Set correct peer
+      return {
+        _: 'inputReplyToMonoForum',
+        monoforum_peer_id: this.appPeersManager.getInputPeerById(0)
+      }
     }
   }
 
