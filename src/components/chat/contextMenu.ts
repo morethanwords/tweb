@@ -270,6 +270,33 @@ export default class ChatContextMenu {
       callback: this.onContextMenu,
       listenerSetter: this.attachListenerSetter
     });
+
+    // * handle message deletion
+    this.attachListenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
+      if(peerId !== this.chat.peerId) {
+        return;
+      }
+
+      if(this.mid && msgs.has(this.mid)) {
+        contextMenuController.close();
+        return;
+      }
+
+      if(this.chat.selection.isSelecting && this.selectedMessages) {
+        const hasDeletedSelectedMessage = this.selectedMessages.some((message) => msgs.has(message.mid));
+        if(hasDeletedSelectedMessage) {
+          contextMenuController.close();
+          return;
+        }
+      }
+
+      if(this.groupedMessages) {
+        const hasDeletedGroupedMessage = this.groupedMessages.some((message) => msgs.has(message.mid));
+        if(hasDeletedGroupedMessage) {
+          contextMenuController.close();
+        }
+      }
+    });
   }
 
   public onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
