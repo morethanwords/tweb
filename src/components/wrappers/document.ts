@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {isIpRevealingExtension, isIpRevealingMimeType} from '../../environment/ipRevealingDocuments';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import {CancellablePromise} from '../../helpers/cancellablePromise';
 import {clearBadCharsAndTrim} from '../../helpers/cleanSearchText';
@@ -339,7 +340,7 @@ export default async function wrapDocument({message,
     } else {
       download = appDownloadManager.downloadToDisc({media: doc, queueId});
 
-      if(doc.mime_type === 'image/svg+xml') {
+      if(isIpRevealingMimeType(doc.mime_type) || isIpRevealingExtension(ext)) {
         confirmationPopup({
           descriptionLangKey: 'Chat.File.QuickLook.Svg',
           button: {

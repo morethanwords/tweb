@@ -24,6 +24,7 @@ export const MAX_FILE_SAVE_SIZE = 20 * 1024 * 1024;
 export const THUMB_TYPE_FULL = '';
 export const TOPIC_COLORS = [0x6FB9F0, 0xFFD67E, 0xCB86DB, 0x8EEE98, 0xFF93B2, 0xFB6F5F];
 export const ATTACH_MENU_BOT_ICON_NAME = 'default_static';
+export const MESSAGES_ALBUM_MAX_SIZE = 10;
 export const MESSAGE_ID_OFFSET = 0x100000000;
 export const GENERAL_TOPIC_ID = MESSAGE_ID_OFFSET + 1;
 export const CAN_HIDE_TOPIC = false;
