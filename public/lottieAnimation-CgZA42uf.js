@@ -1,2 +1,0 @@
-import{dc as n,b as a,Z as s}from"./index-CWTkMyla.js";import{c as r}from"./classNames-CW2brDtv.js";import{v as m,L as c}from"./appDialogsManager-BhLqZLHU.js";const d="_LottieAnimation_r3b7k_1",l="_AdditionalPadding_r3b7k_10",L={LottieAnimation:d,AdditionalPadding:l},_=t=>{const{lottieLoader:o}=n(),i=m();return a(c,s({lottieLoader:o,onPromise:e=>i.collect(e),get class(){return r(t.class,L.LottieAnimation)},restartOnClick:!0},t))};export{_ as L,L as c};
-//# sourceMappingURL=lottieAnimation-CgZA42uf.js.map
