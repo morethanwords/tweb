@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createSignal, Setter, Show} from 'solid-js';
+import {createSignal} from 'solid-js';
 import {hexToRgb, calculateLuminance, getTextColor, calculateOpacity, rgbaToRgb, rgbIntToHex} from '../helpers/color';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import safeWindowOpen from '../helpers/dom/safeWindowOpen';
 import ListenerSetter from '../helpers/listenerSetter';
 import safeAssign from '../helpers/object/safeAssign';
 import themeController from '../helpers/themeController';
-import {AttachMenuBot, DataJSON, WebViewResult, Document} from '../layer';
+import {AttachMenuBot, DataJSON, WebViewResult, Document, MessagesPreparedInlineMessage} from '../layer';
 import appImManager from '../lib/appManagers/appImManager';
 import {InternalLink, INTERNAL_LINK_TYPE} from '../lib/appManagers/internalLink';
 import internalLinkProcessor from '../lib/appManagers/internalLinkProcessor';
@@ -47,10 +47,9 @@ import {PreloaderTsx} from './putPreloader';
 import ButtonIcon from './buttonIcon';
 import ButtonMenuToggle from './buttonMenuToggle';
 import type {RequestWebViewOptions} from '../lib/appManagers/appAttachMenuBotsManager';
-import getPathFromBytes, {createSvgFromBytes} from '../helpers/bytes/getPathFromBytes';
+import {createSvgFromBytes} from '../helpers/bytes/getPathFromBytes';
 import PopupWebAppPreparedMessage from './popups/webAppPreparedMessage';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import IS_WEB_APP_BROWSER_SUPPORTED from '../environment/webAppBrowserSupport';
 
 const SANDBOX_ATTRIBUTES = [
@@ -115,7 +114,7 @@ export default class WebApp {
     safeAssign(this, options);
 
     this.listenerSetter = new ListenerSetter();
-    this.managers = rootScope.managers
+    this.managers = rootScope.managers;
 
     this.title.classList.add('web-app-title');
     this.header.classList.add('web-app-header');
@@ -251,7 +250,7 @@ export default class WebApp {
           </Transition>
         </ButtonTsx>
       </>
-    )
+    );
   }
 
   public onBackClick = (): false | void => {
@@ -544,10 +543,10 @@ export default class WebApp {
     }
 
     this.telegramWebView.dispatchWebViewEvent('clipboard_text_received', result);
-  }
+  };
 
   protected handleHapticFeedback = (data: TelegramWebViewEventMap['web_app_trigger_haptic_feedback']) => {
-    let pattern: number[]
+    let pattern: number[];
     switch(data.type) {
       case 'impact':
         switch(data.impact_style) {
@@ -588,14 +587,14 @@ export default class WebApp {
     if(pattern) {
       navigator.vibrate(pattern);
     }
-  }
+  };
 
   protected handleSetEmojiStatus = this.debouncePopupMethod(async(data) => {
     const {telegramWebView, managers, webViewOptions} = this;
     const doc = await managers.appEmojiManager.getCustomEmojiDocument(data.custom_emoji_id);
     if(!doc) {
       telegramWebView.dispatchWebViewEvent('emoji_status_failed', {error: 'SUGGESTED_EMOJI_INVALID'});
-      return
+      return;
     }
 
     const duration = data.duration ?? 0;
@@ -618,7 +617,7 @@ export default class WebApp {
             _: 'emojiStatus',
             document_id: data.custom_emoji_id,
             until: duration ? tsNow(true) + duration : undefined
-          })
+          });
           toastNew({langPackKey: 'SetAsEmojiStatusInfo'});
           telegramWebView.dispatchWebViewEvent('emoji_status_set', undefined);
         } catch(err) {
@@ -632,7 +631,7 @@ export default class WebApp {
     });
 
     popup.show();
-  }, 'emoji_status_failed', {error: 'USER_DECLINED'})
+  }, 'emoji_status_failed', {error: 'USER_DECLINED'});
 
   protected handleEmojiStatusAccess = this.debouncePopupMethod(async() => {
     const {telegramWebView, managers, webViewOptions} = this;
@@ -672,7 +671,7 @@ export default class WebApp {
     });
 
     popup.show();
-  }, 'emoji_status_access_requested', {status: 'cancelled'})
+  }, 'emoji_status_access_requested', {status: 'cancelled'});
 
   protected handleCheckLocation = async() => {
     const {telegramWebView} = this;
@@ -691,7 +690,7 @@ export default class WebApp {
     });
   }
 
-  protected _requestLocationPopup = false
+  protected _requestLocationPopup = false;
   protected handleRequestLocation = async() => {
     const botPermission = await this.managers.appBotsManager.readBotInternalStorage(this.webViewOptions.botId, 'locationPermission');
 
@@ -731,7 +730,7 @@ export default class WebApp {
         }
       });
       popup.show();
-      return
+      return;
     }
 
     if(botPermission === 'true') {
@@ -840,7 +839,7 @@ export default class WebApp {
 
   protected _fileDownloadPending = false;
   protected handleFileDownload = async(event: TelegramWebViewEventMap['web_app_request_file_download']) => {
-    if(this._fileDownloadPending) return
+    if(this._fileDownloadPending) return;
     this._fileDownloadPending = true;
 
     const {telegramWebView, managers, webViewOptions} = this;
@@ -850,15 +849,15 @@ export default class WebApp {
         bot: await managers.appUsersManager.getUserInput(webViewOptions.botId),
         file_name: event.file_name,
         url: event.url
-      })
+      });
 
       if(!allow) {
         telegramWebView.dispatchWebViewEvent('file_download_requested', {status: 'cancelled'});
-        return
+        return;
       }
     } catch(e) {
       telegramWebView.dispatchWebViewEvent('file_download_requested', {status: 'cancelled'});
-      return
+      return;
     }
 
     const popup = PopupElement.createPopup(PopupPeer, 'popup-confirmation', {
@@ -892,7 +891,7 @@ export default class WebApp {
                   {langKey: 'Confirm', callback: () => safeWindowOpen(event.url)},
                   {langKey: 'Cancel', isCancel: true}
                 ]
-              }).show()
+              }).show();
             });
           }
         },
@@ -901,16 +900,16 @@ export default class WebApp {
           isCancel: true
         }
       ]
-    })
+    });
 
     popup.addEventListener('close', () => {
       if(this._fileDownloadPending) {
         this._fileDownloadPending = false;
         telegramWebView.dispatchWebViewEvent('file_download_requested', {status: 'cancelled'});
       }
-    })
+    });
 
-    popup.show()
+    popup.show();
   }
 
   protected createWebView() {
@@ -1136,7 +1135,7 @@ export default class WebApp {
       web_app_request_fullscreen: () => {
         if(document.fullscreenElement === this.body) {
           this.telegramWebView.dispatchWebViewEvent('fullscreen_failed', {error: 'ALREADY_FULLSCREEN'});
-          return
+          return;
         }
 
         this.body.requestFullscreen().catch((err) => {
@@ -1145,11 +1144,11 @@ export default class WebApp {
         });
       },
       web_app_exit_fullscreen: () => {
-        if(document.fullscreenElement !== this.body) {
-          return
+        if(document.fullscreenElement === this.body) {
+          document.exitFullscreen();
         }
 
-        document.exitFullscreen()
+        telegramWebView.dispatchWebViewEvent('fullscreen_changed', {is_fullscreen: false});
       },
       web_app_secure_storage_save_key: ({req_id}) => telegramWebView.dispatchWebViewEvent('secure_storage_failed', {req_id, error: 'UNSUPPORTED'}),
       web_app_secure_storage_get_key: ({req_id}) => telegramWebView.dispatchWebViewEvent('secure_storage_failed', {req_id, error: 'UNSUPPORTED'}),
@@ -1159,7 +1158,7 @@ export default class WebApp {
         toastNew({langPackKey:'BotStorySharingNotSupported'});
       },
       web_app_send_prepared_message: this.debouncePopupMethod(async({id}) => {
-        let message
+        let message: MessagesPreparedInlineMessage.messagesPreparedInlineMessage;
         try {
           message = await this.managers.appBotsManager.getPreparedMessage(this.webViewOptions.botId, id);
         } catch(err) {
@@ -1189,8 +1188,8 @@ export default class WebApp {
         const minAge = config.verify_age_min ?? 18;
 
         if(age < minAge) {
-          toastNew({langPackKey: 'AgeVerification.Failed'})
-          return
+          toastNew({langPackKey: 'AgeVerification.Failed'});
+          return;
         }
 
         await this.managers.appPrivacyManager.notifyAgeVerified();
@@ -1211,7 +1210,6 @@ export default class WebApp {
 
   public async getTitle(plain: true): Promise<string>;
   public async getTitle(plain: false): Promise<HTMLElement | DocumentFragment>;
-
   public async getTitle(plain: boolean): Promise<string | HTMLElement | DocumentFragment> {
     if(!this.attachMenuBot) {
       const peerId = this.getPeerId();
