@@ -1,7 +1,6 @@
 import PopupElement from '.';
 
 import Chat from '../chat/chat';
-import {InputFieldTsx} from '../inputFieldTsx';
 import {I18nTsx} from '../../helpers/solid/i18n';
 
 import css from './checklist.module.scss';
@@ -12,7 +11,7 @@ import CheckboxFieldTsx from '../checkboxFieldTsx';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
-import {InputMedia, Message, MessageMedia, TextWithEntities, TodoItem, TodoList} from '../../layer';
+import {InputMedia, Message, MessageMedia, TodoItem} from '../../layer';
 import {MTAppConfig} from '../../lib/mtproto/appConfig';
 import safeAssign from '../../helpers/object/safeAssign';
 import {wrapEmojiTextWithEntities} from '../../lib/richTextProcessor/wrapEmojiText';
@@ -48,10 +47,10 @@ export class PopupChecklist extends PopupElement {
 
   private async construct() {
     const appConfig = await this.managers.apiManager.getAppConfig();
-    this.appendSolidBody(() => this._construct({appConfig}))
+    this.appendSolidBody(() => this._construct({appConfig}));
   }
 
-  protected _construct(props: { appConfig: MTAppConfig }) {
+  protected _construct(props: {appConfig: MTAppConfig}) {
     const maxItems = props.appConfig.todo_items_max ?? 10;
     const titleInput = new InputField({
       placeholder: 'NewChecklist.TitlePlaceholder',
@@ -77,7 +76,7 @@ export class PopupChecklist extends PopupElement {
           const val = v.field.value.trim();
           return val.length > 0 && val.length <= props.appConfig.todo_item_length_max;
         });
-      })()
+      })();
 
       this.btnConfirm.disabled = !valid;
     };
@@ -108,24 +107,24 @@ export class PopupChecklist extends PopupElement {
       updateConfirmButton();
       if(!existing || existing.id === this.focusItemId) {
         fastRaf(() => {
-          field.input.focus()
-        })
+          field.input.focus();
+        });
       }
     }
 
     const removeItem = (id: number) => {
       setItems(v => v.filter(v => v.id !== id));
       updateConfirmButton();
-    }
+    };
 
     if(this.editMessage) {
       titleInput.setValueSilently(wrapEmojiTextWithEntities(this.editMessage.media.todo.title), true);
       for(const item of this.editMessage.media.todo.list) {
         addItem(item);
       }
-      if(this.appending) addItem()
+      if(this.appending) addItem();
     } else {
-      addItem()
+      addItem();
     }
 
     const handleConfirm = async() => {
@@ -150,7 +149,7 @@ export class PopupChecklist extends PopupElement {
               }
             };
           })
-        })
+        });
       } else {
         const title = getRichValueWithCaret(titleInput.input, true, false);
 
@@ -272,7 +271,7 @@ export class PopupChecklist extends PopupElement {
             <div class={css.options}>
               <I18nTsx class={css.groupTitle} key="ChecklistOptions" />
               <RowTsx
-                title="Allow Others to Mark as Done"
+                title={<I18nTsx key="ChecklistAllowOthersDone" />}
                 checkboxFieldToggle={
                   <CheckboxFieldTsx
                     checked={allowOthersToMarkAsDone()}
@@ -282,7 +281,7 @@ export class PopupChecklist extends PopupElement {
                 }
               />
               <RowTsx
-                title="Allow Others to Add Tasks"
+                title={<I18nTsx key="ChecklistAllowOthersAdd" />}
                 checkboxFieldToggle={
                   <CheckboxFieldTsx
                     checked={allowOthersToAddTasks()}
@@ -295,6 +294,6 @@ export class PopupChecklist extends PopupElement {
           )}
         </Scrollable>
       </>
-    )
+    );
   }
 }

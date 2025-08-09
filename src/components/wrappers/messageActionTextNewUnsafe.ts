@@ -693,7 +693,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       case 'messageActionPaidMessagesPrice': {
         const isFree = !+action.stars;
         langPackKey = isFree ? 'PaidMessages.GroupPriceChangedFree' : 'PaidMessages.GroupPriceChanged';
-        args = [+action.stars]
+        args = [+action.stars];
         break;
       }
 
@@ -704,10 +704,10 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
       case 'messageActionStarGift':
         if(message.pFlags.out) {
-          langPackKey = 'StarGiftSentMessageOutgoing'
+          langPackKey = 'StarGiftSentMessageOutgoing';
           args = [(action.gift as StarGift.starGift).stars];
         } else {
-          langPackKey = 'StarGiftSentMessageIncoming'
+          langPackKey = 'StarGiftSentMessageIncoming';
           args = [getNameDivHTML(message.fromId, plain), (action.gift as StarGift.starGift).stars];
         }
         break;
@@ -723,76 +723,76 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       case 'messageActionTodoAppendTasks': {
         let listMsg = await managers.appMessagesManager.getMessageByPeer(message.peerId, message.reply_to_mid);
         if(!listMsg) {
-          listMsg = await managers.appMessagesManager.fetchMessageReplyTo(message) as Message.message
+          listMsg = await managers.appMessagesManager.fetchMessageReplyTo(message) as Message.message;
         }
 
-        icon = Icon('checklist_add')
+        icon = Icon('checklist_add');
 
         if(listMsg?._ === 'message' && listMsg.media._ === 'messageMediaToDo') {
           if(action.list.length === 1) {
-            langPackKey = 'ChecklistAddedTask';
+            langPackKey = `ChecklistAddedTask${message.pFlags.out ? 'You' : ''}`;
             args = [
-              message.pFlags.out ? i18n('FromYou') : getNameDivHTML(message.fromId, plain),
+              message.pFlags.out ? undefined : getNameDivHTML(message.fromId, plain),
               wrapSomeText(action.list[0].title.text, plain, action.list[0].title.entities),
               wrapSomeText(listMsg.media.todo.title.text, plain, listMsg.media.todo.title.entities)
             ];
           } else {
-            langPackKey = 'ChecklistAddedTaskMany';
+            langPackKey = `ChecklistAddedTaskMany${message.pFlags.out ? 'You' : ''}`;
             args = [
-              message.pFlags.out ? i18n('FromYou') : getNameDivHTML(message.fromId, plain),
+              message.pFlags.out ? undefined : getNameDivHTML(message.fromId, plain),
               joinTexts(action.list.map((it) => wrapSomeText(it.title.text, plain, it.title.entities)), TODO_JOIN_OPTIONS),
               wrapSomeText(listMsg.media.todo.title.text, plain, listMsg.media.todo.title.entities)
             ];
           }
         }
-        break
+        break;
       }
       case 'messageActionTodoCompletions': {
         let listMsg = await managers.appMessagesManager.getMessageByPeer(message.peerId, message.reply_to_mid);
         if(!listMsg) {
-          listMsg = await managers.appMessagesManager.fetchMessageReplyTo(message) as Message.message
+          listMsg = await managers.appMessagesManager.fetchMessageReplyTo(message) as Message.message;
         }
 
         if(listMsg?._ === 'message' && listMsg.media._ === 'messageMediaToDo') {
-          const list = listMsg.media.todo
-          const itemsMap = new Map<number, TextWithEntities>()
+          const list = listMsg.media.todo;
+          const itemsMap = new Map<number, TextWithEntities>();
           for(const it of list.list) {
-            itemsMap.set(it.id, it.title)
+            itemsMap.set(it.id, it.title);
           }
 
-          const completed = action.completed.map((it) => itemsMap.get(it)).filter(Boolean)
-          const incompleted = action.incompleted.map((it) => itemsMap.get(it)).filter(Boolean)
+          const completed = action.completed.map((it) => itemsMap.get(it)).filter(Boolean);
+          const incompleted = action.incompleted.map((it) => itemsMap.get(it)).filter(Boolean);
 
           if(completed.length === 0) {
-            icon = Icon('checklist_undone')
-            langPackKey = 'ChecklistMarkedUndone';
+            icon = Icon('checklist_undone');
+            langPackKey = `ChecklistMarkedUndone${message.pFlags.out ? 'You' : ''}`;
             args = [
-              message.pFlags.out ? i18n('FromYou') : getNameDivHTML(message.fromId, plain),
+              message.pFlags.out ? undefined : getNameDivHTML(message.fromId, plain),
               joinTexts(incompleted.map((it) => wrapSomeText(it.text, plain, it.entities)), TODO_JOIN_OPTIONS)
             ];
-            break
+            break;
           }
 
           if(incompleted.length === 0) {
-            icon = Icon('checklist_done')
-            langPackKey = 'ChecklistMarkedDone';
+            icon = Icon('checklist_done');
+            langPackKey = `ChecklistMarkedDone${message.pFlags.out ? 'You' : ''}`;
             args = [
-              message.pFlags.out ? i18n('FromYou') : getNameDivHTML(message.fromId, plain),
+              message.pFlags.out ? undefined : getNameDivHTML(message.fromId, plain),
               joinTexts(completed.map((it) => wrapSomeText(it.text, plain, it.entities)), TODO_JOIN_OPTIONS)
             ];
-            break
+            break;
           }
 
-          icon = Icon('checklist_done')
-          langPackKey = 'ChecklistMarkedMixed';
+          icon = Icon('checklist_done');
+          langPackKey = `ChecklistMarkedMixed${message.pFlags.out ? 'You' : ''}`;
           args = [
-            message.pFlags.out ? i18n('FromYou') : getNameDivHTML(message.fromId, plain),
+            message.pFlags.out ? undefined : getNameDivHTML(message.fromId, plain),
             joinTexts(completed.map((it) => wrapSomeText(it.text, plain, it.entities)), TODO_JOIN_OPTIONS),
             joinTexts(incompleted.map((it) => wrapSomeText(it.text, plain, it.entities)), TODO_JOIN_OPTIONS)
           ];
         }
 
-        break
+        break;
       }
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
