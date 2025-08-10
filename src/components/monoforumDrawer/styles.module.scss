@@ -1,0 +1,40 @@
+.Container {
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.InnerContainer {
+  /* opacity: 0.5; */
+
+  z-index: 1;
+  --offset: 5.0625rem;
+
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: calc(100% - var(--offset));
+
+  background-color: var(--surface-color);
+  border-left: 1px solid var(--border-color);
+
+  transition: 0.2s transform;
+
+  pointer-events: initial;
+
+  &.hidden {
+    transform: translateX(100%);
+  }
+}
+
+.Header {
+  padding: 0 0.75rem;
+}
+
+.Title {
+  flex: 1;
+  padding-left: 0.5rem;
+}
