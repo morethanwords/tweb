@@ -413,8 +413,12 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
 
   themeController.setThemeListener();
 
-  // * fetch langPackDifference
-  checkLangPackForUpdates();
+  // * fetch lang pack updates
+  if(langPack.localVersion !== App.langPackLocalVersion && IS_BETA) {
+    I18n.getLangPackAndApply(langPack.lang_code);
+  } else {
+    checkLangPackForUpdates();
+  }
 
   // * handle multi-tab language change (will occur extra time in the original tab though)
   rootScope.addEventListener('language_change', (langCode) => {

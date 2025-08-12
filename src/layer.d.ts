@@ -7704,7 +7704,7 @@ export namespace LangPackDifference {
     from_version: number,
     version: number,
     strings: Array<LangPackString>,
-    local?: boolean,
+    localVersion?: number,
     countries?: HelpCountriesList.helpCountriesList
   };
 }

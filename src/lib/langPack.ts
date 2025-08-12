@@ -87,7 +87,6 @@ namespace I18n {
   export let lastRequestedLangCode: string;
   export let lastRequestedNormalizedLangCode: string;
   export let lastAppliedLangCode: string;
-  export let requestedServerLanguage = false;
   export let timeFormat: State['settings']['timeFormat'];
   export let isRTL = false;
 
@@ -103,17 +102,23 @@ namespace I18n {
     setLangCodeNormalized(lastRequestedNormalizedLangCode.split('-')[0] as any);
   }
 
-  export function getCacheLangPack() {
+  export function getCacheLangPack(dontLoadLocal?: boolean) {
     return Promise.all([
-      commonStateStorage.get('langPack').then((langPack) => langPack || loadLocalLangPack()),
+      commonStateStorage.get('langPack').then((langPack) => langPack || (dontLoadLocal ? undefined : loadLocalLangPack())),
       polyfillPromise
     ]).then(([langPack]) => langPack);
   }
 
   export function getCacheLangPackAndApply() {
-    return cacheLangPackPromise ||= getCacheLangPack().then((langPack) => {
+    return cacheLangPackPromise ||= getCacheLangPack(true).then(async(langPack) => {
+      if(!langPack) {
+        langPack = await loadLocalLangPack();
+        langPack = await saveLangPack(langPack, false);
+      }
+
       setLangCode(langPack.lang_code);
-      return saveLangPack(langPack, true);
+      applyLangPack(langPack);
+      return langPack;
     }).finally(() => {
       cacheLangPackPromise = undefined;
     });
@@ -174,9 +179,9 @@ namespace I18n {
         from_version: 0,
         lang_code: defaultCode,
         strings,
-        version: 0,
-        local: true,
-        countries: countries.default
+        version: App.langPackVersion,
+        countries: countries.default,
+        localVersion: App.langPackLocalVersion
       };
       return langPack;
     });
@@ -184,7 +189,6 @@ namespace I18n {
 
   export function loadLangPack(langCode: string, web?: boolean, ignoreCache?: boolean) {
     web = true;
-    requestedServerLanguage = true;
     const managers = rootScope.managers;
     return Promise.all([
       managers.appLangPackManager.getLangPack(langCode, web ? 'web' : App.langPack, ignoreCache),
@@ -235,6 +239,7 @@ namespace I18n {
 
       langPack1.strings = strings;
       langPack1.countries = countries;
+      langPack1.localVersion = App.langPackLocalVersion;
       return saveLangPack(langPack1, true);
     });
   }

@@ -158,4 +158,15 @@ export default [{
       project: ['./tsconfig.json']
     }
   }
+}, {
+  files: ['**/*.js'],
+
+  languageOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'script'
+  },
+
+  rules: {
+    '@typescript-eslint/await-thenable': 'off'
+  }
 }];

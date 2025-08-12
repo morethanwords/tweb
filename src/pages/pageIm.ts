@@ -6,7 +6,6 @@
 
 import blurActiveElement from '../helpers/dom/blurActiveElement';
 import loadFonts from '../helpers/dom/loadFonts';
-import I18n from '../lib/langPack';
 import rootScope from '../lib/rootScope';
 import Page from './page';
 
@@ -14,14 +13,6 @@ const onFirstMount = () => {
   rootScope.managers.appStateManager.pushToState('authState', {_: 'authStateSignedIn'});
   // ! TOO SLOW
   /* appStateManager.saveState(); */
-
-  if(!I18n.requestedServerLanguage) {
-    I18n.getCacheLangPackAndApply().then((langPack) => {
-      if(langPack.local) {
-        I18n.getLangPackAndApply(langPack.lang_code);
-      }
-    });
-  }
 
   page.pageEl.style.display = '';
 

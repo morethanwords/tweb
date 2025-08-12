@@ -280,7 +280,7 @@
 }, {
   "predicate": "langPackDifference",
   "params": [
-    {"name": "local", "type": "boolean"},
+    {"name": "localVersion", "type": "number"},
     {"name": "countries", "type": "HelpCountriesList.helpCountriesList"}
   ]
 }, {
