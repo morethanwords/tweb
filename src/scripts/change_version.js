@@ -8,12 +8,16 @@
 
 const fs = require('fs');
 
-const version = process.argv[2];
-const changelog = process.argv[3];
+const version = process.argv[2] || 'same';
+const changelog = process.argv[3] || 'same';
+const langVersion = process.argv[4] || 'same';
 const PREFIX = 'VITE_';
 const BUILD_KEY = PREFIX + 'BUILD';
 const VERSION_KEY = PREFIX + 'VERSION';
 const VERSION_FULL_KEY = PREFIX + 'VERSION_FULL';
+const LANG_PACK_VERSION_KEY = PREFIX + 'LANG_PACK_VERSION';
+
+console.log('Change version to:', {version, changelog, langVersion});
 
 const envStr = fs.readFileSync('./.env').toString();
 const env = {};
@@ -30,6 +34,10 @@ if(version !== 'same') {
 env[BUILD_KEY] = +env[BUILD_KEY] + 1;
 env[VERSION_FULL_KEY] = `${env[VERSION_KEY]} (${env[BUILD_KEY]})`;
 
+if(langVersion !== 'same') {
+  env[LANG_PACK_VERSION_KEY] = langVersion;
+}
+
 const lines = [];
 for(const key in env) {
   lines.push(`${key}=${env[key]}`);
@@ -37,7 +45,7 @@ for(const key in env) {
 fs.writeFileSync('./.env', lines.join('\n') + '\n', 'utf-8');
 fs.writeFileSync('./public/version', env[VERSION_FULL_KEY], 'utf-8');
 
-if(changelog) {
+if(changelog !== 'same') {
   const data = fs.readFileSync('./CHANGELOG.md');
   const fd = fs.openSync('./CHANGELOG.md', 'w+');
   const lines = [

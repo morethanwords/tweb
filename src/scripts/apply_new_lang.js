@@ -1,12 +1,20 @@
 const https = require('https');
 const fs = require('fs');
+const path = require('path');
 
-https.get('https://translations.telegram.org/en/webk/export', (response) => {
+const onResponse = (response) => {
   let data = '';
 
   response.on('data', (chunk) => {
     data += chunk;
   });
+
+  const version = response.headers['content-disposition'].match(/filename=".+v(\d+)\./)[1];
+
+  if(!version) {
+    console.log(response.headers);
+    throw new Error('No version found');
+  }
 
   response.on('end', () => {
     const ignore = new Set([
@@ -19,9 +27,9 @@ https.get('https://translations.telegram.org/en/webk/export', (response) => {
     ]);
 
     ['lang', 'langSign'].forEach((part) => {
-      const path = `../${part}.ts`;
+      const filePath = path.resolve(__dirname, `../${part}.ts`);
     
-      let lang = fs.readFileSync(path).toString();
+      let lang = fs.readFileSync(filePath).toString();
 
       const plural = {};
       data.split('\n').forEach((line) => {
@@ -53,9 +61,17 @@ https.get('https://translations.telegram.org/en/webk/export', (response) => {
         }
       }
 
-      fs.writeFileSync(path, lang);
+      fs.writeFileSync(filePath, lang);
     });
+
+    console.log(version);
   });
-}).on("error", (err) => {
-  console.log("Error: " + err.message);
-});
+};
+
+const applyNewLang = () => {
+  https.get('https://translations.telegram.org/en/webk/export?mode=prod', onResponse).on("error", (err) => {
+    throw new Error('Failed to fetch translations: ' + err.message);
+  });
+};
+
+applyNewLang();

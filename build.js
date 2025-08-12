@@ -8,21 +8,18 @@ const {NodeSSH} = require('node-ssh');
 const zlib = require('zlib');
 
 const npmCmd = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
-const version = process.argv[2] || 'same';
-const changelog = process.argv[3] || '';
-const child = spawn(npmCmd, ['run', 'change-version', version, changelog].filter(Boolean), {shell: true});
-child.stdout.on('data', (chunk) => {
-  console.log(chunk.toString());
-});
+const publicPath = path.join(__dirname, 'public');
+const distPath = path.join(__dirname, 'dist');
 
-const publicPath = __dirname + '/public/';
-const distPath = __dirname + '/dist/';
+function readSSHConfig() {
+  let sshConfig;
+  try {
+    sshConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'ssh.json'), 'utf8'));
+  } catch(err) {
 
-let sshConfig;
-try {
-  sshConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'ssh.json'), 'utf8'));
-} catch(err) {
-  console.log('No SSH config, skipping upload');
+  }
+
+  return sshConfig;
 }
 
 function copyFiles(source, destination) {
@@ -57,37 +54,52 @@ function clearOldFiles() {
   });
 }
 
-child.on('close', (code) => {
-  if(code != 0) {
-    console.log(`child process exited with code ${code}`);
-  }
-
-  const child = spawn(npmCmd, ['run', 'build'], {shell: true});
+function changeVersion(langVersion) {
+  const version = process.argv[2] || 'same';
+  const changelog = process.argv[3] || 'same';
+  const child = spawn(npmCmd, ['run', 'change-version', version, changelog, langVersion], {shell: true});
   child.stdout.on('data', (chunk) => {
     console.log(chunk.toString());
   });
 
-  let error = '';
-  child.stderr.on('data', (chunk) => {
-    error += chunk.toString();
+  return new Promise((resolve, reject) => {
+    child.on('close', (code) => {
+      if(code != 0) {
+        reject(new Error('Failed to change version'));
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+function applyNewLang() {
+  const child = spawn(npmCmd, ['run', 'apply-new-lang'], {shell: true});
+  let data = '';
+  child.stdout.on('data', (chunk) => {
+    data += chunk.toString();
   });
 
-  child.on('close', (code) => {
-    if(code != 0) {
-      console.error(error, `build child process exited with code ${code}`);
-    } else {
-      onCompiled();
-    }
+  return new Promise((resolve, reject) => {
+    child.on('close', (code) => {
+      if(code != 0) {
+        reject(new Error('Failed to apply new lang'));
+      } else {
+        const version = +data.trim().split(/[\r\n]/).pop();
+        resolve(version);
+      }
+    });
   });
-});
+}
 
-const ssh = new NodeSSH();
 const onCompiled = async() => {
   console.log('Compiled successfully.');
   copyFiles(distPath, publicPath);
   clearOldFiles();
 
+  const sshConfig = readSSHConfig();
   if(!sshConfig) {
+    console.log('No SSH config, skipping upload');
     return;
   }
 
@@ -97,6 +109,7 @@ const onCompiled = async() => {
     cwd: publicPath
   });
 
+  const ssh = new NodeSSH();
   await ssh.connect({
     ...sshConfig,
     tryKeyboard: true
@@ -151,3 +164,29 @@ function compressFolder(folderPath) {
   console.log(`stdout: ${stdout}`);
   console.log(`stderr: ${stderr}`);
 }); */
+
+applyNewLang().then((version) => {
+  console.log('Applied new lang', version);
+  return changeVersion(version);
+}, () => {
+  console.error('Failed to apply new lang');
+  return changeVersion('same');
+}).then(() => {
+  const child = spawn(npmCmd, ['run', 'build'], {shell: true});
+  child.stdout.on('data', (chunk) => {
+    console.log(chunk.toString());
+  });
+
+  let error = '';
+  child.stderr.on('data', (chunk) => {
+    error += chunk.toString();
+  });
+
+  child.on('close', (code) => {
+    if(code != 0) {
+      console.error(error, `build child process exited with code ${code}`);
+    } else {
+      onCompiled();
+    }
+  });
+});

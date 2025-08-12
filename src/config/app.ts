@@ -22,7 +22,7 @@ const App = {
   version: import.meta.env.VITE_VERSION,
   versionFull: import.meta.env.VITE_VERSION_FULL,
   build: +import.meta.env.VITE_BUILD,
-  langPackVersion: '6.4.4',
+  langPackVersion: +import.meta.env.VITE_LANG_PACK_VERSION,
   langPack: 'webk',
   langPackCode: 'en',
   domains: MAIN_DOMAINS,
