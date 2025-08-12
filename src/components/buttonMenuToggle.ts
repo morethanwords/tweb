@@ -97,6 +97,10 @@ export default function ButtonMenuToggle({
     closeTimeout = undefined;
   };
 
+  // * fix translation by deleting text elements on close
+  const canDeleteTextElementsOnClose = buttons.filter((button) => !button.textElement);
+  const previousButtons = buttons.slice();
+
   let element: HTMLElement, closeTimeout: number, tempId = 0;
   ButtonMenuToggleHandler({
     el: button,
@@ -114,6 +118,10 @@ export default function ButtonMenuToggle({
       if(!filteredButtons.length) {
         return;
       }
+
+      const newButtons = filteredButtons.slice().filter((button) => !previousButtons.includes(button));
+      previousButtons.push(...newButtons);
+      canDeleteTextElementsOnClose.push(...newButtons.filter((button) => !button.textElement));
 
       const _element = element = await ButtonMenu({
         buttons: filteredButtons,
@@ -152,6 +160,7 @@ export default function ButtonMenuToggle({
           try {button.dispose?.();} catch{}
           button.element = undefined;
         });
+        canDeleteTextElementsOnClose.forEach((button) => delete button.textElement);
         element.remove();
       }, 300);
     }
