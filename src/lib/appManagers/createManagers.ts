@@ -29,6 +29,7 @@ import {AppReactionsManager} from './appReactionsManager';
 import {AppStickersManager} from './appStickersManager';
 import {AppUsersManager} from './appUsersManager';
 import {AppWebPagesManager} from './appWebPagesManager';
+import {AppLangPackManager} from './appLangPackManager';
 import {ApiFileManager} from '../mtproto/apiFileManager';
 import {ApiManager} from '../mtproto/apiManager';
 import ctx from '../../environment/ctx';
@@ -88,6 +89,7 @@ export default function createManagers(
     appPrivacyManager: new AppPrivacyManager,
     appInlineBotsManager: new AppInlineBotsManager,
     appStickersManager: new AppStickersManager,
+    appLangPackManager: new AppLangPackManager,
     referenceDatabase: new ReferenceDatabase,
     appEmojiManager: new AppEmojiManager,
     filtersStorage: new FiltersStorage,

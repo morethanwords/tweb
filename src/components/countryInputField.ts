@@ -29,7 +29,7 @@ const setCountries = () => {
 let init = () => {
   init = undefined;
   setCountries();
-  rootScope.addEventListener('language_change', () => {
+  rootScope.addEventListener('language_apply', () => {
     setCountries();
   });
 };

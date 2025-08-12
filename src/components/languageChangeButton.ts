@@ -24,7 +24,7 @@ function getLang(): Promise<[Config.config, LangPackString[], LangPackDifference
       return Promise.all([
         config,
         I18n.getStrings(config.suggested_lang_code, ['Login.ContinueOnLanguage']),
-        I18n.getCacheLangPack()
+        I18n.getCacheLangPackAndApply()
       ]);
     } else {
       return [] as any;
@@ -61,7 +61,7 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
       });
     });
 
-    rootScope.addEventListener('language_change', () => {
+    rootScope.addEventListener('language_apply', () => {
       btnChangeLanguage.remove();
     }, {once: true});
 
@@ -77,7 +77,7 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
       btnChangeLanguage.disabled = true;
       putPreloader(btnChangeLanguage);
 
-      I18n.getLangPack(config.suggested_lang_code);
+      I18n.getLangPackAndApply(config.suggested_lang_code);
     });
   });
 }

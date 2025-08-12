@@ -142,10 +142,10 @@ export default class AppLanguageTab extends SliderSuperTab {
       });
 
       const form = RadioFormFromRows([...radioRows.values()], (value) => {
-        I18n.getLangPack(value, webLangCodes.includes(value));
+        I18n.getLangPackAndApply(value, webLangCodes.includes(value));
       });
 
-      I18n.getCacheLangPack().then((langPack) => {
+      I18n.getCacheLangPackAndApply().then((langPack) => {
         const row = radioRows.get(langPack.lang_code);
         if(!row) {
           console.error('no row', row, langPack);

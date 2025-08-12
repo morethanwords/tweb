@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift} from '../layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference} from '../layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
 import type {MyDialogFilter} from './storages/filters';
 import type {AnyDialog, Folder} from './storages/dialogs';
@@ -158,7 +158,10 @@ export type BroadcastEvents = {
 
   'notification_count_update': void,
 
-  'language_change': string,
+  'language_change': string, // * multi account event
+  'language_apply': void, // * single tab event
+  'langpack_update': {difference: LangPackDifference},
+  'langpack_update_too_long': {lang_code: string},
 
   'theme_change': {x: number, y: number} | void,
   'theme_changed': void,
@@ -227,7 +230,7 @@ export type BroadcastEvents = {
 
   'fulfill_repaid_message': {requestId: number},
 
-  'sensitive_content_settings': SensitiveContentSettings,
+  'sensitive_content_settings': SensitiveContentSettings
 };
 
 export type BroadcastEventsListeners = {

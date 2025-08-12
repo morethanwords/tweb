@@ -7,8 +7,8 @@
 import type lang from '../lang';
 import type langSign from '../langSign';
 import type {State} from '../config/state';
-import DEBUG, {MOUNT_CLASS_TO} from '../config/debug';
-import {HelpCountriesList, HelpCountry, LangPackDifference, LangPackString} from '../layer';
+import {MOUNT_CLASS_TO} from '../config/debug';
+import {HelpCountry, LangPackDifference, LangPackString} from '../layer';
 import App from '../config/app';
 import rootScope from './rootScope';
 import {IS_MOBILE} from '../environment/userAgent';
@@ -103,26 +103,17 @@ namespace I18n {
     setLangCodeNormalized(lastRequestedNormalizedLangCode.split('-')[0] as any);
   }
 
-  export function getCacheLangPack(): Promise<LangPackDifference> {
-    if(cacheLangPackPromise) return cacheLangPackPromise;
-    return cacheLangPackPromise = Promise.all([
-      commonStateStorage.get('langPack') as Promise<LangPackDifference>,
+  export function getCacheLangPack() {
+    return Promise.all([
+      commonStateStorage.get('langPack').then((langPack) => langPack || loadLocalLangPack()),
       polyfillPromise
-    ]).then(([langPack]) => {
-      if(!langPack/*  || true */) {
-        return loadLocalLangPack();
-      } else if(DEBUG && false) {
-        return getLangPack(langPack.lang_code);
-      }/*  else if(langPack.appVersion !== App.langPackVersion) {
-        return getLangPack(langPack.lang_code);
-      } */
+    ]).then(([langPack]) => langPack);
+  }
 
-      if(!lastRequestedLangCode) {
-        setLangCode(langPack.lang_code);
-      }
-
-      applyLangPack(langPack);
-      return langPack;
+  export function getCacheLangPackAndApply() {
+    return cacheLangPackPromise ||= getCacheLangPack().then((langPack) => {
+      setLangCode(langPack.lang_code);
+      return saveLangPack(langPack, true);
     }).finally(() => {
       cacheLangPackPromise = undefined;
     });
@@ -169,7 +160,6 @@ namespace I18n {
 
   export function loadLocalLangPack() {
     const defaultCode = App.langPackCode;
-    setLangCode(defaultCode);
     return Promise.all([
       import('../lang'),
       import('../langSign'),
@@ -188,39 +178,26 @@ namespace I18n {
         local: true,
         countries: countries.default
       };
-      return saveLangPack(langPack);
+      return langPack;
     });
   }
 
-  export function loadLangPack(langCode: string, web?: boolean) {
+  export function loadLangPack(langCode: string, web?: boolean, ignoreCache?: boolean) {
     web = true;
     requestedServerLanguage = true;
     const managers = rootScope.managers;
     return Promise.all([
-      managers.apiManager.invokeApiCacheable('langpack.getLangPack', {
-        lang_code: langCode,
-        lang_pack: web ? 'web' : App.langPack
-      }),
-      !web && managers.apiManager.invokeApiCacheable('langpack.getLangPack', {
-        lang_code: langCode,
-        lang_pack: 'android'
-      }),
+      managers.appLangPackManager.getLangPack(langCode, web ? 'web' : App.langPack, ignoreCache),
+      !web && managers.appLangPackManager.getLangPack(langCode, 'android', ignoreCache),
       import('../lang'),
       import('../langSign'),
-      managers.apiManager.invokeApiCacheable('help.getCountriesList', {
-        lang_code: langCode,
-        hash: 0
-      }) as Promise<HelpCountriesList.helpCountriesList>,
+      managers.appLangPackManager.getCountriesList(langCode, ignoreCache),
       polyfillPromise
     ]);
   }
 
   export function getStrings(langCode: string, strings: string[]) {
-    return rootScope.managers.apiManager.invokeApi('langpack.getStrings', {
-      lang_pack: App.langPack,
-      lang_code: langCode,
-      keys: strings
-    });
+    return rootScope.managers.appLangPackManager.getStrings(langCode, strings);
   }
 
   export function formatLocalStrings(strings: any, pushTo: LangPackString[] = []) {
@@ -245,9 +222,9 @@ namespace I18n {
     return pushTo;
   }
 
-  export function getLangPack(langCode: string, web?: boolean) {
+  export function getLangPackAndApply(langCode: string, web?: boolean, ignoreCache?: boolean) {
     setLangCode(langCode);
-    return loadLangPack(langCode, web).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _]) => {
+    return loadLangPack(langCode, web, ignoreCache).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _]) => {
       let strings: LangPackString[] = [];
 
       [localLangPack1, localLangPack2].forEach((l) => {
@@ -258,13 +235,14 @@ namespace I18n {
 
       langPack1.strings = strings;
       langPack1.countries = countries;
-      return saveLangPack(langPack1);
+      return saveLangPack(langPack1, true);
     });
   }
 
-  export function saveLangPack(langPack: LangPackDifference) {
+  export function saveLangPack(langPack: LangPackDifference, apply: boolean) {
     langPack.appVersion = App.langPackVersion;
 
+    if(!apply) return;
     return commonStateStorage.set({langPack}).then(() => {
       applyLangPack(langPack);
       return langPack;
@@ -344,6 +322,8 @@ namespace I18n {
         instance.update();
       }
     });
+
+    rootScope.dispatchEventSingle('language_apply');
   }
 
   function pushNextArgument(out: ReturnType<typeof superFormatter>, args: FormatterArguments, indexHolder: {i: number}, i?: number) {
@@ -677,5 +657,90 @@ export function join(elements: (Node | string)[], useLast = true, plain?: boolea
 
   return plain ? joined.join('') : joined;
 }
+
+export async function handleUpdateLangPack(update: {difference: LangPackDifference}) {
+  const {difference} = update;
+
+  // Check if this update is for the current language
+  if(difference.lang_code !== I18n.lastRequestedLangCode) {
+    return;
+  }
+
+  // Get current langPack from storage
+  const storedLangPack = await I18n.getCacheLangPack();
+  if(storedLangPack?.lang_code !== difference.lang_code || storedLangPack.lang_code !== I18n.lastRequestedLangCode) {
+    return;
+  }
+
+  if(storedLangPack.version !== difference.from_version) {
+    handleUpdateLangPackTooLong(difference);
+    return;
+  }
+
+  // Apply updates to langPack
+  if(difference.strings) {
+    const storedStrings = storedLangPack.strings ||= [];
+    for(const string of difference.strings) {
+      const existingIndex = storedStrings.findIndex((s) => s.key === string.key);
+      if(existingIndex !== -1) {
+        storedStrings[existingIndex] = string;
+      } else {
+        storedStrings.push(string);
+      }
+    }
+  }
+
+  // if(difference.countries) {
+  //   const storedCountries = storedLangPack.countries ||= {_: 'help.countriesList', countries: [], hash: 0};
+  //   for(const country of difference.countries.countries) {
+  //     const existingIndex = storedCountries.countries.findIndex((c) => c.default_name === country.default_name);
+  //     if(existingIndex !== -1) {
+  //       storedCountries.countries[existingIndex] = country;
+  //     } else {
+  //       storedCountries.countries.push(country);
+  //     }
+  //   }
+  //   // Update hash if provided
+  //   if(difference.countries.hash) {
+  //     storedCountries.hash = difference.countries.hash;
+  //   }
+  // }
+
+  // Update version
+  storedLangPack.version = difference.version;
+  storedLangPack.from_version = difference.from_version;
+
+  // Save updated langPack and apply it
+  await I18n.saveLangPack(storedLangPack, true);
+}
+
+export function handleUpdateLangPackTooLong(update: {lang_code: string}) {
+  const {lang_code} = update;
+
+  // Check if this update is for the current language
+  if(lang_code !== I18n.lastRequestedLangCode) {
+    return;
+  }
+
+  // I18n.getLangPack(lang_code, undefined, true);
+  checkLangPackForUpdates();
+}
+
+export function handleStateCleared() {
+  handleUpdateLangPackTooLong({lang_code: I18n.lastRequestedLangCode});
+}
+
+export async function checkLangPackForUpdates() {
+  const storedLangPack = await I18n.getCacheLangPack();
+  const difference = await rootScope.managers.appLangPackManager.getDifference(storedLangPack.lang_code, storedLangPack.version);
+  if(difference.version > storedLangPack.version) {
+    return handleUpdateLangPack({difference});
+  }
+}
+
+// Listen for events from rootScope to handle server updates
+rootScope.addEventListener('langpack_update', handleUpdateLangPack);
+rootScope.addEventListener('langpack_update_too_long', handleUpdateLangPackTooLong);
+rootScope.addEventListener('state_cleared', handleStateCleared);
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.I18n = I18n);

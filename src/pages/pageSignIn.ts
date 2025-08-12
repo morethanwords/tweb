@@ -213,7 +213,7 @@ const onFirstMount = () => {
     rootScope.managers.apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
       const langPack = commonStateStorage.getFromCache('langPack');
       if(langPack && !langPack.countries?.hash) {
-        I18n.getLangPack(langPack.lang_code).then(() => {
+        I18n.getLangPackAndApply(langPack.lang_code).then(() => {
           telInputField.simulateInputEvent();
         });
       }

@@ -57,6 +57,7 @@ import type AppTranslationsManager from './appTranslationsManager';
 import type {AppManagers} from './managers';
 import type AppGifsManager from './appGifsManager';
 import type AppGiftsManager from './appGiftsManager';
+import type {AppLangPackManager} from './appLangPackManager';
 import {ActiveAccountNumber} from '../accounts/types';
 
 export class AppManager {
@@ -82,6 +83,7 @@ export class AppManager {
   protected appPrivacyManager: AppPrivacyManager;
   protected appInlineBotsManager: AppInlineBotsManager;
   protected appStickersManager: AppStickersManager;
+  protected appLangPackManager: AppLangPackManager;
   protected referenceDatabase: ReferenceDatabase;
   protected appEmojiManager: AppEmojiManager;
   protected dialogsStorage: DialogsStorage;

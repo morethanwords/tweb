@@ -16,9 +16,9 @@ const onFirstMount = () => {
   /* appStateManager.saveState(); */
 
   if(!I18n.requestedServerLanguage) {
-    I18n.getCacheLangPack().then((langPack) => {
+    I18n.getCacheLangPackAndApply().then((langPack) => {
       if(langPack.local) {
-        I18n.getLangPack(langPack.lang_code);
+        I18n.getLangPackAndApply(langPack.lang_code);
       }
     });
   }
