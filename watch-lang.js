@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const LANG_FILE_PATH = path.join(__dirname, 'src', 'lang.ts');
+const LANG_SIGN_FILE_PATH = path.join(__dirname, 'src', 'langSign.ts');
 const APP_FILE_PATH = path.join(__dirname, 'src', 'config', 'app.ts');
 
 // Function to read current version from App.ts
@@ -41,106 +42,129 @@ const getFileHash = (filePath) => {
   }
 };
 
+// Function to handle file change
+const handleFileChange = (filePath, fileName, lastHash, currentVersion, isUpdating) => {
+  if(isUpdating.value) return; // Prevent multiple updates
+
+  const currentHash = getFileHash(filePath);
+
+  if(currentHash && currentHash !== lastHash.value) {
+    console.log(`📝 Changes detected in ${fileName}`);
+    isUpdating.value = true;
+    currentVersion.value++;
+    updateVersion(currentVersion.value);
+    lastHash.value = currentHash;
+
+    // Reset updating flag after a delay to prevent immediate re-triggering
+    setTimeout(() => {
+      isUpdating.value = false;
+    }, 200);
+  }
+};
+
+// Function to check if files exist
+const checkFilesExist = (files) => {
+  for(const {path, name} of files) {
+    if(!fs.existsSync(path)) {
+      console.error(`❌ File ${path} not found!`);
+      return false;
+    }
+  }
+  return true;
+};
+
 // Main watching function using fs.watch
 const watchLangFile = () => {
-  console.log('🔍 Watching for changes in lang.ts file...');
-  console.log(`📁 File: ${LANG_FILE_PATH}`);
+  const files = [
+    {path: LANG_FILE_PATH, name: 'lang.ts'},
+    {path: LANG_SIGN_FILE_PATH, name: 'langSign.ts'}
+  ];
 
-  let lastHash = getFileHash(LANG_FILE_PATH);
-  let currentVersion = getCurrentVersion();
-  let isUpdating = false;
+  console.log('🔍 Watching for changes in lang files...');
+  console.log(`📁 Files: ${files.map(f => f.path).join(', ')}`);
 
-  console.log(`📊 Current version: ${currentVersion}`);
+  const lastHashes = files.map(f => ({value: getFileHash(f.path)}));
+  const currentVersion = {value: getCurrentVersion()};
+  const isUpdating = {value: false};
 
-  // Check if file exists
-  if(!fs.existsSync(LANG_FILE_PATH)) {
-    console.error(`❌ File ${LANG_FILE_PATH} not found!`);
+  console.log(`📊 Current version: ${currentVersion.value}`);
+
+  // Check if files exist
+  if(!checkFilesExist(files)) {
     return;
   }
 
-  // Use fs.watch for file monitoring
-  const watcher = fs.watch(LANG_FILE_PATH, (eventType, filename) => {
-    if(isUpdating) return; // Avoid recursive updates
-
-    if(eventType === 'change') {
-      // Small delay to complete file writing
-      setTimeout(() => {
-        const currentHash = getFileHash(LANG_FILE_PATH);
-
-        if(currentHash && currentHash !== lastHash) {
-          console.log('📝 Changes detected in lang.ts');
-          isUpdating = true;
-          currentVersion++;
-          updateVersion(currentVersion);
-          lastHash = currentHash;
-          isUpdating = false;
-        }
-      }, 100);
-    }
+  // Create watchers for each file
+  const watchers = files.map((file, index) => {
+    return fs.watch(file.path, (eventType, filename) => {
+      if(eventType === 'change') {
+        // Small delay to complete file writing
+        setTimeout(() => {
+          handleFileChange(file.path, file.name, lastHashes[index], currentVersion, isUpdating);
+        }, 100);
+      }
+    });
   });
 
   // Error handling
-  watcher.on('error', (error) => {
-    console.error('❌ File watching error:', error.message);
+  watchers.forEach((watcher, index) => {
+    watcher.on('error', (error) => {
+      console.error(`❌ File watching error (${files[index].name}):`, error.message);
+    });
   });
 
   console.log('✅ Watching started. Press Ctrl+C to stop.');
 
   // Process termination handling
-  process.on('SIGINT', () => {
+  const cleanup = () => {
     console.log('\n🛑 Stopping watch...');
-    watcher.close();
+    watchers.forEach(watcher => watcher.close());
     process.exit(0);
-  });
+  };
 
-  process.on('SIGTERM', () => {
-    console.log('\n🛑 Stopping watch...');
-    watcher.close();
-    process.exit(0);
-  });
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
 };
 
 // Alternative function with interval (for cases when fs.watch doesn't work)
 const watchLangFileWithInterval = () => {
-  console.log('🔍 Watching for changes in lang.ts file (interval mode)...');
-  console.log(`📁 File: ${LANG_FILE_PATH}`);
+  const files = [
+    {path: LANG_FILE_PATH, name: 'lang.ts'},
+    {path: LANG_SIGN_FILE_PATH, name: 'langSign.ts'}
+  ];
 
-  let lastHash = getFileHash(LANG_FILE_PATH);
-  let currentVersion = getCurrentVersion();
+  console.log('🔍 Watching for changes in lang files (interval mode)...');
+  console.log(`📁 Files: ${files.map(f => f.path).join(', ')}`);
 
-  console.log(`📊 Current version: ${currentVersion}`);
+  const lastHashes = files.map(f => ({value: getFileHash(f.path)}));
+  const currentVersion = {value: getCurrentVersion()};
 
-  // Check if file exists
-  if(!fs.existsSync(LANG_FILE_PATH)) {
-    console.error(`❌ File ${LANG_FILE_PATH} not found!`);
+  console.log(`📊 Current version: ${currentVersion.value}`);
+
+  // Check if files exist
+  if(!checkFilesExist(files)) {
     return;
   }
 
-  const interval = setInterval(() => {
-    const currentHash = getFileHash(LANG_FILE_PATH);
+  const isUpdating = {value: false};
 
-    if(currentHash && currentHash !== lastHash) {
-      console.log('📝 Changes detected in lang.ts');
-      currentVersion++;
-      updateVersion(currentVersion);
-      lastHash = currentHash;
-    }
+  const interval = setInterval(() => {
+    files.forEach((file, index) => {
+      handleFileChange(file.path, file.name, lastHashes[index], currentVersion, isUpdating);
+    });
   }, 1000);
 
   console.log('✅ Watching started. Press Ctrl+C to stop.');
 
   // Process termination handling
-  process.on('SIGINT', () => {
+  const cleanup = () => {
     console.log('\n🛑 Stopping watch...');
     clearInterval(interval);
     process.exit(0);
-  });
+  };
 
-  process.on('SIGTERM', () => {
-    console.log('\n🛑 Stopping watch...');
-    clearInterval(interval);
-    process.exit(0);
-  });
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
 };
 
 // Start watching
