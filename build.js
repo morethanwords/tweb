@@ -50,7 +50,7 @@ function clearOldFiles() {
       return;
     }
 
-    fs.unlinkSync(publicPath + file.name);
+    fs.unlinkSync(path.join(publicPath, file.name));
   });
 }
 

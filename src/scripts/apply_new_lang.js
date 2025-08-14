@@ -30,6 +30,7 @@ const onResponse = (response) => {
       const filePath = path.resolve(__dirname, `../${part}.ts`);
     
       let lang = fs.readFileSync(filePath).toString();
+      const originalLang = lang;
 
       const plural = {};
       data.split('\n').forEach((line) => {
@@ -61,7 +62,9 @@ const onResponse = (response) => {
         }
       }
 
-      fs.writeFileSync(filePath, lang);
+      if(originalLang !== lang) {
+        fs.writeFileSync(filePath, lang);
+      }
     });
 
     console.log(version);

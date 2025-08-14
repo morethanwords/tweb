@@ -11,7 +11,10 @@ import {existsSync} from 'fs';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 
-watchLangFile();
+const isDEV = process.env.NODE_ENV === 'development';
+if(isDEV) {
+  watchLangFile();
+}
 
 const rootDir = resolve(__dirname);
 
