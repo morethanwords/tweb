@@ -2962,6 +2962,7 @@
 "ChecklistMarkedUndoneYou" = "You marked %2$s as not done.";
 "ChecklistMarkedMixedYou" = "You marked %2$s as done and %s as not done.";
 "ChecklistAddTasks" = "Add Tasks";
+"ChecklistAddTask" = "Add Task";
 "ChecklistOptions" = "Checklist options";
 "ChecklistReadonlyForwarded" = "You can't edit forwarded checklists.";
 "ChecklistReadonlyPersonal" = "**%s** has restricted others from marking tasks as done.";

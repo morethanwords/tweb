@@ -5,6 +5,7 @@
  */
 
 const fs = require('fs');
+const path = require('path');
 
 const f = (key, value, plural) => {
   value = value
@@ -16,9 +17,9 @@ const f = (key, value, plural) => {
 let out = '';
 
 ['lang', 'langSign'].forEach(part => {
-  const path = `../${part}.ts`;
+  const filePath = path.join(__dirname, `../${part}.ts`);
 
-  let str = fs.readFileSync(path).toString()
+  let str = fs.readFileSync(filePath).toString()
   .replace(/\s+\/\/.+/g, '')
   // .replace(/\\'/g, '')
   .replace(/"/g, `\\"`)
@@ -41,7 +42,7 @@ let out = '';
   // idx -= 1;
   // console.log(str.slice(idx, idx + 100));
   const json = JSON.parse(str);
-  console.log(json);
+  // console.log(json);
 
   for(const key in json) {
     const value = json[key];
@@ -55,4 +56,4 @@ let out = '';
   }
 });
 
-fs.writeFileSync('./out/langPack.strings', out);
+fs.writeFileSync(path.join(__dirname, './out/langPack.strings'), out);

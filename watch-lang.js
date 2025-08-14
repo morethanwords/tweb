@@ -1,9 +1,11 @@
 const fs = require('fs');
 const path = require('path');
+const {spawn, execSync} = require('child_process');
 
 const LANG_FILE_PATH = path.join(__dirname, 'src', 'lang.ts');
 const LANG_SIGN_FILE_PATH = path.join(__dirname, 'src', 'langSign.ts');
 const APP_FILE_PATH = path.join(__dirname, 'src', 'config', 'app.ts');
+const npmCmd = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
 
 // Function to read current version from App.ts
 const getCurrentVersion = () => {
@@ -27,6 +29,8 @@ const updateVersion = (newVersion) => {
     );
     fs.writeFileSync(APP_FILE_PATH, appContent, 'utf8');
     console.log(`✅ Version updated to ${newVersion}`);
+
+    execSync(`${npmCmd} run format-lang`);
   } catch(error) {
     console.error('❌ Error updating App.ts:', error.message);
   }

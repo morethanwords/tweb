@@ -92,6 +92,23 @@ function applyNewLang() {
   });
 }
 
+function formatLang() {
+  const child = spawn(npmCmd, ['run', 'format-lang'], {shell: true});
+  child.stdout.on('data', (chunk) => {
+    console.log(chunk.toString());
+  });
+
+  return new Promise((resolve, reject) => { 
+    child.on('close', (code) => {
+      if(code != 0) {
+        reject(new Error('Failed to format lang'));
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
 const onCompiled = async() => {
   console.log('Compiled successfully.');
   copyFiles(distPath, publicPath);
@@ -165,7 +182,9 @@ function compressFolder(folderPath) {
   console.log(`stderr: ${stderr}`);
 }); */
 
-applyNewLang().then((version) => {
+formatLang()
+.then(applyNewLang)
+.then((version) => {
   console.log('Applied new lang', version);
   return changeVersion(version);
 }, () => {

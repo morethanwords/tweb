@@ -261,9 +261,8 @@ export class PopupChecklist extends PopupElement {
                 class={`btn-transparent ${css.addTaskButton}`}
                 icon="add"
                 onClick={() => addItem()}
-              >
-                Add task
-              </Button>
+                text="ChecklistAddTask"
+              />
             )}
           </div>
 

@@ -18,7 +18,8 @@
     "apply-new-lang": "node ./src/scripts/apply_new_lang.js",
     "watch-lang": "node watch-lang.js",
     "lint": "npx eslint \"src/**/**.ts\"",
-    "build:solid": "node ./src/scripts/build_solid.js"
+    "build:solid": "node ./src/scripts/build_solid.js",
+    "format-lang": "node ./src/scripts/format_lang.js"
   },
   "author": "",
   "license": "GPL-3.0-only",
