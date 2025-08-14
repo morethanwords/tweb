@@ -24,6 +24,8 @@ export type NavigationItem = {
   noBlurOnPop?: boolean,
 };
 
+const USE_NAVIGATION_API = 'navigation' in window;
+
 export class AppNavigationController {
   private navigations: Array<NavigationItem>;
   private id: number;
@@ -46,7 +48,27 @@ export class AppNavigationController {
     this.overriddenHash = '';
     this.isPossibleSwipe = false;
 
-    window.addEventListener('popstate', this.onPopState);
+    // * push init state
+    if(USE_NAVIGATION_API) {
+      this.debug && this.log('push');
+      const url = location.origin + location.pathname + location.search + location.hash;
+      history.pushState(this.id, '', url);
+    }
+
+    // @ts-ignore
+    if(USE_NAVIGATION_API) (navigation as any).addEventListener('navigate', (event) => {
+      if(event.navigationType === 'reload' || event.navigationType === 'replace') {
+        return;
+      }
+
+      this.debug && this.log('navigate', event);
+      cancelEvent(event);
+
+      const url = new URL(event.destination.url);
+      this._onPopState(url.hash, 0);
+    });
+
+    if(!USE_NAVIGATION_API) window.addEventListener('popstate', this.onPopState);
     window.addEventListener('keydown', this.onKeyDown, {capture: true, passive: false});
 
     if(IS_MOBILE_SAFARI) {
@@ -56,17 +78,22 @@ export class AppNavigationController {
 
     history.scrollRestoration = 'manual';
 
-    this.pushState(); // * push init state
+    // * push init state
+    if(!USE_NAVIGATION_API) {
+      this.pushState();
+    }
   }
 
   private onPopState = (e: PopStateEvent) => {
-    const hash = window.location.hash;
-    const id: number = e.state;
-    this.debug && this.log('popstate', e, this.isPossibleSwipe, hash);
+    this._onPopState(window.location.hash, e.state);
+  };
+
+  private _onPopState(hash: string, id: number) {
+    this.debug && this.log('popstate', this.isPossibleSwipe, hash, id);
     if(hash !== this.currentHash) {
       this.debug && this.log.warn(`hash changed, new=${hash}, current=${this.currentHash}, overridden=${this.overriddenHash}`);
       // fix for returning to wrong hash (e.g. chat -> archive -> chat -> 3x back)
-      if(id === this.id && this.overriddenHash && this.overriddenHash !== hash) {
+      if((USE_NAVIGATION_API || id === this.id) && this.overriddenHash && this.overriddenHash !== hash) {
         this.overrideHash(this.overriddenHash);
       } else if(id/*  === this.id */ && !this.overriddenHash && hash) {
         this.overrideHash();
@@ -78,7 +105,7 @@ export class AppNavigationController {
       }
     }
 
-    if(id !== this.id/*  && !this.navigations.length */) {
+    if(!USE_NAVIGATION_API && id !== this.id/*  && !this.navigations.length */) {
       this.pushState();
 
       if(!this.navigations.length) {
@@ -95,7 +122,7 @@ export class AppNavigationController {
     this.manual = !this.isPossibleSwipe;
     this.handleItem(item, this.navigations.length);
     // this.pushState(); // * prevent adding forward arrow
-  };
+  }
 
   private onKeyDown = (e: KeyboardEvent) => {
     const item = this.navigations[this.navigations.length - 1];
@@ -242,7 +269,12 @@ export class AppNavigationController {
   public pushState() {
     this.debug && this.log('push');
     this.manual = false;
-    history.pushState(this.id, '');
+
+    if(USE_NAVIGATION_API) {
+      history.replaceState(this.id, '');
+    } else {
+      history.pushState(this.id, '');
+    }
   }
 
   public replaceState() {
@@ -274,14 +306,14 @@ export class AppNavigationController {
   }
 
   private canCloseOnEscape() {
-    return this.escapeHandlers.every(fn => fn());
+    return this.escapeHandlers.every((fn) => fn());
   }
 
   public registerEscapeHandler(handler: () => boolean) {
     this.escapeHandlers.push(handler);
 
     return () => {
-      this.escapeHandlers = this.escapeHandlers.filter(fn => fn !== handler);
+      this.escapeHandlers = this.escapeHandlers.filter((fn) => fn !== handler);
     };
   }
 }
