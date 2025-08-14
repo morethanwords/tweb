@@ -247,7 +247,7 @@ namespace I18n {
   export function saveLangPack(langPack: LangPackDifference, apply: boolean) {
     langPack.version ||= App.langPackVersion;
 
-    if(!apply) return;
+    if(!apply) return langPack;
     return commonStateStorage.set({langPack}).then(() => {
       applyLangPack(langPack);
       return langPack;
