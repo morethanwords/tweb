@@ -786,7 +786,7 @@ class Some<T extends AnyDialog = AnyDialog> {
     const last = sortedItems[sortedItems.length - 1];
 
     const bottomIndex = last?.index;
-    const dialogIndex = getDialogIndex(dialog);
+    const dialogIndex = getDialogIndex(dialog, this.indexKey);
 
     return !last || dialogIndex >= bottomIndex || this.hasReachedTheEnd;
   }
@@ -931,11 +931,11 @@ class Some<T extends AnyDialog = AnyDialog> {
     }
 
     const newOffsetIndex = result.dialogs.reduce((prev, curr) => {
-      const index = getDialogIndex(curr, this.indexKey)
+      const index = getDialogIndex(curr, this.indexKey);
       return index < prev ? index : prev;
     }, offsetIndex || Infinity);
 
-    const items = await Promise.all(result.dialogs.map(async dialog => {
+    const items = await Promise.all(result.dialogs.map(async(dialog) => {
       const key = this.getDialogKey(dialog as T);
 
       return this.sortedList.createItemForKey(key);
