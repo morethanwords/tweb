@@ -664,9 +664,9 @@ export default class DialogsStorage extends AppManager {
     const wasDialog = dialogs[wasIndex];
     const wasDialogIndex = this.getDialogIndex(wasDialog, indexKey);
 
-    if(noIndex && !this.isVirtualFilter(folderId) && folderId > FOLDER_ID_ARCHIVE) {
-      noIndex = undefined;
-    }
+    // if(noIndex && !this.isVirtualFilter(folderId) && folderId > FOLDER_ID_ARCHIVE) {
+    //   noIndex = undefined;
+    // }
 
     const newDialogIndex = noIndex ? undefined : this.setDialogIndexInFilter(dialog, indexKey, filter);
 
