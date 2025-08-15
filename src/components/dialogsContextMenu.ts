@@ -186,7 +186,7 @@ export default class DialogsContextMenu {
       icon: 'unarchive',
       text: 'Unarchive',
       onClick: this.onArchiveClick,
-      verify: () => this.filterId === FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
+      verify: () => !this.threadId && (this.dialog as Dialog).folder_id === FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
     }, CAN_HIDE_TOPIC ? {
       icon: 'hide',
       text: 'Hide',
