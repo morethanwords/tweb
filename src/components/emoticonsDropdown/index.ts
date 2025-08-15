@@ -149,7 +149,8 @@ export class EmoticonsDropdown extends DropdownHover {
       if(IS_TOUCH_SUPPORTED) {
         // this.chatInput.saveScroll();
         if(blurActiveElement()) {
-          await pause(100);
+          // * commented to fix dynamic height of the dropdown (like limited reactions menu)
+          // await pause(100);
         }
       }
 
