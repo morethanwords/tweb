@@ -57,7 +57,11 @@ export class AppNavigationController {
 
     // @ts-ignore
     if(USE_NAVIGATION_API) (navigation as any).addEventListener('navigate', (event) => {
-      if(event.navigationType === 'reload' || event.navigationType === 'replace') {
+      if(
+        event.navigationType === 'reload' ||
+        event.navigationType === 'replace' ||
+        !event.destination.sameDocument
+      ) {
         return;
       }
 
