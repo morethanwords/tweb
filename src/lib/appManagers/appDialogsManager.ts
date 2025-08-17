@@ -121,6 +121,7 @@ import {MAX_SIDEBAR_WIDTH} from '../../components/sidebarLeft/constants';
 import {unwrap} from 'solid-js/store';
 import wrapMediaSpoiler from '../../components/wrappers/mediaSpoiler';
 import type {MonoforumDrawerInstance} from '../../components/monoforumDrawer';
+import {MonoforumDialog} from '../storages/monoforumDialogs';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 const DIALOG_LOAD_COUNT = 10;
@@ -453,7 +454,7 @@ class ForumTab extends SliderSuperTabEventable {
 
   private log: ReturnType<typeof logger>;
 
-  public xd: Some3;
+  public xd: AutonomousForumTopicList;
 
   public async toggle(value: boolean) {
     if(this.init2) {
@@ -507,7 +508,7 @@ class ForumTab extends SliderSuperTabEventable {
     this.title.replaceWith(this.rows);
     this.rows.append(this.title, this.subtitle);
 
-    this.xd = new Some3(this.peerId, isFloating);
+    this.xd = new AutonomousForumTopicList(this.peerId, isFloating);
     this.xd.scrollable = this.scrollable;
     this.xd.sortedList = new SortedDialogList({
       itemSize: 64,
@@ -691,7 +692,8 @@ class ForumTab extends SliderSuperTabEventable {
 const NOT_IMPLEMENTED_ERROR = new Error('not implemented');
 
 type DialogKey = any;
-class Some<T extends AnyDialog = AnyDialog> {
+type PossibleDialog = AnyDialog | MonoforumDialog;
+export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog> {
   public sortedList: SortedDialogList;
   public scrollable: Scrollable;
   public loadedDialogsAtLeastOnce: boolean;
@@ -701,7 +703,7 @@ class Some<T extends AnyDialog = AnyDialog> {
   protected sliceTimeout: number;
   protected managers: AppManagers;
   protected listenerSetter: ListenerSetter;
-  protected loadDialogsPromise: Promise<{cached: boolean, renderPromise: Some2['loadDialogsRenderPromise']}>;
+  protected loadDialogsPromise: Promise<{cached: boolean, renderPromise: AutonomousDialogList['loadDialogsRenderPromise']}>;
   protected loadDialogsRenderPromise: Promise<void>;
   protected placeholder: DialogsPlaceholder;
   protected log: ReturnType<typeof logger>;
@@ -734,7 +736,7 @@ class Some<T extends AnyDialog = AnyDialog> {
     this.listenerSetter = new ListenerSetter();
   }
 
-  public setIndexKey(indexKey: Some['indexKey']) {
+  public setIndexKey(indexKey: AutonomousDialogListBase['indexKey']) {
     this.indexKey = indexKey;
     this.sortedList.indexKey = indexKey;
   }
@@ -899,6 +901,19 @@ class Some<T extends AnyDialog = AnyDialog> {
   //   return promise;
   // }
 
+  protected async dialogsFetcher(offsetIndex: number, limit: number): Promise<{dialogs: PossibleDialog[], count: number, isEnd: boolean}> {
+    const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
+      offsetIndex,
+      limit,
+      filterId: this.getFilterId(),
+      skipMigrated: this.skipMigrated
+    });
+
+    const result = await ackedResult.result;
+
+    return result;
+  }
+
   public async loadDialogsInner(offsetIndex?: number): Promise<SequentialCursorFetcherResult<number>> {
     const filterId = this.getFilterId();
 
@@ -915,14 +930,7 @@ class Some<T extends AnyDialog = AnyDialog> {
       shouldRefetch = true;
     }
 
-    const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
-      offsetIndex,
-      limit: this.guessLoadCount(),
-      filterId,
-      skipMigrated: this.skipMigrated
-    });
-
-    const result = await ackedResult.result;
+    const result = await this.dialogsFetcher(offsetIndex, this.guessLoadCount());
 
     if(shouldRefetch) {
       setTimeout(async() => {
@@ -1037,7 +1045,7 @@ class Some<T extends AnyDialog = AnyDialog> {
   }
 }
 
-class Some3 extends Some<ForumTopic> {
+class AutonomousForumTopicList extends AutonomousDialogListBase<ForumTopic> {
   constructor(public peerId: PeerId, public isFloating: boolean) {
     super();
 
@@ -1166,7 +1174,7 @@ class Some3 extends Some<ForumTopic> {
   }
 }
 
-export class Some2 extends Some<Dialog> {
+export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   constructor(protected filterId: number) {
     super();
 
@@ -1480,7 +1488,7 @@ export class Some2 extends Some<Dialog> {
   }
 }
 
-export class Some4 extends Some<SavedDialog> {
+export class AutonomousSavedDialogList extends AutonomousDialogListBase<SavedDialog> {
   public onAnyUpdate: () => void;
 
   constructor() {
@@ -1617,8 +1625,8 @@ export class AppDialogsManager {
   public forumTab: ForumTab;
   private forumNavigationItem: NavigationItem;
 
-  public xd: Some2;
-  public xds: {[filterId: number]: Some2} = {};
+  public xd: AutonomousDialogList;
+  public xds: {[filterId: number]: AutonomousDialogList} = {};
 
   public cancelChatlistUpdatesFetching: () => void;
   public fetchChatlistUpdates: () => void;
@@ -2222,7 +2230,7 @@ export class AppDialogsManager {
   }
 
   public l(filter: Parameters<AppDialogsManager['addFilter']>[0]) {
-    const xd = this.xds[filter.id] = new Some2(filter.id);
+    const xd = this.xds[filter.id] = new AutonomousDialogList(filter.id);
     const {scrollable, list} = xd.generateScrollable(filter);
     this.setListClickListener({list, onFound: null, withContext: true});
 

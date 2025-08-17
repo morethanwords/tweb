@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager, {type Some2} from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager, {type AutonomousDialogList} from '../../../lib/appManagers/appDialogsManager';
 import {SliderSuperTab} from '../../slider';
 import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '../../../lib/mtproto/mtproto_config';
 import StoriesList from '../../stories/list';
@@ -17,7 +17,7 @@ export default class AppArchivedTab extends SliderSuperTab {
   private storiesListContainer: HTMLDivElement;
   private disposeStories: () => void;
 
-  private chatListManager: Some2;
+  private chatListManager: AutonomousDialogList;
 
   public init() {
     this.wasFilterId = appDialogsManager.filterId;

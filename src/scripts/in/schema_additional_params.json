@@ -428,6 +428,13 @@
     {"name": "savedPeerId", "type": "PeerId"}
   ]
 }, {
+  "predicate": "monoForumDialog",
+  "params": [
+    {"name": "peerId", "type": "PeerId"},
+    {"name": "parentPeerId", "type": "PeerId"},
+    {"name": "index_0", "type": "number"}
+  ]
+}, {
   "predicate": "channelParticipantsAdmins",
   "params": [
     {"name": "q", "type": "string"}

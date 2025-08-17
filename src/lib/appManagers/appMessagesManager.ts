@@ -2063,10 +2063,10 @@ export class AppMessagesManager extends AppManager {
       };
     } else if(this.appPeersManager.canManageDirectMessages(options.peerId)) {
       // TODO: Set correct peer
-      return {
-        _: 'inputReplyToMonoForum',
-        monoforum_peer_id: this.appPeersManager.getInputPeerById(0)
-      }
+      // return {
+      //   _: 'inputReplyToMonoForum',
+      //   monoforum_peer_id: this.appPeersManager.getInputPeerById(0)
+      // }
     }
   }
 

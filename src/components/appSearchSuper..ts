@@ -5,7 +5,7 @@
  */
 
 import type {AppMessagesManager, MyInputMessagesFilter, MyMessage, RequestHistoryOptions} from '../lib/appManagers/appMessagesManager';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom, Some4} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom, AutonomousSavedDialogList} from '../lib/appManagers/appDialogsManager';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
 import {SearchGroup, SearchGroupType} from './appSearch';
@@ -1832,7 +1832,7 @@ export default class AppSearchSuper {
       return this._loadSavedDialogs(side);
     }
 
-    const xd = new Some4();
+    const xd = new AutonomousSavedDialogList();
     xd.scrollable = this.scrollable;
     xd.sortedList = new SortedDialogList({
       appDialogsManager,

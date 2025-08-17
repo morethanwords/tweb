@@ -13107,7 +13107,10 @@ export namespace SavedDialog {
     read_outbox_max_id: number,
     unread_count: number,
     unread_reactions_count: number,
-    draft?: DraftMessage
+    draft?: DraftMessage,
+    peerId?: PeerId,
+    parentPeerId?: PeerId,
+    index_0?: number
   };
 }
 
