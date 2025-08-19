@@ -67,7 +67,7 @@ import isLegacyMessageId from './utils/messageId/isLegacyMessageId';
 import {joinDeepPath} from '../../helpers/object/setDeepProperty';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 import {LOCAL_ENTITIES} from '../richTextProcessor';
-import {isDialog, isSavedDialog, isForumTopic} from './utils/dialogs/isDialog';
+import {isDialog, isSavedDialog, isForumTopic, isMonoforumDialog} from './utils/dialogs/isDialog';
 import getDialogKey from './utils/dialogs/getDialogKey';
 import getHistoryStorageKey, {getSearchStorageFilterKey} from './utils/messages/getHistoryStorageKey';
 import {ApiLimitType} from '../mtproto/api_methods';
@@ -85,6 +85,7 @@ import RepayRequestHandler, {RepayRequest} from '../mtproto/repayRequestHandler'
 import canVideoBeAnimated from './utils/docs/canVideoBeAnimated';
 import getPhotoInput from './utils/photos/getPhotoInput';
 import {BatchProcessor} from '../../helpers/sortedList';
+import {MonoforumDialog} from '../storages/monoforumDialogs';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -8710,9 +8711,9 @@ export class AppMessagesManager extends AppManager {
     this.rootScope.dispatchEvent('grouped_edit', {peerId: messages[0].peerId, groupedId, deletedMids: deletedMids || [], messages});
   }
 
-  public getDialogUnreadCount(dialog: Dialog | ForumTopic) {
+  public getDialogUnreadCount(dialog: Dialog | ForumTopic | MonoforumDialog) {
     let unreadCount = dialog.unread_count;
-    if(!isForumTopic(dialog) && this.appPeersManager.isForum(dialog.peerId) && !dialog.pFlags.view_forum_as_messages) {
+    if(!isForumTopic(dialog) && !isMonoforumDialog(dialog) && this.appPeersManager.isForum(dialog.peerId) && !dialog.pFlags.view_forum_as_messages) {
       const forumUnreadCount = this.dialogsStorage.getForumUnreadCount(dialog.peerId);
       if(forumUnreadCount instanceof Promise) {
         unreadCount = 0;
@@ -8724,7 +8725,7 @@ export class AppMessagesManager extends AppManager {
     return unreadCount || +!!(dialog as Dialog).pFlags?.unread_mark;
   }
 
-  public isDialogUnread(dialog: AnyDialog) {
+  public isDialogUnread(dialog: AnyDialog | MonoforumDialog) {
     return !isSavedDialog(dialog) && !!this.getDialogUnreadCount(dialog);
   }
 

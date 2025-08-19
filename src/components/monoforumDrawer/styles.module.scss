@@ -10,7 +10,7 @@
   /* opacity: 0.5; */
 
   z-index: 1;
-  --offset: 5.0625rem;
+  --offset: 5rem;
 
   position: absolute;
   top: 0;
@@ -25,16 +25,27 @@
 
   pointer-events: initial;
 
+
+  display: flex;
+  flex-direction: column;
+
   &.hidden {
     transform: translateX(100%);
   }
 }
 
 .Header {
+  flex-grow: none;
+  flex-shrink: none;
   padding: 0 0.75rem;
 }
 
 .Title {
   flex: 1;
   padding-left: 0.5rem;
+}
+
+.ScrollableContainer {
+  flex: 1;
+  position: relative;
 }

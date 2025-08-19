@@ -21,6 +21,7 @@ export default class SortedDialogList {
   public indexKey: ReturnType<typeof getDialogIndexKey>;
   public onListLengthChange: () => void;
   public virtualFilterId: PeerId;
+  public monoforumParentPeerId: PeerId;
 
   private virtualList: ReturnType<typeof createDeferredSortedVirtualList<DialogElement>>;
 
@@ -38,6 +39,7 @@ export default class SortedDialogList {
     indexKey: SortedDialogList['indexKey'],
     onListLengthChange?: SortedDialogList['onListLengthChange'],
     virtualFilterId?: SortedDialogList['virtualFilterId'],
+    monoforumParentPeerId?: SortedDialogList['monoforumParentPeerId'],
 
     scrollable: Scrollable,
     requestItemForIdx: (idx: number, itemsLength: number) => void,
@@ -51,6 +53,7 @@ export default class SortedDialogList {
       'log',
       'indexKey',
       'virtualFilterId',
+      'monoforumParentPeerId',
       'onListLengthChange'
     ]));
 
@@ -125,6 +128,7 @@ export default class SortedDialogList {
       threadId: this.virtualFilterId ? key : undefined,
       isMainList: this.indexKey === 'index_0',
       controlled: true,
+      monoforumParentPeerId: this.monoforumParentPeerId,
       wrapOptions: undefined
     };
 
