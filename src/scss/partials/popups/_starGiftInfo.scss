@@ -101,6 +101,11 @@
     color: rgba(255, 255, 255, .8);
     z-index: 1;
     margin: 0;
+
+    .peer-title {
+      color: #fff;
+      cursor: pointer;
+    }
   }
 }
 
@@ -183,4 +188,22 @@
     color: var(--primary-color);
     cursor: pointer;
   }
+}
+.popup-footer .popup-star-gift-info-resale-button-twoline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 16px;
+  line-height: 16px;
+  height: 3rem;
+}
+
+.popup-star-gift-info-resale-stars-amount {
+  font-size: 12px;
+  line-height: 18px;
+  color: rgba(255, 255, 255, .6);
+  margin-top: 0.125rem;
+  text-transform: none;
 }

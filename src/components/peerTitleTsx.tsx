@@ -6,7 +6,8 @@ import {attachClassName} from '../helpers/solid/classname';
 export const PeerTitleTsx = (props: {
   class?: string
   peerId: PeerId,
-  onlyFirstName?: boolean
+  onlyFirstName?: boolean,
+  username?: boolean,
   onClick?: () => void
 }) => {
   const peerTitle = new PeerTitle();
@@ -14,7 +15,12 @@ export const PeerTitleTsx = (props: {
   const [loaded] = createResource(
     () => props.peerId,
     async(peerId) => {
-      await peerTitle.update({peerId, dialog: false, onlyFirstName: props.onlyFirstName});
+      await peerTitle.update({
+        peerId,
+        dialog: false,
+        onlyFirstName: props.onlyFirstName,
+        username: props.username
+      });
       if(props.onClick) {
         const detach = attachClickEvent(peerTitle.element, props.onClick);
         onCleanup(detach);

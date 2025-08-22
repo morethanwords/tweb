@@ -5,10 +5,11 @@
  */
 
 import bigInt from 'big-integer';
-import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, WebPageAttribute} from '../../layer';
+import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, WebPageAttribute} from '../../layer';
 import {STARS_CURRENCY} from '../mtproto/mtproto_config';
 import {MyDocument} from './appDocsManager';
 import {AppManager} from './manager';
+import getPeerId from './utils/peers/getPeerId';
 
 export interface MyStarGift {
   type: 'stargift',
@@ -18,6 +19,10 @@ export interface MyStarGift {
   isConverted?: boolean,
   isUpgraded?: boolean,
   isUpgradedBySender?: boolean,
+  isResale?: boolean,
+  resellPriceStars?: Long,
+  resellPriceTon?: Long,
+  resellOnlyTon?: boolean,
   collectibleAttributes?: {
     model: StarGiftAttribute.starGiftAttributeModel,
     backdrop: StarGiftAttribute.starGiftAttributeBackdrop,
@@ -97,7 +102,27 @@ export default class AppGiftsManager extends AppManager {
   private cachedStarGiftOptionsHash = 0;
 
   protected after() {
+    this.apiUpdatesManager.addMultipleEventsListeners({
+      updateNewMessage: ({message}) => {
+        if(message._ !== 'messageService') return;
+        const action = message.action;
 
+        switch(action._) {
+          case 'messageActionStarGift':
+            this.rootScope.dispatchEvent('star_gift_list_update', {peerId: getPeerId(message.peer_id)});
+            break;
+
+          case 'messageActionStarGiftUnique': {
+            const peerId = getPeerId(message.peer_id);
+            this.rootScope.dispatchEvent('star_gift_list_update', {peerId});
+            if(action.pFlags.transferred && message.pFlags.out || action.resale_amount) {
+              this.rootScope.dispatchEvent('star_gift_list_update', {peerId: this.rootScope.myId});
+            }
+            break;
+          }
+        }
+      }
+    })
   }
 
   private wrapGift(gift: StarGift): MyStarGift {
@@ -132,6 +157,19 @@ export default class AppGiftsManager extends AppManager {
         }
       }
 
+      let resellPriceStars: Long | undefined;
+      let resellPriceTon: Long | undefined;
+
+      if(gift.resell_amount) {
+        for(const amount of gift.resell_amount) {
+          if(amount._ === 'starsAmount') {
+            resellPriceStars = amount.amount;
+          } else if(amount._ === 'starsTonAmount') {
+            resellPriceTon = amount.amount;
+          }
+        }
+      }
+
       return {
         type: 'stargift',
         raw: gift,
@@ -141,7 +179,10 @@ export default class AppGiftsManager extends AppManager {
           backdrop: attrBackdrop,
           pattern: attrPatern,
           original: attrOrig
-        }
+        },
+        resellPriceStars,
+        resellPriceTon,
+        resellOnlyTon: gift.pFlags.resale_ton_only
       };
     }
   }
@@ -167,7 +208,9 @@ export default class AppGiftsManager extends AppManager {
       msg_id: message.id,
       convert_stars: gift._ === 'starGift' ? gift.convert_stars : undefined,
       upgrade_stars: gift._ === 'starGift' ? gift.upgrade_stars : undefined,
-      saved_id: action.saved_id
+      saved_id: action.saved_id,
+      can_transfer_at: action._ === 'messageActionStarGiftUnique' ? action.can_transfer_at : undefined,
+      can_resell_at: action._ === 'messageActionStarGiftUnique' ? action.can_resell_at : undefined
     };
 
     return {
@@ -247,7 +290,24 @@ export default class AppGiftsManager extends AppManager {
       return this.cachedStarGiftOptions;
     }
 
-    return this.cachedStarGiftOptions = res.gifts.map((it) => this.wrapGift(it));
+    const options: MyStarGift[] = [];
+    for(const it of res.gifts) {
+      const gift = this.wrapGift(it);
+      const isResale = gift.raw._ === 'starGift' && !!gift.raw.availability_resale;
+      if(isResale) {
+        if(!!(gift.raw as StarGift.starGift).availability_remains) {
+          options.push(gift);
+          options.push({...gift, isResale})
+        } else {
+          gift.isResale = true;
+          options.push(gift);
+        }
+      } else {
+        options.push(gift);
+      }
+    }
+
+    return this.cachedStarGiftOptions = options;
   }
 
   public async toggleGiftHidden(gift: InputSavedStarGift, hidden: boolean) {
@@ -270,16 +330,12 @@ export default class AppGiftsManager extends AppManager {
     return mapPremiumOptions(res);
   }
 
-  public async getUpgradePreview(giftId: Long): Promise<StarGiftUpgradePreview> {
-    const res = await this.apiManager.invokeApiSingle('payments.getStarGiftUpgradePreview', {
-      gift_id: giftId
-    });
-
+  private wrapAttributeList(attrs: StarGiftAttribute[]) {
     const models: StarGiftAttribute.starGiftAttributeModel[] = [];
     const backdrops: StarGiftAttribute.starGiftAttributeBackdrop[] = [];
     const patterns: StarGiftAttribute.starGiftAttributePattern[] = [];
 
-    for(const attribute of res.sample_attributes) {
+    for(const attribute of attrs) {
       switch(attribute._) {
         case 'starGiftAttributeModel': {
           attribute.document = this.appDocsManager.saveDoc(attribute.document);
@@ -305,6 +361,14 @@ export default class AppGiftsManager extends AppManager {
       backdrops,
       patterns
     };
+  }
+
+  public async getUpgradePreview(giftId: Long): Promise<StarGiftUpgradePreview> {
+    const res = await this.apiManager.invokeApiSingle('payments.getStarGiftUpgradePreview', {
+      gift_id: giftId
+    });
+
+    return this.wrapAttributeList(res.sample_attributes);
   }
 
   public async getGiftBySlug(slug: string) {
@@ -342,5 +406,34 @@ export default class AppGiftsManager extends AppManager {
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
     });
+  }
+
+  public async getResaleOptions(params: {
+    giftId: Long,
+    sort?: 'price' | 'date' | 'num',
+    filters?: StarGiftAttributeId[]
+    attributesHash: Long,
+    offset?: string,
+  }) {
+    const res = await this.apiManager.invokeApi('payments.getResaleStarGifts', {
+      gift_id: params.giftId,
+      sort_by_num: params.sort === 'num',
+      sort_by_price: params.sort === 'price',
+      attributes: params.filters,
+      attributes_hash: params.attributesHash,
+      offset: params.offset,
+      limit: 51 // divisible by 3 for even grid
+    })
+
+    this.appPeersManager.saveApiPeers(res);
+
+    return {
+      items: res.gifts.map((it) => this.wrapGift(it)),
+      next: res.next_offset,
+      count: res.count,
+      counters: res.counters,
+      attributes: res.attributes ? this.wrapAttributeList(res.attributes) : undefined,
+      attributesHash: res.attributes_hash
+    }
   }
 }

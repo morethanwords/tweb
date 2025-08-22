@@ -24,6 +24,7 @@ import formatStarsAmount from './utils/payments/formatStarsAmount';
 export default class AppPaymentsManager extends AppManager {
   private premiumPromo: MaybePromise<HelpPremiumPromo>;
   private starsStatus: MaybePromise<PaymentsStarsStatus>;
+  private starsStatusTon: MaybePromise<PaymentsStarsStatus>;
 
   protected after() {
     // * reset premium promo
@@ -243,6 +244,23 @@ export default class AppPaymentsManager extends AppManager {
     });
   }
 
+  public getStarsStatusTon(overwrite?: boolean) {
+    if(overwrite) {
+      this.starsStatusTon = undefined;
+    }
+
+    return this.starsStatusTon ??= this.apiManager.invokeApiSingleProcess({
+      method: 'payments.getStarsStatus',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
+        ton: true
+      },
+      processResult: (starsStatus) => {
+        return this.starsStatusTon = this.saveStarsStatus(starsStatus);
+      }
+    });
+  }
+
   public getStarsTransactions(offset: string = '', inbound?: boolean) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarsTransactions',
@@ -327,24 +345,21 @@ export default class AppPaymentsManager extends AppManager {
     return result;
   };
 
-  public updateLocalStarsBalance(balance: StarsAmount.starsAmount, fulfilledReservedStars?: number) {
-    const {starsStatus} = this;
+  public updateLocalStarsBalance(balance: StarsAmount, fulfilledReservedStars?: number) {
+    const ton = balance._ === 'starsTonAmount';
+    const starsStatus = balance._ === 'starsTonAmount' ? this.starsStatusTon : this.starsStatus;
 
     (starsStatus as PaymentsStarsStatus).balance = balance;
     this.rootScope.dispatchEvent('stars_balance', {
       balance: formatStarsAmount(balance),
-      fulfilledReservedStars
+      ton
     });
   }
 
   private onUpdateStarsBalance = (update: Update.updateStarsBalance) => {
-    const {starsStatus} = this;
+    const isTon = update.balance._ === 'starsTonAmount';
+    const starsStatus = isTon ? this.starsStatusTon : this.starsStatus;
     if(!starsStatus || starsStatus instanceof Promise) {
-      return;
-    }
-
-    if(update.balance._ === 'starsTonAmount') {
-      console.warn('No TON support yet');
       return;
     }
 

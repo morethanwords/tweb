@@ -5653,9 +5653,9 @@ export default class ChatBubbles {
               if(action._ === 'messageActionStarGift' && action.upgrade_msg_id) {
                 const upgradeMsg = await this.managers.appMessagesManager.getMessageById(action.upgrade_msg_id);
                 const upgradedGift = await this.managers.appGiftsManager.wrapGiftFromMessage(upgradeMsg as Message.messageService);
-                PopupElement.createPopup(PopupStarGiftInfo, upgradedGift);
+                PopupElement.createPopup(PopupStarGiftInfo, {gift: upgradedGift});
               } else {
-                PopupElement.createPopup(PopupStarGiftInfo, gift)
+                PopupElement.createPopup(PopupStarGiftInfo, {gift})
               }
             }
           }), container, middleware)

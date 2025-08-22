@@ -15,7 +15,7 @@ import {StarGiftBackdrop} from './stargiftBackdrop';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import {IconTsx} from '../iconTsx';
 import formatNumber from '../../helpers/number/formatNumber';
-import {rgbIntToHex} from '../../helpers/color';
+import {changeBrightness, getRgbColorFromTelegramColor, rgbaToHexa, rgbIntToHex} from '../../helpers/color';
 import createContextMenu from '../../helpers/dom/createContextMenu';
 import PopupPickUser from '../popups/pickUser';
 import appImManager from '../../lib/appManagers/appImManager';
@@ -24,10 +24,12 @@ import {copyTextToClipboard} from '../../helpers/clipboard';
 import {toastNew} from '../toast';
 import {wearStarGift} from '../popups/wearStarGift';
 import transferStarGift from '../popups/transferStarGift';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 
 function StarGiftGridItem(props: {
   item: MyStarGift,
-  view: 'profile' | 'list'
+  view: 'profile' | 'list' | 'resale'
   onClick?: () => void
   renderer: SuperStickerRenderer
 }) {
@@ -108,8 +110,15 @@ function StarGiftGridItem(props: {
     <div
       class={/* @once */ classNames(
         styles.gridItem,
-        props.view === 'profile' ? styles.viewProfile : styles.viewList
+        {
+          profile: styles.viewProfile,
+          list: styles.viewList,
+          resale: styles.viewResale
+        }[props.view]
       )}
+      style={{
+        '--overlay-color': rgbaToHexa(changeBrightness(getRgbColorFromTelegramColor(props.item.collectibleAttributes?.backdrop?.edge_color ?? 0), 0.9))
+      }}
       onClick={props.onClick}
       ref={containerRef}
     >
@@ -122,8 +131,15 @@ function StarGiftGridItem(props: {
           patternEmoji={props.item.collectibleAttributes.pattern.document as MyDocument}
         />
       )}
-      {isPinned() && (
+
+      {isPinned() && !props.item.resellOnlyTon && (
         <IconTsx icon="pin2" class={/* @once */ styles.itemPin} />
+      )}
+
+      {props.item.resellOnlyTon && (
+        <div class={/* @once */ styles.tonIcon}>
+          <IconTsx icon="ton" />
+        </div>
       )}
 
       {props.view === 'profile' && props.item.saved?.pFlags.unsaved && (
@@ -141,13 +157,23 @@ function StarGiftGridItem(props: {
             <Sparkles mode='button' isDiv />
           )} */}
           <StarsStar />
-          <span>{props.item.raw.stars}</span>
+          <span>{
+            props.item.raw.resell_min_stars ? `${props.item.raw.resell_min_stars}+` :
+            props.item.raw.stars
+          }</span>
+        </div>
+      )}
+
+      {props.item.resellPriceStars && (
+        <div class={/* @once */ styles.itemPrice}>
+          <StarsStar />
+          <span>{numberThousandSplitterForStars(props.item.resellPriceStars)}</span>
         </div>
       )}
 
       {props.view === 'profile' && props.item.raw._ === 'starGift' && (
         <div class={/* @once */ styles.itemFrom}>
-          {props.item.saved.from_id ? (
+          {props.item.saved.from_id && !props.item.saved.pFlags.name_hidden ? (
             <AvatarNewTsx
               peerId={getPeerId(props.item.saved.from_id)}
               size={20}
@@ -163,15 +189,31 @@ function StarGiftGridItem(props: {
       {(() => {
         const gift = props.item.raw;
         if(gift._ !== 'starGift') {
+          if(props.view === 'profile' && props.item.resellPriceStars) {
+            return (
+              <StarGiftBadge class={/* @once */ styles.badgeResale}>
+                {i18n('StarGiftResaleBadgeProfile')}
+              </StarGiftBadge>
+            )
+          }
+
           return (
             <StarGiftBadge
               class={/* @once */ styles.badgeUnique}
               backdropAttr={props.item.collectibleAttributes.backdrop}
             >
-              {isPinned() ? `#${gift.num}` : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.availability_total, 1)])}
+              {isPinned() || props.view === 'resale' ? `#${gift.num}` : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.availability_total, 0)])}
             </StarGiftBadge>
           );
         };
+
+        if(props.view === 'list' && props.item.isResale) {
+          return (
+            <StarGiftBadge class={/* @once */ styles.badgeResale}>
+              {i18n('StarGiftResaleBadge')}
+            </StarGiftBadge>
+          )
+        }
 
         if(props.view === 'list' && gift.availability_remains === 0) {
           return (
@@ -184,7 +226,7 @@ function StarGiftGridItem(props: {
         if(props.item.raw.availability_total) {
           return (
             <StarGiftBadge>
-              {props.view === 'list' ? i18n('StarGiftLimitedBadge') : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.availability_total, 1)])}
+              {props.view === 'list' ? i18n('StarGiftLimitedBadge') : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.availability_total, 0)])}
             </StarGiftBadge>
           )
         }
@@ -196,7 +238,8 @@ function StarGiftGridItem(props: {
 export function StarGiftsGrid(props: {
   class?: string
   items: MyStarGift[],
-  view: 'profile' | 'list'
+  view: 'profile' | 'list' | 'resale'
+  autoplay?: boolean
   onClick?: (item: MyStarGift) => void
   scrollParent: HTMLElement
 }) {
@@ -206,8 +249,14 @@ export function StarGiftsGrid(props: {
     group: 'none',
     managers: rootScope.managers,
     intersectionObserverInit: {root: props.scrollParent},
-    visibleRenderOptions: {loop: false, width: 120, height: 120},
-    withLock: false
+    visibleRenderOptions: {
+      loop: false,
+      play: props.autoplay ?? true,
+      width: 120,
+      height: 120
+    },
+    withLock: false,
+    playOnHover: props.autoplay === false
   });
 
   onCleanup(() => {

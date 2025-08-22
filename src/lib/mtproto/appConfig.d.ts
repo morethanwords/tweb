@@ -126,6 +126,8 @@ export interface MTAppConfig {
   verify_age_min?:                           number;
   verify_age_bot_username?:                  string;
   verify_age_country?:                       string;
+  ton_usd_rate?:                             number;
+  ton_topup_url?:                            string;
 }
 
 export interface EmojiesSendDiceSuccess {

@@ -43,7 +43,7 @@ export default class AppUsernamesManager extends AppManager {
     peerId: PeerId,
     order: string[]
   }) {
-    if(!peerId) {
+    if(!peerId || peerId === this.appUsersManager.userId) {
       return this.apiManager.invokeApi('account.reorderUsernames', {order});
     } else if(peerId.isAnyChat()) {
       const chatId = peerId.toChatId();

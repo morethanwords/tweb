@@ -1022,7 +1022,7 @@ export class InternalLinkProcessor {
       return;
     }
 
-    PopupElement.createPopup(PopupStarGiftInfo, gift);
+    PopupElement.createPopup(PopupStarGiftInfo, {gift});
   }
 
   public processInternalLink(link: InternalLink) {

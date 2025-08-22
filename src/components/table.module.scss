@@ -39,6 +39,10 @@
   align-items: center;
   color: var(--primary-color);
   cursor: pointer;
+
+  :global(.avatar) {
+    flex-shrink: 0;
+  }
 }
 
 .anonymous {
@@ -63,6 +67,7 @@
   border-radius: 999px;
   color: var(--primary-color);
   background: rgba(var(--primary-color-rgb), .1);
+  white-space: nowrap;
 
   &:not([disabled]):hover {
     background: rgba(var(--primary-color-rgb), .2);

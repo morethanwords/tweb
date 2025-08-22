@@ -46,7 +46,7 @@ const POSITIONS_SMALL: [number, number, number, number][] = [
   [89, 86, 20, MAX_OPACITY],
   [49, 97, 20, MAX_OPACITY],
   [9, 86, 20, MAX_OPACITY],
-  [-5, 42, 20, MAX_OPACITY],
+  [0, 42, 20, MAX_OPACITY],
   [5, 12, 20, MAX_OPACITY]
 ];
 

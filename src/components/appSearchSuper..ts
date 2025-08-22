@@ -2383,6 +2383,10 @@ export default class AppSearchSuper {
       firstMediaTab = savedDialogsTab;
     }
 
+    if(giftsCount && !firstMediaTab) {
+      firstMediaTab = giftsTab;
+    }
+
     this.container.classList.toggle('hide', !firstMediaTab);
     this.container.parentElement.classList.toggle('search-empty', !firstMediaTab);
     if(firstMediaTab) {

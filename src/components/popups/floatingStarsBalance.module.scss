@@ -1,0 +1,37 @@
+.container {
+  background: var(--surface-color);
+  border-radius: 9999px;
+  position: absolute;
+  padding: 0.65625rem 1.25rem 0.59375rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: var(--font-size-14);
+  line-height: 1;
+
+  :global(.i18n) {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  :global(.currency-star-icon) {
+    width: 1em;
+    height: 1em;
+  }
+}
+
+.getMore {
+  margin-top: 0.25rem;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.tonUsd {
+  margin-top: 0.25rem;
+  color: var(--secondary-text-color);
+}

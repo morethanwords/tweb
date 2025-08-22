@@ -322,7 +322,7 @@ $btn-menu-z-index: 4;
       padding-right: 6px;
     }
 
-    &:not(.submenu-trigger):active {
+    &:not(.submenu-trigger):not(.btn-menu-search):active {
       transform: scale(.96);
     }
 
@@ -335,6 +335,11 @@ $btn-menu-z-index: 4;
 
     &.danger {
       @include hover-background-effect(red);
+    }
+
+    &.btn-menu-search {
+      @include hover-background-effect(transparent);
+      cursor: default !important;
     }
 
     &-icon {
@@ -368,6 +373,19 @@ $btn-menu-z-index: 4;
       .media-photo {
         width: inherit;
         height: inherit;
+      }
+    }
+
+    &-input {
+      border: none;
+      outline: none;
+      padding: 0;
+      background-color: transparent;
+      font-size: var(--font-size-14);
+      line-height: var(--line-height-16);
+
+      &::placeholder {
+        color: var(--secondary-text-color);
       }
     }
 
@@ -856,6 +874,24 @@ $btn-menu-z-index: 4;
       width: 100%;
       height: 100%;
       padding: .0625rem;
+    }
+  }
+
+  &-select {
+    padding-bottom: 0;
+  }
+
+  &-search-delimiter {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 0.3125rem;
+    margin-bottom: 0;
+  }
+
+  &-search-scrollable {
+    position: relative;
+    .scrollable {
+      padding-block: 0.3125rem;
     }
   }
 }

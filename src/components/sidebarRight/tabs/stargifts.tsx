@@ -18,7 +18,7 @@ export function StarGiftsProfileTab(props: {
 
   let currentOffset = '';
   let isLoading = false;
-  async function loadNext() {
+  async function loadNext(reload = false) {
     if(isLoading || !hasMore()) return;
     isLoading = true;
     const res = await rootScope.managers.appGiftsManager.getProfileGifts({
@@ -27,7 +27,7 @@ export function StarGiftsProfileTab(props: {
       limit: 99 // divisible by 3 to avoid grid jumping
     });
     currentOffset = res.next;
-    setList(list().concat(res.gifts));
+    setList(reload ? res.gifts : list().concat(res.gifts));
     setHasMore(Boolean(res.next))
     props.onCountChange?.(res.count);
     isLoading = false;
@@ -70,6 +70,13 @@ export function StarGiftsProfileTab(props: {
         setList(newList);
       }
     });
+
+    listenerSetter.add(rootScope)('star_gift_list_update', ({peerId}) => {
+      // refetch list
+      currentOffset = ''
+      setHasMore(true)
+      loadNext(true)
+    })
   });
 
   onCleanup(() => listenerSetter.removeAll());
@@ -83,8 +90,9 @@ export function StarGiftsProfileTab(props: {
         items={list()}
         view='profile'
         scrollParent={props.scrollParent}
+        autoplay={false}
         onClick={(item) => {
-          PopupElement.createPopup(PopupStarGiftInfo, item);
+          PopupElement.createPopup(PopupStarGiftInfo, {gift: item});
         }}
       />
     </div>

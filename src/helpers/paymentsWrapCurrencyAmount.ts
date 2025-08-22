@@ -1,7 +1,9 @@
+import bigInt from 'big-integer';
 import Icon from '../components/icon';
 import Currencies from '../config/currencies';
 import I18n from '../lib/langPack';
-import {STARS_CURRENCY} from '../lib/mtproto/mtproto_config';
+import {STARS_CURRENCY, TON_CURRENCY} from '../lib/mtproto/mtproto_config';
+import {numberThousandSplitterForStars} from './number/numberThousandSplitter';
 
 // https://stackoverflow.com/a/34141813
 function number_format(number: any, decimals: any, dec_point: any, thousands_sep: any): string {
@@ -28,6 +30,56 @@ function number_format(number: any, decimals: any, dec_point: any, thousands_sep
   return s.join(dec);
 }
 
+const NANOTON_DECIMALS = 9;
+
+export function formatNanoton(amount: number | string, maxDecimals: number = 2, withThousandsSep = true) {
+  let amountStr = String(amount);
+  let negative = false;
+  if(amountStr.startsWith('-')) {
+    negative = true;
+    amountStr = amountStr.slice(1);
+  }
+
+  // pad if needed
+  if(amountStr.length < NANOTON_DECIMALS) {
+    amountStr = amountStr.padStart(NANOTON_DECIMALS, '0');
+  }
+  let intPart = amountStr.slice(0, amountStr.length - NANOTON_DECIMALS) || '0';
+  const fracPart = amountStr.slice(-NANOTON_DECIMALS).padEnd(NANOTON_DECIMALS, '0');
+
+  // take decimals of fraction, with rounding
+  let frac2 = fracPart.slice(0, maxDecimals);
+  const nextDigit = fracPart.length > maxDecimals ? parseInt(fracPart[maxDecimals], 10) : 0;
+
+  if(nextDigit >= 5) {
+    const asNum = parseInt(frac2, 10) + 1;
+    if(asNum >= 10 ** maxDecimals) {
+      intPart = bigInt(intPart).plus(1).toString();
+      frac2 = '00';
+    } else {
+      frac2 = asNum.toString().padStart(2, '0');
+    }
+  }
+
+  let res = ''
+  if(negative) res += '-';
+
+  if(withThousandsSep) {
+    res += intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  } else {
+    res += intPart;
+  }
+
+  if(maxDecimals > 0) {
+    frac2 = frac2.replace(/0+$/, '');
+    if(frac2) {
+      res += '.' + frac2;
+    }
+  }
+
+  return res;
+}
+
 export default function paymentsWrapCurrencyAmount<T extends boolean = false>(
   amount: number | string,
   currency: string,
@@ -35,6 +87,15 @@ export default function paymentsWrapCurrencyAmount<T extends boolean = false>(
   useNative?: boolean,
   plain?: T
 ): T extends true ? string : HTMLElement | string {
+  if(currency === TON_CURRENCY) {
+    const str = formatNanoton(amount);
+    if(plain) return str + ' TON';
+    const out = document.createElement('span');
+    out.classList.add('ton-amount');
+    out.append(Icon('ton', 'ton-amount-icon'), ' ', str);
+    return out as any;
+  }
+
   amount = +amount;
 
   if(currency === STARS_CURRENCY) {
@@ -44,7 +105,7 @@ export default function paymentsWrapCurrencyAmount<T extends boolean = false>(
 
     const out = document.createElement('span');
     out.classList.add('xtr');
-    out.append(Icon('star', 'xtr-icon'), ' ', '' + amount);
+    out.append(Icon('star', 'xtr-icon'), ' ', numberThousandSplitterForStars(amount));
     return out as any;
   }
 

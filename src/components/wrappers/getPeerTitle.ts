@@ -31,6 +31,7 @@ export default async function getPeerTitle(options: GetPeerTitleOptions): Promis
     peerId = rootScope.myId,
     plainText,
     onlyFirstName,
+    username,
     limitSymbols,
     managers = rootScope.managers,
     useManagers,
@@ -41,8 +42,13 @@ export default async function getPeerTitle(options: GetPeerTitleOptions): Promis
   if(peerId.isUser()) {
     const user = useManagers ? await managers.appUsersManager.getUser(peerId.toUserId()) : apiManagerProxy.getUser(peerId.toUserId());
     if(user) {
-      if(user.first_name) title += user.first_name;
-      if(user.last_name && (!onlyFirstName || !title)) title += ' ' + user.last_name;
+      if(username) {
+        const username = getPeerActiveUsernames(user)[0] || '';
+        if(username) title = '@' + username;
+      } else {
+        if(user.first_name) title += user.first_name;
+        if(user.last_name && (!onlyFirstName || !title)) title += ' ' + user.last_name;
+      }
     }
 
     if(!title) title = !user || user.pFlags.deleted ? I18n.format(onlyFirstName ? 'Deleted' : 'HiddenName', true) : getPeerActiveUsernames(user)[0] || '';
@@ -55,7 +61,12 @@ export default async function getPeerTitle(options: GetPeerTitleOptions): Promis
 
     if(!title) {
       const chat = (useManagers ? await managers.appChatsManager.getChat(peerId.toChatId()) : apiManagerProxy.getChat(peerId.toChatId())) as Chat.chat;
-      title = chat?.title || '';
+      if(username) {
+        const username = getPeerActiveUsernames(chat)[0] || '';
+        if(username) title = '@' + username;
+      } else {
+        title = chat?.title || '';
+      }
     }
 
     if(onlyFirstName) {

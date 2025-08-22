@@ -55,6 +55,8 @@ export function filterButtonMenuItems(buttons: ButtonMenuItemOptionsVerifiable[]
   return filterAsync(buttons, (button) => button?.verify ? button.verify() ?? false : true);
 }
 
+export type ButtonMenuDirection = 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right'
+
 export default function ButtonMenuToggle({
   buttonOptions,
   listenerSetter: attachListenerSetter,
@@ -73,7 +75,7 @@ export default function ButtonMenuToggle({
   listenerSetter?: ListenerSetter,
   container?: HTMLElement
   appendTo?: HTMLElement,
-  direction: 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right',
+  direction: ButtonMenuDirection,
   buttons: ButtonMenuItemOptionsVerifiable[],
   onOpenBefore?: (e: Event) => any,
   onOpen?: (e: Event, element: HTMLElement) => any,

@@ -24,6 +24,7 @@ export default class SuperStickerRenderer {
   private intersectionObserverInit: IntersectionObserverInit;
   private visibleRenderOptions: Partial<Parameters<typeof wrapSticker>[0]>;
   private withLock: boolean
+  private playOnHover: boolean
 
   constructor(options: {
     regularLazyLoadQueue: LazyLoadQueue;
@@ -32,6 +33,7 @@ export default class SuperStickerRenderer {
     intersectionObserverInit?: SuperStickerRenderer['intersectionObserverInit'];
     visibleRenderOptions?: SuperStickerRenderer['visibleRenderOptions'];
     withLock?: boolean
+    playOnHover?: boolean
   }) {
     options.withLock ??= true;
     safeAssign(this, options);
@@ -85,6 +87,15 @@ export default class SuperStickerRenderer {
       ...(doc.animated ? {} : this.visibleRenderOptions || {})
     });
 
+    if(this.playOnHover) {
+      element.addEventListener('mouseenter', () => {
+        const renderer = this.rendererByElement.get(element);
+        if(renderer && 'playOrRestart' in renderer) {
+          renderer.playOrRestart()
+        }
+      })
+    }
+
     return element;
   }
 
@@ -118,6 +129,7 @@ export default class SuperStickerRenderer {
     });
   };
 
+  private rendererByElement = new WeakMap<HTMLElement, Awaited<Awaited<ReturnType<typeof wrapSticker>>['render']>>();
   private processVisible = async(element: HTMLElement) => {
     const docId = element.dataset.docId;
     const doc = await this.managers.appDocsManager.getDoc(docId);
@@ -147,6 +159,12 @@ export default class SuperStickerRenderer {
       // clearTimeout(timeout);
       this.checkAnimationContainer(element, this.lazyLoadQueue.intersector.isVisible(element));
     }, noop);
+
+    if(this.playOnHover) {
+      promise.then(renderer => {
+        this.rendererByElement.set(element, renderer);
+      });
+    }
 
     /* let timeout = window.setTimeout(() => {
       console.error('processVisibleDiv timeout', div, doc);
