@@ -42,15 +42,14 @@ class MonoforumDialogsStorage extends AppManager {
 
   public async getDialogs({parentPeerId, limit, offsetIndex}: MonoforumDialogsStorage.GetDialogsArgs) {
     const collection = this.getDialogCollection(parentPeerId);
-    const cachedDialogs = collection.items;
     const isCollectionIncomplete = !collection.count || collection.items.length < collection.count;
 
-    let cachedOffsetPosition = this.getPositionFromOffsetIndex(cachedDialogs, offsetIndex);
+    let cachedOffsetPosition = this.getPositionFromOffsetIndex(collection.items, offsetIndex);
 
-    const cachedSlice = cachedDialogs.slice(cachedOffsetPosition, cachedOffsetPosition + limit);
+    const cachedSlice = collection.items.slice(cachedOffsetPosition, cachedOffsetPosition + limit);
 
     const toFetchLimit = limit - cachedSlice.length;
-    const toFetchOffsetDialog = lastItem(cachedSlice) || lastItem(cachedDialogs);
+    const toFetchOffsetDialog = lastItem(cachedSlice) || lastItem(collection.items);
     const toFetchOffsetPeer = this.appPeersManager.getInputPeerById(toFetchOffsetDialog?.peerId);
 
     const fetchedSlice = [];
@@ -117,11 +116,12 @@ class MonoforumDialogsStorage extends AppManager {
 
     const collection = this.getDialogCollection(parentPeerId);
 
-    dialogs = dialogs.filter(dialog => !collection.map.has(dialog.peerId));
+    const dialogsSet = new Set(dialogs.map(dialog => dialog.peerId));
+
+    collection.items = collection.items.filter(dialog => !dialogsSet.has(dialog.peerId));
 
     collection.items.push(...dialogs);
     collection.items.sort(this.sortDialogsComparator);
-
     dialogs.forEach(dialog => collection.map.set(dialog.peerId, dialog));
 
     collection.count = Math.max(count || 0, collection.count, collection.items.length);
