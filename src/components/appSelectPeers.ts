@@ -1245,7 +1245,7 @@ export default class AppSelectPeers {
   }
 
   public getElementByPeerId(peerId: PeerId) {
-    return this.chatsContainer.querySelector<HTMLElement>(`[data-peer-id="${peerId}"]`);
+    return this.list.querySelector<HTMLElement>(`[data-peer-id="${peerId}"]`);
   }
 
   public toggleElementCheckboxByPeerId(peerId: PeerId, checked?: boolean) {

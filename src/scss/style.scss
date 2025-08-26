@@ -2518,3 +2518,40 @@ hr {
     transform: scale(1);
   }
 }
+
+.popup-add-members {
+  &-subtitle {
+    color: var(--secondary-text-color);
+    margin-bottom: .5rem;
+    padding: 0 1rem;
+    display: block;
+    line-height: var(--line-height);
+  }
+
+  &-premium {
+    &-container {
+      padding: 0 2rem;
+      text-align: center;
+
+      .delimiter-with-text {
+        margin: 1rem 0;
+      }
+    }
+
+    &-header {
+      font-size: var(--font-size-20);
+      font-weight: var(--font-weight-bold);
+      display: block;
+      margin-bottom: -1rem;
+    }
+
+    &-subtitle {
+      display: block;
+      margin: 1rem 0;
+
+      .popup-forward-auto-height & {
+        margin-bottom: 0;
+      }
+    }
+  }
+}

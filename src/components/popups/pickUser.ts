@@ -34,7 +34,9 @@ type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelectPeers>[
   titleLangKey?: LangPackKey,
   initial?: PeerId[],
   useTopics?: boolean,
-  headerLangPackKey?: LangPackKey
+  headerLangPackKey?: LangPackKey,
+  footerButton?: (element: HTMLElement) => void,
+  autoHeight?: boolean
 }>;
 
 async function wrapTopicRow({
@@ -89,14 +91,14 @@ export default class PopupPickUser extends PopupElement {
           }
         },
         body: true,
-        title: options.titleLangKey ?? true
-        // withConfirm: options.onMultiSelect ? 'OK' : undefined
-        // footer: !!options.onMultiSelect,
-        // withConfirm: !!options.onMultiSelect
+        title: options.titleLangKey ?? true,
+        footer: !!options.footerButton || undefined,
+        withConfirm: !!options.footerButton || undefined
       }
     );
 
     const isMultiSelect = !!options.onMultiSelect;
+    const headerSearch = options.headerSearch ?? isMultiSelect;
 
     let ignoreOnSelect: boolean;
     const onSelect = async(peerId: PeerId | PeerId[], threadId?: number) => {
@@ -147,13 +149,14 @@ export default class PopupPickUser extends PopupElement {
       appendTo: tabsContainer,
       onChange: isMultiSelect ? (length) => {
         this.btnConfirm.classList.toggle('is-visible', !!length);
+        options.onChange?.(length);
       } : undefined,
       onSelect: isMultiSelect ? undefined : onSelect,
       onFirstRender: () => {
         this.show();
         this.selector.checkForTriggers(); // ! due to zero height before mounting
 
-        if(!IS_TOUCH_SUPPORTED) {
+        if(!IS_TOUCH_SUPPORTED && this.selector.input) {
           this.selector.input.focus();
         }
       },
@@ -162,21 +165,26 @@ export default class PopupPickUser extends PopupElement {
       avatarSize: 'abitbigger',
       managers: this.managers,
       night: this.night,
-      headerSearch: isMultiSelect
+      headerSearch: headerSearch
     });
     this.selector.container.classList.add('tabs-tab');
 
     this.scrollable = this.selector.scrollable;
 
     if(isMultiSelect) {
-      this.header.after(this.selector.searchSection.container);
-      // this.btnConfirm.append(i18n('OK'));
-      // this.footer.append(this.btnConfirm);
-      // this.body.after(this.footer);
-      // this.footer.classList.add('abitlarger');
+      if(headerSearch) {
+        this.header.after(this.selector.searchSection.container);
+      }
 
-      this.btnConfirm = this.btnConfirmOnEnter = ButtonCorner({icon: 'check'});
-      this.body.append(this.btnConfirm);
+      if(!this.btnConfirm) {
+        this.btnConfirm = this.btnConfirmOnEnter = ButtonCorner({icon: 'check'});
+        this.body.append(this.btnConfirm);
+      } else if(this.footer) {
+        this.footer.append(this.btnConfirm);
+        this.body.after(this.footer);
+        this.footer.classList.add('abitlarger');
+        options.footerButton?.(this.btnConfirm);
+      }
 
       attachClickEvent(this.btnConfirm, () => {
         onSelect(this.selector.getSelected() as PeerId[]);
@@ -213,6 +221,10 @@ export default class PopupPickUser extends PopupElement {
         }
       });
       this.transition(this.selector.container);
+    }
+
+    if(options.autoHeight) {
+      this.container.classList.add('popup-forward-auto-height');
     }
   }
 

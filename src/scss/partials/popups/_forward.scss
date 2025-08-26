@@ -52,6 +52,14 @@
     }
   }
 
+  &-auto-height {
+    height: auto !important;
+
+    .sidebar-left-section {
+      min-height: auto !important;
+    }
+  }
+
   .selector.active,
   .chatlist-container {
     height: auto;

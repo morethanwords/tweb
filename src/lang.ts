@@ -886,8 +886,26 @@ const lang = {
   'MultiAccount.ShowNotificationsFromCaption': 'Turn this off if you want to receive notifications only from the account you are currently using.',
   'MultiAccount.AllAccounts': 'All Accounts',
   'MultiAccount.AccountsLimitDescription': 'You have reached the limit of **3** connected accounts. You can add more by subscribing to **Telegram Premium**.',
-
   'CtrlFSearchTipMac': 'Tip: Use **Cmd+F** to open Search',
+  'InviteViaLink.Title': 'Invite via Link',
+  'InviteViaLink.Subtitle': {
+    'one_value': '**%2$s** restricts adding them to groups.\nYou can send them an invite link as message instead.',
+    'other_value': '**%d users** restrict adding them to groups.\nYou can send them an invite link as message instead.'
+  },
+  'InviteViaLink.Send': 'Send Invite Link',
+  'InviteViaLink.Skip': 'Skip',
+  'InviteViaLink.LinkShared': {
+    'one_value': 'Link shared with **%2$s**',
+    'other_value': 'Link shared with **%d users**'
+  },
+  // 'InviteToGroupLeftError': 'Sorry, if a person is no longer part of a group, you need to add each other to your respective contact lists to be able to add them back.\n\nNote that they could still join via the group\'s invite link as long as they are not in the Removed users list.',
+  'InviteViaLink.Premium': 'Upgrade to Premium',
+  'InviteViaLink.Premium.Subtitle': {
+    'one_value': '**%2$s** only accepts invitations to groups from Contacts and **Premium** users.',
+    'other_value': '**%d users** only accept invitations to groups from Contacts and **Premium** users.'
+  },
+  'InviteViaLink.Premium.Subtitle2': 'You can send an invite link to the group in a private message instead.',
+  'InviteViaLink.Premium.Subscribe': 'Subscribe to Telegram Premium',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
