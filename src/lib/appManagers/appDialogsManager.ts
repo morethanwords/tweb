@@ -197,6 +197,7 @@ type DialogElementOptions = {
   fromName?: string,
   noIcons?: boolean,
   threadId?: number,
+  monoforumParentPeerId?: PeerId;
   wrapOptions: WrapSomethingOptions,
   isMainList?: boolean,
   withStories?: boolean,
@@ -219,6 +220,7 @@ export class DialogElement extends Row {
     fromName,
     noIcons,
     threadId,
+    monoforumParentPeerId,
     wrapOptions = {},
     isMainList,
     withStories,
@@ -333,6 +335,9 @@ export class DialogElement extends Row {
     li.dataset.peerId = '' + peerId;
     if(threadId) {
       li.dataset.threadId = '' + threadId;
+    }
+    if(monoforumParentPeerId) {
+      li.dataset.monoforumParentPeerId = '' + monoforumParentPeerId;
     }
 
     const statusSpan = document.createElement('span');
@@ -1619,7 +1624,6 @@ export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<Mono
 
   // WTF: this one is not even used
   public getDialogFromElement(element: HTMLElement) {
-    // TODO: first we need a monoforum threads storage
     return rootScope.managers.dialogsStorage.getAnyDialog(element.dataset.peerId.toPeerId(), element.dataset.threadId.toPeerId()) as any as Promise<MonoforumDialog>;
   }
 
@@ -1654,7 +1658,6 @@ type GetDialogOptions = {
 
 type InitDialogAdditionalOptions = {
   isBatch?: boolean;
-  monoforumParentPeerId?: PeerId;
 };
 
 const TEST_TOP_NOTIFICATION = true ? undefined : (): ChatlistsChatlistUpdates => ({
@@ -2979,6 +2982,7 @@ export class AppDialogsManager {
       const peerId = elem.dataset.peerId.toPeerId();
       const lastMsgId = +elem.dataset.mid || undefined;
       const threadId = +elem.dataset.threadId || undefined;
+      const monoforumParentPeerId = +elem.dataset.monoforumParentPeerId || undefined;
 
       const isSponsored = elem.dataset.sponsored === 'true';
       if(isSponsored) {
@@ -3031,7 +3035,8 @@ export class AppDialogsManager {
       }
 
       setPeerFunc({
-        peerId,
+        peerId: monoforumParentPeerId || peerId,
+        monoforumThreadId: monoforumParentPeerId ? peerId : undefined,
         lastMsgId,
         threadId: threadId
       });

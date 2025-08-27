@@ -436,6 +436,16 @@ export class AppProfileManager extends AppManager {
       throw makeError('CHAT_ADMIN_REQUIRED');
     }
 
+    if(this.appPeersManager.isMonoforum(id?.toPeerId(true))) {
+      return {
+        _: 'channels.channelParticipants',
+        chats: [],
+        count: 0,
+        participants: [],
+        users: []
+      } as ChannelsChannelParticipants.channelsChannelParticipants;
+    }
+
     const MANUALLY_FILTER: Set<ChannelParticipantsFilter['_']> = new Set([
       'channelParticipantsAdmins'
     ]);
@@ -931,6 +941,11 @@ export class AppProfileManager extends AppManager {
   }
 
   public getPeerSettings(peerId: PeerId) {
+    if(this.appPeersManager.isMonoforum(peerId)) return this.peerSettings[peerId] ??= {
+      _: 'peerSettings',
+      pFlags: {}
+    };
+
     if(this.peerSettings[peerId]) return this.peerSettings[peerId];
     return this.apiManager.invokeApiSingleProcess({
       method: 'messages.getPeerSettings',

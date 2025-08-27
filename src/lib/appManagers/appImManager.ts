@@ -145,6 +145,7 @@ export type ChatSetPeerOptions = {
   lastMsgId?: number,
   lastMsgPeerId?: PeerId,
   threadId?: number,
+  monoforumThreadId?: PeerId,
   startParam?: string,
   stack?: {peerId: PeerId, mid: number, message?: Message.message, isOut?: boolean},
   commentId?: number,
@@ -2724,9 +2725,10 @@ export class AppImManager extends EventListenerBase<{
     this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: cancel ? 'sendMessageCancelAction' : 'sendMessageChooseStickerAction'}, undefined, this.chat.threadId);
   }
 
-  public isSamePeer(options1: {peerId: PeerId, threadId?: number, type?: ChatType}, options2: typeof options1) {
+  public isSamePeer(options1: {peerId: PeerId, threadId?: number, monoforumThreadId?: PeerId, type?: ChatType}, options2: typeof options1) {
     return options1.peerId === options2.peerId &&
       options1.threadId === options2.threadId &&
+      options1.monoforumThreadId === options2.monoforumThreadId &&
       (typeof(options1.type) !== typeof(options2.type) || options1.type === options2.type);
   }
 

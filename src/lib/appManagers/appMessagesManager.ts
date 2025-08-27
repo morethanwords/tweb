@@ -101,7 +101,8 @@ export enum HistoryType {
   Chat,
   Thread,
   Topic,
-  Saved
+  Saved,
+  Monoforum
 };
 
 export type SendFileDetails = {
@@ -252,6 +253,7 @@ export type RequestHistoryOptions = {
   addOffset?: number,
   offsetDate?: number,
   threadId?: number,
+  monoforumThreadId?: PeerId,
   // search
   nextRate?: number,
   folderId?: number,
@@ -271,6 +273,11 @@ export type RequestHistoryOptions = {
   recursion?: boolean,                  // ! FOR INNER USE ONLY
   historyType?: HistoryType,            // ! FOR INNER USE ONLY
   searchType?: 'cached' | 'uncached'    // ! FOR INNER USE ONLY
+};
+
+type GetHistoryTypeOptions = {
+  threadId?: number;
+  monoforumPeerId?: number;
 };
 
 export type SearchStorageFilterKey = string;
@@ -5039,7 +5046,7 @@ export class AppMessagesManager extends AppManager {
       }));
     }
 
-    const historyType = this.getHistoryType(peerId, threadId);
+    const historyType = this.getHistoryType(peerId, {threadId});
     const migration = this.getMigration(peerId);
 
     const method = 'messages.getSearchCounters';
@@ -5233,7 +5240,7 @@ export class AppMessagesManager extends AppManager {
         const threadOrSavedId = isObject ? getDialogKey(dialog) : dialog;
         const map: Map<number, ForumTopic | SavedDialog> = this.getHistoryType(
           peerId,
-          threadOrSavedId
+          {threadId: threadOrSavedId}
         ) === HistoryType.Saved ?
           obj.saved ??= new Map() :
           obj.topics ??= new Map();
@@ -6035,7 +6042,11 @@ export class AppMessagesManager extends AppManager {
     const isForum = this.appPeersManager.isForum(peerId);
     const threadKey = this.getThreadKey(message);
     const threadId = threadKey ? +threadKey.split('_')[1] : undefined;
+
+    const isMonoforumThread = peerId.isAnyChat() && 'saved_peer_id' in message && message.saved_peer_id;
+
     const dialog = this.dialogsStorage.getAnyDialog(peerId, isLocalThreadUpdate ? threadId : undefined);
+
 
     if((!dialog || this.reloadConversationsPeers.has(peerId)) && !isLocalThreadUpdate) {
       let good = true;
@@ -7461,6 +7472,7 @@ export class AppMessagesManager extends AppManager {
 
   public getScheduledMessages(peerId: PeerId) {
     if(!this.canSendToPeer(peerId)) return;
+    if(this.appPeersManager.isMonoforum(peerId)) return;
 
     const storage = this.getScheduledMessagesStorage(peerId);
     if(storage.size) {
@@ -7554,7 +7566,9 @@ export class AppMessagesManager extends AppManager {
     return next || prev ? {next, prev} : undefined;
   }
 
-  public getHistoryType(peerId: PeerId, threadId?: number) {
+  public getHistoryType(peerId: PeerId, {threadId, monoforumPeerId}: GetHistoryTypeOptions = {}) {
+    if(monoforumPeerId) return HistoryType.Monoforum;
+
     if(threadId) {
       if(peerId.isUser()) {
         return HistoryType.Saved;
@@ -7570,7 +7584,7 @@ export class AppMessagesManager extends AppManager {
 
   public processRequestHistoryOptions(options: RequestHistoryOptions & {backLimit?: number, historyStorage?: HistoryStorage}) {
     options.offsetId ??= 0;
-    options.historyType ??= this.getHistoryType(options.peerId, options.threadId);
+    options.historyType ??= this.getHistoryType(options.peerId, {threadId: options.threadId, monoforumPeerId: options.monoforumThreadId});
     options.searchType ??= getSearchType(options);
     if(options.savedReaction) {
       options.savedReaction = options.savedReaction.filter(Boolean);
@@ -7596,7 +7610,7 @@ export class AppMessagesManager extends AppManager {
 
     options.historyStorage ??= options.searchType ?
       this.getSearchStorage(options) :
-      this.getHistoryStorage(options.peerId, options.threadId);
+      this.getHistoryStorage(options.peerId, options.monoforumThreadId || options.threadId);
 
     return options;
   }
@@ -8140,6 +8154,7 @@ export class AppMessagesManager extends AppManager {
     addOffset = 0,
     offsetDate = 0,
     threadId = 0,
+    monoforumThreadId,
 
     offsetPeerId,
     nextRate,
@@ -8148,7 +8163,7 @@ export class AppMessagesManager extends AppManager {
     inputFilter,
     minDate,
     maxDate,
-    historyType = this.getHistoryType(peerId, threadId),
+    historyType = this.getHistoryType(peerId, {threadId}),
     chatType,
     fromPeerId,
     savedReaction,
@@ -8230,6 +8245,15 @@ export class AppMessagesManager extends AppManager {
 
       method = 'messages.getReplies';
       options = getRepliesOptions;
+    } else if(historyType === HistoryType.Monoforum) {
+      const getSavedHistoryOptions: MessagesGetSavedHistory = {
+        ...commonOptions,
+        parent_peer: this.appPeersManager.getInputPeerById(peerId),
+        peer: this.appPeersManager.getInputPeerById(monoforumThreadId)
+      };
+
+      method = 'messages.getSavedHistory';
+      options = getSavedHistoryOptions;
     } else if(historyType === HistoryType.Saved) {
       const getSavedHistoryOptions: MessagesGetSavedHistory = {
         ...commonOptions,

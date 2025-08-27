@@ -60,6 +60,10 @@ const MonoforumDrawer = defineSolidElement({
       monoforumParentPeerId: props.peerId
     });
 
+    onCleanup(() => {
+      autonomousList.destroy();
+    });
+
     const list = autonomousList.sortedList.list;
     appDialogsManager.setListClickListener({list, onFound: null, withContext: true});
     scrollable.append(list);

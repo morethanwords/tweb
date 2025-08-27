@@ -106,6 +106,7 @@ export default class Chat extends EventListenerBase<{
   // * will be also used for RequestHistoryOptions
   public peerId: PeerId;
   public threadId: number;
+  public monoforumThreadId: number;
   public savedReaction: (Reaction.reactionCustomEmoji | Reaction.reactionEmoji)[];
   public isPublicHashtag: boolean;
   public isCacheableSearch: boolean;
@@ -742,6 +743,7 @@ export default class Chat extends EventListenerBase<{
           chat: this,
           chatType: this.type,
           peerId: this.peerId,
+          // TODO: Check here for monoforumThreadId
           threadId: this.threadId,
           canFilterSender: this.isAnyGroup,
           query,
@@ -847,6 +849,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public async onChangePeer(options: ChatSetPeerOptions, m: ReturnType<typeof middlewarePromise>) {
+    // spot
     const {peerId, threadId} = options;
 
     if(!this.excludeParts.elements) {
@@ -951,7 +954,8 @@ export default class Chat extends EventListenerBase<{
   public get requestHistoryOptionsPart(): RequestHistoryOptions {
     const options: RequestHistoryOptions = {
       peerId: this.peerId,
-      threadId: this.threadId
+      threadId: this.threadId,
+      monoforumThreadId: this.monoforumThreadId
     };
 
     CHAT_SEARCH_KEYS.forEach((key) => {
@@ -962,13 +966,14 @@ export default class Chat extends EventListenerBase<{
     if(this.hashtagType && this.hashtagType !== 'this') {
       options.peerId = NULL_PEER_ID;
       options.threadId = undefined;
+      options.monoforumThreadId = undefined;
     }
 
     return options;
   }
 
   public setPeer(options: ChatSetPeerOptions) {
-    const {peerId, threadId} = options;
+    const {peerId, threadId, monoforumThreadId} = options;
     if(!peerId) {
       this.inited = undefined;
     } else if(!this.inited) {
@@ -985,6 +990,7 @@ export default class Chat extends EventListenerBase<{
       this.appImManager.dispatchEvent('peer_changing', this);
       this.peerId = peerId || NULL_PEER_ID;
       this.threadId = threadId;
+      this.monoforumThreadId = monoforumThreadId;
       this.middlewareHelper.clean();
     } else if(this.setPeerPromise) {
       return;

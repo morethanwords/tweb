@@ -44,7 +44,7 @@ class MonoforumDialogsStorage extends AppManager {
     const collection = this.getDialogCollection(parentPeerId);
     const isCollectionIncomplete = !collection.count || collection.items.length < collection.count;
 
-    let cachedOffsetPosition = this.getPositionFromOffsetIndex(collection.items, offsetIndex);
+    let cachedOffsetPosition = this.getPositionForOffsetIndex(collection.items, offsetIndex);
 
     const cachedSlice = collection.items.slice(cachedOffsetPosition, cachedOffsetPosition + limit);
 
@@ -60,7 +60,7 @@ class MonoforumDialogsStorage extends AppManager {
     }
 
     // Just in case there are duplicates or some reordering stuff
-    cachedOffsetPosition = this.getPositionFromOffsetIndex(collection.items, offsetIndex);
+    cachedOffsetPosition = this.getPositionForOffsetIndex(collection.items, offsetIndex);
 
     const resultingDialogs = collection.items.slice(cachedOffsetPosition, cachedOffsetPosition + limit);
 
@@ -151,7 +151,7 @@ class MonoforumDialogsStorage extends AppManager {
     return this.collectionsByPeerId[parentPeerId];
   }
 
-  private getPositionFromOffsetIndex(dialogs: MonoforumDialog[], offsetIndex: number) {
+  private getPositionForOffsetIndex(dialogs: MonoforumDialog[], offsetIndex: number) {
     let position = 0;
 
     while(
