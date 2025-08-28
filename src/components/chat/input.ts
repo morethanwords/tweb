@@ -2256,7 +2256,7 @@ export default class ChatInput {
     } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
       key = 'ChannelBroadcast';
     } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
-      key = this.directMessagesHandler.store.isReplying ? 'Message' : 'ChannelDirectMessagesChooseMessage';
+      key = this.directMessagesHandler.store.isReplying ? 'Message' : 'ChannelDirectMessages.ChooseMessage';
     } else if(
       (this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) ||
       await this.managers.appMessagesManager.isAnonymousSending(peerId)

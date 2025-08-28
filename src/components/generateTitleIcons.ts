@@ -65,7 +65,7 @@ export default async function generateTitleIcons({
 
   if(peer?._ === 'channel' && peer.pFlags?.monoforum && !noDirectMessagesBadge) {
     const span = document.createElement('span');
-    span.append(i18n('ChannelDirectMessagesBadge'));
+    span.append(i18n('ChannelDirectMessages.Badge'));
     span.classList.add('peer-title-direct-badge');
     elements.push(span);
   }

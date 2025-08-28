@@ -8598,7 +8598,7 @@ export default class ChatBubbles {
         );
       }
 
-      const subtitle = i18n(starsAmount ? 'ChannelDirectMessagesWelcomePaid' : 'ChannelDirectMessagesWelcome', [await wrapPeerTitle({peerId: this.peerId}), starsElement]);
+      const subtitle = i18n(starsAmount ? 'ChannelDirectMessages.WelcomePaid' : 'ChannelDirectMessages.Welcome', [await wrapPeerTitle({peerId: this.peerId}), starsElement]);
       subtitle.classList.add('center', BASE_CLASS + '-subtitle');
 
       let button: HTMLElement;

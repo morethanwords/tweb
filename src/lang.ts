@@ -3570,10 +3570,18 @@ const lang = {
   'AgeVerification.Action': 'Verify my age',
   'AgeVerification.Failed': 'Sorry, you can\'t view 18+ content.',
 
-  'ChannelDirectMessagesBadge': 'Direct',
-  'ChannelDirectMessagesWelcome': 'Send a direct message to the administrator of\n%s',
-  'ChannelDirectMessagesWelcomePaid': '%s\ncharges %s per message to its admin',
-  'ChannelDirectMessagesChooseMessage': 'Choose a message to reply to'
+  'ChannelDirectMessages.Badge': 'Direct',
+  'ChannelDirectMessages.Welcome': 'Send a direct message to the administrator of\n%s',
+  'ChannelDirectMessages.WelcomePaid': '%s\ncharges %s per message to its admin',
+  'ChannelDirectMessages.ChooseMessage': 'Choose a message to reply to',
+  'ChannelDirectMessages.ThreadsCount': {
+    'one_value': '%d Chat',
+    'other_value': '%d Chats'
+  },
+  'ChannelDirectMessages.MessagesCount': {
+    'one_value': '%d Message',
+    'other_value': '%d Messages'
+  }
 };
 
 export default lang;

@@ -987,14 +987,14 @@ export default class ChatTopbar {
   }
 
   public async finishPeerChange(options: Parameters<Chat['finishPeerChange']>[0]) {
-    const {peerId, threadId} = this.chat;
+    const {peerId, threadId, monoforumThreadId} = this.chat;
     const {middleware} = options;
 
     let newAvatar: ChatTopbar['avatar'], newAvatarMiddlewareHelper: ChatTopbar['avatarMiddlewareHelper'];
     const isSaved = this.chat.type === ChatType.Saved;
     const needArrowBack = this.chat.type === ChatType.Search;
     if([ChatType.Chat].includes(this.chat.type) || isSaved) {
-      const usePeerId = isSaved ? threadId : peerId;
+      const usePeerId = monoforumThreadId ||(isSaved ? threadId : peerId);
       const useThreadId = isSaved ? undefined : threadId;
       const avatar = this.avatar;
       if(
@@ -1171,7 +1171,7 @@ export default class ChatTopbar {
   }
 
   public async setTitleManual(count?: number) {
-    const {peerId, threadId} = this.chat;
+    const {peerId, threadId, monoforumThreadId} = this.chat;
     let titleEl: HTMLElement, icons: Element[];
     const oldMiddlewareHelper = this.titleMiddlewareHelper;
     oldMiddlewareHelper?.destroy();
@@ -1215,7 +1215,7 @@ export default class ChatTopbar {
 
       titleEl = el.element;
     } else if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Saved) {
-      const usePeerId = this.chat.type === ChatType.Saved ? threadId : peerId;
+      const usePeerId = monoforumThreadId || (this.chat.type === ChatType.Saved ? threadId : peerId);
       [titleEl/* , icons */] = await Promise.all([
         wrapPeerTitle({
           peerId: usePeerId,
@@ -1357,6 +1357,23 @@ export default class ChatTopbar {
         const span = i18n('TopicProfileStatus', [title]);
 
         return () => replaceContent(this.subtitle, span);
+      };
+    } else if(this.chat.isMonoforum) {
+      prepare = async() => {
+        const ackedResult = await this.managers.acknowledged.monoforumDialogsStorage.getDialogs({parentPeerId: this.peerId, limit: 1});
+        const initialCount = ackedResult.cached ? (await ackedResult.result).count : '~';
+
+        const el = new I18n.IntlElement({
+          key: 'ChannelDirectMessages.ThreadsCount',
+          args: [initialCount]
+        });
+
+        if(!ackedResult.cached) ackedResult.result?.then(({count}) => el.compareAndUpdate({
+          key: 'ChannelDirectMessages.ThreadsCount',
+          args: [count]
+        }));
+
+        return () => replaceContent(this.subtitle, el.element);
       };
     } else {
       const peerId = this.peerId;
