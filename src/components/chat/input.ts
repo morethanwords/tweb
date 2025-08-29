@@ -2016,7 +2016,7 @@ export default class ChatInput {
     const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
 
     return () => {
-      const {isMonoforum, canManageDirectMessages} = this.chat;
+      const {isMonoforum, canManageDirectMessages, monoforumThreadId} = this.chat;
       // console.warn('[input] finishpeerchange start');
 
       chatInput.classList.remove('hide');
@@ -2158,7 +2158,7 @@ export default class ChatInput {
       this.setStarsAmount(this.chat.starsAmount); // should reset when undefined
 
       this.directMessagesHandler.set({
-        canManageDirectMessages: isMonoforum && canManageDirectMessages,
+        canManageDirectMessages: isMonoforum && canManageDirectMessages && !monoforumThreadId,
         isReplying: !!this.helperType
       });
       // console.warn('[input] finishpeerchange ends');
@@ -2256,7 +2256,9 @@ export default class ChatInput {
     } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
       key = 'ChannelBroadcast';
     } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
-      key = this.directMessagesHandler.store.isReplying ? 'Message' : 'ChannelDirectMessages.ChooseMessage';
+      key = this.chat.monoforumThreadId || this.directMessagesHandler.store.isReplying ?
+        'Message' :
+        'ChannelDirectMessages.ChooseMessage';
     } else if(
       (this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) ||
       await this.managers.appMessagesManager.isAnonymousSending(peerId)
@@ -3575,6 +3577,7 @@ export default class ChatInput {
       this.messageInputField?.input?.classList.add('hide')
       this.messageInputField?.setHidden(true);
       if(this.btnToggleEmoticons) this.btnToggleEmoticons.disabled = true;
+
       onCleanup(() => {
         this.messageInputField?.input?.classList.remove('hide');
         this.messageInputField?.setHidden(false);

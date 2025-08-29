@@ -2069,12 +2069,11 @@ export class AppMessagesManager extends AppManager {
           quote_offset: options.replyToQuote.offset
         })
       };
-    } else if(this.appPeersManager.canManageDirectMessages(options.peerId)) {
-      // TODO: Set correct peer
-      // return {
-      //   _: 'inputReplyToMonoForum',
-      //   monoforum_peer_id: this.appPeersManager.getInputPeerById(0)
-      // }
+    } else if(options.replyToMonoforumPeerId) {
+      return {
+        _: 'inputReplyToMonoForum',
+        monoforum_peer_id: this.appPeersManager.getInputPeerById(options.replyToMonoforumPeerId)
+      };
     }
   }
 
@@ -2285,7 +2284,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     if(replyTo._ === 'inputReplyToMonoForum') {
-      throw new Error('Monoforum is not supported');
+      return;
     }
 
     if(replyTo._ === 'inputReplyToStory') {

@@ -1261,6 +1261,7 @@ export default class Chat extends EventListenerBase<{
       peerId: this.peerId,
       threadId: this.threadId,
       updateStickersetOrder: rootScope.settings.stickers.dynamicPackOrder,
+      replyToMonoforumPeerId: this.monoforumThreadId,
       ...(this.input && {
         ...(this.input.getReplyTo() || false),
         scheduleDate: this.input.scheduleDate,
