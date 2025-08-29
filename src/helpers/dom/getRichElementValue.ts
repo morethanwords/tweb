@@ -24,26 +24,50 @@ export type MarkdownTag = {
   >;
 };
 
+function join(...arr: string[]) {
+  return arr.join(', ');
+}
+
 // https://core.telegram.org/bots/api#html-style
 export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   bold: {
-    match: '[style*="bold"], [style*="font-weight: 700"], [style*="font-weight: 600"], [style*="font-weight:700"], [style*="font-weight:600"], b, strong',
+    match: join(
+      '[style*="bold"]',
+      '[style*="font-weight: 700"]',
+      '[style*="font-weight: 600"]',
+      '[style*="font-weight:700"]',
+      '[style*="font-weight:600"]',
+      'b',
+      'strong',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6'
+    ),
     entityName: 'messageEntityBold'
   },
   underline: {
-    match: '[style*="underline"], u, ins',
+    match: join('[style*="underline"]', 'u', 'ins'),
     entityName: 'messageEntityUnderline'
   },
   italic: {
-    match: '[style*="italic"], i, em',
+    match: join('[style*="italic"]', 'i', 'em'),
     entityName: 'messageEntityItalic'
   },
   monospace: {
-    match: '[style*="monospace"], [face*="monospace"], pre',
+    match: join('[style*="monospace"]', '[face*="monospace"]', 'pre'),
     entityName: 'messageEntityCode'
   },
   strikethrough: {
-    match: '[style*="line-through"], [style*="strikethrough"], strike, del, s',
+    match: join(
+      '[style*="line-through"]',
+      '[style*="strikethrough"]',
+      'strike',
+      'del',
+      's'
+    ),
     entityName: 'messageEntityStrike'
   },
   link: {
@@ -59,7 +83,7 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
     entityName: 'messageEntitySpoiler'
   },
   quote: {
-    match: '[style*="quote"], .quote',
+    match: join('[style*="quote"]', '.quote'),
     entityName: 'messageEntityBlockquote'
   }
   // customEmoji: {
@@ -68,7 +92,7 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   // }
 };
 
-const tabulationMatch = '[style*="table-cell"], th, td';
+const tabulationMatch = join('[style*="table-cell"]', 'th', 'td');
 
 /* export function getDepth(child: Node, container?: Node) {
   let depth = 0;
