@@ -1,0 +1,56 @@
+@import '../../scss/mixins';
+
+.popup {
+  :global {
+    .popup-container {
+      width: 26.25rem;
+      border-radius: 14px;
+    }
+
+    .popup-header {
+      margin: 0;
+    }
+
+    .popup-footer {
+      padding: 0;
+      margin-top: 0.5rem;
+    }
+  }
+}
+
+.input {
+  margin-top: 0.5rem;
+  --padding-horizontal: 2.75rem;
+
+  .inputIcon {
+    position: absolute;
+    left: 0.75rem;
+    top: 0.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 1.5rem;
+    z-index: 2;
+    color: var(--primary-color);
+  }
+
+  .inputApproxLabel {
+    position: absolute;
+    right: 0.75rem;
+    top: 1.125rem;
+    font-size: var(--font-size-13);
+    color: var(--secondary-text-color);
+  }
+
+  :global(.input-field-input) {
+    padding-left: 2.75rem;
+    padding-right: 5rem;
+  }
+}
+
+.youWillReceive {
+  margin-block: 0.25rem 0.5rem;
+  font-size: var(--font-size-13);
+  line-height: var(--line-height-13);
+  margin-left: 0.75rem;
+  color: var(--secondary-text-color);
+}

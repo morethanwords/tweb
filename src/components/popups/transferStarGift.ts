@@ -19,7 +19,7 @@ export default function transferStarGift(gift: MyStarGift): Promise<boolean> {
   if(saved.can_transfer_at !== undefined && saved.can_transfer_at > now) {
     toastNew({
       langPackKey: 'StarGiftTransferCooldown',
-      langPackArguments: [wrapFormattedDuration(formatDuration(saved.can_transfer_at - now, 1))]
+      langPackArguments: [wrapFormattedDuration(formatDuration(saved.can_transfer_at - now, 2))]
     });
     return Promise.resolve(false);
   }

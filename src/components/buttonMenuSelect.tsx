@@ -15,6 +15,43 @@ import clamp from '../helpers/number/clamp'
 import classNames from '../helpers/string/classNames'
 import {positionMenuTrigger} from '../helpers/positionMenu'
 
+type HighlightPosition = {start: number, end: number}
+export function ButtonMenuSelectText(props: {
+  text: string
+  highlight?: HighlightPosition
+}) {
+  function content(): JSX.Element {
+    if(!props.highlight) {
+      return props.text;
+    }
+
+    const {start, end} = props.highlight;
+    const parts: JSX.Element[] = [];
+
+    if(start > 0) {
+      parts.push(
+        <span class="btn-menu-select-text-faded">
+          {props.text.slice(0, start)}
+        </span>
+      );
+    }
+
+    parts.push(props.text.slice(start, end));
+
+    if(end < props.text.length) {
+      parts.push(
+        <span class="btn-menu-select-text-faded">
+          {props.text.slice(end)}
+        </span>
+      );
+    }
+
+    return parts;
+  }
+
+  return <>{content()}</>;
+}
+
 function ButtonMenuSelectInner<T>(props: {
   class?: string
   value: T[]
@@ -26,18 +63,68 @@ function ButtonMenuSelectInner<T>(props: {
     option: T,
     chosen: boolean
     stickerRenderer?: SuperStickerRenderer
+    highlight?: HighlightPosition
+    optionText?: string
   }) => JSX.Element
   optionSearchText: (option: T) => string
   optionKey: (option: T) => string
   deselectAllOnFirstSelect?: boolean
 }) {
   const [search, setSearch] = createSignal('')
+
+
   const cleanForSearch = (text: string) => text.toLowerCase().replace(/[\s+/\\_-]/g, '').trim()
-  const filteredOptions = createMemo(() => {
+
+  type FilteredOption = {
+    option: T
+    highlight?: HighlightPosition
+  }
+  const filteredOptions = createMemo<FilteredOption[]>(() => {
     const search$ = search();
-    if(search$ === '') return props.options;
+    const options = props.options;
+    if(search$ === '') {
+      return options.map(option => ({
+        option
+      }));
+    }
+
     const cleanSearch = cleanForSearch(search$);
-    return props.options.filter(option => cleanForSearch(props.optionSearchText(option)).includes(cleanSearch))
+    const results: FilteredOption[] = [];
+
+    for(const option of options) {
+      const optionText = props.optionSearchText(option);
+      const cleanOptionText = cleanForSearch(optionText);
+
+      const cleanIndex = cleanOptionText.indexOf(cleanSearch);
+      if(cleanIndex !== -1) {
+        let searchIndex = 0;
+        let optionIndex = 0;
+        let matchStart = -1;
+
+        while(searchIndex < cleanSearch.length && optionIndex < optionText.length) {
+          const cleanChar = cleanForSearch(optionText[optionIndex]);
+          if(cleanChar === cleanSearch[searchIndex]) {
+            if(matchStart === -1) {
+              matchStart = optionIndex;
+            }
+            searchIndex++;
+            if(searchIndex === cleanSearch.length) {
+              results.push({
+                option,
+                highlight: {start: matchStart, end: optionIndex + 1}
+              });
+              break;
+            }
+          } else if(matchStart !== -1) {
+            searchIndex = 0;
+            matchStart = -1;
+          }
+          optionIndex++;
+        }
+      }
+    }
+
+    return results;
   })
   const chosenKeys = createMemo(() => {
     const chosen$ = props.value;
@@ -84,7 +171,7 @@ function ButtonMenuSelectInner<T>(props: {
       <div class="btn-menu-search-delimiter" />
       <div
         class="btn-menu-search-scrollable"
-        style={{height: `${Math.min(1 + filteredOptions().length, 7.5) * 32}px`}}
+        style={{height: `${10 + Math.min(1 + filteredOptions().length, 7.5) * 32}px`}}
       >
         <Scrollable axis="y" ref={scrollable}>
           <div
@@ -95,31 +182,33 @@ function ButtonMenuSelectInner<T>(props: {
             <I18nTsx class="btn-menu-item-text" key='SelectAll2' />
           </div>
           <For each={filteredOptions()}>
-            {option => (
+            {filteredOption => (
               <div
                 class="btn-menu-item"
                 onClick={() => {
-                  const optionKey = props.optionKey(option)
+                  const optionKey = props.optionKey(filteredOption.option)
                   const wasChosen = chosenKeys().has(optionKey)
 
                   if(props.deselectAllOnFirstSelect && props.value.length === props.options.length) {
-                    props.onValueChange([option])
+                    props.onValueChange([filteredOption.option])
                     return
                   }
 
                   if(wasChosen) {
                     props.onValueChange(props.value.filter(it => props.optionKey(it) !== optionKey))
                   } else {
-                    props.onValueChange([...props.value, option])
+                    props.onValueChange([...props.value, filteredOption.option])
                   }
                 }}
               >
                 {props.renderOption({
-                  option,
+                  option: filteredOption.option,
                   get chosen() {
-                    return chosenKeys().has(props.optionKey(option))
+                    return chosenKeys().has(props.optionKey(filteredOption.option))
                   },
-                  stickerRenderer
+                  stickerRenderer,
+                  highlight: filteredOption.highlight,
+                  optionText: props.optionSearchText(filteredOption.option)
                 })}
               </div>
             )}

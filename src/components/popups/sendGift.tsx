@@ -50,7 +50,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import {ButtonMenuToggleTsx} from '../buttonMenuToggleTsx';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import {IconTsx} from '../iconTsx';
-import {ButtonMenuSelect} from '../buttonMenuSelect';
+import {ButtonMenuSelect, ButtonMenuSelectText} from '../buttonMenuSelect';
 import {rgbIntToHex} from '../../helpers/color';
 import {PreloaderTsx} from '../putPreloader';
 import {FloatingStarsBalance} from './floatingStarsBalance';
@@ -483,7 +483,10 @@ function ResaleOptionsPage(props: {
                   <>
                     <div class="btn-menu-item-icon" ref={stickerRef} />
                     <div class="btn-menu-item-text">
-                      {props.option.name}
+                      <ButtonMenuSelectText
+                        text={props.option.name}
+                        highlight={props.highlight}
+                      />
                       <span class={styles.resaleFilterChipCount}>
                         {' '}
                         {countersMap.get(getCounterKey(props.option)) ?? 0}
@@ -525,7 +528,10 @@ function ResaleOptionsPage(props: {
                     />
                   </div>
                   <div class="btn-menu-item-text">
-                    {props.option.name}
+                    <ButtonMenuSelectText
+                      text={props.option.name}
+                      highlight={props.highlight}
+                    />
                     <span class={styles.resaleFilterChipCount}>
                       {' '}
                       {countersMap.get(getCounterKey(props.option)) ?? 0}
@@ -566,7 +572,10 @@ function ResaleOptionsPage(props: {
                   <>
                     <div class="btn-menu-item-icon" ref={stickerRef} />
                     <div class="btn-menu-item-text">
-                      {props.option.name}
+                      <ButtonMenuSelectText
+                        text={props.option.name}
+                        highlight={props.highlight}
+                      />
                       <span class={styles.resaleFilterChipCount}>
                         {' '}
                         {countersMap.get(getCounterKey(props.option)) ?? 0}

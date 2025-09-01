@@ -8,7 +8,7 @@ import {i18n} from '../../lib/langPack';
 import {IconTsx} from '../iconTsx';
 import {createResource} from 'solid-js';
 import rootScope from '../../lib/rootScope';
-import paymentsWrapCurrencyAmount, {formatNanoton} from '../../helpers/paymentsWrapCurrencyAmount';
+import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber} from '../../helpers/paymentsWrapCurrencyAmount';
 
 export function FloatingStarsBalance(props: {
   class?: string;
@@ -22,7 +22,7 @@ export function FloatingStarsBalance(props: {
     const rate = appConfig.latest?.ton_usd_rate;
     if(!rate) return '...';
 
-    return paymentsWrapCurrencyAmount(Number(formatNanoton(balanceTon())) * rate * 100, 'USD');
+    return paymentsWrapCurrencyAmount(nanotonToJsNumber(balanceTon()) * rate * 100, 'USD');
   }
 
   return (

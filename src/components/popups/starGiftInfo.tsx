@@ -1,4 +1,4 @@
-import {createMemo, JSX, Show} from 'solid-js';
+import {createMemo, createSignal, JSX, Show} from 'solid-js';
 import PopupElement from '.';
 import {Peer, StarGift} from '../../layer';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
@@ -32,11 +32,16 @@ import tsNow from '../../helpers/tsNow';
 import {useAppState} from '../../stores/appState';
 import transferStarGift from './transferStarGift';
 import safeAssign from '../../helpers/object/safeAssign';
-import paymentsWrapCurrencyAmount, {formatNanoton} from '../../helpers/paymentsWrapCurrencyAmount';
-import Icon from '../icon';
-import {MTAppConfig} from '../../lib/mtproto/appConfig';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import PopupBuyResaleGift from './buyResaleGift';
 import wrapPeerTitle from '../wrappers/peerTitle';
+import {wrapFormattedDuration} from '../wrappers/wrapDuration';
+import formatDuration from '../../helpers/formatDuration';
+import PopupSellStarGift from './sellStarGift';
+import {inputStarGiftEquals} from '../../lib/appManagers/utils/gifts/inputStarGiftEquals';
+import confirmationPopup from '../confirmationPopup';
+import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
+import {updateStarGift} from '../../lib/appManagers/utils/gifts/updateStarGift';
 
 function AttributeTableButton(props: { permille: number }) {
   return (
@@ -95,6 +100,14 @@ export default class PopupStarGiftInfo extends PopupElement {
 
     const isOwnedUniqueGift = gift._ === 'starGiftUnique' && getPeerId(gift.owner_id) === rootScope.myId && saved !== undefined
     const canSave = gift._ === 'starGift' && isIncoming && !isConverted || isOwnedUniqueGift
+
+    const [isListed, setIsListed] = createSignal((gift as StarGift.starGiftUnique).resell_amount !== undefined);
+    this.listenerSetter.add(rootScope)('star_gift_update', (event) => {
+      if(event.resalePrice && inputStarGiftEquals(input, this.gift.input)) {
+        setIsListed(event.resalePrice.length > 0);
+        updateStarGift(this.gift, event);
+      }
+    })
 
     if(canSave) {
       this.btnConfirm.replaceChildren(i18n(saved.pFlags.unsaved ? 'StarGiftDisplayOnMyPage' : 'StarGiftHideFromMyPage'));
@@ -346,6 +359,31 @@ export default class PopupStarGiftInfo extends PopupElement {
       });
     }
 
+    const handleSell = async(changePrice = false) => {
+      if(isListed() && !changePrice) {
+        await confirmationPopup({
+          titleLangKey: 'StarGiftUnlistTitle',
+          titleLangArgs: [getCollectibleName(gift as StarGift.starGiftUnique)],
+          descriptionLangKey: 'StarGiftUnlistText',
+          button: {
+            langKey: 'StarGiftUnlistConfirm'
+          }
+        });
+        await this.managers.appGiftsManager.updateResalePrice(input, null);
+        return
+      }
+
+      const now = tsNow(true);
+      if(saved.can_resell_at !== undefined && saved.can_resell_at > now) {
+        toastNew({
+          langPackKey: 'StarGiftResaleCooldown',
+          langPackArguments: [wrapFormattedDuration(formatDuration(saved.can_resell_at - now, 2))]
+        });
+      }
+
+      PopupElement.createPopup(PopupSellStarGift, {gift: this.gift}).show()
+    }
+
     return (
       <div class={`popup-star-gift-info-container ${gift._ === 'starGiftUnique' ? 'is-collectible' : ''}`}>
         <div class="popup-star-gift-info-header">
@@ -375,6 +413,12 @@ export default class PopupStarGiftInfo extends PopupElement {
                     this.hide();
                   });
                 }
+              },
+              {
+                icon: 'tag_alt',
+                text: 'StarGiftChangePrice',
+                verify: () => isOwnedUniqueGift && isListed(),
+                onClick: () => handleSell(true)
               },
               {
                 icon: 'forward',
@@ -481,9 +525,9 @@ export default class PopupStarGiftInfo extends PopupElement {
               />
               <Button
                 class="popup-star-gift-info-action"
-                icon="forward_filled"
-                text="StarGiftShare"
-                onClick={handleShare}
+                icon={isListed() ? 'tag_alt_crossed' : 'tag_alt'}
+                text={isListed() ? 'StarGiftUnlist' : 'StarGiftSell'}
+                onClick={() => handleSell()}
               />
             </div>
           )}

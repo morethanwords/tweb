@@ -24,7 +24,6 @@ import {copyTextToClipboard} from '../../helpers/clipboard';
 import {toastNew} from '../toast';
 import {wearStarGift} from '../popups/wearStarGift';
 import transferStarGift from '../popups/transferStarGift';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 
 function StarGiftGridItem(props: {
@@ -202,7 +201,7 @@ function StarGiftGridItem(props: {
               class={/* @once */ styles.badgeUnique}
               backdropAttr={props.item.collectibleAttributes.backdrop}
             >
-              {isPinned() || props.view === 'resale' ? `#${gift.num}` : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.availability_total, 0)])}
+              {isPinned() || props.view === 'resale' ? `#${gift.num}` : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.availability_total, 1)])}
             </StarGiftBadge>
           );
         };
@@ -226,7 +225,7 @@ function StarGiftGridItem(props: {
         if(props.item.raw.availability_total) {
           return (
             <StarGiftBadge>
-              {props.view === 'list' ? i18n('StarGiftLimitedBadge') : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.availability_total, 0)])}
+              {props.view === 'list' ? i18n('StarGiftLimitedBadge') : i18n('StarGiftLimitedBadgeNum', [formatNumber(gift.availability_total, 1)])}
             </StarGiftBadge>
           )
         }

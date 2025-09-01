@@ -2664,6 +2664,8 @@ const lang = {
   'StarGiftWear': 'wear',
   'StarGiftWearFull': 'Wear',
   'StarGiftShare': 'share',
+  'StarGiftSell': 'sell',
+  'StarGiftUnlist': 'unlist',
   'StarGiftPin': 'Pin',
   'StarGiftUnpin': 'Unpin',
   'StarGiftLinkButton': 'VIEW COLLECTIBLE',
@@ -2692,6 +2694,35 @@ const lang = {
   'StarGiftResaleBoughtSelf': '%s is now yours.',
   'StarGiftResaleBoughtOther': '%s has been notified about your gift.',
   'StarGiftTransferCooldown': 'You will be able to transfer this gift in %s',
+  'StarGiftResaleCooldown': 'You will be able to resell this gift in %s',
+  'StarGiftSellTitleStars': 'Price in Stars',
+  'StarGiftSellTitleTon': 'Price in TON',
+  'StarGiftSellPlaceholderStars': 'Enter price in Stars',
+  'StarGiftSellPlaceholderTon': 'Enter price in TON',
+  'StarGiftYouWillReceiveStars': {
+    'one_value': 'You will receive **%s** Star.',
+    'other_value': 'You will receive **%s** Stars.'
+  },
+  'StarGiftYouWillReceiveTon': 'You will receive **%s** TON.',
+  'StarGiftMinSellAmountStars': {
+    'one_value': 'You must request minimum %s Star',
+    'other_value': 'You must request minimum %s Stars'
+  },
+  'StarGiftMaxSellAmountStars': {
+    'one_value': 'You can request maximum %s Star',
+    'other_value': 'You can request maximum %s Stars'
+  },
+  'StarGiftMinSellAmountTon': 'You must request minimum %s TON',
+  'StarGiftMaxSellAmountTon': 'You can request maximum %s TON',
+  'StarGiftOnlyAcceptTon': 'Only Accept TON',
+  'StarGiftOnlyAcceptTonInfo': 'If the buyer pays you in TON, there\'s no risk of refunds, unlike Star payments.',
+  'StarGiftSellButton': 'List for Sale',
+  'StarGiftResaleListed': '%s is now for sale!',
+  'StarGiftUnlistTitle': 'Unlist %s',
+  'StarGiftUnlistText': 'Are you sure you want to unlist your gift?',
+  'StarGiftUnlistConfirm': 'Unlist',
+  'StarGiftResaleRemoved': '%s removed from sale!',
+  'StarGiftChangePrice': 'Change price',
   'ActionGiftStarsTitle': {
     'one_value': '%d Star',
     'other_value': '%d Stars'

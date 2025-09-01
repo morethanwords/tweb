@@ -766,10 +766,10 @@ export default class InputField {
     this.setDraftValue(value, silent);
   }
 
-  public setState(state: InputState, label?: LangPackKey) {
+  public setState(state: InputState, label?: LangPackKey, labelOptions?: any[]) {
     if(label) {
       this.label.textContent = '';
-      this.label.append(i18n(label, this.options.labelOptions));
+      this.label.append(i18n(label, labelOptions ?? this.options.labelOptions));
       this.label.style.visibility = 'visible';
     } else {
       this.setLabel();
@@ -779,8 +779,8 @@ export default class InputField {
     this.input.classList.toggle('valid', !!(state & InputState.Valid));
   }
 
-  public setError(label?: LangPackKey) {
-    this.setState(InputState.Error, label);
+  public setError(label?: LangPackKey, labelOptions?: any[]) {
+    this.setState(InputState.Error, label, labelOptions);
   }
 
   public toggleForceFocus(enabled: boolean) {

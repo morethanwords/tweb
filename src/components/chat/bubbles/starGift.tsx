@@ -113,7 +113,7 @@ export function StarGiftBubble(props: {
         >
           <I18nTsx
             key="StarGiftLimitedBadgeNum"
-            args={[formatNumber(props.gift.raw.availability_total, 0)]}
+            args={[formatNumber(props.gift.raw.availability_total, 1)]}
           />
         </StarGiftBadge>
       )}

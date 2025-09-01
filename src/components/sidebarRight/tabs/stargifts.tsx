@@ -7,6 +7,8 @@ import PopupElement from '../../popups';
 import PopupStarGiftInfo from '../../popups/starGiftInfo';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import {StarGiftsGrid} from '../../stargifts/stargiftsGrid';
+import {StarGift} from '../../../layer';
+import {updateStarGift} from '../../../lib/appManagers/utils/gifts/updateStarGift';
 
 export function StarGiftsProfileTab(props: {
   peerId: PeerId
@@ -45,28 +47,23 @@ export function StarGiftsProfileTab(props: {
 
   onMount(() => {
     loadNext()
-    listenerSetter.add(rootScope)('star_gift_update', ({input, unsaved, converted, togglePinned}) => {
-      const idx = list().findIndex((it) => inputStarGiftEquals(it.input, input));
+    listenerSetter.add(rootScope)('star_gift_update', (event) => {
+      const idx = list().findIndex((it) => inputStarGiftEquals(it.input, event.input));
       if(idx !== -1) {
         let newList = list().slice();
         // create a new object to force re-render
         const newItem = {...newList[idx]};
         newList[idx] = newItem;
 
-        if(unsaved !== undefined) {
-          newList[idx].saved.pFlags.unsaved = unsaved ? true : undefined;
-        }
-        if(converted !== undefined) {
-          newItem.isConverted = converted;
-        }
-        if(togglePinned) {
-          newItem.saved.pFlags.pinned_to_top = newItem.saved.pFlags.pinned_to_top ? undefined : true;
+        updateStarGift(newItem, event);
+        if(event.togglePinned) {
           newList = newList.sort((a, b) => {
             if(a.saved.pFlags.pinned_to_top && !b.saved.pFlags.pinned_to_top) return -1;
             if(!a.saved.pFlags.pinned_to_top && b.saved.pFlags.pinned_to_top) return 1;
             return b.saved.date - a.saved.date;
           })
         }
+
         setList(newList);
       }
     });

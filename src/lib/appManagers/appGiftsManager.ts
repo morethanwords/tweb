@@ -5,11 +5,12 @@
  */
 
 import bigInt from 'big-integer';
-import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, WebPageAttribute} from '../../layer';
+import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, StarsAmount, WebPageAttribute} from '../../layer';
 import {STARS_CURRENCY} from '../mtproto/mtproto_config';
 import {MyDocument} from './appDocsManager';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
+import {formatNanoton, nanotonToJsNumber} from '../../helpers/paymentsWrapCurrencyAmount';
 
 export interface MyStarGift {
   type: 'stargift',
@@ -435,5 +436,38 @@ export default class AppGiftsManager extends AppManager {
       attributes: res.attributes ? this.wrapAttributeList(res.attributes) : undefined,
       attributesHash: res.attributes_hash
     }
+  }
+
+  public async updateResalePrice(gift: InputSavedStarGift, price: StarsAmount | null) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.updateStarGiftPrice',
+      params: {
+        stargift: gift,
+        resell_amount: price ?? {
+          _: 'starsAmount',
+          amount: 0,
+          nanos: 0
+        }
+      },
+      processResult: async(updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates);
+        const prices = price ? [price] : [];
+
+        if(price?._ === 'starsTonAmount') {
+          // need price in stars. we cant refetch the gift directly so estimate it based on rates
+
+          const appConfig = await this.apiManager.getAppConfig();
+          const usd = nanotonToJsNumber(price.amount) * appConfig.ton_usd_rate;
+          const stars = usd / (appConfig.stars_usd_sell_rate_x1000 / 100) * 1000;
+          prices.push({
+            _: 'starsAmount',
+            amount: Math.round(stars),
+            nanos: 0
+          });
+        }
+
+        this.rootScope.dispatchEvent('star_gift_update', {input: gift, resalePrice: prices});
+      }
+    })
   }
 }

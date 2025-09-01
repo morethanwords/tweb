@@ -574,7 +574,7 @@ export class AppSidebarLeft extends SidebarSlider {
           );
         }
       });
-      appDialogsManager.xd.toggleAvatarUnreadBadges(false, undefined);
+      appDialogsManager.xd?.toggleAvatarUnreadBadges(false, undefined);
     } else {
       const {hasFoldersSidebar} = useHasFoldersSidebar();
 

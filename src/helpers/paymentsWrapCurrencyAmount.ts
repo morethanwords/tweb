@@ -4,6 +4,7 @@ import Currencies from '../config/currencies';
 import I18n from '../lib/langPack';
 import {STARS_CURRENCY, TON_CURRENCY} from '../lib/mtproto/mtproto_config';
 import {numberThousandSplitterForStars} from './number/numberThousandSplitter';
+import {MOUNT_CLASS_TO} from '../config/debug';
 
 // https://stackoverflow.com/a/34141813
 function number_format(number: any, decimals: any, dec_point: any, thousands_sep: any): string {
@@ -80,6 +81,17 @@ export function formatNanoton(amount: number | string, maxDecimals: number = 2, 
   return res;
 }
 
+export function nanotonToJsNumber(nanoton: number | string) {
+  return Number(formatNanoton(nanoton, NANOTON_DECIMALS, false));
+}
+
+export function parseNanotonFromDecimal(decimal: string) {
+  const [int, frac = '0'] = decimal.split('.');
+  const intPart = int + '0'.repeat(NANOTON_DECIMALS);
+  const fracPart = frac.padEnd(NANOTON_DECIMALS, '0');
+  return bigInt(intPart).plus(bigInt(fracPart));
+}
+
 export default function paymentsWrapCurrencyAmount<T extends boolean = false>(
   amount: number | string,
   currency: string,
@@ -144,7 +156,7 @@ export default function paymentsWrapCurrencyAmount<T extends boolean = false>(
   return out;
 }
 
-(window as any).p = paymentsWrapCurrencyAmount;
+MOUNT_CLASS_TO.p = paymentsWrapCurrencyAmount;
 
 // function paymentsGetCurrencyExp($currency: string) {
 //   if($currency == 'CLF') {

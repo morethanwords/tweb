@@ -1,0 +1,247 @@
+import {createEffect, createMemo, createSignal, on, onMount} from 'solid-js';
+import PopupElement from '.';
+import safeAssign from '../../helpers/object/safeAssign';
+import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
+
+import styles from './sellStarGift.module.scss';
+import {MTAppConfig} from '../../lib/mtproto/appConfig';
+import {i18n, LangPackKey} from '../../lib/langPack';
+import RowTsx from '../rowTsx';
+import CheckboxFieldTsx from '../checkboxFieldTsx';
+import {InputFieldTsx} from '../inputFieldTsx';
+import InputField, {InputFieldOptions} from '../inputField';
+import {fastRaf} from '../../helpers/schedulers';
+import currencyStarIcon from '../currencyStarIcon';
+import Icon from '../icon';
+import {I18nTsx} from '../../helpers/solid/i18n';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import {toastNew} from '../toast';
+import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
+import {StarGift} from '../../layer';
+import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber, parseNanotonFromDecimal} from '../../helpers/paymentsWrapCurrencyAmount';
+import {TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
+
+class SellPriceInputField extends InputField {
+  private icon: HTMLElement;
+  private approxLabel: HTMLElement;
+
+  constructor(options: InputFieldOptions) {
+    super(options);
+
+    this.container.classList.add(styles.input)
+
+    this.icon = document.createElement('div')
+    this.icon.classList.add(styles.inputIcon)
+
+    this.approxLabel = document.createElement('div')
+    this.approxLabel.classList.add(styles.inputApproxLabel)
+
+    this.container.append(this.icon, this.approxLabel)
+
+    this.setIcon('stars')
+    this.setApproxText('≈$0.00')
+  }
+
+  public setIcon(icon: 'ton' | 'stars') {
+    if(icon === 'ton') {
+      this.icon.replaceChildren(Icon('ton'))
+    } else {
+      this.icon.replaceChildren(currencyStarIcon() as HTMLElement)
+    }
+  }
+
+  public setApproxText(text: string) {
+    this.approxLabel.textContent = text
+  }
+}
+
+export default class PopupSellStarGift extends PopupElement<{
+  finish: (result: boolean) => void
+}> {
+  private gift: MyStarGift;
+
+  private finished = false;
+  constructor(options: {
+    gift: MyStarGift,
+  }) {
+    super(styles.popup, {
+      closable: true,
+      overlayClosable: true,
+      title: 'StarGiftSellTitleStars',
+      withConfirm: 'StarGiftSellButton',
+      withFooterConfirm: true,
+      body: true,
+      footer: true
+    });
+
+    this.addEventListener('close', () => {
+      if(!this.finished) {
+        this.dispatchEvent('finish', false);
+      }
+    });
+
+    safeAssign(this, options);
+
+    this.construct()
+  }
+
+  protected async construct() {
+    const appConfig = await this.managers.apiManager.getAppConfig()
+    this.appendSolid(() => this._construct({appConfig}));
+  }
+
+  protected _construct({appConfig}: {appConfig: MTAppConfig}) {
+    const [ton, setTon] = createSignal(this.gift.resellOnlyTon ?? false);
+    const [sellAmount, setSellAmount] = createSignal('');
+    if(this.gift.resellOnlyTon && this.gift.resellPriceTon) {
+      setSellAmount(String(nanotonToJsNumber(this.gift.resellPriceTon)))
+    } else if(this.gift.resellPriceStars) {
+      setSellAmount(String(this.gift.resellPriceStars))
+    }
+    const [loading, setLoading] = createSignal(false);
+
+    const inputError = createMemo<[LangPackKey, any[]] | undefined>(() => {
+      const sellAmount$ = sellAmount();
+      if(!sellAmount$) return undefined;
+
+      if(ton()) {
+        const nanoton = parseNanotonFromDecimal(sellAmount$);
+        const min = appConfig.ton_stargift_resale_amount_min;
+        const max = appConfig.ton_stargift_resale_amount_max;
+        if(nanoton.lt(min)) {
+          return ['StarGiftMinSellAmountTon', [formatNanoton(min)]]
+        }
+
+        if(nanoton.gt(max)) {
+          return ['StarGiftMaxSellAmountTon', [formatNanoton(max)]]
+        }
+
+        return undefined
+      }
+
+      const value = +sellAmount$;
+      const min = appConfig.stars_stargift_resale_amount_min;
+      const max = appConfig.stars_stargift_resale_amount_max;
+
+      if(value < min) {
+        return ['StarGiftMinSellAmountStars', [min]]
+      }
+
+      if(value > max) {
+        return ['StarGiftMaxSellAmountStars', [max]]
+      }
+
+      return undefined
+    })
+
+    const afterCommission = createMemo(() => {
+      if(ton()) {
+        const nanoton = parseNanotonFromDecimal(sellAmount());
+        const commission = appConfig.ton_stargift_resale_commission_permille;
+        const nanotonAfter = nanoton.multiply(commission).divide(1000).toString();
+        return formatNanoton(nanotonAfter, 2);
+      }
+
+      const value = +sellAmount();
+      const commission = appConfig.stars_stargift_resale_commission_permille;
+      return Math.floor(value * (commission / 1000));
+    })
+
+    createEffect(on(() => [inputError(), sellAmount()], ([error, sellAmount]) => {
+      this.btnConfirm.toggleAttribute('disabled', !!error || !sellAmount)
+    }))
+
+    createEffect(on(() => [ton(), sellAmount()], ([ton, sellAmount]) => {
+      if(ton) {
+        const float = Number(sellAmount)
+        const usd = appConfig.ton_usd_rate * float
+        inputRef.setApproxText(`≈${paymentsWrapCurrencyAmount(usd * 100, 'USD')}`)
+        return
+      }
+
+      const value = +sellAmount;
+      const usd = appConfig.stars_usd_sell_rate_x1000 / 1000 * value / 100;
+      inputRef.setApproxText(`≈${paymentsWrapCurrencyAmount(usd * 100, 'USD')}`)
+    }))
+
+    let inputRef: SellPriceInputField
+
+    createEffect(on(ton, (ton, prev) => {
+      this.title.replaceChildren(i18n(ton ? 'StarGiftSellTitleTon' : 'StarGiftSellTitleStars'))
+      inputRef.setIcon(ton ? 'ton' : 'stars')
+
+      if(prev !== undefined) {
+        setSellAmount('')
+        fastRaf(() => {
+          inputRef.input.focus()
+        })
+      }
+    }))
+
+    onMount(() => {
+      attachClickEvent(this.btnConfirm, () => {
+        setLoading(true)
+        this.managers.appGiftsManager.updateResalePrice(this.gift.input, ton() ? {
+          _: 'starsTonAmount',
+          amount: parseNanotonFromDecimal(sellAmount()).toString()
+        } : {
+          _: 'starsAmount',
+          amount: +sellAmount(),
+          nanos: 0
+        }).then(() => {
+          toastNew({
+            langPackKey: 'StarGiftResaleListed',
+            langPackArguments: [getCollectibleName(this.gift.raw as StarGift.starGiftUnique)]
+          })
+          this.dispatchEvent('finish', true)
+          this.hide()
+        }).catch(() => {
+          toastNew({langPackKey: 'Error.AnError'})
+          setLoading(false)
+        })
+      })
+      fastRaf(() => {
+        inputRef.input.focus()
+      })
+    })
+
+    return (
+      <>
+        <InputFieldTsx
+          InputFieldClass={SellPriceInputField}
+          label={ton() ? 'StarGiftSellPlaceholderTon' : 'StarGiftSellPlaceholderStars'}
+          value={sellAmount()}
+          plainText
+          onRawInput={(value) => {
+            let cleanValue = value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+            if(!ton()) cleanValue = cleanValue.replace(/\./g, '');
+            if(value !== cleanValue) {
+              inputRef.setValueSilently(cleanValue);
+            }
+            setSellAmount(cleanValue);
+          }}
+          errorLabel={inputError()?.[0]}
+          errorLabelOptions={inputError()?.[1]}
+          instanceRef={ref => { inputRef = ref }}
+          disabled={loading()}
+        />
+        <I18nTsx
+          class={styles.youWillReceive}
+          key={ton() ? 'StarGiftYouWillReceiveTon' : 'StarGiftYouWillReceiveStars'}
+          args={[String(afterCommission())]}
+        />
+        <RowTsx
+          subtitle={i18n('StarGiftOnlyAcceptTonInfo')}
+          disabled={loading()}
+          checkboxField={(
+            <CheckboxFieldTsx
+              checked={ton()}
+              text="StarGiftOnlyAcceptTon"
+              onChange={setTon}
+            />
+          )}
+        />
+      </>
+    )
+  }
+}
