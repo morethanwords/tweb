@@ -7357,7 +7357,10 @@ export default class ChatBubbles {
 
     const showNameForVerificationCodes = isMessageForVerificationBot(message) && !message.pFlags.local;
     // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
-    const needName = ((message.fromId !== rootScope.myId || !isOut) && this.chat.isLikeGroup) ||
+
+    const iPostedAsSomeoneElse = message.fromId !== rootScope.myId && !this.chat.isMonoforum;
+
+    const needName = ((iPostedAsSomeoneElse || !isOut) && this.chat.isLikeGroup) ||
       message.viaBotId ||
       storyFromPeerId ||
       (showNameForVerificationCodes && !replyTo);
