@@ -1778,6 +1778,7 @@ export default class ChatInput {
           reply_to_msg_id: replyTo.replyToMsgId,
           top_msg_id: this.chat.threadId,
           reply_to_peer_id: replyTo.replyToPeerId,
+          monoforum_peer_id: replyTo.replyToMonoforumPeerId,
           ...(replyTo.replyToQuote && {
             quote_text: replyTo.replyToQuote.text,
             quote_entities: replyTo.replyToQuote.entities,
@@ -1924,7 +1925,8 @@ export default class ChatInput {
           text: replyTo.quote_text,
           entities: replyTo.quote_entities,
           offset: replyTo.quote_offset
-        }
+        },
+        replyToMonoforumPeerId: replyTo.monoforum_peer_id && getPeerId(replyTo.monoforum_peer_id)
       });
     }
 

@@ -12491,8 +12491,8 @@ export namespace InputReplyTo {
     quote_text?: string,
     quote_entities?: Array<MessageEntity>,
     quote_offset?: number,
-    monoforum_peer_id?: InputPeer,
     todo_item_id?: number,
+    monoforum_peer_id?: PeerId | InputPeer,
     reply_to_peer_id?: PeerId | InputPeer
   };
 
@@ -21660,4 +21660,3 @@ export interface MethodDeclMap {
   'stories.getAlbumStories': {req: StoriesGetAlbumStories, res: StoriesStories},
   'channels.checkSearchPostsFlood': {req: ChannelsCheckSearchPostsFlood, res: SearchPostsFlood},
 }
-

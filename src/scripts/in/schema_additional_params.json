@@ -458,7 +458,8 @@
 }, {
   "predicate": "inputReplyToMessage",
   "params": [
-    {"name": "reply_to_peer_id", "type": "PeerId | InputPeer"}
+    {"name": "reply_to_peer_id", "type": "PeerId | InputPeer"},
+    {"name": "monoforum_peer_id", "type": "PeerId | InputPeer"}
   ]
 }, {
   "predicate": "stats.messageStats",

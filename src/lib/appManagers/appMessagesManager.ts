@@ -8544,7 +8544,8 @@ export class AppMessagesManager extends AppManager {
       !this.canSendToPeer(peerId) ||
       peerId === this.appPeersManager.peerId ||
       // (!force && deepEqual(typing?.action, action))
-      (!force && typing?.action?._ === action._)
+      (!force && typing?.action?._ === action._) ||
+      this.appPeersManager.isMonoforum(peerId)
     ) {
       return Promise.resolve(false);
     }

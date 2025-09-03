@@ -29,10 +29,18 @@ export class AppDraftsManager extends AppManager {
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateDraftMessage: (update) => {
         const peerId = this.appPeersManager.getPeerId(update.peer);
+        const isMonoforum = peerId !== this.rootScope.myId;
+
+        const {draft, threadId} = update;
+
+        if(isMonoforum && update.saved_peer_id && draft._ === 'draftMessage' && draft.reply_to?._ === 'inputReplyToMessage') {
+          draft.reply_to.monoforum_peer_id = this.appPeersManager.getPeerId(update.saved_peer_id);
+        }
+
         this.saveDraft({
           peerId,
-          threadId: update.threadId,
-          draft: update.draft,
+          threadId,
+          draft,
           notify: true
         });
       }
@@ -160,6 +168,7 @@ export class AppDraftsManager extends AppManager {
       replyTo.reply_to_msg_id = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_msg_id, channelId);
       replyTo.top_msg_id &&= this.appMessagesIdsManager.generateMessageId(replyTo.top_msg_id, channelId);
       replyTo.reply_to_peer_id &&= this.appPeersManager.getPeerId(replyTo.reply_to_peer_id);
+      replyTo.monoforum_peer_id &&= this.appPeersManager.getPeerId(replyTo.monoforum_peer_id);
     }
 
     return draft;
@@ -196,6 +205,10 @@ export class AppDraftsManager extends AppManager {
 
         if(replyTo.reply_to_peer_id && !isObject(replyTo.reply_to_peer_id)) {
           params.reply_to.reply_to_peer_id = this.appPeersManager.getInputPeerById(replyTo.reply_to_peer_id);
+        }
+
+        if(replyTo.monoforum_peer_id && !isObject(replyTo.monoforum_peer_id)) {
+          params.reply_to.monoforum_peer_id = this.appPeersManager.getInputPeerById(replyTo.monoforum_peer_id);
         }
       }
 
