@@ -29,6 +29,7 @@ import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {ActiveAccountNumber} from './accounts/types';
 import type {ApiManager} from './mtproto/apiManager';
 import {SensitiveContentSettings} from './appManagers/appPrivacyManager';
+import type {MonoforumDialog} from './storages/monoforumDialogs';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -232,7 +233,9 @@ export type BroadcastEvents = {
 
   'fulfill_repaid_message': {requestId: number},
 
-  'sensitive_content_settings': SensitiveContentSettings
+  'sensitive_content_settings': SensitiveContentSettings,
+
+  'monoforum_dialog_update': {dialog: MonoforumDialog},
 };
 
 export type BroadcastEventsListeners = {

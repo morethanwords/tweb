@@ -6273,6 +6273,12 @@ export class AppMessagesManager extends AppManager {
 
       this.notificationsHandlePromise ??= ctx.setTimeout(this.handleNotifications, 0);
     }
+
+    const isMonoforumMessage = message.peerId !== this.rootScope.myId && message.saved_peer_id;
+
+    if(isMonoforumMessage) {
+      this.monoforumDialogsStorage.checkLastMessageForExistingDialog(message);
+    }
   };
 
   private onUpdateMessageReactions = (update: Update.updateMessageReactions) => {

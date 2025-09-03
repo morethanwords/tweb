@@ -1,5 +1,6 @@
 import lastItem from '../../helpers/array/lastItem';
-import {InputPeer, SavedDialog} from '../../layer';
+import {InputPeer, Message, SavedDialog} from '../../layer';
+import {MyMessage} from '../appManagers/appMessagesManager';
 import {AppManager} from '../appManagers/manager';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
 
@@ -127,7 +128,6 @@ class MonoforumDialogsStorage extends AppManager {
     collection.count = Math.max(count || 0, collection.count, collection.items.length);
   }
 
-  // TODO: Undefined index_0 case
   private sortDialogsComparator = (a: MonoforumDialog, b: MonoforumDialog) => (this.getDialogIndex(b) - this.getDialogIndex(a)) || 0;
 
   private setAdditionalProps(parentPeerId: PeerId, dialog: MonoforumDialog) {
@@ -160,6 +160,22 @@ class MonoforumDialogsStorage extends AppManager {
     ) position++;
 
     return position;
+  }
+
+  public checkLastMessageForExistingDialog(message: MyMessage) {
+    const parentPeerId = message.peerId;
+    const peerId = getPeerId(message.saved_peer_id);
+
+    if(!peerId) return;
+
+    const collection = this.collectionsByPeerId[parentPeerId];
+    const dialog = collection.map.get(peerId);
+
+    if(dialog.top_message > message.mid) return;
+
+    dialog.top_message = message.mid;
+
+    this.rootScope.dispatchEvent('monoforum_dialog_update', {dialog});
   }
 }
 
