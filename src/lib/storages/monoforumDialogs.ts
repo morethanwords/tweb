@@ -1,5 +1,5 @@
 import lastItem from '../../helpers/array/lastItem';
-import {InputPeer, Message, SavedDialog} from '../../layer';
+import {InputPeer, SavedDialog} from '../../layer';
 import {MyMessage} from '../appManagers/appMessagesManager';
 import {AppManager} from '../appManagers/manager';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
@@ -49,15 +49,12 @@ class MonoforumDialogsStorage extends AppManager {
 
     const cachedSlice = collection.items.slice(cachedOffsetPosition, cachedOffsetPosition + limit);
 
-    const toFetchLimit = limit - cachedSlice.length;
+    const toFetchLimit = cachedOffsetPosition + limit - cachedSlice.length;
     const toFetchOffsetDialog = lastItem(cachedSlice) || lastItem(collection.items);
     const toFetchOffsetPeer = this.appPeersManager.getInputPeerById(toFetchOffsetDialog?.peerId);
 
-    const fetchedSlice = [];
-
-    if(toFetchLimit && isCollectionIncomplete) {
-      const fetchResult = await this.fetchAndSaveDialogs({parentPeerId, limit: toFetchLimit, offsetPeer: toFetchOffsetPeer});
-      fetchedSlice.push(...fetchResult.dialogs);
+    if(toFetchLimit > 0 && isCollectionIncomplete) {
+      await this.fetchAndSaveDialogs({parentPeerId, limit: toFetchLimit, offsetPeer: toFetchOffsetPeer});
     }
 
     // Just in case there are duplicates or some reordering stuff
@@ -156,7 +153,7 @@ class MonoforumDialogsStorage extends AppManager {
 
     while(
       position < dialogs.length &&
-      this.getDialogIndex(dialogs[position]) > offsetIndex
+      this.getDialogIndex(dialogs[position]) >= offsetIndex
     ) position++;
 
     return position;
