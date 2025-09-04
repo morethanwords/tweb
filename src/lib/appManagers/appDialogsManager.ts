@@ -1567,8 +1567,8 @@ export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<Mono
     //   this.updateDialog(dialog);
     // });
 
-    this.listenerSetter.add(rootScope)('monoforum_dialog_update', ({dialog}) => {
-      this.updateDialog(dialog);
+    this.listenerSetter.add(rootScope)('monoforum_dialogs_update', ({dialogs}) => {
+      dialogs.forEach(dialog => this.updateDialog(dialog));
     });
 
     // this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {

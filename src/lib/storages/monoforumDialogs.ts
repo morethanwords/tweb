@@ -1,5 +1,5 @@
 import lastItem from '../../helpers/array/lastItem';
-import {InputPeer, SavedDialog} from '../../layer';
+import {InputPeer, MessagesSavedDialogs, SavedDialog} from '../../layer';
 import {MyMessage} from '../appManagers/appMessagesManager';
 import {AppManager} from '../appManagers/manager';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
@@ -14,10 +14,20 @@ namespace MonoforumDialogsStorage {
     offsetPeer?: InputPeer;
   };
 
+  export type FetchDialogsByIdArgs = {
+    parentPeerId: PeerId;
+    ids: PeerId[];
+  };
+
   export type GetDialogsArgs = {
     parentPeerId: PeerId;
     limit: number;
     offsetIndex?: number;
+  };
+
+  export type ProcessGetDialogsResultArgs = {
+    parentPeerId: PeerId;
+    result: MessagesSavedDialogs;
   };
 
   export type SaveDialogsArgs = {
@@ -90,6 +100,25 @@ class MonoforumDialogsStorage extends AppManager {
       }
     });
 
+    return this.processGetDialogsResult({parentPeerId, result});
+  }
+
+  private async fetchAndSaveDialogsById({parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs) {
+    const parentPeer = this.appPeersManager.getInputPeerById(parentPeerId);
+    const result = await this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getSavedDialogsByID',
+      params: {
+        ids: ids.map(id => this.appPeersManager.getInputPeerById(id)),
+        parent_peer: parentPeer
+      }
+    });
+
+    const {dialogs} = this.processGetDialogsResult({parentPeerId, result});
+
+    this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs});
+  };
+
+  private processGetDialogsResult({parentPeerId, result}: MonoforumDialogsStorage.ProcessGetDialogsResultArgs) {
     if(result._ === 'messages.savedDialogsNotModified') return;
 
     let count = 0;
@@ -166,13 +195,20 @@ class MonoforumDialogsStorage extends AppManager {
     if(!peerId) return;
 
     const collection = this.collectionsByPeerId[parentPeerId];
+    if(!collection) return;
+
     const dialog = collection.map.get(peerId);
+    if(!dialog) {
+      // TODO: Batch those things if more updates at once?
+      this.fetchAndSaveDialogsById({parentPeerId, ids: [peerId]});
+      return;
+    }
 
     if(dialog.top_message > message.mid) return;
 
     dialog.top_message = message.mid;
 
-    this.rootScope.dispatchEvent('monoforum_dialog_update', {dialog});
+    this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: [dialog]});
   }
 }
 

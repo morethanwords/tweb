@@ -235,7 +235,7 @@ export type BroadcastEvents = {
 
   'sensitive_content_settings': SensitiveContentSettings,
 
-  'monoforum_dialog_update': {dialog: MonoforumDialog},
+  'monoforum_dialogs_update': {dialogs: MonoforumDialog[]},
 };
 
 export type BroadcastEventsListeners = {

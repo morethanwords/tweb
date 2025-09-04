@@ -1,13 +1,12 @@
 import {batch, onCleanup} from 'solid-js';
-
-import {default as appDialogsManager, DialogElement} from '../lib/appManagers/appDialogsManager';
-import getDialogIndexKey from '../lib/appManagers/utils/dialogs/getDialogIndexKey';
-import {AppManagers} from '../lib/appManagers/managers';
-import safeAssign from '../helpers/object/safeAssign';
 import namedPromises from '../helpers/namedPromises';
 import pickKeys from '../helpers/object/pickKeys';
+import safeAssign from '../helpers/object/safeAssign';
+import {default as appDialogsManager, DialogElement} from '../lib/appManagers/appDialogsManager';
+import {AppManagers} from '../lib/appManagers/managers';
+import getDialogIndex from '../lib/appManagers/utils/dialogs/getDialogIndex';
+import getDialogIndexKey from '../lib/appManagers/utils/dialogs/getDialogIndexKey';
 import {logger} from '../lib/logger';
-
 import {createDeferredSortedVirtualList, DeferredSortedVirtualListItem} from './deferredSortedVirtualList';
 import {LoadingDialogSkeletonSize} from './loadingDialogSkeleton';
 import Scrollable from './scrollable';
@@ -101,7 +100,12 @@ export default class SortedDialogList {
   }
 
 
-  public getIndexForKey(key: any) {
+  public async getIndexForKey(key: any) {
+    if(this.monoforumParentPeerId) {
+      const dialog = await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, key);
+      return getDialogIndex(dialog);
+    }
+
     return this.managers.dialogsStorage.getDialogIndex(
       this.virtualFilterId ?? key,
       this.indexKey,
