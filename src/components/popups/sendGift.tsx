@@ -264,7 +264,6 @@ function GiftOptionsPage(props: {
             view="list"
             scrollParent={container}
             onClick={handleGiftClick}
-            autoplay={false}
           />
         </div>
       </div>

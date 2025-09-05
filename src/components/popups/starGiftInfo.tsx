@@ -42,6 +42,8 @@ import {inputStarGiftEquals} from '../../lib/appManagers/utils/gifts/inputStarGi
 import confirmationPopup from '../confirmationPopup';
 import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
 import {updateStarGift} from '../../lib/appManagers/utils/gifts/updateStarGift';
+import {wrapEmojiTextWithEntities} from '../../lib/richTextProcessor/wrapEmojiText';
+import wrapMessageEntities from '../../lib/richTextProcessor/wrapMessageEntities';
 
 function AttributeTableButton(props: { permille: number }) {
   return (
@@ -362,7 +364,8 @@ export default class PopupStarGiftInfo extends PopupElement {
 
         if(collectibleAttributes.original.message) {
           const span = document.createElement('span');
-          span.append(wrapRichText(collectibleAttributes.original.message.text, {entities: collectibleAttributes.original.message.entities}));
+          const wrapped = wrapMessageEntities(collectibleAttributes.original.message.text, collectibleAttributes.original.message.entities)
+          span.append(wrapRichText(wrapped.message, {entities: wrapped.totalEntities}));
           args.push(span);
         }
 

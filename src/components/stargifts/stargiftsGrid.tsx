@@ -256,7 +256,7 @@ export function StarGiftsGrid(props: {
       height: 120
     },
     withLock: false,
-    playOnHover: props.autoplay === false
+    playOnHover: true
   });
 
   onCleanup(() => {
