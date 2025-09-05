@@ -2665,7 +2665,7 @@ const lang = {
   'StarGiftWearFull': 'Wear',
   'StarGiftShare': 'share',
   'StarGiftSell': 'sell',
-  'StarGiftUnlist': 'unlist',
+  'StarGiftChangePriceButton': 'change price',
   'StarGiftPin': 'Pin',
   'StarGiftUnpin': 'Unpin',
   'StarGiftLinkButton': 'VIEW COLLECTIBLE',
@@ -2704,6 +2704,7 @@ const lang = {
     'other_value': 'You will receive **%s** Stars.'
   },
   'StarGiftYouWillReceiveTon': 'You will receive **%s** TON.',
+  'StarGiftYouWillReceivePercent': 'You will receive %d% of the selected amount.',
   'StarGiftMinSellAmountStars': {
     'one_value': 'You must request minimum %s Star',
     'other_value': 'You must request minimum %s Stars'

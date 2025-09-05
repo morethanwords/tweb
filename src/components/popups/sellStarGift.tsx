@@ -86,18 +86,26 @@ export default class PopupSellStarGift extends PopupElement<{
   }
 
   protected async construct() {
-    const appConfig = await this.managers.apiManager.getAppConfig()
-    this.appendSolid(() => this._construct({appConfig}));
+    const [appConfig, floorPrice] = await Promise.all([
+      this.managers.apiManager.getAppConfig(),
+      this.managers.appGiftsManager.getFloorPrice(this.gift.raw.title)
+    ])
+    this.appendSolid(() => this._construct({appConfig, floorPrice}));
+    this.show()
   }
 
-  protected _construct({appConfig}: {appConfig: MTAppConfig}) {
+  protected _construct({appConfig, floorPrice}: {appConfig: MTAppConfig, floorPrice?: Long}) {
     const [ton, setTon] = createSignal(this.gift.resellOnlyTon ?? false);
     const [sellAmount, setSellAmount] = createSignal('');
+
     if(this.gift.resellOnlyTon && this.gift.resellPriceTon) {
       setSellAmount(String(nanotonToJsNumber(this.gift.resellPriceTon)))
     } else if(this.gift.resellPriceStars) {
       setSellAmount(String(this.gift.resellPriceStars))
+    } else if(floorPrice) {
+      setSellAmount(String(floorPrice))
     }
+
     const [loading, setLoading] = createSignal(false);
 
     const inputError = createMemo<[LangPackKey, any[]] | undefined>(() => {
@@ -146,6 +154,8 @@ export default class PopupSellStarGift extends PopupElement<{
       const commission = appConfig.stars_stargift_resale_commission_permille;
       return Math.floor(value * (commission / 1000));
     })
+
+    const percentage = () => (ton() ? appConfig.ton_stargift_resale_commission_permille : appConfig.stars_stargift_resale_commission_permille) / 10;
 
     createEffect(on(() => [inputError(), sellAmount()], ([error, sellAmount]) => {
       this.btnConfirm.toggleAttribute('disabled', !!error || !sellAmount)
@@ -227,8 +237,12 @@ export default class PopupSellStarGift extends PopupElement<{
         />
         <I18nTsx
           class={styles.youWillReceive}
-          key={ton() ? 'StarGiftYouWillReceiveTon' : 'StarGiftYouWillReceiveStars'}
-          args={[String(afterCommission())]}
+          key={
+            sellAmount() ?
+              ton() ? 'StarGiftYouWillReceiveTon' : 'StarGiftYouWillReceiveStars' :
+              'StarGiftYouWillReceivePercent'
+          }
+          args={sellAmount() ? [String(afterCommission()), String(percentage())] : String(percentage())}
         />
         <RowTsx
           subtitle={i18n('StarGiftOnlyAcceptTonInfo')}

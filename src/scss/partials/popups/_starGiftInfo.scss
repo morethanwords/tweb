@@ -151,6 +151,28 @@
   &:hover {
     background-color: rgba(255, 255, 255, .15);
   }
+
+  &.is-change-price {
+    justify-content: flex-end;
+    gap: 0.5rem;
+
+    .tgico {
+      font-size: 1rem;
+      padding: 0;
+    }
+
+    .xtr, .ton-amount {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-weight: 600;
+      font-size: var(--font-size-14);
+    }
+
+    .ton-amount-icon {
+      margin-top: -2px;
+    }
+  }
 }
 
 .popup-star-gift-info-table {

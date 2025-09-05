@@ -8,5 +8,8 @@ export function inputStarGiftEquals(a: InputSavedStarGift, b: InputSavedStarGift
   if(a._ === 'inputSavedStarGiftUser' && b._ === 'inputSavedStarGiftUser') {
     return a.msg_id === b.msg_id;
   }
+  if(a._ === 'inputSavedStarGiftSlug' && b._ === 'inputSavedStarGiftSlug') {
+    return a.slug === b.slug;
+  }
   return false;
 }

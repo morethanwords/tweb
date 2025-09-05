@@ -183,7 +183,8 @@ export default class AppGiftsManager extends AppManager {
         },
         resellPriceStars,
         resellPriceTon,
-        resellOnlyTon: gift.pFlags.resale_ton_only
+        resellOnlyTon: gift.pFlags.resale_ton_only,
+        input: {_:'inputSavedStarGiftSlug', slug: gift.slug}
       };
     }
   }
@@ -291,6 +292,8 @@ export default class AppGiftsManager extends AppManager {
       return this.cachedStarGiftOptions;
     }
 
+    this.cachedStarGiftOptionsHash = res.hash;
+
     const options: MyStarGift[] = [];
     for(const it of res.gifts) {
       const gift = this.wrapGift(it);
@@ -373,11 +376,29 @@ export default class AppGiftsManager extends AppManager {
   }
 
   public async getGiftBySlug(slug: string) {
-    const result = await this.apiManager.invokeApiSingle('payments.getUniqueStarGift', {slug});
+    const [result, savedResult] = await Promise.all([
+      this.apiManager.invokeApiSingle('payments.getUniqueStarGift', {slug}),
+      this.apiManager.invokeApiSingle('payments.getSavedStarGift', {
+        stargift: [{_: 'inputSavedStarGiftSlug', slug}]
+      }).catch((): null => null)
+    ]);
 
     this.appUsersManager.saveApiUsers(result.users);
 
-    return this.wrapGift(result.gift);
+    const ret = this.wrapGift(result.gift);
+    if(savedResult) {
+      this.appPeersManager.saveApiPeers(savedResult);
+      ret.saved = savedResult.gifts[0];
+    }
+
+    return ret;
+  }
+
+  public async getSavedGiftBySlug(slug: string) {
+    const res = await this.apiManager.invokeApiSingle('payments.getSavedStarGift', {
+      stargift: [{_: 'inputSavedStarGiftSlug', slug}]
+    }).catch((): null => null);
+    return res?.gifts[0];
   }
 
   public async togglePinnedGift(gift: InputSavedStarGift) {
@@ -428,8 +449,25 @@ export default class AppGiftsManager extends AppManager {
 
     this.appPeersManager.saveApiPeers(res);
 
+    const wrappedGifts: MyStarGift[] = res.gifts.map((it) => this.wrapGift(it));
+    const ownedGifts = wrappedGifts.filter((it) => getPeerId((it.raw as StarGift.starGiftUnique).owner_id) === this.rootScope.myId);
+    if(ownedGifts.length > 0) {
+      const savedGifts = await this.apiManager.invokeApiSingle('payments.getSavedStarGift', {
+        stargift: ownedGifts.map((it) => it.input)
+      }).catch((): null => null)
+      if(savedGifts) {
+        this.appPeersManager.saveApiPeers(savedGifts);
+        for(const it of ownedGifts) {
+          const savedGift = savedGifts.gifts.find((it) => (it.gift as StarGift.starGiftUnique).slug === (it.gift as StarGift.starGiftUnique).slug);
+          if(savedGift) {
+            it.saved = savedGift;
+          }
+        }
+      }
+    }
+
     return {
-      items: res.gifts.map((it) => this.wrapGift(it)),
+      items: wrappedGifts,
       next: res.next_offset,
       count: res.count,
       counters: res.counters,
@@ -469,5 +507,9 @@ export default class AppGiftsManager extends AppManager {
         this.rootScope.dispatchEvent('star_gift_update', {input: gift, resalePrice: prices});
       }
     })
+  }
+
+  public async getFloorPrice(giftName: string) {
+    return (this.cachedStarGiftOptions?.find(option => option.raw._ === 'starGift' && option.raw.title === giftName)?.raw as StarGift.starGift)?.resell_min_stars;
   }
 }

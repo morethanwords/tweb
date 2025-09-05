@@ -484,6 +484,17 @@
   justify-content: center;
   height: 100%;
   color: var(--secondary-text-color);
+
+  overflow: hidden;
+  text-align: center;
+  overflow-wrap: break-word;
+  padding-inline: 1rem;
+  text-wrap: balance;
+
+  :global(.i18n) {
+    display: block;
+    overflow: hidden;
+  }
 }
 
 @media only screen and (max-width: $small-screen) {

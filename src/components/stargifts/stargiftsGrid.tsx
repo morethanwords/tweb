@@ -157,8 +157,9 @@ function StarGiftGridItem(props: {
           )} */}
           <StarsStar />
           <span>{
-            props.item.raw.resell_min_stars ? `${props.item.raw.resell_min_stars}+` :
-            props.item.raw.stars
+            props.item.raw.resell_min_stars ?
+              `${numberThousandSplitterForStars(props.item.raw.resell_min_stars)}+` :
+              numberThousandSplitterForStars(props.item.raw.stars)
           }</span>
         </div>
       )}

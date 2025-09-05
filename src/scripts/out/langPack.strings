@@ -2289,7 +2289,7 @@
 "StarGiftWearFull" = "Wear";
 "StarGiftShare" = "share";
 "StarGiftSell" = "sell";
-"StarGiftUnlist" = "unlist";
+"StarGiftChangePriceButton" = "change price";
 "StarGiftPin" = "Pin";
 "StarGiftUnpin" = "Unpin";
 "StarGiftLinkButton" = "VIEW COLLECTIBLE";
@@ -2326,6 +2326,7 @@
 "StarGiftYouWillReceiveStars_one" = "You will receive **%s** Star.";
 "StarGiftYouWillReceiveStars_other" = "You will receive **%s** Stars.";
 "StarGiftYouWillReceiveTon" = "You will receive **%s** TON.";
+"StarGiftYouWillReceivePercent" = "You will receive %d% of the selected amount.";
 "StarGiftMinSellAmountStars_one" = "You must request minimum %s Star";
 "StarGiftMinSellAmountStars_other" = "You must request minimum %s Stars";
 "StarGiftMaxSellAmountStars_one" = "You can request maximum %s Star";

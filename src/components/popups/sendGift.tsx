@@ -5,7 +5,7 @@ import {MyPremiumGiftOption, MyStarGift} from '../../lib/appManagers/appGiftsMan
 import {STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {AvatarNewTsx} from '../avatarNew';
 import {i18n, LangPackKey} from '../../lib/langPack';
-import {Accessor, createEffect, createMemo, createSignal, For, on, onMount, Setter, Show} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Setter, Show} from 'solid-js';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import PopupStars, {StarsBalance, StarsStar} from './stars';
 import LottieAnimation from '../lottieAnimation';
@@ -56,6 +56,10 @@ import {PreloaderTsx} from '../putPreloader';
 import {FloatingStarsBalance} from './floatingStarsBalance';
 import {positionMenuTrigger} from '../../helpers/positionMenu';
 import {Transition} from '../../vendor/solid-transition-group';
+import appNavigationController, {NavigationItem} from '../appNavigationController';
+import {subscribeOn} from '../../helpers/solid/subscribeOn';
+import {inputStarGiftEquals} from '../../lib/appManagers/utils/gifts/inputStarGiftEquals';
+import {updateStarGift} from '../../lib/appManagers/utils/gifts/updateStarGift';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
@@ -131,7 +135,7 @@ function GiftOptionsPage(props: {
                     {i18n('PremiumOr')}
                     <div class={styles.premiumOptionPriceStarsInner}>
                       <StarsStar />
-                      {option.priceStars}
+                      {numberThousandSplitterForStars(option.priceStars)}
                     </div>
                   </div>
                 )}
@@ -185,7 +189,7 @@ function GiftOptionsPage(props: {
     return props.giftOptions.filter((it) => (it.raw as StarGift.starGift).stars.toString() === category$);
   });
 
-  const handleGiftClick = (item: MyStarGift) => {
+  const handleGiftClick = async(item: MyStarGift) => {
     const gift = item.raw as StarGift.starGift;
     if(gift.availability_remains === 0 && !gift.resell_min_stars) {
       PopupElement.createPopup(PopupStarGiftInfo, {gift: item});
@@ -260,6 +264,7 @@ function GiftOptionsPage(props: {
             view="list"
             scrollParent={container}
             onClick={handleGiftClick}
+            autoplay={false}
           />
         </div>
       </div>
@@ -387,7 +392,7 @@ function ResaleOptionsPage(props: {
     loadMore();
   });
 
-  createEffect(on(() => [sort(), hasChosenModelOptions(), hasChosenPatternOptions(), hasChosenBackdropOptions()], () => {
+  function loadFromStart() {
     offset = ''
     setItems([])
     countersMap.clear()
@@ -397,7 +402,24 @@ function ResaleOptionsPage(props: {
     setLoading(true);
 
     loadMore();
-  }, {defer: true}));
+  }
+
+  subscribeOn(rootScope)('star_gift_update', (event) => {
+    const idx = items().findIndex((it) => inputStarGiftEquals(it.input, event.input));
+    if(idx !== -1) {
+      if(event.resalePrice) {
+        loadFromStart();
+      } else {
+        updateStarGift(items()[idx], event);
+      }
+    }
+  })
+
+  createEffect(on(
+    () => [sort(), hasChosenModelOptions(), hasChosenPatternOptions(), hasChosenBackdropOptions()],
+    loadFromStart,
+    {defer: true}
+  ));
 
   const SORT_OPTIONS: Record<'price' | 'date' | 'num', {icon: Icon, text: LangPackKey}> = {
     price: {
@@ -952,6 +974,15 @@ export default class PopupSendGift extends PopupElement {
 
     const [currentPage, setCurrentPage] = createSignal(0);
 
+    const secondPageNavigationItem: NavigationItem = {
+      type: 'left',
+      onPop: () => void setCurrentPage(0)
+    }
+
+    onCleanup(() => {
+      appNavigationController.removeItem(secondPageNavigationItem);
+    });
+
     this.container.replaceChildren();
     const dispose = render(() => (
       <>
@@ -961,6 +992,12 @@ export default class PopupSendGift extends PopupElement {
           animateFirst={false}
           onTransitionStart={(id) => {
             this.container.classList.toggle(styles.isChosenGift, id === 1);
+
+            if(id === 0) {
+              appNavigationController.removeItem(secondPageNavigationItem);
+            } else {
+              appNavigationController.pushItem(secondPageNavigationItem);
+            }
           }}
           onTransitionEnd={(id) => {
             if(id === 0) {
