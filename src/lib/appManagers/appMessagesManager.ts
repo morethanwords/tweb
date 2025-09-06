@@ -6468,6 +6468,14 @@ export class AppMessagesManager extends AppManager {
     if(map.size) {
       this.rootScope.dispatchEvent('dialogs_multiupdate', map);
     }
+
+    if(message.saved_peer_id && peerId !== this.rootScope.myId) {
+      const monoforumThreadId = this.appPeersManager.getPeerId(message.saved_peer_id);
+      const monoforumDialog = this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId);
+
+      if(monoforumDialog?.top_message === mid)
+        this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: [monoforumDialog]})
+    }
   };
 
   private onUpdateReadHistory = (update: Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox
