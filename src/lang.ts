@@ -245,6 +245,7 @@ const lang = {
     'other_value': '%d chats selected'
   },
   'SelectAll': 'select all',
+  'SelectAll2': 'Select All',
   'SearchPlaceholder': 'Search...',
   'DeselectAll': 'deselect all',
   'UsernamesBotHelp': 'Drag and drop links to change the order in which they will be displayed on the bot info page.',
@@ -1733,6 +1734,7 @@ const lang = {
   'ActionGiftOutbound': 'You have sent a gift for **un2**',
   'ActionGiftUpgradedInbound': '%s turned the gift from you into a unique collectible',
   'ActionGiftUpgradedOutbound': 'You turned the gift from %s into a unique collectible',
+  'ActionGiftUpgradedSelf': 'You turned this gift into a unique collectible',
   'ActionGiftTransferredInbound': '%s transferred a gift to you',
   'ActionGiftTransferredOutbound': 'You transferred a gift to %s',
   'ActionGiftPremiumTitle2': '%s Premium',
@@ -2455,11 +2457,20 @@ const lang = {
     'one_value': 'Do you want to buy a gift for **%1$d star**?',
     'other_value': 'Do you want to buy a gift for **%1$d stars**?'
   },
+  'StarGiftConfirmTransferText': {
+    'one_value': 'Do you want to transfer a gift for **%1$d star**?',
+    'other_value': 'Do you want to transfer a gift for **%1$d stars**?'
+  },
+  'StarGiftConfirmFreeTransferTitle': 'Confirm Transfer',
+  'StarGiftConfirmFreeTransferText': 'Do you want to transfer %s to **%s**?',
   'StarsNeededTitle': {
     'one_value': '%d Star Needed',
     'other_value': '%d Stars Needed'
   },
+  'TonNeededTitle': '%s TON Needed',
   'StarsNeededText': 'Buy **Stars** and use them on **%s** and other mini apps.',
+  'TonNeededText': 'You can add TON to your balance via the third-party platform Fragment.',
+  'FragmentTopUp': 'Top-Up via Fragment',
   'MenuTelegramStars': 'My Stars',
   'StarsCount': {
     'one_value': '%d Star',
@@ -2542,6 +2553,10 @@ const lang = {
     'one_value': '**You** sent a gift for **%d Star**',
     'other_value': '**You** sent a gift for **%d Stars**'
   },
+  'StarGiftSentMessageSelf': {
+    'one_value': 'You bought a gift for **%d Star**',
+    'other_value': 'You bought a gift for **%d Stars**'
+  },
   'StarGiftFrom': 'Gift from %s',
   'StarGiftDefaultMessage': 'You can add this gift to your profile.',
   'StarGiftDefaultMessageOut': '%s can display this gift on their profile.',
@@ -2587,6 +2602,8 @@ const lang = {
   },
   'StarGiftLimitedBadge': 'limited',
   'StarGiftSoldOutBadge': 'sold out',
+  'StarGiftResaleBadge': 'resale',
+  'StarGiftResaleBadgeProfile': 'on sale',
   'SendStarGiftSubtitle': 'Give %s gifts that can be kept on the profile or converted to Stars.',
   'StarGiftCategoryAll': 'All Gifts',
   'StarGiftCategoryLimited': 'Limited',
@@ -2625,15 +2642,30 @@ const lang = {
   'StarGiftUpgradeFree': 'Upgrade for Free',
   'StarGiftUpgrade': 'Upgrade %s',
   'StarGiftModel': 'Model',
+  'StarGiftNModels': {
+    'one_value': '%d Model',
+    'other_value': '%d Models'
+  },
   'StarGiftBackdrop': 'Backdrop',
+  'StarGiftNBackdrops': {
+    'one_value': '%d Backdrop',
+    'other_value': '%d Backdrops'
+  },
   'StarGiftPattern': 'Symbol',
+  'StarGiftNPatterns': {
+    'one_value': '%d Symbol',
+    'other_value': '%d Symbols'
+  },
   'StarGiftOwner': 'Owner',
   'StarGiftCollectibleNum': 'Collectible #%s',
+  'StarGiftCollectibleNumWithAuthor': 'Collectible #%s by %s',
   'StarGiftTransfer': 'transfer',
   'StarGiftTransferFull': 'Transfer',
   'StarGiftWear': 'wear',
   'StarGiftWearFull': 'Wear',
   'StarGiftShare': 'share',
+  'StarGiftSell': 'sell',
+  'StarGiftChangePriceButton': 'change price',
   'StarGiftPin': 'Pin',
   'StarGiftUnpin': 'Unpin',
   'StarGiftLinkButton': 'VIEW COLLECTIBLE',
@@ -2643,6 +2675,55 @@ const lang = {
   'StarGiftOriginalDetailsComment': 'Gifted to %s on %s with the comment “%s”.',
   'StarGiftOriginalDetailsSenderComment': 'Gifted by %s to %s on %s with the comment “%s”.',
   'StarGiftAttributeTooltip': 'Only %s of such collectibles have this attribute.',
+  'StarGiftResaleSubtitle': '%s for resale',
+  'StarGiftResaleSortPrice': 'Sort by Price',
+  'StarGiftResaleSortDate': 'Sort by Date',
+  'StarGiftResaleSortNum': 'Sort by Number',
+  'StarGiftResaleSortPriceShort': 'Price',
+  'StarGiftResaleSortDateShort': 'Date',
+  'StarGiftResaleSortNumShort': 'Number',
+  'StarGiftResaleNothingFound': 'No matching collectibles found',
+  'StarGiftResaleSend': 'Send a gift for %s',
+  'StarGiftResaleBuy': 'Buy for %s',
+  'StarGiftResaleStarsAmount': 'Equals to %s',
+  'StarGiftResaleBuyConfirm': 'Buy for %s',
+  'StarGiftResalePayInStars': 'Pay in Stars',
+  'StarGiftResalePayInTon': 'Pay in TON',
+  'StarGiftResaleBuyText': 'Do you want to buy **%s** for **%s**?',
+  'StarGiftResaleOnlyTon': 'The seller only accepts TON as payment.',
+  'StarGiftResaleBoughtSelf': '%s is now yours.',
+  'StarGiftResaleBoughtOther': '%s has been notified about your gift.',
+  'StarGiftTransferCooldown': 'You will be able to transfer this gift in %s',
+  'StarGiftResaleCooldown': 'You will be able to resell this gift in %s',
+  'StarGiftSellTitleStars': 'Price in Stars',
+  'StarGiftSellTitleTon': 'Price in TON',
+  'StarGiftSellPlaceholderStars': 'Enter price in Stars',
+  'StarGiftSellPlaceholderTon': 'Enter price in TON',
+  'StarGiftYouWillReceiveStars': {
+    'one_value': 'You will receive **%s** Star.',
+    'other_value': 'You will receive **%s** Stars.'
+  },
+  'StarGiftYouWillReceiveTon': 'You will receive **%s** TON.',
+  'StarGiftYouWillReceivePercent': 'You will receive %d% of the selected amount.',
+  'StarGiftMinSellAmountStars': {
+    'one_value': 'You must request minimum %s Star',
+    'other_value': 'You must request minimum %s Stars'
+  },
+  'StarGiftMaxSellAmountStars': {
+    'one_value': 'You can request maximum %s Star',
+    'other_value': 'You can request maximum %s Stars'
+  },
+  'StarGiftMinSellAmountTon': 'You must request minimum %s TON',
+  'StarGiftMaxSellAmountTon': 'You can request maximum %s TON',
+  'StarGiftOnlyAcceptTon': 'Only Accept TON',
+  'StarGiftOnlyAcceptTonInfo': 'If the buyer pays you in TON, there\'s no risk of refunds, unlike Star payments.',
+  'StarGiftSellButton': 'List for Sale',
+  'StarGiftResaleListed': '%s is now for sale!',
+  'StarGiftUnlistTitle': 'Unlist %s',
+  'StarGiftUnlistText': 'Are you sure you want to unlist your gift?',
+  'StarGiftUnlistConfirm': 'Unlist',
+  'StarGiftResaleRemoved': '%s removed from sale!',
+  'StarGiftChangePrice': 'Change price',
   'ActionGiftStarsTitle': {
     'one_value': '%d Star',
     'other_value': '%d Stars'

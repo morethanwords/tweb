@@ -510,7 +510,6 @@
 @import "partials/popups/accountsLimit";
 @import "partials/popups/starGiftInfo";
 @import "partials/popups/starGiftUpgrade";
-@import "partials/popups/sendGift";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -2475,6 +2474,14 @@ hr {
   &-icon {
     vertical-align: bottom;
     line-height: inherit;
+  }
+}
+
+.ton-amount {
+  &-icon {
+    margin-top: 1px;
+    display: inline-block;
+    vertical-align: text-top;
   }
 }
 

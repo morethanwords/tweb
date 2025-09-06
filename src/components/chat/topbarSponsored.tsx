@@ -110,6 +110,7 @@ export default class ChatTopbarSponsored extends PinnedContainer {
                 photo={photo()}
                 boxWidth={32}
                 boxHeight={32}
+                withoutPreloader
               />
             </div>
           )}

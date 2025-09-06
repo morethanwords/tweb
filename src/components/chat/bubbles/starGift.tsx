@@ -18,6 +18,7 @@ import {MyDocument} from '../../../lib/appManagers/appDocsManager';
 import numberThousandSplitter from '../../../helpers/number/numberThousandSplitter';
 import {simulateClickEvent} from '../../../helpers/dom/clickEvent';
 import formatNumber from '../../../helpers/number/formatNumber';
+import {getCollectibleName} from '../../../lib/appManagers/utils/gifts/getCollectibleName';
 
 export function StarGiftBubble(props: {
   gift: MyStarGift
@@ -34,7 +35,7 @@ export function StarGiftBubble(props: {
       return (
         <div class={/* @once */ styles.uniqueGiftInfo}>
           <div class={/* @once */ styles.uniqueGiftTitle}>
-            {props.gift.raw.title} #{numberThousandSplitter(props.gift.raw.num, ',')}
+            {getCollectibleName(props.gift.raw)}
           </div>
 
           <div class={/* @once */ styles.uniqueGiftProps}>
@@ -112,7 +113,7 @@ export function StarGiftBubble(props: {
         >
           <I18nTsx
             key="StarGiftLimitedBadgeNum"
-            args={[formatNumber(props.gift.raw.availability_total)]}
+            args={[formatNumber(props.gift.raw.availability_total, 1)]}
           />
         </StarGiftBadge>
       )}

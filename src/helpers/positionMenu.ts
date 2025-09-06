@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {ButtonMenuDirection} from '../components/buttonMenuToggle';
 import I18n from '../lib/langPack';
 import mediaSizes from './mediaSizes';
 
@@ -142,4 +143,26 @@ export default function positionMenu(e: MouseEvent | Touch | TouchEvent, elem: H
     width: menuWidth,
     height: menuHeight
   };
+}
+
+export function positionMenuTrigger(trigger: HTMLElement, menu: HTMLElement, direction: ButtonMenuDirection, additionalPadding?: MenuPositionPadding) {
+  const triggerRect = trigger.getBoundingClientRect();
+
+  const [directionX, directionY] = direction.split('-');
+
+  if(directionX === 'bottom') {
+    const top = triggerRect.top + triggerRect.height + (additionalPadding?.top ?? 0);
+    menu.style.top = `${Math.max(top, additionalPadding?.top ?? 0)}px`
+  } else {
+    const bottom = window.innerHeight - triggerRect.top - triggerRect.height - (additionalPadding?.bottom ?? 0)
+    menu.style.bottom = `${Math.max(bottom, additionalPadding?.bottom ?? 0)}px`
+  }
+
+  if(directionY === 'right') {
+    const left = triggerRect.left + (additionalPadding?.left ?? 0);
+    menu.style.left = `${Math.max(left, additionalPadding?.left ?? 0)}px`
+  } else {
+    const right = window.innerWidth - triggerRect.left - triggerRect.width - (additionalPadding?.right ?? 0)
+    menu.style.right = `${Math.max(right, additionalPadding?.right ?? 0)}px`
+  }
 }

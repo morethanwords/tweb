@@ -14,7 +14,9 @@ export function StarGiftBadge(props: {
     <div
       class={classNames(styles.badge, props.class)}
       style={{
-        background: props.backdropAttr ? rgbIntToHex(props.backdropAttr.edge_color, 0.8) : undefined
+        background: props.backdropAttr ?
+          `linear-gradient(180deg, ${rgbIntToHex(props.backdropAttr.center_color)} 0%, ${rgbIntToHex(props.backdropAttr.edge_color)} 100%)` :
+          undefined
       }}
     >
       <div class={classNames(styles.text, props.textClass)}>

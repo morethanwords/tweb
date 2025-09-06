@@ -43,11 +43,11 @@
   flex-direction: row;
   align-items: center;
   gap: 0.125rem;
-  color: #E88011;
+  color: #fff;
   font-weight: 500;
   font-size: var(--font-size-16);
   line-height: 1;
-  padding: 0.4375rem 0.75rem 0.4375rem 0.625rem;
+  padding: 0.4375rem 0.625rem 0.4375rem 0.75rem;
   position: relative;
   z-index: 1;
 
@@ -64,6 +64,7 @@
   .viewList & {
     overflow: hidden;
     background: #FFBB2D33;
+    color: #E88011;
     border-radius: 9999px;
     font-size: 11px;
     font-weight: 500;
@@ -72,6 +73,23 @@
     &:hover {
       background: #FFBB2D50;
     }
+  }
+
+  .viewResale & {
+    background: var(--overlay-color);
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .viewProfile & {
+    position: absolute;
+    bottom: 0.5rem;
+    background: var(--overlay-color);
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem 0.25rem 0.625rem;
   }
 }
 
@@ -110,6 +128,10 @@
   background: linear-gradient(180deg, #FF5B54 1.72%, #ED1C26 94.83%)!important;;
 }
 
+.badgeResale {
+  background: linear-gradient(353.21deg, #4AB221 23.88%, #55DF61 117.26%)!important;
+}
+
 .badgeUnique {
   color: #fff;
 }
@@ -146,4 +168,20 @@
   background: rgba(0, 0, 0, 0.5);
   border-radius: 50%;
   padding: 0.5rem;
+}
+
+.tonIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+  background: var(--overlay-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  font-size: 1.125rem;
+  color: #fff;
+  z-index: 2;
 }

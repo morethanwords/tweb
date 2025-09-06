@@ -52,6 +52,7 @@ export type LottieAssetName =
   | 'StarReactionEffect2'
   | 'StarReactionEffect3'
   | 'UtyanPasscode'
+  | 'Diamond'
 ;
 
 export class LottieLoader {

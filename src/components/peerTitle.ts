@@ -22,6 +22,7 @@ export type PeerTitleOptions = {
   fromName?: string,
   plainText?: boolean,
   onlyFirstName?: boolean,
+  username?: boolean,
   dialog?: boolean,
   limitSymbols?: number,
   withIcons?: boolean,

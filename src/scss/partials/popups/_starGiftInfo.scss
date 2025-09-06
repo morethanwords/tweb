@@ -24,6 +24,10 @@
     width: 1rem;
     height: 1rem;
   }
+
+  .btn-menu-toggle {
+    z-index: 3;
+  }
 }
 
 .popup-star-gift-info-container {
@@ -101,6 +105,11 @@
     color: rgba(255, 255, 255, .8);
     z-index: 1;
     margin: 0;
+
+    .peer-title {
+      color: #fff;
+      cursor: pointer;
+    }
   }
 }
 
@@ -141,6 +150,28 @@
 
   &:hover {
     background-color: rgba(255, 255, 255, .15);
+  }
+
+  &.is-change-price {
+    justify-content: flex-end;
+    gap: 0.5rem;
+
+    .tgico {
+      font-size: 1rem;
+      padding: 0;
+    }
+
+    .xtr, .ton-amount {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-weight: 600;
+      font-size: var(--font-size-14);
+    }
+
+    .ton-amount-icon {
+      margin-top: -2px;
+    }
   }
 }
 
@@ -183,4 +214,22 @@
     color: var(--primary-color);
     cursor: pointer;
   }
+}
+.popup-footer .popup-star-gift-info-resale-button-twoline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 16px;
+  line-height: 16px;
+  height: 3rem;
+}
+
+.popup-star-gift-info-resale-stars-amount {
+  font-size: 12px;
+  line-height: 18px;
+  color: rgba(255, 255, 255, .6);
+  margin-top: 0.125rem;
+  text-transform: none;
 }

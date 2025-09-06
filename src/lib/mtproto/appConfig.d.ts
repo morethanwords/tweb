@@ -126,6 +126,14 @@ export interface MTAppConfig {
   verify_age_min?:                           number;
   verify_age_bot_username?:                  string;
   verify_age_country?:                       string;
+  ton_usd_rate?:                             number;
+  ton_topup_url?:                            string;
+  ton_stargift_resale_amount_max?:            number;
+  ton_stargift_resale_amount_min?:            number;
+  ton_stargift_resale_commission_permille?:   number;
+  stars_stargift_resale_amount_max?:          number;
+  stars_stargift_resale_amount_min?:          number;
+  stars_stargift_resale_commission_permille?: number;
 }
 
 export interface EmojiesSendDiceSuccess {

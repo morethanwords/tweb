@@ -1,6 +1,6 @@
-import {createMemo, JSX, Show} from 'solid-js';
+import {createMemo, createSignal, JSX, onMount, Show} from 'solid-js';
 import PopupElement from '.';
-import {Peer, StarGift} from '../../layer';
+import {InputSavedStarGift, Peer, SavedStarGift, StarGift} from '../../layer';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import {StickerTsx} from '../wrappers/sticker';
 import {i18n, LangPackKey} from '../../lib/langPack';
@@ -16,7 +16,7 @@ import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import PopupSendGift from './sendGift';
 import Table, {TableButton, TablePeer, TableRow} from '../table';
-import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID, STARS_CURRENCY, TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
 import PopupStarGiftUpgrade from './starGiftUpgrade';
@@ -31,6 +31,19 @@ import {wearStarGift} from './wearStarGift';
 import tsNow from '../../helpers/tsNow';
 import {useAppState} from '../../stores/appState';
 import transferStarGift from './transferStarGift';
+import safeAssign from '../../helpers/object/safeAssign';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import PopupBuyResaleGift from './buyResaleGift';
+import wrapPeerTitle from '../wrappers/peerTitle';
+import {wrapFormattedDuration} from '../wrappers/wrapDuration';
+import formatDuration from '../../helpers/formatDuration';
+import PopupSellStarGift from './sellStarGift';
+import {inputStarGiftEquals} from '../../lib/appManagers/utils/gifts/inputStarGiftEquals';
+import confirmationPopup from '../confirmationPopup';
+import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
+import {updateStarGift} from '../../lib/appManagers/utils/gifts/updateStarGift';
+import {wrapEmojiTextWithEntities} from '../../lib/richTextProcessor/wrapEmojiText';
+import wrapMessageEntities from '../../lib/richTextProcessor/wrapMessageEntities';
 
 function AttributeTableButton(props: { permille: number }) {
   return (
@@ -51,9 +64,17 @@ function AttributeTableButton(props: { permille: number }) {
 }
 
 export default class PopupStarGiftInfo extends PopupElement {
-  constructor(
-    private gift: MyStarGift,
-  ) {
+  private gift: MyStarGift;
+  private resaleRecipient?: PeerId;
+  private onClickAway?: () => void;
+
+  private isResale: boolean
+
+  constructor(options: {
+    gift: MyStarGift,
+    onClickAway?: () => void,
+    resaleRecipient?: PeerId
+  }) {
     super('popup-star-gift-info', {
       closable: true,
       overlayClosable: true,
@@ -63,11 +84,21 @@ export default class PopupStarGiftInfo extends PopupElement {
       withFooterConfirm: true
     });
 
+    safeAssign(this, options);
+    this.isResale = this.gift.resellPriceStars !== undefined && getPeerId((this.gift.raw as StarGift.starGiftUnique).owner_id) !== rootScope.myId;
+
     this.construct();
   }
 
   private _construct() {
-    const {saved, raw: gift, sticker, isIncoming, isConverted, collectibleAttributes, input} = this.gift;
+    const {
+      saved,
+      raw: gift,
+      sticker,
+      isIncoming,
+      isConverted,
+      collectibleAttributes
+    } = this.gift;
 
     const isUnavailable = !saved && (gift as StarGift.starGift).availability_remains === 0;
     const fromId = saved ? getPeerId(saved.from_id) : NULL_PEER_ID;
@@ -76,8 +107,27 @@ export default class PopupStarGiftInfo extends PopupElement {
     const lastSaleDate = (gift as StarGift.starGift).last_sale_date ? (new Date((gift as StarGift.starGift).last_sale_date * 1000)) : null;
     const starsValue = (gift as StarGift.starGift).stars;
 
-    const isOwnedUniqueGift = gift._ === 'starGiftUnique' && getPeerId(gift.owner_id) === rootScope.myId && saved !== undefined
-    const canSave = gift._ === 'starGift' && isIncoming && !isConverted || isOwnedUniqueGift
+    const isOwnedUniqueGift = gift._ === 'starGiftUnique' && getPeerId(gift.owner_id) === rootScope.myId
+    const canSave = gift._ === 'starGift' && isIncoming && !isConverted || (isOwnedUniqueGift && saved !== undefined)
+    let input = this.gift.input;
+    if(!input && gift._ === 'starGiftUnique') {
+      input = {_: 'inputSavedStarGiftSlug', slug: gift.slug}
+    }
+
+    const [isListed, setIsListed] = createSignal((gift as StarGift.starGiftUnique).resell_amount !== undefined);
+    const [resellOnlyTon, setResellOnlyTon] = createSignal(this.gift.resellOnlyTon);
+    const [resellPriceTon, setResellPriceTon] = createSignal(this.gift.resellPriceTon);
+    const [resellPriceStars, setResellPriceStars] = createSignal(this.gift.resellPriceStars);
+
+    this.listenerSetter.add(rootScope)('star_gift_update', (event) => {
+      if(event.resalePrice && inputStarGiftEquals(input, this.gift.input)) {
+        setIsListed(event.resalePrice.length > 0);
+        updateStarGift(this.gift, event);
+        setResellOnlyTon(this.gift.resellOnlyTon);
+        setResellPriceTon(this.gift.resellPriceTon);
+        setResellPriceStars(this.gift.resellPriceStars);
+      }
+    })
 
     if(canSave) {
       this.btnConfirm.replaceChildren(i18n(saved.pFlags.unsaved ? 'StarGiftDisplayOnMyPage' : 'StarGiftHideFromMyPage'));
@@ -88,6 +138,34 @@ export default class PopupStarGiftInfo extends PopupElement {
         this.managers.appGiftsManager.toggleGiftHidden(input, !saved.pFlags.unsaved).then(() => {
           this.hide();
         });
+      });
+    } else if(this.isResale) {
+      attachClickEvent(this.btnConfirm, () => {
+        const recipientId = this.resaleRecipient ?? rootScope.myId;
+        const popup = PopupElement.createPopup(PopupBuyResaleGift, {
+          recipientId,
+          gift: this.gift
+        })
+        const giftUnique = this.gift.raw as StarGift.starGiftUnique;
+        popup.show()
+        popup.addEventListener('finish', async(bought) => {
+          if(bought) {
+            this.hide();
+
+            const isSelf = recipientId === rootScope.myId;
+            if(isSelf) {
+              toastNew({
+                langPackKey: 'StarGiftResaleBoughtSelf',
+                langPackArguments: [`${giftUnique.title} #${numberThousandSplitter(giftUnique.num, ',')}`]
+              })
+            } else {
+              toastNew({
+                langPackKey: 'StarGiftResaleBoughtOther',
+                langPackArguments: [await wrapPeerTitle({peerId: recipientId, onlyFirstName: true})]
+              })
+            }
+          }
+        })
       });
     } else {
       attachClickEvent(this.btnConfirm, () => this.hide());
@@ -104,9 +182,15 @@ export default class PopupStarGiftInfo extends PopupElement {
               peerId={getPeerId(gift.owner_id)}
               onClick={() => {
                 appImManager.setInnerPeer({peerId: getPeerId(gift.owner_id)})
+                this.onClickAway?.()
                 this.hide()
               }}
             />
+          ]);
+        } else if(gift.owner_name) {
+          rows.push([
+            'StarGiftOwner',
+            gift.owner_name
           ]);
         }
 
@@ -141,6 +225,17 @@ export default class PopupStarGiftInfo extends PopupElement {
             numberThousandSplitter(gift.availability_total)
           ])
         ]);
+
+        // todo need layer 213
+        // if(...) {
+        //   rows.push([
+        //     'StarGiftValue',
+        //     `~${paymentsWrapCurrencyAmount(
+        //       Number(formatNanoton(this.gift.resellPriceTon, 2, false)) * appConfig.ton_usd_rate * 100,
+        //       'USD'
+        //     )}`
+        //   ]);
+        // }
 
         return rows;
       }
@@ -269,7 +364,8 @@ export default class PopupStarGiftInfo extends PopupElement {
 
         if(collectibleAttributes.original.message) {
           const span = document.createElement('span');
-          span.append(wrapRichText(collectibleAttributes.original.message.text, {entities: collectibleAttributes.original.message.entities}));
+          const wrapped = wrapMessageEntities(collectibleAttributes.original.message.text, collectibleAttributes.original.message.entities)
+          span.append(wrapRichText(wrapped.message, {entities: wrapped.totalEntities}));
           args.push(span);
         }
 
@@ -288,6 +384,39 @@ export default class PopupStarGiftInfo extends PopupElement {
         this.hide();
       });
     }
+
+    const handleSell = async(changePrice = false) => {
+      if(isListed() && !changePrice) {
+        await confirmationPopup({
+          titleLangKey: 'StarGiftUnlistTitle',
+          titleLangArgs: [getCollectibleName(gift as StarGift.starGiftUnique)],
+          descriptionLangKey: 'StarGiftUnlistText',
+          button: {
+            langKey: 'StarGiftUnlistConfirm'
+          }
+        });
+        await this.managers.appGiftsManager.updateResalePrice(input, null);
+        return
+      }
+
+      const now = tsNow(true);
+      if(saved.can_resell_at !== undefined && saved.can_resell_at > now) {
+        toastNew({
+          langPackKey: 'StarGiftResaleCooldown',
+          langPackArguments: [wrapFormattedDuration(formatDuration(saved.can_resell_at - now, 2))]
+        });
+        return
+      }
+
+      PopupElement.createPopup(PopupSellStarGift, {gift: this.gift})
+    }
+
+    onMount(() => {
+      if(isOwnedUniqueGift) {
+        // ! preload options for resale floor price
+        this.managers.appGiftsManager.getStarGiftOptions().catch(() => {})
+      }
+    })
 
     return (
       <div class={`popup-star-gift-info-container ${gift._ === 'starGiftUnique' ? 'is-collectible' : ''}`}>
@@ -318,6 +447,18 @@ export default class PopupStarGiftInfo extends PopupElement {
                     this.hide();
                   });
                 }
+              },
+              {
+                icon: 'tag_alt',
+                text: 'StarGiftChangePrice',
+                verify: () => isOwnedUniqueGift && isListed(),
+                onClick: () => handleSell(true)
+              },
+              {
+                icon: 'tag_alt_crossed',
+                text: 'StarGiftUnlistTitle',
+                verify: () => isOwnedUniqueGift && isListed(),
+                onClick: () => handleSell()
               },
               {
                 icon: 'forward',
@@ -374,7 +515,27 @@ export default class PopupStarGiftInfo extends PopupElement {
 
           {gift._ === 'starGiftUnique' && (
             <div class="popup-star-gift-info-subtitle">
-              {i18n('StarGiftCollectibleNum', [numberThousandSplitter(gift.num, ',')])}
+              {
+                gift.released_by ?
+                  <I18nTsx
+                    key="StarGiftCollectibleNumWithAuthor"
+                    args={[
+                      numberThousandSplitter(gift.num, ','),
+                      <PeerTitleTsx
+                        peerId={getPeerId(gift.released_by)}
+                        username
+                        onClick={() => {
+                          appImManager.setInnerPeer({peerId: getPeerId(gift.released_by)})
+                          this.hide()
+                        }}
+                      />
+                    ]}
+                  /> :
+                  <I18nTsx
+                    key="StarGiftCollectibleNum"
+                    args={[numberThousandSplitter(gift.num, ',')]}
+                  />
+              }
             </div>
           )}
 
@@ -402,12 +563,21 @@ export default class PopupStarGiftInfo extends PopupElement {
                   })
                 }}
               />
-              <Button
-                class="popup-star-gift-info-action"
-                icon="forward_filled"
-                text="StarGiftShare"
-                onClick={handleShare}
-              />
+              {isListed() ? (
+                <button class="popup-star-gift-info-action is-change-price" onClick={() => handleSell(true)}>
+                  {resellOnlyTon() ?
+                    paymentsWrapCurrencyAmount(resellPriceTon(), TON_CURRENCY) :
+                    paymentsWrapCurrencyAmount(resellPriceStars(), STARS_CURRENCY)}
+                  <I18nTsx key="StarGiftChangePriceButton" />
+                </button>
+              ) : (
+                <Button
+                  class="popup-star-gift-info-action"
+                  icon="tag_alt"
+                  text="StarGiftSell"
+                  onClick={() => handleSell()}
+                />
+              )}
             </div>
           )}
         </div>
@@ -441,6 +611,27 @@ export default class PopupStarGiftInfo extends PopupElement {
   private async construct() {
     this.header.remove();
     this.appendSolid(() => this._construct());
+
+    if(this.isResale) {
+      this.btnConfirm.classList.add('popup-star-gift-info-resale-button');
+      this.btnConfirm.replaceChildren(
+        i18n(this.resaleRecipient ? 'StarGiftResaleSend' : 'StarGiftResaleBuy', [
+          this.gift.resellOnlyTon ?
+            paymentsWrapCurrencyAmount(this.gift.resellPriceTon, TON_CURRENCY) :
+            paymentsWrapCurrencyAmount(this.gift.resellPriceStars, STARS_CURRENCY)
+        ])
+      )
+
+      if(this.gift.resellOnlyTon) {
+        this.btnConfirm.classList.add('popup-star-gift-info-resale-button-twoline');
+        const span = i18n('StarGiftResaleStarsAmount', [
+          paymentsWrapCurrencyAmount(this.gift.resellPriceStars, STARS_CURRENCY)
+        ])
+        span.classList.add('popup-star-gift-info-resale-stars-amount');
+        this.btnConfirm.append(span);
+      }
+    }
+
     this.show();
   }
 }

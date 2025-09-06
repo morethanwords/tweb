@@ -32,6 +32,7 @@ export const T_ME_PREFIXES = new Set(['web', 'k', 'z', 'a']);
 export const SEND_WHEN_ONLINE_TIMESTAMP = 0x7FFFFFFE;
 export const SERVER_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/bmp', 'image/gif']);
 export const STARS_CURRENCY = 'XTR';
+export const TON_CURRENCY = 'TON';
 export const SEND_PAID_WITH_STARS_DELAY = 5e3;
 export const SEND_PAID_REACTION_ANONYMOUS_PEER_ID: PeerId = -1;
 
