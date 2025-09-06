@@ -15,6 +15,7 @@ stats.html
 ssh.json
 archive.zip
 .idea
+.env.local
 
 # Throw files you don't need in this folder
 ignore

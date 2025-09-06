@@ -7,16 +7,22 @@ import checker from 'vite-plugin-checker';
 // import devtools from 'solid-devtools/vite'
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
-import {existsSync} from 'fs';
+import {existsSync, copyFileSync} from 'fs';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
+import path from 'path';
+
+const rootDir = resolve(__dirname);
+const ENV_LOCAL_FILE_PATH = path.join(rootDir, '.env.local');
 
 const isDEV = process.env.NODE_ENV === 'development';
 if(isDEV) {
+  if(!existsSync(ENV_LOCAL_FILE_PATH)) {
+    copyFileSync(path.join(rootDir, '.env.local.example'), ENV_LOCAL_FILE_PATH);
+  }
+
   watchLangFile();
 }
-
-const rootDir = resolve(__dirname);
 
 const handlebarsPlugin = handlebars({
   context: {
