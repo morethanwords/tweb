@@ -145,7 +145,7 @@ export type BroadcastEvents = {
 
   'connection_status_change': ConnectionStatusChange,
   'settings_updated': {key: string, value: any, settings: StateSettings},
-  'draft_updated': {peerId: PeerId, threadId: number, draft: MyDraftMessage | undefined, force?: boolean},
+  'draft_updated': {peerId: PeerId, threadId?: number, monoforumThreadId?: PeerId, draft: MyDraftMessage | undefined, force?: boolean},
 
   'background_change': void,
 
@@ -236,6 +236,7 @@ export type BroadcastEvents = {
   'sensitive_content_settings': SensitiveContentSettings,
 
   'monoforum_dialogs_update': {dialogs: MonoforumDialog[]},
+  'monoforum_draft_update': {dialog: MonoforumDialog},
 };
 
 export type BroadcastEventsListeners = {

@@ -2,6 +2,7 @@ import lastItem from '../../helpers/array/lastItem';
 import {InputPeer, MessagesSavedDialogs, SavedDialog} from '../../layer';
 import {MyMessage} from '../appManagers/appMessagesManager';
 import {AppManager} from '../appManagers/manager';
+import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
 
 
@@ -11,7 +12,7 @@ namespace MonoforumDialogsStorage {
   export type FetchDialogsArgs = {
     parentPeerId: PeerId;
     limit: number;
-    offsetPeer?: InputPeer;
+    offsetDialog?: MonoforumDialog;
   };
 
   export type FetchDialogsByIdArgs = {
@@ -59,12 +60,11 @@ class MonoforumDialogsStorage extends AppManager {
 
     const cachedSlice = collection.items.slice(cachedOffsetPosition, cachedOffsetPosition + limit);
 
-    const toFetchLimit = cachedOffsetPosition + limit - cachedSlice.length;
     const toFetchOffsetDialog = lastItem(cachedSlice) || lastItem(collection.items);
-    const toFetchOffsetPeer = this.appPeersManager.getInputPeerById(toFetchOffsetDialog?.peerId);
+    const toFetchLimit = limit - cachedSlice.length; // + Number(!!toFetchOffsetDialog);
 
     if(toFetchLimit > 0 && isCollectionIncomplete) {
-      await this.fetchAndSaveDialogs({parentPeerId, limit: toFetchLimit, offsetPeer: toFetchOffsetPeer});
+      await this.fetchAndSaveDialogs({parentPeerId, limit: toFetchLimit, offsetDialog: toFetchOffsetDialog});
     }
 
     // Just in case there are duplicates or some reordering stuff
@@ -86,15 +86,20 @@ class MonoforumDialogsStorage extends AppManager {
     return collection.map.get(peerId);
   }
 
-  private async fetchAndSaveDialogs({parentPeerId, limit, offsetPeer}: MonoforumDialogsStorage.FetchDialogsArgs) {
+  private async fetchAndSaveDialogs({parentPeerId, limit, offsetDialog}: MonoforumDialogsStorage.FetchDialogsArgs) {
     const parentPeer = this.appPeersManager.getInputPeerById(parentPeerId);
+
+    const offsetPeer = this.appPeersManager.getInputPeerById(offsetDialog?.peerId);
+    const offsetDate = offsetDialog ? this.appMessagesManager.getMessageByPeer(parentPeerId, offsetDialog.top_message)?.date : 0;
+    const offsetId = getServerMessageId(offsetDialog?.top_message);
+
     const result = await this.apiManager.invokeApiSingleProcess({
       method: 'messages.getSavedDialogs',
       params: {
         hash: '0',
         limit,
-        offset_date: 0,
-        offset_id: 0,
+        offset_date: offsetDate,
+        offset_id: offsetId,
         offset_peer: offsetPeer,
         parent_peer: parentPeer
       }
@@ -160,11 +165,15 @@ class MonoforumDialogsStorage extends AppManager {
     dialog.peerId = getPeerId(dialog.peer);
     dialog.parentPeerId = parentPeerId;
     dialog.top_message = this.appMessagesIdsManager.generateMessageId(dialog.top_message, this.appPeersManager.isChannel(parentPeerId) ? parentPeerId.toChatId() : undefined);
-    this.setDialogIndex(dialog);
+    this.updateDialogIndex(dialog);
   }
 
-  private setDialogIndex(dialog: MonoforumDialog) {
+  public updateDialogIndex(dialog: MonoforumDialog) {
+    // if(dialog.draft?._ !== 'draftMessageEmpty' && dialog.draft?.date) {
+    //   date = dialog.draft.date;
+    // } else {
     const message = this.appMessagesManager.getMessageByPeer(dialog.parentPeerId, dialog.top_message);
+
     dialog.index_0 = message?.date;
   }
 

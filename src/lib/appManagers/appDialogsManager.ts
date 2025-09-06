@@ -1571,6 +1571,10 @@ export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<Mono
       dialogs.forEach(dialog => this.updateDialog(dialog));
     });
 
+    this.listenerSetter.add(rootScope)('monoforum_draft_update', ({dialog}) => {
+      this.updateDialog(dialog);
+    });
+
     // this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
     //   if(!isMonoforumDialog(dialog)) {
     //     return;

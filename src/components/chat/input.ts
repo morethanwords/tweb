@@ -1333,8 +1333,8 @@ export default class ChatInput {
   }
 
   private setChatListeners() {
-    this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, draft, force}) => {
-      if(this.chat.threadId !== threadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
+    this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, monoforumThreadId, draft, force}) => {
+      if(this.chat.threadId !== threadId || this.chat.monoforumThreadId !== monoforumThreadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
       this.setDraft(draft, true, force);
     });
 
@@ -1811,7 +1811,7 @@ export default class ChatInput {
     }
 
     const draft = this.getCurrentInputAsDraft();
-    this.managers.appDraftsManager.syncDraft(this.chat.peerId, this.chat.threadId, draft);
+    this.managers.appDraftsManager.syncDraft({peerId: this.chat.peerId, threadId: this.chat.threadId, monoforumThreadId: this.chat.monoforumThreadId, localDraft: draft});
   }
 
   public mentionUser(peerId: PeerId, isHelper?: boolean) {
@@ -1878,7 +1878,7 @@ export default class ChatInput {
     }
 
     if(!draft) {
-      draft = await this.managers.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId);
+      draft = await this.managers.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId || this.chat.monoforumThreadId);
 
       if(!draft) {
         if(force) { // this situation can only happen when sending message with clearDraft

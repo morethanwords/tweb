@@ -504,7 +504,20 @@ export class AppMessagesManager extends AppManager {
       });
     });
 
-    this.rootScope.addEventListener('draft_updated', ({peerId, threadId, draft}) => {
+    this.rootScope.addEventListener('draft_updated', ({peerId, threadId, monoforumThreadId, draft}) => {
+      if(monoforumThreadId) {
+        const dialog = this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId);
+
+        if(!dialog) return;
+
+        dialog.draft = draft;
+        // this.monoforumDialogsStorage.updateDialogIndex(dialog);
+
+        this.rootScope.dispatchEvent('monoforum_draft_update', {dialog});
+
+        return;
+      }
+
       const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
       if(dialog) {
         dialog.draft = draft;
