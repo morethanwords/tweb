@@ -216,6 +216,7 @@ class MonoforumDialogsStorage extends AppManager {
     if(dialog.top_message > message.mid) return;
 
     dialog.top_message = message.mid;
+    this.updateDialogIndex(dialog);
 
     this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: [dialog]});
   }
