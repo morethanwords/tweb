@@ -3367,7 +3367,7 @@ export class AppDialogsManager {
 
     const isTopic = isForumTopic(dialog);
     const isSaved = isSavedDialog(dialog);
-    const isMonoforum = isMonoforumDialog(dialog);
+    const isMonoforumThread = isMonoforumDialog(dialog);
 
     const {deferred, middleware} = setPromiseMiddleware(dom, 'setUnreadMessagePromise');
 
@@ -3450,7 +3450,7 @@ export class AppDialogsManager {
     //   dom.statusSpan.parentElement.classList.toggle('is-closed', !!dialog.pFlags.closed);
     // }
 
-    const hasPinnedBadge = isPinned;
+    const hasPinnedBadge = isPinned && !isMonoforumThread;
     const isPinnedBadgeMounted = !!dom.pinnedBadge;
     if(hasPinnedBadge) {
       dialogElement.createPinnedBadge();
@@ -3469,7 +3469,7 @@ export class AppDialogsManager {
       dialogElement.createUnreadAvatarBadge();
     }
 
-    const hasMentionsBadge = isSaved || isMonoforum ? false : (dialog.unread_mentions_count && (dialog.unread_mentions_count > 1 || dialog.unread_count > 1));
+    const hasMentionsBadge = isSaved || isMonoforumThread ? false : (dialog.unread_mentions_count && (dialog.unread_mentions_count > 1 || dialog.unread_count > 1));
     const isMentionsBadgeMounted = !!dom.mentionsBadge;
     if(hasMentionsBadge) {
       dialogElement.createMentionsBadge();
@@ -3512,7 +3512,7 @@ export class AppDialogsManager {
     }
 
     let isUnread = true, isMention = false, unreadBadgeText: string;
-    if(!isSaved && !isMonoforum && dialog.unread_mentions_count && unreadCount === 1) {
+    if(!isSaved && !isMonoforumThread && dialog.unread_mentions_count && unreadCount === 1) {
       unreadBadgeText = '@';
       isMention = true;
     } else if(isDialogUnread) {
