@@ -29,6 +29,12 @@ type SyncDraftArgs = {
   force?: boolean;
 };
 
+type ClearDraftArgs = {
+  peerId: PeerId;
+  threadId?: number;
+  monoforumThreadId?: PeerId;
+};
+
 export class AppDraftsManager extends AppManager {
   private drafts: { [peerIdAndThreadId: string]: MyDraftMessage };
   private getAllDraftPromise: Promise<void>;
@@ -323,17 +329,18 @@ export class AppDraftsManager extends AppManager {
     });
   }
 
-  public clearDraft(peerId: PeerId, threadId: number) {
+  public clearDraft({peerId, threadId, monoforumThreadId}: ClearDraftArgs) {
     const emptyDraft: DraftMessage.draftMessageEmpty = {
       _: 'draftMessageEmpty'
     };
 
     if(threadId) {
-      this.syncDraft({peerId, threadId, localDraft: emptyDraft as any, saveOnServer: false, force: true});
+      this.syncDraft({peerId, threadId, monoforumThreadId, localDraft: emptyDraft as any, saveOnServer: false, force: true});
     } else {
       this.saveDraft({
         peerId,
         threadId,
+        monoforumThreadId,
         draft: emptyDraft,
         notify: true,
         force: true

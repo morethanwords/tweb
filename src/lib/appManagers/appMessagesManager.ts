@@ -1644,7 +1644,7 @@ export class AppMessagesManager extends AppManager {
 
     if(options.clearDraft) {
       callbacks.push(() => {
-        this.appDraftsManager.clearDraft(peerId, options.threadId);
+        this.appDraftsManager.clearDraft({peerId, threadId: options.threadId, monoforumThreadId: options.replyToMonoforumPeerId});
       });
     }
 
@@ -2115,7 +2115,10 @@ export class AppMessagesManager extends AppManager {
     const messageId = message.id;
     const peerId = this.getMessagePeer(message);
     const storage = options.isScheduled ? this.getScheduledMessagesStorage(peerId) : this.getHistoryMessagesStorage(peerId);
+    const monoforumThreadId = message.saved_peer_id ? this.appPeersManager.getPeerId(message.saved_peer_id) : undefined;
+
     message.storageKey = storage.key;
+
     const callbacks: Array<() => void> = [];
     if(options.isScheduled && !options.noOutgoingMessage) {
       // if(!options.isGroupedItem) {
@@ -2145,6 +2148,10 @@ export class AppMessagesManager extends AppManager {
         if(dialog) {
           this.setDialogTopMessage(message, dialog);
         }
+      }
+
+      if(monoforumThreadId) {
+        this.monoforumDialogsStorage.checkLastMessageForExistingDialog(message);
       }
 
       callbacks.push(() => {
@@ -2188,7 +2195,11 @@ export class AppMessagesManager extends AppManager {
     if(!options.isGroupedItem && message.send) {
       callbacks.push(() => {
         if(options.clearDraft) {
-          this.appDraftsManager.clearDraft(peerId, options.threadId);
+          this.appDraftsManager.clearDraft({
+            peerId,
+            threadId: options.threadId,
+            monoforumThreadId
+          });
         }
         if(DO_NOT_SEND_MESSAGES) return;
 
@@ -2263,7 +2274,8 @@ export class AppMessagesManager extends AppManager {
       views: isBroadcast && 1,
       pending: true,
       effect: options.effect,
-      paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined
+      paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined,
+      saved_peer_id: options.replyToMonoforumPeerId ? this.appPeersManager.getOutputPeer(options.replyToMonoforumPeerId) : undefined
     };
 
     defineNotNumerableProperties(message, ['send', 'promise']);

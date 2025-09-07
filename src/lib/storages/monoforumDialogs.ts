@@ -201,7 +201,7 @@ class MonoforumDialogsStorage extends AppManager {
     const parentPeerId = message.peerId;
     const peerId = getPeerId(message.saved_peer_id);
 
-    if(!peerId) return;
+    if(!peerId || !parentPeerId) return;
 
     const collection = this.collectionsByPeerId[parentPeerId];
     if(!collection) return;
