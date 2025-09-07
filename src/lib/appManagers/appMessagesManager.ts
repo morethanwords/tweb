@@ -8244,6 +8244,12 @@ export class AppMessagesManager extends AppManager {
       method = 'channels.searchPosts';
       options = searchOptions;
     } else if(inputFilter && peerId && !nextRate && folderId === undefined/*  || !query */) {
+      const savedPeerIdInput = monoforumThreadId ?
+        this.appPeersManager.getInputPeerById(monoforumThreadId) :
+        historyType === HistoryType.Saved ?
+          this.appPeersManager.getInputPeerById(threadId) :
+          undefined;
+
       const searchOptions: MessagesSearch = {
         ...commonOptions,
         q: query || '',
@@ -8251,7 +8257,7 @@ export class AppMessagesManager extends AppManager {
         min_date: minDate,
         max_date: maxDate,
         top_msg_id: historyType === HistoryType.Saved ? undefined : threadId,
-        saved_peer_id: historyType === HistoryType.Saved ? this.appPeersManager.getInputPeerById(threadId) : undefined,
+        saved_peer_id: savedPeerIdInput,
         from_id: fromPeerId ? this.appPeersManager.getInputPeerById(fromPeerId) : undefined,
         saved_reaction: savedReaction
       };

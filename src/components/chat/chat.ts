@@ -1094,6 +1094,7 @@ export default class Chat extends EventListenerBase<{
     return this.setPeer({
       peerId: this.peerId,
       threadId: this.threadId,
+      monoforumThreadId: this.monoforumThreadId,
       ...options
     });
   }
