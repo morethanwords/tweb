@@ -45,8 +45,47 @@ namespace MonoforumDialogsStorage {
 }
 
 
+type ActionOnBatchArgs = {
+  parentPeerId: PeerId;
+  ids: PeerId[];
+};
+
+class BatchQueue {
+  private map = new Map<PeerId, PeerId[]>;
+  private isProcessing = false;
+
+  constructor(private actionOnBatch: (args: ActionOnBatchArgs) => Promise<void>) {}
+
+  addToQueue(parentPeerId: PeerId, ids: PeerId[]) {
+    const items = this.map.get(parentPeerId) || [];
+    if(!this.map.has(parentPeerId)) this.map.set(parentPeerId, items);
+
+    items.push(...ids);
+
+    if(!this.isProcessing) self.setTimeout(() => {
+      this.processQueue();
+    }, 0)
+  }
+
+  private async processQueue() {
+    let entries: [PeerId, PeerId[]][];
+
+    this.isProcessing = true;
+
+    while((entries = Array.from(this.map.entries())).length) {
+      this.map.clear();
+      await Promise.all(
+        entries.map(([parentPeerId, ids]) => this.actionOnBatch({parentPeerId, ids}))
+      );
+    }
+
+    this.isProcessing = false;
+  }
+}
+
 class MonoforumDialogsStorage extends AppManager {
   private collectionsByPeerId: Record<PeerId, MonoforumDialogsStorage.DialogCollection> = {};
+  private fetchByIdBatchQueue = new BatchQueue((args) => this.fetchAndSaveDialogsById(args));
 
   public clear = () => {
     this.collectionsByPeerId = {};
@@ -208,8 +247,7 @@ class MonoforumDialogsStorage extends AppManager {
 
     const dialog = collection.map.get(peerId);
     if(!dialog) {
-      // TODO: Batch those things if more updates at once?
-      this.fetchAndSaveDialogsById({parentPeerId, ids: [peerId]});
+      this.updateDialogsByPeerId({parentPeerId, ids: [peerId]});
       return;
     }
 
@@ -219,6 +257,10 @@ class MonoforumDialogsStorage extends AppManager {
     this.updateDialogIndex(dialog);
 
     this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: [dialog]});
+  }
+
+  public async updateDialogsByPeerId({parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs) {
+    this.fetchByIdBatchQueue.addToQueue(parentPeerId, ids);
   }
 }
 
