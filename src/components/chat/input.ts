@@ -1334,6 +1334,12 @@ export default class ChatInput {
 
   private setChatListeners() {
     this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, monoforumThreadId, draft, force}) => {
+      // We don't have draft functionality when in the global monoforum chat, but we still need to clear the input right after sending the message
+      if(!draft && force && this.chat.peerId === peerId && this.chat.isMonoforum) {
+        this.setDraft(draft, true, force);
+        return;
+      }
+
       if(this.chat.threadId !== threadId || this.chat.monoforumThreadId !== monoforumThreadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
       this.setDraft(draft, true, force);
     });
@@ -1802,10 +1808,12 @@ export default class ChatInput {
   }
 
   public saveDraft() {
+    const isMonoforumParent = this.chat.isMonoforum && !this.chat.monoforumThreadId;
     if(
       !this.chat.peerId ||
       this.editMsgId ||
-      PEER_EXCEPTIONS.has(this.chat.type)
+      PEER_EXCEPTIONS.has(this.chat.type) ||
+      isMonoforumParent
     ) {
       return;
     }
@@ -1878,7 +1886,11 @@ export default class ChatInput {
     }
 
     if(!draft) {
-      draft = await this.managers.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId || this.chat.monoforumThreadId);
+      const isMonoforumParent = this.chat.isMonoforum && !this.chat.monoforumThreadId;
+
+      draft = !isMonoforumParent ?
+        await this.managers.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId || this.chat.monoforumThreadId) :
+        undefined;
 
       if(!draft) {
         if(force) { // this situation can only happen when sending message with clearDraft

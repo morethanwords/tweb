@@ -3096,9 +3096,12 @@ export class AppDialogsManager {
   private getLastMessageForDialog(dialog: PossibleDialog, lastMessage?: Message.message | Message.messageService) {
     let draftMessage: MyDraftMessage;
     const {peerId, draft} = dialog as Dialog;
+    const peer = apiManagerProxy.getPeer(peerId);
+    const isMonoforumParent = peer?._ === 'channel' && peer.pFlags?.monoforum;
+
     if(!lastMessage) {
       if(
-        draft?._ === 'draftMessage' && (
+        draft?._ === 'draftMessage' && !isMonoforumParent && (
           !peerId.isAnyChat() ||
           isForumTopic(dialog) ||
           !apiManagerProxy.isForum(peerId)
