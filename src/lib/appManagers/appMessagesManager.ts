@@ -6717,7 +6717,7 @@ export class AppMessagesManager extends AppManager {
       const threadId = +threadKey.split('_')[1];
 
       const monoforumDialog = this.monoforumDialogsStorage.getDialogByParent(peerId, threadId);
-      monoforumDialog?.top_message === mid && monoforumDialogs.push(monoforumDialog);
+      monoforumDialog && monoforumDialogs.push(monoforumDialog);
 
       if(this.threadsStorage[peerId]?.[threadId]) {
         threadKeys.add(threadKey);

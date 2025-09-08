@@ -1,9 +1,11 @@
+import filterUnique from '../../helpers/array/filterUnique';
 import lastItem from '../../helpers/array/lastItem';
 import pause from '../../helpers/schedulers/pause';
-import {InputPeer, MessagesSavedDialogs, SavedDialog} from '../../layer';
+import {MessagesSavedDialogs, SavedDialog} from '../../layer';
 import {MyMessage} from '../appManagers/appMessagesManager';
 import {AppManager} from '../appManagers/manager';
 import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
+import isMentionUnread from '../appManagers/utils/messages/isMentionUnread';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
 
 
@@ -77,7 +79,7 @@ class BatchQueue {
     while((entries = Array.from(this.map.entries())).length) {
       this.map.clear();
       await Promise.all(
-        entries.map(([parentPeerId, ids]) => this.actionOnBatch({parentPeerId, ids}))
+        entries.map(([parentPeerId, ids]) => this.actionOnBatch({parentPeerId, ids: filterUnique(ids)}))
       );
     }
 
@@ -158,6 +160,8 @@ class MonoforumDialogsStorage extends AppManager {
         parent_peer: parentPeer
       }
     });
+
+    // MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] by id', parentPeerId, ids, result});
 
     const {dialogs} = this.processGetDialogsResult({parentPeerId, result});
 
@@ -272,6 +276,12 @@ class MonoforumDialogsStorage extends AppManager {
       return;
     }
 
+    const inboxUnread = !message.pFlags.out && message.pFlags.unread;
+    if(inboxUnread && message.mid > dialog.top_message) {
+      increment(dialog, 'unread_count');
+      if(isMentionUnread(message)) increment(dialog, 'unread_reactions_count');
+    }
+
     if(dialog.top_message > message.mid) return;
 
     dialog.top_message = message.mid;
@@ -283,6 +293,11 @@ class MonoforumDialogsStorage extends AppManager {
   public async updateDialogsByPeerId({parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs) {
     this.fetchByIdBatchQueue.addToQueue(parentPeerId, ids);
   }
+}
+
+function increment<T extends object>(obj: T, key: keyof T, by = 1) {
+  if(!obj) return;
+  obj[key] = (((obj[key] as number) + by) || 0) as any;
 }
 
 export default MonoforumDialogsStorage;
