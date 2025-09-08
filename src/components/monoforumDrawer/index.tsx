@@ -1,4 +1,4 @@
-import {createEffect, createResource, createSignal, onCleanup, Show} from 'solid-js';
+import {createEffect, createMemo, createSignal, onCleanup, Show} from 'solid-js';
 import liteMode from '../../helpers/liteMode';
 import {doubleRaf} from '../../helpers/schedulers';
 import pause from '../../helpers/schedulers/pause';
@@ -16,7 +16,7 @@ if(import.meta.hot) import.meta.hot.accept();
 
 type Props = {
   peerId: PeerId;
-  onCloseFinish: () => void;
+  onClose: () => void;
 };
 
 type Controls = {
@@ -26,23 +26,26 @@ type Controls = {
 const MonoforumDrawer = defineSolidElement({
   name: 'monoforum-drawer',
   component: (props: PassedProps<Props>, _, controls: Controls) => {
-    const {appDialogsManager, AutonomousMonoforumThreadList} = useHotReloadGuard();
+    const {appDialogsManager, AutonomousMonoforumThreadList, appSidebarLeft, apiManagerProxy} = useHotReloadGuard();
     const canAnimate = () => liteMode.isAvailable('animations');
 
     props.element.classList.add(styles.Container);
     if(import.meta.hot) onCleanup(() => void props.element.classList.remove(styles.Container));
 
-    const [chat] = createResource(async() => {
-      const chat = await rootScope.managers.appChatsManager.getChat(props.peerId.toChatId());
+    const chat = createMemo(() => {
+      const chat = apiManagerProxy.getChat(props.peerId.toChatId());
       if(chat?._ === 'channel' && chat?.pFlags?.monoforum) return chat;
 
-      props?.onCloseFinish(); // Should not happen, but let it be
+      setTimeout(() => {
+        props?.onClose(); // Should not happen, but let it be
+      }, 0);
     });
 
-    const [isHidden, setIsHidden] = createSignal(canAnimate());
+    const initiallyHidden = canAnimate() && !appSidebarLeft.isCollapsed();
+    const [isHidden, setIsHidden] = createSignal(initiallyHidden);
 
     createEffect(() => {
-      if(!chat()) return;
+      if(!chat() || !initiallyHidden) return;
       if(canAnimate()) doubleRaf().then(() => setIsHidden(false));
     });
 
@@ -74,13 +77,15 @@ const MonoforumDrawer = defineSolidElement({
 
     function finishClose() {
       props.element.remove();
-      props.onCloseFinish?.();
     }
 
     async function close() {
+      try { props.onClose?.(); } catch{}
+
       if(!canAnimate()) return finishClose();
 
-      setIsHidden(true);
+      if(!appSidebarLeft.isCollapsed()) setIsHidden(true);
+
       await pause(200);
       finishClose();
     }

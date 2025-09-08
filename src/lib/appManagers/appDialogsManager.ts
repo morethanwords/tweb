@@ -340,6 +340,11 @@ export class DialogElement extends Row {
       li.dataset.monoforumParentPeerId = '' + monoforumParentPeerId;
     }
 
+    const peer = apiManagerProxy.getPeer(peerId);
+    if(peer?._ === 'channel' && peer?.pFlags?.monoforum) {
+      li.dataset.isMonoforum = 'true';
+    }
+
     const statusSpan = document.createElement('span');
     statusSpan.classList.add('message-status', 'sending-status'/* , 'transition', 'reveal' */);
 
@@ -1577,14 +1582,14 @@ export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<Mono
       const sidebarRect = appSidebarLeft.rect;
       const paddingY = 56;
       const paddingX = 80;
-      const width = sidebarRect.width - paddingX;
+      const width = appSidebarLeft.isCollapsed() ? MAX_SIDEBAR_WIDTH : sidebarRect.width;
 
       return {
         top: paddingY,
         right: sidebarRect.right,
         bottom: 0,
         left: paddingX,
-        width,
+        width: width - paddingX,
         height: sidebarRect.height - paddingY
       };
     };
@@ -1695,8 +1700,10 @@ export class AppDialogsManager {
 
   private forumsTabs: Map<PeerId, ForumTab>;
   private forumsSlider: HTMLElement;
-  private monoforumDrawersContainer: HTMLElement;
-  private openedMonoforumDrawers: MonoforumDrawerInstance[] = [];
+  private monoforumDrawers: {
+    container: HTMLElement;
+    opened: MonoforumDrawerInstance[];
+  };
   public forumTab: ForumTab;
   private forumNavigationItem: NavigationItem;
 
@@ -1734,10 +1741,13 @@ export class AppDialogsManager {
     this.forumsSlider = document.createElement('div');
     this.forumsSlider.classList.add('topics-slider');
 
-    this.monoforumDrawersContainer = document.createElement('div');
+    this.monoforumDrawers = {
+      container: document.createElement('div'),
+      opened: []
+    };
 
     const drawersParent = this.chatsContainer.parentElement.parentElement;
-    drawersParent.append(this.forumsSlider, this.monoforumDrawersContainer);
+    drawersParent.append(this.forumsSlider, this.monoforumDrawers.container);
 
     // appSidebarLeft.onOpenTab = () => {
     //   return this.toggleForumTab();
@@ -2742,7 +2752,7 @@ export class AppDialogsManager {
     return isContact && !dialog;
   };
 
-  public onForumTabToggle?: () => void;
+  public onSomeDrawerToggle?: () => void;
 
   public async toggleForumTab(newTab?: ForumTab, hideTab = this.forumTab) {
     if(!hideTab && !newTab) {
@@ -2764,7 +2774,7 @@ export class AppDialogsManager {
     const promise = newTab?.toggle(true);
     if(hideTab === this.forumTab) {
       this.forumTab = newTab;
-      this.onForumTabToggle?.();
+      this.onSomeDrawerToggle?.();
     }
 
     if(newTab) {
@@ -2815,27 +2825,37 @@ export class AppDialogsManager {
     dispatchHeavyAnimationEvent(deferred, duration).then(() => deferred.resolve());
   }
 
+  public hasMonoforumOpen() {
+    return !!this.monoforumDrawers.opened.length;
+  }
+
   public async openMonoforumDrawer(peerId: PeerId) {
     const {default: MonoforumDrawer} = await import('../../components/monoforumDrawer');
 
+    if(this.monoforumDrawers.opened?.find(drawer => drawer?.props?.peerId === peerId)) return;
+
+    this.closeMonoforumDrawers();
 
     const drawer = new MonoforumDrawer;
     drawer.HotReloadGuard = SolidJSHotReloadGuardProvider;
     drawer.feedProps({
       peerId,
-      onCloseFinish: () => {
-        this.openedMonoforumDrawers = this.openedMonoforumDrawers.filter(value => value !== drawer);
+      onClose: () => {
+        this.monoforumDrawers.opened = this.monoforumDrawers.opened.filter(value => value !== drawer);
+        this.onSomeDrawerToggle?.();
       }
     });
 
-    this.monoforumDrawersContainer.append(drawer);
-    this.openedMonoforumDrawers.push(drawer);
+    this.monoforumDrawers.container.append(drawer);
+    this.monoforumDrawers.opened.push(drawer);
+
+    this.onSomeDrawerToggle?.();
 
     return drawer;
   }
 
-  public closeMonoforumDrawer() {
-    this.openedMonoforumDrawers.forEach(value => value.controls.close());
+  public closeMonoforumDrawers() {
+    this.monoforumDrawers.opened.forEach(value => value?.controls?.close?.());
   }
 
   public async toggleForumTabByPeerId(peerId: PeerId, show?: boolean, asInnerIfAsMessages?: boolean) {
@@ -2982,6 +3002,14 @@ export class AppDialogsManager {
         return;
       }
 
+
+      if(elem.dataset.isMonoforum) {
+        this.openMonoforumDrawer(peerId);
+        if(e.shiftKey) return;
+      } else {
+        this.closeMonoforumDrawers();
+      }
+
       const isForum = !!elem.querySelector('.is-forum');
       if(isForum && !e.shiftKey && !lastMsgId) {
         this.toggleForumTabByPeerId(peerId, undefined, false);
@@ -2989,6 +3017,7 @@ export class AppDialogsManager {
       }
 
       if(e.ctrlKey || e.metaKey) {
+        // TODO: How about opening a monoforum in new tab?
         this.openDialogInNewTab(elem);
         cancelEvent(e);
         return;
