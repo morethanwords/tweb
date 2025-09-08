@@ -1559,14 +1559,6 @@ export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<Mono
   constructor(private peerId: PeerId) {
     super();
 
-    // this.listenerSetter.add(rootScope)('dialog_flush', ({dialog}) => {
-    //   if(!dialog) {
-    //     return;
-    //   }
-
-    //   this.updateDialog(dialog);
-    // });
-
     this.listenerSetter.add(rootScope)('monoforum_dialogs_update', ({dialogs}) => {
       dialogs.forEach(dialog => this.updateDialog(dialog));
     });
@@ -1575,14 +1567,9 @@ export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<Mono
       this.updateDialog(dialog);
     });
 
-    // this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
-    //   if(!isMonoforumDialog(dialog)) {
-    //     return;
-    //   }
-
-    //   this.deleteDialogByKey(this.getDialogKey(dialog));
-    //   this.onAnyUpdate?.();
-    // });
+    this.listenerSetter.add(rootScope)('monoforum_dialogs_drop', ({ids}) => {
+      ids.forEach(id => this.deleteDialogByKey(id));
+    });
   }
 
   public getRectFromForPlaceholder() {

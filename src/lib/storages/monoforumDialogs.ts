@@ -1,4 +1,5 @@
 import lastItem from '../../helpers/array/lastItem';
+import pause from '../../helpers/schedulers/pause';
 import {InputPeer, MessagesSavedDialogs, SavedDialog} from '../../layer';
 import {MyMessage} from '../appManagers/appMessagesManager';
 import {AppManager} from '../appManagers/manager';
@@ -62,15 +63,16 @@ class BatchQueue {
 
     items.push(...ids);
 
-    if(!this.isProcessing) self.setTimeout(() => {
-      this.processQueue();
-    }, 0)
+    this.processQueue();
   }
 
   private async processQueue() {
-    let entries: [PeerId, PeerId[]][];
-
+    if(this.isProcessing) return;
     this.isProcessing = true;
+
+    await pause(0);
+
+    let entries: [PeerId, PeerId[]][];
 
     while((entries = Array.from(this.map.entries())).length) {
       this.map.clear();
@@ -159,7 +161,15 @@ class MonoforumDialogsStorage extends AppManager {
 
     const {dialogs} = this.processGetDialogsResult({parentPeerId, result});
 
+    const fetchedDialogsSet = new Set(dialogs.map(dialog => dialog.peerId));
+
     this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs});
+
+    const deletedDialogs = ids.filter(id => !fetchedDialogsSet.has(id));
+    if(!deletedDialogs.length) return;
+
+    this.dropDeletedDialogs(parentPeerId, deletedDialogs);
+    this.rootScope.dispatchEvent('monoforum_dialogs_drop', {ids: deletedDialogs});
   };
 
   private processGetDialogsResult({parentPeerId, result}: MonoforumDialogsStorage.ProcessGetDialogsResultArgs) {
@@ -234,6 +244,17 @@ class MonoforumDialogsStorage extends AppManager {
     ) position++;
 
     return position;
+  }
+
+  private dropDeletedDialogs(parentPeerId: PeerId, ids: PeerId[]) {
+    const deletedSet = new Set(ids);
+    const collection = this.getDialogCollection(parentPeerId);
+    const wasCollectionComplete = collection.items.length === collection.count;
+
+    collection.items.filter(dialog => !deletedSet.has(dialog.peerId));
+    ids.forEach(id => collection.map.delete(id));
+
+    if(wasCollectionComplete) collection.count = collection.items.length;
   }
 
   public checkLastMessageForExistingDialog(message: MyMessage) {

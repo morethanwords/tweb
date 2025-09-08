@@ -164,8 +164,10 @@ export default class SortedDialogList {
   }
 
   public delete(key: any) {
-    this.virtualList.removeItem(key);
-    this.virtualList.setTotalCount(prev => prev - 1);
+    batch(() => {
+      this.virtualList.removeItem(key);
+      this.virtualList.setTotalCount(prev => Math.max(0, prev - 1));
+    });
   }
 
   public has(key: any) {

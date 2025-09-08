@@ -6701,7 +6701,12 @@ export class AppMessagesManager extends AppManager {
       return this.appPeersManager.getPeerId(params.peer) === peerId;
     });
 
-    const threadKeys = new Set<string>(), virtual = new Map<number, ForumTopic | SavedDialog>();
+    const
+      threadKeys = new Set<string>(),
+      virtual = new Map<number, ForumTopic | SavedDialog>(),
+      monoforumDialogs: MonoforumDialog[] = []
+    ;
+
     for(const mid of mids) {
       const message = this.getMessageByPeer(peerId, mid);
       const threadKey = this.getThreadKey(message);
@@ -6710,6 +6715,10 @@ export class AppMessagesManager extends AppManager {
       }
 
       const threadId = +threadKey.split('_')[1];
+
+      const monoforumDialog = this.monoforumDialogsStorage.getDialogByParent(peerId, threadId);
+      monoforumDialog?.top_message === mid && monoforumDialogs.push(monoforumDialog);
+
       if(this.threadsStorage[peerId]?.[threadId]) {
         threadKeys.add(threadKey);
 
@@ -6799,6 +6808,10 @@ export class AppMessagesManager extends AppManager {
 
       this.dialogsStorage.setDialogToState(dialog);
     });
+
+    for(const {parentPeerId, peerId} of monoforumDialogs) {
+      this.monoforumDialogsStorage.updateDialogsByPeerId({parentPeerId, ids: [peerId]});
+    }
   };
 
   private onUpdateChannel = (update: Update.updateChannel) => {
