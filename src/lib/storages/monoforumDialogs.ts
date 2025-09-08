@@ -1,7 +1,8 @@
 import filterUnique from '../../helpers/array/filterUnique';
 import lastItem from '../../helpers/array/lastItem';
+import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 import pause from '../../helpers/schedulers/pause';
-import {MessagesSavedDialogs, SavedDialog} from '../../layer';
+import {MessagesSavedDialogs, SavedDialog, Update} from '../../layer';
 import {MyMessage} from '../appManagers/appMessagesManager';
 import {AppManager} from '../appManagers/manager';
 import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
@@ -93,6 +94,13 @@ class MonoforumDialogsStorage extends AppManager {
 
   public clear = () => {
     this.collectionsByPeerId = {};
+  }
+
+  protected after() {
+    this.apiUpdatesManager.addMultipleEventsListeners({
+      updateReadMonoForumInbox: this.onUpdateReadMonoforum,
+      updateReadMonoForumOutbox: this.onUpdateReadMonoforum
+    });
   }
 
   public async getDialogs({parentPeerId, limit, offsetIndex}: MonoforumDialogsStorage.GetDialogsArgs) {
@@ -292,6 +300,61 @@ class MonoforumDialogsStorage extends AppManager {
 
   public async updateDialogsByPeerId({parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs) {
     this.fetchByIdBatchQueue.addToQueue(parentPeerId, ids);
+  }
+
+  private onUpdateReadMonoforum = (update: Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox) => {
+    const channelId = update.channel_id;
+    const maxId = this.appMessagesIdsManager.generateMessageId(update.read_max_id, channelId);
+    const peerId = getPeerId(update.saved_peer_id);
+    const parentPeerId = channelId.toPeerId(true);
+
+    const isOut = update._ === 'updateReadMonoForumOutbox' || undefined;
+
+    const storage = this.appMessagesManager.getHistoryMessagesStorage(parentPeerId);
+    const history = getObjectKeysAndSort(storage, 'desc');
+
+    const readMaxId = this.appMessagesManager.getReadMaxIdIfUnread(parentPeerId, peerId);
+
+    for(let i = 0, length = history.length; i < length; i++) {
+      const mid = history[i];
+      if(mid > maxId) {
+        continue;
+      }
+
+      const message: MyMessage = storage.get(mid);
+
+      if(message.pFlags.out !== isOut) {
+        continue;
+      }
+
+      const messageMonoforumthreadId = getPeerId(message.saved_peer_id);
+      if(peerId !== messageMonoforumthreadId) {
+        continue;
+      }
+
+      const isUnread = message.pFlags.unread || (readMaxId && readMaxId < mid);
+
+      if(!isUnread) {
+        break;
+      }
+
+      this.appMessagesManager.modifyMessage(message, (message) => {
+        delete message.pFlags.unread;
+      }, storage, true);
+
+      this.rootScope.dispatchEvent('notification_cancel', `msg_${this.getAccountNumber()}_${parentPeerId}_${mid}`);
+    }
+
+    const historyStorage = this.appMessagesManager.getHistoryStorage(parentPeerId, peerId);
+
+    if(isOut) historyStorage.readOutboxMaxId = maxId;
+    else historyStorage.readMaxId = maxId;
+
+    const dialog = this.getDialogByParent(parentPeerId, peerId);
+    if(dialog) this.updateDialogsByPeerId({parentPeerId, ids: [peerId]});
+
+    const mainDialog = this.dialogsStorage.getDialogOnly(parentPeerId);
+    if(mainDialog) this.appMessagesManager.reloadConversation(parentPeerId);
   }
 }
 

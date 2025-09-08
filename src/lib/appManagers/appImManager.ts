@@ -585,6 +585,7 @@ export class AppImManager extends EventListenerBase<{
       const isForum = await managers.appPeersManager.isForum(options.message.peerId);
       const threadId = getMessageThreadId(options.message, isForum);
 
+      // TODO: don't forget about notifications
       if(this.chat.peerId === options.message.peerId && this.chat.threadId === threadId && !idleController.isIdle) {
         return;
       }

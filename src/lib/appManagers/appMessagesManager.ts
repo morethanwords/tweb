@@ -299,6 +299,14 @@ type UploadVideoCoverArgs = {
   file: InputFile;
 };
 
+type ReadHistoryArgs = {
+  peerId: PeerId;
+  maxId?: number;
+  threadId?: number;
+  monoforumThreadId?: PeerId;
+  force?: boolean;
+};
+
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
 
 export class AppMessagesManager extends AppManager {
@@ -4767,7 +4775,7 @@ export class AppMessagesManager extends AppManager {
       const folder = this.dialogsStorage.getFolder(peerId);
       for(const topicId of folder.unreadPeerIds) {
         const forumTopic = this.dialogsStorage.getForumTopic(peerId, topicId);
-        this.readHistory(peerId, forumTopic.top_message, topicId, true);
+        this.readHistory({peerId, maxId: forumTopic.top_message, threadId: topicId, force: true});
       }
       return;
     }
@@ -4775,7 +4783,7 @@ export class AppMessagesManager extends AppManager {
     const unread = read || dialog.pFlags?.unread_mark ? undefined : true;
 
     if(!unread && dialog.unread_count) {
-      const promise = this.readHistory(peerId, dialog.top_message, undefined, true);
+      const promise = this.readHistory({peerId, maxId: dialog.top_message, force: true});
       if(!dialog.pFlags.unread_mark) {
         return promise;
       }
@@ -5365,7 +5373,7 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises).then(noop);
   }
 
-  public readHistory(peerId: PeerId, maxId = 0, threadId?: number, force = false) {
+  public readHistory({peerId, maxId = 0, threadId, monoforumThreadId, force = false}: ReadHistoryArgs) {
     if(DO_NOT_READ_HISTORY) {
       return Promise.resolve();
     }
@@ -5384,7 +5392,10 @@ export class AppMessagesManager extends AppManager {
       if(!force) {
         const dialog = this.appChatsManager.isForum(peerId.toChatId()) && threadId ?
           this.dialogsStorage.getForumTopic(peerId, threadId) :
-          this.getDialogOnly(peerId);
+          this.appPeersManager.isMonoforum(peerId) && monoforumThreadId ?
+            this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
+            this.getDialogOnly(peerId);
+
         if(dialog && this.isDialogUnread(dialog)) {
           force = true;
         }
@@ -5396,14 +5407,29 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    const historyStorage = this.getHistoryStorage(peerId, threadId);
+    const historyStorage = this.getHistoryStorage(peerId, threadId || monoforumThreadId);
 
     if(historyStorage.triedToReadMaxId >= maxId) {
       return Promise.resolve();
     }
 
     let apiPromise: Promise<any>;
-    if(threadId) {
+    if(monoforumThreadId) {
+      if(!historyStorage.readPromise) {
+        apiPromise = this.apiManager.invokeApi('messages.readSavedHistory', {
+          parent_peer: this.appPeersManager.getInputPeerById(peerId),
+          peer: this.appPeersManager.getInputPeerById(monoforumThreadId),
+          max_id: getServerMessageId(maxId)
+        });
+      }
+
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateReadMonoForumInbox',
+        read_max_id: maxId,
+        channel_id: peerId.toChatId(),
+        saved_peer_id: this.appPeersManager.getOutputPeer(monoforumThreadId)
+      });
+    } else if(threadId) {
       if(!historyStorage.readPromise) {
         apiPromise = this.apiManager.invokeApi('messages.readDiscussion', {
           peer: this.appPeersManager.getInputPeerById(peerId),
@@ -5473,7 +5499,7 @@ export class AppMessagesManager extends AppManager {
       this.log('readHistory: promise finally', maxId, readMaxId);
 
       if(readMaxId > maxId) {
-        this.readHistory(peerId, readMaxId, threadId, true);
+        this.readHistory({peerId, maxId: readMaxId, threadId, force: true});
       }
     });
 
@@ -5483,7 +5509,7 @@ export class AppMessagesManager extends AppManager {
   public readAllHistory(peerId: PeerId, threadId?: number, force = false) {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
     if(historyStorage.maxId) {
-      this.readHistory(peerId, historyStorage.maxId, threadId, force); // lol
+      this.readHistory({peerId, maxId: historyStorage.maxId, threadId, force}); // lol
     }
   }
 

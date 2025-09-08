@@ -348,7 +348,8 @@ export default class DialogsContextMenu {
       if(!this.threadId) {
         this.managers.appMessagesManager.markDialogUnread(peerId, true);
       } else {
-        this.managers.appMessagesManager.readHistory(peerId, dialog.top_message, this.threadId);
+        // TODO: think about monoforum threads
+        this.managers.appMessagesManager.readHistory({peerId, maxId: dialog.top_message, threadId: this.threadId});
       }
     } else if(!this.threadId) {
       this.managers.appMessagesManager.markDialogUnread(peerId);

@@ -2212,7 +2212,7 @@ export default class ChatBubbles {
     const middleware = this.getMiddleware();
     this[readPromiseKey] = idleController.getFocusPromise().then(async() => {
       if(!middleware()) return;
-      const {peerId, threadId} = this.chat;
+      const {peerId, threadId, monoforumThreadId} = this.chat;
 
       let callback: () => Promise<any>;
       if(type === 'history') {
@@ -2238,7 +2238,7 @@ export default class ChatBubbles {
           this.log('will readHistory by maxId:', maxId);
         }
 
-        callback = () => this.managers.appMessagesManager.readHistory(peerId, maxId, threadId);
+        callback = () => this.managers.appMessagesManager.readHistory({peerId, maxId, threadId, monoforumThreadId});
       } else {
         const readContents: number[] = [];
         for(const mid of this.unreadedContentSeen) {
@@ -4787,9 +4787,16 @@ export default class ChatBubbles {
 
   public async onScrolledAllDown() {
     if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) {
-      const {peerId, threadId} = this.chat;
+      const {peerId, threadId, monoforumThreadId} = this.chat;
       const historyMaxId = await this.chat.getHistoryMaxId();
-      this.managers.appMessagesManager.readHistory(peerId, historyMaxId, threadId, true);
+
+      this.managers.appMessagesManager.readHistory({
+        peerId,
+        maxId: historyMaxId,
+        threadId,
+        monoforumThreadId,
+        force: true
+      });
     }
   }
 
