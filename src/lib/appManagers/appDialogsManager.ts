@@ -3006,7 +3006,7 @@ export class AppDialogsManager {
       if(elem.dataset.isMonoforum) {
         this.openMonoforumDrawer(peerId);
         if(e.shiftKey) return;
-      } else {
+      } else if(!monoforumParentPeerId) {
         this.closeMonoforumDrawers();
       }
 

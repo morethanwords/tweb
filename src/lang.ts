@@ -3581,7 +3581,10 @@ const lang = {
   'ChannelDirectMessages.MessagesCount': {
     'one_value': '%d Message',
     'other_value': '%d Messages'
-  }
+  },
+  'ChannelDirectMessages.Settings.RowItem': 'Direct Messages',
+  'ChannelDirectMessages.Settings.RowItem.Off': 'Off',
+  'ChannelDirectMessages.Settings.RowItem.Free': 'Free'
 };
 
 export default lang;

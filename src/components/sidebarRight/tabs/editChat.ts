@@ -26,7 +26,7 @@ import SettingSection from '../../settingSection';
 import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import PopupElement from '../../popups';
 import AppChatAdministratorsTab from './chatAdministrators';
-import numberThousandSplitter from '../../../helpers/number/numberThousandSplitter';
+import numberThousandSplitter, {numberThousandSplitterForStars} from '../../../helpers/number/numberThousandSplitter';
 import AppChatMembersTab from './chatMembers';
 import AppRemovedUsersTab from './removedUsers';
 import AppChatDiscussionTab from './chatDiscussion';
@@ -39,6 +39,7 @@ import getParticipantsCount from '../../../lib/appManagers/utils/chats/getPartic
 import anchorCallback from '../../../helpers/dom/anchorCallback';
 import PopupBoost from '../../popups/boost';
 import namedPromises from '../../../helpers/namedPromises';
+import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -279,6 +280,42 @@ export default class AppEditChatTab extends SliderSuperTab {
         setReactionsLength();
         addChatUpdateListener(setReactionsLength, 'full');
         section.content.append(reactionsRow.container);
+      }
+
+      if(canChangeInfo && isChannel && isAdmin) {
+        const directMessagesRow = new Row({
+          titleLangKey: 'ChannelDirectMessages.Settings.RowItem',
+          icon: 'messageunread',
+          navigationTab: {
+            constructor: AppChatReactionsTab,
+            slider: this.slider
+          },
+          listenerSetter: this.listenerSetter
+        });
+
+        const setEnabledStatus = () => {
+          if(chat._ !== 'channel') return;
+
+          const linkedMonoforumChat = chat.linked_monoforum_id ? apiManagerProxy.getChat(chat.linked_monoforum_id) : undefined;
+
+          if(linkedMonoforumChat?._ !== 'channel') {
+            replaceContent(directMessagesRow.subtitle, i18n('ChannelDirectMessages.Settings.RowItem.Off'));
+            return;
+          }
+
+          const starsAmount = linkedMonoforumChat.send_paid_messages_stars || 0;
+
+          replaceContent(
+            directMessagesRow.subtitle,
+            starsAmount ?
+              i18n('Stars', [numberThousandSplitterForStars(starsAmount)]) :
+              i18n('ChannelDirectMessages.Settings.RowItem.Free')
+          );
+        };
+
+        setEnabledStatus();
+        addChatUpdateListener(setEnabledStatus, 'basic');
+        section.content.append(directMessagesRow.container);
       }
 
       if(canChangePermissions && !isBroadcast) {
