@@ -822,7 +822,9 @@ export class AppChatsManager extends AppManager {
 
   public toggleSomething(
     chatId: ChatId,
-    what: 'toggleJoinToSend' | 'toggleJoinRequest' | 'toggleForum' | 'togglePreHistoryHidden' | 'toggleAntiSpam' | 'toggleViewForumAsMessages' | 'toggleParticipantsHidden',
+    what: 'toggleJoinToSend' | 'toggleJoinRequest' | 'toggleForum' |
+      'togglePreHistoryHidden' | 'toggleAntiSpam' | 'toggleViewForumAsMessages' |
+      'toggleParticipantsHidden' | 'toggleAutotranslation',
     enabled: boolean,
     forceInvalidation?: boolean
   ) {
@@ -881,6 +883,10 @@ export class AppChatsManager extends AppManager {
     });
 
     return this.toggleSomething(chatId, 'toggleViewForumAsMessages', enabled);
+  }
+
+  public toggleAutotranslation(chatId: ChatId, enabled: boolean) {
+    return this.toggleSomething(chatId, 'toggleAutotranslation', enabled);
   }
 
   public editForumTopic(options: {

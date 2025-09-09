@@ -69,6 +69,7 @@ import PopupSendGift from '../popups/sendGift';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
 import ChatRemoveFee from './removeFee';
 import ChatTopbarSponsored from './topbarSponsored';
+import usePeerTranslation from '../../hooks/usePeerTranslation';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -570,6 +571,26 @@ export default class ChatTopbar {
         } catch(err) {
           return false;
         }
+      }
+    }, {
+      icon: 'premium_translate',
+      text: 'Translate',
+      onClick: () => {
+        this.managers.appTranslationsManager.togglePeerTranslations(this.peerId, false).then(() => {
+          const peerTranslation = usePeerTranslation(this.peerId);
+          if(peerTranslation.canTranslate()) {
+            peerTranslation.toggle(true);
+          }
+        });
+      },
+      verify: async() => {
+        const peerTranslation = usePeerTranslation(this.peerId);
+        if(!peerTranslation.areTranslationsAvailable()) {
+          return false;
+        }
+
+        const fullPeer = await this.managers.appProfileManager.getCachedProfileByPeerId(this.peerId);
+        return !!fullPeer.pFlags.translations_disabled;
       }
     }, {
       icon: 'lock',

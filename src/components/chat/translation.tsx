@@ -25,6 +25,9 @@ import Chat from './chat';
 import PinnedContainer from './pinnedContainer';
 import ChatTopbar from './topbar';
 import {useAppSettings} from '../../stores/appSettings';
+import {toastNew} from '../toast';
+import {usePeer} from '../../stores/peers';
+import {Chat as MTChat} from '../../layer';
 
 export function pickLanguage<T extends boolean>(
   multi?: T,
@@ -164,6 +167,12 @@ export default class ChatTranslation extends PinnedContainer {
         icon: 'crossround',
         text: 'Hide',
         onClick: () => {
+          const peer = usePeer(peerId());
+          toastNew({
+            langPackKey: (peer as MTChat.channel).pFlags.broadcast ?
+              'TranslationBarHiddenChannel' :
+              'TranslationBarHidden'
+          });
           this.managers.appTranslationsManager.togglePeerTranslations(peerId(), true);
         }
       }],
@@ -175,12 +184,12 @@ export default class ChatTranslation extends PinnedContainer {
         <div
           class="pinned-translation-button"
           onClick={() => {
-            if(!isPremium()) {
+            const translation = peerTranslation();
+            if(!translation.canTranslate()) {
               PopupPremium.show({feature: 'translations'});
               return;
             }
 
-            const translation = peerTranslation();
             translation.toggle(!translation.enabled());
           }}
         >

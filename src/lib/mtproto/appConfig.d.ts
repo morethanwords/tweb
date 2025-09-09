@@ -134,6 +134,9 @@ export interface MTAppConfig {
   stars_stargift_resale_amount_max?:          number;
   stars_stargift_resale_amount_min?:          number;
   stars_stargift_resale_commission_permille?: number;
+  channel_autotranslation_level_min?:         number;
+  translations_auto_enabled?:                 'enabled' | 'disabled';
+  translations_manual_enabled?:               'enabled' | 'disabled';
 }
 
 export interface EmojiesSendDiceSuccess {

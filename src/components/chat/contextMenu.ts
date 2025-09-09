@@ -85,6 +85,7 @@ import createSubmenuTrigger from '../createSubmenuTrigger';
 import noop from '../../helpers/noop';
 import {isSensitive} from '../../helpers/restrictions';
 import {hasSensitiveSpoiler} from '../wrappers/mediaSpoiler';
+import {useAppState} from '../../stores/appState';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -810,7 +811,8 @@ export default class ChatContextMenu {
       icon: 'premium_translate',
       text: 'TranslateMessage',
       onClick: () => {
-        if(!rootScope.premium) {
+        const peerTranslation = usePeerTranslation(this.peerId);
+        if(!peerTranslation.canTranslate(true)) {
           PopupPremium.show({feature: 'translations'});
         } else {
           let textWithEntities: TextWithEntities;

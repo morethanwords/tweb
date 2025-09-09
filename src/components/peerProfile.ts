@@ -60,6 +60,7 @@ import PopupTranslate from './popups/translate';
 import wrapSticker from './wrappers/sticker';
 import {rgbIntToHex} from '../helpers/color';
 import {wrapAdaptiveCustomEmoji} from './wrappers/customEmojiSimple';
+import usePeerTranslation from '../hooks/usePeerTranslation';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   setInnerHTML(row.title, text || undefined);
@@ -202,7 +203,8 @@ export default class PeerProfile {
           icon: 'premium_translate',
           text: 'TranslateMessage',
           onClick: async() => {
-            if(!rootScope.premium) {
+            const peerTranslation = usePeerTranslation(this.peerId);
+            if(!peerTranslation.canTranslate(true)) {
               PopupPremium.show({feature: 'translations'});
             } else {
               PopupElement.createPopup(PopupTranslate, {

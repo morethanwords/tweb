@@ -907,6 +907,11 @@ const lang = {
   },
   'InviteViaLink.Premium.Subtitle2': 'You can send an invite link to the group in a private message instead.',
   'InviteViaLink.Premium.Subscribe': 'Subscribe to Telegram Premium',
+  'ChannelAutotranslation': 'Auto-Translate Messages',
+  'ChannelAutotranslationLevelMin': 'Your channel needs to be at least level %d to enable auto-translation. [Boost channel]().',
+  'Translate': 'Translate',
+  'TranslationBarHidden': 'The translation bar is now hidden for this chat.',
+  'TranslationBarHiddenChannel': 'The translation bar is now hidden for this channel.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

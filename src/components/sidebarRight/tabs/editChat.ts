@@ -32,10 +32,12 @@ import AppRemovedUsersTab from './removedUsers';
 import AppChatDiscussionTab from './chatDiscussion';
 import wrapPeerTitle from '../../wrappers/peerTitle';
 import cancelEvent from '../../../helpers/dom/cancelEvent';
-import {toastNew} from '../../toast';
+import {hideToast, toastNew} from '../../toast';
 import AppChatInviteLinksTab from './chatInviteLinks';
 import AppChatRequestsTab from './chatRequests';
 import getParticipantsCount from '../../../lib/appManagers/utils/chats/getParticipantsCount';
+import anchorCallback from '../../../helpers/dom/anchorCallback';
+import PopupBoost from '../../popups/boost';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -514,6 +516,52 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         section.content.append(removedUsersRow.container);
       }
+
+      this.scrollable.append(section.container);
+    }
+
+    if(isBroadcast && canChangeInfo) {
+      const section = new SettingSection({});
+
+      const r = new Row({
+        titleLangKey: 'ChannelAutotranslation',
+        checkboxField: new CheckboxField({
+          toggle: true
+        }),
+        icon: 'premium_translate',
+        clickable: (e) => {
+          if(((chat as Chat.channel).level ?? 0) < appConfig.channel_autotranslation_level_min) {
+            toastNew({
+              langPackKey: 'ChannelAutotranslationLevelMin',
+              langPackArguments: [
+                appConfig.channel_autotranslation_level_min,
+                anchorCallback(() => {
+                  hideToast();
+                  PopupElement.createPopup(PopupBoost, peerId);
+                })
+              ]
+            });
+            cancelEvent(e);
+          }
+        }
+      });
+
+      this.listenerSetter.add(r.checkboxField.input)('change', () => {
+        const toggle = r.toggleDisability(true);
+        this.managers.appChatsManager.toggleAutotranslation(this.chatId, r.checkboxField.checked)
+        .catch(() => {
+          r.checkboxField.setValueSilently(false);
+        }).finally(toggle);
+      });
+
+      const update = () => {
+        r.checkboxField.setValueSilently(!!(chat as Chat.channel).pFlags.autotranslation);
+      };
+
+      update();
+      addChatUpdateListener(update);
+
+      section.content.append(r.container);
 
       this.scrollable.append(section.container);
     }
