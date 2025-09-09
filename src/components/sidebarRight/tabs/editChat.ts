@@ -40,6 +40,7 @@ import anchorCallback from '../../../helpers/dom/anchorCallback';
 import PopupBoost from '../../popups/boost';
 import namedPromises from '../../../helpers/namedPromises';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import {AppDirectMessagesTab} from '../../solidJsTabs';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -284,11 +285,11 @@ export default class AppEditChatTab extends SliderSuperTab {
 
       if(canChangeInfo && isChannel && isAdmin) {
         const directMessagesRow = new Row({
-          titleLangKey: 'ChannelDirectMessages.Settings.RowItem',
+          titleLangKey: 'ChannelDirectMessages.Settings.Title',
           icon: 'messageunread',
-          navigationTab: {
-            constructor: AppChatReactionsTab,
-            slider: this.slider
+          clickable: () => {
+            if(chat._ !== 'channel') return;
+            this.slider.createTab(AppDirectMessagesTab).open({chat});
           },
           listenerSetter: this.listenerSetter
         });
@@ -299,7 +300,7 @@ export default class AppEditChatTab extends SliderSuperTab {
           const linkedMonoforumChat = chat.linked_monoforum_id ? apiManagerProxy.getChat(chat.linked_monoforum_id) : undefined;
 
           if(linkedMonoforumChat?._ !== 'channel') {
-            replaceContent(directMessagesRow.subtitle, i18n('ChannelDirectMessages.Settings.RowItem.Off'));
+            replaceContent(directMessagesRow.subtitle, i18n('ChannelDirectMessages.Settings.Off'));
             return;
           }
 
@@ -309,7 +310,7 @@ export default class AppEditChatTab extends SliderSuperTab {
             directMessagesRow.subtitle,
             starsAmount ?
               i18n('Stars', [numberThousandSplitterForStars(starsAmount)]) :
-              i18n('ChannelDirectMessages.Settings.RowItem.Free')
+              i18n('ChannelDirectMessages.Settings.Free')
           );
         };
 

@@ -1,7 +1,7 @@
 import {Component} from 'solid-js';
 import {render} from 'solid-js/web';
 import {CancellablePromise} from '../../helpers/cancellablePromise';
-import {GlobalPrivacySettings} from '../../layer';
+import {Chat, GlobalPrivacySettings} from '../../layer';
 import {LangPackKey} from '../../lib/langPack';
 import type {PasscodeActions} from '../../lib/passcode/actions';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
@@ -109,6 +109,16 @@ export const AppPrivacyMessagesTab =
   scaffoldSolidJSTab<AppPrivacyMessagesTabPayload>({
     title: 'PrivacyMessages',
     getComponentModule: () => import('../sidebarLeft/tabs/privacy/messages/tab')
+  });
+
+type AppDirectMessagesTabPayload = {
+  chat: Chat.channel;
+};
+
+export const AppDirectMessagesTab =
+  scaffoldSolidJSTab<AppDirectMessagesTabPayload>({
+    title: 'ChannelDirectMessages.Settings.Title',
+    getComponentModule: () => import('../sidebarRight/tabs/channelDirectMessages')
   });
 
 

@@ -5,7 +5,6 @@ import {logger} from '../../../../../lib/logger';
 import DEBUG from '../../../../../config/debug';
 
 import {useSuperTab} from '../../../../solidJsTabs/superTabProvider';
-import ripple from '../../../../ripple'; ripple; // keep
 import {IconTsx} from '../../../../iconTsx';
 
 import useIsConfirmationNeededOnClose from './useIsConfirmationNeededOnClose';
@@ -15,6 +14,7 @@ import useSaveSettings from './useSaveSettings';
 import OptionsSection from './optionsSection';
 import useStateStore from './useStateStore';
 import useSettings from './useSettings';
+import SaveButton from './saveButton';
 
 
 const log = logger('MessagesPrivacyTab');
@@ -43,7 +43,7 @@ const MessagesTab = () => {
     chosenPeersByType
   });
 
-  tab.isConfirmationNeededOnClose = useIsConfirmationNeededOnClose({hasChanges, saveAllSettings});
+  tab.isConfirmationNeededOnClose = useIsConfirmationNeededOnClose({hasChanges, saveAllSettings, descriptionLangKey: 'UnsavedChangesDescription.Privacy'});
 
 
   const [exitAnimationPromise, setExitAnimationPromise] = createSignal<Promise<any>>();
@@ -57,17 +57,7 @@ const MessagesTab = () => {
   return (
     <Show when={isReady()}>
       <Portal mount={tab.header}>
-        <AppearZoomTransition>
-          <Show when={hasChanges()}>
-            <button
-              use:ripple
-              class="btn-icon blue"
-              onClick={() => void saveAllSettings()}
-            >
-              <IconTsx icon="check" />
-            </button>
-          </Show>
-        </AppearZoomTransition>
+        <SaveButton hasChanges={hasChanges()} onClick={() => void saveAllSettings()} />
       </Portal>
 
       <OptionsSection

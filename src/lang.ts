@@ -3422,6 +3422,7 @@ const lang = {
   'PaidMessages.SetPrice': 'Set your price per message',
   'PaidMessages.SetPriceDescription': 'You will receive %d% of the selected fee (~%d$) for each incoming message',
   'PaidMessages.SetPriceGroupDescription': 'Your group will receive %d% of the selected fee (~%d$) for each incoming messages',
+  'PaidMessages.SetPriceChannelDescription': 'Your channel will receive %d% of the selected fee (~%d$) for each incoming messages',
   'PaidMessages.RemoveFee': 'Remove Fee',
   'PaidMessages.RemoveFeeDescription': 'Add users or entire groups who won\'t have to pay to send you messages',
   'PaidMessages.NewChatDescription': '%s charges %d for each message',
@@ -3487,6 +3488,7 @@ const lang = {
   'UnsavedChanges': 'Unsaved Changes',
   'UnsavedChangesDescription.Privacy': 'You have changed some privacy settings. Save changes?',
   'UnsavedChangesDescription.Group': 'You have changed some settings in this group. Save changes?',
+  'UnsavedChangesDescription.Channel': 'You have changed some settings in this channel. Save changes?',
   'DontAskAgain': 'Don\'t ask again',
   'ConfirmPayment': 'Confirm Payment',
   'Undo': 'Undo',
@@ -3582,9 +3584,11 @@ const lang = {
     'one_value': '%d Message',
     'other_value': '%d Messages'
   },
-  'ChannelDirectMessages.Settings.RowItem': 'Direct Messages',
-  'ChannelDirectMessages.Settings.RowItem.Off': 'Off',
-  'ChannelDirectMessages.Settings.RowItem.Free': 'Free'
+  'ChannelDirectMessages.Settings.Title': 'Direct Messages',
+  'ChannelDirectMessages.Settings.Off': 'Off',
+  'ChannelDirectMessages.Settings.Free': 'Free',
+  'ChannelDirectMessages.Settings.SwitchLabel': 'Allow Direct Messages',
+  'ChannelDirectMessages.Settings.SwitchLabelCaption': 'Allow users to send messages to your channel\nYou can set the amount of stars to **0** if you want it to be free'
 };
 
 export default lang;

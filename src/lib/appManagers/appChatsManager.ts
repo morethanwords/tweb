@@ -258,8 +258,9 @@ export class AppChatsManager extends AppManager {
     }).then(this.onChatUpdated.bind(this, id));
   }
 
-  public updateChannelPaidMessagesPrice(id: ChatId, stars: number) {
+  public updateChannelPaidMessagesPrice(id: ChatId, stars: number, directMessagesEnabled?: boolean) {
     return this.apiManager.invokeApi('channels.updatePaidMessagesPrice', {
+      broadcast_messages_allowed: directMessagesEnabled,
       channel: this.getChannelInput(id),
       send_paid_messages_stars: stars
     }).then(this.onChatUpdated.bind(this, id));
