@@ -1118,7 +1118,7 @@ const lang = {
   'AreYouSureSessions': 'Are you sure you want to terminate all other sessions?',
   'Terminate': 'Terminate',
   'WhoCanCallMe': 'Who can call me?',
-  'WhoCanAddMe': 'Who can add me to group chats?',
+  'WhoCanAddMe': 'Who can add me?',
   'ArchivedChats': 'Archived Chats',
   'Cancel': 'Cancel',
   'Confirm': 'Confirm',

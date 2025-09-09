@@ -40,7 +40,7 @@ function _usePeerTranslation(peerId: PeerId) {
   };
 
   const shouldShow = createMemo<boolean | undefined>(() => {
-    if(!areTranslationsAvailable() || !peerLanguage() || !appSettings.translations.enabled) {
+    if(!canTranslate() || !peerLanguage() || !appSettings.translations.enabled) {
       return;
     }
 
