@@ -1,18 +1,14 @@
 import {Component} from 'solid-js';
 import {render} from 'solid-js/web';
-
-import SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
-import {CancellablePromise} from '../../../../helpers/cancellablePromise';
-import type {PasscodeActions} from '../../../../lib/passcode/actions';
-import {GlobalPrivacySettings} from '../../../../layer';
-import {LangPackKey} from '../../../../lib/langPack';
-import {InstanceOf} from '../../../../types';
-
-import {SliderSuperTab} from '../../../slider';
-
-import type AppPrivacyAndSecurityTab from '../privacyAndSecurity';
-import type AppAddMembersTab from '../addMembers';
-
+import {CancellablePromise} from '../../helpers/cancellablePromise';
+import {GlobalPrivacySettings} from '../../layer';
+import {LangPackKey} from '../../lib/langPack';
+import type {PasscodeActions} from '../../lib/passcode/actions';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import {InstanceOf} from '../../types';
+import type AppAddMembersTab from '../sidebarLeft/tabs/addMembers';
+import type AppPrivacyAndSecurityTab from '../sidebarLeft/tabs/privacyAndSecurity';
+import {SliderSuperTab} from '../slider';
 import {PromiseCollector} from './promiseCollector';
 import {SuperTabProvider} from './superTabProvider';
 
@@ -82,7 +78,7 @@ function scaffoldSolidJSTab<Payload = void>({
 export const AppPasscodeLockTab =
   scaffoldSolidJSTab({
     title: 'PasscodeLock.Title',
-    getComponentModule: () => import('../passcodeLock/mainTab'),
+    getComponentModule: () => import('../sidebarLeft/tabs/passcodeLock/mainTab'),
     onOpenAfterTimeout: async function() {
       // Remove the previous enter password tab
       this.slider.sliceTabsUntilTab(
@@ -102,7 +98,7 @@ type AppPasscodeEnterPasswordTabPayload = {
 export const AppPasscodeEnterPasswordTab =
   scaffoldSolidJSTab<AppPasscodeEnterPasswordTabPayload>({
     title: 'PasscodeLock.Title',
-    getComponentModule: () => import('../passcodeLock/enterPasswordTab')
+    getComponentModule: () => import('../sidebarLeft/tabs/passcodeLock/enterPasswordTab')
   });
 
 type AppPrivacyMessagesTabPayload = {
@@ -112,7 +108,7 @@ type AppPrivacyMessagesTabPayload = {
 export const AppPrivacyMessagesTab =
   scaffoldSolidJSTab<AppPrivacyMessagesTabPayload>({
     title: 'PrivacyMessages',
-    getComponentModule: () => import('../privacy/messages/tab')
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/messages/tab')
   });
 
 

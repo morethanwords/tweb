@@ -5,8 +5,8 @@ import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import setBooleanFlag from '../../../../../helpers/object/setBooleanFlag';
 import {logger} from '../../../../../lib/logger';
 
-import {useSuperTab} from '../../solidJsTabs/superTabProvider';
-import type {AppPrivacyMessagesTab} from '../../solidJsTabs';
+import {useSuperTab} from '../../../../solidJsTabs/superTabProvider';
+import type {AppPrivacyMessagesTab} from '../../../../solidJsTabs';
 
 import {MessagesTabStateStore, MessagesPrivacyOption, defaultPrivacyRules, privacyRulesInputKey} from './config';
 import {ChosenPeersByType} from './useStateStore';

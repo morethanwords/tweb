@@ -4,10 +4,9 @@ import {Portal} from 'solid-js/web';
 import {logger} from '../../../../../lib/logger';
 import DEBUG from '../../../../../config/debug';
 
+import {useSuperTab} from '../../../../solidJsTabs/superTabProvider';
 import ripple from '../../../../ripple'; ripple; // keep
 import {IconTsx} from '../../../../iconTsx';
-
-import {useSuperTab} from '../../solidJsTabs/superTabProvider';
 
 import useIsConfirmationNeededOnClose from './useIsConfirmationNeededOnClose';
 import AppearZoomTransition from './appearZoomTransition';

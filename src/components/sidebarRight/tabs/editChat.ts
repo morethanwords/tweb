@@ -38,6 +38,7 @@ import AppChatRequestsTab from './chatRequests';
 import getParticipantsCount from '../../../lib/appManagers/utils/chats/getParticipantsCount';
 import anchorCallback from '../../../helpers/dom/anchorCallback';
 import PopupBoost from '../../popups/boost';
+import namedPromises from '../../../helpers/namedPromises';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -52,7 +53,7 @@ export default class AppEditChatTab extends SliderSuperTab {
     this.container.classList.add('edit-peer-container', 'edit-group-container');
     this.setTitle('Edit');
 
-    let [
+    let {
       chatFull,
       chat,
       isBroadcast,
@@ -68,23 +69,23 @@ export default class AppEditChatTab extends SliderSuperTab {
       canInviteUsers,
       appConfig,
       availableReactions
-    ] = await Promise.all([
-      this.managers.appProfileManager.getChatFull(this.chatId, true),
-      this.managers.appChatsManager.getChat(this.chatId) as Promise<Chat.chat | Chat.channel>,
-      this.managers.appChatsManager.isBroadcast(this.chatId),
-      this.managers.appChatsManager.isChannel(this.chatId),
-      this.managers.appChatsManager.hasRights(this.chatId, 'change_type'),
-      this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
-      this.managers.appChatsManager.hasRights(this.chatId, 'manage_topics'),
-      this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
-      this.managers.appChatsManager.hasRights(this.chatId, 'change_info'),
-      this.managers.appChatsManager.hasRights(this.chatId, 'delete_chat'),
-      this.managers.appChatsManager.hasRights(this.chatId, 'post_messages'),
-      this.managers.appChatsManager.hasRights(this.chatId, 'invite_links'),
-      this.managers.appChatsManager.hasRights(this.chatId, 'invite_users'),
-      this.managers.apiManager.getAppConfig(),
-      this.managers.appReactionsManager.getAvailableReactions()
-    ]);
+    } = await namedPromises({
+      chatFull: this.managers.appProfileManager.getChatFull(this.chatId, true),
+      chat: this.managers.appChatsManager.getChat(this.chatId) as Promise<Chat.chat | Chat.channel>,
+      isBroadcast: this.managers.appChatsManager.isBroadcast(this.chatId),
+      isChannel: this.managers.appChatsManager.isChannel(this.chatId),
+      canChangeType: this.managers.appChatsManager.hasRights(this.chatId, 'change_type'),
+      canChangePermissions: this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
+      canManageTopics: this.managers.appChatsManager.hasRights(this.chatId, 'manage_topics'),
+      canManageAdmins: this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
+      canChangeInfo: this.managers.appChatsManager.hasRights(this.chatId, 'change_info'),
+      canDeleteChat: this.managers.appChatsManager.hasRights(this.chatId, 'delete_chat'),
+      canPostMessages: this.managers.appChatsManager.hasRights(this.chatId, 'post_messages'),
+      canManageInviteLinks: this.managers.appChatsManager.hasRights(this.chatId, 'invite_links'),
+      canInviteUsers: this.managers.appChatsManager.hasRights(this.chatId, 'invite_users'),
+      appConfig: this.managers.apiManager.getAppConfig(),
+      availableReactions: this.managers.appReactionsManager.getAvailableReactions()
+    });
 
     this.scrollable.replaceChildren();
 
