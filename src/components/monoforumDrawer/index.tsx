@@ -2,6 +2,7 @@ import {createEffect, createMemo, createSignal, onCleanup, Show} from 'solid-js'
 import liteMode from '../../helpers/liteMode';
 import {doubleRaf} from '../../helpers/schedulers';
 import pause from '../../helpers/schedulers/pause';
+import type {AutonomousMonoforumThreadList} from '../../lib/appManagers/appDialogsManager';
 import rootScope from '../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
@@ -20,6 +21,7 @@ type Props = {
 };
 
 type Controls = {
+  autonomousList: AutonomousMonoforumThreadList;
   close: () => Promise<void>;
 };
 
@@ -62,6 +64,8 @@ const MonoforumDrawer = defineSolidElement({
       indexKey: 'index_0',
       monoforumParentPeerId: props.peerId
     });
+
+    controls.autonomousList = autonomousList;
 
     onCleanup(() => {
       autonomousList.destroy();

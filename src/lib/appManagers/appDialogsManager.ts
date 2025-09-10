@@ -2004,24 +2004,40 @@ export class AppDialogsManager {
       this.processContact?.(userId.toPeerId());
     });
 
-    appImManager.addEventListener('peer_changed', ({peerId, threadId, isForum}) => {
-      const options: Parameters<AppImManager['isSamePeer']>[0] = {peerId, threadId: isForum || rootScope.myId ? threadId : undefined};
-      // const perf = performance.now();
+    appImManager.addEventListener('peer_changed', ({peerId, threadId, monoforumThreadId, isForum}) => {
+      const options: Parameters<AppImManager['isSamePeer']>[0] = {peerId, monoforumThreadId, threadId: isForum || rootScope.myId ? threadId : undefined};
+
+      const getOptionsForElement = (element: HTMLElement) => {
+        const elementThreadId = +element?.dataset?.threadId || undefined;
+        const elementPeerId = element?.dataset?.peerId?.toPeerId();
+        const monoforumParentPeerId = +element?.dataset?.monoforumParentPeerId || undefined;
+
+        return {
+          peerId: monoforumParentPeerId || elementPeerId,
+          threadId: elementThreadId,
+          monoforumThreadId: monoforumParentPeerId ? elementPeerId : undefined
+        };
+      };
+
       for(const element of this.lastActiveElements) {
-        const elementThreadId = +element.dataset.threadId || undefined;
-        const elementPeerId = element.dataset.peerId.toPeerId();
-        if(!appImManager.isSamePeer({peerId: elementPeerId, threadId: elementThreadId}, options)) {
+        if(!appImManager.isSamePeer(getOptionsForElement(element), options)) {
           this.setDialogActive(element, false);
         }
       }
 
-      const elements = [this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId)].filter(Boolean);
 
-      elements.forEach(element => {
-        if(!element?.dom?.listEl) return;
-        const elementThreadId = +element?.dom?.listEl?.dataset?.threadId || undefined;
-        if(appImManager.isSamePeer({peerId, threadId: elementThreadId}, options)) {
-          this.setDialogActive(element.dom?.listEl, true);
+      const fromMonoforumDrawers = monoforumThreadId ? this.monoforumDrawers.opened.map(drawer => drawer?.controls?.autonomousList?.sortedList?.get(monoforumThreadId)) : []
+      const dialogElements = [
+        this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId),
+        ...fromMonoforumDrawers
+      ].filter(Boolean);
+
+      dialogElements.forEach(dialogElement => {
+        const element = dialogElement?.dom?.listEl;
+        if(!element) return;
+
+        if(appImManager.isSamePeer(getOptionsForElement(element), options)) {
+          this.setDialogActive(element, true);
         }
       });
       // this.log('peer_changed total time:', performance.now() - perf);
