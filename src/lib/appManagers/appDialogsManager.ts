@@ -3019,8 +3019,11 @@ export class AppDialogsManager {
       }
 
       const chat = apiManagerProxy.getChat(peerId);
+      const linkedChat = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id ?
+        apiManagerProxy.getChat(chat.linked_monoforum_id) :
+        undefined;
 
-      if(chat?._ === 'channel' && chat?.admin_rights?.pFlags?.manage_direct_messages) {
+      if(linkedChat?._ === 'channel' && linkedChat?.admin_rights?.pFlags?.manage_direct_messages) {
         const openOnlyDrawer = e.shiftKey;
 
         // Without the timeout the monoforum chats open with a noticeable delay

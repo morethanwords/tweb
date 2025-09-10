@@ -323,7 +323,10 @@ export class AppChatsManager extends AppManager {
   }
 
   public canManageDirectMessages(chatId: ChatId) {
-    const chat = this.getChat(chatId);
+    let chat = this.getChat(chatId);
+    if(chat?._ !== 'channel') return false;
+
+    if(chat?.pFlags?.monoforum && chat?.linked_monoforum_id) chat = this.getChat(chat.linked_monoforum_id);
     if(chat?._ !== 'channel') return false;
 
     return !!(chat.admin_rights?.pFlags?.manage_direct_messages);

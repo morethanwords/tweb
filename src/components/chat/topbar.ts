@@ -1359,7 +1359,7 @@ export default class ChatTopbar {
 
         return () => replaceContent(this.subtitle, span);
       };
-    } else if(this.chat.canManageDirectMessages && !this.chat.monoforumThreadId) {
+    } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages && !this.chat.monoforumThreadId) {
       prepare = async() => {
         const ackedResult = await this.managers.acknowledged.monoforumDialogsStorage.getDialogs({parentPeerId: this.peerId, limit: 1});
         const initialCount = ackedResult.cached ? (await ackedResult.result).count || 0 : '~';
