@@ -3573,6 +3573,7 @@ const lang = {
   'AgeVerification.Failed': 'Sorry, you can\'t view 18+ content.',
 
   'ChannelDirectMessages.Badge': 'Direct',
+  'ChannelDirectMessages.Manage': 'Direct Messages',
   'ChannelDirectMessages.Welcome': 'Send a direct message to the administrator of\n%s',
   'ChannelDirectMessages.WelcomePaid': '%s\ncharges %s per message to its admin',
   'ChannelDirectMessages.ChooseMessage': 'Choose a message to reply to',

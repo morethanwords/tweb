@@ -387,10 +387,10 @@ export default class ChatTopbar {
 
   private verifyDirectMessagesButton = async() => {
     if(!this.peerId.isAnyChat()) return false;
-    const chatFull = await this.managers.appChatsManager.getChat(this.peerId.toChatId());
-    if(chatFull._ !== 'channel') return false;
+    const chat = await this.managers.appChatsManager.getChat(this.peerId.toChatId());
+    if(chat._ !== 'channel') return false;
 
-    return !!(!chatFull.pFlags.monoforum && chatFull.linked_monoforum_id);
+    return !!(!chat.admin_rights && !chat.pFlags.monoforum && chat.linked_monoforum_id);
   };
 
   private verifyIfCanDeleteChat = async() => {
@@ -570,6 +570,11 @@ export default class ChatTopbar {
       onClick: () => PopupElement.createPopup(PopupSendGift, this.peerId),
       verify: async() => (this.chat.isChannel && !this.chat.isMonoforum) || (this.chat.peerId.isUser() && this.managers.appUsersManager.isRegularUser(this.peerId))
     }, {
+      icon: 'message',
+      text: 'ChannelDirectMessages.Manage',
+      onClick: () => this.onDirectMessagesClick(),
+      verify: async() => this.chat.isChannel && this.chat.canManageDirectMessages && !this.chat.isMonoforum
+    }, {
       icon: 'statistics',
       text: 'Statistics',
       onClick: () => {
@@ -736,7 +741,7 @@ export default class ChatTopbar {
     this.pinnedMessage = new ChatPinnedMessage(this, this.chat, this.managers);
 
     this.btnJoin = Button('btn-primary btn-color-primary chat-join hide');
-    this.btnDirectMessages = ButtonIcon('message');
+    this.btnDirectMessages = ButtonIcon('message force-show-on-mobile');
     this.btnCall = ButtonIcon('phone');
     this.btnGroupCall = ButtonIcon('videochat');
     this.btnGroupCallMenu = ButtonMenuToggle({
