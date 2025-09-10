@@ -3018,10 +3018,16 @@ export class AppDialogsManager {
         return;
       }
 
+      const chat = apiManagerProxy.getChat(peerId);
 
-      if(elem.dataset.isMonoforum) {
-        this.openMonoforumDrawer(peerId);
-        if(e.shiftKey) return;
+      if(chat?._ === 'channel' && chat?.admin_rights?.pFlags?.manage_direct_messages) {
+        const openOnlyDrawer = e.shiftKey;
+
+        // Without the timeout the monoforum chats open with a noticeable delay
+        if(!openOnlyDrawer) pause(200).then(() => this.openMonoforumDrawer(peerId));
+        else this.openMonoforumDrawer(peerId);
+
+        if(openOnlyDrawer) return;
       } else if(!monoforumParentPeerId) {
         this.closeMonoforumDrawers();
       }
