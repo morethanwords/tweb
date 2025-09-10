@@ -3666,6 +3666,8 @@ export default class ChatBubbles {
       return;
     }
 
+    if(this.chat.monoforumThreadId && getMessageThreadId(message) !== this.chat.monoforumThreadId) return;
+
     const {savedReaction} = this.chat;
     if(savedReaction?.length) {
       const {reactions} = message as Message.message;
