@@ -1093,6 +1093,8 @@
 "DeleteMessagesTextGroup" = "You can also delete the %1$s you sent from the inboxes of other group members by checking \"Unsend my messages\".";
 "LeaveChannel" = "Leave Channel";
 "LeaveChannelMenu" = "Leave channel";
+"LeaveMonoforum" = "Leave Conversation";
+"MonoforumLeaveAlertWithName" = "Are you sure you want to leave **%1$s**?";
 "ChannelLeaveAlertWithName" = "Are you sure you want to leave **%1$s**?";
 "LeaveMegaMenu" = "Leave group";
 "DeleteChatUser" = "Delete chat";
@@ -2536,6 +2538,7 @@
 "ChatList.Context.DeleteAndExit" = "Delete and Leave";
 "ChatList.Context.LeaveChannel" = "Leave Channel";
 "ChatList.Context.LeaveGroup" = "Leave Group";
+"ChatList.Context.LeaveMonoforum" = "Leave Conversation";
 "ChatList.Service.Call.incoming" = "Incoming Call (%@)";
 "ChatList.Service.Call.outgoing" = "Outgoing Call (%@)";
 "ChatList.Service.VideoCall.incoming" = "Incoming Video Call (%@)";
@@ -2956,6 +2959,7 @@
 "PaidMessages.SetPrice" = "Set your price per message";
 "PaidMessages.SetPriceDescription" = "You will receive %d% of the selected fee (~%d$) for each incoming message";
 "PaidMessages.SetPriceGroupDescription" = "Your group will receive %d% of the selected fee (~%d$) for each incoming messages";
+"PaidMessages.SetPriceChannelDescription" = "Your channel will receive %d% of the selected fee (~%d$) for each incoming messages";
 "PaidMessages.RemoveFee" = "Remove Fee";
 "PaidMessages.RemoveFeeDescription" = "Add users or entire groups who won't have to pay to send you messages";
 "PaidMessages.NewChatDescription" = "%s charges %d for each message";
@@ -2978,6 +2982,10 @@
 "PaidMessages.GroupPriceChangedFree" = "Messages in this group are now free";
 "PaidMessages.GroupPriceChanged_one" = "Messages now cost **%d Star** in this group";
 "PaidMessages.GroupPriceChanged_other" = "Messages now cost **%d Stars** in this group";
+"PaidMessages.ChannelPriceDisabled" = "%s disabled direct messages";
+"PaidMessages.ChannelPriceChangedFree" = "%s now accepts direct messages for free";
+"PaidMessages.ChannelPriceChanged_one" = "%2$s now accepts direct messages for **%1$d Star**";
+"PaidMessages.ChannelPriceChanged_other" = "%2$s now accepts direct messages for **%1$d Stars**";
 "PaidMessages.StarsRefundedToYou_one" = "%2$s refunded **%1$d Star** to you";
 "PaidMessages.StarsRefundedToYou_other" = "%2$s refunded **%1$d Stars** to you";
 "PaidMessages.StarsRefundedByYou_one" = "You refunded **%1$d Star** to %2$s";
@@ -2994,6 +3002,7 @@
 "UnsavedChanges" = "Unsaved Changes";
 "UnsavedChangesDescription.Privacy" = "You have changed some privacy settings. Save changes?";
 "UnsavedChangesDescription.Group" = "You have changed some settings in this group. Save changes?";
+"UnsavedChangesDescription.Channel" = "You have changed some settings in this channel. Save changes?";
 "DontAskAgain" = "Don't ask again";
 "ConfirmPayment" = "Confirm Payment";
 "Undo" = "Undo";
@@ -3074,6 +3083,19 @@
 "AgeVerification.TextGB" = "To access such content, you must confirm that you are at least 18 years old as required by UK law.\n\nThis is a one-time process using your phone's camera. Your selfie will not be stored by Telegram.";
 "AgeVerification.Action" = "Verify my age";
 "AgeVerification.Failed" = "Sorry, you can't view 18+ content.";
+"ChannelDirectMessages.Badge" = "Direct";
+"ChannelDirectMessages.Welcome" = "Send a direct message to the administrator of\n%s";
+"ChannelDirectMessages.WelcomePaid" = "%s\ncharges %s per message to its admin";
+"ChannelDirectMessages.ChooseMessage" = "Choose a message to reply to";
+"ChannelDirectMessages.ThreadsCount_one" = "%d Chat";
+"ChannelDirectMessages.ThreadsCount_other" = "%d Chats";
+"ChannelDirectMessages.MessagesCount_one" = "%d Message";
+"ChannelDirectMessages.MessagesCount_other" = "%d Messages";
+"ChannelDirectMessages.Settings.Title" = "Direct Messages";
+"ChannelDirectMessages.Settings.Off" = "Off";
+"ChannelDirectMessages.Settings.Free" = "Free";
+"ChannelDirectMessages.Settings.SwitchLabel" = "Allow Direct Messages";
+"ChannelDirectMessages.Settings.SwitchLabelCaption" = "Allow users to send messages to your channel\nYou can set the amount of stars to **0** if you want it to be free";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";
