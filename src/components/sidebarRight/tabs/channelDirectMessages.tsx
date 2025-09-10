@@ -31,7 +31,7 @@ const ChannelDirectMessages = () => {
 
   const {commissionPercents, willReceiveDollars} = useStarsCommissionAndWithdrawalPrice(stars);
 
-  const hasChanges = () => initialEnabled !== enabled() || initialStars !== stars();
+  const hasChanges = () => initialEnabled !== enabled() || (enabled() && initialStars !== stars());
 
   let isSaving = false;
 
