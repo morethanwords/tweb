@@ -72,6 +72,7 @@ import ChatTopbarSponsored from './topbarSponsored';
 import usePeerTranslation from '../../hooks/usePeerTranslation';
 import pause from '../../helpers/schedulers/pause';
 import appImManager from '../../lib/appManagers/appImManager';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -1358,10 +1359,10 @@ export default class ChatTopbar {
 
         return () => replaceContent(this.subtitle, span);
       };
-    } else if(this.chat.isMonoforum) {
+    } else if(this.chat.canManageDirectMessages && !this.chat.monoforumThreadId) {
       prepare = async() => {
         const ackedResult = await this.managers.acknowledged.monoforumDialogsStorage.getDialogs({parentPeerId: this.peerId, limit: 1});
-        const initialCount = ackedResult.cached ? (await ackedResult.result).count : '~';
+        const initialCount = ackedResult.cached ? (await ackedResult.result).count || 0 : '~';
 
         const el = new I18n.IntlElement({
           key: 'ChannelDirectMessages.ThreadsCount',
@@ -1370,6 +1371,38 @@ export default class ChatTopbar {
 
         if(!ackedResult.cached) ackedResult.result?.then(({count}) => el.compareAndUpdate({
           key: 'ChannelDirectMessages.ThreadsCount',
+          args: [count]
+        }));
+
+        return () => replaceContent(this.subtitle, el.element);
+      };
+    } else if(this.chat.isMonoforum) {
+      listenerSetter.add(rootScope)('history_multiappend', (message) => {
+        if(message.peerId !== this.chat.peerId) return;
+        if(this.chat.monoforumThreadId && getPeerId(message?.saved_peer_id) !== this.chat.monoforumThreadId) return;
+        setAuto();
+      });
+
+      listenerSetter.add(rootScope)('history_delete', ({peerId}) => {
+        if(peerId !== this.chat.peerId) return;
+        setAuto();
+      });
+
+      prepare = async() => {
+        const ackedResult = await this.managers.acknowledged.appMessagesManager.getHistory({
+          ...this.chat.requestHistoryOptionsPart,
+          limit: 1
+        });
+
+        const initialCount = ackedResult.cached ? (await ackedResult.result).count || 0 : '~';
+
+        const el = new I18n.IntlElement({
+          key: 'ChannelDirectMessages.MessagesCount',
+          args: [initialCount]
+        });
+
+        if(!ackedResult.cached) ackedResult.result?.then(({count}) => el.compareAndUpdate({
+          key: 'ChannelDirectMessages.MessagesCount',
           args: [count]
         }));
 
