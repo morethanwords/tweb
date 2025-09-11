@@ -285,7 +285,12 @@ export class DialogElement extends Row {
 
     const isActive = !dontSetActive && !autonomous &&
       appImManager.chat &&
-      appImManager.isSamePeer(appImManager.chat, {peerId, threadId: threadId, type: isSavedDialog ? ChatType.Saved : ChatType.Chat});
+      appImManager.isSamePeer(appImManager.chat, {
+        peerId: monoforumParentPeerId || peerId,
+        monoforumThreadId: monoforumParentPeerId ? peerId : undefined,
+        threadId: threadId,
+        type: isSavedDialog ? ChatType.Saved : ChatType.Chat
+      });
 
     const peerTitle = new PeerTitle();
     const peerTitlePromise = peerTitle.update({
@@ -1746,7 +1751,7 @@ export class AppDialogsManager {
       opened: []
     };
 
-    const drawersParent = this.chatsContainer.parentElement.parentElement;
+    const drawersParent = appSidebarLeft.sidebarEl;
     drawersParent.append(this.forumsSlider, this.monoforumDrawers.container);
 
     // appSidebarLeft.onOpenTab = () => {
@@ -2881,7 +2886,10 @@ export class AppDialogsManager {
   }
 
   public closeMonoforumDrawers() {
+    const hadOpenedDrawer = !!this.monoforumDrawers.opened.length;
     this.monoforumDrawers.opened.forEach(value => value?.controls?.close?.());
+
+    return hadOpenedDrawer;
   }
 
   public async toggleForumTabByPeerId(peerId: PeerId, show?: boolean, asInnerIfAsMessages?: boolean) {

@@ -96,6 +96,10 @@ const MonoforumDrawer = defineSolidElement({
 
     controls.close = close;
 
+    const closeListener = (): void => void close();
+    props.element.addEventListener('click', closeListener);
+    onCleanup(() => props.element.removeEventListener('click', closeListener));
+
     return (
       <Show when={chat()}>
         <div

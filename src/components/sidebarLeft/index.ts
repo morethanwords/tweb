@@ -518,8 +518,11 @@ export class AppSidebarLeft extends SidebarSlider {
   public closeEverythingInside() {
     this.closeSearch();
     appDialogsManager.toggleForumTab();
-    appDialogsManager.closeMonoforumDrawers();
-    return this.closeAllTabs();
+
+    const hadOpenedDrawer = appDialogsManager.closeMonoforumDrawers();
+    const hadTabs = this.closeAllTabs();
+
+    return hadTabs || hadOpenedDrawer;
   }
 
   private isAnimatingCollapse = false;
@@ -575,7 +578,8 @@ export class AppSidebarLeft extends SidebarSlider {
           );
         }
       });
-      appDialogsManager.xd?.toggleAvatarUnreadBadges(false, undefined);
+      if(!appDialogsManager.hasMonoforumOpen() && !appDialogsManager.forumTab)
+        appDialogsManager.xd?.toggleAvatarUnreadBadges(false, undefined);
     } else {
       const {hasFoldersSidebar} = useHasFoldersSidebar();
 
