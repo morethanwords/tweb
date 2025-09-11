@@ -4116,7 +4116,7 @@ export default class ChatBubbles {
   }
 
   public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
-    const {samePeer, sameSearch, peerId, stack} = options;
+    const {samePeer, sameSearch, peerId, stack, monoforumThreadId} = options;
     let {lastMsgId, lastMsgPeerId, startParam} = options;
     const tempId = ++this.setPeerTempId;
 
@@ -4608,9 +4608,14 @@ export default class ChatBubbles {
       });
 
       if(chatType === ChatType.Chat && !this.chat.isForumTopic) {
-        const dialog = await m(this.managers.appMessagesManager.getDialogOnly(peerId));
+        const dialog = await m(
+          monoforumThreadId ?
+            this.managers.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
+            this.managers.appMessagesManager.getDialogOnly(peerId)
+        );
+
         if(dialog?.pFlags.unread_mark) {
-          this.managers.appMessagesManager.markDialogUnread(peerId, true);
+          this.managers.appMessagesManager.markDialogUnread({peerId, monoforumThreadId: this.chat.monoforumThreadId, read: true});
         }
       }
 

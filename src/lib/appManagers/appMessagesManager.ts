@@ -308,6 +308,12 @@ type ReadHistoryArgs = {
   force?: boolean;
 };
 
+type MarkDialogUnreadArgs = {
+  peerId: PeerId;
+  read?: boolean;
+  monoforumThreadId?: PeerId;
+};
+
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
 
 export class AppMessagesManager extends AppManager {
@@ -4764,12 +4770,16 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public async markDialogUnread(peerId: PeerId, read?: boolean) {
-    const dialog = this.getDialogOnly(peerId);
+  public async markDialogUnread({peerId, read, monoforumThreadId}: MarkDialogUnreadArgs) {
+    const dialog = monoforumThreadId ?
+      this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
+      this.getDialogOnly(peerId);
+
     if(!dialog) return Promise.reject();
 
     if(
       this.appPeersManager.isForum(peerId) &&
+      dialog._ === 'dialog' &&
       !dialog.pFlags.view_forum_as_messages &&
       (read || await this.dialogsStorage.getForumUnreadCount(peerId))
     ) {
@@ -4784,20 +4794,33 @@ export class AppMessagesManager extends AppManager {
     const unread = read || dialog.pFlags?.unread_mark ? undefined : true;
 
     if(!unread && dialog.unread_count) {
-      const promise = this.readHistory({peerId, maxId: dialog.top_message, force: true});
+      const promise = this.readHistory({
+        peerId,
+        monoforumThreadId,
+        maxId: dialog.top_message,
+        force: true
+      });
       if(!dialog.pFlags.unread_mark) {
         return promise;
       }
     }
 
     return this.apiManager.invokeApi('messages.markDialogUnread', {
-      peer: this.appPeersManager.getInputDialogPeerById(peerId),
+      parent_peer: monoforumThreadId ?
+        this.appPeersManager.getInputPeerById(peerId) :
+        undefined,
+      peer: monoforumThreadId ?
+        this.appPeersManager.getInputDialogPeerById(monoforumThreadId) :
+        this.appPeersManager.getInputDialogPeerById(peerId),
       unread
     }).then(() => {
       const pFlags: Update.updateDialogUnreadMark['pFlags'] = unread ? {unread} : {};
       this.onUpdateDialogUnreadMark({
         _: 'updateDialogUnreadMark',
         peer: this.appPeersManager.getDialogPeer(peerId),
+        saved_peer_id: monoforumThreadId ?
+          this.appPeersManager.getOutputPeer(monoforumThreadId) :
+          undefined,
         pFlags
       });
     });
@@ -6397,10 +6420,18 @@ export class AppMessagesManager extends AppManager {
   private onUpdateDialogUnreadMark = (update: Update.updateDialogUnreadMark) => {
     // this.log('updateDialogUnreadMark', update);
     const peerId = this.appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
+    const monoforumThreadId = this.appPeersManager.getPeerId(update.saved_peer_id);
+
     const dialog = this.getDialogOnly(peerId);
 
     if(!dialog) {
       this.scheduleHandleNewDialogs(peerId);
+    } else if(monoforumThreadId) {
+      this.monoforumDialogsStorage.updateDialogUnreadMark({
+        parentPeerId: peerId,
+        peerId: monoforumThreadId,
+        unread: !!update?.pFlags?.unread
+      });
     } else {
       const releaseUnreadCount = this.dialogsStorage.prepareDialogUnreadCountModifying(dialog);
 

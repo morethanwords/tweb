@@ -25,10 +25,11 @@ import IS_SHARED_WORKER_SUPPORTED from '../environment/sharedWorkerSupport';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import appImManager from '../lib/appManagers/appImManager';
 import assumeType from '../helpers/assumeType';
-import {isDialog, isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
+import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
 import createSubmenuTrigger from './createSubmenuTrigger';
 import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
 import memoizeAsyncWithTTL from '../helpers/memoizeAsyncWithTTL';
+import {MonoforumDialog} from '../lib/storages/monoforumDialogs';
 
 
 export default class DialogsContextMenu {
@@ -37,7 +38,8 @@ export default class DialogsContextMenu {
   private peerId: PeerId;
   private filterId: number;
   private threadId: number;
-  private dialog: AnyDialog;
+  private monoforumParentPeerId?: PeerId;
+  private dialog: AnyDialog | MonoforumDialog;
   private canManageTopics: boolean;
   private canDelete: boolean;
   private li: HTMLElement;
@@ -57,7 +59,10 @@ export default class DialogsContextMenu {
         li.classList.add('menu-open');
         this.peerId = li.dataset.peerId.toPeerId();
         this.threadId = +li.dataset.threadId || undefined;
-        this.dialog = await this.managers.dialogsStorage.getAnyDialog(this.peerId, this.threadId);
+        this.monoforumParentPeerId = +li.dataset.monoforumParentPeerId || undefined;
+        this.dialog = this.monoforumParentPeerId ?
+          await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, this.peerId):
+          await this.managers.dialogsStorage.getAnyDialog(this.peerId, this.threadId);
         this.filterId = this.threadId ? undefined : appDialogsManager.filterId;
         this.canManageTopics = isForumTopic(this.dialog) ? await this.managers.dialogsStorage.canManageTopic(this.dialog) : undefined;
         this.canDelete = await this.checkIfCanDelete();
@@ -90,7 +95,7 @@ export default class DialogsContextMenu {
         appDialogsManager.openDialogInNewTab(this.li);
         cancelEvent(e);
       },
-      verify: () => IS_SHARED_WORKER_SUPPORTED
+      verify: () => IS_SHARED_WORKER_SUPPORTED && !this.monoforumParentPeerId
     }, {
       icon: 'topics',
       text: 'TopicViewAsTopics',
@@ -134,6 +139,8 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,
       verify: async() => {
+        if(isMonoforumDialog(this.dialog)) return false;
+
         if(isSavedDialog(this.dialog)) {
           return !this.dialog.pFlags.pinned;
         }
@@ -152,6 +159,8 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Unpin',
       onClick: this.onPinClick,
       verify: async() => {
+        if(isMonoforumDialog(this.dialog)) return false;
+
         if(isSavedDialog(this.dialog)) {
           return !!this.dialog.pFlags.pinned;
         }
@@ -170,25 +179,25 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Mute',
       onClick: this.onMuteClick,
       verify: async() => {
-        return this.peerId !== rootScope.myId && !(await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.dialog.peerId, threadId: this.threadId}));
+        return !this.monoforumParentPeerId && this.peerId !== rootScope.myId && !(await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.dialog.peerId, threadId: this.threadId}));
       }
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
       onClick: this.onUnmuteClick,
       verify: () => {
-        return this.peerId !== rootScope.myId && this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.dialog.peerId, threadId: this.threadId});
+        return !this.monoforumParentPeerId && this.peerId !== rootScope.myId && this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.dialog.peerId, threadId: this.threadId});
       }
     }, {
       icon: 'archive',
       text: 'Archive',
       onClick: this.onArchiveClick,
-      verify: () => !this.threadId && (this.dialog as Dialog).folder_id !== FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
+      verify: () => !this.threadId && !this.monoforumParentPeerId && (this.dialog as Dialog).folder_id !== FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
     }, {
       icon: 'unarchive',
       text: 'Unarchive',
       onClick: this.onArchiveClick,
-      verify: () => !this.threadId && (this.dialog as Dialog).folder_id === FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
+      verify: () => !this.threadId && !this.monoforumParentPeerId && (this.dialog as Dialog).folder_id === FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
     }, CAN_HIDE_TOPIC ? {
       icon: 'hide',
       text: 'Hide',
@@ -343,16 +352,22 @@ export default class DialogsContextMenu {
 
   private onUnreadClick = async() => {
     const {peerId, dialog} = this;
-    assumeType<Dialog | ForumTopic>(dialog);
-    if(dialog.unread_count) {
+    if(!isDialog(dialog) && !isForumTopic(dialog) && !isMonoforumDialog(dialog)) return;
+
+    if(this.monoforumParentPeerId) {
+      this.managers.appMessagesManager.markDialogUnread({
+        peerId: this.monoforumParentPeerId,
+        monoforumThreadId: this.peerId,
+        read: !!dialog.unread_count
+      });
+    } else if(dialog.unread_count) {
       if(!this.threadId) {
-        this.managers.appMessagesManager.markDialogUnread(peerId, true);
+        this.managers.appMessagesManager.markDialogUnread({peerId, read: true});
       } else {
-        // TODO: think about monoforum threads
         this.managers.appMessagesManager.readHistory({peerId, maxId: dialog.top_message, threadId: this.threadId});
       }
     } else if(!this.threadId) {
-      this.managers.appMessagesManager.markDialogUnread(peerId);
+      this.managers.appMessagesManager.markDialogUnread({peerId});
     }
   };
 

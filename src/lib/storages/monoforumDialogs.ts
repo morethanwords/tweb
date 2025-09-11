@@ -46,6 +46,12 @@ namespace MonoforumDialogsStorage {
     map: Map<PeerId, MonoforumDialog>;
     count: number; // Total count
   };
+
+  export type UpdateDialogUnreadMarkArgs = {
+    parentPeerId: PeerId;
+    peerId: PeerId;
+    unread: boolean;
+  };
 }
 
 
@@ -300,6 +306,19 @@ class MonoforumDialogsStorage extends AppManager {
 
   public async updateDialogsByPeerId({parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs) {
     this.fetchByIdBatchQueue.addToQueue(parentPeerId, ids);
+  }
+
+  public async updateDialogUnreadMark({parentPeerId, peerId, unread}: MonoforumDialogsStorage.UpdateDialogUnreadMarkArgs) {
+    const dialog = this.getDialogByParent(parentPeerId, peerId);
+    if(!dialog) return;
+
+    if(!unread) {
+      delete dialog.pFlags.unread_mark;
+    } else {
+      dialog.pFlags.unread_mark = true;
+    }
+
+    this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: [dialog]});
   }
 
   private onUpdateReadMonoforum = (update: Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox) => {
