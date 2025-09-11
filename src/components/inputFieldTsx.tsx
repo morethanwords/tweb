@@ -65,7 +65,7 @@ export const InputFieldTsx = <T extends typeof InputField>(inProps: InputFieldTs
   createEffect(on(
     () => props.disabled,
     (value) => {
-      obj.input.toggleAttribute('disabled', value)
+      obj.input.toggleAttribute('disabled', !!value)
     }
   ))
 
