@@ -125,7 +125,7 @@ import {MonoforumDialog} from '../storages/monoforumDialogs';
 import SolidJSHotReloadGuardProvider from '../solidjs/hotReloadGuardProvider';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
-const DIALOG_LOAD_COUNT = 10;
+const DIALOG_LOAD_COUNT = 20;
 
 export type DialogDom = {
   avatarEl: ReturnType<typeof avatarNew>,
@@ -2856,6 +2856,9 @@ export class AppDialogsManager {
     if(this.monoforumDrawers.opened?.find(drawer => drawer?.props?.peerId === peerId)) return;
 
     this.closeMonoforumDrawers();
+
+    const {count} = await this.managers.monoforumDialogsStorage.getDialogs({parentPeerId: peerId, limit: DIALOG_LOAD_COUNT});
+    if(!count) return;
 
     const navigationItem: NavigationItem = {
       type: 'monoforum',
