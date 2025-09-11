@@ -834,12 +834,13 @@ export default class ChatContextMenu {
       icon: 'link',
       text: 'MessageContext.CopyMessageLink1',
       onClick: this.onCopyLinkClick,
-      verify: async() => !this.isLegacy && await this.managers.appPeersManager.isChannel(this.peerId) && !this.message.pFlags.is_outgoing
+      verify: async() => !this.isLegacy && await this.managers.appPeersManager.isChannel(this.peerId) && !this.chat.isMonoforum && !this.message.pFlags.is_outgoing
     }, {
       icon: 'pin',
       text: 'Message.Context.Pin',
       onClick: this.onPinClick,
       verify: async() => !this.isLegacy &&
+        !this.chat.isMonoforum &&
         !this.message.pFlags.is_outgoing &&
         this.message._ !== 'messageService' &&
         !this.message.pFlags.pinned &&
