@@ -1405,6 +1405,7 @@ export default class ChatTopbar {
       prepare = async() => {
         const ackedResult = await this.managers.acknowledged.appMessagesManager.getHistory({
           ...this.chat.requestHistoryOptionsPart,
+          fetchIfWasNotFetched: true,
           limit: 1
         });
 

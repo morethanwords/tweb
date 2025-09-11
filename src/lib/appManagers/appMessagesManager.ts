@@ -142,6 +142,7 @@ export type HistoryStorage = {
 
   type: 'history' | 'replies' | 'search',
   key: HistoryStorageKey,
+  wasFetched?: boolean;
 
   channelJoinedMid?: number,
   originalInsertSlice?: SlicedArray<number>['insertSlice'],
@@ -5893,6 +5894,7 @@ export class AppMessagesManager extends AppManager {
       history: new SlicedArray(),
       type: options.type,
       key: getHistoryStorageKey(options),
+      wasFetched: false,
       _maxId: undefined,
       _count: null,
       get count() {
@@ -7697,7 +7699,8 @@ export class AppMessagesManager extends AppManager {
    */
   public getHistory(options: RequestHistoryOptions & {
     backLimit?: number,
-    historyStorage?: HistoryStorage
+    historyStorage?: HistoryStorage,
+    fetchIfWasNotFetched?: boolean
   }): Promise<HistoryResult> | HistoryResult {
     this.processRequestHistoryOptions(options);
 
@@ -7732,8 +7735,11 @@ export class AppMessagesManager extends AppManager {
       return haveSlice;
     };
 
+    const willFill = options.fetchIfWasNotFetched && !historyStorage.wasFetched;
+
     const haveSlice = getPossibleSlice();
     if(
+      !willFill &&
       haveSlice &&
       (haveSlice.slice.length === limit || (haveSlice.fulfilled & SliceEnd.Both) === SliceEnd.Both) &&
       (!needRealOffsetIdOffset || haveSlice.slice.isEnd(SliceEnd.Bottom))
@@ -8009,6 +8015,8 @@ export class AppMessagesManager extends AppManager {
       historyResult,
       peerId: requestPeerId
     });
+
+    historyStorage.wasFetched = true;
 
     const {
       count,
