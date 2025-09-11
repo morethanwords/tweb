@@ -263,7 +263,7 @@ class MonoforumDialogsStorage extends AppManager {
     const collection = this.getDialogCollection(parentPeerId);
     const wasCollectionComplete = collection.items.length === collection.count;
 
-    collection.items.filter(dialog => !deletedSet.has(dialog.peerId));
+    collection.items = collection.items.filter(dialog => !deletedSet.has(dialog.peerId));
     ids.forEach(id => collection.map.delete(id));
 
     if(wasCollectionComplete) collection.count = collection.items.length;

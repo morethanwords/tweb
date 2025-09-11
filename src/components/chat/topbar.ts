@@ -1365,6 +1365,15 @@ export default class ChatTopbar {
         return () => replaceContent(this.subtitle, span);
       };
     } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages && !this.chat.monoforumThreadId) {
+      listenerSetter.add(rootScope)('monoforum_dialogs_update', ({dialogs}) => {
+        if(!dialogs.find(dialog => dialog.parentPeerId === this.chat.peerId)) return;
+        setAuto();
+      });
+
+      listenerSetter.add(rootScope)('monoforum_dialogs_drop', () => {
+        setAuto();
+      });
+
       prepare = async() => {
         const ackedResult = await this.managers.acknowledged.monoforumDialogsStorage.getDialogs({parentPeerId: this.peerId, limit: 1});
         const initialCount = ackedResult.cached ? (await ackedResult.result).count || 0 : '~';
