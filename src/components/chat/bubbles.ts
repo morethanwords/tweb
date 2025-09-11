@@ -2616,8 +2616,23 @@ export default class ChatBubbles {
           }
         } else {
           const peerId = peerIdStr.toPeerId();
+          const {mid} = splitFullMid(getBubbleFullMid(bubble) || EMPTY_FULL_MID);
+
           if(peerId !== NULL_PEER_ID) {
-            this.chat.appImManager.setInnerPeer({...additionalSetPeerProps, peerId});
+            const message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, +mid);
+
+            const chat = apiManagerProxy.getChat(this.peerId);
+            const linkedChat = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id ?
+              apiManagerProxy.getChat(chat.linked_monoforum_id) :
+              undefined;
+
+            const shouldOpenAsMonoforum = this.chat.isMonoforum && this.chat.canManageDirectMessages && message && message?.fromId?.toChatId() !== linkedChat?.id?.toChatId();
+
+            this.chat.appImManager.setInnerPeer({
+              ...additionalSetPeerProps,
+              peerId: shouldOpenAsMonoforum ? this.peerId : peerId,
+              monoforumThreadId: shouldOpenAsMonoforum ? peerId : undefined
+            });
             this.chat.appImManager.clickIfSponsoredMessage((bubble as any).message);
           } else {
             toast(I18n.format('HidAccount', true));
@@ -2771,7 +2786,8 @@ export default class ChatBubbles {
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
           type: this.chat.type,
-          threadId: this.chat.threadId
+          threadId: this.chat.threadId,
+          monoforumThreadId: this.chat.monoforumThreadId
         });
       }
     }
