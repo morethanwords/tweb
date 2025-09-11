@@ -8750,7 +8750,7 @@ export default class ChatBubbles {
 
         method = 'prepend';
         appendTo = this.chatInner;
-      } else if(this.chat.isMonoforum) {
+      } else if(this.chat.isMonoforum && !this.chat.canManageDirectMessages) {
         renderPromise = this.renderEmptyPlaceholder('directChannelMessages', bubble, message, elements);
       } else if(this.chat.isAnyGroup && (apiManagerProxy.getPeer(this.peerId) as MTChat.chat).pFlags.creator) {
         renderPromise = this.renderEmptyPlaceholder('group', bubble, message, elements);
