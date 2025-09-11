@@ -3046,9 +3046,10 @@ export class AppDialogsManager {
 
       if(linkedChat?._ === 'channel' && linkedChat?.admin_rights?.pFlags?.manage_direct_messages) {
         const openOnlyDrawer = e.shiftKey;
+        const isSamePeer = appImManager.isSamePeer(appImManager.chat, {peerId});
 
         // Without the timeout the monoforum chats open with a noticeable delay
-        if(!openOnlyDrawer) pause(200).then(() => this.openMonoforumDrawer(peerId));
+        if(!openOnlyDrawer && !isSamePeer) pause(200).then(() => this.openMonoforumDrawer(peerId));
         else this.openMonoforumDrawer(peerId);
 
         if(openOnlyDrawer) return;
