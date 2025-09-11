@@ -2852,6 +2852,13 @@ export class AppDialogsManager {
 
     this.closeMonoforumDrawers();
 
+    const navigationItem: NavigationItem = {
+      type: 'monoforum',
+      onPop: () => {
+        drawer?.controls?.close?.();
+      }
+    };
+
     const drawer = new MonoforumDrawer;
     drawer.HotReloadGuard = SolidJSHotReloadGuardProvider;
     drawer.feedProps({
@@ -2859,8 +2866,11 @@ export class AppDialogsManager {
       onClose: () => {
         this.monoforumDrawers.opened = this.monoforumDrawers.opened.filter(value => value !== drawer);
         this.onSomeDrawerToggle?.();
+        appNavigationController.removeItem(navigationItem);
       }
     });
+
+    appNavigationController.pushItem(navigationItem);
 
     this.monoforumDrawers.container.append(drawer);
     this.monoforumDrawers.opened.push(drawer);
