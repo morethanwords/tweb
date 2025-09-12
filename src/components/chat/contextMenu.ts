@@ -834,12 +834,13 @@ export default class ChatContextMenu {
       icon: 'link',
       text: 'MessageContext.CopyMessageLink1',
       onClick: this.onCopyLinkClick,
-      verify: async() => !this.isLegacy && await this.managers.appPeersManager.isChannel(this.peerId) && !this.message.pFlags.is_outgoing
+      verify: async() => !this.isLegacy && await this.managers.appPeersManager.isChannel(this.peerId) && !this.chat.isMonoforum && !this.message.pFlags.is_outgoing
     }, {
       icon: 'pin',
       text: 'Message.Context.Pin',
       onClick: this.onPinClick,
       verify: async() => !this.isLegacy &&
+        !this.chat.isMonoforum &&
         !this.message.pFlags.is_outgoing &&
         this.message._ !== 'messageService' &&
         !this.message.pFlags.pinned &&
@@ -1502,8 +1503,9 @@ export default class ChatContextMenu {
   };
 
   private onReplyClick = async() => {
-    const {mid, peerId} = this;
-    const replyTo: ChatInputReplyTo = {replyToMsgId: mid};
+    const {peerId, message} = this;
+    const replyTo = this.chat.input.getChatInputReplyToFromMessage(message);
+
     if(!await this.chat.canSend()) {
       replyTo.replyToPeerId = peerId;
       this.chat.input.createReplyPicker(replyTo);
@@ -1689,7 +1691,7 @@ export default class ChatContextMenu {
 
   private onQuoteClick = async() => {
     const messageWithText = this.getMessageWithText();
-    const {peerId, mid} = messageWithText;
+    const {peerId} = messageWithText;
     let {text: value, entities = [], offset: startIndex} = this.getQuotedText();
 
     const appConfig = await this.managers.apiManager.getAppConfig();
@@ -1717,10 +1719,7 @@ export default class ChatContextMenu {
       offset: startIndex
     };
 
-    const replyTo: ChatInputReplyTo = {
-      replyToMsgId: mid,
-      replyToQuote: quote
-    };
+    const replyTo = this.chat.input.getChatInputReplyToFromMessage(messageWithText, quote);
 
     if(!await this.chat.canSend()) {
       replyTo.replyToPeerId = peerId;

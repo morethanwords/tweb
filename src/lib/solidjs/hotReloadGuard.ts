@@ -18,6 +18,7 @@ import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolder
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import type wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import type {ThemeController} from '../../helpers/themeController';
+import type {AppDialogsManager, AutonomousMonoforumThreadList} from '../appManagers/appDialogsManager';
 import type {AppImManager} from '../appManagers/appImManager';
 import type apiManagerProxy from '../mtproto/mtprotoworker';
 import type lottieLoader from '../rlottie/lottieLoader';
@@ -43,6 +44,8 @@ export type SolidJSHotReloadGuardContextValue = {
   PopupPremium: typeof PopupPremium;
   EmoticonsDropdown: typeof EmoticonsDropdown;
   EmojiTab: typeof EmojiTab;
+  appDialogsManager: AppDialogsManager;
+  AutonomousMonoforumThreadList: typeof AutonomousMonoforumThreadList;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

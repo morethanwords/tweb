@@ -9,9 +9,8 @@ import Space from '../../../space';
 import {i18n} from '../../../../lib/langPack';
 import ripple from '../../../ripple'; ripple; // keep
 import PasswordInputField from '../../../passwordInputField';
-
-import type {AppPasscodeEnterPasswordTab} from '../solidJsTabs';
-import {useSuperTab} from '../solidJsTabs/superTabProvider';
+import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
+import type {AppPasscodeEnterPasswordTab} from '../../../solidJsTabs';
 
 import LottieAnimation from './lottieAnimation';
 

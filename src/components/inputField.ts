@@ -460,6 +460,8 @@ export default class InputField {
 
   public allowStartingSpace: boolean;
 
+  private isInputHidden = false;
+
   constructor(public options: InputFieldOptions = {}) {
     this.container = document.createElement('div');
     this.container.classList.add('input-field');
@@ -730,8 +732,13 @@ export default class InputField {
     });
   };
 
+  public setHidden(hidden: boolean) {
+    this.isInputHidden = hidden;
+    this.setEmpty();
+  }
+
   public isEmpty() {
-    return isInputEmpty(this.input, this.allowStartingSpace);
+    return isInputEmpty(this.input, this.allowStartingSpace) || this.isInputHidden;
   }
 
   public isChanged() {

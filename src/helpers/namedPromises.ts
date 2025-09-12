@@ -1,4 +1,4 @@
-export default async function namedPromises<T extends Record<string, Promise<any>>>(
+export default async function namedPromises<T extends Record<string, any>>(
   promises: T
 ): Promise<{[Key in keyof T]: Awaited<T[Key]>}> {
   //

@@ -29,6 +29,7 @@ import shouldDisplayGiftCodeAsGift from '../../helpers/shouldDisplayGiftCodeAsGi
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import Icon from '../icon';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
+import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -692,9 +693,10 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
 
       case 'messageActionPaidMessagesPrice': {
-        const isFree = !+action.stars;
-        langPackKey = isFree ? 'PaidMessages.GroupPriceChangedFree' : 'PaidMessages.GroupPriceChanged';
-        args = [+action.stars];
+        const isBroadcast = await managers.appChatsManager.isBroadcast(message.fromId?.toChatId());
+        const result = await getPriceChangedActionMessageLangParams(action, isBroadcast, () => getNameDivHTML(message.fromId, plain));
+        langPackKey = result.langPackKey;
+        args = result.args;
         break;
       }
 
@@ -802,6 +804,13 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
             joinTexts(incompleted.map((it) => wrapSomeText(it.text, plain, it.entities)), TODO_JOIN_OPTIONS)
           ];
         }
+
+        break;
+      }
+      case 'messageActionChannelCreate': {
+        const chat = message?.peerId ? apiManagerProxy.getChat(message.peerId) : undefined;
+
+        if(chat?._ === 'channel' && chat?.pFlags?.monoforum) langPackKey = 'ActionCreateDirectMessages';
 
         break;
       }

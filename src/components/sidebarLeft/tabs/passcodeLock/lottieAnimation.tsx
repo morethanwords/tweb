@@ -3,7 +3,7 @@ import classNames from '../../../../helpers/string/classNames';
 import type {LottieAssetName} from '../../../../lib/rlottie/lottieLoader';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import LottieAnimationBase from '../../../lottieAnimation';
-import {usePromiseCollector} from '../solidJsTabs/promiseCollector';
+import {usePromiseCollector} from '../../../solidJsTabs/promiseCollector';
 import styles from './common.module.scss';
 
 

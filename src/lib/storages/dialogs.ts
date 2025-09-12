@@ -1670,7 +1670,7 @@ export default class DialogsStorage extends AppManager {
     const folder = this.getFolder(folderId);
     const peerIds = [...folder.unreadPeerIds];
     for(const peerId of peerIds) {
-      await this.appMessagesManager.markDialogUnread(peerId, true);
+      await this.appMessagesManager.markDialogUnread({peerId, read: true});
     }
   }
 

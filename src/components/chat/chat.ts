@@ -106,6 +106,7 @@ export default class Chat extends EventListenerBase<{
   // * will be also used for RequestHistoryOptions
   public peerId: PeerId;
   public threadId: number;
+  public monoforumThreadId: number;
   public savedReaction: (Reaction.reactionCustomEmoji | Reaction.reactionEmoji)[];
   public isPublicHashtag: boolean;
   public isCacheableSearch: boolean;
@@ -151,6 +152,8 @@ export default class Chat extends EventListenerBase<{
   public isAnonymousSending: boolean;
   public isUserBlocked: boolean;
   public isPremiumRequired: boolean;
+  public isMonoforum: boolean;
+  public canManageDirectMessages: boolean;
 
   public starsAmount: number | undefined;
 
@@ -647,13 +650,16 @@ export default class Chat extends EventListenerBase<{
       if(peerId.isAnyChat() && peerId.toChatId() === chatId) {
         const {
           starsAmount,
-          isAnonymousSending
+          isAnonymousSending,
+          canManageDirectMessages
         } = await namedPromises({
           starsAmount: this.managers.appChatsManager.getStarsAmount(chatId),
-          isAnonymousSending: this.managers.appMessagesManager.isAnonymousSending(peerId)
+          isAnonymousSending: this.managers.appMessagesManager.isAnonymousSending(peerId),
+          canManageDirectMessages: this.managers.appPeersManager.canManageDirectMessages(peerId)
         });
 
         if(peerId === this.peerId) {
+          this.canManageDirectMessages = canManageDirectMessages;
           this.isAnonymousSending = isAnonymousSending;
           this.updateStarsAmount(starsAmount);
         }
@@ -737,6 +743,7 @@ export default class Chat extends EventListenerBase<{
           chat: this,
           chatType: this.type,
           peerId: this.peerId,
+          // TODO: Check here for monoforumThreadId
           threadId: this.threadId,
           canFilterSender: this.isAnyGroup,
           query,
@@ -842,6 +849,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public async onChangePeer(options: ChatSetPeerOptions, m: ReturnType<typeof middlewarePromise>) {
+    // spot
     const {peerId, threadId} = options;
 
     if(!this.excludeParts.elements) {
@@ -862,13 +870,12 @@ export default class Chat extends EventListenerBase<{
     const type = options.type ?? ChatType.Chat;
     this.setType(type);
 
-    const [
+    const {
       noForwards,
       restrictions,
       isRestricted,
       isLikeGroup,
       isRealGroup,
-      _,
       isMegagroup,
       isBroadcast,
       isChannel,
@@ -877,24 +884,27 @@ export default class Chat extends EventListenerBase<{
       isUserBlocked,
       isPremiumRequired,
       starsAmount,
-      sensitiveContentSettings
-    ] = await m(Promise.all([
-      this.managers.appPeersManager.noForwards(peerId),
-      this.managers.appPeersManager.getPeerRestrictions(peerId),
-      this.managers.appPeersManager.isPeerRestricted(peerId),
-      this._isLikeGroup(peerId),
-      this.managers.appPeersManager.isAnyGroup(peerId),
-      this.setAutoDownloadMedia(),
-      this.managers.appPeersManager.isMegagroup(peerId),
-      this.managers.appPeersManager.isBroadcast(peerId),
-      this.managers.appPeersManager.isChannel(peerId),
-      this.managers.appPeersManager.isBot(peerId),
-      this.managers.appMessagesManager.isAnonymousSending(peerId),
-      peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),
-      this.isPremiumRequiredToContact(peerId),
-      this.managers.appPeersManager.getStarsAmount(peerId),
-      this.sensitiveContentSettings || this.managers.appPrivacyManager.getSensitiveContentSettings()
-    ]));
+      sensitiveContentSettings,
+      chat,
+      canManageDirectMessages
+    } = await m(namedPromises({
+      noForwards: this.managers.appPeersManager.noForwards(peerId),
+      restrictions: this.managers.appPeersManager.getPeerRestrictions(peerId),
+      isRestricted: this.managers.appPeersManager.isPeerRestricted(peerId),
+      isLikeGroup: this._isLikeGroup(peerId),
+      isRealGroup: this.managers.appPeersManager.isAnyGroup(peerId),
+      isMegagroup: this.managers.appPeersManager.isMegagroup(peerId),
+      isBroadcast: this.managers.appPeersManager.isBroadcast(peerId),
+      isChannel: this.managers.appPeersManager.isChannel(peerId),
+      isBot: this.managers.appPeersManager.isBot(peerId),
+      isAnonymousSending: this.managers.appMessagesManager.isAnonymousSending(peerId),
+      isUserBlocked: peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),
+      isPremiumRequired: this.isPremiumRequiredToContact(peerId),
+      starsAmount: this.managers.appPeersManager.getStarsAmount(peerId),
+      sensitiveContentSettings: this.sensitiveContentSettings || this.managers.appPrivacyManager.getSensitiveContentSettings(),
+      chat: peerId.isAnyChat() && this.managers.appChatsManager.getChat(peerId.toChatId()),
+      canManageDirectMessages: this.managers.appPeersManager.canManageDirectMessages(peerId)
+    }));
 
     // ! WARNING: TEMPORARY, HAVE TO GET TOPIC
     if(isForum && threadId) {
@@ -913,6 +923,8 @@ export default class Chat extends EventListenerBase<{
     this.isAnonymousSending = isAnonymousSending;
     this.isUserBlocked = isUserBlocked;
     this.isPremiumRequired = isPremiumRequired;
+    this.isMonoforum = !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
+    this.canManageDirectMessages = canManageDirectMessages;
     this.starsAmount = starsAmount;
 
     this.isRestricted = isRestricted;
@@ -931,7 +943,8 @@ export default class Chat extends EventListenerBase<{
     if(!this.excludeParts.sharedMedia) {
       this.sharedMediaTab = appSidebarRight.createSharedMediaTab();
       this.sharedMediaTabs.push(this.sharedMediaTab);
-      this.sharedMediaTab.setPeer(peerId, threadId);
+      const linkedMonoforumId = (chat?._ === 'channel' && chat.pFlags?.monoforum && chat.linked_monoforum_id)?.toPeerId?.(true);
+      this.sharedMediaTab.setPeer(this.monoforumThreadId || linkedMonoforumId || peerId, threadId);
     }
 
     this.input?.clearHelper(); // костыль
@@ -941,7 +954,8 @@ export default class Chat extends EventListenerBase<{
   public get requestHistoryOptionsPart(): RequestHistoryOptions {
     const options: RequestHistoryOptions = {
       peerId: this.peerId,
-      threadId: this.threadId
+      threadId: this.threadId,
+      monoforumThreadId: this.monoforumThreadId
     };
 
     CHAT_SEARCH_KEYS.forEach((key) => {
@@ -952,13 +966,14 @@ export default class Chat extends EventListenerBase<{
     if(this.hashtagType && this.hashtagType !== 'this') {
       options.peerId = NULL_PEER_ID;
       options.threadId = undefined;
+      options.monoforumThreadId = undefined;
     }
 
     return options;
   }
 
   public setPeer(options: ChatSetPeerOptions) {
-    const {peerId, threadId} = options;
+    const {peerId, threadId, monoforumThreadId} = options;
     if(!peerId) {
       this.inited = undefined;
     } else if(!this.inited) {
@@ -975,6 +990,7 @@ export default class Chat extends EventListenerBase<{
       this.appImManager.dispatchEvent('peer_changing', this);
       this.peerId = peerId || NULL_PEER_ID;
       this.threadId = threadId;
+      this.monoforumThreadId = monoforumThreadId;
       this.middlewareHelper.clean();
     } else if(this.setPeerPromise) {
       return;
@@ -1078,6 +1094,7 @@ export default class Chat extends EventListenerBase<{
     return this.setPeer({
       peerId: this.peerId,
       threadId: this.threadId,
+      monoforumThreadId: this.monoforumThreadId,
       ...options
     });
   }
@@ -1245,6 +1262,7 @@ export default class Chat extends EventListenerBase<{
       peerId: this.peerId,
       threadId: this.threadId,
       updateStickersetOrder: rootScope.settings.stickers.dynamicPackOrder,
+      replyToMonoforumPeerId: this.monoforumThreadId,
       ...(this.input && {
         ...(this.input.getReplyTo() || false),
         scheduleDate: this.input.scheduleDate,

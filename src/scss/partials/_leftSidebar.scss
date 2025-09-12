@@ -210,7 +210,8 @@
         .sidebar-header.main-search-sidebar-header {
           pointer-events: none;
         }
-        .sidebar-header-search-trigger {
+        .sidebar-header-search-trigger,
+        .can-have-forum .input-search {
           opacity: 0;
         }
       }

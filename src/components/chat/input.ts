@@ -6,7 +6,7 @@
 
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import type {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
-import type {AppMessagesManager, MessageSendingParams} from '../../lib/appManagers/appMessagesManager';
+import type {AppMessagesManager, MessageSendingParams, MyMessage} from '../../lib/appManagers/appMessagesManager';
 import type Chat from './chat';
 import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
 import '../../../public/recorder.min';
@@ -18,7 +18,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -124,7 +124,7 @@ import eachSecond from '../../helpers/eachSecond';
 import {wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
 import showTooltip from '../tooltip';
 import createContextMenu from '../../helpers/dom/createContextMenu';
-import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, onCleanup, Setter} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import SelectedEffect from './selectedEffect';
 import windowSize from '../../helpers/windowSize';
@@ -135,6 +135,7 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesIntercept
 import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
 import focusInput from '../../helpers/dom/focusInput';
 import {PopupChecklist} from '../popups/checklist';
+import assumeType from '../../helpers/assumeType';
 
 // console.log('Recorder', Recorder);
 
@@ -153,7 +154,7 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
-export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId'>;
+export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
@@ -227,6 +228,7 @@ export default class ChatInput {
   public replyToStoryId: MessageSendingParams['replyToStoryId'];
   public replyToQuote: MessageSendingParams['replyToQuote'];
   public replyToPeerId: MessageSendingParams['replyToPeerId'];
+  public replyToMonoforumPeerId: MessageSendingParams['replyToMonoforumPeerId'];
   public editMsgId: number;
   public editMessage: Message.message;
   private noWebPage: true;
@@ -352,7 +354,8 @@ export default class ChatInput {
 
   public paidMessageInterceptor: PaidMessagesInterceptor;
 
-  private starsState: ReturnType<ChatInput['constructStarsState']>;
+  private starsState: ReturnType<ChatInput['createStarsState']>;
+  private directMessagesHandler: ReturnType<ChatInput['createDirectMessagesHandler']>;
 
   constructor(
     public chat: Chat,
@@ -481,7 +484,8 @@ export default class ChatInput {
       this.paidMessageInterceptor.dispose();
     });
 
-    this.starsState = this.constructStarsState();
+    this.starsState = this.createStarsState();
+    this.directMessagesHandler = this.createDirectMessagesHandler();
   }
 
   public freezeFocused(focused: boolean) {
@@ -1330,8 +1334,14 @@ export default class ChatInput {
   }
 
   private setChatListeners() {
-    this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, draft, force}) => {
-      if(this.chat.threadId !== threadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
+    this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, monoforumThreadId, draft, force}) => {
+      // We don't have draft functionality when in the global monoforum chat, but we still need to clear the input right after sending the message
+      if(!draft && force && this.chat.peerId === peerId && this.chat.isMonoforum) {
+        this.setDraft(draft, true, force);
+        return;
+      }
+
+      if(this.chat.threadId !== threadId || this.chat.monoforumThreadId !== monoforumThreadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
       this.setDraft(draft, true, force);
     });
 
@@ -1564,8 +1574,8 @@ export default class ChatInput {
   }
 
   public getJoinButtonType() {
-    const {peerId, threadId} = this.chat;
-    if(peerId.isUser()) {
+    const {peerId, threadId, isMonoforum} = this.chat;
+    if(peerId.isUser() || isMonoforum) {
       return;
     }
 
@@ -1721,14 +1731,22 @@ export default class ChatInput {
       return;
     }
 
-    const dialog = await this.managers.dialogsStorage.getAnyDialog(
-      this.chat.peerId,
-      this.chat.type === ChatType.Discussion ? undefined : this.chat.threadId
-    );
+    const dialog = this.chat.monoforumThreadId ?
+      await this.managers.monoforumDialogsStorage.getDialogByParent(this.chat.peerId, this.chat.monoforumThreadId) :
+      await this.managers.dialogsStorage.getAnyDialog(
+        this.chat.peerId,
+        this.chat.type === ChatType.Discussion ? undefined : this.chat.threadId
+      );
 
     if(isSavedDialog(dialog)) {
       return;
     }
+
+    assumeType<Partial<Pick<Dialog.dialog,
+      | 'unread_count'
+      | 'unread_mentions_count'
+      | 'unread_reactions_count'
+    >>>(dialog);
 
     const count = dialog?.unread_count;
     setBadgeContent(this.goDownUnreadBadge, '' + (count || ''));
@@ -1775,6 +1793,7 @@ export default class ChatInput {
           reply_to_msg_id: replyTo.replyToMsgId,
           top_msg_id: this.chat.threadId,
           reply_to_peer_id: replyTo.replyToPeerId,
+          monoforum_peer_id: replyTo.replyToMonoforumPeerId,
           ...(replyTo.replyToQuote && {
             quote_text: replyTo.replyToQuote.text,
             quote_entities: replyTo.replyToQuote.entities,
@@ -1798,16 +1817,18 @@ export default class ChatInput {
   }
 
   public saveDraft() {
+    const isMonoforumParent = this.chat.isMonoforum && !this.chat.monoforumThreadId;
     if(
       !this.chat.peerId ||
       this.editMsgId ||
-      PEER_EXCEPTIONS.has(this.chat.type)
+      PEER_EXCEPTIONS.has(this.chat.type) ||
+      isMonoforumParent
     ) {
       return;
     }
 
     const draft = this.getCurrentInputAsDraft();
-    this.managers.appDraftsManager.syncDraft(this.chat.peerId, this.chat.threadId, draft);
+    this.managers.appDraftsManager.syncDraft({peerId: this.chat.peerId, threadId: this.chat.threadId, monoforumThreadId: this.chat.monoforumThreadId, localDraft: draft});
   }
 
   public mentionUser(peerId: PeerId, isHelper?: boolean) {
@@ -1874,7 +1895,11 @@ export default class ChatInput {
     }
 
     if(!draft) {
-      draft = await this.managers.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId);
+      const isMonoforumParent = this.chat.isMonoforum && !this.chat.monoforumThreadId;
+
+      draft = !isMonoforumParent ?
+        await this.managers.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId || this.chat.monoforumThreadId) :
+        undefined;
 
       if(!draft) {
         if(force) { // this situation can only happen when sending message with clearDraft
@@ -1921,7 +1946,8 @@ export default class ChatInput {
           text: replyTo.quote_text,
           entities: replyTo.quote_entities,
           offset: replyTo.quote_offset
-        }
+        },
+        replyToMonoforumPeerId: replyTo.monoforum_peer_id && getPeerId(replyTo.monoforum_peer_id)
       });
     }
 
@@ -2013,6 +2039,7 @@ export default class ChatInput {
     const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
 
     return () => {
+      const {isMonoforum, canManageDirectMessages, monoforumThreadId} = this.chat;
       // console.warn('[input] finishpeerchange start');
 
       chatInput.classList.remove('hide');
@@ -2152,6 +2179,11 @@ export default class ChatInput {
       this._center(neededFakeContainer, false);
 
       this.setStarsAmount(this.chat.starsAmount); // should reset when undefined
+
+      this.directMessagesHandler.set({
+        canManageDirectMessages: isMonoforum && canManageDirectMessages && !monoforumThreadId,
+        isReplying: !!this.helperType
+      });
       // console.warn('[input] finishpeerchange ends');
     };
   }
@@ -2246,6 +2278,10 @@ export default class ChatInput {
       key = 'Comment';
     } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
       key = 'ChannelBroadcast';
+    } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
+      key = this.chat.monoforumThreadId || this.directMessagesHandler.store.isReplying ?
+        'Message' :
+        'ChannelDirectMessages.ChooseMessage';
     } else if(
       (this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) ||
       await this.managers.appMessagesManager.isAnonymousSending(peerId)
@@ -3400,6 +3436,7 @@ export default class ChatInput {
   public async createReplyPicker(replyTo: ChatInputReplyTo) {
     const peerId = await PopupPickUser.createReplyPicker();
     this.appImManager.setInnerPeer({peerId}).then(() => {
+      // TODO: Need a picker for monoforum threads
       this.appImManager.chat.input.initMessageReply(replyTo);
     });
   }
@@ -3409,8 +3446,8 @@ export default class ChatInput {
       return;
     }
 
-    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId} = this;
-    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId};
+    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId} = this;
+    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId};
   }
 
   public async clearInput(canSetDraft = true, fireEvent = true, clearValue = '') {
@@ -3499,13 +3536,13 @@ export default class ChatInput {
   public async setStarsAmount(starsAmount: number | undefined) {
     this.starsState.set({starsAmount});
 
+    // TODO: review this `|| true` WTF?
     const params = await this.getPlaceholderParams(await this.chat?.canSend('send_plain') || true);
     this.updateMessageInputPlaceholder(params);
   }
 
-  private constructStarsState = () => createRoot((dispose) => {
-    const middleware = this.getMiddleware();
-    middleware.onDestroy(() => void dispose());
+  private createStarsState = () => createRoot((dispose) => {
+    this.getMiddleware()?.onDestroy(() => void dispose());
 
     const [store, set] = createStore({
       inited: false,
@@ -3540,6 +3577,36 @@ export default class ChatInput {
       if(!store.inited || !store.inputStarsCountEl || !forwardedMessagesStarsAmount()) return;
 
       store.inputStarsCountEl.textContent = numberThousandSplitterForStars(forwardedMessagesStarsAmount());
+    });
+
+    return {store, set};
+  });
+
+  private createDirectMessagesHandler = () => createRoot((dispose) => {
+    this.getMiddleware()?.onDestroy(() => void dispose());
+
+    const [store, set] = createStore({
+      canManageDirectMessages: false,
+      isReplying: false
+    });
+
+    createEffect(() => {
+      if(!store.canManageDirectMessages) return;
+
+      this.getPlaceholderParams().then(params => this.updateMessageInputPlaceholder(params));
+
+      if(store.isReplying) return;
+
+      this.messageInputField?.input?.classList.add('hide')
+      this.messageInputField?.setHidden(true);
+      if(this.btnToggleEmoticons) this.btnToggleEmoticons.disabled = true;
+
+      onCleanup(() => {
+        this.messageInputField?.input?.classList.remove('hide');
+        this.messageInputField?.setHidden(false);
+        this.btnToggleEmoticons.disabled = false;
+        if(this.btnToggleEmoticons) this.btnToggleEmoticons.disabled = false;
+      });
     });
 
     return {store, set};
@@ -3965,6 +4032,17 @@ export default class ChatInput {
     f();
   }
 
+  public getChatInputReplyToFromMessage(message: MyMessage, quote?: MessageSendingParams['replyToQuote']) {
+    const result: ChatInputReplyTo = {
+      replyToMsgId: message?.mid
+    };
+
+    if(quote) result.replyToQuote = quote;
+    if(message?._ === 'message' && message?.saved_peer_id) result.replyToMonoforumPeerId = getPeerId(message.saved_peer_id);
+
+    return result;
+  }
+
   public async initMessageReply(replyTo: ReturnType<ChatInput['getReplyTo']>) {
     if(deepEqual(this.getReplyTo(), replyTo)) {
       return;
@@ -4035,11 +4113,12 @@ export default class ChatInput {
   }
 
   public setReplyTo(replyTo: ChatInputReplyTo) {
-    const {replyToMsgId, replyToQuote, replyToPeerId, replyToStoryId} = replyTo || {};
+    const {replyToMsgId, replyToQuote, replyToPeerId, replyToStoryId, replyToMonoforumPeerId} = replyTo || {};
     this.replyToMsgId = replyToMsgId;
     this.replyToStoryId = replyToStoryId;
     this.replyToQuote = replyToQuote;
     this.replyToPeerId = replyToPeerId;
+    this.replyToMonoforumPeerId = replyToMonoforumPeerId;
     this.center(true);
   }
 
@@ -4074,6 +4153,8 @@ export default class ChatInput {
       this.chat.container.classList.remove('is-helper-active');
       this.t();
     }
+
+    this.directMessagesHandler.set({isReplying: false});
   }
 
   private t() {
@@ -4179,6 +4260,8 @@ export default class ChatInput {
     setTimeout(() => {
       this.updateSendBtn();
     }, 0);
+
+    this.directMessagesHandler.set({isReplying: true});
 
     return container;
   }

@@ -10,7 +10,7 @@ const useStarsCommissionAndWithdrawalPrice = (stars: Accessor<number>) => {
   const centsPerStar = createMemo(() => (+appConfig()?.stars_usd_withdraw_rate_x1000 || 0) / 1000);
 
   const commissionPercents = createMemo(() => Math.round(commission() * 100));
-  const willReceiveDollars = createMemo(() => Math.max(0.01, Math.round(commission() * centsPerStar() * stars()) / 100));
+  const willReceiveDollars = createMemo(() => Math.max(0.01 * Number(!!stars()), Math.round(commission() * centsPerStar() * stars()) / 100));
 
   return {
     commissionPercents,

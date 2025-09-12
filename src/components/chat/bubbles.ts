@@ -202,6 +202,7 @@ import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {ChecklistBubble} from './bubbles/checklist';
 import {getRestrictionReason, isSensitive} from '../../helpers/restrictions';
 import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
+import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -1246,7 +1247,7 @@ export default class ChatBubbles {
             return;
           }
 
-          this.chat.input.initMessageReply({replyToMsgId: message.mid});
+          this.chat.input.initMessageReply(this.chat.input.getChatInputReplyToFromMessage(message));
         }
       });
     } else if(IS_TOUCH_SUPPORTED) {
@@ -1352,8 +1353,8 @@ export default class ChatBubbles {
             }
 
             if(shouldReply) {
-              const {mid} = _target.dataset;
-              this.chat.input.initMessageReply({replyToMsgId: +mid});
+              const message = this.chat.getMessage(getBubbleFullMid(target));
+              this.chat.input.initMessageReply(this.chat.input.getChatInputReplyToFromMessage(message));
               shouldReply = false;
             }
           });
@@ -1433,9 +1434,16 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
-      if(!dialogs.has(this.peerId) || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Saved) {
+      if(!dialogs.has(this.peerId) || this.chat.monoforumThreadId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Saved) {
         return;
       }
+
+      this.chat.input.setUnreadCount();
+    });
+
+    this.listenerSetter.add(rootScope)('monoforum_dialogs_update', ({dialogs}) => {
+      if(this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Saved) return;
+      if(!dialogs.find(dialog => dialog.parentPeerId === this.peerId && dialog.peerId === this.chat.monoforumThreadId)) return;
 
       this.chat.input.setUnreadCount();
     });
@@ -2211,7 +2219,7 @@ export default class ChatBubbles {
     const middleware = this.getMiddleware();
     this[readPromiseKey] = idleController.getFocusPromise().then(async() => {
       if(!middleware()) return;
-      const {peerId, threadId} = this.chat;
+      const {peerId, threadId, monoforumThreadId} = this.chat;
 
       let callback: () => Promise<any>;
       if(type === 'history') {
@@ -2237,7 +2245,7 @@ export default class ChatBubbles {
           this.log('will readHistory by maxId:', maxId);
         }
 
-        callback = () => this.managers.appMessagesManager.readHistory(peerId, maxId, threadId);
+        callback = () => this.managers.appMessagesManager.readHistory({peerId, maxId, threadId, monoforumThreadId});
       } else {
         const readContents: number[] = [];
         for(const mid of this.unreadedContentSeen) {
@@ -2617,8 +2625,23 @@ export default class ChatBubbles {
           }
         } else {
           const peerId = peerIdStr.toPeerId();
+          const {mid} = splitFullMid(getBubbleFullMid(bubble) || EMPTY_FULL_MID);
+
           if(peerId !== NULL_PEER_ID) {
-            this.chat.appImManager.setInnerPeer({...additionalSetPeerProps, peerId});
+            const message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, +mid);
+
+            const chat = apiManagerProxy.getChat(this.peerId);
+            const linkedChat = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id ?
+              apiManagerProxy.getChat(chat.linked_monoforum_id) :
+              undefined;
+
+            const shouldOpenAsMonoforum = this.chat.isMonoforum && this.chat.canManageDirectMessages && message && message?.fromId?.toChatId() !== linkedChat?.id?.toChatId();
+
+            this.chat.appImManager.setInnerPeer({
+              ...additionalSetPeerProps,
+              peerId: shouldOpenAsMonoforum ? this.peerId : peerId,
+              monoforumThreadId: shouldOpenAsMonoforum ? peerId : undefined
+            });
             this.chat.appImManager.clickIfSponsoredMessage((bubble as any).message);
           } else {
             toast(I18n.format('HidAccount', true));
@@ -2772,7 +2795,8 @@ export default class ChatBubbles {
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
           type: this.chat.type,
-          threadId: this.chat.threadId
+          threadId: this.chat.threadId,
+          monoforumThreadId: this.chat.monoforumThreadId
         });
       }
     }
@@ -3667,6 +3691,8 @@ export default class ChatBubbles {
       return;
     }
 
+    if(this.chat.monoforumThreadId && getMessageThreadId(message) !== this.chat.monoforumThreadId) return;
+
     const {savedReaction} = this.chat;
     if(savedReaction?.length) {
       const {reactions} = message as Message.message;
@@ -4099,7 +4125,7 @@ export default class ChatBubbles {
   }
 
   public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
-    const {samePeer, sameSearch, peerId, stack} = options;
+    const {samePeer, sameSearch, peerId, stack, monoforumThreadId} = options;
     let {lastMsgId, lastMsgPeerId, startParam} = options;
     const tempId = ++this.setPeerTempId;
 
@@ -4591,9 +4617,14 @@ export default class ChatBubbles {
       });
 
       if(chatType === ChatType.Chat && !this.chat.isForumTopic) {
-        const dialog = await m(this.managers.appMessagesManager.getDialogOnly(peerId));
+        const dialog = await m(
+          monoforumThreadId ?
+            this.managers.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
+            this.managers.appMessagesManager.getDialogOnly(peerId)
+        );
+
         if(dialog?.pFlags.unread_mark) {
-          this.managers.appMessagesManager.markDialogUnread(peerId, true);
+          this.managers.appMessagesManager.markDialogUnread({peerId, monoforumThreadId: this.chat.monoforumThreadId, read: true});
         }
       }
 
@@ -4788,9 +4819,16 @@ export default class ChatBubbles {
 
   public async onScrolledAllDown() {
     if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) {
-      const {peerId, threadId} = this.chat;
+      const {peerId, threadId, monoforumThreadId} = this.chat;
       const historyMaxId = await this.chat.getHistoryMaxId();
-      this.managers.appMessagesManager.readHistory(peerId, historyMaxId, threadId, true);
+
+      this.managers.appMessagesManager.readHistory({
+        peerId,
+        maxId: historyMaxId,
+        threadId,
+        monoforumThreadId,
+        force: true
+      });
     }
   }
 
@@ -5476,10 +5514,14 @@ export default class ChatBubbles {
           promise = peerTitle.update({peerId: action.channel_id.toPeerId(true), wrapOptions});
           s.append(i18n('ChatMigration.To', [peerTitle.element]));
         } else if(action._ === 'messageActionPaidMessagesPrice') {
-          const isFree = !+action.stars;
+          const result = getPriceChangedActionMessageLangParams(action, this.chat.isBroadcast, () => {
+            const peerTitle = new PeerTitle();
+            promise = peerTitle.update({peerId: message.peerId.toPeerId(true), wrapOptions});
+            return peerTitle.element;
+          });
           s.append(i18n(
-            isFree ? 'PaidMessages.GroupPriceChangedFree' : 'PaidMessages.GroupPriceChanged',
-            [+action.stars]
+            result.langPackKey,
+            result.args
           ));
         } else if(action._ === 'messageActionPaidMessagesRefunded') {
           const peerTitle = new PeerTitle();
@@ -7354,7 +7396,10 @@ export default class ChatBubbles {
 
     const showNameForVerificationCodes = isMessageForVerificationBot(message) && !message.pFlags.local;
     // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
-    const needName = ((message.fromId !== rootScope.myId || !isOut) && this.chat.isLikeGroup) ||
+
+    const iPostedAsSomeoneElse = message.fromId !== rootScope.myId && !this.chat.isMonoforum;
+
+    const needName = ((iPostedAsSomeoneElse || !isOut) && this.chat.isLikeGroup) ||
       message.viaBotId ||
       storyFromPeerId ||
       (showNameForVerificationCodes && !replyTo);
@@ -8398,7 +8443,7 @@ export default class ChatBubbles {
   }
 
   private async renderEmptyPlaceholder(
-    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted' | 'premiumRequired' | 'paidMessages',
+    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted' | 'premiumRequired' | 'paidMessages' | 'directChannelMessages',
     bubble: HTMLElement,
     message: any,
     elements: (Node | string)[]
@@ -8558,7 +8603,7 @@ export default class ChatBubbles {
       const starsAmount = await this.managers.appPeersManager.getStarsAmount(this.peerId); // should be cached probably here
 
       const starsElement = document.createElement('span');
-      starsElement.classList.add(BASE_CLASS + '-stars')
+      starsElement.classList.add(BASE_CLASS + '-stars');
       starsElement.append(
         Icon('star', BASE_CLASS + '-star-icon'),
         numberThousandSplitterForStars(starsAmount)
@@ -8577,6 +8622,37 @@ export default class ChatBubbles {
       });
 
       elements.push(stickerDiv, subtitle, button);
+    } else if(type === 'directChannelMessages') {
+      const stickerDiv = document.createElement('div');
+      stickerDiv.classList.add(BASE_CLASS + '-sticker');
+      stickerDiv.append(Icon('round_chats_filled'));
+
+      const starsAmount = await this.managers.appPeersManager.getStarsAmount(this.peerId);
+
+      let starsElement: HTMLElement;
+
+      if(starsAmount) {
+        starsElement = document.createElement('span');
+        starsElement.classList.add(BASE_CLASS + '-stars');
+        starsElement.append(
+          Icon('star', BASE_CLASS + '-star-icon'),
+          numberThousandSplitterForStars(starsAmount)
+        );
+      }
+
+      const subtitle = i18n(starsAmount ? 'ChannelDirectMessages.WelcomePaid' : 'ChannelDirectMessages.Welcome', [await wrapPeerTitle({peerId: this.peerId}), starsElement]);
+      subtitle.classList.add('center', BASE_CLASS + '-subtitle');
+
+      let button: HTMLElement;
+      if(starsAmount) {
+        button = Button('bubble-service-button overflow-hidden', {noRipple: true, text: 'BuyStars'});
+        button.append(Sparkles({isDiv: true, mode: 'button'}));
+        attachClickEvent(button, () => {
+          PopupElement.createPopup(PopupStars);
+        });
+      }
+
+      elements.push(...[stickerDiv, subtitle, button].filter(Boolean));
     }
 
     if(listElements) {
@@ -8688,6 +8764,8 @@ export default class ChatBubbles {
 
         method = 'prepend';
         appendTo = this.chatInner;
+      } else if(this.chat.isMonoforum && !this.chat.canManageDirectMessages) {
+        renderPromise = this.renderEmptyPlaceholder('directChannelMessages', bubble, message, elements);
       } else if(this.chat.isAnyGroup && (apiManagerProxy.getPeer(this.peerId) as MTChat.chat).pFlags.creator) {
         renderPromise = this.renderEmptyPlaceholder('group', bubble, message, elements);
       } else if(this.chat.type === ChatType.Scheduled) {

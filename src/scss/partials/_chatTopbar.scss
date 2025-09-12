@@ -37,7 +37,7 @@ body.is-right-column-shown {
   --topbar-avatar-active-size: 0px;
   --topbar-close-active-size: 2.5rem;
   --topbar-avatar-close-gap: 2px;
-  
+
   --pinned-container-height: 3.25rem;
 	--pinned-audio-height: var(--pinned-container-height);
 	--pinned-message-height: var(--pinned-container-height);
@@ -153,7 +153,7 @@ body.is-right-column-shown {
 		}
 	}
 
-	.peer-title, 
+	.peer-title,
 	.info {
 		white-space: nowrap;
 		text-overflow: ellipsis;
@@ -176,7 +176,7 @@ body.is-right-column-shown {
 			margin-inline-start: 0;
 		}
 	}
-	
+
 	.chat-info {
 		flex: 1 1 auto;
 		overflow: hidden;
@@ -188,7 +188,7 @@ body.is-right-column-shown {
 		@include respond-to(handhelds) {
 			padding-inline-start: 52px;
     }
-		
+
 		//&.have-utils-width {
 			max-width: calc(100% - var(--utils-width));
 
@@ -223,7 +223,7 @@ body.is-right-column-shown {
 		@include sidebar-transform();
 
 		@include respond-to(handhelds) {
-			> .btn-icon:not(.btn-menu-toggle) {
+			> .btn-icon:not(.btn-menu-toggle):not(.force-show-on-mobile) {
 				display: none;
 			}
 		}
@@ -241,14 +241,14 @@ body.is-right-column-shown {
 			display: none;
 		}
 	}
-	
+
 	.content {
 		flex: 1 1 auto;
 		padding-inline-start: 1.125rem;
 		max-width: 100%;
 		overflow: hidden;
 	}
-	
+
 	.person {
 		display: flex;
 		align-items: center;
@@ -262,7 +262,7 @@ body.is-right-column-shown {
 			font-size: .875rem;
 			//line-height: 18px;
 			color: var(--secondary-text-color);
-			
+
 			.online {
 				color: var(--primary-color);
 			}
@@ -349,7 +349,7 @@ body.is-right-column-shown {
           .topbar-call-right {
             width: auto;
           }
-  
+
           .group-call-description {
             display: none;
           }
@@ -383,7 +383,7 @@ body.is-right-column-shown {
       }
     }
 
-    &-left, 
+    &-left,
     &-right {
       flex: 0 0 auto;
       width: 12rem;

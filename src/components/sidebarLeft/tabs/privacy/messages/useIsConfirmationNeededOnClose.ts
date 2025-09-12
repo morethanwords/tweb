@@ -1,14 +1,16 @@
 import {Accessor} from 'solid-js';
-
+import type {LangPackKey} from '../../../../../lib/langPack';
 import confirmationPopup, {ConfirmationPopupRejectReason} from '../../../../confirmationPopup';
 import {PopupPeerOptions} from '../../../../popups/peer';
 
+
 type UseIsConfirmationNeededOnCloseArgs = {
+  descriptionLangKey: LangPackKey;
   hasChanges: Accessor<boolean>;
   saveAllSettings: () => Promise<void>;
 };
 
-const useIsConfirmationNeededOnClose = ({hasChanges, saveAllSettings}: UseIsConfirmationNeededOnCloseArgs) => async() => {
+const useIsConfirmationNeededOnClose = ({descriptionLangKey, hasChanges, saveAllSettings}: UseIsConfirmationNeededOnCloseArgs) => async() => {
   if(!hasChanges()) return;
 
   const saveButton: PopupPeerOptions['buttons'][number] = {
@@ -18,7 +20,7 @@ const useIsConfirmationNeededOnClose = ({hasChanges, saveAllSettings}: UseIsConf
   try {
     await confirmationPopup({
       titleLangKey: 'UnsavedChanges',
-      descriptionLangKey: 'UnsavedChangesDescription.Privacy',
+      descriptionLangKey,
       button: saveButton,
       buttons: [
         saveButton,

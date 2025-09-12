@@ -9,7 +9,7 @@ import AppSelectPeers from '../../appSelectPeers';
 import {setButtonLoader} from '../../putPreloader';
 import {LangPackKey, _i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
-import {providedTabs} from './solidJsTabs';
+import {providedTabs} from '../../solidJsTabs';
 
 export default class AppAddMembersTab extends SliderSuperTab {
   private nextBtn: HTMLButtonElement;

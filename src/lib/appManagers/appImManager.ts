@@ -145,6 +145,7 @@ export type ChatSetPeerOptions = {
   lastMsgId?: number,
   lastMsgPeerId?: PeerId,
   threadId?: number,
+  monoforumThreadId?: PeerId,
   startParam?: string,
   stack?: {peerId: PeerId, mid: number, message?: Message.message, isOut?: boolean},
   commentId?: number,
@@ -584,6 +585,7 @@ export class AppImManager extends EventListenerBase<{
       const isForum = await managers.appPeersManager.isForum(options.message.peerId);
       const threadId = getMessageThreadId(options.message, isForum);
 
+      // TODO: don't forget about notifications
       if(this.chat.peerId === options.message.peerId && this.chat.threadId === threadId && !idleController.isIdle) {
         return;
       }
@@ -2724,9 +2726,10 @@ export class AppImManager extends EventListenerBase<{
     this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: cancel ? 'sendMessageCancelAction' : 'sendMessageChooseStickerAction'}, undefined, this.chat.threadId);
   }
 
-  public isSamePeer(options1: {peerId: PeerId, threadId?: number, type?: ChatType}, options2: typeof options1) {
+  public isSamePeer(options1: {peerId: PeerId, threadId?: number, monoforumThreadId?: PeerId, type?: ChatType}, options2: typeof options1) {
     return options1.peerId === options2.peerId &&
       options1.threadId === options2.threadId &&
+      options1.monoforumThreadId === options2.monoforumThreadId &&
       (typeof(options1.type) !== typeof(options2.type) || options1.type === options2.type);
   }
 

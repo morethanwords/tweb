@@ -2,7 +2,7 @@ import {createResource} from 'solid-js';
 
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 
-import {usePromiseCollector} from '../../solidJsTabs/promiseCollector';
+import {usePromiseCollector} from '../../../../solidJsTabs/promiseCollector';
 
 import {privacyRulesInputKey, MessagesPrivacyOption} from './config';
 import useIsPremium from './useIsPremium';

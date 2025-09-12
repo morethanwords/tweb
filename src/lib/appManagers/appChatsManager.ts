@@ -258,8 +258,9 @@ export class AppChatsManager extends AppManager {
     }).then(this.onChatUpdated.bind(this, id));
   }
 
-  public updateChannelPaidMessagesPrice(id: ChatId, stars: number) {
+  public updateChannelPaidMessagesPrice(id: ChatId, stars: number, directMessagesEnabled?: boolean) {
     return this.apiManager.invokeApi('channels.updatePaidMessagesPrice', {
+      broadcast_messages_allowed: directMessagesEnabled,
       channel: this.getChannelInput(id),
       send_paid_messages_stars: stars
     }).then(this.onChatUpdated.bind(this, id));
@@ -300,6 +301,11 @@ export class AppChatsManager extends AppManager {
     return this.isChannel(id) && !this.isMegagroup(id);
   }
 
+  public isMonoforum(id: ChatId) {
+    const chat: Chat = this.chats[id];
+    return !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
+  }
+
   public isInChat(id: ChatId) {
     let good = true;
     const chat: Chat = this.getChat(id);
@@ -314,6 +320,16 @@ export class AppChatsManager extends AppManager {
     }
 
     return good;
+  }
+
+  public canManageDirectMessages(chatId: ChatId) {
+    let chat = this.getChat(chatId);
+    if(chat?._ !== 'channel') return false;
+
+    if(chat?.pFlags?.monoforum && chat?.linked_monoforum_id) chat = this.getChat(chat.linked_monoforum_id);
+    if(chat?._ !== 'channel') return false;
+
+    return !!(chat.admin_rights?.pFlags?.manage_direct_messages);
   }
 
   /**

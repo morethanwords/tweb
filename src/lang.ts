@@ -975,6 +975,7 @@ const lang = {
   'ActionUserScored': 'un1 scored %1$s',
   'ActionYouScoredInGame': 'You scored %1$s in un2',
   'ActionUserScoredInGame': 'un1 scored %1$s in un2',
+  'ActionCreateDirectMessages' : 'Direct Messages Opened',
   'AndOther': {
     'one_value': 'and %1$d other',
     'other_value': 'and %1$d others'
@@ -1261,6 +1262,8 @@ const lang = {
   'DeleteMessagesTextGroup': 'You can also delete the %1$s you sent from the inboxes of other group members by checking "Unsend my messages".',
   'LeaveChannel': 'Leave Channel',
   'LeaveChannelMenu': 'Leave channel',
+  'LeaveMonoforum': 'Leave Conversation',
+  'MonoforumLeaveAlertWithName': 'Are you sure you want to leave **%1$s**?',
   'ChannelLeaveAlertWithName': 'Are you sure you want to leave **%1$s**?',
   'LeaveMegaMenu': 'Leave group',
   'DeleteChatUser': 'Delete chat',
@@ -2959,6 +2962,7 @@ const lang = {
   'ChatList.Context.DeleteAndExit': 'Delete and Leave',
   'ChatList.Context.LeaveChannel': 'Leave Channel',
   'ChatList.Context.LeaveGroup': 'Leave Group',
+  'ChatList.Context.LeaveMonoforum': 'Leave Conversation',
   'ChatList.Service.Call.incoming': 'Incoming Call (%@)',
   'ChatList.Service.Call.outgoing': 'Outgoing Call (%@)',
   'ChatList.Service.VideoCall.incoming': 'Incoming Video Call (%@)',
@@ -3421,6 +3425,7 @@ const lang = {
   'PaidMessages.SetPrice': 'Set your price per message',
   'PaidMessages.SetPriceDescription': 'You will receive %d% of the selected fee (~%d$) for each incoming message',
   'PaidMessages.SetPriceGroupDescription': 'Your group will receive %d% of the selected fee (~%d$) for each incoming messages',
+  'PaidMessages.SetPriceChannelDescription': 'Your channel will receive %d% of the selected fee (~%d$) for each incoming messages',
   'PaidMessages.RemoveFee': 'Remove Fee',
   'PaidMessages.RemoveFeeDescription': 'Add users or entire groups who won\'t have to pay to send you messages',
   'PaidMessages.NewChatDescription': '%s charges %d for each message',
@@ -3455,6 +3460,12 @@ const lang = {
     'one_value': 'Messages now cost **%d Star** in this group',
     'other_value': 'Messages now cost **%d Stars** in this group'
   },
+  'PaidMessages.ChannelPriceDisabled': '%s disabled direct messages',
+  'PaidMessages.ChannelPriceChangedFree': '%s now accepts direct messages for free',
+  'PaidMessages.ChannelPriceChanged': {
+    'one_value': '%2$s now accepts direct messages for **%1$d Star**',
+    'other_value': '%2$s now accepts direct messages for **%1$d Stars**'
+  },
   'PaidMessages.StarsRefundedToYou': {
     'one_value': '%2$s refunded **%1$d Star** to you',
     'other_value': '%2$s refunded **%1$d Stars** to you'
@@ -3480,6 +3491,7 @@ const lang = {
   'UnsavedChanges': 'Unsaved Changes',
   'UnsavedChangesDescription.Privacy': 'You have changed some privacy settings. Save changes?',
   'UnsavedChangesDescription.Group': 'You have changed some settings in this group. Save changes?',
+  'UnsavedChangesDescription.Channel': 'You have changed some settings in this channel. Save changes?',
   'DontAskAgain': 'Don\'t ask again',
   'ConfirmPayment': 'Confirm Payment',
   'Undo': 'Undo',
@@ -3561,7 +3573,26 @@ const lang = {
   'AgeVerification.Text': 'To access such content, you must confirm that you are at least 18 years old as required by local laws.\n\nThis is a one-time process using your phone\'s camera. Your selfie will not be stored by Telegram.',
   'AgeVerification.TextGB': 'To access such content, you must confirm that you are at least 18 years old as required by UK law.\n\nThis is a one-time process using your phone\'s camera. Your selfie will not be stored by Telegram.',
   'AgeVerification.Action': 'Verify my age',
-  'AgeVerification.Failed': 'Sorry, you can\'t view 18+ content.'
+  'AgeVerification.Failed': 'Sorry, you can\'t view 18+ content.',
+
+  'ChannelDirectMessages.Badge': 'Direct',
+  'ChannelDirectMessages.Manage': 'Direct Messages',
+  'ChannelDirectMessages.Welcome': 'Send a direct message to the administrator of\n%s',
+  'ChannelDirectMessages.WelcomePaid': '%s\ncharges %s per message to its admin',
+  'ChannelDirectMessages.ChooseMessage': 'Choose a message to reply to',
+  'ChannelDirectMessages.ThreadsCount': {
+    'one_value': '%d Chat',
+    'other_value': '%d Chats'
+  },
+  'ChannelDirectMessages.MessagesCount': {
+    'one_value': '%d Message',
+    'other_value': '%d Messages'
+  },
+  'ChannelDirectMessages.Settings.Title': 'Direct Messages',
+  'ChannelDirectMessages.Settings.Off': 'Off',
+  'ChannelDirectMessages.Settings.Free': 'Free',
+  'ChannelDirectMessages.Settings.SwitchLabel': 'Allow Direct Messages',
+  'ChannelDirectMessages.Settings.SwitchLabelCaption': 'Allow users to send messages to your channel\nYou can set the amount of stars to **0** if you want it to be free'
 };
 
 export default lang;
