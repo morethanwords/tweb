@@ -6118,8 +6118,6 @@ export class AppMessagesManager extends AppManager {
     const threadKey = this.getThreadKey(message);
     const threadId = threadKey ? +threadKey.split('_')[1] : undefined;
 
-    const isMonoforumThread = peerId.isAnyChat() && 'saved_peer_id' in message && message.saved_peer_id;
-
     const dialog = this.dialogsStorage.getAnyDialog(peerId, isLocalThreadUpdate ? threadId : undefined);
 
 
@@ -6194,6 +6192,14 @@ export class AppMessagesManager extends AppManager {
 
           this.dialogsStorage.processTopicUpdate(topic, oldTopic);
         }
+      }
+
+      if(action._ === 'messageActionPaidMessagesPrice' && this.appPeersManager.isBroadcast(message?.peerId)) {
+        const chat = this.appChatsManager.getChat(message.peerId.toChatId());
+        const linkedChatId = chat?._ === 'channel' && !chat?.pFlags?.monoforum && chat?.linked_monoforum_id;
+
+        MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] reload', action, message, chat, linkedChatId});
+        if(linkedChatId) this.reloadConversation(linkedChatId.toPeerId(true));
       }
     }
 
