@@ -912,6 +912,8 @@ const lang = {
   'Translate': 'Translate',
   'TranslationBarHidden': 'The translation bar is now hidden for this chat.',
   'TranslationBarHiddenChannel': 'The translation bar is now hidden for this channel.',
+  'PaymentMethod': 'Payment Method',
+  'PaymentMethodNewCard': 'New Card...',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

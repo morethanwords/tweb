@@ -782,6 +782,8 @@
 "Translate" = "Translate";
 "TranslationBarHidden" = "The translation bar is now hidden for this chat.";
 "TranslationBarHiddenChannel" = "The translation bar is now hidden for this channel.";
+"PaymentMethod" = "Payment Method";
+"PaymentMethodNewCard" = "New Card...";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";

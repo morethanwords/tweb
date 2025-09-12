@@ -2399,9 +2399,11 @@ export default class ChatBubbles {
       const media = (message as Message.message).media;
       const paidMedia = media?._ === 'messageMediaPaidMedia' ? media : undefined;
 
+      const inputInvoice = await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid);
       const popup = await PopupPayment.create({
         message: message as Message.message,
-        inputInvoice: await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid),
+        inputInvoice,
+        isReceipt: buyButton.classList.contains('is-receipt'),
         paidMedia
       });
 
