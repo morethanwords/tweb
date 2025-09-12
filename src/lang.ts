@@ -973,6 +973,7 @@ const lang = {
   'ActionUserScored': 'un1 scored %1$s',
   'ActionYouScoredInGame': 'You scored %1$s in un2',
   'ActionUserScoredInGame': 'un1 scored %1$s in un2',
+  'ActionCreateDirectMessages' : 'Direct Messages Opened',
   'AndOther': {
     'one_value': 'and %1$d other',
     'other_value': 'and %1$d others'

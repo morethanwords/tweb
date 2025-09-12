@@ -807,6 +807,13 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         break;
       }
+      case 'messageActionChannelCreate': {
+        const chat = message?.peerId ? apiManagerProxy.getChat(message.peerId) : undefined;
+
+        if(chat?._ === 'channel' && chat?.pFlags?.monoforum) langPackKey = 'ActionCreateDirectMessages';
+
+        break;
+      }
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;
