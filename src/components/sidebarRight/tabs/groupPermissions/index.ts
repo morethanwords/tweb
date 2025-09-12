@@ -464,7 +464,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         middleware: this.middlewareHelper.get()
       });
 
-      const values = [0, 10, 30, 60, 300, 900, 3600];
+      const values = [0, 5, 10, 30, 60, 300, 900, 3600];
       const steps = range.generateSteps(values);
       const initialValue = chatFull.slowmode_seconds || 0;
 
