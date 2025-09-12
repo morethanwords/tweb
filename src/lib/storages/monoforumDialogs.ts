@@ -187,7 +187,6 @@ class MonoforumDialogsStorage extends AppManager {
     if(!deletedDialogs.length) return;
 
     this.dropDeletedDialogs(parentPeerId, deletedDialogs);
-    this.rootScope.dispatchEvent('monoforum_dialogs_drop', {ids: deletedDialogs});
   };
 
   private processGetDialogsResult({parentPeerId, result}: MonoforumDialogsStorage.ProcessGetDialogsResultArgs) {
@@ -264,7 +263,7 @@ class MonoforumDialogsStorage extends AppManager {
     return position;
   }
 
-  private dropDeletedDialogs(parentPeerId: PeerId, ids: PeerId[]) {
+  public dropDeletedDialogs(parentPeerId: PeerId, ids: PeerId[]) {
     const deletedSet = new Set(ids);
     const collection = this.getDialogCollection(parentPeerId);
     const wasCollectionComplete = collection.items.length === collection.count;
@@ -273,6 +272,8 @@ class MonoforumDialogsStorage extends AppManager {
     ids.forEach(id => collection.map.delete(id));
 
     if(wasCollectionComplete) collection.count = collection.items.length;
+
+    this.rootScope.dispatchEvent('monoforum_dialogs_drop', {parentPeerId, ids});
   }
 
   public checkLastMessageForExistingDialog(message: MyMessage) {

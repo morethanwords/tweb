@@ -703,7 +703,7 @@ export default class ChatTopbar {
 
     const promise = Promise.all([
       reportSpam && this.managers.appMessagesManager.reportSpam(peerId),
-      deleteChat && this.managers.appMessagesManager.flushHistory(peerId, false, true),
+      deleteChat && this.managers.appMessagesManager.flushHistory({peerId, justClear: false, revoke: true}),
       this.managers.appUsersManager.toggleBlock(peerId, true)
     ]);
 

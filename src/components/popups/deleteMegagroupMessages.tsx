@@ -89,7 +89,7 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
       }
 
       if(actions.has('delete')) {
-        promises.push(managers.appMessagesManager.doFlushHistory(peerId, false, true, undefined, fromId));
+        promises.push(managers.appMessagesManager.doFlushHistory({peerId, justClear: false, revoke: true, participantPeerId: fromId}));
       }
     }
 

@@ -236,7 +236,7 @@ export type BroadcastEvents = {
   'sensitive_content_settings': SensitiveContentSettings,
 
   'monoforum_dialogs_update': {dialogs: MonoforumDialog[]},
-  'monoforum_dialogs_drop': {ids: PeerId[]},
+  'monoforum_dialogs_drop': {parentPeerId: PeerId, ids: PeerId[]},
   'monoforum_draft_update': {dialog: MonoforumDialog},
 };
 

@@ -95,6 +95,7 @@ const MonoforumDrawer = defineSolidElement({
     }
 
     controls.close = close;
+    autonomousList.onEmpty = close;
 
     const closeListener = (e: MouseEvent) => {
       if(e.target === props.element) close();

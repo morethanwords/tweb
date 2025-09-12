@@ -377,7 +377,8 @@ export default class DialogsContextMenu {
       this.peerId,
       undefined,
       undefined,
-      this.threadId
+      this.threadId,
+      this.monoforumParentPeerId
     );
   };
 }

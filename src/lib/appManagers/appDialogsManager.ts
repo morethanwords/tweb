@@ -1564,7 +1564,7 @@ export class AutonomousSavedDialogList extends AutonomousDialogListBase<SavedDia
 }
 
 export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<MonoforumDialog> {
-  public onAnyUpdate: () => void;
+  public onEmpty: () => void;
 
   constructor(private peerId: PeerId) {
     super();
@@ -1577,8 +1577,11 @@ export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<Mono
       this.updateDialog(dialog);
     });
 
-    this.listenerSetter.add(rootScope)('monoforum_dialogs_drop', ({ids}) => {
+    this.listenerSetter.add(rootScope)('monoforum_dialogs_drop', ({parentPeerId, ids}) => {
+      if(parentPeerId !== this.peerId) return;
       ids.forEach(id => this.deleteDialogByKey(id));
+
+      if(!this.sortedList.itemsLength()) this.onEmpty?.();
     });
   }
 

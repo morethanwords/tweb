@@ -314,6 +314,23 @@ type MarkDialogUnreadArgs = {
   monoforumThreadId?: PeerId;
 };
 
+type FlushHistoryArgs = {
+  peerId: PeerId;
+  justClear?: boolean;
+  revoke?: boolean;
+  threadOrSavedId?: number;
+  monoforumThreadId?: PeerId;
+};
+
+type DoFlushHistoryArgs = {
+  peerId: PeerId;
+  justClear?: boolean;
+  revoke?: boolean;
+  threadOrSavedId?: number;
+  monoforumThreadId?: PeerId;
+  participantPeerId?: PeerId;
+};
+
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
 
 export class AppMessagesManager extends AppManager {
@@ -3728,13 +3745,7 @@ export class AppMessagesManager extends AppManager {
     return promise || this.reloadConversationsPromise;
   }
 
-  public doFlushHistory(
-    peerId: PeerId,
-    just_clear?: boolean,
-    revoke?: boolean,
-    threadOrSavedId?: number,
-    participantPeerId?: PeerId
-  ): Promise<true> {
+  public doFlushHistory({peerId, justClear, revoke, threadOrSavedId, participantPeerId, monoforumThreadId}: DoFlushHistoryArgs): Promise<true> {
     const isSavedDialog = this.appPeersManager.isSavedDialog(peerId, threadOrSavedId);
     let promise: Promise<true>;
     const processResult = (affectedHistory: MessagesAffectedHistory) => {
@@ -3746,7 +3757,9 @@ export class AppMessagesManager extends AppManager {
 
       if(!affectedHistory.offset) {
         let filterMessage: (message: MyMessage) => boolean;
-        if(participantPeerId) {
+        if(monoforumThreadId) {
+          filterMessage = (message) => this.appPeersManager.getPeerId(message.saved_peer_id) === monoforumThreadId;
+        } else if(participantPeerId) {
           filterMessage = (message) => message.fromId === participantPeerId;
         } else if(isSavedDialog) {
           filterMessage = (message) => {
@@ -3785,10 +3798,20 @@ export class AppMessagesManager extends AppManager {
         return true;
       }
 
-      return this.doFlushHistory(peerId, just_clear, revoke, threadOrSavedId);
+      return this.doFlushHistory({peerId, justClear, revoke, threadOrSavedId, monoforumThreadId});
     };
 
-    if(participantPeerId) {
+    if(monoforumThreadId) {
+      promise = this.apiManager.invokeApiSingleProcess({
+        method: 'messages.deleteSavedHistory',
+        params: {
+          parent_peer: this.appPeersManager.getInputPeerById(peerId),
+          peer: this.appPeersManager.getInputPeerById(monoforumThreadId),
+          max_id: 0
+        },
+        processResult
+      });
+    } else if(participantPeerId) {
       promise = this.apiManager.invokeApiSingleProcess({
         method: 'channels.deleteParticipantHistory',
         params: {
@@ -3801,7 +3824,7 @@ export class AppMessagesManager extends AppManager {
       promise = this.apiManager.invokeApiSingleProcess({
         method: 'messages.deleteHistory',
         params: {
-          just_clear,
+          just_clear: justClear,
           revoke,
           peer: this.appPeersManager.getInputPeerById(peerId),
           max_id: 0
@@ -3831,13 +3854,8 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
-  public async flushHistory(
-    peerId: PeerId,
-    justClear?: boolean,
-    revoke?: boolean,
-    threadOrSavedId?: number
-  ) {
-    if(this.appPeersManager.isChannel(peerId) && !threadOrSavedId) {
+  public async flushHistory({peerId, justClear, revoke, threadOrSavedId, monoforumThreadId}: FlushHistoryArgs) {
+    if(this.appPeersManager.isChannel(peerId) && !threadOrSavedId && !monoforumThreadId) {
       const promise = this.getHistory({
         peerId,
         offsetId: 0,
@@ -3864,7 +3882,12 @@ export class AppMessagesManager extends AppManager {
       });
     }
 
-    return this.doFlushHistory(peerId, justClear, revoke, threadOrSavedId).then(() => {
+    return this.doFlushHistory({peerId, justClear, revoke, threadOrSavedId, monoforumThreadId}).then(() => {
+      if(monoforumThreadId) {
+        this.monoforumDialogsStorage.dropDeletedDialogs(peerId, [monoforumThreadId]);
+        return;
+      }
+
       if(!threadOrSavedId) {
         this.flushStoragesByPeerId(peerId);
       }
@@ -6198,7 +6221,6 @@ export class AppMessagesManager extends AppManager {
         const chat = this.appChatsManager.getChat(message.peerId.toChatId());
         const linkedChatId = chat?._ === 'channel' && !chat?.pFlags?.monoforum && chat?.linked_monoforum_id;
 
-        MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] reload', action, message, chat, linkedChatId});
         if(linkedChatId) this.reloadConversation(linkedChatId.toPeerId(true));
       }
     }
