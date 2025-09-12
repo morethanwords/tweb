@@ -1434,9 +1434,16 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
-      if(!dialogs.has(this.peerId) || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Saved) {
+      if(!dialogs.has(this.peerId) || this.chat.monoforumThreadId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Saved) {
         return;
       }
+
+      this.chat.input.setUnreadCount();
+    });
+
+    this.listenerSetter.add(rootScope)('monoforum_dialogs_update', ({dialogs}) => {
+      if(this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Saved) return;
+      if(!dialogs.find(dialog => dialog.parentPeerId === this.peerId && dialog.peerId === this.chat.monoforumThreadId)) return;
 
       this.chat.input.setUnreadCount();
     });

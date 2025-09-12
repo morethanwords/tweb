@@ -6358,12 +6358,15 @@ export class AppMessagesManager extends AppManager {
   };
 
   private onUpdateMessageReactions = (update: Update.updateMessageReactions) => {
-    const {peer, msg_id, top_msg_id, reactions} = update;
+    const {peer, msg_id, top_msg_id, saved_peer_id, reactions} = update;
     const channelId = (peer as Peer.peerChannel).channel_id;
     const mid = this.appMessagesIdsManager.generateMessageId(msg_id, channelId);
     const threadId = this.appMessagesIdsManager.generateMessageId(top_msg_id, channelId);
     const peerId = this.appPeersManager.getPeerId(peer);
+    const monoforumThreadId = this.appPeersManager.getPeerId(saved_peer_id);
     const message: MyMessage = this.getMessageByPeer(peerId, mid);
+
+    if(monoforumThreadId) this.monoforumDialogsStorage.updateDialogIfExists(peerId, monoforumThreadId);
 
     if(!message) {
       this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, force: true});

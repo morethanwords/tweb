@@ -304,8 +304,15 @@ class MonoforumDialogsStorage extends AppManager {
     this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: [dialog]});
   }
 
-  public async updateDialogsByPeerId({parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs) {
+  public updateDialogsByPeerId({parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs) {
     this.fetchByIdBatchQueue.addToQueue(parentPeerId, ids);
+  }
+
+  public updateDialogIfExists(parentPeerId: PeerId, peerId: PeerId) {
+    const dialog = this.getDialogByParent(parentPeerId, peerId);
+    if(!dialog) return;
+
+    this.updateDialogsByPeerId({parentPeerId, ids: [peerId]});
   }
 
   public async updateDialogUnreadMark({parentPeerId, peerId, unread}: MonoforumDialogsStorage.UpdateDialogUnreadMarkArgs) {

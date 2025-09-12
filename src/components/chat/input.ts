@@ -18,7 +18,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -135,6 +135,7 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesIntercept
 import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
 import focusInput from '../../helpers/dom/focusInput';
 import {PopupChecklist} from '../popups/checklist';
+import assumeType from '../../helpers/assumeType';
 
 // console.log('Recorder', Recorder);
 
@@ -1730,14 +1731,22 @@ export default class ChatInput {
       return;
     }
 
-    const dialog = await this.managers.dialogsStorage.getAnyDialog(
-      this.chat.peerId,
-      this.chat.type === ChatType.Discussion ? undefined : this.chat.threadId
-    );
+    const dialog = this.chat.monoforumThreadId ?
+      await this.managers.monoforumDialogsStorage.getDialogByParent(this.chat.peerId, this.chat.monoforumThreadId) :
+      await this.managers.dialogsStorage.getAnyDialog(
+        this.chat.peerId,
+        this.chat.type === ChatType.Discussion ? undefined : this.chat.threadId
+      );
 
     if(isSavedDialog(dialog)) {
       return;
     }
+
+    assumeType<Partial<Pick<Dialog.dialog,
+      | 'unread_count'
+      | 'unread_mentions_count'
+      | 'unread_reactions_count'
+    >>>(dialog);
 
     const count = dialog?.unread_count;
     setBadgeContent(this.goDownUnreadBadge, '' + (count || ''));
