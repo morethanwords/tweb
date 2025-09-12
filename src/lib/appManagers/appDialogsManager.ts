@@ -3044,7 +3044,7 @@ export class AppDialogsManager {
         apiManagerProxy.getChat(chat.linked_monoforum_id) :
         undefined;
 
-      if(linkedChat?._ === 'channel' && linkedChat?.admin_rights?.pFlags?.manage_direct_messages) {
+      if(linkedChat?._ === 'channel' && linkedChat?.admin_rights?.pFlags?.manage_direct_messages && !mediaSizes.isLessThanFloatingLeftSidebar) {
         const openOnlyDrawer = e.shiftKey;
         const isSamePeer = appImManager.isSamePeer(appImManager.chat, {peerId});
 
