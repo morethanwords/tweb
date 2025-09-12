@@ -944,7 +944,7 @@ export default class Chat extends EventListenerBase<{
       this.sharedMediaTab = appSidebarRight.createSharedMediaTab();
       this.sharedMediaTabs.push(this.sharedMediaTab);
       const linkedMonoforumId = (chat?._ === 'channel' && chat.pFlags?.monoforum && chat.linked_monoforum_id)?.toPeerId?.(true);
-      this.sharedMediaTab.setPeer(linkedMonoforumId || peerId, threadId);
+      this.sharedMediaTab.setPeer(this.monoforumThreadId || linkedMonoforumId || peerId, threadId);
     }
 
     this.input?.clearHelper(); // костыль
