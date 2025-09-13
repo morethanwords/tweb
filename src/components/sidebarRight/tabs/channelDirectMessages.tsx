@@ -19,12 +19,12 @@ const ChannelDirectMessages = () => {
   const {apiManagerProxy, rootScope} = useHotReloadGuard();
 
   const chat = tab.payload.chat;
+  if(!chat) return <></>;
+
   const linkedChat = chat.linked_monoforum_id ? apiManagerProxy.getChat(chat.linked_monoforum_id) : undefined;
 
   const initialEnabled = !!linkedChat;
   const initialStars = linkedChat?._ === 'channel' ? +linkedChat.send_paid_messages_stars || 0 : 0
-
-  if(!chat) return <></>;
 
   const [enabled, setEnabled] = createSignal(initialEnabled);
   const [stars, setStars] = createSignal(initialStars);

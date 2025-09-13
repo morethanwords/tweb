@@ -2114,7 +2114,7 @@ export class AppMessagesManager extends AppManager {
           quote_offset: options.replyToQuote.offset
         })
       };
-    } else if(options.replyToMonoforumPeerId) {
+    } else if(this.appPeersManager.canManageDirectMessages(options.peerId) && options.replyToMonoforumPeerId) {
       return {
         _: 'inputReplyToMonoForum',
         monoforum_peer_id: this.appPeersManager.getInputPeerById(options.replyToMonoforumPeerId)
