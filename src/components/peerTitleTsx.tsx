@@ -8,6 +8,7 @@ export const PeerTitleTsx = (props: {
   peerId: PeerId,
   onlyFirstName?: boolean,
   username?: boolean,
+  limitSymbols?: number,
   onClick?: () => void
 }) => {
   const peerTitle = new PeerTitle();
@@ -19,7 +20,8 @@ export const PeerTitleTsx = (props: {
         peerId,
         dialog: false,
         onlyFirstName: props.onlyFirstName,
-        username: props.username
+        username: props.username,
+        limitSymbols: props.limitSymbols
       });
       if(props.onClick) {
         const detach = attachClickEvent(peerTitle.element, props.onClick);

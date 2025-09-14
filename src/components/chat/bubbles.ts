@@ -203,6 +203,9 @@ import {ChecklistBubble} from './bubbles/checklist';
 import {getRestrictionReason, isSensitive} from '../../helpers/restrictions';
 import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
 import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
+import SuggestedPostActionContent from './bubbleParts/suggestedPostActionContent';
+import addSuggestedPostServiceMessage, {checkIfNotMePosted} from './bubbleParts/suggestPostServiceMessage';
+
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -5315,6 +5318,8 @@ export default class ChatBubbles {
 
     // await pause(1000);
 
+    const loadPromises: Promise<any>[] = [];
+
     const isMessage = message._ === 'message';
     const hasReactions = message._ === 'message' || (message._ === 'messageService' && message.pFlags.reactions_are_possible)
     const groupedId = isMessage && message.grouped_id;
@@ -5363,6 +5368,14 @@ export default class ChatBubbles {
       groupedMessages
     });
 
+    addSuggestedPostServiceMessage({
+      bubble,
+      message,
+      peerId: this.peerId,
+      canManageDirectMessages: this.chat.canManageDirectMessages,
+      loadPromises
+    });
+
 
     let isInUnread = !our &&
       !message.pFlags.out &&
@@ -5378,7 +5391,6 @@ export default class ChatBubbles {
       }
     }
 
-    const loadPromises: Promise<any>[] = [];
     const ret = {
       bubble,
       promises: loadPromises,
@@ -5529,6 +5541,23 @@ export default class ChatBubbles {
             our ? 'PaidMessages.StarsRefundedByYou' : 'PaidMessages.StarsRefundedToYou',
             [+action.stars, peerTitle.element]
           ));
+        } else if(action._ === 'messageActionSuggestedPostApproval' || action._ === 'messageActionSuggestedPostRefund' || action._ === 'messageActionSuggestedPostSuccess') {
+          const content = new SuggestedPostActionContent;
+
+          let peerTitle;
+          if(action._ === 'messageActionSuggestedPostApproval' && checkIfNotMePosted({peerId: this.peerId, canManageDirectMessages: this.chat.canManageDirectMessages, message})) {
+            peerTitle = new PeerTitle();
+            promise = peerTitle.update({peerId: this.peerId, onlyFirstName: this.chat.canManageDirectMessages, limitSymbols: 20, wrapOptions});
+          }
+
+          content.feedProps({
+            action,
+            message,
+            canManageDirectMessages: this.chat.canManageDirectMessages,
+            fromPeerTitle: peerTitle?.element
+          });
+
+          s.append(content);
         } else {
           promise = wrapMessageActionTextNew({
             message,

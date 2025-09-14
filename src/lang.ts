@@ -3590,7 +3590,28 @@ const lang = {
   'ChannelDirectMessages.Settings.Off': 'Off',
   'ChannelDirectMessages.Settings.Free': 'Free',
   'ChannelDirectMessages.Settings.SwitchLabel': 'Allow Direct Messages',
-  'ChannelDirectMessages.Settings.SwitchLabelCaption': 'Allow users to send messages to your channel\nYou can set the amount of stars to **0** if you want it to be free'
+  'ChannelDirectMessages.Settings.SwitchLabelCaption': 'Allow users to send messages to your channel\nYou can set the amount of stars to **0** if you want it to be free',
+
+  'SuggestedPosts.SuggestedAPost': '%s suggested a post',
+  'SuggestedPosts.YouSuggestedAPost': '**You** suggested a post',
+  'SuggestedPosts.SuggestedAChange': '%s suggested a change to the post',
+  'SuggestedPosts.YouSuggestedAChange': '**You** suggested a change to the post',
+  'SuggestedPosts.ApprovedAPost': '%s approved the post',
+  'SuggestedPosts.YouApprovedAPost': '**You** approved the post',
+  'SuggestedPosts.RejectedAPost': '%s rejected the post',
+  'SuggestedPosts.YouRejectedAPost': '**You** rejected the post',
+  'SuggestedPosts.BalanceTooLow': 'Balance too low to publish the suggested post',
+  'SuggestedPosts.Refund': 'The stars were returned to %s because the message was deleted',
+  'SuggestedPosts.AgreementReached': 'Agreement Reached!',
+  'SuggestedPosts.AgreementReached.ToBePublished': 'The post will be automatically published on %s',
+  'SuggestedPosts.AgreementReached.Published': 'The post was published on %s',
+  'SuggestedPosts.AgreementReached.HasBeenCharged': '%s has been charged **%s**',
+  'SuggestedPosts.AgreementReached.YouHaveBeenCharged': 'You have been charged **%s**',
+  'SuggestedPosts.AgreementReached.WillReceive': '%s will receive the **Stars** once the post has been live for **24** hours',
+  'SuggestedPosts.AgreementReached.WillBeRefunded': 'If %s removes the post before the **24** hours pass, the payment will be refunded',
+  'SuggestedPosts.Price': 'Price',
+  'SuggestedPosts.Time': 'Time',
+  'SuggestedPosts.TONAmount': '%d TON'
 };
 
 export default lang;
