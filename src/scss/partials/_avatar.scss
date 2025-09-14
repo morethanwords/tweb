@@ -121,7 +121,7 @@
   //     pointer-events: none;
   //   }
   // }
-  
+
   &-photo {
     //width: 100% !important;
     //height: 100% !important;
@@ -147,6 +147,12 @@
 
   &.is-forum {
     border-radius: var(--avatar-border-radius-forum);
+  }
+
+  &.is-monoforum {
+    border-bottom-left-radius: 0;
+    mask-image: url(assets/img/monoforum-avatar-mask.svg);
+    mask-size: 100% 100%;
   }
 
   &.is-topic {
@@ -203,7 +209,7 @@
     left: var(--offset);
     border-radius: 50%;
     background: var(--avatar-color-story-read);
-    
+
     &.is-unread {
       background-image: linear-gradient(215.87deg, var(--avatar-color-story-unread-from) -1.61%, var(--avatar-color-story-unread-to) 97.44%);
     }

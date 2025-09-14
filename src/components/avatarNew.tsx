@@ -344,6 +344,7 @@ export const AvatarNew = (props: {
   const [color, setColor] = createSignal<string>();
   const [isForum, setIsForum] = createSignal(false);
   const [isTopic, setIsTopic] = createSignal(false);
+  const [isMonoforum, setIsMonoforum] = createSignal(false);
   const [isSubscribed, setIsSubscribed] = createSignal(false);
   const {setStoriesSegments, storyDimensions, storiesCircle} = StoriesSegments({
     size: props.size as number,
@@ -502,6 +503,7 @@ export const AvatarNew = (props: {
     isForum,
     isTopic,
     isSubscribed,
+    isMonoforum,
     storiesSegments
   }: {
     abbreviature?: JSX.Element,
@@ -510,6 +512,7 @@ export const AvatarNew = (props: {
     isForum?: boolean,
     isTopic?: boolean,
     isSubscribed?: boolean,
+    isMonoforum?: boolean,
     storiesSegments?: StoriesSegments
   }) => {
     setThumb();
@@ -520,6 +523,7 @@ export const AvatarNew = (props: {
     setIsForum(isForum);
     setIsTopic(isTopic);
     setIsSubscribed(isSubscribed);
+    setIsMonoforum(isMonoforum);
     setStoriesSegments(storiesSegments);
   };
 
@@ -643,6 +647,7 @@ export const AvatarNew = (props: {
         color,
         isForum: _isForum,
         isSubscribed: _isSubscribed,
+        isMonoforum: !!linkedMonoforumPeer,
         storiesSegments
       });
       isSet = true;
@@ -794,6 +799,7 @@ export const AvatarNew = (props: {
     return {
       'is-forum': isForum(),
       'is-topic': isTopic(),
+      'is-monoforum': isMonoforum(),
       'avatar-relative': !!thumb() || isSubscribed()
     };
   };
