@@ -1,13 +1,14 @@
 import {Match, onCleanup, Show, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
+import {formatFullSentTime} from '../../../helpers/date';
 import {numberThousandSplitterForStars} from '../../../helpers/number/numberThousandSplitter';
 import {I18nTsx} from '../../../helpers/solid/i18n';
 import {Message, MessageAction} from '../../../layer';
-import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
-import styles from './suggestedPostActionContent.module.scss';
 import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
-import {PeerTitleTsx} from '../../peerTitleTsx';
 import rootScope from '../../../lib/rootScope';
+import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
+import {PeerTitleTsx} from '../../peerTitleTsx';
+import styles from './suggestedPostActionContent.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -100,7 +101,7 @@ const SuggestedPostActionContent = defineSolidElement({
           </Show>
           <Show when={suggestedPost().schedule_date}>
             <div class={styles.GridLabel}><I18nTsx key='SuggestedPosts.Time' /></div>
-            <div class={styles.GridValue}>{suggestedPost().schedule_date}</div>
+            <div class={styles.GridValue}>{formatFullSentTime(suggestedPost().schedule_date)}</div>
           </Show>
         </div>
       </Show>
@@ -110,7 +111,7 @@ const SuggestedPostActionContent = defineSolidElement({
           <I18nTsx
             class={styles.Subtitle}
             key={wasPublished() ? 'SuggestedPosts.AgreementReached.Published' : 'SuggestedPosts.AgreementReached.ToBePublished'}
-            args={[props.action.schedule_date + '']}
+            args={[formatFullSentTime(props.action.schedule_date)]}
           />
 
           <Show when={props.action.price}>
