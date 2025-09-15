@@ -43,6 +43,11 @@ const SEARCH_OPTIONS: ProcessSearchTextOptions = {
   includeTag: true
 };
 
+type GetPaidMessagesRevenueArgs = {
+  userId: UserId;
+  parentPeerId?: PeerId;
+};
+
 export class AppUsersManager extends AppManager {
   private storage: AppStoragesManager['storages']['users'];
 
@@ -1313,12 +1318,15 @@ export class AppUsersManager extends AppManager {
     });
   }
 
-  public async getPaidMessagesRevenue(userId: UserId) {
-    const revenue = await this.apiManager.invokeApi('account.getPaidMessagesRevenue', {user_id: this.getUserInput(userId)});
+  public async getPaidMessagesRevenue({userId, parentPeerId}: GetPaidMessagesRevenueArgs) {
+    const revenue = await this.apiManager.invokeApi('account.getPaidMessagesRevenue', {
+      user_id: this.getUserInput(userId),
+      parent_peer: parentPeerId ? this.appPeersManager.getInputPeerById(parentPeerId) : undefined
+    });
     return +revenue.stars_amount;
   }
 
-  public async addNoPaidMessagesException({
+  public async toggleNoPaidMessagesException({
     userId,
     refundCharged,
     requirePayment,
@@ -1329,11 +1337,24 @@ export class AppUsersManager extends AppManager {
     requirePayment?: boolean,
     parentPeerId?: PeerId
   }) {
-    return this.apiManager.invokeApi('account.toggleNoPaidMessagesException', {
+    const result = await this.apiManager.invokeApi('account.toggleNoPaidMessagesException', {
       user_id: this.getUserInput(userId),
       refund_charged: refundCharged,
       require_payment: requirePayment,
       parent_peer: parentPeerId ? this.appPeersManager.getInputPeerById(parentPeerId) : undefined
     });
+
+    if(parentPeerId) {
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateMonoForumNoPaidException',
+        channel_id: parentPeerId.toChatId(),
+        pFlags: !requirePayment ? {
+          exception: true
+        } : {},
+        saved_peer_id: this.appPeersManager.getOutputPeer(userId.toPeerId())
+      });
+    }
+
+    return result;
   }
 }

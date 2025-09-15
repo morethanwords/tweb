@@ -30,6 +30,7 @@ import createSubmenuTrigger from './createSubmenuTrigger';
 import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
 import memoizeAsyncWithTTL from '../helpers/memoizeAsyncWithTTL';
 import {MonoforumDialog} from '../lib/storages/monoforumDialogs';
+import {openRemoveFeePopup} from './chat/removeFee';
 
 
 export default class DialogsContextMenu {
@@ -219,26 +220,17 @@ export default class DialogsContextMenu {
       verify: () => {
         return this.canManageTopics && !!(this.dialog as ForumTopic.forumTopic).pFlags.closed;
       }
-    }, /* {
-      icon: 'folder',
-      text: 'FilterAddTo',
-      onClick: () => {},
-      inner: async() => {
-        const filters = await this.managers.filtersStorage.getDialogFilters();
-        return {
-          buttons: filters.map((filter) => {
-            const title = document.createElement('span');
-            title.append(wrapEmojiText(filter.title));
-            return {
-              icon: 'folder',
-              textElement: title,
-              onClick: () => {}
-            };
-          })
-        };
-      },
-      verify: () => false
-    },  */{
+    }, {
+      icon: 'dollar_circle',
+      text: 'PaidMessages.ChargeFee',
+      onClick: () => this.onToggleFeeClick(true),
+      verify: () => this.verifyToggleFee(true)
+    }, {
+      icon: 'dollar_circle_x',
+      text: 'PaidMessages.RemoveFee',
+      onClick: () => this.onToggleFeeClick(false),
+      verify: () => this.verifyToggleFee(false)
+    }, {
       icon: 'delete',
       className: 'danger',
       text: 'Delete',
@@ -370,6 +362,26 @@ export default class DialogsContextMenu {
       this.managers.appMessagesManager.markDialogUnread({peerId});
     }
   };
+
+  private verifyToggleFee = async(requirePayment: boolean) => {
+    if(!this.monoforumParentPeerId || this.dialog._ !== 'monoForumDialog') return false;
+
+    const chat = await this.managers.appChatsManager.getChat(this.monoforumParentPeerId.toChatId());
+    console.log('my-debug', {chat, requirePayment})
+    if(chat?._ !== 'channel' || !chat?.send_paid_messages_stars) return false;
+
+    return requirePayment ? !!this.dialog.pFlags?.nopaid_messages_exception : !this.dialog.pFlags?.nopaid_messages_exception;
+  };
+
+  private onToggleFeeClick = async(requirePayment: boolean) => {
+    const peerId = this.peerId;
+    const parentPeerId = this.monoforumParentPeerId;
+    if(!peerId || !parentPeerId) return;
+
+    try {
+      await openRemoveFeePopup({peerId, parentPeerId, requirePayment, managers: this.managers})
+    } catch{}
+  }
 
   private onDeleteClick = () => {
     PopupElement.createPopup(

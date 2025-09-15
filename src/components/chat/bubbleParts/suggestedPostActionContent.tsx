@@ -1,5 +1,4 @@
 import {Match, onCleanup, Show, Switch} from 'solid-js';
-import {unwrap} from 'solid-js/store';
 import {formatFullSentTime} from '../../../helpers/date';
 import {numberThousandSplitterForStars} from '../../../helpers/number/numberThousandSplitter';
 import {I18nTsx} from '../../../helpers/solid/i18n';
@@ -48,8 +47,6 @@ const SuggestedPostActionContent = defineSolidElement({
         args={[numberThousandSplitterForStars(props.action.price.amount)]}
       /> :
       undefined;
-
-    console.log('[my-debug]', unwrap(props.action))
 
 
     return <>

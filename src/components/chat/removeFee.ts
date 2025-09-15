@@ -95,27 +95,37 @@ export default class ChatRemoveFee extends PinnedContainer {
   }
 
   private async openRemoveFeeModal(peerId: PeerId) {
-    const userId = peerId.toUserId();
-    const revenue = await this.managers.appUsersManager.getPaidMessagesRevenue(userId);
-
     try {
-      const shouldRefund = await confirmationPopup({
-        className: styles.ConfirmationPopup,
-        titleLangKey: 'PaidMessages.RemoveFee',
-        descriptionLangKey: 'PaidMessages.RemoveFeeWarning',
-        descriptionLangArgs: [await wrapPeerTitle({peerId, onlyFirstName: true})],
-        checkbox: revenue ? {
-          text: 'PaidMessages.RemoveFeeRefund',
-          textArgs: [i18n('Stars', [revenue])]
-        } : undefined,
-        button: {
-          langKey: 'Confirm'
-        }
-      });
-
-      await this.managers.appUsersManager.addNoPaidMessagesException({userId, refundCharged: shouldRefund});
-
+      await openRemoveFeePopup({peerId, managers: this.managers})
       this.hide();
     } catch{}
   }
+}
+
+type OpenRemoveFeePopupArgs = {
+  peerId: PeerId;
+  parentPeerId?: PeerId;
+  requirePayment?: boolean;
+  managers: AppManagers;
+};
+
+export async function openRemoveFeePopup({peerId, parentPeerId, managers, requirePayment}: OpenRemoveFeePopupArgs) {
+  const userId = peerId.toUserId();
+  const revenue = !requirePayment ? await managers.appUsersManager.getPaidMessagesRevenue({userId, parentPeerId}) : undefined;
+
+  const shouldRefund = await confirmationPopup({
+    className: styles.ConfirmationPopup,
+    titleLangKey: requirePayment ? 'PaidMessages.ChargeFee' : 'PaidMessages.RemoveFee',
+    descriptionLangKey: requirePayment ? 'PaidMessages.ChargeFeeWarning' : 'PaidMessages.RemoveFeeWarning',
+    descriptionLangArgs: [await wrapPeerTitle({peerId, onlyFirstName: true})],
+    checkbox: revenue ? {
+      text: 'PaidMessages.RemoveFeeRefund',
+      textArgs: [i18n('Stars', [revenue])]
+    } : undefined,
+    button: {
+      langKey: 'Confirm'
+    }
+  });
+
+  await managers.appUsersManager.toggleNoPaidMessagesException({userId, refundCharged: shouldRefund, parentPeerId, requirePayment});
 }

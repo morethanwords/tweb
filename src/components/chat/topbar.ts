@@ -67,12 +67,13 @@ import ChatTranslation from './translation';
 import {useAppSettings} from '../../stores/appSettings';
 import PopupSendGift from '../popups/sendGift';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
-import ChatRemoveFee from './removeFee';
+import ChatRemoveFee, {openRemoveFeePopup} from './removeFee';
 import ChatTopbarSponsored from './topbarSponsored';
 import usePeerTranslation from '../../hooks/usePeerTranslation';
 import pause from '../../helpers/schedulers/pause';
 import appImManager from '../../lib/appManagers/appImManager';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import namedPromises from '../../helpers/namedPromises';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -649,6 +650,16 @@ export default class ChatTopbar {
         return !!userFull?.pFlags?.blocked;
       }
     }, {
+      icon: 'dollar_circle',
+      text: 'PaidMessages.ChargeFee',
+      onClick: () => this.onToggleFeeClick(true),
+      verify: () => this.verifyToggleFee(true)
+    }, {
+      icon: 'dollar_circle_x',
+      text: 'PaidMessages.RemoveFee',
+      onClick: () => this.onToggleFeeClick(false),
+      verify: () => this.verifyToggleFee(false)
+    }, {
       icon: 'delete',
       danger: true,
       text: 'Delete',
@@ -724,6 +735,29 @@ export default class ChatTopbar {
 
   private onCallClick(type: CallType) {
     this.chat.appImManager.callUser(this.peerId.toUserId(), type);
+  }
+
+  private verifyToggleFee = async(requirePayment: boolean) => {
+    if(!this.chat.monoforumThreadId) return;
+
+    const {chat, dialog} = await namedPromises({
+      chat: this.managers.appChatsManager.getChat(this.peerId.toChatId()),
+      dialog: this.managers.monoforumDialogsStorage.getDialogByParent(this.peerId, this.chat.monoforumThreadId)
+    });
+
+    if(chat?._ !== 'channel' || !chat?.send_paid_messages_stars) return false;
+
+    return requirePayment ? !!dialog.pFlags?.nopaid_messages_exception : !dialog.pFlags?.nopaid_messages_exception;
+  };
+
+  private onToggleFeeClick = async(requirePayment: boolean) => {
+    const peerId = this.chat.monoforumThreadId;
+    const parentPeerId = this.chat.peerId;
+    if(!peerId || !parentPeerId) return;
+
+    try {
+      await openRemoveFeePopup({peerId, parentPeerId, requirePayment, managers: this.managers})
+    } catch{}
   }
 
   private onJoinGroupCallClick = () => {

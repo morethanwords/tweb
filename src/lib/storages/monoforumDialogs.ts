@@ -105,7 +105,8 @@ class MonoforumDialogsStorage extends AppManager {
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateReadMonoForumInbox: this.onUpdateReadMonoforum,
-      updateReadMonoForumOutbox: this.onUpdateReadMonoforum
+      updateReadMonoForumOutbox: this.onUpdateReadMonoforum,
+      updateMonoForumNoPaidException: this.onUpdateMonoForumNoPaidException
     });
   }
 
@@ -382,6 +383,24 @@ class MonoforumDialogsStorage extends AppManager {
 
     const mainDialog = this.dialogsStorage.getDialogOnly(parentPeerId);
     if(mainDialog) this.appMessagesManager.reloadConversation(parentPeerId);
+  }
+
+  private onUpdateMonoForumNoPaidException = (update: Update.updateMonoForumNoPaidException) => {
+    const parentPeerId = update.channel_id.toPeerId(true);
+    const peerId = getPeerId(update.saved_peer_id);
+
+    const dialog = this.getDialogByParent(parentPeerId, peerId);
+    if(!dialog) return;
+
+    if(!dialog.pFlags) dialog.pFlags = {};
+
+    if(update.pFlags?.exception) {
+      dialog.pFlags.nopaid_messages_exception = true;
+    } else {
+      delete dialog.pFlags.nopaid_messages_exception;
+    }
+
+    this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: [dialog]});
   }
 }
 

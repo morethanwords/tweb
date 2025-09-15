@@ -3425,6 +3425,7 @@ const lang = {
   'PaidMessages.SetPriceGroupDescription': 'Your group will receive %d% of the selected fee (~%d$) for each incoming messages',
   'PaidMessages.SetPriceChannelDescription': 'Your channel will receive %d% of the selected fee (~%d$) for each incoming messages',
   'PaidMessages.RemoveFee': 'Remove Fee',
+  'PaidMessages.ChargeFee': 'Charge Fee',
   'PaidMessages.RemoveFeeDescription': 'Add users or entire groups who won\'t have to pay to send you messages',
   'PaidMessages.NewChatDescription': '%s charges %d for each message',
   'PaidMessages.MessageForStars': 'Message for %d',
@@ -3478,6 +3479,7 @@ const lang = {
   },
   'PaidMessages.UserPaysForMessagesNotice': '%s must pay %d for each message to you.',
   'PaidMessages.RemoveFeeWarning': 'Are you sure you want to allow %s to message you for free?',
+  'PaidMessages.ChargeFeeWarning': 'Are you sure you want to charge %s to message you?',
   'PaidMessages.RemoveFeeRefund': 'Refund the %d already paid',
   'PaidMessages.PriceChanged': 'Price changed to %s',
   'PaidMessages.FailedToPayForMessage': {
