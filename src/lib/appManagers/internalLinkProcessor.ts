@@ -1008,9 +1008,11 @@ export class InternalLinkProcessor {
   };
 
   public processShareLink = async(link: InternalLink.InternalLinkShare) => {
-    const peerId = await PopupPickUser.createSharingPicker2();
+    const {peerId, threadId, monoforumThreadId} = await PopupPickUser.createSharingPicker2();
     appImManager.setInnerPeer({
       peerId,
+      threadId,
+      monoforumThreadId,
       text: [link.url, link.text].filter(Boolean).join('\n')
     });
   };

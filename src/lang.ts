@@ -3591,6 +3591,7 @@ const lang = {
   'ChannelDirectMessages.Settings.Free': 'Free',
   'ChannelDirectMessages.Settings.SwitchLabel': 'Allow Direct Messages',
   'ChannelDirectMessages.Settings.SwitchLabelCaption': 'Allow users to send messages to your channel\nYou can set the amount of stars to **0** if you want it to be free',
+  'ChannelDirectMessages.SelectAChat': 'Select a chat',
 
   'SuggestedPosts.SuggestedAPost': '%s suggested a post',
   'SuggestedPosts.YouSuggestedAPost': '**You** suggested a post',

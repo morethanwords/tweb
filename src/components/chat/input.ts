@@ -3434,9 +3434,9 @@ export default class ChatInput {
   }
 
   public async createReplyPicker(replyTo: ChatInputReplyTo) {
-    const peerId = await PopupPickUser.createReplyPicker();
-    this.appImManager.setInnerPeer({peerId}).then(() => {
-      // TODO: Need a picker for monoforum threads
+    const {peerId, threadId, monoforumThreadId} = await PopupPickUser.createReplyPicker();
+    this.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId}).then(() => {
+      replyTo.replyToMonoforumPeerId = monoforumThreadId;
       this.appImManager.chat.input.initMessageReply(replyTo);
     });
   }

@@ -11,6 +11,7 @@ import {PeerTitleTsx} from '../peerTitleTsx';
 import Scrollable from '../scrollable';
 import SortedDialogList from '../sortedDialogList';
 import styles from './styles.module.scss';
+import createMonoforumDialogsList from './list';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -51,19 +52,7 @@ const MonoforumDrawer = defineSolidElement({
       if(canAnimate()) doubleRaf().then(() => setIsHidden(false));
     });
 
-    const scrollable = new Scrollable();
-    const autonomousList = new AutonomousMonoforumThreadList(props.peerId);
-    autonomousList.scrollable = scrollable;
-    autonomousList.sortedList = new SortedDialogList({
-      itemSize: 72,
-      appDialogsManager,
-      scrollable: scrollable,
-      managers: rootScope.managers,
-      requestItemForIdx: autonomousList.requestItemForIdx,
-      onListShrinked: autonomousList.onListShrinked,
-      indexKey: 'index_0',
-      monoforumParentPeerId: props.peerId
-    });
+    const autonomousList = createMonoforumDialogsList({peerId: props.peerId, appDialogsManager, AutonomousMonoforumThreadList})
 
     controls.autonomousList = autonomousList;
 
@@ -73,11 +62,7 @@ const MonoforumDrawer = defineSolidElement({
 
     const list = autonomousList.sortedList.list;
     appDialogsManager.setListClickListener({list, onFound: null, withContext: true});
-    scrollable.append(list);
-    autonomousList.bindScrollable();
 
-
-    autonomousList.onChatsScroll();
 
     function finishClose() {
       props.element.remove();
@@ -118,7 +103,7 @@ const MonoforumDrawer = defineSolidElement({
             <ButtonIconTsx icon='more' />
           </div>
           <div class={styles.ScrollableContainer}>
-            {scrollable.container}
+            {autonomousList.scrollable.container}
           </div>
         </div>
       </Show>
