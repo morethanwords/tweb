@@ -194,7 +194,7 @@ export default class ChatTopbar {
         onOpen: async(e, element) => {
           const deleteButton = this.menuButtons[this.menuButtons.length - 1];
           if(deleteButton?.element) {
-            const deleteButtonText = await this.managers.appPeersManager.getDeleteButtonText(this.peerId);
+            const deleteButtonText = await this.managers.appPeersManager.getDeleteButtonText(this.chat.monoforumThreadId || this.peerId);
             deleteButton.element.lastChild.replaceWith(i18n(deleteButtonText));
           }
         }
@@ -653,7 +653,7 @@ export default class ChatTopbar {
       danger: true,
       text: 'Delete',
       onClick: () => {
-        PopupElement.createPopup(PopupDeleteDialog, this.peerId, undefined, undefined, this.chat.threadId);
+        PopupElement.createPopup(PopupDeleteDialog, this.chat.monoforumThreadId || this.peerId, undefined, undefined, this.chat.threadId, this.chat.monoforumThreadId ? this.peerId : undefined);
       },
       verify: this.verifyIfCanDeleteChat
     }];
