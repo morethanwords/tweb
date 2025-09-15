@@ -132,7 +132,7 @@ export default class PopupPickUser extends PopupElement {
       if(
         !Array.isArray(peerId) &&
         !threadId && !monoforumThreadId &&
-        await this.managers.appPeersManager.isMonoforum(peerId)
+        await this.managers.appPeersManager.canManageDirectMessages(peerId)
       ) {
         ignoreOnSelect = true;
         await this.createMonoforumSelector({
