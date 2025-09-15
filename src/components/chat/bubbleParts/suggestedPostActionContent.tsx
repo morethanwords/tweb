@@ -4,6 +4,7 @@ import {numberThousandSplitterForStars} from '../../../helpers/number/numberThou
 import {I18nTsx} from '../../../helpers/solid/i18n';
 import {Message, MessageAction} from '../../../layer';
 import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
+import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
 import {PeerTitleTsx} from '../../peerTitleTsx';
@@ -48,6 +49,7 @@ const SuggestedPostActionContent = defineSolidElement({
       /> :
       undefined;
 
+    const makeEmoji = (text: string) => <span>{wrapEmojiText(text)}</span>;
 
     return <>
       <div class={styles.Label}>
@@ -71,16 +73,16 @@ const SuggestedPostActionContent = defineSolidElement({
             />
           </Match>
           <Match when={props.action?._ === 'messageActionSuggestedPostApproval' && props.action?.pFlags?.balance_too_low}>
-            <I18nTsx key='SuggestedPosts.BalanceTooLow' />
+            <I18nTsx key='SuggestedPosts.BalanceTooLow' args={[wrapEmojiText('❌')]} />
           </Match>
           <Match when={props.action?._ === 'messageActionSuggestedPostApproval' && props.action?.pFlags?.rejected}>
             <I18nTsx
               key={props.fromPeerTitle ? 'SuggestedPosts.RejectedAPost' : 'SuggestedPosts.YouRejectedAPost'}
-              args={props.fromPeerTitle ? [props.fromPeerTitle] : undefined}
+              args={props.fromPeerTitle ? [wrapEmojiText('❌'), props.fromPeerTitle] : [wrapEmojiText('❌')]}
             />
           </Match>
           <Match when={props.action?._ === 'messageActionSuggestedPostApproval'}>
-            <I18nTsx key='SuggestedPosts.AgreementReached' />
+            <I18nTsx key='SuggestedPosts.AgreementReached' args={[makeEmoji('🤝')]} />
           </Match>
         </Switch>
       </div>
@@ -108,26 +110,28 @@ const SuggestedPostActionContent = defineSolidElement({
           <I18nTsx
             class={styles.Subtitle}
             key={wasPublished() ? 'SuggestedPosts.AgreementReached.Published' : 'SuggestedPosts.AgreementReached.ToBePublished'}
-            args={[formatFullSentTime(props.action.schedule_date)]}
+            args={[makeEmoji('📅'), formatFullSentTime(props.action.schedule_date)]}
           />
 
           <Show when={props.action.price}>
             <I18nTsx
               class={styles.Subtitle}
               key={chargedPeerId() ? 'SuggestedPosts.AgreementReached.HasBeenCharged' : 'SuggestedPosts.AgreementReached.YouHaveBeenCharged'}
-              args={chargedPeerId() ? [<PeerTitleTsx peerId={chargedPeerId()} onlyFirstName limitSymbols={LIMIT_SYMBOLS} />, chargedPrice()] : [chargedPrice()]}
+              args={chargedPeerId() ?
+                [makeEmoji('💰'), <PeerTitleTsx peerId={chargedPeerId()} onlyFirstName limitSymbols={LIMIT_SYMBOLS} />, chargedPrice()] :
+                [makeEmoji('💰'), chargedPrice()]}
             />
 
             <I18nTsx
               class={styles.Subtitle}
               key='SuggestedPosts.AgreementReached.WillReceive'
-              args={[<PeerTitleTsx peerId={props.message.peerId} limitSymbols={LIMIT_SYMBOLS} />]}
+              args={[makeEmoji('⏳'), <PeerTitleTsx peerId={props.message.peerId} limitSymbols={LIMIT_SYMBOLS} />]}
             />
 
             <I18nTsx
               class={styles.Subtitle}
               key='SuggestedPosts.AgreementReached.WillBeRefunded'
-              args={[<PeerTitleTsx peerId={props.message.peerId} limitSymbols={LIMIT_SYMBOLS} />]}
+              args={[makeEmoji('🔄'), <PeerTitleTsx peerId={props.message.peerId} limitSymbols={LIMIT_SYMBOLS} />]}
             />
           </Show>
         </>
