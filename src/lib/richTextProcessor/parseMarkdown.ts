@@ -10,6 +10,7 @@
  */
 
 import {MARKDOWN_ENTITIES, MARKDOWN_REG_EXP} from '.';
+import {MOUNT_CLASS_TO} from '../../config/debug';
 import {MessageEntity} from '../../layer';
 import combineSameEntities from './combineSameEntities';
 import findConflictingEntity from './findConflictingEntity';
@@ -186,3 +187,5 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
 
   return [newText, currentEntities] as const;
 }
+
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.parseMarkdown = parseMarkdown);

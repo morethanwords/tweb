@@ -7,7 +7,7 @@
 import {PASS_CONFLICTING_ENTITIES, PASS_SINGLE_CONFLICTING_ENTITIES} from '.';
 import {MessageEntity} from '../../layer';
 
-const SINGLE_ENTITIES: Set<MessageEntity['_']> = new Set(['messageEntityPre', 'messageEntityCode']);
+export const SINGLE_ENTITIES: Set<MessageEntity['_']> = new Set(['messageEntityPre', 'messageEntityCode']);
 
 export default function findConflictingEntity(currentEntities: MessageEntity[], newEntity: MessageEntity) {
   let singleStart = -1, singleEnd = -1;
