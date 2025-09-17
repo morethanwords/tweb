@@ -7536,7 +7536,8 @@ export class AppMessagesManager extends AppManager {
       !message.pFlags.out ||
       message.pFlags.unread ||
       message.peerId === this.appPeersManager.peerId ||
-      this.appPeersManager.isBroadcast(message.peerId)
+      this.appPeersManager.isBroadcast(message.peerId) ||
+      this.appPeersManager.isMonoforum(message.peerId)
     ) {
       return false;
     }
