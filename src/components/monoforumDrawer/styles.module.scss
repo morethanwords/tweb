@@ -43,6 +43,9 @@
 .Title {
   flex: 1;
   padding-left: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ScrollableContainer {
