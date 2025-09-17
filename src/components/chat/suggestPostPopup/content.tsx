@@ -1,4 +1,5 @@
 import {createSignal, Show} from 'solid-js';
+import {formatFullSentTime} from '../../../helpers/date';
 import numberThousandSplitter from '../../../helpers/number/numberThousandSplitter';
 import {attachHotClassName} from '../../../helpers/solid/classname';
 import {I18nTsx} from '../../../helpers/solid/i18n';
@@ -6,6 +7,7 @@ import I18n from '../../../lib/langPack';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
 import currencyStarIcon from '../../currencyStarIcon';
 import {IconTsx} from '../../iconTsx';
+import PopupSchedule from '../../popups/schedule';
 import useAppConfig from '../../sidebarLeft/tabs/privacy/messages/useAppConfig';
 import useStarsCommissionAndWithdrawalPrice from '../../sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
 import SimpleFormField from '../../simpleFormField';
@@ -32,6 +34,7 @@ const SuggestPostPopupContent = defineSolidElement({
     attachHotClassName(props.element, styles.Container);
 
     const [stars, setStars] = createSignal('');
+    const [publishingTimestamp, setPublishingTimestamp] = createSignal<number>();
 
     const [appConfig] = useAppConfig();
 
@@ -57,17 +60,13 @@ const SuggestPostPopupContent = defineSolidElement({
         <SimpleFormField.SideContent first>
           {currencyStarIcon({class: styles.Icon})}
         </SimpleFormField.SideContent>
-        <SimpleFormField.LabelAndInput
-          forceOffset={44}
-          placeholderLabel={
-            <I18nTsx
-              key={!isBadPrice() ? 'SuggestedPosts.EnterPrice.Label' : 'SuggestedPosts.EnterPrice.MinOffer'}
-              args={isBadPrice() ? [minStars() + ''] : undefined}
-            />
-          }
-          inputProps={{type: 'number'}}
-          forceFieldValue
-        />
+        <SimpleFormField.Input type='number' forceFieldValue />
+        <SimpleFormField.Label forceOffset={44}>
+          <I18nTsx
+            key={!isBadPrice() ? 'SuggestedPosts.EnterPrice.Label' : 'SuggestedPosts.EnterPrice.MinOffer'}
+            args={isBadPrice() ? [minStars() + ''] : undefined}
+          />
+        </SimpleFormField.Label>
         <SimpleFormField.SideContent last>
           <Show when={willReceiveDollars()}>
             ~{numberThousandSplitter(willReceiveDollars(), ',')}$
@@ -82,13 +81,26 @@ const SuggestPostPopupContent = defineSolidElement({
       <Space amount='2rem' />
 
       <SimpleFormField
-        value={I18n.format('SuggestedPosts.PublishingTime.Anytime', true)}
-        onChange={setStars}
+        clickable
+        onClick={() => {
+          new PopupSchedule({
+            initDate: new Date,
+            onPick: (timestamp) => {
+              console.log(timestamp);
+              setPublishingTimestamp(timestamp);
+            }
+          }).show();
+        }}
       >
-        <SimpleFormField.LabelAndInput
-          inputProps={{disabled: true}}
-          placeholderLabel={<I18nTsx key='SuggestedPosts.PublishingTime.Label' />}
-        />
+        <SimpleFormField.InputStub>
+          {publishingTimestamp() ?
+            <span>{formatFullSentTime(publishingTimestamp())}</span> :
+            I18n.format('SuggestedPosts.PublishingTime.Anytime', true)
+          }
+        </SimpleFormField.InputStub>
+        <SimpleFormField.Label active>
+          <I18nTsx key='SuggestedPosts.PublishingTime.Label' />
+        </SimpleFormField.Label>
         <SimpleFormField.SideContent last>
           <IconTsx class={styles.Icon} icon='down' />
         </SimpleFormField.SideContent>

@@ -17,6 +17,10 @@
 
   cursor: text;
 
+  &.clickable {
+    cursor: pointer;
+  }
+
   &:hover .BorderThin {
     border-color: var(--primary-color);
   }
@@ -89,6 +93,9 @@
   height: 100%;
   flex: 1;
 
+  &:disabled {
+    pointer-events: none;
+  }
 
   /* Chrome, Safari, Edge, Opera */
   &[type=number]::-webkit-inner-spin-button,
@@ -106,6 +113,13 @@
   &[type=number] {
     appearance: textfield;
   }
+}
+
+.InputStub {
+  height: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 .Label {
