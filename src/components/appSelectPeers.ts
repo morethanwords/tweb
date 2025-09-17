@@ -282,14 +282,15 @@ export default class AppSelectPeers {
         Promise.all(peerIds.map(async(peerId) => {
           const userId = peerId.toUserId();
 
-          const {requirement, starsAmount} = await namedPromises({
+          const {requirement, starsAmount, canManageDirectMessages} = await namedPromises({
             requirement: this.managers.appUsersManager.getRequirementToContact(userId),
-            starsAmount: this.managers.appPeersManager.getStarsAmount(peerId)
+            starsAmount: this.managers.appPeersManager.getStarsAmount(peerId),
+            canManageDirectMessages: peerId.isAnyChat() && this.managers.appChatsManager.canManageDirectMessages(peerId.toChatId())
           });
 
-          return {peerId, userId, requirement, requiredStars: starsAmount};
+          return {peerId, userId, requirement, requiredStars: starsAmount, canManageDirectMessages};
         })).then((result) => {
-          for(const {peerId, requirement, requiredStars} of result) {
+          for(const {peerId, requirement, requiredStars, canManageDirectMessages} of result) {
             const element = this.getElementByPeerId(peerId.toPeerId(false));
             if(!element) {
               continue;
@@ -299,7 +300,7 @@ export default class AppSelectPeers {
               const lock = Icon('premium_lock', 'selector-premium-lock');
               element.append(lock);
               element.classList.add('is-premium-locked');
-            } else if(+requiredStars) {
+            } else if(+requiredStars && !canManageDirectMessages) {
               const starsAmount = formatNumber(+requiredStars, 1);
 
               const starsBadge = document.createElement('span');

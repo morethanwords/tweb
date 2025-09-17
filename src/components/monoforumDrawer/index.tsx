@@ -3,15 +3,12 @@ import liteMode from '../../helpers/liteMode';
 import {doubleRaf} from '../../helpers/schedulers';
 import pause from '../../helpers/schedulers/pause';
 import type {AutonomousMonoforumThreadList} from '../../lib/appManagers/appDialogsManager';
-import rootScope from '../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import {PeerTitleTsx} from '../peerTitleTsx';
-import Scrollable from '../scrollable';
-import SortedDialogList from '../sortedDialogList';
-import styles from './styles.module.scss';
 import createMonoforumDialogsList from './list';
+import styles from './styles.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 
