@@ -830,7 +830,7 @@ export default class PopupNewMedia extends PopupElement {
       caption = entities = effect = undefined;
     });
 
-    if(sendingParams.replyToMsgId) {
+    if(sendingParams.replyToMsgId || sendingParams.suggestedPost) {
       input.onHelperCancel();
     }
     // input.replyToMsgId = this.chat.threadId;

@@ -22,6 +22,8 @@ type CheckIfNotMePostedArgs = {
 export function checkIfNotMePosted({peerId, message, canManageDirectMessages}: CheckIfNotMePostedArgs) {
   if(!canManageDirectMessages) return message.fromId !== rootScope.myId;
 
+  if(message._ === 'message') return !message.pFlags?.out;
+
   const chat = apiManagerProxy.getChat(peerId);
   const linkedChat = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id ?
     apiManagerProxy.getChat(chat.linked_monoforum_id) : undefined;
