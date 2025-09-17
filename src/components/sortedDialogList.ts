@@ -133,6 +133,7 @@ export default class SortedDialogList {
       isMainList: this.indexKey === 'index_0',
       controlled: true,
       monoforumParentPeerId: this.monoforumParentPeerId,
+      meAsSaved: !this.monoforumParentPeerId,
       wrapOptions: undefined
     };
 
