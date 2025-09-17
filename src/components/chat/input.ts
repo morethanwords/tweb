@@ -137,6 +137,8 @@ import focusInput from '../../helpers/dom/focusInput';
 import {PopupChecklist} from '../popups/checklist';
 import assumeType from '../../helpers/assumeType';
 import {formatFullSentTime} from '../../helpers/date';
+import useStars from '../../stores/stars';
+import PopupStars from '../popups/stars';
 
 // console.log('Recorder', Recorder);
 
@@ -4303,6 +4305,12 @@ export default class ChatInput {
   public async openSuggestPostPopup() {
     const {default: SuggestPostPopup} = await import('./suggestPostPopup');
     new SuggestPostPopup({suggestChange: false, onFinish: (payload) => {
+      const balance = +useStars()() || 0;
+      if(!this.chat.canManageDirectMessages && payload.stars && payload.stars > balance) {
+        PopupElement.createPopup(PopupStars);
+        return;
+      }
+
       this.setTopInfo({
         type: 'suggested',
         callerFunc: () => { },
