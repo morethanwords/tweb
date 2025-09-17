@@ -3618,6 +3618,7 @@ export default class ChatInput {
       this.messageInputField?.input?.classList.add('hide')
       this.messageInputField?.setHidden(true);
       if(this.btnToggleEmoticons) this.btnToggleEmoticons.disabled = true;
+      this.autocompleteHelperController.hideOtherHelpers();
 
       onCleanup(() => {
         this.messageInputField?.input?.classList.remove('hide');
