@@ -42,6 +42,14 @@
   &:hover .Label {
     color: var(--primary-color);
   }
+
+  &.error .BorderThin, &.error .BorderThick {
+    border-color: var(--danger-color);
+  }
+
+  &.error .Label {
+    color: var(--danger-color);
+  }
 }
 
 .Border {
@@ -80,6 +88,24 @@
   margin: 0;
   height: 100%;
   flex: 1;
+
+
+  /* Chrome, Safari, Edge, Opera */
+  &[type=number]::-webkit-inner-spin-button,
+  &[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Firefox */
+  &[type=number] {
+    -moz-appearance: textfield;
+  }
+
+  /* General reset (covers newer browsers moving to standard appearance) */
+  &[type=number] {
+    appearance: textfield;
+  }
 }
 
 .Label {
@@ -92,11 +118,12 @@
   pointer-events: none;
 
   @include animation-level-global(2) {
-    transition: .2s;
+    transition: all .2s, font-weight .05s 0.1s;
   }
 }
 
 .SideContent {
+  color: var(--secondary-text-color);
   margin: 0 0.25rem;
 
   &.first {

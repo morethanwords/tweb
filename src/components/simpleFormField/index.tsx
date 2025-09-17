@@ -1,4 +1,4 @@
-import {Accessor, createContext, createSignal, JSX, mergeProps, onMount, ParentProps, Setter, splitProps, useContext} from 'solid-js';
+import {Accessor, createContext, createSignal, JSX, mergeProps, onMount, ParentProps, Setter, splitProps, useContext, createEffect} from 'solid-js';
 import styles from './styles.module.scss';
 
 
@@ -14,6 +14,8 @@ const Context = createContext<SimpleFormFieldContextValue>();
 const SimpleFormField = (props: ParentProps<{
   value?: string;
   onChange?: (value: string) => void;
+
+  isError?: boolean;
 }>) => {
   const [input, setInput] = createSignal<HTMLInputElement>();
 
@@ -30,6 +32,9 @@ const SimpleFormField = (props: ParentProps<{
     <Context.Provider value={contextValue}>
       <div
         class={styles.Container}
+        classList={{
+          [styles.error]: props.isError
+        }}
         onClick={() => {
           contextValue.input()?.focus();
         }}
@@ -46,6 +51,7 @@ SimpleFormField.LabelAndInput = (inProps: {
   inputProps?: Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'ref'>;
   placeholderLabel: JSX.Element;
   forceOffset?: number;
+  forceFieldValue?: boolean;
 }) => {
   const props = mergeProps({inputProps: {}}, inProps);
   const [inputProps, restInputProps] = splitProps(props.inputProps, ['class', 'classList']);
@@ -74,7 +80,10 @@ SimpleFormField.LabelAndInput = (inProps: {
           ...inputProps.classList
         }}
         value={context.value()}
-        onChange={(e) => context.onChange(e.currentTarget.value)}
+        onInput={(e) => {
+          context.onChange(e.currentTarget.value)
+          if(props.forceFieldValue) context.input().value = context.value();
+        }}
         {...restInputProps}
       />
       <div

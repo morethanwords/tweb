@@ -1,3 +1,4 @@
+import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
 import PopupElement from '../../popups';
 import SuggestPostPopupContent from './content';
 
@@ -12,6 +13,7 @@ export default class SuggestPostPopup extends PopupElement {
     });
 
     const content = new SuggestPostPopupContent;
+    content.HotReloadGuard = SolidJSHotReloadGuardProvider;
     content.feedProps({
       popupContainer: this.container,
       popupHeader: this.header,

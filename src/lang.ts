@@ -3598,6 +3598,7 @@ const lang = {
   'SuggestedPosts.SuggestAPost': 'Suggest a post',
   'SuggestedPosts.SuggestAChange': 'Suggest a change',
   'SuggestedPosts.EnterPrice.Label': 'Enter Price in Stars',
+  'SuggestedPosts.EnterPrice.MinOffer': 'Minimum Offer: %d Stars',
   'SuggestedPosts.EnterPrice.Description': 'Choose how many Stars to pay to publish this post.',
   'SuggestedPosts.PublishingTime.Label': 'Publishing Time',
   'SuggestedPosts.PublishingTime.Anytime': 'Anytime',
