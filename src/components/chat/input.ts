@@ -186,6 +186,8 @@ export default class ChatInput {
   public attachMenu: HTMLElement;
   private attachMenuButtons: ButtonMenuItemOptionsVerifiable[];
 
+  public btnSuggestPost: HTMLElement;
+
   private sendMenu: SendMenu;
 
   private replyElements: {
@@ -1112,7 +1114,10 @@ export default class ChatInput {
     this.attachMenu.classList.add('attach-file');
     this.attachMenu.firstElementChild.replaceWith(Icon('attach'));
 
-    // this.inputContainer.append(this.sendMenu);
+    this.btnSuggestPost = ButtonIcon('message hide');
+    attachClickEvent(this.btnSuggestPost, () => {
+      this.openSuggestPostPopup();
+    });
 
     this.recordTimeEl = document.createElement('div');
     this.recordTimeEl.classList.add('record-time');
@@ -1128,6 +1133,7 @@ export default class ChatInput {
       this.inputMessageContainer,
       this.btnScheduled,
       this.btnToggleReplyMarkup,
+      this.btnSuggestPost,
       this.attachMenu,
       this.recordTimeEl,
       this.fileInput
@@ -2145,6 +2151,11 @@ export default class ChatInput {
         this.unblockBtn.classList.toggle('hide', !good);
       }
 
+      if(this.chat) {
+        const canSuggest = isMonoforum && (!!monoforumThreadId || !canManageDirectMessages);
+        this.btnSuggestPost.classList.toggle('hide', !canSuggest);
+      }
+
       this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
 
       if(this.messageInput) {
@@ -2178,7 +2189,7 @@ export default class ChatInput {
 
       this._center(neededFakeContainer, false);
 
-      this.setStarsAmount(this.chat.starsAmount); // should reset when undefined
+      this.setStarsAmount(this.chat?.starsAmount); // should reset when undefined
 
       this.directMessagesHandler.set({
         canManageDirectMessages: isMonoforum && canManageDirectMessages && !monoforumThreadId,
@@ -4264,5 +4275,10 @@ export default class ChatInput {
     this.directMessagesHandler.set({isReplying: true});
 
     return container;
+  }
+
+  public async openSuggestPostPopup() {
+    const {default: SuggestPostPopup} = await import('./suggestPostPopup');
+    new SuggestPostPopup(false).show();
   }
 }

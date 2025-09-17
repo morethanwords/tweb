@@ -1,0 +1,22 @@
+.Popup {
+  width: 400px;
+  max-width: 100%;
+
+  &Header {
+    margin-bottom: 1rem;
+  }
+}
+
+.Container {
+  padding: 0.5rem 0;
+}
+
+.Caption {
+  font-size: 14px;
+  color: var(--secondary-text-color);
+  padding: 0.25rem 1rem;
+}
+
+.Icon {
+  display: flex;
+}

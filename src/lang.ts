@@ -3595,6 +3595,13 @@ const lang = {
   'ChannelDirectMessages.Settings.SwitchLabelCaption': 'Allow users to send messages to your channel\nYou can set the amount of stars to **0** if you want it to be free',
   'ChannelDirectMessages.SelectAChat': 'Select a chat',
 
+  'SuggestedPosts.SuggestAPost': 'Suggest a post',
+  'SuggestedPosts.SuggestAChange': 'Suggest a change',
+  'SuggestedPosts.EnterPrice.Label': 'Enter Price in Stars',
+  'SuggestedPosts.EnterPrice.Description': 'Choose how many Stars to pay to publish this post.',
+  'SuggestedPosts.PublishingTime.Label': 'Publishing Time',
+  'SuggestedPosts.PublishingTime.Anytime': 'Anytime',
+  'SuggestedPosts.PublishingTime.Description': 'Select the date and time you want the post to be published. The post will remain available for at least 24 hours from this date.',
   'SuggestedPosts.SuggestedAPost': '%s suggested a post',
   'SuggestedPosts.YouSuggestedAPost': '**You** suggested a post',
   'SuggestedPosts.SuggestedAChange': '%s suggested a change to the post',
