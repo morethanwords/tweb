@@ -42,6 +42,8 @@ const SuggestedPostActionContent = defineSolidElement({
     const savedPeerId = () => props.message.saved_peer_id && getPeerId(props.message.saved_peer_id);
     const chargedPeerId = () => savedPeerId() !== rootScope.myId ? savedPeerId() : undefined;
 
+    const awardedStars = () => props.action?._ === 'messageActionSuggestedPostSuccess' && props.action.price.amount;
+
     const chargedPrice = () => props.action?._ === 'messageActionSuggestedPostApproval' && props.action.price ?
       <I18nTsx
         key={props.action.price._ === 'starsTonAmount' ? 'SuggestedPosts.TONAmount' : 'Stars'}
@@ -83,6 +85,15 @@ const SuggestedPostActionContent = defineSolidElement({
           </Match>
           <Match when={props.action?._ === 'messageActionSuggestedPostApproval'}>
             <I18nTsx key='SuggestedPosts.AgreementReached' args={[makeEmoji('🤝')]} />
+          </Match>
+          <Match when={props.action?._ === 'messageActionSuggestedPostSuccess'}>
+            <I18nTsx
+              key='SuggestedPosts.PostSuccess'
+              args={[
+                makeEmoji('✅'),
+                <I18nTsx key='Stars' args={[numberThousandSplitterForStars(awardedStars())]} />
+              ]}
+            />
           </Match>
         </Switch>
       </div>

@@ -30,6 +30,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import Icon from '../icon';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
 import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
+import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -812,6 +813,28 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         if(chat?._ === 'channel' && chat?.pFlags?.monoforum) langPackKey = 'ActionCreateDirectMessages';
 
+        break;
+      }
+      case 'messageActionSuggestedPostApproval': {
+        if(action.pFlags.balance_too_low) {
+          langPackKey = 'SuggestedPosts.BalanceTooLow';
+          args = [wrapEmojiText('❌')]
+        } else if(action.pFlags.rejected) {
+          langPackKey = 'SuggestedPosts.GenericRejectedPost';
+          args = [wrapEmojiText('❌')]
+        } else {
+          langPackKey = 'SuggestedPosts.AgreementReached';
+          args = [wrapEmojiText('🤝')];
+        }
+        break;
+      }
+      case 'messageActionSuggestedPostSuccess': {
+        langPackKey = 'SuggestedPosts.PostSuccess';
+        args = [wrapEmojiText('✅'), i18n('Stars', [numberThousandSplitterForStars(action.price.amount)])];
+        break;
+      }
+      case 'messageActionSuggestedPostRefund': {
+        langPackKey = 'SuggestedPosts.GenericRefund';
         break;
       }
       default:
