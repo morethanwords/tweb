@@ -116,6 +116,12 @@ const SuggestedPostActionContent = defineSolidElement({
         </div>
       </Show>
 
+      {props.action?._ === 'messageActionSuggestedPostApproval' && props.action.reject_comment && (
+        <div class={styles.Subtitle}>
+          "{props.action.reject_comment}"
+        </div>
+      )}
+
       {props.action?._ === 'messageActionSuggestedPostApproval' && !props.action?.pFlags?.balance_too_low && !props.action?.pFlags?.rejected &&
         <>
           <I18nTsx
