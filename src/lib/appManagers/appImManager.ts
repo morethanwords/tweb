@@ -1769,7 +1769,8 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
+    const threadId = chat.threadId || chat.monoforumThreadId;
+    const key = chat.peerId + (threadId ? '_' + threadId : '');
     return this.chatPositions[key];
   }
 
