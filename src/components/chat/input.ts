@@ -136,6 +136,7 @@ import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
 import focusInput from '../../helpers/dom/focusInput';
 import {PopupChecklist} from '../popups/checklist';
 import assumeType from '../../helpers/assumeType';
+import {formatFullSentTime} from '../../helpers/date';
 
 // console.log('Recorder', Recorder);
 
@@ -152,9 +153,14 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
   send_inline: 'GlobalAttachInlineRestricted'
 };
 
-type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
+type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested';
 type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
 export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
+
+type SuggestedPostPayload = {
+  stars?: number;
+  timestamp?: number;
+};
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
@@ -358,6 +364,8 @@ export default class ChatInput {
 
   private starsState: ReturnType<ChatInput['createStarsState']>;
   private directMessagesHandler: ReturnType<ChatInput['createDirectMessagesHandler']>;
+
+  public suggestedPost: SuggestedPostPayload;
 
   constructor(
     public chat: Chat,
@@ -2152,8 +2160,7 @@ export default class ChatInput {
       }
 
       if(this.chat) {
-        const canSuggest = isMonoforum && (!!monoforumThreadId || !canManageDirectMessages);
-        this.btnSuggestPost.classList.toggle('hide', !canSuggest);
+        this.btnSuggestPost.classList.toggle('hide', !this.canShowSuggestPostButton(!!this.helperType));
       }
 
       this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
@@ -3765,6 +3772,7 @@ export default class ChatInput {
       } else {
         this.onMessageSent(false, false);
       }
+      if(this.suggestedPost) this.clearHelper();
       // this.onMessageSent();
     }
 
@@ -4149,6 +4157,12 @@ export default class ChatInput {
       this.forwarding = undefined;
     }
 
+    if(type !== 'suggested') {
+      this.suggestedPost = undefined;
+      this.btnSuggestPost.classList.toggle('hide', !this.canShowSuggestPostButton(false))
+      this.fileInput.multiple = true;
+    }
+
     this.editMsgId = this.editMessage = undefined;
     this.helperType = this.helperFunc = undefined;
     this.setCurrentHover();
@@ -4227,6 +4241,8 @@ export default class ChatInput {
       this.helperFunc = callerFunc;
     }
 
+    this.btnSuggestPost?.classList.toggle('hide', !this.canShowSuggestPostButton(true));
+
     const replyParent = this.replyElements.container;
     const oldReply = replyParent.lastElementChild.previousElementSibling;
     const haveReply = oldReply.classList.contains('reply');
@@ -4277,8 +4293,46 @@ export default class ChatInput {
     return container;
   }
 
+  private canShowSuggestPostButton(hasSuggestedHeader?: boolean) {
+    const canSuggest = this.chat.isMonoforum && (!!this.chat.monoforumThreadId || !this.chat.canManageDirectMessages);
+
+    return canSuggest && !hasSuggestedHeader;
+  }
+
   public async openSuggestPostPopup() {
     const {default: SuggestPostPopup} = await import('./suggestPostPopup');
-    new SuggestPostPopup(false).show();
+    new SuggestPostPopup({suggestChange: false, onFinish: (payload) => {
+      this.setTopInfo({
+        type: 'suggested',
+        callerFunc: () => { },
+        title: i18n('SuggestedPosts.SuggestAPost'),
+        subtitle: this.createSuggestedPostSubtitle(payload)
+      });
+      this.suggestedPost = payload;
+      this.fileInput.multiple = false;
+    }}).show();
+  }
+
+  private createSuggestedPostSubtitle(payload: SuggestedPostPayload) {
+    if(!payload.stars && !payload.timestamp) {
+      return i18n('SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditions');
+    }
+
+    const element = document.createElement('div');
+    element.classList.add('suggested-post-subtitle');
+
+    if(payload.stars) {
+      const span = document.createElement('span');
+      span.append(i18n('Stars', [numberThousandSplitterForStars(payload.stars)]));
+      element.append(span);
+    }
+
+    if(payload.timestamp) {
+      const span = document.createElement('span');
+      span.append(wrapEmojiText('📅'), formatFullSentTime(payload.timestamp));
+      element.append(span);
+    }
+
+    return element;
   }
 }

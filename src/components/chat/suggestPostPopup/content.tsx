@@ -7,12 +7,13 @@ import I18n from '../../../lib/langPack';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
 import currencyStarIcon from '../../currencyStarIcon';
 import {IconTsx} from '../../iconTsx';
-import PopupSchedule from '../../popups/schedule';
 import useAppConfig from '../../sidebarLeft/tabs/privacy/messages/useAppConfig';
 import useStarsCommissionAndWithdrawalPrice from '../../sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
 import SimpleFormField from '../../simpleFormField';
 import Space from '../../space';
 import styles from './styles.module.scss';
+import PopupSchedulePost from './popupSchedulePost';
+import ripple from '../../ripple'; ripple;
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -20,7 +21,12 @@ if(import.meta.hot) import.meta.hot.accept();
 type Props = {
   popupContainer: HTMLElement;
   popupHeader: HTMLElement;
-  onFinish: () => void;
+  onFinish: (payload: FinishPayload) => void;
+};
+
+export type FinishPayload = {
+  stars: number;
+  timestamp: number;
 };
 
 const MIN_STARS = 5;
@@ -47,8 +53,19 @@ const SuggestPostPopupContent = defineSolidElement({
 
     const isBadPrice = () => +stars() && +stars() < minStars();
 
+    const hasErrors = () => isBadPrice();
+
     const onChange = (value: string) => {
       setStars(!value ? value : '' + Math.min(maxStars(), +(value.replace(/\D/g, '')) || 0));
+    };
+
+    const onFinish = () => {
+      if(hasErrors()) return;
+
+      props.onFinish({
+        stars: +stars() || undefined,
+        timestamp: publishingTimestamp() || undefined
+      });
     };
 
     return <>
@@ -83,7 +100,8 @@ const SuggestPostPopupContent = defineSolidElement({
       <SimpleFormField
         clickable
         onClick={() => {
-          new PopupSchedule({
+          // TODO: Need proper minimum and maximum time
+          new PopupSchedulePost({
             initDate: new Date,
             onPick: (timestamp) => {
               console.log(timestamp);
@@ -109,6 +127,17 @@ const SuggestPostPopupContent = defineSolidElement({
       <div class={styles.Caption}>
         <I18nTsx key='SuggestedPosts.PublishingTime.Description' />
       </div>
+
+      <Space amount='2rem' />
+
+      <button
+        use:ripple
+        class="btn-primary btn-color-primary btn-large"
+        disabled={hasErrors()}
+        onClick={onFinish}
+      >
+        <I18nTsx key='SuggestedPosts.MakeAnOffer' />
+      </button>
     </>;
   }
 });

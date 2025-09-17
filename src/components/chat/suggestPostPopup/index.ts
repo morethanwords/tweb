@@ -1,10 +1,15 @@
 import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
 import PopupElement from '../../popups';
-import SuggestPostPopupContent from './content';
+import SuggestPostPopupContent, {FinishPayload} from './content';
 
+
+type Args = {
+  suggestChange?: boolean;
+  onFinish: (payload: FinishPayload) => void;
+};
 
 export default class SuggestPostPopup extends PopupElement {
-  constructor(suggestChange: boolean) {
+  constructor({suggestChange, onFinish}: Args) {
     super('suggest-post-popup', {
       overlayClosable: true,
       closable: true,
@@ -17,7 +22,8 @@ export default class SuggestPostPopup extends PopupElement {
     content.feedProps({
       popupContainer: this.container,
       popupHeader: this.header,
-      onFinish: () => {
+      onFinish: (payload) => {
+        onFinish(payload);
         this.hide();
       }
     });

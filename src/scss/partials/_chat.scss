@@ -2040,3 +2040,9 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 .avatar-for-reply-markup {
   margin-bottom: 43px;
 }
+
+.suggested-post-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

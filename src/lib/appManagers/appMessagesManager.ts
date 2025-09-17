@@ -86,6 +86,7 @@ import canVideoBeAnimated from './utils/docs/canVideoBeAnimated';
 import getPhotoInput from './utils/photos/getPhotoInput';
 import {BatchProcessor} from '../../helpers/sortedList';
 import {MonoforumDialog} from '../storages/monoforumDialogs';
+import formatStarsAmount from './utils/payments/formatStarsAmount';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -234,7 +235,11 @@ export type MessageSendingParams = Partial<{
   savedReaction: Reaction[],
   invertMedia: boolean,
   effect: DocId,
-  confirmedPaymentResult: ConfirmedPaymentResult
+  confirmedPaymentResult: ConfirmedPaymentResult,
+  suggestedPost: {
+    stars?: number,
+    timestamp?: number
+  }
 }>;
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -905,7 +910,8 @@ export class AppMessagesManager extends AppManager {
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
           effect: options.effect,
-          allow_paid_stars: paidStars
+          allow_paid_stars: paidStars,
+          suggested_post: message.suggested_post
         };
 
         const mergedOptions: MessagesSendMessage | MessagesSendMedia = {
@@ -1472,7 +1478,8 @@ export class AppMessagesManager extends AppManager {
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
           effect: options.effect,
-          allow_paid_stars: paidStars
+          allow_paid_stars: paidStars,
+          suggested_post: message.suggested_post
         }).then((updates) => {
           this.apiUpdatesManager.processUpdateMessage(updates)
           this.apiUpdatesManager.processPaidMessageUpdate({
@@ -2307,7 +2314,13 @@ export class AppMessagesManager extends AppManager {
       pending: true,
       effect: options.effect,
       paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined,
-      saved_peer_id: options.replyToMonoforumPeerId ? this.appPeersManager.getOutputPeer(options.replyToMonoforumPeerId) : undefined
+      saved_peer_id: options.replyToMonoforumPeerId ? this.appPeersManager.getOutputPeer(options.replyToMonoforumPeerId) : undefined,
+      suggested_post: options.suggestedPost ? {
+        _: 'suggestedPost',
+        pFlags: {},
+        price: options.suggestedPost.stars ? formatStarsAmount(options.suggestedPost.stars) : undefined,
+        schedule_date: options.suggestedPost.timestamp
+      } : undefined
     };
 
     defineNotNumerableProperties(message, ['send', 'promise']);
