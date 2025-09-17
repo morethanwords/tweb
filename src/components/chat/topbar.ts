@@ -425,12 +425,12 @@ export default class ChatTopbar {
       icon: 'mute',
       text: 'ChatList.Context.Mute',
       onClick: this.onMuteClick,
-      verify: async() => this.chat.type === ChatType.Chat && rootScope.myId !== this.peerId && !(await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.peerId, respectType: false, threadId: this.chat.threadId}))
+      verify: async() => this.chat.type === ChatType.Chat && !this.chat.monoforumThreadId && rootScope.myId !== this.peerId && !(await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.peerId, respectType: false, threadId: this.chat.threadId}))
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
       onClick: this.onUnmuteClick,
-      verify: () => this.chat.type === ChatType.Chat && rootScope.myId !== this.peerId && this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.peerId, respectType: false, threadId: this.chat.threadId})
+      verify: () => this.chat.type === ChatType.Chat && !this.chat.monoforumThreadId && rootScope.myId !== this.peerId && this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.peerId, respectType: false, threadId: this.chat.threadId})
     }, {
       icon: 'comments',
       text: 'ViewDiscussion',
