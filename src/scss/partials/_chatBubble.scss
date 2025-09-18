@@ -3685,6 +3685,19 @@
       transform: rotate(-45deg);
     }
   }
+
+  &-suggested-action {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    min-width: 100px;
+
+    .tgico {
+      font-size: 1rem;
+    }
+  }
 }
 
 .reply-markup-button,

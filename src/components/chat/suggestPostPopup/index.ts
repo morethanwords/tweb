@@ -10,7 +10,7 @@ type Args = {
 
 export default class SuggestPostPopup extends PopupElement {
   constructor({suggestChange, onFinish}: Args) {
-    super('suggest-post-popup', {
+    super('suggested-post-popup', {
       overlayClosable: true,
       closable: true,
       body: true,
@@ -20,8 +20,6 @@ export default class SuggestPostPopup extends PopupElement {
     const content = new SuggestPostPopupContent;
     content.HotReloadGuard = SolidJSHotReloadGuardProvider;
     content.feedProps({
-      popupContainer: this.container,
-      popupHeader: this.header,
       onFinish: (payload) => {
         onFinish(payload);
         this.hide();

@@ -52,6 +52,13 @@ namespace MonoforumDialogsStorage {
     peerId: PeerId;
     unread: boolean;
   };
+
+  export type ToggleSuggestedPostApprovalArgs = {
+    parentPeerId: PeerId;
+    messageId: number;
+    reject?: boolean;
+    rejectComment?: string;
+  };
 }
 
 
@@ -328,6 +335,17 @@ class MonoforumDialogsStorage extends AppManager {
     }
 
     this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: [dialog]});
+  }
+
+  public async toggleSuggestedPostApproval({parentPeerId, messageId, reject, rejectComment}: MonoforumDialogsStorage.ToggleSuggestedPostApprovalArgs) {
+    const updates = await this.apiManager.invokeApi('messages.toggleSuggestedPostApproval', {
+      peer: this.appPeersManager.getInputPeerById(parentPeerId),
+      msg_id: getServerMessageId(messageId),
+      reject,
+      reject_comment: rejectComment
+    });
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
   }
 
   private onUpdateReadMonoforum = (update: Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox) => {

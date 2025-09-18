@@ -9,6 +9,7 @@ import rootScope from '../../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
 import {PeerTitleTsx} from '../../peerTitleTsx';
 import styles from './suggestedPostActionContent.module.scss';
+import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../lib/mtproto/mtproto_config';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -142,13 +143,13 @@ const SuggestedPostActionContent = defineSolidElement({
             <I18nTsx
               class={styles.Subtitle}
               key='SuggestedPosts.AgreementReached.WillReceive'
-              args={[makeEmoji('⏳'), <PeerTitleTsx peerId={props.message.peerId} limitSymbols={LIMIT_SYMBOLS} />]}
+              args={[makeEmoji('⏳'), <PeerTitleTsx peerId={props.message.peerId} limitSymbols={LIMIT_SYMBOLS} />, '' + SUGGESTED_POST_WAIT_FOR_REWARD_HOURS]}
             />
 
             <I18nTsx
               class={styles.Subtitle}
               key='SuggestedPosts.AgreementReached.WillBeRefunded'
-              args={[makeEmoji('🔄'), <PeerTitleTsx peerId={props.message.peerId} limitSymbols={LIMIT_SYMBOLS} />]}
+              args={[makeEmoji('🔄'), <PeerTitleTsx peerId={props.message.peerId} limitSymbols={LIMIT_SYMBOLS} />, '' + SUGGESTED_POST_WAIT_FOR_REWARD_HOURS]}
             />
           </Show>
         </>

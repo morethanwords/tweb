@@ -35,6 +35,7 @@ export const STARS_CURRENCY = 'XTR';
 export const TON_CURRENCY = 'TON';
 export const SEND_PAID_WITH_STARS_DELAY = 5e3;
 export const SEND_PAID_REACTION_ANONYMOUS_PEER_ID: PeerId = -1;
+export const SUGGESTED_POST_WAIT_FOR_REWARD_HOURS = 24;
 
 export const FOLDER_ID_ALL: REAL_FOLDER_ID = 0;
 export const FOLDER_ID_ARCHIVE: REAL_FOLDER_ID = 1;

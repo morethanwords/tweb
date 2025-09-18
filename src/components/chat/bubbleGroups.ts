@@ -23,6 +23,7 @@ import {MiddlewareHelper} from '../../helpers/middleware';
 import {ChatType} from './chat';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 import {isMessageForVerificationBot} from './utils';
+import {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
 
 
 type GroupItem = {
@@ -122,7 +123,7 @@ export class BubbleGroup {
     const replyMarkup = message.reply_markup;
     let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
     replyMarkupRows = replyMarkupRows?.filter?.((row) => row.buttons.length);
-    replyMarkupRows?.length && this.avatar.node.classList.add('avatar-for-reply-markup');
+    (replyMarkupRows?.length || canHaveSuggestedPostReplyMarkup(message)) && this.avatar.node.classList.add('avatar-for-reply-markup');
 
     // this.avatarLoadPromise = Promise.all([
     //   avatarLoadPromise,

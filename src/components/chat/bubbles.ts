@@ -205,6 +205,7 @@ import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessage
 import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
 import SuggestedPostActionContent from './bubbleParts/suggestedPostActionContent';
 import addSuggestedPostServiceMessage, {checkIfNotMePosted} from './bubbleParts/suggestPostServiceMessage';
+import addSuggestedPostReplyMarkup, {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -829,6 +830,12 @@ export default class ChatBubbles {
       // do not edit geo messages
       if(bubble.querySelector('.geo-container')) {
         return;
+      }
+
+      if(this.chat.isMonoforum && message._ === 'message' && !canHaveSuggestedPostReplyMarkup(message)) {
+        const group = bubble.closest('.bubbles-group');
+        const cls = 'avatar-for-reply-markup';
+        group?.querySelector(`.${cls}`)?.classList.remove(cls);
       }
 
       this.safeRenderMessage({
@@ -6185,6 +6192,10 @@ export default class ChatBubbles {
         bubble.classList.add('with-reply-markup');
         contentWrapper.append(containerDiv);
       }
+    }
+
+    if(!isOut && isMessage) {
+      addSuggestedPostReplyMarkup({message, bubble, contentWrapper});
     }
 
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;

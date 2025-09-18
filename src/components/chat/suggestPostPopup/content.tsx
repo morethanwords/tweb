@@ -19,8 +19,6 @@ if(import.meta.hot) import.meta.hot.accept();
 
 
 type Props = {
-  popupContainer: HTMLElement;
-  popupHeader: HTMLElement;
   onFinish: (payload: FinishPayload) => void;
 };
 
@@ -35,8 +33,6 @@ const MAX_STARS = 100_000;
 const SuggestPostPopupContent = defineSolidElement({
   name: 'suggested-post-popup-content',
   component: (props: PassedProps<Props>) => {
-    attachHotClassName(props.popupContainer, styles.Popup);
-    attachHotClassName(props.popupHeader, styles.PopupHeader);
     attachHotClassName(props.element, styles.Container);
 
     const [stars, setStars] = createSignal('');
