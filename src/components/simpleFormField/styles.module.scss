@@ -21,6 +21,10 @@
     cursor: pointer;
   }
 
+  &.withEndButtonIcon {
+    padding-right: calc(var(--padding-horizontal) - 0.5rem);
+  }
+
   &:hover .BorderThin {
     border-color: var(--primary-color);
   }

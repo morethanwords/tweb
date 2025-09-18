@@ -3108,6 +3108,8 @@
 "SuggestedPosts.EnterPrice.Description" = "Choose how many Stars to pay to publish this post. Setting a price is fully optional.";
 "SuggestedPosts.PublishingTime.Label" = "Publishing Time";
 "SuggestedPosts.PublishingTime.Anytime" = "Anytime";
+"SuggestedPosts.PublishingTime.ChooseTime" = "Publish %s";
+"SuggestedPosts.PublishingTime.MinSendTime" = "Minimum send time: %s";
 "SuggestedPosts.PublishingTime.Description" = "Select the date and time you want the post to be published. The post should remain available for at least 24 hours from this date.";
 "SuggestedPosts.MakeAnOffer" = "Make an Offer";
 "SuggestedPosts.Accept" = "Accept";

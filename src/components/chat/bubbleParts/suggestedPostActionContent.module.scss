@@ -18,6 +18,11 @@
   white-space: wrap;
   text-align: left;
   align-self: flex-start;
+
+  &.center {
+    align-self: center;
+    text-align: center;
+  }
 }
 
 .Grid {

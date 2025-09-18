@@ -5,15 +5,17 @@ import {attachHotClassName} from '../../../helpers/solid/classname';
 import {I18nTsx} from '../../../helpers/solid/i18n';
 import I18n from '../../../lib/langPack';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
+import {ButtonIconTsx} from '../../buttonIconTsx';
 import currencyStarIcon from '../../currencyStarIcon';
 import {IconTsx} from '../../iconTsx';
+import ripple from '../../ripple';
 import useAppConfig from '../../sidebarLeft/tabs/privacy/messages/useAppConfig';
 import useStarsCommissionAndWithdrawalPrice from '../../sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
 import SimpleFormField from '../../simpleFormField';
 import Space from '../../space';
-import styles from './styles.module.scss';
 import PopupSchedulePost from './popupSchedulePost';
-import ripple from '../../ripple'; ripple;
+import styles from './styles.module.scss';
+ripple;
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -29,6 +31,8 @@ export type FinishPayload = {
 
 const MIN_STARS = 5;
 const MAX_STARS = 100_000;
+
+const PUBLISH_MIN_DELAY_MINUTES = 10;
 
 const SuggestPostPopupContent = defineSolidElement({
   name: 'suggested-post-popup-content',
@@ -53,6 +57,11 @@ const SuggestPostPopupContent = defineSolidElement({
 
     const onChange = (value: string) => {
       setStars(!value ? value : '' + Math.min(maxStars(), +(value.replace(/\D/g, '')) || 0));
+    };
+
+    const onCrossClick = (event: MouseEvent) => {
+      event.stopPropagation();
+      setPublishingTimestamp();
     };
 
     const onFinish = () => {
@@ -95,10 +104,18 @@ const SuggestPostPopupContent = defineSolidElement({
 
       <SimpleFormField
         clickable
+        withEndButtonIcon={!!publishingTimestamp()}
         onClick={() => {
-          // TODO: Need proper minimum and maximum time
+          const minTimeDate = new Date();
+          minTimeDate.setMinutes(minTimeDate.getMinutes() + PUBLISH_MIN_DELAY_MINUTES);
+
+          const minDate = new Date(minTimeDate);
+          minDate.setHours(0, 0, 0, 0);
+
           new PopupSchedulePost({
-            initDate: new Date,
+            initDate: new Date(minTimeDate),
+            minDate,
+            minTimeDate,
             onPick: (timestamp) => {
               console.log(timestamp);
               setPublishingTimestamp(timestamp);
@@ -116,7 +133,10 @@ const SuggestPostPopupContent = defineSolidElement({
           <I18nTsx key='SuggestedPosts.PublishingTime.Label' />
         </SimpleFormField.Label>
         <SimpleFormField.SideContent last>
-          <IconTsx class={styles.Icon} icon='down' />
+          {publishingTimestamp() ?
+            <ButtonIconTsx icon='cross' tabIndex={-1} onClick={onCrossClick} /> :
+            <IconTsx class={styles.Icon} icon='down' />
+          }
         </SimpleFormField.SideContent>
       </SimpleFormField>
 

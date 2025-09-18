@@ -6,6 +6,10 @@
   font-size: 14px;
   color: var(--secondary-text-color);
   padding: 0.25rem 1rem;
+
+  &.center {
+    text-align: center;
+  }
 }
 
 .Icon {

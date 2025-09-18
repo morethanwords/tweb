@@ -20,8 +20,9 @@ const SimpleFormField = (inProps: ParentProps<{
   onClick?: JSX.EventHandler<HTMLDivElement, MouseEvent>;
   isError?: boolean;
   clickable?: boolean;
+  withEndButtonIcon?: boolean;
 } & Omit<JSX.HTMLAttributes<HTMLDivElement>, 'onChange' | 'onClick'>>) => {
-  const [props, restProps] = splitProps(inProps, ['value', 'onChange', 'isError', 'children', 'onClick', 'class', 'classList', 'clickable']);
+  const [props, restProps] = splitProps(inProps, ['value', 'onChange', 'isError', 'children', 'onClick', 'class', 'classList', 'clickable', 'withEndButtonIcon']);
   const [input, setInput] = createSignal<HTMLInputElement>();
   const [offsetElement, setOffsetElement] = createSignal<HTMLElement>();
 
@@ -44,6 +45,7 @@ const SimpleFormField = (inProps: ParentProps<{
           [styles.error]: props.isError,
           [styles.clickable]: props.clickable,
           [props.class]: !!props.class,
+          [styles.withEndButtonIcon]: props.withEndButtonIcon,
           ...props.classList
         }}
         onClick={(...args) => {
