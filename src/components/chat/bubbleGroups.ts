@@ -466,6 +466,11 @@ export default class BubbleGroups {
   canItemsBeGrouped(item1: GroupItem, item2: GroupItem) {
     if(isMessageForVerificationBot(item1.message)) return false;
 
+    if(
+      item1.message?._ === 'message' && canHaveSuggestedPostReplyMarkup(item1.message) ||
+      item2.message?._ === 'message' && canHaveSuggestedPostReplyMarkup(item2.message)
+    ) return false;
+
     const isOut1 = this.chat.isOutMessage(item1.message);
     return item2.fromId === item1.fromId &&
       item1.dateTimestamp === item2.dateTimestamp &&

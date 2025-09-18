@@ -3,20 +3,15 @@ import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardPr
 import SuggestedPostReplyMarkupContent from './suggestedPostReplyMarkupContent';
 
 
+export function canHaveSuggestedPostReplyMarkup(message: Message.message): boolean {
+  return !message.reply_markup && message.suggested_post && !message.suggested_post.pFlags.accepted && !message.suggested_post.pFlags.rejected;
+}
+
 type Args = {
   message: Message.message;
   bubble: HTMLElement;
   contentWrapper: HTMLElement;
 };
-
-export function canHaveSuggestedPostReplyMarkup(message: Message.message): boolean {
-  return !message.reply_markup && message.suggested_post && !message.suggested_post.pFlags.accepted && !message.suggested_post.pFlags.rejected;
-}
-
-type Props = {
-  message: Message.message;
-};
-
 
 export default function addSuggestedPostReplyMarkup({message, bubble, contentWrapper}: Args) {
   if(!canHaveSuggestedPostReplyMarkup(message)) return;
