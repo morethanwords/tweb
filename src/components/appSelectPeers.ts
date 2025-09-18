@@ -193,6 +193,7 @@ export default class AppSelectPeers {
     checkboxSide?: 'right' | 'left',
     noPlaceholder?: boolean,
     excludePeerIds?: AppSelectPeers['excludePeerIds'],
+    excludeMonoforums?: boolean,
     placeholderSizes?: ConstructorParameters<typeof DialogsPlaceholder>[0],
     getPeerIdFromKey?: AppSelectPeers['getPeerIdFromKey']
   }) {
@@ -239,6 +240,13 @@ export default class AppSelectPeers {
       peerIds = peerIds.filter((peerId) => {
         if(this.excludePeerIds.has(peerId)) {
           return false;
+        }
+
+        if(options.excludeMonoforums) {
+          const chat = apiManagerProxy.getChat(peerId.toChatId());
+          if(chat?._ === 'channel' && chat?.pFlags?.monoforum) {
+            return false;
+          }
         }
 
         const notRendered = !this.renderedPeerIds.has(peerId);

@@ -492,6 +492,7 @@ export default class PopupPickUser extends PopupElement {
   public static createSharingPicker(options: {
     onSelect: ConstructorParameters<typeof PopupPickUser>[0]['onSelect'],
     chatRightsActions?: PopupPickUserOptions['chatRightsActions'],
+    excludeMonoforums?: PopupPickUserOptions['excludeMonoforums'],
     placeholder?: LangPackKey,
     selfPresence?: LangPackKey
   }) {
@@ -522,10 +523,11 @@ export default class PopupPickUser extends PopupElement {
     });
   }
 
-  public static createReplyPicker() {
+  public static createReplyPicker(options: { excludeMonoforums?: boolean } = {}) {
     return this.createSharingPicker2({
       placeholder: 'ReplyToDialog',
-      selfPresence: 'SavedMessagesInfoQuote'
+      selfPresence: 'SavedMessagesInfoQuote',
+      ...options
     });
   }
 
