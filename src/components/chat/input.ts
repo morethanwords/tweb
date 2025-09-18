@@ -1124,7 +1124,7 @@ export default class ChatInput {
     this.attachMenu.classList.add('attach-file');
     this.attachMenu.firstElementChild.replaceWith(Icon('attach'));
 
-    this.btnSuggestPost = ButtonIcon('message hide');
+    this.btnSuggestPost = ButtonIcon('suggested hide');
     attachClickEvent(this.btnSuggestPost, () => {
       this.openSuggestPostPopup();
     });
@@ -4338,7 +4338,7 @@ export default class ChatInput {
 
     if(payload.timestamp) {
       const span = document.createElement('span');
-      span.append(wrapEmojiText('📅'), formatFullSentTime(payload.timestamp));
+      span.append(wrapEmojiText('📅'), ' ', formatFullSentTime(payload.timestamp));
       element.append(span);
     }
 
