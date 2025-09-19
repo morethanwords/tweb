@@ -95,7 +95,7 @@ const MonoforumDrawer = defineSolidElement({
           }}
         >
           <div class={`sidebar-header ${styles.Header}`}>
-            <ButtonIconTsx class='sidebar-close-button' icon='close' onClick={close} />
+            <ButtonIconTsx class='sidebar-close-button' icon='close' noRipple onClick={close} />
             <PeerTitleTsx class={styles.Title} peerId={props.peerId} />
           </div>
           <div class={styles.ScrollableContainer}>
