@@ -233,12 +233,15 @@
     }
   }
 
+  .sidebar-right-border {
+    display: none;
+  }
+
   @include respond-to(not-handhelds) {
     overflow: visible;
 
-    &:after {
+    .sidebar-right-border {
       position: absolute;
-      content: " ";
       display: block;
       height: 100vh;
       width: 1px;
@@ -1607,7 +1610,7 @@
   bottom: 0;
   width: 5px;
 
-  z-index: 4;
+  z-index: 3;
 
   background-color: var(--primary-color);
   opacity: 0;
