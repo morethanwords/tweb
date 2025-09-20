@@ -548,7 +548,7 @@ export class AppMessagesManager extends AppManager {
         if(!dialog) return;
 
         dialog.draft = draft;
-        // this.monoforumDialogsStorage.updateDialogIndex(dialog);
+        this.monoforumDialogsStorage.updateDialogIndex(dialog);
 
         this.rootScope.dispatchEvent('monoforum_draft_update', {dialog});
 

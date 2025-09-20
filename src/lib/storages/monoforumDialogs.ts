@@ -1,7 +1,7 @@
 import filterUnique from '../../helpers/array/filterUnique';
 import lastItem from '../../helpers/array/lastItem';
 import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
-import {MessagesSavedDialogs, SavedDialog, Update} from '../../layer';
+import {DraftMessage, MessagesGetSavedDialogs, MessagesSavedDialogs, SavedDialog, Update} from '../../layer';
 import {Pair} from '../../types';
 import {MyMessage} from '../appManagers/appMessagesManager';
 import {AppManager} from '../appManagers/manager';
@@ -130,6 +130,8 @@ class MonoforumDialogsStorage extends AppManager {
   private collectionsByPeerId: Record<PeerId, MonoforumDialogsStorage.DialogCollection> = {};
   private fetchByIdBatchQueue = new BatchQueue((args) => this.fetchAndSaveDialogsById(args));
 
+  private queuedDraftDialogs: Record<PeerId, PeerId[]> = {};
+
   public clear = () => {
     this.collectionsByPeerId = {};
   }
@@ -146,6 +148,14 @@ class MonoforumDialogsStorage extends AppManager {
     const collection = this.getDialogCollection(parentPeerId);
     const checkIsCollectionIncomplete = () => !collection.count || collection.items.length < collection.count;
 
+    let promise: Promise<any>;
+
+    promise = this.appDraftsManager.addMissedDialogsOrVoid();
+    if(promise) await promise;
+
+    promise = this.fetchQueuedDraftDialogs(parentPeerId);
+    if(promise) await promise;
+
     let cachedOffsetPosition = this.getPositionForOffsetIndex(collection.items, offsetIndex);
 
     const someLimit = 1;
@@ -156,7 +166,7 @@ class MonoforumDialogsStorage extends AppManager {
 
     // Fetch while we have enough dialogs
     while(
-      cachedOffsetPosition + limit >= collection.items.length && // check if we have enough dialogs already
+      cachedOffsetPosition + limit > collection.stable.length && // check if we have enough dialogs already
       checkIsCollectionIncomplete() && // stop when the collection is full
       previousStableLength !== collection.stable.length // guard in case the request doesn't add new dialogs
     ) {
@@ -185,6 +195,28 @@ class MonoforumDialogsStorage extends AppManager {
     return collection.map.get(peerId);
   }
 
+  public enqueDraftDialog(parentPeerId: PeerId, peerId: PeerId) {
+    (this.queuedDraftDialogs[parentPeerId] ??= []).push(peerId);
+  }
+
+  public checkPreloadedDraft(parentPeerId: PeerId, draft: DraftMessage.draftMessage) {
+    if(draft?.reply_to?._ !== 'inputReplyToMessage' && draft?.reply_to?._ !== 'inputReplyToMonoForum') return;
+    const peerId = getPeerId(draft.reply_to.monoforum_peer_id);
+    if(!peerId) return;
+
+    // MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] enqueing draft', parentPeerId, peerId, draft})
+    this.enqueDraftDialog(parentPeerId, peerId);
+  }
+
+  private fetchQueuedDraftDialogs(parentPeerId: PeerId) {
+    const toFetch = this.queuedDraftDialogs[parentPeerId];
+    delete this.queuedDraftDialogs[parentPeerId];
+    if(!toFetch?.length) return;
+
+    // MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] fetching enqued draft dialogs', parentPeerId, toFetch})
+    return this.fetchAndSaveDialogsById({parentPeerId, ids: filterUnique(toFetch)});
+  }
+
   private async fetchAndSaveDialogs({parentPeerId, limit, offsetDialog}: MonoforumDialogsStorage.FetchDialogsArgs) {
     const parentPeer = this.appPeersManager.getInputPeerById(parentPeerId);
 
@@ -204,6 +236,9 @@ class MonoforumDialogsStorage extends AppManager {
       }
     });
 
+    // await pause(500);
+    // MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] fetching dialogs', parentPeerId, p, result})
+
     const processedResult = this.processGetDialogsResult({parentPeerId, result});
     const {dialogs} = processedResult;
 
@@ -221,21 +256,27 @@ class MonoforumDialogsStorage extends AppManager {
   }
 
   private async fetchAndSaveDialogsById({parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs) {
-    const parentPeer = this.appPeersManager.getInputPeerById(parentPeerId);
-    const result = await this.apiManager.invokeApiSingleProcess({
-      method: 'messages.getSavedDialogsByID',
-      params: {
-        ids: ids.map(id => this.appPeersManager.getInputPeerById(id)),
-        parent_peer: parentPeer
-      }
-    });
+    const collection = this.getDialogCollection(parentPeerId);
+    const isCollectionEmpty = !collection.count;
 
+    const parentPeer = this.appPeersManager.getInputPeerById(parentPeerId);
+    const [result] = await Promise.all([
+      this.apiManager.invokeApiSingleProcess({
+        method: 'messages.getSavedDialogsByID',
+        params: {
+          ids: ids.map(id => this.appPeersManager.getInputPeerById(id)),
+          parent_peer: parentPeer
+        }
+      }),
+      isCollectionEmpty && this.fetchAndSaveDialogs({parentPeerId, limit: 1}) // make sure we have the correct count as the by id request doesn't return it
+    ]);
+
+    // await pause(500);
     // MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] by id', parentPeerId, ids, result});
 
     const {dialogs} = this.processGetDialogsResult({parentPeerId, result});
 
-    const collection = this.getDialogCollection(parentPeerId);
-    const lastStableDialogIndex = lastItem(collection.stable).stableIndex;
+    const lastStableDialogIndex = lastItem(collection.stable)?.stableIndex || Infinity;
 
     const fetchedDialogsSet = new Set(dialogs.map(dialog => dialog.peerId));
 
