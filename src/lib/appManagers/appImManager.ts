@@ -1223,7 +1223,7 @@ export class AppImManager extends EventListenerBase<{
           }
         });
       } else if(key === 'ArrowUp' && this.chat?.type !== ChatType.Scheduled) {
-        if(!chat?.input?.editMsgId && chat?.input?.isInputEmpty()) {
+        if(!appDialogsManager.contextMenu?.hasAddToFolderOpen() && !chat?.input?.editMsgId && chat?.input?.isInputEmpty()) {
           this.managers.appMessagesManager.getFirstMessageToEdit(chat.peerId, chat.threadId).then((message) => {
             if(message) {
               chat.input.initMessageEditing(message.mid);
