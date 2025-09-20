@@ -27,8 +27,13 @@ ripple; // keep
 const log = logger('FoldersSidebarContent', LogTypes.Debug);
 
 
+export type FoldersSidebarControls = {
+  hydrateFilters: (filters: MyDialogFilter[]) => void;
+};
+
 export function FoldersSidebarContent(props: {
-  notificationsElement: HTMLElement
+  controlsRef: (controls: FoldersSidebarControls) => void;
+  notificationsElement: HTMLElement;
 }) {
   log.debug('Rendering FoldersSidebarContent');
   onCleanup(() => log.debug('Cleaning up FoldersSidebarContent'));
@@ -198,16 +203,6 @@ export function FoldersSidebarContent(props: {
       listenTo: folderItemsContainer
     });
 
-    (async() => {
-      const filters = await rootScope.managers.filtersStorage.getDialogFilters();
-      const folderFilters = filters.filter((filter) => filter.id !== FOLDER_ID_ARCHIVE);
-
-      const folderItems = await Promise.all(folderFilters.map(makeFolderItemPayload));
-      const orderedFolderItems = await getFolderItemsInOrder(folderItems, rootScope.managers);
-
-      setFolderItems(orderedFolderItems);
-    })()
-
     listenerSetter.add(rootScope)('dialog_flush', ({dialog}) => {
       if(!dialog) return;
       updateAllFolderNotifications();
@@ -240,6 +235,19 @@ export function FoldersSidebarContent(props: {
       contextMenu.destroy();
     });
   });
+
+  const controls: FoldersSidebarControls = {
+    hydrateFilters: async(filters) => {
+      const folderFilters = filters.filter((filter) => filter.id !== FOLDER_ID_ARCHIVE);
+
+      const folderItems = await Promise.all(folderFilters.map(makeFolderItemPayload));
+      const orderedFolderItems = await getFolderItemsInOrder(folderItems, rootScope.managers);
+
+      setFolderItems(orderedFolderItems);
+    }
+  };
+
+  props.controlsRef(controls);
 
   const updateCanShowAddFolders = () => {
     const selectedItem = folderItemRefs[selectedFolderId()];
@@ -326,16 +334,23 @@ export function renderFoldersSidebarContent(
   HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
   middleware: Middleware
 ) {
+  let controls: FoldersSidebarControls;
+
   const {hasFoldersSidebar} = useHasFoldersSidebar();
   createRoot((dispose) => {
     render(() => (
       <HotReloadGuardProvider>
         <Show when={hasFoldersSidebar()}>
-          <FoldersSidebarContent notificationsElement={notificationsElement} />
+          <FoldersSidebarContent
+            notificationsElement={notificationsElement}
+            controlsRef={(value) => void(controls = value)}
+          />
         </Show>
       </HotReloadGuardProvider>
     ), element);
 
     middleware.onDestroy(() => dispose());
   });
+
+  return controls;
 }

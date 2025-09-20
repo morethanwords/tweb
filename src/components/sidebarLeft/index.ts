@@ -82,7 +82,7 @@ import pause from '../../helpers/schedulers/pause';
 import AccountsLimitPopup from './accountsLimitPopup';
 import {changeAccount} from '../../lib/accounts/changeAccount';
 import {UiNotificationsManager} from '../../lib/appManagers/uiNotificationsManager';
-import {renderFoldersSidebarContent} from './foldersSidebarContent';
+import {FoldersSidebarControls, renderFoldersSidebarContent} from './foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import SwipeHandler, {getEvent} from '../swipeHandler';
 import clamp from '../../helpers/number/clamp';
@@ -137,6 +137,8 @@ export class AppSidebarLeft extends SidebarSlider {
 
   private onResize: () => void;
 
+  public foldersSidebarControls: FoldersSidebarControls;
+
   constructor() {
     super({
       sidebarEl: document.getElementById('column-left') as HTMLDivElement,
@@ -166,7 +168,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const mainMiddleware = this.middlewareHelper.get();
     const foldersSidebar = document.getElementById('folders-sidebar');
-    renderFoldersSidebarContent(foldersSidebar, this.totalNotificationsCountSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
+    this.foldersSidebarControls = renderFoldersSidebarContent(foldersSidebar, this.totalNotificationsCountSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
 
     // If it has z-index to early, the browser makes it shift a few times before showing it properly in its position (on very large screens)
     // Doesn't solve the blinking, which doesn't seem to appear when the project is built
