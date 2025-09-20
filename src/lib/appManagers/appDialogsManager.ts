@@ -2853,6 +2853,10 @@ export class AppDialogsManager {
     return !!this.monoforumDrawers.opened.length;
   }
 
+  public hasMonoforumOpenFor(peerId: PeerId) {
+    return !!this.monoforumDrawers.opened.find(drawer => drawer?.props?.peerId === peerId);
+  }
+
   public async openMonoforumDrawer(peerId: PeerId) {
     const {default: MonoforumDrawer} = await import('../../components/monoforumDrawer');
 

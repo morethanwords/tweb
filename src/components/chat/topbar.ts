@@ -74,6 +74,7 @@ import pause from '../../helpers/schedulers/pause';
 import appImManager from '../../lib/appManagers/appImManager';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import namedPromises from '../../helpers/namedPromises';
+import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -485,6 +486,13 @@ export default class ChatTopbar {
         this.chat.appImManager.toggleViewAsMessages(this.peerId, false);
       },
       verify: () => this.peerId === rootScope.myId && !this.chat.threadId && !rootScope.settings.savedAsForum
+    }, {
+      icon: 'message',
+      text: 'ChannelDirectMessages.ViewChats',
+      onClick: () => {
+        appDialogsManager.openMonoforumDrawer(this.peerId);
+      },
+      verify: () => this.chat.isMonoforum && !this.chat.monoforumThreadId && this.chat.canManageDirectMessages && !mediaSizes.isLessThanFloatingLeftSidebar && !appDialogsManager.hasMonoforumOpenFor(this.peerId)
     }, {
       icon: 'select',
       text: 'Chat.Menu.SelectMessages',
