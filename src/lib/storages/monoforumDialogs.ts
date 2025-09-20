@@ -1,8 +1,8 @@
 import filterUnique from '../../helpers/array/filterUnique';
 import lastItem from '../../helpers/array/lastItem';
 import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
-import pause from '../../helpers/schedulers/pause';
 import {MessagesSavedDialogs, SavedDialog, Update} from '../../layer';
+import {Pair} from '../../types';
 import {MyMessage} from '../appManagers/appMessagesManager';
 import {AppManager} from '../appManagers/manager';
 import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
@@ -42,7 +42,32 @@ namespace MonoforumDialogsStorage {
   };
 
   export type DialogCollection = {
+    /**
+     * The items ordered based on the draft's date (if it's not empty) or on the top_message's date
+     */
     items: MonoforumDialog[];
+
+    /**
+     * The items that we know for sure that are in the right order of the top_message with NO gaps
+     *
+     * This avoids the case when the top_message gets deleted and replaced with another very old message,
+     * the dialog then being thrown at the end of the list. Then if we use that last dialog as offset we
+     * might end up with a lot of missing dialogs. That last dialog must be kicked outta here and moved
+     * into the `additional` array
+     *
+     * These dialogs are sorted by the date of the top_message, NOT by the date of the draft,
+     * making sure the ordering based on the draft's date doesn't make us use the wrong offset
+     */
+    stable: MonoforumDialog[];
+
+    /**
+     * The dialogs fetched by id that we are not sure they are in their right order in the main list.
+     *
+     * This includes the ones that have drafts, and the dialogs that were reordered at the end due to
+     * the deletion of their top_message
+     */
+    additional: MonoforumDialog[];
+
     map: Map<PeerId, MonoforumDialog>;
     count: number; // Total count
   };
@@ -79,16 +104,16 @@ class BatchQueue {
 
     items.push(...ids);
 
-    this.processQueue();
+    if(this.isProcessing) return;
+
+    this.isProcessing = true;
+    queueMicrotask(() => {
+      this.processQueue();
+    });
   }
 
   private async processQueue() {
-    if(this.isProcessing) return;
-    this.isProcessing = true;
-
-    await pause(0);
-
-    let entries: [PeerId, PeerId[]][];
+    let entries: Pair<PeerId, PeerId[]>[];
 
     while((entries = Array.from(this.map.entries())).length) {
       this.map.clear();
@@ -119,17 +144,26 @@ class MonoforumDialogsStorage extends AppManager {
 
   public async getDialogs({parentPeerId, limit, offsetIndex}: MonoforumDialogsStorage.GetDialogsArgs) {
     const collection = this.getDialogCollection(parentPeerId);
-    const isCollectionIncomplete = !collection.count || collection.items.length < collection.count;
+    const checkIsCollectionIncomplete = () => !collection.count || collection.items.length < collection.count;
 
     let cachedOffsetPosition = this.getPositionForOffsetIndex(collection.items, offsetIndex);
 
-    const cachedSlice = collection.items.slice(cachedOffsetPosition, cachedOffsetPosition + limit);
+    const someLimit = 1;
 
-    const toFetchOffsetDialog = lastItem(cachedSlice) || lastItem(collection.items);
-    const toFetchLimit = limit - cachedSlice.length; // + Number(!!toFetchOffsetDialog);
+    // This is just a guard in case something wrong happens while fetching the dialogs
+    // If we notice no dialogs were added, the loop will break
+    let previousStableLength = -1;
 
-    if(toFetchLimit > 0 && isCollectionIncomplete) {
-      await this.fetchAndSaveDialogs({parentPeerId, limit: toFetchLimit, offsetDialog: toFetchOffsetDialog});
+    // Fetch while we have enough dialogs
+    while(
+      cachedOffsetPosition + limit >= collection.items.length && // check if we have enough dialogs already
+      checkIsCollectionIncomplete() && // stop when the collection is full
+      previousStableLength !== collection.stable.length // guard in case the request doesn't add new dialogs
+    ) {
+      previousStableLength = collection.stable.length;
+      const toFetchOffsetDialog = lastItem(collection.stable);
+
+      await this.fetchAndSaveDialogs({parentPeerId, limit: someLimit, offsetDialog: toFetchOffsetDialog});
     }
 
     // Just in case there are duplicates or some reordering stuff
@@ -170,7 +204,20 @@ class MonoforumDialogsStorage extends AppManager {
       }
     });
 
-    return this.processGetDialogsResult({parentPeerId, result});
+    const processedResult = this.processGetDialogsResult({parentPeerId, result});
+    const {dialogs} = processedResult;
+
+    const newStableIds = new Set(dialogs.map(dialog => dialog.peerId));
+
+    const collection = this.getDialogCollection(parentPeerId);
+
+    collection.stable = collection.stable.filter(dialog => !newStableIds.has(dialog.peerId));
+    collection.additional = collection.additional.filter(dialog => !newStableIds.has(dialog.peerId));
+
+    collection.stable.push(...dialogs);
+    collection.stable.sort(this.sortStableDialogsComparator); // Theoretically this is useless, but let it be
+
+    return processedResult;
   }
 
   private async fetchAndSaveDialogsById({parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs) {
@@ -187,7 +234,18 @@ class MonoforumDialogsStorage extends AppManager {
 
     const {dialogs} = this.processGetDialogsResult({parentPeerId, result});
 
+    const collection = this.getDialogCollection(parentPeerId);
+    const lastStableDialogIndex = lastItem(collection.stable).stableIndex;
+
     const fetchedDialogsSet = new Set(dialogs.map(dialog => dialog.peerId));
+
+    collection.stable = collection.stable.filter(dialog => !fetchedDialogsSet.has(dialog.peerId));
+    collection.additional = collection.additional.filter(dialog => !fetchedDialogsSet.has(dialog.peerId));
+
+    collection.stable.push(...dialogs.filter(dialog => dialog.stableIndex >= lastStableDialogIndex));
+    collection.stable.sort(this.sortStableDialogsComparator);
+
+    collection.additional.push(...dialogs.filter(dialog => dialog.stableIndex < lastStableDialogIndex));
 
     this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs});
 
@@ -235,6 +293,8 @@ class MonoforumDialogsStorage extends AppManager {
 
   private sortDialogsComparator = (a: MonoforumDialog, b: MonoforumDialog) => (this.getDialogIndex(b) - this.getDialogIndex(a)) || 0;
 
+  private sortStableDialogsComparator = (a: MonoforumDialog, b: MonoforumDialog) => (this.getStableDialogIndex(b) - this.getStableDialogIndex(a)) || 0;
+
   private setAdditionalProps(parentPeerId: PeerId, dialog: MonoforumDialog) {
     dialog.peerId = getPeerId(dialog.peer);
     dialog.parentPeerId = parentPeerId;
@@ -243,21 +303,35 @@ class MonoforumDialogsStorage extends AppManager {
   }
 
   public updateDialogIndex(dialog: MonoforumDialog) {
-    // if(dialog.draft?._ !== 'draftMessageEmpty' && dialog.draft?.date) {
-    //   date = dialog.draft.date;
-    // } else {
     const message = this.appMessagesManager.getMessageByPeer(dialog.parentPeerId, dialog.top_message);
 
-    dialog.index_0 = message?.date;
+    let sortDate: number;
+    if(dialog.draft?._ !== 'draftMessageEmpty' && dialog.draft?.date) {
+      sortDate = dialog.draft.date;
+    } else {
+      sortDate = message?.date;
+    }
+
+    dialog.index_0 = sortDate;
+    dialog.stableIndex = message?.date;
   }
 
   private getDialogIndex(dialog: MonoforumDialog) {
     return dialog.index_0;
   }
 
-  private getDialogCollection(parentPeerId: PeerId) {
-    if(!this.collectionsByPeerId[parentPeerId]) this.collectionsByPeerId[parentPeerId] = {items: [], map: new Map, count: 0};
-    return this.collectionsByPeerId[parentPeerId];
+  private getStableDialogIndex(dialog: MonoforumDialog) {
+    return dialog.stableIndex;
+  }
+
+  private getDialogCollection(parentPeerId: PeerId): MonoforumDialogsStorage.DialogCollection {
+    return this.collectionsByPeerId[parentPeerId] ??= {
+      items: [],
+      stable: [],
+      additional: [],
+      map: new Map,
+      count: 0
+    };
   }
 
   private getPositionForOffsetIndex(dialogs: MonoforumDialog[], offsetIndex: number) {
@@ -277,6 +351,9 @@ class MonoforumDialogsStorage extends AppManager {
     const wasCollectionComplete = collection.items.length === collection.count;
 
     collection.items = collection.items.filter(dialog => !deletedSet.has(dialog.peerId));
+    collection.stable = collection.stable.filter(dialog => !deletedSet.has(dialog.peerId));
+    collection.additional = collection.additional.filter(dialog => !deletedSet.has(dialog.peerId));
+
     ids.forEach(id => collection.map.delete(id));
 
     if(wasCollectionComplete) collection.count = collection.items.length;

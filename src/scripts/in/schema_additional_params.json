@@ -432,7 +432,8 @@
   "params": [
     {"name": "peerId", "type": "PeerId"},
     {"name": "parentPeerId", "type": "PeerId"},
-    {"name": "index_0", "type": "number"}
+    {"name": "index_0", "type": "number"},
+    {"name": "stableIndex", "type": "number"}
   ]
 }, {
   "predicate": "channelParticipantsAdmins",

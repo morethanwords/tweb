@@ -109,6 +109,7 @@ export type ObjectPath<T extends object> =
   T extends any[] ? (keyof T & number) : (keyof T & (number | string))
 ];
 
+export type Pair<Left, Right> = [Left, Right];
 
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn | AuthState.signImport;
 export namespace AuthState {
