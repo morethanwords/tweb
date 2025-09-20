@@ -63,6 +63,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
 
   public managers: AppManagers;
   protected noMenu: boolean;
+  protected additionalStickerViewerClass: string;
   protected searchFetcher?: (value: string) => Promise<T>;
   protected groupFetcher?: (group: EmojiGroup) => Promise<T>;
   protected processSearchResult?: (result: {data: T, searching: boolean, grouping: boolean}) => Promise<HTMLElement>;
@@ -73,6 +74,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   constructor(options: {
     managers: AppManagers,
     noMenu?: boolean,
+    additionalStickerViewerClass?: string,
     searchFetcher?: EmoticonsTabC<Category, T>['searchFetcher'],
     groupFetcher?: EmoticonsTabC<Category, T>['groupFetcher'],
     processSearchResult?: EmoticonsTabC<Category, T>['processSearchResult'],
@@ -434,6 +436,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     isGif?: boolean
   } = {}) {
     attachStickerViewerListeners({
+      additionalClass: this.additionalStickerViewerClass,
       listenTo: this.content,
       listenerSetter: this.listenerSetter,
       getTextColor
