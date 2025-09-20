@@ -6607,6 +6607,7 @@ export class AppMessagesManager extends AppManager {
       update._ === 'updateReadChannelDiscussionOutbox' ? true : undefined;
 
     const isForum = channelId ? this.appChatsManager.isForum(channelId) : false;
+    const isMonoforum = channelId ? this.appChatsManager.isMonoforum(channelId) : false;
     const storage = this.getHistoryMessagesStorage(peerId);
     const history = getObjectKeysAndSort(storage, 'desc');
     const foundDialog = threadId && isForum ?
@@ -6635,6 +6636,7 @@ export class AppMessagesManager extends AppManager {
 
     const releaseUnreadCount = foundDialog && this.dialogsStorage.prepareDialogUnreadCountModifying(foundDialog);
     const readMaxId = this.getReadMaxIdIfUnread(peerId, threadId);
+    const monoforumDialogsTouched: PeerId[] = [];
 
     for(let i = 0, length = history.length; i < length; i++) {
       const mid = history[i];
@@ -6649,6 +6651,9 @@ export class AppMessagesManager extends AppManager {
       }
 
       const messageThreadId = getMessageThreadId(message, isForum);
+
+      if(isMonoforum) monoforumDialogsTouched.push(messageThreadId);
+
       if(threadId && messageThreadId !== threadId) {
         continue;
       }
@@ -6737,6 +6742,10 @@ export class AppMessagesManager extends AppManager {
           this.rootScope.dispatchEvent('replies_updated', this.getMessageByPeer(peerId.toPeerId(), +mid) as Message.message);
         }
       }
+    }
+
+    for(const monoforumThreadId of monoforumDialogsTouched) {
+      this.monoforumDialogsStorage.updateDialogIfExists(peerId, monoforumThreadId);
     }
   };
 
