@@ -203,7 +203,6 @@ import {ChecklistBubble} from './bubbles/checklist';
 import {getRestrictionReason, isSensitive} from '../../helpers/restrictions';
 import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
 import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
-import SuggestedPostActionContent from './bubbleParts/suggestedPostActionContent';
 import addSuggestedPostServiceMessage, {checkIfNotMePosted} from './bubbleParts/suggestPostServiceMessage';
 import addSuggestedPostReplyMarkup, {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
 
@@ -5366,7 +5365,9 @@ export default class ChatBubbles {
     contentWrapper.append(bubbleContainer);
     bubble.append(contentWrapper);
 
-    await addPaidServiceMessage({
+    let tmpPromise: Promise<any>;
+
+    tmpPromise = addPaidServiceMessage({
       isAnyGroup: this.chat.isAnyGroup,
       bubble,
       message,
@@ -5374,15 +5375,16 @@ export default class ChatBubbles {
       peerId: this.peerId,
       groupedMessages
     });
+    if(tmpPromise) await tmpPromise;
 
-    addSuggestedPostServiceMessage({
+    tmpPromise = addSuggestedPostServiceMessage({
       bubble,
       message,
       peerId: this.peerId,
       canManageDirectMessages: this.chat.canManageDirectMessages,
       loadPromises
     });
-
+    if(tmpPromise) await tmpPromise;
 
     let isInUnread = !our &&
       !message.pFlags.out &&
@@ -5549,6 +5551,7 @@ export default class ChatBubbles {
             [+action.stars, peerTitle.element]
           ));
         } else if(action._ === 'messageActionSuggestedPostApproval' || action._ === 'messageActionSuggestedPostRefund' || action._ === 'messageActionSuggestedPostSuccess') {
+          const {default: SuggestedPostActionContent} = await import('./bubbleParts/suggestedPostActionContent');
           const content = new SuggestedPostActionContent;
 
           let peerTitle;
@@ -6195,7 +6198,8 @@ export default class ChatBubbles {
     }
 
     if(!isOut && isMessage) {
-      addSuggestedPostReplyMarkup({message, bubble, contentWrapper});
+      tmpPromise = addSuggestedPostReplyMarkup({message, bubble, contentWrapper});
+      if(tmpPromise) await tmpPromise;
     }
 
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;

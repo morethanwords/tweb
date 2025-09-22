@@ -2,7 +2,6 @@ import {Message} from '../../../layer';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import rootScope from '../../../lib/rootScope';
 import PeerTitle from '../../peerTitle';
-import SuggestedPostActionContent from './suggestedPostActionContent';
 
 
 type Args = {
@@ -35,28 +34,30 @@ export default function addSuggestedPostServiceMessage({bubble, message, peerId,
   const suggestedPost = message._ === 'message' && message.suggested_post;
   if(!suggestedPost) return;
 
-  bubble.classList.add('has-fake-service', 'is-forced-rounded');
+  return (async() => {
+    bubble.classList.add('has-fake-service', 'is-forced-rounded');
 
-  const fakeServiceMessage = document.createElement('div');
-  fakeServiceMessage.classList.add('service-msg');
+    const fakeServiceMessage = document.createElement('div');
+    fakeServiceMessage.classList.add('service-msg');
 
-  let peerTitle: PeerTitle;
-  if(checkIfNotMePosted({message, peerId, canManageDirectMessages})) {
-    peerTitle = new PeerTitle;
-    loadPromises.push(
-      peerTitle.update({peerId: message.fromId, onlyFirstName: canManageDirectMessages, limitSymbols: 20})
-    );
-  }
+    let peerTitle: PeerTitle;
+    if(checkIfNotMePosted({message, peerId, canManageDirectMessages})) {
+      peerTitle = new PeerTitle;
+      loadPromises.push(
+        peerTitle.update({peerId: message.fromId, onlyFirstName: canManageDirectMessages, limitSymbols: 20})
+      );
+    }
 
-  // TODO: Dynamic import (here and in bubbles.ts)
-  const content = new SuggestedPostActionContent;
-  content.feedProps({
-    message,
-    canManageDirectMessages,
-    fromPeerTitle: peerTitle?.element
-  });
+    const {default: SuggestedPostActionContent} = await import('./suggestedPostActionContent');
+    const content = new SuggestedPostActionContent;
+    content.feedProps({
+      message,
+      canManageDirectMessages,
+      fromPeerTitle: peerTitle?.element
+    });
 
-  fakeServiceMessage.append(content);
+    fakeServiceMessage.append(content);
 
-  bubble.prepend(fakeServiceMessage);
+    bubble.prepend(fakeServiceMessage);
+  })();
 }

@@ -1,6 +1,5 @@
 import {Message} from '../../../layer';
 import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-import SuggestedPostReplyMarkupContent from './suggestedPostReplyMarkupContent';
 
 
 export function canHaveSuggestedPostReplyMarkup(message: Message.message): boolean {
@@ -13,13 +12,16 @@ type Args = {
   contentWrapper: HTMLElement;
 };
 
-export default function addSuggestedPostReplyMarkup({message, bubble, contentWrapper}: Args) {
+export default async function addSuggestedPostReplyMarkup({message, bubble, contentWrapper}: Args) {
   if(!canHaveSuggestedPostReplyMarkup(message)) return;
 
-  const container = new SuggestedPostReplyMarkupContent;
-  container.HotReloadGuard = SolidJSHotReloadGuardProvider;
-  container.feedProps({message});
+  return (async() => {
+    const {default: SuggestedPostReplyMarkupContent} = await import('./suggestedPostReplyMarkupContent');
+    const container = new SuggestedPostReplyMarkupContent;
+    container.HotReloadGuard = SolidJSHotReloadGuardProvider;
+    container.feedProps({message});
 
-  bubble.classList.add('with-reply-markup');
-  contentWrapper.append(container);
+    bubble.classList.add('with-reply-markup');
+    contentWrapper.append(container);
+  })();
 }
