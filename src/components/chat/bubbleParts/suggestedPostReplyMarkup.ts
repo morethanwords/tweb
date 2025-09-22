@@ -12,7 +12,7 @@ type Args = {
   contentWrapper: HTMLElement;
 };
 
-export default async function addSuggestedPostReplyMarkup({message, bubble, contentWrapper}: Args) {
+export default function addSuggestedPostReplyMarkup({message, bubble, contentWrapper}: Args) {
   if(!canHaveSuggestedPostReplyMarkup(message)) return;
 
   return (async() => {
