@@ -175,6 +175,8 @@ class MonoforumDialogsStorage extends AppManager {
 
     const isEnd = cachedOffsetPosition + limit >= collection.items.length && collection.items.length === collection.count;
 
+    if(DEBUG) MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] getDialogs', parentPeerId, limit, offsetIndex, resultingDialogs, isEnd, count: collection.count});
+
     return {
       dialogs: resultingDialogs,
       count: collection.count,
@@ -331,10 +333,10 @@ class MonoforumDialogsStorage extends AppManager {
     dialog.peerId = getPeerId(dialog.peer);
     dialog.parentPeerId = parentPeerId;
     dialog.top_message = this.appMessagesIdsManager.generateMessageId(dialog.top_message, this.appPeersManager.isChannel(parentPeerId) ? parentPeerId.toChatId() : undefined);
-    this.updateDialogIndex(dialog);
+    this.updateDialogIndex(dialog, false);
   }
 
-  public updateDialogIndex(dialog: MonoforumDialog) {
+  public updateDialogIndex(dialog: MonoforumDialog, resort = true) {
     const message = this.appMessagesManager.getMessageByPeer(dialog.parentPeerId, dialog.top_message);
 
     let sortDate: number;
@@ -346,6 +348,24 @@ class MonoforumDialogsStorage extends AppManager {
 
     dialog.index_0 = sortDate;
     dialog.stableIndex = message?.date;
+
+    if(!resort || this.isResortingQueued) return;
+
+    this.isResortingQueued = true;
+    queueMicrotask(() => {
+      this.isResortingQueued = false;
+      this.resortDialogs(dialog.parentPeerId);
+    });
+  }
+
+  private isResortingQueued = false;
+  /**
+   * Resorting the dialogs when only a few items changed their index will be almost instant even for tens of thousands of dialogs.
+   */
+  private resortDialogs(parentPeerId: PeerId) {
+    const collection = this.getDialogCollection(parentPeerId);
+    collection.items.sort(this.sortDialogsComparator);
+    collection.stable.sort(this.sortStableDialogsComparator);
   }
 
   private getDialogIndex(dialog: MonoforumDialog) {
