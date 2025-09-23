@@ -3619,19 +3619,26 @@ export default class ChatInput {
       if(store.isReplying) return;
 
       this.messageInputField?.input?.classList.add('hide')
+      this.attachMenu?.classList.add('hide');
       this.messageInputField?.setHidden(true);
-      if(this.btnToggleEmoticons) this.btnToggleEmoticons.disabled = true;
+      this.btnToggleEmoticons?.setAttribute('disabled', '');
       this.autocompleteHelperController.hideOtherHelpers();
+      this.btnSend?.setAttribute('disabled', '');
+      this.btnSend?.classList.add('disabled');
 
       onCleanup(() => {
         this.messageInputField?.input?.classList.remove('hide');
+        this.attachMenu?.classList.remove('hide');
         this.messageInputField?.setHidden(false);
-        this.btnToggleEmoticons.disabled = false;
-        if(this.btnToggleEmoticons) this.btnToggleEmoticons.disabled = false;
+        this.btnToggleEmoticons?.removeAttribute('disabled');
+        this.btnSend?.removeAttribute('disabled');
+        this.btnSend?.classList.remove('disabled');
       });
     });
 
-    return {store, set};
+    const canPaste = () => !store.canManageDirectMessages || store.isReplying;
+
+    return {store, set, canPaste};
   });
 
   private throttledSetMessageCountToBadgeState = asyncThrottle(async(value: string) => {
@@ -3652,6 +3659,10 @@ export default class ChatInput {
     const totalEntities = mergeEntities(apiEntities, myEntities);
 
     return {value, totalEntities};
+  }
+
+  public canPaste() {
+    return this.directMessagesHandler.canPaste();
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {

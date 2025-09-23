@@ -2091,6 +2091,8 @@ export class AppImManager extends EventListenerBase<{
       }
 
       const chatInput = this.chat.input;
+      if(!chatInput.canPaste()) return;
+
       chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) ? 'media' : 'document');
       PopupElement.createPopup(PopupNewMedia, this.chat, files, chatInput.willAttachType);
     }

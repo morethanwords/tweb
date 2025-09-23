@@ -651,7 +651,7 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   public addFiles(files: File[]) {
-    if(this.isSuggestingPost() && this.files.length > 1) return;
+    if(this.isSuggestingPost() && this.files.length) return;
     if(this.isSuggestingPost()) files.splice(1);
 
     const toPush = files.filter((file) => {

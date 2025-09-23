@@ -229,6 +229,11 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       background-color: var(--dark-primary-color) !important;
     }
 
+    &.disabled {
+      pointer-events: none;
+      background-color: var(--secondary-color) !important;
+    }
+
 		// .tgico-send {
 		// 	color: var(--primary-color) !important;
 		// }
