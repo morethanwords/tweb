@@ -903,7 +903,8 @@ export default class Chat extends EventListenerBase<{
       starsAmount: this.managers.appPeersManager.getStarsAmount(peerId),
       sensitiveContentSettings: this.sensitiveContentSettings || this.managers.appPrivacyManager.getSensitiveContentSettings(),
       chat: peerId.isAnyChat() && this.managers.appChatsManager.getChat(peerId.toChatId()),
-      canManageDirectMessages: this.managers.appPeersManager.canManageDirectMessages(peerId)
+      canManageDirectMessages: this.managers.appPeersManager.canManageDirectMessages(peerId),
+      /* KEEP ME */autoDownload: this.setAutoDownloadMedia()
     }));
 
     // ! WARNING: TEMPORARY, HAVE TO GET TOPIC
