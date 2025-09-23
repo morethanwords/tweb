@@ -4930,9 +4930,11 @@ export class AppMessagesManager extends AppManager {
           true
       ) && message.pFlags.out;
 
+    const cannotManageDirectMessages = this.appPeersManager.isMonoforum(message.peerId) && !this.appPeersManager.canManageDirectMessages(message.peerId);
+
     if(
       !canEditMessageInPeer || (
-        message.peer_id._ !== 'peerChannel' &&
+        (message.peer_id._ !== 'peerChannel' || cannotManageDirectMessages) &&
         message.date < (tsNow(true) - (await this.apiManager.getConfig()).edit_time_limit) &&
         (message as Message.message).media?._ !== 'messageMediaPoll'
       )
