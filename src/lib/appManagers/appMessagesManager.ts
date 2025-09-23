@@ -6408,6 +6408,7 @@ export class AppMessagesManager extends AppManager {
     const monoforumThreadId = this.appPeersManager.getPeerId(saved_peer_id);
     const message: MyMessage = this.getMessageByPeer(peerId, mid);
 
+    // TODO: Check if we can avoid refetching the dialog in case we have enough messages to measure the changes ourselves
     if(monoforumThreadId) this.monoforumDialogsStorage.updateDialogIfExists(peerId, monoforumThreadId);
 
     if(!message) {
@@ -6745,6 +6746,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     for(const monoforumThreadId of monoforumDialogsTouched) {
+      // TODO: Check if we can avoid refetching the dialog if we can compute locally
       this.monoforumDialogsStorage.updateDialogIfExists(peerId, monoforumThreadId);
     }
   };
@@ -6923,6 +6925,7 @@ export class AppMessagesManager extends AppManager {
     });
 
     for(const {parentPeerId, peerId} of monoforumDialogs) {
+      // TODO: Do not refetch if the top_message was not deleted or the new top_message is cached
       this.monoforumDialogsStorage.updateDialogsByPeerId({parentPeerId, ids: [peerId]});
     }
   };
