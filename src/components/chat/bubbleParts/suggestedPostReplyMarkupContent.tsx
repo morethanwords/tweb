@@ -1,5 +1,7 @@
+import {numberThousandSplitterForStars} from '../../../helpers/number/numberThousandSplitter';
 import {Message} from '../../../layer';
 import {i18n} from '../../../lib/langPack';
+import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../lib/mtproto/mtproto_config';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import confirmationPopup from '../../confirmationPopup';
@@ -7,6 +9,8 @@ import Icon from '../../icon';
 import ripple from '../../ripple';
 import wrapPeerTitle from '../../wrappers/peerTitle';
 import type Chat from '../chat';
+import SuggestedPostAcceptWithTimePopup from './suggestedPostAcceptWithTimePopup';
+import {useFormattedCommission} from './suggestedPostAcceptWithTimePopup/useFormattedCommission';
 import SuggestedPostRejectPopup from './suggestedPostRejectPopup';
 ripple; // keep
 
@@ -21,15 +25,40 @@ type Props = {
 const SuggestedPostReplyMarkupContent = defineSolidElement({
   name: 'suggested-post-reply-markup-content',
   component: (props: PassedProps<Props>) => {
-    const {rootScope} = useHotReloadGuard();
+    const {rootScope, HotReloadGuard} = useHotReloadGuard();
+
+    const {commission, formattedCommission} = useFormattedCommission();
+
     const onAcceptClick = async() => {
       const canManageDirectMessages = await rootScope.managers.appPeersManager.canManageDirectMessages(props.message.peerId);
+      const stars = props.message.suggested_post?.price?._ === 'starsAmount' && +props.message.suggested_post?.price?.amount || undefined;
+      const scheduleDate = props.message.suggested_post?.schedule_date || undefined;
+
+      if(canManageDirectMessages && !scheduleDate) {
+        new SuggestedPostAcceptWithTimePopup({
+          message: props.message,
+          peerId: props.chat.peerId,
+          HotReloadGuard,
+          offeredStars: stars
+        }).show();
+        return;
+      }
 
       try {
         await confirmationPopup({
+          className: 'suggested-post-popup',
           titleLangKey: 'SuggestedPosts.AcceptOffer',
-          descriptionLangKey: canManageDirectMessages ? 'SuggestedPosts.AcceptOfferDescription.ForAdmin' : 'SuggestedPosts.AcceptOfferDescription.ForSubscriber',
-          descriptionLangArgs: [await wrapPeerTitle({peerId: props.message.fromId, onlyFirstName: true})],
+          descriptionLangKey: canManageDirectMessages ?
+            stars ? 'SuggestedPosts.AcceptOfferDescription.ForAdminPaid' : 'SuggestedPosts.AcceptOfferDescription.ForAdmin' :
+            'SuggestedPosts.AcceptOfferDescription.ForSubscriber',
+          descriptionLangArgs: [
+            await wrapPeerTitle({peerId: props.message.fromId, onlyFirstName: true}),
+            ...(canManageDirectMessages && stars ? [
+              i18n('Stars', [numberThousandSplitterForStars((stars * commission()).toFixed(2))]),
+              formattedCommission(),
+              SUGGESTED_POST_WAIT_FOR_REWARD_HOURS
+            ] : [])
+          ],
           button: {langKey: 'SuggestedPosts.Accept'}
         });
 

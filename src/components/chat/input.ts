@@ -139,6 +139,7 @@ import assumeType from '../../helpers/assumeType';
 import {formatFullSentTime} from '../../helpers/date';
 import useStars from '../../stores/stars';
 import PopupStars from '../popups/stars';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 
 // console.log('Recorder', Recorder);
 
@@ -4348,7 +4349,7 @@ export default class ChatInput {
 
   public async openSuggestPostPopup(initial?: SuggestedPostPayload) {
     const {default: SuggestPostPopup} = await import('./suggestPostPopup');
-    new SuggestPostPopup({suggestChange: !!initial?.changeMid, initialStars: initial?.stars, initialTimestamp: initial?.timestamp, onFinish: (payload) => {
+    new SuggestPostPopup({HotReloadGuard: SolidJSHotReloadGuardProvider, suggestChange: !!initial?.changeMid, initialStars: initial?.stars, initialTimestamp: initial?.timestamp, onFinish: (payload) => {
       const balance = +useStars()() || 0;
       if(!this.chat.canManageDirectMessages && payload.stars && payload.stars > balance) {
         PopupElement.createPopup(PopupStars);

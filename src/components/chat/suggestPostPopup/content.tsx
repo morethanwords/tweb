@@ -1,19 +1,16 @@
 import {createSignal, Show} from 'solid-js';
-import {formatFullSentTime} from '../../../helpers/date';
 import numberThousandSplitter from '../../../helpers/number/numberThousandSplitter';
 import {attachHotClassName} from '../../../helpers/solid/classname';
 import {I18nTsx} from '../../../helpers/solid/i18n';
-import I18n from '../../../lib/langPack';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
-import {ButtonIconTsx} from '../../buttonIconTsx';
 import currencyStarIcon from '../../currencyStarIcon';
-import {IconTsx} from '../../iconTsx';
 import ripple from '../../ripple';
 import useAppConfig from '../../sidebarLeft/tabs/privacy/messages/useAppConfig';
 import useStarsCommissionAndWithdrawalPrice from '../../sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
 import SimpleFormField from '../../simpleFormField';
 import Space from '../../space';
-import PopupSchedulePost from './popupSchedulePost';
+import commonStyles from './commonStyles.module.scss';
+import PublishTimeField from './publishTimeField';
 import styles from './styles.module.scss';
 ripple;
 
@@ -34,7 +31,6 @@ export type FinishPayload = {
 const MIN_STARS = 5;
 const MAX_STARS = 100_000;
 
-const PUBLISH_MIN_DELAY_MINUTES = 10;
 const SUGGEST_CHANGE_MIN_DELAY_MINUTES = 1; // avoid suggesting in the past if the user has the popup open for too long
 
 const SuggestPostPopupContent = defineSolidElement({
@@ -66,11 +62,6 @@ const SuggestPostPopupContent = defineSolidElement({
       setStars(!value ? value : '' + Math.min(maxStars(), +(value.replace(/\D/g, '')) || 0));
     };
 
-    const onCrossClick = (event: MouseEvent) => {
-      event.stopPropagation();
-      setPublishingTimestamp();
-    };
-
     const onFinish = () => {
       if(hasErrors()) return;
 
@@ -87,7 +78,7 @@ const SuggestPostPopupContent = defineSolidElement({
         isError={isBadPrice()}
       >
         <SimpleFormField.SideContent first>
-          {currencyStarIcon({class: styles.Icon})}
+          {currencyStarIcon({class: commonStyles.Icon})}
         </SimpleFormField.SideContent>
         <SimpleFormField.Input type='number' forceFieldValue />
         <SimpleFormField.Label forceOffset={44}>
@@ -109,43 +100,11 @@ const SuggestPostPopupContent = defineSolidElement({
 
       <Space amount='2rem' />
 
-      <SimpleFormField
-        clickable
-        withEndButtonIcon={!!publishingTimestamp()}
-        onClick={() => {
-          const minTimeDate = new Date();
-          minTimeDate.setMinutes(minTimeDate.getMinutes() + PUBLISH_MIN_DELAY_MINUTES);
-
-          const minDate = new Date(minTimeDate);
-          minDate.setHours(0, 0, 0, 0);
-
-          new PopupSchedulePost({
-            initDate: new Date(minTimeDate),
-            minDate,
-            minTimeDate,
-            onPick: (timestamp) => {
-              console.log(timestamp);
-              setPublishingTimestamp(timestamp);
-            }
-          }).show();
-        }}
-      >
-        <SimpleFormField.InputStub>
-          {publishingTimestamp() ?
-            <span>{formatFullSentTime(publishingTimestamp())}</span> :
-            I18n.format('SuggestedPosts.PublishingTime.Anytime', true)
-          }
-        </SimpleFormField.InputStub>
-        <SimpleFormField.Label active>
-          <I18nTsx key='SuggestedPosts.PublishingTime.Label' />
-        </SimpleFormField.Label>
-        <SimpleFormField.SideContent last>
-          {publishingTimestamp() ?
-            <ButtonIconTsx icon='cross' tabIndex={-1} onClick={onCrossClick} /> :
-            <IconTsx class={styles.Icon} icon='down' />
-          }
-        </SimpleFormField.SideContent>
-      </SimpleFormField>
+      <PublishTimeField
+        noTimeLangKey='SuggestedPosts.PublishingTime.Anytime'
+        value={publishingTimestamp()}
+        onChange={setPublishingTimestamp}
+      />
 
       <div class={styles.Caption}>
         <I18nTsx key='SuggestedPosts.PublishingTime.Description' />

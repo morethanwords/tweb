@@ -23,9 +23,11 @@ import type {AppImManager} from '../appManagers/appImManager';
 import type apiManagerProxy from '../mtproto/mtprotoworker';
 import type lottieLoader from '../rlottie/lottieLoader';
 import type {RootScope} from '../rootScope';
+import type SolidJSHotReloadGuardProvider from './hotReloadGuardProvider';
 
 
 export type SolidJSHotReloadGuardContextValue = {
+  HotReloadGuard: typeof SolidJSHotReloadGuardProvider;
   rootScope: RootScope;
   appSidebarLeft: AppSidebarLeft;
   AppChatFoldersTab: typeof AppChatFoldersTab;

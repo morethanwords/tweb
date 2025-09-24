@@ -58,6 +58,7 @@ namespace MonoforumDialogsStorage {
     messageId: number;
     reject?: boolean;
     rejectComment?: string;
+    scheduleTimestamp?: number;
   };
 }
 
@@ -337,12 +338,13 @@ class MonoforumDialogsStorage extends AppManager {
     this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: [dialog]});
   }
 
-  public async toggleSuggestedPostApproval({parentPeerId, messageId, reject, rejectComment}: MonoforumDialogsStorage.ToggleSuggestedPostApprovalArgs) {
+  public async toggleSuggestedPostApproval({parentPeerId, messageId, reject, rejectComment, scheduleTimestamp}: MonoforumDialogsStorage.ToggleSuggestedPostApprovalArgs) {
     const updates = await this.apiManager.invokeApi('messages.toggleSuggestedPostApproval', {
       peer: this.appPeersManager.getInputPeerById(parentPeerId),
       msg_id: getServerMessageId(messageId),
       reject,
-      reject_comment: rejectComment
+      reject_comment: rejectComment,
+      schedule_date: scheduleTimestamp
     });
 
     this.apiUpdatesManager.processUpdateMessage(updates);

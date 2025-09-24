@@ -1,11 +1,11 @@
 import {createSignal} from 'solid-js';
 import {I18nTsx} from '../../../../helpers/solid/i18n';
+import rootScope from '../../../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../../../lib/solidjs/defineSolidElement';
 import {InputFieldTsx} from '../../../inputFieldTsx';
 import ripple from '../../../ripple';
 import Space from '../../../space';
 import styles from './style.module.scss';
-import rootScope from '../../../../lib/rootScope';
 ripple; // keep
 
 if(import.meta.hot) import.meta.hot.accept();
@@ -26,7 +26,7 @@ const SuggestedPostRejectPopupContent = defineSolidElement({
 
     const tooLong = () => comment().length > MAX_LENGTH;
 
-    let isFinishing = false
+    let isFinishing = false;
 
     const onFinish = () => {
       if(isFinishing || tooLong()) return;

@@ -25,6 +25,7 @@ import {SolidJSHotReloadGuardContext} from './hotReloadGuard';
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
   return (
     <SolidJSHotReloadGuardContext.Provider value={{
+      HotReloadGuard: SolidJSHotReloadGuardProvider,
       rootScope,
       appSidebarLeft,
       AppEditFolderTab,
