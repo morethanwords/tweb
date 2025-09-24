@@ -20,7 +20,9 @@ ripple;
 if(import.meta.hot) import.meta.hot.accept();
 
 
-type Props = {
+export type SuggestPostPopupContentProps = {
+  initialStars?: number;
+  initialTimestamp?: number;
   onFinish: (payload: FinishPayload) => void;
 };
 
@@ -33,14 +35,19 @@ const MIN_STARS = 5;
 const MAX_STARS = 100_000;
 
 const PUBLISH_MIN_DELAY_MINUTES = 10;
+const SUGGEST_CHANGE_MIN_DELAY_MINUTES = 1; // avoid suggesting in the past if the user has the popup open for too long
 
 const SuggestPostPopupContent = defineSolidElement({
   name: 'suggested-post-popup-content',
-  component: (props: PassedProps<Props>) => {
+  component: (props: PassedProps<SuggestPostPopupContentProps>) => {
     attachHotClassName(props.element, styles.Container);
 
-    const [stars, setStars] = createSignal('');
-    const [publishingTimestamp, setPublishingTimestamp] = createSignal<number>();
+    const [stars, setStars] = createSignal(props.initialStars ? props.initialStars + '' : '');
+    const [publishingTimestamp, setPublishingTimestamp] = createSignal<number>(
+      props.initialTimestamp && props.initialTimestamp * 1000 > Date.now() + SUGGEST_CHANGE_MIN_DELAY_MINUTES * 60 * 1000 ?
+        props.initialTimestamp :
+        undefined
+    );
 
     const [appConfig] = useAppConfig();
 

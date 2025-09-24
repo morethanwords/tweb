@@ -6,13 +6,15 @@ import confirmationPopup from '../../confirmationPopup';
 import Icon from '../../icon';
 import ripple from '../../ripple';
 import wrapPeerTitle from '../../wrappers/peerTitle';
+import type Chat from '../chat';
 import SuggestedPostRejectPopup from './suggestedPostRejectPopup';
-ripple;
+ripple; // keep
 
 if(import.meta.hot) import.meta.hot.accept();
 
 
 type Props = {
+  chat: Chat;
   message: Message.message;
 };
 
@@ -45,17 +47,28 @@ const SuggestedPostReplyMarkupContent = defineSolidElement({
       }).show();
     };
 
+    const onSuggestChangesClick = () => {
+      props.chat.input.initSuggestPostChange(props.message.mid);
+    };
+
     return (
       <div class="reply-markup">
         <div class="reply-markup-row">
-          <button class="reply-markup-button is-first" use:ripple onClick={onAcceptClick}>
+          <button class="reply-markup-button" use:ripple onClick={onAcceptClick}>
             <span class="reply-markup-button-text reply-markup-suggested-action">
               {Icon('checkround_filled')}{/* @once */i18n('SuggestedPosts.Accept')}
             </span>
           </button>
-          <button class="reply-markup-button is-last" use:ripple onClick={onRejectClick}>
+          <button class="reply-markup-button" use:ripple onClick={onRejectClick}>
             <span class="reply-markup-button-text reply-markup-suggested-action">
               {Icon('crossround_filled')}{/* @once */i18n('SuggestedPosts.Reject')}
+            </span>
+          </button>
+        </div>
+        <div class="reply-markup-row">
+          <button class="reply-markup-button is-first is-last" use:ripple onClick={onSuggestChangesClick}>
+            <span class="reply-markup-button-text reply-markup-suggested-action">
+              {Icon('newchat_filled')}{/* @once */i18n('SuggestedPosts.SuggestChanges')}
             </span>
           </button>
         </div>

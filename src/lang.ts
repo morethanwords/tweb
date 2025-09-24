@@ -3598,6 +3598,7 @@ const lang = {
 
   'SuggestedPosts.SuggestAPost': 'Suggest a post',
   'SuggestedPosts.SuggestAChange': 'Suggest a change',
+  'SuggestedPosts.SuggestChanges': 'Suggest Changes',
   'SuggestedPosts.EnterPrice.Label': 'Enter Price in Stars',
   'SuggestedPosts.EnterPrice.MinOffer': 'Minimum Offer: %d Stars',
   'SuggestedPosts.EnterPrice.Description': 'Choose how many Stars to pay to publish this post. Setting a price is fully optional.',
@@ -3616,6 +3617,7 @@ const lang = {
   'SuggestedPosts.RejectComment.Label': 'Reject with Comment (Optional)',
   'SuggestedPosts.RejectComment.Caption': 'You can leave an optional comment explaining why you rejected the post.',
   'SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditions': 'Offer the post for free',
+  'SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditionsChange': 'Click to change the conditions',
   'SuggestedPosts.SuggestedAPostTopInfoSubtitle.TimeOnly': 'Publish %s',
   'SuggestedPosts.SuggestedAPost': '%s suggested a post',
   'SuggestedPosts.YouSuggestedAPost': '**You** suggested a post',

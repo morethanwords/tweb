@@ -2046,6 +2046,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   margin-bottom: 43px;
 }
 
+.avatar-for-suggested-reply-markup {
+  margin-bottom: 84px;
+}
+
 .suggested-post-subtitle {
   display: flex;
   align-items: center;

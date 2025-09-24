@@ -833,7 +833,7 @@ export default class ChatBubbles {
 
       if(this.chat.isMonoforum && message._ === 'message' && !canHaveSuggestedPostReplyMarkup(message)) {
         const group = bubble.closest('.bubbles-group');
-        const cls = 'avatar-for-reply-markup';
+        const cls = 'avatar-for-suggested-reply-markup';
         group?.querySelector(`.${cls}`)?.classList.remove(cls);
       }
 
@@ -6198,7 +6198,7 @@ export default class ChatBubbles {
     }
 
     if(!isOut && isMessage) {
-      tmpPromise = addSuggestedPostReplyMarkup({message, bubble, contentWrapper});
+      tmpPromise = addSuggestedPostReplyMarkup({message, bubble, contentWrapper, chat: this.chat});
       if(tmpPromise) await tmpPromise;
     }
 

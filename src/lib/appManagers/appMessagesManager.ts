@@ -98,6 +98,8 @@ const DO_NOT_DELETE_MESSAGES = false;
 
 const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
 
+const SUGGESTED_POST_MIN_THRESHOLD_SECONDS = 60; // avoid last minute suggests, or if the user was thinking a lot before clicking send
+
 export enum HistoryType {
   Chat,
   Thread,
@@ -219,6 +221,13 @@ const processAfter = (cb: () => void) => {
   cb();
 };
 
+export type SuggestedPostPayload = {
+  stars?: number;
+  timestamp?: number;
+  changeMid?: number;
+  monoforumThreadId?: PeerId;
+};
+
 export type MessageSendingParams = Partial<{
   peerId: PeerId,
   threadId: number,
@@ -236,10 +245,7 @@ export type MessageSendingParams = Partial<{
   invertMedia: boolean,
   effect: DocId,
   confirmedPaymentResult: ConfirmedPaymentResult,
-  suggestedPost: {
-    stars?: number,
-    timestamp?: number
-  }
+  suggestedPost: SuggestedPostPayload
 }>;
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -2295,6 +2301,7 @@ export class AppMessagesManager extends AppManager {
       topMessage = historyStorage.history.first[0];
     }
 
+
     const message: Message.message = {
       _: 'message',
       id: this.generateTempMessageId(peerId, topMessage),
@@ -2319,7 +2326,9 @@ export class AppMessagesManager extends AppManager {
         _: 'suggestedPost',
         pFlags: {},
         price: options.suggestedPost.stars ? formatStarsAmount(options.suggestedPost.stars) : undefined,
-        schedule_date: options.suggestedPost.timestamp
+        schedule_date: options.suggestedPost.timestamp && options.suggestedPost.timestamp >= tsNow(true) + SUGGESTED_POST_MIN_THRESHOLD_SECONDS ?
+          options.suggestedPost.timestamp :
+          undefined
       } : undefined
     };
 

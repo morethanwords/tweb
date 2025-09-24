@@ -123,7 +123,8 @@ export class BubbleGroup {
     const replyMarkup = message.reply_markup;
     let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
     replyMarkupRows = replyMarkupRows?.filter?.((row) => row.buttons.length);
-    (replyMarkupRows?.length || canHaveSuggestedPostReplyMarkup(message)) && this.avatar.node.classList.add('avatar-for-reply-markup');
+    replyMarkupRows?.length && this.avatar.node.classList.add('avatar-for-reply-markup');
+    canHaveSuggestedPostReplyMarkup(message) && this.avatar.node.classList.add('avatar-for-suggested-reply-markup');
 
     // this.avatarLoadPromise = Promise.all([
     //   avatarLoadPromise,

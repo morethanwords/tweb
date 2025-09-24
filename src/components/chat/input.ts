@@ -6,7 +6,7 @@
 
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import type {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
-import type {AppMessagesManager, MessageSendingParams, MyMessage} from '../../lib/appManagers/appMessagesManager';
+import type {AppMessagesManager, MessageSendingParams, MyMessage, SuggestedPostPayload} from '../../lib/appManagers/appMessagesManager';
 import type Chat from './chat';
 import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
 import '../../../public/recorder.min';
@@ -159,10 +159,6 @@ type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested
 type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
 export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
-type SuggestedPostPayload = {
-  stars?: number;
-  timestamp?: number;
-};
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
@@ -2202,7 +2198,7 @@ export default class ChatInput {
       this.setStarsAmount(this.chat?.starsAmount); // should reset when undefined
 
       this.directMessagesHandler.set({
-        canManageDirectMessages: isMonoforum && canManageDirectMessages && !monoforumThreadId,
+        isMonoforumAllChats: isMonoforum && canManageDirectMessages && !monoforumThreadId,
         isReplying: !!this.helperType
       });
       // console.warn('[input] finishpeerchange ends');
@@ -3400,6 +3396,8 @@ export default class ChatInput {
       possibleBtnMenuContainer = this.replyElements?.menuContainer;
     } else if(this.helperType === 'edit') {
       this.chat.setMessageId({lastMsgId: this.editMsgId});
+    } else if(this.helperType === 'suggested') {
+      this.openSuggestPostPopup(this.suggestedPost);
     } else if(!this.helperType) {
       possibleBtnMenuContainer = this.webPageElements?.container;
     }
@@ -3607,12 +3605,12 @@ export default class ChatInput {
     this.getMiddleware()?.onDestroy(() => void dispose());
 
     const [store, set] = createStore({
-      canManageDirectMessages: false,
+      isMonoforumAllChats: false,
       isReplying: false
     });
 
     createEffect(() => {
-      if(!store.canManageDirectMessages) return;
+      if(!store.isMonoforumAllChats) return;
 
       this.getPlaceholderParams().then(params => this.updateMessageInputPlaceholder(params));
 
@@ -3636,7 +3634,7 @@ export default class ChatInput {
       });
     });
 
-    const canPaste = () => !store.canManageDirectMessages || store.isReplying;
+    const canPaste = () => !store.isMonoforumAllChats || store.isReplying;
 
     return {store, set, canPaste};
   });
@@ -3945,6 +3943,36 @@ export default class ChatInput {
       this.restoreInputLock = restoreInputLock;
     };
     f();
+  }
+
+  public initSuggestPostChange(mid: number) {
+    const message = this.chat.getMessage(mid) as Message.message;
+    if(!message) return;
+
+    const monoforumThreadId = getPeerId(message.saved_peer_id);
+    if(!monoforumThreadId) return;
+
+    const input = wrapDraftText(message.message, {entities: message.totalEntities, wrappingForPeerId: this.chat.peerId});
+
+    const payload: SuggestedPostPayload = {
+      stars: message.suggested_post?.price?._ === 'starsAmount' ? +message.suggested_post.price.amount : undefined,
+      timestamp: message.suggested_post?.schedule_date && message.suggested_post.schedule_date * 1000 > Date.now() ?
+        message.suggested_post.schedule_date :
+        undefined,
+      changeMid: message.mid,
+      monoforumThreadId
+    };
+
+    this.setTopInfo({
+      type: 'suggested',
+      callerFunc: () => {},
+      title: i18n('SuggestedPosts.SuggestChanges'),
+      subtitle: this.createSuggestedPostSubtitle(payload),
+      input,
+      message
+    });
+
+    this.suggestedPost = payload;
   }
 
   public initMessagesForward(fromPeerIdsMids: {[fromPeerId: PeerId]: number[]}) {
@@ -4256,6 +4284,10 @@ export default class ChatInput {
       this.helperFunc = callerFunc;
     }
 
+    if(type === 'suggested') {
+      this.fileInput.multiple = false;
+    }
+
     this.btnSuggestPost?.classList.toggle('hide', !this.canShowSuggestPostButton(true));
 
     const replyParent = this.replyElements.container;
@@ -4314,9 +4346,9 @@ export default class ChatInput {
     return canSuggest && !hasSuggestedHeader;
   }
 
-  public async openSuggestPostPopup() {
+  public async openSuggestPostPopup(initial?: SuggestedPostPayload) {
     const {default: SuggestPostPopup} = await import('./suggestPostPopup');
-    new SuggestPostPopup({suggestChange: false, onFinish: (payload) => {
+    new SuggestPostPopup({suggestChange: !!initial?.changeMid, initialStars: initial?.stars, initialTimestamp: initial?.timestamp, onFinish: (payload) => {
       const balance = +useStars()() || 0;
       if(!this.chat.canManageDirectMessages && payload.stars && payload.stars > balance) {
         PopupElement.createPopup(PopupStars);
@@ -4329,14 +4361,19 @@ export default class ChatInput {
         title: i18n('SuggestedPosts.SuggestAPost'),
         subtitle: this.createSuggestedPostSubtitle(payload)
       });
-      this.suggestedPost = payload;
-      this.fileInput.multiple = false;
+
+      this.suggestedPost = {
+        ...initial,
+        ...payload
+      };
     }}).show();
   }
 
   private createSuggestedPostSubtitle(payload: SuggestedPostPayload) {
     if(!payload.stars && !payload.timestamp) {
-      return i18n('SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditions');
+      return payload.changeMid ?
+        i18n('SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditionsChange') :
+        i18n('SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditions')
     }
 
     const element = document.createElement('div');
