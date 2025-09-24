@@ -1263,12 +1263,10 @@ export default class Chat extends EventListenerBase<{
       peerId: this.peerId,
       threadId: this.threadId,
       updateStickersetOrder: rootScope.settings.stickers.dynamicPackOrder,
-      replyToMonoforumPeerId: this.monoforumThreadId,
       ...(this.input && {
         ...(this.input.getReplyTo() || false),
         ...(this.input.suggestedPost ? {
-          replyToMsgId: this.input.suggestedPost.changeMid,
-          replyToMonoforumPeerId: this.input.suggestedPost.monoforumThreadId
+          replyToMsgId: this.input.suggestedPost.changeMid
         } : {}),
         scheduleDate: this.input.scheduleDate,
         silent: this.input.sendSilent,
@@ -1276,6 +1274,7 @@ export default class Chat extends EventListenerBase<{
         effect: this.input.effect(),
         suggestedPost: this.input.suggestedPost
       }),
+      replyToMonoforumPeerId: this.input?.suggestedPost?.monoforumThreadId || this.input?.getReplyTo()?.replyToMonoforumPeerId || this.monoforumThreadId,
       savedReaction: this.savedReaction
     };
   }
