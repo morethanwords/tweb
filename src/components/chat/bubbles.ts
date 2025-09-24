@@ -5544,7 +5544,8 @@ export default class ChatBubbles {
           ));
         } else if(action._ === 'messageActionPaidMessagesRefunded') {
           const peerTitle = new PeerTitle();
-          promise = peerTitle.update({peerId: this.peerId, onlyFirstName: true, wrapOptions});
+          const savedPeerId = this.chat.canManageDirectMessages && getPeerId(message.saved_peer_id);
+          promise = peerTitle.update({peerId: savedPeerId || this.peerId, onlyFirstName: true, wrapOptions});
 
           s.append(i18n(
             our ? 'PaidMessages.StarsRefundedByYou' : 'PaidMessages.StarsRefundedToYou',

@@ -3619,7 +3619,7 @@ const lang = {
   'SuggestedPosts.RejectComment.Label': 'Reject with Comment (Optional)',
   'SuggestedPosts.RejectComment.Caption': 'You can leave an optional comment explaining why you rejected the post.',
   'SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditions': 'Offer the post for free',
-  'SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditionsChange': 'Click to add conditions',
+  'SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditionsChange': 'Click to add terms',
   'SuggestedPosts.SuggestedAPostTopInfoSubtitle.TimeOnly': 'Publish %s',
   'SuggestedPosts.SuggestedAPost': '%s suggested a post',
   'SuggestedPosts.YouSuggestedAPost': '**You** suggested a post',
