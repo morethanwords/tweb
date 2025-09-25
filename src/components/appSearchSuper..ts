@@ -116,6 +116,7 @@ export type SearchSuperContext = {
   maxId?: number,
   folderId?: number,
   threadId?: number,
+  monoforumThreadId?: PeerId,
   date?: number,
   nextRate?: number,
   minDate?: number,

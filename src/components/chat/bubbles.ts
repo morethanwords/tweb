@@ -2989,6 +2989,7 @@ export default class ChatBubbles {
       .setSearchContext({
         threadId: this.chat.threadId,
         peerId: this.peerId,
+        monoforumThreadId: this.chat.monoforumThreadId,
         inputFilter: {_: documentDiv ? 'inputMessagesFilterDocument' : 'inputMessagesFilterPhotoVideo'},
         useSearch: this.chat.type !== ChatType.Scheduled && !isSingleMedia,
         skipSensitive,

@@ -5077,7 +5077,7 @@ export class AppMessagesManager extends AppManager {
     if(options.isCacheableSearch) {
       searchStorage = this.searchesStorage[key] ??= this.createHistoryStorage(o);
     } else {
-      searchStorage = ((this.searchesStorage[options.peerId] ??= {})[options.threadId] ??= {})[filter] ??= this.createHistoryStorage(o);
+      searchStorage = ((this.searchesStorage[options.peerId] ??= {})[options.threadId || options.monoforumThreadId] ??= {})[filter] ??= this.createHistoryStorage(o);
     }
     if(options.isCacheableSearch) { // * don't update messages list if it's a global search
       if(!searchStorage.searchHistory) {
