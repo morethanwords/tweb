@@ -4,6 +4,8 @@
 
   z-index: 1;
   overflow: hidden;
+
+  pointer-events: none;
 }
 
 .InnerContainer {
@@ -26,7 +28,7 @@
   display: flex;
   flex-direction: column;
 
-  box-shadow: 0px 0px 80px 20px rgba(var(--surface-color-rgb), 0.75);
+  /* box-shadow: 0px 0px 80px 20px rgba(var(--surface-color-rgb), 0.75); */
 
   &.hidden {
     transform: translateX(100%);
@@ -40,12 +42,17 @@
   padding: 0 0.75rem;
 }
 
-.Title {
+.TitleContainer {
   flex: 1;
   padding-left: 0.5rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.Subtitle {
+  font-size: 14px;
+  color: var(--secondary-text-color);
 }
 
 .ScrollableContainer {

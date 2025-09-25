@@ -526,10 +526,10 @@ class MonoforumDialogsStorage extends AppManager {
     else historyStorage.readMaxId = maxId;
 
     const dialog = this.getDialogByParent(parentPeerId, peerId);
-    // TODO: Check if we can avoid refetching the dialog in case we have enoug messages to measure the changes ourselves
+    // TODO: Check if we can avoid refetching the dialog in case we have enough messages to measure the changes ourselves
     if(dialog) this.updateDialogsByPeerId({parentPeerId, ids: [peerId]});
 
-    // TODO: Check if we can avoid refetching the dialog in case we have enoug messages to measure the changes ourselves
+    // TODO: Check if we can avoid refetching the dialog in case we have enough messages to measure the changes ourselves
     const mainDialog = this.dialogsStorage.getDialogOnly(parentPeerId);
     if(mainDialog) this.appMessagesManager.reloadConversation(parentPeerId);
   }

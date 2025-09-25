@@ -2833,10 +2833,14 @@ export class AppDialogsManager {
     const useRafs = promise ? 2 : undefined;
     this.xd.toggleAvatarUnreadBadges(forwards, useRafs);
 
+    this.transitionDrawersParent(forwards, useRafs);
+  }
+
+  private transitionDrawersParent(forwards: boolean, useRafs?: number) {
     const deferred = deferredPromise<void>();
     const duration = 300;
     SetTransition({
-      element: this.forumsSlider.parentElement,
+      element: appSidebarLeft.sidebarEl,
       className: 'is-forum-visible',
       duration,
       forwards,
@@ -2880,7 +2884,7 @@ export class AppDialogsManager {
       peerId,
       onClose: () => {
         this.monoforumDrawers.opened = this.monoforumDrawers.opened.filter(value => value !== drawer);
-        this.onSomeDrawerToggle?.();
+        this.onMonoforumDrawerToggle?.();
         appNavigationController.removeItem(navigationItem);
       }
     });
@@ -2890,7 +2894,7 @@ export class AppDialogsManager {
     this.monoforumDrawers.container.append(drawer);
     this.monoforumDrawers.opened.push(drawer);
 
-    this.onSomeDrawerToggle?.();
+    this.onMonoforumDrawerToggle?.();
 
     return drawer;
   }
@@ -2900,6 +2904,12 @@ export class AppDialogsManager {
     this.monoforumDrawers.opened.forEach(value => value?.controls?.close?.());
 
     return hadOpenedDrawer;
+  }
+
+  private onMonoforumDrawerToggle() {
+    this.xd.toggleAvatarUnreadBadges(this.hasMonoforumOpen(), 0);
+    this.transitionDrawersParent(this.hasMonoforumOpen());
+    this.onSomeDrawerToggle?.();
   }
 
   public async toggleForumTabByPeerId(peerId: PeerId, show?: boolean, asInnerIfAsMessages?: boolean) {

@@ -1,4 +1,4 @@
-import {createEffect, createMemo, createSignal, onCleanup, Show} from 'solid-js';
+import {createEffect, createMemo, createResource, createSignal, onCleanup, Show} from 'solid-js';
 import liteMode from '../../helpers/liteMode';
 import {doubleRaf} from '../../helpers/schedulers';
 import pause from '../../helpers/schedulers/pause';
@@ -9,6 +9,7 @@ import {ButtonIconTsx} from '../buttonIconTsx';
 import {PeerTitleTsx} from '../peerTitleTsx';
 import createMonoforumDialogsList from './list';
 import styles from './styles.module.scss';
+import {I18nTsx} from '../../helpers/solid/i18n';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -26,7 +27,7 @@ type Controls = {
 const MonoforumDrawer = defineSolidElement({
   name: 'monoforum-drawer',
   component: (props: PassedProps<Props>, _, controls: Controls) => {
-    const {appDialogsManager, AutonomousMonoforumThreadList, appSidebarLeft, apiManagerProxy} = useHotReloadGuard();
+    const {appDialogsManager, AutonomousMonoforumThreadList, appSidebarLeft, apiManagerProxy, rootScope} = useHotReloadGuard();
     const canAnimate = () => liteMode.isAvailable('animations');
 
     props.element.classList.add(styles.Container);
@@ -40,6 +41,8 @@ const MonoforumDrawer = defineSolidElement({
         props?.onClose(); // Should not happen, but let it be
       }, 0);
     });
+
+    const [dialogs] = createResource(() => rootScope.managers.monoforumDialogsStorage.getDialogs({parentPeerId: props.peerId, limit: 1}));
 
     const initiallyHidden = canAnimate() && !appSidebarLeft.isCollapsed();
     const [isHidden, setIsHidden] = createSignal(initiallyHidden);
@@ -96,7 +99,12 @@ const MonoforumDrawer = defineSolidElement({
         >
           <div class={`sidebar-header ${styles.Header}`}>
             <ButtonIconTsx class='sidebar-close-button' icon='close' noRipple onClick={close} />
-            <PeerTitleTsx class={styles.Title} peerId={props.peerId} />
+            <div class={styles.TitleContainer}>
+              <PeerTitleTsx peerId={props.peerId} />
+              <div class={styles.Subtitle}>
+                <I18nTsx key='ChannelDirectMessages.ThreadsCount' args={[dialogs() ? dialogs().count + '' : '~']} />
+              </div>
+            </div>
           </div>
           <div class={styles.ScrollableContainer}>
             {autonomousList.scrollable.container}
