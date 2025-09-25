@@ -38,6 +38,7 @@ type ClearDraftArgs = {
 export class AppDraftsManager extends AppManager {
   private drafts: { [peerIdAndThreadId: string]: MyDraftMessage };
   private getAllDraftPromise: Promise<void>;
+  private getAllDraftsResolved = false;
 
   protected after() {
     this.clear(true);
@@ -55,6 +56,11 @@ export class AppDraftsManager extends AppManager {
 
           if(draft.reply_to?._ === 'inputReplyToMessage' || draft.reply_to?._ === 'inputReplyToMonoForum') {
             draft.reply_to.monoforum_peer_id = monoforumThreadId;
+          } else if(!draft.reply_to) {
+            draft.reply_to = {
+              _: 'inputReplyToMonoForum',
+              monoforum_peer_id: this.appPeersManager.getInputPeerById(monoforumThreadId)
+            };
           }
         }
 
@@ -76,6 +82,7 @@ export class AppDraftsManager extends AppManager {
   public clear = (init?: boolean) => {
     if(!init) {
       this.getAllDraftPromise = undefined;
+      this.getAllDraftsResolved = false;
     }
 
     this.drafts = {};
@@ -97,10 +104,20 @@ export class AppDraftsManager extends AppManager {
   //   this.appMessagesManager.scheduleHandleNewDialogs();
   // }
 
+  public addMissedDialogsOrVoid() {
+    if(this.getAllDraftsResolved) return;
+    return this.addMissedDialogs();
+  }
+
   public addMissedDialogs() {
     return this.getAllDrafts().then(() => {
+      this.getAllDraftsResolved = true;
+
+      // MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] drafts', drafts: this.drafts})
       for(const key in this.drafts) {
         if(key.indexOf('_') !== -1) { // exclude threads
+          const peerId = key.split('_')[0]?.toPeerId() || 0;
+          this.monoforumDialogsStorage.checkPreloadedDraft(peerId, this.drafts[key]);
           continue;
         }
 

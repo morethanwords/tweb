@@ -13110,7 +13110,8 @@ export namespace SavedDialog {
     draft?: DraftMessage,
     peerId?: PeerId,
     parentPeerId?: PeerId,
-    index_0?: number
+    index_0?: number,
+    stableIndex?: number
   };
 }
 
