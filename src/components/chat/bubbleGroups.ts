@@ -416,7 +416,7 @@ export default class BubbleGroups {
 
     let prevPeerId: number;
 
-    forEachReverse(this.itemsArr, item => {
+    forEachReverse(this.itemsArr, (item, i) => {
       const savedPeerId = getPeerId(item.message?.saved_peer_id);
       if(!savedPeerId) return;
 
@@ -430,13 +430,18 @@ export default class BubbleGroups {
 
       prevPeerId = savedPeerId;
 
-      if(bubbleAddons.monoforumSeparator) return;
+      if(bubbleAddons.monoforumSeparator) {
+        bubbleAddons.monoforumSeparator.feedProps<false>({
+          index: -i
+        });
+        return;
+      }
 
       bubbleAddons.monoforumSeparator = new MonoforumSeparator;
       bubbleAddons.monoforumSeparator.feedProps({
         bubbles: this.chat.bubbles,
         peerId: savedPeerId,
-        index: item.timestamp
+        index: -i
       });
       item.bubble.classList.add('has-monoforum-separator');
       item.bubble.prepend(bubbleAddons.monoforumSeparator);

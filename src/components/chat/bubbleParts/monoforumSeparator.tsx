@@ -59,9 +59,8 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
           });
 
           if(sortedMapValues[i + 1] === targetMapValue) {
-            console.log('[my-debug]', entry.intersectionRatio);
             setCurrent({
-              nextIntersectionRatio: entry.intersectionRatio
+              nextIntersectionRatio: entry.boundingClientRect.bottom < entry.rootBounds.bottom ? entry.intersectionRatio : 1
             });
           }
         }
@@ -79,7 +78,9 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
 
   return {
     observe(element: HTMLElement, index: number) {
-      observer.observe(element);
+      setTimeout(() => {
+        observer.observe(element);
+      }, 0);
       const [state, setState] = createStore<ElementState>({floating: false, hidden: false});
       map.set(element, {
         index,
@@ -139,10 +140,7 @@ const MonoforumSeparator = defineSolidElement({
   component: (props: PassedProps<Props>) => {
     attachHotClassName(props.element, styles.Container);
 
-    let
-      peerTitleEl: HTMLElement,
-      peerTitleFloatingEl: HTMLElement
-    ;
+    let peerTitleEl: HTMLElement;
 
     const [serviceMsg, setServiceMsg] = createSignal<HTMLElement>();
 
@@ -154,10 +152,6 @@ const MonoforumSeparator = defineSolidElement({
 
     const onClick = () => {
       peerTitleEl?.click();
-    };
-
-    const onFloatingClick = () => {
-      peerTitleFloatingEl?.click();
     };
 
     return (
@@ -186,16 +180,20 @@ const MonoforumSeparator = defineSolidElement({
               '--top': `${SEPARATOR_HEIGHT + 2 * PADDING}px`,
               '--scale': (state().nextIntersectionRatio ?? 1)
             }}
-            onClick={onFloatingClick}
+            onClick={onClick}
           >
-            <PeerTitleTsx ref={peerTitleFloatingEl} peerId={props.peerId} limitSymbols={15} onlyFirstName />
+            <PeerTitleTsx peerId={props.peerId} limitSymbols={15} onlyFirstName />
             <IconTsx icon='arrowhead' class={styles.ArrowIcon} />
           </div>
         </Portal>
         {/* </Show>*/}
 
-        <div class={`${styles.Separator} ${styles.SeparatorLeft}`} />
-        <div class={`${styles.Separator} ${styles.SeparatorRight}`} />
+        <div class={`${styles.Separator} ${styles.SeparatorLeft}`} classList={{
+          [styles.center]: state().floating
+        }} />
+        <div class={`${styles.Separator} ${styles.SeparatorRight}`} classList={{
+          [styles.center]: state().floating
+        }} />
       </>
     );
   }
