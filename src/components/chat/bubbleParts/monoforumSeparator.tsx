@@ -12,7 +12,9 @@ if(import.meta.hot) import.meta.hot.accept();
 
 
 const PADDING = 2;
-const SEPARATOR_HEIGHT = 30;
+const SEPARATOR_HEIGHT = 30; // it's actually 29, but let's have it rounded up)
+
+const LIMIT_SYMBOLS = 15;
 
 
 export type SeparatorIntersectorRoot = ReturnType<typeof createIntersectorRoot>;
@@ -44,9 +46,7 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
       const floating = entry.boundingClientRect.bottom < entry.rootBounds.top;
 
       batch(() => {
-        setState({
-          floating
-        });
+        setState({floating});
 
         const sortedMapValues = Array.from(map.values()).sort((a, b) => a.index - b.index);
         const n = sortedMapValues.length;
@@ -54,9 +54,7 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
           const [, setCurrent] = sortedMapValues[i].signal;
           const [next] = sortedMapValues[i + 1].signal;
 
-          setCurrent({
-            hidden: next.floating
-          });
+          setCurrent({hidden: next.floating});
 
           if(sortedMapValues[i + 1] === targetMapValue) {
             setCurrent({
@@ -81,12 +79,12 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
       setTimeout(() => {
         observer.observe(element);
       }, 0);
+
       const [state, setState] = createStore<ElementState>({floating: false, hidden: false});
       map.set(element, {
         index,
         signal: [state, setState]
       });
-      // update();
 
       return state;
     },
@@ -164,11 +162,10 @@ const MonoforumSeparator = defineSolidElement({
           }}
           onClick={onClick}
         >
-          <PeerTitleTsx ref={peerTitleEl} peerId={props.peerId} limitSymbols={15} onlyFirstName />
+          <PeerTitleTsx ref={peerTitleEl} peerId={props.peerId} limitSymbols={LIMIT_SYMBOLS} onlyFirstName />
           <IconTsx icon='arrowhead' class={styles.ArrowIcon} />
         </div>
 
-        {/* <Show when={state().floating && !state().hidden}>*/}
         <Portal mount={props.bubbles.floatingSeparatorsContainer}>
           <div
             class={styles.ServiceMsg}
@@ -182,11 +179,10 @@ const MonoforumSeparator = defineSolidElement({
             }}
             onClick={onClick}
           >
-            <PeerTitleTsx peerId={props.peerId} limitSymbols={15} onlyFirstName />
+            <PeerTitleTsx peerId={props.peerId} limitSymbols={LIMIT_SYMBOLS} onlyFirstName />
             <IconTsx icon='arrowhead' class={styles.ArrowIcon} />
           </div>
         </Portal>
-        {/* </Show>*/}
 
         <div class={`${styles.Separator} ${styles.SeparatorLeft}`} classList={{
           [styles.center]: state().floating

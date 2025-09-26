@@ -27,7 +27,7 @@
     position: absolute;
     left: 50%;
     top: var(--top, 0);
-    transform: translateX(-50%) translateY(calc((1 - var(--scale, 1)) * -80%)) scale(var(--scale, 1));
+    transform: translateX(-50%) translateY(calc((1 - var(--scale, 1)) * -50%)) scale(var(--scale, 1));
 
     white-space: nowrap;
     width: min-content;
