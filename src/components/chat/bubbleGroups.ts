@@ -446,7 +446,6 @@ export default class BubbleGroups {
       item.bubble.classList.add('has-monoforum-separator');
       item.bubble.prepend(bubbleAddons.monoforumSeparator);
     });
-    console.log('[my-debug]', {items: this.itemsArr});
   }
 
   f(items: GroupItem[], index: number = 0, length = items.length) {

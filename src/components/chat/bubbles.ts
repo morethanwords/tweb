@@ -2642,14 +2642,12 @@ export default class ChatBubbles {
           const {mid} = splitFullMid(getBubbleFullMid(bubble) || EMPTY_FULL_MID);
 
           if(peerId !== NULL_PEER_ID) {
-            const message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, +mid);
-
             const chat = apiManagerProxy.getChat(this.peerId);
             const linkedChat = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id ?
               apiManagerProxy.getChat(chat.linked_monoforum_id) :
               undefined;
 
-            const shouldOpenAsMonoforum = this.chat.isMonoforum && this.chat.canManageDirectMessages && message && message?.fromId?.toChatId() !== linkedChat?.id?.toChatId();
+            const shouldOpenAsMonoforum = this.chat.isMonoforum && this.chat.canManageDirectMessages && peerId !== linkedChat?.id?.toPeerId();
 
             this.chat.appImManager.setInnerPeer({
               ...additionalSetPeerProps,
