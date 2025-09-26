@@ -68,7 +68,7 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
     });
   }, {
     root: rootElement,
-    rootMargin: `-${2 * PADDING + 2 * SEPARATOR_HEIGHT}px`, // 0px 0px 0px`,
+    rootMargin: `-${2 * PADDING + 2 * SEPARATOR_HEIGHT}px 0px 0px 0px`,
     threshold: getThreshold()
   });
 
