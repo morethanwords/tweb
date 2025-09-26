@@ -8,6 +8,7 @@
   align-items: center;
   font-size: var(--font-size-14);
   line-height: 1;
+  white-space: nowrap;
 
   > :global(.i18n) {
     display: flex;

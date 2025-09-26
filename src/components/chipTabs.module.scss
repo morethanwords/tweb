@@ -1,0 +1,73 @@
+@import '../scss/mixins';
+
+.container {
+  position: relative;
+  height: 2.5rem;
+  flex-shrink: 0;
+  transition: background-color var(--transition-standard-in);
+
+  :global(.scrollable) {
+    display: flex;
+    flex-direction: row;
+    gap: 0.1875rem;
+    padding: 0.375rem 1rem;
+  }
+
+  &.center {
+    display: flex;
+    justify-content: center;
+
+    :global(.scrollable) {
+      position: relative;
+      width: min-content;
+    }
+  }
+}
+
+.chip {
+  padding: 0.28125rem 0.75rem;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--secondary-text-color);
+  font-weight: 500;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color var(--transition-standard-in);
+
+  .primary & {
+    transition-property: color, background-color;
+
+    &.active {
+      color: var(--primary-color);
+    }
+  }
+}
+
+.chosen {
+  position: absolute;
+  top: 0.375rem;
+  bottom: 0.375rem;
+  border-radius: 9999px;
+  z-index: -1;
+
+  &.animate {
+    transition: width var(--transition-standard-in), left var(--transition-standard-in);
+  }
+  
+  .surface & {
+    background: var(--surface-color);
+  }
+
+  .secondary & {
+    background: var(--light-filled-secondary-text-color);
+  }
+
+  .primary & {
+    background: rgba(var(--primary-color-rgb), .1);
+    z-index: 1;
+  }
+}

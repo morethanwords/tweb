@@ -80,6 +80,8 @@ export default class PopupPeer extends PopupElement {
 
     if(options.inputField) {
       fragment.append(options.inputField.container);
+      const button = options.buttons.find((button) => !button.isCancel);
+      toggleDisability([button.element], !options.inputField.isValid());
     }
 
     if(options.checkboxes) {

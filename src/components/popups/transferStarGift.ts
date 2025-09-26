@@ -11,9 +11,15 @@ import {toastNew} from '../toast';
 import {wrapFormattedDuration} from '../wrappers/wrapDuration';
 import formatDuration from '../../helpers/formatDuration';
 import tsNow from '../../helpers/tsNow';
+import PopupElement from '.';
+import Row from '../row';
+import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
+import {passwordPopup} from './password';
+import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 
 export default function transferStarGift(gift: MyStarGift): Promise<boolean> {
   const {saved, input} = gift;
+  const raw = gift.raw as StarGift.starGiftUnique;
 
   const now = tsNow(true);
   if(saved.can_transfer_at !== undefined && saved.can_transfer_at > now) {
@@ -25,12 +31,46 @@ export default function transferStarGift(gift: MyStarGift): Promise<boolean> {
   }
 
   const deferred = deferredPromise<boolean>();
-  PopupPickUser.createPicker2({
-    filterPeerTypeBy: ['isRegularUser'],
-    placeholder: 'StarGiftTransferTo',
-    exceptSelf: true
-  }).then(async(peerId) => {
-    const inputPeer = await rootScope.managers.appUsersManager.getUserInputPeer(peerId);
+  let peerSelectorResolved = false;
+  async function handleSelection(peerId: PeerId | 'fragment') {
+    if(peerSelectorResolved) return;
+    peerSelectorResolved = true;
+
+    if(peerId === 'fragment') {
+      try {
+        await confirmationPopup({
+          titleLangKey: 'StarGiftFragmentTransferTitle',
+          descriptionLangKey: 'StarGiftFragmentTransferText',
+          descriptionLangArgs: [getCollectibleName(raw)],
+          button: {
+            langKey: 'StarGiftFragmentTransferConfirm'
+          }
+        })
+
+        const password = await passwordPopup({
+          titleLangKey: 'PleaseEnterCurrentPassword',
+          descriptionLangKey: 'StarGiftFragmentTransferPassword',
+          descriptionLangArgs: [getCollectibleName(raw)],
+          button: {
+            langKey: 'Confirm'
+          }
+        })
+
+        const url = await rootScope.managers.apiManager.invokeApi('payments.getStarGiftWithdrawalUrl', {
+          stargift: input,
+          password: password
+        })
+
+        safeWindowOpen(url.url);
+
+        deferred.resolve(true);
+      } catch(e) {
+        deferred.resolve(false);
+      }
+      return
+    }
+
+    const inputPeer = await rootScope.managers.appPeersManager.getInputPeerById(peerId);
 
     if(Number(saved.transfer_stars) !== 0) {
       const popup = await PopupPayment.create({
@@ -54,8 +94,8 @@ export default function transferStarGift(gift: MyStarGift): Promise<boolean> {
           titleLangKey: 'StarGiftConfirmFreeTransferTitle',
           descriptionLangKey: 'StarGiftConfirmFreeTransferText',
           descriptionLangArgs: [
-            `${gift.raw.title} #${numberThousandSplitter((gift.raw as StarGift.starGiftUnique).num, ',')}`,
-            await wrapPeerTitle({peerId, onlyFirstName: true})
+            getCollectibleName(raw),
+            await wrapPeerTitle({peerId, onlyFirstName: peerId.isUser()})
           ],
           button: {
             langKey: 'Confirm'
@@ -67,7 +107,32 @@ export default function transferStarGift(gift: MyStarGift): Promise<boolean> {
         deferred.resolve(false);
       }
     }
-  })
+  }
+
+  const popup = PopupElement.createPopup(PopupPickUser, {
+    placeholder: 'StarGiftTransferTo',
+    onSelect: handleSelection,
+    exceptSelf: true,
+    filterPeerTypeBy: ['isRegularUser', 'isBroadcast']
+  });
+
+  if(saved.can_export_at !== undefined && saved.can_export_at < now) {
+    const fragmentRow = new Row({
+      titleLangKey: 'StarGiftFragmentTransferItem',
+      icon: 'ton',
+      clickable: () => {
+        handleSelection('fragment');
+        popup.hide();
+      }
+    });
+    popup.selector.list.before(fragmentRow.container);
+  }
+
+  popup.addEventListener('close', () => {
+    if(!peerSelectorResolved) {
+      deferred.resolve(false);
+    }
+  }, {once: true});
 
   return deferred;
 }

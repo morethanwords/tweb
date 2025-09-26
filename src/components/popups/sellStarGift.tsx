@@ -1,12 +1,12 @@
-import {createEffect, createMemo, createSignal, on, onMount} from 'solid-js';
+import {createEffect, createMemo, createSignal, JSX, on, onMount} from 'solid-js';
 import PopupElement from '.';
 import safeAssign from '../../helpers/object/safeAssign';
 import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
 
 import styles from './sellStarGift.module.scss';
 import {MTAppConfig} from '../../lib/mtproto/appConfig';
-import {i18n, LangPackKey} from '../../lib/langPack';
-import Row from '../rowTsx';
+import I18n, {i18n, LangPackKey} from '../../lib/langPack';
+import RowTsx from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
 import {InputFieldTsx} from '../inputFieldTsx';
 import InputField, {InputFieldOptions} from '../inputField';
@@ -17,9 +17,10 @@ import {I18nTsx} from '../../helpers/solid/i18n';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {toastNew} from '../toast';
 import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
-import {StarGift} from '../../layer';
+import {StarGift, StarsAmount} from '../../layer';
 import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber, parseNanotonFromDecimal} from '../../helpers/paymentsWrapCurrencyAmount';
 import {TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
+import Section from '../section';
 
 class SellPriceInputField extends InputField {
   private icon: HTMLElement;
@@ -56,19 +57,22 @@ class SellPriceInputField extends InputField {
 }
 
 export default class PopupSellStarGift extends PopupElement<{
-  finish: (result: boolean) => void
+  finish: (result: 'list' | 'unlist' | 'cancel') => void
 }> {
   private gift: MyStarGift;
+  private allowUnlist?: boolean;
 
   private finished = false;
+  private btnConfirmI18n: I18n.IntlElement
   constructor(options: {
     gift: MyStarGift,
+    allowUnlist?: boolean
   }) {
     super(styles.popup, {
       closable: true,
       overlayClosable: true,
-      title: 'StarGiftSellTitleStars',
-      withConfirm: 'StarGiftSellButton',
+      title: 'StarGiftSellTitlePopup',
+      withConfirm: true,
       withFooterConfirm: true,
       body: true,
       footer: true
@@ -76,11 +80,14 @@ export default class PopupSellStarGift extends PopupElement<{
 
     this.addEventListener('close', () => {
       if(!this.finished) {
-        this.dispatchEvent('finish', false);
+        this.dispatchEvent('finish', 'cancel');
       }
     });
 
     safeAssign(this, options);
+
+    this.btnConfirmI18n = new I18n.IntlElement({key: 'StarGiftSellButton'})
+    this.btnConfirm.replaceChildren(this.btnConfirmI18n.element)
 
     this.construct()
   }
@@ -158,7 +165,12 @@ export default class PopupSellStarGift extends PopupElement<{
     const percentage = () => (ton() ? appConfig.ton_stargift_resale_commission_permille : appConfig.stars_stargift_resale_commission_permille) / 10;
 
     createEffect(on(() => [inputError(), sellAmount()], ([error, sellAmount]) => {
-      this.btnConfirm.toggleAttribute('disabled', !!error || !sellAmount)
+      this.btnConfirm.toggleAttribute('disabled', !!error || (!sellAmount && !this.allowUnlist))
+      if(!sellAmount && this.allowUnlist) {
+        this.btnConfirmI18n.update({key: 'StarGiftUnlistButton'})
+      } else {
+        this.btnConfirmI18n.update({key: 'StarGiftSellButton'})
+      }
     }))
 
     createEffect(on(() => [ton(), sellAmount()], ([ton, sellAmount]) => {
@@ -177,7 +189,6 @@ export default class PopupSellStarGift extends PopupElement<{
     let inputRef: SellPriceInputField
 
     createEffect(on(ton, (ton, prev) => {
-      this.title.replaceChildren(i18n(ton ? 'StarGiftSellTitleTon' : 'StarGiftSellTitleStars'))
       inputRef.setIcon(ton ? 'ton' : 'stars')
 
       if(prev !== undefined) {
@@ -191,19 +202,22 @@ export default class PopupSellStarGift extends PopupElement<{
     onMount(() => {
       attachClickEvent(this.btnConfirm, () => {
         setLoading(true)
-        this.managers.appGiftsManager.updateResalePrice(this.gift.input, ton() ? {
-          _: 'starsTonAmount',
-          amount: parseNanotonFromDecimal(sellAmount()).toString()
-        } : {
-          _: 'starsAmount',
-          amount: +sellAmount(),
-          nanos: 0
-        }).then(() => {
-          toastNew({
-            langPackKey: 'StarGiftResaleListed',
-            langPackArguments: [getCollectibleName(this.gift.raw as StarGift.starGiftUnique)]
-          })
-          this.dispatchEvent('finish', true)
+        let amount: StarsAmount | null
+        if(!sellAmount() && this.allowUnlist) {
+          amount = null
+        } else {
+          amount = ton() ? {
+            _: 'starsTonAmount',
+            amount: parseNanotonFromDecimal(sellAmount()).toString()
+          } : {
+            _: 'starsAmount',
+            amount: +sellAmount(),
+            nanos: 0
+          }
+        }
+
+        this.managers.appGiftsManager.updateResalePrice(this.gift.input, amount).then(() => {
+          this.dispatchEvent('finish', amount === null ? 'unlist' : 'list')
           this.hide()
         }).catch(() => {
           toastNew({langPackKey: 'Error.AnError'})
@@ -217,43 +231,49 @@ export default class PopupSellStarGift extends PopupElement<{
 
     return (
       <>
-        <InputFieldTsx
-          InputFieldClass={SellPriceInputField}
-          label={ton() ? 'StarGiftSellPlaceholderTon' : 'StarGiftSellPlaceholderStars'}
-          value={sellAmount()}
-          plainText
-          onRawInput={(value) => {
-            let cleanValue = value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-            if(!ton()) cleanValue = cleanValue.replace(/\./g, '');
-            if(value !== cleanValue) {
-              inputRef.setValueSilently(cleanValue);
-            }
-            setSellAmount(cleanValue);
-          }}
-          errorLabel={inputError()?.[0]}
-          errorLabelOptions={inputError()?.[1]}
-          instanceRef={ref => { inputRef = ref }}
-          disabled={loading()}
-        />
-        <I18nTsx
-          class={styles.youWillReceive}
-          key={
-            sellAmount() ?
-              ton() ? 'StarGiftYouWillReceiveTon' : 'StarGiftYouWillReceiveStars' :
-              'StarGiftYouWillReceivePercent'
+        <Section
+          caption={
+            <I18nTsx
+              key={
+                sellAmount() ?
+                  ton() ? 'StarGiftYouWillReceiveTon' : 'StarGiftYouWillReceiveStars' :
+                  'StarGiftYouWillReceivePercent'
+              }
+              args={sellAmount() ? [String(afterCommission()), String(percentage())] : String(percentage())}
+            /> as Exclude<JSX.Element, string>
           }
-          args={sellAmount() ? [String(afterCommission()), String(percentage())] : String(percentage())}
-        />
-        <Row disabled={loading()}>
-          <Row.Title>{i18n('StarGiftOnlyAcceptTonInfo')}</Row.Title>
-          <Row.CheckboxField>
-            <CheckboxFieldTsx
-              checked={ton()}
-              text="StarGiftOnlyAcceptTon"
-              onChange={setTon}
-            />
-          </Row.CheckboxField>
-        </Row>
+        >
+          <InputFieldTsx
+            InputFieldClass={SellPriceInputField}
+            label={ton() ? 'StarGiftSellTitleTon' : 'StarGiftSellTitleStars'}
+            value={sellAmount()}
+            plainText
+            onRawInput={(value) => {
+              let cleanValue = value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+              if(!ton()) cleanValue = cleanValue.replace(/\./g, '');
+              if(value !== cleanValue) {
+                inputRef.setValueSilently(cleanValue);
+              }
+              setSellAmount(cleanValue);
+            }}
+            errorLabel={inputError()?.[0]}
+            errorLabelOptions={inputError()?.[1]}
+            instanceRef={ref => { inputRef = ref }}
+            disabled={loading()}
+          />
+        </Section>
+        <Section caption="StarGiftOnlyAcceptTonInfo">
+          <Row disabled={loading()}>
+            <Row.Title>{i18n('StarGiftOnlyAcceptTonInfo')}</Row.Title>
+            <Row.CheckboxField>
+              <CheckboxFieldTsx
+                checked={ton()}
+                text="StarGiftOnlyAcceptTon"
+                onChange={setTon}
+              />
+            </Row.CheckboxField>
+          </Row>
+        </Section>
       </>
     )
   }

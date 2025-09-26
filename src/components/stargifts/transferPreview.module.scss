@@ -1,0 +1,31 @@
+.graph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  :global(.tgico) {
+    font-size: 1.5rem;
+    color: var(--secondary-text-color);
+    opacity: 0.4;
+  }
+}
+
+.giftWrap {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  overflow: hidden;
+
+  :global(.media-sticker-wrapper) {
+    top: 8px;
+    left: 8px;
+  }
+}
+
+.giftBackdropCanvas {
+  width: 52px!important;
+  height: 52px!important;
+  top: 6px;
+}

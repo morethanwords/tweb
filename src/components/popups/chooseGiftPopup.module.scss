@@ -1,0 +1,26 @@
+@import '../../scss/mixins';
+
+.popup {
+  :global {
+    .popup-container {
+      width: 26.25rem;
+      height: calc(100vh - 6.5rem);
+      border-radius: 14px;
+      padding: 0;
+    }
+
+    .popup-header {
+      padding: 0.5rem;
+      margin-bottom: 0;
+    }
+
+    .popup-buttons {
+      padding: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .popup-body {
+      background: var(--background-color);
+    }
+  }
+}

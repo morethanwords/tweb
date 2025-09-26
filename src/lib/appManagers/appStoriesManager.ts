@@ -16,7 +16,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import pause from '../../helpers/schedulers/pause';
 import tsNow from '../../helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, StoryView, MediaArea} from '../../layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, StoryView, MediaArea, StoryAlbum} from '../../layer';
 import {MTAppConfig} from '../mtproto/appConfig';
 import {SERVICE_PEER_ID, TEST_NO_STORIES} from '../mtproto/mtproto_config';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -31,6 +31,12 @@ export type StoriesListType = 'stories' | 'archive';
 export type StoriesListPosition = {type: StoriesListType, index: number};
 export type StoriesSegment = {length: number, type: 'unread' | 'close' | 'read'};
 export type StoriesSegments = StoriesSegment[];
+type AlbumCacheItem = {
+  info: StoryAlbum,
+  ids: StoryItem['id'][],
+  count: number,
+  loadedAll: boolean,
+}
 type StoriesPeerCache = {
   peerId: PeerId,
   stories: StoryItem['id'][],
@@ -46,7 +52,10 @@ type StoriesPeerCache = {
   pinnedLoadedAll?: boolean,
   archiveLoadedAll?: boolean,
   position?: StoriesListPosition,
-  count?: number
+  count?: number,
+  albums: Map<number, AlbumCacheItem>,
+  albumsOrder?: number[],
+  albumsHash?: Long
 };
 
 type ExpiringItem = {peerId: PeerId, id: number, timestamp: number};
@@ -256,7 +265,8 @@ export default class AppStoriesManager extends AppManager {
       pinnedToTop: new Map(),
       storiesMap: new Map(),
       getStoriesPromises: new Map(),
-      deleted: new Set()
+      deleted: new Set(),
+      albums: new Map()
     } : undefined;
   }
 
@@ -269,7 +279,7 @@ export default class AppStoriesManager extends AppManager {
     };
   }
 
-  public saveStoryItem(storyItem: StoryItem, cache: StoriesPeerCache, cacheType?: StoriesCacheType): MyStoryItem {
+  public saveStoryItem(storyItem: StoryItem, cache: StoriesPeerCache, cacheType?: StoriesCacheType | { albumId: number }): MyStoryItem {
     if(TEST_NO_STORIES || !storyItem || storyItem._ === 'storyItemDeleted') {
       return;
     }
@@ -345,7 +355,12 @@ export default class AppStoriesManager extends AppManager {
       );
     }
 
-    if(cacheType) {
+    if(typeof cacheType === 'object' && 'albumId' in cacheType) {
+      const item = cache.albums.get(cacheType.albumId);
+      if(item) {
+        insertStory(item.ids, storyItem, true, StoriesCacheType.Pinned, cache.pinnedToTop);
+      }
+    } else if(cacheType) {
       const array = cache[cacheType];
       insertStory(array, storyItem, true, cacheType, cache.pinnedToTop);
     }
@@ -385,7 +400,7 @@ export default class AppStoriesManager extends AppManager {
     return oldStoryItem || storyItem;
   }
 
-  public saveStoryItems(storyItems: StoryItem[], cache: StoriesPeerCache, cacheType?: StoriesCacheType) {
+  public saveStoryItems(storyItems: StoryItem[], cache: StoriesPeerCache, cacheType?: StoriesCacheType | { albumId: number }) {
     // if((storyItems as any).saved) return storyItems;
     // (storyItems as any).saved = true;
     const indexesToDelete: number[] = [];
@@ -464,7 +479,7 @@ export default class AppStoriesManager extends AppManager {
     };
   }
 
-  public saveStoriesStories(storiesStories: StoriesStories, cache: StoriesPeerCache, cacheType?: StoriesCacheType) {
+  public saveStoriesStories(storiesStories: StoriesStories, cache: StoriesPeerCache, cacheType?: StoriesCacheType | { albumId: number }) {
     this.appPeersManager.saveApiPeers(storiesStories);
     const storyItems = this.saveStoryItems(storiesStories.stories, cache, cacheType) as StoryItem.storyItem[];
 
@@ -724,6 +739,42 @@ export default class AppStoriesManager extends AppManager {
     return {count: storiesStories.count, stories: storyItems, pinnedToTop: pinned ? cache.pinnedToTop : undefined};
   }
 
+  public getAlbums(peerId: PeerId, revalidate = false): MaybePromise<StoryAlbum[]> {
+    const cache = this.getPeerStoriesCache(peerId);
+    if(!revalidate && cache.albumsOrder) {
+      return cache.albumsOrder.map((albumId) => cache.albums.get(albumId).info);
+    }
+
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.getAlbums',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        hash: cache.albumsHash
+      },
+      processResult: (response) => {
+        if(response._ === 'stories.albumsNotModified') {
+          return cache.albumsOrder.map((albumId) => cache.albums.get(albumId).info);
+        }
+
+        cache.albumsOrder = []
+        for(const album of response.albums) {
+          if(album.icon_photo) this.appPhotosManager.savePhoto(album.icon_photo);
+          if(album.icon_video) this.appDocsManager.saveDoc(album.icon_video);
+          cache.albumsOrder.push(album.album_id);
+          cache.albums.set(album.album_id, {
+            info: album,
+            ids: [],
+            count: 0,
+            loadedAll: false
+          });
+        }
+
+        cache.albumsHash = response.hash;
+        return response.albums;
+      }
+    });
+  }
+
   public getPinnedStories(peerId: PeerId, limit: number, offsetId: number = 0): MaybePromise<{count: number, stories: StoryItem.storyItem[], pinnedToTop: StoriesPeerCache['pinnedToTop']}> {
     const cache = this.getPeerStoriesCache(peerId);
     const slice = this.getCachedStories(cache, true, limit, offsetId);
@@ -741,6 +792,47 @@ export default class AppStoriesManager extends AppManager {
       processResult: (response) => { // * response list can have same story if it's pinned to top
         this.processLoadedStoriesStories(cache, true, limit, response);
         return this.getPinnedStories(peerId, limit, offsetId);
+      }
+    });
+  }
+
+  public getAlbumStories(peerId: PeerId, albumId: number, limit: number, offsetId: number = 0): MaybePromise<{count: number, stories: StoryItem.storyItem[]}> {
+    const cache = this.getPeerStoriesCache(peerId);
+    const cachedAlbum = cache.albums.get(albumId);
+    if(!cachedAlbum) {
+      return {count: 0, stories: []};
+    }
+
+    let slice: StoryItem.storyItem[] | undefined;
+    const index = offsetId ? cachedAlbum.ids.findIndex((storyId) => storyId < offsetId) : 0;
+    if(index !== -1) {
+      const sliced = cachedAlbum.ids.slice(index, index + limit);
+      if(sliced.length === limit || cachedAlbum.loadedAll) {
+        slice = sliced.map((storyId) => cache.storiesMap.get(storyId)) as StoryItem.storyItem[];
+      }
+    }
+
+    if(slice) {
+      return {count: cache.count, stories: slice};
+    }
+
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.getAlbumStories',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        album_id: albumId,
+        limit,
+        offset: cachedAlbum?.ids.length ?? 0
+      },
+      processResult: (response) => {
+        this.saveStoriesStories(
+          response,
+          cache,
+          {albumId}
+        );
+        cachedAlbum.count = response.count;
+        cachedAlbum.loadedAll = cachedAlbum.ids.length === response.count;
+        return this.getAlbumStories(peerId, albumId, limit, offsetId);
       }
     });
   }

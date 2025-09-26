@@ -5,12 +5,12 @@
  */
 
 import bigInt from 'big-integer';
-import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, StarsAmount, WebPageAttribute} from '../../layer';
+import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, StarGiftCollection, StarsAmount, WebPageAttribute} from '../../layer';
 import {STARS_CURRENCY} from '../mtproto/mtproto_config';
 import {MyDocument} from './appDocsManager';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
-import {formatNanoton, nanotonToJsNumber} from '../../helpers/paymentsWrapCurrencyAmount';
+import {nanotonToJsNumber} from '../../helpers/paymentsWrapCurrencyAmount';
 
 export interface MyStarGift {
   type: 'stargift',
@@ -30,8 +30,9 @@ export interface MyStarGift {
     pattern: StarGiftAttribute.starGiftAttributePattern,
     original?: StarGiftAttribute.starGiftAttributeOriginalDetails
   },
+  ownerId?: PeerId,
   input?: InputSavedStarGift,
-  saved?: SavedStarGift
+  saved?: SavedStarGift,
 }
 
 export interface MyPremiumGiftOption {
@@ -184,6 +185,7 @@ export default class AppGiftsManager extends AppManager {
         resellPriceStars,
         resellPriceTon,
         resellOnlyTon: gift.pFlags.resale_ton_only,
+        ownerId: getPeerId(gift.owner_id),
         input: {_:'inputSavedStarGiftSlug', slug: gift.slug}
       };
     }
@@ -239,20 +241,44 @@ export default class AppGiftsManager extends AppManager {
       limit: (await this.apiManager.getAppConfig()).stargifts_pinned_to_top_limit
     });
 
-    return res.gifts.filter((it) => it.saved.pFlags.pinned_to_top);
+    return res.gifts;
   }
 
-  public async getProfileGifts(params: {peerId: PeerId, offset?: string, limit?: number}) {
+  public async getProfileGifts(params: {
+    peerId: PeerId,
+    offset?: string,
+    limit?: number,
+    sort?: 'date' | 'value',
+    unlimited?: boolean,
+    limited?: boolean,
+    upgradable?: boolean,
+    unique?: boolean,
+    displayed?: boolean,
+    hidden?: boolean,
+    withCollections?: boolean
+    collectionId?: number
+  }) {
     const isUser = params.peerId.isUser();
-    const inputPeer = isUser ?
-      this.appUsersManager.getUserInputPeer(params.peerId.toUserId()) :
-      this.appChatsManager.getChannelInputPeer(params.peerId.toChatId());
+    const inputPeer = this.appPeersManager.getInputPeerById(params.peerId)
+    const collectionsPromise = params.withCollections ?
+      this.apiManager.invokeApiSingle('payments.getStarGiftCollections', {
+        peer: inputPeer,
+        hash: 0
+      }) : null
     const res = await this.apiManager.invokeApiSingleProcess({
       method: 'payments.getSavedStarGifts',
       params: {
         peer: inputPeer,
         offset: params.offset ?? '',
-        limit: params.limit ?? 50
+        limit: params.limit ?? 50,
+        sort_by_value: params.sort === 'value',
+        exclude_unlimited: params.unlimited === false,
+        exclude_unupgradable: params.limited === false,
+        exclude_upgradable: params.upgradable === false,
+        exclude_unique: params.unique === false,
+        exclude_saved: params.displayed === false,
+        exclude_unsaved: params.hidden === false,
+        collection_id: params.collectionId
       }
     });
 
@@ -262,6 +288,7 @@ export default class AppGiftsManager extends AppManager {
     for(const it of res.gifts) {
       wrapped.push({
         ...this.wrapGift(it.gift),
+        ownerId: params.peerId,
         input: isUser ? {
           _: 'inputSavedStarGiftUser',
           msg_id: it.msg_id
@@ -275,10 +302,22 @@ export default class AppGiftsManager extends AppManager {
       });
     }
 
+    let collections: StarGiftCollection[] | undefined;
+    if(collectionsPromise) {
+      const res = await collectionsPromise;
+      if(res._ === 'payments.starGiftCollections') {
+        collections = res.collections;
+        for(const it of collections) {
+          if(it.icon) this.appDocsManager.saveDoc(it.icon);
+        }
+      }
+    }
+
     return {
       next: res.next_offset,
       gifts: wrapped,
-      count: res.count
+      count: res.count,
+      collections
     };
   }
 
@@ -509,7 +548,35 @@ export default class AppGiftsManager extends AppManager {
     })
   }
 
+  public async getGiftValue(slug: string) {
+    const res = await this.apiManager.invokeApiSingle('payments.getUniqueStarGiftValueInfo', {
+      slug
+    });
+
+    return res;
+  }
+
   public async getFloorPrice(giftName: string) {
     return (this.cachedStarGiftOptions?.find(option => option.raw._ === 'starGift' && option.raw.title === giftName)?.raw as StarGift.starGift)?.resell_min_stars;
+  }
+
+  public async updateCollection(options: {
+    peerId: PeerId,
+    collectionId: number,
+    add?: InputSavedStarGift[],
+    delete?: InputSavedStarGift[],
+    title?: string,
+  }) {
+    const res = await this.apiManager.invokeApiSingle('payments.updateStarGiftCollection', {
+      peer: this.appPeersManager.getInputPeerById(options.peerId),
+      collection_id: options.collectionId,
+      add_stargift: options.add,
+      delete_stargift: options.delete,
+      title: options.title
+    });
+
+    if(res.icon) this.appDocsManager.saveDoc(res.icon);
+
+    return res;
   }
 }

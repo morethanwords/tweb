@@ -268,7 +268,9 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_giftcode: 'Open',
   telegram_chat: 'OpenGroup',
   telegram_livestream: 'VoipChannelJoinVoiceChatUrl',
-  telegram_nft: 'StarGiftLinkButton'
+  telegram_nft: 'StarGiftLinkButton',
+  telegram_collection: 'StarGiftCollectionLinkButton',
+  telegram_story_album: 'ViewStoryAlbum'
 };
 
 const webPageTypesSiteNames: {[type in WebPage.webPage['type']]?: LangPackKey} = {
@@ -6316,6 +6318,7 @@ export default class ChatBubbles {
           }
 
           const starGiftAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeUniqueStarGift')
+          const starGiftCollectionAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeStarGiftCollection')
 
           const props: Parameters<typeof WebPageBox>[0] = {};
           const boxRefs: ((box: HTMLAnchorElement) => void)[] = [];
@@ -6388,7 +6391,7 @@ export default class ChatBubbles {
           // const willHaveSponsoredAvatar = sponsoredMessage && (getPeerId(sponsoredMessage.from_id) !== NULL_PEER_ID || sponsoredPhoto);
           // const willHaveSponsoredPhoto = sponsoredMessage && sponsoredMessage.pFlags.show_peer_photo && willHaveSponsoredAvatar;
           const willHaveSponsoredPhoto = !!sponsoredPhoto;
-          const willHaveMedia = !!(photo || doc || storyAttribute || willHaveSponsoredPhoto || starGiftAttribute);
+          const willHaveMedia = !!(photo || doc || storyAttribute || willHaveSponsoredPhoto || starGiftAttribute || starGiftCollectionAttribute);
           if(willHaveMedia) {
             preview = document.createElement('div');
             props.media = {
@@ -6598,6 +6601,20 @@ export default class ChatBubbles {
               }
             }), preview, middleware)
             props.text = undefined
+          } else if(starGiftCollectionAttribute) {
+            await wrapSticker({
+              doc: await this.managers.appDocsManager.saveDoc(starGiftCollectionAttribute.icons[0]),
+              div: preview,
+              middleware,
+              lazyLoadQueue,
+              play: true,
+              loop: false,
+              group: this.chat.animationGroup
+            })
+            preview.style.width = '48px';
+            preview.style.height = '48px';
+            props.media.photoSize = 'square';
+            isSquare = true;
           }
 
           if(preview) {

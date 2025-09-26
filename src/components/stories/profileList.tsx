@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {splitProps, createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createComputed, createReaction} from 'solid-js';
+import {splitProps, createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createComputed, createReaction, Show, on} from 'solid-js';
 import {createStoriesViewer} from './viewer';
 import {Document, MessageMedia, Photo, StoryItem} from '../../layer';
 import {wrapStoryMedia} from './preview';
@@ -12,6 +12,9 @@ import getMediaThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
 import {SearchSelection} from '../chat/selection';
 import {StoriesProvider, useStories} from './store';
 import Icon from '../icon';
+import {ChipTab, ChipTabs} from '../chipTabs';
+import {i18n} from '../../lib/langPack';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 
 const TEST_ONE = false;
 const TEST_TWO = false;
@@ -154,11 +157,56 @@ function _StoriesProfileList(props: {
   );
 }
 
+const ALL_ALBUMS_ID = -1;
+
+function StoriesAlbums() {
+  const [stories, actions] = useStories();
+  const hasAlbums = () => stories.ready && stories.peer.albums && stories.peer.albums.length > 0;
+
+  const [chosenAlbumId, setChosenAlbumId] = createSignal<number>(ALL_ALBUMS_ID);
+
+  const handleChange = (value: string) => {
+    const albumId = Number(value);
+    setChosenAlbumId(albumId);
+    actions.setAlbumId(albumId === ALL_ALBUMS_ID ? undefined : albumId);
+  }
+
+  return (
+    <Show when={hasAlbums()}>
+      <ChipTabs
+        class="search-super-content-stories-albums"
+        value={chosenAlbumId().toString()}
+        onChange={handleChange}
+        view="surface"
+        center
+        needIntersectionObserver
+      >
+        <ChipTab value={ALL_ALBUMS_ID.toString()}>
+          {i18n('StoryAlbumAll')}
+        </ChipTab>
+        <For each={stories.peer.albums}>
+          {(album) => (
+            <ChipTab value={album.album_id.toString()}>
+              {wrapEmojiText(album.title)}
+            </ChipTab>
+          )}
+        </For>
+      </ChipTabs>
+    </Show>
+  );
+}
+
 export default function StoriesProfileList(props: Parameters<typeof StoriesProvider>[0] & Parameters<typeof _StoriesProfileList>[0]) {
   const [, rest] = splitProps(props, ['onReady', 'onLengthChange', 'selection']);
+
   return (
     <StoriesProvider {...rest}>
-      <_StoriesProfileList {...props} pinned={rest.pinned} />
+      <div>
+        {rest.pinned && (
+          <StoriesAlbums />
+        )}
+        <_StoriesProfileList {...props} pinned={rest.pinned} />
+      </div>
     </StoriesProvider>
   );
 }

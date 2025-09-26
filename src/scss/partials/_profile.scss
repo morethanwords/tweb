@@ -506,7 +506,7 @@
       --transition: .1s ease-in-out;
       position: absolute;
       inset-inline: 0;
-      z-index: 2;
+      z-index: 3;
 
       @include animation-level(2) {
         transition: background-color var(--transition);
@@ -692,9 +692,27 @@
   }
 }
 
-.star-gifts-profile-tab {
-  background-color: var(--background-color);
-  display: flex;
-  justify-content: center;
+.search-super-container-gifts.tabs-tab,
+.search-super-container-stories.tabs-tab {
+  position: static;
+  overflow: initial!important;
+}
+
+.search-super-content-gifts {
   height: 100%;
+}
+
+.search-super-content-stories {
+  background-color: var(--background-color)!important;
+
+  &-albums {
+    position: sticky!important;
+    top: 6.5rem;
+    z-index: 3;
+    background-color: var(--background-color);
+
+    .my-stories-container & {
+      top: 0;
+    }
+  }
 }

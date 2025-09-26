@@ -10,7 +10,7 @@ import {createStore, reconcile} from 'solid-js/store';
 import mediaSizes from '../../helpers/mediaSizes';
 import clamp from '../../helpers/number/clamp';
 import windowSize from '../../helpers/windowSize';
-import {StoryItem, PeerStories} from '../../layer';
+import {StoryItem, PeerStories, StoryAlbum} from '../../layer';
 import StoriesCacheType from '../../lib/appManagers/utils/stories/cacheType';
 import insertStory from '../../lib/appManagers/utils/stories/insertStory';
 import rootScope, {BroadcastEvents} from '../../lib/rootScope';
@@ -32,6 +32,7 @@ export type ChangeStoryParams = {
 export type StoriesContextPeerState = {
   peerId: PeerId,
   stories: Array<StoryItem>,
+  albums?: Array<StoryAlbum>,
   maxReadId?: number,
   index?: number,
   count: number
@@ -83,7 +84,8 @@ export type StoriesContextActions = {
   toggleSorting: (type: StoriesSortingFreezeType, freeze: boolean) => void,
   load: () => Promise<boolean>,
   setBuffering: (buffering: boolean) => void,
-  setLoop: (loop: boolean) => void
+  setLoop: (loop: boolean) => void,
+  setAlbumId: (albumId: number | undefined) => void
 };
 
 export type StoriesContextValue = [
@@ -116,6 +118,8 @@ const createStoriesStore = (props: {
   pinned?: boolean,
   archive?: boolean,
   onLoadCallback?: (callback: () => Promise<boolean>) => void,
+  onLoad?: (fullLoad: boolean) => void,
+  initialAlbumId?: number,
   singleStory?: boolean
 }): StoriesContextValue => {
   const getNearestStory = (
@@ -179,6 +183,7 @@ const createStoriesStore = (props: {
   };
 
   let loadState: string, loaded: boolean;
+  let albumId: number | undefined = props.initialAlbumId;
   const [state, setState] = createStore(initialState);
   const singlePeerId = props.peerId || (props.peers && props.peers[0].peerId);
   const currentListType: StoriesListType = props.archive ? 'archive' : 'stories';
@@ -223,26 +228,31 @@ const createStoriesStore = (props: {
     });
   };
 
-  const load = () => {
+  const load = (reload = false) => {
     const {peerId, pinned, archive} = props;
     if(peerId) {
       if(pinned || archive) {
         const {peer} = state;
-        const offsetId = peer ? peer.stories[peer.stories.length - 1].id : 0;
+        const offsetId = peer && !reload ? peer.stories[peer.stories.length - 1].id : 0;
         const loadCount = 30;
-        let promise: ReturnType<AppStoriesManager['getPinnedStories']> | ReturnType<AppStoriesManager['getStoriesArchive']>;
-        if(pinned) {
+        let promise: ReturnType<AppStoriesManager['getPinnedStories']> | ReturnType<AppStoriesManager['getStoriesArchive']> | ReturnType<AppStoriesManager['getAlbumStories']>;
+        let albumsPromise: ReturnType<AppStoriesManager['getAlbums']>;
+        if(albumId) {
+          promise = rootScope.managers.appStoriesManager.getAlbumStories(peerId, albumId, loadCount, offsetId);
+        } else if(pinned) {
           promise = rootScope.managers.appStoriesManager.getPinnedStories(peerId, loadCount, offsetId);
+          albumsPromise = !offsetId ? rootScope.managers.appStoriesManager.getAlbums(peerId) : undefined;
         } else {
           promise = rootScope.managers.appStoriesManager.getStoriesArchive(peerId, loadCount, offsetId);
         }
-        return promise.then(({count, stories: storyItems, pinnedToTop}) => {
-          if(!offsetId) {
+        return Promise.all([promise, albumsPromise]).then(([{count, stories: storyItems}, albums]) => {
+          if(!offsetId && !reload) {
             const peer: StoriesContextPeerState = {
               index: 0,
               peerId,
               stories: storyItems,
-              count
+              count,
+              albums
             };
 
             addPeers([peer]);
@@ -252,13 +262,17 @@ const createStoriesStore = (props: {
             setState('peers', 0, 'count', count);
           }
 
-          return loaded = storyItems.length < loadCount;
+          loaded = storyItems.length < loadCount;
+          props.onLoad?.(loaded);
+          return loaded;
         });
       }
 
       return rootScope.managers.appStoriesManager.getPeerStories(peerId).then((peerStories) => {
         addPeerStories([peerStories]);
-        return loaded = true;
+        loaded = true;
+        props.onLoad?.(loaded);
+        return loaded;
       });
     }
 
@@ -276,6 +290,7 @@ const createStoriesStore = (props: {
         load();
       }
 
+      props.onLoad?.(loaded);
       return loaded;
     });
   };
@@ -405,6 +420,13 @@ const createStoriesStore = (props: {
 
     setLoop: (loop) => {
       setState({loop});
+    },
+
+    setAlbumId: (albumId_) => {
+      albumId = albumId_;
+      setState('peers', 0, 'count', state.peers[0].count);
+      setState('peers', 0, 'stories', []);
+      load(true);
     }
   };
 
