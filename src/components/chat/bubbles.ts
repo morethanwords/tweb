@@ -205,6 +205,7 @@ import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessage
 import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
 import addSuggestedPostServiceMessage, {checkIfNotMePosted} from './bubbleParts/suggestPostServiceMessage';
 import addSuggestedPostReplyMarkup, {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
+import type {SeparatorIntersectorRoot} from './bubbleParts/monoforumSeparator';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -383,6 +384,8 @@ export default class ChatBubbles {
 
   private stickyIntersector: StickyIntersector;
 
+  public separatorIntersectorRoot: SeparatorIntersectorRoot;
+
   private unreaded: Map<HTMLElement, number> = new Map();
   private unreadedContent: Map<HTMLElement, number> = new Map();
   private unreadedSeen: Set<number> = new Set();
@@ -471,6 +474,7 @@ export default class ChatBubbles {
   public replySwipeHandler: SwipeHandler;
 
   private remover: HTMLDivElement;
+  public floatingSeparatorsContainer: HTMLDivElement;
 
   private lastPlayingVideo: HTMLVideoElement;
 
@@ -1189,9 +1193,12 @@ export default class ChatBubbles {
     remover.classList.add('bubbles-remover', 'bubbles-inner');
     removerContainer.append(remover);
 
+    const floatingSeparatorsContainer = this.floatingSeparatorsContainer = document.createElement('div');
+    floatingSeparatorsContainer.classList.add('bubbles-floating-separators-container');
+
     this.setScroll();
 
-    container.append(removerContainer, this.scrollable.container);
+    container.append(removerContainer, this.scrollable.container, floatingSeparatorsContainer);
   }
 
   public attachContainerListeners() {

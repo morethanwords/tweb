@@ -1,9 +1,10 @@
-import {createResource, onCleanup} from 'solid-js';
+import {createResource, onCleanup, Ref} from 'solid-js';
 import PeerTitle from './peerTitle';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import {attachClassName} from '../helpers/solid/classname';
 
 export const PeerTitleTsx = (props: {
+  ref?: Ref<HTMLElement>;
   class?: string
   peerId: PeerId,
   onlyFirstName?: boolean,
@@ -12,6 +13,8 @@ export const PeerTitleTsx = (props: {
   onClick?: () => void
 }) => {
   const peerTitle = new PeerTitle();
+
+  props.ref instanceof Function && props.ref?.(peerTitle.element); // solid will always make it a function
 
   const [loaded] = createResource(
     () => props.peerId,

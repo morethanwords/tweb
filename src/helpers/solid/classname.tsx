@@ -11,7 +11,7 @@ export function attachClassName(element: HTMLElement, accessor: () => string) {
   }));
 }
 
-export function attachHotClassName(element: HTMLElement, className: string) {
-  element.classList.add(className);
-  if(import.meta.hot) onCleanup(() => void element.classList.remove(className));
+export function attachHotClassName(element: HTMLElement, ...className: string[]) {
+  element.classList.add(...className);
+  if(import.meta.hot) onCleanup(() => void element.classList.remove(...className));
 }

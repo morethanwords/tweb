@@ -24,6 +24,10 @@ import {ChatType} from './chat';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 import {isMessageForVerificationBot} from './utils';
 import {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import typedElement from '../../helpers/dom/typedElement';
+import {BubbleElementAddons} from './types';
+import MonoforumSeparator from './bubbleParts/monoforumSeparator';
 
 
 type GroupItem = {
@@ -403,9 +407,41 @@ export default class BubbleGroups {
       group.mount(true);
     });
 
-    // toMount.forEach((group) => {
-    //   group.updateClassNames();
-    // });
+    this.addMonoforumSeparators();
+  }
+
+  private addMonoforumSeparators() {
+    const canHaveSeparators = this.chat.isMonoforum && this.chat.canManageDirectMessages && !this.chat.monoforumThreadId;
+    if(!canHaveSeparators) return;
+
+    let prevPeerId: number;
+
+    forEachReverse(this.itemsArr, item => {
+      const savedPeerId = getPeerId(item.message?.saved_peer_id);
+      if(!savedPeerId) return;
+
+      const bubbleAddons = typedElement<BubbleElementAddons>(item.bubble);
+
+      if(prevPeerId === savedPeerId) {
+        item.bubble.classList.remove('has-monoforum-separator');
+        bubbleAddons.monoforumSeparator?.remove();
+        return;
+      }
+
+      prevPeerId = savedPeerId;
+
+      if(bubbleAddons.monoforumSeparator) return;
+
+      bubbleAddons.monoforumSeparator = new MonoforumSeparator;
+      bubbleAddons.monoforumSeparator.feedProps({
+        bubbles: this.chat.bubbles,
+        peerId: savedPeerId,
+        index: item.timestamp
+      });
+      item.bubble.classList.add('has-monoforum-separator');
+      item.bubble.prepend(bubbleAddons.monoforumSeparator);
+    });
+    console.log('[my-debug]', {items: this.itemsArr});
   }
 
   f(items: GroupItem[], index: number = 0, length = items.length) {
@@ -482,6 +518,7 @@ export default class BubbleGroups {
       (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true)) &&
       (!isOut1 || item1.message.fromId === rootScope.myId) && // * group anonymous sending
       item1.message.peerId === item2.message.peerId &&
+      getPeerId(item1.message.saved_peer_id) === getPeerId(item2.message.saved_peer_id) &&
       (item1.message as Message.message).post_author === (item2.message as Message.message).post_author;
   }
 
