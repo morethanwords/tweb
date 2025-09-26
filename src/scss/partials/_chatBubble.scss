@@ -3263,6 +3263,10 @@
     align-items: flex-end;
   }
 
+  &.service {
+    align-items: center;
+  }
+
   .service-msg {
     align-self: center;
     max-width: 100%;
