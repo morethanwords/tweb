@@ -32,7 +32,8 @@ const SuggestedPostReplyMarkupContent = defineSolidElement({
     const onAcceptClick = async() => {
       const canManageDirectMessages = await rootScope.managers.appPeersManager.canManageDirectMessages(props.message.peerId);
       const stars = props.message.suggested_post?.price?._ === 'starsAmount' && +props.message.suggested_post?.price?.amount || undefined;
-      const scheduleDate = props.message.suggested_post?.schedule_date || undefined;
+      let scheduleDate = props.message.suggested_post?.schedule_date || undefined;
+      if(scheduleDate * 1000 < Date.now()) scheduleDate = undefined;
 
       if(canManageDirectMessages && !scheduleDate) {
         new SuggestedPostAcceptWithTimePopup({

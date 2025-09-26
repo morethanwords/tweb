@@ -98,7 +98,7 @@ const DO_NOT_DELETE_MESSAGES = false;
 
 const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
 
-const SUGGESTED_POST_MIN_THRESHOLD_SECONDS = 60; // avoid last minute suggests, or if the user was thinking a lot before clicking send
+export const SUGGESTED_POST_MIN_THRESHOLD_SECONDS = 60; // avoid last minute suggests, or if the user was thinking a lot before clicking send
 
 export enum HistoryType {
   Chat,

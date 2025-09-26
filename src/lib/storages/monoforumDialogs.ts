@@ -1,9 +1,10 @@
 import filterUnique from '../../helpers/array/filterUnique';
 import lastItem from '../../helpers/array/lastItem';
 import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
+import tsNow from '../../helpers/tsNow';
 import {DraftMessage, MessagesGetSavedDialogs, MessagesSavedDialogs, SavedDialog, Update} from '../../layer';
 import {Pair} from '../../types';
-import {MyMessage} from '../appManagers/appMessagesManager';
+import {MyMessage, SUGGESTED_POST_MIN_THRESHOLD_SECONDS} from '../appManagers/appMessagesManager';
 import {AppManager} from '../appManagers/manager';
 import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
 import isMentionUnread from '../appManagers/utils/messages/isMentionUnread';
@@ -471,7 +472,9 @@ class MonoforumDialogsStorage extends AppManager {
       msg_id: getServerMessageId(messageId),
       reject,
       reject_comment: rejectComment,
-      schedule_date: scheduleTimestamp
+      schedule_date: scheduleTimestamp && scheduleTimestamp >= tsNow(true) + SUGGESTED_POST_MIN_THRESHOLD_SECONDS ?
+        scheduleTimestamp :
+        undefined
     });
 
     this.apiUpdatesManager.processUpdateMessage(updates);
