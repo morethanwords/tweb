@@ -159,7 +159,7 @@ export default class CheckboxField {
 
     if(options.withRipple) {
       label.classList.add('checkbox-ripple', 'hover-effect');
-      ripple(label, undefined, undefined, true);
+      ripple(label);
       // label.prepend(input);
     } else if(options.withHover) {
       label.classList.add('hover-effect');

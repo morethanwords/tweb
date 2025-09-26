@@ -6,7 +6,7 @@ import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
 import styles from './sellStarGift.module.scss';
 import {MTAppConfig} from '../../lib/mtproto/appConfig';
 import {i18n, LangPackKey} from '../../lib/langPack';
-import RowTsx from '../rowTsx';
+import Row from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
 import {InputFieldTsx} from '../inputFieldTsx';
 import InputField, {InputFieldOptions} from '../inputField';
@@ -244,17 +244,16 @@ export default class PopupSellStarGift extends PopupElement<{
           }
           args={sellAmount() ? [String(afterCommission()), String(percentage())] : String(percentage())}
         />
-        <RowTsx
-          subtitle={i18n('StarGiftOnlyAcceptTonInfo')}
-          disabled={loading()}
-          checkboxField={(
+        <Row disabled={loading()}>
+          <Row.Title>{i18n('StarGiftOnlyAcceptTonInfo')}</Row.Title>
+          <Row.CheckboxField>
             <CheckboxFieldTsx
               checked={ton()}
               text="StarGiftOnlyAcceptTon"
               onChange={setTon}
             />
-          )}
-        />
+          </Row.CheckboxField>
+        </Row>
       </>
     )
   }

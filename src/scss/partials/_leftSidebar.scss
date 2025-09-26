@@ -297,6 +297,7 @@
       background-color: var(--surface-color);
       position: relative;
       top: unset;
+      flex: 0 0 auto;
 
       @include respond-to(handhelds) {
         box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
@@ -309,22 +310,6 @@
       .badge {
         margin-inline-start: 5px;
         //line-height: inherit !important;
-      }
-
-      &:not(.hide) + #folders-container {
-        height: calc(100% - var(--scrollable-size));
-
-        .scrollable {
-          padding-top: .5rem;
-        }
-
-        .dialogs-placeholder-canvas {
-          top: .5rem;
-        }
-
-        /* .chatlist {
-          top: .5rem;
-        } */
       }
     }
 
@@ -351,7 +336,11 @@
   }
 
   .folders-tabs-scrollable {
-    flex: 0 0 auto;
+    display: none;
+
+    .has-horizontal-folders & {
+      display: block;
+    }
   }
 
   /* .folders-tabs-scrollable {
@@ -479,13 +468,40 @@
     position: relative;
     flex: 1 1 auto;
 
-    .scrollable-y {
+    .folders-scrollable {
       background-color: transparent;
       position: absolute;
+      border-bottom: none !important;
+      transition: transform var(--tabs-transition);
+
+      .has-pending-suggestion &,
+      .has-horizontal-folders & {
+        border-top: none !important;
+      }
 
       &.active { // fix safari 14.0.2 scrollHeight
         display: block;
       }
+
+      .has-folders-sidebar & {
+        padding-top: 0 !important;
+      }
+    }
+
+    .has-horizontal-folders & {
+      height: calc(100% - var(--scrollable-size));
+
+      .folders-scrollable {
+        padding-top: .5rem;
+      }
+
+      .dialogs-placeholder-canvas {
+        top: .5rem;
+      }
+
+      /* .chatlist {
+        top: .5rem;
+      } */
     }
   }
 
@@ -1663,15 +1679,6 @@
       transform: translate(-50%, 0);
       width: 32px;
       height: 100%;
-    }
-  }
-}
-
-@include respond-to(no-floating-left-sidebar) {
-  body.has-folders-sidebar,
-  #column-left.is-collapsed {
-    .folders-tabs-scrollable {
-      display: none !important;
     }
   }
 }

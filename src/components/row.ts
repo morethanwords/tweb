@@ -263,7 +263,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
       this.container.classList.add('row-clickable', 'hover-effect');
 
       if(!options.noRipple) {
-        ripple(this.container, undefined, undefined, true);
+        ripple(this.container);
       }
 
       /* if(options.radioField || options.checkboxField) {
@@ -388,12 +388,6 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     this.container.classList.toggle('cant-sort', !enabled);
   }
 }
-
-export const RowTsx = (props: Partial<ConstructorParameters<typeof Row>[0]>) => {
-  const obj = new Row(props);
-
-  return obj.container;
-};
 
 export const CreateRowFromCheckboxField = (checkboxField: CheckboxField) => {
   return new Row({checkboxField, listenerSetter: checkboxField.listenerSetter});

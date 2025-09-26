@@ -134,6 +134,7 @@ import useLockScreenShortcut from './utils/useLockScreenShortcut';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../../components/chat/paidMessagesInterceptor';
 import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport';
 import ChatAudio from '../../components/chat/audio';
+import PopupAboutAd from '../../components/popups/aboutAd';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -697,6 +698,8 @@ export class AppImManager extends EventListenerBase<{
     this.handlePeerColors();
     this.checkForShare();
     this.init();
+
+    // PopupElement.createPopup(PopupAboutAd);
 
     // PopupElement.createPopup(PopupBoostsViaGifts, -5000866300);
   }

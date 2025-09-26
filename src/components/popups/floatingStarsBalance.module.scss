@@ -9,7 +9,7 @@
   font-size: var(--font-size-14);
   line-height: 1;
 
-  :global(.i18n) {
+  > :global(.i18n) {
     display: flex;
     align-items: center;
     gap: 0.25rem;

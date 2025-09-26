@@ -10,7 +10,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import {StarsBalance} from './stars';
 import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show} from 'solid-js';
 import {easeOutCircApply} from '../../helpers/easing/easeOutCirc';
-import RowTsx from '../rowTsx';
+import Row from '../rowTsx';
 import CheckboxField from '../checkboxField';
 import {replaceButtonIcon} from '../button';
 import rootScope from '../../lib/rootScope';
@@ -357,10 +357,9 @@ export default class PopupStarReaction extends PopupElement {
           </div>
         </div>
         <div class="popup-star-reaction-checkbox">
-          <RowTsx
-            classList={{'popup-star-reaction-checkbox-row': true}}
-            checkboxField={checkboxField.label}
-          />
+          <Row class="popup-star-reaction-checkbox-row">
+            <Row.CheckboxField>{checkboxField.label}</Row.CheckboxField>
+          </Row>
         </div>
       </>
     );

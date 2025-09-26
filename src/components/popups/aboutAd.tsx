@@ -6,7 +6,7 @@
 
 import PopupElement from '.';
 import {render} from 'solid-js/web';
-import RowTsx from '../rowTsx';
+import Row from '../rowTsx';
 import {i18n} from '../../lib/langPack';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {IconTsx} from '../iconTsx';
@@ -35,9 +35,21 @@ export default class PopupAboutAd extends PopupElement {
         <div class="popup-about-ad-icon"><IconTsx icon="ads" /></div>
         <div class="popup-about-ad-title">{i18n('AboutRevenueSharingAds')}</div>
         <div class="popup-about-ad-subtitle">{i18n('RevenueSharingAdsAlertSubtitle')}</div>
-        <RowTsx icon="lock" title={i18n('RevenueSharingAdsInfo1Title')} subtitle={i18n('RevenueSharingAdsInfo1Subtitle')} />
-        <RowTsx icon="revenue" title={i18n('RevenueSharingAdsInfo2Title')} subtitle={i18n('RevenueSharingAdsInfo2Subtitle')} />
-        <RowTsx icon="nochannel" title={i18n('RevenueSharingAdsInfo3Title')} subtitle={i18n('RevenueSharingAdsInfo3Subtitle')} />
+        <Row>
+          <Row.Icon icon="lock" />
+          <Row.Title>{i18n('RevenueSharingAdsInfo1Title')}</Row.Title>
+          <Row.Subtitle>{i18n('RevenueSharingAdsInfo1Subtitle')}</Row.Subtitle>
+        </Row>
+        <Row>
+          <Row.Icon icon="revenue" />
+          <Row.Title>{i18n('RevenueSharingAdsInfo2Title')}</Row.Title>
+          <Row.Subtitle>{i18n('RevenueSharingAdsInfo2Subtitle')}</Row.Subtitle>
+        </Row>
+        <Row>
+          <Row.Icon icon="nochannel" />
+          <Row.Title>{i18n('RevenueSharingAdsInfo3Title')}</Row.Title>
+          <Row.Subtitle>{i18n('RevenueSharingAdsInfo3Subtitle')}</Row.Subtitle>
+        </Row>
         <div class="popup-about-ad-caption">
           <div class="popup-about-ad-caption-title">{i18n('RevenueSharingAdsInfo4Title')}</div>
           <div class="popup-about-ad-caption-subtitle">{i18n('RevenueSharingAdsInfo4Subtitle2', [i18n('RevenueSharingAdsInfo4SubtitleLearnMore1')])}</div>

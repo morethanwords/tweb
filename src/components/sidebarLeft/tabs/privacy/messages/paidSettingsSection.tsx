@@ -5,7 +5,7 @@ import {Transition} from 'solid-transition-group';
 import {i18n, join} from '../../../../../lib/langPack';
 
 import Section from '../../../../section';
-import RowTsx from '../../../../rowTsx';
+import Row from '../../../../rowTsx';
 
 import {useSuperTab} from '../../solidJsTabs/superTabProvider';
 
@@ -80,11 +80,10 @@ const PaidSettingsSection: Component<{
           </Section>
 
           <Section name="PrivacyExceptions" caption="PaidMessages.RemoveFeeDescription">
-            <RowTsx
-              title={i18n('PaidMessages.RemoveFee')}
-              rightContent={<span class="primary">{chosenPeersLabel()}</span>}
-              clickable={onExceptionsClick}
-            />
+            <Row clickable={onExceptionsClick}>
+              <Row.Title>{i18n('PaidMessages.RemoveFee')}</Row.Title>
+              <Row.RightContent><span class="primary">{chosenPeersLabel()}</span></Row.RightContent>
+            </Row>
           </Section>
         </div>
       </Show>

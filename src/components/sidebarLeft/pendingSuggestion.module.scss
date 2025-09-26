@@ -1,0 +1,57 @@
+// @import "../scss/mixins";
+@import "../../scss/variables";
+
+.container {
+  order: 0;
+  // padding: 0 .5rem;
+  // margin: .5rem 0;
+}
+
+.suggestion {
+  margin: .5rem;
+
+  :global(.has-folders-sidebar) & {
+    margin-bottom: 0;
+  }
+
+  &Subtitle {
+    font-size: var(--font-size-16);
+    line-height: var(--line-height-16);
+  }
+
+  &.danger {
+    background-color: rgba(var(--danger-color-rgb), $hover-alpha);
+
+    .suggestionTitle {
+      color: var(--danger-color);
+    }
+  }
+}
+
+.banned {
+  width: 100%;
+  height: 3.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+
+  .emoji {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+// .container {
+//   display: flex;
+//   flex-direction: column;
+// }
+
+// .title {
+
+// }
+
+// .subtitle {
+
+// }

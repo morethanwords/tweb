@@ -279,7 +279,7 @@ const onFirstMount = () => {
 const page = new Page('page-sign', true, onFirstMount, () => {
   if(btnNext) {
     replaceContent(btnNext, i18n('Login.Next'));
-    ripple(btnNext, undefined, undefined, true);
+    ripple(btnNext);
     btnNext.removeAttribute('disabled');
   }
 

@@ -505,22 +505,23 @@ export default class PopupBoostsViaGifts extends PopupElement {
 
                   return (
                     <RowTsx
-                      classList={{'popup-boosts-stars-row': true}}
-                      title={
+                      class="popup-boosts-stars-row"
+                      noRipple
+                      clickable={() => {
+                        setStarsOption(option);
+                      }}
+                    >
+                      <RowTsx.Title>
                         <span class="popup-boosts-stars-amount text-bold">
                           <StarsStackedStars stars={+option.stars} size={18} />
                           {' '}
                           {i18n('Stars', [numberThousandSplitterForStars(+option.stars)])}
                         </span>
-                      }
-                      subtitle={subtitle()}
-                      rightContent={paymentsWrapCurrencyAmount(option.amount, option.currency)}
-                      checkboxField={checkboxField.label}
-                      noRipple
-                      clickable={() => {
-                        setStarsOption(option);
-                      }}
-                    />
+                      </RowTsx.Title>
+                      <RowTsx.Subtitle>{subtitle()}</RowTsx.Subtitle>
+                      <RowTsx.RightContent>{paymentsWrapCurrencyAmount(option.amount, option.currency)}</RowTsx.RightContent>
+                      <RowTsx.CheckboxField>{checkboxField.label}</RowTsx.CheckboxField>
+                    </RowTsx>
                   );
                 }}
               </For>

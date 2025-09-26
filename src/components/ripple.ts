@@ -10,6 +10,7 @@ import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import {fastRaf} from '../helpers/schedulers';
 import liteMode from '../helpers/liteMode';
+import {Accessor, createRenderEffect, onCleanup} from 'solid-js';
 
 
 declare module 'solid-js' {
@@ -18,17 +19,17 @@ declare module 'solid-js' {
       /**
        * To be used in solid-js as `<button use:ripple />`
        */
-      ripple: true;
+      ripple: boolean;
     }
   }
 }
 
 let rippleClickId = 0;
-export default function ripple(
+function _ripple(
   elem: HTMLElement,
+  prepend: boolean | 'no' = true,
   callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(),
   onEnd: (id: number) => void = null,
-  prepend = false,
   attachListenerTo = elem
 ) {
   // return;
@@ -43,7 +44,9 @@ export default function ripple(
     r.classList.add('is-square');
   }
 
-  elem[prepend ? 'prepend' : 'append'](r);
+  if(prepend !== 'no') {
+    elem[prepend ? 'prepend' : 'append'](r);
+  }
 
   let handler: () => void;
   // let animationEndPromise: Promise<number>;
@@ -242,4 +245,23 @@ export default function ripple(
       element: r
     };
   }
+}
+
+export default function ripple(elem: HTMLElement, accessor?: Accessor<boolean>, prepend?: boolean | 'no') {
+  if(accessor) {
+    createRenderEffect(() => {
+      const value = accessor();
+      if(value === undefined || value) {
+        const ret = _ripple(elem, prepend);
+        onCleanup(() => {
+          ret.dispose();
+        });
+      }
+    });
+
+    return;
+  }
+
+  const ret = _ripple(elem, prepend);
+  return ret;
 }

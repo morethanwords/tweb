@@ -326,7 +326,7 @@ export function renderFoldersSidebarContent(
   HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
   middleware: Middleware
 ) {
-  const {hasFoldersSidebar} = useHasFoldersSidebar();
+  const [hasFoldersSidebar] = useHasFoldersSidebar();
   createRoot((dispose) => {
     render(() => (
       <HotReloadGuardProvider>

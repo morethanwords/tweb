@@ -9,7 +9,6 @@ import {ChannelsSponsoredMessageReportResult, MessageReportOption, ReportResult,
 import {Accessor, createSignal, For, Setter, createResource, createEffect, onCleanup, createMemo, untrack} from 'solid-js';
 import Section from '../section';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import RowTsx from '../rowTsx';
 import {TransitionGroup} from '../../helpers/solid/transitionGroup';
 import TransitionSlider from '../transition';
 import {i18n, LangPackKey} from '../../lib/langPack';
@@ -22,6 +21,7 @@ import InputField from '../inputField';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import Button from '../buttonTsx';
 import classNames from '../../helpers/string/classNames';
+import Row from '../rowTsx';
 
 export default class PopupReportAd extends PopupElement {
   private static STICKER_EMOJI = '👮‍♀️';
@@ -150,11 +150,10 @@ export default class PopupReportAd extends PopupElement {
       <For each={result.options}>
         {(option) => {
           return (
-            <RowTsx
-              title={wrapEmojiText(option.text)}
-              clickable={() => setOption(option)}
-              rightContent={Icon('next', 'popup-report-ad-option-arrow-icon')}
-            />
+            <Row clickable={() => setOption(option)}>
+              <Row.Title>{wrapEmojiText(option.text)}</Row.Title>
+              <Row.RightContent>{Icon('next', 'popup-report-ad-option-arrow-icon')}</Row.RightContent>
+            </Row>
           );
         }}
       </For>

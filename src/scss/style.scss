@@ -1352,6 +1352,10 @@ middle-ellipsis-element {
 
 .hover-danger-effect {
   @include hover-background-effect(red);
+
+  .c-ripple__circle {
+    background-color: var(--light-danger-color);
+  }
 }
 
 .progress-ring {
