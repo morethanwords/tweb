@@ -70,14 +70,17 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
     threshold: getThreshold()
   });
 
+  let cleaned = false;
+
   onCleanup(() => {
+    cleaned = true;
     observer.disconnect();
   });
 
   return {
     observe(element: HTMLElement, index: number) {
       setTimeout(() => {
-        observer.observe(element);
+        if(!cleaned) observer.observe(element);
       }, 0);
 
       const [state, setState] = createStore<ElementState>({floating: false, hidden: false});
