@@ -342,6 +342,13 @@ type DoFlushHistoryArgs = {
   participantPeerId?: PeerId;
 };
 
+type SendContactArgs = {
+  peerId: PeerId;
+  monoforumThreadId?: PeerId;
+  contactPeerId: PeerId;
+  confirmedPaymentResult?: ConfirmedPaymentResult;
+};
+
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
 
 export class AppMessagesManager extends AppManager {
@@ -1859,8 +1866,13 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public sendContact(peerId: PeerId, contactPeerId: PeerId, confirmedPaymentResult?: ConfirmedPaymentResult) {
-    return this.sendOther({peerId, inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId), confirmedPaymentResult});
+  public sendContact({peerId, contactPeerId, monoforumThreadId, confirmedPaymentResult}: SendContactArgs) {
+    return this.sendOther({
+      peerId,
+      inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId),
+      replyToMonoforumPeerId: monoforumThreadId,
+      confirmedPaymentResult
+    });
   }
 
   public sendOther(

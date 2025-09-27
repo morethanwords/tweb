@@ -90,12 +90,13 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
 
   private onForward = async() => {
     PopupPickUser.createSharingPicker({
-      onSelect: async(peerId) => {
+      onSelect: async(peerId, _, monoforumThreadId) => {
         const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
         if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
 
         rootScope.managers.appMessagesManager.sendText({
           peerId,
+          replyToMonoforumPeerId: monoforumThreadId,
           text: this.shareUrl,
           confirmedPaymentResult: preparedPaymentResult
         });

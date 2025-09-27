@@ -2754,7 +2754,7 @@ export class AppImManager extends EventListenerBase<{
       },
       descriptionLangKey: 'AreYouSureShareMyContactInfoBot'
     }).then(() => {
-      return this.managers.appMessagesManager.sendContact(peerId, rootScope.myId);
+      return this.managers.appMessagesManager.sendContact({peerId, contactPeerId: rootScope.myId});
     });
   }
 

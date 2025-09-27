@@ -938,7 +938,7 @@ const Stories = (props: {
   const onShareClick = (wasPlaying = !stories.paused) => {
     actions.pause();
     const popup = PopupPickUser.createSharingPicker({
-      onSelect: async(peerId) => {
+      onSelect: async(peerId, _, monoforumThreadId) => {
         const storyPeerId = props.state.peerId;
 
         const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
@@ -952,7 +952,8 @@ const Stories = (props: {
             id: currentStory().id,
             peer: inputPeer
           },
-          confirmedPaymentResult: preparedPaymentResult
+          confirmedPaymentResult: preparedPaymentResult,
+          replyToMonoforumPeerId: monoforumThreadId
         });
 
         showMessageSentTooltip(
