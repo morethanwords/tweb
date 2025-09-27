@@ -36,7 +36,7 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
   const map = new Map<HTMLElement, ElementMapValue>();
 
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
+    batch(() => entries.forEach(entry => {
       const element = entry.target as HTMLElement;
       if(!map.has(element)) return;
 
@@ -45,25 +45,24 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
 
       const floating = entry.boundingClientRect.bottom < entry.rootBounds.top;
 
-      batch(() => {
-        setState({floating});
+      setState({floating});
 
-        const sortedMapValues = Array.from(map.values()).sort((a, b) => a.index - b.index);
-        const n = sortedMapValues.length;
-        for(let i = 0; i < n - 1; i++) {
-          const [, setCurrent] = sortedMapValues[i].signal;
-          const [next] = sortedMapValues[i + 1].signal;
+      const sortedMapValues = Array.from(map.values()).sort((a, b) => a.index - b.index);
+      const n = sortedMapValues.length;
+      for(let i = 0; i < n - 1; i++) {
+        const [, setCurrent] = sortedMapValues[i].signal;
+        const [next] = sortedMapValues[i + 1].signal;
 
-          setCurrent({hidden: next.floating});
+        setCurrent({hidden: next.floating});
 
-          if(sortedMapValues[i + 1] === targetMapValue) {
-            setCurrent({
-              nextIntersectionRatio: entry.boundingClientRect.bottom < entry.rootBounds.bottom ? entry.intersectionRatio : 1
-            });
-          }
+        if(sortedMapValues[i + 1] === targetMapValue) {
+          setCurrent({
+            nextIntersectionRatio: entry.boundingClientRect.bottom < entry.rootBounds.bottom ? entry.intersectionRatio : 1
+          });
         }
-      })
-    });
+      }
+    })
+    );
   }, {
     root: rootElement,
     rootMargin: `-${2 * PADDING + 2 * SEPARATOR_HEIGHT}px 0px 0px 0px`,
