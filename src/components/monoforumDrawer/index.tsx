@@ -2,6 +2,7 @@ import {createEffect, createMemo, createResource, createSignal, onCleanup, Show}
 import liteMode from '../../helpers/liteMode';
 import {doubleRaf} from '../../helpers/schedulers';
 import pause from '../../helpers/schedulers/pause';
+import {I18nTsx} from '../../helpers/solid/i18n';
 import type {AutonomousMonoforumThreadList} from '../../lib/appManagers/appDialogsManager';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
@@ -9,7 +10,6 @@ import {ButtonIconTsx} from '../buttonIconTsx';
 import {PeerTitleTsx} from '../peerTitleTsx';
 import createMonoforumDialogsList from './list';
 import styles from './styles.module.scss';
-import {I18nTsx} from '../../helpers/solid/i18n';
 
 if(import.meta.hot) import.meta.hot.accept();
 
