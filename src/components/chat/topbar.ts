@@ -921,6 +921,16 @@ export default class ChatTopbar {
       }
     });
 
+    this.listenerSetter.add(rootScope)('monoforum_dialogs_update', async({dialogs}) => {
+      if(!this.chat.isMonoforum || !this.chat.monoforumThreadId) return;
+
+      const found = dialogs.find(dialog => dialog.parentPeerId === this.chat.peerId && dialog.peerId === this.chat.monoforumThreadId);
+      if(!found) return;
+
+      const callback = await (await this.chatRemoveFee.setPeerId(this.chat.peerId)).result;
+      callback();
+    });
+
     return this;
   }
 
