@@ -529,7 +529,7 @@ export default class ChatTopbar {
       onClick: () => {
         this.addContact();
       },
-      verify: async() => this.peerId.isUser() && !(await this.managers.appPeersManager.isContact(this.peerId))
+      verify: async() => (this.chat.monoforumThreadId || this.peerId).isUser() && !(await this.managers.appPeersManager.isContact(this.chat.monoforumThreadId || this.peerId))
     }, {
       icon: 'forward',
       text: 'ShareContact',
@@ -590,7 +590,7 @@ export default class ChatTopbar {
         this.appSidebarRight.createTab(AppStatisticsTab).open(this.peerId.toChatId());
         this.appSidebarRight.toggleSidebar(true);
       },
-      verify: () => this.managers.appProfileManager.canViewStatistics(this.peerId)
+      verify: () => !this.chat.monoforumThreadId && this.managers.appProfileManager.canViewStatistics(this.peerId)
     }, {
       icon: 'addboost',
       text: 'Boosts',
