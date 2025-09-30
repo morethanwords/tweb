@@ -645,6 +645,12 @@ export default class Chat extends EventListenerBase<{
       }
     });
 
+    this.bubbles.listenerSetter.add(rootScope)('monoforum_dialogs_drop', ({ids, parentPeerId}) => {
+      if(parentPeerId === this.peerId && ids.includes(this.monoforumThreadId)) {
+        this.appImManager.setPeer({isDeleting: true});
+      }
+    });
+
     this.bubbles.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
       const {peerId} = this;
       if(peerId.isAnyChat() && peerId.toChatId() === chatId) {
