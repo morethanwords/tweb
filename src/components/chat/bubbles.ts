@@ -4795,22 +4795,22 @@ export default class ChatBubbles {
   }
 
   public async finishPeerChange() {
-    const {canWrite, hasMessages} = await namedPromises({
+    const {canWrite, hasMessages, appConfig} = await namedPromises({
       canWrite: this.chat.canSend(),
-      hasMessages: this.chat.hasMessages()
+      hasMessages: this.chat.hasMessages(),
+      appConfig: Promise.resolve(apiManagerProxy.getAppConfig())
     });
 
-    const isBroadcast = this.chat.isBroadcast;
-    const isLikeGroup = this.chat.isLikeGroup;
+    const {isBroadcast, isLikeGroup, peerId} = this.chat;
 
     return () => {
       this.chatInner.classList.toggle('has-rights', canWrite);
-      this.container.classList.toggle('is-chat-input-hidden', !canWrite);
+      this.container.classList.toggle('is-chat-input-hidden', !canWrite && !appConfig.freeze_since_date);
 
       [this.chatInner, this.remover].forEach((element) => {
         element.classList.toggle('is-chat', isLikeGroup);
         element.classList.toggle('no-messages', !hasMessages);
-        element.classList.toggle('with-message-avatars', isVerificationBot(this.peerId));
+        element.classList.toggle('with-message-avatars', isVerificationBot(peerId));
         element.classList.toggle('is-broadcast', isBroadcast);
       });
 

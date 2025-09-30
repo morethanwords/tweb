@@ -108,7 +108,12 @@ export class AppPrivacyManager extends AppManager {
     if(this._getSensitiveContentSettingsPromise) return this._getSensitiveContentSettingsPromise;
 
     return this._getSensitiveContentSettingsPromise = Promise.all([
-      this.apiManager.invokeApi('account.getContentSettings'),
+      this.apiManager.invokeApi('account.getContentSettings').catch(() => {
+        return {
+          _: 'account.contentSettings',
+          pFlags: {}
+        } as AccountContentSettings;
+      }),
       this.appStateManager.getState(),
       this.apiManager.getAppConfig()
     ]).then(([contentSettings, state, appConfig]) => {

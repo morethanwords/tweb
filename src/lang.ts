@@ -553,6 +553,8 @@ const lang = {
   'Chat.PremiumRequired': 'Subscribe to **Premium** to message **%s**.',
   'Chat.PremiumRequiredButton': 'Get Premium',
   'Chat.Input.PremiumRequiredButton': 'Only Premium users can message %s.\n[Learn more...]()',
+  'Chat.Input.FrozenButton1': 'Your Account is Frozen',
+  'Chat.Input.FrozenButton2': 'Click to view details',
   'OnlyPremiumCanMessage': '**%s** only accepts messages from contacts and **[Telegram Premium]()** subscribers.',
   'Chat.ContextMenu.Read': 'Read',
   'MediaFiles': {

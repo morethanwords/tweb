@@ -7122,6 +7122,13 @@ export class AppMessagesManager extends AppManager {
       return false;
     }
 
+    const appConfig = await this.apiManager.getAppConfig();
+    if(appConfig.freeze_since_date) {
+      const username = appConfig.freeze_appeal_url.split('/').pop();
+      const peer = await this.appUsersManager.resolveUsername(username);
+      return peerId === peer.id.toPeerId(peer._ !== 'user');
+    }
+
     if(peerId.isAnyChat()) {
       const chatId = peerId.toChatId();
       if(threadId) {
@@ -8719,7 +8726,9 @@ export class AppMessagesManager extends AppManager {
   }
 
   public canForward(message: Message.message | Message.messageService) {
-    return message?._ === 'message' && !(message as Message.message).pFlags.noforwards && !this.appPeersManager.noForwards(message.peerId);
+    return message?._ === 'message' &&
+      !(message as Message.message).pFlags.noforwards &&
+      !this.appPeersManager.noForwards(message.peerId);
   }
 
   private pushBatchUpdate<E extends keyof BatchUpdates, C extends BatchUpdates[E]>(

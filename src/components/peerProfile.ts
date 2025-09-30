@@ -799,7 +799,7 @@ export default class PeerProfile {
       this.fillNotifications(),
       this.setMoreDetails(undefined, manual),
       this.setPeerStatus(true, true)
-    ]).then((callbacks) => {
+    ].map((promise) => promise.catch(() => undefined as () => void))).then((callbacks) => {
       return () => {
         callbacks.forEach((callback) => callback?.());
       };

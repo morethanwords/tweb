@@ -85,7 +85,7 @@ import createSubmenuTrigger from '../createSubmenuTrigger';
 import noop from '../../helpers/noop';
 import {isSensitive} from '../../helpers/restrictions';
 import {hasSensitiveSpoiler} from '../wrappers/mediaSpoiler';
-import {useAppState} from '../../stores/appState';
+import {useAppConfig, useIsFrozen} from '../../stores/appState';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -413,14 +413,14 @@ export default class ChatContextMenu {
       this.canOpenReactedList = undefined;
       this.linkToMessage = await this.getUrlToMessage();
       this.selectedMessagesText = await this.getSelectedMessagesText();
-      this.messageLanguage = this.selectedMessages || !this.message ? undefined : await detectLanguageForTranslation((this.message as Message.message).message);
+      this.messageLanguage = useAppConfig().freeze_since_date || this.selectedMessages || !this.message ? undefined : await detectLanguageForTranslation((this.message as Message.message).message);
 
       if(checklistItemId) {
         const media = (this.message as Message.message).media as MessageMedia.messageMediaToDo;
         this.checklistItem = {
           item: media.todo.list.find((item) => item.id === checklistItemId),
           completion: media.completions?.find((completion) => completion.id === checklistItemId)
-        }
+        };
       } else {
         this.checklistItem = undefined;
       }
@@ -844,12 +844,15 @@ export default class ChatContextMenu {
         this.message._ !== 'messageService' &&
         !this.message.pFlags.pinned &&
         await this.managers.appPeersManager.canPinMessage(this.message.peerId) &&
-        this.chat.type !== ChatType.Scheduled
+        this.chat.type !== ChatType.Scheduled &&
+        !useIsFrozen()
     }, {
       icon: 'unpin',
       text: 'Message.Context.Unpin',
       onClick: this.onUnpinClick,
-      verify: () => (this.message as Message.message).pFlags.pinned && this.managers.appPeersManager.canPinMessage(this.message.peerId)
+      verify: () => (this.message as Message.message).pFlags.pinned &&
+        this.managers.appPeersManager.canPinMessage(this.message.peerId) &&
+        !useIsFrozen()
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',

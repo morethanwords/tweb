@@ -135,6 +135,7 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesIntercept
 import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
 import focusInput from '../../helpers/dom/focusInput';
 import {PopupChecklist} from '../popups/checklist';
+import {useAppConfig, useAppState} from '../../stores/appState';
 
 // console.log('Recorder', Recorder);
 
@@ -292,6 +293,7 @@ export default class ChatInput {
   private unblockBtn: HTMLButtonElement;
   private onlyPremiumBtn: HTMLButtonElement;
   private onlyPremiumBtnText: I18n.IntlElement;
+  private frozenBtn: HTMLButtonElement;
   private joinBtn: HTMLButtonElement;
   private rowsWrapperWrapper: HTMLDivElement;
   private controlContainer: HTMLElement;
@@ -1285,11 +1287,25 @@ export default class ChatInput {
     this.joinBtn = this.chat.topbar && makeControlButton('ChannelJoin');
     this.onlyPremiumBtnText = new I18n.IntlElement({key: 'Chat.Input.PremiumRequiredButton', args: [0, document.createElement('a')]});
     this.onlyPremiumBtn = makeControlButton(this.onlyPremiumBtnText.element);
+    const frozenText = document.createElement('span');
+    frozenText.classList.add('chat-input-frozen-text');
+    const frozenText1 = i18n('Chat.Input.FrozenButton1');
+    frozenText1.classList.add('danger');
+    const frozenText2 = i18n('Chat.Input.FrozenButton2');
+    frozenText2.classList.add('secondary', 'chat-input-frozen-text-subtitle');
+    frozenText.append(frozenText1, frozenText2);
+    this.frozenBtn = makeControlButton(frozenText);
 
     attachClickEvent(this.botStartBtn, this.startBot, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.unblockBtn, this.unblockUser, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.onlyPremiumBtn, () => {
       PopupPremium.show();
+    }, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.frozenBtn, () => {
+      alert('asd');
+      // this.chat.appImManager.setInnerPeer({
+      //   peerId: this.chat.threadId
+      // });
     }, {listenerSetter: this.listenerSetter});
     this.joinBtn && attachClickEvent(this.joinBtn, this.chat.topbar.onJoinClick.bind(this.chat.topbar, this.joinBtn), {listenerSetter: this.listenerSetter});
 
@@ -1323,6 +1339,7 @@ export default class ChatInput {
       this.unblockBtn,
       this.joinBtn,
       this.onlyPremiumBtn,
+      this.frozenBtn,
       this.replyInTopicOverlay,
       this.pinnedControlBtn,
       this.openChatBtn
@@ -1594,7 +1611,8 @@ export default class ChatInput {
       await this.chat.isStartButtonNeeded() ||
       this.isReplyInTopicOverlayNeeded() ||
       (this.chat.peerId.isUser() && (this.chat.isUserBlocked || this.chat.isPremiumRequired)) ||
-      this.getJoinButtonType()
+      this.getJoinButtonType() ||
+      (this.frozenBtn && useAppConfig().freeze_since_date && !(await this.chat.canSend()))
     ) {
       return this.controlContainer;
     }
@@ -1995,7 +2013,8 @@ export default class ChatInput {
       ackedScheduledMids,
       setSendAsCallback,
       peerTitleShort,
-      isPremiumRequired
+      isPremiumRequired,
+      appConfig
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
@@ -2007,7 +2026,8 @@ export default class ChatInput {
       btnScheduled ? modifyAckedPromise(this.managers.acknowledged.appMessagesManager.getScheduledMessages(peerId)) : undefined,
       sendAs ? (sendAs.setPeerId(peerId), sendAs.updateManual(true)) : undefined,
       wrapPeerTitle({peerId, onlyFirstName: true}),
-      this.chat.isPremiumRequiredToContact()
+      this.chat.isPremiumRequiredToContact(),
+      apiManagerProxy.getAppConfig()
     ]);
 
     const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
@@ -2069,6 +2089,12 @@ export default class ChatInput {
       sendMenu?.setPeerParams({peerId, isPaid: !!this.chat.starsAmount});
 
       let haveSomethingInControl = false;
+      if(this.chat && this.frozenBtn) {
+        const good = !haveSomethingInControl && appConfig.freeze_since_date && !canSend;
+        haveSomethingInControl ||= good;
+        this.frozenBtn.classList.toggle('hide', !good);
+      }
+
       if(this.chat && this.joinBtn) {
         const type = this.getJoinButtonType();
         const good = !haveSomethingInControl && !!type;
