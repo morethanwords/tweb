@@ -87,6 +87,7 @@ import getPhotoInput from './utils/photos/getPhotoInput';
 import {BatchProcessor} from '../../helpers/sortedList';
 import {MonoforumDialog} from '../storages/monoforumDialogs';
 import formatStarsAmount from './utils/payments/formatStarsAmount';
+import {makeMessageMediaInputForSuggestedPost} from './utils/messages/makeMessageMediaInput';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -225,6 +226,7 @@ export type SuggestedPostPayload = {
   stars?: number;
   timestamp?: number;
   changeMid?: number;
+  hasMedia?: boolean;
   monoforumThreadId?: PeerId;
 };
 
@@ -844,7 +846,7 @@ export class AppMessagesManager extends AppManager {
     }>
   ): Promise<void> {
     let {peerId, text} = options;
-    if(!text.trim()) {
+    if(!text.trim() && !options.suggestedPost?.changeMid) {
       return;
     }
 
@@ -910,6 +912,13 @@ export class AppMessagesManager extends AppManager {
           allow_paid_stars: paidStars
         }, sentRequestOptions);
       } else {
+        let media: InputMedia | undefined;
+        if(options.suggestedPost?.changeMid) {
+          const changingMessage = this.getMessageByPeer(peerId, options.suggestedPost.changeMid);
+          if(changingMessage?._ === 'message')
+            media = makeMessageMediaInputForSuggestedPost(changingMessage.media)
+        }
+
         const commonOptions: Partial<MessagesSendMessage | MessagesSendMedia> = {
           peer: inputPeer,
           message: text,
@@ -924,7 +933,8 @@ export class AppMessagesManager extends AppManager {
           invert_media: options.invertMedia,
           effect: options.effect,
           allow_paid_stars: paidStars,
-          suggested_post: message.suggested_post
+          suggested_post: message.suggested_post,
+          media
         };
 
         const mergedOptions: MessagesSendMessage | MessagesSendMedia = {
@@ -933,7 +943,7 @@ export class AppMessagesManager extends AppManager {
         };
 
         apiPromise = this.apiManager.invokeApiAfter(
-          options.webPage ? 'messages.sendMedia' : 'messages.sendMessage',
+          options.webPage || media ? 'messages.sendMedia' : 'messages.sendMessage',
           mergedOptions,
           sentRequestOptions
         );
@@ -2313,6 +2323,14 @@ export class AppMessagesManager extends AppManager {
       topMessage = historyStorage.history.first[0];
     }
 
+    let media: MessageMedia;
+    if(options.suggestedPost?.changeMid) {
+      const changingMessage = this.getMessageByPeer(peerId, options.suggestedPost.changeMid);
+
+      if(changingMessage?._ === 'message' && makeMessageMediaInputForSuggestedPost(changingMessage.media)) {
+        media = changingMessage.media;
+      }
+    }
 
     const message: Message.message = {
       _: 'message',
@@ -2334,6 +2352,7 @@ export class AppMessagesManager extends AppManager {
       effect: options.effect,
       paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined,
       saved_peer_id: options.replyToMonoforumPeerId ? this.appPeersManager.getOutputPeer(options.replyToMonoforumPeerId) : undefined,
+      media,
       suggested_post: options.suggestedPost ? {
         _: 'suggestedPost',
         pFlags: {},

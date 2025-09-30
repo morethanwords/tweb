@@ -140,6 +140,7 @@ import {formatFullSentTime} from '../../helpers/date';
 import useStars from '../../stores/stars';
 import PopupStars from '../popups/stars';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import {makeMessageMediaInputForSuggestedPost} from '../../lib/appManagers/utils/messages/makeMessageMediaInput';
 
 // console.log('Recorder', Recorder);
 
@@ -3135,7 +3136,7 @@ export default class ChatInput {
     if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) {
       this.forwardStoryCallback?.(e as MouseEvent);
       return;
-    } else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId) {
+    } else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId || this.suggestedPost?.hasMedia) {
       if(this.recording) {
         if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
           this.onCancelRecordClick();
@@ -3514,7 +3515,7 @@ export default class ChatInput {
 
     if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) icon = 'forward';
     else if(this.editMsgId) icon = 'edit';
-    else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding) icon = this.chat.type === ChatType.Scheduled ? 'schedule' : 'send';
+    else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.suggestedPost?.hasMedia) icon = this.chat.type === ChatType.Scheduled ? 'schedule' : 'send';
     else icon = 'record';
 
     ['send', 'record', 'edit', 'schedule', 'forward'].forEach((i) => {
@@ -3769,7 +3770,7 @@ export default class ChatInput {
 
         return;
       }
-    } else if(trimmedValue) {
+    } else if(trimmedValue || this.suggestedPost?.hasMedia) {
       this.managers.appMessagesManager.sendText({
         ...sendingParams,
         text: value,
@@ -3961,6 +3962,7 @@ export default class ChatInput {
         message.suggested_post.schedule_date :
         undefined,
       changeMid: message.mid,
+      hasMedia: !!makeMessageMediaInputForSuggestedPost(message.media), // accept only supported media
       monoforumThreadId
     };
 
