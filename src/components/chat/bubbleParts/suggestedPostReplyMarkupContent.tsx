@@ -84,14 +84,14 @@ const SuggestedPostReplyMarkupContent = defineSolidElement({
     return (
       <div class="reply-markup">
         <div class="reply-markup-row">
-          <button class="reply-markup-button" use:ripple onClick={onAcceptClick}>
-            <span class="reply-markup-button-text reply-markup-suggested-action">
-              {Icon('checkround_filled')}{/* @once */i18n('SuggestedPosts.Accept')}
-            </span>
-          </button>
           <button class="reply-markup-button" use:ripple onClick={onRejectClick}>
             <span class="reply-markup-button-text reply-markup-suggested-action">
               {Icon('crossround_filled')}{/* @once */i18n('SuggestedPosts.Reject')}
+            </span>
+          </button>
+          <button class="reply-markup-button" use:ripple onClick={onAcceptClick}>
+            <span class="reply-markup-button-text reply-markup-suggested-action">
+              {Icon('checkround_filled')}{/* @once */i18n('SuggestedPosts.Accept')}
             </span>
           </button>
         </div>
