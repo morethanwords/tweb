@@ -1,6 +1,7 @@
 import {Accessor, batch, createMemo, createRoot, createSignal, onCleanup} from 'solid-js';
 import {createStore, SetStoreFunction} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
+import {simulateClickEvent} from '../../../helpers/dom/clickEvent';
 import {attachHotClassName} from '../../../helpers/solid/classname';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
 import {IconTsx} from '../../iconTsx';
@@ -151,7 +152,7 @@ const MonoforumSeparator = defineSolidElement({
     });
 
     const onClick = () => {
-      peerTitleEl?.click();
+      if(peerTitleEl) simulateClickEvent(peerTitleEl);
     };
 
     return (

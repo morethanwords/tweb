@@ -2,6 +2,7 @@ import {createEffect, createMemo, createResource, createSignal, onCleanup, Show}
 import liteMode from '../../helpers/liteMode';
 import {doubleRaf} from '../../helpers/schedulers';
 import pause from '../../helpers/schedulers/pause';
+import {attachHotClassName} from '../../helpers/solid/classname';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import type {AutonomousMonoforumThreadList} from '../../lib/appManagers/appDialogsManager';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
@@ -30,8 +31,7 @@ const MonoforumDrawer = defineSolidElement({
     const {appDialogsManager, AutonomousMonoforumThreadList, appSidebarLeft, apiManagerProxy, rootScope} = useHotReloadGuard();
     const canAnimate = () => liteMode.isAvailable('animations');
 
-    props.element.classList.add(styles.Container);
-    if(import.meta.hot) onCleanup(() => void props.element.classList.remove(styles.Container));
+    attachHotClassName(props.element, styles.Container);
 
     const chat = createMemo(() => {
       const chat = apiManagerProxy.getChat(props.peerId.toChatId());

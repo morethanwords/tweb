@@ -755,7 +755,7 @@ export default class ChatTopbar {
 
     if(chat?._ !== 'channel' || !chat?.send_paid_messages_stars) return false;
 
-    return requirePayment ? !!dialog.pFlags?.nopaid_messages_exception : !dialog.pFlags?.nopaid_messages_exception;
+    return requirePayment ? !!dialog?.pFlags?.nopaid_messages_exception : !dialog?.pFlags?.nopaid_messages_exception;
   };
 
   private onToggleFeeClick = async(requirePayment: boolean) => {
