@@ -100,7 +100,7 @@ const MonoforumDrawer = defineSolidElement({
           <div class={`sidebar-header ${styles.Header}`}>
             <ButtonIconTsx class='sidebar-close-button' icon='close' noRipple onClick={close} />
             <div class={styles.TitleContainer}>
-              <PeerTitleTsx peerId={props.peerId} />
+              <PeerTitleTsx class={styles.Title} peerId={props.peerId} />
               <div class={styles.Subtitle}>
                 <I18nTsx key='ChannelDirectMessages.ThreadsCount' args={[dialogs() ? dialogs().count + '' : '~']} />
               </div>

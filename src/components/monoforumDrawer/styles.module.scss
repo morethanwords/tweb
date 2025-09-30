@@ -50,6 +50,10 @@
   text-overflow: ellipsis;
 }
 
+.Title {
+  font-weight: var(--font-weight-bold);
+}
+
 .Subtitle {
   font-size: 14px;
   color: var(--secondary-text-color);
