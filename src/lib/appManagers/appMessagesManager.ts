@@ -2332,10 +2332,20 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
+    let fromId;
+
+    if(this.appPeersManager.isMonoforum(peerId) && this.appPeersManager.canManageDirectMessages(peerId)) {
+      const chat = this.appChatsManager.getChat(peerId.toChatId());
+      const linkedChannelId = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id?.toPeerId?.(true) || undefined;
+      fromId = this.appPeersManager.getOutputPeer(linkedChannelId);
+    } else {
+      fromId = options.sendAsPeerId ? this.appPeersManager.getOutputPeer(options.sendAsPeerId) : this.generateFromId(peerId);
+    }
+
     const message: Message.message = {
       _: 'message',
       id: this.generateTempMessageId(peerId, topMessage),
-      from_id: options.sendAsPeerId ? this.appPeersManager.getOutputPeer(options.sendAsPeerId) : this.generateFromId(peerId),
+      from_id: fromId,
       peer_id: this.appPeersManager.getOutputPeer(peerId),
       post_author: postAuthor,
       pFlags: this.generateFlags(peerId),

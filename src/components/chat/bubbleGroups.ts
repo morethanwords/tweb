@@ -508,8 +508,8 @@ export default class BubbleGroups {
     if(isMessageForVerificationBot(item1.message)) return false;
 
     if(
-      item1.message?._ === 'message' && canHaveSuggestedPostReplyMarkup(item1.message) ||
-      item2.message?._ === 'message' && canHaveSuggestedPostReplyMarkup(item2.message)
+      item1.message?._ === 'message' && item1.message?.suggested_post ||
+      item2.message?._ === 'message' && item2.message?.suggested_post
     ) return false;
 
     const isOut1 = this.chat.isOutMessage(item1.message);
@@ -520,9 +520,9 @@ export default class BubbleGroups {
       !item2.single &&
       isOut1 === this.chat.isOutMessage(item2.message) &&
       (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true)) &&
-      (!isOut1 || item1.message.fromId === rootScope.myId) && // * group anonymous sending
+      (!this.chat.isMonoforum || getMessageThreadId(item1.message) === getMessageThreadId(item2.message)) &&
+      (!isOut1 || item1.message.fromId === rootScope.myId || this.chat.isMonoforum) && // * group anonymous sending
       item1.message.peerId === item2.message.peerId &&
-      getPeerId(item1.message.saved_peer_id) === getPeerId(item2.message.saved_peer_id) &&
       (item1.message as Message.message).post_author === (item2.message as Message.message).post_author;
   }
 
