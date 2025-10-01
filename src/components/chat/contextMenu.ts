@@ -1535,6 +1535,11 @@ export default class ChatContextMenu {
       return;
     }
 
+    if(message?._ === 'message' && message.suggested_post) {
+      this.chat.input.initSuggestPostChange(message.mid);
+      return;
+    }
+
     this.chat.input.initMessageEditing(this.isTargetAGroupedItem ? this.mid : message.mid);
   };
 
