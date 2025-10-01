@@ -47,18 +47,17 @@ export default function transferStarGift(gift: MyStarGift): Promise<boolean> {
           }
         })
 
-        const password = await passwordPopup({
+        const url = await passwordPopup({
           titleLangKey: 'PleaseEnterCurrentPassword',
           descriptionLangKey: 'StarGiftFragmentTransferPassword',
           descriptionLangArgs: [getCollectibleName(raw)],
           button: {
             langKey: 'Confirm'
-          }
-        })
-
-        const url = await rootScope.managers.apiManager.invokeApi('payments.getStarGiftWithdrawalUrl', {
-          stargift: input,
-          password: password
+          },
+          callback: (password) => rootScope.managers.apiManager.invokeApi('payments.getStarGiftWithdrawalUrl', {
+            stargift: input,
+            password: password
+          })
         })
 
         safeWindowOpen(url.url);

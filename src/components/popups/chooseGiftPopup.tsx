@@ -14,17 +14,18 @@ import {PreloaderTsx} from '../putPreloader';
 import {Transition} from 'solid-transition-group';
 
 export default class PopupChooseGift extends PopupElement<{
-  finish: (result: MyStarGift[] | null) => void
+  finish: (result: {selected: MyStarGift[], deselected: MyStarGift[]} | null) => void
 }> {
   private peerId: PeerId;
-  private excludeCollectionId?: number;
+  private selectedCollectionId?: number;
 
   private finished = false;
   private selected: () => MyStarGift[];
+  private deselected: () => MyStarGift[];
 
   constructor(options: {
     peerId: PeerId,
-    excludeCollectionId?: number
+    selectedCollectionId?: number
   }) {
     super(styles.popup, {
       overlayClosable: true,
@@ -35,7 +36,7 @@ export default class PopupChooseGift extends PopupElement<{
         {
           langKey: 'Confirm',
           callback: () => {
-            this.dispatchEvent('finish', this.selected());
+            this.dispatchEvent('finish', {selected: this.selected(), deselected: this.deselected()});
           }
         },
         {
@@ -65,10 +66,17 @@ export default class PopupChooseGift extends PopupElement<{
   protected _construct() {
     const [store, actions] = createProfileGiftsStore({peerId: this.peerId});
     const [selected, setSelected] = createSignal<MyStarGift[]>([]);
+    const [deselected, setDeselected] = createSignal<MyStarGift[]>([]);
     this.selected = selected;
+    this.deselected = deselected;
     actions.loadNext();
 
-    const filteredList = () => unwrap(store.items).filter((it) => !it.saved.collection_id?.includes(this.excludeCollectionId));
+    const isGiftSelected = (gift: MyStarGift) => {
+      if(this.selectedCollectionId && gift.saved.collection_id?.includes(this.selectedCollectionId)) {
+        return !deselected().includes(gift);
+      }
+      return selected().includes(gift);
+    }
 
     let scrollableRef!: HTMLDivElement;
     return (
@@ -86,17 +94,26 @@ export default class PopupChooseGift extends PopupElement<{
             <Scrollable ref={scrollableRef} onScrolledBottom={actions.loadNext}>
               <StarGiftsGrid
                 class={styles.grid}
-                items={filteredList()}
+                items={unwrap(store.items)}
                 view="profile"
                 autoplay={false}
                 scrollParent={scrollableRef}
-                selected={selected()}
+                selected={isGiftSelected}
                 onClick={(clickedItem) => {
-                  const idx = selected().indexOf(clickedItem);
-                  if(idx !== -1) {
-                    setSelected(selected().filter((it) => it !== clickedItem));
+                  if(this.selectedCollectionId && clickedItem.saved.collection_id?.includes(this.selectedCollectionId)) {
+                    const idx = deselected().indexOf(clickedItem);
+                    if(idx !== -1) {
+                      setDeselected(deselected().filter((it, i) => i !== idx));
+                    } else {
+                      setDeselected([...deselected(), clickedItem]);
+                    }
                   } else {
-                    setSelected([...selected(), clickedItem]);
+                    const idx = selected().indexOf(clickedItem);
+                    if(idx !== -1) {
+                      setSelected(selected().filter((it, i) => i !== idx));
+                    } else {
+                      setSelected([...selected(), clickedItem]);
+                    }
                   }
                 }}
               />

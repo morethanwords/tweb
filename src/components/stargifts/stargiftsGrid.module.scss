@@ -223,18 +223,11 @@
   position: absolute;
   top: 0.5rem;
   left: 0.5rem;
-  z-index: 2;
+  z-index: 3;
   margin: 0;
   --size: 1.25rem;
 
   :global(.checkbox-box-border) {
-    opacity: 0;
-    transition: opacity var(--transition-standard-in);
     border-width: 1px;
-  }
-
-  :global(.checkbox-field-input:checked + .checkbox-box .checkbox-box-border) {
-    opacity: 1;
-    transition: opacity var(--transition-standard-out);
   }
 }

@@ -797,29 +797,35 @@ function ChosenGiftPage(props: {
       }
     }
 
-    const popup = await PopupPayment.create({
-      inputInvoice: invoice,
-      noShowIfStars: true,
-      purpose: 'stargift'
-    });
-    popup.addEventListener('finish', (result) => {
-      if(result === 'paid' || result === 'pending') {
-        props.onClose();
-        if(
-          props.chosenGift.type === 'stargift' &&
-          props.chosenGift.raw._ === 'starGift' &&
-          props.chosenGift.raw.per_user_total &&
-          props.chosenGift.raw.per_user_remains
-        ) {
-          toastNew({
-            langPackKey: 'StarGiftLimitSent',
-            langPackArguments: [props.chosenGift.raw.per_user_remains - 1]
-          })
+    try {
+      const popup = await PopupPayment.create({
+        inputInvoice: invoice,
+        noShowIfStars: true,
+        purpose: 'stargift'
+      });
+      popup.addEventListener('finish', (result) => {
+        if(result === 'paid' || result === 'pending') {
+          props.onClose();
+          if(
+            props.chosenGift.type === 'stargift' &&
+            props.chosenGift.raw._ === 'starGift' &&
+            props.chosenGift.raw.per_user_total &&
+            props.chosenGift.raw.per_user_remains
+          ) {
+            toastNew({
+              langPackKey: 'StarGiftLimitSent',
+              langPackArguments: [props.chosenGift.raw.per_user_remains - 1]
+            })
+          }
+        } else {
+          setSending(false);
         }
-      } else {
-        setSending(false);
-      }
-    });
+      });
+    } catch(err) {
+      setSending(false);
+      toastNew({langPackKey: 'Error.AnError'});
+      console.error('send gift error', err);
+    }
   }
 
   return (

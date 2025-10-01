@@ -38,7 +38,7 @@ export default class PopupStarGiftUpgrade extends PopupElement {
   private _construct(preview: StarGiftUpgradePreview, peerTitle?: HTMLElement) {
     this.header.remove();
     this.footer.classList.add('abitlarger');
-    const freeUpgrade = this.gift.isUpgradedBySender || this.gift.saved?.upgrade_stars !== undefined;
+    const freeUpgrade = this.gift.isUpgradedBySender;
     if(this.descriptionForPeerId) {
       this.btnConfirm.replaceChildren(i18n('OK'));
     } else {

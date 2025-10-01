@@ -106,7 +106,7 @@ function StarGiftGridItem(props: {
   })
 
   const isPinned = () => props.item.saved?.pFlags.pinned_to_top;
-  const isPremium = () => props.view === 'list' && props.item.raw.pFlags.require_premium;
+  const isPremium = () => props.view === 'list' && props.item.raw._ === 'starGift' && props.item.raw.pFlags.require_premium && props.item.raw.availability_remains > 0;
   const isLocked = () => props.view === 'list' && props.item.raw._ === 'starGift' && props.item.raw.locked_until_date > tsNow(true);
 
   return (
@@ -177,7 +177,7 @@ function StarGiftGridItem(props: {
           )} */}
           <StarsStar />
           <span>{
-            props.item.raw.resell_min_stars ?
+            props.item.isResale && props.item.raw.resell_min_stars ?
               `${numberThousandSplitterForStars(props.item.raw.resell_min_stars)}+` :
               numberThousandSplitterForStars(props.item.raw.stars)
           }</span>
@@ -269,7 +269,7 @@ export function StarGiftsGrid(props: {
   view: 'profile' | 'list' | 'resale'
   autoplay?: boolean
   onClick?: (item: MyStarGift) => void
-  selected?: MyStarGift[]
+  selected?: (item: MyStarGift) => boolean
   scrollParent: HTMLElement
 }) {
   const lazyLoadQueue = new LazyLoadQueue();
@@ -301,7 +301,7 @@ export function StarGiftsGrid(props: {
             item={item}
             view={props.view}
             hasSelection={/* @once */ props.selected !== undefined}
-            selected={props.selected?.includes(item)}
+            selected={props.selected?.(item)}
             onClick={() => props.onClick?.(item)}
             renderer={stickerRenderer}
           />

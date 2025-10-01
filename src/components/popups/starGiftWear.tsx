@@ -15,6 +15,10 @@ import {AvatarNewTsx} from '../avatarNew';
 import RowTsx from '../rowTsx';
 import PopupPremium from './premium';
 import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
+import {PeerTitleTsx} from '../peerTitleTsx';
+import classNames from '../../helpers/string/classNames';
+import wrapEmojiStatus from '../wrappers/emojiStatus';
+import {StickerTsx} from '../wrappers/sticker';
 
 export default class PopupStarGiftWear extends PopupElement {
   private gift: MyStarGift;
@@ -42,7 +46,7 @@ export default class PopupStarGiftWear extends PopupElement {
 
     return (
       <div class={/* @once */ styles.container}>
-        <div class={/* @once */ styles.header}>
+        <div class={/* @once */ classNames(styles.header, 'profile-container need-white is-collapsed')}>
           {gift._ === 'starGiftUnique' && (
             <StarGiftBackdrop
               class={/* @once */ styles.backdrop}
@@ -61,6 +65,22 @@ export default class PopupStarGiftWear extends PopupElement {
             peerId={rootScope.myId}
             size={120}
           />
+
+          <div class="profile-avatars-info">
+            <div class="profile-name">
+              <PeerTitleTsx peerId={rootScope.myId} withIcons />
+              <StickerTsx
+                class="emoji-status"
+                sticker={this.gift.sticker}
+                width={24}
+                height={24}
+                extraOptions={{play: true, loop: false}}
+              />
+            </div>
+            <div class="profile-subtitle">
+              <span class="online"><I18nTsx key="Online" /></span>
+            </div>
+          </div>
         </div>
 
         <div class={/* @once */ styles.body}>
@@ -76,9 +96,14 @@ export default class PopupStarGiftWear extends PopupElement {
             subtitle={<I18nTsx key="StarGiftWearBenefit1Text" />}
           />
           <RowTsx
-            icon="menu_verification"
+            icon="menu_feature_cover"
             title={<I18nTsx key="StarGiftWearBenefit2Title" />}
             subtitle={<I18nTsx key="StarGiftWearBenefit2Text" />}
+          />
+          <RowTsx
+            icon="menu_verification"
+            title={<I18nTsx key="StarGiftWearBenefit3Title" />}
+            subtitle={<I18nTsx key="StarGiftWearBenefit3Text" />}
           />
         </div>
       </div>

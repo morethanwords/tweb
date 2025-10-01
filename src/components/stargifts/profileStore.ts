@@ -7,6 +7,7 @@ import {createListenerSetter} from '../stories/viewer';
 import {updateStarGift} from '../../lib/appManagers/utils/gifts/updateStarGift';
 import {inputStarGiftEquals} from '../../lib/appManagers/utils/gifts/inputStarGiftEquals';
 import untrackActions from '../../helpers/solid/untrackActions';
+import setBooleanFlag from '../../helpers/object/setBooleanFlag';
 
 export const ALL_COLLECTIONS_ID = -1
 
@@ -187,23 +188,42 @@ export function createProfileGiftsStore(props: {
       const items = unwrap(store.items);
       const idx = items.findIndex((it) => inputStarGiftEquals(it.input, event.input));
       if(idx !== -1) {
-        let newList = items.slice();
+        const newList = items.slice();
         // create a new object to force re-render
         const newItem = {...newList[idx]};
         newList[idx] = newItem;
 
         updateStarGift(newItem, event);
-        if(event.togglePinned) {
-          newList = newList.sort((a, b) => {
-            if(a.saved.pFlags.pinned_to_top && !b.saved.pFlags.pinned_to_top) return -1;
-            if(!a.saved.pFlags.pinned_to_top && b.saved.pFlags.pinned_to_top) return 1;
-            return b.saved.date - a.saved.date;
-          })
-        }
 
         setStore('items', newList);
       }
     });
+
+    listenerSetter.add(rootScope)('my_pinned_stargifts', (event) => {
+      const items = unwrap(store.items).slice();
+      for(let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const shouldBePinned = event.gifts.some((it) => inputStarGiftEquals(it, item.input))
+        const wasPinned = !!item.saved.pFlags.pinned_to_top
+
+        if(shouldBePinned !== wasPinned) {
+          items[i] = {...item} // force re-render
+          setBooleanFlag(items[i].saved.pFlags, 'pinned_to_top', shouldBePinned)
+        }
+      }
+
+      items.sort((a, b) => {
+        if(a.saved.pFlags.pinned_to_top && !b.saved.pFlags.pinned_to_top) return -1;
+        if(!a.saved.pFlags.pinned_to_top && b.saved.pFlags.pinned_to_top) return 1;
+        if(a.saved.pFlags.pinned_to_top && b.saved.pFlags.pinned_to_top) {
+          const idxA = event.gifts.findIndex((it) => inputStarGiftEquals(it, a.input))
+          const idxB = event.gifts.findIndex((it) => inputStarGiftEquals(it, b.input))
+          return idxA - idxB
+        };
+        return b.saved.date - a.saved.date;
+      })
+      setStore('items', items);
+    })
 
     listenerSetter.add(rootScope)('star_gift_list_update', () => {
       // refetch list

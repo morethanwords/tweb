@@ -1560,6 +1560,7 @@
 "ActionGiftUpgradedSelf" = "You turned this gift into a unique collectible";
 "ActionGiftTransferredInbound" = "%s transferred a gift to you";
 "ActionGiftTransferredOutbound" = "You transferred a gift to %s";
+"ActionGiftTransferredSelf" = "You transferred a unique collectible";
 "ActionGiftPremiumTitle2" = "%s Premium";
 "ActionGiftPremiumSubtitle2" = "Subscription for exclusive Telegram features.";
 "ChatAdmin" = "admin";
@@ -2406,13 +2407,17 @@
 "StarGiftCollectionsAddGifts" = "Add Gifts";
 "StarGiftCollectionsEmptyOther" = "No matching gifts.";
 "StarGiftCollectionsRename" = "Edit Name";
+"StarGiftCollectionsDeleteTitle" = "Delete collection";
+"StarGiftCollectionsDeleteAreYouSure" = "Are you sure you want to delete collection **%s**?";
 "StarGiftChoose" = "Choose Gifts";
 "StarGiftWearTitle" = "Wear %s";
 "StarGiftWearSubtitle" = "and get these benefits:";
 "StarGiftWearBenefit1Title" = "Radiant Badge";
 "StarGiftWearBenefit1Text" = "The glittering icon of this item will be displayed next to your name.";
-"StarGiftWearBenefit2Title" = "Proof of Ownership";
-"StarGiftWearBenefit2Text" = "Tapping the icon of this item next to your name will show its info and owner.";
+"StarGiftWearBenefit2Title" = "Unique Profile Design";
+"StarGiftWearBenefit2Text" = "Your profile page will get the color and the symbol of this item.";
+"StarGiftWearBenefit3Title" = "Proof of Ownership";
+"StarGiftWearBenefit3Text" = "Tapping the icon of this item next to your name will show its info and owner.";
 "StarGiftWearStart" = "Start Wearing";
 "StarGiftLimitReached" = "You've already sent **%d** of these gifts, and it's the limit.";
 "StarGiftLimitSent" = "You can send **%d** more.";

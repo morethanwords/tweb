@@ -11,6 +11,10 @@
     .popup-body {
       align-items: center;
     }
+    
+    .btn-transparent {
+      position: relative;
+    }
   }
 }
 
@@ -41,6 +45,7 @@
   line-height: 22px;
   text-align: center;
   text-wrap: balance;
+  word-break: break-all;
 }
 
 .table {

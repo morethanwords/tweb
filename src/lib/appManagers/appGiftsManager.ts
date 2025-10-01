@@ -11,6 +11,7 @@ import {MyDocument} from './appDocsManager';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
 import {nanotonToJsNumber} from '../../helpers/paymentsWrapCurrencyAmount';
+import {inputStarGiftEquals} from './utils/gifts/inputStarGiftEquals';
 
 export interface MyStarGift {
   type: 'stargift',
@@ -244,6 +245,7 @@ export default class AppGiftsManager extends AppManager {
     return res.gifts;
   }
 
+  private myPinnedGifts: InputSavedStarGift[] = [];
   public async getProfileGifts(params: {
     peerId: PeerId,
     offset?: string,
@@ -311,6 +313,10 @@ export default class AppGiftsManager extends AppManager {
           if(it.icon) this.appDocsManager.saveDoc(it.icon);
         }
       }
+    }
+
+    if(params.peerId === this.rootScope.myId && !params.offset) {
+      this.myPinnedGifts = wrapped.filter((it) => it.saved?.pFlags.pinned_to_top).map((it) => it.input);
     }
 
     return {
@@ -441,11 +447,18 @@ export default class AppGiftsManager extends AppManager {
   }
 
   public async togglePinnedGift(gift: InputSavedStarGift) {
+    const idx = this.myPinnedGifts.findIndex((it) => inputStarGiftEquals(it, gift));
+    if(idx !== -1) {
+      this.myPinnedGifts.splice(idx, 1);
+    } else {
+      this.myPinnedGifts.push(gift);
+    }
+
     await this.apiManager.invokeApiSingle('payments.toggleStarGiftsPinnedToTop', {
       peer: {_:'inputPeerSelf'},
-      stargift: [gift]
+      stargift: this.myPinnedGifts
     });
-    this.rootScope.dispatchEvent('star_gift_update', {input: gift, togglePinned: true});
+    this.rootScope.dispatchEvent('my_pinned_stargifts', {gifts: this.myPinnedGifts});
   }
 
   public upgradeStarGift(input: InputSavedStarGift, keepDetails: boolean) {
