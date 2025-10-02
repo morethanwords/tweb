@@ -4399,6 +4399,10 @@ export default class ChatInput {
         ...initial,
         ...payload
       };
+
+      if(this.directMessagesHandler.store.isSuggestingUneditablePostChange) {
+        this.sendMessage();
+      }
     }}).show();
   }
 
