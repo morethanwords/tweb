@@ -2298,9 +2298,11 @@ export default class ChatInput {
     } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
       key = 'ChannelBroadcast';
     } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
-      key = this.chat.monoforumThreadId || this.directMessagesHandler.store.isReplying ?
-        'Message' :
-        'ChannelDirectMessages.ChooseMessage';
+      key = this.directMessagesHandler.store.isSuggestingUneditablePostChange ?
+        'ChannelDirectMessages.CantChangeSuggestedPostMessage' :
+        this.chat.monoforumThreadId || this.directMessagesHandler.store.isReplying ?
+          'Message' :
+          'ChannelDirectMessages.ChooseMessage';
     } else if(
       (this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) ||
       await this.managers.appMessagesManager.isAnonymousSending(peerId)
@@ -3608,7 +3610,8 @@ export default class ChatInput {
 
     const [store, set] = createStore({
       isMonoforumAllChats: false,
-      isReplying: false
+      isReplying: false,
+      isSuggestingUneditablePostChange: false
     });
 
     createEffect(() => {
@@ -3633,6 +3636,23 @@ export default class ChatInput {
         this.btnToggleEmoticons?.removeAttribute('disabled');
         this.btnSend?.removeAttribute('disabled');
         this.btnSend?.classList.remove('disabled');
+      });
+    });
+
+    createEffect(() => {
+      this.getPlaceholderParams().then(params => this.updateMessageInputPlaceholder(params));
+
+      if(!store.isSuggestingUneditablePostChange) return;
+
+      this.messageInputField?.input?.classList.add('hide')
+      this.messageInputField?.setHidden(true);
+      this.btnToggleEmoticons?.setAttribute('disabled', '');
+      this.autocompleteHelperController.hideOtherHelpers();
+
+      onCleanup(() => {
+        this.messageInputField?.input?.classList.remove('hide');
+        this.messageInputField?.setHidden(false);
+        this.btnToggleEmoticons?.removeAttribute('disabled');
       });
     });
 
@@ -3976,6 +3996,12 @@ export default class ChatInput {
     });
 
     this.suggestedPost = payload;
+
+    const isSuggestingUneditablePostChange = !!(message.media?._ === 'messageMediaDocument' && message.media.document?._ === 'document' && message.media.document.sticker);
+    this.directMessagesHandler.set({isSuggestingUneditablePostChange});
+    if(isSuggestingUneditablePostChange) {
+      this.openSuggestPostPopup(payload);
+    }
   }
 
   public initMessagesForward(fromPeerIdsMids: {[fromPeerId: PeerId]: number[]}) {
@@ -4207,6 +4233,7 @@ export default class ChatInput {
       this.suggestedPost = undefined;
       this.btnSuggestPost.classList.toggle('hide', !this.canShowSuggestPostButton(false))
       this.fileInput.multiple = true;
+      this.directMessagesHandler.set({isSuggestingUneditablePostChange: false});
     }
 
     this.editMsgId = this.editMessage = undefined;
@@ -4225,7 +4252,7 @@ export default class ChatInput {
       this.t();
     }
 
-    this.directMessagesHandler.set({isReplying: false});
+    if(!type) this.directMessagesHandler.set({isReplying: false});
   }
 
   private t() {
@@ -4358,11 +4385,14 @@ export default class ChatInput {
         return;
       }
 
+      const message = initial?.changeMid ? this.chat.getMessage(initial.changeMid) as Message.message : undefined;
+
       this.setTopInfo({
         type: 'suggested',
         callerFunc: () => { },
         title: i18n('SuggestedPosts.SuggestAPost'),
-        subtitle: this.createSuggestedPostSubtitle(payload)
+        subtitle: this.createSuggestedPostSubtitle(payload),
+        message
       });
 
       this.suggestedPost = {

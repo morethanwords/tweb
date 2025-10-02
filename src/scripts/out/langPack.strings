@@ -3092,6 +3092,7 @@
 "ChannelDirectMessages.Welcome" = "Send a direct message to the administrator of\n%s";
 "ChannelDirectMessages.WelcomePaid" = "%s\ncharges %s per message to its admin";
 "ChannelDirectMessages.ChooseMessage" = "Choose a message to reply to";
+"ChannelDirectMessages.CantChangeSuggestedPostMessage" = "Can't change message of this post";
 "ChannelDirectMessages.ThreadsCount_one" = "%d Chat";
 "ChannelDirectMessages.ThreadsCount_other" = "%d Chats";
 "ChannelDirectMessages.MessagesCount_one" = "%d Message";

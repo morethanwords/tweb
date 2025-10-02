@@ -725,7 +725,8 @@ export default class ChatContextMenu {
       text: 'Edit',
       onClick: this.onEditClick,
       verify: async() => (await this.managers.appMessagesManager.canEditMessage(this.message, 'text')) &&
-        !!this.chat.input.messageInput
+        !!this.chat.input.messageInput ||
+        (this.message._ === 'message' && this.message.pFlags?.out && this.message.suggested_post && !this.message.suggested_post.pFlags?.accepted && !this.message.suggested_post.pFlags?.rejected)
     }, {
       icon: 'plusround',
       text: 'ChecklistAddTasks',

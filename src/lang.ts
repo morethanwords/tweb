@@ -3581,6 +3581,7 @@ const lang = {
   'ChannelDirectMessages.Welcome': 'Send a direct message to the administrator of\n%s',
   'ChannelDirectMessages.WelcomePaid': '%s\ncharges %s per message to its admin',
   'ChannelDirectMessages.ChooseMessage': 'Choose a message to reply to',
+  'ChannelDirectMessages.CantChangeSuggestedPostMessage': 'Can\'t change message of this post',
   'ChannelDirectMessages.ThreadsCount': {
     'one_value': '%d Chat',
     'other_value': '%d Chats'
