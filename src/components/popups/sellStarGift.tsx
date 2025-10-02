@@ -6,7 +6,7 @@ import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
 import styles from './sellStarGift.module.scss';
 import {MTAppConfig} from '../../lib/mtproto/appConfig';
 import I18n, {i18n, LangPackKey} from '../../lib/langPack';
-import RowTsx from '../rowTsx';
+import Row from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
 import {InputFieldTsx} from '../inputFieldTsx';
 import InputField, {InputFieldOptions} from '../inputField';
@@ -16,10 +16,8 @@ import Icon from '../icon';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {toastNew} from '../toast';
-import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
-import {StarGift, StarsAmount} from '../../layer';
+import {StarsAmount} from '../../layer';
 import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber, parseNanotonFromDecimal} from '../../helpers/paymentsWrapCurrencyAmount';
-import {TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import Section from '../section';
 
 class SellPriceInputField extends InputField {
@@ -264,7 +262,6 @@ export default class PopupSellStarGift extends PopupElement<{
         </Section>
         <Section caption="StarGiftOnlyAcceptTonInfo">
           <Row disabled={loading()}>
-            <Row.Title>{i18n('StarGiftOnlyAcceptTonInfo')}</Row.Title>
             <Row.CheckboxField>
               <CheckboxFieldTsx
                 checked={ton()}

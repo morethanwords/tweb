@@ -12,12 +12,11 @@ import safeAssign from '../../helpers/object/safeAssign';
 
 import styles from './starGiftWear.module.scss';
 import {AvatarNewTsx} from '../avatarNew';
-import RowTsx from '../rowTsx';
+import Row from '../rowTsx';
 import PopupPremium from './premium';
 import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
 import {PeerTitleTsx} from '../peerTitleTsx';
 import classNames from '../../helpers/string/classNames';
-import wrapEmojiStatus from '../wrappers/emojiStatus';
 import {StickerTsx} from '../wrappers/sticker';
 
 export default class PopupStarGiftWear extends PopupElement {
@@ -90,21 +89,33 @@ export default class PopupStarGiftWear extends PopupElement {
             args={[getCollectibleName(gift)]}
           />
           <I18nTsx class={/* @once */ styles.subtitle} key="StarGiftWearSubtitle" />
-          <RowTsx
-            icon="menu_feature_unique"
-            title={<I18nTsx key="StarGiftWearBenefit1Title" />}
-            subtitle={<I18nTsx key="StarGiftWearBenefit1Text" />}
-          />
-          <RowTsx
-            icon="menu_feature_cover"
-            title={<I18nTsx key="StarGiftWearBenefit2Title" />}
-            subtitle={<I18nTsx key="StarGiftWearBenefit2Text" />}
-          />
-          <RowTsx
-            icon="menu_verification"
-            title={<I18nTsx key="StarGiftWearBenefit3Title" />}
-            subtitle={<I18nTsx key="StarGiftWearBenefit3Text" />}
-          />
+          <Row>
+            <Row.Icon icon="menu_feature_unique" />
+            <Row.Title>
+              <I18nTsx key="StarGiftWearBenefit1Title" />
+            </Row.Title>
+            <Row.Subtitle>
+              <I18nTsx key="StarGiftWearBenefit1Text" />
+            </Row.Subtitle>
+          </Row>
+          <Row>
+            <Row.Icon icon="menu_feature_cover" />
+            <Row.Title>
+              <I18nTsx key="StarGiftWearBenefit2Title" />
+            </Row.Title>
+            <Row.Subtitle>
+              <I18nTsx key="StarGiftWearBenefit2Text" />
+            </Row.Subtitle>
+          </Row>
+          <Row>
+            <Row.Icon icon="menu_verification" />
+            <Row.Title>
+              <I18nTsx key="StarGiftWearBenefit3Title" />
+            </Row.Title>
+            <Row.Subtitle>
+              <I18nTsx key="StarGiftWearBenefit3Text" />
+            </Row.Subtitle>
+          </Row>
         </div>
       </div>
     );
@@ -119,11 +130,9 @@ export default class PopupStarGiftWear extends PopupElement {
         _: 'inputEmojiStatusCollectible',
         collectible_id: this.gift.raw.id
       }).then(() => {
-        toastNew({langPackKey: 'SetAsEmojiStatusInfo'});
         this.hide();
       }).catch(() => {
         toastNew({langPackKey: 'Error.AnError'});
-        this.hide();
       });
     });
   }

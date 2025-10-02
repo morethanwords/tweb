@@ -3,7 +3,7 @@ import {BroadcastEvents} from '../../../rootScope';
 import {MyStarGift} from '../../appGiftsManager';
 
 export function updateStarGift(gift: MyStarGift, update: BroadcastEvents['star_gift_update']) {
-  const {unsaved, converted, resalePrice} = update;
+  const {unsaved, converted, resalePrice, wearing} = update;
 
   if(unsaved !== undefined) {
     gift.saved.pFlags.unsaved = unsaved ? true : undefined;
@@ -35,5 +35,9 @@ export function updateStarGift(gift: MyStarGift, update: BroadcastEvents['star_g
       raw.pFlags.resale_ton_only = gift.resellOnlyTon ? true : undefined;
       raw.resell_amount = resalePrice;
     }
+  }
+
+  if(wearing !== undefined) {
+    gift.isWearing = wearing;
   }
 }

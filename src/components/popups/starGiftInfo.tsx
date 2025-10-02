@@ -116,15 +116,33 @@ export default class PopupStarGiftInfo extends PopupElement {
     const [resellOnlyTon, setResellOnlyTon] = createSignal(this.gift.resellOnlyTon);
     const [resellPriceTon, setResellPriceTon] = createSignal(this.gift.resellPriceTon);
     const [resellPriceStars, setResellPriceStars] = createSignal(this.gift.resellPriceStars);
+    const [isWearing, setIsWearing] = createSignal(this.gift.isWearing);
 
     this.listenerSetter.add(rootScope)('star_gift_update', (event) => {
-      if(event.resalePrice && inputStarGiftEquals(input, this.gift.input)) {
-        setIsListed(event.resalePrice.length > 0);
-        updateStarGift(this.gift, event);
-        setResellOnlyTon(this.gift.resellOnlyTon);
-        setResellPriceTon(this.gift.resellPriceTon);
-        setResellPriceStars(this.gift.resellPriceStars);
+      if(inputStarGiftEquals(this.gift, event.input)) {
+        if(event.resalePrice) {
+          setIsListed(event.resalePrice.length > 0);
+          updateStarGift(this.gift, event);
+          setResellOnlyTon(this.gift.resellOnlyTon);
+          setResellPriceTon(this.gift.resellPriceTon);
+          setResellPriceStars(this.gift.resellPriceStars);
+        }
+        if(event.wearing !== undefined) {
+          setIsWearing(event.wearing);
+          createSnackbar({
+            icon: event.wearing ? 'crown' : 'crownoff',
+            textElement: event.wearing ?
+              i18n('SetAsEmojiStatusInfo') :
+              i18n('StarGiftWearStopped', [getCollectibleName(gift as StarGift.starGiftUnique)])
+          });
+        }
       }
+    })
+
+    this.listenerSetter.add(rootScope)('emoji_status_change', async() => {
+      const self = await rootScope.managers.appUsersManager.getSelf();
+      const wearingGiftId = self?.emoji_status?._ === 'emojiStatusCollectible' ? self.emoji_status.collectible_id : null;
+      setIsWearing(wearingGiftId === gift.id);
     })
 
     const handleAttributeClick = (attribute: StarGiftAttribute.starGiftAttributeModel | StarGiftAttribute.starGiftAttributeBackdrop | StarGiftAttribute.starGiftAttributePattern) => {
@@ -584,6 +602,7 @@ export default class PopupStarGiftInfo extends PopupElement {
           {isOwnedUniqueGift && (
             <div class="popup-star-gift-info-actions">
               <Button
+                noRipple
                 class="popup-star-gift-info-action"
                 icon="gem_transfer"
                 text="StarGiftTransfer"
@@ -594,12 +613,20 @@ export default class PopupStarGiftInfo extends PopupElement {
                 })}
               />
               <Button
+                noRipple
                 class="popup-star-gift-info-action"
-                icon="crown"
-                text="StarGiftWear"
-                onClick={() => PopupStarGiftWear.open(this.gift)}
+                icon={isWearing() ? 'crownoff' : 'crown'}
+                text={isWearing() ? 'StarGiftWearStop' : 'StarGiftWear'}
+                onClick={() => {
+                  if(isWearing()) {
+                    rootScope.managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
+                  } else {
+                    PopupStarGiftWear.open(this.gift)
+                  }
+                }}
               />
               <Button
+                noRipple
                 class="popup-star-gift-info-action"
                 icon={isListed() ? 'tag_alt_crossed' : 'tag_alt'}
                 text={isListed() ? 'StarGiftUnlistButton' : 'StarGiftSell'}

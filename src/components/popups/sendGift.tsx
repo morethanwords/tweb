@@ -434,7 +434,7 @@ function ResaleOptionsPage(props: {
   }
 
   subscribeOn(rootScope)('star_gift_update', (event) => {
-    const idx = items().findIndex((it) => inputStarGiftEquals(it.input, event.input));
+    const idx = items().findIndex((it) => inputStarGiftEquals(it, event.input));
     if(idx !== -1) {
       if(event.resalePrice) {
         loadFromStart();

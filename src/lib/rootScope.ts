@@ -223,7 +223,8 @@ export type BroadcastEvents = {
     input: InputSavedStarGift,
     resalePrice?: StarsAmount[],
     unsaved?: boolean,
-    converted?: boolean
+    converted?: boolean,
+    wearing?: boolean
   },
   'my_pinned_stargifts': {gifts: InputSavedStarGift[]},
   'star_gift_list_update': {peerId: PeerId},

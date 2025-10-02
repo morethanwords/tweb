@@ -22,6 +22,7 @@ export interface MyStarGift {
   isUpgraded?: boolean,
   isUpgradedBySender?: boolean,
   isResale?: boolean,
+  isWearing?: boolean,
   resellPriceStars?: Long,
   resellPriceTon?: Long,
   resellOnlyTon?: boolean,
@@ -103,6 +104,7 @@ function mapPremiumOptions(premiumOptions: PremiumGiftCodeOption.premiumGiftCode
 export default class AppGiftsManager extends AppManager {
   private cachedStarGiftOptions?: MyStarGift[];
   private cachedStarGiftOptionsHash = 0;
+  private wearingGiftSlug?: string | null;
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -124,8 +126,30 @@ export default class AppGiftsManager extends AppManager {
             break;
           }
         }
+      },
+      updateUserEmojiStatus: (upd) => {
+        if(upd.user_id !== this.rootScope.myId) return;
+
+        if(this.wearingGiftSlug) {
+          this.rootScope.dispatchEvent('star_gift_update', {input: {_: 'inputSavedStarGiftSlug', slug: this.wearingGiftSlug}, wearing: false});
+        }
+
+        if(upd.emoji_status._ === 'emojiStatusCollectible') {
+          this.wearingGiftSlug = upd.emoji_status.slug;
+          this.rootScope.dispatchEvent('star_gift_update', {input: {_: 'inputSavedStarGiftSlug', slug: this.wearingGiftSlug}, wearing: true});
+        } else {
+          this.wearingGiftSlug = null;
+        }
       }
     })
+  }
+
+  private async ensureHaveWearingGiftSlug() {
+    if(this.wearingGiftSlug === undefined) {
+      const self = this.appUsersManager.getSelf();
+      if(!self) return
+      this.wearingGiftSlug = self.emoji_status?._ === 'emojiStatusCollectible' ? self.emoji_status.slug : null;
+    };
   }
 
   private wrapGift(gift: StarGift): MyStarGift {
@@ -187,7 +211,8 @@ export default class AppGiftsManager extends AppManager {
         resellPriceTon,
         resellOnlyTon: gift.pFlags.resale_ton_only,
         ownerId: getPeerId(gift.owner_id),
-        input: {_:'inputSavedStarGiftSlug', slug: gift.slug}
+        input: {_:'inputSavedStarGiftSlug', slug: gift.slug},
+        isWearing: gift.slug === this.wearingGiftSlug
       };
     }
   }
@@ -260,6 +285,10 @@ export default class AppGiftsManager extends AppManager {
     withCollections?: boolean
     collectionId?: number
   }) {
+    if(params.peerId === this.rootScope.myId) {
+      await this.ensureHaveWearingGiftSlug();
+    }
+
     const isUser = params.peerId.isUser();
     const inputPeer = this.appPeersManager.getInputPeerById(params.peerId)
     const collectionsPromise = params.withCollections ?

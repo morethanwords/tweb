@@ -44,7 +44,7 @@ function StarGiftGridItem(props: {
     props.renderer.observeAnimated(stickerRef);
 
     if(props.view === 'profile' && !props.hasSelection) {
-      const {raw, saved, input, isIncoming} = props.item;
+      const {raw, saved, input, isIncoming, isWearing} = props.item;
       const isOwnedUniqueGift = raw._ === 'starGiftUnique' && getPeerId(raw.owner_id) === rootScope.myId && saved !== undefined;
 
       createContextMenu({
@@ -79,7 +79,7 @@ function StarGiftGridItem(props: {
             }
           },
           {
-            icon: 'gem_transfer',
+            icon: 'gem_transfer_outline',
             text: 'StarGiftTransferFull',
             verify: () => isOwnedUniqueGift,
             onClick: () => {
@@ -87,10 +87,16 @@ function StarGiftGridItem(props: {
             }
           },
           {
-            icon: 'crown',
-            text: 'StarGiftWearFull',
+            icon: isWearing ? 'crownoff_outline' : 'crown_outline',
+            text: isWearing ? 'StarGiftWearStopFull' : 'StarGiftWearFull',
             verify: () => isOwnedUniqueGift,
-            onClick: () => PopupStarGiftWear.open(props.item)
+            onClick: () => {
+              if(isWearing) {
+                rootScope.managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
+              } else {
+                PopupStarGiftWear.open(props.item);
+              }
+            }
           },
           {
             icon: saved.pFlags.unsaved ? 'eye' : 'eyecross_outline',

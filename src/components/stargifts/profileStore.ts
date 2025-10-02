@@ -186,7 +186,7 @@ export function createProfileGiftsStore(props: {
   onMount(() => {
     listenerSetter.add(rootScope)('star_gift_update', (event) => {
       const items = unwrap(store.items);
-      const idx = items.findIndex((it) => inputStarGiftEquals(it.input, event.input));
+      const idx = items.findIndex((it) => inputStarGiftEquals(it, event.input));
       if(idx !== -1) {
         const newList = items.slice();
         // create a new object to force re-render
@@ -203,7 +203,7 @@ export function createProfileGiftsStore(props: {
       const items = unwrap(store.items).slice();
       for(let i = 0; i < items.length; i++) {
         const item = items[i];
-        const shouldBePinned = event.gifts.some((it) => inputStarGiftEquals(it, item.input))
+        const shouldBePinned = event.gifts.some((it) => inputStarGiftEquals(item, it))
         const wasPinned = !!item.saved.pFlags.pinned_to_top
 
         if(shouldBePinned !== wasPinned) {
@@ -216,8 +216,8 @@ export function createProfileGiftsStore(props: {
         if(a.saved.pFlags.pinned_to_top && !b.saved.pFlags.pinned_to_top) return -1;
         if(!a.saved.pFlags.pinned_to_top && b.saved.pFlags.pinned_to_top) return 1;
         if(a.saved.pFlags.pinned_to_top && b.saved.pFlags.pinned_to_top) {
-          const idxA = event.gifts.findIndex((it) => inputStarGiftEquals(it, a.input))
-          const idxB = event.gifts.findIndex((it) => inputStarGiftEquals(it, b.input))
+          const idxA = event.gifts.findIndex((it) => inputStarGiftEquals(a, it))
+          const idxB = event.gifts.findIndex((it) => inputStarGiftEquals(b, it))
           return idxA - idxB
         };
         return b.saved.date - a.saved.date;
