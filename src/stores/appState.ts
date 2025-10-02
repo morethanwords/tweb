@@ -1,4 +1,4 @@
-import {createRoot} from 'solid-js';
+import {createMemo, createRoot} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {State} from '../config/state';
 import rootScope from '../lib/rootScope';
@@ -24,9 +24,15 @@ const setAppStateSilent = (key: any, value?: any) => {
 
 const useAppState = () => [appState, setAppState] as const;
 
+const useAppConfig = () => appState.appConfig;
+
+const useIsFrozen = () => !!useAppConfig().freeze_since_date;
+
 export {
   appState,
   useAppState,
   setAppState,
-  setAppStateSilent
+  setAppStateSilent,
+  useAppConfig,
+  useIsFrozen
 };

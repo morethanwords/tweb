@@ -3,7 +3,7 @@ import {render} from 'solid-js/web';
 import {InputFieldTsx} from '../inputFieldTsx';
 import PopupElement from '../popups';
 
-import {RowTsx} from '../row';
+import Row from '../rowTsx';
 import CheckboxField from '../checkboxField';
 
 import imgRecordAudio from './assets/recordAudio.svg';
@@ -103,11 +103,11 @@ const RtmpRecordPopupContent = (props: RtmpRecordPopupContentProps) => {
           {i18n('Rtmp.RecordPopup.RecordingHint')}
         </div>
 
-        <RowTsx
-          icon="videocamera"
-          title={i18n('Rtmp.RecordPopup.AlsoRecordVideo')}
-          checkboxField={recordVideoCheck}
-        />
+        <Row>
+          <Row.Title>{i18n('Rtmp.RecordPopup.AlsoRecordVideo')}</Row.Title>
+          <Row.CheckboxField>{recordVideoCheck.label}</Row.CheckboxField>
+          <Row.Icon icon="videocamera" />
+        </Row>
       </div>
 
       <div class={cnPopup('-preview')}>

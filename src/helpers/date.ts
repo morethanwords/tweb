@@ -53,7 +53,7 @@ export const getWeekNumber = (date: Date) => {
   return Math.ceil((((d.getTime() - yearStart.getTime()) / ONE_DAY) + 1) / 7);
 };
 
-export function formatDate(date: Date, today?: Date) {
+export function formatDate(date: Date, today?: Date, withTime?: boolean) {
   if(!today) {
     today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -63,6 +63,11 @@ export function formatDate(date: Date, today?: Date) {
     day: 'numeric',
     month: 'long'
   };
+
+  if(withTime) {
+    options.hour = '2-digit';
+    options.minute = '2-digit';
+  }
 
   if(date.getFullYear() !== today.getFullYear()) {
     options.year = 'numeric';

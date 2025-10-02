@@ -20,7 +20,7 @@ import {ServiceBubble} from '../chat/bubbles/service';
 import {StarGiftBubble} from '../chat/bubbles/starGift';
 import {InputFieldTsx} from '../inputFieldTsx';
 import rootScope from '../../lib/rootScope';
-import RowTsx from '../rowTsx';
+import Row from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
 import Button from '../buttonTsx';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
@@ -825,20 +825,27 @@ function ChosenGiftPage(props: {
               maxLength={useAppState()[0].appConfig.stargifts_message_length_max}
             />
             {props.chosenGift.type === 'stargift' && (
-              <RowTsx
-                title={i18n('StarGiftHideMyName')}
-                checkboxFieldToggle={
+              <Row>
+                <Row.CheckboxFieldToggle>
                   <CheckboxFieldTsx
                     checked={anonymous()}
                     toggle
                     onChange={setAnonymous}
                   />
-                }
-              />
+                </Row.CheckboxFieldToggle>
+                <Row.Title>{i18n('StarGiftHideMyName')}</Row.Title>
+              </Row>
             )}
             {'months' in props.chosenGift && props.chosenGift.priceStars && (
-              <RowTsx
-                title={
+              <Row>
+                <Row.CheckboxFieldToggle>
+                  <CheckboxFieldTsx
+                    checked={payWithStars()}
+                    toggle
+                    onChange={setPayWithStars}
+                  />
+                </Row.CheckboxFieldToggle>
+                <Row.Title>
                   <I18nTsx
                     key="PayWithStars"
                     args={[
@@ -846,15 +853,8 @@ function ChosenGiftPage(props: {
                       numberThousandSplitterForStars(props.chosenGift.priceStars)
                     ]}
                   />
-                }
-                checkboxFieldToggle={
-                  <CheckboxFieldTsx
-                    checked={payWithStars()}
-                    toggle
-                    onChange={setPayWithStars}
-                  />
-                }
-              />
+                </Row.Title>
+              </Row>
             )}
           </div>
           <div class={styles.formHint}>
@@ -867,8 +867,15 @@ function ChosenGiftPage(props: {
           {props.chosenGift.type === 'stargift' && (props.chosenGift.raw as StarGift.starGift).upgrade_stars && (
             <>
               <div class={styles.formSheet}>
-                <RowTsx
-                  title={
+                <Row>
+                  <Row.CheckboxFieldToggle>
+                    <CheckboxFieldTsx
+                      checked={withUpgrade()}
+                      toggle
+                      onChange={setWithUpgrade}
+                    />
+                  </Row.CheckboxFieldToggle>
+                  <Row.Title>
                     <I18nTsx
                       key="StarGiftMakeUnique"
                       args={[
@@ -877,15 +884,8 @@ function ChosenGiftPage(props: {
                       ]}
                     >
                     </I18nTsx>
-                  }
-                  checkboxFieldToggle={
-                    <CheckboxFieldTsx
-                      checked={withUpgrade()}
-                      toggle
-                      onChange={setWithUpgrade}
-                    />
-                  }
-                />
+                  </Row.Title>
+                </Row>
               </div>
               <div class={styles.formHint}>
                 <I18nTsx

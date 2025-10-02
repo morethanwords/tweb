@@ -9,7 +9,7 @@ import {i18n} from '../../../../../lib/langPack';
 import {hideToast, toastNew} from '../../../../toast';
 import StaticRadio from '../../../../staticRadio';
 import Section from '../../../../section';
-import RowTsx from '../../../../rowTsx';
+import Row from '../../../../rowTsx';
 
 import {MessagesPrivacyOption, MessagesTabStateStore, TRANSITION_TIME} from './config';
 import useIsPremium from './useIsPremium';
@@ -71,44 +71,51 @@ const OptionsSection: Component<{
       name="PrivacyMessagesTitle"
       caption={caption as any}
     >
-      <RowTsx
-        checkboxField={
+      <Row
+        clickable={() => {
+          props.setStore('option', MessagesPrivacyOption.Everybody);
+        }}
+      >
+        <Row.CheckboxField>
           <StaticRadio
             floating
             checked={props.store.option === MessagesPrivacyOption.Everybody}
           />
-        }
-        clickable={() => {
-          props.setStore('option', MessagesPrivacyOption.Everybody);
-        }}
-        title={i18n('PrivacySettingsController.Everbody')}
-      />
-      <RowTsx
-        checkboxField={
-          isPremium() && <StaticRadio
-            floating
-            checked={props.store.option === MessagesPrivacyOption.ContactsAndPremium}
-          />
-        }
-        icon={!isPremium() ? 'premium_lock' : undefined}
+        </Row.CheckboxField>
+        <Row.Title>{i18n('PrivacySettingsController.Everbody')}</Row.Title>
+      </Row>
+      <Row
         clickable={handlePremiumOptionClick(() => {
           props.setStore('option', MessagesPrivacyOption.ContactsAndPremium);
         })}
-        title={i18n('Privacy.ContactsAndPremium')}
-      />
-      <RowTsx
-        checkboxField={
-          isPremium() && <StaticRadio floating checked={props.isPaid} />
-        }
-        icon={!isPremium() ? 'premium_lock' : undefined}
+      >
+        {isPremium() && (
+          <Row.CheckboxField>
+            <StaticRadio
+              floating
+              checked={props.store.option === MessagesPrivacyOption.ContactsAndPremium}
+            />
+          </Row.CheckboxField>
+        )}
+        {!isPremium() && <Row.Icon icon="premium_lock" />}
+        <Row.Title>{i18n('Privacy.ContactsAndPremium')}</Row.Title>
+      </Row>
+      <Row
         clickable={handlePremiumOptionClick(() => {
           props.setStore(prev => ({
             option: MessagesPrivacyOption.Paid,
             stars: prev.stars || DEFAULT_STARS_AMOUNT
           }));
         })}
-        title={i18n('PaidMessages.ChargeForMessages')}
-      />
+      >
+        {isPremium() && (
+          <Row.CheckboxField>
+            <StaticRadio floating checked={props.isPaid} />
+          </Row.CheckboxField>
+        )}
+        {!isPremium() && <Row.Icon icon="premium_lock" />}
+        <Row.Title>{i18n('PaidMessages.ChargeForMessages')}</Row.Title>
+      </Row>
     </Section>
   );
 };

@@ -7,6 +7,7 @@
 import {MOUNT_CLASS_TO} from '../config/debug';
 import EventListenerBase from './eventListenerBase';
 import {makeMediaSize, MediaSize} from './mediaSize';
+import {createStore} from 'solid-js/store';
 
 type MediaTypeSizes = {
   regular: MediaSize,
@@ -43,6 +44,14 @@ const LARGE_SIZE = 1680;
 const CUSTOM_EMOJI_SIZE = makeMediaSize(20, 20);
 const ESG_CUSTOM_EMOJI_SIZE = makeMediaSize(36, 36);
 const EMOJI_STATUS_SIZE = makeMediaSize(18, 18);
+
+const [store, setStore] = createStore({
+  isMobile: false,
+  isFloatingLeftSidebar: false,
+  isLessThanFloatingLeftSidebar: false,
+  active: undefined as MediaTypeSizes,
+  activeScreen: undefined as ScreenSize
+});
 
 class MediaSizes extends EventListenerBase<{
   changeScreen: (from: ScreenSize, to: ScreenSize) => void,
@@ -126,11 +135,21 @@ class MediaSizes extends EventListenerBase<{
     }
 
     const wasScreen = this.activeScreen;
+    const isMobile = activeScreen === ScreenSize.mobile;
+    const isLessThanFloatingLeftSidebar = innerWidth <= FLOATING_LEFT_SIDEBAR_SIZE;
     this.activeScreen = activeScreen;
-    this.isMobile = this.activeScreen === ScreenSize.mobile;
-    this.isLessThanFloatingLeftSidebar = innerWidth <= FLOATING_LEFT_SIDEBAR_SIZE;
-    this.isFloatingLeftSidebar = this.activeScreen === ScreenSize.medium && this.isLessThanFloatingLeftSidebar;
-    this.active = this.isMobile ? this.sizes.handhelds : this.sizes.desktop;
+    this.isMobile = isMobile;
+    this.isLessThanFloatingLeftSidebar = isLessThanFloatingLeftSidebar;
+    this.isFloatingLeftSidebar = activeScreen === ScreenSize.medium && isLessThanFloatingLeftSidebar;
+    this.active = isMobile ? this.sizes.handhelds : this.sizes.desktop;
+
+    setStore({
+      isMobile: this.isMobile,
+      isFloatingLeftSidebar: this.isFloatingLeftSidebar,
+      isLessThanFloatingLeftSidebar: this.isLessThanFloatingLeftSidebar,
+      active: this.active,
+      activeScreen: this.activeScreen
+    });
 
     // console.time('esg');
     // const computedStyle = window.getComputedStyle(document.documentElement);
@@ -162,3 +181,7 @@ class MediaSizes extends EventListenerBase<{
 const mediaSizes = new MediaSizes();
 MOUNT_CLASS_TO.mediaSizes = mediaSizes;
 export default mediaSizes;
+
+export function useMediaSizes() {
+  return store;
+}

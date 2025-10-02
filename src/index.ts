@@ -53,7 +53,7 @@ import PasscodeLockScreenController from './components/passcodeLock/passcodeLock
 import type {LangPackDifference} from './layer';
 import commonStateStorage from './lib/commonStateStorage';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './components/sidebarLeft/constants';
-import useHasFoldersSidebar from './stores/foldersSidebar';
+import useHasFoldersSidebar, {useIsSidebarCollapsed} from './stores/foldersSidebar';
 
 // import commonStateStorage from './lib/commonStateStorage';
 // import { STATE_INIT } from './config/state';
@@ -181,6 +181,7 @@ function setSidebarLeftWidth() {
 
   if(validatedWidth === 0) {
     sidebarEl.classList.add('is-collapsed');
+    useIsSidebarCollapsed()[1](true);
   } else if(validatedWidth) {
     document.documentElement.style.setProperty('--current-sidebar-left-width', validatedWidth + 'px');
   }
@@ -404,7 +405,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
 
   console.timeLog(TIME_LABEL, 'sent all states (2)');
 
-  const {setHasFoldersSidebar} = useHasFoldersSidebar();
+  const [, setHasFoldersSidebar] = useHasFoldersSidebar();
   setHasFoldersSidebar(!!rootScope.settings.tabsInSidebar);
 
   rootScope.managers.rootScope.getPremium().then((isPremium) => {

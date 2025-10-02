@@ -46,7 +46,7 @@ import type {AppWebPagesManager} from './appWebPagesManager';
 import type AppAttachMenuBotsManager from './appAttachMenuBotsManager';
 import type AppSeamlessLoginManager from './appSeamlessLoginManager';
 import type AppThemesManager from './appThemesManager';
-import type AppUsernamesManager from './appThemesManager';
+import type AppUsernamesManager from './appUsernamesManager';
 import type AppChatInvitesManager from './appChatInvitesManager';
 import type AppStoriesManager from './appStoriesManager';
 import type AppBotsManager from './appBotsManager';

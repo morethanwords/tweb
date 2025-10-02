@@ -335,8 +335,7 @@ export function renderFoldersSidebarContent(
   middleware: Middleware
 ) {
   let controls: FoldersSidebarControls;
-
-  const {hasFoldersSidebar} = useHasFoldersSidebar();
+  const [hasFoldersSidebar] = useHasFoldersSidebar();
   createRoot((dispose) => {
     render(() => (
       <HotReloadGuardProvider>

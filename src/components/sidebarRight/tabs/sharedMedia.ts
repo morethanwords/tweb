@@ -27,6 +27,7 @@ import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 import wrapPeerTitle from '../../wrappers/peerTitle';
 import ButtonMenuToggle from '../../buttonMenuToggle';
 import appImManager from '../../../lib/appManagers/appImManager';
+import {useIsFrozen} from '../../../stores/appState';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -611,7 +612,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private async toggleEditBtn(manual?: boolean): Promise<(() => void) | void> {
     const {peerId} = this;
     let show: boolean;
-    if(peerId.isUser()) {
+    if(useIsFrozen()) {
+      show = false;
+    } else if(peerId.isUser()) {
       show = peerId !== rootScope.myId && await this.managers.appUsersManager.canEdit(peerId.toUserId());
     } else {
       const chatId = peerId.toChatId();

@@ -553,6 +553,8 @@ const lang = {
   'Chat.PremiumRequired': 'Subscribe to **Premium** to message **%s**.',
   'Chat.PremiumRequiredButton': 'Get Premium',
   'Chat.Input.PremiumRequiredButton': 'Only Premium users can message %s.\n[Learn more...]()',
+  'Chat.Input.FrozenButton1': 'Your Account is Frozen',
+  'Chat.Input.FrozenButton2': 'Click to view details',
   'OnlyPremiumCanMessage': '**%s** only accepts messages from contacts and **[Telegram Premium]()** subscribers.',
   'Chat.ContextMenu.Read': 'Read',
   'MediaFiles': {
@@ -914,6 +916,17 @@ const lang = {
   'TranslationBarHiddenChannel': 'The translation bar is now hidden for this channel.',
   'PaymentMethod': 'Payment Method',
   'PaymentMethodNewCard': 'New Card...',
+  'Suggestion.Frozen.Title': 'Your account is frozen! %s',
+  'Suggestion.Frozen.Subtitle': 'Tap to view details and submit an appeal >',
+  'Frozen.Title': 'Your Account is Frozen',
+  'Frozen.Violation.Title': 'Violation of Terms',
+  'Frozen.Violation.Subtitle': 'Your account was frozen for breaking Telegram\'s Terms and Conditions.',
+  'Frozen.ReadOnly.Title': 'Read-Only Mode',
+  'Frozen.ReadOnly.Subtitle': 'You can access your account but can\'t send messages or take actions.',
+  'Frozen.Appeal.Title': 'Appeal Before Deactivation',
+  'Frozen.Appeal.Subtitle': 'Appeal via %s before %s, or your account will be deleted.',
+  'Frozen.Button': 'SUBMIT AN APPEAL',
+  'Frozen.Ok': 'UNDERSTOOD',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

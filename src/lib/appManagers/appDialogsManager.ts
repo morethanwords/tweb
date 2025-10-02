@@ -120,6 +120,8 @@ import throttle from '../../helpers/schedulers/throttle';
 import {MAX_SIDEBAR_WIDTH} from '../../components/sidebarLeft/constants';
 import {unwrap} from 'solid-js/store';
 import wrapMediaSpoiler from '../../components/wrappers/mediaSpoiler';
+import {renderPendingSuggestion} from '../../components/sidebarLeft/pendingSuggestion';
+import {useHasFolders} from '../../stores/foldersSidebar';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 const DIALOG_LOAD_COUNT = 10;
@@ -1573,7 +1575,7 @@ export class AppDialogsManager {
 
   private log = logger('DIALOGS', LogTypes.Log | LogTypes.Error | LogTypes.Warn | LogTypes.Debug);
 
-  private contextMenu: DialogsContextMenu;
+  public contextMenu: DialogsContextMenu;
 
   public filterId: number;
   public folders: {[k in 'menu' | 'container' | 'menuScrollContainer']: HTMLElement} = {
@@ -1624,6 +1626,8 @@ export class AppDialogsManager {
   private bottomPart: HTMLDivElement;
   private disposeStories: () => void;
   public resizeStoriesList: () => void;
+
+  private suggestionContainer: HTMLElement;
 
   public start() {
     const managers = this.managers = getProxiedManagers();
@@ -2098,6 +2102,12 @@ export class AppDialogsManager {
 
     // await (await m(loadDialogsPromise)).renderPromise.catch(noop);
     this.managers.appMessagesManager.fillConversations();
+
+    if(!this.suggestionContainer) {
+      this.suggestionContainer = document.createElement('div');
+      this.folders.container.parentElement.prepend(this.suggestionContainer);
+      renderPendingSuggestion(this.suggestionContainer);
+    }
   }
 
   /* private getOffset(side: 'top' | 'bottom'): {index: number, pos: number} {
@@ -2329,7 +2339,8 @@ export class AppDialogsManager {
     // containerToAppend.append(li);
 
     const {ul, scrollable} = this.l(filter);
-    scrollable.container.classList.add('tabs-tab', 'chatlist-parts');
+    scrollable.container.classList.add('tabs-tab', 'chatlist-parts', 'folders-scrollable');
+    scrollable.attachBorderListeners();
 
     /* const parts = document.createElement('div');
     parts.classList.add('chatlist-parts'); */
@@ -2387,6 +2398,9 @@ export class AppDialogsManager {
 
         this.chatsContainer.classList.toggle('has-filters', show);
       }
+
+      const [, setHasFolders] = useHasFolders();
+      setHasFolders(show);
 
       this.changeFiltersAllChatsKey();
 

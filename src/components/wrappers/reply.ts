@@ -34,7 +34,7 @@ export default function wrapReply(options: WrapReplyOptions) {
   setDirection(replyContainer.container);
   // replyContainer.border.classList.add('quote-like-border');
   replyContainer.border.remove();
-  ripple(replyContainer.container, undefined, undefined, true);
+  ripple(replyContainer.container);
 
   if(options.isQuote) {
     replyContainer.container.classList.add('quote-like-icon');

@@ -409,6 +409,15 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     pointer-events: none;
     padding: 0 1rem;
   }
+
+  &-frozen-text {
+    display: flex;
+    flex-direction: column;
+
+    &-subtitle {
+      font-size: var(--font-size-14);
+    }
+  }
 }
 
 .chat-input-main {
@@ -446,7 +455,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
         .reply-wrapper {
           height: 0 !important;
-          opacity: 0;
+          opacity: 0 !important;
           pointer-events: none;
         }
 

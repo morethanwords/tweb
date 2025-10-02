@@ -100,6 +100,7 @@
   --messages-custom-emoji-size: calc(var(--messages-text-size) + 4px);
   --bubble-transition-in: transform var(--transition-standard-in), opacity var(--transition-standard-in);
   --bubble-transition-out: transform var(--transition-standard-out), opacity var(--transition-standard-out);
+  --line-height-24: 30px;
   --line-height-20: 26px;
   --line-height-18: 24px;
   --line-height-16: 21px;
@@ -109,6 +110,7 @@
   --line-height-12: 16px;
   --line-height-11: 15px;
   --line-height: 1.3125;
+  --font-size-24: 24px;
   --font-size-20: 20px;
   --font-size-18: 18px;
   --font-size-16: 16px;
@@ -1352,6 +1354,10 @@ middle-ellipsis-element {
 
 .hover-danger-effect {
   @include hover-background-effect(red);
+
+  .c-ripple__circle {
+    background-color: var(--light-danger-color);
+  }
 }
 
 .progress-ring {
@@ -2562,4 +2568,18 @@ hr {
       }
     }
   }
+}
+
+.text-overflow {
+  &-wrap {
+    @include text-overflow(false);
+  }
+
+  &-no-wrap {
+    @include text-overflow(true);
+  }
+}
+
+.text-center {
+  @include text-center();
 }

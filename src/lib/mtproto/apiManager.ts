@@ -714,7 +714,7 @@ export class ApiManager extends ApiManagerMethods {
         } else if(error.code === 400 && error.type === 'CONNECTION_NOT_INITED') {
           this.networkerFactory.unsetConnectionInited();
           return performRequest();
-        } else if(!options.rawError && error.code === 420 && !error.type.includes('SLOWMODE_WAIT')) {
+        } else if(!options.rawError && error.code === 420 && !error.type.includes('SLOWMODE_WAIT') && error.type !== 'FROZEN_METHOD_INVALID') {
           const match = error.type.match(/^FLOOD_WAIT_(\d+)/) || error.type.match(/_(\d+)_?/);
           let waitTime: number;
           if(match) {

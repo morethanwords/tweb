@@ -21,7 +21,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import {Tabs} from '../sidebarRight/tabs/boosts';
 import {createLoadableList} from '../sidebarRight/tabs/statistics';
-import RowTsx from '../rowTsx';
+import Row from '../rowTsx';
 import {formatFullSentTime} from '../../helpers/date';
 import {avatarNew} from '../avatarNew';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -411,20 +411,20 @@ export default class PopupStars extends PopupElement {
 
       let container: HTMLDivElement;
       (
-        <RowTsx
+        <Row
           ref={container}
-          title={<b>{_title}</b>}
-          midtitle={midtitle}
-          subtitle={subtitleStatus ? [subtitle, ' — ', subtitleStatus] : subtitle}
-          media={media}
-          mediaSize="abitbigger"
           clickable={() => {
             PopupPayment.create({
               transaction
             });
           }}
-          rightContent={<StarsChange stars={formatStarsAmount(transaction.amount)} />}
-        />
+        >
+          <Row.Title><b>{_title}</b></Row.Title>
+          <Row.Midtitle>{midtitle}</Row.Midtitle>
+          <Row.Subtitle>{subtitleStatus ? [subtitle, ' — ', subtitleStatus] : subtitle}</Row.Subtitle>
+          <Row.RightContent><StarsChange stars={formatStarsAmount(transaction.amount)} /></Row.RightContent>
+          <Row.Media mediaSize="abitbigger">{media}</Row.Media>
+        </Row>
       );
 
       return container;
@@ -448,20 +448,8 @@ export default class PopupStars extends PopupElement {
 
       let container: HTMLDivElement;
       (
-        <RowTsx
+        <Row
           ref={container}
-          title={title}
-          titleRight={!isCancelled && (<StarsAmount stars={subscription.pricing.amount} />)}
-          subtitle={i18n(
-            isExpired ? 'Stars.Subscriptions.Expired' : isCancelled ?
-              'Stars.Subscriptions.Expires' :
-              'Stars.Subscriptions.Renews',
-            [formatFullSentTime(subscription.until_date, undefined, true)]
-          )}
-          subtitleRight={!isCancelled && i18n('Stars.Subscriptions.PerMonth')}
-          rightContent={isCancelled && (<span class="popup-stars-cancelled danger">{i18n('Stars.Subscriptions.Cancelled')}</span>)}
-          media={avatar.node}
-          mediaSize="abitbigger"
           clickable={async() => {
             const popup = await PopupPayment.create({
               subscription,
@@ -474,7 +462,18 @@ export default class PopupStars extends PopupElement {
               }
             });
           }}
-        />
+        >
+          <Row.Title titleRight={!isCancelled && (<StarsAmount stars={subscription.pricing.amount} />)}>{title}</Row.Title>
+          <Row.Subtitle subtitleRight={!isCancelled && i18n('Stars.Subscriptions.PerMonth')}>{
+            i18n(
+              isExpired ? 'Stars.Subscriptions.Expired' : isCancelled ?
+                'Stars.Subscriptions.Expires' :
+                'Stars.Subscriptions.Renews',
+              [formatFullSentTime(subscription.until_date, undefined, true)]
+            )}</Row.Subtitle>
+          <Row.RightContent>{isCancelled && (<span class="popup-stars-cancelled danger">{i18n('Stars.Subscriptions.Cancelled')}</span>)}</Row.RightContent>
+          <Row.Media mediaSize="abitbigger">{avatar.node}</Row.Media>
+        </Row>
       );
 
       return container;
