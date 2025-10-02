@@ -1513,6 +1513,7 @@
     .input-search,
     .sidebar-header__title {
       opacity: 0;
+      pointer-events: none;
     }
   }
 
