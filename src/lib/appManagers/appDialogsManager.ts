@@ -2057,6 +2057,7 @@ export class AppDialogsManager {
       for(const filter of filters) {
         this.addFilter(filter);
       }
+      appSidebarLeft.foldersSidebarControls?.hydrateFilters?.(filters);
     };
 
     let addFiltersPromise: Promise<any>;
