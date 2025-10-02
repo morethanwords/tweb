@@ -509,6 +509,8 @@ export class AppSidebarLeft extends SidebarSlider {
     if(canShowCtrlFTip && this.isCollapsed() && !hasFoldersSidebar()) {
       this.showCtrlFTip();
     }
+
+    if(!this.isCollapsed()) appDialogsManager.resizeStoriesList?.();
   }
 
   public hasSomethingOpenInside() {
