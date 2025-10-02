@@ -497,9 +497,9 @@ class MonoforumDialogsStorage extends AppManager {
   }
 }
 
-function increment<T extends object>(obj: T, key: keyof T, by = 1) {
+export function increment<T extends object>(obj: T, key: keyof T, by = 1) {
   if(!obj) return;
-  obj[key] = (((obj[key] as number) + by) || 0) as any;
+  obj[key] = Math.max(((obj[key] as number) + by) || 0, 0) as any;
 }
 
 export default MonoforumDialogsStorage;

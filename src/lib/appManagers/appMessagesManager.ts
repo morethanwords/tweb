@@ -85,7 +85,7 @@ import RepayRequestHandler, {RepayRequest} from '../mtproto/repayRequestHandler'
 import canVideoBeAnimated from './utils/docs/canVideoBeAnimated';
 import getPhotoInput from './utils/photos/getPhotoInput';
 import {BatchProcessor} from '../../helpers/sortedList';
-import {MonoforumDialog} from '../storages/monoforumDialogs';
+import {increment, MonoforumDialog} from '../storages/monoforumDialogs';
 import formatStarsAmount from './utils/payments/formatStarsAmount';
 import {makeMessageMediaInputForSuggestedPost} from './utils/messages/makeMessageMediaInput';
 
@@ -6694,7 +6694,7 @@ export class AppMessagesManager extends AppManager {
 
     const releaseUnreadCount = foundDialog && this.dialogsStorage.prepareDialogUnreadCountModifying(foundDialog);
     const readMaxId = this.getReadMaxIdIfUnread(peerId, threadId || monoforumThreadId);
-    const monoforumDialogsTouched: PeerId[] = [];
+    const monoforumDialogsTouched: Record<PeerId, MonoforumDialog> = {};
 
     for(let i = 0, length = history.length; i < length; i++) {
       const mid = history[i];
@@ -6710,7 +6710,7 @@ export class AppMessagesManager extends AppManager {
 
       const messageThreadId = getMessageThreadId(message, isForum);
 
-      if(isMonoforum) monoforumDialogsTouched.push(messageThreadId);
+
       if(threadId && messageThreadId !== threadId ||
         monoforumThreadId && messageThreadId !== monoforumThreadId) {
         continue;
@@ -6736,6 +6736,17 @@ export class AppMessagesManager extends AppManager {
         if(isMentionUnread(message)) {
           newUnreadMentionsCount = --foundDialog.unread_mentions_count;
           this.modifyCachedMentions({peerId, mid: message.mid, add: false});
+        }
+      }
+
+      if(isMonoforum) {
+        const monoforumDialog = this.monoforumDialogsStorage.getDialogByParent(peerId, messageThreadId);
+        if(!message.pFlags.out && monoforumDialog) {
+          monoforumDialogsTouched[monoforumDialog.peerId] = monoforumDialog;
+          increment(monoforumDialog, 'unread_count', -1);
+          if(isMentionUnread(message)) {
+            increment(monoforumDialog, 'unread_reactions_count', -1);
+          }
         }
       }
 
@@ -6802,9 +6813,9 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    for(const monoforumThreadId of monoforumDialogsTouched) {
-      // TODO: Check if we can avoid refetching the dialog if we can compute locally
-      this.monoforumDialogsStorage.updateDialogIfExists(peerId, monoforumThreadId);
+    const monoforumDialogs = Object.values(monoforumDialogsTouched);
+    if(monoforumDialogs.length) {
+      this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: monoforumDialogs});
     }
   };
 

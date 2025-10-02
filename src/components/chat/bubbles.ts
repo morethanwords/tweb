@@ -9530,12 +9530,16 @@ export default class ChatBubbles {
       return;
     }
 
+    if(this.chat.canManageDirectMessages && !this.chat.monoforumThreadId) {
+      return;
+    }
+
     const middleware = this.getMiddleware();
 
-    const {peerId, threadId} = this.chat;
+    const {peerId, threadId, monoforumThreadId} = this.chat;
 
     const historyMaxId = await this.chat.getHistoryMaxId();
-    let readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId);
+    let readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId || monoforumThreadId);
     if(!readMaxId || !middleware()) return;
 
     readMaxId = this.getRenderedHistory('asc', true)
