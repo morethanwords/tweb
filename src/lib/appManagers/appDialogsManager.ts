@@ -1575,7 +1575,7 @@ export class AppDialogsManager {
 
   private log = logger('DIALOGS', LogTypes.Log | LogTypes.Error | LogTypes.Warn | LogTypes.Debug);
 
-  private contextMenu: DialogsContextMenu;
+  public contextMenu: DialogsContextMenu;
 
   public filterId: number;
   public folders: {[k in 'menu' | 'container' | 'menuScrollContainer']: HTMLElement} = {
