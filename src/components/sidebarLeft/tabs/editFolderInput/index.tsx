@@ -43,6 +43,7 @@ const createEmojiDropdownButton = ({inputField}: CreateEmojiDropdownButtonArgs) 
 
     const emojiTab = new EmojiTab({
       managers: rootScope.managers,
+      additionalStickerViewerClass: styles.StickerViewer,
       noPacks: !rootScope.premium,
       noSearchGroups: !rootScope.premium,
       onClick: async(emoji) => {
