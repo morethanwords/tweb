@@ -134,8 +134,6 @@ class MonoforumDialogsStorage extends AppManager {
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
-      updateReadMonoForumInbox: this.onUpdateReadMonoforum,
-      updateReadMonoForumOutbox: this.onUpdateReadMonoforum,
       updateMonoForumNoPaidException: this.onUpdateMonoForumNoPaidException
     });
   }
@@ -478,63 +476,6 @@ class MonoforumDialogsStorage extends AppManager {
     });
 
     this.apiUpdatesManager.processUpdateMessage(updates);
-  }
-
-  private onUpdateReadMonoforum = (update: Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox) => {
-    const channelId = update.channel_id;
-    const maxId = this.appMessagesIdsManager.generateMessageId(update.read_max_id, channelId);
-    const peerId = getPeerId(update.saved_peer_id);
-    const parentPeerId = channelId.toPeerId(true);
-
-    const isOut = update._ === 'updateReadMonoForumOutbox' || undefined;
-
-    const storage = this.appMessagesManager.getHistoryMessagesStorage(parentPeerId);
-    const history = getObjectKeysAndSort(storage, 'desc');
-
-    const readMaxId = this.appMessagesManager.getReadMaxIdIfUnread(parentPeerId, peerId);
-
-    for(let i = 0, length = history.length; i < length; i++) {
-      const mid = history[i];
-      if(mid > maxId) {
-        continue;
-      }
-
-      const message: MyMessage = storage.get(mid);
-
-      if(message.pFlags.out !== isOut) {
-        continue;
-      }
-
-      const messageMonoforumthreadId = getPeerId(message.saved_peer_id);
-      if(peerId !== messageMonoforumthreadId) {
-        continue;
-      }
-
-      const isUnread = message.pFlags.unread || (readMaxId && readMaxId < mid);
-
-      if(!isUnread) {
-        break;
-      }
-
-      this.appMessagesManager.modifyMessage(message, (message) => {
-        delete message.pFlags.unread;
-      }, storage, true);
-
-      this.rootScope.dispatchEvent('notification_cancel', `msg_${this.getAccountNumber()}_${parentPeerId}_${mid}`);
-    }
-
-    const historyStorage = this.appMessagesManager.getHistoryStorage(parentPeerId, peerId);
-
-    if(isOut) historyStorage.readOutboxMaxId = maxId;
-    else historyStorage.readMaxId = maxId;
-
-    const dialog = this.getDialogByParent(parentPeerId, peerId);
-    // TODO: Check if we can avoid refetching the dialog in case we have enough messages to measure the changes ourselves
-    if(dialog) this.updateDialogsByPeerId({parentPeerId, ids: [peerId]});
-
-    // TODO: Check if we can avoid refetching the dialog in case we have enough messages to measure the changes ourselves
-    const mainDialog = this.dialogsStorage.getDialogOnly(parentPeerId);
-    if(mainDialog) this.appMessagesManager.reloadConversation(parentPeerId);
   }
 
   private onUpdateMonoForumNoPaidException = (update: Update.updateMonoForumNoPaidException) => {

@@ -484,6 +484,8 @@ export class AppMessagesManager extends AppManager {
       updateReadHistoryOutbox: this.onUpdateReadHistory,
       updateReadChannelInbox: this.onUpdateReadHistory,
       updateReadChannelOutbox: this.onUpdateReadHistory,
+      updateReadMonoForumInbox: this.onUpdateReadHistory,
+      updateReadMonoForumOutbox: this.onUpdateReadHistory,
 
       updateChannelReadMessagesContents: this.onUpdateReadMessagesContents,
       updateReadMessagesContents: this.onUpdateReadMessagesContents,
@@ -6649,15 +6651,18 @@ export class AppMessagesManager extends AppManager {
 
   private onUpdateReadHistory = (update: Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox
     | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox
-    | Update.updateReadChannelInbox | Update.updateReadChannelOutbox) => {
+    | Update.updateReadChannelInbox | Update.updateReadChannelOutbox
+    | Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox) => {
     const channelId = (update as Update.updateReadChannelInbox).channel_id;
     const maxId = this.appMessagesIdsManager.generateMessageId((update as Update.updateReadChannelInbox).max_id || (update as Update.updateReadChannelDiscussionInbox).read_max_id, channelId);
     const threadId = this.appMessagesIdsManager.generateMessageId((update as Update.updateReadChannelDiscussionInbox).top_msg_id, channelId);
+    const monoforumThreadId = this.appPeersManager.getPeerId((update as Update.updateReadMonoForumInbox).saved_peer_id);
     const peerId = channelId ? channelId.toPeerId(true) : this.appPeersManager.getPeerId((update as Update.updateReadHistoryInbox).peer);
 
     const isOut = update._ === 'updateReadHistoryOutbox' ||
       update._ === 'updateReadChannelOutbox' ||
-      update._ === 'updateReadChannelDiscussionOutbox' ? true : undefined;
+      update._ === 'updateReadChannelDiscussionOutbox' ||
+      update._ === 'updateReadMonoForumOutbox' ? true : undefined;
 
     const isForum = channelId ? this.appChatsManager.isForum(channelId) : false;
     const isMonoforum = channelId ? this.appChatsManager.isMonoforum(channelId) : false;
@@ -6673,7 +6678,7 @@ export class AppMessagesManager extends AppManager {
 
     // this.log.warn(dT(), 'read', peerId, isOut ? 'out' : 'in', maxId)
 
-    const historyStorage = this.getHistoryStorage(peerId, threadId);
+    const historyStorage = this.getHistoryStorage(peerId, threadId || monoforumThreadId);
 
     if(peerId.isUser() && isOut) {
       this.appUsersManager.forceUserOnline(peerId.toUserId());
@@ -6688,7 +6693,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     const releaseUnreadCount = foundDialog && this.dialogsStorage.prepareDialogUnreadCountModifying(foundDialog);
-    const readMaxId = this.getReadMaxIdIfUnread(peerId, threadId);
+    const readMaxId = this.getReadMaxIdIfUnread(peerId, threadId || monoforumThreadId);
     const monoforumDialogsTouched: PeerId[] = [];
 
     for(let i = 0, length = history.length; i < length; i++) {
@@ -6706,8 +6711,8 @@ export class AppMessagesManager extends AppManager {
       const messageThreadId = getMessageThreadId(message, isForum);
 
       if(isMonoforum) monoforumDialogsTouched.push(messageThreadId);
-
-      if(threadId && messageThreadId !== threadId) {
+      if(threadId && messageThreadId !== threadId ||
+        monoforumThreadId && messageThreadId !== monoforumThreadId) {
         continue;
       }
 
