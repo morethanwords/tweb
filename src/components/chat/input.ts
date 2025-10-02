@@ -136,6 +136,7 @@ import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
 import focusInput from '../../helpers/dom/focusInput';
 import {PopupChecklist} from '../popups/checklist';
 import {useAppConfig, useAppState} from '../../stores/appState';
+import showFrozenPopup from '../popups/frozen';
 
 // console.log('Recorder', Recorder);
 
@@ -1302,10 +1303,7 @@ export default class ChatInput {
       PopupPremium.show();
     }, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.frozenBtn, () => {
-      alert('asd');
-      // this.chat.appImManager.setInnerPeer({
-      //   peerId: this.chat.threadId
-      // });
+      showFrozenPopup();
     }, {listenerSetter: this.listenerSetter});
     this.joinBtn && attachClickEvent(this.joinBtn, this.chat.topbar.onJoinClick.bind(this.chat.topbar, this.joinBtn), {listenerSetter: this.listenerSetter});
 

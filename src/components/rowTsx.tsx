@@ -122,11 +122,12 @@ Row.RowPart = (props: {
 
 Row.Row = (props: {
   class: string,
+  additionalClass?: string,
   left?: JSX.Element,
   right?: JSX.Element,
   rightSecondary?: boolean
 }) => {
-  const part = <Row.RowPart class={props.class} part={props.left} />;
+  const part = <Row.RowPart class={classNames(props.class, props.additionalClass)} part={props.left} />;
   const resolved = children(() => props.right);
   return (
     <>
@@ -134,7 +135,11 @@ Row.Row = (props: {
         <div class={classNames('row-row', `row-${props.class}-row`)}>
           {part}
           <Row.RowPart
-            class={`${props.class} row-${props.class}-right${props.rightSecondary ? ` row-${props.class}-right-secondary` : ''}`}
+            class={classNames(
+              props.class,
+              props.additionalClass,
+              `row-${props.class}-right${props.rightSecondary ? ` row-${props.class}-right-secondary` : ''}`
+            )}
             part={resolved()}
           />
         </div>
@@ -146,6 +151,7 @@ Row.Row = (props: {
 
 Row.Title = (props: {
   children: JSX.Element,
+  class?: string,
   titleRight?: JSX.Element,
   titleRightSecondary?: boolean
 }) => {
@@ -153,6 +159,7 @@ Row.Title = (props: {
   return context.register('title', (
     <Row.Row
       class="title"
+      additionalClass={props.class}
       left={props.children}
       right={props.titleRight || context.store.checkboxFieldToggle}
       rightSecondary={props.titleRightSecondary}
@@ -173,11 +180,13 @@ Row.Midtitle = (props: {
 
 Row.Subtitle = (props: {
   children: JSX.Element,
+  class?: string,
   subtitleRight?: JSX.Element
 }) => {
   return useContext(RowContext).register('subtitle', (
     <Row.Row
       class="subtitle"
+      additionalClass={props.class}
       left={props.children}
       right={props.subtitleRight}
     />
@@ -186,10 +195,10 @@ Row.Subtitle = (props: {
 
 Row.Icon = (props: {
   icon: Icon,
-  iconClasses?: string[]
+  class?: string
 }) => {
   return useContext(RowContext).register('icon', (
-    <IconTsx icon={props.icon} class={classNames('row-icon', ...(props.iconClasses || []))} />
+    <IconTsx icon={props.icon} class={classNames('row-icon', props.class)} />
   ));
 };
 

@@ -22,7 +22,7 @@ export default function RippleElement<T extends ValidComponent>(props: DynamicPr
           }
         });
 
-        (props.ref as Ref<any>)(ref);
+        (props.ref as Ref<any>)?.(ref);
       }}
       class={classNames(
         props.class,

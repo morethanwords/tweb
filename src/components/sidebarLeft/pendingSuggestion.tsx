@@ -3,12 +3,13 @@ import {useAppState} from '../../stores/appState';
 import Row from '../rowTsx';
 import styles from './pendingSuggestion.module.scss';
 import {render} from 'solid-js/web';
-import {createEffect, createSignal, JSX} from 'solid-js';
+import {createEffect, createSignal, JSX, Show} from 'solid-js';
 import classNames from '../../helpers/string/classNames';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {useIsSidebarCollapsed} from '../../stores/foldersSidebar';
 import RippleElement from '../rippleElement';
 import documentFragmentToNodes from '../../helpers/dom/documentFragmentToNodes';
+import showFrozenPopup from '../popups/frozen';
 
 const PendingSuggestion = (props: Parameters<typeof Row>[0]) =>{
   return (
@@ -39,20 +40,14 @@ function FrozenSuggestion() {
   const [isSidebarCollapsed] = useIsSidebarCollapsed();
   const emoji = () => wrapEmojiText('🚫');
 
-  const onClick = () => {};
+  const onClick = () => {
+    showFrozenPopup();
+  };
 
   return (
-    <>
-      {isSidebarCollapsed() && (
-        <RippleElement
-          component="div"
-          class={classNames(styles.banned, 'hover-danger-effect')}
-          onClick={onClick}
-        >
-          {documentFragmentToNodes(emoji())}
-        </RippleElement>
-      )}
-      {!isSidebarCollapsed() && (
+    <Show
+      when={isSidebarCollapsed()}
+      fallback={
         <PendingSuggestion
           class={styles.danger}
           clickable={onClick}
@@ -61,8 +56,16 @@ function FrozenSuggestion() {
           <PendingSuggestion.Title>{i18n('Suggestion.Frozen.Title', [emoji()])}</PendingSuggestion.Title>
           <PendingSuggestion.Subtitle>{i18n('Suggestion.Frozen.Subtitle')}</PendingSuggestion.Subtitle>
         </PendingSuggestion>
-      )}
-    </>
+      }
+    >
+      <RippleElement
+        component="div"
+        class={classNames(styles.banned, 'hover-danger-effect')}
+        onClick={onClick}
+      >
+        {documentFragmentToNodes(emoji())}
+      </RippleElement>
+    </Show>
   );
 }
 

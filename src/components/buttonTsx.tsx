@@ -12,6 +12,7 @@ const Button = (props: Partial<{
   children: JSX.Element,
   icon: Icon,
   iconAfter: Icon,
+  iconClass: string,
   onClick: (e: MouseEvent) => void,
   text: LangPackKey,
   textArgs: FormatterArguments,
@@ -34,9 +35,9 @@ const Button = (props: Partial<{
       rippleSquare={props.rippleSquare}
       tabIndex={props.tabIndex}
     >
-      {props.icon && <IconTsx icon={props.icon} class="button-icon" />}
+      {props.icon && <IconTsx icon={props.icon} class={classNames('button-icon', props.iconClass)} />}
       {props.text ? i18n(props.text, props.textArgs) : props.children}
-      {props.iconAfter && <IconTsx icon={props.iconAfter} class="button-icon" />}
+      {props.iconAfter && <IconTsx icon={props.iconAfter} class={classNames('button-icon', props.iconClass)} />}
     </RippleElement>
   );
 };
