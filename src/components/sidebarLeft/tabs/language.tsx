@@ -64,9 +64,8 @@ export default class AppLanguageTab extends SliderSuperTab {
             PopupPremium.show({feature: 'translations'});
           })]}
         >
-          <RowTsx
-            title={i18n('ShowTranslateButton')}
-            checkboxFieldToggle={
+          <RowTsx>
+            <RowTsx.CheckboxFieldToggle>
               <CheckboxFieldTsx
                 checked={appSettings.translations.showInMenu}
                 toggle
@@ -74,19 +73,10 @@ export default class AppLanguageTab extends SliderSuperTab {
                   setAppSettings('translations', 'showInMenu', checked);
                 }}
               />
-            }
-          />
+            </RowTsx.CheckboxFieldToggle>
+            <RowTsx.Title>{i18n('ShowTranslateButton')}</RowTsx.Title>
+          </RowTsx>
           <RowTsx
-            title={i18n('ShowTranslateChatButton')}
-            checkboxFieldToggle={
-              <CheckboxFieldTsx
-                checked={appSettings.translations.enabled}
-                toggle
-                onChange={(checked) => {
-                  setAppSettings('translations', 'enabled', checked);
-                }}
-              />
-            }
             fakeDisabled={!isPremium()}
             clickable={(e) => {
               if(!isPremium()) {
@@ -94,19 +84,32 @@ export default class AppLanguageTab extends SliderSuperTab {
                 PopupPremium.show({feature: 'translations'});
               }
             }}
-          />
+          >
+            <RowTsx.Title>{i18n('ShowTranslateChatButton')}</RowTsx.Title>
+            <RowTsx.CheckboxFieldToggle>
+              <CheckboxFieldTsx
+                checked={appSettings.translations.enabled}
+                toggle
+                onChange={(checked) => {
+                  setAppSettings('translations', 'enabled', checked);
+                }}
+              />
+            </RowTsx.CheckboxFieldToggle>
+          </RowTsx>
           {appSettings.translations.enabled && (<RowTsx
-            title={i18n('DoNotTranslate')}
-            titleRight={doNotTranslate().length < 3 ?
-              join(doNotTranslate().map((lang) => i18n(`Language.${lang}`)), false) :
-              i18n('Languages', [doNotTranslate().length])
-            }
-            titleRightSecondary
             clickable={async() => {
               const languages = await pickLanguage(true, doNotTranslate());
               setAppSettings('translations', 'doNotTranslate', languages);
             }}
-          />)}
+          >
+            <RowTsx.Title
+              titleRight={doNotTranslate().length < 3 ?
+                join(doNotTranslate().map((lang) => i18n(`Language.${lang}`)), false) :
+                i18n('Languages', [doNotTranslate().length])
+              }
+              titleRightSecondary
+            >{i18n('DoNotTranslate')}</RowTsx.Title>
+          </RowTsx>)}
         </Section>
       );
 

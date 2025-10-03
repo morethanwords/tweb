@@ -194,6 +194,7 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
 
   if(checkboxField) {
     el.append(checkboxField.label);
+    el.classList.add('has-checkbox')
   }
 
   if(options.separator === true || options.separatorDown) {

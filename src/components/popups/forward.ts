@@ -12,6 +12,7 @@ import {toastNew} from '../toast';
 import PopupPickUser from './pickUser';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
 import PopupElement from '.';
+import {useAppConfig, useIsFrozen} from '../../stores/appState';
 
 export default class PopupForward extends PopupPickUser {
   constructor(
@@ -55,7 +56,20 @@ export default class PopupForward extends PopupPickUser {
       placeholder: 'ShareModal.Search.ForwardPlaceholder',
       chatRightsActions: chatRightsAction,
       selfPresence: 'ChatYourSelf',
-      useTopics: !noTopics
+      useTopics: !noTopics,
+      ...(useIsFrozen() && {
+        getMoreCustom: async() => {
+          const appConfig = useAppConfig();
+          const peer = await rootScope.managers.appUsersManager.resolveUsername(appConfig.freeze_appeal_url.split('/').pop());
+          return {
+            result: [peer.id.toPeerId(peer._ !== 'user')],
+            isEnd: true
+          };
+        },
+        peerType: ['custom'],
+        noSearch: true,
+        headerLangPackKey: 'Forward'
+      })
     });
   }
 

@@ -45,15 +45,19 @@ const EnterPasswordTab = () => {
 
   const canSubmit = () => value() && value().length <= MAX_PASSCODE_LENGTH;
 
+  let isSubmitting = false;
   async function onSubmit(e: Event) {
     e.preventDefault();
 
-    if(!canSubmit()) return;
+    if(!canSubmit() || isSubmitting) return;
+    isSubmitting = true;
 
     try {
       await tab.payload.onSubmit(value(), tab, actions);
     } catch{
       setIsError(true);
+    } finally {
+      isSubmitting = false;
     }
   }
 

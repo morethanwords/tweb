@@ -10,7 +10,7 @@ import {StarGiftBackdrop} from '../stargifts/stargiftBackdrop';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import wrapSticker from '../wrappers/sticker';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
-import RowTsx from '../rowTsx';
+import Row from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
@@ -38,7 +38,7 @@ export default class PopupStarGiftUpgrade extends PopupElement {
   private _construct(preview: StarGiftUpgradePreview, peerTitle?: HTMLElement) {
     this.header.remove();
     this.footer.classList.add('abitlarger');
-    const freeUpgrade = this.gift.isUpgradedBySender || this.gift.saved?.upgrade_stars !== undefined;
+    const freeUpgrade = this.gift.isUpgradedBySender;
     if(this.descriptionForPeerId) {
       this.btnConfirm.replaceChildren(i18n('OK'));
     } else {
@@ -167,15 +167,15 @@ export default class PopupStarGiftUpgrade extends PopupElement {
           </div>
         </div>
         {!this.descriptionForPeerId && (
-          <div class='popup-star-gift-upgrade-footer'>
-            <RowTsx
-              checkboxField={
+          <div class="popup-star-gift-upgrade-footer">
+            <Row>
+              <Row.CheckboxField>
                 <CheckboxFieldTsx
                   text="StarGiftUpgradeKeepInfo"
                   signal={keepInfoSignal}
                 />
-              }
-            />
+              </Row.CheckboxField>
+            </Row>
           </div>
         )}
       </div>

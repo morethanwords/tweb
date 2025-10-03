@@ -81,7 +81,7 @@ import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 import createParticipantContextMenu from '../helpers/dom/createParticipantContextMenu';
 import findAndSpliceAll from '../helpers/array/findAndSpliceAll';
 import deferredPromise from '../helpers/cancellablePromise';
-import {createRoot} from 'solid-js';
+import {createEffect, createRoot, on} from 'solid-js';
 import StoriesProfileList from './stories/profileList';
 import Button from './button';
 import anchorCallback from '../helpers/dom/anchorCallback';
@@ -93,7 +93,7 @@ import setBlankToAnchor from '../lib/richTextProcessor/setBlankToAnchor';
 import cancelClickOrNextIfNotClick from '../helpers/dom/cancelClickOrNextIfNotClick';
 import createElementFromMarkup from '../helpers/createElementFromMarkup';
 import numberThousandSplitter from '../helpers/number/numberThousandSplitter';
-import {StarGiftsProfileTab} from './sidebarRight/tabs/stargifts';
+import {ALL_COLLECTIONS_ID, StarGiftsProfileActions, StarGiftsProfileStore} from './stargifts/profileStore';
 import {getFirstChild, resolveFirst} from '@solid-primitives/refs';
 import SortedDialogList from './sortedDialogList';
 import Icon from './icon';
@@ -105,6 +105,10 @@ import {SensitiveContentSettings} from '../lib/appManagers/appPrivacyManager';
 import {ignoreRestrictionReasons, isSensitive} from '../helpers/restrictions';
 import {isMessageSensitive} from '../lib/appManagers/utils/messages/isMessageRestricted';
 import {MediaSearchContext} from './appMediaPlaybackController';
+import {StarGiftsProfileTab} from './stargifts/profileList';
+import {MyStarGift} from '../lib/appManagers/appGiftsManager';
+import wrapSticker from './wrappers/sticker';
+import {unwrap} from 'solid-js/store';
 
 // const testScroll = false;
 
@@ -470,6 +474,9 @@ export default class AppSearchSuper {
 
   public slider: SidebarSlider;
 
+  public stargiftsStore: StarGiftsProfileStore;
+  public stargiftsActions: StarGiftsProfileActions;
+
   constructor(options: Pick<
     AppSearchSuper,
     'mediaTabs' |
@@ -541,6 +548,12 @@ export default class AppSearchSuper {
           yDiff *= -1;
           const prevId = this.selectTab.prevId();
           const children = Array.from(this.tabsMenu.children) as HTMLElement[];
+
+          const prevChild = this.mediaTabs[prevId];
+          if(prevChild.type === 'gifts' && this.stargiftsActions.handleSwipe(xDiff)) {
+            return
+          }
+
           let idx: number;
           if(xDiff > 0) {
             for(let i = prevId + 1; i < children.length; ++i) {
@@ -1721,16 +1734,11 @@ export default class AppSearchSuper {
         },
         onLoadCallback: (callback) => {
           this._loadStories = async() => {
-            const promise = callback();
-            const loaded = await promise;
-            if(!middleware()) {
-              return;
-            }
-
-            if(loaded) {
-              this.loaded[mediaTab.type] = true;
-            }
+            await callback()
           };
+        },
+        onLoad: (loaded) => {
+          this.loaded[mediaTab.type] = loaded;
         },
         onLengthChange: (length) => {
           this.onStoriesLengthChange?.(length);
@@ -2054,37 +2062,35 @@ export default class AppSearchSuper {
     this.loaded[mediaTab.type] = true;
   }
 
-  private _loadedGifts: true
   private async loadGifts({mediaTab}: SearchSuperLoadTypeOptions) {
-    if(!this._loadedGifts) {
+    if(!this.stargiftsStore) {
       const middleware = this.middleware.get();
       createRoot((dispose) => {
         middleware.onClean(() => dispose());
 
         const scrollTarget = this.scrollable.container;
 
-        const {render: giftsList, loadNext} = StarGiftsProfileTab({
+        const {render: giftsList, store, actions} = StarGiftsProfileTab({
           peerId: this.searchContext.peerId,
           scrollParent: scrollTarget,
           onCountChange: (count) => {
             this.setCounter('gifts', count);
           }
         });
-
-        scrollTarget.addEventListener('scroll', () => {
-          const offset = 400;
-          if(this.mediaTab !== mediaTab) return; // There is one scrollable for all tabs
-          if(scrollTarget.scrollTop + scrollTarget.clientHeight >= scrollTarget.scrollHeight - offset) {
-            loadNext();
+        createEffect(on(() => store.items, (items) => {
+          if(items.length > 0 && store.chosenCollection === ALL_COLLECTIONS_ID) {
+            this.setPinnedGifts(unwrap(items));
           }
-        });
+        }))
+        this.stargiftsStore = store;
+        this.stargiftsActions = actions;
 
         mediaTab.contentTab.append(getFirstChild(giftsList, v => v instanceof Element) as Element);
       });
-      this._loadedGifts = true;
+      return
     }
 
-    return Promise.resolve();
+    return this.stargiftsActions.loadNext();
   }
 
   private loadType(options: SearchSuperLoadTypeOptions) {
@@ -2287,7 +2293,8 @@ export default class AppSearchSuper {
       canViewSimilar,
       giftsCount,
       sensitiveContentSettings,
-      chatRestrictions
+      chatRestrictions,
+      maybePinnedGifts
     ] = await Promise.all([
       this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId),
       this.canViewSavedDialogs(),
@@ -2298,7 +2305,8 @@ export default class AppSearchSuper {
       this.canViewSimilar(),
       this.getGiftsCount(),
       this.managers.appPrivacyManager.getSensitiveContentSettings(),
-      this.managers.appPeersManager.getPeerRestrictions(peerId)
+      this.managers.appPeersManager.getPeerRestrictions(peerId),
+      peerId === rootScope.myId && this.managers.appGiftsManager.getPinnedGifts(peerId)
     ]);
 
     if(!middleware()) {
@@ -2345,6 +2353,8 @@ export default class AppSearchSuper {
     const similarTab = this.mediaTabsMap.get('similar');
     const giftsTab = this.mediaTabsMap.get('gifts');
 
+    const showGiftsTab = giftsCount !== 0 && threadId == null;
+
     const a: [SearchSuperMediaTab, boolean][] = [
       [savedDialogsTab, canViewSavedDialogs],
       [savedTab, canViewSaved],
@@ -2352,7 +2362,7 @@ export default class AppSearchSuper {
       [membersTab, canViewMembers],
       [groupsTab, canViewGroups],
       [similarTab, canViewSimilar],
-      [giftsTab, giftsCount !== 0]
+      [giftsTab, showGiftsTab]
     ];
 
     a.forEach(([tab, value]) => {
@@ -2384,8 +2394,12 @@ export default class AppSearchSuper {
       firstMediaTab = savedDialogsTab;
     }
 
-    if(giftsCount && !firstMediaTab) {
+    if(showGiftsTab && !firstMediaTab) {
       firstMediaTab = giftsTab;
+    }
+
+    if(maybePinnedGifts) {
+      this.setPinnedGifts(maybePinnedGifts);
     }
 
     this.container.classList.toggle('hide', !firstMediaTab);
@@ -2494,6 +2508,38 @@ export default class AppSearchSuper {
     }
 
     return containers[dateTimestamp];
+  }
+
+  public setPinnedGifts(gifts: MyStarGift[]) {
+    const giftsTab = this.mediaTabsMap.get('gifts')
+    const menuTabName = giftsTab?.menuTabName
+    if(!menuTabName) return;
+    menuTabName.classList.add('search-super-pinned-gifts-wrap');
+    Promise.all(gifts.slice(0, 3).map(async(gift) => {
+      const div = document.createElement('div');
+      await wrapSticker({
+        div,
+        static: true,
+        doc: gift.sticker,
+        middleware: this.middleware.get(),
+        width: 18,
+        height: 18
+      }).then(({render}) => render);
+      return div
+    })).then((gifts) => {
+      let wrap = menuTabName.querySelector('.search-super-pinned-gifts')
+      if(gifts.length === 0) {
+        wrap?.remove();
+        return;
+      }
+
+      if(!wrap) {
+        wrap = document.createElement('div');
+        wrap.className = 'search-super-pinned-gifts';
+        menuTabName.append(wrap);
+      }
+      wrap.replaceChildren(...gifts);
+    })
   }
 
   public async canViewSavedDialogs() {

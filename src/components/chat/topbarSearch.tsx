@@ -55,8 +55,7 @@ import Animated from '../../helpers/solid/animations';
 import Chat, {ChatType} from './chat';
 import {subscribeOn} from '../../helpers/solid/subscribeOn';
 import getHistoryStorageKey, {getHistoryStorageType} from '../../lib/appManagers/utils/messages/getHistoryStorageKey';
-import useScreenSize from '../../hooks/useScreenSize';
-import {ScreenSize} from '../../helpers/mediaSizes';
+import {ScreenSize, useMediaSizes} from '../../helpers/mediaSizes';
 import ButtonCorner from '../buttonCorner';
 
 export const ScrollableYTsx = (props: {
@@ -374,8 +373,8 @@ export default function TopbarSearch(props: {
   onActive?: (active: boolean, showingReactions: boolean, isSmallScreen: boolean) => void,
   onSearchTypeChange?: () => void
 }) {
-  const screenSize = useScreenSize();
-  const isSmallScreen = createMemo(() => screenSize() === ScreenSize.mobile);
+  const mediaSizes = useMediaSizes();
+  const isSmallScreen = createMemo(() => mediaSizes.activeScreen === ScreenSize.mobile);
   const [isInputFocused, setIsInputFocused] = createSignal(false);
   const [value, setValue] = createSignal<string>('');
   const [count, setCount] = createSignal<number>();

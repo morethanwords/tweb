@@ -6,7 +6,7 @@ import {I18nTsx} from '../../helpers/solid/i18n';
 import css from './checklist.module.scss';
 import {createEffect, createSignal, For, on} from 'solid-js';
 import InputField from '../inputField';
-import RowTsx from '../rowTsx';
+import Row from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
@@ -269,26 +269,26 @@ export class PopupChecklist extends PopupElement {
           {!this.appending && (
             <div class={css.options}>
               <I18nTsx class={css.groupTitle} key="ChecklistOptions" />
-              <RowTsx
-                title={<I18nTsx key="ChecklistAllowOthersDone" />}
-                checkboxFieldToggle={
+              <Row>
+                <Row.CheckboxFieldToggle>
                   <CheckboxFieldTsx
                     checked={allowOthersToMarkAsDone()}
                     toggle
                     onChange={setAllowOthersToMarkAsDone}
                   />
-                }
-              />
-              <RowTsx
-                title={<I18nTsx key="ChecklistAllowOthersAdd" />}
-                checkboxFieldToggle={
+                </Row.CheckboxFieldToggle>
+                <Row.Title><I18nTsx key="ChecklistAllowOthersDone" /></Row.Title>
+              </Row>
+              <Row>
+                <Row.CheckboxFieldToggle>
                   <CheckboxFieldTsx
                     checked={allowOthersToAddTasks()}
                     toggle
                     onChange={setAllowOthersToAddTasks}
                   />
-                }
-              />
+                </Row.CheckboxFieldToggle>
+                <Row.Title><I18nTsx key="ChecklistAllowOthersAdd" /></Row.Title>
+              </Row>
             </div>
           )}
         </Scrollable>

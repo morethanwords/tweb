@@ -15,7 +15,7 @@ import type SliderSuperTab from '../../../sliderTab';
 import ripple from '../../../ripple'; ripple; // keep
 import StaticSwitch from '../../../staticSwitch';
 import Section from '../../../section';
-import RowTsx from '../../../rowTsx';
+import Row from '../../../rowTsx';
 import Space from '../../../space';
 
 import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
@@ -265,25 +265,27 @@ const PasscodeSetContent: Component<{
 
         <Space amount="1.125rem" />
 
-        <RowTsx
-          title={i18n('PasscodeLock.TurnOff.Title')}
-          icon="lockoff"
-          clickable={onDisable}
-        />
-        <RowTsx
-          title={i18n('PasscodeLock.ChangePasscode')}
-          icon="key"
-          clickable={onPasscodeChange}
-        />
+        <Row clickable={onDisable}>
+          <Row.Icon icon="lockoff" />
+          <Row.Title>{i18n('PasscodeLock.TurnOff.Title')}</Row.Title>
+        </Row>
+        <Row clickable={onPasscodeChange}>
+          <Row.Icon icon="key" />
+          <Row.Title>{i18n('PasscodeLock.ChangePasscode')}</Row.Title>
+        </Row>
       </Section>
 
       <Section caption={canShowShortcut() ? 'PasscodeLock.LockShortcutDescription' : undefined}>
         <Show when={lockTimeout.state === 'ready'}>
-          <RowTsx
+          <Row
             ref={setAutoCloseRowEl}
-            classList={{[styles.Row]: true}}
-            title={i18n('PasscodeLock.AutoLock')}
-            rightContent={
+            class={styles.Row}
+            clickable={() => {
+              setIsOpen(true);
+            }}
+          >
+            <Row.Title>{i18n('PasscodeLock.AutoLock')}</Row.Title>
+            <Row.RightContent>
               <InlineSelect
                 value={lockTimeout()}
                 onClose={() => setIsOpen(false)}
@@ -292,23 +294,21 @@ const PasscodeSetContent: Component<{
                 isOpen={isOpen()}
                 parent={autoCloseRowEl()}
               />
-            }
-            clickable={() => {
-              setIsOpen(true);
-            }}
-          />
+            </Row.RightContent>
+          </Row>
         </Show>
         <Show when={canShowShortcut()}>
-          <RowTsx
-            title={i18n('PasscodeLock.EnableLockShortcut')}
-            classList={{[styles.Row]: true}}
-            rightContent={
-              <StaticSwitch checked={shortcutEnabled()} />
-            }
+          <Row
+            class={styles.Row}
             clickable={(e) => {
               setShortcutEnabled(!shortcutEnabled());
             }}
-          />
+          >
+            <Row.Title>{i18n('PasscodeLock.EnableLockShortcut')}</Row.Title>
+            <Row.RightContent>
+              <StaticSwitch checked={shortcutEnabled()} />
+            </Row.RightContent>
+          </Row>
           <div class={styles.ShortcutBuilderRow} classList={{[styles.collapsed]: !shortcutEnabled()}}>
             <ShortcutBuilder class={styles.ShortcutBuilderRowChild} value={shortcutKeys() || []} onChange={setShortcutKeys} key="L" />
           </div>

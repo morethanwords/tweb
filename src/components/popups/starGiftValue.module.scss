@@ -1,0 +1,87 @@
+@import '../../scss/mixins';
+
+.popup {
+  :global {
+    .popup-container {
+      width: 26.25rem;
+      border-radius: 14px;
+      padding: 0;
+    }
+
+    .popup-body {
+      align-items: center;
+    }
+    
+    .btn-transparent {
+      position: relative;
+    }
+  }
+}
+
+.close {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+}
+
+.sticker {
+  margin-top: 1.625rem;
+}
+
+.value {
+  background: var(--primary-color);
+  color: #fff;
+  padding: 0.5625rem 1rem;
+  border-radius: 9999px;
+  font-size: 24px;
+  font-weight: 600;
+  font-family: var(--font-rounded);
+  margin-top: 1rem;
+}
+
+.about {
+  margin-top: 1rem;
+  font-size: 16px;
+  line-height: 22px;
+  text-align: center;
+  text-wrap: balance;
+  word-break: break-all;
+}
+
+.table {
+  margin-top: 1.5rem;
+  padding-inline: 1rem;
+  width: 100%;
+
+  :global(.currency-star-icon) {
+    width: 16px;
+    height: 16px;
+    margin-right: 0.125rem;
+    vertical-align: text-top;
+  }
+}
+
+.footer {
+  margin-top: 1rem;
+  padding-inline: 1rem;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+
+  button {
+    border-radius: 8px;
+    height: 50px;
+    justify-content: center;
+    margin-top: 0.625rem;
+
+    span {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    &:last-child {
+      margin-bottom: 1rem;
+    }
+  }
+}

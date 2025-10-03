@@ -414,6 +414,15 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     pointer-events: none;
     padding: 0 1rem;
   }
+
+  &-frozen-text {
+    display: flex;
+    flex-direction: column;
+
+    &-subtitle {
+      font-size: var(--font-size-14);
+    }
+  }
 }
 
 .chat-input-main {
@@ -451,7 +460,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
         .reply-wrapper {
           height: 0 !important;
-          opacity: 0;
+          opacity: 0 !important;
           pointer-events: none;
         }
 
@@ -1275,34 +1284,6 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       bottom: calc(100% + .5rem);
       inset-inline-start: 3.125rem;
       transform: scale(1) !important;
-
-      &-item {
-        padding-inline-end: 1.5rem;
-
-        &-text {
-          order: 1;
-        }
-
-        .checkbox {
-          &-field {
-            --size: 1.25rem;
-            order: 0;
-            margin: 0;
-            margin-inline-end: var(--icon-margin);
-          }
-
-          &-box {
-            &-border,
-            &-background {
-              display: none;
-            }
-
-            &-check use {
-              stroke: var(--primary-text-color);
-            }
-          }
-        }
-      }
 
       @include respond-to(handhelds) {
         inset-inline-start: calc(var(--padding-horizontal) * -1);

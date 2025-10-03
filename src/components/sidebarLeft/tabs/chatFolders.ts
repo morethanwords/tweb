@@ -216,7 +216,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
     this.listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
       if(key === stateKey) {
-        const {setHasFoldersSidebar} = useHasFoldersSidebar();
+        const [, setHasFoldersSidebar] = useHasFoldersSidebar();
         setHasFoldersSidebar(!!value);
         appImManager.adjustChatPatternBackground();
         if(!value) appSidebarLeft.showCtrlFTip();

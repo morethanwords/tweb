@@ -143,6 +143,9 @@ export interface MTAppConfig {
   channel_autotranslation_level_min?:         number;
   translations_auto_enabled?:                 'enabled' | 'disabled';
   translations_manual_enabled?:               'enabled' | 'disabled';
+  freeze_since_date?:                         number;
+  freeze_until_date?:                         number;
+  freeze_appeal_url?:                         string;
 }
 
 export interface EmojiesSendDiceSuccess {

@@ -273,7 +273,9 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_giftcode: 'Open',
   telegram_chat: 'OpenGroup',
   telegram_livestream: 'VoipChannelJoinVoiceChatUrl',
-  telegram_nft: 'StarGiftLinkButton'
+  telegram_nft: 'StarGiftLinkButton',
+  telegram_collection: 'StarGiftCollectionLinkButton',
+  telegram_story_album: 'ViewStoryAlbum'
 };
 
 const webPageTypesSiteNames: {[type in WebPage.webPage['type']]?: LangPackKey} = {
@@ -2423,9 +2425,11 @@ export default class ChatBubbles {
       const media = (message as Message.message).media;
       const paidMedia = media?._ === 'messageMediaPaidMedia' ? media : undefined;
 
+      const inputInvoice = await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid);
       const popup = await PopupPayment.create({
         message: message as Message.message,
-        inputInvoice: await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid),
+        inputInvoice,
+        isReceipt: buyButton.classList.contains('is-receipt'),
         paidMedia
       });
 
@@ -4846,22 +4850,22 @@ export default class ChatBubbles {
   }
 
   public async finishPeerChange() {
-    const {canWrite, hasMessages} = await namedPromises({
+    const {canWrite, hasMessages, appConfig} = await namedPromises({
       canWrite: this.chat.canSend(),
-      hasMessages: this.chat.hasMessages()
+      hasMessages: this.chat.hasMessages(),
+      appConfig: Promise.resolve(apiManagerProxy.getAppConfig())
     });
 
-    const isBroadcast = this.chat.isBroadcast;
-    const isLikeGroup = this.chat.isLikeGroup;
+    const {isBroadcast, isLikeGroup, peerId} = this.chat;
 
     return () => {
       this.chatInner.classList.toggle('has-rights', canWrite);
-      this.container.classList.toggle('is-chat-input-hidden', !canWrite);
+      this.container.classList.toggle('is-chat-input-hidden', !canWrite && !appConfig.freeze_since_date);
 
       [this.chatInner, this.remover].forEach((element) => {
         element.classList.toggle('is-chat', isLikeGroup);
         element.classList.toggle('no-messages', !hasMessages);
-        element.classList.toggle('with-message-avatars', isVerificationBot(this.peerId));
+        element.classList.toggle('with-message-avatars', isVerificationBot(peerId));
         element.classList.toggle('is-broadcast', isBroadcast);
       });
 
@@ -6407,6 +6411,7 @@ export default class ChatBubbles {
           }
 
           const starGiftAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeUniqueStarGift')
+          const starGiftCollectionAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeStarGiftCollection')
 
           const props: Parameters<typeof WebPageBox>[0] = {};
           const boxRefs: ((box: HTMLAnchorElement) => void)[] = [];
@@ -6479,7 +6484,7 @@ export default class ChatBubbles {
           // const willHaveSponsoredAvatar = sponsoredMessage && (getPeerId(sponsoredMessage.from_id) !== NULL_PEER_ID || sponsoredPhoto);
           // const willHaveSponsoredPhoto = sponsoredMessage && sponsoredMessage.pFlags.show_peer_photo && willHaveSponsoredAvatar;
           const willHaveSponsoredPhoto = !!sponsoredPhoto;
-          const willHaveMedia = !!(photo || doc || storyAttribute || willHaveSponsoredPhoto || starGiftAttribute);
+          const willHaveMedia = !!(photo || doc || storyAttribute || willHaveSponsoredPhoto || starGiftAttribute || starGiftCollectionAttribute);
           if(willHaveMedia) {
             preview = document.createElement('div');
             props.media = {
@@ -6689,6 +6694,20 @@ export default class ChatBubbles {
               }
             }), preview, middleware)
             props.text = undefined
+          } else if(starGiftCollectionAttribute) {
+            await wrapSticker({
+              doc: await this.managers.appDocsManager.saveDoc(starGiftCollectionAttribute.icons[0]),
+              div: preview,
+              middleware,
+              lazyLoadQueue,
+              play: true,
+              loop: false,
+              group: this.chat.animationGroup
+            })
+            preview.style.width = '48px';
+            preview.style.height = '48px';
+            props.media.photoSize = 'square';
+            isSquare = true;
           }
 
           if(preview) {

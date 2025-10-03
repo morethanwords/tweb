@@ -56,7 +56,7 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
         }
 
       default:
-        if(path.length <= 2 || path[1]?.match(/^\d+(?:\?(?:comment|thread)=\d+)?$/) || path[1] === 's') {
+        if(path.length <= 2 || path[1]?.match(/^\d+(?:\?(?:comment|thread)=\d+)?$/) || ['s', 'c', 'a'].includes(path[1])) {
           onclick = 'im';
           break;
         }

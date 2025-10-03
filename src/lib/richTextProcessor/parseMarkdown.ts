@@ -10,6 +10,7 @@
  */
 
 import {MARKDOWN_ENTITIES, MARKDOWN_REG_EXP} from '.';
+import {MOUNT_CLASS_TO} from '../../config/debug';
 import {MessageEntity} from '../../layer';
 import combineSameEntities from './combineSameEntities';
 import findConflictingEntity from './findConflictingEntity';
@@ -22,14 +23,31 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
 
   const entities: MessageEntity[] = [];
   let pushedEntity = false;
-  const pushEntity = (entity: MessageEntity) => !findConflictingEntity(currentEntities, entity) ? (entities.push(entity), pushedEntity = true) : pushedEntity = false;
+  const pushEntity = (
+    entity: MessageEntity,
+    adjustOffset = 0,
+    adjustLength = 0
+  ) => {
+    const conflictingEntity = findConflictingEntity(
+      currentEntities,
+      adjustOffset || adjustLength ? {...entity/* , offset: entity.offset + adjustOffset */, length: entity.length + adjustLength + adjustOffset} : entity,
+      true
+    );
+
+    return !conflictingEntity ?
+      (entities.push(entity), pushedEntity = true) :
+      pushedEntity = false;
+  };
 
   const newTextParts: string[] = [];
-  let rawOffset = 0, match;
+  let rawOffset = 0, match: RegExpMatchArray;
   while(match = raw.match(MARKDOWN_REG_EXP)) {
-    const matchIndex = rawOffset + match.index;
-    const possibleNextRawOffset = match.index + match[0].length;
-    const beforeMatch = match.index > 0 && raw.slice(0, match.index);
+    const matchWhitespace = match[1] || '';
+    const matchIndexAfterWhitespace = match.index + matchWhitespace.length;
+    const matchValueAfterWhitespace = match[0].slice(matchWhitespace.length);
+    const matchIndex = rawOffset + matchIndexAfterWhitespace;
+    const possibleNextRawOffset = matchIndex + matchValueAfterWhitespace.length;
+    const beforeMatch = matchIndexAfterWhitespace > 0 && raw.slice(0, matchIndexAfterWhitespace);
     beforeMatch && newTextParts.push(beforeMatch);
     const text = match[3] || match[8] || match[11] || match[13];
     // rawOffset -= text.length;
@@ -39,36 +57,40 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
     let entity: MessageEntity;
     pushedEntity = false;
     if(text.match(/^`*$/)) {
-      newTextParts.push(match[0]);
+      newTextParts.push(matchValueAfterWhitespace);
     } else if(match[3]) { // pre
-      let languageMatch = match[3].match(/(.*?)\n/);
-      if(!languageMatch?.[1]) {
-        languageMatch = undefined;
-      }
+      const languageMatch = match[3].match(/(.*?)\n/);
+      const language = languageMatch?.[1] || '';
 
-      let code = languageMatch ? match[3].slice(languageMatch[1].length) : match[3];
+      let code = language ? match[3].slice(language.length) : match[3];
       const startIndex = code[0] === '\n' ? 1 : 0;
       const endIndex = code[code.length - 1] === '\n' ? -1 : undefined;
       code = code.slice(startIndex, endIndex);
       entity = {
         _: 'messageEntityPre',
-        language: languageMatch?.[1] || '',
-        offset: matchIndex + match[1].length,
+        language: language,
+        offset: matchIndex,
         length: code.length
       };
 
-      if(pushEntity(entity)) {
+      const adjustOffset = match[2].length + (language ? language.length : 0) + (startIndex ? 1 : 0);
+      const adjustLength = match[4].length + (endIndex ? 1 : 0);
+      if(pushEntity(entity, adjustOffset, adjustLength)) {
+        if(startIndex) {
+          rawOffset -= 1;
+        }
+
         if(endIndex) {
           rawOffset -= 1;
         }
 
-        if(languageMatch) {
-          rawOffset -= languageMatch[0].length;
+        if(language) {
+          rawOffset -= language.length;
         }
 
         let whitespace = '';
-        if(match[1]) {
-          whitespace = match[1];
+        if(matchWhitespace && false) {
+          whitespace = matchWhitespace;
         } else {
           const previousPart = newTextParts[newTextParts.length - 1];
           if(previousPart && !/\s/.test(previousPart[previousPart.length - 1])) {
@@ -82,22 +104,23 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
       }
     } else if(match[7]) { // code|italic|bold
       const isSOH = match[6] === '\x01';
+      const symbol = match[7];
 
       entity = {
-        _: MARKDOWN_ENTITIES[match[7]] as (MessageEntity.messageEntityBold | MessageEntity.messageEntityCode | MessageEntity.messageEntityItalic | MessageEntity.messageEntitySpoiler)['_'],
+        _: MARKDOWN_ENTITIES[symbol] as (MessageEntity.messageEntityBold | MessageEntity.messageEntityCode | MessageEntity.messageEntityItalic | MessageEntity.messageEntitySpoiler)['_'],
         // offset: matchIndex + match[6].length,
         offset: matchIndex + (isSOH ? 0 : match[6].length),
         length: text.length
       };
 
-      if(pushEntity(entity)) {
+      if(pushEntity(entity, symbol.length, symbol.length)) {
         if(!isSOH) {
           newTextParts.push(match[6] + text + match[9]);
         } else {
           newTextParts.push(text);
         }
 
-        rawOffset -= match[7].length * 2 + (isSOH ? 2 : 0);
+        rawOffset -= symbol.length * 2 + (isSOH ? 2 : 0);
       }
     } else if(match[11]) { // custom mention
       entity = {
@@ -110,17 +133,20 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
       if(pushEntity(entity)) {
         newTextParts.push(text);
 
-        rawOffset -= match[0].length - text.length;
+        rawOffset -= matchValueAfterWhitespace.length - text.length;
       }
     } else if(match[12]) { // text url
+      const url = match[14];
       entity = {
         _: 'messageEntityTextUrl',
-        url: match[14],
+        url: url,
         offset: matchIndex,
         length: text.length
       };
 
-      if(pushEntity(entity)) {
+      const adjustOffset = 1;
+      const adjustLength = 4 + url.length;
+      if(pushEntity(entity, adjustOffset, adjustLength)) {
         newTextParts.push(text);
 
         rawOffset -= match[12].length - text.length;
@@ -128,11 +154,11 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
     }
 
     if(!pushedEntity) {
-      newTextParts.push(match[0]);
+      newTextParts.push(matchValueAfterWhitespace);
     }
 
-    raw = raw.substr(match.index + match[0].length);
-    rawOffset += match.index + match[0].length;
+    raw = raw.substr(matchIndexAfterWhitespace + matchValueAfterWhitespace.length);
+    rawOffset += matchIndexAfterWhitespace + matchValueAfterWhitespace.length;
 
     const rawOffsetDiff = rawOffset - possibleNextRawOffset;
     if(rawOffsetDiff) {
@@ -186,3 +212,5 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
 
   return [newText, currentEntities] as const;
 }
+
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.parseMarkdown = parseMarkdown);

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>spoiler</title>
+    <g id="spoiler" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
+        <path d="M19.58,3.08 L3.15,19.51 C3.24,19.85 3.42,20.16 3.66,20.41 C3.91,20.65 4.22,20.83 4.56,20.92 L21,4.49 C20.81,3.8 20.27,3.26 19.58,3.08 Z M11.95,3 L3.07,11.88 L3.07,14.71 L14.78,3 L11.95,3 Z M5.07,3 C3.97,3 3.07,3.9 3.07,5 L3.07,7 L7.07,3 L5.07,3 Z M19.07,21 C19.62,21 20.12,20.78 20.48,20.41 C20.85,20.05 21.07,19.55 21.07,19 L21.07,17 L17.07,21 L19.07,21 Z M9.36,21 L12.19,21 L21.07,12.12 L21.07,9.29 L9.36,21 Z" id="Shape" fill="#000000" fill-rule="nonzero"></path>
+    </g>
+</svg>

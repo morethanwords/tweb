@@ -16,7 +16,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import flatten from '../../helpers/array/flatten';
 import {avatarNew} from '../avatarNew';
 import PeerTitle from '../peerTitle';
-import RowTsx from '../rowTsx';
+import Row from '../rowTsx';
 import {IconTsx} from '../iconTsx';
 import classNames from '../../helpers/string/classNames';
 import {ChatPermissions} from '../sidebarRight/tabs/groupPermissions';
@@ -293,22 +293,23 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
           <Section
             classList={{hide: !banning().length}}
           >
-            <RowTsx
+            <Row
               ref={(e) => {
                 // lastRowRef = e;
                 e.classList.add('primary');
               }}
-              title={
-                <div class={classNames(`${className}-expand-row`, !collapsed() && 'is-expanded')}>
-                  {i18n(collapsedName())}
-                  <IconTsx icon="down" class={`${className}-expand-row-icon`} />
-                </div>
-              }
               clickable={() => {
                 setCollapsed((v) => !v);
               }}
               color="primary"
-            />
+            >
+              <Row.Title>
+                <div class={classNames(`${className}-expand-row`, !collapsed() && 'is-expanded')}>
+                  {i18n(collapsedName())}
+                  <IconTsx icon="down" class={`${className}-expand-row-icon`} />
+                </div>
+              </Row.Title>
+            </Row>
           </Section>
         </>
       );

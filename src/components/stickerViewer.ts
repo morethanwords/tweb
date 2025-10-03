@@ -34,7 +34,8 @@ import {STICKER_EFFECT_MULTIPLIER} from './wrappers/sticker';
 import wrapVideo from './wrappers/video';
 
 let hasViewer = false;
-export default function attachStickerViewerListeners({listenTo, listenerSetter, selector, findTarget: originalFindTarget, getTextColor}: {
+export default function attachStickerViewerListeners({listenTo, listenerSetter, selector, findTarget: originalFindTarget, getTextColor, additionalClass}: {
+  additionalClass?: string,
   listenerSetter: ListenerSetter,
   listenTo: HTMLElement,
   selector?: string,
@@ -242,7 +243,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       document.removeEventListener('mousemove', onMousePreMove);
 
       container = document.createElement('div');
-      container.classList.add(className);
+      container.classList.add(className, additionalClass);
       hasViewer = true;
 
       const middleware = _middleware.get();

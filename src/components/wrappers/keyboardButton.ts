@@ -115,6 +115,7 @@ export default function wrapKeyboardButton({
 
       if(mediaInvoice?.receipt_msg_id) {
         text = i18n('Message.ReplyActionButtonShowReceipt');
+        buttonEl.classList.add('is-receipt');
       }
 
       break;

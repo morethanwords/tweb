@@ -12,6 +12,7 @@
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import {MessageEntity} from '../../layer';
 import combineSameEntities from '../../lib/richTextProcessor/combineSameEntities';
+import findConflictingEntity, {SINGLE_ENTITIES} from '../../lib/richTextProcessor/findConflictingEntity';
 import sortEntities from '../../lib/richTextProcessor/sortEntities';
 import getRichElementValue, {SELECTION_SEPARATOR} from './getRichElementValue';
 
@@ -93,6 +94,24 @@ export default function getRichValueWithCaret(
     if(length !== trimmedLength) {
       entity.length -= length - trimmedLength;
     } */
+
+    const single = entities.filter((entity) => SINGLE_ENTITIES.has(entity._));
+    for(let i = 0; i < entities.length; ++i) {
+      const entity = entities[i];
+      if(SINGLE_ENTITIES.has(entity._)) {
+        continue;
+      }
+
+      const conflictingEntity = findConflictingEntity(single, entity);
+      if(!conflictingEntity) {
+        continue;
+      }
+
+      entity.length = conflictingEntity.offset - entity.offset;
+      if(entity.length <= 0) {
+        entities.splice(i--, 1);
+      }
+    }
 
     combineSameEntities(entities);
     sortEntities(entities);

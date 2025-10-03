@@ -84,12 +84,19 @@
 
   .viewProfile & {
     position: absolute;
-    bottom: 0.5rem;
+    bottom: 0.375rem;
     background: var(--overlay-color);
     border-radius: 9999px;
     font-size: 11px;
-    font-weight: 600;
-    padding: 0.25rem 0.5rem 0.25rem 0.625rem;
+    line-height: 1;
+    font-weight: 500;
+    gap: 0.125rem;
+    height: 1.125rem;
+    padding: 0 0.375rem;
+
+    :global(.tgico) {
+      font-size: 12px;
+    }
   }
 }
 
@@ -132,6 +139,23 @@
   background: linear-gradient(353.21deg, #4AB221 23.88%, #55DF61 117.26%)!important;
 }
 
+.badgePremium {
+  background: linear-gradient(353.21deg, #ED9E00 23.88%, #FFCD3A 117.26%)!important;
+}
+
+.itemPremium {
+  background: linear-gradient(180deg, #FAB624 0%, #EA8A01 100%);;
+}
+
+.itemPremiumBackground {
+  position: absolute;
+  z-index: 0;
+  inset: 2px;
+  background: var(--surface-color);
+  opacity: 1;
+  border-radius: 0.5rem;
+}
+
 .badgeUnique {
   color: #fff;
 }
@@ -155,6 +179,15 @@
   z-index: 1;
   font-size: 2rem;
   color: #fff;
+}
+
+.itemLock {
+  position: absolute;
+  left: 0.25rem;
+  top: 0.25rem;
+  z-index: 1;
+  font-size: 1.5rem;
+  color: var(--danger-color);
 }
 
 .itemUnsaved {
@@ -184,4 +217,17 @@
   font-size: 1.125rem;
   color: #fff;
   z-index: 2;
+}
+
+.checkbox {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 3;
+  margin: 0;
+  --size: 1.25rem;
+
+  :global(.checkbox-box-border) {
+    border-width: 1px;
+  }
 }

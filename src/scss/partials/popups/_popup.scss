@@ -207,7 +207,8 @@ $popup-footer-abitlarger-padding: 1rem;
       line-height: #{$popup-footer-button-size};
     }
 
-    &.abitlarger {
+    &.abitlarger,
+    &-abitlarger {
       padding: #{$popup-footer-abitlarger-padding};
 
       .btn-primary {
@@ -222,6 +223,12 @@ $popup-footer-abitlarger-padding: 1rem;
       font-size: var(--font-size-13);
       line-height: var(--line-height-14);
       margin-top: .625rem;
+    }
+
+    &-button {
+      & + & {
+        margin-top: .625rem;
+      }
     }
   }
 

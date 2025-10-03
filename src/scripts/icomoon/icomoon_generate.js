@@ -4,7 +4,7 @@ const pipeline = require('./icomoon');
 const fs = require('fs');
 const path = require('path');
 
-const iconsPath = path.join(__dirname, '../../../tweb-design/JS_3/Icons/');
+const iconsPath = path.join(__dirname, '../../../assets/icons/');
 const files = fs.readdirSync(iconsPath);
 const icons = files.filter(file => file.endsWith('.svg')).map(file => iconsPath + file);
 

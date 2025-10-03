@@ -2,8 +2,8 @@
 
 .popup {
   :global(.popup-container) {
-    width: 26.25rem;
-    border-radius: 14px;
+    width: 21.5rem;
+    border-radius: 10px;
     padding: 0;
     overflow: visible;
   }
@@ -11,6 +11,7 @@
   :global(.popup-buttons) {
     padding: 0 0.25rem;
     margin: 0.5rem;
+    justify-content: space-between;
   }
 
   :global(.popup-body) {
@@ -23,73 +24,31 @@
 }
 
 .onlyTon {
-  font-size: var(--font-size-13);
+  font-size: 16px;
+  line-height: 20px;
   color: var(--secondary-text-color);
-  margin-top: 1rem;
+  margin-top: 0.875rem;
   text-align: center;
-}
-
-.tabs {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  justify-content: center;
-  align-items: center;
-}
-
-.tab {
-  font-size: var(--font-size-12);
-  line-height: 0.5625rem;
-  padding: 0.375rem 0.5rem;
-  border-radius: 999px;
-  color: var(--secondary-text-color);
-  white-space: nowrap;
-  cursor: pointer;
-
-  @include hover-global(filled-gray, background-color, true);
-
-  &.activeTab {
-    color: var(--primary-color);
-    background: rgba(var(--primary-color-rgb), .1)!important;
-  }
 }
 
 .graph {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1rem;
-
-  :global(.tgico) {
-    font-size: 1.5rem;
-  }
+  margin-top: 1.5rem;
 }
 
-.giftWrap {
-  position: relative;
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
-  overflow: hidden;
-
-  :global(.media-sticker-wrapper) {
-    top: 8px;
-    left: 8px;
-  }
-}
-
-.giftBackdropCanvas {
-  width: 52px!important;
-  height: 52px!important;
-  top: 6px;
+.title {
+  margin-top: 1.5rem;
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 500;
+  padding-inline: 1rem;
+  align-self: flex-start;
 }
 
 .text {
-  text-align: center;
-  text-wrap: balance;
-  margin-top: 2rem;
-  padding-inline: 2rem;
+  margin-top: 1.125rem;
+  padding-inline: 1rem;
+  align-self: flex-start;
+  line-height: 20px;
 }
 
 .starsBalance {

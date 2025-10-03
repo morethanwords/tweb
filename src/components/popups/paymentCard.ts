@@ -12,7 +12,7 @@ import {validateAnyIncomplete, validateCardExpiry, validateCardNumber} from '../
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import noop from '../../helpers/noop';
-import {PaymentsPaymentForm, User} from '../../layer';
+import {PaymentFormMethod, PaymentsPaymentForm, User} from '../../layer';
 import {LangPackKey, _i18n} from '../../lib/langPack';
 import CheckboxField from '../checkboxField';
 import confirmationPopup from '../confirmationPopup';
@@ -210,6 +210,7 @@ export type PaymentsNativeParams = {
   publishable_key?: string, // stripe
   public_token?: string, // smartglocal
   gpay_params: string,
+  tokenize_url?: string
 };
 const SUPPORTED_NATIVE_PROVIDERS: Set<PaymentsNativeProvider> = new Set(['stripe', 'smartglocal']);
 
@@ -221,7 +222,8 @@ export default class PopupPaymentCard extends PopupElement<{
   constructor(
     private paymentForm: PaymentsPaymentForm.paymentsPaymentForm,
     private user: User.user,
-    private savedCard?: PaymentCardDetails
+    private savedCard?: PaymentCardDetails,
+    private method?: PaymentFormMethod
   ) {
     super('popup-payment popup-payment-card', {
       closable: true,
@@ -231,11 +233,11 @@ export default class PopupPaymentCard extends PopupElement<{
       title: 'PaymentCardInfo'
     });
 
-    if(SUPPORTED_NATIVE_PROVIDERS.has(paymentForm.native_provider as PaymentsNativeProvider)) {
+    if(SUPPORTED_NATIVE_PROVIDERS.has(paymentForm.native_provider as PaymentsNativeProvider) && !method) {
       this.d();
     } else {
       const telegramWebView = this.telegramWebView = createVerificationIframe({
-        url: paymentForm.url
+        url: method?.url || paymentForm.url
       });
 
       telegramWebView.addEventListener('payment_form_submit', (data) => {
@@ -247,7 +249,7 @@ export default class PopupPaymentCard extends PopupElement<{
 
         this.hide();
 
-        if(paymentForm.pFlags.can_save_credentials) {
+        if(!method && paymentForm.pFlags.can_save_credentials) {
           confirmationPopup({
             titleLangKey: 'PaymentCardSavePaymentInformation',
             descriptionLangKey: 'PaymentCardSavePaymentInformationInfoLine1',
@@ -518,9 +520,16 @@ export default class PopupPaymentCard extends PopupElement<{
             }
           };
 
-          const url = /* DEBUG_PAYMENT_SMART_GLOCAL */false ?
+          let url = /* DEBUG_PAYMENT_SMART_GLOCAL */false ?
             'https://tgb-playground.smart-glocal.com/cds/v1/tokenize/card' :
             'https://tgb.smart-glocal.com/cds/v1/tokenize/card';
+
+          const nativeTokenizeUrl = nativeParams.tokenize_url;
+          if(typeof(nativeTokenizeUrl) === 'string' &&
+              nativeTokenizeUrl.startsWith('https://') &&
+              nativeTokenizeUrl.endsWith('.smart-glocal.com/cds/v1/tokenize/card')) {
+            url = nativeTokenizeUrl;
+          }
 
           const response = await fetch(url, {
             method: 'POST',

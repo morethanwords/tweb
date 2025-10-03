@@ -8,8 +8,9 @@
   align-items: center;
   font-size: var(--font-size-14);
   line-height: 1;
+  white-space: nowrap;
 
-  :global(.i18n) {
+  > :global(.i18n) {
     display: flex;
     align-items: center;
     gap: 0.25rem;

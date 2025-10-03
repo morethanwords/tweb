@@ -63,7 +63,7 @@ import flatten from '../../helpers/array/flatten';
 import EmojiTab from '../emoticonsDropdown/tabs/emoji';
 import {EmoticonsDropdown} from '../emoticonsDropdown';
 import cloneDOMRect from '../../helpers/dom/cloneDOMRect';
-import {AccountEmojiStatuses, EmojiStatus, User} from '../../layer';
+import {AccountEmojiStatuses, AttachMenuBot, EmojiStatus, User} from '../../layer';
 import filterUnique from '../../helpers/array/filterUnique';
 import {Middleware, MiddlewareHelper} from '../../helpers/middleware';
 import wrapEmojiStatus from '../wrappers/emojiStatus';
@@ -82,7 +82,7 @@ import pause from '../../helpers/schedulers/pause';
 import AccountsLimitPopup from './accountsLimitPopup';
 import {changeAccount} from '../../lib/accounts/changeAccount';
 import {UiNotificationsManager} from '../../lib/appManagers/uiNotificationsManager';
-import {renderFoldersSidebarContent} from './foldersSidebarContent';
+import {FoldersSidebarControls, renderFoldersSidebarContent} from './foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import SwipeHandler, {getEvent} from '../swipeHandler';
 import clamp from '../../helpers/number/clamp';
@@ -103,7 +103,7 @@ import createSubmenuTrigger from '../createSubmenuTrigger';
 import ChatTypeMenu from '../chatTypeMenu';
 import {RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 import EmptySearchPlaceholder from '../emptySearchPlaceholder';
-import useHasFoldersSidebar from '../../stores/foldersSidebar';
+import useHasFoldersSidebar, {useIsSidebarCollapsed} from '../../stores/foldersSidebar';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -137,6 +137,8 @@ export class AppSidebarLeft extends SidebarSlider {
 
   private onResize: () => void;
 
+  public foldersSidebarControls: FoldersSidebarControls;
+
   constructor() {
     super({
       sidebarEl: document.getElementById('column-left') as HTMLDivElement,
@@ -166,7 +168,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const mainMiddleware = this.middlewareHelper.get();
     const foldersSidebar = document.getElementById('folders-sidebar');
-    renderFoldersSidebarContent(foldersSidebar, this.totalNotificationsCountSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
+    this.foldersSidebarControls = renderFoldersSidebarContent(foldersSidebar, this.totalNotificationsCountSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
 
     // If it has z-index to early, the browser makes it shift a few times before showing it properly in its position (on very large screens)
     // Doesn't solve the blinking, which doesn't seem to appear when the project is built
@@ -504,11 +506,13 @@ export class AppSidebarLeft extends SidebarSlider {
     this.chatListContainer.parentElement.classList.toggle('zoom-fade', !this.isCollapsed());
     appDialogsManager.xd.toggleAvatarUnreadBadges(this.isCollapsed(), undefined);
 
-    const {hasFoldersSidebar} = useHasFoldersSidebar();
+    const [hasFoldersSidebar] = useHasFoldersSidebar();
 
     if(canShowCtrlFTip && this.isCollapsed() && !hasFoldersSidebar()) {
       this.showCtrlFTip();
     }
+
+    if(!this.isCollapsed()) appDialogsManager.resizeStoriesList?.();
   }
 
   public hasSomethingOpenInside() {
@@ -581,7 +585,7 @@ export class AppSidebarLeft extends SidebarSlider {
       if(!appDialogsManager.hasMonoforumOpen() && !appDialogsManager.forumTab)
         appDialogsManager.xd?.toggleAvatarUnreadBadges(false, undefined);
     } else {
-      const {hasFoldersSidebar} = useHasFoldersSidebar();
+      const [hasFoldersSidebar] = useHasFoldersSidebar();
 
       sidebarPlaceholder.classList.add('keep-active');
       this.sidebarEl.classList.add(
@@ -645,9 +649,13 @@ export class AppSidebarLeft extends SidebarSlider {
       this.onSomethingOpenInsideChange();
     }
 
+    const rightBorder = document.createElement('div');
+    rightBorder.classList.add('sidebar-right-border');
+
     const resizeHandle = document.createElement('div');
     resizeHandle.classList.add('sidebar-resize-handle');
-    this.sidebarEl.append(resizeHandle);
+
+    this.sidebarEl.append(rightBorder, resizeHandle);
 
     const throttledSetToStorage = throttle((width: number) => {
       localStorage.setItem('sidebar-left-width', width + '');
@@ -674,6 +682,7 @@ export class AppSidebarLeft extends SidebarSlider {
         const wasCollapsed = this.isCollapsed();
         const isCollapsed = !this.hasSomethingOpenInside() && width < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR;
         this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
+        useIsSidebarCollapsed()[1](isCollapsed);
 
         if(isCollapsed !== wasCollapsed)
           this.onCollapsedChange(true);
@@ -812,7 +821,7 @@ export class AppSidebarLeft extends SidebarSlider {
       buttons: filteredButtons,
       container: mountTo,
       onOpenBefore: async() => {
-        const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
+        const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots().catch(() => [] as AttachMenuBot[]);
         const buttons = filteredButtonsSliced.slice();
         const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
           return attachMenuBot.pFlags.show_in_side_menu;

@@ -228,6 +228,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     onClick?: EmojiTab['onClick'],
     noPacks?: EmojiTab['noPacks'],
     noSearch?: EmojiTab['noSearch'],
+    additionalStickerViewerClass?: EmojiTab['additionalStickerViewerClass'],
     preloaderDelay?: EmojiTab['preloaderDelay'],
     freeCustomEmoji?: EmojiTab['freeCustomEmoji'],
     canHaveEmojiTimer?: EmojiTab['canHaveEmojiTimer'],
@@ -239,6 +240,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     super({
       managers: options.managers,
       noMenu: options.noPacks,
+      additionalStickerViewerClass: options.additionalStickerViewerClass,
       searchFetcher: options.noSearch ? undefined : async(value) => {
         if(!value) return {emojis: []};
 

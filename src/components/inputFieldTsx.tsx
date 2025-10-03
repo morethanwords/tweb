@@ -56,7 +56,7 @@ export const InputFieldTsx = <T extends typeof InputField>(inProps: InputFieldTs
   createEffect(on(
     () => [props.label, props.labelOptions] as const,
     ([value, options]) => {
-      if(value !== obj.label.textContent) {
+      if(value !== obj.label?.textContent) {
         obj.label.replaceChildren(i18n(value, options))
       }
     }
@@ -65,7 +65,7 @@ export const InputFieldTsx = <T extends typeof InputField>(inProps: InputFieldTs
   createEffect(on(
     () => props.disabled,
     (value) => {
-      obj.input.toggleAttribute('disabled', value)
+      obj.input.toggleAttribute('disabled', !!value)
     }
   ))
 

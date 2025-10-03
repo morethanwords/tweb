@@ -5,7 +5,7 @@
  */
 
 import rootScope, {BroadcastEvents} from '../../../lib/rootScope';
-import AppSearchSuper, {SearchSuperMediaTab, SearchSuperType} from '../../appSearchSuper.';
+import AppSearchSuper, {SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '../../appSearchSuper.';
 import SidebarSlider, {SliderSuperTab} from '../../slider';
 import TransitionSlider from '../../transition';
 import AppEditChatTab from './editChat';
@@ -27,6 +27,8 @@ import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 import wrapPeerTitle from '../../wrappers/peerTitle';
 import ButtonMenuToggle from '../../buttonMenuToggle';
 import appImManager from '../../../lib/appManagers/appImManager';
+import {useIsFrozen} from '../../../stores/appState';
+import {profileStarGiftsButtonMenu} from '../../stargifts/profileList';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -45,7 +47,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   public peerId: PeerId;
   private threadId: number;
 
-  private searchSuper: AppSearchSuper;
+  public searchSuper: AppSearchSuper;
 
   private profile: PeerProfile;
   private peerChanged: boolean;
@@ -112,17 +114,25 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const transitionFirstItem = makeTransitionItem(this.titleI18n.element, true, this.title);
     this.editBtn = ButtonIcon('edit');
 
+    const self = this;
     const btnMenu = this.btnMenu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
       direction: 'bottom-left',
-      buttons: [{
-        icon: 'message',
-        text: 'SavedViewAsMessages',
-        onClick: () => {
-          appImManager.toggleViewAsMessages(rootScope.myId, true);
+      buttons: [
+        {
+          icon: 'message',
+          text: 'SavedViewAsMessages',
+          onClick: () => {
+            appImManager.toggleViewAsMessages(rootScope.myId, true);
+          },
+          verify: () => this.peerId === rootScope.myId && this.isFirst
         },
-        verify: () => this.peerId === rootScope.myId && this.isFirst
-      }]
+        ...profileStarGiftsButtonMenu({
+          get store() { return self.searchSuper.stargiftsStore },
+          get actions() { return self.searchSuper.stargiftsActions },
+          peerId: this.peerId
+        })
+      ]
     });
 
     transitionFirstItem.element.append(this.editBtn);
@@ -173,6 +183,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     if(!this.noProfile) {
       this.profile = new PeerProfile(this.managers, this.scrollable, this.listenerSetter, true, this.container);
       this.profile.init();
+      this.profile.onPinnedGiftsChange = (gifts) => {
+        this.searchSuper.setPinnedGifts(gifts);
+      }
       this.scrollable.append(this.profile.element);
     }
 
@@ -353,6 +366,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         setTimeout(() => {
           btnAddMembers.classList.toggle('is-hidden', mediaTab.type !== 'members');
         }, timeout);
+
+        if(!this.isFirst) {
+          this.btnMenu.classList.toggle('hide', mediaTab.type !== 'gifts');
+        }
       },
       managers: this.managers,
       onLengthChange: (type, length) => {
@@ -611,7 +628,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private async toggleEditBtn(manual?: boolean): Promise<(() => void) | void> {
     const {peerId} = this;
     let show: boolean;
-    if(peerId.isUser()) {
+    if(useIsFrozen()) {
+      show = false;
+    } else if(peerId.isUser()) {
       show = peerId !== rootScope.myId && await this.managers.appUsersManager.canEdit(peerId.toUserId());
     } else {
       const chatId = peerId.toChatId();
@@ -633,6 +652,12 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
   public loadSidebarMedia(single: boolean, justLoad?: boolean) {
     return this.searchSuper.load(single, justLoad);
+  }
+
+  public setSearchTab(tab: SearchSuperMediaType) {
+    const idx = this.searchSuper.mediaTabs.findIndex((t) => t.type === tab)
+    if(idx === -1) return;
+    this.searchSuper.selectTab(idx);
   }
 
   onOpenAfterTimeout() {

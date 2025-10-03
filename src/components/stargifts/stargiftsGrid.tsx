@@ -22,13 +22,17 @@ import appImManager from '../../lib/appManagers/appImManager';
 import {StarGift} from '../../layer';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import {toastNew} from '../toast';
-import {wearStarGift} from '../popups/wearStarGift';
 import transferStarGift from '../popups/transferStarGift';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
+import CheckboxFieldTsx from '../checkboxFieldTsx';
+import tsNow from '../../helpers/tsNow';
+import PopupStarGiftWear from '../popups/starGiftWear';
 
 function StarGiftGridItem(props: {
   item: MyStarGift,
   view: 'profile' | 'list' | 'resale'
+  hasSelection?: boolean
+  selected?: boolean
   onClick?: () => void
   renderer: SuperStickerRenderer
 }) {
@@ -39,8 +43,8 @@ function StarGiftGridItem(props: {
     props.renderer.renderSticker(props.item.sticker, stickerRef);
     props.renderer.observeAnimated(stickerRef);
 
-    if(props.view === 'profile') {
-      const {raw, saved, input, isIncoming} = props.item;
+    if(props.view === 'profile' && !props.hasSelection) {
+      const {raw, saved, input, isIncoming, isWearing} = props.item;
       const isOwnedUniqueGift = raw._ === 'starGiftUnique' && getPeerId(raw.owner_id) === rootScope.myId && saved !== undefined;
 
       createContextMenu({
@@ -75,7 +79,7 @@ function StarGiftGridItem(props: {
             }
           },
           {
-            icon: 'gem_transfer',
+            icon: 'gem_transfer_outline',
             text: 'StarGiftTransferFull',
             verify: () => isOwnedUniqueGift,
             onClick: () => {
@@ -83,11 +87,15 @@ function StarGiftGridItem(props: {
             }
           },
           {
-            icon: 'crown',
-            text: 'StarGiftWearFull',
+            icon: isWearing ? 'crownoff_outline' : 'crown_outline',
+            text: isWearing ? 'StarGiftWearStopFull' : 'StarGiftWearFull',
             verify: () => isOwnedUniqueGift,
             onClick: () => {
-              wearStarGift(raw.id);
+              if(isWearing) {
+                rootScope.managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
+              } else {
+                PopupStarGiftWear.open(props.item);
+              }
             }
           },
           {
@@ -104,6 +112,8 @@ function StarGiftGridItem(props: {
   })
 
   const isPinned = () => props.item.saved?.pFlags.pinned_to_top;
+  const isPremium = () => props.view === 'list' && props.item.raw._ === 'starGift' && props.item.raw.pFlags.require_premium && props.item.raw.availability_remains > 0;
+  const isLocked = () => props.view === 'list' && props.item.raw._ === 'starGift' && props.item.raw.locked_until_date > tsNow(true);
 
   return (
     <div
@@ -113,7 +123,8 @@ function StarGiftGridItem(props: {
           profile: styles.viewProfile,
           list: styles.viewList,
           resale: styles.viewResale
-        }[props.view]
+        }[props.view],
+        isPremium() && styles.itemPremium
       )}
       style={{
         '--overlay-color': rgbaToHexa(changeBrightness(getRgbColorFromTelegramColor(props.item.collectibleAttributes?.backdrop?.edge_color ?? 0), 0.9))
@@ -121,6 +132,17 @@ function StarGiftGridItem(props: {
       onClick={props.onClick}
       ref={containerRef}
     >
+      {props.hasSelection && (
+        <CheckboxFieldTsx
+          round
+          class={/* @once */ styles.checkbox}
+          checked={props.selected}
+        />
+      )}
+
+      {isPremium() && (
+        <div class={/* @once */ styles.itemPremiumBackground} />
+      )}
 
       {props.item.collectibleAttributes && (
         <StarGiftBackdrop
@@ -133,6 +155,10 @@ function StarGiftGridItem(props: {
 
       {isPinned() && !props.item.resellOnlyTon && (
         <IconTsx icon="pin2" class={/* @once */ styles.itemPin} />
+      )}
+
+      {isLocked() && (
+        <IconTsx icon="time_lock" class={/* @once */ styles.itemLock} />
       )}
 
       {props.item.resellOnlyTon && (
@@ -157,7 +183,7 @@ function StarGiftGridItem(props: {
           )} */}
           <StarsStar />
           <span>{
-            props.item.raw.resell_min_stars ?
+            props.item.isResale && props.item.raw.resell_min_stars ?
               `${numberThousandSplitterForStars(props.item.raw.resell_min_stars)}+` :
               numberThousandSplitterForStars(props.item.raw.stars)
           }</span>
@@ -166,12 +192,12 @@ function StarGiftGridItem(props: {
 
       {props.item.resellPriceStars && (
         <div class={/* @once */ styles.itemPrice}>
-          <StarsStar />
+          <IconTsx icon="star" />
           <span>{numberThousandSplitterForStars(props.item.resellPriceStars)}</span>
         </div>
       )}
 
-      {props.view === 'profile' && props.item.raw._ === 'starGift' && (
+      {props.view === 'profile' && props.item.raw._ === 'starGift' && !props.hasSelection && (
         <div class={/* @once */ styles.itemFrom}>
           {props.item.saved.from_id && !props.item.saved.pFlags.name_hidden ? (
             <AvatarNewTsx
@@ -215,6 +241,14 @@ function StarGiftGridItem(props: {
           )
         }
 
+        if(isPremium()) {
+          return (
+            <StarGiftBadge class={/* @once */ styles.badgePremium}>
+              {i18n('StarGiftPremiumBadge')}
+            </StarGiftBadge>
+          )
+        }
+
         if(props.view === 'list' && gift.availability_remains === 0) {
           return (
             <StarGiftBadge class={/* @once */ styles.badgeSoldout}>
@@ -241,6 +275,7 @@ export function StarGiftsGrid(props: {
   view: 'profile' | 'list' | 'resale'
   autoplay?: boolean
   onClick?: (item: MyStarGift) => void
+  selected?: (item: MyStarGift) => boolean
   scrollParent: HTMLElement
 }) {
   const lazyLoadQueue = new LazyLoadQueue();
@@ -271,6 +306,8 @@ export function StarGiftsGrid(props: {
           <StarGiftGridItem
             item={item}
             view={props.view}
+            hasSelection={/* @once */ props.selected !== undefined}
+            selected={props.selected?.(item)}
             onClick={() => props.onClick?.(item)}
             renderer={stickerRenderer}
           />

@@ -374,6 +374,8 @@ $btn-menu-z-index: 4;
         width: inherit;
         height: inherit;
       }
+
+      
     }
 
     &-input {
@@ -531,6 +533,32 @@ $btn-menu-z-index: 4;
         left: var(--offset);
         border: 1.5px solid var(--primary-color);
         border-radius: inherit;
+      }
+    }
+
+    .checkbox-field {
+      --size: 1.25rem;
+      order: 0;
+      margin: 0;
+      margin-inline-end: var(--icon-margin);
+
+      .checkbox-box {
+        &-border,
+        &-background {
+          display: none;
+        }
+
+        &-check use {
+          stroke: var(--primary-text-color);
+        }
+      }
+    }
+
+    &.has-checkbox {
+      padding-inline-end: 1.5rem;
+
+      .btn-menu-item-text {
+        order: 1;
       }
     }
   }

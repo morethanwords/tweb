@@ -61,6 +61,7 @@ import wrapSticker from './wrappers/sticker';
 import {rgbIntToHex} from '../helpers/color';
 import {wrapAdaptiveCustomEmoji} from './wrappers/customEmojiSimple';
 import usePeerTranslation from '../hooks/usePeerTranslation';
+import {MyStarGift} from '../lib/appManagers/appGiftsManager';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   setInnerHTML(row.title, text || undefined);
@@ -111,6 +112,8 @@ export default class PeerProfile {
   private botVerification: HTMLDivElement;
 
   private pinnedGiftsContainer: HTMLDivElement;
+
+  public onPinnedGiftsChange?: (gifts: MyStarGift[]) => void;
 
   constructor(
     private managers: AppManagers,
@@ -799,7 +802,7 @@ export default class PeerProfile {
       this.fillNotifications(),
       this.setMoreDetails(undefined, manual),
       this.setPeerStatus(true, true)
-    ]).then((callbacks) => {
+    ].map((promise) => promise.catch(() => undefined as () => void))).then((callbacks) => {
       return () => {
         callbacks.forEach((callback) => callback?.());
       };
@@ -812,7 +815,7 @@ export default class PeerProfile {
 
     const pinnedGifts = await this.managers.appGiftsManager.getPinnedGifts(peerId);
     const middleware = this.middlewareHelper.get();
-    const stickers = await Promise.all(pinnedGifts.map(async(gift, idx) => {
+    const stickers = await Promise.all(pinnedGifts.filter((it) => it.saved.pFlags.pinned_to_top).map(async(gift, idx) => {
       const div = document.createElement('div');
       div.className = 'profile-pinned-gift';
       div.setAttribute('data-idx', idx.toString());
@@ -827,6 +830,7 @@ export default class PeerProfile {
       }).then((r) => r.render);
       return div;
     }));
+    this.onPinnedGiftsChange?.(pinnedGifts);
 
     return () => {
       this.pinnedGiftsContainer.replaceChildren(...stickers);

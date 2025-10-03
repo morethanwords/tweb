@@ -1,0 +1,83 @@
+.popup {
+  :global {
+    .popup-container {
+      width: 26.25rem;
+      border-radius: 14px;
+    }
+    .popup-header {
+      margin: 0;
+    }
+
+    .popup-body {
+      overflow: visible;
+    }
+
+    .popup-footer {
+      padding: 0;
+      margin-top: 2rem;
+    }
+
+    .profile-name {
+      display: flex;
+      align-items: center;
+    }
+  }
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: -1rem;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding-inline: 1rem;
+  padding-bottom: 1rem;
+  width: 100%;
+  height: 15rem
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.close {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  color: #fff;
+}
+
+.avatar {
+  width: 120px;
+  height: 120px;
+  position: relative;
+  margin-top: 1.625rem;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  padding-top: 1rem;
+  padding-inline: 1rem;
+}
+
+.title {
+  text-align: center;
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 14px;
+  line-height: 24px;
+  margin-bottom: 0.75rem;
+}

@@ -134,6 +134,7 @@ import useLockScreenShortcut from './utils/useLockScreenShortcut';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../../components/chat/paidMessagesInterceptor';
 import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport';
 import ChatAudio from '../../components/chat/audio';
+import PopupAboutAd from '../../components/popups/aboutAd';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -700,6 +701,8 @@ export class AppImManager extends EventListenerBase<{
     this.checkForShare();
     this.init();
 
+    // PopupElement.createPopup(PopupAboutAd);
+
     // PopupElement.createPopup(PopupBoostsViaGifts, -5000866300);
   }
 
@@ -1225,7 +1228,7 @@ export class AppImManager extends EventListenerBase<{
           }
         });
       } else if(key === 'ArrowUp' && this.chat?.type !== ChatType.Scheduled) {
-        if(!chat?.input?.editMsgId && chat?.input?.isInputEmpty()) {
+        if(!appDialogsManager.contextMenu?.hasAddToFolderOpen() && !chat?.input?.editMsgId && chat?.input?.isInputEmpty()) {
           this.managers.appMessagesManager.getFirstMessageToEdit(chat.peerId, chat.threadId).then((message) => {
             if(message) {
               chat.input.initMessageEditing(message.mid);
