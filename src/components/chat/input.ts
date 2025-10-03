@@ -6,7 +6,7 @@
 
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import type {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
-import type {AppMessagesManager, MessageSendingParams} from '../../lib/appManagers/appMessagesManager';
+import type {AppMessagesManager, MessageSendingParams, MyMessage, SuggestedPostPayload} from '../../lib/appManagers/appMessagesManager';
 import type Chat from './chat';
 import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
 import '../../../public/recorder.min';
@@ -18,7 +18,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -124,7 +124,7 @@ import eachSecond from '../../helpers/eachSecond';
 import {wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
 import showTooltip from '../tooltip';
 import createContextMenu from '../../helpers/dom/createContextMenu';
-import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, onCleanup, Setter} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import SelectedEffect from './selectedEffect';
 import windowSize from '../../helpers/windowSize';
@@ -135,6 +135,12 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesIntercept
 import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
 import focusInput from '../../helpers/dom/focusInput';
 import {PopupChecklist} from '../popups/checklist';
+import assumeType from '../../helpers/assumeType';
+import {formatFullSentTime} from '../../helpers/date';
+import useStars from '../../stores/stars';
+import PopupStars from '../popups/stars';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import {makeMessageMediaInputForSuggestedPost} from '../../lib/appManagers/utils/messages/makeMessageMediaInput';
 import {useAppConfig, useAppState} from '../../stores/appState';
 import showFrozenPopup from '../popups/frozen';
 
@@ -153,9 +159,10 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
   send_inline: 'GlobalAttachInlineRestricted'
 };
 
-type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
+type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested';
 type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
-export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId'>;
+export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
+
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
@@ -186,6 +193,8 @@ export default class ChatInput {
 
   public attachMenu: HTMLElement;
   private attachMenuButtons: ButtonMenuItemOptionsVerifiable[];
+
+  public btnSuggestPost: HTMLElement;
 
   private sendMenu: SendMenu;
 
@@ -229,6 +238,7 @@ export default class ChatInput {
   public replyToStoryId: MessageSendingParams['replyToStoryId'];
   public replyToQuote: MessageSendingParams['replyToQuote'];
   public replyToPeerId: MessageSendingParams['replyToPeerId'];
+  public replyToMonoforumPeerId: MessageSendingParams['replyToMonoforumPeerId'];
   public editMsgId: number;
   public editMessage: Message.message;
   private noWebPage: true;
@@ -355,7 +365,10 @@ export default class ChatInput {
 
   public paidMessageInterceptor: PaidMessagesInterceptor;
 
-  private starsState: ReturnType<ChatInput['constructStarsState']>;
+  private starsState: ReturnType<ChatInput['createStarsState']>;
+  private directMessagesHandler: ReturnType<ChatInput['createDirectMessagesHandler']>;
+
+  public suggestedPost: SuggestedPostPayload;
 
   constructor(
     public chat: Chat,
@@ -484,7 +497,8 @@ export default class ChatInput {
       this.paidMessageInterceptor.dispose();
     });
 
-    this.starsState = this.constructStarsState();
+    this.starsState = this.createStarsState();
+    this.directMessagesHandler = this.createDirectMessagesHandler();
   }
 
   public freezeFocused(focused: boolean) {
@@ -1028,7 +1042,7 @@ export default class ChatInput {
 
         PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
-      verify: () => this.chat.peerId.isAnyChat() || this.chat.isBot
+      verify: () => (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot
     }, {
       icon: 'poll',
       text: 'Checklist',
@@ -1047,7 +1061,8 @@ export default class ChatInput {
         }
 
         PopupElement.createPopup(PopupChecklist, {chat: this.chat}).show();
-      }
+      },
+      verify: () => !this.chat.isMonoforum
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();
@@ -1057,7 +1072,7 @@ export default class ChatInput {
       direction: 'top-left',
       buttons: this.attachMenuButtons,
       onOpenBefore: this.excludeParts.attachMenu ? undefined : async() => {
-        const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
+        const attachMenuBots = this.chat.isMonoforum ? [] : await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
         const buttons = attachMenuButtons.slice();
         const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
           return attachMenuBot.pFlags.show_in_attach_menu;
@@ -1111,7 +1126,10 @@ export default class ChatInput {
     this.attachMenu.classList.add('attach-file');
     this.attachMenu.firstElementChild.replaceWith(Icon('attach'));
 
-    // this.inputContainer.append(this.sendMenu);
+    this.btnSuggestPost = ButtonIcon('suggested hide');
+    attachClickEvent(this.btnSuggestPost, () => {
+      this.openSuggestPostPopup();
+    });
 
     this.recordTimeEl = document.createElement('div');
     this.recordTimeEl.classList.add('record-time');
@@ -1127,6 +1145,7 @@ export default class ChatInput {
       this.inputMessageContainer,
       this.btnScheduled,
       this.btnToggleReplyMarkup,
+      this.btnSuggestPost,
       this.attachMenu,
       this.recordTimeEl,
       this.fileInput
@@ -1345,8 +1364,14 @@ export default class ChatInput {
   }
 
   private setChatListeners() {
-    this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, draft, force}) => {
-      if(this.chat.threadId !== threadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
+    this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, monoforumThreadId, draft, force}) => {
+      // We don't have draft functionality when in the global monoforum chat, but we still need to clear the input right after sending the message
+      if(!draft && force && this.chat.peerId === peerId && this.chat.isMonoforum) {
+        this.setDraft(draft, true, force);
+        return;
+      }
+
+      if(this.chat.threadId !== threadId || this.chat.monoforumThreadId !== monoforumThreadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
       this.setDraft(draft, true, force);
     });
 
@@ -1579,8 +1604,8 @@ export default class ChatInput {
   }
 
   public getJoinButtonType() {
-    const {peerId, threadId} = this.chat;
-    if(peerId.isUser()) {
+    const {peerId, threadId, isMonoforum} = this.chat;
+    if(peerId.isUser() || isMonoforum) {
       return;
     }
 
@@ -1737,14 +1762,22 @@ export default class ChatInput {
       return;
     }
 
-    const dialog = await this.managers.dialogsStorage.getAnyDialog(
-      this.chat.peerId,
-      this.chat.type === ChatType.Discussion ? undefined : this.chat.threadId
-    );
+    const dialog = this.chat.monoforumThreadId ?
+      await this.managers.monoforumDialogsStorage.getDialogByParent(this.chat.peerId, this.chat.monoforumThreadId) :
+      await this.managers.dialogsStorage.getAnyDialog(
+        this.chat.peerId,
+        this.chat.type === ChatType.Discussion ? undefined : this.chat.threadId
+      );
 
     if(isSavedDialog(dialog)) {
       return;
     }
+
+    assumeType<Partial<Pick<Dialog.dialog,
+      | 'unread_count'
+      | 'unread_mentions_count'
+      | 'unread_reactions_count'
+    >>>(dialog);
 
     const count = dialog?.unread_count;
     setBadgeContent(this.goDownUnreadBadge, '' + (count || ''));
@@ -1791,6 +1824,7 @@ export default class ChatInput {
           reply_to_msg_id: replyTo.replyToMsgId,
           top_msg_id: this.chat.threadId,
           reply_to_peer_id: replyTo.replyToPeerId,
+          monoforum_peer_id: replyTo.replyToMonoforumPeerId,
           ...(replyTo.replyToQuote && {
             quote_text: replyTo.replyToQuote.text,
             quote_entities: replyTo.replyToQuote.entities,
@@ -1814,16 +1848,18 @@ export default class ChatInput {
   }
 
   public saveDraft() {
+    const isMonoforumParent = this.chat.isMonoforum && !this.chat.monoforumThreadId;
     if(
       !this.chat.peerId ||
       this.editMsgId ||
-      PEER_EXCEPTIONS.has(this.chat.type)
+      PEER_EXCEPTIONS.has(this.chat.type) ||
+      isMonoforumParent
     ) {
       return;
     }
 
     const draft = this.getCurrentInputAsDraft();
-    this.managers.appDraftsManager.syncDraft(this.chat.peerId, this.chat.threadId, draft);
+    this.managers.appDraftsManager.syncDraft({peerId: this.chat.peerId, threadId: this.chat.threadId, monoforumThreadId: this.chat.monoforumThreadId, localDraft: draft});
   }
 
   public mentionUser(peerId: PeerId, isHelper?: boolean) {
@@ -1890,7 +1926,11 @@ export default class ChatInput {
     }
 
     if(!draft) {
-      draft = await this.managers.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId);
+      const isMonoforumParent = this.chat.isMonoforum && !this.chat.monoforumThreadId;
+
+      draft = !isMonoforumParent ?
+        await this.managers.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId || this.chat.monoforumThreadId) :
+        undefined;
 
       if(!draft) {
         if(force) { // this situation can only happen when sending message with clearDraft
@@ -1937,7 +1977,8 @@ export default class ChatInput {
           text: replyTo.quote_text,
           entities: replyTo.quote_entities,
           offset: replyTo.quote_offset
-        }
+        },
+        replyToMonoforumPeerId: replyTo.monoforum_peer_id && getPeerId(replyTo.monoforum_peer_id)
       });
     }
 
@@ -2031,6 +2072,7 @@ export default class ChatInput {
     const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
 
     return () => {
+      const {isMonoforum, canManageDirectMessages, monoforumThreadId} = this.chat;
       // console.warn('[input] finishpeerchange start');
 
       chatInput.classList.remove('hide');
@@ -2142,6 +2184,10 @@ export default class ChatInput {
         this.unblockBtn.classList.toggle('hide', !good);
       }
 
+      if(this.chat) {
+        this.btnSuggestPost.classList.toggle('hide', !this.canShowSuggestPostButton(!!this.helperType));
+      }
+
       this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
 
       if(this.messageInput) {
@@ -2175,7 +2221,12 @@ export default class ChatInput {
 
       this._center(neededFakeContainer, false);
 
-      this.setStarsAmount(this.chat.starsAmount); // should reset when undefined
+      this.setStarsAmount(this.chat?.starsAmount); // should reset when undefined
+
+      this.directMessagesHandler.set({
+        isMonoforumAllChats: isMonoforum && canManageDirectMessages && !monoforumThreadId,
+        isReplying: !!this.helperType
+      });
       // console.warn('[input] finishpeerchange ends');
     };
   }
@@ -2270,6 +2321,12 @@ export default class ChatInput {
       key = 'Comment';
     } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
       key = 'ChannelBroadcast';
+    } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
+      key = this.directMessagesHandler.store.isSuggestingUneditablePostChange ?
+        'ChannelDirectMessages.CantChangeSuggestedPostMessage' :
+        this.chat.monoforumThreadId || this.directMessagesHandler.store.isReplying ?
+          'Message' :
+          'ChannelDirectMessages.ChooseMessage';
     } else if(
       (this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) ||
       await this.managers.appMessagesManager.isAnonymousSending(peerId)
@@ -3105,7 +3162,7 @@ export default class ChatInput {
     if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) {
       this.forwardStoryCallback?.(e as MouseEvent);
       return;
-    } else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId) {
+    } else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId || this.suggestedPost?.hasMedia) {
       if(this.recording) {
         if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
           this.onCancelRecordClick();
@@ -3367,6 +3424,8 @@ export default class ChatInput {
       possibleBtnMenuContainer = this.replyElements?.menuContainer;
     } else if(this.helperType === 'edit') {
       this.chat.setMessageId({lastMsgId: this.editMsgId});
+    } else if(this.helperType === 'suggested') {
+      this.openSuggestPostPopup(this.suggestedPost);
     } else if(!this.helperType) {
       possibleBtnMenuContainer = this.webPageElements?.container;
     }
@@ -3422,8 +3481,9 @@ export default class ChatInput {
   }
 
   public async createReplyPicker(replyTo: ChatInputReplyTo) {
-    const peerId = await PopupPickUser.createReplyPicker();
-    this.appImManager.setInnerPeer({peerId}).then(() => {
+    const {peerId, threadId, monoforumThreadId} = await PopupPickUser.createReplyPicker(this.chat.isMonoforum ? {excludeMonoforums: true} : undefined);
+    this.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId}).then(() => {
+      replyTo.replyToMonoforumPeerId = monoforumThreadId;
       this.appImManager.chat.input.initMessageReply(replyTo);
     });
   }
@@ -3433,8 +3493,8 @@ export default class ChatInput {
       return;
     }
 
-    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId} = this;
-    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId};
+    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId} = this;
+    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId};
   }
 
   public async clearInput(canSetDraft = true, fireEvent = true, clearValue = '') {
@@ -3481,7 +3541,7 @@ export default class ChatInput {
 
     if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) icon = 'forward';
     else if(this.editMsgId) icon = 'edit';
-    else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding) icon = this.chat.type === ChatType.Scheduled ? 'schedule' : 'send';
+    else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.suggestedPost?.hasMedia) icon = this.chat.type === ChatType.Scheduled ? 'schedule' : 'send';
     else icon = 'record';
 
     ['send', 'record', 'edit', 'schedule', 'forward'].forEach((i) => {
@@ -3523,13 +3583,13 @@ export default class ChatInput {
   public async setStarsAmount(starsAmount: number | undefined) {
     this.starsState.set({starsAmount});
 
+    // TODO: review this `|| true` WTF?
     const params = await this.getPlaceholderParams(await this.chat?.canSend('send_plain') || true);
     this.updateMessageInputPlaceholder(params);
   }
 
-  private constructStarsState = () => createRoot((dispose) => {
-    const middleware = this.getMiddleware();
-    middleware.onDestroy(() => void dispose());
+  private createStarsState = () => createRoot((dispose) => {
+    this.getMiddleware()?.onDestroy(() => void dispose());
 
     const [store, set] = createStore({
       inited: false,
@@ -3569,6 +3629,62 @@ export default class ChatInput {
     return {store, set};
   });
 
+  private createDirectMessagesHandler = () => createRoot((dispose) => {
+    this.getMiddleware()?.onDestroy(() => void dispose());
+
+    const [store, set] = createStore({
+      isMonoforumAllChats: false,
+      isReplying: false,
+      isSuggestingUneditablePostChange: false
+    });
+
+    createEffect(() => {
+      if(!store.isMonoforumAllChats) return;
+
+      this.getPlaceholderParams().then(params => this.updateMessageInputPlaceholder(params));
+
+      if(store.isReplying) return;
+
+      this.messageInputField?.input?.classList.add('hide')
+      this.attachMenu?.classList.add('hide');
+      this.messageInputField?.setHidden(true);
+      this.btnToggleEmoticons?.setAttribute('disabled', '');
+      this.autocompleteHelperController.hideOtherHelpers();
+      this.btnSend?.setAttribute('disabled', '');
+      this.btnSend?.classList.add('disabled');
+
+      onCleanup(() => {
+        this.messageInputField?.input?.classList.remove('hide');
+        this.attachMenu?.classList.remove('hide');
+        this.messageInputField?.setHidden(false);
+        this.btnToggleEmoticons?.removeAttribute('disabled');
+        this.btnSend?.removeAttribute('disabled');
+        this.btnSend?.classList.remove('disabled');
+      });
+    });
+
+    createEffect(() => {
+      this.getPlaceholderParams().then(params => this.updateMessageInputPlaceholder(params));
+
+      if(!store.isSuggestingUneditablePostChange) return;
+
+      this.messageInputField?.input?.classList.add('hide')
+      this.messageInputField?.setHidden(true);
+      this.btnToggleEmoticons?.setAttribute('disabled', '');
+      this.autocompleteHelperController.hideOtherHelpers();
+
+      onCleanup(() => {
+        this.messageInputField?.input?.classList.remove('hide');
+        this.messageInputField?.setHidden(false);
+        this.btnToggleEmoticons?.removeAttribute('disabled');
+      });
+    });
+
+    const canPaste = () => !store.isMonoforumAllChats || store.isReplying;
+
+    return {store, set, canPaste};
+  });
+
   private throttledSetMessageCountToBadgeState = asyncThrottle(async(value: string) => {
     if(!value?.trim()) {
       this.starsState.set({messageCount: 0});
@@ -3587,6 +3703,10 @@ export default class ChatInput {
     const totalEntities = mergeEntities(apiEntities, myEntities);
 
     return {value, totalEntities};
+  }
+
+  public canPaste() {
+    return this.directMessagesHandler.canPaste();
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
@@ -3694,7 +3814,7 @@ export default class ChatInput {
 
         return;
       }
-    } else if(trimmedValue) {
+    } else if(trimmedValue || this.suggestedPost?.hasMedia) {
       this.managers.appMessagesManager.sendText({
         ...sendingParams,
         text: value,
@@ -3711,6 +3831,7 @@ export default class ChatInput {
       } else {
         this.onMessageSent(false, false);
       }
+      if(this.suggestedPost) this.clearHelper();
       // this.onMessageSent();
     }
 
@@ -3870,6 +3991,43 @@ export default class ChatInput {
     f();
   }
 
+  public initSuggestPostChange(mid: number) {
+    const message = this.chat.getMessage(mid) as Message.message;
+    if(!message) return;
+
+    const monoforumThreadId = getPeerId(message.saved_peer_id);
+    if(!monoforumThreadId) return;
+
+    const input = wrapDraftText(message.message, {entities: message.totalEntities, wrappingForPeerId: this.chat.peerId});
+
+    const payload: SuggestedPostPayload = {
+      stars: message.suggested_post?.price?._ === 'starsAmount' ? +message.suggested_post.price.amount : undefined,
+      timestamp: message.suggested_post?.schedule_date && message.suggested_post.schedule_date * 1000 > Date.now() ?
+        message.suggested_post.schedule_date :
+        undefined,
+      changeMid: message.mid,
+      hasMedia: !!makeMessageMediaInputForSuggestedPost(message.media), // accept only supported media
+      monoforumThreadId
+    };
+
+    this.setTopInfo({
+      type: 'suggested',
+      callerFunc: () => {},
+      title: i18n('SuggestedPosts.SuggestChanges'),
+      subtitle: this.createSuggestedPostSubtitle(payload),
+      input,
+      message
+    });
+
+    this.suggestedPost = payload;
+
+    const isSuggestingUneditablePostChange = !!(message.media?._ === 'messageMediaDocument' && message.media.document?._ === 'document' && message.media.document.sticker);
+    this.directMessagesHandler.set({isSuggestingUneditablePostChange});
+    if(isSuggestingUneditablePostChange) {
+      this.openSuggestPostPopup(payload);
+    }
+  }
+
   public initMessagesForward(fromPeerIdsMids: {[fromPeerId: PeerId]: number[]}) {
     const f = async() => {
       // const peerTitles: string[]
@@ -3989,6 +4147,17 @@ export default class ChatInput {
     f();
   }
 
+  public getChatInputReplyToFromMessage(message: MyMessage, quote?: MessageSendingParams['replyToQuote']) {
+    const result: ChatInputReplyTo = {
+      replyToMsgId: message?.mid
+    };
+
+    if(quote) result.replyToQuote = quote;
+    if(message?._ === 'message' && message?.saved_peer_id) result.replyToMonoforumPeerId = getPeerId(message.saved_peer_id);
+
+    return result;
+  }
+
   public async initMessageReply(replyTo: ReturnType<ChatInput['getReplyTo']>) {
     if(deepEqual(this.getReplyTo(), replyTo)) {
       return;
@@ -4059,11 +4228,12 @@ export default class ChatInput {
   }
 
   public setReplyTo(replyTo: ChatInputReplyTo) {
-    const {replyToMsgId, replyToQuote, replyToPeerId, replyToStoryId} = replyTo || {};
+    const {replyToMsgId, replyToQuote, replyToPeerId, replyToStoryId, replyToMonoforumPeerId} = replyTo || {};
     this.replyToMsgId = replyToMsgId;
     this.replyToStoryId = replyToStoryId;
     this.replyToQuote = replyToQuote;
     this.replyToPeerId = replyToPeerId;
+    this.replyToMonoforumPeerId = replyToMonoforumPeerId;
     this.center(true);
   }
 
@@ -4083,6 +4253,13 @@ export default class ChatInput {
       this.forwarding = undefined;
     }
 
+    if(type !== 'suggested') {
+      this.suggestedPost = undefined;
+      this.btnSuggestPost.classList.toggle('hide', !this.canShowSuggestPostButton(false))
+      this.fileInput.multiple = true;
+      this.directMessagesHandler.set({isSuggestingUneditablePostChange: false});
+    }
+
     this.editMsgId = this.editMessage = undefined;
     this.helperType = this.helperFunc = undefined;
     this.setCurrentHover();
@@ -4098,6 +4275,8 @@ export default class ChatInput {
       this.chat.container.classList.remove('is-helper-active');
       this.t();
     }
+
+    if(!type) this.directMessagesHandler.set({isReplying: false});
   }
 
   private t() {
@@ -4159,6 +4338,12 @@ export default class ChatInput {
       this.helperFunc = callerFunc;
     }
 
+    if(type === 'suggested') {
+      this.fileInput.multiple = false;
+    }
+
+    this.btnSuggestPost?.classList.toggle('hide', !this.canShowSuggestPostButton(true));
+
     const replyParent = this.replyElements.container;
     const oldReply = replyParent.lastElementChild.previousElementSibling;
     const haveReply = oldReply.classList.contains('reply');
@@ -4204,6 +4389,69 @@ export default class ChatInput {
       this.updateSendBtn();
     }, 0);
 
+    this.directMessagesHandler.set({isReplying: true});
+
     return container;
+  }
+
+  private canShowSuggestPostButton(hasSuggestedHeader?: boolean) {
+    const canSuggest = this.chat.isMonoforum && (!!this.chat.monoforumThreadId || !this.chat.canManageDirectMessages);
+
+    return canSuggest && !hasSuggestedHeader;
+  }
+
+  public async openSuggestPostPopup(initial?: SuggestedPostPayload) {
+    const {default: SuggestPostPopup} = await import('./suggestPostPopup');
+    new SuggestPostPopup({HotReloadGuard: SolidJSHotReloadGuardProvider, suggestChange: !!initial?.changeMid, initialStars: initial?.stars, initialTimestamp: initial?.timestamp, onFinish: (payload) => {
+      const balance = +useStars()() || 0;
+      if(!this.chat.canManageDirectMessages && payload.stars && payload.stars > balance) {
+        PopupElement.createPopup(PopupStars);
+        return;
+      }
+
+      const message = initial?.changeMid ? this.chat.getMessage(initial.changeMid) as Message.message : undefined;
+
+      this.setTopInfo({
+        type: 'suggested',
+        callerFunc: () => { },
+        title: i18n('SuggestedPosts.SuggestAPost'),
+        subtitle: this.createSuggestedPostSubtitle(payload),
+        message
+      });
+
+      this.suggestedPost = {
+        ...initial,
+        ...payload
+      };
+
+      if(this.directMessagesHandler.store.isSuggestingUneditablePostChange) {
+        this.sendMessage();
+      }
+    }}).show();
+  }
+
+  private createSuggestedPostSubtitle(payload: SuggestedPostPayload) {
+    if(!payload.stars && !payload.timestamp) {
+      return payload.changeMid ?
+        i18n('SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditionsChange') :
+        i18n('SuggestedPosts.SuggestedAPostTopInfoSubtitle.NoConditions')
+    }
+
+    const element = document.createElement('div');
+    element.classList.add('suggested-post-subtitle');
+
+    if(payload.stars) {
+      const span = document.createElement('span');
+      span.append(i18n('Stars', [numberThousandSplitterForStars(payload.stars)]));
+      element.append(span);
+    }
+
+    if(payload.timestamp) {
+      const span = document.createElement('span');
+      span.append(wrapEmojiText('📅'), ' ', formatFullSentTime(payload.timestamp));
+      element.append(span);
+    }
+
+    return element;
   }
 }

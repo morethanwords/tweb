@@ -6,7 +6,7 @@ import type SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloa
 import {i18n} from '../../../../lib/langPack';
 
 import useStarsCommissionAndWithdrawalPrice from '../../../sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
-import {PromiseCollector} from '../../../sidebarLeft/tabs/solidJsTabs/promiseCollector';
+import {PromiseCollector} from '../../../solidJsTabs/promiseCollector';
 import StarRangeInput from '../../../sidebarLeft/tabs/privacy/messages/starsRangeInput';
 import StaticSwitch from '../../../staticSwitch';
 import Section from '../../../section';

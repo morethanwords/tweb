@@ -1,0 +1,65 @@
+.Container {
+  position: absolute;
+  inset: 0;
+
+  z-index: 1;
+  overflow: hidden;
+
+  pointer-events: none;
+}
+
+.InnerContainer {
+  --offset: 5rem;
+
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: calc(100% - var(--offset));
+
+  background-color: var(--surface-color);
+  border-left: 1px solid var(--border-color);
+
+  transition: 0.2s transform, 0.3s 0.2s box-shadow;
+
+  pointer-events: initial;
+
+
+  display: flex;
+  flex-direction: column;
+
+  /* box-shadow: 0px 0px 80px 20px rgba(var(--surface-color-rgb), 0.75); */
+
+  &.hidden {
+    transform: translateX(100%);
+    box-shadow: none;
+  }
+}
+
+.Header {
+  flex-grow: none;
+  flex-shrink: none;
+  padding: 0 0.75rem;
+}
+
+.TitleContainer {
+  flex: 1;
+  padding-left: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.Title {
+  font-weight: var(--font-weight-bold);
+}
+
+.Subtitle {
+  font-size: 14px;
+  color: var(--secondary-text-color);
+}
+
+.ScrollableContainer {
+  flex: 1;
+  position: relative;
+}

@@ -4,10 +4,9 @@ import {Transition} from 'solid-transition-group';
 
 import {i18n, join} from '../../../../../lib/langPack';
 
+import {useSuperTab} from '../../../../solidJsTabs/superTabProvider';
 import Section from '../../../../section';
 import Row from '../../../../rowTsx';
-
-import {useSuperTab} from '../../solidJsTabs/superTabProvider';
 
 import useStarsCommissionAndWithdrawalPrice from './useStarsCommissionAndWithdrawalPrice';
 import {MessagesTabStateStore, TRANSITION_TIME} from './config';

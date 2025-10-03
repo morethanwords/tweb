@@ -67,7 +67,7 @@ import isLegacyMessageId from './utils/messageId/isLegacyMessageId';
 import {joinDeepPath} from '../../helpers/object/setDeepProperty';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 import {LOCAL_ENTITIES} from '../richTextProcessor';
-import {isDialog, isSavedDialog, isForumTopic} from './utils/dialogs/isDialog';
+import {isDialog, isSavedDialog, isForumTopic, isMonoforumDialog} from './utils/dialogs/isDialog';
 import getDialogKey from './utils/dialogs/getDialogKey';
 import getHistoryStorageKey, {getSearchStorageFilterKey} from './utils/messages/getHistoryStorageKey';
 import {ApiLimitType} from '../mtproto/api_methods';
@@ -85,6 +85,9 @@ import RepayRequestHandler, {RepayRequest} from '../mtproto/repayRequestHandler'
 import canVideoBeAnimated from './utils/docs/canVideoBeAnimated';
 import getPhotoInput from './utils/photos/getPhotoInput';
 import {BatchProcessor} from '../../helpers/sortedList';
+import {increment, MonoforumDialog} from '../storages/monoforumDialogs';
+import formatStarsAmount from './utils/payments/formatStarsAmount';
+import {makeMessageMediaInputForSuggestedPost} from './utils/messages/makeMessageMediaInput';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -96,11 +99,14 @@ const DO_NOT_DELETE_MESSAGES = false;
 
 const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
 
+export const SUGGESTED_POST_MIN_THRESHOLD_SECONDS = 60; // avoid last minute suggests, or if the user was thinking a lot before clicking send
+
 export enum HistoryType {
   Chat,
   Thread,
   Topic,
-  Saved
+  Saved,
+  Monoforum
 };
 
 export type SendFileDetails = {
@@ -140,6 +146,7 @@ export type HistoryStorage = {
 
   type: 'history' | 'replies' | 'search',
   key: HistoryStorageKey,
+  wasFetched?: boolean;
 
   channelJoinedMid?: number,
   originalInsertSlice?: SlicedArray<number>['insertSlice'],
@@ -215,6 +222,14 @@ const processAfter = (cb: () => void) => {
   cb();
 };
 
+export type SuggestedPostPayload = {
+  stars?: number;
+  timestamp?: number;
+  changeMid?: number;
+  hasMedia?: boolean;
+  monoforumThreadId?: PeerId;
+};
+
 export type MessageSendingParams = Partial<{
   peerId: PeerId,
   threadId: number,
@@ -223,6 +238,7 @@ export type MessageSendingParams = Partial<{
   replyToQuote: {text: string, entities?: MessageEntity[], offset?: number},
   replyToPeerId: PeerId,
   replyTo: InputReplyTo,
+  replyToMonoforumPeerId: PeerId,
   scheduleDate: number,
   silent: boolean,
   sendAsPeerId: number,
@@ -230,7 +246,8 @@ export type MessageSendingParams = Partial<{
   savedReaction: Reaction[],
   invertMedia: boolean,
   effect: DocId,
-  confirmedPaymentResult: ConfirmedPaymentResult
+  confirmedPaymentResult: ConfirmedPaymentResult,
+  suggestedPost: SuggestedPostPayload
 }>;
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -250,6 +267,7 @@ export type RequestHistoryOptions = {
   addOffset?: number,
   offsetDate?: number,
   threadId?: number,
+  monoforumThreadId?: PeerId,
   // search
   nextRate?: number,
   folderId?: number,
@@ -271,6 +289,11 @@ export type RequestHistoryOptions = {
   searchType?: 'cached' | 'uncached'    // ! FOR INNER USE ONLY
 };
 
+type GetHistoryTypeOptions = {
+  threadId?: number;
+  monoforumPeerId?: number;
+};
+
 export type SearchStorageFilterKey = string;
 
 type GetUnreadMentionsOptions = {
@@ -288,6 +311,44 @@ type UploadThumbAndCoverArgs = {
 type UploadVideoCoverArgs = {
   peer: InputPeer;
   file: InputFile;
+};
+
+type ReadHistoryArgs = {
+  peerId: PeerId;
+  maxId?: number;
+  threadId?: number;
+  monoforumThreadId?: PeerId;
+  force?: boolean;
+};
+
+type MarkDialogUnreadArgs = {
+  peerId: PeerId;
+  read?: boolean;
+  monoforumThreadId?: PeerId;
+};
+
+type FlushHistoryArgs = {
+  peerId: PeerId;
+  justClear?: boolean;
+  revoke?: boolean;
+  threadOrSavedId?: number;
+  monoforumThreadId?: PeerId;
+};
+
+type DoFlushHistoryArgs = {
+  peerId: PeerId;
+  justClear?: boolean;
+  revoke?: boolean;
+  threadOrSavedId?: number;
+  monoforumThreadId?: PeerId;
+  participantPeerId?: PeerId;
+};
+
+type SendContactArgs = {
+  peerId: PeerId;
+  monoforumThreadId?: PeerId;
+  contactPeerId: PeerId;
+  confirmedPaymentResult?: ConfirmedPaymentResult;
 };
 
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
@@ -423,6 +484,8 @@ export class AppMessagesManager extends AppManager {
       updateReadHistoryOutbox: this.onUpdateReadHistory,
       updateReadChannelInbox: this.onUpdateReadHistory,
       updateReadChannelOutbox: this.onUpdateReadHistory,
+      updateReadMonoForumInbox: this.onUpdateReadHistory,
+      updateReadMonoForumOutbox: this.onUpdateReadHistory,
 
       updateChannelReadMessagesContents: this.onUpdateReadMessagesContents,
       updateReadMessagesContents: this.onUpdateReadMessagesContents,
@@ -495,7 +558,20 @@ export class AppMessagesManager extends AppManager {
       });
     });
 
-    this.rootScope.addEventListener('draft_updated', ({peerId, threadId, draft}) => {
+    this.rootScope.addEventListener('draft_updated', ({peerId, threadId, monoforumThreadId, draft}) => {
+      if(monoforumThreadId) {
+        const dialog = this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId);
+
+        if(!dialog) return;
+
+        dialog.draft = draft;
+        this.monoforumDialogsStorage.updateDialogIndex(dialog);
+
+        this.rootScope.dispatchEvent('monoforum_draft_update', {dialog});
+
+        return;
+      }
+
       const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
       if(dialog) {
         dialog.draft = draft;
@@ -772,7 +848,7 @@ export class AppMessagesManager extends AppManager {
     }>
   ): Promise<void> {
     let {peerId, text} = options;
-    if(!text.trim()) {
+    if(!text.trim() && !options.suggestedPost?.changeMid) {
       return;
     }
 
@@ -838,6 +914,13 @@ export class AppMessagesManager extends AppManager {
           allow_paid_stars: paidStars
         }, sentRequestOptions);
       } else {
+        let media: InputMedia | undefined;
+        if(options.suggestedPost?.changeMid) {
+          const changingMessage = this.getMessageByPeer(peerId, options.suggestedPost.changeMid);
+          if(changingMessage?._ === 'message')
+            media = makeMessageMediaInputForSuggestedPost(changingMessage.media)
+        }
+
         const commonOptions: Partial<MessagesSendMessage | MessagesSendMedia> = {
           peer: inputPeer,
           message: text,
@@ -851,7 +934,9 @@ export class AppMessagesManager extends AppManager {
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
           effect: options.effect,
-          allow_paid_stars: paidStars
+          allow_paid_stars: paidStars,
+          suggested_post: message.suggested_post,
+          media
         };
 
         const mergedOptions: MessagesSendMessage | MessagesSendMedia = {
@@ -860,7 +945,7 @@ export class AppMessagesManager extends AppManager {
         };
 
         apiPromise = this.apiManager.invokeApiAfter(
-          options.webPage ? 'messages.sendMedia' : 'messages.sendMessage',
+          options.webPage || media ? 'messages.sendMedia' : 'messages.sendMessage',
           mergedOptions,
           sentRequestOptions
         );
@@ -1418,7 +1503,8 @@ export class AppMessagesManager extends AppManager {
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: options.invertMedia,
           effect: options.effect,
-          allow_paid_stars: paidStars
+          allow_paid_stars: paidStars,
+          suggested_post: message.suggested_post
         }).then((updates) => {
           this.apiUpdatesManager.processUpdateMessage(updates)
           this.apiUpdatesManager.processPaidMessageUpdate({
@@ -1622,7 +1708,7 @@ export class AppMessagesManager extends AppManager {
 
     if(options.clearDraft) {
       callbacks.push(() => {
-        this.appDraftsManager.clearDraft(peerId, options.threadId);
+        this.appDraftsManager.clearDraft({peerId, threadId: options.threadId, monoforumThreadId: options.replyToMonoforumPeerId});
       });
     }
 
@@ -1792,8 +1878,13 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public sendContact(peerId: PeerId, contactPeerId: PeerId, confirmedPaymentResult?: ConfirmedPaymentResult) {
-    return this.sendOther({peerId, inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId), confirmedPaymentResult});
+  public sendContact({peerId, contactPeerId, monoforumThreadId, confirmedPaymentResult}: SendContactArgs) {
+    return this.sendOther({
+      peerId,
+      inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId),
+      replyToMonoforumPeerId: monoforumThreadId,
+      confirmedPaymentResult
+    });
   }
 
   public sendOther(
@@ -2048,6 +2139,9 @@ export class AppMessagesManager extends AppManager {
     } else if(options.replyToMsgId) {
       return {
         _: 'inputReplyToMessage',
+        monoforum_peer_id: this.appPeersManager.canManageDirectMessages(options.peerId) && options.replyToMonoforumPeerId ?
+          this.appPeersManager.getInputPeerById(options.replyToMonoforumPeerId) :
+          undefined,
         reply_to_msg_id: getServerMessageId(options.replyToMsgId),
         reply_to_peer_id: options.replyToPeerId && this.appPeersManager.getInputPeerById(options.replyToPeerId),
         top_msg_id: options.threadId ? getServerMessageId(options.threadId) : undefined,
@@ -2056,6 +2150,11 @@ export class AppMessagesManager extends AppManager {
           quote_entities: options.replyToQuote.entities,
           quote_offset: options.replyToQuote.offset
         })
+      };
+    } else if(this.appPeersManager.canManageDirectMessages(options.peerId) && options.replyToMonoforumPeerId) {
+      return {
+        _: 'inputReplyToMonoForum',
+        monoforum_peer_id: this.appPeersManager.getInputPeerById(options.replyToMonoforumPeerId)
       };
     }
   }
@@ -2085,7 +2184,10 @@ export class AppMessagesManager extends AppManager {
     const messageId = message.id;
     const peerId = this.getMessagePeer(message);
     const storage = options.isScheduled ? this.getScheduledMessagesStorage(peerId) : this.getHistoryMessagesStorage(peerId);
+    const monoforumThreadId = message.saved_peer_id ? this.appPeersManager.getPeerId(message.saved_peer_id) : undefined;
+
     message.storageKey = storage.key;
+
     const callbacks: Array<() => void> = [];
     if(options.isScheduled && !options.noOutgoingMessage) {
       // if(!options.isGroupedItem) {
@@ -2115,6 +2217,10 @@ export class AppMessagesManager extends AppManager {
         if(dialog) {
           this.setDialogTopMessage(message, dialog);
         }
+      }
+
+      if(monoforumThreadId) {
+        this.monoforumDialogsStorage.checkLastMessageForExistingDialog(message);
       }
 
       callbacks.push(() => {
@@ -2158,7 +2264,11 @@ export class AppMessagesManager extends AppManager {
     if(!options.isGroupedItem && message.send) {
       callbacks.push(() => {
         if(options.clearDraft) {
-          this.appDraftsManager.clearDraft(peerId, options.threadId);
+          this.appDraftsManager.clearDraft({
+            peerId,
+            threadId: options.threadId,
+            monoforumThreadId
+          });
         }
         if(DO_NOT_SEND_MESSAGES) return;
 
@@ -2215,10 +2325,29 @@ export class AppMessagesManager extends AppManager {
       topMessage = historyStorage.history.first[0];
     }
 
+    let media: MessageMedia;
+    if(options.suggestedPost?.changeMid) {
+      const changingMessage = this.getMessageByPeer(peerId, options.suggestedPost.changeMid);
+
+      if(changingMessage?._ === 'message' && makeMessageMediaInputForSuggestedPost(changingMessage.media)) {
+        media = changingMessage.media;
+      }
+    }
+
+    let fromId;
+
+    if(this.appPeersManager.isMonoforum(peerId) && this.appPeersManager.canManageDirectMessages(peerId)) {
+      const chat = this.appChatsManager.getChat(peerId.toChatId());
+      const linkedChannelId = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id?.toPeerId?.(true) || undefined;
+      fromId = this.appPeersManager.getOutputPeer(linkedChannelId);
+    } else {
+      fromId = options.sendAsPeerId ? this.appPeersManager.getOutputPeer(options.sendAsPeerId) : this.generateFromId(peerId);
+    }
+
     const message: Message.message = {
       _: 'message',
       id: this.generateTempMessageId(peerId, topMessage),
-      from_id: options.sendAsPeerId ? this.appPeersManager.getOutputPeer(options.sendAsPeerId) : this.generateFromId(peerId),
+      from_id: fromId,
       peer_id: this.appPeersManager.getOutputPeer(peerId),
       post_author: postAuthor,
       pFlags: this.generateFlags(peerId),
@@ -2233,7 +2362,17 @@ export class AppMessagesManager extends AppManager {
       views: isBroadcast && 1,
       pending: true,
       effect: options.effect,
-      paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined
+      paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined,
+      saved_peer_id: options.replyToMonoforumPeerId ? this.appPeersManager.getOutputPeer(options.replyToMonoforumPeerId) : undefined,
+      media,
+      suggested_post: options.suggestedPost ? {
+        _: 'suggestedPost',
+        pFlags: {},
+        price: options.suggestedPost.stars ? formatStarsAmount(options.suggestedPost.stars) : undefined,
+        schedule_date: options.suggestedPost.timestamp && options.suggestedPost.timestamp >= tsNow(true) + SUGGESTED_POST_MIN_THRESHOLD_SECONDS ?
+          options.suggestedPost.timestamp :
+          undefined
+      } : undefined
     };
 
     defineNotNumerableProperties(message, ['send', 'promise']);
@@ -2267,7 +2406,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     if(replyTo._ === 'inputReplyToMonoForum') {
-      throw new Error('Monoforum is not supported');
+      return;
     }
 
     if(replyTo._ === 'inputReplyToStory') {
@@ -3129,7 +3268,8 @@ export class AppMessagesManager extends AppManager {
       drop_media_captions: options.dropCaptions,
       send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
       top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined,
-      allow_paid_stars: paidStars
+      allow_paid_stars: paidStars,
+      reply_to: this.getInputReplyTo({peerId, replyToMonoforumPeerId: options.replyToMonoforumPeerId})
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates);
@@ -3671,13 +3811,7 @@ export class AppMessagesManager extends AppManager {
     return promise || this.reloadConversationsPromise;
   }
 
-  public doFlushHistory(
-    peerId: PeerId,
-    just_clear?: boolean,
-    revoke?: boolean,
-    threadOrSavedId?: number,
-    participantPeerId?: PeerId
-  ): Promise<true> {
+  public doFlushHistory({peerId, justClear, revoke, threadOrSavedId, participantPeerId, monoforumThreadId}: DoFlushHistoryArgs): Promise<true> {
     const isSavedDialog = this.appPeersManager.isSavedDialog(peerId, threadOrSavedId);
     let promise: Promise<true>;
     const processResult = (affectedHistory: MessagesAffectedHistory) => {
@@ -3689,7 +3823,9 @@ export class AppMessagesManager extends AppManager {
 
       if(!affectedHistory.offset) {
         let filterMessage: (message: MyMessage) => boolean;
-        if(participantPeerId) {
+        if(monoforumThreadId) {
+          filterMessage = (message) => this.appPeersManager.getPeerId(message.saved_peer_id) === monoforumThreadId;
+        } else if(participantPeerId) {
           filterMessage = (message) => message.fromId === participantPeerId;
         } else if(isSavedDialog) {
           filterMessage = (message) => {
@@ -3728,10 +3864,20 @@ export class AppMessagesManager extends AppManager {
         return true;
       }
 
-      return this.doFlushHistory(peerId, just_clear, revoke, threadOrSavedId);
+      return this.doFlushHistory({peerId, justClear, revoke, threadOrSavedId, monoforumThreadId});
     };
 
-    if(participantPeerId) {
+    if(monoforumThreadId) {
+      promise = this.apiManager.invokeApiSingleProcess({
+        method: 'messages.deleteSavedHistory',
+        params: {
+          parent_peer: this.appPeersManager.getInputPeerById(peerId),
+          peer: this.appPeersManager.getInputPeerById(monoforumThreadId),
+          max_id: 0
+        },
+        processResult
+      });
+    } else if(participantPeerId) {
       promise = this.apiManager.invokeApiSingleProcess({
         method: 'channels.deleteParticipantHistory',
         params: {
@@ -3744,7 +3890,7 @@ export class AppMessagesManager extends AppManager {
       promise = this.apiManager.invokeApiSingleProcess({
         method: 'messages.deleteHistory',
         params: {
-          just_clear,
+          just_clear: justClear,
           revoke,
           peer: this.appPeersManager.getInputPeerById(peerId),
           max_id: 0
@@ -3774,13 +3920,8 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
-  public async flushHistory(
-    peerId: PeerId,
-    justClear?: boolean,
-    revoke?: boolean,
-    threadOrSavedId?: number
-  ) {
-    if(this.appPeersManager.isChannel(peerId) && !threadOrSavedId) {
+  public async flushHistory({peerId, justClear, revoke, threadOrSavedId, monoforumThreadId}: FlushHistoryArgs) {
+    if(this.appPeersManager.isChannel(peerId) && !threadOrSavedId && !monoforumThreadId) {
       const promise = this.getHistory({
         peerId,
         offsetId: 0,
@@ -3807,7 +3948,12 @@ export class AppMessagesManager extends AppManager {
       });
     }
 
-    return this.doFlushHistory(peerId, justClear, revoke, threadOrSavedId).then(() => {
+    return this.doFlushHistory({peerId, justClear, revoke, threadOrSavedId, monoforumThreadId}).then(() => {
+      if(monoforumThreadId) {
+        this.monoforumDialogsStorage.dropDeletedDialogs(peerId, [monoforumThreadId]);
+        return;
+      }
+
       if(!threadOrSavedId) {
         this.flushStoragesByPeerId(peerId);
       }
@@ -4713,19 +4859,23 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public async markDialogUnread(peerId: PeerId, read?: boolean) {
-    const dialog = this.getDialogOnly(peerId);
+  public async markDialogUnread({peerId, read, monoforumThreadId}: MarkDialogUnreadArgs) {
+    const dialog = monoforumThreadId ?
+      this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
+      this.getDialogOnly(peerId);
+
     if(!dialog) return Promise.reject();
 
     if(
       this.appPeersManager.isForum(peerId) &&
+      dialog._ === 'dialog' &&
       !dialog.pFlags.view_forum_as_messages &&
       (read || await this.dialogsStorage.getForumUnreadCount(peerId))
     ) {
       const folder = this.dialogsStorage.getFolder(peerId);
       for(const topicId of folder.unreadPeerIds) {
         const forumTopic = this.dialogsStorage.getForumTopic(peerId, topicId);
-        this.readHistory(peerId, forumTopic.top_message, topicId, true);
+        this.readHistory({peerId, maxId: forumTopic.top_message, threadId: topicId, force: true});
       }
       return;
     }
@@ -4733,20 +4883,33 @@ export class AppMessagesManager extends AppManager {
     const unread = read || dialog.pFlags?.unread_mark ? undefined : true;
 
     if(!unread && dialog.unread_count) {
-      const promise = this.readHistory(peerId, dialog.top_message, undefined, true);
+      const promise = this.readHistory({
+        peerId,
+        monoforumThreadId,
+        maxId: dialog.top_message,
+        force: true
+      });
       if(!dialog.pFlags.unread_mark) {
         return promise;
       }
     }
 
     return this.apiManager.invokeApi('messages.markDialogUnread', {
-      peer: this.appPeersManager.getInputDialogPeerById(peerId),
+      parent_peer: monoforumThreadId ?
+        this.appPeersManager.getInputPeerById(peerId) :
+        undefined,
+      peer: monoforumThreadId ?
+        this.appPeersManager.getInputDialogPeerById(monoforumThreadId) :
+        this.appPeersManager.getInputDialogPeerById(peerId),
       unread
     }).then(() => {
       const pFlags: Update.updateDialogUnreadMark['pFlags'] = unread ? {unread} : {};
       this.onUpdateDialogUnreadMark({
         _: 'updateDialogUnreadMark',
         peer: this.appPeersManager.getDialogPeer(peerId),
+        saved_peer_id: monoforumThreadId ?
+          this.appPeersManager.getOutputPeer(monoforumThreadId) :
+          undefined,
         pFlags
       });
     });
@@ -4819,9 +4982,11 @@ export class AppMessagesManager extends AppManager {
           true
       ) && message.pFlags.out;
 
+    const cannotManageDirectMessages = this.appPeersManager.isMonoforum(message.peerId) && !this.appPeersManager.canManageDirectMessages(message.peerId);
+
     if(
       !canEditMessageInPeer || (
-        message.peer_id._ !== 'peerChannel' &&
+        (message.peer_id._ !== 'peerChannel' || cannotManageDirectMessages) &&
         message.date < (tsNow(true) - (await this.apiManager.getConfig()).edit_time_limit) &&
         (message as Message.message).media?._ !== 'messageMediaPoll'
       )
@@ -4955,7 +5120,7 @@ export class AppMessagesManager extends AppManager {
     if(options.isCacheableSearch) {
       searchStorage = this.searchesStorage[key] ??= this.createHistoryStorage(o);
     } else {
-      searchStorage = ((this.searchesStorage[options.peerId] ??= {})[options.threadId] ??= {})[filter] ??= this.createHistoryStorage(o);
+      searchStorage = ((this.searchesStorage[options.peerId] ??= {})[options.threadId || options.monoforumThreadId] ??= {})[filter] ??= this.createHistoryStorage(o);
     }
     if(options.isCacheableSearch) { // * don't update messages list if it's a global search
       if(!searchStorage.searchHistory) {
@@ -5028,7 +5193,7 @@ export class AppMessagesManager extends AppManager {
       }));
     }
 
-    const historyType = this.getHistoryType(peerId, threadId);
+    const historyType = this.getHistoryType(peerId, {threadId});
     const migration = this.getMigration(peerId);
 
     const method = 'messages.getSearchCounters';
@@ -5222,7 +5387,7 @@ export class AppMessagesManager extends AppManager {
         const threadOrSavedId = isObject ? getDialogKey(dialog) : dialog;
         const map: Map<number, ForumTopic | SavedDialog> = this.getHistoryType(
           peerId,
-          threadOrSavedId
+          {threadId: threadOrSavedId}
         ) === HistoryType.Saved ?
           obj.saved ??= new Map() :
           obj.topics ??= new Map();
@@ -5323,7 +5488,7 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises).then(noop);
   }
 
-  public readHistory(peerId: PeerId, maxId = 0, threadId?: number, force = false) {
+  public readHistory({peerId, maxId = 0, threadId, monoforumThreadId, force = false}: ReadHistoryArgs) {
     if(DO_NOT_READ_HISTORY) {
       return Promise.resolve();
     }
@@ -5342,7 +5507,10 @@ export class AppMessagesManager extends AppManager {
       if(!force) {
         const dialog = this.appChatsManager.isForum(peerId.toChatId()) && threadId ?
           this.dialogsStorage.getForumTopic(peerId, threadId) :
-          this.getDialogOnly(peerId);
+          this.appPeersManager.isMonoforum(peerId) && monoforumThreadId ?
+            this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
+            this.getDialogOnly(peerId);
+
         if(dialog && this.isDialogUnread(dialog)) {
           force = true;
         }
@@ -5354,14 +5522,29 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    const historyStorage = this.getHistoryStorage(peerId, threadId);
+    const historyStorage = this.getHistoryStorage(peerId, threadId || monoforumThreadId);
 
     if(historyStorage.triedToReadMaxId >= maxId) {
       return Promise.resolve();
     }
 
     let apiPromise: Promise<any>;
-    if(threadId) {
+    if(monoforumThreadId) {
+      if(!historyStorage.readPromise) {
+        apiPromise = this.apiManager.invokeApi('messages.readSavedHistory', {
+          parent_peer: this.appPeersManager.getInputPeerById(peerId),
+          peer: this.appPeersManager.getInputPeerById(monoforumThreadId),
+          max_id: getServerMessageId(maxId)
+        });
+      }
+
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateReadMonoForumInbox',
+        read_max_id: maxId,
+        channel_id: peerId.toChatId(),
+        saved_peer_id: this.appPeersManager.getOutputPeer(monoforumThreadId)
+      });
+    } else if(threadId) {
       if(!historyStorage.readPromise) {
         apiPromise = this.apiManager.invokeApi('messages.readDiscussion', {
           peer: this.appPeersManager.getInputPeerById(peerId),
@@ -5431,7 +5614,7 @@ export class AppMessagesManager extends AppManager {
       this.log('readHistory: promise finally', maxId, readMaxId);
 
       if(readMaxId > maxId) {
-        this.readHistory(peerId, readMaxId, threadId, true);
+        this.readHistory({peerId, maxId: readMaxId, threadId, force: true});
       }
     });
 
@@ -5441,7 +5624,7 @@ export class AppMessagesManager extends AppManager {
   public readAllHistory(peerId: PeerId, threadId?: number, force = false) {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
     if(historyStorage.maxId) {
-      this.readHistory(peerId, historyStorage.maxId, threadId, force); // lol
+      this.readHistory({peerId, maxId: historyStorage.maxId, threadId, force}); // lol
     }
   }
 
@@ -5825,6 +6008,7 @@ export class AppMessagesManager extends AppManager {
       history: new SlicedArray(),
       type: options.type,
       key: getHistoryStorageKey(options),
+      wasFetched: false,
       _maxId: undefined,
       _count: null,
       get count() {
@@ -6024,7 +6208,9 @@ export class AppMessagesManager extends AppManager {
     const isForum = this.appPeersManager.isForum(peerId);
     const threadKey = this.getThreadKey(message);
     const threadId = threadKey ? +threadKey.split('_')[1] : undefined;
+
     const dialog = this.dialogsStorage.getAnyDialog(peerId, isLocalThreadUpdate ? threadId : undefined);
+
 
     if((!dialog || this.reloadConversationsPeers.has(peerId)) && !isLocalThreadUpdate) {
       let good = true;
@@ -6097,6 +6283,13 @@ export class AppMessagesManager extends AppManager {
 
           this.dialogsStorage.processTopicUpdate(topic, oldTopic);
         }
+      }
+
+      if(action._ === 'messageActionPaidMessagesPrice' && this.appPeersManager.isBroadcast(message?.peerId)) {
+        const chat = this.appChatsManager.getChat(message.peerId.toChatId());
+        const linkedChatId = chat?._ === 'channel' && !chat?.pFlags?.monoforum && chat?.linked_monoforum_id;
+
+        if(linkedChatId) this.reloadConversation(linkedChatId.toPeerId(true));
       }
     }
 
@@ -6252,15 +6445,25 @@ export class AppMessagesManager extends AppManager {
 
       this.notificationsHandlePromise ??= ctx.setTimeout(this.handleNotifications, 0);
     }
+
+    const isMonoforumMessage = message.peerId !== this.rootScope.myId && message.saved_peer_id;
+
+    if(isMonoforumMessage) {
+      this.monoforumDialogsStorage.checkLastMessageForExistingDialog(message);
+    }
   };
 
   private onUpdateMessageReactions = (update: Update.updateMessageReactions) => {
-    const {peer, msg_id, top_msg_id, reactions} = update;
+    const {peer, msg_id, top_msg_id, saved_peer_id, reactions} = update;
     const channelId = (peer as Peer.peerChannel).channel_id;
     const mid = this.appMessagesIdsManager.generateMessageId(msg_id, channelId);
     const threadId = this.appMessagesIdsManager.generateMessageId(top_msg_id, channelId);
     const peerId = this.appPeersManager.getPeerId(peer);
+    const monoforumThreadId = this.appPeersManager.getPeerId(saved_peer_id);
     const message: MyMessage = this.getMessageByPeer(peerId, mid);
+
+    // TODO: Check if we can avoid refetching the dialog in case we have enough messages to measure the changes ourselves
+    if(monoforumThreadId) this.monoforumDialogsStorage.updateDialogIfExists(peerId, monoforumThreadId);
 
     if(!message) {
       this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, force: true});
@@ -6317,10 +6520,18 @@ export class AppMessagesManager extends AppManager {
   private onUpdateDialogUnreadMark = (update: Update.updateDialogUnreadMark) => {
     // this.log('updateDialogUnreadMark', update);
     const peerId = this.appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
+    const monoforumThreadId = this.appPeersManager.getPeerId(update.saved_peer_id);
+
     const dialog = this.getDialogOnly(peerId);
 
     if(!dialog) {
       this.scheduleHandleNewDialogs(peerId);
+    } else if(monoforumThreadId) {
+      this.monoforumDialogsStorage.updateDialogUnreadMark({
+        parentPeerId: peerId,
+        peerId: monoforumThreadId,
+        unread: !!update?.pFlags?.unread
+      });
     } else {
       const releaseUnreadCount = this.dialogsStorage.prepareDialogUnreadCountModifying(dialog);
 
@@ -6428,21 +6639,33 @@ export class AppMessagesManager extends AppManager {
     if(map.size) {
       this.rootScope.dispatchEvent('dialogs_multiupdate', map);
     }
+
+    if(message.saved_peer_id && peerId !== this.rootScope.myId) {
+      const monoforumThreadId = this.appPeersManager.getPeerId(message.saved_peer_id);
+      const monoforumDialog = this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId);
+
+      if(monoforumDialog?.top_message === mid)
+        this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: [monoforumDialog]})
+    }
   };
 
   private onUpdateReadHistory = (update: Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox
     | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox
-    | Update.updateReadChannelInbox | Update.updateReadChannelOutbox) => {
+    | Update.updateReadChannelInbox | Update.updateReadChannelOutbox
+    | Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox) => {
     const channelId = (update as Update.updateReadChannelInbox).channel_id;
     const maxId = this.appMessagesIdsManager.generateMessageId((update as Update.updateReadChannelInbox).max_id || (update as Update.updateReadChannelDiscussionInbox).read_max_id, channelId);
     const threadId = this.appMessagesIdsManager.generateMessageId((update as Update.updateReadChannelDiscussionInbox).top_msg_id, channelId);
+    const monoforumThreadId = this.appPeersManager.getPeerId((update as Update.updateReadMonoForumInbox).saved_peer_id);
     const peerId = channelId ? channelId.toPeerId(true) : this.appPeersManager.getPeerId((update as Update.updateReadHistoryInbox).peer);
 
     const isOut = update._ === 'updateReadHistoryOutbox' ||
       update._ === 'updateReadChannelOutbox' ||
-      update._ === 'updateReadChannelDiscussionOutbox' ? true : undefined;
+      update._ === 'updateReadChannelDiscussionOutbox' ||
+      update._ === 'updateReadMonoForumOutbox' ? true : undefined;
 
     const isForum = channelId ? this.appChatsManager.isForum(channelId) : false;
+    const isMonoforum = channelId ? this.appChatsManager.isMonoforum(channelId) : false;
     const storage = this.getHistoryMessagesStorage(peerId);
     const history = getObjectKeysAndSort(storage, 'desc');
     const foundDialog = threadId && isForum ?
@@ -6455,7 +6678,7 @@ export class AppMessagesManager extends AppManager {
 
     // this.log.warn(dT(), 'read', peerId, isOut ? 'out' : 'in', maxId)
 
-    const historyStorage = this.getHistoryStorage(peerId, threadId);
+    const historyStorage = this.getHistoryStorage(peerId, threadId || monoforumThreadId);
 
     if(peerId.isUser() && isOut) {
       this.appUsersManager.forceUserOnline(peerId.toUserId());
@@ -6470,7 +6693,8 @@ export class AppMessagesManager extends AppManager {
     }
 
     const releaseUnreadCount = foundDialog && this.dialogsStorage.prepareDialogUnreadCountModifying(foundDialog);
-    const readMaxId = this.getReadMaxIdIfUnread(peerId, threadId);
+    const readMaxId = this.getReadMaxIdIfUnread(peerId, threadId || monoforumThreadId);
+    const monoforumDialogsTouched: Record<PeerId, MonoforumDialog> = {};
 
     for(let i = 0, length = history.length; i < length; i++) {
       const mid = history[i];
@@ -6485,7 +6709,10 @@ export class AppMessagesManager extends AppManager {
       }
 
       const messageThreadId = getMessageThreadId(message, isForum);
-      if(threadId && messageThreadId !== threadId) {
+
+
+      if(threadId && messageThreadId !== threadId ||
+        monoforumThreadId && messageThreadId !== monoforumThreadId) {
         continue;
       }
 
@@ -6509,6 +6736,17 @@ export class AppMessagesManager extends AppManager {
         if(isMentionUnread(message)) {
           newUnreadMentionsCount = --foundDialog.unread_mentions_count;
           this.modifyCachedMentions({peerId, mid: message.mid, add: false});
+        }
+      }
+
+      if(isMonoforum) {
+        const monoforumDialog = this.monoforumDialogsStorage.getDialogByParent(peerId, messageThreadId);
+        if(!message.pFlags.out && monoforumDialog) {
+          monoforumDialogsTouched[monoforumDialog.peerId] = monoforumDialog;
+          increment(monoforumDialog, 'unread_count', -1);
+          if(isMentionUnread(message)) {
+            increment(monoforumDialog, 'unread_reactions_count', -1);
+          }
         }
       }
 
@@ -6573,6 +6811,11 @@ export class AppMessagesManager extends AppManager {
           this.rootScope.dispatchEvent('replies_updated', this.getMessageByPeer(peerId.toPeerId(), +mid) as Message.message);
         }
       }
+    }
+
+    const monoforumDialogs = Object.values(monoforumDialogsTouched);
+    if(monoforumDialogs.length) {
+      this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs: monoforumDialogs});
     }
   };
 
@@ -6641,7 +6884,12 @@ export class AppMessagesManager extends AppManager {
       return this.appPeersManager.getPeerId(params.peer) === peerId;
     });
 
-    const threadKeys = new Set<string>(), virtual = new Map<number, ForumTopic | SavedDialog>();
+    const
+      threadKeys = new Set<string>(),
+      virtual = new Map<number, ForumTopic | SavedDialog>(),
+      monoforumDialogs: MonoforumDialog[] = []
+    ;
+
     for(const mid of mids) {
       const message = this.getMessageByPeer(peerId, mid);
       const threadKey = this.getThreadKey(message);
@@ -6650,6 +6898,10 @@ export class AppMessagesManager extends AppManager {
       }
 
       const threadId = +threadKey.split('_')[1];
+
+      const monoforumDialog = this.monoforumDialogsStorage.getDialogByParent(peerId, threadId);
+      monoforumDialog && monoforumDialogs.push(monoforumDialog);
+
       if(this.threadsStorage[peerId]?.[threadId]) {
         threadKeys.add(threadKey);
 
@@ -6739,6 +6991,11 @@ export class AppMessagesManager extends AppManager {
 
       this.dialogsStorage.setDialogToState(dialog);
     });
+
+    for(const {parentPeerId, peerId} of monoforumDialogs) {
+      // TODO: Do not refetch if the top_message was not deleted or the new top_message is cached
+      this.monoforumDialogsStorage.updateDialogsByPeerId({parentPeerId, ids: [peerId]});
+    }
   };
 
   private onUpdateChannel = (update: Update.updateChannel) => {
@@ -7366,7 +7623,8 @@ export class AppMessagesManager extends AppManager {
       !message.pFlags.out ||
       message.pFlags.unread ||
       message.peerId === this.appPeersManager.peerId ||
-      this.appPeersManager.isBroadcast(message.peerId)
+      this.appPeersManager.isBroadcast(message.peerId) ||
+      this.appPeersManager.isMonoforum(message.peerId)
     ) {
       return false;
     }
@@ -7457,6 +7715,7 @@ export class AppMessagesManager extends AppManager {
 
   public getScheduledMessages(peerId: PeerId) {
     if(!this.canSendToPeer(peerId)) return;
+    if(this.appPeersManager.isMonoforum(peerId)) return;
 
     const storage = this.getScheduledMessagesStorage(peerId);
     if(storage.size) {
@@ -7550,7 +7809,9 @@ export class AppMessagesManager extends AppManager {
     return next || prev ? {next, prev} : undefined;
   }
 
-  public getHistoryType(peerId: PeerId, threadId?: number) {
+  public getHistoryType(peerId: PeerId, {threadId, monoforumPeerId}: GetHistoryTypeOptions = {}) {
+    if(monoforumPeerId) return HistoryType.Monoforum;
+
     if(threadId) {
       if(peerId.isUser()) {
         return HistoryType.Saved;
@@ -7566,7 +7827,7 @@ export class AppMessagesManager extends AppManager {
 
   public processRequestHistoryOptions(options: RequestHistoryOptions & {backLimit?: number, historyStorage?: HistoryStorage}) {
     options.offsetId ??= 0;
-    options.historyType ??= this.getHistoryType(options.peerId, options.threadId);
+    options.historyType ??= this.getHistoryType(options.peerId, {threadId: options.threadId, monoforumPeerId: options.monoforumThreadId});
     options.searchType ??= getSearchType(options);
     if(options.savedReaction) {
       options.savedReaction = options.savedReaction.filter(Boolean);
@@ -7592,7 +7853,7 @@ export class AppMessagesManager extends AppManager {
 
     options.historyStorage ??= options.searchType ?
       this.getSearchStorage(options) :
-      this.getHistoryStorage(options.peerId, options.threadId);
+      this.getHistoryStorage(options.peerId, options.monoforumThreadId || options.threadId);
 
     return options;
   }
@@ -7602,7 +7863,8 @@ export class AppMessagesManager extends AppManager {
    */
   public getHistory(options: RequestHistoryOptions & {
     backLimit?: number,
-    historyStorage?: HistoryStorage
+    historyStorage?: HistoryStorage,
+    fetchIfWasNotFetched?: boolean
   }): Promise<HistoryResult> | HistoryResult {
     this.processRequestHistoryOptions(options);
 
@@ -7637,8 +7899,11 @@ export class AppMessagesManager extends AppManager {
       return haveSlice;
     };
 
+    const willFill = options.fetchIfWasNotFetched && !historyStorage.wasFetched;
+
     const haveSlice = getPossibleSlice();
     if(
+      !willFill &&
       haveSlice &&
       (haveSlice.slice.length === limit || (haveSlice.fulfilled & SliceEnd.Both) === SliceEnd.Both) &&
       (!needRealOffsetIdOffset || haveSlice.slice.isEnd(SliceEnd.Bottom))
@@ -7915,6 +8180,8 @@ export class AppMessagesManager extends AppManager {
       peerId: requestPeerId
     });
 
+    historyStorage.wasFetched = true;
+
     const {
       count,
       isBottomEnd,
@@ -8136,6 +8403,7 @@ export class AppMessagesManager extends AppManager {
     addOffset = 0,
     offsetDate = 0,
     threadId = 0,
+    monoforumThreadId,
 
     offsetPeerId,
     nextRate,
@@ -8144,7 +8412,7 @@ export class AppMessagesManager extends AppManager {
     inputFilter,
     minDate,
     maxDate,
-    historyType = this.getHistoryType(peerId, threadId),
+    historyType = this.getHistoryType(peerId, {threadId}),
     chatType,
     fromPeerId,
     savedReaction,
@@ -8187,6 +8455,12 @@ export class AppMessagesManager extends AppManager {
       method = 'channels.searchPosts';
       options = searchOptions;
     } else if(inputFilter && peerId && !nextRate && folderId === undefined/*  || !query */) {
+      const savedPeerIdInput = monoforumThreadId ?
+        this.appPeersManager.getInputPeerById(monoforumThreadId) :
+        historyType === HistoryType.Saved ?
+          this.appPeersManager.getInputPeerById(threadId) :
+          undefined;
+
       const searchOptions: MessagesSearch = {
         ...commonOptions,
         q: query || '',
@@ -8194,7 +8468,7 @@ export class AppMessagesManager extends AppManager {
         min_date: minDate,
         max_date: maxDate,
         top_msg_id: historyType === HistoryType.Saved ? undefined : threadId,
-        saved_peer_id: historyType === HistoryType.Saved ? this.appPeersManager.getInputPeerById(threadId) : undefined,
+        saved_peer_id: savedPeerIdInput,
         from_id: fromPeerId ? this.appPeersManager.getInputPeerById(fromPeerId) : undefined,
         saved_reaction: savedReaction
       };
@@ -8226,6 +8500,15 @@ export class AppMessagesManager extends AppManager {
 
       method = 'messages.getReplies';
       options = getRepliesOptions;
+    } else if(historyType === HistoryType.Monoforum) {
+      const getSavedHistoryOptions: MessagesGetSavedHistory = {
+        ...commonOptions,
+        parent_peer: this.appPeersManager.getInputPeerById(peerId),
+        peer: this.appPeersManager.getInputPeerById(monoforumThreadId)
+      };
+
+      method = 'messages.getSavedHistory';
+      options = getSavedHistoryOptions;
     } else if(historyType === HistoryType.Saved) {
       const getSavedHistoryOptions: MessagesGetSavedHistory = {
         ...commonOptions,
@@ -8511,7 +8794,8 @@ export class AppMessagesManager extends AppManager {
       !this.canSendToPeer(peerId) ||
       peerId === this.appPeersManager.peerId ||
       // (!force && deepEqual(typing?.action, action))
-      (!force && typing?.action?._ === action._)
+      (!force && typing?.action?._ === action._) ||
+      this.appPeersManager.isMonoforum(peerId)
     ) {
       return Promise.resolve(false);
     }
@@ -8707,9 +8991,9 @@ export class AppMessagesManager extends AppManager {
     this.rootScope.dispatchEvent('grouped_edit', {peerId: messages[0].peerId, groupedId, deletedMids: deletedMids || [], messages});
   }
 
-  public getDialogUnreadCount(dialog: Dialog | ForumTopic) {
+  public getDialogUnreadCount(dialog: Dialog | ForumTopic | MonoforumDialog) {
     let unreadCount = dialog.unread_count;
-    if(!isForumTopic(dialog) && this.appPeersManager.isForum(dialog.peerId) && !dialog.pFlags.view_forum_as_messages) {
+    if(!isForumTopic(dialog) && !isMonoforumDialog(dialog) && this.appPeersManager.isForum(dialog.peerId) && !dialog.pFlags.view_forum_as_messages) {
       const forumUnreadCount = this.dialogsStorage.getForumUnreadCount(dialog.peerId);
       if(forumUnreadCount instanceof Promise) {
         unreadCount = 0;
@@ -8721,7 +9005,7 @@ export class AppMessagesManager extends AppManager {
     return unreadCount || +!!(dialog as Dialog).pFlags?.unread_mark;
   }
 
-  public isDialogUnread(dialog: AnyDialog) {
+  public isDialogUnread(dialog: AnyDialog | MonoforumDialog) {
     return !isSavedDialog(dialog) && !!this.getDialogUnreadCount(dialog);
   }
 

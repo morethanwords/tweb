@@ -455,9 +455,9 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     this.initSidebarResize();
-    appDialogsManager.onForumTabToggle = () => {
+    appDialogsManager.onSomeDrawerToggle = () => {
       this.onSomethingOpenInsideChange();
-    }
+    };
 
     addShortcutListener(['ctrl+f', 'alt+f', 'meta+f'], () => {
       if(appNavigationController.findItemByType('popup')) return;
@@ -516,13 +516,17 @@ export class AppSidebarLeft extends SidebarSlider {
   }
 
   public hasSomethingOpenInside() {
-    return this.hasTabsInNavigation() || this.isSearchActive || !!appDialogsManager.forumTab;
+    return this.hasTabsInNavigation() || this.isSearchActive || !!appDialogsManager.forumTab || appDialogsManager.hasMonoforumOpen();
   }
 
   public closeEverythingInside() {
     this.closeSearch();
     appDialogsManager.toggleForumTab();
-    return this.closeAllTabs();
+
+    const hadOpenedDrawer = appDialogsManager.closeMonoforumDrawers();
+    const hadTabs = this.closeAllTabs();
+
+    return hadTabs || hadOpenedDrawer;
   }
 
   private isAnimatingCollapse = false;
@@ -533,7 +537,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.sidebarEl.classList.toggle('has-open-tabs', isFloating);
     this.sidebarEl.classList.toggle('has-real-tabs', this.hasTabsInNavigation());
-    this.sidebarEl.classList.toggle('has-forum-open', !!appDialogsManager.forumTab);
+    this.sidebarEl.classList.toggle('has-forum-open', !!appDialogsManager.forumTab || appDialogsManager.hasMonoforumOpen());
 
     const sidebarPlaceholder = document.querySelector('.sidebar-left-placeholder');
 
@@ -578,7 +582,8 @@ export class AppSidebarLeft extends SidebarSlider {
           );
         }
       });
-      appDialogsManager.xd?.toggleAvatarUnreadBadges(false, undefined);
+      if(!appDialogsManager.hasMonoforumOpen() && !appDialogsManager.forumTab)
+        appDialogsManager.xd?.toggleAvatarUnreadBadges(false, undefined);
     } else {
       const [hasFoldersSidebar] = useHasFoldersSidebar();
 

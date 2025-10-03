@@ -23,7 +23,7 @@ export default class PopupForward extends PopupPickUser {
   ) {
     super({
       peerType: ['dialogs', 'contacts'],
-      onSelect: !peerIdMids && onSelect ? onSelect : async(peerId, threadId) => {
+      onSelect: !peerIdMids && onSelect ? onSelect : async(peerId, threadId, monoforumThreadId) => {
         if(onSelect) {
           const res = onSelect(peerId);
           if(res instanceof Promise) {
@@ -50,7 +50,7 @@ export default class PopupForward extends PopupPickUser {
           return;
         }
 
-        await appImManager.setInnerPeer({peerId, threadId});
+        await appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
         appImManager.chat.input.initMessagesForward(peerIdMids);
       },
       placeholder: 'ShareModal.Search.ForwardPlaceholder',

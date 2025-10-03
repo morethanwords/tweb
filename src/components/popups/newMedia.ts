@@ -191,7 +191,7 @@ export default class PopupNewMedia extends PopupElement {
         onClick: () => {
           this.chat.input.onAttachClick(false, false, false);
         },
-        verify: () => true
+        verify: () => !this.isSuggestingPost()
       }, {
         icon: 'image',
         text: 'Popup.Attach.AsMedia',
@@ -229,12 +229,12 @@ export default class PopupNewMedia extends PopupElement {
         icon: 'groupmedia',
         text: 'Popup.Attach.GroupMedia',
         onClick: () => this.changeGroup(true),
-        verify: () => !this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif()
+        verify: () => !this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif() && !this.isSuggestingPost()
       }, {
         icon: 'groupmediaoff',
         text: 'Popup.Attach.UngroupMedia',
         onClick: () => this.changeGroup(false),
-        verify: () => this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif()
+        verify: () => this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif() && !this.isSuggestingPost()
       }, {
         icon: 'mediaspoiler',
         text: 'EnablePhotoSpoiler',
@@ -651,6 +651,9 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   public addFiles(files: File[]) {
+    if(this.isSuggestingPost() && this.files.length) return;
+    if(this.isSuggestingPost()) files.splice(1);
+
     const toPush = files.filter((file) => {
       const found = this.files.find((_file) => {
         return _file.lastModified === file.lastModified && _file.name === file.name && _file.size === file.size;
@@ -827,7 +830,7 @@ export default class PopupNewMedia extends PopupElement {
       caption = entities = effect = undefined;
     });
 
-    if(sendingParams.replyToMsgId) {
+    if(sendingParams.replyToMsgId || sendingParams.suggestedPost) {
       input.onHelperCancel();
     }
     // input.replyToMsgId = this.chat.threadId;
@@ -1519,6 +1522,10 @@ export default class PopupNewMedia extends PopupElement {
       this.onScroll();
       doubleRaf().then(() => this.afterRender());
     });
+  }
+
+  private isSuggestingPost() {
+    return !!this.chat?.input?.suggestedPost;
   }
 
   private canShowActionsForBcr(bcr: DOMRect) {

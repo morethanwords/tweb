@@ -14,6 +14,7 @@ import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import themeController from '../../helpers/themeController';
+import appDialogsManager, {AutonomousMonoforumThreadList} from '../appManagers/appDialogsManager';
 import appImManager from '../appManagers/appImManager';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 import lottieLoader from '../rlottie/lottieLoader';
@@ -24,6 +25,7 @@ import {SolidJSHotReloadGuardContext} from './hotReloadGuard';
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
   return (
     <SolidJSHotReloadGuardContext.Provider value={{
+      HotReloadGuard: SolidJSHotReloadGuardProvider,
       rootScope,
       appSidebarLeft,
       AppEditFolderTab,
@@ -41,7 +43,9 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       PasswordMonkey,
       PopupPremium,
       EmoticonsDropdown,
-      EmojiTab
+      EmojiTab,
+      appDialogsManager,
+      AutonomousMonoforumThreadList
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

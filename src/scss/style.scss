@@ -1835,6 +1835,22 @@ hr {
     --custom-emoji-size: 1rem;
     margin-inline-end: .25rem;
   }
+
+  &-direct-badge {
+    margin-inline-start: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+
+    text-transform: uppercase;
+
+    line-height: 1;
+    font-size: 12px;
+    border-radius: 4px;
+    padding: 3px 4px;
+
+    color: var(--secondary-text-color);
+    background-color: rgba(var(--secondary-text-color-rgb) , 0.2);
+  }
 }
 
 .chatlist-chat {
@@ -2568,6 +2584,10 @@ hr {
       }
     }
   }
+}
+
+.surface-color-background {
+  background-color: var(--surface-color);
 }
 
 .text-overflow {

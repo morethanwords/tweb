@@ -23,6 +23,11 @@ import {MiddlewareHelper} from '../../helpers/middleware';
 import {ChatType} from './chat';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 import {isMessageForVerificationBot} from './utils';
+import {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import typedElement from '../../helpers/dom/typedElement';
+import {BubbleElementAddons} from './types';
+import MonoforumSeparator from './bubbleParts/monoforumSeparator';
 
 
 type GroupItem = {
@@ -123,6 +128,7 @@ export class BubbleGroup {
     let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
     replyMarkupRows = replyMarkupRows?.filter?.((row) => row.buttons.length);
     replyMarkupRows?.length && this.avatar.node.classList.add('avatar-for-reply-markup');
+    canHaveSuggestedPostReplyMarkup(message) && this.avatar.node.classList.add('avatar-for-suggested-reply-markup');
 
     // this.avatarLoadPromise = Promise.all([
     //   avatarLoadPromise,
@@ -401,9 +407,45 @@ export default class BubbleGroups {
       group.mount(true);
     });
 
-    // toMount.forEach((group) => {
-    //   group.updateClassNames();
-    // });
+    this.addMonoforumSeparators();
+  }
+
+  private addMonoforumSeparators() {
+    const canHaveSeparators = this.chat.isMonoforum && this.chat.canManageDirectMessages && !this.chat.monoforumThreadId;
+    if(!canHaveSeparators) return;
+
+    let prevPeerId: number;
+
+    forEachReverse(this.itemsArr, (item, i) => {
+      const savedPeerId = getPeerId(item.message?.saved_peer_id);
+      if(!savedPeerId) return;
+
+      const bubbleAddons = typedElement<BubbleElementAddons>(item.bubble);
+
+      if(prevPeerId === savedPeerId) {
+        item.bubble.classList.remove('has-monoforum-separator');
+        bubbleAddons.monoforumSeparator?.remove();
+        return;
+      }
+
+      prevPeerId = savedPeerId;
+
+      if(bubbleAddons.monoforumSeparator) {
+        bubbleAddons.monoforumSeparator.feedProps<false>({
+          index: -i
+        });
+        return;
+      }
+
+      bubbleAddons.monoforumSeparator = new MonoforumSeparator;
+      bubbleAddons.monoforumSeparator.feedProps({
+        bubbles: this.chat.bubbles,
+        peerId: savedPeerId,
+        index: -i
+      });
+      item.bubble.classList.add('has-monoforum-separator');
+      item.bubble.prepend(bubbleAddons.monoforumSeparator);
+    });
   }
 
   f(items: GroupItem[], index: number = 0, length = items.length) {
@@ -465,6 +507,11 @@ export default class BubbleGroups {
   canItemsBeGrouped(item1: GroupItem, item2: GroupItem) {
     if(isMessageForVerificationBot(item1.message)) return false;
 
+    if(
+      item1.message?._ === 'message' && item1.message?.suggested_post ||
+      item2.message?._ === 'message' && item2.message?.suggested_post
+    ) return false;
+
     const isOut1 = this.chat.isOutMessage(item1.message);
     return item2.fromId === item1.fromId &&
       item1.dateTimestamp === item2.dateTimestamp &&
@@ -473,7 +520,8 @@ export default class BubbleGroups {
       !item2.single &&
       isOut1 === this.chat.isOutMessage(item2.message) &&
       (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true)) &&
-      (!isOut1 || item1.message.fromId === rootScope.myId) && // * group anonymous sending
+      (!this.chat.isMonoforum || getMessageThreadId(item1.message) === getMessageThreadId(item2.message)) &&
+      (!isOut1 || item1.message.fromId === rootScope.myId || this.chat.isMonoforum) && // * group anonymous sending
       item1.message.peerId === item2.message.peerId &&
       (item1.message as Message.message).post_author === (item2.message as Message.message).post_author;
   }

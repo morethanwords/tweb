@@ -105,7 +105,7 @@ import {avatarNew} from '../../components/avatarNew';
 import Icon from '../../components/icon';
 import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
-import {isDialog, isForumTopic, isSavedDialog} from './utils/dialogs/isDialog';
+import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from './utils/dialogs/isDialog';
 import {ChatType} from '../../components/chat/chat';
 import PopupDeleteDialog from '../../components/popups/deleteDialog';
 import rtmpCallsController from '../calls/rtmpCallsController';
@@ -120,11 +120,14 @@ import throttle from '../../helpers/schedulers/throttle';
 import {MAX_SIDEBAR_WIDTH} from '../../components/sidebarLeft/constants';
 import {unwrap} from 'solid-js/store';
 import wrapMediaSpoiler from '../../components/wrappers/mediaSpoiler';
+import type {MonoforumDrawerInstance} from '../../components/monoforumDrawer';
+import {MonoforumDialog} from '../storages/monoforumDialogs';
+import SolidJSHotReloadGuardProvider from '../solidjs/hotReloadGuardProvider';
 import {renderPendingSuggestion} from '../../components/sidebarLeft/pendingSuggestion';
 import {useHasFolders} from '../../stores/foldersSidebar';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
-const DIALOG_LOAD_COUNT = 10;
+const DIALOG_LOAD_COUNT = 20;
 
 export type DialogDom = {
   avatarEl: ReturnType<typeof avatarNew>,
@@ -196,6 +199,7 @@ type DialogElementOptions = {
   fromName?: string,
   noIcons?: boolean,
   threadId?: number,
+  monoforumParentPeerId?: PeerId;
   wrapOptions: WrapSomethingOptions,
   isMainList?: boolean,
   withStories?: boolean,
@@ -218,6 +222,7 @@ export class DialogElement extends Row {
     fromName,
     noIcons,
     threadId,
+    monoforumParentPeerId,
     wrapOptions = {},
     isMainList,
     withStories,
@@ -282,7 +287,12 @@ export class DialogElement extends Row {
 
     const isActive = !dontSetActive && !autonomous &&
       appImManager.chat &&
-      appImManager.isSamePeer(appImManager.chat, {peerId, threadId: threadId, type: isSavedDialog ? ChatType.Saved : ChatType.Chat});
+      appImManager.isSamePeer(appImManager.chat, {
+        peerId: monoforumParentPeerId || peerId,
+        monoforumThreadId: monoforumParentPeerId ? peerId : undefined,
+        threadId: threadId,
+        type: isSavedDialog ? ChatType.Saved : ChatType.Chat
+      });
 
     const peerTitle = new PeerTitle();
     const peerTitlePromise = peerTitle.update({
@@ -332,6 +342,14 @@ export class DialogElement extends Row {
     li.dataset.peerId = '' + peerId;
     if(threadId) {
       li.dataset.threadId = '' + threadId;
+    }
+    if(monoforumParentPeerId) {
+      li.dataset.monoforumParentPeerId = '' + monoforumParentPeerId;
+    }
+
+    const peer = apiManagerProxy.getPeer(peerId);
+    if(peer?._ === 'channel' && peer?.pFlags?.monoforum) {
+      li.dataset.isMonoforum = 'true';
     }
 
     const statusSpan = document.createElement('span');
@@ -454,7 +472,7 @@ class ForumTab extends SliderSuperTabEventable {
 
   private log: ReturnType<typeof logger>;
 
-  public xd: Some3;
+  public xd: AutonomousForumTopicList;
 
   public async toggle(value: boolean) {
     if(this.init2) {
@@ -508,7 +526,7 @@ class ForumTab extends SliderSuperTabEventable {
     this.title.replaceWith(this.rows);
     this.rows.append(this.title, this.subtitle);
 
-    this.xd = new Some3(this.peerId, isFloating);
+    this.xd = new AutonomousForumTopicList(this.peerId, isFloating);
     this.xd.scrollable = this.scrollable;
     this.xd.sortedList = new SortedDialogList({
       itemSize: 64,
@@ -692,7 +710,8 @@ class ForumTab extends SliderSuperTabEventable {
 const NOT_IMPLEMENTED_ERROR = new Error('not implemented');
 
 type DialogKey = any;
-class Some<T extends AnyDialog = AnyDialog> {
+type PossibleDialog = AnyDialog | MonoforumDialog;
+export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog> {
   public sortedList: SortedDialogList;
   public scrollable: Scrollable;
   public loadedDialogsAtLeastOnce: boolean;
@@ -702,7 +721,7 @@ class Some<T extends AnyDialog = AnyDialog> {
   protected sliceTimeout: number;
   protected managers: AppManagers;
   protected listenerSetter: ListenerSetter;
-  protected loadDialogsPromise: Promise<{cached: boolean, renderPromise: Some2['loadDialogsRenderPromise']}>;
+  protected loadDialogsPromise: Promise<{cached: boolean, renderPromise: AutonomousDialogList['loadDialogsRenderPromise']}>;
   protected loadDialogsRenderPromise: Promise<void>;
   protected placeholder: DialogsPlaceholder;
   protected log: ReturnType<typeof logger>;
@@ -735,7 +754,7 @@ class Some<T extends AnyDialog = AnyDialog> {
     this.listenerSetter = new ListenerSetter();
   }
 
-  public setIndexKey(indexKey: Some['indexKey']) {
+  public setIndexKey(indexKey: AutonomousDialogListBase['indexKey']) {
     this.indexKey = indexKey;
     this.sortedList.indexKey = indexKey;
   }
@@ -900,6 +919,19 @@ class Some<T extends AnyDialog = AnyDialog> {
   //   return promise;
   // }
 
+  protected async dialogsFetcher(offsetIndex: number, limit: number): Promise<{dialogs: PossibleDialog[], count: number, isEnd: boolean}> {
+    const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
+      offsetIndex,
+      limit,
+      filterId: this.getFilterId(),
+      skipMigrated: this.skipMigrated
+    });
+
+    const result = await ackedResult.result;
+
+    return result;
+  }
+
   public async loadDialogsInner(offsetIndex?: number): Promise<SequentialCursorFetcherResult<number>> {
     const filterId = this.getFilterId();
 
@@ -916,14 +948,7 @@ class Some<T extends AnyDialog = AnyDialog> {
       shouldRefetch = true;
     }
 
-    const ackedResult = await this.managers.acknowledged.dialogsStorage.getDialogs({
-      offsetIndex,
-      limit: this.guessLoadCount(),
-      filterId,
-      skipMigrated: this.skipMigrated
-    });
-
-    const result = await ackedResult.result;
+    const result = await this.dialogsFetcher(offsetIndex, this.guessLoadCount());
 
     if(shouldRefetch) {
       setTimeout(async() => {
@@ -1038,7 +1063,7 @@ class Some<T extends AnyDialog = AnyDialog> {
   }
 }
 
-class Some3 extends Some<ForumTopic> {
+class AutonomousForumTopicList extends AutonomousDialogListBase<ForumTopic> {
   constructor(public peerId: PeerId, public isFloating: boolean) {
     super();
 
@@ -1167,7 +1192,7 @@ class Some3 extends Some<ForumTopic> {
   }
 }
 
-export class Some2 extends Some<Dialog> {
+export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   constructor(protected filterId: number) {
     super();
 
@@ -1481,7 +1506,7 @@ export class Some2 extends Some<Dialog> {
   }
 }
 
-export class Some4 extends Some<SavedDialog> {
+export class AutonomousSavedDialogList extends AutonomousDialogListBase<SavedDialog> {
   public onAnyUpdate: () => void;
 
   constructor() {
@@ -1540,6 +1565,69 @@ export class Some4 extends Some<SavedDialog> {
   }
 }
 
+export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<MonoforumDialog> {
+  public onEmpty: () => void;
+
+  constructor(private peerId: PeerId) {
+    super();
+
+    this.listenerSetter.add(rootScope)('monoforum_dialogs_update', ({dialogs}) => {
+      dialogs.forEach(dialog => this.updateDialog(dialog));
+    });
+
+    this.listenerSetter.add(rootScope)('monoforum_draft_update', ({dialog}) => {
+      this.updateDialog(dialog);
+    });
+
+    this.listenerSetter.add(rootScope)('monoforum_dialogs_drop', ({parentPeerId, ids}) => {
+      if(parentPeerId !== this.peerId) return;
+      ids.forEach(id => this.deleteDialogByKey(id));
+
+      if(!this.sortedList.itemsLength()) this.onEmpty?.();
+    });
+  }
+
+  public getRectFromForPlaceholder() {
+    return (): DOMRectEditable => {
+      const sidebarRect = appSidebarLeft.rect;
+      const paddingY = 56;
+      const paddingX = 80;
+      const width = appSidebarLeft.isCollapsed() ? MAX_SIDEBAR_WIDTH : sidebarRect.width;
+
+      return {
+        top: paddingY,
+        right: sidebarRect.right,
+        bottom: 0,
+        left: paddingX,
+        width: width - paddingX,
+        height: sidebarRect.height - paddingY
+      };
+    };
+  }
+
+  protected getFilterId() {
+    return this.peerId;
+  }
+
+  public getDialogKey(dialog: MonoforumDialog) {
+    return dialog?.peerId;
+  }
+
+  // WTF: this one is not even used
+  public getDialogKeyFromElement(element: HTMLElement) {
+    // return +element.dataset.peerId;
+  }
+
+  // WTF: this one is not even used
+  public getDialogFromElement(element: HTMLElement) {
+    return rootScope.managers.dialogsStorage.getAnyDialog(element.dataset.peerId.toPeerId(), element.dataset.threadId.toPeerId()) as any as Promise<MonoforumDialog>;
+  }
+
+  protected dialogsFetcher(offsetIndex: number, limit: number) {
+    return this.managers.monoforumDialogsStorage.getDialogs({parentPeerId: this.peerId, limit, offsetIndex});
+  }
+}
+
 // const testScroll = false;
 // let testTopSlice = 1;
 
@@ -1557,6 +1645,15 @@ type FilterRendered = {
     chatlistUpdates: ChatlistsChatlistUpdates
   },
   middlewareHelper: MiddlewareHelper,
+};
+
+type GetDialogOptions = {
+  threadOrSavedId?: number;
+  monoforumParentPeerId?: number;
+};
+
+type InitDialogAdditionalOptions = {
+  isBatch?: boolean;
 };
 
 const TEST_TOP_NOTIFICATION = true ? undefined : (): ChatlistsChatlistUpdates => ({
@@ -1613,11 +1710,15 @@ export class AppDialogsManager {
 
   private forumsTabs: Map<PeerId, ForumTab>;
   private forumsSlider: HTMLElement;
+  private monoforumDrawers: {
+    container: HTMLElement;
+    opened: MonoforumDrawerInstance[];
+  };
   public forumTab: ForumTab;
   private forumNavigationItem: NavigationItem;
 
-  public xd: Some2;
-  public xds: {[filterId: number]: Some2} = {};
+  public xd: AutonomousDialogList;
+  public xds: {[filterId: number]: AutonomousDialogList} = {};
 
   public cancelChatlistUpdatesFetching: () => void;
   public fetchChatlistUpdates: () => void;
@@ -1647,10 +1748,18 @@ export class AppDialogsManager {
     const storiesListContainer = this.storiesListContainer = document.createElement('div');
     storiesListContainer.classList.add('stories-list');
 
+
     this.forumsTabs = new Map();
     this.forumsSlider = document.createElement('div');
     this.forumsSlider.classList.add('topics-slider');
-    this.chatsContainer.parentElement.parentElement.append(this.forumsSlider);
+
+    this.monoforumDrawers = {
+      container: document.createElement('div'),
+      opened: []
+    };
+
+    const drawersParent = appSidebarLeft.sidebarEl;
+    drawersParent.append(this.forumsSlider, this.monoforumDrawers.container);
 
     // appSidebarLeft.onOpenTab = () => {
     //   return this.toggleForumTab();
@@ -1907,24 +2016,40 @@ export class AppDialogsManager {
       this.processContact?.(userId.toPeerId());
     });
 
-    appImManager.addEventListener('peer_changed', ({peerId, threadId, isForum}) => {
-      const options: Parameters<AppImManager['isSamePeer']>[0] = {peerId, threadId: isForum || rootScope.myId ? threadId : undefined};
-      // const perf = performance.now();
+    appImManager.addEventListener('peer_changed', ({peerId, threadId, monoforumThreadId, isForum}) => {
+      const options: Parameters<AppImManager['isSamePeer']>[0] = {peerId, monoforumThreadId, threadId: isForum || rootScope.myId ? threadId : undefined};
+
+      const getOptionsForElement = (element: HTMLElement) => {
+        const elementThreadId = +element?.dataset?.threadId || undefined;
+        const elementPeerId = element?.dataset?.peerId?.toPeerId();
+        const monoforumParentPeerId = +element?.dataset?.monoforumParentPeerId || undefined;
+
+        return {
+          peerId: monoforumParentPeerId || elementPeerId,
+          threadId: elementThreadId,
+          monoforumThreadId: monoforumParentPeerId ? elementPeerId : undefined
+        };
+      };
+
       for(const element of this.lastActiveElements) {
-        const elementThreadId = +element.dataset.threadId || undefined;
-        const elementPeerId = element.dataset.peerId.toPeerId();
-        if(!appImManager.isSamePeer({peerId: elementPeerId, threadId: elementThreadId}, options)) {
+        if(!appImManager.isSamePeer(getOptionsForElement(element), options)) {
           this.setDialogActive(element, false);
         }
       }
 
-      const elements = [this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId)].filter(Boolean);
 
-      elements.forEach(element => {
-        if(!element?.dom?.listEl) return;
-        const elementThreadId = +element?.dom?.listEl?.dataset?.threadId || undefined;
-        if(appImManager.isSamePeer({peerId, threadId: elementThreadId}, options)) {
-          this.setDialogActive(element.dom?.listEl, true);
+      const fromMonoforumDrawers = monoforumThreadId ? this.monoforumDrawers.opened.map(drawer => drawer?.controls?.autonomousList?.sortedList?.get(monoforumThreadId)) : []
+      const dialogElements = [
+        this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId),
+        ...fromMonoforumDrawers
+      ].filter(Boolean);
+
+      dialogElements.forEach(dialogElement => {
+        const element = dialogElement?.dom?.listEl;
+        if(!element) return;
+
+        if(appImManager.isSamePeer(getOptionsForElement(element), options)) {
+          this.setDialogActive(element, true);
         }
       });
       // this.log('peer_changed total time:', performance.now() - perf);
@@ -2225,7 +2350,7 @@ export class AppDialogsManager {
   }
 
   public l(filter: Parameters<AppDialogsManager['addFilter']>[0]) {
-    const xd = this.xds[filter.id] = new Some2(filter.id);
+    const xd = this.xds[filter.id] = new AutonomousDialogList(filter.id);
     const {scrollable, list} = xd.generateScrollable(filter);
     this.setListClickListener({list, onFound: null, withContext: true});
 
@@ -2666,7 +2791,7 @@ export class AppDialogsManager {
     return isContact && !dialog;
   };
 
-  public onForumTabToggle?: () => void;
+  public onSomeDrawerToggle?: () => void;
 
   public async toggleForumTab(newTab?: ForumTab, hideTab = this.forumTab) {
     if(!hideTab && !newTab) {
@@ -2688,7 +2813,7 @@ export class AppDialogsManager {
     const promise = newTab?.toggle(true);
     if(hideTab === this.forumTab) {
       this.forumTab = newTab;
-      this.onForumTabToggle?.();
+      this.onSomeDrawerToggle?.();
     }
 
     if(newTab) {
@@ -2723,10 +2848,14 @@ export class AppDialogsManager {
     const useRafs = promise ? 2 : undefined;
     this.xd.toggleAvatarUnreadBadges(forwards, useRafs);
 
+    this.transitionDrawersParent(forwards, useRafs);
+  }
+
+  private transitionDrawersParent(forwards: boolean, useRafs?: number) {
     const deferred = deferredPromise<void>();
     const duration = 300;
     SetTransition({
-      element: this.forumsSlider.parentElement,
+      element: appSidebarLeft.sidebarEl,
       className: 'is-forum-visible',
       duration,
       forwards,
@@ -2737,6 +2866,65 @@ export class AppDialogsManager {
     });
 
     dispatchHeavyAnimationEvent(deferred, duration).then(() => deferred.resolve());
+  }
+
+  public hasMonoforumOpen() {
+    return !!this.monoforumDrawers.opened.length;
+  }
+
+  public hasMonoforumOpenFor(peerId: PeerId) {
+    return !!this.monoforumDrawers.opened.find(drawer => drawer?.props?.peerId === peerId);
+  }
+
+  public async openMonoforumDrawer(peerId: PeerId) {
+    const {default: MonoforumDrawer} = await import('../../components/monoforumDrawer');
+
+    if(this.monoforumDrawers.opened?.find(drawer => drawer?.props?.peerId === peerId)) return;
+
+    this.closeMonoforumDrawers();
+
+    const {count} = await this.managers.monoforumDialogsStorage.getDialogs({parentPeerId: peerId, limit: DIALOG_LOAD_COUNT});
+    if(!count) return;
+
+    const navigationItem: NavigationItem = {
+      type: 'monoforum',
+      onPop: () => {
+        drawer?.controls?.close?.();
+      }
+    };
+
+    const drawer = new MonoforumDrawer;
+    drawer.HotReloadGuard = SolidJSHotReloadGuardProvider;
+    drawer.feedProps({
+      peerId,
+      onClose: () => {
+        this.monoforumDrawers.opened = this.monoforumDrawers.opened.filter(value => value !== drawer);
+        this.onMonoforumDrawerToggle?.();
+        appNavigationController.removeItem(navigationItem);
+      }
+    });
+
+    appNavigationController.pushItem(navigationItem);
+
+    this.monoforumDrawers.container.append(drawer);
+    this.monoforumDrawers.opened.push(drawer);
+
+    this.onMonoforumDrawerToggle?.();
+
+    return drawer;
+  }
+
+  public closeMonoforumDrawers() {
+    const hadOpenedDrawer = !!this.monoforumDrawers.opened.length;
+    this.monoforumDrawers.opened.forEach(value => value?.controls?.close?.());
+
+    return hadOpenedDrawer;
+  }
+
+  private onMonoforumDrawerToggle() {
+    this.xd.toggleAvatarUnreadBadges(this.hasMonoforumOpen(), 0);
+    this.transitionDrawersParent(this.hasMonoforumOpen());
+    this.onSomeDrawerToggle?.();
   }
 
   public async toggleForumTabByPeerId(peerId: PeerId, show?: boolean, asInnerIfAsMessages?: boolean) {
@@ -2864,6 +3052,7 @@ export class AppDialogsManager {
       const peerId = elem.dataset.peerId.toPeerId();
       const lastMsgId = +elem.dataset.mid || undefined;
       const threadId = +elem.dataset.threadId || undefined;
+      const monoforumParentPeerId = +elem.dataset.monoforumParentPeerId || undefined;
 
       const isSponsored = elem.dataset.sponsored === 'true';
       if(isSponsored) {
@@ -2882,6 +3071,24 @@ export class AppDialogsManager {
         return;
       }
 
+      const chat = apiManagerProxy.getChat(peerId);
+      const linkedChat = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id ?
+        apiManagerProxy.getChat(chat.linked_monoforum_id) :
+        undefined;
+
+      if(linkedChat?._ === 'channel' && linkedChat?.admin_rights?.pFlags?.manage_direct_messages && !mediaSizes.isLessThanFloatingLeftSidebar) {
+        const openOnlyDrawer = e.shiftKey;
+        const isSamePeer = appImManager.isSamePeer(appImManager.chat, {peerId});
+
+        // Without the timeout the monoforum chats open with a noticeable delay
+        if(!openOnlyDrawer && !isSamePeer) pause(200).then(() => this.openMonoforumDrawer(peerId));
+        else this.openMonoforumDrawer(peerId);
+
+        if(openOnlyDrawer) return;
+      } else if(!monoforumParentPeerId) {
+        this.closeMonoforumDrawers();
+      }
+
       const isForum = !!elem.querySelector('.is-forum');
       if(isForum && !e.shiftKey && !lastMsgId) {
         this.toggleForumTabByPeerId(peerId, undefined, false);
@@ -2889,6 +3096,7 @@ export class AppDialogsManager {
       }
 
       if(e.ctrlKey || e.metaKey) {
+        // TODO: How about opening a monoforum in new tab?
         this.openDialogInNewTab(elem);
         cancelEvent(e);
         return;
@@ -2916,7 +3124,8 @@ export class AppDialogsManager {
       }
 
       setPeerFunc({
-        peerId,
+        peerId: monoforumParentPeerId || peerId,
+        monoforumThreadId: monoforumParentPeerId ? peerId : undefined,
         lastMsgId,
         threadId: threadId
       });
@@ -2979,12 +3188,15 @@ export class AppDialogsManager {
     });
   }
 
-  private getLastMessageForDialog(dialog: AnyDialog, lastMessage?: Message.message | Message.messageService) {
+  private getLastMessageForDialog(dialog: PossibleDialog, lastMessage?: Message.message | Message.messageService) {
     let draftMessage: MyDraftMessage;
     const {peerId, draft} = dialog as Dialog;
+    const peer = apiManagerProxy.getPeer(peerId);
+    const isMonoforumParent = peer?._ === 'channel' && peer.pFlags?.monoforum;
+
     if(!lastMessage) {
       if(
-        draft?._ === 'draftMessage' && (
+        draft?._ === 'draftMessage' && !isMonoforumParent && (
           !peerId.isAnyChat() ||
           isForumTopic(dialog) ||
           !apiManagerProxy.isForum(peerId)
@@ -2995,7 +3207,7 @@ export class AppDialogsManager {
 
       lastMessage = (dialog as Dialog).topMessage;
       if(lastMessage?.mid !== dialog.top_message) {
-        const trueLastMessage = apiManagerProxy.getMessageByPeer(peerId, dialog.top_message);
+        const trueLastMessage = apiManagerProxy.getMessageByPeer((dialog as MonoforumDialog)?.parentPeerId || peerId, dialog.top_message);
         if(trueLastMessage && (trueLastMessage as Message.messageService).action?._ !== 'messageActionChannelJoined') {
           lastMessage = trueLastMessage;
         }
@@ -3014,7 +3226,7 @@ export class AppDialogsManager {
     setUnread = false,
     noForwardIcon
   }: {
-    dialog: AnyDialog,
+    dialog: PossibleDialog,
     lastMessage?: Message.message | Message.messageService,
     dialogElement?: DialogElement,
     highlightWord?: string,
@@ -3240,7 +3452,7 @@ export class AppDialogsManager {
     isBatch = false,
     setLastMessagePromise
   }: {
-    dialog: AnyDialog,
+    dialog: PossibleDialog,
     dialogElement: DialogElement,
     isBatch?: boolean,
     setLastMessagePromise?: Promise<void>
@@ -3253,6 +3465,7 @@ export class AppDialogsManager {
 
     const isTopic = isForumTopic(dialog);
     const isSaved = isSavedDialog(dialog);
+    const isMonoforumThread = isMonoforumDialog(dialog);
 
     const {deferred, middleware} = setPromiseMiddleware(dom, 'setUnreadMessagePromise');
 
@@ -3335,7 +3548,7 @@ export class AppDialogsManager {
     //   dom.statusSpan.parentElement.classList.toggle('is-closed', !!dialog.pFlags.closed);
     // }
 
-    const hasPinnedBadge = isPinned;
+    const hasPinnedBadge = isPinned && !isMonoforumThread;
     const isPinnedBadgeMounted = !!dom.pinnedBadge;
     if(hasPinnedBadge) {
       dialogElement.createPinnedBadge();
@@ -3347,14 +3560,14 @@ export class AppDialogsManager {
       dialogElement.createUnreadBadge();
     }
 
-    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && (!!this.forumTab || appSidebarLeft.isCollapsed()) && isDialogUnread;
+    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && !isMonoforumThread && (!!this.forumTab || appSidebarLeft.isCollapsed() || this.hasMonoforumOpen()) && isDialogUnread;
 
     const isUnreadAvatarBadgeMounted = !!dom.unreadAvatarBadge;
     if(hasUnreadAvatarBadge) {
       dialogElement.createUnreadAvatarBadge();
     }
 
-    const hasMentionsBadge = isSaved ? false : (dialog.unread_mentions_count && (dialog.unread_mentions_count > 1 || dialog.unread_count > 1));
+    const hasMentionsBadge = isSaved || isMonoforumThread ? false : (dialog.unread_mentions_count && (dialog.unread_mentions_count > 1 || dialog.unread_count > 1));
     const isMentionsBadgeMounted = !!dom.mentionsBadge;
     if(hasMentionsBadge) {
       dialogElement.createMentionsBadge();
@@ -3397,7 +3610,7 @@ export class AppDialogsManager {
     }
 
     let isUnread = true, isMention = false, unreadBadgeText: string;
-    if(!isSaved && dialog.unread_mentions_count && unreadCount === 1) {
+    if(!isSaved && !isMonoforumThread && dialog.unread_mentions_count && unreadCount === 1) {
       unreadBadgeText = '@';
       isMention = true;
     } else if(isDialogUnread) {
@@ -3440,10 +3653,17 @@ export class AppDialogsManager {
     deferred.resolve();
   }
 
-  private async getDialog(dialog: AnyDialog | PeerId, threadOrSavedId?: number) {
+  private async getDialog(dialog: AnyDialog | PeerId, {threadOrSavedId, monoforumParentPeerId}: GetDialogOptions = {}) {
     if(typeof(dialog) !== 'object') {
-      let originalDialog: AnyDialog;
-      if(threadOrSavedId) {
+      let originalDialog: AnyDialog | MonoforumDialog;
+      if(monoforumParentPeerId) {
+        originalDialog = await this.managers.monoforumDialogsStorage.getDialogByParent(monoforumParentPeerId, dialog);
+
+        if(!originalDialog) return {
+          peerId: dialog || NULL_PEER_ID,
+          pFlags: {}
+        } as MonoforumDialog;
+      } else if(threadOrSavedId) {
         if(dialog === rootScope.myId) {
           originalDialog = await this.managers.dialogsStorage.getAnyDialog(dialog, threadOrSavedId);
           if(!originalDialog) {
@@ -3481,7 +3701,7 @@ export class AppDialogsManager {
     return dialog as AnyDialog;
   }
 
-  public addListDialog(options: Parameters<AppDialogsManager['addDialogNew']>[0] & {isBatch?: boolean}) {
+  public addListDialog(options: Parameters<AppDialogsManager['addDialogNew']>[0] & InitDialogAdditionalOptions) {
     options.autonomous = false;
     options.withStories = true;
 
@@ -3495,9 +3715,9 @@ export class AppDialogsManager {
     return ret;
   }
 
-  public initDialog(dialogElement: DialogElement, options: Parameters<AppDialogsManager['addDialogNew']>[0] & {isBatch?: boolean}) {
+  public initDialog(dialogElement: DialogElement, options: Parameters<AppDialogsManager['addDialogNew']>[0] & InitDialogAdditionalOptions) {
     const {peerId} = options;
-    const getDialogPromise = this.getDialog(peerId, options.threadId);
+    const getDialogPromise = this.getDialog(peerId, {threadOrSavedId: options.threadId, monoforumParentPeerId: options.monoforumParentPeerId});
 
     const promise = getDialogPromise.then((dialog) => {
       const promises: (Promise<any> | void)[] = [];

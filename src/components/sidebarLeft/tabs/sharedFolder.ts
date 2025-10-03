@@ -130,7 +130,7 @@ export class InviteLink {
 
   public shareLink = (url: string = this.url) => {
     PopupPickUser.createSharingPicker({
-      onSelect: async(peerId) => {
+      onSelect: async(peerId, _, monoforumThreadId) => {
         // Cannot use normal import here :(
         const {default: PaidMessagesInterceptor, PAYMENT_REJECTED} = await import('../../chat/paidMessagesInterceptor');
 
@@ -140,6 +140,7 @@ export class InviteLink {
         rootScope.managers.appMessagesManager.sendText({
           peerId,
           text: url,
+          replyToMonoforumPeerId: monoforumThreadId,
           confirmedPaymentResult: preparedPaymentResult as ConfirmedPaymentResult
         });
         appImManager.setInnerPeer({peerId});

@@ -229,6 +229,11 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       background-color: var(--dark-primary-color) !important;
     }
 
+    &.disabled {
+      pointer-events: none;
+      background-color: var(--secondary-color) !important;
+    }
+
 		// .tgico-send {
 		// 	color: var(--primary-color) !important;
 		// }
@@ -2020,4 +2025,14 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
 .avatar-for-reply-markup {
   margin-bottom: 43px;
+}
+
+.avatar-for-suggested-reply-markup {
+  margin-bottom: 84px;
+}
+
+.suggested-post-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }

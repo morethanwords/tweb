@@ -283,3 +283,14 @@ $popup-footer-abitlarger-padding: 1rem;
     }
   }
 }
+
+.suggested-post-popup {
+  .popup-container {
+    width: 400px !important;
+    max-width: 100%;
+  }
+
+  .popup-header {
+    margin-bottom: 0.5rem;
+  }
+}

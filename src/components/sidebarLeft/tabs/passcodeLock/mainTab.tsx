@@ -7,6 +7,9 @@ import ListenerSetter from '../../../../helpers/listenerSetter';
 import {IS_MOBILE} from '../../../../environment/userAgent';
 import {i18n, LangPackKey} from '../../../../lib/langPack';
 
+import {usePromiseCollector} from '../../../solidJsTabs/promiseCollector';
+import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
+import type {AppPasscodeLockTab} from '../../../solidJsTabs';
 import confirmationPopup from '../../../confirmationPopup';
 import type SliderSuperTab from '../../../sliderTab';
 import ripple from '../../../ripple'; ripple; // keep
@@ -14,10 +17,6 @@ import StaticSwitch from '../../../staticSwitch';
 import Section from '../../../section';
 import Row from '../../../rowTsx';
 import Space from '../../../space';
-
-import {usePromiseCollector} from '../solidJsTabs/promiseCollector';
-import {useSuperTab} from '../solidJsTabs/superTabProvider';
-import type {AppPasscodeLockTab} from '../solidJsTabs';
 
 import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
 import LottieAnimation from './lottieAnimation';

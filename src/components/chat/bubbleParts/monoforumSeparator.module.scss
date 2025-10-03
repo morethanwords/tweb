@@ -1,0 +1,87 @@
+.Container {
+  position: relative;
+  align-self: center;
+}
+
+.ServiceMsg {
+  display: flex !important;
+  align-items: center;
+  gap: 0.125rem;
+
+  font-size: var(--messages-service-text-size);
+  padding: .28125rem .625rem;
+  padding-right: 0.25rem;
+  line-height: calc(var(--messages-service-text-size) + 5px);
+  border-radius: 100px;
+
+  color: white;
+  background-color: var(--message-highlighting-color);
+
+  cursor: pointer;
+
+  &:hover {
+    background-color: hsl(from var(--message-highlighting-color) h s calc(l + 8));
+  }
+
+  &.floating {
+    position: absolute;
+    left: 50%;
+    top: var(--top, 0);
+    transform: translateX(-50%) translateY(calc((1 - var(--scale, 1)) * -75%)) scale(var(--scale, 1));
+
+    white-space: nowrap;
+    width: min-content;
+
+    pointer-events: none;
+    opacity: 0;
+
+    :global(.bubbles):has(:global(.is-scrolling)) & {
+      pointer-events: initial;
+      opacity: 1;
+    }
+  }
+
+  transition: opacity 0.4s;
+
+  &.hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+.ArrowIcon {
+  font-size: 1.15rem;
+  transform: rotate(-90deg);
+  opacity: 0.75;
+}
+
+.Separator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50vw;
+  height: 2px;
+
+  opacity: 0.075;
+  background-image: url(assets/img/monoforum-separator-dash-black.svg);
+  :global(.night) & {
+    opacity: 0.15;
+    background-image: url(assets/img/monoforum-separator-dash.svg);
+  }
+
+  &Left {
+    left: calc(100% + 2px);
+
+    &.center {
+      left: calc(50%);
+    }
+  }
+
+  &Right {
+    right: calc(100% + 2px);
+
+    &.center {
+      right: calc(50%);
+    }
+  }
+}

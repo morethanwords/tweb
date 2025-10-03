@@ -55,9 +55,9 @@ function StarGiftGridItem(props: {
             text: 'ShareFile',
             verify: () => raw._ === 'starGiftUnique',
             onClick: () => {
-              PopupPickUser.createSharingPicker2().then((peerId) => {
-                rootScope.managers.appMessagesManager.sendText({peerId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
-                appImManager.setInnerPeer({peerId});
+              PopupPickUser.createSharingPicker2().then(({peerId, threadId, monoforumThreadId}) => {
+                rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
+                appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
               });
             }
           },

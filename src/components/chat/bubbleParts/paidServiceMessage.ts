@@ -14,13 +14,13 @@ type Args = {
   groupedMessages?: Message.message[];
 };
 
-export default async function addPaidServiceMessage({isAnyGroup, bubble, message, our, peerId, groupedMessages}: Args) {
+export default function addPaidServiceMessage({isAnyGroup, bubble, message, our, peerId, groupedMessages}: Args) {
   assumeType<Message.message>(message);
 
   const paidStars = Number(message.paid_message_stars)
   const repayRequest = message.repayRequest;
 
-  if(paidStars && !isAnyGroup) {
+  if(paidStars && !isAnyGroup) return (async() => {
     bubble.classList.add('has-fake-service', 'is-forced-rounded');
     bubble.dataset.isPaid = '1';
 
@@ -41,5 +41,5 @@ export default async function addPaidServiceMessage({isAnyGroup, bubble, message
     paidServiceMessage.append(i18nElement);
 
     bubble.prepend(paidServiceMessage);
-  }
+  })();
 }

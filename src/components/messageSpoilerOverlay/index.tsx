@@ -136,6 +136,10 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
 
       update();
     }, 3000);
+
+    onCleanup(() => {
+      if(failTimeout) window.clearTimeout(failTimeout);
+    });
   });
 
   const canvas = (

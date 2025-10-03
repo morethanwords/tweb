@@ -1,0 +1,153 @@
+@import "../../scss/variables.scss";
+@import "../../scss/mixins.scss";
+
+.Container {
+  box-sizing: border-box;
+  --height: 54px;
+  --border-radius: #{$border-radius-medium};
+  --padding-horizontal: 1rem;
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--padding-horizontal);
+
+  height: var(--height);
+  border-radius: var(--border-radius);
+
+  cursor: text;
+
+  &.clickable {
+    cursor: pointer;
+  }
+
+  &.withEndButtonIcon {
+    padding-right: calc(var(--padding-horizontal) - 0.5rem);
+  }
+
+  &:hover .BorderThin {
+    border-color: var(--primary-color);
+  }
+
+  &:focus-within .BorderThick {
+    opacity: 1;
+  }
+
+  &:focus-within .Label, .Label.active {
+    --cover-padding: 0.25rem;
+    font-size: 0.8rem;
+    top: 0;
+    left: calc(var(--padding-horizontal) - var(--cover-padding));
+    padding: 0 var(--cover-padding);
+    background-color: var(--surface-color);
+  }
+
+  &:focus-within .Label {
+    color: var(--primary-color);
+    font-weight: bold;
+  }
+
+  &:hover .Label {
+    color: var(--primary-color);
+  }
+
+  &.error .BorderThin, &.error .BorderThick {
+    border-color: var(--danger-color);
+  }
+
+  &.error .Label {
+    color: var(--danger-color);
+  }
+}
+
+.Border {
+  &Thin, &Thick {
+    position: absolute;
+    inset: 0;
+    border-style: solid;
+
+    border-radius: var(--border-radius);
+    pointer-events: none;
+  }
+
+  &Thin {
+    border: 1px solid var(--input-search-border-color);
+
+    @include animation-level-global(2) {
+      transition: border-color .2s;
+    }
+  }
+
+  &Thick {
+    border: 2px solid var(--primary-color);
+    opacity: 0;
+
+    @include animation-level-global(2) {
+      transition: opacity .2s;
+    }
+  }
+}
+
+.Input {
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  flex: 1;
+
+  &:disabled {
+    pointer-events: none;
+  }
+
+  /* Chrome, Safari, Edge, Opera */
+  &[type=number]::-webkit-inner-spin-button,
+  &[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Firefox */
+  &[type=number] {
+    -moz-appearance: textfield;
+  }
+
+  /* General reset (covers newer browsers moving to standard appearance) */
+  &[type=number] {
+    appearance: textfield;
+  }
+}
+
+.InputStub {
+  height: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.Label {
+  position: absolute;
+  left: var(--offset, 0px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  color: $placeholder-color;
+  pointer-events: none;
+
+  @include animation-level-global(2) {
+    transition: all .2s, font-weight .05s 0.1s;
+  }
+}
+
+.SideContent {
+  color: var(--secondary-text-color);
+  margin: 0 0.25rem;
+
+  &.first {
+    margin-left: 0;
+  }
+  &.last {
+    margin-right: 0;
+  }
+}

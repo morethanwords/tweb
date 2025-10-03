@@ -1,0 +1,48 @@
+.Container {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  gap: 0.25rem;
+}
+
+.Label {
+  max-width: 200px;
+  white-space: wrap;
+}
+
+.Subtitle {
+  font-size: 13px;
+  max-width: 280px;
+  white-space: wrap;
+  text-align: left;
+  align-self: flex-start;
+
+  &.center {
+    align-self: center;
+    text-align: center;
+  }
+}
+
+.Grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-items: start;
+
+  font-size: 13px;
+
+  gap: 0.125rem 0.75rem;
+
+  white-space: nowrap;
+
+  &Label {
+  }
+
+  &Value {
+    font-weight: 600;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

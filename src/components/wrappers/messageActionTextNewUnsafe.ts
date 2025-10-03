@@ -29,6 +29,8 @@ import shouldDisplayGiftCodeAsGift from '../../helpers/shouldDisplayGiftCodeAsGi
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import Icon from '../icon';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
+import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
+import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -692,9 +694,10 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
 
       case 'messageActionPaidMessagesPrice': {
-        const isFree = !+action.stars;
-        langPackKey = isFree ? 'PaidMessages.GroupPriceChangedFree' : 'PaidMessages.GroupPriceChanged';
-        args = [+action.stars];
+        const isBroadcast = await managers.appChatsManager.isBroadcast(message.fromId?.toChatId());
+        const result = await getPriceChangedActionMessageLangParams(action, isBroadcast, () => getNameDivHTML(message.fromId, plain));
+        langPackKey = result.langPackKey;
+        args = result.args;
         break;
       }
 
@@ -803,6 +806,35 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           ];
         }
 
+        break;
+      }
+      case 'messageActionChannelCreate': {
+        const chat = message?.peerId ? apiManagerProxy.getChat(message.peerId) : undefined;
+
+        if(chat?._ === 'channel' && chat?.pFlags?.monoforum) langPackKey = 'ActionCreateDirectMessages';
+
+        break;
+      }
+      case 'messageActionSuggestedPostApproval': {
+        if(action.pFlags.balance_too_low) {
+          langPackKey = 'SuggestedPosts.BalanceTooLow';
+          args = [wrapEmojiText('❌')]
+        } else if(action.pFlags.rejected) {
+          langPackKey = 'SuggestedPosts.GenericRejectedPost';
+          args = [wrapEmojiText('❌')]
+        } else {
+          langPackKey = 'SuggestedPosts.AgreementReached';
+          args = [wrapEmojiText('🤝')];
+        }
+        break;
+      }
+      case 'messageActionSuggestedPostSuccess': {
+        langPackKey = 'SuggestedPosts.PostSuccess';
+        args = [wrapEmojiText('✅'), i18n('Stars', [numberThousandSplitterForStars(action.price.amount)])];
+        break;
+      }
+      case 'messageActionSuggestedPostRefund': {
+        langPackKey = 'SuggestedPosts.GenericRefund';
         break;
       }
       default:

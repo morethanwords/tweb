@@ -1,13 +1,12 @@
 import {batch, onCleanup} from 'solid-js';
-
-import {default as appDialogsManager, DialogElement} from '../lib/appManagers/appDialogsManager';
-import getDialogIndexKey from '../lib/appManagers/utils/dialogs/getDialogIndexKey';
-import {AppManagers} from '../lib/appManagers/managers';
-import safeAssign from '../helpers/object/safeAssign';
 import namedPromises from '../helpers/namedPromises';
 import pickKeys from '../helpers/object/pickKeys';
+import safeAssign from '../helpers/object/safeAssign';
+import {default as appDialogsManager, DialogElement} from '../lib/appManagers/appDialogsManager';
+import {AppManagers} from '../lib/appManagers/managers';
+import getDialogIndex from '../lib/appManagers/utils/dialogs/getDialogIndex';
+import getDialogIndexKey from '../lib/appManagers/utils/dialogs/getDialogIndexKey';
 import {logger} from '../lib/logger';
-
 import {createDeferredSortedVirtualList, DeferredSortedVirtualListItem} from './deferredSortedVirtualList';
 import {LoadingDialogSkeletonSize} from './loadingDialogSkeleton';
 import Scrollable from './scrollable';
@@ -21,6 +20,7 @@ export default class SortedDialogList {
   public indexKey: ReturnType<typeof getDialogIndexKey>;
   public onListLengthChange: () => void;
   public virtualFilterId: PeerId;
+  public monoforumParentPeerId: PeerId;
 
   private virtualList: ReturnType<typeof createDeferredSortedVirtualList<DialogElement>>;
 
@@ -38,6 +38,7 @@ export default class SortedDialogList {
     indexKey: SortedDialogList['indexKey'],
     onListLengthChange?: SortedDialogList['onListLengthChange'],
     virtualFilterId?: SortedDialogList['virtualFilterId'],
+    monoforumParentPeerId?: SortedDialogList['monoforumParentPeerId'],
 
     scrollable: Scrollable,
     requestItemForIdx: (idx: number, itemsLength: number) => void,
@@ -51,6 +52,7 @@ export default class SortedDialogList {
       'log',
       'indexKey',
       'virtualFilterId',
+      'monoforumParentPeerId',
       'onListLengthChange'
     ]));
 
@@ -98,7 +100,12 @@ export default class SortedDialogList {
   }
 
 
-  public getIndexForKey(key: any) {
+  public async getIndexForKey(key: any) {
+    if(this.monoforumParentPeerId) {
+      const dialog = await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, key);
+      return getDialogIndex(dialog);
+    }
+
     return this.managers.dialogsStorage.getDialogIndex(
       this.virtualFilterId ?? key,
       this.indexKey,
@@ -125,6 +132,8 @@ export default class SortedDialogList {
       threadId: this.virtualFilterId ? key : undefined,
       isMainList: this.indexKey === 'index_0',
       controlled: true,
+      monoforumParentPeerId: this.monoforumParentPeerId,
+      meAsSaved: !this.monoforumParentPeerId,
       wrapOptions: undefined
     };
 
@@ -156,8 +165,10 @@ export default class SortedDialogList {
   }
 
   public delete(key: any) {
-    this.virtualList.removeItem(key);
-    this.virtualList.setTotalCount(prev => prev - 1);
+    batch(() => {
+      this.virtualList.removeItem(key);
+      this.virtualList.setTotalCount(prev => Math.max(0, prev - 1));
+    });
   }
 
   public has(key: any) {

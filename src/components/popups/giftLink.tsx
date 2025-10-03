@@ -219,13 +219,14 @@ export default class PopupGiftLink extends PopupElement {
 
   public static shareGiftLink(url: string, openAfter?: boolean) {
     PopupPickUser.createSharingPicker({
-      onSelect: async(peerId) => {
+      onSelect: async(peerId, _, monoforumThreadId) => {
         const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
         if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
 
         rootScope.managers.appMessagesManager.sendText({
           peerId,
           text: url,
+          replyToMonoforumPeerId: monoforumThreadId,
           confirmedPaymentResult: preparedPaymentResult
         });
 

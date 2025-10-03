@@ -29,6 +29,7 @@ import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {ActiveAccountNumber} from './accounts/types';
 import type {ApiManager} from './mtproto/apiManager';
 import {SensitiveContentSettings} from './appManagers/appPrivacyManager';
+import type {MonoforumDialog} from './storages/monoforumDialogs';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -144,7 +145,7 @@ export type BroadcastEvents = {
 
   'connection_status_change': ConnectionStatusChange,
   'settings_updated': {key: string, value: any, settings: StateSettings},
-  'draft_updated': {peerId: PeerId, threadId: number, draft: MyDraftMessage | undefined, force?: boolean},
+  'draft_updated': {peerId: PeerId, threadId?: number, monoforumThreadId?: PeerId, draft: MyDraftMessage | undefined, force?: boolean},
 
   'background_change': void,
 
@@ -233,7 +234,11 @@ export type BroadcastEvents = {
 
   'fulfill_repaid_message': {requestId: number},
 
-  'sensitive_content_settings': SensitiveContentSettings
+  'sensitive_content_settings': SensitiveContentSettings,
+
+  'monoforum_dialogs_update': {dialogs: MonoforumDialog[]},
+  'monoforum_dialogs_drop': {parentPeerId: PeerId, ids: PeerId[]},
+  'monoforum_draft_update': {dialog: MonoforumDialog},
 };
 
 export type BroadcastEventsListeners = {
