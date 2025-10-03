@@ -874,7 +874,8 @@ export namespace ChatFull {
     emojiset?: StickerSet,
     bot_verification?: BotVerification,
     stargifts_count?: number,
-    send_paid_messages_stars?: string | number
+    send_paid_messages_stars?: string | number,
+    main_tab?: ProfileTab
   };
 }
 
@@ -1612,6 +1613,8 @@ export namespace MessageAction {
       upgraded?: true,
       refunded?: true,
       can_upgrade?: true,
+      prepaid_upgrade?: true,
+      upgrade_separate?: true,
     }>,
     gift: StarGift,
     message?: TextWithEntities,
@@ -1620,7 +1623,9 @@ export namespace MessageAction {
     upgrade_stars?: string | number,
     from_id?: Peer,
     peer?: Peer,
-    saved_id?: string | number
+    saved_id?: string | number,
+    prepaid_upgrade_hash?: string,
+    gift_msg_id?: number
   };
 
   export type messageActionStarGiftUnique = {
@@ -1631,6 +1636,7 @@ export namespace MessageAction {
       transferred?: true,
       saved?: true,
       refunded?: true,
+      prepaid_upgrade?: true,
     }>,
     gift: StarGift,
     can_export_at?: number,
@@ -1984,7 +1990,9 @@ export namespace AuthSentCode {
   export type authSentCodePaymentRequired = {
     _: 'auth.sentCodePaymentRequired',
     store_product: string,
-    phone_code_hash: string
+    phone_code_hash: string,
+    support_email_address: string,
+    support_email_subject: string
   };
 }
 
@@ -2276,7 +2284,9 @@ export namespace UserFull {
     disallowed_gifts?: DisallowedGiftsSettings,
     stars_rating?: StarsRating,
     stars_my_pending_rating?: StarsRating,
-    stars_my_pending_rating_date?: number
+    stars_my_pending_rating_date?: number,
+    main_tab?: ProfileTab,
+    saved_music?: Document
   };
 }
 
@@ -4825,7 +4835,7 @@ export namespace WebPage {
     document?: Document,
     cached_page?: Page,
     attributes?: Array<WebPageAttribute>,
-    type?: 'document' | 'photo' | 'telegram_channel' | 'telegram_megagroup' | 'telegram_bot' | 'telegram_botapp' | 'telegram_user' | 'telegram_chatlist' | 'telegram_story' | 'telegram_channel_boost' | 'telegram_giftcode' | 'telegram_chat' | 'telegram_videochat' | 'telegram_voicechat' | 'telegram_livestream' | 'telegram_nft',
+    type?: 'document' | 'photo' | 'telegram_channel' | 'telegram_megagroup' | 'telegram_bot' | 'telegram_botapp' | 'telegram_user' | 'telegram_chatlist' | 'telegram_story' | 'telegram_channel_boost' | 'telegram_giftcode' | 'telegram_chat' | 'telegram_videochat' | 'telegram_voicechat' | 'telegram_livestream' | 'telegram_nft' | 'telegram_collection' | 'telegram_story_album',
     entities?: MessageEntity[]
   };
 
@@ -11267,7 +11277,7 @@ export namespace AttachMenuPeerType {
 /**
  * @link https://core.telegram.org/type/InputInvoice
  */
-export type InputInvoice = InputInvoice.inputInvoiceMessage | InputInvoice.inputInvoiceSlug | InputInvoice.inputInvoicePremiumGiftCode | InputInvoice.inputInvoiceStars | InputInvoice.inputInvoiceChatInviteSubscription | InputInvoice.inputInvoiceStarGift | InputInvoice.inputInvoiceStarGiftUpgrade | InputInvoice.inputInvoiceStarGiftTransfer | InputInvoice.inputInvoicePremiumGiftStars | InputInvoice.inputInvoiceBusinessBotTransferStars | InputInvoice.inputInvoiceStarGiftResale;
+export type InputInvoice = InputInvoice.inputInvoiceMessage | InputInvoice.inputInvoiceSlug | InputInvoice.inputInvoicePremiumGiftCode | InputInvoice.inputInvoiceStars | InputInvoice.inputInvoiceChatInviteSubscription | InputInvoice.inputInvoiceStarGift | InputInvoice.inputInvoiceStarGiftUpgrade | InputInvoice.inputInvoiceStarGiftTransfer | InputInvoice.inputInvoicePremiumGiftStars | InputInvoice.inputInvoiceBusinessBotTransferStars | InputInvoice.inputInvoiceStarGiftResale | InputInvoice.inputInvoiceStarGiftPrepaidUpgrade;
 
 export namespace InputInvoice {
   export type inputInvoiceMessage = {
@@ -11346,6 +11356,12 @@ export namespace InputInvoice {
     }>,
     slug: string,
     to_id: InputPeer
+  };
+
+  export type inputInvoiceStarGiftPrepaidUpgrade = {
+    _: 'inputInvoiceStarGiftPrepaidUpgrade',
+    peer: InputPeer,
+    hash: string
   };
 }
 
@@ -11448,9 +11464,11 @@ export namespace InputStorePaymentPurpose {
 
   export type inputStorePaymentStarsTopup = {
     _: 'inputStorePaymentStarsTopup',
+    flags?: number,
     stars: string | number,
     currency: string,
-    amount: string | number
+    amount: string | number,
+    spend_purpose_peer?: InputPeer
   };
 
   export type inputStorePaymentStarsGift = {
@@ -14034,6 +14052,7 @@ export namespace StarsTransaction {
       business_transfer?: true,
       stargift_resale?: true,
       posts_search?: true,
+      stargift_prepaid_upgrade?: true,
     }>,
     id: string,
     amount: StarsAmount,
@@ -14388,7 +14407,8 @@ export namespace StarGift {
     title?: string,
     released_by?: Peer,
     per_user_total?: number,
-    per_user_remains?: number
+    per_user_remains?: number,
+    locked_until_date?: number
   };
 
   export type starGiftUnique = {
@@ -14399,6 +14419,7 @@ export namespace StarGift {
       resale_ton_only?: true,
     }>,
     id: string | number,
+    gift_id: string | number,
     title: string,
     slug: string,
     num: number,
@@ -14410,7 +14431,9 @@ export namespace StarGift {
     availability_total: number,
     gift_address?: string,
     resell_amount?: Array<StarsAmount>,
-    released_by?: Peer
+    released_by?: Peer,
+    value_amount?: string | number,
+    value_currency?: string
   };
 }
 
@@ -14738,6 +14761,7 @@ export namespace PaymentsUniqueStarGift {
   export type paymentsUniqueStarGift = {
     _: 'payments.uniqueStarGift',
     gift: StarGift,
+    chats: Array<Chat>,
     users: Array<User>
   };
 }
@@ -14751,6 +14775,7 @@ export namespace MessagesWebPagePreview {
   export type messagesWebPagePreview = {
     _: 'messages.webPagePreview',
     media: MessageMedia,
+    chats: Array<Chat>,
     users: Array<User>
   };
 }
@@ -14770,6 +14795,7 @@ export namespace SavedStarGift {
       refunded?: true,
       can_upgrade?: true,
       pinned_to_top?: true,
+      upgrade_separate?: true,
     }>,
     from_id?: Peer,
     date: number,
@@ -14783,7 +14809,8 @@ export namespace SavedStarGift {
     transfer_stars?: string | number,
     can_transfer_at?: number,
     can_resell_at?: number,
-    collection_id?: Array<number>
+    collection_id?: Array<number>,
+    prepaid_upgrade_hash?: string
   };
 }
 
@@ -15215,6 +15242,123 @@ export namespace SearchPostsFlood {
     remains: number,
     wait_till?: number,
     stars_amount: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.UniqueStarGiftValueInfo
+ */
+export type PaymentsUniqueStarGiftValueInfo = PaymentsUniqueStarGiftValueInfo.paymentsUniqueStarGiftValueInfo;
+
+export namespace PaymentsUniqueStarGiftValueInfo {
+  export type paymentsUniqueStarGiftValueInfo = {
+    _: 'payments.uniqueStarGiftValueInfo',
+    flags?: number,
+    pFlags: Partial<{
+      last_sale_on_fragment?: true,
+      value_is_average?: true,
+    }>,
+    currency: string,
+    value: string | number,
+    initial_sale_date: number,
+    initial_sale_stars: string | number,
+    initial_sale_price: string | number,
+    last_sale_date?: number,
+    last_sale_price?: string | number,
+    floor_price?: string | number,
+    average_price?: string | number,
+    listed_count?: number,
+    fragment_listed_count?: number,
+    fragment_listed_url?: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/ProfileTab
+ */
+export type ProfileTab = ProfileTab.profileTabPosts | ProfileTab.profileTabGifts | ProfileTab.profileTabMedia | ProfileTab.profileTabFiles | ProfileTab.profileTabMusic | ProfileTab.profileTabVoice | ProfileTab.profileTabLinks | ProfileTab.profileTabGifs;
+
+export namespace ProfileTab {
+  export type profileTabPosts = {
+    _: 'profileTabPosts'
+  };
+
+  export type profileTabGifts = {
+    _: 'profileTabGifts'
+  };
+
+  export type profileTabMedia = {
+    _: 'profileTabMedia'
+  };
+
+  export type profileTabFiles = {
+    _: 'profileTabFiles'
+  };
+
+  export type profileTabMusic = {
+    _: 'profileTabMusic'
+  };
+
+  export type profileTabVoice = {
+    _: 'profileTabVoice'
+  };
+
+  export type profileTabLinks = {
+    _: 'profileTabLinks'
+  };
+
+  export type profileTabGifs = {
+    _: 'profileTabGifs'
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/users.SavedMusic
+ */
+export type UsersSavedMusic = UsersSavedMusic.usersSavedMusicNotModified | UsersSavedMusic.usersSavedMusic;
+
+export namespace UsersSavedMusic {
+  export type usersSavedMusicNotModified = {
+    _: 'users.savedMusicNotModified',
+    count: number
+  };
+
+  export type usersSavedMusic = {
+    _: 'users.savedMusic',
+    count: number,
+    documents: Array<Document>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/account.SavedMusicIds
+ */
+export type AccountSavedMusicIds = AccountSavedMusicIds.accountSavedMusicIdsNotModified | AccountSavedMusicIds.accountSavedMusicIds;
+
+export namespace AccountSavedMusicIds {
+  export type accountSavedMusicIdsNotModified = {
+    _: 'account.savedMusicIdsNotModified'
+  };
+
+  export type accountSavedMusicIds = {
+    _: 'account.savedMusicIds',
+    ids: Array<string | number>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.CheckCanSendGiftResult
+ */
+export type PaymentsCheckCanSendGiftResult = PaymentsCheckCanSendGiftResult.paymentsCheckCanSendGiftResultOk | PaymentsCheckCanSendGiftResult.paymentsCheckCanSendGiftResultFail;
+
+export namespace PaymentsCheckCanSendGiftResult {
+  export type paymentsCheckCanSendGiftResultOk = {
+    _: 'payments.checkCanSendGiftResultOk'
+  };
+
+  export type paymentsCheckCanSendGiftResultFail = {
+    _: 'payments.checkCanSendGiftResultFail',
+    reason: TextWithEntities
   };
 }
 
@@ -16670,6 +16814,22 @@ export interface ConstructorDeclMap {
   'stories.albums': StoriesAlbums.storiesAlbums,
   'searchPostsFlood': SearchPostsFlood.searchPostsFlood,
   'webPageAttributeStarGiftCollection': WebPageAttribute.webPageAttributeStarGiftCollection,
+  'inputInvoiceStarGiftPrepaidUpgrade': InputInvoice.inputInvoiceStarGiftPrepaidUpgrade,
+  'payments.uniqueStarGiftValueInfo': PaymentsUniqueStarGiftValueInfo.paymentsUniqueStarGiftValueInfo,
+  'profileTabPosts': ProfileTab.profileTabPosts,
+  'profileTabGifts': ProfileTab.profileTabGifts,
+  'profileTabMedia': ProfileTab.profileTabMedia,
+  'profileTabFiles': ProfileTab.profileTabFiles,
+  'profileTabMusic': ProfileTab.profileTabMusic,
+  'profileTabVoice': ProfileTab.profileTabVoice,
+  'profileTabLinks': ProfileTab.profileTabLinks,
+  'profileTabGifs': ProfileTab.profileTabGifs,
+  'users.savedMusicNotModified': UsersSavedMusic.usersSavedMusicNotModified,
+  'users.savedMusic': UsersSavedMusic.usersSavedMusic,
+  'account.savedMusicIdsNotModified': AccountSavedMusicIds.accountSavedMusicIdsNotModified,
+  'account.savedMusicIds': AccountSavedMusicIds.accountSavedMusicIds,
+  'payments.checkCanSendGiftResultOk': PaymentsCheckCanSendGiftResult.paymentsCheckCanSendGiftResultOk,
+  'payments.checkCanSendGiftResultFail': PaymentsCheckCanSendGiftResult.paymentsCheckCanSendGiftResultFail,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -20704,9 +20864,10 @@ export type PaymentsGetSavedStarGifts = {
   exclude_unsaved?: boolean,
   exclude_saved?: boolean,
   exclude_unlimited?: boolean,
-  exclude_limited?: boolean,
   exclude_unique?: boolean,
   sort_by_value?: boolean,
+  exclude_upgradable?: boolean,
+  exclude_unupgradable?: boolean,
   peer: InputPeer,
   collection_id?: number,
   offset: string,
@@ -20935,6 +21096,46 @@ export type StoriesGetAlbumStories = {
 export type ChannelsCheckSearchPostsFlood = {
   flags?: number,
   query?: string
+};
+
+export type PaymentsGetUniqueStarGiftValueInfo = {
+  slug: string
+};
+
+export type PaymentsCheckCanSendGift = {
+  gift_id: string | number
+};
+
+export type AccountSetMainProfileTab = {
+  tab: ProfileTab
+};
+
+export type ChannelsSetMainProfileTab = {
+  channel: InputChannel,
+  tab: ProfileTab
+};
+
+export type AccountSaveMusic = {
+  flags?: number,
+  unsave?: boolean,
+  id: InputDocument,
+  after_id?: InputDocument
+};
+
+export type AccountGetSavedMusicIds = {
+  hash: string | number
+};
+
+export type UsersGetSavedMusic = {
+  id: InputUser,
+  offset: number,
+  limit: number,
+  hash: string | number
+};
+
+export type UsersGetSavedMusicByID = {
+  id: InputUser,
+  documents: Array<InputDocument>
 };
 
 export interface MethodDeclMap {
@@ -21656,5 +21857,13 @@ export interface MethodDeclMap {
   'stories.getAlbums': {req: StoriesGetAlbums, res: StoriesAlbums},
   'stories.getAlbumStories': {req: StoriesGetAlbumStories, res: StoriesStories},
   'channels.checkSearchPostsFlood': {req: ChannelsCheckSearchPostsFlood, res: SearchPostsFlood},
+  'payments.getUniqueStarGiftValueInfo': {req: PaymentsGetUniqueStarGiftValueInfo, res: PaymentsUniqueStarGiftValueInfo},
+  'payments.checkCanSendGift': {req: PaymentsCheckCanSendGift, res: PaymentsCheckCanSendGiftResult},
+  'account.setMainProfileTab': {req: AccountSetMainProfileTab, res: boolean},
+  'channels.setMainProfileTab': {req: ChannelsSetMainProfileTab, res: boolean},
+  'account.saveMusic': {req: AccountSaveMusic, res: boolean},
+  'account.getSavedMusicIds': {req: AccountGetSavedMusicIds, res: AccountSavedMusicIds},
+  'users.getSavedMusic': {req: UsersGetSavedMusic, res: UsersSavedMusic},
+  'users.getSavedMusicByID': {req: UsersGetSavedMusicByID, res: UsersSavedMusic},
 }
 

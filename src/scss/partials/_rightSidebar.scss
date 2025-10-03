@@ -716,6 +716,26 @@
       margin-inline-start: 1.5rem;
     }
   }
+
+  &-pinned-gifts {
+    margin-left: 0.25rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    
+    .media-sticker-wrapper {
+      width: 18px;
+      height: 18px;
+      position: relative;
+    }
+
+    &-wrap {
+      display: flex;
+      flex-direction: row;
+      gap: 0.25rem;
+      align-items: center;
+    }
+  }
 }
 
 #search-container {

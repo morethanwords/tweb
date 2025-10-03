@@ -334,7 +334,8 @@ export const AvatarNew = (props: {
   isStoryFolded?: Accessor<boolean>,
   processImageOnLoad?: (image: HTMLImageElement) => void,
   meAsNotes?: boolean,
-  onStoriesStatus?: (has: boolean) => void
+  onStoriesStatus?: (has: boolean) => void,
+  class?: string
 }) => {
   const [ready, setReady] = createSignal(false);
   const [icon, setIcon] = createSignal<Icon>();
@@ -840,7 +841,7 @@ export const AvatarNew = (props: {
   const element = (
     <div
       ref={node}
-      class={`avatar avatar-like avatar-${props.size} avatar-gradient`}
+      class={`avatar avatar-like avatar-${props.size} avatar-gradient ${props.class ?? ''}`}
       classList={classList()}
       data-color={color()}
       data-peer-id={props.peerId}
@@ -889,7 +890,7 @@ export const AvatarNew = (props: {
   return ret;
 };
 
-export function AvatarNewTsx(props: Parameters<typeof AvatarNew>[0]) {
+export function AvatarNewTsx(props: Parameters<typeof AvatarNew>[0] & {class?: string}) {
   const el = AvatarNew(props);
   createEffect(on(() => props.peerId, () => {
     el.render()

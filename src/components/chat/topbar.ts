@@ -539,7 +539,7 @@ export default class ChatTopbar {
     }, {
       icon: 'gift',
       text: 'Chat.Menu.SendGift',
-      onClick: () => PopupElement.createPopup(PopupSendGift, this.peerId),
+      onClick: () => PopupElement.createPopup(PopupSendGift, {peerId: this.peerId}),
       verify: async() => this.chat.isChannel || (this.chat.peerId.isUser() && this.managers.appUsersManager.isRegularUser(this.peerId))
     }, {
       icon: 'statistics',

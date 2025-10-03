@@ -201,53 +201,21 @@
 }
 
 .categoriesContainer {
-  position: sticky;
+  position: sticky!important;
   top: 3.5rem;
   width: 100%;
-  transition: background-color var(--transition-standard-in), border-bottom-color var(--transition-standard-in);
+  transition-property: background-color, border-bottom-color;
   border-bottom-color: transparent;
   z-index: 3;
-  flex-shrink: 0;
-  height: 2.5rem;
 
-  &.isPinned {
+  &Pinned {
     background: var(--surface-color);
     border-bottom: 1px solid var(--border-color);
   }
 
-  :global(.scrollable) {
-    display: flex;
-    flex-direction: row;
-    gap: 0.1875rem;
-    padding: 0.375rem 1rem; 
-  }
-}
-
-.giftCategoryChip {
-  padding: 0.28125rem 0.75rem;
-  font-size: 14px;
-  line-height: 19px;
-  color: var(--secondary-text-color);
-  font-weight: 500;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: background-color var(--transition-standard-in);
-
   :global(.currency-star-icon) {
     width: 1rem;
     height: 1rem;
-  }
-
-  &.active {
-    background: var(--surface-color);
-  }
-
-  .isPinned &.active {
-    background: var(--light-filled-secondary-text-color);
   }
 }
 

@@ -1280,34 +1280,6 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       inset-inline-start: 3.125rem;
       transform: scale(1) !important;
 
-      &-item {
-        padding-inline-end: 1.5rem;
-
-        &-text {
-          order: 1;
-        }
-
-        .checkbox {
-          &-field {
-            --size: 1.25rem;
-            order: 0;
-            margin: 0;
-            margin-inline-end: var(--icon-margin);
-          }
-
-          &-box {
-            &-border,
-            &-background {
-              display: none;
-            }
-
-            &-check use {
-              stroke: var(--primary-text-color);
-            }
-          }
-        }
-      }
-
       @include respond-to(handhelds) {
         inset-inline-start: calc(var(--padding-horizontal) * -1);
       }

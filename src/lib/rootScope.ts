@@ -223,9 +223,10 @@ export type BroadcastEvents = {
     input: InputSavedStarGift,
     resalePrice?: StarsAmount[],
     unsaved?: boolean,
-    converted?: boolean
-    togglePinned?: boolean
+    converted?: boolean,
+    wearing?: boolean
   },
+  'my_pinned_stargifts': {gifts: InputSavedStarGift[]},
   'star_gift_list_update': {peerId: PeerId},
 
   'insufficent_stars_for_message': {messageCount: number, requestId: number, invokeApiArgs: Parameters<ApiManager['invokeApi']>, reservedStars?: number};

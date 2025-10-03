@@ -4,22 +4,17 @@ import safeAssign from '../../helpers/object/safeAssign';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
 import rootScope from '../../lib/rootScope';
-import {AvatarNewTsx} from '../avatarNew';
-import {IconTsx} from '../iconTsx';
 import {PeerTitleTsx} from '../peerTitleTsx';
 
 import styles from './buyResaleGift.module.scss';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import {STARS_CURRENCY, TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {StarGift} from '../../layer';
-import {StarGiftBackdrop} from '../stargifts/stargiftBackdrop';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {MTAppConfig} from '../../lib/mtproto/appConfig';
-import {StickerTsx} from '../wrappers/sticker';
-import classNames from '../../helpers/string/classNames';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import {FloatingStarsBalance} from './floatingStarsBalance';
 import PopupPayment from './payment';
+import {StarGiftTransferPreview} from '../stargifts/transferPreview';
+import {ChipTab, ChipTabs} from '../chipTabs';
 
 export default class PopupBuyResaleGift extends PopupElement<{
   finish: (result: boolean) => void
@@ -51,15 +46,10 @@ export default class PopupBuyResaleGift extends PopupElement<{
   }
 
   protected async construct() {
-    const [appConfig, patternDoc, modelDoc] = await Promise.all([
-      this.managers.apiManager.getAppConfig(),
-      this.managers.appDocsManager.getDoc(this.gift.collectibleAttributes?.pattern.document.id as number),
-      this.managers.appDocsManager.getDoc(this.gift.collectibleAttributes?.model.document.id as number)
-    ])
-    this.appendSolidBody(() => this._construct({appConfig, patternDoc, modelDoc}));
+    this.appendSolidBody(() => this._construct());
   }
 
-  protected _construct({appConfig, patternDoc, modelDoc}: {appConfig: MTAppConfig, patternDoc: MyDocument, modelDoc: MyDocument}) {
+  protected _construct() {
     const [ton, setTon] = createSignal(this.gift.resellOnlyTon ?? false);
     const gift = this.gift.raw as StarGift.starGiftUnique;
 
@@ -111,41 +101,31 @@ export default class PopupBuyResaleGift extends PopupElement<{
             <I18nTsx key="StarGiftResaleOnlyTon" />
           </div>
         ) : (
-          <div class={/* @once */ styles.tabs}>
-            <div class={classNames(styles.tab, !ton() && styles.activeTab)} onClick={() => setTon(false)}>
+          <ChipTabs
+            value={ton() ? 'ton' : 'stars'}
+            view="primary"
+            onChange={(value) => setTon(value === 'ton')}
+          >
+            <ChipTab value="stars">
               <I18nTsx key="StarGiftResalePayInStars" />
-            </div>
-            <div class={classNames(styles.tab, ton() && styles.activeTab)} onClick={() => setTon(true)}>
+            </ChipTab>
+            <ChipTab value="ton">
               <I18nTsx key="StarGiftResalePayInTon" />
-            </div>
-          </div>
+            </ChipTab>
+          </ChipTabs>
         )}
-        <div class={/* @once */ styles.graph}>
-          <div class={/* @once */ styles.giftWrap}>
-            <StarGiftBackdrop
-              backdrop={this.gift.collectibleAttributes?.backdrop}
-              patternEmoji={patternDoc}
-              small
-              canvasClass={/* @once */ styles.giftBackdropCanvas}
-            />
-            <StickerTsx
-              sticker={modelDoc}
-              width={48}
-              height={48}
-              autoStyle
-              extraOptions={{play: true, loop: true}}
-            />
-          </div>
-          <IconTsx icon="next" />
-          <AvatarNewTsx
-            peerId={this.recipientId}
-            size={64}
-          />
-        </div>
+
+        <StarGiftTransferPreview
+          class={/* @once */ styles.graph}
+          gift={this.gift}
+          recipient={this.recipientId}
+        />
+
+        <I18nTsx class={/* @once */ styles.title} key="ConfirmPayment" />
 
         <div class={/* @once */ styles.text}>
           <I18nTsx
-            key="StarGiftResaleBuyText"
+            key={this.recipientId !== rootScope.myId ? 'StarGiftResaleBuyTextWithRecipient' : 'StarGiftResaleBuyText'}
             args={[
               <span>
                 {gift.title}
@@ -153,7 +133,8 @@ export default class PopupBuyResaleGift extends PopupElement<{
               </span>,
               ton() ?
                 paymentsWrapCurrencyAmount(this.gift.resellPriceTon, TON_CURRENCY, false, false, true) :
-                paymentsWrapCurrencyAmount(this.gift.resellPriceStars, STARS_CURRENCY, false, false, true)
+                paymentsWrapCurrencyAmount(this.gift.resellPriceStars, STARS_CURRENCY, false, false, true),
+              this.recipientId !== rootScope.myId && <PeerTitleTsx peerId={this.recipientId} />
             ]}
           />
         </div>

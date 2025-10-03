@@ -720,7 +720,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           langPackKey = 'StarGiftSentMessageSelf';
           args = [formatStarsAmount(action.resale_amount)];
         } else if(message.peerId === rootScope.myId) {
-          langPackKey = 'ActionGiftUpgradedSelf';
+          langPackKey = action.pFlags.upgrade ? 'ActionGiftUpgradedSelf' : 'ActionGiftTransferredSelf';
         } else {
           if(action.pFlags.upgrade) {
             langPackKey = message.pFlags.out ? 'ActionGiftUpgradedOutbound' : 'ActionGiftUpgradedInbound'

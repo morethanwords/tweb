@@ -11,7 +11,8 @@ export default function getVisibleRect(
   overflowElement: HTMLElement,
   lookForSticky?: boolean,
   rect: DOMRectMinified = element.getBoundingClientRect(),
-  overflowRect: DOMRectMinified = overflowElement.getBoundingClientRect()
+  overflowRect: DOMRectMinified = overflowElement.getBoundingClientRect(),
+  ignoreBoundaries?: boolean
 ) {
   let {top: overflowTop, right: overflowRight, bottom: overflowBottom, left: overflowLeft} = overflowRect;
 
@@ -45,10 +46,10 @@ export default function getVisibleRect(
 
   return {
     rect: {
-      top: rect.top < overflowTop && overflowTop !== 0 ? (overflow.top = true, ++overflow.vertical, overflowTop) : rect.top,
-      right: rect.right > overflowRight && overflowRight !== windowWidth ? (overflow.right = true, ++overflow.horizontal, overflowRight) : rect.right,
-      bottom: rect.bottom > overflowBottom && overflowBottom !== windowHeight ? (overflow.bottom = true, ++overflow.vertical, overflowBottom) : rect.bottom,
-      left: rect.left < overflowLeft && overflowLeft !== 0 ? (overflow.left = true, ++overflow.horizontal, overflowLeft) : rect.left
+      top: rect.top < overflowTop && (ignoreBoundaries || overflowTop !== 0) ? (overflow.top = true, ++overflow.vertical, overflowTop) : rect.top,
+      right: rect.right > overflowRight && (ignoreBoundaries || overflowRight !== windowWidth) ? (overflow.right = true, ++overflow.horizontal, overflowRight) : rect.right,
+      bottom: rect.bottom > overflowBottom && (ignoreBoundaries || overflowBottom !== windowHeight) ? (overflow.bottom = true, ++overflow.vertical, overflowBottom) : rect.bottom,
+      left: rect.left < overflowLeft && (ignoreBoundaries || overflowLeft !== 0) ? (overflow.left = true, ++overflow.horizontal, overflowLeft) : rect.left
     },
     overflow
   };

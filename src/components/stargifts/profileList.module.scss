@@ -1,0 +1,47 @@
+.tab {
+  background-color: var(--background-color);
+  height: 100%;
+}
+
+.hasCollections .grid {
+  padding-top: 0.25rem;
+}
+
+.collections {
+  position: sticky!important;
+  top: 3rem;
+  z-index: 3;
+  background-color: var(--background-color);
+
+  :global(.profile-container) & {
+    top: 6.5rem;
+  }
+}
+
+.addCollection {
+  margin-left: 0.25rem;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  text-align: center;
+  padding-inline: 1rem;
+}
+
+.emptyTitle {
+  font-size: var(--font-size-18);
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 26px;
+}
+
+.emptySubtitle {
+  font-size: 14px;
+  color: var(--secondary-text-color);
+  margin-bottom: 0.75rem;
+}

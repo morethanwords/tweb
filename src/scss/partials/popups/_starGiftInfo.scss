@@ -5,7 +5,9 @@
     &-container {
       width: 26.25rem;
       border-radius: 14px;
+      overflow: visible;
     }
+
     &-header {
       margin: 0;
     }
@@ -17,6 +19,18 @@
     &-footer {
       padding: 0;
       margin-top: 2rem;
+
+      .btn-primary {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 48px;
+        gap: 0.25rem;
+
+        .tgico {
+          font-size: 1.25rem;
+        }
+      }
     }
   }
 
@@ -44,6 +58,9 @@
   position: relative;
   padding-inline: 1rem;
   width: 100%;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  overflow: hidden;
 
   .is-collectible & {
     padding-bottom: 1rem;
@@ -59,6 +76,10 @@
   position: absolute;
   top: 0.5rem;
   left: 0.5rem;
+}
+
+.is-collectible .popup-star-gift-info-close,
+.is-collectible .popup-star-gift-info-menu-toggle {
   color: #fff;
 }
 
@@ -151,27 +172,34 @@
   &:hover {
     background-color: rgba(255, 255, 255, .15);
   }
+}
 
-  &.is-change-price {
-    justify-content: flex-end;
-    gap: 0.5rem;
+.popup-star-gift-info-change-price {
+  position: absolute;
+  top: 0.8125rem;
+  right: 3.125rem;
+  z-index: 1;
+  color: #fff;
+  background-color: rgba(255, 255, 255, .1);
+  padding-inline: 0.5rem;
+  height: 1.875rem;
+  border-radius: 999px;
 
-    .tgico {
-      font-size: 1rem;
-      padding: 0;
-    }
+  .tgico {
+    font-size: 1rem;
+    padding: 0;
+  }
 
-    .xtr, .ton-amount {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      font-weight: 600;
-      font-size: var(--font-size-14);
-    }
+  .xtr, .ton-amount {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 600;
+    font-size: var(--font-size-14);
+  }
 
-    .ton-amount-icon {
-      margin-top: -2px;
-    }
+  .ton-amount-icon {
+    margin-top: -2px;
   }
 }
 
@@ -196,7 +224,6 @@
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
-  color: #fff;
   z-index: 1;
 }
 
@@ -215,7 +242,7 @@
     cursor: pointer;
   }
 }
-.popup-footer .popup-star-gift-info-resale-button-twoline {
+.popup-star-gift-info .popup-footer .popup-star-gift-info-resale-button-twoline {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -224,6 +251,14 @@
   font-size: 16px;
   line-height: 16px;
   height: 3rem;
+
+  .tgico {
+    font-size: 0.875rem;
+  }
+
+  .ton-amount-icon {
+    margin-top: 2px;
+  }
 }
 
 .popup-star-gift-info-resale-stars-amount {
@@ -232,4 +267,20 @@
   color: rgba(255, 255, 255, .6);
   margin-top: 0.125rem;
   text-transform: none;
+}
+
+.popup-star-gift-info-attribute-clickable {
+  color: var(--primary-color);
+  cursor: pointer;
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.popup-star-gift-info-snackbar {
+  top: -3.5rem;
+  bottom: initial !important;
+  left: 0;
+  right: 0;
+  z-index: -1;
 }

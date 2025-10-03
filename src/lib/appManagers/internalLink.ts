@@ -27,7 +27,9 @@ export enum INTERNAL_LINK_TYPE {
   BUSINESS_CHAT,
   STARS_TOPUP,
   SHARE,
-  UNIQUE_STAR_GIFT
+  UNIQUE_STAR_GIFT,
+  STAR_GIFT_COLLECTION,
+  STORY_ALBUM,
 };
 
 export type InternalLink =
@@ -49,7 +51,9 @@ export type InternalLink =
   InternalLink.InternalLinkBusinessChat |
   InternalLink.InternalLinkStarsTopup |
   InternalLink.InternalLinkShare |
-  InternalLink.InternalLinkUniqueStarGift;
+  InternalLink.InternalLinkUniqueStarGift |
+  InternalLink.InternalLinkStarGiftCollection |
+  InternalLink.InternalLinkStoryAlbum;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -179,6 +183,18 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT,
     slug: string
   }
+
+  export interface InternalLinkStarGiftCollection {
+    _: INTERNAL_LINK_TYPE.STAR_GIFT_COLLECTION,
+    domain: string,
+    id: string
+  }
+
+  export interface InternalLinkStoryAlbum {
+    _: INTERNAL_LINK_TYPE.STORY_ALBUM,
+    domain: string,
+    id: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -200,5 +216,7 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.BUSINESS_CHAT]: InternalLink.InternalLinkBusinessChat,
   [INTERNAL_LINK_TYPE.STARS_TOPUP]: InternalLink.InternalLinkStarsTopup,
   [INTERNAL_LINK_TYPE.SHARE]: InternalLink.InternalLinkShare,
-  [INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT]: InternalLink.InternalLinkUniqueStarGift
+  [INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT]: InternalLink.InternalLinkUniqueStarGift,
+  [INTERNAL_LINK_TYPE.STAR_GIFT_COLLECTION]: InternalLink.InternalLinkStarGiftCollection,
+  [INTERNAL_LINK_TYPE.STORY_ALBUM]: InternalLink.InternalLinkStoryAlbum
 };
