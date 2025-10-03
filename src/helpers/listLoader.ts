@@ -92,6 +92,8 @@ export default class ListLoader<T extends {}, P extends {}> {
       this.next.unshift(...items);
     }
 
+    this.current = item;
+
     if(this.next.length < this.loadWhenLeft) {
       this.load(!this.reverse);
     }
@@ -100,7 +102,6 @@ export default class ListLoader<T extends {}, P extends {}> {
       this.load(this.reverse);
     }
 
-    this.current = item;
     dispatchJump && this.onJump?.(item, length > 0);
     return this.current;
   }
