@@ -39,7 +39,7 @@ export class AppMessagesIdsManager {
   }
 
   public incrementMessageId(messageId: number, increment: number) {
-    return this.generateMessageId(getServerMessageId(messageId) + increment, isLegacyMessageId(messageId) ? 1 : 0);
+    return this.generateMessageId(getServerMessageId(messageId) + increment, isLegacyMessageId(messageId) ? 0 : 1);
   }
 
   public getMessageIdInfo(mid: number, channelId?: ChatId) {
