@@ -1,4 +1,4 @@
-import {createEffect, createRoot, createSelector, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
+import {batch, createEffect, createRoot, createSelector, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
@@ -32,7 +32,8 @@ export type FoldersSidebarControls = {
 };
 
 export function FoldersSidebarContent(props: {
-  controlsRef: (controls: FoldersSidebarControls) => void;
+  filters: MyDialogFilter[];
+  isFiltersInited: boolean;
   notificationsElement: HTMLElement;
 }) {
   log.debug('Rendering FoldersSidebarContent');
@@ -236,18 +237,22 @@ export function FoldersSidebarContent(props: {
     });
   });
 
-  const controls: FoldersSidebarControls = {
-    hydrateFilters: async(filters) => {
-      const folderFilters = filters.filter((filter) => filter.id !== FOLDER_ID_ARCHIVE);
+  createEffect(() => {
+    if(!props.isFiltersInited) return;
 
+    const folderFilters = props.filters.filter((filter) => filter.id !== FOLDER_ID_ARCHIVE);
+
+    let cleaned = false;
+    onCleanup(() => void (cleaned = true));
+
+    (async() => {
       const folderItems = await Promise.all(folderFilters.map(makeFolderItemPayload));
       const orderedFolderItems = await getFolderItemsInOrder(folderItems, rootScope.managers);
 
-      setFolderItems(orderedFolderItems);
-    }
-  };
+      if(!cleaned) setFolderItems(orderedFolderItems);
+    })();
+  });
 
-  props.controlsRef(controls);
 
   const updateCanShowAddFolders = () => {
     const selectedItem = folderItemRefs[selectedFolderId()];
@@ -333,17 +338,26 @@ export function renderFoldersSidebarContent(
   notificationsElement: HTMLElement,
   HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
   middleware: Middleware
-) {
-  let controls: FoldersSidebarControls;
+): FoldersSidebarControls {
   const [hasFoldersSidebar] = useHasFoldersSidebar();
+
+  const {
+    filters: [filters, setFilters],
+    isFiltersInited: [isFiltersInited, setIsFiltersInited]
+  } = createRoot((dispose) => {
+    middleware.onDestroy(() => dispose());
+
+    return {
+      filters: createSignal<MyDialogFilter[]>([]),
+      isFiltersInited: createSignal(false)
+    };
+  });
+
   createRoot((dispose) => {
     render(() => (
       <HotReloadGuardProvider>
         <Show when={hasFoldersSidebar()}>
-          <FoldersSidebarContent
-            notificationsElement={notificationsElement}
-            controlsRef={(value) => void(controls = value)}
-          />
+          <FoldersSidebarContent notificationsElement={notificationsElement} filters={filters()} isFiltersInited={isFiltersInited()} />
         </Show>
       </HotReloadGuardProvider>
     ), element);
@@ -351,5 +365,10 @@ export function renderFoldersSidebarContent(
     middleware.onDestroy(() => dispose());
   });
 
-  return controls;
+  return {
+    hydrateFilters: (filters) => batch(() => {
+      setFilters(filters);
+      setIsFiltersInited(true);
+    })
+  };
 }
