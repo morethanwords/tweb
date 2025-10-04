@@ -71,6 +71,7 @@ import PriceChangedInterceptor from './priceChangedInterceptor';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {SensitiveContentSettings} from '../../lib/appManagers/appPrivacyManager';
 import {ignoreRestrictionReasons, isRestricted, isSensitive} from '../../helpers/restrictions';
+import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 
 export enum ChatType {
   Chat = 'chat',
@@ -642,6 +643,7 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
       if(dialog.peerId === this.peerId && (isDialog(dialog) || this.threadId === getDialogKey(dialog))) {
         this.appImManager.setPeer({isDeleting: true});
+        if(appDialogsManager.hasMonoforumOpenFor(dialog.peerId)) appDialogsManager.closeMonoforumDrawers();
       }
     });
 

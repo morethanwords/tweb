@@ -132,6 +132,7 @@ export default function hasRights(
     case 'add_admins':
     case 'anonymous':
     case 'post_messages':
+    case 'manage_direct_messages':
     case 'edit_messages': {
       return isAdmin && !!myFlags[action];
     }

@@ -2648,6 +2648,7 @@
 "ChatList.Mute.Forever" = "Forever";
 "Channel.EditAdmin.ManageCalls" = "Manage Video Chats";
 "Channel.EditAdmin.PermissionInviteSubscribers" = "Add Subscribers";
+"Channel.EditAdmin.ManageDirectMessages" = "Manage Direct Messages";
 "Channel.Admin.Dismiss" = "Dismiss Admin";
 "Channel.Admin.AdminAccess" = "This admin will be able to add new admins with equal or fewer rights.";
 "Channel.Admin.AdminRestricted" = "This admin will not be able to add new admins.";
