@@ -85,7 +85,7 @@ export async function wrapReplyDivAndCaption(options: {
     messageMedia = (messageMedia as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage || messageMedia;
     const photo = (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo;
     const document = (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
-    const spoiler = (messageMedia as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument).pFlags.spoiler;
+    const spoiler = (messageMedia as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument)?.pFlags?.spoiler;
 
     if(photo || (document && document.thumbs?.length)/* ['video', 'sticker', 'gif', 'round', 'photo', 'audio'].indexOf(document.type) !== -1) */) {
       if(document?.type === 'sticker') {
