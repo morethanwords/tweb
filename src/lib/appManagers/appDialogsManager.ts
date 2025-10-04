@@ -1753,13 +1753,14 @@ export class AppDialogsManager {
     this.forumsSlider = document.createElement('div');
     this.forumsSlider.classList.add('topics-slider');
 
+    this.chatsContainer.parentElement.parentElement.append(this.forumsSlider);
+
     this.monoforumDrawers = {
       container: document.createElement('div'),
       opened: []
     };
 
-    const drawersParent = appSidebarLeft.sidebarEl;
-    drawersParent.append(this.forumsSlider, this.monoforumDrawers.container);
+    appSidebarLeft.sidebarEl.append(this.monoforumDrawers.container);
 
     // appSidebarLeft.onOpenTab = () => {
     //   return this.toggleForumTab();
