@@ -4,7 +4,7 @@ import {Transition} from 'solid-transition-group';
 import throttle from '../../../helpers/schedulers/throttle';
 import {i18n} from '../../../lib/langPack';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import RowTsx from '../../rowTsx';
+import Row from '../../rowTsx';
 import Section from '../../section';
 import SaveButton from '../../sidebarLeft/tabs/privacy/messages/saveButton';
 import StarRangeInput from '../../sidebarLeft/tabs/privacy/messages/starsRangeInput';
@@ -70,11 +70,14 @@ const ChannelDirectMessages = () => {
     </Portal>
 
     <Section caption='ChannelDirectMessages.Settings.SwitchLabelCaption'>
-      <RowTsx
-        rightContent={<StaticSwitch checked={enabled()} />}
-        clickable={() => {setEnabled(!enabled())}}
-        title={i18n('ChannelDirectMessages.Settings.SwitchLabel')}
-      />
+      <Row clickable={() => {setEnabled(!enabled())}}>
+        <Row.Title>
+          {i18n('ChannelDirectMessages.Settings.SwitchLabel')}
+        </Row.Title>
+        <Row.RightContent>
+          <StaticSwitch checked={enabled()} />
+        </Row.RightContent>
+      </Row>
     </Section>
 
     <Transition name='fade'>
