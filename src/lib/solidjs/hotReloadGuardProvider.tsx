@@ -1,5 +1,6 @@
 import {ParentProps} from 'solid-js';
 
+import {AutonomousMonoforumThreadList} from '../../components/autonomousDialogList/monoforumThreads';
 import {EmoticonsDropdown} from '../../components/emoticonsDropdown';
 import EmoticonsSearch from '../../components/emoticonsDropdown/search';
 import EmojiTab from '../../components/emoticonsDropdown/tabs/emoji';
@@ -14,7 +15,7 @@ import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import themeController from '../../helpers/themeController';
-import appDialogsManager, {AutonomousMonoforumThreadList} from '../appManagers/appDialogsManager';
+import appDialogsManager from '../appManagers/appDialogsManager';
 import appImManager from '../appManagers/appImManager';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 import lottieLoader from '../rlottie/lottieLoader';

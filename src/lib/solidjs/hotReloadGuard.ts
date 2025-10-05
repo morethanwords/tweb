@@ -4,6 +4,7 @@ import {createContext, useContext} from 'solid-js';
  * `import type` is mandatory to avoid reloading the page (not really 😀, vite handles it even without the `import type`)
  */
 
+import type {AutonomousMonoforumThreadList} from '../../components/autonomousDialogList/monoforumThreads';
 import type {EmoticonsDropdown} from '../../components/emoticonsDropdown';
 import type EmoticonsSearch from '../../components/emoticonsDropdown/search';
 import type EmojiTab from '../../components/emoticonsDropdown/tabs/emoji';
@@ -18,7 +19,7 @@ import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolder
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import type wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import type {ThemeController} from '../../helpers/themeController';
-import type {AppDialogsManager, AutonomousMonoforumThreadList} from '../appManagers/appDialogsManager';
+import type {AppDialogsManager} from '../appManagers/appDialogsManager';
 import type {AppImManager} from '../appManagers/appImManager';
 import type apiManagerProxy from '../mtproto/mtprotoworker';
 import type lottieLoader from '../rlottie/lottieLoader';

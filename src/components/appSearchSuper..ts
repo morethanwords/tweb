@@ -5,7 +5,7 @@
  */
 
 import type {AppMessagesManager, MyInputMessagesFilter, MyMessage, RequestHistoryOptions} from '../lib/appManagers/appMessagesManager';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom, AutonomousSavedDialogList} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '../lib/appManagers/appDialogsManager';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
 import {SearchGroup, SearchGroupType} from './appSearch';
@@ -109,6 +109,7 @@ import {StarGiftsProfileTab} from './stargifts/profileList';
 import {MyStarGift} from '../lib/appManagers/appGiftsManager';
 import wrapSticker from './wrappers/sticker';
 import {unwrap} from 'solid-js/store';
+import {AutonomousSavedDialogList} from './autonomousDialogList/savedDialogs';
 
 // const testScroll = false;
 
@@ -1841,7 +1842,7 @@ export default class AppSearchSuper {
       return this._loadSavedDialogs(side);
     }
 
-    const xd = new AutonomousSavedDialogList();
+    const xd = new AutonomousSavedDialogList({appDialogsManager});
     xd.scrollable = this.scrollable;
     xd.sortedList = new SortedDialogList({
       appDialogsManager,

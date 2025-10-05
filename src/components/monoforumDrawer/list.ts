@@ -1,6 +1,6 @@
-import type {AppDialogsManager, AutonomousMonoforumThreadList} from '../../lib/appManagers/appDialogsManager';
+import type {AppDialogsManager} from '../../lib/appManagers/appDialogsManager';
 import rootScope from '../../lib/rootScope';
-import {useHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
+import type {AutonomousMonoforumThreadList} from '../autonomousDialogList/monoforumThreads';
 import Scrollable from '../scrollable';
 import SortedDialogList from '../sortedDialogList';
 
@@ -16,7 +16,7 @@ type Args = {
 
 const createMonoforumDialogsList = ({peerId, appDialogsManager, AutonomousMonoforumThreadList}: Args) => {
   const scrollable = new Scrollable();
-  const autonomousList = new AutonomousMonoforumThreadList(peerId);
+  const autonomousList = new AutonomousMonoforumThreadList({peerId, appDialogsManager});
   autonomousList.scrollable = scrollable;
   autonomousList.sortedList = new SortedDialogList({
     itemSize: 72,
