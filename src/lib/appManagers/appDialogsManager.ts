@@ -76,15 +76,11 @@ import whichChild from '../../helpers/dom/whichChild';
 import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
 import Row, {RowMediaSizeType} from '../../components/row'
 import SettingSection from '../../components/settingSection';
-import {SliderSuperTabEventable} from '../../components/sliderTab';
-import safeAssign from '../../helpers/object/safeAssign';
-import ButtonMenuToggle from '../../components/buttonMenuToggle';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
 import formatNumber from '../../helpers/number/formatNumber';
 import AppSharedMediaTab from '../../components/sidebarRight/tabs/sharedMedia';
 import {dispatchHeavyAnimationEvent} from '../../hooks/useHeavyAnimationCheck';
 import shake from '../../helpers/dom/shake';
-import AppEditTopicTab from '../../components/sidebarRight/tabs/editTopic';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import eachTimeout from '../../helpers/eachTimeout';
@@ -98,14 +94,12 @@ import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
 import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from './utils/dialogs/isDialog';
 import {ChatType} from '../../components/chat/chat';
-import PopupDeleteDialog from '../../components/popups/deleteDialog';
 import rtmpCallsController from '../calls/rtmpCallsController';
 import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
 import {WrapRichTextOptions} from '../richTextProcessor/wrapRichText';
 import createFolderContextMenu from '../../helpers/dom/createFolderContextMenu';
 import {useAppSettings} from '../../stores/appSettings';
 import wrapFolderTitle from '../../components/wrappers/folderTitle';
-import SortedDialogList from '../../components/sortedDialogList';
 import {unwrap} from 'solid-js/store';
 import wrapMediaSpoiler from '../../components/wrappers/mediaSpoiler';
 import type {MonoforumDrawerInstance} from '../../components/monoforumDrawer';
@@ -114,9 +108,10 @@ import SolidJSHotReloadGuardProvider from '../solidjs/hotReloadGuardProvider';
 import {renderPendingSuggestion} from '../../components/sidebarLeft/pendingSuggestion';
 import {useHasFolders} from '../../stores/foldersSidebar';
 import {BADGE_TRANSITION_TIME} from '../../components/autonomousDialogList/constants';
-import {AutonomousForumTopicList} from '../../components/autonomousDialogList/forumTopics';
 import {AutonomousDialogList} from '../../components/autonomousDialogList/dialogs';
 import {PossibleDialog} from '../../components/autonomousDialogList/base';
+import {ForumTab} from '../../components/forumTab/forumTab';
+import {fillForumTabRegister} from '../../components/forumTab/fillRegister';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -455,250 +450,6 @@ export class DialogElement extends Row {
   }
 }
 
-class ForumTab extends SliderSuperTabEventable {
-  private rows: HTMLElement;
-  private subtitle: HTMLElement;
-
-  public peerId: PeerId;
-  private firstTime: boolean;
-
-  private log: ReturnType<typeof logger>;
-
-  public xd: AutonomousForumTopicList;
-
-  public async toggle(value: boolean) {
-    if(this.init2) {
-      await this.init2();
-    }
-
-    SetTransition({
-      element: this.container,
-      className: 'is-visible',
-      forwards: value,
-      duration: 300,
-      onTransitionEnd: !value ? () => {
-        this.onCloseAfterTimeout();
-      } : undefined,
-      useRafs: this.firstTime ? (this.firstTime = undefined, 2) : undefined
-    });
-  }
-
-  private _close = () => {
-    if(!this.slider) {
-      appDialogsManager.toggleForumTab(undefined, this);
-    } else {
-      this.close();
-    }
-  };
-
-  public init(options: {
-    peerId: PeerId,
-    managers: AppManagers
-  }) {
-    safeAssign(this, options);
-
-    this.log = logger('FORUM');
-    this.firstTime = true;
-    this.container.classList.add('topics-container');
-
-    const isFloating = !this.slider;
-    if(isFloating) {
-      this.closeBtn.replaceChildren(Icon('close'));
-      this.container.classList.add('active', 'is-floating');
-
-      attachClickEvent(this.closeBtn, this._close, {listenerSetter: this.listenerSetter});
-    }
-
-    this.rows = document.createElement('div');
-    this.rows.classList.add('sidebar-header__rows');
-
-    this.subtitle = document.createElement('div');
-    this.subtitle.classList.add('sidebar-header__subtitle');
-
-    this.title.replaceWith(this.rows);
-    this.rows.append(this.title, this.subtitle);
-
-    this.xd = new AutonomousForumTopicList({peerId: this.peerId, isFloating, appDialogsManager});
-    this.xd.scrollable = this.scrollable;
-    this.xd.sortedList = new SortedDialogList({
-      itemSize: 64,
-      noAvatar: true,
-      appDialogsManager,
-      scrollable: this.scrollable,
-      managers: this.managers,
-      log: this.log,
-      requestItemForIdx: this.xd.requestItemForIdx,
-      onListShrinked: this.xd.onListShrinked,
-      indexKey: 'index_0',
-      virtualFilterId: this.peerId
-    });
-
-    const list = this.xd.sortedList.list;
-    appDialogsManager.setListClickListener({list, onFound: null, withContext: true});
-    this.scrollable.append(list);
-    this.xd.bindScrollable();
-
-    const btnMenu = ButtonMenuToggle({
-      listenerSetter: this.listenerSetter,
-      direction: 'bottom-left',
-      buttons: [{
-        icon: 'add',
-        text: 'ForumTopic.Context.New',
-        onClick: () => {
-          appSidebarLeft.createTab(AppEditTopicTab).open(this.peerId);
-        },
-        separatorDown: true,
-        verify: () => this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics')
-      }, {
-        icon: 'info',
-        text: 'ForumTopic.Context.Info',
-        onClick: () => {
-          AppSharedMediaTab.open(appSidebarLeft, this.peerId);
-        }
-      }, {
-        icon: 'message',
-        text: 'ForumTopic.Context.ShowAsMessages',
-        onClick: this.viewAsMessages,
-        verify: () => {
-          const chat = appImManager.chat;
-          return !chat || !appImManager.isSamePeer(chat, this.getOptionsForMessages());
-        }
-      }, {
-        icon: 'adduser',
-        text: 'ForumTopic.Context.AddMember',
-        onClick: () => {},
-        verify: () => false && this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users')
-      }, {
-        icon: 'logout',
-        danger: true,
-        text: 'LeaveMegaMenu',
-        onClick: () => {
-          PopupElement.createPopup(PopupDeleteDialog, this.peerId, undefined, (promise) => {
-            this._close();
-          });
-        },
-        separator: true,
-        verify: async() => !!(await this.managers.appMessagesManager.getDialogOnly(this.peerId))
-      }]
-    });
-
-    this.listenerSetter.add(rootScope)('history_reload', (peerId) => {
-      if(this.peerId !== peerId) {
-        return;
-      }
-
-      this.xd.fullReset();
-    });
-
-    this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
-      if(this.peerId !== chatId.toPeerId(true)) {
-        return;
-      }
-
-      const chat = apiManagerProxy.getChat(chatId);
-      if(!(chat as Chat.channel).pFlags.forum) {
-        appDialogsManager.toggleForumTab(undefined, this);
-      }
-    });
-
-    if(IS_TOUCH_SUPPORTED) {
-      handleTabSwipe({
-        element: this.container,
-        onSwipe: () => {
-          appDialogsManager.toggleForumTab(undefined, this);
-        },
-        middleware: this.middlewareHelper.get()
-      });
-    }
-
-    this.header.append(btnMenu);
-
-    if(!isFloating) {
-      return this.init2();
-    }
-  }
-
-  public async init2() {
-    this.init2 = undefined;
-
-    const middleware = this.middlewareHelper.get();
-    const peerId = this.peerId;
-
-    this.managers.apiUpdatesManager.subscribeToChannelUpdates(this.peerId.toChatId());
-    middleware.onDestroy(() => {
-      this.managers.apiUpdatesManager.unsubscribeFromChannelUpdates(this.peerId.toChatId());
-    });
-
-    const peerTitlePromise = wrapPeerTitle({
-      peerId,
-      dialog: true,
-      wrapOptions: {middleware}
-    });
-
-    const setStatusPromise = appImManager.setPeerStatus({
-      peerId,
-      element: this.subtitle,
-      needClear: true,
-      useWhitespace: false,
-      middleware,
-      noTyping: true
-    });
-
-    // this.managers.dialogsStorage.getForumTopics(this.peerId).then((messagesForumTopics) => {
-    //   console.log(messagesForumTopics);
-
-    //   const promises = messagesForumTopics.topics.map((forumTopic) => {
-    //     return this.sortedDialogList.add(forumTopic.id);
-    //   });
-
-    //   return Promise.all(promises);
-    // }).then(() => {
-    //   this.dialogsPlaceholder.detach(this.sortedDialogList.getAll().size);
-    // });
-
-    this.xd.onChatsScroll();
-
-    return Promise.all([
-      peerTitlePromise,
-      setStatusPromise
-      // this.xd.onChatsScroll().then((loadResult) => {
-      //   return loadResult.cached ? loadResult.renderPromise : undefined
-      // })
-    ]).then(([
-      peerTitle,
-      setStatus
-      // _
-    ]) => {
-      if(!middleware()) {
-        return;
-      }
-
-      this.title.append(peerTitle);
-      setStatus?.();
-    });
-  }
-
-  public onCloseAfterTimeout() {
-    super.onCloseAfterTimeout();
-    this.xd.destroy();
-  }
-
-  public getOptionsForMessages(): Parameters<AppImManager['isSamePeer']>[0] {
-    return {
-      peerId: this.peerId,
-      type: ChatType.Chat
-    };
-  }
-
-  public viewAsMessages = async() => {
-    const chat = appImManager.chat;
-    const peerId = this.peerId;
-    this._close();
-    await this.managers.appChatsManager.toggleViewForumAsMessages(peerId.toChatId(), true);
-    appImManager[chat?.peerId === peerId ? 'setPeer' : 'setInnerPeer'](this.getOptionsForMessages());
-  };
-}
-
 // const testScroll = false;
 // let testTopSlice = 1;
 
@@ -819,6 +570,8 @@ export class AppDialogsManager {
     const storiesListContainer = this.storiesListContainer = document.createElement('div');
     storiesListContainer.classList.add('stories-list');
 
+
+    fillForumTabRegister();
 
     this.forumsTabs = new Map();
     this.forumsSlider = document.createElement('div');
@@ -2037,7 +1790,10 @@ export class AppDialogsManager {
         return;
       }
 
-      forumTab = appSidebarLeft.createTab(ForumTab);
+      const ForumTabConstructor = ForumTab.register.getEntry(peerId);
+      if(!ForumTabConstructor) return;
+
+      forumTab = appSidebarLeft.createTab(ForumTabConstructor);
       forumTab.open({peerId, managers});
       return;
     }
@@ -2054,7 +1810,10 @@ export class AppDialogsManager {
     }
 
     if(show && !forumTab) {
-      forumTab = new ForumTab(undefined);
+      const ForumTabConstructor = ForumTab.register.getEntry(peerId);
+      if(!ForumTabConstructor) return;
+
+      forumTab = new ForumTabConstructor(undefined);
       forumTab.init({peerId, managers});
 
       this.forumsTabs.set(peerId, forumTab);
