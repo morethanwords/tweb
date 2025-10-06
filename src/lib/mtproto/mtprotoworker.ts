@@ -401,10 +401,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     //   }
     // });
 
-    rootScope.addEventListener('language_change', (language) => {
-      rootScope.managers.networkerFactory.setLanguage(language);
-      rootScope.managers.appAttachMenuBotsManager.onLanguageChange();
-    });
+    rootScope.addEventListener('language_change', this.onLanguageChange);
 
     window.addEventListener('online', () => {
       rootScope.managers.networkerFactory.forceReconnectTimeout();
@@ -465,6 +462,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     // this.sendState();
   }
+
+  public onLanguageChange = (language: string) => {
+    this.invokeVoid('language', language);
+    rootScope.managers.appAttachMenuBotsManager.onLanguageChange();
+  };
 
   public sendEnvironment() {
     this.log('Passing environment:', ENVIRONMENT);

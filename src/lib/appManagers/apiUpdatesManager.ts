@@ -699,7 +699,7 @@ class ApiUpdatesManager {
     delete this.subscriptions[channelId];
   }
 
-  public attach(langCode?: string) {
+  public attach() {
     if(this.attached) return;
 
     // return;
@@ -794,7 +794,7 @@ class ApiUpdatesManager {
             });
           };
 
-          const languages = filterUnique([langCode, 'en']);
+          const languages = filterUnique([this.networkerFactory.language, 'en']);
           for(const language of languages) {
             try {
               await getChangelog(language);

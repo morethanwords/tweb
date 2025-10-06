@@ -401,6 +401,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     return;
   }
 
+  apiManagerProxy.onLanguageChange(I18n.lastRequestedLangCode);
   await apiManagerProxy.sendAllStates(allStates);
 
   console.timeLog(TIME_LABEL, 'sent all states (2)');

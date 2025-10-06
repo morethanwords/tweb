@@ -62,6 +62,10 @@ export class NetworkerFactory extends AppManager {
   }
 
   public setLanguage(langCode: string) {
+    if(this.language === langCode) {
+      return;
+    }
+
     this.language = langCode;
     for(const networker of this.networkers) {
       if(!networker.isFileNetworker) {

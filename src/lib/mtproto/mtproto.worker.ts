@@ -203,6 +203,15 @@ port.addMultipleEventsListeners({
 
   toggleUninteruptableActivity: ({activity, active}, source) => {
     autoLockControls.toggleUninteruptableActivity(source, activity, active);
+  },
+
+  language: (language) => {
+    callbackify(appManagersManager.getManagersByAccount(), (managers) => {
+      for(const key in managers) {
+        const accountNumber = key as any as ActiveAccountNumber
+        managers[accountNumber].networkerFactory.setLanguage(language);
+      }
+    });
   }
 
   // localStorageEncryptionMethodsProxy: (payload) => {
@@ -247,7 +256,7 @@ const autoLockControls = useAutoLock({
 
 appTabsManager.onTabStateChange = async() => {
   const tabs = appTabsManager.getTabs();
-  const areAllIdle = tabs.every(tab => !!tab.state.idleStartTime);
+  const areAllIdle = tabs.every((tab) => !!tab.state.idleStartTime);
 
   autoLockControls.setAreAllIdle(areAllIdle);
 };
