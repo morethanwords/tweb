@@ -446,7 +446,7 @@
 "Search.Types.PublicPosts" = "Public Posts";
 "Chat.SearchSelected" = "Search Selected Text";
 "Privacy.VoiceMessagesPremiumCaption" = "Subscribe to Telegram Premium to restrict who can send you voice or video messages.\n\n**[What is Telegram Premium?]()**";
-"Privacy.MessagesInfo" = "You can restrict messages from users who are not in your contacts and don't have Premium.\n\n**[What is Telegram Premium?]()**";
+"Privacy.MessagesInfo" = "You can restrict messages from users who are not in your contacts and whom you haven't messaged first.\n\n**[What is Telegram Premium?]()**";
 "Privacy.BioRow" = "Who can see my bio?";
 "Privacy.ContactsAndPremium" = "Contacts and Premium";
 "Privacy.MessagesCaption" = "Change who can send you messages.";
@@ -781,7 +781,7 @@
 "InviteViaLink.Premium.Subtitle2" = "You can send an invite link to the group in a private message instead.";
 "InviteViaLink.Premium.Subscribe" = "Subscribe to Telegram Premium";
 "ChannelAutotranslation" = "Auto-Translate Messages";
-"ChannelAutotranslationLevelMin" = "Your channel needs to be at least level %d to enable auto-translation. [Boost channel]().";
+"ChannelAutotranslationLevelMin" = "Your channel needs to reach Level %d to enable auto-translation. [Boost channel]().";
 "Translate" = "Translate";
 "TranslationBarHidden" = "The translation bar is now hidden for this chat.";
 "TranslationBarHiddenChannel" = "The translation bar is now hidden for this channel.";
@@ -1291,7 +1291,7 @@
 "BotStop" = "Block bot";
 "BotRestart" = "Restart bot";
 "ShareYouPhoneNumberTitle" = "Share your phone number?";
-"AreYouSureShareMyContactInfoBot" = "The bot will know your phone number. This can be useful for integration with other services.";
+"AreYouSureShareMyContactInfoBot" = "The bot will know your phone number. This can be useful for integration with other services.\n\n⚠️ Warning! Never enter your Telegram login codes in mini apps.";
 "DistanceUnitsTitle" = "Distance units";
 "DistanceUnitsKilometers" = "Kilometers";
 "DistanceUnitsMiles" = "Miles";
@@ -2240,7 +2240,7 @@
 "StarGiftDefaultMessageConvertableOut_one" = "%s can add this gift on their profile or convert it to %d Star.";
 "StarGiftDefaultMessageConvertableOut_other" = "%s can add this gift on their profile or convert it to %d Stars.";
 "StarGiftDefaultMessageUpgrade" = "Upgrade this gift to a unique collectible.";
-"StarGiftDefaultMessageUpgradeOut" = "%s can turn this gift to a unique collectible.";
+"StarGiftDefaultMessageUpgradeOut" = "%s can turn this gift into a unique collectible.";
 "StarGiftReceivedTitle" = "Received Gift";
 "StarGiftTitle" = "Gift";
 "StarGiftReceivedSubtitle_one" = "You can add this gift to your profile or convert it to %d Star.";
@@ -2292,7 +2292,7 @@
 "StarGiftLimitedBadgeNum" = "1 of %s";
 "StarGiftStatus" = "Status";
 "StarGiftStatusNonUnique" = "Non-Unique";
-"StarGiftStatusUpgrade" = "Upgrade";
+"StarGiftStatusUpgrade" = "upgrade";
 "StarGiftUpgradeTitle" = "Upgrade Gift";
 "StarGiftUpgradeTitleFor" = "Make Unique";
 "StarGiftUpgradeSubtitle" = "Turn your gift into a unique collectible that you can transfer or auction.";
@@ -2374,7 +2374,7 @@
 "StarGiftMaxSellAmountTon" = "You can request maximum %s TON";
 "StarGiftOnlyAcceptTon" = "Only Accept TON";
 "StarGiftOnlyAcceptTonInfo" = "If the buyer pays you in TON, there's no risk of refunds, unlike Star payments.";
-"StarGiftSellButton" = "Put for Sale";
+"StarGiftSellButton" = "List for Sale";
 "StarGiftResaleListed" = "%s is now for sale!";
 "StarGiftUnlistTitle" = "Unlist %s";
 "StarGiftUnlistText" = "Are you sure you want to unlist your gift?";

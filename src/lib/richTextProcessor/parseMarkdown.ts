@@ -28,6 +28,12 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
     adjustOffset = 0,
     adjustLength = 0
   ) => {
+    // * we have to push entity even if it has no length
+    // * to match the logic of other apps
+    // if(!entity.length) {
+    //   return pushedEntity = false;
+    // }
+
     const conflictingEntity = findConflictingEntity(
       currentEntities,
       adjustOffset || adjustLength ? {...entity/* , offset: entity.offset + adjustOffset */, length: entity.length + adjustLength + adjustOffset} : entity,

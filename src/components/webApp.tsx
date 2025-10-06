@@ -546,6 +546,10 @@ export default class WebApp {
   };
 
   protected handleHapticFeedback = (data: TelegramWebViewEventMap['web_app_trigger_haptic_feedback']) => {
+    if(!navigator.vibrate) {
+      return;
+    }
+
     let pattern: number[];
     switch(data.type) {
       case 'impact':
