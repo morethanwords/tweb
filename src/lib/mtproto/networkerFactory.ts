@@ -11,7 +11,6 @@
 
 import type {ConnectionStatusChange} from './connectionStatus';
 import MTPNetworker from './networker';
-import {InvokeApiOptions} from '../../types';
 import App from '../../config/app';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {AppManager} from '../appManagers/manager';
@@ -41,9 +40,12 @@ export class NetworkerFactory extends AppManager {
     this.updatesProcessor = callback;
   }
 
-  public getNetworker(dcId: number, authKey: Uint8Array, authKeyId: Uint8Array, serverSalt: Uint8Array, options: InvokeApiOptions) {
-    // console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcId, options);
-    const networker = new MTPNetworker(this, this.timeManager, dcId, authKey, authKeyId, serverSalt, this.getAccountNumber(), options);
+  public getNetworker(options: Omit<ConstructorParameters<typeof MTPNetworker>[0], 'networkerFactory' | 'timeManager'>) {
+    const networker = new MTPNetworker({
+      ...options,
+      networkerFactory: this,
+      timeManager: this.timeManager
+    });
     this.networkers.push(networker);
     return networker;
   }
