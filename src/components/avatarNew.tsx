@@ -334,6 +334,7 @@ export const AvatarNew = (props: {
   isStoryFolded?: Accessor<boolean>,
   processImageOnLoad?: (image: HTMLImageElement) => void,
   meAsNotes?: boolean,
+  asAllChats?: boolean,
   onStoriesStatus?: (has: boolean) => void,
   class?: string
 }) => {
@@ -548,6 +549,13 @@ export const AvatarNew = (props: {
     let {peerId} = props;
     if(title !== undefined) {
       peerId = NULL_PEER_ID;
+    }
+
+    if(props.asAllChats) {
+      set({
+        icon: 'round_chats_filled'
+      });
+      return;
     }
 
     if(peerId === myId && isDialog) {

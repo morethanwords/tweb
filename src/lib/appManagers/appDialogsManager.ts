@@ -189,7 +189,8 @@ type DialogElementOptions = {
   isMainList?: boolean,
   withStories?: boolean,
   controlled?: boolean,
-  dontSetActive?: boolean
+  dontSetActive?: boolean,
+  asAllChats?: boolean
 };
 export class DialogElement extends Row {
   private static BADGE_ORDER: Parameters<DialogElement['toggleBadgeByKey']>[0][] = ['reactionsBadge', 'mentionsBadge', 'unreadBadge', 'pinnedBadge'];
@@ -212,7 +213,8 @@ export class DialogElement extends Row {
     isMainList,
     withStories,
     controlled,
-    dontSetActive
+    dontSetActive,
+    asAllChats
   }: DialogElementOptions) {
     super({
       clickable: true,
@@ -254,7 +256,8 @@ export class DialogElement extends Row {
       peerTitle: fromName,
       withStories,
       wrapOptions: newWrapOptions,
-      meAsNotes: isSavedDialog
+      meAsNotes: isSavedDialog,
+      asAllChats
     });
     loadPromises?.push(avatar?.readyThumbPromise);
     const avatarEl = avatar?.node;
@@ -291,7 +294,8 @@ export class DialogElement extends Row {
         textColor: appDialogsManager.getPrimaryColor(isActive),
         ...newWrapOptions
       },
-      meAsNotes: isSavedDialog
+      meAsNotes: isSavedDialog,
+      asAllChats
     });
 
     loadPromises?.push(peerTitlePromise);
@@ -332,9 +336,8 @@ export class DialogElement extends Row {
       li.dataset.monoforumParentPeerId = '' + monoforumParentPeerId;
     }
 
-    const peer = apiManagerProxy.getPeer(peerId);
-    if(peer?._ === 'channel' && peer?.pFlags?.monoforum) {
-      li.dataset.isMonoforum = 'true';
+    if(asAllChats) {
+      li.dataset.monoforumAllChats = 'true';
     }
 
     const statusSpan = document.createElement('span');
@@ -847,7 +850,7 @@ export class AppDialogsManager {
 
 
       const dialogElements = [
-        this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId || monoforumThreadId)
+        this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId || monoforumThreadId || peerId)
       ].filter(Boolean);
 
       dialogElements.forEach(dialogElement => {
@@ -1834,18 +1837,15 @@ export class AppDialogsManager {
         undefined;
 
       // TMP
-      let openedMonoforum = false;
-      if(linkedChat?._ === 'channel' && linkedChat?.admin_rights?.pFlags?.manage_direct_messages && !mediaSizes.isLessThanFloatingLeftSidebar) {
-        const openOnlyDrawer = e.shiftKey;
-        const isSamePeer = appImManager.isSamePeer(appImManager.chat, {peerId});
-
-        // Without the timeout the monoforum chats open with a noticeable delay
-        if(!openOnlyDrawer && !isSamePeer) pause(200).then(() => this.toggleForumTabByPeerId(peerId));
-        else this.toggleForumTabByPeerId(peerId);
-
-        openedMonoforum = true;
-
-        if(openOnlyDrawer) return;
+      if(
+        linkedChat?._ === 'channel' &&
+        linkedChat?.admin_rights?.pFlags?.manage_direct_messages &&
+        !elem.dataset.monoforumAllChats &&
+        !e.shiftKey &&
+        !mediaSizes.isLessThanFloatingLeftSidebar
+      ) {
+        this.toggleForumTabByPeerId(peerId);
+        return;
       }
 
       const isForum = !!elem.querySelector('.is-forum');
@@ -1875,8 +1875,7 @@ export class AppDialogsManager {
       }
 
       if(
-        !openedMonoforum &&
-        (!threadId || lastMsgId) &&
+        (!threadId && !monoforumParentPeerId || lastMsgId) &&
         this.xd.sortedList.list === list &&
         this.xd !== this.xds[FOLDER_ID_ARCHIVE]
       ) {
@@ -2226,7 +2225,7 @@ export class AppDialogsManager {
     const isTopic = isForumTopic(dialog);
     const isSaved = isSavedDialog(dialog);
     const isMonoforumThread = isMonoforumDialog(dialog);
-
+    const monoforumAsAllChats = !!dialogElement?.dom?.listEl?.dataset?.monoforumAllChats;
     const {deferred, middleware} = setPromiseMiddleware(dom, 'setUnreadMessagePromise');
 
     const {peerId} = dialog;
@@ -2308,7 +2307,7 @@ export class AppDialogsManager {
     //   dom.statusSpan.parentElement.classList.toggle('is-closed', !!dialog.pFlags.closed);
     // }
 
-    const hasPinnedBadge = isPinned && !isMonoforumThread;
+    const hasPinnedBadge = isPinned && !isMonoforumThread && !monoforumAsAllChats;
     const isPinnedBadgeMounted = !!dom.pinnedBadge;
     if(hasPinnedBadge) {
       dialogElement.createPinnedBadge();
@@ -2320,7 +2319,7 @@ export class AppDialogsManager {
       dialogElement.createUnreadBadge();
     }
 
-    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && !isMonoforumThread && (!!this.forumTab || appSidebarLeft.isCollapsed()) && isDialogUnread;
+    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && !isMonoforumThread && !monoforumAsAllChats && (!!this.forumTab || appSidebarLeft.isCollapsed()) && isDialogUnread;
 
     const isUnreadAvatarBadgeMounted = !!dom.unreadAvatarBadge;
     if(hasUnreadAvatarBadge) {

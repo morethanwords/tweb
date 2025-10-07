@@ -29,6 +29,7 @@ export type PeerTitleOptions = {
   withPremiumIcon?: boolean,
   threadId?: number,
   meAsNotes?: boolean,
+  asAllChats?: boolean,
   wrapOptions?: WrapSomethingOptions
 };
 
@@ -107,7 +108,10 @@ export default class PeerTitle {
 
     let hasInner: boolean;
     const {peerId, threadId} = this.options;
-    if(peerId === rootScope.myId && this.options.dialog) {
+    if(this.options.asAllChats) {
+      const element = i18n('AllChats');
+      replaceContent(this.element, element);
+    } else if(peerId === rootScope.myId && this.options.dialog) {
       let element: HTMLElement;
       if(this.options.meAsNotes) {
         element = i18n(this.options.onlyFirstName ? 'MyNotesShort' : 'MyNotes');

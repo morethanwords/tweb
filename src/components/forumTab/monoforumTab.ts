@@ -1,6 +1,8 @@
 import middlewarePromise from '../../helpers/middlewarePromise';
 import namedPromises from '../../helpers/namedPromises';
+import {Dialog} from '../../layer';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
+import {isDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import {i18n} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
 import {AutonomousMonoforumThreadList} from '../autonomousDialogList/monoforumThreads';
@@ -18,7 +20,8 @@ export class MonoforumTab extends ForumTab {
 
     const autonomousList = new AutonomousMonoforumThreadList({peerId: this.peerId, appDialogsManager});
     autonomousList.scrollable = this.scrollable;
-    autonomousList.sortedList = new SortedDialogList({
+
+    const sortedList = autonomousList.sortedList = new SortedDialogList({
       itemSize: 72,
       appDialogsManager,
       scrollable: this.scrollable,
@@ -28,6 +31,8 @@ export class MonoforumTab extends ForumTab {
       indexKey: 'index_0',
       monoforumParentPeerId: this.peerId
     });
+
+    sortedList.addPinned(this.peerId);
 
     const list = autonomousList.sortedList.list;
     this.scrollable.append(list);
@@ -53,6 +58,33 @@ export class MonoforumTab extends ForumTab {
     this.listenerSetter.add(rootScope)('monoforum_dialogs_drop', () => {
       this.updateDialogsCount();
     });
+
+    this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
+      for(const [, {dialog}] of dialogs) {
+        if(isDialog(dialog) && dialog.peerId === this.peerId) {
+          this.updateAllChatsDialog(dialog);
+        }
+      }
+    });
+
+    this.listenerSetter.add(rootScope)('dialog_unread', ({dialog}) => {
+      if(isDialog(dialog)) {
+        this.updateAllChatsDialog(dialog);
+      }
+    });
+  }
+
+  private updateAllChatsDialog(dialog: Dialog.dialog) {
+    const dialogElement = this.xd.getDialogElement(this.peerId);
+    if(!dialogElement) {
+      return;
+    }
+
+    appDialogsManager.setLastMessageN({
+      dialog,
+      dialogElement,
+      setUnread: true
+    });
   }
 
   async asyncInit(): Promise<void> {
@@ -67,6 +99,7 @@ export class MonoforumTab extends ForumTab {
       const {peerTitle, dialogs} = await wrapPromiseWithMiddleware(namedPromises({
         peerTitle: wrapPeerTitle({
           peerId,
+          withIcons: true,
           dialog: true,
           wrapOptions: {middleware}
         }),

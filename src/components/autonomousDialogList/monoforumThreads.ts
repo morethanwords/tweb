@@ -1,7 +1,5 @@
 import rootScope from '../../lib/rootScope';
 import {MonoforumDialog} from '../../lib/storages/monoforumDialogs';
-import appSidebarLeft from '../sidebarLeft';
-import {MAX_SIDEBAR_WIDTH} from '../sidebarLeft/constants';
 import {AutonomousDialogListBase, BaseConstructorArgs} from './base';
 
 
@@ -19,10 +17,11 @@ export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<Mono
     this.peerId = peerId;
 
     this.listenerSetter.add(rootScope)('monoforum_dialogs_update', ({dialogs}) => {
-      dialogs.forEach(dialog => this.updateDialog(dialog));
+      dialogs.filter(dialog => dialog.parentPeerId === this.peerId).forEach(dialog => this.updateDialog(dialog));
     });
 
     this.listenerSetter.add(rootScope)('monoforum_draft_update', ({dialog}) => {
+      if(dialog.parentPeerId !== this.peerId) return;
       this.updateDialog(dialog);
     });
 

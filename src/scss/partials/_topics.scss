@@ -71,10 +71,6 @@
       // }
     }
 
-    .chatlist-chat {
-      min-height: 4rem;
-      padding-inline-start: .75rem;
-    }
   }
 }
 
@@ -234,4 +230,9 @@
       }
     }
   }
+}
+
+.topic-dialogs-override .chatlist-chat {
+  min-height: 4rem;
+  padding-inline-start: .75rem;
 }
