@@ -2338,8 +2338,7 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    let fromId;
-
+    let fromId: Peer;
     if(this.appPeersManager.isMonoforum(peerId) && this.appPeersManager.canManageDirectMessages(peerId)) {
       const chat = this.appChatsManager.getChat(peerId.toChatId());
       const linkedChannelId = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id?.toPeerId?.(true) || undefined;
@@ -2367,7 +2366,7 @@ export class AppMessagesManager extends AppManager {
       pending: true,
       effect: options.effect,
       paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined,
-      saved_peer_id: options.replyToMonoforumPeerId ? this.appPeersManager.getOutputPeer(options.replyToMonoforumPeerId) : undefined,
+      saved_peer_id: options.replyToMonoforumPeerId ? this.appPeersManager.getOutputPeer(options.replyToMonoforumPeerId) : (peerId === this.appPeersManager.peerId ? this.appPeersManager.getOutputPeer(this.appPeersManager.peerId) : undefined),
       media,
       suggested_post: options.suggestedPost ? {
         _: 'suggestedPost',

@@ -4153,7 +4153,13 @@ export default class ChatInput {
     };
 
     if(quote) result.replyToQuote = quote;
-    if(message?._ === 'message' && message?.saved_peer_id) result.replyToMonoforumPeerId = getPeerId(message.saved_peer_id);
+    if(
+      message?._ === 'message' &&
+      message?.saved_peer_id &&
+      this.chat.isMonoforum
+    ) {
+      result.replyToMonoforumPeerId = getPeerId(message.saved_peer_id);
+    }
 
     return result;
   }

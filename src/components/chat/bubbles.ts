@@ -1371,7 +1371,7 @@ export default class ChatBubbles {
             }
 
             if(shouldReply) {
-              const message = this.chat.getMessage(getBubbleFullMid(target));
+              const message = this.chat.getMessage(getBubbleFullMid(_target));
               this.chat.input.initMessageReply(this.chat.input.getChatInputReplyToFromMessage(message));
               shouldReply = false;
             }
