@@ -77,7 +77,7 @@ export default class AppArchivedTab extends SliderSuperTab {
   }
 
   onClose() {
-    appDialogsManager.xds[AppArchivedTab.filterId] = undefined;
+    delete appDialogsManager.xds[AppArchivedTab.filterId];
     this.scrollable.onAdditionalScroll = undefined;
     appDialogsManager.setFilterIdAndChangeTab(this.wasFilterId);
     appDialogsManager.closeMonoforumDrawers();
