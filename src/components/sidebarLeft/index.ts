@@ -516,17 +516,14 @@ export class AppSidebarLeft extends SidebarSlider {
   }
 
   public hasSomethingOpenInside() {
-    return this.hasTabsInNavigation() || this.isSearchActive || !!appDialogsManager.forumTab || appDialogsManager.hasMonoforumOpen();
+    return this.hasTabsInNavigation() || this.isSearchActive || !!appDialogsManager.forumTab;
   }
 
   public closeEverythingInside() {
     this.closeSearch();
     appDialogsManager.toggleForumTab();
 
-    const hadOpenedDrawer = appDialogsManager.closeMonoforumDrawers();
-    const hadTabs = this.closeAllTabs();
-
-    return hadTabs || hadOpenedDrawer;
+    return this.closeAllTabs();
   }
 
   private isAnimatingCollapse = false;
@@ -537,7 +534,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.sidebarEl.classList.toggle('has-open-tabs', isFloating);
     this.sidebarEl.classList.toggle('has-real-tabs', this.hasTabsInNavigation());
-    this.sidebarEl.classList.toggle('has-forum-open', !!appDialogsManager.forumTab || appDialogsManager.hasMonoforumOpen());
+    this.sidebarEl.classList.toggle('has-forum-open', !!appDialogsManager.forumTab);
 
     const sidebarPlaceholder = document.querySelector('.sidebar-left-placeholder');
 
@@ -582,7 +579,7 @@ export class AppSidebarLeft extends SidebarSlider {
           );
         }
       });
-      if(!appDialogsManager.hasMonoforumOpen() && !appDialogsManager.forumTab)
+      if(!appDialogsManager.forumTab)
         appDialogsManager.xd?.toggleAvatarUnreadBadges(false, undefined);
     } else {
       const [hasFoldersSidebar] = useHasFoldersSidebar();

@@ -102,9 +102,7 @@ import {useAppSettings} from '../../stores/appSettings';
 import wrapFolderTitle from '../../components/wrappers/folderTitle';
 import {unwrap} from 'solid-js/store';
 import wrapMediaSpoiler from '../../components/wrappers/mediaSpoiler';
-import type {MonoforumDrawerInstance} from '../../components/monoforumDrawer';
 import {MonoforumDialog} from '../storages/monoforumDialogs';
-import SolidJSHotReloadGuardProvider from '../solidjs/hotReloadGuardProvider';
 import {renderPendingSuggestion} from '../../components/sidebarLeft/pendingSuggestion';
 import {useHasFolders} from '../../stores/foldersSidebar';
 import {BADGE_TRANSITION_TIME} from '../../components/autonomousDialogList/constants';
@@ -532,10 +530,6 @@ export class AppDialogsManager {
 
   private forumsTabs: Map<PeerId, ForumTab>;
   private forumsSlider: HTMLElement;
-  private monoforumDrawers: {
-    container: HTMLElement;
-    opened: MonoforumDrawerInstance[];
-  };
   public forumTab: ForumTab;
   private forumNavigationItem: NavigationItem;
 
@@ -578,17 +572,6 @@ export class AppDialogsManager {
     this.forumsSlider.classList.add('topics-slider');
 
     this.chatsContainer.parentElement.parentElement.append(this.forumsSlider);
-
-    this.monoforumDrawers = {
-      container: document.createElement('div'),
-      opened: []
-    };
-
-    appSidebarLeft.sidebarEl.append(this.monoforumDrawers.container);
-
-    // appSidebarLeft.onOpenTab = () => {
-    //   return this.toggleForumTab();
-    // };
 
     if(IS_TOUCH_SUPPORTED) {
       handleTabSwipe({
@@ -863,10 +846,8 @@ export class AppDialogsManager {
       }
 
 
-      const fromMonoforumDrawers = monoforumThreadId ? this.monoforumDrawers.opened.map(drawer => drawer?.controls?.autonomousList?.sortedList?.get(monoforumThreadId)) : []
       const dialogElements = [
-        this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId),
-        ...fromMonoforumDrawers
+        this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId || monoforumThreadId)
       ].filter(Boolean);
 
       dialogElements.forEach(dialogElement => {
@@ -1693,63 +1674,8 @@ export class AppDialogsManager {
     dispatchHeavyAnimationEvent(deferred, duration).then(() => deferred.resolve());
   }
 
-  public hasMonoforumOpen() {
-    return !!this.monoforumDrawers.opened.length;
-  }
-
-  public hasMonoforumOpenFor(peerId: PeerId) {
-    return !!this.monoforumDrawers.opened.find(drawer => drawer?.props?.peerId === peerId);
-  }
-
-  public async openMonoforumDrawer(peerId: PeerId) {
-    const {default: MonoforumDrawer} = await import('../../components/monoforumDrawer');
-
-    if(this.monoforumDrawers.opened?.find(drawer => drawer?.props?.peerId === peerId)) return;
-
-    this.closeMonoforumDrawers();
-
-    const {count} = await this.managers.monoforumDialogsStorage.getDialogs({parentPeerId: peerId, limit: DIALOG_LOAD_COUNT});
-    if(!count) return;
-
-    const navigationItem: NavigationItem = {
-      type: 'monoforum',
-      onPop: () => {
-        drawer?.controls?.close?.();
-      }
-    };
-
-    const drawer = new MonoforumDrawer;
-    drawer.HotReloadGuard = SolidJSHotReloadGuardProvider;
-    drawer.feedProps({
-      peerId,
-      onClose: () => {
-        this.monoforumDrawers.opened = this.monoforumDrawers.opened.filter(value => value !== drawer);
-        this.onMonoforumDrawerToggle?.();
-        appNavigationController.removeItem(navigationItem);
-      }
-    });
-
-    appNavigationController.pushItem(navigationItem);
-
-    this.monoforumDrawers.container.append(drawer);
-    this.monoforumDrawers.opened.push(drawer);
-
-    this.onMonoforumDrawerToggle?.();
-
-    return drawer;
-  }
-
-  public closeMonoforumDrawers() {
-    const hadOpenedDrawer = !!this.monoforumDrawers.opened.length;
-    this.monoforumDrawers.opened.forEach(value => value?.controls?.close?.());
-
-    return hadOpenedDrawer;
-  }
-
-  private onMonoforumDrawerToggle() {
-    this.xd.toggleAvatarUnreadBadges(this.hasMonoforumOpen(), 0);
-    this.transitionDrawersParent(this.hasMonoforumOpen());
-    this.onSomeDrawerToggle?.();
+  public hasForumOpenFor(peerId: PeerId) {
+    return !!this.forumsTabs.get(peerId);
   }
 
   public async toggleForumTabByPeerId(peerId: PeerId, show?: boolean, asInnerIfAsMessages?: boolean) {
@@ -1907,17 +1833,19 @@ export class AppDialogsManager {
         apiManagerProxy.getChat(chat.linked_monoforum_id) :
         undefined;
 
+      // TMP
+      let openedMonoforum = false;
       if(linkedChat?._ === 'channel' && linkedChat?.admin_rights?.pFlags?.manage_direct_messages && !mediaSizes.isLessThanFloatingLeftSidebar) {
         const openOnlyDrawer = e.shiftKey;
         const isSamePeer = appImManager.isSamePeer(appImManager.chat, {peerId});
 
         // Without the timeout the monoforum chats open with a noticeable delay
-        if(!openOnlyDrawer && !isSamePeer) pause(200).then(() => this.openMonoforumDrawer(peerId));
-        else this.openMonoforumDrawer(peerId);
+        if(!openOnlyDrawer && !isSamePeer) pause(200).then(() => this.toggleForumTabByPeerId(peerId));
+        else this.toggleForumTabByPeerId(peerId);
+
+        openedMonoforum = true;
 
         if(openOnlyDrawer) return;
-      } else if(!monoforumParentPeerId) {
-        this.closeMonoforumDrawers();
       }
 
       const isForum = !!elem.querySelector('.is-forum');
@@ -1947,6 +1875,7 @@ export class AppDialogsManager {
       }
 
       if(
+        !openedMonoforum &&
         (!threadId || lastMsgId) &&
         this.xd.sortedList.list === list &&
         this.xd !== this.xds[FOLDER_ID_ARCHIVE]
@@ -2391,7 +2320,7 @@ export class AppDialogsManager {
       dialogElement.createUnreadBadge();
     }
 
-    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && !isMonoforumThread && (!!this.forumTab || appSidebarLeft.isCollapsed() || this.hasMonoforumOpen()) && isDialogUnread;
+    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && !isMonoforumThread && (!!this.forumTab || appSidebarLeft.isCollapsed()) && isDialogUnread;
 
     const isUnreadAvatarBadgeMounted = !!dom.unreadAvatarBadge;
     if(hasUnreadAvatarBadge) {

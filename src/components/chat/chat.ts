@@ -643,7 +643,6 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
       if(dialog.peerId === this.peerId && (isDialog(dialog) || this.threadId === getDialogKey(dialog))) {
         this.appImManager.setPeer({isDeleting: true});
-        if(appDialogsManager.hasMonoforumOpenFor(dialog.peerId)) appDialogsManager.closeMonoforumDrawers();
       }
     });
 

@@ -115,24 +115,6 @@ export class AutonomousForumTopicList extends AutonomousDialogListBase<ForumTopi
     return +element.dataset.threadId;
   }
 
-  public getRectFromForPlaceholder() {
-    return (): DOMRectEditable => {
-      const sidebarRect = appSidebarLeft.rect;
-      const paddingY = 56;
-      const paddingX = this.isFloating ? 80 : 0;
-      const width = this.isFloating ? MAX_SIDEBAR_WIDTH - paddingX : sidebarRect.width;
-
-      return {
-        top: paddingY,
-        right: sidebarRect.right,
-        bottom: 0,
-        left: paddingX,
-        width,
-        height: sidebarRect.height - paddingY
-      };
-    };
-  }
-
   public getDialogFromElement(element: HTMLElement) {
     return this.managers.dialogsStorage.getForumTopic(+element.dataset.peerId, +element.dataset.threadId);
   }

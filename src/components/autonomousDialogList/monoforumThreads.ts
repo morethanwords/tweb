@@ -34,24 +34,6 @@ export class AutonomousMonoforumThreadList extends AutonomousDialogListBase<Mono
     });
   }
 
-  public getRectFromForPlaceholder() {
-    return (): DOMRectEditable => {
-      const sidebarRect = appSidebarLeft.rect;
-      const paddingY = 56;
-      const paddingX = 80;
-      const width = appSidebarLeft.isCollapsed() ? MAX_SIDEBAR_WIDTH : sidebarRect.width;
-
-      return {
-        top: paddingY,
-        right: sidebarRect.right,
-        bottom: 0,
-        left: paddingX,
-        width: width - paddingX,
-        height: sidebarRect.height - paddingY
-      };
-    };
-  }
-
   protected getFilterId() {
     return this.peerId;
   }

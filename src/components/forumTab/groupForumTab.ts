@@ -134,27 +134,9 @@ export class GroupForumTab extends ForumTab {
       noTyping: true
     });
 
-    // this.managers.dialogsStorage.getForumTopics(this.peerId).then((messagesForumTopics) => {
-    //   console.log(messagesForumTopics);
-
-    //   const promises = messagesForumTopics.topics.map((forumTopic) => {
-    //     return this.sortedDialogList.add(forumTopic.id);
-    //   });
-
-    //   return Promise.all(promises);
-    // }).then(() => {
-    //   this.dialogsPlaceholder.detach(this.sortedDialogList.getAll().size);
-    // });
-    //
-
-    this.xd.onChatsScroll();
-
     return Promise.all([
       peerTitlePromise,
       setStatusPromise
-      // this.xd.onChatsScroll().then((loadResult) => {
-      //   return loadResult.cached ? loadResult.renderPromise : undefined
-      // })
     ]).then(([
       peerTitle,
       setStatus

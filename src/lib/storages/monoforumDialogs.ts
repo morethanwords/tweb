@@ -1,6 +1,5 @@
 import filterUnique from '../../helpers/array/filterUnique';
 import lastItem from '../../helpers/array/lastItem';
-import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 import tsNow from '../../helpers/tsNow';
 import {DraftMessage, MessagesGetSavedDialogs, MessagesSavedDialogs, SavedDialog, Update} from '../../layer';
 import {Pair} from '../../types';

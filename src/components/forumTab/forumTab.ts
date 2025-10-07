@@ -5,10 +5,12 @@ import safeAssign from '../../helpers/object/safeAssign';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {logger} from '../../lib/logger';
+import {AutonomousDialogListBase} from '../autonomousDialogList/base';
 import Icon from '../icon';
+import appSidebarLeft from '../sidebarLeft';
+import {MAX_SIDEBAR_WIDTH} from '../sidebarLeft/constants';
 import SetTransition from '../singleTransition';
 import {SliderSuperTabEventable} from '../sliderTab';
-import {AutonomousForumTopicList} from '../autonomousDialogList/forumTopics';
 import {Register} from './register';
 
 
@@ -24,7 +26,7 @@ export class ForumTab extends SliderSuperTabEventable {
 
   protected log: ReturnType<typeof logger>;
 
-  public xd: AutonomousForumTopicList;
+  public xd: AutonomousDialogListBase;
 
   public async toggle(value: boolean) {
     if(this.triggerAsyncInit) {
@@ -55,6 +57,7 @@ export class ForumTab extends SliderSuperTabEventable {
   }
 
   protected async asyncInit(): Promise<void> {
+    this.xd.onChatsScroll();
   }
 
   public init(options: {
@@ -96,9 +99,33 @@ export class ForumTab extends SliderSuperTabEventable {
 
     this.syncInit();
 
+    this.xd.getRectFromForPlaceholder = this.getRectFromForPlaceholder;
+
     if(!isFloating) {
       return this.triggerAsyncInit();
     }
+  }
+
+  protected getRectFromForPlaceholder = () => {
+    const isFloating = !this.slider;
+
+    return (): DOMRectEditable => {
+      const sidebarRect = appSidebarLeft.rect;
+      const paddingY = 56;
+      const paddingX = isFloating ? 80 : 0;
+      const isCollapsed = appSidebarLeft.isCollapsed();
+      const originalWidth = isCollapsed ? MAX_SIDEBAR_WIDTH : sidebarRect.width;
+      const width = isFloating ? originalWidth - paddingX : originalWidth;
+
+      return {
+        top: paddingY,
+        right: sidebarRect.right,
+        bottom: 0,
+        left: paddingX,
+        width,
+        height: sidebarRect.height - paddingY
+      };
+    };
   }
 
   public async triggerAsyncInit() {

@@ -23,11 +23,13 @@ import getDialogIndex from '../../lib/appManagers/utils/dialogs/getDialogIndex';
 import {Middleware} from '../../helpers/middleware';
 import deferredPromise from '../../helpers/cancellablePromise';
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import createMonoforumDialogsList from '../monoforumDrawer/list';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import findUpAttribute from '../../helpers/dom/findUpAttribute';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {AutonomousMonoforumThreadList} from '../autonomousDialogList/monoforumThreads';
+import Scrollable from '../scrollable';
+import SortedDialogList from '../sortedDialogList';
+import rootScope from '../../lib/rootScope';
 
 type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelectPeers>[0], {
   multiSelect?: never,
@@ -366,11 +368,33 @@ export default class PopupPickUser extends PopupElement {
     const middlewareHelper = this.middlewareHelper.get().create();
     const middleware = middlewareHelper.get();
 
-    const autonomousList = createMonoforumDialogsList({peerId: parentPeerId, appDialogsManager, AutonomousMonoforumThreadList});
+    const scrollable = new Scrollable();
+    const autonomousList = new AutonomousMonoforumThreadList({peerId: parentPeerId, appDialogsManager});
+    autonomousList.scrollable = scrollable;
+    autonomousList.sortedList = new SortedDialogList({
+      itemSize: 72,
+      appDialogsManager,
+      scrollable: scrollable,
+      managers: rootScope.managers,
+      requestItemForIdx: autonomousList.requestItemForIdx,
+      onListShrinked: autonomousList.onListShrinked,
+      indexKey: 'index_0',
+      monoforumParentPeerId: parentPeerId
+    });
+
+    autonomousList.getRectFromForPlaceholder = () => this.selector.container;
+
+    const list = autonomousList.sortedList.list;
+
+    scrollable.append(list);
+    autonomousList.bindScrollable();
+
+
+    autonomousList.onChatsScroll();
+
 
     middleware.onDestroy(() => void autonomousList.destroy());
 
-    const list = autonomousList.sortedList.list;
     attachClickEvent(list, (e) => {
       const target = findUpAttribute(e.target, 'data-peer-id') as HTMLElement;
 
@@ -386,7 +410,7 @@ export default class PopupPickUser extends PopupElement {
     const container = document.createElement('div');
     container.classList.add('tabs-tab');
 
-    autonomousList.scrollable.container.classList.add('surface-color-background');
+    autonomousList.scrollable.container.classList.add('surface-color-background', 'dialogs-placeholder-canvas-parent');
     container.append(autonomousList.scrollable.container);
 
     autonomousList.scrollable.attachBorderListeners();

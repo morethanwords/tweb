@@ -111,7 +111,7 @@
       &.scale-in {
         animation: scaleIn .15s ease forwards;
       }
-  
+
       &.scale-out {
         animation: scaleIn .15s ease forwards;
         animation-direction: reverse;
@@ -164,7 +164,7 @@
         color: #fff;
         flex: 0 0 auto;
         pointer-events: none;
-  
+
         html.is-safari & {
           -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
         }
@@ -361,5 +361,18 @@
     line-height: 1.25rem;
     inset-inline-start: 2.25rem;
     top: 2rem;
+  }
+}
+
+.dialogs-placeholder-canvas-parent {
+  position: relative;
+
+  .dialogs-placeholder-canvas {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
   }
 }
