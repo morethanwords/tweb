@@ -2129,6 +2129,10 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
+  public getMonoforumThreadId(peerId: PeerId, savedPeerId: Peer) {
+    return savedPeerId && this.appPeersManager.isMonoforum(peerId) ? this.appPeersManager.getPeerId(savedPeerId) : undefined;
+  }
+
   public getInputReplyTo(options: MessageSendingParams): InputReplyTo {
     if(options.replyToStoryId) {
       return {
@@ -2184,7 +2188,7 @@ export class AppMessagesManager extends AppManager {
     const messageId = message.id;
     const peerId = this.getMessagePeer(message);
     const storage = options.isScheduled ? this.getScheduledMessagesStorage(peerId) : this.getHistoryMessagesStorage(peerId);
-    const monoforumThreadId = message.saved_peer_id ? this.appPeersManager.getPeerId(message.saved_peer_id) : undefined;
+    const monoforumThreadId = this.getMonoforumThreadId(peerId, message.saved_peer_id);
 
     message.storageKey = storage.key;
 
@@ -6459,7 +6463,7 @@ export class AppMessagesManager extends AppManager {
     const mid = this.appMessagesIdsManager.generateMessageId(msg_id, channelId);
     const threadId = this.appMessagesIdsManager.generateMessageId(top_msg_id, channelId);
     const peerId = this.appPeersManager.getPeerId(peer);
-    const monoforumThreadId = this.appPeersManager.getPeerId(saved_peer_id);
+    const monoforumThreadId = this.getMonoforumThreadId(peerId, saved_peer_id);
     const message: MyMessage = this.getMessageByPeer(peerId, mid);
 
     // TODO: Check if we can avoid refetching the dialog in case we have enough messages to measure the changes ourselves
@@ -6520,7 +6524,7 @@ export class AppMessagesManager extends AppManager {
   private onUpdateDialogUnreadMark = (update: Update.updateDialogUnreadMark) => {
     // this.log('updateDialogUnreadMark', update);
     const peerId = this.appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
-    const monoforumThreadId = this.appPeersManager.getPeerId(update.saved_peer_id);
+    const monoforumThreadId = this.getMonoforumThreadId(peerId, update.saved_peer_id);
 
     const dialog = this.getDialogOnly(peerId);
 
@@ -6641,7 +6645,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     if(message.saved_peer_id && peerId !== this.rootScope.myId) {
-      const monoforumThreadId = this.appPeersManager.getPeerId(message.saved_peer_id);
+      const monoforumThreadId = this.getMonoforumThreadId(peerId, message.saved_peer_id);
       const monoforumDialog = this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId);
 
       if(monoforumDialog?.top_message === mid)
@@ -6656,8 +6660,8 @@ export class AppMessagesManager extends AppManager {
     const channelId = (update as Update.updateReadChannelInbox).channel_id;
     const maxId = this.appMessagesIdsManager.generateMessageId((update as Update.updateReadChannelInbox).max_id || (update as Update.updateReadChannelDiscussionInbox).read_max_id, channelId);
     const threadId = this.appMessagesIdsManager.generateMessageId((update as Update.updateReadChannelDiscussionInbox).top_msg_id, channelId);
-    const monoforumThreadId = this.appPeersManager.getPeerId((update as Update.updateReadMonoForumInbox).saved_peer_id);
     const peerId = channelId ? channelId.toPeerId(true) : this.appPeersManager.getPeerId((update as Update.updateReadHistoryInbox).peer);
+    const monoforumThreadId = this.getMonoforumThreadId(peerId, (update as Update.updateReadMonoForumInbox).saved_peer_id);
 
     const isOut = update._ === 'updateReadHistoryOutbox' ||
       update._ === 'updateReadChannelOutbox' ||
