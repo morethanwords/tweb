@@ -226,7 +226,7 @@ export default class MTPNetworker {
     const suffix = this.isFileUpload ? '-U' : this.isFileDownload ? '-D' : '';
     this.name = 'NET-' + dcId + suffix;
     // this.log = logger(this.name, this.upload && this.dcId === 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
-    this.log = logger(
+    this.log = this.networkerFactory.createLogger(
       this.name + (suffix ? '' : '-C') + '-' + networkerTempId++,
       LogTypes.Log | LogTypes.Error | LogTypes.Warn | (this.debug ? LogTypes.Debug : 0)
     );

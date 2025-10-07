@@ -17,7 +17,13 @@ export enum LogTypes {
   Debug = 8
 };
 
-export const LOG_LEVELS = [LogTypes.None, LogTypes.Error, LogTypes.Warn, LogTypes.Log, LogTypes.Debug];
+export const LOG_LEVELS = [
+  LogTypes.None,
+  LogTypes.Error,
+  LogTypes.Warn,
+  LogTypes.Log,
+  LogTypes.Debug
+];
 
 const IS_WEBKIT = IS_SAFARI || IS_FIREFOX;
 
@@ -98,7 +104,10 @@ export type Logger = {
   bindPrefix(prefix: string, type?: LogTypes): Logger;
 };
 
-const methods: ['debug' | 'info' | 'warn' | 'error' | 'assert' | 'trace'/*  | 'log' */ | 'group' | 'groupCollapsed' | 'groupEnd', LogTypes][] = [
+const methods: [
+  'debug' | 'info' | 'warn' | 'error' | 'assert' | 'trace'/*  | 'log' */ | 'group' | 'groupCollapsed' | 'groupEnd',
+  LogTypes
+][] = [
   ['debug', LogTypes.Debug],
   ['info', LogTypes.Log],
   ['warn', LogTypes.Warn],
@@ -111,7 +120,12 @@ const methods: ['debug' | 'info' | 'warn' | 'error' | 'assert' | 'trace'/*  | 'l
   // ["log", LogTypes.Log]
 ];
 
-export function logger(prefix: string, type: LogTypes = LogTypes.Log | LogTypes.Warn | LogTypes.Error, ignoreDebugReset = false, style = ''): Logger {
+export function logger(
+  prefix: string,
+  type: LogTypes = LogTypes.Log | LogTypes.Warn | LogTypes.Error,
+  ignoreDebugReset = false,
+  style = ''
+): Logger {
   let originalPrefix: string;
   if(!DEBUG && !ignoreDebugReset/*  || true */) {
     type = LogTypes.Error;

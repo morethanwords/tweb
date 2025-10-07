@@ -13,7 +13,6 @@ import type GroupCallConnectionInstance from '../calls/groupCallConnectionInstan
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import {nextRandomUint} from '../../helpers/random';
 import {DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, GroupCallStreamChannel, InputFileLocation, InputGroupCall, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '../../layer';
-import {logger} from '../logger';
 import {NULL_PEER_ID} from '../mtproto/mtproto_config';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
@@ -58,8 +57,6 @@ export interface CallRecordParams {
 }
 
 export class AppGroupCallsManager extends AppManager {
-  private log: ReturnType<typeof logger>;
-
   private groupCalls: Map<GroupCallId, MyGroupCall>;
   private participants: Map<GroupCallId, Map<PeerId, GroupCallParticipant>>;
   private nextOffsets: Map<GroupCallId, string>;
@@ -69,7 +66,7 @@ export class AppGroupCallsManager extends AppManager {
   // private doNotDispatchParticipantUpdate: PeerId;
 
   protected after() {
-    this.log = logger('GROUP-CALLS');
+    this.name = 'GROUP-CALLS';
 
     this.groupCalls = new Map();
     this.participants = new Map();

@@ -59,7 +59,7 @@ import ChatBackgroundPatternRenderer from '../../components/chat/patternRenderer
 import {IS_CHROMIUM, IS_FIREFOX} from '../../environment/userAgent';
 import compareVersion from '../../helpers/compareVersion';
 import {AppManagers} from './managers';
-import {UiNotificationsManager} from './uiNotificationsManager';
+import uiNotificationsManager, {UiNotificationsManager} from './uiNotificationsManager';
 import appMediaPlaybackController from '../../components/appMediaPlaybackController';
 import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
 import wrapRichText from '../richTextProcessor/wrapRichText';
@@ -221,7 +221,7 @@ export class AppImManager extends EventListenerBase<{
     this.managers = managers;
     internalLinkProcessor.construct(managers);
 
-    UiNotificationsManager.constructAndStartAll();
+    uiNotificationsManager.constructAndStartAll();
 
     appMediaPlaybackController.construct(managers);
 
@@ -585,11 +585,15 @@ export class AppImManager extends EventListenerBase<{
       const isForum = await managers.appPeersManager.isForum(options.message.peerId);
       const threadId = getMessageThreadId(options.message, isForum);
 
-      if(this.chat.peerId === options.message.peerId && this.chat.threadId === threadId && !idleController.isIdle) {
+      if(
+        this.chat.peerId === options.message.peerId &&
+        this.chat.threadId === threadId &&
+        !idleController.isIdle
+      ) {
         return;
       }
 
-      UiNotificationsManager.byAccount[accountNumber]?.buildNotificationQueue(options);
+      uiNotificationsManager.buildNotificationQueue(options);
     });
 
     this.addEventListener('peer_changed', async({peerId}) => {

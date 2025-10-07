@@ -28,6 +28,7 @@ import sessionStorage from '../sessionStorage';
 import CacheStorageController from '../files/cacheStorage';
 import {ApiManager} from './apiManager';
 import {useAutoLock} from './useAutoLock';
+import pushSingleManager from './pushSingleManager';
 
 
 const log = logger('MTPROTO');
@@ -36,6 +37,10 @@ const log = logger('MTPROTO');
 const port = new MTProtoMessagePort<false>();
 
 let isLocked = true;
+
+const singleManagers = {
+  [pushSingleManager.name]: pushSingleManager
+};
 
 port.addMultipleEventsListeners({
   environment: (environment) => {
@@ -148,6 +153,8 @@ port.addMultipleEventsListeners({
         sessionStorage.decryptEncryptable()
     ]);
 
+    pushSingleManager.onIsUsingPasscodeChange(payload.isUsingPasscode);
+
     await port.invokeExceptSourceAsync('toggleUsingPasscode', payload, source);
 
     isLocked = false;
@@ -212,6 +219,12 @@ port.addMultipleEventsListeners({
         managers[accountNumber].networkerFactory.setLanguage(language);
       }
     });
+  },
+
+  singleManager: (payload) => {
+    const manager = singleManagers[payload.name];
+    // @ts-ignore
+    return manager[payload.method](...payload.args);
   }
 
   // localStorageEncryptionMethodsProxy: (payload) => {

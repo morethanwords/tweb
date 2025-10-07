@@ -9,14 +9,19 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type {ActiveAccountNumber} from '../accounts/types';
 import {Database} from '../../config/databases';
-import {AccountDatabase, getDatabaseState} from '../../config/databases/state';
+import {CommonDatabase, getCommonDatabaseState} from '../../config/databases/state';
 import {NOTIFICATION_BADGE_PATH, NOTIFICATION_ICON_PATH} from '../../config/notifications';
 import {IS_FIREFOX} from '../../environment/userAgent';
 import deepEqual from '../../helpers/object/deepEqual';
 import IDBStorage from '../files/idb';
 import {log, serviceMessagePort} from './index.service';
 import {ServicePushPingTaskPayload} from './serviceMessagePort';
+import {CURRENT_ACCOUNT_QUERY_PARAM} from '../accounts/constants';
+import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+import EncryptionKeyStore from '../passcode/keyStore';
+import base64ToBytes from '../../helpers/string/base64ToBytes';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 const defaultBaseUrl = location.protocol + '//' + location.hostname + location.pathname.split('/').slice(0, -1).join('/') + '/';
@@ -25,6 +30,10 @@ const defaultBaseUrl = location.protocol + '//' + location.hostname + location.p
 const PING_PUSH_TIMEOUT = 10000 + 1500;
 let lastPingTime = 0;
 let localNotificationsAvailable = true;
+
+export type RawPushNotificationObject = {
+  p: string
+};
 
 export type PushNotificationObject = {
   loc_key: string,
@@ -45,8 +54,10 @@ export type PushNotificationObject = {
   mute: string, // should be number
   title: string,
   message?: string,
-} & {
-  action?: 'mute1d' | 'push_settings', // will be set before postMessage to main thread
+  user_id?: number // receiver user id
+} & { // will be set before postMessage to main thread
+  action?: 'mute1d' | 'push_settings',
+  accountNumber: ActiveAccountNumber
 };
 
 class SomethingGetter<T extends Database<any>, Storage extends Record<string, any>> {
@@ -55,7 +66,7 @@ class SomethingGetter<T extends Database<any>, Storage extends Record<string, an
 
   constructor(
     db: T,
-    storeName: typeof db['stores'][number]['name'],
+    storeName: T['stores'][number]['name'],
     private defaults: {
       [Property in keyof Storage]: ((value: Storage[Property]) => Storage[Property]) | Storage[Property]
     }
@@ -114,6 +125,8 @@ type PushStorage = {
   push_mute_until: number,
   push_lang: Partial<ServicePushPingTaskPayload['lang']>
   push_settings: Partial<ServicePushPingTaskPayload['settings']>
+  push_accounts: ServicePushPingTaskPayload['accounts'],
+  push_secret: Uint8Array
 };
 
 const defaults: PushStorage = {
@@ -123,20 +136,25 @@ const defaults: PushStorage = {
     push_action_mute1d: 'Mute for 24H',
     push_action_settings: 'Settings'
   },
-  push_settings: {}
+  push_settings: {},
+  push_accounts: {},
+  push_secret: new Uint8Array()
 };
 
-// Warning: Push API temporarily disabled
-const getter = new SomethingGetter<AccountDatabase, PushStorage>(getDatabaseState(1), 'session', defaults);
+const getter = new SomethingGetter<CommonDatabase, PushStorage>(getCommonDatabaseState(), 'session', defaults);
 
 // fill cache
 for(const i in defaults) {
   getter.get(i as keyof PushStorage);
 }
 
-ctx.addEventListener('push', (event) => {
-  const obj: PushNotificationObject = event.data.json();
-  log('push', {...obj});
+function handlePushNotificationObject(obj: PushNotificationObject) {
+  const copy = JSON.parse(JSON.stringify(obj));
+  log('push', copy);
+
+  if(obj.mute === '1') {
+    return;
+  }
 
   try {
     const [muteUntil, settings, lang] = [
@@ -160,7 +178,9 @@ ctx.addEventListener('push', (event) => {
     }
 
     const notificationPromise = fireNotification(obj, settings, lang);
-    event.waitUntil(notificationPromise);
+    return notificationPromise.catch((err) => {
+      log.error('push notification error', err, copy);
+    });
   } catch(err) {
     log(err);
 
@@ -173,6 +193,38 @@ ctx.addEventListener('push', (event) => {
 
     // event.waitUntil(notificationPromise);
   }
+}
+
+ctx.addEventListener('push', (event) => {
+  const obj: RawPushNotificationObject | PushNotificationObject = event.data.json();
+  if(!('p' in obj)) {
+    event.waitUntil(handlePushNotificationObject(obj));
+    return;
+  }
+
+  const key = getter.getCached('push_secret');
+  log('raw push', obj, key);
+  if(!key) {
+    log('no secret');
+    event.waitUntil(handlePushNotificationObject({
+      loc_key: '',
+      loc_args: [],
+      custom: {
+        msg_id: ''
+      },
+      random_id: 0,
+      description: '',
+      title: '',
+      mute: '0',
+      user_id: 0,
+      accountNumber: 1
+    }));
+    return;
+  }
+
+  serviceMessagePort.invoke('decryptPush', {p: obj.p, secret: key});
+
+  event.waitUntil(Promise.resolve());
 });
 
 ctx.addEventListener('notificationclick', (event) => {
@@ -192,25 +244,46 @@ ctx.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  const promise = ctx.clients.matchAll({
-    type: 'window'
-  }).then((clientList) => {
+  const promise = Promise.all([
+    ctx.clients.matchAll({type: 'window'}),
+    getter.get('push_settings'),
+    getter.get('push_accounts')
+  ]).then(([clientList, settings, accounts]) => {
     data.action = action;
-    pendingNotification = data;
-    for(let i = 0; i < clientList.length; ++i) {
-      const client = clientList[i];
-      if('focus' in client) {
-        client.focus();
-        serviceMessagePort.invokeVoid('pushClick', pendingNotification, client);
-        pendingNotification = undefined;
-        return;
+    for(const _accountNumber in accounts) { // * find correct account number for this notification
+      const accountNumber = +_accountNumber as ActiveAccountNumber;
+      if(accounts[accountNumber] === data.user_id) {
+        data.accountNumber = accountNumber;
+        break;
       }
     }
 
+    pendingNotification = data;
+    for(let i = 0; i < clientList.length; ++i) {
+      const client = clientList[i];
+      if(!('focus' in client)) {
+        continue;
+      }
+
+      // * verify account number
+      const url = new URL(client.url);
+      if((url.searchParams.get(CURRENT_ACCOUNT_QUERY_PARAM) ?? 1) !== data.accountNumber) {
+        continue;
+      }
+
+      client.focus();
+      serviceMessagePort.invokeVoid('pushClick', pendingNotification, client);
+      pendingNotification = undefined;
+      return;
+    }
+
     if(ctx.clients.openWindow) {
-      return Promise.resolve(getter.get('push_settings')).then((settings) => {
-        return ctx.clients.openWindow(settings.baseUrl || defaultBaseUrl);
-      });
+      const url = new URL(settings.baseUrl || defaultBaseUrl);
+      if(data.accountNumber && data.accountNumber > 1) { // * set account number
+        url.searchParams.set(CURRENT_ACCOUNT_QUERY_PARAM, data.accountNumber + '');
+      }
+
+      return ctx.clients.openWindow(url);
     }
   }).catch((error) => {
     log.error('Clients.matchAll error', error);
@@ -299,7 +372,7 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
     throw error;
   }
 
-  if(settings?.nopreview) {
+  if(settings?.nopreview || !obj.loc_key) {
     title = 'Telegram';
     body = lang.push_message_nopreview;
     tag = 'unknown_peer';
@@ -326,13 +399,21 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
   log('show notify', title, body, obj, notificationOptions);
 
   const notificationPromise = ctx.registration.showNotification(title, notificationOptions);
-
   return notificationPromise.catch((error) => {
     log.error('Show notification promise', error);
   });
 }
 
-export function onPing(payload: ServicePushPingTaskPayload, source?: MessageEventSource) {
+export async function canSaveAccounts() {
+  const [isUsingPasscode, encryptionKey] = await Promise.all([
+    DeferredIsUsingPasscode.isUsingPasscode(),
+    EncryptionKeyStore.get()
+  ]);
+  // * if no passcode or app is unlocked
+  return !isUsingPasscode || encryptionKey;
+}
+
+export async function onPing(payload: ServicePushPingTaskPayload, source?: MessageEventSource) {
   lastPingTime = Date.now();
   localNotificationsAvailable = payload.localNotifications;
 
@@ -348,6 +429,13 @@ export function onPing(payload: ServicePushPingTaskPayload, source?: MessageEven
   if(payload.settings) {
     getter.set('push_settings', payload.settings);
   }
+
+  getter.set('push_accounts', (await canSaveAccounts() && payload.accounts) || defaults.push_accounts);
+  getter.set('push_secret', (await canSaveAccounts() && payload.secret) || defaults.push_secret);
+}
+
+export function resetPushAccounts() {
+  getter.set('push_accounts', defaults.push_accounts);
 }
 
 const ignoreMessages: Map<string, number> = new Map();

@@ -13,6 +13,7 @@ import type {ActiveAccountNumber} from '../accounts/types';
 import type {getEnvironment} from '../../environment/utils';
 import type {ToggleUsingPasscodePayload} from '../mtproto/mtprotoMessagePort';
 import type {VideoStreamInfo} from '../calls/videoStreamInfo';
+import type {PushSingleManager} from '../mtproto/pushSingleManager';
 import SuperMessagePort from '../mtproto/superMessagePort';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 
@@ -23,7 +24,9 @@ export type ServicePushPingTaskPayload = {
     push_action_settings: string
     push_message_nopreview: string
   },
-  settings: WebPushApiManager['settings']
+  settings: WebPushApiManager['settings'],
+  accounts: {[key in ActiveAccountNumber]?: UserId},
+  secret: Uint8Array
 };
 
 export type ServiceRequestFilePartTaskPayload = {
@@ -86,6 +89,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   downloadDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Blob>,
   requestDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Document.document>,
   requestAltDocsByDoc: (payload: {docId: DocId, accountNumber: ActiveAccountNumber}) => MaybePromise<Document.document[]>,
+  decryptPush: (payload: {p: string, secret: Uint8Array}) => ReturnType<PushSingleManager['decryptPush']>
 } & ServiceEvent, Master> {
   constructor() {
     super('SERVICE');

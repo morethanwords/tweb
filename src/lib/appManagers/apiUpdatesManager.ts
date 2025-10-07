@@ -9,9 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import DEBUG from '../../config/debug';
-import {ConstructorDeclMap, Message, MessageEntity, MessageFwdHeader, Peer, StarsAmount, Update, Updates} from '../../layer';
-import {logger, LogTypes} from '../logger';
+import {ConstructorDeclMap, Message, MessageFwdHeader, Peer, StarsAmount, Update, Updates} from '../../layer';
+import {LogTypes} from '../logger';
 import assumeType from '../../helpers/assumeType';
 import App from '../../config/app';
 import filterUnique from '../../helpers/array/filterUnique';
@@ -54,13 +53,12 @@ class ApiUpdatesManager {
   private channelStates: {[channelId: ChatId]: UpdatesState} = {};
   private attached = false;
 
-  private log = logger('UPDATES', LogTypes.Error | LogTypes.Warn | LogTypes.Log/*  | LogTypes.Debug */);
-  private debug = DEBUG;
-
   private subscriptions: {[channelId: ChatId]: {count: number, interval?: number}} = {};
 
   constructor() {
     this._constructor(false);
+    this.name = 'UPDATES';
+    this.logTypes = LogTypes.Error | LogTypes.Warn | LogTypes.Log/*  | LogTypes.Debug */;
   }
 
   private setProxy() {
@@ -710,6 +708,8 @@ class ApiUpdatesManager {
 
     this.appStateManager.getState().then(({updates: state}) => {
       const newVersion = this.appStateManager.newVersion/*  || '1.6.0' */;
+
+      this.log('got state', state);
 
       // rootScope.broadcast('state_synchronizing');
       if(!state || !state.pts || !state.date/*  || !state.seq */) { // seq can be undefined because of updates.differenceTooLong

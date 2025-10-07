@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Awaited} from '../../types';
+import type {Awaited, ModifyFunctionsToAsync} from '../../types';
 import {type State} from '../../config/state';
 import type {Chat, ChatPhoto, Message, MessagePeerReaction, PeerNotifySettings, User, UserProfilePhoto} from '../../layer';
 import type {CryptoMethods} from '../crypto/crypto_methods';
@@ -61,6 +61,7 @@ import PasscodeLockScreenController from '../../components/passcodeLock/passcode
 import EncryptionKeyStore from '../passcode/keyStore';
 import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import CacheStorageController from '../files/cacheStorage';
+import type {PushSingleManager} from './pushSingleManager';
 
 
 export type Mirrors = {
@@ -99,7 +100,7 @@ export type NotificationBuildTaskPayload = {
   fwdCount?: number,
   peerReaction?: MessagePeerReaction,
   peerTypeNotifySettings?: PeerNotifySettings,
-  accountNumber?: ActiveAccountNumber,
+  accountNumber: ActiveAccountNumber,
   isOtherTabActive?: boolean
 };
 
@@ -139,6 +140,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private serviceWorkerRegistration: ServiceWorkerRegistration;
 
+  public pushSingleManager: ModifyFunctionsToAsync<PushSingleManager>;
+
   constructor() {
     super();
 
@@ -152,6 +155,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
       peers: {},
       avatars: {}
     };
+
+    this.pushSingleManager = this.createSingleManagerProxy('pushSingleManager');
 
     this.processMirrorTaskMap = {
       messages: (payload) => {
@@ -1040,6 +1045,24 @@ class ApiManagerProxy extends MTProtoMessagePort {
   public async clearInterval(intervalId: number) {
     this.intervals.delete(intervalId);
     await this.invoke('clearInterval', intervalId);
+  }
+
+  private createSingleManagerProxy<T>(name: string): ModifyFunctionsToAsync<T> {
+    const proxy = new Proxy({}, {
+      get: (target, p, receiver) => {
+        return (...args: any[]) => {
+          const promise = apiManagerProxy.invoke('singleManager', {
+            name,
+            method: p as string,
+            args
+          });
+
+          return promise;
+        };
+      }
+    });
+
+    return proxy as any;
   }
 }
 

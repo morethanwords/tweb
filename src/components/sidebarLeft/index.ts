@@ -81,7 +81,7 @@ import filterAsync from '../../helpers/array/filterAsync';
 import pause from '../../helpers/schedulers/pause';
 import AccountsLimitPopup from './accountsLimitPopup';
 import {changeAccount} from '../../lib/accounts/changeAccount';
-import {UiNotificationsManager} from '../../lib/appManagers/uiNotificationsManager';
+import uiNotificationsManager, {UiNotificationsManager} from '../../lib/appManagers/uiNotificationsManager';
 import {FoldersSidebarControls, renderFoldersSidebarContent} from './foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import SwipeHandler, {getEvent} from '../swipeHandler';
@@ -177,7 +177,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     rootScope.addEventListener('notification_count_update', async() => {
-      const notificationsCount = await UiNotificationsManager.getNotificationsCountForAllAccounts();
+      const notificationsCount = await uiNotificationsManager.getNotificationsCountForAllAccounts();
       const count = Object.entries(notificationsCount).reduce(
         (prev, [accountNumber, count]) =>
           prev +
@@ -854,7 +854,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
         const [totalAccounts, notificationsCount] = await Promise.all([
           AccountController.getTotalAccounts(),
-          UiNotificationsManager.getNotificationsCountForAllAccounts()
+          uiNotificationsManager.getNotificationsCountForAllAccounts()
         ]);
         const accountButtons: typeof buttons = [];
         for(let i = 1; i <= totalAccounts; i++) {

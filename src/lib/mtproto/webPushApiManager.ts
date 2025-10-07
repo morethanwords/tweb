@@ -12,6 +12,7 @@
 import type {PushNotificationObject} from '../serviceWorker/push';
 import type {ServicePushPingTaskPayload} from '../serviceWorker/serviceMessagePort';
 import type {NotificationSettings} from '../appManagers/uiNotificationsManager';
+import type {ActiveAccountNumber} from '../accounts/types';
 import type ServiceMessagePort from '../serviceWorker/serviceMessagePort';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import {logger} from '../logger';
@@ -22,6 +23,9 @@ import copy from '../../helpers/object/copy';
 import singleInstance from './singleInstance';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
+import AccountController from '../accounts/accountController';
+import App from '../../config/app';
+import apiManagerProxy from './mtprotoworker';
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -79,6 +83,10 @@ export class WebPushApiManager extends EventListenerBase<{
     this.localNotificationsAvailable = false;
   }
 
+  public getSecret() {
+    return apiManagerProxy.pushSingleManager.getSecret();
+  }
+
   public getSubscription() {
     if(!this.isAvailable) {
       return;
@@ -100,7 +108,10 @@ export class WebPushApiManager extends EventListenerBase<{
     }
 
     navigator.serviceWorker.ready.then((reg) => {
-      reg.pushManager.subscribe({userVisibleOnly: this.userVisibleOnly}).then((subscription) => {
+      reg.pushManager.subscribe({
+        userVisibleOnly: this.userVisibleOnly,
+        applicationServerKey: App.pushServerKey
+      }).then((subscription) => {
         // The subscription was successful
         this.isPushEnabled = true;
         this.pushSubscriptionNotify('subscribe', subscription);
@@ -126,18 +137,16 @@ export class WebPushApiManager extends EventListenerBase<{
     navigator.serviceWorker.ready.then((reg) => {
       reg.pushManager.getSubscription().then((subscription) => {
         this.isPushEnabled = false;
-
-        if(subscription) {
-          this.pushSubscriptionNotify('unsubscribe', subscription);
-
-          setTimeout(() => {
-            subscription.unsubscribe().then((successful) => {
-              this.isPushEnabled = false;
-            }).catch((e) => {
-              this.log.error('Unsubscription error: ', e);
-            });
-          }, 3000);
+        if(!subscription) {
+          return;
         }
+
+        this.pushSubscriptionNotify('unsubscribe', subscription);
+        subscription.unsubscribe().then(() => {
+          this.isPushEnabled = false;
+        }).catch((e) => {
+          this.log.error('Unsubscription error: ', e);
+        });
       }).catch((e) => {
         this.log.error('Error thrown while unsubscribing from ' +
           'push messaging.', e);
@@ -170,7 +179,7 @@ export class WebPushApiManager extends EventListenerBase<{
     });
   }
 
-  public isAliveNotify = () => {
+  public isAliveNotify = async() => {
     if(!this.isAvailable || singleInstance.deactivatedReason) {
       return;
     }
@@ -185,14 +194,27 @@ export class WebPushApiManager extends EventListenerBase<{
     };
 
     for(const action in ACTIONS_LANG_MAP) {
-      lang[action as keyof typeof ACTIONS_LANG_MAP] = I18n.format(ACTIONS_LANG_MAP[action as keyof typeof ACTIONS_LANG_MAP], true);
+      lang[action as keyof typeof ACTIONS_LANG_MAP] = I18n.format(
+        ACTIONS_LANG_MAP[action as keyof typeof ACTIONS_LANG_MAP],
+        true
+      );
     }
 
-    this.serviceMessagePort.invokeVoid('pushPing', {
+    const accounts: ServicePushPingTaskPayload['accounts'] = {};
+    const [userIds, secret] = await Promise.all([AccountController.getUserIds(), this.getSecret()]);
+    userIds.forEach((userId, accountNumber) => {
+      accounts[(accountNumber + 1) as ActiveAccountNumber] = userId;
+    });
+
+    const payload: ServicePushPingTaskPayload = {
       localNotifications: this.localNotificationsAvailable,
       lang: lang,
-      settings: this.settings
-    });
+      settings: this.settings,
+      accounts,
+      secret
+    };
+
+    this.serviceMessagePort.invokeVoid('pushPing', payload);
 
     this.isAliveTO = setTimeout(this.isAliveNotify, PING_PUSH_INTERVAL);
   }
@@ -230,7 +252,8 @@ export class WebPushApiManager extends EventListenerBase<{
 
   public pushSubscriptionNotify(event: PushSubscriptionNotifyType, subscription?: PushSubscription) {
     if(subscription) {
-      const subscriptionObj: PushSubscriptionJSON = subscription.toJSON();
+      const subscriptionObj: PushSubscriptionJSON & {vapid?: boolean} = subscription.toJSON();
+      if(subscriptionObj) subscriptionObj.vapid = true;
       if(!subscriptionObj ||
         !subscriptionObj.endpoint ||
         !subscriptionObj.keys ||

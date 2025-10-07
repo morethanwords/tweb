@@ -79,8 +79,6 @@ export class ApiManager extends ApiManagerMethods {
 
   // public telegramMeNotified = false;
 
-  private log: ReturnType<typeof logger>;
-
   private afterMessageTempIds: {
     [tempId: string]: {
       messageId: string,
@@ -90,13 +88,11 @@ export class ApiManager extends ApiManagerMethods {
 
   private transportType: TransportType;
 
-  private updatesProcessor: (obj: any) => void;
-
   private loggingOut: boolean;
 
   constructor() {
     super();
-    this.log = logger('API');
+    this.name = 'API';
 
     this.cachedNetworkers = {} as any;
     this.cachedExportPromise = {};
@@ -105,12 +101,6 @@ export class ApiManager extends ApiManagerMethods {
     this.afterMessageTempIds = {};
 
     this.transportType = Modes.transport;
-
-    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports) {
-      transportController.addEventListener('transport', (transportType) => {
-        this.changeTransportType(transportType);
-      });
-    }
 
     // * Make sure that the used autologin_token is no more than 10000 seconds old
     // * https://core.telegram.org/api/url-authorization
@@ -122,6 +112,12 @@ export class ApiManager extends ApiManagerMethods {
 
   protected after() {
     const result = super.after();
+
+    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports) {
+      transportController.addEventListener('transport', (transportType) => {
+        this.changeTransportType(transportType);
+      });
+    }
 
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateConfig: () => {
@@ -570,7 +566,6 @@ export class ApiManager extends ApiManagerMethods {
   }
 
   public setUpdatesProcessor(callback: (obj: any) => void) {
-    this.updatesProcessor = callback;
     this.networkerFactory.setUpdatesProcessor(callback);
   }
 

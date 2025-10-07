@@ -14,7 +14,7 @@ import {TLSerialization, TLDeserialization} from './tl_utils';
 import {TransportType} from './dcConfigurator';
 import rsaKeysManager from './rsaKeysManager';
 import CryptoWorker from '../crypto/cryptoMessagePort';
-import {logger, LogTypes} from '../logger';
+import {LogTypes} from '../logger';
 import DEBUG from '../../config/debug';
 import {Awaited, DcId} from '../../types';
 import addPadding from '../../helpers/bytes/addPadding';
@@ -106,15 +106,18 @@ export class Authorizer extends AppManager {
     [dcId: DcId]: Promise<AuthOptions>
   };
 
-  private log: ReturnType<typeof logger>;
-
   private transportType: TransportType;
 
   private getTransportTypePromise: Promise<void>;
 
+  constructor() {
+    super();
+    this.name = 'AUTHORIZER';
+    this.logTypes = LogTypes.Error | LogTypes.Log;
+  }
+
   protected after() {
     this.cached = {};
-    this.log = logger(`AUTHORIZER`, LogTypes.Error | LogTypes.Log);
   }
 
   private sendPlainRequest(dcId: DcId, requestArray: Uint8Array) {

@@ -7,7 +7,7 @@
 import {logger, LogTypes} from '../logger';
 import {CACHE_ASSETS_NAME, requestCache} from './cache';
 import onStreamFetch, {toggleStreamInUse} from './stream';
-import {closeAllNotifications, onPing, onShownNotification} from './push';
+import {closeAllNotifications, onPing, onShownNotification, resetPushAccounts} from './push';
 import CacheStorageController from '../files/cacheStorage';
 import {IS_SAFARI} from '../../environment/userAgent';
 import ServiceMessagePort from './serviceMessagePort';
@@ -176,8 +176,15 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
   if(!connectedWindows.size) {
     log.warn('no windows left');
 
-    EncryptionKeyStore.resetDeferred();
-    DeferredIsUsingPasscode.resetDeferred();
+    DeferredIsUsingPasscode.isUsingPasscode()
+    .then((isUsingPasscode) => {
+      if(isUsingPasscode) {
+        resetPushAccounts();
+      }
+    }).finally(() => {
+      EncryptionKeyStore.resetDeferred();
+      DeferredIsUsingPasscode.resetDeferred();
+    });
 
     if(_mtprotoMessagePort) {
       serviceMessagePort.detachPort(_mtprotoMessagePort);

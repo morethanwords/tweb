@@ -154,7 +154,7 @@ export type BroadcastEvents = {
   'notify_peer_type_settings': {key: Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings},
 
   'notification_reset': string,
-  'notification_cancel': string,
+  'notification_cancel': `msg_${ActiveAccountNumber}_${PeerId}_${number}`,
 
   'notification_count_update': void,
 

@@ -23,6 +23,11 @@ export class NetworkerFactory extends AppManager {
   // public onConnectionStatusChange: (status: ConnectionStatusChange) => void = null;
   public akStopped = false;
 
+  constructor() {
+    super();
+    this.name = 'NET-FACTORY';
+  }
+
   public onConnectionStatusChange(status: ConnectionStatusChange) {
     this.rootScope.dispatchEvent('connection_status_change', status);
     //  ({type: 'connectionStatusChange', payload: status});

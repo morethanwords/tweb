@@ -15,6 +15,7 @@ import type {PasscodeStorageValue} from '../commonStateStorage';
 import SuperMessagePort from './superMessagePort';
 
 export type MTProtoManagerTaskPayload = {name: string, method: string, args: any[], accountNumber: ActiveAccountNumber};
+export type MTProtoSingleManagerTaskPayload = {name: string, method: string, args: any[]};
 
 type CallNotificationPayload = {
   callerId: string | number,
@@ -38,6 +39,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   crypto: (payload: {method: string, args: any[]}) => Promise<any>,
   state: (payload: {accountNumber: ActiveAccountNumber} & LoadStateResult) => void,
   manager: (payload: MTProtoManagerTaskPayload) => any,
+  singleManager: (payload: MTProtoSingleManagerTaskPayload) => any,
   toggleStorages: (payload: {enabled: boolean, clearWrite: boolean}) => ReturnType<typeof toggleStorages>,
   serviceWorkerOnline: (online: boolean) => void,
   serviceWorkerPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
