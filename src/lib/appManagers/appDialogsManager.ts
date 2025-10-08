@@ -374,7 +374,7 @@ export class DialogElement extends Row {
     if(!autonomous) {
       (li as any).dialogDom = dom;
 
-      if(isMainList && appDialogsManager.forumTab?.peerId === peerId && !threadId) {
+      if(isMainList && !asAllChats && appDialogsManager.forumTab?.peerId === peerId && !threadId) {
         li.classList.add('is-forum-open');
       }
     }
@@ -963,7 +963,7 @@ export class AppDialogsManager {
   public setDialogActive(listEl: HTMLElement, active: boolean) {
     const dom = (listEl as any).dialogDom as DialogDom;
     this.setDialogActiveStatus(listEl, active);
-    listEl.classList.toggle('is-forum-open', this.forumTab?.peerId === listEl.dataset.peerId.toPeerId() && !listEl.dataset.threadId);
+    listEl.classList.toggle('is-forum-open', this.forumTab?.peerId === listEl.dataset.peerId.toPeerId() && !listEl.dataset.threadId && !listEl.dataset.monoforumAllChats);
     if(active) {
       this.lastActiveElements.add(listEl);
     } else {
