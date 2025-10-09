@@ -54,7 +54,6 @@ export default class DialogsContextMenu {
     createContextMenu({
       listenTo: element,
       buttons: this.getButtons(),
-      appendTo: document.getElementById('page-chats'),
       onOpen: async(e, li) => {
         this.li = li;
         li.classList.add('menu-open');
