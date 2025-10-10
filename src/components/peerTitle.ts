@@ -17,6 +17,7 @@ import generateTitleIcons from './generateTitleIcons';
 import {wrapTopicIcon} from './wrappers/messageActionTextNewUnsafe';
 import lottieLoader from '../lib/rlottie/lottieLoader';
 import {AsAllChatsType} from '../lib/appManagers/appDialogsManager';
+import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -109,8 +110,23 @@ export default class PeerTitle {
 
     let hasInner: boolean;
     const {peerId, threadId} = this.options;
-    if(this.options.asAllChats) {
-      const element = i18n(this.options.asAllChats === 'monoforum' ? 'AllChats' : 'AllMessages');
+    if(this.options.asAllChats === 'topics') {
+      const title = i18n('AllMessages');
+
+      const inner = document.createElement('span');
+      inner.classList.add('peer-title-inner');
+      hasInner = true;
+      setInnerHTML(inner, title);
+
+      const fragment = document.createDocumentFragment();
+      const emojiText = document.createElement('span');
+      !IS_EMOJI_SUPPORTED && emojiText.classList.add('emoji-topic-icon');
+      emojiText.append(wrapEmojiText('💬'));
+      fragment.append(emojiText, inner);
+
+      setInnerHTML(this.element, fragment);
+    } else if(this.options.asAllChats === 'monoforum') {
+      const element = i18n('AllChats');
       replaceContent(this.element, element);
     } else if(peerId === rootScope.myId && this.options.dialog) {
       let element: HTMLElement;

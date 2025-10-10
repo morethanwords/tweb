@@ -217,6 +217,11 @@ ul.chatlist {
       margin-inline-end: .25rem;
     }
 
+    .row-title .emoji-topic-icon {
+      margin-top: 0;
+      margin-inline-end: .25rem;
+    }
+
     // ! IT IS IMPORTANT, OVERFLOW DOESN'T WORK WITH display: inline-flex;
     .topic-name {
       .topic-icon {
