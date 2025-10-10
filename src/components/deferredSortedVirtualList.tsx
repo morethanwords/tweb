@@ -110,7 +110,9 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   };
 
   const removeItem = (id: any) => {
+    const hadItem = itemsMap().has(id);
     setItems(prev => prev.filter(item => id !== item.id));
+    return hadItem;
   };
 
   const updateItem = (id: any, index: number) => {
@@ -132,6 +134,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const clear = () => {
     batch(() => {
       setItems([]);
+      setPinnedItems([]);
       setTotalCount(0);
       setWasAtLeastOnceFetched(false);
       setRevealIdx(Infinity);
@@ -198,7 +201,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   function checkShrink(visibleItems: Set<number>, itemsLength: number) {
     const maxVisible = Math.max(0, ...Array.from(visibleItems.values()));
 
-    const toKeep = maxVisible + EXTRA_ITEMS_TO_KEEP;
+    const toKeep = maxVisible - pinnedItems().length + EXTRA_ITEMS_TO_KEEP;
 
     if(itemsLength > toKeep) {
       batch(() => {

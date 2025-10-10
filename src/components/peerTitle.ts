@@ -16,6 +16,7 @@ import getPeerTitle from './wrappers/getPeerTitle';
 import generateTitleIcons from './generateTitleIcons';
 import {wrapTopicIcon} from './wrappers/messageActionTextNewUnsafe';
 import lottieLoader from '../lib/rlottie/lottieLoader';
+import {AsAllChatsType} from '../lib/appManagers/appDialogsManager';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -29,7 +30,7 @@ export type PeerTitleOptions = {
   withPremiumIcon?: boolean,
   threadId?: number,
   meAsNotes?: boolean,
-  asAllChats?: boolean,
+  asAllChats?: AsAllChatsType,
   wrapOptions?: WrapSomethingOptions
 };
 
@@ -109,7 +110,7 @@ export default class PeerTitle {
     let hasInner: boolean;
     const {peerId, threadId} = this.options;
     if(this.options.asAllChats) {
-      const element = i18n('AllChats');
+      const element = i18n(this.options.asAllChats === 'monoforum' ? 'AllChats' : 'AllMessages');
       replaceContent(this.element, element);
     } else if(peerId === rootScope.myId && this.options.dialog) {
       let element: HTMLElement;

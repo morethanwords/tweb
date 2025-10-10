@@ -3650,6 +3650,7 @@ const lang = {
   'ChecklistAllowOthersDone': 'Allow Others to Mark as Done',
   'ChecklistAllowOthersAdd': 'Allow Others to Add Tasks',
   'AllChats': 'All Chats',
+  'AllMessages': 'All Messages',
   'UsersOnly': 'Private Chats',
   'GroupsOnly': 'Group Chats',
   'ChannelsOnly': 'Channels',

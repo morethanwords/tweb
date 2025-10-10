@@ -46,3 +46,5 @@ export const START_LOCAL_ID = Math.max(...Array.from(REAL_FOLDERS)) + 1 as MyDia
 export const TEST_NO_STORIES = false;
 export const TEST_NO_SAVED = false;
 export const TEST_NO_STREAMING = false;
+
+export const SIMULATED_BOTFORUM_IDS = new Set([-2314844887]);

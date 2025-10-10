@@ -186,6 +186,10 @@ export class AppPeersManager extends AppManager {
     return peerId && !peerId.isUser() && this.appChatsManager.canManageDirectMessages(peerId.toChatId());
   }
 
+  public isBotforum(peerId: PeerId): boolean {
+    return !peerId.isUser() && this.appChatsManager.isBotforum(peerId.toChatId());
+  }
+
   /**
    * The amount of stars necessary to be paid for every message if the target peer had enabled it
    */

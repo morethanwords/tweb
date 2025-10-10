@@ -22,9 +22,7 @@ export class GroupForumTab extends ForumTab {
 
     this.container.classList.add('topic-dialogs-override');
 
-    const isFloating = !this.slider;
-
-    this.xd = new AutonomousForumTopicList({peerId: this.peerId, isFloating, appDialogsManager});
+    this.xd = new AutonomousForumTopicList({peerId: this.peerId, appDialogsManager});
     this.xd.scrollable = this.scrollable;
     this.xd.sortedList = new SortedDialogList({
       itemSize: 64,

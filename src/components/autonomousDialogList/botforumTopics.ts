@@ -1,6 +1,5 @@
 import {ForumTopic} from '../../lib/appManagers/appMessagesManager';
 import {isDialog, isForumTopic} from '../../lib/appManagers/utils/dialogs/isDialog';
-import {CAN_HIDE_TOPIC} from '../../lib/mtproto/mtproto_config';
 import rootScope from '../../lib/rootScope';
 import {AutonomousDialogListBase, BaseConstructorArgs} from './base';
 
@@ -9,15 +8,13 @@ type ConstructorArgs = BaseConstructorArgs & {
   peerId: PeerId;
 };
 
-export class AutonomousForumTopicList extends AutonomousDialogListBase<ForumTopic> {
+export class AutonomousBotforumTopicList extends AutonomousDialogListBase<ForumTopic> {
   public peerId: PeerId;
 
   constructor({peerId, ...args}: ConstructorArgs) {
     super(args);
 
     this.peerId = peerId;
-
-    this.skipMigrated = !!CAN_HIDE_TOPIC;
 
     this.placeholderOptions = {
       avatarSize: 0,

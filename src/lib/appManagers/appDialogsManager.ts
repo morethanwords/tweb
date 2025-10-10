@@ -173,6 +173,7 @@ const avatarSizeMap: {[k in DialogElementSize]?: number} = {
 };
 
 export type DialogElementSize = RowMediaSizeType;
+export type AsAllChatsType = 'monoforum' | 'topics';
 type DialogElementOptions = {
   peerId: PeerId,
   rippleEnabled?: boolean,
@@ -190,7 +191,7 @@ type DialogElementOptions = {
   withStories?: boolean,
   controlled?: boolean,
   dontSetActive?: boolean,
-  asAllChats?: boolean
+  asAllChats?: AsAllChatsType;
 };
 export class DialogElement extends Row {
   private static BADGE_ORDER: Parameters<DialogElement['toggleBadgeByKey']>[0][] = ['reactionsBadge', 'mentionsBadge', 'unreadBadge', 'pinnedBadge'];
@@ -219,7 +220,7 @@ export class DialogElement extends Row {
     super({
       clickable: true,
       noRipple: !rippleEnabled,
-      havePadding: !threadId,
+      havePadding: !threadId && asAllChats !== 'topics',
       title: true,
       titleRightSecondary: true,
       subtitle: true,
@@ -246,7 +247,7 @@ export class DialogElement extends Row {
 
     const usePeerId = isSavedDialog ? threadId : peerId;
 
-    const avatar = isForumTopic ? undefined : avatarNew({
+    const avatar = isForumTopic || asAllChats === 'topics' ? undefined : avatarNew({
       middleware: this.middlewareHelper.get(),
       size: avatarSizeMap[avatarSize],
 
@@ -257,7 +258,7 @@ export class DialogElement extends Row {
       withStories,
       wrapOptions: newWrapOptions,
       meAsNotes: isSavedDialog,
-      asAllChats
+      asAllChats: asAllChats === 'monoforum'
     });
     loadPromises?.push(avatar?.readyThumbPromise);
     const avatarEl = avatar?.node;
@@ -337,7 +338,7 @@ export class DialogElement extends Row {
     }
 
     if(asAllChats) {
-      li.dataset.monoforumAllChats = 'true';
+      li.dataset.isAllChats = 'true';
     }
 
     const statusSpan = document.createElement('span');
@@ -963,7 +964,7 @@ export class AppDialogsManager {
   public setDialogActive(listEl: HTMLElement, active: boolean) {
     const dom = (listEl as any).dialogDom as DialogDom;
     this.setDialogActiveStatus(listEl, active);
-    listEl.classList.toggle('is-forum-open', this.forumTab?.peerId === listEl.dataset.peerId.toPeerId() && !listEl.dataset.threadId && !listEl.dataset.monoforumAllChats);
+    listEl.classList.toggle('is-forum-open', this.forumTab?.peerId === listEl.dataset.peerId.toPeerId() && !listEl.dataset.threadId && !listEl.dataset.isAllChats);
     if(active) {
       this.lastActiveElements.add(listEl);
     } else {
@@ -1840,7 +1841,7 @@ export class AppDialogsManager {
       if(
         linkedChat?._ === 'channel' &&
         linkedChat?.admin_rights?.pFlags?.manage_direct_messages &&
-        !elem.dataset.monoforumAllChats &&
+        !elem.dataset.isAllChats &&
         !e.shiftKey &&
         !mediaSizes.isLessThanFloatingLeftSidebar
       ) {
@@ -2225,7 +2226,7 @@ export class AppDialogsManager {
     const isTopic = isForumTopic(dialog);
     const isSaved = isSavedDialog(dialog);
     const isMonoforumThread = isMonoforumDialog(dialog);
-    const monoforumAsAllChats = !!dialogElement?.dom?.listEl?.dataset?.monoforumAllChats;
+    const monoforumAsAllChats = !!dialogElement?.dom?.listEl?.dataset?.isAllChats;
     const {deferred, middleware} = setPromiseMiddleware(dom, 'setUnreadMessagePromise');
 
     const {peerId} = dialog;
