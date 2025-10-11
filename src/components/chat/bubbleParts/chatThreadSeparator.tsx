@@ -138,7 +138,7 @@ type Props = {
 };
 
 const ChatThreadSeparator = defineSolidElement({
-  name: 'monoforum-separator',
+  name: 'chat-thread-separator',
   component: (props: PassedProps<Props>) => {
     attachHotClassName(props.element, styles.Container);
 

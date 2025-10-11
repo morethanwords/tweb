@@ -63,10 +63,10 @@
   height: 2px;
 
   opacity: 0.075;
-  background-image: url(assets/img/monoforum-separator-dash-black.svg);
+  background-image: url(assets/img/chat-thread-separator-dash-black.svg);
   :global(.night) & {
     opacity: 0.15;
-    background-image: url(assets/img/monoforum-separator-dash.svg);
+    background-image: url(assets/img/chat-thread-separator-dash.svg);
   }
 
   &Left {
