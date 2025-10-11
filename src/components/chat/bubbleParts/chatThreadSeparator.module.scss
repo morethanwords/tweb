@@ -3,7 +3,11 @@
   align-self: center;
 }
 
+$round-border-radius: 100px;
+
 .ServiceMsg {
+  position: relative;
+
   display: flex !important;
   align-items: center;
   gap: 0.125rem;
@@ -12,9 +16,11 @@
   padding: .28125rem .625rem;
   padding-right: 0.25rem;
   line-height: calc(var(--messages-service-text-size) + 5px);
-  border-radius: 100px;
+  border-radius: $round-border-radius;
 
   color: white;
+  --link-color: white;
+  font-weight: var(--font-weight-bold);
   background-color: var(--message-highlighting-color);
 
   cursor: pointer;
@@ -47,10 +53,18 @@
     opacity: 0 !important;
     pointer-events: none !important;
   }
+
+  a::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: $round-border-radius;
+  }
 }
 
 .ArrowIcon {
   font-size: 1.15rem;
+  line-height: 1.15rem;
   transform: rotate(-90deg);
   opacity: 0.75;
 }

@@ -1,10 +1,12 @@
-import {Accessor, batch, createMemo, createRoot, createSignal, onCleanup} from 'solid-js';
+import {Accessor, batch, createMemo, createRoot, createSignal, Match, onCleanup, Switch} from 'solid-js';
 import {createStore, SetStoreFunction} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
 import {simulateClickEvent} from '../../../helpers/dom/clickEvent';
 import {attachHotClassName} from '../../../helpers/solid/classname';
+import wrapTopicThreadAnchor from '../../../lib/richTextProcessor/wrapTopicThreadAnchor';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
 import {IconTsx} from '../../iconTsx';
+import PeerTitle from '../../peerTitle';
 import {PeerTitleTsx} from '../../peerTitleTsx';
 import type ChatBubbles from '../bubbles';
 import styles from './chatThreadSeparator.module.scss';
@@ -134,6 +136,7 @@ type Props = {
   bubbles: ChatBubbles;
   peerId: PeerId;
   threadId?: number;
+  lastMsgId?: number;
   index: number;
 };
 
@@ -142,7 +145,7 @@ const ChatThreadSeparator = defineSolidElement({
   component: (props: PassedProps<Props>) => {
     attachHotClassName(props.element, styles.Container);
 
-    let peerTitleEl: HTMLElement;
+    let clickTriggerEl: HTMLElement;
 
     const [serviceMsg, setServiceMsg] = createSignal<HTMLElement>();
 
@@ -153,22 +156,43 @@ const ChatThreadSeparator = defineSolidElement({
     });
 
     const onClick = () => {
-      if(peerTitleEl) simulateClickEvent(peerTitleEl);
+      if(clickTriggerEl) simulateClickEvent(clickTriggerEl);
     };
 
 
+    const peerTitleOptions = () => ({
+      peerId: props.peerId,
+      threadId: props.threadId,
+      withIcons: !!props.threadId,
+      limitSymbols: LIMIT_SYMBOLS,
+      onlyFirstName: true
+    });
+
     const InnerPeerTitle = (thisProps: {withRef?: boolean}) => {
       return (
-        <PeerTitleTsx
-          ref={(el) => {
-            if(thisProps.withRef) peerTitleEl = el;
-          }}
-          peerId={props.peerId}
-          threadId={props.threadId}
-          withIcons={!!props.threadId}
-          limitSymbols={LIMIT_SYMBOLS}
-          onlyFirstName
-        />
+        <Switch>
+          <Match when={props.threadId}>
+            {(() => {
+              const element = wrapTopicThreadAnchor({peerId: props.peerId, threadId: props.threadId, lastMsgId: props.lastMsgId});
+
+              const peerTitle = new PeerTitle;
+              peerTitle.update(peerTitleOptions());
+
+              element.append(peerTitle.element);
+              if(thisProps.withRef) element.append(peerTitle.element);
+
+              return element;
+            })()}
+          </Match>
+          <Match when={!props.threadId}>
+            <PeerTitleTsx
+              ref={(el) => {
+                if(thisProps.withRef) clickTriggerEl = el;
+              }}
+              {...peerTitleOptions()}
+            />
+          </Match>
+        </Switch>
       );
     };
 

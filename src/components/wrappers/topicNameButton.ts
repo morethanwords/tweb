@@ -4,8 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
-import wrapTelegramUrlToAnchor from '../../lib/richTextProcessor/wrapTelegramUrlToAnchor';
+import wrapTopicThreadAnchor from '../../lib/richTextProcessor/wrapTopicThreadAnchor';
 import {avatarNew} from '../avatarNew';
 import Icon from '../icon';
 import wrapPeerTitle from './peerTitle';
@@ -40,7 +39,7 @@ export default async function wrapTopicNameButton(
 
     options.withIcons = false;
   } else {
-    element = wrapTelegramUrlToAnchor('t.me/c/' + peerId.toChatId() + (threadId ? '/' + getServerMessageId(threadId) : '') + (lastMsgId ? '/' + getServerMessageId(lastMsgId) : ''));
+    element = wrapTopicThreadAnchor({peerId, threadId, lastMsgId});
   }
 
   element.classList.add('topic-name', 'topic-name-button');

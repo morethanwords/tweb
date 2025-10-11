@@ -412,7 +412,7 @@ export default class BubbleGroups {
 
   private addChatThreadSeparators() {
     const isMonoforum = this.chat.isMonoforum && this.chat.canManageDirectMessages && !this.chat.monoforumThreadId;
-    const isBotforum = this.chat.isBotforum;
+    const isBotforum = this.chat.isBotforum && !this.chat.threadId;
 
     const canHaveSeparators = isMonoforum || isBotforum;
 
@@ -449,6 +449,7 @@ export default class BubbleGroups {
         bubbles: this.chat.bubbles,
         peerId: savedPeerId || this.chat.peerId,
         threadId: savedPeerId ? undefined : threadId,
+        lastMsgId: item.message?.mid,
         index: -i
       });
       item.bubble.classList.add('has-chat-thread-separator');
