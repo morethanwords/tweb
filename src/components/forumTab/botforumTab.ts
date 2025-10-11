@@ -2,6 +2,7 @@ import middlewarePromise from '../../helpers/middlewarePromise';
 import namedPromises from '../../helpers/namedPromises';
 import {Chat, Dialog} from '../../layer';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
+import {isDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import {i18n} from '../../lib/langPack';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import rootScope from '../../lib/rootScope';
@@ -64,6 +65,14 @@ export class BotforumTab extends ForumTab {
         appDialogsManager.toggleForumTab(undefined, this);
       }
     });
+
+    this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
+      for(const [, {dialog}] of dialogs) {
+        if(isDialog(dialog) && dialog.peerId === this.peerId) {
+          this.updateAllChatsDialog(dialog);
+        }
+      }
+    });
   }
 
   private updateAllChatsDialog(dialog: Dialog.dialog) {
@@ -106,6 +115,7 @@ export class BotforumTab extends ForumTab {
     } catch{}
   }
 
+  // TODO: there should be monthly users there
   private async updateDialogsCount() {
     if(!this.dialogsCountI18nEl) return;
     const {count} = await this.managers.monoforumDialogsStorage.getDialogs({parentPeerId: this.peerId, limit: 1});
