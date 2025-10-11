@@ -7,7 +7,7 @@ import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidE
 import {IconTsx} from '../../iconTsx';
 import {PeerTitleTsx} from '../../peerTitleTsx';
 import type ChatBubbles from '../bubbles';
-import styles from './monoforumSeparator.module.scss';
+import styles from './chatThreadSeparator.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -133,10 +133,11 @@ function useIntersector({bubbles, element, index}: UseIntersectorArgs) {
 type Props = {
   bubbles: ChatBubbles;
   peerId: PeerId;
+  threadId?: number;
   index: number;
 };
 
-const MonoforumSeparator = defineSolidElement({
+const ChatThreadSeparator = defineSolidElement({
   name: 'monoforum-separator',
   component: (props: PassedProps<Props>) => {
     attachHotClassName(props.element, styles.Container);
@@ -155,6 +156,22 @@ const MonoforumSeparator = defineSolidElement({
       if(peerTitleEl) simulateClickEvent(peerTitleEl);
     };
 
+
+    const InnerPeerTitle = (thisProps: {withRef?: boolean}) => {
+      return (
+        <PeerTitleTsx
+          ref={(el) => {
+            if(thisProps.withRef) peerTitleEl = el;
+          }}
+          peerId={props.peerId}
+          threadId={props.threadId}
+          withIcons={!!props.threadId}
+          limitSymbols={LIMIT_SYMBOLS}
+          onlyFirstName
+        />
+      );
+    };
+
     return (
       <>
         <div
@@ -165,7 +182,7 @@ const MonoforumSeparator = defineSolidElement({
           }}
           onClick={onClick}
         >
-          <PeerTitleTsx ref={peerTitleEl} peerId={props.peerId} limitSymbols={LIMIT_SYMBOLS} onlyFirstName />
+          <InnerPeerTitle withRef />
           <IconTsx icon='arrowhead' class={styles.ArrowIcon} />
         </div>
 
@@ -182,7 +199,7 @@ const MonoforumSeparator = defineSolidElement({
             }}
             onClick={onClick}
           >
-            <PeerTitleTsx peerId={props.peerId} limitSymbols={LIMIT_SYMBOLS} onlyFirstName />
+            <InnerPeerTitle />
             <IconTsx icon='arrowhead' class={styles.ArrowIcon} />
           </div>
         </Portal>
@@ -198,4 +215,4 @@ const MonoforumSeparator = defineSolidElement({
   }
 });
 
-export default MonoforumSeparator;
+export default ChatThreadSeparator;

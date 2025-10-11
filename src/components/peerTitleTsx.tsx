@@ -8,6 +8,7 @@ export const PeerTitleTsx = (props: {
   ref?: Ref<HTMLElement>;
   class?: string
   peerId: PeerId,
+  threadId?: number,
   onlyFirstName?: boolean,
   username?: boolean,
   limitSymbols?: number,
@@ -20,10 +21,11 @@ export const PeerTitleTsx = (props: {
   props.ref instanceof Function && props.ref?.(peerTitle.element); // solid will always make it a function
 
   const [loaded] = createResource(
-    () => props.peerId,
-    async(peerId) => {
+    () => [props.peerId, props.threadId],
+    async([peerId, threadId]) => {
       await peerTitle.update({
         peerId,
+        threadId,
         dialog: false,
         onlyFirstName: props.onlyFirstName,
         username: props.username,

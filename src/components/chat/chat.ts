@@ -154,6 +154,7 @@ export default class Chat extends EventListenerBase<{
   public isUserBlocked: boolean;
   public isPremiumRequired: boolean;
   public isMonoforum: boolean;
+  public isBotforum: boolean;
   public canManageDirectMessages: boolean;
 
   public starsAmount: number | undefined;
@@ -886,6 +887,7 @@ export default class Chat extends EventListenerBase<{
       isMegagroup,
       isBroadcast,
       isChannel,
+      isBotforum,
       isBot,
       isAnonymousSending,
       isUserBlocked,
@@ -903,6 +905,7 @@ export default class Chat extends EventListenerBase<{
       isMegagroup: this.managers.appPeersManager.isMegagroup(peerId),
       isBroadcast: this.managers.appPeersManager.isBroadcast(peerId),
       isChannel: this.managers.appPeersManager.isChannel(peerId),
+      isBotforum: this.managers.appPeersManager.isBotforum(peerId),
       isBot: this.managers.appPeersManager.isBot(peerId),
       isAnonymousSending: this.managers.appMessagesManager.isAnonymousSending(peerId),
       isUserBlocked: peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),
@@ -932,6 +935,7 @@ export default class Chat extends EventListenerBase<{
     this.isUserBlocked = isUserBlocked;
     this.isPremiumRequired = isPremiumRequired;
     this.isMonoforum = !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
+    this.isBotforum = isBotforum;
     this.canManageDirectMessages = canManageDirectMessages;
     this.starsAmount = starsAmount;
 
@@ -1312,7 +1316,7 @@ export default class Chat extends EventListenerBase<{
 
   public isAvatarNeeded(message: Message.message | Message.messageService) {
     if(isMessageForVerificationBot(message)) return true;
-    return this.isLikeGroup && !this.isOutMessage(message);
+    return this.isLikeGroup && !this.isOutMessage(message) && !this.isBotforum;
   }
 
   public isPinnedMessagesNeeded() {

@@ -1,5 +1,5 @@
-import type MonoforumSeparator from './bubbleParts/monoforumSeparator';
+import type ChatThreadSeparator from './bubbleParts/chatThreadSeparator';
 
 export type BubbleElementAddons = {
-  monoforumSeparator?: InstanceType<typeof MonoforumSeparator>;
+  chatThreadSeparator?: InstanceType<typeof ChatThreadSeparator>;
 };

@@ -205,7 +205,7 @@ import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessage
 import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
 import addSuggestedPostServiceMessage, {checkIfNotMePosted} from './bubbleParts/suggestPostServiceMessage';
 import addSuggestedPostReplyMarkup, {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
-import type {SeparatorIntersectorRoot} from './bubbleParts/monoforumSeparator';
+import type {SeparatorIntersectorRoot} from './bubbleParts/chatThreadSeparator';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -4863,7 +4863,7 @@ export default class ChatBubbles {
       this.container.classList.toggle('is-chat-input-hidden', !canWrite && !appConfig.freeze_since_date);
 
       [this.chatInner, this.remover].forEach((element) => {
-        element.classList.toggle('is-chat', isLikeGroup);
+        element.classList.toggle('is-chat', isLikeGroup && !this.chat.isBotforum);
         element.classList.toggle('no-messages', !hasMessages);
         element.classList.toggle('with-message-avatars', isVerificationBot(peerId));
         element.classList.toggle('is-broadcast', isBroadcast);
@@ -7467,7 +7467,7 @@ export default class ChatBubbles {
 
     const iPostedAsSomeoneElse = message.fromId !== rootScope.myId && !this.chat.isMonoforum;
 
-    const needName = ((iPostedAsSomeoneElse || !isOut) && this.chat.isLikeGroup) ||
+    const needName = ((iPostedAsSomeoneElse || !isOut) && this.chat.isLikeGroup && !this.chat.isBotforum) ||
       message.viaBotId ||
       storyFromPeerId ||
       (showNameForVerificationCodes && !replyTo);

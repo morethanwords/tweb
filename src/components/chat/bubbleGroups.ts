@@ -12,7 +12,7 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import {Message} from '../../layer';
-import {NULL_PEER_ID, REPLIES_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
+import {GENERAL_TOPIC_ID, NULL_PEER_ID, REPLIES_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
 import ChatBubbles, {SERVICE_AS_REGULAR, STICKY_OFFSET} from './bubbles';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import partition from '../../helpers/array/partition';
@@ -27,7 +27,7 @@ import {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyM
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import typedElement from '../../helpers/dom/typedElement';
 import {BubbleElementAddons} from './types';
-import MonoforumSeparator from './bubbleParts/monoforumSeparator';
+import ChatThreadSeparator from './bubbleParts/chatThreadSeparator';
 
 
 type GroupItem = {
@@ -407,44 +407,52 @@ export default class BubbleGroups {
       group.mount(true);
     });
 
-    this.addMonoforumSeparators();
+    this.addChatThreadSeparators();
   }
 
-  private addMonoforumSeparators() {
-    const canHaveSeparators = this.chat.isMonoforum && this.chat.canManageDirectMessages && !this.chat.monoforumThreadId;
+  private addChatThreadSeparators() {
+    const isMonoforum = this.chat.isMonoforum && this.chat.canManageDirectMessages && !this.chat.monoforumThreadId;
+    const isBotforum = this.chat.isBotforum;
+
+    const canHaveSeparators = isMonoforum || isBotforum;
+
     if(!canHaveSeparators) return;
 
-    let prevPeerId: number;
+    let prevKey: number;
 
     forEachReverse(this.itemsArr, (item, i) => {
-      const savedPeerId = getPeerId(item.message?.saved_peer_id);
-      if(!savedPeerId) return;
+      const savedPeerId = isMonoforum ? getPeerId(item.message?.saved_peer_id) : undefined;
+      const threadId = isBotforum ? getMessageThreadId(item.message, true) || GENERAL_TOPIC_ID : undefined;
+
+      const key = savedPeerId || threadId;
+      if(!key) return;
 
       const bubbleAddons = typedElement<BubbleElementAddons>(item.bubble);
 
-      if(prevPeerId === savedPeerId) {
-        item.bubble.classList.remove('has-monoforum-separator');
-        bubbleAddons.monoforumSeparator?.remove();
+      if(prevKey === key) {
+        item.bubble.classList.remove('has-chat-thread-separator');
+        bubbleAddons.chatThreadSeparator?.remove();
         return;
       }
 
-      prevPeerId = savedPeerId;
+      prevKey = key;
 
-      if(bubbleAddons.monoforumSeparator) {
-        bubbleAddons.monoforumSeparator.feedProps<false>({
+      if(bubbleAddons.chatThreadSeparator) {
+        bubbleAddons.chatThreadSeparator.feedProps<false>({
           index: -i
         });
         return;
       }
 
-      bubbleAddons.monoforumSeparator = new MonoforumSeparator;
-      bubbleAddons.monoforumSeparator.feedProps({
+      bubbleAddons.chatThreadSeparator = new ChatThreadSeparator;
+      bubbleAddons.chatThreadSeparator.feedProps({
         bubbles: this.chat.bubbles,
-        peerId: savedPeerId,
+        peerId: savedPeerId || this.chat.peerId,
+        threadId: savedPeerId ? undefined : threadId,
         index: -i
       });
-      item.bubble.classList.add('has-monoforum-separator');
-      item.bubble.prepend(bubbleAddons.monoforumSeparator);
+      item.bubble.classList.add('has-chat-thread-separator');
+      item.bubble.prepend(bubbleAddons.chatThreadSeparator);
     });
   }
 
