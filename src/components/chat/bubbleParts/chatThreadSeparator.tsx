@@ -1,8 +1,10 @@
-import {Accessor, batch, createMemo, createRoot, createSignal, Match, onCleanup, Switch} from 'solid-js';
+import {Accessor, batch, createEffect, createMemo, createRoot, createSignal, Match, onCleanup, Ref, Switch} from 'solid-js';
 import {createStore, SetStoreFunction} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
 import {simulateClickEvent} from '../../../helpers/dom/clickEvent';
+import clamp from '../../../helpers/number/clamp';
 import {attachHotClassName} from '../../../helpers/solid/classname';
+import type CustomEmojiElement from '../../../lib/customEmoji/element';
 import wrapTopicThreadAnchor from '../../../lib/richTextProcessor/wrapTopicThreadAnchor';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
 import {IconTsx} from '../../iconTsx';
@@ -146,6 +148,7 @@ const ChatThreadSeparator = defineSolidElement({
     attachHotClassName(props.element, styles.Container);
 
     let clickTriggerEl: HTMLElement;
+    let scaledEl: HTMLElement;
 
     const [serviceMsg, setServiceMsg] = createSignal<HTMLElement>();
 
@@ -159,6 +162,26 @@ const ChatThreadSeparator = defineSolidElement({
       if(clickTriggerEl) simulateClickEvent(clickTriggerEl);
     };
 
+    const scale = createMemo(() => clamp((state().nextIntersectionRatio ?? 1), 0, 1));
+
+    const isScaling = createMemo(() => scale() < 1);
+
+    createEffect(() => {
+      if(!isScaling() || !scaledEl) return;
+
+      const emojiElements = Array.from(scaledEl.querySelectorAll<CustomEmojiElement>('custom-emoji-element'))
+      .filter(emojiElement => !emojiElement.player.paused);
+
+      emojiElements.forEach((emojiElement) => {
+        emojiElement.player.pause();
+      });
+
+      onCleanup(() => {
+        emojiElements.forEach((emojiElement) => {
+          emojiElement.player.play();
+        });
+      });
+    });
 
     const peerTitleOptions = () => ({
       peerId: props.peerId,
@@ -168,7 +191,7 @@ const ChatThreadSeparator = defineSolidElement({
       onlyFirstName: true
     });
 
-    const InnerPeerTitle = (thisProps: {withRef?: boolean}) => {
+    const InnerPeerTitle = (thisProps: {ref?: Ref<HTMLElement>}) => {
       return (
         <Switch>
           <Match when={props.threadId}>
@@ -179,16 +202,14 @@ const ChatThreadSeparator = defineSolidElement({
               peerTitle.update(peerTitleOptions());
 
               element.append(peerTitle.element);
-              if(thisProps.withRef) element.append(peerTitle.element);
+              if(thisProps.ref instanceof Function) thisProps.ref(peerTitle.element);
 
               return element;
             })()}
           </Match>
           <Match when={!props.threadId}>
             <PeerTitleTsx
-              ref={(el) => {
-                if(thisProps.withRef) clickTriggerEl = el;
-              }}
+              ref={thisProps.ref}
               {...peerTitleOptions()}
             />
           </Match>
@@ -206,7 +227,7 @@ const ChatThreadSeparator = defineSolidElement({
           }}
           onClick={onClick}
         >
-          <InnerPeerTitle withRef />
+          <InnerPeerTitle ref={clickTriggerEl} />
           <IconTsx icon='arrowhead' class={styles.ArrowIcon} />
         </div>
 
@@ -219,11 +240,11 @@ const ChatThreadSeparator = defineSolidElement({
             }}
             style={{
               '--top': `${SEPARATOR_HEIGHT + 2 * PADDING}px`,
-              '--scale': (state().nextIntersectionRatio ?? 1)
+              '--scale': scale()
             }}
             onClick={onClick}
           >
-            <InnerPeerTitle />
+            <InnerPeerTitle ref={scaledEl} />
             <IconTsx icon='arrowhead' class={styles.ArrowIcon} />
           </div>
         </Portal>
