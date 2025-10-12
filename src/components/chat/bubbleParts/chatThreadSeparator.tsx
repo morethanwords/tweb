@@ -170,15 +170,15 @@ const ChatThreadSeparator = defineSolidElement({
       if(!isScaling() || !scaledEl) return;
 
       const emojiElements = Array.from(scaledEl.querySelectorAll<CustomEmojiElement>('custom-emoji-element'))
-      .filter(emojiElement => !emojiElement.player.paused);
+      .filter(emojiElement => !emojiElement.player?.paused);
 
       emojiElements.forEach((emojiElement) => {
-        emojiElement.player.pause();
+        emojiElement.player?.pause();
       });
 
       onCleanup(() => {
         emojiElements.forEach((emojiElement) => {
-          emojiElement.player.play();
+          emojiElement.player?.play();
         });
       });
     });
