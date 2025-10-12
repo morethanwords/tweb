@@ -17,7 +17,7 @@ import ChatContextMenu from './contextMenu';
 import ChatInput from './input';
 import ChatSelection from './selection';
 import ChatTopbar from './topbar';
-import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY} from '../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SIMULATED_BOTFORUM_IDS} from '../../lib/mtproto/mtproto_config';
 import SetTransition from '../singleTransition';
 import AppPrivateSearchTab from '../sidebarRight/tabs/search';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
@@ -1219,11 +1219,11 @@ export default class Chat extends EventListenerBase<{
   }
 
   // * used to define need of avatars
-  public _isLikeGroup(peerId: PeerId) {
+  public async _isLikeGroup(peerId: PeerId) {
     return peerId === rootScope.myId ||
       peerId === REPLIES_PEER_ID ||
       (this.type === ChatType.Search && this.hashtagType !== 'this') ||
-      this.managers.appPeersManager.isLikeGroup(peerId);
+      !SIMULATED_BOTFORUM_IDS.has(peerId) && this.managers.appPeersManager.isLikeGroup(peerId);
   }
 
   public resetSearch() {
@@ -1316,7 +1316,7 @@ export default class Chat extends EventListenerBase<{
 
   public isAvatarNeeded(message: Message.message | Message.messageService) {
     if(isMessageForVerificationBot(message)) return true;
-    return this.isLikeGroup && !this.isOutMessage(message) && !this.isBotforum;
+    return this.isLikeGroup && !this.isOutMessage(message);
   }
 
   public isPinnedMessagesNeeded() {

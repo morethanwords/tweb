@@ -206,6 +206,7 @@ import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
 import addSuggestedPostServiceMessage, {checkIfNotMePosted} from './bubbleParts/suggestPostServiceMessage';
 import addSuggestedPostReplyMarkup, {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
 import type {SeparatorIntersectorRoot} from './bubbleParts/chatThreadSeparator';
+import BotforumNewTopic from './bubbleParts/botforumNewTopic';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -4863,7 +4864,7 @@ export default class ChatBubbles {
       this.container.classList.toggle('is-chat-input-hidden', !canWrite && !appConfig.freeze_since_date);
 
       [this.chatInner, this.remover].forEach((element) => {
-        element.classList.toggle('is-chat', isLikeGroup && !this.chat.isBotforum);
+        element.classList.toggle('is-chat', isLikeGroup);
         element.classList.toggle('no-messages', !hasMessages);
         element.classList.toggle('with-message-avatars', isVerificationBot(peerId));
         element.classList.toggle('is-broadcast', isBroadcast);
@@ -7467,7 +7468,7 @@ export default class ChatBubbles {
 
     const iPostedAsSomeoneElse = message.fromId !== rootScope.myId && !this.chat.isMonoforum;
 
-    const needName = ((iPostedAsSomeoneElse || !isOut) && this.chat.isLikeGroup && !this.chat.isBotforum) ||
+    const needName = ((iPostedAsSomeoneElse || !isOut) && this.chat.isLikeGroup) ||
       message.viaBotId ||
       storyFromPeerId ||
       (showNameForVerificationCodes && !replyTo);
@@ -8795,9 +8796,11 @@ export default class ChatBubbles {
       };
 
       if(!isSponsored) {
-        bubble.classList.add('bubble-first');
+        if(!this.chat.isBotforum) bubble.classList.add('bubble-first');
         bubble.classList.remove('can-have-tail', 'is-in');
       }
+
+      if(this.chat.isBotforum) bubble.classList.add('bubble-last', 'botforum-new-topic-bubble');
 
       const elements: (Node | string)[] = [];
       const isBot = this.chat.isBot;
@@ -8814,6 +8817,13 @@ export default class ChatBubbles {
         appendTo = this.chatInner;
         method = 'append';
         animate = false;
+      } else if(this.chat.isBotforum) {
+        animate = false;
+        appendTo = this.chatInner;
+        method = 'append';
+        elementsMethod = 'replaceChildren';
+
+        elements.push(new BotforumNewTopic);
       } else if(isBot && message._ === 'message') {
         if(isMessageForVerificationBot(message)) {
           const langPackString = I18n.strings.get('VerificationCodesBotDescription');
@@ -9080,6 +9090,10 @@ export default class ChatBubbles {
         })
       }
 
+      if(side === 'bottom' && value && this.chat.isBotforum) {
+        return this.renderBotforumPlaceholder();
+      }
+
       if(side === 'top' && value && this.chat.isBot) {
         return this.renderBotPlaceholder();
       }
@@ -9232,6 +9246,23 @@ export default class ChatBubbles {
     }
 
     return processPromise;
+  }
+
+  private async renderBotforumPlaceholder() {
+    const middleware = this.getMiddleware();
+
+    const message = await this.generateLocalFirstMessage(false, (message) => {
+      message.message = '';
+      message.date = Date.now() * 1000;
+    });
+
+    if(!middleware()) {
+      return;
+    }
+
+    return {
+      renderPromise: this.processLocalMessageRender(message, false)
+    }
   }
 
   private async renderUnknownUserPlaceholder() {

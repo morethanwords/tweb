@@ -3740,7 +3740,9 @@ const lang = {
   'SuggestedPosts.PostSuccess': '%s The channel was awarded **%d** for publishing the post',
   'SuggestedPosts.Price': 'Price',
   'SuggestedPosts.Time': 'Time',
-  'SuggestedPosts.TONAmount': '%d TON'
+  'SuggestedPosts.TONAmount': '%d TON',
+
+  'CreateNewTopicDescription': 'Type any message to\ncreate a new topic.'
 };
 
 export default lang;

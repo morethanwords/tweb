@@ -47,4 +47,4 @@ export const TEST_NO_STORIES = false;
 export const TEST_NO_SAVED = false;
 export const TEST_NO_STREAMING = false;
 
-export const SIMULATED_BOTFORUM_IDS = new Set([-2314844887]);
+export const SIMULATED_BOTFORUM_IDS = new Set([]);

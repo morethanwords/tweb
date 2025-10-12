@@ -3806,3 +3806,26 @@
   margin-top: 0.25rem;
   --border-end-start-radius: 0;
 }
+
+.botforum-new-topic-bubble {
+  --border-start-start-radius: #{$bubble-border-radius-big};
+  --border-start-end-radius: #{$bubble-border-radius-big};
+  --border-end-end-radius: #{$bubble-border-radius-big};
+  --border-end-start-radius: #{$bubble-border-radius-big};
+  order: 1000000;
+  margin-top: .5rem;
+  justify-content: center;
+  align-items: center;
+  max-width: 100%;
+
+  pointer-events: none;
+
+  .bubble-content {
+    background-color: var(--message-highlighting-color);
+    box-shadow: none;
+  }
+
+  .message {
+    color: white;
+  }
+}
