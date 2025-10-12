@@ -3813,7 +3813,7 @@
   --border-end-end-radius: #{$bubble-border-radius-big};
   --border-end-start-radius: #{$bubble-border-radius-big};
   order: 1000000;
-  margin-top: .5rem;
+  margin-top: 1.5rem;
   justify-content: center;
   align-items: center;
   max-width: 100%;
@@ -3827,5 +3827,21 @@
 
   .message {
     color: white;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -0.75rem;
+    width: 100vw;
+    height: 2px;
+
+    opacity: 0.075;
+    background-image: url(assets/img/chat-thread-separator-dash-black.svg);
+  }
+
+  .night &::before {
+    opacity: 0.15;
+    background-image: url(assets/img/chat-thread-separator-dash.svg);
   }
 }

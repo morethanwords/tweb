@@ -9252,7 +9252,7 @@ export default class ChatBubbles {
     const middleware = this.getMiddleware();
 
     const message = await this.generateLocalFirstMessage(false, (message) => {
-      message.message = '';
+      message.message = '-'; // will get replaced anyway
       message.date = Date.now() * 1000;
     });
 
