@@ -327,6 +327,16 @@
         padding-top: 15px;
       }
     } */
+     
+    .stars-rating-icon {
+      display: flex;
+      align-items: center;
+      pointer-events: all;
+
+      &-warning {
+        margin-right: 0.25rem;
+      }
+    }
 
     .sidebar-left-section {
       position: relative;

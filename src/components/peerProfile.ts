@@ -62,6 +62,8 @@ import {rgbIntToHex} from '../helpers/color';
 import {wrapAdaptiveCustomEmoji} from './wrappers/customEmojiSimple';
 import usePeerTranslation from '../hooks/usePeerTranslation';
 import {MyStarGift} from '../lib/appManagers/appGiftsManager';
+import {wrapStarsRatingLevel} from './wrappers/starsRating';
+import showStarsRatingPopup from './popups/starsRating';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   setInnerHTML(row.title, text || undefined);
@@ -531,7 +533,7 @@ export default class PeerProfile {
   ): Promise<T extends true ? () => void : void> {
     const peerId = this.peerId;
 
-    const callbacks: Array<() => void> = [];
+    const callbacks: Array<() => void | Promise<void>> = [];
     callbacks.push(() => {
       this.element.classList.toggle('is-me', peerId === rootScope.myId);
       if(peerId.isUser()) {
@@ -550,6 +552,23 @@ export default class PeerProfile {
           });
           this.subtitle.append(when);
         }
+      }
+    });
+
+    callbacks.push(async() => {
+      if(!peerId.isUser()) return
+      const fullUser = await this.managers.appProfileManager.getProfileByPeerId(peerId) as UserFull.userFull;
+      if(this.subtitle.querySelector('.stars-rating-icon')) {
+        return;
+      }
+
+      if(fullUser.stars_rating && fullUser.stars_rating.level !== 0) {
+        const icon = wrapStarsRatingLevel(fullUser.stars_rating.level);
+        attachClickEvent(icon, (e) => {
+          cancelEvent(e);
+          showStarsRatingPopup({user: apiManagerProxy.getUser(peerId.toUserId()), userFull: fullUser});
+        });
+        this.subtitle.prepend(icon);
       }
     });
 
@@ -580,7 +599,7 @@ export default class PeerProfile {
       promise.then((callback) => callback && callbacks.unshift(callback));
     }
 
-    const callback = () => callbacks.forEach((callback) => callback());
+    const callback = () => Promise.all(callbacks.map((callback) => callback()));
 
     return promise.then(() => {
       if(manual) {
