@@ -89,8 +89,8 @@ export default class AppEditTopicTab extends SliderSuperTab {
       attachClickEvent(confirmBtn, () => {
         const toggle = toggleDisability([confirmBtn], true);
         if(threadId) {
-          this.managers.appChatsManager.editForumTopic({
-            chatId,
+          this.managers.appMessagesManager.editForumTopic({
+            peerId,
             topicId: threadId,
             title: nameInputField.value,
             iconEmojiId: this.topic.icon_emoji_id || 0
@@ -101,8 +101,8 @@ export default class AppEditTopicTab extends SliderSuperTab {
             toggle();
           });
         } else {
-          this.managers.appChatsManager.createForumTopic({
-            chatId,
+          this.managers.appMessagesManager.createForumTopic({
+            peerId,
             iconColor: TOPIC_COLORS[this.colorIndex],
             iconEmojiId: this.topic.icon_emoji_id,
             title: nameInputField.value
@@ -194,8 +194,8 @@ export default class AppEditTopicTab extends SliderSuperTab {
       });
 
       this.listenerSetter.add(checkboxField.input)('change', () => {
-        const promise = this.managers.appChatsManager.editForumTopic({
-          chatId,
+        const promise = this.managers.appMessagesManager.editForumTopic({
+          peerId,
           topicId: threadId,
           hidden: !checkboxField.checked
         });

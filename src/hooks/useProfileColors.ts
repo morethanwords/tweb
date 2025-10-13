@@ -18,7 +18,7 @@ export function usePeerProfileAppearance(peerId: PeerId) {
   createEffect(() => {
     const _peer = peer();
     const profileColor = (_peer as User.user)?.profile_color;
-    if(!profileColor) {
+    if(profileColor?._ !== 'peerColor') {
       setColorSet();
       setBackgroundEmojiId();
       return;

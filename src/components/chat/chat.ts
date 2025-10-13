@@ -35,7 +35,7 @@ import AppSharedMediaTab from '../sidebarRight/tabs/sharedMedia';
 import noop from '../../helpers/noop';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, ChatFull, MessageEntity, PaymentsPaymentForm, InputPeer} from '../../layer';
+import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, ChatFull, MessageEntity, PaymentsPaymentForm, InputPeer, ChatTheme, UserFull} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -551,7 +551,9 @@ export default class Chat extends EventListenerBase<{
       }
 
       let wallPaper = unwrap((_fullPeer as ChatFull.channelFull).wallpaper);
-      const emoticon = _fullPeer.theme_emoticon || (wallPaper && wallPaper.settings?.emoticon);
+      const emoticon = (_fullPeer as ChatFull.channelFull).theme_emoticon ||
+        ((_fullPeer as UserFull.userFull).theme as ChatTheme.chatTheme)?.emoticon ||
+        (wallPaper && wallPaper.settings?.emoticon);
 
       const theme = unwrap(getThemeByEmoticon(emoticon));
       if(!theme && !wallPaper) {
