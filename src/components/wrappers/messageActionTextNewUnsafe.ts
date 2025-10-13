@@ -589,8 +589,11 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         args = authorElement ? [authorElement] : [];
 
-        if(action.emoticon) {
-          args.push(wrapSomeText(action.emoticon, plain));
+        const theme = action.theme;
+        if(theme._ === 'chatThemeUniqueGift') {
+          // * unsupported now
+        } else if(theme.emoticon) {
+          args.push(wrapSomeText(theme.emoticon, plain));
           langPackKey = isMe ? 'ChatThemeChangedYou' : 'ChatThemeChangedTo';
         } else {
           langPackKey = isMe ? 'ChatThemeDisabledYou' : 'ChatThemeDisabled';

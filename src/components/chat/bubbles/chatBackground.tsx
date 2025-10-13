@@ -34,8 +34,9 @@ async function getBackgroundParameters(options: {
     const full = await managers.appProfileManager.getCachedFullUser(peerId.toUserId())
     if(full?.wallpaper) {
       wallPaper = full.wallpaper as WallPaper.wallPaper;
-    } else if(full?.theme_emoticon) {
-      const acctTheme = appState.accountThemes.themes?.find((theme) => theme.emoticon === full.theme_emoticon);
+    } else if(full?.theme) {
+      const themeEmoticon = 'emoticon' in full.theme ? full.theme.emoticon : undefined;
+      const acctTheme = appState.accountThemes.themes?.find((theme) => theme.emoticon === themeEmoticon);
       if(acctTheme) {
         theme = acctTheme;
         const themeWallPaper = acctTheme?.settings.find(it => it.wallpaper)?.wallpaper;
