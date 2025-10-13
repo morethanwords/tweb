@@ -5,7 +5,7 @@
  */
 
 import {setDirection} from '../../helpers/dom/setInnerHTML';
-import {MessageEntity, MessageReplyHeader, User} from '../../layer';
+import {MessageEntity, MessageReplyHeader, PeerColor, User} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import {getPeerColorsByPeer} from '../../lib/appManagers/utils/peers/getPeerColorById';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -55,7 +55,7 @@ export default function wrapReply(options: WrapReplyOptions) {
     });
 
     const peer = apiManagerProxy.getPeer(setColorPeerId);
-    const docId = (peer as User.user)?.color?.background_emoji_id;
+    const docId = ((peer as User.user)?.color as PeerColor.peerColor)?.background_emoji_id;
     if(docId) {
       wrapEmojiPattern({
         docId,

@@ -905,59 +905,6 @@ export class AppChatsManager extends AppManager {
     return this.toggleSomething(chatId, 'toggleAutotranslation', enabled);
   }
 
-  public editForumTopic(options: {
-    chatId: ChatId,
-    topicId: number,
-    title?: string,
-    iconEmojiId?: DocId,
-    closed?: boolean,
-    hidden?: boolean
-  }) {
-    const {chatId, topicId, title, iconEmojiId, closed, hidden} = options;
-    return this.apiManager.invokeApi('channels.editForumTopic', {
-      channel: this.getChannelInput(chatId),
-      topic_id: getServerMessageId(topicId),
-      title,
-      icon_emoji_id: iconEmojiId,
-      closed,
-      hidden
-    }).then(this.onChatUpdated.bind(this, chatId));
-  }
-
-  public async createForumTopic(options: {
-    chatId: ChatId,
-    title: string,
-    iconColor: number,
-    iconEmojiId: DocId
-  }) {
-    const {chatId, title, iconColor, iconEmojiId} = options;
-
-    const channelFull = await this.appProfileManager.getChannelFull(chatId);
-    const sendAsInputPeer = channelFull.default_send_as && this.appPeersManager.getInputPeerById(this.appPeersManager.getPeerId(channelFull.default_send_as));
-
-    return this.apiManager.invokeApi('channels.createForumTopic', {
-      channel: this.getChannelInput(chatId),
-      title,
-      icon_color: iconColor,
-      icon_emoji_id: iconEmojiId,
-      random_id: randomLong(),
-      send_as: sendAsInputPeer
-    }).then((updates) => {
-      this.onChatUpdated(chatId, updates);
-
-      const update = (updates as Updates.updates).updates.find((update) => update._ === 'updateNewChannelMessage') as Update.updateNewChannelMessage;
-      return this.appMessagesIdsManager.generateMessageId(update.message.id, chatId);
-    });
-  }
-
-  public updatePinnedForumTopic(chatId: ChatId, topicId: number, pinned: boolean) {
-    return this.apiManager.invokeApi('channels.updatePinnedForumTopic', {
-      channel: this.getChannelInput(chatId),
-      topic_id: getServerMessageId(topicId),
-      pinned
-    }).then(this.onChatUpdated.bind(this, chatId));
-  }
-
   public getGroupsForDiscussion() {
     return this.apiManager.invokeApi('channels.getGroupsForDiscussion').then((messagesChats) => {
       this.saveApiChats(messagesChats.chats);
