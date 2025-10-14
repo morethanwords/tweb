@@ -67,9 +67,12 @@ export class BotforumTab extends ForumTab {
     });
 
     this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
-      for(const [, {dialog}] of dialogs) {
+      for(const [peerId, {dialog, topics}] of dialogs) {
         if(isDialog(dialog) && dialog.peerId === this.peerId) {
           this.updateAllChatsDialog(dialog);
+        }
+        if(peerId === this.peerId && topics?.size) {
+          this.updateDialogsCount();
         }
       }
     });
@@ -111,14 +114,13 @@ export class BotforumTab extends ForumTab {
       }));
 
       this.title.append(peerTitle);
-      this.subtitle.append(this.dialogsCountI18nEl = i18n('ChannelDirectMessages.ThreadsCount', [dialogs ? dialogs.count + '' : '~']))
+      this.subtitle.append(this.dialogsCountI18nEl = i18n('TopicsCount', [dialogs ? dialogs.count + '' : '~']))
     } catch{}
   }
 
-  // TODO: there should be monthly users there
   private async updateDialogsCount() {
     if(!this.dialogsCountI18nEl) return;
-    const {count} = await this.managers.monoforumDialogsStorage.getDialogs({parentPeerId: this.peerId, limit: 1});
-    this.dialogsCountI18nEl.replaceWith(i18n('ChannelDirectMessages.ThreadsCount', [count + '']));
+    const {count} = await this.managers.dialogsStorage.getDialogs({filterId: this.peerId, limit: 1});
+    this.dialogsCountI18nEl.replaceWith(i18n('TopicsCount', [count + '']));
   }
 }

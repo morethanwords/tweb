@@ -17,7 +17,7 @@ import ChatContextMenu from './contextMenu';
 import ChatInput from './input';
 import ChatSelection from './selection';
 import ChatTopbar from './topbar';
-import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SIMULATED_BOTFORUM_IDS} from '../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY} from '../../lib/mtproto/mtproto_config';
 import SetTransition from '../singleTransition';
 import AppPrivateSearchTab from '../sidebarRight/tabs/search';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
@@ -987,6 +987,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setPeer(options: ChatSetPeerOptions) {
+    console.log('[my-debug] setting peer', {options})
     const {peerId, threadId, monoforumThreadId} = options;
     if(!peerId) {
       this.inited = undefined;
@@ -1222,10 +1223,16 @@ export default class Chat extends EventListenerBase<{
 
   // * used to define need of avatars
   public async _isLikeGroup(peerId: PeerId) {
-    return peerId === rootScope.myId ||
-      peerId === REPLIES_PEER_ID ||
-      (this.type === ChatType.Search && this.hashtagType !== 'this') ||
-      !SIMULATED_BOTFORUM_IDS.has(peerId) && this.managers.appPeersManager.isLikeGroup(peerId);
+    if(peerId === rootScope.myId) return true;
+    if(peerId === REPLIES_PEER_ID) return true;
+    if(this.type === ChatType.Search && this.hashtagType !== 'this') return true;
+
+    const {isBotforum, isLikeGroup} = await namedPromises({
+      isLikeGroup: this.managers.appPeersManager.isLikeGroup(peerId),
+      isBotforum: this.managers.appPeersManager.isBotforum(peerId)
+    });
+
+    return !isBotforum && isLikeGroup;
   }
 
   public resetSearch() {

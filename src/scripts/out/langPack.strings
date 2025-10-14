@@ -3246,6 +3246,8 @@
 "SuggestedPosts.Time" = "Time";
 "SuggestedPosts.TONAmount" = "%d TON";
 "CreateNewTopicDescription" = "Type any message to\ncreate a new topic.";
+"TopicsCount_one" = "%d topic";
+"TopicsCount_other" = "%d topics";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

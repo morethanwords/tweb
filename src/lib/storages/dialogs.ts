@@ -417,7 +417,7 @@ export default class DialogsStorage extends AppManager {
   }
 
   public getFilterType(filterId: number) {
-    if(filterId && filterId < 0) return FilterType.Forum;
+    if(filterId && filterId < 0 || this.appPeersManager.isBotforum(filterId)) return FilterType.Forum;
     else if(filterId === this.appPeersManager.peerId) return FilterType.Saved;
     else return FilterType.Folder;
   }
@@ -1808,7 +1808,7 @@ export default class DialogsStorage extends AppManager {
 
   public processTopics<T extends MaybePromise<{topics: MTForumTopic[], pts?: number}>>(peerId: PeerId, result: T) {
     return callbackify(result, (result) => {
-      if('pts' in result) {
+      if('pts' in result && peerId.isAnyChat()) {
         this.apiUpdatesManager.addChannelState(peerId.toChatId(), result.pts);
       }
 

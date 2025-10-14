@@ -3742,7 +3742,11 @@ const lang = {
   'SuggestedPosts.Time': 'Time',
   'SuggestedPosts.TONAmount': '%d TON',
 
-  'CreateNewTopicDescription': 'Type any message to\ncreate a new topic.'
+  'CreateNewTopicDescription': 'Type any message to\ncreate a new topic.',
+  'TopicsCount': {
+    'one_value': '%d topic',
+    'other_value': '%d topics'
+  }
 };
 
 export default lang;

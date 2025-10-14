@@ -3820,6 +3820,10 @@
 
   pointer-events: none;
 
+  .bubble-content-wrapper {
+    max-width: unset;
+  }
+
   .bubble-content {
     background-color: var(--message-highlighting-color);
     box-shadow: none;

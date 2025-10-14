@@ -58,26 +58,6 @@ export class AutonomousBotforumTopicList extends AutonomousDialogListBase<ForumT
       this.appDialogsManager.setUnreadMessagesN({dialog, dialogElement: this.getDialogElement(this.getDialogKey(dialog))});
     });
 
-    this.listenerSetter.add(rootScope)('dialog_notify_settings', async(dialog) => {
-      if(dialog.peerId !== this.peerId) {
-        return;
-      }
-
-      if(isDialog(dialog)) {
-        const all = this.sortedList.getAll();
-        const entries = [...all.entries()];
-        const promises = entries.map(([id]) => this.managers.dialogsStorage.getForumTopic(this.peerId, id));
-        const topics = await Promise.all(promises);
-        entries.forEach(([id, element], idx) => {
-          this.appDialogsManager.setUnreadMessagesN({dialog: topics[idx], dialogElement: element}); // возможно это не нужно, но нужно менять is-muted
-        });
-
-        return;
-      }
-
-      this.appDialogsManager.setUnreadMessagesN({dialog, dialogElement: this.getDialogElement(this.getDialogKey(dialog))}); // возможно это не нужно, но нужно менять is-muted
-    });
-
     this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
       if(!isForumTopic(dialog) || dialog.peerId !== this.peerId) {
         return;

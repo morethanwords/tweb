@@ -218,8 +218,22 @@ ul.chatlist {
     }
 
     .row-title .emoji-topic-icon {
+      --full-size: 22px;
+      --size: 20px;
+
+      width: var(--full-size);
+      height: var(--full-size);
+      text-align: center;
+
+      font-size: var(--size);
+
       margin-top: 0;
       margin-inline-end: .25rem;
+
+      img {
+        width: var(--size);
+        height: var(--size);
+      }
     }
 
     // ! IT IS IMPORTANT, OVERFLOW DOESN'T WORK WITH display: inline-flex;

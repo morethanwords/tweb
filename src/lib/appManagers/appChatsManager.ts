@@ -24,7 +24,6 @@ import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getPeerId from './utils/peers/getPeerId';
 import callbackify from '../../helpers/callbackify';
-import {SIMULATED_BOTFORUM_IDS} from '../mtproto/mtproto_config';
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] |
@@ -305,12 +304,6 @@ export class AppChatsManager extends AppManager {
   public isMonoforum(id: ChatId) {
     const chat: Chat = this.chats[id];
     return !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
-  }
-
-  public isBotforum(id: ChatId) {
-    return SIMULATED_BOTFORUM_IDS.has(id.toPeerId(true));
-    // const chat: Chat = this.chats[id];
-    // return !!(chat?._ === 'channel' && chat?.pFlags?.botforum);
   }
 
   public isInChat(id: ChatId) {

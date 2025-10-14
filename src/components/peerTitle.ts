@@ -120,7 +120,7 @@ export default class PeerTitle {
 
       const fragment = document.createDocumentFragment();
       const emojiText = document.createElement('span');
-      !IS_EMOJI_SUPPORTED && emojiText.classList.add('emoji-topic-icon');
+      /* !IS_EMOJI_SUPPORTED && */ emojiText.classList.add('emoji-topic-icon');
       emojiText.append(wrapEmojiText('💬'));
       fragment.append(emojiText, inner);
 

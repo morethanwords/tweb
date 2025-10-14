@@ -174,6 +174,7 @@ const avatarSizeMap: {[k in DialogElementSize]?: number} = {
 
 export type DialogElementSize = RowMediaSizeType;
 export type AsAllChatsType = 'monoforum' | 'topics';
+
 type DialogElementOptions = {
   peerId: PeerId,
   rippleEnabled?: boolean,
@@ -193,6 +194,7 @@ type DialogElementOptions = {
   dontSetActive?: boolean,
   asAllChats?: AsAllChatsType;
 };
+
 export class DialogElement extends Row {
   private static BADGE_ORDER: Parameters<DialogElement['toggleBadgeByKey']>[0][] = ['reactionsBadge', 'mentionsBadge', 'unreadBadge', 'pinnedBadge'];
   public dom: DialogDom;
@@ -330,16 +332,11 @@ export class DialogElement extends Row {
     }
 
     li.dataset.peerId = '' + peerId;
-    if(threadId) {
-      li.dataset.threadId = '' + threadId;
-    }
-    if(monoforumParentPeerId) {
-      li.dataset.monoforumParentPeerId = '' + monoforumParentPeerId;
-    }
 
-    if(asAllChats) {
-      li.dataset.isAllChats = 'true';
-    }
+    if(threadId) li.dataset.threadId = '' + threadId;
+    if(monoforumParentPeerId) li.dataset.monoforumParentPeerId = '' + monoforumParentPeerId;
+    if(asAllChats) li.dataset.isAllChats = 'true';
+
 
     const statusSpan = document.createElement('span');
     statusSpan.classList.add('message-status', 'sending-status'/* , 'transition', 'reveal' */);
@@ -1832,19 +1829,24 @@ export class AppDialogsManager {
         return;
       }
 
-      const chat = apiManagerProxy.getChat(peerId);
-      const linkedChat = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id ?
-        apiManagerProxy.getChat(chat.linked_monoforum_id) :
+      const peer = apiManagerProxy.getPeer(peerId);
+
+      const linkedChat = peer?._ === 'channel' && peer?.pFlags?.monoforum && peer?.linked_monoforum_id ?
+        apiManagerProxy.getChat(peer.linked_monoforum_id) :
         undefined;
 
-      // TMP
       if(
         linkedChat?._ === 'channel' &&
         linkedChat?.admin_rights?.pFlags?.manage_direct_messages &&
         !elem.dataset.isAllChats &&
-        !e.shiftKey &&
-        !mediaSizes.isLessThanFloatingLeftSidebar
+        !e.shiftKey
       ) {
+        this.toggleForumTabByPeerId(peerId);
+        return;
+      }
+
+
+      if(peer?._ === 'user' && peer?.pFlags?.bot_forum_view && !threadId && !elem.dataset.isAllChats && !e.shiftKey) {
         this.toggleForumTabByPeerId(peerId);
         return;
       }
