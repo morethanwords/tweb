@@ -529,6 +529,7 @@ export default class BubbleGroups {
       !item2.single &&
       isOut1 === this.chat.isOutMessage(item2.message) &&
       (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, {isForum: true}) === getMessageThreadId(item2.message, {isForum: true})) &&
+      (!this.chat.isBotforum || getMessageThreadId(item1.message, {isBotforum: true}) === getMessageThreadId(item2.message, {isBotforum: true})) &&
       (!this.chat.isMonoforum || getMessageThreadId(item1.message) === getMessageThreadId(item2.message)) &&
       (!isOut1 || item1.message.fromId === rootScope.myId || this.chat.isMonoforum) && // * group anonymous sending
       item1.message.peerId === item2.message.peerId &&

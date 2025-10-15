@@ -7513,10 +7513,11 @@ export default class ChatBubbles {
         (
           replyTo?._ === 'messageReplyStoryHeader' || (
             message.reply_to_mid &&
-            message.reply_to_mid !== this.chat.threadId
+            message.reply_to_mid !== this.chat.threadId &&
+            message.reply_to_mid !== replyTo?.reply_to_top_id
           ) || replyTo?.reply_from
         ) &&
-        (!this.chat.isAllMessagesForum || (replyTo as MessageReplyHeader.messageReplyHeader).reply_to_top_id)
+        (!this.chat.isAllMessagesForum && !this.chat.isBotforum || (replyTo as MessageReplyHeader.messageReplyHeader).reply_to_top_id)
       ) {
         replyContainer = await MessageRender.setReply({
           chat: this.chat,
