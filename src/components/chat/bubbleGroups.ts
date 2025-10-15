@@ -422,7 +422,7 @@ export default class BubbleGroups {
 
     forEachReverse(this.itemsArr, (item, i) => {
       const savedPeerId = isMonoforum ? getPeerId(item.message?.saved_peer_id) : undefined;
-      const threadId = isBotforum ? getMessageThreadId(item.message, true) || GENERAL_TOPIC_ID : undefined;
+      const threadId = isBotforum ? getMessageThreadId(item.message, {isBotforum: true}) : undefined;
 
       const key = savedPeerId || threadId;
       if(!key) return;
@@ -528,7 +528,7 @@ export default class BubbleGroups {
       !item1.single &&
       !item2.single &&
       isOut1 === this.chat.isOutMessage(item2.message) &&
-      (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true)) &&
+      (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, {isForum: true}) === getMessageThreadId(item2.message, {isForum: true})) &&
       (!this.chat.isMonoforum || getMessageThreadId(item1.message) === getMessageThreadId(item2.message)) &&
       (!isOut1 || item1.message.fromId === rootScope.myId || this.chat.isMonoforum) && // * group anonymous sending
       item1.message.peerId === item2.message.peerId &&

@@ -2437,7 +2437,7 @@ export class AppMessagesManager extends AppManager {
     const originalMessage = this.getMessageByPeer(peerId, replyToMsgId);
 
     if(isForum && !replyToTopId && originalMessage) {
-      replyToTopId = getMessageThreadId(originalMessage, true);
+      replyToTopId = getMessageThreadId(originalMessage, {isForum: true});
     }
 
     const header: MessageReplyHeader = {
@@ -6619,7 +6619,7 @@ export class AppMessagesManager extends AppManager {
     const mid = this.appMessagesIdsManager.generateMessageId(message.id, channelId);
     const storage = this.getHistoryMessagesStorage(peerId);
     if(!storage.has(mid)) {
-      this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId: getMessageThreadId(message, this.appPeersManager.isForum(peerId)), force: true});
+      this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId: getMessageThreadId(message, {isForum: this.appPeersManager.isForum(peerId)}), force: true});
       // this.fixDialogUnreadMentionsIfNoMessage(peerId);
       return;
     }
@@ -6773,7 +6773,7 @@ export class AppMessagesManager extends AppManager {
         continue;
       }
 
-      const messageThreadId = getMessageThreadId(message, isForum);
+      const messageThreadId = getMessageThreadId(message, {isForum});
 
 
       if(threadId && messageThreadId !== threadId ||
@@ -7353,7 +7353,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     if(peerId.isAnyChat() || (threadMessage as Message.message).saved_peer_id) {
-      const threadId = getMessageThreadId(threadMessage, this.appChatsManager.isForum(peerId.toChatId()));
+      const threadId = getMessageThreadId(threadMessage, {isForum: this.appChatsManager.isForum(peerId.toChatId())});
       if(threadId) {
         threadKey = peerId + '_' + threadId;
       }
@@ -7878,7 +7878,9 @@ export class AppMessagesManager extends AppManager {
     if(monoforumPeerId) return HistoryType.Monoforum;
 
     if(threadId) {
-      if(peerId.isUser()) {
+      if(this.appPeersManager.isBotforum(peerId)) {
+        return HistoryType.Topic;
+      } else if(peerId.isUser()) {
         return HistoryType.Saved;
       } else if(this.appPeersManager.isForum(peerId)) {
         return HistoryType.Topic;

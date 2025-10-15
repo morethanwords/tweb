@@ -349,7 +349,7 @@ export class UiNotificationsManager {
       managers: account.managers
     };
 
-    const threadId = isForum ? getMessageThreadId(message, isForum) : undefined;
+    const threadId = isForum ? getMessageThreadId(message, {isForum}) : undefined;
     const notificationFromPeerId = peerReaction ? getPeerId(peerReaction.peer_id) : message.fromId;
     const peerTitle = notification.title = await getPeerTitle({...peerTitleOptions, peerId, threadId: threadId, managers: account.managers, useManagers: true});
     if(isForum) {

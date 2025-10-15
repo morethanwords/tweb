@@ -40,6 +40,7 @@ import PopupStarGiftInfo from '../../components/popups/starGiftInfo';
 import noop from '../../helpers/noop';
 import appSidebarRight from '../../components/sidebarRight';
 import pause from '../../helpers/schedulers/pause';
+import namedPromises from '../../helpers/namedPromises';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -647,9 +648,15 @@ export class InternalLinkProcessor {
 
   public processPrivatePostLink = async(link: InternalLink.InternalLinkPrivatePost) => {
     const chatId = link.channel.toChatId();
+    const userId = link.channel.toUserId();
 
-    const chat = await this.managers.appChatsManager.getChat(chatId);
-    if(!chat) {
+    const {chat, isBotforum, user} = await namedPromises({
+      chat: this.managers.appChatsManager.getChat(chatId),
+      isBotforum: this.managers.appUsersManager.isBotforum(userId),
+      user: this.managers.appUsersManager.getUser(userId)
+    });
+
+    if(!chat && !isBotforum) {
       try {
         await this.managers.appChatsManager.resolveChannel(chatId);
       } catch(err) {
@@ -662,7 +669,7 @@ export class InternalLinkProcessor {
     const threadId = link.thread ? +link.thread : undefined;
 
     return appImManager.op({
-      peer: chat,
+      peer: chat || user,
       lastMsgId: postId,
       threadId,
       stack: link.stack,

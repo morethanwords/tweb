@@ -1392,7 +1392,7 @@ export default class ChatBubbles {
         this.updateGradient = true;
       }
 
-      if(this.chat.threadId && getMessageThreadId(message, this.chat.isForum) !== this.chat.threadId) {
+      if(this.chat.threadId && getMessageThreadId(message, {isForum: this.chat.isForum}) !== this.chat.threadId) {
         return;
       }
 
@@ -3705,7 +3705,7 @@ export default class ChatBubbles {
       return;
     }
 
-    if(this.chat.threadId && getMessageThreadId(message, this.chat.isForum) !== this.chat.threadId) {
+    if(this.chat.threadId && getMessageThreadId(message, {isForum: this.chat.isForum}) !== this.chat.threadId) {
       return;
     }
 
@@ -6088,7 +6088,7 @@ export default class ChatBubbles {
     if(isMessage && (this.chat.isAllMessagesForum || (this.chat.hashtagType === 'my' && isOut))) {
       const result = await wrapTopicNameButton({
         peerId: message.peerId,
-        threadId: getMessageThreadId(message, this.chat.isForum),
+        threadId: getMessageThreadId(message, {isForum: this.chat.isForum}),
         lastMsgId: message.mid,
         wrapOptions: {
           middleware
@@ -8796,11 +8796,11 @@ export default class ChatBubbles {
       };
 
       if(!isSponsored) {
-        if(!this.chat.isBotforum) bubble.classList.add('bubble-first');
+        if(!this.shouldShowBotforumNewTopic()) bubble.classList.add('bubble-first');
         bubble.classList.remove('can-have-tail', 'is-in');
       }
 
-      if(this.chat.isBotforum) bubble.classList.add('bubble-last', 'botforum-new-topic-bubble');
+      if(this.shouldShowBotforumNewTopic()) bubble.classList.add('bubble-last', 'botforum-new-topic-bubble');
 
       const elements: (Node | string)[] = [];
       const isBot = this.chat.isBot;
@@ -8817,7 +8817,7 @@ export default class ChatBubbles {
         appendTo = this.chatInner;
         method = 'append';
         animate = false;
-      } else if(this.chat.isBotforum) {
+      } else if(this.shouldShowBotforumNewTopic()) {
         animate = false;
         appendTo = this.chatInner;
         method = 'append';
@@ -9090,7 +9090,7 @@ export default class ChatBubbles {
         })
       }
 
-      if(side === 'bottom' && value && this.chat.isBotforum) {
+      if(side === 'bottom' && value && this.shouldShowBotforumNewTopic()) {
         return this.renderBotforumPlaceholder();
       }
 
@@ -9660,6 +9660,10 @@ export default class ChatBubbles {
       this.cleanupPlaceholders()
       this.renderUnknownUserPlaceholder();
     }
+  }
+
+  private shouldShowBotforumNewTopic() {
+    return this.chat.isBotforum && !this.chat.threadId;
   }
 }
 

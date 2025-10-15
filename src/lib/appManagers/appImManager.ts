@@ -587,7 +587,7 @@ export class AppImManager extends EventListenerBase<{
       const {accountNumber} = options;
       const managers = createProxiedManagersForAccount(accountNumber);
       const isForum = await managers.appPeersManager.isForum(options.message.peerId);
-      const threadId = getMessageThreadId(options.message, isForum);
+      const threadId = getMessageThreadId(options.message, {isForum});
 
       if(
         this.chat.peerId === options.message.peerId &&
@@ -1460,7 +1460,7 @@ export class AppImManager extends EventListenerBase<{
     if(isForum && lastMsgId && !threadId) {
       const message = await this.managers.appMessagesManager.reloadMessages(peerId, lastMsgId);
       if(message) {
-        threadId = options.threadId = getMessageThreadId(message, isForum);
+        threadId = options.threadId = getMessageThreadId(message, {isForum});
       } else {
         threadId = options.threadId = lastMsgId;
         lastMsgId = options.lastMsgId = undefined;

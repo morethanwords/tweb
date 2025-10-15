@@ -460,7 +460,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     const {peerId} = message;
     const isForum = await this.managers.appPeersManager.isForum(peerId);
-    const threadId = getMessageThreadId(message, isForum);
+    const threadId = getMessageThreadId(message, {isForum});
 
     this._renderNewMessage(message);
     if(threadId) {
