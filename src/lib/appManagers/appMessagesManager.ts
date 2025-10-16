@@ -28,7 +28,7 @@ import {MyDocument} from './appDocsManager';
 import {MyPhoto} from './appPhotosManager';
 import DEBUG from '../../config/debug';
 import SlicedArray, {Slice, SliceEnd} from '../../helpers/slicedArray';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, MESSAGES_ALBUM_MAX_SIZE, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, TEST_NO_SAVED, THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, MESSAGES_ALBUM_MAX_SIZE, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, TEST_NO_SAVED, THUMB_TYPE_FULL, TOPIC_COLORS} from '../mtproto/mtproto_config';
 import {getMiddleware} from '../../helpers/middleware';
 import assumeType from '../../helpers/assumeType';
 import copy from '../../helpers/object/copy';
@@ -351,6 +351,24 @@ type SendContactArgs = {
   confirmedPaymentResult?: ConfirmedPaymentResult;
 };
 
+type GenerateTopicCreatedServiceMessageArgs = {
+  peerId: PeerId;
+  title: string;
+};
+
+type CreateBotforumTopicArgs = {
+  peerId: PeerId;
+  title: string;
+  tempId: number;
+  randomId: string;
+  iconColor?: number;
+};
+
+type GetPendingOrCreateBotforumTopicArgs = {
+  peerId: PeerId;
+  title?: string;
+};
+
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
 
 export class AppMessagesManager extends AppManager {
@@ -394,6 +412,13 @@ export class AppMessagesManager extends AppManager {
       }>
     }
   } = {};
+
+  private pendingNewBotforumTopics: Record<PeerId, {
+    newId?: number;
+    tempId: number;
+    beforeMessageSendCallbacks: Array<() => void>;
+    messageSendCallbacks: Array<() => void>;
+  }> = {};
 
   private sendSmthLazyLoadQueue = new LazyLoadQueueBase(10);
 
@@ -688,6 +713,7 @@ export class AppMessagesManager extends AppManager {
     this.threadsToReplies = {};
     this.references = {};
     this.waitingTranscriptions = new Map();
+    this.pendingNewBotforumTopics = {};
 
     this.dialogsStorage && this.dialogsStorage.clear(init);
     this.filtersStorage && this.filtersStorage.clear(init);
@@ -2167,9 +2193,28 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private checkSendOptions(options: MessageSendingParams) {
+  private checkSendOptions(options: MessageSendingParams & Partial<{ text: string }>) {
     if(options.threadId && !options.replyToMsgId) {
       options.replyToMsgId = options.threadId;
+    }
+
+    const {peerId} = options;
+    if(this.appPeersManager.isBotforum(peerId) && !options.threadId) {
+      const pendingTopic = this.getPendingOrCreateBotforumTopic({peerId, title: options.text?.slice(0, 16)});
+
+      if(options.replyToMsgId) {
+        options.threadId = pendingTopic.tempId;
+        pendingTopic.beforeMessageSendCallbacks.push(() => {
+          options.threadId = pendingTopic.newId;
+          if(options.replyTo?._ === 'inputReplyToMessage') options.replyTo.top_msg_id = pendingTopic.newId;
+        });
+      } else {
+        options.replyToMsgId = pendingTopic.tempId;
+        pendingTopic.beforeMessageSendCallbacks.push(() => {
+          options.replyToMsgId = pendingTopic.newId;
+          if(options.replyTo?._ === 'inputReplyToMessage') options.replyTo.reply_to_msg_id = pendingTopic.newId;
+        });
+      }
     }
 
     options.replyTo ??= this.getInputReplyTo(options);
@@ -2280,7 +2325,11 @@ export class AppMessagesManager extends AppManager {
         }
         if(DO_NOT_SEND_MESSAGES) return;
 
-        if(SEND_MESSAGES_TO_PAID_QUEUE || options.confirmedPaymentResult?.canUndo) {
+        if(this.pendingNewBotforumTopics[peerId] && !options.threadId) {
+          this.pendingNewBotforumTopics[peerId].messageSendCallbacks.push(() => {
+            message.send();
+          });
+        } else if(SEND_MESSAGES_TO_PAID_QUEUE || options.confirmedPaymentResult?.canUndo) {
           this.paidMessagesQueue.add(peerId, {
             send: () => void message?.send?.(),
             cancel: () => void this.cancelPendingMessage(message?.random_id)
@@ -2403,6 +2452,34 @@ export class AppMessagesManager extends AppManager {
         })
       };
     }
+
+    return message;
+  }
+
+  private generateTopicCreatedServiceMessage({peerId, title}: GenerateTopicCreatedServiceMessageArgs) {
+    const iconColor = TOPIC_COLORS[Math.floor(Math.random() * TOPIC_COLORS.length)];
+
+    const message = {
+      _: 'messageService',
+      pFlags: {
+        out: true,
+        reactions_are_possible: true
+      },
+      id: this.generateTempMessageId(peerId),
+      random_id: randomLong(),
+      from_id: this.appPeersManager.getOutputPeer(this.rootScope.myId),
+      peer_id: this.appPeersManager.getOutputPeer(peerId),
+      date: tsNow(true) + this.timeManager.getServerTimeOffset(),
+      pending: true,
+      action: {
+        _: 'messageActionTopicCreate',
+        pFlags: {
+          title_missing: true
+        },
+        title: title,
+        icon_color: iconColor
+      }
+    } satisfies Message.messageService;
 
     return message;
   }
@@ -6218,6 +6295,66 @@ export class AppMessagesManager extends AppManager {
       const update = (updates as Updates.updates).updates.find((update) => update._ === 'updateNewChannelMessage') as Update.updateNewChannelMessage;
       return this.appMessagesIdsManager.generateMessageId(update.message.id, channelId);
     });
+  }
+
+  private getPendingOrCreateBotforumTopic({peerId, title}: GetPendingOrCreateBotforumTopicArgs) {
+    if(this.pendingNewBotforumTopics[peerId]) {
+      return this.pendingNewBotforumTopics[peerId];
+    }
+
+    const topicCreatedMessage = this.generateTopicCreatedServiceMessage({peerId, title: title || 'New Chat'})
+    const temporaryThreadId = topicCreatedMessage.id;
+
+    const storages: HistoryStorage[] = [
+      this.getHistoryStorage(peerId),
+      this.getHistoryStorage(peerId, temporaryThreadId)
+    ].filter(Boolean);
+
+    for(const storage of storages) {
+      storage.history.unshift(temporaryThreadId);
+    }
+
+    const [message] = this.saveMessages([topicCreatedMessage]);
+
+    const storage = this.getHistoryMessagesStorage(peerId);
+    this.rootScope.dispatchEvent('history_append', {storageKey: storage.key, message});
+
+    this.createPendingBotforumTopic({peerId, tempId: topicCreatedMessage.id, randomId: topicCreatedMessage.random_id, title: title || 'New Chat'});
+
+    return this.pendingNewBotforumTopics[peerId];
+  }
+
+  private async createPendingBotforumTopic({peerId, title, tempId, randomId, iconColor}: CreateBotforumTopicArgs) {
+    const beforeMessageSendCallbacks: Array<() => void> = [];
+    const messageSendCallbacks: Array<() => void> = [];
+
+    this.pendingNewBotforumTopics[peerId] = {
+      tempId,
+      beforeMessageSendCallbacks,
+      messageSendCallbacks
+    };
+
+    const pendingTopic = this.pendingNewBotforumTopics[peerId];
+
+    const updates = await this.apiManager.invokeApi('messages.createForumTopic', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      title,
+      icon_color: iconColor,
+      random_id: randomId,
+      title_missing: true
+    });
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
+
+    if(updates._ === 'updates') {
+      const messageIdUpdate = updates.updates.find(update => update._ === 'updateMessageID');
+      if(messageIdUpdate) pendingTopic.newId = messageIdUpdate.id;
+    }
+
+    delete this.pendingNewBotforumTopics[peerId];
+
+    beforeMessageSendCallbacks.forEach((callback) => callback());
+    messageSendCallbacks.forEach((callback) => callback());
   }
 
   public updatePinnedForumTopic(peerId: PeerId, topicId: number, pinned: boolean) {
