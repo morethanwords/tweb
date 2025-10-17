@@ -59,6 +59,7 @@ import type {AppManagers} from './managers';
 import type AppGifsManager from './appGifsManager';
 import type AppGiftsManager from './appGiftsManager';
 import type {AppLangPackManager} from './appLangPackManager';
+import {logger, LogTypes} from '../logger';
 import {ActiveAccountNumber} from '../accounts/types';
 
 export class AppManager {
@@ -120,14 +121,25 @@ export class AppManager {
   protected appGiftsManager: AppGiftsManager;
   protected monoforumDialogsStorage: MonoforumDialogsStorage;
 
+  protected name: string;
+  public log: ReturnType<typeof logger>;
+  protected logTypes: LogTypes;
+  protected logIgnoreDebugReset: boolean;
+
   public clear: (init?: boolean) => void;
 
   public getAccountNumber() {
     return this.accountNumber;
   }
 
+  public createLogger(prefix: string, logTypes?: LogTypes, ignoreDebugReset?: boolean) {
+    return logger(`ACC-${this.accountNumber}-${prefix}`, logTypes, ignoreDebugReset);
+  }
+
   public setManagersAndAccountNumber(managers: AppManagers, accountNumber: ActiveAccountNumber) {
     Object.assign(this, {...managers, accountNumber});
+    this.name = this.name ?? '';
+    this.log = this.createLogger(this.name, this.logTypes, this.logIgnoreDebugReset);
     // this.after();
   }
 }

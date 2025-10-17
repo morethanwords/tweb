@@ -11,14 +11,16 @@ export default function CheckboxFieldTsx(props: {
   checked?: boolean,
   toggle?: boolean,
   round?: boolean,
-  onChange?: (checked: boolean) => void
+  onChange?: (checked: boolean) => void,
+  stateKey?: string
 }): JSX.Element {
   const [checked, setChecked] = props.signal ?? createSignal(props.checked);
 
   const checkboxField = new CheckboxField({
     text: props.text,
     toggle: props.toggle,
-    round: props.round
+    round: props.round,
+    stateKey: props.stateKey
   });
 
   let first = true;
@@ -32,6 +34,10 @@ export default function CheckboxFieldTsx(props: {
   });
 
   createEffect(on(() => props.checked, (value) => {
+    if(value === undefined) {
+      return;
+    }
+
     setChecked(value);
   }));
 

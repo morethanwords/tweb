@@ -6,7 +6,6 @@
 
 import {getDatabaseState} from '../../config/databases/state';
 import {MAX_ACCOUNTS} from '../accounts/constants';
-import {logger} from '../logger';
 import AppStorage from '../storage';
 import {ResetStoragesPromise} from './appStateManager';
 import {AppManager} from './manager';
@@ -19,14 +18,13 @@ export class AppStoragesManager extends AppManager {
   private resetStoragesPromise: ResetStoragesPromise;
   private loadStoragesPromise: ReturnType<typeof loadStorages>;
 
-  private log: ReturnType<typeof logger>;
   private _accountNumber: ActiveAccountNumber;
 
   constructor(accountNumber: ActiveAccountNumber, resetStoragesPromise: ResetStoragesPromise) {
     super();
 
     this.resetStoragesPromise = resetStoragesPromise;
-    this.log = logger('STORAGES');
+    this.name = 'STORAGES';
     this.storages = createStorages(accountNumber);
     this._accountNumber = accountNumber;
     // this.loadPromise = deferredPromise();

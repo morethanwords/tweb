@@ -12,6 +12,7 @@
 import type {PushNotificationObject} from '../serviceWorker/push';
 import type {ServicePushPingTaskPayload} from '../serviceWorker/serviceMessagePort';
 import type {NotificationSettings} from '../appManagers/uiNotificationsManager';
+import type {ActiveAccountNumber} from '../accounts/types';
 import type ServiceMessagePort from '../serviceWorker/serviceMessagePort';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import {logger} from '../logger';
@@ -22,6 +23,9 @@ import copy from '../../helpers/object/copy';
 import singleInstance from './singleInstance';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
+import AccountController from '../accounts/accountController';
+import App from '../../config/app';
+import apiManagerProxy from './mtprotoworker';
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -34,15 +38,10 @@ export type PushSubscriptionNotify = {
 const PING_PUSH_INTERVAL = 10000;
 
 export class WebPushApiManager extends EventListenerBase<{
-  push_notification_click: (n: PushNotificationObject) => void,
-  push_init: (n: PushSubscriptionNotify) => void,
-  push_subscribe: (n: PushSubscriptionNotify) => void,
-  push_unsubscribe: (n: PushSubscriptionNotify) => void
+  push_notification_click: (n: PushNotificationObject) => void
 }> {
   public isAvailable = true;
-  private isPushEnabled = false;
   private localNotificationsAvailable = true;
-  private started = false;
   private settings: NotificationSettings & {baseUrl?: string} = {} as any;
   private isAliveTO: any;
   private isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
@@ -57,22 +56,18 @@ export class WebPushApiManager extends EventListenerBase<{
     if(!('PushManager' in window) ||
       !('Notification' in window) ||
       !('serviceWorker' in navigator)) {
-      this.log.warn('Push messaging is not supported.');
+      this.log.warn('push messaging is not supported.');
       this.isAvailable = false;
       this.localNotificationsAvailable = false;
     }
 
     if(this.isAvailable && Notification.permission === 'denied') {
-      this.log.warn('The user has blocked notifications.');
+      this.log.warn('the user has blocked notifications.');
     }
   }
 
   public start() {
-    if(!this.started) {
-      this.started = true;
-      this.getSubscription();
-      this.setUpServiceWorkerChannel();
-    }
+    this.setUpServiceWorkerChannel();
   }
 
   public setLocalNotificationsDisabled() {
@@ -84,34 +79,36 @@ export class WebPushApiManager extends EventListenerBase<{
       return;
     }
 
-    navigator.serviceWorker.ready.then((reg) => {
-      reg.pushManager.getSubscription().then((subscription) => {
-        this.isPushEnabled = !!subscription;
-        this.pushSubscriptionNotify('init', subscription);
+    return navigator.serviceWorker.ready.then((reg) => {
+      return reg.pushManager.getSubscription().then((subscription) => {
+        return this.makeTokenData(subscription);
       }).catch((err) => {
-        this.log.error('Error during getSubscription()', err);
+        this.log.error('error during getSubscription()', err);
       });
     });
   }
 
-  public subscribe = () => {
+  public subscribe = (): Promise<PushSubscriptionNotify | void> => {
     if(!this.isAvailable) {
       return;
     }
 
-    navigator.serviceWorker.ready.then((reg) => {
-      reg.pushManager.subscribe({userVisibleOnly: this.userVisibleOnly}).then((subscription) => {
-        // The subscription was successful
-        this.isPushEnabled = true;
-        this.pushSubscriptionNotify('subscribe', subscription);
+    this.log('subscribing');
+    return navigator.serviceWorker.ready.then((reg) => {
+      return reg.pushManager.subscribe({
+        userVisibleOnly: this.userVisibleOnly,
+        applicationServerKey: App.pushServerKey
+      }).then((subscription) => {
+        this.log('subscribed');
+        return this.makeTokenData(subscription);
       }).catch((e) => {
         if(Notification.permission === 'denied') {
-          this.log('Permission for Notifications was denied');
+          this.log('permission for Notifications was denied');
         } else {
-          this.log('Unable to subscribe to push.', e);
+          this.log('unable to subscribe to push.', e);
           if(!this.userVisibleOnly) {
             this.userVisibleOnly = true;
-            setTimeout(this.subscribe, 0);
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(this.subscribe);
           }
         }
       });
@@ -123,54 +120,27 @@ export class WebPushApiManager extends EventListenerBase<{
       return;
     }
 
-    navigator.serviceWorker.ready.then((reg) => {
-      reg.pushManager.getSubscription().then((subscription) => {
-        this.isPushEnabled = false;
-
-        if(subscription) {
-          this.pushSubscriptionNotify('unsubscribe', subscription);
-
-          setTimeout(() => {
-            subscription.unsubscribe().then((successful) => {
-              this.isPushEnabled = false;
-            }).catch((e) => {
-              this.log.error('Unsubscription error: ', e);
-            });
-          }, 3000);
-        }
-      }).catch((e) => {
-        this.log.error('Error thrown while unsubscribing from ' +
-          'push messaging.', e);
-      });
-    });
-  }
-
-  public forceUnsubscribe() {
-    if(!this.isAvailable) {
-      return;
-    }
-
-    navigator.serviceWorker.ready.then((reg) => {
-      reg.pushManager.getSubscription().then((subscription) => {
-        this.log.warn('force unsubscribe', subscription);
+    this.log('unsubscribing');
+    return navigator.serviceWorker.ready.then((reg) => {
+      return reg.pushManager.getSubscription().then((subscription) => {
         if(!subscription) {
+          this.log('no subscription to unsubscribe from');
           return;
         }
 
-        subscription.unsubscribe().then((successful) => {
-          this.log.warn('force unsubscribe successful', successful);
-          this.isPushEnabled = false;
+        subscription.unsubscribe().then(() => {
+          this.log('unsubscribed');
         }).catch((e) => {
-          this.log.error('Unsubscription error: ', e);
+          this.log.error('unsubscription error: ', e);
         });
       }).catch((e) => {
-        this.log.error('Error thrown while unsubscribing from ' +
+        this.log.error('error thrown while unsubscribing from ' +
           'push messaging.', e);
       });
     });
   }
 
-  public isAliveNotify = () => {
+  public isAliveNotify = async() => {
     if(!this.isAvailable || singleInstance.deactivatedReason) {
       return;
     }
@@ -185,14 +155,30 @@ export class WebPushApiManager extends EventListenerBase<{
     };
 
     for(const action in ACTIONS_LANG_MAP) {
-      lang[action as keyof typeof ACTIONS_LANG_MAP] = I18n.format(ACTIONS_LANG_MAP[action as keyof typeof ACTIONS_LANG_MAP], true);
+      lang[action as keyof typeof ACTIONS_LANG_MAP] = I18n.format(
+        ACTIONS_LANG_MAP[action as keyof typeof ACTIONS_LANG_MAP],
+        true
+      );
     }
 
-    this.serviceMessagePort.invokeVoid('pushPing', {
+    const accounts: ServicePushPingTaskPayload['accounts'] = {};
+    const [userIds, keysIdsBase64] = await Promise.all([
+      AccountController.getUserIds(),
+      apiManagerProxy.pushSingleManager.getKeysIdsBase64()
+    ]);
+    userIds.forEach((userId, accountNumber) => {
+      accounts[(accountNumber + 1) as ActiveAccountNumber] = userId;
+    });
+
+    const payload: ServicePushPingTaskPayload = {
       localNotifications: this.localNotificationsAvailable,
       lang: lang,
-      settings: this.settings
-    });
+      settings: this.settings,
+      accounts,
+      keysIdsBase64
+    };
+
+    this.serviceMessagePort.invokeVoid('pushPing', payload);
 
     this.isAliveTO = setTimeout(this.isAliveNotify, PING_PUSH_INTERVAL);
   }
@@ -228,30 +214,27 @@ export class WebPushApiManager extends EventListenerBase<{
     navigator.serviceWorker.ready.then(this.isAliveNotify);
   }
 
-  public pushSubscriptionNotify(event: PushSubscriptionNotifyType, subscription?: PushSubscription) {
-    if(subscription) {
-      const subscriptionObj: PushSubscriptionJSON = subscription.toJSON();
-      if(!subscriptionObj ||
-        !subscriptionObj.endpoint ||
-        !subscriptionObj.keys ||
-        !subscriptionObj.keys.p256dh ||
-        !subscriptionObj.keys.auth) {
-        this.log.warn('Invalid push subscription', subscriptionObj);
-        this.unsubscribe();
-        this.isAvailable = false;
-        this.pushSubscriptionNotify(event);
-        return;
-      }
-
-      this.log.warn('Push', event, subscriptionObj);
-      this.dispatchEvent(('push_' + event) as PushSubscriptionNotifyEvent, {
-        tokenType: 10,
-        tokenValue: JSON.stringify(subscriptionObj)
-      });
-    } else {
-      this.log.warn('Push', event, false);
-      this.dispatchEvent(('push_' + event) as PushSubscriptionNotifyEvent, false as any);
+  private makeTokenData(subscription: PushSubscription): PushSubscriptionNotify {
+    if(!subscription) {
+      return;
     }
+
+    const subscriptionObj: PushSubscriptionJSON & {vapid?: boolean} = subscription.toJSON();
+    if(!subscriptionObj ||
+      !subscriptionObj.endpoint ||
+      !subscriptionObj.keys ||
+      !subscriptionObj.keys.p256dh ||
+      !subscriptionObj.keys.auth) {
+      this.log.warn('invalid push subscription', subscriptionObj);
+      this.isAvailable = false;
+      throw new Error('invalid push subscription');
+    }
+
+    subscriptionObj.vapid = true;
+    return {
+      tokenType: 10,
+      tokenValue: JSON.stringify(subscriptionObj)
+    };
   }
 
   public ignorePushByMid(peerId: PeerId, mid: number) {

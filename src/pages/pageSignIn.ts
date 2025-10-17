@@ -239,7 +239,7 @@ const onFirstMount = () => {
           if(!dcId) return;
 
           const accountData = await AccountController.get(getCurrentAccount());
-          const key = accountData?.[`dc${dcId as TrueDcId}_auth_key`];
+          const key = accountData[`dc${dcId as TrueDcId}_auth_key`];
 
           if(key) {
             return g();

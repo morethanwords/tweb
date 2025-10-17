@@ -1,3 +1,5 @@
+import {MOUNT_CLASS_TO} from '../../config/debug';
+
 export default function bytesToBase64(bytes: number[] | Uint8Array) {
   let mod3: number;
   let result = '';
@@ -32,3 +34,5 @@ export function uint6ToBase64(nUint6: number) {
             47 :
             65;
 }
+
+MOUNT_CLASS_TO.bytesToBase64 = bytesToBase64;

@@ -16,8 +16,7 @@ import {randomLong} from '../../helpers/random';
 import {Document, InputFile, InputFileLocation, InputWebFileLocation, Photo, PhotoSize, UploadFile, UploadWebFile, VideoSize, WebDocument} from '../../layer';
 import {DcId} from '../../types';
 import CacheStorageController from '../files/cacheStorage';
-import {logger, LogTypes} from '../logger';
-import assumeType from '../../helpers/assumeType';
+import {LogTypes} from '../logger';
 import noop from '../../helpers/noop';
 import readBlobAsArrayBuffer from '../../helpers/blob/readBlobAsArrayBuffer';
 import bytesToHex from '../../helpers/bytes/bytesToHex';
@@ -143,7 +142,6 @@ export class ApiFileManager extends AppManager {
     }
   } = {};
 
-  private log: ReturnType<typeof logger> = logger('AFM', LogTypes.Error | LogTypes.Log);
   private tempId = 0;
   private queueId = 0;
   private debug = Modes.debug;
@@ -151,6 +149,12 @@ export class ApiFileManager extends AppManager {
   private maxUploadParts = 4000;
   private maxDownloadParts = 8000;
   private webFileDcId: DcId;
+
+  constructor() {
+    super();
+    this.name = 'AFM';
+    this.logTypes = LogTypes.Error | LogTypes.Log;
+  }
 
   protected after() {
     setInterval(() => { // clear old promises

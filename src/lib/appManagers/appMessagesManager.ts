@@ -422,8 +422,6 @@ export class AppMessagesManager extends AppManager {
   private reloadConversationsPromise: Promise<void>;
   private reloadConversationsPeers: Map<PeerId, {inputDialogPeer: InputDialogPeer, promise: CancellablePromise<Dialog>, sentRequest?: boolean}> = new Map();
 
-  public log = logger('MESSAGES', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
-
   private groupedTempId = 0;
   private mediaTempId = 0;
   private mediaTempMap: {[tempId: number]: number} = {};
@@ -456,6 +454,12 @@ export class AppMessagesManager extends AppManager {
   private paidMessagesQueue = new PaidMessagesQueue;
 
   private repayRequestHandler: RepayRequestHandler;
+
+  constructor() {
+    super();
+    this.name = 'MESSAGES';
+    this.logTypes = LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn;
+  }
 
   protected after() {
     this.clear(true);

@@ -15,6 +15,7 @@ import type {PasscodeStorageValue} from '../commonStateStorage';
 import SuperMessagePort from './superMessagePort';
 
 export type MTProtoManagerTaskPayload = {name: string, method: string, args: any[], accountNumber: ActiveAccountNumber};
+export type MTProtoSingleManagerTaskPayload = {name: string, method: string, args: any[]};
 
 type CallNotificationPayload = {
   callerId: string | number,
@@ -27,10 +28,8 @@ type MTProtoBroadcastEvent = {
 };
 
 export type ToggleUsingPasscodePayload = {
-  isUsingPasscode: true;
-  encryptionKey: CryptoKey;
-} | {
-  isUsingPasscode: false;
+  isUsingPasscode: boolean,
+  encryptionKey?: CryptoKey;
 };
 
 export default class MTProtoMessagePort<Master extends boolean = true> extends SuperMessagePort<{
@@ -38,6 +37,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   crypto: (payload: {method: string, args: any[]}) => Promise<any>,
   state: (payload: {accountNumber: ActiveAccountNumber} & LoadStateResult) => void,
   manager: (payload: MTProtoManagerTaskPayload) => any,
+  singleManager: (payload: MTProtoSingleManagerTaskPayload) => any,
   toggleStorages: (payload: {enabled: boolean, clearWrite: boolean}) => ReturnType<typeof toggleStorages>,
   serviceWorkerOnline: (online: boolean) => void,
   serviceWorkerPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
@@ -56,7 +56,8 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   localStorageEncryptedProxy: (payload: LocalStorageEncryptedProxyTaskPayload) => Promise<any>,
   toggleCacheStorage: (value: boolean, source: MessageEventSource) => void,
   forceLogout: () => void,
-  toggleUninteruptableActivity: (payload: {activity: string, active: boolean}, source: MessageEventSource) => void
+  toggleUninteruptableActivity: (payload: {activity: string, active: boolean}, source: MessageEventSource) => void,
+  language: (payload: string) => void
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,

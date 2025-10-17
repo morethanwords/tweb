@@ -7,7 +7,7 @@
 import {logger, LogTypes} from '../logger';
 import {CACHE_ASSETS_NAME, requestCache} from './cache';
 import onStreamFetch, {toggleStreamInUse} from './stream';
-import {closeAllNotifications, onPing, onShownNotification} from './push';
+import {closeAllNotifications, fillPushObject, onPing, onPushClosedWindows, onShownNotification, resetPushAccounts} from './push';
 import CacheStorageController from '../files/cacheStorage';
 import {IS_SAFARI} from '../../environment/userAgent';
 import ServiceMessagePort from './serviceMessagePort';
@@ -140,12 +140,14 @@ serviceMessagePort.addMultipleEventsListeners({
 
   toggleUsingPasscode: (payload) => {
     DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
-    EncryptionKeyStore.save(payload.isUsingPasscode ? payload.encryptionKey : null);
+    EncryptionKeyStore.save(payload.encryptionKey);
   },
 
   saveEncryptionKey: (payload) => {
     EncryptionKeyStore.save(payload);
-  }
+  },
+
+  fillPushObject
 });
 
 const {
@@ -176,8 +178,17 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
   if(!connectedWindows.size) {
     log.warn('no windows left');
 
-    EncryptionKeyStore.resetDeferred();
-    DeferredIsUsingPasscode.resetDeferred();
+    DeferredIsUsingPasscode.isUsingPasscode()
+    .then((isUsingPasscode) => {
+      if(isUsingPasscode) {
+        resetPushAccounts();
+      }
+    }).finally(() => {
+      if(!connectedWindows.size) { // * make sure that the promise is resolved not because new window connected
+        EncryptionKeyStore.resetDeferred();
+        DeferredIsUsingPasscode.resetDeferred();
+      }
+    });
 
     if(_mtprotoMessagePort) {
       serviceMessagePort.detachPort(_mtprotoMessagePort);
@@ -188,6 +199,7 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
       _cryptoMessagePort = undefined;
     }
 
+    onPushClosedWindows();
     onDownloadClosedWindows();
   }
 });

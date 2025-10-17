@@ -92,11 +92,11 @@ export class GroupCallsController extends EventListenerBase<{
 
   public startConnectingSound() {
     this.stopConnectingSound();
-    this.audioAsset.playSoundWithTimeout('group_call_connect.mp3', true, 2500);
+    this.audioAsset.playWithTimeout({name: 'connect', loop: true}, 2500);
   }
 
   public stopConnectingSound() {
-    this.audioAsset.stopSound();
+    this.audioAsset.stop();
     this.audioAsset.cancelDelayedPlay();
   }
 
@@ -155,7 +155,7 @@ export class GroupCallsController extends EventListenerBase<{
         if(this.currentGroupCall === currentGroupCall && state === GROUP_CALL_STATE.CLOSED) {
           this.setCurrentGroupCall(null);
           this.stopConnectingSound();
-          this.audioAsset.playSound('group_call_end.mp3');
+          this.audioAsset.play({name: 'end'});
           rootScope.dispatchEvent('chat_update', currentGroupCall.chatId);
         }
       });
@@ -210,7 +210,7 @@ export class GroupCallsController extends EventListenerBase<{
           case 'connected': {
             if(!currentGroupCall.joined) {
               currentGroupCall.joined = true;
-              this.audioAsset.playSound('group_call_start.mp3');
+              this.audioAsset.play({name: 'start'});
               this.managers.appGroupCallsManager.getGroupCallParticipants(groupCallId);
             }
 

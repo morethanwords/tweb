@@ -121,6 +121,12 @@ export const AppDirectMessagesTab =
     getComponentModule: () => import('../sidebarRight/tabs/channelDirectMessages')
   });
 
+export const AppNotificationsTab =
+  scaffoldSolidJSTab({
+    title: 'Telegram.NotificationSettingsViewController',
+    getComponentModule: () => import('../notifications')
+  });
+
 
 // ---
 
@@ -132,6 +138,7 @@ export type ProvidedTabs = {
   // Other tabs
   AppPrivacyAndSecurityTab: typeof AppPrivacyAndSecurityTab;
   AppAddMembersTab: typeof AppAddMembersTab;
+  AppNotificationsTab: typeof AppNotificationsTab;
 };
 
 /**
@@ -140,7 +147,8 @@ export type ProvidedTabs = {
 // eslint-disable-next-line prefer-const
 export let providedTabs = {
   AppPasscodeLockTab,
-  AppPasscodeEnterPasswordTab
+  AppPasscodeEnterPasswordTab,
+  AppNotificationsTab
 
   // Others to be assigned...
 } as ProvidedTabs;

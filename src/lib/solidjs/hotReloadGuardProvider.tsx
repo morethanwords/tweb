@@ -20,6 +20,7 @@ import apiManagerProxy from '../mtproto/mtprotoworker';
 import lottieLoader from '../rlottie/lottieLoader';
 import rootScope from '../rootScope';
 import {SolidJSHotReloadGuardContext} from './hotReloadGuard';
+import uiNotificationsManager from '../appManagers/uiNotificationsManager';
 
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
@@ -45,7 +46,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       EmoticonsDropdown,
       EmojiTab,
       appDialogsManager,
-      AutonomousMonoforumThreadList
+      AutonomousMonoforumThreadList,
+      uiNotificationsManager
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

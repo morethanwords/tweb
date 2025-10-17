@@ -59,7 +59,7 @@ import ChatBackgroundPatternRenderer from '../../components/chat/patternRenderer
 import {IS_CHROMIUM, IS_FIREFOX} from '../../environment/userAgent';
 import compareVersion from '../../helpers/compareVersion';
 import {AppManagers} from './managers';
-import {UiNotificationsManager} from './uiNotificationsManager';
+import uiNotificationsManager, {UiNotificationsManager} from './uiNotificationsManager';
 import appMediaPlaybackController from '../../components/appMediaPlaybackController';
 import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
 import wrapRichText from '../richTextProcessor/wrapRichText';
@@ -135,6 +135,7 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../../components/chat/p
 import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport';
 import ChatAudio from '../../components/chat/audio';
 import PopupAboutAd from '../../components/popups/aboutAd';
+import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -206,6 +207,8 @@ export class AppImManager extends EventListenerBase<{
 
   public isShiftLockShortcut = false;
 
+  private audioAssetPlayer: AudioAssetPlayer<Record<'message_sent', string>>;
+
   private chatPositions: {
     [peerId_threadId: string]: ChatSavedPosition;
   };
@@ -222,7 +225,7 @@ export class AppImManager extends EventListenerBase<{
     this.managers = managers;
     internalLinkProcessor.construct(managers);
 
-    UiNotificationsManager.constructAndStartAll();
+    uiNotificationsManager.constructAndStartAll();
 
     appMediaPlaybackController.construct(managers);
 
@@ -586,12 +589,15 @@ export class AppImManager extends EventListenerBase<{
       const isForum = await managers.appPeersManager.isForum(options.message.peerId);
       const threadId = getMessageThreadId(options.message, isForum);
 
-      // TODO: don't forget about notifications
-      if(this.chat.peerId === options.message.peerId && this.chat.threadId === threadId && !idleController.isIdle) {
+      if(
+        this.chat.peerId === options.message.peerId &&
+        this.chat.threadId === threadId &&
+        !idleController.isIdle
+      ) {
         return;
       }
 
-      UiNotificationsManager.byAccount[accountNumber]?.buildNotificationQueue(options);
+      uiNotificationsManager.buildNotificationQueue(options);
     });
 
     this.addEventListener('peer_changed', async({peerId}) => {
@@ -614,6 +620,16 @@ export class AppImManager extends EventListenerBase<{
 
     this.chatAudio = new ChatAudio(this, managers);
     this.columnEl.append(this.chatAudio.container);
+
+    this.audioAssetPlayer = new AudioAssetPlayer({
+      message_sent: 'message_sent.mp3'
+    });
+
+    rootScope.addEventListener('message_sent', () => {
+      if(rootScope.settings.notifications.sentMessageSound) {
+        this.audioAssetPlayer.playWithThrottle({name: 'message_sent'}, 1000);
+      }
+    });
 
     if(IS_CALL_SUPPORTED) {
       callsController.addEventListener('instance', ({instance/* , hasCurrent */}) => {

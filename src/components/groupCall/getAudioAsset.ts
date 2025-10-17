@@ -6,14 +6,12 @@
 
 import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
 
-export type GroupCallAudioAssetName = 'group_call_connect.mp3' | 'group_call_end.mp3' | 'group_call_start.mp3' | 'voip_onallowtalk.mp3';
-
-let audioAsset: AudioAssetPlayer<GroupCallAudioAssetName>;
+let audioAsset: AudioAssetPlayer<Record<'connect' | 'end' | 'start' | 'allowtalk', string>>;
 export default function getGroupCallAudioAsset() {
-  return audioAsset ??= new AudioAssetPlayer([
-    'group_call_connect.mp3',
-    'group_call_end.mp3',
-    'group_call_start.mp3',
-    'voip_onallowtalk.mp3'
-  ]);
+  return audioAsset ??= new AudioAssetPlayer({
+    connect: 'group_call_connect.mp3',
+    end: 'group_call_end.mp3',
+    start: 'group_call_start.mp3',
+    allowtalk: 'voip_onallowtalk.mp3'
+  });
 }

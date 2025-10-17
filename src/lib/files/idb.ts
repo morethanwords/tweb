@@ -309,8 +309,8 @@ class IDBStorage<T extends Database<any>, StoreName extends string = T['stores']
 
     const isArray = Array.isArray(entryName);
     if(!isArray) {
-      entryName = [].concat(entryName);
-      value = [].concat(value);
+      entryName = [entryName] as string[];
+      value = [value];
     }
 
     return this.getObjectStore('readwrite', (objectStore) => {

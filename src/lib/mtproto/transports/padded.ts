@@ -4,8 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import randomize from '../../../helpers/array/randomize';
-import {nextRandomUint} from '../../../helpers/random';
+import {nextRandomUint, randomBytes} from '../../../helpers/random';
 import {IntermediatePacketCodec} from './intermediate';
 /*  Data packets are aligned to 4bytes. This codec adds random bytes of size
   from 0 to 3 bytes, which are ignored by decoder. */
@@ -14,7 +13,7 @@ class PaddedIntermediatePacketCodec extends IntermediatePacketCodec {
   public obfuscateTag = new Uint8Array([this.tag, this.tag, this.tag, this.tag]);
 
   public encodePacket(data: Uint8Array) {
-    const padding = randomize(new Uint8Array(nextRandomUint(8) % 3));
+    const padding = randomBytes(nextRandomUint(8) % 3);
     const len = data.byteLength + padding.byteLength;
 
     const header = new Uint8Array(new Uint32Array([len]).buffer);

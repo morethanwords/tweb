@@ -583,9 +583,9 @@ class SuperMessagePort<
     this.pushTask(task, port);
   }
 
-  public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: false, port?: SendPort, transfer?: Transferable[]): Promise<Awaited<ReturnType<Send[T]>>>;
-  public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: true, port?: SendPort, transfer?: Transferable[]): Promise<AckedResult<Awaited<ReturnType<Send[T]>>>>;
-  public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: boolean, port?: SendPort, transfer?: Transferable[]) {
+  public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: false, port?: SendPort, transfer?: Transferable[], timeout?: number): Promise<Awaited<ReturnType<Send[T]>>>;
+  public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: true, port?: SendPort, transfer?: Transferable[], timeout?: number): Promise<AckedResult<Awaited<ReturnType<Send[T]>>>>;
+  public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: boolean, port?: SendPort, transfer?: Transferable[], timeout?: number) {
     this.debug && this.log.debug('start', type, payload);
 
     let task: InvokeTask;
@@ -594,6 +594,13 @@ class SuperMessagePort<
       this.awaiting[task.id] = {resolve, reject, taskType: type as string, port};
       this.pushTask(task, port);
     });
+
+    if(timeout) {
+      const {reject} = this.awaiting[task.id];
+      setTimeout(() => {
+        reject(makeError('TIMEOUT'));
+      }, timeout);
+    }
 
     if(IS_WORKER) {
       promise.finally(() => {

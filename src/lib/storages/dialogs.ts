@@ -39,7 +39,6 @@ import {BroadcastEvents} from '../rootScope';
 import assumeType from '../../helpers/assumeType';
 import makeError from '../../helpers/makeError';
 import callbackify from '../../helpers/callbackify';
-import {logger} from '../logger';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
 import {isDialog, isSavedDialog, isForumTopic} from '../appManagers/utils/dialogs/isDialog';
 import getDialogKey from '../appManagers/utils/dialogs/getDialogKey';
@@ -103,7 +102,10 @@ export default class DialogsStorage extends AppManager {
 
   private savedDialogsPromises: Map<PeerId, Promise<SavedDialog>>;
 
-  private log = logger('DIALOGS');
+  constructor() {
+    super();
+    this.name = 'DIALOGS';
+  }
 
   protected after() {
     this.clear(true);

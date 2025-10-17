@@ -6,16 +6,14 @@
 
 import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
 
-export type CallAudioAssetName = 'call_busy.mp3' | 'call_connect.mp3' | 'call_end.mp3' | 'call_incoming.mp3' | 'call_outgoing.mp3' | 'voip_failed.mp3' | 'voip_connecting.mp3';
-
-let audioAsset: AudioAssetPlayer<CallAudioAssetName>;
+let assetPlayer: AudioAssetPlayer<Record<'busy' | 'connect' | 'end' | 'incoming' | 'outgoing' | 'failed', string>>;
 export default function getCallAudioAsset() {
-  return audioAsset ??= new AudioAssetPlayer([
-    'call_busy.mp3',
-    'call_connect.mp3',
-    'call_end.mp3',
-    'call_incoming.mp3',
-    'call_outgoing.mp3',
-    'voip_failed.mp3'
-  ]);
+  return assetPlayer ??= new AudioAssetPlayer({
+    busy: 'call_busy.mp3',
+    connect: 'call_connect.mp3',
+    end: 'call_end.mp3',
+    incoming: 'call_incoming.mp3',
+    outgoing: 'call_outgoing.mp3',
+    failed: 'voip_failed.mp3'
+  });
 }

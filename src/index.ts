@@ -401,6 +401,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     return;
   }
 
+  apiManagerProxy.onLanguageChange(I18n.lastRequestedLangCode);
   await apiManagerProxy.sendAllStates(allStates);
 
   console.timeLog(TIME_LABEL, 'sent all states (2)');
@@ -540,7 +541,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
         import('./lib/mtproto/webPushApiManager')
       ]).then(([meModule, pushModule]) => {
         meModule.default.setAuthorized(false);
-        pushModule.default.forceUnsubscribe();
+        pushModule.default.unsubscribe();
       });
     } catch(err) {
 

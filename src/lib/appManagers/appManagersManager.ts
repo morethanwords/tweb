@@ -17,6 +17,7 @@ import {ActiveAccountNumber} from '../accounts/types';
 import AppStateManager from './appStateManager';
 import rootScope from '../rootScope';
 import AccountController from '../accounts/accountController';
+import pushSingleManager from '../mtproto/pushSingleManager';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 
@@ -113,7 +114,7 @@ export class AppManagersManager {
       for(let i = 1; i < accountNumber; i++) {
         const otherAccountNumber = i as ActiveAccountNumber;
         const accountData = await AccountController.get(otherAccountNumber);
-        if(accountData?.userId && accountData?.userId === userId) {
+        if(accountData.userId === userId) {
           const managersByAccount = await this.getManagersByAccount();
           managersByAccount[accountNumber].apiManager.logOut(otherAccountNumber);
         }
@@ -211,6 +212,9 @@ export class AppManagersManager {
             const {appDocsManager} = managersByAccount[accountNumber];
             return appDocsManager.getAltDocsByDocument(docId);
           });
+        },
+        decryptPush(payload) {
+          return pushSingleManager.decryptPush(payload.p, payload.keyIdBase64);
         }
       });
     }

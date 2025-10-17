@@ -24,6 +24,7 @@ import type apiManagerProxy from '../mtproto/mtprotoworker';
 import type lottieLoader from '../rlottie/lottieLoader';
 import type {RootScope} from '../rootScope';
 import type SolidJSHotReloadGuardProvider from './hotReloadGuardProvider';
+import type uiNotificationsManager from '../appManagers/uiNotificationsManager';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -48,6 +49,7 @@ export type SolidJSHotReloadGuardContextValue = {
   EmojiTab: typeof EmojiTab;
   appDialogsManager: AppDialogsManager;
   AutonomousMonoforumThreadList: typeof AutonomousMonoforumThreadList;
+  uiNotificationsManager: typeof uiNotificationsManager;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

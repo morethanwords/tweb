@@ -9,14 +9,14 @@ import StaticUtilityClass from '../staticUtilityClass';
 
 import {AccountSessionData, ActiveAccountNumber} from './types';
 import {MAX_ACCOUNTS} from './constants';
+import bytesToHex from '../../helpers/bytes/bytesToHex';
+import randomize from '../../helpers/array/randomize';
 
 export class AccountController extends StaticUtilityClass {
   static async getTotalAccounts() {
-    const promises = ([1, 2, 3, 4] as const).map((accountNumber) => sessionStorage.get(`account${accountNumber}`));
-
+    const promises = ([1, 2, 3, 4] as const).map((accountNumber) => this.get(accountNumber));
     const allAccountsData = await Promise.all(promises);
-
-    return allAccountsData.filter((accountData) => !!accountData?.userId).length;
+    return allAccountsData.filter((accountData) => !!accountData.userId).length;
   }
 
   static async getUnencryptedTotalAccounts() {
@@ -24,35 +24,60 @@ export class AccountController extends StaticUtilityClass {
   }
 
   static async getUserIds() {
-    const promises = ([1, 2, 3, 4] as const).map((accountNumber) => sessionStorage.get(`account${accountNumber}`));
-
+    const promises = ([1, 2, 3, 4] as const).map((accountNumber) => this.get(accountNumber));
     const allAccountsData = await Promise.all(promises);
-
-    return allAccountsData.map((accountData) => accountData?.userId).filter(Boolean);
+    return allAccountsData.map((accountData) => accountData.userId).filter(Boolean);
   }
 
-  static async get(accountNumber: ActiveAccountNumber) {
-    const data = await sessionStorage.get(`account${accountNumber}`);
-    this.fillFingerprint(data);
+  static async get(accountNumber: ActiveAccountNumber, updating?: boolean) {
+    const data = await sessionStorage.get(`account${accountNumber}`) || {} as AccountSessionData;
+
+    if(!updating && this.fillMissingData(data)) {
+      await this.update(accountNumber, data);
+    }
+
     return data;
   }
 
+  static fillMissingData(data: AccountSessionData) {
+    return [
+      this.fillFingerprint(data),
+      this.fillPushKey(data)
+    ].some(Boolean);
+  }
+
   static fillFingerprint(data: AccountSessionData) {
-    if(data && !data.auth_key_fingerprint) {
-      const key = `dc${App.baseDcId}_auth_key` as const;
-      const value = data[key];
-      data.auth_key_fingerprint = value ? data[key].slice(0, 8) : undefined;
+    if(!data.auth_key_fingerprint) {
+      const authKey = data[`dc${App.baseDcId}_auth_key`];
+      if(!authKey) {
+        return false;
+      }
+
+      data.auth_key_fingerprint = authKey ? authKey.slice(0, 8) : undefined;
+      return true;
     }
+
+    return false;
+  }
+
+  static fillPushKey(data: AccountSessionData) {
+    if(!data.push_key && data.userId) {
+      data.push_key = bytesToHex(randomize(new Uint8Array(256)));
+      return true;
+    }
+
+    return false;
   }
 
   static async update(accountNumber: ActiveAccountNumber, data: Partial<AccountSessionData>, overrideAll = false) {
-    const prevData = await this.get(accountNumber);
-    this.fillFingerprint(data as AccountSessionData);
+    const prevData = await this.get(accountNumber, true);
 
     const updatedData = {
       ...(overrideAll ? {} : prevData),
       ...data
     };
+
+    this.fillMissingData(updatedData);
 
     await sessionStorage.set({
       [`account${accountNumber}`]: updatedData
@@ -80,7 +105,7 @@ export class AccountController extends StaticUtilityClass {
       await sessionStorage.delete(`account${i as ActiveAccountNumber}`);
       if(i < MAX_ACCOUNTS) {
         const toMove = await this.get((i + 1) as ActiveAccountNumber);
-        toMove?.userId && (await this.update(i as ActiveAccountNumber, toMove, true));
+        toMove.userId && (await this.update(i as ActiveAccountNumber, toMove, true));
       }
     }
   }

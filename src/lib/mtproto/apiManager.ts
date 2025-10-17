@@ -44,6 +44,7 @@ import EncryptedStorageLayer from '../encryptedStorageLayer';
 import {getCommonDatabaseState} from '../../config/databases/state';
 import EncryptionKeyStore from '../passcode/keyStore';
 import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+import {MTAuthKey} from './authorizer';
 /**
  * To not be used in an ApiManager instance as there is no account number attached to it
  */
@@ -79,8 +80,6 @@ export class ApiManager extends ApiManagerMethods {
 
   // public telegramMeNotified = false;
 
-  private log: ReturnType<typeof logger>;
-
   private afterMessageTempIds: {
     [tempId: string]: {
       messageId: string,
@@ -90,13 +89,11 @@ export class ApiManager extends ApiManagerMethods {
 
   private transportType: TransportType;
 
-  private updatesProcessor: (obj: any) => void;
-
   private loggingOut: boolean;
 
   constructor() {
     super();
-    this.log = logger('API');
+    this.name = 'API';
 
     this.cachedNetworkers = {} as any;
     this.cachedExportPromise = {};
@@ -105,12 +102,6 @@ export class ApiManager extends ApiManagerMethods {
     this.afterMessageTempIds = {};
 
     this.transportType = Modes.transport;
-
-    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports) {
-      transportController.addEventListener('transport', (transportType) => {
-        this.changeTransportType(transportType);
-      });
-    }
 
     // * Make sure that the used autologin_token is no more than 10000 seconds old
     // * https://core.telegram.org/api/url-authorization
@@ -122,6 +113,12 @@ export class ApiManager extends ApiManagerMethods {
 
   protected after() {
     const result = super.after();
+
+    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports) {
+      transportController.addEventListener('transport', (transportType) => {
+        this.changeTransportType(transportType);
+      });
+    }
 
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateConfig: () => {
@@ -253,7 +250,7 @@ export class ApiManager extends ApiManagerMethods {
     }
 
     const accountData = await AccountController.get(this.getAccountNumber());
-    const baseDcId = accountData?.dcId;
+    const baseDcId = accountData.dcId;
     if(!this.baseDcId) {
       if(!baseDcId) {
         this.setBaseDcId(App.baseDcId);
@@ -278,7 +275,7 @@ export class ApiManager extends ApiManagerMethods {
     }
 
     AccountController.update(this.getAccountNumber(), {
-      date:  (userAuth as UserAuth).date,
+      date: (userAuth as UserAuth).date,
       userId: (userAuth as UserAuth).id,
       dcId: (userAuth as UserAuth).dcID as TrueDcId
     });
@@ -316,7 +313,7 @@ export class ApiManager extends ApiManagerMethods {
 
     for(let dcId = 1; dcId <= 5; dcId++) {
       const key = `dc${dcId as TrueDcId}_auth_key` as const;
-      if(accountData?.[key]) {
+      if(accountData[key]) {
         logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId, ignoreErrors: true}));
       }
     }
@@ -464,35 +461,57 @@ export class ApiManager extends ApiManagerMethods {
     const ss: DcServerSalt = `dc${dcId}_server_salt` as any;
 
     let transport = this.chooseServer(dcId, connectionType, transportType);
-    return this.gettingNetworkers[getKey] = AccountController.get(this.getAccountNumber()).then((accountData) => [accountData?.[ak], accountData?.[ss]] as const)
+    return this.gettingNetworkers[getKey] = AccountController
+    .get(this.getAccountNumber())
+    .then((accountData) => [accountData[ak], accountData[ss]] as const)
     .then(async([authKeyHex, serverSaltHex]) => {
-      let networker: MTPNetworker, error: any;
+      let networker: MTPNetworker, error: any, onTransport: () => Promise<any>;
+      let permanent: {authKey?: MTAuthKey, serverSalt?: Uint8Array}, temporary: typeof permanent;
       if(authKeyHex?.length === 512) {
         if(serverSaltHex?.length !== 16) {
           serverSaltHex = 'AAAAAAAAAAAAAAAA';
         }
 
         const authKey = bytesFromHex(authKeyHex);
-        const authKeyId = (await CryptoWorker.invokeCrypto('sha1', authKey)).slice(-8);
-        const serverSalt = bytesFromHex(serverSaltHex);
+        permanent = {
+          authKey: new MTAuthKey(authKey, (await CryptoWorker.invokeCrypto('sha1', authKey)).slice(-8)),
+          serverSalt: bytesFromHex(serverSaltHex)
+        };
 
-        networker = this.networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, options);
+        temporary = await this.authorizer.auth(dcId, true);
       } else {
         try { // if no saved state
-          const auth = await this.authorizer.auth(dcId);
+          [permanent, temporary] = await Promise.all([this.authorizer.auth(dcId, false), this.authorizer.auth(dcId, true)]);
 
-          authKeyHex = bytesToHex(auth.authKey);
-          serverSaltHex = bytesToHex(auth.serverSalt);
+          authKeyHex = bytesToHex(permanent.authKey.key);
+          serverSaltHex = bytesToHex(permanent.serverSalt);
 
           AccountController.update(this.getAccountNumber(), {
             [ak]: authKeyHex,
             [ss]: serverSaltHex
           });
-
-          networker = this.networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, options);
         } catch(_error) {
           error = _error;
         }
+      }
+
+      if(!error) {
+        const auth = temporary ?? permanent;
+        networker = this.networkerFactory.getNetworker({
+          dcId,
+          permAuthKey: permanent.authKey,
+          authKey: auth.authKey,
+          serverSalt: auth.serverSalt,
+          isFileDownload: connectionType === 'download',
+          isFileUpload: connectionType === 'upload',
+          accountNumber: this.getAccountNumber()
+        });
+
+        if(temporary) onTransport = async() => {
+          await networker.wrapBindAuthKeyCall(temporary.authKey.expiresAt);
+          // await networker.wrapApiCall('help.getConfig', {});
+          // await pause(1000000);
+        };
       }
 
       // ! cannot get it before this promise because simultaneous changeTransport will change nothing
@@ -521,6 +540,7 @@ export class ApiManager extends ApiManagerMethods {
       }
 
       this.changeNetworkerTransport(networker, transport);
+      // onTransport && await onTransport?.();
       networkers.unshift(networker);
       this.setOnDrainIfNeeded(networker);
       return networker;
@@ -570,7 +590,6 @@ export class ApiManager extends ApiManagerMethods {
   }
 
   public setUpdatesProcessor(callback: (obj: any) => void) {
-    this.updatesProcessor = callback;
     this.networkerFactory.setUpdatesProcessor(callback);
   }
 

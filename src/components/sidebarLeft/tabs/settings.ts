@@ -10,7 +10,7 @@ import AppPrivacyAndSecurityTab from './privacyAndSecurity';
 import AppGeneralSettingsTab from './generalSettings';
 import AppEditProfileTab from './editProfile';
 import AppChatFoldersTab from './chatFolders';
-import AppNotificationsTab from './notifications';
+import {AppNotificationsTab} from './solidJsTabs';
 import AppLanguageTab from './language';
 import lottieLoader from '../../../lib/rlottie/lottieLoader';
 import PopupPeer from '../../popups/peer';

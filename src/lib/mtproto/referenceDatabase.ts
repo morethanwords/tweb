@@ -5,7 +5,6 @@
  */
 
 import type {Photo, StoryItem, WallPaper} from '../../layer';
-import {logger} from '../logger';
 import bytesToHex from '../../helpers/bytes/bytesToHex';
 import deepEqual from '../../helpers/object/deepEqual';
 import {AppManager} from '../appManagers/manager';
@@ -119,8 +118,13 @@ export class ReferenceDatabase extends AppManager {
   private contexts: Map<ReferenceBytes, ReferenceContexts> = new Map();
   // private references: Map<ReferenceBytes, number[]> = new Map();
   private links: {[hex: string]: ReferenceBytes} = {};
-  private log = logger('RD', undefined, true);
   private refreshEmojiesSoundsPromise: Promise<any>;
+
+  constructor() {
+    super();
+    this.name = 'RD';
+    this.logIgnoreDebugReset = true;
+  }
 
   // constructor() {
   //   super();
