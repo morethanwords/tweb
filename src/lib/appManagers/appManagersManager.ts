@@ -114,7 +114,7 @@ export class AppManagersManager {
       for(let i = 1; i < accountNumber; i++) {
         const otherAccountNumber = i as ActiveAccountNumber;
         const accountData = await AccountController.get(otherAccountNumber);
-        if(accountData?.userId && accountData?.userId === userId) {
+        if(accountData.userId === userId) {
           const managersByAccount = await this.getManagersByAccount();
           managersByAccount[accountNumber].apiManager.logOut(otherAccountNumber);
         }
@@ -214,7 +214,7 @@ export class AppManagersManager {
           });
         },
         decryptPush(payload) {
-          return pushSingleManager.decryptPush(payload.p, payload.secret);
+          return pushSingleManager.decryptPush(payload.p, payload.keyIdBase64);
         }
       });
     }

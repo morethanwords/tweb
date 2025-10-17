@@ -135,6 +135,7 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../../components/chat/p
 import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport';
 import ChatAudio from '../../components/chat/audio';
 import PopupAboutAd from '../../components/popups/aboutAd';
+import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -204,6 +205,8 @@ export class AppImManager extends EventListenerBase<{
   public customEmojiSize: MediaSize;
 
   public isShiftLockShortcut = false;
+
+  private audioAssetPlayer: AudioAssetPlayer<Record<'message_sent', string>>;
 
   private chatPositions: {
     [peerId_threadId: string]: ChatSavedPosition;
@@ -616,6 +619,16 @@ export class AppImManager extends EventListenerBase<{
 
     this.chatAudio = new ChatAudio(this, managers);
     this.columnEl.append(this.chatAudio.container);
+
+    this.audioAssetPlayer = new AudioAssetPlayer({
+      message_sent: 'message_sent.mp3'
+    });
+
+    rootScope.addEventListener('message_sent', () => {
+      if(rootScope.settings.notifications.sentMessageSound) {
+        this.audioAssetPlayer.playWithThrottle({name: 'message_sent'}, 1000);
+      }
+    });
 
     if(IS_CALL_SUPPORTED) {
       callsController.addEventListener('instance', ({instance/* , hasCurrent */}) => {

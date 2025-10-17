@@ -246,7 +246,7 @@ async function loadStateForAccount(accountNumber: ActiveAccountNumber): Promise<
   const writer = StateWriter(log);
   writer.readFromArray(arr);
 
-  if(accountData?.userId) {
+  if(accountData.userId) {
     writer.state.authState = {_: 'authStateSignedIn'};
   }
 
@@ -264,7 +264,7 @@ async function loadStateForAccount(accountNumber: ActiveAccountNumber): Promise<
     oldVersion,
     resetStorages: writer.resetStorages,
     common: commonWriter.state,
-    userId: accountData?.userId
+    userId: accountData.userId
   };
 }
 
@@ -417,7 +417,7 @@ async function moveStoragesToMultiAccountFormat() {
 }
 
 async function checkIfHasMultiAccount() {
-  return !!(await AccountController.get(1));
+  return !!(await AccountController.get(1))[`dc${App.baseDcId}_auth_key`];
 }
 
 function deleteOldDatabase() {

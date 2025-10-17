@@ -514,15 +514,7 @@ class TLDeserialization<FetchLongAs extends Long> {
     return this.fetchObject('Object', field);
   }
 
-  public fetchString(field?: string): string {
-    let len = this.byteView[this.offset++];
-
-    if(len === 254) {
-      len = this.byteView[this.offset++] |
-        (this.byteView[this.offset++] << 8) |
-        (this.byteView[this.offset++] << 16);
-    }
-
+  public fetchStringWithLength(len: number, field?: string) {
     let sUTF8 = '';
     for(let i = 0; i < len; ++i) {
       sUTF8 += String.fromCharCode(this.byteView[this.offset++]);
@@ -543,6 +535,18 @@ class TLDeserialization<FetchLongAs extends Long> {
     this.debug && console.log('<<<', s, (field || '') + ':string');
 
     return s;
+  }
+
+  public fetchString(field?: string): string {
+    let len = this.byteView[this.offset++];
+
+    if(len === 254) {
+      len = this.byteView[this.offset++] |
+        (this.byteView[this.offset++] << 8) |
+        (this.byteView[this.offset++] << 16);
+    }
+
+    return this.fetchStringWithLength(len, field);
   }
 
   public fetchBytes(field?: string) {

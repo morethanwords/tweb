@@ -22,6 +22,7 @@ import type {AppImManager} from '../appManagers/appImManager';
 import type apiManagerProxy from '../mtproto/mtprotoworker';
 import type lottieLoader from '../rlottie/lottieLoader';
 import type {RootScope} from '../rootScope';
+import type uiNotificationsManager from '../appManagers/uiNotificationsManager';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -43,6 +44,7 @@ export type SolidJSHotReloadGuardContextValue = {
   PopupPremium: typeof PopupPremium;
   EmoticonsDropdown: typeof EmoticonsDropdown;
   EmojiTab: typeof EmojiTab;
+  uiNotificationsManager: typeof uiNotificationsManager;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

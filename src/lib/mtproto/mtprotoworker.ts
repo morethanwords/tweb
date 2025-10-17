@@ -62,6 +62,7 @@ import EncryptionKeyStore from '../passcode/keyStore';
 import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import CacheStorageController from '../files/cacheStorage';
 import type {PushSingleManager} from './pushSingleManager';
+import getDeepProperty from '../../helpers/object/getDeepProperty';
 
 
 export type Mirrors = {
@@ -342,7 +343,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
       toggleUsingPasscode: (payload) => {
         DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
-        EncryptionKeyStore.save(payload.isUsingPasscode ? payload.encryptionKey : null);
+        EncryptionKeyStore.save(payload.encryptionKey);
       }
 
       // hello: () => {
@@ -421,7 +422,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
           telegramMeWebManager.setAuthorized(false),
           pause(3000)
         ]),
-        webPushApiManager.forceUnsubscribe(),
+        webPushApiManager.unsubscribe(),
         this.invokeVoid('terminate', undefined), // * terminate mtproto worker
         this.serviceWorkerRegistration?.unregister().catch(noop) // * release storages
       ]).finally(() => {
@@ -453,7 +454,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
 
     rootScope.addEventListener('settings_updated', ({key, settings}) => {
-      setAppSettingsSilent(/* key,  */settings);
+      const path = splitDeepPath(key).slice(1);
+      setAppSettingsSilent(path[0], getDeepProperty(settings, path));
     });
 
     rootScope.addEventListener('toggle_using_passcode', (value) => {
@@ -525,10 +527,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
 
     DeferredIsUsingPasscode.isUsingPasscode().then((value) => {
-      if(!value) {
-        // When value=true we'll send it and the encryption key after unlocking the screen
-        this.serviceMessagePort.invokeVoid('toggleUsingPasscode', {isUsingPasscode: false});
-      }
+      this.serviceMessagePort.invokeVoid('toggleUsingPasscode', {isUsingPasscode: value});
     });
   }
 
@@ -784,7 +783,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private async dispatchUserAuth() {
     const accountData = await AccountController.get(getCurrentAccount());
-    if(accountData?.userId) {
+    if(accountData.userId) {
       rootScope.dispatchEvent('user_auth', {
         dcID: accountData.dcId || 0,
         date: accountData.date || (Date.now() / 1000 | 0),

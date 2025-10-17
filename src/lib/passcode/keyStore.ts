@@ -22,8 +22,8 @@ export default class EncryptionKeyStore extends StaticUtilityClass {
     return base64Key;
   }
 
-  public static save(key: CryptoKey | null) {
-    this.key = key;
+  public static save(key?: CryptoKey) {
+    this.key = key || null;
     this.deferred?.resolve();
     this.deferred = undefined;
   }

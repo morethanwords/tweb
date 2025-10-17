@@ -86,6 +86,7 @@ const Row = (props: Partial<{
         onClick={typeof(props.clickable) !== 'boolean' && props.clickable}
         noRipple={!haveRipple()}
       >
+        {props.children}
         {store.title}
         {store.midtitle}
         {store.subtitle}

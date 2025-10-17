@@ -877,7 +877,7 @@ export class AppSidebarLeft extends SidebarSlider {
           } else {
             const otherManagers = createProxiedManagersForAccount(accountNumber);
             const accountData = await AccountController.get(accountNumber);
-            const peerId = accountData?.userId?.toPeerId();
+            const peerId = accountData.userId?.toPeerId();
             const user = await otherManagers.appUsersManager.getSelf();
 
             const content = document.createElement('span');

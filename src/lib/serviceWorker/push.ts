@@ -21,7 +21,7 @@ import {ServicePushPingTaskPayload} from './serviceMessagePort';
 import {CURRENT_ACCOUNT_QUERY_PARAM} from '../accounts/constants';
 import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import EncryptionKeyStore from '../passcode/keyStore';
-import base64ToBytes from '../../helpers/string/base64ToBytes';
+import pause from '../../helpers/schedulers/pause';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 const defaultBaseUrl = location.protocol + '//' + location.hostname + location.pathname.split('/').slice(0, -1).join('/') + '/';
@@ -31,8 +31,8 @@ const PING_PUSH_TIMEOUT = 10000 + 1500;
 let lastPingTime = 0;
 let localNotificationsAvailable = true;
 
-export type RawPushNotificationObject = {
-  p: string
+export type EncryptedPushNotificationObject = {
+  p: string | false
 };
 
 export type PushNotificationObject = {
@@ -57,7 +57,9 @@ export type PushNotificationObject = {
   user_id?: number // receiver user id
 } & { // will be set before postMessage to main thread
   action?: 'mute1d' | 'push_settings',
-  accountNumber: ActiveAccountNumber
+  accountNumber: ActiveAccountNumber,
+  p?: string,
+  keyIdBase64?: string
 };
 
 class SomethingGetter<T extends Database<any>, Storage extends Record<string, any>> {
@@ -126,7 +128,7 @@ type PushStorage = {
   push_lang: Partial<ServicePushPingTaskPayload['lang']>
   push_settings: Partial<ServicePushPingTaskPayload['settings']>
   push_accounts: ServicePushPingTaskPayload['accounts'],
-  push_secret: Uint8Array
+  push_keys_ids_base64: string[]
 };
 
 const defaults: PushStorage = {
@@ -138,7 +140,7 @@ const defaults: PushStorage = {
   },
   push_settings: {},
   push_accounts: {},
-  push_secret: new Uint8Array()
+  push_keys_ids_base64: []
 };
 
 const getter = new SomethingGetter<CommonDatabase, PushStorage>(getCommonDatabaseState(), 'session', defaults);
@@ -169,12 +171,12 @@ function handlePushNotificationObject(obj: PushNotificationObject) {
       muteUntil &&
       nowTime < muteUntil
     ) {
-      throw `supress notification because mute for ${Math.ceil((muteUntil - nowTime) / 60000)} min`;
+      throw `supress push notification because mute for ${Math.ceil((muteUntil - nowTime) / 60000)} min`;
     }
 
     const hasActiveWindows = (Date.now() - lastPingTime) <= PING_PUSH_TIMEOUT && localNotificationsAvailable;
     if(hasActiveWindows) {
-      throw 'supress notification because some instance is alive';
+      throw 'supress push notification because some instance is alive';
     }
 
     const notificationPromise = fireNotification(obj, settings, lang);
@@ -196,36 +198,68 @@ function handlePushNotificationObject(obj: PushNotificationObject) {
 }
 
 ctx.addEventListener('push', (event) => {
-  const obj: RawPushNotificationObject | PushNotificationObject = event.data.json();
+  const obj: EncryptedPushNotificationObject | PushNotificationObject = event.data.json();
   if(!('p' in obj)) {
     event.waitUntil(handlePushNotificationObject(obj));
     return;
   }
 
-  const key = getter.getCached('push_secret');
-  log('raw push', obj, key);
-  if(!key) {
-    log('no secret');
-    event.waitUntil(handlePushNotificationObject({
-      loc_key: '',
-      loc_args: [],
-      custom: {
-        msg_id: ''
-      },
-      random_id: 0,
-      description: '',
-      title: '',
-      mute: '0',
-      user_id: 0,
-      accountNumber: 1
-    }));
+  const emptyNotification: PushNotificationObject = {
+    loc_key: '',
+    loc_args: [],
+    custom: {
+      msg_id: ''
+    },
+    random_id: 0,
+    description: '',
+    title: '',
+    mute: '0',
+    user_id: 0,
+    accountNumber: 1
+  };
+
+  log('encrypted push', obj);
+
+  const {p} = obj;
+  if(!p) {
+    log('no p');
+    event.waitUntil(handlePushNotificationObject(emptyNotification));
     return;
   }
 
-  serviceMessagePort.invoke('decryptPush', {p: obj.p, secret: key});
+  const keysIdsBase64 = getter.getCached('push_keys_ids_base64');
+  const keyIndex = keysIdsBase64?.findIndex((key) => p.startsWith(key)) ?? -1;
+  if(keyIndex === -1) {
+    log('no key');
+    event.waitUntil(handlePushNotificationObject(emptyNotification));
+    return;
+  }
 
-  event.waitUntil(Promise.resolve());
+  const keyIdBase64 = keysIdsBase64[keyIndex];
+  emptyNotification.accountNumber = keyIndex + 1 as ActiveAccountNumber;
+  emptyNotification.p = p;
+  emptyNotification.keyIdBase64 = keyIdBase64;
+  event.waitUntil(
+    serviceMessagePort.invoke('decryptPush', {p, keyIdBase64}, undefined, undefined, undefined, 1000)
+    .catch((err) => {
+      log.error('decryptPush error', err);
+      return emptyNotification;
+    })
+    .then(handlePushNotificationObject)
+  );
 });
+
+async function isPasscodeLocked() {
+  return Promise.race([
+    pause(1000).then(() => undefined as boolean),
+    Promise.all([
+      DeferredIsUsingPasscode.isUsingPasscode(),
+      EncryptionKeyStore.get()
+    ]).then(([isUsingPasscode, encryptionKey]) => {
+      return isUsingPasscode && !encryptionKey;
+    })
+  ]);
+}
 
 ctx.addEventListener('notificationclick', (event) => {
   const notification = event.notification;
@@ -247,8 +281,9 @@ ctx.addEventListener('notificationclick', (event) => {
   const promise = Promise.all([
     ctx.clients.matchAll({type: 'window'}),
     getter.get('push_settings'),
-    getter.get('push_accounts')
-  ]).then(([clientList, settings, accounts]) => {
+    getter.get('push_accounts'),
+    isPasscodeLocked()
+  ]).then(([clientList, settings, accounts, isLocked]) => {
     data.action = action;
     for(const _accountNumber in accounts) { // * find correct account number for this notification
       const accountNumber = +_accountNumber as ActiveAccountNumber;
@@ -267,11 +302,15 @@ ctx.addEventListener('notificationclick', (event) => {
 
       // * verify account number
       const url = new URL(client.url);
-      if((url.searchParams.get(CURRENT_ACCOUNT_QUERY_PARAM) ?? 1) !== data.accountNumber) {
+      if((+url.searchParams.get(CURRENT_ACCOUNT_QUERY_PARAM) || 1) !== data.accountNumber) {
         continue;
       }
 
       client.focus();
+      if(isLocked) { // * wait until app is unlocked
+        return;
+      }
+
       serviceMessagePort.invokeVoid('pushClick', pendingNotification, client);
       pendingNotification = undefined;
       return;
@@ -343,12 +382,10 @@ export function closeAllNotifications(tag?: string) {
 }
 
 function userInvisibleIsSupported() {
-  return IS_FIREFOX;
+  return IS_FIREFOX || true;
 }
 
-function fireNotification(obj: PushNotificationObject, settings: PushStorage['push_settings'], lang: PushStorage['push_lang']) {
-  let title = obj.title || 'Telegram';
-  let body = obj.description || '';
+export function fillPushObject(obj: PushNotificationObject) {
   let peerId: string;
 
   if(obj.custom) {
@@ -362,6 +399,14 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
   }
 
   obj.custom.peerId = '' + peerId;
+  return obj;
+}
+
+function fireNotification(obj: PushNotificationObject, settings: PushStorage['push_settings'], lang: PushStorage['push_lang']) {
+  obj = fillPushObject(obj);
+  const peerId = obj.custom.peerId;
+  let title = obj.title || 'Telegram';
+  let body = obj.description || '';
   let tag = 'peer' + peerId;
 
   const messageKey = peerId + '_' + obj.custom.msg_id;
@@ -400,17 +445,17 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
 
   const notificationPromise = ctx.registration.showNotification(title, notificationOptions);
   return notificationPromise.catch((error) => {
-    log.error('Show notification promise', error);
+    log.error('show notification promise', error);
   });
 }
 
 export async function canSaveAccounts() {
-  const [isUsingPasscode, encryptionKey] = await Promise.all([
-    DeferredIsUsingPasscode.isUsingPasscode(),
-    EncryptionKeyStore.get()
+  const [isUsingPasscode/* , encryptionKey */] = await Promise.all([
+    DeferredIsUsingPasscode.isUsingPasscode()/* ,
+    EncryptionKeyStore.get() */
   ]);
   // * if no passcode or app is unlocked
-  return !isUsingPasscode || encryptionKey;
+  return !isUsingPasscode/*  || !!encryptionKey */;
 }
 
 export async function onPing(payload: ServicePushPingTaskPayload, source?: MessageEventSource) {
@@ -430,8 +475,13 @@ export async function onPing(payload: ServicePushPingTaskPayload, source?: Messa
     getter.set('push_settings', payload.settings);
   }
 
-  getter.set('push_accounts', (await canSaveAccounts() && payload.accounts) || defaults.push_accounts);
-  getter.set('push_secret', (await canSaveAccounts() && payload.secret) || defaults.push_secret);
+  const canSave = await canSaveAccounts();
+  getter.set('push_accounts', (canSave && payload.accounts) || defaults.push_accounts);
+  getter.set('push_keys_ids_base64', payload.keysIdsBase64 || defaults.push_keys_ids_base64);
+}
+
+export function onPushClosedWindows() {
+  lastPingTime = 0;
 }
 
 export function resetPushAccounts() {

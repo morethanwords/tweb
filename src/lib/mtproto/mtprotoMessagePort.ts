@@ -28,10 +28,8 @@ type MTProtoBroadcastEvent = {
 };
 
 export type ToggleUsingPasscodePayload = {
-  isUsingPasscode: true;
-  encryptionKey: CryptoKey;
-} | {
-  isUsingPasscode: false;
+  isUsingPasscode: boolean,
+  encryptionKey?: CryptoKey;
 };
 
 export default class MTProtoMessagePort<Master extends boolean = true> extends SuperMessagePort<{

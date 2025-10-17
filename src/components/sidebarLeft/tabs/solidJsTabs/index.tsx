@@ -118,7 +118,7 @@ export const AppPrivacyMessagesTab =
 export const AppNotificationsTab =
   scaffoldSolidJSTab({
     title: 'Telegram.NotificationSettingsViewController',
-    getComponentModule: () => import('../notificationsNew')
+    getComponentModule: () => import('../notifications')
   });
 
 

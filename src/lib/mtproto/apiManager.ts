@@ -250,7 +250,7 @@ export class ApiManager extends ApiManagerMethods {
     }
 
     const accountData = await AccountController.get(this.getAccountNumber());
-    const baseDcId = accountData?.dcId;
+    const baseDcId = accountData.dcId;
     if(!this.baseDcId) {
       if(!baseDcId) {
         this.setBaseDcId(App.baseDcId);
@@ -275,7 +275,7 @@ export class ApiManager extends ApiManagerMethods {
     }
 
     AccountController.update(this.getAccountNumber(), {
-      date:  (userAuth as UserAuth).date,
+      date: (userAuth as UserAuth).date,
       userId: (userAuth as UserAuth).id,
       dcId: (userAuth as UserAuth).dcID as TrueDcId
     });
@@ -313,7 +313,7 @@ export class ApiManager extends ApiManagerMethods {
 
     for(let dcId = 1; dcId <= 5; dcId++) {
       const key = `dc${dcId as TrueDcId}_auth_key` as const;
-      if(accountData?.[key]) {
+      if(accountData[key]) {
         logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId, ignoreErrors: true}));
       }
     }
@@ -461,7 +461,9 @@ export class ApiManager extends ApiManagerMethods {
     const ss: DcServerSalt = `dc${dcId}_server_salt` as any;
 
     let transport = this.chooseServer(dcId, connectionType, transportType);
-    return this.gettingNetworkers[getKey] = AccountController.get(this.getAccountNumber()).then((accountData) => [accountData?.[ak], accountData?.[ss]] as const)
+    return this.gettingNetworkers[getKey] = AccountController
+    .get(this.getAccountNumber())
+    .then((accountData) => [accountData[ak], accountData[ss]] as const)
     .then(async([authKeyHex, serverSaltHex]) => {
       let networker: MTPNetworker, error: any, onTransport: () => Promise<any>;
       let permanent: {authKey?: MTAuthKey, serverSalt?: Uint8Array}, temporary: typeof permanent;

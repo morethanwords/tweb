@@ -53,14 +53,14 @@ Button.Corner = (props: Partial<{
   );
 };
 
-Button.Icon = (props: Partial<{
+Button.Icon = (props: {icon: Icon} & Partial<{
   ref: Ref<HTMLElement>,
   children: JSX.Element,
   onClick: (e: MouseEvent) => void,
   class: string
 }>) => {
   return (
-    <Button {...props} class={classNames('btn-icon', props.class)} tabIndex={-1} />
+    <Button {...props} class={classNames('btn-icon', props.icon, props.class)} tabIndex={-1} />
   )
 };
 

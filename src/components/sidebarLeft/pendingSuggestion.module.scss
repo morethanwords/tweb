@@ -5,6 +5,15 @@
   order: 0;
   // padding: 0 .5rem;
   // margin: .5rem 0;
+
+  // interpolate-size: allow-keywords;
+  // height: 0;
+  // overflow: hidden;
+  // transition: height 200ms ease-in-out;
+
+  // &.shown {
+  //   height: max-content;
+  // }
 }
 
 .suggestion {
@@ -19,12 +28,20 @@
     line-height: var(--line-height-16);
   }
 
+  &Container {
+    overflow: hidden;
+  }
+
   &.danger {
     background-color: rgba(var(--danger-color-rgb), $hover-alpha);
 
     .suggestionTitle {
       color: var(--danger-color);
     }
+  }
+
+  &.secondary {
+    background-color: rgba(var(--secondary-text-color-rgb), $hover-alpha);
   }
 }
 
@@ -41,6 +58,15 @@
     width: 1.5rem;
     height: 1.5rem;
   }
+}
+
+.close {
+  font-size: 1.0625rem;
+  padding: .375rem;
+  position: absolute;
+  inset-inline-end: .25rem;
+  top: .25rem;
+  z-index: 1;
 }
 
 // .container {

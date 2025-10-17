@@ -5,36 +5,66 @@
  */
 
 import safePlay from './dom/safePlay';
+import deepEqual from './object/deepEqual';
+import tsNow from './tsNow';
 
 const ASSETS_PATH = 'assets/audio/';
 
-export default class AudioAssetPlayer<AssetName extends string> {
+type PlayOptions<AssetMap extends Record<string, string>> = {
+  name: keyof AssetMap,
+  loop?: boolean,
+  volume?: number
+};
+
+export default class AudioAssetPlayer<AssetMap extends Record<string, string>> {
+  private static container: HTMLElement;
   private audio: HTMLAudioElement;
   private tempId: number;
-  private assetName: AssetName;
+  private assetName: keyof AssetMap;
+  private lastOptions: PlayOptions<AssetMap>;
+  private nextAt: number;
 
-  constructor(private assets: AssetName[]) {
+  constructor(private assets: AssetMap) {
     this.tempId = 0;
+
+    if(!AudioAssetPlayer.container) {
+      AudioAssetPlayer.container = document.createElement('div');
+      AudioAssetPlayer.container.id = 'audio-asset-player';
+      document.body.append(AudioAssetPlayer.container);
+    }
   }
 
-  public playSound(name: AssetName, loop = false) {
+  public play(options: PlayOptions<AssetMap>) {
     ++this.tempId;
-    this.assetName = name;
+    this.assetName = options.name;
+    this.lastOptions = options;
 
     try {
       const audio = this.createAudio();
       audio.autoplay = true;
-      audio.src = ASSETS_PATH + name;
-      audio.loop = loop;
+      audio.src = ASSETS_PATH + this.assets[options.name];
+      audio.loop = options.loop ?? false;
+      audio.volume = options.volume ?? 1;
+      AudioAssetPlayer.container.append(audio);
       safePlay(audio);
     } catch(e) {
       console.error('playSound', name, e);
     }
   }
 
-  public playSoundIfDifferent(name: AssetName, loop?: boolean) {
-    if(this.assetName !== name) {
-      this.playSound(name, loop);
+  public playWithThrottle(options: PlayOptions<AssetMap>, throttle: number) {
+    const now = tsNow();
+    if(this.nextAt && now < this.nextAt && deepEqual(this.lastOptions, options)) {
+      return;
+    }
+
+    this.nextAt = now + throttle;
+    this.play(options);
+  }
+
+  public playIfDifferent(options: PlayOptions<AssetMap>) {
+    if(this.assetName !== options.name) {
+      this.play(options);
     }
   }
 
@@ -49,7 +79,7 @@ export default class AudioAssetPlayer<AssetName extends string> {
     return audio;
   }
 
-  public stopSound() {
+  public stop() {
     if(!this.audio) {
       return;
     }
@@ -61,7 +91,7 @@ export default class AudioAssetPlayer<AssetName extends string> {
     ++this.tempId;
   }
 
-  public playSoundWithTimeout(name: AssetName, loop: boolean, timeout: number) {
+  public playWithTimeout(options: PlayOptions<AssetMap>, timeout: number) {
     // timeout = 0;
     const tempId = ++this.tempId;
     setTimeout(() => {
@@ -69,7 +99,7 @@ export default class AudioAssetPlayer<AssetName extends string> {
         return;
       }
 
-      this.playSound(name, loop);
+      this.play(options);
     }, timeout);
   }
 }

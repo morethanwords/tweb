@@ -13,10 +13,9 @@ import type FiltersStorage from '../lib/storages/filters';
 import type {AuthState, Modify} from '../types';
 import {IS_MOBILE} from '../environment/userAgent';
 import getTimeFormat from '../helpers/getTimeFormat';
-import {nextRandomUint} from '../helpers/random';
 import App from './app';
-import {MTAppConfig} from '../lib/mtproto/appConfig';
-import {ShortcutKey as PasscodeLockShortcutKey} from '../components/sidebarLeft/tabs/passcodeLock/shortcutBuilder';
+import type {MTAppConfig} from '../lib/mtproto/appConfig';
+import type {ShortcutKey as PasscodeLockShortcutKey} from '../components/sidebarLeft/tabs/passcodeLock/shortcutBuilder';
 
 const STATE_VERSION = App.version;
 const BUILD = App.build;
@@ -78,7 +77,14 @@ export type StateSettings = {
   themes: AppTheme[],
   theme: AppTheme['name'],
   notifications: {
-    sound: boolean
+    sound: boolean,
+    push: boolean,
+    desktop: boolean,
+    sentMessageSound: boolean,
+    suggested: boolean,
+    volume: number, // [0..1]
+    novibrate?: boolean,
+    nopreview?: boolean
   },
   nightTheme?: boolean, // ! DEPRECATED
   timeFormat: 'h12' | 'h23',
@@ -309,7 +315,12 @@ export const SETTINGS_INIT: StateSettings = {
   ],
   theme: 'system',
   notifications: {
-    sound: false
+    sound: false,
+    push: true,
+    desktop: true,
+    sentMessageSound: true,
+    suggested: false,
+    volume: 0.5
   },
   timeFormat: getTimeFormat(),
   liteMode: {

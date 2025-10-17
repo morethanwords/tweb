@@ -11,7 +11,6 @@
 
 import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoMessagePort';
-import sessionStorage from '../sessionStorage';
 import Schema from './schema';
 import {NetworkerFactory} from './networkerFactory';
 import {logger, LogTypes} from '../logger';
@@ -44,6 +43,7 @@ import makeError from '../../helpers/makeError';
 import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
 import safeAssign from '../../helpers/object/safeAssign';
 import {MTAuthKey} from './authorizer';
+import {MessageKeyUtils} from './messageKeyUtils';
 
 // console.error('networker included!', new Error().stack);
 
@@ -904,7 +904,7 @@ export default class MTPNetworker {
 
   private async getBaseDcId() {
     const accountData = await AccountController.get(this.accountNumber);
-    return accountData?.dcId;
+    return accountData.dcId;
   }
 
   public attachPromise(promise: Promise<any>, message: MTMessage) {
@@ -1030,66 +1030,6 @@ export default class MTPNetworker {
     log('push', sentMessage, delay);
 
     this.scheduleRequest(delay);
-  }
-
-  private async getMsgKey(dataWithPadding: Uint8Array, isOut: boolean, v1?: boolean) {
-    if(v1) {
-      const hash = await CryptoWorker.invokeCrypto('sha1', dataWithPadding);
-      return hash.subarray(4, 4 + 16);
-    }
-
-    const x = isOut ? 0 : 8;
-    const msgKeyLargePlain = bufferConcats(this.authKey.key.subarray(88 + x, 88 + x + 32), dataWithPadding);
-
-    const msgKeyLarge = await CryptoWorker.invokeCrypto('sha256', msgKeyLargePlain);
-    const msgKey = new Uint8Array(msgKeyLarge).subarray(8, 24);
-    return msgKey;
-  };
-
-  private async getAesKeyIv(msgKey: Uint8Array, isOut: boolean, v1?: boolean): Promise<[Uint8Array, Uint8Array]> {
-    const authKey = (v1 ? this.permAuthKey : this.authKey).key;
-    const x = isOut ? 0 : 8;
-    if(v1) {
-      const [sha1a, sha1b, sha1c, sha1d] = await Promise.all([
-        CryptoWorker.invokeCrypto('sha1', bufferConcats(msgKey, authKey.subarray(x, x + 32))),
-        CryptoWorker.invokeCrypto('sha1', bufferConcats(authKey.subarray(32 + x, 32 + x + 16), msgKey, authKey.subarray(48 + x, 48 + x + 16))),
-        CryptoWorker.invokeCrypto('sha1', bufferConcats(authKey.subarray(64 + x, 64 + x + 32), msgKey)),
-        CryptoWorker.invokeCrypto('sha1', bufferConcats(msgKey, authKey.subarray(96 + x, 96 + x + 32)))
-      ]);
-
-      const aesKey = bufferConcats(sha1a.subarray(0, 0 + 8), sha1b.subarray(8, 8 + 12), sha1c.subarray(4, 4 + 12));
-      const aesIv = bufferConcats(sha1a.subarray(8, 8 + 12), sha1b.subarray(0, 0 + 8), sha1c.subarray(16, 16 + 4), sha1d.subarray(0, 0 + 8));
-      return [aesKey, aesIv];
-    }
-
-    const sha2aText = new Uint8Array(52);
-    const sha2bText = new Uint8Array(52);
-    const promises: Array<Promise<Uint8Array>> = [];
-
-    sha2aText.set(msgKey, 0);
-    sha2aText.set(authKey.subarray(x, x + 36), 16);
-    promises.push(CryptoWorker.invokeCrypto('sha256', sha2aText));
-
-    sha2bText.set(authKey.subarray(40 + x, 40 + x + 36), 0);
-    sha2bText.set(msgKey, 36);
-    promises.push(CryptoWorker.invokeCrypto('sha256', sha2bText));
-
-    const results = await Promise.all(promises);
-
-    const aesKey = new Uint8Array(32);
-    const aesIv = new Uint8Array(32);
-    const sha2a = new Uint8Array(results[0]);
-    const sha2b = new Uint8Array(results[1]);
-
-    aesKey.set(sha2a.subarray(0, 8));
-    aesKey.set(sha2b.subarray(8, 24), 8);
-    aesKey.set(sha2a.subarray(24, 32), 24);
-
-    aesIv.set(sha2b.subarray(0, 8));
-    aesIv.set(sha2a.subarray(8, 24), 8);
-    aesIv.set(sha2b.subarray(24, 32), 24);
-
-    return [aesKey, aesIv];
   }
 
   public isStopped() {
@@ -1306,20 +1246,47 @@ export default class MTPNetworker {
   }
 
   private async getEncryptedMessage(dataWithPadding: Uint8Array, padding: number, v1?: boolean) {
-    const msgKey = await this.getMsgKey(padding && v1 ? dataWithPadding.subarray(0, -padding) : dataWithPadding, true, v1);
-    const keyIv = await this.getAesKeyIv(msgKey, true, v1);
-    const encryptedBytes = await CryptoWorker.invokeCrypto('aes-encrypt', dataWithPadding, keyIv[0], keyIv[1]);
+    const msgKey = await MessageKeyUtils.getMsgKey(
+      this.authKey.key,
+      padding && v1 ? dataWithPadding.subarray(0, -padding) : dataWithPadding,
+      false,
+      v1
+    );
+
+    const messageKeyData = await MessageKeyUtils.getAesKeyIv(
+      (v1 ? this.permAuthKey : this.authKey).key,
+      msgKey,
+      false,
+      v1
+    );
+
+    const encryptedBytes = await CryptoWorker.invokeCrypto(
+      'aes-encrypt',
+      dataWithPadding,
+      messageKeyData.aesKey,
+      messageKeyData.aesIv
+    );
 
     return {
       bytes: encryptedBytes,
       msgKey,
-      keyIv
+      messageKeyData
     };
   }
 
   private async getDecryptedMessage(msgKey: Uint8Array, encryptedData: Uint8Array) {
-    const keyIv = await this.getAesKeyIv(msgKey, false);
-    return CryptoWorker.invokeCrypto('aes-decrypt', encryptedData, keyIv[0], keyIv[1]);
+    const messageKeyData = await MessageKeyUtils.getAesKeyIv(
+      this.authKey.key,
+      msgKey,
+      true
+    );
+
+    return CryptoWorker.invokeCrypto(
+      'aes-decrypt',
+      encryptedData,
+      messageKeyData.aesKey,
+      messageKeyData.aesIv
+    );
   }
 
   private async getEncryptedOutput(message: MTMessage, v1?: boolean) {
@@ -1435,7 +1402,7 @@ export default class MTPNetworker {
 
     const dataWithPadding = await this.getDecryptedMessage(msgKey, encryptedData);
     // this.log('after decrypt')
-    const calcMsgKey = await this.getMsgKey(dataWithPadding, false);
+    const calcMsgKey = await MessageKeyUtils.getMsgKey(this.authKey.key, dataWithPadding, true);
     if(!bytesCmp(msgKey, calcMsgKey)) {
       this.log.warn('[MT] msg_keys', msgKey, calcMsgKey);
       this.updateSession(); // fix 28.01.2020

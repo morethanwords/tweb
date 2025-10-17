@@ -1,4 +1,4 @@
-import {createRoot} from 'solid-js';
+import {createRoot, untrack} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {State, StateSettings} from '../config/state';
 import rootScope from '../lib/rootScope';
@@ -11,7 +11,7 @@ const setAppSettings: typeof _setAppSettings = (...args: any[]) => {
   // @ts-ignore
   _setAppSettings(...args);
   // @ts-ignore
-  rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', key), unwrap(appSettings[key]));
+  rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', key), unwrap(untrack(() => appSettings[key])));
 };
 
 const setAppSettingsSilent = (key: any, value?: any) => {

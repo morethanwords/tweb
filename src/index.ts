@@ -541,7 +541,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
         import('./lib/mtproto/webPushApiManager')
       ]).then(([meModule, pushModule]) => {
         meModule.default.setAuthorized(false);
-        pushModule.default.forceUnsubscribe();
+        pushModule.default.unsubscribe();
       });
     } catch(err) {
 

@@ -144,7 +144,7 @@ port.addMultipleEventsListeners({
 
   toggleUsingPasscode: async(payload, source) => {
     DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
-    EncryptionKeyStore.save(payload.isUsingPasscode ? payload.encryptionKey : null);
+    EncryptionKeyStore.save(payload.encryptionKey);
 
     await Promise.all([
       AppStorage.toggleEncryptedForAll(payload.isUsingPasscode),

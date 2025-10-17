@@ -152,18 +152,15 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   );
 
   private async loadFromIDB() {
-    try
-    {
+    try {
       const storageData = await this.storage.get(EncryptedStorageLayer.STORAGE_KEY);
 
-      if(storageData === null) throw null;
+      if(storageData === null || storageData === undefined) throw null;
       if(!(storageData instanceof Uint8Array)) throw new Error('Stored data in encrypted store is not a Uint8Array'); // Should not happen but anyway))
 
       const decrypted = await EncryptedStorageLayer.decrypt(storageData);
       this.data = decrypted;
-    }
-    catch(error)
-    {
+    } catch(error) {
       if(error) this.log(error);
       this.data = {};
     }

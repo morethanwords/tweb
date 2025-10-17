@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getCallAudioAsset, {CallAudioAssetName} from '../../components/call/getAudioAsset';
+import getCallAudioAsset from '../../components/call/getAudioAsset';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import IS_CALL_SUPPORTED from '../../environment/callSupport';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
@@ -32,7 +32,7 @@ export class CallsController extends EventListenerBase<{
 }> {
   private log: ReturnType<typeof logger>;
   private managers: AppManagers;
-  private audioAsset: AudioAssetPlayer<CallAudioAssetName>;
+  private audioAsset: ReturnType<typeof getCallAudioAsset>;
   private instances: Map<CallId, CallInstance>;
   private sortedInstances: Array<CallInstance>;
   private tempId: number;
@@ -183,22 +183,22 @@ export class CallsController extends EventListenerBase<{
       if(currentCall === call || !currentCall) {
         if(state === CALL_STATE.CLOSED) {
           if(!call.isOutgoing && !call.wasTryingToJoin) { // incoming call has been accepted on other device or ended
-            this.audioAsset.stopSound();
+            this.audioAsset.stop();
           } else if(call.wasTryingToJoin && !hasConnected) { // something has happened during the key exchanging
-            this.audioAsset.playSound('voip_failed.mp3');
+            this.audioAsset.play({name: 'failed'});
           } else {
-            this.audioAsset.playSound(call.discardReason._ === 'phoneCallDiscardReasonBusy' ? 'call_busy.mp3' : 'call_end.mp3');
+            this.audioAsset.play(call.discardReason._ === 'phoneCallDiscardReasonBusy' ? {name: 'busy'} : {name: 'end'});
           }
         } else if(state === CALL_STATE.PENDING) {
-          this.audioAsset.playSound(call.isOutgoing ? 'call_outgoing.mp3' : 'call_incoming.mp3', true);
+          this.audioAsset.play({name: call.isOutgoing ? 'outgoing' : 'incoming', loop: true});
         } else if(state === CALL_STATE.EXCHANGING_KEYS) {
-          this.audioAsset.playSoundIfDifferent('call_connect.mp3');
+          this.audioAsset.playIfDifferent({name: 'connect'});
         } else if(state === CALL_STATE.CONNECTING) {
           if(call.duration) {
-            this.audioAsset.playSound('voip_connecting.mp3', true);
+            this.audioAsset.play({name: 'connect', loop: true});
           }
         } else {
-          this.audioAsset.stopSound();
+          this.audioAsset.stop();
         }
       }
     });

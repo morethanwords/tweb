@@ -1,5 +1,4 @@
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import randomize from '../../helpers/array/randomize';
 import deepEqual from '../../helpers/object/deepEqual';
 import base64ToBytes from '../../helpers/string/base64ToBytes';
 import {AccountRegisterDevice, AccountUnregisterDevice} from '../../layer';
@@ -9,11 +8,24 @@ import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import CryptoWorker from '../crypto/cryptoMessagePort';
 import type {PushSubscriptionNotify} from './webPushApiManager';
 import bytesCmp from '../../helpers/bytes/bytesCmp';
+import {MessageKeyUtils} from './messageKeyUtils';
+import {TLDeserialization} from './tl_utils';
+import type {PushNotificationObject} from '../serviceWorker/push';
+import {ActiveAccountNumber} from '../accounts/types';
+import bytesToBase64 from '../../helpers/bytes/bytesToBase64';
+import AccountController from '../accounts/accountController';
+import bytesFromHex from '../../helpers/bytes/bytesFromHex';
+
+export type PushKey = {
+  key: Uint8Array,
+  id: Uint8Array,
+  idBase64?: string
+};
 
 export class PushSingleManager {
   private log: ReturnType<typeof logger>;
   private registeredDevice: PushSubscriptionNotify;
-  private secret: Promise<Uint8Array>;
+  private keys: Promise<PushKey[]>;
   public name: string;
 
   constructor() {
@@ -21,18 +33,38 @@ export class PushSingleManager {
     this.name = 'pushSingleManager';
   }
 
-  private generateSecret(isUsingPasscode: boolean) {
-    return isUsingPasscode ? randomize(new Uint8Array(256)) : new Uint8Array();
-  }
-
-  public getSecret() {
-    return this.secret ??= DeferredIsUsingPasscode.isUsingPasscode().then((isUsingPasscode) => {
-      return this.generateSecret(isUsingPasscode);
+  private getKeys(): Promise<PushKey[]> {
+    return this.keys ??= Promise.all([
+      DeferredIsUsingPasscode.isUsingPasscode(),
+      this.getLoggedInAccounts()
+    ]).then(([isUsingPasscode, accounts]) => {
+      return Promise.all(accounts.map(({accountNumber}) => {
+        return this.getKeyForAccountNumber(accountNumber, isUsingPasscode);
+      }));
     });
   }
 
+  private async getKeyForAccountNumber(accountNumber: ActiveAccountNumber, isUsingPasscode: boolean): Promise<PushKey> {
+    const accountData = await AccountController.get(accountNumber);
+    const key = isUsingPasscode ? bytesFromHex(accountData.push_key) : new Uint8Array();
+    const keyHash = key.length ? await CryptoWorker.invokeCrypto('sha1', key) : new Uint8Array(),
+      keyId = keyHash.slice(-8);
+
+    // * slice last character because key is not divisible by 3
+    // * this way we can easily compare base64 strings
+    const keyIdBase64 = bytesToBase64(keyId)
+    .replace(/=+$/, '')
+    .slice(0, -1);
+
+    return {key: key, id: keyId, idBase64: keyIdBase64};
+  }
+
+  public getKeysIdsBase64(): Promise<string[]> {
+    return this.getKeys().then((keys) => keys.map((key) => key.idBase64));
+  }
+
   public onIsUsingPasscodeChange(isUsingPasscode: boolean) {
-    this.secret = undefined;
+    this.keys = undefined;
     if(this.registeredDevice) {
       this.registerDevice(this.registeredDevice, true);
     }
@@ -42,15 +74,25 @@ export class PushSingleManager {
     return !!this.registeredDevice;
   }
 
-  private async getLoggedInManagers() {
+  private async getLoggedInAccounts() {
     const managersByAccount = await appManagersManager.getManagersByAccount();
-    const out: Map<UserId, typeof managersByAccount[keyof typeof managersByAccount]> = new Map();
-    Object.values(managersByAccount).forEach((managers) => {
+    const out: {
+      accountNumber: ActiveAccountNumber,
+      userId: UserId,
+      managers: typeof managersByAccount[keyof typeof managersByAccount]
+    }[] = [];
+
+    Object.values(managersByAccount).forEach((managers, idx) => {
       const peerId = managers.appPeersManager.peerId;
       if(!!peerId) {
-        out.set(peerId.toUserId(), managers);
+        out.push({
+          accountNumber: idx + 1 as ActiveAccountNumber,
+          userId: peerId.toUserId(),
+          managers
+        });
       }
     });
+
     return out;
   }
 
@@ -63,8 +105,8 @@ export class PushSingleManager {
       return false;
     }
 
-    const [managers, secret] = await Promise.all([this.getLoggedInManagers(), this.getSecret()]);
-    const userIds = [...managers.keys()];
+    const [accounts, keys] = await Promise.all([this.getLoggedInAccounts(), this.getKeys()]);
+    const userIds = accounts.map((account) => account.userId);
 
     this.registeredDevice = tokenData;
     this.log('register device', this.registeredDevice, tokenData, userIds);
@@ -74,12 +116,15 @@ export class PushSingleManager {
       token: tokenData.tokenValue,
       other_uids: userIds,
       app_sandbox: false,
-      secret,
+      secret: undefined,
       no_muted: true
     };
 
-    const promises = [...managers.values()].map((managers) => {
-      return managers.apiManager.invokeApi('account.registerDevice', params)/* .then(() => {
+    const promises = accounts.map(async({managers}, idx) => {
+      return managers.apiManager.invokeApi('account.registerDevice', {
+        ...params,
+        secret: keys[idx].key
+      })/* .then(() => {
         return managers.apiManager.invokeApi('account.updateDeviceLocked', {
           period: 5
         });
@@ -95,12 +140,12 @@ export class PushSingleManager {
   }
 
   public async unregisterDevice(tokenData: PushSubscriptionNotify) {
-    if(!this.registeredDevice) {
+    if(!this.registeredDevice || !tokenData) {
       return;
     }
 
-    const managers = await this.getLoggedInManagers();
-    const userIds = [...managers.keys()];
+    const accounts = await this.getLoggedInAccounts();
+    const userIds = accounts.map((account) => account.userId);
 
     this.registeredDevice = undefined;
     this.log('unregister device', tokenData);
@@ -111,7 +156,7 @@ export class PushSingleManager {
       other_uids: userIds
     };
 
-    const promises = [...managers.values()].map((managers) => {
+    const promises = accounts.map(({managers}) => {
       return managers.apiManager.invokeApi('account.unregisterDevice', params);
     });
 
@@ -124,20 +169,41 @@ export class PushSingleManager {
   }
 
   // * https://github.com/DrKLO/Telegram/blob/3708e9847a96ed681ff811d391749cc4535b03f2/TMessagesProj/src/main/java/org/telegram/messenger/GcmPushListenerService.java#L56
-  public async decryptPush(pString: string, authKey: Uint8Array) {
-    const bytes = base64ToBytes(pString);
-    const authKeyHash = await CryptoWorker.invokeCrypto('sha1', authKey),
-      authKeyAux = authKeyHash.slice(0, 8),
-      authKeyId = authKeyHash.slice(-8);
-
-    const inAuthKeyId = bytes.slice(0, 8);
-    if(!bytesCmp(inAuthKeyId, authKeyId)) {
-      throw new Error('Invalid auth key id');
+  public async decryptPush(pString: string, idBase64: string): Promise<PushNotificationObject> {
+    const pushKey = await this.getKeys().then((keys) => keys.find((key) => key.idBase64 === idBase64));
+    if(!pushKey) {
+      throw new Error('no push key found');
     }
 
-    const messageKey = bytes.slice(8, 8 + 16);
+    const {key: authKey, id: authKeyId} = pushKey;
+    const bytes = base64ToBytes(pString);
+    let deserializer = new TLDeserialization(bytes);
 
-    return {};
+    const inAuthKeyId = deserializer.fetchIntBytes(64, true, 'auth_key_id');
+    if(!bytesCmp(inAuthKeyId, authKeyId)) {
+      throw new Error('invalid auth key id');
+    }
+
+    const messageKey = deserializer.fetchIntBytes(128, true, 'msg_key');
+    const messageKeyData = await MessageKeyUtils.getAesKeyIv(authKey, messageKey, true);
+
+    const decrypted = await CryptoWorker.invokeCrypto(
+      'aes-decrypt',
+      bytes.slice(deserializer.getOffset()),
+      messageKeyData.aesKey,
+      messageKeyData.aesIv
+    );
+
+    const calcMessageKey = await MessageKeyUtils.getMsgKey(authKey, decrypted, true);
+    if(!bytesCmp(messageKey, calcMessageKey)) {
+      throw new Error('server messageKey mismatch');
+    }
+
+    deserializer = new TLDeserialization(decrypted);
+    const length = deserializer.fetchInt('length');
+    const data = deserializer.fetchStringWithLength(length, 'data');
+
+    return JSON.parse(data);
   }
 }
 

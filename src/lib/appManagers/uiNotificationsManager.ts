@@ -39,6 +39,11 @@ import createNotificationImage from '../../helpers/createNotificationImage';
 import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
 import {FOLDER_ID_ALL} from '../mtproto/mtproto_config';
 import PasscodeLockScreenController from '../../components/passcodeLock/passcodeLockScreenController';
+import {StateSettings} from '../../config/state';
+import {useAppSettings} from '../../stores/appSettings';
+import {unwrap} from 'solid-js/store';
+import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
+import {createEffect, on} from 'solid-js';
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -56,14 +61,7 @@ export type NotifyOptions = Partial<{
   noIncrement: boolean;
 }>;
 
-export type NotificationSettings = {
-  nodesktop: boolean,
-  volume: number,
-  novibrate: boolean,
-  nopreview: boolean,
-  nopush: boolean,
-  nosound: boolean
-};
+export type NotificationSettings = StateSettings['notifications'];
 
 const SHOW_NOTIFICATIONS_FOR_OTHER_ACCOUNT = false;
 
@@ -77,8 +75,6 @@ export class UiNotificationsManager {
   private notificationIndex: number;
   private soundsPlayed: {[tag: string]: number};
   private vibrateSupport: boolean;
-  private nextSoundAt: number;
-  private prevSoundVolume: number;
 
   private faviconElements: HTMLLinkElement[];
 
@@ -87,21 +83,23 @@ export class UiNotificationsManager {
   private titleMiddlewareHelper: MiddlewareHelper;
   private prevFavicon: string;
 
-  private notifySoundEl: HTMLElement;
-
   private stopped: boolean;
 
   private topMessagesDeferred: CancellablePromise<void>;
-
-  private settings: NotificationSettings;
-
-  private pushInited: boolean;
 
   private setAppBadge: (contents?: any) => Promise<void>;
 
   private log: ReturnType<typeof logger>;
 
   public accounts: Map<ActiveAccountNumber, Account>;
+
+  private audioAssetPlayer: AudioAssetPlayer<Record<'notification', string>>;
+
+  private appSettings: StateSettings;
+
+  private get settings() {
+    return this.appSettings.notifications;
+  }
 
   public async getNotificationsCountForAllAccounts(): Promise<Partial<Record<ActiveAccountNumber, number>>> {
     return (await commonStateStorage.get('notificationsCount', false)) || {};
@@ -163,17 +161,9 @@ export class UiNotificationsManager {
     this.titleChanged = false;
     this.titleMiddlewareHelper = getMiddleware();
 
-    this.notifySoundEl = document.createElement('div');
-    this.notifySoundEl.id = 'notify-sound';
-    document.body.append(this.notifySoundEl);
-
     this.stopped = true;
 
     this.topMessagesDeferred = deferredPromise<void>();
-
-    this.settings = {} as any;
-
-    this.pushInited = false;
 
     this.setAppBadge = (navigator as any).setAppBadge?.bind(navigator);
     this.setAppBadge?.(0);
@@ -181,6 +171,12 @@ export class UiNotificationsManager {
     this.log = logger('NOTIFICATIONS');
 
     this.accounts = new Map();
+
+    this.audioAssetPlayer = new AudioAssetPlayer({
+      notification: 'notification.mp3'
+    });
+
+    this.appSettings = useAppSettings()[0];
 
     // * set listeners
 
@@ -202,31 +198,19 @@ export class UiNotificationsManager {
       });
     }
 
-    webPushApiManager.addEventListener('push_init', (tokenData) => {
-      this.pushInited = true;
-      if(!this.settings.nodesktop && !this.settings.nopush) {
-        if(tokenData) {
-          apiManagerProxy.pushSingleManager.registerDevice(tokenData);
-        } else {
-          webPushApiManager.subscribe();
-        }
-      } else {
-        apiManagerProxy.pushSingleManager.unregisterDevice(tokenData);
-      }
-    });
-    webPushApiManager.addEventListener('push_subscribe', (tokenData) => {
-      apiManagerProxy.pushSingleManager.registerDevice(tokenData);
-    });
-    webPushApiManager.addEventListener('push_unsubscribe', (tokenData) => {
-      apiManagerProxy.pushSingleManager.unregisterDevice(tokenData);
-    });
+    createEffect(on(() => this.settings.push, this.onPushConditionsChange));
 
     rootScope.addEventListener('dialogs_multiupdate', () => {
       // unregisterTopMsgs()
       this.topMessagesDeferred.resolve();
     }, {once: true});
 
-    webPushApiManager.addEventListener('push_notification_click', (notificationData) => {
+    webPushApiManager.addEventListener('push_notification_click', async(notificationData) => {
+      if(notificationData.p) { // * decrypt push notification
+        notificationData = await apiManagerProxy.pushSingleManager.decryptPush(notificationData.p, notificationData.keyIdBase64);
+        notificationData = await apiManagerProxy.serviceMessagePort.invoke('fillPushObject', notificationData);
+      }
+
       if(notificationData.action === 'push_settings') {
         /* this.topMessagesDeferred.then(() => {
           $modal.open({
@@ -239,21 +223,11 @@ export class UiNotificationsManager {
         return;
       }
 
-      if(notificationData.action === 'mute1d') {
-        [...this.accounts.values()].map(({managers}) => {
-          return managers.apiManager.invokeApi('account.updateDeviceLocked', {
-            period: 86400
-          });
-        });
-
-        // toastNew({
-        //   langPackKey: 'PushNotification.Action.Mute1d.Success'
-        // });
-
-        return;
-      }
-
-      if(notificationData.accountNumber !== getCurrentAccount()) {
+      // * can be undefined if push is decrypted here
+      if(
+        notificationData.accountNumber !== undefined &&
+        notificationData.accountNumber !== getCurrentAccount()
+      ) {
         return;
       }
 
@@ -287,6 +261,23 @@ export class UiNotificationsManager {
       });
     });
   }
+
+  public onPushConditionsChange = async() => {
+    const needPush = this.settings.push &&
+      webPushApiManager.isAvailable &&
+      Notification.permission === 'granted';
+
+    let tokenData = await webPushApiManager.getSubscription();
+    if(needPush) {
+      tokenData ||= await webPushApiManager.subscribe();
+      if(tokenData) {
+        apiManagerProxy.pushSingleManager.registerDevice(tokenData);
+      }
+    } else if(tokenData) {
+      webPushApiManager.unsubscribe();
+      apiManagerProxy.pushSingleManager.unregisterDevice(tokenData);
+    }
+  };
 
   public async buildNotificationQueue(options: Parameters<UiNotificationsManager['buildNotification']>[0]) {
     this.notificationsQueue.push({
@@ -508,9 +499,9 @@ export class UiNotificationsManager {
       return false;
     }
 
-    if('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-      window.addEventListener('click', this.requestPermission);
-    }
+    // if('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+    //   window.addEventListener('click', this.requestPermission);
+    // }
 
     try {
       if('onbeforeunload' in window) {
@@ -658,7 +649,7 @@ export class UiNotificationsManager {
     this.notificationsShown[key] = true;
 
     const now = tsNow();
-    if(this.settings.volume > 0 && !this.settings.nosound/* &&
+    if(this.settings.volume > 0 && this.settings.sound/* &&
       (
         !data.tag ||
         !this.soundsPlayed[data.tag] ||
@@ -674,7 +665,7 @@ export class UiNotificationsManager {
       return;
     }
 
-    if(this.settings.nodesktop) {
+    if(!this.settings.desktop) {
       if(this.vibrateSupport && !this.settings.novibrate) {
         navigator.vibrate([200, 100, 200]);
         return;
@@ -755,35 +746,9 @@ export class UiNotificationsManager {
     return true;
   }
 
-  public updateLocalSettings = () => {
-    const keys = ['notify_nodesktop', 'notify_volume', 'notify_novibrate', 'notify_nopreview', 'notify_nopush'];
-    const promises = keys.map(() => undefined as any);
-    // const promises = keys.map((k) => stateStorage.get(k as any));
-    Promise.all(promises)
-    .then(async(updSettings) => {
-      this.settings.nodesktop = updSettings[0];
-      this.settings.volume = updSettings[1] === undefined ? 0.5 : updSettings[1];
-      this.settings.novibrate = updSettings[2];
-      this.settings.nopreview = updSettings[3];
-      this.settings.nopush = updSettings[4];
-
-      if(this.pushInited) {
-        const needPush = !this.settings.nopush && !this.settings.nodesktop && webPushApiManager.isAvailable || false;
-        const hasPush = await apiManagerProxy.pushSingleManager.isRegistered();
-        if(needPush !== hasPush) {
-          if(needPush) {
-            webPushApiManager.subscribe();
-          } else {
-            webPushApiManager.unsubscribe();
-          }
-        }
-      }
-
-      webPushApiManager.setSettings(this.settings);
-    });
-
-    this.settings.nosound = !rootScope.settings.notifications.sound;
-  }
+  public updateLocalSettings = async() => {
+    webPushApiManager.setSettings(unwrap(this.settings));
+  };
 
   public getLocalSettings() {
     return this.settings;
@@ -800,33 +765,13 @@ export class UiNotificationsManager {
     delete this.soundsPlayed[tag];
   }
 
-  private requestPermission = () => {
-    Notification.requestPermission();
-    window.removeEventListener('click', this.requestPermission);
-  };
+  // private requestPermission = () => {
+  //   Notification.requestPermission();
+  //   window.removeEventListener('click', this.requestPermission);
+  // };
 
   public testSound(volume: number) {
-    const now = tsNow();
-    if(this.nextSoundAt && now < this.nextSoundAt && this.prevSoundVolume === volume) {
-      return;
-    }
-
-    this.nextSoundAt = now + 1000;
-    this.prevSoundVolume = volume;
-    const filename = 'assets/audio/notification.mp3';
-    const audio = document.createElement('audio');
-    audio.autoplay = true;
-    audio.setAttribute('mozaudiochannel', 'notification');
-    audio.volume = volume;
-    audio.innerHTML = `
-      <source src="${filename}" type="audio/mpeg" />
-      <embed hidden="true" autostart="true" loop="false" volume="${volume * 100}" src="${filename}" />
-    `;
-    this.notifySoundEl.append(audio);
-
-    audio.addEventListener('ended', () => {
-      audio.remove();
-    }, {once: true});
+    this.audioAssetPlayer.playWithThrottle({name: 'notification', volume}, 1000);
   }
 
   public async cancel(key: NotificationKey) {
