@@ -16,7 +16,7 @@ $transition: .2s var(--transition-standard-easing);
   border-radius: $border-radius-huge;
   // top: 100px;
   // left: calc(50vw - 240px);
-  z-index: 3;
+  z-index: 4;
   backdrop-filter: blur(20px);
   // background-color: rgba(var(--surface-color-rgb), .65);
   background-color: rgba(var(--body-background-color-rgb), .65);
