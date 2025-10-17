@@ -1,5 +1,6 @@
 import middlewarePromise from '../../helpers/middlewarePromise';
 import namedPromises from '../../helpers/namedPromises';
+import asyncThrottle from '../../helpers/schedulers/asyncThrottle';
 import {Chat, Dialog} from '../../layer';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import {isDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
@@ -17,6 +18,10 @@ export class BotforumTab extends ForumTab {
 
   syncInit(): void {
     super.syncInit();
+
+    this.middlewareHelper.get().onClean(() => {
+      this.updateDialogsCount.clear();
+    });
 
     this.container.classList.add('topic-dialogs-override');
 
@@ -118,9 +123,9 @@ export class BotforumTab extends ForumTab {
     } catch{}
   }
 
-  private async updateDialogsCount() {
+  private updateDialogsCount = asyncThrottle(async() => {
     if(!this.dialogsCountI18nEl) return;
     const {count} = await this.managers.dialogsStorage.getDialogs({filterId: this.peerId, limit: 1});
-    this.dialogsCountI18nEl.replaceWith(i18n('TopicsCount', [count + '']));
-  }
+    this.dialogsCountI18nEl.replaceWith(this.dialogsCountI18nEl = i18n('TopicsCount', [count + '']));
+  }, 0);
 }
