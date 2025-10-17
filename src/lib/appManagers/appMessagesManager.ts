@@ -3114,9 +3114,10 @@ export class AppMessagesManager extends AppManager {
 
       const dialogs = items;
       const slicedDialogs = limit === useLimit ? dialogs : dialogs.slice(0, limit);
+
       return {
         isEnd: isEnd && slicedDialogs[slicedDialogs.length - 1] === dialogs[dialogs.length - 1],
-        count: count ?? items.length,
+        count: Math.max(count || 0, items.length),
         dialogs: slicedDialogs
       };
     };
