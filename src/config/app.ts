@@ -32,7 +32,8 @@ const App = {
   isMainDomain: MAIN_DOMAINS.includes(location.hostname),
   suffix: 'K',
   threads,
-  cryptoWorkers: threads
+  cryptoWorkers: threads,
+  interclientBroadcastChannel: 'tgweb'
 };
 
 if(App.isMainDomain) { // use Webogram credentials then

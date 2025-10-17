@@ -26,7 +26,7 @@ export type AppInstance = {
   time: number
 };
 
-export type InstanceDeactivateReason = 'version' | 'tabs';
+export type InstanceDeactivateReason = 'version' | 'tabs' | 'otherClient';
 
 const CHECK_INSTANCE_INTERVAL = 5000;
 const DEACTIVATE_TIMEOUT = 30000;
@@ -43,6 +43,7 @@ export class SingleInstance extends EventListenerBase<{
   private deactivateTimeout: number;
   private deactivated: InstanceDeactivateReason;
   private log = logger('INSTANCE');
+  private interclientBroadcastChannel: BroadcastChannel;
 
   constructor() {
     super(false);
@@ -56,19 +57,51 @@ export class SingleInstance extends EventListenerBase<{
   }
 
   public start() {
+    if(this.started) {
+      return;
+    }
+
+    this.started = true;
+    this.listenOtherClients();
     this.reset();
 
-    if(!this.started/*  && !Config.Navigator.mobile && !Config.Modes.packed */) {
-      this.started = true;
+    idleController.addEventListener('change', this.checkInstance);
+    apiManagerProxy.setInterval(this.checkInstance, CHECK_INSTANCE_INTERVAL);
 
-      idleController.addEventListener('change', this.checkInstance);
-      apiManagerProxy.setInterval(this.checkInstance, CHECK_INSTANCE_INTERVAL);
+    try {
+      document.documentElement.addEventListener('beforeunload', this.clearInstance);
+    } catch(e) {}
 
-      try {
-        document.documentElement.addEventListener('beforeunload', this.clearInstance);
-      } catch(e) {}
+    return this.checkInstance();
+  }
 
-      return this.checkInstance();
+  private listenOtherClients() {
+    if(typeof(BroadcastChannel) === 'undefined') {
+      this.log.warn('BroadcastChannel is not supported');
+      return;
+    }
+
+    const channel = this.interclientBroadcastChannel = new BroadcastChannel(App.interclientBroadcastChannel);
+    channel.addEventListener('message', (event) => {
+      (event.data === App.suffix ? this.onMyClient : this.onOtherClient)();
+    });
+  }
+
+  public onMyClient = () => {
+    this.activateInstance();
+    rootScope.managers.networkerFactory.startAll();
+    this.log.warn('activated our client');
+  };
+
+  private onOtherClient = () => {
+    this.deactivateInstance('otherClient');
+    rootScope.managers.networkerFactory.stopAll();
+    this.log.warn('deactivated our client');
+  };
+
+  private sendClientInterclient() {
+    if(this.interclientBroadcastChannel) {
+      this.interclientBroadcastChannel.postMessage(App.suffix);
     }
   }
 
@@ -76,6 +109,7 @@ export class SingleInstance extends EventListenerBase<{
     this.masterInstance = false;
     this.clearDeactivateTimeout();
     this.deactivated = undefined;
+    this.sendClientInterclient(); // * should work for both cases when 'tabs' or 'otherClient'
   }
 
   private clearInstance = () => {

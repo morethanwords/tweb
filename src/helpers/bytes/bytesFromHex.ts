@@ -1,3 +1,5 @@
+import {MOUNT_CLASS_TO} from '../../config/debug';
+
 export default function bytesFromHex(hexString: string) {
   const len = hexString.length;
   const bytes = new Uint8Array(Math.ceil(len / 2));
@@ -13,3 +15,5 @@ export default function bytesFromHex(hexString: string) {
 
   return bytes;
 }
+
+MOUNT_CLASS_TO.bytesFromHex = bytesFromHex;

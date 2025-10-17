@@ -103,6 +103,8 @@
 "Deactivated.Subtitle" = "Telegram supports only one active tab with the app.\nClick anywhere to continue using this tab.";
 "Deactivated.Version.Title" = "WebK has updated...";
 "Deactivated.Version.Subtitle" = "Another tab is running a newer version of Telegram.\nClick anywhere to reload this tab.";
+"Deactivated.OtherClient.Title" = "App is inactive...";
+"Deactivated.OtherClient.Subtitle" = "Another app is running.\nClick anywhere to continue using this app.";
 "Discussion.Set.PrivateChannel" = "Any member of this group will be able to see messages in the channel.";
 "Discussion.Set.PrivateGroup" = "Anyone from the channel will be able to see messages in this group.";
 "General.Keyboard" = "Keyboard";
