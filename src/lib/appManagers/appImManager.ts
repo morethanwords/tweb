@@ -1524,7 +1524,7 @@ export class AppImManager extends EventListenerBase<{
     threadId: number,
     stack?: ChatSetPeerOptions['stack']
   }) {
-    if(await this.managers.appChatsManager.isForum(options.peerId.toChatId())) {
+    if(await this.managers.appChatsManager.isForum(options.peerId.toChatId()) || await this.managers.appPeersManager.isBotforum(options.peerId)) {
       await this.managers.dialogsStorage.getForumTopicOrReload(options.peerId, options.threadId);
       return this.setInnerPeer(options);
     }

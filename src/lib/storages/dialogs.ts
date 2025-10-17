@@ -575,7 +575,7 @@ export default class DialogsStorage extends AppManager {
 
   public getAnyDialog(peerId: PeerId, topicOrSavedId?: number) {
     if(topicOrSavedId) {
-      return peerId.isUser() ? this.savedDialogs[topicOrSavedId] : this.getForumTopic(peerId, topicOrSavedId);
+      return peerId.isUser() && !this.appPeersManager.isBotforum(peerId) ? this.savedDialogs[topicOrSavedId] : this.getForumTopic(peerId, topicOrSavedId);
     }
 
     return this.dialogs[peerId];
@@ -1719,7 +1719,7 @@ export default class DialogsStorage extends AppManager {
   }
 
   public getForumTopicById(peerId: PeerId, topicId?: number): Promise<ForumTopic> {
-    if(!this.appPeersManager.isForum(peerId)) {
+    if(!this.appPeersManager.isForum(peerId) && !this.appPeersManager.isBotforum(peerId)) {
       return Promise.reject(makeError('CHANNEL_FORUM_MISSING'));
     }
 

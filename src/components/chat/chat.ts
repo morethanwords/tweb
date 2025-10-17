@@ -684,6 +684,16 @@ export default class Chat extends EventListenerBase<{
       }
     });
 
+    this.bubbles.listenerSetter.add(rootScope)('botforum_pending_topic_created', ({peerId, tempId, newId}) => {
+      if(peerId !== this.peerId || (this.threadId && this.threadId !== tempId)) return;
+
+      this.input.clearInput();
+      this.setPeer({
+        peerId,
+        threadId: newId || tempId
+      });
+    });
+
 
     const freezeObservers = (freeze: boolean) => {
       const cb = () => {
@@ -868,8 +878,9 @@ export default class Chat extends EventListenerBase<{
     }
 
     const isForum = apiManagerProxy.isForum(peerId);
+    const isBotforum = apiManagerProxy.isBotforum(peerId);
 
-    if(threadId && !isForum) {
+    if(threadId && !isForum && !isBotforum) {
       options.type = options.peerId === rootScope.myId ? ChatType.Saved : ChatType.Discussion;
     }
 
@@ -889,7 +900,6 @@ export default class Chat extends EventListenerBase<{
       isMegagroup,
       isBroadcast,
       isChannel,
-      isBotforum,
       isBot,
       isAnonymousSending,
       isUserBlocked,
@@ -907,7 +917,6 @@ export default class Chat extends EventListenerBase<{
       isMegagroup: this.managers.appPeersManager.isMegagroup(peerId),
       isBroadcast: this.managers.appPeersManager.isBroadcast(peerId),
       isChannel: this.managers.appPeersManager.isChannel(peerId),
-      isBotforum: this.managers.appPeersManager.isBotforum(peerId),
       isBot: this.managers.appPeersManager.isBot(peerId),
       isAnonymousSending: this.managers.appMessagesManager.isAnonymousSending(peerId),
       isUserBlocked: peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),

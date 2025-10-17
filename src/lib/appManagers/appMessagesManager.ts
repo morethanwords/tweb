@@ -88,6 +88,7 @@ import {BatchProcessor} from '../../helpers/sortedList';
 import {increment, MonoforumDialog} from '../storages/monoforumDialogs';
 import formatStarsAmount from './utils/payments/formatStarsAmount';
 import {makeMessageMediaInputForSuggestedPost} from './utils/messages/makeMessageMediaInput';
+import {isTempId} from './utils/messages/isTempId';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -2199,7 +2200,10 @@ export class AppMessagesManager extends AppManager {
     }
 
     const {peerId} = options;
-    if(this.appPeersManager.isBotforum(peerId) && !options.threadId) {
+    if(
+      this.appPeersManager.isBotforum(peerId) &&
+      (!options.threadId || isTempId(options.threadId))
+    ) {
       const pendingTopic = this.getPendingOrCreateBotforumTopic({peerId, title: options.text?.slice(0, 16)});
 
       if(options.replyToMsgId) {
@@ -6334,6 +6338,8 @@ export class AppMessagesManager extends AppManager {
       messageSendCallbacks
     };
 
+    this.rootScope.dispatchEvent('botforum_pending_topic_created', {peerId, tempId});
+
     const pendingTopic = this.pendingNewBotforumTopics[peerId];
 
     const updates = await this.apiManager.invokeApi('messages.createForumTopic', {
@@ -6344,12 +6350,22 @@ export class AppMessagesManager extends AppManager {
       title_missing: true
     });
 
+    // TODO: Test with delay
+    // await pause(5000);
+
     this.apiUpdatesManager.processUpdateMessage(updates);
 
     if(updates._ === 'updates') {
       const messageIdUpdate = updates.updates.find(update => update._ === 'updateMessageID');
       if(messageIdUpdate) pendingTopic.newId = messageIdUpdate.id;
     }
+
+    this.rootScope.dispatchEvent('botforum_pending_topic_created', {peerId, tempId, newId: pendingTopic.newId});
+    await this.dialogsStorage.getForumTopicById(peerId, pendingTopic.newId);
+
+    const temporaryStorage = this.getHistoryStorage(peerId, pendingTopic.tempId);
+    // const newStorage = this.getHistoryStorage(peerId, pendingTopic.newId);
+    (this.threadsStorage[peerId] ??= {})[pendingTopic.newId] = temporaryStorage;
 
     delete this.pendingNewBotforumTopics[peerId];
 
@@ -8103,7 +8119,9 @@ export class AppMessagesManager extends AppManager {
       return haveSlice;
     };
 
-    const willFill = options.fetchIfWasNotFetched && !historyStorage.wasFetched;
+    const isThreadTemporary = options.threadId && isTempId(options.threadId);
+
+    const willFill = options.fetchIfWasNotFetched && !historyStorage.wasFetched && !isThreadTemporary;
 
     const haveSlice = getPossibleSlice();
     if(
@@ -8118,6 +8136,21 @@ export class AppMessagesManager extends AppManager {
         isEnd: haveSlice.slice.getEnds(),
         offsetIdOffset: haveSlice.offsetIdOffset,
         messages: options.isCacheableSearch ? haveSlice.slice.map((str) => this.getMessageByPeer(+str.split('_')[0], +str.split('_')[1])) : undefined
+      };
+    }
+
+    if(isThreadTemporary) {
+      const first = historyStorage.history.first;
+      first.setEnd(SliceEnd.Both);
+
+      const slice = first.slice(0, 0);
+      slice.setEnd(SliceEnd.Both);
+
+      return {
+        count: 0,
+        history: Array.from(slice),
+        isEnd: slice.getEnds(),
+        offsetIdOffset: 0
       };
     }
 

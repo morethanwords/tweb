@@ -239,6 +239,8 @@ export type BroadcastEvents = {
   'monoforum_dialogs_update': {dialogs: MonoforumDialog[]},
   'monoforum_dialogs_drop': {parentPeerId: PeerId, ids: PeerId[]},
   'monoforum_draft_update': {dialog: MonoforumDialog},
+
+  'botforum_pending_topic_created': {peerId: PeerId, tempId: number, newId?: number}
 };
 
 export type BroadcastEventsListeners = {
