@@ -862,6 +862,7 @@ export const AvatarNew = (props: {
       classList={classList()}
       data-color={color()}
       data-peer-id={props.peerId}
+      data-thread-id={props.threadId}
       data-story-id={props.storyId}
       style={style()}
       {...(props.props || {})}
