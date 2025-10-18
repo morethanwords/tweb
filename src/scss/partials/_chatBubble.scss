@@ -3257,6 +3257,10 @@
   padding-top: 0.5rem;
   gap: 0.5rem;
 
+  &.is-first-unread::before {
+    width: 100vw;
+  }
+
   &.is-out {
     gap: 0.5rem;
     flex-direction: column; // override the .bubble.is-out
