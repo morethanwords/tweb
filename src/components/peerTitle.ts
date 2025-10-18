@@ -141,12 +141,13 @@ export default class PeerTitle {
       replaceContent(this.element, i18n(this.options.onlyFirstName ? 'AuthorHiddenShort' : 'AuthorHidden'));
     } else {
       if(threadId) {
-        const [topic, isForum] = await Promise.all([
+        const [topic, isForum, isBotforum] = await Promise.all([
           rootScope.managers.dialogsStorage.getForumTopic(peerId, threadId),
-          rootScope.managers.appPeersManager.isForum(peerId)
+          rootScope.managers.appPeersManager.isForum(peerId),
+          rootScope.managers.appPeersManager.isBotforum(peerId)
         ]);
 
-        if(!topic && isForum) {
+        if(!topic && (isForum || isBotforum)) {
           rootScope.managers.dialogsStorage.getForumTopicById(peerId, threadId).then((forumTopic) => {
             if(!forumTopic && this.options.threadId === threadId) {
               this.options.threadId = undefined;
