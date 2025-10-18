@@ -19,6 +19,8 @@ export function LimitLineTsx(props: {
   animateProgress?: boolean
   progressFrom?: JSX.Element
   progressTo?: JSX.Element
+  progressClass?: string
+  progressFilledClass?: string
   onScrub?: (progress: number) => void
   filledProgressElement?: HTMLElement
   hint?: JSX.Element
@@ -142,11 +144,11 @@ export function LimitLineTsx(props: {
     line = (
       <div class={styles.line}>
         <Show when={props.progressFrom || props.progressTo}>
-          <div class={`${styles.linePart} ${styles.lineEmpty}`}>
+          <div class={classNames(styles.linePart, props.progressClass)}>
             {props.progressFrom}
             {props.progressTo}
           </div>
-          <div class={`${styles.linePart} ${styles.lineFilled} ${styles.lineAbsolute}`}>
+          <div class={classNames(`${styles.linePart} ${styles.lineFilled}`, props.progressFilledClass)}>
             {props.progressFrom}
             {props.progressTo}
           </div>
@@ -182,6 +184,7 @@ export function LimitLineTsx(props: {
       class={classNames(
         styles.container,
         props.hintJustIcon && styles.justIcon,
+        ('hint' in props || props.hintIcon) && styles.hasHint,
         isReverse() && styles.reverse,
         props.class
       )}

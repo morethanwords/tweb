@@ -23,7 +23,10 @@
   overflow: hidden;
   position: relative;
   align-self: stretch;
-  margin: calc(var(--hint-height) + 1rem) 0 0;
+
+  &.hasHint {
+    margin-top: calc(var(--hint-height) + 1rem);
+  }
 
   &Part {
     color: var(--primary-text-color);

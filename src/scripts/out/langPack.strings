@@ -2273,8 +2273,8 @@
 "StarGiftPremiumBadge" = "premium";
 "SendStarGiftSubtitle" = "Give %s gifts that can be kept on the profile or converted to Stars.";
 "StarGiftCategoryAll" = "All Gifts";
-"StarGiftCategoryLimited" = "Limited";
-"StarGiftCategoryInStock" = "In Stock";
+"StarGiftCategoryOwned" = "My Gifts";
+"StarGiftCategoryCollectibles" = "Collectibles";
 "StarGiftUnavailableTitle" = "Unavailable";
 "StarGiftUnavailableSubtitle" = "This gift has sold out.";
 "StarGiftUnavailableFirstSale" = "First sale";

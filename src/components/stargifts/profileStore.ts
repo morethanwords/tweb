@@ -11,34 +11,28 @@ import setBooleanFlag from '../../helpers/object/setBooleanFlag';
 
 export const ALL_COLLECTIONS_ID = -1
 
-export interface StarGiftsProfileStore {
+interface StarGiftsFilters {
+  sort?: 'date' | 'value'
+  chosenCollection?: number
+  unlimited?: boolean
+  limited?: boolean
+  upgradable?: boolean
+  unique?: boolean
+  displayed?: boolean
+  hidden?: boolean
+}
+
+export interface StarGiftsProfileStore extends Required<StarGiftsFilters> {
   items: MyStarGift[]
   collections: StarGiftCollection[] | undefined
   loading: boolean
   loaded: boolean
-  chosenCollection: number
-  sort: 'date' | 'value'
-  unlimited: boolean
-  limited: boolean
-  upgradable: boolean
-  unique: boolean
-  displayed: boolean
-  hidden: boolean
   hasCollections: boolean
 }
 
 export interface StarGiftsProfileActions {
   loadNext: (reload?: boolean) => Promise<void>
-  setFilters: (filters: {
-    sort?: 'date' | 'value'
-    chosenCollection?: number
-    unlimited?: boolean
-    limited?: boolean
-    upgradable?: boolean
-    unique?: boolean
-    displayed?: boolean
-    hidden?: boolean
-  }) => void
+  setFilters: (filters: StarGiftsFilters) => void
   deleteCollection: (collectionId: number) => void
   handleSwipe: (xDiff: number) => boolean
   updateCollection: (collection: StarGiftCollection, options?: {
@@ -50,6 +44,7 @@ export interface StarGiftsProfileActions {
 
 export function createProfileGiftsStore(props: {
   peerId: PeerId
+  initialFilters?: StarGiftsFilters
   onCountChange?: (count: number) => void
 }): [StarGiftsProfileStore, StarGiftsProfileActions] {
   const initialState: StarGiftsProfileStore = {
@@ -66,6 +61,7 @@ export function createProfileGiftsStore(props: {
     unique: true,
     displayed: true,
     hidden: true,
+    ...props.initialFilters,
     get hasCollections() {
       return store.collections !== undefined && store.collections.length > 0;
     }
