@@ -2306,6 +2306,8 @@
 "StarGiftUpgradeKeepInfo" = "Add sender’s name and comment";
 "StarGiftUpgradeFree" = "Upgrade for Free";
 "StarGiftUpgrade" = "Upgrade %s";
+"StarGiftPriceDecrease" = "Price decreases in %s";
+"StarGiftPriceDecreaseLink" = "See how price will decrease";
 "StarGiftModel" = "Model";
 "StarGiftNModels_one" = "%d Model";
 "StarGiftNModels_other" = "%d Models";
@@ -2427,6 +2429,10 @@
 "StarGiftWearStart" = "Start Wearing";
 "StarGiftLimitReached" = "You've already sent **%d** of these gifts, and it's the limit.";
 "StarGiftLimitSent" = "You can send **%d** more.";
+"StarGiftUpgradePriceTitle" = "Upgrade Cost";
+"StarGiftUpgradePriceSubtitle" = "Users who upgrade their gifts first get collectibles with shorter numbers.";
+"StarGiftUpgradePriceAbout" = "Upgrade cost drops every minute.";
+"StarGiftUpgradePriceUnderstood" = "UNDERSTOOD";
 "ActionGiftStarsTitle_one" = "%d Star";
 "ActionGiftStarsTitle_other" = "%d Stars";
 "SearchAppsExamples" = "Examples";

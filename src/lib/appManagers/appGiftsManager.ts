@@ -5,7 +5,7 @@
  */
 
 import bigInt from 'big-integer';
-import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, StarGiftCollection, StarsAmount, WebPageAttribute} from '../../layer';
+import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, StarGiftCollection, StarGiftUpgradePrice, StarsAmount, WebPageAttribute} from '../../layer';
 import {STARS_CURRENCY} from '../mtproto/mtproto_config';
 import {MyDocument} from './appDocsManager';
 import {AppManager} from './manager';
@@ -50,7 +50,9 @@ export interface MyPremiumGiftOption {
 export interface StarGiftUpgradePreview {
   models: StarGiftAttribute.starGiftAttributeModel[],
   backdrops: StarGiftAttribute.starGiftAttributeBackdrop[],
-  patterns: StarGiftAttribute.starGiftAttributePattern[]
+  patterns: StarGiftAttribute.starGiftAttributePattern[],
+  prices: StarGiftUpgradePrice[],
+  next_prices: StarGiftUpgradePrice[]
 }
 
 function mapPremiumOptions(premiumOptions: PremiumGiftCodeOption.premiumGiftCodeOption[]) {
@@ -446,7 +448,11 @@ export default class AppGiftsManager extends AppManager {
       gift_id: giftId
     });
 
-    return this.wrapAttributeList(res.sample_attributes);
+    return {
+      ...this.wrapAttributeList(res.sample_attributes),
+      prices: res.prices.sort((a, b) => a.date - b.date),
+      next_prices: res.next_prices.sort((a, b) => a.date - b.date)
+    };
   }
 
   public async getGiftBySlug(slug: string) {

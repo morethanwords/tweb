@@ -62,6 +62,7 @@ import PopupPremium from './premium';
 import tsNow from '../../helpers/tsNow';
 import confirmationPopup from '../confirmationPopup';
 import {toastNew} from '../toast';
+import createStarGiftUpgradePopup from './starGiftUpgrade';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
@@ -957,7 +958,10 @@ function ChosenGiftPage(props: {
                   args={[
                     wrapRichText(props.peerName),
                     (() => {
-                      const a = anchorCallback(() => PopupStarGiftUpgrade.create(props.chosenGift as MyStarGift, props.peerId));
+                      const a = anchorCallback(() => createStarGiftUpgradePopup({
+                        gift: props.chosenGift as MyStarGift,
+                        descriptionForPeerId: props.peerId
+                      }));
                       a.append(i18n('StarGiftMakeUniqueLink'));
                       return a;
                     })()

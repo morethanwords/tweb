@@ -2676,6 +2676,8 @@ const lang = {
   'StarGiftUpgradeKeepInfo': 'Add sender’s name and comment',
   'StarGiftUpgradeFree': 'Upgrade for Free',
   'StarGiftUpgrade': 'Upgrade %s',
+  'StarGiftPriceDecrease': 'Price decreases in %s',
+  'StarGiftPriceDecreaseLink': 'See how price will decrease',
   'StarGiftModel': 'Model',
   'StarGiftNModels': {
     'one_value': '%d Model',
@@ -2809,6 +2811,10 @@ const lang = {
   'StarGiftWearStart': 'Start Wearing',
   'StarGiftLimitReached': 'You\'ve already sent **%d** of these gifts, and it\'s the limit.',
   'StarGiftLimitSent': 'You can send **%d** more.',
+  'StarGiftUpgradePriceTitle': 'Upgrade Cost',
+  'StarGiftUpgradePriceSubtitle': 'Users who upgrade their gifts first get collectibles with shorter numbers.',
+  'StarGiftUpgradePriceAbout': 'Upgrade cost drops every minute.',
+  'StarGiftUpgradePriceUnderstood': 'UNDERSTOOD',
   'ActionGiftStarsTitle': {
     'one_value': '%d Star',
     'other_value': '%d Stars'

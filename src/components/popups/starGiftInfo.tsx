@@ -19,7 +19,6 @@ import Table, {TableButton, TableButtonWithTooltip, TablePeer, TableRow} from '.
 import {NULL_PEER_ID, STARS_CURRENCY, TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
-import PopupStarGiftUpgrade from './starGiftUpgrade';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import {StarGiftBackdrop} from '../stargifts/stargiftBackdrop';
 import {ButtonMenuToggleTsx} from '../buttonMenuToggleTsx';
@@ -46,6 +45,7 @@ import appSidebarRight from '../sidebarRight';
 import Icon from '../icon';
 import PopupStarGiftWear from './starGiftWear';
 import {setQuizHint} from '../poll';
+import createStarGiftUpgradePopup from './starGiftUpgrade';
 
 function AttributeTableButton(props: { permille: number }) {
   return (
@@ -170,7 +170,7 @@ export default class PopupStarGiftInfo extends PopupElement {
     }
 
     if(this.gift.raw._ === 'starGift' && this.gift.saved?.pFlags.can_upgrade) {
-      attachClickEvent(this.btnConfirm, () => PopupStarGiftUpgrade.create(this.gift).then(() => this.hide()));
+      attachClickEvent(this.btnConfirm, () => createStarGiftUpgradePopup({gift: this.gift}).then(() => this.hide()));
     } else if(this.isResale) {
       attachClickEvent(this.btnConfirm, () => {
         const recipientId = this.resaleRecipient ?? rootScope.myId;
