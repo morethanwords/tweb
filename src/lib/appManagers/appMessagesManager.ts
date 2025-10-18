@@ -7506,8 +7506,11 @@ export class AppMessagesManager extends AppManager {
       return threadKey;
     }
 
-    if(peerId.isAnyChat() || (threadMessage as Message.message).saved_peer_id) {
-      const threadId = getMessageThreadId(threadMessage, {isForum: this.appChatsManager.isForum(peerId.toChatId())});
+    if(peerId.isAnyChat() || this.appPeersManager.isBotforum(peerId) || (threadMessage as Message.message).saved_peer_id) {
+      const threadId = getMessageThreadId(threadMessage, {
+        isForum: this.appChatsManager.isForum(peerId.toChatId()),
+        isBotforum: this.appPeersManager.isBotforum(peerId)
+      });
       if(threadId) {
         threadKey = peerId + '_' + threadId;
       }

@@ -71,7 +71,7 @@ import PriceChangedInterceptor from './priceChangedInterceptor';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {SensitiveContentSettings} from '../../lib/appManagers/appPrivacyManager';
 import {ignoreRestrictionReasons, isRestricted, isSensitive} from '../../helpers/restrictions';
-import appDialogsManager from '../../lib/appManagers/appDialogsManager';
+
 
 export enum ChatType {
   Chat = 'chat',
@@ -687,10 +687,16 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.listenerSetter.add(rootScope)('botforum_pending_topic_created', ({peerId, tempId, newId}) => {
       if(peerId !== this.peerId || (this.threadId && this.threadId !== tempId)) return;
 
+      if(newId) {
+        this.threadId = newId;
+        this.appImManager.dispatchEvent('peer_changed', this);
+        return;
+      }
+
       this.input.clearInput();
       this.setPeer({
         peerId,
-        threadId: newId || tempId
+        threadId: tempId
       });
     });
 
