@@ -91,12 +91,8 @@ export default class AppSettingsTab extends SliderSuperTab {
       false,
       this.container,
       (has) => {
-        let last = this.profile.element.lastElementChild;
-        if(has) {
-          last = last.previousElementSibling;
-        }
-
-        last.firstElementChild.append(changeAvatarBtn);
+        const last = this.profile.element.lastElementChild;
+        last.parentElement.firstElementChild.nextElementSibling.firstElementChild.append(changeAvatarBtn);
       }
     );
     this.profile.init();
