@@ -87,6 +87,9 @@ function createStore(state) {
 function createMutable(state) {
   return state;
 }
+function modifyMutable(state, modifier) {
+  modifier(state);
+}
 function reconcile(value, options = {}) {
   return state => {
     if (!isWrappable(state) || !isWrappable(value)) return value;
@@ -115,6 +118,7 @@ exports.DEV = DEV;
 exports.createMutable = createMutable;
 exports.createStore = createStore;
 exports.isWrappable = isWrappable;
+exports.modifyMutable = modifyMutable;
 exports.produce = produce;
 exports.reconcile = reconcile;
 exports.setProperty = setProperty;

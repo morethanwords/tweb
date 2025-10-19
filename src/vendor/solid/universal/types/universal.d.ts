@@ -19,8 +19,8 @@ export interface Renderer<NodeType> {
   createElement(tag: string): NodeType;
   createTextNode(value: string): NodeType;
   insertNode(parent: NodeType, node: NodeType, anchor?: NodeType): void;
-  insert<T>(parent: any, accessor: (() => T) | T, marker?: any | null): NodeType;
-  spread<T>(node: any, accessor: (() => T) | T, skipChildren?: Boolean): void;
+  insert<T>(parent: any, accessor: (() => T) | T, marker?: any | null, initial?: any): NodeType;
+  spread<T>(node: any, accessor: (() => T) | T, skipChildren?: boolean): void;
   setProp<T>(node: NodeType, name: string, value: T, prev?: T): T;
   mergeProps(...sources: unknown[]): unknown;
   use<A, T>(fn: (element: NodeType, arg: A) => T, element: NodeType, arg: A): T;

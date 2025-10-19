@@ -28,6 +28,19 @@ export type DynamicProps<T extends ValidComponent, P = ComponentProps<T>> = {
     component: T | undefined;
 };
 /**
+ * Renders an arbitrary component or element with the given props
+ *
+ * This is a lower level version of the `Dynamic` component, useful for
+ * performance optimizations in libraries. Do not use this unless you know
+ * what you are doing.
+ * ```typescript
+ * const element = () => multiline() ? 'textarea' : 'input';
+ * createDynamic(element, { value: value() });
+ * ```
+ * @description https://docs.solidjs.com/reference/components/dynamic
+ */
+export declare function createDynamic<T extends ValidComponent>(component: () => T | undefined, props: ComponentProps<T>): JSX.Element;
+/**
  * Renders an arbitrary custom or native component and passes the other props
  * ```typescript
  * <Dynamic component={multiline() ? 'textarea' : 'input'} value={value()} />

@@ -302,6 +302,51 @@ function mutateContext(o, key, value) {
   }
 }
 
+function escape(s, attr) {
+  const t = typeof s;
+  if (t !== "string") {
+    if (t === "function") return escape(s());
+    if (Array.isArray(s)) {
+      for (let i = 0; i < s.length; i++) s[i] = escape(s[i]);
+      return s;
+    }
+    return s;
+  }
+  const delim = "<";
+  const escDelim = "&lt;";
+  let iDelim = s.indexOf(delim);
+  let iAmp = s.indexOf("&");
+  if (iDelim < 0 && iAmp < 0) return s;
+  let left = 0,
+    out = "";
+  while (iDelim >= 0 && iAmp >= 0) {
+    if (iDelim < iAmp) {
+      if (left < iDelim) out += s.substring(left, iDelim);
+      out += escDelim;
+      left = iDelim + 1;
+      iDelim = s.indexOf(delim, left);
+    } else {
+      if (left < iAmp) out += s.substring(left, iAmp);
+      out += "&amp;";
+      left = iAmp + 1;
+      iAmp = s.indexOf("&", left);
+    }
+  }
+  if (iDelim >= 0) {
+    do {
+      if (left < iDelim) out += s.substring(left, iDelim);
+      out += escDelim;
+      left = iDelim + 1;
+      iDelim = s.indexOf(delim, left);
+    } while (iDelim >= 0);
+  } else while (iAmp >= 0) {
+    if (left < iAmp) out += s.substring(left, iAmp);
+    out += "&amp;";
+    left = iAmp + 1;
+    iAmp = s.indexOf("&", left);
+  }
+  return left < s.length ? out + s.substring(left) : out;
+}
 function resolveSSRNode(node) {
   const t = typeof node;
   if (t === "string") return node;
@@ -319,21 +364,34 @@ function resolveSSRNode(node) {
   if (t === "function") return resolveSSRNode(node());
   return String(node);
 }
-const sharedConfig = {};
+const sharedConfig = {
+  context: undefined,
+  getContextId() {
+    if (!this.context) throw new Error(`getContextId cannot be used under non-hydrating context`);
+    return getContextId(this.context.count);
+  },
+  getNextContextId() {
+    if (!this.context) throw new Error(`getNextContextId cannot be used under non-hydrating context`);
+    return getContextId(this.context.count++);
+  }
+};
+function getContextId(count) {
+  const num = String(count),
+    len = num.length - 1;
+  return sharedConfig.context.id + (len ? String.fromCharCode(96 + len) : "") + num;
+}
 function setHydrateContext(context) {
   sharedConfig.context = context;
 }
 function nextHydrateContext() {
   return sharedConfig.context ? {
     ...sharedConfig.context,
-    id: `${sharedConfig.context.id}${sharedConfig.context.count++}-`,
+    id: sharedConfig.getNextContextId(),
     count: 0
   } : undefined;
 }
 function createUniqueId() {
-  const ctx = sharedConfig.context;
-  if (!ctx) throw new Error(`createUniqueId cannot be used under non-hydrating context`);
-  return `${ctx.id}${ctx.count++}`;
+  return sharedConfig.getNextContextId();
 }
 function createComponent(Comp, props) {
   if (sharedConfig.context && !sharedConfig.context.noHydrate) {
@@ -429,7 +487,7 @@ function ErrorBoundary(props) {
     clean,
     sync = true;
   const ctx = sharedConfig.context;
-  const id = ctx.id + ctx.count;
+  const id = sharedConfig.getContextId();
   function displayFallback() {
     cleanNode(clean);
     ctx.serialize(id, error);
@@ -451,24 +509,19 @@ function ErrorBoundary(props) {
   if (error) return displayFallback();
   sync = false;
   return {
-    t: `<!--!$e${id}-->${resolveSSRNode(res)}<!--!$/e${id}-->`
+    t: `<!--!$e${id}-->${resolveSSRNode(escape(res))}<!--!$/e${id}-->`
   };
 }
 const SuspenseContext = createContext();
 let resourceContext = null;
 function createResource(source, fetcher, options = {}) {
-  if (arguments.length === 2) {
-    if (typeof fetcher === "object") {
-      options = fetcher;
-      fetcher = source;
-      source = true;
-    }
-  } else if (arguments.length === 1) {
+  if (typeof fetcher !== "function") {
+    options = fetcher || {};
     fetcher = source;
     source = true;
   }
   const contexts = new Set();
-  const id = sharedConfig.context.id + sharedConfig.context.count++;
+  const id = sharedConfig.getNextContextId();
   let resource = {};
   let value = options.storage ? options.storage(options.initialValue)[0]() : options.initialValue;
   let p;
@@ -482,8 +535,8 @@ function createResource(source, fetcher, options = {}) {
   }
   const read = () => {
     if (error) throw error;
-    if (resourceContext && p) resourceContext.push(p);
     const resolved = options.ssrLoadFrom !== "initial" && sharedConfig.context.async && "data" in sharedConfig.context.resources[id];
+    if (!resolved && resourceContext) resourceContext.push(id);
     if (!resolved && read.loading) {
       const ctx = useContext(SuspenseContext);
       if (ctx) {
@@ -508,14 +561,14 @@ function createResource(source, fetcher, options = {}) {
       value = ctx.resources[id].data;
       return;
     }
-    resourceContext = [];
-    const lookup = typeof source === "function" ? source() : source;
-    if (resourceContext.length) {
-      p = Promise.all(resourceContext).then(() => fetcher(source(), {
-        value
-      }));
+    let lookup;
+    try {
+      resourceContext = [];
+      lookup = typeof source === "function" ? source() : source;
+      if (resourceContext.length) return;
+    } finally {
+      resourceContext = null;
     }
-    resourceContext = null;
     if (!p) {
       if (lookup == null || lookup === false) return;
       p = fetcher(lookup, {
@@ -549,10 +602,12 @@ function createResource(source, fetcher, options = {}) {
     return ctx.resources[id].data;
   }
   if (options.ssrLoadFrom !== "initial") load();
-  return resource.ref = [read, {
+  const ref = [read, {
     refetch: load,
     mutate: v => value = v
   }];
+  if (p) resource.ref = ref;
+  return ref;
 }
 function lazy(fn) {
   let p;
@@ -566,7 +621,7 @@ function lazy(fn) {
   };
   const contexts = new Set();
   const wrap = props => {
-    const id = sharedConfig.context.id.slice(0, -1);
+    const id = sharedConfig.context.id;
     let ref = sharedConfig.context.lazy[id];
     if (ref) p = ref;else load(id);
     if (p.resolved) return p.resolved(props);
@@ -616,19 +671,26 @@ function useTransition() {
   }];
 }
 function SuspenseList(props) {
+  if (sharedConfig.context && !sharedConfig.context.noHydrate) {
+    const c = sharedConfig.context;
+    setHydrateContext(nextHydrateContext());
+    const result = props.children;
+    setHydrateContext(c);
+    return result;
+  }
   return props.children;
 }
 function Suspense(props) {
   let done;
   const ctx = sharedConfig.context;
-  const id = ctx.id + ctx.count;
+  const id = sharedConfig.getContextId();
   const o = createOwner();
   const value = ctx.suspense[id] || (ctx.suspense[id] = {
     resources: new Map(),
     completed: () => {
       const res = runSuspense();
       if (suspenseComplete(value)) {
-        done(resolveSSRNode(res));
+        done(resolveSSRNode(escape(res)));
       }
     }
   });
@@ -663,11 +725,11 @@ function Suspense(props) {
       setHydrateContext({
         ...ctx,
         count: 0,
-        id: ctx.id + "0-f",
+        id: ctx.id + "0F",
         noHydrate: true
       });
       const res = {
-        t: `<template id="pl-${id}"></template>${resolveSSRNode(props.fallback)}<!--pl-${id}-->`
+        t: `<template id="pl-${id}"></template>${resolveSSRNode(escape(props.fallback))}<!--pl-${id}-->`
       };
       setHydrateContext(ctx);
       return res;
@@ -675,7 +737,7 @@ function Suspense(props) {
     setHydrateContext({
       ...ctx,
       count: 0,
-      id: ctx.id + "0-f"
+      id: ctx.id + "0F"
     });
     ctx.serialize(id, "$$f");
     return props.fallback;

@@ -1,3 +1,4 @@
+export declare const IS_DEV: string | boolean;
 export declare const $RAW: unique symbol, $NODE: unique symbol, $HAS: unique symbol, $SELF: unique symbol;
 export declare const DevHooks: {
     onStoreNodeUpdate: OnStoreNodeUpdate | null;
@@ -6,7 +7,7 @@ type DataNode = {
     (): any;
     $(value?: any): void;
 };
-type DataNodes = Record<PropertyKey, DataNode | undefined>;
+export type DataNodes = Record<PropertyKey, DataNode | undefined>;
 export type OnStoreNodeUpdate = (state: StoreNode, property: PropertyKey, value: StoreNode | NotWrappable, prev: StoreNode | NotWrappable) => void;
 export interface StoreNode {
     [$NODE]?: DataNodes;

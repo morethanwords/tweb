@@ -2,6 +2,8 @@
 
 var solidJs = require('solid-js');
 
+const memo = fn => solidJs.createMemo(() => fn());
+
 function createRenderer$1({
   createElement,
   createTextNode,
@@ -226,7 +228,7 @@ function createRenderer$1({
     },
     mergeProps: solidJs.mergeProps,
     effect: solidJs.createRenderEffect,
-    memo: solidJs.createMemo,
+    memo,
     createComponent: solidJs.createComponent,
     use(fn, element, arg) {
       return solidJs.untrack(() => fn(element, arg));

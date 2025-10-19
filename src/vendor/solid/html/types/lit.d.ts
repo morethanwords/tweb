@@ -5,7 +5,7 @@ interface Runtime {
     insert(parent: MountableElement, accessor: any, marker?: Node | null, init?: any): any;
     spread<T>(node: Element, accessor: (() => T) | T, isSVG?: Boolean, skipChildren?: Boolean): void;
     createComponent(Comp: (props: any) => any, props: any): any;
-    addEventListener(node: Element, name: string, handler: () => void, delegate: boolean): void;
+    addEventListener(node: Element, name: string, handler: EventListener | EventListenerObject | (EventListenerObject & AddEventListenerOptions), delegate: boolean): void;
     delegateEvents(eventNames: string[]): void;
     classList(node: Element, value: {
         [k: string]: boolean;

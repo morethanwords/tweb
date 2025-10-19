@@ -25,19 +25,20 @@ export function delegateEvents(eventNames: string[], d?: Document): void;
 export function clearDelegatedEvents(d?: Document): void;
 export function spread<T>(
   node: Element,
-  accessor: (() => T) | T,
+  accessor: T,
   isSVG?: Boolean,
   skipChildren?: Boolean
 ): void;
 export function assign(node: Element, props: any, isSVG?: Boolean, skipChildren?: Boolean): void;
 export function setAttribute(node: Element, name: string, value: string): void;
 export function setAttributeNS(node: Element, namespace: string, name: string, value: string): void;
+export function setBoolAttribute(node: Element, name: string, value: any): void;
 export function className(node: Element, value: string): void;
 export function setProperty(node: Element, name: string, value: any): void;
 export function addEventListener(
   node: Element,
   name: string,
-  handler: () => void,
+  handler: EventListener | EventListenerObject | (EventListenerObject & AddEventListenerOptions),
   delegate: boolean
 ): void;
 export function classList(
@@ -57,7 +58,7 @@ export function dynamicProperty(props: unknown, key: string): unknown;
 export function hydrate(
   fn: () => JSX.Element,
   node: MountableElement,
-  options?: { renderId?: string, owner?: unknown }
+  options?: { renderId?: string; owner?: unknown }
 ): () => void;
 export function getHydrationKey(): string;
 export function getNextElement(template?: HTMLTemplateElement): Element;
@@ -75,3 +76,4 @@ export interface RequestEvent {
 }
 export declare const RequestContext: unique symbol;
 export function getRequestEvent(): RequestEvent | undefined;
+export function runHydrationEvents(): void;

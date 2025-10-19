@@ -26,9 +26,11 @@ export type ObservableObserver<T> = ((v: T) => void) | {
  * description https://docs.solidjs.com/reference/reactive-utilities/observable
  */
 export declare function observable<T>(input: Accessor<T>): Observable<T>;
-export declare function from<T>(producer: ((setter: Setter<T | undefined>) => () => void) | {
+type Producer<T> = ((setter: Setter<T>) => () => void) | {
     subscribe: (fn: (v: T) => void) => (() => void) | {
         unsubscribe: () => void;
     };
-}): Accessor<T | undefined>;
+};
+export declare function from<T>(producer: Producer<T>, initalValue: T): Accessor<T>;
+export declare function from<T>(producer: Producer<T | undefined>): Accessor<T | undefined>;
 export {};

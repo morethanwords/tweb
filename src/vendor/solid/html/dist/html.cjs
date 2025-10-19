@@ -22,7 +22,7 @@ const lookup = {
   track: true,
   wbr: true
 };
-function parseTag( tag) {
+function parseTag(tag) {
   const res = {
     type: 'tag',
     name: '',
@@ -64,7 +64,7 @@ function parseTag( tag) {
 }
 function pushTextNode(list, html, start) {
   const end = html.indexOf('<', start);
-  const content = html.slice(start, end === -1 ? void 0 : end);
+  const content = html.slice(start, end === -1 ? undefined : end);
   if (!/^\s*$/.test(content)) {
     list.push({
       type: 'text',
@@ -83,7 +83,7 @@ function pushCommentNode(list, tag) {
 }
 function parse(html) {
   const result = [];
-  let current = void 0;
+  let current = undefined;
   let level = -1;
   const arr = [];
   const byTag = {};
@@ -92,7 +92,7 @@ function parse(html) {
     const isComment = tag.slice(0, 4) === '<!--';
     const start = index + tag.length;
     const nextChar = html.charAt(start);
-    let parent = void 0;
+    let parent = undefined;
     if (isOpen && !isComment) {
       level++;
       current = parseTag(tag);
@@ -330,6 +330,7 @@ function createHTML(r, {
     options.counter = childOptions.counter;
     options.templateId = childOptions.templateId;
     options.hasCustomElement = options.hasCustomElement || childOptions.hasCustomElement;
+    options.isImportNode = options.isImportNode || childOptions.isImportNode;
   }
   function processComponentProps(propGroups) {
     let result = [];
@@ -357,8 +358,8 @@ function createHTML(r, {
           propGroups.push(`exprs[${options.counter++}]`);
           propGroups.push(props = []);
         } else if (value === "###") {
-          props.push(`${name}: exprs[${options.counter++}]`);
-        } else props.push(`${name}: "${value}"`);
+          props.push(`"${name}": exprs[${options.counter++}]`);
+        } else props.push(`"${name}": "${value}"`);
       } else if (type === 'directive') {
         const tag = `_$el${uuid++}`;
         const topDecl = !options.decl.length;
@@ -440,8 +441,9 @@ function createHTML(r, {
       const templateId = options.templateId;
       options.decl.push(topDecl ? "" : `${tag} = ${options.path}.${options.first ? "firstChild" : "nextSibling"}`);
       const isSVG = r.SVGElements.has(node.name);
-      const isCE = node.name.includes("-");
+      const isCE = node.name.includes("-") || node.attrs.some(e => e.name === "is");
       options.hasCustomElement = isCE;
+      options.isImportNode = (node.name === 'img' || node.name === 'iframe') && node.attrs.some(e => e.name === "loading" && e.value === 'lazy');
       if (node.attrs.some(e => e.name === "###")) {
         const spreadArgs = [];
         let current = "";
@@ -498,7 +500,7 @@ function createHTML(r, {
       options.first = false;
       processChildren(node, options);
       if (topDecl) {
-        options.decl[0] = options.hasCustomElement ? `const ${tag} = r.untrack(() => document.importNode(tmpls[${templateId}].content.firstChild, true))` : `const ${tag} = tmpls[${templateId}].content.firstChild.cloneNode(true)`;
+        options.decl[0] = options.hasCustomElement || options.isImportNode ? `const ${tag} = r.untrack(() => document.importNode(tmpls[${templateId}].content.firstChild, true))` : `const ${tag} = tmpls[${templateId}].content.firstChild.cloneNode(true)`;
       }
     } else if (node.type === "text") {
       const tag = `_$el${uuid++}`;

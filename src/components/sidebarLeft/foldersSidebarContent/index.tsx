@@ -184,11 +184,12 @@ export function FoldersSidebarContent(props: {
   }
 
   createEffect(() => {
-    if(!menuTarget()) return;
+    const _menuTarget = menuTarget();
+    if(!_menuTarget) return;
 
-    appSidebarLeft.createToolsMenu(menuTarget(), true);
-    menuTarget().classList.add('sidebar-tools-button', 'is-visible');
-    menuTarget().append(props.notificationsElement);
+    appSidebarLeft.createToolsMenu(_menuTarget, true);
+    _menuTarget.classList.add('sidebar-tools-button', 'is-visible');
+    _menuTarget.append(props.notificationsElement);
   });
 
   let contextMenu: ReturnType<typeof createFolderContextMenu>;
@@ -340,30 +341,21 @@ export function renderFoldersSidebarContent(
   middleware: Middleware
 ): FoldersSidebarControls {
   const [hasFoldersSidebar] = useHasFoldersSidebar();
+  const [filters, setFilters] = createSignal<MyDialogFilter[]>([]);
+  const [isFiltersInited, setIsFiltersInited] = createSignal(false);
 
-  const {
-    filters: [filters, setFilters],
-    isFiltersInited: [isFiltersInited, setIsFiltersInited]
-  } = createRoot((dispose) => {
-    middleware.onDestroy(() => dispose());
-
-    return {
-      filters: createSignal<MyDialogFilter[]>([]),
-      isFiltersInited: createSignal(false)
-    };
-  });
-
-  createRoot((dispose) => {
-    render(() => (
-      <HotReloadGuardProvider>
-        <Show when={hasFoldersSidebar()}>
-          <FoldersSidebarContent notificationsElement={notificationsElement} filters={filters()} isFiltersInited={isFiltersInited()} />
-        </Show>
-      </HotReloadGuardProvider>
-    ), element);
-
-    middleware.onDestroy(() => dispose());
-  });
+  const dispose = render(() => (
+    <HotReloadGuardProvider>
+      <Show when={hasFoldersSidebar()}>
+        <FoldersSidebarContent
+          notificationsElement={notificationsElement}
+          filters={filters()}
+          isFiltersInited={isFiltersInited()}
+        />
+      </Show>
+    </HotReloadGuardProvider>
+  ), element);
+  middleware.onDestroy(dispose);
 
   return {
     hydrateFilters: (filters) => batch(() => {

@@ -269,11 +269,15 @@ function wrap(value) {
     const keys = Object.keys(value),
       desc = Object.getOwnPropertyDescriptors(value);
     const proto = Object.getPrototypeOf(value);
-    const isClass = value !== null && typeof value === "object" && !Array.isArray(value) && proto !== Object.prototype;
+    const isClass = proto !== null && value !== null && typeof value === "object" && !Array.isArray(value) && proto !== Object.prototype;
     if (isClass) {
-      const descriptors = Object.getOwnPropertyDescriptors(proto);
-      keys.push(...Object.keys(descriptors));
-      Object.assign(desc, descriptors);
+      let curProto = proto;
+      while (curProto != null) {
+        const descriptors = Object.getOwnPropertyDescriptors(curProto);
+        keys.push(...Object.keys(descriptors));
+        Object.assign(desc, descriptors);
+        curProto = Object.getPrototypeOf(curProto);
+      }
     }
     for (let i = 0, l = keys.length; i < l; i++) {
       const prop = keys[i];
@@ -318,12 +322,12 @@ function applyState(target, parent, property, merge, key) {
   if (isArray) {
     if (target.length && previous.length && (!merge || key && target[0] && target[0][key] != null)) {
       let i, j, start, end, newEnd, item, newIndicesNext, keyVal;
-      for (start = 0, end = Math.min(previous.length, target.length); start < end && (previous[start] === target[start] || key && previous[start] && target[start] && previous[start][key] === target[start][key]); start++) {
+      for (start = 0, end = Math.min(previous.length, target.length); start < end && (previous[start] === target[start] || key && previous[start] && target[start] && previous[start][key] && previous[start][key] === target[start][key]); start++) {
         applyState(target[start], previous, start, merge, key);
       }
       const temp = new Array(target.length),
         newIndices = new Map();
-      for (end = previous.length - 1, newEnd = target.length - 1; end >= start && newEnd >= start && (previous[end] === target[newEnd] || key && previous[start] && target[start] && previous[end][key] === target[newEnd][key]); end--, newEnd--) {
+      for (end = previous.length - 1, newEnd = target.length - 1; end >= start && newEnd >= start && (previous[end] === target[newEnd] || key && previous[end] && target[newEnd] && previous[end][key] && previous[end][key] === target[newEnd][key]); end--, newEnd--) {
         temp[newEnd] = previous[end];
       }
       if (start > newEnd || start > end) {

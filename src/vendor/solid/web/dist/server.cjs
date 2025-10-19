@@ -2,39 +2,195 @@
 
 var solidJs = require('solid-js');
 var seroval = require('seroval');
+var web = require('seroval-plugins/web');
 
-const booleans = ["allowfullscreen", "async", "autofocus", "autoplay", "checked", "controls", "default", "disabled", "formnovalidate", "hidden", "indeterminate", "ismap", "loop", "multiple", "muted", "nomodule", "novalidate", "open", "playsinline", "readonly", "required", "reversed", "seamless", "selected"];
+const booleans = ["allowfullscreen", "async", "alpha",
+"autofocus",
+"autoplay", "checked", "controls", "default", "disabled", "formnovalidate", "hidden",
+"indeterminate", "inert",
+"ismap", "loop", "multiple", "muted", "nomodule", "novalidate", "open", "playsinline", "readonly", "required", "reversed", "seamless",
+"selected", "adauctionheaders",
+"browsingtopics",
+"credentialless",
+"defaultchecked", "defaultmuted", "defaultselected", "defer", "disablepictureinpicture", "disableremoteplayback", "preservespitch",
+"shadowrootclonable", "shadowrootcustomelementregistry",
+"shadowrootdelegatesfocus", "shadowrootserializable",
+"sharedstoragewritable"
+];
 const BooleanAttributes = /*#__PURE__*/new Set(booleans);
+const Properties = /*#__PURE__*/new Set([
+"className", "value",
+"readOnly", "noValidate", "formNoValidate", "isMap", "noModule", "playsInline", "adAuctionHeaders",
+"allowFullscreen", "browsingTopics",
+"defaultChecked", "defaultMuted", "defaultSelected", "disablePictureInPicture", "disableRemotePlayback", "preservesPitch", "shadowRootClonable", "shadowRootCustomElementRegistry",
+"shadowRootDelegatesFocus", "shadowRootSerializable",
+"sharedStorageWritable",
+...booleans]);
 const ChildProperties = /*#__PURE__*/new Set(["innerHTML", "textContent", "innerText", "children"]);
 const Aliases = /*#__PURE__*/Object.assign(Object.create(null), {
   className: "class",
   htmlFor: "for"
 });
+const PropAliases = /*#__PURE__*/Object.assign(Object.create(null), {
+  class: "className",
+  novalidate: {
+    $: "noValidate",
+    FORM: 1
+  },
+  formnovalidate: {
+    $: "formNoValidate",
+    BUTTON: 1,
+    INPUT: 1
+  },
+  ismap: {
+    $: "isMap",
+    IMG: 1
+  },
+  nomodule: {
+    $: "noModule",
+    SCRIPT: 1
+  },
+  playsinline: {
+    $: "playsInline",
+    VIDEO: 1
+  },
+  readonly: {
+    $: "readOnly",
+    INPUT: 1,
+    TEXTAREA: 1
+  },
+  adauctionheaders: {
+    $: "adAuctionHeaders",
+    IFRAME: 1
+  },
+  allowfullscreen: {
+    $: "allowFullscreen",
+    IFRAME: 1
+  },
+  browsingtopics: {
+    $: "browsingTopics",
+    IMG: 1
+  },
+  defaultchecked: {
+    $: "defaultChecked",
+    INPUT: 1
+  },
+  defaultmuted: {
+    $: "defaultMuted",
+    AUDIO: 1,
+    VIDEO: 1
+  },
+  defaultselected: {
+    $: "defaultSelected",
+    OPTION: 1
+  },
+  disablepictureinpicture: {
+    $: "disablePictureInPicture",
+    VIDEO: 1
+  },
+  disableremoteplayback: {
+    $: "disableRemotePlayback",
+    AUDIO: 1,
+    VIDEO: 1
+  },
+  preservespitch: {
+    $: "preservesPitch",
+    AUDIO: 1,
+    VIDEO: 1
+  },
+  shadowrootclonable: {
+    $: "shadowRootClonable",
+    TEMPLATE: 1
+  },
+  shadowrootdelegatesfocus: {
+    $: "shadowRootDelegatesFocus",
+    TEMPLATE: 1
+  },
+  shadowrootserializable: {
+    $: "shadowRootSerializable",
+    TEMPLATE: 1
+  },
+  sharedstoragewritable: {
+    $: "sharedStorageWritable",
+    IFRAME: 1,
+    IMG: 1
+  }
+});
+function getPropAlias(prop, tagName) {
+  const a = PropAliases[prop];
+  return typeof a === "object" ? a[tagName] ? a["$"] : undefined : a;
+}
+const DelegatedEvents = /*#__PURE__*/new Set(["beforeinput", "click", "dblclick", "contextmenu", "focusin", "focusout", "input", "keydown", "keyup", "mousedown", "mousemove", "mouseout", "mouseover", "mouseup", "pointerdown", "pointermove", "pointerout", "pointerover", "pointerup", "touchend", "touchmove", "touchstart"]);
+const SVGElements = /*#__PURE__*/new Set([
+"altGlyph", "altGlyphDef", "altGlyphItem", "animate", "animateColor", "animateMotion", "animateTransform", "circle", "clipPath", "color-profile", "cursor", "defs", "desc", "ellipse", "feBlend", "feColorMatrix", "feComponentTransfer", "feComposite", "feConvolveMatrix", "feDiffuseLighting", "feDisplacementMap", "feDistantLight", "feDropShadow", "feFlood", "feFuncA", "feFuncB", "feFuncG", "feFuncR", "feGaussianBlur", "feImage", "feMerge", "feMergeNode", "feMorphology", "feOffset", "fePointLight", "feSpecularLighting", "feSpotLight", "feTile", "feTurbulence", "filter", "font", "font-face", "font-face-format", "font-face-name", "font-face-src", "font-face-uri", "foreignObject", "g", "glyph", "glyphRef", "hkern", "image", "line", "linearGradient", "marker", "mask", "metadata", "missing-glyph", "mpath", "path", "pattern", "polygon", "polyline", "radialGradient", "rect",
+"set", "stop",
+"svg", "switch", "symbol", "text", "textPath",
+"tref", "tspan", "use", "view", "vkern"]);
+const SVGNamespace = {
+  xlink: "http://www.w3.org/1999/xlink",
+  xml: "http://www.w3.org/XML/1998/namespace"
+};
+const DOMElements = /*#__PURE__*/new Set(["html", "base", "head", "link", "meta", "style", "title", "body", "address", "article", "aside", "footer", "header", "main", "nav", "section", "body", "blockquote", "dd", "div", "dl", "dt", "figcaption", "figure", "hr", "li", "ol", "p", "pre", "ul", "a", "abbr", "b", "bdi", "bdo", "br", "cite", "code", "data", "dfn", "em", "i", "kbd", "mark", "q", "rp", "rt", "ruby", "s", "samp", "small", "span", "strong", "sub", "sup", "time", "u", "var", "wbr", "area", "audio", "img", "map", "track", "video", "embed", "iframe", "object", "param", "picture", "portal", "source", "svg", "math", "canvas", "noscript", "script", "del", "ins", "caption", "col", "colgroup", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "button", "datalist", "fieldset", "form", "input", "label", "legend", "meter", "optgroup", "option", "output", "progress", "select", "textarea", "details", "dialog", "menu", "summary", "details", "slot", "template", "acronym", "applet", "basefont", "bgsound", "big", "blink", "center", "content", "dir", "font", "frame", "frameset", "hgroup", "image", "keygen", "marquee", "menuitem", "nobr", "noembed", "noframes", "plaintext", "rb", "rtc", "shadow", "spacer", "strike", "tt", "xmp", "a", "abbr", "acronym", "address", "applet", "area", "article", "aside", "audio", "b", "base", "basefont", "bdi", "bdo", "bgsound", "big", "blink", "blockquote", "body", "br", "button", "canvas", "caption", "center", "cite", "code", "col", "colgroup", "content", "data", "datalist", "dd", "del", "details", "dfn", "dialog", "dir", "div", "dl", "dt", "em", "embed", "fieldset", "figcaption", "figure", "font", "footer", "form", "frame", "frameset", "head", "header", "hgroup", "hr", "html", "i", "iframe", "image", "img", "input", "ins", "kbd", "keygen", "label", "legend", "li", "link", "main", "map", "mark", "marquee", "menu", "menuitem", "meta", "meter", "nav", "nobr", "noembed", "noframes", "noscript", "object", "ol", "optgroup", "option", "output", "p", "param", "picture", "plaintext", "portal", "pre", "progress", "q", "rb", "rp", "rt", "rtc", "ruby", "s", "samp", "script", "section", "select", "shadow", "slot", "small", "source", "spacer", "span", "strike", "strong", "style", "sub", "summary", "sup", "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track", "tt", "u", "ul", "var", "video", "wbr", "xmp", "input", "h1", "h2", "h3", "h4", "h5", "h6",
+"webview",
+"isindex", "listing", "multicol", "nextid", "noindex", "search"]);
+
+const memo = fn => solidJs.createMemo(() => fn());
 
 const ES2017FLAG = seroval.Feature.AggregateError
-| seroval.Feature.BigInt
 | seroval.Feature.BigIntTypedArray;
-function stringify(data) {
-  return seroval.serialize(data, {
-    disabledFeatures: ES2017FLAG
+const GLOBAL_IDENTIFIER = '_$HY.r';
+function createSerializer({
+  onData,
+  onDone,
+  scopeId,
+  onError
+}) {
+  return new seroval.Serializer({
+    scopeId,
+    plugins: [web.AbortSignalPlugin,
+    web.CustomEventPlugin, web.DOMExceptionPlugin, web.EventPlugin,
+    web.FormDataPlugin, web.HeadersPlugin, web.ReadableStreamPlugin, web.RequestPlugin, web.ResponsePlugin, web.URLSearchParamsPlugin, web.URLPlugin],
+    globalIdentifier: GLOBAL_IDENTIFIER,
+    disabledFeatures: ES2017FLAG,
+    onData,
+    onDone,
+    onError
   });
+}
+function getLocalHeaderScript(id) {
+  return seroval.getCrossReferenceHeader(id) + ';';
 }
 
 const VOID_ELEMENTS = /^(?:area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr)$/i;
-const REPLACE_SCRIPT = `function $df(e,n,t,o,d){if(t=document.getElementById(e),o=document.getElementById("pl-"+e)){for(;o&&8!==o.nodeType&&o.nodeValue!=="pl-"+e;)d=o.nextSibling,o.remove(),o=d;_$HY.done?o.remove():o.replaceWith(t.content)}t.remove(),_$HY.set(e,n),_$HY.fe(e)}`;
+const REPLACE_SCRIPT = `function $df(e,n,o,t){if(n=document.getElementById(e),o=document.getElementById("pl-"+e)){for(;o&&8!==o.nodeType&&o.nodeValue!=="pl-"+e;)t=o.nextSibling,o.remove(),o=t;_$HY.done?o.remove():o.replaceWith(n.content)}n.remove(),_$HY.fe(e)}`;
 function renderToString(code, options = {}) {
+  const {
+    renderId
+  } = options;
   let scripts = "";
+  const serializer = createSerializer({
+    scopeId: renderId,
+    onData(script) {
+      if (!scripts) {
+        scripts = getLocalHeaderScript(renderId);
+      }
+      scripts += script + ";";
+    },
+    onError: options.onError
+  });
   solidJs.sharedConfig.context = {
-    id: options.renderId || "",
+    id: renderId || "",
     count: 0,
     suspense: {},
     lazy: {},
     assets: [],
     nonce: options.nonce,
-    writeResource(id, p, error) {
-      if (solidJs.sharedConfig.context.noHydrate) return;
-      if (error) return scripts += `_$HY.set("${id}", ${stringify(p)});`;
-      scripts += `_$HY.set("${id}", ${stringify(p)});`;
+    serialize(id, p) {
+      !solidJs.sharedConfig.context.noHydrate && serializer.write(id, p);
+    },
+    roots: 0,
+    nextRoot() {
+      return this.renderId + "i-" + this.roots++;
     }
   };
   let html = solidJs.createRoot(d => {
@@ -42,6 +198,7 @@ function renderToString(code, options = {}) {
     return resolveSSRNode(escape(code()));
   });
   solidJs.sharedConfig.context.noHydrate = true;
+  serializer.close();
   html = injectAssets(solidJs.sharedConfig.context.assets, html);
   if (scripts.length) html = injectScripts(html, scripts, options.nonce);
   return html;
@@ -64,38 +221,52 @@ function renderToStream(code, options = {}) {
     nonce,
     onCompleteShell,
     onCompleteAll,
-    renderId
+    renderId,
+    noScripts
   } = options;
   let dispose;
-  const blockingResources = [];
-  const registry = new Map();
-  const dedupe = new WeakMap();
-  const checkEnd = () => {
-    if (!registry.size && !completed) {
-      writeTasks();
-      onCompleteAll && onCompleteAll({
-        write(v) {
-          !completed && buffer.write(v);
-        }
-      });
-      writable && writable.end();
-      completed = true;
-      setTimeout(dispose);
-    }
-  };
+  const blockingPromises = [];
   const pushTask = task => {
+    if (noScripts) return;
+    if (!tasks && !firstFlushed) {
+      tasks = getLocalHeaderScript(renderId);
+    }
     tasks += task + ";";
-    if (!scheduled && firstFlushed) {
-      Promise.resolve().then(writeTasks);
-      scheduled = true;
+    if (!timer && firstFlushed) {
+      timer = setTimeout(writeTasks);
     }
   };
+  const onDone = () => {
+    writeTasks();
+    doShell();
+    onCompleteAll && onCompleteAll({
+      write(v) {
+        !completed && buffer.write(v);
+      }
+    });
+    writable && writable.end();
+    completed = true;
+    if (firstFlushed) dispose();
+  };
+  const serializer = createSerializer({
+    scopeId: options.renderId,
+    onData: pushTask,
+    onDone,
+    onError: options.onError
+  });
+  const flushEnd = () => {
+    if (!registry.size) {
+      queue(() => queue(() => serializer.flush()));
+    }
+  };
+  const registry = new Map();
   const writeTasks = () => {
     if (tasks.length && !completed && firstFlushed) {
       buffer.write(`<script${nonce ? ` nonce="${nonce}"` : ""}>${tasks}</script>`);
       tasks = "";
     }
-    scheduled = false;
+    timer && clearTimeout(timer);
+    timer = null;
   };
   let context;
   let writable;
@@ -103,8 +274,9 @@ function renderToStream(code, options = {}) {
   let tasks = "";
   let firstFlushed = false;
   let completed = false;
+  let shellCompleted = false;
   let scriptFlushed = false;
-  let scheduled = true;
+  let timer = null;
   let buffer = {
     write(payload) {
       tmp += payload;
@@ -120,7 +292,7 @@ function renderToStream(code, options = {}) {
     assets: [],
     nonce,
     block(p) {
-      if (!firstFlushed) blockingResources.push(p);
+      if (!firstFlushed) blockingPromises.push(p);
     },
     replace(id, payloadFn) {
       if (firstFlushed) return;
@@ -128,42 +300,53 @@ function renderToStream(code, options = {}) {
       const first = html.indexOf(placeholder);
       if (first === -1) return;
       const last = html.indexOf(`<!--!$/${id}-->`, first + placeholder.length);
-      html = html.replace(html.slice(first, last + placeholder.length + 1), resolveSSRNode(payloadFn()));
+      html = html.slice(0, first) + resolveSSRNode(escape(payloadFn())) + html.slice(last + placeholder.length + 1);
     },
-    writeResource(id, p, error, wait) {
+    serialize(id, p, wait) {
       const serverOnly = solidJs.sharedConfig.context.noHydrate;
-      if (error) return !serverOnly && pushTask(serializeSet(dedupe, id, p));
-      if (!p || typeof p !== "object" || !("then" in p)) return !serverOnly && pushTask(serializeSet(dedupe, id, p));
-      if (!firstFlushed) wait && blockingResources.push(p);else !serverOnly && pushTask(`_$HY.init("${id}")`);
-      if (serverOnly) return;
-      p.then(d => {
-        !completed && pushTask(serializeSet(dedupe, id, d));
-      }).catch(() => {
-        !completed && pushTask(`_$HY.set("${id}", {})`);
-      });
+      if (!firstFlushed && wait && typeof p === "object" && "then" in p) {
+        blockingPromises.push(p);
+        !serverOnly && p.then(d => {
+          serializer.write(id, d);
+        }).catch(e => {
+          serializer.write(id, e);
+        });
+      } else if (!serverOnly) serializer.write(id, p);
+    },
+    roots: 0,
+    nextRoot() {
+      return this.renderId + "i-" + this.roots++;
     },
     registerFragment(key) {
       if (!registry.has(key)) {
-        registry.set(key, []);
-        firstFlushed && pushTask(`_$HY.init("${key}")`);
+        let resolve, reject;
+        const p = new Promise((r, rej) => (resolve = r, reject = rej));
+        registry.set(key, err => queue(() => queue(() => {
+          err ? reject(err) : resolve(true);
+          queue(flushEnd);
+        })));
+        serializer.write(key, p);
       }
       return (value, error) => {
         if (registry.has(key)) {
-          const keys = registry.get(key);
+          const resolve = registry.get(key);
           registry.delete(key);
-          if (waitForFragments(registry, key)) return;
-          if ((value !== undefined || error) && !completed) {
+          if (waitForFragments(registry, key)) {
+            resolve();
+            return;
+          }
+          if (!completed) {
             if (!firstFlushed) {
-              Promise.resolve().then(() => html = replacePlaceholder(html, key, value !== undefined ? value : ""));
-              error && pushTask(serializeSet(dedupe, key, error));
+              queue(() => html = replacePlaceholder(html, key, value !== undefined ? value : ""));
+              resolve(error);
             } else {
               buffer.write(`<template id="${key}">${value !== undefined ? value : " "}</template>`);
-              pushTask(`${keys.length ? keys.map(k => `_$HY.unset("${k}")`).join(";") + ";" : ""}$df("${key}"${error ? "," + stringify(error) : ""})${!scriptFlushed ? ";" + REPLACE_SCRIPT : ""}`);
+              pushTask(`$df("${key}")${!scriptFlushed ? ";" + REPLACE_SCRIPT : ""}`);
+              resolve(error);
               scriptFlushed = true;
             }
           }
         }
-        if (!registry.size) Promise.resolve().then(checkEnd);
         return firstFlushed;
       };
     }
@@ -173,27 +356,24 @@ function renderToStream(code, options = {}) {
     return resolveSSRNode(escape(code()));
   });
   function doShell() {
+    if (shellCompleted) return;
     solidJs.sharedConfig.context = context;
     context.noHydrate = true;
     html = injectAssets(context.assets, html);
-    for (const key in context.resources) {
-      if (!("data" in context.resources[key] || context.resources[key].ref[0].error)) pushTask(`_$HY.init("${key}")`);
-    }
-    for (const key of registry.keys()) pushTask(`_$HY.init("${key}")`);
     if (tasks.length) html = injectScripts(html, tasks, nonce);
     buffer.write(html);
     tasks = "";
-    scheduled = false;
     onCompleteShell && onCompleteShell({
       write(v) {
         !completed && buffer.write(v);
       }
     });
+    shellCompleted = true;
   }
   return {
     then(fn) {
       function complete() {
-        doShell();
+        dispose();
         fn(tmp);
       }
       if (onCompleteAll) {
@@ -203,36 +383,50 @@ function renderToStream(code, options = {}) {
           complete();
         };
       } else onCompleteAll = complete;
-      if (!registry.size) Promise.resolve().then(checkEnd);
+      queue(flushEnd);
     },
     pipe(w) {
-      Promise.allSettled(blockingResources).then(() => {
-        doShell();
-        buffer = writable = w;
-        buffer.write(tmp);
-        firstFlushed = true;
-        if (completed) writable.end();else setTimeout(checkEnd);
+      allSettled(blockingPromises).then(() => {
+        setTimeout(() => {
+          doShell();
+          buffer = writable = w;
+          buffer.write(tmp);
+          firstFlushed = true;
+          if (completed) {
+            dispose();
+            writable.end();
+          } else flushEnd();
+        });
       });
     },
     pipeTo(w) {
-      Promise.allSettled(blockingResources).then(() => {
-        doShell();
-        const encoder = new TextEncoder();
-        const writer = w.getWriter();
-        writable = {
-          end() {
-            writer.releaseLock();
-            w.close();
-          }
-        };
-        buffer = {
-          write(payload) {
-            writer.write(encoder.encode(payload));
-          }
-        };
-        buffer.write(tmp);
-        firstFlushed = true;
-        if (completed) writable.end();else setTimeout(checkEnd);
+      return allSettled(blockingPromises).then(() => {
+        let resolve;
+        const p = new Promise(r => resolve = r);
+        setTimeout(() => {
+          doShell();
+          const encoder = new TextEncoder();
+          const writer = w.getWriter();
+          writable = {
+            end() {
+              writer.releaseLock();
+              w.close();
+              resolve();
+            }
+          };
+          buffer = {
+            write(payload) {
+              writer.write(encoder.encode(payload));
+            }
+          };
+          buffer.write(tmp);
+          firstFlushed = true;
+          if (completed) {
+            dispose();
+            writable.end();
+          } else flushEnd();
+        });
+        return p;
       });
     }
   };
@@ -275,7 +469,7 @@ function ssrClassList(value) {
 }
 function ssrStyle(value) {
   if (!value) return "";
-  if (typeof value === "string") return value;
+  if (typeof value === "string") return escape(value, true);
   let result = "";
   const k = Object.keys(value);
   for (let i = 0; i < k.length; i++) {
@@ -283,10 +477,16 @@ function ssrStyle(value) {
     const v = value[s];
     if (v != undefined) {
       if (i) result += ";";
-      result += `${s}:${escape(v, true)}`;
+      const r = escape(v, true);
+      if (r != undefined && r !== "undefined") {
+        result += `${s}:${r}`;
+      }
     }
   }
   return result;
+}
+function ssrStyleProperty(name, value) {
+  return value != null ? name + value : "";
 }
 function ssrElement(tag, props, children, needsId) {
   if (props == null) props = {};else if (typeof props === "function") props = props();
@@ -297,7 +497,7 @@ function ssrElement(tag, props, children, needsId) {
   for (let i = 0; i < keys.length; i++) {
     const prop = keys[i];
     if (ChildProperties.has(prop)) {
-      if (children === undefined && !skipChildren) children = prop === "innerHTML" ? props[prop] : escape(props[prop]);
+      if (children === undefined && !skipChildren) children = tag === "script" || tag === "style" || prop === "innerHTML" ? props[prop] : escape(props[prop]);
       continue;
     }
     const value = props[prop];
@@ -310,10 +510,15 @@ function ssrElement(tag, props, children, needsId) {
       classResolved = true;
     } else if (BooleanAttributes.has(prop)) {
       if (value) result += prop;else continue;
-    } else if (value == undefined || prop === "ref" || prop.slice(0, 2) === "on") {
+    } else if (value == undefined || prop === "ref" || prop.slice(0, 2) === "on" || prop.slice(0, 5) === "prop:") {
       continue;
+    } else if (prop.slice(0, 5) === "bool:") {
+      if (!value) continue;
+      result += escape(prop.slice(5));
+    } else if (prop.slice(0, 5) === "attr:") {
+      result += `${escape(prop.slice(5))}="${escape(value, true)}"`;
     } else {
-      result += `${Aliases[prop] || prop}="${escape(value, true)}"`;
+      result += `${Aliases[prop] || escape(prop)}="${escape(value, true)}"`;
     }
     if (i !== keys.length - 1) result += " ";
   }
@@ -330,13 +535,14 @@ function ssrAttribute(key, value, isBoolean) {
 }
 function ssrHydrationKey() {
   const hk = getHydrationKey();
-  return hk ? ` data-hk="${hk}"` : "";
+  return hk ? ` data-hk=${hk}` : "";
 }
 function escape(s, attr) {
   const t = typeof s;
   if (t !== "string") {
     if (!attr && t === "function") return escape(s());
     if (!attr && Array.isArray(s)) {
+      s = s.slice();
       for (let i = 0; i < s.length; i++) s[i] = escape(s[i]);
       return s;
     }
@@ -397,10 +603,10 @@ function resolveSSRNode(node, top) {
 }
 function getHydrationKey() {
   const hydrate = solidJs.sharedConfig.context;
-  return hydrate && !hydrate.noHydrate && `${hydrate.id}${hydrate.count++}`;
+  return hydrate && !hydrate.noHydrate && solidJs.sharedConfig.getNextContextId();
 }
 function useAssets(fn) {
-  solidJs.sharedConfig.context.assets.push(() => resolveSSRNode(fn()));
+  solidJs.sharedConfig.context.assets.push(() => resolveSSRNode(escape(fn())));
 }
 function getAssets() {
   const assets = solidJs.sharedConfig.context.assets;
@@ -412,7 +618,7 @@ function generateHydrationScript({
   eventNames = ["click", "input"],
   nonce
 } = {}) {
-  return `<script${nonce ? ` nonce="${nonce}"` : ""}>(e=>{let t=e=>e&&e.hasAttribute&&(e.hasAttribute("data-hk")?e:t(e.host&&e.host.nodeType?e.host:e.parentNode));["${eventNames.join('", "')}"].forEach((o=>document.addEventListener(o,(o=>{let s=o.composedPath&&o.composedPath()[0]||o.target,a=t(s);a&&!e.completed.has(a)&&e.events.push([a,o])}))))})(window._$HY||(_$HY={events:[],completed:new WeakSet,r:{},fe(){},init(e,t){_$HY.r[e]=[new Promise((e=>t=e)),t]},set(e,t,o){(o=_$HY.r[e])&&o[1](t),_$HY.r[e]=[t]},unset(e){delete _$HY.r[e]},load:e=>_$HY.r[e]}));</script><!--xs-->`;
+  return `<script${nonce ? ` nonce="${nonce}"` : ""}>window._$HY||(e=>{let t=e=>e&&e.hasAttribute&&(e.hasAttribute("data-hk")?e:t(e.host&&e.host.nodeType?e.host:e.parentNode));["${eventNames.join('", "')}"].forEach((o=>document.addEventListener(o,(o=>{if(!e.events)return;let s=t(o.composedPath&&o.composedPath()[0]||o.target);s&&!e.completed.has(s)&&e.events.push([s,o])}))))})(_$HY={events:[],completed:new WeakSet,r:{},fe(){}});</script><!--xs-->`;
 }
 function Hydration(props) {
   if (!solidJs.sharedConfig.context.noHydrate) return props.children;
@@ -420,7 +626,7 @@ function Hydration(props) {
   solidJs.sharedConfig.context = {
     ...context,
     count: 0,
-    id: `${context.id}${context.count++}-`,
+    id: solidJs.sharedConfig.getNextContextId(),
     noHydrate: false
   };
   const res = props.children;
@@ -428,14 +634,26 @@ function Hydration(props) {
   return res;
 }
 function NoHydration(props) {
-  solidJs.sharedConfig.context.noHydrate = true;
+  if (solidJs.sharedConfig.context) solidJs.sharedConfig.context.noHydrate = true;
   return props.children;
+}
+function queue(fn) {
+  return Promise.resolve().then(fn);
+}
+function allSettled(promises) {
+  let length = promises.length;
+  return Promise.allSettled(promises).then(() => {
+    if (promises.length !== length) return allSettled(promises);
+    return;
+  });
 }
 function injectAssets(assets, html) {
   if (!assets || !assets.length) return html;
   let out = "";
   for (let i = 0, len = assets.length; i < len; i++) out += assets[i]();
-  return html.replace(`</head>`, out + `</head>`);
+  const index = html.indexOf("</head>");
+  if (index === -1) return html;
+  return html.slice(0, index) + out + html.slice(index);
 }
 function injectScripts(html, scripts, nonce) {
   const tag = `<script${nonce ? ` nonce="${nonce}"` : ""}>${scripts}</script>`;
@@ -447,18 +665,9 @@ function injectScripts(html, scripts, nonce) {
 }
 function waitForFragments(registry, key) {
   for (const k of [...registry.keys()].reverse()) {
-    if (key.startsWith(k)) {
-      registry.get(k).push(key);
-      return true;
-    }
+    if (key.startsWith(k)) return true;
   }
   return false;
-}
-function serializeSet(registry, key, value) {
-  const exist = registry.get(value);
-  if (exist) return `_$HY.set("${key}", _$HY.r["${exist}"][0])`;
-  value !== null && typeof value === "object" && registry.set(value, key);
-  return `_$HY.set("${key}", ${stringify(value)})`;
 }
 function replacePlaceholder(html, key, value) {
   const marker = `<template id="pl-${key}">`;
@@ -467,6 +676,10 @@ function replacePlaceholder(html, key, value) {
   if (first === -1) return html;
   const last = html.indexOf(close, first + marker.length);
   return html.slice(0, first) + value + html.slice(last + close.length);
+}
+const RequestContext = Symbol();
+function getRequestEvent() {
+  return globalThis[RequestContext] ? globalThis[RequestContext].getStore() || solidJs.sharedConfig.context && solidJs.sharedConfig.context.event || console.log("RequestEvent is missing. This is most likely due to accessing `getRequestEvent` non-managed async scope in a partially polyfilled environment. Try moving it above all `await` calls.") : undefined;
 }
 function Assets(props) {
   useAssets(() => props.children);
@@ -523,105 +736,144 @@ function ssrSpread(props, isSVG, skipChildren) {
       let n;
       result += `class="${(n = props.class) ? n + " " : ""}${(n = props.className) ? n + " " : ""}${ssrClassList(props.classList)}"`;
       classResolved = true;
-    } else if (BooleanAttributes.has(prop)) {
+    } else if (prop !== "value" && Properties.has(prop)) {
       if (value) result += prop;else continue;
     } else if (value == undefined || prop === "ref" || prop.slice(0, 2) === "on" || prop.slice(0, 5) === "prop:") {
       continue;
+    } else if (prop.slice(0, 5) === "bool:") {
+      if (!value) continue;
+      result += escape(prop.slice(5));
+    } else if (prop.slice(0, 5) === "attr:") {
+      result += `${escape(prop.slice(5))}="${escape(value, true)}"`;
     } else {
-      if (prop.slice(0, 5) === "attr:") prop = prop.slice(5);
-      result += `${Aliases[prop] || prop}="${escape(value, true)}"`;
+      result += `${Aliases[prop] || escape(prop)}="${escape(value, true)}"`;
     }
     if (i !== keys.length - 1) result += " ";
   }
   return result;
 }
+function notSup() {
+  throw new Error("Client-only API called on the server side. Run client-only code in onMount, or conditionally run client-only component with <Show>.");
+}
 
 const isServer = true;
 const isDev = false;
-function render() {}
-function hydrate() {}
-function insert() {}
-function spread() {}
-function addEventListener() {}
-function delegateEvents() {}
-function Dynamic(props) {
-  const [p, others] = solidJs.splitProps(props, ["component"]);
-  const comp = p.component,
+function createDynamic(component, props) {
+  const comp = component(),
     t = typeof comp;
   if (comp) {
-    if (t === "function") return comp(others);else if (t === "string") {
-      return ssrElement(comp, others, undefined, true);
+    if (t === "function") return comp(props);else if (t === "string") {
+      return ssrElement(comp, props, undefined, true);
     }
   }
+}
+function Dynamic(props) {
+  const [, others] = solidJs.splitProps(props, ["component"]);
+  return createDynamic(() => props.component, others);
 }
 function Portal(props) {
   return "";
 }
 
-Object.defineProperty(exports, 'ErrorBoundary', {
+Object.defineProperty(exports, "ErrorBoundary", {
   enumerable: true,
   get: function () { return solidJs.ErrorBoundary; }
 });
-Object.defineProperty(exports, 'For', {
+Object.defineProperty(exports, "For", {
   enumerable: true,
   get: function () { return solidJs.For; }
 });
-Object.defineProperty(exports, 'Index', {
+Object.defineProperty(exports, "Index", {
   enumerable: true,
   get: function () { return solidJs.Index; }
 });
-Object.defineProperty(exports, 'Match', {
+Object.defineProperty(exports, "Match", {
   enumerable: true,
   get: function () { return solidJs.Match; }
 });
-Object.defineProperty(exports, 'Show', {
+Object.defineProperty(exports, "Show", {
   enumerable: true,
   get: function () { return solidJs.Show; }
 });
-Object.defineProperty(exports, 'Suspense', {
+Object.defineProperty(exports, "Suspense", {
   enumerable: true,
   get: function () { return solidJs.Suspense; }
 });
-Object.defineProperty(exports, 'SuspenseList', {
+Object.defineProperty(exports, "SuspenseList", {
   enumerable: true,
   get: function () { return solidJs.SuspenseList; }
 });
-Object.defineProperty(exports, 'Switch', {
+Object.defineProperty(exports, "Switch", {
   enumerable: true,
   get: function () { return solidJs.Switch; }
 });
-Object.defineProperty(exports, 'createComponent', {
+Object.defineProperty(exports, "createComponent", {
   enumerable: true,
   get: function () { return solidJs.createComponent; }
 });
-Object.defineProperty(exports, 'mergeProps', {
+Object.defineProperty(exports, "effect", {
+  enumerable: true,
+  get: function () { return solidJs.createRenderEffect; }
+});
+Object.defineProperty(exports, "getOwner", {
+  enumerable: true,
+  get: function () { return solidJs.getOwner; }
+});
+Object.defineProperty(exports, "mergeProps", {
   enumerable: true,
   get: function () { return solidJs.mergeProps; }
 });
+Object.defineProperty(exports, "untrack", {
+  enumerable: true,
+  get: function () { return solidJs.untrack; }
+});
+exports.Aliases = Aliases;
 exports.Assets = Assets;
+exports.ChildProperties = ChildProperties;
+exports.DOMElements = DOMElements;
+exports.DelegatedEvents = DelegatedEvents;
 exports.Dynamic = Dynamic;
 exports.Hydration = Hydration;
 exports.HydrationScript = HydrationScript;
 exports.NoHydration = NoHydration;
 exports.Portal = Portal;
-exports.addEventListener = addEventListener;
-exports.delegateEvents = delegateEvents;
+exports.Properties = Properties;
+exports.RequestContext = RequestContext;
+exports.SVGElements = SVGElements;
+exports.SVGNamespace = SVGNamespace;
+exports.addEventListener = notSup;
+exports.assign = notSup;
+exports.classList = notSup;
+exports.className = notSup;
+exports.createDynamic = createDynamic;
+exports.delegateEvents = notSup;
+exports.dynamicProperty = notSup;
 exports.escape = escape;
 exports.generateHydrationScript = generateHydrationScript;
 exports.getAssets = getAssets;
 exports.getHydrationKey = getHydrationKey;
-exports.hydrate = hydrate;
-exports.insert = insert;
+exports.getNextElement = notSup;
+exports.getNextMarker = notSup;
+exports.getNextMatch = notSup;
+exports.getPropAlias = getPropAlias;
+exports.getRequestEvent = getRequestEvent;
+exports.hydrate = notSup;
+exports.insert = notSup;
 exports.isDev = isDev;
 exports.isServer = isServer;
+exports.memo = memo;
 exports.pipeToNodeWritable = pipeToNodeWritable;
 exports.pipeToWritable = pipeToWritable;
-exports.render = render;
+exports.render = notSup;
 exports.renderToStream = renderToStream;
 exports.renderToString = renderToString;
 exports.renderToStringAsync = renderToStringAsync;
 exports.resolveSSRNode = resolveSSRNode;
-exports.spread = spread;
+exports.runHydrationEvents = notSup;
+exports.setAttribute = notSup;
+exports.setAttributeNS = notSup;
+exports.setProperty = notSup;
+exports.spread = notSup;
 exports.ssr = ssr;
 exports.ssrAttribute = ssrAttribute;
 exports.ssrClassList = ssrClassList;
@@ -629,5 +881,7 @@ exports.ssrElement = ssrElement;
 exports.ssrHydrationKey = ssrHydrationKey;
 exports.ssrSpread = ssrSpread;
 exports.ssrStyle = ssrStyle;
-exports.stringify = stringify;
+exports.ssrStyleProperty = ssrStyleProperty;
+exports.style = notSup;
+exports.template = notSup;
 exports.useAssets = useAssets;

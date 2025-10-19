@@ -802,7 +802,7 @@ export default class PopupStars extends PopupElement {
     return (
       <>
         {firstSection}
-        {!starsNeeded() && !this.giftPeerId && restSection}
+        {starsNeeded() === bigInt.zero && !this.giftPeerId && restSection}
       </>
     );
   }

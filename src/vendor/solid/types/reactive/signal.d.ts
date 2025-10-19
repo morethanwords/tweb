@@ -24,8 +24,10 @@ SOFTWARE.
 import { requestCallback } from "./scheduler.js";
 import type { JSX } from "../jsx.js";
 import type { FlowComponent } from "../render/index.js";
+export declare const IS_DEV: string | boolean;
 export declare const equalFn: <T>(a: T, b: T) => boolean;
 export declare const $PROXY: unique symbol;
+export declare const SUPPORTS_PROXY: boolean;
 export declare const $TRACK: unique symbol;
 export declare const $DEVCOMP: unique symbol;
 export declare var Owner: Owner | null;
@@ -34,7 +36,9 @@ export declare let Transition: TransitionState | null;
 export declare const DevHooks: {
     afterUpdate: (() => void) | null;
     afterCreateOwner: ((owner: Owner) => void) | null;
+    /** @deprecated use `afterRegisterGraph` */
     afterCreateSignal: ((signal: SignalState<any>) => void) | null;
+    afterRegisterGraph: ((sourceMapValue: SourceMapValue) => void) | null;
 };
 export type ComputationState = 0 | 1 | 2;
 export interface SourceMapValue {
@@ -48,6 +52,7 @@ export interface SignalState<T> extends SourceMapValue {
     observerSlots: number[] | null;
     tValue?: T;
     comparator?: (prev: T, next: T) => boolean;
+    internal?: true;
 }
 export interface Owner {
     owned: Computation<any>[] | null;
@@ -98,7 +103,7 @@ export type RootFunction<T> = (dispose: () => void) => T;
 export declare function createRoot<T>(fn: RootFunction<T>, detachedOwner?: typeof Owner): T;
 export type Accessor<T> = () => T;
 export type Setter<in out T> = {
-    <U extends T>(...args: undefined extends T ? [] : [value: (prev: T) => U]): undefined extends T ? undefined : U;
+    <U extends T>(...args: undefined extends T ? [] : [value: Exclude<U, Function> | ((prev: T) => U)]): undefined extends T ? undefined : U;
     <U extends T>(value: (prev: T) => U): U;
     <U extends T>(value: Exclude<U, Function>): U;
     <U extends T>(value: Exclude<U, Function> | ((prev: T) => U)): U;
@@ -423,7 +428,7 @@ export interface OnOptions {
  * });
  * ```
  *
- * @description https://docs.solidjs.com/reference/jsx-attributes/on_
+ * @description https://docs.solidjs.com/reference/reactive-utilities/on
  */
 export declare function on<S, Next extends Prev, Prev = Next>(deps: AccessorArray<S> | Accessor<S>, fn: OnEffectFunction<S, undefined | NoInfer<Prev>, Next>, options?: OnOptions & {
     defer?: false;
@@ -476,6 +481,7 @@ export type Transition = [Accessor<boolean>, (fn: () => void) => Promise<void>];
  *   () => boolean,
  *   (fn: () => void, cb?: () => void) => void
  * ];
+ * ```
  * @returns a tuple; first value is an accessor if the transition is pending and a callback to start the transition
  *
  * @description https://docs.solidjs.com/reference/reactive-utilities/use-transition

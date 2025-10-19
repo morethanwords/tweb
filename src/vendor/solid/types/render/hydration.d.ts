@@ -15,6 +15,8 @@ type SharedConfig = {
     done?: boolean;
     count?: number;
     effects?: Computation<any, any>[];
+    getContextId(): string;
+    getNextContextId(): string;
 };
 export declare const sharedConfig: SharedConfig;
 export declare function setHydrateContext(context?: HydrationContext): void;

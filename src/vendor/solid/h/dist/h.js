@@ -5,12 +5,14 @@ function createHyperScript(r) {
   function h() {
     let args = [].slice.call(arguments),
       e,
+      classes = [],
       multiExpression = false;
     while (Array.isArray(args[0])) args = args[0];
     if (args[0][$ELEMENT]) args.unshift(h.Fragment);
     typeof args[0] === "string" && detectMultiExpression(args);
     const ret = () => {
       while (args.length) item(args.shift());
+      if (e instanceof Element && classes.length) e.classList.add(...classes);
       return e;
     };
     ret[$ELEMENT] = true;
@@ -19,7 +21,7 @@ function createHyperScript(r) {
       const type = typeof l;
       if (l == null) ;else if ("string" === type) {
         if (!e) parseClass(l);else e.appendChild(document.createTextNode(l));
-      } else if ("number" === type || "boolean" === type || l instanceof Date || l instanceof RegExp) {
+      } else if ("number" === type || "boolean" === type || "bigint" === type || "symbol" === type || l instanceof Date || l instanceof RegExp) {
         e.appendChild(document.createTextNode(l.toString()));
       } else if (Array.isArray(l)) {
         for (let i = 0; i < l.length; i++) item(l[i]);
@@ -29,6 +31,15 @@ function createHyperScript(r) {
         let dynamic = false;
         const d = Object.getOwnPropertyDescriptors(l);
         for (const k in d) {
+          if (k === "class" && classes.length !== 0) {
+            const fixedClasses = classes.join(" "),
+              value = typeof d["class"].value === "function" ? () => fixedClasses + " " + d["class"].value() : fixedClasses + " " + l["class"];
+            Object.defineProperty(l, "class", {
+              ...d[k],
+              value
+            });
+            classes = [];
+          }
           if (k !== "ref" && k.slice(0, 2) !== "on" && typeof d[k].value === "function") {
             r.dynamicProperty(l, k);
             dynamic = true;
@@ -72,7 +83,7 @@ function createHyperScript(r) {
         const v = m[i],
           s = v.substring(1, v.length);
         if (!v) continue;
-        if (!e) e = r.SVGElements.has(v) ? document.createElementNS("http://www.w3.org/2000/svg", v) : document.createElement(v);else if (v[0] === ".") e.classList.add(s);else if (v[0] === "#") e.setAttribute("id", s);
+        if (!e) e = r.SVGElements.has(v) ? document.createElementNS("http://www.w3.org/2000/svg", v) : document.createElement(v);else if (v[0] === ".") classes.push(s);else if (v[0] === "#") e.setAttribute("id", s);
       }
     }
     function detectMultiExpression(list) {

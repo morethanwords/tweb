@@ -18,6 +18,8 @@ export type ValidComponent = keyof JSX.IntrinsicElements | Component<any> | (str
 export type ComponentProps<T extends ValidComponent> = T extends Component<infer P> ? P : T extends keyof JSX.IntrinsicElements ? JSX.IntrinsicElements[T] : Record<string, unknown>;
 type SharedConfig = {
     context?: HydrationContext;
+    getContextId(): string;
+    getNextContextId(): string;
 };
 export declare const sharedConfig: SharedConfig;
 export declare function createUniqueId(): string;

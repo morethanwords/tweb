@@ -83,7 +83,6 @@ export default class ChatTopbarSponsored extends PinnedContainer {
       <Show when={message()}>
         <div
           class={/* @once */ classNames(styles.container, 'quote-like')}
-          // @ts-expect-error
           on:click={() => appImManager.onSponsoredMessageClick(message())}
           ref={(el) => {
             if(!el) return;
@@ -129,7 +128,6 @@ export default class ChatTopbarSponsored extends PinnedContainer {
               icon="close"
               // onMouseDown={e => e.stopPropagation()}
               noRipple
-              // @ts-expect-error
               on:click={(e) => {
                 e.stopPropagation();
                 PopupPremium.show({feature: 'no_ads'})

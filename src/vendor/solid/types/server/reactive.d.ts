@@ -78,7 +78,12 @@ export declare function observable<T>(input: Accessor<T>): {
     subscribe(observer: ObservableObserver<T>): {
         unsubscribe(): void;
     };
-    [Symbol.observable](): any;
+    [Symbol.observable](): {
+        subscribe(observer: ObservableObserver<T>): {
+            unsubscribe(): void;
+        };
+        [Symbol.observable](): /*elided*/ any;
+    };
 };
 export declare function from<T>(producer: ((setter: Setter<T>) => () => void) | {
     subscribe: (fn: (v: T) => void) => (() => void) | {

@@ -1,4 +1,6 @@
-import { createRoot, createRenderEffect, mergeProps, createMemo, createComponent, untrack } from 'solid-js';
+import { createMemo, createRoot, createRenderEffect, mergeProps, createComponent, untrack } from 'solid-js';
+
+const memo = fn => createMemo(() => fn());
 
 function createRenderer$1({
   createElement,
@@ -224,7 +226,7 @@ function createRenderer$1({
     },
     mergeProps,
     effect: createRenderEffect,
-    memo: createMemo,
+    memo,
     createComponent,
     use(fn, element, arg) {
       return untrack(() => fn(element, arg));

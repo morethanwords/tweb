@@ -2,8 +2,27 @@
 
 var solidJs = require('solid-js');
 
-const booleans = ["allowfullscreen", "async", "autofocus", "autoplay", "checked", "controls", "default", "disabled", "formnovalidate", "hidden", "indeterminate", "ismap", "loop", "multiple", "muted", "nomodule", "novalidate", "open", "playsinline", "readonly", "required", "reversed", "seamless", "selected"];
-const Properties = /*#__PURE__*/new Set(["className", "value", "readOnly", "formNoValidate", "isMap", "noModule", "playsInline", ...booleans]);
+const booleans = ["allowfullscreen", "async", "alpha",
+"autofocus",
+"autoplay", "checked", "controls", "default", "disabled", "formnovalidate", "hidden",
+"indeterminate", "inert",
+"ismap", "loop", "multiple", "muted", "nomodule", "novalidate", "open", "playsinline", "readonly", "required", "reversed", "seamless",
+"selected", "adauctionheaders",
+"browsingtopics",
+"credentialless",
+"defaultchecked", "defaultmuted", "defaultselected", "defer", "disablepictureinpicture", "disableremoteplayback", "preservespitch",
+"shadowrootclonable", "shadowrootcustomelementregistry",
+"shadowrootdelegatesfocus", "shadowrootserializable",
+"sharedstoragewritable"
+];
+const Properties = /*#__PURE__*/new Set([
+"className", "value",
+"readOnly", "noValidate", "formNoValidate", "isMap", "noModule", "playsInline", "adAuctionHeaders",
+"allowFullscreen", "browsingTopics",
+"defaultChecked", "defaultMuted", "defaultSelected", "disablePictureInPicture", "disableRemotePlayback", "preservesPitch", "shadowRootClonable", "shadowRootCustomElementRegistry",
+"shadowRootDelegatesFocus", "shadowRootSerializable",
+"sharedStorageWritable",
+...booleans]);
 const ChildProperties = /*#__PURE__*/new Set(["innerHTML", "textContent", "innerText", "children"]);
 const Aliases = /*#__PURE__*/Object.assign(Object.create(null), {
   className: "class",
@@ -11,6 +30,10 @@ const Aliases = /*#__PURE__*/Object.assign(Object.create(null), {
 });
 const PropAliases = /*#__PURE__*/Object.assign(Object.create(null), {
   class: "className",
+  novalidate: {
+    $: "noValidate",
+    FORM: 1
+  },
   formnovalidate: {
     $: "formNoValidate",
     BUTTON: 1,
@@ -32,6 +55,62 @@ const PropAliases = /*#__PURE__*/Object.assign(Object.create(null), {
     $: "readOnly",
     INPUT: 1,
     TEXTAREA: 1
+  },
+  adauctionheaders: {
+    $: "adAuctionHeaders",
+    IFRAME: 1
+  },
+  allowfullscreen: {
+    $: "allowFullscreen",
+    IFRAME: 1
+  },
+  browsingtopics: {
+    $: "browsingTopics",
+    IMG: 1
+  },
+  defaultchecked: {
+    $: "defaultChecked",
+    INPUT: 1
+  },
+  defaultmuted: {
+    $: "defaultMuted",
+    AUDIO: 1,
+    VIDEO: 1
+  },
+  defaultselected: {
+    $: "defaultSelected",
+    OPTION: 1
+  },
+  disablepictureinpicture: {
+    $: "disablePictureInPicture",
+    VIDEO: 1
+  },
+  disableremoteplayback: {
+    $: "disableRemotePlayback",
+    AUDIO: 1,
+    VIDEO: 1
+  },
+  preservespitch: {
+    $: "preservesPitch",
+    AUDIO: 1,
+    VIDEO: 1
+  },
+  shadowrootclonable: {
+    $: "shadowRootClonable",
+    TEMPLATE: 1
+  },
+  shadowrootdelegatesfocus: {
+    $: "shadowRootDelegatesFocus",
+    TEMPLATE: 1
+  },
+  shadowrootserializable: {
+    $: "shadowRootSerializable",
+    TEMPLATE: 1
+  },
+  sharedstoragewritable: {
+    $: "sharedStorageWritable",
+    IFRAME: 1,
+    IMG: 1
   }
 });
 function getPropAlias(prop, tagName) {
@@ -40,7 +119,7 @@ function getPropAlias(prop, tagName) {
 }
 const DelegatedEvents = /*#__PURE__*/new Set(["beforeinput", "click", "dblclick", "contextmenu", "focusin", "focusout", "input", "keydown", "keyup", "mousedown", "mousemove", "mouseout", "mouseover", "mouseup", "pointerdown", "pointermove", "pointerout", "pointerover", "pointerup", "touchend", "touchmove", "touchstart"]);
 const SVGElements = /*#__PURE__*/new Set([
-"altGlyph", "altGlyphDef", "altGlyphItem", "animate", "animateColor", "animateMotion", "animateTransform", "circle", "clipPath", "color-profile", "cursor", "defs", "desc", "ellipse", "feBlend", "feColorMatrix", "feComponentTransfer", "feComposite", "feConvolveMatrix", "feDiffuseLighting", "feDisplacementMap", "feDistantLight", "feFlood", "feFuncA", "feFuncB", "feFuncG", "feFuncR", "feGaussianBlur", "feImage", "feMerge", "feMergeNode", "feMorphology", "feOffset", "fePointLight", "feSpecularLighting", "feSpotLight", "feTile", "feTurbulence", "filter", "font", "font-face", "font-face-format", "font-face-name", "font-face-src", "font-face-uri", "foreignObject", "g", "glyph", "glyphRef", "hkern", "image", "line", "linearGradient", "marker", "mask", "metadata", "missing-glyph", "mpath", "path", "pattern", "polygon", "polyline", "radialGradient", "rect",
+"altGlyph", "altGlyphDef", "altGlyphItem", "animate", "animateColor", "animateMotion", "animateTransform", "circle", "clipPath", "color-profile", "cursor", "defs", "desc", "ellipse", "feBlend", "feColorMatrix", "feComponentTransfer", "feComposite", "feConvolveMatrix", "feDiffuseLighting", "feDisplacementMap", "feDistantLight", "feDropShadow", "feFlood", "feFuncA", "feFuncB", "feFuncG", "feFuncR", "feGaussianBlur", "feImage", "feMerge", "feMergeNode", "feMorphology", "feOffset", "fePointLight", "feSpecularLighting", "feSpotLight", "feTile", "feTurbulence", "filter", "font", "font-face", "font-face-format", "font-face-name", "font-face-src", "font-face-uri", "foreignObject", "g", "glyph", "glyphRef", "hkern", "image", "line", "linearGradient", "marker", "mask", "metadata", "missing-glyph", "mpath", "path", "pattern", "polygon", "polyline", "radialGradient", "rect",
 "set", "stop",
 "svg", "switch", "symbol", "text", "textPath",
 "tref", "tspan", "use", "view", "vkern"]);
@@ -48,7 +127,11 @@ const SVGNamespace = {
   xlink: "http://www.w3.org/1999/xlink",
   xml: "http://www.w3.org/XML/1998/namespace"
 };
-const DOMElements = /*#__PURE__*/new Set(["html", "base", "head", "link", "meta", "style", "title", "body", "address", "article", "aside", "footer", "header", "main", "nav", "section", "body", "blockquote", "dd", "div", "dl", "dt", "figcaption", "figure", "hr", "li", "ol", "p", "pre", "ul", "a", "abbr", "b", "bdi", "bdo", "br", "cite", "code", "data", "dfn", "em", "i", "kbd", "mark", "q", "rp", "rt", "ruby", "s", "samp", "small", "span", "strong", "sub", "sup", "time", "u", "var", "wbr", "area", "audio", "img", "map", "track", "video", "embed", "iframe", "object", "param", "picture", "portal", "source", "svg", "math", "canvas", "noscript", "script", "del", "ins", "caption", "col", "colgroup", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "button", "datalist", "fieldset", "form", "input", "label", "legend", "meter", "optgroup", "option", "output", "progress", "select", "textarea", "details", "dialog", "menu", "summary", "details", "slot", "template", "acronym", "applet", "basefont", "bgsound", "big", "blink", "center", "content", "dir", "font", "frame", "frameset", "hgroup", "image", "keygen", "marquee", "menuitem", "nobr", "noembed", "noframes", "plaintext", "rb", "rtc", "shadow", "spacer", "strike", "tt", "xmp", "a", "abbr", "acronym", "address", "applet", "area", "article", "aside", "audio", "b", "base", "basefont", "bdi", "bdo", "bgsound", "big", "blink", "blockquote", "body", "br", "button", "canvas", "caption", "center", "cite", "code", "col", "colgroup", "content", "data", "datalist", "dd", "del", "details", "dfn", "dialog", "dir", "div", "dl", "dt", "em", "embed", "fieldset", "figcaption", "figure", "font", "footer", "form", "frame", "frameset", "head", "header", "hgroup", "hr", "html", "i", "iframe", "image", "img", "input", "ins", "kbd", "keygen", "label", "legend", "li", "link", "main", "map", "mark", "marquee", "menu", "menuitem", "meta", "meter", "nav", "nobr", "noembed", "noframes", "noscript", "object", "ol", "optgroup", "option", "output", "p", "param", "picture", "plaintext", "portal", "pre", "progress", "q", "rb", "rp", "rt", "rtc", "ruby", "s", "samp", "script", "section", "select", "shadow", "slot", "small", "source", "spacer", "span", "strike", "strong", "style", "sub", "summary", "sup", "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track", "tt", "u", "ul", "var", "video", "wbr", "xmp", "input", "h1", "h2", "h3", "h4", "h5", "h6"]);
+const DOMElements = /*#__PURE__*/new Set(["html", "base", "head", "link", "meta", "style", "title", "body", "address", "article", "aside", "footer", "header", "main", "nav", "section", "body", "blockquote", "dd", "div", "dl", "dt", "figcaption", "figure", "hr", "li", "ol", "p", "pre", "ul", "a", "abbr", "b", "bdi", "bdo", "br", "cite", "code", "data", "dfn", "em", "i", "kbd", "mark", "q", "rp", "rt", "ruby", "s", "samp", "small", "span", "strong", "sub", "sup", "time", "u", "var", "wbr", "area", "audio", "img", "map", "track", "video", "embed", "iframe", "object", "param", "picture", "portal", "source", "svg", "math", "canvas", "noscript", "script", "del", "ins", "caption", "col", "colgroup", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "button", "datalist", "fieldset", "form", "input", "label", "legend", "meter", "optgroup", "option", "output", "progress", "select", "textarea", "details", "dialog", "menu", "summary", "details", "slot", "template", "acronym", "applet", "basefont", "bgsound", "big", "blink", "center", "content", "dir", "font", "frame", "frameset", "hgroup", "image", "keygen", "marquee", "menuitem", "nobr", "noembed", "noframes", "plaintext", "rb", "rtc", "shadow", "spacer", "strike", "tt", "xmp", "a", "abbr", "acronym", "address", "applet", "area", "article", "aside", "audio", "b", "base", "basefont", "bdi", "bdo", "bgsound", "big", "blink", "blockquote", "body", "br", "button", "canvas", "caption", "center", "cite", "code", "col", "colgroup", "content", "data", "datalist", "dd", "del", "details", "dfn", "dialog", "dir", "div", "dl", "dt", "em", "embed", "fieldset", "figcaption", "figure", "font", "footer", "form", "frame", "frameset", "head", "header", "hgroup", "hr", "html", "i", "iframe", "image", "img", "input", "ins", "kbd", "keygen", "label", "legend", "li", "link", "main", "map", "mark", "marquee", "menu", "menuitem", "meta", "meter", "nav", "nobr", "noembed", "noframes", "noscript", "object", "ol", "optgroup", "option", "output", "p", "param", "picture", "plaintext", "portal", "pre", "progress", "q", "rb", "rp", "rt", "rtc", "ruby", "s", "samp", "script", "section", "select", "shadow", "slot", "small", "source", "spacer", "span", "strike", "strong", "style", "sub", "summary", "sup", "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track", "tt", "u", "ul", "var", "video", "wbr", "xmp", "input", "h1", "h2", "h3", "h4", "h5", "h6",
+"webview",
+"isindex", "listing", "multicol", "nextid", "noindex", "search"]);
+
+const memo = fn => solidJs.createMemo(() => fn());
 
 function reconcileArrays(parentNode, a, b) {
   let bLength = b.length,
@@ -109,6 +192,9 @@ function reconcileArrays(parentNode, a, b) {
 
 const $$EVENTS = "_$DX_DELEGATE";
 function render(code, element, init, options = {}) {
+  if (!element) {
+    throw new Error("The `element` passed to `render(..., element)` doesn't exist. Make sure `element` exists in the document.");
+  }
   let disposer;
   solidJs.createRoot(dispose => {
     disposer = dispose;
@@ -119,14 +205,15 @@ function render(code, element, init, options = {}) {
     element.textContent = "";
   };
 }
-function template(html, isCE, isSVG) {
+function template(html, isImportNode, isSVG, isMathML) {
   let node;
   const create = () => {
-    const t = document.createElement("template");
+    if (isHydrating()) throw new Error("Failed attempt to create new DOM elements during hydration. Check that the libraries you are using support hydration.");
+    const t = isMathML ? document.createElementNS("http://www.w3.org/1998/Math/MathML", "template") : document.createElement("template");
     t.innerHTML = html;
-    return isSVG ? t.content.firstChild.firstChild : t.content.firstChild;
+    return isSVG ? t.content.firstChild.firstChild : isMathML ? t.firstChild : t.content.firstChild;
   };
-  const fn = isCE ? () => solidJs.untrack(() => document.importNode(node || (node = create()), true)) : () => (node || (node = create())).cloneNode(true);
+  const fn = isImportNode ? () => solidJs.untrack(() => document.importNode(node || (node = create()), true)) : () => (node || (node = create())).cloneNode(true);
   fn.cloneNode = fn;
   return fn;
 }
@@ -146,13 +233,24 @@ function clearDelegatedEvents(document = window.document) {
     delete document[$$EVENTS];
   }
 }
+function setProperty(node, name, value) {
+  if (isHydrating(node)) return;
+  node[name] = value;
+}
 function setAttribute(node, name, value) {
+  if (isHydrating(node)) return;
   if (value == null) node.removeAttribute(name);else node.setAttribute(name, value);
 }
 function setAttributeNS(node, namespace, name, value) {
+  if (isHydrating(node)) return;
   if (value == null) node.removeAttributeNS(namespace, name);else node.setAttributeNS(namespace, name, value);
 }
+function setBoolAttribute(node, name, value) {
+  if (isHydrating(node)) return;
+  value ? node.setAttribute(name, "") : node.removeAttribute(name);
+}
 function className(node, value) {
+  if (isHydrating(node)) return;
   if (value == null) node.removeAttribute("class");else node.className = value;
 }
 function addEventListener(node, name, handler, delegate) {
@@ -164,7 +262,7 @@ function addEventListener(node, name, handler, delegate) {
   } else if (Array.isArray(handler)) {
     const handlerFn = handler[0];
     node.addEventListener(name, handler[0] = e => handlerFn.call(node, handler[1], e));
-  } else node.addEventListener(name, handler);
+  } else node.addEventListener(name, handler, typeof handler !== "function" && handler);
 }
 function classList(node, value, prev = {}) {
   const classKeys = Object.keys(value || {}),
@@ -206,12 +304,15 @@ function style(node, value, prev) {
   }
   return prev;
 }
+function setStyleProperty(node, name, value) {
+  value != null ? node.style.setProperty(name, value) : node.style.removeProperty(name);
+}
 function spread(node, props = {}, isSVG, skipChildren) {
   const prevProps = {};
   if (!skipChildren) {
     solidJs.createRenderEffect(() => prevProps.children = insertExpression(node, props.children, prevProps.children));
   }
-  solidJs.createRenderEffect(() => props.ref && props.ref(node));
+  solidJs.createRenderEffect(() => typeof props.ref === "function" && use(props.ref, node));
   solidJs.createRenderEffect(() => assign(node, props, isSVG, true, prevProps, true));
   return prevProps;
 }
@@ -224,9 +325,6 @@ function dynamicProperty(props, key) {
     enumerable: true
   });
   return props;
-}
-function innerHTML(parent, content) {
-  !solidJs.sharedConfig.context && (parent.innerHTML = content);
 }
 function use(fn, element, arg) {
   return solidJs.untrack(() => fn(element, arg));
@@ -241,7 +339,7 @@ function assign(node, props, isSVG, skipChildren, prevProps = {}, skipRef = fals
   for (const prop in prevProps) {
     if (!(prop in props)) {
       if (prop === "children") continue;
-      prevProps[prop] = assignProp(node, prop, null, prevProps[prop], isSVG, skipRef);
+      prevProps[prop] = assignProp(node, prop, null, prevProps[prop], isSVG, skipRef, props);
     }
   }
   for (const prop in props) {
@@ -250,29 +348,37 @@ function assign(node, props, isSVG, skipChildren, prevProps = {}, skipRef = fals
       continue;
     }
     const value = props[prop];
-    prevProps[prop] = assignProp(node, prop, value, prevProps[prop], isSVG, skipRef);
+    prevProps[prop] = assignProp(node, prop, value, prevProps[prop], isSVG, skipRef, props);
   }
 }
 function hydrate$1(code, element, options = {}) {
+  if (globalThis._$HY.done) return render(code, element, [...element.childNodes], options);
   solidJs.sharedConfig.completed = globalThis._$HY.completed;
   solidJs.sharedConfig.events = globalThis._$HY.events;
-  solidJs.sharedConfig.load = globalThis._$HY.load;
+  solidJs.sharedConfig.load = id => globalThis._$HY.r[id];
+  solidJs.sharedConfig.has = id => id in globalThis._$HY.r;
   solidJs.sharedConfig.gather = root => gatherHydratable(element, root);
   solidJs.sharedConfig.registry = new Map();
   solidJs.sharedConfig.context = {
     id: options.renderId || "",
     count: 0
   };
-  gatherHydratable(element, options.renderId);
-  const dispose = render(code, element, [...element.childNodes], options);
-  solidJs.sharedConfig.context = null;
-  return dispose;
+  try {
+    gatherHydratable(element, options.renderId);
+    return render(code, element, [...element.childNodes], options);
+  } finally {
+    solidJs.sharedConfig.context = null;
+  }
 }
 function getNextElement(template) {
-  let node, key;
-  if (!solidJs.sharedConfig.context || !(node = solidJs.sharedConfig.registry.get(key = getHydrationKey()))) {
-    if (solidJs.sharedConfig.context) console.warn("Unable to find DOM nodes for hydration key:", key);
-    if (!template) throw new Error("Unrecoverable Hydration Mismatch. No template for key: " + key);
+  let node,
+    key,
+    hydrating = isHydrating();
+  if (!hydrating || !(node = solidJs.sharedConfig.registry.get(key = getHydrationKey()))) {
+    if (hydrating) {
+      solidJs.sharedConfig.done = true;
+      throw new Error(`Hydration Mismatch. Unable to find DOM nodes for hydration key: ${key}\n${template ? template().outerHTML : ""}`);
+    }
     return template();
   }
   if (solidJs.sharedConfig.completed) solidJs.sharedConfig.completed.add(node);
@@ -287,11 +393,11 @@ function getNextMarker(start) {
   let end = start,
     count = 0,
     current = [];
-  if (solidJs.sharedConfig.context) {
+  if (isHydrating(start)) {
     while (end) {
       if (end.nodeType === 8) {
         const v = end.nodeValue;
-        if (v === "#") count++;else if (v === "/") {
+        if (v === "$") count++;else if (v === "/") {
           if (count === 0) return [end, current];
           count--;
         }
@@ -309,16 +415,24 @@ function runHydrationEvents() {
         completed,
         events
       } = solidJs.sharedConfig;
+      if (!events) return;
       events.queued = false;
       while (events.length) {
         const [el, e] = events[0];
         if (!completed.has(el)) return;
-        eventHandler(e);
         events.shift();
+        eventHandler(e);
+      }
+      if (solidJs.sharedConfig.done) {
+        solidJs.sharedConfig.events = _$HY.events = null;
+        solidJs.sharedConfig.completed = _$HY.completed = null;
       }
     });
     solidJs.sharedConfig.events.queued = true;
   }
+}
+function isHydrating(node) {
+  return !!solidJs.sharedConfig.context && !solidJs.sharedConfig.done && (!node || node.isConnected);
 }
 function toPropertyName(name) {
   return name.toLowerCase().replace(/-([a-z])/g, (_, w) => w.toUpperCase());
@@ -327,7 +441,7 @@ function toggleClassKey(node, key, value) {
   const classNames = key.trim().split(/\s+/);
   for (let i = 0, nameLen = classNames.length; i < nameLen; i++) node.classList.toggle(classNames[i], value);
 }
-function assignProp(node, prop, value, prev, isSVG, skipRef) {
+function assignProp(node, prop, value, prev, isSVG, skipRef, props) {
   let isCE, isProp, isChildProp, propAlias, forceProp;
   if (prop === "style") return style(node, value, prev);
   if (prop === "classList") return classList(node, value, prev);
@@ -336,8 +450,8 @@ function assignProp(node, prop, value, prev, isSVG, skipRef) {
     if (!skipRef) value(node);
   } else if (prop.slice(0, 3) === "on:") {
     const e = prop.slice(3);
-    prev && node.removeEventListener(e, prev);
-    value && node.addEventListener(e, value);
+    prev && node.removeEventListener(e, prev, typeof prev !== "function" && prev);
+    value && node.addEventListener(e, value, typeof value !== "function" && value);
   } else if (prop.slice(0, 10) === "oncapture:") {
     const e = prop.slice(10);
     prev && node.removeEventListener(e, prev, true);
@@ -355,11 +469,13 @@ function assignProp(node, prop, value, prev, isSVG, skipRef) {
     }
   } else if (prop.slice(0, 5) === "attr:") {
     setAttribute(node, prop.slice(5), value);
-  } else if ((forceProp = prop.slice(0, 5) === "prop:") || (isChildProp = ChildProperties.has(prop)) || !isSVG && ((propAlias = getPropAlias(prop, node.tagName)) || (isProp = Properties.has(prop))) || (isCE = node.nodeName.includes("-"))) {
+  } else if (prop.slice(0, 5) === "bool:") {
+    setBoolAttribute(node, prop.slice(5), value);
+  } else if ((forceProp = prop.slice(0, 5) === "prop:") || (isChildProp = ChildProperties.has(prop)) || !isSVG && ((propAlias = getPropAlias(prop, node.tagName)) || (isProp = Properties.has(prop))) || (isCE = node.nodeName.includes("-") || "is" in props)) {
     if (forceProp) {
       prop = prop.slice(5);
       isProp = true;
-    }
+    } else if (isHydrating(node)) return value;
     if (prop === "class" || prop === "className") className(node, value);else if (isCE && !isProp && !isChildProp) node[toPropertyName(prop)] = value;else node[propAlias || prop] = value;
   } else {
     const ns = isSVG && prop.indexOf(":") > -1 && SVGNamespace[prop.split(":")[0]];
@@ -368,14 +484,30 @@ function assignProp(node, prop, value, prev, isSVG, skipRef) {
   return value;
 }
 function eventHandler(e) {
-  const key = `$$${e.type}`;
-  let node = e.composedPath && e.composedPath()[0] || e.target;
-  if (e.target !== node) {
-    Object.defineProperty(e, "target", {
-      configurable: true,
-      value: node
-    });
+  if (solidJs.sharedConfig.registry && solidJs.sharedConfig.events) {
+    if (solidJs.sharedConfig.events.find(([el, ev]) => ev === e)) return;
   }
+  let node = e.target;
+  const key = `$$${e.type}`;
+  const oriTarget = e.target;
+  const oriCurrentTarget = e.currentTarget;
+  const retarget = value => Object.defineProperty(e, "target", {
+    configurable: true,
+    value
+  });
+  const handleNode = () => {
+    const handler = node[key];
+    if (handler && !node.disabled) {
+      const data = node[`${key}Data`];
+      data !== undefined ? handler.call(node, data, e) : handler.call(node, e);
+      if (e.cancelBubble) return;
+    }
+    node.host && typeof node.host !== "string" && !node.host._$host && node.contains(e.target) && retarget(node.host);
+    return true;
+  };
+  const walkUpTree = () => {
+    while (handleNode() && (node = node._$host || node.parentNode || node.host));
+  };
   Object.defineProperty(e, "currentTarget", {
     configurable: true,
     get() {
@@ -383,18 +515,28 @@ function eventHandler(e) {
     }
   });
   if (solidJs.sharedConfig.registry && !solidJs.sharedConfig.done) solidJs.sharedConfig.done = _$HY.done = true;
-  while (node) {
-    const handler = node[key];
-    if (handler && !node.disabled) {
-      const data = node[`${key}Data`];
-      data !== undefined ? handler.call(node, data, e) : handler.call(node, e);
-      if (e.cancelBubble) return;
+  if (e.composedPath) {
+    const path = e.composedPath();
+    retarget(path[0]);
+    for (let i = 0; i < path.length - 2; i++) {
+      node = path[i];
+      if (!handleNode()) break;
+      if (node._$host) {
+        node = node._$host;
+        walkUpTree();
+        break;
+      }
+      if (node.parentNode === oriCurrentTarget) {
+        break;
+      }
     }
-    node = node._$host || node.parentNode || node.host;
   }
+  else walkUpTree();
+  retarget(oriTarget);
 }
 function insertExpression(parent, value, current, marker, unwrapArray) {
-  if (solidJs.sharedConfig.context) {
+  const hydrating = isHydrating(parent);
+  if (hydrating) {
     !current && (current = [...parent.childNodes]);
     let cleaned = [];
     for (let i = 0; i < current.length; i++) {
@@ -409,12 +551,15 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
     multi = marker !== undefined;
   parent = multi && current[0] && current[0].parentNode || parent;
   if (t === "string" || t === "number") {
-    if (solidJs.sharedConfig.context) return current;
-    if (t === "number") value = value.toString();
+    if (hydrating) return current;
+    if (t === "number") {
+      value = value.toString();
+      if (value === current) return current;
+    }
     if (multi) {
       let node = current[0];
       if (node && node.nodeType === 3) {
-        node.data = value;
+        node.data !== value && (node.data = value);
       } else node = document.createTextNode(value);
       current = cleanChildren(parent, current, marker, node);
     } else {
@@ -423,7 +568,7 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
       } else current = parent.textContent = value;
     }
   } else if (value == null || t === "boolean") {
-    if (solidJs.sharedConfig.context) return current;
+    if (hydrating) return current;
     current = cleanChildren(parent, current, marker);
   } else if (t === "function") {
     solidJs.createRenderEffect(() => {
@@ -439,11 +584,14 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
       solidJs.createRenderEffect(() => current = insertExpression(parent, array, current, marker, true));
       return () => current;
     }
-    if (solidJs.sharedConfig.context) {
+    if (hydrating) {
       if (!array.length) return current;
-      for (let i = 0; i < array.length; i++) {
-        if (array[i].parentNode) return current = array;
-      }
+      if (marker === undefined) return current = [...parent.childNodes];
+      let node = array[0];
+      if (node.parentNode !== parent) return current;
+      const nodes = [node];
+      while ((node = node.nextSibling) !== marker) nodes.push(node);
+      return current = nodes;
     }
     if (array.length === 0) {
       current = cleanChildren(parent, current, marker);
@@ -458,7 +606,7 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
     }
     current = array;
   } else if (value.nodeType) {
-    if (solidJs.sharedConfig.context && value.parentNode) return current = multi ? [value] : value;
+    if (hydrating && value.parentNode) return current = multi ? [value] : value;
     if (Array.isArray(current)) {
       if (multi) return current = cleanChildren(parent, current, marker, value);
       cleanChildren(parent, current, null, value);
@@ -473,7 +621,7 @@ function normalizeIncomingArray(normalized, array, current, unwrap) {
   let dynamic = false;
   for (let i = 0, len = array.length; i < len; i++) {
     let item = array[i],
-      prev = current && current[i],
+      prev = current && current[normalized.length],
       t;
     if (item == null || item === true || item === false) ; else if ((t = typeof item) === "object" && item.nodeType) {
       normalized.push(item);
@@ -521,8 +669,7 @@ function gatherHydratable(element, root) {
   }
 }
 function getHydrationKey() {
-  const hydrate = solidJs.sharedConfig.context;
-  return `${hydrate.id}${hydrate.count++}`;
+  return solidJs.sharedConfig.getNextContextId();
 }
 function NoHydration(props) {
   return solidJs.sharedConfig.context ? undefined : props.children;
@@ -530,7 +677,11 @@ function NoHydration(props) {
 function Hydration(props) {
   return props.children;
 }
-function voidFn() {}
+const voidFn = () => undefined;
+const RequestContext = Symbol();
+function innerHTML(parent, content) {
+  !solidJs.sharedConfig.context && (parent.innerHTML = content);
+}
 
 function throwInBrowser(func) {
   const err = new Error(`${func.name} is not supported in the browser, returning undefined`);
@@ -558,8 +709,10 @@ function ssrSpread(props, isSVG, skipChildren) {}
 const isServer = false;
 const isDev = true;
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
-function createElement(tagName, isSVG = false) {
-  return isSVG ? document.createElementNS(SVG_NAMESPACE, tagName) : document.createElement(tagName);
+function createElement(tagName, isSVG = false, is = undefined) {
+  return isSVG ? document.createElementNS(SVG_NAMESPACE, tagName) : document.createElement(tagName, {
+    is
+  });
 }
 const hydrate = (...args) => {
   solidJs.enableHydration();
@@ -604,9 +757,8 @@ function Portal(props) {
   });
   return marker;
 }
-function Dynamic(props) {
-  const [p, others] = solidJs.splitProps(props, ["component"]);
-  const cached = solidJs.createMemo(() => p.component);
+function createDynamic(component, props) {
+  const cached = solidJs.createMemo(component);
   return solidJs.createMemo(() => {
     const component = cached();
     switch (typeof component) {
@@ -614,69 +766,69 @@ function Dynamic(props) {
         Object.assign(component, {
           [solidJs.$DEVCOMP]: true
         });
-        return solidJs.untrack(() => component(others));
+        return solidJs.untrack(() => component(props));
       case "string":
         const isSvg = SVGElements.has(component);
-        const el = solidJs.sharedConfig.context ? getNextElement() : createElement(component, isSvg);
-        spread(el, others, isSvg);
+        const el = solidJs.sharedConfig.context ? getNextElement() : createElement(component, isSvg, solidJs.untrack(() => props.is));
+        spread(el, props, isSvg);
         return el;
     }
   });
 }
+function Dynamic(props) {
+  const [, others] = solidJs.splitProps(props, ["component"]);
+  return createDynamic(() => props.component, others);
+}
 
-Object.defineProperty(exports, 'ErrorBoundary', {
+Object.defineProperty(exports, "ErrorBoundary", {
   enumerable: true,
   get: function () { return solidJs.ErrorBoundary; }
 });
-Object.defineProperty(exports, 'For', {
+Object.defineProperty(exports, "For", {
   enumerable: true,
   get: function () { return solidJs.For; }
 });
-Object.defineProperty(exports, 'Index', {
+Object.defineProperty(exports, "Index", {
   enumerable: true,
   get: function () { return solidJs.Index; }
 });
-Object.defineProperty(exports, 'Match', {
+Object.defineProperty(exports, "Match", {
   enumerable: true,
   get: function () { return solidJs.Match; }
 });
-Object.defineProperty(exports, 'Show', {
+Object.defineProperty(exports, "Show", {
   enumerable: true,
   get: function () { return solidJs.Show; }
 });
-Object.defineProperty(exports, 'Suspense', {
+Object.defineProperty(exports, "Suspense", {
   enumerable: true,
   get: function () { return solidJs.Suspense; }
 });
-Object.defineProperty(exports, 'SuspenseList', {
+Object.defineProperty(exports, "SuspenseList", {
   enumerable: true,
   get: function () { return solidJs.SuspenseList; }
 });
-Object.defineProperty(exports, 'Switch', {
+Object.defineProperty(exports, "Switch", {
   enumerable: true,
   get: function () { return solidJs.Switch; }
 });
-Object.defineProperty(exports, 'createComponent', {
+Object.defineProperty(exports, "createComponent", {
   enumerable: true,
   get: function () { return solidJs.createComponent; }
 });
-Object.defineProperty(exports, 'effect', {
+Object.defineProperty(exports, "effect", {
   enumerable: true,
   get: function () { return solidJs.createRenderEffect; }
 });
-Object.defineProperty(exports, 'getOwner', {
+Object.defineProperty(exports, "getOwner", {
   enumerable: true,
   get: function () { return solidJs.getOwner; }
 });
-Object.defineProperty(exports, 'memo', {
-  enumerable: true,
-  get: function () { return solidJs.createMemo; }
-});
-Object.defineProperty(exports, 'mergeProps', {
+Object.defineProperty(exports, "mergeProps", {
   enumerable: true,
   get: function () { return solidJs.mergeProps; }
 });
-Object.defineProperty(exports, 'untrack', {
+Object.defineProperty(exports, "untrack", {
   enumerable: true,
   get: function () { return solidJs.untrack; }
 });
@@ -691,6 +843,7 @@ exports.HydrationScript = voidFn;
 exports.NoHydration = NoHydration;
 exports.Portal = Portal;
 exports.Properties = Properties;
+exports.RequestContext = RequestContext;
 exports.SVGElements = SVGElements;
 exports.SVGNamespace = SVGNamespace;
 exports.addEventListener = addEventListener;
@@ -698,6 +851,7 @@ exports.assign = assign;
 exports.classList = classList;
 exports.className = className;
 exports.clearDelegatedEvents = clearDelegatedEvents;
+exports.createDynamic = createDynamic;
 exports.delegateEvents = delegateEvents;
 exports.dynamicProperty = dynamicProperty;
 exports.escape = escape;
@@ -708,11 +862,13 @@ exports.getNextElement = getNextElement;
 exports.getNextMarker = getNextMarker;
 exports.getNextMatch = getNextMatch;
 exports.getPropAlias = getPropAlias;
+exports.getRequestEvent = voidFn;
 exports.hydrate = hydrate;
 exports.innerHTML = innerHTML;
 exports.insert = insert;
 exports.isDev = isDev;
 exports.isServer = isServer;
+exports.memo = memo;
 exports.render = render;
 exports.renderToStream = renderToStream;
 exports.renderToString = renderToString;
@@ -721,6 +877,9 @@ exports.resolveSSRNode = resolveSSRNode;
 exports.runHydrationEvents = runHydrationEvents;
 exports.setAttribute = setAttribute;
 exports.setAttributeNS = setAttributeNS;
+exports.setBoolAttribute = setBoolAttribute;
+exports.setProperty = setProperty;
+exports.setStyleProperty = setStyleProperty;
 exports.spread = spread;
 exports.ssr = ssr;
 exports.ssrAttribute = ssrAttribute;

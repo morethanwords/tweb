@@ -29,7 +29,7 @@ export declare function For<T extends readonly any[], U extends JSX.Element>(pro
  * ```
  * If you have a list with changing indices, better use `<For>`.
  *
- * @description https://docs.solidjs.com/reference/components/index
+ * @description https://docs.solidjs.com/reference/components/index-component
  */
 export declare function Index<T extends readonly any[], U extends JSX.Element>(props: {
     each: T | undefined | null | false;

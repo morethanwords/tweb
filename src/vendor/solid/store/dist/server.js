@@ -85,6 +85,9 @@ function createStore(state) {
 function createMutable(state) {
   return state;
 }
+function modifyMutable(state, modifier) {
+  modifier(state);
+}
 function reconcile(value, options = {}) {
   return state => {
     if (!isWrappable(state) || !isWrappable(value)) return value;
@@ -108,4 +111,4 @@ function produce(fn) {
 }
 const DEV = undefined;
 
-export { $RAW, DEV, createMutable, createStore, isWrappable, produce, reconcile, setProperty, unwrap, updatePath };
+export { $RAW, DEV, createMutable, createStore, isWrappable, modifyMutable, produce, reconcile, setProperty, unwrap, updatePath };

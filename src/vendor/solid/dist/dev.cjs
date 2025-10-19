@@ -9,6 +9,7 @@ let taskIdCounter = 1,
   yieldInterval = 5,
   deadline = 0,
   maxYieldInterval = 300,
+  maxDeadline = 0,
   scheduleCallback = null,
   scheduledCallback = null;
 const maxSigned31BitInt = 1073741823;
@@ -20,9 +21,9 @@ function setupScheduler() {
     if (scheduledCallback !== null) {
       const currentTime = performance.now();
       deadline = currentTime + yieldInterval;
-      const hasTimeRemaining = true;
+      maxDeadline = currentTime + maxYieldInterval;
       try {
-        const hasMoreWork = scheduledCallback(hasTimeRemaining, currentTime);
+        const hasMoreWork = scheduledCallback(currentTime);
         if (!hasMoreWork) {
           scheduledCallback = null;
         } else port.postMessage(null);
@@ -40,7 +41,7 @@ function setupScheduler() {
         if (scheduling.isInputPending()) {
           return true;
         }
-        return currentTime >= maxYieldInterval;
+        return currentTime >= maxDeadline;
       } else {
         return false;
       }
@@ -84,21 +85,21 @@ function requestCallback(fn, options) {
 function cancelCallback(task) {
   task.fn = null;
 }
-function flushWork(hasTimeRemaining, initialTime) {
+function flushWork(initialTime) {
   isCallbackScheduled = false;
   isPerformingWork = true;
   try {
-    return workLoop(hasTimeRemaining, initialTime);
+    return workLoop(initialTime);
   } finally {
     currentTask = null;
     isPerformingWork = false;
   }
 }
-function workLoop(hasTimeRemaining, initialTime) {
+function workLoop(initialTime) {
   let currentTime = initialTime;
   currentTask = taskQueue[0] || null;
   while (currentTask !== null) {
-    if (currentTask.expirationTime > currentTime && (!hasTimeRemaining || shouldYieldToHost())) {
+    if (currentTask.expirationTime > currentTime && shouldYieldToHost()) {
       break;
     }
     const callback = currentTask.fn;
@@ -118,21 +119,36 @@ function workLoop(hasTimeRemaining, initialTime) {
 
 const sharedConfig = {
   context: undefined,
-  registry: undefined
+  registry: undefined,
+  effects: undefined,
+  done: false,
+  getContextId() {
+    return getContextId(this.context.count);
+  },
+  getNextContextId() {
+    return getContextId(this.context.count++);
+  }
 };
+function getContextId(count) {
+  const num = String(count),
+    len = num.length - 1;
+  return sharedConfig.context.id + (len ? String.fromCharCode(96 + len) : "") + num;
+}
 function setHydrateContext(context) {
   sharedConfig.context = context;
 }
 function nextHydrateContext() {
   return {
     ...sharedConfig.context,
-    id: `${sharedConfig.context.id}${sharedConfig.context.count++}-`,
+    id: sharedConfig.getNextContextId(),
     count: 0
   };
 }
 
+const IS_DEV = true;
 const equalFn = (a, b) => a === b;
 const $PROXY = Symbol("solid-proxy");
+const SUPPORTS_PROXY = typeof Proxy === "function";
 const $TRACK = Symbol("solid-track");
 const $DEVCOMP = Symbol("solid-dev-component");
 const signalOptions = {
@@ -160,7 +176,8 @@ let ExecCount = 0;
 const DevHooks = {
   afterUpdate: null,
   afterCreateOwner: null,
-  afterCreateSignal: null
+  afterCreateSignal: null,
+  afterRegisterGraph: null
 };
 function createRoot(fn, detachedOwner) {
   const listener = Listener,
@@ -201,8 +218,12 @@ function createSignal(value, options) {
   };
   {
     if (options.name) s.name = options.name;
-    if (DevHooks.afterCreateSignal) DevHooks.afterCreateSignal(s);
-    if (!options.internal) registerGraph(s);
+    if (options.internal) {
+      s.internal = true;
+    } else {
+      registerGraph(s);
+      if (DevHooks.afterCreateSignal) DevHooks.afterCreateSignal(s);
+    }
   }
   const setter = value => {
     if (typeof value === "function") {
@@ -261,21 +282,21 @@ function createResource(pSource, pFetcher, pOptions) {
   let source;
   let fetcher;
   let options;
-  if (arguments.length === 2 && typeof pFetcher === "object" || arguments.length === 1) {
-    source = true;
-    fetcher = pSource;
-    options = pFetcher || {};
-  } else {
+  if (typeof pFetcher === "function") {
     source = pSource;
     fetcher = pFetcher;
     options = pOptions || {};
+  } else {
+    source = true;
+    fetcher = pSource;
+    options = pFetcher || {};
   }
   let pr = null,
     initP = NO_INIT,
     id = null,
     loadedUnderTransition = false,
     scheduled = false,
-    resolved = ("initialValue" in options),
+    resolved = "initialValue" in options,
     dynamic = typeof source === "function" && createMemo(source);
   const contexts = new Set(),
     [value, setValue] = (options.storage || createSignal)(options.initialValue),
@@ -285,9 +306,8 @@ function createResource(pSource, pFetcher, pOptions) {
     }),
     [state, setState] = createSignal(resolved ? "ready" : "unresolved");
   if (sharedConfig.context) {
-    id = `${sharedConfig.context.id}${sharedConfig.context.count++}`;
-    let v;
-    if (options.ssrLoadFrom === "initial") initP = options.initialValue;else if (sharedConfig.load && (v = sharedConfig.load(id))) initP = v;
+    id = sharedConfig.getNextContextId();
+    if (options.ssrLoadFrom === "initial") initP = options.initialValue;else if (sharedConfig.load && sharedConfig.has(id)) initP = sharedConfig.load(id);
   }
   function loadEnd(p, v, error, key) {
     if (pr === p) {
@@ -345,17 +365,27 @@ function createResource(pSource, pFetcher, pOptions) {
       return;
     }
     if (Transition && pr) Transition.promises.delete(pr);
-    const p = initP !== NO_INIT ? initP : untrack(() => fetcher(lookup, {
-      value: value(),
-      refetching
-    }));
-    if (!isPromise(p)) {
+    let error;
+    const p = initP !== NO_INIT ? initP : untrack(() => {
+      try {
+        return fetcher(lookup, {
+          value: value(),
+          refetching
+        });
+      } catch (fetcherError) {
+        error = fetcherError;
+      }
+    });
+    if (error !== undefined) {
+      loadEnd(pr, undefined, castError(error), lookup);
+      return;
+    } else if (!isPromise(p)) {
       loadEnd(pr, p, undefined, lookup);
       return p;
     }
     pr = p;
-    if ("value" in p) {
-      if (p.status === "success") loadEnd(pr, p.value, undefined, lookup);else loadEnd(pr, undefined, undefined, lookup);
+    if ("v" in p) {
+      if (p.s === 1) loadEnd(pr, p.v, undefined, lookup);else loadEnd(pr, undefined, castError(p.v), lookup);
       return p;
     }
     scheduled = true;
@@ -388,9 +418,10 @@ function createResource(pSource, pFetcher, pOptions) {
       }
     }
   });
-  if (dynamic) createComputed(() => load(false));else load(false);
+  let owner = Owner;
+  if (dynamic) createComputed(() => (owner = Owner, load(false)));else load(false);
   return [read, {
-    refetch: load,
+    refetch: info => runWithOwner(owner, () => load(info)),
     mutate: setValue
   }];
 }
@@ -565,9 +596,11 @@ function devComponent(Comp, props) {
   return c.tValue !== undefined ? c.tValue : c.value;
 }
 function registerGraph(value) {
-  if (!Owner) return;
-  if (Owner.sourceMap) Owner.sourceMap.push(value);else Owner.sourceMap = [value];
-  value.graph = Owner;
+  if (Owner) {
+    if (Owner.sourceMap) Owner.sourceMap.push(value);else Owner.sourceMap = [value];
+    value.graph = Owner;
+  }
+  if (DevHooks.afterRegisterGraph) DevHooks.afterRegisterGraph(value);
 }
 function createContext(defaultValue, options) {
   const id = Symbol("context");
@@ -578,7 +611,8 @@ function createContext(defaultValue, options) {
   };
 }
 function useContext(context) {
-  return Owner && Owner.context && Owner.context[context.id] !== undefined ? Owner.context[context.id] : context.defaultValue;
+  let value;
+  return Owner && Owner.context && (value = Owner.context[context.id]) !== undefined ? value : context.defaultValue;
 }
 function children(fn) {
   const children = createMemo(fn);
@@ -677,7 +711,7 @@ function writeSignal(node, value, isComp) {
         }
         if (Updates.length > 10e5) {
           Updates = [];
-          if (true) throw new Error("Potential Infinite Loop Detected.");
+          if (IS_DEV) throw new Error("Potential Infinite Loop Detected.");
           throw new Error();
         }
       }, false);
@@ -900,12 +934,13 @@ function runUserEffects(queue) {
       sharedConfig.effects || (sharedConfig.effects = []);
       sharedConfig.effects.push(...queue.slice(0, userLength));
       return;
-    } else if (sharedConfig.effects) {
-      queue = [...sharedConfig.effects, ...queue];
-      userLength += sharedConfig.effects.length;
-      delete sharedConfig.effects;
     }
     setHydrateContext();
+  }
+  if (sharedConfig.effects && (sharedConfig.done || !sharedConfig.count)) {
+    queue = [...sharedConfig.effects, ...queue];
+    userLength += sharedConfig.effects.length;
+    delete sharedConfig.effects;
   }
   for (i = 0; i < userLength; i++) runTop(queue[i]);
 }
@@ -951,11 +986,11 @@ function cleanNode(node) {
       }
     }
   }
+  if (node.tOwned) {
+    for (i = node.tOwned.length - 1; i >= 0; i--) cleanNode(node.tOwned[i]);
+    delete node.tOwned;
+  }
   if (Transition && Transition.running && node.pure) {
-    if (node.tOwned) {
-      for (i = node.tOwned.length - 1; i >= 0; i--) cleanNode(node.tOwned[i]);
-      delete node.tOwned;
-    }
     reset(node, true);
   } else if (node.owned) {
     for (i = node.owned.length - 1; i >= 0; i--) cleanNode(node.owned[i]);
@@ -1085,8 +1120,8 @@ function observable(input) {
     }
   };
 }
-function from(producer) {
-  const [s, set] = createSignal(undefined, {
+function from(producer, initalValue = undefined) {
+  const [s, set] = createSignal(initalValue, {
     equals: false
   });
   if ("subscribe" in producer) {
@@ -1112,20 +1147,12 @@ function mapArray(list, mapFn, options = {}) {
   onCleanup(() => dispose(disposers));
   return () => {
     let newItems = list() || [],
+      newLen = newItems.length,
       i,
       j;
     newItems[$TRACK];
     return untrack(() => {
-      let newLen = newItems.length,
-        newIndices,
-        newIndicesNext,
-        temp,
-        tempdisposers,
-        tempIndexes,
-        start,
-        end,
-        newEnd,
-        item;
+      let newIndices, newIndicesNext, temp, tempdisposers, tempIndexes, start, end, newEnd, item;
       if (newLen === 0) {
         if (len !== 0) {
           dispose(disposers);
@@ -1217,10 +1244,11 @@ function indexArray(list, mapFn, options = {}) {
     i;
   onCleanup(() => dispose(disposers));
   return () => {
-    const newItems = list() || [];
+    const newItems = list() || [],
+      newLen = newItems.length;
     newItems[$TRACK];
     return untrack(() => {
-      if (newItems.length === 0) {
+      if (newLen === 0) {
         if (len !== 0) {
           dispose(disposers);
           disposers = [];
@@ -1246,7 +1274,7 @@ function indexArray(list, mapFn, options = {}) {
         mapped = [];
         len = 0;
       }
-      for (i = 0; i < newItems.length; i++) {
+      for (i = 0; i < newLen; i++) {
         if (i < items.length && items[i] !== newItems[i]) {
           signals[i](() => newItems[i]);
         } else if (i >= items.length) {
@@ -1256,7 +1284,7 @@ function indexArray(list, mapFn, options = {}) {
       for (; i < items.length; i++) {
         disposers[i]();
       }
-      len = signals.length = disposers.length = newItems.length;
+      len = signals.length = disposers.length = newLen;
       items = newItems.slice(0);
       return mapped = mapped.slice(0, len);
     });
@@ -1332,7 +1360,7 @@ function mergeProps(...sources) {
     proxy = proxy || !!s && $PROXY in s;
     sources[i] = typeof s === "function" ? (proxy = true, createMemo(s)) : s;
   }
-  if (proxy) {
+  if (SUPPORTS_PROXY && proxy) {
     return new Proxy({
       get(property) {
         for (let i = sources.length - 1; i >= 0; i--) {
@@ -1387,7 +1415,7 @@ function mergeProps(...sources) {
   return target;
 }
 function splitProps(props, ...keys) {
-  if ($PROXY in props) {
+  if (SUPPORTS_PROXY && $PROXY in props) {
     const blocked = new Set(keys.length > 1 ? keys.flat() : keys[0]);
     const res = keys.map(k => {
       return new Proxy({
@@ -1445,7 +1473,7 @@ function lazy(fn) {
       sharedConfig.count || (sharedConfig.count = 0);
       sharedConfig.count++;
       (p || (p = fn())).then(mod => {
-        setHydrateContext(ctx);
+        !sharedConfig.done && setHydrateContext(ctx);
         sharedConfig.count--;
         set(() => mod.default);
         setHydrateContext();
@@ -1456,17 +1484,17 @@ function lazy(fn) {
       comp = s;
     }
     let Comp;
-    return createMemo(() => (Comp = comp()) && untrack(() => {
-      if (true) Object.assign(Comp, {
+    return createMemo(() => (Comp = comp()) ? untrack(() => {
+      if (IS_DEV) Object.assign(Comp, {
         [$DEVCOMP]: true
       });
-      if (!ctx) return Comp(props);
+      if (!ctx || sharedConfig.done) return Comp(props);
       const c = sharedConfig.context;
       setHydrateContext(ctx);
       const r = Comp(props);
       setHydrateContext(c);
       return r;
-    }));
+    }) : "");
   };
   wrap.preload = () => p || ((p = fn()).then(mod => comp = () => mod.default), p);
   return wrap;
@@ -1474,7 +1502,7 @@ function lazy(fn) {
 let counter = 0;
 function createUniqueId() {
   const ctx = sharedConfig.context;
-  return ctx ? `${ctx.id}${ctx.count++}` : `cl-${counter++}`;
+  return ctx ? sharedConfig.getNextContextId() : `cl-${counter++}`;
 }
 
 const narrowedError = name => `Attempting to access a stale value from <${name}> that could possibly be undefined. This may occur because you are reading the accessor returned from the component at a time where it has already been unmounted. We recommend cleaning up any stale timers or async, or reading from the initial condition.` ;
@@ -1496,8 +1524,11 @@ function Index(props) {
 }
 function Show(props) {
   const keyed = props.keyed;
-  const condition = createMemo(() => props.when, undefined, {
-    equals: (a, b) => keyed ? a === b : !a === !b,
+  const conditionValue = createMemo(() => props.when, undefined, {
+    name: "condition value"
+  } );
+  const condition = keyed ? conditionValue : createMemo(conditionValue, undefined, {
+    equals: (a, b) => !a === !b,
     name: "condition"
   } );
   return createMemo(() => {
@@ -1507,7 +1538,7 @@ function Show(props) {
       const fn = typeof child === "function" && child.length > 0;
       return fn ? untrack(() => child(keyed ? c : () => {
         if (!untrack(condition)) throw narrowedError("Show");
-        return props.when;
+        return conditionValue();
       })) : child;
     }
     return props.fallback;
@@ -1516,35 +1547,38 @@ function Show(props) {
   } );
 }
 function Switch(props) {
-  let keyed = false;
-  const equals = (a, b) => (keyed ? a[1] === b[1] : !a[1] === !b[1]) && a[2] === b[2];
-  const conditions = children(() => props.children),
-    evalConditions = createMemo(() => {
-      let conds = conditions();
-      if (!Array.isArray(conds)) conds = [conds];
-      for (let i = 0; i < conds.length; i++) {
-        const c = conds[i].when;
-        if (c) {
-          keyed = !!conds[i].keyed;
-          return [i, c, conds[i]];
-        }
-      }
-      return [-1];
-    }, undefined, {
-      equals,
-      name: "eval conditions"
-    } );
+  const chs = children(() => props.children);
+  const switchFunc = createMemo(() => {
+    const ch = chs();
+    const mps = Array.isArray(ch) ? ch : [ch];
+    let func = () => undefined;
+    for (let i = 0; i < mps.length; i++) {
+      const index = i;
+      const mp = mps[i];
+      const prevFunc = func;
+      const conditionValue = createMemo(() => prevFunc() ? undefined : mp.when, undefined, {
+        name: "condition value"
+      } );
+      const condition = mp.keyed ? conditionValue : createMemo(conditionValue, undefined, {
+        equals: (a, b) => !a === !b,
+        name: "condition"
+      } );
+      func = () => prevFunc() || (condition() ? [index, conditionValue, mp] : undefined);
+    }
+    return func;
+  });
   return createMemo(() => {
-    const [index, when, cond] = evalConditions();
-    if (index < 0) return props.fallback;
-    const c = cond.children;
-    const fn = typeof c === "function" && c.length > 0;
-    return fn ? untrack(() => c(keyed ? when : () => {
-      if (untrack(evalConditions)[0] !== index) throw narrowedError("Match");
-      return cond.when;
-    })) : c;
+    const sel = switchFunc()();
+    if (!sel) return props.fallback;
+    const [index, conditionValue, mp] = sel;
+    const child = mp.children;
+    const fn = typeof child === "function" && child.length > 0;
+    return fn ? untrack(() => child(mp.keyed ? conditionValue() : () => {
+      if (untrack(switchFunc)()?.[0] !== index) throw narrowedError("Match");
+      return conditionValue();
+    })) : child;
   }, undefined, {
-    name: "value"
+    name: "eval conditions"
   } );
 }
 function Match(props) {
@@ -1556,7 +1590,7 @@ function resetErrorBoundaries() {
 }
 function ErrorBoundary(props) {
   let err;
-  if (sharedConfig.context && sharedConfig.load) err = sharedConfig.load(sharedConfig.context.id + sharedConfig.context.count);
+  if (sharedConfig.context && sharedConfig.load) err = sharedConfig.load(sharedConfig.getContextId());
   const [errored, setErrored] = createSignal(err, {
     name: "errored"
   } );
@@ -1577,7 +1611,7 @@ function ErrorBoundary(props) {
 }
 
 const suspenseListEquals = (a, b) => a.showContent === b.showContent && a.showFallback === b.showFallback;
-const SuspenseListContext = createContext();
+const SuspenseListContext = /* #__PURE__ */createContext();
 function SuspenseList(props) {
   let [wrapper, setWrapper] = createSignal(() => ({
       inFallback: false
@@ -1674,10 +1708,10 @@ function Suspense(props) {
     },
     owner = getOwner();
   if (sharedConfig.context && sharedConfig.load) {
-    const key = sharedConfig.context.id + sharedConfig.context.count;
+    const key = sharedConfig.getContextId();
     let ref = sharedConfig.load(key);
     if (ref) {
-      if (typeof ref !== "object" || ref.status !== "success") p = ref;else sharedConfig.gather(key);
+      if (typeof ref !== "object" || ref.s !== 1) p = ref;else sharedConfig.gather(key);
     }
     if (p && p !== "$$f") {
       const [s, set] = createSignal(undefined, {
@@ -1731,7 +1765,7 @@ function Suspense(props) {
             dispose = disposer;
             if (ctx) {
               setHydrateContext({
-                id: ctx.id + "f",
+                id: ctx.id + "F",
                 count: 0
               });
               ctx = undefined;
