@@ -67,8 +67,14 @@ export class AppNavigationController {
 
       this.debug && this.log('navigate', event);
       cancelEvent(event);
-
       const url = new URL(event.destination.url);
+
+      if(event.navigationType === 'push') {
+        this.overrideHash(url.hash);
+        this.onHashChange && this.onHashChange();
+        return;
+      }
+
       this._onPopState(url.hash, 0);
     });
 
