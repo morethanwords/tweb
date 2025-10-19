@@ -3258,7 +3258,7 @@
   gap: 0.5rem;
 
   &.is-first-unread::before {
-    width: 100vw;
+    width: 200%;
   }
 
   &.is-out {

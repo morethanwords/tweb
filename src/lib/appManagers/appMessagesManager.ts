@@ -89,6 +89,7 @@ import {increment, MonoforumDialog} from '../storages/monoforumDialogs';
 import formatStarsAmount from './utils/payments/formatStarsAmount';
 import {makeMessageMediaInputForSuggestedPost} from './utils/messages/makeMessageMediaInput';
 import {isTempId} from './utils/messages/isTempId';
+import fitSymbols from '../../helpers/string/fitSymbols';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -99,6 +100,8 @@ const SEND_MESSAGES_TO_PAID_QUEUE = false;
 const DO_NOT_DELETE_MESSAGES = false;
 
 const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
+const TOPIC_TITLE_MAX_LENGTH = 16;
+const TOPIC_TITLE_DEFAULT = 'New Chat';
 
 export const SUGGESTED_POST_MIN_THRESHOLD_SECONDS = 60; // avoid last minute suggests, or if the user was thinking a lot before clicking send
 
@@ -362,6 +365,7 @@ type CreateBotforumTopicArgs = {
   title: string;
   tempId: number;
   randomId: string;
+  message: ReturnType<AppMessagesManager['generateTopicCreatedServiceMessage']>;
   iconColor?: number;
 };
 
@@ -2204,7 +2208,7 @@ export class AppMessagesManager extends AppManager {
       this.appPeersManager.isBotforum(peerId) &&
       (!options.threadId || isTempId(options.threadId))
     ) {
-      const pendingTopic = this.getPendingOrCreateBotforumTopic({peerId, title: options.text?.slice(0, 16)});
+      const pendingTopic = this.getPendingOrCreateBotforumTopic({peerId, title: fitSymbols(options.text || TOPIC_TITLE_DEFAULT, TOPIC_TITLE_MAX_LENGTH)});
 
       if(options.replyToMsgId) {
         options.threadId = pendingTopic.tempId;
@@ -6324,12 +6328,19 @@ export class AppMessagesManager extends AppManager {
     const storage = this.getHistoryMessagesStorage(peerId);
     this.rootScope.dispatchEvent('history_append', {storageKey: storage.key, message});
 
-    this.createPendingBotforumTopic({peerId, tempId: topicCreatedMessage.id, randomId: topicCreatedMessage.random_id, title: title || 'New Chat'});
+    this.createPendingBotforumTopic({
+      peerId,
+      tempId: topicCreatedMessage.id,
+      randomId: topicCreatedMessage.random_id,
+      title: title || 'New Chat',
+      message: topicCreatedMessage,
+      iconColor: topicCreatedMessage.action.icon_color
+    });
 
     return this.pendingNewBotforumTopics[peerId];
   }
 
-  private async createPendingBotforumTopic({peerId, title, tempId, randomId, iconColor}: CreateBotforumTopicArgs) {
+  private async createPendingBotforumTopic({peerId, title, tempId, randomId, message, iconColor}: CreateBotforumTopicArgs) {
     const beforeMessageSendCallbacks: Array<() => void> = [];
     const messageSendCallbacks: Array<() => void> = [];
 
@@ -6339,9 +6350,19 @@ export class AppMessagesManager extends AppManager {
       messageSendCallbacks
     };
 
+    const temporaryTopic = this.generateTemporaryTopic(message);
+    const dumpTemporaryTopic = this.dialogsStorage.setTemporaryForumTopic(temporaryTopic);
+
     this.rootScope.dispatchEvent('botforum_pending_topic_created', {peerId, tempId});
 
     const pendingTopic = this.pendingNewBotforumTopics[peerId];
+
+    this.pendingByRandomId[randomId] = {
+      tempId: pendingTopic.tempId,
+      threadId: pendingTopic.tempId,
+      peerId,
+      storage: this.getHistoryMessagesStorage(peerId)
+    };
 
     const updates = await this.apiManager.invokeApi('messages.createForumTopic', {
       peer: this.appPeersManager.getInputPeerById(peerId),
@@ -6354,6 +6375,10 @@ export class AppMessagesManager extends AppManager {
     // TODO: Test with delay
     // await pause(5000);
 
+    const temporaryStorage = this.getHistoryStorage(peerId, pendingTopic.tempId);
+    temporaryStorage.key = getHistoryStorageKey({type: 'replies', peerId, threadId: pendingTopic.newId});
+    (this.threadsStorage[peerId] ??= {})[pendingTopic.newId] = temporaryStorage;
+
     this.apiUpdatesManager.processUpdateMessage(updates);
 
     if(updates._ === 'updates') {
@@ -6361,17 +6386,38 @@ export class AppMessagesManager extends AppManager {
       if(messageIdUpdate) pendingTopic.newId = messageIdUpdate.id;
     }
 
-    this.rootScope.dispatchEvent('botforum_pending_topic_created', {peerId, tempId, newId: pendingTopic.newId});
     await this.dialogsStorage.getForumTopicById(peerId, pendingTopic.newId);
+    this.rootScope.dispatchEvent('botforum_pending_topic_created', {peerId, tempId, newId: pendingTopic.newId});
 
-    const temporaryStorage = this.getHistoryStorage(peerId, pendingTopic.tempId);
-    // const newStorage = this.getHistoryStorage(peerId, pendingTopic.newId);
-    (this.threadsStorage[peerId] ??= {})[pendingTopic.newId] = temporaryStorage;
+    dumpTemporaryTopic();
+
 
     delete this.pendingNewBotforumTopics[peerId];
 
     beforeMessageSendCallbacks.forEach((callback) => callback());
     messageSendCallbacks.forEach((callback) => callback());
+  }
+
+  private generateTemporaryTopic(message: ReturnType<AppMessagesManager['generateTopicCreatedServiceMessage']> & Pick<Message.messageService, 'peerId'>): MTForumTopic.forumTopic {
+    return {
+      _: 'forumTopic',
+      id: message.id,
+      peerId: message.peerId,
+      date: message.date,
+      from_id: message.from_id,
+      title: message.action.title,
+      icon_color: message.action.icon_color,
+      top_message: message.id,
+      read_inbox_max_id: 0,
+      read_outbox_max_id: 0,
+      unread_count: 0,
+      unread_mentions_count: 0,
+      unread_reactions_count: 0,
+      notify_settings: {_: 'peerNotifySettings'},
+      pFlags: {
+        title_missing: true
+      }
+    };
   }
 
   public updatePinnedForumTopic(peerId: PeerId, topicId: number, pinned: boolean) {

@@ -156,7 +156,8 @@ export type ChatSetPeerOptions = {
   text?: string,
   entities?: MessageEntity[],
   call?: string | number,
-  isDeleting?: boolean
+  isDeleting?: boolean,
+  fromTemporaryThread?: boolean
 } & Partial<ChatSearchKeys>;
 
 export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {

@@ -86,9 +86,9 @@ const onAvatarStoriesUpdate = ({peerId}: {peerId: PeerId}) => {
 
 rootScope.addEventListener('avatar_update', onAvatarUpdate);
 rootScope.addEventListener('peer_title_edit', async(data) => {
-  if(!(await rootScope.managers.appAvatarsManager.isAvatarCached(data.peerId))) {
-    onAvatarUpdate(data);
-  }
+  if(!data.threadId && (await rootScope.managers.appAvatarsManager.isAvatarCached(data.peerId))) return;
+
+  onAvatarUpdate(data);
 });
 
 rootScope.addEventListener('peer_stories', ({peerId}) => {
@@ -97,6 +97,7 @@ rootScope.addEventListener('peer_stories', ({peerId}) => {
 rootScope.addEventListener('stories_read', onAvatarStoriesUpdate);
 rootScope.addEventListener('story_deleted', onAvatarStoriesUpdate);
 rootScope.addEventListener('story_new', onAvatarStoriesUpdate);
+
 
 const getStoriesSegments = async(peerId: PeerId, storyId?: number): Promise<AckedResult<StoriesSegments>> => {
   if(storyId) {

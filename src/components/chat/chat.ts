@@ -687,16 +687,12 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.listenerSetter.add(rootScope)('botforum_pending_topic_created', ({peerId, tempId, newId}) => {
       if(peerId !== this.peerId || (this.threadId && this.threadId !== tempId)) return;
 
-      if(newId) {
-        this.threadId = newId;
-        this.appImManager.dispatchEvent('peer_changed', this);
-        return;
-      }
+      !newId && this.input.clearInput();
 
-      this.input.clearInput();
       this.setPeer({
         peerId,
-        threadId: tempId
+        threadId: newId || tempId,
+        fromTemporaryThread: !!newId
       });
     });
 
@@ -1067,6 +1063,18 @@ export default class Chat extends EventListenerBase<{
       ...requestHistoryOptionsPart
     });
     this.changeHistoryStorageKey(newKey);
+
+    if(options.fromTemporaryThread) {
+      return Promise.resolve({
+        cached: true,
+        promise: this.finishPeerChange({
+          peerId,
+          middleware: () => {
+            return this.peerId === peerId && this.threadId === threadId;
+          }
+        })
+      });
+    }
 
     const bubblesSetPeerPromise = this.bubbles.setPeer({...options, samePeer, sameSearch});
     const setPeerPromise = this.setPeerPromise = bubblesSetPeerPromise.then((result) => {

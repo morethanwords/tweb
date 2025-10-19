@@ -50,6 +50,19 @@ rootScope.addEventListener('peer_title_edit', ({peerId, threadId}) => {
   });
 });
 
+rootScope.addEventListener('botforum_pending_topic_created', ({peerId, tempId, newId}) => {
+  if(!newId) return;
+
+  const query = `.peer-title[data-peer-id="${peerId}"][data-thread-id="${tempId}"]`;
+
+  const elements = Array.from(document.querySelectorAll(query)) as HTMLElement[];
+
+  elements.forEach((element) => {
+    const peerTitle = weakMap.get(element);
+    peerTitle?.update({...peerTitle.options, threadId: newId});
+  });
+});
+
 export default class PeerTitle {
   public element: HTMLElement;
   public options: PeerTitleOptions;

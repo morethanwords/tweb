@@ -94,6 +94,7 @@ export default class DialogsStorage extends AppManager {
 
   private forumTopics: Map<PeerId, {
     topics: Map<number, ForumTopic>,
+    temporaryTopics: Map<number, ForumTopic>,
     deletedTopics: Set<number>,
     getTopicPromises: Map<number, CancellablePromise<ForumTopic>>,
     index: SearchIndex<ForumTopic['id']>,
@@ -1697,6 +1698,7 @@ export default class DialogsStorage extends AppManager {
     }
 
     cache.topics.clear();
+    cache.temporaryTopics.clear();
 
     // for permanent delete
     // this.forumTopics.delete(peerId);
@@ -1707,6 +1709,7 @@ export default class DialogsStorage extends AppManager {
     if(!forumTopics) {
       forumTopics = {
         topics: new Map(),
+        temporaryTopics: new Map(),
         deletedTopics: new Set(),
         getTopicPromises: new Map(),
         index: this.createSearchIndex()
@@ -1791,9 +1794,18 @@ export default class DialogsStorage extends AppManager {
     return promise || cache.getTopicsPromise;
   }
 
+  public setTemporaryForumTopic(topic: ForumTopic) {
+    const cache = this.getForumTopicsCache(topic.peerId);
+    cache.temporaryTopics.set(topic.id, topic);
+
+    return () => {
+      cache.temporaryTopics.delete(topic.id);
+    };
+  }
+
   public getForumTopic(peerId: PeerId, topicId: number) {
     const forumTopics = this.forumTopics.get(peerId);
-    return forumTopics?.topics?.get(topicId);
+    return forumTopics?.topics?.get(topicId) || forumTopics?.temporaryTopics?.get(topicId);
   }
 
   public getForumTopicOrReload(peerId: PeerId, topicId: number) {
