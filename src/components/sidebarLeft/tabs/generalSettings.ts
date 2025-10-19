@@ -31,6 +31,7 @@ import AppPowerSavingTab from './powerSaving';
 import {toastNew} from '../../toast';
 import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 import {useAppSettings} from '../../../stores/appSettings';
+import pause from '../../../helpers/schedulers/pause';
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -523,6 +524,9 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       container.append(form);
     }
 
-    return Promise.all(promises);
+    return Promise.race([
+      pause(500),
+      Promise.all(promises)
+    ]);
   }
 }
