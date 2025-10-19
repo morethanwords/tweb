@@ -8,13 +8,12 @@ import type {StateSettings} from '../../../config/state';
 import flatten from '../../../helpers/array/flatten';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import {LiteModeKey} from '../../../helpers/liteMode';
-import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 import pause from '../../../helpers/schedulers/pause';
-import rootScope from '../../../lib/rootScope';
 import CheckboxFields, {CheckboxFieldsField} from '../../checkboxFields';
 import SettingSection from '../../settingSection';
 import SliderSuperTab from '../../sliderTab';
 import {toastNew} from '../../toast';
+import {useAppSettings} from '../../../stores/appSettings';
 
 type PowerSavingCheckboxFieldsField = CheckboxFieldsField & {
   key: LiteModeKey
@@ -24,6 +23,7 @@ export default class AppPowerSavingTab extends SliderSuperTab {
   public init() {
     this.container.classList.add('power-saving-container');
     this.setTitle('LiteMode.Title');
+    const [appSettings, setAppSettings] = useAppSettings();
 
     const form = document.createElement('form');
 
@@ -55,7 +55,7 @@ export default class AppPowerSavingTab extends SliderSuperTab {
         const isArray = Array.isArray(key);
         const mainKey = isArray ? key[0] : key;
         const nested = isArray ? flatten(key[1].map(wrap)) : undefined;
-        const value = rootScope.settings.liteMode[mainKey];
+        const value = appSettings.liteMode[mainKey];
         return [{
           key: mainKey,
           text: mainKey === 'all' ? 'LiteMode.EnableText' : `LiteMode.Key.${mainKey}.Title`,
@@ -83,7 +83,7 @@ export default class AppPowerSavingTab extends SliderSuperTab {
       });
 
       attachClickEvent(section.content, () => {
-        if(rootScope.settings.liteMode.all) {
+        if(appSettings.liteMode.all) {
           toastNew({langPackKey: 'LiteMode.DisableAlert'});
         }
       }, {listenerSetter: this.listenerSetter});
@@ -113,7 +113,7 @@ export default class AppPowerSavingTab extends SliderSuperTab {
         liteMode[field.key] = field.key === 'all' ? checked : !checked;
       });
 
-      const wasAll = rootScope.settings.liteMode.all;
+      const wasAll = appSettings.liteMode.all;
       if(wasAll !== liteMode.all) {
         onAllChange(!wasAll);
 
@@ -122,10 +122,10 @@ export default class AppPowerSavingTab extends SliderSuperTab {
         }
       }
 
-      await this.managers.appStateManager.setByKey(joinDeepPath('settings', 'liteMode'), rootScope.settings.liteMode = liteMode);
+      setAppSettings('liteMode', liteMode);
     });
 
-    onAllChange(rootScope.settings.liteMode.all);
+    onAllChange(appSettings.liteMode.all);
 
     this.scrollable.append(form);
   }

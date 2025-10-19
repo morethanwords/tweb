@@ -95,9 +95,9 @@ function NotificationsSuggestion() {
     setAppSettings('notifications', 'suggested', true);
     toastNew({langPackKey: 'Suggestion.Notifications.Dismissed'});
 
-    setTimeout(() => {
-      setAppSettings('notifications', 'suggested', false);
-    }, 2e3);
+    // setTimeout(() => {
+    //   setAppSettings('notifications', 'suggested', false);
+    // }, 2e3);
   };
 
   return (
@@ -106,7 +106,7 @@ function NotificationsSuggestion() {
       clickable={() => {
         Notification.requestPermission().then((permission) => {
           if(permission === 'granted') {
-            setAppSettings('notifications', 'suggested', false);
+            setAppSettings('notifications', 'suggested', true);
             uiNotificationsManager.onPushConditionsChange();
           } else if(permission === 'denied') {
             throw 1;
@@ -134,11 +134,11 @@ export function renderPendingSuggestion(toElement: HTMLElement) {
     const [element, setElement] = createSignal<JSX.Element>();
 
     // * test
-    onMount(() => {
-      if(appSettings.notifications.suggested) {
-        setAppSettings('notifications', 'suggested', false);
-      }
-    });
+    // onMount(() => {
+    //   if(appSettings.notifications.suggested) {
+    //     setAppSettings('notifications', 'suggested', false);
+    //   }
+    // });
 
     createEffect(() => {
       let element: JSX.Element;

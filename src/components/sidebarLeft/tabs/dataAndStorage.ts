@@ -12,7 +12,6 @@ import formatBytes from '../../../helpers/formatBytes';
 import copy from '../../../helpers/object/copy';
 import deepEqual from '../../../helpers/object/deepEqual';
 import {FormatterArguments, i18n, join, LangPackKey} from '../../../lib/langPack';
-import rootScope from '../../../lib/rootScope';
 import Button from '../../button';
 import CheckboxField from '../../checkboxField';
 import confirmationPopup from '../../confirmationPopup';
@@ -22,7 +21,8 @@ import AppAutoDownloadFileTab from './autoDownload/file';
 import AppAutoDownloadPhotoTab from './autoDownload/photo';
 import AppAutoDownloadVideoTab from './autoDownload/video';
 import SettingSection from '../../settingSection';
-import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
+import {useAppSettings} from '../../../stores/appSettings';
+import {unwrap} from 'solid-js/store';
 
 const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPackKey} = {
   contacts: 'AutoDownloadContacts',
@@ -34,6 +34,7 @@ const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPa
 export default class AppDataAndStorageTab extends SliderSuperTabEventable {
   public init() {
     this.setTitle('DataSettings');
+    const [appSettings, setAppSettings] = useAppSettings();
 
     {
       const section = new SettingSection({name: 'AutomaticMediaDownload', caption: 'AutoDownloadAudioInfo'});
@@ -41,7 +42,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
       const autoCheckboxField = new CheckboxField({
         text: 'AutoDownloadMedia',
         name: 'auto',
-        checked: !rootScope.settings.autoDownloadNew.pFlags.disabled,
+        checked: !appSettings.autoDownloadNew.pFlags.disabled,
         listenerSetter: this.listenerSetter
       });
 
@@ -52,14 +53,14 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
 
       const onChange = () => {
         toggleDisability([resetButton],
-          deepEqual(rootScope.settings.autoDownload, SETTINGS_INIT.autoDownload) &&
-          deepEqual(rootScope.settings.autoDownloadNew, SETTINGS_INIT.autoDownloadNew));
+          deepEqual(appSettings.autoDownload, SETTINGS_INIT.autoDownload) &&
+          deepEqual(appSettings.autoDownloadNew, SETTINGS_INIT.autoDownloadNew));
       };
 
       const setSubtitles = () => {
-        this.setAutoDownloadSubtitle(photoRow, rootScope.settings.autoDownload.photo /* state.settings.autoDownloadNew.photo_size_max */);
-        this.setAutoDownloadSubtitle(videoRow, rootScope.settings.autoDownload.video/* , state.settings.autoDownloadNew.video_size_max */);
-        this.setAutoDownloadSubtitle(fileRow, rootScope.settings.autoDownload.file, rootScope.settings.autoDownloadNew.file_size_max);
+        this.setAutoDownloadSubtitle(photoRow, appSettings.autoDownload.photo /* state.settings.autoDownloadNew.photo_size_max */);
+        this.setAutoDownloadSubtitle(videoRow, appSettings.autoDownload.video/* , state.settings.autoDownloadNew.video_size_max */);
+        this.setAutoDownloadSubtitle(fileRow, appSettings.autoDownload.file, appSettings.autoDownloadNew.file_size_max);
       };
 
       const openTab = (tabConstructor: SliderSuperTabEventableConstructable) => {
@@ -108,32 +109,30 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
             langKey: 'Reset'
           }
         }).then(() => {
-          const settings = rootScope.settings;
-          settings.autoDownloadNew = copy(SETTINGS_INIT.autoDownloadNew);
-          settings.autoDownload = copy(SETTINGS_INIT.autoDownload);
-          rootScope.settings = settings;
-          this.managers.appStateManager.setByKey('settings', settings);
+          setAppSettings('autoDownload', copy(SETTINGS_INIT.autoDownload));
+          setAppSettings('autoDownloadNew', copy(SETTINGS_INIT.autoDownloadNew));
 
           setSubtitles();
-          autoCheckboxField.checked = !rootScope.settings.autoDownloadNew.pFlags.disabled;
+          autoCheckboxField.checked = !appSettings.autoDownloadNew.pFlags.disabled;
         });
       });
 
+      let initial = true;
       const onDisabledChange = () => {
         const disabled = !autoCheckboxField.checked;
-
-        const autoDownloadNew = rootScope.settings.autoDownloadNew;
-        if(disabled) {
-          autoDownloadNew.pFlags.disabled = true;
-        } else {
-          delete autoDownloadNew.pFlags.disabled;
-        }
 
         [photoRow, videoRow, fileRow].forEach((row) => {
           row.container.classList.toggle('is-disabled', disabled);
         });
 
-        this.managers.appStateManager.setByKey(joinDeepPath('settings', 'autoDownloadNew'), autoDownloadNew);
+        if(initial) {
+          initial = false;
+        } else {
+          const obj = copy(unwrap(appSettings.autoDownloadNew));
+          if(disabled) obj.pFlags.disabled = true;
+          else delete obj.pFlags.disabled;
+          setAppSettings('autoDownloadNew', obj);
+        }
 
         onChange();
       };
@@ -158,6 +157,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
     let key: LangPackKey;
     const args: FormatterArguments = [];
 
+    settings = unwrap(settings);
     const peerKeys = Object.keys(settings) as (keyof typeof AUTO_DOWNLOAD_FOR_KEYS)[];
     const enabledKeys = peerKeys.map((key) => settings[key] ? AUTO_DOWNLOAD_FOR_KEYS[key] : undefined).filter(Boolean);
     if(!enabledKeys.length || sizeMax === 0) {
