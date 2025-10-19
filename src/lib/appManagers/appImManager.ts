@@ -2378,7 +2378,7 @@ export class AppImManager extends EventListenerBase<{
       if(options.threadId) {
         if(options.peerId === rootScope.myId) {
           options.type = ChatType.Saved;
-        } else if(!apiManagerProxy.isForum(options.peerId)) {
+        } else if(!apiManagerProxy.isForum(options.peerId) && !apiManagerProxy.isBotforum(options.peerId)) {
           options.type = ChatType.Discussion;
         }
       }
