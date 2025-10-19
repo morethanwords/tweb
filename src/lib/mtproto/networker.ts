@@ -1506,11 +1506,11 @@ export default class MTPNetworker {
   private applyServerSalt(newServerSalt: string) {
     const serverSalt = longToBytes(newServerSalt);
 
-    if(this.usingPfs) {
-      AccountController.update(this.accountNumber, {
-        ['dc' + this.dcId + '_server_salt']: bytesToHex(serverSalt)
-      });
-    }
+    // if(this.usingPfs) {
+    AccountController.update(this.accountNumber, {
+      [`dc${this.dcId}_server_salt`]: bytesToHex(serverSalt)
+    });
+    // }
 
     this.serverSalt = new Uint8Array(serverSalt);
   }

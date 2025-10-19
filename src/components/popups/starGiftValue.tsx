@@ -20,7 +20,6 @@ import {IconTsx} from '../iconTsx';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import PopupSendGift from './sendGift';
 import rootScope from '../../lib/rootScope';
-import ripple from '../ripple';
 
 export default class PopupStarGiftValue extends PopupElement {
   private gift: MyStarGift;
@@ -181,7 +180,6 @@ export default class PopupStarGiftValue extends PopupElement {
         <div class={/* @once */ styles.footer}>
           {value.listed_count && (
             <Button
-              ref={ripple}
               class="rp-overflow btn-transparent primary"
               onClick={() => PopupElement.createPopup(PopupSendGift, {
                 peerId: rootScope.myId,
@@ -208,7 +206,6 @@ export default class PopupStarGiftValue extends PopupElement {
           )}
           {value.fragment_listed_count && (
             <Button
-              ref={ripple}
               class="rp-overflow btn-transparent primary"
               onClick={() => safeWindowOpen(value.fragment_listed_url)}
             >
