@@ -46,6 +46,8 @@ import Icon from '../icon';
 import PopupStarGiftWear from './starGiftWear';
 import {setQuizHint} from '../poll';
 import createStarGiftUpgradePopup from './starGiftUpgrade';
+import classNames from '../../helpers/string/classNames';
+import PopupPayment from './payment';
 
 function AttributeTableButton(props: { permille: number }) {
   return (
@@ -367,8 +369,10 @@ export default class PopupStarGiftInfo extends PopupElement {
       return rows;
     })
 
+    const [originalDetails, setOriginalDetails] = createSignal(collectibleAttributes?.original);
+
     const tableFooter = () => {
-      if(collectibleAttributes?.original) {
+      if(originalDetails()) {
         const wrapPeer = (peer: Peer) => {
           const peerId = getPeerId(peer);
           return (
@@ -403,7 +407,31 @@ export default class PopupStarGiftInfo extends PopupElement {
           args.push(span);
         }
 
-        return <I18nTsx class="popup-star-gift-info-original" key={key} args={args} />;
+        return (
+          <div class={classNames('popup-star-gift-info-original', saved.drop_original_details_stars && 'has-delete')}>
+            <I18nTsx key={key} args={args} />
+            {saved.drop_original_details_stars && (
+              <ButtonIconTsx
+                icon="delete"
+                onClick={async() => {
+                  const popup = await PopupPayment.create({
+                    inputInvoice: {
+                      _: 'inputInvoiceStarGiftDropOriginalDetails',
+                      stargift: input
+                    }
+                  });
+
+                  popup.addEventListener('finish', (result) => {
+                    if(result === 'paid') {
+                      setOriginalDetails(undefined);
+                      delete collectibleAttributes.original
+                    }
+                  });
+                }}
+              />
+            )}
+          </div>
+        )
       }
 
       if(saved?.message) {

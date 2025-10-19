@@ -242,7 +242,8 @@ export default class AppGiftsManager extends AppManager {
       upgrade_stars: gift._ === 'starGift' ? gift.upgrade_stars : undefined,
       saved_id: action.saved_id,
       can_transfer_at: action._ === 'messageActionStarGiftUnique' ? action.can_transfer_at : undefined,
-      can_resell_at: action._ === 'messageActionStarGiftUnique' ? action.can_resell_at : undefined
+      can_resell_at: action._ === 'messageActionStarGiftUnique' ? action.can_resell_at : undefined,
+      drop_original_details_stars: action._ === 'messageActionStarGiftUnique' ? action.drop_original_details_stars : undefined
     };
 
     return {

@@ -2815,6 +2815,8 @@ const lang = {
   'StarGiftUpgradePriceSubtitle': 'Users who upgrade their gifts first get collectibles with shorter numbers.',
   'StarGiftUpgradePriceAbout': 'Upgrade cost drops every minute.',
   'StarGiftUpgradePriceUnderstood': 'UNDERSTOOD',
+  'StarGiftDropOriginalDetailsTitle': 'Remove Description',
+  'StarGiftDropOriginalDetailsText': 'Do you want to permanently remove the description from this collectible?',
   'ActionGiftStarsTitle': {
     'one_value': '%d Star',
     'other_value': '%d Stars'
