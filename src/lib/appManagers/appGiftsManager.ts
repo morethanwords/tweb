@@ -612,8 +612,8 @@ export default class AppGiftsManager extends AppManager {
     const res = await this.apiManager.invokeApiSingle('payments.updateStarGiftCollection', {
       peer: this.appPeersManager.getInputPeerById(options.peerId),
       collection_id: options.collectionId,
-      add_stargift: options.add,
-      delete_stargift: options.delete,
+      add_stargift: options.add?.length ? options.add : undefined,
+      delete_stargift: options.delete?.length ? options.delete : undefined,
       title: options.title
     });
 
