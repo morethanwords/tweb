@@ -7720,8 +7720,8 @@ export class AppMessagesManager extends AppManager {
     return this.getMessageFromStorage(this.getScheduledMessagesStorage(peerId), mid);
   }
 
-  public getScheduledMessages(peerId: PeerId) {
-    if(!this.canSendToPeer(peerId)) return;
+  public async getScheduledMessages(peerId: PeerId) {
+    if(!(await this.canSendToPeer(peerId))) return;
     if(this.appPeersManager.isMonoforum(peerId)) return;
 
     const storage = this.getScheduledMessagesStorage(peerId);
@@ -8784,7 +8784,7 @@ export class AppMessagesManager extends AppManager {
     return threadId ? `${peerId}_${threadId}` : peerId;
   }
 
-  public setTyping(
+  public async setTyping(
     peerId: PeerId,
     action: SendMessageAction,
     force?: boolean,
@@ -8798,7 +8798,7 @@ export class AppMessagesManager extends AppManager {
     let typing = this.typings[key];
     if(
       !peerId ||
-      !this.canSendToPeer(peerId) ||
+      !(await this.canSendToPeer(peerId)) ||
       peerId === this.appPeersManager.peerId ||
       // (!force && deepEqual(typing?.action, action))
       (!force && typing?.action?._ === action._) ||
@@ -9231,7 +9231,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public getSponsoredMessage(peerId: PeerId): Promise<MessagesSponsoredMessages> {
+  public async getSponsoredMessage(peerId: PeerId): Promise<MessagesSponsoredMessages> {
     // return Promise.resolve({
     //   '_': 'messages.sponsoredMessages',
     //   'posts_between': 5,
@@ -9279,7 +9279,7 @@ export class AppMessagesManager extends AppManager {
     // });
 
     // * don't show sponsored messages in own channels
-    if(!peerId.isUser() && this.canSendToPeer(peerId)) {
+    if(!peerId.isUser() && await this.canSendToPeer(peerId)) {
       return Promise.resolve({
         _: 'messages.sponsoredMessagesEmpty'
       });
