@@ -627,7 +627,7 @@ export class AppImManager extends EventListenerBase<{
 
     rootScope.addEventListener('message_sent', () => {
       if(rootScope.settings.notifications.sentMessageSound) {
-        this.audioAssetPlayer.playWithThrottle({name: 'message_sent'}, 1000);
+        this.audioAssetPlayer.playWithThrottle({name: 'message_sent', volume: 0.2}, 300);
       }
     });
 

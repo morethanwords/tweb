@@ -45,6 +45,7 @@ export default class AudioAssetPlayer<AssetMap extends Record<string, string>> {
       audio.src = ASSETS_PATH + this.assets[options.name];
       audio.loop = options.loop ?? false;
       audio.volume = options.volume ?? 1;
+      audio.setAttribute('name', options.name as string);
       AudioAssetPlayer.container.append(audio);
       safePlay(audio);
     } catch(e) {
