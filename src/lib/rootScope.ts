@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount} from '../layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity} from '../layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
 import type {MyDialogFilter} from './storages/filters';
 import type {AnyDialog, Folder} from './storages/dialogs';
@@ -240,7 +240,9 @@ export type BroadcastEvents = {
   'monoforum_dialogs_drop': {parentPeerId: PeerId, ids: PeerId[]},
   'monoforum_draft_update': {dialog: MonoforumDialog},
 
-  'botforum_pending_topic_created': {peerId: PeerId, tempId: number, newId?: number}
+  'botforum_pending_topic_created': {peerId: PeerId, tempId: number, newId?: number},
+
+  'update_draft_message_typing': {peerId: PeerId, threadId: number, mid: number, message: string, entities: MessageEntity[]}
 };
 
 export type BroadcastEventsListeners = {

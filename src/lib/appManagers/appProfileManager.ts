@@ -1046,6 +1046,11 @@ export class AppProfileManager extends AppManager {
     const action = update.action;
     let typing = typings.find((t) => t.userId === fromId);
 
+    if(update._ === 'updateUserTyping' && action._ === 'sendMessageTextDraftAction') {
+      this.appMessagesManager.handleTypingBotforumUpdate(update);
+      return;
+    }
+
     if((action as SendMessageAction.sendMessageEmojiInteraction).msg_id) {
       (action as SendMessageAction.sendMessageEmojiInteraction).msg_id = this.appMessagesIdsManager.generateMessageId((action as SendMessageAction.sendMessageEmojiInteraction).msg_id, (update as Update.updateChannelUserTyping).channel_id);
     }

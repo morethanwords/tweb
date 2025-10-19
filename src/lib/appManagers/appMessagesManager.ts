@@ -374,6 +374,12 @@ type GetPendingOrCreateBotforumTopicArgs = {
   title?: string;
 };
 
+type GenerateTypingBotforumMessageArgs = {
+  peerId: PeerId;
+  threadId: number;
+  action: SendMessageAction.sendMessageTextDraftAction;
+};
+
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
 
 export class AppMessagesManager extends AppManager {
@@ -484,6 +490,8 @@ export class AppMessagesManager extends AppManager {
   private paidMessagesQueue = new PaidMessagesQueue;
 
   private repayRequestHandler: RepayRequestHandler;
+
+  private typingBotforumMessages: Map<PeerId, string> = new Map();
 
   constructor() {
     super();
@@ -2385,7 +2393,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     let topMessage: number;
-    if(options.threadId && !this.appPeersManager.isForum(peerId)) {
+    if(options.threadId && !this.appPeersManager.isForum(peerId) && !this.appPeersManager.isBotforum(peerId)) {
       const historyStorage = this.getHistoryStorage(peerId, options.threadId);
       topMessage = historyStorage.history.first[0];
     }
@@ -7583,7 +7591,10 @@ export class AppMessagesManager extends AppManager {
   }
 
   private checkPendingMessage(message: MyMessage) {
-    const randomId = this.pendingByMessageId[message.mid];
+    const randomId =
+      this.pendingByMessageId[message.mid] ||
+      (!message.pFlags.out ? this.typingBotforumMessages.get(message.peerId) : undefined);
+
     let pendingMessage: ReturnType<AppMessagesManager['finalizePendingMessage']>;
     if(randomId) {
       const pendingData = this.pendingByRandomId[randomId];
@@ -9786,6 +9797,80 @@ export class AppMessagesManager extends AppManager {
         this.apiUpdatesManager.processUpdateMessage(updates);
       }
     })
+  }
+
+  public handleTypingBotforumUpdate(update: Update.updateUserTyping) {
+    const action = update.action;
+    if(action._ !== 'sendMessageTextDraftAction') return;
+
+    const peerId = update.user_id.toPeerId();
+    const threadId = update.top_msg_id;
+    const randomId = '' + action.random_id;
+
+    const existingRandomId = this.typingBotforumMessages.get(peerId);
+
+    if(!existingRandomId || existingRandomId !== randomId) {
+      existingRandomId && this.cancelPendingMessage(existingRandomId);
+
+      this.typingBotforumMessages.set(peerId, randomId);
+      const generatedMessage = this.generateTypingBotforumMessage({peerId, threadId, action});
+
+      const storages: HistoryStorage[] = [this.getHistoryStorage(peerId), this.getHistoryStorage(peerId, threadId)]
+      .filter(Boolean);
+
+      for(const storage of storages) {
+        storage.history.unshift(generatedMessage.id);
+      }
+
+      const [message] = this.saveMessages([generatedMessage]);
+
+      const storage = this.getHistoryMessagesStorage(peerId);
+
+      this.pendingByRandomId[randomId] = {peerId, tempId: generatedMessage.id, threadId, storage};
+
+      this.rootScope.dispatchEvent('history_append', {storageKey: storage.key, message});
+    } else {
+      const {tempId} = this.pendingByRandomId[randomId];
+
+      const message = this.getMessageByPeer(peerId, tempId);
+      if(message._ === 'message') {
+        message.message = action.text.text;
+        message.entities = action.text.entities;
+      }
+      this.saveMessages([message]);
+
+      const storage = this.getHistoryMessagesStorage(peerId);
+
+      this.rootScope.dispatchEvent('message_edit', {message, storageKey: storage.key, peerId, mid: tempId});
+
+      // this.rootScope.dispatchEvent('update_draft_message_typing', {
+      //   peerId,
+      //   threadId,
+      //   mid: tempId,
+      //   message: action.text.text,
+      //   entities: action.text.entities
+      // });
+    }
+  }
+
+  private generateTypingBotforumMessage({peerId, threadId, action}: GenerateTypingBotforumMessageArgs) {
+    return {
+      _: 'message',
+      id: this.generateTempMessageId(peerId),
+      from_id: this.appPeersManager.getOutputPeer(peerId),
+      peer_id: this.appPeersManager.getOutputPeer(peerId),
+      pFlags: {},
+      date: tsNow(true) + this.timeManager.getServerTimeOffset(),
+      message: action.text.text,
+      entities: action.text.entities,
+      random_id: '' + action.random_id,
+      reply_to: {
+        _: 'messageReplyHeader',
+        pFlags: {},
+        reply_to_top_id: threadId,
+        reply_to_msg_id: threadId
+      }
+    } satisfies Message.message;
   }
 }
 
