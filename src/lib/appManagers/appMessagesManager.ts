@@ -2214,17 +2214,12 @@ export class AppMessagesManager extends AppManager {
     const {peerId} = options;
     if(
       this.appPeersManager.isBotforum(peerId) &&
+      !options.replyToMsgId &&
       (!options.threadId || isTempId(options.threadId))
     ) {
       const pendingTopic = this.getPendingOrCreateBotforumTopic({peerId, title: fitSymbols(options.text || TOPIC_TITLE_DEFAULT, TOPIC_TITLE_MAX_LENGTH)});
 
-      if(options.replyToMsgId) {
-        options.threadId = pendingTopic.tempId;
-        pendingTopic.beforeMessageSendCallbacks.push(() => {
-          options.threadId = pendingTopic.newId;
-          if(options.replyTo?._ === 'inputReplyToMessage') options.replyTo.top_msg_id = pendingTopic.newId;
-        });
-      } else {
+      if(!options.replyToMsgId) {
         options.replyToMsgId = pendingTopic.tempId;
         pendingTopic.beforeMessageSendCallbacks.push(() => {
           options.replyToMsgId = pendingTopic.newId;
