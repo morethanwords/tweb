@@ -294,9 +294,10 @@ export class DialogElement extends Row {
       withIcons: !noIcons,
       threadId: isSavedDialog ? undefined : threadId,
       wrapOptions: {
-        textColor: appDialogsManager.getPrimaryColor(isActive),
+        textColor: appDialogsManager.getTextColor(isActive),
         ...newWrapOptions
       },
+      iconsColor: appDialogsManager.getPrimaryColor(isActive),
       meAsNotes: isSavedDialog,
       asAllChats
     });

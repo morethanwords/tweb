@@ -31,6 +31,7 @@ export type PeerTitleOptions = {
   withPremiumIcon?: boolean,
   threadId?: number,
   meAsNotes?: boolean,
+  iconsColor?: string,
   asAllChats?: AsAllChatsType,
   wrapOptions?: WrapSomethingOptions
 };
@@ -188,8 +189,8 @@ export default class PeerTitle {
 
       const [title, icons, topicIcon] = await Promise.all([
         getPeerTitle(this.options as Required<PeerTitleOptions>),
-        (this.options.withIcons && generateTitleIcons({peerId, wrapOptions: this.options.wrapOptions})) ||
-          (this.options.withPremiumIcon && generateTitleIcons({peerId, wrapOptions: this.options.wrapOptions, noVerifiedIcon: true, noFakeIcon: true})),
+        (this.options.withIcons && generateTitleIcons({peerId, wrapOptions: {...this.options.wrapOptions, textColor: this.options.iconsColor || this.options.wrapOptions?.textColor}})) ||
+          (this.options.withPremiumIcon && generateTitleIcons({peerId, wrapOptions: {...this.options.wrapOptions, textColor: this.options.iconsColor || this.options.wrapOptions?.textColor}, noVerifiedIcon: true, noFakeIcon: true})),
         getTopicIconPromise
       ]);
 
