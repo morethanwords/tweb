@@ -620,7 +620,7 @@ export class Authorizer extends AppManager {
   };
 
   private async __auth(dcId: DcId, temp: boolean) {
-    if(Modes.noPfs) {
+    if(Modes.noPfs && temp) {
       return;
     }
 
