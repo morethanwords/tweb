@@ -201,7 +201,7 @@
       .profile-subtitle {
         line-height: 24px;
         
-        span {
+        &-text {
           opacity: var(--secondary-opacity-max);
         }
       }

@@ -44,21 +44,22 @@ export default function showStarsRatingPopup(props: {
   const [isFuture, setIsFuture] = createSignal(false);
   const rating = () => isFuture() ? futureRating : currentRating;
   const isNegativeLevel = () => rating().level < 0;
-  const progress = createMemo(() => {
-    const rating$ = rating();
-    const isMaxLevel = rating$.next_level_stars === undefined;
-    const isNegativeLevel = rating$.level < 0;
-    if(isNegativeLevel) {
-      return 0.5;
-    } else if(isMaxLevel) {
-      return 1;
-    } else {
-      return (Number(rating$.stars) - Number(rating$.current_level_stars)) /
-        (Number(rating$.next_level_stars) - Number(rating$.current_level_stars));
-    }
-  });
 
   createPopup(() => {
+    const progress = createMemo(() => {
+      const rating$ = rating();
+      const isMaxLevel = rating$.next_level_stars === undefined;
+      const isNegativeLevel = rating$.level < 0;
+      if(isNegativeLevel) {
+        return 0.5;
+      } else if(isMaxLevel) {
+        return 1;
+      } else {
+        return (Number(rating$.stars) - Number(rating$.current_level_stars)) /
+          (Number(rating$.next_level_stars) - Number(rating$.current_level_stars));
+      }
+    });
+
     return (
       <PopupElement class={styles.popup} containerClass={styles.popupContainer}>
         <PopupElement.Header class={styles.popupHeader}>
