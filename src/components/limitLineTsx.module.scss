@@ -24,7 +24,7 @@
   position: relative;
   align-self: stretch;
 
-  &.hasHint {
+  .hasHint & {
     margin-top: calc(var(--hint-height) + 1rem);
   }
 
@@ -42,7 +42,7 @@
     }
   }
 
-  &Absolute {
+  &Filled {
     position: absolute;
     inset: 0;
     mask-image: linear-gradient(
@@ -50,6 +50,8 @@
       rgb(0, 0, 0) var(--limit-progress),
       rgba(0, 0, 0, 0) calc(var(--limit-progress) + 0.01%)
     );
+    color: #fff;
+    background: var(--limit-background);
 
     .reverse & {
       mask-image: linear-gradient(
@@ -58,11 +60,6 @@
         rgba(0, 0, 0, 0) calc(var(--limit-progress) + 0.01%)
       );
     }
-  }
-
-  &Filled {
-    color: #fff;
-    background: var(--limit-background)
   }
 }
 

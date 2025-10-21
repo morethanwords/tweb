@@ -269,7 +269,7 @@ function GiftOptionsPage(props: {
           <ChipTab value="All">
             {i18n('StarGiftCategoryAll')}
           </ChipTab>
-          <Show when={props.profileStore.items.length > 0}>
+          <Show when={props.peerId !== rootScope.myId && props.profileStore.items.length > 0}>
             <ChipTab value="Owned">
               {i18n('StarGiftCategoryOwned')}
             </ChipTab>
@@ -1062,7 +1062,7 @@ export default class PopupSendGift extends PopupElement {
       this.peerId.isUser() ? this.managers.appGiftsManager.getPremiumGiftOptions() : [] as MyPremiumGiftOption[],
       this.managers.appGiftsManager.getStarGiftOptions(),
       this.managers.appPeersManager.getPeer(this.peerId),
-      !this.resaleParams && profileStoreActions.loadNext()
+      !this.resaleParams && this.peerId !== rootScope.myId && profileStoreActions.loadNext()
     ]);
 
     const [chosenGift, setChosenGift] = createSignal<GiftOption>();

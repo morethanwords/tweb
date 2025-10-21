@@ -34,7 +34,7 @@
 }
 
 .limitLine {
-  margin-top: 1.375rem;
+  margin-top: 2rem;
   --limit-background: var(--primary-color);
   --hint-height: 3rem;
   --hint-icon-gap: .5rem;
@@ -75,10 +75,6 @@
 
 .list {
   margin-top: 1.375rem;
-
-  :global(.tgico) {
-    color: var(--primary-color);
-  }
 }
 
 .badge {
@@ -137,4 +133,23 @@
   margin-left: 0.25rem;
   display: inline-flex;
   align-items: center;
+}
+
+.row {
+  padding-inline-start: 3.5rem;
+  margin-top: .75rem;
+
+  &Icon {
+    color: var(--primary-color)!important;
+    top: 1rem !important;
+    transform: none !important;
+    inset-inline-start: 1rem !important;
+    font-size: 1.875rem!important;
+  }
+
+  &Subtitle {
+    font-size: 15px !important;
+    line-height: 22px;
+    margin-top: .125rem !important;
+  }
 }

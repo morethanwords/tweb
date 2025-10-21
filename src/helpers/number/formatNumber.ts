@@ -1,5 +1,6 @@
-export default function formatNumber(bytes: number, decimals = 2) {
+export default function formatNumber(bytes: number, decimals = 2): string {
   if(bytes === 0) return '0';
+  if(bytes < 0) return '-' + formatNumber(-bytes, decimals);
 
   const k = 1000;
   const dm = decimals < 0 ? 0 : decimals;

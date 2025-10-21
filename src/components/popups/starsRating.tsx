@@ -142,34 +142,34 @@ export default function showStarsRatingPopup(props: {
           />
 
           <div class={styles.list}>
-            <Row>
-              <Row.Icon icon="gift" />
-              <Row.Title>
+            <Row class={styles.row}>
+              <Row.Icon class={styles.rowIcon} icon="gift" />
+              <Row.Title class="text-bold">
                 <I18nTsx key="StarsRating.Row1Title" />
               </Row.Title>
-              <Row.Subtitle>
+              <Row.Subtitle class={styles.rowSubtitle}>
                 <Badge active={true} />
                 <I18nTsx key="StarsRating.Row1Subtitle" />
               </Row.Subtitle>
             </Row>
 
-            <Row>
-              <Row.Icon icon="group_star" />
-              <Row.Title>
+            <Row class={styles.row}>
+              <Row.Icon class={styles.rowIcon} icon="group_star" />
+              <Row.Title class="text-bold">
                 <I18nTsx key="StarsRating.Row2Title" />
               </Row.Title>
-              <Row.Subtitle>
+              <Row.Subtitle class={styles.rowSubtitle}>
                 <Badge active={true} />
                 <I18nTsx key="StarsRating.Row2Subtitle" />
               </Row.Subtitle>
             </Row>
 
-            <Row>
-              <Row.Icon icon="reload_star" />
-              <Row.Title>
+            <Row class={styles.row}>
+              <Row.Icon class={styles.rowIcon} icon="reload_star" />
+              <Row.Title class="text-bold">
                 <I18nTsx key="StarsRating.Row3Title" />
               </Row.Title>
-              <Row.Subtitle>
+              <Row.Subtitle class={styles.rowSubtitle}>
                 <Badge active={false} />
                 <I18nTsx key="StarsRating.Row3Subtitle" />
               </Row.Subtitle>
