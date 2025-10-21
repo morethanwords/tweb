@@ -153,7 +153,7 @@ port.addMultipleEventsListeners({
         sessionStorage.decryptEncryptable()
     ]);
 
-    pushSingleManager.onIsUsingPasscodeChange(payload.isUsingPasscode);
+    pushSingleManager.registerAgain();
 
     await port.invokeExceptSourceAsync('toggleUsingPasscode', payload, source);
 
