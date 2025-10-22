@@ -3,7 +3,8 @@
   height: 100%;
 }
 
-.hasCollections .grid {
+.hasCollections .grid,
+:global(.search-super-tabs-scrollable.is-single + .search-super-tabs-container) .grid {
   padding-top: 0.25rem;
 }
 

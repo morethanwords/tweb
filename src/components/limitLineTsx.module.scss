@@ -1,0 +1,152 @@
+@import '../scss/variables';
+@import '../scss/mixins';
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  --limit-progress: 50%;
+  --limit-background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
+  --limit-height: 2rem;
+  --hint-background: var(--limit-background);
+  --hint-height: 2rem;
+  --hint-icon-gap: .25rem;
+  --hint-icon-size: 1.25rem;
+}
+
+.line {
+  height: var(--limit-height);
+  border-radius: $border-radius-medium;
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  align-self: stretch;
+
+  .hasHint & {
+    margin-top: calc(var(--hint-height) + 1rem);
+  }
+
+  &Part {
+    color: var(--primary-text-color);
+    background: var(--limit-line-empty-background);
+    flex: 1 1 0;
+    padding: 0 .75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .reverse & {
+      flex-direction: row-reverse;
+    }
+  }
+
+  &Filled {
+    position: absolute;
+    inset: 0;
+    mask-image: linear-gradient(
+      to right,
+      rgb(0, 0, 0) var(--limit-progress),
+      rgba(0, 0, 0, 0) calc(var(--limit-progress) + 0.01%)
+    );
+    color: #fff;
+    background: var(--limit-background);
+
+    .reverse & {
+      mask-image: linear-gradient(
+        to left,
+        rgb(0, 0, 0) var(--limit-progress),
+        rgba(0, 0, 0, 0) calc(var(--limit-progress) + 0.01%)
+      );
+    }
+  }
+}
+
+.slider {
+  --height: var(--limit-height);
+  --thumb-size: 1.625rem;
+  --focus-scale: 1;
+  width: 100%;
+  border-radius: 99999px;
+  background-color: var(--limit-line-empty-background);
+  z-index: 1;
+
+  :global(.progress-line__filled) {
+    border-radius: inherit;
+    min-width: var(--height);
+    background: var(--limit-background);
+    width: calc(var(--progress) * 100% + var(--height) * (1 - var(--progress)));
+    overflow: hidden;
+    
+    &:after {
+      background-color: #fff;
+      inset-inline-end: .9375rem;
+      box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, .1);
+      z-index: 2;
+    }
+  }
+}
+
+.hint {
+  height: var(--hint-height);
+  border-radius: 9999px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hint-icon-gap);
+  font-weight: var(--font-weight-bold);
+  transform: scale(.6) translate(-280px, 16px) rotate(-30deg);
+  left: var(--left);
+  right: var(--right);
+  padding: 0 .75rem;
+  position: absolute;
+  background: var(--hint-background);
+  background-size: 200px var(--height);
+  border-radius: var(--border-radius);
+  white-space: nowrap;
+
+  @include animation-level-global(2) {
+    transition: transform .3s cubic-bezier(.12, 1.1, .56, 1.2)/* , left .3s cubic-bezier(.12, 1.1, .56, 1.2) */;
+  }
+
+  &.active {
+    transform: scale(1) translate(0, 0) rotate(0);
+  }
+}
+
+.hintTail {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: var(--hint-background);
+  background-size: 100px auto;
+  background-position-x: calc(100px - var(--tail-left-relative) * 65px);
+  clip-path: path("M0.5 0H44.5H36.9853C35.394 0 33.8679 0.632141 32.7426 1.75736L25.3284 9.17157C23.7663 10.7337 21.2337 10.7337 19.6716 9.17157L12.2574 1.75736C11.1321 0.632141 9.60602 0 8.01472 0H0.5Z");
+}
+
+.hintTailContainer {
+  position: absolute;
+  width: 46px;
+  height: 12px;
+  left: var(--tail-left);
+  bottom: -12px;
+}
+
+.hintIcon {
+  font-size: var(--hint-icon-size);
+  display: flex;
+}
+
+.justIcon {
+  .hint {
+    padding: 0 1rem;
+  }
+
+  .hintTailContainer {
+    bottom: -10px;
+  }
+}

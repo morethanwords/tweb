@@ -17,7 +17,7 @@ import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectib
 import {passwordPopup} from './password';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 
-export default function transferStarGift(gift: MyStarGift): Promise<boolean> {
+export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): Promise<boolean> {
   const {saved, input} = gift;
   const raw = gift.raw as StarGift.starGiftUnique;
 
@@ -106,6 +106,11 @@ export default function transferStarGift(gift: MyStarGift): Promise<boolean> {
         deferred.resolve(false);
       }
     }
+  }
+
+  if(toPeerId) {
+    handleSelection(toPeerId);
+    return deferred;
   }
 
   const popup = PopupElement.createPopup(PopupPickUser, {

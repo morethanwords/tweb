@@ -3048,9 +3048,9 @@ export class AppMessagesManager extends AppManager {
     let promise: Promise<ReturnType<typeof processResult>>, method: string, params: any;
     if(filterType === FilterType.Forum) {
       promise = this.apiManager.invokeApiSingleProcess({
-        method: method = 'channels.getForumTopics',
+        method: method = 'messages.getForumTopics',
         params: params = {
-          channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
+          peer: this.appPeersManager.getInputPeerById(peerId),
           limit: useLimit,
           offset_date: offsetTopicId ? undefined : offsetDate,
           offset_id: offsetId,
@@ -3915,9 +3915,9 @@ export class AppMessagesManager extends AppManager {
       });
     } else {
       promise = this.apiManager.invokeApiSingleProcess({
-        method: 'channels.deleteTopicHistory',
+        method: 'messages.deleteTopicHistory',
         params: {
-          channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
+          peer: this.appPeersManager.getInputPeerById(peerId),
           top_msg_id: getServerMessageId(threadOrSavedId)
         },
         processResult
@@ -4834,7 +4834,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     if(isTopic) {
-      return this.appChatsManager.updatePinnedForumTopic(peerId.toChatId(), topicOrSavedId, pinned);
+      return this.updatePinnedForumTopic(peerId, topicOrSavedId, pinned);
     }
 
     let promise: Promise<boolean>;
@@ -6170,6 +6170,64 @@ export class AppMessagesManager extends AppManager {
     }
 
     return false;
+  }
+
+  public editForumTopic(options: {
+    peerId: PeerId,
+    topicId: number,
+    title?: string,
+    iconEmojiId?: DocId,
+    closed?: boolean,
+    hidden?: boolean
+  }) {
+    const {peerId, topicId, title, iconEmojiId, closed, hidden} = options;
+    return this.apiManager.invokeApi('messages.editForumTopic', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      topic_id: getServerMessageId(topicId),
+      title,
+      icon_emoji_id: iconEmojiId,
+      closed,
+      hidden
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public async createForumTopic(options: {
+    peerId: PeerId,
+    title: string,
+    iconColor: number,
+    iconEmojiId: DocId
+  }) {
+    const {peerId, title, iconColor, iconEmojiId} = options;
+
+    const channelId = peerId.isUser() ? undefined : peerId.toChatId();
+    const channelFull = channelId ? undefined : await this.appProfileManager.getChannelFull(channelId);
+    const sendAsInputPeer = channelFull?.default_send_as && this.appPeersManager.getInputPeerById(this.appPeersManager.getPeerId(channelFull.default_send_as));
+
+    return this.apiManager.invokeApi('messages.createForumTopic', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      title,
+      icon_color: iconColor,
+      icon_emoji_id: iconEmojiId,
+      random_id: randomLong(),
+      send_as: sendAsInputPeer
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+
+      const update = (updates as Updates.updates).updates.find((update) => update._ === 'updateNewChannelMessage') as Update.updateNewChannelMessage;
+      return this.appMessagesIdsManager.generateMessageId(update.message.id, channelId);
+    });
+  }
+
+  public updatePinnedForumTopic(peerId: PeerId, topicId: number, pinned: boolean) {
+    return this.apiManager.invokeApi('messages.updatePinnedForumTopic', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      topic_id: getServerMessageId(topicId),
+      pinned
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    });
   }
 
   private onUpdateMessageId = (update: Update.updateMessageID) => {

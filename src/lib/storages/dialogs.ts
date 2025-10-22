@@ -188,12 +188,12 @@ export default class DialogsStorage extends AppManager {
       updateDialogPinned: this.onUpdateDialogPinned,
       updateSavedDialogPinned: this.onUpdateDialogPinned,
 
-      updateChannelPinnedTopic: this.onUpdateChannelPinnedTopic,
+      updatePinnedForumTopic: this.onUpdatePinnedForumTopic,
 
       updatePinnedDialogs: this.onUpdatePinnedDialogs,
       updatePinnedSavedDialogs: this.onUpdatePinnedDialogs,
 
-      updateChannelPinnedTopics: this.onUpdateChannelPinnedTopics,
+      updatePinnedForumTopics: this.onUpdatePinnedForumTopics,
 
       updateChannelViewForumAsMessages: this.onUpdateChannelViewForumAsMessages
     });
@@ -1760,8 +1760,8 @@ export default class DialogsStorage extends AppManager {
         return;
       }
 
-      return this.apiManager.invokeApi('channels.getForumTopicsByID', {
-        channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
+      return this.apiManager.invokeApi('messages.getForumTopicsByID', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
         topics: ids
       }).then((messagesForumTopics) => {
         if(this.getForumTopicsCache(peerId) !== cache) {
@@ -2033,9 +2033,9 @@ export default class DialogsStorage extends AppManager {
     this.handleDialogTogglePinned(dialog, update.pFlags.pinned, folderId);
   };
 
-  private onUpdateChannelPinnedTopic = (update: Update.updateChannelPinnedTopic) => {
-    const channelId = update.channel_id;
-    const peerId = channelId.toPeerId(true);
+  private onUpdatePinnedForumTopic = (update: Update.updatePinnedForumTopic) => {
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    const channelId = peerId.isAnyChat() ? peerId.toChatId() : undefined;
     const topicId = this.appMessagesIdsManager.generateMessageId(update.topic_id, channelId);
     const topic = this.getForumTopic(peerId, topicId);
     if(!topic) {
@@ -2078,9 +2078,9 @@ export default class DialogsStorage extends AppManager {
     }
   };
 
-  private onUpdateChannelPinnedTopics = async(update: Update.updateChannelPinnedTopics) => {
-    const channelId = update.channel_id;
-    const peerId = channelId.toPeerId(true);
+  private onUpdatePinnedForumTopics = async(update: Update.updatePinnedForumTopics) => {
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    const channelId = peerId.isAnyChat() ? peerId.toChatId() : undefined;
     const forumTopics = this.forumTopics.get(peerId);
     if(!forumTopics) {
       return;
@@ -2093,8 +2093,8 @@ export default class DialogsStorage extends AppManager {
     } else {
       const limit = await this.apiManager.getLimit('topicPin', true);
 
-      const promise = this.apiManager.invokeApi('channels.getForumTopics', {
-        channel: this.appChatsManager.getChannelInput(channelId),
+      const promise = this.apiManager.invokeApi('messages.getForumTopics', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
         limit,
         offset_date: 0,
         offset_id: 0,

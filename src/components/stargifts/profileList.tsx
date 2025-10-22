@@ -354,7 +354,21 @@ export function StarGiftsProfileTab(props: {
         </ChipTabs>
       </Show>
 
-      <Transition name="fade" mode="outin">
+      <Transition
+        onEnter={(el, done) => {
+          const a = el.animate([{opacity: 0}, {opacity: 1}], {
+            duration: 100
+          });
+          a.finished.then(done);
+        }}
+        onExit={(el, done) => {
+          const a = el.animate([{opacity: 1}, {opacity: 0}], {
+            duration: 100
+          });
+          a.finished.then(done);
+        }}
+        mode="outin"
+      >
         <Switch>
           <Match when={store.loading && store.items.length === 0}>
             <PreloaderTsx />

@@ -2807,7 +2807,7 @@ export class AppImManager extends EventListenerBase<{
       peerColorRgbValue = `var(--${property}-primary-color-rgb)`;
       peerBorderBackgroundValue = `var(--${property}-peer-${Math.max(1, length)}-border-background)`;
     } else {
-      const colorIndex = color?.color ?? getPeerColorIndexByPeer(peer);
+      const colorIndex = (color as PeerColor.peerColor)?.color ?? getPeerColorIndexByPeer(peer);
       if(colorIndex === -1) {
         element.style.removeProperty(colorProperty);
         element.style.removeProperty(borderBackgroundProperty);

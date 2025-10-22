@@ -37,6 +37,7 @@ import type Chat from '../chat/chat';
 import {PENDING_PAID_REACTIONS} from '../chat/reactions';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import {PeerTitleTsx} from '../peerTitleTsx';
+import {LimitLineTsx} from '../limitLineTsx';
 
 export default class PopupStarReaction extends PopupElement {
   constructor(private peerId: PeerId, private mid: number, private chat: Chat) {
@@ -114,18 +115,6 @@ export default class PopupStarReaction extends PopupElement {
       this.destroy();
     }, {listenerSetter: this.listenerSetter});
 
-    const range = new RangeSelector({
-      step: 0.0001,
-      min: 0,
-      max: 1,
-      useProperty: true,
-      offsetAxisValue: 30
-    }, starsSliderValue());
-    range.setListeners();
-    range.setHandlers({
-      onScrub: setStarsSliderValue
-    });
-
     const checkboxField = new CheckboxField({
       text: 'StarsReactionShowMeInTopSenders',
       checked: myReactor ? !myReactor.pFlags.anonymous : defaultSendAs?._ !== 'paidReactionPrivacyAnonymous'
@@ -170,71 +159,15 @@ export default class PopupStarReaction extends PopupElement {
       );
     }, {defer: true}));
 
-    let hintRef!: HTMLDivElement;
-    let tailRef!: HTMLDivElement;
-    let tailContainerRef!: HTMLDivElement;
-    function updateHintPosition() {
-      const hintWidth = hintRef.getBoundingClientRect().width;
-      const parentWidth = hintRef.parentElement.getBoundingClientRect().width;
 
-      const starsSliderValue$ = starsSliderValue();
-      const calculateSliderTipPosition = (value: number) => value * parentWidth + 30 * (1 - value) - 15;
-      const sliderTipPosition = calculateSliderTipPosition(starsSliderValue$);
-
-      const hintLeft = sliderTipPosition - hintWidth / 2;
-      const hintPadding = 8;
-      const minHintLeft = hintPadding;
-      const maxHintLeft = parentWidth - hintWidth - hintPadding;
-      const hintLeftClamped = clamp(hintLeft, minHintLeft, maxHintLeft);
-      hintRef.style.setProperty('--left', hintLeftClamped + 'px');
-
-      const tailWidth = 46;
-      const halfTailWidth = tailWidth / 2;
-      const extra = 15;
-      const extraHalf = extra / 2;
-      const tailLeft = sliderTipPosition - halfTailWidth;
-      let tailLeft2 = tailLeft;
-      const tailLeftMin = -extra;
-      const tailLeftMax = parentWidth - tailWidth + extra;
-      if((tailLeftMax - tailLeft) < extra) {
-        tailLeft2 += lerp(0, extra, 1 - (tailLeftMax - tailLeft) / extra);
-      }
-      if(tailLeft < extraHalf) {
-        tailLeft2 -= lerp(0, extra, 1 - -(-extraHalf - tailLeft) / extra);
-      }
-      const tailLeftClamped = clamp(tailLeft2, tailLeftMin, tailLeftMax);
-      const tailInset1 = (tailLeftMax - tailLeft2) > extra ? 0 : (1 - Math.max(tailLeftMax - tailLeft2, 0) / extra * 0.633) * 50;
-      const tailInset2 = tailLeft2 > extra ? 0 : (1 - Math.max(-(-extra - tailLeft2), 0) / extra * 0.595) * 50;
-      tailContainerRef.style.setProperty('--tail-left', tailLeftClamped + 'px');
-      tailContainerRef.style.clipPath = `inset(0 ${tailInset1}% 0 ${tailInset2}%)`;
-      tailRef.style.setProperty('--tail-left-relative', String(clamp((sliderTipPosition - hintLeftClamped) / hintWidth, 0, 1)));
-
-
-      const borderRadius = 24;
-      const leftProgress = tailLeft2 < 16 ? Math.max(0, (7 + tailLeft2)) / borderRadius : 1;
-      const tailRight = parentWidth - tailLeft2 - tailWidth;
-      const rightProgress = tailRight < 16 ? Math.max(0, (8 + tailRight)) / borderRadius : 1;
-
-      const radiusLeftBottom = leftProgress === 1 ? borderRadius : lerp(0, borderRadius, leftProgress);
-      const radiusRightBottom = rightProgress === 1 ? borderRadius : lerp(0, borderRadius, rightProgress);
-
-      hintRef.style.setProperty('--border-radius', `${borderRadius}px ${borderRadius}px ${radiusRightBottom}px ${radiusLeftBottom}px`);
-    }
-
-    const updateCounterDebounced = debounce(hintCounter.setCount.bind(hintCounter), 10, true, true);
+    const updateCounterDebounced = debounce(val => fastRaf(() => hintCounter.setCount(val)), 10, true, true);
 
     createEffect(() => {
       sendText.compareAndUpdate({
         args: [starsCount()]
       });
-      fastRaf(updateHintPosition);
       updateCounterDebounced(starsCount());
     });
-    onMount(() => {
-      resizeObserver.observe(hintRef);
-      fastRaf(updateHintPosition);
-    });
-    const resizeObserver = new ResizeObserver(updateHintPosition);
 
     const mySender = createMemo(() => {
       const existing = topSenders().find((sender) => sender.pFlags.my);
@@ -271,7 +204,6 @@ export default class PopupStarReaction extends PopupElement {
         mode="progress"
       />
     );
-    range.container.querySelector('.progress-line__filled').appendChild(sparkles as HTMLElement);
 
     const renderSender = (sender: MessageReactor.messageReactor) => {
       const peerId = getPeerId(sender.peer_id);
@@ -329,17 +261,19 @@ export default class PopupStarReaction extends PopupElement {
 
     return (
       <>
-        <div class="popup-stars-slider">
-          {range.container}
-          <div class="popup-stars-slider-hint-tail-container" ref={tailContainerRef}>
-            <div class="popup-stars-slider-hint-tail" ref={tailRef} />
-          </div>
-          <div class="popup-stars-slider-hint" ref={hintRef}>
-            <IconTsx icon="star" />
-            {hintCounter.container}
-            <Sparkles mode="button" />
-          </div>
-        </div>
+        <LimitLineTsx
+          class="popup-stars-slider"
+          filledProgressElement={sparkles as HTMLElement}
+          progress={starsSliderValue()}
+          onScrub={setStarsSliderValue}
+          hint={
+            <div class="popup-stars-slider-hint">
+              {hintCounter.container}
+              <Sparkles mode="button" />
+            </div>
+          }
+          hintIcon="star"
+        />
         <div class="popup-stars-title">{i18n('StarsReactionTitle')}</div>
         <div class="popup-stars-subtitle">{i18n('StarsReactionText', [peerTitle])}</div>
         <div class="popup-star-reaction-senders">

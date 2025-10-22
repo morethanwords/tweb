@@ -11,7 +11,6 @@ import PopupStars, {StarsBalance, StarsStar} from './stars';
 import LottieAnimation from '../lottieAnimation';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import classNames from '../../helpers/string/classNames';
-import sortLongsArray from '../../helpers/long/sortLongsArray';
 import {StarGiftsGrid} from '../stargifts/stargiftsGrid';
 import {fastRaf} from '../../helpers/schedulers';
 import PopupStarGiftInfo from './starGiftInfo';
@@ -31,7 +30,6 @@ import {render} from 'solid-js/web';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import numberThousandSplitter, {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import PopupPayment from './payment';
-import useStars from '../../stores/stars';
 import {TransitionSliderTsx} from '../transitionTsx';
 import maybe2x from '../../helpers/maybe2x';
 import {I18nTsx} from '../../helpers/solid/i18n';
@@ -39,11 +37,9 @@ import {StarGiftBadge} from '../stargifts/stargiftBadge';
 import Scrollable from '../scrollable2';
 import {approxEquals} from '../../helpers/number/approxEquals';
 import {useAppState} from '../../stores/appState';
-import PopupStarGiftUpgrade from './starGiftUpgrade';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import {PeerTitleTsx} from '../peerTitleTsx';
 
-import styles from './sendGift.module.scss';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import {IconTsx} from '../iconTsx';
 import {ButtonMenuSelect, ButtonMenuSelectText} from '../buttonMenuSelect';
@@ -62,14 +58,14 @@ import PopupPremium from './premium';
 import tsNow from '../../helpers/tsNow';
 import confirmationPopup from '../confirmationPopup';
 import {toastNew} from '../toast';
+import createStarGiftUpgradePopup from './starGiftUpgrade';
+import {createProfileGiftsStore, StarGiftsProfileActions, StarGiftsProfileStore} from '../stargifts/profileStore';
+import transferStarGift from './transferStarGift';
+import {unwrap} from 'solid-js/store';
+
+import styles from './sendGift.module.scss';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
-
-const STATIC_CATEGORIES: Record<string, LangPackKey> = {
-  All: 'StarGiftCategoryAll',
-  Limited: 'StarGiftCategoryLimited',
-  InStock: 'StarGiftCategoryInStock'
-};
 
 function GiftOptionsPage(props: {
   peer: User.user | Chat.channel
@@ -78,15 +74,14 @@ function GiftOptionsPage(props: {
   giftOptions: MyStarGift[]
   onGiftChosen: (item: GiftOption) => void
   onClose: () => void
+
+  profileStore: StarGiftsProfileStore
+  profileStoreActions: StarGiftsProfileActions
 }) {
   const [isPinned, setIsPinned] = createSignal(false);
-  const availableCategoriesSet = new Set<string>();
-  for(const option of props.giftOptions) {
-    availableCategoriesSet.add(String((option.raw as StarGift.starGift).stars));
-  }
-  const availableCategories = sortLongsArray([...availableCategoriesSet.values()]);
 
-  const [category, setCategory] = createSignal<string>('All');
+  type CategoryName = 'All' | 'Owned' | 'Collectibles';
+  const [category, setCategory] = createSignal<CategoryName>('All');
 
   let categoriesContainer!: HTMLDivElement;
   let container!: HTMLDivElement;
@@ -151,33 +146,35 @@ function GiftOptionsPage(props: {
 
   const handleCategoryChanged = (it: string) => {
     const wasPinned = isPinned()
-    setCategory(it);
+    setCategory(it as CategoryName);
 
     fastRaf(() => {
       container.scrollTo({top: categoriesContainer.offsetTop - 56, behavior: wasPinned ? 'instant' : 'smooth'});
     });
   }
 
-  const wrapCategory = (it: string) => (
-    <ChipTab value={it}>
-      {it in STATIC_CATEGORIES ? i18n(STATIC_CATEGORIES[it]) : (
-          <>
-            <StarsStar />
-            {it}
-          </>
-        )}
-    </ChipTab>
-  );
-
   const filteredGiftOptions = createMemo(() => {
     const category$ = category();
     if(category$ === 'All') return props.giftOptions;
-    if(category$ === 'Limited') return props.giftOptions.filter((it) => (it.raw as StarGift.starGift).availability_total);
-    if(category$ === 'InStock') return props.giftOptions.filter((it) => (it.raw as StarGift.starGift).availability_remains === undefined || (it.raw as StarGift.starGift).availability_remains > 0);
-    return props.giftOptions.filter((it) => (it.raw as StarGift.starGift).stars.toString() === category$);
+    if(category$ === 'Collectibles') {
+      return props.giftOptions.filter((it) =>
+        ((it.raw as StarGift.starGift).availability_remains > 0 && (it.raw as StarGift.starGift).upgrade_stars !== undefined) ||
+        it.isResale
+      );
+    }
+    return unwrap(props.profileStore.items);
   });
 
   const handleGiftClick = async(item: MyStarGift) => {
+    if(category() === 'Owned') {
+      transferStarGift(item, props.peerId).then((result) => {
+        if(result) {
+          props.onClose();
+        }
+      });
+      return
+    }
+
     const gift = item.raw as StarGift.starGift;
     if(gift.availability_remains === 0 && !gift.resell_min_stars) {
       PopupElement.createPopup(PopupStarGiftInfo, {gift: item});
@@ -211,7 +208,6 @@ function GiftOptionsPage(props: {
     props.onGiftChosen(item);
   };
 
-
   onMount(() => {
     fastRaf(() => {
       container.style.setProperty('--height', `${container.offsetHeight}px`);
@@ -227,6 +223,11 @@ function GiftOptionsPage(props: {
         const containerRect = container.getBoundingClientRect();
         const rect = categoriesContainer.getBoundingClientRect();
         setIsPinned(approxEquals(rect.top - containerRect.top, 56, 0.1));
+      }}
+      onScrolledBottom={() => {
+        if(category() === 'Owned') {
+          props.profileStoreActions.loadNext();
+        }
       }}
     >
       <div class={styles.mainContainer}>
@@ -263,16 +264,25 @@ function GiftOptionsPage(props: {
           view={isPinned() ? 'secondary' : 'surface'}
           class={classNames(styles.categoriesContainer, isPinned() && styles.categoriesContainerPinned)}
           ref={categoriesContainer}
+          center
         >
-          {wrapCategory('All')}
-          {wrapCategory('Limited')}
-          {wrapCategory('InStock')}
-          <For each={availableCategories}>
-            {wrapCategory}
-          </For>
+          <ChipTab value="All">
+            {i18n('StarGiftCategoryAll')}
+          </ChipTab>
+          <Show when={props.peerId !== rootScope.myId && props.profileStore.items.length > 0}>
+            <ChipTab value="Owned">
+              {i18n('StarGiftCategoryOwned')}
+            </ChipTab>
+          </Show>
+          <ChipTab value="Collectibles">
+            {i18n('StarGiftCategoryCollectibles')}
+          </ChipTab>
         </ChipTabs>
 
         <div class={styles.giftsGridContainer}>
+          <Show when={category() === 'Owned' && props.profileStore.loading}>
+            <PreloaderTsx />
+          </Show>
           <StarGiftsGrid
             items={filteredGiftOptions()}
             view="list"
@@ -957,7 +967,10 @@ function ChosenGiftPage(props: {
                   args={[
                     wrapRichText(props.peerName),
                     (() => {
-                      const a = anchorCallback(() => PopupStarGiftUpgrade.create(props.chosenGift as MyStarGift, props.peerId));
+                      const a = anchorCallback(() => createStarGiftUpgradePopup({
+                        gift: props.chosenGift as MyStarGift,
+                        descriptionForPeerId: props.peerId
+                      }));
                       a.append(i18n('StarGiftMakeUniqueLink'));
                       return a;
                     })()
@@ -1037,10 +1050,19 @@ export default class PopupSendGift extends PopupElement {
   }
 
   private async construct() {
+    const [profileStore, profileStoreActions] = createProfileGiftsStore({
+      peerId: rootScope.myId,
+      initialFilters: {
+        unlimited: false,
+        limited: false,
+        upgradable: false
+      }
+    })
     const [premiumOptions, giftOptions, peer] = await Promise.all([
       this.peerId.isUser() ? this.managers.appGiftsManager.getPremiumGiftOptions() : [] as MyPremiumGiftOption[],
       this.managers.appGiftsManager.getStarGiftOptions(),
-      this.managers.appPeersManager.getPeer(this.peerId)
+      this.managers.appPeersManager.getPeer(this.peerId),
+      !this.resaleParams && this.peerId !== rootScope.myId && profileStoreActions.loadNext()
     ]);
 
     const [chosenGift, setChosenGift] = createSignal<GiftOption>();
@@ -1094,6 +1116,8 @@ export default class PopupSendGift extends PopupElement {
               setCurrentPage((option as MyStarGift).isResale ? 2 : 1);
             }}
             onClose={() => this.hide()}
+            profileStore={profileStore}
+            profileStoreActions={profileStoreActions}
           />
           <Show when={chosenGift() !== undefined && !(chosenGift() as MyStarGift).isResale}>
             <ChosenGiftPage

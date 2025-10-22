@@ -1,6 +1,6 @@
 import {getHexColorFromTelegramColor, hexToRgb, hexaToHsla} from '../../../../helpers/color';
 import themeController from '../../../../helpers/themeController';
-import {Chat, HelpPeerColorOption, HelpPeerColorSet, User} from '../../../../layer';
+import {Chat, HelpPeerColorOption, HelpPeerColorSet, PeerColor, User} from '../../../../layer';
 
 const DialogColorsFg: Array<string[]> = [['#CC5049'], ['#D67722'], ['#955CDB'], ['#40A920'], ['#309EBA'], ['#368AD1'], ['#C7508B']],
   DialogColors = ['red', 'orange', 'violet', 'green', 'cyan', 'blue', 'pink'] as const;
@@ -44,7 +44,7 @@ export function getPeerAvatarColorByPeer(peer: Chat | User) {
 export function getPeerColorIndexByPeer(peer: Chat | User) {
   if(!peer) return -1;
   const peerColor = (peer as User.user).color;
-  return peerColor?.color ?? getPeerColorIndexById(peer.id);
+  return (peerColor as PeerColor.peerColor)?.color ?? getPeerColorIndexById(peer.id);
 }
 
 export function getPeerColorsByPeer(peer: Chat | User) {

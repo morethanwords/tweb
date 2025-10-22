@@ -296,16 +296,16 @@ export default class DialogsContextMenu {
   };
 
   private onHideTopicClick = () => {
-    this.managers.appChatsManager.editForumTopic({
-      chatId: this.peerId.toChatId(),
+    this.managers.appMessagesManager.editForumTopic({
+      peerId: this.peerId,
       topicId: this.threadId,
       hidden: true
     });
   };
 
   private onToggleTopicClick = () => {
-    this.managers.appChatsManager.editForumTopic({
-      chatId: this.peerId.toChatId(),
+    this.managers.appMessagesManager.editForumTopic({
+      peerId: this.peerId,
       topicId: this.threadId,
       closed: !(this.dialog as ForumTopic.forumTopic).pFlags.closed
     });
