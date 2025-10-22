@@ -285,7 +285,7 @@ function GiftOptionsPage(props: {
           </Show>
           <StarGiftsGrid
             items={filteredGiftOptions()}
-            view="list"
+            view={category() === 'Owned' ? 'transfer' : 'list'}
             scrollParent={container}
             onClick={handleGiftClick}
           />
