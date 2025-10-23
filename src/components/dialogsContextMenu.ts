@@ -31,6 +31,7 @@ import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
 import memoizeAsyncWithTTL from '../helpers/memoizeAsyncWithTTL';
 import {MonoforumDialog} from '../lib/storages/monoforumDialogs';
 import {openRemoveFeePopup} from './chat/removeFee';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 
 
 export default class DialogsContextMenu {
@@ -215,7 +216,7 @@ export default class DialogsContextMenu {
       text: 'CloseTopic',
       onClick: this.onToggleTopicClick,
       verify: () => {
-        return this.canManageTopics && !(this.dialog as ForumTopic.forumTopic).pFlags.closed;
+        return !apiManagerProxy.isBotforum(this.peerId) && this.canManageTopics && !(this.dialog as ForumTopic.forumTopic).pFlags.closed;
       }
     }, {
       icon: 'lockoff',
