@@ -2530,7 +2530,7 @@ export class AppMessagesManager extends AppManager {
       replyToTopId = getMessageThreadId(originalMessage, {isForum: true});
     }
 
-    if(isBotforum && !replyToTopId && getMessageThreadId(originalMessage)) {
+    if(isBotforum && !replyToTopId && originalMessage && getMessageThreadId(originalMessage, {isBotforum: true})) {
       replyToTopId = getMessageThreadId(originalMessage, {isBotforum: true});
     }
 
