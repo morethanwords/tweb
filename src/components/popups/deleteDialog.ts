@@ -198,7 +198,8 @@ export default class PopupDeleteDialog {
       }
 
       case 'megagroup':
-      case 'group': {
+      case 'group':
+      case 'botforum_thread': {
         if(threadId) {
           title = 'DeleteTopics';
           titleArgs = [1];

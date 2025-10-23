@@ -24,7 +24,7 @@ import getServerMessageId from './utils/messageId/getServerMessageId';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import callbackify from '../../helpers/callbackify';
 
-export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog' | 'monoforum' | 'monoforum_thread';
+export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog' | 'monoforum' | 'monoforum_thread' | 'botforum_thread';
 export class AppPeersManager extends AppManager {
   public get peerId() {
     return this.appUsersManager.userId.toPeerId();
@@ -311,6 +311,8 @@ export class AppPeersManager extends AppManager {
       return 'savedDialog';
     } else if(this.isMonoforum(peerId)) {
       return threadId ? 'monoforum_thread' : 'monoforum';
+    } else if(this.isBotforum(peerId) && threadId) {
+      return 'botforum_thread';
     } else if(this.isMegagroup(peerId)) {
       return 'megagroup';
     } else if(this.isChannel(peerId)) {
