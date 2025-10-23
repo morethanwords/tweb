@@ -1392,6 +1392,14 @@ export default class ChatBubbles {
         this.updateGradient = true;
       }
 
+      if(this.chat.isBotforum && !this.chat.threadId && message._ === 'message' && message.pFlags.out && getMessageThreadId(message, {isBotforum: true})) {
+        this.chat.setPeer({
+          peerId: this.peerId,
+          threadId: getMessageThreadId(message, {isBotforum: true})
+        });
+        return;
+      }
+
       if(this.chat.threadId && getMessageThreadId(message, {isForum: this.chat.isForum}) !== this.chat.threadId) {
         return;
       }

@@ -1001,7 +1001,6 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setPeer(options: ChatSetPeerOptions) {
-    console.log('[my-debug] setting peer', {options})
     const {peerId, threadId, monoforumThreadId} = options;
     if(!peerId) {
       this.inited = undefined;

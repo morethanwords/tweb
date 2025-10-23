@@ -2521,6 +2521,7 @@ export class AppMessagesManager extends AppManager {
 
     const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
     const isForum = this.appPeersManager.isForum(peerId);
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
     const replyToMsgId = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_msg_id, channelId);
     let replyToTopId = replyTo.top_msg_id ? this.appMessagesIdsManager.generateMessageId(replyTo.top_msg_id, channelId) : undefined;
     const originalMessage = this.getMessageByPeer(peerId, replyToMsgId);
@@ -2529,13 +2530,17 @@ export class AppMessagesManager extends AppManager {
       replyToTopId = getMessageThreadId(originalMessage, {isForum: true});
     }
 
+    if(isBotforum && !replyToTopId && getMessageThreadId(originalMessage)) {
+      replyToTopId = getMessageThreadId(originalMessage, {isBotforum: true});
+    }
+
     const header: MessageReplyHeader = {
       _: 'messageReplyHeader',
       pFlags: {},
       reply_to_msg_id: replyToMsgId || replyToTopId
     };
 
-    if(replyToTopId && isForum && GENERAL_TOPIC_ID !== replyToTopId) {
+    if(replyToTopId && ((isForum && GENERAL_TOPIC_ID !== replyToTopId) || isBotforum)) {
       header.pFlags.forum_topic = true;
     }
 
