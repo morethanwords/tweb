@@ -134,6 +134,8 @@ export type DialogDom = {
   subtitleEl: HTMLElement,
   mutedIcon?: HTMLElement,
 
+  titleWrapOptions?: WrapSomethingOptions;
+
   setLastMessagePromise?: CancellablePromise<void>,
   setUnreadMessagePromise?: CancellablePromise<void>
 };
@@ -186,7 +188,7 @@ type DialogElementOptions = {
   fromName?: string,
   noIcons?: boolean,
   threadId?: number,
-  monoforumParentPeerId?: PeerId;
+  monoforumParentPeerId?: PeerId,
   wrapOptions: WrapSomethingOptions,
   isMainList?: boolean,
   withStories?: boolean,
@@ -285,6 +287,8 @@ export class DialogElement extends Row {
         type: isSavedDialog ? ChatType.Saved : ChatType.Chat
       });
 
+    let titleWrapOptions: WrapSomethingOptions;
+
     const peerTitle = new PeerTitle();
     const peerTitlePromise = peerTitle.update({
       peerId: usePeerId,
@@ -293,7 +297,7 @@ export class DialogElement extends Row {
       onlyFirstName,
       withIcons: !noIcons,
       threadId: isSavedDialog ? undefined : threadId,
-      wrapOptions: {
+      wrapOptions: titleWrapOptions = {
         textColor: appDialogsManager.getTextColor(isActive),
         ...newWrapOptions
       },
@@ -366,7 +370,8 @@ export class DialogElement extends Row {
       lastMessageSpan: span,
       containerEl: li,
       listEl: li,
-      subtitleEl: this.subtitleRow
+      subtitleEl: this.subtitleRow,
+      titleWrapOptions
     };
 
     // this will never happen for migrated legacy chat
@@ -955,6 +960,11 @@ export class AppDialogsManager {
     customEmojiRenderers.forEach((customEmojiRenderer) => {
       customEmojiRenderer.textColor = this.getTextColor(active);
     });
+
+    const dom = (listEl as any).dialogDom as DialogDom;
+    if(dom.titleWrapOptions) {
+      dom.titleWrapOptions.textColor = this.getTextColor(active);
+    }
 
     changeTitleEmojiColor(listEl, this.getPrimaryColor(active));
   }
