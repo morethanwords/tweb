@@ -7592,14 +7592,18 @@ export class AppMessagesManager extends AppManager {
   }
 
   private checkPendingMessage(message: MyMessage) {
+    let botforumTypingRandomId: string;
+
     const randomId =
       this.pendingByMessageId[message.mid] ||
-      (!message.pFlags.out ? this.typingBotforumMessages.get(message.peerId) : undefined);
+      (!message.pFlags.out ? botforumTypingRandomId = this.typingBotforumMessages.get(message.peerId) : undefined);
 
     let pendingMessage: ReturnType<AppMessagesManager['finalizePendingMessage']>;
     if(randomId) {
       const pendingData = this.pendingByRandomId[randomId];
       if(pendingMessage = this.finalizePendingMessage(randomId, message)) {
+        // if(botforumTypingRandomId) message.random_id = botforumTypingRandomId;
+
         this.rootScope.dispatchEvent('history_update', {
           storageKey: pendingData.storage.key,
           message,
@@ -7608,6 +7612,7 @@ export class AppMessagesManager extends AppManager {
       }
 
       delete this.pendingByMessageId[message.mid];
+      this.typingBotforumMessages.delete(message.peerId);
     }
 
     return pendingMessage;
@@ -9860,7 +9865,9 @@ export class AppMessagesManager extends AppManager {
       id: this.generateTempMessageId(peerId),
       from_id: this.appPeersManager.getOutputPeer(peerId),
       peer_id: this.appPeersManager.getOutputPeer(peerId),
-      pFlags: {},
+      pFlags: {
+        currentlyTyping: true
+      },
       date: tsNow(true) + this.timeManager.getServerTimeOffset(),
       message: action.text.text,
       entities: action.text.entities,

@@ -207,6 +207,7 @@ import addSuggestedPostServiceMessage, {checkIfNotMePosted} from './bubbleParts/
 import addSuggestedPostReplyMarkup, {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
 import type {SeparatorIntersectorRoot} from './bubbleParts/chatThreadSeparator';
 import BotforumNewTopic from './bubbleParts/botforumNewTopic';
+import type {wrapContinuouslyTypingMessage} from './bubbleParts/continuouslyTypingMessage';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -381,6 +382,8 @@ export default class ChatBubbles {
     groupsLength: number,
     timeout?: number
   }} = {};
+
+  private currentlyTypingMessages: {[mid: number | string]: ReturnType<typeof wrapContinuouslyTypingMessage>} = {};
 
   private scrolledDown = true;
   private isScrollingTimeout = 0;
@@ -6056,6 +6059,25 @@ export default class ChatBubbles {
 
     if(needToSetHTML) {
       setInnerHTML(messageDiv, richText);
+    }
+
+    const usedId = message.mid;
+    if(isMessage && message.pFlags.currentlyTyping || this.currentlyTypingMessages[usedId]) {
+      const {wrapContinuouslyTypingMessage} = await import('./bubbleParts/continuouslyTypingMessage');
+
+      const previous = this.currentlyTypingMessages[usedId];
+      previous?.clean();
+
+      const current = this.currentlyTypingMessages[usedId] = wrapContinuouslyTypingMessage({root: richText, prevPosition: previous?.currentPosition});
+
+      middleware.onDestroy(() => {
+        current?.clean();
+        setTimeout(() => {
+          if(current === this.currentlyTypingMessages[usedId]) {
+            this.currentlyTypingMessages[usedId] = undefined;
+          }
+        }, 1000); // leave some time in case the message is swapped
+      });
     }
 
     const isOut = this.chat.isOutMessage(message);

@@ -119,6 +119,7 @@
     {"name": "savedFrom", "type": "string"},
     {"name": "sponsored", "type": "true"},
     {"name": "local", "type": "true"},
+    {"name": "currentlyTyping", "type": "true"},
     {"name": "sponsoredMessage", "type": "SponsoredMessage.sponsoredMessage"},
     {"name": "promise", "type": "CancellablePromise<void>"},
     {"name": "uploadingFileName", "type": "string[]"},
