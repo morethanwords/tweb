@@ -3746,7 +3746,8 @@ const lang = {
   'TopicsCount': {
     'one_value': '%d topic',
     'other_value': '%d topics'
-  }
+  },
+  'WaitForTopicCreation': 'Wait for the topic to be created'
 };
 
 export default lang;

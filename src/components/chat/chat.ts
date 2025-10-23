@@ -71,6 +71,7 @@ import PriceChangedInterceptor from './priceChangedInterceptor';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {SensitiveContentSettings} from '../../lib/appManagers/appPrivacyManager';
 import {ignoreRestrictionReasons, isRestricted, isSensitive} from '../../helpers/restrictions';
+import {isTempId} from '../../lib/appManagers/utils/messages/isTempId';
 
 
 export enum ChatType {
@@ -156,6 +157,7 @@ export default class Chat extends EventListenerBase<{
   public isMonoforum: boolean;
   public isBotforum: boolean;
   public canManageDirectMessages: boolean;
+  public isTemporaryThread: boolean;
 
   public starsAmount: number | undefined;
 
@@ -951,6 +953,7 @@ export default class Chat extends EventListenerBase<{
     this.isBotforum = isBotforum;
     this.canManageDirectMessages = canManageDirectMessages;
     this.starsAmount = starsAmount;
+    this.isTemporaryThread = isTempId(threadId)
 
     this.isRestricted = isRestricted;
     this.sensitiveContentSettings = sensitiveContentSettings;

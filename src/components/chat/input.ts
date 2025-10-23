@@ -2193,7 +2193,7 @@ export default class ChatInput {
       if(this.messageInput) {
         this.updateMessageInput(
           canSend || haveSomethingInControl,
-          canSendPlain,
+          canSendPlain && !this.chat.isTemporaryThread,
           placeholderParams,
           peerId.isUser() ? options.text : undefined,
           peerId.isUser() ? options.entities : undefined
@@ -2495,7 +2495,7 @@ export default class ChatInput {
     attachClickEvent(this.messageInput, (e) => {
       if(!this.canSendPlain()) {
         toastNew({
-          langPackKey: POSTING_NOT_ALLOWED_MAP['send_plain']
+          langPackKey: this.chat.isTemporaryThread ? 'WaitForTopicCreation' : POSTING_NOT_ALLOWED_MAP['send_plain']
         });
         return;
       }

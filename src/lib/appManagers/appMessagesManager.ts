@@ -2207,16 +2207,13 @@ export class AppMessagesManager extends AppManager {
   }
 
   private checkSendOptions(options: MessageSendingParams & Partial<{ text: string }>) {
-    if(options.threadId && !options.replyToMsgId) {
-      options.replyToMsgId = options.threadId;
-    }
-
     const {peerId} = options;
     if(
       this.appPeersManager.isBotforum(peerId) &&
       !options.replyToMsgId &&
       (!options.threadId || isTempId(options.threadId))
     ) {
+      options.threadId = undefined;
       const pendingTopic = this.getPendingOrCreateBotforumTopic({peerId, title: fitSymbols(options.text || TOPIC_TITLE_DEFAULT, TOPIC_TITLE_MAX_LENGTH)});
 
       if(!options.replyToMsgId) {
@@ -2226,6 +2223,10 @@ export class AppMessagesManager extends AppManager {
           if(options.replyTo?._ === 'inputReplyToMessage') options.replyTo.reply_to_msg_id = pendingTopic.newId;
         });
       }
+    }
+
+    if(options.threadId && !options.replyToMsgId) {
+      options.replyToMsgId = options.threadId;
     }
 
     options.replyTo ??= this.getInputReplyTo(options);
@@ -6375,8 +6376,6 @@ export class AppMessagesManager extends AppManager {
       title_missing: true
     });
 
-    // TODO: Test with delay
-    // await pause(5000);
 
     const temporaryStorage = this.getHistoryStorage(peerId, pendingTopic.tempId);
     temporaryStorage.key = getHistoryStorageKey({type: 'replies', peerId, threadId: pendingTopic.newId});
