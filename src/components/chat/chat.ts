@@ -953,7 +953,6 @@ export default class Chat extends EventListenerBase<{
     this.isBotforum = isBotforum;
     this.canManageDirectMessages = canManageDirectMessages;
     this.starsAmount = starsAmount;
-    this.isTemporaryThread = isTempId(threadId)
 
     this.isRestricted = isRestricted;
     this.sensitiveContentSettings = sensitiveContentSettings;
@@ -1019,6 +1018,7 @@ export default class Chat extends EventListenerBase<{
       this.peerId = peerId || NULL_PEER_ID;
       this.threadId = threadId;
       this.monoforumThreadId = monoforumThreadId;
+      this.isTemporaryThread = isTempId(threadId);
       this.middlewareHelper.clean();
     } else if(this.setPeerPromise) {
       return;
