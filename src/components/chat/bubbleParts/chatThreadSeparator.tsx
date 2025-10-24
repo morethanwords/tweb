@@ -164,21 +164,21 @@ const ChatThreadSeparator = defineSolidElement({
 
     const scale = createMemo(() => clamp((state().nextIntersectionRatio ?? 1), 0, 1));
 
-    const isScaling = createMemo(() => scale() < 1);
+    const isScaling = createMemo(() => 0 < scale() && scale() < 1);
 
     createEffect(() => {
       if(!isScaling() || !scaledEl) return;
 
       const emojiElements = Array.from(scaledEl.querySelectorAll<CustomEmojiElement>('custom-emoji-element'))
-      .filter(emojiElement => !emojiElement.player?.paused);
+      .filter(emojiElement => !emojiElement?.paused);
 
       emojiElements.forEach((emojiElement) => {
-        emojiElement.player?.pause();
+        emojiElement.pause();
       });
 
       onCleanup(() => {
         emojiElements.forEach((emojiElement) => {
-          emojiElement.player?.play();
+          emojiElement.play();
         });
       });
     });
