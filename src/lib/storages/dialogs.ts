@@ -1538,6 +1538,7 @@ export default class DialogsStorage extends AppManager {
     } = options;
 
     const isForum = this.isFilterIdForForum(filterId);
+    const isBotforum = this.appPeersManager.isBotforum(filterId);
     const isVirtualFilter = this.isVirtualFilter(filterId);
     if(!isVirtualFilter && !REAL_FOLDERS.has(filterId)) {
       const promises: Promise<any>[] = [];
@@ -1630,7 +1631,8 @@ export default class DialogsStorage extends AppManager {
       limit,
       folderId: realFolderId,
       query,
-      offsetTopicId: isForum && query ? (curDialogStorage[curDialogStorage.length - 1] as ForumTopic)?.id : undefined
+      offsetTopicId: isForum && query ? (curDialogStorage[curDialogStorage.length - 1] as ForumTopic)?.id : undefined,
+      offsetBotforumTopic: isBotforum ? (curDialogStorage[curDialogStorage.length - 1] as ForumTopic) : undefined
     }).then((result) => {
       if(query) {
         return this.getDialogs({

@@ -2947,13 +2947,15 @@ export class AppMessagesManager extends AppManager {
     folderId,
     query,
     offsetTopicId,
-    filterType = this.dialogsStorage.getFilterType(folderId)
+    filterType = this.dialogsStorage.getFilterType(folderId),
+    offsetBotforumTopic
   }: {
     limit: number,
     folderId: number,
     query?: string,
     offsetTopicId?: ForumTopic['id'],
-    filterType?: FilterType
+    filterType?: FilterType,
+    offsetBotforumTopic?: ForumTopic
   }) {
     const log = this.log.bindPrefix('getTopMessages');
     // const dialogs = this.dialogsStorage.getFolder(folderId);
@@ -3147,7 +3149,7 @@ export class AppMessagesManager extends AppManager {
         params: params = {
           peer: this.appPeersManager.getInputPeerById(peerId),
           limit: useLimit,
-          offset_date: offsetTopicId ? undefined : offsetDate,
+          offset_date: offsetBotforumTopic?.date || (offsetTopicId ? undefined : offsetDate),
           offset_id: offsetId,
           offset_topic: offsetTopicId,
           q: query
