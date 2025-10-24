@@ -7,7 +7,7 @@ type WrapContinuouslyTypingMessageArgs = {
   prevPosition?: number;
 };
 
-const TARGET_TIME_TO_WRITE = 3000;
+const TARGET_TIME_TO_WRITE = 1500;
 
 const BASE_DELAY = 60 * 1_000 / (2_000 * 5); // 2_000wpm
 const DELAY_VARIATION = 0.3;
@@ -16,7 +16,7 @@ const SCROLL_VIEW_DELAY = 200;
 
 // Try to write it with the base speed of 2000wpm or burst it in 3 seconds if it's a long message
 function getRandomDelay(targetDelay: number) {
-  const delay = Math.min(BASE_DELAY, targetDelay);
+  const delay = Math.max(1 /* ms */, Math.min(BASE_DELAY, targetDelay));
   return delay + Math.random() * delay * DELAY_VARIATION;
 }
 
