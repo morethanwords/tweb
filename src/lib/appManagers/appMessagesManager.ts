@@ -3929,8 +3929,6 @@ export class AppMessagesManager extends AppManager {
         let filterMessage: (message: MyMessage) => boolean;
         if(monoforumThreadId) {
           filterMessage = (message) => this.appPeersManager.getPeerId(message.saved_peer_id) === monoforumThreadId;
-        } else if(this.appPeersManager.isBotforum(peerId) && threadOrSavedId) {
-          filterMessage = (message) => getMessageThreadId(message, {isBotforum: true}) === threadOrSavedId;
         } else if(participantPeerId) {
           filterMessage = (message) => message.fromId === participantPeerId;
         } else if(isSavedDialog) {

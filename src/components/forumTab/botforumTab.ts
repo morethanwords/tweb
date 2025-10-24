@@ -60,13 +60,13 @@ export class BotforumTab extends ForumTab {
       this.xd.fullReset();
     });
 
-    this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
-      if(this.peerId !== chatId.toPeerId(true)) {
+    this.listenerSetter.add(rootScope)('user_update', (userId) => {
+      if(this.peerId !== userId.toPeerId()) {
         return;
       }
 
-      const chat = apiManagerProxy.getChat(chatId);
-      if(!(chat as Chat.channel)?.pFlags?.forum) {
+      const user = apiManagerProxy.getUser(userId);
+      if(user?._ === 'user' && !user?.pFlags?.bot_forum_view) {
         appDialogsManager.toggleForumTab(undefined, this);
       }
     });
