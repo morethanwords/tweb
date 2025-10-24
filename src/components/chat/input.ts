@@ -3481,7 +3481,10 @@ export default class ChatInput {
   }
 
   public async createReplyPicker(replyTo: ChatInputReplyTo) {
-    const {peerId, threadId, monoforumThreadId} = await PopupPickUser.createReplyPicker(this.chat.isMonoforum ? {excludeMonoforums: true} : undefined);
+    const {peerId, threadId, monoforumThreadId} = await PopupPickUser.createReplyPicker({
+      excludeBotforums: true,
+      ...(this.chat.isMonoforum ? {excludeMonoforums: true} : undefined)
+    });
     this.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId}).then(() => {
       replyTo.replyToMonoforumPeerId = monoforumThreadId;
       this.appImManager.chat.input.initMessageReply(replyTo);

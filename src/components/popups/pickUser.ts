@@ -119,7 +119,7 @@ export default class PopupPickUser extends PopupElement {
         options.useTopics &&
         !Array.isArray(peerId) &&
         !threadId && !monoforumThreadId &&
-        await this.managers.appPeersManager.isForum(peerId)
+        (await this.managers.appPeersManager.isForum(peerId) || await this.managers.appPeersManager.isBotforum(peerId))
       ) {
         ignoreOnSelect = true;
         await this.createForumSelector({
@@ -519,6 +519,7 @@ export default class PopupPickUser extends PopupElement {
     onSelect: ConstructorParameters<typeof PopupPickUser>[0]['onSelect'],
     chatRightsActions?: PopupPickUserOptions['chatRightsActions'],
     excludeMonoforums?: PopupPickUserOptions['excludeMonoforums'],
+    excludeBotforums?: PopupPickUserOptions['excludeBotforums'],
     placeholder?: LangPackKey,
     selfPresence?: LangPackKey
   }) {
@@ -549,7 +550,7 @@ export default class PopupPickUser extends PopupElement {
     });
   }
 
-  public static createReplyPicker(options: { excludeMonoforums?: boolean } = {}) {
+  public static createReplyPicker(options: Pick<PopupPickUserOptions, 'excludeBotforums' | 'excludeMonoforums'> = {}) {
     return this.createSharingPicker2({
       placeholder: 'ReplyToDialog',
       selfPresence: 'SavedMessagesInfoQuote',

@@ -3373,7 +3373,11 @@ export class AppMessagesManager extends AppManager {
       send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
       top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined,
       allow_paid_stars: paidStars,
-      reply_to: this.getInputReplyTo({peerId, replyToMonoforumPeerId: options.replyToMonoforumPeerId})
+      reply_to: this.getInputReplyTo({
+        peerId,
+        replyToMonoforumPeerId: options.replyToMonoforumPeerId,
+        replyToMsgId: this.appPeersManager.isBotforum(peerId) ? options.threadId : undefined
+      })
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates);
