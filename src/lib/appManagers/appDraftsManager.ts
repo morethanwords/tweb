@@ -66,7 +66,7 @@ export class AppDraftsManager extends AppManager {
 
         this.saveDraft({
           peerId,
-          threadId,
+          threadId: threadId || update.top_msg_id,
           monoforumThreadId,
           draft,
           notify: true
