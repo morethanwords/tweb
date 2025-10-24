@@ -1765,12 +1765,27 @@ export default class DialogsStorage extends AppManager {
         return;
       }
 
-      return this.apiManager.invokeApi('messages.getForumTopicsByID', {
-        peer: this.appPeersManager.getInputPeerById(peerId),
-        topics: ids
-      }).then((messagesForumTopics) => {
+      const topicsFolder = this.getFolder(peerId);
+
+      return Promise.all([
+        this.apiManager.invokeApi('messages.getForumTopicsByID', {
+          peer: this.appPeersManager.getInputPeerById(peerId),
+          topics: ids
+        }),
+        topicsFolder.count === null && this.apiManager.invokeApi('messages.getForumTopics', {
+          peer: this.appPeersManager.getInputPeerById(peerId),
+          offset_date: 0,
+          offset_id: 0,
+          limit: 1,
+          offset_topic: 0
+        })
+      ]).then(([messagesForumTopics, allMessagesForumTopicsResult]) => {
         if(this.getForumTopicsCache(peerId) !== cache) {
           return;
+        }
+
+        if(typeof allMessagesForumTopicsResult?.count === 'number') {
+          topicsFolder.count = allMessagesForumTopicsResult.count;
         }
 
         this.applyDialogs(messagesForumTopics, peerId);
