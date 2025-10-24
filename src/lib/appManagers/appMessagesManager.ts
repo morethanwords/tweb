@@ -9839,10 +9839,13 @@ export class AppMessagesManager extends AppManager {
       const {tempId} = this.pendingByRandomId[randomId];
 
       const message = this.getMessageByPeer(peerId, tempId);
+
       if(message._ === 'message') {
         message.message = action.text.text;
         message.entities = action.text.entities;
+        message.totalEntities = undefined;
       }
+
       this.saveMessages([message]);
 
       const storage = this.getHistoryMessagesStorage(peerId);

@@ -28,24 +28,19 @@ export function wrapContinuouslyTypingMessage({root, prevPosition = -1}: WrapCon
     initialNodes.push(initialTreeWalker.currentNode);
   }
 
-  let currentPosition = -1;
+  let currentPositionMax = -1;
 
   for(const node of initialNodes) {
     if(node.nodeType === Node.TEXT_NODE) {
       const chars = node.textContent.split('').map(char => {
         const span = document.createElement('span');
         span.textContent = char;
-        currentPosition++;
-        if(currentPosition > prevPosition) {
-          span.classList.add(styles.hidden);
-        }
+        currentPositionMax++;
         return span;
       });
       const fragment = document.createDocumentFragment();
       fragment.append(...chars);
       node.parentNode?.replaceChild(fragment, node);
-    } else if(node instanceof Element) {
-      node.classList.add(styles.hidden);
     }
   }
 
@@ -65,6 +60,8 @@ export function wrapContinuouslyTypingMessage({root, prevPosition = -1}: WrapCon
 
       if(node.nodeType === Node.TEXT_NODE) {
         position += node.textContent.length;
+      } else if(node instanceof Element && position > prevPosition) {
+        node.classList.add(styles.hidden);
       }
 
       if(position <= prevPosition) {
@@ -106,7 +103,7 @@ export function wrapContinuouslyTypingMessage({root, prevPosition = -1}: WrapCon
     }
   }
 
-  const targetDelay = TARGET_TIME_TO_WRITE / (currentPosition - prevPosition);
+  const targetDelay = TARGET_TIME_TO_WRITE / (currentPositionMax - prevPosition);
 
   animate(() => {
     if(cleaned) return false;
