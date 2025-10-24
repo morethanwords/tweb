@@ -900,7 +900,7 @@ export class AppProfileManager extends AppManager {
 
   public canGiftPremium(userId: UserId) {
     const user = this.appUsersManager.getUser(userId);
-    if(user?.pFlags?.premium) {
+    if(user?.pFlags?.premium || user?.pFlags?.bot_forum_view) {
       return false;
     }
 
