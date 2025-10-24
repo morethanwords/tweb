@@ -288,7 +288,7 @@ export class AppNotificationsManager extends AppManager {
 
   public validatePeerSettings<T extends Parameters<AppNotificationsManager['getPeerLocalSettings']>[0]>(options: T): T {
     if(options.peerId === this.appPeersManager.peerId) return;
-    if(options.threadId && !this.appPeersManager.isForum(options.peerId)) options.threadId = undefined;
+    if(options.threadId && !this.appPeersManager.isForum(options.peerId) && !this.appPeersManager.isBotforum(options.peerId)) options.threadId = undefined;
     return options;
   }
 
