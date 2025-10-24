@@ -7,16 +7,17 @@ type WrapContinuouslyTypingMessageArgs = {
   prevPosition?: number;
 };
 
-const TARGET_TIME_TO_WRITE = 5000;
+const TARGET_TIME_TO_WRITE = 3000;
 
 const BASE_DELAY = 60 * 1_000 / (2_000 * 5); // 2_000wpm
-const DELAY_VARIATION = BASE_DELAY / 3;
+const DELAY_VARIATION = 0.3;
 
 const SCROLL_VIEW_DELAY = 200;
 
-// Try to write it with the base speed of 2000wpm or burst it in 5 seconds if it's a long message
+// Try to write it with the base speed of 2000wpm or burst it in 3 seconds if it's a long message
 function getRandomDelay(targetDelay: number) {
-  return Math.random() * DELAY_VARIATION + Math.min(BASE_DELAY, targetDelay);
+  const delay = Math.min(BASE_DELAY, targetDelay);
+  return delay + Math.random() * delay * DELAY_VARIATION;
 }
 
 export function wrapContinuouslyTypingMessage({root, prevPosition = -1}: WrapContinuouslyTypingMessageArgs) {
