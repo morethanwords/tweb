@@ -3249,6 +3249,7 @@
 "TopicsCount_one" = "%d topic";
 "TopicsCount_other" = "%d topics";
 "WaitForTopicCreation" = "Wait for the topic to be created";
+"ContinueLastTopic" = "Continue last topic";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

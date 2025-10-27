@@ -11,12 +11,11 @@ import type Chat from './chat';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
-import {Message} from '../../layer';
-import {GENERAL_TOPIC_ID, NULL_PEER_ID, REPLIES_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
+import {Message, ReplyMarkup} from '../../layer';
+import {NULL_PEER_ID, REPLIES_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
 import ChatBubbles, {SERVICE_AS_REGULAR, STICKY_OFFSET} from './bubbles';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import partition from '../../helpers/array/partition';
-import noop from '../../helpers/noop';
 import getMessageThreadId from '../../lib/appManagers/utils/messages/getMessageThreadId';
 import {avatarNew} from '../avatarNew';
 import {MiddlewareHelper} from '../../helpers/middleware';
@@ -25,9 +24,9 @@ import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName'
 import {isMessageForVerificationBot} from './utils';
 import {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import typedElement from '../../helpers/dom/typedElement';
 import {BubbleElementAddons} from './types';
 import ChatThreadSeparator from './bubbleParts/chatThreadSeparator';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 
 
 type GroupItem = {
@@ -408,6 +407,7 @@ export default class BubbleGroups {
     });
 
     this.addChatThreadSeparators();
+    this.addContinueLastTopicReplyMarkup();
   }
 
   private addChatThreadSeparators() {
@@ -427,7 +427,7 @@ export default class BubbleGroups {
       const key = savedPeerId || threadId;
       if(!key) return;
 
-      const bubbleAddons = typedElement<BubbleElementAddons>(item.bubble);
+      const bubbleAddons = item.bubble as BubbleElementAddons;
 
       if(prevKey === key) {
         item.bubble.classList.remove('has-chat-thread-separator');
@@ -445,6 +445,7 @@ export default class BubbleGroups {
       }
 
       bubbleAddons.chatThreadSeparator = new ChatThreadSeparator;
+      bubbleAddons.chatThreadSeparator.HotReloadGuard = SolidJSHotReloadGuardProvider;
       bubbleAddons.chatThreadSeparator.feedProps({
         bubbles: this.chat.bubbles,
         peerId: savedPeerId || this.chat.peerId,
@@ -454,6 +455,28 @@ export default class BubbleGroups {
       });
       item.bubble.classList.add('has-chat-thread-separator');
       item.bubble.prepend(bubbleAddons.chatThreadSeparator);
+    });
+  }
+
+  /**
+   * Makes the reply markup of the last message bubble visible
+   */
+  private addContinueLastTopicReplyMarkup() {
+    if(!this.chat.isBotforum) return;
+
+    let visible = true;
+
+    this.itemsArr.forEach((item) => {
+      const bubbleAddons = item.bubble as BubbleElementAddons;
+
+      if(item.message._ !== 'message') return;
+      if(!bubbleAddons.continueLastTopicReplyMarkup) return;
+
+      bubbleAddons.continueLastTopicReplyMarkup.feedProps<false>({
+        visible: visible && !(item.message.reply_markup as ReplyMarkup.replyInlineMarkup)?.rows
+      });
+
+      visible = false;
     });
   }
 

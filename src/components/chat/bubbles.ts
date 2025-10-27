@@ -208,6 +208,7 @@ import addSuggestedPostReplyMarkup, {canHaveSuggestedPostReplyMarkup} from './bu
 import type {SeparatorIntersectorRoot} from './bubbleParts/chatThreadSeparator';
 import BotforumNewTopic from './bubbleParts/botforumNewTopic';
 import type {wrapContinuouslyTypingMessage} from './bubbleParts/continuouslyTypingMessage';
+import addContinueLastTopicReplyMarkup from './bubbleParts/continueLastTopicReplyMarkup';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -6242,6 +6243,10 @@ export default class ChatBubbles {
     if(!isOut && isMessage) {
       tmpPromise = addSuggestedPostReplyMarkup({message, bubble, contentWrapper, chat: this.chat});
       if(tmpPromise) await tmpPromise;
+    }
+
+    if(isMessage) {
+      addContinueLastTopicReplyMarkup({message, bubble, contentWrapper, chat: this.chat});
     }
 
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;

@@ -1,15 +1,12 @@
-import {Accessor, batch, createEffect, createMemo, createRoot, createSignal, Match, onCleanup, Ref, Switch} from 'solid-js';
+import {Accessor, batch, createEffect, createMemo, createRoot, createSignal, onCleanup, Ref} from 'solid-js';
 import {createStore, SetStoreFunction} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
-import {simulateClickEvent} from '../../../helpers/dom/clickEvent';
 import clamp from '../../../helpers/number/clamp';
 import {attachHotClassName} from '../../../helpers/solid/classname';
 import type CustomEmojiElement from '../../../lib/customEmoji/element';
-import wrapTopicThreadAnchor from '../../../lib/richTextProcessor/wrapTopicThreadAnchor';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import {IconTsx} from '../../iconTsx';
-import PeerTitle from '../../peerTitle';
-import {PeerTitleTsx} from '../../peerTitleTsx';
 import type ChatBubbles from '../bubbles';
 import styles from './chatThreadSeparator.module.scss';
 
@@ -145,6 +142,7 @@ type Props = {
 const ChatThreadSeparator = defineSolidElement({
   name: 'chat-thread-separator',
   component: (props: PassedProps<Props>) => {
+    const {appImManager, PeerTitleTsx} = useHotReloadGuard();
     attachHotClassName(props.element, styles.Container);
 
     let clickTriggerEl: HTMLElement;
@@ -159,7 +157,11 @@ const ChatThreadSeparator = defineSolidElement({
     });
 
     const onClick = () => {
-      if(clickTriggerEl) simulateClickEvent(clickTriggerEl);
+      appImManager.setPeer({
+        peerId: props.peerId,
+        threadId: props.threadId,
+        lastMsgId: props.lastMsgId
+      });
     };
 
     const scale = createMemo(() => clamp((state().nextIntersectionRatio ?? 1), 0, 1));
@@ -183,37 +185,17 @@ const ChatThreadSeparator = defineSolidElement({
       });
     });
 
-    const peerTitleOptions = () => ({
-      peerId: props.peerId,
-      threadId: props.threadId,
-      withIcons: !!props.threadId,
-      limitSymbols: LIMIT_SYMBOLS,
-      onlyFirstName: true
-    });
-
     const InnerPeerTitle = (thisProps: {ref?: Ref<HTMLElement>}) => {
       return (
-        <Switch>
-          <Match when={props.threadId}>
-            {(() => {
-              const element = wrapTopicThreadAnchor({peerId: props.peerId, threadId: props.threadId, lastMsgId: props.lastMsgId});
-
-              const peerTitle = new PeerTitle;
-              peerTitle.update(peerTitleOptions());
-
-              element.append(peerTitle.element);
-              if(thisProps.ref instanceof Function) thisProps.ref(peerTitle.element);
-
-              return element;
-            })()}
-          </Match>
-          <Match when={!props.threadId}>
-            <PeerTitleTsx
-              ref={thisProps.ref}
-              {...peerTitleOptions()}
-            />
-          </Match>
-        </Switch>
+        <PeerTitleTsx
+          ref={thisProps.ref}
+          class={styles.PeerTitle}
+          peerId={props.peerId}
+          threadId={props.threadId}
+          withIcons={!!props.threadId}
+          limitSymbols={LIMIT_SYMBOLS}
+          onlyFirstName={true}
+        />
       );
     };
 

@@ -19,7 +19,6 @@ $round-border-radius: 100px;
   border-radius: $round-border-radius;
 
   color: white;
-  --link-color: white;
   font-weight: var(--font-weight-bold);
   background-color: var(--message-highlighting-color);
 
@@ -52,13 +51,6 @@ $round-border-radius: 100px;
   &.hidden {
     opacity: 0 !important;
     pointer-events: none !important;
-  }
-
-  a::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: $round-border-radius;
   }
 }
 
@@ -98,4 +90,8 @@ $round-border-radius: 100px;
       right: calc(50%);
     }
   }
+}
+
+.PeerTitle {
+  pointer-events: none;
 }

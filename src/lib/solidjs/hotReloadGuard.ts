@@ -11,6 +11,7 @@ import type EmojiTab from '../../components/emoticonsDropdown/tabs/emoji';
 import type {InputFieldTsx} from '../../components/inputFieldTsx';
 import type PasswordMonkey from '../../components/monkeys/password';
 import type PasswordInputField from '../../components/passwordInputField';
+import type {PeerTitleTsx} from '../../components/peerTitleTsx';
 import type {setQuizHint} from '../../components/poll';
 import type showLimitPopup from '../../components/popups/limit';
 import type PopupPremium from '../../components/popups/premium';
@@ -21,11 +22,11 @@ import type wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb'
 import type {ThemeController} from '../../helpers/themeController';
 import type {AppDialogsManager} from '../appManagers/appDialogsManager';
 import type {AppImManager} from '../appManagers/appImManager';
+import type uiNotificationsManager from '../appManagers/uiNotificationsManager';
 import type apiManagerProxy from '../mtproto/mtprotoworker';
 import type lottieLoader from '../rlottie/lottieLoader';
 import type {RootScope} from '../rootScope';
 import type SolidJSHotReloadGuardProvider from './hotReloadGuardProvider';
-import type uiNotificationsManager from '../appManagers/uiNotificationsManager';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -51,6 +52,7 @@ export type SolidJSHotReloadGuardContextValue = {
   appDialogsManager: AppDialogsManager;
   AutonomousMonoforumThreadList: typeof AutonomousMonoforumThreadList;
   uiNotificationsManager: typeof uiNotificationsManager;
+  PeerTitleTsx: typeof PeerTitleTsx;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

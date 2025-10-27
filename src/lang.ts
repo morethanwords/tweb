@@ -3747,7 +3747,8 @@ const lang = {
     'one_value': '%d topic',
     'other_value': '%d topics'
   },
-  'WaitForTopicCreation': 'Wait for the topic to be created'
+  'WaitForTopicCreation': 'Wait for the topic to be created',
+  'ContinueLastTopic': 'Continue last topic'
 };
 
 export default lang;
