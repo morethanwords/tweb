@@ -1823,6 +1823,13 @@ export class AppDialogsManager {
       const threadId = +elem.dataset.threadId || undefined;
       const monoforumParentPeerId = +elem.dataset.monoforumParentPeerId || undefined;
 
+      const openChat = () => setPeerFunc({
+        peerId: monoforumParentPeerId || peerId,
+        monoforumThreadId: monoforumParentPeerId ? peerId : undefined,
+        lastMsgId,
+        threadId: threadId
+      });
+
       const isSponsored = elem.dataset.sponsored === 'true';
       if(isSponsored) {
         const chip = elem.querySelector('.sponsored-peer-chip');
@@ -1852,13 +1859,17 @@ export class AppDialogsManager {
         !elem.dataset.isAllChats &&
         !e.shiftKey
       ) {
-        this.toggleForumTabByPeerId(peerId);
+        this.toggleForumTabByPeerId(peerId).then(() => {
+          openChat();
+        });
         return;
       }
 
 
       if(peer?._ === 'user' && peer?.pFlags?.bot_forum_view && !threadId && !elem.dataset.isAllChats && !e.shiftKey) {
-        this.toggleForumTabByPeerId(peerId);
+        this.toggleForumTabByPeerId(peerId).then(() => {
+          openChat();
+        });
         return;
       }
 
@@ -1896,12 +1907,7 @@ export class AppDialogsManager {
         this.toggleForumTab();
       }
 
-      setPeerFunc({
-        peerId: monoforumParentPeerId || peerId,
-        monoforumThreadId: monoforumParentPeerId ? peerId : undefined,
-        lastMsgId,
-        threadId: threadId
-      });
+      openChat();
     }, {capture: true});
 
     // cancel link click

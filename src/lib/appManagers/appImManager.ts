@@ -1437,6 +1437,7 @@ export class AppImManager extends EventListenerBase<{
 
     const channelId = isChannel ? (options.peer as MTChat.channel).id : undefined;
     const isForum = !!(options.peer as MTChat.channel).pFlags.forum;
+    const isBotforum = !!(options.peer?._ === 'user' && options.peer?.pFlags?.bot_forum_view);
 
     await Promise.all(keys.map(async(key) => {
       options[key] &&= await this.managers.appMessagesIdsManager.generateMessageId(options[key], channelId);
@@ -1455,6 +1456,10 @@ export class AppImManager extends EventListenerBase<{
     if(!commentId && !threadId && !lastMsgId && isForum) {
       appDialogsManager.toggleForumTabByPeerId(peerId, true, true);
       return;
+    }
+
+    if(!commentId && !threadId && !lastMsgId && isBotforum) {
+      appDialogsManager.toggleForumTabByPeerId(peerId, true);
     }
 
     // handle t.me/username/thread or t.me/username/messageId
