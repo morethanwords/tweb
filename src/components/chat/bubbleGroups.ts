@@ -447,6 +447,7 @@ export default class BubbleGroups {
       bubbleAddons.chatThreadSeparator = new ChatThreadSeparator;
       bubbleAddons.chatThreadSeparator.HotReloadGuard = SolidJSHotReloadGuardProvider;
       bubbleAddons.chatThreadSeparator.feedProps({
+        chat: this.chat,
         bubbles: this.chat.bubbles,
         peerId: savedPeerId || this.chat.peerId,
         threadId: savedPeerId ? undefined : threadId,

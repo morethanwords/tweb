@@ -8,6 +8,7 @@ import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidE
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import {IconTsx} from '../../iconTsx';
 import type ChatBubbles from '../bubbles';
+import Chat from '../chat';
 import styles from './chatThreadSeparator.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
@@ -133,6 +134,7 @@ function useIntersector({bubbles, element, index}: UseIntersectorArgs) {
 
 type Props = {
   bubbles: ChatBubbles;
+  chat: Chat;
   peerId: PeerId;
   threadId?: number;
   lastMsgId?: number;
@@ -157,8 +159,10 @@ const ChatThreadSeparator = defineSolidElement({
     });
 
     const onClick = () => {
+      const isMonoforum = props.chat.isMonoforum;
       appImManager.setPeer({
-        peerId: props.peerId,
+        peerId: isMonoforum ? props.chat.peerId : props.peerId,
+        monoforumThreadId: isMonoforum ? props.peerId : undefined,
         threadId: props.threadId,
         lastMsgId: props.lastMsgId
       });

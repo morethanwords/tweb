@@ -1,4 +1,4 @@
-import {createEffect, Show} from 'solid-js';
+import {createEffect, onCleanup, Show} from 'solid-js';
 import {Message} from '../../../../layer';
 import getMessageThreadId from '../../../../lib/appManagers/utils/messages/getMessageThreadId';
 import {i18n} from '../../../../lib/langPack';
@@ -38,6 +38,7 @@ const ContinueLastTopicReplyMarkupContent = defineSolidElement({
     createEffect(() => {
       if(!props.visible) return;
       props.bubble.classList.add('with-reply-markup');
+      onCleanup(() => props.bubble.classList.remove('with-reply-markup'));
     });
 
     return (
