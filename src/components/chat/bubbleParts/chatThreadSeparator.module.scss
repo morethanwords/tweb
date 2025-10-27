@@ -52,6 +52,10 @@ $round-border-radius: 100px;
     opacity: 0 !important;
     pointer-events: none !important;
   }
+
+  :global(.peer-title .topic-icon) {
+    margin-inline-end: 0.25rem;
+  }
 }
 
 .ArrowIcon {
