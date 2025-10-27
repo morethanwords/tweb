@@ -9,13 +9,16 @@ import type {Theme} from '../layer';
 import type AppBackgroundTab from '../components/sidebarLeft/tabs/background';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import rootScope from '../lib/rootScope';
-import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
+import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import customProperties from './dom/customProperties';
 import {TelegramWebViewTheme} from '../types';
-import {joinDeepPath} from './object/setDeepProperty';
 import windowSize from './windowSize';
 import liteMode from './liteMode';
+import {useAppSettings} from '../stores/appSettings';
+import {logger} from '../lib/logger';
+import pause from './schedulers/pause';
+import Transitions, {getTransition} from '../config/transitions';
 
 export type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
@@ -108,6 +111,8 @@ const colorMap: {
     'green-color': '#5CC85E'
   }
 };
+
+const log = logger('THEME');
 
 export class ThemeController {
   private themeColor: string;
@@ -208,6 +213,8 @@ export class ThemeController {
   }
 
   public _setTheme(silent?: boolean) {
+    const _log = log.bindPrefix('setTheme');
+    _log(`set colors, silent=${silent}`);
     const isNight = this.isNight();
     const colorScheme = document.head.querySelector('[name="color-scheme"]');
     colorScheme?.setAttribute('content', isNight ? 'dark' : 'light');
@@ -229,10 +236,16 @@ export class ThemeController {
 
     this.applyHighlightingColor();
     !silent && rootScope.dispatchEventSingle('theme_changed');
+    _log('end');
   }
 
   public setTheme(coordinates?: {x: number, y: number}) {
-    if(!('startViewTransition' in document) || !this.applied) {
+    const _log = log.bindPrefix('setTheme');
+    const fast = !('startViewTransition' in document) || !this.applied;
+    const animationsAvailable = liteMode.isAvailable('animations');
+    _log(`start, fast=${fast}, coordinates=${JSON.stringify(coordinates)}, animations=${animationsAvailable}`);
+
+    if(fast) {
       const silent = !this.applied;
       const wasApplied = this.applied;
       this.applied = true;
@@ -245,7 +258,7 @@ export class ThemeController {
       return;
     }
 
-    if(!liteMode.isAvailable('animations')) {
+    if(!animationsAvailable) {
       coordinates = undefined;
     }
 
@@ -257,10 +270,12 @@ export class ThemeController {
     }
 
     const transition = document.startViewTransition(() => {
-      this._setTheme();
+      _log('view transition started');
+      return this._setTheme();
     });
 
     if(!coordinates) {
+      _log('view transition is not needed');
       return;
     }
 
@@ -272,26 +287,37 @@ export class ThemeController {
     );
 
     transition.ready.then(() => {
-      document.documentElement.animate({
-        clipPath: [
-          `circle(0 at ${x}px ${y}px)`,
-          `circle(${endRadius}px at ${x}px ${y}px)`
+      _log('view transition ready');
+
+      const {easing, duration, keyframes} = getTransition(
+        'standard',
+        !reverse,
+        [
+          {clipPath: `circle(0 at ${x}px ${y}px)`},
+          {clipPath: `circle(${endRadius}px at ${x}px ${y}px)`}
         ]
-      }, {
-        duration: 500,
-        easing: 'ease-in-out',
+      );
+
+      document.documentElement.animate(keyframes, {
+        duration: duration * 2,
+        easing,
         pseudoElement: `::view-transition-${reverse ? 'old' : 'new'}(root)`,
-        direction: reverse ? 'reverse' : 'normal'
+        fill: 'forwards' // * without this rule animation will flick at the end
       });
     });
 
     transition.finished.finally(() => {
+      _log('view transition end');
       document.documentElement.classList.remove('no-view-transition', 'reverse');
     });
   }
 
-  public async switchTheme(name: AppTheme['name'], coordinates?: {x: number, y: number}) {
-    await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'theme'), name);
+  public async switchTheme(
+    name: AppTheme['name'] = this.isNight() ? 'day' : 'night',
+    coordinates?: {x: number, y: number}
+  ) {
+    const [, setAppSettings] = useAppSettings();
+    await setAppSettings('theme', name);
     rootScope.dispatchEvent('theme_change', coordinates);
   }
 
@@ -379,7 +405,7 @@ export class ThemeController {
   public async applyNewTheme(theme: Theme) {
     const isNight = this.isNightTheme(theme);
     const currentTheme = this.getTheme();
-    const themes = rootScope.settings.themes;
+    const themes = rootScope.settings.themes.slice();
     const themeSettings = theme.settings.find((themeSettings) => themeSettings.base_theme._ === (isNight ? 'baseThemeNight' : 'baseThemeClassic'));
     const newAppTheme: AppTheme = {
       ...theme,
@@ -392,7 +418,8 @@ export class ThemeController {
 
     await this.AppBackgroundTab.setBackgroundDocument(themeSettings.wallpaper, newAppTheme.settings);
     themes[themes.indexOf(currentTheme)] = newAppTheme;
-    await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'themes'), rootScope.settings.themes);
+    const [, setAppSettings] = useAppSettings();
+    await setAppSettings('themes', themes);
     rootScope.dispatchEvent('theme_change');
   }
 

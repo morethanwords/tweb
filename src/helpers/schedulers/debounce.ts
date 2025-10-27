@@ -1,7 +1,7 @@
 // * Jolly Cobra's schedulers
 
 import ctx from '../../environment/ctx';
-import {AnyFunction, Awaited} from '../../types';
+import {AnyFunction} from '../../types';
 import noop from '../noop';
 
 export type DebounceReturnType<F extends AnyFunction> = {

@@ -104,6 +104,8 @@ import ChatTypeMenu from '../chatTypeMenu';
 import {RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 import EmptySearchPlaceholder from '../emptySearchPlaceholder';
 import useHasFoldersSidebar, {useIsSidebarCollapsed} from '../../stores/foldersSidebar';
+import isObject from '../../helpers/object/isObject';
+import {useAppSettings} from '../../stores/appSettings';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -821,7 +823,11 @@ export class AppSidebarLeft extends SidebarSlider {
       buttons: filteredButtons,
       container: mountTo,
       onOpenBefore: async() => {
-        const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots().catch(() => [] as AttachMenuBot[]);
+        const emptyAttachMenuBots: AttachMenuBot[] = [];
+        const attachMenuBots = await Promise.race([
+          pause(30).then(() => emptyAttachMenuBots),
+          this.managers.appAttachMenuBotsManager.getAttachMenuBots().catch(() => emptyAttachMenuBots)
+        ]);
         const buttons = filteredButtonsSliced.slice();
         const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
           return attachMenuBot.pFlags.show_in_side_menu;
@@ -844,7 +850,11 @@ export class AppSidebarLeft extends SidebarSlider {
           return button;
         });
 
-        function wrapUserName(user: User.user) {
+        function wrapUserName(user: User.user | PeerId) {
+          if(!isObject(user)) {
+            return '' + user;
+          }
+
           let name = user.first_name;
           if(user.last_name) name += ' ' + user.last_name;
 
@@ -886,7 +896,7 @@ export class AppSidebarLeft extends SidebarSlider {
             const user = await otherManagers.appUsersManager.getSelf();
 
             const content = document.createElement('span');
-            content.append(wrapUserName(user));
+            content.append(wrapUserName(user || peerId));
 
             if(notificationsCount[accountNumber]) {
               const badge = createBadge('span', 20, 'primary');
@@ -956,19 +966,18 @@ export class AppSidebarLeft extends SidebarSlider {
     submenu: ReturnType<typeof createSubmenuTrigger>,
     closeTabsBefore: (clb: () => void) => void
   ) {
-    const isDarkModeEnabled = () => themeController.getTheme().name === 'night';
     const toggleTheme = () => {
       const item = btns[0].element;
       const icon = item.querySelector('.tgico');
       const rect = icon.getBoundingClientRect();
-      themeController.switchTheme(isDarkModeEnabled() ? 'day' : 'night', {
+      themeController.switchTheme(undefined, {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2
       });
     };
 
     const darkModeText = document.createElement('span');
-    darkModeText.append(i18n(isDarkModeEnabled() ? 'DisableDarkMode': 'EnableDarkMode'));
+    darkModeText.append(i18n(themeController.isNight() ? 'DisableDarkMode': 'EnableDarkMode'));
     const animationsText = document.createElement('span');
 
     const btns: ButtonMenuItemOptionsVerifiable[] = [{
@@ -1047,10 +1056,8 @@ export class AppSidebarLeft extends SidebarSlider {
 
     async function toggleAnimations() {
       updateAnimationsToggleButton(!(await hasAnimations()));
-      rootScope.managers.appStateManager.setByKey(
-        joinDeepPath('settings', 'liteMode', 'animations'),
-        await hasAnimations() // The value is already reversed
-      );
+      const [, setAppSettings] = useAppSettings();
+      await setAppSettings('liteMode', 'animations', await hasAnimations());
     }
 
     async function updateAnimationsToggleButton(enabled: boolean) {

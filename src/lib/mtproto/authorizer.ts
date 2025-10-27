@@ -17,7 +17,7 @@ import rsaKeysManager from './rsaKeysManager';
 import CryptoWorker from '../crypto/cryptoMessagePort';
 import {LogTypes} from '../logger';
 import DEBUG from '../../config/debug';
-import {Awaited, DcId, Modify} from '../../types';
+import {DcId, Modify} from '../../types';
 import addPadding from '../../helpers/bytes/addPadding';
 import bytesCmp from '../../helpers/bytes/bytesCmp';
 import bytesFromHex from '../../helpers/bytes/bytesFromHex';

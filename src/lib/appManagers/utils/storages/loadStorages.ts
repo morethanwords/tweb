@@ -11,7 +11,6 @@ import type {StoragesStorages} from './createStorages';
 import type {ResetStoragesPromise} from '../../appStateManager';
 import type AppStorage from '../../../storage';
 import {recordPromiseBound} from '../../../../helpers/recordPromise';
-import {Awaited} from '../../../../types';
 import {logger} from '../../../logger';
 import noop from '../../../../helpers/noop';
 

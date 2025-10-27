@@ -12,7 +12,6 @@ import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import rootScope from '../../lib/rootScope';
 import SetTransition from '../singleTransition';
 import StackedAvatars from '../stackedAvatars';
-import {Awaited} from '../../types';
 import wrapSticker from '../wrappers/sticker';
 import wrapStickerAnimation from '../wrappers/stickerAnimation';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';

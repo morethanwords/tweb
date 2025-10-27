@@ -89,7 +89,6 @@ import {getPeerColorIndexByPeer} from '../../lib/appManagers/utils/peers/getPeer
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
 import {AppManagers} from '../../lib/appManagers/managers';
-import {Awaited} from '../../types';
 import idleController from '../../helpers/idleController';
 import overlayCounter from '../../helpers/overlayCounter';
 import {cancelContextMenuOpening} from '../../helpers/dom/attachContextMenuListener';
@@ -206,6 +205,7 @@ import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
 import addSuggestedPostServiceMessage, {checkIfNotMePosted} from './bubbleParts/suggestPostServiceMessage';
 import addSuggestedPostReplyMarkup, {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
 import type {SeparatorIntersectorRoot} from './bubbleParts/monoforumSeparator';
+import {getTransition} from '../../config/transitions';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -3521,7 +3521,8 @@ export default class ChatBubbles {
       scrollSaver.restore();
       scrollSaver.save(); // * save again after moving elements
 
-      const options: KeyframeAnimationOptions = {duration: 300, fill: 'forwards', easing: 'cubic-bezier(.4, .0, .2, 1)'};
+      const {duration, easing} = getTransition('standard');
+      const options: KeyframeAnimationOptions = {duration, fill: 'forwards', easing};
 
       // const contentWrapper = bubble.querySelector<HTMLElement>('.bubble-content-wrapper');
       // const bubbleDeleteKeyframe: Keyframe = {transform: 'scale(0)'};
@@ -5654,7 +5655,8 @@ export default class ChatBubbles {
               scrollSaver.save();
             }
 
-            const options: KeyframeAnimationOptions = {duration: noAnimation ? 0 : 300, fill: 'forwards', easing: 'cubic-bezier(.4, .0, .2, 1)'};
+            const {duration, easing} = getTransition('standard');
+            const options: KeyframeAnimationOptions = {duration: noAnimation ? 0 : duration, fill: 'forwards', easing};
             const keyframes: Keyframe[] = [{height: '0'/* , transform: 'scale(0)', opacity: '0' */}, {height: '9.125rem'/* , transform: 'scale(1)', opacity: '1' */}];
             if(!force) keyframes.reverse();
             const animation = c.animate(keyframes, options);

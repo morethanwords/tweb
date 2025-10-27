@@ -37,7 +37,9 @@ const serverOptions: ServerOptions = {
   // host: '192.168.95.17',
   port: 8080,
   sourcemapIgnoreList(sourcePath, sourcemapPath) {
-    return sourcePath.includes('node_modules') || sourcePath.includes('logger');
+    return sourcePath.includes('node_modules') ||
+      sourcePath.includes('logger') ||
+      sourcePath.includes('eventListenerBase');
   }
 };
 

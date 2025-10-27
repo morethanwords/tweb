@@ -31,7 +31,6 @@ import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStick
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import rootScope from '../../lib/rootScope';
 import webpWorkerController from '../../lib/webp/webpWorkerController';
-import {Awaited} from '../../types';
 import {getEmojiToneIndex} from '../../vendor/emoji';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import LazyLoadQueue from '../lazyLoadQueue';

@@ -61,7 +61,6 @@ import filterMessagesByInputFilter from '../lib/appManagers/utils/messages/filte
 import getChatMembersString from './wrappers/getChatMembersString';
 import getUserStatusString from './wrappers/getUserStatusString';
 import getParticipantPeerId from '../lib/appManagers/utils/chats/getParticipantPeerId';
-import {Awaited} from '../types';
 import {attachContextMenuListener} from '../helpers/dom/attachContextMenuListener';
 import contextMenuController from '../helpers/contextMenuController';
 import positionMenu from '../helpers/positionMenu';
