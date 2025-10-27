@@ -529,7 +529,7 @@ export default class ChatTopbar {
       onClick: () => {
         this.addContact();
       },
-      verify: async() => (this.chat.monoforumThreadId || this.peerId).isUser() && !(await this.managers.appPeersManager.isContact(this.chat.monoforumThreadId || this.peerId))
+      verify: async() => !this.chat.isBot && (this.chat.monoforumThreadId || this.peerId).isUser() && !(await this.managers.appPeersManager.isContact(this.chat.monoforumThreadId || this.peerId))
     }, {
       icon: 'forward',
       text: 'ShareContact',
