@@ -5662,12 +5662,24 @@ export class AppMessagesManager extends AppManager {
         // apiPromise = new Promise<void>((resolve) => resolve());
       }
 
-      this.apiUpdatesManager.processLocalUpdate({
-        _: 'updateReadChannelDiscussionInbox',
-        channel_id: peerId.toChatId(),
-        top_msg_id: threadId,
-        read_max_id: maxId
-      });
+      if(peerId.isAnyChat()) {
+        this.apiUpdatesManager.processLocalUpdate({
+          _: 'updateReadChannelDiscussionInbox',
+          channel_id: peerId.toChatId(),
+          top_msg_id: threadId,
+          read_max_id: maxId
+        });
+      } else {
+        this.apiUpdatesManager.processLocalUpdate({
+          _: 'updateReadHistoryInbox',
+          peer: this.appPeersManager.getOutputPeer(peerId),
+          top_msg_id: threadId,
+          max_id: maxId,
+          still_unread_count: 0,
+          pts: undefined,
+          pts_count: undefined
+        });
+      }
     } else if(this.appPeersManager.isChannel(peerId)) {
       if(!historyStorage.readPromise) {
         apiPromise = this.apiManager.invokeApi('channels.readHistory', {
@@ -6943,10 +6955,11 @@ export class AppMessagesManager extends AppManager {
       update._ === 'updateReadMonoForumOutbox' ? true : undefined;
 
     const isForum = channelId ? this.appChatsManager.isForum(channelId) : false;
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
     const isMonoforum = channelId ? this.appChatsManager.isMonoforum(channelId) : false;
     const storage = this.getHistoryMessagesStorage(peerId);
     const history = getObjectKeysAndSort(storage, 'desc');
-    const foundDialog = threadId && isForum ?
+    const foundDialog = threadId && (isForum || isBotforum) ?
       this.dialogsStorage.getForumTopic(peerId, threadId) :
       this.getDialogOnly(peerId);
     const stillUnreadCount = (update as Update.updateReadChannelInbox).still_unread_count;
@@ -6986,7 +6999,7 @@ export class AppMessagesManager extends AppManager {
         continue;
       }
 
-      const messageThreadId = getMessageThreadId(message, {isForum});
+      const messageThreadId = getMessageThreadId(message, {isForum, isBotforum});
 
 
       if(threadId && messageThreadId !== threadId ||
