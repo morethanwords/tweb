@@ -141,7 +141,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
     element.id = 'active-sessions-contextmenu';
     element.classList.add('contextmenu');
 
-    document.getElementById('page-chats').append(element);
+    document.body.append(element);
 
     attachContextMenuListener({
       element: this.scrollable.container,

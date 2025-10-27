@@ -106,7 +106,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     element.id = 'blocked-users-contextmenu';
     element.classList.add('contextmenu');
 
-    document.getElementById('page-chats').append(element);
+    document.body.append(element);
 
     attachContextMenuListener({
       element: this.scrollable.container,

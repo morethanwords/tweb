@@ -322,7 +322,7 @@ class SearchContextMenu {
 
     this.element = ButtonMenuSync({buttons: this.buttons, listenerSetter: this.listenerSetter});
     this.element.classList.add('search-contextmenu', 'contextmenu');
-    document.getElementById('page-chats').append(this.element);
+    document.body.append(this.element);
   }
 
   private onGotoClick = () => {
