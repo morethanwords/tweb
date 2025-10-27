@@ -22,6 +22,8 @@
     @media only screen and (min-width: $large-screen + 1) { @content; }
   } @else if $media == not-handhelds {
     @media only screen and (min-width: $small-screen + 1) { @content; }
+  } @else if $media == not-large-screens {
+    @media only screen and (max-width: $large-screen) { @content; }
   }
 
   @else if $media == floating-left-sidebar {

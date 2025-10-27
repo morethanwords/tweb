@@ -68,6 +68,7 @@
   color: var(--primary-color);
   background: rgba(var(--primary-color-rgb), .1);
   white-space: nowrap;
+  overflow: hidden;
 
   &:not([disabled]):hover {
     background: rgba(var(--primary-color-rgb), .2);

@@ -38,10 +38,11 @@ const Row = (props: Partial<{
   children: JSX.Element
 }> = {}) => {
   const [store, setStore] = createStore<RowContextValue['store']>({});
-  const register = (kind: Kind, element: JSX.Element) => {
+  const register: RowContextValue['register'] = (kind, element) => {
     setStore(kind, element);
     onCleanup(() => setStore(kind, undefined));
-    return element;
+    return undefined;
+    // return element;
   };
 
   const isCheckbox = () => !!(store.checkboxField || store.checkboxFieldToggle || store.radioField);
@@ -237,7 +238,14 @@ Row.Media = (props: {
   mediaSize: RowMediaSizeType
 }) => {
   return useContext(RowContext).register('media', (
-    <div class={classNames('row-media', props.mediaSize && `row-media-${props.mediaSize}`)}>{props.children}</div>
+    <div
+      class={classNames(
+        'row-media',
+        props.mediaSize && `row-media-${props.mediaSize}`
+      )}
+    >
+      {props.children}
+    </div>
   ));
 };
 

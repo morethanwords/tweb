@@ -471,16 +471,17 @@
     padding: 0;
     --popup-min-width: 100%;
     --popup-max-width: 100%;
+
+    :global(.popup-container) {
+      margin-bottom: 0;
+      margin-top: auto!important;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
   }
 
-  :global(.popup-container) {
-    margin-bottom: 0;
-    margin-top: auto!important;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-
-  .premiumOptionsContainer, :global(.star-gifts-grid) {
+  .premiumOptionsContainer,
+  :global(.star-gifts-grid) {
     padding-inline: 0.5rem;
   }
 

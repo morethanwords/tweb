@@ -798,7 +798,13 @@
     justify-content: center;
 
     &.half {
-      width: 50%;
+      @include respond-to(not-large-screens) {
+        flex: 1 1 auto;
+      }
+
+      @include respond-to(large-screens) {
+        width: 50%;
+      }
     }
 
     @include sidebar-transform(1, true);
@@ -835,8 +841,16 @@
     }
 
     &-utils {
-      // 2.5rem = button size, 1rem = container padding
-      margin-inline-start: -3.5rem;
+      margin-inline-end: 1rem;
+
+      @include respond-to(handhelds) {
+        margin-inline-end: .5rem;
+      }
+
+      @include respond-to(large-screens) {
+        // 2.5rem = button size, 1rem = container padding
+        margin-inline: -3.5rem 0;
+      }
     }
 
     &.is-disabled {
