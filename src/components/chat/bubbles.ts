@@ -522,7 +522,7 @@ export default class ChatBubbles {
     // * events
 
     // will call when sent for update pos
-    this.listenerSetter.add(rootScope)('history_update', async({storageKey, sequential, message}) => {
+    this.listenerSetter.add(rootScope)('history_update', async({storageKey, sequential, tempId, message}) => {
       if(this.chat.messagesStorageKey !== storageKey || this.chat.type === ChatType.Scheduled) {
         return;
       }
@@ -530,6 +530,8 @@ export default class ChatBubbles {
       const {mid} = message;
       const log = false ? this.log.bindPrefix('history_update-' + mid) : undefined;
       log && log('start');
+
+      if(this.finalizeTypingMessage(message, tempId)) return;
 
       const fullMid = makeFullMid(message);
       const bubble = this.getBubble(fullMid);
@@ -6075,7 +6077,12 @@ export default class ChatBubbles {
       const previous = this.currentlyTypingMessages[usedId];
       previous?.clean();
 
-      const current = this.currentlyTypingMessages[usedId] = wrapContinuouslyTypingMessage({root: richText, prevPosition: previous?.currentPosition});
+      const current = this.currentlyTypingMessages[usedId] = wrapContinuouslyTypingMessage({
+        bubble,
+        root: richText,
+        prevPosition: previous?.currentPosition,
+        isEnd: previous?.nextIsEnd
+      });
 
       middleware.onDestroy(() => {
         current?.clean();
@@ -9706,6 +9713,25 @@ export default class ChatBubbles {
 
   private shouldShowBotforumNewTopic() {
     return this.chat.isBotforum && !this.chat.threadId;
+  }
+
+  private finalizeTypingMessage(message: MyMessage, tempId: number) {
+    const currentlyTyping = this.currentlyTypingMessages[tempId];
+    const bubble = currentlyTyping?.bubble;
+
+    if(!currentlyTyping || !bubble) return false;
+
+    delete this.currentlyTypingMessages[tempId];
+    this.currentlyTypingMessages[message.mid] = currentlyTyping;
+    currentlyTyping.nextIsEnd = true;
+
+    this.safeRenderMessage({
+      message,
+      bubble,
+      reverse: true
+    });
+
+    return true;
   }
 }
 

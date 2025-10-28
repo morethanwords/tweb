@@ -4,18 +4,21 @@ import styles from './continuouslyTypingMessage.module.scss';
 
 type WrapContinuouslyTypingMessageArgs = {
   root: Node;
+  bubble: HTMLElement;
   isEnd?: boolean;
   prevPosition?: number;
 };
 
 type Result = {
   allNodes: Node[];
+  bubble: HTMLElement;
   clean: () => void;
   currentPosition: number;
   currentNodeIdx: number;
+  nextIsEnd?: boolean;
 };
 
-export function wrapContinuouslyTypingMessage({root, isEnd = false, prevPosition = -1}: WrapContinuouslyTypingMessageArgs) {
+export function wrapContinuouslyTypingMessage({root, bubble, isEnd = false, prevPosition = -1}: WrapContinuouslyTypingMessageArgs): Result {
   const maxPosition = getMaxPosition(root);
 
   const {allNodes, currentNodeIdx} = hidePrevElements(root, prevPosition);
@@ -36,6 +39,7 @@ export function wrapContinuouslyTypingMessage({root, isEnd = false, prevPosition
     ended = true;
 
     if(!isEnd) appendDots(lastTextNode);
+
     animate(() => {
       lastElement?.scrollIntoView({behavior: 'smooth', block: 'center'});
     });
@@ -43,9 +47,11 @@ export function wrapContinuouslyTypingMessage({root, isEnd = false, prevPosition
 
   const result = {
     allNodes,
+    bubble,
     clean,
     currentPosition: prevPosition,
-    currentNodeIdx
+    currentNodeIdx,
+    nextIsEnd: isEnd
   };
 
   runAnimation({
@@ -179,16 +185,14 @@ function typeNext({result, setLastElement, setLastTextNode, onEnd}: TypeNextArgs
 const BASE_DELAY = 60 * 1_000 / (800 * 5); // 800wpm
 const DELAY_VARIATION = 0.3;
 
-// Try to write it with the base speed of 800wpm or burst it in 1.5 seconds if it's a long message
+// Try to write it with the base speed of 800wpm or burst it in 5 seconds if it's a long message
 function getRandomDelay(targetDelay: number) {
   const delay = Math.max(1 /* ms */, Math.min(BASE_DELAY, targetDelay));
   return delay + Math.random() * delay * DELAY_VARIATION;
 }
 
 
-const TARGET_TIME_TO_WRITE = 1500;
-// const TARGET_TIME_TO_WRITE = 1000;
-const SCROLL_VIEW_DELAY = 200;
+const TARGET_TIME_TO_WRITE = 5000;
 
 type RunAnimationArgs = {
   typeNext: () => void;
@@ -201,10 +205,7 @@ type RunAnimationArgs = {
 function runAnimation({typeNext, isCleaned, getLastElement, maxPosition, prevPosition}: RunAnimationArgs) {
   const targetDelay = TARGET_TIME_TO_WRITE / (maxPosition - prevPosition);
 
-  let
-    nextTime = performance.now(),
-    nextScrollTime = performance.now() + SCROLL_VIEW_DELAY
-  ;
+  let nextTime = performance.now();
 
   animate(() => {
     if(isCleaned()) return false;
@@ -216,10 +217,7 @@ function runAnimation({typeNext, isCleaned, getLastElement, maxPosition, prevPos
       nextTime = nextTime + getRandomDelay(targetDelay);
     }
 
-    if(now > nextScrollTime) {
-      getLastElement().scrollIntoView({behavior: 'smooth', block: 'center'});
-      nextScrollTime = now + SCROLL_VIEW_DELAY;
-    }
+    getLastElement()?.scrollIntoView({behavior: 'instant', block: 'center'});
 
     return true;
   });

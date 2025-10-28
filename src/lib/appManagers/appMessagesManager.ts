@@ -491,7 +491,7 @@ export class AppMessagesManager extends AppManager {
 
   private repayRequestHandler: RepayRequestHandler;
 
-  private typingBotforumMessages: Map<PeerId, string> = new Map();
+  private typingBotforumMessages: Map<PeerId, Set<string>> = new Map();
 
   constructor() {
     super();
@@ -7609,30 +7609,61 @@ export class AppMessagesManager extends AppManager {
   }
 
   private checkPendingMessage(message: MyMessage) {
-    let botforumTypingRandomId: string;
-
     const randomId =
       this.pendingByMessageId[message.mid] ||
-      (!message.pFlags.out ? botforumTypingRandomId = this.typingBotforumMessages.get(message.peerId) : undefined);
+      this.guessBotforumTypingMessage(message);
 
     let pendingMessage: ReturnType<AppMessagesManager['finalizePendingMessage']>;
     if(randomId) {
       const pendingData = this.pendingByRandomId[randomId];
       if(pendingMessage = this.finalizePendingMessage(randomId, message)) {
-        // if(botforumTypingRandomId) message.random_id = botforumTypingRandomId;
-
         this.rootScope.dispatchEvent('history_update', {
           storageKey: pendingData.storage.key,
           message,
+          tempId: pendingData.tempId,
           sequential: pendingData.sequential
         });
       }
 
       delete this.pendingByMessageId[message.mid];
-      this.typingBotforumMessages.delete(message.peerId);
+      this.deleteBotforumTypingMessageByRandomId(message.peerId, '' + randomId);
     }
 
     return pendingMessage;
+  }
+
+  private guessBotforumTypingMessage(message: MyMessage) {
+    if(message._ !== 'message' || message.pFlags.out) return;
+
+    const randomIds = this.typingBotforumMessages.get(message.peerId);
+    if(!randomIds) return;
+
+    let result: MyMessage, resultLength = 0;
+
+    for(const randomId of randomIds) {
+      const pendingData = this.pendingByRandomId[randomId];
+      const existingMessage = this.getMessageByPeer(pendingData.peerId, pendingData.tempId);
+
+      if(existingMessage?._ !== 'message') continue;
+
+      if(message.message?.startsWith(existingMessage.message || '') && existingMessage.message?.length > resultLength) {
+        result = existingMessage;
+        resultLength = message.message.length || 0;
+      }
+    }
+
+    return result?.random_id;
+  }
+
+  private deleteBotforumTypingMessageByRandomId(peerId: PeerId, randomId: string) {
+    const randomIds = this.typingBotforumMessages.get(peerId);
+    if(!randomIds) return;
+
+    randomIds.delete(randomId);
+
+    if(randomIds.size === 0) {
+      this.typingBotforumMessages.delete(peerId);
+    }
   }
 
   public mutePeer(options: {peerId: PeerId, muteUntil: number, threadId?: number}) {
@@ -9830,12 +9861,12 @@ export class AppMessagesManager extends AppManager {
     const threadId = update.top_msg_id;
     const randomId = '' + action.random_id;
 
-    const existingRandomId = this.typingBotforumMessages.get(peerId);
+    if(!this.typingBotforumMessages.has(peerId)) this.typingBotforumMessages.set(peerId, new Set);
+    const existingRandomIds = this.typingBotforumMessages.get(peerId);
 
-    if(!existingRandomId || existingRandomId !== randomId) {
-      existingRandomId && this.cancelPendingMessage(existingRandomId);
+    if(!existingRandomIds.has(randomId)) {
+      existingRandomIds.add(randomId);
 
-      this.typingBotforumMessages.set(peerId, randomId);
       const generatedMessage = this.generateTypingBotforumMessage({peerId, threadId, action});
 
       const storages: HistoryStorage[] = [this.getHistoryStorage(peerId), this.getHistoryStorage(peerId, threadId)]
@@ -9868,14 +9899,6 @@ export class AppMessagesManager extends AppManager {
       const storage = this.getHistoryMessagesStorage(peerId);
 
       this.rootScope.dispatchEvent('message_edit', {message, storageKey: storage.key, peerId, mid: tempId});
-
-      // this.rootScope.dispatchEvent('update_draft_message_typing', {
-      //   peerId,
-      //   threadId,
-      //   mid: tempId,
-      //   message: action.text.text,
-      //   entities: action.text.entities
-      // });
     }
   }
 
