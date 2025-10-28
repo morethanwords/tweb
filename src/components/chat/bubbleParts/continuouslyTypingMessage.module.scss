@@ -3,7 +3,7 @@
 }
 
 $duration: 0.65s;
-$delay: $duration / 5;
+$delay: calc($duration / 5);
 
 .Dot {
   opacity: 0;
@@ -14,7 +14,7 @@ $delay: $duration / 5;
   }
 
   &3 {
-    animation-delay: $delay * 2;
+    animation-delay: calc($delay * 2);
   }
 }
 
