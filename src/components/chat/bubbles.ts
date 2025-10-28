@@ -5441,15 +5441,11 @@ export default class ChatBubbles {
     const regularAsService = !!isStoryMention;
     let returnService: boolean;
 
-    const isBotforumCreateTopicService = this.chat.isBotforum && (message as Message.messageService).action?._ === 'messageActionTopicCreate';
-
-    if(isBotforumCreateTopicService && this.chat.threadId) {
+    if(this.chat.isBotforum && (message as Message.messageService).action?._ === 'messageActionTopicCreate') {
       return;
     }
 
-    const skipServiceRender = isBotforumCreateTopicService && !this.chat.threadId;
-
-    if(!skipServiceRender) if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
+    if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
       const action = (message as Message.messageService).action;
       if(action) {
         const _ = action._;
@@ -5884,11 +5880,6 @@ export default class ChatBubbles {
       returnService = true;
     }
 
-    if(skipServiceRender) {
-      bubble.className = 'bubble service';
-      bubbleContainer.replaceChildren();
-      returnService = true;
-    }
 
     const setUnreadObserver = isInUnread && this.observer ? this.setUnreadObserver.bind(this, 'history', bubble, maxBubbleMid) : undefined;
 
