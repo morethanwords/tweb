@@ -63,6 +63,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   leaveRtmpCall: (payload: [Long, boolean]) => void,
   toggleStreamInUse: (payload: {url: string, inUse: boolean, accountNumber: ActiveAccountNumber}) => void,
   toggleCacheStorage: (value: boolean) => void,
+  resetEncryptableCacheStorages: () => void,
   toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
   saveEncryptionKey: (payload: CryptoKey) => void,
   fillPushObject: (payload: PushNotificationObject) => PushNotificationObject,

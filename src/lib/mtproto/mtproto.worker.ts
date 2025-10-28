@@ -204,6 +204,10 @@ port.addMultipleEventsListeners({
     await port.invokeExceptSourceAsync('toggleCacheStorage', enabled, source);
   },
 
+  resetEncryptableCacheStorages: () => {
+    CacheStorageController.resetOpenEncryptableCacheStorages();
+  },
+
   forceLogout: async() => {
     await ApiManager.forceLogOutAll();
   },
@@ -300,4 +304,3 @@ listenMessagePort(port, (source) => {
   appTabsManager.deleteTab(source);
   autoLockControls.removeTab(source);
 });
-

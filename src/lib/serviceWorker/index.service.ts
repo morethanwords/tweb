@@ -138,6 +138,10 @@ serviceMessagePort.addMultipleEventsListeners({
     CacheStorageController.temporarilyToggle(enabled);
   },
 
+  resetEncryptableCacheStorages: () => {
+    CacheStorageController.resetOpenEncryptableCacheStorages();
+  },
+
   toggleUsingPasscode: (payload) => {
     DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
     EncryptionKeyStore.save(payload.encryptionKey);

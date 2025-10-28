@@ -31,6 +31,12 @@ export function usePasscodeActions() {
 
   async function clearCacheStorages() {
     await CacheStorageController.clearEncryptableStorages();
+
+    CacheStorageController.resetOpenEncryptableCacheStorages();
+    await Promise.all([
+      apiManagerProxy.invoke('resetEncryptableCacheStorages', void 0),
+      apiManagerProxy.serviceMessagePort.invoke('resetEncryptableCacheStorages', void 0)
+    ]);
   }
 
   async function enablePasscode(passcode: string) {

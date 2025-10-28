@@ -11,9 +11,7 @@
     //   }
     // },
     {
-      "code_actions": {
-        "source.fixAll.eslint": true
-      }
+      "code_action": "source.fixAll.eslint"
     }
   ]
 }

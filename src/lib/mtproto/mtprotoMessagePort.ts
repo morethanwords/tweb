@@ -55,6 +55,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   toggleLockOthers: (isLocked: boolean, source: MessageEventSource) => void
   localStorageEncryptedProxy: (payload: LocalStorageEncryptedProxyTaskPayload) => Promise<any>,
   toggleCacheStorage: (value: boolean, source: MessageEventSource) => void,
+  resetEncryptableCacheStorages: () => void,
   forceLogout: () => void,
   toggleUninteruptableActivity: (payload: {activity: string, active: boolean}, source: MessageEventSource) => void,
   language: (payload: string) => void
