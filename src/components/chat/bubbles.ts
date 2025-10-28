@@ -4376,6 +4376,10 @@ export default class ChatBubbles {
       savedPosition
     };
 
+    if(this.chat.isBroadcast && this.chat.type === ChatType.Chat/*  && false */) {
+      this.loadSponsoredMessages();
+    }
+
     if(!samePeer) {
       this.ranks = undefined;
       this.processRanks = undefined;
@@ -4428,10 +4432,6 @@ export default class ChatBubbles {
         if(ackedResult.cached) {
           await m(setRanksPromise);
         }
-      }
-
-      if(this.chat.isBroadcast && this.chat.type === ChatType.Chat/*  && false */) {
-        this.loadSponsoredMessages();
       }
     }
 
@@ -8197,7 +8197,6 @@ export default class ChatBubbles {
         this.chat.getHistoryMaxId()
       ])
       let prevGroupedId: Long | undefined
-      debugger
 
       for(const mid_ of history) {
         const mid = typeof(mid_) === 'number' ? mid_ : mid_.mid;
@@ -9182,10 +9181,12 @@ export default class ChatBubbles {
         this.messagesQueuePromise
       ]).then(([message]) => {
         if(!middleware()) return;
-        // this.processLocalMessageRender(message);
-        log('rendering', message);
-        return this.performHistoryResult({history: [message]}, false);
-      });
+        if(this.scrollable.loadedAll.bottom) {
+          this.performHistoryResult({history: [message]}, false);
+        } else {
+          this.sponsoredMessagesAvailable = [message]
+        }
+      })
     }).finally(() => {
       if(this.getSponsoredMessagePromise === promise) {
         this.getSponsoredMessagePromise = undefined;
