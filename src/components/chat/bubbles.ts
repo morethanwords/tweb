@@ -5441,7 +5441,15 @@ export default class ChatBubbles {
     const regularAsService = !!isStoryMention;
     let returnService: boolean;
 
-    if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
+    const isBotforumCreateTopicService = this.chat.isBotforum && (message as Message.messageService).action?._ === 'messageActionTopicCreate';
+
+    if(isBotforumCreateTopicService && this.chat.threadId) {
+      return;
+    }
+
+    const skipServiceRender = isBotforumCreateTopicService && !this.chat.threadId;
+
+    if(!skipServiceRender) if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
       const action = (message as Message.messageService).action;
       if(action) {
         const _ = action._;
@@ -5459,6 +5467,7 @@ export default class ChatBubbles {
       bubble.className = 'bubble service';
 
       bubbleContainer.replaceChildren();
+
       const s = document.createElement('div');
       s.classList.add('service-msg');
       if(action) {
@@ -5872,6 +5881,12 @@ export default class ChatBubbles {
         bubble.classList.add('is-group-last');
       }
 
+      returnService = true;
+    }
+
+    if(skipServiceRender) {
+      bubble.className = 'bubble service';
+      bubbleContainer.replaceChildren();
       returnService = true;
     }
 
