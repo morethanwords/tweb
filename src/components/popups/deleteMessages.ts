@@ -16,6 +16,7 @@ import {formatFullSentTime} from '../../helpers/date';
 import tsNow from '../../helpers/tsNow';
 import PopupDeleteMegagroupMessages from './deleteMegagroupMessages';
 import getParticipantPeerId from '../../lib/appManagers/utils/chats/getParticipantPeerId';
+import namedPromises from '../../helpers/namedPromises';
 
 export default class PopupDeleteMessages {
   constructor(
@@ -34,8 +35,12 @@ export default class PopupDeleteMessages {
     mids = mids.slice();
 
     const managers = PopupElement.MANAGERS;
-    const peerTitleElement = await wrapPeerTitle({peerId, threadId, onlyFirstName: true});
-    const messages = await Promise.all(mids.map((mid) => managers.appMessagesManager.getMessageByPeer(peerId, mid)));
+
+    const {peerTitleElement, isBot, messages} = await namedPromises({
+      peerTitleElement: wrapPeerTitle({peerId, threadId, onlyFirstName: true}),
+      isBot: managers.appPeersManager.isBot(peerId),
+      messages: Promise.all(mids.map((mid) => managers.appMessagesManager.getMessageByPeer(peerId, mid)))
+    });
 
     const isMegagroup = await managers.appPeersManager.isMegagroup(peerId);
     if(isMegagroup && !messages.some((message) => message.pFlags.out)) {
@@ -83,11 +88,13 @@ export default class PopupDeleteMessages {
 
     if(isMegagroup) {
       description = mids.length === 1 ? 'AreYouSureDeleteSingleMessageMega' : 'AreYouSureDeleteFewMessagesMega';
+    } else if(isBot) {
+      description = mids.length === 1 ? 'AreYouSureDeleteSingleMessageBot' : 'AreYouSureDeleteFewMessagesBot';
     } else {
       description = mids.length === 1 ? 'AreYouSureDeleteSingleMessage' : 'AreYouSureDeleteFewMessages';
     }
 
-    if(peerId === rootScope.myId || type === ChatType.Scheduled) {
+    if(peerId === rootScope.myId || type === ChatType.Scheduled || isBot) {
 
     } else if(peerId.isUser()) {
       checkboxes.push({
