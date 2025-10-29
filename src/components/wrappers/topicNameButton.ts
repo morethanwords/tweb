@@ -12,6 +12,7 @@ import wrapPeerTitle from './peerTitle';
 export default async function wrapTopicNameButton(
   options: {
     lastMsgId?: number,
+    noAvatarAndLink?: boolean,
     noLink?: boolean
   } & Pick<Parameters<typeof wrapPeerTitle>[0], 'peerId' | 'threadId' | 'wrapOptions' | 'withIcons' | 'dialog'>
 ) {
@@ -19,7 +20,10 @@ export default async function wrapTopicNameButton(
 
   let loadPromise: Promise<any> = Promise.resolve();
   let element: HTMLElement;
-  if(options.noLink) {
+
+  if(options.noAvatarAndLink) {
+    element = document.createElement('span');
+  } else if(options.noLink) {
     element = document.createElement('span');
     element.dataset.savedFrom = `${options.peerId}_${options.lastMsgId}`;
     element.classList.add('has-avatar');

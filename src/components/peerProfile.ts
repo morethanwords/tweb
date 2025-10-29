@@ -62,6 +62,7 @@ import {rgbIntToHex} from '../helpers/color';
 import {wrapAdaptiveCustomEmoji} from './wrappers/customEmojiSimple';
 import usePeerTranslation from '../hooks/usePeerTranslation';
 import {MyStarGift} from '../lib/appManagers/appGiftsManager';
+import namedPromises from '../helpers/namedPromises';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   setInnerHTML(row.title, text || undefined);
@@ -555,15 +556,24 @@ export default class PeerProfile {
 
     let promise: Promise<(() => void) | void> = Promise.resolve();
     if(!(!peerId || (rootScope.myId === peerId && this.isDialog)) && peerId !== HIDDEN_PEER_ID) {
-      const isForum = await this.managers.appPeersManager.isForum(this.peerId);
+      const {isForum, isBotforum} = await namedPromises({
+        isForum: this.managers.appPeersManager.isForum(this.peerId),
+        isBotforum: this.managers.appPeersManager.isBotforum(this.peerId)
+      });
+
       const middleware = this.middlewareHelper.get();
-      if(isForum && this.threadId) {
+      if((isForum || isBotforum) && this.threadId) {
         promise = wrapTopicNameButton({
           peerId,
+          withIcons: false,
+          noAvatarAndLink: true,
           wrapOptions: {
             middleware
           }
         }).then(({element}) => {
+          attachClickEvent(element, (e) => {
+            appImManager.setPeer({peerId});
+          });
           this.subtitle.replaceChildren(element);
         });
       } else {
@@ -638,7 +648,14 @@ export default class PeerProfile {
   private async _setAvatar() {
     const middleware = this.middlewareHelper.get();
     const {peerId, threadId} = this.getDetailsForUse();
-    const isTopic = !!(threadId && await this.managers.appPeersManager.isForum(peerId));
+
+    const {isForum, isBotforum} = await namedPromises({
+      isForum: this.managers.appPeersManager.isForum(peerId),
+      isBotforum: this.managers.appPeersManager.isBotforum(peerId)
+    });
+
+    const isTopic = !!(threadId && (isForum || isBotforum));
+
     if(/* this.canBeDetailed() &&  */!isTopic) {
       const photo = await this.managers.appPeersManager.getPeerPhoto(peerId);
 
@@ -728,7 +745,8 @@ export default class PeerProfile {
 
   private async fillUsername() {
     const {peerId} = this;
-    if(peerId.isUser() && this.canBeDetailed()) {
+    const isBotforum = await this.managers.appPeersManager.isBotforum(peerId);
+    if(peerId.isUser() && !(isBotforum && this.threadId) && this.canBeDetailed()) {
       const usernames = await this.managers.appPeersManager.getPeerActiveUsernames(peerId);
       const also = this.getUsernamesAlso(usernames);
 
@@ -1113,7 +1131,13 @@ export default class PeerProfile {
     const {peerId} = this;
     const m = this.getMiddlewarePromise();
 
-    if(!peerId || !this.canBeDetailed() || await m(this.managers.appPeersManager.isPeerRestricted(peerId))) {
+
+    if(
+      !peerId ||
+      !this.canBeDetailed() ||
+      (await m(this.managers.appPeersManager.isBotforum(peerId)) && this.threadId) ||
+      await m(this.managers.appPeersManager.isPeerRestricted(peerId))
+    ) {
       return;
     }
 

@@ -29,6 +29,7 @@ import ButtonMenuToggle from '../../buttonMenuToggle';
 import appImManager from '../../../lib/appManagers/appImManager';
 import {useIsFrozen} from '../../../stores/appState';
 import {profileStarGiftsButtonMenu} from '../../stargifts/profileList';
+import namedPromises from '../../../helpers/namedPromises';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -581,21 +582,36 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const {peerId, threadId} = this;
     const isSavedDialog = !!(peerId === rootScope.myId && threadId);
     const usePeerId = isSavedDialog ? threadId : peerId;
-    const [isForum, isBroadcast, isBot, peerTitle] = await Promise.all([
-      this.managers.appPeersManager.isForum(usePeerId),
-      this.managers.appPeersManager.isBroadcast(usePeerId),
-      this.managers.appPeersManager.isBot(usePeerId),
-      wrapPeerTitle({
+    const {isForum, isBotforum, isBroadcast, isBot, peerTitle} = await namedPromises({
+      isForum: this.managers.appPeersManager.isForum(usePeerId),
+      isBotforum: this.managers.appPeersManager.isBotforum(usePeerId),
+      isBroadcast: this.managers.appPeersManager.isBroadcast(usePeerId),
+      isBot: this.managers.appPeersManager.isBot(usePeerId),
+      peerTitle: wrapPeerTitle({
         peerId,
         threadId: isSavedDialog ? undefined : threadId,
         meAsNotes: isSavedDialog && threadId === rootScope.myId,
         dialog: true
       })
-    ]);
+    });
+
+    const titleKey = ((): LangPackKey => {
+      if((isForum || isBotforum) && threadId) {
+        return 'Profile.Info.Topic';
+      } else if(isBot) {
+        return 'Profile.Info.Bot';
+      } else if(isBroadcast) {
+        return 'Profile.Info.Channel';
+      } else if(usePeerId.isUser()) {
+        return 'Profile.Info.User';
+      } else {
+        return 'Profile.Info.Group';
+      }
+    })();
 
     return () => {
       this.titleI18n.compareAndUpdate({
-        key: isBot ? 'Profile.Info.Bot' : (isBroadcast ? 'Profile.Info.Channel' : (threadId && isForum ? 'Profile.Info.Topic' : (usePeerId.isUser() ? 'Profile.Info.User' : 'Profile.Info.Group')))
+        key: titleKey
       });
       this.sharedMediaTitle.replaceChildren(peerTitle);
       this.btnMenu.classList.toggle('hide', !this.isFirst || isSavedDialog || peerId !== rootScope.myId);
