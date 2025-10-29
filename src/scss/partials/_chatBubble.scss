@@ -1044,7 +1044,36 @@
       }
 
 
-      &-premiumRequired, &-paidMessages, &-directChannelMessages  {
+      &-topic {
+        .empty-bubble-placeholder-sticker {
+          --parent-size: 4rem;
+          width: var(--parent-size) !important;
+          height: var(--parent-size) !important;
+          margin-left: auto;
+          margin-right: auto;
+          font-size: var(--parent-size);
+          border-radius: 50%;
+
+          .topic-icon {
+            --size: var(--parent-size);
+          }
+        }
+      }
+
+      .empty-bubble-placeholder-topic-title {
+        font-weight: 500;
+        align-self: center;
+        font-size: 16px;
+        text-align: center;
+      }
+
+      .empty-bubble-placeholder-topic-subtitle {
+        margin: 0.25rem 1rem;
+        max-width: 160px;
+        text-align: center;
+      }
+
+      &-premiumRequired, &-paidMessages, &-directChannelMessages {
         .empty-bubble-placeholder-sticker {
           width: 8rem !important;
           height: 8rem !important;

@@ -28,7 +28,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement, {setQuizHint} from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, BotApp, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, StarGift, PeerSettings, LangPackString} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -209,6 +209,7 @@ import type {SeparatorIntersectorRoot} from './bubbleParts/chatThreadSeparator';
 import BotforumNewTopic from './bubbleParts/botforumNewTopic';
 import type {wrapContinuouslyTypingMessage} from './bubbleParts/continuouslyTypingMessage';
 import addContinueLastTopicReplyMarkup from './bubbleParts/continueLastTopicReplyMarkup';
+import {wrapTopicIcon} from '../wrappers/messageActionTextNewUnsafe';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -292,6 +293,19 @@ type Bubble = {
 };
 
 type MyHistoryResult = HistoryResult | {history: number[]};
+
+type EmptyPlaceholderType =
+  | 'group'
+  | 'saved'
+  | 'noMessages'
+  | 'noScheduledMessages'
+  | 'greeting'
+  | 'restricted'
+  | 'premiumRequired'
+  | 'paidMessages'
+  | 'directChannelMessages'
+  | 'topic'
+;
 
 function getMainMidForGrouped(mids: number[]) {
   return Math.min(...mids);
@@ -8561,7 +8575,7 @@ export default class ChatBubbles {
   }
 
   private async renderEmptyPlaceholder(
-    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted' | 'premiumRequired' | 'paidMessages' | 'directChannelMessages',
+    type: EmptyPlaceholderType,
     bubble: HTMLElement,
     message: any,
     elements: (Node | string)[]
@@ -8569,7 +8583,7 @@ export default class ChatBubbles {
     const BASE_CLASS = 'empty-bubble-placeholder';
     bubble.classList.add(BASE_CLASS, BASE_CLASS + '-' + type);
 
-    let title: HTMLElement;
+    let title: HTMLElement, topic: ForumTopic.forumTopic;
     if(type === 'group') title = i18n('GroupEmptyTitle1');
     else if(type === 'saved') title = i18n('ChatYourSelfTitle');
     else if(type === 'noMessages' || type === 'greeting') title = i18n('NoMessages');
@@ -8771,6 +8785,21 @@ export default class ChatBubbles {
       }
 
       elements.push(...[stickerDiv, subtitle, button].filter(Boolean));
+    } else if(type === 'topic' && (topic = await this.managers.dialogsStorage.getForumTopic(this.peerId, this.chat.threadId))) {
+      const stickerDiv = document.createElement('div');
+      stickerDiv.classList.add(BASE_CLASS + '-sticker');
+
+      stickerDiv.append(
+        await wrapTopicIcon({topic, middleware: this.getMiddleware(), customEmojiSize: makeMediaSize(64, 64)})
+      );
+
+      const title = i18n('TopicEmptyTitle');
+      title.classList.add('center', BASE_CLASS + '-topic-title');
+
+      const subtitle = i18n('TopicEmptyDescription');
+      subtitle.classList.add('center', BASE_CLASS + '-topic-subtitle');
+
+      elements.push(stickerDiv, title, subtitle);
     }
 
     if(listElements) {
@@ -8911,6 +8940,8 @@ export default class ChatBubbles {
         } else {
           renderPromise = this.renderEmptyPlaceholder('greeting', bubble, message, elements);
         }
+      } else if((this.chat.isBotforum || this.chat.isForum) && this.chat.threadId) {
+        renderPromise = this.renderEmptyPlaceholder('topic', bubble, message, elements);
       } else {
         renderPromise = this.renderEmptyPlaceholder('noMessages', bubble, message, elements);
       }

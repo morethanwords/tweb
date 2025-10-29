@@ -3750,7 +3750,9 @@ const lang = {
     'other_value': '%d topics'
   },
   'WaitForTopicCreation': 'Wait for the topic to be created',
-  'ContinueLastTopic': 'Continue last topic'
+  'ContinueLastTopic': 'Continue last topic',
+  'TopicEmptyTitle': 'Almost done!',
+  'TopicEmptyDescription': 'Send a message to start the topic.'
 };
 
 export default lang;
