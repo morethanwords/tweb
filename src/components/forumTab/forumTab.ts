@@ -6,6 +6,7 @@ import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {logger} from '../../lib/logger';
 import {AutonomousDialogListBase} from '../autonomousDialogList/base';
+import ButtonIcon from '../buttonIcon';
 import Icon from '../icon';
 import appSidebarLeft from '../sidebarLeft';
 import {MAX_SIDEBAR_WIDTH} from '../sidebarLeft/constants';
@@ -96,6 +97,14 @@ export class ForumTab extends SliderSuperTabEventable {
         middleware: this.middlewareHelper.get()
       });
     }
+
+    const searchButton = ButtonIcon('search');
+    attachClickEvent(searchButton, () => {
+      appSidebarLeft.closeEverythingInside();
+      appSidebarLeft.initSearch().openWithPeerId(this.peerId);
+    });
+
+    this.header.append(searchButton);
 
     this.syncInit();
 

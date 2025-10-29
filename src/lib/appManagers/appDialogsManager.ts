@@ -1857,6 +1857,7 @@ export class AppDialogsManager {
         linkedChat?._ === 'channel' &&
         linkedChat?.admin_rights?.pFlags?.manage_direct_messages &&
         !elem.dataset.isAllChats &&
+        !lastMsgId &&
         !e.shiftKey
       ) {
         this.toggleForumTabByPeerId(peerId).then(() => {
@@ -1866,7 +1867,7 @@ export class AppDialogsManager {
       }
 
 
-      if(peer?._ === 'user' && peer?.pFlags?.bot_forum_view && !threadId && !elem.dataset.isAllChats && !e.shiftKey) {
+      if(peer?._ === 'user' && peer?.pFlags?.bot_forum_view && !lastMsgId && !threadId && !elem.dataset.isAllChats && !e.shiftKey) {
         this.toggleForumTabByPeerId(peerId).then(() => {
           openChat();
         });
