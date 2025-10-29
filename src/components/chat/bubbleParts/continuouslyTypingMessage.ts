@@ -183,10 +183,10 @@ function typeNext({result, setLastElement, setLastTextNode, onEnd}: TypeNextArgs
 
 
 const BASE_DELAY = 60 * 1_000 / (800 * 5); // 800wpm
-const MIN_DELAY = 60 * 1_000 / (1_500 * 5); // 1_500wpm
+const MIN_DELAY = 60 * 1_000 / (3_000 * 5); // 3_000wpm
 const DELAY_VARIATION = 0.3;
 
-// Try to write it with the base speed of 800wpm or burst it in 5 seconds if it's a long message, maximum speed of 1500wpm overall
+// Try to write it with the base speed of 800wpm or burst it in 5 seconds if it's a long message, maximum speed of 3_000wpm overall
 function getRandomDelay(targetDelay: number) {
   const delay = Math.max(MIN_DELAY, Math.min(BASE_DELAY, targetDelay));
   return delay + Math.random() * delay * DELAY_VARIATION;
