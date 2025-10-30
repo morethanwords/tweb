@@ -5,6 +5,7 @@ import styles from './continuouslyTypingMessage.module.scss';
 type WrapContinuouslyTypingMessageArgs = {
   root: Node;
   bubble: HTMLElement;
+  scrollable: HTMLElement;
   isEnd?: boolean;
   prevPosition?: number;
 };
@@ -18,13 +19,12 @@ type Result = {
   nextIsEnd?: boolean;
 };
 
-export function wrapContinuouslyTypingMessage({root, bubble, isEnd = false, prevPosition = -1}: WrapContinuouslyTypingMessageArgs): Result {
+export function wrapContinuouslyTypingMessage({root, bubble, scrollable, isEnd = false, prevPosition = -1}: WrapContinuouslyTypingMessageArgs): Result {
   const maxPosition = getMaxPosition(root);
 
   const {allNodes, currentNodeIdx} = hidePrevElements(root, prevPosition);
 
   let
-    lastElement: Element,
     lastTextNode: Node,
     cleaned = false,
     ended = false
@@ -39,10 +39,6 @@ export function wrapContinuouslyTypingMessage({root, bubble, isEnd = false, prev
     ended = true;
 
     if(!isEnd) appendDots(lastTextNode);
-
-    animate(() => {
-      lastElement?.scrollIntoView({behavior: 'smooth', block: 'center'});
-    });
   }
 
   const result = {
@@ -55,13 +51,12 @@ export function wrapContinuouslyTypingMessage({root, bubble, isEnd = false, prev
   };
 
   runAnimation({
+    scrollable,
     typeNext: () => typeNext({
       result,
-      setLastElement: (element) => lastElement = element,
       setLastTextNode: (node) => lastTextNode = node,
       onEnd
     }),
-    getLastElement: () => lastElement,
     isCleaned: () => cleaned,
     maxPosition,
     prevPosition
@@ -151,12 +146,11 @@ function appendDots(node: Node) {
 
 type TypeNextArgs = {
   result: Result;
-  setLastElement: (element: Element) => void;
   setLastTextNode: (node: Node) => void;
   onEnd: () => void;
 };
 
-function typeNext({result, setLastElement, setLastTextNode, onEnd}: TypeNextArgs) {
+function typeNext({result, setLastTextNode, onEnd}: TypeNextArgs) {
   const {allNodes, clean} = result;
   result.currentPosition++;
 
@@ -165,7 +159,6 @@ function typeNext({result, setLastElement, setLastTextNode, onEnd}: TypeNextArgs
     const node = allNodes[result.currentNodeIdx];
 
     if(node instanceof Element) {
-      setLastElement(node);
       node.classList.remove(styles.hidden);
     }
 
@@ -193,33 +186,120 @@ function getRandomDelay(targetDelay: number) {
 }
 
 
-const TARGET_TIME_TO_WRITE = 5000;
-
 type RunAnimationArgs = {
+  scrollable: HTMLElement;
   typeNext: () => void;
   isCleaned: () => boolean;
-  getLastElement: () => Element;
   maxPosition: number;
   prevPosition: number;
 };
 
-function runAnimation({typeNext, isCleaned, getLastElement, maxPosition, prevPosition}: RunAnimationArgs) {
+const TARGET_TIME_TO_WRITE = 5000;
+
+function runAnimation({scrollable, typeNext, isCleaned, maxPosition, prevPosition}: RunAnimationArgs) {
   const targetDelay = TARGET_TIME_TO_WRITE / (maxPosition - prevPosition);
 
   let nextTime = performance.now();
 
+  const animationInvalidation = registerAnimationInvalidation(scrollable);
+
+  const checkCleaned = () => {
+    if(!isCleaned()) return false;
+
+    animationInvalidation.cleanup();
+
+    return true;
+  };
+
   animate(() => {
-    if(isCleaned()) return false;
+    if(checkCleaned()) {
+      return false;
+    }
+
 
     const now = performance.now();
 
-    while(now > nextTime && !isCleaned()) {
+    while(now > nextTime && !checkCleaned()) {
       typeNext();
       nextTime = nextTime + getRandomDelay(targetDelay);
     }
 
-    getLastElement()?.scrollIntoView({behavior: 'instant', block: 'center'});
+    if(!animationInvalidation.isInvalidated()) {
+      // value.aboutToScroll = true;
+
+      // animate(() => {
+      // value.aboutToScroll = false;
+      // if(value.invalidateTimeoutId || checkCleaned()) return;
+
+      const threshold = 120; // px
+      if(scrollable.scrollTop + scrollable.clientHeight > scrollable.scrollHeight - threshold) {
+        scrollable.scrollTop = scrollable.scrollHeight;
+      }
+      // });
+    }
 
     return true;
   });
+}
+
+
+type RegisteredScrollableValue = {
+  count: number;
+  invalidateTimeoutId?: number;
+  // aboutToScroll?: boolean;
+  cleanup: () => void;
+};
+
+const INVALIDATE_SCROLL_TIMEOUT = 450;
+
+const events = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const;
+const registeredScrollables = new Map<HTMLElement, RegisteredScrollableValue>();
+
+function registerAnimationInvalidation(scrollable: HTMLElement) {
+  let value: RegisteredScrollableValue;
+
+  if(!registeredScrollables.has(scrollable)) {
+    value = {
+      count: 0,
+      cleanup: () => {
+        events.forEach(event => {
+          scrollable.removeEventListener(event, callback);
+        });
+      }
+    };
+
+    const callback = () => {
+      if(value.invalidateTimeoutId) self.clearTimeout(value.invalidateTimeoutId);
+      value.invalidateTimeoutId = self.setTimeout(() => {
+        value.invalidateTimeoutId = undefined;
+      }, INVALIDATE_SCROLL_TIMEOUT)
+    };
+
+    events.forEach(event => {
+      scrollable.addEventListener(event, callback, {passive: true});
+    });
+
+    registeredScrollables.set(scrollable, value);
+  } else {
+    value = registeredScrollables.get(scrollable);
+  }
+
+  value.count++;
+
+  let cleaned = false;
+
+  return {
+    isInvalidated: () => !!value.invalidateTimeoutId,
+    cleanup: () => {
+      if(cleaned) return;
+      cleaned = true;
+
+      value.count--;
+
+      if(value.count <= 0) {
+        value.cleanup();
+        registeredScrollables.delete(scrollable);
+      }
+    }
+  };
 }

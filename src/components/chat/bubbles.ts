@@ -6092,6 +6092,7 @@ export default class ChatBubbles {
       previous?.clean();
 
       const current = this.currentlyTypingMessages[usedId] = wrapContinuouslyTypingMessage({
+        scrollable: this.scrollable.container,
         bubble,
         root: richText,
         prevPosition: previous?.currentPosition,
@@ -9752,7 +9753,9 @@ export default class ChatBubbles {
 
     if(!currentlyTyping || !bubble) return false;
 
+    currentlyTyping?.clean();
     delete this.currentlyTypingMessages[tempId];
+
     this.currentlyTypingMessages[message.mid] = currentlyTyping;
     currentlyTyping.nextIsEnd = true;
 
