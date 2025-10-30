@@ -81,6 +81,11 @@ export class BotforumTab extends ForumTab {
         }
       }
     });
+
+    this.listenerSetter.add(rootScope)('dialog_draft', ({dialog}) => {
+      if(!isDialog(dialog) || dialog.peerId !== this.peerId) return;
+      this.updateAllChatsDialog(dialog);
+    });
   }
 
   private updateAllChatsDialog(dialog: Dialog.dialog) {
