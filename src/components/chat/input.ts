@@ -1810,6 +1810,7 @@ export default class ChatInput {
       const webPageOptions = this.webPageOptions;
       const hasLargeMedia = !!webPage?.pFlags?.has_large_media;
       const replyTo = this.getReplyTo();
+      const isBotforumAllChats = this.chat.isBotforum && !this.chat.threadId;
       draft = {
         _: 'draftMessage',
         date: tsNow(true),
@@ -1819,7 +1820,7 @@ export default class ChatInput {
           no_webpage: this.noWebPage,
           invert_media: this.invertMedia || undefined
         },
-        reply_to: replyTo ? {
+        reply_to: !isBotforumAllChats && replyTo ? {
           _: 'inputReplyToMessage',
           reply_to_msg_id: replyTo.replyToMsgId,
           top_msg_id: this.chat.threadId,
