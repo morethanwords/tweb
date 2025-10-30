@@ -996,7 +996,7 @@
         margin-right: .3125rem;
       }
 
-      .bubbles.has-groups & {
+      .bubbles.has-groups &, .bubbles.is-temporary-thread & {
         pointer-events: none;
 
         .bubble-content-wrapper {

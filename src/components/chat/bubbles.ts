@@ -265,6 +265,8 @@ const BIG_EMOJI_SIZES: {[size: number]: number} = {
 };
 const BIG_EMOJI_SIZES_LENGTH = Object.keys(BIG_EMOJI_SIZES).length;
 
+const TOPIC_ICON_SIZE = makeMediaSize(64, 64);
+
 const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_channel: 'Chat.Message.ViewChannel',
   telegram_megagroup: 'OpenGroup',
@@ -504,6 +506,8 @@ export default class ChatBubbles {
   private changedMids: Map<number, number>; // used when message is sent faster than temporary one was rendered
 
   private peerSettings: PeerSettings;
+
+  private placeholderTopicIconContainer?: HTMLElement;
 
   constructor(
     private chat: Chat,
@@ -4885,11 +4889,24 @@ export default class ChatBubbles {
       appConfig: Promise.resolve(apiManagerProxy.getAppConfig())
     });
 
-    const {isBroadcast, isLikeGroup, peerId} = this.chat;
+    const middleware = this.getMiddleware();
+
+    const {isBroadcast, isLikeGroup, peerId, isTemporaryThread} = this.chat;
 
     return () => {
       this.chatInner.classList.toggle('has-rights', canWrite);
       this.container.classList.toggle('is-chat-input-hidden', !canWrite && !appConfig.freeze_since_date);
+
+      const tmpThreadCls = 'is-temporary-thread';
+      if(!isTemporaryThread && this.container.classList.contains(tmpThreadCls)) {
+        setTimeout(() => {
+          if(!middleware()) return;
+          this.container.classList.remove(tmpThreadCls);
+        }, 200); // leave some time for the message to appear
+      }
+      if(isTemporaryThread) {
+        this.container.classList.add(tmpThreadCls);
+      }
 
       [this.chatInner, this.remover].forEach((element) => {
         element.classList.toggle('is-chat', isLikeGroup);
@@ -5200,6 +5217,14 @@ export default class ChatBubbles {
     if(!message || this.renderingMessages.has(fullMid) || (this.getBubble(fullMid) && !bubble)) {
       return;
     }
+
+    if(this.chat.isBotforum && this.chat.threadId && message?._ === 'messageService' && message?.action?._ === 'messageActionTopicEdit' && this.placeholderTopicIconContainer) (async() => {
+      const topic = await this.managers.dialogsStorage.getForumTopic(this.peerId, this.chat.threadId);
+      if(!realMiddleware()) return;
+      this.placeholderTopicIconContainer.replaceChildren(
+        await wrapTopicIcon({topic, middleware: this.getMiddleware(), customEmojiSize: TOPIC_ICON_SIZE})
+      );
+    })();
 
     const middlewareHelper = getMiddleware();
     const middleware = middlewareHelper.get();
@@ -8791,8 +8816,13 @@ export default class ChatBubbles {
       stickerDiv.classList.add(BASE_CLASS + '-sticker');
 
       stickerDiv.append(
-        await wrapTopicIcon({topic, middleware: this.getMiddleware(), customEmojiSize: makeMediaSize(64, 64)})
+        await wrapTopicIcon({topic, middleware: this.getMiddleware(), customEmojiSize: TOPIC_ICON_SIZE})
       );
+
+      this.placeholderTopicIconContainer = stickerDiv;
+      this.getMiddleware().onDestroy(() => {
+        this.placeholderTopicIconContainer = undefined;
+      });
 
       const title = i18n('TopicEmptyTitle');
       title.classList.add('center', BASE_CLASS + '-topic-title');
