@@ -7761,6 +7761,9 @@ export class AppMessagesManager extends AppManager {
       delete finalMessage.error;
       delete finalMessage.random_id;
       delete finalMessage.send;
+      if(finalMessage._ === 'message') {
+        delete finalMessage.pFlags.currentlyTyping;
+      }
     }
 
     this.rootScope.dispatchEvent('messages_pending');
