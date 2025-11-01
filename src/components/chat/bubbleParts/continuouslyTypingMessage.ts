@@ -20,9 +20,12 @@ type Result = {
 };
 
 export function wrapContinuouslyTypingMessage({root, bubble, scrollable, isEnd = false, prevPosition = -1}: WrapContinuouslyTypingMessageArgs): Result {
-  const maxPosition = getMaxPosition(root);
-
-  const {allNodes, currentNodeIdx} = hidePrevElements(root, prevPosition);
+  const {
+    maxPosition,
+    nodeContents,
+    allNodes,
+    currentNodeIdx
+  } = processNodeTree({root, prevPosition});
 
   let
     lastTextNode: Node,
@@ -32,6 +35,7 @@ export function wrapContinuouslyTypingMessage({root, bubble, scrollable, isEnd =
 
   function clean() {
     cleaned = true;
+    allNodes.forEach(node => nodeContents.delete(node));
   };
 
   function onEnd() {
@@ -52,10 +56,12 @@ export function wrapContinuouslyTypingMessage({root, bubble, scrollable, isEnd =
 
   runAnimation({
     scrollable,
-    typeNext: () => typeNext({
+    typeNext: (length) => typeNext({
       result,
       setLastTextNode: (node) => lastTextNode = node,
-      onEnd
+      nodeContents,
+      onEnd,
+      length
     }),
     isCleaned: () => cleaned,
     maxPosition,
@@ -66,62 +72,41 @@ export function wrapContinuouslyTypingMessage({root, bubble, scrollable, isEnd =
 }
 
 
-function getMaxPosition(root: Node) {
-  const initialTreeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ALL);
+type ProcessNodeTreeArgs = {
+  root: Node;
+  prevPosition: number;
+};
 
-  const initialNodes: Node[] = [];
+function processNodeTree({root, prevPosition}: ProcessNodeTreeArgs) {
+  const treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ALL);
 
-  while(initialTreeWalker.nextNode()) {
-    initialNodes.push(initialTreeWalker.currentNode);
-  }
-
-  let position = -1;
-
-  for(const node of initialNodes) {
-    if(node.nodeType === Node.TEXT_NODE) {
-      const chars = node.textContent.split('').map(char => {
-        const span = document.createElement('span');
-        span.textContent = char;
-        position++;
-        return span;
-      });
-      const fragment = document.createDocumentFragment();
-      fragment.append(...chars);
-      node.parentNode?.replaceChild(fragment, node);
-    }
-  }
-
-  return position;
-}
-
-
-function hidePrevElements(root: Node, toPosition: number) {
-  let currentNodeIdx = 0;
-
-  const allNodesTreeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ALL);
   const allNodes: Node[] = [];
+  const nodeContents = new WeakMap<Node, string>();
 
-  let position = 0;
+  while(treeWalker.nextNode()) allNodes.push(treeWalker.currentNode);
 
-  while(allNodesTreeWalker.nextNode()) {
-    const node = allNodesTreeWalker.currentNode;
-    allNodes.push(node);
+  let
+    position = -1,
+    currentNodeIdx = 0
+  ;
 
+  for(const node of allNodes) {
     if(node.nodeType === Node.TEXT_NODE) {
-      position += node.textContent.length;
-    } else if(node instanceof Element && position > toPosition) {
+      nodeContents.set(node, node.textContent);
+
+      node.textContent = node.textContent.slice(0, Math.max(0, prevPosition - position + 1));
+
+      position += nodeContents.get(node).length;
+    } else if(node instanceof Element && position > prevPosition) {
       node.classList.add(styles.hidden);
     }
 
-    if(position <= toPosition) {
+    if(position <= prevPosition) {
       currentNodeIdx++;
     }
   }
 
-  return {
-    allNodes,
-    currentNodeIdx
-  };
+  return {maxPosition: position, nodeContents, allNodes, currentNodeIdx};
 }
 
 
@@ -148,23 +133,35 @@ type TypeNextArgs = {
   result: Result;
   setLastTextNode: (node: Node) => void;
   onEnd: () => void;
+  nodeContents: WeakMap<Node, string>;
+  length: number;
 };
 
-function typeNext({result, setLastTextNode, onEnd}: TypeNextArgs) {
+function typeNext({result, setLastTextNode, onEnd, nodeContents, length}: TypeNextArgs) {
   const {allNodes, clean} = result;
-  result.currentPosition++;
 
-  let stillHere = true;
-  for(; result.currentNodeIdx < allNodes.length && stillHere; result.currentNodeIdx++) {
+  while(result.currentNodeIdx < allNodes.length && length) {
     const node = allNodes[result.currentNodeIdx];
 
     if(node instanceof Element) {
+      result.currentNodeIdx++;
       node.classList.remove(styles.hidden);
-    }
+    } else if(node.nodeType === Node.TEXT_NODE) {
+      const typedLength = node.textContent.length;
+      const finalContent = nodeContents.get(node);
 
-    if(node.nodeType === Node.TEXT_NODE && node.textContent.length) {
+      const leftOverLength = Math.max(0, typedLength + length - finalContent.length);
+
+      const start = typedLength;
+      const end = start + length - leftOverLength;
+
+      node.textContent += finalContent.slice(start, end);
+
+      length = leftOverLength;
+      result.currentPosition += end - start;
+
+      if(leftOverLength) result.currentNodeIdx++;
       setLastTextNode(node);
-      stillHere = false;
     }
   }
 
@@ -176,10 +173,10 @@ function typeNext({result, setLastTextNode, onEnd}: TypeNextArgs) {
 
 
 const BASE_DELAY = 60 * 1_000 / (800 * 5); // 800wpm
-const MIN_DELAY = 60 * 1_000 / (3_000 * 5); // 3_000wpm
+const MIN_DELAY = 60 * 1_000 / (2_400 * 5); // 2_400wpm
 const DELAY_VARIATION = 0.3;
 
-// Try to write it with the base speed of 800wpm or burst it in 5 seconds if it's a long message, maximum speed of 3_000wpm overall
+// Try to write it with the base speed of 800wpm or burst it in 5 seconds if it's a long message, maximum speed of 2_400wpm overall
 function getRandomDelay(targetDelay: number) {
   const delay = Math.max(MIN_DELAY, Math.min(BASE_DELAY, targetDelay));
   return delay + Math.random() * delay * DELAY_VARIATION;
@@ -188,7 +185,7 @@ function getRandomDelay(targetDelay: number) {
 
 type RunAnimationArgs = {
   scrollable: HTMLElement;
-  typeNext: () => void;
+  typeNext: (length: number) => void;
   isCleaned: () => boolean;
   maxPosition: number;
   prevPosition: number;
@@ -198,8 +195,9 @@ const TARGET_TIME_TO_WRITE = 5000;
 
 function runAnimation({scrollable, typeNext, isCleaned, maxPosition, prevPosition}: RunAnimationArgs) {
   const targetDelay = TARGET_TIME_TO_WRITE / (maxPosition - prevPosition);
+  console.log('my-debug', {maxPosition, prevPosition, targetDelay});
 
-  let nextTime = performance.now();
+  let prevTime = 0;
 
   const animationInvalidation = registerAnimationInvalidation(scrollable);
 
@@ -211,20 +209,27 @@ function runAnimation({scrollable, typeNext, isCleaned, maxPosition, prevPositio
     return true;
   };
 
-  animate(() => {
-    if(checkCleaned()) {
-      return false;
-    }
+  let skip = -1;
+  const skipFrames = 2;
 
+  animate(() => {
+    if(checkCleaned()) return false;
+
+    skip = (skip + 1) % skipFrames;
+    if(skip) return true;
 
     const now = performance.now();
+    if(!prevTime) prevTime = now;
 
-    while(now > nextTime && !checkCleaned()) {
-      typeNext();
-      nextTime = nextTime + getRandomDelay(targetDelay);
+    const length = Math.max(0, Math.round((now - prevTime) / getRandomDelay(targetDelay)));
+    console.log('my-debug', {length});
+
+    if(length) {
+      typeNext(length);
+      prevTime = now;
     }
 
-    if(!animationInvalidation.isInvalidated()) {
+    if(length && !animationInvalidation.isInvalidated()) {
       // value.aboutToScroll = true;
 
       // animate(() => {
