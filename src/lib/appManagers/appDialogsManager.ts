@@ -1861,7 +1861,7 @@ export class AppDialogsManager {
         !e.shiftKey
       ) {
         this.toggleForumTabByPeerId(peerId).then(() => {
-          openChat();
+          if(appImManager.chat?.peerId?.toChatId() !== linkedChat?.id) openChat();
         });
         return;
       }
@@ -1869,7 +1869,7 @@ export class AppDialogsManager {
 
       if(peer?._ === 'user' && peer?.pFlags?.bot_forum_view && !lastMsgId && !threadId && !elem.dataset.isAllChats && !e.shiftKey) {
         this.toggleForumTabByPeerId(peerId).then(() => {
-          openChat();
+          if(appImManager.chat?.peerId?.toUserId() !== peer.id) openChat();
         });
         return;
       }
