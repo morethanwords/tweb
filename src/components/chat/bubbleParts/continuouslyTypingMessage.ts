@@ -195,7 +195,6 @@ const TARGET_TIME_TO_WRITE = 5000;
 
 function runAnimation({scrollable, typeNext, isCleaned, maxPosition, prevPosition}: RunAnimationArgs) {
   const targetDelay = TARGET_TIME_TO_WRITE / (maxPosition - prevPosition);
-  console.log('my-debug', {maxPosition, prevPosition, targetDelay});
 
   let prevTime = 0;
 
@@ -222,7 +221,6 @@ function runAnimation({scrollable, typeNext, isCleaned, maxPosition, prevPositio
     if(!prevTime) prevTime = now;
 
     const length = Math.max(0, Math.round((now - prevTime) / getRandomDelay(targetDelay)));
-    console.log('my-debug', {length});
 
     if(length) {
       typeNext(length);
