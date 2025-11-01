@@ -43,6 +43,7 @@ import getPeerId from '../appManagers/utils/peers/getPeerId';
 import {isDialog, isSavedDialog, isForumTopic} from '../appManagers/utils/dialogs/isDialog';
 import getDialogKey from '../appManagers/utils/dialogs/getDialogKey';
 import getDialogThreadId from '../appManagers/utils/dialogs/getDialogThreadId';
+import {isTempId} from '../appManagers/utils/messages/isTempId';
 
 export enum FilterType {
   Folder,
@@ -631,6 +632,8 @@ export default class DialogsStorage extends AppManager {
 
   public processDialogForFilters(dialog: AnyDialog, noIndex?: boolean) {
     // let perf = performance.now();
+    if(dialog?._ === 'forumTopic' && isTempId(dialog.id)) return;
+
     if(!isDialog(dialog)) {
       this.processDialogForFilter(dialog, undefined, noIndex);
       return;
