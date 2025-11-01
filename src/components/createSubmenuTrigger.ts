@@ -1,4 +1,5 @@
 import {CLICK_EVENT_NAME} from '../helpers/dom/clickEvent';
+import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
 import noop from '../helpers/noop';
 import pause from '../helpers/schedulers/pause';
 import {i18n} from '../lib/langPack';
@@ -9,14 +10,22 @@ import Icon from './icon';
 
 let submenuHelperIdSeed = 0;
 
+export type CreateSubmenuArgs = {
+  middleware: Middleware;
+};
+
 export default function createSubmenuTrigger(
   options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'regularText' | 'icon' | 'verify' | 'separator' | 'separatorDown' | 'onClose'>,
-  createSubmenu: () => MaybePromise<HTMLElement>
+  createSubmenu: (args: CreateSubmenuArgs) => MaybePromise<HTMLElement>
 ) {
-  let isDisabled = false;
+  let
+    isDisabled = false,
+    currentMiddleware: MiddlewareHelper
+  ;
 
   const onOpen = () => {
     if(!menuBtnOptions.element) return;
+    currentMiddleware = getMiddleware();
 
     menuBtnOptions.element.addEventListener(CLICK_EVENT_NAME, (e) => {
       e.stopPropagation();
@@ -26,7 +35,7 @@ export default function createSubmenuTrigger(
     attachFloatingButtonMenu({
       element: menuBtnOptions.element,
       direction: 'right-start',
-      createMenu: createSubmenu,
+      createMenu: () => createSubmenu({middleware: currentMiddleware.get()}),
       offset: [-5, -5],
       level: 2,
       triggerEvent: 'mouseenter',
@@ -36,6 +45,7 @@ export default function createSubmenuTrigger(
   };
 
   const onClose = async() => {
+    currentMiddleware?.destroy();
     // Prevents hover from triggering when the menu is closing
     isDisabled = true;
     await pause(200);

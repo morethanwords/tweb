@@ -22,11 +22,9 @@ import createContextMenu from '../helpers/dom/createContextMenu';
 import PopupElement from './popups';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import IS_SHARED_WORKER_SUPPORTED from '../environment/sharedWorkerSupport';
-import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import appImManager from '../lib/appManagers/appImManager';
-import assumeType from '../helpers/assumeType';
 import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
-import createSubmenuTrigger from './createSubmenuTrigger';
+import createSubmenuTrigger, {CreateSubmenuArgs} from './createSubmenuTrigger';
 import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
 import memoizeAsyncWithTTL from '../helpers/memoizeAsyncWithTTL';
 import {MonoforumDialog} from '../lib/storages/monoforumDialogs';
@@ -240,15 +238,19 @@ export default class DialogsContextMenu {
     return this.buttons = this.buttons.filter(Boolean);
   }
 
-  private createAddToFolderSubmenu = async() => {
+  private createAddToFolderSubmenu = async({middleware}: CreateSubmenuArgs) => {
     if(!isDialog(this.dialog)) return;
 
     const {default: AddToFolderDropdownMenu, fetchDialogFilters} = await import('./addToFolderDropdownMenu');
 
+    const filters = await fetchDialogFilters();
+
+    if(!middleware()) return;
+
     const menu = new AddToFolderDropdownMenu;
     menu.feedProps({
       dialog: this.dialog,
-      filters: await fetchDialogFilters(),
+      filters,
       currentFilter: () => appDialogsManager.filterId,
       onNewDialog: (dialog) => {
         this.dialog = dialog;
