@@ -170,7 +170,7 @@ const ChatThreadSeparator = defineSolidElement({
 
     const scale = createMemo(() => clamp((state().nextIntersectionRatio ?? 1), 0, 1));
 
-    const isScaling = createMemo(() => 0 < scale() && scale() < 1);
+    const isScaling = createMemo(() => scale() < 1);
 
     createEffect(() => {
       if(!isScaling() || !scaledEl) return;
