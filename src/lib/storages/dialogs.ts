@@ -1787,11 +1787,11 @@ export default class DialogsStorage extends AppManager {
           return;
         }
 
+        this.applyDialogs(messagesForumTopics, peerId);
+
         if(typeof allMessagesForumTopicsResult?.count === 'number') {
           topicsFolder.count = allMessagesForumTopicsResult.count;
         }
-
-        this.applyDialogs(messagesForumTopics, peerId);
 
         messagesForumTopics.topics.forEach((forumTopic) => {
           if(isForumTopic(forumTopic as ForumTopic)) {

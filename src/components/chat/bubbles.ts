@@ -199,7 +199,7 @@ import {PremiumGiftBubble} from './bubbles/premiumGift';
 import {UnknownUserBubble} from './bubbles/unknownUser';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {ChecklistBubble} from './bubbles/checklist';
-import {getRestrictionReason, isSensitive} from '../../helpers/restrictions';
+import {getRestrictionReason} from '../../helpers/restrictions';
 import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
 import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
 import addSuggestedPostServiceMessage, {checkIfNotMePosted} from './bubbleParts/suggestPostServiceMessage';
@@ -209,7 +209,6 @@ import BotforumNewTopic from './bubbleParts/botforumNewTopic';
 import type {wrapContinuouslyTypingMessage} from './bubbleParts/continuouslyTypingMessage';
 import addContinueLastTopicReplyMarkup from './bubbleParts/continueLastTopicReplyMarkup';
 import {wrapTopicIcon} from '../wrappers/messageActionTextNewUnsafe';
-import type {SeparatorIntersectorRoot} from './bubbleParts/monoforumSeparator';
 import {getTransition} from '../../config/transitions';
 
 
