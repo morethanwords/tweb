@@ -632,7 +632,7 @@ export default class ChatTopbar {
         }
 
         const fullPeer = await this.managers.appProfileManager.getCachedProfileByPeerId(this.peerId);
-        return !!fullPeer.pFlags.translations_disabled;
+        return fullPeer && !!fullPeer.pFlags.translations_disabled;
       }
     }, {
       icon: 'lock',

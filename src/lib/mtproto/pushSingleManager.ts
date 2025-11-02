@@ -15,6 +15,7 @@ import {ActiveAccountNumber} from '../accounts/types';
 import bytesToBase64 from '../../helpers/bytes/bytesToBase64';
 import AccountController from '../accounts/accountController';
 import bytesFromHex from '../../helpers/bytes/bytesFromHex';
+import rootScope from '../rootScope';
 
 export type PushKey = {
   key: Uint8Array,
@@ -31,6 +32,10 @@ export class PushSingleManager {
   constructor() {
     this.log = logger('PUSH');
     this.name = 'pushSingleManager';
+
+    rootScope.addEventListener('account_logged_in', () => {
+      this.registerAgain();
+    });
   }
 
   private getKeys(): Promise<PushKey[]> {
@@ -63,7 +68,7 @@ export class PushSingleManager {
     return this.getKeys().then((keys) => keys.map((key) => key.idBase64));
   }
 
-  public onIsUsingPasscodeChange(isUsingPasscode: boolean) {
+  public registerAgain() {
     this.keys = undefined;
     if(this.registeredDevice) {
       this.registerDevice(this.registeredDevice, true);

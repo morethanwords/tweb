@@ -19,7 +19,6 @@ import Table, {TableButton, TableButtonWithTooltip, TablePeer, TableRow} from '.
 import {NULL_PEER_ID, STARS_CURRENCY, TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
-import PopupStarGiftUpgrade from './starGiftUpgrade';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import {StarGiftBackdrop} from '../stargifts/stargiftBackdrop';
 import {ButtonMenuToggleTsx} from '../buttonMenuToggleTsx';
@@ -46,6 +45,9 @@ import appSidebarRight from '../sidebarRight';
 import Icon from '../icon';
 import PopupStarGiftWear from './starGiftWear';
 import {setQuizHint} from '../poll';
+import createStarGiftUpgradePopup from './starGiftUpgrade';
+import classNames from '../../helpers/string/classNames';
+import PopupPayment from './payment';
 
 function AttributeTableButton(props: { permille: number }) {
   return (
@@ -170,7 +172,7 @@ export default class PopupStarGiftInfo extends PopupElement {
     }
 
     if(this.gift.raw._ === 'starGift' && this.gift.saved?.pFlags.can_upgrade) {
-      attachClickEvent(this.btnConfirm, () => PopupStarGiftUpgrade.create(this.gift).then(() => this.hide()));
+      attachClickEvent(this.btnConfirm, () => createStarGiftUpgradePopup({gift: this.gift}).then(() => this.hide()));
     } else if(this.isResale) {
       attachClickEvent(this.btnConfirm, () => {
         const recipientId = this.resaleRecipient ?? rootScope.myId;
@@ -367,8 +369,10 @@ export default class PopupStarGiftInfo extends PopupElement {
       return rows;
     })
 
+    const [originalDetails, setOriginalDetails] = createSignal(collectibleAttributes?.original);
+
     const tableFooter = () => {
-      if(collectibleAttributes?.original) {
+      if(originalDetails()) {
         const wrapPeer = (peer: Peer) => {
           const peerId = getPeerId(peer);
           return (
@@ -403,7 +407,31 @@ export default class PopupStarGiftInfo extends PopupElement {
           args.push(span);
         }
 
-        return <I18nTsx class="popup-star-gift-info-original" key={key} args={args} />;
+        return (
+          <div class={classNames('popup-star-gift-info-original', saved.drop_original_details_stars && 'has-delete')}>
+            <I18nTsx key={key} args={args} />
+            {saved.drop_original_details_stars && (
+              <ButtonIconTsx
+                icon="delete"
+                onClick={async() => {
+                  const popup = await PopupPayment.create({
+                    inputInvoice: {
+                      _: 'inputInvoiceStarGiftDropOriginalDetails',
+                      stargift: input
+                    }
+                  });
+
+                  popup.addEventListener('finish', (result) => {
+                    if(result === 'paid') {
+                      setOriginalDetails(undefined);
+                      delete collectibleAttributes.original
+                    }
+                  });
+                }}
+              />
+            )}
+          </div>
+        )
       }
 
       if(saved?.message) {

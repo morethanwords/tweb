@@ -14,6 +14,7 @@ import PopupElement from '../popups';
 import showUndoablePaidTooltip, {paidMessagesLangKeys} from './undoablePaidTooltip';
 import createPendingUndoableMessage from './pendingUndoableMessage';
 import type Chat from './chat';
+import {useAppState} from '../../stores/appState';
 
 
 type PassedDownArgs = {
@@ -165,10 +166,8 @@ export default class PaidMessagesInterceptor {
       if(!shouldShowWarning) return UserConfirmationResult.Skipped;
 
       onNotShowAgain = () => {
-        rootScope.managers.appStateManager.setByKey(
-          'dontShowPaidMessageWarningFor',
-          [...dontShowPaidMessageWarningFor, peerId]
-        );
+        const [, setAppState] = useAppState();
+        setAppState('dontShowPaidMessageWarningFor', [...dontShowPaidMessageWarningFor, peerId]);
       };
     }
 

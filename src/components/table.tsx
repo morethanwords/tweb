@@ -9,7 +9,7 @@ import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 import Button from './buttonTsx';
 import showTooltip from './tooltip';
 
-export type TableRow = [LangPackKey, JSX.Element];
+export type TableRow = [LangPackKey | JSX.Element, JSX.Element];
 
 const keyCellClass = classNames(styles.cell, styles.key);
 
@@ -20,6 +20,7 @@ export default function Table(props: {
   footer?: JSX.Element
   footerClass?: string
   cellClass?: string
+  keyCellClass?: string
 }) {
   return (
     <table
@@ -32,7 +33,9 @@ export default function Table(props: {
       <For each={props.content}>
         {([key, value]) => (
           <tr class={/* @once */ styles.row}>
-            <td class={classNames(keyCellClass, props.cellClass)}>{i18n(key)}</td>
+            <td class={classNames(keyCellClass, props.cellClass, props.keyCellClass)}>
+              {typeof key === 'string' ? i18n(key as LangPackKey) : key}
+            </td>
             <td class={classNames(styles.cell, props.cellClass)}>
               <div class={/* @once */ styles.value}>
                 {value}

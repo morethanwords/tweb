@@ -312,6 +312,9 @@ export default class PopupStarsPay extends PopupElement<{
     } else if(this.form._ === 'payments.paymentFormStarGift') {
       title = i18n('StarsConfirmPurchaseTitle');
       subtitle = i18n(this.inputInvoice._ === 'inputInvoiceStarGiftTransfer' ? 'StarGiftConfirmTransferText' : 'StarGiftConfirmPurchaseText', [amount]);
+    } else if(this.inputInvoice?._ === 'inputInvoiceStarGiftDropOriginalDetails') {
+      title = i18n('StarGiftDropOriginalDetailsTitle');
+      subtitle = i18n('StarGiftDropOriginalDetailsText');
     } else if(this.transaction && !this.form.title) {
       title = i18n(this.transaction.subscription_period ? 'Stars.Subscription.Title' : 'Stars.TopUp');
     } else if(this.chatInvite) {

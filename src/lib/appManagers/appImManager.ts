@@ -288,10 +288,6 @@ export class AppImManager extends EventListenerBase<{
     };
     rootScope.addEventListener('premium_toggle', onPremiumToggle);
 
-    rootScope.addEventListener('background_change', () => {
-      this.applyCurrentTheme({noSetTheme: true});
-    });
-
     onPremiumToggle(rootScope.premium);
     this.managers.rootScope.getPremium().then(onPremiumToggle);
 
@@ -1741,6 +1737,7 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public setBackground(url: string, broadcastEvent = true, skipAnimation?: boolean): Promise<void> {
+    this.log('setBackground', url, broadcastEvent, skipAnimation);
     this.lastBackgroundUrl = url;
     const promises = this.chats.map((chat) => chat.setBackgroundIfNotSet({url, skipAnimation}));
     return Promise.resolve(promises[promises.length - 1]).then(() => {

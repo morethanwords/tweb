@@ -6,7 +6,6 @@
 
 import {CryptoMethods} from './crypto_methods';
 import SuperMessagePort from '../mtproto/superMessagePort';
-import {Awaited} from '../../types';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import {IS_WORKER} from '../../helpers/context';
 

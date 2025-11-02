@@ -11,7 +11,7 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {IS_WORKER} from '../../helpers/context';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import makeError from '../../helpers/makeError';
-import {Awaited, WorkerTaskTemplate, WorkerTaskVoidTemplate} from '../../types';
+import {WorkerTaskTemplate, WorkerTaskVoidTemplate} from '../../types';
 import {logger} from '../logger';
 
 type SuperMessagePortTask = WorkerTaskTemplate & {

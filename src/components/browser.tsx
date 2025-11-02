@@ -192,7 +192,7 @@ function BrowserHeader(props: {
     });
     element.classList.add('contextmenu');
 
-    document.getElementById('page-chats').append(element);
+    document.body.append(element);
 
     positionMenu(e, element);
     contextMenuController.openBtnMenu(element, () => {

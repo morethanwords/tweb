@@ -2660,8 +2660,8 @@ const lang = {
   'StarGiftPremiumBadge': 'premium',
   'SendStarGiftSubtitle': 'Give %s gifts that can be kept on the profile or converted to Stars.',
   'StarGiftCategoryAll': 'All Gifts',
-  'StarGiftCategoryLimited': 'Limited',
-  'StarGiftCategoryInStock': 'In Stock',
+  'StarGiftCategoryOwned': 'My Gifts',
+  'StarGiftCategoryCollectibles': 'Collectibles',
   'StarGiftUnavailableTitle': 'Unavailable',
   'StarGiftUnavailableSubtitle': 'This gift has sold out.',
   'StarGiftUnavailableFirstSale': 'First sale',
@@ -2695,6 +2695,8 @@ const lang = {
   'StarGiftUpgradeKeepInfo': 'Add sender’s name and comment',
   'StarGiftUpgradeFree': 'Upgrade for Free',
   'StarGiftUpgrade': 'Upgrade %s',
+  'StarGiftPriceDecrease': 'Price decreases in %s',
+  'StarGiftPriceDecreaseLink': 'See how price will decrease',
   'StarGiftModel': 'Model',
   'StarGiftNModels': {
     'one_value': '%d Model',
@@ -2828,6 +2830,12 @@ const lang = {
   'StarGiftWearStart': 'Start Wearing',
   'StarGiftLimitReached': 'You\'ve already sent **%d** of these gifts, and it\'s the limit.',
   'StarGiftLimitSent': 'You can send **%d** more.',
+  'StarGiftUpgradePriceTitle': 'Upgrade Cost',
+  'StarGiftUpgradePriceSubtitle': 'Users who upgrade their gifts first get collectibles with shorter numbers.',
+  'StarGiftUpgradePriceAbout': 'Upgrade cost drops every minute.',
+  'StarGiftUpgradePriceUnderstood': 'UNDERSTOOD',
+  'StarGiftDropOriginalDetailsTitle': 'Remove Description',
+  'StarGiftDropOriginalDetailsText': 'Do you want to permanently remove the description from this collectible?',
   'ActionGiftStarsTitle': {
     'one_value': '%d Star',
     'other_value': '%d Stars'
@@ -3752,7 +3760,37 @@ const lang = {
   'WaitForTopicCreation': 'Wait for the topic to be created',
   'ContinueLastTopic': 'Continue last topic',
   'TopicEmptyTitle': 'Almost done!',
-  'TopicEmptyDescription': 'Send a message to start the topic.'
+  'TopicEmptyDescription': 'Send a message to start the topic.',
+
+  'StarsRating.Level': 'Level %d',
+  'StarsRating.Title': 'Rating',
+  'StarsRating.Subtitle': 'This rating reflects **%s**’s activity on Telegram. What affects it:',
+  'StarsRating.SubtitleMy': 'This rating reflects your activity on Telegram. What affects it:',
+  'StarsRating.Row1Title': 'Gifts from Telegram',
+  'StarsRating.Row1Subtitle': '100% of the Stars spent on gifts purchased from Telegram.',
+  'StarsRating.Row2Title': 'Gifts and Posts from Users',
+  'StarsRating.Row2Subtitle': '20% of the Stars spent on gifts or posts from users and channels.',
+  'StarsRating.Row3Title': 'Refunds and Conversions',
+  'StarsRating.Row3Subtitle': '10x of refunded Stars and 85% of bought gifts converted to Stars.',
+  'StarsRating.BadgeAdded': 'ADDED',
+  'StarsRating.BadgeDeducted': 'DEDUCTED',
+  'StarsRating.Negative': 'Negative Rating',
+  'StarsRating.NegativeDescription': 'A negative rating indicates that **%s**\'s payments are unreliable.',
+  'StarsRating.NegativeDescriptionMy': {
+    'one_value': 'A negative rating indicates that your payments are unreliable. Spend **%s Star** to fix this issue.',
+    'other_value': 'A negative rating indicates that your payments are unreliable. Spend **%s Stars** to fix this issue.'
+  },
+  'StarsRating.PendingDescription': {
+    'one_value': 'The rating updates in **%s** after purchases. **%s point** is pending.',
+    'other_value': 'The rating updates in **%s** after purchases. **%s points** are pending.'
+  },
+  'StarsRating.FutureDescription': {
+    'one_value': 'This will be your rating in **%s**, after **%s point** is added.',
+    'other_value': 'This will be your rating in **%s**, after **%s points** are added.'
+  },
+  'StarsRating.Preview': 'Preview',
+  'StarsRating.Back': 'Back',
+  'StarsRating.Understood': 'UNDERSTOOD'
 };
 
 export default lang;

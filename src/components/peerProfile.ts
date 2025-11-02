@@ -63,6 +63,8 @@ import {wrapAdaptiveCustomEmoji} from './wrappers/customEmojiSimple';
 import usePeerTranslation from '../hooks/usePeerTranslation';
 import {MyStarGift} from '../lib/appManagers/appGiftsManager';
 import namedPromises from '../helpers/namedPromises';
+import {wrapStarsRatingLevel} from './wrappers/starsRating';
+import showStarsRatingPopup from './popups/starsRating';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   setInnerHTML(row.title, text || undefined);
@@ -76,6 +78,8 @@ export default class PeerProfile {
   private section: SettingSection;
   private name: HTMLDivElement;
   private subtitle: HTMLDivElement;
+  private subtitleRating: HTMLDivElement;
+  private subtitleText: HTMLDivElement;
   private bio: Row;
   private username: Row;
   private phone: Row;
@@ -169,6 +173,14 @@ export default class PeerProfile {
 
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add('profile-subtitle');
+
+    this.subtitleRating = document.createElement('div');
+    this.subtitleRating.classList.add('profile-subtitle-rating');
+
+    this.subtitleText = document.createElement('div');
+    this.subtitleText.classList.add('profile-subtitle-text');
+
+    this.subtitle.append(this.subtitleRating, this.subtitleText);
 
     this.pinnedGiftsContainer = document.createElement('div');
     this.pinnedGiftsContainer.classList.add('profile-pinned-gifts');
@@ -539,7 +551,7 @@ export default class PeerProfile {
         const user = apiManagerProxy.getUser(peerId.toUserId());
         if((user.status as UserStatus.userStatusRecently)?.pFlags?.by_me) {
           // Don't append the when element if it's already been added
-          if(this.subtitle.querySelector('.show-when')) {
+          if(this.subtitleText.querySelector('.show-when')) {
             return;
           }
 
@@ -549,7 +561,7 @@ export default class PeerProfile {
             cancelEvent(e);
             PopupElement.createPopup(PopupToggleReadDate, peerId, 'lastSeen');
           });
-          this.subtitle.append(when);
+          this.subtitleText.append(when);
         }
       }
     });
@@ -574,12 +586,12 @@ export default class PeerProfile {
           attachClickEvent(element, (e) => {
             appImManager.setPeer({peerId});
           });
-          this.subtitle.replaceChildren(element);
+          this.subtitleText.replaceChildren(element);
         });
       } else {
         promise = appImManager.setPeerStatus({
           peerId,
-          element: this.subtitle,
+          element: this.subtitleText,
           needClear,
           useWhitespace: true,
           middleware,
@@ -590,7 +602,7 @@ export default class PeerProfile {
       promise.then((callback) => callback && callbacks.unshift(callback));
     }
 
-    const callback = () => callbacks.forEach((callback) => callback());
+    const callback = () => callbacks.map((callback) => callback());
 
     return promise.then(() => {
       if(manual) {
@@ -617,6 +629,7 @@ export default class PeerProfile {
     });
 
     this.botVerification.style.display = 'none';
+    this.subtitleRating.style.display = 'none';
 
     if(this.notifications) {
       this.notifications.container.style.display = '';
@@ -813,13 +826,37 @@ export default class PeerProfile {
     };
   }
 
+  private async fillStarsRating() {
+    const {peerId} = this.getDetailsForUse();
+    if(!peerId.isUser()) return
+
+    const fullUser = await this.managers.appProfileManager.getProfileByPeerId(peerId) as UserFull.userFull;
+
+    if(fullUser.stars_rating && fullUser.stars_rating.level !== 0) {
+      const icon = wrapStarsRatingLevel(fullUser.stars_rating.level);
+      attachClickEvent(icon, (e) => {
+        cancelEvent(e);
+        showStarsRatingPopup({user: apiManagerProxy.getUser(peerId.toUserId()), userFull: fullUser});
+      });
+      return () => {
+        this.subtitleRating.replaceChildren(icon);
+        this.subtitleRating.style.display = '';
+      }
+    }
+
+    return () => {
+      this.subtitleRating.style.display = 'none';
+    }
+  }
+
   private async fillRows(manual: Promise<any>) {
     return Promise.all([
       this.fillUsername(),
       this.fillUserPhone(),
       this.fillNotifications(),
       this.setMoreDetails(undefined, manual),
-      this.setPeerStatus(true, true)
+      this.setPeerStatus(true, true),
+      this.fillStarsRating()
     ].map((promise) => promise.catch(() => undefined as () => void))).then((callbacks) => {
       return () => {
         callbacks.forEach((callback) => callback?.());

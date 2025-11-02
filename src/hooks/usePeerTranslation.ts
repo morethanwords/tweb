@@ -48,8 +48,9 @@ function _usePeerTranslation(peerId: PeerId) {
       return;
     }
 
+    const _fullPeer = fullPeer();
     if(
-      fullPeer().pFlags.translations_disabled ||
+      (!_fullPeer || _fullPeer.pFlags.translations_disabled) ||
       appSettings.translations.doNotTranslate.includes(peerLanguage())
     ) {
       return false;

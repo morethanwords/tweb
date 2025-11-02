@@ -402,11 +402,12 @@ PopupElement.ConfirmButton = (props: {
 
 PopupElement.Body = (props: {
   children: JSX.Element,
+  class?: string,
   scrollable?: boolean,
   floatingHeader?: boolean
 }) => {
   return useContext(PopupContext).register('body', (
-    <div class="popup-body">
+    <div class={classNames('popup-body', props.class)}>
       {props.children}
     </div>
   ));

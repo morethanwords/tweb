@@ -284,3 +284,19 @@
   right: 0;
   z-index: -1;
 }
+
+.popup-star-gift-info-original {
+  text-align: center;
+
+  &.has-delete {
+    display: flex;
+    text-align: left;
+    align-items: center;
+    justify-content: between;
+    gap: 0.5rem;
+  }
+
+  .btn-icon {
+    flex-shrink: 0;
+  }
+}

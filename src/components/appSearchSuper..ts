@@ -61,7 +61,6 @@ import filterMessagesByInputFilter from '../lib/appManagers/utils/messages/filte
 import getChatMembersString from './wrappers/getChatMembersString';
 import getUserStatusString from './wrappers/getUserStatusString';
 import getParticipantPeerId from '../lib/appManagers/utils/chats/getParticipantPeerId';
-import {Awaited} from '../types';
 import {attachContextMenuListener} from '../helpers/dom/attachContextMenuListener';
 import contextMenuController from '../helpers/contextMenuController';
 import positionMenu from '../helpers/positionMenu';
@@ -324,7 +323,7 @@ class SearchContextMenu {
 
     this.element = ButtonMenuSync({buttons: this.buttons, listenerSetter: this.listenerSetter});
     this.element.classList.add('search-contextmenu', 'contextmenu');
-    document.getElementById('page-chats').append(this.element);
+    document.body.append(this.element);
   }
 
   private onGotoClick = () => {

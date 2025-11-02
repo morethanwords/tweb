@@ -155,19 +155,23 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
       this.listenerResults[name] = args;
     }
 
-    const arr: Array<SuperReturnType<Listeners[typeof name]>> = collectResults && [];
+    const results: Array<SuperReturnType<Listeners[typeof name]>> = collectResults && [];
 
     const listeners = this.listeners[name];
-    if(listeners) {
-      for(const listener of listeners) {
+    for(const listener of listeners || []) {
+      try {
         const result = this.invokeListenerCallback(name, listener, ...args);
-        if(arr) {
-          arr.push(result);
+        if(results) {
+          results.push(result);
+        }
+      } catch(err) {
+        if(results) {
+          throw err;
         }
       }
     }
 
-    return arr;
+    return results;
   }
 
   public dispatchResultableEvent<T extends keyof Listeners>(name: T, ...args: ArgumentTypes<Listeners[T]>) {

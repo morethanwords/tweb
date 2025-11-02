@@ -79,7 +79,7 @@ function FrozenSuggestion() {
     >
       <RippleElement
         component="div"
-        class={classNames(styles.banned, 'hover-danger-effect')}
+        class={classNames(styles.collapsed, 'hover-danger-effect')}
         onClick={onClick}
       >
         {documentFragmentToNodes(emoji())}
@@ -89,7 +89,9 @@ function FrozenSuggestion() {
 }
 
 function NotificationsSuggestion() {
+  const [isSidebarCollapsed] = useIsSidebarCollapsed();
   const [appSettings, setAppSettings] = useAppSettings();
+  const emoji = () => wrapEmojiText('🔔');
 
   const onDismissed = () => {
     setAppSettings('notifications', 'suggested', true);
@@ -100,28 +102,43 @@ function NotificationsSuggestion() {
     // }, 2e3);
   };
 
+  const onClick = () => {
+    Notification.requestPermission().then((permission) => {
+      if(permission === 'granted') {
+        setAppSettings('notifications', 'suggested', true);
+        uiNotificationsManager.onPushConditionsChange();
+      } else if(permission === 'denied') {
+        throw 1;
+      }
+    }).catch(onDismissed);
+  };
+
   return (
-    <PendingSuggestion
-      class={styles.secondary}
-      clickable={() => {
-        Notification.requestPermission().then((permission) => {
-          if(permission === 'granted') {
-            setAppSettings('notifications', 'suggested', true);
-            uiNotificationsManager.onPushConditionsChange();
-          } else if(permission === 'denied') {
-            throw 1;
-          }
-        }).catch(onDismissed);
-      }}
-      closable={onDismissed}
+    <Show
+      when={isSidebarCollapsed()}
+      fallback={
+        <PendingSuggestion
+          class={styles.secondary}
+          clickable={onClick}
+          closable={onDismissed}
+        >
+          <PendingSuggestion.Title>
+            {i18n('Suggestion.Notifications', [emoji()])}
+          </PendingSuggestion.Title>
+          <PendingSuggestion.Subtitle>
+            {i18n('Suggestion.Notifications.Subtitle')}
+          </PendingSuggestion.Subtitle>
+        </PendingSuggestion>
+      }
     >
-      <PendingSuggestion.Title>
-        {i18n('Suggestion.Notifications', [wrapEmojiText('🔔')])}
-      </PendingSuggestion.Title>
-      <PendingSuggestion.Subtitle>
-        {i18n('Suggestion.Notifications.Subtitle')}
-      </PendingSuggestion.Subtitle>
-    </PendingSuggestion>
+      <RippleElement
+        component="div"
+        class={classNames(styles.collapsed, 'hover-effect')}
+        onClick={onClick}
+      >
+        {documentFragmentToNodes(emoji())}
+      </RippleElement>
+    </Show>
   );
 }
 

@@ -1,5 +1,6 @@
 import compareUint8Arrays from '../../helpers/bytes/compareUint8Arrays';
 import {joinDeepPath} from '../../helpers/object/setDeepProperty';
+import {useAppSettings} from '../../stores/appSettings';
 
 import AccountController from '../accounts/accountController';
 import commonStateStorage from '../commonStateStorage';
@@ -46,7 +47,8 @@ export function usePasscodeActions() {
       }
     });
 
-    await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'enabled'), true);
+    const [, setAppSettings] = useAppSettings();
+    await setAppSettings('passcode', 'enabled', true);
 
     await disableCacheStorages();
     await clearCacheStorages();
@@ -81,7 +83,8 @@ export function usePasscodeActions() {
   }
 
   async function disablePasscode() {
-    rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'enabled'), false);
+    const [, setAppSettings] = useAppSettings();
+    await setAppSettings('passcode', 'enabled', false);
     rootScope.dispatchEvent('toggle_using_passcode', false);
 
     await disableCacheStorages();

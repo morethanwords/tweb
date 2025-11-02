@@ -38,10 +38,11 @@ const Row = (props: Partial<{
   children: JSX.Element
 }> = {}) => {
   const [store, setStore] = createStore<RowContextValue['store']>({});
-  const register = (kind: Kind, element: JSX.Element) => {
+  const register: RowContextValue['register'] = (kind, element) => {
     setStore(kind, element);
     onCleanup(() => setStore(kind, undefined));
-    return element;
+    return undefined;
+    // return element;
   };
 
   const isCheckbox = () => !!(store.checkboxField || store.checkboxFieldToggle || store.radioField);
@@ -63,39 +64,42 @@ const Row = (props: Partial<{
     }
   };
 
-  return (
+  const resolvedChildren = children(() =>
     <RowContext.Provider value={value}>
-      {props.children && undefined}
-      <RippleElement
-        ref={props.ref as any}
-        component={props.as === 'a' ? 'a' : (props.as === 'label' || isCheckbox() ? 'label' : 'div')}
-        classList={{
-          'row': true,
-          'no-subtitle': !store.subtitle,
-          'no-wrap': value.noWrap,
-          'row-with-icon': !!store.icon,
-          'row-with-padding': havePadding(),
-          [`row-clickable hover-${props.color ? props.color + '-' : ''}effect`]: isClickable(),
-          'is-disabled': props.disabled,
-          'is-fake-disabled': props.fakeDisabled,
-          'row-grid': !!store.rightContent,
-          'with-midtitle': !!store.midtitle,
-          ...(props.classList || {}),
-          [props.class]: !!props.class
-        }}
-        onClick={typeof(props.clickable) !== 'boolean' && props.clickable}
-        noRipple={!haveRipple()}
-      >
-        {props.children}
-        {store.title}
-        {store.midtitle}
-        {store.subtitle}
-        {store.icon}
-        {store.checkboxField || store.radioField}
-        {store.rightContent}
-        {store.media}
-      </RippleElement>
+      {props.children}
     </RowContext.Provider>
+  );
+
+  return (
+    <RippleElement
+      ref={props.ref as any}
+      component={props.as === 'a' ? 'a' : (props.as === 'label' || isCheckbox() ? 'label' : 'div')}
+      classList={{
+        'row': true,
+        'no-subtitle': !store.subtitle,
+        'no-wrap': value.noWrap,
+        'row-with-icon': !!store.icon,
+        'row-with-padding': havePadding(),
+        [`row-clickable hover-${props.color ? props.color + '-' : ''}effect`]: isClickable(),
+        'is-disabled': props.disabled,
+        'is-fake-disabled': props.fakeDisabled,
+        'row-grid': !!store.rightContent,
+        'with-midtitle': !!store.midtitle,
+        ...(props.classList || {}),
+        [props.class]: !!props.class
+      }}
+      onClick={typeof(props.clickable) !== 'boolean' && props.clickable}
+      noRipple={!haveRipple()}
+    >
+      {resolvedChildren()}
+      {store.title}
+      {store.midtitle}
+      {store.subtitle}
+      {store.icon}
+      {store.checkboxField || store.radioField}
+      {store.rightContent}
+      {store.media}
+    </RippleElement>
   );
 };
 
@@ -234,7 +238,14 @@ Row.Media = (props: {
   mediaSize: RowMediaSizeType
 }) => {
   return useContext(RowContext).register('media', (
-    <div class={classNames('row-media', props.mediaSize && `row-media-${props.mediaSize}`)}>{props.children}</div>
+    <div
+      class={classNames(
+        'row-media',
+        props.mediaSize && `row-media-${props.mediaSize}`
+      )}
+    >
+      {props.children}
+    </div>
   ));
 };
 

@@ -30,7 +30,7 @@ import PopupStarGiftWear from '../popups/starGiftWear';
 
 function StarGiftGridItem(props: {
   item: MyStarGift,
-  view: 'profile' | 'list' | 'resale'
+  view: 'profile' | 'list' | 'resale' | 'transfer'
   hasSelection?: boolean
   selected?: boolean
   onClick?: () => void
@@ -121,6 +121,7 @@ function StarGiftGridItem(props: {
         styles.gridItem,
         {
           profile: styles.viewProfile,
+          transfer: styles.viewTransfer,
           list: styles.viewList,
           resale: styles.viewResale
         }[props.view],
@@ -161,7 +162,7 @@ function StarGiftGridItem(props: {
         <IconTsx icon="time_lock" class={/* @once */ styles.itemLock} />
       )}
 
-      {props.item.resellOnlyTon && (
+      {props.item.resellOnlyTon && props.view !== 'transfer' && (
         <div class={/* @once */ styles.tonIcon}>
           <IconTsx icon="ton" />
         </div>
@@ -190,10 +191,16 @@ function StarGiftGridItem(props: {
         </div>
       )}
 
-      {props.item.resellPriceStars && (
+      {props.item.resellPriceStars && props.view !== 'transfer' && (
         <div class={/* @once */ styles.itemPrice}>
           <IconTsx icon="star" />
           <span>{numberThousandSplitterForStars(props.item.resellPriceStars)}</span>
+        </div>
+      )}
+
+      {props.view === 'transfer' && (
+        <div class={/* @once */ styles.itemPrice}>
+          {i18n('StarGiftTransferFull')}
         </div>
       )}
 
@@ -272,7 +279,7 @@ function StarGiftGridItem(props: {
 export function StarGiftsGrid(props: {
   class?: string
   items: MyStarGift[],
-  view: 'profile' | 'list' | 'resale'
+  view: 'profile' | 'list' | 'resale' | 'transfer'
   autoplay?: boolean
   onClick?: (item: MyStarGift) => void
   selected?: (item: MyStarGift) => boolean

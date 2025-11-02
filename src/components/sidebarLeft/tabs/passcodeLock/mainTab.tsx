@@ -24,6 +24,7 @@ import InlineSelect from './inlineSelect';
 
 import commonStyles from './common.module.scss';
 import styles from './mainTab.module.scss';
+import {useAppSettings} from '../../../../stores/appSettings';
 
 
 type AppPasscodeLockTabType = typeof AppPasscodeLockTab;
@@ -138,6 +139,7 @@ const PasscodeSetContent: Component<{
   const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppPrivacyAndSecurityTab}] = useSuperTab<AppPasscodeLockTabType>();
   const {disablePasscode, changePasscode} = usePasscodeActions();
   const {rootScope, setQuizHint} = useHotReloadGuard();
+  const [, setAppSettings] = useAppSettings();
 
   const options = [
     {value: 0, label: () => i18n('PasscodeLock.Disabled')},
@@ -181,17 +183,17 @@ const PasscodeSetContent: Component<{
 
   function setShortcutKeys(value: ShortcutKey[]) {
     mutateShortcutKeys(value);
-    rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'lockShortcut'), value);
+    setAppSettings('passcode', 'lockShortcut', value);
   }
 
   function setShortcutEnabled(value: boolean) {
     mutateShortcutEnabled(value);
-    rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'lockShortcutEnabled'), value);
+    setAppSettings('passcode', 'lockShortcutEnabled', value);
   }
 
   function setLockTimeout(value: number | null) {
     mutateLockTimeout(value);
-    rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'passcode', 'autoLockTimeoutMins'), value);
+    setAppSettings('passcode', 'autoLockTimeoutMins', value);
   }
 
   onCleanup(() => {

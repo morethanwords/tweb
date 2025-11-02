@@ -1,0 +1,101 @@
+.popup {
+  --popup-min-width: 26.25rem;
+  --popup-max-width: 26.25rem;
+
+  &Container {
+    padding: 0;
+    max-height: calc(100vh - 6.5rem);
+  }
+
+  &Header {
+    position: absolute;
+    margin: 0;
+    top: .625rem;
+    inset-inline-start: .625rem;
+  }
+
+  &CloseButton {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  &Footer {
+    padding: 1rem;
+  }
+
+  &Button:global(.btn-primary) {
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    :global(.popup-button-icon) {
+      font-size: 1.5rem;
+    }
+  }
+}
+
+.scrollableContent {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  padding-bottom: 0;
+}
+
+.limitLine {
+  margin-top: 1.375rem;
+  --limit-background: var(--primary-color);
+  --hint-height: 3rem;
+  --hint-icon-gap: .5rem;
+  --hint-icon-size: 1.5rem;
+
+  &Hint {
+    font-family: var(--font-rounded);
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1;
+  }
+}
+
+.title {
+  font-weight: 600;
+  font-size: 24px;
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.subtitle {
+  font-size: 16px;
+  line-height: 22px;
+  text-align: center;
+  margin-top: 0.375rem;
+  text-wrap: balance;
+}
+
+.table {
+  margin-top: 1.375rem;
+
+  &KeyCell {
+    width: 35%;
+  }
+  
+  &Value {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+
+    :global(.currency-star-icon) {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+}
+
+.about {
+  margin-top: 1.375rem;
+  text-align: center;
+  text-wrap: balance;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--secondary-text-color);
+}
