@@ -158,11 +158,15 @@ export function positionMenuTrigger(trigger: HTMLElement, menu: HTMLElement, dir
     menu.style.bottom = `${Math.max(bottom, additionalPadding?.bottom ?? 0)}px`
   }
 
-  if(directionY === 'right') {
+  if(directionY === 'right' || directionY === 'center') {
     const left = triggerRect.left + (additionalPadding?.left ?? 0);
     menu.style.left = `${Math.max(left, additionalPadding?.left ?? 0)}px`
   } else {
     const right = window.innerWidth - triggerRect.left - triggerRect.width - (additionalPadding?.right ?? 0)
     menu.style.right = `${Math.max(right, additionalPadding?.right ?? 0)}px`
+  }
+
+  if(directionY === 'center') {
+    menu.style.setProperty('--parent-half-width', (trigger.clientWidth / 2) + 'px');
   }
 }

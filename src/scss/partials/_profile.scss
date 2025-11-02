@@ -726,6 +726,12 @@
     align-items: center;
     gap: 0.5rem;
   }
+
+  &-notes {
+    .row-title {
+      white-space: pre-wrap;
+    }
+  }
 }
 
 .search-super-container-gifts.tabs-tab,

@@ -44,6 +44,7 @@ import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 import {AgeVerificationPopup} from '../../popups/ageVerification';
 import {clearSensitiveSpoilers} from '../../wrappers/mediaSpoiler';
 import useContentSettings from '../../../stores/contentSettings';
+import AppPrivacyBirthdayTab from './privacy/birthday';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -315,6 +316,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         listenerSetter: this.listenerSetter
       });
 
+      const birthdayRow = rowsByKeys['inputPrivacyKeyBirthday'] = new Row({
+        titleLangKey: 'Privacy.BirthdayRow',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          this.slider.createTab(AppPrivacyBirthdayTab).open();
+        },
+        listenerSetter: this.listenerSetter
+      });
+
       const createPremiumTitle = (langKey: LangPackKey) => {
         const fragment = document.createDocumentFragment();
         const icon = Icon('star', 'privacy-premium-icon');
@@ -405,7 +415,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         linkAccountRow,
         groupChatsAddRow,
         voicesRow,
-        messagesRow
+        messagesRow,
+        birthdayRow
       ].filter(Boolean).map((row) => row.container));
       this.scrollable.append(section.container);
 

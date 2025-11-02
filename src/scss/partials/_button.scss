@@ -340,6 +340,7 @@ $btn-menu-z-index: 4;
     &.btn-menu-search {
       @include hover-background-effect(transparent);
       cursor: default !important;
+      margin-top: .3125rem;
     }
 
     &-icon {
@@ -906,7 +907,7 @@ $btn-menu-z-index: 4;
   }
 
   &-select {
-    padding-bottom: 0;
+    padding-block: 0;
 
     &-text-faded {
       opacity: 0.3;

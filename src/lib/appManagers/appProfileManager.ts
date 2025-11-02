@@ -11,7 +11,7 @@
 
 import type {MyTopPeer} from './appUsersManager';
 import tsNow from '../../helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall} from '../../layer';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities} from '../../layer';
 import SearchIndex from '../searchIndex';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
@@ -1108,4 +1108,43 @@ export class AppProfileManager extends AppManager {
     const peerId = this.appPeersManager.getPeerId(update.peer);
     this.rootScope.dispatchEvent('peer_settings', {peerId, settings: update.settings});
   };
+
+  public setMyBirthday(date: Birthday | null) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'account.updateBirthday',
+      params: {
+        birthday: date
+      },
+      processResult: (result) => {
+        if(!result) return
+
+        this.modifyCachedFullUser(this.rootScope.myId, (userFull) => {
+          userFull.birthday = date ?? undefined;
+          return true;
+        });
+        // to update peer profile
+        this.rootScope.dispatchEvent('peer_bio_edit', this.rootScope.myId);
+      }
+    });
+  }
+
+  public updateUserNote(userId: UserId, note: TextWithEntities) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'contacts.updateContactNote',
+      params: {
+        id: this.appUsersManager.getUserInput(userId),
+        note: note
+      },
+      processResult: (result) => {
+        if(!result) return
+
+        this.modifyCachedFullUser(userId, (userFull) => {
+          userFull.note = note;
+          return true;
+        });
+        // to update peer profile
+        this.rootScope.dispatchEvent('peer_bio_edit', userId.toPeerId());
+      }
+    });
+  }
 }

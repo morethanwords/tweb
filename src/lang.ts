@@ -149,6 +149,8 @@ const lang = {
   'Suggestion.Notifications': 'Never miss a message! %s',
   'Suggestion.Notifications.Subtitle': 'Enable notifications to stay updated.',
   'Suggestion.Notifications.Dismissed': 'You can turn notifications back on in the settings.',
+  'Suggestion.BirthdaySetup': 'Add your birthday! %s',
+  'Suggestion.BirthdaySetup.Subtitle': 'Let your contacts know when you’re celebrating.',
   'NewPrivateChat': 'New Private Chat',
   'NewPoll.OptionLabel': 'Option %d',
   'Message.Context.Selection.Copy': 'Copy selected',
@@ -569,6 +571,17 @@ const lang = {
   'Privacy.BioRow': 'Who can see my bio?',
   'Privacy.ContactsAndPremium': 'Contacts and Premium',
   'Privacy.MessagesCaption': 'Change who can send you messages.',
+  'Privacy.BirthdayRow': 'Who can see my birthday?',
+  'Privacy.Birthday': 'Who can see my birthday',
+  'Birthday': 'Birthday',
+  'BirthdayYearsOld': {
+    'one_value': ' (%d year old)',
+    'other_value': ' (%d years old)'
+  },
+  'ContactNoteRow': 'Notes',
+  'ContactNoteRowDesc': 'only visible to you',
+  'ContactNodeDescription': 'Notes are only visible to you',
+  'Privacy.BirthdayCaption': 'You can restrict who can see the birthday on your profile with granular precision.',
   'PrivacySettings.Messages.PremiumError': 'Only subscribers of [Telegram Premium]() can restrict receiving messages.',
   'Chat.PremiumRequired': 'Subscribe to **Premium** to message **%s**.',
   'Chat.PremiumRequiredButton': 'Get Premium',
@@ -3793,7 +3806,15 @@ const lang = {
   },
   'StarsRating.Preview': 'Preview',
   'StarsRating.Back': 'Back',
-  'StarsRating.Understood': 'UNDERSTOOD'
+  'StarsRating.Understood': 'UNDERSTOOD',
+  'BirthdayPopup.Title': 'Date of Birth',
+  'BirthdayPopup.Day': 'Day',
+  'BirthdayPopup.Month': 'Month',
+  'BirthdayPopup.Year': 'Year',
+  'BirthdayPopup.OnlyContacts': 'Only your contacts will see your birthday. %s',
+  'BirthdayPopup.OnlyContactsLink': 'Change',
+  'BirthdayPopup.Choose': 'Choose who can see your birthday in %s',
+  'BirthdayPopup.ChooseLink': 'Settings'
 };
 
 export default lang;

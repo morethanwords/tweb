@@ -21,10 +21,15 @@ import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 import formatUserPhone from '../../wrappers/formatUserPhone';
 import SettingSection from '../../settingSection';
 import wrapPeerTitle from '../../wrappers/peerTitle';
+import {wrapEmojiTextWithEntities} from '../../../lib/richTextProcessor/wrapEmojiText';
+import EditFolderInput from '../../sidebarLeft/tabs/editFolderInput';
+import {InputFieldEmoji} from '../../inputFieldEmoji';
+import {toastNew} from '../../toast';
 
 export default class AppEditContactTab extends SliderSuperTab {
   private nameInputField: InputField;
   private lastNameInputField: InputField;
+  private noteInputField: InputFieldEmoji;
   private editPeer: EditPeer;
   private sharePhoneCheckboxField: CheckboxField;
   public peerId: PeerId;
@@ -73,6 +78,19 @@ export default class AppEditContactTab extends SliderSuperTab {
 
       inputWrapper.append(this.nameInputField.container, this.lastNameInputField.container);
       inputFields.push(this.nameInputField, this.lastNameInputField);
+
+      if(userId) {
+        const fullUser = await this.managers.appProfileManager.getCachedFullUser(userId);
+        this.noteInputField = new InputFieldEmoji({
+          label: 'ContactNoteRow',
+          name: 'contact-note',
+          maxLength: 128,
+          withLinebreaks: true
+        });
+        this.noteInputField.setRichOriginalValue(fullUser.note);
+        inputFields.push(this.noteInputField);
+        inputWrapper.append(this.noteInputField.container);
+      }
 
       this.editPeer = new EditPeer({
         peerId: peerId,
@@ -205,16 +223,26 @@ export default class AppEditContactTab extends SliderSuperTab {
     attachClickEvent(this.editPeer.nextBtn, async() => {
       this.editPeer.nextBtn.disabled = true;
 
-      this.managers.appUsersManager.addContact(
-        userId,
-        this.nameInputField.value,
-        this.lastNameInputField.value,
-        (await this.managers.appUsersManager.getUser(userId)).phone,
-        this.sharePhoneCheckboxField?.checked
-      ).finally(() => {
-        this.editPeer.nextBtn.removeAttribute('disabled');
-        this.close();
-      });
+      try {
+        await this.managers.appUsersManager.addContact(
+          userId,
+          this.nameInputField.value,
+          this.lastNameInputField.value,
+          (await this.managers.appUsersManager.getUser(userId)).phone,
+          this.sharePhoneCheckboxField?.checked
+        )
+
+        if(this.noteInputField.isChanged()) {
+          await this.managers.appProfileManager.updateUserNote(userId, this.noteInputField.richValue);
+        }
+      } catch(error) {
+        console.error(error)
+        toastNew({langPackKey: 'Error.AnError'});
+        return
+      }
+
+      this.editPeer.nextBtn.removeAttribute('disabled');
+      this.close();
     }, {listenerSetter: this.listenerSetter});
   }
 }

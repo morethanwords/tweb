@@ -450,7 +450,8 @@ PopupElement.Button = (props: {
   iconLeft?: Icon,
   iconRight?: Icon,
   class?: string,
-  noDefaultClass?: boolean
+  noDefaultClass?: boolean,
+  disabled?: boolean
 }) => {
   const context = useContext(PopupContext);
 
@@ -488,7 +489,7 @@ PopupElement.Button = (props: {
       )}
       noRipple={props.noRipple}
       onClick={handleClick}
-      disabled={disabled()}
+      disabled={props.disabled || disabled()}
       icon={props.iconLeft}
       iconAfter={props.iconRight}
       iconClass={classNames('popup-button-icon', props.iconLeft ? 'left' : 'right')}
