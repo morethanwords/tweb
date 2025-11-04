@@ -17,7 +17,7 @@ import Animated from '../../helpers/solid/animations';
 import uiNotificationsManager from '../../lib/appManagers/uiNotificationsManager';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {dismissServerSuggestion, pendingSuggestions} from '../../stores/promo';
-import showBirthdayPopup from '../popups/birthday';
+import showBirthdayPopup, {saveMyBirthday} from '../popups/birthday';
 import rootScope from '../../lib/rootScope';
 
 const PendingSuggestion = (props: Parameters<typeof Row>[0] & {closable?: () => void}) => {
@@ -158,9 +158,11 @@ function BirthdaySetupSuggestion() {
   const onClick = () => {
     showBirthdayPopup({
       onSave: async(date) => {
-        await rootScope.managers.appProfileManager.setMyBirthday(date);
-        dismissServerSuggestion(BIRTHDAY_SETUP_SUGGESTION_KEY);
-        return true;
+        if(await saveMyBirthday(date)) {
+          dismissServerSuggestion(BIRTHDAY_SETUP_SUGGESTION_KEY);
+          return true;
+        }
+        return false;
       }
     });
   };

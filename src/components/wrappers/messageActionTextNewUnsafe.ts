@@ -840,6 +840,12 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         langPackKey = 'SuggestedPosts.GenericRefund';
         break;
       }
+      case 'messageActionSuggestBirthday': {
+        langPackKey = message.pFlags.out ? 'BirthdaySuggestOutgoing' : 'BirthdaySuggestIncoming';
+        args = [getNameDivHTML(message.peerId, plain)];
+
+        break
+      }
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;

@@ -210,6 +210,7 @@ import type {wrapContinuouslyTypingMessage} from './bubbleParts/continuouslyTypi
 import addContinueLastTopicReplyMarkup from './bubbleParts/continueLastTopicReplyMarkup';
 import {wrapTopicIcon} from '../wrappers/messageActionTextNewUnsafe';
 import {getTransition} from '../../config/transitions';
+import {SuggestBirthdayBubble} from './bubbles/suggestBirthday';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -5637,6 +5638,15 @@ export default class ChatBubbles {
           });
 
           s.append(content);
+        } else if(action._ === 'messageActionSuggestBirthday') {
+          const title = await wrapMessageActionTextNew({message, middleware});
+          const container = document.createElement('div');
+          this.wrapSomeSolid(() => SuggestBirthdayBubble({
+            birthday: action.birthday,
+            outgoing: message.pFlags.out,
+            title
+          }), container, middleware);
+          s.append(container);
         } else {
           promise = wrapMessageActionTextNew({
             message,

@@ -1113,17 +1113,30 @@ export class AppProfileManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'account.updateBirthday',
       params: {
-        birthday: date
+        birthday: date ?? undefined
       },
       processResult: (result) => {
-        if(!result) return
-
         this.modifyCachedFullUser(this.rootScope.myId, (userFull) => {
           userFull.birthday = date ?? undefined;
           return true;
         });
         // to update peer profile
         this.rootScope.dispatchEvent('peer_bio_edit', this.rootScope.myId);
+      }
+    });
+  }
+
+  public suggestUserBirthday(userId: UserId, date: Birthday) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'users.suggestBirthday',
+      params: {
+        id: this.appUsersManager.getUserInput(userId),
+        birthday: date
+      },
+      processResult: (updates) => {
+        if(!updates) return
+
+        this.apiUpdatesManager.processUpdateMessage(updates);
       }
     });
   }

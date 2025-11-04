@@ -25,6 +25,7 @@ import {wrapEmojiTextWithEntities} from '../../../lib/richTextProcessor/wrapEmoj
 import EditFolderInput from '../../sidebarLeft/tabs/editFolderInput';
 import {InputFieldEmoji} from '../../inputFieldEmoji';
 import {toastNew} from '../../toast';
+import showBirthdayPopup, {suggestUserBirthday} from '../../popups/birthday';
 
 export default class AppEditContactTab extends SliderSuperTab {
   private nameInputField: InputField;
@@ -44,6 +45,8 @@ export default class AppEditContactTab extends SliderSuperTab {
     ]);
     const isNew = !isContact;
     this.setTitle(isNew ? 'AddContactTitle' : 'Edit');
+
+    let suggestBirthdayRow: Row | undefined;
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -90,6 +93,19 @@ export default class AppEditContactTab extends SliderSuperTab {
         this.noteInputField.setRichOriginalValue(fullUser.note);
         inputFields.push(this.noteInputField);
         inputWrapper.append(this.noteInputField.container);
+
+        if(!fullUser.birthday) {
+          suggestBirthdayRow = new Row({
+            title: i18n('SuggestBirthdayRow'),
+            icon: 'gift',
+            clickable: () => {
+              showBirthdayPopup({
+                suggestForPeer: peerId,
+                onSave: it => suggestUserBirthday(userId, it)
+              })
+            }
+          })
+        }
       }
 
       this.editPeer = new EditPeer({
@@ -152,6 +168,10 @@ export default class AppEditContactTab extends SliderSuperTab {
           notificationsCheckboxField.checked = enabled;
 
           section.content.append(notificationsRow.container);
+
+          if(suggestBirthdayRow) {
+            section.content.append(suggestBirthdayRow.container);
+          }
         } else {
           const user = await this.managers.appUsersManager.getUser(userId);
 

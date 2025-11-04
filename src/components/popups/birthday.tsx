@@ -1,4 +1,4 @@
-import {createEffect, createSignal, For, onMount} from 'solid-js';
+import {createEffect, createSignal, For, onMount, Show} from 'solid-js';
 import PopupElement from './indexTsx';
 import {createPopup} from './indexTsx';
 import {I18nTsx} from '../../helpers/solid/i18n';
@@ -15,6 +15,8 @@ import appSidebarLeft from '../sidebarLeft';
 import AppPrivacyBirthdayTab from '../sidebarLeft/tabs/privacy/birthday';
 import rootScope from '../../lib/rootScope';
 import {doubleRaf, fastRaf} from '../../helpers/schedulers';
+import {toastNew} from '../toast';
+import {PeerTitleTsx} from '../peerTitleTsx';
 
 const MIN_YEAR = 1900;
 
@@ -23,11 +25,36 @@ interface MonthOption {
   value: number;
 }
 
+export async function saveMyBirthday(date: Birthday | null) {
+  try {
+    await rootScope.managers.appProfileManager.setMyBirthday(date);
+    return true;
+  } catch(error) {
+    console.error(error);
+    toastNew({langPackKey: 'Error.AnError'});
+    return false;
+  }
+}
+
+export async function suggestUserBirthday(userId: UserId, date: Birthday) {
+  try {
+    await rootScope.managers.appProfileManager.suggestUserBirthday(userId, date);
+    return true;
+  } catch(error) {
+    console.error(error);
+    toastNew({langPackKey: 'Error.AnError'});
+    return false;
+  }
+}
+
 export default async function showBirthdayPopup(props: {
   initialDate?: Birthday
-  onSave: (date: Birthday) => MaybePromise<boolean>
+  suggestForPeer?: PeerId
+  fromProfile?: boolean
+  fromSuggestion?: boolean
+  onSave: (date: Birthday | null) => MaybePromise<boolean>
 }) {
-  const privacy = await rootScope.managers.appPrivacyManager.getPrivacy('inputPrivacyKeyBirthday');
+  const privacy = props.suggestForPeer ? null : await rootScope.managers.appPrivacyManager.getPrivacy('inputPrivacyKeyBirthday');
   const isContactsOnly = !privacy || (
     privacy.length === 2 &&
     privacy[0]._ === 'privacyValueAllowContacts' &&
@@ -195,7 +222,11 @@ export default async function showBirthdayPopup(props: {
             src="/assets/img/utyan-birthday.png"
           />
 
-          <I18nTsx class={styles.title} key="BirthdayPopup.Title" />
+          <I18nTsx
+            class={styles.title}
+            key={props.suggestForPeer ? 'BirthdayPopup.TitleForPeer' : 'BirthdayPopup.Title'}
+            args={[props.suggestForPeer ? <PeerTitleTsx peerId={props.suggestForPeer} /> : undefined]}
+          />
 
           <div class={styles.datePicker}>
             {dayField.container}
@@ -203,28 +234,55 @@ export default async function showBirthdayPopup(props: {
             {yearField.container}
           </div>
 
-          <div class={styles.privacyInfo}>
-            <I18nTsx
-              class={styles.privacyInfoText}
-              key={isContactsOnly ? 'BirthdayPopup.OnlyContacts' : 'BirthdayPopup.Choose'}
-              args={[
-                <a class={styles.privacyInfoLink} onClick={openPrivacySettings}>
-                  <I18nTsx key={isContactsOnly ? 'BirthdayPopup.OnlyContactsLink' : 'BirthdayPopup.ChooseLink'} />
-                  <IconTsx icon="next" />
-                </a>
-              ]} />
-          </div>
+          <Show when={!props.suggestForPeer}>
+            <div class={styles.privacyInfo}>
+              <I18nTsx
+                class={styles.privacyInfoText}
+                key={isContactsOnly ? 'BirthdayPopup.OnlyContacts' : 'BirthdayPopup.Choose'}
+                args={[
+                  <a class={styles.privacyInfoLink} onClick={openPrivacySettings}>
+                    <I18nTsx key={isContactsOnly ? 'BirthdayPopup.OnlyContactsLink' : 'BirthdayPopup.ChooseLink'} />
+                    <IconTsx icon="next" />
+                  </a>
+                ]} />
+            </div>
+          </Show>
         </PopupElement.Body>
         <PopupElement.Footer class={styles.popupFooter}>
+          <Show when={props.fromSuggestion && props.initialDate.year}>
+            <PopupElement.FooterButton
+              langKey="BirthdayPopup.HideYear"
+              secondary
+              callback={() => {
+                setYear(undefined);
+                yearField.setValueSilently('');
+                return false;
+              }}
+            />
+          </Show>
+          <Show when={props.fromProfile && props.initialDate}>
+            <PopupElement.FooterButton
+              langKey="BirthdayPopup.Remove"
+              secondary
+              callback={async() => {
+                await props.onSave(null);
+                setShow(false);
+                return true;
+              }}
+            />
+          </Show>
           <PopupElement.FooterButton
             disabled={!day() || !month()}
-            langKey="Save"
+            langKey={
+              props.fromSuggestion ? 'BirthdayPopup.SaveFromSuggestion' :
+              props.suggestForPeer ? 'BirthdayPopup.Suggest' : 'Save'}
             callback={async() => {
               if(!day() || !month() || !year()) return;
               await props.onSave({_: 'birthday', day: day(), month: month().value, year: year()});
               setShow(false);
               return true;
-            } } />
+            }}
+          />
         </PopupElement.Footer>
       </PopupElement>
     );

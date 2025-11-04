@@ -54,6 +54,7 @@ export type LottieAssetName =
   | 'UtyanPasscode'
   | 'Diamond'
   | 'UtyanRestricted'
+  | 'Cake'
 ;
 
 export class LottieLoader {

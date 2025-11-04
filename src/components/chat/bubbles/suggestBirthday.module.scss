@@ -1,0 +1,36 @@
+.wrap {
+  max-width: 12rem;
+  padding-block: 0.5rem;
+
+  :global(.bubble-service-button) {
+    overflow: hidden;
+  }
+}
+
+.cake {
+  width: var(--size);
+  height: var(--size);
+  margin-bottom: 0.5rem;
+  position: relative;
+  margin-inline: auto;
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  margin-top: 0.5rem;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.label {
+  color: rgba(255, 255, 255, 0.75);
+}

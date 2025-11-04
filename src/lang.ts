@@ -23,6 +23,7 @@ const lang = {
   'EditProfile.Username.Invalid': 'Username is invalid',
   'EditFolder.Toast.ChooseChat': 'Please choose at least one chat for this folder.',
   'EditFolder.EmojiAsIconTip': 'If you put only one emoji at the beginning (or at the end), it will be displayed as the icon in the folders sidebar',
+  'EditProfile.AddBirthdayRow': 'Add Birthday',
   'EditBot.Title': 'Edit Bot',
   'EditBot.Username.Caption': 'This username cannot be edited.',
   'EditBot.Buttons.Caption': 'Use [@BotFather](https://t.me/botfather) to manage this bot.',
@@ -580,6 +581,7 @@ const lang = {
   },
   'ContactNoteRow': 'Notes',
   'ContactNoteRowDesc': 'only visible to you',
+  'SuggestBirthdayRow': 'Suggest Date of Birth',
   'ContactNodeDescription': 'Notes are only visible to you',
   'Privacy.BirthdayCaption': 'You can restrict who can see the birthday on your profile with granular precision.',
   'PrivacySettings.Messages.PremiumError': 'Only subscribers of [Telegram Premium]() can restrict receiving messages.',
@@ -3808,13 +3810,21 @@ const lang = {
   'StarsRating.Back': 'Back',
   'StarsRating.Understood': 'UNDERSTOOD',
   'BirthdayPopup.Title': 'Date of Birth',
+  'BirthdayPopup.TitleForPeer': '%s\'s Date of Birth',
   'BirthdayPopup.Day': 'Day',
   'BirthdayPopup.Month': 'Month',
   'BirthdayPopup.Year': 'Year',
   'BirthdayPopup.OnlyContacts': 'Only your contacts will see your birthday. %s',
   'BirthdayPopup.OnlyContactsLink': 'Change',
   'BirthdayPopup.Choose': 'Choose who can see your birthday in %s',
-  'BirthdayPopup.ChooseLink': 'Settings'
+  'BirthdayPopup.ChooseLink': 'Settings',
+  'BirthdayPopup.SaveFromSuggestion': 'Add to My Profile',
+  'BirthdayPopup.Suggest': 'Suggest Date of Birth',
+  'BirthdayPopup.HideYear': 'Hide Year',
+  'BirthdayPopup.Remove': 'Remove from Profile',
+  'BirthdaySuggestOutgoing': 'You suggested %s to add a birthday',
+  'BirthdaySuggestIncoming': '%s suggested you add your birthday',
+  'BirthdaySuggestView': 'View'
 };
 
 export default lang;

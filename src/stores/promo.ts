@@ -24,7 +24,7 @@ const promoData = createRoot(() => {
 
 const [pendingDismissed, setPendingDismissed] = createSignal<string[]>([]);
 
-export const pendingSuggestions = createMemo(() => {
+export const pendingSuggestions = createRoot(() => createMemo(() => {
   const promoData$ = promoData[0]();
   if(promoData$._ !== 'help.promoData') return new Set();
   const set = new Set(promoData$.pending_suggestions);
@@ -35,7 +35,7 @@ export const pendingSuggestions = createMemo(() => {
     set.delete(dismissed);
   }
   return set;
-});
+}));
 
 export function dismissServerSuggestion(suggestion: string) {
   setPendingDismissed((prev) => [...prev, suggestion]);

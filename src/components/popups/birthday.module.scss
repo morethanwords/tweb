@@ -43,14 +43,30 @@
 
 .title {
   margin-top: 1.125rem;
+  margin-bottom: 1.75rem;
   font-weight: 600;
   font-size: 24px;
   line-height: 1;
   text-align: center;
 }
 
+
+.privacyInfo {
+  margin-bottom: 2.5rem;
+  text-align: center;
+  text-wrap: balance;
+  font-size: 16px;
+  line-height: 20px;
+  color: var(--secondary-text-color);
+
+  &Link {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+}
+
 .datePicker {
-  margin-top: 2.5rem;
   display: flex;
   flex-direction: row;
   gap: 0.625rem;
@@ -73,19 +89,4 @@
 
 .monthMenu {
   width: calc(var(--parent-half-width) * 2);
-}
-
-.privacyInfo {
-  margin-top: 1.75rem;
-  text-align: center;
-  text-wrap: balance;
-  font-size: 16px;
-  line-height: 20px;
-  color: var(--secondary-text-color);
-
-  &Link {
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-  }
 }
