@@ -42,6 +42,10 @@ import {_tgico} from '../helpers/tgico';
 import Icon from './icon';
 import setCurrentTime from '../helpers/dom/setCurrentTime';
 import makeError from '../helpers/makeError';
+import {hideToast, toastNew} from './toast';
+import anchorCallback from '../helpers/dom/anchorCallback';
+import PopupPremium from './popups/premium';
+
 
 const UNMOUNT_PRELOADER = true;
 
@@ -207,6 +211,16 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
         } else {
           const message = audioEl.message;
           if(message.pFlags.is_outgoing) {
+            return;
+          }
+          if(!rootScope.getPremium()) {
+            toastNew({
+              langPackKey: 'AudioAndVideoTranscription.PremiumAlert',
+              langPackArguments: [anchorCallback(() => {
+                hideToast();
+                PopupPremium.show({feature: 'voice_to_text'});
+              })]
+            });
             return;
           }
 
