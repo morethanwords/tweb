@@ -33,7 +33,7 @@
 
   transform: translate(-50%, -11px) scale(var(--scale));
   transform-origin: center 50px;
-  transition: transform 0.2s;
+  transition: transform 0.2s, opacity 0.2s;
 
   z-index: 4;
 

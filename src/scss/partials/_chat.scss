@@ -467,6 +467,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
         .btn-send {
           transform: scale(0);
         }
+
+        .btn-send-stars-badge {
+          opacity: 0;
+        }
       }
 
       &.animating {
