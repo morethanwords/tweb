@@ -111,7 +111,7 @@ import {findUpAvatar} from '../../components/avatarNew';
 import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
-import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
+import {getPeerColorIndexByPeer, getPeerColorsByPeer, makeColorsGradient, setPeerColors} from './utils/peers/getPeerColorById';
 import {savedReactionTags} from '../../components/chat/reactions';
 import {setAppState, useAppState} from '../../stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
@@ -133,6 +133,7 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../../components/chat/p
 import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport';
 import ChatAudio from '../../components/chat/audio';
 import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
+import {getRgbColorFromTelegramColor, rgbIntToHex} from '../../helpers/color';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -2804,6 +2805,8 @@ export class AppImManager extends EventListenerBase<{
     // }
 
     const peer = apiManagerProxy.getPeer(peerId);
+    if(!color && peer?._ === 'user') color = peer.color
+
     let peerColorRgbValue: string, peerBorderBackgroundValue: string;
     if(messageHighlighting || colorAsOut) {
       const colors = getPeerColorsByPeer(peer);
@@ -2811,6 +2814,16 @@ export class AppImManager extends EventListenerBase<{
       const property = messageHighlighting ? 'message-empty' : 'message-out';
       peerColorRgbValue = `var(--${property}-primary-color-rgb)`;
       peerBorderBackgroundValue = `var(--${property}-peer-${Math.max(1, length)}-border-background)`;
+    } else if(color?._ === 'peerColorCollectible') {
+      let colors = color.colors
+      let accentColor = color.accent_color
+      if(themeController.isNight()) {
+        if(color.dark_accent_color) accentColor = color.dark_accent_color
+        if(color.dark_colors) colors = color.dark_colors
+      }
+
+      peerColorRgbValue = getRgbColorFromTelegramColor(accentColor).join(', ')
+      peerBorderBackgroundValue = makeColorsGradient(colors.map(it => rgbIntToHex(it)))
     } else {
       const colorIndex = (color as PeerColor.peerColor)?.color ?? getPeerColorIndexByPeer(peer);
       if(colorIndex === -1) {
