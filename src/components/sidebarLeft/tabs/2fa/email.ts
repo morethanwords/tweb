@@ -20,6 +20,11 @@ import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
 import SettingSection from '../../../settingSection';
 import PopupElement from '../../../popups';
 
+
+type ConstructorArgs = {
+  justSetPasssword?: boolean;
+};
+
 export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public inputField: InputField;
   public state: AccountPassword;
@@ -28,7 +33,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public hint: string;
   public isFirst = false;
 
-  public init() {
+  public init({justSetPasssword = false}: ConstructorArgs = {}) {
     this.container.classList.add('two-step-verification', 'two-step-verification-email');
     this.setTitle('RecoveryEmailTitle');
 
@@ -75,7 +80,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     const btnSkip = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'YourEmailSkip'});
 
     const goNext = () => {
-      this.slider.createTab(AppTwoStepVerificationSetTab).open();
+      this.slider.createTab(AppTwoStepVerificationSetTab).open({messageFor: justSetPasssword ? 'password' : 'email'});
     };
 
     const onContinueClick = () => {
@@ -104,7 +109,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
           tab.state = this.state;
           tab.email = email;
           tab.length = symbols;
-          tab.open();
+          tab.open({justSetPasssword});
         } else {
           console.log('password set error', err);
         }

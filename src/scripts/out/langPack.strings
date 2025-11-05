@@ -1142,8 +1142,10 @@
 "Disable" = "Disable";
 "TwoStepVerificationSetPassword" = "Set Password";
 "TwoStepVerificationPasswordSet" = "Password Set!";
+"TwoStepVerificationEmailSet" = "Recovery Email Set!";
 "TwoStepVerificationPasswordSetInfo" = "This password will be required when you log in on a new device in addition to the code you get in the SMS.";
 "TwoStepVerificationPasswordReturnSettings" = "Return to Settings";
+"TwoStepVerificationEmailSetInfo" = "You will be able to use this recovery email to reset your password and restore access to your account.";
 "RecoveryEmail" = "Recovery email";
 "RecoveryEmailTitle" = "Recovery Email";
 "ResendCode" = "Resend code";
