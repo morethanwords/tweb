@@ -2658,6 +2658,8 @@ const lang = {
   'StarGiftDate': 'Date',
   'StarGiftValue': 'Value',
   'StarGiftSendGift': 'Send a Gift',
+  'StarGiftSendGiftSelf': 'Buy a Gift',
+  'SendGiftSelfCaption': 'buy yourself a gift',
   'StarGiftAvailability': 'Availability',
   'StarGiftAvailabilityValue2': {
     'other_value': '%1$d of %2$d left'
@@ -2677,6 +2679,7 @@ const lang = {
   'StarGiftResaleBadgeProfile': 'on sale',
   'StarGiftPremiumBadge': 'premium',
   'SendStarGiftSubtitle': 'Give %s gifts that can be kept on the profile or converted to Stars.',
+  'SendStarGiftSubtitleSelf': 'Buy yourself a gifts to add to your profile or reserve for later.\n\nLimited-edition gifts upgraded to collectibles can be gifted to others.',
   'StarGiftCategoryAll': 'All Gifts',
   'StarGiftCategoryOwned': 'My Gifts',
   'StarGiftCategoryCollectibles': 'Collectibles',

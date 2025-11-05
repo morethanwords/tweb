@@ -79,6 +79,7 @@ function GiftOptionsPage(props: {
   profileStoreActions: StarGiftsProfileActions
 }) {
   const [isPinned, setIsPinned] = createSignal(false);
+  const isToSelf = props.peerId === rootScope.myId;
 
   type CategoryName = 'All' | 'Owned' | 'Collectibles';
   const [category, setCategory] = createSignal<CategoryName>('All');
@@ -86,7 +87,7 @@ function GiftOptionsPage(props: {
   let categoriesContainer!: HTMLDivElement;
   let container!: HTMLDivElement;
 
-  const giftPremiumSection = props.peer._ === 'user' && (
+  const giftPremiumSection = props.peer._ === 'user' && !isToSelf && (
     <>
       <div class={styles.mainTitle}>
         {i18n('GiftPremium')}
@@ -249,12 +250,12 @@ function GiftOptionsPage(props: {
         {giftPremiumSection}
 
         <div class={styles.mainTitle}>
-          {i18n('StarGiftSendGift')}
+          {isToSelf ? i18n('StarGiftSendGiftSelf') : i18n('StarGiftSendGift')}
         </div>
         <div class={styles.mainSubtitle}>
           <I18nTsx
-            key="SendStarGiftSubtitle"
-            args={<PeerTitleTsx peerId={props.peerId} onlyFirstName={props.peer._ === 'user'} />}
+            key={isToSelf ? 'SendStarGiftSubtitleSelf' : 'SendStarGiftSubtitle'}
+            args={isToSelf ? undefined : [<PeerTitleTsx peerId={props.peerId} onlyFirstName={props.peer._ === 'user'} />]}
           />
         </div>
 
@@ -269,7 +270,7 @@ function GiftOptionsPage(props: {
           <ChipTab value="All">
             {i18n('StarGiftCategoryAll')}
           </ChipTab>
-          <Show when={props.peerId !== rootScope.myId && props.profileStore.items.length > 0}>
+          <Show when={!isToSelf && props.profileStore.items.length > 0}>
             <ChipTab value="Owned">
               {i18n('StarGiftCategoryOwned')}
             </ChipTab>

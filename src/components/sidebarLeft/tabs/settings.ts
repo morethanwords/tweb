@@ -36,6 +36,8 @@ import useStars from '../../../stores/stars';
 import PopupStars from '../../popups/stars';
 import {renderPeerProfile} from '../../peerProfile';
 import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
+import PopupPickUser from '../../popups/pickUser';
+import PopupSendGift from '../../popups/sendGift';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -255,17 +257,21 @@ export default class AppSettingsTab extends SliderSuperTab {
     });
 
     const giftPremium = new Row({
-      titleLangKey: 'GiftPremiumGifting',
+      titleLangKey: 'Chat.Menu.SendGift',
       icon: 'gift',
       clickable: () => {
-        appImManager.initGifting();
+        PopupElement.createPopup(PopupPickUser, {
+          placeholder: 'Chat.Menu.SendGift',
+          selfPresence: 'SendGiftSelfCaption',
+          meAsSaved: false,
+          onSelect: (peerId) => {
+            PopupElement.createPopup(PopupSendGift, {peerId});
+          },
+          filterPeerTypeBy: ['isRegularUser', 'isBroadcast']
+        });
       },
       listenerSetter: this.listenerSetter
     });
-
-    const badge = i18n('New');
-    badge.classList.add('row-title-badge');
-    giftPremium.title.append(badge);
 
     const buttonsSection = new SettingSection();
     buttonsSection.content.append(buttonsDiv);
