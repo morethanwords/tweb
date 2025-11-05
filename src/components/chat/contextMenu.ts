@@ -81,7 +81,7 @@ import {getFullDate} from '../../helpers/date/getFullDate';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from './paidMessagesInterceptor';
 import {MySponsoredPeer} from '../../lib/appManagers/appChatsManager';
 import {PopupChecklist} from '../popups/checklist';
-import createSubmenuTrigger from '../createSubmenuTrigger';
+import createSubmenuTrigger, {CreateSubmenuArgs} from '../createSubmenuTrigger';
 import noop from '../../helpers/noop';
 import {isSensitive} from '../../helpers/restrictions';
 import {hasSensitiveSpoiler} from '../wrappers/mediaSpoiler';
@@ -998,7 +998,7 @@ export default class ChatContextMenu {
     }];
   }
 
-  private createChecklistItemSubmenu = async() => {
+  private createChecklistItemSubmenu = async({middleware}: CreateSubmenuArgs) => {
     const {item, completion} = this.checklistItem;
     const message = this.message as Message.message & {media: MessageMedia.messageMediaToDo};
     const canEdit = await this.managers.appMessagesManager.canEditMessage(message, 'text');
@@ -1058,10 +1058,14 @@ export default class ChatContextMenu {
           });
         }
       }
-    ]
+    ];
+
+    const filteredButtons = await filterAsync(buttons, (button) => button.verify?.() ?? true);
+
+    if(!middleware()) return;
 
     return ButtonMenu({
-      buttons: await filterAsync(buttons, (button) => button.verify?.() ?? true)
+      buttons: filteredButtons
     })
   }
 

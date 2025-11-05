@@ -30,7 +30,16 @@ export default function attachFloatingButtonMenu({
 
     const triggerBcr = element.getBoundingClientRect();
 
-    const menu = await createMenu();
+    let menu: HTMLElement;
+    try {
+      menu = await createMenu();
+    } catch{}
+
+    if(!menu) {
+      opened = false;
+      onCloseArg?.();
+      return;
+    }
 
     const onClose = async() => {
       opened = false;
