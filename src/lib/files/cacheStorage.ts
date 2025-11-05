@@ -71,6 +71,10 @@ export default class CacheStorageController implements FileStorage {
     CacheStorageController.STORAGES.push(this);
   }
 
+  get isEncryptable() {
+    return this.config?.encryptable;
+  }
+
   private static async encrypt(blob: Blob) {
     const key = await EncryptionKeyStore.get();
     const dataAsBuffer = await readBlobAsUint8Array(blob);
@@ -120,7 +124,12 @@ export default class CacheStorageController implements FileStorage {
   }
 
   public deleteAll() {
+    this.openDbPromise = undefined;
     return caches.delete(this.dbName);
+  }
+
+  public reset() {
+    this.openDbPromise = undefined;
   }
 
   public async has(entryName: string) {
@@ -280,15 +289,31 @@ export default class CacheStorageController implements FileStorage {
     .filter(([, {encryptable}]) => encryptable)
     .map(([name]) => name) as CacheStorageDbName[];
 
-    await Promise.all(encryptableStorageNames.map(async(storageName) => {
-      // Make sure we have all encryptable storages in current thread, can't get from .STORAGES
-      const storage = new CacheStorageController(storageName);
+    try {
+      await Promise.all(encryptableStorageNames.map(async(storageName) => {
+        // Make sure we have all encryptable storages in current thread, can't get from .STORAGES
+        const storage = new CacheStorageController(storageName);
 
-      // await storage.deleteAll();
-      await storage.timeoutOperation(async(cache) => {
-        const keys = await cache.keys();
-        await Promise.all(keys.map(request => cache.delete(request)));
-      });
-    }));
+        await storage.deleteAll();
+
+        // Don't redo to this, as if the cache is too large, it will throw
+        // await storage.timeoutOperation(async(cache) => {
+        //   const keys = await cache.keys();
+        //   await Promise.all(keys.map(request => cache.delete(request)));
+        // });
+      }));
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  public static getOpenEncryptableStorages() {
+    return this.STORAGES.filter(storage => storage.isEncryptable);
+  }
+
+  public static async resetOpenEncryptableCacheStorages() {
+    this.getOpenEncryptableStorages().forEach(async(storage) => {
+      storage.reset();
+    });
   }
 }
