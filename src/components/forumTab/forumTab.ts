@@ -1,7 +1,9 @@
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import handleTabSwipe from '../../helpers/dom/handleTabSwipe';
+import liteMode from '../../helpers/liteMode';
 import safeAssign from '../../helpers/object/safeAssign';
+import pause from '../../helpers/schedulers/pause';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {logger} from '../../lib/logger';
@@ -99,8 +101,9 @@ export class ForumTab extends SliderSuperTabEventable {
     }
 
     const searchButton = ButtonIcon('search');
-    attachClickEvent(searchButton, () => {
+    attachClickEvent(searchButton, async() => {
       appSidebarLeft.closeEverythingInside();
+      if(liteMode.isAvailable('animations')) await pause(400);
       appSidebarLeft.initSearch().openWithPeerId(this.peerId);
     });
 

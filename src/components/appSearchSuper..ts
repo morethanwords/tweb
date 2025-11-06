@@ -109,6 +109,8 @@ import {MyStarGift} from '../lib/appManagers/appGiftsManager';
 import wrapSticker from './wrappers/sticker';
 import {unwrap} from 'solid-js/store';
 import {AutonomousSavedDialogList} from './autonomousDialogList/savedDialogs';
+import SetTransition from './singleTransition';
+import liteMode from '../helpers/liteMode';
 
 // const testScroll = false;
 
@@ -1118,6 +1120,21 @@ export default class AppSearchSuper {
       sharedMediaDiv.append(searchGroup.container);
     } else if(inputFilter === 'inputMessagesFilterEmpty' && !isSaved) {
       searchGroup = this.searchGroups.messages;
+    }
+
+    if(liteMode.isAvailable('animations')) {
+      searchGroup.container.classList.add('is-hidden');
+
+      setTimeout(() => SetTransition({
+        element: searchGroup.container,
+        className: 'is-visible',
+        forwards: true,
+        duration: 250,
+        onTransitionEnd: () => {
+          searchGroup.container.classList.remove('is-hidden');
+          searchGroup.container.classList.remove('is-visible');
+        }
+      }), 100); // doesn't properly animate without it, even useRafs don't really help
     }
 
     const options: ProcessSearchSuperResult = {

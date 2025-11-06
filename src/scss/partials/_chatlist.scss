@@ -88,6 +88,24 @@
       margin-bottom: 0;
     }
 
+    &.is-hidden {
+      opacity: 0;
+    }
+
+    &.is-visible {
+      &:not(.backwards) {
+        opacity: 1;
+      }
+
+      &.animating {
+        transition: opacity var(--transition-standard-in);
+
+        &.backwards {
+          transition: opacity var(--transition-standard-out);
+        }
+      }
+    }
+
     &__name {
       color: var(--secondary-text-color);
       padding: 0 23px;
