@@ -1282,7 +1282,7 @@ export default class AppSearchSuper {
     }
 
     const query = this.searchContext.query;
-    if(query) {
+    if(query && !this.searchContext.peerId) {
       const addDialogSubtitle = async(dom: DialogDom, peerId: PeerId) => {
         const peer = await this.managers.appPeersManager.getPeer(peerId);
         if(peerId === rootScope.myId) {
