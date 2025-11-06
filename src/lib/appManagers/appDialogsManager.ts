@@ -861,7 +861,11 @@ export class AppDialogsManager {
         const element = dialogElement?.dom?.listEl;
         if(!element) return;
 
-        if(appImManager.isSamePeer(getOptionsForElement(element), options)) {
+        const optionsForElement = getOptionsForElement(element);
+        if(
+          appImManager.isSamePeer(optionsForElement, options) ||
+          apiManagerProxy.isBotforum(optionsForElement.peerId) && optionsForElement.peerId === options.peerId
+        ) {
           this.setDialogActive(element, true);
         }
       });
