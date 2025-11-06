@@ -962,7 +962,7 @@ export class AppDialogsManager {
     });
 
     const dom = (listEl as any).dialogDom as DialogDom;
-    if(dom.titleWrapOptions) {
+    if(dom?.titleWrapOptions) {
       dom.titleWrapOptions.textColor = this.getTextColor(active);
     }
 
