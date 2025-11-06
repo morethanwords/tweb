@@ -93,16 +93,10 @@
     }
 
     &.is-visible {
-      &:not(.backwards) {
-        opacity: 1;
-      }
+      opacity: 1;
 
       &.animating {
         transition: opacity var(--transition-standard-in);
-
-        &.backwards {
-          transition: opacity var(--transition-standard-out);
-        }
       }
     }
 
