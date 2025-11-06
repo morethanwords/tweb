@@ -34,6 +34,7 @@ export type PopupPremiumProps = {
   isPremiumActive?: boolean,
   gift: MessageAction.messageActionGiftPremium | PaymentsCheckedGiftCode,
   peerId: PeerId,
+  emojiStatusId?: DocId,
   isOut: boolean,
   type: 'premium' | 'gift',
   stack: ChatSetPeerOptions['stack'],
@@ -54,6 +55,7 @@ export default class PopupPremium extends PopupElement {
   private feature: PremiumPromoFeatureType;
   private gift: PopupPremiumProps['gift'];
   private peerId: PeerId;
+  private emojiStatusId?: DocId;
   private isOut: boolean;
   private stack: PopupPremiumProps['stack'];
   private transition: ReturnType<typeof TransitionSlider>;
@@ -67,6 +69,7 @@ export default class PopupPremium extends PopupElement {
     peerId?: PopupPremium['peerId'],
     isOut?: PopupPremium['isOut'],
     stack?: PopupPremium['stack']
+    emojiStatusId?: PopupPremium['emojiStatusId']
   } = {}) {
     super('popup-premium', {
       overlayClosable: true,
@@ -159,6 +162,7 @@ export default class PopupPremium extends PopupElement {
       isPremiumActive,
       gift: this.gift,
       peerId: this.peerId || this.stack?.peerId,
+      emojiStatusId: this.emojiStatusId,
       isOut: this.isOut || this.stack?.isOut,
       type: this.gift ? 'gift' : 'premium',
       stack: this.stack,
@@ -180,7 +184,7 @@ export default class PopupPremium extends PopupElement {
 
     this.createTransitionSlider();
     this.createActionButton();
-    this.createPromoSlideTab();
+    await this.createPromoSlideTab();
     this.createFeatureSlideTab();
 
     const tabs = [this.promoSlideTab.tab, this.featureSlideTab.tab].filter(Boolean);
@@ -258,7 +262,7 @@ export default class PopupPremium extends PopupElement {
     this.actionButtonContainer.append(this.actionButton);
   }
 
-  private createPromoSlideTab() {
+  private async createPromoSlideTab() {
     this.promoSlideTab = new PromoSlideTab({
       container: this.tabsContainer,
       header: this.header,
@@ -273,6 +277,7 @@ export default class PopupPremium extends PopupElement {
       this.updateActionLayout();
     };
     this.promoSlideTab.close = this.close;
+    await this.promoSlideTab.initPromise;
   }
 
   private createFeatureSlideTab() {

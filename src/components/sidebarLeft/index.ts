@@ -106,6 +106,7 @@ import EmptySearchPlaceholder from '../emptySearchPlaceholder';
 import useHasFoldersSidebar, {useIsSidebarCollapsed} from '../../stores/foldersSidebar';
 import isObject from '../../helpers/object/isObject';
 import {useAppSettings} from '../../stores/appSettings';
+import {openEmojiStatusPicker} from './emojiStatusPicker';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -235,96 +236,13 @@ export class AppSidebarLeft extends SidebarSlider {
     const lockButton = createLockButton();
 
     attachClickEvent(statusBtnIcon, () => {
-      const emojiTab = new EmojiTab({
-        noRegularEmoji: true,
-        managers: rootScope.managers,
-        mainSets: () => {
-          const defaultStatuses = this.managers.appStickersManager.getLocalStickerSet('inputStickerSetEmojiDefaultStatuses')
-          .then((stickerSet) => {
-            return stickerSet.documents.map((doc) => doc.id);
-          });
-
-          const convertEmojiStatuses = (emojiStatuses: AccountEmojiStatuses) => {
-            return (emojiStatuses as AccountEmojiStatuses.accountEmojiStatuses)
-            .statuses
-            .map((status) => (status as EmojiStatus.emojiStatus).document_id)
-            .filter(Boolean);
-          };
-
-          return [
-            Promise.all([
-              defaultStatuses,
-              this.managers.appUsersManager.getRecentEmojiStatuses().then(convertEmojiStatuses),
-              this.managers.appUsersManager.getDefaultEmojiStatuses().then(convertEmojiStatuses),
-              this.managers.appEmojiManager.getRecentEmojis('custom')
-            ]).then((arrays) => {
-              return filterUnique(flatten(arrays));
-            })
-          ];
-        },
-        onClick: async(emoji) => {
-          emoticonsDropdown.hideAndDestroy();
-
-          const noStatus = getIconContent('star') === emoji.emoji;
-          let emojiStatus: EmojiStatus;
-          if(noStatus) {
-            emojiStatus = {
-              _: 'emojiStatusEmpty'
-            };
-          } else {
-            emojiStatus = {
-              _: 'emojiStatus',
-              document_id: emoji.docId
-            };
-
-            fireOnNew = true;
-          }
-
-          this.managers.appUsersManager.updateEmojiStatus(emojiStatus);
-        },
-        canHaveEmojiTimer: true
-      });
-
-      const emoticonsDropdown = new EmoticonsDropdown({
-        tabsToRender: [emojiTab],
-        customParentElement: document.body,
-        getOpenPosition: () => {
-          const rect = statusBtnIcon.getBoundingClientRect();
-          const cloned = cloneDOMRect(rect);
-          cloned.left = rect.left + rect.width / 2;
-          cloned.top = rect.top + rect.height / 2;
-          return cloned;
+      openEmojiStatusPicker({
+        managers: this.managers,
+        anchorElement: statusBtnIcon,
+        onChosen: () => {
+          fireOnNew = true
         }
-      });
-
-      const textColor = 'primary-color';
-
-      emoticonsDropdown.setTextColor(textColor);
-
-      emoticonsDropdown.addEventListener('closed', () => {
-        emoticonsDropdown.hideAndDestroy();
-      });
-
-      emoticonsDropdown.onButtonClick();
-
-      emojiTab.initPromise.then(() => {
-        const emojiElement = Icon('star', 'super-emoji-premium-icon');
-        emojiElement.style.color = `var(--${textColor})`;
-
-        const category = emojiTab.getCustomCategory();
-
-        emojiTab.addEmojiToCategory({
-          category,
-          element: emojiElement,
-          batch: false,
-          prepend: true
-          // active: !iconEmojiId
-        });
-
-        // if(iconEmojiId) {
-        //   emojiTab.setActive({docId: iconEmojiId, emoji: ''});
-        // }
-      });
+      })
     });
 
     const wrapStatus = async(middleware: Middleware) => {

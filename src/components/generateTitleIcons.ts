@@ -4,12 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {attachClickEvent} from '../helpers/dom/clickEvent';
 import {Chat, User} from '../layer';
 import {i18n} from '../lib/langPack';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import rootScope from '../lib/rootScope';
 import generateFakeIcon from './generateFakeIcon';
 import generatePremiumIcon from './generatePremiumIcon';
 import generateVerifiedIcon from './generateVerifiedIcon';
+import PopupPremium from './popups/premium';
+import {openEmojiStatusPicker} from './sidebarLeft/emojiStatusPicker';
 import {wrapAdaptiveCustomEmoji} from './wrappers/customEmojiSimple';
 import wrapEmojiStatus from './wrappers/emojiStatus';
 
@@ -21,7 +25,8 @@ export default async function generateTitleIcons({
   noPremiumIcon,
   noDirectMessagesBadge,
   peer,
-  wrapOptions
+  wrapOptions,
+  clickableEmojiStatus = false
 }: {
   peerId: PeerId,
   wrapOptions: WrapSomethingOptions,
@@ -30,6 +35,7 @@ export default async function generateTitleIcons({
   noFakeIcon?: boolean,
   noPremiumIcon?: boolean,
   noDirectMessagesBadge?: boolean,
+  clickableEmojiStatus?: boolean,
   peer?: Chat | User
 }): Promise<{ elements: HTMLElement[]; botVerification?: HTMLElement; }> {
   peer ??= apiManagerProxy.getPeer(peerId);
@@ -52,10 +58,40 @@ export default async function generateTitleIcons({
         wrapOptions
       });
 
+      if(clickableEmojiStatus) {
+        container.classList.add('clickable');
+        attachClickEvent(container, (e) => {
+          e.stopPropagation()
+          if(peerId === rootScope.myId) {
+            openEmojiStatusPicker({
+              managers: rootScope.managers,
+              anchorElement: container
+            })
+          } else {
+            PopupPremium.show({
+              peerId,
+              emojiStatusId: emojiStatus.document_id
+            })
+          }
+        });
+      }
+
       if(!middleware()) return {elements};
       elements.push(container);
     } else if((peer as User.user).pFlags.premium && !isPremiumFeaturesHidden) {
-      elements.push(generatePremiumIcon());
+      const premiumIcon = generatePremiumIcon();
+
+      if(clickableEmojiStatus) {
+        premiumIcon.classList.add('clickable');
+        attachClickEvent(premiumIcon, (e) => {
+          e.stopPropagation()
+          PopupPremium.show({
+            peerId
+          })
+        });
+      }
+
+      elements.push(premiumIcon);
     }
   }
 

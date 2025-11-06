@@ -24,6 +24,11 @@ import {PeerTitleOptions} from '../peerTitle';
 import {InviteLink} from '../sidebarLeft/tabs/sharedFolder';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import PopupGiftLink from '../popups/giftLink';
+import lastItem from '../../helpers/array/lastItem';
+import maybe2x from '../../helpers/maybe2x';
+import wrapSticker from '../wrappers/sticker';
+import PopupStickers from '../popups/stickers';
+import PopupElement from '../popups';
 
 type PromoSlideTabOptions = PopupPremiumProps & {
   container: HTMLElement,
@@ -141,8 +146,10 @@ export default class PromoSlideTab {
   public selectPeriod: (option: PremiumSubscriptionOption) => void;
   public close: (callback?: () => void) => void;
 
+  public initPromise: Promise<void>;
+
   constructor(public options: PromoSlideTabOptions) {
-    this.initPremiumTab(options);
+    this.initPromise = this.initPremiumTab(options);
   }
 
   private async initPremiumTab(options: PromoSlideTabOptions) {
@@ -151,12 +158,12 @@ export default class PromoSlideTab {
     tab.classList.add('premium-promo-tab', 'not-bottom', 'scrollable', 'scrollable-y');
     tab.addEventListener('scroll', this.onTabScroll);
 
-    options.body.append(...[
+    options.body.append(...(await Promise.all([
       this.createImageContainer(),
-      await this.createHeading(),
+      this.createHeading(),
       options.type === 'premium' && !options.isPremiumActive && this.createOptionsForm(),
       this.createFeaturesContainer()
-    ].filter(Boolean));
+    ])).filter(Boolean));
     options.container.classList.add('fixed-size');
   }
 
@@ -232,6 +239,31 @@ export default class PromoSlideTab {
           description.append(text, inviteLink.container);
         }
       }
+    } else if(this.options.peerId && this.options.emojiStatusId) {
+      headingTextTitle.classList.add('smaller-text');
+      const [peerTitle, doc] = await Promise.all([
+        wrapPeerTitle({peerId: this.options.peerId}),
+        rootScope.managers.appEmojiManager.getCustomEmojiDocument(this.options.emojiStatusId)
+      ]);
+      if(doc.stickerSetInput) {
+        const stickerset = await rootScope.managers.appStickersManager.getStickerSet(doc.stickerSetInput);
+        title = i18n('TelegramPremiumPeerTitleEmojiStatus', [
+          peerTitle,
+          anchorCallback(() => {
+            PopupElement.createPopup(PopupStickers, doc.stickerSetInput, true).show()
+          }),
+          stickerset.set.title
+        ])
+      } else {
+        title = i18n('TelegramPremiumPeerTitleEmojiStatusNoPack', [peerTitle])
+      }
+      description = i18n('TelegramPremiumPeerSubtitleEmojiStatus');
+    } else if(this.options.peerId) {
+      headingTextTitle.classList.add('smaller-text');
+      title = i18n('TelegramPremiumPeerTitle', [
+        await wrapPeerTitle({peerId: this.options.peerId})
+      ])
+      description = i18n('TelegramPremiumPeerSubtitle');
     } else {
       title = this.options.isPremiumActive ? i18n('TelegramPremiumSubscribedTitle') : i18n('Premium.Boarding.Title');
       description = this.options.isPremiumActive ? i18n('TelegramPremiumSubscribedSubtitle') : i18n('Premium.Boarding.Info');
@@ -253,14 +285,30 @@ export default class PromoSlideTab {
     return featuresContainer;
   }
 
-  private createImageContainer() {
+  private async createImageContainer() {
     const premiumImageContainer = document.createElement('div');
     premiumImageContainer.classList.add('popup-premium-header-image-container');
-    const premiumImage = document.createElement('img');
-    premiumImage.src = `assets/img/premium-star${window.devicePixelRatio > 1 ? '@2x' : ''}.png`;
-    premiumImage.classList.add('popup-premium-header-image');
-    premiumImageContainer.append(premiumImage);
-    return premiumImageContainer;
+    if(this.options.emojiStatusId) {
+      premiumImageContainer.classList.add('is-emoji-status')
+      const doc = await rootScope.managers.appEmojiManager.getCustomEmojiDocument(this.options.emojiStatusId);
+      await wrapSticker({
+        doc,
+        div: premiumImageContainer,
+        play: true,
+        loop: true,
+        group: 'EMOJI-STATUS',
+        middleware: this.options.middleware,
+        width: 100,
+        height: 100
+      });
+      return premiumImageContainer;
+    } else {
+      const premiumImage = document.createElement('img');
+      premiumImage.src = `${maybe2x('assets/img/premium-star')}.png`;
+      premiumImage.classList.add('popup-premium-header-image');
+      premiumImageContainer.append(premiumImage);
+      return premiumImageContainer;
+    }
   }
 
   private createStatusText() {
@@ -311,13 +359,14 @@ export default class PromoSlideTab {
       const media = row.createMedia('small');
       media.classList.add('premium-promo-tab-icon');
       media.append(Icon(f.icon));
-      media.style.backgroundColor = PREMIUM_FEATURES_COLORS[idx];
+      const color = PREMIUM_FEATURES_COLORS[idx] ?? lastItem(PREMIUM_FEATURES_COLORS);
+      media.style.backgroundColor = color;
 
       if(f.new) {
         const badge = i18n('New');
         badge.classList.add('row-title-badge');
         row.title.append(badge);
-        badge.style.backgroundColor = PREMIUM_FEATURES_COLORS[idx];
+        badge.style.backgroundColor = color;
       }
 
       return row.container;

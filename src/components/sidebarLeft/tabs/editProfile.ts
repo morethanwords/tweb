@@ -124,8 +124,8 @@ export default class AppEditProfileTab extends SliderSuperTab {
             showBirthdayPopup({
               onSave: async(date) => {
                 if(await saveMyBirthday(date)) {
-                  addBirthdayRow.container.remove()
-                  return true
+                  addBirthdayRow.container.remove();
+                  return true;
                 }
                 return false;
               }
