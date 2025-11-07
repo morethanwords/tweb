@@ -1111,7 +1111,7 @@ export default class AppSearchSuper {
       searchGroup = this.searchGroups.messages;
     }
 
-    if(liteMode.isAvailable('animations')) {
+    if(liteMode.isAvailable('animations') && searchGroup?.container) {
       searchGroup.container.classList.add('is-hidden');
 
       setTimeout(() => SetTransition({
