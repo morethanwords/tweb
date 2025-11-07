@@ -9,7 +9,7 @@ import {i18n_} from '../../../lib/langPack';
 import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
 import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
 import rootScope from '../../../lib/rootScope';
-import AppSearchSuper from '../../appSearchSuper.';
+import AppSearchSuper from '../../appSearchSuper';
 import Button from '../../button';
 import ButtonMenuToggle from '../../buttonMenuToggle';
 import SettingSection from '../../settingSection';

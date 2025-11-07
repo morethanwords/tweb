@@ -5,7 +5,7 @@
  */
 
 import type {MediaSearchContext} from '../components/appMediaPlaybackController';
-import type {SearchSuperContext} from '../components/appSearchSuper.';
+import type {SearchSuperContext} from '../components/appSearchSuper';
 import type {Message} from '../layer';
 import type {MessagesStorageKey, MyMessage} from '../lib/appManagers/appMessagesManager';
 import {AppManagers} from '../lib/appManagers/managers';

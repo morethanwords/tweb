@@ -63,7 +63,7 @@ import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import CacheStorageController from '../files/cacheStorage';
 import type {PushSingleManager} from './pushSingleManager';
 import getDeepProperty from '../../helpers/object/getDeepProperty';
-import {_deleteHistoryStorage, _useHistoryStorage} from '../../stores/historyStorages';
+import {_changeHistoryStorageKey, _deleteHistoryStorage, _useHistoryStorage} from '../../stores/historyStorages';
 import SlicedArray, {SliceEnd} from '../../helpers/slicedArray';
 import {createHistoryStorageSearchSlicedArray} from '../appManagers/utils/messages/createHistoryStorage';
 
@@ -269,6 +269,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
             readOutboxMaxId: undefined,
             triedToReadMaxId: undefined
           });
+        } else if(property === 'key') {
+          _changeHistoryStorageKey(historyStorageKey as any, payload.value);
+          setHistoryStorage('key', payload.value);
         } else if(property === 'slices') {
           // @ts-ignore
           (historyStorage.searchHistory || historyStorage.history).slices[+smth1][smth2](...payload.value);
