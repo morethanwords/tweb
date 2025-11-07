@@ -26,7 +26,7 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import cancelSelection from '../../helpers/dom/cancelSelection';
 import getSelectedText from '../../helpers/dom/getSelectedText';
 import replaceContent from '../../helpers/dom/replaceContent';
-import AppSearchSuper from '../appSearchSuper.';
+import AppSearchSuper from '../appSearchSuper';
 import isInDOM from '../../helpers/dom/isInDOM';
 import {randomLong} from '../../helpers/random';
 import {attachClickEvent, AttachClickOptions} from '../../helpers/dom/clickEvent';
