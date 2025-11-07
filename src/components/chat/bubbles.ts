@@ -28,7 +28,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement, {setQuizHint} from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, BotApp, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, StarGift, PeerSettings, LangPackString} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -199,12 +199,16 @@ import {PremiumGiftBubble} from './bubbles/premiumGift';
 import {UnknownUserBubble} from './bubbles/unknownUser';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {ChecklistBubble} from './bubbles/checklist';
-import {getRestrictionReason, isSensitive} from '../../helpers/restrictions';
+import {getRestrictionReason} from '../../helpers/restrictions';
 import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
 import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
 import addSuggestedPostServiceMessage, {checkIfNotMePosted} from './bubbleParts/suggestPostServiceMessage';
 import addSuggestedPostReplyMarkup, {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
-import type {SeparatorIntersectorRoot} from './bubbleParts/monoforumSeparator';
+import type {SeparatorIntersectorRoot} from './bubbleParts/chatThreadSeparator';
+import BotforumNewTopic from './bubbleParts/botforumNewTopic';
+import type {wrapContinuouslyTypingMessage} from './bubbleParts/continuouslyTypingMessage';
+import addContinueLastTopicReplyMarkup from './bubbleParts/continueLastTopicReplyMarkup';
+import {wrapTopicIcon} from '../wrappers/messageActionTextNewUnsafe';
 import {getTransition} from '../../config/transitions';
 
 
@@ -261,6 +265,8 @@ const BIG_EMOJI_SIZES: {[size: number]: number} = {
 };
 const BIG_EMOJI_SIZES_LENGTH = Object.keys(BIG_EMOJI_SIZES).length;
 
+const TOPIC_ICON_SIZE = makeMediaSize(64, 64);
+
 const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_channel: 'Chat.Message.ViewChannel',
   telegram_megagroup: 'OpenGroup',
@@ -289,6 +295,19 @@ type Bubble = {
 };
 
 type MyHistoryResult = HistoryResult | {history: number[]};
+
+type EmptyPlaceholderType =
+  | 'group'
+  | 'saved'
+  | 'noMessages'
+  | 'noScheduledMessages'
+  | 'greeting'
+  | 'restricted'
+  | 'premiumRequired'
+  | 'paidMessages'
+  | 'directChannelMessages'
+  | 'topic'
+;
 
 function getMainMidForGrouped(mids: number[]) {
   return Math.min(...mids);
@@ -380,6 +399,8 @@ export default class ChatBubbles {
     groupsLength: number,
     timeout?: number
   }} = {};
+
+  private currentlyTypingMessages: {[mid: number | string]: ReturnType<typeof wrapContinuouslyTypingMessage>} = {};
 
   private scrolledDown = true;
   private isScrollingTimeout = 0;
@@ -486,6 +507,8 @@ export default class ChatBubbles {
 
   private peerSettings: PeerSettings;
 
+  private placeholderTopicIconContainer?: HTMLElement;
+
   constructor(
     private chat: Chat,
     private managers: AppManagers
@@ -517,7 +540,7 @@ export default class ChatBubbles {
     // * events
 
     // will call when sent for update pos
-    this.listenerSetter.add(rootScope)('history_update', async({storageKey, sequential, message}) => {
+    this.listenerSetter.add(rootScope)('history_update', async({storageKey, sequential, tempId, message}) => {
       if(this.chat.messagesStorageKey !== storageKey || this.chat.type === ChatType.Scheduled) {
         return;
       }
@@ -525,6 +548,8 @@ export default class ChatBubbles {
       const {mid} = message;
       const log = false ? this.log.bindPrefix('history_update-' + mid) : undefined;
       log && log('start');
+
+      if(this.finalizeTypingMessage(message, tempId)) return;
 
       const fullMid = makeFullMid(message);
       const bubble = this.getBubble(fullMid);
@@ -1391,7 +1416,15 @@ export default class ChatBubbles {
         this.updateGradient = true;
       }
 
-      if(this.chat.threadId && getMessageThreadId(message, this.chat.isForum) !== this.chat.threadId) {
+      if(this.chat.isBotforum && !this.chat.threadId && message._ === 'message' && message.pFlags.out && getMessageThreadId(message, {isBotforum: true})) {
+        this.chat.setPeer({
+          peerId: this.peerId,
+          threadId: getMessageThreadId(message, {isBotforum: true})
+        });
+        return;
+      }
+
+      if(this.chat.threadId && getMessageThreadId(message, {isForum: this.chat.isForum}) !== this.chat.threadId) {
         return;
       }
 
@@ -3704,7 +3737,7 @@ export default class ChatBubbles {
       return;
     }
 
-    if(this.chat.threadId && getMessageThreadId(message, this.chat.isForum) !== this.chat.threadId) {
+    if(this.chat.threadId && getMessageThreadId(message, {isForum: this.chat.isForum}) !== this.chat.threadId) {
       return;
     }
 
@@ -4855,11 +4888,24 @@ export default class ChatBubbles {
       hasMessages: this.chat.hasMessages()
     });
 
-    const {isBroadcast, isLikeGroup, peerId} = this.chat;
+    const middleware = this.getMiddleware();
+
+    const {isBroadcast, isLikeGroup, peerId, isTemporaryThread} = this.chat;
 
     return () => {
       this.chatInner.classList.toggle('has-rights', canWrite);
       this.container.classList.toggle('is-chat-input-hidden', !canWrite && !this.chat.appConfig.freeze_since_date);
+
+      const tmpThreadCls = 'is-temporary-thread';
+      if(!isTemporaryThread && this.container.classList.contains(tmpThreadCls)) {
+        setTimeout(() => {
+          if(!middleware()) return;
+          this.container.classList.remove(tmpThreadCls);
+        }, 200); // leave some time for the message to appear
+      }
+      if(isTemporaryThread) {
+        this.container.classList.add(tmpThreadCls);
+      }
 
       [this.chatInner, this.remover].forEach((element) => {
         element.classList.toggle('is-chat', isLikeGroup);
@@ -5171,6 +5217,14 @@ export default class ChatBubbles {
       return;
     }
 
+    if(this.chat.isBotforum && this.chat.threadId && message?._ === 'messageService' && message?.action?._ === 'messageActionTopicEdit' && this.placeholderTopicIconContainer) (async() => {
+      const topic = await this.managers.dialogsStorage.getForumTopic(this.peerId, this.chat.threadId);
+      if(!realMiddleware()) return;
+      this.placeholderTopicIconContainer.replaceChildren(
+        await wrapTopicIcon({topic, middleware: this.getMiddleware(), customEmojiSize: TOPIC_ICON_SIZE})
+      );
+    })();
+
     const middlewareHelper = getMiddleware();
     const middleware = middlewareHelper.get();
     const realMiddleware = this.getMiddleware();
@@ -5427,6 +5481,10 @@ export default class ChatBubbles {
     const regularAsService = !!isStoryMention;
     let returnService: boolean;
 
+    if(this.chat.isBotforum && (message as Message.messageService).action?._ === 'messageActionTopicCreate') {
+      return;
+    }
+
     if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
       const action = (message as Message.messageService).action;
       if(action) {
@@ -5445,6 +5503,7 @@ export default class ChatBubbles {
       bubble.className = 'bubble service';
 
       bubbleContainer.replaceChildren();
+
       const s = document.createElement('div');
       s.classList.add('service-msg');
       if(action) {
@@ -5861,6 +5920,7 @@ export default class ChatBubbles {
       returnService = true;
     }
 
+
     const setUnreadObserver = isInUnread && this.observer ? this.setUnreadObserver.bind(this, 'history', bubble, maxBubbleMid) : undefined;
 
     const isBroadcast = this.chat.isBroadcast;
@@ -6048,6 +6108,31 @@ export default class ChatBubbles {
       setInnerHTML(messageDiv, richText);
     }
 
+    const usedId = message.mid;
+    if(isMessage && message.pFlags.currentlyTyping || this.currentlyTypingMessages[usedId]) {
+      const {wrapContinuouslyTypingMessage} = await import('./bubbleParts/continuouslyTypingMessage');
+
+      const previous = this.currentlyTypingMessages[usedId];
+      previous?.clean();
+
+      const current = this.currentlyTypingMessages[usedId] = wrapContinuouslyTypingMessage({
+        scrollable: this.scrollable.container,
+        bubble,
+        root: richText,
+        prevPosition: previous?.currentPosition,
+        isEnd: previous?.nextIsEnd
+      });
+
+      middleware.onDestroy(() => {
+        current?.clean();
+        setTimeout(() => {
+          if(current === this.currentlyTypingMessages[usedId]) {
+            this.currentlyTypingMessages[usedId] = undefined;
+          }
+        }, 1000); // leave some time in case the message is swapped
+      });
+    }
+
     const isOut = this.chat.isOutMessage(message);
     const haveRTLChar = isRTL(messageMessage, true);
 
@@ -6086,7 +6171,7 @@ export default class ChatBubbles {
     if(isMessage && (this.chat.isAllMessagesForum || (this.chat.hashtagType === 'my' && isOut))) {
       const result = await wrapTopicNameButton({
         peerId: message.peerId,
-        threadId: getMessageThreadId(message, this.chat.isForum),
+        threadId: getMessageThreadId(message, {isForum: this.chat.isForum}),
         lastMsgId: message.mid,
         wrapOptions: {
           middleware
@@ -6210,6 +6295,10 @@ export default class ChatBubbles {
     if(!isOut && isMessage) {
       tmpPromise = addSuggestedPostReplyMarkup({message, bubble, contentWrapper, chat: this.chat});
       if(tmpPromise) await tmpPromise;
+    }
+
+    if(isMessage) {
+      addContinueLastTopicReplyMarkup({message, bubble, contentWrapper, chat: this.chat});
     }
 
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;
@@ -7511,10 +7600,11 @@ export default class ChatBubbles {
         (
           replyTo?._ === 'messageReplyStoryHeader' || (
             message.reply_to_mid &&
-            message.reply_to_mid !== this.chat.threadId
+            message.reply_to_mid !== this.chat.threadId &&
+            message.reply_to_mid !== replyTo?.reply_to_top_id
           ) || replyTo?.reply_from
         ) &&
-        (!this.chat.isAllMessagesForum || (replyTo as MessageReplyHeader.messageReplyHeader).reply_to_top_id)
+        (!this.chat.isAllMessagesForum && !this.chat.isBotforum || (replyTo as MessageReplyHeader.messageReplyHeader).reply_to_top_id)
       ) {
         replyContainer = await MessageRender.setReply({
           chat: this.chat,
@@ -8509,7 +8599,7 @@ export default class ChatBubbles {
   }
 
   private async renderEmptyPlaceholder(
-    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted' | 'premiumRequired' | 'paidMessages' | 'directChannelMessages',
+    type: EmptyPlaceholderType,
     bubble: HTMLElement,
     message: any,
     elements: (Node | string)[]
@@ -8517,7 +8607,7 @@ export default class ChatBubbles {
     const BASE_CLASS = 'empty-bubble-placeholder';
     bubble.classList.add(BASE_CLASS, BASE_CLASS + '-' + type);
 
-    let title: HTMLElement;
+    let title: HTMLElement, topic: ForumTopic.forumTopic;
     if(type === 'group') title = i18n('GroupEmptyTitle1');
     else if(type === 'saved') title = i18n('ChatYourSelfTitle');
     else if(type === 'noMessages' || type === 'greeting') title = i18n('NoMessages');
@@ -8719,6 +8809,26 @@ export default class ChatBubbles {
       }
 
       elements.push(...[stickerDiv, subtitle, button].filter(Boolean));
+    } else if(type === 'topic' && (topic = await this.managers.dialogsStorage.getForumTopic(this.peerId, this.chat.threadId))) {
+      const stickerDiv = document.createElement('div');
+      stickerDiv.classList.add(BASE_CLASS + '-sticker');
+
+      stickerDiv.append(
+        await wrapTopicIcon({topic, middleware: this.getMiddleware(), customEmojiSize: TOPIC_ICON_SIZE})
+      );
+
+      this.placeholderTopicIconContainer = stickerDiv;
+      this.getMiddleware().onDestroy(() => {
+        this.placeholderTopicIconContainer = undefined;
+      });
+
+      const title = i18n('TopicEmptyTitle');
+      title.classList.add('center', BASE_CLASS + '-topic-title');
+
+      const subtitle = i18n('TopicEmptyDescription');
+      subtitle.classList.add('center', BASE_CLASS + '-topic-subtitle');
+
+      elements.push(stickerDiv, title, subtitle);
     }
 
     if(listElements) {
@@ -8793,9 +8903,11 @@ export default class ChatBubbles {
       };
 
       if(!isSponsored) {
-        bubble.classList.add('bubble-first');
+        if(!this.shouldShowBotforumNewTopic()) bubble.classList.add('bubble-first');
         bubble.classList.remove('can-have-tail', 'is-in');
       }
+
+      if(this.shouldShowBotforumNewTopic()) bubble.classList.add('bubble-last', 'botforum-new-topic-bubble');
 
       const elements: (Node | string)[] = [];
       const isBot = this.chat.isBot;
@@ -8812,6 +8924,13 @@ export default class ChatBubbles {
         appendTo = this.chatInner;
         method = 'append';
         animate = false;
+      } else if(this.shouldShowBotforumNewTopic()) {
+        animate = false;
+        appendTo = this.chatInner;
+        method = 'append';
+        elementsMethod = 'replaceChildren';
+
+        elements.push(new BotforumNewTopic);
       } else if(isBot && message._ === 'message') {
         if(isMessageForVerificationBot(message)) {
           const langPackString = I18n.strings.get('VerificationCodesBotDescription');
@@ -8850,6 +8969,8 @@ export default class ChatBubbles {
         } else {
           renderPromise = this.renderEmptyPlaceholder('greeting', bubble, message, elements);
         }
+      } else if((this.chat.isBotforum || this.chat.isForum) && this.chat.threadId) {
+        renderPromise = this.renderEmptyPlaceholder('topic', bubble, message, elements);
       } else {
         renderPromise = this.renderEmptyPlaceholder('noMessages', bubble, message, elements);
       }
@@ -9078,6 +9199,10 @@ export default class ChatBubbles {
         })
       }
 
+      if(side === 'bottom' && value && this.shouldShowBotforumNewTopic()) {
+        return this.renderBotforumPlaceholder();
+      }
+
       if(side === 'top' && value && this.chat.isBot) {
         return this.renderBotPlaceholder();
       }
@@ -9232,6 +9357,23 @@ export default class ChatBubbles {
     }
 
     return processPromise;
+  }
+
+  private async renderBotforumPlaceholder() {
+    const middleware = this.getMiddleware();
+
+    const message = await this.generateLocalFirstMessage(false, (message) => {
+      message.message = '-'; // will get replaced anyway
+      message.date = Date.now() * 1000;
+    });
+
+    if(!middleware()) {
+      return;
+    }
+
+    return {
+      renderPromise: this.processLocalMessageRender(message, false)
+    }
   }
 
   private async renderUnknownUserPlaceholder() {
@@ -9629,6 +9771,31 @@ export default class ChatBubbles {
       this.cleanupPlaceholders()
       this.renderUnknownUserPlaceholder();
     }
+  }
+
+  private shouldShowBotforumNewTopic() {
+    return this.chat.isBotforum && !this.chat.threadId;
+  }
+
+  private finalizeTypingMessage(message: MyMessage, tempId: number) {
+    const currentlyTyping = this.currentlyTypingMessages[tempId];
+    const bubble = currentlyTyping?.bubble;
+
+    if(!currentlyTyping || !bubble) return false;
+
+    currentlyTyping?.clean();
+    delete this.currentlyTypingMessages[tempId];
+
+    this.currentlyTypingMessages[message.mid] = currentlyTyping;
+    currentlyTyping.nextIsEnd = true;
+
+    this.safeRenderMessage({
+      message,
+      bubble,
+      reverse: true
+    });
+
+    return true;
   }
 }
 

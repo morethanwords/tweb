@@ -1,13 +1,15 @@
-import {Accessor, batch, createMemo, createRoot, createSignal, onCleanup} from 'solid-js';
+import {Accessor, batch, createEffect, createMemo, createRoot, createSignal, onCleanup, Ref} from 'solid-js';
 import {createStore, SetStoreFunction} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
-import {simulateClickEvent} from '../../../helpers/dom/clickEvent';
+import clamp from '../../../helpers/number/clamp';
 import {attachHotClassName} from '../../../helpers/solid/classname';
+import type CustomEmojiElement from '../../../lib/customEmoji/element';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import {IconTsx} from '../../iconTsx';
-import {PeerTitleTsx} from '../../peerTitleTsx';
 import type ChatBubbles from '../bubbles';
-import styles from './monoforumSeparator.module.scss';
+import Chat from '../chat';
+import styles from './chatThreadSeparator.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -132,16 +134,21 @@ function useIntersector({bubbles, element, index}: UseIntersectorArgs) {
 
 type Props = {
   bubbles: ChatBubbles;
+  chat: Chat;
   peerId: PeerId;
+  threadId?: number;
+  lastMsgId?: number;
   index: number;
 };
 
-const MonoforumSeparator = defineSolidElement({
-  name: 'monoforum-separator',
+const ChatThreadSeparator = defineSolidElement({
+  name: 'chat-thread-separator',
   component: (props: PassedProps<Props>) => {
+    const {appImManager, PeerTitleTsx} = useHotReloadGuard();
     attachHotClassName(props.element, styles.Container);
 
-    let peerTitleEl: HTMLElement;
+    let clickTriggerEl: HTMLElement;
+    let scaledEl: HTMLElement;
 
     const [serviceMsg, setServiceMsg] = createSignal<HTMLElement>();
 
@@ -152,7 +159,48 @@ const MonoforumSeparator = defineSolidElement({
     });
 
     const onClick = () => {
-      if(peerTitleEl) simulateClickEvent(peerTitleEl);
+      const isMonoforum = props.chat.isMonoforum;
+      appImManager.setPeer({
+        peerId: isMonoforum ? props.chat.peerId : props.peerId,
+        monoforumThreadId: isMonoforum ? props.peerId : undefined,
+        threadId: props.threadId,
+        lastMsgId: props.lastMsgId
+      });
+    };
+
+    const scale = createMemo(() => clamp((state().nextIntersectionRatio ?? 1), 0, 1));
+
+    const isScaling = createMemo(() => scale() < 1);
+
+    createEffect(() => {
+      if(!isScaling() || !scaledEl) return;
+
+      const emojiElements = Array.from(scaledEl.querySelectorAll<CustomEmojiElement>('custom-emoji-element'))
+      .filter(emojiElement => !emojiElement?.paused);
+
+      emojiElements.forEach((emojiElement) => {
+        emojiElement.pause();
+      });
+
+      onCleanup(() => {
+        emojiElements.forEach((emojiElement) => {
+          emojiElement.play();
+        });
+      });
+    });
+
+    const InnerPeerTitle = (thisProps: {ref?: Ref<HTMLElement>}) => {
+      return (
+        <PeerTitleTsx
+          ref={thisProps.ref}
+          class={styles.PeerTitle}
+          peerId={props.peerId}
+          threadId={props.threadId}
+          withIcons={!!props.threadId}
+          limitSymbols={LIMIT_SYMBOLS}
+          onlyFirstName={true}
+        />
+      );
     };
 
     return (
@@ -165,7 +213,7 @@ const MonoforumSeparator = defineSolidElement({
           }}
           onClick={onClick}
         >
-          <PeerTitleTsx ref={peerTitleEl} peerId={props.peerId} limitSymbols={LIMIT_SYMBOLS} onlyFirstName />
+          <InnerPeerTitle ref={clickTriggerEl} />
           <IconTsx icon='arrowhead' class={styles.ArrowIcon} />
         </div>
 
@@ -178,11 +226,11 @@ const MonoforumSeparator = defineSolidElement({
             }}
             style={{
               '--top': `${SEPARATOR_HEIGHT + 2 * PADDING}px`,
-              '--scale': (state().nextIntersectionRatio ?? 1)
+              '--scale': scale()
             }}
             onClick={onClick}
           >
-            <PeerTitleTsx peerId={props.peerId} limitSymbols={LIMIT_SYMBOLS} onlyFirstName />
+            <InnerPeerTitle ref={scaledEl} />
             <IconTsx icon='arrowhead' class={styles.ArrowIcon} />
           </div>
         </Portal>
@@ -198,4 +246,4 @@ const MonoforumSeparator = defineSolidElement({
   }
 });
 
-export default MonoforumSeparator;
+export default ChatThreadSeparator;

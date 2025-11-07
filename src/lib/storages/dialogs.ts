@@ -43,6 +43,7 @@ import getPeerId from '../appManagers/utils/peers/getPeerId';
 import {isDialog, isSavedDialog, isForumTopic} from '../appManagers/utils/dialogs/isDialog';
 import getDialogKey from '../appManagers/utils/dialogs/getDialogKey';
 import getDialogThreadId from '../appManagers/utils/dialogs/getDialogThreadId';
+import {isTempId} from '../appManagers/utils/messages/isTempId';
 
 export enum FilterType {
   Folder,
@@ -94,6 +95,7 @@ export default class DialogsStorage extends AppManager {
 
   private forumTopics: Map<PeerId, {
     topics: Map<number, ForumTopic>,
+    temporaryTopics: Map<number, ForumTopic>,
     deletedTopics: Set<number>,
     getTopicPromises: Map<number, CancellablePromise<ForumTopic>>,
     index: SearchIndex<ForumTopic['id']>,
@@ -417,7 +419,7 @@ export default class DialogsStorage extends AppManager {
   }
 
   public getFilterType(filterId: number) {
-    if(filterId && filterId < 0) return FilterType.Forum;
+    if(filterId && filterId < 0 || this.appPeersManager.isBotforum(filterId)) return FilterType.Forum;
     else if(filterId === this.appPeersManager.peerId) return FilterType.Saved;
     else return FilterType.Folder;
   }
@@ -575,7 +577,7 @@ export default class DialogsStorage extends AppManager {
 
   public getAnyDialog(peerId: PeerId, topicOrSavedId?: number) {
     if(topicOrSavedId) {
-      return peerId.isUser() ? this.savedDialogs[topicOrSavedId] : this.getForumTopic(peerId, topicOrSavedId);
+      return peerId.isUser() && !this.appPeersManager.isBotforum(peerId) ? this.savedDialogs[topicOrSavedId] : this.getForumTopic(peerId, topicOrSavedId);
     }
 
     return this.dialogs[peerId];
@@ -630,6 +632,8 @@ export default class DialogsStorage extends AppManager {
 
   public processDialogForFilters(dialog: AnyDialog, noIndex?: boolean) {
     // let perf = performance.now();
+    if(dialog?._ === 'forumTopic' && isTempId(dialog.id)) return;
+
     if(!isDialog(dialog)) {
       this.processDialogForFilter(dialog, undefined, noIndex);
       return;
@@ -1537,6 +1541,7 @@ export default class DialogsStorage extends AppManager {
     } = options;
 
     const isForum = this.isFilterIdForForum(filterId);
+    const isBotforum = this.appPeersManager.isBotforum(filterId);
     const isVirtualFilter = this.isVirtualFilter(filterId);
     if(!isVirtualFilter && !REAL_FOLDERS.has(filterId)) {
       const promises: Promise<any>[] = [];
@@ -1629,7 +1634,8 @@ export default class DialogsStorage extends AppManager {
       limit,
       folderId: realFolderId,
       query,
-      offsetTopicId: isForum && query ? (curDialogStorage[curDialogStorage.length - 1] as ForumTopic)?.id : undefined
+      offsetTopicId: isForum && query ? (curDialogStorage[curDialogStorage.length - 1] as ForumTopic)?.id : undefined,
+      offsetBotforumTopic: isBotforum ? (curDialogStorage[curDialogStorage.length - 1] as ForumTopic) : undefined
     }).then((result) => {
       if(query) {
         return this.getDialogs({
@@ -1697,6 +1703,7 @@ export default class DialogsStorage extends AppManager {
     }
 
     cache.topics.clear();
+    cache.temporaryTopics.clear();
 
     // for permanent delete
     // this.forumTopics.delete(peerId);
@@ -1707,6 +1714,7 @@ export default class DialogsStorage extends AppManager {
     if(!forumTopics) {
       forumTopics = {
         topics: new Map(),
+        temporaryTopics: new Map(),
         deletedTopics: new Set(),
         getTopicPromises: new Map(),
         index: this.createSearchIndex()
@@ -1719,7 +1727,7 @@ export default class DialogsStorage extends AppManager {
   }
 
   public getForumTopicById(peerId: PeerId, topicId?: number): Promise<ForumTopic> {
-    if(!this.appPeersManager.isForum(peerId)) {
+    if(!this.appPeersManager.isForum(peerId) && !this.appPeersManager.isBotforum(peerId)) {
       return Promise.reject(makeError('CHANNEL_FORUM_MISSING'));
     }
 
@@ -1760,15 +1768,30 @@ export default class DialogsStorage extends AppManager {
         return;
       }
 
-      return this.apiManager.invokeApi('messages.getForumTopicsByID', {
-        peer: this.appPeersManager.getInputPeerById(peerId),
-        topics: ids
-      }).then((messagesForumTopics) => {
+      const topicsFolder = this.getFolder(peerId);
+
+      return Promise.all([
+        this.apiManager.invokeApi('messages.getForumTopicsByID', {
+          peer: this.appPeersManager.getInputPeerById(peerId),
+          topics: ids
+        }),
+        topicsFolder.count === null && this.apiManager.invokeApi('messages.getForumTopics', {
+          peer: this.appPeersManager.getInputPeerById(peerId),
+          offset_date: 0,
+          offset_id: 0,
+          limit: 1,
+          offset_topic: 0
+        })
+      ]).then(([messagesForumTopics, allMessagesForumTopicsResult]) => {
         if(this.getForumTopicsCache(peerId) !== cache) {
           return;
         }
 
         this.applyDialogs(messagesForumTopics, peerId);
+
+        if(typeof allMessagesForumTopicsResult?.count === 'number') {
+          topicsFolder.count = allMessagesForumTopicsResult.count;
+        }
 
         messagesForumTopics.topics.forEach((forumTopic) => {
           if(isForumTopic(forumTopic as ForumTopic)) {
@@ -1791,9 +1814,18 @@ export default class DialogsStorage extends AppManager {
     return promise || cache.getTopicsPromise;
   }
 
+  public setTemporaryForumTopic(topic: ForumTopic) {
+    const cache = this.getForumTopicsCache(topic.peerId);
+    cache.temporaryTopics.set(topic.id, topic);
+
+    return () => {
+      cache.temporaryTopics.delete(topic.id);
+    };
+  }
+
   public getForumTopic(peerId: PeerId, topicId: number) {
     const forumTopics = this.forumTopics.get(peerId);
-    return forumTopics?.topics?.get(topicId);
+    return forumTopics?.topics?.get(topicId) || forumTopics?.temporaryTopics?.get(topicId);
   }
 
   public getForumTopicOrReload(peerId: PeerId, topicId: number) {
@@ -1808,7 +1840,7 @@ export default class DialogsStorage extends AppManager {
 
   public processTopics<T extends MaybePromise<{topics: MTForumTopic[], pts?: number}>>(peerId: PeerId, result: T) {
     return callbackify(result, (result) => {
-      if('pts' in result) {
+      if('pts' in result && peerId.isAnyChat()) {
         this.apiUpdatesManager.addChannelState(peerId.toChatId(), result.pts);
       }
 

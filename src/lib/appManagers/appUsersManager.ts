@@ -756,6 +756,10 @@ export class AppUsersManager extends AppManager {
     return this.users[id] && !!this.users[id].pFlags.bot;
   }
 
+  public isBotforum(id: UserId) {
+    return this.users[id] && !!this.users[id].pFlags.bot_forum_view;
+  }
+
   public isAttachMenuBot(id: UserId) {
     return this.isBot(id) && !!this.users[id].pFlags.bot_attach_menu;
   }

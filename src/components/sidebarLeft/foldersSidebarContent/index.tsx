@@ -187,7 +187,7 @@ export function FoldersSidebarContent(props: {
     const _menuTarget = menuTarget();
     if(!_menuTarget) return;
 
-    appSidebarLeft.createToolsMenu(_menuTarget, true);
+    appSidebarLeft.createToolsMenu(_menuTarget);
     _menuTarget.classList.add('sidebar-tools-button', 'is-visible');
     _menuTarget.append(props.notificationsElement);
   });

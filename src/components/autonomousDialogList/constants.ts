@@ -1,0 +1,1 @@
+export const BADGE_TRANSITION_TIME = 250;

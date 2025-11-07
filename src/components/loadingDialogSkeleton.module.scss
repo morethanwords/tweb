@@ -54,11 +54,11 @@
         rgba(0, 0, 0, 1) 75%,
         rgba(0, 0, 0, 0) 100%
       );
-      
+
       mask-size: 200% 100%;
-      
+
       animation: shimmer 2.25s infinite linear;
-      
+
       mask-position: 50% 0;
     }
   }

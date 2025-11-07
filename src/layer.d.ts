@@ -991,6 +991,7 @@ export namespace Message {
       is_scheduled?: true,
       sponsored?: true,
       local?: true,
+      currentlyTyping?: true,
     }>,
     flags2?: number,
     id: number,

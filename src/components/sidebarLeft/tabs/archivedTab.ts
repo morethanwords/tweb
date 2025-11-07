@@ -4,11 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager, {type AutonomousDialogList} from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import {SliderSuperTab} from '../../slider';
 import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '../../../lib/mtproto/mtproto_config';
 import StoriesList from '../../stories/list';
 import {render} from 'solid-js/web';
+import {AutonomousDialogList} from '../../autonomousDialogList/dialogs';
 
 export default class AppArchivedTab extends SliderSuperTab {
   private static filterId: REAL_FOLDER_ID = FOLDER_ID_ARCHIVE;
@@ -80,7 +81,6 @@ export default class AppArchivedTab extends SliderSuperTab {
     delete appDialogsManager.xds[AppArchivedTab.filterId];
     this.scrollable.onAdditionalScroll = undefined;
     appDialogsManager.setFilterIdAndChangeTab(this.wasFilterId);
-    appDialogsManager.closeMonoforumDrawers();
   }
 
   onCloseAfterTimeout() {

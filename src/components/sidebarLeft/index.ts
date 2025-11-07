@@ -111,6 +111,7 @@ export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
 type SearchInitResult = {
   open: (focus?: boolean) => void;
+  openWithPeerId: (peerId: PeerId) => void;
   close: () => void;
 }
 
@@ -129,7 +130,7 @@ export class AppSidebarLeft extends SidebarSlider {
   private newBtnMenu: HTMLElement;
 
   private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
-  private searchSuper: AppSearchSuper;
+  public searchSuper: AppSearchSuper;
   private searchInitResult: SearchInitResult;
   private isSearchActive = false;
   private searchTriggerWhenCollapsed: HTMLElement;
@@ -518,17 +519,14 @@ export class AppSidebarLeft extends SidebarSlider {
   }
 
   public hasSomethingOpenInside() {
-    return this.hasTabsInNavigation() || this.isSearchActive || !!appDialogsManager.forumTab || appDialogsManager.hasMonoforumOpen();
+    return this.hasTabsInNavigation() || this.isSearchActive || !!appDialogsManager.forumTab;
   }
 
   public closeEverythingInside() {
     this.closeSearch();
     appDialogsManager.toggleForumTab();
 
-    const hadOpenedDrawer = appDialogsManager.closeMonoforumDrawers();
-    const hadTabs = this.closeAllTabs();
-
-    return hadTabs || hadOpenedDrawer;
+    return this.closeAllTabs();
   }
 
   private isAnimatingCollapse = false;
@@ -539,7 +537,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.sidebarEl.classList.toggle('has-open-tabs', isFloating);
     this.sidebarEl.classList.toggle('has-real-tabs', this.hasTabsInNavigation());
-    this.sidebarEl.classList.toggle('has-forum-open', !!appDialogsManager.forumTab || appDialogsManager.hasMonoforumOpen());
+    this.sidebarEl.classList.toggle('has-forum-open', !!appDialogsManager.forumTab);
 
     const sidebarPlaceholder = document.querySelector('.sidebar-left-placeholder');
 
@@ -584,7 +582,7 @@ export class AppSidebarLeft extends SidebarSlider {
           );
         }
       });
-      if(!appDialogsManager.hasMonoforumOpen() && !appDialogsManager.forumTab)
+      if(!appDialogsManager.forumTab)
         appDialogsManager.xd?.toggleAvatarUnreadBadges(false, undefined);
     } else {
       const [hasFoldersSidebar] = useHasFoldersSidebar();
@@ -701,11 +699,9 @@ export class AppSidebarLeft extends SidebarSlider {
     })
   }
 
-  public createToolsMenu(mountTo?: HTMLElement, closeBefore?: boolean) {
+  public createToolsMenu(mountTo?: HTMLElement) {
     const closeTabsBefore = async(clb: () => void) => {
-      if(closeBefore) {
-        this.closeEverythingInside() && await pause(200);
-      }
+      this.closeEverythingInside() && await pause(200);
 
       clb();
     }
@@ -1160,7 +1156,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
   }
 
-  private initSearch() {
+  public initSearch() {
     if(this.searchInitResult) return this.searchInitResult;
 
     const searchContainer = this.sidebarEl.querySelector('#search-container') as HTMLDivElement;
@@ -1543,6 +1539,26 @@ export class AppSidebarLeft extends SidebarSlider {
       open: (focus = true) => {
         onFocus();
         focus && this.inputSearch.input.focus();
+      },
+      openWithPeerId: (peerId: PeerId) => {
+        onFocus();
+        this.inputSearch.input.focus();
+
+        selectedPeerId = peerId;
+
+        this.inputSearch.onChange(this.inputSearch.value = '');
+
+        const element = renderEntity(peerId);
+        this.inputSearch.container.append(element);
+
+        element.addEventListener('click', () => {
+          unselectEntity(element);
+        });
+
+        pickedElements.push(element);
+        fastRaf(() => {
+          updatePicked();
+        });
       },
       close: () => {
         close();

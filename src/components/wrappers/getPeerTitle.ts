@@ -53,7 +53,10 @@ export default async function getPeerTitle(options: GetPeerTitleOptions): Promis
   if(peerId.isUser()) {
     const user = useManagers ? await managers.appUsersManager.getUser(peerId.toUserId()) : apiManagerProxy.getUser(peerId.toUserId());
     if(user) {
-      if(username) {
+      if(user.pFlags?.bot_forum_view && threadId) {
+        const topic = await managers.dialogsStorage.getForumTopic(peerId, threadId);
+        title = topic?.title || '';
+      } else if(username) {
         const username = getPeerActiveUsernames(user)[0] || '';
         if(username) title = '@' + username;
       } else {

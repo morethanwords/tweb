@@ -54,6 +54,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   } = args;
 
   const [items, setItems] = createSignal<DeferredSortedVirtualListItem<T>[]>([]);
+  const [pinnedItems, setPinnedItems] = createSignal<DeferredSortedVirtualListItem<T>[]>([]);
   const [totalCount, setTotalCount] = createSignal(0);
   const [wasAtLeastOnceFetched, setWasAtLeastOnceFetched] = createSignal(false);
   const [revealIdx, setRevealIdx] = createSignal(Infinity);
@@ -63,14 +64,14 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   // const scrollableSize = useElementSize(() => scrollable);
 
   const sortedItems = createMemo(() => items().slice().sort((a, b) => sortWith(a.index, b.index)));
-  const itemsMap = createMemo(() => new Map(items().map(item => [item.id, item.value])));
+  const itemsMap = createMemo(() => new Map([...pinnedItems(), ...items()].map(item => [item.id, item.value])));
 
   const fullItems = createMemo(() => {
     // if(!wasAtLeastOnceFetched()) return new Array((scrollableSize.height + itemSize - 1) / itemSize | 0).fill(null);
 
-    const realItems = sortedItems();
+    const realItems = [...pinnedItems(), ...sortedItems()];
 
-    return new Array(Math.max(totalCount(), realItems.length))
+    return new Array(Math.max(totalCount() + pinnedItems().length, realItems.length))
     .fill(null)
     .map((_, idx) => realItems[idx] || null);
   });
@@ -99,8 +100,19 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     ]);
   };
 
+  const addPinnedItems = (newItems: DeferredSortedVirtualListItem<T>[]) => {
+    if(!newItems.length) return;
+    const ids = new Set(newItems.map(item => item.id));
+    setPinnedItems(prev => [
+      ...prev.filter(item => !ids.has(item.id)),
+      ...newItems
+    ]);
+  };
+
   const removeItem = (id: any) => {
+    const hadItem = itemsMap().has(id);
     setItems(prev => prev.filter(item => id !== item.id));
+    return hadItem;
   };
 
   const updateItem = (id: any, index: number) => {
@@ -122,6 +134,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const clear = () => {
     batch(() => {
       setItems([]);
+      setPinnedItems([]);
       setTotalCount(0);
       setWasAtLeastOnceFetched(false);
       setRevealIdx(Infinity);
@@ -188,7 +201,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   function checkShrink(visibleItems: Set<number>, itemsLength: number) {
     const maxVisible = Math.max(0, ...Array.from(visibleItems.values()));
 
-    const toKeep = maxVisible + EXTRA_ITEMS_TO_KEEP;
+    const toKeep = maxVisible - pinnedItems().length + EXTRA_ITEMS_TO_KEEP;
 
     if(itemsLength > toKeep) {
       batch(() => {
@@ -234,7 +247,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
       createEffect(() => {
         if(canShow()) return;
 
-        requestItemForIdx(props.idx, items().length);
+        requestItemForIdx(props.idx - pinnedItems().length, items().length);
       });
 
       createComputed(() => {
@@ -286,6 +299,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     sortedItems,
     itemsLength,
     addItems,
+    addPinnedItems,
     updateItem,
     removeItem,
     setWasAtLeastOnceFetched,

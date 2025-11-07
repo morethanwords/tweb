@@ -101,6 +101,9 @@ export default class SortedDialogList {
 
 
   public async getIndexForKey(key: any) {
+    if(key === this.monoforumParentPeerId) return 0;
+    if(key === this.virtualFilterId) return 0;
+
     if(this.monoforumParentPeerId) {
       const dialog = await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, key);
       return getDialogIndex(dialog);
@@ -129,10 +132,11 @@ export default class SortedDialogList {
       peerId: this.virtualFilterId ?? key,
       loadPromises,
       isBatch: true,
-      threadId: this.virtualFilterId ? key : undefined,
+      threadId: this.virtualFilterId && key !== this.virtualFilterId ? key : undefined,
       isMainList: this.indexKey === 'index_0',
       controlled: true,
-      monoforumParentPeerId: this.monoforumParentPeerId,
+      monoforumParentPeerId: key !== this.monoforumParentPeerId ? this.monoforumParentPeerId : undefined,
+      asAllChats: key === this.monoforumParentPeerId ? 'monoforum' : key === this.virtualFilterId ? 'topics' : undefined,
       meAsSaved: !this.monoforumParentPeerId,
       wrapOptions: undefined
     };
@@ -164,9 +168,14 @@ export default class SortedDialogList {
     // this.virtualList.setTotalCount(prev => prev + 1);
   }
 
+  public async addPinned(key: any) {
+    const item = await this.createItemForKey(key);
+    this.virtualList.addPinnedItems([item]);
+  }
+
   public delete(key: any) {
     batch(() => {
-      this.virtualList.removeItem(key);
+      this.virtualList.removeItem(key) &&
       this.virtualList.setTotalCount(prev => Math.max(0, prev - 1));
     });
   }

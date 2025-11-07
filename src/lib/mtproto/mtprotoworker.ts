@@ -1010,6 +1010,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return !!(peer as Chat.channel)?.pFlags?.forum;
   }
 
+  public isBotforum(peerId: PeerId) {
+    const peer = this.getPeer(peerId);
+    return !!(peer as User.user)?.pFlags?.bot_forum_view;
+  }
+
   public isAvatarCached(peerId: PeerId, size?: PeerPhotoSize) {
     const saved = this.mirrors.avatars[peerId];
     if(size === undefined) {

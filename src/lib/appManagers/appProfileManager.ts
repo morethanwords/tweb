@@ -857,7 +857,7 @@ export class AppProfileManager extends AppManager {
 
   public canGiftPremium(userId: UserId) {
     const user = this.appUsersManager.getUser(userId);
-    if(user?.pFlags?.premium) {
+    if(user?.pFlags?.premium || user?.pFlags?.bot_forum_view) {
       return false;
     }
 
@@ -1002,6 +1002,11 @@ export class AppProfileManager extends AppManager {
     const typings = this.typingsInPeer[key] ??= [];
     const action = update.action;
     let typing = typings.find((t) => t.userId === fromId);
+
+    if(update._ === 'updateUserTyping' && action._ === 'sendMessageTextDraftAction') {
+      this.appMessagesManager.handleTypingBotforumUpdate(update);
+      return;
+    }
 
     if((action as SendMessageAction.sendMessageEmojiInteraction).msg_id) {
       (action as SendMessageAction.sendMessageEmojiInteraction).msg_id = this.appMessagesIdsManager.generateMessageId((action as SendMessageAction.sendMessageEmojiInteraction).msg_id, (update as Update.updateChannelUserTyping).channel_id);

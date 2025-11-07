@@ -156,7 +156,8 @@ export type ChatSetPeerOptions = {
   text?: string,
   entities?: MessageEntity[],
   call?: string | number,
-  isDeleting?: boolean
+  isDeleting?: boolean,
+  fromTemporaryThread?: boolean
 } & Partial<ChatSearchKeys>;
 
 export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
@@ -583,7 +584,7 @@ export class AppImManager extends EventListenerBase<{
       const {accountNumber} = options;
       const managers = createProxiedManagersForAccount(accountNumber);
       const isForum = await managers.appPeersManager.isForum(options.message.peerId);
-      const threadId = getMessageThreadId(options.message, isForum);
+      const threadId = getMessageThreadId(options.message, {isForum});
 
       if(
         this.chat.peerId === options.message.peerId &&
@@ -1432,6 +1433,7 @@ export class AppImManager extends EventListenerBase<{
 
     const channelId = isChannel ? (options.peer as MTChat.channel).id : undefined;
     const isForum = !!(options.peer as MTChat.channel).pFlags.forum;
+    const isBotforum = !!(options.peer?._ === 'user' && options.peer?.pFlags?.bot_forum_view);
 
     await Promise.all(keys.map(async(key) => {
       options[key] &&= await this.managers.appMessagesIdsManager.generateMessageId(options[key], channelId);
@@ -1452,11 +1454,15 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
+    if(!commentId && !threadId && !lastMsgId && isBotforum) {
+      appDialogsManager.toggleForumTabByPeerId(peerId, true);
+    }
+
     // handle t.me/username/thread or t.me/username/messageId
     if(isForum && lastMsgId && !threadId) {
       const message = await this.managers.appMessagesManager.reloadMessages(peerId, lastMsgId);
       if(message) {
-        threadId = options.threadId = getMessageThreadId(message, isForum);
+        threadId = options.threadId = getMessageThreadId(message, {isForum});
       } else {
         threadId = options.threadId = lastMsgId;
         lastMsgId = options.lastMsgId = undefined;
@@ -1520,7 +1526,7 @@ export class AppImManager extends EventListenerBase<{
     threadId: number,
     stack?: ChatSetPeerOptions['stack']
   }) {
-    if(await this.managers.appChatsManager.isForum(options.peerId.toChatId())) {
+    if(await this.managers.appChatsManager.isForum(options.peerId.toChatId()) || await this.managers.appPeersManager.isBotforum(options.peerId)) {
       await this.managers.dialogsStorage.getForumTopicOrReload(options.peerId, options.threadId);
       return this.setInnerPeer(options);
     }
@@ -2370,7 +2376,7 @@ export class AppImManager extends EventListenerBase<{
       if(options.threadId) {
         if(options.peerId === rootScope.myId) {
           options.type = ChatType.Saved;
-        } else if(!apiManagerProxy.isForum(options.peerId)) {
+        } else if(!apiManagerProxy.isForum(options.peerId) && !apiManagerProxy.isBotforum(options.peerId)) {
           options.type = ChatType.Discussion;
         }
       }

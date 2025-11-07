@@ -64,7 +64,12 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
     if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
 
     const r = async() => {
-      await onOpen?.(e, target);
+      try {
+        await onOpen?.(e, target);
+      } catch{
+        onClose?.();
+        return;
+      }
 
       const initResult = await init();
       if(!initResult) {

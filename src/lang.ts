@@ -1143,6 +1143,8 @@ const lang = {
   'OtherSessions': 'Active sessions',
   'AreYouSureDeleteSingleMessage': 'Are you sure you want to delete this message?',
   'AreYouSureDeleteFewMessages': 'Are you sure you want to delete these messages?',
+  'AreYouSureDeleteSingleMessageBot': 'Do you want to delete this message?\nThis will delete it just for you.',
+  'AreYouSureDeleteFewMessagesBot': 'Do you want to delete these messages?\nThis will delete them just for you.',
   'AreYouSureDeleteSingleMessageMega': 'Are you sure you want to delete this message for everyone?',
   'AreYouSureDeleteFewMessagesMega': 'Are you sure you want to delete these messages for everyone?',
   'AreYouSureDeleteAndExitName': 'Are you sure you want to delete and leave the group **%1$s**?',
@@ -3661,6 +3663,7 @@ const lang = {
   'ChecklistAllowOthersDone': 'Allow Others to Mark as Done',
   'ChecklistAllowOthersAdd': 'Allow Others to Add Tasks',
   'AllChats': 'All Chats',
+  'AllMessages': 'All Messages',
   'UsersOnly': 'Private Chats',
   'GroupsOnly': 'Group Chats',
   'ChannelsOnly': 'Channels',
@@ -3751,6 +3754,17 @@ const lang = {
   'SuggestedPosts.Price': 'Price',
   'SuggestedPosts.Time': 'Time',
   'SuggestedPosts.TONAmount': '%d TON',
+
+  'CreateNewTopicDescription': 'Type any message to\ncreate a new topic.',
+  'TopicsCount': {
+    'one_value': '%d topic',
+    'other_value': '%d topics'
+  },
+  'WaitForTopicCreation': 'Wait for the topic to be created',
+  'ContinueLastTopic': 'Continue last topic',
+  'TopicEmptyTitle': 'Almost done!',
+  'TopicEmptyDescription': 'Send a message to start the topic.',
+
   'StarsRating.Level': 'Level %d',
   'StarsRating.Title': 'Rating',
   'StarsRating.Subtitle': 'This rating reflects **%s**’s activity on Telegram. What affects it:',

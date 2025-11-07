@@ -1,0 +1,31 @@
+.hidden {
+  display: none;
+}
+
+$duration: 0.65s;
+$delay: calc($duration / 5);
+
+.Dot {
+  opacity: 0;
+  animation: dot-animation $duration infinite;
+
+  &2 {
+    animation-delay: $delay;
+  }
+
+  &3 {
+    animation-delay: calc($delay * 2);
+  }
+}
+
+@keyframes dot-animation {
+  0%, 15% {
+    opacity: 0;
+  }
+  20%, 55% {
+    opacity: 1;
+  }
+  60%, 100% {
+    opacity: 0;
+  }
+}

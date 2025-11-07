@@ -69,12 +69,13 @@ import {getCurrentNewMediaPopup} from '../popups/newMedia';
 import PriceChangedInterceptor from './priceChangedInterceptor';
 import {isMessageForVerificationBot, isVerificationBot} from './utils';
 import {isSensitive} from '../../helpers/restrictions';
-import appDialogsManager from '../../lib/appManagers/appDialogsManager';
+import {isTempId} from '../../lib/appManagers/utils/messages/isTempId';
 import {usePeer} from '../../stores/peers';
 import {useAppSettings} from '../../stores/appSettings';
 import useHistoryStorage from '../../stores/historyStorages';
 import useAutoDownloadSettings, {ChatAutoDownloadSettings} from '../../hooks/useAutoDownloadSettings';
 import usePeerTranslation from '../../hooks/usePeerTranslation';
+
 
 export enum ChatType {
   Chat = 'chat',
@@ -157,7 +158,9 @@ export default class Chat extends EventListenerBase<{
   public isUserBlocked: boolean;
   public isPremiumRequired: boolean;
   public isMonoforum: boolean;
+  public isBotforum: boolean;
   public canManageDirectMessages: boolean;
+  public isTemporaryThread: boolean;
 
   public starsAmount: number | undefined;
 
@@ -679,7 +682,6 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
       if(dialog.peerId === this.peerId && (isDialog(dialog) || this.threadId === getDialogKey(dialog))) {
         this.appImManager.setPeer({isDeleting: true});
-        if(appDialogsManager.hasMonoforumOpenFor(dialog.peerId)) appDialogsManager.closeMonoforumDrawers();
       }
     });
 
@@ -709,6 +711,19 @@ export default class Chat extends EventListenerBase<{
         }
       }
     });
+
+    this.bubbles.listenerSetter.add(rootScope)('botforum_pending_topic_created', ({peerId, tempId, newId}) => {
+      if(peerId !== this.peerId || (this.threadId && this.threadId !== tempId)) return;
+
+      !newId && this.input.clearInput();
+
+      this.setPeer({
+        peerId,
+        threadId: newId || tempId,
+        fromTemporaryThread: !!newId
+      });
+    });
+
 
     const freezeObservers = (freeze: boolean) => {
       const cb = () => {
@@ -892,8 +907,9 @@ export default class Chat extends EventListenerBase<{
     }
 
     const isForum = apiManagerProxy.isForum(peerId);
+    const isBotforum = apiManagerProxy.isBotforum(peerId);
 
-    if(threadId && !isForum) {
+    if(threadId && !isForum && !isBotforum) {
       options.type = options.peerId === rootScope.myId ? ChatType.Saved : ChatType.Discussion;
     }
 
@@ -954,6 +970,7 @@ export default class Chat extends EventListenerBase<{
     this.isUserBlocked = isUserBlocked;
     this.isPremiumRequired = isPremiumRequired;
     this.isMonoforum = !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
+    this.isBotforum = isBotforum;
     this.canManageDirectMessages = canManageDirectMessages;
     this.starsAmount = starsAmount;
 
@@ -1018,6 +1035,7 @@ export default class Chat extends EventListenerBase<{
       this.peerId = peerId || NULL_PEER_ID;
       this.threadId = threadId;
       this.monoforumThreadId = monoforumThreadId;
+      this.isTemporaryThread = isTempId(threadId);
       this.middlewareHelper.clean();
 
       createRoot((dispose) => {
@@ -1077,6 +1095,18 @@ export default class Chat extends EventListenerBase<{
       getHistoryStorageKey(forKey),
       getHistoryStorageKey({...forKey, threadId: undefined})
     );
+
+    if(options.fromTemporaryThread) {
+      return Promise.resolve({
+        cached: true,
+        promise: this.finishPeerChange({
+          peerId,
+          middleware: () => {
+            return this.peerId === peerId && this.threadId === threadId;
+          }
+        })
+      });
+    }
 
     const bubblesSetPeerPromise = this.bubbles.setPeer({...options, samePeer, sameSearch});
     const setPeerPromise = this.setPeerPromise = bubblesSetPeerPromise.then((result) => {
@@ -1235,11 +1265,17 @@ export default class Chat extends EventListenerBase<{
   }
 
   // * used to define need of avatars
-  public _isLikeGroup(peerId: PeerId) {
-    return peerId === rootScope.myId ||
-      peerId === REPLIES_PEER_ID ||
-      (this.type === ChatType.Search && this.hashtagType !== 'this') ||
-      this.managers.appPeersManager.isLikeGroup(peerId);
+  public async _isLikeGroup(peerId: PeerId) {
+    if(peerId === rootScope.myId) return true;
+    if(peerId === REPLIES_PEER_ID) return true;
+    if(this.type === ChatType.Search && this.hashtagType !== 'this') return true;
+
+    const {isBotforum, isLikeGroup} = await namedPromises({
+      isLikeGroup: this.managers.appPeersManager.isLikeGroup(peerId),
+      isBotforum: this.managers.appPeersManager.isBotforum(peerId)
+    });
+
+    return !isBotforum && isLikeGroup;
   }
 
   public resetSearch() {

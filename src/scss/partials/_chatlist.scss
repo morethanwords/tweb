@@ -88,6 +88,18 @@
       margin-bottom: 0;
     }
 
+    &.is-hidden {
+      opacity: 0;
+    }
+
+    &.is-visible {
+      opacity: 1;
+
+      &.animating {
+        transition: opacity var(--transition-standard-in);
+      }
+    }
+
     &__name {
       color: var(--secondary-text-color);
       padding: 0 23px;
@@ -215,6 +227,25 @@ ul.chatlist {
     .row-title .topic-icon {
       --size: 1.375rem;
       margin-inline-end: .25rem;
+    }
+
+    .row-title .emoji-topic-icon {
+      --full-size: 22px;
+      --size: 20px;
+
+      width: var(--full-size);
+      height: var(--full-size);
+      text-align: center;
+
+      font-size: var(--size);
+
+      margin-top: 0;
+      margin-inline-end: .25rem;
+
+      img {
+        width: var(--size);
+        height: var(--size);
+      }
     }
 
     // ! IT IS IMPORTANT, OVERFLOW DOESN'T WORK WITH display: inline-flex;

@@ -24,7 +24,7 @@ import getServerMessageId from './utils/messageId/getServerMessageId';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import callbackify from '../../helpers/callbackify';
 
-export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog' | 'monoforum' | 'monoforum_thread';
+export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog' | 'monoforum' | 'monoforum_thread' | 'botforum_thread';
 export class AppPeersManager extends AppManager {
   public get peerId() {
     return this.appUsersManager.userId.toPeerId();
@@ -182,6 +182,10 @@ export class AppPeersManager extends AppManager {
     return !peerId.isUser() && this.appChatsManager.isMonoforum(peerId.toChatId());
   }
 
+  public isBotforum(peerId?: PeerId): boolean {
+    return peerId?.isUser() && this.appUsersManager.isBotforum(peerId.toChatId());
+  }
+
   public canManageDirectMessages(peerId?: PeerId) {
     return peerId && !peerId.isUser() && this.appChatsManager.canManageDirectMessages(peerId.toChatId());
   }
@@ -307,6 +311,8 @@ export class AppPeersManager extends AppManager {
       return 'savedDialog';
     } else if(this.isMonoforum(peerId)) {
       return threadId ? 'monoforum_thread' : 'monoforum';
+    } else if(this.isBotforum(peerId) && threadId) {
+      return 'botforum_thread';
     } else if(this.isMegagroup(peerId)) {
       return 'megagroup';
     } else if(this.isChannel(peerId)) {

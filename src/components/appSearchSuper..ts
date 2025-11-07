@@ -5,7 +5,7 @@
  */
 
 import type {AppMessagesManager, MyInputMessagesFilter, MyMessage, RequestHistoryOptions} from '../lib/appManagers/appMessagesManager';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom, AutonomousSavedDialogList} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '../lib/appManagers/appDialogsManager';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
 import {SearchGroup, SearchGroupType} from './appSearch';
@@ -105,6 +105,9 @@ import wrapSticker from './wrappers/sticker';
 import {unwrap} from 'solid-js/store';
 import {usePeer} from '../stores/peers';
 import {useAppState} from '../stores/appState';
+import {AutonomousSavedDialogList} from './autonomousDialogList/savedDialogs';
+import SetTransition from './singleTransition';
+import liteMode from '../helpers/liteMode';
 
 // const testScroll = false;
 
@@ -1108,6 +1111,21 @@ export default class AppSearchSuper {
       searchGroup = this.searchGroups.messages;
     }
 
+    if(liteMode.isAvailable('animations')) {
+      searchGroup.container.classList.add('is-hidden');
+
+      setTimeout(() => SetTransition({
+        element: searchGroup.container,
+        className: 'is-visible',
+        forwards: true,
+        duration: 250,
+        onTransitionEnd: () => {
+          searchGroup.container.classList.remove('is-hidden');
+          searchGroup.container.classList.remove('is-visible');
+        }
+      }), 100); // doesn't properly animate without it, even useRafs don't really help
+    }
+
     const options: ProcessSearchSuperResult = {
       elemsToAppend,
       inputFilter,
@@ -1270,7 +1288,7 @@ export default class AppSearchSuper {
     }
 
     const query = this.searchContext.query;
-    if(query) {
+    if(query && !this.searchContext.peerId) {
       const addDialogSubtitle = async(dom: DialogDom, peerId: PeerId) => {
         const peer = await this.managers.appPeersManager.getPeer(peerId);
         if(peerId === rootScope.myId) {
@@ -1828,7 +1846,7 @@ export default class AppSearchSuper {
       return this._loadSavedDialogs(side);
     }
 
-    const xd = new AutonomousSavedDialogList();
+    const xd = new AutonomousSavedDialogList({appDialogsManager});
     xd.scrollable = this.scrollable;
     xd.sortedList = new SortedDialogList({
       appDialogsManager,

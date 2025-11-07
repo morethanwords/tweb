@@ -4,12 +4,14 @@ import {createContext, useContext} from 'solid-js';
  * `import type` is mandatory to avoid reloading the page (not really 😀, vite handles it even without the `import type`)
  */
 
+import type {AutonomousMonoforumThreadList} from '../../components/autonomousDialogList/monoforumThreads';
 import type {EmoticonsDropdown} from '../../components/emoticonsDropdown';
 import type EmoticonsSearch from '../../components/emoticonsDropdown/search';
 import type EmojiTab from '../../components/emoticonsDropdown/tabs/emoji';
 import type {InputFieldTsx} from '../../components/inputFieldTsx';
 import type PasswordMonkey from '../../components/monkeys/password';
 import type PasswordInputField from '../../components/passwordInputField';
+import type {PeerTitleTsx} from '../../components/peerTitleTsx';
 import type {setQuizHint} from '../../components/poll';
 import type showLimitPopup from '../../components/popups/limit';
 import type PopupPremium from '../../components/popups/premium';
@@ -18,13 +20,13 @@ import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolder
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import type wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import type {ThemeController} from '../../helpers/themeController';
-import type {AppDialogsManager, AutonomousMonoforumThreadList} from '../appManagers/appDialogsManager';
+import type {AppDialogsManager} from '../appManagers/appDialogsManager';
 import type {AppImManager} from '../appManagers/appImManager';
+import type uiNotificationsManager from '../appManagers/uiNotificationsManager';
 import type apiManagerProxy from '../mtproto/mtprotoworker';
 import type lottieLoader from '../rlottie/lottieLoader';
 import type {RootScope} from '../rootScope';
 import type SolidJSHotReloadGuardProvider from './hotReloadGuardProvider';
-import type uiNotificationsManager from '../appManagers/uiNotificationsManager';
 import type I18n from '../langPack';
 import type {i18n, join} from '../langPack';
 import type PopupElement from '../../components/popups';
@@ -88,6 +90,7 @@ export type SolidJSHotReloadGuardContextValue = {
   toastNew: typeof toastNew;
   BusinessHours: typeof BusinessHours;
   avatarNew: typeof avatarNew;
+  PeerTitleTsx: typeof PeerTitleTsx;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

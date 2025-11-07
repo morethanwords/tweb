@@ -86,9 +86,9 @@ const onAvatarStoriesUpdate = ({peerId}: {peerId: PeerId}) => {
 
 rootScope.addEventListener('avatar_update', onAvatarUpdate);
 rootScope.addEventListener('peer_title_edit', async(data) => {
-  if(!(await rootScope.managers.appAvatarsManager.isAvatarCached(data.peerId))) {
-    onAvatarUpdate(data);
-  }
+  if(!data.threadId && (await rootScope.managers.appAvatarsManager.isAvatarCached(data.peerId))) return;
+
+  onAvatarUpdate(data);
 });
 
 rootScope.addEventListener('peer_stories', ({peerId}) => {
@@ -97,6 +97,7 @@ rootScope.addEventListener('peer_stories', ({peerId}) => {
 rootScope.addEventListener('stories_read', onAvatarStoriesUpdate);
 rootScope.addEventListener('story_deleted', onAvatarStoriesUpdate);
 rootScope.addEventListener('story_new', onAvatarStoriesUpdate);
+
 
 const getStoriesSegments = async(peerId: PeerId, storyId?: number): Promise<AckedResult<StoriesSegments>> => {
   if(storyId) {
@@ -334,6 +335,7 @@ export const AvatarNew = (props: {
   isStoryFolded?: Accessor<boolean>,
   processImageOnLoad?: (image: HTMLImageElement) => void,
   meAsNotes?: boolean,
+  asAllChats?: boolean,
   onStoriesStatus?: (has: boolean) => void,
   class?: string
 }) => {
@@ -548,6 +550,13 @@ export const AvatarNew = (props: {
     let {peerId} = props;
     if(title !== undefined) {
       peerId = NULL_PEER_ID;
+    }
+
+    if(props.asAllChats) {
+      set({
+        icon: 'round_chats_filled'
+      });
+      return;
     }
 
     if(peerId === myId && isDialog) {
@@ -816,7 +825,7 @@ export const AvatarNew = (props: {
     const dimensions = storyDimensions();
     return {
       'padding': dimensions ? (dimensions.size - dimensions.willBeSize) / 2 + 'px' : undefined,
-      '--size': isTopic() && props.wrapOptions.customEmojiSize.width ? props.wrapOptions.customEmojiSize.width + 'px' : undefined
+      '--size': isTopic() && props.wrapOptions?.customEmojiSize?.width ? props.wrapOptions.customEmojiSize.width + 'px' : undefined
     };
   };
 
@@ -854,6 +863,7 @@ export const AvatarNew = (props: {
       classList={classList()}
       data-color={color()}
       data-peer-id={props.peerId}
+      data-thread-id={props.threadId}
       data-story-id={props.storyId}
       style={style()}
       {...(props.props || {})}

@@ -156,7 +156,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       const {visible} = getViewportSlice({
         overflowElement,
         overflowRect,
-        elements: placeholders,
+        elements: placeholders.filter(el => !(el instanceof CustomEmojiElement) || !el.syncedPlayer?.pausedElements?.has(el)),
         extraSize: this.size.height * 2.5 // let's add some margin
       });
 

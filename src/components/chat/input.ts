@@ -1809,6 +1809,7 @@ export default class ChatInput {
       const webPageOptions = this.webPageOptions;
       const hasLargeMedia = !!webPage?.pFlags?.has_large_media;
       const replyTo = this.getReplyTo();
+      const isBotforumAllChats = this.chat.isBotforum && !this.chat.threadId;
       draft = {
         _: 'draftMessage',
         date: tsNow(true),
@@ -1818,7 +1819,7 @@ export default class ChatInput {
           no_webpage: this.noWebPage,
           invert_media: this.invertMedia || undefined
         },
-        reply_to: replyTo ? {
+        reply_to: !isBotforumAllChats && replyTo ? {
           _: 'inputReplyToMessage',
           reply_to_msg_id: replyTo.replyToMsgId,
           top_msg_id: this.chat.threadId,
@@ -2192,7 +2193,7 @@ export default class ChatInput {
       if(this.messageInput) {
         this.updateMessageInput(
           canSend || haveSomethingInControl,
-          canSendPlain,
+          canSendPlain && !this.chat.isTemporaryThread,
           placeholderParams,
           peerId.isUser() ? options.text : undefined,
           peerId.isUser() ? options.entities : undefined
@@ -2494,7 +2495,7 @@ export default class ChatInput {
     attachClickEvent(this.messageInput, (e) => {
       if(!this.canSendPlain()) {
         toastNew({
-          langPackKey: POSTING_NOT_ALLOWED_MAP['send_plain']
+          langPackKey: this.chat.isTemporaryThread ? 'WaitForTopicCreation' : POSTING_NOT_ALLOWED_MAP['send_plain']
         });
         return;
       }
@@ -3480,7 +3481,10 @@ export default class ChatInput {
   }
 
   public async createReplyPicker(replyTo: ChatInputReplyTo) {
-    const {peerId, threadId, monoforumThreadId} = await PopupPickUser.createReplyPicker(this.chat.isMonoforum ? {excludeMonoforums: true} : undefined);
+    const {peerId, threadId, monoforumThreadId} = await PopupPickUser.createReplyPicker({
+      excludeBotforums: true,
+      ...(this.chat.isMonoforum ? {excludeMonoforums: true} : undefined)
+    });
     this.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId}).then(() => {
       replyTo.replyToMonoforumPeerId = monoforumThreadId;
       this.appImManager.chat.input.initMessageReply(replyTo);
