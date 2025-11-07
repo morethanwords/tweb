@@ -151,7 +151,8 @@ export class WebPushApiManager extends EventListenerBase<{
     const ACTIONS_LANG_MAP: Record<keyof ServicePushPingTaskPayload['lang'], LangPackKey> = {
       push_action_mute1d: IS_MOBILE ? 'PushNotification.Action.Mute1d.Mobile' : 'PushNotification.Action.Mute1d',
       push_action_settings: IS_MOBILE ? 'PushNotification.Action.Settings.Mobile' : 'PushNotification.Action.Settings',
-      push_message_nopreview: 'PushNotification.Message.NoPreview'
+      push_message_nopreview: 'PushNotification.Message.NoPreview',
+      push_message_error: 'PushNotification.Message.Refreshing'
     };
 
     for(const action in ACTIONS_LANG_MAP) {

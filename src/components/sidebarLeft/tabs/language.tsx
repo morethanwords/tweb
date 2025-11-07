@@ -85,7 +85,6 @@ export default class AppLanguageTab extends SliderSuperTab {
               }
             }}
           >
-            <RowTsx.Title>{i18n('ShowTranslateChatButton')}</RowTsx.Title>
             <RowTsx.CheckboxFieldToggle>
               <CheckboxFieldTsx
                 checked={appSettings.translations.enabled}
@@ -95,6 +94,7 @@ export default class AppLanguageTab extends SliderSuperTab {
                 }}
               />
             </RowTsx.CheckboxFieldToggle>
+            <RowTsx.Title>{i18n('ShowTranslateChatButton')}</RowTsx.Title>
           </RowTsx>
           {appSettings.translations.enabled && (<RowTsx
             clickable={async() => {

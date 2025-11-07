@@ -658,12 +658,10 @@ export class AppChatsManager extends AppManager {
     return this.apiManager.invokeApi('messages.editChatAbout', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       about
-    }).then((bool) => {
-      if(bool) {
-        this.rootScope.dispatchEvent('peer_bio_edit', peerId);
-      }
-
-      return bool;
+    }).then(() => {
+      this.appProfileManager.modifyCachedFullChat(id, (chatFull) => {
+        chatFull.about = about;
+      });
     });
   }
 

@@ -57,8 +57,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   toggleCacheStorage: (value: boolean, source: MessageEventSource) => void,
   resetEncryptableCacheStorages: () => void,
   forceLogout: () => void,
-  toggleUninteruptableActivity: (payload: {activity: string, active: boolean}, source: MessageEventSource) => void,
-  language: (payload: string) => void
+  toggleUninteruptableActivity: (payload: {activity: string, active: boolean}, source: MessageEventSource) => void
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,

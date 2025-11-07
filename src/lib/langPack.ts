@@ -22,6 +22,7 @@ import setBlankToAnchor from './richTextProcessor/setBlankToAnchor';
 import {createSignal} from 'solid-js';
 import commonStateStorage from './commonStateStorage';
 import Icon from '../components/icon';
+import currencyStarIcon from '../components/currencyStarIcon';
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   'messageActionChatCreate': 'ActionCreateGroup',
@@ -341,13 +342,14 @@ namespace I18n {
     }
   }
 
-  const IconMap: Record<string, Icon> = {
+  const IconMap: Record<string, Icon | (() => HTMLElement)> = {
     '>': 'next',
     '<': 'previous'
+    // '⭐️': currencyStarIcon as () => HTMLElement
   };
 
   const iconsNoWhitespace = '><';
-  const iconsToReplace = Object.keys(IconMap).join('');
+  const iconsKeys = Object.keys(IconMap);
 
   export function superFormatter(input: string, args?: FormatterArguments, indexHolder?: {i: number}): Exclude<FormatterArgument, FormatterArgument[]>[] {
     if(!indexHolder) { // set starting index for arguments without order
@@ -359,7 +361,7 @@ namespace I18n {
     }
 
     const out: ReturnType<typeof superFormatter> = [];
-    const regExp = new RegExp(`(\\*\\*|__)(.+?)\\1|(\\n)|(\\[.+?\\]\\(.*?\\))|(?:^|\\s)([${iconsToReplace}])(?:$|\\s)|un\\d|%\\d\\$.|%\\S`, 'g');
+    const regExp = new RegExp(`(\\*\\*|__)(.+?)\\1|(\\n)|(\\[.+?\\]\\(.*?\\))|(?:^|\\s)(${iconsKeys.join('|')})(?:$|\\s)|un\\d|%\\d\\$.|%\\S`, 'g');
 
     let lastIndex = 0;
     input.replace(regExp, (match, p1: any, p2: any, p3: any, p4: string, p5: string, offset: number, string: string) => {
@@ -422,7 +424,15 @@ namespace I18n {
       } else if(p5) {
         const noWhitespace = iconsNoWhitespace.includes(p5);
         if(!noWhitespace && !match.startsWith(p5)) out.push(match[0]);
-        out.push(Icon(IconMap[p5], 'inline-icon'));
+        const className = 'inline-icon';
+        const i = IconMap[p5];
+        if(typeof(i) === 'function') {
+          const element = i();
+          element.classList.add(className);
+          out.push(element);
+        } else {
+          out.push(Icon(i, className));
+        }
         if(!noWhitespace && match.startsWith(p5)) out.push(match[match.length - 1]);
       } else if(args) {
         const index = match.replace(/\D/g, '');

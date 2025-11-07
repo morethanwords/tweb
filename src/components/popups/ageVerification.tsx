@@ -4,6 +4,7 @@ import safeAssign from '../../helpers/object/safeAssign';
 import appImManager from '../../lib/appManagers/appImManager';
 import {i18n, LangPackKey} from '../../lib/langPack';
 import {MTAppConfig} from '../../lib/mtproto/appConfig';
+import useContentSettings from '../../stores/contentSettings';
 import Button from '../buttonTsx';
 import styles from './ageVerification.module.scss';
 
@@ -29,11 +30,11 @@ export class AgeVerificationPopup extends PopupElement {
 
   private async construct() {
     const appConfig = await this.managers.apiManager.getAppConfig();
-    this.appendSolidBody(() => this._construct({appConfig}))
+    this.appendSolidBody(() => this._construct({appConfig}));
   }
 
-  protected _construct({appConfig}: { appConfig: MTAppConfig }) {
-    let textKey: LangPackKey
+  protected _construct({appConfig}: {appConfig: MTAppConfig}) {
+    let textKey: LangPackKey;
     if(appConfig.verify_age_country === 'GB') {
       textKey = 'AgeVerification.TextGB';
     } else {
@@ -41,20 +42,21 @@ export class AgeVerificationPopup extends PopupElement {
     }
 
     const handleVerify = async() => {
-      const bot = await this.managers.appUsersManager.resolveUserByUsername(appConfig.verify_age_bot_username ?? 'TelegramAge')
+      const bot = await this.managers.appUsersManager.resolveUserByUsername(
+        appConfig.verify_age_bot_username ?? 'TelegramAge'
+      );
       this._switchedToWebApp = true;
-      this.destroy()
+      this.destroy();
       appImManager.openWebApp({
         botId: bot.id,
         main: true,
         noConfirmation: true,
         forcePopup: true,
-        onClose: async() => {
-          const settings = await this.managers.appPrivacyManager.getSensitiveContentSettings()
-          this.onVerify(settings.ageVerified)
+        onClose: () => {
+          this.onVerify(!!useContentSettings().ageVerified());
         }
-      })
-    }
+      });
+    };
 
     return (
       <>
@@ -65,7 +67,7 @@ export class AgeVerificationPopup extends PopupElement {
           {i18n('AgeVerification.Action')}
         </Button>
       </>
-    )
+    );
   }
 
   static create(): Promise<boolean> {
@@ -76,11 +78,11 @@ export class AgeVerificationPopup extends PopupElement {
 
     popup.addEventListener('close', () => {
       if(!popup._switchedToWebApp) {
-        promise.resolve(false)
+        promise.resolve(false);
       }
     });
-    popup.show()
+    popup.show();
 
-    return promise
+    return promise;
   }
 }

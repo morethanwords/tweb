@@ -16,7 +16,6 @@ import lottieLoader from '../../../lib/rlottie/lottieLoader';
 import PopupPeer from '../../popups/peer';
 import AppDataAndStorageTab from './dataAndStorage';
 import ButtonIcon from '../../buttonIcon';
-import PeerProfile from '../../peerProfile';
 import rootScope from '../../../lib/rootScope';
 import Row from '../../row';
 import AppActiveSessionsTab from './activeSessions';
@@ -35,6 +34,8 @@ import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import {createEffect, createRoot} from 'solid-js';
 import useStars from '../../../stores/stars';
 import PopupStars from '../../popups/stars';
+import {renderPeerProfile} from '../../peerProfile';
+import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -45,7 +46,6 @@ export default class AppSettingsTab extends SliderSuperTab {
     storage: HTMLButtonElement,
     privacy: HTMLButtonElement,
   } = {} as any;
-  private profile: PeerProfile;
 
   private languageRow: Row;
   private devicesRow: Row;
@@ -84,21 +84,6 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.header.append(this.buttons.edit, btnMenu);
 
-    this.profile = new PeerProfile(
-      this.managers,
-      this.scrollable,
-      this.listenerSetter,
-      false,
-      this.container,
-      (has) => {
-        const last = this.profile.element.lastElementChild;
-        last.parentElement.firstElementChild.nextElementSibling.firstElementChild.append(changeAvatarBtn);
-      }
-    );
-    this.profile.init();
-    this.profile.setPeer(rootScope.myId);
-    const fillPromise = this.profile.fillProfileElements();
-
     const changeAvatarBtn = ButtonCorner({icon: 'cameraadd', className: 'profile-change-avatar'});
     attachClickEvent(changeAvatarBtn, () => {
       const canvas = document.createElement('canvas');
@@ -108,7 +93,17 @@ export default class AppSettingsTab extends SliderSuperTab {
         });
       });
     }, {listenerSetter: this.listenerSetter});
-    this.profile.element.lastElementChild.firstElementChild.append(changeAvatarBtn);
+
+    const peerProfileElement = createRoot((dispose) => {
+      this.middlewareHelper.onDestroy(dispose);
+      return (renderPeerProfile({
+        peerId: rootScope.myId,
+        isDialog: false,
+        scrollable: this.scrollable,
+        setCollapsedOn: this.container,
+        changeAvatarBtn
+      }, SolidJSHotReloadGuardProvider) as any)()();
+    });
 
     const updateChangeAvatarBtn = async() => {
       const user = await this.managers.appUsersManager.getSelf();
@@ -282,7 +277,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     }
 
     this.scrollable.append(...[
-      this.profile.element,
+      peerProfileElement,
       /* profileSection.container, */
       buttonsSection.container,
       premiumSection?.container
@@ -311,8 +306,6 @@ export default class AppSettingsTab extends SliderSuperTab {
     lottieLoader.loadLottieWorkers();
 
     this.updateActiveSessions();
-
-    (await fillPromise)();
   }
 
   private getAuthorizations(overwrite?: boolean) {
@@ -333,10 +326,5 @@ export default class AppSettingsTab extends SliderSuperTab {
       this.authorizations = auths.authorizations;
       this.devicesRow.titleRight.textContent = '' + this.authorizations.length;
     });
-  }
-
-  public onCloseAfterTimeout() {
-    this.profile.destroy();
-    return super.onCloseAfterTimeout();
   }
 }

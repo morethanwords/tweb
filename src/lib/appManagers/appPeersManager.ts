@@ -165,8 +165,8 @@ export class AppPeersManager extends AppManager {
   }
 
   public isPeerRestricted(peerId: PeerId) {
-    return callbackify(this.appPrivacyManager.getSensitiveContentSettings(), (settings) => {
-      return isPeerRestricted(this.getPeer(peerId), settings.sensitiveCanChange);
+    return callbackify(this.appPrivacyManager.getContentSettings(), (settings) => {
+      return isPeerRestricted(this.getPeer(peerId), !!settings.pFlags.sensitive_can_change);
     });
   }
 

@@ -1,13 +1,13 @@
-import {JSX} from 'solid-js/jsx-runtime'
-import liteMode from '../../../helpers/liteMode'
-import lottieLoader, {LottieAssetName} from '../../../lib/rlottie/lottieLoader'
-import Button from '../../buttonTsx'
-import LottieAnimation from '../../lottieAnimation'
-import {RLottieOptions} from '../../../lib/rlottie/rlottiePlayer'
+import {JSX} from 'solid-js';
+import liteMode from '../../../helpers/liteMode';
+import lottieLoader, {LottieAssetName} from '../../../lib/rlottie/lottieLoader';
+import Button from '../../buttonTsx';
+import LottieAnimation from '../../lottieAnimation';
+import {RLottieOptions} from '../../../lib/rlottie/rlottiePlayer';
 
-import styles from './premiumGift.module.scss'
-import stylesCommon from './service.module.scss'
-import classNames from '../../../helpers/string/classNames'
+import styles from './premiumGift.module.scss';
+import stylesCommon from './service.module.scss';
+import classNames from '../../../helpers/string/classNames';
 
 export function PremiumGiftBubble(props: {
   assetName: LottieAssetName
@@ -43,5 +43,5 @@ export function PremiumGiftBubble(props: {
         </Button>
       )}
     </div>
-  )
+  );
 }

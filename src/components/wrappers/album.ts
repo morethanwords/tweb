@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
 import mediaSizes from '../../helpers/mediaSizes';
 import {Middleware} from '../../helpers/middleware';
+import {ChatAutoDownloadSettings} from '../../hooks/useAutoDownloadSettings';
 import {Document, Message, MessageMedia, Photo, PhotoSize} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';

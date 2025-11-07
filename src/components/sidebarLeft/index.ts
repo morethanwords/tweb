@@ -415,7 +415,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.initNavigation();
 
-    apiManagerProxy.getState().then((state) => {
+    {
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
         fetch('version', {cache: 'no-cache'})
@@ -432,7 +432,7 @@ export class AppSidebarLeft extends SidebarSlider {
         })
         .catch(noop);
       }, CHECK_UPDATE_INTERVAL);
-    });
+    }
 
     this.onResize = () => {
       const rect = this.rect = this.tabsContainer.getBoundingClientRect();

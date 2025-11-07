@@ -213,6 +213,7 @@
 "PushNotification.Action.Mute1d.Mobile" = "Mute for 1 day";
 "PushNotification.Action.Settings.Mobile" = "Alerts settings";
 "PushNotification.Message.NoPreview" = "You have a new message";
+"PushNotification.Message.Refreshing" = "Telegram is syncing in the background...";
 "LogOut.Description" = "Are you sure you want to log out?\n\nNote that you can seamlessly use Telegram on all your devices at once.";
 "VoiceChat.DiscussionGroup" = "discussion group";
 "PaymentInfo.CVV" = "CVV Code";

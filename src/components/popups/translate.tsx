@@ -20,6 +20,8 @@ import Section from '../section';
 import {TranslatableMessageTsx} from '../translatableMessage';
 
 export default class PopupTranslate extends PopupElement {
+  private peerTranslation: ReturnType<typeof usePeerTranslation>;
+
   constructor(private options: {
     peerId: PeerId,
     message?: Message.message,
@@ -34,7 +36,7 @@ export default class PopupTranslate extends PopupElement {
         langKey: 'Telegram.LanguageViewController',
         callback: () => {
           pickLanguage(false).then((language) => {
-            usePeerTranslation(this.options.peerId).setLanguage(language);
+            this.peerTranslation.setLanguage(language);
           });
           return false;
         }
@@ -56,6 +58,8 @@ export default class PopupTranslate extends PopupElement {
         this.show();
       }, 0);
     });
+
+    this.peerTranslation = usePeerTranslation(this.options.peerId);
 
     let originalTextWithEntities: TextWithEntities = this.options.textWithEntities;
     if(this.options.message) {
@@ -135,7 +139,6 @@ export default class PopupTranslate extends PopupElement {
       );
     };
 
-    const peerLanguage = usePeerTranslation(this.options.peerId);
     const preloader = putPreloader(undefined, true);
 
     const [loading, setLoading] = createSignal(true);
@@ -162,7 +165,7 @@ export default class PopupTranslate extends PopupElement {
         <Section noShadow name={`Language.${this.options.detectedLanguage}`}>
           {wrap(originalTextWithEntities, 120)}
         </Section>
-        <Section noShadow name={`Language.${peerLanguage.language()}`} fakeGradientDelimiter>
+        <Section noShadow name={`Language.${this.peerTranslation.language()}`} fakeGradientDelimiter>
           <Show when={!loading()} fallback={(
             <div class="popup-translate-preloader">
               {preloader}

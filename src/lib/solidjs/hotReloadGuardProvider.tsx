@@ -21,6 +21,23 @@ import lottieLoader from '../rlottie/lottieLoader';
 import rootScope from '../rootScope';
 import {SolidJSHotReloadGuardContext} from './hotReloadGuard';
 import uiNotificationsManager from '../appManagers/uiNotificationsManager';
+import I18n, {i18n, join} from '../langPack';
+import PopupElement from '../../components/popups';
+import PopupTranslate from '../../components/popups/translate';
+import PopupToggleReadDate from '../../components/popups/toggleReadDate';
+import wrapSticker from '../../components/wrappers/sticker';
+import wrapTopicNameButton from '../../components/wrappers/topicNameButton';
+import wrapRichText from '../richTextProcessor/wrapRichText';
+import wrapPeerTitle from '../../components/wrappers/peerTitle';
+import wrapPhoto from '../../components/wrappers/photo';
+import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
+import {wrapAdaptiveCustomEmoji} from '../../components/wrappers/customEmojiSimple';
+import confirmationPopup from '../../components/confirmationPopup';
+import PeerProfileAvatars from '../../components/peerProfileAvatars';
+import showStarsRatingPopup from '../../components/popups/starsRating';
+import {toast, toastNew} from '../../components/toast';
+import BusinessHours from '../../components/businessHours';
+import {avatarNew} from '../../components/avatarNew';
 
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
@@ -47,7 +64,27 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       EmojiTab,
       appDialogsManager,
       AutonomousMonoforumThreadList,
-      uiNotificationsManager
+      uiNotificationsManager,
+      I18n,
+      i18n,
+      join,
+      PopupElement,
+      PopupTranslate,
+      PopupToggleReadDate,
+      wrapSticker,
+      wrapTopicNameButton,
+      wrapRichText,
+      wrapPeerTitle,
+      wrapPhoto,
+      wrapEmojiText,
+      wrapAdaptiveCustomEmoji,
+      confirmationPopup,
+      PeerProfileAvatars,
+      showStarsRatingPopup,
+      toast,
+      toastNew,
+      BusinessHours,
+      avatarNew
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>
