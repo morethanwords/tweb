@@ -19,6 +19,11 @@ import toggleDisability from '../../../../helpers/dom/toggleDisability';
 import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
 import SettingSection from '../../../settingSection';
 
+
+type ConstructorArgs = {
+  justSetPasssword?: boolean;
+};
+
 export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSuperTab {
   public codeInputField: CodeInputField;
   public state: AccountPassword;
@@ -26,7 +31,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
   public length: number;
   public isFirst = false;
 
-  public init() {
+  public init({justSetPasssword = false}: ConstructorArgs = {}) {
     this.container.classList.add('two-step-verification', 'two-step-verification-email-confirmation');
     this.setTitle('TwoStepAuth.RecoveryTitle');
 
@@ -95,7 +100,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
     const btnResend = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'ResendCode'});
 
     const goNext = () => {
-      this.slider.createTab(AppTwoStepVerificationSetTab).open();
+      this.slider.createTab(AppTwoStepVerificationSetTab).open({messageFor: justSetPasssword ? 'password' : 'email'});
     };
 
     const freeze = (disable: boolean) => {

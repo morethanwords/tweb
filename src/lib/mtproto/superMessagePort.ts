@@ -289,6 +289,18 @@ class SuperMessagePort<
         return;
       }
 
+      // try {
+      //   const perf = performance.now();
+      //   const clone = structuredClone(task); clone;
+      //   this.log('postMessage clone time',
+      //     task.type,
+      //     performance.now() - perf,
+      //     task.type === 'batch' ? task.payload.length : undefined
+      //   );
+      // } catch(err) {
+      //   console.error('postMessage clone error', err);
+      // }
+
       port.postMessage(task, task.transfer as any);
     });
   }

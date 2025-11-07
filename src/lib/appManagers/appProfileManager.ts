@@ -119,35 +119,11 @@ export class AppProfileManager extends AppManager {
       this.invalidateChannelParticipants(chatId);
     });
 
-    this.rootScope.addEventListener('peer_bio_edit', (peerId) => {
-      this.rootScope.dispatchEvent('user_full_update', peerId.toUserId());
-    });
-
     this.typingsInPeer = {};
     this.peerSettings = {};
   }
 
-  /* public saveBotInfo(botInfo: any) {
-    const botId = botInfo && botInfo.user_id;
-    if(!botId) {
-      return null;
-    }
-
-    const commands: any = {};
-    botInfo.commands.forEach((botCommand: any) => {
-      commands[botCommand.command] = botCommand.description;
-    });
-
-    return this.botInfos[botId] = {
-      id: botId,
-      version: botInfo.version,
-      shareText: botInfo.share_text,
-      description: botInfo.description,
-      commands: commands
-    };
-  } */
-
-  public getProfile(id: UserId, override?: true) {
+  public getProfile(id: UserId, override?: boolean) {
     if(this.usersFull[id] && !override && Date.now() < this.fullExpiration[id.toPeerId()]) {
       return this.usersFull[id];
     }
@@ -193,10 +169,6 @@ export class AppProfileManager extends AppManager {
         this.usersFull[id] = userFull;
         this.fullExpiration[peerId] = Date.now() + PEER_FULL_TTL;
 
-        /* if(userFull.bot_info) {
-          userFull.bot_info = this.saveBotInfo(userFull.bot_info) as any;
-        } */
-
         // appMessagesManager.savePinnedMessage(id, userFull.pinned_msg_id);
 
         this.rootScope.dispatchEvent('user_full_update', id);
@@ -213,7 +185,7 @@ export class AppProfileManager extends AppManager {
     return intro && (intro.title || intro.description || intro.sticker);
   }
 
-  public getProfileByPeerId(peerId: PeerId, override?: true) {
+  public getProfileByPeerId(peerId: PeerId, override?: boolean) {
     if(this.appPeersManager.isAnyChat(peerId)) return this.getChatFull(peerId.toChatId(), override);
     else return this.getProfile(peerId.toUserId(), override);
   }
@@ -299,7 +271,7 @@ export class AppProfileManager extends AppManager {
     });
   } */
 
-  public getChatFull(id: ChatId, override?: true) {
+  public getChatFull(id: ChatId, override?: boolean) {
     if(this.appChatsManager.isChannel(id)) {
       return this.getChannelFull(id, override);
     }
@@ -550,7 +522,7 @@ export class AppProfileManager extends AppManager {
     });
   }
 
-  public getChannelFull(id: ChatId, override?: true) {
+  public getChannelFull(id: ChatId, override?: boolean) {
     const peerId = id.toPeerId(true);
     if(this.chatsFull[id] !== undefined && !override && Date.now() < this.fullExpiration[peerId]) {
       return this.chatsFull[id] as ChatFull.channelFull;
@@ -732,17 +704,9 @@ export class AppProfileManager extends AppManager {
     }).then((user) => {
       this.appUsersManager.saveApiUser(user);
 
-      if(about !== undefined) {
-        const peerId = user.id.toPeerId();
-        const userFull = this.usersFull[user.id];
-        if(userFull) {
-          userFull.about = about;
-        }
-
-        this.rootScope.dispatchEvent('peer_bio_edit', peerId);
-      }
-
-      return this.getProfile(user.id, true);
+      this.modifyCachedFullUser(user.id, (userFull) => {
+        userFull.about = about;
+      });
     });
   }
 
@@ -761,16 +725,9 @@ export class AppProfileManager extends AppManager {
         });
       }
 
-      const userFull = this.getCachedFullUser(botId);
-      if(about !== undefined) {
-        if(userFull) {
-          userFull.about = about;
-        }
-
-        this.rootScope.dispatchEvent('peer_bio_edit', botId.toPeerId());
-      }
-
-      return this.getProfile(botId, true);
+      this.modifyCachedFullUser(botId, (userFull) => {
+        userFull.about = about;
+      });
     });
   }
 

@@ -42,10 +42,7 @@ export default class ChatRequests extends PinnedContainer {
         }
       ),
       onClose: () => {
-        apiManagerProxy.getState().then((state) => {
-          state.hideChatJoinRequests[this.peerId] = Date.now();
-          this.managers.appStateManager.pushToState('hideChatJoinRequests', state.hideChatJoinRequests);
-        });
+        this.chat.setAppState('hideChatJoinRequests', this.peerId, Date.now());
       },
       floating: true,
       height: 52
@@ -116,15 +113,14 @@ export default class ChatRequests extends PinnedContainer {
   public setPeerId(peerId: PeerId) {
     // const middleware = this.getMiddleware();
     return Promise.all([
-      this.chat.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId),
-      apiManagerProxy.getState()
-    ]).then(([peerFullAcked, state]) => {
+      this.chat.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId)
+    ]).then(([peerFullAcked]) => {
       return {
         cached: peerFullAcked.cached,
         result: callbackify(peerFullAcked.result, (peerFull) => {
           const recentRequesters = (peerFull as ChatFull.channelFull)?.recent_requesters;
           if(recentRequesters &&
-            (!state.hideChatJoinRequests[peerId] || (Date.now() - state.hideChatJoinRequests[peerId]) >= ONE_DAY)) {
+            (!this.chat.appState.hideChatJoinRequests[peerId] || (Date.now() - this.chat.appState.hideChatJoinRequests[peerId]) >= ONE_DAY)) {
             return this.set(
               peerId,
               recentRequesters.slice(0, 3).map((userId) => userId.toPeerId(false)),

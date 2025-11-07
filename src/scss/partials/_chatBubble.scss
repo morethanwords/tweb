@@ -532,8 +532,14 @@
     &--transcribe {
       font-size: 1.375rem;
     }
+
     &--lifted {
       bottom: calc(var(--message-beside-button-size) + 0.25rem);
+    }
+
+    .with-beside-replies &--lifted {
+      bottom: 0;
+      inset-inline-end: calc(var(--message-beside-button-margin) - var(--message-beside-button-size) - 0.25rem);
     }
   }
 

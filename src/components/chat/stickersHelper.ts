@@ -69,7 +69,7 @@ export default class StickersHelper extends AutocompleteHelper {
     this.managers.appStickersManager.getStickersByEmoticon({
       emoticon,
       includeOurStickers: true,
-      includeServerStickers: rootScope.settings.stickers.suggest === 'all'
+      includeServerStickers: this.chat.appSettings.stickers.suggest === 'all'
     }).then((stickers) => {
       if(!middleware()) {
         return;

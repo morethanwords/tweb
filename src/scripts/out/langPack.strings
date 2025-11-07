@@ -213,6 +213,7 @@
 "PushNotification.Action.Mute1d.Mobile" = "Mute for 1 day";
 "PushNotification.Action.Settings.Mobile" = "Alerts settings";
 "PushNotification.Message.NoPreview" = "You have a new message";
+"PushNotification.Message.Refreshing" = "Telegram is syncing in the background...";
 "LogOut.Description" = "Are you sure you want to log out?\n\nNote that you can seamlessly use Telegram on all your devices at once.";
 "VoiceChat.DiscussionGroup" = "discussion group";
 "PaymentInfo.CVV" = "CVV Code";
@@ -1144,8 +1145,10 @@
 "Disable" = "Disable";
 "TwoStepVerificationSetPassword" = "Set Password";
 "TwoStepVerificationPasswordSet" = "Password Set!";
+"TwoStepVerificationEmailSet" = "Recovery Email Set!";
 "TwoStepVerificationPasswordSetInfo" = "This password will be required when you log in on a new device in addition to the code you get in the SMS.";
 "TwoStepVerificationPasswordReturnSettings" = "Return to Settings";
+"TwoStepVerificationEmailSetInfo" = "You will be able to use this recovery email to reset your password and restore access to your account.";
 "RecoveryEmail" = "Recovery email";
 "RecoveryEmailTitle" = "Recovery Email";
 "ResendCode" = "Resend code";
@@ -2999,7 +3002,7 @@
 "EnableDarkMode" = "Enable Dark Mode";
 "DisableDarkMode" = "Disable Dark Mode";
 "DisableAnimations" = "Disable Animations";
-"RoundVideoTranscription.PremiumAlert" = "Subscribe to Telegram Premium to unlock video and audio transcription. [Read More]()";
+"AudioAndVideoTranscription.PremiumAlert" = "Subscribe to Telegram Premium to unlock video and audio transcription. [Read More]()";
 "Chat.Search.JoinedChannels" = "Channels you joined";
 "Chat.Search.NothingFound" = "Nothing interesting here yet...";
 "UnknownBotUsers" = "Unknown users";

@@ -201,7 +201,7 @@ export function wrapRoundVideoBubble({
   async function showAudio() {
     if(!rootScope.getPremium()) {
       toastNew({
-        langPackKey: 'RoundVideoTranscription.PremiumAlert',
+        langPackKey: 'AudioAndVideoTranscription.PremiumAlert',
         langPackArguments: [anchorCallback(() => {
           hideToast();
           PopupPremium.show({feature: 'voice_to_text'});

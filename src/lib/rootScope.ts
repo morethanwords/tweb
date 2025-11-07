@@ -22,14 +22,13 @@ import type StoriesCacheType from './appManagers/utils/stories/cacheType';
 import type {StoriesListPosition} from './appManagers/appStoriesManager';
 import type {ArgumentTypes} from '../types';
 import type {RtmpCallInstance} from './calls/rtmpCallsController';
+import type {ApiManager} from './mtproto/apiManager';
+import type {MonoforumDialog} from './storages/monoforumDialogs';
 import {NULL_PEER_ID, UserAuth} from './mtproto/mtproto_config';
 import EventListenerBase, {EventListenerListeners} from '../helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {ActiveAccountNumber} from './accounts/types';
-import type {ApiManager} from './mtproto/apiManager';
-import {SensitiveContentSettings} from './appManagers/appPrivacyManager';
-import type {MonoforumDialog} from './storages/monoforumDialogs';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -54,7 +53,6 @@ export type BroadcastEvents = {
   'peer_typings': {peerId: PeerId, threadId?: number, typings: UserTyping[]},
   'peer_block': {peerId: PeerId, blocked?: boolean, blockedMyStoriesFrom?: boolean},
   'peer_title_edit': {peerId: PeerId, threadId?: number},
-  'peer_bio_edit': PeerId,
   'peer_deleted': PeerId, // left chat, deleted user dialog, left channel
   'peer_full_update': PeerId,
   'peer_settings': {peerId: PeerId, settings: PeerSettings},
@@ -91,7 +89,6 @@ export type BroadcastEvents = {
   'history_delete': {peerId: PeerId, msgs: Set<number>},
   'history_forbidden': PeerId,
   'history_reload': PeerId,
-  'history_count': {historyKey: string, count: number},
   'history_delete_key': {historyKey: string, mid: number},
   // 'history_request': void,
 
@@ -234,8 +231,6 @@ export type BroadcastEvents = {
   'insufficent_stars_for_message': {messageCount: number, requestId: number, invokeApiArgs: Parameters<ApiManager['invokeApi']>, reservedStars?: number};
 
   'fulfill_repaid_message': {requestId: number},
-
-  'sensitive_content_settings': SensitiveContentSettings,
 
   'monoforum_dialogs_update': {dialogs: MonoforumDialog[]},
   'monoforum_dialogs_drop': {parentPeerId: PeerId, ids: PeerId[]},

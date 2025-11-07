@@ -55,7 +55,7 @@ import I18n from '../langPack';
 import {NOTIFICATION_BADGE_PATH} from '../../config/notifications';
 import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
 import {appSettings, setAppSettingsSilent} from '../../stores/appSettings';
-import {unwrap} from 'solid-js/store';
+import {produce, unwrap} from 'solid-js/store';
 import createNotificationImage from '../../helpers/createNotificationImage';
 import PasscodeLockScreenController from '../../components/passcodeLock/passcodeLockScreenController';
 import EncryptionKeyStore from '../passcode/keyStore';
@@ -63,6 +63,9 @@ import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import CacheStorageController from '../files/cacheStorage';
 import type {PushSingleManager} from './pushSingleManager';
 import getDeepProperty from '../../helpers/object/getDeepProperty';
+import {_deleteHistoryStorage, _useHistoryStorage} from '../../stores/historyStorages';
+import SlicedArray, {SliceEnd} from '../../helpers/slicedArray';
+import {createHistoryStorageSearchSlicedArray} from '../appManagers/utils/messages/createHistoryStorage';
 
 
 export type Mirrors = {
@@ -81,7 +84,8 @@ export type Mirrors = {
   peers: {
     [peerId in PeerId]: Exclude<Chat, Chat.chatEmpty> | User.user
   },
-  avatars: AppAvatarsManager['savedAvatarURLs']
+  avatars: AppAvatarsManager['savedAvatarURLs'],
+  historyStorage: any
 };
 
 export type MirrorTaskPayload<
@@ -130,7 +134,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
   private pingServiceWorkerPromise: CancellablePromise<void>;
 
   private processMirrorTaskMap: {
-    [type in keyof Mirrors]?: (payload: MirrorTaskPayload) => void
+    [type in keyof Mirrors]?: (payload: MirrorTaskPayload) => void | boolean
   };
 
   private appConfig: MaybePromise<MTAppConfig>;
@@ -154,7 +158,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
       messages: {},
       groupedMessages: {},
       peers: {},
-      avatars: {}
+      avatars: {},
+      historyStorage: undefined
     };
 
     this.pushSingleManager = this.createSingleManagerProxy('pushSingleManager');
@@ -222,6 +227,65 @@ class ApiManagerProxy extends MTProtoMessagePort {
         } else {
           reconcilePeers(payload.value);
         }
+      },
+
+      historyStorage: (payload) => {
+        if(!payload.key) { // * mirroring all history storages at once
+          for(const key in payload.value) {
+            const historyStorage = payload.value[key];
+            const [, setHistoryStorage] = _useHistoryStorage(key as any);
+            if(historyStorage.searchHistorySerialized) {
+              setHistoryStorage(
+                'searchHistory',
+                SlicedArray.fromJSON<`${PeerId}_${number}`>(historyStorage.searchHistorySerialized)
+              );
+            } else {
+              setHistoryStorage(
+                'history',
+                SlicedArray.fromJSON<number>(historyStorage.historySerialized)
+              );
+            }
+          }
+          return false;
+        }
+
+        const splittedKey = splitDeepPath(payload.key);
+        const [historyStorageKey, property, smth1, smth2] = splittedKey;
+        const [historyStorage, setHistoryStorage] = _useHistoryStorage(historyStorageKey as any);
+
+        if(property === 'delete') {
+          const slicedArray: SlicedArray<any> = historyStorage.searchHistory || historyStorage.history;
+          slicedArray.slices.splice(0, Infinity);
+          const slice = slicedArray.constructSlice();
+          // slice.setEnd(SliceEnd.Bottom);
+          slicedArray.slices.unshift(slice);
+          _deleteHistoryStorage(historyStorageKey as any);
+          setHistoryStorage({
+            count: null,
+            _maxId: undefined,
+            maxOutId: undefined,
+            replyMarkup: undefined,
+            readMaxId: undefined,
+            readOutboxMaxId: undefined,
+            triedToReadMaxId: undefined
+          });
+        } else if(property === 'slices') {
+          // @ts-ignore
+          (historyStorage.searchHistory || historyStorage.history).slices[+smth1][smth2](...payload.value);
+        } else if(property === 'history' || property === 'searchHistory') {
+          let slicedArray: SlicedArray<any> = historyStorage.searchHistory || historyStorage.history;
+          if(!slicedArray) {
+            slicedArray = property === 'searchHistory' ? createHistoryStorageSearchSlicedArray() : new SlicedArray();
+            setHistoryStorage(property, slicedArray);
+          }
+
+          // @ts-ignore
+          slicedArray[smth1](...payload.value);
+        } else {
+          setHistoryStorage(property as any, payload.value);
+        }
+
+        return false;
       }
     };
 
@@ -471,7 +535,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   public onLanguageChange = (language: string) => {
-    this.invokeVoid('language', language);
+    rootScope.managers.all.networkerFactory.setLanguage(language);
     rootScope.managers.appAttachMenuBotsManager.onLanguageChange();
   };
 
@@ -1030,7 +1094,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     const isSettingsUpdate = name === 'state' && key === 'settings';
     if(!isSettingsUpdate && accountNumber !== getCurrentAccount()) return;
 
-    this.processMirrorTaskMap[name]?.(payload);
+    const result = this.processMirrorTaskMap[name]?.(payload);
+    if(result === false) {
+      return;
+    }
+
     if(!payload.hasOwnProperty('key')) {
       this.mirrors[name] = value;
       return;

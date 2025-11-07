@@ -650,11 +650,6 @@ export class AppUsersManager extends AppManager {
         this.rootScope.dispatchEvent('peer_title_edit', {peerId});
       }
 
-      // whitelisted domains
-      if(changedPremium) {
-        this.rootScope.dispatchEvent('peer_bio_edit', peerId);
-      }
-
       if(changedEmojiStatus && user.pFlags.self) {
         this.rootScope.dispatchEvent('emoji_status_change');
       }
@@ -751,19 +746,6 @@ export class AppUsersManager extends AppManager {
       this.saveApiUsers(users);
       return users;
     });
-  }
-
-  public async getUserPhone(id: UserId) {
-    const user = this.getUser(id);
-    if(!user?.phone) {
-      return;
-    }
-
-    const appConfig = await this.apiManager.getAppConfig();
-    return {
-      phone: user.phone,
-      isAnonymous: appConfig.fragment_prefixes.some((prefix) => user.phone.startsWith(prefix))
-    };
   }
 
   public getSelf() {
@@ -1242,7 +1224,9 @@ export class AppUsersManager extends AppManager {
       return empty;
     }
 
-    if('' + user.id === '' + this.getSelf().id) return empty;
+    if(user.pFlags.self) {
+      return empty;
+    }
 
     if(!user.send_paid_messages_stars && (!user.pFlags.contact_require_premium || this.rootScope.premium)) {
       return empty;
@@ -1250,10 +1234,12 @@ export class AppUsersManager extends AppManager {
 
     const userFull = this.appProfileManager.getCachedFullUser(userId);
     if(userFull) {
-      if(userFull.pFlags.contact_require_premium) {
+      if(userFull.pFlags.contact_require_premium && !this.rootScope.premium) {
         return {_: 'requirementToContactPremium'};
       } else if(userFull.send_paid_messages_stars) {
         return {_: 'requirementToContactPaidMessages', stars_amount: userFull.send_paid_messages_stars};
+      } else {
+        return empty;
       }
     }
 
@@ -1280,10 +1266,9 @@ export class AppUsersManager extends AppManager {
   }
 
   public updateCachedUserFullStarsAmount(userId: UserId, starsAmount: number) {
-    const userFull = this.appProfileManager.getCachedFullUser(userId);
-    if(!userFull) return;
-
-    userFull.send_paid_messages_stars = starsAmount;
+    this.appProfileManager.modifyCachedFullUser(userId, (userFull) => {
+      userFull.send_paid_messages_stars = starsAmount;
+    });
   }
 
   /**
@@ -1308,6 +1293,11 @@ export class AppUsersManager extends AppManager {
         id: userIds.map((userId) => this.getUserInput(userId))
       }).then((result) => {
         result.forEach((requirement, index) => {
+          // * not sure if it's needed, but just in case
+          if(requirement._ === 'requirementToContactPremium' && this.rootScope.premium) {
+            requirement = {_: 'requirementToContactEmpty'};
+          }
+
           const userId = userIds[index];
           const promise = this.requirementsToContactPromises.get(userId);
           promise.resolve(requirement);

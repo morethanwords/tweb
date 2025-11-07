@@ -11,13 +11,17 @@ import {SliderSuperTab} from '../../../slider';
 import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
 import AppSettingsTab from '../settings';
 
+type ConstructorArgs = {
+  messageFor: 'password' | 'email';
+};
+
 export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
-  public init() {
+  public init({messageFor}: ConstructorArgs) {
     this.container.classList.add('two-step-verification', 'two-step-verification-set');
-    this.setTitle('TwoStepVerificationPasswordSet');
+    this.setTitle(messageFor === 'password' ? 'TwoStepVerificationPasswordSet' : 'TwoStepVerificationEmailSet');
 
     const section = new SettingSection({
-      captionOld: 'TwoStepVerificationPasswordSetInfo',
+      captionOld: messageFor === 'password' ? 'TwoStepVerificationPasswordSetInfo' : 'TwoStepVerificationEmailSetInfo',
       noDelimiter: true
     });
 

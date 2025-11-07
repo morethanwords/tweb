@@ -204,21 +204,16 @@ port.addMultipleEventsListeners({
     await port.invokeExceptSourceAsync('toggleCacheStorage', enabled, source);
   },
 
+  resetEncryptableCacheStorages: () => {
+    CacheStorageController.resetOpenEncryptableCacheStorages();
+  },
+
   forceLogout: async() => {
     await ApiManager.forceLogOutAll();
   },
 
   toggleUninteruptableActivity: ({activity, active}, source) => {
     autoLockControls.toggleUninteruptableActivity(source, activity, active);
-  },
-
-  language: (language) => {
-    callbackify(appManagersManager.getManagersByAccount(), (managers) => {
-      for(const key in managers) {
-        const accountNumber = key as any as ActiveAccountNumber
-        managers[accountNumber].networkerFactory.setLanguage(language);
-      }
-    });
   },
 
   singleManager: (payload) => {
@@ -300,4 +295,3 @@ listenMessagePort(port, (source) => {
   appTabsManager.deleteTab(source);
   autoLockControls.removeTab(source);
 });
-

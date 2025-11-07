@@ -81,16 +81,16 @@ const NotifySection = (props: {
   return (
     <Section name={props.name}>
       <Row>
-        <Row.Title>{i18n(props.typeText)}</Row.Title>
         <Row.CheckboxFieldToggle>
           <CheckboxFieldTsx checked={enabled()} onChange={setEnabled} toggle />
         </Row.CheckboxFieldToggle>
+        <Row.Title>{i18n(props.typeText)}</Row.Title>
       </Row>
       <Row>
-        <Row.Title>{i18n('MessagePreview')}</Row.Title>
         <Row.CheckboxFieldToggle>
           <CheckboxFieldTsx checked={showPreviews()} onChange={setShowPreviews} toggle />
         </Row.CheckboxFieldToggle>
+        <Row.Title>{i18n('MessagePreview')}</Row.Title>
       </Row>
     </Section>
   );
@@ -113,7 +113,6 @@ const OtherSection = () => {
   return (
     <Section name="NotificationsOther">
       <Row>
-        <Row.Title>{i18n('ContactJoined')}</Row.Title>
         <Row.CheckboxFieldToggle>
           <CheckboxFieldTsx
             checked={contactJoined()}
@@ -121,6 +120,7 @@ const OtherSection = () => {
             toggle
           />
         </Row.CheckboxFieldToggle>
+        <Row.Title>{i18n('ContactJoined')}</Row.Title>
       </Row>
     </Section>
   );
@@ -174,7 +174,6 @@ const NotificationsSection = () => {
       caption={isGranted() ? 'MultiAccount.ShowNotificationsFromCaption' : 'Notifications.Default'}
     >
       <NotificationRow>
-        <Row.Title>{i18n('Notifications.Show')}</Row.Title>
         <Row.CheckboxFieldToggle>
           <NotificationCheckbox
             checked={appSettings.notifications.desktop}
@@ -182,9 +181,9 @@ const NotificationsSection = () => {
             toggle
           />
         </Row.CheckboxFieldToggle>
+        <Row.Title>{i18n('Notifications.Show')}</Row.Title>
       </NotificationRow>
       <NotificationRow>
-        <Row.Title>{i18n('Notifications.Offline')}</Row.Title>
         <Row.CheckboxFieldToggle>
           <NotificationCheckbox
             checked={appSettings.notifications.push}
@@ -192,9 +191,9 @@ const NotificationsSection = () => {
             toggle
           />
         </Row.CheckboxFieldToggle>
+        <Row.Title>{i18n('Notifications.Offline')}</Row.Title>
       </NotificationRow>
       <NotificationRow>
-        <Row.Title>{i18n('MultiAccount.AllAccounts')}</Row.Title>
         <Row.CheckboxFieldToggle>
           <NotificationCheckbox
             checked={appSettings.notifyAllAccounts}
@@ -202,6 +201,7 @@ const NotificationsSection = () => {
             toggle
           />
         </Row.CheckboxFieldToggle>
+        <Row.Title>{i18n('MultiAccount.AllAccounts')}</Row.Title>
       </NotificationRow>
       {!isGranted() && (
         <Button
@@ -226,7 +226,6 @@ const SoundSection = () => {
       caption="Notifications.Sound.Caption"
     >
       <Row>
-        <Row.Title>{i18n('Notifications.Sound')}</Row.Title>
         <Row.CheckboxFieldToggle>
           <CheckboxFieldTsx
             checked={appSettings.notifications.sound}
@@ -240,6 +239,7 @@ const SoundSection = () => {
             toggle
           />
         </Row.CheckboxFieldToggle>
+        <Row.Title>{i18n('Notifications.Sound')}</Row.Title>
       </Row>
       <RangeSettingSelector
         textLeft={i18n('Notifications.Sound.Volume')}
@@ -270,7 +270,6 @@ const SoundEffectsSection = () => {
   return (
     <Section name="Notifications.Sound.Effects">
       <Row>
-        <Row.Title>{i18n('Notifications.Sound.Sent')}</Row.Title>
         <Row.CheckboxFieldToggle>
           <CheckboxFieldTsx
             checked={appSettings.notifications.sentMessageSound}
@@ -278,6 +277,7 @@ const SoundEffectsSection = () => {
             toggle
           />
         </Row.CheckboxFieldToggle>
+        <Row.Title>{i18n('Notifications.Sound.Sent')}</Row.Title>
       </Row>
     </Section>
   );

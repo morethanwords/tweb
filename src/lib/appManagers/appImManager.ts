@@ -113,7 +113,7 @@ import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
 import {savedReactionTags} from '../../components/chat/reactions';
-import {setAppState} from '../../stores/appState';
+import {setAppState, useAppState} from '../../stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
 import {AppMediaViewerRtmp} from '../../components/appMediaViewerRtmp';
 import useProfileColors from '../../hooks/useProfileColors';
@@ -701,9 +701,6 @@ export class AppImManager extends EventListenerBase<{
       savedReactionTags.splice(0, savedReactionTags.length, ...tags);
     });
 
-    // * preload sensitive content settings
-    this.managers.appPrivacyManager.getSensitiveContentSettings();
-
     // new PasscodeLockScreenControler().lock();
 
     this.onHashChange(true);
@@ -781,9 +778,8 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public async pushBotIdAsConfirmed(botId: BotId) {
-    const state = await apiManagerProxy.getState();
-    state.confirmedWebViews.push(botId);
-    await this.managers.appStateManager.pushToState('confirmedWebViews', state.confirmedWebViews);
+    const [appState, setAppState] = useAppState();
+    await setAppState('confirmedWebViews', [...appState.confirmedWebViews, botId]);
   }
 
   public async confirmBotWebView(options: {
@@ -792,8 +788,12 @@ export class AppImManager extends EventListenerBase<{
     ignoreConfirmedState?: boolean,
     showDisclaimer?: boolean
   }): Promise<boolean> {
-    const state = await apiManagerProxy.getState();
-    if(options.ignoreConfirmedState || options.showDisclaimer || !state.confirmedWebViews.includes(options.botId)) {
+    const [appState] = useAppState();
+    if(
+      options.ignoreConfirmedState ||
+      options.showDisclaimer ||
+      !appState.confirmedWebViews.includes(options.botId)
+    ) {
       const haveWriteAccess = await this.confirmBotWebViewInner(options);
       await this.pushBotIdAsConfirmed(options.botId);
       return haveWriteAccess;
@@ -1859,10 +1859,6 @@ export class AppImManager extends EventListenerBase<{
     const changedAutoplay = !!c.filter((key) => animationIntersector.setAutoplay(liteMode.isAvailable(key), key)).length;
     if(changedLoop || changedAutoplay) {
       animationIntersector.checkAnimations2(false);
-    }
-
-    for(const chat of this.chats) {
-      chat.setAutoDownloadMedia();
     }
 
     I18n.setTimeFormat(rootScope.settings.timeFormat);

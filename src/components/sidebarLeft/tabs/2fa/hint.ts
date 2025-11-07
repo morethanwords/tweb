@@ -73,7 +73,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
       tab.newPassword = this.newPassword;
       tab.hint = hint;
 
-      tab.open();
+      tab.open({justSetPasssword: true});
     };
 
     const btnContinue = Button('btn-primary btn-color-primary', {text: 'Continue'});

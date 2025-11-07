@@ -73,6 +73,18 @@ export class AppManagersManager {
 
     port.addEventListener('manager', ({name, method, args, accountNumber}) => {
       return callbackify(this.getManagersByAccount(), (managersByAccount) => {
+        if(accountNumber === undefined) {
+          const results: any[] = [];
+          for(const accountNumber in managersByAccount) {
+            const managers = managersByAccount[+accountNumber as any as ActiveAccountNumber];
+            const manager = managers[name as keyof Managers];
+            // @ts-ignore
+            results.push(manager[method](...args));
+          }
+
+          return results.some((result) => result instanceof Promise) ? Promise.all(results) : results;
+        }
+
         const managers = managersByAccount[accountNumber];
         const manager = managers[name as keyof Managers];
         // @ts-ignore
@@ -108,7 +120,6 @@ export class AppManagersManager {
       this.cryptoWorkersURLs.push(...newURLs);
       return this.cryptoWorkersURLs;
     });
-
 
     rootScope.addEventListener('account_logged_in', async({accountNumber, userId}) => {
       for(let i = 1; i < accountNumber; i++) {

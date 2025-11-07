@@ -88,6 +88,8 @@ import {BatchProcessor} from '../../helpers/sortedList';
 import {increment, MonoforumDialog} from '../storages/monoforumDialogs';
 import formatStarsAmount from './utils/payments/formatStarsAmount';
 import {makeMessageMediaInputForSuggestedPost} from './utils/messages/makeMessageMediaInput';
+import createObservedState, {wrapObject} from '../../helpers/createObservedState';
+import createHistoryStorage, {createHistoryStorageSearchSlicedArray} from './utils/messages/createHistoryStorage';
 import {isTempId} from './utils/messages/isTempId';
 import fitSymbols from '../../helpers/string/fitSymbols';
 
@@ -134,12 +136,11 @@ export type SendFileDetails = {
 export type HistoryStorageKey = `${HistoryStorage['type']}_${PeerId}` | `replies_${PeerId}_${number}` | `search_${PeerId}_${SearchStorageFilterKey}_${number}`;
 export type HistoryStorage = {
   _maxId: number,
-  _count: number | null,
   count: number | null,
-  history: SlicedArray<number>,
+  history?: SlicedArray<number>,
   searchHistory?: SlicedArray<`${PeerId}_${number}`>,
 
-  maxId?: number,
+  readonly maxId?: number,
   readPromise?: Promise<void>,
   readMaxId?: number,
   readOutboxMaxId?: number,
@@ -148,7 +149,7 @@ export type HistoryStorage = {
   maxOutId?: number,
   replyMarkup?: Exclude<ReplyMarkup, ReplyMarkup.replyInlineMarkup>,
 
-  type: 'history' | 'replies' | 'search',
+  readonly type: 'history' | 'replies' | 'search',
   key: HistoryStorageKey,
   wasFetched?: boolean;
 
@@ -2813,7 +2814,7 @@ export class AppMessagesManager extends AppManager {
       message.peerId,
       isDialog(dialog) ? undefined : getDialogKey(dialog)
     );
-    historyStorage.maxId = message.mid;
+    historyStorage._maxId = message.mid;
 
     this.dialogsStorage.generateIndexForDialog(dialog, false, message);
 
@@ -3625,6 +3626,21 @@ export class AppMessagesManager extends AppManager {
     return message;
   }
 
+  private iterateHistoryStorages(
+    storages: HistoryStorage | Record<string, HistoryStorage>,
+    callback: (storage: HistoryStorage) => void
+  ) {
+    if('key' in storages) {
+      callback(storages as HistoryStorage);
+      return;
+    }
+
+    for(const key in storages) {
+      const storage = storages[key];
+      this.iterateHistoryStorages(storage, callback);
+    }
+  }
+
   public mirrorAllMessages(port?: MessageEventSource) {
     const mirror: Mirrors['messages'] = {};
     [
@@ -3640,6 +3656,23 @@ export class AppMessagesManager extends AppManager {
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
       name: 'messages',
       value: mirror,
+      accountNumber: this.getAccountNumber()
+    }, port);
+
+    const historyMirror: Mirrors['historyStorage'] = {};
+    [
+      this.historiesStorage,
+      this.searchesStorage,
+      this.threadsStorage
+    ].forEach((storages) => {
+      this.iterateHistoryStorages(storages as any, (historyStorage) => {
+        historyMirror[historyStorage.key] = this.historyStorageAsTransferable(historyStorage);
+      });
+    });
+
+    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+      name: 'historyStorage',
+      value: historyMirror,
       accountNumber: this.getAccountNumber()
     }, port);
   }
@@ -4087,6 +4120,20 @@ export class AppMessagesManager extends AppManager {
   }
 
   private flushStoragesByPeerId(peerId: PeerId) {
+    [
+      this.historiesStorage[peerId],
+      this.searchesStorage[peerId],
+      this.threadsStorage[peerId]
+    ].forEach((s) => {
+      this.iterateHistoryStorages(s as any, (historyStorage) => {
+        MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+          name: 'historyStorage',
+          key: joinDeepPath(historyStorage.key, 'delete'),
+          accountNumber: this.getAccountNumber()
+        });
+      });
+    });
+
     [
       this.historiesStorage,
       this.threadsStorage,
@@ -5230,24 +5277,9 @@ export class AppMessagesManager extends AppManager {
     } else {
       searchStorage = ((this.searchesStorage[options.peerId] ??= {})[options.threadId || options.monoforumThreadId] ??= {})[filter] ??= this.createHistoryStorage(o);
     }
-    if(options.isCacheableSearch) { // * don't update messages list if it's a global search
-      if(!searchStorage.searchHistory) {
-        const slicedArray = searchStorage.searchHistory = new SlicedArray();
-        slicedArray.insertSlice = (slice) => {
-          slicedArray.first.push(...slice);
-          return slicedArray.first;
-        };
 
-        slicedArray.findOffsetInSlice = (offsetId, slice) => {
-          const index = slice.indexOf(offsetId);
-          if(index !== -1) {
-            return {
-              slice,
-              offset: index + 1
-            };
-          }
-        };
-      }
+    if(options.isCacheableSearch) { // * don't update messages list if it's a global search
+
     } else if(!searchStorage.originalInsertSlice) {
       searchStorage.originalInsertSlice = searchStorage.history.insertSlice.bind(searchStorage.history);
       searchStorage.history.insertSlice = (...args) => {
@@ -5405,7 +5437,7 @@ export class AppMessagesManager extends AppManager {
       if(historyStorage.maxId && historyStorage.maxId < newMaxId && first.isEnd(SliceEnd.Bottom)) {
         first.unsetEnd(SliceEnd.Bottom);
       }
-      historyStorage.maxId = newMaxId;
+      historyStorage._maxId = newMaxId;
 
       this.threadsToReplies[threadKey] = peerId + '_' + mid;
 
@@ -6089,7 +6121,7 @@ export class AppMessagesManager extends AppManager {
     // insertSlice([newerMessage?.mid, message.mid, olderMessage?.mid].filter(Boolean));
     insertInDescendSortedArray(slice, mid);
 
-    historyStorage.maxId = Math.max(historyStorage.maxId, message.mid);
+    historyStorage._maxId = Math.max(historyStorage.maxId, message.mid);
     historyStorage.channelJoinedMid = message.mid;
     if(historyStorage.originalInsertSlice) {
       historyStorage.history.insertSlice = historyStorage.originalInsertSlice;
@@ -6123,38 +6155,98 @@ export class AppMessagesManager extends AppManager {
   }
 
   public createHistoryStorage(options: Parameters<typeof getHistoryStorageKey>[0]): HistoryStorage {
-    const self = this;
-    return {
-      history: new SlicedArray(),
-      type: options.type,
-      key: getHistoryStorageKey(options),
-      wasFetched: false,
-      _maxId: undefined,
-      _count: null,
-      get count() {
-        return this._count;
-      },
-      set count(count) {
-        this._count = count;
-        if(self.historyMaxIdSubscribed.has(this.key)) {
-          self.rootScope.dispatchEvent('history_count', {historyKey: this.key, count});
-        }
-      },
-      get maxId() {
-        const maxId = this._maxId;
-        if(maxId) {
-          return maxId;
+    const historyStorage = createHistoryStorage(options);
+    if(options.searchType === 'uncached') {
+      return historyStorage;
+    }
+
+    if(options.isCacheableSearch && options.searchType === 'cached') {
+      historyStorage.searchHistory = createHistoryStorageSearchSlicedArray();
+    } else {
+      historyStorage.history = new SlicedArray();
+    }
+
+    const passProperties: Set<keyof HistoryStorage> = new Set([
+      '_maxId',
+      'count',
+      'readMaxId',
+      'readOutboxMaxId',
+      'maxOutId',
+      'replyMarkup'
+    ]);
+
+    // * using proxy to catch only outside calls
+    let ignoreSliceCalls = false;
+    const observeKey = historyStorage.searchHistory ? 'searchHistory' : 'history';
+    const observed = createObservedState(historyStorage, {
+      onSet: ({prop, value, oldValue, state}) => {
+        if(!passProperties.has(prop as keyof HistoryStorage)) {
+          return;
         }
 
-        const first = this.history.first;
-        if(first.isEnd(SliceEnd.Bottom)) {
-          return first[0];
-        }
+        MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+          name: 'historyStorage',
+          key: joinDeepPath(historyStorage.key, prop),
+          value,
+          accountNumber: this.getAccountNumber()
+        });
       },
-      set maxId(maxId) {
-        this._maxId = maxId;
+
+      observe: {
+        [observeKey]: {
+          methods: ['push', 'unshift', 'insertSlice', 'delete', 'deleteSlice'],
+          onCallBefore: () => {
+            ignoreSliceCalls = true;
+          },
+          onCall: ({method, args, result, state}) => {
+            ignoreSliceCalls = false;
+
+            // console.log('history', method, args, result, state);
+            MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+              name: 'historyStorage',
+              key: joinDeepPath(historyStorage.key, observeKey, method),
+              value: args,
+              accountNumber: this.getAccountNumber()
+            });
+          }
+        }
       }
+    });
+
+    // * can't listen as proxy because it won't call from inside of SlicedArray
+    // * afterwards listening only outside calls
+    // * also make sure that slice is included in the history
+    const slicedArrayToObserve = observed[observeKey];
+    const originalConstructSlice: any = slicedArrayToObserve.constructSlice.bind(slicedArrayToObserve);
+    slicedArrayToObserve.constructSlice = (...args: any[]) => {
+      const result = originalConstructSlice(...args as any);
+      const proxy = wrapObject(result, {
+        methods: ['setEnd', 'unsetEnd', 'splice'],
+        onCall: ({method, args, result, state}) => {
+          if(ignoreSliceCalls) {
+            return;
+          }
+
+          const index = slicedArrayToObserve.slices.indexOf(proxy);
+          if(index === -1) {
+            // console.warn('slice unknown call', observed, proxy);
+            return;
+          }
+
+          // console.log('slice call', method, args, result, state);
+          MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+            name: 'historyStorage',
+            key: joinDeepPath(historyStorage.key, 'slices', index, method),
+            value: args,
+            accountNumber: this.getAccountNumber()
+          });
+        }
+      }, historyStorage);
+      return proxy;
     };
+    slicedArrayToObserve.slices.splice(0, Infinity, slicedArrayToObserve.constructSlice() as any);
+
+    return observed;
   }
 
   public getHistoryStorage(peerId: PeerId, threadId?: number) {
@@ -6166,12 +6258,7 @@ export class AppMessagesManager extends AppManager {
     return this.historiesStorage[peerId] ??= this.processNewHistoryStorage(peerId, this.createHistoryStorage({type: 'history', peerId}));
   }
 
-  public getHistoryStorageTransferable(options: RequestHistoryOptions & {
-    backLimit?: number,
-    historyStorage?: HistoryStorage
-  }) {
-    this.processRequestHistoryOptions(options);
-    const historyStorage = options.historyStorage;
+  private historyStorageAsTransferable(historyStorage: HistoryStorage) {
     const {
       count,
       history,
@@ -6195,6 +6282,14 @@ export class AppMessagesManager extends AppManager {
       maxOutId,
       replyMarkup
     };
+  }
+
+  public getHistoryStorageTransferable(options: RequestHistoryOptions & {
+    backLimit?: number,
+    historyStorage?: HistoryStorage
+  }) {
+    this.processRequestHistoryOptions(options);
+    return this.historyStorageAsTransferable(options.historyStorage);
   }
 
   private getNotifyPeerSettings(peerId: PeerId, threadId?: number) {
@@ -6615,6 +6710,7 @@ export class AppMessagesManager extends AppManager {
     } else {
       // * catch situation with disconnect. if message's id is lower than we already have (in bottom end slice), will sort it
       const firstSlice = historyStorage.history.first;
+      let inserted = false;
       if(firstSlice.isEnd(SliceEnd.Bottom)) {
         let i = 0;
         for(const length = firstSlice.length; i < length; ++i) {
@@ -6623,8 +6719,13 @@ export class AppMessagesManager extends AppManager {
           }
         }
 
-        firstSlice.splice(i, 0, message.mid);
-      } else {
+        if(i > 0) {
+          firstSlice.splice(i, 0, message.mid);
+          inserted = true;
+        }
+      }
+
+      if(!inserted) {
         historyStorage.history.unshift(message.mid);
       }
 
@@ -6634,7 +6735,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     if(!historyStorage.maxId || message.mid > historyStorage.maxId) {
-      historyStorage.maxId = message.mid;
+      historyStorage._maxId = message.mid;
     }
 
     if(this.mergeReplyKeyboard(historyStorage, message)) {
@@ -7297,11 +7398,20 @@ export class AppMessagesManager extends AppManager {
     const needDialog = this.appChatsManager.isInChat(channelId);
 
     const canViewHistory = !!getPeerActiveUsernames(channel)[0] || !channel.pFlags.left;
-    const hasHistory = this.historiesStorage[peerId] !== undefined;
+    const historyStorage = this.historiesStorage[peerId];
+    const hasHistory = historyStorage !== undefined;
 
     if(canViewHistory !== hasHistory) {
       delete this.historiesStorage[peerId];
       this.rootScope.dispatchEvent('history_forbidden', peerId);
+
+      if(historyStorage) {
+        MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+          name: 'historyStorage',
+          key: joinDeepPath(historyStorage.key, 'delete'),
+          accountNumber: this.getAccountNumber()
+        });
+      }
     }
 
     const dialog = this.getDialogOnly(peerId);
@@ -8570,7 +8680,7 @@ export class AppMessagesManager extends AppManager {
         }
 
         if(historyStorage.maxId !== newMaxId) {
-          historyStorage.maxId = slice[0]; // ! WARNING
+          historyStorage._maxId = slice[0]; // ! WARNING
 
           this.reloadConversation(peerId); // when top_message is deleted but cached
         }

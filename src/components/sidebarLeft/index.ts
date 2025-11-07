@@ -99,7 +99,7 @@ import DeferredIsUsingPasscode from '../../lib/passcode/deferredIsUsingPasscode'
 import EncryptionKeyStore from '../../lib/passcode/keyStore';
 import createLockButton from './lockButton';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './constants';
-import createSubmenuTrigger from '../createSubmenuTrigger';
+import createSubmenuTrigger, {CreateSubmenuArgs} from '../createSubmenuTrigger';
 import ChatTypeMenu from '../chatTypeMenu';
 import {RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 import EmptySearchPlaceholder from '../emptySearchPlaceholder';
@@ -416,7 +416,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.initNavigation();
 
-    apiManagerProxy.getState().then((state) => {
+    {
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
         fetch('version', {cache: 'no-cache'})
@@ -433,7 +433,7 @@ export class AppSidebarLeft extends SidebarSlider {
         })
         .catch(noop);
       }, CHECK_UPDATE_INTERVAL);
-    });
+    }
 
     this.onResize = () => {
       const rect = this.rect = this.tabsContainer.getBoundingClientRect();
@@ -730,7 +730,7 @@ export class AppSidebarLeft extends SidebarSlider {
     const moreSubmenu = createSubmenuTrigger({
       text: 'MultiAccount.More',
       icon: 'more'
-    }, () => this.createMoreSubmenu(moreSubmenu, closeTabsBefore));
+    }, (args) => this.createMoreSubmenu(args, closeTabsBefore));
 
     const newSubmenu = createSubmenuTrigger({
       text: 'CreateANew',
@@ -959,7 +959,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
 
   private async createMoreSubmenu(
-    submenu: ReturnType<typeof createSubmenuTrigger>,
+    {middleware}: CreateSubmenuArgs,
     closeTabsBefore: (clb: () => void) => void
   ) {
     const toggleTheme = () => {
@@ -1084,6 +1084,8 @@ export class AppSidebarLeft extends SidebarSlider {
     }, true);
 
     initAnimationsToggleIcon();
+
+    if(!middleware()) return;
 
     return menu;
   }

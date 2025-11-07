@@ -1260,27 +1260,23 @@ const Stories = (props: {
       }
     });
 
-    if(!untrack(noSound)) apiManagerProxy.getState().then((state) => {
+    if(!untrack(noSound)) {
       const [appSettings, setAppSettings] = useAppSettings();
       if(!cleaned && !appSettings.seenTooltips.storySound) {
-        runWithOwner(owner, () => {
-          const playingMemo = createMemo((prev) => prev || (isActive() && stories.startTime));
-          createEffect(() => {
-            if(playingMemo()) {
-              const {close} = showTooltip({
-                ...muteTooltipOptions,
-                textElement: i18n('Story.SoundTooltip')
-              });
-              setTooltipCloseCallback(() => close);
-            }
-          });
+        const playingMemo = createMemo((prev) => prev || (isActive() && stories.startTime));
+        createEffect(() => {
+          if(playingMemo()) {
+            const {close} = showTooltip({
+              ...muteTooltipOptions,
+              textElement: i18n('Story.SoundTooltip')
+            });
+            setTooltipCloseCallback(() => close);
+          }
         });
 
         setAppSettings('seenTooltips', 'storySound', true);
       }
-    });
-
-    const owner = getOwner();
+    }
   };
 
   const setStoryMeta = (story: StoryItem.storyItemSkipped | StoryItem.storyItem) => {

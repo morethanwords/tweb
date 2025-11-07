@@ -35,7 +35,6 @@ import PopupDeleteMessages from './popups/deleteMessages';
 import Row from './row';
 import htmlToDocumentFragment from '../helpers/dom/htmlToDocumentFragment';
 import {SearchSelection} from './chat/selection';
-import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
 import {MyDocument} from '../lib/appManagers/appDocsManager';
 import AppMediaViewer from './appMediaViewer';
@@ -70,7 +69,6 @@ import SwipeHandler from './swipeHandler';
 import wrapDocument from './wrappers/document';
 import wrapPhoto from './wrappers/photo';
 import wrapVideo from './wrappers/video';
-import noop from '../helpers/noop';
 import wrapMediaSpoiler, {hasSensitiveSpoiler, onMediaSpoilerClick} from './wrappers/mediaSpoiler';
 import filterAsync from '../helpers/array/filterAsync';
 import ChatContextMenu, {getSponsoredMessageButtons} from './chat/contextMenu';
@@ -93,21 +91,20 @@ import cancelClickOrNextIfNotClick from '../helpers/dom/cancelClickOrNextIfNotCl
 import createElementFromMarkup from '../helpers/createElementFromMarkup';
 import numberThousandSplitter from '../helpers/number/numberThousandSplitter';
 import {ALL_COLLECTIONS_ID, StarGiftsProfileActions, StarGiftsProfileStore} from './stargifts/profileStore';
-import {getFirstChild, resolveFirst} from '@solid-primitives/refs';
+import {getFirstChild} from '@solid-primitives/refs';
 import SortedDialogList from './sortedDialogList';
 import Icon from './icon';
 import PopupReportAd from './popups/reportAd';
-import createContextMenu from '../helpers/dom/createContextMenu';
 import ButtonMenuToggle from './buttonMenuToggle';
-import EmptySearchPlaceholder from './emptySearchPlaceholder';
-import {SensitiveContentSettings} from '../lib/appManagers/appPrivacyManager';
-import {ignoreRestrictionReasons, isSensitive} from '../helpers/restrictions';
+import {isSensitive} from '../helpers/restrictions';
 import {isMessageSensitive} from '../lib/appManagers/utils/messages/isMessageRestricted';
 import {MediaSearchContext} from './appMediaPlaybackController';
 import {StarGiftsProfileTab} from './stargifts/profileList';
 import {MyStarGift} from '../lib/appManagers/appGiftsManager';
 import wrapSticker from './wrappers/sticker';
 import {unwrap} from 'solid-js/store';
+import {usePeer} from '../stores/peers';
+import {useAppState} from '../stores/appState';
 import {AutonomousSavedDialogList} from './autonomousDialogList/savedDialogs';
 import SetTransition from './singleTransition';
 import liteMode from '../helpers/liteMode';
@@ -418,9 +415,6 @@ export default class AppSearchSuper {
 
   private log = logger('SEARCH-SUPER');
   public selectTab: ReturnType<typeof horizontalMenu>;
-
-  private sensitiveContentSettings: SensitiveContentSettings;
-  private isChatSensitive: boolean;
 
   private monthContainers: Partial<{
     [type in SearchSuperType]: {
@@ -733,9 +727,8 @@ export default class AppSearchSuper {
       if(mediaSpoiler) {
         onMediaSpoilerClick({
           event: e,
-          mediaSpoiler,
-          sensitiveSettings: this.sensitiveContentSettings
-        })
+          mediaSpoiler
+        });
         return;
       }
 
@@ -802,10 +795,6 @@ export default class AppSearchSuper {
     }, () => {
       this.lazyLoadQueue.unlockAndRefresh(); // ! maybe not so efficient
     }, this.listenerSetter);
-
-    this.listenerSetter.add(rootScope)('sensitive_content_settings', (sensitiveContentSettings) => {
-      this.sensitiveContentSettings = sensitiveContentSettings;
-    });
   }
 
   private scrollToStart() {
@@ -1465,38 +1454,37 @@ export default class AppSearchSuper {
         })
       ]);
     } else if(!this.searchContext.peerId && !this.searchContext.minDate) {
+      const [appState] = useAppState();
       const renderRecentSearch = (setActive = true) => {
-        return apiManagerProxy.getState().then((state) => {
-          if(!middleware()) {
-            return;
-          }
+        if(!middleware()) {
+          return;
+        }
 
-          this.searchGroups.recent.list.replaceChildren();
+        this.searchGroups.recent.list.replaceChildren();
 
-          state.recentSearch.slice(0, 20).forEach(async(peerId) => {
-            const {dom} = appDialogsManager.addDialogNew({
-              peerId: peerId,
-              container: this.searchGroups.recent.list,
-              meAsSaved: true,
-              avatarSize: 'abitbigger',
-              autonomous: true,
-              wrapOptions: {
-                middleware
-              },
-              withStories: true
-            });
-
-            dom.lastMessageSpan.append(await (peerId.isUser() ?
-              Promise.resolve(getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()))) :
-              getChatMembersString(peerId.toChatId())));
+        appState.recentSearch.slice(0, 20).forEach(async(peerId) => {
+          const {dom} = appDialogsManager.addDialogNew({
+            peerId: peerId,
+            container: this.searchGroups.recent.list,
+            meAsSaved: true,
+            avatarSize: 'abitbigger',
+            autonomous: true,
+            wrapOptions: {
+              middleware
+            },
+            withStories: true
           });
 
-          if(!state.recentSearch.length) {
-            this.searchGroups.recent.clear();
-          } else if(setActive) {
-            this.searchGroups.recent.setActive();
-          }
+          dom.lastMessageSpan.append(await (peerId.isUser() ?
+            Promise.resolve(getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()))) :
+            getChatMembersString(peerId.toChatId())));
         });
+
+        if(!appState.recentSearch.length) {
+          this.searchGroups.recent.clear();
+        } else if(setActive) {
+          this.searchGroups.recent.setActive();
+        }
       };
 
       return Promise.all([
@@ -2290,6 +2278,10 @@ export default class AppSearchSuper {
     return !this.loaded[mediaTab.type] || (this.historyStorage[inputFilter] && this.usedFromHistory[inputFilter] < this.historyStorage[inputFilter].length);
   }
 
+  public get isChatSensitive() {
+    return isSensitive((usePeer(this.searchContext.peerId) as User.user).restriction_reason || []);
+  }
+
   private async loadFirstTime() {
     const middleware = this.middleware.get();
     const {peerId, threadId} = this.searchContext;
@@ -2309,8 +2301,6 @@ export default class AppSearchSuper {
       canViewStories,
       canViewSimilar,
       giftsCount,
-      sensitiveContentSettings,
-      chatRestrictions,
       maybePinnedGifts
     ] = await Promise.all([
       this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId),
@@ -2321,18 +2311,12 @@ export default class AppSearchSuper {
       this.canViewStories(),
       this.canViewSimilar(),
       this.getGiftsCount(),
-      this.managers.appPrivacyManager.getSensitiveContentSettings(),
-      this.managers.appPeersManager.getPeerRestrictions(peerId),
       peerId === rootScope.myId && this.managers.appGiftsManager.getPinnedGifts(peerId)
     ]);
 
     if(!middleware()) {
       return;
     }
-
-    this.sensitiveContentSettings = sensitiveContentSettings;
-    ignoreRestrictionReasons(this.sensitiveContentSettings.ignoreRestrictionReasons);
-    this.isChatSensitive = isSensitive(chatRestrictions);
 
     if(this.loadMutex) {
       await this.loadMutex;

@@ -8,9 +8,9 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import safePlay from '../../helpers/dom/safePlay';
 import getImageFromStrippedThumb from '../../helpers/getImageFromStrippedThumb';
 import {Document, Photo, PhotoSize} from '../../layer';
-import {SensitiveContentSettings} from '../../lib/appManagers/appPrivacyManager';
 import {i18n} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
+import useContentSettings from '../../stores/contentSettings';
 import confirmationPopup from '../confirmationPopup';
 import DotRenderer from '../dotRenderer';
 import Icon from '../icon';
@@ -76,10 +76,10 @@ function revealSpoilerWithAnimation(options: {
 
 export function onMediaSpoilerClick(options: {
   mediaSpoiler: HTMLElement,
-  sensitiveSettings: SensitiveContentSettings,
   event: Event
 }) {
-  const {mediaSpoiler, event, sensitiveSettings} = options;
+  const {mediaSpoiler, event} = options;
+  const contentSettings = useContentSettings();
   cancelEvent(event);
 
   if(mediaSpoiler.classList.contains('is-revealing') || mediaSpoiler.dataset.isRevealing) {
@@ -87,17 +87,17 @@ export function onMediaSpoilerClick(options: {
   }
 
   if(mediaSpoiler.dataset.isSensitive) {
-    if(!sensitiveSettings.sensitiveCanChange) {
-      toastNew({langPackKey: 'SensitiveContentUnavailable'})
-      return
+    if(!contentSettings.sensitiveCanChange()) {
+      toastNew({langPackKey: 'SensitiveContentUnavailable'});
+      return;
     }
 
-    if(sensitiveSettings.needAgeVerification && !sensitiveSettings.ageVerified) {
+    if(contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
       AgeVerificationPopup.create().then((verified) => {
         if(verified) {
-          clearSensitiveSpoilers()
+          clearSensitiveSpoilers();
         }
-      })
+      });
       return;
     }
 
@@ -113,11 +113,11 @@ export function onMediaSpoilerClick(options: {
     }).then((remember) => {
       if(remember) {
         rootScope.managers.appPrivacyManager.setContentSettings({sensitive_enabled: true});
-        clearSensitiveSpoilers()
+        clearSensitiveSpoilers();
         return
       }
 
-      delete mediaSpoiler.dataset.isSensitive
+      delete mediaSpoiler.dataset.isSensitive;
       onMediaSpoilerClick(options);
     })
     return;

@@ -787,7 +787,7 @@ export default class ChatBubbles {
           if(div && !tempMessage.media?.document?.thumbs?.length && doc.thumbs?.length) {
             getHeavyAnimationPromise().then(async() => {
               const timeSpan = div.querySelector('.time');
-              const newDiv = await wrapDocument({message, fontSize: rootScope.settings.messagesTextSize});
+              const newDiv = await wrapDocument({message, fontSize: this.chat.appSettings.messagesTextSize});
               div.replaceWith(newDiv);
 
               if(timeSpan) {
@@ -1467,7 +1467,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('history_delete_key', ({historyKey, mid}) => {
-      if(this.chat.historyStorageKey !== historyKey) {
+      if(this.chat.historyStorage.key !== historyKey) {
         return;
       }
 
@@ -1573,7 +1573,7 @@ export default class ChatBubbles {
       }
 
       const middleware = this.getMiddleware();
-      const chat = apiManagerProxy.getChat(chatId);
+      const chat = this.chat.peer;
       const hadRights = this.chatInner.classList.contains('has-rights');
       const hadPlainRights = this.chat.input.canSendPlain();
       const [hasRights, hasPlainRights, canEmbedLinks] = await Promise.all([
@@ -2281,7 +2281,7 @@ export default class ChatBubbles {
           const rendered = this.getRenderedHistory('desc', true);
           const bubblesMaxId = rendered ? splitFullMid(rendered[0]).mid : -1;
           if(maxId >= bubblesMaxId) {
-            maxId = Math.max((await this.chat.getHistoryMaxId()) || 0, maxId);
+            maxId = Math.max(this.chat.getHistoryMaxId() || 0, maxId);
             if(!middleware()) return;
           }
         }
@@ -2490,8 +2490,7 @@ export default class ChatBubbles {
     if(mediaSpoiler) {
       onMediaSpoilerClick({
         event: e,
-        mediaSpoiler,
-        sensitiveSettings: this.chat.sensitiveContentSettings
+        mediaSpoiler
       });
       return;
     }
@@ -2679,7 +2678,7 @@ export default class ChatBubbles {
           const {mid} = splitFullMid(getBubbleFullMid(bubble) || EMPTY_FULL_MID);
 
           if(peerId !== NULL_PEER_ID) {
-            const chat = apiManagerProxy.getChat(this.peerId);
+            const chat = this.chat.peer;
             const linkedChat = chat?._ === 'channel' && chat?.pFlags?.monoforum && chat?.linked_monoforum_id ?
               apiManagerProxy.getChat(chat.linked_monoforum_id) :
               undefined;
@@ -3412,8 +3411,8 @@ export default class ChatBubbles {
     }
   }
 
-  public async updateUnreadByDialog() {
-    const historyStorage = await this.chat.getHistoryStorage();
+  public updateUnreadByDialog() {
+    const historyStorage = this.chat.getHistoryStorage();
     const maxId = this.peerId === rootScope.myId ? historyStorage.readMaxId : historyStorage.readOutboxMaxId;
 
     for(const mid of this.unreadOut) {
@@ -4217,7 +4216,7 @@ export default class ChatBubbles {
       lastMsgFullMid = EMPTY_FULL_MID;
     }
 
-    const historyStorage = await m(this.chat.getHistoryStorage());
+    const historyStorage = this.chat.getHistoryStorage();
     if(chatType === ChatType.Pinned) {
       topMessageFullMid = makeFullMid(peerId, await m(this.managers.appMessagesManager.getPinnedMessagesMaxId(peerId, this.chat.threadId)));
     } else if(historyStorage.searchHistory) {
@@ -4389,7 +4388,7 @@ export default class ChatBubbles {
     // const haveToScrollToBubble = (topMessage && (isJump || samePeer)) || isTarget;
     const haveToScrollToBubble = canScroll || (topMessageFullMid !== EMPTY_FULL_MID && isJump) || isTarget;
     const fromUp = maxBubbleFullMid !== EMPTY_FULL_MID && (lastMsgFullMid === EMPTY_FULL_MID/*  || lastMsgId < 0 */ || await (async() => {
-      const historyStorage = await this.chat.getHistoryStorage();
+      const historyStorage = this.chat.getHistoryStorage();
       const slicedArray = historyStorage.searchHistory || historyStorage.history;
       if(slicedArray === historyStorage.searchHistory) {
         const lastIndex = slicedArray.first.indexOf(lastMsgFullMid);
@@ -4408,6 +4407,10 @@ export default class ChatBubbles {
       topMessageFullMid,
       savedPosition
     };
+
+    if(this.chat.isBroadcast && this.chat.type === ChatType.Chat/*  && false */) {
+      this.loadSponsoredMessages();
+    }
 
     if(!samePeer) {
       this.ranks = undefined;
@@ -4461,10 +4464,6 @@ export default class ChatBubbles {
         if(ackedResult.cached) {
           await m(setRanksPromise);
         }
-      }
-
-      if(this.chat.isBroadcast && this.chat.type === ChatType.Chat/*  && false */) {
-        this.loadSponsoredMessages();
       }
     }
 
@@ -4868,10 +4867,10 @@ export default class ChatBubbles {
     // }
   }
 
-  public async onScrolledAllDown() {
+  public onScrolledAllDown() {
     if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) {
       const {peerId, threadId, monoforumThreadId} = this.chat;
-      const historyMaxId = await this.chat.getHistoryMaxId();
+      const historyMaxId = this.chat.getHistoryMaxId();
 
       this.managers.appMessagesManager.readHistory({
         peerId,
@@ -4884,10 +4883,9 @@ export default class ChatBubbles {
   }
 
   public async finishPeerChange() {
-    const {canWrite, hasMessages, appConfig} = await namedPromises({
+    const {canWrite, hasMessages} = await namedPromises({
       canWrite: this.chat.canSend(),
-      hasMessages: this.chat.hasMessages(),
-      appConfig: Promise.resolve(apiManagerProxy.getAppConfig())
+      hasMessages: this.chat.hasMessages()
     });
 
     const middleware = this.getMiddleware();
@@ -4896,7 +4894,7 @@ export default class ChatBubbles {
 
     return () => {
       this.chatInner.classList.toggle('has-rights', canWrite);
-      this.container.classList.toggle('is-chat-input-hidden', !canWrite && !appConfig.freeze_since_date);
+      this.container.classList.toggle('is-chat-input-hidden', !canWrite && !this.chat.appConfig.freeze_since_date);
 
       const tmpThreadCls = 'is-temporary-thread';
       if(!isTemporaryThread && this.container.classList.contains(tmpThreadCls)) {
@@ -4920,8 +4918,8 @@ export default class ChatBubbles {
     };
   }
 
-  public async updateHasMessages() {
-    const hasMessages = await this.chat.hasMessages();
+  public updateHasMessages() {
+    const hasMessages = this.chat.hasMessages();
     [this.chatInner, this.remover].forEach((element) => {
       element.classList.toggle('no-messages', !hasMessages);
     });
@@ -5732,10 +5730,10 @@ export default class ChatBubbles {
           const deferred = deferredPromise<void>();
 
           const updateHidden = async(hidden: boolean) => {
-            const state = await apiManagerProxy.getState();
-            if(hidden) state.hiddenSimilarChannels.push(peerId);
-            else indexOfAndSplice(state.hiddenSimilarChannels, peerId);
-            await this.managers.appStateManager.pushToState('hiddenSimilarChannels', state.hiddenSimilarChannels);
+            const array = this.chat.appState.hiddenSimilarChannels.slice();
+            if(hidden) array.push(peerId);
+            else indexOfAndSplice(array, peerId);
+            await this.chat.setAppState('hiddenSimilarChannels', array);
           };
 
           const peerId = this.chat.peerId;
@@ -5756,8 +5754,7 @@ export default class ChatBubbles {
                 bubbleContainer.classList.add('is-clickable');
                 await getHeavyAnimationPromise();
 
-                const state = await apiManagerProxy.getState();
-                if(!state.hiddenSimilarChannels.includes(peerId)) {
+                if(!this.chat.appState.hiddenSimilarChannels.includes(peerId)) {
                   toggle(true, cached);
                 }
 
@@ -6078,7 +6075,7 @@ export default class ChatBubbles {
     let isStandaloneMedia = false;
     let attachmentDiv: HTMLElement;
     if(bigEmojis) {
-      if(rootScope.settings.emoji.big) {
+      if(this.chat.appSettings.emoji.big) {
         const sticker = bigEmojis === 1 &&
           !totalEntities.find((entity) => entity._ === 'messageEntityCustomEmoji') &&
           await this.managers.appStickersManager.getAnimatedEmojiSticker(messageMessage);
@@ -6627,7 +6624,7 @@ export default class ChatBubbles {
                     _: 'inputMessagesFilterEmpty'
                   }
                 },
-                fontSize: rootScope.settings.messagesTextSize,
+                fontSize: this.chat.appSettings.messagesTextSize,
                 canTranscribeVoice: true
               });
               preview.append(docDiv);
@@ -6982,7 +6979,7 @@ export default class ChatBubbles {
                 isScheduled: (message as Message.message).pFlags.is_scheduled
               } : undefined,
               sizeType: 'documentName',
-              fontSize: rootScope.settings.messagesTextSize,
+              fontSize: this.chat.appSettings.messagesTextSize,
               richTextFragment: richText,
               richTextOptions: getRichTextOptions(),
               canTranscribeVoice: true,
@@ -8251,7 +8248,7 @@ export default class ChatBubbles {
     if(!this.scrollable.loadedAll['bottom'] || !this.scrollable.loadedAll['top']) {
       let isEnd = (historyResult as HistoryResult).isEnd;
       if(!isEnd) {
-        const historyStorage = await this.chat.getHistoryStorage();
+        const historyStorage = this.chat.getHistoryStorage();
         const firstSlice = historyStorage.history.first;
         const lastSlice = historyStorage.history.last;
         isEnd = {top: false, bottom: false, both: false};
@@ -8287,7 +8284,6 @@ export default class ChatBubbles {
         this.chat.getHistoryMaxId()
       ])
       let prevGroupedId: Long | undefined
-      debugger
 
       for(const mid_ of history) {
         const mid = typeof(mid_) === 'number' ? mid_ : mid_.mid;
@@ -8955,7 +8951,7 @@ export default class ChatBubbles {
         appendTo = this.chatInner;
       } else if(this.chat.isMonoforum && !this.chat.canManageDirectMessages) {
         renderPromise = this.renderEmptyPlaceholder('directChannelMessages', bubble, message, elements);
-      } else if(this.chat.isAnyGroup && (apiManagerProxy.getPeer(this.peerId) as MTChat.chat).pFlags.creator) {
+      } else if(this.chat.isAnyGroup && (this.chat.peer as MTChat.chat).pFlags.creator) {
         renderPromise = this.renderEmptyPlaceholder('group', bubble, message, elements);
       } else if(this.chat.type === ChatType.Scheduled) {
         renderPromise = this.renderEmptyPlaceholder('noScheduledMessages', bubble, message, elements);
@@ -9307,10 +9303,12 @@ export default class ChatBubbles {
         this.messagesQueuePromise
       ]).then(([message]) => {
         if(!middleware()) return;
-        // this.processLocalMessageRender(message);
-        log('rendering', message);
-        return this.performHistoryResult({history: [message]}, false);
-      });
+        if(this.scrollable.loadedAll.bottom) {
+          this.performHistoryResult({history: [message]}, false);
+        } else {
+          this.sponsoredMessagesAvailable = [message]
+        }
+      })
     }).finally(() => {
       if(this.getSponsoredMessagePromise === promise) {
         this.getSponsoredMessagePromise = undefined;
@@ -9432,7 +9430,7 @@ export default class ChatBubbles {
           !this.getRenderedLength()
         ) ||
         (this.chat.type === ChatType.Scheduled && !this.getRenderedLength()) ||
-        !(await this.chat.getHistoryStorage()).count
+        !this.chat.getHistoryStorage().count
       )
     ) {
       this.log('inject empty peer placeholder');
@@ -9546,7 +9544,7 @@ export default class ChatBubbles {
       if(this.chat.type === ChatType.Pinned) {
         additionalFullMids = [additionalFullMid];
       } else {
-        const historyStorage = await this.chat.getHistoryStorage();
+        const historyStorage = this.chat.getHistoryStorage();
         const slicedArray = historyStorage.history;
         const slice = slicedArray.slice;
         if(slice.isEnd(SliceEnd.Bottom) && !slice.isEnd(SliceEnd.Both)) {
@@ -9701,7 +9699,7 @@ export default class ChatBubbles {
 
     const {peerId, threadId, monoforumThreadId} = this.chat;
 
-    const historyMaxId = await this.chat.getHistoryMaxId();
+    const historyMaxId = this.chat.getHistoryMaxId();
     let readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId || monoforumThreadId);
     if(!readMaxId || !middleware()) return;
 

@@ -13,10 +13,10 @@ import wrapPhoto from '../wrappers/photo';
 import wrapVideo from '../wrappers/video';
 import LazyLoadQueue from '../lazyLoadQueue';
 import {AnimationItemGroup} from '../animationIntersector';
-import {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import {IS_SAFARI} from '../../environment/userAgent';
 import createMiddleware from '../../helpers/solid/createMiddleware';
+import {ChatAutoDownloadSettings} from '../../hooks/useAutoDownloadSettings';
 
 let processing = false;
 const pollStories = () => {

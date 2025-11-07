@@ -55,6 +55,12 @@ const REFRESH_KEYS: Array<keyof State> = [
   'filtersArr'
 ];
 
+const RESET_WITH_BUILD: Array<keyof State> = [
+  'appConfig',
+  'version',
+  'build'
+];
+
 // const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
 
 function AnyStateWriter<S>(log: ReturnType<typeof logger>, keys: string[], init: S) {
@@ -168,8 +174,12 @@ const STATE_STEPS = {
     const SKIP_VALIDATING_PATHS: Set<string> = new Set([
       'settings.themes'
     ]);
+
     validateInitObject(init, writer.state, (missingKey) => {
-      writer.push(missingKey as keyof typeof init, writer.state[missingKey as keyof typeof init]);
+      writer.push(
+        missingKey as keyof typeof init,
+        writer.state[missingKey as keyof typeof init]
+      );
     }, undefined, SKIP_VALIDATING_PATHS);
   },
   VERSION: (writer: ReturnType<typeof StateWriter>) => {
@@ -186,9 +196,9 @@ const STATE_STEPS = {
         oldVersion = writer.state.version;
       }
 
-      writer.push('appConfig', copy(STATE_INIT.appConfig));
-      writer.push('version', STATE_VERSION);
-      writer.push('build', BUILD);
+      RESET_WITH_BUILD.forEach((key) => {
+        writer.push(key, copy(STATE_INIT[key]));
+      });
     }
 
     return {newVersion, oldVersion};

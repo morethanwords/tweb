@@ -1207,7 +1207,7 @@ export default class DialogsStorage extends AppManager {
         const topMessage = this.appMessagesManager.getMessageByPeer(peerId, topMid) as MyMessage;
         if(!topMid || (topPendingMessage && (!topMessage || topPendingMessage?.date > topMessage?.date))) {
           dialog.top_message = topMid = topPendingMid;
-          this.appMessagesManager.getHistoryStorage(peerId, dialogKey).maxId = topPendingMid;
+          this.appMessagesManager.getHistoryStorage(peerId, dialogKey)._maxId = topPendingMid;
         }
       }
 
@@ -1457,7 +1457,7 @@ export default class DialogsStorage extends AppManager {
       dialog.topMessage = this.appMessagesManager.getMessageByPeer(peerId, dialog.top_message);
     }
 
-    historyStorage.maxId = mid;
+    historyStorage._maxId = mid;
     if(!isSaved) {
       historyStorage.readMaxId = dialog.read_inbox_max_id;
       historyStorage.readOutboxMaxId = dialog.read_outbox_max_id;
