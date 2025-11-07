@@ -43,7 +43,6 @@ export class BotforumTab extends ForumTab {
     sortedList.addPinned(this.peerId);
 
     const list = autonomousList.sortedList.list;
-    this.scrollable.append(list);
     autonomousList.bindScrollable();
 
     this.xd = autonomousList;

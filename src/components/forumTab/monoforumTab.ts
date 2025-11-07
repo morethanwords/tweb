@@ -35,13 +35,12 @@ export class MonoforumTab extends ForumTab {
     sortedList.addPinned(this.peerId);
 
     const list = autonomousList.sortedList.list;
-    this.scrollable.append(list);
-    autonomousList.bindScrollable();
 
     this.xd = autonomousList;
 
     appDialogsManager.setListClickListener({list, onFound: null, withContext: true});
     this.scrollable.append(list);
+    autonomousList.bindScrollable();
 
 
     this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
