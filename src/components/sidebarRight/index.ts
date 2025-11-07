@@ -12,7 +12,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import {AppManagers} from '../../lib/appManagers/managers';
 import appNavigationController from '../appNavigationController';
 import rootScope from '../../lib/rootScope';
-import {SearchSuperMediaType} from '../appSearchSuper.';
+
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 

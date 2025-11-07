@@ -5,7 +5,7 @@
  */
 
 import type {MyDocument} from '../lib/appManagers/appDocsManager';
-import type {SearchSuperContext} from './appSearchSuper.';
+import type {SearchSuperContext} from './appSearchSuper';
 import rootScope from '../lib/rootScope';
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import {IS_APPLE, IS_SAFARI} from '../environment/userAgent';

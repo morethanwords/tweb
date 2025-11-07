@@ -12,7 +12,7 @@ import InputSearch from '../inputSearch';
 import SidebarSlider, {SliderSuperTab} from '../slider';
 import TransitionSlider from '../transition';
 import AppNewGroupTab from './tabs/newGroup';
-import AppSearchSuper from '../appSearchSuper.';
+import AppSearchSuper from '../appSearchSuper';
 import {DateData, fillTipDates} from '../../helpers/date';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import AppSettingsTab from './tabs/settings';
