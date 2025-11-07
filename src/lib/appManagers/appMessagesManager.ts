@@ -6172,7 +6172,8 @@ export class AppMessagesManager extends AppManager {
       'readMaxId',
       'readOutboxMaxId',
       'maxOutId',
-      'replyMarkup'
+      'replyMarkup',
+      'key'
     ]);
 
     // * using proxy to catch only outside calls
@@ -6186,7 +6187,10 @@ export class AppMessagesManager extends AppManager {
 
         MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
           name: 'historyStorage',
-          key: joinDeepPath(historyStorage.key, prop),
+          key: joinDeepPath(
+            prop === 'key' ? oldValue : historyStorage.key,
+            prop
+          ),
           value,
           accountNumber: this.getAccountNumber()
         });
@@ -6494,17 +6498,18 @@ export class AppMessagesManager extends AppManager {
       title_missing: true
     });
 
+    if(updates._ === 'updates') {
+      const messageIdUpdate = updates.updates.find((update) => update._ === 'updateMessageID');
+      if(messageIdUpdate) {
+        pendingTopic.newId = this.appMessagesIdsManager.generateMessageId(messageIdUpdate.id);
+      }
+    }
 
     const temporaryStorage = this.getHistoryStorage(peerId, pendingTopic.tempId);
     temporaryStorage.key = getHistoryStorageKey({type: 'replies', peerId, threadId: pendingTopic.newId});
     (this.threadsStorage[peerId] ??= {})[pendingTopic.newId] = temporaryStorage;
 
     this.apiUpdatesManager.processUpdateMessage(updates);
-
-    if(updates._ === 'updates') {
-      const messageIdUpdate = updates.updates.find(update => update._ === 'updateMessageID');
-      if(messageIdUpdate) pendingTopic.newId = messageIdUpdate.id;
-    }
 
     await this.dialogsStorage.getForumTopicById(peerId, pendingTopic.newId);
     this.rootScope.dispatchEvent('botforum_pending_topic_created', {peerId, tempId, newId: pendingTopic.newId});

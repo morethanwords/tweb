@@ -35,6 +35,8 @@ import {makeMediaSize} from '../helpers/mediaSize';
 import type {MyStarGift} from '../lib/appManagers/appGiftsManager';
 import IS_PARALLAX_SUPPORTED from '../environment/parallaxSupport';
 import {generateDelimiter} from './generateDelimiter';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import ListenerSetter from '../helpers/listenerSetter';
 
 type PeerProfileContextValue = {
   peerId: PeerId,
@@ -49,6 +51,8 @@ type PeerProfileContextValue = {
   canBeDetailed: () => boolean,
   isSavedDialog: boolean,
   isTopic: boolean,
+  isBotforum: boolean,
+  needSimpleAvatar: boolean,
   getDetailsForUse: () => {peerId: PeerId, threadId?: number},
   verifyContext: (peerId: PeerId, threadId?: number) => boolean,
 };
@@ -110,7 +114,13 @@ const PeerProfile = (props: {
     },
     isSavedDialog: !!(props.peerId === rootScope.myId && props.threadId),
     get isTopic() {
-      return !!(props.threadId && (value.peer as Chat.channel).pFlags.forum);
+      return !!(props.threadId && ((value.peer as Chat.channel).pFlags.forum || value.isBotforum));
+    },
+    get isBotforum() {
+      return !!(value.peer as User.user).pFlags.bot_forum_view;
+    },
+    get needSimpleAvatar() {
+      return value.isTopic;
     },
     canBeDetailed: () => value.peerId !== rootScope.myId || !value.isDialog,
     getDetailsForUse: () => {
@@ -165,7 +175,7 @@ const PeerProfile = (props: {
           value.peerId === rootScope.myId && 'is-me'
         )}
       >
-        <Show when={!value.isTopic}>
+        <Show when={!value.needSimpleAvatar}>
           <PeerProfile.AutoAvatar />
         </Show>
         <Show when={props.changeAvatarBtn}>
@@ -192,7 +202,7 @@ PeerProfile.Avatar = () => {
   const name = (<PeerProfile.Name />) as HTMLElement;
   const subtitle = (<PeerProfile.Subtitle />) as HTMLElement;
 
-  if(!context.isTopic) {
+  if(!context.needSimpleAvatar) {
     const avatars = new PeerProfileAvatars(
       context.scrollable,
       rootScope.managers,
@@ -330,17 +340,24 @@ PeerProfile.SubtitleStatus = () => {
     }
 
     const {peerId, isDialog} = context;
-
-    const isForum = !!(context.peer as Chat.channel).pFlags.forum;
     const middleware = createMiddleware().get();
-    if(isForum && context.threadId) {
+    if(context.isTopic) {
       const [element] = createResource(() => {
+        const listenerSetter = new ListenerSetter();
+        onCleanup(() => listenerSetter.removeAll());
         return wrapTopicNameButton({
           peerId,
+          withIcons: false,
+          noAvatarAndLink: true,
           wrapOptions: {
             middleware
           }
-        }).then(({element}) => element);
+        }).then(({element}) => {
+          attachClickEvent(element, (e) => {
+            appImManager.setPeer({peerId});
+          }, {listenerSetter});
+          return element;
+        });
       });
 
       return (
@@ -1071,19 +1088,21 @@ PeerProfile.MainSection = () => {
   return (
     <Section
       noDelimiter
-      contentProps={{class: classNames(context.isTopic && 'has-simple-avatar')}}
+      contentProps={{class: classNames(context.needSimpleAvatar && 'has-simple-avatar')}}
     >
-      <Show when={context.isTopic}>
+      <Show when={context.needSimpleAvatar}>
         <PeerProfile.AutoAvatar />
       </Show>
-      <PeerProfile.Phone />
-      <PeerProfile.Username />
-      <PeerProfile.Location />
-      <PeerProfile.Bio />
-      <PeerProfile.Link />
-      <PeerProfile.BusinessHours />
-      <PeerProfile.BusinessLocation />
-      <PeerProfile.Notifications />
+      <Show when={!(context.isBotforum && context.threadId)}>
+        <PeerProfile.Phone />
+        <PeerProfile.Username />
+        <PeerProfile.Location />
+        <PeerProfile.Bio />
+        <PeerProfile.Link />
+        <PeerProfile.BusinessHours />
+        <PeerProfile.BusinessLocation />
+        <PeerProfile.Notifications />
+      </Show>
     </Section>
   );
 };

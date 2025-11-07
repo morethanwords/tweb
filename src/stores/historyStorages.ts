@@ -20,4 +20,9 @@ export function _deleteHistoryStorage(key: HistoryStorageKey) {
   delete cache[key];
 }
 
+export function _changeHistoryStorageKey(key: HistoryStorageKey, newKey: HistoryStorageKey) {
+  cache[newKey] = cache[key];
+  delete cache[key];
+}
+
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.historyStorages = cache);
