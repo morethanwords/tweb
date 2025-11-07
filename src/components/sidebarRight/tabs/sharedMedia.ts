@@ -15,7 +15,7 @@ import ButtonIcon from '../../buttonIcon';
 import I18n, {LangPackKey, i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import PeerProfile from '../../peerProfile';
+import {renderPeerProfile} from '../../peerProfile';
 import {Chat, Message} from '../../../layer';
 import getMessageThreadId from '../../../lib/appManagers/utils/messages/getMessageThreadId';
 import AppEditTopicTab from './editTopic';
@@ -29,6 +29,8 @@ import ButtonMenuToggle from '../../buttonMenuToggle';
 import appImManager from '../../../lib/appManagers/appImManager';
 import {useIsFrozen} from '../../../stores/appState';
 import {profileStarGiftsButtonMenu} from '../../stargifts/profileList';
+import {createRoot} from 'solid-js';
+import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -49,7 +51,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
   public searchSuper: AppSearchSuper;
 
-  private profile: PeerProfile;
   private peerChanged: boolean;
 
   private titleI18n: I18n.IntlElement;
@@ -180,15 +181,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // * body
 
-    if(!this.noProfile) {
-      this.profile = new PeerProfile(this.managers, this.scrollable, this.listenerSetter, true, this.container);
-      this.profile.init();
-      this.profile.onPinnedGiftsChange = (gifts) => {
-        this.searchSuper.setPinnedGifts(gifts);
-      }
-      this.scrollable.append(this.profile.element);
-    }
-
     const HEADER_HEIGHT = 56;
     this.scrollable.onAdditionalScroll = () => {
       const rect = this.searchSuper.nav.getBoundingClientRect();
@@ -225,7 +217,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       isHeavy: false
     });
 
-    transition(this.profile ? TitleIndex.Profile : TitleIndex.Media);
+    transition(this.noProfile ? TitleIndex.Media : TitleIndex.Profile);
 
     const transitionSubtitle = TransitionSlider({
       content: sharedMediaTransitionContainer,
@@ -237,7 +229,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     transitionSubtitle(0);
 
     attachClickEvent(this.closeBtn, (e) => {
-      if(transition.prevId() && this.profile) {
+      if(transition.prevId() && !this.noProfile) {
         this.scrollable.scrollIntoViewNew({
           element: this.scrollable.container.querySelector('.profile-content') as HTMLElement,
           position: 'start'
@@ -392,9 +384,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     // * fix scroll position to media tab because of absolute header
     this.searchSuper.scrollOffset = 56;
 
-    if(this.profile) {
-      this.profile.element.append(this.searchSuper.container);
-    } else {
+    if(this.noProfile) {
       this.scrollable.append(this.searchSuper.container);
     }
 
@@ -535,7 +525,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     ]);
 
     return () => {
-      this.profile?.cleanupHTML();
       this.editBtn.classList.add('hide');
       this.searchSuper.cleanupHTML(true);
       this.container.classList.toggle('can-add-members', canViewMembers && hasRights);
@@ -571,8 +560,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       threadId,
       historyStorage
     });
-
-    this.profile?.setPeer(peerId, threadId);
 
     return true;
   }
@@ -611,8 +598,26 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const callbacks = await Promise.all([
       this.cleanupHTML(),
       this.toggleEditBtn(true),
-      this.profile?.fillProfileElements(),
-      this.changeTitleKey()
+      // this.profile?.fillProfileElements(),
+      this.changeTitleKey(),
+      (() => {
+        !this.noProfile && createRoot((dispose) => {
+          this.middlewareHelper.onDestroy(dispose);
+          this.scrollable.append((renderPeerProfile({
+            peerId: this.peerId,
+            threadId: this.threadId,
+            isDialog: true,
+            scrollable: this.scrollable,
+            setCollapsedOn: this.container,
+            searchSuperContainer: this.searchSuper.container,
+            onPinnedGiftsChange: (gifts) => {
+              this.searchSuper.setPinnedGifts(gifts);
+            }
+          }, SolidJSHotReloadGuardProvider) as any)()());
+        });
+
+        return () => {};
+      })()
     ]);
 
     return () => {
@@ -670,7 +675,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     super.onCloseAfterTimeout();
 
     if(this.destroyable) {
-      this.profile?.destroy();
       this.searchSuper.destroy();
     }
   }

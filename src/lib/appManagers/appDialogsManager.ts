@@ -125,6 +125,7 @@ import {MonoforumDialog} from '../storages/monoforumDialogs';
 import SolidJSHotReloadGuardProvider from '../solidjs/hotReloadGuardProvider';
 import {renderPendingSuggestion} from '../../components/sidebarLeft/pendingSuggestion';
 import {useHasFolders} from '../../stores/foldersSidebar';
+import {useAppState} from '../../stores/appState';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 const DIALOG_LOAD_COUNT = 20;
@@ -1796,26 +1797,23 @@ export class AppDialogsManager {
 
     rootScope.addEventListener('state_cleared', () => {
       const clearCurrent = REAL_FOLDERS.has(this.filterId);
-      // setTimeout(() =>
-      apiManagerProxy.getState().then(async(state) => {
-        this.xd.loadedDialogsAtLeastOnce = false;
-        this.showFiltersPromise = undefined;
+      this.xd.loadedDialogsAtLeastOnce = false;
+      this.showFiltersPromise = undefined;
 
-        /* const clearPromises: Promise<any>[] = [];
-        for(const name in this.managers.appStateManager.storagesResults) {
-          const results = this.managers.appStateManager.storagesResults[name as keyof AppStateManager['storages']];
-          const storage = this.managers.appStateManager.storages[name as keyof AppStateManager['storages']];
-          results.length = 0;
-          clearPromises.push(storage.clear());
-        } */
+      /* const clearPromises: Promise<any>[] = [];
+      for(const name in this.managers.appStateManager.storagesResults) {
+        const results = this.managers.appStateManager.storagesResults[name as keyof AppStateManager['storages']];
+        const storage = this.managers.appStateManager.storages[name as keyof AppStateManager['storages']];
+        results.length = 0;
+        clearPromises.push(storage.clear());
+      } */
 
-        if(clearCurrent) {
-          this.xd.clear();
-          this.onTabChange();
-        }
+      if(clearCurrent) {
+        this.xd.clear();
+        this.onTabChange();
+      }
 
-        this.onStateLoaded(state);
-      })// , 5000);
+      this.onStateLoaded(useAppState()[0]);
     });
 
     this.setFilterId(FOLDER_ID_ALL);
@@ -1902,31 +1900,13 @@ export class AppDialogsManager {
       listenTo: this.folders.menu
     });
 
-    apiManagerProxy.getState().then((state) => {
-      const [appSettings, setAppSettings] = useAppSettings();
-      // * it should've had a better place :(
-      appMediaPlaybackController.setPlaybackParams(unwrap(appSettings.playbackParams));
-      appMediaPlaybackController.addEventListener('playbackParams', (params) => {
-        setAppSettings('playbackParams', params);
-      });
-
-      return this.onStateLoaded(state);
-    })/* .then(() => {
-      const isLoadedMain = this.managers.appMessagesManager.dialogsStorage.isDialogsLoaded(0);
-      const isLoadedArchive = this.managers.appMessagesManager.dialogsStorage.isDialogsLoaded(1);
-      const wasLoaded = isLoadedMain || isLoadedArchive;
-      const a: Promise<any> = isLoadedMain ? Promise.resolve() : this.managers.appMessagesManager.getConversationsAll('', 0);
-      const b: Promise<any> = isLoadedArchive ? Promise.resolve() : this.managers.appMessagesManager.getConversationsAll('', 1);
-      a.finally(() => {
-        b.then(() => {
-          if(wasLoaded) {
-            (apiUpdatesManager.updatesState.syncLoading || Promise.resolve()).then(() => {
-              this.managers.appMessagesManager.refreshConversations();
-            });
-          }
-        });
-      });
-    }) */;
+    const [appState] = useAppState();
+    const [appSettings, setAppSettings] = useAppSettings();
+    // * it should've had a better place :(
+    appMediaPlaybackController.setPlaybackParams(unwrap(appSettings.playbackParams));
+    appMediaPlaybackController.addEventListener('playbackParams', (params) => {
+      setAppSettings('playbackParams', params);
+    });
 
     mediaSizes.addEventListener('resize', () => {
       this.changeFiltersAllChatsKey();
@@ -1952,8 +1932,8 @@ export class AppDialogsManager {
 
     this.xd = this.xds[this.filterId];
 
-
     appSidebarLeft.onCollapsedChange();
+    this.onStateLoaded(appState);
     // selectTab(0, false);
   }
 

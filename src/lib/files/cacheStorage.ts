@@ -119,6 +119,9 @@ export default class CacheStorageController implements FileStorage {
     return this.timeoutOperation((cache) => cache.delete('/' + entryName));
   }
 
+  /**
+   * Requires reconnection in order to save to disc again
+   */
   public deleteAll() {
     return caches.delete(this.dbName);
   }

@@ -65,7 +65,6 @@ import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainG
 import PopupTranslate from '../popups/translate';
 import getRichSelection from '../../helpers/dom/getRichSelection';
 import detectLanguageForTranslation from '../../helpers/detectLanguageForTranslation';
-import usePeerTranslation from '../../hooks/usePeerTranslation';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import documentFragmentToHTML from '../../helpers/dom/documentFragmentToHTML';
 import PopupReportAd from '../popups/reportAd';
@@ -85,7 +84,7 @@ import createSubmenuTrigger from '../createSubmenuTrigger';
 import noop from '../../helpers/noop';
 import {isSensitive} from '../../helpers/restrictions';
 import {hasSensitiveSpoiler} from '../wrappers/mediaSpoiler';
-import {useAppConfig, useIsFrozen} from '../../stores/appState';
+import {useIsFrozen} from '../../stores/appState';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -413,7 +412,7 @@ export default class ChatContextMenu {
       this.canOpenReactedList = undefined;
       this.linkToMessage = await this.getUrlToMessage();
       this.selectedMessagesText = await this.getSelectedMessagesText();
-      this.messageLanguage = useAppConfig().freeze_since_date || this.selectedMessages || !this.message ? undefined : await detectLanguageForTranslation((this.message as Message.message).message);
+      this.messageLanguage = this.chat.appConfig.freeze_since_date || this.selectedMessages || !this.message ? undefined : await detectLanguageForTranslation((this.message as Message.message).message);
 
       if(checklistItemId) {
         const media = (this.message as Message.message).media as MessageMedia.messageMediaToDo;
@@ -681,7 +680,7 @@ export default class ChatContextMenu {
         !!(this.message as Message.message).message &&
         this.isTextSelected &&
         !this.isTextFromMultipleMessagesSelected &&
-        (!usePeerTranslation(this.peerId).enabled() || this.message.pFlags.out) &&
+        (!this.chat.peerTranslation.enabled() || this.message.pFlags.out) &&
         (this.chat.bubbles.canForward(this.message) || this.chat.canSend())
     }, {
       icon: 'reply',
@@ -812,8 +811,7 @@ export default class ChatContextMenu {
       icon: 'premium_translate',
       text: 'TranslateMessage',
       onClick: () => {
-        const peerTranslation = usePeerTranslation(this.peerId);
-        if(!peerTranslation.canTranslate(true)) {
+        if(!this.chat.peerTranslation.canTranslate(true)) {
           PopupPremium.show({feature: 'translations'});
         } else {
           let textWithEntities: TextWithEntities;

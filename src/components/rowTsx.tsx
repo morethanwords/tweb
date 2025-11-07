@@ -1,8 +1,10 @@
-import {children, JSX, Ref, createContext, useContext, onCleanup} from 'solid-js';
-import {createStore} from 'solid-js/store';
+import {children, createMemo, JSX, onCleanup, Ref, Show, useContext} from 'solid-js';
 import classNames from '../helpers/string/classNames';
 import {IconTsx} from './iconTsx';
 import RippleElement from './rippleElement';
+import createComponentContext, {ComponentContextValue} from '../helpers/solid/createComponentContext';
+import createContextMenu from '../helpers/dom/createContextMenu';
+import ListenerSetter from '../helpers/listenerSetter';
 
 export type RowMediaSizeType = 'small' | 'medium' | 'big' | 'abitbigger' | 'bigger' | '40';
 
@@ -10,15 +12,16 @@ type Kind = 'title' | 'subtitle' | 'media' | 'midtitle' | 'icon' |
   'rightContent' | 'checkboxField' | 'checkboxFieldToggle' | 'radioField' |
   'media';
 
-type RowContextValue = {
-  register: (kind: Kind, element: JSX.Element) => JSX.Element,
-  store: {[key in Kind]?: JSX.Element},
+type RowContextValue = ComponentContextValue<Kind> & {
   noWrap?: boolean
 };
 
-const RowContext = createContext<RowContextValue>();
+const {
+  context: RowContext,
+  createValue: createRowValue
+} = createComponentContext<RowContextValue, Kind>();
 
-const Row = (props: Partial<{
+const Row = (props: {children: JSX.Element} & Partial<{
   ref: Ref<HTMLElement>,
   clickable: boolean | JSX.HTMLAttributes<HTMLElement>['onClick'],
   havePadding: boolean,
@@ -31,19 +34,19 @@ const Row = (props: Partial<{
   // buttonRightLangKey: LangPackKey,
   // rightTextContent?: string,
   as: 'a' | 'label' | 'div',
-  // contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
+  contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
   // checkboxKeys: [LangPackKey, LangPackKey],
   classList: {[key: string]: boolean},
-  class: string,
-  children: JSX.Element
-}> = {}) => {
-  const [store, setStore] = createStore<RowContextValue['store']>({});
-  const register: RowContextValue['register'] = (kind, element) => {
-    setStore(kind, element);
-    onCleanup(() => setStore(kind, undefined));
-    return undefined;
-    // return element;
+  class: string
+}>) => {
+  const value: RowContextValue = {
+    ...createRowValue(),
+    get noWrap() {
+      return props.noWrap;
+    }
   };
+
+  const {store} = value;
 
   const isCheckbox = () => !!(store.checkboxField || store.checkboxFieldToggle || store.radioField);
   const isClickable = () => !!(props.clickable || isCheckbox());
@@ -56,23 +59,33 @@ const Row = (props: Partial<{
     store.media
   );
 
-  const value: RowContextValue = {
-    register,
-    store,
-    get noWrap() {
-      return props.noWrap;
-    }
-  };
-
   const resolvedChildren = children(() =>
     <RowContext.Provider value={value}>
       {props.children}
     </RowContext.Provider>
   );
 
+  const ref = createMemo(() => {
+    return props.contextMenu ? (container: HTMLElement) => {
+      const listenerSetter = new ListenerSetter();
+      const {open} = createContextMenu({
+        ...props.contextMenu,
+        listenTo: container,
+        listenerSetter
+      });
+
+      onCleanup(() => {
+        listenerSetter.removeAll();
+      });
+
+      // @ts-ignore
+      props.ref?.(container);
+    } : props.ref as any;
+  });
+
   return (
     <RippleElement
-      ref={props.ref as any}
+      ref={ref()}
       component={props.as === 'a' ? 'a' : (props.as === 'label' || isCheckbox() ? 'label' : 'div')}
       classList={{
         'row': true,
@@ -109,19 +122,17 @@ Row.RowPart = (props: {
 }) => {
   const resolved = children(() => props.part);
   return (
-    <>
-      {resolved() && (
-        <div
-          class={classNames(
-            'row-' + props.class,
-            useContext(RowContext).noWrap && 'no-wrap'
-          )}
-          dir="auto"
-        >
-          {resolved()}
-        </div>
-      )}
-    </>
+    <Show when={resolved()}>
+      <div
+        class={classNames(
+          'row-' + props.class,
+          useContext(RowContext).noWrap && 'no-wrap'
+        )}
+        dir="auto"
+      >
+        {resolved()}
+      </div>
+    </Show>
   );
 };
 
@@ -135,22 +146,19 @@ Row.Row = (props: {
   const part = <Row.RowPart class={classNames(props.class, props.additionalClass)} part={props.left} />;
   const resolved = children(() => props.right);
   return (
-    <>
-      {resolved() && (
-        <div class={classNames('row-row', `row-${props.class}-row`)}>
-          {part}
-          <Row.RowPart
-            class={classNames(
-              props.class,
-              props.additionalClass,
-              `row-${props.class}-right${props.rightSecondary ? ` row-${props.class}-right-secondary` : ''}`
-            )}
-            part={resolved()}
-          />
-        </div>
-      )}
-      {!resolved() && part}
-    </>
+    <Show when={resolved()} fallback={part}>
+      <div class={classNames('row-row', `row-${props.class}-row`)}>
+        {part}
+        <Row.RowPart
+          class={classNames(
+            props.class,
+            props.additionalClass,
+            `row-${props.class}-right${props.rightSecondary ? ` row-${props.class}-right-secondary` : ''}`
+          )}
+          part={resolved()}
+        />
+      </div>
+    </Show>
   );
 };
 
@@ -234,15 +242,17 @@ Row.CheckboxFieldToggle = (props: {
 };
 
 Row.Media = (props: {
-  children: JSX.Element,
-  mediaSize: RowMediaSizeType
+  children?: JSX.Element,
+  size: RowMediaSizeType,
+  ref?: Ref<HTMLDivElement>
 }) => {
   return useContext(RowContext).register('media', (
     <div
       class={classNames(
         'row-media',
-        props.mediaSize && `row-media-${props.mediaSize}`
+        props.size && `row-media-${props.size}`
       )}
+      ref={props.ref}
     >
       {props.children}
     </div>

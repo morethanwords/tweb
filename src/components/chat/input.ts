@@ -141,7 +141,6 @@ import useStars from '../../stores/stars';
 import PopupStars from '../popups/stars';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import {makeMessageMediaInputForSuggestedPost} from '../../lib/appManagers/utils/messages/makeMessageMediaInput';
-import {useAppConfig, useAppState} from '../../stores/appState';
 import showFrozenPopup from '../popups/frozen';
 
 // console.log('Recorder', Recorder);
@@ -1609,7 +1608,7 @@ export default class ChatInput {
       return;
     }
 
-    const chat = apiManagerProxy.getChat(peerId.toChatId());
+    const chat = this.chat.peer;
     if(!chat || !(chat as MTChat.channel).pFlags.left || (chat as MTChat.channel).pFlags.broadcast) {
       return;
     }
@@ -1635,7 +1634,7 @@ export default class ChatInput {
       this.isReplyInTopicOverlayNeeded() ||
       (this.chat.peerId.isUser() && (this.chat.isUserBlocked || this.chat.isPremiumRequired)) ||
       this.getJoinButtonType() ||
-      (this.frozenBtn && useAppConfig().freeze_since_date && !(await this.chat.canSend()))
+      (this.frozenBtn && this.chat.appConfig.freeze_since_date && !(await this.chat.canSend()))
     ) {
       return this.controlContainer;
     }
@@ -1702,7 +1701,7 @@ export default class ChatInput {
       return false;
     }
 
-    const user = await this.managers.appUsersManager.getUser(peerId);
+    const user = this.chat.peer as User.user;
     return user.status?._ !== 'userStatusOnline';
   };
 
@@ -2954,7 +2953,7 @@ export default class ChatInput {
 
       if(
         this.stickersHelper &&
-        rootScope.settings.stickers.suggest !== 'none' &&
+        this.chat.appSettings.stickers.suggest !== 'none' &&
         await this.chat.canSend('send_stickers') &&
         (['messageEntityEmoji', 'messageEntityCustomEmoji'] as MessageEntity['_'][]).includes(entity?._) &&
         entity.length === value.length &&
@@ -2977,7 +2976,7 @@ export default class ChatInput {
         if(this.commandsHelper && await this.commandsHelper.checkQuery(query, this.chat.peerId)) {
           foundHelper = this.commandsHelper;
         }
-      } else if(rootScope.settings.emoji.suggest) { // emoji
+      } else if(this.chat.appSettings.emoji.suggest) { // emoji
         query = query.replace(/^\s*/, '');
         if(!value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()-=|]/) && query) {
           foundHelper = this.emojiHelper;
@@ -3104,7 +3103,7 @@ export default class ChatInput {
     }
 
     const chatId = peerId.toChatId();
-    const chat = apiManagerProxy.getChat(chatId) as MTChat.channel;
+    const chat = this.chat.peer as MTChat.channel;
 
     if(!chat.pFlags.slowmode_enabled) {
       return false;

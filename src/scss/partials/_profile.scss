@@ -395,6 +395,10 @@
     inset-inline-end: 1.25rem;
     transform: none;
     transition: none !important;
+
+    &-container {
+      position: relative;
+    }
   }
 
   &-container {

@@ -423,7 +423,7 @@ export default class PopupStars extends PopupElement {
           <Row.Midtitle>{midtitle}</Row.Midtitle>
           <Row.Subtitle>{subtitleStatus ? [subtitle, ' — ', subtitleStatus] : subtitle}</Row.Subtitle>
           <Row.RightContent><StarsChange stars={formatStarsAmount(transaction.amount)} /></Row.RightContent>
-          <Row.Media mediaSize="abitbigger">{media}</Row.Media>
+          <Row.Media size="abitbigger">{media}</Row.Media>
         </Row>
       );
 
@@ -472,7 +472,7 @@ export default class PopupStars extends PopupElement {
               [formatFullSentTime(subscription.until_date, undefined, true)]
             )}</Row.Subtitle>
           <Row.RightContent>{isCancelled && (<span class="popup-stars-cancelled danger">{i18n('Stars.Subscriptions.Cancelled')}</span>)}</Row.RightContent>
-          <Row.Media mediaSize="abitbigger">{avatar.node}</Row.Media>
+          <Row.Media size="abitbigger">{avatar.node}</Row.Media>
         </Row>
       );
 

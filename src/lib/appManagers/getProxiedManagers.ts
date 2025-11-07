@@ -77,7 +77,12 @@ const DEBUG_MANAGER_REQUESTS: {[managerName: string]: Set<string>} = {
   // appMessagesManager: new Set(['getMessageByPeer', 'getGroupsFirstMessage'])
 };
 
-function createProxy(/* source: T,  */name: string, accountNumber: ActiveAccountNumber, ack?: boolean) {
+function createProxy(
+  /* source: T,  */
+  name: string,
+  accountNumber: ActiveAccountNumber,
+  ack?: boolean
+) {
   const proxy = new Proxy({}, {
     get: (target, p, receiver) => {
       // console.log('get', target, p, receiver);
@@ -114,8 +119,12 @@ function createProxy(/* source: T,  */name: string, accountNumber: ActiveAccount
   return proxy;
 }
 
-type AA<T> = {
+type AcknowledgedManager<T> = {
   [key in keyof T]: T[key] extends (...args: infer A) => infer R ? (...args: A) => Promise<AckedResult<Awaited<R>>> : never
+};
+
+type AllManager<T> = {
+  [key in keyof T]: T[key] extends (...args: infer A) => infer R ? (...args: A) => Promise<Array<Awaited<R>>> : never
 };
 
 type T = Awaited<ReturnType<typeof createManagers>>;
@@ -123,10 +132,17 @@ export type ProxiedManagers = {
   [name in keyof T]?: ModifyFunctionsToAsync<T[name]>;
 };
 
-type ProxiedAndAcknowledgedManagers = ProxiedManagers & {
-  acknowledged?: {
-    [name in keyof T]?: AA<T[name]>;
-  }
+export type AcknowledgedManagers = {
+  [name in keyof T]?: AcknowledgedManager<T[name]>;
+};
+
+export type AllManagers = {
+  [name in keyof T]?: AllManager<T[name]>;
+};
+
+type CombinedManagers = ProxiedManagers & {
+  acknowledged?: AcknowledgedManagers,
+  all?: AllManagers
 };
 
 function createProxyProxy(proxied: any, accountNumber: ActiveAccountNumber, ack?: boolean) {
@@ -144,7 +160,7 @@ export function createProxiedManagersForAccount(accountNumber: ActiveAccountNumb
 
 MOUNT_CLASS_TO.createProxiedManagersForAccount = createProxiedManagersForAccount;
 
-let proxied: ProxiedAndAcknowledgedManagers;
+let proxied: CombinedManagers;
 export default function getProxiedManagers() {
   if(proxied) {
     return proxied;
@@ -152,5 +168,6 @@ export default function getProxiedManagers() {
 
   proxied = createProxyProxy({}, getCurrentAccount(), false);
   proxied.acknowledged = createProxyProxy({}, getCurrentAccount(), true);
+  proxied.all = createProxyProxy({}, undefined, false);
   return proxied;
 }

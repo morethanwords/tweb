@@ -22,7 +22,8 @@ export type ServicePushPingTaskPayload = {
   lang: {
     push_action_mute1d: string
     push_action_settings: string
-    push_message_nopreview: string
+    push_message_nopreview: string,
+    push_message_error: string
   },
   settings: WebPushApiManager['settings'],
   accounts: {[key in ActiveAccountNumber]?: UserId},

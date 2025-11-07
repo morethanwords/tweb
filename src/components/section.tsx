@@ -10,7 +10,7 @@ import {generateDelimiter} from './generateDelimiter';
 import classNames from '../helpers/string/classNames';
 
 export type SectionOptions = {
-  name?: LangPackKey | HTMLElement | DocumentFragment,
+  name?: LangPackKey | HTMLElement | DocumentFragment | JSX.Element,
   nameArgs?: FormatterArguments,
   nameRight?: JSX.Element,
   caption?: LangPackKey | Exclude<JSX.Element, string>,
@@ -20,7 +20,8 @@ export type SectionOptions = {
   noDelimiter?: boolean,
   fakeGradientDelimiter?: boolean,
   noShadow?: boolean,
-  class?: JSX.HTMLAttributes<HTMLDivElement>['class']
+  class?: JSX.HTMLAttributes<HTMLDivElement>['class'],
+  contentProps?: JSX.HTMLAttributes<HTMLDivElement>,
   ref?: Ref<HTMLDivElement>
 };
 
@@ -42,7 +43,7 @@ const SectionCaption = (props: Pick<SectionOptions, 'caption' | 'captionArgs' | 
   );
 };
 const Section: ParentComponent<SectionOptions & JSX.HTMLAttributes<HTMLDivElement>> = (props) => {
-  const [, rest] = splitProps(props, ['name', 'nameArgs', 'nameRight', 'caption', 'captionArgs', 'captionOld', 'captionRef', 'noDelimiter', 'fakeGradientDelimiter', 'noShadow', 'class']);
+  const [, rest] = splitProps(props, ['name', 'nameArgs', 'nameRight', 'caption', 'captionArgs', 'captionOld', 'captionRef', 'noDelimiter', 'fakeGradientDelimiter', 'noShadow', 'class', 'contentProps']);
   return (
     <div
       class={classNames(className + '-container', props.class)}
@@ -57,10 +58,10 @@ const Section: ParentComponent<SectionOptions & JSX.HTMLAttributes<HTMLDivElemen
         )}
       >
         {props.fakeGradientDelimiter ? generateDelimiter() : (!props.noDelimiter && <hr />)}
-        <SectionContent>
+        <SectionContent {...props.contentProps}>
           {props.name && (
             <div class={classNames('sidebar-left-h2', className + '-name')}>
-              {typeof(props.name) === 'string' ? i18n(props.name, props.nameArgs) : props.name}
+              {typeof(props.name) === 'string' ? i18n(props.name as LangPackKey, props.nameArgs) : props.name}
               {props.nameRight && <div class={className + '-name-right'}>{props.nameRight}</div>}
             </div>
           )}

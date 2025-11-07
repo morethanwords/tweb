@@ -30,22 +30,20 @@ import getPrivacyRulesDetails from '../../../lib/appManagers/utils/privacy/getPr
 import PrivacyType from '../../../lib/appManagers/utils/privacy/privacyType';
 import confirmationPopup, {PopupConfirmationOptions} from '../../confirmationPopup';
 import noop from '../../../helpers/noop';
-import {hideToast, toastNew} from '../../toast';
+import {toastNew} from '../../toast';
 import AppPrivacyVoicesTab from './privacy/voices';
 import SettingSection from '../../settingSection';
 import AppActiveWebSessionsTab from './activeWebSessions';
 import PopupElement from '../../popups';
 import AppPrivacyAboutTab from './privacy/about';
-import PopupPremium from '../../popups/premium';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
 import {AppPrivacyMessagesTab} from '../../solidJsTabs';
 import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, providedTabs} from '../../solidJsTabs';
 import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import {SensitiveContentSettings} from '../../../lib/appManagers/appPrivacyManager';
 import {AgeVerificationPopup} from '../../popups/ageVerification';
 import {clearSensitiveSpoilers} from '../../wrappers/mediaSpoiler';
+import useContentSettings from '../../../stores/contentSettings';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -58,7 +56,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     return {
       appConfig: fromTab.managers.apiManager.getAppConfig(),
       globalPrivacy: fromTab.managers.appPrivacyManager.getGlobalPrivacySettings(),
-      contentSettings: fromTab.managers.appPrivacyManager.getSensitiveContentSettings(),
       webAuthorizations: fromTab.managers.appSeamlessLoginManager.getWebAuthorizations()
     };
   }
@@ -66,6 +63,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   public async init(p: ReturnType<typeof AppPrivacyAndSecurityTab['getInitArgs']>) {
     this.container.classList.add('dont-u-dare-block-me');
     this.setTitle('PrivacySettings');
+    const contentSettings = useContentSettings();
 
     const SUBTITLE: LangPackKey = 'Loading';
     const promises: Promise<any>[] = [];
@@ -477,8 +475,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         checkboxField
       });
 
-      let contentSettings: SensitiveContentSettings;
-
       let pendingChange = false;
       checkboxField.input.addEventListener('change', (evt) => {
         const newEnabled = checkboxField.checked;
@@ -487,12 +483,12 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           return;
         }
 
-        if(newEnabled && contentSettings.needAgeVerification && !contentSettings.ageVerified) {
+        if(newEnabled && contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
           checkboxField.input.checked = false;
           AgeVerificationPopup.create().then((verified) => {
             if(verified) {
               checkboxField.setValueSilently(true);
-              clearSensitiveSpoilers()
+              clearSensitiveSpoilers();
             }
           })
           return;
@@ -503,7 +499,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         this.managers.appPrivacyManager.setContentSettings({
           sensitive_enabled: newEnabled
         }).catch(() => {
-          toastNew({langPackKey: 'Error.AnError'})
+          toastNew({langPackKey: 'Error.AnError'});
           checkboxField.setValueSilently(!newEnabled);
         }).finally(() => {
           pendingChange = false;
@@ -512,17 +508,10 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
       section.content.append(row.container);
 
-      const promise = p.contentSettings.then((settings) => {
-        if(!settings.sensitiveCanChange) {
-          return;
-        }
-
-        contentSettings = settings;
-        checkboxField.setValueSilently(settings.sensitiveEnabled);
+      if(contentSettings.sensitiveCanChange()) {
+        checkboxField.setValueSilently(contentSettings.sensitiveEnabled());
         section.container.classList.remove('hide');
-      });
-
-      promises.push(promise);
+      }
 
       this.scrollable.append(section.container);
     }

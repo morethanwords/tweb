@@ -140,7 +140,7 @@ class Stream {
 
     deferred = promises[taskId] = deferredPromise();
 
-    serviceMessagePort.invoke('requestFilePart', payload, undefined, mtprotoMessagePort)
+    serviceMessagePort.invoke('requestFilePart', payload, undefined, mtprotoMessagePort, undefined, 60e3)
     .then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred)).finally(() => {
       if(promises[taskId] === deferred) {
         delete promises[taskId];

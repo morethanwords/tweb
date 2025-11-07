@@ -135,6 +135,7 @@ const defaults: PushStorage = {
   push_mute_until: 0,
   push_lang: {
     push_message_nopreview: 'You have a new message',
+    push_message_error: 'Telegram is syncing in the background...',
     push_action_mute1d: 'Mute for 24H',
     push_action_settings: 'Settings'
   },
@@ -150,20 +151,24 @@ for(const i in defaults) {
   getter.get(i as keyof PushStorage);
 }
 
-function handlePushNotificationObject(obj: PushNotificationObject) {
+async function handlePushNotificationObject(obj: PushNotificationObject) {
   const copy = JSON.parse(JSON.stringify(obj));
   log('push', copy);
 
-  if(obj.mute === '1') {
-    return;
-  }
-
+  let noFix = false,
+    _lang: PushStorage['push_lang'];
   try {
-    const [muteUntil, settings, lang] = [
-      getter.getCached('push_mute_until'),
-      getter.getCached('push_settings'),
-      getter.getCached('push_lang')
-    ];
+    // * this should never happen, but just in case
+    if(obj.mute === '1') {
+      throw `supress push notification because obj.mute is 1`;
+    }
+
+    const [muteUntil, settings, lang] = await Promise.all([
+      getter.get('push_mute_until'),
+      getter.get('push_settings'),
+      getter.get('push_lang')
+    ]);
+    _lang = lang;
 
     const nowTime = Date.now();
     if(
@@ -176,26 +181,39 @@ function handlePushNotificationObject(obj: PushNotificationObject) {
 
     const hasActiveWindows = (Date.now() - lastPingTime) <= PING_PUSH_TIMEOUT && localNotificationsAvailable;
     if(hasActiveWindows) {
+      noFix = true;
       throw 'supress push notification because some instance is alive';
     }
 
     const notificationPromise = fireNotification(obj, settings, lang);
-    return notificationPromise.catch((err) => {
+    await notificationPromise.catch((err) => {
       log.error('push notification error', err, copy);
+      throw err;
     });
   } catch(err) {
     log(err);
 
-    // const tag = 'fix';
-    // const notificationPromise = ctx.registration.showNotification('Telegram', {tag});
+    if(noFix) {
+      return;
+    }
 
-    // notificationPromise.then(() => {
-    //   closeAllNotifications(tag);
-    // });
+    const tag = 'fix';
+    const notificationPromise = ctx.registration.showNotification('Telegram', {
+      tag,
+      body: _lang.push_message_error
+    });
 
-    // event.waitUntil(notificationPromise);
+    notificationPromise.then(() => {
+      setTimeout(() => {
+        closeAllNotifications(tag);
+      }, 1000);
+    });
+
+    return notificationPromise;
   }
 }
+
+(ctx as any).handlePushNotificationObject = handlePushNotificationObject;
 
 ctx.addEventListener('push', (event) => {
   const obj: EncryptedPushNotificationObject | PushNotificationObject = event.data.json();
@@ -382,7 +400,7 @@ export function closeAllNotifications(tag?: string) {
 }
 
 function userInvisibleIsSupported() {
-  return IS_FIREFOX || true;
+  return IS_FIREFOX;
 }
 
 export function fillPushObject(obj: PushNotificationObject) {
@@ -402,7 +420,11 @@ export function fillPushObject(obj: PushNotificationObject) {
   return obj;
 }
 
-function fireNotification(obj: PushNotificationObject, settings: PushStorage['push_settings'], lang: PushStorage['push_lang']) {
+function fireNotification(
+  obj: PushNotificationObject,
+  settings: PushStorage['push_settings'],
+  lang: PushStorage['push_lang']
+) {
   obj = fillPushObject(obj);
   const peerId = obj.custom.peerId;
   let title = obj.title || 'Telegram';
@@ -423,10 +445,11 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
     tag = 'unknown_peer';
   }
 
-  const actions: (Omit<NotificationAction, 'action'> & {action: PushNotificationObject['action']})[] = [{
-    action: 'mute1d',
-    title: lang.push_action_mute1d
-  }/* , {
+  const actions: (Omit<NotificationAction, 'action'> & {action: PushNotificationObject['action']})[] = [
+    userInvisibleIsSupported() && {
+      action: 'mute1d',
+      title: lang.push_action_mute1d
+    }/* , {
     action: 'push_settings',
     title: lang.push_action_settings || 'Settings'
   } */];
@@ -436,7 +459,7 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
     icon: NOTIFICATION_ICON_PATH,
     tag,
     data: obj,
-    actions,
+    actions: actions.filter(Boolean),
     badge: NOTIFICATION_BADGE_PATH,
     silent: obj.custom.silent === '1'
   };
@@ -445,7 +468,8 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
 
   const notificationPromise = ctx.registration.showNotification(title, notificationOptions);
   return notificationPromise.catch((error) => {
-    log.error('show notification promise', error);
+    log.error('show notification promise error', error);
+    throw error;
   });
 }
 
