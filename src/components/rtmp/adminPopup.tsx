@@ -6,9 +6,9 @@ import {Show, createRoot, createSignal} from 'solid-js';
 import {toastNew} from '../toast';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import {Ripple} from '../rippleTsx';
-import rtmpCallsController from '../../lib/calls/rtmpCallsController';
 import {RtmpData} from './rtmpData';
 import {i18n} from '../../lib/langPack';
+import appImManager from '../../lib/appManagers/appImManager';
 
 const cnPopup = (className = '') => `rtmp-popup${className}`;
 
@@ -112,9 +112,16 @@ export class RtmpStartStreamPopup extends PopupElement {
       this.props.onEndStream();
       return;
     }
-    const chatId = this.props.peerId.toChatId();
-    this.managers.appGroupCallsManager.createGroupCall(chatId, undefined, undefined, true).then(() => {
-      rtmpCallsController.joinCall(chatId);
+    const peerId = this.props.peerId;
+    const chatId = peerId.toChatId();
+    this.managers.appGroupCallsManager.createGroupCall(
+      chatId,
+      undefined,
+      undefined,
+      true
+    ).then(() => {
+      appImManager.joinLiveStream(peerId);
+      // rtmpCallsController.joinCall(chatId);
     });
   }
 

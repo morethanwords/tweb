@@ -99,7 +99,7 @@ const PeerProfile = (props: {
   changeAvatarBtn?: HTMLElement
 }) => {
   const {rootScope} = useHotReloadGuard();
-  const fullPeer = useFullPeer(() => props.peerId);
+  const fullPeer = useFullPeer(props.peerId);
   const value: PeerProfileContextValue = {
     peerId: props.peerId,
     threadId: props.threadId,

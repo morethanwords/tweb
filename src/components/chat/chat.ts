@@ -614,7 +614,7 @@ export default class Chat extends EventListenerBase<{
       createEffect(on(isNightTheme, update, {defer: true}));
     };
 
-    const fullPeer = useFullPeer(() => this.peerId);
+    const fullPeer = useFullPeer(this.peerId);
     const [appState] = useAppState();
     createEffect(() => {
       update();

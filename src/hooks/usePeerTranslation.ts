@@ -13,7 +13,7 @@ function _usePeerTranslation(peerId: PeerId) {
   const [appSettings, setAppSettings] = useAppSettings();
   const [appState] = useAppState();
 
-  const fullPeer = useFullPeer(() => peerId);
+  const fullPeer = useFullPeer(peerId);
   const peer = usePeer(() => peerId);
   const peerLanguage = usePeerLanguage(() => peerId, true);
   const isPremium = usePremium();

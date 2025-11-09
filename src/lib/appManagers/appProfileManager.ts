@@ -26,10 +26,9 @@ import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import getParticipantsCount from './utils/chats/getParticipantsCount';
 import callbackifyAll from '../../helpers/callbackifyAll';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {PEER_FULL_TTL} from '../mtproto/mtproto_config';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
-
-const PEER_FULL_TTL = 3 * 60e3;
 
 type GetChannelParticipantsOptions = {
   id: ChatId,
@@ -686,7 +685,7 @@ export class AppProfileManager extends AppManager {
 
     // ! эта строчка будет создавать race condition:
     // ! запрос вернёт chat с установленным флагом call_not_empty, хотя сам апдейт уже будет применён
-    // this.getProfileByPeerId(peerId, true);
+    this.getProfileByPeerId(peerId, true);
   }
 
   public refreshFullPeerIfNeeded(peerId: PeerId) {

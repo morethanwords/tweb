@@ -345,7 +345,7 @@ export class AppGroupCallsManager extends AppManager {
         call: groupCallInput,
         source: discard
       });
-    } else {
+    } else { // ! this doesn't work anymore
       promise = this.apiManager.invokeApi('phone.joinGroupCall', {
         call: groupCallInput,
         join_as: this.appPeersManager.getInputPeerSelf(),

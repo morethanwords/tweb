@@ -117,8 +117,6 @@ import {setAppState, useAppState} from '../../stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
 import {AppMediaViewerRtmp} from '../../components/appMediaViewerRtmp';
 import useProfileColors from '../../hooks/useProfileColors';
-import {DEFAULT_BACKGROUND_SLUG} from '../../config/app';
-import blur from '../../helpers/blur';
 import {wrapSlowModeLeftDuration} from '../../components/wrappers/wrapDuration';
 import {splitFullMid} from '../../components/chat/bubbles';
 import getSelectedNodes from '../../helpers/dom/getSelectedNodes';
@@ -134,7 +132,6 @@ import useLockScreenShortcut from './utils/useLockScreenShortcut';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../../components/chat/paidMessagesInterceptor';
 import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport';
 import ChatAudio from '../../components/chat/audio';
-import PopupAboutAd from '../../components/popups/aboutAd';
 import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
 
 export type ChatSavedPosition = {
@@ -623,7 +620,16 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('message_sent', () => {
-      if(rootScope.settings.notifications.sentMessageSound) {
+      if(!rootScope.settings.notifications.sentMessageSound) {
+        return;
+      }
+
+      const currentTab = apiManagerProxy.getTabState();
+      const accountOtherTabs = apiManagerProxy.getAllTabStates().filter((tab) =>
+        tab.accountNumber === currentTab.accountNumber &&
+        tab.id !== currentTab.id
+      );
+      if(!currentTab.idleStartTime || accountOtherTabs.every((tab) => tab.idleStartTime < currentTab.idleStartTime)) {
         this.audioAssetPlayer.playWithThrottle({name: 'message_sent', volume: 0.2}, 300);
       }
     });
@@ -1645,7 +1651,7 @@ export class AppImManager extends EventListenerBase<{
 
   public async joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId) {
     const chatId = peerId.toChatId();
-    const hasRights = this.managers.appChatsManager.hasRights(chatId, 'manage_call');
+    const hasRights = await this.managers.appChatsManager.hasRights(chatId, 'manage_call');
     const next = async() => {
       const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
       let call: MyGroupCall;

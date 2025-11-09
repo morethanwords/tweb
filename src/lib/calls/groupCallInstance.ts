@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {GroupCallConnectionType, GroupCallId, GroupCallOutputSource} from '../appManagers/appGroupCallsManager';
+import type {AppGroupCallsManager, GroupCallConnectionType, GroupCallId, GroupCallOutputSource} from '../appManagers/appGroupCallsManager';
 import {IS_SAFARI} from '../../environment/userAgent';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import safeAssign from '../../helpers/object/safeAssign';
@@ -339,7 +339,13 @@ export default class GroupCallInstance extends CallInstanceBase<{
     }
 
     if(!rejoin) {
-      const d = discard || (this.joined ? this.connections.main.sources.audio.source : undefined);
+      let d: Parameters<AppGroupCallsManager['hangUp']>[1];
+      try {
+        d = discard || (/* this.joined ?  */this.connections.main.sources.audio.source/*  : undefined */);
+      } catch(err) {
+        d = 0;
+      }
+
       this.managers.appGroupCallsManager.hangUp(this.id, d);
     }
   }

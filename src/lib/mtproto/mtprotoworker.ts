@@ -66,6 +66,7 @@ import getDeepProperty from '../../helpers/object/getDeepProperty';
 import {_changeHistoryStorageKey, _deleteHistoryStorage, _useHistoryStorage} from '../../stores/historyStorages';
 import SlicedArray, {SliceEnd} from '../../helpers/slicedArray';
 import {createHistoryStorageSearchSlicedArray} from '../appManagers/utils/messages/createHistoryStorage';
+import tabId from '../../config/tabId';
 
 
 export type Mirrors = {
@@ -112,7 +113,8 @@ export type NotificationBuildTaskPayload = {
 export type TabState = {
   chatPeerIds: PeerId[],
   idleStartTime: number,
-  accountNumber: number
+  accountNumber: number,
+  id: number
 };
 
 class ApiManagerProxy extends MTProtoMessagePort {
@@ -295,7 +297,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.tabState = {
       accountNumber: getCurrentAccount(),
       chatPeerIds: [],
-      idleStartTime: 0
+      idleStartTime: 0,
+      id: tabId
     };
 
     this.intervals = new Map();
@@ -1090,6 +1093,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   public updateTabStateIdle(idle: boolean) {
     this.updateTabState('idleStartTime', idle ? Date.now() : 0);
+  }
+
+  public getTabState() {
+    return this.tabState;
   }
 
   private onMirrorTask = (payload: MirrorTaskPayload) => {

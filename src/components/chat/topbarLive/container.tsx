@@ -1,4 +1,4 @@
-import {Show, createEffect, createMemo, createSignal} from 'solid-js';
+import {Show, createEffect, createMemo, createResource, createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 import {TopbarLive} from './topbarLive';
 import {subscribeOn} from '../../../helpers/solid/subscribeOn';
@@ -9,9 +9,10 @@ import {AppManagers} from '../../../lib/appManagers/managers';
 import Chat from '../chat';
 import ChatTopbar from '../topbar';
 import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
-import {InputGroupCall, Chat as MTChat} from '../../../layer';
+import {ChatFull, GroupCall, InputGroupCall, Chat as MTChat} from '../../../layer';
 import appImManager from '../../../lib/appManagers/appImManager';
 import {useChat} from '../../../stores/peers';
+import {useFullPeer} from '../../../stores/fullPeers';
 
 export default class ChatLive extends PinnedContainer {
   private dispose: () => void;
@@ -37,8 +38,15 @@ export default class ChatLive extends PinnedContainer {
 
     const [watching, setWatching] = createSignal<number>();
     const chat = useChat(() => peerId().toChatId());
+    const [fullPeer, setFullPeer] = createSignal<ChatFull | undefined>();
+    createEffect(() => {
+      const fullPeer = useFullPeer(peerId());
+      createEffect(() => {
+        setFullPeer(fullPeer() as ChatFull);
+      });
+    });
     const currentCall = useCurrentRtmpCall();
-    const isGroupCallActive = createMemo(() => {
+    const isCallActive = createMemo(() => {
       const _chat = chat();
 
       return !!(
@@ -48,13 +56,29 @@ export default class ChatLive extends PinnedContainer {
         (_chat as MTChat.channel).pFlags.call_not_empty
       );
     });
-    const shouldShow = createMemo(() => isGroupCallActive() && currentCall.peerId() !== peerId());
+    const [fullCall] = createResource(
+      fullPeer,
+      async(fullPeer) => {
+        const inputGroupCall = (fullPeer as ChatFull.channelFull)?.call;
+        if(!inputGroupCall) {
+          return;
+        }
 
-    const getFullChat = () => rootScope.managers.appProfileManager.getChatFull(peerId().toChatId());
+        const fullCall = await rootScope.managers.appGroupCallsManager.getGroupCallFull(
+          (inputGroupCall as InputGroupCall.inputGroupCall).id
+        );
+        return fullCall && (fullCall as GroupCall.groupCall).pFlags.rtmp_stream ?
+          fullCall as GroupCall.groupCall :
+          undefined;
+      }
+    );
+    const shouldShow = createMemo(() => {
+      return !!(isCallActive() && currentCall.peerId() !== peerId() && fullCall());
+    });
 
     subscribeOn(rootScope)('group_call_update', async(call) => {
-      if(!isGroupCallActive() || call._ !== 'groupCall') return;
-      const fullChat = await getFullChat();
+      if(!isCallActive() || call._ !== 'groupCall') return;
+      const fullChat = fullPeer();
       if(fullChat?._ !== 'channelFull') return;
 
       if(call.id !== (fullChat.call as InputGroupCall.inputGroupCall)?.id) return;
@@ -71,20 +95,12 @@ export default class ChatLive extends PinnedContainer {
         setWatching();
       }
 
-      createEffect(async() => {
-        if(!isGroupCallActive()) {
+      createEffect(() => {
+        if(!isCallActive()) {
           setWatching();
+        } else {
+          setWatching(fullCall()?.participants_count);
         }
-
-        const fullChat = await getFullChat();
-        if(fullChat?._ !== 'channelFull' || !fullChat.call) return;
-
-        const call = await rootScope.managers.appGroupCallsManager.getGroupCallFull(
-          (fullChat.call as InputGroupCall.inputGroupCall).id
-        );
-        if(call?._ !== 'groupCall') return;
-
-        setWatching(call.participants_count);
       });
 
       return peerId();

@@ -216,7 +216,7 @@ export default class ChatTopbar {
 
     this.pushButtonToVerify(this.btnCall, this.verifyCallButton.bind(this, 'voice'));
     this.pushButtonToVerify(this.btnGroupCall, this.verifyVideoChatButton.bind(this, 'nonadmin'));
-    this.pushButtonToVerify(this.btnGroupCallMenu, this.verifyVideoChatButton.bind(this, 'admin'));
+    this.pushButtonToVerify(this.btnGroupCallMenu, this.verifyRtmpButton.bind(this));
     this.pushButtonToVerify(this.btnDirectMessages, this.verifyDirectMessagesButton.bind(this));
 
     this.chatInfoContainer.append(this.btnBack, this.chatInfo, this.chatUtils);
@@ -320,6 +320,7 @@ export default class ChatTopbar {
       return;
     }
 
+    element.classList.add('hide');
     this.buttonsToVerify.push({element, verify});
   }
 
@@ -345,8 +346,33 @@ export default class ChatTopbar {
     r();
   };
 
-  private verifyVideoChatButton = async(type?: 'group' | 'broadcast' | 'admin' | 'nonadmin') => {
-    if(!IS_GROUP_CALL_SUPPORTED || this.peerId.isUser() || this.chat.type !== ChatType.Chat || this.chat.threadId) return false;
+  private verifyRtmpButton = async() => {
+    if(!this.chat.isBroadcast) {
+      return false;
+    }
+
+    const currentGroupCall = groupCallsController.groupCall;
+    const chatId = this.peerId.toChatId();
+    if(currentGroupCall?.chatId === chatId) {
+      return false;
+    }
+
+    const chat = this.chat.peer as MTChat.channel | MTChat.chat;
+    const isCallActive = !!(chat as MTChat.chat).pFlags?.call_active;
+    if(isCallActive) {
+      return false;
+    }
+
+    return hasRights(chat, 'manage_call');
+  };
+
+  private verifyVideoChatButton = async(type?: 'group' | 'broadcast' | 'nonadmin') => {
+    if(
+      !IS_GROUP_CALL_SUPPORTED ||
+      this.peerId.isUser() ||
+      this.chat.type !== ChatType.Chat ||
+      this.chat.threadId
+    ) return false;
 
     const currentGroupCall = groupCallsController.groupCall;
     const chatId = this.peerId.toChatId();
@@ -355,21 +381,27 @@ export default class ChatTopbar {
     }
 
     if(type) {
-      if(((type === 'group' && await this.managers.appPeersManager.isBroadcast(this.peerId))) ||
-        ((type === 'broadcast' && await this.managers.appPeersManager.isAnyGroup(this.peerId)))) {
+      if(((type === 'group' && !this.chat.isAnyGroup)) ||
+        ((type === 'broadcast' && !this.chat.isBroadcast))) {
         return false;
       }
     }
 
     const chat = this.chat.peer as MTChat.channel | MTChat.chat;
-    if(hasRights(chat, 'manage_call') && !this.chat.isMonoforum) {
-      if(type === 'admin') return !(chat as MTChat.chat).pFlags?.call_active;
+    const isCallActive = !!(chat as MTChat.chat).pFlags?.call_active;
+    const canManageCall = hasRights(chat, 'manage_call');
+    if(type === 'nonadmin' && canManageCall && this.chat.isBroadcast) {
+      return false; // * hide live stream top button
     }
-    if(!(chat as MTChat.chat).pFlags?.call_active) return false;
+    const needActiveCall = !canManageCall;
+    if(!isCallActive) {
+      return !needActiveCall;
+    }
 
     const fullChat = await this.managers.appProfileManager.getChatFull(chatId);
+    const inputGroupCall = fullChat.call as InputGroupCall.inputGroupCall;
     const groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(
-      (fullChat.call as InputGroupCall.inputGroupCall).id
+      inputGroupCall.id
     );
     if(groupCall?._ !== 'groupCall') return false;
 
@@ -386,7 +418,7 @@ export default class ChatTopbar {
 
   private verifyDirectMessagesButton = async() => {
     if(!this.peerId.isAnyChat()) return false;
-    const chat = await this.managers.appChatsManager.getChat(this.peerId.toChatId());
+    const chat = this.chat.peer;
     if(chat._ !== 'channel') return false;
 
     return !!(!chat.admin_rights && !chat.pFlags.monoforum && chat.linked_monoforum_id);
@@ -667,7 +699,14 @@ export default class ChatTopbar {
       danger: true,
       text: 'Delete',
       onClick: () => {
-        PopupElement.createPopup(PopupDeleteDialog, this.chat.monoforumThreadId || this.peerId, undefined, undefined, this.chat.threadId, this.chat.monoforumThreadId ? this.peerId : undefined);
+        PopupElement.createPopup(
+          PopupDeleteDialog,
+          this.chat.monoforumThreadId || this.peerId,
+          undefined,
+          undefined,
+          this.chat.threadId,
+          this.chat.monoforumThreadId ? this.peerId : undefined
+        );
       },
       verify: this.verifyIfCanDeleteChat
     }];
