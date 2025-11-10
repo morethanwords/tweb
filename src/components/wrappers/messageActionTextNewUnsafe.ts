@@ -608,6 +608,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
       case 'messageActionGiftStars':
       case 'messageActionGiftCode':
+      case 'messageActionGiftTon':
       case 'messageActionGiftPremium': {
         const isGiftCode = action._ === 'messageActionGiftCode';
         if(isGiftCode && !shouldDisplayGiftCodeAsGift(action)) {
@@ -723,7 +724,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       case 'messageActionStarGiftUnique':
         if(!message.pFlags.out && action.resale_amount) {
-          langPackKey = 'StarGiftSentMessageSelf';
+          langPackKey = action.resale_amount._ === 'starsTonAmount' ? 'StarGiftSentMessageSelfTon' : 'StarGiftSentMessageSelf';
           args = [formatStarsAmount(action.resale_amount)];
         } else if(message.peerId === rootScope.myId) {
           langPackKey = action.pFlags.upgrade ? 'ActionGiftUpgradedSelf' : 'ActionGiftTransferredSelf';

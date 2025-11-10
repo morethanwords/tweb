@@ -582,7 +582,6 @@ const lang = {
   'ContactNoteRow': 'Notes',
   'ContactNoteRowDesc': 'only visible to you',
   'SuggestBirthdayRow': 'Suggest Date of Birth',
-  'ContactNodeDescription': 'Notes are only visible to you',
   'Privacy.BirthdayCaption': 'You can restrict who can see the birthday on your profile with granular precision.',
   'PrivacySettings.Messages.PremiumError': 'Only subscribers of [Telegram Premium]() can restrict receiving messages.',
   'Chat.PremiumRequired': 'Subscribe to **Premium** to message **%s**.',
@@ -2545,6 +2544,7 @@ const lang = {
   'TonNeededText': 'You can add TON to your balance via the third-party platform Fragment.',
   'FragmentTopUp': 'Top-Up via Fragment',
   'MenuTelegramStars': 'My Stars',
+  'MenuTelegramStarsTon': 'My TON',
   'StarsCount': {
     'one_value': '%d Star',
     'other_value': '%d Stars'
@@ -2630,6 +2630,7 @@ const lang = {
     'one_value': 'You bought a gift for **%d Star**',
     'other_value': 'You bought a gift for **%d Stars**'
   },
+  'StarGiftSentMessageSelfTon': 'You bought a gift for **%d TON**',
   'StarGiftFrom': 'Gift from %s',
   'StarGiftDefaultMessage': 'You can add this gift to your profile.',
   'StarGiftDefaultMessageOut': '%s can display this gift on their profile.',
@@ -2684,7 +2685,7 @@ const lang = {
   'StarGiftResaleBadgeProfile': 'on sale',
   'StarGiftPremiumBadge': 'premium',
   'SendStarGiftSubtitle': 'Give %s gifts that can be kept on the profile or converted to Stars.',
-  'SendStarGiftSubtitleSelf': 'Buy yourself a gifts to add to your profile or reserve for later.\n\nLimited-edition gifts upgraded to collectibles can be gifted to others.',
+  'SendStarGiftSubtitleSelf': 'Buy yourself a gift to add to your profile or reserve for later.\n\nLimited-edition gifts upgraded to collectibles can be gifted to others.',
   'StarGiftCategoryAll': 'All Gifts',
   'StarGiftCategoryOwned': 'My Gifts',
   'StarGiftCategoryCollectibles': 'Collectibles',
@@ -3832,7 +3833,8 @@ const lang = {
   'BirthdayPopup.Remove': 'Remove from Profile',
   'BirthdaySuggestOutgoing': 'You suggested %s to add a birthday',
   'BirthdaySuggestIncoming': '%s suggested you add your birthday',
-  'BirthdaySuggestView': 'View'
+  'BirthdaySuggestView': 'View',
+  'TonGiftSubtitle': 'Use TON to suggest posts to channels.'
 };
 
 export default lang;

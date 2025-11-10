@@ -42,10 +42,12 @@ export function SuggestBirthdayBubble(props: {
           <I18nTsx class={/* @once */ styles.label} key="BirthdayPopup.Month" />
           {monthsLocalized[props.birthday.month - 1]}
         </div>
-        <div class={/* @once */ styles.col}>
-          <I18nTsx class={/* @once */ styles.label} key="BirthdayPopup.Year" />
-          {props.birthday.year}
-        </div>
+        <Show when={props.birthday.year}>
+          <div class={/* @once */ styles.col}>
+            <I18nTsx class={/* @once */ styles.label} key="BirthdayPopup.Year" />
+            {props.birthday.year}
+          </div>
+        </Show>
       </div>
 
       <Show when={!props.outgoing}>

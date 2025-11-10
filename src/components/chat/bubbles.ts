@@ -98,7 +98,7 @@ import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import noop from '../../helpers/noop';
 import getGroupedText from '../../lib/appManagers/utils/messages/getGroupedText';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber} from '../../helpers/paymentsWrapCurrencyAmount';
 import PopupPayment from '../popups/payment';
 import isInDOM from '../../helpers/dom/isInDOM';
 import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
@@ -5218,6 +5218,10 @@ export default class ChatBubbles {
       return;
     }
 
+    const middlewareHelper = getMiddleware();
+    const middleware = middlewareHelper.get();
+    const realMiddleware = this.getMiddleware();
+
     if(this.chat.isBotforum && this.chat.threadId && message?._ === 'messageService' && message?.action?._ === 'messageActionTopicEdit' && this.placeholderTopicIconContainer) (async() => {
       const topic = await this.managers.dialogsStorage.getForumTopic(this.peerId, this.chat.threadId);
       if(!realMiddleware()) return;
@@ -5226,9 +5230,6 @@ export default class ChatBubbles {
       );
     })();
 
-    const middlewareHelper = getMiddleware();
-    const middleware = middlewareHelper.get();
-    const realMiddleware = this.getMiddleware();
     realMiddleware.onClean(() => {
       (this.chat.destroyPromise || this.chat.setPeerPromise || Promise.resolve()).then(() => {
         middlewareHelper.destroy();
@@ -5690,6 +5691,29 @@ export default class ChatBubbles {
                 peerId: this.peerId,
                 isOut: !!message.pFlags.out
               });
+            }
+          }), content, middleware);
+
+          bubbleContainer.after(content);
+        } else if(action._ === 'messageActionGiftTon') {
+          const content = bubbleContainer.cloneNode(false) as HTMLElement;
+          content.classList.add('has-service-before');
+
+          const stickers = await this.managers.appStickersManager.getLocalStickerSet('inputStickerSetTonGifts')
+          let idx: number
+          const amountNum = nanotonToJsNumber(action.amount)
+          if(amountNum > 50) idx = 2
+          else if(amountNum > 10) idx = 1
+          else idx = 0
+
+          this.wrapSomeSolid(() => PremiumGiftBubble({
+            rlottieOptions: {middleware},
+            sticker: stickers.documents[idx] as MyDocument,
+            title: formatNanoton(action.crypto_amount) + ' ' + action.crypto_currency,
+            subtitle: i18n('TonGiftSubtitle'),
+            buttonText: i18n('ActionGiftPremiumView'),
+            buttonCallback: () => {
+              PopupElement.createPopup(PopupStars, {ton: true})
             }
           }), content, middleware);
 

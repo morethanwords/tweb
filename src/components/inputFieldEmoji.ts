@@ -46,6 +46,18 @@ const createEmojiDropdownButton = ({inputField}: {inputField: InputFieldEmoji}) 
       tabsToRender: [emojiTab],
       customParentElement: document.body,
       getOpenPosition: () => {
+        if(inputField.options.withLinebreaks) {
+          const rect = inputField.input.getBoundingClientRect()
+          const cloned = cloneDOMRect(rect);
+          cloned.top += rect.height
+          if(cloned.top + 420 > window.innerHeight) {
+            cloned.top = rect.top - 428
+          }
+
+          cloned.left += rect.width / 2
+          return cloned
+        }
+
         const rect = button.getBoundingClientRect();
         const cloned = cloneDOMRect(rect);
         cloned.left = rect.left + rect.width / 2;

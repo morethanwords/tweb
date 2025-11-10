@@ -206,7 +206,7 @@ export class AppProfileManager extends AppManager {
   }
 
   public modifyCachedFullUser(userId: UserId, modify: (fullUser: UserFull) => boolean | void) {
-    this.modifyCachedFullPeer(userId.toPeerId(true), modify as any);
+    this.modifyCachedFullPeer(userId.toPeerId(false), modify as any);
   }
 
   public modifyCachedFullPeer(peerId: PeerId, modify: (fullPeer: UserFull | ChatFull) => boolean | void) {
@@ -1120,8 +1120,6 @@ export class AppProfileManager extends AppManager {
           userFull.birthday = date ?? undefined;
           return true;
         });
-        // to update peer profile
-        this.rootScope.dispatchEvent('peer_bio_edit', this.rootScope.myId);
       }
     });
   }
@@ -1152,11 +1150,9 @@ export class AppProfileManager extends AppManager {
         if(!result) return
 
         this.modifyCachedFullUser(userId, (userFull) => {
-          userFull.note = note;
+          userFull.note = note.text === '' ? undefined : note;
           return true;
         });
-        // to update peer profile
-        this.rootScope.dispatchEvent('peer_bio_edit', userId.toPeerId());
       }
     });
   }

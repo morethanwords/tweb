@@ -64,6 +64,7 @@ import transferStarGift from './transferStarGift';
 import {unwrap} from 'solid-js/store';
 
 import styles from './sendGift.module.scss';
+import Animated from '../../helpers/solid/animations';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
@@ -669,7 +670,7 @@ function ResaleOptionsPage(props: {
 
       <div class={styles.secondPageBody}>
         <Scrollable ref={container} onScrolledBottom={loadMore}>
-          <Transition name="fade">
+          <Animated type="cross-fade">
             <Show
               when={!loading() && items().length > 0}
               fallback={loading() ? <PreloaderTsx /> : (
@@ -679,6 +680,7 @@ function ResaleOptionsPage(props: {
               )}
             >
               <StarGiftsGrid
+                class={styles.resaleGrid}
                 items={items()}
                 view="resale"
                 scrollParent={container}
@@ -706,7 +708,7 @@ function ResaleOptionsPage(props: {
                 }}
               />
             </Show>
-          </Transition>
+          </Animated>
         </Scrollable>
       </div>
     </div>

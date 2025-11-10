@@ -529,7 +529,7 @@ export const addCancelButton = (buttons: PopupButton[]) => {
 export function createPopup(callback: () => JSX.Element) {
   createRoot((dispose) => {
     <PopupControllerContext.Provider value={{dispose}}>
-      {callback()}
+      {untrack(callback)}
     </PopupControllerContext.Provider>
   });
 }

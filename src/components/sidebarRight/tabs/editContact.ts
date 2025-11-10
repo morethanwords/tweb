@@ -90,7 +90,9 @@ export default class AppEditContactTab extends SliderSuperTab {
           maxLength: 128,
           withLinebreaks: true
         });
-        this.noteInputField.setRichOriginalValue(fullUser.note);
+        if(fullUser.note) {
+          this.noteInputField.setRichOriginalValue(fullUser.note);
+        }
         inputFields.push(this.noteInputField);
         inputWrapper.append(this.noteInputField.container);
 

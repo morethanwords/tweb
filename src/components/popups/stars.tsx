@@ -47,6 +47,7 @@ import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsA
 import wrapLocalSticker from '../wrappers/localSticker';
 import bigInt from 'big-integer';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
+import {IconTsx} from '../iconTsx';
 
 export function StarsStrokeStar(props: {stroke?: boolean, style?: JSX.HTMLAttributes<HTMLDivElement>['style']}) {
   return (
@@ -136,11 +137,18 @@ export function StarsAmount(props: {stars: Long}) {
   );
 }
 
-export function StarsChange(props: {stars: Long, isRefund?: boolean, noSign?: boolean, reverse?: boolean, inline?: boolean}) {
+export function StarsChange(props: {
+  stars: Long,
+  isRefund?: boolean,
+  noSign?: boolean,
+  reverse?: boolean,
+  inline?: boolean,
+  ton?: boolean
+}) {
   return (
     <div class={classNames('popup-stars-pay-amount', +props.stars > 0 ? 'green' : 'danger', props.reverse && 'reverse', props.inline && 'inline')}>
       {`${+props.stars > 0 && !props.noSign ? '+' : ''}${props.stars}`}
-      <StarsStar />
+      {props.ton ? <IconTsx icon="ton" /> : <StarsStar />}
       {props.isRefund && <span class="popup-stars-pay-amount-status">{i18n('StarsRefunded')}</span>}
     </div>
   );
@@ -422,7 +430,7 @@ export default class PopupStars extends PopupElement {
           <Row.Title><b>{_title}</b></Row.Title>
           <Row.Midtitle>{midtitle}</Row.Midtitle>
           <Row.Subtitle>{subtitleStatus ? [subtitle, ' — ', subtitleStatus] : subtitle}</Row.Subtitle>
-          <Row.RightContent><StarsChange stars={formatStarsAmount(transaction.amount)} /></Row.RightContent>
+          <Row.RightContent><StarsChange stars={formatStarsAmount(transaction.amount)} ton={transaction.amount._ === 'starsTonAmount'} /></Row.RightContent>
           <Row.Media size="abitbigger">{media}</Row.Media>
         </Row>
       );
@@ -671,7 +679,7 @@ export default class PopupStars extends PopupElement {
         }
 
         loading = true;
-        const starsStatus = await this.managers.appPaymentsManager.getStarsTransactions(offset, inbound);
+        const starsStatus = await this.managers.appPaymentsManager.getStarsTransactions(offset, inbound, this.ton);
         if(!middleware()) return;
 
         const promises = (starsStatus.history || []).map(this.renderTransaction);
@@ -773,7 +781,7 @@ export default class PopupStars extends PopupElement {
 
     const restSection = (
       <>
-        {this.appConfig.stars_gifts_enabled && (
+        {this.appConfig.stars_gifts_enabled && !this.ton && (
           <Section>
             <Button
               class="btn-primary btn-transparent primary"

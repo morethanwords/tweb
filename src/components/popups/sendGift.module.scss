@@ -468,6 +468,10 @@
   }
 }
 
+.resaleGrid {
+  inset: 0;
+}
+
 @media only screen and (max-width: $small-screen) {
   .popup {
     padding: 0;

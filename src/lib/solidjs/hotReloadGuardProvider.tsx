@@ -40,6 +40,8 @@ import showStarsRatingPopup from '../../components/popups/starsRating';
 import {toast, toastNew} from '../../components/toast';
 import BusinessHours from '../../components/businessHours';
 import {avatarNew} from '../../components/avatarNew';
+import PopupSendGift from '../../components/popups/sendGift';
+import showBirthdayPopup from '../../components/popups/birthday';
 
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
@@ -87,7 +89,9 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       toastNew,
       BusinessHours,
       avatarNew,
-      PeerTitleTsx
+      PeerTitleTsx,
+      PopupSendGift,
+      showBirthdayPopup
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

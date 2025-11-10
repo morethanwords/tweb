@@ -1,4 +1,4 @@
-import {batch, createContext, createEffect, createMemo, createResource, createSignal, JSX, onCleanup, Show, useContext} from 'solid-js';
+import {batch, createContext, createEffect, createMemo, createResource, createSignal, JSX, onCleanup, Show, untrack, useContext} from 'solid-js';
 import {render} from 'solid-js/web';
 import Section from './section';
 import numberThousandSplitter from '../helpers/number/numberThousandSplitter';
@@ -37,6 +37,10 @@ import IS_PARALLAX_SUPPORTED from '../environment/parallaxSupport';
 import {generateDelimiter} from './generateDelimiter';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import ListenerSetter from '../helpers/listenerSetter';
+import PopupSendGift from './popups/sendGift';
+import PopupElement from './popups';
+import showBirthdayPopup, {saveMyBirthday} from './popups/birthday';
+import {differenceInYears} from '../helpers/date';
 
 type PeerProfileContextValue = {
   peerId: PeerId,
@@ -686,6 +690,101 @@ PeerProfile.Username = () => {
   );
 };
 
+PeerProfile.Birthday = () => {
+  const context = useContext(PeerProfileContext);
+  const {I18n, i18n, wrapEmojiText, rootScope, PopupElement, PopupSendGift} = useHotReloadGuard();
+  const birthday = createMemo(() => (context.fullPeer as UserFull.userFull)?.birthday);
+  const isToday = createMemo(() => {
+    const birthday$ = birthday()
+    if(!birthday$) return false
+
+    const today = new Date();
+    return birthday$.day === today.getDate() && birthday$.month === today.getMonth() + 1;
+  })
+
+  const onClick = createMemo(() => {
+    if(context.peerId === rootScope.myId) {
+      return () => showBirthdayPopup({
+        initialDate: birthday(),
+        fromProfile: true,
+        onSave: saveMyBirthday
+      })
+    }
+
+    if(isToday()) {
+      return () => PopupElement.createPopup(PopupSendGift, {peerId: context.peerId})
+    }
+  });
+
+  const text = createMemo(() => {
+    const birthday$ = birthday()
+    if(!birthday$) return ''
+
+    const date = new Date()
+    date.setDate(birthday$.day);
+    date.setMonth(birthday$.month - 1);
+    if(birthday$.year) {
+      date.setFullYear(birthday$.year);
+    }
+
+    const el = new I18n.IntlDateElement({
+      date,
+      options: {
+        day: 'numeric',
+        month: 'long',
+        year: birthday$.year ? 'numeric' : undefined
+      }
+    }).element
+
+    if(isToday()) el.prepend(wrapEmojiText('🎂 '))
+
+    if(birthday$.year) {
+      const years = differenceInYears(date, new Date());
+
+
+      el.append(i18n('BirthdayYearsOld', [years]));
+    }
+
+    return el
+  })
+
+  return (
+    <Show when={birthday()}>
+      <Row clickable={onClick()}>
+        <Row.Icon icon="gift" />
+        <Row.Title>{text()}</Row.Title>
+        <Row.Subtitle>
+          {i18n('Birthday')}
+        </Row.Subtitle>
+      </Row>
+    </Show>
+  );
+};
+
+PeerProfile.ContactNote = () => {
+  const context = useContext(PeerProfileContext);
+  const {i18n, wrapEmojiText} = useHotReloadGuard();
+  const note = createMemo(() => (context.fullPeer as UserFull.userFull)?.note);
+  const text = createMemo(() => {
+    const note$ = note()
+    if(!note$) return null
+
+    return wrapEmojiText(note$.text, false, note$.entities)
+  });
+
+  return (
+    <Show when={text()}>
+      <Row class="profile-notes">
+        <Row.Icon icon="newchat_filled" />
+        <Row.Title>{text()}</Row.Title>
+        <Row.Subtitle subtitleRight={i18n('ContactNoteRowDesc')}>
+          {i18n('ContactNoteRow')}
+        </Row.Subtitle>
+      </Row>
+    </Show>
+  );
+};
+
 PeerProfile.Location = () => {
   const context = useContext(PeerProfileContext);
   const {i18n} = useHotReloadGuard();
@@ -1099,6 +1198,8 @@ PeerProfile.MainSection = () => {
         <PeerProfile.Location />
         <PeerProfile.Bio />
         <PeerProfile.Link />
+        <PeerProfile.Birthday />
+        <PeerProfile.ContactNote />
         <PeerProfile.BusinessHours />
         <PeerProfile.BusinessLocation />
         <PeerProfile.Notifications />

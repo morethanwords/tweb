@@ -4,7 +4,7 @@ import {createPopup} from './indexTsx';
 import {I18nTsx} from '../../helpers/solid/i18n';
 
 import {Birthday} from '../../layer';
-import {getMonths, numberOfDaysEachMonth} from '../../helpers/date';
+import {getMonths, getDaysPerMonthForYear, numberOfDaysEachMonth} from '../../helpers/date';
 import InputField from '../inputField';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {createButtonMenuSelect} from '../buttonMenuSelect';
@@ -17,6 +17,8 @@ import rootScope from '../../lib/rootScope';
 import {doubleRaf, fastRaf} from '../../helpers/schedulers';
 import {toastNew} from '../toast';
 import {PeerTitleTsx} from '../peerTitleTsx';
+import lottieLoader from '../../lib/rlottie/lottieLoader';
+import LottieAnimation from '../lottieAnimation';
 
 const MIN_YEAR = 1900;
 
@@ -61,18 +63,19 @@ export default async function showBirthdayPopup(props: {
     privacy[1]._ === 'privacyValueDisallowAll'
   );
 
-  const [show, setShow] = createSignal(false);
-  const [day, setDay] = createSignal<number | undefined>(props.initialDate?.day);
-  const [month, setMonth] = createSignal<MonthOption | undefined>();
-  const [year, setYear] = createSignal<number | undefined>(props.initialDate?.year);
-
-  const monthOptions = getMonths().map((m, idx) => ({text: m, value: idx + 1}));
-  if(props.initialDate?.month) {
-    setMonth(monthOptions[props.initialDate.month - 1]);
-  }
-
   createPopup(() => {
-    onMount(() => doubleRaf().then(() => setShow(true)));
+    const [show, setShow] = createSignal(false);
+    const [day, setDay] = createSignal<number | undefined>(props.initialDate?.day);
+    const [month, setMonth] = createSignal<MonthOption | undefined>();
+    const [year, setYear] = createSignal<number | undefined>(props.initialDate?.year);
+
+    const monthOptions = getMonths().map((m, idx) => ({text: m, value: idx + 1}));
+    if(props.initialDate?.month) {
+      setMonth(monthOptions[props.initialDate.month - 1]);
+    }
+
+    const daysPerMonth = (year$ = year()) => year$ ? getDaysPerMonthForYear(year$) : numberOfDaysEachMonth;
+
     const dayField = new InputField({
       label: 'BirthdayPopup.Day',
       plainText: true
@@ -100,19 +103,22 @@ export default async function showBirthdayPopup(props: {
 
     const now = new Date()
     const nowYear = now.getFullYear()
-    const nowMonth = now.getMonth()
+    const nowMonth = now.getMonth() + 1
     const nowDay = now.getDate()
 
     function updateDayInput() {
       const value = dayField.value;
       const cleanValue = value.replace(/[^0-9]/g, '');
-      if(!cleanValue) return;
+      if(!cleanValue) {
+        setDay(undefined);
+        return;
+      };
 
       const month$ = month();
 
       const valueNum = Number(cleanValue);
-      const daysInMonth = month$ ? numberOfDaysEachMonth[month$.value - 1] : 31;
-      if(yearField.value === String(nowYear) && valueNum > nowDay) {
+      const daysInMonth = month$ ? daysPerMonth()[month$.value - 1] : 31;
+      if(yearField.value === String(nowYear) && month$.value === nowMonth && valueNum > nowDay) {
         dayField.setValueSilently(nowDay.toString());
         setDay(nowDay);
       } else if(valueNum > daysInMonth) {
@@ -141,7 +147,7 @@ export default async function showBirthdayPopup(props: {
       },
       get options() {
         if(yearField.value === String(nowYear)) {
-          return monthOptions.filter(m => m.value <= nowMonth + 1)
+          return monthOptions.filter(m => m.value <= nowMonth)
         }
 
         return monthOptions
@@ -179,17 +185,14 @@ export default async function showBirthdayPopup(props: {
         } else if(valueNum >= nowYear) {
           yearField.setValueSilently(nowYear.toString());
           setYear(nowYear);
-          if(month() && month().value > nowMonth + 1) {
-            setMonth(monthOptions[nowMonth])
-
-            if(Number(dayField.value) > nowDay) {
-              dayField.setValueSilently(nowDay.toString());
-              setDay(nowDay);
-            }
+          if(month() && month().value > nowMonth) {
+            setMonth(monthOptions[nowMonth - 1])
           }
         } else {
           setYear(valueNum);
         }
+
+        updateDayInput()
       } else {
         setYear(undefined);
       }
@@ -211,15 +214,26 @@ export default async function showBirthdayPopup(props: {
       }
     })
 
+    const doubleRafPromise = doubleRaf()
+
     return (
       <PopupElement class={styles.popup} containerClass={styles.popupContainer} show={show()}>
         <PopupElement.Header class={styles.popupHeader}>
           <PopupElement.CloseButton class={styles.popupCloseButton} />
         </PopupElement.Header>
         <PopupElement.Body class={styles.popupBody}>
-          <img
+          <LottieAnimation
             class={styles.img}
-            src="/assets/img/utyan-birthday.png"
+            size={120}
+            lottieLoader={lottieLoader}
+            restartOnClick
+            name="UtyanBirthday"
+            onPromise={(promise) => {
+              Promise.all([promise, doubleRafPromise]).then(([p]) => {
+                setShow(true);
+                p.playOrRestart()
+              });
+            }}
           />
 
           <I18nTsx
@@ -266,7 +280,6 @@ export default async function showBirthdayPopup(props: {
               secondary
               callback={async() => {
                 await props.onSave(null);
-                setShow(false);
                 return true;
               }}
             />
@@ -277,9 +290,8 @@ export default async function showBirthdayPopup(props: {
               props.fromSuggestion ? 'BirthdayPopup.SaveFromSuggestion' :
               props.suggestForPeer ? 'BirthdayPopup.Suggest' : 'Save'}
             callback={async() => {
-              if(!day() || !month() || !year()) return;
+              if(!day() || !month()) return;
               await props.onSave({_: 'birthday', day: day(), month: month().value, year: year()});
-              setShow(false);
               return true;
             }}
           />
