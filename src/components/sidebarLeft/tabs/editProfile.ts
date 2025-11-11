@@ -15,6 +15,8 @@ import setBlankToAnchor from '../../../lib/richTextProcessor/setBlankToAnchor';
 import getPeerEditableUsername from '../../../lib/appManagers/utils/peers/getPeerEditableUsername';
 import SettingSection, {generateSection} from '../../settingSection';
 import UsernamesSection from '../../usernamesSection';
+import Row from '../../row';
+import showBirthdayPopup, {saveMyBirthday} from '../../popups/birthday';
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -113,6 +115,26 @@ export default class AppEditProfileTab extends SliderSuperTab {
       this.content.append(this.editPeer.nextBtn);
 
       section.append(this.editPeer.avatarEdit.container, inputWrapper);
+
+      if(!userFull.birthday) {
+        const addBirthdayRow = new Row({
+          title: i18n('EditProfile.AddBirthdayRow'),
+          icon: 'gift',
+          clickable: () => {
+            showBirthdayPopup({
+              onSave: async(date) => {
+                if(await saveMyBirthday(date)) {
+                  addBirthdayRow.container.remove();
+                  return true;
+                }
+                return false;
+              }
+            })
+          }
+        })
+
+        section.append(addBirthdayRow.container);
+      }
     }
 
     {

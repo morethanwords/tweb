@@ -1,5 +1,5 @@
 import {resolveFirst} from '@solid-primitives/refs'
-import {ComponentProps, createEffect, createMemo, createRoot, createSignal, For, JSX, on, onCleanup, onMount, splitProps} from 'solid-js'
+import {ComponentProps, createEffect, createMemo, createRoot, createSignal, For, JSX, on, onCleanup, onMount, Show, splitProps} from 'solid-js'
 import {attachClickEvent} from '../helpers/dom/clickEvent'
 import {IconTsx} from './iconTsx'
 import contextMenuController from '../helpers/contextMenuController'
@@ -66,13 +66,14 @@ function ButtonMenuSelectInner<T>(props: {
     highlight?: HighlightPosition
     optionText?: string
   }) => JSX.Element
-  optionSearchText: (option: T) => string
+  optionSearchText?: (option: T) => string
   optionKey: (option: T) => string
   deselectAllOnFirstSelect?: boolean
+  single?: boolean
 }) {
   const [search, setSearch] = createSignal('')
 
-
+  const hasSearch = !!props.optionSearchText;
   const cleanForSearch = (text: string) => text.toLowerCase().replace(/[\s+/\\_-]/g, '').trim()
 
   type FilteredOption = {
@@ -82,7 +83,7 @@ function ButtonMenuSelectInner<T>(props: {
   const filteredOptions = createMemo<FilteredOption[]>(() => {
     const search$ = search();
     const options = props.options;
-    if(search$ === '') {
+    if(search$ === '' || !hasSearch) {
       return options.map(option => ({
         option
       }));
@@ -153,38 +154,44 @@ function ButtonMenuSelectInner<T>(props: {
   });
 
   let inputEl: HTMLInputElement;
-  onMount(() => doubleRaf().then(() => inputEl.focus()))
+  onMount(() => doubleRaf().then(() => inputEl?.focus()))
 
   return (
     <div class={classNames('btn-menu', 'btn-menu-select', props.class)}>
-      <div class="btn-menu-item btn-menu-search">
-        <IconTsx icon="search" class="btn-menu-item-icon" />
-        <input
-          type="text"
-          class="btn-menu-item-input"
-          placeholder={i18n('Search').textContent}
-          value={search()}
-          onInput={e => setSearch(e.currentTarget.value)}
-          ref={inputEl}
-        />
-      </div>
-      <div class="btn-menu-search-delimiter" />
+      <Show when={hasSearch}>
+        <div class="btn-menu-item btn-menu-search">
+          <IconTsx icon="search" class="btn-menu-item-icon" />
+          <input
+            type="text"
+            class="btn-menu-item-input"
+            placeholder={i18n('Search').textContent}
+            value={search()}
+            onInput={e => setSearch(e.currentTarget.value)}
+            ref={inputEl}
+          />
+        </div>
+        <div class="btn-menu-search-delimiter" />
+      </Show>
       <div
         class="btn-menu-search-scrollable"
         style={{height: `${10 + Math.min(1 + filteredOptions().length, 7.5) * 32}px`}}
       >
         <Scrollable axis="y" ref={scrollable}>
-          <div
-            class="btn-menu-item"
-            onClick={() => props.onValueChange(props.options)}
-          >
-            <IconTsx icon="checkround" class="btn-menu-item-icon" />
-            <I18nTsx class="btn-menu-item-text" key='SelectAll2' />
-          </div>
+          <Show when={!props.single}>
+            <div
+              class="btn-menu-item"
+              tabIndex="0"
+              onClick={() => props.onValueChange(props.options)}
+            >
+              <IconTsx icon="checkround" class="btn-menu-item-icon" />
+              <I18nTsx class="btn-menu-item-text" key='SelectAll2' />
+            </div>
+          </Show>
           <For each={filteredOptions()}>
             {filteredOption => (
               <div
                 class="btn-menu-item"
+                tabIndex="0"
                 onClick={() => {
                   const optionKey = props.optionKey(filteredOption.option)
                   const wasChosen = chosenKeys().has(optionKey)
@@ -196,6 +203,8 @@ function ButtonMenuSelectInner<T>(props: {
 
                   if(wasChosen) {
                     props.onValueChange(props.value.filter(it => props.optionKey(it) !== optionKey))
+                  } else if(props.single) {
+                    props.onValueChange([filteredOption.option])
                   } else {
                     props.onValueChange([...props.value, filteredOption.option])
                   }
@@ -208,7 +217,7 @@ function ButtonMenuSelectInner<T>(props: {
                   },
                   stickerRenderer,
                   highlight: filteredOption.highlight,
-                  optionText: props.optionSearchText(filteredOption.option)
+                  optionText: props.optionSearchText?.(filteredOption.option)
                 })}
               </div>
             )}
@@ -219,18 +228,24 @@ function ButtonMenuSelectInner<T>(props: {
   )
 }
 
-export function ButtonMenuSelect<T>(props: ComponentProps<typeof ButtonMenuSelectInner<T>> & {
-  onToggleMenu: (open: boolean) => void
+export function createButtonMenuSelect<T>(props: ComponentProps<typeof ButtonMenuSelectInner<T>> & {
+  onToggleMenu?: (open: boolean) => void
   direction: ButtonMenuDirection
-  children: JSX.Element
 }) {
-  const children = resolveFirst(() => props.children, it => it instanceof HTMLElement)
-
   let dispose: () => void;
   let closeTimeout: number;
   let tempId = 0;
+  let opened = false
+
+  function close() {
+    if(opened) {
+      contextMenuController.close()
+      opened = false
+    }
+  }
 
   async function open(triggerEl: HTMLElement) {
+    if(opened) return;
     dispose?.()
     const _tempId = ++tempId;
 
@@ -245,13 +260,17 @@ export function ButtonMenuSelect<T>(props: ComponentProps<typeof ButtonMenuSelec
 
     const el = createRoot((dispose_) => {
       dispose = dispose_
-      const [, innerProps] = splitProps(props, ['children', 'onToggleMenu', 'direction'])
+      const [, innerProps] = splitProps(props, ['direction', 'onToggleMenu'])
 
       return <ButtonMenuSelectInner {...innerProps} />
     })
     const domEl = typeof el === 'function' ? (el as () => HTMLElement)() : el as HTMLElement
 
-    props.onToggleMenu(true)
+    if(props.single) {
+      attachClickEvent(domEl, close)
+    }
+
+    props.onToggleMenu?.(true)
     domEl.classList.add(props.direction)
     positionMenuTrigger(triggerEl, domEl, props.direction, {top: 8})
     document.body.append(domEl)
@@ -263,18 +282,30 @@ export function ButtonMenuSelect<T>(props: ComponentProps<typeof ButtonMenuSelec
       clearTimeout(closeTimeout);
       closeTimeout = undefined;
 
-      props.onToggleMenu(false)
+      props.onToggleMenu?.(false)
+      opened = false
       closeTimeout = window.setTimeout(() => {
         closeTimeout = undefined;
         domEl.remove();
         dispose?.()
       }, 300);
     })
+    opened = true
   }
 
   onCleanup(() => {
     dispose?.()
   })
+
+  return {open, close}
+}
+
+export function ButtonMenuSelect<T>(props: Parameters<typeof createButtonMenuSelect<T>>[0] & {
+  children: JSX.Element
+}) {
+  const children = resolveFirst(() => props.children, it => it instanceof HTMLElement)
+
+  const {open} = createButtonMenuSelect(props)
 
   createEffect(on(children, (el: HTMLElement) => {
     if(!el) return

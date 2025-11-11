@@ -11,7 +11,7 @@
 
 import type {MyTopPeer} from './appUsersManager';
 import tsNow from '../../helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall} from '../../layer';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities} from '../../layer';
 import SearchIndex from '../searchIndex';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
@@ -206,7 +206,7 @@ export class AppProfileManager extends AppManager {
   }
 
   public modifyCachedFullUser(userId: UserId, modify: (fullUser: UserFull) => boolean | void) {
-    this.modifyCachedFullPeer(userId.toPeerId(true), modify as any);
+    this.modifyCachedFullPeer(userId.toPeerId(false), modify as any);
   }
 
   public modifyCachedFullPeer(peerId: PeerId, modify: (fullPeer: UserFull | ChatFull) => boolean | void) {
@@ -1108,4 +1108,52 @@ export class AppProfileManager extends AppManager {
     const peerId = this.appPeersManager.getPeerId(update.peer);
     this.rootScope.dispatchEvent('peer_settings', {peerId, settings: update.settings});
   };
+
+  public setMyBirthday(date: Birthday | null) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'account.updateBirthday',
+      params: {
+        birthday: date ?? undefined
+      },
+      processResult: (result) => {
+        this.modifyCachedFullUser(this.rootScope.myId, (userFull) => {
+          userFull.birthday = date ?? undefined;
+          return true;
+        });
+      }
+    });
+  }
+
+  public suggestUserBirthday(userId: UserId, date: Birthday) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'users.suggestBirthday',
+      params: {
+        id: this.appUsersManager.getUserInput(userId),
+        birthday: date
+      },
+      processResult: (updates) => {
+        if(!updates) return
+
+        this.apiUpdatesManager.processUpdateMessage(updates);
+      }
+    });
+  }
+
+  public updateUserNote(userId: UserId, note: TextWithEntities) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'contacts.updateContactNote',
+      params: {
+        id: this.appUsersManager.getUserInput(userId),
+        note: note
+      },
+      processResult: (result) => {
+        if(!result) return
+
+        this.modifyCachedFullUser(userId, (userFull) => {
+          userFull.note = note.text === '' ? undefined : note;
+          return true;
+        });
+      }
+    });
+  }
 }

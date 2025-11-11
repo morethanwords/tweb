@@ -149,6 +149,10 @@
       left: 50%;
       transform: translateX(-50%);
       top: -.75rem;
+
+      &.is-emoji-status {
+        width: 100px;
+      }
     }
   }
 

@@ -2040,3 +2040,15 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   align-items: center;
   gap: 0.5rem;
 }
+
+.reply.has-collectible {
+  padding-inline-end: 28px;
+}
+
+.reply-collectible {
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  inset-inline-end: 4px;
+  top: 4px;
+}

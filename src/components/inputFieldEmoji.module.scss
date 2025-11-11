@@ -1,10 +1,15 @@
 .EmojiButton {
   position: absolute;
-  right: 8px;
+  inset-inline-end: 8px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
   background-color: var(--surface-color);
+
+  &.multiline {
+    top: 8px;
+    transform: none;
+  }
 }
 
 .EmoticonsDropdown, .StickerViewer {

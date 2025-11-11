@@ -3,7 +3,7 @@ import {useAppState} from '../../stores/appState';
 import Row from '../rowTsx';
 import styles from './pendingSuggestion.module.scss';
 import {render} from 'solid-js/web';
-import {createEffect, createSignal, JSX, onMount, Show, splitProps} from 'solid-js';
+import {createEffect, createMemo, createSignal, JSX, onMount, Show, splitProps} from 'solid-js';
 import classNames from '../../helpers/string/classNames';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {useIsSidebarCollapsed} from '../../stores/foldersSidebar';
@@ -16,6 +16,9 @@ import {toastNew} from '../toast';
 import Animated from '../../helpers/solid/animations';
 import uiNotificationsManager from '../../lib/appManagers/uiNotificationsManager';
 import cancelEvent from '../../helpers/dom/cancelEvent';
+import {dismissServerSuggestion, pendingSuggestions} from '../../stores/promo';
+import showBirthdayPopup, {saveMyBirthday} from '../popups/birthday';
+import rootScope from '../../lib/rootScope';
 
 const PendingSuggestion = (props: Parameters<typeof Row>[0] & {closable?: () => void}) => {
   // const [, rest] = splitProps(props, ['closable']);
@@ -141,6 +144,53 @@ function NotificationsSuggestion() {
     </Show>
   );
 }
+const BIRTHDAY_SETUP_SUGGESTION_KEY = 'BIRTHDAY_SETUP';
+
+function BirthdaySetupSuggestion() {
+  const [isSidebarCollapsed] = useIsSidebarCollapsed();
+
+  const emoji = () => wrapEmojiText('🎂');
+
+  const onDismissed = () => {
+    dismissServerSuggestion(BIRTHDAY_SETUP_SUGGESTION_KEY);
+  };
+
+  const onClick = () => {
+    showBirthdayPopup({
+      onSave: async(date) => {
+        if(await saveMyBirthday(date)) {
+          dismissServerSuggestion(BIRTHDAY_SETUP_SUGGESTION_KEY);
+          return true;
+        }
+        return false;
+      }
+    });
+  };
+
+  return (
+    <Show
+      when={isSidebarCollapsed()}
+      fallback={
+        <PendingSuggestion
+          class={styles.secondary}
+          clickable={onClick}
+          closable={onDismissed}
+        >
+          <PendingSuggestion.Title>{i18n('Suggestion.BirthdaySetup', [emoji()])}</PendingSuggestion.Title>
+          <PendingSuggestion.Subtitle>{i18n('Suggestion.BirthdaySetup.Subtitle')}</PendingSuggestion.Subtitle>
+        </PendingSuggestion>
+      }
+    >
+      <RippleElement
+        component="div"
+        class={classNames(styles.collapsed, 'hover-effect')}
+        onClick={onClick}
+      >
+        {documentFragmentToNodes(emoji())}
+      </RippleElement>
+    </Show>
+  );
+}
 
 export function renderPendingSuggestion(toElement: HTMLElement) {
   toElement.classList.add(styles.container);
@@ -161,6 +211,8 @@ export function renderPendingSuggestion(toElement: HTMLElement) {
       let element: JSX.Element;
       if(appConfig.freeze_since_date) {
         element = FrozenSuggestion();
+      } else if(pendingSuggestions().has(BIRTHDAY_SETUP_SUGGESTION_KEY)) {
+        element = BirthdaySetupSuggestion();
       } else if(
         !appSettings.notifications.suggested &&
         Notification.permission !== 'granted'

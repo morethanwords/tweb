@@ -1080,7 +1080,7 @@ export default class AppSelectPeers {
     let subtitleEl: HTMLElement;
     if(peerId.isAnyChat()) {
       subtitleEl = await getChatMembersString(peerId.toChatId());
-    } else if(peerId === rootScope.myId && this.meAsSaved) {
+    } else if(peerId === rootScope.myId) {
       subtitleEl = i18n(this.selfPresence);
     } else {
       subtitleEl = getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()));

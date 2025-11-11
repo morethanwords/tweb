@@ -372,6 +372,7 @@ export default class PopupStarsPay extends PopupElement<{
     });
 
     const tablePeer = (this.isReceipt || this.subscription) && makeTablePeer(this.peerId);
+    const isTon = this.transaction?.amount._ === 'starsTonAmount';
 
     const transactionIdSpan = transactionId && (<span onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>);
 
@@ -394,9 +395,14 @@ export default class PopupStarsPay extends PopupElement<{
       ];
     } else if(this.transaction && this.transaction.pFlags.gift) {
       tableContent = [
-        [this.isOutGift ? 'BoostingTo' : 'BoostingFrom', tablePeer],
-        ['StarsTransactionDate',  formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
+        [this.isOutGift ? 'BoostingTo' : 'BoostingFrom', tablePeer]
       ];
+      if(transactionIdSpan) {
+        tableContent.push(['StarsTransactionID', transactionIdSpan]);
+      }
+      tableContent.push(
+        ['StarsTransactionDate',  formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
+      )
     } else if(this.isReceipt) {
       const realAmount = this.transaction?.paid_messages &&
         !this.transaction.pFlags.refund &&
@@ -410,7 +416,7 @@ export default class PopupStarsPay extends PopupElement<{
           this.transaction?.subscription_period ? 'Stars.Subscription' : 'BoostingTo',
           tablePeer
         ] : ['Stars.Via', _title],
-        realAmount && ['PaidMessages.FullPrice', <StarsChange reverse noSign inline stars={realAmount} />],
+        realAmount && ['PaidMessages.FullPrice', <StarsChange reverse noSign inline stars={realAmount} ton={isTon} />],
         this.transaction && (this.transaction.extended_media || this.transaction.pFlags.reaction) && messageAnchor && [this.transaction.pFlags.reaction ? 'Message' : 'StarsTransactionMedia', messageAnchor],
         ['StarsTransactionID', transactionIdSpan],
         ['StarsTransactionDate', formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
@@ -465,7 +471,14 @@ export default class PopupStarsPay extends PopupElement<{
           >{avatar}</div>
         </div>
         <div class="popup-stars-title">{title}</div>
-        {tableContent && !this.subscription && !noStarsChange && <StarsChange stars={!this.transaction ? -+amount : amount} isRefund={!!this.transaction?.pFlags?.refund} noSign={this.isOutGift} />}
+        {tableContent && !this.subscription && !noStarsChange && (
+          <StarsChange
+            stars={!this.transaction ? -+amount : amount}
+            isRefund={!!this.transaction?.pFlags?.refund}
+            noSign={this.isOutGift}
+            ton={isTon}
+          />
+        )}
         {subtitle && <div class={classNames('popup-stars-subtitle', tableContent && !this.subscription && !this.boost && 'mt')}>{subtitle}</div>}
         {tableContent && (
           <>

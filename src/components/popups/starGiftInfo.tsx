@@ -408,9 +408,9 @@ export default class PopupStarGiftInfo extends PopupElement {
         }
 
         return (
-          <div class={classNames('popup-star-gift-info-original', saved.drop_original_details_stars && 'has-delete')}>
+          <div class={classNames('popup-star-gift-info-original', saved?.drop_original_details_stars && 'has-delete')}>
             <I18nTsx key={key} args={args} />
-            {saved.drop_original_details_stars && (
+            {saved?.drop_original_details_stars && (
               <ButtonIconTsx
                 icon="delete"
                 onClick={async() => {
@@ -448,6 +448,8 @@ export default class PopupStarGiftInfo extends PopupElement {
     }
 
     const handleSell = async(changePrice = false) => {
+      if(!isOwnedUniqueGift || !saved) return;
+
       if(isListed() && !changePrice) {
         await confirmationPopup({
           titleLangKey: 'StarGiftUnlistTitle',

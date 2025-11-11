@@ -183,7 +183,9 @@ export default class PopupStarGiftValue extends PopupElement {
               class="rp-overflow btn-transparent primary"
               onClick={() => PopupElement.createPopup(PopupSendGift, {
                 peerId: rootScope.myId,
-                resaleForGift: gift.gift_id
+                resaleParams: {
+                  giftId: gift.gift_id
+                }
               })}
             >
               <I18nTsx

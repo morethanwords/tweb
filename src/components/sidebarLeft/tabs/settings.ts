@@ -36,6 +36,9 @@ import useStars from '../../../stores/stars';
 import PopupStars from '../../popups/stars';
 import {renderPeerProfile} from '../../peerProfile';
 import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
+import PopupPickUser from '../../popups/pickUser';
+import PopupSendGift from '../../popups/sendGift';
+import {formatNanoton} from '../../../helpers/paymentsWrapCurrencyAmount';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -245,27 +248,46 @@ export default class AppSettingsTab extends SliderSuperTab {
       listenerSetter: this.listenerSetter
     });
 
-    createRoot((dispose) => {
-      this.middlewareHelper.onDestroy(dispose);
-      const stars = useStars();
-      createEffect(() => {
-        starsRow.titleRight.textContent = '' + stars();
-        starsRow.container.classList.toggle('hide', !stars());
-      });
-    });
-
-    const giftPremium = new Row({
-      titleLangKey: 'GiftPremiumGifting',
-      icon: 'gift',
+    const starsTonRow = new Row({
+      titleLangKey: 'MenuTelegramStarsTon',
+      titleRightSecondary: true,
+      icon: 'ton',
       clickable: () => {
-        appImManager.initGifting();
+        PopupElement.createPopup(PopupStars, {ton: true});
       },
       listenerSetter: this.listenerSetter
     });
 
-    const badge = i18n('New');
-    badge.classList.add('row-title-badge');
-    giftPremium.title.append(badge);
+    createRoot((dispose) => {
+      this.middlewareHelper.onDestroy(dispose);
+      const stars = useStars();
+      const starsTon = useStars(true);
+      createEffect(() => {
+        starsRow.titleRight.textContent = '' + stars();
+        starsRow.container.classList.toggle('hide', !stars());
+      });
+      createEffect(() => {
+        starsTonRow.titleRight.textContent = formatNanoton(starsTon());
+        starsTonRow.container.classList.toggle('hide', String(starsTon()) === '0');
+      });
+    });
+
+    const giftPremium = new Row({
+      titleLangKey: 'Chat.Menu.SendGift',
+      icon: 'gift',
+      clickable: () => {
+        PopupElement.createPopup(PopupPickUser, {
+          placeholder: 'Chat.Menu.SendGift',
+          selfPresence: 'SendGiftSelfCaption',
+          meAsSaved: false,
+          onSelect: (peerId) => {
+            PopupElement.createPopup(PopupSendGift, {peerId});
+          },
+          filterPeerTypeBy: ['isRegularUser', 'isBroadcast']
+        });
+      },
+      listenerSetter: this.listenerSetter
+    });
 
     const buttonsSection = new SettingSection();
     buttonsSection.content.append(buttonsDiv);
@@ -273,7 +295,12 @@ export default class AppSettingsTab extends SliderSuperTab {
     let premiumSection: SettingSection;
     if(!await apiManagerProxy.isPremiumPurchaseBlocked()) {
       premiumSection = new SettingSection();
-      premiumSection.content.append(this.premiumRow.container, starsRow.container, giftPremium.container);
+      premiumSection.content.append(
+        this.premiumRow.container,
+        starsRow.container,
+        starsTonRow.container,
+        giftPremium.container
+      );
     }
 
     this.scrollable.append(...[
