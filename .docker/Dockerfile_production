@@ -10,11 +10,8 @@ COPY . .
 # install pnpm
 RUN npm install -g pnpm
 
-# install initial depenancies
+# install dependencies
 RUN pnpm install
-
-# install production depencancies
-RUN pnpm install --production
 
 # build
 RUN node build
