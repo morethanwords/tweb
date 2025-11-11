@@ -1795,7 +1795,7 @@ export default class DialogsStorage extends AppManager {
 
         messagesForumTopics.topics.forEach((forumTopic) => {
           if(isForumTopic(forumTopic as ForumTopic)) {
-            promises[forumTopic.id].resolve(forumTopic as ForumTopic);
+            promises[forumTopic.id]?.resolve(forumTopic as ForumTopic);
             delete promises[forumTopic.id];
           }
         });
