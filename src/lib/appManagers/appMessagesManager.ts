@@ -6513,10 +6513,6 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    const temporaryStorage = this.getHistoryStorage(peerId, pendingTopic.tempId);
-    temporaryStorage.key = getHistoryStorageKey({type: 'replies', peerId, threadId: pendingTopic.newId});
-    (this.threadsStorage[peerId] ??= {})[pendingTopic.newId] = temporaryStorage;
-
     this.apiUpdatesManager.processUpdateMessage(updates);
 
     await this.dialogsStorage.getForumTopicById(peerId, pendingTopic.newId);
