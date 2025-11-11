@@ -92,6 +92,7 @@ import createObservedState, {wrapObject} from '../../helpers/createObservedState
 import createHistoryStorage, {createHistoryStorageSearchSlicedArray} from './utils/messages/createHistoryStorage';
 import {isTempId} from './utils/messages/isTempId';
 import fitSymbols from '../../helpers/string/fitSymbols';
+import isObject from '../../helpers/object/isObject';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -6205,6 +6206,12 @@ export class AppMessagesManager extends AppManager {
           onCall: ({method, args, result, state}) => {
             ignoreSliceCalls = false;
 
+            args.forEach((arg, idx, array) => {
+              if(isObject(arg) && arg.unwrapped) {
+                array[idx] = arg.unwrapped;
+              }
+            });
+
             // console.log('history', method, args, result, state);
             MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
               name: 'historyStorage',
@@ -6246,6 +6253,7 @@ export class AppMessagesManager extends AppManager {
           });
         }
       }, historyStorage);
+      proxy.unwrapped = result;
       return proxy;
     };
     slicedArrayToObserve.slices.splice(0, Infinity, slicedArrayToObserve.constructSlice() as any);
