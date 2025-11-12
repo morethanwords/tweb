@@ -619,7 +619,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       (() => {
         !this.noProfile && createRoot((dispose) => {
           this.middlewareHelper.onDestroy(dispose);
-          this.scrollable.append((renderPeerProfile({
+          this.scrollable.append(renderPeerProfile({
             peerId: this.peerId,
             threadId: this.threadId,
             isDialog: true,
@@ -629,7 +629,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
             onPinnedGiftsChange: (gifts) => {
               this.searchSuper.setPinnedGifts(gifts);
             }
-          }, SolidJSHotReloadGuardProvider) as any)()());
+          }, SolidJSHotReloadGuardProvider));
         });
 
         return () => {};

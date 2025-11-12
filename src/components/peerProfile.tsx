@@ -41,6 +41,7 @@ import PopupSendGift from './popups/sendGift';
 import PopupElement from './popups';
 import showBirthdayPopup, {saveMyBirthday} from './popups/birthday';
 import {differenceInYears} from '../helpers/date';
+import {resolveFirst} from '@solid-primitives/refs';
 
 type PeerProfileContextValue = {
   peerId: PeerId,
@@ -1209,11 +1210,14 @@ PeerProfile.MainSection = () => {
 };
 
 export const renderPeerProfile = (props: Parameters<typeof PeerProfile>[0], HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider) => {
-  return (
+  const ret = (
     <HotReloadGuardProvider>
       <PeerProfile {...props} />
     </HotReloadGuardProvider>
   );
+
+  const resolved = resolveFirst(() => ret);
+  return resolved() as HTMLElement;
 };
 
 export default PeerProfile;

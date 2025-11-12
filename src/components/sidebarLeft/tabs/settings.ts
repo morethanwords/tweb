@@ -99,13 +99,13 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     const peerProfileElement = createRoot((dispose) => {
       this.middlewareHelper.onDestroy(dispose);
-      return (renderPeerProfile({
+      return renderPeerProfile({
         peerId: rootScope.myId,
         isDialog: false,
         scrollable: this.scrollable,
         setCollapsedOn: this.container,
         changeAvatarBtn
-      }, SolidJSHotReloadGuardProvider) as any)()();
+      }, SolidJSHotReloadGuardProvider);
     });
 
     const updateChangeAvatarBtn = async() => {
