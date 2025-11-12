@@ -65,12 +65,6 @@ export class MonoforumTab extends ForumTab {
         }
       }
     });
-
-    this.listenerSetter.add(rootScope)('dialog_unread', ({dialog}) => {
-      if(isDialog(dialog)) {
-        this.updateAllChatsDialog(dialog);
-      }
-    });
   }
 
   private updateAllChatsDialog(dialog: Dialog.dialog) {
