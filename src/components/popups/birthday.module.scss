@@ -53,7 +53,7 @@
 
 
 .privacyInfo {
-  margin-top: 2.5rem;
+  margin-top: 1.75rem;
   text-align: center;
   text-wrap: balance;
   font-size: 16px;
@@ -72,8 +72,10 @@
   flex-direction: row;
   gap: 0.625rem;
   width: 100%;
+  margin-top: .75rem;
 
-  .day, .year {
+  .day,
+  .year {
     width: 5rem;
   }
 
