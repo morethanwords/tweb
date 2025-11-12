@@ -2985,7 +2985,7 @@
 "Premium.Boarding.Got.Title" = "You are all set!";
 "Premium.Boarding.Got.Info" = "Thank you for subscribing to Telegram Premium. Here's what is now unlocked.";
 "Premium.Boarding.Peer.Title" = "[%@](profile) is a subscriber of\nTelegram Premium";
-"Premium.Boarding.Peer.Info" = "Owners of **Telegram Premium** accounts have exclusive access to multiple additional features.";
+"Premium.Boarding.Peer.Info" = "Owners of Telegram Premium accounts have exclusive access to multiple additional features.";
 "Premium.Boarding.PeerStatus.Default.Title" = "This is %@'s current status.";
 "Premium.Boarding.PeerStatus.Custom.Title" = "This is %@'s current status from\n🤡 [%@]().";
 "Premium.Boarding.PeerStatus.Info" = "Emoji status is a premium feature.\nOther features included in **Telegram Premium**:";

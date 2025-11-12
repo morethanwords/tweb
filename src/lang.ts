@@ -2858,7 +2858,7 @@ const lang = {
   'StarGiftLimitReached': 'You\'ve already sent **%d** of these gifts, and it\'s the limit.',
   'StarGiftLimitSent': 'You can send **%d** more.',
   'StarGiftUpgradePriceTitle': 'Upgrade Cost',
-  'StarGiftUpgradePriceSubtitle': 'Users who upgrade their gifts first get collectibles with shorter numbers.',
+  'StarGiftUpgradePriceSubtitle': 'Users who upgrade their gifts first get collectibles with lower numbers.',
   'StarGiftUpgradePriceAbout': 'Upgrade cost drops every minute.',
   'StarGiftUpgradePriceUnderstood': 'UNDERSTOOD',
   'StarGiftDropOriginalDetailsTitle': 'Remove Description',
