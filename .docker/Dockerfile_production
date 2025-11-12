@@ -5,13 +5,16 @@ FROM node:18
 WORKDIR /app
 
 # copy src
-COPY . .
+COPY .. .
 
 # install pnpm
 RUN npm install -g pnpm
 
-# install dependencies
+# install initial depenancies
 RUN pnpm install
+
+# install production depencancies
+RUN pnpm install --production
 
 # build
 RUN node build
@@ -23,4 +26,4 @@ FROM nginx:stable-alpine3.20-slim
 RUN apk update && apk upgrade --no-cache
 
 # copy the build files to nginx entry point
-COPY --from=0 /app/public /usr/share/nginx/html
+COPY ./public /usr/share/nginx/html
