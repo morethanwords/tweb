@@ -152,7 +152,7 @@ async function handlePushNotificationObject(obj: PushNotificationObject) {
   const copy = JSON.parse(JSON.stringify(obj));
   log('push', copy);
 
-  let noFix = false,
+  let fix = false,
     _lang: PushStorage['push_lang'];
   try {
     // * this should never happen, but just in case
@@ -179,7 +179,8 @@ async function handlePushNotificationObject(obj: PushNotificationObject) {
 
     const hasActiveWindow = windowClients.length && localNotificationsAvailable;
     if(hasActiveWindow) {
-      noFix = windowClients.some((windowClient) => windowClient.focused);
+      // fix = !windowClients.some((windowClient) => windowClient.focused);
+      fix = false;
       throw 'supress push notification because some instance is alive';
     }
 
@@ -191,7 +192,7 @@ async function handlePushNotificationObject(obj: PushNotificationObject) {
   } catch(err) {
     log(err);
 
-    if(noFix) {
+    if(!fix) {
       return;
     }
 
