@@ -14,7 +14,7 @@ import styles from './birthday.module.scss';
 import appSidebarLeft from '../sidebarLeft';
 import AppPrivacyBirthdayTab from '../sidebarLeft/tabs/privacy/birthday';
 import rootScope from '../../lib/rootScope';
-import {doubleRaf, fastRaf} from '../../helpers/schedulers';
+import {doubleRaf} from '../../helpers/schedulers';
 import {toastNew} from '../toast';
 import {PeerTitleTsx} from '../peerTitleTsx';
 import lottieLoader from '../../lib/rlottie/lottieLoader';

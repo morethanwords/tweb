@@ -3345,6 +3345,7 @@ const lang = {
   'Text.CopyLabel_PhoneNumber': 'Copy Phone Number',
   'Text.CopyLabel_Username': 'Copy Username',
   'Text.CopyLabel_ShareLink': 'Copy Share Link',
+  'Text.CopyLabel_Note': 'Copy Note',
   'GeneralSettings.BigEmoji': 'Large Emoji',
   'GeneralSettings.EmojiPrediction': 'Suggest Emoji',
   'GroupPermission.Delete': 'Delete Exception',

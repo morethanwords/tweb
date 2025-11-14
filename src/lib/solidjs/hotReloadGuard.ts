@@ -45,8 +45,9 @@ import type showStarsRatingPopup from '../../components/popups/starsRating';
 import type {toast, toastNew} from '../../components/toast';
 import type BusinessHours from '../../components/businessHours';
 import type {avatarNew} from '../../components/avatarNew';
-import PopupSendGift from '../../components/popups/sendGift';
-import showBirthdayPopup from '../../components/popups/birthday';
+import type PopupSendGift from '../../components/popups/sendGift';
+import type showBirthdayPopup from '../../components/popups/birthday';
+import type {saveMyBirthday} from '../../components/popups/birthday';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -95,6 +96,7 @@ export type SolidJSHotReloadGuardContextValue = {
   PeerTitleTsx: typeof PeerTitleTsx;
   PopupSendGift: typeof PopupSendGift;
   showBirthdayPopup: typeof showBirthdayPopup;
+  saveMyBirthday: typeof saveMyBirthday;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

@@ -85,6 +85,7 @@ import noop from '../../helpers/noop';
 import {isSensitive} from '../../helpers/restrictions';
 import {hasSensitiveSpoiler} from '../wrappers/mediaSpoiler';
 import {useIsFrozen} from '../../stores/appState';
+import prepareTextWithEntitiesForCopying from '../../helpers/prepareTextWithEntitiesForCopying';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -1476,28 +1477,12 @@ export default class ChatContextMenu {
       return peerTitle + ', [' + date + ']';
     })) : [];
 
-    const htmlParts = messages.map((message) => {
-      const wrapped = wrapRichText(message.message, {
-        entities: (message as Message.message).totalEntities || message.entities,
-        wrappingDraft: true
-      });
-      return documentFragmentToHTML(wrapped);
-    });
-
-    const parts: string[] = messages.map((message) => {
-      return message.message;
-    });
-
-    const prepare = (smth: string[]) => {
-      return smth.map((str, idx) => {
-        return meta[idx] ? meta[idx] + '\n' + str : str;
-      }).join('\n\n');
-    };
-
-    return {
-      text: prepare(parts),
-      html: prepare(htmlParts)
-    };
+    return prepareTextWithEntitiesForCopying(messages.map((message) => {
+      return {
+        text: message.message,
+        entities: (message as Message.message).totalEntities || message.entities
+      };
+    }));
   }
 
   private onSendScheduledClick = async() => {

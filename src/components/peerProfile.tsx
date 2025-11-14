@@ -37,11 +37,9 @@ import IS_PARALLAX_SUPPORTED from '../environment/parallaxSupport';
 import {generateDelimiter} from './generateDelimiter';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import ListenerSetter from '../helpers/listenerSetter';
-import PopupSendGift from './popups/sendGift';
-import PopupElement from './popups';
-import showBirthdayPopup, {saveMyBirthday} from './popups/birthday';
-import {differenceInYears} from '../helpers/date';
 import {resolveFirst} from '@solid-primitives/refs';
+import differenceInYears from '../helpers/date/differenceInYears';
+import prepareTextWithEntitiesForCopying from '../helpers/prepareTextWithEntitiesForCopying';
 
 type PeerProfileContextValue = {
   peerId: PeerId,
@@ -694,15 +692,15 @@ PeerProfile.Username = () => {
 
 PeerProfile.Birthday = () => {
   const context = useContext(PeerProfileContext);
-  const {I18n, i18n, wrapEmojiText, rootScope, PopupElement, PopupSendGift} = useHotReloadGuard();
+  const {I18n, i18n, wrapEmojiText, rootScope, PopupElement, PopupSendGift, showBirthdayPopup, saveMyBirthday} = useHotReloadGuard();
   const birthday = createMemo(() => (context.fullPeer as UserFull.userFull)?.birthday);
   const isToday = createMemo(() => {
-    const birthday$ = birthday()
-    if(!birthday$) return false
+    const birthday$ = birthday();
+    if(!birthday$) return false;
 
     const today = new Date();
     return birthday$.day === today.getDate() && birthday$.month === today.getMonth() + 1;
-  })
+  });
 
   const onClick = createMemo(() => {
     if(context.peerId === rootScope.myId) {
@@ -710,19 +708,19 @@ PeerProfile.Birthday = () => {
         initialDate: birthday(),
         fromProfile: true,
         onSave: saveMyBirthday
-      })
+      });
     }
 
     if(isToday()) {
-      return () => PopupElement.createPopup(PopupSendGift, {peerId: context.peerId})
+      return () => PopupElement.createPopup(PopupSendGift, {peerId: context.peerId});
     }
   });
 
   const text = createMemo(() => {
-    const birthday$ = birthday()
-    if(!birthday$) return ''
+    const birthday$ = birthday();
+    if(!birthday$) return '';
 
-    const date = new Date()
+    const date = new Date();
     date.setDate(birthday$.day);
     date.setMonth(birthday$.month - 1);
     if(birthday$.year) {
@@ -736,19 +734,17 @@ PeerProfile.Birthday = () => {
         month: 'long',
         year: birthday$.year ? 'numeric' : undefined
       }
-    }).element
+    }).element;
 
-    if(isToday()) el.prepend(wrapEmojiText('🎂 '))
+    if(isToday()) el.prepend(wrapEmojiText('🎂 '));
 
     if(birthday$.year) {
       const years = differenceInYears(date, new Date());
-
-
       el.append(i18n('BirthdayYearsOld', [years]));
     }
 
-    return el
-  })
+    return el;
+  });
 
   return (
     <Show when={birthday()}>
@@ -765,19 +761,35 @@ PeerProfile.Birthday = () => {
 
 PeerProfile.ContactNote = () => {
   const context = useContext(PeerProfileContext);
-  const {i18n, wrapEmojiText} = useHotReloadGuard();
+  const {i18n, wrapEmojiText, toastNew} = useHotReloadGuard();
   const note = createMemo(() => (context.fullPeer as UserFull.userFull)?.note);
   const text = createMemo(() => {
-    const note$ = note()
-    if(!note$) return null
+    const note$ = note();
+    if(!note$) return;
 
-    return wrapEmojiText(note$.text, false, note$.entities)
+    return wrapEmojiText(note$.text, false, note$.entities);
   });
+
+  const onClick = () => {
+    const {text, html} = prepareTextWithEntitiesForCopying(note());
+    copyTextToClipboard(text, html);
+    toastNew({langPackKey: 'TextCopied'});
+  };
 
   return (
     <Show when={text()}>
-      <Row class="profile-notes">
-        <Row.Icon icon="newchat_filled" />
+      <Row
+        clickable={onClick}
+        class="profile-notes"
+        contextMenu={{
+          buttons: [{
+            icon: 'copy',
+            text: 'Text.CopyLabel_Note',
+            onClick
+          }]
+        }}
+      >
+        <Row.Icon icon="edit" />
         <Row.Title>{text()}</Row.Title>
         <Row.Subtitle subtitleRight={i18n('ContactNoteRowDesc')}>
           {i18n('ContactNoteRow')}
