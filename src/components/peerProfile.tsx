@@ -40,6 +40,7 @@ import ListenerSetter from '../helpers/listenerSetter';
 import {resolveFirst} from '@solid-primitives/refs';
 import differenceInYears from '../helpers/date/differenceInYears';
 import prepareTextWithEntitiesForCopying from '../helpers/prepareTextWithEntitiesForCopying';
+import generateVerifiedIcon from './generateVerifiedIcon';
 
 type PeerProfileContextValue = {
   peerId: PeerId,
@@ -1102,22 +1103,38 @@ PeerProfile.Notifications = () => {
 
 PeerProfile.BotVerification = () => {
   const context = useContext(PeerProfileContext);
-  const {wrapAdaptiveCustomEmoji, wrapEmojiText} = useHotReloadGuard();
+  const {wrapAdaptiveCustomEmoji, wrapEmojiText, i18n} = useHotReloadGuard();
   const verification = createMemo(() => (context.fullPeer as UserFull)?.bot_verification);
+  const officialVerified = createMemo(() => (context.peer as User.user).pFlags.verified);
 
-  return (
-    <Show when={verification()}>
-      <div class="profile-bot-verification">
-        {wrapAdaptiveCustomEmoji({
+  const content = createMemo(() => {
+    if(verification()) {
+      return {
+        icon: wrapAdaptiveCustomEmoji({
           docId: verification().icon,
           size: 32,
           wrapOptions: {
             middleware: createMiddleware().get(),
             textColor: 'secondary-text-color'
           }
-        }).container}
+        }).container,
+        text: wrapEmojiText(verification().description)
+      };
+    } else if(officialVerified()) {
+      const isBroadcast = (context.peer as Chat.channel).pFlags.broadcast;
+      return {
+        icon: generateVerifiedIcon(),
+        text: i18n(context.peerId.isAnyChat() ? (isBroadcast ? 'Verified.Channel' : 'Verified.Group') : 'Verified.Bot')
+      };
+    }
+  });
+
+  return (
+    <Show when={content()}>
+      <div class="profile-bot-verification">
+        {content().icon}
         <div class="profile-bot-verification-content">
-          {wrapEmojiText(verification().description)}
+          {content().text}
         </div>
       </div>
     </Show>

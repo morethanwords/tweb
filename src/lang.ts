@@ -960,6 +960,9 @@ const lang = {
   'Frozen.Appeal.Subtitle': 'Appeal via %s before %s, or your account will be deleted.',
   'Frozen.Button': 'SUBMIT AN APPEAL',
   'Frozen.Ok': 'UNDERSTOOD',
+  'Verified.Bot': 'This bot is verified as official by the representatives of Telegram.',
+  'Verified.Channel': 'This channel was verified by Telegram.',
+  'Verified.Group': 'This group was verified by Telegram.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
