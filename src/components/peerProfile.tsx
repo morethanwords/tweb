@@ -693,7 +693,7 @@ PeerProfile.Username = () => {
 
 PeerProfile.Birthday = () => {
   const context = useContext(PeerProfileContext);
-  const {I18n, i18n, wrapEmojiText, rootScope, PopupElement, PopupSendGift, showBirthdayPopup, saveMyBirthday} = useHotReloadGuard();
+  const {I18n, i18n, wrapEmojiText, rootScope, PopupElement, PopupSendGift, showBirthdayPopup, saveMyBirthday, toastNew} = useHotReloadGuard();
   const birthday = createMemo(() => (context.fullPeer as UserFull.userFull)?.birthday);
   const isToday = createMemo(() => {
     const birthday$ = birthday();
@@ -701,20 +701,6 @@ PeerProfile.Birthday = () => {
 
     const today = new Date();
     return birthday$.day === today.getDate() && birthday$.month === today.getMonth() + 1;
-  });
-
-  const onClick = createMemo(() => {
-    if(context.peerId === rootScope.myId) {
-      return () => showBirthdayPopup({
-        initialDate: birthday(),
-        fromProfile: true,
-        onSave: saveMyBirthday
-      });
-    }
-
-    if(isToday()) {
-      return () => PopupElement.createPopup(PopupSendGift, {peerId: context.peerId});
-    }
   });
 
   const text = createMemo(() => {
@@ -747,9 +733,39 @@ PeerProfile.Birthday = () => {
     return el;
   });
 
+  const onClick = createMemo(() => {
+    if(context.peerId === rootScope.myId) {
+      return () => showBirthdayPopup({
+        initialDate: birthday(),
+        fromProfile: true,
+        onSave: saveMyBirthday
+      });
+    }
+
+    if(isToday()) {
+      return () => PopupElement.createPopup(PopupSendGift, {peerId: context.peerId});
+    }
+
+    return onCopyClick;
+  });
+
+  const onCopyClick = () => {
+    copyTextToClipboard((text() as HTMLElement).textContent);
+    toastNew({langPackKey: 'TextCopied'});
+  };
+
   return (
     <Show when={birthday()}>
-      <Row clickable={onClick()}>
+      <Row
+        clickable={onClick()}
+        contextMenu={{
+          buttons: [{
+            icon: 'copy',
+            text: 'Copy',
+            onClick: onCopyClick
+          }]
+        }}
+      >
         <Row.Icon icon="gift" />
         <Row.Title>{text()}</Row.Title>
         <Row.Subtitle>
