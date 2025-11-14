@@ -22,13 +22,10 @@ import {CURRENT_ACCOUNT_QUERY_PARAM} from '../accounts/constants';
 import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
 import EncryptionKeyStore from '../passcode/keyStore';
 import pause from '../../helpers/schedulers/pause';
+import {getWindowClients} from '../../helpers/context';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 const defaultBaseUrl = location.protocol + '//' + location.hostname + location.pathname.split('/').slice(0, -1).join('/') + '/';
-
-// as in webPushApiManager.ts
-const PING_PUSH_TIMEOUT = 10000 + 1500;
-let lastPingTime = 0;
 let localNotificationsAvailable = true;
 
 export type EncryptedPushNotificationObject = {
@@ -163,10 +160,11 @@ async function handlePushNotificationObject(obj: PushNotificationObject) {
       throw `supress push notification because obj.mute is 1`;
     }
 
-    const [muteUntil, settings, lang] = await Promise.all([
+    const [muteUntil, settings, lang, windowClients] = await Promise.all([
       getter.get('push_mute_until'),
       getter.get('push_settings'),
-      getter.get('push_lang')
+      getter.get('push_lang'),
+      getWindowClients()
     ]);
     _lang = lang;
 
@@ -179,9 +177,9 @@ async function handlePushNotificationObject(obj: PushNotificationObject) {
       throw `supress push notification because mute for ${Math.ceil((muteUntil - nowTime) / 60000)} min`;
     }
 
-    const hasActiveWindows = (Date.now() - lastPingTime) <= PING_PUSH_TIMEOUT && localNotificationsAvailable;
-    if(hasActiveWindows) {
-      noFix = true;
+    const hasActiveWindow = windowClients.length && localNotificationsAvailable;
+    if(hasActiveWindow) {
+      noFix = windowClients.some((windowClient) => windowClient.focused);
       throw 'supress push notification because some instance is alive';
     }
 
@@ -198,15 +196,18 @@ async function handlePushNotificationObject(obj: PushNotificationObject) {
     }
 
     const tag = 'fix';
-    const notificationPromise = ctx.registration.showNotification('Telegram', {
+    const notificationPromise = ctx.registration.showNotification('Telegram Web', {
+      body: _lang.push_message_error,
+      icon: NOTIFICATION_ICON_PATH,
       tag,
-      body: _lang.push_message_error
+      badge: NOTIFICATION_BADGE_PATH,
+      silent: true
     });
 
     notificationPromise.then(() => {
       setTimeout(() => {
         closeAllNotifications(tag);
-      }, 1000);
+      }, 2000);
     });
 
     return notificationPromise;
@@ -215,7 +216,7 @@ async function handlePushNotificationObject(obj: PushNotificationObject) {
 
 (ctx as any).handlePushNotificationObject = handlePushNotificationObject;
 
-ctx.addEventListener('push', (event) => {
+function onPushEvent(event: PushEvent) {
   const obj: EncryptedPushNotificationObject | PushNotificationObject = event.data.json();
   if(!('p' in obj)) {
     event.waitUntil(handlePushNotificationObject(obj));
@@ -265,7 +266,7 @@ ctx.addEventListener('push', (event) => {
     })
     .then(handlePushNotificationObject)
   );
-});
+}
 
 async function isPasscodeLocked() {
   return Promise.race([
@@ -279,7 +280,7 @@ async function isPasscodeLocked() {
   ]);
 }
 
-ctx.addEventListener('notificationclick', (event) => {
+function onNotificationClick(event: NotificationEvent) {
   const notification = event.notification;
   log('on notification click', notification);
   notification.close();
@@ -347,9 +348,7 @@ ctx.addEventListener('notificationclick', (event) => {
   })
 
   event.waitUntil(promise);
-});
-
-ctx.addEventListener('notificationclose', onCloseNotification);
+}
 
 const notifications: Set<Notification> = new Set();
 let pendingNotification: PushNotificationObject;
@@ -483,7 +482,6 @@ export async function canSaveAccounts() {
 }
 
 export async function onPing(payload: ServicePushPingTaskPayload, source?: MessageEventSource) {
-  lastPingTime = Date.now();
   localNotificationsAvailable = payload.localNotifications;
 
   if(pendingNotification && source) {
@@ -504,10 +502,6 @@ export async function onPing(payload: ServicePushPingTaskPayload, source?: Messa
   getter.set('push_keys_ids_base64', payload.keysIdsBase64 || defaults.push_keys_ids_base64);
 }
 
-export function onPushClosedWindows() {
-  lastPingTime = 0;
-}
-
 export function resetPushAccounts() {
   getter.set('push_accounts', defaults.push_accounts);
 }
@@ -525,3 +519,7 @@ setInterval(() => {
     }
   });
 }, 30 * 60e3);
+
+ctx.addEventListener('notificationclick', onNotificationClick);
+ctx.addEventListener('notificationclose', onCloseNotification);
+ctx.addEventListener('push', onPushEvent);
