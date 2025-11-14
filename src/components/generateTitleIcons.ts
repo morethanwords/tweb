@@ -60,7 +60,7 @@ export default async function generateTitleIcons({
 
       if(clickableEmojiStatus) {
         container.classList.add('clickable');
-        attachClickEvent(container, (e) => {
+        const detach = attachClickEvent(container, (e) => {
           e.stopPropagation()
           if(peerId === rootScope.myId) {
             openEmojiStatusPicker({
@@ -74,6 +74,8 @@ export default async function generateTitleIcons({
             })
           }
         });
+
+        middleware.onDestroy(detach);
       }
 
       if(!middleware()) return {elements};

@@ -118,7 +118,10 @@ export default class PeerProfileAvatars {
     let cancel = false;
     let freeze = false;
     attachClickEvent(this.container, async(_e) => {
-      if(findUpClassName(_e.target, 'profile-subtitle-rating')) {
+      if(
+        findUpClassName(_e.target, 'profile-subtitle-rating') ||
+        findUpClassName(_e.target, 'emoji-status')
+      ) {
         return;
       }
 

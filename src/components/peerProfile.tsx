@@ -287,8 +287,9 @@ PeerProfile.Name = () => {
         middleware: createMiddleware().get(),
         textColor: context.setCollapsedOn.classList.contains('need-white') ? 'white' : undefined
       },
-      meAsNotes: !!(peerId === rootScope.myId && context.threadId)
-    })
+      meAsNotes: !!(peerId === rootScope.myId && context.threadId),
+      clickableEmojiStatus: true
+    });
   });
 
   return (

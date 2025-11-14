@@ -198,6 +198,11 @@
         }
       }
 
+      .emoji-status {
+        pointer-events: all;
+        z-index: 1;
+      }
+
       .profile-subtitle {
         line-height: 24px;
         
