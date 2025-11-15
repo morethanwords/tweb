@@ -1981,7 +1981,7 @@ export default class AppSearchSuper {
       this.renderPeerDialogs(channelDialogs.map((dialog) => dialog.peerId), group, middleware);
     }
 
-    const recommendations = await this.managers.appChatsManager.getGenericChannelRecommendations();
+    const recommendations = await this.managers.appChatsManager.getChannelRecommendations();
 
     if(recommendations.chats.length) {
       const group = new SearchGroup('SimilarChannels', 'channels');

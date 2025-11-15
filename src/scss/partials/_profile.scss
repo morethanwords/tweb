@@ -722,14 +722,14 @@
 
   &-bot-verification {
     --custom-emoji-size: 1rem;
-    font-size: 14px;
-    line-height: 16px;
+    font-size: var(--font-size-14);
     padding-inline: 1rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: .75rem;
     color: var(--secondary-text-color);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: .5rem;
+    line-height: var(--line-height-14);
 
     .verified-icon {
       &-background {

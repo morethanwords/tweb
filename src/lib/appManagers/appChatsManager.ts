@@ -446,7 +446,7 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  public createChat(title: string, userIds: UserId[]): Promise<ChatId> {
+  public createChat(title: string, userIds: UserId[]) {
     return this.apiManager.invokeApi('messages.createChat', {
       users: userIds.map((u) => this.appUsersManager.getUserInput(u)),
       title
@@ -454,7 +454,7 @@ export class AppChatsManager extends AppManager {
       this.apiUpdatesManager.processUpdateMessage(invitedUsers.updates);
 
       const chatId = (invitedUsers.updates as Updates.updates).chats[0].id;
-      return chatId;
+      return {chatId, missingInvitees: invitedUsers.missing_invitees};
     });
   }
 
@@ -960,18 +960,7 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  public getGenericChannelRecommendations() {
-    return this.apiManager.invokeApiSingleProcess({
-      method: 'channels.getChannelRecommendations',
-      params: {},
-      processResult: (messagesChats) => {
-        this.saveApiChats(messagesChats.chats);
-        return messagesChats;
-      }
-    });
-  }
-
-  public getChannelRecommendations(chatId: ChatId) {
+  public getChannelRecommendations(chatId?: ChatId) {
     const result = this.recommendations[chatId];
     if(result) {
       return result;
@@ -980,7 +969,7 @@ export class AppChatsManager extends AppManager {
     const promise = this.recommendations[chatId] = this.apiManager.invokeApiSingleProcess({
       method: 'channels.getChannelRecommendations',
       params: {
-        channel: this.getChannelInput(chatId)
+        channel: chatId ? this.getChannelInput(chatId) : undefined
       },
       processResult: (messagesChats) => {
         this.saveApiChats(messagesChats.chats);

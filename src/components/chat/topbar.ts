@@ -608,7 +608,7 @@ export default class ChatTopbar {
       icon: 'message',
       text: 'ChannelDirectMessages.Manage',
       onClick: () => this.onDirectMessagesClick(),
-      verify: async() => this.chat.isChannel && this.chat.canManageDirectMessages && !this.chat.isMonoforum
+      verify: () => this.chat.isChannel && this.chat.canManageDirectMessages && !this.chat.isMonoforum && !!(this.chat.peer as MTChat.channel).linked_monoforum_id
     }, {
       icon: 'statistics',
       text: 'Statistics',
