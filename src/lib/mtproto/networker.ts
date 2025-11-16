@@ -45,6 +45,26 @@ import safeAssign from '../../helpers/object/safeAssign';
 import {MTAuthKey} from './authorizer';
 import {MessageKeyUtils} from './messageKeyUtils';
 
+// Helper function to get a clean device model name
+function getCleanDeviceModel(): string {
+  const userAgent = getEnvironment().USER_AGENT;
+  if(!userAgent) return 'Fomoed Dashboard';
+
+  // Extract browser name
+  let browser = 'Browser';
+  if(userAgent.includes('Firefox/')) {
+    browser = 'Firefox';
+  } else if(userAgent.includes('Edg/')) {
+    browser = 'Edge';
+  } else if(userAgent.includes('Chrome/')) {
+    browser = 'Chrome';
+  } else if(userAgent.includes('Safari/') && !userAgent.includes('Chrome/')) {
+    browser = 'Safari';
+  }
+
+  return `Fomoed Dashboard (${browser})`;
+}
+
 // console.error('networker included!', new Error().stack);
 
 export type MTMessageOptions = InvokeApiOptions & Partial<{
@@ -384,7 +404,7 @@ export default class MTPNetworker {
         query: (serializer: TLSerialization) => {
           serializer.storeMethod('initConnection', {
             api_id: App.id,
-            device_model: getEnvironment().USER_AGENT || 'Unknown UserAgent',
+            device_model: getCleanDeviceModel(),
             system_version: navigator.platform || 'Unknown Platform',
             app_version: App.version + (App.isMainDomain ? ' ' + App.suffix : ''),
             system_lang_code: navigator.language || 'en',
