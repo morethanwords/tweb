@@ -582,7 +582,7 @@ const lang = {
   'ContactNoteRow': 'Notes',
   'ContactNoteRowDesc': 'only visible to you',
   'SuggestBirthdayRow': 'Suggest Date of Birth',
-  'Privacy.BirthdayCaption': 'You can restrict who can see the birthday on your profile with granular precision.',
+  'Privacy.BirthdayCaption': 'You can restrict who can see your birthday with granular precision.',
   'PrivacySettings.Messages.PremiumError': 'Only subscribers of [Telegram Premium]() can restrict receiving messages.',
   'Chat.PremiumRequired': 'Subscribe to **Premium** to message **%s**.',
   'Chat.PremiumRequiredButton': 'Get Premium',
@@ -3838,7 +3838,7 @@ const lang = {
   'BirthdaySuggestOutgoing': 'You suggested %s to add a birthday',
   'BirthdaySuggestIncoming': '%s suggested you add your birthday',
   'BirthdaySuggestView': 'View',
-  'TonGiftSubtitle': 'Use TON to suggest posts to channels.'
+  'TonGiftSubtitle': 'Use TON to buy gifts and suggest posts to channels.'
 };
 
 export default lang;

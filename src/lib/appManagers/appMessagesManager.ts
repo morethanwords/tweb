@@ -3631,6 +3631,10 @@ export class AppMessagesManager extends AppManager {
     storages: HistoryStorage | Record<string, HistoryStorage>,
     callback: (storage: HistoryStorage) => void
   ) {
+    if(!storages) {
+      return;
+    }
+
     if('key' in storages) {
       callback(storages as HistoryStorage);
       return;
@@ -8155,7 +8159,7 @@ export class AppMessagesManager extends AppManager {
     port.invokeVoid('notificationBuild', {
       message,
       accountNumber: this.getAccountNumber(),
-      isOtherTabActive: !!tab.state.idleStartTime,
+      isOtherTabActive: tab ? !!tab.state.idleStartTime : true,
       ...options
     }, tab?.source);
   }
