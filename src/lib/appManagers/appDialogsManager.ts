@@ -111,6 +111,7 @@ import {AutonomousDialogList} from '../../components/autonomousDialogList/dialog
 import {PossibleDialog} from '../../components/autonomousDialogList/base';
 import {ForumTab} from '../../components/forumTab/forumTab';
 import {fillForumTabRegister} from '../../components/forumTab/fillRegister';
+import LazyLoadQueue from '../../components/lazyLoadQueue';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -554,11 +555,14 @@ export class AppDialogsManager {
 
   private suggestionContainer: HTMLElement;
 
+  private lazyLoadQueue: LazyLoadQueue;
+
   public start() {
     const managers = this.managers = getProxiedManagers();
 
     this.contextMenu = new DialogsContextMenu(managers);
     this.stateMiddlewareHelper = getMiddleware();
+    this.lazyLoadQueue = new LazyLoadQueue(5, true);
 
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
@@ -2478,6 +2482,32 @@ export class AppDialogsManager {
     if(ret) {
       const promise = this.initDialog(ret, options);
       options.loadPromises?.push(promise);
+    }
+
+    if(ret && this.lazyLoadQueue) {
+      const div = ret.dom.listEl;
+      const lazyLoadElement: Parameters<AppDialogsManager['lazyLoadQueue']['push']>[0] = {
+        div,
+        load: async() => {
+          await pause(200);
+          if(!this.lazyLoadQueue.intersector.isVisible(div)) {
+            this.lazyLoadQueue.push(lazyLoadElement); // * to process again
+            return;
+          }
+
+          return this.managers.appMessagesManager.getHistory({
+            peerId: options.monoforumParentPeerId || options.peerId,
+            threadId: options.threadId,
+            monoforumThreadId: options.monoforumParentPeerId ? options.peerId : undefined,
+            limit: 50
+          });
+        }
+      };
+
+      this.lazyLoadQueue.push(lazyLoadElement);
+      ret.middlewareHelper.onDestroy(() => {
+        this.lazyLoadQueue.delete(lazyLoadElement);
+      });
     }
 
     return ret;
