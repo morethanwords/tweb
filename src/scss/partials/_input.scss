@@ -499,8 +499,8 @@ button:focus {
   .input-search-part {
     --max-opacity: .6;
     position: absolute;
-    // top: 50%;
-    // transform: translate(0, -50%);
+    top: 50%;
+    transform: translateY(-50%);
     text-align: center;
     font-size: var(--icon-size);
     color: var(--secondary-text-color);
@@ -510,6 +510,10 @@ button:focus {
 
     @include animation-level(2) {
       transition: opacity .2s ease-out, color .2s ease-out;
+    }
+
+    &.tgico {
+      transform: translateY(calc(-50% + 0.15em)) !important;
     }
   }
 

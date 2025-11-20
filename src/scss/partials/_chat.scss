@@ -275,6 +275,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   .btn-send {
 		font-size: 1.5rem;
 		line-height: 1.5rem;
+
+		.tgico {
+			transform: translateY(0.15em) !important;
+		}
 	}
 
 	.record-time {

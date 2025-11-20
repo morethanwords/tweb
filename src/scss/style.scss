@@ -962,13 +962,13 @@ b {
 
   html.no-touch body.animation-level-2 & {
     .avatar-edit-icon {
-      transform: translateY(-50%) translateX(-50%) scale(1);
+      transform: translateY(calc(-50% + 0.15em)) translateX(-50%) scale(1);
       transition: transform .2s ease-in-out;
     }
 
     &:hover {
       .avatar-edit-icon {
-        transform: translateY(-50%) translateX(-50%) scale(1.2);
+        transform: translateY(calc(-50% + 0.15em)) translateX(-50%) scale(1.2);
       }
     }
   }
@@ -981,7 +981,7 @@ b {
     height: 3rem;
     top: 50%;
     left: 50%;
-    transform: translateY(-50%) translateX(-50%);
+    transform: translateY(calc(-50% + 0.15em)) translateX(-50%);
     z-index: 2;
     color: #fff;
   }
@@ -2166,8 +2166,12 @@ hr {
 }
 
 .inline-icon {
-  vertical-align: bottom;
+  vertical-align: -0.15em;
   line-height: inherit;
+
+  &.tgico {
+    transform: none !important;
+  }
 }
 
 .icon-reflect {
