@@ -253,6 +253,10 @@ $row-border-radius: $border-radius-medium;
       top: 50%;
       transform: translateY(-50%);
 
+      &.tgico {
+        transform: translateY(calc(-50% + 0.15em));
+      }
+
       &-premium-color {
         color: var(--primary-color);
       }

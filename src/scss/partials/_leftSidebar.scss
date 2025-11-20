@@ -616,6 +616,10 @@
       } */
       &:not(.is-hidden) {
         transform: translateZ(0);
+
+        .tgico {
+          transform: translateY(0.15em) translateZ(0) !important;
+        }
       }
     }
 

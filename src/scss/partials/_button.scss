@@ -352,10 +352,13 @@ $btn-menu-z-index: 4;
       margin-inline-start: calc(var(--add) / -2);
       color: currentColor;
       font-size: var(--icon-size);
-      align-self: flex-start;
-      margin-top: .125rem;
+      align-self: center;
+      margin-top: 0;
       padding: 0;
       position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
       &-right {
         margin-inline: .25rem -.5rem;
@@ -501,7 +504,7 @@ $btn-menu-z-index: 4;
 
       .tgico {
         font-size: 20px;
-        transform: rotate(-90deg);
+        transform: rotate(-90deg) translateY(0.15em);
         color: var(--secondary-color);
       }
     }

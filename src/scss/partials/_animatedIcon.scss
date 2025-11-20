@@ -166,7 +166,10 @@
     height: 1.5rem;
     line-height: 1.5rem;
     animation: hide-icon .4s forwards ease-in-out;
-    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
     @include animation-level(0) {
       visibility: hidden;
       animation: none !important;

@@ -16,6 +16,9 @@
   user-select: none;
   text-transform: uppercase;
   font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .avatar-gradient {
