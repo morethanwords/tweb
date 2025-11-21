@@ -443,7 +443,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     });
 
     const type: IgnoreMouseOutType = 'menu';
-    createStickersContextMenu({
+    this.emoticonsDropdown && createStickersContextMenu({
       listenTo: this.content,
       chatInput: this.emoticonsDropdown.chatInput,
       verifyRecent,

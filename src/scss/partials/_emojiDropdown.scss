@@ -128,13 +128,6 @@ $menu-search-translateY: -#{$menu-height};
     padding: 0 .1875rem;
   }
 
-  .tabs-tab.no-border-top {
-    .menu-horizontal-div,
-    .menu-wrapper {
-      border-bottom-color: transparent;
-    }
-  }
-
   .gifs-masonry {
     margin: .25rem .1875rem .1875rem;
     border-radius: $border-radius-medium;
@@ -533,5 +526,12 @@ $menu-search-translateY: -#{$menu-height};
 .emoji-padding {
   .super-emojis {
     padding: 0 .5rem;
+  }
+}
+
+.no-border-top {
+  .menu-horizontal-div,
+  .menu-wrapper {
+    border-bottom-color: transparent;
   }
 }
