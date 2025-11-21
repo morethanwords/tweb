@@ -2621,7 +2621,10 @@ const Stories = (props: {
       onClick={(e) => {
         if(!isActive()) {
           actions.set({peer: props.state, index: props.state.index});
-        } else if(findUpClassName(e.target, styles.ViewerStoryRepost)) {
+        } else if(
+          findUpClassName(e.target, styles.ViewerStoryRepost) ||
+          findUpClassName(e.target, styles.ViewerStoryHeaderRepost)
+        ) {
           const story = currentStory();
           const repostInfo = getStoryRepostInfo(story as StoryItem.storyItem);
           if(!repostInfo) {
@@ -2635,7 +2638,7 @@ const Stories = (props: {
           if(fwdFrom?.from || mediaAreaChannelPost) {
             props.close(() => {
               const peerId = fwdFrom ? getPeerId(fwdFrom.from) : mediaAreaChannelPost.channel_id.toPeerId(true);
-              if(fwdFrom?.story_id) {
+              if(fwdFrom?.story_id && !findUpClassName(e.target, styles.ViewerStoryHeaderRepost)) {
                 createStoriesViewerWithPeer({
                   peerId,
                   id: fwdFrom.story_id
