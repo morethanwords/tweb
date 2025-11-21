@@ -1,23 +1,26 @@
 import {createContext, ParentComponent, useContext} from 'solid-js';
-import type {ProvidedTabs} from '.';
 import {InstanceOf} from '../../types';
 import type SliderSuperTab from '../sliderTab';
+import {ProvidedTabs} from './providedTabs';
 
 
 const SuperTabContext = createContext<[SliderSuperTab, ProvidedTabs]>();
 
 type SuperTabProviderProps = {
   self: SliderSuperTab;
-  allTabs: ProvidedTabs;
 };
 
-export const SuperTabProvider: ParentComponent<SuperTabProviderProps> = (props) => {
+export const SuperTabProvider: ParentComponent<SuperTabProviderProps> & {
+  allTabs: ProvidedTabs;
+} = (props) => {
   return (
-    <SuperTabContext.Provider value={[props.self, props.allTabs]}>
+    <SuperTabContext.Provider value={[props.self, SuperTabProvider.allTabs]}>
       {props.children}
     </SuperTabContext.Provider>
   );
 };
+
+SuperTabProvider.allTabs = {} as ProvidedTabs; // will get reassigned in index.ts
 
 export const useSuperTab = <TabClass extends typeof SliderSuperTab>() =>
   useContext(SuperTabContext) as [InstanceOf<TabClass>, ProvidedTabs];
