@@ -26,6 +26,10 @@ type MarkdownCache = {
   canUndoFromHTML: string;
 };
 
+export function joinMarkupNames(types: MarkdownType[]) {
+  return 'markup-' + types.join('-');
+}
+
 export function createMarkdownCache(input: HTMLElement): MarkdownCache {
   return;
 
@@ -114,45 +118,50 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
     // underline: 'Underline',
     // strikethrough: 'Strikethrough',
     // monospace: () => document.execCommand('fontName', false, MONOSPACE_FONT),
-    link: href ? () => document.execCommand('createLink', false, href) : () => document.execCommand('unlink', false, null)
+    link: href ? () => document.execCommand('createLink', false, href) : resetLinkFormatting
     // quote: () => document.execCommand('formatBlock', false, 'blockquote')
     // spoiler: () => document.execCommand('fontName', false, SPOILER_FONT)
   };
 
-  const c = (type: MarkdownType) => {
-    commandsMap[type] = () => {
-      const k = (canCombine.includes(type) ? canCombine : [type]).filter((type) => hasMarkup[type]?.active);
-      if(!indexOfAndSplice(k, type)) {
-        k.push(type);
+  const processCommand = (type: MarkdownType) => {
+    const isCombineable = canCombine.includes(type);
+    const k = (isCombineable ? canCombine : [type]).filter((type) => hasMarkup[type]?.fully);
+    // const k = (isCombineable && false ? canCombine : [type]).filter((type) => hasMarkup[type]?.active);
+    const isRemoving = !!(indexOfAndSplice(k, type) || hasMarkup[type]?.partly);
+    if(!isRemoving) {
+      k.push(type);
+    }
+
+    if(type === 'quote'/*  && k.includes(type) */) {
+      const selection = document.getSelection();
+      if(selection.rangeCount && getCharAfterRange(selection.getRangeAt(0)) === '\n') {
+        const toLeft = false;
+        selection.modify(
+          selection.isCollapsed ? 'move' : 'extend',
+          toLeft ? 'backward' : 'forward', 'character'
+        );
       }
+    }
 
-      if(type === 'quote'/*  && k.includes(type) */) {
-        const selection = document.getSelection();
-        if(selection.rangeCount && getCharAfterRange(selection.getRangeAt(0)) === '\n') {
-          const toLeft = false;
-          selection.modify(selection.isCollapsed ? 'move' : 'extend', toLeft ? 'backward' : 'forward', 'character');
-        }
-      }
+    let ret: boolean;
+    if(!k.length) {
+      ret = resetCurrentFontFormatting();
+    } else {
+      ret = document.execCommand('fontName', false, joinMarkupNames(k));
+    }
 
-      let ret: boolean;
-      if(!k.length) {
-        ret = resetCurrentFontFormatting();
-      } else {
-        ret = document.execCommand('fontName', false, 'markup-' + k.join('-'));
-      }
+    processCurrentFormatting(
+      input,
+      isCombineable || isRemoving ? {type, active: !isRemoving} : undefined
+    );
 
-      processCurrentFormatting(input);
-
-      return ret;
-    };
+    return ret;
   };
 
   const canCombine: (typeof type)[] = ['bold', 'italic', 'underline', 'strikethrough', 'spoiler', 'quote'];
-  canCombine.forEach((type) => {
-    c(type);
+  ([...canCombine, 'monospace'] as const).forEach((type) => {
+    commandsMap[type] = processCommand.bind(null, type);
   });
-
-  c('monospace');
 
   if(!commandsMap[type]) {
     return false;
@@ -228,7 +237,8 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
 
   executed.push(document.execCommand('styleWithCSS', false, 'true'));
 
-  const hasMarkup = getMarkupInSelection(Object.keys(commandsMap) as (typeof type)[]);
+  const commandsKeys = Object.keys(commandsMap) as (typeof type)[];
+  const hasMarkup = getMarkupInSelection(commandsKeys);
 
   // * monospace can't be combined with different types
   /* if(type === 'monospace' || type === 'spoiler') {
@@ -247,8 +257,10 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
       executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
     }
   } else  */{
-    if(hasMarkup['monospace']?.active && type === 'link') {
+    if(hasMarkup['monospace']?.partly && type === 'link') {
       executed.push(resetCurrentFormatting());
+    } else if(hasMarkup['link']?.partly && type === 'monospace') {
+      executed.push(resetLinkFormatting());
     }
 
     executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
@@ -273,9 +285,18 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
   return true;
 }
 
-export function processCurrentFormatting(input: HTMLElement) {
+export function processCurrentFormatting(
+  input: HTMLElement,
+  toggling?: {
+    type: MarkdownType,
+    active: boolean
+  }
+) {
+  const quoteClasses = ['quote-like', 'quote-like-icon', 'quote-like-border'];
   // const perf = performance.now();
-  (input.querySelectorAll('[style*="font-family"]') as NodeListOf<HTMLElement>).forEach((element) => {
+  // * add styles
+  (input.querySelectorAll('[style*="font-family"]') as NodeListOf<HTMLElement>)
+  .forEach((element) => {
     if(element.style.caretColor) { // cleared blockquote
       element.style.cssText = '';
       return;
@@ -291,18 +312,29 @@ export function processCurrentFormatting(input: HTMLElement) {
     setDirection(element);
 
     if(fontFamily.includes('quote')) {
-      element.classList.add('quote-like', 'quote-like-icon', 'quote-like-border');
+      element.classList.add(...quoteClasses);
     }
   });
 
-  (input.querySelectorAll('.is-markup') as NodeListOf<HTMLElement>).forEach((element) => {
+  // * remove styles
+  (input.querySelectorAll('.is-markup') as NodeListOf<HTMLElement>)
+  .forEach((element) => {
     const fontFamily = element.style.fontFamily;
     if(fontFamily && fontFamily !== FontFamilyName) {
       return;
     }
 
+    // * fix nested formatting
+    if(toggling) {
+      // * if we toggle italic for selection but part of it has bold
+      if(!element.dataset.markup.includes(toggling.type)) {
+        element.style.fontFamily = element.dataset.markup;
+        return;
+      }
+    }
+
     if(!fontFamily.includes('quote')) {
-      element.classList.remove('quote-like', 'quote-like-icon', 'quote-like-border');
+      element.classList.remove(...quoteClasses);
     }
 
     element.classList.remove('is-markup');
@@ -317,6 +349,10 @@ export function resetCurrentFormatting() {
 
 export function resetCurrentFontFormatting() {
   return document.execCommand('fontName', false, FontFamilyName);
+}
+
+export function resetLinkFormatting() {
+  return document.execCommand('unlink', false, null);
 }
 
 export function handleMarkdownShortcut(input: HTMLElement, e: KeyboardEvent) {

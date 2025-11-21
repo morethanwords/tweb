@@ -256,7 +256,7 @@ export default class MarkupTooltip {
     const types = Object.keys(this.buttons) as MarkupTooltipTypes[];
     const markup = getMarkupInSelection(types);
     types.forEach((type) => {
-      if(markup[type].active) {
+      if(markup[type].partly) {
         currentMarkups.add(this.buttons[type as MarkupTooltipTypes]);
       }
     });
