@@ -963,6 +963,10 @@ const lang = {
   'Verified.Bot': 'This bot is verified as official by the representatives of Telegram.',
   'Verified.Channel': 'This channel was verified by Telegram.',
   'Verified.Group': 'This group was verified by Telegram.',
+  // 'SavedMessages.Count': {
+  //   'one_value': '%d saved message',
+  //   'other_value': '%d saved messages'
+  // },
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

@@ -6178,7 +6178,8 @@ export class AppMessagesManager extends AppManager {
       'readOutboxMaxId',
       'maxOutId',
       'replyMarkup',
-      'key'
+      'key',
+      'wasFetched'
     ]);
 
     // * using proxy to catch only outside calls
