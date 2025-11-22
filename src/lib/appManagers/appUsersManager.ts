@@ -1274,11 +1274,12 @@ export class AppUsersManager extends AppManager {
   /**
    * The amount of stars necessary to be paid for every message if the target user had enabled it
    */
-  public async getStarsAmount(userId: UserId, forceFetch = false): Promise<number | undefined> {
-    const requirement = forceFetch ? await this.fetchRequirementToContact(userId) : await this.getRequirementToContact(userId);
-    const starsAmount = requirement?._ === 'requirementToContactPaidMessages' ? Number(requirement.stars_amount) : undefined;
-
-    return starsAmount;
+  public getStarsAmount(userId: UserId, forceFetch = false, onlyCached = false): MaybePromise<number | undefined> {
+    const requirementResult = forceFetch ? this.fetchRequirementToContact(userId) : this.getRequirementToContact(userId, onlyCached);
+    return callbackify(requirementResult, (requirement) => {
+      const starsAmount = requirement?._ === 'requirementToContactPaidMessages' ? Number(requirement.stars_amount) : undefined;
+      return starsAmount;
+    });
   }
 
   private getRequirementsToContact() {

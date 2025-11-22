@@ -9630,12 +9630,12 @@ export default class ChatBubbles {
     this.isFirstLoad = false;
 
     const processResult = async(historyResult: Awaited<typeof result['result']>) => {
-      if((historyResult as HistoryResult).isEnd?.top) {
-        // * synchronize bot placeholder & user premium appearance
-        await this.managers.appProfileManager.getProfileByPeerId(peerId);
+      // if((historyResult as HistoryResult).isEnd?.top) {
+      //   // * synchronize bot placeholder & user premium appearance
+      //   await this.managers.appProfileManager.getProfileByPeerId(peerId);
 
-        // await this.setLoaded('top', true);
-      }
+      //   // await this.setLoaded('top', true);
+      // }
     };
 
     const sup = (historyResult: Awaited<typeof result['result']>) => {
