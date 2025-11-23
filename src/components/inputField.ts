@@ -276,8 +276,13 @@ let init = () => {
         richValue.value = correctedText;
       } */
 
+      const hasCustomEmoji = richValue.entities.some((entity) => entity._ === 'messageEntityCustomEmoji');
+
       // * fix new lines
-      {
+      // * if we have custom emoji, plain text will miss plain emoji
+      // * so we won't be able to fix new lines
+      // * hopefully we won't have same problem from other websites
+      if(!hasCustomEmoji) {
         // * first we clear all the new lines from rich value
         const richValueSplitted = richValue.value.split('');
         forEachReverse(richValueSplitted, (char, index, arr) => {
@@ -293,12 +298,14 @@ let init = () => {
 
         // * then we add new lines to rich value
         const plainTextLines = plainText.split('\n');
+        const plainTextLinesLength = plainTextLines.length;
         let plainTextLength = 0;
-        for(const line of plainTextLines) {
+        for(let lineIndex = 0; lineIndex < plainTextLinesLength - 1; ++lineIndex) {
+          const line = plainTextLines[lineIndex];
           plainTextLength += line.length;
           richValueSplitted.splice(plainTextLength, 0, '\n');
           richValue.entities.forEach((entity) => {
-            if(entity.offset >= plainTextLength) {
+            if(entity.offset >= (plainTextLength - lineIndex)) {
               entity.offset += 1;
             }
           });
@@ -311,8 +318,7 @@ let init = () => {
 
       const richTextLength = richValue.value.replace(/\s/g, '').length;
       const plainTextLength = plainText.replace(/\s/g, '').length;
-      if(richTextLength === plainTextLength ||
-        richValue.entities.find((entity) => entity._ === 'messageEntityCustomEmoji')) {
+      if(richTextLength === plainTextLength || hasCustomEmoji) {
         text = richValue.value;
         entities = richValue.entities;
         usePlainText = false;
