@@ -34,6 +34,10 @@ const TEST_SPONSORED = false;
 
 export type MySponsoredPeer = Omit<SponsoredPeer, 'peer'> & {peer: PeerId};
 
+type GetAdminLogsArgs = {
+  channelId: ChatId;
+};
+
 export class AppChatsManager extends AppManager {
   private storage: AppStoragesManager['storages']['chats'];
 
@@ -999,6 +1003,24 @@ export class AppChatsManager extends AppManager {
         }));
       }
     })
+  }
+
+  public getAdminLogs({channelId}: GetAdminLogsArgs) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'channels.getAdminLog',
+      params: {
+        channel: this.getChannelInput(channelId),
+        q: '',
+        min_id: 0,
+        max_id: 0,
+        limit: 100
+      },
+      processResult: (result) => {
+        this.appUsersManager.saveApiUsers(result.users);
+        this.appChatsManager.saveApiChats(result.chats);
+        return result.events;
+      }
+    });
   }
 
   private onUpdateChannelParticipant = (update: Update.updateChannelParticipant) => {

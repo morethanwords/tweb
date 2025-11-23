@@ -41,6 +41,7 @@ import PopupBoost from '../../popups/boost';
 import namedPromises from '../../../helpers/namedPromises';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import {AppDirectMessagesTab} from '../../solidJsTabs';
+import {AppAdminRecentActionsTab} from '../../solidJsTabs/tabs';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -438,6 +439,19 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         section.caption.replaceChildren(i18n('ForumToggleDescription'));
         section.content.append(topicsRow.container);
+      }
+
+      if(isAdmin) {
+        const recentActionsRow = new Row({
+          icon: 'clipboard',
+          titleLangKey: 'RecentActions',
+          clickable: () => {
+            this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId});
+          },
+          listenerSetter: this.listenerSetter
+        });
+
+        section.content.append(recentActionsRow.container);
       }
 
       section.caption.classList.toggle('hide', !section.caption.childElementCount);

@@ -2,10 +2,11 @@ import {onCleanup} from 'solid-js';
 import {TextWithEntities} from '../../../../layer';
 import wrapEmojiText from '../../../../lib/richTextProcessor/wrapEmojiText';
 import defineSolidElement, {PassedProps} from '../../../../lib/solidjs/defineSolidElement';
-import {InputFieldTsx} from '../../../inputFieldTsx';
 import {InputFieldEmoji} from '../../../inputFieldEmoji';
+import {InputFieldTsx} from '../../../inputFieldTsx';
 
 if(import.meta.hot) import.meta.hot.accept();
+
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 

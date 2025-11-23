@@ -3331,6 +3331,7 @@
 "BirthdaySuggestIncoming" = "%s suggested you add your birthday";
 "BirthdaySuggestView" = "View";
 "TonGiftSubtitle" = "Use TON to buy gifts and suggest posts to channels.";
+"RecentActions" = "Recent Actions";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

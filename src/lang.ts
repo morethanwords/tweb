@@ -3838,7 +3838,9 @@ const lang = {
   'BirthdaySuggestOutgoing': 'You suggested %s to add a birthday',
   'BirthdaySuggestIncoming': '%s suggested you add your birthday',
   'BirthdaySuggestView': 'View',
-  'TonGiftSubtitle': 'Use TON to buy gifts and suggest posts to channels.'
+  'TonGiftSubtitle': 'Use TON to buy gifts and suggest posts to channels.',
+
+  'RecentActions': 'Recent Actions'
 };
 
 export default lang;

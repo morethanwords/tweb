@@ -62,3 +62,14 @@ export const AppNotificationsTab =
     title: 'Telegram.NotificationSettingsViewController',
     getComponentModule: () => import('../sidebarLeft/tabs/notifications')
   });
+
+
+type AppAdminRecentActionsTabPayload = {
+  channelId: ChatId;
+};
+
+export const AppAdminRecentActionsTab =
+  scaffoldSolidJSTab<AppAdminRecentActionsTabPayload>({
+    title: 'RecentActions',
+    getComponentModule: () => import('../sidebarRight/tabs/adminRecentActions')
+  });
