@@ -5,7 +5,7 @@
  */
 
 import type {MyDialogFilter} from '../storages/filters';
-import type {Dialog, ForumTopic, MyMessage, SavedDialog} from './appMessagesManager';
+import type {Dialog, ForumTopic, MyMessage, RequestHistoryOptions, SavedDialog} from './appMessagesManager';
 import type {MyDocument} from './appDocsManager';
 import type {State} from '../../config/state';
 import type {AnyDialog} from '../storages/dialogs';
@@ -2495,12 +2495,29 @@ export class AppDialogsManager {
             return;
           }
 
-          return this.managers.appMessagesManager.getHistory({
+          const getHistoryOptions: RequestHistoryOptions = {
             peerId: options.monoforumParentPeerId || options.peerId,
             threadId: options.threadId,
             monoforumThreadId: options.monoforumParentPeerId ? options.peerId : undefined,
             limit: 50
-          });
+          };
+
+          const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(
+            options.peerId,
+            options.threadId
+          );
+
+          if(readMaxId) {
+            const limit = Math.floor(getHistoryOptions.limit / 2);
+            await this.managers.appMessagesManager.getHistory({
+              ...getHistoryOptions,
+              offsetId: readMaxId || undefined,
+              backLimit: readMaxId ? limit : undefined,
+              limit
+            });
+          }
+
+          return this.managers.appMessagesManager.getHistory(getHistoryOptions);
         }
       };
 
