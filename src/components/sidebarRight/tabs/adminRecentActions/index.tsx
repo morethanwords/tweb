@@ -4,7 +4,7 @@ import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
 import {LogEntry} from './logEntry';
-import {IconTsx} from '../../../iconTsx';
+
 
 const log = logger('AdminRecentActionsTab');
 

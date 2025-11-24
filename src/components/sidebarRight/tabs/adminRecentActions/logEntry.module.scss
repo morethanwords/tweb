@@ -1,6 +1,16 @@
 .Container {
   border-radius: 12px;
   background-color: var(--surface-color);
+
+  cursor: pointer;
+
+  &:hover {
+    background-color: hsl(from var(--surface-color) h s calc(l - 2));
+  }
+
+  :global(.night) &:hover {
+    background-color: hsl(from var(--surface-color) h s calc(l + 5));
+  }
 }
 
 .Header {
@@ -9,29 +19,22 @@
   gap: 12px;
 
   padding: 10px 12px;
-
-  --border-color: 0, 0, 0;
-  border-bottom: 1px solid var(--background-color);
-
-  :global(.night) & {
-    --border-color: 255, 255, 255;
-  }
 }
 
 .Group {
   flex: 1;
   min-width: 0; /* crucial – allows the item to shrink below its content width */
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 .Icon {
   display: flex;
   font-size: 20px;
-  /* align-self: flex-start;
-  padding-top: 12px; */
-  /* color: var(--primary-color); */
+}
+
+.NameRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .PeerTitle {
@@ -52,16 +55,23 @@
   font-size: 14px;
   color: var(--secondary-text-color);
   line-height: 1.2;
+  padding-top: 2px;
 }
 
 .Date {
   font-size: 13px;
   line-height: 1;
-  /* opacity: 0.6; */
-  color: var(--secondary-text-color);
+  /* color: var(--secondary-text-color); */
+  opacity: 0.4;
+  font-weight: 200;
 }
 
 .ExpandableContent {
   font-size: 16px;
   padding: 8px 12px;
+  border-top: 1px solid var(--background-color);
+
+  &Wrapper {
+    overflow: hidden;
+  }
 }
