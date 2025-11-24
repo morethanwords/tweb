@@ -1288,6 +1288,13 @@
       }
     }
   }
+
+  .error-label {
+    font-size: 14px;
+    margin-top: -16px;
+    color: var(--danger-color);
+    margin-left: 4px;
+  }
 }
 
 .privacy-tab {

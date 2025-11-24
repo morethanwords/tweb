@@ -9,7 +9,7 @@ import {AuthSentCode, AuthSentCodeType, AuthSignIn} from '../layer';
 import Page from './page';
 import pageSignIn from './pageSignIn';
 import TrackingMonkey from '../components/monkeys/tracking';
-import CodeInputField from '../components/codeInputField';
+import CodeInputFieldCompat from '../components/codeInputField';
 import {i18n, LangPackKey} from '../lib/langPack';
 import {randomLong} from '../helpers/random';
 import replaceContent from '../helpers/dom/replaceContent';
@@ -19,23 +19,26 @@ import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
 import setBlankToAnchor from '../lib/richTextProcessor/setBlankToAnchor';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import Icon from '../components/icon';
+import {fastRaf} from '../helpers/schedulers';
 
 let authSentCode: AuthSentCode.authSentCode = null;
 
 let headerElement: HTMLHeadElement = null;
 let sentTypeElement: HTMLParagraphElement = null;
-let codeInput: HTMLInputElement, codeInputField: CodeInputField;
+let codeInputField: CodeInputFieldCompat;
+let codeInputErrorLabel: HTMLElement;
 let monkey: TrackingMonkey, player: RLottiePlayer;
 
 const cleanup = () => {
   setTimeout(() => {
     monkey?.remove();
     player?.remove();
+    codeInputField?.cleanup()
   }, 300);
 };
 
 const submitCode = (code: string) => {
-  codeInput.setAttribute('disabled', 'true');
+  codeInputField.disabled = true;
 
   const params: AuthSignIn = {
     phone_number: authSentCode.phone_number,
@@ -82,33 +85,40 @@ const submitCode = (code: string) => {
         good = true;
         await (await import('./pagePassword')).default.mount(); // lol
         setTimeout(() => {
-          codeInput.value = '';
+          codeInputField.value = '';
         }, 300);
         break;
       case 'PHONE_CODE_EXPIRED':
-        codeInput.classList.add('error');
-        replaceContent(codeInputField.label, i18n('PHONE_CODE_EXPIRED'));
+        codeInputField.error = true;
+        replaceContent(codeInputErrorLabel, i18n('PHONE_CODE_EXPIRED'));
         break;
       case 'PHONE_CODE_EMPTY':
       case 'PHONE_CODE_INVALID':
-        codeInput.classList.add('error');
-        replaceContent(codeInputField.label, i18n('PHONE_CODE_INVALID'));
+        codeInputField.error = true;
+        replaceContent(codeInputErrorLabel, i18n('PHONE_CODE_INVALID'));
         break;
       default:
-        codeInputField.label.innerText = err.type;
+        codeInputField.error = true;
+        replaceContent(codeInputErrorLabel, err.type);
         break;
     }
 
-    if(!good) {
-      codeInputField.select();
-    }
+    codeInputField.disabled = false;
 
-    codeInput.removeAttribute('disabled');
+    if(!good) {
+      codeInputField.value = '';
+      fastRaf(() => {
+        codeInputField.input.focus();
+      });
+    }
   });
 };
 
 const onFirstMount = () => {
   page.pageEl.querySelector('.input-wrapper').append(codeInputField.container);
+  codeInputErrorLabel = document.createElement('div');
+  codeInputErrorLabel.classList.add('error-label');
+  page.pageEl.querySelector('.input-wrapper').append(codeInputErrorLabel);
 
   const editButton = page.pageEl.querySelector('.phone-edit') as HTMLElement;
   editButton.append(Icon('edit'));
@@ -160,25 +170,21 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
     headerElement = page.pageEl.getElementsByClassName('phone')[0] as HTMLHeadElement;
     sentTypeElement = page.pageEl.getElementsByClassName('sent-type')[0] as HTMLParagraphElement;
   } else {
-    codeInput.value = '';
-
-    const evt = document.createEvent('HTMLEvents');
-    evt.initEvent('input', false, true);
-    codeInput.dispatchEvent(evt);
+    codeInputField.value = '';
   }
 
   const CODE_LENGTH = (authSentCode.type as AuthSentCodeType.authSentCodeTypeApp).length;
   if(!codeInputField) {
-    codeInputField = new CodeInputField({
-      label: 'Code',
-      name: randomLong(),
+    codeInputField = new CodeInputFieldCompat({
       length: CODE_LENGTH,
+      onChange: (code) => {
+        codeInputField.error = false;
+        replaceContent(codeInputErrorLabel, '');
+      },
       onFill: (code) => {
         submitCode(code);
       }
     });
-
-    codeInput = codeInputField.input as HTMLInputElement;
   }
 
   codeInputField.options.length = CODE_LENGTH;
@@ -203,6 +209,10 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
       a.href = authSentCodeType.url;
       args = [a];
       break;
+    case 'auth.sentCodeTypeEmailCode':
+      key = 'Login.Code.SentEmail';
+      args = [authSentCodeType.email_pattern];
+      break;
     default:
       key = 'Login.Code.SentUnknown';
       args = [authSentCodeType._];
@@ -215,7 +225,9 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
 
   return getAnimation().catch(() => {});
 }, () => {
-  codeInput.focus();
+  fastRaf(() => {
+    codeInputField?.input.focus();
+  })
 });
 
 export default page;

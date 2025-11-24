@@ -7,6 +7,8 @@
 import InputField from '../inputField';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
+import CodeInputFieldCompat from '../codeInputField';
+import {fastRaf} from '../../helpers/schedulers';
 
 export default class TrackingMonkey {
   public container: HTMLElement;
@@ -19,7 +21,7 @@ export default class TrackingMonkey {
 
   protected loadPromise: Promise<any>;
 
-  constructor(protected inputField: InputField, protected size: number) {
+  constructor(protected inputField: InputField | CodeInputFieldCompat, protected size: number) {
     this.container = document.createElement('div');
     this.container.classList.add('media-sticker-wrapper');
 
@@ -29,9 +31,24 @@ export default class TrackingMonkey {
       this.playAnimation(0);
     });
 
-    input.addEventListener('input', (e) => {
-      this.playAnimation(inputField.value.length);
-    });
+    const isCodeInputField = inputField instanceof CodeInputFieldCompat;
+
+    if(isCodeInputField) {
+      input.addEventListener('focus', () => {
+        this.playAnimation(1);
+      });
+
+      input.addEventListener('input', (e) => {
+        fastRaf(() => {
+          const frac = (1 + inputField.value.length) / inputField.options.length;
+          this.playAnimation(frac * this.max);
+        })
+      });
+    } else {
+      input.addEventListener('input', (e) => {
+        this.playAnimation(inputField.value.length);
+      });
+    }
 
     /* codeInput.addEventListener('focus', () => {
       playAnimation(Math.max(codeInput.value.length, 1));

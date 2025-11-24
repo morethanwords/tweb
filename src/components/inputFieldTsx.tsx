@@ -13,7 +13,7 @@ export interface InputFieldTsxProps<T extends typeof InputField> extends InputFi
   class?: string
   value?: string | Node
   onRawInput?: (value: string) => void
-  errorLabel?: LangPackKey
+  errorLabel?: LangPackKey | null
   errorLabelOptions?: any[]
   disabled?: boolean
 }
@@ -39,7 +39,7 @@ export const InputFieldTsx = <T extends typeof InputField>(inProps: InputFieldTs
     ([error, options], prev) => {
       if(!error && !prev) return // Prevent setting error first render
 
-      if(error) obj.setError(error, options)
+      if(error !== undefined) obj.setError(error, options)
       else obj.setState(InputState.Neutral)
     }
   ))

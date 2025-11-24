@@ -33,6 +33,13 @@
       width: 100%;
       padding: 0 16px;
     }
+
+    .error-label {
+      text-align: center;
+      height: 1lh;
+      font-size: 14px;
+      color: var(--danger-color);
+    }
   }
 
   .auth-image,
@@ -154,6 +161,10 @@
 }
 
 .page-authCode {
+  .input-wrapper {
+    justify-items: center;
+  }
+
   .phone-wrapper {
     flex: 0 0 auto;
   }

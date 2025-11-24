@@ -6,6 +6,7 @@ const lang = {
   'Login.Code.SentSms': 'We have sent you an SMS\nwith the code.',
   'Login.Code.SentInApp': 'We have sent you a message in Telegram\nwith the code.',
   'Login.Code.SentCall': 'We will call you and dictate\nthe code.',
+  'Login.Code.SentEmail': 'Please check your email **%s** (don\'t forget the spam folder) and enter the code we just sent you.',
   'Login.Code.SentUnknown': 'Please check everything\nfor a code (type: %s)',
   'Login.Password.Title': 'Enter Your Password',
   'Login.Password.Subtitle': 'Your account is protected with\nan additional password',

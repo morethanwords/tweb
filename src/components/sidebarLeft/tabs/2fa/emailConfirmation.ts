@@ -8,7 +8,7 @@ import {AccountPassword} from '../../../../layer';
 import Button from '../../../button';
 import {SliderSuperTab} from '../../../slider';
 import AppTwoStepVerificationSetTab from './passwordSet';
-import CodeInputField from '../../../codeInputField';
+import CodeInputFieldCompat from '../../../codeInputField';
 import AppTwoStepVerificationEmailTab from './email';
 import {putPreloader} from '../../../putPreloader';
 import {i18n, _i18n} from '../../../../lib/langPack';
@@ -18,6 +18,7 @@ import replaceContent from '../../../../helpers/dom/replaceContent';
 import toggleDisability from '../../../../helpers/dom/toggleDisability';
 import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
 import SettingSection from '../../../settingSection';
+import lottieLoader from '../../../../lib/rlottie/lottieLoader';
 
 
 type ConstructorArgs = {
@@ -25,7 +26,8 @@ type ConstructorArgs = {
 };
 
 export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSuperTab {
-  public codeInputField: CodeInputField;
+  public codeInputField: CodeInputFieldCompat;
+  public errorLabel: HTMLElement;
   public state: AccountPassword;
   public email: string;
   public length: number;
@@ -42,15 +44,16 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
 
     _i18n(section.caption, 'TwoStepAuth.ConfirmEmailCodeDesc', [this.email]);
 
-    const emoji = '📬';
     const stickerContainer = document.createElement('div');
+    stickerContainer.classList.add('media-sticker-wrapper');
 
-    wrapStickerEmoji({
-      div: stickerContainer,
+    lottieLoader.loadAnimationAsAsset({
+      container: stickerContainer,
       width: 160,
       height: 160,
-      emoji
-    });
+      loop: false,
+      autoplay: true
+    }, 'Mailbox');
 
     section.content.append(stickerContainer);
 
@@ -59,10 +62,15 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
 
-    const inputField = this.codeInputField = new CodeInputField({
-      name: 'recovery-email-code',
-      label: 'TwoStepAuth.RecoveryCode',
+    this.errorLabel = document.createElement('div');
+    this.errorLabel.classList.add('error-label', 'hidden');
+
+    const inputField = this.codeInputField = new CodeInputFieldCompat({
       length: this.length,
+      onChange: (code) => {
+        inputField.error = false;
+        this.errorLabel.classList.add('hidden');
+      },
       onFill: (code) => {
         freeze(true);
 
@@ -77,13 +85,15 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
         .catch((err) => {
           switch(err.type) {
             case 'CODE_INVALID':
-              inputField.input.classList.add('error');
-              replaceContent(inputField.label, i18n('TwoStepAuth.RecoveryCodeInvalid'));
+              inputField.error = true;
+              this.errorLabel.classList.remove('hidden');
+              replaceContent(this.errorLabel, i18n('TwoStepAuth.RecoveryCodeInvalid'));
               break;
 
             case 'EMAIL_HASH_EXPIRED':
-              inputField.input.classList.add('error');
-              replaceContent(inputField.label, i18n('TwoStepAuth.RecoveryCodeExpired'));
+              inputField.error = true;
+              this.errorLabel.classList.remove('hidden');
+              replaceContent(this.errorLabel, i18n('TwoStepAuth.RecoveryCodeExpired'));
               break;
 
             default:
@@ -104,7 +114,8 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
     };
 
     const freeze = (disable: boolean) => {
-      toggleDisability([inputField.input, btnChange, btnResend], disable);
+      toggleDisability([btnChange, btnResend], disable);
+      inputField.disabled = disable;
     };
 
     attachClickEvent(btnChange, (e) => {
@@ -126,7 +137,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
       });
     });
 
-    inputWrapper.append(inputField.container, btnChange, btnResend);
+    inputWrapper.append(inputField.container, this.errorLabel, btnChange, btnResend);
 
     inputContent.append(inputWrapper);
 
@@ -136,5 +147,10 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
   onOpenAfterTimeout() {
     if(!canFocus(this.isFirst)) return;
     this.codeInputField.input.focus();
+  }
+
+  onCloseAfterTimeout() {
+    super.onCloseAfterTimeout();
+    this.codeInputField.cleanup()
   }
 }

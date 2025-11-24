@@ -3842,7 +3842,21 @@ const lang = {
   'BirthdaySuggestOutgoing': 'You suggested %s to add a birthday',
   'BirthdaySuggestIncoming': '%s suggested you add your birthday',
   'BirthdaySuggestView': 'View',
-  'TonGiftSubtitle': 'Use TON to buy gifts and suggest posts to channels.'
+  'TonGiftSubtitle': 'Use TON to buy gifts and suggest posts to channels.',
+  'LoginEmail': 'Login Email',
+  'EmailSetup.Title': 'Add Email',
+  'EmailSetup.Subtitle': 'Please add your email address to keep access to your account.',
+  'EmailSetup.InputCaption': 'Your Email',
+  'EmailSetup.CheckEmail': 'Check Your Email',
+  'EmailSetup.CheckEmailSubtitle': 'Please enter the code we have sent to your email **%s**.',
+  'EmailSetup.WrongCode': 'Wrong code, please try again.',
+  'EmailSetup.InvalidEmail': 'Invalid email address',
+  'EmailSetup.BadEmail': 'Sorry, this email is not allowed.',
+  'EmailSetup.ChangeTitle': 'Enter New Email',
+  'EmailSetup.ChangeSubtitle': 'You will receive Telegram login codes via email and not SMS. Please enter an email address to which you have access.',
+  'EmailSetup.ChangeEmail': 'Change Email',
+  'EmailSetup.SetupToast': 'Email added successfully.',
+  'EmailSetup.ChangeToast': 'Email changed successfully.'
 };
 
 export default lang;

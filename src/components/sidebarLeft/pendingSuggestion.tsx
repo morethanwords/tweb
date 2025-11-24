@@ -16,9 +16,10 @@ import {toastNew} from '../toast';
 import Animated from '../../helpers/solid/animations';
 import uiNotificationsManager from '../../lib/appManagers/uiNotificationsManager';
 import cancelEvent from '../../helpers/dom/cancelEvent';
-import {dismissServerSuggestion, pendingSuggestions} from '../../stores/promo';
+import {dismissServerSuggestion, pendingSuggestions, refetchPromoData} from '../../stores/promo';
 import showBirthdayPopup, {saveMyBirthday} from '../popups/birthday';
 import rootScope from '../../lib/rootScope';
+import {showEmailSetupPopup} from '../popups/emailSetup';
 
 const PendingSuggestion = (props: Parameters<typeof Row>[0] & {closable?: () => void}) => {
   // const [, rest] = splitProps(props, ['closable']);
@@ -145,6 +146,8 @@ function NotificationsSuggestion() {
   );
 }
 const BIRTHDAY_SETUP_SUGGESTION_KEY = 'BIRTHDAY_SETUP';
+const EMAIL_SETUP_KEY = 'SETUP_LOGIN_EMAIL';
+const EMAIL_SETUP_KEY_NOSKIP = 'SETUP_LOGIN_EMAIL_NOSKIP';
 
 function BirthdaySetupSuggestion() {
   const [isSidebarCollapsed] = useIsSidebarCollapsed();
@@ -160,7 +163,7 @@ function BirthdaySetupSuggestion() {
       onSave: async(date) => {
         if(await saveMyBirthday(date)) {
           dismissServerSuggestion(BIRTHDAY_SETUP_SUGGESTION_KEY);
-          return true;
+          return; true;
         }
         return false;
       }
@@ -206,6 +209,29 @@ export function renderPendingSuggestion(toElement: HTMLElement) {
     //     setAppSettings('notifications', 'suggested', false);
     //   }
     // });
+
+    let refetchedForEmail = false;
+    createEffect(() => {
+      const pendingSuggestions$ = pendingSuggestions();
+      if(pendingSuggestions$.has(EMAIL_SETUP_KEY) || pendingSuggestions$.has(EMAIL_SETUP_KEY_NOSKIP)) {
+        if(!refetchedForEmail) {
+          refetchedForEmail = true;
+          refetchPromoData();
+          return;
+        }
+        const noskip = pendingSuggestions$.has(EMAIL_SETUP_KEY_NOSKIP);
+
+        showEmailSetupPopup({
+          noskip,
+          purpose: {_: 'emailVerifyPurposeLoginChange'},
+          onDismiss: () => {
+            if(!noskip) {
+              dismissServerSuggestion(EMAIL_SETUP_KEY);
+            }
+          }
+        });
+      }
+    })
 
     createEffect(() => {
       let element: JSX.Element;

@@ -37,6 +37,10 @@ export const pendingSuggestions = createRoot(() => createMemo(() => {
   return set;
 }));
 
+export function refetchPromoData() {
+  return promoData[1].refetch();
+}
+
 export function dismissServerSuggestion(suggestion: string) {
   setPendingDismissed((prev) => [...prev, suggestion]);
   rootScope.managers.apiManager.invokeApiSingleProcess({
