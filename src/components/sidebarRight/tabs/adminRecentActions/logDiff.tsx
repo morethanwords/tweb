@@ -1,6 +1,6 @@
 import {For, JSX, Show} from 'solid-js';
-import styles from './logDiff.module.scss';
 import {IconTsx} from '../../../iconTsx';
+import styles from './logDiff.module.scss';
 
 
 type LogDiffProps = {

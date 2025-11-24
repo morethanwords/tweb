@@ -9,10 +9,11 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {Photo, PhotoSize, PhotosPhotos} from '../../layer';
-import {ReferenceContext} from '../mtproto/referenceDatabase';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceArrayInObject from '../../helpers/object/safeReplaceArrayInObject';
+import {Photo, PhotoSize, PhotosPhotos} from '../../layer';
+import {CachedPhotosStorage} from '../files/cachedPhotosStorage';
+import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {AppManager} from './manager';
 
 export type MyPhoto = Photo.photo;
@@ -24,6 +25,8 @@ export class AppPhotosManager extends AppManager {
   private photos: {
     [id: string]: MyPhoto
   } = {};
+
+  private savedPhotoURLs: Record<Photo['id'], Record</* size: */number, string | Promise<string>>> = {};
 
   public savePhoto(photo: Photo, context?: ReferenceContext) {
     if(!photo || photo._ === 'photoEmpty') return;
@@ -114,5 +117,13 @@ export class AppPhotosManager extends AppManager {
 
   public getPhoto(photoId: any/* MyPhoto | string */): MyPhoto {
     return isObject(photoId) ? photoId as MyPhoto : this.photos[photoId as any as string];
+  }
+
+  public loadPhoto(photo: MyPhoto, photoSize: PhotoSize) {
+    return CachedPhotosStorage.getPhoto({
+      photo,
+      photoSize,
+      download: (options) => this.apiFileManager.download(options)
+    });
   }
 }

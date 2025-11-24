@@ -1,4 +1,4 @@
-import {JSX, Show} from 'solid-js';
+import {Component, Show} from 'solid-js';
 import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
 import {i18n} from '../../../../lib/langPack';
 import {LogDiff} from './logDiff';
@@ -6,35 +6,43 @@ import {diffAdminRights} from './diffAdminRights';
 import {resolveAdminRightFlagI18n} from './adminRightsI18nResolver';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
+import {ChatPhoto} from './chatPhoto';
 
 type MapCallbackResult = {
   // Making them as components to avoid rendering when not expanded, and being able to duplicate when needed
-  Message: () => JSX.Element;
-  ExpandableContent?: () => JSX.Element;
+  Message: Component;
+  ExpandableContent?: Component;
 };
 
-type Args<Key extends ChannelAdminLogEventAction['_']> = {
+type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
   action: Extract<ChannelAdminLogEventAction, {_: Key}>;
   isBroadcast: boolean;
 };
 
-type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: Args<Key>) => MapCallbackResult;
+type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: MapCallbackArgs<Key>) => MapCallbackResult;
 
 
-export const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>} = {
+const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>} = {
   'channelAdminLogEventActionChangeTitle': ({action}) => ({
     Message: () => i18n('AdminRecentActionMessage.ChangeTitle'),
     ExpandableContent: () => <LogDiff added={action.new_value} removed={action.prev_value} />
   }),
-  'channelAdminLogEventActionChangeAbout': () => ({
-    Message: () => i18n('AdminRecentActionMessage.ChangeAbout')
-  }),
-  'channelAdminLogEventActionChangeUsername': ({action}) => ({
-    Message: () => i18n('AdminRecentActionMessage.ChangeUsername'),
+  'channelAdminLogEventActionChangeAbout': ({action, isBroadcast}) => ({
+    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeAboutChannel' : 'AdminRecentActionMessage.ChangeAboutGroup'),
     ExpandableContent: () => <LogDiff added={action.new_value} removed={action.prev_value} />
   }),
-  'channelAdminLogEventActionChangePhoto': () => ({
-    Message: () => i18n('AdminRecentActionMessage.ChangePhoto')
+  'channelAdminLogEventActionChangeUsername': ({action, isBroadcast}) => ({
+    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeUsernameChannel' : 'AdminRecentActionMessage.ChangeUsernameGroup'),
+    ExpandableContent: () => <LogDiff added={action.new_value} removed={action.prev_value} />
+  }),
+  'channelAdminLogEventActionChangePhoto': ({action, isBroadcast}) => ({
+    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangePhotoChannel' : 'AdminRecentActionMessage.ChangePhotoGroup'),
+    ExpandableContent: () => (
+      <LogDiff
+        added={action.new_photo?._ === 'photo' && <ChatPhoto photo={action.new_photo} />}
+        removed={action.prev_photo?._ === 'photo' && <ChatPhoto photo={action.prev_photo} />}
+      />
+    )
   }),
   'channelAdminLogEventActionToggleInvites': () => ({
     Message: () => i18n('AdminRecentActionMessage.ToggleInvites')

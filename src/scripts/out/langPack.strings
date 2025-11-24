@@ -3334,9 +3334,12 @@
 "TonGiftSubtitle" = "Use TON to buy gifts and suggest posts to channels.";
 "RecentActions" = "Recent Actions";
 "AdminRecentActionMessage.ChangeTitle" = "Changed channel title";
-"AdminRecentActionMessage.ChangeAbout" = "Updated channel description";
-"AdminRecentActionMessage.ChangeUsername" = "Modified channel username";
-"AdminRecentActionMessage.ChangePhoto" = "Changed channel photo";
+"AdminRecentActionMessage.ChangeAboutChannel" = "Updated channel description";
+"AdminRecentActionMessage.ChangeAboutGroup" = "Updated group description";
+"AdminRecentActionMessage.ChangeUsernameGroup" = "Modified group username";
+"AdminRecentActionMessage.ChangeUsernameChannel" = "Modified channel username";
+"AdminRecentActionMessage.ChangePhotoChannel" = "Changed channel photo";
+"AdminRecentActionMessage.ChangePhotoGroup" = "Changed group photo";
 "AdminRecentActionMessage.ToggleInvites" = "Toggled invite links";
 "AdminRecentActionMessage.ToggleSignatures" = "Toggled message signatures";
 "AdminRecentActionMessage.UpdatePinnedMessage" = "Updated pinned message";

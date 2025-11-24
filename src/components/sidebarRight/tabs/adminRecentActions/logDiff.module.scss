@@ -42,7 +42,7 @@
   justify-content: center;
   padding-left: 2px;
   padding-right: 4px;
-  opacity: 0.25;
+  opacity: 0.3;
 
   font-size: 14px;
 
@@ -53,4 +53,6 @@
 
 .Content {
   flex: 1;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
