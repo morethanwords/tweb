@@ -3,6 +3,7 @@ import {logger} from '../../../../lib/logger';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
+import {getLogEntry} from './logEntriesMap';
 import {LogEntry} from './logEntry';
 
 
@@ -28,21 +29,28 @@ const AdminRecentActionsTab = () => {
 
   return (
     <For each={logs() || []}>
-      {(log) => (
-        <div style={{padding: '6px 12px'}}>
-          <LogEntry
-            peerTitle={<PeerTitleTsx peerId={log.user_id.toPeerId()} />}
-            // peerTitle={'lsdfkj alsdfj alskdjf alskdjf alsdkfj alsdkfja lsdkjf asldfj'}
-            // message={'Chnaged the title from This to That and edited some messages'}
-            message={'Chnaged the title from This to That'}
-            date={new Date(log.date * 1000)}
-            icon='clipboard'
+      {(log) => {
+        const entry = getLogEntry(log);
+        const {Message, ExpandableContent} = entry;
+        if(!entry) return null;
+
+        return (
+          <div style={{padding: '6px 12px'}}>
+            <LogEntry
+              peerTitle={<PeerTitleTsx peerId={log.user_id.toPeerId()} />}
+              // peerTitle={'lsdfkj alsdfj alskdjf alskdjf alsdkfj alsdkfja lsdkjf asldfj'}
+              // message={'Chnaged the title from This to That and edited some messages'}
+              message={<Message />}
+              date={new Date(log.date * 1000)}
+              icon='clipboard'
+              expandableContent={ExpandableContent && <ExpandableContent />}
             // expandableContent={<div>
             // lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
             // </div>}
-          />
-        </div>
-      )}
+            />
+          </div>
+        )
+      }}
     </For>
   );
 };

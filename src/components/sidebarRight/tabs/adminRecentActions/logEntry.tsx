@@ -11,13 +11,13 @@ type LogEntryProps = {
   message: JSX.Element;
   icon: Icon;
 
+  offsetTitle?: boolean;
   expanded?: boolean;
   expandableContent?: JSX.Element;
 };
 
-
 export const LogEntry = (props: LogEntryProps) => {
-  const [expanded, setExpanded] = createSignal(false);
+  const [expanded, setExpanded] = createSignal(true);
 
   return (
     <div class={styles.Container} onClick={() => setExpanded(!expanded())}>
@@ -30,7 +30,7 @@ export const LogEntry = (props: LogEntryProps) => {
           <HeightTransition>
             <Show when={!expanded()}>
               <div>
-                <div class={styles.Message}>{props.message} adsf asdf asd sdf</div>
+                <div class={styles.Message}>{props.message}</div>
               </div>
             </Show>
           </HeightTransition>
@@ -44,10 +44,15 @@ export const LogEntry = (props: LogEntryProps) => {
         <Show when={expanded()}>
           <div class={styles.ExpandableContentWrapper}>
             <div class={styles.ExpandableContent}>
-              <div class={styles.ExpandableContentTitle}>
+              <div class={styles.ExpandableContentTitle} classList={{
+                [styles.offset]: props.offsetTitle
+              }}>
                 {props.message}
               </div>
-              {props.expandableContent}
+              <Show when={props.expandableContent}>
+                <div class={styles.ExpandableContentSpace} />
+                {props.expandableContent}
+              </Show>
             </div>
           </div>
         </Show>

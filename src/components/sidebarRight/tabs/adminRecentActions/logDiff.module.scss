@@ -1,0 +1,45 @@
+.Block {
+  padding: 4px;
+  display: flex;
+  border-radius: 6px;
+
+  &.added {
+    background-color: rgba(40, 167, 69, 0.25);
+  }
+
+  &.removed {
+    background-color: rgba(220, 53, 69, 0.25);
+  }
+
+  &.unroundedTop {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  &.unroundedBottom {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+.Separator {
+  height: 1px;
+  background-color: var(--surface-color);
+}
+
+.Strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 2px;
+  padding-right: 4px;
+  opacity: 0.5;
+
+  :global(.night) & {
+    opacity: 0.75;
+  }
+}
+
+.Content {
+  flex: 1;
+}
