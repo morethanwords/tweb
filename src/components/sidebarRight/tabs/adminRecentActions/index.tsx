@@ -3,7 +3,7 @@ import {logger} from '../../../../lib/logger';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
-import {getLogEntry} from './logEntriesMap';
+import {resolveLogEntry} from './logEntriesResolver';
 import {LogEntry} from './logEntry';
 
 
@@ -30,7 +30,7 @@ const AdminRecentActionsTab = () => {
   return (
     <For each={logs() || []}>
       {(log) => {
-        const entry = getLogEntry(log);
+        const entry = resolveLogEntry({event: log, isBroadcast: tab.payload.isBroadcast});
         const {Message, ExpandableContent} = entry;
         if(!entry) return null;
 
@@ -55,13 +55,5 @@ const AdminRecentActionsTab = () => {
   );
 };
 
-/**
- * - cases for each log action type
- * - infinite scroll fetching
- * - dynamic virtual list
- * - collapsing
- * - filters
- * - downloading log
- */
 
 export default AdminRecentActionsTab;

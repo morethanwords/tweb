@@ -1,6 +1,7 @@
-import {JSX, Show} from 'solid-js';
+import {For, JSX, Show} from 'solid-js';
 import styles from './logDiff.module.scss';
 import {IconTsx} from '../../../iconTsx';
+
 
 type LogDiffProps = {
   added?: JSX.Element;
@@ -8,36 +9,53 @@ type LogDiffProps = {
 };
 
 export const LogDiff = (props: LogDiffProps) => {
-  console.log('log diff called')
+  const addedAsArray = () => props.added ? props.added instanceof Array ? props.added : [props.added] : [];
+  const removedAsArray = () => props.removed ? props.removed instanceof Array ? props.removed : [props.removed] : [];
+
+  const hasAdded = () => addedAsArray().length > 0;
+  const hasRemoved = () => removedAsArray().length > 0;
+
   return (
     <>
-      <Show when={props.added}>
+      <Show when={hasAdded()}>
         <div class={`${styles.Block} ${styles.added}`} classList={{
-          [styles.unroundedBottom]: !!props.removed
+          [styles.unroundedBottom]: hasRemoved()
         }}>
-          <div class={`${styles.Strip} ${styles.added}`}>
-            <IconTsx icon='plus' />
-          </div>
-          <div class={styles.Content}>
-            {props.added}
-          </div>
+          <For each={addedAsArray()}>
+            {item => (
+              <div class={styles.Line}>
+                <div class={`${styles.Strip} ${styles.added}`}>
+                  <IconTsx icon='plus' />
+                </div>
+                <div class={styles.Content}>
+                  {item}
+                </div>
+              </div>
+            )}
+          </For>
         </div>
       </Show>
 
-      <Show when={props.added && props.removed}>
+      <Show when={hasAdded() && hasRemoved()}>
         <div class={styles.Separator} />
       </Show>
 
-      <Show when={props.removed}>
+      <Show when={hasRemoved()}>
         <div class={`${styles.Block} ${styles.removed}`} classList={{
-          [styles.unroundedTop]: !!props.added
+          [styles.unroundedTop]: hasAdded()
         }}>
-          <div class={`${styles.Strip} ${styles.removed}`}>
-            <IconTsx icon='minus' />
-          </div>
-          <div class={styles.Content}>
-            {props.removed}
-          </div>
+          <For each={removedAsArray()}>
+            {item => (
+              <div class={styles.Line}>
+                <div class={`${styles.Strip} ${styles.removed}`}>
+                  <IconTsx icon='minus' />
+                </div>
+                <div class={styles.Content}>
+                  {item}
+                </div>
+              </div>
+            )}
+          </For>
         </div>
       </Show>
     </>

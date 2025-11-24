@@ -66,6 +66,7 @@ export const AppNotificationsTab =
 
 type AppAdminRecentActionsTabPayload = {
   channelId: ChatId;
+  isBroadcast: boolean;
 };
 
 export const AppAdminRecentActionsTab =

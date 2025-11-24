@@ -327,6 +327,7 @@ const lang = {
   'AdminRights.PostStories': 'Post Stories',
   'AdminRights.EditStories': 'Edit Stories of Others',
   'AdminRights.DeleteStories': 'Delete Stories of Others',
+  'AdminRights.Other': 'Other',
   'Payments.Terms.Accept': 'I accept [Terms of Service]() of **%@**.',
   'AddChannel': 'Add Channel',
   'AllSubscribers': 'All Subscribers',

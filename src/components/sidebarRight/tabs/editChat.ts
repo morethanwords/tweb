@@ -446,7 +446,7 @@ export default class AppEditChatTab extends SliderSuperTab {
           icon: 'clipboard',
           titleLangKey: 'RecentActions',
           clickable: () => {
-            this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId});
+            this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
           },
           listenerSetter: this.listenerSetter
         });

@@ -1,7 +1,11 @@
-import {JSX} from 'solid-js';
+import {JSX, Show} from 'solid-js';
 import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
 import {i18n} from '../../../../lib/langPack';
 import {LogDiff} from './logDiff';
+import {diffAdminRights} from './diffAdminRights';
+import {resolveAdminRightFlagI18n} from './adminRightsI18nResolver';
+import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
 
 type MapCallbackResult = {
   // Making them as components to avoid rendering when not expanded, and being able to duplicate when needed
@@ -9,19 +13,25 @@ type MapCallbackResult = {
   ExpandableContent?: () => JSX.Element;
 };
 
-type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (action: Extract<ChannelAdminLogEventAction, {_: Key}>) => MapCallbackResult;
+type Args<Key extends ChannelAdminLogEventAction['_']> = {
+  action: Extract<ChannelAdminLogEventAction, {_: Key}>;
+  isBroadcast: boolean;
+};
+
+type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: Args<Key>) => MapCallbackResult;
 
 
 export const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>} = {
-  'channelAdminLogEventActionChangeTitle': (action) => ({
+  'channelAdminLogEventActionChangeTitle': ({action}) => ({
     Message: () => i18n('AdminRecentActionMessage.ChangeTitle'),
     ExpandableContent: () => <LogDiff added={action.new_value} removed={action.prev_value} />
   }),
   'channelAdminLogEventActionChangeAbout': () => ({
     Message: () => i18n('AdminRecentActionMessage.ChangeAbout')
   }),
-  'channelAdminLogEventActionChangeUsername': () => ({
-    Message: () => i18n('AdminRecentActionMessage.ChangeUsername')
+  'channelAdminLogEventActionChangeUsername': ({action}) => ({
+    Message: () => i18n('AdminRecentActionMessage.ChangeUsername'),
+    ExpandableContent: () => <LogDiff added={action.new_value} removed={action.prev_value} />
   }),
   'channelAdminLogEventActionChangePhoto': () => ({
     Message: () => i18n('AdminRecentActionMessage.ChangePhoto')
@@ -53,8 +63,26 @@ export const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallba
   'channelAdminLogEventActionParticipantToggleBan': () => ({
     Message: () => i18n('AdminRecentActionMessage.BanToggled')
   }),
-  'channelAdminLogEventActionParticipantToggleAdmin': () => ({
-    Message: () => i18n('AdminRecentActionMessage.AdminToggled')
+  'channelAdminLogEventActionParticipantToggleAdmin': ({action, isBroadcast}) => ({
+    Message: () => i18n('AdminRecentActionMessage.AdminToggled'),
+    ExpandableContent: () => {
+      const {PeerTitleTsx} = useHotReloadGuard();
+      const prevParticipantRights = 'admin_rights' in action.prev_participant ? action.prev_participant.admin_rights : null;
+      const newParticipantRights = 'admin_rights' in action.new_participant ? action.new_participant.admin_rights : null;
+
+      const diff = diffAdminRights(prevParticipantRights?.pFlags, newParticipantRights?.pFlags);
+      const peerId = getParticipantPeerId(action.prev_participant || action.new_participant);
+
+      return <>
+        <Show when={peerId}>
+          <PeerTitleTsx peerId={peerId} />
+        </Show>
+        <LogDiff
+          added={diff.granted.map(key => i18n(resolveAdminRightFlagI18n(key, {isBroadcast})))}
+          removed={diff.revoked.map(key => i18n(resolveAdminRightFlagI18n(key, {isBroadcast})))}
+        />
+      </>;
+    }
   }),
   'channelAdminLogEventActionChangeStickerSet': () => ({
     Message: () => i18n('AdminRecentActionMessage.ChangeStickerSet')
@@ -169,10 +197,15 @@ export const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallba
   })
 };
 
-export const getLogEntry = (event: ChannelAdminLogEvent) => {
-  const entry = logEntriesMap[event.action._];
-  if(!entry) {
+type ResolveLogEntryArgs = {
+  event: ChannelAdminLogEvent;
+  isBroadcast: boolean;
+};
+
+export const resolveLogEntry = ({event, isBroadcast}: ResolveLogEntryArgs) => {
+  const resolver = logEntriesMap[event.action._];
+  if(!resolver) {
     return null;
   }
-  return entry(event.action as never);
+  return resolver({action: event.action as never, isBroadcast});
 };
