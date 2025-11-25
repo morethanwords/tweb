@@ -1,13 +1,16 @@
 import {Component, Show} from 'solid-js';
 import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
-import {i18n} from '../../../../lib/langPack';
-import {LogDiff} from './logDiff';
-import {diffAdminRights} from './diffAdminRights';
-import {resolveAdminRightFlagI18n} from './adminRightsI18nResolver';
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
+import {i18n} from '../../../../lib/langPack';
+import wrapRichText from '../../../../lib/richTextProcessor/wrapRichText';
+import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import Space from '../../../space';
+import {resolveAdminRightFlagI18n} from './adminRightsI18nResolver';
 import {ChatPhoto} from './chatPhoto';
+import {diffAdminRights} from './diffAdminRights';
 import {KeyValuePair} from './keyValuePair';
+import {LogDiff} from './logDiff';
+import {getPhoto} from './utils';
 
 
 type MapCallbackResult = {
@@ -43,8 +46,8 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     ExpandableContent: () => (
       <LogDiff
         vertical
-        added={action.new_photo?._ === 'photo' && <ChatPhoto photo={action.new_photo} isForum={isForum} />}
-        removed={action.prev_photo?._ === 'photo' && <ChatPhoto photo={action.prev_photo} isForum={isForum} />}
+        added={action.new_photo?._ === 'photo' && <ChatPhoto photo={action.new_photo} rounded isForum={isForum} />}
+        removed={action.prev_photo?._ === 'photo' && <ChatPhoto photo={action.prev_photo} rounded isForum={isForum} />}
       />
     )
   }),
@@ -57,11 +60,64 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
   'channelAdminLogEventActionUpdatePinned': () => ({
     Message: () => i18n('AdminRecentActionMessage.UpdatePinnedMessage')
   }),
-  'channelAdminLogEventActionEditMessage': () => ({
-    Message: () => i18n('AdminRecentActionMessage.EditedMessage')
+  'channelAdminLogEventActionEditMessage': ({action}) => ({
+    Message: () => i18n('AdminRecentActionMessage.EditedMessage'),
+    ExpandableContent: () => {
+      const prevPhoto = getPhoto(action.prev_message);
+      const newPhoto = getPhoto(action.new_message);
+
+      const prevMessage = action.prev_message?._ === 'message' ? action.prev_message : undefined;
+      const newMessage = action.new_message?._ === 'message' ? action.new_message : undefined;
+
+      const hasPhotoDiff = prevPhoto || newPhoto;
+      const hasMessageDiff = prevMessage?.message || newMessage?.message;
+
+      return <>
+        <Show when={hasPhotoDiff}>
+          <LogDiff
+            vertical
+            added={newPhoto && <ChatPhoto photo={newPhoto} />}
+            removed={prevPhoto && <ChatPhoto photo={prevPhoto} />}
+          />
+        </Show>
+
+        {(hasPhotoDiff && hasMessageDiff) && <Space amount='4px' />}
+
+        <Show when={hasMessageDiff}>
+          <LogDiff
+            added={newMessage && wrapRichText(newMessage.message, {entities: newMessage.entities})}
+            removed={prevMessage && wrapRichText(prevMessage.message, {entities: prevMessage.entities})}
+          />
+        </Show>
+      </>;
+    }
   }),
-  'channelAdminLogEventActionDeleteMessage': () => ({
-    Message: () => i18n('AdminRecentActionMessage.DeletedMessage')
+  'channelAdminLogEventActionDeleteMessage': ({action}) => ({
+    Message: () => i18n('AdminRecentActionMessage.DeletedMessage'),
+    ExpandableContent: () => {
+      const prevPhoto = getPhoto(action.message);
+      const prevMessage = action.message?._ === 'message' ? action.message : undefined;
+
+      const hasPhotoDiff = prevPhoto;
+      const hasMessageDiff = prevMessage?.message;
+
+      return <>
+        <Show when={hasPhotoDiff}>
+          <LogDiff
+            vertical
+            removed={prevPhoto && <ChatPhoto photo={prevPhoto} />}
+          />
+        </Show>
+
+        {(hasPhotoDiff && hasMessageDiff) && <Space amount='4px' />}
+
+        <Show when={hasMessageDiff}>
+          <LogDiff
+            removed={prevMessage && wrapRichText(prevMessage.message, {entities: prevMessage.entities})}
+          />
+        </Show>
+      </>;
+    }
   }),
   'channelAdminLogEventActionParticipantJoin': () => ({
     Message: () => i18n('AdminRecentActionMessage.ParticipantJoined')
@@ -79,6 +135,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     Message: () => i18n('AdminRecentActionMessage.AdminToggled'),
     ExpandableContent: () => {
       const {PeerTitleTsx} = useHotReloadGuard();
+
       const prevParticipantRights = 'admin_rights' in action.prev_participant ? action.prev_participant.admin_rights : null;
       const newParticipantRights = 'admin_rights' in action.new_participant ? action.new_participant.admin_rights : null;
 
