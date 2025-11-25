@@ -148,6 +148,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
             label={i18n('ToUser')}
             value={<PeerTitleTsx peerId={peerId} />}
           />
+          <Space amount='4px' />
         </Show>
         <LogDiff
           added={diff.granted.map(key => i18n(resolveAdminRightFlagI18n(key, {isBroadcast})))}
