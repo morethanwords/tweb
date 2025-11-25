@@ -1,11 +1,14 @@
 .Container {
   &.vertical {
     display: flex;
+
+    .Block {
+      flex: 1;
+    }
   }
 }
 
 .Block {
-  flex: 1;
   padding: 4px;
   border-radius: 6px;
 
