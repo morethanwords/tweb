@@ -363,15 +363,15 @@ button:focus {
 
 .input-search {
   --border-width: 1px;
-  --height: 42px;
+  --height: 44px;
   --border-radius: 22px;
-  --icon-left-add-offset: 0rem;
+  --icon-left-add-offset: .1875rem;
   --icon-left-offset: calc(.8125rem + var(--icon-left-add-offset));
   --icon-size: 1.5rem;
   --padding-horizontal: calc(var(--height) + 3px + var(--icon-left-add-offset) - var(--border-width));
   position: relative;
   width: 100%;
-  margin-inline: .4375rem;
+  margin-inline: .5rem;
   overflow: hidden;
   display: flex;
   align-items: center;

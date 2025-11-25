@@ -149,7 +149,7 @@ export class AppSidebarLeft extends SidebarSlider {
     // this._selectTab(0); // make first tab as default
 
     this.chatListContainer = document.getElementById('chatlist-container');
-    this.inputSearch = new InputSearch();
+    this.inputSearch = new InputSearch({oldStyle: true});
     (this.inputSearch.input as HTMLInputElement).placeholder = ' ';
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
     sidebarHeader.append(this.inputSearch.container);
@@ -286,7 +286,6 @@ export class AppSidebarLeft extends SidebarSlider {
       if(isPremium) {
         await wrapStatus((statusMiddlewareHelper = middleware.create()).get());
         if(!middleware()) return;
-        sidebarHeader.append(statusBtnIcon);
         toggleRightButtons(true, await DeferredIsUsingPasscode.isUsingPasscode());
 
         const onEmojiStatusChange = () => {
@@ -315,6 +314,8 @@ export class AppSidebarLeft extends SidebarSlider {
 
       if(isUsingPasscode) sidebarHeader.append(lockButton.element);
       else lockButton.element.remove();
+
+      sidebarHeader.classList.toggle('is-input-the-last-child', !isPremium && !isUsingPasscode);
     };
 
     appImManager.addEventListener('premium_toggle', onPremium);

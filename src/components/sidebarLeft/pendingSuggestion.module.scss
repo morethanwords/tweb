@@ -19,7 +19,7 @@
 .suggestion {
   margin: .5rem;
 
-  :global(.has-folders-sidebar) & {
+  :global(.has-vertical-folders) & {
     margin-bottom: 0;
   }
 
