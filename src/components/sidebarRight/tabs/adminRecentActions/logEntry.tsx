@@ -41,7 +41,7 @@ export const LogEntry = (props: LogEntryProps) => {
           {formatTime(props.date)}
         </div>
       </div>
-      <HeightTransition>
+      <HeightTransition scale>
         <Show when={expanded()}>
           <div class={styles.ExpandableContentWrapper}>
             <div class={styles.ExpandableContent}>
