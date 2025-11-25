@@ -19,11 +19,13 @@
   }
 
   &.added {
-    background-color: rgba(40, 167, 69, 0.25);
+    border-left: 3px solid rgba(40, 167, 69, 0.5);
+    background-color: rgba(40, 167, 69, 0.2);
   }
 
   &.removed {
-    background-color: rgba(220, 53, 69, 0.25);
+    border-left: 3px solid rgba(220, 53, 69, 0.5);
+    background-color: rgba(220, 53, 69, 0.2);
   }
 
   &.unroundedTop {

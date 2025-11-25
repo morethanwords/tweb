@@ -1,17 +1,13 @@
 .Container {
   display: inline-flex;
   gap: 4px;
-  padding: 3px 8px 2px;
+  padding: 3px 8px 2px 6px;
   border-radius: 6px;
 
   font-size: 14px;
 
-  background-color: rgba(var(--primary-color-rgb), 0.8);
-  color: white;
-
-  :global(.night) & {
-    background-color: var(--primary-color);
-  }
+  border-left: 3px solid rgba(var(--primary-color-rgb), 0.5);
+  background-color: rgba(var(--primary-color-rgb), 0.2);
 
   margin-bottom: 4px;
 }
