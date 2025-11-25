@@ -1,0 +1,21 @@
+.Container {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px 8px 2px;
+  border-radius: 6px;
+
+  font-size: 14px;
+
+  background-color: rgba(var(--primary-color-rgb), 0.8);
+  color: white;
+
+  :global(.night) & {
+    background-color: var(--primary-color);
+  }
+
+  margin-bottom: 4px;
+}
+
+.Value {
+  font-weight: 500;
+}

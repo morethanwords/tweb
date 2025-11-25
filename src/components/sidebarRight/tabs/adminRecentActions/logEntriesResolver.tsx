@@ -7,6 +7,8 @@ import {resolveAdminRightFlagI18n} from './adminRightsI18nResolver';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {ChatPhoto} from './chatPhoto';
+import {KeyValuePair} from './keyValuePair';
+
 
 type MapCallbackResult = {
   // Making them as components to avoid rendering when not expanded, and being able to duplicate when needed
@@ -85,7 +87,10 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
 
       return <>
         <Show when={peerId}>
-          <PeerTitleTsx peerId={peerId} />
+          <KeyValuePair
+            label={i18n('ToUser')}
+            value={<PeerTitleTsx peerId={peerId} />}
+          />
         </Show>
         <LogDiff
           added={diff.granted.map(key => i18n(resolveAdminRightFlagI18n(key, {isBroadcast})))}
