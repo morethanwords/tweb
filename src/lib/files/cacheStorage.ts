@@ -32,9 +32,6 @@ const cacheStorageDbConfig = {
   cachedFiles: {
     encryptable: true
   },
-  cachedPhotos: {
-    encryptable: true
-  },
   cachedStreamChunks: {
     encryptable: true
   },

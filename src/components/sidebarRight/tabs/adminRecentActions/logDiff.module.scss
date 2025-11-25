@@ -1,4 +1,11 @@
+.Container {
+  &.vertical {
+    display: flex;
+  }
+}
+
 .Block {
+  flex: 1;
   padding: 4px;
   border-radius: 6px;
 
@@ -24,6 +31,16 @@
   &.unroundedBottom {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
+  }
+
+  &.unroundedRight {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  &.unroundedLeft {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
   }
 }
 

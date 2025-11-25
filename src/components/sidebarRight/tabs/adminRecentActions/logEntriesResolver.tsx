@@ -17,6 +17,7 @@ type MapCallbackResult = {
 type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
   action: Extract<ChannelAdminLogEventAction, {_: Key}>;
   isBroadcast: boolean;
+  isForum: boolean;
 };
 
 type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: MapCallbackArgs<Key>) => MapCallbackResult;
@@ -35,12 +36,13 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeUsernameChannel' : 'AdminRecentActionMessage.ChangeUsernameGroup'),
     ExpandableContent: () => <LogDiff added={action.new_value} removed={action.prev_value} />
   }),
-  'channelAdminLogEventActionChangePhoto': ({action, isBroadcast}) => ({
+  'channelAdminLogEventActionChangePhoto': ({action, isBroadcast, isForum}) => ({
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangePhotoChannel' : 'AdminRecentActionMessage.ChangePhotoGroup'),
     ExpandableContent: () => (
       <LogDiff
-        added={action.new_photo?._ === 'photo' && <ChatPhoto photo={action.new_photo} />}
-        removed={action.prev_photo?._ === 'photo' && <ChatPhoto photo={action.prev_photo} />}
+        vertical
+        added={action.new_photo?._ === 'photo' && <ChatPhoto photo={action.new_photo} isForum={isForum} />}
+        removed={action.prev_photo?._ === 'photo' && <ChatPhoto photo={action.prev_photo} isForum={isForum} />}
       />
     )
   }),
@@ -208,12 +210,13 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
 type ResolveLogEntryArgs = {
   event: ChannelAdminLogEvent;
   isBroadcast: boolean;
+  isForum: boolean;
 };
 
-export const resolveLogEntry = ({event, isBroadcast}: ResolveLogEntryArgs) => {
+export const resolveLogEntry = ({event, isBroadcast, isForum}: ResolveLogEntryArgs) => {
   const resolver = logEntriesMap[event.action._];
   if(!resolver) {
     return null;
   }
-  return resolver({action: event.action as never, isBroadcast});
+  return resolver({action: event.action as never, isBroadcast, isForum});
 };

@@ -6,6 +6,8 @@ import styles from './logDiff.module.scss';
 type LogDiffProps = {
   added?: JSX.Element;
   removed?: JSX.Element;
+
+  vertical?: boolean;
 };
 
 export const LogDiff = (props: LogDiffProps) => {
@@ -16,10 +18,10 @@ export const LogDiff = (props: LogDiffProps) => {
   const hasRemoved = () => removedAsArray().length > 0;
 
   return (
-    <>
+    <div class={styles.Container} classList={{[styles.vertical]: props.vertical}}>
       <Show when={hasAdded()}>
         <div class={`${styles.Block} ${styles.added}`} classList={{
-          [styles.unroundedBottom]: hasRemoved()
+          [props.vertical ? styles.unroundedRight : styles.unroundedBottom]: hasRemoved()
         }}>
           <For each={addedAsArray()}>
             {item => (
@@ -42,7 +44,7 @@ export const LogDiff = (props: LogDiffProps) => {
 
       <Show when={hasRemoved()}>
         <div class={`${styles.Block} ${styles.removed}`} classList={{
-          [styles.unroundedTop]: hasAdded()
+          [props.vertical ? styles.unroundedLeft : styles.unroundedTop]: hasAdded()
         }}>
           <For each={removedAsArray()}>
             {item => (
@@ -58,6 +60,6 @@ export const LogDiff = (props: LogDiffProps) => {
           </For>
         </div>
       </Show>
-    </>
+    </div>
   );
 };

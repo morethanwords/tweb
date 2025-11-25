@@ -1,32 +1,19 @@
-import {createResource} from 'solid-js';
-import renderImageFromUrl from '../../../../helpers/dom/renderImageFromUrl';
 import {Photo} from '../../../../layer';
-import choosePhotoSize from '../../../../lib/appManagers/utils/photos/choosePhotoSize';
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import {PhotoTsx} from '../../../wrappers/photo';
+import styles from './chatPhoto.module.scss';
+
 
 type ChatPhotoProps = {
   photo: Photo.photo;
+  isForum?: boolean;
 };
 
-const photoSizePx = 120;
+const boxSize = 120;
 
 export const ChatPhoto = (props: ChatPhotoProps) => {
-  const {rootScope} = useHotReloadGuard();
-
-  const [img] = createResource(() => props.photo, async(photo) => {
-    const img = document.createElement('img');
-
-    const photoSize = choosePhotoSize(photo, photoSizePx);
-    const url = await rootScope.managers.appPhotosManager.loadPhoto(photo, photoSize);
-
-    await renderImageFromUrl(img, url);
-
-    return img;
-  });
-
   return (
-    <div>
-      {img()}
+    <div class={styles.Container} classList={{[styles.forum]: props.isForum}}>
+      <PhotoTsx class={styles.Photo} photo={props.photo} boxWidth={boxSize} boxHeight={boxSize} withoutPreloader />
     </div>
   );
 };

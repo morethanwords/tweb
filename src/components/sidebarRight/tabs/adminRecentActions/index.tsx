@@ -10,7 +10,7 @@ import {LogEntry} from './logEntry';
 const log = logger('AdminRecentActionsTab');
 
 const AdminRecentActionsTab = () => {
-  const {rootScope, PeerTitleTsx} = useHotReloadGuard();
+  const {rootScope, PeerTitleTsx, apiManagerProxy} = useHotReloadGuard();
   const [tab] = useSuperTab<typeof AppAdminRecentActionsTab>();
 
   const [logs] = createResource(async() => {
@@ -23,6 +23,8 @@ const AdminRecentActionsTab = () => {
     return result;
   });
 
+  const isForum = apiManagerProxy.isForum(tab.payload.channelId.toPeerId(true));
+
   createEffect(() => {
     console.log('logs :>> ', logs());
   });
@@ -30,7 +32,7 @@ const AdminRecentActionsTab = () => {
   return (
     <For each={logs() || []}>
       {(log) => {
-        const entry = resolveLogEntry({event: log, isBroadcast: tab.payload.isBroadcast});
+        const entry = resolveLogEntry({event: log, isBroadcast: tab.payload.isBroadcast, isForum});
         const {Message, ExpandableContent} = entry;
         if(!entry) return null;
 
