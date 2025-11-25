@@ -228,6 +228,17 @@ const processAfter = (cb: () => void) => {
   cb();
 };
 
+const passHistoryStorageProperties: Set<keyof HistoryStorage> = new Set([
+  '_maxId',
+  'count',
+  'readMaxId',
+  'readOutboxMaxId',
+  'maxOutId',
+  'replyMarkup',
+  'key',
+  'wasFetched'
+]);
+
 export type SuggestedPostPayload = {
   stars?: number;
   timestamp?: number;
@@ -6171,23 +6182,12 @@ export class AppMessagesManager extends AppManager {
       historyStorage.history = new SlicedArray();
     }
 
-    const passProperties: Set<keyof HistoryStorage> = new Set([
-      '_maxId',
-      'count',
-      'readMaxId',
-      'readOutboxMaxId',
-      'maxOutId',
-      'replyMarkup',
-      'key',
-      'wasFetched'
-    ]);
-
     // * using proxy to catch only outside calls
     let ignoreSliceCalls = false;
     const observeKey = historyStorage.searchHistory ? 'searchHistory' : 'history';
     const observed = createObservedState(historyStorage, {
       onSet: ({prop, value, oldValue, state}) => {
-        if(!passProperties.has(prop as keyof HistoryStorage)) {
+        if(!passHistoryStorageProperties.has(prop as keyof HistoryStorage)) {
           return;
         }
 
@@ -6277,36 +6277,33 @@ export class AppMessagesManager extends AppManager {
 
   private historyStorageAsTransferable(historyStorage: HistoryStorage) {
     const {
-      count,
       history,
       searchHistory,
-      maxId,
-      readMaxId,
-      readOutboxMaxId,
-      maxOutId,
-      replyMarkup
+      maxId
     } = historyStorage;
 
-    return {
-      count,
+    const historyStorageCopy = {};
+    passHistoryStorageProperties.forEach((prop) => {
+      // @ts-ignore
+      historyStorageCopy[prop] = historyStorage[prop];
+    });
+
+    const ret: any = {
+      ...historyStorageCopy,
       history: undefined as HistoryStorage,
       historySerialized: history.toJSON(),
       searchHistory: undefined as HistoryStorage,
       searchHistorySerialized: searchHistory?.toJSON(),
-      maxId,
-      readMaxId,
-      readOutboxMaxId,
-      maxOutId,
-      replyMarkup
+      maxId
     };
-  }
 
-  public getHistoryStorageTransferable(options: RequestHistoryOptions & {
-    backLimit?: number,
-    historyStorage?: HistoryStorage
-  }) {
-    this.processRequestHistoryOptions(options);
-    return this.historyStorageAsTransferable(options.historyStorage);
+    for(const key in ret) {
+      if(ret[key] === undefined) {
+        delete ret[key];
+      }
+    }
+
+    return ret;
   }
 
   private getNotifyPeerSettings(peerId: PeerId, threadId?: number) {

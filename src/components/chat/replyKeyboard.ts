@@ -114,7 +114,7 @@ export default class ReplyKeyboard extends DropdownHover {
   }
 
   private async getReplyMarkup(): Promise<ReplyMarkup> {
-    return (await this.managers.appMessagesManager.getHistoryStorageTransferable({peerId: this.peerId})).replyMarkup ?? {
+    return this.chatInput.chat.historyStorageNoThreadId.replyMarkup ?? {
       _: 'replyKeyboardHide',
       pFlags: {}
     };
