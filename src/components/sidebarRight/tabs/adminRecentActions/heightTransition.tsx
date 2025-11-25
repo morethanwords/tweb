@@ -1,6 +1,7 @@
 import {createEffect, createSignal, ParentProps} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {animate} from '../../../../helpers/animation';
+import liteMode from '../../../../helpers/liteMode';
 
 
 type HeightTransitionProps = {
@@ -37,7 +38,7 @@ export const HeightTransition = (props: ParentProps<HeightTransitionProps>) => {
             {height: '0px', opacity: 0, ...(props.scale && {transform: 'scale(0.95)', transformOrigin: '75% center'})},
             {height: `${targetHeight}px`, opacity: 1, ...(props.scale && {transform: 'scale(1)'})}
           ], {
-            duration: transitionTime,
+            duration: liteMode.isAvailable('animations') ? transitionTime : 0,
             easing: 'ease-in-out'
           }).finished.then(done);
         });
@@ -49,7 +50,7 @@ export const HeightTransition = (props: ParentProps<HeightTransitionProps>) => {
             {height: `${el.scrollHeight}px`, opacity: 1},
             {height: '0px', opacity: 0}
           ], {
-            duration: transitionTime,
+            duration: liteMode.isAvailable('animations') ? transitionTime : 0,
             fill: 'forwards',
             easing: 'ease-in-out'
           }).finished.then(done);
