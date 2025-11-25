@@ -5,11 +5,16 @@
   cursor: pointer;
 
   &:hover {
-    background-color: hsl(from var(--surface-color) h s calc(l - 2));
+    background-color: hsl(from var(--surface-color) h s calc(l - 7));
   }
 
   :global(.night) &:hover {
     background-color: hsl(from var(--surface-color) h s calc(l + 5));
+  }
+
+  border: 1px solid rgba(0, 0, 0, 0.075);
+  :global(.night) & {
+    border-color: rgba(255, 255, 255, 0.075);
   }
 }
 

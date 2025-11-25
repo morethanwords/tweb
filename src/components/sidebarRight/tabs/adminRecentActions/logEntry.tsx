@@ -18,16 +18,17 @@ type LogEntryProps = {
 
 export const LogEntry = (props: LogEntryProps) => {
   const [expanded, setExpanded] = createSignal(true);
+  const [hasRunningAnimations, setHasRunningAnimations] = createSignal(false);
 
   return (
-    <div class={styles.Container} onClick={() => setExpanded(!expanded())}>
+    <div class={styles.Container} onClick={() => !hasRunningAnimations() && setExpanded(!expanded())}>
       <div class={styles.Header}>
         <div class={styles.Icon}><IconTsx icon={props.icon} /></div>
         <div class={styles.Group}>
           {/* <div class={styles.NameRow}>*/}
           <div class={styles.PeerTitle}>{props.peerTitle}</div>
           {/* </div>*/}
-          <HeightTransition>
+          <HeightTransition onRunningAnimations={value => setHasRunningAnimations(!!value)}>
             <Show when={!expanded()}>
               <div>
                 <div class={styles.Message}>{props.message}</div>
