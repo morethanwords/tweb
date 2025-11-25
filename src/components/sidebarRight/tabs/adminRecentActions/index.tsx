@@ -33,8 +33,9 @@ const AdminRecentActionsTab = () => {
     <For each={logs() || []}>
       {(log) => {
         const entry = resolveLogEntry({event: log, isBroadcast: tab.payload.isBroadcast, isForum});
-        const {Message, ExpandableContent} = entry;
         if(!entry) return null;
+
+        const {Message, ExpandableContent} = entry;
 
         return (
           <div style={{padding: '6px 12px'}}>
