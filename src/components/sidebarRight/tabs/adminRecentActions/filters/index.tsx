@@ -27,6 +27,10 @@ export const Filters = (props: FiltersProps) => {
       >
         <Show when={props.open}>
           <div class={styles.Container}>
+            <div class={styles.ContainerBackdrop}>
+              <div class={styles.ContainerBackdropFill} />
+              <div class={styles.ContainerBackdropExtension} />
+            </div>
             <div class={styles.Card}>
               <For each={filterGroupsConfig}>
                 {group => (

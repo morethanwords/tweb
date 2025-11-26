@@ -14,13 +14,36 @@
   /* height: 340px; */
   max-height: 100%;
 
-  --start-color: rgba(0, 0, 0, 0.15);
-  /* --start-color: var(--background-color); */
-  background-image: linear-gradient(to bottom, var(--start-color) calc(100% - var(--padding-bottom)), transparent);
+  --backdrop-color: rgba(0, 0, 0, 0.15);
 
   :global(.night) & {
-    --start-color: rgba(0, 0, 0, 0.35);
-}
+    --backdrop-color: rgba(0, 0, 0, 0.35);
+  }
+
+  &Backdrop {
+    &Fill {
+      z-index: -1;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: calc(100% - var(--padding-bottom));
+      background-color: var(--backdrop-color);
+    }
+
+    &Extension {
+      z-index: -1;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--padding-bottom);
+
+      /* --start-color: var(--background-color); */
+      background-image: linear-gradient(to bottom, var(--backdrop-color), transparent);
+    }
+  }
+
 
   &EnterActive, &ExitActive {
     transition: opacity 0.1s ease-in-out, transform 0.16s ease-in-out;

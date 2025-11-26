@@ -1,8 +1,12 @@
 import {Accessor, createMemo, createSignal, For, JSX, Show} from 'solid-js';
+import {keepMe} from '../../../../../helpers/keepMe';
 import CheckboxFieldTsx from '../../../../checkboxFieldTsx';
 import {IconTsx} from '../../../../iconTsx';
+import ripple from '../../../../ripple';
 import {HeightTransition} from '../heightTransition';
 import styles from './expandableFilterGroup.module.scss';
+
+keepMe(ripple);
 
 
 type Item = {
@@ -30,7 +34,7 @@ export const ExpandableFilterGroup = (props: ExpandableFilterGroupProps) => {
 
   return (
     <>
-      <div class={`${styles.Row} hover-effect`} onClick={() => setIsExpanded(!isExpanded())}>
+      <div class={`${styles.Row} hover-effect rp`} use:ripple onClick={() => setIsExpanded(!isExpanded())}>
         <div class={styles.RowCheckboxWrapper} onClick={onMainCheckboxClick}>
           <CheckboxFieldTsx class={styles.RowCheckbox} checked={isMainChecked()} />
         </div>
@@ -49,7 +53,7 @@ export const ExpandableFilterGroup = (props: ExpandableFilterGroupProps) => {
           <div class={styles.ExpandedItems}>
             <For each={props.items}>
               {item => (
-                <div class={`${styles.Row} hover-effect`} onClick={item.onClick}>
+                <div class={`${styles.Row} hover-effect rp`} use:ripple onClick={item.onClick}>
                   <div class={styles.RowOffset} />
                   <div class={styles.RowCheckboxWrapper}>
                     <CheckboxFieldTsx class={styles.RowCheckbox} checked={item.checked()} />
