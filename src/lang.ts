@@ -3897,7 +3897,24 @@ const lang = {
   'AdminRecentActionMessage.ChangeEmojiStickerSet': 'Changed emoji sticker set',
   'AdminRecentActionMessage.ToggleSignatureProfiles': 'Toggled signature profiles',
   'AdminRecentActionMessage.ParticipantSubscriptionExtended': 'Extended participant subscription',
-  'AdminRecentActionMessage.ToggleAutoTranslation': 'Toggled auto‑translation'
+  'AdminRecentActionMessage.ToggleAutoTranslation': 'Toggled auto‑translation',
+
+  'AdminRecentActionsFilters.NewAdminRights': 'New Admin Rights',
+  'AdminRecentActionsFilters.NewExceptions': 'New exceptions',
+  'AdminRecentActionsFilters.NewMembers': 'New members',
+  'AdminRecentActionsFilters.MembersLeftGroup': 'Members left the Group',
+
+  'AdminRecentActionsFilters.GroupInfo': 'Group info',
+  'AdminRecentActionsFilters.InviteLinks': 'Invite links',
+  'AdminRecentActionsFilters.VideoChats': 'Video Chats',
+
+  'AdminRecentActionsFilters.DeletedMessages': 'Deleted messages',
+  'AdminRecentActionsFilters.EditedMessages': 'Edited messages',
+  'AdminRecentActionsFilters.PinnedMessages': 'Pinned messages',
+
+  'AdminRecentActionsFilters.MembersAndAdmins': 'Members and Admins',
+  'AdminRecentActionsFilters.GroupSettings': 'Group Settings',
+  'AdminRecentActionsFilters.Messages': 'Messages'
 };
 
 export default lang;
