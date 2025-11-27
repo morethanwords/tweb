@@ -1,6 +1,7 @@
 import {createComputed, createMemo, createResource, createSelector, createSignal, For, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
+import {createSetSignal} from '../../../../../helpers/solid/createSetSignal';
 import {I18nTsx} from '../../../../../helpers/solid/i18n';
 import useElementSize from '../../../../../hooks/useElementSize';
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
@@ -30,16 +31,21 @@ export const Filters = (props: FiltersProps) => {
     })
   );
 
-  const adminIds = () =>
+  const [selectedFlagsStore, setSelectedFlagsStore] = createStore(getInitialFlagsStore());
+  const [selectedAdminIds, setSelectedAdminIds] = createSetSignal<PeerId>();
+
+  const [cardElement, setCardElement] = createSignal<HTMLDivElement | null>(null);
+  const [contentElement, setContentElement] = createSignal<HTMLDivElement | null>(null);
+
+  const cardSize = useElementSize(cardElement);
+  const contentSize = useElementSize(contentElement);
+
+  const adminIds = createMemo(() =>
     // [...Array.from({length: 20}).flatMap(() => [...adminsResource()?.participants || []])]
     adminsResource()?.participants
     ?.filter(item => 'user_id' in item)
-    .map(item => item.user_id) || [];
-
-  // createEffect(() => {
-  //   if(!adminsResource()) return;
-  //   console.log('my-debug', {admins: adminsResource()});
-  // });
+    .map(item => item.user_id) || []
+  );
 
   const notShowingAdmins = createMemo(() => {
     if(!adminsResource()) return null;
@@ -49,54 +55,36 @@ export const Filters = (props: FiltersProps) => {
     return count - length > 0 ? count - length : null;
   });
 
-  const [cardElement, setCardElement] = createSignal<HTMLDivElement | null>(null);
-  const [contentElement, setContentElement] = createSignal<HTMLDivElement | null>(null);
-
-  const cardSize = useElementSize(cardElement);
-  const contentSize = useElementSize(contentElement);
+  const allAdminPeerIds = createMemo(() =>
+    adminIds().map(id => id.toPeerId())
+  );
 
   const isOverflowing = createMemo(() => {
     if(!cardElement() || !contentElement()) return false;
     return cardSize.height < contentSize.height;
   });
 
-  const getInitialFlagsStore = () => {
-    const keys = filterGroupsConfig.flatMap(group => group.items.map(item => item.pFlag));
-
-    return Object.fromEntries(keys.map(key => [key, true]));
-  };
-
-  const [flagsStore, setFlagsStore] = createStore(getInitialFlagsStore());
-
-  const getGroupCheckCount = (group: FilterGroupConfigItem) => {
-    return group.items.filter(item => flagsStore[item.pFlag]).length;
-  };
-
-  const onGroupClick = (group: FilterGroupConfigItem) => {
-    const areAllChecked = group.items.every(item => flagsStore[item.pFlag]);
-
-    setFlagsStore(group.items.map(item => item.pFlag), !areAllChecked);
-  };
-
-  const [selectedAdminIds, setSelectedAdminIds] = createSignal(new Set<PeerId>(), {
-    equals: (prev, next) => prev.size === next.size && [...prev].every(id => next.has(id))
-  });
-
-  const getAllAdminPeerIds = () => {
-    return adminIds().map(id => id.toPeerId());
-  };
-
-  createComputed(() => {
-    setSelectedAdminIds(new Set(getAllAdminPeerIds()));
-  });
-
-  const onAllAdminsClick = () => {
-    setSelectedAdminIds(new Set(getAllAdminPeerIds()));
-  };
-
   const isAdminIdSelected = createSelector(
     selectedAdminIds,
     (id: PeerId, ids) => ids.has(id.toPeerId()));
+
+  createComputed(() => {
+    setSelectedAdminIds(new Set(allAdminPeerIds()));
+  });
+
+  const flagGroupCheckCount = (group: FilterGroupConfigItem) => {
+    return group.items.filter(item => selectedFlagsStore[item.pFlag]).length;
+  };
+
+  const onFlagGroupClick = (group: FilterGroupConfigItem) => {
+    const areAllChecked = group.items.every(item => selectedFlagsStore[item.pFlag]);
+
+    setSelectedFlagsStore(group.items.map(item => item.pFlag), !areAllChecked);
+  };
+
+  const onAllAdminsClick = () => {
+    setSelectedAdminIds(new Set(allAdminPeerIds()));
+  };
 
   const onAdminClick = (id: PeerId) => {
     const newIds = new Set(selectedAdminIds());
@@ -107,14 +95,6 @@ export const Filters = (props: FiltersProps) => {
     }
     setSelectedAdminIds(newIds);
   };
-
-  // createEffect(() => {
-  //   console.log('my-debug', {
-  //     isOverflowing: isOverflowing(),
-  //     cardSize: cardSize.height,
-  //     contentSize: contentSize.height
-  //   })
-  // })
 
   return (
     <>
@@ -146,12 +126,12 @@ export const Filters = (props: FiltersProps) => {
                     {group => (
                       <ExpandableFilterGroup
                         mainLabel={<I18nTsx key={group.i18nKey} />}
-                        checkedCount={getGroupCheckCount(group)}
-                        onMainCheckboxClick={() => onGroupClick(group)}
+                        checkedCount={flagGroupCheckCount(group)}
+                        onMainCheckboxClick={() => onFlagGroupClick(group)}
                         items={group.items.map(item => ({
-                          checked: () => flagsStore[item.pFlag],
+                          checked: () => selectedFlagsStore[item.pFlag],
                           label: <I18nTsx key={item.i18nKey} />,
-                          onClick: () => setFlagsStore(item.pFlag, (prev) => !prev)
+                          onClick: () => setSelectedFlagsStore(item.pFlag, (prev) => !prev)
                         }))}
                       />
                     )}
@@ -187,41 +167,8 @@ export const Filters = (props: FiltersProps) => {
   );
 };
 
+const getInitialFlagsStore = () => {
+  const keys = filterGroupsConfig.flatMap(group => group.items.map(item => item.pFlag));
 
-/*
-pFlags: Partial<{
-  join?: true,
-  leave?: true,
-  invite?: true,
-  ban?: true,
-  unban?: true,
-  kick?: true,
-  unkick?: true,
-  promote?: true,
-  demote?: true,
-  info?: true,
-  settings?: true,
-  pinned?: true,
-  edit?: true,
-  delete?: true,
-  group_call?: true,
-  invites?: true,
-  send?: true,
-  forums?: true,
-  sub_extend?: true,
-}>
-
-join: 'AdminRecentActionsFilters.NewMembers'
-leave: 'AdminRecentActionsFilters.MembersLeftGroup'
-
-promote: 'AdminRecentActionsFilters.NewAdminRights'
-
-info: 'AdminRecentActionsFilters.GroupInfo'
-invites: 'AdminRecentActionsFilters.InviteLinks'
-group_call: 'AdminRecentActionsFilters.VideoChats'
-
-delete: 'AdminRecentActionsFilters.DeletedMessages'
-edit: 'AdminRecentActionsFilters.EditedMessages'
-pinned: 'AdminRecentActionsFilters.PinnedMessages'
-
-*/
+  return Object.fromEntries(keys.map(key => [key, true]));
+};
