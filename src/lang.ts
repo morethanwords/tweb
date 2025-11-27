@@ -3916,6 +3916,7 @@ const lang = {
   'AdminRecentActionsFilters.GroupSettings': 'Group Settings',
   'AdminRecentActionsFilters.Messages': 'Messages',
 
+  'AdminRecentActionsFilters.ApplyFilters': 'Apply Filters',
   'AdminRecentActionsFilters.ByType': 'Filter by type',
   'AdminRecentActionsFilters.ByAdmin': 'Filter by admin',
   'AdminRecentActionsFilters.ShowAllAdminActions': 'Show actions of all admins',

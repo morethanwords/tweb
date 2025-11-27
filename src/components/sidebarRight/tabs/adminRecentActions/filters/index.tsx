@@ -5,6 +5,7 @@ import {createSetSignal} from '../../../../../helpers/solid/createSetSignal';
 import {I18nTsx} from '../../../../../helpers/solid/i18n';
 import useElementSize from '../../../../../hooks/useElementSize';
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
+import Button from '../../../../buttonTsx';
 import Scrollable from '../../../../scrollable2';
 import Space from '../../../../space';
 import {FilterGroupConfigItem, filterGroupsConfig} from './config';
@@ -157,6 +158,10 @@ export const Filters = (props: FiltersProps) => {
                       <I18nTsx key='AdminRecentActionsFilters.NotShowingAdmins' args={[notShowingAdmins() + '']} />
                     </div>
                   </Show>
+                  <Space amount='1rem' />
+                  <Button primary large>
+                    <I18nTsx key='AdminRecentActionsFilters.ApplyFilters' />
+                  </Button>
                 </div>
               </Scrollable>
             </div>
