@@ -19,6 +19,7 @@ type FiltersProps = {
 };
 
 const adminsFetchLimit = 40; // Have more admins? I'm really sorry :)
+const limitPeerTitleSymbols = 24;
 
 export const Filters = (props: FiltersProps) => {
   const {rootScope, PeerTitleTsx} = useHotReloadGuard();
@@ -148,7 +149,7 @@ export const Filters = (props: FiltersProps) => {
                       onMainCheckboxClick={onAllAdminsClick}
                       items={adminIds().map(userId => ({
                         checked: () => isAdminIdSelected(userId.toPeerId()),
-                        label: <PeerTitleTsx peerId={userId.toPeerId()} />,
+                        label: <PeerTitleTsx peerId={userId.toPeerId()} limitSymbols={limitPeerTitleSymbols} />,
                         onClick: () => onAdminClick(userId.toPeerId())
                       }))}
                     />
