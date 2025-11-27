@@ -1,11 +1,12 @@
-import {createEffect, createMemo, createResource, createSignal, For, Show} from 'solid-js';
+import {createComputed, createMemo, createResource, createSelector, createSignal, For, Show} from 'solid-js';
+import {createStore} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {I18nTsx} from '../../../../../helpers/solid/i18n';
 import useElementSize from '../../../../../hooks/useElementSize';
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import Scrollable from '../../../../scrollable2';
 import Space from '../../../../space';
-import {filterGroupsConfig} from './config';
+import {FilterGroupConfigItem, filterGroupsConfig} from './config';
 import {ExpandableFilterGroup} from './expandableFilterGroup';
 import styles from './styles.module.scss';
 
@@ -15,6 +16,8 @@ type FiltersProps = {
   open: boolean;
 };
 
+const adminsFetchLimit = 40; // Have more admins? I'm really sorry :)
+
 export const Filters = (props: FiltersProps) => {
   const {rootScope, PeerTitleTsx} = useHotReloadGuard();
 
@@ -23,7 +26,7 @@ export const Filters = (props: FiltersProps) => {
       id,
       filter: {_: 'channelParticipantsAdmins'},
       offset: 0,
-      limit: 40
+      limit: adminsFetchLimit
     })
   );
 
@@ -56,6 +59,54 @@ export const Filters = (props: FiltersProps) => {
     if(!cardElement() || !contentElement()) return false;
     return cardSize.height < contentSize.height;
   });
+
+  const getInitialFlagsStore = () => {
+    const keys = filterGroupsConfig.flatMap(group => group.items.map(item => item.pFlag));
+
+    return Object.fromEntries(keys.map(key => [key, true]));
+  };
+
+  const [flagsStore, setFlagsStore] = createStore(getInitialFlagsStore());
+
+  const getGroupCheckCount = (group: FilterGroupConfigItem) => {
+    return group.items.filter(item => flagsStore[item.pFlag]).length;
+  };
+
+  const onGroupClick = (group: FilterGroupConfigItem) => {
+    const areAllChecked = group.items.every(item => flagsStore[item.pFlag]);
+
+    setFlagsStore(group.items.map(item => item.pFlag), !areAllChecked);
+  };
+
+  const [selectedAdminIds, setSelectedAdminIds] = createSignal(new Set<PeerId>(), {
+    equals: (prev, next) => prev.size === next.size && [...prev].every(id => next.has(id))
+  });
+
+  const getAllAdminPeerIds = () => {
+    return adminIds().map(id => id.toPeerId());
+  };
+
+  createComputed(() => {
+    setSelectedAdminIds(new Set(getAllAdminPeerIds()));
+  });
+
+  const onAllAdminsClick = () => {
+    setSelectedAdminIds(new Set(getAllAdminPeerIds()));
+  };
+
+  const isAdminIdSelected = createSelector(
+    selectedAdminIds,
+    (id: PeerId, ids) => ids.has(id.toPeerId()));
+
+  const onAdminClick = (id: PeerId) => {
+    const newIds = new Set(selectedAdminIds());
+    if(newIds.has(id.toPeerId())) {
+      newIds.delete(id.toPeerId());
+    } else {
+      newIds.add(id.toPeerId());
+    }
+    setSelectedAdminIds(newIds);
+  };
 
   // createEffect(() => {
   //   console.log('my-debug', {
@@ -95,12 +146,12 @@ export const Filters = (props: FiltersProps) => {
                     {group => (
                       <ExpandableFilterGroup
                         mainLabel={<I18nTsx key={group.i18nKey} />}
-                        checkedCount={group.items.length}
-                        onMainCheckboxClick={() => {}}
+                        checkedCount={getGroupCheckCount(group)}
+                        onMainCheckboxClick={() => onGroupClick(group)}
                         items={group.items.map(item => ({
-                          checked: () => false,
+                          checked: () => flagsStore[item.pFlag],
                           label: <I18nTsx key={item.i18nKey} />,
-                          onClick: () => {}
+                          onClick: () => setFlagsStore(item.pFlag, (prev) => !prev)
                         }))}
                       />
                     )}
@@ -112,12 +163,12 @@ export const Filters = (props: FiltersProps) => {
                   <Show when={adminIds().length}>
                     <ExpandableFilterGroup
                       mainLabel={<I18nTsx key='AdminRecentActionsFilters.ShowAllAdminActions' />}
-                      checkedCount={adminIds().length}
-                      onMainCheckboxClick={() => {}}
+                      checkedCount={selectedAdminIds().size}
+                      onMainCheckboxClick={onAllAdminsClick}
                       items={adminIds().map(userId => ({
-                        checked: () => false,
+                        checked: () => isAdminIdSelected(userId.toPeerId()),
                         label: <PeerTitleTsx peerId={userId.toPeerId()} />,
-                        onClick: () => {}
+                        onClick: () => onAdminClick(userId.toPeerId())
                       }))}
                     />
                   </Show>
