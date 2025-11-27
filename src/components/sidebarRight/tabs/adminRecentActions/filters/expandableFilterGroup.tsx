@@ -37,6 +37,7 @@ export const ExpandableFilterGroup = (props: ExpandableFilterGroupProps) => {
       <div class={`${styles.Row} hover-effect rp`} use:ripple onClick={() => setIsExpanded(!isExpanded())}>
         <div class={styles.RowCheckboxWrapper} onClick={onMainCheckboxClick}>
           <CheckboxFieldTsx class={styles.RowCheckbox} checked={isMainChecked()} />
+          <div class={styles.RowCheckboxClickArea} />
         </div>
         <div class={styles.RowSeparator} />
         <div class={styles.RowLabel}>

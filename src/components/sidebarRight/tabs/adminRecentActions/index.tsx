@@ -45,7 +45,7 @@ const AdminRecentActionsTab = () => {
       </div>
     </Portal>
     <Portal mount={tab.content}>
-      <Filters open={isFiltersOpen()} />
+      <Filters channelId={tab.payload.channelId} open={isFiltersOpen()} />
     </Portal>
     <Space amount='6px' />
     <For each={logs() || []}>

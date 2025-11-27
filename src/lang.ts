@@ -3914,7 +3914,15 @@ const lang = {
 
   'AdminRecentActionsFilters.MembersAndAdmins': 'Members and Admins',
   'AdminRecentActionsFilters.GroupSettings': 'Group Settings',
-  'AdminRecentActionsFilters.Messages': 'Messages'
+  'AdminRecentActionsFilters.Messages': 'Messages',
+
+  'AdminRecentActionsFilters.ByType': 'Filter by type',
+  'AdminRecentActionsFilters.ByAdmin': 'Filter by admin',
+  'AdminRecentActionsFilters.ShowAllAdminActions': 'Show actions of all admins',
+  'AdminRecentActionsFilters.NotShowingAdmins': {
+    'one_value': 'Not showing %d admin',
+    'other_value': 'Not showing %d admins'
+  }
 };
 
 export default lang;

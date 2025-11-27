@@ -90,6 +90,10 @@ html.custom-scroll {
 
   -webkit-overflow-scrolling: touch;
 
+  &.relative {
+    position: relative;
+  }
+
   &.scrollable-x {
     overflow-x: auto;
     scrollbar-width: none; // Firefox only
@@ -117,16 +121,16 @@ html.custom-scroll {
       @include animation-level(2) {
         transition: border-top-color var(--transition-standard-in), border-bottom-color var(--transition-standard-in);
       }
-  
+
       &:not(.scrolled-start) {
         border-top-color: var(--border-color);
       }
-  
+
       &:not(.scrolled-end) {
         border-bottom-color: var(--border-color);
       }
     }
-    
+
     // html.is-firefox & {
     //   transition: scrollbar-color .3s ease;
     // }

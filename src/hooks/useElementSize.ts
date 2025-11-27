@@ -1,6 +1,7 @@
 import {Accessor, createMemo, createRenderEffect, createRoot, onCleanup} from 'solid-js';
 import {createStore, Store} from 'solid-js/store';
 
+import {animate} from '../helpers/animation';
 import pickKeys from '../helpers/object/pickKeys';
 
 
@@ -22,8 +23,25 @@ const createSizeRoot = (element: Accessor<Element>) => createRoot(dispose => {
 
     setStore(pickKeys(element().getBoundingClientRect(), ['width', 'height']));
 
+    let callback: () => void, isQueued = false;
+
     const resizeObserver = new ResizeObserver(([entry]) => {
-      setStore(pickKeys(entry.contentRect, ['width', 'height']));
+      const boxSize = entry.borderBoxSize[0];
+      if(!boxSize) return;
+
+      callback = () => setStore({
+        width: boxSize.inlineSize,
+        height: boxSize.blockSize
+      });
+
+      if(isQueued) return;
+      isQueued = true;
+
+      animate(() => {
+        callback?.();
+        callback = undefined;
+        isQueued = false;
+      });
     });
 
     resizeObserver.observe(element());

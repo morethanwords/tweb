@@ -11,10 +11,17 @@
   &Checkbox {
     margin: 0;
     display: inline-flex;
+    pointer-events: none;
 
     &Wrapper {
+      position: relative;
       display: flex;
       padding: var(--padding);
+    }
+
+    &CickArea {
+      position: absolute;
+      inset: 0;
     }
   }
 

@@ -31,12 +31,14 @@ export default function Scrollable(props: {
   ref?: Ref<HTMLDivElement>,
   thumbRef?: (el: HTMLDivElement) => void,
   class?: string,
+  classList?: JSX.HTMLAttributes<HTMLDivElement>['classList'],
   axis?: 'x' | 'y',
   withBorders?: 'both' | 'top' | 'bottom' | 'manual',
   onScrolledTop?: () => void,
   onScrolledBottom?: () => void,
   onScroll?: () => void,
-  onScrollOffset?: number
+  onScrollOffset?: number,
+  relative?: boolean
 }) {
   const axis = props.axis ?? 'y';
   const scrollPositionProperty: 'scrollTop' | 'scrollLeft' = axis === 'x' ? 'scrollLeft' : 'scrollTop';
@@ -251,6 +253,10 @@ export default function Scrollable(props: {
           (props.withBorders === 'bottom' || props.withBorders === 'both') && 'scrollable-y-bordered-bottom'
         ] : [])
       )}
+      classList={{
+        relative: props.relative,
+        ...props.classList
+      }}
       onScroll={onScroll}
       onWheel={(axis === 'x' && !IS_TOUCH_SUPPORTED && onWheel) || undefined}
     >
