@@ -52,13 +52,13 @@ export type ScrollOptions = {
   transitionFunction?: (value: number) => number
 };
 
-export function fastSmoothScrollToStart(container: HTMLElement, axis: 'x') {
+export function fastSmoothScrollToStart(container: HTMLElement, axis: 'x' | 'y') {
   return fastSmoothScroll({
     container: container,
     element: container,
-    getElementPosition: () => -container.scrollLeft,
+    getElementPosition: () => -(axis === 'x' ? container.scrollLeft : container.scrollTop),
     position: 'start',
-    axis: 'x'
+    axis
   });
 }
 

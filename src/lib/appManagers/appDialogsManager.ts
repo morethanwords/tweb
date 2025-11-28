@@ -112,6 +112,7 @@ import {PossibleDialog} from '../../components/autonomousDialogList/base';
 import {ForumTab} from '../../components/forumTab/forumTab';
 import {fillForumTabRegister} from '../../components/forumTab/fillRegister';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
+import {fastSmoothScrollToStart} from '../../helpers/fastSmoothScroll';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -682,7 +683,10 @@ export class AppDialogsManager {
           }
         }
 
-        if(wasFilterId === id) return;
+        if(wasFilterId === id) {
+          fastSmoothScrollToStart(this.xds[id].scrollable.container, 'y');
+          return;
+        }
 
         this.xds[id].clear();
         const promise = this.setFilterIdAndChangeTab(id).then(() => {
