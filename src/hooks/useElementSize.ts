@@ -1,8 +1,8 @@
 import {Accessor, createMemo, createRenderEffect, createRoot, onCleanup} from 'solid-js';
 import {createStore, Store} from 'solid-js/store';
 
-import {animate} from '../helpers/animation';
 import pickKeys from '../helpers/object/pickKeys';
+import {requestRAF} from '../helpers/solid/requestRAF';
 
 
 type SizeRoot = {
@@ -37,7 +37,7 @@ const createSizeRoot = (element: Accessor<Element>) => createRoot(dispose => {
       if(isQueued) return;
       isQueued = true;
 
-      animate(() => {
+      requestRAF(() => {
         callback?.();
         callback = undefined;
         isQueued = false;

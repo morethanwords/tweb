@@ -2,3 +2,17 @@
   display: flex;
   align-items: center;
 }
+
+.Item {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  padding: 6px 12px;
+
+  top: var(--top, 0px);
+  transform: translateY(var(--translation, 0px));
+
+  &.hidden {
+    opacity: 0;
+  }
+}

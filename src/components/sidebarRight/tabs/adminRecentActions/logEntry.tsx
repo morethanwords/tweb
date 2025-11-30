@@ -13,15 +13,15 @@ type LogEntryProps = {
 
   offsetTitle?: boolean;
   expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
   expandableContent?: JSX.Element;
 };
 
 export const LogEntry = (props: LogEntryProps) => {
-  const [expanded, setExpanded] = createSignal(true);
   const [hasRunningAnimations, setHasRunningAnimations] = createSignal(false);
 
   return (
-    <div class={styles.Container} onClick={() => !hasRunningAnimations() && setExpanded(!expanded())}>
+    <div class={styles.Container} onClick={() => !hasRunningAnimations() && props.onExpandedChange?.(!props.expanded)}>
       <div class={styles.Header}>
         <div class={styles.Icon}><IconTsx icon={props.icon} /></div>
         <div class={styles.Group}>
@@ -29,7 +29,7 @@ export const LogEntry = (props: LogEntryProps) => {
           <div class={styles.PeerTitle}>{props.peerTitle}</div>
           {/* </div>*/}
           <HeightTransition onRunningAnimations={value => setHasRunningAnimations(!!value)}>
-            <Show when={!expanded()}>
+            <Show when={!props.expanded}>
               <div>
                 <div class={styles.Message}>{props.message}</div>
               </div>
@@ -42,7 +42,7 @@ export const LogEntry = (props: LogEntryProps) => {
         </div>
       </div>
       <HeightTransition scale>
-        <Show when={expanded()}>
+        <Show when={props.expanded}>
           <div class={styles.ExpandableContentWrapper}>
             <div class={styles.ExpandableContent}>
               <div class={styles.ExpandableContentTitle} classList={{
