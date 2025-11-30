@@ -195,7 +195,6 @@ const createVirtualRenderState = <T, >({
 
       if(Math.abs(scrollTopAdjustment) > scrollAdjustmentThreshold)
         untrack(scrollable).scrollTop += scrollTopAdjustment;
-      console.log('scrollTopAdjustment:', scrollTopAdjustment);
 
       setHeight(prev => prev + totalHeightDiff);
       setRenderedItems(toRender);
