@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity} from '../layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData} from '../layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
 import type {MyDialogFilter} from './storages/filters';
 import type {AnyDialog, Folder} from './storages/dialogs';
@@ -29,6 +29,7 @@ import EventListenerBase, {EventListenerListeners} from '../helpers/eventListene
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {ActiveAccountNumber} from './accounts/types';
+import {MyPromoData} from './appManagers/appPromoManager';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -237,6 +238,7 @@ export type BroadcastEvents = {
   'monoforum_draft_update': {dialog: MonoforumDialog},
 
   'botforum_pending_topic_created': {peerId: PeerId, tempId: number, newId?: number},
+  'promo_data_update': MyPromoData,
 };
 
 export type BroadcastEventsListeners = {

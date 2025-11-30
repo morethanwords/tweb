@@ -2,7 +2,7 @@ import PopupElement, {createPopup} from './indexTsx'
 
 import {CodeInputField} from '../codeInputField';
 import {TransitionSliderTsx} from '../transitionTsx';
-import {createSignal, onCleanup, onMount, Ref, Show} from 'solid-js';
+import {createEffect, createSignal, onCleanup, onMount, Ref, Show} from 'solid-js';
 
 import styles from './emailSetup.module.scss';
 import LottieAnimation from '../lottieAnimation';
@@ -12,16 +12,39 @@ import {InputFieldTsx} from '../inputFieldTsx';
 import {LangPackKey} from '../../lib/langPack';
 import ButtonTsx from '../buttonTsx';
 import classNames from '../../helpers/string/classNames';
-import {AccountSentEmailCode, EmailVerifyPurpose} from '../../layer';
+import {AccountSentEmailCode, EmailVerifyPurpose, MessageEntity} from '../../layer';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import InputField, {InputState} from '../inputField';
 import {doubleRaf, fastRaf} from '../../helpers/schedulers';
 import Animated from '../../helpers/solid/animations';
 import rootScope from '../../lib/rootScope';
 import {subscribeOn} from '../../helpers/solid/subscribeOn';
+import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+
+export function wrapEmailPattern(pattern: string) {
+  if(pattern.includes(' ') || !pattern.includes('*')) return pattern
+
+  const entities: MessageEntity[] = []
+  for(let i = 0; i < pattern.length;) {
+    const idx = pattern.indexOf('*', i)
+    if(idx === -1) break
+    let endIdx = idx + 1
+    while(pattern[endIdx] === '*') endIdx++
+
+    entities.push({
+      _: 'messageEntitySpoiler',
+      offset: idx,
+      length: endIdx - idx
+    })
+
+    i = endIdx
+  }
+
+  return wrapRichText(pattern, {entities, noTextFormat: true})
+}
 
 export function EnterEmailStep(props: {
-  fromPopup?: boolean
+  isInitialSetup?: boolean
   footerClass?: string
   purpose: EmailVerifyPurpose
   onCodeSent: (code: AccountSentEmailCode.accountSentEmailCode) => void
@@ -93,8 +116,8 @@ export function EnterEmailStep(props: {
         }}
       />
 
-      <I18nTsx class={styles.title} key={props.fromPopup ? 'EmailSetup.Title' : 'EmailSetup.ChangeTitle'} />
-      <I18nTsx class={styles.subtitle} key={props.fromPopup ? 'EmailSetup.Subtitle' : 'EmailSetup.ChangeSubtitle'} />
+      <I18nTsx class={styles.title} key={props.isInitialSetup ? 'EmailSetup.Title' : 'EmailSetup.ChangeTitle'} />
+      <I18nTsx class={styles.subtitle} key={props.isInitialSetup ? 'EmailSetup.Subtitle' : 'EmailSetup.ChangeSubtitle'} />
 
       <InputFieldTsx
         instanceRef={ref => inputRef = ref}
@@ -137,6 +160,7 @@ export function EnterEmailStep(props: {
 
 export function EnterCodeStep(props: {
   footerClass?: string
+  visible?: boolean
   purpose: EmailVerifyPurpose
   sentCode: AccountSentEmailCode.accountSentEmailCode
   onSuccess: () => void
@@ -148,10 +172,12 @@ export function EnterCodeStep(props: {
 
   let inputRef!: HTMLInputElement;
 
-  onMount(() => {
-    doubleRaf().then(() => {
-      inputRef.focus();
-    })
+  createEffect(() => {
+    if(props.visible !== false) {
+      doubleRaf().then(() => {
+        inputRef.focus();
+      })
+    }
   })
 
   function onSubmit() {
@@ -169,16 +195,21 @@ export function EnterCodeStep(props: {
       if(err.type === 'EMAIL_VERIFY_EXPIRED') {
         setLoading(false);
         return props.onExpired();
-      } else if(err.type === 'CODE_INVALID') {
+      }
+
+      if(err.type === 'CODE_INVALID') {
         setError('EmailSetup.WrongCode');
       } else {
         console.error(err);
         setError('Error.AnError');
       }
 
+      codeSignal[1]('');
+
       // avoid flashing while transitioning to error state
       setTimeout(() => {
         setLoading(false);
+        fastRaf(() => inputRef.focus());
       }, 200);
     });
   }
@@ -198,7 +229,11 @@ export function EnterCodeStep(props: {
       />
 
       <I18nTsx class={styles.title} key="EmailSetup.CheckEmail" />
-      <I18nTsx class={styles.subtitle} key="EmailSetup.CheckEmailSubtitle" args={[props.sentCode.email_pattern]} />
+      <I18nTsx
+        class={styles.subtitle}
+        key="EmailSetup.CheckEmailSubtitle"
+        args={[wrapEmailPattern(props.sentCode.email_pattern)]}
+      />
 
       <CodeInputField
         ref={inputRef}
@@ -251,6 +286,7 @@ export function showEmailSetupPopup(options: {
   const [show, setShow] = createSignal(false);
   const [page, setPage] = createSignal(0);
   const [code, setCode] = createSignal<AccountSentEmailCode.accountSentEmailCode | undefined>(undefined);
+  const [codePageTransitionEnded, setCodePageTransitionEnded] = createSignal(false);
 
   return createPopup(() => {
     const secondPageNavigationItem: NavigationItem = {
@@ -259,6 +295,7 @@ export function showEmailSetupPopup(options: {
     }
 
     onCleanup(() => {
+      isCurrentlyShowing = false;
       appNavigationController.removeItem(secondPageNavigationItem);
     });
 
@@ -276,9 +313,12 @@ export function showEmailSetupPopup(options: {
           isCurrentlyShowing = false;
           if(!isSuccess) options.onDismiss?.()
         }}
+        isConfirmationNeededOnClose={() => {
+          if(options.noskip && !isSuccess) return Promise.reject()
+        }}
       >
         <PopupElement.Header class={styles.popupHeader}>
-          <Show when={!options.noskip}>
+          <Show when={!options.noskip || page() === 1}>
             <PopupElement.CloseButton
               class={styles.popupCloseButton}
               canGoBack={page() !== 0}
@@ -294,15 +334,21 @@ export function showEmailSetupPopup(options: {
             animateFirst={false}
             currentPage={page()}
             onTransitionStart={(id) => {
+              setCodePageTransitionEnded(false);
               if(id === 0) {
                 appNavigationController.removeItem(secondPageNavigationItem);
               } else {
                 appNavigationController.pushItem(secondPageNavigationItem);
               }
             }}
+            onTransitionEnd={(id) => {
+              if(id === 1) {
+                setCodePageTransitionEnded(true);
+              }
+            }}
           >
             <EnterEmailStep
-              fromPopup
+              isInitialSetup={true}
               purpose={options.purpose}
               onCodeSent={code => {
                 setCode(code);
@@ -313,6 +359,7 @@ export function showEmailSetupPopup(options: {
               <EnterCodeStep
                 purpose={options.purpose}
                 sentCode={code()!}
+                visible={page() === 1 && codePageTransitionEnded()}
                 onExpired={() => {
                   setPage(0);
                   setCode(undefined);

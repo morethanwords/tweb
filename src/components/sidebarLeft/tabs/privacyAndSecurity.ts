@@ -46,6 +46,7 @@ import {clearSensitiveSpoilers} from '../../wrappers/mediaSpoiler';
 import useContentSettings from '../../../stores/contentSettings';
 import AppPrivacyBirthdayTab from './privacy/birthday';
 import ChangeLoginEmailTab from './changeLoginEmail';
+import {wrapEmailPattern} from '../../popups/emailSetup';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -98,7 +99,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
             tab = this.slider.createTab(AppTwoStepVerificationEnterPasswordTab);
           } else if(passwordState.email_unconfirmed_pattern) {
             tab = this.slider.createTab(AppTwoStepVerificationEmailConfirmationTab);
-            tab.email = passwordState.email_unconfirmed_pattern;
+            tab.email = wrapEmailPattern(passwordState.email_unconfirmed_pattern);
             tab.length = 6;
             tab.isFirst = true;
             this.managers.passwordManager.resendPasswordEmail();
@@ -120,7 +121,9 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         subtitle: SUBTITLE,
         icon: 'email',
         clickable: () => {
-          this.slider.createTab(ChangeLoginEmailTab).open();
+          this.slider.createTab(ChangeLoginEmailTab).open({
+            isInitialSetup: passwordState.login_email_pattern.includes(' ')
+          });
         },
         listenerSetter: this.listenerSetter
       });
@@ -226,7 +229,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         twoFactorRow.freezed = false;
 
         if(state.login_email_pattern) {
-          replaceContent(emailRow.subtitle, state.login_email_pattern);
+          replaceContent(emailRow.subtitle, wrapEmailPattern(state.login_email_pattern));
           emailRow.freezed = false;
           twoFactorRow.container.after(emailRow.container);
         }

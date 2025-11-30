@@ -1,63 +1,16 @@
-import {batch, createEffect, createMemo, createResource, createRoot, createSignal, on} from 'solid-js';
-import {HelpPromoData} from '../layer';
+import {createMemo} from 'solid-js';
 import rootScope from '../lib/rootScope';
-import ctx from '../environment/ctx';
+import {MyPromoData} from '../lib/appManagers/appPromoManager';
+import {createStore, reconcile} from 'solid-js/store';
 
-const promoData = createRoot(() => {
-  const [promoData, actions] = createResource<HelpPromoData>(() => {
-    return rootScope.managers.apiManager.invokeApiSingleProcess({method: 'help.getPromoData'});
-  }, {
-    initialValue: {_:'help.promoDataEmpty', expires: 0}
-  });
+const [promoData, setPromoData] = createStore<MyPromoData>({pendingSuggestions: []});
 
-  let timeout: number
-  createEffect(on(promoData, (promoData) => {
-    if(timeout) clearTimeout(timeout);
+rootScope.managers.appPromoManager.getPromoData()
 
-    timeout = ctx.setTimeout(() => {
-      actions.refetch();
-    }, promoData.expires * 1000 - Date.now());
-  }, {defer: true}));
+rootScope.addEventListener('promo_data_update', (data) => {
+  setPromoData(reconcile(data));
+});
 
-  return [promoData, actions] as const
-})
-
-const [pendingDismissed, setPendingDismissed] = createSignal<string[]>([]);
-
-export const pendingSuggestions = createRoot(() => createMemo(() => {
-  const promoData$ = promoData[0]();
-  if(promoData$._ !== 'help.promoData') return new Set();
-  const set = new Set(promoData$.pending_suggestions);
-  for(const dismissed of pendingDismissed()) {
-    set.delete(dismissed);
-  }
-  for(const dismissed of promoData$.dismissed_suggestions) {
-    set.delete(dismissed);
-  }
-  return set;
-}));
-
-export function refetchPromoData() {
-  return promoData[1].refetch();
-}
-
-export function dismissServerSuggestion(suggestion: string) {
-  setPendingDismissed((prev) => [...prev, suggestion]);
-  rootScope.managers.apiManager.invokeApiSingleProcess({
-    method: 'help.dismissSuggestion',
-    params: {suggestion, peer: {_: 'inputPeerEmpty'}}
-  }).then((result) => {
-    if(!result) return
-
-    batch(() => {
-      promoData[1].mutate((prev) => {
-        if(prev._ === 'help.promoDataEmpty') return prev;
-        return {
-          ...prev,
-          dismissed_suggestions: [...prev.dismissed_suggestions, suggestion]
-        }
-      })
-      setPendingDismissed((prev) => prev.filter((s) => s !== suggestion));
-    })
-  });
+export function usePendingSuggestions() {
+  return createMemo(() => new Set(promoData.pendingSuggestions));
 }

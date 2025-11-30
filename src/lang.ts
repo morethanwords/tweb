@@ -3856,7 +3856,16 @@ const lang = {
   'EmailSetup.ChangeSubtitle': 'You will receive Telegram login codes via email and not SMS. Please enter an email address to which you have access.',
   'EmailSetup.ChangeEmail': 'Change Email',
   'EmailSetup.SetupToast': 'Email added successfully.',
-  'EmailSetup.ChangeToast': 'Email changed successfully.'
+  'EmailSetup.ChangeToast': 'Email changed successfully.',
+  'ResetPassword.Title': 'Reset Password',
+  'ResetPassword.NoRecovery': 'Since you didn\'t provide a recovery email when setting up your password, your remaining options are either to remember your password or wait 7 days until your password is reset',
+  'ResetPassword.Confirm': 'Are you sure you want to reset your 2-Step Verification password?',
+  'ResetPassword.Success': 'Your 2-Step Verification password was reset.',
+  'ResetPassword.Wait': 'You recently requested a password reset that was canceled. Please wait %s before making a new request.',
+  'ResetPassword.RequestPending': 'You can reset your password in %d ([cancel]())',
+  'ResetPassword.TroubleText': 'If you don’t have access to your recovery email, your remaining options are either to remember your password or wait 7 days until your password is reset.',
+  'ResetPassword.Action': '[Reset password]()',
+  'PasswordDeactivated': 'Password deactivated'
 };
 
 export default lang;

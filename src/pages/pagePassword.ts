@@ -11,8 +11,8 @@ import Page from './page';
 import Button from '../components/button';
 import PasswordInputField from '../components/passwordInputField';
 import PasswordMonkey from '../components/monkeys/password';
-import I18n from '../lib/langPack';
-import LoginPage from './loginPage';
+import I18n, {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
+import LoginPage, {SimpleConfirmationPopup} from './loginPage';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import htmlToSpan from '../helpers/dom/htmlToSpan';
@@ -20,9 +20,16 @@ import replaceContent from '../helpers/dom/replaceContent';
 import toggleDisability from '../helpers/dom/toggleDisability';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../lib/rootScope';
+import anchorCallback from '../helpers/dom/anchorCallback';
+import {toastNew} from '../components/toast';
+import PopupElement, {addCancelButton, PopupButton} from '../components/popups';
+import pageSignIn from './pageSignIn';
+import formatDuration from '../helpers/formatDuration';
+import {wrapFormattedDuration} from '../components/wrappers/wrapDuration';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
+
 
 const onFirstMount = (): Promise<any> => {
   const page = new LoginPage({
@@ -44,7 +51,78 @@ const onFirstMount = (): Promise<any> => {
 
   passwordInput = passwordInputField.input as HTMLInputElement;
 
-  page.inputWrapper.append(passwordInputField.container, btnNext);
+  let resetLoading = false
+  const resetLink = i18n('ForgotPassword', [
+    anchorCallback(() => {
+      if(resetLoading) return;
+      resetLoading = true;
+
+      rootScope.managers.passwordManager.requestRecovery().then((res) => {
+        return import('./pageEmailRecover').then((m) => {
+          m.default.mount({email_pattern: res.email_pattern});
+        })
+      }).catch(async(err: ApiError) => {
+        if(err.type === 'PASSWORD_RECOVERY_NA') {
+          await SimpleConfirmationPopup.show({
+            titleLangKey: 'Login.ResetPassword.Title',
+            descriptionLangKey: 'Login.ResetPassword.NoEmailText',
+            button: {
+              langKey: 'Login.ResetPassword.ResetAccount',
+              isDanger: true
+            }
+          })
+
+          await SimpleConfirmationPopup.show({
+            titleLangKey: 'Login.ResetAccount.Title',
+            descriptionLangKey: 'Login.ResetAccount.Text',
+            button: {
+              langKey: 'Login.ResetPassword.ResetAccount',
+              isDanger: true
+            }
+          })
+
+          // Promise.reject({type: '2FA_CONFIRM_WAIT_518400'})
+          await rootScope.managers.apiManager.invokeApi('account.deleteAccount', {
+            reason: 'Forgot password'
+          })
+          .then(() => {
+            pageSignIn.mount();
+          }).catch((err: ApiError) => {
+            if(err.type === '2FA_RECENT_CONFIRM') {
+              SimpleConfirmationPopup.show({
+                titleLangKey: 'Login.ResetAccountFail.Title',
+                descriptionLangKey: 'Login.ResetAccountFail.TextCancelled',
+                button: {
+                  langKey: 'OK'
+                }
+              })
+            } else if(err.type.startsWith('2FA_CONFIRM_WAIT_')) {
+              const waitTime = +err.type.replace('2FA_CONFIRM_WAIT_', '');
+              SimpleConfirmationPopup.show({
+                titleLangKey: 'Login.ResetAccountFail.Title',
+                descriptionLangKey: 'Login.ResetAccountFail.TextWait',
+                descriptionArgs: [wrapFormattedDuration(formatDuration(waitTime))],
+                button: {
+                  langKey: 'OK'
+                }
+              })
+            } else {
+              console.error(err);
+              toastNew({langPackKey: 'Error.AnError'});
+            }
+          })
+          return
+        }
+
+        toastNew({langPackKey: 'Error.AnError'});
+      }).finally(() => {
+        resetLoading = false;
+      });
+    })
+  ]);
+  resetLink.classList.add('forgot-link');
+
+  page.inputWrapper.append(passwordInputField.container, resetLink, btnNext);
 
   let getStateInterval: number;
 

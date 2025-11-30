@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {_i18n} from '../../../lib/langPack';
 import {EnterCodeStep, EnterEmailStep} from '../../popups/emailSetup';
 import {SliderSuperTab} from '../../slider';
 import {render} from 'solid-js/web';
@@ -18,6 +17,7 @@ class ChangeLoginEmailCodeTab extends SliderSuperTab {
   private dispose: VoidFunction
 
   public init(args: {
+    isInitialSetup?: boolean
     sentCode: AccountSentEmailCode.accountSentEmailCode
   }) {
     this.container.classList.add(styles.container);
@@ -32,7 +32,7 @@ class ChangeLoginEmailCodeTab extends SliderSuperTab {
           this.close()
         }}
         onSuccess={() => {
-          toastNew({langPackKey: 'EmailSetup.ChangeToast'});
+          toastNew({langPackKey: args.isInitialSetup ? 'EmailSetup.SetupToast' : 'EmailSetup.ChangeToast'});
           this.slider.sliceTabsUntilTab(AppSettingsTab, this);
           this.close()
         }}
@@ -49,7 +49,7 @@ class ChangeLoginEmailCodeTab extends SliderSuperTab {
 export default class ChangeLoginEmailTab extends SliderSuperTab {
   private dispose: VoidFunction
 
-  public init() {
+  public init(options: { isInitialSetup?: boolean }) {
     this.container.classList.add(styles.container);
     this.setTitle('EmailSetup.ChangeEmail');
 
@@ -57,8 +57,12 @@ export default class ChangeLoginEmailTab extends SliderSuperTab {
       <EnterEmailStep
         purpose={{_: 'emailVerifyPurposeLoginChange'}}
         footerClass={styles.footer}
+        isInitialSetup={options.isInitialSetup}
         onCodeSent={code => {
-          this.slider.createTab(ChangeLoginEmailCodeTab).open({sentCode: code});
+          this.slider.createTab(ChangeLoginEmailCodeTab).open({
+            sentCode: code,
+            isInitialSetup: options.isInitialSetup
+          });
         }}
       />
     ), this.content)

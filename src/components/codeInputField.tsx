@@ -6,8 +6,9 @@
 
 import styles from './codeInputField.module.scss';
 import classNames from '../helpers/string/classNames';
-import {children, createRoot, createSignal, Index, Ref, Signal} from 'solid-js';
+import {children, createRoot, createSignal, Index, Ref, Show, Signal} from 'solid-js';
 import {subscribeOn} from '../helpers/solid/subscribeOn';
+import {Transition} from '../vendor/solid-transition-group';
 
 export default class CodeInputFieldCompat {
   public container: HTMLDivElement;
@@ -82,7 +83,7 @@ export function CodeInputField(props: {
     inserting: false as boolean,
     start: null as number | null,
     end: null as number | null
-  }
+  };
 
   const syncSelection = (props: {
     start: number | null
@@ -279,7 +280,13 @@ export function CodeInputField(props: {
               (activeIndexStart() <= idx && idx < activeIndexEnd()) && styles.active
             )}
           >
-            {value()[idx]}
+            <Transition>
+              <Show when={value()[idx]}>
+                <div class={styles.digitContent}>
+                  {value()[idx]}
+                </div>
+              </Show>
+            </Transition>
             {isInserting() && value().length === idx && <div class={styles.caret} />}
           </div>
         )}
