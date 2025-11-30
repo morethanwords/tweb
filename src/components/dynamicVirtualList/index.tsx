@@ -42,8 +42,8 @@ export type DynamicVirtualListProps<T, El extends HTMLElement> = {
   maxBatchSize: number;
 };
 
-const viewportThreshold = 0.2;
-const stableResizeTimeout = 100;
+const viewportThreshold = 0.05;
+const stableResizeTimeout = 50;
 const scrollAdjustmentThreshold = 1;
 
 const createListItemStates = <T, >(list: Accessor<T[]>) => {

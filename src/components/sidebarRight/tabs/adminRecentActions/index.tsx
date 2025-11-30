@@ -1,17 +1,17 @@
-import {createEffect, createMemo, createResource, createSignal, For, mapArray, Show} from 'solid-js';
+import {createEffect, createMemo, createResource, createSignal, mapArray, Show} from 'solid-js';
 import {Dynamic, Portal} from 'solid-js/web';
 import {logger} from '../../../../lib/logger';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {ButtonIconTsx} from '../../../buttonIconTsx';
+import {DynamicVirtualList} from '../../../dynamicVirtualList';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
 import Space from '../../../space';
 import {Filters} from './filters';
 import {resolveLogEntry} from './logEntriesResolver';
 import {LogEntry} from './logEntry';
-import styles from './styles.module.scss';
 import {savedLogs} from './savedLogs';
-import {DynamicVirtualList} from '../../../dynamicVirtualList';
+import styles from './styles.module.scss';
 
 
 const log = logger('AdminRecentActionsTab');
@@ -23,7 +23,7 @@ const AdminRecentActionsTab = () => {
   const [isFiltersOpen, setIsFiltersOpen] = createSignal(false);
 
   const [logs] = createResource(async() => {
-    return [...Array.from({length: 200})].flatMap(() => savedLogs);
+    return [...Array.from({length: 10})].flatMap(() => savedLogs);
     // const startTime = performance.now();
     // const result = await rootScope.managers.appChatsManager.getAdminLogs({channelId: tab.payload.channelId})
     // const endTime = performance.now();
