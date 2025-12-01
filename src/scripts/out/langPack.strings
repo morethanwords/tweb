@@ -3407,6 +3407,8 @@
 "AdminRecentActionsFilters.ShowAllAdminActions" = "Show actions of all admins";
 "AdminRecentActionsFilters.NotShowingAdmins_one" = "Not showing %d admin";
 "AdminRecentActionsFilters.NotShowingAdmins_other" = "Not showing %d admins";
+"AdminRecentActionsPlaceholder.Title" = "No actions here yet";
+"AdminRecentActionsPlaceholder.Description" = "The admins have not taken any service actions in the last **48** hours.";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

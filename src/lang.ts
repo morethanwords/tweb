@@ -3923,7 +3923,10 @@ const lang = {
   'AdminRecentActionsFilters.NotShowingAdmins': {
     'one_value': 'Not showing %d admin',
     'other_value': 'Not showing %d admins'
-  }
+  },
+
+  'AdminRecentActionsPlaceholder.Title': 'No actions here yet',
+  'AdminRecentActionsPlaceholder.Description': 'The admins have not taken any service actions in the last **48** hours.'
 };
 
 export default lang;

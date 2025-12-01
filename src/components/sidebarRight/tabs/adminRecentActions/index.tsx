@@ -1,5 +1,6 @@
 import {createEffect, createMemo, createResource, createSignal, mapArray, Show} from 'solid-js';
 import {Dynamic, Portal} from 'solid-js/web';
+import {Transition} from 'solid-transition-group';
 import {keepMe} from '../../../../helpers/keepMe';
 import {logger} from '../../../../lib/logger';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
@@ -8,13 +9,14 @@ import {DynamicVirtualList} from '../../../dynamicVirtualList';
 import ripple from '../../../ripple';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
-import Space from '../../../space';
 import {ExpandToggleButton} from './expandToggleButton';
 import {Filters} from './filters';
 import {resolveLogEntry} from './logEntriesResolver';
 import {LogEntry} from './logEntry';
+import {NoActionsPlaceholder} from './noActionsPlaceholder';
 import {savedLogs} from './savedLogs';
 import styles from './styles.module.scss';
+import pause from '../../../../helpers/schedulers/pause';
 
 keepMe(ripple);
 
@@ -28,6 +30,7 @@ const AdminRecentActionsTab = () => {
   const [isFiltersOpen, setIsFiltersOpen] = createSignal(false);
 
   const [logs] = createResource(async() => {
+    return []
     return [...Array.from({length: 10})].flatMap(() => savedLogs);
     const startTime = performance.now();
     const result = await rootScope.managers.appChatsManager.getAdminLogs({channelId: tab.payload.channelId})
@@ -65,15 +68,26 @@ const AdminRecentActionsTab = () => {
 
   return <>
     <Portal mount={tab.header}>
-      <div class={styles.IconsFlex}>
-        <ExpandToggleButton expanded={areAllExpanded()} onClick={onAllToggle} />
-        <ButtonIconTsx icon='filter' onClick={() => setIsFiltersOpen(!isFiltersOpen())} />
-      </div>
+      <Transition name='fade'>
+        <Show when={logs()?.length}>
+          <div class={styles.IconsFlex}>
+            <ExpandToggleButton expanded={areAllExpanded()} onClick={onAllToggle} />
+            <ButtonIconTsx icon='filter' onClick={() => setIsFiltersOpen(!isFiltersOpen())} />
+          </div>
+        </Show>
+      </Transition>
     </Portal>
     <Portal mount={tab.content}>
       <Filters channelId={tab.payload.channelId} open={isFiltersOpen()} />
     </Portal>
-    <Space amount='6px' />
+
+    <Transition name='fade'>
+      <Show when={logs.state === 'ready' && logs()?.length === 0}>
+        <NoActionsPlaceholder />
+      </Show>
+    </Transition>
+
+
     <DynamicVirtualList
       list={items()}
       measureElementHeight={(el: HTMLDivElement) => el.offsetHeight}
