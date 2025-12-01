@@ -1,17 +1,22 @@
 import {createEffect, createMemo, createResource, createSignal, mapArray, Show} from 'solid-js';
 import {Dynamic, Portal} from 'solid-js/web';
+import {keepMe} from '../../../../helpers/keepMe';
 import {logger} from '../../../../lib/logger';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {ButtonIconTsx} from '../../../buttonIconTsx';
 import {DynamicVirtualList} from '../../../dynamicVirtualList';
+import ripple from '../../../ripple';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
 import Space from '../../../space';
+import {ExpandToggleButton} from './expandToggleButton';
 import {Filters} from './filters';
 import {resolveLogEntry} from './logEntriesResolver';
 import {LogEntry} from './logEntry';
 import {savedLogs} from './savedLogs';
 import styles from './styles.module.scss';
+
+keepMe(ripple);
 
 
 const log = logger('AdminRecentActionsTab');
@@ -24,13 +29,13 @@ const AdminRecentActionsTab = () => {
 
   const [logs] = createResource(async() => {
     return [...Array.from({length: 10})].flatMap(() => savedLogs);
-    // const startTime = performance.now();
-    // const result = await rootScope.managers.appChatsManager.getAdminLogs({channelId: tab.payload.channelId})
-    // const endTime = performance.now();
+    const startTime = performance.now();
+    const result = await rootScope.managers.appChatsManager.getAdminLogs({channelId: tab.payload.channelId})
+    const endTime = performance.now();
 
-    // log(`getAdminLogs took ${endTime - startTime}ms`);
+    log(`getAdminLogs took ${endTime - startTime}ms`);
 
-    // return result;
+    return result;
   });
   const itemsRaw = mapArray(() => logs() || [], log => {
     const [expanded, setExpanded] = createSignal(true);
@@ -46,19 +51,22 @@ const AdminRecentActionsTab = () => {
 
   const isForum = apiManagerProxy.isForum(tab.payload.channelId.toPeerId(true));
 
+  // TODO: remove console.log
   createEffect(() => {
     console.log('logs :>> ', logs());
   });
 
+  const areAllExpanded = createMemo(() => items().every(item => item.expanded()));
+
   const onAllToggle = () => {
-    const areAllExpanded = items().every(item => item.expanded());
-    items().forEach(item => void item.setExpanded(!areAllExpanded));
+    const value = areAllExpanded();
+    items().forEach(item => void item.setExpanded(!value));
   }
 
   return <>
     <Portal mount={tab.header}>
       <div class={styles.IconsFlex}>
-        <ButtonIconTsx icon='down_up' onClick={onAllToggle} />
+        <ExpandToggleButton expanded={areAllExpanded()} onClick={onAllToggle} />
         <ButtonIconTsx icon='filter' onClick={() => setIsFiltersOpen(!isFiltersOpen())} />
       </div>
     </Portal>
