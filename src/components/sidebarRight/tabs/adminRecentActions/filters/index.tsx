@@ -4,6 +4,7 @@ import {Transition} from 'solid-transition-group';
 import {createSetSignal} from '../../../../../helpers/solid/createSetSignal';
 import {I18nTsx} from '../../../../../helpers/solid/i18n';
 import useElementSize from '../../../../../hooks/useElementSize';
+import {AdminLogFilterFlags} from '../../../../../lib/appManagers/appChatsManager';
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import Button from '../../../../buttonTsx';
 import Scrollable from '../../../../scrollable2';
@@ -11,11 +12,21 @@ import Space from '../../../../space';
 import {FilterGroupConfigItem, filterGroupsConfig} from './config';
 import {ExpandableFilterGroup} from './expandableFilterGroup';
 import styles from './styles.module.scss';
+import track from '../../../../../helpers/solid/track';
 
+
+export type CommittedFilters = {
+  flags?: AdminLogFilterFlags;
+  admins?: PeerId[];
+};
 
 type FiltersProps = {
   channelId: ChatId;
   open: boolean;
+  onClose?: () => void;
+
+  committedFilters?: CommittedFilters | null;
+  onCommit?: (filters: CommittedFilters | null) => void;
 };
 
 const adminsFetchLimit = 40; // Have more admins? I'm really sorry :)
@@ -68,10 +79,14 @@ export const Filters = (props: FiltersProps) => {
 
   const isAdminIdSelected = createSelector(
     selectedAdminIds,
-    (id: PeerId, ids) => ids.has(id.toPeerId()));
+    (id: PeerId, ids) => ids.has(id.toPeerId())
+  );
 
   createComputed(() => {
-    setSelectedAdminIds(new Set(allAdminPeerIds()));
+    track(() => props.open);
+
+    setSelectedFlagsStore(props.committedFilters?.flags || getInitialFlagsStore());
+    setSelectedAdminIds(new Set(props.committedFilters?.admins || allAdminPeerIds()));
   });
 
   const flagGroupCheckCount = (group: FilterGroupConfigItem) => {
@@ -98,11 +113,34 @@ export const Filters = (props: FiltersProps) => {
     setSelectedAdminIds(newIds);
   };
 
+  const onReset = () => {
+    props.onCommit(null);
+    props.onClose?.();
+  };
+
+  const onCommit = () => {
+    const activeFlagEntries = Object.entries(selectedFlagsStore).filter(([, value]) => value);
+
+    const flags = activeFlagEntries.length && activeFlagEntries.length < getAllFlagKeys().length ?
+      Object.fromEntries(activeFlagEntries) :
+      undefined;
+
+    const admins = selectedAdminIds().size < allAdminPeerIds().length && selectedAdminIds().size ?
+      Array.from(selectedAdminIds()) :
+      undefined;
+
+    props.onCommit(flags || admins ? {
+      flags,
+      admins
+    } : null);
+    props.onClose?.();
+  };
+
   return (
     <>
       <Transition name='fade'>
         <Show when={props.open}>
-          <div class={styles.Overlay} />
+          <div class={styles.Overlay} onClick={props.onClose} />
         </Show>
       </Transition>
 
@@ -160,9 +198,14 @@ export const Filters = (props: FiltersProps) => {
                     </div>
                   </Show>
                   <Space amount='1rem' />
-                  <Button primary large>
-                    <I18nTsx key='AdminRecentActionsFilters.ApplyFilters' />
-                  </Button>
+                  <div class={styles.Footer}>
+                    <Button class={styles.Button} primary onClick={onReset}>
+                      <I18nTsx key='AdminRecentActionsFilters.ResetFilters' />
+                    </Button>
+                    <Button class={styles.Button} primaryFilled onClick={onCommit}>
+                      <I18nTsx key='AdminRecentActionsFilters.ApplyFilters' />
+                    </Button>
+                  </div>
                 </div>
               </Scrollable>
             </div>
@@ -173,8 +216,10 @@ export const Filters = (props: FiltersProps) => {
   );
 };
 
+const getAllFlagKeys = () => filterGroupsConfig.flatMap(group => group.items.map(item => item.pFlag));
+
 const getInitialFlagsStore = () => {
-  const keys = filterGroupsConfig.flatMap(group => group.items.map(item => item.pFlag));
+  const keys = getAllFlagKeys();
 
   return Object.fromEntries(keys.map(key => [key, true]));
 };

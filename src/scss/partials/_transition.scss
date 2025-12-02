@@ -165,8 +165,16 @@
 .fade-exit-active {
   transition: opacity 0.1s ease-out;
 }
+
+.fade-2-enter-active,
+.fade-2-exit-active {
+  transition: opacity 0.2s ease-out;
+}
+
 .fade-enter,
-.fade-exit-to {
+.fade-exit-to,
+.fade-2-enter,
+.fade-2-exit-to {
   opacity: 0;
 }
 

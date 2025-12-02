@@ -1,4 +1,4 @@
-import {createComputed, createEffect, createMemo, createResource, createSignal, mapArray, onMount, Show} from 'solid-js';
+import {createComputed, createMemo, createResource, createSignal, mapArray, onMount, Show} from 'solid-js';
 import {Dynamic, Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import lastItem from '../../../../helpers/array/lastItem';
@@ -14,7 +14,7 @@ import ripple from '../../../ripple';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
 import {ExpandToggleButton} from './expandToggleButton';
-import {Filters} from './filters';
+import {CommittedFilters, Filters} from './filters';
 import {resolveLogEntry} from './logEntriesResolver';
 import {LogEntry} from './logEntry';
 import {NoActionsPlaceholder} from './noActionsPlaceholder';
@@ -23,12 +23,12 @@ import styles from './styles.module.scss';
 keepMe(ripple);
 
 
-const log = logger('AdminRecentActionsTab');
-
 const fetchLimit = 20; // we don't care if it doesn't fill the viewport, it will rerun anyway
 const fetchThrottleTimeout = 200;
 const maxBatchSize = 20;
 const itemSizeEstimate = 150;
+const animateInDuration = 200;
+const staggerDelay = 40;
 
 const testEmpty = 0;
 
@@ -38,18 +38,32 @@ const AdminRecentActionsTab = () => {
 
   const isForum = apiManagerProxy.isForum(tab.payload.channelId.toPeerId(true));
 
+  let shouldAnimateIn = true, isQueuedUnsettingShouldAnimate = false, reachedTheEnd = false;
+
   const [isFiltersOpen, setIsFiltersOpen] = createSignal(false);
+  const [committedFilters, setCommittedFilters] = createSignal<CommittedFilters | null>(null);
 
   const [logs, setLogs] = createSignal<AdminLog[]>([]);
 
-  // for loading state, then we're fetching more as the user scrolls
-  const [initialLogs] = createResource(() =>
-    testEmpty ?
-    pause(testEmpty).then(() => [] as AdminLog[]) :
+  const fetchLogs = (offsetId?: AdminLog['id']) => committedFilters() ?
+    rootScope.managers.appChatsManager.fetchAdminLogs({
+      channelId: tab.payload.channelId,
+      limit: fetchLimit,
+      admins: committedFilters()?.admins,
+      flags: committedFilters()?.flags,
+      offsetId
+    }) :
     rootScope.managers.appChatsManager.getAdminLogs({
       channelId: tab.payload.channelId,
-      limit: fetchLimit
-    })
+      limit: fetchLimit,
+      offsetId
+    });
+
+  // for loading state, then we're fetching more as the user scrolls
+  const [initialLogs, initialLogsActions] = createResource(() => committedFilters() || {}, () =>
+    testEmpty ?
+      pause(testEmpty).then(() => [] as AdminLog[]) :
+      fetchLogs()
   );
 
   const itemStatesRaw = mapArray(() => logs() || [], log => {
@@ -67,12 +81,12 @@ const AdminRecentActionsTab = () => {
   const areAllExpanded = createMemo(() => itemStates().every(item => item.expanded()));
 
   createComputed(() => {
-    setLogs(initialLogs());
-  });
+    shouldAnimateIn = true;
+    isQueuedUnsettingShouldAnimate = false;
+    reachedTheEnd = false;
 
-  // TODO: remove console.log
-  createEffect(() => {
-    console.log('logs :>> ', logs());
+    setLogs(initialLogs() || []);
+    tab.scrollable.container.scrollTop = 0;
   });
 
   const fetchMore = asyncThrottle(async() => {
@@ -81,8 +95,11 @@ const AdminRecentActionsTab = () => {
     const lastLog = lastItem(logs());
     if(!lastLog) return; // empty list
 
-    const newLogs = await rootScope.managers.appChatsManager.getAdminLogs({channelId: tab.payload.channelId, limit: fetchLimit, offsetId: lastLog?.id});
-    if(!newLogs.length) return;
+    const newLogs = await fetchLogs(lastLog.id)
+    if(!newLogs.length) {
+      reachedTheEnd = true;
+      return;
+    }
 
     const newLogsIds = new Set(newLogs.map(log => String(log.id)));
 
@@ -97,94 +114,103 @@ const AdminRecentActionsTab = () => {
     itemStates().forEach(item => void item.setExpanded(!value));
   };
 
-  let isFirst = true, queuedUnsettingIsFirst = false;
 
   return <>
     <Portal mount={tab.header}>
       <Transition name='fade'>
-        <Show when={logs()?.length}>
+        <Show when={logs().length || committedFilters()}>
           <div class={styles.IconsFlex}>
-            <ExpandToggleButton expanded={areAllExpanded()} onClick={onAllToggle} />
+            <Transition name='fade'>
+              <Show when={logs().length}>
+                <ExpandToggleButton expanded={areAllExpanded()} onClick={onAllToggle} />
+              </Show>
+            </Transition>
             <ButtonIconTsx icon='filter' onClick={() => setIsFiltersOpen(!isFiltersOpen())} />
           </div>
         </Show>
       </Transition>
     </Portal>
     <Portal mount={tab.content}>
-      <Filters channelId={tab.payload.channelId} open={isFiltersOpen()} />
+      <Filters
+        channelId={tab.payload.channelId}
+        open={isFiltersOpen()}
+        onClose={() => setIsFiltersOpen(false)}
+        committedFilters={committedFilters()}
+        onCommit={setCommittedFilters}
+      />
     </Portal>
 
-    <Transition name='fade'>
+    <Transition name='fade-2'>
       <Show when={initialLogs.state === 'ready' && initialLogs()?.length === 0}>
-        <NoActionsPlaceholder />
+        <NoActionsPlaceholder forFilters={!!committedFilters()} />
+      </Show>
+      <Show keyed when={itemStates().length ? initialLogs() : false}>
+        <DynamicVirtualList
+          list={itemStates()}
+          measureElementHeight={(el: HTMLDivElement) => el.offsetHeight}
+          estimateItemHeight={() => itemSizeEstimate}
+          maxBatchSize={maxBatchSize}
+          scrollable={tab.scrollable.container}
+          onNearBottom={fetchMore}
+          Item={(props) => {
+            let ref: HTMLDivElement;
+
+            const item = createMemo(() => props.payload);
+            const log = createMemo(() => item().log);
+
+            const entry = createMemo(() => resolveLogEntry({event: log(), isBroadcast: tab.payload.isBroadcast, isForum}));
+
+            const [forceHide, setForceHide] = createSignal(shouldAnimateIn);
+
+            if(shouldAnimateIn) {
+              onMount(() => {
+                ref?.animate({
+                  opacity: [0, 1],
+                  transform: ['translateY(-4px)', 'translateY(0)']
+                }, {duration: animateInDuration, delay: props.idx * staggerDelay}).finished
+                .then(() => {
+                  setForceHide(false);
+                });
+              });
+
+              if(!isQueuedUnsettingShouldAnimate) {
+                isQueuedUnsettingShouldAnimate = true;
+                queueMicrotask(() => {
+                  shouldAnimateIn = false;
+                });
+              }
+            }
+
+            return (
+              <div
+                ref={(el) => {
+                  ref = el;
+                  if(props.ref instanceof Function) props.ref(el);
+                }}
+                class={styles.Item}
+                classList={{[styles.hidden]: forceHide() || props.isMeasuring}}
+                style={{
+                  '--top': `${props.offset}px`,
+                  '--translation': `${props.translation}px`
+                }}
+              >
+                <Show when={entry()}>
+                  <LogEntry
+                    peerTitle={<PeerTitleTsx peerId={log().user_id.toPeerId()} />}
+                    message={<Dynamic component={entry().Message} />}
+                    date={new Date(log().date * 1000)}
+                    icon='clipboard'
+                    expanded={item().expanded()}
+                    onExpandedChange={(value) => item().setExpanded(value)}
+                    expandableContent={entry().ExpandableContent && <Dynamic component={entry().ExpandableContent} />}
+                  />
+                </Show>
+              </div>
+            )
+          }}
+        />
       </Show>
     </Transition>
-
-
-    <DynamicVirtualList
-      list={itemStates()}
-      measureElementHeight={(el: HTMLDivElement) => el.offsetHeight}
-      estimateItemHeight={() => itemSizeEstimate}
-      maxBatchSize={maxBatchSize}
-      scrollable={tab.scrollable.container}
-      onNearBottom={fetchMore}
-      Item={(props) => {
-        let ref: HTMLDivElement;
-
-        const item = createMemo(() => props.payload);
-        const log = createMemo(() => item().log);
-
-        const entry = createMemo(() => resolveLogEntry({event: log(), isBroadcast: tab.payload.isBroadcast, isForum}));
-
-        const [forceHide, setForceHide] = createSignal(isFirst);
-
-        if(isFirst) {
-          onMount(() => {
-            ref?.animate({
-              opacity: [0, 1],
-              transform: ['translateY(-4px)', 'translateY(0)']
-            }, {duration: 160, delay: props.idx * 40}).finished
-            .then(() => {
-              setForceHide(false);
-            });
-          });
-
-          if(!queuedUnsettingIsFirst) {
-            queuedUnsettingIsFirst = true;
-            queueMicrotask(() => {
-              isFirst = false;
-            });
-          }
-        }
-
-        return (
-          <div
-            ref={(el) => {
-              ref = el;
-              if(props.ref instanceof Function) props.ref(el);
-            }}
-            class={styles.Item}
-            classList={{[styles.hidden]: forceHide() || props.isMeasuring}}
-            style={{
-              '--top': `${props.offset}px`,
-              '--translation': `${props.translation}px`
-            }}
-          >
-            <Show when={entry()}>
-              <LogEntry
-                peerTitle={<PeerTitleTsx peerId={log().user_id.toPeerId()} />}
-                message={<Dynamic component={entry().Message} />}
-                date={new Date(log().date * 1000)}
-                icon='clipboard'
-                expanded={item().expanded()}
-                onExpandedChange={(value) => item().setExpanded(value)}
-                expandableContent={entry().ExpandableContent && <Dynamic component={entry().ExpandableContent} />}
-              />
-            </Show>
-          </div>
-        )
-      }}
-    />
   </>;
 };
 

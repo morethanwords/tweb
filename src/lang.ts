@@ -3916,7 +3916,8 @@ const lang = {
   'AdminRecentActionsFilters.GroupSettings': 'Group Settings',
   'AdminRecentActionsFilters.Messages': 'Messages',
 
-  'AdminRecentActionsFilters.ApplyFilters': 'Apply Filters',
+  'AdminRecentActionsFilters.ApplyFilters': 'Apply',
+  'AdminRecentActionsFilters.ResetFilters': 'Reset',
   'AdminRecentActionsFilters.ByType': 'Filter by type',
   'AdminRecentActionsFilters.ByAdmin': 'Filter by admin',
   'AdminRecentActionsFilters.ShowAllAdminActions': 'Show actions of all admins',
@@ -3926,7 +3927,10 @@ const lang = {
   },
 
   'AdminRecentActionsPlaceholder.Title': 'No actions here yet',
-  'AdminRecentActionsPlaceholder.Description': 'The admins have not taken any service actions in the last **48** hours.'
+  'AdminRecentActionsPlaceholder.Description': 'The admins have not taken any service actions in the last **48** hours.',
+
+  'AdminRecentActionsPlaceholder.WithFilterTitle': 'No results',
+  'AdminRecentActionsPlaceholder.WithFilterDescription': 'Try adjusting your filters or search for a specific action.'
 };
 
 export default lang;

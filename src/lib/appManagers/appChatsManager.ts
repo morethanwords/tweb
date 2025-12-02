@@ -36,6 +36,7 @@ const TEST_SPONSORED = false;
 export type MySponsoredPeer = Omit<SponsoredPeer, 'peer'> & {peer: PeerId};
 
 export type AdminLog = ChannelAdminLogEvent.channelAdminLogEvent;
+export type AdminLogFilterFlags = ChannelsGetAdminLog['events_filter']['pFlags'];
 
 type GetAdminLogsArgs = {
   channelId: ChatId;
@@ -46,7 +47,7 @@ type GetAdminLogsArgs = {
 type FetchAdminLogsArgs = {
   channelId: ChatId;
   offsetId?: AdminLog['id'];
-  filters?: ChannelsGetAdminLog['events_filter']['pFlags'];
+  flags?: AdminLogFilterFlags;
   admins?: UserId[];
   limit: number;
 };
@@ -1020,7 +1021,7 @@ export class AppChatsManager extends AppManager {
 
   private adminLogsFetcherMap = new Map<ChatId, SlicedCachedFetcher<AdminLog>>;
 
-  public fetchAdminLogs({channelId, offsetId, filters, admins, limit}: FetchAdminLogsArgs) {
+  public fetchAdminLogs({channelId, offsetId, flags, admins, limit}: FetchAdminLogsArgs) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'channels.getAdminLog',
       params: {
@@ -1029,9 +1030,9 @@ export class AppChatsManager extends AppManager {
         min_id: 0,
         max_id: offsetId || 0,
         limit,
-        events_filter: filters ? {
+        events_filter: flags ? {
           _: 'channelAdminLogEventsFilter',
-          pFlags: filters
+          pFlags: flags
         } : undefined,
         admins: admins?.map(id => this.appUsersManager.getUserInput(id))
       },
