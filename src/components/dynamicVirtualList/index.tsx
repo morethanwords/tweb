@@ -32,6 +32,7 @@ export type DynamicVirtualListItemProps<T, El extends HTMLElement> = {
   isMeasuring: boolean;
   offset: number;
   translation: number;
+  idx: number;
 };
 
 export type DynamicVirtualListProps<T, El extends HTMLElement> = {
@@ -232,7 +233,7 @@ const createItemComponent = <T, El extends HTMLElement>({
     const owner = getOwner();
     const isCleaned = useIsCleaned();
 
-    const {offset, setCachedHeight} = props.item;
+    const {offset, setCachedHeight, idx} = props.item;
 
     const [stableOffset, setStableOffset] = createSignal(0);
     const [translation, setTranslation] = createSignal(0);
@@ -295,6 +296,7 @@ const createItemComponent = <T, El extends HTMLElement>({
         isMeasuring={isMeasuring()}
         offset={isMeasuring() ? 0 : stableOffset()}
         translation={isMeasuring() ? 0 : translation()}
+        idx={idx()}
       />
     );
   };
