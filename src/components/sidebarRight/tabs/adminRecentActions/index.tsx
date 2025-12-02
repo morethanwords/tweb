@@ -1,7 +1,10 @@
-import {createEffect, createMemo, createResource, createSignal, mapArray, Show} from 'solid-js';
+import {createComputed, createEffect, createMemo, createResource, createSignal, mapArray, Show} from 'solid-js';
 import {Dynamic, Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
+import lastItem from '../../../../helpers/array/lastItem';
 import {keepMe} from '../../../../helpers/keepMe';
+import asyncThrottle from '../../../../helpers/schedulers/asyncThrottle';
+import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
 import {logger} from '../../../../lib/logger';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {ButtonIconTsx} from '../../../buttonIconTsx';
@@ -14,7 +17,6 @@ import {Filters} from './filters';
 import {resolveLogEntry} from './logEntriesResolver';
 import {LogEntry} from './logEntry';
 import {NoActionsPlaceholder} from './noActionsPlaceholder';
-import {savedLogs} from './savedLogs';
 import styles from './styles.module.scss';
 
 keepMe(ripple);
@@ -22,24 +24,26 @@ keepMe(ripple);
 
 const log = logger('AdminRecentActionsTab');
 
+const fetchLimit = 20; // we don't care if it doesn't fill the viewport, it will rerun anyway
+const fetchThrottleTimeout = 200;
+
 const AdminRecentActionsTab = () => {
   const {rootScope, PeerTitleTsx, apiManagerProxy} = useHotReloadGuard();
   const [tab] = useSuperTab<typeof AppAdminRecentActionsTab>();
 
+  const isForum = apiManagerProxy.isForum(tab.payload.channelId.toPeerId(true));
+
   const [isFiltersOpen, setIsFiltersOpen] = createSignal(false);
 
-  const [logs] = createResource(async() => {
-    // return []
-    // return [...Array.from({length: 10})].flatMap(() => savedLogs);
-    const startTime = performance.now();
-    const result = await rootScope.managers.appChatsManager.getAdminLogs({channelId: tab.payload.channelId, limit: 100})
-    const endTime = performance.now();
+  const [logs, setLogs] = createSignal<AdminLog[]>([]);
 
-    log(`getAdminLogs took ${endTime - startTime}ms`);
+  // for loading state, then we're fetching more as the user scrolls
+  const [initialLogs] = createResource(() => rootScope.managers.appChatsManager.getAdminLogs({
+    channelId: tab.payload.channelId,
+    limit: fetchLimit
+  }));
 
-    return result;
-  });
-  const itemsRaw = mapArray(() => logs() || [], log => {
+  const itemStatesRaw = mapArray(() => logs() || [], log => {
     const [expanded, setExpanded] = createSignal(true);
 
     return {
@@ -49,21 +53,40 @@ const AdminRecentActionsTab = () => {
     }
   });
 
-  const items = createMemo(() => itemsRaw());
+  const itemStates = createMemo(() => itemStatesRaw());
 
-  const isForum = apiManagerProxy.isForum(tab.payload.channelId.toPeerId(true));
+  const areAllExpanded = createMemo(() => itemStates().every(item => item.expanded()));
+
+  createComputed(() => {
+    setLogs(initialLogs());
+  });
 
   // TODO: remove console.log
   createEffect(() => {
     console.log('logs :>> ', logs());
   });
 
-  const areAllExpanded = createMemo(() => items().every(item => item.expanded()));
+  const fetchMore = asyncThrottle(async() => {
+    if(initialLogs.loading) return;
+
+    const lastLog = lastItem(logs());
+    if(!lastLog) return; // empty list
+
+    const newLogs = await rootScope.managers.appChatsManager.getAdminLogs({channelId: tab.payload.channelId, limit: fetchLimit, offsetId: lastLog?.id});
+    if(!newLogs.length) return;
+
+    const newLogsIds = new Set(newLogs.map(log => String(log.id)));
+
+    setLogs([
+      ...logs().filter(log => !newLogsIds.has(String(log.id))), // just in case
+      ...newLogs
+    ]);
+  }, fetchThrottleTimeout);
 
   const onAllToggle = () => {
     const value = areAllExpanded();
-    items().forEach(item => void item.setExpanded(!value));
-  }
+    itemStates().forEach(item => void item.setExpanded(!value));
+  };
 
   return <>
     <Portal mount={tab.header}>
@@ -81,18 +104,19 @@ const AdminRecentActionsTab = () => {
     </Portal>
 
     <Transition name='fade'>
-      <Show when={logs.state === 'ready' && logs()?.length === 0}>
+      <Show when={initialLogs.state === 'ready' && initialLogs()?.length === 0}>
         <NoActionsPlaceholder />
       </Show>
     </Transition>
 
 
     <DynamicVirtualList
-      list={items()}
+      list={itemStates()}
       measureElementHeight={(el: HTMLDivElement) => el.offsetHeight}
       estimateItemHeight={() => 100}
       maxBatchSize={20}
       scrollable={tab.scrollable.container}
+      onNearBottom={fetchMore}
       Item={(props) => {
         const item = createMemo(() => props.payload);
         const log = createMemo(() => item().log);

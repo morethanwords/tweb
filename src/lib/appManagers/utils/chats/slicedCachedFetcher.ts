@@ -16,30 +16,39 @@ type GetItemsArgs<T> = FetchItemsArgs & {
 };
 
 export class SlicedCachedFetcher<T> {
-  public cachedSlices: string[][] = [];
+  private isEnd = false;
+  private cachedSlices: string[][] = [];
   private cachedItemsMap = new Map<string, T>();
 
   public async getItems({limit, offsetId, fetchItems, getId}: GetItemsArgs<T>) {
     let result: Array<Id> = [];
     let remainingLimit = limit;
+    let tookFromLastSlice = false;
 
     for(const slice of this.cachedSlices) {
       const idx = slice.indexOf(String(offsetId));
       if(idx === -1) continue;
 
+      tookFromLastSlice = slice === lastItem(this.cachedSlices);
       result = slice.slice(idx, idx + limit + 1); // keeps the item with offsetId to make sure the slices merge if this is the last item in the slice
       remainingLimit = Math.max(0, limit + 1 - result.length);
     }
 
-    if(remainingLimit) {
+    const dontFetch = tookFromLastSlice && this.isEnd;
+
+    if(remainingLimit && !dontFetch) {
       const lastCachedItem = lastItem(result);
       // adding + 1 to include the last cached item for the slices to merge
       const cachedOffsetId = lastCachedItem ? (BigInt(lastItem(result)) + BigInt(1)).toString() : undefined;
 
+      const fetchLimit = remainingLimit + (lastCachedItem ? 1 : 0);
+
       const items = await fetchItems({
-        limit: remainingLimit + (lastCachedItem ? 1 : 0),
+        limit: fetchLimit,
         offsetId: cachedOffsetId || offsetId
       });
+
+      if(items.length < fetchLimit) this.isEnd = true;
 
       insertInSortedSlicedArray(
         items.map(item => String(getId(item))),

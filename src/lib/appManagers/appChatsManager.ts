@@ -35,7 +35,7 @@ const TEST_SPONSORED = false;
 
 export type MySponsoredPeer = Omit<SponsoredPeer, 'peer'> & {peer: PeerId};
 
-type AdminLog = ChannelAdminLogEvent.channelAdminLogEvent;
+export type AdminLog = ChannelAdminLogEvent.channelAdminLogEvent;
 
 type GetAdminLogsArgs = {
   channelId: ChatId;

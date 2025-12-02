@@ -10,6 +10,7 @@ import {
   getOwner,
   type JSX,
   mapArray,
+  mergeProps,
   on,
   onCleanup,
   type Ref,
@@ -40,6 +41,12 @@ export type DynamicVirtualListProps<T, El extends HTMLElement> = {
   measureElementHeight: (el: El) => number;
   Item: (props: DynamicVirtualListItemProps<T, El>) => JSX.Element;
   maxBatchSize: number;
+
+  nearBottomThreshold?: number;
+  /**
+   * Fires constantly when the list is near the bottom, even if empty, refires when the list changes too, dangerous thing
+   */
+  onNearBottom?: () => void;
 };
 
 const viewportThreshold = 0.05;
@@ -99,14 +106,14 @@ const createListHeight = <T, >({listItemStates, estimateItemHeight}: CreateListH
 };
 
 type CreateVirtualRenderStateArgs<T> = {
-  listItemStates: Accessor<ListItemState<T>[]>;
+  list: Accessor<T[]>;
   scrollable: Accessor<HTMLElement>;
   estimateItemHeight: (item: T) => number;
   maxBatchSize: Accessor<number>;
 };
 
 const createVirtualRenderState = <T, >({
-  listItemStates,
+  list,
   scrollable,
   maxBatchSize: batchSize,
   estimateItemHeight
@@ -115,6 +122,8 @@ const createVirtualRenderState = <T, >({
   const size = useElementSize(scrollable);
 
   const clientHeight = () => size.height;
+
+  const listItemStates = createListItemStates(list);
 
   const [height, setHeight] = createListHeight({
     listItemStates,
@@ -201,7 +210,7 @@ const createVirtualRenderState = <T, >({
     });
   });
 
-  return {height, renderedItems};
+  return {scrollTop, clientHeight, height, renderedItems};
 };
 
 type CreateItemComponentArgs<T, El extends HTMLElement> = {
@@ -292,16 +301,24 @@ const createItemComponent = <T, El extends HTMLElement>({
 };
 
 export const DynamicVirtualList = <T, El extends HTMLElement>(
-  props: DynamicVirtualListProps<T, El>,
+  inProps: DynamicVirtualListProps<T, El>,
 ) => {
-  const listItemStates = createListItemStates(() => props.list);
+  const props = mergeProps({nearBottomThreshold: 120}, inProps)
 
-  const {height, renderedItems} = createVirtualRenderState({
-    listItemStates,
+  const {scrollTop, clientHeight, height, renderedItems} = createVirtualRenderState({
+    list: () => props.list,
     estimateItemHeight: (...args) => props.estimateItemHeight(...args),
     maxBatchSize: () => props.maxBatchSize,
     scrollable: () => props.scrollable
   });
+
+  createEffect(() => {
+    if(!props.onNearBottom) return;
+
+    if(scrollTop() + clientHeight() >= height() - props.nearBottomThreshold) {
+      untrack(() => props.onNearBottom());
+    }
+  })
 
   const Item = createItemComponent({
     component: () => props.Item,
