@@ -16,7 +16,6 @@ import {LogEntry} from './logEntry';
 import {NoActionsPlaceholder} from './noActionsPlaceholder';
 import {savedLogs} from './savedLogs';
 import styles from './styles.module.scss';
-import pause from '../../../../helpers/schedulers/pause';
 
 keepMe(ripple);
 
@@ -30,10 +29,10 @@ const AdminRecentActionsTab = () => {
   const [isFiltersOpen, setIsFiltersOpen] = createSignal(false);
 
   const [logs] = createResource(async() => {
-    return []
-    return [...Array.from({length: 10})].flatMap(() => savedLogs);
+    // return []
+    // return [...Array.from({length: 10})].flatMap(() => savedLogs);
     const startTime = performance.now();
-    const result = await rootScope.managers.appChatsManager.getAdminLogs({channelId: tab.payload.channelId})
+    const result = await rootScope.managers.appChatsManager.getAdminLogs({channelId: tab.payload.channelId, limit: 100})
     const endTime = performance.now();
 
     log(`getAdminLogs took ${endTime - startTime}ms`);
@@ -98,7 +97,7 @@ const AdminRecentActionsTab = () => {
         const item = createMemo(() => props.payload);
         const log = createMemo(() => item().log);
 
-        const entry = () => resolveLogEntry({event: log(), isBroadcast: tab.payload.isBroadcast, isForum});
+        const entry = createMemo(() => resolveLogEntry({event: log(), isBroadcast: tab.payload.isBroadcast, isForum}));
 
         return (
           <div

@@ -12,7 +12,7 @@
 import deepEqual from '../../helpers/object/deepEqual';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {ChannelParticipant, ChannelsCreateChannel, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesChats, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, Update, Updates} from '../../layer';
+import {ChannelAdminLogEvent, ChannelParticipant, ChannelsCreateChannel, ChannelsGetAdminLog, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesChats, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, Update, Updates} from '../../layer';
 import {AppManager} from './manager';
 import hasRights from './utils/chats/hasRights';
 import getParticipantPeerId from './utils/chats/getParticipantPeerId';
@@ -24,6 +24,7 @@ import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getPeerId from './utils/peers/getPeerId';
 import callbackify from '../../helpers/callbackify';
+import {SlicedCachedFetcher} from './utils/chats/slicedCachedFetcher';
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] |
@@ -34,8 +35,20 @@ const TEST_SPONSORED = false;
 
 export type MySponsoredPeer = Omit<SponsoredPeer, 'peer'> & {peer: PeerId};
 
+type AdminLog = ChannelAdminLogEvent.channelAdminLogEvent;
+
 type GetAdminLogsArgs = {
   channelId: ChatId;
+  offsetId?: AdminLog['id'];
+  limit: number;
+};
+
+type FetchAdminLogsArgs = {
+  channelId: ChatId;
+  offsetId?: AdminLog['id'];
+  filters?: ChannelsGetAdminLog['events_filter']['pFlags'];
+  admins?: UserId[];
+  limit: number;
 };
 
 export class AppChatsManager extends AppManager {
@@ -1005,22 +1018,48 @@ export class AppChatsManager extends AppManager {
     })
   }
 
-  public getAdminLogs({channelId}: GetAdminLogsArgs) {
+  private adminLogsFetcherMap = new Map<ChatId, SlicedCachedFetcher<AdminLog>>;
+
+  public fetchAdminLogs({channelId, offsetId, filters, admins, limit}: FetchAdminLogsArgs) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'channels.getAdminLog',
       params: {
         channel: this.getChannelInput(channelId),
         q: '',
         min_id: 0,
-        max_id: 0,
-        limit: 100
+        max_id: offsetId || 0,
+        limit,
+        events_filter: filters ? {
+          _: 'channelAdminLogEventsFilter',
+          pFlags: filters
+        } : undefined,
+        admins: admins?.map(id => this.appUsersManager.getUserInput(id))
       },
       processResult: (result) => {
         this.appUsersManager.saveApiUsers(result.users);
         this.appChatsManager.saveApiChats(result.chats);
         return result.events;
       }
+    })
+  }
+
+  public async getAdminLogs({channelId, offsetId, limit}: GetAdminLogsArgs) {
+    const cachedFetcher = this.adminLogsFetcherMap.get(channelId) || new SlicedCachedFetcher;
+    if(!this.adminLogsFetcherMap.has(channelId)) this.adminLogsFetcherMap.set(channelId, cachedFetcher);
+
+    const items = await cachedFetcher.getItems({
+      offsetId,
+      limit,
+      fetchItems: ({offsetId, limit}) => this.fetchAdminLogs({channelId, offsetId, limit}),
+      getId: (log) => log.id
     });
+
+    // const slices = cachedFetcher.cachedSlices.map(s => [...s])
+
+    // MTProtoMessagePort.getInstance<false>().invoke('log', {m: 'my-debug', items, slices})
+    // console.log('my-debug', {items, slices})
+
+    return items;
   }
 
   private onUpdateChannelParticipant = (update: Update.updateChannelParticipant) => {
