@@ -24,6 +24,7 @@ import {useIsCleaned} from '../../hooks/useIsCleaned';
 import {useResizeObserver} from '../../hooks/useResizeObserver';
 import {useScrollTop} from '../../hooks/useScrollTop';
 import {lowerBound} from './lowerBound';
+import styles from './styles.module.scss';
 
 
 export type DynamicVirtualListItemProps<T, El extends HTMLElement> = {
@@ -334,7 +335,7 @@ export const DynamicVirtualList = <T, El extends HTMLElement>(
   });
 
   return (
-    <div style={{height: `${height()}px`, position: 'relative'}}>
+    <div class={styles.Container} style={{'--height': `${height()}px`}}>
       <For each={renderedItems()}>{item => <Item item={/* @once */ item} />}</For>
     </div>
   );

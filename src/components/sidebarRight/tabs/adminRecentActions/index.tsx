@@ -165,9 +165,8 @@ const AdminRecentActionsTab = () => {
 
     <Transition
       name='fade-2'
-      onExit={(_el) => {
-        const el = _el as HTMLElement;
-        el.style.position = 'absolute';
+      onExit={(el) => {
+        el.classList.add(styles.absolute);
       }}
     >
       <Show when={initialLogs.state === 'ready' && initialLogs()?.length === 0}>
