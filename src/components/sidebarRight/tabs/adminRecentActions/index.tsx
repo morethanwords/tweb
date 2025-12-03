@@ -1,10 +1,12 @@
-import {batch, createComputed, createMemo, createResource, createSelector, createSignal, mapArray, onMount, Show} from 'solid-js';
+import {batch, createComputed, createMemo, createResource, createSelector, createSignal, onMount, Show} from 'solid-js';
 import {Dynamic, Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import lastItem from '../../../../helpers/array/lastItem';
 import {keepMe} from '../../../../helpers/keepMe';
+import liteMode from '../../../../helpers/liteMode';
 import asyncThrottle from '../../../../helpers/schedulers/asyncThrottle';
 import pause from '../../../../helpers/schedulers/pause';
+import {createSetSignal} from '../../../../helpers/solid/createSetSignal';
 import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {ButtonIconTsx} from '../../../buttonIconTsx';
@@ -18,7 +20,6 @@ import {groupToIconMap, resolveLogEntry} from './logEntriesResolver';
 import {LogEntry} from './logEntry';
 import {NoActionsPlaceholder} from './noActionsPlaceholder';
 import styles from './styles.module.scss';
-import {createSetSignal} from '../../../../helpers/solid/createSetSignal';
 
 keepMe(ripple);
 
@@ -29,8 +30,9 @@ const maxBatchSize = 20;
 const itemSizeEstimate = 70;
 const itemSizeEstimateExpanded = 120;
 const animateInDuration = 200;
-const staggerDelay = 10;
+const staggerDelay = 20;
 const staggerDelayExpanded = 40;
+const reAnimateDelay = 120;
 
 const testEmpty = 0;
 
@@ -40,7 +42,10 @@ const AdminRecentActionsTab = () => {
 
   const isForum = apiManagerProxy.isForum(tab.payload.channelId.toPeerId(true));
 
-  let shouldAnimateIn = true, isQueuedUnsettingShouldAnimate = false, reachedTheEnd = false;
+  let shouldAnimateIn = true,
+    isQueuedUnsettingShouldAnimate = false,
+    isFirstAnimation = true,
+    reachedTheEnd = false;
 
   const [isFiltersOpen, setIsFiltersOpen] = createSignal(false);
   const [committedFilters, setCommittedFilters] = createSignal<CommittedFilters | null>(null);
@@ -64,23 +69,11 @@ const AdminRecentActionsTab = () => {
     });
 
   // for loading state, then we're fetching more as the user scrolls
-  const [initialLogs, initialLogsActions] = createResource(() => committedFilters() || {}, () =>
+  const [initialLogs] = createResource(() => committedFilters() || {}, () =>
     testEmpty ?
       pause(testEmpty).then(() => [] as AdminLog[]) :
       fetchLogs()
   );
-
-  const itemStatesRaw = mapArray(() => logs() || [], log => {
-    const [expanded, setExpanded] = createSignal(true);
-
-    return {
-      log,
-      expanded,
-      setExpanded
-    }
-  });
-
-  const itemStates = createMemo(() => itemStatesRaw());
 
   const areAllExpanded = createMemo(() => cachedAreAllExpanded() && !toggledLogs().size);
 
@@ -104,7 +97,7 @@ const AdminRecentActionsTab = () => {
   });
 
   const fetchMore = asyncThrottle(async() => {
-    if(initialLogs.loading) return;
+    if(initialLogs.loading || reachedTheEnd) return;
 
     const lastLog = lastItem(logs());
     if(!lastLog) return; // empty list
@@ -170,13 +163,19 @@ const AdminRecentActionsTab = () => {
       />
     </Portal>
 
-    <Transition name='fade-2'>
+    <Transition
+      name='fade-2'
+      onExit={(_el) => {
+        const el = _el as HTMLElement;
+        el.style.position = 'absolute';
+      }}
+    >
       <Show when={initialLogs.state === 'ready' && initialLogs()?.length === 0}>
         <NoActionsPlaceholder forFilters={!!committedFilters()} />
       </Show>
-      <Show keyed when={itemStates().length ? initialLogs() : false}>
+      <Show keyed when={logs().length ? initialLogs() : false}>
         <DynamicVirtualList
-          list={itemStates()}
+          list={logs()}
           measureElementHeight={(el: HTMLDivElement) => el.offsetHeight}
           estimateItemHeight={() => cachedAreAllExpanded() ? itemSizeEstimateExpanded : itemSizeEstimate}
           maxBatchSize={maxBatchSize}
@@ -186,21 +185,22 @@ const AdminRecentActionsTab = () => {
           Item={(props) => {
             let ref: HTMLDivElement;
 
-            const item = createMemo(() => props.payload);
-            const log = createMemo(() => item().log);
+            const log = createMemo(() => props.payload);
 
             const entry = createMemo(() => resolveLogEntry({event: log(), isBroadcast: tab.payload.isBroadcast, isForum}));
 
-            const [forceHide, setForceHide] = createSignal(shouldAnimateIn);
+            const areAnimationsAvailable = liteMode.isAvailable('animations');
 
-            if(shouldAnimateIn) {
+            const [forceHide, setForceHide] = createSignal(areAnimationsAvailable && shouldAnimateIn);
+
+            if(shouldAnimateIn && areAnimationsAvailable) {
               onMount(() => {
                 ref?.animate({
                   opacity: [0, 1],
                   transform: ['translateY(-4px)', 'translateY(0)']
                 }, {
                   duration: animateInDuration,
-                  delay: props.idx * (cachedAreAllExpanded() ? staggerDelayExpanded : staggerDelay)
+                  delay: props.idx * (cachedAreAllExpanded() ? staggerDelayExpanded : staggerDelay) + (!isFirstAnimation ? reAnimateDelay : 0)
                 }).finished
                 .then(() => {
                   setForceHide(false);
@@ -211,6 +211,7 @@ const AdminRecentActionsTab = () => {
                 isQueuedUnsettingShouldAnimate = true;
                 queueMicrotask(() => {
                   shouldAnimateIn = false;
+                  isFirstAnimation = false;
                 });
               }
             }
