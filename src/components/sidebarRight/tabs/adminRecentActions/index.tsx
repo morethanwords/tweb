@@ -1,4 +1,4 @@
-import {createComputed, createMemo, createResource, createSignal, mapArray, onMount, Show} from 'solid-js';
+import {batch, createComputed, createMemo, createResource, createSelector, createSignal, mapArray, onMount, Show} from 'solid-js';
 import {Dynamic, Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import lastItem from '../../../../helpers/array/lastItem';
@@ -19,16 +19,19 @@ import {resolveLogEntry} from './logEntriesResolver';
 import {LogEntry} from './logEntry';
 import {NoActionsPlaceholder} from './noActionsPlaceholder';
 import styles from './styles.module.scss';
+import {createSetSignal} from '../../../../helpers/solid/createSetSignal';
 
 keepMe(ripple);
 
 
-const fetchLimit = 20; // we don't care if it doesn't fill the viewport, it will rerun anyway
+const fetchLimit = 30; // we don't care if it doesn't fill the viewport, it will refetch immediately anyway
 const fetchThrottleTimeout = 200;
 const maxBatchSize = 20;
-const itemSizeEstimate = 150;
+const itemSizeEstimate = 70;
+const itemSizeEstimateExpanded = 120;
 const animateInDuration = 200;
-const staggerDelay = 40;
+const staggerDelay = 10;
+const staggerDelayExpanded = 40;
 
 const testEmpty = 0;
 
@@ -42,6 +45,8 @@ const AdminRecentActionsTab = () => {
 
   const [isFiltersOpen, setIsFiltersOpen] = createSignal(false);
   const [committedFilters, setCommittedFilters] = createSignal<CommittedFilters | null>(null);
+  const [cachedAreAllExpanded, setCachedAreAllExpanded] = createSignal(true);
+  const [toggledLogs, setToggledLogs] = createSetSignal<AdminLog>();
 
   const [logs, setLogs] = createSignal<AdminLog[]>([]);
 
@@ -78,14 +83,24 @@ const AdminRecentActionsTab = () => {
 
   const itemStates = createMemo(() => itemStatesRaw());
 
-  const areAllExpanded = createMemo(() => itemStates().every(item => item.expanded()));
+  const areAllExpanded = createMemo(() => cachedAreAllExpanded() && !toggledLogs().size);
+
+  const isExpanded = createSelector(
+    () => [cachedAreAllExpanded(), toggledLogs()] as const,
+    (log: AdminLog, [cachedAreAllExpanded, toggledLogs]) => {
+      return cachedAreAllExpanded ? !toggledLogs.has(log) : toggledLogs.has(log)
+    }
+  );
 
   createComputed(() => {
     shouldAnimateIn = true;
     isQueuedUnsettingShouldAnimate = false;
     reachedTheEnd = false;
 
-    setLogs(initialLogs() || []);
+    batch(() => {
+      setLogs(initialLogs() || []);
+      setToggledLogs(new Set<AdminLog>);
+    });
     tab.scrollable.container.scrollTop = 0;
   });
 
@@ -111,13 +126,15 @@ const AdminRecentActionsTab = () => {
 
   const onAllToggle = () => {
     const value = areAllExpanded();
-    itemStates().forEach(item => void item.setExpanded(!value));
+    batch(() => {
+      setCachedAreAllExpanded(!value);
+      setToggledLogs(new Set<AdminLog>);
+    });
   };
-
 
   return <>
     <Portal mount={tab.header}>
-      <Transition name='fade'>
+      <Transition name='fade' mode='outin'>
         <Show when={logs().length || committedFilters()}>
           <div class={styles.IconsFlex}>
             <Transition name='fade'>
@@ -148,7 +165,7 @@ const AdminRecentActionsTab = () => {
         <DynamicVirtualList
           list={itemStates()}
           measureElementHeight={(el: HTMLDivElement) => el.offsetHeight}
-          estimateItemHeight={() => itemSizeEstimate}
+          estimateItemHeight={() => cachedAreAllExpanded() ? itemSizeEstimateExpanded : itemSizeEstimate}
           maxBatchSize={maxBatchSize}
           scrollable={tab.scrollable.container}
           onNearBottom={fetchMore}
@@ -167,7 +184,10 @@ const AdminRecentActionsTab = () => {
                 ref?.animate({
                   opacity: [0, 1],
                   transform: ['translateY(-4px)', 'translateY(0)']
-                }, {duration: animateInDuration, delay: props.idx * staggerDelay}).finished
+                }, {
+                  duration: animateInDuration,
+                  delay: props.idx * (cachedAreAllExpanded() ? staggerDelayExpanded : staggerDelay)
+                }).finished
                 .then(() => {
                   setForceHide(false);
                 });
@@ -200,8 +220,12 @@ const AdminRecentActionsTab = () => {
                     message={<Dynamic component={entry().Message} />}
                     date={new Date(log().date * 1000)}
                     icon='clipboard'
-                    expanded={item().expanded()}
-                    onExpandedChange={(value) => item().setExpanded(value)}
+                    expanded={isExpanded(log())}
+                    onExpandedChange={(value) => setToggledLogs(prev => {
+                      const set = new Set(prev);
+                      set.has(log()) ? set.delete(log()) : set.add(log());
+                      return set;
+                    })}
                     expandableContent={entry().ExpandableContent && <Dynamic component={entry().ExpandableContent} />}
                   />
                 </Show>

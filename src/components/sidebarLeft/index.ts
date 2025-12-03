@@ -101,8 +101,11 @@ import useHasFoldersSidebar, {useIsSidebarCollapsed} from '../../stores/foldersS
 import isObject from '../../helpers/object/isObject';
 import {useAppSettings} from '../../stores/appSettings';
 import {openEmojiStatusPicker} from './emojiStatusPicker';
+import SlicedArray from '../../helpers/slicedArray';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
+
+(window as any).SlicedArray = SlicedArray
 
 type SearchInitResult = {
   open: (focus?: boolean) => void;
