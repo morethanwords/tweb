@@ -15,7 +15,7 @@ import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
 import {ExpandToggleButton} from './expandToggleButton';
 import {CommittedFilters, Filters} from './filters';
-import {resolveLogEntry} from './logEntriesResolver';
+import {groupToIconMap, resolveLogEntry} from './logEntriesResolver';
 import {LogEntry} from './logEntry';
 import {NoActionsPlaceholder} from './noActionsPlaceholder';
 import styles from './styles.module.scss';
@@ -219,7 +219,7 @@ const AdminRecentActionsTab = () => {
                     peerTitle={<PeerTitleTsx peerId={log().user_id.toPeerId()} />}
                     message={<Dynamic component={entry().Message} />}
                     date={new Date(log().date * 1000)}
-                    icon='clipboard'
+                    icon={groupToIconMap[entry().group]}
                     expanded={isExpanded(log())}
                     onExpandedChange={(value) => setToggledLogs(prev => {
                       const set = new Set(prev);

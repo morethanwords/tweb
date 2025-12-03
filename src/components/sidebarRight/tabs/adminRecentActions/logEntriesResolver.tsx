@@ -13,10 +13,30 @@ import {LogDiff} from './logDiff';
 import {getPhoto} from './utils';
 
 
+export type GroupType =
+  | 'info'
+  | 'identity'
+  | 'media'
+  | 'permissions'
+  | 'messages'
+  | 'participants'
+  | 'invites'
+  | 'links'
+  | 'location'
+  | 'calls'
+  | 'topics'
+  | 'appearance'
+  | 'reactions'
+  | 'forum'
+  | 'translations'
+  | 'other';
+
 type MapCallbackResult = {
   // Making them as components to avoid rendering when not expanded, and being able to duplicate when needed
   Message: Component;
   ExpandableContent?: Component;
+
+  group: GroupType;
 };
 
 type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
@@ -27,21 +47,24 @@ type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
 
 type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: MapCallbackArgs<Key>) => MapCallbackResult;
 
-
 const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>} = {
   'channelAdminLogEventActionChangeTitle': ({action}) => ({
+    group: 'info',
     Message: () => i18n('AdminRecentActionMessage.ChangeTitle'),
     ExpandableContent: () => <LogDiff added={action.new_value} removed={action.prev_value} />
   }),
   'channelAdminLogEventActionChangeAbout': ({action, isBroadcast}) => ({
+    group: 'info',
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeAboutChannel' : 'AdminRecentActionMessage.ChangeAboutGroup'),
     ExpandableContent: () => <LogDiff added={action.new_value} removed={action.prev_value} />
   }),
   'channelAdminLogEventActionChangeUsername': ({action, isBroadcast}) => ({
+    group: 'identity',
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeUsernameChannel' : 'AdminRecentActionMessage.ChangeUsernameGroup'),
     ExpandableContent: () => <LogDiff added={action.new_value} removed={action.prev_value} />
   }),
   'channelAdminLogEventActionChangePhoto': ({action, isBroadcast, isForum}) => ({
+    group: 'media',
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangePhotoChannel' : 'AdminRecentActionMessage.ChangePhotoGroup'),
     ExpandableContent: () => (
       <LogDiff
@@ -52,15 +75,19 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     )
   }),
   'channelAdminLogEventActionToggleInvites': () => ({
+    group: 'invites',
     Message: () => i18n('AdminRecentActionMessage.ToggleInvites')
   }),
   'channelAdminLogEventActionToggleSignatures': () => ({
+    group: 'identity',
     Message: () => i18n('AdminRecentActionMessage.ToggleSignatures')
   }),
   'channelAdminLogEventActionUpdatePinned': () => ({
+    group: 'messages',
     Message: () => i18n('AdminRecentActionMessage.UpdatePinnedMessage')
   }),
   'channelAdminLogEventActionEditMessage': ({action}) => ({
+    group: 'messages',
     Message: () => i18n('AdminRecentActionMessage.EditedMessage'),
     ExpandableContent: () => {
       const prevPhoto = getPhoto(action.prev_message);
@@ -93,6 +120,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     }
   }),
   'channelAdminLogEventActionDeleteMessage': ({action}) => ({
+    group: 'messages',
     Message: () => i18n('AdminRecentActionMessage.DeletedMessage'),
     ExpandableContent: () => {
       const prevPhoto = getPhoto(action.message);
@@ -120,18 +148,23 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     }
   }),
   'channelAdminLogEventActionParticipantJoin': () => ({
+    group: 'participants',
     Message: () => i18n('AdminRecentActionMessage.ParticipantJoined')
   }),
   'channelAdminLogEventActionParticipantLeave': () => ({
+    group: 'participants',
     Message: () => i18n('AdminRecentActionMessage.ParticipantLeft')
   }),
   'channelAdminLogEventActionParticipantInvite': () => ({
+    group: 'invites',
     Message: () => i18n('AdminRecentActionMessage.ParticipantInvited')
   }),
   'channelAdminLogEventActionParticipantToggleBan': () => ({
+    group: 'permissions',
     Message: () => i18n('AdminRecentActionMessage.BanToggled')
   }),
   'channelAdminLogEventActionParticipantToggleAdmin': ({action, isBroadcast}) => ({
+    group: 'permissions',
     Message: () => i18n('AdminRecentActionMessage.AdminToggled'),
     ExpandableContent: () => {
       const {PeerTitleTsx} = useHotReloadGuard();
@@ -158,114 +191,151 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     }
   }),
   'channelAdminLogEventActionChangeStickerSet': () => ({
+    group: 'appearance',
     Message: () => i18n('AdminRecentActionMessage.ChangeStickerSet')
   }),
   'channelAdminLogEventActionTogglePreHistoryHidden': () => ({
+    group: 'permissions',
     Message: () => i18n('AdminRecentActionMessage.TogglePreHistoryHidden')
   }),
   'channelAdminLogEventActionDefaultBannedRights': () => ({
+    group: 'permissions',
     Message: () => i18n('AdminRecentActionMessage.DefaultBannedRightsChanged')
   }),
   'channelAdminLogEventActionStopPoll': () => ({
+    group: 'messages',
     Message: () => i18n('AdminRecentActionMessage.PollStopped')
   }),
   'channelAdminLogEventActionChangeLinkedChat': () => ({
+    group: 'links',
     Message: () => i18n('AdminRecentActionMessage.ChangeLinkedChat')
   }),
   'channelAdminLogEventActionChangeLocation': () => ({
+    group: 'location',
     Message: () => i18n('AdminRecentActionMessage.ChangeLocation')
   }),
   'channelAdminLogEventActionToggleSlowMode': () => ({
+    group: 'messages',
     Message: () => i18n('AdminRecentActionMessage.ToggleSlowMode')
   }),
   'channelAdminLogEventActionStartGroupCall': () => ({
+    group: 'calls',
     Message: () => i18n('AdminRecentActionMessage.StartGroupCall')
   }),
   'channelAdminLogEventActionDiscardGroupCall': () => ({
+    group: 'calls',
     Message: () => i18n('AdminRecentActionMessage.DiscardGroupCall')
   }),
   'channelAdminLogEventActionParticipantMute': () => ({
+    group: 'calls',
     Message: () => i18n('AdminRecentActionMessage.ParticipantMuted')
   }),
   'channelAdminLogEventActionParticipantUnmute': () => ({
+    group: 'calls',
     Message: () => i18n('AdminRecentActionMessage.ParticipantUnmuted')
   }),
   'channelAdminLogEventActionToggleGroupCallSetting': () => ({
+    group: 'calls',
     Message: () => i18n('AdminRecentActionMessage.ToggleGroupCallSetting')
   }),
   'channelAdminLogEventActionParticipantJoinByInvite': () => ({
+    group: 'invites',
     Message: () => i18n('AdminRecentActionMessage.ParticipantJoinedByInvite')
   }),
   'channelAdminLogEventActionExportedInviteDelete': () => ({
+    group: 'invites',
     Message: () => i18n('AdminRecentActionMessage.ExportedInviteDeleted')
   }),
   'channelAdminLogEventActionExportedInviteRevoke': () => ({
+    group: 'invites',
     Message: () => i18n('AdminRecentActionMessage.ExportedInviteRevoked')
   }),
   'channelAdminLogEventActionExportedInviteEdit': () => ({
+    group: 'invites',
     Message: () => i18n('AdminRecentActionMessage.ExportedInviteEdited')
   }),
   'channelAdminLogEventActionParticipantVolume': () => ({
+    group: 'calls',
     Message: () => i18n('AdminRecentActionMessage.ParticipantVolumeChanged')
   }),
   'channelAdminLogEventActionChangeHistoryTTL': () => ({
+    group: 'messages',
     Message: () => i18n('AdminRecentActionMessage.ChangeHistoryTTL')
   }),
   'channelAdminLogEventActionParticipantJoinByRequest': () => ({
+    group: 'participants',
     Message: () => i18n('AdminRecentActionMessage.ParticipantJoinedByRequest')
   }),
   'channelAdminLogEventActionToggleNoForwards': () => ({
+    group: 'permissions',
     Message: () => i18n('AdminRecentActionMessage.ToggleNoForwards')
   }),
   'channelAdminLogEventActionSendMessage': () => ({
+    group: 'messages',
     Message: () => i18n('AdminRecentActionMessage.MessageSent')
   }),
   'channelAdminLogEventActionChangeAvailableReactions': () => ({
+    group: 'reactions',
     Message: () => i18n('AdminRecentActionMessage.ChangeAvailableReactions')
   }),
   'channelAdminLogEventActionChangeUsernames': () => ({
+    group: 'identity',
     Message: () => i18n('AdminRecentActionMessage.ChangeUsernames')
   }),
   'channelAdminLogEventActionToggleForum': () => ({
+    group: 'forum',
     Message: () => i18n('AdminRecentActionMessage.ToggleForum')
   }),
   'channelAdminLogEventActionCreateTopic': () => ({
+    group: 'topics',
     Message: () => i18n('AdminRecentActionMessage.TopicCreated')
   }),
   'channelAdminLogEventActionEditTopic': () => ({
+    group: 'topics',
     Message: () => i18n('AdminRecentActionMessage.TopicEdited')
   }),
   'channelAdminLogEventActionDeleteTopic': () => ({
+    group: 'topics',
     Message: () => i18n('AdminRecentActionMessage.TopicDeleted')
   }),
   'channelAdminLogEventActionPinTopic': () => ({
+    group: 'topics',
     Message: () => i18n('AdminRecentActionMessage.TopicPinned')
   }),
   'channelAdminLogEventActionToggleAntiSpam': () => ({
+    group: 'permissions',
     Message: () => i18n('AdminRecentActionMessage.ToggleAntiSpam')
   }),
   'channelAdminLogEventActionChangePeerColor': () => ({
+    group: 'appearance',
     Message: () => i18n('AdminRecentActionMessage.ChangePeerColor')
   }),
   'channelAdminLogEventActionChangeProfilePeerColor': () => ({
+    group: 'appearance',
     Message: () => i18n('AdminRecentActionMessage.ChangeProfilePeerColor')
   }),
   'channelAdminLogEventActionChangeWallpaper': () => ({
+    group: 'appearance',
     Message: () => i18n('AdminRecentActionMessage.ChangeWallpaper')
   }),
   'channelAdminLogEventActionChangeEmojiStatus': () => ({
+    group: 'appearance',
     Message: () => i18n('AdminRecentActionMessage.ChangeEmojiStatus')
   }),
   'channelAdminLogEventActionChangeEmojiStickerSet': () => ({
+    group: 'appearance',
     Message: () => i18n('AdminRecentActionMessage.ChangeEmojiStickerSet')
   }),
   'channelAdminLogEventActionToggleSignatureProfiles': () => ({
+    group: 'identity',
     Message: () => i18n('AdminRecentActionMessage.ToggleSignatureProfiles')
   }),
   'channelAdminLogEventActionParticipantSubExtend': () => ({
+    group: 'participants',
     Message: () => i18n('AdminRecentActionMessage.ParticipantSubscriptionExtended')
   }),
   'channelAdminLogEventActionToggleAutotranslation': () => ({
+    group: 'translations',
     Message: () => i18n('AdminRecentActionMessage.ToggleAutoTranslation')
   })
 };
@@ -282,4 +352,23 @@ export const resolveLogEntry = ({event, isBroadcast, isForum}: ResolveLogEntryAr
     return null;
   }
   return resolver({action: event.action as never, isBroadcast, isForum});
+};
+
+export const groupToIconMap: Record<GroupType, Icon> = {
+  info: 'info',
+  identity: 'username',
+  media: 'image',
+  permissions: 'permissions',
+  messages: 'message',
+  participants: 'group',
+  invites: 'adduser',
+  links: 'link',
+  location: 'location',
+  calls: 'phone',
+  topics: 'topics',
+  appearance: 'brush',
+  reactions: 'reactions',
+  forum: 'comments',
+  translations: 'language',
+  other: 'more'
 };
