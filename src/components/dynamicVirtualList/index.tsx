@@ -42,6 +42,7 @@ export type DynamicVirtualListProps<T, El extends HTMLElement> = {
   measureElementHeight: (el: El) => number;
   Item: (props: DynamicVirtualListItemProps<T, El>) => JSX.Element;
   maxBatchSize: number;
+  verticalPadding?: number;
 
   nearBottomThreshold?: number;
   /**
@@ -82,9 +83,10 @@ type ListItemState<T> = ReturnType<ReturnType<typeof createListItemStates<T>>>[n
 type CreateListHeightArgs<T> = {
   listItemStates: Accessor<ListItemState<T>[]>;
   estimateItemHeight: (item: T) => number;
+  verticalPadding: Accessor<number>;
 };
 
-const createListHeight = <T, >({listItemStates, estimateItemHeight}: CreateListHeightArgs<T>) => {
+const createListHeight = <T, >({listItemStates, estimateItemHeight, verticalPadding}: CreateListHeightArgs<T>) => {
   const [height, setHeight] = createSignal(0);
 
   createComputed(() => {
@@ -97,9 +99,9 @@ const createListHeight = <T, >({listItemStates, estimateItemHeight}: CreateListH
         item.setOffset(acc);
 
         return acc + height;
-      }, 0);
+      }, verticalPadding());
 
-      setHeight(newHeight);
+      setHeight(newHeight + verticalPadding());
     });
   });
 
@@ -111,13 +113,15 @@ type CreateVirtualRenderStateArgs<T> = {
   scrollable: Accessor<HTMLElement>;
   estimateItemHeight: (item: T) => number;
   maxBatchSize: Accessor<number>;
+  verticalPadding: Accessor<number>;
 };
 
 const createVirtualRenderState = <T, >({
   list,
   scrollable,
   maxBatchSize: batchSize,
-  estimateItemHeight
+  estimateItemHeight,
+  verticalPadding
 }: CreateVirtualRenderStateArgs<T>) => {
   const scrollTop = useScrollTop(scrollable);
   const size = useElementSize(scrollable);
@@ -128,7 +132,8 @@ const createVirtualRenderState = <T, >({
 
   const [height, setHeight] = createListHeight({
     listItemStates,
-    estimateItemHeight
+    estimateItemHeight,
+    verticalPadding
   });
 
   const [renderedItems, setRenderedItems] = createSignal<ListItemState<T>[]>([]);
@@ -170,7 +175,7 @@ const createVirtualRenderState = <T, >({
         untrack(() => list[idx].offset() + (list[idx].cachedHeight() || 0)),
       );
 
-      currentOffset = list[i]?.offset() || 0;
+      currentOffset = list[i]?.offset() || verticalPadding();
 
       for(; i < list.length; i++) {
         const item = list[i];
@@ -305,13 +310,14 @@ const createItemComponent = <T, El extends HTMLElement>({
 export const DynamicVirtualList = <T, El extends HTMLElement>(
   inProps: DynamicVirtualListProps<T, El>,
 ) => {
-  const props = mergeProps({nearBottomThreshold: 120}, inProps)
+  const props = mergeProps({nearBottomThreshold: 120, verticalPadding: 0}, inProps)
 
   const {scrollTop, clientHeight, height, renderedItems} = createVirtualRenderState({
     list: () => props.list,
     estimateItemHeight: (...args) => props.estimateItemHeight(...args),
     maxBatchSize: () => props.maxBatchSize,
-    scrollable: () => props.scrollable
+    scrollable: () => props.scrollable,
+    verticalPadding: () => props.verticalPadding
   });
 
   createEffect(() => {

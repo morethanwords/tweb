@@ -6,7 +6,6 @@ import {keepMe} from '../../../../helpers/keepMe';
 import asyncThrottle from '../../../../helpers/schedulers/asyncThrottle';
 import pause from '../../../../helpers/schedulers/pause';
 import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
-import {logger} from '../../../../lib/logger';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {ButtonIconTsx} from '../../../buttonIconTsx';
 import {DynamicVirtualList} from '../../../dynamicVirtualList';
@@ -169,6 +168,7 @@ const AdminRecentActionsTab = () => {
           maxBatchSize={maxBatchSize}
           scrollable={tab.scrollable.container}
           onNearBottom={fetchMore}
+          verticalPadding={8}
           Item={(props) => {
             let ref: HTMLDivElement;
 
@@ -221,7 +221,7 @@ const AdminRecentActionsTab = () => {
                     date={new Date(log().date * 1000)}
                     icon={groupToIconMap[entry().group]}
                     expanded={isExpanded(log())}
-                    onExpandedChange={(value) => setToggledLogs(prev => {
+                    onExpandedChange={() => setToggledLogs(prev => {
                       const set = new Set(prev);
                       set.has(log()) ? set.delete(log()) : set.add(log());
                       return set;
