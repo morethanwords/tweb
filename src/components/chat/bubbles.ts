@@ -1411,7 +1411,7 @@ export default class ChatBubbles {
   public constructPeerHelpers() {
     // will call when message is sent (only 1)
     this.listenerSetter.add(rootScope)('history_append', async({storageKey, message}) => {
-      if(storageKey !== this.chat.messagesStorageKey || this.chat.type === ChatType.Scheduled) return;
+      if(storageKey !== this.chat.messagesStorageKey || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static) return;
 
       if(liteMode.isAvailable('chat_background')) {
         this.updateGradient = true;
@@ -4222,8 +4222,10 @@ export default class ChatBubbles {
       topMessageFullMid = makeFullMid(peerId, await m(this.managers.appMessagesManager.getPinnedMessagesMaxId(peerId, this.chat.threadId)));
     } else if(historyStorage.searchHistory) {
       topMessageFullMid = (historyStorage.searchHistory.first[0] as FullMid) ?? EMPTY_FULL_MID;
-    } else {
+    } else if(chatType !== ChatType.Static) {
       topMessageFullMid = historyStorage.maxId ? makeFullMid(peerId, historyStorage.maxId) : EMPTY_FULL_MID;
+    } else {
+      topMessageFullMid = EMPTY_FULL_MID;
     }
     const isTarget = lastMsgFullMid !== EMPTY_FULL_MID;
 
@@ -8442,7 +8444,21 @@ export default class ChatBubbles {
     }
 
     // const middleware = this.getMiddleware();
-    if([ChatType.Chat, ChatType.Discussion, ChatType.Saved, ChatType.Search].includes(this.chat.type)) {
+    if(this.chat.type === ChatType.Static) {
+      return Promise.resolve({
+        cached: true,
+        result: Promise.resolve({
+          history: this.chat.staticMessages?.map(message => message.mid) || [],
+          count: this.chat.staticMessages?.length || 0,
+          messages: this.chat.staticMessages || [],
+          isEnd: {
+            both: true,
+            bottom: true,
+            top: true
+          }
+        })
+      });
+    } else if([ChatType.Chat, ChatType.Discussion, ChatType.Saved, ChatType.Search].includes(this.chat.type)) {
       return this.managers.acknowledged.appMessagesManager.getHistory({
         ...this.chat.requestHistoryOptionsPart,
         offsetPeerId,

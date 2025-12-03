@@ -6,7 +6,7 @@
 
 import type {ChatRights} from '../../lib/appManagers/appChatsManager';
 import type {RequestWebViewOptions} from '../../lib/appManagers/appAttachMenuBotsManager';
-import type {HistoryStorageKey, MessageSendingParams, MessagesStorageKey, RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
+import type {HistoryStorageKey, MessageSendingParams, MessagesStorageKey, MyMessage, RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 import {AppImManager, APP_TABS, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import {logger, LogTypes} from '../../lib/logger';
@@ -84,7 +84,8 @@ export enum ChatType {
   Scheduled = 'scheduled',
   Stories = 'stories',
   Saved = 'saved',
-  Search = 'search'
+  Search = 'search',
+  Static = 'static'
 };
 
 export type ChatSearchKeys = Pick<RequestHistoryOptions, 'query' | 'isCacheableSearch' | 'isPublicHashtag' | 'savedReaction' | 'fromPeerId' | 'inputFilter' | 'hashtagType'>;
@@ -189,6 +190,8 @@ export default class Chat extends EventListenerBase<{
   public historyStorage: ReturnType<typeof useHistoryStorage>;
   public historyStorageNoThreadId: ReturnType<typeof useHistoryStorage>;
   public peerTranslation: ReturnType<typeof usePeerTranslation>;
+
+  public staticMessages: MyMessage[] = [];
 
   // public requestHistoryOptionsPart: RequestHistoryOptions;
 
@@ -671,7 +674,7 @@ export default class Chat extends EventListenerBase<{
 
     this.bubbles.attachContainerListeners();
 
-    this.container.append(this.topbar.container, this.bubbles.container, this.input.chatInput);
+    this.container.append(this.topbar.container, this.bubbles.container, this.input.emptySpace, this.input.chatInput);
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
       if(this.peerId === migrateFrom) {
@@ -1017,7 +1020,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setPeer(options: ChatSetPeerOptions) {
-    const {peerId, threadId, monoforumThreadId} = options;
+    const {peerId, threadId, monoforumThreadId, messages} = options;
     if(!peerId) {
       this.inited = undefined;
     } else if(!this.inited) {
@@ -1050,6 +1053,8 @@ export default class Chat extends EventListenerBase<{
     } else if(this.setPeerPromise) {
       return;
     }
+
+    this.staticMessages = messages || [];
 
     if(!peerId) {
       this.peerId = 0;
@@ -1372,7 +1377,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isPinnedMessagesNeeded() {
-    return this.type === ChatType.Chat || this.isForum;
+    return this.type === ChatType.Chat || (this.isForum && this.type !== ChatType.Static);
   }
 
   public isForwardOfForward(message: Message) {

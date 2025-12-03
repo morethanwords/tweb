@@ -188,6 +188,8 @@ export default class ChatInput {
   private btnToggleReplyMarkup: HTMLButtonElement;
   public btnSendContainer: HTMLDivElement;
 
+  public emptySpace: HTMLDivElement;
+
   private replyKeyboard: ReplyKeyboard;
 
   public attachMenu: HTMLElement;
@@ -387,6 +389,9 @@ export default class ChatInput {
 
     this.chatInput = document.createElement('div');
     this.chatInput.classList.add(CLASS_NAME, className2, 'hide');
+
+    this.emptySpace = document.createElement('div');
+    this.emptySpace.classList.add('chat-input-empty-space', 'hide');
 
     this.inputContainer = document.createElement('div');
     this.inputContainer.classList.add(`${CLASS_NAME}-container`, `${className2}-container`);
@@ -2075,7 +2080,9 @@ export default class ChatInput {
       const {isMonoforum, canManageDirectMessages, monoforumThreadId} = this.chat;
       // console.warn('[input] finishpeerchange start');
 
-      chatInput.classList.remove('hide');
+      chatInput.classList.toggle('hide', this.chat?.type === ChatType.Static);
+      this.emptySpace.classList.toggle('hide', this.chat?.type !== ChatType.Static);
+
       if(goDownBtn) {
         goDownBtn.classList.toggle('is-broadcast', isBroadcast);
         goDownBtn.classList.remove('hide');

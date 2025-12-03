@@ -67,6 +67,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		}
 	}
 
+	&-empty-space {
+    padding-top: 12px;
+	}
+
 	/* @include respond-to(handhelds) {
 		position: sticky;
 		bottom: 0;
