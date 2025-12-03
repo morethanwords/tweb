@@ -10049,6 +10049,11 @@ export class AppMessagesManager extends AppManager {
       }
     } satisfies Message.message;
   }
+
+  public temporarilySaveMessage(peerId: PeerId, message: MyMessage) {
+    this.saveMessages([message], {storage: this.createMessageStorage(peerId, 'history')});
+    return message;
+  }
 }
 
 class Batcher<Key, Id, Result> {

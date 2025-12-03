@@ -3930,7 +3930,11 @@ const lang = {
   'AdminRecentActionsPlaceholder.Description': 'The admins have not taken any service actions in the last **48** hours.',
 
   'AdminRecentActionsPlaceholder.WithFilterTitle': 'No results',
-  'AdminRecentActionsPlaceholder.WithFilterDescription': 'Try adjusting your filters or search for a specific action.'
+  'AdminRecentActionsPlaceholder.WithFilterDescription': 'Try adjusting your filters or search for a specific action.',
+
+  'AdminRecentActions.ViewPreviousMessage': 'View Previous',
+  'AdminRecentActions.ViewDeletedMessage': 'View Deleted',
+  'AdminRecentActions.ViewUpdatedMessage': 'View Updated'
 };
 
 export default lang;

@@ -4,11 +4,11 @@
 
   cursor: pointer;
 
-  &:hover {
+  &:hover:not(:has(:global(.interactable:hover))) {
     background-color: hsl(from var(--surface-color) h s calc(l - 3));
   }
 
-  :global(.night) &:hover {
+  :global(.night) &:hover:not(:has(:global(.interactable:hover))) {
     background-color: hsl(from var(--surface-color) h s calc(l + 5));
   }
 
@@ -34,7 +34,7 @@
 
 .Icon {
   display: flex;
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .NameRow {
@@ -74,7 +74,8 @@
 
 .ExpandableContent {
   font-size: 16px;
-  padding: 8px 12px;
+  padding: 8px 12px 12px;
+  /* padding-bottom: 12px; */
   border-top: 1px solid var(--background-color);
 
   &Wrapper {

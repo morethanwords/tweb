@@ -10,6 +10,7 @@ import {ChatPhoto} from './chatPhoto';
 import {diffAdminRights} from './diffAdminRights';
 import {KeyValuePair} from './keyValuePair';
 import {LogDiff} from './logDiff';
+import {PreviewMessageButtons} from './previewMessageButtons';
 import {getPhoto} from './utils';
 
 
@@ -40,6 +41,7 @@ type MapCallbackResult = {
 };
 
 type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
+  channelId: ChatId;
   action: Extract<ChannelAdminLogEventAction, {_: Key}>;
   isBroadcast: boolean;
   isForum: boolean;
@@ -86,7 +88,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     group: 'messages',
     Message: () => i18n('AdminRecentActionMessage.UpdatePinnedMessage')
   }),
-  'channelAdminLogEventActionEditMessage': ({action}) => ({
+  'channelAdminLogEventActionEditMessage': ({channelId, action}) => ({
     group: 'messages',
     Message: () => i18n('AdminRecentActionMessage.EditedMessage'),
     ExpandableContent: () => {
@@ -96,7 +98,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const prevMessage = action.prev_message?._ === 'message' ? action.prev_message : undefined;
       const newMessage = action.new_message?._ === 'message' ? action.new_message : undefined;
 
-      const hasPhotoDiff = prevPhoto || newPhoto;
+      const hasPhotoDiff = prevPhoto?.id !== newPhoto?.id;
       const hasMessageDiff = prevMessage?.message || newMessage?.message;
 
       return <>
@@ -116,10 +118,14 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
             removed={prevMessage && wrapRichText(prevMessage.message, {entities: prevMessage.entities})}
           />
         </Show>
+
+        <Space amount='8px' />
+
+        <PreviewMessageButtons channelId={channelId} added={action.new_message} removed={action.prev_message} />
       </>;
     }
   }),
-  'channelAdminLogEventActionDeleteMessage': ({action}) => ({
+  'channelAdminLogEventActionDeleteMessage': ({channelId, action}) => ({
     group: 'messages',
     Message: () => i18n('AdminRecentActionMessage.DeletedMessage'),
     ExpandableContent: () => {
@@ -144,6 +150,10 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
             removed={prevMessage && wrapRichText(prevMessage.message, {entities: prevMessage.entities})}
           />
         </Show>
+
+        <Space amount='8px' />
+
+        <PreviewMessageButtons channelId={channelId} removed={action.message} removedIsDeleted />
       </>;
     }
   }),
@@ -341,17 +351,18 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
 };
 
 type ResolveLogEntryArgs = {
+  channelId: ChatId;
   event: ChannelAdminLogEvent;
   isBroadcast: boolean;
   isForum: boolean;
 };
 
-export const resolveLogEntry = ({event, isBroadcast, isForum}: ResolveLogEntryArgs) => {
+export const resolveLogEntry = ({channelId, event, isBroadcast, isForum}: ResolveLogEntryArgs) => {
   const resolver = logEntriesMap[event.action._];
   if(!resolver) {
     return null;
   }
-  return resolver({action: event.action as never, isBroadcast, isForum});
+  return resolver({channelId, action: event.action as never, isBroadcast, isForum});
 };
 
 export const groupToIconMap: Record<GroupType, Icon> = {

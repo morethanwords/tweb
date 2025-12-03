@@ -3,6 +3,7 @@ import {ParentProps} from 'solid-js';
 import {AutonomousMonoforumThreadList} from '../../components/autonomousDialogList/monoforumThreads';
 import {avatarNew} from '../../components/avatarNew';
 import BusinessHours from '../../components/businessHours';
+import {ChatType} from '../../components/chat/chat';
 import confirmationPopup from '../../components/confirmationPopup';
 import {EmoticonsDropdown} from '../../components/emoticonsDropdown';
 import EmoticonsSearch from '../../components/emoticonsDropdown/search';
@@ -96,7 +97,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       showBirthdayPopup,
       saveMyBirthday,
       Row,
-      useAppSettings
+      useAppSettings,
+      ChatType
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

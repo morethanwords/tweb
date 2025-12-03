@@ -21,7 +21,10 @@ export const LogEntry = (props: LogEntryProps) => {
   const [hasRunningAnimations, setHasRunningAnimations] = createSignal(false);
 
   return (
-    <div class={styles.Container} onClick={() => !hasRunningAnimations() && props.onExpandedChange?.(!props.expanded)}>
+    <div class={styles.Container} onClick={(e) => {
+      if(e.target.closest('.interactable')) return;
+      !hasRunningAnimations() && props.onExpandedChange?.(!props.expanded);
+    }}>
       <div class={styles.Header}>
         <div class={styles.Icon}><IconTsx icon={props.icon} /></div>
         <div class={styles.Group}>

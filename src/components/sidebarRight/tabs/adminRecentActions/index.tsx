@@ -5,6 +5,7 @@ import lastItem from '../../../../helpers/array/lastItem';
 import {keepMe} from '../../../../helpers/keepMe';
 import liteMode from '../../../../helpers/liteMode';
 import asyncThrottle from '../../../../helpers/schedulers/asyncThrottle';
+import debounce from '../../../../helpers/schedulers/debounce';
 import pause from '../../../../helpers/schedulers/pause';
 import {createSetSignal} from '../../../../helpers/solid/createSetSignal';
 import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
@@ -33,6 +34,7 @@ const animateInDuration = 200;
 const staggerDelay = 20;
 const staggerDelayExpanded = 40;
 const reAnimateDelay = 120;
+const thumbUpdateDebounceTimeout = 100;
 
 const testEmpty = 0;
 
@@ -55,19 +57,20 @@ const AdminRecentActionsTab = () => {
 
   const [logs, setLogs] = createSignal<AdminLog[]>([]);
 
+  // const fetchLogs = async(offsetId?: AdminLog['id']) => [...Array.from({length: 4}, () => [...savedLogs.map(o => ({...o}))])].flat()
   const fetchLogs = (offsetId?: AdminLog['id']) => committedFilters() ?
-    rootScope.managers.appChatsManager.fetchAdminLogs({
-      channelId: tab.payload.channelId,
-      limit: fetchLimit,
-      admins: committedFilters()?.admins,
-      flags: committedFilters()?.flags,
-      offsetId
-    }) :
-    rootScope.managers.appChatsManager.getAdminLogs({
-      channelId: tab.payload.channelId,
-      limit: fetchLimit,
-      offsetId
-    });
+  rootScope.managers.appChatsManager.fetchAdminLogs({
+    channelId: tab.payload.channelId,
+    limit: fetchLimit,
+    admins: committedFilters()?.admins,
+    flags: committedFilters()?.flags,
+    offsetId
+  }) :
+  rootScope.managers.appChatsManager.getAdminLogs({
+    channelId: tab.payload.channelId,
+    limit: fetchLimit,
+    offsetId
+  });
 
   // for loading state, then we're fetching more as the user scrolls
   const [initialLogs] = createResource(() => committedFilters() || {}, () =>
@@ -118,6 +121,10 @@ const AdminRecentActionsTab = () => {
     ]);
   }, fetchThrottleTimeout);
 
+  const updateThumb = debounce(() => {
+    tab.scrollable.updateThumb();
+  }, thumbUpdateDebounceTimeout)
+
   const onAllToggle = () => {
     const value = areAllExpanded();
     batch(() => {
@@ -138,6 +145,11 @@ const AdminRecentActionsTab = () => {
         setToggledLogs(new Set<AdminLog>);
       }
     });
+  };
+
+  const onNearBottom = () => {
+    fetchMore();
+    updateThumb();
   };
 
   return <>
@@ -173,6 +185,9 @@ const AdminRecentActionsTab = () => {
         el.style.transform = `translateY(${-savedScrollTop}px)`;
         pause(200).then(done);
       }}
+      onAfterExit={() => {
+        tab.scrollable.updateThumb();
+      }}
     >
       <Show when={initialLogs.state === 'ready' && initialLogs()?.length === 0}>
         <NoActionsPlaceholder forFilters={!!committedFilters()} />
@@ -184,14 +199,19 @@ const AdminRecentActionsTab = () => {
           estimateItemHeight={() => cachedAreAllExpanded() ? itemSizeEstimateExpanded : itemSizeEstimate}
           maxBatchSize={maxBatchSize}
           scrollable={tab.scrollable.container}
-          onNearBottom={fetchMore}
-          verticalPadding={8}
+          onNearBottom={onNearBottom}
+          // verticalPadding={8}
           Item={(props) => {
             let ref: HTMLDivElement;
 
             const log = createMemo(() => props.payload);
 
-            const entry = createMemo(() => resolveLogEntry({event: log(), isBroadcast: tab.payload.isBroadcast, isForum}));
+            const entry = createMemo(() => resolveLogEntry({
+              channelId: tab.payload.channelId,
+              event: log(),
+              isBroadcast: tab.payload.isBroadcast,
+              isForum
+            }));
 
             const areAnimationsAvailable = liteMode.isAvailable('animations');
 

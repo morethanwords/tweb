@@ -18,7 +18,7 @@ export const LogDiff = (props: LogDiffProps) => {
   const hasRemoved = () => removedAsArray().length > 0;
 
   return (
-    <div class={styles.Container} classList={{[styles.vertical]: props.vertical}}>
+    <div class={`interactable ${styles.Container}`} classList={{[styles.vertical]: props.vertical}}>
       <Show when={hasAdded()}>
         <div class={`${styles.Block} ${styles.added}`} classList={{
           [props.vertical ? styles.unroundedRight : styles.unroundedBottom]: hasRemoved()

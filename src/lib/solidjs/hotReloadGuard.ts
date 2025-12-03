@@ -7,6 +7,7 @@ import {createContext, useContext} from 'solid-js';
 import type {AutonomousMonoforumThreadList} from '../../components/autonomousDialogList/monoforumThreads';
 import type {avatarNew} from '../../components/avatarNew';
 import type BusinessHours from '../../components/businessHours';
+import type {ChatType} from '../../components/chat/chat';
 import type confirmationPopup from '../../components/confirmationPopup';
 import type {EmoticonsDropdown} from '../../components/emoticonsDropdown';
 import type EmoticonsSearch from '../../components/emoticonsDropdown/search';
@@ -101,6 +102,7 @@ export type SolidJSHotReloadGuardContextValue = {
   saveMyBirthday: typeof saveMyBirthday;
   Row: typeof Row;
   useAppSettings: typeof useAppSettings;
+  ChatType: typeof ChatType;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<
