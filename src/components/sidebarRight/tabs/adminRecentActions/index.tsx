@@ -57,20 +57,20 @@ const AdminRecentActionsTab = () => {
 
   const [logs, setLogs] = createSignal<AdminLog[]>([]);
 
-  // const fetchLogs = async(offsetId?: AdminLog['id']) => [...Array.from({length: 4}, () => [...savedLogs.map(o => ({...o}))])].flat()
+  // const fetchLogs = async(offsetId?: AdminLog['id']) => offsetId ? [] : [...Array.from({length: 40}, () => [...savedLogs.map(o => ({...o}))])].flat()
   const fetchLogs = (offsetId?: AdminLog['id']) => committedFilters() ?
-  rootScope.managers.appChatsManager.fetchAdminLogs({
-    channelId: tab.payload.channelId,
-    limit: fetchLimit,
-    admins: committedFilters()?.admins,
-    flags: committedFilters()?.flags,
-    offsetId
-  }) :
-  rootScope.managers.appChatsManager.getAdminLogs({
-    channelId: tab.payload.channelId,
-    limit: fetchLimit,
-    offsetId
-  });
+    rootScope.managers.appChatsManager.fetchAdminLogs({
+      channelId: tab.payload.channelId,
+      limit: fetchLimit,
+      admins: committedFilters()?.admins,
+      flags: committedFilters()?.flags,
+      offsetId
+    }) :
+    rootScope.managers.appChatsManager.getAdminLogs({
+      channelId: tab.payload.channelId,
+      limit: fetchLimit,
+      offsetId
+    });
 
   // for loading state, then we're fetching more as the user scrolls
   const [initialLogs] = createResource(() => committedFilters() || {}, () =>
@@ -200,7 +200,7 @@ const AdminRecentActionsTab = () => {
           maxBatchSize={maxBatchSize}
           scrollable={tab.scrollable.container}
           onNearBottom={onNearBottom}
-          // verticalPadding={8}
+          verticalPadding={8}
           Item={(props) => {
             let ref: HTMLDivElement;
 
