@@ -45,7 +45,8 @@ const AdminRecentActionsTab = () => {
   let shouldAnimateIn = true,
     isQueuedUnsettingShouldAnimate = false,
     isFirstAnimation = true,
-    reachedTheEnd = false;
+    reachedTheEnd = false,
+    savedScrollTop = 0;
 
   const [isFiltersOpen, setIsFiltersOpen] = createSignal(false);
   const [committedFilters, setCommittedFilters] = createSignal<CommittedFilters | null>(null);
@@ -93,6 +94,7 @@ const AdminRecentActionsTab = () => {
       setLogs(initialLogs() || []);
       setToggledLogs(new Set<AdminLog>);
     });
+    savedScrollTop = tab.scrollable.container.scrollTop;
     tab.scrollable.container.scrollTop = 0;
   });
 
@@ -165,8 +167,11 @@ const AdminRecentActionsTab = () => {
 
     <Transition
       name='fade-2'
-      onExit={(el) => {
+      onExit={(_el, done) => {
+        const el = _el as HTMLElement;
         el.classList.add(styles.absolute);
+        el.style.transform = `translateY(${-savedScrollTop}px)`;
+        pause(200).then(done);
       }}
     >
       <Show when={initialLogs.state === 'ready' && initialLogs()?.length === 0}>
