@@ -131,6 +131,20 @@ const AdminRecentActionsTab = () => {
     });
   };
 
+  const onToggle = (log: AdminLog) => {
+    batch(() => {
+      setToggledLogs(prev => {
+        const set = new Set(prev);
+        set.has(log) ? set.delete(log) : set.add(log);
+        return set;
+      });
+      if(toggledLogs().size === logs().length) {
+        setCachedAreAllExpanded(!cachedAreAllExpanded());
+        setToggledLogs(new Set<AdminLog>);
+      }
+    });
+  };
+
   return <>
     <Portal mount={tab.header}>
       <Transition name='fade' mode='outin'>
@@ -220,12 +234,8 @@ const AdminRecentActionsTab = () => {
                     message={<Dynamic component={entry().Message} />}
                     date={new Date(log().date * 1000)}
                     icon={groupToIconMap[entry().group]}
+                    onExpandedChange={() => onToggle(log())}
                     expanded={isExpanded(log())}
-                    onExpandedChange={() => setToggledLogs(prev => {
-                      const set = new Set(prev);
-                      set.has(log()) ? set.delete(log()) : set.add(log());
-                      return set;
-                    })}
                     expandableContent={entry().ExpandableContent && <Dynamic component={entry().ExpandableContent} />}
                   />
                 </Show>
