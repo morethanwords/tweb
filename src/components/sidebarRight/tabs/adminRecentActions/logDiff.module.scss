@@ -9,8 +9,11 @@
 }
 
 .Block {
+  position: relative;
   padding: 4px;
-  border-radius: 6px;
+  padding-left: 7px;
+  border-radius: 4px;
+  overflow: hidden;
 
   color: rgba(0, 0, 0, 0.8);
 
@@ -19,12 +22,12 @@
   }
 
   &.added {
-    border-left: 3px solid rgba(40, 167, 69, 0.5);
+    /* border-left: 3px solid rgba(40, 167, 69, 0.5); */
     background-color: rgba(40, 167, 69, 0.2);
   }
 
   &.removed {
-    border-left: 3px solid rgba(220, 53, 69, 0.5);
+    /* border-left: 3px solid rgba(220, 53, 69, 0.5); */
     background-color: rgba(220, 53, 69, 0.2);
   }
 
@@ -46,6 +49,22 @@
   &.unroundedLeft {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+  }
+}
+
+.Border {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+
+  &.added {
+    background-color: rgba(40, 167, 69, 0.5);
+  }
+
+  &.removed {
+    background-color: rgba(220, 53, 69, 0.5);
   }
 }
 

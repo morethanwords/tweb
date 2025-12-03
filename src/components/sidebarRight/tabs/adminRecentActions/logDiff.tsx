@@ -23,6 +23,7 @@ export const LogDiff = (props: LogDiffProps) => {
         <div class={`${styles.Block} ${styles.added}`} classList={{
           [props.vertical ? styles.unroundedRight : styles.unroundedBottom]: hasRemoved()
         }}>
+          <div class={`${styles.Border} ${styles.added}`} />
           <For each={addedAsArray()}>
             {item => (
               <div class={styles.Line}>
@@ -46,6 +47,7 @@ export const LogDiff = (props: LogDiffProps) => {
         <div class={`${styles.Block} ${styles.removed}`} classList={{
           [props.vertical ? styles.unroundedLeft : styles.unroundedTop]: hasAdded()
         }}>
+          <div class={`${styles.Border} ${styles.removed}`} />
           <For each={removedAsArray()}>
             {item => (
               <div class={styles.Line}>
