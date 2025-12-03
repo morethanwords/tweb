@@ -1,5 +1,5 @@
 import {createSignal, JSX, Show} from 'solid-js';
-import {formatTime} from '../../../../helpers/date';
+import {formatDate} from '../../../../helpers/date';
 import {IconTsx} from '../../../iconTsx';
 import {HeightTransition} from './heightTransition';
 import styles from './logEntry.module.scss';
@@ -25,9 +25,7 @@ export const LogEntry = (props: LogEntryProps) => {
       <div class={styles.Header}>
         <div class={styles.Icon}><IconTsx icon={props.icon} /></div>
         <div class={styles.Group}>
-          {/* <div class={styles.NameRow}>*/}
           <div class={styles.PeerTitle}>{props.peerTitle}</div>
-          {/* </div>*/}
           <HeightTransition onRunningAnimations={value => setHasRunningAnimations(!!value)}>
             <Show when={!props.expanded}>
               <div>
@@ -37,8 +35,7 @@ export const LogEntry = (props: LogEntryProps) => {
           </HeightTransition>
         </div>
         <div class={styles.Date}>
-          {/* {formatDate(props.date, undefined, true)}*/}
-          {formatTime(props.date)}
+          {formatDate(props.date, {withTime: true, shortMonth: true})}
         </div>
       </div>
       <HeightTransition scale>

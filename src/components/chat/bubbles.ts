@@ -3955,7 +3955,7 @@ export default class ChatBubbles {
     } else if(isScheduled && timestamp === SEND_WHEN_ONLINE_TIMESTAMP) {
       dateElement = i18n('MessageScheduledUntilOnline');
     } else {
-      dateElement = formatDate(date, today);
+      dateElement = formatDate(date, {today});
 
       if(isScheduled) {
         dateElement = i18n('Chat.Date.ScheduledFor', [dateElement]);

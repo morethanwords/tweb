@@ -53,7 +53,15 @@ export const getWeekNumber = (date: Date) => {
   return Math.ceil((((d.getTime() - yearStart.getTime()) / ONE_DAY) + 1) / 7);
 };
 
-export function formatDate(date: Date, today?: Date, withTime?: boolean) {
+
+type FormatDateOptions = {
+  today?: Date;
+  withTime?: boolean;
+  shortMonth?: boolean;
+  overrideIntlOptions?: Intl.DateTimeFormatOptions;
+};
+
+export function formatDate(date: Date, {today, withTime, shortMonth, overrideIntlOptions}: FormatDateOptions = {}) {
   if(!today) {
     today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -61,7 +69,7 @@ export function formatDate(date: Date, today?: Date, withTime?: boolean) {
 
   const options: Intl.DateTimeFormatOptions = {
     day: 'numeric',
-    month: 'long'
+    month: shortMonth ? 'short' : 'long'
   };
 
   if(withTime) {
@@ -71,6 +79,10 @@ export function formatDate(date: Date, today?: Date, withTime?: boolean) {
 
   if(date.getFullYear() !== today.getFullYear()) {
     options.year = 'numeric';
+  }
+
+  if(overrideIntlOptions) {
+    Object.assign(options, overrideIntlOptions);
   }
 
   return new I18n.IntlDateElement({
