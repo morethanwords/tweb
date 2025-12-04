@@ -10,6 +10,7 @@ type KeyValuePairProps = {
 export const KeyValuePair = (props: KeyValuePairProps) => {
   return (
     <div class={styles.Container}>
+      <div class={styles.Border} />
       <div>{props.label}:</div>
       <div class={styles.Value}>{props.value}</div>
     </div>
