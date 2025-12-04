@@ -179,7 +179,7 @@ export const Filters = (props: FiltersProps) => {
             <div class={styles.Card} ref={setCardElement}>
               <Scrollable classList={{[styles.hideThumb]: !isOverflowing()}} relative>
                 <div class={styles.Content} ref={setContentElement}>
-                  <Space amount='0.5rem' />
+                  <Space amount='2px' />
 
                   <form class={styles.Search} onSubmit={onSubmit}>
                     <SimpleFormField value={search()} onChange={setSearch}>
