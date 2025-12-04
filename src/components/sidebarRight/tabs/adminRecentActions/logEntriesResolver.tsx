@@ -1,6 +1,7 @@
 import {Component, Show} from 'solid-js';
 import deepEqual from '../../../../helpers/object/deepEqual';
 import pause from '../../../../helpers/schedulers/pause';
+import createMiddleware from '../../../../helpers/solid/createMiddleware';
 import {wrapAsyncClickHandler} from '../../../../helpers/wrapAsyncClickHandler';
 import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
@@ -106,6 +107,8 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const hasPhotoDiff = prevPhoto?.id !== newPhoto?.id;
       const hasMessageDiff = prevMessage?.message !== newMessage?.message || !deepEqual(prevMessage?.entities, newMessage?.entities);
 
+      const middleware = createMiddleware().get();
+
       return <>
         <Show when={hasPhotoDiff}>
           <LogDiff
@@ -115,12 +118,14 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
           />
         </Show>
 
-        {(hasPhotoDiff && hasMessageDiff) && <Space amount='4px' />}
+        <Show when={hasPhotoDiff && hasMessageDiff}>
+          <Space amount='4px' />
+        </Show>
 
         <Show when={hasMessageDiff}>
           <LogDiff
-            added={newMessage && wrapRichText(newMessage.message, {entities: newMessage.entities})}
-            removed={prevMessage && wrapRichText(prevMessage.message, {entities: prevMessage.entities})}
+            added={newMessage && wrapRichText(newMessage.message, {entities: newMessage.entities, middleware})}
+            removed={prevMessage && wrapRichText(prevMessage.message, {entities: prevMessage.entities, middleware})}
           />
         </Show>
 
@@ -140,6 +145,8 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const hasPhotoDiff = prevPhoto;
       const hasMessageDiff = prevMessage?.message;
 
+      const middleware = createMiddleware().get();
+
       return <>
         <Show when={hasPhotoDiff}>
           <LogDiff
@@ -152,7 +159,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
 
         <Show when={hasMessageDiff}>
           <LogDiff
-            removed={prevMessage && wrapRichText(prevMessage.message, {entities: prevMessage.entities})}
+            removed={prevMessage && wrapRichText(prevMessage.message, {entities: prevMessage.entities, middleware})}
           />
         </Show>
 
