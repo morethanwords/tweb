@@ -1,6 +1,7 @@
 .Container {
   position: absolute;
   z-index: 2;
+  pointer-events: none;
 
   --padding: 12px;
   --padding-bottom: 64px;
@@ -65,6 +66,8 @@
 
   background-color: var(--surface-color);
   border-radius: 12px;
+
+  pointer-events: initial;
 }
 
 .Content {

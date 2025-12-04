@@ -1,6 +1,7 @@
-import {createComputed, createMemo, createResource, createSelector, createSignal, For, Show} from 'solid-js';
+import {batch, createComputed, createMemo, createResource, createSelector, createSignal, For, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
+import {IS_MOBILE} from '../../../../../environment/userAgent';
 import {createSetSignal} from '../../../../../helpers/solid/createSetSignal';
 import {I18nTsx} from '../../../../../helpers/solid/i18n';
 import track from '../../../../../helpers/solid/track';
@@ -33,6 +34,7 @@ type FiltersProps = {
 
 const adminsFetchLimit = 40; // Have more admins? I'm really sorry :)
 const limitPeerTitleSymbols = 24;
+const focusDelay = 100;
 
 export const Filters = (props: FiltersProps) => {
   const {rootScope, PeerTitleTsx} = useHotReloadGuard();
@@ -133,12 +135,25 @@ export const Filters = (props: FiltersProps) => {
       Array.from(selectedAdminIds()) :
       undefined;
 
-    props.onCommit(search() || flags || admins ? {
-      search: search() || undefined,
-      flags,
-      admins
-    } : null);
-    props.onClose?.();
+    batch(() => {
+      props.onCommit(search() || flags || admins ? {
+        search: search() || undefined,
+        flags,
+        admins
+      } : null);
+
+      props.onClose?.();
+    });
+  };
+
+  const onSubmit = (e: Event) => {
+    e.preventDefault();
+    onCommit();
+  };
+
+  const onInputRef = (el: HTMLInputElement) => {
+    if(IS_MOBILE) return;
+    setTimeout(() => el.focus(), focusDelay)
   };
 
   return (
@@ -166,12 +181,12 @@ export const Filters = (props: FiltersProps) => {
                 <div class={styles.Content} ref={setContentElement}>
                   <Space amount='0.5rem' />
 
-                  <div class={styles.Search}>
+                  <form class={styles.Search} onSubmit={onSubmit}>
                     <SimpleFormField value={search()} onChange={setSearch}>
                       <SimpleFormField.Label><I18nTsx key='Search' /></SimpleFormField.Label>
-                      <SimpleFormField.Input />
+                      <SimpleFormField.Input ref={onInputRef} />
                     </SimpleFormField>
-                  </div>
+                  </form>
 
                   <Space amount='1rem' />
 

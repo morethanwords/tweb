@@ -1,6 +1,6 @@
-import {Accessor, createContext, createSignal, JSX, mergeProps, onMount, ParentProps, Setter, splitProps, useContext, createEffect, batch} from 'solid-js';
-import styles from './styles.module.scss';
+import {Accessor, batch, createContext, createSignal, JSX, onMount, ParentProps, Ref, Setter, splitProps, useContext} from 'solid-js';
 import {requestRAF} from '../../helpers/solid/requestRAF';
+import styles from './styles.module.scss';
 
 
 type SimpleFormFieldContextValue = {
@@ -64,9 +64,10 @@ const SimpleFormField = (inProps: ParentProps<{
 };
 
 SimpleFormField.Input = (inProps: {
+  ref?: Ref<HTMLInputElement>;
   forceFieldValue?: boolean;
 } & Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onInput' | 'ref'>) => {
-  const [props, restProps] = splitProps(inProps, ['class', 'classList', 'forceFieldValue']);
+  const [props, restProps] = splitProps(inProps, ['ref', 'class', 'classList', 'forceFieldValue']);
 
   const context = useContext(Context);
 
@@ -75,6 +76,7 @@ SimpleFormField.Input = (inProps: {
       ref={(el) => batch(() => {
         context.setInput(el);
         context.setOffsetElement(el);
+        if(props.ref instanceof Function) props.ref(el);
       })}
       class={styles.Input}
       classList={{
