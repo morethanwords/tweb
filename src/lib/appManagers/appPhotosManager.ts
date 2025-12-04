@@ -25,8 +25,6 @@ export class AppPhotosManager extends AppManager {
     [id: string]: MyPhoto
   } = {};
 
-  private savedPhotoURLs: Record<Photo['id'], Record</* size: */number, string | Promise<string>>> = {};
-
   public savePhoto(photo: Photo, context?: ReferenceContext) {
     if(!photo || photo._ === 'photoEmpty') return;
 
