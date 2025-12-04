@@ -64,6 +64,7 @@ const AdminRecentActionsTab = () => {
     rootScope.managers.appChatsManager.fetchAdminLogs({
       channelId: tab.payload.channelId,
       limit: fetchLimit,
+      search: committedFilters()?.search,
       admins: committedFilters()?.admins,
       flags: committedFilters()?.flags,
       offsetId

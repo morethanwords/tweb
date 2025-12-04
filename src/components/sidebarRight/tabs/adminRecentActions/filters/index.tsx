@@ -3,19 +3,21 @@ import {createStore} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {createSetSignal} from '../../../../../helpers/solid/createSetSignal';
 import {I18nTsx} from '../../../../../helpers/solid/i18n';
+import track from '../../../../../helpers/solid/track';
 import useElementSize from '../../../../../hooks/useElementSize';
 import {AdminLogFilterFlags} from '../../../../../lib/appManagers/appChatsManager';
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import Button from '../../../../buttonTsx';
 import Scrollable from '../../../../scrollable2';
+import SimpleFormField from '../../../../simpleFormField';
 import Space from '../../../../space';
 import {FilterGroupConfigItem, filterGroupsConfig} from './config';
 import {ExpandableFilterGroup} from './expandableFilterGroup';
 import styles from './styles.module.scss';
-import track from '../../../../../helpers/solid/track';
 
 
 export type CommittedFilters = {
+  search?: string;
   flags?: AdminLogFilterFlags;
   admins?: PeerId[];
 };
@@ -44,6 +46,7 @@ export const Filters = (props: FiltersProps) => {
     })
   );
 
+  const [search, setSearch] = createSignal('');
   const [selectedFlagsStore, setSelectedFlagsStore] = createStore(getInitialFlagsStore());
   const [selectedAdminIds, setSelectedAdminIds] = createSetSignal<PeerId>();
 
@@ -85,6 +88,7 @@ export const Filters = (props: FiltersProps) => {
   createComputed(() => {
     track(() => props.open);
 
+    setSearch(props.committedFilters?.search || '');
     setSelectedFlagsStore(props.committedFilters?.flags || getInitialFlagsStore());
     setSelectedAdminIds(new Set(props.committedFilters?.admins || allAdminPeerIds()));
   });
@@ -129,7 +133,8 @@ export const Filters = (props: FiltersProps) => {
       Array.from(selectedAdminIds()) :
       undefined;
 
-    props.onCommit(flags || admins ? {
+    props.onCommit(search() || flags || admins ? {
+      search: search() || undefined,
       flags,
       admins
     } : null);
@@ -159,6 +164,17 @@ export const Filters = (props: FiltersProps) => {
             <div class={styles.Card} ref={setCardElement}>
               <Scrollable classList={{[styles.hideThumb]: !isOverflowing()}} relative>
                 <div class={styles.Content} ref={setContentElement}>
+                  <Space amount='0.5rem' />
+
+                  <div class={styles.Search}>
+                    <SimpleFormField value={search()} onChange={setSearch}>
+                      <SimpleFormField.Label><I18nTsx key='Search' /></SimpleFormField.Label>
+                      <SimpleFormField.Input />
+                    </SimpleFormField>
+                  </div>
+
+                  <Space amount='1rem' />
+
                   <div class={styles.SectionTitle}>
                     <I18nTsx key='AdminRecentActionsFilters.ByType' />
                   </div>
@@ -197,7 +213,9 @@ export const Filters = (props: FiltersProps) => {
                       <I18nTsx key='AdminRecentActionsFilters.NotShowingAdmins' args={[notShowingAdmins() + '']} />
                     </div>
                   </Show>
+
                   <Space amount='1rem' />
+
                   <div class={styles.Footer}>
                     <Button class={styles.Button} primary onClick={onReset}>
                       <I18nTsx key='AdminRecentActionsFilters.ResetFilters' />

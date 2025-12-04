@@ -49,6 +49,7 @@ type FetchAdminLogsArgs = {
   offsetId?: AdminLog['id'];
   flags?: AdminLogFilterFlags;
   admins?: UserId[];
+  search?: string;
   limit: number;
 };
 
@@ -1021,12 +1022,12 @@ export class AppChatsManager extends AppManager {
 
   private adminLogsFetcherMap = new Map<ChatId, SlicedCachedFetcher<AdminLog>>;
 
-  public fetchAdminLogs({channelId, offsetId, flags, admins, limit}: FetchAdminLogsArgs) {
+  public fetchAdminLogs({channelId, offsetId, search, flags, admins, limit}: FetchAdminLogsArgs) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'channels.getAdminLog',
       params: {
         channel: this.getChannelInput(channelId),
-        q: '',
+        q: search || '',
         min_id: 0,
         max_id: offsetId || 0,
         limit,
