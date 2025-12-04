@@ -3333,7 +3333,8 @@
 "BirthdaySuggestView" = "View";
 "TonGiftSubtitle" = "Use TON to buy gifts and suggest posts to channels.";
 "RecentActions" = "Recent Actions";
-"AdminRecentActionMessage.ChangeTitle" = "Changed channel title";
+"AdminRecentActionMessage.ChangeTitleChannel" = "Changed channel title";
+"AdminRecentActionMessage.ChangeTitleGroup" = "Changed group title";
 "AdminRecentActionMessage.ChangeAboutChannel" = "Updated channel description";
 "AdminRecentActionMessage.ChangeAboutGroup" = "Updated group description";
 "AdminRecentActionMessage.ChangeUsernameGroup" = "Modified group username";
@@ -3345,8 +3346,10 @@
 "AdminRecentActionMessage.UpdatePinnedMessage" = "Updated pinned message";
 "AdminRecentActionMessage.EditedMessage" = "Edited a message";
 "AdminRecentActionMessage.DeletedMessage" = "Deleted a message";
-"AdminRecentActionMessage.ParticipantJoined" = "Member joined the channel";
-"AdminRecentActionMessage.ParticipantLeft" = "Member left the channel";
+"AdminRecentActionMessage.ParticipantJoinedChannel" = "Member joined the channel";
+"AdminRecentActionMessage.ParticipantJoinedGroup" = "Member joined the group";
+"AdminRecentActionMessage.ParticipantLeftChannel" = "Member left the channel";
+"AdminRecentActionMessage.ParticipantLeftGroup" = "Member left the group";
 "AdminRecentActionMessage.ParticipantInvited" = "Invited a member";
 "AdminRecentActionMessage.BanToggled" = "Banned/unbanned a participant";
 "AdminRecentActionMessage.AdminToggled" = "Granted/revoked admin rights";
@@ -3355,7 +3358,8 @@
 "AdminRecentActionMessage.DefaultBannedRightsChanged" = "Changed default banned rights";
 "AdminRecentActionMessage.PollStopped" = "Stopped a poll";
 "AdminRecentActionMessage.ChangeLinkedChat" = "Changed linked chat";
-"AdminRecentActionMessage.ChangeLocation" = "Changed channel location";
+"AdminRecentActionMessage.ChangeLocationChannel" = "Changed channel location";
+"AdminRecentActionMessage.ChangeLocationGroup" = "Changed group location";
 "AdminRecentActionMessage.ToggleSlowMode" = "Toggled slow mode";
 "AdminRecentActionMessage.StartGroupCall" = "Started a group call";
 "AdminRecentActionMessage.DiscardGroupCall" = "Ended the group call";

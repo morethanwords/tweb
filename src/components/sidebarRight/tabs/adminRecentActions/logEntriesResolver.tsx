@@ -56,9 +56,9 @@ type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
 type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: MapCallbackArgs<Key>) => MapCallbackResult;
 
 const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>} = {
-  'channelAdminLogEventActionChangeTitle': ({action}) => ({
+  'channelAdminLogEventActionChangeTitle': ({action, isBroadcast}) => ({
     group: 'info',
-    Message: () => i18n('AdminRecentActionMessage.ChangeTitle'),
+    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeTitleChannel' : 'AdminRecentActionMessage.ChangeTitleGroup'),
     ExpandableContent: () => <LogDiff added={action.new_value} removed={action.prev_value} />
   }),
   'channelAdminLogEventActionChangeAbout': ({action, isBroadcast}) => ({
@@ -169,13 +169,13 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       </>;
     }
   }),
-  'channelAdminLogEventActionParticipantJoin': () => ({
+  'channelAdminLogEventActionParticipantJoin': ({isBroadcast}) => ({
     group: 'participants',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantJoined')
+    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ParticipantJoinedChannel' : 'AdminRecentActionMessage.ParticipantJoinedChannel')
   }),
-  'channelAdminLogEventActionParticipantLeave': () => ({
+  'channelAdminLogEventActionParticipantLeave': ({isBroadcast}) => ({
     group: 'participants',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantLeft')
+    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ParticipantLeftChannel' : 'AdminRecentActionMessage.ParticipantLeftGroup')
   }),
   'channelAdminLogEventActionParticipantInvite': () => ({
     group: 'invites',
@@ -238,9 +238,9 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     group: 'links',
     Message: () => i18n('AdminRecentActionMessage.ChangeLinkedChat')
   }),
-  'channelAdminLogEventActionChangeLocation': () => ({
+  'channelAdminLogEventActionChangeLocation': ({isBroadcast}) => ({
     group: 'location',
-    Message: () => i18n('AdminRecentActionMessage.ChangeLocation')
+    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeLocationChannel' : 'AdminRecentActionMessage.ChangeLocationGroup')
   }),
   'channelAdminLogEventActionToggleSlowMode': () => ({
     group: 'messages',
