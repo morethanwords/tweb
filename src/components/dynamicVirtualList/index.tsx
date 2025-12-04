@@ -137,14 +137,16 @@ const createVirtualRenderState = <T, >({
     verticalPadding
   });
 
-  const [renderedItems, setRenderedItems] = createSignal<ListItemState<T>[]>([]);
+  const [renderedItems, setRenderedItems] = createSignal<ListItemState<T>[]>([], {
+    equals: (a, b) => a.length === b.length && a.every((item, i) => item === b[i])
+  });
 
   createEffect(() => {
     const list = listItemStates();
 
     const localBatchSize = untrack(batchSize);
 
-    const prevRenderedItems = untrack(renderedItems);
+    const prevRenderedItems = renderedItems();
     const toRender: ListItemState<T>[] = [];
 
     const prevMinIdx = prevRenderedItems.length ?
@@ -176,7 +178,7 @@ const createVirtualRenderState = <T, >({
         untrack(() => list[idx].offset() + (list[idx].cachedHeight() || 0)),
       );
 
-      currentOffset = list[i]?.offset() || verticalPadding();
+      currentOffset = untrack(() => list[i]?.offset()) || verticalPadding();
 
       for(; i < list.length; i++) {
         const item = list[i];
@@ -217,7 +219,12 @@ const createVirtualRenderState = <T, >({
     });
   });
 
-  return {scrollTop, clientHeight, height, renderedItems};
+  return {
+    scrollTop,
+    clientHeight,
+    height,
+    renderedItems
+  };
 };
 
 type CreateItemComponentArgs<T, El extends HTMLElement> = {
@@ -267,6 +274,8 @@ const createItemComponent = <T, El extends HTMLElement>({
       runWithOwner(owner, () => {
         registerResizeCallback(ref, ({size}) => {
           setCachedHeight(size.height);
+          // Looks like the resize observer is giving a little bit different height, especially visible when scrolled to bottom then collapse one element
+          // setCachedHeight(measureElementHeight(ref));
         });
       });
     });
