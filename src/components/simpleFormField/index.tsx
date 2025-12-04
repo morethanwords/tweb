@@ -1,5 +1,6 @@
 import {Accessor, createContext, createSignal, JSX, mergeProps, onMount, ParentProps, Setter, splitProps, useContext, createEffect, batch} from 'solid-js';
 import styles from './styles.module.scss';
+import {requestRAF} from '../../helpers/solid/requestRAF';
 
 
 type SimpleFormFieldContextValue = {
@@ -110,6 +111,7 @@ SimpleFormField.Label = (props: ParentProps<{
   const context = useContext(Context);
 
   const [offset, setOffset] = createSignal(0);
+  const [noTransition, setNoTransition] = createSignal(true);
 
   onMount(() => {
     if(props.forceOffset || !context.offsetElement()) return;
@@ -121,11 +123,18 @@ SimpleFormField.Label = (props: ParentProps<{
     setOffset(inputRect.left - rect.left);
   });
 
+  onMount(() => {
+    requestRAF(() => {
+      setNoTransition(false);
+    });
+  });
+
   return (
     <div
       class={styles.Label}
       classList={{
-        [styles.active]: props.active || !!context.value()
+        [styles.active]: props.active || !!context.value(),
+        [styles.noTransition]: noTransition()
       }}
       style={{
         '--offset': `${props.forceOffset || offset()}px`
