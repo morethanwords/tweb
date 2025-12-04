@@ -10,6 +10,10 @@
   font-size: 14px;
 
   background-color: rgba(var(--primary-color-rgb), 0.2);
+
+  &:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.35);
+  }
 }
 
 .Value {

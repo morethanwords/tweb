@@ -19,6 +19,7 @@ import InputField from '../../inputField';
 import SettingSection from '../../settingSection';
 import SidebarSlider from '../../slider';
 import {SliderSuperTabEventable} from '../../sliderTab';
+import {providedTabs} from '../../solidJsTabs';
 import getUserStatusString from '../../wrappers/getUserStatusString';
 import wrapPeerTitle from '../../wrappers/peerTitle';
 import {ChatAdministratorRights, ChatPermissions} from './groupPermissions';
@@ -275,3 +276,5 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
     }
   }
 }
+
+providedTabs.AppUserPermissionsTab = AppUserPermissionsTab;

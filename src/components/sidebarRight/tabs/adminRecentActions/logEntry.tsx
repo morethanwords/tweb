@@ -15,6 +15,8 @@ type LogEntryProps = {
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   expandableContent?: JSX.Element;
+
+  onPeerTitleClick?: () => void;
 };
 
 export const LogEntry = (props: LogEntryProps) => {
@@ -28,7 +30,12 @@ export const LogEntry = (props: LogEntryProps) => {
       <div class={styles.Header}>
         <div class={styles.Icon}><IconTsx icon={props.icon} /></div>
         <div class={styles.Group}>
-          <div class={styles.PeerTitle}>{props.peerTitle}</div>
+          <div class={styles.PeerTitle}>
+            <div class={`${styles.PeerTitleText} interactable`} onClick={props.onPeerTitleClick}>
+              <div class={styles.PeerTitleTextClickArea} />
+              {props.peerTitle}
+            </div>
+          </div>
           <HeightTransition onRunningAnimations={value => setHasRunningAnimations(!!value)}>
             <Show when={!props.expanded}>
               <div>

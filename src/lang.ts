@@ -3842,7 +3842,6 @@ const lang = {
   'TonGiftSubtitle': 'Use TON to buy gifts and suggest posts to channels.',
 
   'RecentActions': 'Recent Actions',
-  'ToUser': 'To user',
 
   'AdminRecentActionMessage.ChangeTitle': 'Changed channel title',
   'AdminRecentActionMessage.ChangeAboutChannel': 'Updated channel description',
@@ -3898,6 +3897,8 @@ const lang = {
   'AdminRecentActionMessage.ToggleSignatureProfiles': 'Toggled signature profiles',
   'AdminRecentActionMessage.ParticipantSubscriptionExtended': 'Extended participant subscription',
   'AdminRecentActionMessage.ToggleAutoTranslation': 'Toggled auto‑translation',
+
+  'AdminRecentActionMessage.ChangedPermissionsToUser': 'To user',
 
   'AdminRecentActionsFilters.NewAdminRights': 'New Admin Rights',
   'AdminRecentActionsFilters.NewExceptions': 'New exceptions',

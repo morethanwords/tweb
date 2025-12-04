@@ -1,6 +1,7 @@
 import type AppAddMembersTab from '../sidebarLeft/tabs/addMembers';
 import type AppPrivacyAndSecurityTab from '../sidebarLeft/tabs/privacyAndSecurity';
-import {AppPasscodeLockTab, AppPasscodeEnterPasswordTab, AppNotificationsTab} from './tabs';
+import type AppUserPermissionsTab from '../sidebarRight/tabs/userPermissions';
+import {AppNotificationsTab, AppPasscodeEnterPasswordTab, AppPasscodeLockTab} from './tabs';
 
 
 export type ProvidedTabs = {
@@ -11,6 +12,7 @@ export type ProvidedTabs = {
   // Other non solid-js tabs
   AppPrivacyAndSecurityTab: typeof AppPrivacyAndSecurityTab;
   AppAddMembersTab: typeof AppAddMembersTab;
+  AppUserPermissionsTab: typeof AppUserPermissionsTab;
 };
 
 /**

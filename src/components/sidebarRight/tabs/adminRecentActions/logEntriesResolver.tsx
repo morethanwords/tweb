@@ -5,6 +5,8 @@ import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getPar
 import {i18n} from '../../../../lib/langPack';
 import wrapRichText from '../../../../lib/richTextProcessor/wrapRichText';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
+import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
 import Space from '../../../space';
 import {resolveAdminRightFlagI18n} from './adminRightsI18nResolver';
 import {ChatPhoto} from './chatPhoto';
@@ -178,7 +180,8 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     group: 'permissions',
     Message: () => i18n('AdminRecentActionMessage.AdminToggled'),
     ExpandableContent: () => {
-      const {PeerTitleTsx} = useHotReloadGuard();
+      const {PeerTitleTsx, rootScope} = useHotReloadGuard();
+      const [tab, allTabs] = useSuperTab<typeof AppAdminRecentActionsTab>();
 
       const prevParticipantRights = 'admin_rights' in action.prev_participant ? action.prev_participant.admin_rights : null;
       const newParticipantRights = 'admin_rights' in action.new_participant ? action.new_participant.admin_rights : null;
@@ -189,8 +192,12 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       return <>
         <Show when={peerId}>
           <KeyValuePair
-            label={i18n('ToUser')}
+            label={i18n('AdminRecentActionMessage.ChangedPermissionsToUser')}
             value={<PeerTitleTsx peerId={peerId} />}
+            onClick={async() => {
+              const participant = await rootScope.managers.appProfileManager.getParticipant(tab.payload.channelId, peerId);
+              allTabs.AppUserPermissionsTab.openTab(tab.slider, tab.payload.channelId, participant, true);
+            }}
           />
           <Space amount='4px' />
         </Show>

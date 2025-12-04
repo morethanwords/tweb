@@ -22,7 +22,7 @@
 .Header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 
   padding: 10px 12px;
 }
@@ -50,7 +50,11 @@
   white-space: nowrap;
   font-size: 14px;
   line-height: 1.2;
-  padding-top: 1px;
+
+  padding: 2px 4px;
+  padding-top: 3px;
+
+  border-radius: 3px;
 }
 
 .Message {
@@ -62,6 +66,7 @@
   color: var(--secondary-text-color);
   line-height: 1.2;
   padding-top: 2px;
+  padding-left: 4px;
 }
 
 .Date {
@@ -88,5 +93,30 @@
 
   &Space {
     height: 4px;
+  }
+}
+
+.PeerTitleText {
+  position: relative;
+  display: inline-flex;
+
+  &ClickArea {
+    position: absolute;
+    --x-offset: -4px;
+    --y-offset: -2px;
+    top: var(--y-offset);
+    left: var(--x-offset);
+    right: var(--x-offset);
+    bottom: var(--y-offset);
+
+    border-radius: 3px;
+  }
+
+  &:hover &ClickArea {
+    background-color: rgba(0, 0, 0, 0.075);
+  }
+
+  :global(.night) &:hover &ClickArea {
+    background-color: rgba(255, 255, 255, 0.12);
   }
 }

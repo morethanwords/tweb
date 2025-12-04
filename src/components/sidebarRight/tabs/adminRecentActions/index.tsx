@@ -40,7 +40,7 @@ const testEmpty = 0;
 
 const AdminRecentActionsTab = () => {
   const {rootScope, PeerTitleTsx, apiManagerProxy} = useHotReloadGuard();
-  const [tab] = useSuperTab<typeof AppAdminRecentActionsTab>();
+  const [tab, allTabs] = useSuperTab<typeof AppAdminRecentActionsTab>();
 
   const isForum = apiManagerProxy.isForum(tab.payload.channelId.toPeerId(true));
 
@@ -264,6 +264,10 @@ const AdminRecentActionsTab = () => {
                     onExpandedChange={() => onToggle(log())}
                     expanded={isExpanded(log())}
                     expandableContent={entry().ExpandableContent && <Dynamic component={entry().ExpandableContent} />}
+                    onPeerTitleClick={async() => {
+                      const participant = await rootScope.managers.appProfileManager.getParticipant(tab.payload.channelId, log().user_id.toPeerId());
+                      allTabs.AppUserPermissionsTab.openTab(tab.slider, tab.payload.channelId, participant, true);
+                    }}
                   />
                 </Show>
               </div>
