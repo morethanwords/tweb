@@ -32,7 +32,7 @@ const itemSizeEstimate = 70;
 const itemSizeEstimateExpanded = 120;
 const animateInDuration = 200;
 const staggerDelay = 20;
-const staggerDelayExpanded = 40;
+const staggerDelayExpanded = 50;
 const reAnimateDelay = 120;
 const thumbUpdateDebounceTimeout = 100;
 
@@ -57,6 +57,7 @@ const AdminRecentActionsTab = () => {
 
   const [logs, setLogs] = createSignal<AdminLog[]>([]);
 
+  // const fetchLogs = async(offsetId?: AdminLog['id']) => offsetId ? [] : [...Array.from({length: 1}, () => [...savedLogs.slice(0, 12).map(o => ({...o}))])].flat()
   // const fetchLogs = async(offsetId?: AdminLog['id']) => offsetId ? [] : [...Array.from({length: 40}, () => [...savedLogs.map(o => ({...o}))])].flat()
   const fetchLogs = (offsetId?: AdminLog['id']) => committedFilters() ?
     rootScope.managers.appChatsManager.fetchAdminLogs({
@@ -201,6 +202,7 @@ const AdminRecentActionsTab = () => {
           scrollable={tab.scrollable.container}
           onNearBottom={onNearBottom}
           verticalPadding={8}
+          renderAtLeastFromBottom={({clientHeight}) => Math.ceil((clientHeight / itemSizeEstimate))}
           Item={(props) => {
             let ref: HTMLDivElement;
 

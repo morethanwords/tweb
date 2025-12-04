@@ -36,6 +36,10 @@ export type DynamicVirtualListItemProps<T, El extends HTMLElement> = {
   idx: number;
 };
 
+type RenderAtLeastFromBottomArgs = {
+  clientHeight: number;
+};
+
 export type DynamicVirtualListProps<T, El extends HTMLElement> = {
   list: T[];
   scrollable: HTMLElement;
@@ -44,6 +48,11 @@ export type DynamicVirtualListProps<T, El extends HTMLElement> = {
   Item: (props: DynamicVirtualListItemProps<T, El>) => JSX.Element;
   maxBatchSize: number;
   verticalPadding?: number;
+
+  /**
+   * Useful when scrolled all the way to the bottom and collapsing all elements, make sure to give an integer
+   */
+  renderAtLeastFromBottom?: (args: RenderAtLeastFromBottomArgs) => number;
 
   nearBottomThreshold?: number;
   /**
@@ -115,6 +124,7 @@ type CreateVirtualRenderStateArgs<T> = {
   estimateItemHeight: (item: T) => number;
   maxBatchSize: Accessor<number>;
   verticalPadding: Accessor<number>;
+  renderAtLeastFromBottom: (args: RenderAtLeastFromBottomArgs) => number;
 };
 
 const createVirtualRenderState = <T, >({
@@ -122,7 +132,8 @@ const createVirtualRenderState = <T, >({
   scrollable,
   maxBatchSize: batchSize,
   estimateItemHeight,
-  verticalPadding
+  verticalPadding,
+  renderAtLeastFromBottom
 }: CreateVirtualRenderStateArgs<T>) => {
   const scrollTop = useScrollTop(scrollable);
   const size = useElementSize(scrollable);
@@ -146,6 +157,7 @@ const createVirtualRenderState = <T, >({
 
     const localBatchSize = untrack(batchSize);
 
+    // Yes, we'll rerun the effect every time it changes, making sure it fills the viewport even if items didn't change their height after updating
     const prevRenderedItems = renderedItems();
     const toRender: ListItemState<T>[] = [];
 
@@ -178,6 +190,11 @@ const createVirtualRenderState = <T, >({
         untrack(() => list[idx].offset() + (list[idx].cachedHeight() || 0)),
       );
 
+      const fromBottomIdx = list.length - renderAtLeastFromBottom({clientHeight: localClientHeight});
+
+      i = Math.min(i, fromBottomIdx);
+      i = Math.max(i, 0);
+
       currentOffset = untrack(() => list[i]?.offset()) || verticalPadding();
 
       for(; i < list.length; i++) {
@@ -195,7 +212,7 @@ const createVirtualRenderState = <T, >({
 
         const wasVisible = prevRenderedItems.includes(item);
 
-        const isVisible = bottom > viewportTop && top < viewportBottom;
+        const isVisible = (bottom > viewportTop || i >= fromBottomIdx) && top < viewportBottom;
 
         if(!wasVisible && isVisible) queuedCount += 1;
 
@@ -273,9 +290,9 @@ const createItemComponent = <T, El extends HTMLElement>({
 
       runWithOwner(owner, () => {
         registerResizeCallback(ref, ({size}) => {
-          setCachedHeight(size.height);
+          // setCachedHeight(size.height);
           // Looks like the resize observer is giving a little bit different height, especially visible when scrolled to bottom then collapse one element
-          // setCachedHeight(measureElementHeight(ref));
+          setCachedHeight(measureElementHeight(ref));
         });
       });
     });
@@ -320,14 +337,19 @@ const createItemComponent = <T, El extends HTMLElement>({
 export const DynamicVirtualList = <T, El extends HTMLElement>(
   inProps: DynamicVirtualListProps<T, El>,
 ) => {
-  const props = mergeProps({nearBottomThreshold: 120, verticalPadding: 0}, inProps)
+  const props = mergeProps({
+    nearBottomThreshold: 120,
+    verticalPadding: 0,
+    renderAtLeastFromBottom: () => 0
+  }, inProps);
 
   const {scrollTop, clientHeight, height, renderedItems} = createVirtualRenderState({
     list: () => props.list,
     estimateItemHeight: (...args) => props.estimateItemHeight(...args),
     maxBatchSize: () => props.maxBatchSize,
     scrollable: () => props.scrollable,
-    verticalPadding: () => props.verticalPadding
+    verticalPadding: () => props.verticalPadding,
+    renderAtLeastFromBottom: (args) => props.renderAtLeastFromBottom(args)
   });
 
   createEffect(() => {
