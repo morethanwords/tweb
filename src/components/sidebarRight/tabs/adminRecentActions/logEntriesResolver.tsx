@@ -1,4 +1,5 @@
 import {Component, Show} from 'solid-js';
+import deepEqual from '../../../../helpers/object/deepEqual';
 import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {i18n} from '../../../../lib/langPack';
@@ -99,7 +100,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const newMessage = action.new_message?._ === 'message' ? action.new_message : undefined;
 
       const hasPhotoDiff = prevPhoto?.id !== newPhoto?.id;
-      const hasMessageDiff = prevMessage?.message || newMessage?.message;
+      const hasMessageDiff = prevMessage?.message !== newMessage?.message || !deepEqual(prevMessage?.entities, newMessage?.entities);
 
       return <>
         <Show when={hasPhotoDiff}>
