@@ -152,13 +152,19 @@ const createVirtualRenderState = <T, >({
     equals: (a, b) => a.length === b.length && a.every((item, i) => item === b[i])
   });
 
+  // Here we care only by reference
+  const [trackedRenderedItems, setTrackedRenderedItems] = createSignal<ListItemState<T>[]>([]);
+
   createEffect(() => {
+    // We'll rerun the effect every time the rendered items change (but after measuring),
+    // making sure it fills the viewport even if the items didn't change their height after updating
+    trackedRenderedItems();
+
     const list = listItemStates();
 
     const localBatchSize = untrack(batchSize);
 
-    // Yes, we'll rerun the effect every time it changes, making sure it fills the viewport even if items didn't change their height after updating
-    const prevRenderedItems = renderedItems();
+    const prevRenderedItems = untrack(renderedItems);
     const toRender: ListItemState<T>[] = [];
 
     const prevMinIdx = prevRenderedItems.length ?
@@ -234,13 +240,18 @@ const createVirtualRenderState = <T, >({
       setHeight(prev => prev + totalHeightDiff);
       setRenderedItems(toRender);
     });
+
+    // console.log('my-debug rerender', {localScrollTop, viewportTop, viewportBottom, prevRenderedItemsLength: prevRenderedItems.length, toRenderLength: toRender.length})
   });
 
   return {
     scrollTop,
     clientHeight,
     height,
-    renderedItems
+    renderedItems,
+    onMeasure: () => {
+      setTrackedRenderedItems(untrack(renderedItems));
+    }
   };
 };
 
@@ -343,7 +354,7 @@ export const DynamicVirtualList = <T, El extends HTMLElement>(
     renderAtLeastFromBottom: () => 0
   }, inProps);
 
-  const {scrollTop, clientHeight, height, renderedItems} = createVirtualRenderState({
+  const {scrollTop, clientHeight, height, renderedItems, onMeasure} = createVirtualRenderState({
     list: () => props.list,
     estimateItemHeight: (...args) => props.estimateItemHeight(...args),
     maxBatchSize: () => props.maxBatchSize,
@@ -362,7 +373,10 @@ export const DynamicVirtualList = <T, El extends HTMLElement>(
 
   const Item = createItemComponent({
     component: () => props.Item,
-    measureElementHeight: (...args) => props.measureElementHeight(...args)
+    measureElementHeight: (...args) => {
+      onMeasure(); // we're batching inside the measure and it will set by the same reference, so it should be fine
+      return props.measureElementHeight(...args)
+    }
   });
 
   return (
