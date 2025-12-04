@@ -54,7 +54,32 @@
   padding: 2px 4px;
   padding-top: 3px;
 
-  border-radius: 3px;
+  border-radius: 6px;
+
+  &Text {
+    position: relative;
+    display: inline-flex;
+
+    &ClickArea {
+      position: absolute;
+      --x-offset: -4px;
+      --y-offset: -2px;
+      top: var(--y-offset);
+      left: var(--x-offset);
+      right: var(--x-offset);
+      bottom: var(--y-offset);
+
+      border-radius: 6px;
+    }
+
+    &:hover &ClickArea {
+      background-color: rgba(0, 0, 0, 0.075);
+    }
+
+    :global(.night) &:hover &ClickArea {
+      background-color: rgba(255, 255, 255, 0.12);
+    }
+  }
 }
 
 .Message {
@@ -93,30 +118,5 @@
 
   &Space {
     height: 4px;
-  }
-}
-
-.PeerTitleText {
-  position: relative;
-  display: inline-flex;
-
-  &ClickArea {
-    position: absolute;
-    --x-offset: -4px;
-    --y-offset: -2px;
-    top: var(--y-offset);
-    left: var(--x-offset);
-    right: var(--x-offset);
-    bottom: var(--y-offset);
-
-    border-radius: 3px;
-  }
-
-  &:hover &ClickArea {
-    background-color: rgba(0, 0, 0, 0.075);
-  }
-
-  :global(.night) &:hover &ClickArea {
-    background-color: rgba(255, 255, 255, 0.12);
   }
 }
