@@ -8,6 +8,7 @@ import asyncThrottle from '../../../../helpers/schedulers/asyncThrottle';
 import debounce from '../../../../helpers/schedulers/debounce';
 import pause from '../../../../helpers/schedulers/pause';
 import {createSetSignal} from '../../../../helpers/solid/createSetSignal';
+import {wrapAsyncClickHandler} from '../../../../helpers/wrapAsyncClickHandler';
 import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {ButtonIconTsx} from '../../../buttonIconTsx';
@@ -264,10 +265,11 @@ const AdminRecentActionsTab = () => {
                     onExpandedChange={() => onToggle(log())}
                     expanded={isExpanded(log())}
                     expandableContent={entry().ExpandableContent && <Dynamic component={entry().ExpandableContent} />}
-                    onPeerTitleClick={async() => {
+                    onPeerTitleClick={wrapAsyncClickHandler(async() => {
                       const participant = await rootScope.managers.appProfileManager.getParticipant(tab.payload.channelId, log().user_id.toPeerId());
                       allTabs.AppUserPermissionsTab.openTab(tab.slider, tab.payload.channelId, participant, true);
-                    }}
+                      await pause(200); // wait the open animation too
+                    })}
                   />
                 </Show>
               </div>

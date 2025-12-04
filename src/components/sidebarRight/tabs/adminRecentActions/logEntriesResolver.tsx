@@ -1,5 +1,7 @@
 import {Component, Show} from 'solid-js';
 import deepEqual from '../../../../helpers/object/deepEqual';
+import pause from '../../../../helpers/schedulers/pause';
+import {wrapAsyncClickHandler} from '../../../../helpers/wrapAsyncClickHandler';
 import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {i18n} from '../../../../lib/langPack';
@@ -194,10 +196,11 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
           <KeyValuePair
             label={i18n('AdminRecentActionMessage.ChangedPermissionsToUser')}
             value={<PeerTitleTsx peerId={peerId} />}
-            onClick={async() => {
+            onClick={wrapAsyncClickHandler(async() => {
               const participant = await rootScope.managers.appProfileManager.getParticipant(tab.payload.channelId, peerId);
               allTabs.AppUserPermissionsTab.openTab(tab.slider, tab.payload.channelId, participant, true);
-            }}
+              await pause(200); // wait the open animation too
+            })}
           />
           <Space amount='4px' />
         </Show>
