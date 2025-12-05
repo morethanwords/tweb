@@ -3902,8 +3902,6 @@ const lang = {
   'AdminRecentActionMessage.ParticipantSubscriptionExtended': 'Extended participant subscription',
   'AdminRecentActionMessage.ToggleAutoTranslation': 'Toggled auto‑translation',
 
-  'AdminRecentActionMessage.ChangedPermissionsToUser': 'To user',
-
   'AdminRecentActionsFilters.NewAdminRights': 'New Admin Rights',
   'AdminRecentActionsFilters.NewExceptions': 'New exceptions',
   'AdminRecentActionsFilters.NewMembers': 'New members',
@@ -3939,7 +3937,15 @@ const lang = {
 
   'AdminRecentActions.ViewPreviousMessage': 'View Previous',
   'AdminRecentActions.ViewDeletedMessage': 'View Deleted',
-  'AdminRecentActions.ViewUpdatedMessage': 'View Updated'
+  'AdminRecentActions.ViewUpdatedMessage': 'View Updated',
+  'AdminRecentActions.ViewPinned': 'View Pinned',
+  'AdminRecentActions.ViewUnpinned': 'View Unpinned',
+  'AdminRecentActions.ChangedPermissionsToUser': 'To user',
+  'AdminRecentActions.ChangedTo': 'Changed to',
+  'AdminRecentActions.Enabled': 'Enabled',
+  'AdminRecentActions.Disabled': 'Disabled',
+  'AdminRecentActions.SlowModeDuration': 'Slow mode duration',
+  'AdminRecentActions.UserNotMemberAnymore': 'This user is not a member anymore'
 };
 
 export default lang;

@@ -3,7 +3,9 @@
   overflow: hidden;
 
   display: inline-flex;
+  align-items: center;
   gap: 4px;
+
   padding: 3px 8px 2px 9px;
   border-radius: 6px;
 
@@ -11,7 +13,7 @@
 
   background-color: rgba(var(--primary-color-rgb), 0.2);
 
-  &:hover {
+  &.interactable:hover {
     background-color: rgba(var(--primary-color-rgb), 0.3);
   }
 }

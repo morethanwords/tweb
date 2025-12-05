@@ -1,4 +1,4 @@
-import {For, JSX, Show} from 'solid-js';
+import {children, createMemo, For, JSX, Show} from 'solid-js';
 import {IconTsx} from '../../../iconTsx';
 import styles from './logDiff.module.scss';
 
@@ -11,11 +11,14 @@ type LogDiffProps = {
 };
 
 export const LogDiff = (props: LogDiffProps) => {
-  const addedAsArray = () => props.added ? props.added instanceof Array ? props.added : [props.added] : [];
-  const removedAsArray = () => props.removed ? props.removed instanceof Array ? props.removed : [props.removed] : [];
+  const resolvedAdded = children(() => props.added);
+  const resolvedRemoved = children(() => props.removed);
 
-  const hasAdded = () => addedAsArray().length > 0;
-  const hasRemoved = () => removedAsArray().length > 0;
+  const addedAsArray = createMemo(() => resolvedAdded.toArray().filter(Boolean));
+  const removedAsArray = createMemo(() => resolvedRemoved.toArray().filter(Boolean));
+
+  const hasAdded = createMemo(() => addedAsArray().length > 0);
+  const hasRemoved = createMemo(() => removedAsArray().length > 0);
 
   return (
     <div class={styles.Container} classList={{[styles.vertical]: props.vertical, interactable: !props.vertical}}>

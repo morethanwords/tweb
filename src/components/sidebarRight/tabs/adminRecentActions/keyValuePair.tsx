@@ -10,7 +10,7 @@ type KeyValuePairProps = {
 
 export const KeyValuePair = (props: KeyValuePairProps) => {
   return (
-    <div class={`${styles.Container} interactable`} onClick={props.onClick}>
+    <div class={styles.Container} classList={{'interactable': !!props.onClick, [styles.interactable]: !!props.onClick}} onClick={props.onClick}>
       <div class={styles.Border} />
       <div>{props.label}:</div>
       <div class={styles.Value}>{props.value}</div>

@@ -2,6 +2,7 @@ import {createMemo, Show} from 'solid-js';
 import {I18nTsx} from '../../../../helpers/solid/i18n';
 import {Message} from '../../../../layer';
 import {MyMessage} from '../../../../lib/appManagers/appMessagesManager';
+import {LangPackKey} from '../../../../lib/langPack';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import Button from '../../../buttonTsx';
 import styles from './previewMessageButtons.module.scss';
@@ -11,7 +12,9 @@ export const PreviewMessageButtons = (props: {
   channelId: ChatId;
   added?: Message;
   removed?: Message;
-  removedIsDeleted?: boolean;
+
+  addedKey?: LangPackKey;
+  removedKey?: LangPackKey;
 }) => {
   const {rootScope, appImManager, ChatType} = useHotReloadGuard();
 
@@ -33,14 +36,14 @@ export const PreviewMessageButtons = (props: {
   return (
     <Show when={nonEmptyAdded() || nonEmptyRemoved()}>
       <div class={styles.Container}>
-        <Show when={nonEmptyAdded()}>
+        <Show when={nonEmptyAdded() && props.addedKey}>
           <Button class={`interactable ${styles.Button} ${styles.added}`} onClick={() => onClick(nonEmptyAdded())}>
-            <I18nTsx key='AdminRecentActions.ViewUpdatedMessage' />
+            <I18nTsx key={props.addedKey} />
           </Button>
         </Show>
-        <Show when={nonEmptyRemoved()}>
+        <Show when={nonEmptyRemoved() && props.removedKey}>
           <Button class={`interactable ${styles.Button} ${styles.removed}`} onClick={() => onClick(nonEmptyRemoved())}>
-            <I18nTsx key={props.removedIsDeleted ? 'AdminRecentActions.ViewDeletedMessage' : 'AdminRecentActions.ViewPreviousMessage'} />
+            <I18nTsx key={props.removedKey} />
           </Button>
         </Show>
       </div>

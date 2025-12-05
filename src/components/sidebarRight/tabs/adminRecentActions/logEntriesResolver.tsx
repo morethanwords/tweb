@@ -1,4 +1,5 @@
 import {Component, Show} from 'solid-js';
+import formatDuration from '../../../../helpers/formatDuration';
 import deepEqual from '../../../../helpers/object/deepEqual';
 import pause from '../../../../helpers/schedulers/pause';
 import createMiddleware from '../../../../helpers/solid/createMiddleware';
@@ -11,7 +12,9 @@ import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
 import Space from '../../../space';
+import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
 import {resolveAdminRightFlagI18n} from './adminRightsI18nResolver';
+import {BooleanKeyValue} from './booleanKeyValue';
 import {ChatPhoto} from './chatPhoto';
 import {diffAdminRights} from './diffAdminRights';
 import {KeyValuePair} from './keyValuePair';
@@ -28,6 +31,8 @@ export type GroupType =
   | 'messages'
   | 'participants'
   | 'invites'
+  | 'join'
+  | 'leave'
   | 'links'
   | 'location'
   | 'calls'
@@ -36,6 +41,7 @@ export type GroupType =
   | 'reactions'
   | 'forum'
   | 'translations'
+  | 'pinned'
   | 'other';
 
 type MapCallbackResult = {
@@ -82,17 +88,63 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       />
     )
   }),
-  'channelAdminLogEventActionToggleInvites': () => ({
+  'channelAdminLogEventActionToggleInvites': ({action}) => ({
     group: 'invites',
-    Message: () => i18n('AdminRecentActionMessage.ToggleInvites')
+    Message: () => i18n('AdminRecentActionMessage.ToggleInvites'),
+    ExpandableContent: () => (
+      <BooleanKeyValue value={action.new_value} />
+    )
   }),
-  'channelAdminLogEventActionToggleSignatures': () => ({
+  'channelAdminLogEventActionToggleSignatures': ({action}) => ({
     group: 'identity',
-    Message: () => i18n('AdminRecentActionMessage.ToggleSignatures')
+    Message: () => i18n('AdminRecentActionMessage.ToggleSignatures'),
+    ExpandableContent: () => (
+      <BooleanKeyValue value={action.new_value} />
+    )
   }),
-  'channelAdminLogEventActionUpdatePinned': () => ({
-    group: 'messages',
-    Message: () => i18n('AdminRecentActionMessage.UpdatePinnedMessage')
+  'channelAdminLogEventActionUpdatePinned': ({channelId, action}) => ({
+    group: 'pinned',
+    Message: () => i18n('AdminRecentActionMessage.UpdatePinnedMessage'),
+    ExpandableContent: () => {
+      const photo = getPhoto(action.message);
+      const justMessage = action.message?._ === 'message' ? action.message : undefined;
+
+      const hasPhotoDiff = photo;
+      const hasMessageDiff = justMessage?.message;
+
+      const middleware = createMiddleware().get();
+
+      const pinned = action.message?._ === 'message' && action.message.pFlags?.pinned;
+
+      return <>
+        <Show when={hasPhotoDiff}>
+          <LogDiff
+            vertical
+            added={pinned && photo && <ChatPhoto photo={photo} />}
+            removed={!pinned && photo && <ChatPhoto photo={photo} />}
+          />
+        </Show>
+
+        {(hasPhotoDiff && hasMessageDiff) && <Space amount='4px' />}
+
+        <Show when={hasMessageDiff}>
+          <LogDiff
+            added={pinned && justMessage && wrapRichText(justMessage.message, {entities: justMessage.entities, middleware})}
+            removed={!pinned && justMessage && wrapRichText(justMessage.message, {entities: justMessage.entities, middleware})}
+          />
+        </Show>
+
+        <Space amount='8px' />
+
+        <PreviewMessageButtons
+          channelId={channelId}
+          added={pinned ? action.message : undefined}
+          removed={pinned ? undefined : action.message}
+          addedKey='AdminRecentActions.ViewPinned'
+          removedKey='AdminRecentActions.ViewUnpinned'
+        />
+      </>;
+    }
   }),
   'channelAdminLogEventActionEditMessage': ({channelId, action}) => ({
     group: 'messages',
@@ -131,7 +183,13 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
 
         <Space amount='8px' />
 
-        <PreviewMessageButtons channelId={channelId} added={action.new_message} removed={action.prev_message} />
+        <PreviewMessageButtons
+          channelId={channelId}
+          added={action.new_message}
+          removed={action.prev_message}
+          addedKey='AdminRecentActions.ViewUpdatedMessage'
+          removedKey='AdminRecentActions.ViewPreviousMessage'
+        />
       </>;
     }
   }),
@@ -165,25 +223,32 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
 
         <Space amount='8px' />
 
-        <PreviewMessageButtons channelId={channelId} removed={action.message} removedIsDeleted />
+        <PreviewMessageButtons
+          channelId={channelId}
+          removed={action.message}
+          removedKey='AdminRecentActions.ViewDeletedMessage'
+        />
       </>;
     }
   }),
   'channelAdminLogEventActionParticipantJoin': ({isBroadcast}) => ({
-    group: 'participants',
-    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ParticipantJoinedChannel' : 'AdminRecentActionMessage.ParticipantJoinedChannel')
+    group: 'join',
+    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ParticipantJoinedChannel' : 'AdminRecentActionMessage.ParticipantJoinedGroup')
   }),
   'channelAdminLogEventActionParticipantLeave': ({isBroadcast}) => ({
-    group: 'participants',
+    group: 'leave',
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ParticipantLeftChannel' : 'AdminRecentActionMessage.ParticipantLeftGroup')
   }),
   'channelAdminLogEventActionParticipantInvite': () => ({
-    group: 'invites',
+    group: 'join',
     Message: () => i18n('AdminRecentActionMessage.ParticipantInvited')
   }),
-  'channelAdminLogEventActionParticipantToggleBan': () => ({
+  'channelAdminLogEventActionParticipantToggleBan': ({action}) => ({
     group: 'permissions',
-    Message: () => i18n('AdminRecentActionMessage.BanToggled')
+    Message: () => i18n('AdminRecentActionMessage.BanToggled'),
+    ExpandableContent: () => (
+      <>{action.new_participant}</>
+    )
   }),
   'channelAdminLogEventActionParticipantToggleAdmin': ({action, isBroadcast}) => ({
     group: 'permissions',
@@ -201,7 +266,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       return <>
         <Show when={peerId}>
           <KeyValuePair
-            label={i18n('AdminRecentActionMessage.ChangedPermissionsToUser')}
+            label={i18n('AdminRecentActions.ChangedPermissionsToUser')}
             value={<PeerTitleTsx peerId={peerId} />}
             onClick={wrapAsyncClickHandler(async() => {
               const participant = await rootScope.managers.appProfileManager.getParticipant(tab.payload.channelId, peerId);
@@ -242,9 +307,19 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     group: 'location',
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeLocationChannel' : 'AdminRecentActionMessage.ChangeLocationGroup')
   }),
-  'channelAdminLogEventActionToggleSlowMode': () => ({
-    group: 'messages',
-    Message: () => i18n('AdminRecentActionMessage.ToggleSlowMode')
+  'channelAdminLogEventActionToggleSlowMode': ({action}) => ({
+    group: 'permissions',
+    Message: () => i18n('AdminRecentActionMessage.ToggleSlowMode'),
+    ExpandableContent: () => (
+      <KeyValuePair
+        label={i18n('AdminRecentActions.SlowModeDuration')}
+        value={
+            action.new_value ?
+              wrapFormattedDuration(formatDuration(action.new_value)) :
+              i18n('AdminRecentActions.Disabled')
+        }
+      />
+    )
   }),
   'channelAdminLogEventActionStartGroupCall': () => ({
     group: 'calls',
@@ -267,7 +342,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     Message: () => i18n('AdminRecentActionMessage.ToggleGroupCallSetting')
   }),
   'channelAdminLogEventActionParticipantJoinByInvite': () => ({
-    group: 'invites',
+    group: 'join',
     Message: () => i18n('AdminRecentActionMessage.ParticipantJoinedByInvite')
   }),
   'channelAdminLogEventActionExportedInviteDelete': () => ({
@@ -390,7 +465,9 @@ export const groupToIconMap: Record<GroupType, Icon> = {
   permissions: 'permissions',
   messages: 'message',
   participants: 'group',
-  invites: 'adduser',
+  join: 'adduser',
+  invites: 'link',
+  leave: 'deleteuser',
   links: 'link',
   location: 'location',
   calls: 'phone',
@@ -399,5 +476,6 @@ export const groupToIconMap: Record<GroupType, Icon> = {
   reactions: 'reactions',
   forum: 'comments',
   translations: 'language',
+  pinned: 'pin',
   other: 'more'
 };

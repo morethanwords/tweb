@@ -1,4 +1,4 @@
-import {batch, createComputed, createMemo, createResource, createSelector, createSignal, onMount, Show} from 'solid-js';
+import {batch, createComputed, createEffect, createMemo, createResource, createSelector, createSignal, onMount, Show} from 'solid-js';
 import {Dynamic, Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import lastItem from '../../../../helpers/array/lastItem';
@@ -10,12 +10,14 @@ import pause from '../../../../helpers/schedulers/pause';
 import {createSetSignal} from '../../../../helpers/solid/createSetSignal';
 import {wrapAsyncClickHandler} from '../../../../helpers/wrapAsyncClickHandler';
 import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
+import {isParticipantAdmin} from '../../../../lib/appManagers/utils/chats/isParticipantAdmin';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {ButtonIconTsx} from '../../../buttonIconTsx';
 import {DynamicVirtualList} from '../../../dynamicVirtualList';
 import ripple from '../../../ripple';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
+import {toastNew} from '../../../toast';
 import {ExpandToggleButton} from './expandToggleButton';
 import {CommittedFilters, Filters} from './filters';
 import {groupToIconMap, resolveLogEntry} from './logEntriesResolver';
@@ -59,7 +61,7 @@ const AdminRecentActionsTab = () => {
   const [logs, setLogs] = createSignal<AdminLog[]>([]);
 
   // const fetchLogs = async(offsetId?: AdminLog['id']) => offsetId ? [] : [...Array.from({length: 1}, () => [...savedLogs.slice(0, 12).map(o => ({...o}))])].flat()
-  // const fetchLogs = async(offsetId?: AdminLog['id']) => offsetId ? [] : [...Array.from({length: 40}, () => [...savedLogs.map(o => ({...o}))])].flat()
+  // const fetchLogs = async(offsetId?: AdminLog['id']) => offsetId ? [] : [...Array.from({length: 400}, () => [...savedLogs.map(o => ({...o}))])].flat()
   const fetchLogs = (offsetId?: AdminLog['id']) => committedFilters() ?
     rootScope.managers.appChatsManager.fetchAdminLogs({
       channelId: tab.payload.channelId,
@@ -110,7 +112,7 @@ const AdminRecentActionsTab = () => {
     const lastLog = lastItem(logs());
     if(!lastLog) return; // empty list
 
-    const newLogs = await fetchLogs(lastLog.id)
+    const newLogs = await fetchLogs(lastLog.id);
     if(!newLogs.length) {
       reachedTheEnd = true;
       return;
@@ -149,6 +151,10 @@ const AdminRecentActionsTab = () => {
       }
     });
   };
+
+  // createEffect(() => {
+  //   console.log('my-debug', {logs: logs()})
+  // });
 
   const onNearBottom = () => {
     fetchMore();
@@ -267,9 +273,15 @@ const AdminRecentActionsTab = () => {
                     expanded={isExpanded(log())}
                     expandableContent={entry().ExpandableContent && <Dynamic component={entry().ExpandableContent} />}
                     onPeerTitleClick={wrapAsyncClickHandler(async() => {
-                      const participant = await rootScope.managers.appProfileManager.getParticipant(tab.payload.channelId, log().user_id.toPeerId());
-                      allTabs.AppUserPermissionsTab.openTab(tab.slider, tab.payload.channelId, participant, true);
-                      await pause(200); // wait the open animation too
+                      try {
+                        const participant = await rootScope.managers.appProfileManager.getParticipant(tab.payload.channelId, log().user_id.toPeerId());
+                        allTabs.AppUserPermissionsTab.openTab(tab.slider, tab.payload.channelId, participant, isParticipantAdmin(participant));
+                        await pause(200); // wait the open animation too
+                      } catch{
+                        toastNew({
+                          langPackKey: 'AdminRecentActions.UserNotMemberAnymore'
+                        });
+                      }
                     })}
                   />
                 </Show>
