@@ -3861,7 +3861,8 @@ const lang = {
   'AdminRecentActionMessage.ParticipantLeftChannel': 'Member left the channel',
   'AdminRecentActionMessage.ParticipantLeftGroup': 'Member left the group',
   'AdminRecentActionMessage.ParticipantInvited': 'Invited a member',
-  'AdminRecentActionMessage.BanToggled': 'Banned/unbanned a participant',
+  'AdminRecentActionMessage.ParticipantBanned': 'Banned a participant',
+  'AdminRecentActionMessage.ParticipantPermissionsToggled': 'Changed participant permissions',
   'AdminRecentActionMessage.AdminToggled': 'Granted/revoked admin rights',
   'AdminRecentActionMessage.ChangeStickerSet': 'Changed sticker set',
   'AdminRecentActionMessage.TogglePreHistoryHidden': 'Toggled pre‑history visibility',
@@ -3945,7 +3946,8 @@ const lang = {
   'AdminRecentActions.Enabled': 'Enabled',
   'AdminRecentActions.Disabled': 'Disabled',
   'AdminRecentActions.SlowModeDuration': 'Slow mode duration',
-  'AdminRecentActions.UserNotMemberAnymore': 'This user is not a member anymore'
+  'AdminRecentActions.UserNotMemberAnymore': 'This user is not a member anymore',
+  'AdminRecentActions.Participant': 'Participant'
 };
 
 export default lang;

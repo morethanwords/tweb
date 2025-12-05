@@ -1,4 +1,4 @@
-import {batch, createComputed, createEffect, createMemo, createResource, createSelector, createSignal, onMount, Show} from 'solid-js';
+import {batch, createComputed, createMemo, createResource, createSelector, createSignal, onMount, Show} from 'solid-js';
 import {Dynamic, Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import lastItem from '../../../../helpers/array/lastItem';
@@ -18,6 +18,7 @@ import ripple from '../../../ripple';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
 import {toastNew} from '../../../toast';
+import {limitPeerTitleSymbols} from './constants';
 import {ExpandToggleButton} from './expandToggleButton';
 import {CommittedFilters, Filters} from './filters';
 import {groupToIconMap, resolveLogEntry} from './logEntriesResolver';
@@ -265,7 +266,7 @@ const AdminRecentActionsTab = () => {
               >
                 <Show when={entry()}>
                   <LogEntry
-                    peerTitle={<PeerTitleTsx peerId={log().user_id.toPeerId()} />}
+                    peerTitle={<PeerTitleTsx peerId={log().user_id.toPeerId()} limitSymbols={limitPeerTitleSymbols} />}
                     message={<Dynamic component={entry().Message} />}
                     date={new Date(log().date * 1000)}
                     icon={groupToIconMap[entry().group]}
