@@ -1,17 +1,13 @@
 import {Component, Show} from 'solid-js';
 import formatDuration from '../../../../helpers/formatDuration';
 import deepEqual from '../../../../helpers/object/deepEqual';
-import pause from '../../../../helpers/schedulers/pause';
 import createMiddleware from '../../../../helpers/solid/createMiddleware';
-import {wrapAsyncClickHandler} from '../../../../helpers/wrapAsyncClickHandler';
 import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
 import {i18n} from '../../../../lib/langPack';
 import wrapRichText from '../../../../lib/richTextProcessor/wrapRichText';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
-import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
 import Space from '../../../space';
 import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
 import {resolveAdminRightFlagI18n} from './adminRightsI18nResolver';
@@ -22,7 +18,7 @@ import {KeyValuePair} from './keyValuePair';
 import {LogDiff} from './logDiff';
 import {participantRightsMap} from './participantRightsMap';
 import {PreviewMessageButtons} from './previewMessageButtons';
-import {diffFlags, getPhoto} from './utils';
+import {diffFlags, getPhoto, useParticipantClickHandler} from './utils';
 
 
 export type GroupType =
@@ -242,8 +238,9 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     group: 'leave',
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ParticipantLeftChannel' : 'AdminRecentActionMessage.ParticipantLeftGroup')
   }),
-  'channelAdminLogEventActionParticipantInvite': () => ({
-    group: 'join',
+  // TODO: What is up with this event type?
+  'channelAdminLogEventActionParticipantInvite': ({action}) => ({
+    group: 'invites',
     Message: () => i18n('AdminRecentActionMessage.ParticipantInvited')
   }),
   'channelAdminLogEventActionParticipantToggleBan': ({action}) => ({
@@ -258,6 +255,8 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const prevBannedParticipant = action.prev_participant?._ === 'channelParticipantBanned' ? action.prev_participant : undefined;
       const newBannedParticipant = action.new_participant?._ === 'channelParticipantBanned' ? action.new_participant : undefined;
 
+      const peerId = getParticipantPeerId(action.prev_participant || action.new_participant);
+
       const diff = diffFlags(prevBannedParticipant?.banned_rights?.pFlags, newBannedParticipant?.banned_rights?.pFlags);
 
       return (
@@ -266,10 +265,11 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
             label={i18n('AdminRecentActions.Participant')}
             value={
               <PeerTitleTsx
-                peerId={getParticipantPeerId(action.prev_participant || action.new_participant)}
+                peerId={peerId}
                 limitSymbols={limitPeerTitleSymbols}
               />
             }
+            onClick={useParticipantClickHandler(peerId)}
           />
           <Show when={!isBannedParticipant(action.new_participant)}>
             <Space amount='4px' />
@@ -294,8 +294,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     group: 'permissions',
     Message: () => i18n('AdminRecentActionMessage.AdminToggled'),
     ExpandableContent: () => {
-      const {PeerTitleTsx, rootScope} = useHotReloadGuard();
-      const [tab, allTabs] = useSuperTab<typeof AppAdminRecentActionsTab>();
+      const {PeerTitleTsx} = useHotReloadGuard();
 
       const prevParticipantRights = 'admin_rights' in action.prev_participant ? action.prev_participant.admin_rights : null;
       const newParticipantRights = 'admin_rights' in action.new_participant ? action.new_participant.admin_rights : null;
@@ -308,11 +307,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
           <KeyValuePair
             label={i18n('AdminRecentActions.ChangedPermissionsToUser')}
             value={<PeerTitleTsx peerId={peerId} limitSymbols={limitPeerTitleSymbols} />}
-            onClick={wrapAsyncClickHandler(async() => {
-              const participant = await rootScope.managers.appProfileManager.getParticipant(tab.payload.channelId, peerId);
-              allTabs.AppUserPermissionsTab.openTab(tab.slider, tab.payload.channelId, participant, true);
-              await pause(200); // wait the open animation too
-            })}
+            onClick={useParticipantClickHandler(peerId)}
           />
           <Space amount='4px' />
         </Show>

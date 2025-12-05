@@ -25,6 +25,7 @@ import {groupToIconMap, resolveLogEntry} from './logEntriesResolver';
 import {LogEntry} from './logEntry';
 import {NoActionsPlaceholder} from './noActionsPlaceholder';
 import styles from './styles.module.scss';
+import {useParticipantClickHandler} from './utils';
 
 keepMe(ripple);
 
@@ -273,17 +274,7 @@ const AdminRecentActionsTab = () => {
                     onExpandedChange={() => onToggle(log())}
                     expanded={isExpanded(log())}
                     expandableContent={entry().ExpandableContent && <Dynamic component={entry().ExpandableContent} />}
-                    onPeerTitleClick={wrapAsyncClickHandler(async() => {
-                      try {
-                        const participant = await rootScope.managers.appProfileManager.getParticipant(tab.payload.channelId, log().user_id.toPeerId());
-                        allTabs.AppUserPermissionsTab.openTab(tab.slider, tab.payload.channelId, participant, isParticipantAdmin(participant));
-                        await pause(200); // wait the open animation too
-                      } catch{
-                        toastNew({
-                          langPackKey: 'AdminRecentActions.UserNotMemberAnymore'
-                        });
-                      }
-                    })}
+                    onPeerTitleClick={useParticipantClickHandler(log().user_id.toPeerId())}
                   />
                 </Show>
               </div>
