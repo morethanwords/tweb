@@ -1,5 +1,5 @@
 import {batch} from 'solid-js';
-import {animate} from '../animation';
+import {fastRaf} from '../schedulers';
 
 let rafCallbacks: Array<() => void> = [];
 let isRAFing = false;
@@ -11,7 +11,7 @@ export function requestRAF(callback: () => void) {
 
   isRAFing = true;
 
-  animate(() => {
+  fastRaf(() => {
     const savedCallbacks = rafCallbacks;
 
     rafCallbacks = [];
