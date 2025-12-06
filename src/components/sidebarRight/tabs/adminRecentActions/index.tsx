@@ -1,4 +1,4 @@
-import {batch, createComputed, createMemo, createResource, createSelector, createSignal, onMount, Show} from 'solid-js';
+import {batch, createComputed, createMemo, createResource, createSelector, createSignal, ErrorBoundary, onMount, Show} from 'solid-js';
 import {Dynamic, Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import lastItem from '../../../../helpers/array/lastItem';
@@ -8,16 +8,13 @@ import asyncThrottle from '../../../../helpers/schedulers/asyncThrottle';
 import debounce from '../../../../helpers/schedulers/debounce';
 import pause from '../../../../helpers/schedulers/pause';
 import {createSetSignal} from '../../../../helpers/solid/createSetSignal';
-import {wrapAsyncClickHandler} from '../../../../helpers/wrapAsyncClickHandler';
 import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
-import {isParticipantAdmin} from '../../../../lib/appManagers/utils/chats/isParticipantAdmin';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {ButtonIconTsx} from '../../../buttonIconTsx';
 import {DynamicVirtualList} from '../../../dynamicVirtualList';
 import ripple from '../../../ripple';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import {type AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
-import {toastNew} from '../../../toast';
 import {limitPeerTitleSymbols} from './constants';
 import {ExpandToggleButton} from './expandToggleButton';
 import {CommittedFilters, Filters} from './filters';
@@ -273,7 +270,11 @@ const AdminRecentActionsTab = () => {
                     icon={groupToIconMap[entry().group]}
                     onExpandedChange={() => onToggle(log())}
                     expanded={isExpanded(log())}
-                    expandableContent={entry().ExpandableContent && <Dynamic component={entry().ExpandableContent} />}
+                    expandableContent={entry().ExpandableContent && (
+                      <ErrorBoundary fallback={<></>}>
+                        <Dynamic component={entry().ExpandableContent} />
+                      </ErrorBoundary>
+                    )}
                     onPeerTitleClick={useParticipantClickHandler(log().user_id.toPeerId())}
                   />
                 </Show>
