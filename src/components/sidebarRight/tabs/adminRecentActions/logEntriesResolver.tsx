@@ -3,9 +3,10 @@ import formatDuration from '../../../../helpers/formatDuration';
 import deepEqual from '../../../../helpers/object/deepEqual';
 import createMiddleware from '../../../../helpers/solid/createMiddleware';
 import {I18nTsx} from '../../../../helpers/solid/i18n';
-import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
+import {ChannelAdminLogEvent, ChannelAdminLogEventAction, ChatBannedRights} from '../../../../layer';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
+import removeChatBannedRightsFromParticipant from '../../../../lib/appManagers/utils/chats/removeChatBannedRightsFromParticipant';
 import getPeerId from '../../../../lib/appManagers/utils/peers/getPeerId';
 import {i18n} from '../../../../lib/langPack';
 import wrapRichText from '../../../../lib/richTextProcessor/wrapRichText';
@@ -245,23 +246,35 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ParticipantLeftChannel' : 'AdminRecentActionMessage.ParticipantLeftGroup')
   }),
   // TODO: What is up with this event type?
-  'channelAdminLogEventActionParticipantInvite': ({action}) => ({
+  'channelAdminLogEventActionParticipantInvite': () => ({
     group: 'invites',
     Message: () => i18n('AdminRecentActionMessage.ParticipantInvited')
   }),
-  'channelAdminLogEventActionParticipantToggleBan': ({action}) => ({
+  'channelAdminLogEventActionParticipantToggleBan': ({channelId, action}) => ({
     group: 'permissions',
     Message: () => i18n(isBannedParticipant(action.new_participant) ?
       'AdminRecentActionMessage.ParticipantBanned' :
       'AdminRecentActionMessage.ParticipantPermissionsToggled'
     ),
     ExpandableContent: () => {
+      const {apiManagerProxy} = useHotReloadGuard();
+
       const prevBannedParticipant = action.prev_participant?._ === 'channelParticipantBanned' ? action.prev_participant : undefined;
       const newBannedParticipant = action.new_participant?._ === 'channelParticipantBanned' ? action.new_participant : undefined;
 
+      const channel = apiManagerProxy.getChat(channelId);
+
+      const removeDefaultRights = (rights: ChatBannedRights.chatBannedRights) =>
+        channel?._ === 'channel' && rights ?
+          removeChatBannedRightsFromParticipant(channel, rights) :
+          rights;
+
       const peerId = getParticipantPeerId(action.prev_participant || action.new_participant);
 
-      const diff = diffFlags(prevBannedParticipant?.banned_rights?.pFlags, newBannedParticipant?.banned_rights?.pFlags);
+      const diff = diffFlags(
+        removeDefaultRights(prevBannedParticipant?.banned_rights)?.pFlags,
+        removeDefaultRights(newBannedParticipant?.banned_rights)?.pFlags
+      );
 
       return (
         <>
@@ -447,17 +460,33 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
     Message: () => i18n('AdminRecentActionMessage.ExportedInviteEdited'),
     ExpandableContent: () => <InviteKeyValue invite={action.new_invite} />
   }),
-  'channelAdminLogEventActionParticipantVolume': () => ({
+  'channelAdminLogEventActionParticipantVolume': ({action}) => ({
     group: 'calls',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantVolumeChanged')
+    Message: () => i18n('AdminRecentActionMessage.ParticipantVolumeChanged'),
+    ExpandableContent: () => <ParticipantKeyValue peerId={getPeerId(action.participant?.peer)} />
   }),
-  'channelAdminLogEventActionChangeHistoryTTL': () => ({
+  'channelAdminLogEventActionChangeHistoryTTL': ({action}) => ({
     group: 'messages',
-    Message: () => i18n('AdminRecentActionMessage.ChangeHistoryTTL')
+    Message: () => i18n('AdminRecentActionMessage.ChangeHistoryTTL'),
+    ExpandableContent: () => (
+      <KeyValuePair
+        label={<I18nTsx key={'AdminRecentActions.AutoDeleteTimer'} />}
+        value={action.new_value ?
+          wrapFormattedDuration(formatDuration(action.new_value)) :
+          i18n('AdminRecentActions.Disabled')
+        }
+      />
+    )
   }),
-  'channelAdminLogEventActionParticipantJoinByRequest': () => ({
+  'channelAdminLogEventActionParticipantJoinByRequest': ({action}) => ({
     group: 'participants',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantJoinedByRequest')
+    Message: () => i18n('AdminRecentActionMessage.ParticipantJoinedByRequest'),
+    ExpandableContent: () => (
+      <ParticipantKeyValue
+        label={i18n('AdminRecentActions.ApprovedBy')}
+        peerId={action.approved_by.toPeerId()}
+      />
+    )
   }),
   'channelAdminLogEventActionToggleNoForwards': () => ({
     group: 'permissions',

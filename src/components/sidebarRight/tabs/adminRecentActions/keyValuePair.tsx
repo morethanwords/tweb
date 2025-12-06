@@ -36,7 +36,7 @@ export const BooleanKeyValue = (props: {
   value: boolean;
 }) => (
   <KeyValuePair
-    label={props.label ?? i18n('AdminRecentActions.ChangedTo')}
+    label={props.label || i18n('AdminRecentActions.ChangedTo')}
     value={props.value ?
       i18n('AdminRecentActions.Enabled') :
       i18n('AdminRecentActions.Disabled')
@@ -55,13 +55,16 @@ export const InviteKeyValue = (props: { invite: ExportedChatInvite }) => {
   );
 };
 
-export const ParticipantKeyValue = (props: { peerId: PeerId }) => {
+export const ParticipantKeyValue = (props: {
+  label?: JSX.Element;
+  peerId: PeerId;
+}) => {
   const {PeerTitleTsx} = useHotReloadGuard();
 
   return (
     <Show when={props.peerId}>
       <KeyValuePair
-        label={<I18nTsx key={'AdminRecentActions.Participant'} />}
+        label={props.label || <I18nTsx key={'AdminRecentActions.Participant'} />}
         value={<PeerTitleTsx peerId={props.peerId} limitSymbols={limitPeerTitleSymbols} />}
         onClick={useParticipantClickHandler(props.peerId)}
       />

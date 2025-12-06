@@ -3882,7 +3882,7 @@ const lang = {
   'AdminRecentActionMessage.ExportedInviteRevoked': 'Revoked an exported invite',
   'AdminRecentActionMessage.ExportedInviteEdited': 'Edited an exported invite',
   'AdminRecentActionMessage.ParticipantVolumeChanged': 'Adjusted participant volume',
-  'AdminRecentActionMessage.ChangeHistoryTTL': 'Changed history TTL',
+  'AdminRecentActionMessage.ChangeHistoryTTL': 'Changed messages auto-delete timer',
   'AdminRecentActionMessage.ParticipantJoinedByRequest': 'Member joined by request',
   'AdminRecentActionMessage.ToggleNoForwards': 'Toggled “no forwards”',
   'AdminRecentActionMessage.MessageSent': 'Sent a message',
@@ -3949,7 +3949,9 @@ const lang = {
   'AdminRecentActions.SlowModeDuration': 'Slow mode duration',
   'AdminRecentActions.UserNotMemberAnymore': 'This user is not a member anymore',
   'AdminRecentActions.Participant': 'Participant',
-  'AdminRecentActions.JoinMuted': 'Join muted'
+  'AdminRecentActions.ApprovedBy': 'Approved by',
+  'AdminRecentActions.JoinMuted': 'Join muted',
+  'AdminRecentActions.AutoDeleteTimer': 'Auto-delete timer'
 };
 
 export default lang;
