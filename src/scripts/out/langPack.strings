@@ -3356,7 +3356,7 @@
 "AdminRecentActionMessage.AdminToggled" = "Granted/revoked admin rights";
 "AdminRecentActionMessage.ChangeStickerSet" = "Changed sticker set";
 "AdminRecentActionMessage.TogglePreHistoryHidden" = "Toggled pre‑history visibility";
-"AdminRecentActionMessage.DefaultBannedRightsChanged" = "Changed default banned rights";
+"AdminRecentActionMessage.DefaultBannedRightsChanged" = "Changed default permissions";
 "AdminRecentActionMessage.PollStopped" = "Stopped a poll";
 "AdminRecentActionMessage.ChangeLinkedChat" = "Changed linked chat";
 "AdminRecentActionMessage.ChangeLocationChannel" = "Changed channel location";
@@ -3421,6 +3421,7 @@
 "AdminRecentActions.ViewUpdatedMessage" = "View Updated";
 "AdminRecentActions.ViewPinned" = "View Pinned";
 "AdminRecentActions.ViewUnpinned" = "View Unpinned";
+"AdminRecentActions.ViewStopped" = "View Stopped";
 "AdminRecentActions.ChangedPermissionsToUser" = "To user";
 "AdminRecentActions.ChangedTo" = "Changed to";
 "AdminRecentActions.Enabled" = "Enabled";

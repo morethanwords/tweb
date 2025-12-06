@@ -197,12 +197,17 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     Message: () => i18n('AdminRecentActionMessage.DeletedMessage'),
     ExpandableContent: () => {
       const prevPhoto = getPhoto(action.message);
-      const prevMessage = action.message?._ === 'message' ? action.message : undefined;
+      const prevMessage = action.message?._ === 'message' ? structuredClone(action.message) : undefined;
 
       const hasPhotoDiff = prevPhoto;
       const hasMessageDiff = prevMessage?.message;
 
       const middleware = createMiddleware().get();
+
+      if(prevMessage && prevMessage.media._ === 'messageMediaPoll') {
+        if(!prevMessage.media.poll.pFlags) prevMessage.media.poll.pFlags = {};
+        prevMessage.media.poll.pFlags.closed = true;
+      }
 
       return <>
         <Show when={hasPhotoDiff}>
@@ -224,7 +229,7 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
 
         <PreviewMessageButtons
           channelId={channelId}
-          removed={action.message}
+          removed={prevMessage || action.message}
           removedKey='AdminRecentActions.ViewDeletedMessage'
         />
       </>;
@@ -326,13 +331,37 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     group: 'permissions',
     Message: () => i18n('AdminRecentActionMessage.TogglePreHistoryHidden')
   }),
-  'channelAdminLogEventActionDefaultBannedRights': () => ({
+  'channelAdminLogEventActionDefaultBannedRights': ({action}) => ({
     group: 'permissions',
-    Message: () => i18n('AdminRecentActionMessage.DefaultBannedRightsChanged')
+    Message: () => i18n('AdminRecentActionMessage.DefaultBannedRightsChanged'),
+    ExpandableContent: () => {
+      const diff = diffFlags(action.prev_banned_rights?.pFlags, action.new_banned_rights?.pFlags);
+
+      return (
+        <LogDiff
+          // yes, they need to be inversed here
+          removed={
+            diff.new.map(key => participantRightsMap[key])
+            .filter(Boolean).map(key => i18n(key))
+          }
+          added={
+            diff.old.map(key => participantRightsMap[key])
+            .filter(Boolean).map(key => i18n(key))
+          }
+        />
+      )
+    }
   }),
-  'channelAdminLogEventActionStopPoll': () => ({
+  'channelAdminLogEventActionStopPoll': ({channelId, action}) => ({
     group: 'messages',
-    Message: () => i18n('AdminRecentActionMessage.PollStopped')
+    Message: () => i18n('AdminRecentActionMessage.PollStopped'),
+    ExpandableContent: () => (
+      <PreviewMessageButtons
+        channelId={channelId}
+        removed={action.message}
+        removedKey='AdminRecentActions.ViewStopped'
+      />
+    )
   }),
   'channelAdminLogEventActionChangeLinkedChat': () => ({
     group: 'links',
