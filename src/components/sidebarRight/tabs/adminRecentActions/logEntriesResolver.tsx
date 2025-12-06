@@ -2,19 +2,20 @@ import {Component, Show} from 'solid-js';
 import formatDuration from '../../../../helpers/formatDuration';
 import deepEqual from '../../../../helpers/object/deepEqual';
 import createMiddleware from '../../../../helpers/solid/createMiddleware';
+import {I18nTsx} from '../../../../helpers/solid/i18n';
 import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
+import getPeerId from '../../../../lib/appManagers/utils/peers/getPeerId';
 import {i18n} from '../../../../lib/langPack';
 import wrapRichText from '../../../../lib/richTextProcessor/wrapRichText';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import Space from '../../../space';
 import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
 import {resolveAdminRightFlagI18n} from './adminRightsI18nResolver';
-import {BooleanKeyValue} from './booleanKeyValue';
 import {ChatPhoto} from './chatPhoto';
 import {limitPeerTitleSymbols} from './constants';
-import {KeyValuePair} from './keyValuePair';
+import {BooleanKeyValue, InviteKeyValue, KeyValuePair, ParticipantKeyValue} from './keyValuePair';
 import {LogDiff} from './logDiff';
 import {participantRightsMap} from './participantRightsMap';
 import {PreviewMessageButtons} from './previewMessageButtons';
@@ -60,7 +61,7 @@ type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
 type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: MapCallbackArgs<Key>) => MapCallbackResult;
 
 
-const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>} = {
+const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key> } = {
   'channelAdminLogEventActionChangeTitle': ({action, isBroadcast}) => ({
     group: 'info',
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeTitleChannel' : 'AdminRecentActionMessage.ChangeTitleGroup'),
@@ -255,8 +256,6 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       'AdminRecentActionMessage.ParticipantPermissionsToggled'
     ),
     ExpandableContent: () => {
-      const {PeerTitleTsx} = useHotReloadGuard();
-
       const prevBannedParticipant = action.prev_participant?._ === 'channelParticipantBanned' ? action.prev_participant : undefined;
       const newBannedParticipant = action.new_participant?._ === 'channelParticipantBanned' ? action.new_participant : undefined;
 
@@ -266,16 +265,8 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
 
       return (
         <>
-          <KeyValuePair
-            label={i18n('AdminRecentActions.Participant')}
-            value={
-              <PeerTitleTsx
-                peerId={peerId}
-                limitSymbols={limitPeerTitleSymbols}
-              />
-            }
-            onClick={useParticipantClickHandler(peerId)}
-          />
+          <ParticipantKeyValue peerId={peerId} />
+
           <Show when={!isBannedParticipant(action.new_participant)}>
             <Space amount='4px' />
 
@@ -363,24 +354,47 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       />
     )
   }),
-  'channelAdminLogEventActionChangeLinkedChat': () => ({
+  'channelAdminLogEventActionChangeLinkedChat': ({action}) => ({
     group: 'links',
-    Message: () => i18n('AdminRecentActionMessage.ChangeLinkedChat')
+    Message: () => i18n('AdminRecentActionMessage.ChangeLinkedChat'),
+    ExpandableContent: () => {
+      const {PeerTitleTsx} = useHotReloadGuard();
+
+      return (
+        <KeyValuePair
+          label={<I18nTsx key='DiscussionController.Channel.Title' />}
+          value={action.new_value ?
+            <PeerTitleTsx peerId={action.new_value.toPeerId(true)} limitSymbols={limitPeerTitleSymbols} /> :
+            i18n('AdminRecentActions.Disabled')
+          }
+        />
+      )
+    }
   }),
-  'channelAdminLogEventActionChangeLocation': ({isBroadcast}) => ({
+  'channelAdminLogEventActionChangeLocation': ({isBroadcast, action}) => ({
     group: 'location',
-    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeLocationChannel' : 'AdminRecentActionMessage.ChangeLocationGroup')
+    Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeLocationChannel' : 'AdminRecentActionMessage.ChangeLocationGroup'),
+    ExpandableContent: () => {
+      const prevLocation = action.prev_value?._ === 'channelLocation' ? action.prev_value : undefined;
+      const newLocation = action.new_value?._ === 'channelLocation' ? action.new_value : undefined;
+
+      return (
+        <LogDiff
+          added={newLocation?.address}
+          removed={prevLocation?.address}
+        />
+      )
+    }
   }),
   'channelAdminLogEventActionToggleSlowMode': ({action}) => ({
     group: 'permissions',
     Message: () => i18n('AdminRecentActionMessage.ToggleSlowMode'),
     ExpandableContent: () => (
       <KeyValuePair
-        label={i18n('AdminRecentActions.SlowModeDuration')}
-        value={
-            action.new_value ?
-              wrapFormattedDuration(formatDuration(action.new_value)) :
-              i18n('AdminRecentActions.Disabled')
+        label={<I18nTsx key={'AdminRecentActions.SlowModeDuration'} />}
+        value={action.new_value ?
+          wrapFormattedDuration(formatDuration(action.new_value)) :
+          i18n('AdminRecentActions.Disabled')
         }
       />
     )
@@ -393,33 +407,45 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     group: 'calls',
     Message: () => i18n('AdminRecentActionMessage.DiscardGroupCall')
   }),
-  'channelAdminLogEventActionParticipantMute': () => ({
+  'channelAdminLogEventActionParticipantMute': ({action}) => ({
     group: 'calls',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantMuted')
+    Message: () => i18n('AdminRecentActionMessage.ParticipantMuted'),
+    ExpandableContent: () => <ParticipantKeyValue peerId={getPeerId(action.participant?.peer)} />
   }),
-  'channelAdminLogEventActionParticipantUnmute': () => ({
+  'channelAdminLogEventActionParticipantUnmute': ({action}) => ({
     group: 'calls',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantUnmuted')
+    Message: () => i18n('AdminRecentActionMessage.ParticipantUnmuted'),
+    ExpandableContent: () => <ParticipantKeyValue peerId={getPeerId(action.participant?.peer)} />
   }),
-  'channelAdminLogEventActionToggleGroupCallSetting': () => ({
+  'channelAdminLogEventActionToggleGroupCallSetting': ({action}) => ({
     group: 'calls',
-    Message: () => i18n('AdminRecentActionMessage.ToggleGroupCallSetting')
+    Message: () => i18n('AdminRecentActionMessage.ToggleGroupCallSetting'),
+    ExpandableContent: () => (
+      <BooleanKeyValue
+        label={<I18nTsx key={'AdminRecentActions.JoinMuted'} />}
+        value={action.join_muted}
+      />
+    )
   }),
-  'channelAdminLogEventActionParticipantJoinByInvite': () => ({
+  'channelAdminLogEventActionParticipantJoinByInvite': ({action}) => ({
     group: 'join',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantJoinedByInvite')
+    Message: () => i18n('AdminRecentActionMessage.ParticipantJoinedByInvite'),
+    ExpandableContent: () => <InviteKeyValue invite={action.invite} />
   }),
-  'channelAdminLogEventActionExportedInviteDelete': () => ({
+  'channelAdminLogEventActionExportedInviteDelete': ({action}) => ({
     group: 'invites',
-    Message: () => i18n('AdminRecentActionMessage.ExportedInviteDeleted')
+    Message: () => i18n('AdminRecentActionMessage.ExportedInviteDeleted'),
+    ExpandableContent: () => <InviteKeyValue invite={action.invite} />
   }),
-  'channelAdminLogEventActionExportedInviteRevoke': () => ({
+  'channelAdminLogEventActionExportedInviteRevoke': ({action}) => ({
     group: 'invites',
-    Message: () => i18n('AdminRecentActionMessage.ExportedInviteRevoked')
+    Message: () => i18n('AdminRecentActionMessage.ExportedInviteRevoked'),
+    ExpandableContent: () => <InviteKeyValue invite={action.invite} />
   }),
-  'channelAdminLogEventActionExportedInviteEdit': () => ({
+  'channelAdminLogEventActionExportedInviteEdit': ({action}) => ({
     group: 'invites',
-    Message: () => i18n('AdminRecentActionMessage.ExportedInviteEdited')
+    Message: () => i18n('AdminRecentActionMessage.ExportedInviteEdited'),
+    ExpandableContent: () => <InviteKeyValue invite={action.new_invite} />
   }),
   'channelAdminLogEventActionParticipantVolume': () => ({
     group: 'calls',

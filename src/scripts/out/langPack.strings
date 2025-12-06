@@ -3429,6 +3429,7 @@
 "AdminRecentActions.SlowModeDuration" = "Slow mode duration";
 "AdminRecentActions.UserNotMemberAnymore" = "This user is not a member anymore";
 "AdminRecentActions.Participant" = "Participant";
+"AdminRecentActions.JoinMuted" = "Join muted";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

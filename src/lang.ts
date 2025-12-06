@@ -3948,7 +3948,8 @@ const lang = {
   'AdminRecentActions.Disabled': 'Disabled',
   'AdminRecentActions.SlowModeDuration': 'Slow mode duration',
   'AdminRecentActions.UserNotMemberAnymore': 'This user is not a member anymore',
-  'AdminRecentActions.Participant': 'Participant'
+  'AdminRecentActions.Participant': 'Participant',
+  'AdminRecentActions.JoinMuted': 'Join muted'
 };
 
 export default lang;

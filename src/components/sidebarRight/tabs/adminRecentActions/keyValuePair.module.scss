@@ -13,7 +13,7 @@
 
   background-color: rgba(var(--primary-color-rgb), 0.2);
 
-  &.interactable:hover {
+  &.hoverable:hover {
     background-color: rgba(var(--primary-color-rgb), 0.3);
   }
 }
