@@ -11,7 +11,7 @@ import Page from './page';
 import Button from '../components/button';
 import PasswordInputField from '../components/passwordInputField';
 import PasswordMonkey from '../components/monkeys/password';
-import I18n, {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
+import I18n, {i18n} from '../lib/langPack';
 import LoginPage, {SimpleConfirmationPopup} from './loginPage';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
@@ -22,14 +22,13 @@ import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../lib/rootScope';
 import anchorCallback from '../helpers/dom/anchorCallback';
 import {toastNew} from '../components/toast';
-import PopupElement, {addCancelButton, PopupButton} from '../components/popups';
 import pageSignIn from './pageSignIn';
 import formatDuration from '../helpers/formatDuration';
 import {wrapFormattedDuration} from '../components/wrappers/wrapDuration';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
-
+let monkey: PasswordMonkey;
 
 const onFirstMount = (): Promise<any> => {
   const page = new LoginPage({
@@ -211,7 +210,7 @@ const onFirstMount = (): Promise<any> => {
   });
 
   const size = mediaSizes.isMobile ? 100 : 166;
-  const monkey = new PasswordMonkey(passwordInputField, size);
+  monkey = new PasswordMonkey(passwordInputField, size);
   page.imageDiv.append(monkey.container);
   return Promise.all([
     monkey.load(),
@@ -219,7 +218,9 @@ const onFirstMount = (): Promise<any> => {
   ]);
 };
 
-const page = new Page('page-password', true, onFirstMount, null, () => {
+const page = new Page('page-password', true, onFirstMount, () => {
+  monkey?.load()
+}, () => {
   // if(!isAppleMobile) {
   passwordInput.focus();
   // }
