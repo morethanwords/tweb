@@ -3368,9 +3368,9 @@
 "AdminRecentActionMessage.ParticipantUnmuted" = "Unmuted a participant";
 "AdminRecentActionMessage.ToggleGroupCallSetting" = "Changed group‑call setting";
 "AdminRecentActionMessage.ParticipantJoinedByInvite" = "Member joined via invite";
-"AdminRecentActionMessage.ExportedInviteDeleted" = "Deleted an exported invite";
-"AdminRecentActionMessage.ExportedInviteRevoked" = "Revoked an exported invite";
-"AdminRecentActionMessage.ExportedInviteEdited" = "Edited an exported invite";
+"AdminRecentActionMessage.ExportedInviteDeleted" = "Deleted an invite link";
+"AdminRecentActionMessage.ExportedInviteRevoked" = "Revoked an invite link";
+"AdminRecentActionMessage.ExportedInviteEdited" = "Edited an invite link";
 "AdminRecentActionMessage.ParticipantVolumeChanged" = "Adjusted participant volume";
 "AdminRecentActionMessage.ChangeHistoryTTL" = "Changed messages auto-delete timer";
 "AdminRecentActionMessage.ParticipantJoinedByRequest" = "Member joined by request";
