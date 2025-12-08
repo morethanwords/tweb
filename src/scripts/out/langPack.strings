@@ -829,6 +829,8 @@
 "Verified.Bot" = "This bot is verified as official by the representatives of Telegram.";
 "Verified.Channel" = "This channel was verified by Telegram.";
 "Verified.Group" = "This group was verified by Telegram.";
+"WebPage.InstantView" = "INSTANT VIEW";
+"InstantView.WrongLayout" = "Wrong layout?";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";

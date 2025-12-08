@@ -519,4 +519,26 @@
   "params": [
     {"name": "pinnedIndex", "type": "number"}
   ]
+}, {
+  "predicate": "messageEntityImage",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"},
+    {"name": "document_id", "type": "Long"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntitySubscript",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntitySuperscript",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"}
+  ],
+  "type": "MessageEntity"
 }]

@@ -5445,7 +5445,7 @@ export namespace ReplyMarkup {
 /**
  * @link https://core.telegram.org/type/MessageEntity
  */
-export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBankCard | MessageEntity.messageEntitySpoiler | MessageEntity.messageEntityCustomEmoji | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret | MessageEntity.messageEntityTimestamp;
+export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBankCard | MessageEntity.messageEntitySpoiler | MessageEntity.messageEntityCustomEmoji | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret | MessageEntity.messageEntityTimestamp | MessageEntity.messageEntityImage | MessageEntity.messageEntitySubscript | MessageEntity.messageEntitySuperscript;
 
 export namespace MessageEntity {
   export type messageEntityUnknown = {
@@ -5615,6 +5615,25 @@ export namespace MessageEntity {
     length?: number,
     time?: number,
     raw?: string
+  };
+
+  export type messageEntityImage = {
+    _: 'messageEntityImage',
+    offset?: number,
+    length?: number,
+    document_id?: Long
+  };
+
+  export type messageEntitySubscript = {
+    _: 'messageEntitySubscript',
+    offset?: number,
+    length?: number
+  };
+
+  export type messageEntitySuperscript = {
+    _: 'messageEntitySuperscript',
+    offset?: number,
+    length?: number
   };
 }
 
@@ -17031,6 +17050,9 @@ export interface ConstructorDeclMap {
   'messageMediaPhotoExternal': MessageMedia.messageMediaPhotoExternal,
   'messageMediaDocumentExternal': MessageMedia.messageMediaDocumentExternal,
   'updatePts': Update.updatePts,
+  'messageEntityImage': MessageEntity.messageEntityImage,
+  'messageEntitySubscript': MessageEntity.messageEntitySubscript,
+  'messageEntitySuperscript': MessageEntity.messageEntitySuperscript,
 }
 
 export type InvokeAfterMsg = {

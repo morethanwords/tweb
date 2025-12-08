@@ -13,6 +13,7 @@ import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {WebPage} from '../../layer';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import {AppManager} from './manager';
+import findAndSplice from '../../helpers/array/findAndSplice';
 
 const photoTypeSet = new Set(['photo', 'video', 'gif', 'document']);
 
@@ -89,6 +90,33 @@ export class AppWebPagesManager extends AppManager {
             break;
           }
         }
+      }
+
+      const cachedPage = apiWebPage.cached_page;
+      if(cachedPage) {
+        cachedPage.photos = cachedPage.photos?.map((photo) => {
+          return this.appPhotosManager.savePhoto(photo, mediaContext);
+        }).filter(Boolean);
+
+        cachedPage.documents = cachedPage.documents?.map((doc) => {
+          return this.appDocsManager.saveDoc(doc, mediaContext);
+        }).filter(Boolean);
+
+        if(apiWebPage.photo) {
+          findAndSplice(cachedPage.photos, (photo) => photo.id === apiWebPage.photo.id);
+          cachedPage.photos.push(apiWebPage.photo);
+        }
+
+        if(apiWebPage.document) {
+          findAndSplice(cachedPage.documents, (doc) => doc.id === apiWebPage.document.id);
+          cachedPage.documents.push(apiWebPage.document);
+        }
+
+        cachedPage.blocks.forEach((block) => {
+          if('channel' in block) {
+            this.appChatsManager.saveApiChats([block.channel]);
+          }
+        });
       }
 
       if(!photoTypeSet.has(apiWebPage.type) &&

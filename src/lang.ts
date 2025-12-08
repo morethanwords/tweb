@@ -967,6 +967,9 @@ const lang = {
   //   'one_value': '%d saved message',
   //   'other_value': '%d saved messages'
   // },
+  'WebPage.InstantView': 'INSTANT VIEW',
+  // 'InstantView.RelatedArticles': 'Other News',
+  'InstantView.WrongLayout': 'Wrong layout?',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

@@ -349,6 +349,16 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         break;
       }
 
+      case 'messageEntitySubscript': {
+        element = document.createElement('sub');
+        break;
+      }
+
+      case 'messageEntitySuperscript': {
+        element = document.createElement('sup');
+        break;
+      }
+
       case 'messageEntityBotCommand': {
         // if(!(options.noLinks || options.noCommands || contextExternal)/*  && !entity.unsafe */) {
         if(!options.noLinks && passEntities[entity._]) {
@@ -550,7 +560,12 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           }
 
           const currentContext = !!onclick;
-          if(!onclick && masked && !currentContext && !options.passMaskedLinks) {
+          if(
+            !onclick &&
+            masked &&
+            !currentContext &&
+            !options.passMaskedLinks
+          ) {
             onclick = 'showMaskedAlert';
           }
 

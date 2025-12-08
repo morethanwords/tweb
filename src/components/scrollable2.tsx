@@ -4,8 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {resolveElements} from '@solid-primitives/refs';
-import {createEffect, createMemo, createSignal, JSX, on, onCleanup, Ref} from 'solid-js';
+import {children, createEffect, createMemo, createSignal, JSX, on, onCleanup, Ref} from 'solid-js';
 import {IS_OVERLAY_SCROLL_SUPPORTED} from '../environment/overlayScrollSupport';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import {IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
@@ -230,9 +229,9 @@ export default function Scrollable(props: {
     }
   };
 
-  const children = resolveElements(() => props.children);
+  const resolvedChildren = children(() => props.children);
 
-  createEffect(on(children, onSizeChange));
+  createEffect(on(resolvedChildren, onSizeChange));
 
   let ref: HTMLDivElement, thumbRef: HTMLDivElement;
   return (
@@ -266,7 +265,7 @@ export default function Scrollable(props: {
           ></div>
         </div>
       )}
-      {children()}
+      {resolvedChildren()}
     </div>
   );
 }

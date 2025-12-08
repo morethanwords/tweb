@@ -30,6 +30,7 @@ export enum INTERNAL_LINK_TYPE {
   UNIQUE_STAR_GIFT,
   STAR_GIFT_COLLECTION,
   STORY_ALBUM,
+  INSTANT_VIEW
 };
 
 export type InternalLink =
@@ -53,7 +54,8 @@ export type InternalLink =
   InternalLink.InternalLinkShare |
   InternalLink.InternalLinkUniqueStarGift |
   InternalLink.InternalLinkStarGiftCollection |
-  InternalLink.InternalLinkStoryAlbum;
+  InternalLink.InternalLinkStoryAlbum |
+  InternalLink.InternalLinkInstantView;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -195,6 +197,11 @@ export namespace InternalLink {
     domain: string,
     id: string
   }
+
+  export interface InternalLinkInstantView {
+    _: INTERNAL_LINK_TYPE.INSTANT_VIEW,
+    url: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -218,5 +225,6 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.SHARE]: InternalLink.InternalLinkShare,
   [INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT]: InternalLink.InternalLinkUniqueStarGift,
   [INTERNAL_LINK_TYPE.STAR_GIFT_COLLECTION]: InternalLink.InternalLinkStarGiftCollection,
-  [INTERNAL_LINK_TYPE.STORY_ALBUM]: InternalLink.InternalLinkStoryAlbum
+  [INTERNAL_LINK_TYPE.STORY_ALBUM]: InternalLink.InternalLinkStoryAlbum,
+  [INTERNAL_LINK_TYPE.INSTANT_VIEW]: InternalLink.InternalLinkInstantView
 };

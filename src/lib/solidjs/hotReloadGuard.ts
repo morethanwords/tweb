@@ -48,6 +48,7 @@ import type {avatarNew} from '../../components/avatarNew';
 import type PopupSendGift from '../../components/popups/sendGift';
 import type showBirthdayPopup from '../../components/popups/birthday';
 import type {saveMyBirthday} from '../../components/popups/birthday';
+import type VideoTsx from '../../components/wrappers/videoTsx';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -97,6 +98,7 @@ export type SolidJSHotReloadGuardContextValue = {
   PopupSendGift: typeof PopupSendGift;
   showBirthdayPopup: typeof showBirthdayPopup;
   saveMyBirthday: typeof saveMyBirthday;
+  VideoTsx: typeof VideoTsx;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

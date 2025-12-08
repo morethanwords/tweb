@@ -41,6 +41,9 @@ import noop from '../../helpers/noop';
 import appSidebarRight from '../../components/sidebarRight';
 import pause from '../../helpers/schedulers/pause';
 import namedPromises from '../../helpers/namedPromises';
+import {openInstantViewInAppBrowser} from '../../components/browser';
+import SolidJSHotReloadGuardProvider from '../solidjs/hotReloadGuardProvider';
+import cancelEvent from '../../helpers/dom/cancelEvent';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -50,7 +53,7 @@ export class InternalLinkProcessor {
 
     addAnchorListener<{}>({
       name: 'showMaskedAlert',
-      callback: (params, element) => {
+      callback: ({element}) => {
         const href = element.href;
 
         const a = element.cloneNode(true) as HTMLAnchorElement;
@@ -106,7 +109,7 @@ export class InternalLinkProcessor {
 
     addAnchorListener<{}>({
       name: 'setMediaTimestamp',
-      callback: (_, element) => {
+      callback: ({element}) => {
         const timestamp = +element.dataset.timestamp;
         const bubble = findUpClassName(element, 'bubble');
         if(bubble) {
@@ -230,7 +233,7 @@ export class InternalLinkProcessor {
       uriParams: K1 | K2 | K3 | K4 | K5 | K6 | K7 | K8
     }>({
       name: 'im',
-      callback: async({pathnameParams, uriParams}, element, masked) => {
+      callback: async({pathnameParams, uriParams, element, masked}) => {
         let link: InternalLink;
         if('voicechat' in uriParams || 'videochat' in uriParams || 'livestream' in uriParams) {
           assumeType<K7>(uriParams);
@@ -357,7 +360,7 @@ export class InternalLinkProcessor {
     }>({
       name: 'resolve',
       protocol: 'tg',
-      callback: ({uriParams}, element, masked) => {
+      callback: ({uriParams, element, masked}) => {
         let link: InternalLink;
         if(uriParams.voicechat !== undefined || uriParams.videochat !== undefined || uriParams.livestream !== undefined) {
           link = this.makeLink(INTERNAL_LINK_TYPE.VOICE_CHAT, uriParams as Required<typeof uriParams>);
@@ -493,7 +496,7 @@ export class InternalLinkProcessor {
     // t.me/giftcode/slug
     addAnchorListener<{pathnameParams: ['giftcode', string]}>({
       name: 'giftcode',
-      callback: ({pathnameParams}, element) => {
+      callback: ({pathnameParams, element}) => {
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.GIFT_CODE,
           slug: pathnameParams[1],
@@ -512,7 +515,7 @@ export class InternalLinkProcessor {
     }>({
       name: 'giftcode',
       protocol: 'tg',
-      callback: ({uriParams}, element) => {
+      callback: ({uriParams, element}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.GIFT_CODE, uriParams);
         link.stack = appImManager.getStackFromElement(element);
         return this.processInternalLink(link);
@@ -617,6 +620,26 @@ export class InternalLinkProcessor {
       protocol: 'tg',
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT, uriParams);
+        return this.processInternalLink(link);
+      }
+    });
+
+    // tg://iv?url=...
+    addAnchorListener<{
+      uriParams: {
+        url: string
+      },
+    }>({
+      name: 'iv',
+      protocol: 'tg',
+      noCancelEvent: true,
+      callback: ({element, event}) => {
+        if((event as MouseEvent).ctrlKey || (event as MouseEvent).metaKey) {
+          return;
+        }
+
+        cancelEvent(event);
+        const link = this.makeLink(INTERNAL_LINK_TYPE.INSTANT_VIEW, {url: element.href});
         return this.processInternalLink(link);
       }
     });
@@ -1046,30 +1069,34 @@ export class InternalLinkProcessor {
     }
 
     PopupElement.createPopup(PopupStarGiftInfo, {gift});
-  }
+  };
 
   public processStarGiftCollectionLink = async(link: InternalLink.InternalLinkStarGiftCollection) => {
     const peer = await this.managers.appUsersManager.resolveUsername(link.domain);
     const peerId = peer.id.toPeerId(peer._ !== 'user');
     if(appImManager.chat.peerId !== peerId) {
       await appImManager.setInnerPeer({peerId});
-      await pause(500)
+      await pause(500);
     }
     appSidebarRight.toggleSidebar(true, true);
     appSidebarRight.sharedMediaTab.setSearchTab('gifts');
-    appSidebarRight.sharedMediaTab.searchSuper.stargiftsActions?.setFilters({chosenCollection: Number(link.id)})
-  }
+    appSidebarRight.sharedMediaTab.searchSuper.stargiftsActions?.setFilters({chosenCollection: Number(link.id)});
+  };
 
   public processStoryAlbumLink = async(link: InternalLink.InternalLinkStoryAlbum) => {
     const peer = await this.managers.appUsersManager.resolveUsername(link.domain);
     const peerId = peer.id.toPeerId(peer._ !== 'user');
     if(appImManager.chat.peerId !== peerId) {
       await appImManager.setInnerPeer({peerId});
-      await pause(500)
+      await pause(500);
     }
     appSidebarRight.toggleSidebar(true, true);
     appSidebarRight.sharedMediaTab.setSearchTab('stories');
-  }
+  };
+
+  public processInstantViewLink = (link: InternalLink.InternalLinkInstantView) => {
+    openInstantViewInAppBrowser({cachedPage: link.url, HotReloadGuardProvider: SolidJSHotReloadGuardProvider});
+  };
 
   public processInternalLink(link: InternalLink) {
     const map: {
@@ -1095,7 +1122,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.SHARE]: this.processShareLink,
       [INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT]: this.processUniqueStarGiftLink,
       [INTERNAL_LINK_TYPE.STAR_GIFT_COLLECTION]: this.processStarGiftCollectionLink,
-      [INTERNAL_LINK_TYPE.STORY_ALBUM]: this.processStoryAlbumLink
+      [INTERNAL_LINK_TYPE.STORY_ALBUM]: this.processStoryAlbumLink,
+      [INTERNAL_LINK_TYPE.INSTANT_VIEW]: this.processInstantViewLink
     };
 
     const processor = map[link._];

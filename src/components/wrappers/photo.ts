@@ -365,7 +365,8 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
 
 export function PhotoTsx(props: Parameters<typeof wrapPhoto>[0] & {
   class?: string
-  ref?: Ref<HTMLElement>
+  ref?: Ref<HTMLElement>,
+  onResult?: (result: Awaited<ReturnType<typeof wrapPhoto>>) => void
 }) {
   const div = document.createElement('div');
 
@@ -374,20 +375,27 @@ export function PhotoTsx(props: Parameters<typeof wrapPhoto>[0] & {
   let middleware: MiddlewareHelper
   createEffect(on(() => props.photo, async() => {
     if(middleware) middleware.destroy();
-    middleware = getMiddleware()
+    middleware = getMiddleware();
+    const _middleware = middleware.get();
 
     wrapPhoto({
       ...props,
-      middleware: middleware.get(),
+      middleware: _middleware,
       container: div
-    })
-  }))
+    }).then((result) => {
+      if(!_middleware()) {
+        return;
+      }
 
-  onCleanup(() => middleware?.destroy())
+      props.onResult?.(result);
+    });
+  }));
 
-  if(typeof props.ref === 'function') {
+  onCleanup(() => middleware?.destroy());
+
+  if(typeof(props.ref) === 'function') {
     props.ref(div);
   }
 
-  return div
+  return div;
 }
