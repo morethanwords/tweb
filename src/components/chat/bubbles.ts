@@ -11,7 +11,7 @@ import type Chat from './chat';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import {logger} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
-import BubbleGroups from './bubbleGroups';
+import BubbleGroups, {getMid, isMessage} from './bubbleGroups';
 import PopupDatePicker from '../popups/datePicker';
 import PopupForward from '../popups/forward';
 import PopupStickers from '../popups/stickers';
@@ -211,6 +211,7 @@ import addContinueLastTopicReplyMarkup from './bubbleParts/continueLastTopicRepl
 import {wrapTopicIcon} from '../wrappers/messageActionTextNewUnsafe';
 import {getTransition} from '../../config/transitions';
 import {SuggestBirthdayBubble} from './bubbles/suggestBirthday';
+import {AdminLog} from '../../lib/appManagers/appChatsManager';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -295,7 +296,8 @@ type Bubble = {
   groupedId?: string
 };
 
-type MyHistoryResult = HistoryResult | {history: number[]};
+type LocalHistoryResult = Omit<HistoryResult, 'messages'> & {messages?: (MyMessage | AdminLog)[]};
+type MyHistoryResult = LocalHistoryResult | {history: number[]};
 
 type EmptyPlaceholderType =
   | 'group'
@@ -1411,7 +1413,7 @@ export default class ChatBubbles {
   public constructPeerHelpers() {
     // will call when message is sent (only 1)
     this.listenerSetter.add(rootScope)('history_append', async({storageKey, message}) => {
-      if(storageKey !== this.chat.messagesStorageKey || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static) return;
+      if(storageKey !== this.chat.messagesStorageKey || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) return;
 
       if(liteMode.isAvailable('chat_background')) {
         this.updateGradient = true;
@@ -1448,13 +1450,13 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('history_multiappend', (message) => {
-      if(this.peerId !== message.peerId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static) return;
+      if(this.peerId !== message.peerId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) return;
       this.renderNewMessage(message);
       this.updateHasMessages();
     });
 
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
-      if((peerId !== this.peerId && !GLOBAL_MIDS) || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static) {
+      if((peerId !== this.peerId && !GLOBAL_MIDS) || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) {
         return;
       }
 
@@ -1639,7 +1641,7 @@ export default class ChatBubbles {
           this.bubbleGroups.groups.forEach((group) => {
             if(!this.chat.isLikeGroup) {
               group.destroyAvatar();
-            } else if(this.chat.isAvatarNeeded(group.firstItem.message)) {
+            } else if(isMessage(group.firstItem.message) && this.chat.isAvatarNeeded(group.firstItem.message)) {
               group.createAvatar(group.firstItem.message);
             }
           });
@@ -3182,7 +3184,7 @@ export default class ChatBubbles {
 
   public getRenderedHistory(sort: 'asc' | 'desc' = 'desc', onlyReal?: boolean) {
     let history = flatten(
-      this.bubbleGroups.groups.map((group) => group.items.map((item) => makeFullMid(item.message)))
+      this.bubbleGroups.groups.map((group) => group.items.map((item) => this.makeFullMid(item.message)))
     );
 
     if(sort === 'asc') {
@@ -4222,7 +4224,7 @@ export default class ChatBubbles {
       topMessageFullMid = makeFullMid(peerId, await m(this.managers.appMessagesManager.getPinnedMessagesMaxId(peerId, this.chat.threadId)));
     } else if(historyStorage.searchHistory) {
       topMessageFullMid = (historyStorage.searchHistory.first[0] as FullMid) ?? EMPTY_FULL_MID;
-    } else if(chatType !== ChatType.Static) {
+    } else if(chatType !== ChatType.Static && this.chat.type !== ChatType.Logs) {
       topMessageFullMid = historyStorage.maxId ? makeFullMid(peerId, historyStorage.maxId) : EMPTY_FULL_MID;
     } else {
       topMessageFullMid = EMPTY_FULL_MID;
@@ -4935,12 +4937,14 @@ export default class ChatBubbles {
       return queue.filter((details) => {
         // message can be deleted during rendering
         return details &&
-          this.getBubble(makeFullMid(details.message)) === details.bubble &&
-          !this.changedMids.has(details.message.mid);
+          this.getBubble(this.makeFullMid(details.message)) === details.bubble &&
+          !this.changedMids.has(getMid(details.message));
       });
     };
 
-    loadQueue = filterQueue(loadQueue);
+    console.log('my-debug', {loadQueue})
+    // loadQueue = filterQueue(loadQueue);
+    console.log('my-debug filtered', {loadQueue})
 
     log('messages rendered');
 
@@ -4955,9 +4959,9 @@ export default class ChatBubbles {
     let newLastMid = newLastGroup?.lastMid;
 
     // * fix slicing sponsored before render
-    const sponsoredItem = loadQueue.find(({message}) => (message as Message.message).pFlags.sponsored);
+    const sponsoredItem = loadQueue.find(({message}) => message?._ === 'message' && message.pFlags.sponsored);
     if(sponsoredItem) {
-      newLastMid = sponsoredItem.message.mid;
+      newLastMid = getMid(sponsoredItem.message);
     }
 
     const changedTop = firstMid !== newFirstMid;
@@ -5059,7 +5063,7 @@ export default class ChatBubbles {
     }
 
     loadQueue.forEach(({message, bubble, updatePosition}) => {
-      if(message.pFlags.local && updatePosition) {
+      if(isMessage(message) && message.pFlags.local && updatePosition) {
         this.chatInner[(message as Message.message).pFlags.sponsored ? 'append' : 'prepend'](bubble);
         return;
       }
@@ -5097,7 +5101,7 @@ export default class ChatBubbles {
   public groupBubbles(items: Array<{
     // Awaited<ReturnType<ChatBubbles['safeRenderMessage']>> &
     bubble: HTMLElement,
-    message: Message.message | Message.messageService,
+    message: Message.message | Message.messageService | AdminLog,
     reverse: boolean
   }/*  & {
     unmountIfFound?: boolean
@@ -5128,8 +5132,8 @@ export default class ChatBubbles {
         return;
       }
 
-      const shouldHaveAvatar = this.chat.isAvatarNeeded(firstItem.message);
-      if(shouldHaveAvatar) {
+      const shouldHaveAvatar = isMessage(firstItem.message) && this.chat.isAvatarNeeded(firstItem.message);
+      if(shouldHaveAvatar && isMessage(firstItem.message)) {
         if(group.avatar) {
           return;
         }
@@ -5208,14 +5212,16 @@ export default class ChatBubbles {
     processResult,
     canAnimateLadder
   }: {
-    message: Message.message | Message.messageService,
+    message: Message.message | Message.messageService | AdminLog,
     reverse?: boolean,
     bubble?: HTMLElement,
     updatePosition?: boolean,
     processResult?: (result: ReturnType<ChatBubbles['renderMessage']>, bubble: HTMLElement) => typeof result,
     canAnimateLadder?: boolean
   }) {
-    const fullMid = makeFullMid(message);
+    const isMessage = (message: Message.message | Message.messageService | AdminLog): message is Message.message | Message.messageService => message._ === 'message' || message._ === 'messageService';
+
+    const fullMid = makeFullMid(isMessage(message) ? message : this.chat.peerId, !isMessage(message) ? +message.id : undefined);
     if(!message || this.renderingMessages.has(fullMid) || (this.getBubble(fullMid) && !bubble)) {
       return;
     }
@@ -5248,8 +5254,8 @@ export default class ChatBubbles {
       // const groupedId = (message as Message.message).grouped_id;
       const newBubble = document.createElement('div');
       newBubble.middlewareHelper = middlewareHelper;
-      newBubble.dataset.mid = '' + message.mid;
-      newBubble.dataset.peerId = '' + message.peerId;
+      newBubble.dataset.mid = '' + (isMessage(message) ? message.mid : message.id);
+      newBubble.dataset.peerId = '' + (isMessage(message) ? message.peerId : this.chat.peerId);
       newBubble.dataset.timestamp = '' + message.date;
 
       // const bubbleNew: Bubble = this.bubblesNew[message.mid] ??= {
@@ -5271,7 +5277,7 @@ export default class ChatBubbles {
       }
 
       bubble = this.bubbles[fullMid] = newBubble;
-      let originalPromise = this.renderMessage(message, reverse, bubble, middleware);
+      let originalPromise = isMessage(message) ? this.renderMessage(message, reverse, bubble, middleware) : this.renderLog(message, reverse);
       if(processResult) {
         originalPromise = processResult(originalPromise, bubble);
       }
@@ -5374,6 +5380,19 @@ export default class ChatBubbles {
     }
   };
 
+  private async renderLog(log: AdminLog, reverse = false) {
+    const div = document.createElement('div');
+    div.style.height = '100px';
+    div.style.border = '1px solid red';
+    div.textContent = log.action._;
+    return {
+      bubble: div,
+      message: log as MyMessage | AdminLog,
+      reverse,
+      promises: [] as Promise<any>[]
+    }
+  }
+
   // reverse means top
   private async renderMessage(
     message: Message.message | Message.messageService,
@@ -5470,7 +5489,7 @@ export default class ChatBubbles {
     const ret = {
       bubble,
       promises: loadPromises,
-      message,
+      message: message as MyMessage | AdminLog,
       reverse
     };
 
@@ -8248,24 +8267,28 @@ export default class ChatBubbles {
   }
 
   public async performHistoryResult(
-    historyResult: HistoryResult | {history: (Message.message | Message.messageService | number)[]},
+    historyResult: LocalHistoryResult | {history: (Message.message | Message.messageService | number)[]},
     reverse: boolean
   ) {
     const log = false || true ? this.log.bindPrefix('perform-' + (Math.random() * 1000 | 0)) : undefined;
     log?.('start', this.chatInner.parentElement, historyResult);
 
-    let history = (historyResult as HistoryResult).messages || historyResult.history;
+    let history: (Message.message | Message.messageService | AdminLog | number)[] = (historyResult as LocalHistoryResult).messages || historyResult.history;
     history = history.slice(); // need
+
+    console.log('my-debug', {history})
 
     if(this.needReflowScroll) {
       reflowScrollableElement(this.scrollable.container);
       this.needReflowScroll = false;
     }
 
-    const cb = (message: Message.message | Message.messageService) => {
+    const cb = (message: Message.message | Message.messageService | AdminLog) => {
+      const isMessage = message?._ === 'message' || message?._ === 'messageService';
+
       if(!message) {
         return;
-      } else if(message.pFlags.local) {
+      } else if(isMessage && message.pFlags.local) {
         return this.processLocalMessageRender(message);
       } else {
         return this.safeRenderMessage({
@@ -8322,6 +8345,7 @@ export default class ChatBubbles {
       let prevGroupedId: Long | undefined
 
       for(const mid_ of history) {
+        if(typeof mid_ === 'object' && mid_?._ === 'channelAdminLogEvent') continue;
         const mid = typeof(mid_) === 'number' ? mid_ : mid_.mid;
         if(mid <= readMaxId) continue
 
@@ -8435,7 +8459,7 @@ export default class ChatBubbles {
     });
   };
 
-  public requestHistory(offsetId: number | FullMid, limit: number, backLimit: number): Promise<AckedResult<HistoryResult>>  {
+  public requestHistory(offsetId: number | FullMid, limit: number, backLimit: number): Promise<AckedResult<LocalHistoryResult>>  {
     let offsetPeerId: PeerId;
     if(typeof(offsetId) === 'string') {
       const {peerId, mid} = splitFullMid(offsetId);
@@ -8443,8 +8467,27 @@ export default class ChatBubbles {
       offsetId = mid;
     }
 
-    // const middleware = this.getMiddleware();
-    if(this.chat.type === ChatType.Static) {
+    if(this.chat.type === ChatType.Logs) {
+      return Promise.resolve({
+        cached: false,
+        result: (async() => {
+          const {peerId} = this.chat;
+          const {items: logs, isEnd} = await this.managers.appChatsManager.getAdminLogs({channelId: peerId.toChatId(), offsetId, limit, backLimit});
+          console.log('my-debug', {logs, isEnd, offsetId, limit, backLimit})
+
+          return {
+            history: logs.map(log => +log.id),
+            count: logs.length,
+            messages: logs,
+            isEnd: {
+              both: isEnd && !offsetId,
+              bottom: !offsetId,
+              top: isEnd
+            }
+          };
+        })()
+      });
+    } else if(this.chat.type === ChatType.Static) {
       return Promise.resolve({
         cached: true,
         result: Promise.resolve({
@@ -9846,6 +9889,11 @@ export default class ChatBubbles {
     });
 
     return true;
+  }
+
+  makeFullMid(message: MyMessage | AdminLog) {
+    if(message._ === 'channelAdminLogEvent') return makeFullMid(this.chat.peerId, +message.id);
+    return makeFullMid(message);
   }
 }
 

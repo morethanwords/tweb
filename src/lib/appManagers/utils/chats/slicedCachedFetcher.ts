@@ -13,25 +13,30 @@ type FetchItemsArgs = {
 type GetItemsArgs<T> = FetchItemsArgs & {
   fetchItems: (args: FetchItemsArgs) => Promise<T[]>;
   getId: (item: T) => Id;
+  backLimit?: number;
 };
 
+/**
+ * Fetches in only one direction if given an offset (and if no cache is found). If no offset is given, it will always fetch first
+ */
 export class SlicedCachedFetcher<T> {
   private isEnd = false;
   private cachedSlices: string[][] = [];
   private cachedItemsMap = new Map<string, T>();
 
-  public async getItems({limit, offsetId, fetchItems, getId}: GetItemsArgs<T>) {
+  public async getItems({limit, offsetId, fetchItems, getId, backLimit = 0}: GetItemsArgs<T>) {
     let result: Array<Id> = [];
     let remainingLimit = limit;
     let tookFromLastSlice = false;
 
-    for(const slice of this.cachedSlices) {
+    if(offsetId) for(const slice of this.cachedSlices) {
       const idx = slice.indexOf(String(offsetId));
       if(idx === -1) continue;
 
       tookFromLastSlice = slice === lastItem(this.cachedSlices);
-      result = slice.slice(idx, idx + limit + 1); // keeps the item with offsetId to make sure the slices merge if this is the last item in the slice
-      remainingLimit = Math.max(0, limit + 1 - result.length);
+      const startIdx = Math.max(0, idx - backLimit);
+      result = slice.slice(startIdx, idx + limit + 1); // keeps the item with offsetId to make sure the slices merge if this is the last item in the slice
+      remainingLimit = Math.max(0, limit + 1 - result.length - (idx - startIdx));
     }
 
     const dontFetch = tookFromLastSlice && this.isEnd;
@@ -68,10 +73,12 @@ export class SlicedCachedFetcher<T> {
       ];
     }
 
-    return result
+    const items = result
     // remove the item with offsetId, was used only for making sure slices overlap
     .filter(id => String(id) !== String(offsetId))
     .slice(0, limit)
     .map(id => this.cachedItemsMap.get(String(id)));
+
+    return {items, isEnd: this.isEnd};
   }
 }

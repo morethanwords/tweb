@@ -2080,8 +2080,10 @@ export default class ChatInput {
       const {isMonoforum, canManageDirectMessages, monoforumThreadId} = this.chat;
       // console.warn('[input] finishpeerchange start');
 
-      chatInput.classList.toggle('hide', this.chat?.type === ChatType.Static);
-      this.emptySpace.classList.toggle('hide', this.chat?.type !== ChatType.Static);
+      const noInput = [ChatType.Static, ChatType.Logs].includes(this.chat?.type);
+
+      chatInput.classList.toggle('hide', noInput);
+      this.emptySpace.classList.toggle('hide', !noInput);
 
       if(goDownBtn) {
         goDownBtn.classList.toggle('is-broadcast', isBroadcast);

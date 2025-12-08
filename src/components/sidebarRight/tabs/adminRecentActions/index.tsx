@@ -74,7 +74,7 @@ const AdminRecentActionsTab = () => {
       channelId: tab.payload.channelId,
       limit: fetchLimit,
       offsetId
-    });
+    }).then(({items}) => items);
 
   // for loading state, then we're fetching more as the user scrolls
   const [initialLogs] = createResource(() => committedFilters() || {}, () =>

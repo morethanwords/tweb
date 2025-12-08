@@ -85,7 +85,8 @@ export enum ChatType {
   Stories = 'stories',
   Saved = 'saved',
   Search = 'search',
-  Static = 'static'
+  Static = 'static',
+  Logs = 'logs'
 };
 
 export type ChatSearchKeys = Pick<RequestHistoryOptions, 'query' | 'isCacheableSearch' | 'isPublicHashtag' | 'savedReaction' | 'fromPeerId' | 'inputFilter' | 'hashtagType'>;
@@ -1377,7 +1378,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isPinnedMessagesNeeded() {
-    return this.type === ChatType.Chat || (this.isForum && this.type !== ChatType.Static);
+    return this.type === ChatType.Chat || (this.isForum && this.type !== ChatType.Static && this.type !== ChatType.Logs);
   }
 
   public isForwardOfForward(message: Message) {

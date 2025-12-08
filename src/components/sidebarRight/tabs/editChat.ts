@@ -42,6 +42,8 @@ import namedPromises from '../../../helpers/namedPromises';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import {AppDirectMessagesTab} from '../../solidJsTabs';
 import {AppAdminRecentActionsTab} from '../../solidJsTabs/tabs';
+import appImManager from '../../../lib/appManagers/appImManager';
+import {ChatType} from '../../chat/chat';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -446,7 +448,11 @@ export default class AppEditChatTab extends SliderSuperTab {
           icon: 'clipboard',
           titleLangKey: 'RecentActions',
           clickable: () => {
-            this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
+            // this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
+            appImManager.setPeer({
+              peerId: this.chatId.toPeerId(true),
+              type: ChatType.Logs
+            });
           },
           listenerSetter: this.listenerSetter
         });

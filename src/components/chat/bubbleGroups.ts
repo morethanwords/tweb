@@ -27,6 +27,7 @@ import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {BubbleElementAddons} from './types';
 import ChatThreadSeparator from './bubbleParts/chatThreadSeparator';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import {AdminLog} from '../../lib/appManagers/appChatsManager';
 
 
 type GroupItem = {
@@ -39,7 +40,7 @@ type GroupItem = {
   mounted: boolean,
   single: boolean,
   group?: BubbleGroup,
-  message: Message.message | Message.messageService, // use it only to set avatar
+  message: Message.message | Message.messageService | AdminLog, // use it only to set avatar
   reverse?: boolean
 };
 
@@ -324,6 +325,15 @@ export class BubbleGroup {
 //   }
 // }
 
+export const getMid = (message: MyMessage | AdminLog) => {
+  if(message._ === 'channelAdminLogEvent') return +message.id;
+  return message.mid;
+}
+
+export const isMessage = (message: MyMessage | AdminLog) => {
+  return message._ === 'message' || message._ === 'messageService';
+}
+
 export default class BubbleGroups {
   public itemsArr: Array<GroupItem> = []; // descend sorted
   private itemsMap: Map<HTMLElement, GroupItem> = new Map();
@@ -421,8 +431,11 @@ export default class BubbleGroups {
     let prevKey: number;
 
     forEachReverse(this.itemsArr, (item, i) => {
-      const savedPeerId = isMonoforum ? getPeerId(item.message?.saved_peer_id) : undefined;
-      const threadId = isBotforum ? getMessageThreadId(item.message, {isBotforum: true}) : undefined;
+      const message = item.message;
+      if(message._ === 'channelAdminLogEvent') return;
+
+      const savedPeerId = isMonoforum ? getPeerId(message?.saved_peer_id) : undefined;
+      const threadId = isBotforum ? getMessageThreadId(message, {isBotforum: true}) : undefined;
 
       const key = savedPeerId || threadId;
       if(!key) return;
@@ -451,7 +464,7 @@ export default class BubbleGroups {
         bubbles: this.chat.bubbles,
         peerId: savedPeerId || this.chat.peerId,
         threadId: savedPeerId ? undefined : threadId,
-        lastMsgId: item.message?.mid,
+        lastMsgId: message?.mid,
         index: -i
       });
       item.bubble.classList.add('has-chat-thread-separator');
@@ -509,7 +522,7 @@ export default class BubbleGroups {
       return;
     }
 
-    item.mid = /* item.groupMid =  */message.mid;
+    item.mid = /* item.groupMid =  */getMid(message);
     item.message = message;
     item.groupMid = this.generateGroupMid(message, item.dateTimestamp);
 
@@ -538,6 +551,8 @@ export default class BubbleGroups {
   }
 
   canItemsBeGrouped(item1: GroupItem, item2: GroupItem) {
+    if(item1.message?._ === 'channelAdminLogEvent' || item2.message?._ === 'channelAdminLogEvent') return false;
+
     if(isMessageForVerificationBot(item1.message)) return false;
 
     if(
@@ -628,7 +643,11 @@ export default class BubbleGroups {
     this.itemsMap.delete(item.bubble);
   }
 
-  getMessageFromId(message: MyMessage) {
+  getMessageFromId(message: MyMessage | AdminLog) {
+    if(message._ === 'channelAdminLogEvent') {
+      return this.chat.peerId;
+    }
+
     let fromId = /* (this.chat.peerId.isAnyChat() && message.viaBotId) ||  */message.fromId;
 
     // fix for saved messages forward to self
@@ -639,14 +658,16 @@ export default class BubbleGroups {
     return fromId;
   }
 
-  generateGroupMid(message: MyMessage, dateTimestamp: number) {
-    const {mid, date: timestamp} = message;
+  generateGroupMid(message: MyMessage | AdminLog, dateTimestamp: number) {
+    const {date: timestamp} = message;
+    const mid = message._ === 'channelAdminLogEvent' ? +message.id : message.mid;
     return this.chat.type === ChatType.Scheduled ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${+('' + mid).replace('.', '')}` : mid;
   }
 
-  createItem(bubble: HTMLElement, message: MyMessage, reverse: boolean) {
-    const single = !(message._ === 'message' || (message.action && SERVICE_AS_REGULAR.has(message.action._)));
-    const {mid, date: timestamp} = message;
+  createItem(bubble: HTMLElement, message: MyMessage | AdminLog, reverse: boolean) {
+    const single = !(message._ === 'message' || (message._ === 'messageService' && message.action && SERVICE_AS_REGULAR.has(message.action._)));
+    const {date: timestamp} = message;
+    const mid = message._ === 'channelAdminLogEvent' ? +message.id : message.mid;
     const {dateTimestamp} = this.chat.bubbles.getDateForDateContainer(timestamp);
     const item: GroupItem = {
       mid,
@@ -693,7 +714,7 @@ export default class BubbleGroups {
     // }
   }
 
-  prepareForGrouping(bubble: HTMLElement, message: MyMessage, reverse: boolean) {
+  prepareForGrouping(bubble: HTMLElement, message: MyMessage | AdminLog, reverse: boolean) {
     const foundItem = this.getItemByBubble(bubble);
     if(foundItem) { // should happen only on edit
       // debugger;

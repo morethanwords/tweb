@@ -42,6 +42,7 @@ type GetAdminLogsArgs = {
   channelId: ChatId;
   offsetId?: AdminLog['id'];
   limit: number;
+  backLimit?: number;
 };
 
 type FetchAdminLogsArgs = {
@@ -1045,13 +1046,14 @@ export class AppChatsManager extends AppManager {
     })
   }
 
-  public async getAdminLogs({channelId, offsetId, limit}: GetAdminLogsArgs) {
+  public async getAdminLogs({channelId, offsetId, limit, backLimit}: GetAdminLogsArgs) {
     const cachedFetcher = this.adminLogsFetcherMap.get(channelId) || new SlicedCachedFetcher;
     if(!this.adminLogsFetcherMap.has(channelId)) this.adminLogsFetcherMap.set(channelId, cachedFetcher);
 
-    const items = await cachedFetcher.getItems({
+    return cachedFetcher.getItems({
       offsetId,
       limit,
+      backLimit,
       fetchItems: ({offsetId, limit}) => this.fetchAdminLogs({channelId, offsetId, limit}),
       getId: (log) => log.id
     });
@@ -1061,7 +1063,7 @@ export class AppChatsManager extends AppManager {
     // MTProtoMessagePort.getInstance<false>().invoke('log', {m: 'my-debug', items, slices})
     // console.log('my-debug', {items, slices})
 
-    return items;
+    // return items;
   }
 
   private onUpdateChannelParticipant = (update: Update.updateChannelParticipant) => {

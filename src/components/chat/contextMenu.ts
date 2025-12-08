@@ -302,7 +302,7 @@ export default class ChatContextMenu {
 
   public onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
     let bubble: HTMLElement, contentWrapper: HTMLElement, avatar: HTMLElement;
-    if(this.chat.type === ChatType.Static) return;
+    if(this.chat.type === ChatType.Static || this.chat.type !== ChatType.Logs) return;
 
     try {
       contentWrapper = findUpClassName(e.target, 'bubble-content-wrapper');
