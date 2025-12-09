@@ -11,7 +11,7 @@ import type Chat from './chat';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import {logger} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
-import BubbleGroups, {getMid, isMessage} from './bubbleGroups';
+import BubbleGroups from './bubbleGroups';
 import PopupDatePicker from '../popups/datePicker';
 import PopupForward from '../popups/forward';
 import PopupStickers from '../popups/stickers';
@@ -197,7 +197,7 @@ import PopupStarGiftInfo from '../popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from './bubbles/starGift';
 import {PremiumGiftBubble} from './bubbles/premiumGift';
 import {UnknownUserBubble} from './bubbles/unknownUser';
-import {isMessageForVerificationBot, isVerificationBot} from './utils';
+import {getMid, isMessage, isMessageForVerificationBot, isVerificationBot} from './utils';
 import {ChecklistBubble} from './bubbles/checklist';
 import {getRestrictionReason} from '../../helpers/restrictions';
 import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
@@ -212,6 +212,7 @@ import {wrapTopicIcon} from '../wrappers/messageActionTextNewUnsafe';
 import {getTransition} from '../../config/transitions';
 import {SuggestBirthdayBubble} from './bubbles/suggestBirthday';
 import {AdminLog} from '../../lib/appManagers/appChatsManager';
+import {resolveAdminLog} from './bubbleParts/adminLogsResolver';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -378,10 +379,19 @@ type AddMessageSpoilerOverlayArgs = {
   canTranslate?: boolean;
 };
 
+type RenderLogArgs = {
+  log: AdminLog;
+  reverse?: boolean;
+  bubble: HTMLElement;
+  middleware: Middleware;
+};
+
 type RenderMessageArgs = {
   message: Message.message | Message.messageService;
   originalMessage?: Message.message | Message.messageService;
   reverse?: boolean;
+  fakeServiceContent?: Node;
+  additionalPromises?: Promise<any>[];
   bubble: HTMLElement;
   middleware: Middleware;
 };
@@ -5285,15 +5295,8 @@ export default class ChatBubbles {
 
       if(isMessage(message)) {
         originalPromise = this.renderMessage({message, reverse, bubble, middleware});
-      } else if(message?.action?._ === 'channelAdminLogEventActionEditMessage') {
-        originalPromise = rootScope.managers.appMessagesManager.temporarilySaveMessage(this.chat.peerId, message.action.new_message as MyMessage)
-        .then(savedMessage => this.renderMessage({message: savedMessage, reverse, bubble, middleware}))
-        .then(ret => {
-          ret.message = message; // prevent it from being filtered out when batching rendered items
-          return ret;
-        });
       } else {
-        originalPromise = this.renderLog(message, bubble, reverse);
+        originalPromise = this.renderLog({log: message, bubble, reverse, middleware});
       }
 
       if(processResult) {
@@ -5398,21 +5401,61 @@ export default class ChatBubbles {
     }
   };
 
-  private async renderLog(log: AdminLog, bubble: HTMLElement, reverse = false) {
-    const div = document.createElement('div');
-    div.style.height = '100px';
-    div.style.border = '1px solid red';
-    div.textContent = log.action._;
-    bubble.append(div);
+  private async renderLog({log, reverse = false, bubble, middleware}: RenderLogArgs) {
+    const promises: Promise<any>[] = [];
+
+    const entry = resolveAdminLog({
+      channelId: this.peerId.toChatId(),
+      event: log,
+      isBroadcast: this.chat.isBroadcast,
+      isForum: this.chat.isForum,
+      peerId: log.user_id.toPeerId(),
+      makePeerName: (id) => {
+        const peerTitle = new PeerTitle;
+        promises.push(peerTitle.update({peerId: id}))
+        return peerTitle.element;
+      }
+    });
+
+    if(!entry) return;
+
+    if(entry.type === 'service') {
+      bubble.className = 'bubble service';
+
+      const s = document.createElement('div');
+      s.classList.add('service-msg');
+
+      const contentWrapper = document.createElement('div');
+      contentWrapper.classList.add('bubble-content-wrapper');
+
+      const bubbleContainer = document.createElement('div');
+      bubbleContainer.classList.add('bubble-content');
+      bubbleContainer.append(s);
+
+      contentWrapper.append(bubbleContainer);
+      bubble.append(contentWrapper);
+
+      const dispose = render(() => entry.Content({}), s);
+      middleware.onDestroy(() => void dispose());
+    } else if(entry.type === 'default') {
+      return this.renderMessage({
+        message: entry.message,
+        originalMessage: entry.originalMessage,
+        reverse,
+        bubble,
+        middleware
+      });
+    }
+
     return {
       bubble,
       message: log as MyMessage | AdminLog,
       reverse,
-      promises: [] as Promise<any>[]
+      promises
     }
   }
 
-  private async renderMessage({message, originalMessage, reverse = false, bubble, middleware}: RenderMessageArgs ) {
+  private async renderMessage({message, originalMessage, additionalPromises = [], reverse = false, bubble, middleware}: RenderMessageArgs) {
     // if(DEBUG) {
     //   this.log('message to render:', message);
     // }
@@ -5423,7 +5466,7 @@ export default class ChatBubbles {
 
     // await pause(1000);
 
-    const loadPromises: Promise<any>[] = [];
+    const loadPromises: Promise<any>[] = [...additionalPromises];
 
     const isMessage = message._ === 'message';
     const hasReactions = message._ === 'message' || (message._ === 'messageService' && message.pFlags.reactions_are_possible)

@@ -21,7 +21,7 @@ import {avatarNew} from '../avatarNew';
 import {MiddlewareHelper} from '../../helpers/middleware';
 import {ChatType} from './chat';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
-import {isMessageForVerificationBot} from './utils';
+import {getMid, isMessageForVerificationBot} from './utils';
 import {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {BubbleElementAddons} from './types';
@@ -324,15 +324,6 @@ export class BubbleGroup {
 //     Object.assign(this, details);
 //   }
 // }
-
-export const getMid = (message: MyMessage | AdminLog) => {
-  if(message._ === 'channelAdminLogEvent') return +message.id;
-  return message.mid;
-}
-
-export const isMessage = (message: MyMessage | AdminLog) => {
-  return message._ === 'message' || message._ === 'messageService';
-}
 
 export default class BubbleGroups {
   public itemsArr: Array<GroupItem> = []; // descend sorted
