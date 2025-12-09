@@ -130,17 +130,14 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
         length
       }), options);
     case 'textImage':
-      // Placeholder for image
-      return {
-        _: 'textWithEntities',
-        text: ' ',
-        entities: [{
-          _: 'messageEntityImage',
-          offset: 0,
-          length: 1,
-          document_id: richText.document_id
-        } as any]
-      };
+      return wrapEntity({_: 'textPlain', text: '\x01'}, (offset, length) => ({
+        _: 'messageEntityCustomEmoji',
+        document_id: richText.document_id,
+        offset,
+        length,
+        w: richText.w,
+        h: richText.h
+      }), options);
     case 'textSubscript':
       return wrapEntity(richText.text, (offset, length) => ({
         _: 'messageEntitySubscript',

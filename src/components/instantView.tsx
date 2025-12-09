@@ -17,6 +17,8 @@ import Animated from '../helpers/solid/animations';
 import {unwrap} from 'solid-js/store';
 import wrapUrl from '../lib/richTextProcessor/wrapUrl';
 import documentFragmentToNodes from '../helpers/dom/documentFragmentToNodes';
+import {CustomEmojiRendererElement} from '../lib/customEmoji/renderer';
+import createMiddleware from '../helpers/solid/createMiddleware';
 
 type InstantViewContextValue = {
   webPageId: Long,
@@ -24,7 +26,8 @@ type InstantViewContextValue = {
   randomId: string,
   openNewPage: (url: string) => void,
   collapse: () => void,
-  scrollToAnchor: (anchor: string, instantly: boolean) => void
+  scrollToAnchor: (anchor: string, instantly: boolean) => void,
+  customEmojiRenderer: CustomEmojiRendererElement
 };
 
 const InstantViewContext = createContext<InstantViewContextValue>();
@@ -67,7 +70,12 @@ export function InstantView(props: {
         position: 'start',
         forceDuration
       });
-    }
+    },
+    customEmojiRenderer: CustomEmojiRendererElement.create({
+      textColor: 'primary-text-color',
+      middleware: createMiddleware().get(),
+      renderNonSticker: true
+    })
   };
 
   console.log(props.page);
@@ -97,6 +105,7 @@ export function InstantView(props: {
             class={classNames(styles.InstantView, 'text-overflow-wrap')}
             onClick={onClick.bind(null, value)}
           >
+            {value.customEmojiRenderer}
             <For each={props.page.blocks}>{(block) => (
               <Block block={block} />
             )}</For>
@@ -322,9 +331,11 @@ function Block(props: {block: PageBlock}) {
               <>
                 {idx() && <div class={styles.RelatedArticleBorderTop} />}
                 <a
+                  dir="auto"
                   href={wrapped.url}
                   class={classNames(
                     styles.RelatedArticle,
+                    photo && styles.WithPhoto,
                     idx() && styles.BorderTop,
                     'hover-effect'
                   )}
@@ -342,7 +353,7 @@ function Block(props: {block: PageBlock}) {
                       <RichTextRenderer text={{_: 'textPlain', text: article.author}} />
                       {` • `}
                     </Show>
-                    {formatFullSentTime(article.published_date, true)}
+                    <span dir="auto">{formatFullSentTime(article.published_date, true)}</span>
                   </div>
                   <Show when={photo}>
                     <PhotoTsx
@@ -365,14 +376,14 @@ function Block(props: {block: PageBlock}) {
 }
 
 function RichTextRenderer(props: {text: RichText}) {
-  const {webPageId, page, randomId} = useContext(InstantViewContext);
+  const {webPageId, page, randomId, customEmojiRenderer} = useContext(InstantViewContext);
   const {text, entities} = wrapTelegramRichText(
     props.text,
     {webPageId, url: page.url, randomId}
   );
 
   console.log({text, entities}, unwrap(props.text));
-  const fragment = wrapRichText(text, {entities});
+  const fragment = wrapRichText(text, {entities, customEmojiRenderer});
   fragment.querySelectorAll('[onclick="tg_iv(this)"]').forEach((el) => {
     el.classList.add(styles.Anchor);
   });

@@ -7,6 +7,7 @@ import {logger} from '../../lib/logger';
 import {FontInfo, FontKey, NumberPair, ResizableLayer} from './types';
 import {HistoryItem} from './context';
 import {IS_FIREFOX} from '../../environment/userAgent';
+import StickerType from '../../config/stickerType';
 
 export const log = logger('Media editor');
 
@@ -184,7 +185,7 @@ export function snapToAvailableQuality(videoHeight: number) {
 export function checkIfHasAnimatedStickers(layers: ResizableLayer[]) {
   return !!layers.find((layer) => {
     const stickerType = layer.sticker?.sticker;
-    return stickerType === 2 || (!IS_FIREFOX && stickerType === 3);
+    return stickerType === StickerType.Lottie || (!IS_FIREFOX && stickerType === StickerType.WebM);
   });
 };
 

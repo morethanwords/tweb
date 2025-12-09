@@ -158,7 +158,10 @@
   display: block;
   color: currentColor;
   position: relative;
-  padding-inline-end: calc(var(--padding-horizontal) + 7.25rem);
+
+  &.WithPhoto {
+    padding-inline-end: calc(var(--padding-horizontal) + 7.25rem);
+  }
 
   &Title {
     line-height: 1.3125em;

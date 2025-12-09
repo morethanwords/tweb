@@ -25,6 +25,7 @@ import SearchIndex from '../searchIndex';
 import parseEntities from '../richTextProcessor/parseEntities';
 import toArray from '../../helpers/array/toArray';
 import base64ToBytes from '../../helpers/string/base64ToBytes';
+import StickerType from '../../config/stickerType';
 
 const CACHE_TIME = 3600e3;
 
@@ -870,7 +871,7 @@ export class AppStickersManager extends AppManager {
       const stickers = [...new Set(cachedStickersAnimated.concat(cachedStickersStatic, foundStickers))]/* .filter((doc) => !doc.animated) */;
 
       forEachReverse(stickers, (sticker, idx, arr) => {
-        if((sticker.sticker === 3 && !getEnvironment().IS_WEBM_SUPPORTED) ||
+        if((sticker.sticker === StickerType.WebM && !getEnvironment().IS_WEBM_SUPPORTED) ||
           (excludePremiumEffectStickers && !this.rootScope.premium && getStickerEffectThumb(sticker))) {
           arr.splice(idx, 1);
         }

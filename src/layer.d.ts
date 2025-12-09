@@ -5571,7 +5571,9 @@ export namespace MessageEntity {
     _: 'messageEntityCustomEmoji',
     offset: number,
     length: number,
-    document_id: string | number
+    document_id: string | number,
+    w?: number,
+    h?: number
   };
 
   export type messageEntityBlockquote = {

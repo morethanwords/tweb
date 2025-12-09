@@ -549,4 +549,10 @@
     {"name": "name", "type": "string"}
   ],
   "type": "MessageEntity"
+}, {
+  "predicate": "messageEntityCustomEmoji",
+  "params": [
+    {"name": "w", "type": "number"},
+    {"name": "h", "type": "number"}
+  ]
 }]

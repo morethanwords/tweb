@@ -35,6 +35,7 @@ import {Sparkles} from '../sparkles';
 import {AnimatedCounter} from '../animatedCounter';
 import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt';
 import {IS_MOBILE} from '../../environment/userAgent';
+import StickerType from '../../config/stickerType';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -580,7 +581,7 @@ export default class ReactionElement extends HTMLElement {
       div && div.classList.add(CLASS_NAME + '-sticker-activate');
 
       const genericEffectSize = options.sizes.genericEffectSize;
-      const isGenericMasked = genericEffect && sticker.sticker !== 2;
+      const isGenericMasked = genericEffect && sticker.sticker !== StickerType.Lottie;
 
       const textColor = options.textColor || 'primary-text-color';
 

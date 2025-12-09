@@ -407,6 +407,12 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         set.add(customEmojiElement);
         customEmojiElement.dataset.stickerEmoji = fullEntityText;
 
+        if(entity.w) {
+          customEmojiElement.classList.add('custom-emoji-custom-sized');
+          customEmojiElement.style.setProperty('--width', entity.w + 'px');
+          customEmojiElement.style.setProperty('--height', entity.h + 'px');
+        }
+
         if(options.wrappingDraft) {
           element = document.createElement('img');
           (element as HTMLImageElement).alt = fullEntityText;

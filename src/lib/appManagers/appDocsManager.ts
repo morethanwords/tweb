@@ -28,6 +28,7 @@ import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 import tsNow from '../../helpers/tsNow';
 import appManagersManager from './appManagersManager';
 import tryPatchMp4 from '../../helpers/fixChromiumMp4';
+import StickerType from '../../config/stickerType';
 
 export type MyDocument = Document.document;
 
@@ -179,14 +180,14 @@ export class AppDocsManager extends AppManager {
           // * there can be no thumbs, then it is a document
           if(/* apiDoc.thumbs &&  */doc.mime_type === EXTENSION_MIME_TYPE_MAP.webp && (doc.thumbs || getEnvironment().IS_WEBP_SUPPORTED)) {
             doc.type = 'sticker';
-            doc.sticker = 1;
+            doc.sticker = StickerType.Static;
           } else if(doc.mime_type === EXTENSION_MIME_TYPE_MAP.webm) {
             // if(!getEnvironment().IS_WEBM_SUPPORTED) {
             //   break;
             // }
 
             doc.type = 'sticker';
-            doc.sticker = 3;
+            doc.sticker = StickerType.WebM;
             doc.animated = true;
           }
           break;
@@ -243,7 +244,7 @@ export class AppDocsManager extends AppManager {
     } else if(doc.mime_type === EXTENSION_MIME_TYPE_MAP.tgs && doc.file_name === 'AnimatedSticker.tgs') {
       doc.type = 'sticker';
       doc.animated = true;
-      doc.sticker = 2;
+      doc.sticker = StickerType.Lottie;
     }
 
     if(doc.type === 'voice' || doc.type === 'round') {

@@ -27,6 +27,7 @@ import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
 import {observeResize, unobserveResize} from '../../components/resizeObserver';
 import {PAID_REACTION_EMOJI_DOCID} from './constants';
 import lottieLoader from '../rlottie/lottieLoader';
+import StickerType from '../../config/stickerType';
 
 const globalLazyLoadQueue = new LazyLoadQueue();
 
@@ -61,6 +62,8 @@ export class CustomEmojiRendererElement extends HTMLElement {
   public textColor: CustomProperty;
 
   public observeResizeElement: HTMLElement | false;
+
+  public renderNonSticker: boolean;
 
   constructor() {
     super();
@@ -438,9 +441,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
     const newElements = addCustomEmojis.get(docId);
     const customEmojis = renderer.customEmojis.get(docId);
     const newElementsArray = Array.from(newElements);
-    const isLottie = doc.sticker === 2;
+    const stickerType = doc.sticker ?? (this.renderNonSticker ? StickerType.Static : undefined);
+    const isLottie = stickerType === StickerType.Lottie;
     const isStatic = newElementsArray[0].static || (doc.mime_type === 'video/webm' && !IS_WEBM_SUPPORTED);
-    const willHaveSyncedPlayer = (isLottie || (doc.sticker === 3 && this.isSelectable)) && !onlyThumb && !isStatic;
+    const willHaveSyncedPlayer = (isLottie || (stickerType === StickerType.WebM && this.isSelectable)) && !onlyThumb && !isStatic;
 
     const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
     if(attribute && attribute.pFlags.text_color) {
@@ -500,7 +504,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       });
     }
 
-    if(doc.sticker === 1 || onlyThumb || isStatic) {
+    if(stickerType === StickerType.Static || onlyThumb || isStatic) {
       if(this.isSelectable) {
         addition.onRender = () => Promise.all(_loadPromises).then(() => {
           if(!middleware()) return;
@@ -795,6 +799,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     renderer.textColor = options.textColor;
     // renderer.textColor = typeof(options.textColor) === 'function' ? options.textColor() : options.textColor;
     renderer.observeResizeElement = options.observeResizeElement;
+    renderer.renderNonSticker = options.renderNonSticker;
     if(options.wrappingDraft) {
       renderer.contentEditable = 'false';
       renderer.style.height = 'inherit';
@@ -832,7 +837,8 @@ export type CustomEmojiRendererElementOptions = Partial<{
   isSelectable: boolean,
   wrappingDraft: boolean,
 
-  observeResizeElement?: HTMLElement | false
+  observeResizeElement?: HTMLElement | false,
+  renderNonSticker?: boolean
 }> & WrapSomethingOptions;
 
 const CUSTOM_EMOJI_INSTANT_PLAY = true; // do not wait for animationIntersector
