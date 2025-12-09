@@ -448,7 +448,7 @@ export default class AppEditChatTab extends SliderSuperTab {
           icon: 'clipboard',
           titleLangKey: 'RecentActions',
           clickable: () => {
-            // this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
+            this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
             appImManager.setPeer({
               peerId: this.chatId.toPeerId(true),
               type: ChatType.Logs

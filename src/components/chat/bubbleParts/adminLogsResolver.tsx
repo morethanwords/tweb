@@ -5,6 +5,7 @@ import {MyMessage} from '../../../lib/appManagers/appMessagesManager';
 import {isBannedParticipant} from '../../../lib/appManagers/utils/chats/isBannedParticipant';
 import {i18n} from '../../../lib/langPack';
 import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
+import {isMessage} from '../utils';
 
 type ServiceResult = {
   type: 'service';
@@ -20,10 +21,10 @@ type DefaultResult = {
   type: 'default';
   message: MyMessage;
   originalMessage?: MyMessage;
-  ServiceContent?: Component;
+  ServiceContent: Component;
 };
 
-type MapCallbackResult = ServiceResult | RegularResult | DefaultResult;
+type MapCallbackResult = ServiceResult | RegularResult | DefaultResult | null;
 
 type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
   channelId: ChatId;
@@ -61,21 +62,25 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.ToggleSignaturesEnabled' : 'AdminLog.ToggleSignaturesDisabled', [makePeerName(peerId)])
   }),
-  'channelAdminLogEventActionUpdatePinned': ({action, peerId, makePeerName}) => ({
-    type: 'service',
-    Content: () => {
-      const pinned = action.message?._ === 'message' && action.message.pFlags?.pinned;
+  'channelAdminLogEventActionUpdatePinned': ({action, peerId, makePeerName}) => isMessage(action.message) ? ({
+    type: 'default',
+    message: action.message,
+    ServiceContent: () => {
+      const pinned = action.message._ === 'message' && action.message.pFlags?.pinned;
       return i18n(pinned ? 'AdminLog.PinnedMessage' : 'AdminLog.UnpinnedMessage', [makePeerName(peerId)]);
     }
-  }),
-  'channelAdminLogEventActionEditMessage': ({peerId, makePeerName}) => ({
-    type: 'service',
-    Content: () => i18n('AdminLog.EditedMessage', [makePeerName(peerId)])
-  }),
-  'channelAdminLogEventActionDeleteMessage': ({peerId, makePeerName}) => ({
-    type: 'service',
-    Content: () => i18n('AdminLog.DeletedMessage', [makePeerName(peerId)])
-  }),
+  }) : null,
+  'channelAdminLogEventActionEditMessage': ({action, peerId, makePeerName}) => isMessage(action.new_message) ? ({
+    type: 'default',
+    message: action.new_message,
+    originalMessage: isMessage(action.prev_message) ? action.prev_message : null,
+    ServiceContent: () => i18n('AdminLog.EditedMessage', [makePeerName(peerId)])
+  }) : null,
+  'channelAdminLogEventActionDeleteMessage': ({action, peerId, makePeerName}) => isMessage(action.message) ? ({
+    type: 'default',
+    message: action.message,
+    ServiceContent: () => i18n('AdminLog.DeletedMessage', [makePeerName(peerId)])
+  }) : null,
   'channelAdminLogEventActionParticipantJoin': ({isBroadcast, peerId, makePeerName}) => ({
     type: 'service',
     Content: () => i18n(isBroadcast ? 'AdminLog.ParticipantJoinedChannel' : 'AdminLog.ParticipantJoinedGroup', [makePeerName(peerId)])
@@ -198,10 +203,11 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.ToggleNoForwardsEnabled' : 'AdminLog.ToggleNoForwardsDisabled', [makePeerName(peerId)])
   }),
-  'channelAdminLogEventActionSendMessage': ({peerId, makePeerName}) => ({
-    type: 'service',
-    Content: () => i18n('AdminLog.MessageSent', [makePeerName(peerId)])
-  }),
+  'channelAdminLogEventActionSendMessage': ({action, peerId, makePeerName}) => isMessage(action.message) ? ({
+    type: 'default',
+    message: action.message,
+    ServiceContent: () => i18n('AdminLog.MessageSent', [makePeerName(peerId)])
+  }) : null,
   'channelAdminLogEventActionChangeAvailableReactions': ({peerId, makePeerName}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ChangeAvailableReactions', [makePeerName(peerId)])

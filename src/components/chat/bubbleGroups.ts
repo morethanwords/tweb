@@ -651,14 +651,14 @@ export default class BubbleGroups {
 
   generateGroupMid(message: MyMessage | AdminLog, dateTimestamp: number) {
     const {date: timestamp} = message;
-    const mid = message._ === 'channelAdminLogEvent' ? +message.id : message.mid;
+    const mid = getMid(message);
     return this.chat.type === ChatType.Scheduled ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${+('' + mid).replace('.', '')}` : mid;
   }
 
   createItem(bubble: HTMLElement, message: MyMessage | AdminLog, reverse: boolean) {
     const single = !(message._ === 'message' || (message._ === 'messageService' && message.action && SERVICE_AS_REGULAR.has(message.action._)));
     const {date: timestamp} = message;
-    const mid = message._ === 'channelAdminLogEvent' ? +message.id : message.mid;
+    const mid = getMid(message);
     const {dateTimestamp} = this.chat.bubbles.getDateForDateContainer(timestamp);
     const item: GroupItem = {
       mid,

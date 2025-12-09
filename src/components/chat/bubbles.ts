@@ -5296,7 +5296,11 @@ export default class ChatBubbles {
       if(isMessage(message)) {
         originalPromise = this.renderMessage({message, reverse, bubble, middleware});
       } else {
-        originalPromise = this.renderLog({log: message, bubble, reverse, middleware});
+        originalPromise = this.renderLog({log: message, bubble, reverse, middleware})
+        .then(ret => {
+          ret.message = message;
+          return ret;
+        });
       }
 
       if(processResult) {
@@ -5438,9 +5442,20 @@ export default class ChatBubbles {
       const dispose = render(() => entry.Content({}), s);
       middleware.onDestroy(() => void dispose());
     } else if(entry.type === 'default') {
+      const serviceContent = document.createElement('div');
+
+      const dispose = render(() => entry.ServiceContent({}), serviceContent);
+      middleware.onDestroy(() => void dispose());
+
+      const {message, originalMessage} = await namedPromises({
+        message: rootScope.managers.appMessagesManager.temporarilySaveMessage(this.peerId, entry.message),
+        originalMessage: rootScope.managers.appMessagesManager.temporarilySaveMessage(this.peerId, entry.originalMessage)
+      });
+
       return this.renderMessage({
-        message: entry.message,
-        originalMessage: entry.originalMessage,
+        message,
+        originalMessage,
+        fakeServiceContent: serviceContent,
         reverse,
         bubble,
         middleware
@@ -5455,7 +5470,7 @@ export default class ChatBubbles {
     }
   }
 
-  private async renderMessage({message, originalMessage, additionalPromises = [], reverse = false, bubble, middleware}: RenderMessageArgs) {
+  private async renderMessage({message, originalMessage, fakeServiceContent, additionalPromises = [], reverse = false, bubble, middleware}: RenderMessageArgs) {
     // if(DEBUG) {
     //   this.log('message to render:', message);
     // }
@@ -6029,6 +6044,17 @@ export default class ChatBubbles {
       }
 
       returnService = true;
+    }
+
+    if(fakeServiceContent) {
+      bubble.classList.add('has-fake-service', 'is-forced-rounded');
+
+      const fakeServiceMessage = document.createElement('div');
+      fakeServiceMessage.classList.add('service-msg');
+
+      fakeServiceMessage.append(fakeServiceContent);
+
+      bubble.prepend(fakeServiceMessage);
     }
 
 
@@ -8340,11 +8366,9 @@ export default class ChatBubbles {
     }
 
     const cb = (message: Message.message | Message.messageService | AdminLog) => {
-      const isMessage = message?._ === 'message' || message?._ === 'messageService';
-
       if(!message) {
         return;
-      } else if(isMessage && message.pFlags.local) {
+      } else if(isMessage(message) && message.pFlags.local) {
         return this.processLocalMessageRender(message);
       } else {
         return this.safeRenderMessage({

@@ -3444,10 +3444,10 @@
 "AdminLog.ToggleInvitesDisabled" = "%s disabled invites";
 "AdminLog.ToggleSignaturesEnabled" = "%s enabled signatures";
 "AdminLog.ToggleSignaturesDisabled" = "%s disabled signatures";
-"AdminLog.PinnedMessage" = "%s pinned a message";
-"AdminLog.UnpinnedMessage" = "%s unpinned a message";
-"AdminLog.EditedMessage" = "%s edited a message";
-"AdminLog.DeletedMessage" = "%s deleted a message";
+"AdminLog.PinnedMessage" = "%s pinned a message:";
+"AdminLog.UnpinnedMessage" = "%s unpinned a message:";
+"AdminLog.EditedMessage" = "%s edited a message:";
+"AdminLog.DeletedMessage" = "%s deleted a message:";
 "AdminLog.ParticipantJoinedChannel" = "%s joined the channel";
 "AdminLog.ParticipantJoinedGroup" = "%s joined the group";
 "AdminLog.ParticipantLeftChannel" = "%s left the channel";
@@ -3484,7 +3484,7 @@
 "AdminLog.ParticipantJoinedByRequest" = "%s joined by request";
 "AdminLog.ToggleNoForwardsEnabled" = "%s enabled content protection";
 "AdminLog.ToggleNoForwardsDisabled" = "%s disabled content protection";
-"AdminLog.MessageSent" = "%s sent a message";
+"AdminLog.MessageSent" = "%s sent a message:";
 "AdminLog.ChangeAvailableReactions" = "%s changed available reactions";
 "AdminLog.ChangeUsernames" = "%s changed usernames";
 "AdminLog.ToggleForumEnabled" = "%s enabled topics";

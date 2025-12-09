@@ -1,3 +1,4 @@
+import {Message} from '../../layer';
 import {AdminLog} from '../../lib/appManagers/appChatsManager';
 import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
@@ -18,6 +19,6 @@ export function getMid(message: MyMessage | AdminLog) {
   return message.mid;
 }
 
-export function isMessage(message: MyMessage | AdminLog) {
+export function isMessage(message: Message | AdminLog) {
   return message._ === 'message' || message._ === 'messageService';
 }
