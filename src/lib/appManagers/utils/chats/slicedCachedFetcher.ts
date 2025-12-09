@@ -76,9 +76,8 @@ export class SlicedCachedFetcher<T> {
     const items = result
     // remove the item with offsetId, was used only for making sure slices overlap
     .filter(id => String(id) !== String(offsetId))
-    .slice(0, limit)
     .map(id => this.cachedItemsMap.get(String(id)));
 
-    return {items, isEnd: this.isEnd};
+    return {items, isEnd: tookFromLastSlice && this.isEnd};
   }
 }
