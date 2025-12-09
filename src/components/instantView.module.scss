@@ -15,7 +15,7 @@
   line-height: calc(var(--line-height-16) * var(--iv-scale));
   min-height: 100%;
   position: relative;
-  padding-bottom: 1.5em;
+  padding-bottom: 2em;
 
   :global(.anchor-url) {
     color: var(--primary-color);
@@ -210,5 +210,20 @@
 
   @include hover-global() {
     text-decoration: underline;
+  }
+}
+
+.Table {
+  margin: 0 calc(var(--padding-horizontal) * -1);
+  // padding: 0 var(--padding-horizontal);
+
+  &Wrapper {
+    margin: 0.75em 0;
+  }
+
+  &Name {
+    color: var(--secondary-text-color);
+    font-size: 0.8888em;
+    margin-bottom: 0.2222em;
   }
 }

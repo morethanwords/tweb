@@ -6,6 +6,7 @@ import styles from './instantView.module.scss';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import classNames from '../helpers/string/classNames';
 import {PhotoTsx} from './wrappers/photo';
+import GenericTable, {GenericTableRow} from './genericTable';
 import {useHotReloadGuard} from '../lib/solidjs/hotReloadGuard';
 import {formatDate, formatFullSentTime} from '../helpers/date';
 import findUpClassName from '../helpers/dom/findUpClassName';
@@ -262,6 +263,37 @@ function Block(props: {block: PageBlock}) {
           id={useContext(InstantViewContext).randomId + block.name}
         />
       );
+    case 'pageBlockTable': {
+      const rows: GenericTableRow[] = block.rows.map((row) => ({
+        cells: row.cells.map((cell) => ({
+          content: cell.text ? <RichTextRenderer text={cell.text} /> : undefined,
+          header: cell.pFlags.header,
+          colspan: cell.colspan,
+          rowspan: cell.rowspan,
+          alignCenter: cell.pFlags.align_center,
+          alignRight: cell.pFlags.align_right,
+          valignMiddle: cell.pFlags.valign_middle,
+          valignBottom: cell.pFlags.valign_bottom
+        }))
+      }));
+
+      return (
+        <div class={styles.TableWrapper}>
+          <Show when={block.title._ !== 'textEmpty'}>
+            <div class={styles.TableName}>
+              <RichTextRenderer text={block.title} />
+            </div>
+          </Show>
+          <div class={styles.Table}>
+            <GenericTable
+              rows={rows}
+              bordered={block.pFlags.bordered}
+              striped={block.pFlags.striped}
+            />
+          </div>
+        </div>
+      );
+    }
     case 'pageBlockRelatedArticles':
       return (
         <div class={styles.Section}>
