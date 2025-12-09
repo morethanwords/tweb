@@ -370,13 +370,21 @@ function shouldShowUnknownUserPlaceholder(peerSettings?: PeerSettings) {
   return peerSettings?.phone_country || peerSettings?.registration_month;
 }
 
-type AddMessageSpoilerOverlayParams = {
+type AddMessageSpoilerOverlayArgs = {
   mid: number;
   loadPromises?: Promise<void>[];
   messageDiv: HTMLDivElement;
   middleware: Middleware;
   canTranslate?: boolean;
-}
+};
+
+type RenderMessageArgs = {
+  message: Message.message | Message.messageService;
+  originalMessage?: Message.message | Message.messageService;
+  reverse?: boolean;
+  bubble: HTMLElement;
+  middleware: Middleware;
+};
 
 export default class ChatBubbles {
   public container: HTMLDivElement;
@@ -4942,9 +4950,7 @@ export default class ChatBubbles {
       });
     };
 
-    console.log('my-debug', {loadQueue})
-    // loadQueue = filterQueue(loadQueue);
-    console.log('my-debug filtered', {loadQueue})
+    loadQueue = filterQueue(loadQueue);
 
     log('messages rendered');
 
@@ -5219,9 +5225,7 @@ export default class ChatBubbles {
     processResult?: (result: ReturnType<ChatBubbles['renderMessage']>, bubble: HTMLElement) => typeof result,
     canAnimateLadder?: boolean
   }) {
-    const isMessage = (message: Message.message | Message.messageService | AdminLog): message is Message.message | Message.messageService => message._ === 'message' || message._ === 'messageService';
-
-    const fullMid = makeFullMid(isMessage(message) ? message : this.chat.peerId, !isMessage(message) ? +message.id : undefined);
+    const fullMid = this.makeFullMid(message);
     if(!message || this.renderingMessages.has(fullMid) || (this.getBubble(fullMid) && !bubble)) {
       return;
     }
@@ -5277,7 +5281,21 @@ export default class ChatBubbles {
       }
 
       bubble = this.bubbles[fullMid] = newBubble;
-      let originalPromise = isMessage(message) ? this.renderMessage(message, reverse, bubble, middleware) : this.renderLog(message, reverse);
+      let originalPromise: ReturnType<ChatBubbles['renderMessage']>;
+
+      if(isMessage(message)) {
+        originalPromise = this.renderMessage({message, reverse, bubble, middleware});
+      } else if(message?.action?._ === 'channelAdminLogEventActionEditMessage') {
+        originalPromise = rootScope.managers.appMessagesManager.temporarilySaveMessage(this.chat.peerId, message.action.new_message as MyMessage)
+        .then(savedMessage => this.renderMessage({message: savedMessage, reverse, bubble, middleware}))
+        .then(ret => {
+          ret.message = message; // prevent it from being filtered out when batching rendered items
+          return ret;
+        });
+      } else {
+        originalPromise = this.renderLog(message, bubble, reverse);
+      }
+
       if(processResult) {
         originalPromise = processResult(originalPromise, bubble);
       }
@@ -5380,26 +5398,21 @@ export default class ChatBubbles {
     }
   };
 
-  private async renderLog(log: AdminLog, reverse = false) {
+  private async renderLog(log: AdminLog, bubble: HTMLElement, reverse = false) {
     const div = document.createElement('div');
     div.style.height = '100px';
     div.style.border = '1px solid red';
     div.textContent = log.action._;
+    bubble.append(div);
     return {
-      bubble: div,
+      bubble,
       message: log as MyMessage | AdminLog,
       reverse,
       promises: [] as Promise<any>[]
     }
   }
 
-  // reverse means top
-  private async renderMessage(
-    message: Message.message | Message.messageService,
-    reverse = false,
-    bubble: HTMLElement,
-    middleware: Middleware
-  ) {
+  private async renderMessage({message, originalMessage, reverse = false, bubble, middleware}: RenderMessageArgs ) {
     // if(DEBUG) {
     //   this.log('message to render:', message);
     // }
@@ -8026,7 +8039,7 @@ export default class ChatBubbles {
     return ret;
   }
 
-  private async addMessageSpoilerOverlay({mid, messageDiv, middleware, loadPromises, canTranslate}: AddMessageSpoilerOverlayParams) {
+  private async addMessageSpoilerOverlay({mid, messageDiv, middleware, loadPromises, canTranslate}: AddMessageSpoilerOverlayArgs) {
     if(IS_FIREFOX) return; // Firefox has very poor performance when drawing on canvas
     if(canTranslate && loadPromises) await Promise.all(loadPromises); // TranslatableMessage delays the moment when content appears in the DOM
 
