@@ -120,6 +120,7 @@ $transition: .2s var(--transition-standard-easing);
         font-weight: var(--font-weight-bold);
         white-space: nowrap;
         overflow: hidden;
+        text-align: left;
 
         @include animation-level-global(2) {
           transition: width $transition;

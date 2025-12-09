@@ -63,6 +63,8 @@ export function InstantView(props: {
     }
   };
 
+  console.log(props.page);
+
   if(props.anchor) {
     onMount(() => {
       queueMicrotask(() => {
@@ -78,13 +80,17 @@ export function InstantView(props: {
       <Animated type="cross-fade" appear={props.needFadeIn} mode="add-remove">
         <Scrollable ref={scrollableRef}>
           <div
+            dir={props.page.pFlags.rtl ? 'auto' : undefined}
             class={classNames(styles.InstantView, 'text-overflow-wrap')}
             onClick={onClick.bind(null, value)}
           >
             <For each={props.page.blocks}>{(block) => (
               <Block block={block} />
             )}</For>
-            <div class={classNames(styles.Section, styles.Meta, 'secondary')}>
+            <div
+              dir="auto"
+              class={classNames(styles.Section, styles.Meta, 'secondary')}
+            >
               <Show when={props.page.views}>
                 {i18n('Views', [props.page.views])}
                 {` • `}
@@ -232,7 +238,14 @@ function Block(props: {block: PageBlock}) {
     }
     case 'pageBlockAuthorDate':
       return (
-        <div class={classNames(styles.AuthorDate, 'secondary')}>
+        <div
+          dir="auto"
+          class={classNames(
+            styles.AuthorDate,
+            'secondary',
+            useContext(InstantViewContext).page.pFlags.rtl && 'text-right'
+          )}
+        >
           <Show when={block.author._ !== 'textEmpty'}>
             <RichTextRenderer text={block.author} />
             {` • `}
@@ -310,7 +323,9 @@ function Block(props: {block: PageBlock}) {
 function RichTextRenderer(props: {text: RichText}) {
   const {text, entities} = wrapTelegramRichText(props.text);
   console.log({text, entities}, unwrap(props.text));
-  return documentFragmentToNodes(wrapRichText(text, {entities}));
+  const fragment = wrapRichText(text, {entities});
+  return documentFragmentToNodes(fragment);
+  // return (<span dir="auto">{fragment}</span>);
   // const textWithEntities = createMemo(() => wrapTelegramRichText(props.text));
 
   // let ref: HTMLSpanElement;

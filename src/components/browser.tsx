@@ -9,7 +9,7 @@ import {batch, createContext, createEffect, createRoot, For, onCleanup, onMount,
 import styles from './browser.module.scss';
 import {ButtonIconTsx} from './buttonIconTsx';
 import getTextWidth from '../helpers/canvas/getTextWidth';
-import {FontFull} from '../config/font';
+import {FontFull, FontFullBold} from '../config/font';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import untrackActions from '../helpers/solid/untrackActions';
 import classNames from '../helpers/string/classNames';
@@ -132,7 +132,7 @@ function BrowserHeaderTab(props: {
           onClick={props.openPageMenu}
         />
       </BrowserHeaderButton>
-      <div class={styles.BrowserHeaderTabTitle}>
+      <div dir="auto" class={styles.BrowserHeaderTabTitle}>
         {documentFragmentToNodes(wrapEmojiText(props.page.title))}
       </div>
       <div class={classNames(styles.BrowserHeaderTabHover, styles.BrowserHeaderTabMask)}></div>
@@ -561,7 +561,7 @@ function Browser(props: {
 }
 
 function makeBrowserPage(props: BrowserPageProps): BrowserPageProps {
-  props.titleWidth ??= () => getTextWidth(props.title, FontFull);
+  props.titleWidth ??= () => getTextWidth(props.title, FontFullBold);
   props.id ??= Math.random().toString(36).slice(2);
   props.menuButtons ??= [];
   props.menuButtons.push({
