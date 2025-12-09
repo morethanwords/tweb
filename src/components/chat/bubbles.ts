@@ -5458,6 +5458,7 @@ export default class ChatBubbles {
         fakeServiceContent: serviceContent,
         reverse,
         bubble,
+        additionalPromises: promises,
         middleware
       });
     }
@@ -5467,7 +5468,7 @@ export default class ChatBubbles {
       message: log as MyMessage | AdminLog,
       reverse,
       promises
-    }
+    };
   }
 
   private async renderMessage({message, originalMessage, fakeServiceContent, additionalPromises = [], reverse = false, bubble, middleware}: RenderMessageArgs) {
