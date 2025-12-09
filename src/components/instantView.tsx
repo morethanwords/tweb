@@ -1,6 +1,6 @@
 import {JSX, For, createMemo, createEffect, createContext, useContext, onMount, createRenderEffect, Show} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
-import {Document, Page, PageBlock, PageListOrderedItem, Photo, RichText} from '../layer';
+import {Document, Page, PageBlock, PageCaption, PageListOrderedItem, Photo, RichText} from '../layer';
 import wrapTelegramRichText from '../lib/richTextProcessor/wrapTelegramRichText';
 import styles from './instantView.module.scss';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
@@ -107,7 +107,7 @@ export function InstantView(props: {
           >
             {value.customEmojiRenderer}
             <For each={props.page.blocks}>{(block) => (
-              <Block block={block} />
+              <Block block={block} paddings={1} />
             )}</For>
             <div
               dir="auto"
@@ -141,15 +141,42 @@ export function InstantView(props: {
   );
 }
 
-function onMediaResult(ref: HTMLDivElement) {
+function onMediaResult(ref: HTMLDivElement, paddings: number) {
   const {width, height} = ref.style;
   ref.style.setProperty(
     '--aspect-ratio',
     '' + (parseInt(width) / parseInt(height))
   );
+
+  ref.style.setProperty(
+    '--paddings',
+    '' + (paddings > 1 ? paddings : 0)
+  );
 }
 
-function Block(props: {block: PageBlock}) {
+function Caption(props: {caption: PageCaption}) {
+  const {caption} = props;
+  const isTextEmpty = isRichTextEmpty(caption.text);
+  const isCreditEmpty = isRichTextEmpty(caption.credit);
+  return (
+    <Show when={!isTextEmpty || !isCreditEmpty}>
+      <div class={classNames(styles.Caption, 'secondary')}>
+        <Show when={!isTextEmpty}>
+          <div class={classNames(styles.CaptionText, 'text-bold')}>
+            <RichTextRenderer text={caption.text} />
+          </div>
+        </Show>
+        <Show when={!isCreditEmpty}>
+          <div class={styles.CaptionCredit}>
+            <RichTextRenderer text={caption.credit} />
+          </div>
+        </Show>
+      </div>
+    </Show>
+  );
+}
+
+function Block(props: {block: PageBlock, paddings: number}) {
   const block = props.block;
   // if(block._ !== 'pageBlockRelatedArticles' && Math.random() !== undefined) {
   //   return;
@@ -180,12 +207,15 @@ function Block(props: {block: PageBlock}) {
           class={classNames(styles.List, 'browser-default')}
         >
           <For each={block.items}>{(item, idx) => (
-            <li value={+(item as PageListOrderedItem.pageListOrderedItemText).num || (idx() + 1)}>
+            <li
+              class={styles.ListItem}
+              value={+(item as PageListOrderedItem.pageListOrderedItemText).num || (idx() + 1)}
+            >
               {item._ === 'pageListItemText' || item._ === 'pageListOrderedItemText' ? (
                 <RichTextRenderer text={item.text} />
               ) : (
                 <For each={item.blocks}>{(subBlock) => (
-                  <Block block={subBlock} />
+                  <Block block={subBlock} paddings={props.paddings + 1} />
                 )}</For>
               )}
             </li>
@@ -196,13 +226,17 @@ function Block(props: {block: PageBlock}) {
       return (
         <blockquote class={styles.Blockquote}>
           <RichTextRenderer text={block.text} />
-          {block.caption && <div class={styles.Caption}><RichTextRenderer text={block.caption} /></div>}
+          <Show when={!isRichTextEmpty(block.caption)}>
+            <div class={styles.BlockquoteCaption}>
+              <RichTextRenderer text={block.caption} />
+            </div>
+          </Show>
         </blockquote>
       );
     case 'pageBlockCover':
       return (
         <div class={styles.Cover}>
-          <Block block={block.cover} />
+          <Block block={block.cover} paddings={props.paddings} />
         </div>
       );
     case 'pageBlockPhoto': {
@@ -210,13 +244,16 @@ function Block(props: {block: PageBlock}) {
       const photo = unwrap(context.page.photos.find((photo) => photo.id === block.photo_id)) as Photo.photo;
       let ref: HTMLDivElement;
       return (
-        <PhotoTsx
-          ref={ref}
-          class={styles.Media}
-          photo={photo}
-          withoutPreloader
-          onResult={() => onMediaResult(ref)}
-        />
+        <>
+          <PhotoTsx
+            ref={ref}
+            class={styles.Media}
+            photo={photo}
+            withoutPreloader
+            onResult={() => onMediaResult(ref, props.paddings)}
+          />
+          <Caption caption={block.caption} />
+        </>
       );
     }
     case 'pageBlockVideo': {
@@ -225,15 +262,18 @@ function Block(props: {block: PageBlock}) {
       const doc = unwrap(context.page.documents.find((doc) => doc.id === block.video_id)) as Document.document;
       let ref: HTMLDivElement;
       return (
-        <VideoTsx
-          ref={ref}
-          doc={doc}
-          class={styles.Media}
-          withoutPreloader
-          withPreview
-          noInfo
-          onResult={() => onMediaResult(ref)}
-        />
+        <>
+          <VideoTsx
+            ref={ref}
+            doc={doc}
+            class={styles.Media}
+            withoutPreloader
+            withPreview
+            noInfo
+            onResult={() => onMediaResult(ref, props.paddings)}
+          />
+          <Caption caption={block.caption} />
+        </>
       );
     }
     case 'pageBlockChannel': {
@@ -268,7 +308,7 @@ function Block(props: {block: PageBlock}) {
             useContext(InstantViewContext).page.pFlags.rtl && 'text-right'
           )}
         >
-          <Show when={block.author._ !== 'textEmpty'}>
+          <Show when={!isRichTextEmpty(block.author)}>
             <RichTextRenderer text={block.author} />
             {` • `}
           </Show>
@@ -300,7 +340,7 @@ function Block(props: {block: PageBlock}) {
 
       return (
         <div class={styles.TableWrapper}>
-          <Show when={block.title._ !== 'textEmpty'}>
+          <Show when={!isRichTextEmpty(block.title)}>
             <div class={styles.TableName}>
               <RichTextRenderer text={block.title} />
             </div>
@@ -370,9 +410,19 @@ function Block(props: {block: PageBlock}) {
           }}</For>
         </div>
       );
+    case 'pageBlockKicker':
+      return (
+        <div class={classNames(styles.Kicker, 'text-bold')}>
+          <RichTextRenderer text={block.text} />
+        </div>
+      );
     default:
       return <div class={styles.Unsupported}>Unsupported block: {block._}</div>;
   }
+}
+
+function isRichTextEmpty(text: RichText) {
+  return text._ === 'textEmpty';
 }
 
 function RichTextRenderer(props: {text: RichText}) {

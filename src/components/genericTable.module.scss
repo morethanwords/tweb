@@ -18,7 +18,7 @@
   font-size: 0.8888em;
   line-height: 1.3125em;
   word-break: keep-all;
-  margin: 0 var(--padding-horizontal);
+  margin-inline: var(--margin-horizontal);
   border-radius: #{$border-radius};
   position: relative;
   overflow: hidden;

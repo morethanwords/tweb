@@ -4,6 +4,8 @@
   --iv-max-width: 50rem;
   --iv-scale: 1.125;
   --padding-horizontal: calc(1rem * var(--iv-scale));
+  --margin-horizontal: calc(var(--padding-horizontal) * -1);
+  --paddings: 1;
   padding: 0 var(--padding-horizontal);
   background-color: var(--surface-color);
   color: var(--text-primary);
@@ -40,7 +42,7 @@
 }
 
 .Section {
-  margin: 0 calc(var(--padding-horizontal) * -1);
+  margin: 0 var(--margin-horizontal);
 }
 
 .SectionName {
@@ -67,7 +69,7 @@
 
 .Subtitle {
   font-size: 1.1111em;
-  margin: 0.5em 0;
+  margin: -0.25em 0 0.5em;
 }
 
 .Header {
@@ -89,9 +91,10 @@
 
 .Preformatted {
   background-color: var(--light-secondary-text-color);
+  // padding: 0.2222em max(var(--padding-horizontal), 0.8888em);
   padding: 0.2222em var(--padding-horizontal);
   overflow-x: auto;
-  margin: 0.6666em calc(var(--padding-horizontal) * -1);
+  margin: 0.6666em var(--margin-horizontal);
 }
 
 .Footer {
@@ -109,21 +112,28 @@
 }
 
 .List {
+  --margin-horizontal: 0em;
   margin-bottom: 1em;
-  padding-left: 20px;
-  
-  li {
+  padding-inline: var(--padding-horizontal);
+
+  &Item {
     margin-bottom: 0.5em;
+  }
+
+  .Media {
+    --paddings: 2;
+    // --width: 100%;
+    // --padding-horizontal: calc(var(--padding-horizontal) * 2);
   }
 }
 
 .Blockquote {
   border-left: 4px solid var(--primary-color);
   margin: 1em 0;
-  padding-left: 16px;
+  padding-inline-start: var(--padding-horizontal);
   font-style: italic;
   
-  .Caption {
+  &Caption {
     margin-top: 0.5em;
     font-size: 0.9em;
     color: var(--text-secondary);
@@ -138,8 +148,8 @@
 }
 
 .Media {
-  --width: min(var(--browser-width), var(--iv-max-width));
-  margin: 0 -1em;
+  --width: min(calc(var(--browser-width) - var(--padding-horizontal) * var(--paddings) * 2), var(--iv-max-width));
+  margin: 0 var(--margin-horizontal);
   position: relative;
   width: var(--width) !important;
   height: calc(var(--width) / var(--aspect-ratio)) !important;
@@ -221,7 +231,7 @@
 }
 
 .Table {
-  margin: 0 calc(var(--padding-horizontal) * -1);
+  margin: 0 var(--margin-horizontal);
   // padding: 0 var(--padding-horizontal);
 
   &Wrapper {
@@ -232,5 +242,24 @@
     color: var(--secondary-text-color);
     font-size: 0.8888em;
     margin-bottom: 0.2222em;
+  }
+}
+
+.Kicker {
+  margin: 1em 0;
+  font-size: 0.8888em;
+}
+
+.Caption {
+  margin-top: .3333em;
+
+  &Text {
+    font-size: 0.8888em;
+    line-height: 1.3125em;
+  }
+
+  &Credit {
+    font-size: 0.7222em;
+    line-height: 1.3076923077em;
   }
 }
