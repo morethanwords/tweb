@@ -27,7 +27,7 @@ export class SlicedCachedFetcher<T> {
   public async getItems({limit, offsetId, fetchItems, getId, backLimit = 0}: GetItemsArgs<T>) {
     let result: Array<Id> = [];
     let remainingLimit = limit;
-    let tookFromLastSlice = false;
+    let tookFromLastSlice = false, isSliceEnd = false;
 
     if(offsetId) for(const slice of this.cachedSlices) {
       const idx = slice.indexOf(String(offsetId));
@@ -37,6 +37,7 @@ export class SlicedCachedFetcher<T> {
       const startIdx = Math.max(0, idx - backLimit);
       result = slice.slice(startIdx, idx + limit + 1); // keeps the item with offsetId to make sure the slices merge if this is the last item in the slice
       remainingLimit = Math.max(0, limit + 1 - result.length - (idx - startIdx));
+      isSliceEnd = lastItem(result) === lastItem(slice);
     }
 
     const dontFetch = tookFromLastSlice && this.isEnd;
@@ -78,6 +79,6 @@ export class SlicedCachedFetcher<T> {
     .filter(id => String(id) !== String(offsetId))
     .map(id => this.cachedItemsMap.get(String(id)));
 
-    return {items, isEnd: tookFromLastSlice && this.isEnd};
+    return {items, isEnd: this.isEnd && tookFromLastSlice && isSliceEnd};
   }
 }
