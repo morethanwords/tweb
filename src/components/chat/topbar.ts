@@ -347,7 +347,7 @@ export default class ChatTopbar {
   };
 
   private verifyRtmpButton = async() => {
-    if(!this.chat.isBroadcast) {
+    if(!this.chat.isBroadcast || this.chat.type !== ChatType.Chat) {
       return false;
     }
 

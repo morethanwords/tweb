@@ -296,10 +296,3 @@ export const resolveAdminLog = ({channelId, event, isBroadcast, isForum, peerId,
 
   return resolver({channelId, action: event.action as never, isBroadcast, isForum, peerId, makePeerName});
 };
-
-export type {
-  DefaultResult,
-  MapCallbackResult,
-  RegularResult,
-  ServiceResult
-};

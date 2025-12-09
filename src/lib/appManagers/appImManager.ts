@@ -2761,6 +2761,7 @@ export class AppImManager extends EventListenerBase<{
       options1.threadId === options2.threadId &&
       options1.monoforumThreadId === options2.monoforumThreadId &&
       (options1.type !== ChatType.Static && options2.type !== ChatType.Static) &&
+      (options1.type !== ChatType.Logs && options2.type !== ChatType.Logs) &&
       (typeof(options1.type) !== typeof(options2.type) || options1.type === options2.type);
   }
 
