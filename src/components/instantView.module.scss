@@ -13,6 +13,9 @@
   user-select: text;
   font-size: calc(var(--font-size-16) * var(--iv-scale));
   line-height: calc(var(--line-height-16) * var(--iv-scale));
+  min-height: 100%;
+  position: relative;
+  padding-bottom: 1.5em;
 
   :global(.anchor-url) {
     color: var(--primary-color);
@@ -196,6 +199,10 @@
   padding: .25em var(--padding-horizontal);
   font-size: .8888em;
   text-align: center;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 .WrongLayout {
