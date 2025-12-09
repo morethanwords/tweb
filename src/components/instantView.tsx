@@ -12,7 +12,7 @@ import {formatDate, formatFullSentTime} from '../helpers/date';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import Scrollable from './scrollable2';
-import fastSmoothScroll from '../helpers/fastSmoothScroll';
+import fastSmoothScroll, {fastSmoothScrollToStart} from '../helpers/fastSmoothScroll';
 import Animated from '../helpers/solid/animations';
 import {unwrap} from 'solid-js/store';
 import wrapUrl from '../lib/richTextProcessor/wrapUrl';
@@ -24,7 +24,7 @@ type InstantViewContextValue = {
   randomId: string,
   openNewPage: (url: string) => void,
   collapse: () => void,
-  scrollToAnchor: (anchor: string) => void
+  scrollToAnchor: (anchor: string, instantly: boolean) => void
 };
 
 const InstantViewContext = createContext<InstantViewContextValue>();
@@ -54,25 +54,37 @@ export function InstantView(props: {
     randomId: '' + (Math.random() * 1000 | 0),
     openNewPage: props.openNewPage,
     collapse: props.collapse,
-    scrollToAnchor: (anchor) => {
+    scrollToAnchor: (anchor, instantly) => {
+      const forceDuration = instantly ? 0 : undefined;
+      if(!anchor) {
+        fastSmoothScrollToStart(scrollableRef, 'y', forceDuration);
+        return;
+      }
+
       fastSmoothScroll({
         container: scrollableRef,
         element: document.getElementById(value.randomId + anchor.slice(1)) as HTMLElement,
         position: 'start',
-        forceDuration: 0
+        forceDuration
       });
     }
   };
 
   console.log(props.page);
 
-  if(props.anchor) {
-    onMount(() => {
-      queueMicrotask(() => {
-        value.scrollToAnchor(props.anchor);
-      });
+  let firstAnchor = true;
+  createEffect(() => {
+    const anchor = props.anchor;
+    const _firstAnchor = firstAnchor;
+    firstAnchor = false;
+    if(_firstAnchor && !anchor) {
+      return;
+    }
+
+    queueMicrotask(() => {
+      value.scrollToAnchor(anchor, _firstAnchor);
     });
-  }
+  });
 
   const {i18n, appImManager, rootScope} = useHotReloadGuard();
   let scrollableRef: HTMLDivElement;
@@ -353,9 +365,17 @@ function Block(props: {block: PageBlock}) {
 }
 
 function RichTextRenderer(props: {text: RichText}) {
-  const {text, entities} = wrapTelegramRichText(props.text);
+  const {webPageId, page, randomId} = useContext(InstantViewContext);
+  const {text, entities} = wrapTelegramRichText(
+    props.text,
+    {webPageId, url: page.url, randomId}
+  );
+
   console.log({text, entities}, unwrap(props.text));
   const fragment = wrapRichText(text, {entities});
+  fragment.querySelectorAll('[onclick="tg_iv(this)"]').forEach((el) => {
+    el.classList.add(styles.Anchor);
+  });
   return documentFragmentToNodes(fragment);
   // return (<span dir="auto">{fragment}</span>);
   // const textWithEntities = createMemo(() => wrapTelegramRichText(props.text));

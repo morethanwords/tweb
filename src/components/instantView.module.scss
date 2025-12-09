@@ -17,22 +17,26 @@
   position: relative;
   padding-bottom: 2em;
 
-  :global(.anchor-url) {
-    color: var(--primary-color);
-    background-color: var(--light-filled-primary-color);
-    font-weight: var(--font-weight-bold);
-  }
-
   :global(.text-highlight) {
     font-style: normal;
     background-color: var(--light-filled-secondary-text-color);
   }
 
-  :global(.text-highlight),
-  :global(.anchor-url) {
-    padding: 0 .1666em;
-    border-radius: .1666em;
-  }
+  // :global(.anchor-url) {
+  //   color: var(--primary-color);
+  // }
+}
+
+.Anchor {
+  color: var(--primary-color);
+  background-color: var(--light-filled-primary-color);
+  font-weight: var(--font-weight-bold);
+}
+
+.Anchor,
+.InstantView :global(.text-highlight) {
+  padding: 0 .1666em;
+  border-radius: .1666em;
 }
 
 .Section {

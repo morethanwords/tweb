@@ -5,7 +5,7 @@
  */
 
 import {Portal} from 'solid-js/web';
-import {batch, createContext, createEffect, createRoot, For, onCleanup, onMount, useContext, JSX, createMemo, createSignal, Accessor, untrack, createResource, Resource, on, createReaction, Show, createRenderEffect, createComputed} from 'solid-js';
+import {batch, createContext, createEffect, createRoot, For, onCleanup, onMount, useContext, JSX, createMemo, createSignal, Accessor, untrack, createResource, Resource, on, createReaction, Show, createRenderEffect, createComputed, Setter} from 'solid-js';
 import styles from './browser.module.scss';
 import {ButtonIconTsx} from './buttonIconTsx';
 import getTextWidth from '../helpers/canvas/getTextWidth';
@@ -55,14 +55,14 @@ import limitSymbols from '../helpers/string/limitSymbols';
 import {toastNew} from './toast';
 import pause from '../helpers/schedulers/pause';
 
-type BrowserPageProps = {
+type BrowserPageProps<T = {}> = T & {
   title: string, // plain text
   icon: JSX.Element,
   dispose: () => void,
   titleWidth?: () => number,
   id?: string,
   menuButtons?: ButtonMenuItemOptionsVerifiable[],
-  scrollFromPage?: BrowserPageProps,
+  scrollFromPage?: BrowserPageProps<any>,
   content?: JSX.Element | (() => JSX.Element),
   cacheKey?: string,
 
@@ -889,6 +889,11 @@ function Loader<T>(props: {
   );
 }
 
+type InstantViewPageExtraProps = {
+  url: string,
+  setAnchor: Setter<string>
+};
+
 export function openInstantViewInAppBrowser({
   webPageId: _webPageId,
   cachedPage,
@@ -896,10 +901,15 @@ export function openInstantViewInAppBrowser({
   anchor
 }: {
   webPageId?: Long,
-  cachedPage: Page | string,
+  cachedPage?: Page | string,
   HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
   anchor?: string // * expect it to be '#name'
 }) {
+  if(!cachedPage && anchor) {
+    (lastContext[0].page as BrowserPageProps<InstantViewPageExtraProps>).setAnchor(anchor);
+    return;
+  }
+
   const TEST_PART = false;
   const hadCachedPage = typeof(cachedPage) !== 'string';
   let url: string;
@@ -912,6 +922,18 @@ export function openInstantViewInAppBrowser({
     url = cachedPage as string;
     cachedPage = undefined;
     anchor = new URL(url).hash;
+
+    if(/* anchor &&  */lastContext && lastContext[0].page) {
+      const page = lastContext[0].page as BrowserPageProps<InstantViewPageExtraProps>;
+      const u1 = new URL(page.url);
+      const u2 = new URL(url);
+      u2.hash = u1.hash = '';
+      // * protocol can be http or https
+      if(u1.hostname === u2.hostname && u1.pathname === u2.pathname) {
+        page.setAnchor(anchor);
+        return;
+      }
+    }
   }
 
   const [webPageId, setWebPageId] = createSignal<Long>(_webPageId);
@@ -941,7 +963,9 @@ export function openInstantViewInAppBrowser({
       }
     });
 
-    const initialState: BrowserPageProps = {
+    const [_anchor, setAnchor] = createSignal(anchor, {equals: false});
+
+    const initialState: BrowserPageProps<InstantViewPageExtraProps> = {
       get title() {
         if(pageResource.loading && !pageResource.latest) {
           return I18n.format('Loading', true);
@@ -978,7 +1002,7 @@ export function openInstantViewInAppBrowser({
               openNewPage={(url) => {
                 openInstantViewInAppBrowser({cachedPage: url, HotReloadGuardProvider});
               }}
-              anchor={anchor}
+              anchor={_anchor()}
               needFadeIn={needFadeIn}
               collapse={() => {
                 lastContext[1].toggleCollapsed(true);
@@ -986,7 +1010,10 @@ export function openInstantViewInAppBrowser({
             />
           </HotReloadGuardProvider>
         </Show>
-      )
+      ),
+
+      url,
+      setAnchor
     };
 
     openInAppBrowser(initialState);

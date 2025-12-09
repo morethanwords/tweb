@@ -541,4 +541,12 @@
     {"name": "length", "type": "number"}
   ],
   "type": "MessageEntity"
+}, {
+  "predicate": "messageEntityAnchor",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"},
+    {"name": "name", "type": "string"}
+  ],
+  "type": "MessageEntity"
 }]

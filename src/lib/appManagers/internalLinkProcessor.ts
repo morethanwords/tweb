@@ -1095,7 +1095,10 @@ export class InternalLinkProcessor {
   };
 
   public processInstantViewLink = (link: InternalLink.InternalLinkInstantView) => {
-    openInstantViewInAppBrowser({cachedPage: link.url, HotReloadGuardProvider: SolidJSHotReloadGuardProvider});
+    openInstantViewInAppBrowser({
+      cachedPage: link.url,
+      HotReloadGuardProvider: SolidJSHotReloadGuardProvider
+    });
   };
 
   public processInternalLink(link: InternalLink) {
