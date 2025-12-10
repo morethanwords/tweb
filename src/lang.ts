@@ -3956,8 +3956,8 @@ const lang = {
 
   'AdminLog.ChangeTitleChannel': '%s changed the channel title to %s',
   'AdminLog.ChangeTitleGroup': '%s changed the group title to %s',
-  'AdminLog.ChangeAboutChannel': '%s changed the channel description',
-  'AdminLog.ChangeAboutGroup': '%s changed the group description',
+  'AdminLog.ChangeAboutChannel': '%s changed the channel description:',
+  'AdminLog.ChangeAboutGroup': '%s changed the group description:',
   'AdminLog.ChangeUsernameChannel': '%s changed the channel username',
   'AdminLog.ChangeUsernameGroup': '%s changed the group username',
   'AdminLog.ChangePhotoChannel': '%s changed the channel photo',
