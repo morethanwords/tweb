@@ -30,6 +30,7 @@ import {toast, toastNew} from '../../components/toast';
 import {wrapAdaptiveCustomEmoji} from '../../components/wrappers/customEmojiSimple';
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import wrapPhoto from '../../components/wrappers/photo';
+import wrapReply from '../../components/wrappers/reply';
 import wrapSticker from '../../components/wrappers/sticker';
 import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import wrapTopicNameButton from '../../components/wrappers/topicNameButton';
@@ -98,7 +99,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       saveMyBirthday,
       Row,
       useAppSettings,
-      ChatType
+      ChatType,
+      wrapReply
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

@@ -3952,6 +3952,7 @@ const lang = {
   'AdminRecentActions.ApprovedBy': 'Approved by',
   'AdminRecentActions.JoinMuted': 'Join muted',
   'AdminRecentActions.AutoDeleteTimer': 'Auto-delete timer',
+  'AdminRecentActions.PreviousDescription': 'Previous description',
 
   'AdminLog.ChangeTitleChannel': '%s changed the channel title to %s',
   'AdminLog.ChangeTitleGroup': '%s changed the group title to %s',

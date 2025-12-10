@@ -2612,3 +2612,7 @@ hr {
 .text-center {
   @include text-center();
 }
+
+.margin-0 {
+  margin: 0 !important;
+}

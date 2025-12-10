@@ -5462,11 +5462,11 @@ export default class ChatBubbles {
       contentWrapper.append(bubbleContainer);
       bubble.append(contentWrapper);
 
-      renderComponent({element: s, Component: entry.Content, middleware});
+      renderComponent({element: s, Component: entry.Content, middleware, HotReloadGuard: SolidJSHotReloadGuardProvider});
     } else if(entry.type === 'default') {
       const serviceContent = document.createElement('div');
 
-      renderComponent({element: serviceContent, Component: entry.ServiceContent, middleware});
+      renderComponent({element: serviceContent, Component: entry.ServiceContent, middleware, HotReloadGuard: SolidJSHotReloadGuardProvider});
 
       const {message, originalMessage} = await namedPromises({
         message: rootScope.managers.appMessagesManager.temporarilySaveMessage(this.peerId, entry.message),
@@ -5486,7 +5486,7 @@ export default class ChatBubbles {
       const isOut = log.user_id.toPeerId() === rootScope.myId;
       bubble.classList.add('bubble', isOut ? 'is-out' : 'is-in', ...entry.bubbleClass.split(' '));
 
-      renderComponent({element: bubble, Component: entry.Content, middleware});
+      renderComponent({element: bubble, Component: entry.Content, middleware, HotReloadGuard: SolidJSHotReloadGuardProvider});
     }
 
     if(import.meta.hot) {

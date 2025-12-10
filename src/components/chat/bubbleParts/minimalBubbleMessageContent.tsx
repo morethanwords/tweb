@@ -1,4 +1,4 @@
-import {ParentProps, JSX} from 'solid-js';
+import {JSX, ParentProps, Show} from 'solid-js';
 import {getDirection} from '../../../helpers/dom/setInnerHTML';
 import {generateTail, makeTime} from '../utils';
 
@@ -10,7 +10,11 @@ export const MinimalBubbleMessageContent = (props: ParentProps<{
   return (
     <div class="bubble-content-wrapper">
       <div class="bubble-content">
-        {props.name}
+        <Show when={props.name}>
+          <div class="name colored-name">
+            {props.name}
+          </div>
+        </Show>
         <div class="message spoilers-container" dir={getDirection()}>
           {props.children}
           <div class="time">

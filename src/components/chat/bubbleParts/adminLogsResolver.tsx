@@ -1,6 +1,7 @@
 import {Component} from 'solid-js';
 import {makeDateFromTimestamp} from '../../../helpers/date/makeDateFromTimestamp';
 import formatDuration from '../../../helpers/formatDuration';
+import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {I18nTsx} from '../../../helpers/solid/i18n';
 import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../layer';
 import {AdminLog} from '../../../lib/appManagers/appChatsManager';
@@ -8,6 +9,8 @@ import {MyMessage} from '../../../lib/appManagers/appMessagesManager';
 import {isBannedParticipant} from '../../../lib/appManagers/utils/chats/isBannedParticipant';
 import {i18n} from '../../../lib/langPack';
 import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
+import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
+import Space from '../../space';
 import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
 import {isMessage} from '../utils';
 import {MinimalBubbleMessageContent} from './minimalBubbleMessageContent';
@@ -55,6 +58,22 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'regular',
     bubbleClass: 'can-have-tail has-fake-service is-forced-rounded',
     Content: () => {
+      const {wrapReply} = useHotReloadGuard();
+      const middleware = createMiddleware().get();
+
+      const peerId = event.user_id.toPeerId();
+
+      const previousDescriptionContainer = wrapReply({
+        setColorPeerId: peerId,
+        title: i18n('AdminRecentActions.PreviousDescription'),
+        quote: {
+          text: action.prev_value
+        },
+        middleware
+      }).container;
+
+      previousDescriptionContainer.classList.add('margin-0');
+
       return (
         <>
           <div class='service-msg'>
@@ -62,13 +81,12 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
           </div>
           <MinimalBubbleMessageContent
             date={makeDateFromTimestamp(event.date)}
-            name={
-              <div class='name colored-name'>
-                {makeMessagePeerTitle(event.user_id.toPeerId())}
-              </div>
-            }
+            name={makeMessagePeerTitle(peerId)}
           >
             {wrapRichText(action.new_value)}
+
+            <Space amount='0.5rem' />
+            {previousDescriptionContainer}
           </MinimalBubbleMessageContent>
         </>
       );

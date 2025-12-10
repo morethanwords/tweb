@@ -35,6 +35,7 @@ import type {toast, toastNew} from '../../components/toast';
 import type {wrapAdaptiveCustomEmoji} from '../../components/wrappers/customEmojiSimple';
 import type wrapPeerTitle from '../../components/wrappers/peerTitle';
 import type wrapPhoto from '../../components/wrappers/photo';
+import type wrapReply from '../../components/wrappers/reply';
 import type wrapSticker from '../../components/wrappers/sticker';
 import type wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import type wrapTopicNameButton from '../../components/wrappers/topicNameButton';
@@ -103,6 +104,7 @@ export type SolidJSHotReloadGuardContextValue = {
   Row: typeof Row;
   useAppSettings: typeof useAppSettings;
   ChatType: typeof ChatType;
+  wrapReply: typeof wrapReply;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<
