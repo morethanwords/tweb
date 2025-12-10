@@ -21,7 +21,7 @@ import {avatarNew} from '../avatarNew';
 import {MiddlewareHelper} from '../../helpers/middleware';
 import {ChatType} from './chat';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
-import {getMid, isMessageForVerificationBot} from './utils';
+import {getMid, isMessage, isMessageForVerificationBot} from './utils';
 import {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {BubbleElementAddons} from './types';
@@ -79,13 +79,20 @@ export class BubbleGroup {
     this.middlewareHelper = chat.bubbles.getMiddleware().create();
   }
 
-  getAvatarOptions(message: Message.message) {
-    const fwdFrom = message.fwd_from;
-    const fwdFromId = message.fwdFromId;
+  getAvatarOptions(message: Message.message | AdminLog) {
+    const fwdFrom = isMessage(message) ? message.fwd_from : undefined;
+    const fwdFromId = isMessage(message) ? message.fwdFromId : undefined;
     const fwdFromName = getFwdFromName(fwdFrom);
-    const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
+    const isForwardFromChannel = isMessage(message) && message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
     const currentPeerId = this.chat.peerId;
-    const peerId = ((fwdFrom && (/* currentPeerId === rootScope.myId ||  */currentPeerId === REPLIES_PEER_ID || currentPeerId === VERIFICATION_CODES_BOT_ID) && !fwdFromName) || isForwardFromChannel ? fwdFromId : message.fromId) || NULL_PEER_ID;
+
+    const peerId =
+      (
+        isMessage(message) ?
+          ((fwdFrom && (/* currentPeerId === rootScope.myId ||  */currentPeerId === REPLIES_PEER_ID || currentPeerId === VERIFICATION_CODES_BOT_ID) && !fwdFromName) || isForwardFromChannel ? fwdFromId : message.fromId) :
+          message?.user_id?.toPeerId()
+      ) ||
+      NULL_PEER_ID;
 
     return {
       // peerId: fwdFromName ? NULL_PEER_ID : peerId,
@@ -105,7 +112,7 @@ export class BubbleGroup {
     --this.offset;
   }
 
-  createAvatar(message: Message.message | Message.messageService, options?: Partial<Parameters<typeof avatarNew>[0]>) {
+  createAvatar(message: Message.message | Message.messageService | AdminLog, options?: Partial<Parameters<typeof avatarNew>[0]>) {
     if(this.avatarLoadPromise) {
       return this.avatarLoadPromise;
     } else if(message._ === 'messageService') {
@@ -124,11 +131,13 @@ export class BubbleGroup {
     });
     this.avatar.node.classList.add('bubbles-group-avatar', 'user-avatar'/* , 'can-zoom-fade' */);
 
-    const replyMarkup = message.reply_markup;
+    const replyMarkup = isMessage(message) && message.reply_markup;
     let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
     replyMarkupRows = replyMarkupRows?.filter?.((row) => row.buttons.length);
     replyMarkupRows?.length && this.avatar.node.classList.add('avatar-for-reply-markup');
-    canHaveSuggestedPostReplyMarkup(message) && this.avatar.node.classList.add('avatar-for-suggested-reply-markup');
+    if(isMessage(message) && canHaveSuggestedPostReplyMarkup(message)) {
+      this.avatar.node.classList.add('avatar-for-suggested-reply-markup');
+    }
 
     // this.avatarLoadPromise = Promise.all([
     //   avatarLoadPromise,

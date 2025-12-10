@@ -3432,10 +3432,10 @@
 "AdminRecentActions.ApprovedBy" = "Approved by";
 "AdminRecentActions.JoinMuted" = "Join muted";
 "AdminRecentActions.AutoDeleteTimer" = "Auto-delete timer";
-"AdminLog.ChangeTitleChannel" = "%s changed the channel title";
-"AdminLog.ChangeTitleGroup" = "%s changed the group title";
-"AdminLog.ChangeAboutChannel" = "%s changed the channel about";
-"AdminLog.ChangeAboutGroup" = "%s changed the group about";
+"AdminLog.ChangeTitleChannel" = "%s changed the channel title to %s";
+"AdminLog.ChangeTitleGroup" = "%s changed the group title to %s";
+"AdminLog.ChangeAboutChannel" = "%s changed the channel description";
+"AdminLog.ChangeAboutGroup" = "%s changed the group description";
 "AdminLog.ChangeUsernameChannel" = "%s changed the channel username";
 "AdminLog.ChangeUsernameGroup" = "%s changed the group username";
 "AdminLog.ChangePhotoChannel" = "%s changed the channel photo";

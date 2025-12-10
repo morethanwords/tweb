@@ -32,6 +32,7 @@ import Scrollable from '../scrollable';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
+import {makeTime} from './utils';
 
 const NBSP = '&nbsp;';
 
@@ -40,10 +41,6 @@ const makeEdited = () => {
   edited.classList.add('time-edited', 'time-part');
   _i18n(edited, 'EditedMessage');
   return edited;
-};
-
-const makeTime = (date: Date, includeDate?: boolean) => {
-  return includeDate ? formatFullSentTimeRaw(date.getTime() / 1000 | 0, {combined: true}).dateEl : formatTime(date);
 };
 
 const makeEffect = (props: {

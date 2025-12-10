@@ -1,11 +1,17 @@
 import {Component} from 'solid-js';
+import {makeDateFromTimestamp} from '../../../helpers/date/makeDateFromTimestamp';
 import formatDuration from '../../../helpers/formatDuration';
+import {I18nTsx} from '../../../helpers/solid/i18n';
 import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../layer';
+import {AdminLog} from '../../../lib/appManagers/appChatsManager';
 import {MyMessage} from '../../../lib/appManagers/appMessagesManager';
 import {isBannedParticipant} from '../../../lib/appManagers/utils/chats/isBannedParticipant';
 import {i18n} from '../../../lib/langPack';
+import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
 import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
 import {isMessage} from '../utils';
+import {MinimalBubbleMessageContent} from './minimalBubbleMessageContent';
+
 
 type ServiceResult = {
   type: 'service';
@@ -14,6 +20,7 @@ type ServiceResult = {
 
 type RegularResult = {
   type: 'regular';
+  bubbleClass: string;
   Content: Component;
 };
 
@@ -28,253 +35,274 @@ type MapCallbackResult = ServiceResult | RegularResult | DefaultResult | null;
 
 type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
   channelId: ChatId;
+  event: AdminLog;
   action: Extract<ChannelAdminLogEventAction, {_: Key}>;
   isBroadcast: boolean;
   isForum: boolean;
   peerId: PeerId;
-  makePeerName: (peerId: PeerId) => Node;
+  makePeerTitle: (peerId: PeerId) => Node;
+  makeMessagePeerTitle: (peerId: PeerId) => Node;
 };
 
 type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: MapCallbackArgs<Key>) => MapCallbackResult;
 
 const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key> } = {
-  'channelAdminLogEventActionChangeTitle': ({isBroadcast, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeTitle': ({isBroadcast, action, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(isBroadcast ? 'AdminLog.ChangeTitleChannel' : 'AdminLog.ChangeTitleGroup', [makePeerName(peerId)])
+    Content: () => i18n(isBroadcast ? 'AdminLog.ChangeTitleChannel' : 'AdminLog.ChangeTitleGroup', [makePeerTitle(peerId), action.new_value])
   }),
-  'channelAdminLogEventActionChangeAbout': ({isBroadcast, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeAbout': ({isBroadcast, action, event, peerId, makePeerTitle, makeMessagePeerTitle}) => ({
+    type: 'regular',
+    bubbleClass: 'can-have-tail has-fake-service is-forced-rounded',
+    Content: () => {
+      return (
+        <>
+          <div class='service-msg'>
+            <I18nTsx key={isBroadcast ? 'AdminLog.ChangeAboutChannel' : 'AdminLog.ChangeAboutGroup'} args={[makePeerTitle(peerId)]} />
+          </div>
+          <MinimalBubbleMessageContent
+            date={makeDateFromTimestamp(event.date)}
+            name={
+              <div class='name colored-name'>
+                {makeMessagePeerTitle(event.user_id.toPeerId())}
+              </div>
+            }
+          >
+            {wrapRichText(action.new_value)}
+          </MinimalBubbleMessageContent>
+        </>
+      );
+    }
+  }),
+  'channelAdminLogEventActionChangeUsername': ({isBroadcast, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(isBroadcast ? 'AdminLog.ChangeAboutChannel' : 'AdminLog.ChangeAboutGroup', [makePeerName(peerId)])
+    Content: () => i18n(isBroadcast ? 'AdminLog.ChangeUsernameChannel' : 'AdminLog.ChangeUsernameGroup', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangeUsername': ({isBroadcast, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangePhoto': ({isBroadcast, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(isBroadcast ? 'AdminLog.ChangeUsernameChannel' : 'AdminLog.ChangeUsernameGroup', [makePeerName(peerId)])
+    Content: () => i18n(isBroadcast ? 'AdminLog.ChangePhotoChannel' : 'AdminLog.ChangePhotoGroup', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangePhoto': ({isBroadcast, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionToggleInvites': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(isBroadcast ? 'AdminLog.ChangePhotoChannel' : 'AdminLog.ChangePhotoGroup', [makePeerName(peerId)])
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleInvitesEnabled' : 'AdminLog.ToggleInvitesDisabled', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionToggleInvites': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionToggleSignatures': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(action.new_value ? 'AdminLog.ToggleInvitesEnabled' : 'AdminLog.ToggleInvitesDisabled', [makePeerName(peerId)])
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleSignaturesEnabled' : 'AdminLog.ToggleSignaturesDisabled', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionToggleSignatures': ({action, peerId, makePeerName}) => ({
-    type: 'service',
-    Content: () => i18n(action.new_value ? 'AdminLog.ToggleSignaturesEnabled' : 'AdminLog.ToggleSignaturesDisabled', [makePeerName(peerId)])
-  }),
-  'channelAdminLogEventActionUpdatePinned': ({action, peerId, makePeerName}) => isMessage(action.message) ? ({
+  'channelAdminLogEventActionUpdatePinned': ({action, peerId, makePeerTitle}) => isMessage(action.message) ? ({
     type: 'default',
     message: action.message,
     ServiceContent: () => {
       const pinned = action.message._ === 'message' && action.message.pFlags?.pinned;
-      return i18n(pinned ? 'AdminLog.PinnedMessage' : 'AdminLog.UnpinnedMessage', [makePeerName(peerId)]);
+      return i18n(pinned ? 'AdminLog.PinnedMessage' : 'AdminLog.UnpinnedMessage', [makePeerTitle(peerId)]);
     }
   }) : null,
-  'channelAdminLogEventActionEditMessage': ({action, peerId, makePeerName}) => isMessage(action.new_message) ? ({
+  'channelAdminLogEventActionEditMessage': ({action, peerId, makePeerTitle}) => isMessage(action.new_message) ? ({
     type: 'default',
     message: action.new_message,
     originalMessage: isMessage(action.prev_message) ? action.prev_message : null,
-    ServiceContent: () => i18n('AdminLog.EditedMessage', [makePeerName(peerId)])
+    ServiceContent: () => i18n('AdminLog.EditedMessage', [makePeerTitle(peerId)])
   }) : null,
-  'channelAdminLogEventActionDeleteMessage': ({action, peerId, makePeerName}) => isMessage(action.message) ? ({
+  'channelAdminLogEventActionDeleteMessage': ({action, peerId, makePeerTitle}) => isMessage(action.message) ? ({
     type: 'default',
     message: action.message,
-    ServiceContent: () => i18n('AdminLog.DeletedMessage', [makePeerName(peerId)])
+    ServiceContent: () => i18n('AdminLog.DeletedMessage', [makePeerTitle(peerId)])
   }) : null,
-  'channelAdminLogEventActionParticipantJoin': ({isBroadcast, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantJoin': ({isBroadcast, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(isBroadcast ? 'AdminLog.ParticipantJoinedChannel' : 'AdminLog.ParticipantJoinedGroup', [makePeerName(peerId)])
+    Content: () => i18n(isBroadcast ? 'AdminLog.ParticipantJoinedChannel' : 'AdminLog.ParticipantJoinedGroup', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantLeave': ({isBroadcast, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantLeave': ({isBroadcast, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(isBroadcast ? 'AdminLog.ParticipantLeftChannel' : 'AdminLog.ParticipantLeftGroup', [makePeerName(peerId)])
+    Content: () => i18n(isBroadcast ? 'AdminLog.ParticipantLeftChannel' : 'AdminLog.ParticipantLeftGroup', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantInvite': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantInvite': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantInvited', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ParticipantInvited', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantToggleBan': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantToggleBan': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
     Content: () => {
       const isBanned = isBannedParticipant(action.new_participant);
-      return i18n(isBanned ? 'AdminLog.ParticipantBanned' : 'AdminLog.ParticipantPermissionsToggled', [makePeerName(peerId)]);
+      return i18n(isBanned ? 'AdminLog.ParticipantBanned' : 'AdminLog.ParticipantPermissionsToggled', [makePeerTitle(peerId)]);
     }
   }),
-  'channelAdminLogEventActionParticipantToggleAdmin': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantToggleAdmin': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
     Content: () => {
       const prevRights = 'admin_rights' in action.prev_participant ? action.prev_participant.admin_rights : null;
       const newRights = 'admin_rights' in action.new_participant ? action.new_participant.admin_rights : null;
       const isPromotion = !prevRights && newRights;
-      return i18n(isPromotion ? 'AdminLog.AdminPromoted' : 'AdminLog.AdminDemoted', [makePeerName(peerId)]);
+      return i18n(isPromotion ? 'AdminLog.AdminPromoted' : 'AdminLog.AdminDemoted', [makePeerTitle(peerId)]);
     }
   }),
-  'channelAdminLogEventActionChangeStickerSet': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeStickerSet': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ChangeStickerSet', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ChangeStickerSet', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionTogglePreHistoryHidden': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionTogglePreHistoryHidden': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(action.new_value ? 'AdminLog.TogglePreHistoryHiddenEnabled' : 'AdminLog.TogglePreHistoryHiddenDisabled', [makePeerName(peerId)])
+    Content: () => i18n(action.new_value ? 'AdminLog.TogglePreHistoryHiddenEnabled' : 'AdminLog.TogglePreHistoryHiddenDisabled', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionDefaultBannedRights': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionDefaultBannedRights': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.DefaultBannedRightsChanged', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.DefaultBannedRightsChanged', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionStopPoll': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionStopPoll': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.PollStopped', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.PollStopped', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangeLinkedChat': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeLinkedChat': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ChangeLinkedChat', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ChangeLinkedChat', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangeLocation': ({isBroadcast, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeLocation': ({isBroadcast, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(isBroadcast ? 'AdminLog.ChangeLocationChannel' : 'AdminLog.ChangeLocationGroup', [makePeerName(peerId)])
+    Content: () => i18n(isBroadcast ? 'AdminLog.ChangeLocationChannel' : 'AdminLog.ChangeLocationGroup', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionToggleSlowMode': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionToggleSlowMode': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
     Content: () => {
       if(action.new_value) {
         const duration = wrapFormattedDuration(formatDuration(action.new_value));
-        return i18n('AdminLog.ToggleSlowModeSet', [makePeerName(peerId), duration]);
+        return i18n('AdminLog.ToggleSlowModeSet', [makePeerTitle(peerId), duration]);
       } else {
-        return i18n('AdminLog.ToggleSlowModeDisabled', [makePeerName(peerId)]);
+        return i18n('AdminLog.ToggleSlowModeDisabled', [makePeerTitle(peerId)]);
       }
     }
   }),
-  'channelAdminLogEventActionStartGroupCall': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionStartGroupCall': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.StartGroupCall', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.StartGroupCall', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionDiscardGroupCall': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionDiscardGroupCall': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.DiscardGroupCall', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.DiscardGroupCall', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantMute': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantMute': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantMuted', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ParticipantMuted', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantUnmute': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantUnmute': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantUnmuted', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ParticipantUnmuted', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionToggleGroupCallSetting': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionToggleGroupCallSetting': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(action.join_muted ? 'AdminLog.ToggleGroupCallSettingEnabled' : 'AdminLog.ToggleGroupCallSettingDisabled', [makePeerName(peerId)])
+    Content: () => i18n(action.join_muted ? 'AdminLog.ToggleGroupCallSettingEnabled' : 'AdminLog.ToggleGroupCallSettingDisabled', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantJoinByInvite': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantJoinByInvite': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantJoinedByInvite', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ParticipantJoinedByInvite', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionExportedInviteDelete': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionExportedInviteDelete': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ExportedInviteDeleted', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ExportedInviteDeleted', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionExportedInviteRevoke': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionExportedInviteRevoke': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ExportedInviteRevoked', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ExportedInviteRevoked', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionExportedInviteEdit': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionExportedInviteEdit': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ExportedInviteEdit', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ExportedInviteEdit', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantVolume': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantVolume': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantVolumeChanged', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ParticipantVolumeChanged', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangeHistoryTTL': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeHistoryTTL': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
     Content: () => {
       if(action.new_value) {
         const duration = wrapFormattedDuration(formatDuration(action.new_value));
-        return i18n('AdminLog.ChangeHistoryTTLEnabled', [makePeerName(peerId), duration]);
+        return i18n('AdminLog.ChangeHistoryTTLEnabled', [makePeerTitle(peerId), duration]);
       } else {
-        return i18n('AdminLog.ChangeHistoryTTLDisabled', [makePeerName(peerId)]);
+        return i18n('AdminLog.ChangeHistoryTTLDisabled', [makePeerTitle(peerId)]);
       }
     }
   }),
-  'channelAdminLogEventActionParticipantJoinByRequest': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantJoinByRequest': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantJoinedByRequest', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ParticipantJoinedByRequest', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionToggleNoForwards': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionToggleNoForwards': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(action.new_value ? 'AdminLog.ToggleNoForwardsEnabled' : 'AdminLog.ToggleNoForwardsDisabled', [makePeerName(peerId)])
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleNoForwardsEnabled' : 'AdminLog.ToggleNoForwardsDisabled', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionSendMessage': ({action, peerId, makePeerName}) => isMessage(action.message) ? ({
+  'channelAdminLogEventActionSendMessage': ({action, peerId, makePeerTitle}) => isMessage(action.message) ? ({
     type: 'default',
     message: action.message,
-    ServiceContent: () => i18n('AdminLog.MessageSent', [makePeerName(peerId)])
+    ServiceContent: () => i18n('AdminLog.MessageSent', [makePeerTitle(peerId)])
   }) : null,
-  'channelAdminLogEventActionChangeAvailableReactions': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeAvailableReactions': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ChangeAvailableReactions', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ChangeAvailableReactions', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangeUsernames': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeUsernames': ({peerId, makePeerTitle}) => ({
     type: 'service',
     Content: () =>
-      i18n('AdminLog.ChangeUsernames', [makePeerName(peerId)])
+      i18n('AdminLog.ChangeUsernames', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionToggleForum': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionToggleForum': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(action.new_value ? 'AdminLog.ToggleForumEnabled' : 'AdminLog.ToggleForumDisabled', [makePeerName(peerId)])
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleForumEnabled' : 'AdminLog.ToggleForumDisabled', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionCreateTopic': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionCreateTopic': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.TopicCreated', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.TopicCreated', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionEditTopic': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionEditTopic': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.TopicEdited', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.TopicEdited', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionDeleteTopic': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionDeleteTopic': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.TopicDeleted', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.TopicDeleted', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionPinTopic': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionPinTopic': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
     Content: () => {
       // For now, assume it's always pinning since we don't have clear access to prev/new state
-      return i18n('AdminLog.TopicPinned', [makePeerName(peerId)]);
+      return i18n('AdminLog.TopicPinned', [makePeerTitle(peerId)]);
     }
   }),
-  'channelAdminLogEventActionToggleAntiSpam': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionToggleAntiSpam': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(action.new_value ? 'AdminLog.ToggleAntiSpamEnabled' : 'AdminLog.ToggleAntiSpamDisabled', [makePeerName(peerId)])
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleAntiSpamEnabled' : 'AdminLog.ToggleAntiSpamDisabled', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangePeerColor': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangePeerColor': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ChangePeerColor', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ChangePeerColor', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangeProfilePeerColor': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeProfilePeerColor': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ChangeProfilePeerColor', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ChangeProfilePeerColor', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangeWallpaper': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeWallpaper': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ChangeWallpaper', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ChangeWallpaper', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangeEmojiStatus': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeEmojiStatus': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ChangeEmojiStatus', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ChangeEmojiStatus', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionChangeEmojiStickerSet': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionChangeEmojiStickerSet': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ChangeEmojiStickerSet', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ChangeEmojiStickerSet', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionToggleSignatureProfiles': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionToggleSignatureProfiles': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(action.new_value ? 'AdminLog.ToggleSignatureProfilesEnabled' : 'AdminLog.ToggleSignatureProfilesDisabled', [makePeerName(peerId)])
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleSignatureProfilesEnabled' : 'AdminLog.ToggleSignatureProfilesDisabled', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantSubExtend': ({peerId, makePeerName}) => ({
+  'channelAdminLogEventActionParticipantSubExtend': ({peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantSubscriptionExtended', [makePeerName(peerId)])
+    Content: () => i18n('AdminLog.ParticipantSubscriptionExtended', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionToggleAutotranslation': ({action, peerId, makePeerName}) => ({
+  'channelAdminLogEventActionToggleAutotranslation': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n(action.new_value ? 'AdminLog.ToggleAutoTranslationEnabled' : 'AdminLog.ToggleAutoTranslationDisabled', [makePeerName(peerId)])
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleAutoTranslationEnabled' : 'AdminLog.ToggleAutoTranslationDisabled', [makePeerTitle(peerId)])
   })
 };
 
@@ -284,15 +312,16 @@ type ResolveAdminLogArgs = {
   isBroadcast: boolean;
   isForum: boolean;
   peerId: PeerId;
-  makePeerName: (peerId: PeerId) => Node;
+  makePeerTitle: (peerId: PeerId) => Node;
+  makeMessagePeerTitle: (peerId: PeerId) => Node;
 };
 
-export const resolveAdminLog = ({channelId, event, isBroadcast, isForum, peerId, makePeerName}: ResolveAdminLogArgs) => {
+export const resolveAdminLog = ({channelId, event, isBroadcast, isForum, peerId, makePeerTitle, makeMessagePeerTitle}: ResolveAdminLogArgs) => {
   const resolver = adminLogsMap[event.action._];
 
   if(!resolver) {
     return null;
   }
 
-  return resolver({channelId, action: event.action as never, isBroadcast, isForum, peerId, makePeerName});
+  return resolver({channelId, event, action: event.action as never, isBroadcast, isForum, peerId, makePeerTitle, makeMessagePeerTitle});
 };

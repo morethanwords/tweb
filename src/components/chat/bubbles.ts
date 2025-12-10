@@ -197,7 +197,7 @@ import PopupStarGiftInfo from '../popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from './bubbles/starGift';
 import {PremiumGiftBubble} from './bubbles/premiumGift';
 import {UnknownUserBubble} from './bubbles/unknownUser';
-import {getMid, isMessage, isMessageForVerificationBot, isVerificationBot} from './utils';
+import {generateTail, getMid, isMessage, isMessageForVerificationBot, isVerificationBot} from './utils';
 import {ChecklistBubble} from './bubbles/checklist';
 import {getRestrictionReason} from '../../helpers/restrictions';
 import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
@@ -212,7 +212,8 @@ import {wrapTopicIcon} from '../wrappers/messageActionTextNewUnsafe';
 import {getTransition} from '../../config/transitions';
 import {SuggestBirthdayBubble} from './bubbles/suggestBirthday';
 import {AdminLog} from '../../lib/appManagers/appChatsManager';
-import {resolveAdminLog} from './bubbleParts/adminLogsResolver';
+import {resolveAdminLog as importedResolveAdminLog} from './bubbleParts/adminLogsResolver';
+import {renderComponent} from '../../helpers/solid/renderComponent';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -312,6 +313,20 @@ type EmptyPlaceholderType =
   | 'directChannelMessages'
   | 'topic'
 ;
+
+let rerenderLogBubblesCallbacks: (() => void)[];
+let resolveAdminLog = importedResolveAdminLog;
+
+if(import.meta.hot) {
+  rerenderLogBubblesCallbacks = [];
+  import.meta.hot.accept('./bubbleParts/adminLogsResolver', (module) => {
+    if(!module) return;
+    const {resolveAdminLog: newResolveAdminLog} = module as unknown as typeof import('./bubbleParts/adminLogsResolver');
+
+    resolveAdminLog = newResolveAdminLog;
+    rerenderLogBubblesCallbacks.forEach(callback => callback());
+  });
+}
 
 function getMainMidForGrouped(mids: number[]) {
   return Math.min(...mids);
@@ -1659,7 +1674,7 @@ export default class ChatBubbles {
           this.bubbleGroups.groups.forEach((group) => {
             if(!this.chat.isLikeGroup) {
               group.destroyAvatar();
-            } else if(isMessage(group.firstItem.message) && this.chat.isAvatarNeeded(group.firstItem.message)) {
+            } else if(this.isAvatarNeeded(group.firstItem.message)) {
               group.createAvatar(group.firstItem.message);
             }
           });
@@ -5148,8 +5163,8 @@ export default class ChatBubbles {
         return;
       }
 
-      const shouldHaveAvatar = isMessage(firstItem.message) && this.chat.isAvatarNeeded(firstItem.message);
-      if(shouldHaveAvatar && isMessage(firstItem.message)) {
+      const shouldHaveAvatar = this.isAvatarNeeded(firstItem.message);
+      if(shouldHaveAvatar) {
         if(group.avatar) {
           return;
         }
@@ -5408,17 +5423,25 @@ export default class ChatBubbles {
   private async renderLog({log, reverse = false, bubble, middleware}: RenderLogArgs) {
     const promises: Promise<any>[] = [];
 
+    const wrapOptions: WrapSomethingOptions = {
+      lazyLoadQueue: this.lazyLoadQueue,
+      middleware,
+      customEmojiSize: this.chat.appImManager.customEmojiSize,
+      animationGroup: this.chat.animationGroup
+    };
+
     const entry = resolveAdminLog({
       channelId: this.peerId.toChatId(),
       event: log,
       isBroadcast: this.chat.isBroadcast,
       isForum: this.chat.isForum,
       peerId: log.user_id.toPeerId(),
-      makePeerName: (id) => {
+      makePeerTitle: (peerId) => {
         const peerTitle = new PeerTitle;
-        promises.push(peerTitle.update({peerId: id}))
+        promises.push(peerTitle.update({peerId}));
         return peerTitle.element;
-      }
+      },
+      makeMessagePeerTitle: (peerId) => this.createTitle(peerId, wrapOptions, false).element
     });
 
     if(!entry) return;
@@ -5439,13 +5462,11 @@ export default class ChatBubbles {
       contentWrapper.append(bubbleContainer);
       bubble.append(contentWrapper);
 
-      const dispose = render(() => entry.Content({}), s);
-      middleware.onDestroy(() => void dispose());
+      renderComponent({element: s, Component: entry.Content, middleware});
     } else if(entry.type === 'default') {
       const serviceContent = document.createElement('div');
 
-      const dispose = render(() => entry.ServiceContent({}), serviceContent);
-      middleware.onDestroy(() => void dispose());
+      renderComponent({element: serviceContent, Component: entry.ServiceContent, middleware});
 
       const {message, originalMessage} = await namedPromises({
         message: rootScope.managers.appMessagesManager.temporarilySaveMessage(this.peerId, entry.message),
@@ -5460,6 +5481,25 @@ export default class ChatBubbles {
         bubble,
         additionalPromises: promises,
         middleware
+      });
+    } else if(entry.type === 'regular') {
+      const isOut = log.user_id.toPeerId() === rootScope.myId;
+      bubble.classList.add('bubble', isOut ? 'is-out' : 'is-in', ...entry.bubbleClass.split(' '));
+
+      renderComponent({element: bubble, Component: entry.Content, middleware});
+    }
+
+    if(import.meta.hot) {
+      const callback = () => {
+        this.safeRenderMessage({
+          bubble,
+          message: log,
+          reverse
+        });
+      };
+      rerenderLogBubblesCallbacks.push(callback);
+      middleware.onDestroy(() => {
+        rerenderLogBubblesCallbacks = rerenderLogBubblesCallbacks.filter(cb => cb !== callback);
       });
     }
 
@@ -9976,26 +10016,25 @@ export default class ChatBubbles {
     if(message._ === 'channelAdminLogEvent') return makeFullMid(this.chat.peerId, +message.id);
     return makeFullMid(message);
   }
-}
 
-export function generateTail(asSpan?: boolean) {
-  if(asSpan) {
-    const span = document.createElement('span');
-    span.classList.add('bubble-tail');
-    return span;
+  public isAvatarNeeded(message: Message.message | Message.messageService | AdminLog) {
+    if(message?._ === 'channelAdminLogEvent') {
+      const entry = resolveAdminLog({
+        channelId: this.peerId.toChatId(),
+        event: message,
+        isBroadcast: this.chat.isBroadcast,
+        isForum: this.chat.isForum,
+        peerId: message.user_id?.toPeerId(),
+        makePeerTitle: () => document.createElement('span'),
+        makeMessagePeerTitle: () => document.createElement('span')
+      });
+
+      if(entry.type === 'default') message = entry.message;
+      else if(entry.type === 'regular') return true;
+      else return false;
+    }
+
+    if(isMessageForVerificationBot(message)) return true;
+    return this.chat.isLikeGroup && !this.chat.isOutMessage(message);
   }
-
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttributeNS(null, 'viewBox', '0 0 11 20');
-  svg.setAttributeNS(null, 'width', '11');
-  svg.setAttributeNS(null, 'height', '20');
-  svg.classList.add('bubble-tail');
-
-  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttributeNS(null, 'href', '#message-tail-filled');
-  // use.classList.add('bubble-tail-use');
-
-  svg.append(use);
-
-  return svg;
 }

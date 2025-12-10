@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ChatRights} from '../../lib/appManagers/appChatsManager';
+import type {AdminLog, ChatRights} from '../../lib/appManagers/appChatsManager';
 import type {RequestWebViewOptions} from '../../lib/appManagers/appAttachMenuBotsManager';
 import type {HistoryStorageKey, MessageSendingParams, MessagesStorageKey, MyMessage, RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 import {AppImManager, APP_TABS, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
@@ -67,7 +67,7 @@ import showUndoablePaidTooltip, {paidReactionLangKeys} from './undoablePaidToolt
 import namedPromises from '../../helpers/namedPromises';
 import {getCurrentNewMediaPopup} from '../popups/newMedia';
 import PriceChangedInterceptor from './priceChangedInterceptor';
-import {isMessageForVerificationBot, isVerificationBot} from './utils';
+import {isVerificationBot} from './utils';
 import {isSensitive} from '../../helpers/restrictions';
 import {isTempId} from '../../lib/appManagers/utils/messages/isTempId';
 import {usePeer} from '../../stores/peers';
@@ -1370,11 +1370,6 @@ export default class Chat extends EventListenerBase<{
     const fwdFrom = (message as Message.message).fwd_from;
     const isOut = this.isOurMessage(message) && (!fwdFrom || this.peerId !== rootScope.myId || this.threadId);
     return !!isOut;
-  }
-
-  public isAvatarNeeded(message: Message.message | Message.messageService) {
-    if(isMessageForVerificationBot(message)) return true;
-    return this.isLikeGroup && !this.isOutMessage(message);
   }
 
   public isPinnedMessagesNeeded() {
