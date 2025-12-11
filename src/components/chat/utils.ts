@@ -49,3 +49,16 @@ export function generateTail(asSpan?: boolean) {
 
   return svg;
 }
+
+export function linkColor(el: string | Node) {
+  if(typeof el === 'string') {
+    const span = document.createElement('span');
+    span.textContent = el;
+    span.classList.add('link-color');
+    return span;
+  }
+
+  if(el instanceof HTMLElement) el.classList.add('link-color');
+
+  return el;
+}

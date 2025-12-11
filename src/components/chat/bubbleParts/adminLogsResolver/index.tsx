@@ -1,19 +1,25 @@
-import {Component} from 'solid-js';
+import {Component, For, Show} from 'solid-js';
 import {makeDateFromTimestamp} from '../../../../helpers/date/makeDateFromTimestamp';
 import formatDuration from '../../../../helpers/formatDuration';
-import createMiddleware from '../../../../helpers/solid/createMiddleware';
 import {I18nTsx} from '../../../../helpers/solid/i18n';
-import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
+import {ChannelAdminLogEvent, ChannelAdminLogEventAction, ChatBannedRights} from '../../../../layer';
 import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
 import {MyMessage} from '../../../../lib/appManagers/appMessagesManager';
+import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
-import {i18n} from '../../../../lib/langPack';
+import removeChatBannedRightsFromParticipant from '../../../../lib/appManagers/utils/chats/removeChatBannedRightsFromParticipant';
+import {i18n, LangPackKey} from '../../../../lib/langPack';
 import wrapRichText from '../../../../lib/richTextProcessor/wrapRichText';
+import wrapTelegramUrlToAnchor from '../../../../lib/richTextProcessor/wrapTelegramUrlToAnchor';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import {resolveAdminRightFlagI18n} from '../../../sidebarRight/tabs/adminRecentActions/adminRightsI18nResolver';
+import {participantRightsMap} from '../../../sidebarRight/tabs/adminRecentActions/participantRightsMap';
+import {diffFlags} from '../../../sidebarRight/tabs/adminRecentActions/utils';
 import Space from '../../../space';
 import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
-import {isMessage} from '../../utils';
+import {isMessage, linkColor} from '../../utils';
 import {MinimalBubbleMessageContent} from '../minimalBubbleMessageContent';
+import {Reply} from './reply';
 
 
 type ServiceResult = {
@@ -60,22 +66,6 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'regular',
     bubbleClass: defaultBubbleClass,
     Content: () => {
-      const {wrapReply} = useHotReloadGuard();
-      const middleware = createMiddleware().get();
-
-      const peerId = event.user_id.toPeerId();
-
-      const previousDescriptionContainer = wrapReply({
-        setColorPeerId: peerId,
-        title: i18n('AdminRecentActions.PreviousDescription'),
-        quote: {
-          text: action.prev_value
-        },
-        middleware
-      }).container;
-
-      previousDescriptionContainer.classList.add('margin-0');
-
       return (
         <>
           <div class='service-msg'>
@@ -86,34 +76,57 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
             name={makeMessagePeerTitle(peerId)}
           >
             {wrapRichText(action.new_value)}
-
             <Space amount='0.5rem' />
-            {previousDescriptionContainer}
+            <Reply
+              colorPeerId={peerId}
+              title={i18n('AdminRecentActions.PreviousDescription')}
+              text={action.prev_value}
+            />
           </MinimalBubbleMessageContent>
         </>
       );
     }
   }),
-  'channelAdminLogEventActionChangeUsername': ({isBroadcast, peerId, makePeerTitle}) => ({
+  'channelAdminLogEventActionChangeUsername': ({isBroadcast, event, action, peerId, makePeerTitle, makeMessagePeerTitle}) => ({
     type: 'regular',
     bubbleClass: defaultBubbleClass,
     Content: () => {
-      const {wrapReply} = useHotReloadGuard();
-      const middleware = createMiddleware().get();
+      const translationKey = ((): LangPackKey => {
+        if(action.new_value) {
+          return isBroadcast ? 'AdminLog.ChangeLinkChannel' : 'AdminLog.ChangeLinkGroup';
+        } else {
+          return isBroadcast ? 'AdminLog.RemovedLinkChannel' : 'AdminLog.RemovedLinkGroup';
+        }
+      })();
+
+      const anchor = (() => {
+        if(!action.new_value) return;
+        const link = `t.me/${action.new_value}`
+
+        const anchor = wrapTelegramUrlToAnchor(link);
+        anchor.textContent = link;
+
+        return anchor;
+      })();
 
       return (
         <>
           <div class='service-msg'>
-            <I18nTsx key={isBroadcast ? 'AdminLog.ChangeUsernameChannel' : 'AdminLog.ChangeUsernameGroup'} args={[makePeerTitle(peerId)]} />
+            <I18nTsx key={translationKey} args={[makePeerTitle(peerId)]} />
           </div>
           <MinimalBubbleMessageContent
             date={makeDateFromTimestamp(event.date)}
             name={makeMessagePeerTitle(peerId)}
           >
-            {wrapRichText(action.new_value)}
-
-            <Space amount='0.5rem' />
-            {previousUsernameContainer}
+            <Show when={anchor}>
+              {anchor}
+              <Space amount='0.5rem' />
+            </Show>
+            <Reply
+              colorPeerId={peerId}
+              title={i18n('AdminRecentActions.PreviousLink')}
+              text={`https://t.me/${action.prev_value}`}
+            />
           </MinimalBubbleMessageContent>
         </>
       );
@@ -162,20 +175,117 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'service',
     Content: () => i18n('AdminLog.ParticipantInvited', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantToggleBan': ({action, peerId, makePeerTitle}) => ({
-    type: 'service',
+  'channelAdminLogEventActionParticipantToggleBan': ({event, action, channelId, peerId, makeMessagePeerTitle, makePeerTitle}) => ({
+    type: 'regular',
+    bubbleClass: defaultBubbleClass,
     Content: () => {
       const isBanned = isBannedParticipant(action.new_participant);
-      return i18n(isBanned ? 'AdminLog.ParticipantBanned' : 'AdminLog.ParticipantPermissionsToggled', [makePeerTitle(peerId)]);
+      const {apiManagerProxy} = useHotReloadGuard();
+
+      const prevBannedParticipant = action.prev_participant?._ === 'channelParticipantBanned' ? action.prev_participant : undefined;
+      const newBannedParticipant = action.new_participant?._ === 'channelParticipantBanned' ? action.new_participant : undefined;
+
+      const channel = apiManagerProxy.getChat(channelId);
+
+      const removeDefaultRights = (rights: ChatBannedRights.chatBannedRights) =>
+        channel?._ === 'channel' && rights ?
+          removeChatBannedRightsFromParticipant(channel, rights) :
+          rights;
+
+      const participantPeerId = getParticipantPeerId(action.prev_participant || action.new_participant);
+
+      const participantUser = apiManagerProxy.getUser(participantPeerId.toUserId());
+      const username = participantUser?.username || '';
+
+      const diff = diffFlags(
+        removeDefaultRights(prevBannedParticipant?.banned_rights)?.pFlags,
+        removeDefaultRights(newBannedParticipant?.banned_rights)?.pFlags
+      );
+
+      // yes, they need to be inversed here
+      const removed = diff.new.map(key => participantRightsMap[key])
+      .filter(Boolean).map(key => i18n(key))
+
+      const added = diff.old.map(key => participantRightsMap[key])
+      .filter(Boolean).map(key => i18n(key))
+
+
+      return (
+        <>
+          <MinimalBubbleMessageContent
+            date={makeDateFromTimestamp(event.date)}
+            name={makeMessagePeerTitle(peerId)}
+          >
+            <Show when={isBanned}>
+              <I18nTsx
+                key={username ? 'AdminLog.ParticipantBannedUsername' : 'AdminLog.ParticipantBanned'}
+                args={[linkColor(makePeerTitle(participantPeerId)), linkColor(`@${participantUser?.username || ''}`)]}
+              />
+            </Show>
+            <Show when={!isBanned}>
+              <I18nTsx
+                key={username ? 'AdminLog.ParticipantPermissionsToggledUsername' : 'AdminLog.ParticipantPermissionsToggled'}
+                args={[linkColor(makePeerTitle(participantPeerId)), linkColor(`@${participantUser?.username || ''}`)]}
+              />
+            </Show>
+            <Space amount='0.5rem' />
+            <For each={added}>
+              {key => (
+                <div>+ {key}</div>
+              )}
+            </For>
+            <For each={removed}>
+              {key => (
+                <div>- {key}</div>
+              )}
+            </For>
+          </MinimalBubbleMessageContent>
+        </>
+      );
     }
   }),
-  'channelAdminLogEventActionParticipantToggleAdmin': ({action, peerId, makePeerTitle}) => ({
-    type: 'service',
+  'channelAdminLogEventActionParticipantToggleAdmin': ({event, action, peerId, makePeerTitle, makeMessagePeerTitle, isBroadcast}) => ({
+    type: 'regular',
+    bubbleClass: defaultBubbleClass,
     Content: () => {
-      const prevRights = 'admin_rights' in action.prev_participant ? action.prev_participant.admin_rights : null;
-      const newRights = 'admin_rights' in action.new_participant ? action.new_participant.admin_rights : null;
-      const isPromotion = !prevRights && newRights;
-      return i18n(isPromotion ? 'AdminLog.AdminPromoted' : 'AdminLog.AdminDemoted', [makePeerTitle(peerId)]);
+      const {apiManagerProxy} = useHotReloadGuard();
+
+      const prevParticipantRights = 'admin_rights' in action.prev_participant ? action.prev_participant.admin_rights : null;
+      const newParticipantRights = 'admin_rights' in action.new_participant ? action.new_participant.admin_rights : null;
+
+      const diff = diffFlags(prevParticipantRights?.pFlags, newParticipantRights?.pFlags);
+      const participantPeerId = getParticipantPeerId(action.prev_participant || action.new_participant);
+
+      const participantUser = apiManagerProxy.getUser(participantPeerId.toUserId());
+      const username = participantUser?.username || '';
+
+      const added = diff.new.map(key => i18n(resolveAdminRightFlagI18n(key, {isBroadcast})));
+      const removed = diff.old.map(key => i18n(resolveAdminRightFlagI18n(key, {isBroadcast})));
+
+      return (
+        <>
+          <MinimalBubbleMessageContent
+            date={makeDateFromTimestamp(event.date)}
+            name={makeMessagePeerTitle(peerId)}
+          >
+            <I18nTsx
+              key={username ? 'AdminLog.AdminPermissionsChangedUsername' : 'AdminLog.AdminPermissionsChanged'}
+              args={[linkColor(makePeerTitle(participantPeerId)), linkColor(`@${participantUser?.username || ''}`)]}
+            />
+            <Space amount='0.5rem' />
+            <For each={added}>
+              {key => (
+                <div>+ {key}</div>
+              )}
+            </For>
+            <For each={removed}>
+              {key => (
+                <div>- {key}</div>
+              )}
+            </For>
+          </MinimalBubbleMessageContent>
+        </>
+      );
     }
   }),
   'channelAdminLogEventActionChangeStickerSet': ({peerId, makePeerTitle}) => ({

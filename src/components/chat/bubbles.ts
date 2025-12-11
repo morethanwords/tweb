@@ -319,7 +319,7 @@ let resolveAdminLog = importedResolveAdminLog;
 
 if(import.meta.hot) {
   rerenderLogBubblesCallbacks = [];
-  import.meta.hot.accept('./bubbleParts/adminLogsResolver', (module) => {
+  import.meta.hot.accept('./bubbleParts/adminLogsResolver/index.tsx', (module) => {
     if(!module) return;
     const {resolveAdminLog: newResolveAdminLog} = module as unknown as typeof import('./bubbleParts/adminLogsResolver');
 
