@@ -246,10 +246,12 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
     group: 'leave',
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ParticipantLeftChannel' : 'AdminRecentActionMessage.ParticipantLeftGroup')
   }),
-  // TODO: What is up with this event type?
-  'channelAdminLogEventActionParticipantInvite': () => ({
+  'channelAdminLogEventActionParticipantInvite': ({action}) => ({
     group: 'invites',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantInvited')
+    Message: () => i18n('AdminRecentActionMessage.ParticipantInvited'),
+    ExpandableContent: () => (
+      <ParticipantKeyValue peerId={getParticipantPeerId(action.participant)} />
+    )
   }),
   'channelAdminLogEventActionParticipantToggleBan': ({channelId, action}) => ({
     group: 'permissions',
@@ -514,9 +516,12 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
     group: 'identity',
     Message: () => i18n('AdminRecentActionMessage.ChangeUsernames')
   }),
-  'channelAdminLogEventActionToggleForum': () => ({
+  'channelAdminLogEventActionToggleForum': ({action}) => ({
     group: 'forum',
-    Message: () => i18n('AdminRecentActionMessage.ToggleForum')
+    Message: () => i18n('AdminRecentActionMessage.ToggleForum'),
+    ExpandableContent: () => (
+      <BooleanKeyValue value={action.new_value} />
+    )
   }),
   'channelAdminLogEventActionCreateTopic': ({action}) => ({
     group: 'topics',
@@ -554,9 +559,12 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
       />
     )
   }),
-  'channelAdminLogEventActionToggleAntiSpam': () => ({
+  'channelAdminLogEventActionToggleAntiSpam': ({action}) => ({
     group: 'permissions',
-    Message: () => i18n('AdminRecentActionMessage.ToggleAntiSpam')
+    Message: () => i18n('AdminRecentActionMessage.ToggleAntiSpam'),
+    ExpandableContent: () => (
+      <BooleanKeyValue value={action.new_value} />
+    )
   }),
   'channelAdminLogEventActionChangePeerColor': () => ({
     group: 'appearance',
@@ -578,17 +586,26 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
     group: 'appearance',
     Message: () => i18n('AdminRecentActionMessage.ChangeEmojiStickerSet')
   }),
-  'channelAdminLogEventActionToggleSignatureProfiles': () => ({
+  'channelAdminLogEventActionToggleSignatureProfiles': ({action}) => ({
     group: 'identity',
-    Message: () => i18n('AdminRecentActionMessage.ToggleSignatureProfiles')
+    Message: () => i18n('AdminRecentActionMessage.ToggleSignatureProfiles'),
+    ExpandableContent: () => (
+      <BooleanKeyValue value={action.new_value} />
+    )
   }),
-  'channelAdminLogEventActionParticipantSubExtend': () => ({
+  'channelAdminLogEventActionParticipantSubExtend': ({action}) => ({
     group: 'participants',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantSubscriptionExtended')
+    Message: () => i18n('AdminRecentActionMessage.ParticipantSubscriptionExtended'),
+    ExpandableContent: () => (
+      <ParticipantKeyValue peerId={getParticipantPeerId(action.new_participant)}/>
+    )
   }),
-  'channelAdminLogEventActionToggleAutotranslation': () => ({
+  'channelAdminLogEventActionToggleAutotranslation': ({action}) => ({
     group: 'translations',
-    Message: () => i18n('AdminRecentActionMessage.ToggleAutoTranslation')
+    Message: () => i18n('AdminRecentActionMessage.ToggleAutoTranslation'),
+    ExpandableContent: () => (
+      <BooleanKeyValue value={action.new_value} />
+    )
   })
 };
 

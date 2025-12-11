@@ -173,9 +173,9 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'service',
     Content: () => i18n(isBroadcast ? 'AdminLog.ParticipantLeftChannel' : 'AdminLog.ParticipantLeftGroup', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantInvite': ({peerId, makePeerTitle}) => ({
+  'channelAdminLogEventActionParticipantInvite': ({peerId, action, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantInvited', [makePeerTitle(peerId)])
+    Content: () => i18n('AdminLog.ParticipantInvited', [makePeerTitle(peerId), makePeerTitle(getParticipantPeerId(action.participant))])
   }),
   'channelAdminLogEventActionParticipantToggleBan': ({event, action, channelId, peerId, makeMessagePeerTitle, makePeerTitle}) => ({
     type: 'regular',

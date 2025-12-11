@@ -3981,7 +3981,7 @@ const lang = {
   'AdminLog.ParticipantJoinedGroup': '%s joined the group',
   'AdminLog.ParticipantLeftChannel': '%s left the channel',
   'AdminLog.ParticipantLeftGroup': '%s left the group',
-  'AdminLog.ParticipantInvited': '%s was invited',
+  'AdminLog.ParticipantInvited': '%s invited %s',
   'AdminLog.ParticipantBanned': 'banned %s',
   'AdminLog.ParticipantBannedUsername': 'banned %s (%s)',
   'AdminLog.ParticipantPermissionsToggled': 'changed permissions for %s',
