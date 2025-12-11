@@ -1,11 +1,11 @@
-import {JSX, For, createMemo, createEffect, createContext, useContext, onMount, createRenderEffect, Show} from 'solid-js';
+import {JSX, For, createMemo, createEffect, createContext, useContext, onMount, createRenderEffect, Show, Suspense, children, createSignal, createReaction} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {Document, Page, PageBlock, PageCaption, PageListOrderedItem, Photo, RichText} from '../layer';
 import wrapTelegramRichText from '../lib/richTextProcessor/wrapTelegramRichText';
 import styles from './instantView.module.scss';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import classNames from '../helpers/string/classNames';
-import {PhotoTsx} from './wrappers/photo';
+import {PhotoTsx} from './wrappers/photoTsx';
 import GenericTable, {GenericTableRow} from './genericTable';
 import {useHotReloadGuard} from '../lib/solidjs/hotReloadGuard';
 import {formatDate, formatFullSentTime} from '../helpers/date';
@@ -19,6 +19,7 @@ import wrapUrl from '../lib/richTextProcessor/wrapUrl';
 import documentFragmentToNodes from '../helpers/dom/documentFragmentToNodes';
 import {CustomEmojiRendererElement} from '../lib/customEmoji/renderer';
 import createMiddleware from '../helpers/solid/createMiddleware';
+import MySuspense from '../helpers/solid/mySuspense';
 
 type InstantViewContextValue = {
   webPageId: Long,
@@ -47,8 +48,10 @@ export function InstantView(props: {
   openNewPage: (url: string) => void,
   collapse: () => void,
   needFadeIn?: boolean,
-  anchor?: string // * expect it to be '#name'
+  anchor?: string, // * expect it to be '#name'
+  onReady?: () => void
 }) {
+  const [ready, setReady] = createSignal(false);
   const value: InstantViewContextValue = {
     get webPageId() {
       return props.webPageId;
@@ -82,6 +85,10 @@ export function InstantView(props: {
 
   let firstAnchor = true;
   createEffect(() => {
+    if(!ready()) {
+      return;
+    }
+
     const anchor = props.anchor;
     const _firstAnchor = firstAnchor;
     firstAnchor = false;
@@ -89,55 +96,60 @@ export function InstantView(props: {
       return;
     }
 
-    queueMicrotask(() => {
-      value.scrollToAnchor(anchor, _firstAnchor);
-    });
+    value.scrollToAnchor(anchor, _firstAnchor);
   });
 
   const {i18n, appImManager, rootScope} = useHotReloadGuard();
   let scrollableRef: HTMLDivElement;
   return (
-    <InstantViewContext.Provider value={value}>
-      <Animated type="cross-fade" appear={props.needFadeIn} mode="add-remove">
-        <Scrollable ref={scrollableRef}>
-          <div
-            dir={props.page.pFlags.rtl ? 'auto' : undefined}
-            class={classNames(styles.InstantView, 'text-overflow-wrap')}
-            onClick={onClick.bind(null, value)}
-          >
-            {value.customEmojiRenderer}
-            <For each={props.page.blocks}>{(block) => (
-              <Block block={block} paddings={1} />
-            )}</For>
+    <Animated type="cross-fade" appear={props.needFadeIn} mode="add-remove">
+      <MySuspense
+        onReady={() => {
+          setReady(true);
+          props.onReady?.();
+        }}
+      >
+        <InstantViewContext.Provider value={value}>
+          <Scrollable ref={scrollableRef}>
             <div
-              dir="auto"
-              class={classNames(styles.Section, styles.Meta, 'secondary')}
+              dir={props.page.pFlags.rtl ? 'auto' : undefined}
+              class={classNames(styles.InstantView, 'text-overflow-wrap')}
+              onClick={onClick.bind(null, value)}
             >
-              <Show when={props.page.views}>
-                {i18n('Views', [props.page.views])}
-                {` • `}
-              </Show>
-              <a
-                class={styles.WrongLayout}
-                href="#"
-                onClick={async(e) => {
-                  cancelEvent(e);
-                  value.collapse();
-                  const user = await rootScope.managers.appUsersManager.resolveUserByUsername('@previews');
-                  const startParam = `webpage${value.webPageId}`;
-                  appImManager.setInnerPeer({
-                    peerId: user.id.toPeerId(false),
-                    startParam
-                  });
-                }}
+              {value.customEmojiRenderer}
+              <For each={props.page.blocks}>{(block) => (
+                <Block block={block} paddings={1} />
+              )}</For>
+              <div
+                dir="auto"
+                class={classNames(styles.Section, styles.Meta, 'secondary')}
               >
-                {i18n('InstantView.WrongLayout')}
-              </a>
+                <Show when={props.page.views}>
+                  {i18n('Views', [props.page.views])}
+                  {` • `}
+                </Show>
+                <a
+                  class={styles.WrongLayout}
+                  href="#"
+                  onClick={async(e) => {
+                    cancelEvent(e);
+                    value.collapse();
+                    const user = await rootScope.managers.appUsersManager.resolveUserByUsername('@previews');
+                    const startParam = `webpage${value.webPageId}`;
+                    appImManager.setInnerPeer({
+                      peerId: user.id.toPeerId(false),
+                      startParam
+                    });
+                  }}
+                >
+                  {i18n('InstantView.WrongLayout')}
+                </a>
+              </div>
             </div>
-          </div>
-        </Scrollable>
-      </Animated>
-    </InstantViewContext.Provider>
+          </Scrollable>
+        </InstantViewContext.Provider>
+      </MySuspense>
+    </Animated>
   );
 }
 
@@ -393,7 +405,9 @@ function Block(props: {block: PageBlock, paddings: number}) {
                       <RichTextRenderer text={{_: 'textPlain', text: article.author}} />
                       {` • `}
                     </Show>
-                    <span dir="auto">{formatFullSentTime(article.published_date, true)}</span>
+                    <Show when={article.published_date}>
+                      <span dir="auto">{formatFullSentTime(article.published_date, true)}</span>
+                    </Show>
                   </div>
                   <Show when={photo}>
                     <PhotoTsx
@@ -416,6 +430,12 @@ function Block(props: {block: PageBlock, paddings: number}) {
           <RichTextRenderer text={block.text} />
         </div>
       );
+      // case 'pageBlockDetails':
+      //   return (
+      //     <div class={styles.Details}>
+
+    //     </div>
+    //   );
     default:
       return <div class={styles.Unsupported}>Unsupported block: {block._}</div>;
   }

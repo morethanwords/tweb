@@ -1,12 +1,12 @@
-import pause from '../../helpers/schedulers/pause';
+import {Ref, Show, createResource, splitProps} from 'solid-js';
+import wrapPhoto from './photo';
 import createMiddleware from '../../helpers/solid/createMiddleware';
-import wrapVideo from './video';
-import {createResource, Ref, Show, splitProps} from 'solid-js';
+import pause from '../../helpers/schedulers/pause';
 
-export default function VideoTsx(props: Omit<Parameters<typeof wrapVideo>[0], 'middleware'> & {
-  class?: string
-  ref?: Ref<HTMLElement>,
-  onResult?: (result: Awaited<ReturnType<typeof wrapVideo>>) => void
+export function PhotoTsx(props: Parameters<typeof wrapPhoto>[0] & {
+  class?: string;
+  ref?: Ref<HTMLElement>;
+  onResult?: (result: Awaited<ReturnType<typeof wrapPhoto>>) => void;
 }) {
   const [local, others] = splitProps(props, ['class', 'ref', 'onResult']);
   let ref: HTMLDivElement;
@@ -20,12 +20,11 @@ export default function VideoTsx(props: Omit<Parameters<typeof wrapVideo>[0], 'm
     ></div>
   );
 
-  const [result] = createResource(() => others.doc, (doc) => {
+  const [result] = createResource(() => others.photo, (photo) => {
     const middleware = createMiddleware().get();
-    // console.log('children wrapping video', doc);
-    return wrapVideo({
+    return wrapPhoto({
       ...others,
-      doc,
+      photo,
       middleware,
       container: ref
     }).then(async(result) => {
@@ -33,7 +32,7 @@ export default function VideoTsx(props: Omit<Parameters<typeof wrapVideo>[0], 'm
         return;
       }
 
-      local.onResult?.(result);
+      props.onResult?.(result);
       // await pause(1500);
       return result;
     });

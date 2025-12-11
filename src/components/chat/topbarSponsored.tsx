@@ -21,7 +21,7 @@ import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import appImManager from '../../lib/appManagers/appImManager';
 import {getMiddleware} from '../../helpers/middleware';
-import {PhotoTsx} from '../wrappers/photo';
+import {PhotoTsx} from '../wrappers/photoTsx';
 import {MyPhoto} from '../../lib/appManagers/appPhotosManager';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import PopupPremium from '../popups/premium';

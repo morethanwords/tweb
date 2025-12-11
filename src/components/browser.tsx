@@ -54,6 +54,7 @@ import wrapTelegramRichText from '../lib/richTextProcessor/wrapTelegramRichText'
 import limitSymbols from '../helpers/string/limitSymbols';
 import {toastNew} from './toast';
 import pause from '../helpers/schedulers/pause';
+import assumeType from '../helpers/assumeType';
 
 type BrowserPageProps<T = {}> = T & {
   title: string, // plain text
@@ -911,12 +912,19 @@ export function openInstantViewInAppBrowser({
   }
 
   const TEST_PART = false;
-  const hadCachedPage = typeof(cachedPage) !== 'string';
+  let hadCachedPage = typeof(cachedPage) !== 'string';
   let url: string;
   if(hadCachedPage) {
-    url = (cachedPage as Page).url;
+    assumeType<Page>(cachedPage);
+    url = cachedPage.url;
     if(TEST_PART) {
-      (cachedPage as Page).blocks = (cachedPage as Page).blocks.slice(0, -5);
+      cachedPage.blocks = cachedPage.blocks.slice(0, -5);
+    }
+
+    // * preload page first because anchor can be missing
+    if(anchor && cachedPage.pFlags.part) {
+      hadCachedPage = false;
+      cachedPage = undefined;
     }
   } else {
     url = cachedPage as string;
@@ -936,15 +944,17 @@ export function openInstantViewInAppBrowser({
     }
   }
 
+  assumeType<Page>(cachedPage);
+
   const [webPageId, setWebPageId] = createSignal<Long>(_webPageId);
   const [page, setPageStore] = createStore<Page>(undefined);
   const [pageResource] = createResource<Page>(async() => {
     if(
       !TEST_PART &&
       hadCachedPage &&
-      (!(cachedPage as Page).pFlags.part && (cachedPage as Page).views !== undefined)
+      (!cachedPage.pFlags.part && cachedPage.views !== undefined)
     ) {
-      return cachedPage as Page;
+      return cachedPage;
     }
 
     if(TEST_PART) await pause(10000);
@@ -953,7 +963,7 @@ export function openInstantViewInAppBrowser({
       setWebPageId(webPage.id);
       return (webPage as WebPage.webPage).cached_page;
     });
-  }, {initialValue: cachedPage as Page});
+  }, {initialValue: cachedPage});
 
   const needFadeIn = !hadCachedPage;
   createRoot((dispose) => {
@@ -964,6 +974,11 @@ export function openInstantViewInAppBrowser({
     });
 
     const [_anchor, setAnchor] = createSignal(anchor, {equals: false});
+
+    const waitForReady = !lastContext && hadCachedPage;
+    const onReady = () => {
+      openInAppBrowser(initialState);
+    };
 
     const initialState: BrowserPageProps<InstantViewPageExtraProps> = {
       get title() {
@@ -993,7 +1008,7 @@ export function openInstantViewInAppBrowser({
       }],
       icon: <IconTsx icon="boostcircle" />,
       dispose,
-      content: () => (
+      content: (
         <Show when={pageResource()}>
           <HotReloadGuardProvider>
             <InstantView
@@ -1007,6 +1022,7 @@ export function openInstantViewInAppBrowser({
               collapse={() => {
                 lastContext[1].toggleCollapsed(true);
               }}
+              onReady={waitForReady ? () => queueMicrotask(onReady) : undefined}
             />
           </HotReloadGuardProvider>
         </Show>
@@ -1016,6 +1032,8 @@ export function openInstantViewInAppBrowser({
       setAnchor
     };
 
-    openInAppBrowser(initialState);
+    if(!waitForReady) {
+      onReady();
+    }
   });
 }

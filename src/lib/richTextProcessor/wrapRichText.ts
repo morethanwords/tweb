@@ -365,6 +365,13 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         break;
       }
 
+      case 'messageEntityPhone': {
+        element = document.createElement('a');
+        element.classList.add('phone-url');
+        (element as HTMLAnchorElement).href = 'tel:' + fullEntityText;
+        break;
+      }
+
       case 'messageEntityBotCommand': {
         // if(!(options.noLinks || options.noCommands || contextExternal)/*  && !entity.unsafe */) {
         if(!options.noLinks && passEntities[entity._]) {
