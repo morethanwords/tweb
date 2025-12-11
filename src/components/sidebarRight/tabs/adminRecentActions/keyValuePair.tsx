@@ -48,7 +48,7 @@ export const InviteKeyValue = (props: { invite: ExportedChatInvite }) => {
   return (
     <Show when={props.invite._ === 'chatInviteExported'}>
       <KeyValuePair
-        label={<I18nTsx key={'InviteLink'} />}
+        label={<I18nTsx key='InviteLink' />}
         value={props.invite._ === 'chatInviteExported' ? props.invite.link : ''}
       />
     </Show>
@@ -64,10 +64,10 @@ export const ParticipantKeyValue = (props: {
   return (
     <Show when={props.peerId}>
       <KeyValuePair
-        label={props.label || <I18nTsx key={'AdminRecentActions.Participant'} />}
+        label={props.label || <I18nTsx key='AdminRecentActions.Participant' />}
         value={<PeerTitleTsx peerId={props.peerId} limitSymbols={limitPeerTitleSymbols} />}
         onClick={useParticipantClickHandler(props.peerId)}
       />
     </Show>
   )
-}
+};

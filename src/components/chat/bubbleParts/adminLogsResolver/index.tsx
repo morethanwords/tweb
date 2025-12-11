@@ -8,19 +8,20 @@ import {MyMessage} from '../../../../lib/appManagers/appMessagesManager';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
 import removeChatBannedRightsFromParticipant from '../../../../lib/appManagers/utils/chats/removeChatBannedRightsFromParticipant';
+import getPeerId from '../../../../lib/appManagers/utils/peers/getPeerId';
 import {i18n, LangPackKey} from '../../../../lib/langPack';
 import wrapRichText from '../../../../lib/richTextProcessor/wrapRichText';
 import wrapTelegramUrlToAnchor from '../../../../lib/richTextProcessor/wrapTelegramUrlToAnchor';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {resolveAdminRightFlagI18n} from '../../../sidebarRight/tabs/adminRecentActions/adminRightsI18nResolver';
 import {participantRightsMap} from '../../../sidebarRight/tabs/adminRecentActions/participantRightsMap';
+import {TopicName} from '../../../sidebarRight/tabs/adminRecentActions/topicName';
 import {diffFlags} from '../../../sidebarRight/tabs/adminRecentActions/utils';
 import Space from '../../../space';
 import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
 import {isMessage, linkColor} from '../../utils';
 import {MinimalBubbleMessageContent} from '../minimalBubbleMessageContent';
 import {Reply} from './reply';
-import getPeerId from '../../../../lib/appManagers/utils/peers/getPeerId';
 
 
 type ServiceResult = {
@@ -433,23 +434,25 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.ToggleForumEnabled' : 'AdminLog.ToggleForumDisabled', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionCreateTopic': ({peerId, makePeerTitle}) => ({
+  'channelAdminLogEventActionCreateTopic': ({peerId, action, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.TopicCreated', [makePeerTitle(peerId)])
+    Content: () => <I18nTsx key='AdminLog.TopicCreated' args={[makePeerTitle(peerId), <TopicName topic={action.topic} />]} />
   }),
-  'channelAdminLogEventActionEditTopic': ({peerId, makePeerTitle}) => ({
+  'channelAdminLogEventActionEditTopic': ({peerId, makePeerTitle, action}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.TopicEdited', [makePeerTitle(peerId)])
+    Content: () => <I18nTsx key='AdminLog.TopicEdited' args={[makePeerTitle(peerId), <TopicName topic={action.new_topic} />]} />
   }),
-  'channelAdminLogEventActionDeleteTopic': ({peerId, makePeerTitle}) => ({
+  'channelAdminLogEventActionDeleteTopic': ({peerId, makePeerTitle, action}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.TopicDeleted', [makePeerTitle(peerId)])
+    Content: () => <I18nTsx key='AdminLog.TopicDeleted' args={[makePeerTitle(peerId), <TopicName topic={action.topic} />]} />
   }),
   'channelAdminLogEventActionPinTopic': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
     Content: () => {
-      // For now, assume it's always pinning since we don't have clear access to prev/new state
-      return i18n('AdminLog.TopicPinned', [makePeerTitle(peerId)]);
+      const pinned = !!action.new_topic;
+      const topic = action.new_topic ? action.new_topic : action.prev_topic;
+
+      return <I18nTsx key={pinned ? 'AdminLog.TopicPinned' : 'AdminLog.TopicUnpinned'} args={[makePeerTitle(peerId), <TopicName topic={topic} />]} />;
     }
   }),
   'channelAdminLogEventActionToggleAntiSpam': ({action, peerId, makePeerTitle}) => ({

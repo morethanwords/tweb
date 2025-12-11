@@ -20,6 +20,7 @@ import {BooleanKeyValue, InviteKeyValue, KeyValuePair, ParticipantKeyValue} from
 import {LogDiff} from './logDiff';
 import {participantRightsMap} from './participantRightsMap';
 import {PreviewMessageButtons} from './previewMessageButtons';
+import {TopicName} from './topicName';
 import {diffFlags, getPhoto, useParticipantClickHandler} from './utils';
 
 
@@ -488,13 +489,22 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
       />
     )
   }),
-  'channelAdminLogEventActionToggleNoForwards': () => ({
+  'channelAdminLogEventActionToggleNoForwards': ({action}) => ({
     group: 'permissions',
-    Message: () => i18n('AdminRecentActionMessage.ToggleNoForwards')
+    Message: () => action.new_value ?
+      i18n('AdminRecentActionMessage.ToggleNoForwardsEnabled') :
+      i18n('AdminRecentActionMessage.ToggleNoForwardsDisabled')
   }),
-  'channelAdminLogEventActionSendMessage': () => ({
+  'channelAdminLogEventActionSendMessage': ({action, channelId}) => ({
     group: 'messages',
-    Message: () => i18n('AdminRecentActionMessage.MessageSent')
+    Message: () => i18n('AdminRecentActionMessage.MessageSent'),
+    ExpandableContent: () => (
+      <PreviewMessageButtons
+        channelId={channelId}
+        added={action.message}
+        addedKey='AdminRecentActions.ViewSentMessage'
+      />
+    )
   }),
   'channelAdminLogEventActionChangeAvailableReactions': () => ({
     group: 'reactions',
@@ -508,21 +518,41 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
     group: 'forum',
     Message: () => i18n('AdminRecentActionMessage.ToggleForum')
   }),
-  'channelAdminLogEventActionCreateTopic': () => ({
+  'channelAdminLogEventActionCreateTopic': ({action}) => ({
     group: 'topics',
-    Message: () => i18n('AdminRecentActionMessage.TopicCreated')
+    Message: () => i18n('AdminRecentActionMessage.TopicCreated'),
+    ExpandableContent: () => (
+      <LogDiff added={<TopicName topic={action.topic} />} />
+    )
   }),
-  'channelAdminLogEventActionEditTopic': () => ({
+  'channelAdminLogEventActionEditTopic': ({action}) => ({
     group: 'topics',
-    Message: () => i18n('AdminRecentActionMessage.TopicEdited')
+    Message: () => i18n('AdminRecentActionMessage.TopicEdited'),
+    ExpandableContent: () => (
+      <LogDiff
+        added={<TopicName topic={action.new_topic} />}
+        removed={<TopicName topic={action.prev_topic} />}
+      />
+    )
   }),
-  'channelAdminLogEventActionDeleteTopic': () => ({
+  'channelAdminLogEventActionDeleteTopic': ({action}) => ({
     group: 'topics',
-    Message: () => i18n('AdminRecentActionMessage.TopicDeleted')
+    Message: () => i18n('AdminRecentActionMessage.TopicDeleted'),
+    ExpandableContent: () => (
+      <LogDiff
+        removed={<TopicName topic={action.topic} />}
+      />
+    )
   }),
-  'channelAdminLogEventActionPinTopic': () => ({
+  'channelAdminLogEventActionPinTopic': ({action}) => ({
     group: 'topics',
-    Message: () => i18n('AdminRecentActionMessage.TopicPinned')
+    Message: () => i18n(action.new_topic ? 'AdminRecentActionMessage.TopicPinned' : 'AdminRecentActionMessage.TopicUnpinned'),
+    ExpandableContent: () => (
+      <LogDiff
+        added={action.new_topic ? <TopicName topic={action.new_topic} /> : undefined}
+        removed={action.prev_topic ? <TopicName topic={action.prev_topic} /> : undefined}
+      />
+    )
   }),
   'channelAdminLogEventActionToggleAntiSpam': () => ({
     group: 'permissions',

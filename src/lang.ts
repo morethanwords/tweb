@@ -3885,6 +3885,8 @@ const lang = {
   'AdminRecentActionMessage.ChangeHistoryTTL': 'Changed messages auto-delete timer',
   'AdminRecentActionMessage.ParticipantJoinedByRequest': 'Member joined by request',
   'AdminRecentActionMessage.ToggleNoForwards': 'Toggled “no forwards”',
+  'AdminRecentActionMessage.ToggleNoForwardsEnabled': 'Enabled content protection',
+  'AdminRecentActionMessage.ToggleNoForwardsDisabled': 'Disabled content protection',
   'AdminRecentActionMessage.MessageSent': 'Sent a message',
   'AdminRecentActionMessage.ChangeAvailableReactions': 'Changed available reactions',
   'AdminRecentActionMessage.ChangeUsernames': 'Changed usernames',
@@ -3893,6 +3895,7 @@ const lang = {
   'AdminRecentActionMessage.TopicEdited': 'Edited a topic',
   'AdminRecentActionMessage.TopicDeleted': 'Deleted a topic',
   'AdminRecentActionMessage.TopicPinned': 'Pinned a topic',
+  'AdminRecentActionMessage.TopicUnpinned': 'Unpinned a topic',
   'AdminRecentActionMessage.ToggleAntiSpam': 'Toggled anti‑spam protection',
   'AdminRecentActionMessage.ChangePeerColor': 'Changed peer color',
   'AdminRecentActionMessage.ChangeProfilePeerColor': 'Changed profile peer color',
@@ -3939,6 +3942,7 @@ const lang = {
   'AdminRecentActions.ViewPreviousMessage': 'View Previous',
   'AdminRecentActions.ViewDeletedMessage': 'View Deleted',
   'AdminRecentActions.ViewUpdatedMessage': 'View Updated',
+  'AdminRecentActions.ViewSentMessage': 'View Sent',
   'AdminRecentActions.ViewPinned': 'View Pinned',
   'AdminRecentActions.ViewUnpinned': 'View Unpinned',
   'AdminRecentActions.ViewStopped': 'View Stopped',
@@ -4016,11 +4020,11 @@ const lang = {
   'AdminLog.ChangeUsernames': '%s changed usernames',
   'AdminLog.ToggleForumEnabled': '%s enabled topics',
   'AdminLog.ToggleForumDisabled': '%s disabled topics',
-  'AdminLog.TopicCreated': '%s created a topic',
-  'AdminLog.TopicEdited': '%s edited a topic',
-  'AdminLog.TopicDeleted': '%s deleted a topic',
-  'AdminLog.TopicPinned': '%s pinned a topic',
-  'AdminLog.TopicUnpinned': '%s unpinned a topic',
+  'AdminLog.TopicCreated': '%s created the topic %s',
+  'AdminLog.TopicEdited': '%s edited the topic %s',
+  'AdminLog.TopicDeleted': '%s deleted the topic %s',
+  'AdminLog.TopicPinned': '%s pinned the topic %s',
+  'AdminLog.TopicUnpinned': '%s unpinned the topic %s',
   'AdminLog.ToggleAntiSpamEnabled': '%s enabled anti-spam',
   'AdminLog.ToggleAntiSpamDisabled': '%s disabled anti-spam',
   'AdminLog.ChangePeerColor': '%s changed the accent color',
@@ -4032,7 +4036,9 @@ const lang = {
   'AdminLog.ToggleSignatureProfilesDisabled': '%s disabled signature profiles',
   'AdminLog.ParticipantSubscriptionExtended': '%s extended subscription',
   'AdminLog.ToggleAutoTranslationEnabled': '%s enabled auto-translation',
-  'AdminLog.ToggleAutoTranslationDisabled': '%s disabled auto-translation'
+  'AdminLog.ToggleAutoTranslationDisabled': '%s disabled auto-translation',
+
+  'Topic': 'Topic'
 };
 
 export default lang;
