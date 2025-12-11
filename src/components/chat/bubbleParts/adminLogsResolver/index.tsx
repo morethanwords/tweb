@@ -1,19 +1,19 @@
 import {Component} from 'solid-js';
-import {makeDateFromTimestamp} from '../../../helpers/date/makeDateFromTimestamp';
-import formatDuration from '../../../helpers/formatDuration';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
-import {I18nTsx} from '../../../helpers/solid/i18n';
-import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../layer';
-import {AdminLog} from '../../../lib/appManagers/appChatsManager';
-import {MyMessage} from '../../../lib/appManagers/appMessagesManager';
-import {isBannedParticipant} from '../../../lib/appManagers/utils/chats/isBannedParticipant';
-import {i18n} from '../../../lib/langPack';
-import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import Space from '../../space';
-import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
-import {isMessage} from '../utils';
-import {MinimalBubbleMessageContent} from './minimalBubbleMessageContent';
+import {makeDateFromTimestamp} from '../../../../helpers/date/makeDateFromTimestamp';
+import formatDuration from '../../../../helpers/formatDuration';
+import createMiddleware from '../../../../helpers/solid/createMiddleware';
+import {I18nTsx} from '../../../../helpers/solid/i18n';
+import {ChannelAdminLogEvent, ChannelAdminLogEventAction} from '../../../../layer';
+import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
+import {MyMessage} from '../../../../lib/appManagers/appMessagesManager';
+import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
+import {i18n} from '../../../../lib/langPack';
+import wrapRichText from '../../../../lib/richTextProcessor/wrapRichText';
+import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import Space from '../../../space';
+import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
+import {isMessage} from '../../utils';
+import {MinimalBubbleMessageContent} from '../minimalBubbleMessageContent';
 
 
 type ServiceResult = {
@@ -49,6 +49,8 @@ type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
 
 type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: MapCallbackArgs<Key>) => MapCallbackResult;
 
+const defaultBubbleClass = 'can-have-tail has-fake-service is-forced-rounded';
+
 const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key> } = {
   'channelAdminLogEventActionChangeTitle': ({isBroadcast, action, peerId, makePeerTitle}) => ({
     type: 'service',
@@ -56,7 +58,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
   }),
   'channelAdminLogEventActionChangeAbout': ({isBroadcast, action, event, peerId, makePeerTitle, makeMessagePeerTitle}) => ({
     type: 'regular',
-    bubbleClass: 'can-have-tail has-fake-service is-forced-rounded',
+    bubbleClass: defaultBubbleClass,
     Content: () => {
       const {wrapReply} = useHotReloadGuard();
       const middleware = createMiddleware().get();
@@ -93,8 +95,29 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     }
   }),
   'channelAdminLogEventActionChangeUsername': ({isBroadcast, peerId, makePeerTitle}) => ({
-    type: 'service',
-    Content: () => i18n(isBroadcast ? 'AdminLog.ChangeUsernameChannel' : 'AdminLog.ChangeUsernameGroup', [makePeerTitle(peerId)])
+    type: 'regular',
+    bubbleClass: defaultBubbleClass,
+    Content: () => {
+      const {wrapReply} = useHotReloadGuard();
+      const middleware = createMiddleware().get();
+
+      return (
+        <>
+          <div class='service-msg'>
+            <I18nTsx key={isBroadcast ? 'AdminLog.ChangeUsernameChannel' : 'AdminLog.ChangeUsernameGroup'} args={[makePeerTitle(peerId)]} />
+          </div>
+          <MinimalBubbleMessageContent
+            date={makeDateFromTimestamp(event.date)}
+            name={makeMessagePeerTitle(peerId)}
+          >
+            {wrapRichText(action.new_value)}
+
+            <Space amount='0.5rem' />
+            {previousUsernameContainer}
+          </MinimalBubbleMessageContent>
+        </>
+      );
+    }
   }),
   'channelAdminLogEventActionChangePhoto': ({isBroadcast, peerId, makePeerTitle}) => ({
     type: 'service',
