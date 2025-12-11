@@ -10019,6 +10019,8 @@ export default class ChatBubbles {
 
   public isAvatarNeeded(message: Message.message | Message.messageService | AdminLog) {
     if(message?._ === 'channelAdminLogEvent') {
+      if(message.user_id?.toPeerId() === rootScope.myId) return false;
+
       const entry = resolveAdminLog({
         channelId: this.peerId.toChatId(),
         event: message,

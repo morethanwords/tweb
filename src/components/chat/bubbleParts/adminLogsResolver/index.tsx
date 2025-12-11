@@ -20,6 +20,7 @@ import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
 import {isMessage, linkColor} from '../../utils';
 import {MinimalBubbleMessageContent} from '../minimalBubbleMessageContent';
 import {Reply} from './reply';
+import getPeerId from '../../../../lib/appManagers/utils/peers/getPeerId';
 
 
 type ServiceResult = {
@@ -296,14 +297,46 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.TogglePreHistoryHiddenEnabled' : 'AdminLog.TogglePreHistoryHiddenDisabled', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionDefaultBannedRights': ({peerId, makePeerTitle}) => ({
-    type: 'service',
-    Content: () => i18n('AdminLog.DefaultBannedRightsChanged', [makePeerTitle(peerId)])
+  'channelAdminLogEventActionDefaultBannedRights': ({event, action, peerId, makePeerTitle, makeMessagePeerTitle}) => ({
+    type: 'regular',
+    bubbleClass: defaultBubbleClass,
+    Content: () => {
+      const diff = diffFlags(action.prev_banned_rights?.pFlags, action.new_banned_rights?.pFlags);
+
+      const added = diff.new.map(key => participantRightsMap[key])
+      .filter(Boolean).map(key => i18n(key))
+
+      const removed = diff.old.map(key => participantRightsMap[key])
+      .filter(Boolean).map(key => i18n(key))
+
+      return (
+        <>
+          <MinimalBubbleMessageContent
+            date={makeDateFromTimestamp(event.date)}
+            name={makeMessagePeerTitle(peerId)}
+          >
+            <I18nTsx key={'AdminLog.DefaultBannedRightsChanged'} />
+            <Space amount='0.5rem' />
+            <For each={added}>
+              {key => (
+                <div>+ {key}</div>
+              )}
+            </For>
+            <For each={removed}>
+              {key => (
+                <div>- {key}</div>
+              )}
+            </For>
+          </MinimalBubbleMessageContent>
+        </>
+      );
+    }
   }),
-  'channelAdminLogEventActionStopPoll': ({peerId, makePeerTitle}) => ({
-    type: 'service',
-    Content: () => i18n('AdminLog.PollStopped', [makePeerTitle(peerId)])
-  }),
+  'channelAdminLogEventActionStopPoll':  ({action, peerId, makePeerTitle}) => isMessage(action.message) ? ({
+    type: 'default',
+    message: action.message,
+    ServiceContent: () => i18n('AdminLog.PollStopped', [makePeerTitle(peerId)])
+  }) : null,
   'channelAdminLogEventActionChangeLinkedChat': ({peerId, makePeerTitle}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ChangeLinkedChat', [makePeerTitle(peerId)])
@@ -331,13 +364,13 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'service',
     Content: () => i18n('AdminLog.DiscardGroupCall', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantMute': ({peerId, makePeerTitle}) => ({
+  'channelAdminLogEventActionParticipantMute': ({peerId, action, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantMuted', [makePeerTitle(peerId)])
+    Content: () => i18n('AdminLog.ParticipantMuted', [makePeerTitle(getPeerId(action.participant?.peer)), makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantUnmute': ({peerId, makePeerTitle}) => ({
+  'channelAdminLogEventActionParticipantUnmute': ({peerId, action, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantUnmuted', [makePeerTitle(peerId)])
+    Content: () => i18n('AdminLog.ParticipantUnmuted', [makePeerTitle(getPeerId(action.participant?.peer)), makePeerTitle(peerId)])
   }),
   'channelAdminLogEventActionToggleGroupCallSetting': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
@@ -359,9 +392,9 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'service',
     Content: () => i18n('AdminLog.ExportedInviteEdit', [makePeerTitle(peerId)])
   }),
-  'channelAdminLogEventActionParticipantVolume': ({peerId, makePeerTitle}) => ({
+  'channelAdminLogEventActionParticipantVolume': ({peerId, action, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantVolumeChanged', [makePeerTitle(peerId)])
+    Content: () => i18n('AdminLog.ParticipantVolumeChanged', [makePeerTitle(getPeerId(action.participant?.peer)), makePeerTitle(peerId)])
   }),
   'channelAdminLogEventActionChangeHistoryTTL': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
@@ -374,9 +407,9 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       }
     }
   }),
-  'channelAdminLogEventActionParticipantJoinByRequest': ({peerId, makePeerTitle}) => ({
+  'channelAdminLogEventActionParticipantJoinByRequest': ({peerId, action, makePeerTitle}) => ({
     type: 'service',
-    Content: () => i18n('AdminLog.ParticipantJoinedByRequest', [makePeerTitle(peerId)])
+    Content: () => i18n('AdminLog.ParticipantJoinedByRequest', [makePeerTitle(peerId), makePeerTitle(action.approved_by.toPeerId())])
   }),
   'channelAdminLogEventActionToggleNoForwards': ({action, peerId, makePeerTitle}) => ({
     type: 'service',
