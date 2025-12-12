@@ -106,7 +106,8 @@ export const Filters = (props: FiltersProps) => {
   };
 
   const onAllAdminsClick = () => {
-    setSelectedAdminIds(new Set(allAdminPeerIds()));
+    const areAllSelected = selectedAdminIds().size === allAdminPeerIds().length;
+    setSelectedAdminIds(areAllSelected ? new Set<number> : new Set(allAdminPeerIds()));
   };
 
   const onAdminClick = (id: PeerId) => {
@@ -131,7 +132,7 @@ export const Filters = (props: FiltersProps) => {
       Object.fromEntries(activeFlagEntries) :
       undefined;
 
-    const admins = selectedAdminIds().size < allAdminPeerIds().length && selectedAdminIds().size ?
+    const admins = selectedAdminIds().size < allAdminPeerIds().length ?
       Array.from(selectedAdminIds()) :
       undefined;
 
