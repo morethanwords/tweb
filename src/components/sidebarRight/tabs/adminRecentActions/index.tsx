@@ -61,17 +61,13 @@ const AdminRecentActionsTab = () => {
 
   // const fetchLogs = async(offsetId?: AdminLog['id']) => offsetId ? [] : [...Array.from({length: 1}, () => [...savedLogs.slice(0, 12).map(o => ({...o}))])].flat()
   // const fetchLogs = async(offsetId?: AdminLog['id']) => offsetId ? [] : [...Array.from({length: 400}, () => [...savedLogs.map(o => ({...o}))])].flat()
-  const fetchLogs = (offsetId?: AdminLog['id']) => committedFilters() ?
-    rootScope.managers.appChatsManager.fetchAdminLogs({
+
+  const fetchLogs = (offsetId?: AdminLog['id']) =>
+    rootScope.managers.appChatsManager.getAdminLogs({
       channelId: tab.payload.channelId,
-      limit: fetchLimit,
       search: committedFilters()?.search,
       admins: committedFilters()?.admins,
       flags: committedFilters()?.flags,
-      offsetId
-    }) :
-    rootScope.managers.appChatsManager.getAdminLogs({
-      channelId: tab.payload.channelId,
       limit: fetchLimit,
       offsetId
     }).then(({items}) => items);

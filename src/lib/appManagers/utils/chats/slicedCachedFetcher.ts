@@ -27,16 +27,21 @@ export class SlicedCachedFetcher<T> {
   public async getItems({limit, offsetId, fetchItems, getId, backLimit = 0}: GetItemsArgs<T>) {
     let result: Array<Id> = [];
     let remainingLimit = limit;
-    let tookFromLastSlice = false, isSliceEnd = false;
+    let tookFromLastSlice = false, isSliceEnd = false, tookFromFirstSlice = false, isSliceStart = false;
 
     if(offsetId) for(const slice of this.cachedSlices) {
       const idx = slice.indexOf(String(offsetId));
       if(idx === -1) continue;
 
+      tookFromFirstSlice = slice === this.cachedSlices[0];
       tookFromLastSlice = slice === lastItem(this.cachedSlices);
+
       const startIdx = Math.max(0, idx - backLimit);
+
       result = slice.slice(startIdx, idx + limit + 1); // keeps the item with offsetId to make sure the slices merge if this is the last item in the slice
       remainingLimit = Math.max(0, limit + 1 - result.length - (idx - startIdx));
+
+      isSliceStart = startIdx === 0;
       isSliceEnd = lastItem(result) === lastItem(slice);
     }
 
@@ -47,14 +52,17 @@ export class SlicedCachedFetcher<T> {
       // adding + 1 to include the last cached item for the slices to merge
       const cachedOffsetId = lastCachedItem ? (BigInt(lastItem(result)) + BigInt(1)).toString() : undefined;
 
-      const fetchLimit = remainingLimit + (lastCachedItem ? 1 : 0);
+      const additionalLimit = lastCachedItem ? 1 : 0;
+      const fetchLimit = remainingLimit + additionalLimit;
 
       const items = await fetchItems({
         limit: fetchLimit,
         offsetId: cachedOffsetId || offsetId
       });
 
-      if(items.length < fetchLimit) this.isEnd = true;
+      // NOTE: the server might return less items than requested, even though it has way more to return
+      // so we're checking only when there are no items returned (or only the cached one)
+      if(items.length === additionalLimit) this.isEnd = true;
 
       insertInSortedSlicedArray(
         items.map(item => String(getId(item))),
@@ -79,6 +87,10 @@ export class SlicedCachedFetcher<T> {
     .filter(id => String(id) !== String(offsetId))
     .map(id => this.cachedItemsMap.get(String(id)));
 
-    return {items, isEnd: this.isEnd && tookFromLastSlice && isSliceEnd};
+    return {
+      items,
+      isStart: !offsetId || (tookFromFirstSlice && isSliceStart),
+      isEnd: this.isEnd && tookFromLastSlice && isSliceEnd
+    };
   }
 }

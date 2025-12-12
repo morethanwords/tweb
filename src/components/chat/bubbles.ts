@@ -8593,16 +8593,16 @@ export default class ChatBubbles {
         cached: false,
         result: (async() => {
           const {peerId} = this.chat;
-          const {items: logs, isEnd} = await this.managers.appChatsManager.getAdminLogs({channelId: peerId.toChatId(), offsetId, limit, backLimit});
-          console.log('my-debug', {logs, isEnd, offsetId, limit, backLimit})
+          const {items: logs, isStart, isEnd} = await this.managers.appChatsManager.getAdminLogs({channelId: peerId.toChatId(), offsetId, limit, backLimit});
+          console.log('my-debug', {logs, isStart, isEnd, offsetId, limit, backLimit})
 
           return {
             history: logs.map(log => +log.id),
             count: logs.length,
             messages: logs,
             isEnd: {
-              both: isEnd && !offsetId,
-              bottom: !offsetId,
+              both: isStart && isEnd,
+              bottom: isStart,
               top: isEnd
             }
           };
