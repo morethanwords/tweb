@@ -1142,6 +1142,8 @@ export default class ChatTopbar {
 
     return () => {
       const canHaveSomeButtons = !(this.chat.type === ChatType.Pinned || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs);
+      const canHaveSearch = canHaveSomeButtons || this.chat.type === ChatType.Logs;
+
       this.btnMute && this.btnMute.classList.toggle('hide', !isBroadcast || !canHaveSomeButtons);
       if(this.btnJoin) {
         if(isBroadcast && !this.chat.isRestricted && canHaveSomeButtons) {
@@ -1153,7 +1155,7 @@ export default class ChatTopbar {
       }
 
       if(this.btnSearch) {
-        this.btnSearch.classList.toggle('hide', !canHaveSomeButtons);
+        this.btnSearch.classList.toggle('hide', !canHaveSearch);
       }
 
       if(this.btnPinned) {

@@ -75,6 +75,7 @@ import {useAppSettings} from '../../stores/appSettings';
 import useHistoryStorage from '../../stores/historyStorages';
 import useAutoDownloadSettings, {ChatAutoDownloadSettings} from '../../hooks/useAutoDownloadSettings';
 import usePeerTranslation from '../../hooks/usePeerTranslation';
+import debounce from '../../helpers/schedulers/debounce';
 
 
 export enum ChatType {
@@ -755,6 +756,23 @@ export default class Chat extends EventListenerBase<{
       freezeObservers(this.appImManager.chat !== this || (tabId !== APP_TABS.CHAT && mediaSizes.activeScreen === ScreenSize.mobile));
     });
 
+    const setInChatQuery = (query: string) => {
+      let options: ChatSetPeerOptions;
+
+      if(this.type === ChatType.Logs) options = {
+        peerId: this.peerId,
+        type: ChatType.Logs
+      };
+
+      if(options) this.bubbles.setInChatQuery(query, options);
+    };
+
+    const setInChatQueryDebounced = debounce((query: string) => {
+      setInChatQuery(query);
+    }, 300, false, true);
+
+    const hasInChatQuery = () => this.type === ChatType.Logs;
+
     this.searchSignal = createUnifiedSignal();
     createRoot((dispose) => {
       this.middlewareHelper.get().onDestroy(dispose);
@@ -799,14 +817,17 @@ export default class Chat extends EventListenerBase<{
           peerId: this.peerId,
           // TODO: Check here for monoforumThreadId
           threadId: this.threadId,
-          canFilterSender: this.isAnyGroup,
+          canFilterSender: this.type !== ChatType.Logs && this.isAnyGroup,
           query,
           filterPeerId,
           reaction,
+          noList: hasInChatQuery(),
+          onValueChange: hasInChatQuery() ? setInChatQueryDebounced : undefined,
           onClose: () => {
             this.searchSignal(undefined);
+            setInChatQuery('');
           },
-          onDatePick: (timestamp) => {
+          onDatePick: this.type === ChatType.Logs ? undefined : (timestamp) => {
             this.bubbles.onDatePick(timestamp);
           },
           onActive: (active, showingReactions, isSmallScreen) => {

@@ -545,6 +545,9 @@ export default class ChatBubbles {
 
   private placeholderTopicIconContainer?: HTMLElement;
 
+  // for filtering the contents of the chat rather then showing up results in the topbar search
+  private inChatQuery?: string;
+
   constructor(
     private chat: Chat,
     private managers: AppManagers
@@ -8593,7 +8596,15 @@ export default class ChatBubbles {
         cached: false,
         result: (async() => {
           const {peerId} = this.chat;
-          const {items: logs, isStart, isEnd} = await this.managers.appChatsManager.getAdminLogs({channelId: peerId.toChatId(), offsetId, limit, backLimit});
+
+          const {items: logs, isStart, isEnd} = await this.managers.appChatsManager.getAdminLogs({
+            channelId: peerId.toChatId(),
+            search: this.inChatQuery,
+            offsetId,
+            limit,
+            backLimit
+          });
+
           console.log('my-debug', {logs, isStart, isEnd, offsetId, limit, backLimit})
 
           return {
@@ -10038,5 +10049,14 @@ export default class ChatBubbles {
 
     if(isMessageForVerificationBot(message)) return true;
     return this.chat.isLikeGroup && !this.chat.isOutMessage(message);
+  }
+
+  public setInChatQuery(query: string, setPeerOptions: ChatSetPeerOptions) {
+    query = query || undefined;
+    if(query === this.inChatQuery) return;
+
+    this.cleanup(true);
+    this.inChatQuery = query;
+    this.setPeer({...setPeerOptions, samePeer: false, sameSearch: false});
   }
 }
