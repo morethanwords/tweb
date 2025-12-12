@@ -1,4 +1,4 @@
-import {For, createEffect, createContext, useContext, Show, createSignal, Setter} from 'solid-js';
+import {For, createEffect, createContext, useContext, Show, createSignal, Setter, onCleanup, createReaction} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {Document, Page, PageBlock, PageCaption, PageListOrderedItem, Photo, RichText} from '../layer';
 import wrapTelegramRichText from '../lib/richTextProcessor/wrapTelegramRichText';
@@ -21,6 +21,7 @@ import documentFragmentToNodes from '../helpers/dom/documentFragmentToNodes';
 import {CustomEmojiRendererElement} from '../lib/customEmoji/renderer';
 import createMiddleware from '../helpers/solid/createMiddleware';
 import MySuspense from '../helpers/solid/mySuspense';
+import TelegramWebView from './telegramWebView';
 
 type InstantViewContextValue = {
   webPageId: Long,
@@ -30,7 +31,8 @@ type InstantViewContextValue = {
   collapse: () => void,
   scrollToAnchor: (anchor: string, instantly: boolean) => void,
   customEmojiRenderer: CustomEmojiRendererElement,
-  details: WeakMap<HTMLElement, Setter<boolean>>
+  details: WeakMap<HTMLElement, Setter<boolean>>,
+  ready: boolean
 };
 
 const InstantViewContext = createContext<InstantViewContextValue>();
@@ -57,6 +59,9 @@ export function InstantView(props: {
   const value: InstantViewContextValue = {
     get webPageId() {
       return props.webPageId;
+    },
+    get ready() {
+      return ready();
     },
     page: props.page,
     randomId: '' + (Math.random() * 1000 | 0),
@@ -459,6 +464,79 @@ function Block(props: {block: PageBlock, paddings: number}) {
           }}</For>
         </>
       );
+    case 'pageBlockEmbed': {
+      const context = useContext(InstantViewContext);
+      const isFullWidth = block.pFlags?.full_width;
+      const posterPhoto = block.poster_photo_id ?
+        unwrap(context.page.photos.find((photo) => photo.id === block.poster_photo_id)) as Photo.photo :
+        undefined;
+
+      const [height, setHeight] = createSignal(0);
+      const webView = block.html || block.url ?
+        new TelegramWebView({html: block.html, url: block.url}) :
+        undefined;
+      if(webView) {
+        webView.iframe.classList.add(styles.EmbedIframe);
+        webView.iframe.scrolling = block.pFlags?.allow_scrolling ? 'yes' : 'no';
+        webView.iframe.allowFullscreen = true;
+
+        if(block.url) {
+          webView.iframe.style.width = '100%';
+          webView.iframe.style.height = '100%';
+          webView.iframe.style.border = '0';
+        }
+
+        createEffect(() => {
+          if(!context.ready) {
+            return;
+          }
+
+          queueMicrotask(() => {
+            if(!cleaned) {
+              webView.onMount();
+            }
+          });
+        });
+
+        let cleaned = false;
+        onCleanup(() => {
+          cleaned = true;
+          webView.destroy();
+        });
+
+        webView.addEventListener('resize_frame', ({height}) => {
+          setHeight(height);
+        });
+      }
+
+      return (
+        <>
+          <div
+            class={classNames(
+              styles.Media,
+              styles.Embed,
+              isFullWidth ? styles.EmbedFullWidth : styles.EmbedAutoWidth,
+              height() && styles.EmbedHasHeight
+            )}
+            style={{
+              '--aspect-ratio': block.w && block.h ? block.w / block.h : 4 / 3,
+              '--paddings': isFullWidth ? 0 : props.paddings * 2,
+              '--height': height() && height() + 'px'
+            }}
+          >
+            <Show when={!webView} fallback={webView.iframe}>
+              <Show when={posterPhoto}>
+                <PhotoTsx
+                  photo={posterPhoto}
+                  withoutPreloader
+                />
+              </Show>
+            </Show>
+          </div>
+          <Caption caption={block.caption} />
+        </>
+      );
+    }
     case 'pageBlockKicker':
       return (
         <div class={classNames(styles.Padding, styles.Kicker, 'text-bold')}>
