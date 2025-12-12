@@ -221,13 +221,13 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
             <Show when={isBanned}>
               <I18nTsx
                 key={username ? 'AdminLog.ParticipantBannedUsername' : 'AdminLog.ParticipantBanned'}
-                args={[linkColor(makePeerTitle(participantPeerId)), linkColor(`@${participantUser?.username || ''}`)]}
+                args={[linkColor(makePeerTitle(participantPeerId)), username ? linkColor(`@${username}`) : '']}
               />
             </Show>
             <Show when={!isBanned}>
               <I18nTsx
                 key={username ? 'AdminLog.ParticipantPermissionsToggledUsername' : 'AdminLog.ParticipantPermissionsToggled'}
-                args={[linkColor(makePeerTitle(participantPeerId)), linkColor(`@${participantUser?.username || ''}`)]}
+                args={[linkColor(makePeerTitle(participantPeerId)), username ? linkColor(`@${username}`) : '']}
               />
             </Show>
             <Space amount='0.5rem' />
@@ -272,7 +272,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
           >
             <I18nTsx
               key={username ? 'AdminLog.AdminPermissionsChangedUsername' : 'AdminLog.AdminPermissionsChanged'}
-              args={[linkColor(makePeerTitle(participantPeerId)), linkColor(`@${participantUser?.username || ''}`)]}
+              args={[linkColor(makePeerTitle(participantPeerId)), username ? linkColor(`@${username}`) : '']}
             />
             <Space amount='0.5rem' />
             <For each={added}>
