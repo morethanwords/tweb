@@ -976,7 +976,13 @@ export function openInstantViewInAppBrowser({
     const [_anchor, setAnchor] = createSignal(anchor, {equals: false});
 
     const waitForReady = !lastContext && hadCachedPage;
+    let wasReady = false;
     const onReady = () => {
+      if(wasReady) {
+        return;
+      }
+
+      wasReady = true;
       openInAppBrowser(initialState);
     };
 

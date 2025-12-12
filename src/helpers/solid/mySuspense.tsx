@@ -1,4 +1,4 @@
-import {Suspense, ParentProps, children, createMemo, JSX} from 'solid-js';
+import {Suspense, ParentProps, children, createMemo, JSX, createSignal, createReaction} from 'solid-js';
 
 export default function MySuspense(props: ParentProps<{
   onReady?: () => void;
@@ -9,14 +9,20 @@ export default function MySuspense(props: ParentProps<{
     </Suspense>
   ));
 
+  // const [ready, setReady] = createSignal(false);
   const childrenMemo = createMemo<JSX.Element>((prev) => {
     const children = resolvedChildren() || prev;
     // console.log('children', children);
     if(children && !prev) {
+      // setReady(true);
       props.onReady?.();
     }
     return children;
   });
+
+  // createReaction(ready)(() => {
+  //   props.onReady?.();
+  // });
 
   return (
     <>

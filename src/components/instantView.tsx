@@ -1,4 +1,4 @@
-import {JSX, For, createMemo, createEffect, createContext, useContext, onMount, createRenderEffect, Show, Suspense, children, createSignal, createReaction} from 'solid-js';
+import {For, createEffect, createContext, useContext, Show, createSignal, Setter} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {Document, Page, PageBlock, PageCaption, PageListOrderedItem, Photo, RichText} from '../layer';
 import wrapTelegramRichText from '../lib/richTextProcessor/wrapTelegramRichText';
@@ -6,6 +6,7 @@ import styles from './instantView.module.scss';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import classNames from '../helpers/string/classNames';
 import {PhotoTsx} from './wrappers/photoTsx';
+import {IconTsx} from './iconTsx';
 import GenericTable, {GenericTableRow} from './genericTable';
 import {useHotReloadGuard} from '../lib/solidjs/hotReloadGuard';
 import {formatDate, formatFullSentTime} from '../helpers/date';
@@ -28,7 +29,8 @@ type InstantViewContextValue = {
   openNewPage: (url: string) => void,
   collapse: () => void,
   scrollToAnchor: (anchor: string, instantly: boolean) => void,
-  customEmojiRenderer: CustomEmojiRendererElement
+  customEmojiRenderer: CustomEmojiRendererElement,
+  details: WeakMap<HTMLElement, Setter<boolean>>
 };
 
 const InstantViewContext = createContext<InstantViewContextValue>();
@@ -67,9 +69,21 @@ export function InstantView(props: {
         return;
       }
 
+      const element = document.getElementById(value.randomId + anchor.slice(1)) as HTMLElement;
+      let detailsElement: HTMLElement = element;
+      do {
+        detailsElement = findUpClassName(detailsElement, styles.Details);
+        if(!detailsElement) {
+          break;
+        }
+
+        value.details.get(detailsElement)(true);
+        detailsElement = detailsElement.parentElement;
+      } while(true);
+
       fastSmoothScroll({
         container: scrollableRef,
-        element: document.getElementById(value.randomId + anchor.slice(1)) as HTMLElement,
+        element,
         position: 'start',
         forceDuration
       });
@@ -78,7 +92,8 @@ export function InstantView(props: {
       textColor: 'primary-text-color',
       middleware: createMiddleware().get(),
       renderNonSticker: true
-    })
+    }),
+    details: new WeakMap()
   };
 
   console.log(props.page);
@@ -96,7 +111,9 @@ export function InstantView(props: {
       return;
     }
 
-    value.scrollToAnchor(anchor, _firstAnchor);
+    queueMicrotask(() => {
+      value.scrollToAnchor(anchor, _firstAnchor);
+    });
   });
 
   const {i18n, appImManager, rootScope} = useHotReloadGuard();
@@ -117,12 +134,14 @@ export function InstantView(props: {
               onClick={onClick.bind(null, value)}
             >
               {value.customEmojiRenderer}
-              <For each={props.page.blocks}>{(block) => (
-                <Block block={block} paddings={1} />
-              )}</For>
+              <div class={styles.InstantViewContent}>
+                <For each={props.page.blocks}>{(block) => (
+                  <Block block={block} paddings={1} />
+                )}</For>
+              </div>
               <div
                 dir="auto"
-                class={classNames(styles.Section, styles.Meta, 'secondary')}
+                class={classNames(styles.InstantViewFooter, 'secondary')}
               >
                 <Show when={props.page.views}>
                   {i18n('Views', [props.page.views])}
@@ -162,7 +181,7 @@ function onMediaResult(ref: HTMLDivElement, paddings: number) {
 
   ref.style.setProperty(
     '--paddings',
-    '' + (paddings > 1 ? paddings : 0)
+    '' + (paddings > 1 ? paddings + 1 : 0)
   );
 }
 
@@ -172,7 +191,7 @@ function Caption(props: {caption: PageCaption}) {
   const isCreditEmpty = isRichTextEmpty(caption.credit);
   return (
     <Show when={!isTextEmpty || !isCreditEmpty}>
-      <div class={classNames(styles.Caption, 'secondary')}>
+      <div class={classNames(styles.Padding, styles.Caption, 'secondary')}>
         <Show when={!isTextEmpty}>
           <div class={classNames(styles.CaptionText, 'text-bold')}>
             <RichTextRenderer text={caption.text} />
@@ -196,33 +215,46 @@ function Block(props: {block: PageBlock, paddings: number}) {
 
   switch(block._) {
     case 'pageBlockTitle':
-      return <h1 class={styles.Title}><RichTextRenderer text={block.text} /></h1>;
+      return <h1 class={classNames(styles.Padding, styles.Title)}><RichTextRenderer text={block.text} /></h1>;
     case 'pageBlockSubtitle':
-      return <h2 class={classNames(styles.Subtitle, 'secondary')}><RichTextRenderer text={block.text} /></h2>;
+      return <h2 class={classNames(styles.Padding, styles.Subtitle, 'secondary')}><RichTextRenderer text={block.text} /></h2>;
     case 'pageBlockHeader':
-      return <h3 class={styles.Header}><RichTextRenderer text={block.text} /></h3>;
+      return <h3 class={classNames(styles.Padding, styles.Header)}><RichTextRenderer text={block.text} /></h3>;
     case 'pageBlockSubheader':
-      return <h4 class={styles.Subheader}><RichTextRenderer text={block.text} /></h4>;
+      return <h4 class={classNames(styles.Padding, styles.Subheader)}><RichTextRenderer text={block.text} /></h4>;
     case 'pageBlockParagraph':
-      return <p class={styles.Paragraph}><RichTextRenderer text={block.text} /></p>;
+      return <p class={classNames(styles.Padding, styles.Paragraph)}><RichTextRenderer text={block.text} /></p>;
     case 'pageBlockPreformatted':
-      return <pre class={styles.Preformatted}><RichTextRenderer text={block.text} /></pre>;
+      return <pre class={classNames(styles.Preformatted)}><RichTextRenderer text={block.text} /></pre>;
     case 'pageBlockFooter':
-      return <footer class={styles.Footer}><RichTextRenderer text={block.text} /></footer>;
+      return <footer class={classNames(styles.Padding, styles.Footer, 'secondary')}><RichTextRenderer text={block.text} /></footer>;
     case 'pageBlockDivider':
-      return <hr class={styles.Divider} />;
+      return <div class={styles.Divider} />;
     case 'pageBlockOrderedList':
-    case 'pageBlockList':
+    case 'pageBlockList': {
+      // * own numbers cannot be perfectly vertical aligned if children is not plain text
+      const isOrdered = block._ === 'pageBlockOrderedList';
+      const shouldHaveOwnNumbers = isOrdered && block.items.some((item) => item.num && !item.num.match(/^\d+$/));
+      const {wrapEmojiText} = useHotReloadGuard();
       return (
         <Dynamic
-          component={block._ === 'pageBlockOrderedList' ? 'ol' : 'ul'}
-          class={classNames(styles.List, 'browser-default')}
+          component={isOrdered ? 'ol' : 'ul'}
+          class={classNames(
+            styles.List,
+            shouldHaveOwnNumbers && styles.ListOrdered,
+            'browser-default'
+          )}
         >
           <For each={block.items}>{(item, idx) => (
-            <li
-              class={styles.ListItem}
-              value={+(item as PageListOrderedItem.pageListOrderedItemText).num || (idx() + 1)}
-            >
+            <li class={styles.ListItem}>
+              {shouldHaveOwnNumbers && (
+                <span class={styles.ListItemNumber}>
+                  {(item as PageListOrderedItem.pageListOrderedItemText).num ?
+                    wrapEmojiText((item as PageListOrderedItem.pageListOrderedItemText).num) :
+                    idx() + 1}
+                  {`. `}
+                </span>
+              )}
               {item._ === 'pageListItemText' || item._ === 'pageListOrderedItemText' ? (
                 <RichTextRenderer text={item.text} />
               ) : (
@@ -234,16 +266,20 @@ function Block(props: {block: PageBlock, paddings: number}) {
           )}</For>
         </Dynamic>
       );
+    }
     case 'pageBlockBlockquote':
       return (
-        <blockquote class={styles.Blockquote}>
-          <RichTextRenderer text={block.text} />
-          <Show when={!isRichTextEmpty(block.caption)}>
-            <div class={styles.BlockquoteCaption}>
-              <RichTextRenderer text={block.caption} />
-            </div>
-          </Show>
-        </blockquote>
+        <div class={classNames(styles.Padding, styles.BlockquoteWrapper)}>
+          <blockquote class={styles.Blockquote}>
+            <div class={styles.BlockquoteBorder} />
+            <RichTextRenderer text={block.text} />
+            <Show when={!isRichTextEmpty(block.caption)}>
+              <div class={styles.BlockquoteCaption}>
+                <RichTextRenderer text={block.caption} />
+              </div>
+            </Show>
+          </blockquote>
+        </div>
       );
     case 'pageBlockCover':
       return (
@@ -293,20 +329,18 @@ function Block(props: {block: PageBlock, paddings: number}) {
       const {collapse} = useContext(InstantViewContext);
       const peerId = block.channel.id.toPeerId(true);
       return (
-        <div class={styles.Section}>
-          <div
-            class={classNames(
-              styles.SectionName,
-              styles.Channel,
-              'text-bold'
-            )}
-            onClick={() => {
-              collapse();
-              appImManager.setInnerPeer({peerId});
-            }}
-          >
-            <PeerTitleTsx peerId={peerId} />
-          </div>
+        <div
+          class={classNames(
+            styles.SectionName,
+            styles.Channel,
+            'text-bold'
+          )}
+          onClick={() => {
+            collapse();
+            appImManager.setInnerPeer({peerId});
+          }}
+        >
+          <PeerTitleTsx peerId={peerId} />
         </div>
       );
     }
@@ -315,6 +349,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
         <div
           dir="auto"
           class={classNames(
+            styles.Padding,
             styles.AuthorDate,
             'secondary',
             useContext(InstantViewContext).page.pFlags.rtl && 'text-right'
@@ -369,7 +404,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
     }
     case 'pageBlockRelatedArticles':
       return (
-        <div class={styles.Section}>
+        <>
           <div class={styles.SectionName}>
             {/* {useHotReloadGuard().i18n('InstantView.RelatedArticles')} */}
             <RichTextRenderer text={block.title} />
@@ -381,7 +416,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
               undefined;
             return (
               <>
-                {idx() && <div class={styles.RelatedArticleBorderTop} />}
+                {idx() && <div class={styles.Border} />}
                 <a
                   dir="auto"
                   href={wrapped.url}
@@ -422,27 +457,72 @@ function Block(props: {block: PageBlock, paddings: number}) {
               </>
             );
           }}</For>
-        </div>
+        </>
       );
     case 'pageBlockKicker':
       return (
-        <div class={classNames(styles.Kicker, 'text-bold')}>
+        <div class={classNames(styles.Padding, styles.Kicker, 'text-bold')}>
           <RichTextRenderer text={block.text} />
         </div>
       );
-      // case 'pageBlockDetails':
-      //   return (
-      //     <div class={styles.Details}>
-
-    //     </div>
-    //   );
+    case 'pageBlockPullquote':
+      return (
+        <div class={styles.Pullquote}>
+          <RichTextRenderer text={block.text} />
+          <Show when={!isRichTextEmpty(block.caption)}>
+            <div class={styles.BlockquoteCaption}>
+              <RichTextRenderer text={block.caption} />
+            </div>
+          </Show>
+        </div>
+      );
+    case 'pageBlockDetails': {
+      const [open, setOpen] = createSignal(!!block.pFlags.open);
+      const detailsMap = useContext(InstantViewContext).details;
+      return (
+        <div
+          ref={(ref) => {detailsMap.set(ref, setOpen)}}
+          class={classNames(styles.Details)}
+        >
+          <div
+            class={classNames(styles.DetailsSummary, 'hover-effect')}
+            onClick={() => setOpen(!open())}
+          >
+            <IconTsx
+              icon="down"
+              class={classNames(styles.DetailsIcon, open() && styles.DetailsIconOpen)}
+            />
+            <div class={classNames(styles.DetailsTitle, 'text-bold')}>
+              <RichTextRenderer text={block.title} />
+            </div>
+          </div>
+          <div class={styles.Border} />
+          <div
+            class={classNames(
+              styles.DetailsContent,
+              open() && styles.DetailsContentOpen
+            )}
+          >
+            <div class={styles.DetailsContentInner}>
+              <For each={block.blocks}>{(subBlock) => (
+                <Block block={subBlock} paddings={props.paddings} />
+              )}</For>
+            </div>
+          </div>
+        </div>
+      );
+    }
     default:
-      return <div class={styles.Unsupported}>Unsupported block: {block._}</div>;
+      return (
+        <div class={classNames(styles.Padding, styles.Unsupported)}>
+          Unsupported block: {block._}
+        </div>
+      );
   }
 }
 
 function isRichTextEmpty(text: RichText) {
-  return text._ === 'textEmpty';
+  return text._ === 'textEmpty' || (text._ === 'textPlain' && !text.text.trim());
 }
 
 function RichTextRenderer(props: {text: RichText}) {

@@ -6,18 +6,21 @@
   --padding-horizontal: calc(1rem * var(--iv-scale));
   --margin-horizontal: calc(var(--padding-horizontal) * -1);
   --paddings: 1;
-  padding: 0 var(--padding-horizontal);
+  --iv-font-size: calc(var(--font-size-16) * var(--iv-scale));
+  --iv-line-height: calc(var(--line-height-16) * var(--iv-scale));
+  // padding: 0 var(--padding-horizontal);
   background-color: var(--surface-color);
   color: var(--text-primary);
   font-family: var(--font-family);
   max-width: var(--iv-max-width);
   margin: 0 auto;
   user-select: text;
-  font-size: calc(var(--font-size-16) * var(--iv-scale));
-  line-height: calc(var(--line-height-16) * var(--iv-scale));
+  font-size: var(--iv-font-size);
+  line-height: var(--iv-line-height);
   min-height: 100%;
   position: relative;
-  padding-bottom: 2em;
+  display: flex;
+  flex-direction: column;
 
   :global(.text-highlight) {
     font-style: normal;
@@ -27,6 +30,22 @@
   // :global(.anchor-url) {
   //   color: var(--primary-color);
   // }
+
+  &Content {
+    flex: 1 1 auto;
+  }
+
+  &Footer {
+    background-color: var(--light-secondary-text-color);
+    padding: .25em var(--padding-horizontal);
+    font-size: .8888em;
+    text-align: center;
+    flex: 0 0 auto;
+  }
+}
+
+.Padding {
+  padding-inline: var(--padding-horizontal);
 }
 
 .Anchor {
@@ -41,9 +60,9 @@
   border-radius: .1666em;
 }
 
-.Section {
-  margin: 0 var(--margin-horizontal);
-}
+// .Section {
+//   margin: 0 var(--margin-horizontal);
+// }
 
 .SectionName {
   padding: .375em var(--padding-horizontal);
@@ -79,10 +98,10 @@
 }
 
 .Subheader {
-  font-size: 1.1em;
-  font-weight: 600;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
+  font-size: 1.1111em;
+  line-height: 1.3em;
+  font-weight: var(--font-weight-normal);
+  margin: 1em 0 0.5em;
 }
 
 .Paragraph {
@@ -94,30 +113,52 @@
   // padding: 0.2222em max(var(--padding-horizontal), 0.8888em);
   padding: 0.2222em var(--padding-horizontal);
   overflow-x: auto;
-  margin: 0.6666em var(--margin-horizontal);
+  margin-block: 0.6666em;
 }
 
 .Footer {
-  margin-top: 2em;
-  font-size: 0.9em;
-  color: var(--text-secondary);
-  border-top: 1px solid var(--divider-color);
-  padding-top: 1em;
+  margin: 1em 0;
 }
 
 .Divider {
-  border: 0;
-  border-top: 1px solid var(--divider-color);
-  margin: 2em 0;
+  margin: 1em auto;
+  height: 1px;
+  background-color: var(--border-color);
+  width: 50%;
 }
 
 .List {
   --margin-horizontal: 0em;
   margin-bottom: 1em;
-  padding-inline: var(--padding-horizontal);
+  padding-inline: calc(var(--padding-horizontal) * 2) var(--padding-horizontal);
+
+  .Padding {
+    padding-inline: 0;
+  }
+
+  .List {
+    padding-inline: var(--padding-horizontal) 0;
+  }
 
   &Item {
     margin-bottom: 0.5em;
+    position: relative;
+    min-height: var(--iv-line-height);
+
+    &Number {
+      position: absolute;
+      // inset-inline-start: calc(var(--padding-horizontal) * -1);
+      margin-inline-start: -100%;
+      pointer-events: none;
+      user-select: none;
+      text-align: end;
+      white-space: pre;
+      width: 100%;
+    }
+  }
+
+  &Ordered {
+    list-style: none;
   }
 
   .Table {
@@ -125,17 +166,37 @@
   }
 }
 
+.Pullquote {
+  margin: 0.5em 0;
+  font-size: 1.1111em;
+  line-height: 1.3em;
+  @include text-center();
+}
+
 .Blockquote {
-  border-left: 4px solid var(--primary-color);
-  margin: 1em 0;
-  padding-inline-start: var(--padding-horizontal);
+  margin: 0;
+  position: relative;
+  padding-inline: var(--padding-horizontal);
   font-style: italic;
-  
+
+  &Wrapper {
+    margin: 1em 0;
+  }
+
   &Caption {
     margin-top: 0.5em;
     font-size: 0.9em;
     color: var(--text-secondary);
     font-style: normal;
+  }
+
+  &Border {
+    position: absolute;
+    width: 0.2222em;
+    height: 100%;
+    inset-inline-start: 0;
+    background-color: var(--primary-color);
+    border-radius: 8px;
   }
 }
 
@@ -146,8 +207,8 @@
 }
 
 .Media {
-  --width: min(calc(var(--browser-width) - var(--padding-horizontal) * var(--paddings) * 2), var(--iv-max-width));
-  margin: 0 var(--margin-horizontal);
+  --width: min(calc(var(--browser-width) - var(--padding-horizontal) * var(--paddings)), var(--iv-max-width));
+  // margin: 0 var(--margin-horizontal);
   position: relative;
   width: var(--width) !important;
   height: calc(var(--width) / var(--aspect-ratio)) !important;
@@ -201,23 +262,12 @@
       object-fit: cover;
     }
   }
-
-  &BorderTop {
-    margin-inline-start: var(--padding-horizontal);
-    height: 1px;
-    background-color: var(--border-color);
-  }
 }
 
-.Meta {
-  background-color: var(--light-secondary-text-color);
-  padding: .25em var(--padding-horizontal);
-  font-size: .8888em;
-  text-align: center;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+.Border {
+  margin-inline-start: var(--padding-horizontal);
+  height: 1px;
+  background-color: var(--border-color);
 }
 
 .WrongLayout {
@@ -229,7 +279,7 @@
 }
 
 .Table {
-  margin: 0 var(--margin-horizontal);
+  // margin: 0 var(--margin-horizontal);
   // padding: 0 var(--padding-horizontal);
 
   &Wrapper {
@@ -240,6 +290,7 @@
     color: var(--secondary-text-color);
     font-size: 0.8888em;
     margin-bottom: 0.2222em;
+    padding-inline: var(--padding-horizontal);
   }
 }
 
@@ -259,5 +310,62 @@
   &Credit {
     font-size: 0.7222em;
     line-height: 1.3076923077em;
+  }
+}
+
+.Details {
+  // margin: 0 var(--margin-horizontal);
+  // overflow: hidden;
+
+  & & {
+    --margin-horizontal: 0em;
+    // --padding-horizontal: 0em;
+
+    // .DetailsSummary,
+    // .DetailsContentInner {
+    //   padding-inline: 0;
+    // }
+  }
+
+  // .Border {
+    // margin-inline: 0 var(--margin-horizontal);
+  // }
+
+  &Summary {
+    padding: 0.75em var(--padding-horizontal);
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  &Icon {
+    margin-inline: -.1777em var(--padding-horizontal);
+    font-size: 1.25em;
+    color: var(--text-secondary);
+    transition: transform 0.2s ease-in-out;
+
+    &Open {
+      transform: rotate(180deg);
+    }
+  }
+
+  &Title {
+    font-size: 1em;
+  }
+
+  &Content {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows var(--transition-standard-in);
+
+    &Open {
+      grid-template-rows: 1fr;
+    }
+
+    &Inner {
+      overflow: hidden;
+      // padding: 0 var(--padding-horizontal);
+    }
   }
 }
