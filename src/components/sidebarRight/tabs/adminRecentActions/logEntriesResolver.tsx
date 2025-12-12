@@ -207,7 +207,7 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
 
       const middleware = createMiddleware().get();
 
-      if(prevMessage && prevMessage.media._ === 'messageMediaPoll') {
+      if(prevMessage && prevMessage.media?._ === 'messageMediaPoll') {
         if(!prevMessage.media.poll.pFlags) prevMessage.media.poll.pFlags = {};
         prevMessage.media.poll.pFlags.closed = true;
       }
