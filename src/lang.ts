@@ -1255,6 +1255,8 @@ const lang = {
   'UserRestrictionsSendMedia': 'Send Media',
   'UserRestrictionsSendPolls': 'Send Polls',
   'UserRestrictionsSendStickers': 'Send Stickers and GIFs',
+  'UserRestrictionsSendStickersOnly': 'Send Stickers',
+  'UserRestrictionsSendGIFsOnly': 'Send GIFs',
   'UserRestrictionsSendPhotos': 'Send Photos',
   'UserRestrictionsSendVideos': 'Send Videos',
   'UserRestrictionsSendMusic': 'Send Music',
