@@ -44,6 +44,7 @@ import {AppDirectMessagesTab} from '../../solidJsTabs';
 import {AppAdminRecentActionsTab} from '../../solidJsTabs/tabs';
 import appImManager from '../../../lib/appManagers/appImManager';
 import {ChatType} from '../../chat/chat';
+import {appSettings} from '../../../stores/appSettings';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -448,11 +449,14 @@ export default class AppEditChatTab extends SliderSuperTab {
           icon: 'clipboard',
           titleLangKey: 'RecentActions',
           clickable: () => {
-            this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
-            appImManager.setPeer({
-              peerId: this.chatId.toPeerId(true),
-              type: ChatType.Logs
-            });
+            if(appSettings.logsDiffView) {
+              this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
+            } else {
+              appImManager.setPeer({
+                peerId: this.chatId.toPeerId(true),
+                type: ChatType.Logs
+              });
+            }
           },
           listenerSetter: this.listenerSetter
         });

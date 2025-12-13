@@ -3845,6 +3845,7 @@ const lang = {
 
   'RecentActions': 'Recent Actions',
   'FilterActions': 'Filter Actions',
+  'CompactDiffView': 'Compact / Diff View',
 
   'AdminRecentActionMessage.ChangeTitleChannel': 'Changed channel title',
   'AdminRecentActionMessage.ChangeTitleGroup': 'Changed group title',

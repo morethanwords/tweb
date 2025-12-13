@@ -73,6 +73,8 @@ import namedPromises from '../../helpers/namedPromises';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import {createEffect, createRoot, on} from 'solid-js';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import {AppAdminRecentActionsTab} from '../solidJsTabs/tabs';
+import {setAppSettings} from '../../stores/appSettings';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -620,7 +622,7 @@ export default class ChatTopbar {
       icon: 'message',
       text: 'ChannelDirectMessages.Manage',
       onClick: () => this.onDirectMessagesClick(),
-      verify: () => this.chat.isChannel && this.chat.canManageDirectMessages && !this.chat.isMonoforum && !!(this.chat.peer as MTChat.channel).linked_monoforum_id
+      verify: () => this.chat.isChannel && this.chat.canManageDirectMessages && !this.chat.isMonoforum && !!(this.chat.peer as MTChat.channel).linked_monoforum_id && this.chat.type !== ChatType.Logs
     }, {
       icon: 'statistics',
       text: 'Statistics',
@@ -706,6 +708,20 @@ export default class ChatTopbar {
       text: 'PaidMessages.RemoveFee',
       onClick: () => this.onToggleFeeClick(false),
       verify: () => this.verifyToggleFee(false)
+    }, {
+      icon: 'clipboard',
+      text: 'CompactDiffView',
+      onClick: async() => {
+        await this.chat.setPeer({peerId: this.peerId});
+        setAppSettings('logsDiffView', true);
+
+        this.appSidebarRight.toggleSidebar(true);
+        this.appSidebarRight.createTab(AppAdminRecentActionsTab).open({
+          channelId: this.peerId.toChatId(),
+          isBroadcast: this.chat.isBroadcast
+        });
+      },
+      verify: () => this.chat.type === ChatType.Logs
     }, {
       icon: 'delete',
       danger: true,

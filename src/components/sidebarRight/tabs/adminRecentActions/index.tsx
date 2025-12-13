@@ -10,6 +10,7 @@ import pause from '../../../../helpers/schedulers/pause';
 import {createSetSignal} from '../../../../helpers/solid/createSetSignal';
 import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import {setAppSettings} from '../../../../stores/appSettings';
 import {ButtonIconTsx} from '../../../buttonIconTsx';
 import {DynamicVirtualList} from '../../../dynamicVirtualList';
 import ripple from '../../../ripple';
@@ -41,8 +42,8 @@ const thumbUpdateDebounceTimeout = 100;
 const testEmpty = 0;
 
 const AdminRecentActionsTab = () => {
-  const {rootScope, PeerTitleTsx, apiManagerProxy} = useHotReloadGuard();
-  const [tab, allTabs] = useSuperTab<typeof AppAdminRecentActionsTab>();
+  const {rootScope, PeerTitleTsx, apiManagerProxy, appImManager, ChatType} = useHotReloadGuard();
+  const [tab] = useSuperTab<typeof AppAdminRecentActionsTab>();
 
   const isForum = apiManagerProxy.isForum(tab.payload.channelId.toPeerId(true));
 
@@ -147,9 +148,14 @@ const AdminRecentActionsTab = () => {
     });
   };
 
-  // createEffect(() => {
-  //   console.log('my-debug', {logs: logs()})
-  // });
+  const onChatView = () => {
+    setAppSettings('logsDiffView', false);
+    tab.close();
+    appImManager.setPeer({
+      peerId: tab.payload.channelId.toPeerId(true),
+      type: ChatType.Logs
+    });
+  };
 
   const onNearBottom = () => {
     fetchMore();
@@ -158,18 +164,19 @@ const AdminRecentActionsTab = () => {
 
   return <>
     <Portal mount={tab.header}>
-      <Transition name='fade' mode='outin'>
-        <Show when={logs().length || committedFilters()}>
-          <div class={styles.IconsFlex}>
-            <Transition name='fade'>
-              <Show when={logs().length}>
-                <ExpandToggleButton expanded={areAllExpanded()} onClick={onAllToggle} />
-              </Show>
-            </Transition>
+      <div class={styles.IconsFlex}>
+        <Transition name='fade' mode='outin'>
+          <Show when={logs().length}>
+            <ExpandToggleButton expanded={areAllExpanded()} onClick={onAllToggle} />
+          </Show>
+        </Transition>
+        <Transition name='fade' mode='outin'>
+          <Show when={logs().length || committedFilters()}>
             <ButtonIconTsx icon='filter' onClick={() => setIsFiltersOpen(!isFiltersOpen())} />
-          </div>
-        </Show>
-      </Transition>
+          </Show>
+        </Transition>
+        <ButtonIconTsx icon='message' onClick={onChatView} />
+      </div>
     </Portal>
     <Portal mount={tab.content}>
       <Filters
