@@ -3844,6 +3844,7 @@ const lang = {
   'TonGiftSubtitle': 'Use TON to buy gifts and suggest posts to channels.',
 
   'RecentActions': 'Recent Actions',
+  'FilterActions': 'Filter Actions',
 
   'AdminRecentActionMessage.ChangeTitleChannel': 'Changed channel title',
   'AdminRecentActionMessage.ChangeTitleGroup': 'Changed group title',

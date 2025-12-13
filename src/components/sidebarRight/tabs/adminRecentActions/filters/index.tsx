@@ -1,9 +1,7 @@
-import {batch, createComputed, createMemo, createSignal, Show} from 'solid-js';
+import {batch, createComputed, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {IS_MOBILE} from '../../../../../environment/userAgent';
 import track from '../../../../../helpers/solid/track';
-import useElementSize from '../../../../../hooks/useElementSize';
-import Scrollable from '../../../../scrollable2';
 import {FlagFilters} from './flagFilters';
 import styles from './styles.module.scss';
 import {CommittedFilters} from './types';
@@ -23,18 +21,6 @@ const focusDelay = 100;
 
 export const Filters = (props: FiltersProps) => {
   const filtersControls = useFlagFilters({channelId: () => props.channelId});
-
-  const [cardElement, setCardElement] = createSignal<HTMLDivElement | null>(null);
-  const [contentElement, setContentElement] = createSignal<HTMLDivElement | null>(null);
-
-  const cardSize = useElementSize(cardElement);
-  const contentSize = useElementSize(contentElement);
-
-
-  const isOverflowing = createMemo(() => {
-    if(!cardElement() || !contentElement()) return false;
-    return cardSize.height < contentSize.height;
-  });
 
   createComputed(() => {
     track(() => props.open);
@@ -79,18 +65,14 @@ export const Filters = (props: FiltersProps) => {
               <div class={styles.ContainerBackdropFill} />
               <div class={styles.ContainerBackdropExtension} />
             </div>
-            <div class={styles.Card} ref={setCardElement}>
-              <Scrollable classList={{[styles.hideThumb]: !isOverflowing()}} relative>
-                <div class={styles.Content} ref={setContentElement}>
-                  <FlagFilters
-                    filtersControls={filtersControls}
-                    inputRef={onInputRef}
-                    onCommit={onCommit}
-                    onReset={onReset}
-                    hasSearch
-                  />
-                </div>
-              </Scrollable>
+            <div class={styles.Card}>
+              <FlagFilters
+                filtersControls={filtersControls}
+                inputRef={onInputRef}
+                onCommit={onCommit}
+                onReset={onReset}
+                hasSearch
+              />
             </div>
           </div>
         </Show>

@@ -756,19 +756,8 @@ export default class Chat extends EventListenerBase<{
       freezeObservers(this.appImManager.chat !== this || (tabId !== APP_TABS.CHAT && mediaSizes.activeScreen === ScreenSize.mobile));
     });
 
-    const setInChatQuery = (query: string) => {
-      let options: ChatSetPeerOptions;
-
-      if(this.type === ChatType.Logs) options = {
-        peerId: this.peerId,
-        type: ChatType.Logs
-      };
-
-      if(options) this.bubbles.setInChatQuery(query, options);
-    };
-
     const setInChatQueryDebounced = debounce((query: string) => {
-      setInChatQuery(query);
+      this.bubbles.setInChatQuery(query);
     }, 300, false, true);
 
     const hasInChatQuery = () => this.type === ChatType.Logs;
@@ -825,7 +814,7 @@ export default class Chat extends EventListenerBase<{
           onValueChange: hasInChatQuery() ? setInChatQueryDebounced : undefined,
           onClose: () => {
             this.searchSignal(undefined);
-            setInChatQuery('');
+            this.bubbles.setInChatQuery('');
           },
           onDatePick: this.type === ChatType.Logs ? undefined : (timestamp) => {
             this.bubbles.onDatePick(timestamp);

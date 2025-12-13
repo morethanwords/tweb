@@ -214,6 +214,7 @@ import {SuggestBirthdayBubble} from './bubbles/suggestBirthday';
 import {AdminLog} from '../../lib/appManagers/appChatsManager';
 import {renderComponent} from '../../helpers/solid/renderComponent';
 import {NoneToVoidFunction} from '../../types';
+import type {CommittedFilters} from '../sidebarRight/tabs/adminRecentActions/filters';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -317,14 +318,13 @@ type EmptyPlaceholderType =
 let resolveAdminLog: typeof import('./bubbleParts/adminLogsResolver').resolveAdminLog;
 let adminLogResolverPromise: Promise<void>;
 
-// Lazy-load resolveAdminLog only when needed
 const ensureAdminLogResolver = () => {
-  if(!adminLogResolverPromise) {
-    adminLogResolverPromise = import('./bubbleParts/adminLogsResolver').then((module) => {
-      resolveAdminLog = module.resolveAdminLog;
-    });
-  }
-  return adminLogResolverPromise;
+  if(resolveAdminLog) return;
+
+  return adminLogResolverPromise ??= (async() => {
+    const module = await import('./bubbleParts/adminLogsResolver');
+    resolveAdminLog = module.resolveAdminLog;
+  })();
 };
 
 let rerenderLogBubblesCallbacks: NoneToVoidFunction[];
@@ -559,6 +559,8 @@ export default class ChatBubbles {
 
   // for filtering the contents of the chat rather then showing up results in the topbar search
   private inChatQuery?: string;
+
+  public committedLogsFilters?: CommittedFilters;
 
   constructor(
     private chat: Chat,
@@ -5445,7 +5447,9 @@ export default class ChatBubbles {
       animationGroup: this.chat.animationGroup
     };
 
-    await ensureAdminLogResolver();
+    const promise = ensureAdminLogResolver();
+    if(promise) await promise;
+
     const entry = resolveAdminLog({
       channelId: this.peerId.toChatId(),
       event: log,
@@ -8613,6 +8617,8 @@ export default class ChatBubbles {
           const {items: logs, isStart, isEnd} = await this.managers.appChatsManager.getAdminLogs({
             channelId: peerId.toChatId(),
             search: this.inChatQuery,
+            admins: this.committedLogsFilters?.admins,
+            flags: this.committedLogsFilters?.flags,
             offsetId,
             limit,
             backLimit
@@ -10070,12 +10076,29 @@ export default class ChatBubbles {
     return this.chat.isLikeGroup && !this.chat.isOutMessage(message);
   }
 
-  public setInChatQuery(query: string, setPeerOptions: ChatSetPeerOptions) {
+  private reload() {
+    this.cleanup(true);
+    this.setPeer({
+      peerId: this.peerId,
+      type: this.chat.type,
+      samePeer: false,
+      sameSearch: false
+    });
+  }
+
+  public setInChatQuery(query: string) {
     query = query || undefined;
     if(query === this.inChatQuery) return;
 
-    this.cleanup(true);
     this.inChatQuery = query;
-    this.setPeer({...setPeerOptions, samePeer: false, sameSearch: false});
+    this.reload();
+  }
+
+  public setLogFilters(filters?: CommittedFilters) {
+    filters === filters || undefined;
+    if(filters === this.committedLogsFilters) return;
+
+    this.committedLogsFilters = filters;
+    this.reload();
   }
 }

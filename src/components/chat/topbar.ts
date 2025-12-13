@@ -72,6 +72,7 @@ import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import namedPromises from '../../helpers/namedPromises';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import {createEffect, createRoot, on} from 'solid-js';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -94,6 +95,7 @@ export default class ChatTopbar {
   private btnGroupCallMenu: HTMLElement;
   private btnMute: HTMLButtonElement;
   private btnSearch: HTMLButtonElement;
+  private btnLogFilters: HTMLButtonElement;
   private btnMore: HTMLElement;
   private btnDirectMessages: HTMLElement;
 
@@ -211,6 +213,7 @@ export default class ChatTopbar {
       this.btnGroupCallMenu,
       this.btnMute,
       this.btnSearch,
+      this.btnLogFilters,
       this.btnMore
     ].filter(Boolean));
 
@@ -446,6 +449,13 @@ export default class ChatTopbar {
         this.chat.initSearch();
       },
       verify: () => mediaSizes.isMobile
+    }, {
+      icon: 'filter',
+      text: 'FilterActions',
+      onClick: () => {
+        this.onFilterActionsClick();
+      },
+      verify: () => mediaSizes.isMobile
     }, /* {
       icon: 'pinlist',
       text: 'Pinned Messages',
@@ -541,7 +551,7 @@ export default class ChatTopbar {
           selection.toggleByElement(bubble);
         };
       },
-      verify: () => !this.chat.selection.isSelecting && !!this.chat.bubbles.getRenderedLength()
+      verify: () => !this.chat.selection.isSelecting && !!this.chat.bubbles.getRenderedLength() && !(this.chat.type === ChatType.Logs)
     }, {
       icon: 'select',
       text: 'Chat.Menu.ClearSelection',
@@ -603,7 +613,9 @@ export default class ChatTopbar {
       icon: 'gift',
       text: 'Chat.Menu.SendGift',
       onClick: () => PopupElement.createPopup(PopupSendGift, {peerId: this.peerId}),
-      verify: async() => this.chat.isChannel || (this.chat.peerId.isUser() && this.managers.appUsersManager.isRegularUser(this.peerId))
+      verify: async() => (
+        this.chat.isChannel || (this.chat.peerId.isUser() && this.managers.appUsersManager.isRegularUser(this.peerId))
+      ) && !(this.chat.type === ChatType.Logs)
     }, {
       icon: 'message',
       text: 'ChannelDirectMessages.Manage',
@@ -715,6 +727,11 @@ export default class ChatTopbar {
     this.attachClickEvent(this.btnSearch, (e) => {
       this.chat.initSearch();
     }, true);
+
+    this.btnLogFilters = ButtonIcon('filter');
+    this.attachClickEvent(this.btnLogFilters, () => {
+      this.onFilterActionsClick();
+    });
   }
 
   public addContact() {
@@ -805,6 +822,19 @@ export default class ChatTopbar {
   private onJoinGroupCallClick = () => {
     this.chat.appImManager.joinGroupCall(this.peerId);
   };
+
+  private onFilterActionsClick = async() => {
+    const {default: LogFiltersPopup} = await import('./logFiltersPopup');
+
+    new LogFiltersPopup({
+      channelId: this.peerId.toChatId(),
+      committedFilters: this.chat.bubbles.committedLogsFilters,
+      HotReloadGuard: SolidJSHotReloadGuardProvider,
+      onFinish: ({committedFilters}) => {
+        this.chat.bubbles.setLogFilters(committedFilters);
+      }
+    }).show();
+  }
 
   private get peerId() {
     return this.chat.peerId;
@@ -1158,6 +1188,10 @@ export default class ChatTopbar {
         this.btnSearch.classList.toggle('hide', !canHaveSearch);
       }
 
+      if(this.btnLogFilters) {
+        this.btnLogFilters.classList.toggle('hide', this.chat.type !== ChatType.Logs);
+      }
+
       if(this.btnPinned) {
         this.btnPinned.classList.toggle('hide', !canHaveSomeButtons);
       }
@@ -1181,8 +1215,10 @@ export default class ChatTopbar {
 
       this.verifyButtons();
 
+      const canHaveMore = canHaveSomeButtons || this.chat.type === ChatType.Logs;
+
       if(this.btnMore) {
-        this.btnMore.classList.toggle('hide', !canHaveSomeButtons);
+        this.btnMore.classList.toggle('hide', !canHaveMore);
       }
 
       const isPinnedMessagesNeeded = this.chat.isPinnedMessagesNeeded();

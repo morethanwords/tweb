@@ -2,6 +2,7 @@ import {For, Show} from 'solid-js';
 import {I18nTsx} from '../../../../../helpers/solid/i18n';
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import Button from '../../../../buttonTsx';
+import Scrollable from '../../../../scrollable2';
 import SimpleFormField from '../../../../simpleFormField';
 import Space from '../../../../space';
 import {limitPeerTitleSymbols} from '../constants';
@@ -35,21 +36,21 @@ export const FlagFilters = (props: {
     onCommit();
   };
 
-  return (
-    <>
-      <Show when={props.hasSearch}>
-        <Space amount='2px' />
+  return <>
+    <Show when={props.hasSearch}>
+      <Space amount='2px' />
 
-        <form class={styles.Search} onSubmit={onSubmit}>
-          <SimpleFormField value={filtersControls().search()} onChange={filtersControls().onSearchChange}>
-            <SimpleFormField.Label><I18nTsx key='Search' /></SimpleFormField.Label>
-            <SimpleFormField.Input ref={/* @once */props.inputRef} />
-          </SimpleFormField>
-        </form>
+      <form class={styles.Search} onSubmit={onSubmit}>
+        <SimpleFormField value={filtersControls().search()} onChange={filtersControls().onSearchChange}>
+          <SimpleFormField.Label><I18nTsx key='Search' /></SimpleFormField.Label>
+          <SimpleFormField.Input ref={/* @once */props.inputRef} />
+        </SimpleFormField>
+      </form>
 
-        <Space amount='1rem' />
-      </Show>
+      <Space amount='1rem' />
+    </Show>
 
+    <Scrollable class={styles.Scrollable} withBorders='both' relative>
       <div class={styles.SectionTitle}>
         <I18nTsx key='AdminRecentActionsFilters.ByType' />
       </div>
@@ -89,16 +90,17 @@ export const FlagFilters = (props: {
         </div>
       </Show>
 
-      <Space amount='1rem' />
+    </Scrollable>
 
-      <div class={styles.Footer}>
-        <Button class={styles.Button} primary onClick={props.onReset}>
-          <I18nTsx key='AdminRecentActionsFilters.ResetFilters' />
-        </Button>
-        <Button class={styles.Button} primaryFilled onClick={onCommit}>
-          <I18nTsx key='AdminRecentActionsFilters.ApplyFilters' />
-        </Button>
-      </div>
-    </>
-  );
+    <Space amount='1rem' />
+
+    <div class={styles.Footer}>
+      <Button class={styles.Button} primary onClick={props.onReset}>
+        <I18nTsx key='AdminRecentActionsFilters.ResetFilters' />
+      </Button>
+      <Button class={styles.Button} primaryFilled onClick={onCommit}>
+        <I18nTsx key='AdminRecentActionsFilters.ApplyFilters' />
+      </Button>
+    </div>
+  </>
 };

@@ -1,5 +1,5 @@
 import {Accessor, createMemo, createResource, createSelector, createSignal} from 'solid-js';
-import {createStore} from 'solid-js/store';
+import {createStore, reconcile} from 'solid-js/store';
 import {createSetSignal} from '../../../../../helpers/solid/createSetSignal';
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import {FilterGroupConfigItem, filterGroupsConfig} from './config';
@@ -105,7 +105,7 @@ export function useFlagFilters({channelId}: UseFlagFiltersArgs) {
 
   const setFromCommittedFilters = (committedFilters?: CommittedFilters | null) => {
     setSearch(committedFilters?.search || '');
-    setSelectedFlagsStore(committedFilters?.flags || getInitialFlagsStore());
+    setSelectedFlagsStore(reconcile(committedFilters?.flags || getInitialFlagsStore()));
     setSelectedAdminIds(new Set(committedFilters?.admins || allAdminPeerIds()));
   };
 

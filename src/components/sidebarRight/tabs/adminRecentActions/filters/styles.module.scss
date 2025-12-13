@@ -67,11 +67,13 @@
   background-color: var(--surface-color);
   border-radius: 12px;
 
+  min-height: 0;
+  padding: 16px 12px;
+
   pointer-events: initial;
 }
 
 .Content {
-  padding: 16px 12px;
 }
 
 .hideThumb {
