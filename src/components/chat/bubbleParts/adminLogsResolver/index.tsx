@@ -304,10 +304,10 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     Content: () => {
       const diff = diffFlags(action.prev_banned_rights?.pFlags, action.new_banned_rights?.pFlags);
 
-      const added = diff.new.map(key => participantRightsMap[key])
+      const added = diff.old.map(key => participantRightsMap[key])
       .filter(Boolean).map(key => i18n(key))
 
-      const removed = diff.old.map(key => participantRightsMap[key])
+      const removed = diff.new.map(key => participantRightsMap[key])
       .filter(Boolean).map(key => i18n(key))
 
       return (
