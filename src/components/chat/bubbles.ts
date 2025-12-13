@@ -212,8 +212,8 @@ import {wrapTopicIcon} from '../wrappers/messageActionTextNewUnsafe';
 import {getTransition} from '../../config/transitions';
 import {SuggestBirthdayBubble} from './bubbles/suggestBirthday';
 import {AdminLog} from '../../lib/appManagers/appChatsManager';
-import {resolveAdminLog as importedResolveAdminLog} from './bubbleParts/adminLogsResolver';
 import {renderComponent} from '../../helpers/solid/renderComponent';
+import {NoneToVoidFunction} from '../../types';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -314,8 +314,20 @@ type EmptyPlaceholderType =
   | 'topic'
 ;
 
-let rerenderLogBubblesCallbacks: (() => void)[];
-let resolveAdminLog = importedResolveAdminLog;
+let resolveAdminLog: typeof import('./bubbleParts/adminLogsResolver').resolveAdminLog;
+let adminLogResolverPromise: Promise<void>;
+
+// Lazy-load resolveAdminLog only when needed
+const ensureAdminLogResolver = () => {
+  if(!adminLogResolverPromise) {
+    adminLogResolverPromise = import('./bubbleParts/adminLogsResolver').then((module) => {
+      resolveAdminLog = module.resolveAdminLog;
+    });
+  }
+  return adminLogResolverPromise;
+};
+
+let rerenderLogBubblesCallbacks: NoneToVoidFunction[];
 
 if(import.meta.hot) {
   rerenderLogBubblesCallbacks = [];
@@ -5433,6 +5445,7 @@ export default class ChatBubbles {
       animationGroup: this.chat.animationGroup
     };
 
+    await ensureAdminLogResolver();
     const entry = resolveAdminLog({
       channelId: this.peerId.toChatId(),
       event: log,
@@ -10031,6 +10044,12 @@ export default class ChatBubbles {
   public isAvatarNeeded(message: Message.message | Message.messageService | AdminLog) {
     if(message?._ === 'channelAdminLogEvent') {
       if(message.user_id?.toPeerId() === rootScope.myId) return false;
+
+      // If resolveAdminLog hasn't been loaded yet (unlikely in practice since renderLog would have loaded it),
+      // return false as a safe default to show avatars for admin log entries
+      if(!resolveAdminLog) {
+        return false;
+      }
 
       const entry = resolveAdminLog({
         channelId: this.peerId.toChatId(),
