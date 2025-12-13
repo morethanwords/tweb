@@ -143,3 +143,10 @@
   margin-top: 0.75rem;
   margin-bottom: 0.5rem;
 }
+
+.confetti {
+  // offset bubble padding
+  margin: -2px -8px -5px;
+  width: calc(100% + 16px);
+  height: calc(100% + 7px);
+}

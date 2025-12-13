@@ -715,10 +715,10 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           langPackKey = 'StarGiftSentMessageSelf';
           args = [(action.gift as StarGift.starGift).stars];
         } else if(message.pFlags.out) {
-          langPackKey = 'StarGiftSentMessageOutgoing';
+          langPackKey = action.pFlags.upgrade_separate ? 'StarGiftSentMessagePrepaidOutgoing' : 'StarGiftSentMessageOutgoing';
           args = [(action.gift as StarGift.starGift).stars];
         } else {
-          langPackKey = 'StarGiftSentMessageIncoming';
+          langPackKey = action.pFlags.upgrade_separate ? 'StarGiftSentMessagePrepaidIncoming' : 'StarGiftSentMessageIncoming';
           args = [getNameDivHTML(message.fromId, plain), (action.gift as StarGift.starGift).stars];
         }
         break;
