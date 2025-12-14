@@ -75,6 +75,7 @@ import {createEffect, createRoot, on} from 'solid-js';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import {AppAdminRecentActionsTab} from '../solidJsTabs/tabs';
 import {setAppSettings} from '../../stores/appSettings';
+import {wrapAsyncClickHandler} from '../../helpers/wrapAsyncClickHandler';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -839,7 +840,7 @@ export default class ChatTopbar {
     this.chat.appImManager.joinGroupCall(this.peerId);
   };
 
-  private onFilterActionsClick = async() => {
+  private onFilterActionsClick = wrapAsyncClickHandler(async() => {
     const {default: LogFiltersPopup} = await import('./logFiltersPopup');
 
     new LogFiltersPopup({
@@ -850,7 +851,7 @@ export default class ChatTopbar {
         this.chat.bubbles.setLogFilters(committedFilters);
       }
     }).show();
-  }
+  })
 
   private get peerId() {
     return this.chat.peerId;
