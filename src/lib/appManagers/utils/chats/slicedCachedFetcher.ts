@@ -90,7 +90,7 @@ export class SlicedCachedFetcher<T> {
     return {
       items,
       isStart: !offsetId || (tookFromFirstSlice && isSliceStart),
-      isEnd: this.isEnd && (tookFromLastSlice && isSliceEnd || !offsetId)
+      isEnd: this.isEnd && (tookFromLastSlice && isSliceEnd || !this.cachedSlices.length)
     };
   }
 }

@@ -39,7 +39,7 @@ const LogFiltersPopupContent = defineSolidElement({
       <FlagFilters
         filtersControls={filtersControls}
         onCommit={onCommit}
-        onReset={onCommit}
+        onReset={() => onCommit()}
       />
     </>;
   }
