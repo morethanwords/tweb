@@ -6,7 +6,7 @@ import Scrollable from '../../../../scrollable2';
 import SimpleFormField from '../../../../simpleFormField';
 import Space from '../../../../space';
 import {limitPeerTitleSymbols} from '../constants';
-import {filterGroupsConfig} from './config';
+
 import {ExpandableFilterGroup} from './expandableFilterGroup';
 import styles from './flagFilters.module.scss';
 import {CommittedFilters} from './types';
@@ -54,7 +54,7 @@ export const FlagFilters = (props: {
       <div class={styles.SectionTitle}>
         <I18nTsx key='AdminRecentActionsFilters.ByType' />
       </div>
-      <For each={filterGroupsConfig}>
+      <For each={filtersControls().filterGroupsConfig()}>
         {group => (
           <ExpandableFilterGroup
             mainLabel={<I18nTsx key={group.i18nKey} />}

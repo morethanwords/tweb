@@ -181,6 +181,7 @@ const AdminRecentActionsTab = () => {
     <Portal mount={tab.content}>
       <Filters
         channelId={tab.payload.channelId}
+        isBroadcast={tab.payload.isBroadcast}
         open={isFiltersOpen()}
         onClose={() => setIsFiltersOpen(false)}
         committedFilters={committedFilters()}

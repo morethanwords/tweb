@@ -10,6 +10,7 @@ import {useFlagFilters} from './useFlagFilters';
 
 type FiltersProps = {
   channelId: ChatId;
+  isBroadcast: boolean;
   open: boolean;
   onClose?: () => void;
 
@@ -20,7 +21,7 @@ type FiltersProps = {
 const focusDelay = 100;
 
 export const Filters = (props: FiltersProps) => {
-  const filtersControls = useFlagFilters({channelId: () => props.channelId});
+  const filtersControls = useFlagFilters({channelId: () => props.channelId, isBroadcast: () => props.isBroadcast});
 
   createComputed(() => {
     track(() => props.open);

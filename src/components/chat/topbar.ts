@@ -845,6 +845,7 @@ export default class ChatTopbar {
 
     new LogFiltersPopup({
       channelId: this.peerId.toChatId(),
+      isBroadcast: this.chat.isBroadcast,
       committedFilters: this.chat.bubbles.committedLogsFilters,
       HotReloadGuard: SolidJSHotReloadGuardProvider,
       onFinish: ({committedFilters}) => {

@@ -11,6 +11,7 @@ if(import.meta.hot) import.meta.hot.accept();
 
 export type LogFiltersPopupContentProps = {
   channelId: ChatId;
+  isBroadcast: boolean;
   committedFilters?: CommittedFilters | null;
   onFinish: (payload: FinishPayload) => void;
 };
@@ -24,7 +25,7 @@ const LogFiltersPopupContent = defineSolidElement({
   component: (props: PassedProps<LogFiltersPopupContentProps>) => {
     attachHotClassName(props.element, styles.Container);
 
-    const filtersControls = useFlagFilters({channelId: () => props.channelId});
+    const filtersControls = useFlagFilters({channelId: () => props.channelId, isBroadcast: () => props.isBroadcast});
 
     createComputed(() => {
       console.log('my-debug', props.committedFilters);

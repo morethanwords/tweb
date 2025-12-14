@@ -2,18 +2,28 @@ import {Accessor, createMemo, createResource, createSelector, createSignal} from
 import {createStore, reconcile} from 'solid-js/store';
 import {createSetSignal} from '../../../../../helpers/solid/createSetSignal';
 import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
-import {FilterGroupConfigItem, filterGroupsConfig} from './config';
+import {FilterGroupConfigItem, getFilterGroupsConfig} from './config';
 import {CommittedFilters} from './types';
 
 
 type UseFlagFiltersArgs = {
   channelId: Accessor<ChatId>;
+  isBroadcast: Accessor<boolean>;
 };
 
 const adminsFetchLimit = 40; // Have more admins? I'm really sorry :)
 
-export function useFlagFilters({channelId}: UseFlagFiltersArgs) {
+export function useFlagFilters({channelId, isBroadcast}: UseFlagFiltersArgs) {
   const {rootScope} = useHotReloadGuard();
+
+  const filterGroupsConfig = createMemo(() => getFilterGroupsConfig({isBroadcast: isBroadcast()}));
+
+  const getAllFlagKeys = () => filterGroupsConfig().flatMap(group => group.items.map(item => item.pFlag));
+
+  const getInitialFlagsStore = () => {
+    const keys = getAllFlagKeys();
+    return Object.fromEntries(keys.map(key => [key, true]));
+  };
 
   const [adminsResource] = createResource(channelId, (id) =>
     rootScope.managers.appProfileManager.getChannelParticipants({
@@ -110,6 +120,8 @@ export function useFlagFilters({channelId}: UseFlagFiltersArgs) {
   };
 
   return {
+    filterGroupsConfig,
+
     adminIds,
     notShowingAdmins,
 
@@ -130,11 +142,3 @@ export function useFlagFilters({channelId}: UseFlagFiltersArgs) {
     flagGroupCheckCount
   };
 }
-
-const getAllFlagKeys = () => filterGroupsConfig.flatMap(group => group.items.map(item => item.pFlag));
-
-const getInitialFlagsStore = () => {
-  const keys = getAllFlagKeys();
-
-  return Object.fromEntries(keys.map(key => [key, true]));
-};
