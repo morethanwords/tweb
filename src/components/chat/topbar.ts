@@ -76,6 +76,7 @@ import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvi
 import {AppAdminRecentActionsTab} from '../solidJsTabs/tabs';
 import {setAppSettings} from '../../stores/appSettings';
 import {wrapAsyncClickHandler} from '../../helpers/wrapAsyncClickHandler';
+import liteMode from '../../helpers/liteMode';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -712,16 +713,20 @@ export default class ChatTopbar {
     }, {
       icon: 'clipboard',
       text: 'CompactDiffView',
-      onClick: async() => {
+      onClick: wrapAsyncClickHandler(async() => {
         await this.chat.setPeer({peerId: this.peerId});
         setAppSettings('logsDiffView', true);
 
-        this.appSidebarRight.toggleSidebar(true);
+        // awaiting this doesn't help
+        this.appSidebarRight.toggleSidebar(true, true);
+
+        if(liteMode.isAvailable('animations')) await pause(100);
+
         this.appSidebarRight.createTab(AppAdminRecentActionsTab).open({
           channelId: this.peerId.toChatId(),
           isBroadcast: this.chat.isBroadcast
         });
-      },
+      }),
       verify: () => this.chat.type === ChatType.Logs
     }, {
       icon: 'delete',
