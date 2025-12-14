@@ -215,6 +215,7 @@ import {AdminLog} from '../../lib/appManagers/appChatsManager';
 import {renderComponent} from '../../helpers/solid/renderComponent';
 import {NoneToVoidFunction} from '../../types';
 import type {CommittedFilters} from '../sidebarRight/tabs/adminRecentActions/filters';
+import deepEqual from '../../helpers/object/deepEqual';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -6305,6 +6306,31 @@ export default class ChatBubbles {
 
     if(needToSetHTML) {
       setInnerHTML(messageDiv, richText);
+
+      const canShowPreviousMessage = ((originalMessage?: Message): originalMessage is Message.message  => {
+        if(originalMessage?._ !== 'message' || !originalMessage.message) return false;
+        if(message?._ !== 'message') return false;
+
+        return (
+          message.message !== originalMessage.message ||
+          !deepEqual(message.entities, originalMessage.entities)
+        );
+      });
+
+      if(canShowPreviousMessage(originalMessage)) {
+        const container = wrapReply({
+          setColorPeerId: originalMessage.fromId,
+          title: i18n('AdminRecentActions.PreviousMessage'),
+          quote: {
+            text: originalMessage.message,
+            entities: originalMessage.entities
+          },
+          middleware
+        }).container;
+
+        container.classList.add('margin-0');
+        messageDiv.appendChild(container);
+      }
     }
 
     const usedId = message.mid;

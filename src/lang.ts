@@ -3961,6 +3961,7 @@ const lang = {
   'AdminRecentActions.JoinMuted': 'Join muted',
   'AdminRecentActions.AutoDeleteTimer': 'Auto-delete timer',
   'AdminRecentActions.PreviousDescription': 'Previous description',
+  'AdminRecentActions.PreviousMessage': 'Previous message',
   'AdminRecentActions.PreviousLink': 'Previous link',
 
   'AdminLog.ChangeTitleChannel': '%s changed the channel title to %s',
