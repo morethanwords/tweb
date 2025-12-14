@@ -1079,7 +1079,12 @@
         text-align: center;
       }
 
-      &-premiumRequired, &-paidMessages, &-directChannelMessages {
+      .empty-bubble-placeholder-logs-subtitle {
+        max-width: 240px;
+        text-align: center;
+      }
+
+      &-premiumRequired, &-paidMessages, &-directChannelMessages, &-logs {
         .empty-bubble-placeholder-sticker {
           width: 8rem !important;
           height: 8rem !important;
@@ -1107,7 +1112,7 @@
         }
       }
 
-      &-directChannelMessages {
+      &-directChannelMessages, &-logs {
         .empty-bubble-placeholder-sticker {
           font-size: 80px;
           display: flex;

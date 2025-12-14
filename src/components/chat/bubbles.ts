@@ -313,6 +313,7 @@ type EmptyPlaceholderType =
   | 'paidMessages'
   | 'directChannelMessages'
   | 'topic'
+  | 'logs'
 ;
 
 let resolveAdminLog: typeof import('./bubbleParts/adminLogsResolver').resolveAdminLog;
@@ -9073,6 +9074,21 @@ export default class ChatBubbles {
       subtitle.classList.add('center', BASE_CLASS + '-topic-subtitle');
 
       elements.push(stickerDiv, title, subtitle);
+    } else if(type === 'logs') {
+      const stickerDiv = document.createElement('div');
+      stickerDiv.classList.add(BASE_CLASS + '-sticker');
+      stickerDiv.append(Icon('clipboard'));
+
+      const hasFilters = this.inChatQuery || this.committedLogsFilters;
+      console.log('my-debug', {hasFilters})
+
+      const title = i18n(!hasFilters ? 'AdminRecentActionsPlaceholder.Title' : 'AdminRecentActionsPlaceholder.WithFilterTitle');
+      title.classList.add('center', BASE_CLASS + '-title');
+
+      const subtitle = i18n(!hasFilters ? 'AdminRecentActionsPlaceholder.Description' : 'AdminRecentActionsPlaceholder.WithFilterDescription');
+      subtitle.classList.add('center', BASE_CLASS + '-logs-subtitle');
+
+      elements.push(stickerDiv, title, subtitle);
     }
 
     if(listElements) {
@@ -9215,6 +9231,8 @@ export default class ChatBubbles {
         }
       } else if((this.chat.isBotforum || this.chat.isForum) && this.chat.threadId) {
         renderPromise = this.renderEmptyPlaceholder('topic', bubble, message, elements);
+      } else if(this.chat.type === ChatType.Logs) {
+        renderPromise = this.renderEmptyPlaceholder('logs', bubble, message, elements);
       } else {
         renderPromise = this.renderEmptyPlaceholder('noMessages', bubble, message, elements);
       }
@@ -9669,6 +9687,7 @@ export default class ChatBubbles {
       !shouldShowUnknownUserPlaceholder(this.peerSettings) &&
       (
         this.chat.isRestricted ||
+        this.chat.type === ChatType.Logs ||
         (
           Object.keys(this.bubbles).length &&
           !this.getRenderedLength()
