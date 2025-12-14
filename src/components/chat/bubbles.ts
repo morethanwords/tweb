@@ -417,6 +417,7 @@ type RenderLogArgs = {
 
 type RenderMessageArgs = {
   message: Message.message | Message.messageService;
+  colorOriginalMessagePeerId?: PeerId;
   originalMessage?: Message.message | Message.messageService;
   reverse?: boolean;
   fakeServiceContent?: Node;
@@ -5498,6 +5499,7 @@ export default class ChatBubbles {
       return this.renderMessage({
         message,
         originalMessage,
+        colorOriginalMessagePeerId: entry.colorPeerId,
         fakeServiceContent: serviceContent,
         reverse,
         bubble,
@@ -5533,7 +5535,16 @@ export default class ChatBubbles {
     };
   }
 
-  private async renderMessage({message, originalMessage, fakeServiceContent, additionalPromises = [], reverse = false, bubble, middleware}: RenderMessageArgs) {
+  private async renderMessage({
+    message,
+    originalMessage,
+    colorOriginalMessagePeerId,
+    fakeServiceContent,
+    additionalPromises = [],
+    reverse = false,
+    bubble,
+    middleware
+  }: RenderMessageArgs) {
     // if(DEBUG) {
     //   this.log('message to render:', message);
     // }
@@ -6319,7 +6330,7 @@ export default class ChatBubbles {
 
       if(canShowPreviousMessage(originalMessage)) {
         const container = wrapReply({
-          setColorPeerId: originalMessage.fromId,
+          setColorPeerId: colorOriginalMessagePeerId,
           title: i18n('AdminRecentActions.PreviousMessage'),
           quote: {
             text: originalMessage.message,

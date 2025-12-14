@@ -39,6 +39,7 @@ type DefaultResult = {
   type: 'default';
   message: MyMessage;
   originalMessage?: MyMessage;
+  colorPeerId?: PeerId;
   ServiceContent: Component;
 };
 
@@ -157,6 +158,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
   'channelAdminLogEventActionEditMessage': ({action, peerId, makePeerTitle}) => isMessage(action.new_message) ? ({
     type: 'default',
     message: action.new_message,
+    colorPeerId: peerId,
     originalMessage: isMessage(action.prev_message) ? action.prev_message : null,
     ServiceContent: () => i18n('AdminLog.EditedMessage', [makePeerTitle(peerId)])
   }) : null,
