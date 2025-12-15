@@ -1,0 +1,105 @@
+import {formatDate} from '../../../../helpers/date';
+import {makeDateFromTimestamp} from '../../../../helpers/date/makeDateFromTimestamp';
+import formatDuration from '../../../../helpers/formatDuration';
+import prepareTextWithEntitiesForCopying from '../../../../helpers/prepareTextWithEntitiesForCopying';
+import {ChannelAdminLogEventAction, ChatBannedRights} from '../../../../layer';
+import {MyMessage} from '../../../../lib/appManagers/appMessagesManager';
+import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
+import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
+import removeChatBannedRightsFromParticipant from '../../../../lib/appManagers/utils/chats/removeChatBannedRightsFromParticipant';
+import I18n from '../../../../lib/langPack';
+import {resolveAdminRightFlagI18n} from '../../../sidebarRight/tabs/adminRecentActions/adminRightsI18nResolver';
+import {participantRightsMap} from '../../../sidebarRight/tabs/adminRecentActions/participantRightsMap';
+import {diffFlags} from '../../../sidebarRight/tabs/adminRecentActions/utils';
+import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
+
+
+export type CopyTextResult = {
+  text: string;
+  html?: string;
+};
+
+export function getDateTextForCopy(timestamp: number): string {
+  const date = makeDateFromTimestamp(timestamp);
+  const dateElement = formatDate(date, {withTime: true});
+  return dateElement.textContent || '';
+}
+
+
+export function formatDurationAsText(seconds: number): string {
+  return wrapFormattedDuration(formatDuration(seconds), true);
+}
+
+export function extractBanChanges(
+  action: Extract<ChannelAdminLogEventAction, {_: 'channelAdminLogEventActionParticipantToggleBan'}>,
+  channelId: ChatId,
+  apiManagerProxy: any
+) {
+  const isBanned = isBannedParticipant(action.new_participant);
+  const prevBannedParticipant = action.prev_participant?._ === 'channelParticipantBanned' ? action.prev_participant : undefined;
+  const newBannedParticipant = action.new_participant?._ === 'channelParticipantBanned' ? action.new_participant : undefined;
+
+  const channel = apiManagerProxy.getChat(channelId);
+
+  const removeDefaultRights = (rights: ChatBannedRights.chatBannedRights) =>
+    channel?._ === 'channel' && rights ?
+      removeChatBannedRightsFromParticipant(channel, rights) :
+      rights;
+
+  const participantPeerId = getParticipantPeerId(action.prev_participant || action.new_participant);
+  const participantUser = apiManagerProxy.getUser(participantPeerId.toUserId());
+  const username = participantUser?.username || '';
+
+  const diff = diffFlags(
+    removeDefaultRights(prevBannedParticipant?.banned_rights)?.pFlags,
+    removeDefaultRights(newBannedParticipant?.banned_rights)?.pFlags
+  );
+
+  // yes, they need to be inversed here
+  const removed = diff.new.map(key => participantRightsMap[key]).filter(Boolean).map(key => I18n.format(key, true));
+  const added = diff.old.map(key => participantRightsMap[key]).filter(Boolean).map(key => I18n.format(key, true));
+
+  return {isBanned, participantPeerId, participantUser, username, added, removed};
+}
+
+export function extractAdminChanges(
+  action: Extract<ChannelAdminLogEventAction, {_: 'channelAdminLogEventActionParticipantToggleAdmin'}>,
+  apiManagerProxy: any,
+  isBroadcast: boolean
+) {
+  const prevParticipantRights = 'admin_rights' in action.prev_participant ? action.prev_participant.admin_rights : null;
+  const newParticipantRights = 'admin_rights' in action.new_participant ? action.new_participant.admin_rights : null;
+
+  const diff = diffFlags(prevParticipantRights?.pFlags, newParticipantRights?.pFlags);
+  const participantPeerId = getParticipantPeerId(action.prev_participant || action.new_participant);
+
+  const participantUser = apiManagerProxy.getUser(participantPeerId.toUserId());
+  const username = participantUser?.username || '';
+
+  const added = diff.new.map(key => I18n.format(resolveAdminRightFlagI18n(key as any, {isBroadcast}), true));
+  const removed = diff.old.map(key => I18n.format(resolveAdminRightFlagI18n(key as any, {isBroadcast}), true));
+
+  return {participantPeerId, participantUser, username, added, removed};
+}
+
+export function extractDefaultRightsChanges(
+  action: Extract<ChannelAdminLogEventAction, {_: 'channelAdminLogEventActionDefaultBannedRights'}>
+) {
+  const diff = diffFlags(action.prev_banned_rights?.pFlags, action.new_banned_rights?.pFlags);
+
+  const added = diff.old.map(key => participantRightsMap[key]).filter(Boolean).map(key => I18n.format(key, true));
+  const removed = diff.new.map(key => participantRightsMap[key]).filter(Boolean).map(key => I18n.format(key, true));
+
+  return {added, removed};
+}
+
+export function getMessageTextForCopy(message: MyMessage) {
+  if(message._ !== 'message') {
+    return {text: '', html: ''};
+  }
+
+  return prepareTextWithEntitiesForCopying({
+    text: message.message,
+    entities: message.entities
+  });
+}

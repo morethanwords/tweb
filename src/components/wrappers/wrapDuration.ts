@@ -18,7 +18,11 @@ export const DURATION_LANG_KEYS: {[type in DurationType]: LangPackKey} = {
   [DurationType.Years]: 'Years'
 };
 
-export function wrapFormattedDuration(formatted: ReturnType<typeof formatDuration>, plain?: boolean) {
+export function wrapFormattedDuration(formatted: ReturnType<typeof formatDuration>, plain: true): string;
+export function wrapFormattedDuration(formatted: ReturnType<typeof formatDuration>, plain?: false): HTMLSpanElement;
+export function wrapFormattedDuration(formatted: ReturnType<typeof formatDuration>, plain?: boolean): string | HTMLSpanElement;
+
+export function wrapFormattedDuration(formatted: ReturnType<typeof formatDuration>, plain?: boolean): string | HTMLSpanElement {
   if(plain) {
     const strings = formatted.map((d) => I18n.format(DURATION_LANG_KEYS[d.type], true, [d.duration]));
     return join(strings, false, plain);

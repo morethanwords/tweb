@@ -33,6 +33,7 @@ import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolder
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import type {toast, toastNew} from '../../components/toast';
 import type {wrapAdaptiveCustomEmoji} from '../../components/wrappers/customEmojiSimple';
+import type getPeerTitle from '../../components/wrappers/getPeerTitle';
 import type {wrapTopicIcon} from '../../components/wrappers/messageActionTextNewUnsafe';
 import type wrapPeerTitle from '../../components/wrappers/peerTitle';
 import type wrapPhoto from '../../components/wrappers/photo';
@@ -87,6 +88,7 @@ export type SolidJSHotReloadGuardContextValue = {
   wrapSticker: typeof wrapSticker;
   wrapTopicNameButton: typeof wrapTopicNameButton;
   wrapRichText: typeof wrapRichText;
+  getPeerTitle: typeof getPeerTitle;
   wrapPeerTitle: typeof wrapPeerTitle;
   wrapPhoto: typeof wrapPhoto;
   wrapEmojiText: typeof wrapEmojiText;

@@ -28,6 +28,7 @@ import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import {toast, toastNew} from '../../components/toast';
 import {wrapAdaptiveCustomEmoji} from '../../components/wrappers/customEmojiSimple';
+import getPeerTitle from '../../components/wrappers/getPeerTitle';
 import {wrapTopicIcon} from '../../components/wrappers/messageActionTextNewUnsafe';
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import wrapPhoto from '../../components/wrappers/photo';
@@ -83,6 +84,7 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       wrapSticker,
       wrapTopicNameButton,
       wrapRichText,
+      getPeerTitle,
       wrapPeerTitle,
       wrapPhoto,
       wrapEmojiText,
