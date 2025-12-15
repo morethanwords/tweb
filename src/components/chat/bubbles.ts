@@ -426,6 +426,16 @@ type RenderMessageArgs = {
   middleware: Middleware;
 };
 
+type BubblesResolveAdminLogArgs = {
+  log: AdminLog;
+  noJsx?: false;
+  promises: Promise<any>[];
+  middleware: Middleware;
+} | {
+  log: AdminLog;
+  noJsx: true;
+};
+
 export default class ChatBubbles {
   public container: HTMLDivElement;
   public chatInner: HTMLDivElement;
@@ -564,6 +574,8 @@ export default class ChatBubbles {
   private inChatQuery?: string;
 
   public committedLogsFilters?: CommittedFilters;
+
+  public logsByBubble = new WeakMap<HTMLElement, AdminLog>();
 
   constructor(
     private chat: Chat,
@@ -5443,31 +5455,15 @@ export default class ChatBubbles {
   private async renderLog({log, reverse = false, bubble, middleware}: RenderLogArgs) {
     const promises: Promise<any>[] = [];
 
-    const wrapOptions: WrapSomethingOptions = {
-      lazyLoadQueue: this.lazyLoadQueue,
+    const entry = await this.resolveAdminLog({
+      log,
       middleware,
-      customEmojiSize: this.chat.appImManager.customEmojiSize,
-      animationGroup: this.chat.animationGroup
-    };
-
-    const promise = ensureAdminLogResolver();
-    if(promise) await promise;
-
-    const entry = resolveAdminLog({
-      channelId: this.peerId.toChatId(),
-      event: log,
-      isBroadcast: this.chat.isBroadcast,
-      isForum: this.chat.isForum,
-      peerId: log.user_id.toPeerId(),
-      makePeerTitle: (peerId) => {
-        const peerTitle = new PeerTitle;
-        promises.push(peerTitle.update({peerId}));
-        return peerTitle.element;
-      },
-      makeMessagePeerTitle: (peerId) => this.createTitle(peerId, wrapOptions, false).element
+      promises
     });
 
     if(!entry) return;
+
+    this.logsByBubble.set(bubble, log);
 
     if(entry.type === 'service') {
       bubble.className = 'bubble service';
@@ -10108,14 +10104,9 @@ export default class ChatBubbles {
         return false;
       }
 
-      const entry = resolveAdminLog({
-        channelId: this.peerId.toChatId(),
-        event: message,
-        isBroadcast: this.chat.isBroadcast,
-        isForum: this.chat.isForum,
-        peerId: message.user_id?.toPeerId(),
-        makePeerTitle: () => document.createElement('span'),
-        makeMessagePeerTitle: () => document.createElement('span')
+      const entry = this.resolveAdminLogUnsafe({
+        log: message,
+        noJsx: true
       });
 
       if(entry.type === 'default') message = entry.message;
@@ -10151,5 +10142,48 @@ export default class ChatBubbles {
 
     this.committedLogsFilters = filters;
     this.reload();
+  }
+
+  public async resolveAdminLog(args: BubblesResolveAdminLogArgs) {
+    const promise = ensureAdminLogResolver();
+    if(promise) await promise;
+
+    return this.resolveAdminLogUnsafe(args);
+  }
+
+  /**
+   * Doesn't ensure the resolver function was loaded
+   */
+  public resolveAdminLogUnsafe(args: BubblesResolveAdminLogArgs) {
+    const {log} = args;
+
+    const wrapOptions: WrapSomethingOptions = args.noJsx !== true ? {
+      lazyLoadQueue: this.lazyLoadQueue,
+      middleware: args.middleware,
+      customEmojiSize: this.chat.appImManager.customEmojiSize,
+      animationGroup: this.chat.animationGroup
+    } : undefined;
+
+    const promises = args.noJsx !== true ? args.promises : undefined;
+
+    const entry = resolveAdminLog({
+      channelId: this.peerId.toChatId(),
+      event: log,
+      isBroadcast: this.chat.isBroadcast,
+      isForum: this.chat.isForum,
+      peerId: log.user_id.toPeerId(),
+      makePeerTitle: promises ?
+        (peerId) => {
+          const peerTitle = new PeerTitle;
+          promises.push(peerTitle.update({peerId}));
+          return peerTitle.element;
+        } :
+        () => document.createElement('span'),
+      makeMessagePeerTitle: wrapOptions ?
+        (peerId) => this.createTitle(peerId, wrapOptions, false).element :
+        () => document.createElement('span')
+    });
+
+    return entry;
   }
 }

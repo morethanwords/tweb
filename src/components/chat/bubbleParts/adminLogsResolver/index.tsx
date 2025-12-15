@@ -240,10 +240,10 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const text = I18n.format('AdminLog.EditedMessage', true, [peerTitle]);
       const newMsg = isMessage(action.new_message) ? getMessageTextForCopy(action.new_message) : {text: '', html: ''};
       const prevMsg = (isMessage(action.prev_message)) ? getMessageTextForCopy(action.prev_message) : {text: '', html: ''};
-      const previousLabel = I18n.format('AdminRecentActions.PreviousDescription', true);
+      const previousLabel = I18n.format('AdminRecentActions.PreviousMessage', true);
       return {
-        text: `${text} [${dateText}]\n${newMsg.text}\n${previousLabel}: ${prevMsg.text}`,
-        html: `${text} [${dateText}]<br/>${newMsg.html}<br/>${previousLabel}: ${prevMsg.html}`
+        text: `${text} [${dateText}]\n${newMsg.text}\n\n${previousLabel}:\n${prevMsg.text}`,
+        html: `${text} [${dateText}]<br/>${newMsg.html}<br/><br/>${previousLabel}:<br/>${prevMsg.html}`
       };
     }
   }) : null,
@@ -369,10 +369,12 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     getCopyText: async() => {
       const dateText = getDateTextForCopy(event.date);
       const {apiManagerProxy, getPeerTitle} = useHotReloadGuard();
-      const {isBanned, participantPeerId, participantUser, username, added, removed} = extractBanChanges(action, channelId, apiManagerProxy);
+      const {isBanned, participantPeerId, added, removed} = extractBanChanges(action, channelId, apiManagerProxy);
       const participantName = await getPeerTitle({peerId: participantPeerId, plainText: true});
+      const adminName = await getPeerTitle({peerId, plainText: true});
 
-      const lines = [`${participantName} [${dateText}]`];
+      const lines = [`${adminName} [${dateText}]`];
+      lines.push(I18n.format(isBanned ? 'AdminLog.ParticipantBanned' : 'AdminLog.ParticipantPermissionsToggled', true, [participantName]));
       added.forEach(perm => lines.push(`+ ${perm}`));
       removed.forEach(perm => lines.push(`- ${perm}`));
 
@@ -425,10 +427,12 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     getCopyText: async() => {
       const dateText = getDateTextForCopy(event.date);
       const {apiManagerProxy, getPeerTitle} = useHotReloadGuard();
-      const {participantPeerId, participantUser, username, added, removed} = extractAdminChanges(action, apiManagerProxy, isBroadcast);
+      const {participantPeerId, added, removed} = extractAdminChanges(action, apiManagerProxy, isBroadcast);
       const participantName = await getPeerTitle({peerId: participantPeerId, plainText: true});
+      const adminName = await getPeerTitle({peerId, plainText: true});
 
-      const lines = [`${participantName} [${dateText}]`];
+      const lines = [`${adminName} [${dateText}]`];
+      lines.push(I18n.format('AdminLog.AdminPermissionsChanged', true, [participantName]));
       added.forEach(perm => lines.push(`+ ${perm}`));
       removed.forEach(perm => lines.push(`- ${perm}`));
 
@@ -457,7 +461,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       return {text: `${text} [${dateText}]`};
     }
   }),
-  'channelAdminLogEventActionDefaultBannedRights': ({event, action, peerId, makePeerTitle, makeMessagePeerTitle}) => ({
+  'channelAdminLogEventActionDefaultBannedRights': ({event, action, peerId, makeMessagePeerTitle}) => ({
     type: 'regular',
     bubbleClass: defaultBubbleClass,
     Content: () => {

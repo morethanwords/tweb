@@ -115,6 +115,11 @@ export type ObjectPath<T extends object> =
 
 export type Pair<Left, Right> = [Left, Right];
 
+type PartialByKeys<T, K extends keyof T = never> =
+  Omit<T, K> &
+  Partial<Pick<T, K>>;
+
+
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn | AuthState.signImport;
 export namespace AuthState {
   export type signIn = {

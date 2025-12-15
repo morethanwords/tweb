@@ -8,11 +8,14 @@ import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getPar
 import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
 import removeChatBannedRightsFromParticipant from '../../../../lib/appManagers/utils/chats/removeChatBannedRightsFromParticipant';
 import I18n from '../../../../lib/langPack';
+import type apiManagerProxy from '../../../../lib/mtproto/mtprotoworker';
 import {resolveAdminRightFlagI18n} from '../../../sidebarRight/tabs/adminRecentActions/adminRightsI18nResolver';
 import {participantRightsMap} from '../../../sidebarRight/tabs/adminRecentActions/participantRightsMap';
 import {diffFlags} from '../../../sidebarRight/tabs/adminRecentActions/utils';
 import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
 
+
+type ApiManagerProxyType = typeof apiManagerProxy;
 
 export type CopyTextResult = {
   text: string;
@@ -33,7 +36,7 @@ export function formatDurationAsText(seconds: number): string {
 export function extractBanChanges(
   action: Extract<ChannelAdminLogEventAction, {_: 'channelAdminLogEventActionParticipantToggleBan'}>,
   channelId: ChatId,
-  apiManagerProxy: any
+  apiManagerProxy: ApiManagerProxyType
 ) {
   const isBanned = isBannedParticipant(action.new_participant);
   const prevBannedParticipant = action.prev_participant?._ === 'channelParticipantBanned' ? action.prev_participant : undefined;
@@ -64,7 +67,7 @@ export function extractBanChanges(
 
 export function extractAdminChanges(
   action: Extract<ChannelAdminLogEventAction, {_: 'channelAdminLogEventActionParticipantToggleAdmin'}>,
-  apiManagerProxy: any,
+  apiManagerProxy: ApiManagerProxyType,
   isBroadcast: boolean
 ) {
   const prevParticipantRights = 'admin_rights' in action.prev_participant ? action.prev_participant.admin_rights : null;

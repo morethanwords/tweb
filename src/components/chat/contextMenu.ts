@@ -86,6 +86,8 @@ import {isSensitive} from '../../helpers/restrictions';
 import {hasSensitiveSpoiler} from '../wrappers/mediaSpoiler';
 import {useIsFrozen} from '../../stores/appState';
 import prepareTextWithEntitiesForCopying from '../../helpers/prepareTextWithEntitiesForCopying';
+import {runWithHotReloadGuard} from '../../lib/solidjs/runWithHotReloadGuard';
+import {PartialByKeys} from '../../types';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -209,7 +211,7 @@ export default class ChatContextMenu {
   private emojiInputsPromise: CancellablePromise<InputStickerSet.inputStickerSetID[]>;
   private groupedMessages: Message.message[];
   private linkToMessage: Awaited<ReturnType<ChatContextMenu['getUrlToMessage']>>;
-  private selectedMessagesText: Awaited<ReturnType<ChatContextMenu['getSelectedMessagesText']>>;
+  private selectedMessagesText: PartialByKeys<Awaited<ReturnType<ChatContextMenu['getSelectedMessagesText']>>, 'html'>;
   private selectedMessages: MyMessage[];
   private avatarPeerId: number;
 
@@ -301,8 +303,10 @@ export default class ChatContextMenu {
   }
 
   public onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
+    if(this.chat.type === ChatType.Static) return;
+
+
     let bubble: HTMLElement, contentWrapper: HTMLElement, avatar: HTMLElement;
-    if(this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) return;
 
     try {
       contentWrapper = findUpClassName(e.target, 'bubble-content-wrapper');
@@ -343,7 +347,7 @@ export default class ChatContextMenu {
       checklistItemId = +(checklistItemElement as HTMLElement).dataset.checklistItemId;
     }
 
-    const r = async() => {
+    const prepareForMessage = async() => {
       const isSponsored = this.isSponsored = mid < 0;
       this.isSelectable = this.chat.selection.canSelectBubble(bubble);
       this.messagePeerId = bubble ? bubble.dataset.peerId.toPeerId() : undefined;
@@ -425,6 +429,29 @@ export default class ChatContextMenu {
       } else {
         this.checklistItem = undefined;
       }
+    };
+
+
+    const prepareForLog = async() => {
+      const log = this.chat.bubbles.logsByBubble.get(bubble);
+      (async() => {
+        try {
+          const entry = await this.chat.bubbles.resolveAdminLog({
+            log,
+            noJsx: true
+          });
+
+          this.selectedMessagesText = await runWithHotReloadGuard(entry.getCopyText);
+        } catch{}
+      })();
+    };
+
+    const openMenu = async() => {
+      if(this.chat.type === ChatType.Logs) {
+        await prepareForLog();
+      } else {
+        await prepareForMessage();
+      }
 
       const initResult = await this.init();
       if(!initResult) {
@@ -466,7 +493,7 @@ export default class ChatContextMenu {
       reactionsCallbacks?.onAfterInit();
     };
 
-    r();
+    openMenu();
   };
 
   public cleanup() {
@@ -502,6 +529,18 @@ export default class ChatContextMenu {
   }
 
   private setButtons() {
+    if(this.chat.type === ChatType.Logs) {
+      this.buttons = [
+        {
+          icon: 'copy',
+          text: 'Copy',
+          onClick: this.onCopyClick,
+          verify: () => !!this.selectedMessagesText
+        }
+      ];
+      return;
+    }
+
     if(this.isTag) {
       const tagTitle = this.reactionElement.findTitle();
       const reactionCount = this.reactionElement.reactionCount;
