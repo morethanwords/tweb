@@ -22,6 +22,10 @@ import {CustomEmojiRendererElement} from '../lib/customEmoji/renderer';
 import createMiddleware from '../helpers/solid/createMiddleware';
 import MySuspense from '../helpers/solid/mySuspense';
 import TelegramWebView from './telegramWebView';
+import getWebFileLocation from '../helpers/getWebFileLocation';
+import makeGoogleMapsUrl from '../helpers/makeGoogleMapsUrl';
+import {GeoPoint} from '../layer';
+import GeoPin from './geoPin';
 
 type InstantViewContextValue = {
   webPageId: Long,
@@ -178,7 +182,7 @@ export function InstantView(props: {
 }
 
 function _onMediaResult(
-  ref: HTMLDivElement,
+  ref: HTMLElement,
   width: number,
   height: number,
   paddings: number
@@ -586,6 +590,38 @@ function Block(props: {block: PageBlock, paddings: number}) {
             )}</For>
           </div>
         </div>
+      );
+    }
+    case 'pageBlockMap': {
+      const geo = block.geo as GeoPoint.geoPoint;
+      const url = makeGoogleMapsUrl(geo);
+      const location = getWebFileLocation(geo, block.w, block.h, block.zoom);
+
+      return (
+        <>
+          <a
+            ref={(ref) => {
+              _onMediaResult(
+                ref,
+                block.w,
+                block.h,
+                props.paddings
+              );
+            }}
+            href={url}
+            target="_blank"
+            class={styles.Map}
+            style={{'--max-height': block.h + 'px'}}
+          >
+            <PhotoTsx
+              photo={location}
+              class={styles.Media}
+              withoutPreloader
+            />
+            <GeoPin />
+          </a>
+          <Caption caption={block.caption} />
+        </>
       );
     }
     case 'pageBlockKicker':

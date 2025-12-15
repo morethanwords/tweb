@@ -84,6 +84,7 @@
 
 .AuthorDate {
   font-size: 0.8888em;
+  margin: 1em 0;
 }
 
 .Subtitle {
@@ -307,7 +308,7 @@
     border-radius: .5rem;
     overflow: hidden;
 
-    :global(.media-photo) {
+    img, :global(.media-photo) {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -351,7 +352,7 @@
 }
 
 .Caption {
-  margin-top: .3333em;
+  margin: .3333em 0 .6666em;
 
   &Text {
     font-size: 0.8888em;
@@ -418,5 +419,20 @@
       overflow: hidden;
       // padding: 0 var(--padding-horizontal);
     }
+  }
+}
+
+.Map {
+  display: block; // anchor tag
+  // margin: 1em 0;
+  position: relative;
+
+  .Media {
+    max-height: var(--max-height, 400px);
+  }
+
+  :global(.media-photo) {
+    max-height: 100%;
+    object-fit: cover;
   }
 }
