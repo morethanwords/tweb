@@ -177,17 +177,27 @@ export function InstantView(props: {
   );
 }
 
-function onMediaResult(ref: HTMLDivElement, paddings: number) {
-  const {width, height} = ref.style;
+function _onMediaResult(
+  ref: HTMLDivElement,
+  width: number,
+  height: number,
+  paddings: number
+) {
   ref.style.setProperty(
     '--aspect-ratio',
-    '' + (parseInt(width) / parseInt(height))
+    '' + (width / height)
   );
 
   ref.style.setProperty(
     '--paddings',
-    '' + (paddings > 1 ? paddings + 1 : 0)
+    // '' + (paddings > 1 ? paddings + 1 : 0)
+    '' + (paddings > 1 ? paddings : 0)
   );
+}
+
+function onMediaResult(ref: HTMLDivElement, paddings: number) {
+  const {width, height} = ref.style;
+  _onMediaResult(ref, parseInt(width), parseInt(height), paddings);
 }
 
 function Caption(props: {caption: PageCaption}) {
@@ -512,6 +522,14 @@ function Block(props: {block: PageBlock, paddings: number}) {
       return (
         <>
           <div
+            ref={(ref) => {
+              _onMediaResult(
+                ref,
+                block.w || 4,
+                block.h || 3,
+                Math.max(isFullWidth ? 0 : 2, props.paddings)
+              );
+            }}
             class={classNames(
               styles.Media,
               styles.Embed,
@@ -519,8 +537,6 @@ function Block(props: {block: PageBlock, paddings: number}) {
               height() && styles.EmbedHasHeight
             )}
             style={{
-              '--aspect-ratio': block.w && block.h ? block.w / block.h : 4 / 3,
-              '--paddings': isFullWidth ? 0 : props.paddings * 2,
               '--height': height() && height() + 'px'
             }}
           >
@@ -535,6 +551,41 @@ function Block(props: {block: PageBlock, paddings: number}) {
           </div>
           <Caption caption={block.caption} />
         </>
+      );
+    }
+    case 'pageBlockEmbedPost': {
+      const context = useContext(InstantViewContext);
+      const {Row} = useHotReloadGuard();
+      const authorPhoto = block.author_photo_id ?
+        unwrap(context.page.photos.find((photo) => photo.id === block.author_photo_id)) as Photo.photo :
+        undefined;
+
+      return (
+        <div class={styles.Post}>
+          <div class={styles.PostBorder} />
+          <Row class={styles.PostAuthor}>
+            <Row.Title class="text-bold">
+              <RichTextRenderer text={{_: 'textPlain', text: block.author}} />
+            </Row.Title>
+            <Row.Subtitle>
+              {formatFullSentTime(block.date, true)}
+            </Row.Subtitle>
+            <Row.Media size="abitbigger">
+              <PhotoTsx
+                class={styles.PostAuthorPhoto}
+                photo={authorPhoto}
+                withoutPreloader
+                boxWidth={42}
+                boxHeight={42}
+              />
+            </Row.Media>
+          </Row>
+          <div class={styles.PostContent}>
+            <For each={block.blocks}>{(subBlock) => (
+              <Block block={subBlock} paddings={props.paddings + 2} />
+            )}</For>
+          </div>
+        </div>
       );
     }
     case 'pageBlockKicker':

@@ -43,6 +43,7 @@ import {avatarNew} from '../../components/avatarNew';
 import PopupSendGift from '../../components/popups/sendGift';
 import showBirthdayPopup, {saveMyBirthday} from '../../components/popups/birthday';
 import VideoTsx from '../../components/wrappers/videoTsx';
+import Row from '../../components/rowTsx';
 
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
@@ -94,7 +95,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       PopupSendGift,
       showBirthdayPopup,
       saveMyBirthday,
-      VideoTsx
+      VideoTsx,
+      Row
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>
