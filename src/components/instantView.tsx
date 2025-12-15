@@ -12,7 +12,7 @@ import {useHotReloadGuard} from '../lib/solidjs/hotReloadGuard';
 import {formatDate, formatFullSentTime} from '../helpers/date';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import cancelEvent from '../helpers/dom/cancelEvent';
-import Scrollable from './scrollable2';
+import Scrollable, {ScrollableContext} from './scrollable2';
 import fastSmoothScroll, {fastSmoothScrollToStart} from '../helpers/fastSmoothScroll';
 import Animated from '../helpers/solid/animations';
 import {unwrap} from 'solid-js/store';
@@ -26,6 +26,7 @@ import getWebFileLocation from '../helpers/getWebFileLocation';
 import makeGoogleMapsUrl from '../helpers/makeGoogleMapsUrl';
 import {GeoPoint} from '../layer';
 import GeoPin from './geoPin';
+import ScrollSaver from '../helpers/scrollSaver';
 
 type InstantViewContextValue = {
   webPageId: Long,
@@ -36,7 +37,8 @@ type InstantViewContextValue = {
   scrollToAnchor: (anchor: string, instantly: boolean) => void,
   customEmojiRenderer: CustomEmojiRendererElement,
   details: WeakMap<HTMLElement, Setter<boolean>>,
-  ready: boolean
+  ready: boolean,
+  savingScroll: boolean
 };
 
 const InstantViewContext = createContext<InstantViewContextValue>();
@@ -102,7 +104,8 @@ export function InstantView(props: {
       middleware: createMiddleware().get(),
       renderNonSticker: true
     }),
-    details: new WeakMap()
+    details: new WeakMap(),
+    savingScroll: false
   };
 
   console.log(props.page);
@@ -518,8 +521,25 @@ function Block(props: {block: PageBlock, paddings: number}) {
           webView.destroy();
         });
 
+        const scrollableContext = useContext(ScrollableContext);
         webView.addEventListener('resize_frame', ({height}) => {
+          if(!height) {
+            return;
+          }
+
+          const scrollSaver = context.savingScroll ? undefined : new ScrollSaver(scrollableContext, undefined, false);
+          if(scrollSaver) {
+            context.savingScroll = true;
+            scrollSaver.save();
+          }
+
           setHeight(height);
+          if(scrollSaver) queueMicrotask(() => {
+            queueMicrotask(() => {
+              context.savingScroll = false;
+              scrollSaver.restore();
+            });
+          });
         });
       }
 
