@@ -28,7 +28,6 @@ const LogFiltersPopupContent = defineSolidElement({
     const filtersControls = useFlagFilters({channelId: () => props.channelId, isBroadcast: () => props.isBroadcast});
 
     createComputed(() => {
-      console.log('my-debug', props.committedFilters);
       filtersControls.setFromCommittedFilters(props.committedFilters);
     });
 

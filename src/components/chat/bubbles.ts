@@ -8457,8 +8457,6 @@ export default class ChatBubbles {
     let history: (Message.message | Message.messageService | AdminLog | number)[] = (historyResult as LocalHistoryResult).messages || historyResult.history;
     history = history.slice(); // need
 
-    console.log('my-debug', {history})
-
     if(this.needReflowScroll) {
       reflowScrollableElement(this.scrollable.container);
       this.needReflowScroll = false;
@@ -8661,8 +8659,6 @@ export default class ChatBubbles {
             limit,
             backLimit
           });
-
-          console.log('my-debug', {logs, isStart, isEnd, offsetId, limit, backLimit})
 
           return {
             history: logs.map(log => +log.id),
@@ -9117,7 +9113,6 @@ export default class ChatBubbles {
       stickerDiv.append(Icon('clipboard'));
 
       const hasFilters = this.inChatQuery || this.committedLogsFilters;
-      console.log('my-debug', {hasFilters})
 
       const title = i18n(!hasFilters ? 'AdminRecentActionsPlaceholder.Title' : 'AdminRecentActionsPlaceholder.WithFilterTitle');
       title.classList.add('center', BASE_CLASS + '-title');
@@ -10151,7 +10146,7 @@ export default class ChatBubbles {
   }
 
   public setLogFilters(filters?: CommittedFilters) {
-    filters === filters || undefined;
+    filters = filters || undefined;
     if(filters === this.committedLogsFilters) return;
 
     this.committedLogsFilters = filters;
