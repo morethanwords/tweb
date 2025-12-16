@@ -50,6 +50,8 @@ import type showBirthdayPopup from '../../components/popups/birthday';
 import type {saveMyBirthday} from '../../components/popups/birthday';
 import type VideoTsx from '../../components/wrappers/videoTsx';
 import type Row from '../../components/rowTsx';
+import type DocumentTsx from '../../components/wrappers/documentTsx';
+import type PhotoTsx from '../../components/wrappers/photoTsx';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -100,6 +102,8 @@ export type SolidJSHotReloadGuardContextValue = {
   showBirthdayPopup: typeof showBirthdayPopup;
   saveMyBirthday: typeof saveMyBirthday;
   VideoTsx: typeof VideoTsx;
+  DocumentTsx: typeof DocumentTsx;
+  PhotoTsx: typeof PhotoTsx;
   Row: typeof Row;
 };
 

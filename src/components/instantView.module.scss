@@ -422,6 +422,7 @@
   }
 }
 
+
 .Map {
   display: block; // anchor tag
   // margin: 1em 0;
@@ -435,4 +436,8 @@
     max-height: 100%;
     object-fit: cover;
   }
+}
+
+.Audio {
+  margin: .7777em 0;
 }

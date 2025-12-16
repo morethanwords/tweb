@@ -5,7 +5,6 @@ import wrapTelegramRichText from '../lib/richTextProcessor/wrapTelegramRichText'
 import styles from './instantView.module.scss';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import classNames from '../helpers/string/classNames';
-import {PhotoTsx} from './wrappers/photoTsx';
 import {IconTsx} from './iconTsx';
 import GenericTable, {GenericTableRow} from './genericTable';
 import {useHotReloadGuard} from '../lib/solidjs/hotReloadGuard';
@@ -27,6 +26,8 @@ import makeGoogleMapsUrl from '../helpers/makeGoogleMapsUrl';
 import {GeoPoint} from '../layer';
 import GeoPin from './geoPin';
 import ScrollSaver from '../helpers/scrollSaver';
+import {Message} from '../layer';
+import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 
 type InstantViewContextValue = {
   webPageId: Long,
@@ -311,6 +312,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
       );
     case 'pageBlockPhoto': {
       const context = useContext(InstantViewContext);
+      const {PhotoTsx} = useHotReloadGuard();
       const photo = unwrap(context.page.photos.find((photo) => photo.id === block.photo_id)) as Photo.photo;
       let ref: HTMLDivElement;
       return (
@@ -341,6 +343,39 @@ function Block(props: {block: PageBlock, paddings: number}) {
             withPreview
             noInfo
             onResult={() => onMediaResult(ref, props.paddings)}
+          />
+          <Caption caption={block.caption} />
+        </>
+      );
+    }
+    case 'pageBlockAudio': {
+      const context = useContext(InstantViewContext);
+      const {DocumentTsx} = useHotReloadGuard();
+      const doc = unwrap(context.page.documents.find((doc) => doc.id === block.audio_id)) as Document.document;
+
+      const message: Message.message = {
+        _: 'message',
+        id: (Number(block.audio_id) || 0) as number, // Fake ID
+        peer_id: {_: 'peerUser', user_id: 0},
+        date: 0,
+        message: '',
+        media: {
+          _: 'messageMediaDocument',
+          document: doc,
+          pFlags: {}
+        },
+        pFlags: {},
+        mid: (Number(block.audio_id) || 0) as number, // Fake MID
+        peerId: NULL_PEER_ID
+      };
+
+      return (
+        <>
+          <DocumentTsx
+            class={classNames(styles.Padding, styles.Audio)}
+            message={message}
+            withTime={false}
+            autoDownloadSize={10 * 1024 * 1024} // 10MB auto-download limit
           />
           <Caption caption={block.caption} />
         </>
@@ -424,7 +459,8 @@ function Block(props: {block: PageBlock, paddings: number}) {
         </div>
       );
     }
-    case 'pageBlockRelatedArticles':
+    case 'pageBlockRelatedArticles': {
+      const {PhotoTsx} = useHotReloadGuard();
       return (
         <>
           <div class={styles.SectionName}>
@@ -481,8 +517,10 @@ function Block(props: {block: PageBlock, paddings: number}) {
           }}</For>
         </>
       );
+    }
     case 'pageBlockEmbed': {
       const context = useContext(InstantViewContext);
+      const {PhotoTsx} = useHotReloadGuard();
       const isFullWidth = block.pFlags?.full_width;
       const posterPhoto = block.poster_photo_id ?
         unwrap(context.page.photos.find((photo) => photo.id === block.poster_photo_id)) as Photo.photo :
@@ -579,7 +617,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
     }
     case 'pageBlockEmbedPost': {
       const context = useContext(InstantViewContext);
-      const {Row} = useHotReloadGuard();
+      const {Row, PhotoTsx} = useHotReloadGuard();
       const authorPhoto = block.author_photo_id ?
         unwrap(context.page.photos.find((photo) => photo.id === block.author_photo_id)) as Photo.photo :
         undefined;
@@ -616,6 +654,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
       const geo = block.geo as GeoPoint.geoPoint;
       const url = makeGoogleMapsUrl(geo);
       const location = getWebFileLocation(geo, block.w, block.h, block.zoom);
+      const {PhotoTsx} = useHotReloadGuard();
 
       return (
         <>
