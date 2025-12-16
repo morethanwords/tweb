@@ -8,6 +8,7 @@ import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBan
 import removeChatBannedRightsFromParticipant from '../../../../lib/appManagers/utils/chats/removeChatBannedRightsFromParticipant';
 import I18n from '../../../../lib/langPack';
 import type apiManagerProxy from '../../../../lib/mtproto/mtprotoworker';
+import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {resolveAdminRightFlagI18n} from '../../../sidebarRight/tabs/adminRecentActions/adminRightsI18nResolver';
 import {participantRightsMap} from '../../../sidebarRight/tabs/adminRecentActions/participantRightsMap';
 import {diffFlags} from '../../../sidebarRight/tabs/adminRecentActions/utils';
@@ -104,4 +105,112 @@ export function getMessageTextForCopy(message: Message) {
     text: message.message,
     entities: message.entities
   });
+}
+
+export async function createSimpleServiceCopyText(
+  timestamp: number,
+  peerId: PeerId,
+  formatText: (peerTitle: string) => string
+): Promise<CopyTextResult> {
+  const {getPeerTitle} = useHotReloadGuard();
+  const dateText = getDateTextForCopy(timestamp);
+  const peerTitle = await getPeerTitle({peerId, plainText: true});
+  const text = formatText(peerTitle);
+  return {text: `${text} [${dateText}]`};
+}
+
+export async function createMessageCopyText(
+  timestamp: number,
+  peerId: PeerId,
+  message: Message,
+  formatText: (peerTitle: string) => string
+): Promise<CopyTextResult> {
+  const {getPeerTitle} = useHotReloadGuard();
+  const dateText = getDateTextForCopy(timestamp);
+  const peerTitle = await getPeerTitle({peerId, plainText: true});
+  const text = formatText(peerTitle);
+  const msg = getMessageTextForCopy(message);
+  return {
+    text: `${text} [${dateText}]\n${msg.text}`,
+    html: `${text} [${dateText}]<br/>${msg.html}`
+  };
+}
+
+export async function createPreviousValueCopyText(
+  timestamp: number,
+  peerId: PeerId,
+  formatMainText: (peerTitle: string) => string,
+  newValue: string,
+  prevValue: string,
+  formatPreviousLabel: () => string
+): Promise<CopyTextResult> {
+  const {getPeerTitle} = useHotReloadGuard();
+  const dateText = getDateTextForCopy(timestamp);
+  const peerTitle = await getPeerTitle({peerId, plainText: true});
+  const mainText = formatMainText(peerTitle);
+  const previousLabel = formatPreviousLabel();
+  return {
+    text: `${mainText} [${dateText}]\n${newValue}\n\n${previousLabel}:\n${prevValue}`
+  };
+}
+
+export async function createMultiLineCopyText(
+  timestamp: number,
+  peerId: PeerId,
+  buildLines: (peerTitle: string, dateText: string) => string[]
+): Promise<CopyTextResult> {
+  const {getPeerTitle} = useHotReloadGuard();
+  const dateText = getDateTextForCopy(timestamp);
+  const peerTitle = await getPeerTitle({peerId, plainText: true});
+  const lines = buildLines(peerTitle, dateText);
+  return {text: lines.join('\n')};
+}
+
+export async function createMessageWithPreviousCopyText(
+  timestamp: number,
+  peerId: PeerId,
+  newMessage: Message,
+  prevMessage: Message,
+  formatMainText: (peerTitle: string) => string,
+  formatPreviousLabel: () => string
+): Promise<CopyTextResult> {
+  const {getPeerTitle} = useHotReloadGuard();
+  const dateText = getDateTextForCopy(timestamp);
+  const peerTitle = await getPeerTitle({peerId, plainText: true});
+  const mainText = formatMainText(peerTitle);
+  const newMsg = getMessageTextForCopy(newMessage);
+  const prevMsg = getMessageTextForCopy(prevMessage);
+  const previousLabel = formatPreviousLabel();
+  return {
+    text: `${mainText} [${dateText}]\n${newMsg.text}\n\n${previousLabel}:\n${prevMsg.text}`,
+    html: `${mainText} [${dateText}]<br/>${newMsg.html}<br/><br/>${previousLabel}:<br/>${prevMsg.html}`
+  };
+}
+
+export async function createTwoPeerCopyText(
+  timestamp: number,
+  peerId: PeerId,
+  secondPeerId: PeerId,
+  formatText: (peerTitle: string, secondPeerTitle: string) => string
+): Promise<CopyTextResult> {
+  const {getPeerTitle} = useHotReloadGuard();
+  const dateText = getDateTextForCopy(timestamp);
+  const peerTitle = await getPeerTitle({peerId, plainText: true});
+  const secondPeerTitle = await getPeerTitle({peerId: secondPeerId, plainText: true});
+  const text = formatText(peerTitle, secondPeerTitle);
+  return {text: `${text} [${dateText}]`};
+}
+
+export async function createConditionalCopyText(
+  timestamp: number,
+  peerId: PeerId,
+  condition: boolean,
+  formatTexts: (peerTitle: string) => {trueText: string; falseText: string}
+): Promise<CopyTextResult> {
+  const {getPeerTitle} = useHotReloadGuard();
+  const dateText = getDateTextForCopy(timestamp);
+  const peerTitle = await getPeerTitle({peerId, plainText: true});
+  const {trueText, falseText} = formatTexts(peerTitle);
+  const text = condition ? trueText : falseText;
+  return {text: `${text} [${dateText}]`};
 }

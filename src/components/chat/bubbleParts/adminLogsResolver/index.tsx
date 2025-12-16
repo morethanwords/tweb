@@ -22,7 +22,7 @@ import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
 import {isMessage, linkColor} from '../../utils';
 import {MinimalBubbleMessageContent} from '../minimalBubbleMessageContent';
 import {Reply} from './reply';
-import {CopyTextResult, extractAdminChanges, extractBanChanges, extractDefaultRightsChanges, formatDurationAsText, getDateTextForCopy, getMessageTextForCopy} from './copyTextHelpers';
+import {CopyTextResult, createConditionalCopyText, createMessageCopyText, createMessageWithPreviousCopyText, createMultiLineCopyText, createPreviousValueCopyText, createSimpleServiceCopyText, createTwoPeerCopyText, extractAdminChanges, extractBanChanges, extractDefaultRightsChanges, formatDurationAsText, getDateTextForCopy, getMessageTextForCopy} from './copyTextHelpers';
 
 
 type ServiceResult = {
@@ -68,13 +68,11 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
   'channelAdminLogEventActionChangeTitle': ({isBroadcast, action, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(isBroadcast ? 'AdminLog.ChangeTitleChannel' : 'AdminLog.ChangeTitleGroup', [makePeerTitle(peerId), action.new_value]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(isBroadcast ? 'AdminLog.ChangeTitleChannel' : 'AdminLog.ChangeTitleGroup', true, [peerTitle, action.new_value]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ChangeTitleChannel' : 'AdminLog.ChangeTitleGroup', true, [peerTitle, action.new_value])
+    )
   }),
   'channelAdminLogEventActionChangeAbout': ({isBroadcast, action, event, peerId, makePeerTitle, makeMessagePeerTitle}) => ({
     type: 'regular',
@@ -100,17 +98,14 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
         </>
       );
     },
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const previousLabel = I18n.format('AdminRecentActions.PreviousDescription', true);
-      return {
-        text: `${
-          I18n.format(isBroadcast ? 'AdminLog.ChangeAboutChannel' : 'AdminLog.ChangeAboutGroup', true, [peerTitle])
-        } [${dateText}]\n${action.new_value}\n\n${previousLabel}:\n${action.prev_value}`
-      };
-    }
+    getCopyText: () => createPreviousValueCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ChangeAboutChannel' : 'AdminLog.ChangeAboutGroup', true, [peerTitle]),
+      action.new_value,
+      action.prev_value,
+      () => I18n.format('AdminRecentActions.PreviousDescription', true)
+    )
   }),
   'channelAdminLogEventActionChangeUsername': ({isBroadcast, event, action, peerId, makePeerTitle, makeMessagePeerTitle}) => ({
     type: 'regular',
@@ -158,56 +153,51 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
         </>
       );
     },
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const translationKey: LangPackKey = action.new_value ?
-        (isBroadcast ? 'AdminLog.ChangeLinkChannel' : 'AdminLog.ChangeLinkGroup') :
-        (isBroadcast ? 'AdminLog.RemovedLinkChannel' : 'AdminLog.RemovedLinkGroup');
-      const previousLabel = I18n.format('AdminRecentActions.PreviousLink', true);
-      const lines = [`${I18n.format(translationKey, true, [peerTitle])} [${dateText}]`];
-      if(action.new_value) {
-        lines.push(`https://t.me/${action.new_value}`);
+    getCopyText: () => createMultiLineCopyText(
+      event.date,
+      peerId,
+      (peerTitle, dateText) => {
+        const translationKey: LangPackKey = action.new_value ?
+          (isBroadcast ? 'AdminLog.ChangeLinkChannel' : 'AdminLog.ChangeLinkGroup') :
+          (isBroadcast ? 'AdminLog.RemovedLinkChannel' : 'AdminLog.RemovedLinkGroup');
+        const previousLabel = I18n.format('AdminRecentActions.PreviousLink', true);
+        const lines = [`${I18n.format(translationKey, true, [peerTitle])} [${dateText}]`];
+        if(action.new_value) {
+          lines.push(`https://t.me/${action.new_value}`);
+        }
+        if(action.prev_value) {
+          lines.push(`${previousLabel}: https://t.me/${action.prev_value}`);
+        }
+        return lines;
       }
-      if(action.prev_value) {
-        lines.push(`${previousLabel}: https://t.me/${action.prev_value}`);
-      }
-      return {text: lines.join('\n')};
-    }
+    )
   }),
   'channelAdminLogEventActionChangePhoto': ({isBroadcast, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(isBroadcast ? 'AdminLog.ChangePhotoChannel' : 'AdminLog.ChangePhotoGroup', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(isBroadcast ? 'AdminLog.ChangePhotoChannel' : 'AdminLog.ChangePhotoGroup', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ChangePhotoChannel' : 'AdminLog.ChangePhotoGroup', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionToggleInvites': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.ToggleInvitesEnabled' : 'AdminLog.ToggleInvitesDisabled', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(action.new_value ? 'AdminLog.ToggleInvitesEnabled' : 'AdminLog.ToggleInvitesDisabled', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(action.new_value ? 'AdminLog.ToggleInvitesEnabled' : 'AdminLog.ToggleInvitesDisabled', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionToggleSignatures': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.ToggleSignaturesEnabled' : 'AdminLog.ToggleSignaturesDisabled', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(action.new_value ? 'AdminLog.ToggleSignaturesEnabled' : 'AdminLog.ToggleSignaturesDisabled', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(action.new_value ? 'AdminLog.ToggleSignaturesEnabled' : 'AdminLog.ToggleSignaturesDisabled', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionUpdatePinned': ({action, peerId, makePeerTitle, event}) => isMessage(action.message) ? ({
     type: 'default',
@@ -216,17 +206,14 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const pinned = action.message._ === 'message' && action.message.pFlags?.pinned;
       return i18n(pinned ? 'AdminLog.PinnedMessage' : 'AdminLog.UnpinnedMessage', [makePeerTitle(peerId)]);
     },
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
+    getCopyText: () => {
       const pinned = action.message._ === 'message' && action.message.pFlags?.pinned;
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(pinned ? 'AdminLog.PinnedMessage' : 'AdminLog.UnpinnedMessage', true, [peerTitle]);
-      const msg = getMessageTextForCopy(action.message);
-      return {
-        text: `${text} [${dateText}]\n${msg.text}`,
-        html: `${text} [${dateText}]<br/>${msg.html}`
-      };
+      return createMessageCopyText(
+        event.date,
+        peerId,
+        action.message,
+        (peerTitle) => I18n.format(pinned ? 'AdminLog.PinnedMessage' : 'AdminLog.UnpinnedMessage', true, [peerTitle])
+      );
     }
   }) : null,
   'channelAdminLogEventActionEditMessage': ({action, peerId, makePeerTitle, event}) => isMessage(action.new_message) ? ({
@@ -235,70 +222,53 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     colorPeerId: peerId,
     originalMessage: isMessage(action.prev_message) ? action.prev_message : null,
     ServiceContent: () => i18n('AdminLog.EditedMessage', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.EditedMessage', true, [peerTitle]);
-      const newMsg = getMessageTextForCopy(action.new_message);
-      const prevMsg = getMessageTextForCopy(action.prev_message);
-      const previousLabel = I18n.format('AdminRecentActions.PreviousMessage', true);
-      return {
-        text: `${text} [${dateText}]\n${newMsg.text}\n\n${previousLabel}:\n${prevMsg.text}`,
-        html: `${text} [${dateText}]<br/>${newMsg.html}<br/><br/>${previousLabel}:<br/>${prevMsg.html}`
-      };
-    }
+    getCopyText: () => createMessageWithPreviousCopyText(
+      event.date,
+      peerId,
+      action.new_message,
+      action.prev_message,
+      (peerTitle) => I18n.format('AdminLog.EditedMessage', true, [peerTitle]),
+      () => I18n.format('AdminRecentActions.PreviousMessage', true)
+    )
   }) : null,
   'channelAdminLogEventActionDeleteMessage': ({action, peerId, makePeerTitle, event}) => isMessage(action.message) ? ({
     type: 'default',
     message: action.message,
     ServiceContent: () => i18n('AdminLog.DeletedMessage', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.DeletedMessage', true, [peerTitle]);
-      const msg = getMessageTextForCopy(action.message);
-      return {
-        text: `${text} [${dateText}]\n${msg.text}`,
-        html: `${text} [${dateText}]<br/>${msg.html}`
-      };
-    }
+    getCopyText: () => createMessageCopyText(
+      event.date,
+      peerId,
+      action.message,
+      (peerTitle) => I18n.format('AdminLog.DeletedMessage', true, [peerTitle])
+    )
   }) : null,
   'channelAdminLogEventActionParticipantJoin': ({isBroadcast, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(isBroadcast ? 'AdminLog.ParticipantJoinedChannel' : 'AdminLog.ParticipantJoinedGroup', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(isBroadcast ? 'AdminLog.ParticipantJoinedChannel' : 'AdminLog.ParticipantJoinedGroup', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ParticipantJoinedChannel' : 'AdminLog.ParticipantJoinedGroup', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionParticipantLeave': ({isBroadcast, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(isBroadcast ? 'AdminLog.ParticipantLeftChannel' : 'AdminLog.ParticipantLeftGroup', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(isBroadcast ? 'AdminLog.ParticipantLeftChannel' : 'AdminLog.ParticipantLeftGroup', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ParticipantLeftChannel' : 'AdminLog.ParticipantLeftGroup', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionParticipantInvite': ({peerId, action, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ParticipantInvited', [makePeerTitle(peerId), makePeerTitle(getParticipantPeerId(action.participant))]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const participantPeerId = getParticipantPeerId(action.participant);
-      const participantTitle = await getPeerTitle({peerId: participantPeerId, plainText: true});
-      const text = I18n.format('AdminLog.ParticipantInvited', true, [peerTitle, participantTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createTwoPeerCopyText(
+      event.date,
+      peerId,
+      getParticipantPeerId(action.participant),
+      (peerTitle, participantTitle) => I18n.format('AdminLog.ParticipantInvited', true, [peerTitle, participantTitle])
+    )
   }),
   'channelAdminLogEventActionParticipantToggleBan': ({event, action, channelId, peerId, makeMessagePeerTitle, makePeerTitle}) => ({
     type: 'regular',
@@ -444,24 +414,24 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
   'channelAdminLogEventActionChangeStickerSet': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ChangeStickerSet', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ChangeStickerSet', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeStickerSet', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionTogglePreHistoryHidden': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.TogglePreHistoryHiddenEnabled' : 'AdminLog.TogglePreHistoryHiddenDisabled', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(action.new_value ? 'AdminLog.TogglePreHistoryHiddenEnabled' : 'AdminLog.TogglePreHistoryHiddenDisabled', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.TogglePreHistoryHiddenEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.TogglePreHistoryHiddenDisabled', true, [peerTitle])
+      })
+    )
   }),
   'channelAdminLogEventActionDefaultBannedRights': ({event, action, peerId, makeMessagePeerTitle}) => ({
     type: 'regular',
@@ -515,39 +485,30 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     type: 'default',
     message: action.message,
     ServiceContent: () => i18n('AdminLog.PollStopped', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.PollStopped', true, [peerTitle]);
-      const msg = getMessageTextForCopy(action.message);
-      return {
-        text: `${text} [${dateText}]\n${msg.text}`,
-        html: `${text} [${dateText}]<br/>${msg.html}`
-      };
-    }
+    getCopyText: () => createMessageCopyText(
+      event.date,
+      peerId,
+      action.message,
+      (peerTitle) => I18n.format('AdminLog.PollStopped', true, [peerTitle])
+    )
   }) : null,
   'channelAdminLogEventActionChangeLinkedChat': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ChangeLinkedChat', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ChangeLinkedChat', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeLinkedChat', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionChangeLocation': ({isBroadcast, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(isBroadcast ? 'AdminLog.ChangeLocationChannel' : 'AdminLog.ChangeLocationGroup', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(isBroadcast ? 'AdminLog.ChangeLocationChannel' : 'AdminLog.ChangeLocationGroup', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ChangeLocationChannel' : 'AdminLog.ChangeLocationGroup', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionToggleSlowMode': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
@@ -576,118 +537,99 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
   'channelAdminLogEventActionStartGroupCall': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.StartGroupCall', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.StartGroupCall', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.StartGroupCall', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionDiscardGroupCall': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.DiscardGroupCall', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.DiscardGroupCall', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.DiscardGroupCall', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionParticipantMute': ({peerId, action, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ParticipantMuted', [makePeerTitle(getPeerId(action.participant?.peer)), makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const participantPeerId = getPeerId(action.participant?.peer);
-      const participantTitle = await getPeerTitle({peerId: participantPeerId, plainText: true});
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ParticipantMuted', true, [participantTitle, peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createTwoPeerCopyText(
+      event.date,
+      getPeerId(action.participant?.peer),
+      peerId,
+      (participantTitle, peerTitle) => I18n.format('AdminLog.ParticipantMuted', true, [participantTitle, peerTitle])
+    )
   }),
   'channelAdminLogEventActionParticipantUnmute': ({peerId, action, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ParticipantUnmuted', [makePeerTitle(getPeerId(action.participant?.peer)), makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const participantPeerId = getPeerId(action.participant?.peer);
-      const participantTitle = await getPeerTitle({peerId: participantPeerId, plainText: true});
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ParticipantUnmuted', true, [participantTitle, peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createTwoPeerCopyText(
+      event.date,
+      getPeerId(action.participant?.peer),
+      peerId,
+      (participantTitle, peerTitle) => I18n.format('AdminLog.ParticipantUnmuted', true, [participantTitle, peerTitle])
+    )
   }),
   'channelAdminLogEventActionToggleGroupCallSetting': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(action.join_muted ? 'AdminLog.ToggleGroupCallSettingEnabled' : 'AdminLog.ToggleGroupCallSettingDisabled', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(action.join_muted ? 'AdminLog.ToggleGroupCallSettingEnabled' : 'AdminLog.ToggleGroupCallSettingDisabled', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.join_muted,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleGroupCallSettingEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleGroupCallSettingDisabled', true, [peerTitle])
+      })
+    )
   }),
   'channelAdminLogEventActionParticipantJoinByInvite': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ParticipantJoinedByInvite', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ParticipantJoinedByInvite', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ParticipantJoinedByInvite', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionExportedInviteDelete': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ExportedInviteDeleted', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ExportedInviteDeleted', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ExportedInviteDeleted', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionExportedInviteRevoke': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ExportedInviteRevoked', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ExportedInviteRevoked', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ExportedInviteRevoked', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionExportedInviteEdit': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ExportedInviteEdit', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ExportedInviteEdit', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ExportedInviteEdit', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionParticipantVolume': ({peerId, action, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ParticipantVolumeChanged', [makePeerTitle(getPeerId(action.participant?.peer)), makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const participantPeerId = getPeerId(action.participant?.peer);
-      const participantTitle = await getPeerTitle({peerId: participantPeerId, plainText: true});
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ParticipantVolumeChanged', true, [participantTitle, peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createTwoPeerCopyText(
+      event.date,
+      getPeerId(action.participant?.peer),
+      peerId,
+      (participantTitle, peerTitle) => I18n.format('AdminLog.ParticipantVolumeChanged', true, [participantTitle, peerTitle])
+    )
   }),
   'channelAdminLogEventActionChangeHistoryTTL': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
@@ -716,112 +658,104 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
   'channelAdminLogEventActionParticipantJoinByRequest': ({peerId, action, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ParticipantJoinedByRequest', [makePeerTitle(peerId), makePeerTitle(action.approved_by.toPeerId())]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const approvedByPeerId = action.approved_by.toPeerId();
-      const approvedByTitle = await getPeerTitle({peerId: approvedByPeerId, plainText: true});
-      const text = I18n.format('AdminLog.ParticipantJoinedByRequest', true, [peerTitle, approvedByTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createTwoPeerCopyText(
+      event.date,
+      peerId,
+      action.approved_by.toPeerId(),
+      (peerTitle, approvedByTitle) => I18n.format('AdminLog.ParticipantJoinedByRequest', true, [peerTitle, approvedByTitle])
+    )
   }),
   'channelAdminLogEventActionToggleNoForwards': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.ToggleNoForwardsEnabled' : 'AdminLog.ToggleNoForwardsDisabled', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(action.new_value ? 'AdminLog.ToggleNoForwardsEnabled' : 'AdminLog.ToggleNoForwardsDisabled', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleNoForwardsEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleNoForwardsDisabled', true, [peerTitle])
+      })
+    )
   }),
   'channelAdminLogEventActionSendMessage': ({action, peerId, makePeerTitle, event}) => isMessage(action.message) ? ({
     type: 'default',
     message: action.message,
     ServiceContent: () => i18n('AdminLog.MessageSent', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.MessageSent', true, [peerTitle]);
-      const msg = getMessageTextForCopy(action.message);
-      return {
-        text: `${text} [${dateText}]\n${msg.text}`,
-        html: `${text} [${dateText}]<br/>${msg.html}`
-      };
-    }
+    getCopyText: () => createMessageCopyText(
+      event.date,
+      peerId,
+      action.message,
+      (peerTitle) => I18n.format('AdminLog.MessageSent', true, [peerTitle])
+    )
   }) : null,
   'channelAdminLogEventActionChangeAvailableReactions': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ChangeAvailableReactions', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ChangeAvailableReactions', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeAvailableReactions', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionChangeUsernames': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () =>
       i18n('AdminLog.ChangeUsernames', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ChangeUsernames', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeUsernames', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionToggleForum': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.ToggleForumEnabled' : 'AdminLog.ToggleForumDisabled', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(action.new_value ? 'AdminLog.ToggleForumEnabled' : 'AdminLog.ToggleForumDisabled', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleForumEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleForumDisabled', true, [peerTitle])
+      })
+    )
   }),
   'channelAdminLogEventActionCreateTopic': ({peerId, action, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => <I18nTsx key='AdminLog.TopicCreated' args={[makePeerTitle(peerId), <TopicName topic={action.topic} />]} />,
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const topicTitle = action.topic._ === 'forumTopicDeleted' ? '' : action.topic.title;
-      const text = I18n.format('AdminLog.TopicCreated', true, [peerTitle, topicTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => {
+        const topicTitle = action.topic._ === 'forumTopicDeleted' ? '' : action.topic.title;
+        return I18n.format('AdminLog.TopicCreated', true, [peerTitle, topicTitle]);
+      }
+    )
   }),
   'channelAdminLogEventActionEditTopic': ({peerId, makePeerTitle, action, event}) => ({
     type: 'service',
     Content: () => <I18nTsx key='AdminLog.TopicEdited' args={[makePeerTitle(peerId), <TopicName topic={action.new_topic} />]} />,
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const topicTitle = action.new_topic._ === 'forumTopicDeleted' ? '' : action.new_topic.title;
-      const text = I18n.format('AdminLog.TopicEdited', true, [peerTitle, topicTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => {
+        const topicTitle = action.new_topic._ === 'forumTopicDeleted' ? '' : action.new_topic.title;
+        return I18n.format('AdminLog.TopicEdited', true, [peerTitle, topicTitle]);
+      }
+    )
   }),
   'channelAdminLogEventActionDeleteTopic': ({peerId, makePeerTitle, action, event}) => ({
     type: 'service',
     Content: () => <I18nTsx key='AdminLog.TopicDeleted' args={[makePeerTitle(peerId), <TopicName topic={action.topic} />]} />,
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const topicTitle = action.topic._ === 'forumTopicDeleted' ? '' : action.topic.title;
-      const text = I18n.format('AdminLog.TopicDeleted', true, [peerTitle, topicTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => {
+        const topicTitle = action.topic._ === 'forumTopicDeleted' ? '' : action.topic.title;
+        return I18n.format('AdminLog.TopicDeleted', true, [peerTitle, topicTitle]);
+      }
+    )
   }),
   'channelAdminLogEventActionPinTopic': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
@@ -831,115 +765,109 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
 
       return <I18nTsx key={pinned ? 'AdminLog.TopicPinned' : 'AdminLog.TopicUnpinned'} args={[makePeerTitle(peerId), <TopicName topic={topic} />]} />;
     },
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const pinned = !!action.new_topic;
-      const topic = action.new_topic ? action.new_topic : action.prev_topic;
-      const topicTitle = topic._ === 'forumTopic' ? topic.title : '';
-      const text = I18n.format(pinned ? 'AdminLog.TopicPinned' : 'AdminLog.TopicUnpinned', true, [peerTitle, topicTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => {
+        const pinned = !!action.new_topic;
+        const topic = action.new_topic ? action.new_topic : action.prev_topic;
+        const topicTitle = topic._ === 'forumTopic' ? topic.title : '';
+        return I18n.format(pinned ? 'AdminLog.TopicPinned' : 'AdminLog.TopicUnpinned', true, [peerTitle, topicTitle]);
+      }
+    )
   }),
   'channelAdminLogEventActionToggleAntiSpam': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.ToggleAntiSpamEnabled' : 'AdminLog.ToggleAntiSpamDisabled', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(action.new_value ? 'AdminLog.ToggleAntiSpamEnabled' : 'AdminLog.ToggleAntiSpamDisabled', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleAntiSpamEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleAntiSpamDisabled', true, [peerTitle])
+      })
+    )
   }),
   'channelAdminLogEventActionChangePeerColor': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ChangePeerColor', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ChangePeerColor', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangePeerColor', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionChangeProfilePeerColor': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ChangeProfilePeerColor', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ChangeProfilePeerColor', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeProfilePeerColor', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionChangeWallpaper': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ChangeWallpaper', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ChangeWallpaper', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeWallpaper', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionChangeEmojiStatus': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ChangeEmojiStatus', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ChangeEmojiStatus', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeEmojiStatus', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionChangeEmojiStickerSet': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ChangeEmojiStickerSet', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ChangeEmojiStickerSet', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeEmojiStickerSet', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionToggleSignatureProfiles': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.ToggleSignatureProfilesEnabled' : 'AdminLog.ToggleSignatureProfilesDisabled', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(action.new_value ? 'AdminLog.ToggleSignatureProfilesEnabled' : 'AdminLog.ToggleSignatureProfilesDisabled', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleSignatureProfilesEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleSignatureProfilesDisabled', true, [peerTitle])
+      })
+    )
   }),
   'channelAdminLogEventActionParticipantSubExtend': ({peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n('AdminLog.ParticipantSubscriptionExtended', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format('AdminLog.ParticipantSubscriptionExtended', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ParticipantSubscriptionExtended', true, [peerTitle])
+    )
   }),
   'channelAdminLogEventActionToggleAutotranslation': ({action, peerId, makePeerTitle, event}) => ({
     type: 'service',
     Content: () => i18n(action.new_value ? 'AdminLog.ToggleAutoTranslationEnabled' : 'AdminLog.ToggleAutoTranslationDisabled', [makePeerTitle(peerId)]),
-    getCopyText: async() => {
-      const {getPeerTitle} = useHotReloadGuard();
-      const dateText = getDateTextForCopy(event.date);
-      const peerTitle = await getPeerTitle({peerId, plainText: true});
-      const text = I18n.format(action.new_value ? 'AdminLog.ToggleAutoTranslationEnabled' : 'AdminLog.ToggleAutoTranslationDisabled', true, [peerTitle]);
-      return {text: `${text} [${dateText}]`};
-    }
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleAutoTranslationEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleAutoTranslationDisabled', true, [peerTitle])
+      })
+    )
   })
 };
 
