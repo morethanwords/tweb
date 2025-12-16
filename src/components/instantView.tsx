@@ -149,7 +149,7 @@ export function InstantView(props: {
               {value.customEmojiRenderer}
               <div class={styles.InstantViewContent}>
                 <For each={props.page.blocks}>{(block) => (
-                  <Block block={block} paddings={1} />
+                  <Block block={block} paddings={2} />
                 )}</For>
               </div>
               <div
@@ -199,7 +199,7 @@ function _onMediaResult(
   ref.style.setProperty(
     '--paddings',
     // '' + (paddings > 1 ? paddings + 1 : 0)
-    '' + (paddings > 1 ? paddings : 0)
+    '' + (paddings > 2 ? paddings : 0)
   );
 }
 
@@ -644,7 +644,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
           </Row>
           <div class={styles.PostContent}>
             <For each={block.blocks}>{(subBlock) => (
-              <Block block={subBlock} paddings={props.paddings + 2} />
+              <Block block={subBlock} paddings={props.paddings + 1} />
             )}</For>
           </div>
         </div>
