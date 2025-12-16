@@ -1322,6 +1322,7 @@ export default class ChatBubbles {
       this.listenerSetter.add(container)('dblclick', async(e) => {
         if(
           this.chat.type === ChatType.Pinned ||
+          this.chat.type === ChatType.Logs ||
           this.chat.selection.isSelecting ||
           !this.chat.input.canSendPlain()
         ) {
