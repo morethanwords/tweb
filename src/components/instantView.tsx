@@ -694,7 +694,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
         <div class={styles.Pullquote}>
           <RichTextRenderer text={block.text} />
           <Show when={!isRichTextEmpty(block.caption)}>
-            <div class={styles.BlockquoteCaption}>
+            <div class={classNames(styles.BlockquoteCaption, 'secondary')}>
               <RichTextRenderer text={block.caption} />
             </div>
           </Show>
