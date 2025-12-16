@@ -2,8 +2,7 @@ import {formatDate} from '../../../../helpers/date';
 import {makeDateFromTimestamp} from '../../../../helpers/date/makeDateFromTimestamp';
 import formatDuration from '../../../../helpers/formatDuration';
 import prepareTextWithEntitiesForCopying from '../../../../helpers/prepareTextWithEntitiesForCopying';
-import {ChannelAdminLogEventAction, ChatBannedRights} from '../../../../layer';
-import {MyMessage} from '../../../../lib/appManagers/appMessagesManager';
+import {ChannelAdminLogEventAction, ChatBannedRights, Message} from '../../../../layer';
 import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
 import removeChatBannedRightsFromParticipant from '../../../../lib/appManagers/utils/chats/removeChatBannedRightsFromParticipant';
@@ -96,7 +95,7 @@ export function extractDefaultRightsChanges(
   return {added, removed};
 }
 
-export function getMessageTextForCopy(message: MyMessage) {
+export function getMessageTextForCopy(message: Message) {
   if(message._ !== 'message') {
     return {text: '', html: ''};
   }

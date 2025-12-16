@@ -103,10 +103,12 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     getCopyText: async() => {
       const {getPeerTitle} = useHotReloadGuard();
       const dateText = getDateTextForCopy(event.date);
-      const username = await getPeerTitle({peerId, plainText: true});
+      const peerTitle = await getPeerTitle({peerId, plainText: true});
       const previousLabel = I18n.format('AdminRecentActions.PreviousDescription', true);
       return {
-        text: `${username} [${dateText}]\n${action.new_value}\n${previousLabel}: ${action.prev_value}`
+        text: `${
+          I18n.format(isBroadcast ? 'AdminLog.ChangeAboutChannel' : 'AdminLog.ChangeAboutGroup', true, [peerTitle])
+        } [${dateText}]\n${action.new_value}\n\n${previousLabel}:\n${action.prev_value}`
       };
     }
   }),
@@ -166,7 +168,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const previousLabel = I18n.format('AdminRecentActions.PreviousLink', true);
       const lines = [`${I18n.format(translationKey, true, [peerTitle])} [${dateText}]`];
       if(action.new_value) {
-        lines.push(`t.me/${action.new_value}`);
+        lines.push(`https://t.me/${action.new_value}`);
       }
       if(action.prev_value) {
         lines.push(`${previousLabel}: https://t.me/${action.prev_value}`);
@@ -220,7 +222,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const pinned = action.message._ === 'message' && action.message.pFlags?.pinned;
       const peerTitle = await getPeerTitle({peerId, plainText: true});
       const text = I18n.format(pinned ? 'AdminLog.PinnedMessage' : 'AdminLog.UnpinnedMessage', true, [peerTitle]);
-      const msg = isMessage(action.message) ? getMessageTextForCopy(action.message) : {text: '', html: ''};
+      const msg = getMessageTextForCopy(action.message);
       return {
         text: `${text} [${dateText}]\n${msg.text}`,
         html: `${text} [${dateText}]<br/>${msg.html}`
@@ -238,8 +240,8 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const dateText = getDateTextForCopy(event.date);
       const peerTitle = await getPeerTitle({peerId, plainText: true});
       const text = I18n.format('AdminLog.EditedMessage', true, [peerTitle]);
-      const newMsg = isMessage(action.new_message) ? getMessageTextForCopy(action.new_message) : {text: '', html: ''};
-      const prevMsg = (isMessage(action.prev_message)) ? getMessageTextForCopy(action.prev_message) : {text: '', html: ''};
+      const newMsg = getMessageTextForCopy(action.new_message);
+      const prevMsg = getMessageTextForCopy(action.prev_message);
       const previousLabel = I18n.format('AdminRecentActions.PreviousMessage', true);
       return {
         text: `${text} [${dateText}]\n${newMsg.text}\n\n${previousLabel}:\n${prevMsg.text}`,
@@ -256,7 +258,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const dateText = getDateTextForCopy(event.date);
       const peerTitle = await getPeerTitle({peerId, plainText: true});
       const text = I18n.format('AdminLog.DeletedMessage', true, [peerTitle]);
-      const msg = isMessage(action.message) ? getMessageTextForCopy(action.message) : {text: '', html: ''};
+      const msg = getMessageTextForCopy(action.message);
       return {
         text: `${text} [${dateText}]\n${msg.text}`,
         html: `${text} [${dateText}]<br/>${msg.html}`
@@ -498,10 +500,11 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
     getCopyText: async() => {
       const {getPeerTitle} = useHotReloadGuard();
       const dateText = getDateTextForCopy(event.date);
-      const username = await getPeerTitle({peerId, plainText: true});
+      const peerTitle = await getPeerTitle({peerId, plainText: true});
       const {added, removed} = extractDefaultRightsChanges(action);
 
-      const lines = [`${username} [${dateText}]`];
+      const lines = [`${peerTitle} [${dateText}]`];
+      lines.push(I18n.format('AdminLog.DefaultBannedRightsChanged', true, [peerTitle]));
       added.forEach(perm => lines.push(`+ ${perm}`));
       removed.forEach(perm => lines.push(`- ${perm}`));
 
@@ -517,7 +520,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const dateText = getDateTextForCopy(event.date);
       const peerTitle = await getPeerTitle({peerId, plainText: true});
       const text = I18n.format('AdminLog.PollStopped', true, [peerTitle]);
-      const msg = isMessage(action.message) ? getMessageTextForCopy(action.message) : {text: '', html: ''};
+      const msg = getMessageTextForCopy(action.message);
       return {
         text: `${text} [${dateText}]\n${msg.text}`,
         html: `${text} [${dateText}]<br/>${msg.html}`
@@ -743,7 +746,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const dateText = getDateTextForCopy(event.date);
       const peerTitle = await getPeerTitle({peerId, plainText: true});
       const text = I18n.format('AdminLog.MessageSent', true, [peerTitle]);
-      const msg = isMessage(action.message) ? getMessageTextForCopy(action.message) : {text: '', html: ''};
+      const msg = getMessageTextForCopy(action.message);
       return {
         text: `${text} [${dateText}]\n${msg.text}`,
         html: `${text} [${dateText}]<br/>${msg.html}`
@@ -834,7 +837,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       const peerTitle = await getPeerTitle({peerId, plainText: true});
       const pinned = !!action.new_topic;
       const topic = action.new_topic ? action.new_topic : action.prev_topic;
-      const topicTitle = topic._ === 'forumTopicDeleted' ? '' : topic.title;
+      const topicTitle = topic._ === 'forumTopic' ? topic.title : '';
       const text = I18n.format(pinned ? 'AdminLog.TopicPinned' : 'AdminLog.TopicUnpinned', true, [peerTitle, topicTitle]);
       return {text: `${text} [${dateText}]`};
     }
