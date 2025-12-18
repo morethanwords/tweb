@@ -206,7 +206,7 @@ function UpgradeAnimation(props: {
     const middleware = createMiddleware();
 
     let lastPlayer: RLottiePlayer;
-    Promise.all(models.map(async(model, idx) => {
+    await Promise.all(models.map(async(model, idx) => {
       const div = document.createElement('div');
       const isLast = idx === models.length - 1;
       div.classList.add('popup-star-gift-info-upgrade-model');
