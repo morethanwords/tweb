@@ -25,6 +25,17 @@ import {Reply} from './reply';
 import {CopyTextResult, createConditionalCopyText, createMessageCopyText, createMessageWithPreviousCopyText, createMultiLineCopyText, createPreviousValueCopyText, createSimpleServiceCopyText, createTwoPeerCopyText, extractAdminChanges, extractBanChanges, extractDefaultRightsChanges, formatDurationAsText, getDateTextForCopy, getMessageTextForCopy} from './copyTextHelpers';
 
 
+type RenderArgs = {
+  channelId: ChatId;
+  event: AdminLog;
+  isBroadcast: boolean;
+  isForum: boolean;
+  peerId: PeerId;
+  makePeerTitle: (peerId: PeerId) => Node;
+  makeMessagePeerTitle: (peerId: PeerId) => Node;
+  isOut: boolean;
+};
+
 type ServiceResult = {
   type: 'service';
   Content: Component;
@@ -50,15 +61,8 @@ type DefaultResult = {
 type MapCallbackResult = ServiceResult | RegularResult | DefaultResult | null;
 
 type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
-  channelId: ChatId;
-  event: AdminLog;
   action: Extract<ChannelAdminLogEventAction, {_: Key}>;
-  isBroadcast: boolean;
-  isForum: boolean;
-  peerId: PeerId;
-  makePeerTitle: (peerId: PeerId) => Node;
-  makeMessagePeerTitle: (peerId: PeerId) => Node;
-};
+} & RenderArgs;
 
 type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: MapCallbackArgs<Key>) => MapCallbackResult;
 
@@ -74,7 +78,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ChangeTitleChannel' : 'AdminLog.ChangeTitleGroup', true, [peerTitle, action.new_value])
     )
   }),
-  'channelAdminLogEventActionChangeAbout': ({isBroadcast, action, event, peerId, makePeerTitle, makeMessagePeerTitle}) => ({
+  'channelAdminLogEventActionChangeAbout': ({isBroadcast, action, event, peerId, makePeerTitle, makeMessagePeerTitle, isOut}) => ({
     type: 'regular',
     bubbleClass: defaultBubbleClass,
     Content: () => {
@@ -85,7 +89,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
           </div>
           <MinimalBubbleMessageContent
             date={makeDateFromTimestamp(event.date)}
-            name={makeMessagePeerTitle(peerId)}
+            name={isOut ? null : makeMessagePeerTitle(peerId)}
           >
             {wrapRichText(action.new_value)}
             <Space amount='0.5rem' />
@@ -107,7 +111,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       () => I18n.format('AdminRecentActions.PreviousDescription', true)
     )
   }),
-  'channelAdminLogEventActionChangeUsername': ({isBroadcast, event, action, peerId, makePeerTitle, makeMessagePeerTitle}) => ({
+  'channelAdminLogEventActionChangeUsername': ({isBroadcast, event, action, peerId, makePeerTitle, makeMessagePeerTitle, isOut}) => ({
     type: 'regular',
     bubbleClass: defaultBubbleClass,
     Content: () => {
@@ -136,7 +140,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
           </div>
           <MinimalBubbleMessageContent
             date={makeDateFromTimestamp(event.date)}
-            name={makeMessagePeerTitle(peerId)}
+            name={isOut ? null : makeMessagePeerTitle(peerId)}
           >
             <Show when={anchor}>
               {anchor}
@@ -270,7 +274,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       (peerTitle, participantTitle) => I18n.format('AdminLog.ParticipantInvited', true, [peerTitle, participantTitle])
     )
   }),
-  'channelAdminLogEventActionParticipantToggleBan': ({event, action, channelId, peerId, makeMessagePeerTitle, makePeerTitle}) => ({
+  'channelAdminLogEventActionParticipantToggleBan': ({event, action, channelId, peerId, makeMessagePeerTitle, makePeerTitle, isOut}) => ({
     type: 'regular',
     bubbleClass: defaultBubbleClass,
     Content: () => {
@@ -309,7 +313,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
         <>
           <MinimalBubbleMessageContent
             date={makeDateFromTimestamp(event.date)}
-            name={makeMessagePeerTitle(peerId)}
+            name={isOut ? null : makeMessagePeerTitle(peerId)}
           >
             <Show when={isBanned}>
               <I18nTsx
@@ -323,17 +327,15 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
                 args={[linkColor(makePeerTitle(participantPeerId)), username ? linkColor(`@${username}`) : '']}
               />
             </Show>
-            <Space amount='0.5rem' />
-            <For each={added}>
-              {key => (
-                <div>+ {key}</div>
-              )}
-            </For>
-            <For each={removed}>
-              {key => (
-                <div>- {key}</div>
-              )}
-            </For>
+            <Show when={!isBanned}>
+              <Space amount='0.5rem' />
+              <For each={added}>
+                {key => <div>+ {key}</div>}
+              </For>
+              <For each={removed}>
+                {key => <div>- {key}</div>}
+              </For>
+            </Show>
           </MinimalBubbleMessageContent>
         </>
       );
@@ -353,7 +355,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       return {text: lines.join('\n')};
     }
   }),
-  'channelAdminLogEventActionParticipantToggleAdmin': ({event, action, peerId, makePeerTitle, makeMessagePeerTitle, isBroadcast}) => ({
+  'channelAdminLogEventActionParticipantToggleAdmin': ({event, action, peerId, makePeerTitle, makeMessagePeerTitle, isBroadcast, isOut}) => ({
     type: 'regular',
     bubbleClass: defaultBubbleClass,
     Content: () => {
@@ -375,7 +377,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
         <>
           <MinimalBubbleMessageContent
             date={makeDateFromTimestamp(event.date)}
-            name={makeMessagePeerTitle(peerId)}
+            name={isOut ? null : makeMessagePeerTitle(peerId)}
           >
             <I18nTsx
               key={username ? 'AdminLog.AdminPermissionsChangedUsername' : 'AdminLog.AdminPermissionsChanged'}
@@ -383,14 +385,10 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
             />
             <Space amount='0.5rem' />
             <For each={added}>
-              {key => (
-                <div>+ {key}</div>
-              )}
+              {key => <div>+ {key}</div>}
             </For>
             <For each={removed}>
-              {key => (
-                <div>- {key}</div>
-              )}
+              {key => <div>- {key}</div>}
             </For>
           </MinimalBubbleMessageContent>
         </>
@@ -433,7 +431,7 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
       })
     )
   }),
-  'channelAdminLogEventActionDefaultBannedRights': ({event, action, peerId, makeMessagePeerTitle}) => ({
+  'channelAdminLogEventActionDefaultBannedRights': ({event, action, peerId, makeMessagePeerTitle, isOut}) => ({
     type: 'regular',
     bubbleClass: defaultBubbleClass,
     Content: () => {
@@ -449,19 +447,15 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
         <>
           <MinimalBubbleMessageContent
             date={makeDateFromTimestamp(event.date)}
-            name={makeMessagePeerTitle(peerId)}
+            name={isOut ? null : makeMessagePeerTitle(peerId)}
           >
             <I18nTsx key={'AdminLog.DefaultBannedRightsChanged'} />
             <Space amount='0.5rem' />
             <For each={added}>
-              {key => (
-                <div>+ {key}</div>
-              )}
+              {key => <div>+ {key}</div>}
             </For>
             <For each={removed}>
-              {key => (
-                <div>- {key}</div>
-              )}
+              {key => <div>- {key}</div>}
             </For>
           </MinimalBubbleMessageContent>
         </>
@@ -871,22 +865,15 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
   })
 };
 
-type ResolveAdminLogArgs = {
-  channelId: ChatId;
-  event: ChannelAdminLogEvent;
-  isBroadcast: boolean;
-  isForum: boolean;
-  peerId: PeerId;
-  makePeerTitle: (peerId: PeerId) => Node;
-  makeMessagePeerTitle: (peerId: PeerId) => Node;
-};
+type ResolveAdminLogArgs = RenderArgs;
 
-export const resolveAdminLog = ({channelId, event, isBroadcast, isForum, peerId, makePeerTitle, makeMessagePeerTitle}: ResolveAdminLogArgs) => {
+export const resolveAdminLog = (args: ResolveAdminLogArgs) => {
+  const {event} = args;
   const resolver = adminLogsMap[event.action._];
 
   if(!resolver) {
     return null;
   }
 
-  return resolver({channelId, event, action: event.action as never, isBroadcast, isForum, peerId, makePeerTitle, makeMessagePeerTitle});
+  return resolver({...args, action: event.action as never});
 };

@@ -10167,12 +10167,15 @@ export default class ChatBubbles {
 
     const promises = args.noJsx !== true ? args.promises : undefined;
 
+    const isOut = log.user_id.toPeerId() === rootScope.myId;
+
     const entry = resolveAdminLog({
       channelId: this.peerId.toChatId(),
       event: log,
       isBroadcast: this.chat.isBroadcast,
       isForum: this.chat.isForum,
       peerId: log.user_id.toPeerId(),
+      isOut,
       makePeerTitle: promises ?
         (peerId) => {
           const peerTitle = new PeerTitle;
