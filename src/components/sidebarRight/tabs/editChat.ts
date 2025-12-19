@@ -403,6 +403,26 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(discussionRow.container);
       }
 
+      if(isAdmin) {
+        const recentActionsRow = new Row({
+          icon: 'clipboard',
+          titleLangKey: 'RecentActions',
+          clickable: () => {
+            if(appSettings.logsDiffView) {
+              this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
+            } else {
+              appImManager.setPeer({
+                peerId: this.chatId.toPeerId(true),
+                type: ChatType.Logs
+              });
+            }
+          },
+          listenerSetter: this.listenerSetter
+        });
+
+        section.content.append(recentActionsRow.container);
+      }
+
       if(canManageTopics && isAdmin && (chat.participants_count >= appConfig.forum_upgrade_participants_min || (chat as Chat.channel).pFlags.forum) && !isBroadcast) {
         const topicsRow = new Row({
           checkboxField: new CheckboxField({toggle: true}),
@@ -442,26 +462,6 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         section.caption.replaceChildren(i18n('ForumToggleDescription'));
         section.content.append(topicsRow.container);
-      }
-
-      if(isAdmin) {
-        const recentActionsRow = new Row({
-          icon: 'clipboard',
-          titleLangKey: 'RecentActions',
-          clickable: () => {
-            if(appSettings.logsDiffView) {
-              this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
-            } else {
-              appImManager.setPeer({
-                peerId: this.chatId.toPeerId(true),
-                type: ChatType.Logs
-              });
-            }
-          },
-          listenerSetter: this.listenerSetter
-        });
-
-        section.content.append(recentActionsRow.container);
       }
 
       section.caption.classList.toggle('hide', !section.caption.childElementCount);
