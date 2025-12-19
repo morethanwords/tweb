@@ -2940,6 +2940,8 @@ export default class ChatBubbles {
     const bubble = findUpClassName(target, 'bubble');
     const documentDiv = findUpClassName(target, 'document-with-thumb');
 
+    if(this.chat.type === ChatType.Logs) return;
+
     if(
       (target.tagName === 'IMG' && !target.classList.contains('emoji') && !target.classList.contains('document-thumb')) ||
       target.classList.contains('album-item') ||

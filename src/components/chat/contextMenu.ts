@@ -195,6 +195,7 @@ export default class ChatContextMenu {
   private peerId: PeerId;
   private mid: number;
   private message: Message.message | Message.messageService;
+  private messageFromLog: Message.message | Message.messageService;
   private mainMessage: Message.message | Message.messageService;
   private sponsoredMessage: SponsoredMessage;
   private noForwards: boolean;
@@ -434,16 +435,15 @@ export default class ChatContextMenu {
 
     const prepareForLog = async() => {
       const log = this.chat.bubbles.logsByBubble.get(bubble);
-      (async() => {
-        try {
-          const entry = await this.chat.bubbles.resolveAdminLog({
-            log,
-            noJsx: true
-          });
+      try {
+        const entry = await this.chat.bubbles.resolveAdminLog({
+          log,
+          noJsx: true
+        });
 
-          this.selectedMessagesText = await runWithHotReloadGuard(entry.getCopyText);
-        } catch{}
-      })();
+        this.selectedMessagesText = await runWithHotReloadGuard(entry.getCopyText);
+        this.messageFromLog = entry.type === 'default' ? entry.message : undefined;
+      } catch{}
     };
 
     const openMenu = async() => {
@@ -536,6 +536,16 @@ export default class ChatContextMenu {
           text: 'Copy',
           onClick: this.onCopyClick,
           verify: () => !!this.selectedMessagesText
+        },
+        {
+          icon: 'download',
+          text: 'Media',
+          onClick: () => {
+            const media = getMediaFromMessage(this.messageFromLog, true);
+            if(!media) return;
+            appDownloadManager.downloadToDisc({media, queueId: this.chat.bubbles.lazyLoadQueue.queueId});
+          },
+          verify: () => this.messageFromLog && !!getMediaFromMessage(this.messageFromLog)
         }
       ];
       return;

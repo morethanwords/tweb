@@ -4055,7 +4055,8 @@ const lang = {
   'AdminLog.ToggleAutoTranslationEnabled': '%s enabled auto-translation',
   'AdminLog.ToggleAutoTranslationDisabled': '%s disabled auto-translation',
 
-  'Topic': 'Topic'
+  'Topic': 'Topic',
+  'DownloadMedia': 'Download Media'
 };
 
 export default lang;

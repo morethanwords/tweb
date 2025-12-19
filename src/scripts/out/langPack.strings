@@ -3534,6 +3534,7 @@
 "AdminLog.ToggleAutoTranslationEnabled" = "%s enabled auto-translation";
 "AdminLog.ToggleAutoTranslationDisabled" = "%s disabled auto-translation";
 "Topic" = "Topic";
+"DownloadMedia" = "Download Media";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";
