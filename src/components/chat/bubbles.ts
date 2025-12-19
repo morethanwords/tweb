@@ -10099,21 +10099,15 @@ export default class ChatBubbles {
 
   public isAvatarNeeded(message: Message.message | Message.messageService | AdminLog) {
     if(message?._ === 'channelAdminLogEvent') {
-      if(message.user_id?.toPeerId() === rootScope.myId) return false;
-
-      // If resolveAdminLog hasn't been loaded yet (unlikely in practice since renderLog would have loaded it),
-      // return false as a safe default to show avatars for admin log entries
-      if(!resolveAdminLog) {
-        return false;
-      }
-
       const entry = this.resolveAdminLogUnsafe({
         log: message,
         noJsx: true
       });
 
+      if(!entry) return false;
+
       if(entry.type === 'default') message = entry.message;
-      else if(entry.type === 'regular') return true;
+      else if(entry.type === 'regular') return message.user_id?.toPeerId() !== rootScope.myId;
       else return false;
     }
 
@@ -10159,6 +10153,8 @@ export default class ChatBubbles {
    * Doesn't ensure the resolver function was loaded
    */
   public resolveAdminLogUnsafe(args: BubblesResolveAdminLogArgs) {
+    if(!resolveAdminLog) return null;
+
     const {log} = args;
 
     const wrapOptions: WrapSomethingOptions = args.noJsx !== true ? {
@@ -10187,7 +10183,11 @@ export default class ChatBubbles {
         } :
         () => document.createElement('span'),
       makeMessagePeerTitle: wrapOptions ?
-        (peerId) => this.createTitle(peerId, wrapOptions, false).element :
+        (peerId) => {
+          const {element, textColorProperty} = this.createTitle(peerId, wrapOptions, false);
+          element.style.color = `rgb(var(--${textColorProperty}))`;
+          return element;
+        } :
         () => document.createElement('span')
     });
 

@@ -86,11 +86,21 @@ export class BubbleGroup {
     const isForwardFromChannel = isMessage(message) && message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
     const currentPeerId = this.chat.peerId;
 
+    const getPeerIdForLog = (log: AdminLog) => {
+      const entry = this.chat.bubbles.resolveAdminLogUnsafe({log, noJsx: true});
+
+      if(entry?.type === 'default') {
+        if(entry.message._ === 'message') return getPeerId(entry.message.from_id);
+      }
+
+      return log?.user_id?.toPeerId();
+    };
+
     const peerId =
       (
         isMessage(message) ?
           ((fwdFrom && (/* currentPeerId === rootScope.myId ||  */currentPeerId === REPLIES_PEER_ID || currentPeerId === VERIFICATION_CODES_BOT_ID) && !fwdFromName) || isForwardFromChannel ? fwdFromId : message.fromId) :
-          message?.user_id?.toPeerId()
+          getPeerIdForLog(message)
       ) ||
       NULL_PEER_ID;
 

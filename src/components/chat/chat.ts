@@ -1285,6 +1285,7 @@ export default class Chat extends EventListenerBase<{
     if(peerId === rootScope.myId) return true;
     if(peerId === REPLIES_PEER_ID) return true;
     if(this.type === ChatType.Search && this.hashtagType !== 'this') return true;
+    if(this.type === ChatType.Logs) return true;
 
     const {isBotforum, isLikeGroup} = await namedPromises({
       isLikeGroup: this.managers.appPeersManager.isLikeGroup(peerId),
