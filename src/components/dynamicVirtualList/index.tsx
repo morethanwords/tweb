@@ -178,7 +178,7 @@ const createVirtualRenderState = <T, >({
         const height = untrack(item.cachedHeight) || 0;
         const heightDiff = height - item.prevCachedHeight;
         scrollTopAdjustment += heightDiff;
-        item.needScrollAdjustment = false
+        item.needScrollAdjustment = false;
       }
 
     const localScrollTop = scrollTop() + scrollTopAdjustment,
