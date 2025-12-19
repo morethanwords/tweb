@@ -539,7 +539,7 @@ export default class ChatContextMenu {
         },
         {
           icon: 'download',
-          text: 'Media',
+          text: 'DownloadMedia',
           onClick: () => {
             const media = getMediaFromMessage(this.messageFromLog, true);
             if(!media) return;
