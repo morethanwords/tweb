@@ -4243,8 +4243,8 @@ export default class ChatBubbles {
     });
   }
 
-  public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
-    const {samePeer, sameSearch, peerId, stack, monoforumThreadId} = options;
+  public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean, forceIsFirstLoad?: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
+    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad} = options;
     let {lastMsgId, lastMsgPeerId, startParam} = options;
     const tempId = ++this.setPeerTempId;
 
@@ -4437,6 +4437,8 @@ export default class ChatBubbles {
         const rendered = this.getRenderedHistory('desc', true);
         maxBubbleFullMid = rendered[0] || EMPTY_FULL_MID;
       }
+
+      if(forceIsFirstLoad) this.isFirstLoad = true;
     } else {
       this.isFirstLoad = true;
       this.destroyResizeObserver();
@@ -10124,8 +10126,9 @@ export default class ChatBubbles {
     this.setPeer({
       peerId: this.peerId,
       type: this.chat.type,
-      samePeer: false,
-      sameSearch: false
+      samePeer: true,
+      sameSearch: false,
+      forceIsFirstLoad: true
     });
   }
 

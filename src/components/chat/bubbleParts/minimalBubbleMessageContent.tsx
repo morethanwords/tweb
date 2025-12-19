@@ -11,7 +11,7 @@ export const MinimalBubbleMessageContent = (props: ParentProps<{
     <div class="bubble-content-wrapper">
       <div class="bubble-content">
         <Show when={props.name}>
-          <div class="name colored-name">
+          <div class="name colored-name next-is-message">
             {props.name}
           </div>
         </Show>
