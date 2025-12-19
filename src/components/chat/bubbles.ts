@@ -6138,7 +6138,7 @@ export default class ChatBubbles {
     const isBroadcast = this.chat.isBroadcast;
     if(returnService) {
       setUnreadObserver?.();
-      if(hasReactions) {
+      if(hasReactions && this.chat.type !== ChatType.Logs) {
         this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
       }
       return ret;
@@ -8130,7 +8130,7 @@ export default class ChatBubbles {
       this.setBubbleRepliesCount(bubble, replies.replies);
     }
 
-    if(hasReactions) {
+    if(hasReactions && this.chat.type !== ChatType.Logs) {
       this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
     }
 
