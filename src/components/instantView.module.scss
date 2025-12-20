@@ -421,7 +421,6 @@
   }
 }
 
-
 .Map {
   display: block; // anchor tag
   // margin: 1em 0;
@@ -439,4 +438,18 @@
 
 .Audio {
   margin: .7777em 0;
+}
+
+.Slideshow {
+  .Media {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute;
+    inset: 0;
+
+    :global(.media-photo) {
+      max-height: 100%;
+      object-fit: cover;
+    }
+  }
 }

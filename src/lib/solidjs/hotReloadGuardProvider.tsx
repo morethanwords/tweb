@@ -46,6 +46,7 @@ import VideoTsx from '../../components/wrappers/videoTsx';
 import Row from '../../components/rowTsx';
 import DocumentTsx from '../../components/wrappers/documentTsx';
 import PhotoTsx from '../../components/wrappers/photoTsx';
+import Slideshow from '../../components/ui/slideshow'; // Added import
 
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
@@ -100,7 +101,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       VideoTsx,
       Row,
       PhotoTsx,
-      DocumentTsx
+      DocumentTsx,
+      Slideshow
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

@@ -52,6 +52,7 @@ import type VideoTsx from '../../components/wrappers/videoTsx';
 import type Row from '../../components/rowTsx';
 import type DocumentTsx from '../../components/wrappers/documentTsx';
 import type PhotoTsx from '../../components/wrappers/photoTsx';
+import type Slideshow from '../../components/ui/slideshow';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -105,6 +106,7 @@ export type SolidJSHotReloadGuardContextValue = {
   DocumentTsx: typeof DocumentTsx;
   PhotoTsx: typeof PhotoTsx;
   Row: typeof Row;
+  Slideshow: typeof Slideshow;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

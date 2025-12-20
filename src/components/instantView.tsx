@@ -230,8 +230,10 @@ function Caption(props: {caption: PageCaption}) {
   );
 }
 
-function Block(props: {block: PageBlock, paddings: number}) {
+function Block(props: {block: PageBlock, paddings: number, noCaption?: boolean}) {
   const block = props.block;
+
+  const CaptionC: typeof Caption = props.noCaption ? (...args: any[]) => false : Caption;
   // if(block._ !== 'pageBlockRelatedArticles' && Math.random() !== undefined) {
   //   return;
   // }
@@ -324,7 +326,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
             withoutPreloader
             onResult={() => onMediaResult(ref, props.paddings)}
           />
-          <Caption caption={block.caption} />
+          <CaptionC caption={block.caption} />
         </>
       );
     }
@@ -344,7 +346,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
             noInfo
             onResult={() => onMediaResult(ref, props.paddings)}
           />
-          <Caption caption={block.caption} />
+          <CaptionC caption={block.caption} />
         </>
       );
     }
@@ -377,7 +379,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
             withTime={false}
             autoDownloadSize={10 * 1024 * 1024} // 10MB auto-download limit
           />
-          <Caption caption={block.caption} />
+          <CaptionC caption={block.caption} />
         </>
       );
     }
@@ -611,7 +613,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
               </Show>
             </Show>
           </div>
-          <Caption caption={block.caption} />
+          <CaptionC caption={block.caption} />
         </>
       );
     }
@@ -650,6 +652,23 @@ function Block(props: {block: PageBlock, paddings: number}) {
         </div>
       );
     }
+    case 'pageBlockSlideshow': {
+      const {Slideshow} = useHotReloadGuard();
+
+      return (
+        <>
+          <Slideshow
+            class={styles.Slideshow}
+            items={block.items}
+          >
+            {(item, idx) => (
+              <Block block={item} paddings={0} noCaption />
+            )}
+          </Slideshow>
+          <CaptionC caption={block.caption} />
+        </>
+      );
+    }
     case 'pageBlockMap': {
       const geo = block.geo as GeoPoint.geoPoint;
       const url = makeGoogleMapsUrl(geo);
@@ -679,7 +698,7 @@ function Block(props: {block: PageBlock, paddings: number}) {
             />
             <GeoPin />
           </a>
-          <Caption caption={block.caption} />
+          <CaptionC caption={block.caption} />
         </>
       );
     }
