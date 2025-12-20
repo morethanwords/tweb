@@ -422,6 +422,7 @@ type RenderMessageArgs = {
   reverse?: boolean;
   fakeServiceContent?: Node;
   additionalPromises?: Promise<any>[];
+  logId?: string | number;
   bubble: HTMLElement;
   middleware: Middleware;
 };
@@ -447,7 +448,7 @@ export default class ChatBubbles {
   // public messagesCount: number = -1;
 
   private unreadOut = new Set<number>();
-  private needUpdate: {replyToPeerId: PeerId, replyMid?: number, replyStoryId?: number, mid: number, peerId: PeerId}[] = []; // if need wrapSingleMessage
+  private needUpdate: {replyToPeerId: PeerId, replyMid?: number, replyStoryId?: number, mid: number, peerId: PeerId, logId?: string | number}[] = []; // if need wrapSingleMessage
 
   private bubbles: {[fullMid: string]: HTMLElement} = {};
   public skippedMids: Set<string> = new Set();
@@ -2057,9 +2058,10 @@ export default class ChatBubbles {
         }
       });
 
-      const promises = filtered.map(async({peerId, mid, replyMid, replyToPeerId}) => {
+      const promises = filtered.map(async({peerId, mid, replyMid, replyToPeerId, logId}) => {
         const fullMid = makeFullMid(peerId, mid);
-        const bubble = this.getBubble(fullMid);
+        const logFullMid = logId ? makeFullMid(peerId, +logId) : undefined;
+        const bubble = this.getBubble(fullMid) || (logId && this.getBubble(logFullMid));
         if(!bubble) return;
 
         const [message, originalMessage] = await Promise.all([
@@ -2072,6 +2074,7 @@ export default class ChatBubbles {
             chat: this.chat,
             bubble,
             message,
+            logId,
             middleware: bubble.middlewareHelper.get(),
             lazyLoadQueue: this.lazyLoadQueue,
             needUpdate: this.needUpdate,
@@ -5493,8 +5496,8 @@ export default class ChatBubbles {
       renderComponent({element: serviceContent, Component: entry.ServiceContent, middleware, HotReloadGuard: SolidJSHotReloadGuardProvider});
 
       const {message, originalMessage} = await namedPromises({
-        message: rootScope.managers.appMessagesManager.temporarilySaveMessage(this.peerId, entry.message),
-        originalMessage: rootScope.managers.appMessagesManager.temporarilySaveMessage(this.peerId, entry.originalMessage)
+        message: rootScope.managers.appMessagesManager.saveLogsMessage(this.peerId, entry.message),
+        originalMessage: rootScope.managers.appMessagesManager.saveLogsMessage(this.peerId, entry.originalMessage)
       });
 
       return this.renderMessage({
@@ -5505,6 +5508,7 @@ export default class ChatBubbles {
         reverse,
         bubble,
         additionalPromises: promises,
+        logId: log.id,
         middleware
       });
     } else if(entry.type === 'regular') {
@@ -5543,6 +5547,7 @@ export default class ChatBubbles {
     fakeServiceContent,
     additionalPromises = [],
     reverse = false,
+    logId,
     bubble,
     middleware
   }: RenderMessageArgs) {
@@ -7841,12 +7846,13 @@ export default class ChatBubbles {
             message.reply_to_mid !== replyTo?.reply_to_top_id
           ) || replyTo?.reply_from
         ) &&
-        (!this.chat.isAllMessagesForum && !this.chat.isBotforum || (replyTo as MessageReplyHeader.messageReplyHeader).reply_to_top_id)
+        (!this.chat.isAllMessagesForum && !this.chat.isBotforum || this.chat.type === ChatType.Logs || (replyTo as MessageReplyHeader.messageReplyHeader).reply_to_top_id)
       ) {
         replyContainer = await MessageRender.setReply({
           chat: this.chat,
           bubble,
           bubbleContainer,
+          logId,
           message,
           appendCallback: (container) => {
             nameContainer.prepend(container);
