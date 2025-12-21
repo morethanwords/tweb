@@ -3821,6 +3821,14 @@ export class AppMessagesManager extends AppManager {
       return this.getMessageById(messageId);
     }
 
+    return this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), messageId);
+  }
+
+  public getMessageByPeerOrFromLogs(peerId: PeerId, messageId: number) {
+    if(!peerId) {
+      return this.getMessageById(messageId);
+    }
+
     return this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), messageId) || this.getMessageFromStorage(this.getLogsMessagesStorage(peerId), messageId);
   }
 
@@ -9212,7 +9220,9 @@ export class AppMessagesManager extends AppManager {
   }
 
   private clearMessageReplyTo(message: MyMessage) {
-    message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
+    if(!message) return;
+    message = this.getMessageByPeerOrFromLogs(message.peerId, message.mid); // message can come from other thread
+    if(!message) return;
     this.modifyMessage(message, (message) => {
       delete message.reply_to_mid; // ! WARNING!
       delete message.reply_to; // ! WARNING!
@@ -9220,8 +9230,9 @@ export class AppMessagesManager extends AppManager {
   }
 
   public fetchMessageReplyTo(message: MyMessage) {
-    message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
-    if(!message.reply_to) return Promise.resolve(this.generateEmptyMessage(0));
+    if(!message) return Promise.resolve(this.generateEmptyMessage(0));
+    message = this.getMessageByPeerOrFromLogs(message.peerId, message.mid); // message can come from other thread
+    if(!message?.reply_to) return Promise.resolve(this.generateEmptyMessage(0));
     const replyTo = message.reply_to;
     if(replyTo._ === 'messageReplyStoryHeader') {
       const result = this.appStoriesManager.getStoryById(this.appPeersManager.getPeerId(replyTo.peer), replyTo.story_id);

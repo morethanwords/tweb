@@ -578,6 +578,8 @@ export default class ChatBubbles {
 
   public logsByBubble = new WeakMap<HTMLElement, AdminLog>();
 
+  private logsBubbleByMid = new Map<number, {element: HTMLElement, priorityDate: number}>();
+
   constructor(
     private chat: Chat,
     private managers: AppManagers
@@ -2870,8 +2872,19 @@ export default class ChatBubbles {
       } catch(err) {}
 
       if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
-        const message = this.chat.getMessage(bubbleFullMid) as Message.message;
-        const replyTo = message.reply_to;
+        let replyTo: MessageReplyHeader;
+        let message: Message.message;
+
+        if(this.chat.type === ChatType.Logs) {
+          const log = this.logsByBubble.get(bubble);
+          const entry = this.resolveAdminLogUnsafe({log, noJsx: true});
+          if(entry.type !== 'default' || entry.message._ !== 'message') return;
+          message = entry.message;
+          replyTo = entry.message.reply_to;
+        } else {
+          message = this.chat.getMessage(bubbleFullMid) as Message.message;
+          replyTo = message.reply_to;
+        }
 
         if(replyTo._ === 'messageReplyStoryHeader') {
           const target = bubble.querySelector('.reply-media');
@@ -2890,7 +2903,12 @@ export default class ChatBubbles {
           return;
         }
 
-        let replyToPeerId = replyTo.reply_to_peer_id ? getPeerId(replyTo.reply_to_peer_id) : message.peerId;
+        let replyToPeerId = replyTo.reply_to_peer_id ?
+          getPeerId(replyTo.reply_to_peer_id) :
+          this.chat.type === ChatType.Logs ?
+            this.peerId :
+            message.peerId;
+
         if(this.chat.type === ChatType.Discussion && !this.chat.isForum) {
           const historyResult = await this.managers.appMessagesManager.getHistory({
             peerId: replyToPeerId,
@@ -2910,14 +2928,33 @@ export default class ChatBubbles {
 
         this.followStack.push(bubbleFullMid);
 
+        if(this.chat.type === ChatType.Logs) {
+          let existingMessage: MyMessage;
+          replyToMid = await this.managers.appMessagesIdsManager.generateMessageId(replyToMid, this.chat.isChannel ? this.peerId.toChatId() : undefined);
+
+          try {
+            existingMessage = await this.managers.appMessagesManager.reloadMessages(replyToPeerId, replyToMid);
+          } catch{}
+
+          if(!existingMessage) {
+            const existingLogBubble = this.logsBubbleByMid.get(replyToMid);
+            if(!existingLogBubble) return;
+            this.scrollToBubble(existingLogBubble.element, 'center');
+            this.highlightBubble(existingLogBubble.element);
+            return;
+          }
+        }
+
         this.chat.appImManager.setInnerPeer({
           ...additionalSetPeerProps,
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
-          type: this.chat.type,
+          type: this.chat.type === ChatType.Logs ? undefined : this.chat.type,
           threadId: this.chat.threadId,
           monoforumThreadId: this.chat.monoforumThreadId
         });
+
+        return;
       }
     }
   };
@@ -5500,6 +5537,17 @@ export default class ChatBubbles {
         message: rootScope.managers.appMessagesManager.saveLogsMessage(this.peerId, entry.message),
         originalMessage: rootScope.managers.appMessagesManager.saveLogsMessage(this.peerId, entry.originalMessage)
       });
+
+      const existing = this.logsBubbleByMid.get(message.mid);
+
+      if(existing && existing.priorityDate < log.date || !existing) {
+        this.logsBubbleByMid.set(message.mid, {element: bubble, priorityDate: Date.now()});
+        middleware.onDestroy(() => {
+          if(this.logsBubbleByMid.get(message.mid).element === bubble) {
+            this.logsBubbleByMid.delete(message.mid);
+          }
+        });
+      }
 
       return this.renderMessage({
         message,
