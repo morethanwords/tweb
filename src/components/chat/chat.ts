@@ -164,6 +164,7 @@ export default class Chat extends EventListenerBase<{
   public isBotforum: boolean;
   public canManageDirectMessages: boolean;
   public isTemporaryThread: boolean;
+  public noInput: boolean;
 
   public starsAmount: number | undefined;
 
@@ -676,7 +677,7 @@ export default class Chat extends EventListenerBase<{
 
     this.bubbles.attachContainerListeners();
 
-    this.container.append(this.topbar.container, this.bubbles.container, this.input.emptySpace, this.input.chatInput);
+    this.container.append(this.topbar.container, this.bubbles.container, this.input.chatInput);
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
       if(this.peerId === migrateFrom) {
@@ -1031,7 +1032,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setPeer(options: ChatSetPeerOptions) {
-    const {peerId, threadId, monoforumThreadId, messages} = options;
+    const {peerId, threadId, monoforumThreadId, messages, type} = options;
     if(!peerId) {
       this.inited = undefined;
     } else if(!this.inited) {
@@ -1050,6 +1051,7 @@ export default class Chat extends EventListenerBase<{
       this.threadId = threadId;
       this.monoforumThreadId = monoforumThreadId;
       this.isTemporaryThread = isTempId(threadId);
+      this.noInput = [ChatType.Static, ChatType.Logs].includes(type);
       this.middlewareHelper.clean();
 
       createRoot((dispose) => {

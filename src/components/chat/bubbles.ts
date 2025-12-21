@@ -4968,7 +4968,7 @@ export default class ChatBubbles {
 
     const middleware = this.getMiddleware();
 
-    const {isBroadcast, isLikeGroup, peerId, isTemporaryThread} = this.chat;
+    const {isBroadcast, isLikeGroup, peerId, isTemporaryThread, noInput} = this.chat;
 
     return () => {
       this.chatInner.classList.toggle('has-rights', canWrite);
@@ -4987,6 +4987,7 @@ export default class ChatBubbles {
 
       [this.chatInner, this.remover].forEach((element) => {
         element.classList.toggle('is-chat', isLikeGroup);
+        element.classList.toggle('no-input', noInput);
         element.classList.toggle('no-messages', !hasMessages);
         element.classList.toggle('with-message-avatars', isVerificationBot(peerId));
         element.classList.toggle('is-broadcast', isBroadcast);

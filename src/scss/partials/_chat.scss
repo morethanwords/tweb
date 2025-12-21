@@ -1866,6 +1866,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     max-width: 80%;
   }
 
+  &.no-input {
+    padding-bottom: 12px;
+  }
+
 	&.is-broadcast {
 		.bubble {
 			--max-width: 100%;
