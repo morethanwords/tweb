@@ -4,7 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Scrollable from '../components/scrollable';
+import type Scrollable from '../components/scrollable';
+import type {ScrollableContextValue} from '../components/scrollable2';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import {IS_SAFARI} from '../environment/userAgent';
 import getVisibleRect from './dom/getVisibleRect';
@@ -34,7 +35,7 @@ export default class ScrollSaver {
    * @param reverse true means top
    */
   constructor(
-    private scrollable: Scrollable,
+    private scrollable: Scrollable | ScrollableContextValue,
     private query: string,
     private reverse: boolean
   ) {
@@ -150,7 +151,7 @@ export default class ScrollSaver {
     const {scrollPosition: scrollTop, scrollSize: scrollHeight} = this.scrollable;
     this.scrollHeight = scrollHeight;
 
-    if(!this.elements.length) { // maybe all messages have been deleted or adding first message
+    if(!this.elements.length && this.query) { // maybe all messages have been deleted or adding first message
       // this._restore(useReflow);
       this.setScrollTop(this.reverse ? scrollHeight : 0, useReflow); // fix scrolling to first new message
       return;

@@ -211,6 +211,7 @@ import addContinueLastTopicReplyMarkup from './bubbleParts/continueLastTopicRepl
 import {wrapTopicIcon} from '../wrappers/messageActionTextNewUnsafe';
 import {getTransition} from '../../config/transitions';
 import {SuggestBirthdayBubble} from './bubbles/suggestBirthday';
+import {openInstantViewInAppBrowser} from '../browser';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -2765,8 +2766,8 @@ export default class ChatBubbles {
         (window as any)[callback](findUpTag(target, 'A'), e);
       }
 
-      const sponsoredCallback = (webPageContainer as any).callback as () => void;
-      sponsoredCallback?.();
+      const sponsoredCallback = (webPageContainer as any).callback as (e: Event) => void;
+      sponsoredCallback?.(event);
 
       return;
     }
@@ -6535,15 +6536,62 @@ export default class ChatBubbles {
             }
           }
 
+          let wrapped = wrapUrl(webPage.url);
+          // * find entity with anchor
+          const urlEntities = totalEntities.map((entity) => {
+            try {
+              let entityUrl = (entity as MessageEntity.messageEntityTextUrl).url;
+              if(!entityUrl && entity._ === 'messageEntityUrl') {
+                entityUrl = messageMessage.slice(entity.offset, entity.offset + entity.length);
+              }
+
+              if(!entityUrl) {
+                return;
+              }
+
+              const w = wrapUrl(entityUrl);
+              const u = new URL(w.url);
+              u.hash = '';
+              return u.toString() === wrapped.url ? w : undefined;
+            } catch(err) {}
+          }).filter(Boolean);
+          if(urlEntities.length === 1) {
+            wrapped = urlEntities[0];
+          }
+
           const starGiftAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeUniqueStarGift')
           const starGiftCollectionAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeStarGiftCollection')
 
           const props: Parameters<typeof WebPageBox>[0] = {};
           const boxRefs: ((box: HTMLAnchorElement) => void)[] = [];
 
-          const wrapped = wrapUrl(webPage.url);
           const hasSafeUrl = (wrapped.onclick && !UNSAFE_ANCHOR_LINK_TYPES.has(wrapped.onclick)) || isSponsored;
-          if(hasSafeUrl) {
+          if(webPage.cached_page) {
+            const span = document.createElement('span');
+            span.append(
+              Icon('boost', 'inline-icon', 'inline-icon-left'),
+              i18n('WebPage.InstantView')
+            );
+            props.footer = {
+              content: span
+            };
+
+            boxRefs.push((box) => {
+              (box as any).callback = (e: MouseEvent) => {
+                if(e.metaKey || e.ctrlKey) {
+                  return;
+                }
+
+                cancelEvent(e);
+                openInstantViewInAppBrowser({
+                  webPageId: webPage.id,
+                  cachedPage: webPage.cached_page,
+                  anchor: new URL(wrapped.url).hash,
+                  HotReloadGuardProvider: SolidJSHotReloadGuardProvider
+                });
+              };
+            });
+          } else if(hasSafeUrl) {
             boxRefs.push((box) => {
               box.setAttribute('safe', '1');
             });

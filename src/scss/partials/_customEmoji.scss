@@ -22,6 +22,14 @@
     min-height: inherit;
   }
 
+  // * mostly for instant view's `textImage` entities
+  &-custom-sized {
+    width: var(--width) !important;
+    height: var(--height) !important;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
   .media-sticker,
   .rlottie {
     margin: 0;

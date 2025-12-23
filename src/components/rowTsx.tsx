@@ -244,13 +244,15 @@ Row.CheckboxFieldToggle = (props: {
 Row.Media = (props: {
   children?: JSX.Element,
   size: RowMediaSizeType,
-  ref?: Ref<HTMLDivElement>
+  ref?: Ref<HTMLDivElement>,
+  class?: string
 }) => {
   return useContext(RowContext).register('media', (
     <div
       class={classNames(
         'row-media',
-        props.size && `row-media-${props.size}`
+        props.size && `row-media-${props.size}`,
+        props.class
       )}
       ref={props.ref}
     >

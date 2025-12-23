@@ -31,6 +31,7 @@ import SetTransition from '../singleTransition';
 import {ChatType} from './chat';
 import type {AppImManager} from '../../lib/appManagers/appImManager';
 import findUpClassName from '../../helpers/dom/findUpClassName';
+import toggleDisability from '../../helpers/dom/toggleDisability';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -40,6 +41,8 @@ export default class ChatAudio extends PinnedContainer {
   private repeatEl: HTMLButtonElement;
   private time: HTMLElement;
   private duration: number;
+  private prevEl: HTMLButtonElement;
+  private nextEl: HTMLButtonElement;
 
   constructor(protected appImManager: AppImManager, protected managers: AppManagers) {
     super({
@@ -67,8 +70,8 @@ export default class ChatAudio extends PinnedContainer {
 
     this.divAndCaption.border.remove();
 
-    const prevEl = ButtonIcon('fast_rewind active', {noRipple: true});
-    const nextEl = ButtonIcon('fast_forward active', {noRipple: true});
+    const prevEl = this.prevEl = ButtonIcon('fast_rewind active', {noRipple: true});
+    const nextEl = this.nextEl = ButtonIcon('fast_forward active', {noRipple: true});
 
     this.time = document.createElement('span');
     this.time.classList.add('pinned-audio-time');
@@ -255,6 +258,8 @@ export default class ChatAudio extends PinnedContainer {
       media,
       duration: this.duration = doc.duration
     });
+
+    toggleDisability([this.prevEl, this.nextEl], !message.peerId);
 
     this.fill({
       title,

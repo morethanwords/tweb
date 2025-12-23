@@ -519,4 +519,40 @@
   "params": [
     {"name": "pinnedIndex", "type": "number"}
   ]
+}, {
+  "predicate": "messageEntityImage",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"},
+    {"name": "document_id", "type": "Long"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntitySubscript",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntitySuperscript",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntityAnchor",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"},
+    {"name": "name", "type": "string"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntityCustomEmoji",
+  "params": [
+    {"name": "w", "type": "number"},
+    {"name": "h", "type": "number"}
+  ]
 }]

@@ -12,7 +12,8 @@ export default function getWebFileLocation(
     geo_point: {
       _: 'inputGeoPoint',
       lat: geo.lat,
-      long: geo.long
+      long: geo.long,
+      accuracy_radius: geo.accuracy_radius
     },
     w: width,
     h: height,

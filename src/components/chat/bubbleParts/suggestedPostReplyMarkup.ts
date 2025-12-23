@@ -4,7 +4,7 @@ import type Chat from '../chat';
 
 
 export function canHaveSuggestedPostReplyMarkup(message: Message.message): boolean {
-  return !message.reply_markup && message.suggested_post && !message.suggested_post.pFlags.accepted && !message.suggested_post.pFlags.rejected;
+  return !message.reply_markup && !!message.suggested_post && !message.suggested_post.pFlags.accepted && !message.suggested_post.pFlags.rejected;
 }
 
 type Args = {

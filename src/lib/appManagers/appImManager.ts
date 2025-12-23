@@ -25,7 +25,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor, SponsoredMessage, InputGroupCall} from '../../layer';
+import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor, SponsoredMessage, InputGroupCall, WebPage} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -717,6 +717,11 @@ export class AppImManager extends EventListenerBase<{
     this.handlePeerColors();
     this.checkForShare();
     this.init();
+
+    // setTimeout(() => {
+    //   const message = apiManagerProxy.getMessageByPeer(61004386, 1837709);
+    //   openInstantViewInAppBrowser(((message as Message.message).media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage);
+    // }, 100);
 
     // PopupElement.createPopup(PopupAboutAd);
 

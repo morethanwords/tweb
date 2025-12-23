@@ -21,6 +21,7 @@ import ImageStickerFrameByFrameRenderer from './imageStickerFrameByFrameRenderer
 import LottieStickerFrameByFrameRenderer from './lottieStickerFrameByFrameRenderer';
 import {StickerFrameByFrameRenderer} from './types';
 import VideoStickerFrameByFrameRenderer from './videoStickerFrameByFrameRenderer';
+import StickerType from '../../../config/stickerType';
 
 
 type Args = {
@@ -163,9 +164,9 @@ export default async function renderToActualVideo({
         const stickerType = layer.sticker?.sticker;
         let renderer: StickerFrameByFrameRenderer;
 
-        if(stickerType === 1) renderer = new ImageStickerFrameByFrameRenderer();
-        if(stickerType === 2) renderer = new LottieStickerFrameByFrameRenderer();
-        if(stickerType === 3) renderer = new VideoStickerFrameByFrameRenderer();
+        if(stickerType === StickerType.Static) renderer = new ImageStickerFrameByFrameRenderer();
+        if(stickerType === StickerType.Lottie) renderer = new LottieStickerFrameByFrameRenderer();
+        if(stickerType === StickerType.WebM) renderer = new VideoStickerFrameByFrameRenderer();
         if(!renderer) return;
 
         renderers.set(layer.id, renderer);

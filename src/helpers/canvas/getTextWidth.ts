@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import isRTL from '../string/isRTL';
+
 // import { MOUNT_CLASS_TO } from "../../config/debug";
 
 let context: CanvasRenderingContext2D;
@@ -22,6 +24,8 @@ export default function getTextWidth(text: string, font: string) {
   if(context.font !== font) {
     context.font = font;
   }
+
+  context.direction = isRTL(text) ? 'rtl' : 'ltr';
 
   // context.font = font;
   const metrics = context.measureText(text);

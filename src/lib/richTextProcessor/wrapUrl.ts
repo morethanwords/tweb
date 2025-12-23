@@ -67,6 +67,13 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
     onclick = 'im';
   } else if((tgMatch = url.match(/tg:(?:\/\/)?(.+?)(?:\?|$)/))) {
     onclick = 'tg_' + tgMatch[1] as any;
+
+    switch(tgMatch[1]) {
+      // * local
+      case 'iv':
+        out.url = decodeURIComponent(new URL(url).searchParams.get('url'));
+        break;
+    }
   }/*  else if(unsafe) {
     url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
   } */

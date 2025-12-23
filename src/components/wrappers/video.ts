@@ -82,7 +82,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
 
 let turnedObserverOn = false;
 
-export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName, onGlobalMedia, onLoad}: {
+export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName, onGlobalMedia, onLoad, withPreview}: {
   doc: MyDocument,
   altDoc?: MyDocument,
   container?: HTMLElement,
@@ -98,6 +98,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   group?: AnimationItemGroup,
   onlyPreview?: boolean,
   noPreview?: boolean,
+  withPreview?: boolean,
   withoutPreloader?: boolean,
   loadPromises?: Promise<any>[],
   autoDownload?: ChatAutoDownloadSettings,
@@ -408,7 +409,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   }
 
   let photoRes: Awaited<ReturnType<typeof wrapPhoto>>;
-  if(message || onlyPreview) {
+  if(message || onlyPreview || withPreview) {
     photoRes = await wrapPhoto({
       photo: doc,
       message,
