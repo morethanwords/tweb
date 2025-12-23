@@ -972,6 +972,7 @@ const lang = {
   'InstantView.WrongLayout': 'Wrong layout?',
   'InstantView.Media.Url': 'Click to open the link:',
   'InstantView.Media.Url.Touch': 'Tap to open the link:',
+  'Chat.Message.RequestToJoin': 'REQUEST TO JOIN',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

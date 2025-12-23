@@ -1002,6 +1002,11 @@ $color-inactive: rgba(255, 255, 255, .5);
     // opacity: .5;
   }
 
+  img,
+  video {
+    dynamic-range-limit: no-limit;
+  }
+
   // &Slider {
   //   position: relative;
   //   display: flex;

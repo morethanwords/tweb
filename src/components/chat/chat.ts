@@ -1460,7 +1460,8 @@ export default class Chat extends EventListenerBase<{
             this.sendReaction(options);
           },
           purpose: 'reaction',
-          peerId: this.peerId
+          peerId: this.peerId,
+          spendPurposePeerId: this.peerId
         });
 
         return;

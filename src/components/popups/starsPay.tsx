@@ -142,7 +142,8 @@ export default class PopupStarsPay extends PopupElement<{
               this.result = 'cancelled';
               this.hide();
             },
-            purpose: this.purpose
+            purpose: this.purpose,
+            spendPurposePeerId: this.peerId
           });
         } else if((err as ApiError).type === 'FORM_EXPIRED') {
           await this.reloadForm();

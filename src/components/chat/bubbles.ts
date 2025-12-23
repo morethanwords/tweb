@@ -283,7 +283,8 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_livestream: 'VoipChannelJoinVoiceChatUrl',
   telegram_nft: 'StarGiftLinkButton',
   telegram_collection: 'StarGiftCollectionLinkButton',
-  telegram_story_album: 'ViewStoryAlbum'
+  telegram_story_album: 'ViewStoryAlbum',
+  telegram_megagroup_request: 'Chat.Message.RequestToJoin'
 };
 
 const webPageTypesSiteNames: {[type in WebPage.webPage['type']]?: LangPackKey} = {
