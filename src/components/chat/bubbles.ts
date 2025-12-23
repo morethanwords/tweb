@@ -5822,7 +5822,10 @@ export default class ChatBubbles {
           this.wrapSomeSolid(() => StarGiftBubble({
             gift,
             fromId: getPeerId(gift.saved.from_id),
-            asUpgrade: gift.isIncoming && gift.isUpgradedBySender && !(action._ === 'messageActionStarGift' && action.pFlags.upgraded),
+            asUpgrade: gift.isIncoming &&
+              !(action._ === 'messageActionStarGift' && action.pFlags.upgraded) &&
+              (gift.isUpgradedBySender || action.pFlags.prepaid_upgrade),
+            asPrepaidUpgrade: action._ === 'messageActionStarGift' && action.pFlags.upgrade_separate,
             ownerId: gift.isIncoming ? undefined : message.peerId,
             wrapStickerOptions: {
               middleware,

@@ -125,6 +125,15 @@ export default class AppGiftsManager extends AppManager {
             if(action.pFlags.transferred && message.pFlags.out || action.resale_amount) {
               this.rootScope.dispatchEvent('star_gift_list_update', {peerId: this.rootScope.myId});
             }
+            if(action._ === 'messageActionStarGiftUnique' && action.pFlags.upgrade) {
+              this.wrapGiftFromMessage(message).then(gift => {
+                this.rootScope.dispatchEvent('star_gift_upgrade', {
+                  gift,
+                  savedId: action.saved_id,
+                  fromMsgId: message.reply_to?._ === 'messageReplyHeader' ? message.reply_to.reply_to_msg_id : undefined
+                });
+              })
+            }
             break;
           }
         }
@@ -224,7 +233,7 @@ export default class AppGiftsManager extends AppManager {
     const gift = action.gift;
     const baseWrap = this.wrapGift(action.gift);
 
-    const isIncomingGift = action._ === 'messageActionStarGiftUnique' && action.pFlags.upgrade ? message.pFlags.out : !message.pFlags.out;
+    const isIncomingGift = action._ === 'messageActionStarGiftUnique' && action.pFlags.upgrade ? !!message.pFlags.out : !message.pFlags.out;
 
     const saved: SavedStarGift.savedStarGift = {
       _: 'savedStarGift',
@@ -237,14 +246,19 @@ export default class AppGiftsManager extends AppManager {
       date: message.date,
       gift,
       message: action._ === 'messageActionStarGift' ? action.message : baseWrap.collectibleAttributes.original?.message,
-      msg_id: message.id,
+      msg_id: action._ === 'messageActionStarGift' && action.pFlags.prepaid_upgrade ? action.gift_msg_id : message.id,
       convert_stars: gift._ === 'starGift' ? gift.convert_stars : undefined,
       upgrade_stars: gift._ === 'starGift' ? gift.upgrade_stars : undefined,
       saved_id: action.saved_id,
       can_transfer_at: action._ === 'messageActionStarGiftUnique' ? action.can_transfer_at : undefined,
       can_resell_at: action._ === 'messageActionStarGiftUnique' ? action.can_resell_at : undefined,
-      drop_original_details_stars: action._ === 'messageActionStarGiftUnique' ? action.drop_original_details_stars : undefined
+      drop_original_details_stars: action._ === 'messageActionStarGiftUnique' ? action.drop_original_details_stars : undefined,
+      prepaid_upgrade_hash: action._ === 'messageActionStarGift' ? action.prepaid_upgrade_hash : undefined
     };
+
+    if(!baseWrap.ownerId) {
+      baseWrap.ownerId = isIncomingGift ? this.rootScope.myId : message.peerId;
+    }
 
     return {
       ...baseWrap,
@@ -255,7 +269,7 @@ export default class AppGiftsManager extends AppManager {
       saved,
       input: {
         _: 'inputSavedStarGiftUser',
-        msg_id: message.id
+        msg_id: saved.msg_id
       }
     };
   }
@@ -470,6 +484,9 @@ export default class AppGiftsManager extends AppManager {
     if(savedResult) {
       this.appPeersManager.saveApiPeers(savedResult);
       ret.saved = savedResult.gifts[0];
+      if(ret.raw._ === 'starGiftUnique' && !ret.raw.owner_id) {
+        ret.raw.owner_id = {_: 'peerUser', user_id: this.rootScope.myId};
+      }
     }
 
     return ret;

@@ -15,7 +15,6 @@ import {MyStarGift} from '../../../lib/appManagers/appGiftsManager';
 import {StarGiftBadge} from '../../stargifts/stargiftBadge';
 import {StarGiftBackdrop} from '../../stargifts/stargiftBackdrop';
 import {MyDocument} from '../../../lib/appManagers/appDocsManager';
-import numberThousandSplitter from '../../../helpers/number/numberThousandSplitter';
 import {simulateClickEvent} from '../../../helpers/dom/clickEvent';
 import formatNumber from '../../../helpers/number/formatNumber';
 import {getCollectibleName} from '../../../lib/appManagers/utils/gifts/getCollectibleName';
@@ -25,6 +24,7 @@ export function StarGiftBubble(props: {
 
   fromId: PeerId
   asUpgrade?: boolean;
+  asPrepaidUpgrade?: boolean;
   ownerId?: PeerId;
   message?: TextWithEntities;
   wrapStickerOptions?: StickerTsxExtraOptions;
@@ -133,7 +133,7 @@ export function StarGiftBubble(props: {
       />
 
       <I18nTsx
-        key="StarGiftFrom"
+        key={props.asPrepaidUpgrade ? 'StarGiftUpgradeFrom' : 'StarGiftFrom'}
         class={/* @once */ styles.from}
         args={
           <div class={/* @once */ styles.fromUser}>

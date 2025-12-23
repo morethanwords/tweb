@@ -3,14 +3,14 @@ import {createListTransition} from './createListTransition';
 import {resolveElements} from '@solid-primitives/refs';
 import liteMode from '../liteMode';
 
-function wrapKeyframes(keyframes: Keyframe[] | ((element: Element) => Keyframe[])) {
+function wrapKeyframes(keyframes: Keyframe[] | ((element: Element, removed: boolean) => Keyframe[])) {
   return typeof(keyframes) !== 'function' ? () => keyframes : keyframes;
 }
 
 export function AnimationList(props: {
   children: JSX.Element
   animationOptions: KeyframeAnimationOptions,
-  keyframes: Keyframe[] | ((element: Element) => Keyframe[]),
+  keyframes: Keyframe[] | ((element: Element, removed: boolean) => Keyframe[]),
   mode: 'replacement' | 'add-remove'/*  | 'add' */ | 'remove',
   itemClassName?: string,
   appear?: boolean
@@ -50,7 +50,7 @@ export function AnimationList(props: {
 
       queueMicrotask(() => {
         if(shouldAnimateAdded) {
-          const keyframes = added.map((element) => getKeyframes(element));
+          const keyframes = added.map((element) => getKeyframes(element, false));
           added.forEach((element, idx) => {
             element.animate(keyframes[idx], options);
           });
@@ -61,7 +61,7 @@ export function AnimationList(props: {
           return;
         }
 
-        const reversedKeyframes = removed.map((element) => getKeyframes(element).slice().reverse());
+        const reversedKeyframes = removed.map((element) => getKeyframes(element, true).slice().reverse());
         const promises: Promise<any>[] = [];
         removed.forEach((element, idx) => {
           const animation = element.animate(reversedKeyframes[idx], options);

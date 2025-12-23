@@ -2633,12 +2633,21 @@ const lang = {
     'one_value': '**You** sent a gift for **%d Star**',
     'other_value': '**You** sent a gift for **%d Stars**'
   },
+  'StarGiftSentMessagePrepaidIncoming': {
+    'one_value': '**%s** sent an upgrade worth **%d Star** for your gift',
+    'other_value': '**%s** sent an upgrade worth **%d Stars** for your gift'
+  },
+  'StarGiftSentMessagePrepaidOutgoing': {
+    'one_value': 'You sent an upgrade worth **%d Star**',
+    'other_value': 'You sent an upgrade worth **%d Stars**'
+  },
   'StarGiftSentMessageSelf': {
     'one_value': 'You bought a gift for **%d Star**',
     'other_value': 'You bought a gift for **%d Stars**'
   },
   'StarGiftSentMessageSelfTon': 'You bought a gift for **%d TON**',
   'StarGiftFrom': 'Gift from %s',
+  'StarGiftUpgradeFrom': 'Upgrade from %s',
   'StarGiftDefaultMessage': 'You can add this gift to your profile.',
   'StarGiftDefaultMessageOut': '%s can display this gift on their profile.',
   'StarGiftDefaultMessageConvertable': {
@@ -2716,19 +2725,24 @@ const lang = {
   'StarGiftStatus': 'Status',
   'StarGiftStatusNonUnique': 'Non-Unique',
   'StarGiftStatusUpgrade': 'upgrade',
+  'StarGiftGiftUpgrade': 'Gift an Upgrade',
   'StarGiftUpgradeTitle': 'Upgrade Gift',
   'StarGiftUpgradeTitleFor': 'Make Unique',
   'StarGiftUpgradeSubtitle': 'Turn your gift into a unique collectible that you can transfer or auction.',
   'StarGiftUpgradeSubtitleFor': 'Let %s turn this gift into a unique collectible.',
   'StarGiftUpgradeUniqueTitle': 'Unique',
   'StarGiftUpgradeUniqueText': 'Get a unique number, model, backdrop and symbol for your gift.',
+  'StarGiftUpgradeUniqueTextPrepaid': '%s will get a unique number, model, backdrop and symbol for the gift.',
   'StarGiftUpgradeTransferableTitle': 'Transferable',
   'StarGiftUpgradeTransferableText': 'Send your upgraded gift to any of your friends on Telegram.',
+  'StarGiftUpgradeTransferableTextPrepaid': '%s will be able to send the gift to anyone on Telegram.',
   'StarGiftUpgradeTradableTitle': 'Tradable',
   'StarGiftUpgradeTradableText': 'Sell or auction your gift on third-party NFT marketplaces.',
+  'StarGiftUpgradeTradableTextPrepaid': '%s will be able to auction the gift on third-party NFT marketplaces.',
   'StarGiftUpgradeKeepInfo': 'Add sender’s name and comment',
   'StarGiftUpgradeFree': 'Upgrade for Free',
   'StarGiftUpgrade': 'Upgrade %s',
+  'StarGiftUpgradePrepaid': 'Pay %s for Upgrade',
   'StarGiftPriceDecrease': 'Price decreases in %s',
   'StarGiftPriceDecreaseLink': 'See how price will decrease',
   'StarGiftModel': 'Model',

@@ -29,7 +29,8 @@ import EventListenerBase, {EventListenerListeners} from '../helpers/eventListene
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {ActiveAccountNumber} from './accounts/types';
-import {MyPromoData} from './appManagers/appPromoManager';
+import type {MyStarGift} from './appManagers/appGiftsManager';
+import type {MyPromoData} from './appManagers/appPromoManager';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -228,6 +229,7 @@ export type BroadcastEvents = {
   },
   'my_pinned_stargifts': {gifts: InputSavedStarGift[]},
   'star_gift_list_update': {peerId: PeerId},
+  'star_gift_upgrade': {gift: MyStarGift, savedId?: Long, fromMsgId?: number},
 
   'insufficent_stars_for_message': {messageCount: number, requestId: number, invokeApiArgs: Parameters<ApiManager['invokeApi']>, reservedStars?: number};
 

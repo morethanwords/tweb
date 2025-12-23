@@ -1,7 +1,8 @@
 import {createEffect, createMemo, createSignal, onCleanup} from 'solid-js';
 import PopupElement from './indexTsx';
+import PopupElementOld from './index'
 import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import {StarGift, StarGiftAttribute} from '../../layer';
+import {StarGiftAttribute} from '../../layer';
 import {randomItemExcept} from '../../helpers/array/randomItem';
 import {i18n} from '../../lib/langPack';
 import {IconTsx} from '../iconTsx';
@@ -13,20 +14,18 @@ import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import Row from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
 import {ButtonIconTsx} from '../buttonIconTsx';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
 import PopupPayment from './payment';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import rootScope from '../../lib/rootScope';
 import {createPopup} from './indexTsx';
 import createMiddleware from '../../helpers/solid/createMiddleware';
-import deferredPromise from '../../helpers/cancellablePromise';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
-import formatDuration from '../../helpers/formatDuration';
-import {wrapFormattedDuration, wrapLeftDuration} from '../wrappers/wrapDuration';
+import {wrapLeftDuration} from '../wrappers/wrapDuration';
 import {AnimatedCounter} from '../animatedCounter';
-import Icon from '../icon';
 import {createStarGiftUpgradePricePopup} from './starGiftUpgradePrice';
+import PopupStarGiftInfo from './starGiftInfo';
+import {subscribeOn} from '../../helpers/solid/subscribeOn';
 
 export default async function createStarGiftUpgradePopup(props: {
   gift: MyStarGift,
@@ -40,11 +39,11 @@ export default async function createStarGiftUpgradePopup(props: {
     props.descriptionForPeerId ? wrapPeerTitle({peerId: props.descriptionForPeerId}) : undefined
   ]);
 
-  console.log(preview)
-
   const [show, setShow] = createSignal(true);
+  let upgradePromise: CancellablePromise<boolean> | undefined
 
   const freeUpgrade = props.gift.isUpgradedBySender;
+  const canPrepay = props.gift.saved?.prepaid_upgrade_hash !== undefined;
 
   const keepInfoSignal = createSignal(true);
 
@@ -60,15 +59,32 @@ export default async function createStarGiftUpgradePopup(props: {
   randomize();
 
   async function handleUpgrade(): Promise<boolean> {
+    if(props.descriptionForPeerId && canPrepay) {
+      const deferred = deferredPromise<boolean>();
+      PopupPayment.create({
+        inputInvoice: {
+          _: 'inputInvoiceStarGiftPrepaidUpgrade',
+          hash: props.gift.saved?.prepaid_upgrade_hash,
+          peer: await rootScope.managers.appPeersManager.getInputPeerById(props.descriptionForPeerId)
+        },
+        noShowIfStars: true
+      }).then((popup) => {
+        popup.addEventListener('finish', (result) => {
+          deferred.resolve(result === 'paid');
+        });
+      });
+      return deferred;
+    }
+
+    upgradePromise = deferredPromise<boolean>();
+
     if(freeUpgrade) {
       await rootScope.managers.appGiftsManager.upgradeStarGift(
         props.gift.input,
         keepInfoSignal[0]()
       );
-      return true
+      return upgradePromise
     }
-
-    const deferred = deferredPromise<boolean>()
 
     PopupPayment.create({
       inputInvoice: {
@@ -81,16 +97,13 @@ export default async function createStarGiftUpgradePopup(props: {
       noShowIfStars: true
     }).then((popup) => {
       popup.addEventListener('finish', (result) => {
-        if(result === 'paid') {
-          setShow(false);
-          deferred.resolve(true);
-        } else {
-          deferred.resolve(false);
+        if(result !== 'paid') {
+          upgradePromise.resolve(false);
         }
       });
     });
 
-    return deferred;
+    return upgradePromise;
   }
 
   const [now, setNow] = createSignal(tsNow(true))
@@ -151,6 +164,17 @@ export default async function createStarGiftUpgradePopup(props: {
       });
     });
 
+    subscribeOn(rootScope)('star_gift_upgrade', (event) => {
+      if(!upgradePromise) return;
+      if(!(event.savedId === props.gift.saved?.saved_id || event.fromMsgId === props.gift.saved?.msg_id)) return
+
+      PopupElementOld.createPopup(PopupStarGiftInfo, {
+        gift: event.gift,
+        upgradeAnimation: preview
+      })
+      upgradePromise.resolve(true)
+    })
+
     let stickerContainer!: HTMLDivElement;
 
     return (
@@ -184,21 +208,33 @@ export default async function createStarGiftUpgradePopup(props: {
                 <IconTsx class="popup-star-gift-upgrade-feature-icon" icon="gem" />
                 <div class="popup-star-gift-upgrade-feature-body">
                   <I18nTsx class="popup-star-gift-upgrade-feature-title" key="StarGiftUpgradeUniqueTitle" />
-                  <I18nTsx class="popup-star-gift-upgrade-feature-text" key="StarGiftUpgradeUniqueText" />
+                  <I18nTsx
+                    class="popup-star-gift-upgrade-feature-text"
+                    key={props.descriptionForPeerId ? 'StarGiftUpgradeUniqueTextPrepaid' : 'StarGiftUpgradeUniqueText'}
+                    args={props.descriptionForPeerId ? [peerTitle.cloneNode(true)] : []}
+                  />
                 </div>
               </div>
               <div class="popup-star-gift-upgrade-feature">
                 <IconTsx class="popup-star-gift-upgrade-feature-icon" icon="gem_exchange" />
                 <div class="popup-star-gift-upgrade-feature-body">
                   <I18nTsx class="popup-star-gift-upgrade-feature-title" key="StarGiftUpgradeTransferableTitle" />
-                  <I18nTsx class="popup-star-gift-upgrade-feature-text" key="StarGiftUpgradeTransferableText" />
+                  <I18nTsx
+                    class="popup-star-gift-upgrade-feature-text"
+                    key={props.descriptionForPeerId ? 'StarGiftUpgradeTransferableTextPrepaid' : 'StarGiftUpgradeTransferableText'}
+                    args={props.descriptionForPeerId ? [peerTitle.cloneNode(true)] : []}
+                  />
                 </div>
               </div>
               <div class="popup-star-gift-upgrade-feature">
                 <IconTsx class="popup-star-gift-upgrade-feature-icon" icon="trade" />
                 <div class="popup-star-gift-upgrade-feature-body">
                   <I18nTsx class="popup-star-gift-upgrade-feature-title" key="StarGiftUpgradeTradableTitle" />
-                  <I18nTsx class="popup-star-gift-upgrade-feature-text" key="StarGiftUpgradeTradableText" />
+                  <I18nTsx
+                    class="popup-star-gift-upgrade-feature-text"
+                    key={props.descriptionForPeerId ? 'StarGiftUpgradeTradableTextPrepaid' : 'StarGiftUpgradeTradableText'}
+                    args={props.descriptionForPeerId ? [peerTitle.cloneNode(true)] : []}
+                  />
                 </div>
               </div>
             </div>
@@ -217,7 +253,7 @@ export default async function createStarGiftUpgradePopup(props: {
           </div>
         </PopupElement.Body>
         <PopupElement.Footer>
-          {props.descriptionForPeerId ? (
+          {props.descriptionForPeerId && !canPrepay ? (
             <PopupElement.FooterButton
               langKey="OK"
               callback={() => setShow(false)}
@@ -225,7 +261,7 @@ export default async function createStarGiftUpgradePopup(props: {
           ) : (
             <PopupElement.FooterButton callback={handleUpgrade}>
               <I18nTsx
-                key={freeUpgrade ? 'StarGiftUpgradeFree' : 'StarGiftUpgrade'}
+                key={freeUpgrade ? 'StarGiftUpgradeFree' : props.descriptionForPeerId ? 'StarGiftUpgradePrepaid' : 'StarGiftUpgrade'}
                 args={freeUpgrade ? [] : [
                   <span class="popup-star-gift-upgrade-price-wrap">
                     <IconTsx icon="star" class="currency-star-icon" />
@@ -242,7 +278,7 @@ export default async function createStarGiftUpgradePopup(props: {
               )}
             </PopupElement.FooterButton>
           )}
-          {hasFuturePrices() && (
+          {hasFuturePrices() && !canPrepay && (
             <div
               class="popup-star-gift-upgrade-price-decrease-link"
               onClick={() => createStarGiftUpgradePricePopup({preview})}
