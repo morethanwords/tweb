@@ -1,4 +1,5 @@
 @import "../scss/mixins.scss";
+@import "../scss/variables.scss";
 
 .InstantView {
   --iv-max-width: 50rem;
@@ -450,6 +451,24 @@
     :global(.media-photo) {
       max-height: 100%;
       object-fit: cover;
+    }
+  }
+}
+
+.Collage {
+  position: relative;
+  overflow: hidden;
+
+  &Item {
+    position: absolute;
+
+    .Media {
+      width: 100% !important;
+      height: 100% !important;
+
+      :global(.media-photo) {
+        height: 100%;
+      }
     }
   }
 }

@@ -28,6 +28,7 @@ import GeoPin from './geoPin';
 import ScrollSaver from '../helpers/scrollSaver';
 import {Message} from '../layer';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import prepareAlbum from './prepareAlbum';
 
 type InstantViewContextValue = {
   webPageId: Long,
@@ -203,9 +204,19 @@ function _onMediaResult(
   );
 }
 
-function onMediaResult(ref: HTMLDivElement, paddings: number) {
+function onMediaResult(
+  ref: HTMLDivElement,
+  paddings: number,
+  onSize?: (size: {width: number, height: number}) => void
+) {
   const {width, height} = ref.style;
-  _onMediaResult(ref, parseInt(width), parseInt(height), paddings);
+  const widthNum = parseInt(width);
+  const heightNum = parseInt(height);
+  _onMediaResult(ref, widthNum, heightNum, paddings);
+
+  const r = {width: widthNum, height: heightNum};
+  onSize?.(r);
+  return r;
 }
 
 function Caption(props: {caption: PageCaption}) {
@@ -230,7 +241,12 @@ function Caption(props: {caption: PageCaption}) {
   );
 }
 
-function Block(props: {block: PageBlock, paddings: number, noCaption?: boolean}) {
+function Block(props: {
+  block: PageBlock,
+  paddings: number,
+  noCaption?: boolean,
+  onSize?: (size: {width: number, height: number}) => void,
+}) {
   const block = props.block;
 
   const CaptionC: typeof Caption = props.noCaption ? (...args: any[]) => false : Caption;
@@ -324,7 +340,7 @@ function Block(props: {block: PageBlock, paddings: number, noCaption?: boolean})
             class={styles.Media}
             photo={photo}
             withoutPreloader
-            onResult={() => onMediaResult(ref, props.paddings)}
+            onResult={() => onMediaResult(ref, props.paddings, props.onSize)}
           />
           <CaptionC caption={block.caption} />
         </>
@@ -344,7 +360,7 @@ function Block(props: {block: PageBlock, paddings: number, noCaption?: boolean})
             withoutPreloader
             withPreview
             noInfo
-            onResult={() => onMediaResult(ref, props.paddings)}
+            onResult={() => onMediaResult(ref, props.paddings, props.onSize)}
           />
           <CaptionC caption={block.caption} />
         </>
@@ -753,6 +769,56 @@ function Block(props: {block: PageBlock, paddings: number, noCaption?: boolean})
             </div>
           </div>
         </div>
+      );
+    }
+    case 'pageBlockCollage': {
+      let ref: HTMLDivElement;
+      const map: Map<HTMLDivElement, {width: number, height: number}> = new Map();
+      const ret = (
+        <div
+          ref={ref}
+          class={classNames(styles.Collage, styles.Media)}
+        >
+          <For each={block.items}>{(item) => {
+            let ref: HTMLDivElement;
+            const ret = (
+              <div
+                ref={ref}
+                class={styles.CollageItem}
+              >
+                <Block
+                  block={item}
+                  paddings={props.paddings}
+                  onSize={(size) => {
+                    map.set(ref, size);
+                  }}
+                />
+              </div>
+            );
+
+            return ret;
+          }}</For>
+        </div>
+      );
+
+      createEffect(() => {
+        const sizes = Array.from(map.values()).map(({width, height}) => ({w: width, h: height}));
+        const {width, height} = prepareAlbum({
+          container: ref,
+          items: sizes,
+          maxWidth: 400,
+          minWidth: 100,
+          spacing: 2
+        });
+        _onMediaResult(ref, width, height, props.paddings);
+        // console.warn('collage map', map, ref.childElementCount);
+      });
+
+      return (
+        <>
+          {ret}
+          <CaptionC caption={block.caption} />
+        </>
       );
     }
     default:

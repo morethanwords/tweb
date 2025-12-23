@@ -2760,21 +2760,6 @@ const Stories = (props: {
   );
 }
 
-export type PassthroughProps<E extends Element> = {element: E} & ParentProps & JSX.HTMLAttributes<E>;
-export function Passthrough<E extends Element>(props: PassthroughProps<E>): E {
-  const owner = getOwner();
-  let content: JSX.Element;
-
-  createEffect(() => {
-    content ||= runWithOwner(owner, () => props.children);
-    const [_, others] = splitProps(props, ['element']);
-    const isSvg = props.element instanceof SVGElement;
-    assign(props.element, others, isSvg);
-  });
-
-  return props.element;
-}
-
 export default function StoriesViewer(props: {
   onExit?: () => void,
   target?: Accessor<Element>,
