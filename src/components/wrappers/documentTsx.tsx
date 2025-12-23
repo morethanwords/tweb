@@ -1,6 +1,5 @@
-import {Ref} from 'solid-js';
 import wrapDocument from './document';
-import {MediaTsx} from './mediaTsx';
+import {MediaComponentProps, MediaTsx} from './mediaTsx';
 import {Middleware} from '../../helpers/middleware';
 
 type DocumentProps = Omit<Parameters<typeof wrapDocument>[0], 'middleware'>;
@@ -14,10 +13,8 @@ const loader = (options: DocumentProps & {middleware: Middleware, container: HTM
 };
 
 export default function DocumentTsx(props: DocumentProps & {
-  class?: string;
-  ref?: Ref<HTMLElement>;
   onResult?: (result: Awaited<ReturnType<typeof wrapDocument>>) => void;
-}) {
+} & MediaComponentProps) {
   return (
     <MediaTsx<DocumentProps, Awaited<ReturnType<typeof wrapDocument>>>
       {...props}

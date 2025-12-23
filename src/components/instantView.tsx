@@ -7,7 +7,7 @@ import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import classNames from '../helpers/string/classNames';
 import {IconTsx} from './iconTsx';
 import GenericTable, {GenericTableRow} from './genericTable';
-import {useHotReloadGuard} from '../lib/solidjs/hotReloadGuard';
+import {SolidJSHotReloadGuardContextValue, useHotReloadGuard} from '../lib/solidjs/hotReloadGuard';
 import {formatDate, formatFullSentTime} from '../helpers/date';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import cancelEvent from '../helpers/dom/cancelEvent';
@@ -29,6 +29,9 @@ import ScrollSaver from '../helpers/scrollSaver';
 import {Message} from '../layer';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 import prepareAlbum from './prepareAlbum';
+import type AppMediaViewer from './appMediaViewer';
+import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 
 type InstantViewContextValue = {
   webPageId: Long,
@@ -40,7 +43,8 @@ type InstantViewContextValue = {
   customEmojiRenderer: CustomEmojiRendererElement,
   details: WeakMap<HTMLElement, Setter<boolean>>,
   ready: boolean,
-  savingScroll: boolean
+  savingScroll: boolean,
+  media: Array<{ref: HTMLElement, media: Photo.photo | Document.document, caption: PageCaption}>
 };
 
 const InstantViewContext = createContext<InstantViewContextValue>();
@@ -107,7 +111,8 @@ export function InstantView(props: {
       renderNonSticker: true
     }),
     details: new WeakMap(),
-    savingScroll: false
+    savingScroll: false,
+    media: []
   };
 
   console.log(props.page);
@@ -241,6 +246,112 @@ function Caption(props: {caption: PageCaption}) {
   );
 }
 
+function prepareMediaForViewer(
+  ref: HTMLDivElement,
+  media: Photo.photo | Document.document,
+  caption: PageCaption,
+  webPageId?: Long,
+  url?: string
+) {
+  const context = useContext(InstantViewContext);
+  const hotReloadGuard = useHotReloadGuard();
+  const item = {
+    ref,
+    media,
+    caption
+  };
+  context.media.push(item);
+
+  onCleanup(() => {
+    indexOfAndSplice(context.media, item);
+  });
+
+  return onMediaClick.bind(null, {
+    context,
+    ref,
+    hotReloadGuard,
+    webPageId,
+    url
+  });
+}
+
+async function onMediaClick({
+  context,
+  ref,
+  hotReloadGuard,
+  webPageId,
+  url
+}: {
+  context: InstantViewContextValue,
+  ref: HTMLElement,
+  hotReloadGuard: SolidJSHotReloadGuardContextValue,
+  webPageId?: Long,
+  url?: string
+}) {
+  const {rootScope, AppMediaViewer, I18n} = hotReloadGuard;
+  const promises = context.media.map(async({ref, media, caption}, index) => {
+    const message = await rootScope.managers.appMessagesManager.generateStandaloneOutgoingMessage(NULL_PEER_ID);
+    message.media = media._ === 'photo' ?
+      {_: 'messageMediaPhoto', pFlags: {}, photo: media} :
+      {_: 'messageMediaDocument', pFlags: {video: true}, document: media};
+    message.id = message.mid = 0;
+    message.date = media.date;
+    message.fromId = NULL_PEER_ID;
+
+    if(!isRichTextEmpty(caption.text)) {
+      const textWithEntities = wrapTelegramRichText(caption.text);
+      message.totalEntities = textWithEntities.entities;
+      message.message = textWithEntities.text;
+    }
+
+    if(url) {
+      const string = I18n.format(
+        IS_TOUCH_SUPPORTED ? 'InstantView.Media.Url.Touch' : 'InstantView.Media.Url',
+        true
+      ) + '\n';
+
+      const addingString = string + url + '\n\n';
+
+      message.message = addingString + message.message;
+      message.totalEntities ||= [];
+      message.totalEntities.forEach((entity) => {
+        entity.offset += addingString.length;
+      });
+      message.totalEntities.unshift({
+        _: 'messageEntityTextUrl',
+        offset: string.length,
+        length: url.length,
+        url: webPageId ?
+          'tg://iv?url=' + encodeURIComponent(url) :
+          url
+      });
+    }
+
+    const target: AppMediaViewer['target'] = {
+      message,
+      element: ref,
+      mid: 0,
+      peerId: NULL_PEER_ID,
+      index
+    };
+    return target;
+  });
+  const targets = await Promise.all(promises);
+  const target = targets.find(({element}) => element === ref);
+  targets.forEach((target) => target.element = target.element.lastElementChild as any);
+
+  new AppMediaViewer(true)
+  .setSearchContext({peerId: NULL_PEER_ID, inputFilter: {_: 'inputMessagesFilterEmpty'}, useSearch: false})
+  .openMedia({
+    message: target.message,
+    target: target.element,
+    fromRight: 0,
+    reverse: false,
+    prevTargets: targets.slice(0, target.index),
+    nextTargets: targets.slice(target.index + 1)
+  });
+}
+
 function Block(props: {
   block: PageBlock,
   paddings: number,
@@ -332,15 +443,19 @@ function Block(props: {
       const context = useContext(InstantViewContext);
       const {PhotoTsx} = useHotReloadGuard();
       const photo = unwrap(context.page.photos.find((photo) => photo.id === block.photo_id)) as Photo.photo;
-      let ref: HTMLDivElement;
+      let ref: HTMLDivElement, onClick: () => void;
       return (
         <>
           <PhotoTsx
-            ref={ref}
+            ref={(_ref) => {
+              ref = _ref;
+              onClick = prepareMediaForViewer(ref, photo, block.caption, block.webpage_id, block.url);
+            }}
             class={styles.Media}
             photo={photo}
             withoutPreloader
             onResult={() => onMediaResult(ref, props.paddings, props.onSize)}
+            onClick={() => onClick()}
           />
           <CaptionC caption={block.caption} />
         </>
@@ -350,17 +465,21 @@ function Block(props: {
       const context = useContext(InstantViewContext);
       const {VideoTsx} = useHotReloadGuard();
       const doc = unwrap(context.page.documents.find((doc) => doc.id === block.video_id)) as Document.document;
-      let ref: HTMLDivElement;
+      let ref: HTMLDivElement, onClick: () => void;
       return (
         <>
           <VideoTsx
-            ref={ref}
+            ref={(_ref) => {
+              ref = _ref;
+              onClick = prepareMediaForViewer(ref, doc, block.caption);
+            }}
             doc={doc}
             class={styles.Media}
             withoutPreloader
             withPreview
             noInfo
             onResult={() => onMediaResult(ref, props.paddings, props.onSize)}
+            onClick={() => onClick()}
           />
           <CaptionC caption={block.caption} />
         </>

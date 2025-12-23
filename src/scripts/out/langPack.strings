@@ -831,6 +831,8 @@
 "Verified.Group" = "This group was verified by Telegram.";
 "WebPage.InstantView" = "INSTANT VIEW";
 "InstantView.WrongLayout" = "Wrong layout?";
+"InstantView.Media.Url" = "Click to open the link:";
+"InstantView.Media.Url.Touch" = "Tap to open the link:";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";

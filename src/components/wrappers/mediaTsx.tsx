@@ -2,14 +2,18 @@ import {Ref, Show, createResource, splitProps} from 'solid-js';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import {Middleware} from '../../helpers/middleware';
 
+export type MediaComponentProps = {
+  class?: string,
+  ref?: Ref<HTMLDivElement>,
+  onClick?: (e: MouseEvent) => void
+};
+
 export function MediaTsx<T, R>(props: T & {
-  class?: string;
-  ref?: Ref<HTMLElement>;
   onResult?: (result: R) => void;
   loader: (options: T & {middleware: Middleware, container: HTMLElement}) => Promise<R>;
   itemKey: keyof T;
-}) {
-  const [local, others] = splitProps(props, ['class', 'ref', 'onResult', 'loader', 'itemKey']);
+} & MediaComponentProps) {
+  const [local, others] = splitProps(props, ['class', 'ref', 'onResult', 'loader', 'itemKey', 'onClick']);
   let ref: HTMLDivElement;
   const ret = (
     <div
@@ -18,6 +22,7 @@ export function MediaTsx<T, R>(props: T & {
         ref = _ref;
         (local.ref as any)?.(ref);
       }}
+      onClick={local.onClick}
     ></div>
   );
 

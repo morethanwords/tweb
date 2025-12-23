@@ -970,6 +970,8 @@ const lang = {
   'WebPage.InstantView': 'INSTANT VIEW',
   // 'InstantView.RelatedArticles': 'Other News',
   'InstantView.WrongLayout': 'Wrong layout?',
+  'InstantView.Media.Url': 'Click to open the link:',
+  'InstantView.Media.Url.Touch': 'Tap to open the link:',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
