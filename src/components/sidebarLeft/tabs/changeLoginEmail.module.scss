@@ -1,0 +1,12 @@
+.container {
+  :global(.sidebar-content) {
+    padding: 16px;
+    background: var(--surface-color);
+    height: auto;
+  }
+}
+
+.footer {
+  margin-top: 2rem;
+  margin-bottom: auto;
+}

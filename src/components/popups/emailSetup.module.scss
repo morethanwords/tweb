@@ -1,0 +1,112 @@
+.popup {
+  --popup-min-width: 26.25rem;
+  --popup-max-width: 26.25rem;
+
+  &Container {
+    padding: 0;
+    border-radius: 2rem;
+    height: 26.25rem;
+  }
+
+  &Header {
+    position: absolute;
+    margin: 0;
+    top: .625rem;
+    inset-inline-start: .625rem;
+  }
+
+  &CloseButton {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  &Footer {
+    padding: 1.625rem 0 0;
+  }
+}
+
+.slider {
+  height: 100%;
+
+  :global(.tabs-tab) {
+    background-color: var(--surface-color);
+    padding: 1rem;
+
+    .page {
+      height: 100%;
+    }
+  }
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.lottie {
+  width: var(--size);
+  height: var(--size);
+  margin-top: 0.25rem;
+
+  position: relative;
+}
+
+.title {
+  margin-top: 1.375rem;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin-top: 0.75rem;
+  font-size: 15px;
+  line-height: 20px;
+  text-align: center;
+  text-wrap: balance;
+
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.input {
+  margin-top: 2.375rem;
+  width: 100%;
+  --height: 48px;
+  --border-radius: 12px;
+  --padding: 0.8125rem;
+  justify-content: center;
+}
+
+.footer {
+  margin-top: auto;
+  position: relative;
+  width: 100%;
+  height: 3rem;
+}
+
+.button {
+  border-radius: 16px;
+  text-transform: uppercase;
+  height: 48px;
+
+  &Container {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.error {
+  color: var(--danger-color);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+  text-wrap: balance;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}

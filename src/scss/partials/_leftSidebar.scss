@@ -1260,6 +1260,18 @@
     }
   }
 
+  &-forgot {
+    color: var(--secondary-text-color);
+    font-size: var(--font-size-13);
+    line-height: var(--line-height-13);
+    
+    a { color: var(--primary-color); }
+  }
+
+  &-forgot-popup.popup {
+    --popup-min-width: 22.5rem;
+  }
+
   &-hint {
     .media-sticker-wrapper {
       width: 160px;
@@ -1287,6 +1299,14 @@
         inset-inline-start: .625rem;
       }
     }
+  }
+
+  .error-label {
+    font-size: var(--font-size-14);
+    margin-top: -1rem;
+    color: var(--danger-color);
+    margin-left: 0.25rem;
+    height: 1lh;
   }
 }
 

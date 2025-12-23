@@ -16,9 +16,9 @@ import cancelEvent from '../../../../helpers/dom/cancelEvent';
 import {canFocus} from '../../../../helpers/dom/canFocus';
 import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
 import matchEmail from '../../../../lib/richTextProcessor/matchEmail';
-import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
 import SettingSection from '../../../settingSection';
 import PopupElement from '../../../popups';
+import lottieLoader from '../../../../lib/rlottie/lottieLoader';
 
 
 type ConstructorArgs = {
@@ -42,15 +42,16 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
       noDelimiter: true
     });
 
-    const emoji = '💌';
     const stickerContainer = document.createElement('div');
+    stickerContainer.classList.add('media-sticker-wrapper');
 
-    wrapStickerEmoji({
-      div: stickerContainer,
+    lottieLoader.loadAnimationAsAsset({
+      container: stickerContainer,
       width: 160,
       height: 160,
-      emoji
-    });
+      loop: false,
+      autoplay: true
+    }, 'LoveLetter');
 
     section.content.append(stickerContainer);
 

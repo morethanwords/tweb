@@ -56,6 +56,8 @@ export type LottieAssetName =
   | 'UtyanRestricted'
   | 'UtyanBirthday'
   | 'Cake'
+  | 'Mailbox'
+  | 'LoveLetter'
 ;
 
 export class LottieLoader {
