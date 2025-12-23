@@ -96,6 +96,20 @@ export class PasswordManager extends AppManager {
     return this.apiManager.invokeApi('account.confirmPasswordEmail', {code});
   }
 
+  public requestRecovery(options: any = {}) {
+    return this.apiManager.invokeApi('auth.requestPasswordRecovery', {}, options);
+  }
+
+  public async confirmPasswordResetEmail(code: string) {
+    const res = await this.apiManager.invokeApi('auth.recoverPassword', {code});
+
+    if(res._ === 'auth.authorization') {
+      this.apiManager.setUser(res.user);
+    }
+
+    return res;
+  }
+
   public resendPasswordEmail() {
     return this.apiManager.invokeApi('account.resendPasswordEmail');
   }
@@ -103,14 +117,4 @@ export class PasswordManager extends AppManager {
   public cancelPasswordEmail() {
     return this.apiManager.invokeApi('account.cancelPasswordEmail');
   }
-
-  /* public requestRecovery(options: any = {}) {
-    return apiManager.invokeApi('auth.requestPasswordRecovery', {}, options);
-  }
-
-  public recover(code: any, options: any = {}) {
-    return apiManager.invokeApi('auth.recoverPassword', {
-      code
-    }, options);
-  } */
 }

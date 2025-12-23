@@ -62,6 +62,7 @@ import {ActiveAccountNumber} from '../accounts/types';
 import {AppManager} from './manager';
 import AppGiftsManager from './appGiftsManager';
 import MonoforumDialogsStorage from '../storages/monoforumDialogs';
+import AppPromoManager from './appPromoManager';
 
 export default function createManagers(
   appStoragesManager: AppStoragesManager,
@@ -123,7 +124,8 @@ export default function createManagers(
     appTranslationsManager: new AppTranslationsManager,
     appGifsManager: new AppGifsManager,
     appGiftsManager: new AppGiftsManager,
-    monoforumDialogsStorage: new MonoforumDialogsStorage
+    monoforumDialogsStorage: new MonoforumDialogsStorage,
+    appPromoManager: new AppPromoManager
   };
 
   type T = typeof managers;

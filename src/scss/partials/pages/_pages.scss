@@ -33,6 +33,13 @@
       width: 100%;
       padding: 0 16px;
     }
+
+    .error-label {
+      text-align: center;
+      height: 1lh;
+      font-size: 14px;
+      color: var(--danger-color);
+    }
   }
 
   .auth-image,
@@ -129,6 +136,16 @@
       }
     }
   }
+
+  .forgot-link {
+    text-align: left;
+    font-size: var(--font-size-14);
+    line-height: var(--line-height-14);
+    margin-top: -12px;
+    margin-left: 8px;
+    color: var(--secondary-text-color);
+    a { color: var(--primary-color); }
+  }
 }
 
 .page-sign {
@@ -154,6 +171,10 @@
 }
 
 .page-authCode {
+  .input-wrapper {
+    justify-items: center;
+  }
+
   .phone-wrapper {
     flex: 0 0 auto;
   }

@@ -45,6 +45,8 @@ import {AgeVerificationPopup} from '../../popups/ageVerification';
 import {clearSensitiveSpoilers} from '../../wrappers/mediaSpoiler';
 import useContentSettings from '../../../stores/contentSettings';
 import AppPrivacyBirthdayTab from './privacy/birthday';
+import ChangeLoginEmailTab from './changeLoginEmail';
+import {wrapEmailPattern} from '../../popups/emailSetup';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -97,7 +99,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
             tab = this.slider.createTab(AppTwoStepVerificationEnterPasswordTab);
           } else if(passwordState.email_unconfirmed_pattern) {
             tab = this.slider.createTab(AppTwoStepVerificationEmailConfirmationTab);
-            tab.email = passwordState.email_unconfirmed_pattern;
+            tab.email = wrapEmailPattern(passwordState.email_unconfirmed_pattern);
             tab.length = 6;
             tab.isFirst = true;
             this.managers.passwordManager.resendPasswordEmail();
@@ -113,6 +115,19 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
       const twoFactorRow = new Row(twoFactorRowOptions);
       twoFactorRow.freezed = true;
+
+      const emailRow = new Row({
+        titleLangKey: 'LoginEmail',
+        subtitle: SUBTITLE,
+        icon: 'email',
+        clickable: () => {
+          this.slider.createTab(ChangeLoginEmailTab).open({
+            isInitialSetup: passwordState.login_email_pattern.includes(' ')
+          });
+        },
+        listenerSetter: this.listenerSetter
+      });
+      emailRow.freezed = true;
 
       const passcodeLockRowOptions: ConstructorParameters<typeof Row>[0] = {
         icon: 'key',
@@ -172,7 +187,13 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       });
       websitesRow.freezed = true;
 
-      section.content.append(blockedUsersRow.container, passcodeLockRow.container, twoFactorRow.container, activeSessionsRow.container, websitesRow.container);
+      section.content.append(
+        blockedUsersRow.container,
+        passcodeLockRow.container,
+        twoFactorRow.container,
+        activeSessionsRow.container,
+        websitesRow.container
+      );
       this.scrollable.append(section.container);
 
       const setBlockedCount = (count: number) => {
@@ -206,6 +227,12 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         passwordState = state;
         replaceContent(twoFactorRow.subtitle, i18n(state.pFlags.has_password ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
         twoFactorRow.freezed = false;
+
+        if(state.login_email_pattern) {
+          replaceContent(emailRow.subtitle, wrapEmailPattern(state.login_email_pattern));
+          emailRow.freezed = false;
+          twoFactorRow.container.after(emailRow.container);
+        }
 
         // console.log('password state', state);
       });

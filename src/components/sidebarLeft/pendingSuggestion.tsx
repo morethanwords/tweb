@@ -16,8 +16,9 @@ import {toastNew} from '../toast';
 import Animated from '../../helpers/solid/animations';
 import uiNotificationsManager from '../../lib/appManagers/uiNotificationsManager';
 import cancelEvent from '../../helpers/dom/cancelEvent';
-import {dismissServerSuggestion, pendingSuggestions} from '../../stores/promo';
+import {usePendingSuggestions} from '../../stores/promo';
 import showBirthdayPopup, {saveMyBirthday} from '../popups/birthday';
+import {showEmailSetupPopup} from '../popups/emailSetup';
 import rootScope from '../../lib/rootScope';
 
 const PendingSuggestion = (props: Parameters<typeof Row>[0] & {closable?: () => void}) => {
@@ -145,6 +146,8 @@ function NotificationsSuggestion() {
   );
 }
 const BIRTHDAY_SETUP_SUGGESTION_KEY = 'BIRTHDAY_SETUP';
+const EMAIL_SETUP_KEY = 'SETUP_LOGIN_EMAIL';
+const EMAIL_SETUP_KEY_NOSKIP = 'SETUP_LOGIN_EMAIL_NOSKIP';
 
 function BirthdaySetupSuggestion() {
   const [isSidebarCollapsed] = useIsSidebarCollapsed();
@@ -152,15 +155,15 @@ function BirthdaySetupSuggestion() {
   const emoji = () => wrapEmojiText('🎂');
 
   const onDismissed = () => {
-    dismissServerSuggestion(BIRTHDAY_SETUP_SUGGESTION_KEY);
+    rootScope.managers.appPromoManager.dismissSuggestion(BIRTHDAY_SETUP_SUGGESTION_KEY);
   };
 
   const onClick = () => {
     showBirthdayPopup({
       onSave: async(date) => {
         if(await saveMyBirthday(date)) {
-          dismissServerSuggestion(BIRTHDAY_SETUP_SUGGESTION_KEY);
-          return true;
+          rootScope.managers.appPromoManager.dismissSuggestion(BIRTHDAY_SETUP_SUGGESTION_KEY);
+          return;
         }
         return false;
       }
@@ -199,6 +202,7 @@ export function renderPendingSuggestion(toElement: HTMLElement) {
     const [{appConfig}] = useAppState();
     const [appSettings, setAppSettings] = useAppSettings();
     const [element, setElement] = createSignal<JSX.Element>();
+    const pendingSuggestions = usePendingSuggestions();
 
     // * test
     // onMount(() => {
@@ -206,6 +210,29 @@ export function renderPendingSuggestion(toElement: HTMLElement) {
     //     setAppSettings('notifications', 'suggested', false);
     //   }
     // });
+
+    createEffect(() => {
+      const pendingSuggestions$ = pendingSuggestions();
+      if(pendingSuggestions$.has(EMAIL_SETUP_KEY) || pendingSuggestions$.has(EMAIL_SETUP_KEY_NOSKIP)) {
+        rootScope.managers.appPromoManager.getPromoData(true).then((data) => {
+          const noskip = data.pendingSuggestions.includes(EMAIL_SETUP_KEY_NOSKIP);
+          if(data.pendingSuggestions.includes(EMAIL_SETUP_KEY) || noskip) {
+            showEmailSetupPopup({
+              noskip,
+              purpose: {_: 'emailVerifyPurposeLoginChange'},
+              onDismiss: () => {
+                if(!noskip) {
+                  rootScope.managers.appPromoManager.dismissSuggestion(EMAIL_SETUP_KEY);
+                }
+              },
+              onSuccess: () => {
+                toastNew({langPackKey: 'EmailSetup.SetupToast'});
+              }
+            });
+          }
+        });
+      }
+    });
 
     createEffect(() => {
       let element: JSX.Element;
