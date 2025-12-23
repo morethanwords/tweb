@@ -115,7 +115,7 @@ export function InstantView(props: {
     media: []
   };
 
-  console.log(props.page);
+  // console.log(props.page);
 
   let firstAnchor = true;
   createEffect(() => {
@@ -960,7 +960,7 @@ function RichTextRenderer(props: {text: RichText}) {
     {webPageId, url: page.url, randomId}
   );
 
-  console.log({text, entities}, unwrap(props.text));
+  // console.log({text, entities}, unwrap(props.text));
   const fragment = wrapRichText(text, {entities, customEmojiRenderer});
   fragment.querySelectorAll('[onclick="tg_iv(this)"]').forEach((el) => {
     el.classList.add(styles.Anchor);

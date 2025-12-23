@@ -1,12 +1,12 @@
 
 import {children, createEffect, createSignal, For, onCleanup, onMount, Show, JSX} from 'solid-js';
-import SwipeHandler from '../swipeHandler';
+import SwipeHandler from './swipeHandler';
 import styles from './slideshow.module.scss';
-import classNames from '../../helpers/string/classNames';
-import {fastRaf} from '../../helpers/schedulers';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import IS_PARALLAX_SUPPORTED from '../../environment/parallaxSupport';
-import {IconTsx} from '../iconTsx';
+import classNames from '../helpers/string/classNames';
+import {fastRaf} from '../helpers/schedulers';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import IS_PARALLAX_SUPPORTED from '../environment/parallaxSupport';
+import {IconTsx} from './iconTsx';
 
 export type SlideshowProps<T> = {
   class?: string;

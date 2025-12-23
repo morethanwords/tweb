@@ -46,7 +46,7 @@ import VideoTsx from '../../components/wrappers/videoTsx';
 import Row from '../../components/rowTsx';
 import DocumentTsx from '../../components/wrappers/documentTsx';
 import PhotoTsx from '../../components/wrappers/photoTsx';
-import Slideshow from '../../components/ui/slideshow'; // Added import
+import Slideshow from '../../components/slideshow'; // Added import
 import AppMediaViewer from '../../components/appMediaViewer';
 
 

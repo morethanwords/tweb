@@ -52,7 +52,7 @@ import type VideoTsx from '../../components/wrappers/videoTsx';
 import type Row from '../../components/rowTsx';
 import type DocumentTsx from '../../components/wrappers/documentTsx';
 import type PhotoTsx from '../../components/wrappers/photoTsx';
-import type Slideshow from '../../components/ui/slideshow';
+import type Slideshow from '../../components/slideshow';
 import type AppMediaViewer from '../../components/appMediaViewer';
 
 
