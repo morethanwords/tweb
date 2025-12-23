@@ -953,7 +953,7 @@ const lang = {
   'Suggestion.Frozen.Subtitle': 'Tap to view details and submit an appeal >',
   'Frozen.Title': 'Your Account is Frozen',
   'Frozen.Violation.Title': 'Violation of Terms',
-  'Frozen.Violation.Subtitle': 'Your account was frozen for breaking Telegram\'s Terms and Conditions.',
+  'Frozen.Violation.Subtitle': 'Your account was frozen for breaking Telegram’s Terms of Service.',
   'Frozen.ReadOnly.Title': 'Read-Only Mode',
   'Frozen.ReadOnly.Subtitle': 'You can access your account but can\'t send messages or take actions.',
   'Frozen.Appeal.Title': 'Appeal Before Deactivation',

@@ -819,7 +819,7 @@
 "Suggestion.Frozen.Subtitle" = "Tap to view details and submit an appeal >";
 "Frozen.Title" = "Your Account is Frozen";
 "Frozen.Violation.Title" = "Violation of Terms";
-"Frozen.Violation.Subtitle" = "Your account was frozen for breaking Telegram's Terms and Conditions.";
+"Frozen.Violation.Subtitle" = "Your account was frozen for breaking Telegram’s Terms of Service.";
 "Frozen.ReadOnly.Title" = "Read-Only Mode";
 "Frozen.ReadOnly.Subtitle" = "You can access your account but can't send messages or take actions.";
 "Frozen.Appeal.Title" = "Appeal Before Deactivation";
@@ -833,6 +833,7 @@
 "InstantView.WrongLayout" = "Wrong layout?";
 "InstantView.Media.Url" = "Click to open the link:";
 "InstantView.Media.Url.Touch" = "Tap to open the link:";
+"Chat.Message.RequestToJoin" = "REQUEST TO JOIN";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";
@@ -3414,7 +3415,7 @@
 "Login.QR.Help1" = "Open Telegram on your phone";
 "Login.QR.Help2" = "Go to **Settings** > **Devices** > **Link Desktop Device**";
 "Login.QR.Help3" = "Point your phone at this screen to confirm login";
-"Login.QR.Cancel" = "Log in by phone Number";
+"Login.QR.Cancel" = "Log in by phone number";
 "Login.QR.Login" = "Log in by QR Code";
 "PhoneNumber.Code.Fragment.Info" = "Get the code in the Anonymous Numbers section on [Fragment](%1$@)";
 "PHONE_CODE_INVALID" = "Invalid code";
