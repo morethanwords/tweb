@@ -28,8 +28,11 @@ import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import {toast, toastNew} from '../../components/toast';
 import {wrapAdaptiveCustomEmoji} from '../../components/wrappers/customEmojiSimple';
+import getPeerTitle from '../../components/wrappers/getPeerTitle';
+import {wrapTopicIcon} from '../../components/wrappers/messageActionTextNewUnsafe';
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import wrapPhoto from '../../components/wrappers/photo';
+import wrapReply from '../../components/wrappers/reply';
 import wrapSticker from '../../components/wrappers/sticker';
 import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import wrapTopicNameButton from '../../components/wrappers/topicNameButton';
@@ -81,6 +84,7 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       wrapSticker,
       wrapTopicNameButton,
       wrapRichText,
+      getPeerTitle,
       wrapPeerTitle,
       wrapPhoto,
       wrapEmojiText,
@@ -98,7 +102,9 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       saveMyBirthday,
       Row,
       useAppSettings,
-      ChatType
+      ChatType,
+      wrapReply,
+      wrapTopicIcon
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

@@ -371,7 +371,9 @@ export default function TopbarSearch(props: {
   onClose?: () => void,
   onDatePick?: (timestamp: number) => void,
   onActive?: (active: boolean, showingReactions: boolean, isSmallScreen: boolean) => void,
-  onSearchTypeChange?: () => void
+  onSearchTypeChange?: () => void,
+  onValueChange?: (value: string) => void,
+  noList?: boolean
 }) {
   const mediaSizes = useMediaSizes();
   const isSmallScreen = createMemo(() => mediaSizes.activeScreen === ScreenSize.mobile);
@@ -421,6 +423,10 @@ export default function TopbarSearch(props: {
       props.onActive(false, false, isSmallScreen());
     });
   }
+
+  createEffect(() => {
+    props.onValueChange?.(value());
+  });
 
   // * full search replacement
   createEffect(() => {
@@ -749,6 +755,8 @@ export default function TopbarSearch(props: {
 
   // * search
   createEffect<Partial<{searchType: SearchType, query: string}>>((prev) => {
+    if(props.noList) return;
+
     prev ||= {};
     const {peerId, threadId} = props;
     const query = value();

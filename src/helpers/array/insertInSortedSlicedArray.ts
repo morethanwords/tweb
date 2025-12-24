@@ -5,6 +5,8 @@ import {mergeSortedArrays} from './mergeSortedArrays';
 export function insertInSortedSlicedArray<T>(slice: T[], slices: T[][], compare: (a: T, b: T) => number) {
   let i = 0;
 
+  if(!slice.length) return;
+
   for(; i < slices.length; i++) {
     const currentSlice = slices[i];
 

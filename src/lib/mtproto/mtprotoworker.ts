@@ -975,6 +975,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return `${peerId}_history`;
   }
 
+  public getLogsMessagesStorage(peerId: PeerId): MessagesStorageKey {
+    return `${peerId}_logs`;
+  }
+
   public getGlobalHistoryMessagesStorage(): MessagesStorageKey {
     return this.getHistoryMessagesStorage(NULL_PEER_ID);
   }
@@ -990,9 +994,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
       return this.getMessageById(messageId);
     }
 
-    return this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), messageId);
+    return (
+      this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), messageId) ||
+      this.getMessageFromStorage(this.getLogsMessagesStorage(peerId), messageId)
+    );
   }
-
 
   public getPeerForAccount(peerId: PeerId, accountNumber: ActiveAccountNumber) {
     const managers = createProxiedManagersForAccount(accountNumber);

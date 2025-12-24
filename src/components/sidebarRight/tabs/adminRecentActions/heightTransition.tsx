@@ -31,6 +31,8 @@ export const HeightTransition = (props: ParentProps<HeightTransitionProps>) => {
 
       onEnter={async(_el, done) => {
         const el = _el as HTMLElement;
+        el.style.height = '0px';
+        el.style.opacity = '0';
 
         animate(() => {
           const targetHeight = el.scrollHeight;
@@ -40,7 +42,13 @@ export const HeightTransition = (props: ParentProps<HeightTransitionProps>) => {
           ], {
             duration: liteMode.isAvailable('animations') ? transitionTime : 0,
             easing: 'ease-in-out'
-          }).finished.then(done);
+          }).finished
+          .then(() => {
+            el.style.removeProperty('height');
+            el.style.removeProperty('opacity');
+
+            done();
+          });
         });
       }}
 

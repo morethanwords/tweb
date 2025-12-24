@@ -1,7 +1,7 @@
 import {createEffect, createResource, For, JSX, on} from 'solid-js';
 import classNames from '../../../helpers/string/classNames';
 import {MessageEntity, ReplyMarkup} from '../../../layer';
-import {generateTail} from '../bubbles';
+import {generateTail} from '../utils';
 import {I18nTsx} from '../../../helpers/solid/i18n';
 import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
 import rootScope from '../../../lib/rootScope';

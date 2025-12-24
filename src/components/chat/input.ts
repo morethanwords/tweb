@@ -32,7 +32,7 @@ import tsNow from '../../helpers/tsNow';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '../../environment/userAgent';
 import I18n, {FormatterArguments, i18n, join, LangPackKey} from '../../lib/langPack';
-import {generateTail} from './bubbles';
+import {generateTail} from './utils';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import ButtonCorner from '../buttonCorner';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -187,8 +187,6 @@ export default class ChatInput {
   private btnToggleEmoticons: HTMLButtonElement;
   private btnToggleReplyMarkup: HTMLButtonElement;
   public btnSendContainer: HTMLDivElement;
-
-  public emptySpace: HTMLDivElement;
 
   private replyKeyboard: ReplyKeyboard;
 
@@ -389,9 +387,6 @@ export default class ChatInput {
 
     this.chatInput = document.createElement('div');
     this.chatInput.classList.add(CLASS_NAME, className2, 'hide');
-
-    this.emptySpace = document.createElement('div');
-    this.emptySpace.classList.add('chat-input-empty-space', 'hide');
 
     this.inputContainer = document.createElement('div');
     this.inputContainer.classList.add(`${CLASS_NAME}-container`, `${className2}-container`);
@@ -2080,8 +2075,7 @@ export default class ChatInput {
       const {isMonoforum, canManageDirectMessages, monoforumThreadId} = this.chat;
       // console.warn('[input] finishpeerchange start');
 
-      chatInput.classList.toggle('hide', this.chat?.type === ChatType.Static);
-      this.emptySpace.classList.toggle('hide', this.chat?.type !== ChatType.Static);
+      chatInput.classList.toggle('hide', this.chat.noInput);
 
       if(goDownBtn) {
         goDownBtn.classList.toggle('is-broadcast', isBroadcast);

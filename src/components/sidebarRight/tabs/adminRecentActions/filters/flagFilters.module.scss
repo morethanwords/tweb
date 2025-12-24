@@ -1,0 +1,28 @@
+.SectionTitle {
+  font-weight: 500;
+  padding-left: 12px;
+  color: var(--secondary-text-color);
+}
+
+.Footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 12px;
+  padding-top: 2px;
+}
+
+.Button {
+  height: 2.5rem;
+  padding: 0 20px;
+  width: unset;
+}
+
+.Search {
+  padding: 0 10px;
+}
+
+.Scrollable {
+  flex: 1;
+}

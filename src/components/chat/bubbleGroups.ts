@@ -21,12 +21,13 @@ import {avatarNew} from '../avatarNew';
 import {MiddlewareHelper} from '../../helpers/middleware';
 import {ChatType} from './chat';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
-import {isMessageForVerificationBot} from './utils';
+import {getMid, isMessage, isMessageForVerificationBot} from './utils';
 import {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {BubbleElementAddons} from './types';
 import ChatThreadSeparator from './bubbleParts/chatThreadSeparator';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import {AdminLog} from '../../lib/appManagers/appChatsManager';
 
 
 type GroupItem = {
@@ -39,7 +40,7 @@ type GroupItem = {
   mounted: boolean,
   single: boolean,
   group?: BubbleGroup,
-  message: Message.message | Message.messageService, // use it only to set avatar
+  message: Message.message | Message.messageService | AdminLog, // use it only to set avatar
   reverse?: boolean
 };
 
@@ -78,13 +79,30 @@ export class BubbleGroup {
     this.middlewareHelper = chat.bubbles.getMiddleware().create();
   }
 
-  getAvatarOptions(message: Message.message) {
-    const fwdFrom = message.fwd_from;
-    const fwdFromId = message.fwdFromId;
+  getAvatarOptions(message: Message.message | AdminLog) {
+    const fwdFrom = isMessage(message) ? message.fwd_from : undefined;
+    const fwdFromId = isMessage(message) ? message.fwdFromId : undefined;
     const fwdFromName = getFwdFromName(fwdFrom);
-    const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
+    const isForwardFromChannel = isMessage(message) && message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
     const currentPeerId = this.chat.peerId;
-    const peerId = ((fwdFrom && (/* currentPeerId === rootScope.myId ||  */currentPeerId === REPLIES_PEER_ID || currentPeerId === VERIFICATION_CODES_BOT_ID) && !fwdFromName) || isForwardFromChannel ? fwdFromId : message.fromId) || NULL_PEER_ID;
+
+    const getPeerIdForLog = (log: AdminLog) => {
+      const entry = this.chat.bubbles.resolveAdminLogUnsafe({log, noJsx: true});
+
+      if(entry?.type === 'default') {
+        if(entry.message._ === 'message') return getPeerId(entry.message.from_id);
+      }
+
+      return log?.user_id?.toPeerId();
+    };
+
+    const peerId =
+      (
+        isMessage(message) ?
+          ((fwdFrom && (/* currentPeerId === rootScope.myId ||  */currentPeerId === REPLIES_PEER_ID || currentPeerId === VERIFICATION_CODES_BOT_ID) && !fwdFromName) || isForwardFromChannel ? fwdFromId : message.fromId) :
+          getPeerIdForLog(message)
+      ) ||
+      NULL_PEER_ID;
 
     return {
       // peerId: fwdFromName ? NULL_PEER_ID : peerId,
@@ -104,7 +122,7 @@ export class BubbleGroup {
     --this.offset;
   }
 
-  createAvatar(message: Message.message | Message.messageService, options?: Partial<Parameters<typeof avatarNew>[0]>) {
+  createAvatar(message: Message.message | Message.messageService | AdminLog, options?: Partial<Parameters<typeof avatarNew>[0]>) {
     if(this.avatarLoadPromise) {
       return this.avatarLoadPromise;
     } else if(message._ === 'messageService') {
@@ -123,11 +141,13 @@ export class BubbleGroup {
     });
     this.avatar.node.classList.add('bubbles-group-avatar', 'user-avatar'/* , 'can-zoom-fade' */);
 
-    const replyMarkup = message.reply_markup;
+    const replyMarkup = isMessage(message) && message.reply_markup;
     let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
     replyMarkupRows = replyMarkupRows?.filter?.((row) => row.buttons.length);
     replyMarkupRows?.length && this.avatar.node.classList.add('avatar-for-reply-markup');
-    canHaveSuggestedPostReplyMarkup(message) && this.avatar.node.classList.add('avatar-for-suggested-reply-markup');
+    if(isMessage(message) && canHaveSuggestedPostReplyMarkup(message)) {
+      this.avatar.node.classList.add('avatar-for-suggested-reply-markup');
+    }
 
     // this.avatarLoadPromise = Promise.all([
     //   avatarLoadPromise,
@@ -421,8 +441,11 @@ export default class BubbleGroups {
     let prevKey: number;
 
     forEachReverse(this.itemsArr, (item, i) => {
-      const savedPeerId = isMonoforum ? getPeerId(item.message?.saved_peer_id) : undefined;
-      const threadId = isBotforum ? getMessageThreadId(item.message, {isBotforum: true}) : undefined;
+      const message = item.message;
+      if(message._ === 'channelAdminLogEvent') return;
+
+      const savedPeerId = isMonoforum ? getPeerId(message?.saved_peer_id) : undefined;
+      const threadId = isBotforum ? getMessageThreadId(message, {isBotforum: true}) : undefined;
 
       const key = savedPeerId || threadId;
       if(!key) return;
@@ -451,7 +474,7 @@ export default class BubbleGroups {
         bubbles: this.chat.bubbles,
         peerId: savedPeerId || this.chat.peerId,
         threadId: savedPeerId ? undefined : threadId,
-        lastMsgId: item.message?.mid,
+        lastMsgId: message?.mid,
         index: -i
       });
       item.bubble.classList.add('has-chat-thread-separator');
@@ -509,7 +532,7 @@ export default class BubbleGroups {
       return;
     }
 
-    item.mid = /* item.groupMid =  */message.mid;
+    item.mid = /* item.groupMid =  */getMid(message);
     item.message = message;
     item.groupMid = this.generateGroupMid(message, item.dateTimestamp);
 
@@ -538,6 +561,8 @@ export default class BubbleGroups {
   }
 
   canItemsBeGrouped(item1: GroupItem, item2: GroupItem) {
+    if(item1.message?._ === 'channelAdminLogEvent' || item2.message?._ === 'channelAdminLogEvent') return false;
+
     if(isMessageForVerificationBot(item1.message)) return false;
 
     if(
@@ -628,7 +653,11 @@ export default class BubbleGroups {
     this.itemsMap.delete(item.bubble);
   }
 
-  getMessageFromId(message: MyMessage) {
+  getMessageFromId(message: MyMessage | AdminLog) {
+    if(message._ === 'channelAdminLogEvent') {
+      return this.chat.peerId;
+    }
+
     let fromId = /* (this.chat.peerId.isAnyChat() && message.viaBotId) ||  */message.fromId;
 
     // fix for saved messages forward to self
@@ -639,14 +668,16 @@ export default class BubbleGroups {
     return fromId;
   }
 
-  generateGroupMid(message: MyMessage, dateTimestamp: number) {
-    const {mid, date: timestamp} = message;
+  generateGroupMid(message: MyMessage | AdminLog, dateTimestamp: number) {
+    const {date: timestamp} = message;
+    const mid = getMid(message);
     return this.chat.type === ChatType.Scheduled ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${+('' + mid).replace('.', '')}` : mid;
   }
 
-  createItem(bubble: HTMLElement, message: MyMessage, reverse: boolean) {
-    const single = !(message._ === 'message' || (message.action && SERVICE_AS_REGULAR.has(message.action._)));
-    const {mid, date: timestamp} = message;
+  createItem(bubble: HTMLElement, message: MyMessage | AdminLog, reverse: boolean) {
+    const single = !(message._ === 'message' || (message._ === 'messageService' && message.action && SERVICE_AS_REGULAR.has(message.action._)));
+    const {date: timestamp} = message;
+    const mid = getMid(message);
     const {dateTimestamp} = this.chat.bubbles.getDateForDateContainer(timestamp);
     const item: GroupItem = {
       mid,
@@ -693,7 +724,7 @@ export default class BubbleGroups {
     // }
   }
 
-  prepareForGrouping(bubble: HTMLElement, message: MyMessage, reverse: boolean) {
+  prepareForGrouping(bubble: HTMLElement, message: MyMessage | AdminLog, reverse: boolean) {
     const foundItem = this.getItemByBubble(bubble);
     if(foundItem) { // should happen only on edit
       // debugger;

@@ -244,6 +244,7 @@ export default function Scrollable(props: {
         'scrollable',
         `scrollable-${axis}`,
         props.class,
+        props.relative && 'relative',
         IS_SAFARI && !IS_MOBILE_SAFARI && 'no-scrollbar',
         ...(props.withBorders ? [
           isScrolledToStart() && 'scrolled-start',
@@ -253,10 +254,6 @@ export default function Scrollable(props: {
           (props.withBorders === 'bottom' || props.withBorders === 'both') && 'scrollable-y-bordered-bottom'
         ] : [])
       )}
-      classList={{
-        relative: props.relative,
-        ...props.classList
-      }}
       onScroll={onScroll}
       onWheel={(axis === 'x' && !IS_TOUCH_SUPPORTED && onWheel) || undefined}
     >

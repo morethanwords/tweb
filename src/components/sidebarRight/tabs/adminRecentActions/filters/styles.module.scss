@@ -67,11 +67,13 @@
   background-color: var(--surface-color);
   border-radius: 12px;
 
+  min-height: 0;
+  padding: 16px 12px;
+
   pointer-events: initial;
 }
 
 .Content {
-  padding: 16px 12px;
 }
 
 .hideThumb {
@@ -88,29 +90,4 @@
 
 .TopLevelCheckbox {
   background-color: red;
-}
-
-.SectionTitle {
-  font-weight: 500;
-  padding-left: 12px;
-  color: var(--secondary-text-color);
-}
-
-.Footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 0 12px;
-  padding-top: 2px;
-}
-
-.Button {
-  height: 2.5rem;
-  padding: 0 20px;
-  width: unset;
-}
-
-.Search {
-  padding: 0 10px;
 }

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ChatRights} from '../../lib/appManagers/appChatsManager';
+import type {AdminLog, ChatRights} from '../../lib/appManagers/appChatsManager';
 import type {RequestWebViewOptions} from '../../lib/appManagers/appAttachMenuBotsManager';
 import type {HistoryStorageKey, MessageSendingParams, MessagesStorageKey, MyMessage, RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 import {AppImManager, APP_TABS, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
@@ -67,7 +67,7 @@ import showUndoablePaidTooltip, {paidReactionLangKeys} from './undoablePaidToolt
 import namedPromises from '../../helpers/namedPromises';
 import {getCurrentNewMediaPopup} from '../popups/newMedia';
 import PriceChangedInterceptor from './priceChangedInterceptor';
-import {isMessageForVerificationBot, isVerificationBot} from './utils';
+import {isVerificationBot} from './utils';
 import {isSensitive} from '../../helpers/restrictions';
 import {isTempId} from '../../lib/appManagers/utils/messages/isTempId';
 import {usePeer} from '../../stores/peers';
@@ -75,6 +75,7 @@ import {useAppSettings} from '../../stores/appSettings';
 import useHistoryStorage from '../../stores/historyStorages';
 import useAutoDownloadSettings, {ChatAutoDownloadSettings} from '../../hooks/useAutoDownloadSettings';
 import usePeerTranslation from '../../hooks/usePeerTranslation';
+import debounce from '../../helpers/schedulers/debounce';
 
 
 export enum ChatType {
@@ -85,7 +86,8 @@ export enum ChatType {
   Stories = 'stories',
   Saved = 'saved',
   Search = 'search',
-  Static = 'static'
+  Static = 'static',
+  Logs = 'logs'
 };
 
 export type ChatSearchKeys = Pick<RequestHistoryOptions, 'query' | 'isCacheableSearch' | 'isPublicHashtag' | 'savedReaction' | 'fromPeerId' | 'inputFilter' | 'hashtagType'>;
@@ -162,6 +164,7 @@ export default class Chat extends EventListenerBase<{
   public isBotforum: boolean;
   public canManageDirectMessages: boolean;
   public isTemporaryThread: boolean;
+  public noInput: boolean;
 
   public starsAmount: number | undefined;
 
@@ -674,7 +677,7 @@ export default class Chat extends EventListenerBase<{
 
     this.bubbles.attachContainerListeners();
 
-    this.container.append(this.topbar.container, this.bubbles.container, this.input.emptySpace, this.input.chatInput);
+    this.container.append(this.topbar.container, this.bubbles.container, this.input.chatInput);
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
       if(this.peerId === migrateFrom) {
@@ -754,6 +757,12 @@ export default class Chat extends EventListenerBase<{
       freezeObservers(this.appImManager.chat !== this || (tabId !== APP_TABS.CHAT && mediaSizes.activeScreen === ScreenSize.mobile));
     });
 
+    const setInChatQueryDebounced = debounce((query: string) => {
+      this.bubbles.setInChatQuery(query);
+    }, 300, false, true);
+
+    const hasInChatQuery = () => this.type === ChatType.Logs;
+
     this.searchSignal = createUnifiedSignal();
     createRoot((dispose) => {
       this.middlewareHelper.get().onDestroy(dispose);
@@ -798,14 +807,17 @@ export default class Chat extends EventListenerBase<{
           peerId: this.peerId,
           // TODO: Check here for monoforumThreadId
           threadId: this.threadId,
-          canFilterSender: this.isAnyGroup,
+          canFilterSender: this.type !== ChatType.Logs && this.isAnyGroup,
           query,
           filterPeerId,
           reaction,
+          noList: hasInChatQuery(),
+          onValueChange: hasInChatQuery() ? setInChatQueryDebounced : undefined,
           onClose: () => {
             this.searchSignal(undefined);
+            this.bubbles.setInChatQuery('');
           },
-          onDatePick: (timestamp) => {
+          onDatePick: this.type === ChatType.Logs ? undefined : (timestamp) => {
             this.bubbles.onDatePick(timestamp);
           },
           onActive: (active, showingReactions, isSmallScreen) => {
@@ -1020,7 +1032,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setPeer(options: ChatSetPeerOptions) {
-    const {peerId, threadId, monoforumThreadId, messages} = options;
+    const {peerId, threadId, monoforumThreadId, messages, type} = options;
     if(!peerId) {
       this.inited = undefined;
     } else if(!this.inited) {
@@ -1039,6 +1051,7 @@ export default class Chat extends EventListenerBase<{
       this.threadId = threadId;
       this.monoforumThreadId = monoforumThreadId;
       this.isTemporaryThread = isTempId(threadId);
+      this.noInput = [ChatType.Static, ChatType.Logs].includes(type);
       this.middlewareHelper.clean();
 
       createRoot((dispose) => {
@@ -1274,6 +1287,7 @@ export default class Chat extends EventListenerBase<{
     if(peerId === rootScope.myId) return true;
     if(peerId === REPLIES_PEER_ID) return true;
     if(this.type === ChatType.Search && this.hashtagType !== 'this') return true;
+    if(this.type === ChatType.Logs) return true;
 
     const {isBotforum, isLikeGroup} = await namedPromises({
       isLikeGroup: this.managers.appPeersManager.isLikeGroup(peerId),
@@ -1371,13 +1385,8 @@ export default class Chat extends EventListenerBase<{
     return !!isOut;
   }
 
-  public isAvatarNeeded(message: Message.message | Message.messageService) {
-    if(isMessageForVerificationBot(message)) return true;
-    return this.isLikeGroup && !this.isOutMessage(message);
-  }
-
   public isPinnedMessagesNeeded() {
-    return this.type === ChatType.Chat || (this.isForum && this.type !== ChatType.Static);
+    return this.type === ChatType.Chat || (this.isForum && this.type !== ChatType.Static && this.type !== ChatType.Logs);
   }
 
   public isForwardOfForward(message: Message) {

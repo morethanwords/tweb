@@ -24,7 +24,7 @@ export const PreviewMessageButtons = (props: {
   const nonEmptyRemoved = createMemo(() => getNonEmpty(props.removed));
 
   const onClick = async(message: MyMessage) => {
-    const newMessage = await rootScope.managers.appMessagesManager.temporarilySaveMessage(props.channelId.toPeerId(true), message);
+    const newMessage = await rootScope.managers.appMessagesManager.saveLogsMessage(props.channelId.toPeerId(true), message);
 
     appImManager.setPeer({
       peerId: props.channelId.toPeerId(true),

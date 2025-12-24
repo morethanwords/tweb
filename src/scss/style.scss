@@ -632,6 +632,10 @@ a {
   color: var(--link-color);
 }
 
+.link-color {
+  color: var(--link-color);
+}
+
 button,
 input,
 optgroup,
@@ -2611,4 +2615,8 @@ hr {
 
 .text-center {
   @include text-center();
+}
+
+.margin-0 {
+  margin: 0 !important;
 }

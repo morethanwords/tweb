@@ -20,6 +20,7 @@ import {BooleanKeyValue, InviteKeyValue, KeyValuePair, ParticipantKeyValue} from
 import {LogDiff} from './logDiff';
 import {participantRightsMap} from './participantRightsMap';
 import {PreviewMessageButtons} from './previewMessageButtons';
+import {TopicName} from './topicName';
 import {diffFlags, getPhoto, useParticipantClickHandler} from './utils';
 
 
@@ -206,7 +207,7 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
 
       const middleware = createMiddleware().get();
 
-      if(prevMessage && prevMessage.media._ === 'messageMediaPoll') {
+      if(prevMessage && prevMessage.media?._ === 'messageMediaPoll') {
         if(!prevMessage.media.poll.pFlags) prevMessage.media.poll.pFlags = {};
         prevMessage.media.poll.pFlags.closed = true;
       }
@@ -245,10 +246,12 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
     group: 'leave',
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ParticipantLeftChannel' : 'AdminRecentActionMessage.ParticipantLeftGroup')
   }),
-  // TODO: What is up with this event type?
-  'channelAdminLogEventActionParticipantInvite': () => ({
+  'channelAdminLogEventActionParticipantInvite': ({action}) => ({
     group: 'invites',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantInvited')
+    Message: () => i18n('AdminRecentActionMessage.ParticipantInvited'),
+    ExpandableContent: () => (
+      <ParticipantKeyValue peerId={getParticipantPeerId(action.participant)} />
+    )
   }),
   'channelAdminLogEventActionParticipantToggleBan': ({channelId, action}) => ({
     group: 'permissions',
@@ -488,13 +491,22 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
       />
     )
   }),
-  'channelAdminLogEventActionToggleNoForwards': () => ({
+  'channelAdminLogEventActionToggleNoForwards': ({action}) => ({
     group: 'permissions',
-    Message: () => i18n('AdminRecentActionMessage.ToggleNoForwards')
+    Message: () => action.new_value ?
+      i18n('AdminRecentActionMessage.ToggleNoForwardsEnabled') :
+      i18n('AdminRecentActionMessage.ToggleNoForwardsDisabled')
   }),
-  'channelAdminLogEventActionSendMessage': () => ({
+  'channelAdminLogEventActionSendMessage': ({action, channelId}) => ({
     group: 'messages',
-    Message: () => i18n('AdminRecentActionMessage.MessageSent')
+    Message: () => i18n('AdminRecentActionMessage.MessageSent'),
+    ExpandableContent: () => (
+      <PreviewMessageButtons
+        channelId={channelId}
+        added={action.message}
+        addedKey='AdminRecentActions.ViewSentMessage'
+      />
+    )
   }),
   'channelAdminLogEventActionChangeAvailableReactions': () => ({
     group: 'reactions',
@@ -504,29 +516,55 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
     group: 'identity',
     Message: () => i18n('AdminRecentActionMessage.ChangeUsernames')
   }),
-  'channelAdminLogEventActionToggleForum': () => ({
+  'channelAdminLogEventActionToggleForum': ({action}) => ({
     group: 'forum',
-    Message: () => i18n('AdminRecentActionMessage.ToggleForum')
+    Message: () => i18n('AdminRecentActionMessage.ToggleForum'),
+    ExpandableContent: () => (
+      <BooleanKeyValue value={action.new_value} />
+    )
   }),
-  'channelAdminLogEventActionCreateTopic': () => ({
+  'channelAdminLogEventActionCreateTopic': ({action}) => ({
     group: 'topics',
-    Message: () => i18n('AdminRecentActionMessage.TopicCreated')
+    Message: () => i18n('AdminRecentActionMessage.TopicCreated'),
+    ExpandableContent: () => (
+      <LogDiff added={<TopicName topic={action.topic} />} />
+    )
   }),
-  'channelAdminLogEventActionEditTopic': () => ({
+  'channelAdminLogEventActionEditTopic': ({action}) => ({
     group: 'topics',
-    Message: () => i18n('AdminRecentActionMessage.TopicEdited')
+    Message: () => i18n('AdminRecentActionMessage.TopicEdited'),
+    ExpandableContent: () => (
+      <LogDiff
+        added={<TopicName topic={action.new_topic} />}
+        removed={<TopicName topic={action.prev_topic} />}
+      />
+    )
   }),
-  'channelAdminLogEventActionDeleteTopic': () => ({
+  'channelAdminLogEventActionDeleteTopic': ({action}) => ({
     group: 'topics',
-    Message: () => i18n('AdminRecentActionMessage.TopicDeleted')
+    Message: () => i18n('AdminRecentActionMessage.TopicDeleted'),
+    ExpandableContent: () => (
+      <LogDiff
+        removed={<TopicName topic={action.topic} />}
+      />
+    )
   }),
-  'channelAdminLogEventActionPinTopic': () => ({
+  'channelAdminLogEventActionPinTopic': ({action}) => ({
     group: 'topics',
-    Message: () => i18n('AdminRecentActionMessage.TopicPinned')
+    Message: () => i18n(action.new_topic ? 'AdminRecentActionMessage.TopicPinned' : 'AdminRecentActionMessage.TopicUnpinned'),
+    ExpandableContent: () => (
+      <LogDiff
+        added={action.new_topic ? <TopicName topic={action.new_topic} /> : undefined}
+        removed={action.prev_topic ? <TopicName topic={action.prev_topic} /> : undefined}
+      />
+    )
   }),
-  'channelAdminLogEventActionToggleAntiSpam': () => ({
+  'channelAdminLogEventActionToggleAntiSpam': ({action}) => ({
     group: 'permissions',
-    Message: () => i18n('AdminRecentActionMessage.ToggleAntiSpam')
+    Message: () => i18n('AdminRecentActionMessage.ToggleAntiSpam'),
+    ExpandableContent: () => (
+      <BooleanKeyValue value={action.new_value} />
+    )
   }),
   'channelAdminLogEventActionChangePeerColor': () => ({
     group: 'appearance',
@@ -548,17 +586,26 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
     group: 'appearance',
     Message: () => i18n('AdminRecentActionMessage.ChangeEmojiStickerSet')
   }),
-  'channelAdminLogEventActionToggleSignatureProfiles': () => ({
+  'channelAdminLogEventActionToggleSignatureProfiles': ({action}) => ({
     group: 'identity',
-    Message: () => i18n('AdminRecentActionMessage.ToggleSignatureProfiles')
+    Message: () => i18n('AdminRecentActionMessage.ToggleSignatureProfiles'),
+    ExpandableContent: () => (
+      <BooleanKeyValue value={action.new_value} />
+    )
   }),
-  'channelAdminLogEventActionParticipantSubExtend': () => ({
+  'channelAdminLogEventActionParticipantSubExtend': ({action}) => ({
     group: 'participants',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantSubscriptionExtended')
+    Message: () => i18n('AdminRecentActionMessage.ParticipantSubscriptionExtended'),
+    ExpandableContent: () => (
+      <ParticipantKeyValue peerId={getParticipantPeerId(action.new_participant)}/>
+    )
   }),
-  'channelAdminLogEventActionToggleAutotranslation': () => ({
+  'channelAdminLogEventActionToggleAutotranslation': ({action}) => ({
     group: 'translations',
-    Message: () => i18n('AdminRecentActionMessage.ToggleAutoTranslation')
+    Message: () => i18n('AdminRecentActionMessage.ToggleAutoTranslation'),
+    ExpandableContent: () => (
+      <BooleanKeyValue value={action.new_value} />
+    )
   })
 };
 

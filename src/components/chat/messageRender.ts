@@ -32,6 +32,7 @@ import Scrollable from '../scrollable';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
+import {makeTime} from './utils';
 
 const NBSP = '&nbsp;';
 
@@ -40,10 +41,6 @@ const makeEdited = () => {
   edited.classList.add('time-edited', 'time-part');
   _i18n(edited, 'EditedMessage');
   return edited;
-};
-
-const makeTime = (date: Date, includeDate?: boolean) => {
-  return includeDate ? formatFullSentTimeRaw(date.getTime() / 1000 | 0, {combined: true}).dateEl : formatTime(date);
 };
 
 const makeEffect = (props: {
@@ -344,11 +341,12 @@ export namespace MessageRender {
     return isFooter;
   };
 
-  export const setReply = async({chat, bubble, bubbleContainer, message, appendCallback, middleware, lazyLoadQueue, needUpdate, isStandaloneMedia, isOut, fromUpdate}: {
+  export const setReply = async({chat, bubble, bubbleContainer, message, logId, appendCallback, middleware, lazyLoadQueue, needUpdate, isStandaloneMedia, isOut, fromUpdate}: {
     chat: Chat,
     bubble: HTMLElement,
     bubbleContainer?: HTMLElement,
     message: Message.message,
+    logId?: string | number,
     appendCallback?: (container: HTMLElement) => void,
     middleware: Middleware,
     lazyLoadQueue: LazyLoadQueue,
@@ -389,9 +387,9 @@ export namespace MessageRender {
 
     if(!fromUpdate) {
       if(isStoryReply) {
-        needUpdate.push(forUpdate = {replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid, peerId: message.peerId});
+        needUpdate.push(forUpdate = {replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid, peerId: message.peerId, logId});
       } else {
-        needUpdate.push(forUpdate = {replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid, peerId: message.peerId});
+        needUpdate.push(forUpdate = {replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid, peerId: message.peerId, logId});
       }
 
       middleware.onClean(() => {

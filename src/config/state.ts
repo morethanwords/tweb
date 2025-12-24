@@ -110,7 +110,8 @@ export type StateSettings = {
     lockShortcutEnabled: boolean,
     lockShortcut: PasscodeLockShortcutKey[],
     canAttemptAgainOn: number | null
-  }
+  },
+  logsDiffView?: boolean
 };
 
 type CacheSomething<T> = {

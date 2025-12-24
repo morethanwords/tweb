@@ -38,12 +38,6 @@ export type MySponsoredPeer = Omit<SponsoredPeer, 'peer'> & {peer: PeerId};
 export type AdminLog = ChannelAdminLogEvent.channelAdminLogEvent;
 export type AdminLogFilterFlags = ChannelsGetAdminLog['events_filter']['pFlags'];
 
-type GetAdminLogsArgs = {
-  channelId: ChatId;
-  offsetId?: AdminLog['id'];
-  limit: number;
-};
-
 type FetchAdminLogsArgs = {
   channelId: ChatId;
   offsetId?: AdminLog['id'];
@@ -52,6 +46,13 @@ type FetchAdminLogsArgs = {
   search?: string;
   limit: number;
 };
+
+type GetAdminLogsArgs = FetchAdminLogsArgs & {
+  backLimit?: number;
+};
+
+type GetAdminLogsFetcherKeyArgs = Pick<FetchAdminLogsArgs, 'channelId' | 'flags' | 'admins' | 'search'>;
+
 
 export class AppChatsManager extends AppManager {
   private storage: AppStoragesManager['storages']['chats'];
@@ -1045,23 +1046,44 @@ export class AppChatsManager extends AppManager {
     })
   }
 
-  public async getAdminLogs({channelId, offsetId, limit}: GetAdminLogsArgs) {
-    const cachedFetcher = this.adminLogsFetcherMap.get(channelId) || new SlicedCachedFetcher;
-    if(!this.adminLogsFetcherMap.has(channelId)) this.adminLogsFetcherMap.set(channelId, cachedFetcher);
+  private getAdminLogsFetcherKey({channelId, search, flags, admins}: GetAdminLogsFetcherKeyArgs) {
+    flags = Object.fromEntries(
+      Object.entries(flags || {})
+      .sort(([a], [b]) => a.localeCompare(b))
+      .filter(([, value]) => value)
+    );
 
-    const items = await cachedFetcher.getItems({
+    if(!Object.keys(flags).length) flags = undefined;
+
+    return JSON.stringify({
+      channelId,
+      search: search || undefined,
+      flags,
+      // can be empty array, there are also logs from non-admins
+      admins
+    });
+  }
+
+  public async getAdminLogs({channelId, search, flags, admins, offsetId, limit, backLimit}: GetAdminLogsArgs) {
+    const key = this.getAdminLogsFetcherKey({channelId, search, flags, admins});
+
+    const cachedFetcher = this.adminLogsFetcherMap.get(key) || new SlicedCachedFetcher;
+    if(!this.adminLogsFetcherMap.has(key)) this.adminLogsFetcherMap.set(key, cachedFetcher);
+
+    const result = await cachedFetcher.getItems({
       offsetId,
       limit,
-      fetchItems: ({offsetId, limit}) => this.fetchAdminLogs({channelId, offsetId, limit}),
+      backLimit,
+      fetchItems: ({offsetId, limit}) => this.fetchAdminLogs({channelId, search, flags, admins, offsetId, limit}),
       getId: (log) => log.id
     });
 
     // const slices = cachedFetcher.cachedSlices.map(s => [...s])
 
-    // MTProtoMessagePort.getInstance<false>().invoke('log', {m: 'my-debug', items, slices})
-    // console.log('my-debug', {items, slices})
+    // MTProtoMessagePort.getInstance<false>().invoke('log', {m: 'my-debug', result, slices})
+    // console.log('my-debug', {channelId, offsetId, limit, backLimit, result, slices})
 
-    return items;
+    return result;
   }
 
   private onUpdateChannelParticipant = (update: Update.updateChannelParticipant) => {
