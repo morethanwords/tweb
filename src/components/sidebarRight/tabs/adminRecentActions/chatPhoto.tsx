@@ -1,5 +1,5 @@
 import {Photo} from '../../../../layer';
-import {PhotoTsx} from '../../../wrappers/photo';
+import PhotoTsx from '../../../wrappers/photoTsx';
 import styles from './chatPhoto.module.scss';
 
 
