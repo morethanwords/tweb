@@ -1,0 +1,112 @@
+.wrap {
+  position: relative;
+  pointer-events: none;
+  display: flex;
+  gap: 0.625rem;
+  container-type: inline-size;
+  justify-content: center;
+  width: 100%;
+}
+
+.input {
+  display: flex;
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  padding: 0;
+  color: transparent;
+  background: transparent;
+  caret-color: transparent;
+  border: 0px solid transparent;
+  outline: transparent solid 0px;
+  box-shadow: none;
+  line-height: 1;
+  letter-spacing: -1em;
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+  pointer-events: all;
+
+  .disabled & {
+    pointer-events: none;
+  }
+}
+
+.digit {
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid var(--input-search-border-color);
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition-property: border-color, opacity;
+  transition-duration: 0.1s, 0.3s;
+  transition-timing-function: var(--transition-standard-easing);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+
+  &.active {
+    border-color: var(--primary-color);
+    transition: none;
+  }
+  
+  .error & {
+    border-color: var(--danger-color);
+  }
+
+  .disabled & {
+    opacity: 0.75;
+    pointer-events: none;
+  }
+
+  &Content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :global {
+    .s-enter-active,
+    .s-exit-active {
+      transition-property: opacity, transform;
+      transition-duration: 0.2s;
+      transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .s-enter {
+      transform: translateY(20px);
+    }
+
+    .s-exit-to {
+      opacity: 0;
+      transform: scale(0.5)
+    }
+  }
+}
+
+@container (width <= 320px) {
+  .digit {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
+.caret {
+  height: 1rem;
+  width: 1px;
+  animation: caret-blink 1.25s ease-out infinite;
+  transition-duration: 1000ms;
+  background-color: var(--primary-text-color);
+}
+
+@keyframes caret-blink {
+  0%, 70%, 100% {
+    opacity: 1;
+  }
+  20%, 50% {
+    opacity: 0;
+  }
+}

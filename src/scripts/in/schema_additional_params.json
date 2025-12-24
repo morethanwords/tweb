@@ -454,7 +454,7 @@
 }, {
   "predicate": "webPage",
   "params": [
-    {"name": "type", "type": "'document' | 'photo' | 'telegram_channel' | 'telegram_megagroup' | 'telegram_bot' | 'telegram_botapp' | 'telegram_user' | 'telegram_chatlist' | 'telegram_story' | 'telegram_channel_boost' | 'telegram_giftcode' | 'telegram_chat' | 'telegram_videochat' | 'telegram_voicechat' | 'telegram_livestream' | 'telegram_nft' | 'telegram_collection' | 'telegram_story_album'"},
+    {"name": "type", "type": "'document' | 'photo' | 'telegram_channel' | 'telegram_megagroup' | 'telegram_bot' | 'telegram_botapp' | 'telegram_user' | 'telegram_chatlist' | 'telegram_story' | 'telegram_channel_boost' | 'telegram_giftcode' | 'telegram_chat' | 'telegram_videochat' | 'telegram_voicechat' | 'telegram_livestream' | 'telegram_nft' | 'telegram_collection' | 'telegram_story_album' | 'telegram_megagroup_request'"},
     {"name": "entities", "type": "MessageEntity[]"}
   ]
 }, {
@@ -518,5 +518,41 @@
   "predicate": "storyItemSkipped",
   "params": [
     {"name": "pinnedIndex", "type": "number"}
+  ]
+}, {
+  "predicate": "messageEntityImage",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"},
+    {"name": "document_id", "type": "Long"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntitySubscript",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntitySuperscript",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntityAnchor",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"},
+    {"name": "name", "type": "string"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntityCustomEmoji",
+  "params": [
+    {"name": "w", "type": "number"},
+    {"name": "h", "type": "number"}
   ]
 }]

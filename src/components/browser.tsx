@@ -5,11 +5,11 @@
  */
 
 import {Portal} from 'solid-js/web';
-import {batch, createContext, createEffect, createRoot, For, onCleanup, onMount, useContext, JSX, createMemo, createSignal, Accessor, untrack, createResource, Resource, on, createReaction} from 'solid-js';
+import {batch, createContext, createEffect, createRoot, For, onCleanup, onMount, useContext, JSX, createMemo, createSignal, Accessor, untrack, createResource, Resource, on, createReaction, Show, createRenderEffect, createComputed, Setter} from 'solid-js';
 import styles from './browser.module.scss';
 import {ButtonIconTsx} from './buttonIconTsx';
 import getTextWidth from '../helpers/canvas/getTextWidth';
-import {FontFull} from '../config/font';
+import {FontFull, FontFullBold} from '../config/font';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import untrackActions from '../helpers/solid/untrackActions';
 import classNames from '../helpers/string/classNames';
@@ -29,7 +29,7 @@ import WebApp, {WebAppLaunchOptions} from './webApp';
 import deferredPromise from '../helpers/cancellablePromise';
 import documentFragmentToNodes from '../helpers/dom/documentFragmentToNodes';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
-import {i18n} from '../lib/langPack';
+import I18n, {i18n} from '../lib/langPack';
 import {avatarNew} from './avatarNew';
 import {getMiddleware} from '../helpers/middleware';
 import MovablePanel from '../helpers/movablePanel';
@@ -41,20 +41,30 @@ import rootScope from '../lib/rootScope';
 import {SimilarPeer} from './chat/similarChannels';
 import SearchIndex from '../lib/searchIndex';
 import {useUser} from '../stores/peers';
-import {User} from '../layer';
+import {Page, User} from '../layer';
 import getPeerActiveUsernames from '../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import internalLinkProcessor from '../lib/appManagers/internalLinkProcessor';
 import {INTERNAL_LINK_TYPE} from '../lib/appManagers/internalLink';
+import {InstantView} from './instantView';
+import {WebPage} from '../layer';
+import SolidJSHotReloadGuardProvider from '../lib/solidjs/hotReloadGuardProvider';
+import {copyTextToClipboard} from '../helpers/clipboard';
+import safeWindowOpen from '../helpers/dom/safeWindowOpen';
+import wrapTelegramRichText from '../lib/richTextProcessor/wrapTelegramRichText';
+import limitSymbols from '../helpers/string/limitSymbols';
+import {toastNew} from './toast';
+import pause from '../helpers/schedulers/pause';
+import assumeType from '../helpers/assumeType';
 
-type BrowserPageProps = {
+type BrowserPageProps<T = {}> = T & {
   title: string, // plain text
   icon: JSX.Element,
   dispose: () => void,
-  titleWidth?: number,
+  titleWidth?: () => number,
   id?: string,
   menuButtons?: ButtonMenuItemOptionsVerifiable[],
-  scrollFromPage?: BrowserPageProps,
-  content?: JSX.Element,
+  scrollFromPage?: BrowserPageProps<any>,
+  content?: JSX.Element | (() => JSX.Element),
   cacheKey?: string,
 
   isCatalogue?: boolean,
@@ -109,7 +119,7 @@ function BrowserHeaderTab(props: {
         state.pages.indexOf(props.page) === 0 && styles.first
       )}
       style={{
-        '--text-width': props.page.titleWidth + 26 + 'px',
+        '--text-width': props.page.titleWidth() + 26 + 'px',
         'z-index': Math.max(1, 4 - props.index()),
         'transform': transform()
       }}
@@ -123,7 +133,7 @@ function BrowserHeaderTab(props: {
           onClick={props.openPageMenu}
         />
       </BrowserHeaderButton>
-      <div class={styles.BrowserHeaderTabTitle}>
+      <div dir="auto" class={styles.BrowserHeaderTabTitle}>
         {documentFragmentToNodes(wrapEmojiText(props.page.title))}
       </div>
       <div class={classNames(styles.BrowserHeaderTabHover, styles.BrowserHeaderTabMask)}></div>
@@ -160,7 +170,7 @@ function BrowserHeader(props: {
       axis: 'x',
       forceDuration: 200,
       getNormalSize: ({rect}) => {
-        const diff = scrollFromPage.titleWidth - page.titleWidth;
+        const diff = scrollFromPage.titleWidth() - page.titleWidth();
         return rect.width + diff/*  + page.titleWidth */;
       }
     });
@@ -253,7 +263,7 @@ function BrowserHeader(props: {
             class={styles.BrowserHeaderSelector}
             style={{
               transform: `translateX(${state.index * 40 + 7 + (state.index >= 1 ? 16 : 0)}px)`,
-              width: state.page.titleWidth + 16 * 2 + 34 + 'px'
+              width: state.page.titleWidth() + 16 * 2 + 34 + 'px'
             }}
           >
             <BrowserHeaderTipSvg left />
@@ -306,7 +316,7 @@ type BrowserContextActions = {
   select: (page: BrowserPageProps | number) => void,
   close: (page: BrowserPageProps) => void,
   destroy: () => void,
-  toggleCollapsed: () => void,
+  toggleCollapsed: (collapse?: boolean) => void,
   replace: (page: BrowserPageProps, originalPage: BrowserPageProps) => void
 };
 
@@ -403,8 +413,8 @@ function createBrowserStore(props: {
 
       setState('destroyed', true);
     },
-    toggleCollapsed: () => {
-      setState('collapsed', (v) => !v);
+    toggleCollapsed: (collapse) => {
+      setState('collapsed', collapse ?? ((v) => !v));
     },
     replace: (page, originalPage) => {
       page.id = originalPage.id;
@@ -523,7 +533,7 @@ function Browser(props: {
                 state.page !== page && 'hide'
               )}
             >
-              {page.content}
+              {typeof(page.content) === 'function' ? page.content() : page.content}
             </div>
           );
         }}</For>
@@ -552,7 +562,7 @@ function Browser(props: {
 }
 
 function makeBrowserPage(props: BrowserPageProps): BrowserPageProps {
-  props.titleWidth ??= getTextWidth(props.title, FontFull);
+  props.titleWidth ??= () => getTextWidth(props.title, FontFullBold);
   props.id ??= Math.random().toString(36).slice(2);
   props.menuButtons ??= [];
   props.menuButtons.push({
@@ -569,6 +579,7 @@ let lastContext: BrowserContextValue;
 export function openInAppBrowser(page?: BrowserPageProps) {
   if(lastContext) {
     lastContext[1].add(page);
+    lastContext[1].toggleCollapsed(false);
     return;
   }
 
@@ -877,4 +888,158 @@ function Loader<T>(props: {
       {ready() && props.children(rendered)}
     </>
   );
+}
+
+type InstantViewPageExtraProps = {
+  url: string,
+  setAnchor: Setter<string>
+};
+
+export function openInstantViewInAppBrowser({
+  webPageId: _webPageId,
+  cachedPage,
+  HotReloadGuardProvider,
+  anchor
+}: {
+  webPageId?: Long,
+  cachedPage?: Page | string,
+  HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
+  anchor?: string // * expect it to be '#name'
+}) {
+  if(!cachedPage && anchor) {
+    (lastContext[0].page as BrowserPageProps<InstantViewPageExtraProps>).setAnchor(anchor);
+    return;
+  }
+
+  const TEST_PART = false;
+  let hadCachedPage = typeof(cachedPage) !== 'string';
+  let url: string;
+  if(hadCachedPage) {
+    assumeType<Page>(cachedPage);
+    url = cachedPage.url;
+    if(TEST_PART) {
+      cachedPage.blocks = cachedPage.blocks.slice(0, -5);
+    }
+
+    // * preload page first because anchor can be missing
+    if(anchor && cachedPage.pFlags.part) {
+      hadCachedPage = false;
+      cachedPage = undefined;
+    }
+  } else {
+    url = cachedPage as string;
+    cachedPage = undefined;
+    anchor = new URL(url).hash;
+
+    if(/* anchor &&  */lastContext && lastContext[0].page) {
+      const page = lastContext[0].page as BrowserPageProps<InstantViewPageExtraProps>;
+      const u1 = new URL(page.url);
+      const u2 = new URL(url);
+      u2.hash = u1.hash = '';
+      // * protocol can be http or https
+      if(u1.hostname === u2.hostname && u1.pathname === u2.pathname) {
+        page.setAnchor(anchor);
+        return;
+      }
+    }
+  }
+
+  assumeType<Page>(cachedPage);
+
+  const [webPageId, setWebPageId] = createSignal<Long>(_webPageId);
+  const [page, setPageStore] = createStore<Page>(undefined);
+  const [pageResource] = createResource<Page>(async() => {
+    if(
+      !TEST_PART &&
+      hadCachedPage &&
+      (!cachedPage.pFlags.part && cachedPage.views !== undefined)
+    ) {
+      return cachedPage;
+    }
+
+    if(TEST_PART) await pause(10000);
+    return rootScope.managers.appWebPagesManager.getWebPage(url)
+    .then((webPage) => {
+      setWebPageId(webPage.id);
+      return (webPage as WebPage.webPage).cached_page;
+    });
+  }, {initialValue: cachedPage});
+
+  const needFadeIn = !hadCachedPage;
+  createRoot((dispose) => {
+    createComputed(() => {
+      if(pageResource()) {
+        setPageStore(reconcile(pageResource()));
+      }
+    });
+
+    const [_anchor, setAnchor] = createSignal(anchor, {equals: false});
+
+    const waitForReady = !lastContext && hadCachedPage;
+    let wasReady = false;
+    const onReady = () => {
+      if(wasReady) {
+        return;
+      }
+
+      wasReady = true;
+      openInAppBrowser(initialState);
+    };
+
+    const initialState: BrowserPageProps<InstantViewPageExtraProps> = {
+      get title() {
+        if(pageResource.loading && !pageResource.latest) {
+          return I18n.format('Loading', true);
+        }
+
+        const block = page.blocks.find((block) => block._ === 'pageBlockTitle');
+        if(!block) {
+          return /* webPage().site_name ||  */'Instant View';
+        }
+
+        const textWithEntities = wrapTelegramRichText(block.text);
+        return limitSymbols(textWithEntities.text, 20);
+      },
+      menuButtons: [{
+        icon: 'newtab',
+        text: 'OpenInNewTab',
+        onClick: () => safeWindowOpen(url)
+      }, {
+        icon: 'copy',
+        text: 'CopyLink',
+        onClick: () => {
+          copyTextToClipboard(url);
+          toastNew({langPackKey: 'LinkCopied'});
+        }
+      }],
+      icon: <IconTsx icon="boostcircle" />,
+      dispose,
+      content: (
+        <Show when={pageResource()}>
+          <HotReloadGuardProvider>
+            <InstantView
+              webPageId={webPageId()}
+              page={page}
+              openNewPage={(url) => {
+                openInstantViewInAppBrowser({cachedPage: url, HotReloadGuardProvider});
+              }}
+              anchor={_anchor()}
+              needFadeIn={needFadeIn}
+              collapse={() => {
+                lastContext[1].toggleCollapsed(true);
+              }}
+              onReady={waitForReady ? () => queueMicrotask(onReady) : undefined}
+            />
+          </HotReloadGuardProvider>
+        </Show>
+      ),
+
+      url,
+      setAnchor
+    };
+
+    if(!waitForReady) {
+      onReady();
+    }
+  });
 }

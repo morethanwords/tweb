@@ -1,0 +1,143 @@
+@import "../scss/mixins";
+
+.Slideshow {
+  --secondary-opacity-max: 1;
+  --padding-bottom: 56.25%;
+  width: 100%;
+  padding-bottom: var(--padding-bottom);
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  background-color: var(--surface-color);
+  z-index: 1;
+  overflow: hidden;
+
+  @include animation-level-global(2) {
+    transition: padding-bottom var(--transition-standard-in);
+  }
+
+  /* &:before, &:after {
+    position: absolute;
+    content: " ";
+    height: 100%;
+    width:
+  } */
+  @include hover-global() {
+    .Arrow {
+      opacity: 0.2;
+    }
+  }
+
+  &.IsSingle {
+    .Arrow,
+    .Tabs {
+      display: none;
+    }
+  }
+
+  &.IsSwiping {
+    .Arrow {
+      opacity: 0 !important;
+    }
+  }
+}
+
+.Items {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  transform-origin: left top;
+  transition: transform .2s ease-in-out;
+  position: absolute;
+  // top: 0;
+  // left: 0;
+  // will-change: transform;
+
+  .NoTransition & {
+    transition: none !important;
+  }
+}
+
+.Item {
+  width: inherit;
+  height: 0;
+  padding-bottom: var(--padding-bottom);
+  min-width: 100%;
+  display: flex;
+  position: relative;
+}
+
+.Tabs {
+  display: flex;
+  position: absolute;
+  top: .5rem;
+  left: .375rem;
+  right: .375rem;
+  height: .125rem;
+  pointer-events: none;
+  z-index: 2;
+
+  @include animation-level-global(2) {
+    opacity: 1;
+    transition: opacity var(--transition-standard-in);
+  }
+}
+
+.Tab {
+  flex: 1 1 auto;
+  border-radius: 4px;
+  margin: 0 .125rem;
+  background-color: #fff;
+  opacity: .2;
+  transition: opacity .2s ease-in-out;
+  height: inherit;
+
+  &.Active {
+    opacity: .6;
+  }
+}
+
+.Arrow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: calc(100% / 3);
+  opacity: 0;
+  z-index: 2;
+
+  @include animation-level-global(2) {
+    transition: opacity .2s ease-in-out;
+  }
+
+  @include hover-global() {
+    opacity: 1 !important;
+  }
+
+  &Icon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 2.1875rem;
+    color: #fff;
+    left: .625rem;
+  }
+
+  /* .Slideshow:not(.IsSwiping) & {
+    @include hover() {
+      opacity: 1;
+    }
+  } */
+
+  &Next {
+    left: auto;
+    right: 0;
+
+    .ArrowIcon {
+      left: auto;
+      right: .625rem;
+    }
+  }
+}

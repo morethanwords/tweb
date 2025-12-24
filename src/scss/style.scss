@@ -2180,6 +2180,10 @@ hr {
 .inline-icon {
   vertical-align: bottom;
   line-height: inherit;
+
+  &-left {
+    margin-inline-end: .125rem;
+  }
 }
 
 .icon-reflect {

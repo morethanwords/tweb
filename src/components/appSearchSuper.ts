@@ -734,7 +734,7 @@ export default class AppSearchSuper {
 
       const peerId = target.dataset.peerId.toPeerId();
       const message = await this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
-      const skipSensitive = !this.isChatSensitive && !isMessageSensitive(message);
+      const skipSensitive = this.isMessageSensitive(message as Message.message);
 
       const targets = (Array.from(this.tabs[inputFilter].querySelectorAll('.' + targetClassName)) as HTMLElement[]).map((el) => {
         const containerEl = findUpClassName(el, className);
@@ -909,7 +909,7 @@ export default class AppSearchSuper {
       });
     }
 
-    const sensitive = this.isChatSensitive || isMessageSensitive(message);
+    const sensitive = this.isMessageSensitive(message);
 
     if((message.media as MessageMedia.messageMediaPhoto).pFlags.spoiler || sensitive) {
       const mediaSpoiler = await wrapMediaSpoiler({
@@ -2278,8 +2278,8 @@ export default class AppSearchSuper {
     return !this.loaded[mediaTab.type] || (this.historyStorage[inputFilter] && this.usedFromHistory[inputFilter] < this.historyStorage[inputFilter].length);
   }
 
-  public get isChatSensitive() {
-    return isSensitive((usePeer(this.searchContext.peerId) as User.user).restriction_reason || []);
+  private isMessageSensitive(message: Message.message) {
+    return isSensitive((usePeer(message.peerId) as User.user).restriction_reason || []) || isMessageSensitive(message);
   }
 
   private async loadFirstTime() {

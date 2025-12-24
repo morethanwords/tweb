@@ -39,11 +39,17 @@ createRoot(() => {
   const [isSidebarCollapsed] = isSidebarCollapsedSignal;
   const mediaSizes = useMediaSizes();
   createEffect(() => {
+    const hasFolders$ = hasFolders();
+    const hasHorizontal = (!isSidebarCollapsed() || mediaSizes.activeScreen < ScreenSize.medium) &&
+      (!hasFoldersSidebar() || mediaSizes.isLessThanFloatingLeftSidebar);
+    const hasVertical = !hasHorizontal;
     document.body.classList.toggle(
       'has-horizontal-folders',
-      hasFolders() &&
-        (!isSidebarCollapsed() || mediaSizes.activeScreen < ScreenSize.medium) &&
-        (!hasFoldersSidebar() || mediaSizes.isLessThanFloatingLeftSidebar)
+      hasFolders$ && hasHorizontal
+    );
+    document.body.classList.toggle(
+      'has-vertical-folders',
+      hasFolders$ && hasVertical
     );
   });
 });

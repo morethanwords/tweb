@@ -392,7 +392,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const fromId = (message as Message.message).fwd_from && !message.fromId ? getFwdFromName((message as Message.message).fwd_from) : message.fromId;
     const media = getMediaFromMessage(message, true, index);
 
-    const isSponsored = !!(message as Message.message).pFlags.sponsored;
+    const isSponsored = !!(message as Message.message).pFlags.sponsored || !message.fromId;
     const noAuthor = isSponsored;
     const noForwards = await this.managers.appPeersManager.noForwards(message.peerId);
     const isServiceMessage = message._ === 'messageService';

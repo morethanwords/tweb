@@ -236,7 +236,7 @@ export default class Chat extends EventListenerBase<{
     this.sharedMediaTabs = [];
 
     createRoot((dispose) => {
-      this.middlewareHelper.get().onDestroy(dispose);
+      this.destroyMiddlewareHelper.onDestroy(dispose);
       this.stars = useStars();
       [this.appState, this.setAppState] = useAppState();
       [this.appSettings, this.setAppSettings] = useAppSettings();
@@ -962,7 +962,7 @@ export default class Chat extends EventListenerBase<{
       isAnonymousSending: this.managers.appMessagesManager.isAnonymousSending(peerId),
       isUserBlocked: peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),
       isPremiumRequired: this.isPremiumRequiredToContact(peerId),
-      starsAmount: this.managers.appPeersManager.getStarsAmount(peerId),
+      starsAmount: this.managers.acknowledged.appPeersManager.getStarsAmount(peerId),
       chat: peerId.isAnyChat() && this.peer as MTChat,
       canManageDirectMessages: this.managers.appPeersManager.canManageDirectMessages(peerId)
     }, this.log));
@@ -987,7 +987,18 @@ export default class Chat extends EventListenerBase<{
     this.isMonoforum = !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
     this.isBotforum = isBotforum;
     this.canManageDirectMessages = canManageDirectMessages;
-    this.starsAmount = starsAmount;
+
+    if(starsAmount.cached) {
+      this.starsAmount = await starsAmount.result;
+    } else {
+      const middleware = this.middlewareHelper.get();
+      starsAmount.result.then((starsAmount) => {
+        if(!middleware()) {
+          return;
+        }
+        this.updateStarsAmount(starsAmount);
+      });
+    }
 
     this.isRestricted = isRestricted;
 
@@ -1463,7 +1474,8 @@ export default class Chat extends EventListenerBase<{
             this.sendReaction(options);
           },
           purpose: 'reaction',
-          peerId: this.peerId
+          peerId: this.peerId,
+          spendPurposePeerId: this.peerId
         });
 
         return;

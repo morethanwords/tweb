@@ -1,3 +1,4 @@
+import StickerType from '../../../config/stickerType';
 import {MediaEditorContextValue} from '../context';
 import {MediaEditorFinalResultPayload} from './createFinalResult';
 
@@ -29,7 +30,7 @@ export default async function renderToImage({
 
   scaledLayers.forEach((layer) => {
     if(layer.type === 'text') drawTextLayer(context, ctx, layer);
-    if(layer.type === 'sticker' && layer.sticker?.sticker === 1) {
+    if(layer.type === 'sticker' && layer.sticker?.sticker === StickerType.Static) {
       const {container} = stickersLayersInfo[layer.id];
       const stickerChild = container?.lastElementChild;
       if(!(stickerChild instanceof HTMLImageElement)) return;

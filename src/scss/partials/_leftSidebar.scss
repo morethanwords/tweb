@@ -24,6 +24,22 @@
     display: none;
   }
 
+  .main-search-sidebar-header {
+    // padding-inline-end: .75rem;
+
+    &.is-input-the-last-child {
+      padding-inline-end: .5rem;
+    }
+
+    .has-vertical-folders & {
+      padding-inline: .5rem;
+
+      &:not(.is-input-the-last-child) {
+        padding-inline-end: 1rem;
+      }
+    }
+  }
+
   @include respond-to(no-floating-left-sidebar) {
     &.is-collapsed {
       width: var(--sidebar-left-width-when-collapsed, var(--sidebar-collapsed-width));
@@ -219,7 +235,7 @@
 
     body.has-folders-sidebar & {
       .tabs-tab.item-main {
-        --stories-additional-offset: -40px;
+        --stories-additional-offset: -47px;
       }
     }
   }
@@ -368,7 +384,7 @@
       } */
 
       .selector-user {
-        --selector-user-size: 30px;
+        --selector-user-size: 32px;
         position: absolute !important;
         inset-inline-start: 6px;
         top: 6px;
@@ -379,6 +395,10 @@
       &.is-picked {
         .input-search-input {
           padding-inline-start: calc(var(--paddingLeft) + 8px - var(--border-width));
+        }
+
+        .input-search-icon {
+          --max-opacity: 0;
         }
       }
 
@@ -797,14 +817,15 @@
         opacity: 0;
         overflow: hidden;
         pointer-events: none;
-
-        transition: width 0.12s, opacity 0.12s;
+        margin-inline-start: 0;
+        transition: width 0.12s, opacity 0.12s, margin-inline-start 0.12s;
 
         &.is-visible {
           width: 2.5rem;
           opacity: 1;
           overflow: initial;
           pointer-events: initial;
+          margin-inline-start: .5rem;
         }
       }
     }
@@ -881,6 +902,7 @@
   .sidebar-tools-button-notifications {
     top: .5rem;
     right: .75rem;
+    pointer-events: none;
   }
 }
 
@@ -1239,6 +1261,18 @@
     }
   }
 
+  &-forgot {
+    color: var(--secondary-text-color);
+    font-size: var(--font-size-13);
+    line-height: var(--line-height-13);
+    
+    a { color: var(--primary-color); }
+  }
+
+  &-forgot-popup.popup {
+    --popup-min-width: 22.5rem;
+  }
+
   &-hint {
     .media-sticker-wrapper {
       width: 160px;
@@ -1266,6 +1300,14 @@
         inset-inline-start: .625rem;
       }
     }
+  }
+
+  .error-label {
+    font-size: var(--font-size-14);
+    margin-top: -1rem;
+    color: var(--danger-color);
+    margin-left: 0.25rem;
+    height: 1lh;
   }
 }
 

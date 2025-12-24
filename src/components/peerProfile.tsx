@@ -733,6 +733,11 @@ PeerProfile.Birthday = () => {
     return el;
   });
 
+  const onCopyClick = () => {
+    copyTextToClipboard((text() as HTMLElement).textContent);
+    toastNew({langPackKey: 'TextCopied'});
+  };
+
   const onClick = createMemo(() => {
     if(context.peerId === rootScope.myId) {
       return () => showBirthdayPopup({
@@ -749,10 +754,6 @@ PeerProfile.Birthday = () => {
     return onCopyClick;
   });
 
-  const onCopyClick = () => {
-    copyTextToClipboard((text() as HTMLElement).textContent);
-    toastNew({langPackKey: 'TextCopied'});
-  };
 
   return (
     <Show when={birthday()}>

@@ -193,8 +193,8 @@ export class AppPeersManager extends AppManager {
   /**
    * The amount of stars necessary to be paid for every message if the target peer had enabled it
    */
-  public async getStarsAmount(peerId: PeerId): Promise<number | undefined> {
-    if(peerId.isUser()) return this.appUsersManager.getStarsAmount(peerId.toUserId());
+  public getStarsAmount(peerId: PeerId, onlyCached?: boolean): MaybePromise<number | undefined> {
+    if(peerId.isUser()) return this.appUsersManager.getStarsAmount(peerId.toUserId(), undefined, onlyCached);
 
     return this.appChatsManager.getStarsAmount(peerId.toChatId());
   }

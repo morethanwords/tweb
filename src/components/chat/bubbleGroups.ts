@@ -54,6 +54,13 @@ function insertSomething<T>(to: Array<T>, what: T, sortKey: keyof T, reverse: bo
   }
 }
 
+function canHaveReplyMarkup(message: Message.message) {
+  const replyMarkup = message.reply_markup;
+  let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
+  replyMarkupRows = replyMarkupRows?.filter?.((row) => row.buttons.length);
+  return !!replyMarkupRows?.length;
+}
+
 export class BubbleGroup {
   container: HTMLElement;
   chat: Chat;
@@ -141,13 +148,7 @@ export class BubbleGroup {
     });
     this.avatar.node.classList.add('bubbles-group-avatar', 'user-avatar'/* , 'can-zoom-fade' */);
 
-    const replyMarkup = isMessage(message) && message.reply_markup;
-    let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
-    replyMarkupRows = replyMarkupRows?.filter?.((row) => row.buttons.length);
-    replyMarkupRows?.length && this.avatar.node.classList.add('avatar-for-reply-markup');
-    if(isMessage(message) && canHaveSuggestedPostReplyMarkup(message)) {
-      this.avatar.node.classList.add('avatar-for-suggested-reply-markup');
-    }
+    this.updateAvatarClassNames(message);
 
     // this.avatarLoadPromise = Promise.all([
     //   avatarLoadPromise,
@@ -165,6 +166,15 @@ export class BubbleGroup {
     this.container.append(this.avatarContainer);
 
     return this.avatarLoadPromise;
+  }
+
+  updateAvatarClassNames(message = this.lastItem.message) {
+    if(!this.avatar || message?._ !== 'message') {
+      return;
+    }
+
+    this.avatar.node.classList.toggle('avatar-for-reply-markup', canHaveReplyMarkup(message));
+    this.avatar.node.classList.toggle('avatar-for-suggested-reply-markup', canHaveSuggestedPostReplyMarkup(message));
   }
 
   get firstTimestamp() {
@@ -207,6 +217,8 @@ export class BubbleGroup {
     // }
 
     const first = items[length - 1].bubble;
+
+    this.updateAvatarClassNames();
 
     if(items.length === 1) {
       first.classList.add('is-group-first', 'is-group-last');

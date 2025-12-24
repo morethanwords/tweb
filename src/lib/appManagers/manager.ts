@@ -61,6 +61,7 @@ import type AppGiftsManager from './appGiftsManager';
 import type {AppLangPackManager} from './appLangPackManager';
 import {logger, LogTypes} from '../logger';
 import {ActiveAccountNumber} from '../accounts/types';
+import AppPromoManager from './appPromoManager';
 
 export class AppManager {
   private accountNumber: ActiveAccountNumber;
@@ -120,6 +121,7 @@ export class AppManager {
   protected appGifsManager: AppGifsManager;
   protected appGiftsManager: AppGiftsManager;
   protected monoforumDialogsStorage: MonoforumDialogsStorage;
+  protected appPromoManager: AppPromoManager;
 
   protected name: string;
   public log: ReturnType<typeof logger>;

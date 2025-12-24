@@ -12,7 +12,9 @@ import rootScope from '../lib/rootScope';
 import generateFakeIcon from './generateFakeIcon';
 import generatePremiumIcon from './generatePremiumIcon';
 import generateVerifiedIcon from './generateVerifiedIcon';
+import PopupElement from './popups';
 import PopupPremium from './popups/premium';
+import PopupStarGiftInfo from './popups/starGiftInfo';
 import {openEmojiStatusPicker} from './sidebarLeft/emojiStatusPicker';
 import {wrapAdaptiveCustomEmoji} from './wrappers/customEmojiSimple';
 import wrapEmojiStatus from './wrappers/emojiStatus';
@@ -60,18 +62,25 @@ export default async function generateTitleIcons({
 
       if(clickableEmojiStatus) {
         container.classList.add('clickable');
-        const detach = attachClickEvent(container, (e) => {
-          e.stopPropagation()
+        let busy = false;
+        const detach = attachClickEvent(container, async(e) => {
+          e.stopPropagation();
           if(peerId === rootScope.myId) {
             openEmojiStatusPicker({
               managers: rootScope.managers,
               anchorElement: container
-            })
+            });
+          } else if(emojiStatus._ === 'emojiStatusCollectible') {
+            if(busy) return;
+            busy = true;
+            const gift = await rootScope.managers.appGiftsManager.getGiftBySlug(emojiStatus.slug);
+            PopupElement.createPopup(PopupStarGiftInfo, {gift});
+            busy = false;
           } else {
             PopupPremium.show({
               peerId,
               emojiStatusId: emojiStatus.document_id
-            })
+            });
           }
         });
 
@@ -85,12 +94,14 @@ export default async function generateTitleIcons({
 
       if(clickableEmojiStatus) {
         premiumIcon.classList.add('clickable');
-        attachClickEvent(premiumIcon, (e) => {
-          e.stopPropagation()
+        const detach = attachClickEvent(premiumIcon, (e) => {
+          e.stopPropagation();
           PopupPremium.show({
             peerId
-          })
+          });
         });
+
+        wrapOptions.middleware.onDestroy(detach);
       }
 
       elements.push(premiumIcon);

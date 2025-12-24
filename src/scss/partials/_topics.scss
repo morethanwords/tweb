@@ -208,6 +208,7 @@
 
   &-emoticons-container {
     flex: 1 1 auto;
+    overflow: hidden;
 
     .sidebar-left-section {
       padding: 0 !important;

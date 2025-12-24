@@ -23,12 +23,10 @@ import isWebDocument from '../../lib/appManagers/utils/webDocs/isWebDocument';
 import createVideo from '../../helpers/dom/createVideo';
 import noop from '../../helpers/noop';
 import {THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
-import {getMiddleware, Middleware, MiddlewareHelper} from '../../helpers/middleware';
+import {Middleware} from '../../helpers/middleware';
 import liteMode from '../../helpers/liteMode';
 import isWebFileLocation from '../../lib/appManagers/utils/webFiles/isWebFileLocation';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import {attachClassName} from '../../helpers/solid/classname';
-import {createEffect, on, onCleanup, Ref} from 'solid-js';
 
 export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish, useBlur, useRenderCache, canHaveVideoPlayer, uploadingFileName}: {
   photo: MyPhoto | MyDocument | WebDocument | InputWebFileLocation,
@@ -363,31 +361,3 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   return ret;
 }
 
-export function PhotoTsx(props: Parameters<typeof wrapPhoto>[0] & {
-  class?: string
-  ref?: Ref<HTMLElement>
-}) {
-  const div = document.createElement('div');
-
-  attachClassName(div, () => props.class);
-
-  let middleware: MiddlewareHelper
-  createEffect(on(() => props.photo, async() => {
-    if(middleware) middleware.destroy();
-    middleware = getMiddleware()
-
-    wrapPhoto({
-      ...props,
-      middleware: middleware.get(),
-      container: div
-    })
-  }))
-
-  onCleanup(() => middleware?.destroy())
-
-  if(typeof props.ref === 'function') {
-    props.ref(div);
-  }
-
-  return div
-}

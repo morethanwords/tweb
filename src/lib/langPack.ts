@@ -480,7 +480,7 @@ namespace I18n {
 
     const result = superFormatter(input, args);
     if(plain) { // * let's try a hack now... (don't want to replace []() entity)
-      return result.map((item) => item instanceof Node ? item.textContent : item).join('');
+      return result.map((item) => item instanceof HTMLBRElement ? '\n' : (item instanceof Node ? item.textContent : item)).join('');
     } else {
       return result;
     }

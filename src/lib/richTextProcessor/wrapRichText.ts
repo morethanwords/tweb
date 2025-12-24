@@ -349,6 +349,29 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         break;
       }
 
+      case 'messageEntitySubscript': {
+        element = document.createElement('sub');
+        break;
+      }
+
+      case 'messageEntitySuperscript': {
+        element = document.createElement('sup');
+        break;
+      }
+
+      case 'messageEntityAnchor': {
+        element = document.createElement('span');
+        element.id = entity.name;
+        break;
+      }
+
+      case 'messageEntityPhone': {
+        element = document.createElement('a');
+        element.classList.add('phone-url');
+        (element as HTMLAnchorElement).href = 'tel:' + fullEntityText;
+        break;
+      }
+
       case 'messageEntityBotCommand': {
         // if(!(options.noLinks || options.noCommands || contextExternal)/*  && !entity.unsafe */) {
         if(!options.noLinks && passEntities[entity._]) {
@@ -390,6 +413,12 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         if(!set) customEmojis.set(docId, set = new Set());
         set.add(customEmojiElement);
         customEmojiElement.dataset.stickerEmoji = fullEntityText;
+
+        if(entity.w) {
+          customEmojiElement.classList.add('custom-emoji-custom-sized');
+          customEmojiElement.style.setProperty('--width', entity.w + 'px');
+          customEmojiElement.style.setProperty('--height', entity.h + 'px');
+        }
 
         if(options.wrappingDraft) {
           element = document.createElement('img');
@@ -550,7 +579,12 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           }
 
           const currentContext = !!onclick;
-          if(!onclick && masked && !currentContext && !options.passMaskedLinks) {
+          if(
+            !onclick &&
+            masked &&
+            !currentContext &&
+            !options.passMaskedLinks
+          ) {
             onclick = 'showMaskedAlert';
           }
 

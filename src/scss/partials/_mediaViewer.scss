@@ -340,6 +340,11 @@ $inactive-opacity: .4;
       //}
     }
 
+    img,
+    video {
+      dynamic-range-limit: no-limit;
+    }
+
     .thumbnail-avatar {
       user-select: none;
       opacity: 1;

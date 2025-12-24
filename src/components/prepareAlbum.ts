@@ -30,7 +30,7 @@ export default function prepareAlbum(options: {
   container.style.height = height + 'px';
   const children = container.children;
 
-  layout.forEach(({geometry, sides}, idx) => {
+  const items = layout.map(({geometry, sides}, idx) => {
     let div: HTMLElement;
     div = children[idx] as HTMLElement;
     if(!div) {
@@ -71,6 +71,8 @@ export default function prepareAlbum(options: {
 
     // @ts-ignore
     // div.style.backgroundColor = '#' + Math.floor(Math.random() * (2 ** 24 - 1)).toString(16).padStart(6, '0');
+
+    return div;
   });
 
   /* if(options.forMedia) {
@@ -81,4 +83,6 @@ export default function prepareAlbum(options: {
       options.container.children[i].append(mediaDiv);
     });
   } */
+
+  return {items, width, height};
 }

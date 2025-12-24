@@ -1,0 +1,59 @@
+@import '../scss/variables.scss';
+
+.wrapper {
+  overflow-x: auto;
+}
+
+.border {
+  position: absolute;
+  border: 1px solid var(--border-color);
+  border-radius: #{$border-radius};
+  inset: 0;
+  pointer-events: none;
+}
+
+.genericTable {
+  border-collapse: collapse;
+  width: calc(100% - var(--padding-horizontal, 0px) * 2);
+  font-size: 0.8888em;
+  line-height: 1.3125em;
+  word-break: keep-all;
+  margin-inline: var(--padding-horizontal);
+  border-radius: #{$border-radius};
+  position: relative;
+  overflow: hidden;
+
+  &.bordered {
+    border: 1px solid transparent;
+    border-style: hidden;
+
+    .genericCell,
+    .genericHeaderCell {
+      border: 1px solid var(--border-color);
+    }
+  }
+}
+
+.genericRow {
+  &.striped {
+    background-color: var(--light-filled-secondary-text-color);
+  }
+}
+
+.genericCell,
+.genericHeaderCell {
+  padding: 0.5em;
+  vertical-align: top;
+  text-align: left;
+  border: 1px solid transparent;
+
+  &.cellAlignCenter { text-align: center; }
+  &.cellAlignRight { text-align: right; }
+  &.cellValignMiddle { vertical-align: middle; }
+  &.cellValignBottom { vertical-align: bottom; }
+}
+
+.genericHeaderCell {
+  font-weight: var(--font-weight-bold);
+  background-color: var(--light-secondary-text-color);
+}

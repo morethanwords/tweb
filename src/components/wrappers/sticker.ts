@@ -46,6 +46,7 @@ import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
 import toArray from '../../helpers/array/toArray';
 import {createEffect, createSignal, on, onCleanup, onMount, Ref} from 'solid-js';
 import createMiddleware from '../../helpers/solid/createMiddleware';
+import StickerType from '../../config/stickerType';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -127,8 +128,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     emoji = doc.stickerEmojiRaw;
   }
 
-  const stickerType = doc.sticker;
-  if(stickerType === 1 || (stickerType === 3 && !IS_WEBM_SUPPORTED)) {
+  const stickerType = doc.sticker ?? StickerType.Static;
+  if(stickerType === StickerType.Static || (stickerType === StickerType.WebM && !IS_WEBM_SUPPORTED)) {
     asStatic = true;
   }
 
@@ -140,7 +141,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     height = size.height;
   }
 
-  if(stickerType === 2) {
+  if(stickerType === StickerType.Lottie) {
     // LottieLoader.loadLottie();
     lottieLoader.loadLottieWorkers();
   }
@@ -199,7 +200,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     return cacheContext = apiManagerProxy.getCacheContext(doc, type);
   };
 
-  const isAnimated = !asStatic && (stickerType === 2 || stickerType === 3);
+  const isAnimated = !asStatic && (stickerType === StickerType.Lottie || stickerType === StickerType.WebM);
 
   const effectThumb = getStickerEffectThumb(doc);
   if(isOut !== undefined && effectThumb && !isOut) {
@@ -216,7 +217,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     });
   }
 
-  if(asStatic && stickerType !== 1) {
+  if(asStatic && stickerType !== StickerType.Static) {
     const thumb = choosePhotoSize(doc, width, height, false) as PhotoSize.photoSize;
     getCacheContext(thumb.type);
   } else {
@@ -235,7 +236,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   const downloaded = cacheContext.downloaded && !needFadeIn;
 
   const isThumbNeededForType = isAnimated;
-  const lottieCachedThumb = stickerType === 2 || stickerType === 3 ? apiManagerProxy.getStickerCachedThumb(doc.id, lottieCachedThumbToneIndex) : undefined;
+  const lottieCachedThumb = stickerType === StickerType.Lottie || stickerType === StickerType.WebM ? apiManagerProxy.getStickerCachedThumb(doc.id, lottieCachedThumbToneIndex) : undefined;
 
   const ret = {
     render: undefined as typeof loadPromise,
@@ -356,7 +357,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
           }).catch(() => loadThumbPromise.resolve());
         }
       }
-    } else if(((stickerType === 2 && toneIndex <= 0) || stickerType === 3) && (withThumb || onlyThumb)) {
+    } else if(((stickerType === StickerType.Lottie && toneIndex <= 0) || stickerType === StickerType.WebM) && (withThumb || onlyThumb)) {
       const load = async() => {
         if(!isEmptyContainer((div as HTMLElement[])[0]) || (middleware && !middleware())) {
           loadThumbPromise.resolve();
@@ -421,7 +422,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       throw middlewareError;
     }
 
-    if(stickerType === 2 && !asStatic) {
+    if(stickerType === StickerType.Lottie && !asStatic) {
       const blob = await appDownloadManager.downloadMedia({media: doc, queueId: lazyLoadQueue?.queueId, thumb: fullThumb});
       if(middleware && !middleware()) {
         throw middlewareError;
@@ -515,7 +516,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
       // return deferred;
       // await new Promise((resolve) => setTimeout(resolve, 5e3));
-    } else if(asStatic || stickerType === 3) {
+    } else if(asStatic || stickerType === StickerType.WebM) {
       const isSingleVideo = isAnimated && syncedVideo;
       const cacheName = isSingleVideo ? framesCache.generateName('' + doc.id, 0, 0, undefined, undefined) : undefined;
 
@@ -711,7 +712,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         if(cacheContext.url) r();
         else {
           let promise: Promise<any>;
-          if(stickerType !== 1 && asStatic) {
+          if(stickerType !== StickerType.Static && asStatic) {
             const thumb = choosePhotoSize(doc, width, height, false) as PhotoSize.photoSize;
             // promise = managers.appDocsManager.getThumbURL(doc, thumb).promise
             promise = appDownloadManager.downloadMediaURL({media: doc, thumb, queueId: lazyLoadQueue?.queueId});
@@ -750,7 +751,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     loadPromises?.push(loadThumbPromise);
   }
 
-  if(stickerType === 2 && effectThumb && isOut !== undefined && !noPremium) {
+  if(stickerType === StickerType.Lottie && effectThumb && isOut !== undefined && !noPremium) {
     attachStickerEffectHandler({
       container: div[0],
       doc,

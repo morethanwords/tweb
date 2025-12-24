@@ -1,0 +1,474 @@
+@import "../scss/mixins.scss";
+@import "../scss/variables.scss";
+
+.InstantView {
+  --iv-max-width: 50rem;
+  --iv-scale: 1.125;
+  --padding-horizontal: calc(1rem * var(--iv-scale));
+  --margin-horizontal: calc(var(--padding-horizontal) * -1);
+  --paddings: 1;
+  --iv-font-size: calc(var(--font-size-16) * var(--iv-scale));
+  --iv-line-height: calc(var(--line-height-16) * var(--iv-scale));
+  // padding: 0 var(--padding-horizontal);
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  max-width: var(--iv-max-width);
+  margin: 0 auto;
+  user-select: text;
+  font-size: var(--iv-font-size);
+  line-height: var(--iv-line-height);
+  min-height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+
+  :global(.text-highlight) {
+    font-style: normal;
+    background-color: var(--light-filled-secondary-text-color);
+  }
+
+  // :global(.anchor-url) {
+  //   color: var(--primary-color);
+  // }
+
+  &Content {
+    flex: 1 1 auto;
+  }
+
+  &Footer {
+    background-color: var(--light-secondary-text-color);
+    padding: .25em var(--padding-horizontal);
+    font-size: .8888em;
+    text-align: center;
+    flex: 0 0 auto;
+  }
+}
+
+.Padding {
+  padding-inline: var(--padding-horizontal);
+}
+
+.Anchor {
+  color: var(--primary-color);
+  background-color: var(--light-filled-primary-color);
+  font-weight: var(--font-weight-bold);
+}
+
+.Anchor,
+.InstantView :global(.text-highlight) {
+  padding: 0 .1666em;
+  border-radius: .1666em;
+}
+
+// .Section {
+//   margin: 0 var(--margin-horizontal);
+// }
+
+.SectionName {
+  padding: .375em var(--padding-horizontal);
+  background-color: var(--light-secondary-text-color);
+  font-size: 1.1111em;
+  line-height: 1.3em;
+  font-weight: var(--font-weight-bold);
+}
+
+.Channel {
+  cursor: pointer;
+}
+
+.Title {
+  font-size: 1.3333em;
+  line-height: 1.25em;
+  margin: .5em 0;
+}
+
+.AuthorDate {
+  font-size: 0.8888em;
+  margin: 1em 0;
+}
+
+.Subtitle {
+  font-size: 1.1111em;
+  margin: -0.25em 0 0.5em;
+}
+
+.Header {
+  font-size: 1.25em;
+  font-weight: var(--font-weight-bold);
+  margin: .5em 0;
+}
+
+.Subheader {
+  font-size: 1.1111em;
+  line-height: 1.3em;
+  font-weight: var(--font-weight-normal);
+  margin: 1em 0 0.5em;
+}
+
+.Paragraph {
+  margin-bottom: 1em;
+}
+
+.Preformatted {
+  background-color: var(--light-secondary-text-color);
+  // padding: 0.2222em max(var(--padding-horizontal), 0.8888em);
+  padding: 0.2222em var(--padding-horizontal);
+  overflow-x: auto;
+  margin-block: 0.6666em;
+}
+
+.Footer {
+  margin: 1em 0;
+}
+
+.Divider {
+  margin: 1em auto;
+  height: 1px;
+  background-color: var(--border-color);
+  width: 50%;
+}
+
+.List {
+  --margin-horizontal: 0em;
+  margin-bottom: 1em;
+  padding-inline: calc(var(--padding-horizontal) * 2) var(--padding-horizontal);
+
+  .Padding {
+    padding-inline: 0;
+  }
+
+  .List {
+    padding-inline: var(--padding-horizontal) 0;
+  }
+
+  &Item {
+    margin-bottom: 0.5em;
+    position: relative;
+    min-height: var(--iv-line-height);
+
+    &Number {
+      position: absolute;
+      // inset-inline-start: calc(var(--padding-horizontal) * -1);
+      margin-inline-start: -100%;
+      pointer-events: none;
+      user-select: none;
+      text-align: end;
+      white-space: pre;
+      width: 100%;
+    }
+  }
+
+  &Ordered {
+    list-style: none;
+  }
+
+  .Table {
+    --padding-horizontal: 0em;
+  }
+}
+
+.Pullquote {
+  margin: 0.5em 0;
+  font-size: 1.1111em;
+  line-height: 1.3em;
+  @include text-center();
+}
+
+.Blockquote {
+  margin: 0;
+  position: relative;
+  padding-inline: var(--padding-horizontal);
+  font-style: italic;
+
+  &Wrapper {
+    margin: 1em 0;
+  }
+
+  &Caption {
+    margin-top: 0.2352941176em;
+    font-size: 0.85em;
+    font-style: normal;
+  }
+
+  &Border {
+    position: absolute;
+    width: 0.2222em;
+    height: 100%;
+    inset-inline-start: 0;
+    background-color: var(--primary-color);
+    border-radius: 8px;
+  }
+}
+
+.Unsupported {
+  color: var(--error-color);
+  font-size: 0.8em;
+  margin-bottom: 1em;
+}
+
+.Media {
+  --width: min(calc(var(--browser-width) - var(--padding-horizontal) * var(--paddings)), var(--iv-max-width));
+  // margin: 0 var(--margin-horizontal);
+  position: relative;
+  width: var(--width) !important;
+  height: calc(var(--width) / var(--aspect-ratio)) !important;
+
+  :global(.media-photo),
+  :global(.media-video) {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+.Embed {
+  &Iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  &AutoWidth {
+    margin: 0 auto;
+  }
+
+  &HasHeight {
+    height: var(--height) !important;
+  }
+}
+
+.Post {
+  position: relative;
+  padding-inline: calc(var(--padding-horizontal) * 2) var(--padding-horizontal);
+
+  &Border {
+    position: absolute;
+    inset-inline-start: var(--padding-horizontal);
+    width: 0.2222em;
+    height: 100%;
+    border-radius: 0.4444em;
+    background-color: var(--primary-color);
+  }
+
+  &Author {
+    margin-inline-start: calc(var(--padding-horizontal) * -0.5);
+
+    &Photo {
+      width: 100% !important;
+      height: 100% !important;
+
+      :global(.media-photo) {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+      }
+    }
+  }
+
+  &Content {
+    .Padding {
+      padding-inline: 0;
+    }
+  }
+}
+
+.RelatedArticle {
+  cursor: pointer;
+  padding: .75em var(--padding-horizontal);
+  font-size: .8888em;
+  display: block;
+  color: currentColor;
+  position: relative;
+
+  &.WithPhoto {
+    padding-inline-end: calc(var(--padding-horizontal) + 7.25rem);
+  }
+
+  &Title {
+    line-height: 1.3125em;
+  }
+
+  &Description {
+    margin: 0.25em 0;
+    @include text-overflow(3);
+  }
+
+  &Description,
+  &Author {
+    font-size: 0.875em;
+    line-height: 1.2857142857em;
+  }
+
+  &Photo {
+    position: absolute;
+    width: 100px !important;
+    height: 100px !important;
+    inset-inline-end: var(--padding-horizontal);
+    top: .75em;
+    border-radius: .5rem;
+    overflow: hidden;
+
+    img, :global(.media-photo) {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+}
+
+.Border {
+  margin-inline-start: var(--padding-horizontal);
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+.WrongLayout {
+  color: currentColor;
+
+  @include hover-global() {
+    text-decoration: underline;
+  }
+}
+
+.Table {
+  // margin: 0 var(--margin-horizontal);
+  // padding: 0 var(--padding-horizontal);
+
+  &Wrapper {
+    margin: 0.75em 0;
+  }
+
+  &Name {
+    color: var(--secondary-text-color);
+    font-size: 0.8888em;
+    margin-bottom: 0.2222em;
+    padding-inline: var(--padding-horizontal);
+  }
+}
+
+.Kicker {
+  margin: 1em 0;
+  font-size: 0.8888em;
+}
+
+.Caption {
+  margin: .3333em 0 .6666em;
+
+  &Text {
+    font-size: 0.8888em;
+    line-height: 1.3125em;
+  }
+
+  &Credit {
+    font-size: 0.7222em;
+    line-height: 1.3076923077em;
+  }
+}
+
+.Details {
+  // margin: 0 var(--margin-horizontal);
+  // overflow: hidden;
+
+  & & {
+    --margin-horizontal: 0em;
+    // --padding-horizontal: 0em;
+
+    // .DetailsSummary,
+    // .DetailsContentInner {
+    //   padding-inline: 0;
+    // }
+  }
+
+  // .Border {
+    // margin-inline: 0 var(--margin-horizontal);
+  // }
+
+  &Summary {
+    padding: 0.75em var(--padding-horizontal);
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  &Icon {
+    margin-inline: -.1777em var(--padding-horizontal);
+    font-size: 1.25em;
+    color: var(--text-secondary);
+    transition: transform 0.2s ease-in-out;
+
+    &Open {
+      transform: rotate(180deg);
+    }
+  }
+
+  &Title {
+    font-size: 1em;
+  }
+
+  &Content {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows var(--transition-standard-in);
+
+    &Open {
+      grid-template-rows: 1fr;
+    }
+
+    &Inner {
+      overflow: hidden;
+      // padding: 0 var(--padding-horizontal);
+    }
+  }
+}
+
+.Map {
+  display: block; // anchor tag
+  // margin: 1em 0;
+  position: relative;
+
+  .Media {
+    max-height: var(--max-height, 400px);
+  }
+
+  :global(.media-photo) {
+    max-height: 100%;
+    object-fit: cover;
+  }
+}
+
+.Audio {
+  margin: .7777em 0;
+}
+
+.Slideshow {
+  .Media {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute;
+    inset: 0;
+
+    :global(.media-photo) {
+      max-height: 100%;
+      object-fit: cover;
+    }
+  }
+}
+
+.Collage {
+  position: relative;
+  overflow: hidden;
+
+  &Item {
+    position: absolute;
+
+    .Media {
+      width: 100% !important;
+      height: 100% !important;
+
+      :global(.media-photo) {
+        height: 100%;
+      }
+    }
+  }
+}

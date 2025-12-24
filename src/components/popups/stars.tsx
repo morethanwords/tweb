@@ -356,6 +356,7 @@ export default class PopupStars extends PopupElement {
   private appConfig: MTAppConfig;
   private toppedUp: boolean;
   private ton: boolean;
+  private spendPurposePeerId: PeerId;
 
   constructor(options: {
     paymentForm?: PaymentsPaymentForm.paymentsPaymentFormStars,
@@ -365,7 +366,8 @@ export default class PopupStars extends PopupElement {
     purpose?: PopupStars['purpose'],
     giftPeerId?: PeerId,
     peerId?: PeerId,
-    ton?: boolean
+    ton?: boolean,
+    spendPurposePeerId?: PeerId
   } = {}) {
     super('popup-stars', {
       closable: true,
@@ -624,7 +626,10 @@ export default class PopupStars extends PopupElement {
                     _: 'inputStorePaymentStarsTopup',
                     amount: option.amount,
                     currency: option.currency,
-                    stars: option.stars
+                    stars: option.stars,
+                    spend_purpose_peer: this.spendPurposePeerId && this.spendPurposePeerId !== rootScope.myId ?
+                      await this.managers.appPeersManager.getInputPeerById(this.spendPurposePeerId) :
+                      undefined
                   };
 
                   const inputInvoice: InputInvoice = {

@@ -4,6 +4,7 @@ import {createContext, useContext} from 'solid-js';
  * `import type` is mandatory to avoid reloading the page (not really 😀, vite handles it even without the `import type`)
  */
 
+import type AppMediaViewer from '../../components/appMediaViewer';
 import type {AutonomousMonoforumThreadList} from '../../components/autonomousDialogList/monoforumThreads';
 import type {avatarNew} from '../../components/avatarNew';
 import type BusinessHours from '../../components/businessHours';
@@ -31,16 +32,20 @@ import type Row from '../../components/rowTsx';
 import type {AppSidebarLeft} from '../../components/sidebarLeft';
 import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
+import type Slideshow from '../../components/slideshow';
 import type {toast, toastNew} from '../../components/toast';
 import type {wrapAdaptiveCustomEmoji} from '../../components/wrappers/customEmojiSimple';
+import type DocumentTsx from '../../components/wrappers/documentTsx';
 import type getPeerTitle from '../../components/wrappers/getPeerTitle';
 import type {wrapTopicIcon} from '../../components/wrappers/messageActionTextNewUnsafe';
 import type wrapPeerTitle from '../../components/wrappers/peerTitle';
 import type wrapPhoto from '../../components/wrappers/photo';
+import type PhotoTsx from '../../components/wrappers/photoTsx';
 import type wrapReply from '../../components/wrappers/reply';
 import type wrapSticker from '../../components/wrappers/sticker';
 import type wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import type wrapTopicNameButton from '../../components/wrappers/topicNameButton';
+import type VideoTsx from '../../components/wrappers/videoTsx';
 import type {ThemeController} from '../../helpers/themeController';
 import type {useAppSettings} from '../../stores/appSettings';
 import type {AppDialogsManager} from '../appManagers/appDialogsManager';
@@ -109,6 +114,11 @@ export type SolidJSHotReloadGuardContextValue = {
   ChatType: typeof ChatType;
   wrapReply: typeof wrapReply;
   wrapTopicIcon: typeof wrapTopicIcon;
+  VideoTsx: typeof VideoTsx;
+  DocumentTsx: typeof DocumentTsx;
+  PhotoTsx: typeof PhotoTsx;
+  Slideshow: typeof Slideshow;
+  AppMediaViewer: typeof AppMediaViewer;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

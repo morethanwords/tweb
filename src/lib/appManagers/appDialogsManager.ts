@@ -5,7 +5,7 @@
  */
 
 import type {MyDialogFilter} from '../storages/filters';
-import type {Dialog, ForumTopic, MyMessage, SavedDialog} from './appMessagesManager';
+import type {Dialog, ForumTopic, MyMessage, RequestHistoryOptions, SavedDialog} from './appMessagesManager';
 import type {MyDocument} from './appDocsManager';
 import type {State} from '../../config/state';
 import type {AnyDialog} from '../storages/dialogs';
@@ -111,6 +111,8 @@ import {AutonomousDialogList} from '../../components/autonomousDialogList/dialog
 import {PossibleDialog} from '../../components/autonomousDialogList/base';
 import {ForumTab} from '../../components/forumTab/forumTab';
 import {fillForumTabRegister} from '../../components/forumTab/fillRegister';
+import LazyLoadQueue from '../../components/lazyLoadQueue';
+import {fastSmoothScrollToStart} from '../../helpers/fastSmoothScroll';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -554,11 +556,14 @@ export class AppDialogsManager {
 
   private suggestionContainer: HTMLElement;
 
+  private lazyLoadQueue: LazyLoadQueue;
+
   public start() {
     const managers = this.managers = getProxiedManagers();
 
     this.contextMenu = new DialogsContextMenu(managers);
     this.stateMiddlewareHelper = getMiddleware();
+    this.lazyLoadQueue = new LazyLoadQueue(5, true);
 
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
@@ -678,7 +683,10 @@ export class AppDialogsManager {
           }
         }
 
-        if(wasFilterId === id) return;
+        if(wasFilterId === id) {
+          fastSmoothScrollToStart(this.xds[id].scrollable.container, 'y');
+          return;
+        }
 
         this.xds[id].clear();
         const promise = this.setFilterIdAndChangeTab(id).then(() => {
@@ -2478,6 +2486,49 @@ export class AppDialogsManager {
     if(ret) {
       const promise = this.initDialog(ret, options);
       options.loadPromises?.push(promise);
+    }
+
+    if(ret && this.lazyLoadQueue) {
+      const div = ret.dom.listEl;
+      const lazyLoadElement: Parameters<AppDialogsManager['lazyLoadQueue']['push']>[0] = {
+        div,
+        load: async() => {
+          await pause(200);
+          if(!this.lazyLoadQueue.intersector.isVisible(div)) {
+            this.lazyLoadQueue.push(lazyLoadElement); // * to process again
+            return;
+          }
+
+          const getHistoryOptions: RequestHistoryOptions = {
+            peerId: options.monoforumParentPeerId || options.peerId,
+            threadId: options.threadId,
+            monoforumThreadId: options.monoforumParentPeerId ? options.peerId : undefined,
+            limit: 50
+          };
+
+          const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(
+            options.peerId,
+            options.threadId
+          );
+
+          if(readMaxId) {
+            const limit = Math.floor(getHistoryOptions.limit / 2);
+            await this.managers.appMessagesManager.getHistory({
+              ...getHistoryOptions,
+              offsetId: readMaxId || undefined,
+              backLimit: readMaxId ? limit : undefined,
+              limit
+            });
+          }
+
+          return this.managers.appMessagesManager.getHistory(getHistoryOptions);
+        }
+      };
+
+      this.lazyLoadQueue.push(lazyLoadElement);
+      ret.middlewareHelper.onDestroy(() => {
+        this.lazyLoadQueue.delete(lazyLoadElement);
+      });
     }
 
     return ret;

@@ -4,8 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {resolveElements} from '@solid-primitives/refs';
-import {createEffect, createMemo, createSignal, JSX, on, onCleanup, Ref} from 'solid-js';
+import {children, createContext, createEffect, createMemo, createSignal, JSX, on, onCleanup, Ref} from 'solid-js';
 import {IS_OVERLAY_SCROLL_SUPPORTED} from '../environment/overlayScrollSupport';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import {IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
@@ -25,6 +24,19 @@ if(USE_OWN_SCROLL) {
   throttleMeasurement = (callback) => window.setTimeout(callback, SCROLL_THROTTLE);
   cancelMeasurement = (id) => window.clearTimeout(id);
 }
+
+export type ScrollableContextValue = {
+  scrollPosition: number,
+  scrollSize: number,
+  clientSize: number,
+  offsetSize: number,
+  getDistanceToEnd: () => number,
+  container: HTMLDivElement,
+  onSizeChange: () => void,
+  setScrollPositionSilently: (value: number) => void
+};
+
+export const ScrollableContext = createContext<ScrollableContextValue>();
 
 export default function Scrollable(props: {
   children: JSX.Element,
@@ -47,7 +59,9 @@ export default function Scrollable(props: {
   const offsetSizeProperty: 'offsetHeight' | 'offsetWidth' = axis === 'x' ? 'offsetWidth' : 'offsetHeight';
   const clientAxis: 'clientY' | 'clientX' = axis === 'x' ? 'clientX' : 'clientY';
 
+  const [ignoreScrollEvent, setIgnoreScrollEvent] = createSignal(false);
   const scrollPosition = () => ref[scrollPositionProperty];
+  const setScrollPosition = (value: number) => ref[scrollPositionProperty] = value;
   const scrollSize = () => ref[scrollSizeProperty];
   const clientSize = () => ref[clientSizeProperty];
   const offsetSize = () => ref[offsetSizeProperty];
@@ -184,6 +198,22 @@ export default function Scrollable(props: {
     }
   };
 
+  const setScrollPositionSilently = (value: number) => {
+    lastScrollPosition = value;
+    ignoreNextScrollEvent();
+
+    setScrollPosition(value);
+  };
+
+  const ignoreNextScrollEvent = () => {
+    setIgnoreScrollEvent(true);
+    ref.addEventListener('scroll', (e) => {
+      cancelEvent(e);
+      setIgnoreScrollEvent(false);
+      // this.addScrollListener();
+    }, {capture: true, passive: false, once: true});
+  };
+
   const onScrollCallbacks = createMemo(() => [props.onScroll, props.withBorders && checkEnds].filter(Boolean));
 
   const onThumbMouseMove = (e: MouseEvent) => {
@@ -232,14 +262,44 @@ export default function Scrollable(props: {
     }
   };
 
-  const children = resolveElements(() => props.children);
+  const value: ScrollableContextValue = {
+    get scrollPosition() {
+      return scrollPosition();
+    },
+    get scrollSize() {
+      return scrollSize();
+    },
+    get clientSize() {
+      return clientSize();
+    },
+    get offsetSize() {
+      return offsetSize();
+    },
+    getDistanceToEnd,
+    get container() {
+      return ref;
+    },
+    onSizeChange,
+    setScrollPositionSilently
+  };
 
-  createEffect(on(children, onSizeChange));
+  const resolvedChildren = children(() => {
+    return (
+      <ScrollableContext.Provider value={value}>
+        {props.children}
+      </ScrollableContext.Provider>
+    );
+  });
+
+  createEffect(on(resolvedChildren, onSizeChange));
 
   let ref: HTMLDivElement, thumbRef: HTMLDivElement;
   return (
     <div
-      ref={(_ref) => (ref = _ref, (props.ref as any)?.(_ref))}
+      ref={(_ref) => {
+        ref = _ref;
+        (props.ref as any)?.(_ref);
+      }}
       class={classNames(
         'scrollable',
         `scrollable-${axis}`,
@@ -254,7 +314,7 @@ export default function Scrollable(props: {
           (props.withBorders === 'bottom' || props.withBorders === 'both') && 'scrollable-y-bordered-bottom'
         ] : [])
       )}
-      onScroll={onScroll}
+      onScroll={!ignoreScrollEvent() && onScroll}
       onWheel={(axis === 'x' && !IS_TOUCH_SUPPORTED && onWheel) || undefined}
     >
       {USE_OWN_SCROLL && axis === 'y' && (
@@ -269,7 +329,7 @@ export default function Scrollable(props: {
           ></div>
         </div>
       )}
-      {children()}
+      {resolvedChildren()}
     </div>
   );
 }

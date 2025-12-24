@@ -1355,7 +1355,11 @@ export default class ChatTopbar {
     } else if(this.chat.type === ChatType.Scheduled) {
       titleEl = i18n(peerId === rootScope.myId ? 'Reminders' : 'ScheduledMessages');
     } else if(this.chat.type === ChatType.Discussion) {
-      const el = this.messagesCounter(middleware, 'Chat.Title.Comments', this.chat.isForum);
+      const el = this.messagesCounter({
+        middleware,
+        key: 'Chat.Title.Comments',
+        minusFirst: this.chat.isForum
+      });
       if(count === undefined) {
         const historyStorage = this.chat.getHistoryStorage();
         if(!middleware()) return;
@@ -1465,8 +1469,20 @@ export default class ChatTopbar {
     this.container.style.setProperty('--pinned-floating-height', `calc(${floatingHeight}px + var(--topbar-floating-call-height) + var(--topbar-floating-audio-height))`);
   };
 
-  private messagesCounter(middleware: Middleware, key: LangPackKey, minusFirst?: boolean) {
-    const el = new I18n.IntlElement({
+  private messagesCounter({
+    middleware,
+    key,
+    minusFirst,
+    displayLoading
+  }: {
+    middleware: Middleware,
+    key: LangPackKey,
+    minusFirst?: boolean,
+    displayLoading?: boolean
+  }) {
+    const el = new I18n.IntlElement(displayLoading ? {
+      key: 'Loading'
+    } : {
       key,
       args: [1]
     });
@@ -1475,11 +1491,11 @@ export default class ChatTopbar {
       middleware.onDestroy(dispose);
 
       createEffect(on(
-        () => this.chat.historyStorage.count,
-        (count) => {
+        () => [this.chat.historyStorage.count, this.chat.historyStorage.wasFetched] as const,
+        ([count]) => {
           el.compareAndUpdate({key, args: [count - (minusFirst ? 1 : 0)]});
         },
-        {defer: true}
+        {defer: displayLoading ? !this.chat.historyStorage.wasFetched : true}
       ));
     });
 
@@ -1493,8 +1509,12 @@ export default class ChatTopbar {
     const listenerSetter = new ListenerSetter();
 
     let prepare: (needClear: boolean) => Promise<() => void>;
-    if(this.chat.type === ChatType.Saved) {
-      const el = this.messagesCounter(middleware, 'messages');
+    if(this.chat.type === ChatType.Saved || this.peerId === rootScope.myId) {
+      const el = this.messagesCounter({
+        middleware,
+        key: 'messages',
+        displayLoading: this.peerId === rootScope.myId
+      });
 
       prepare = async() => {
         const historyStorage = this.chat.getHistoryStorage();

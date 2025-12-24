@@ -17,6 +17,7 @@ import {wrapEmojiTextWithEntities} from '../../../lib/richTextProcessor/wrapEmoj
 import PopupPremium from '../../popups/premium';
 import {toastNew} from '../../toast';
 import wrapPeerTitle from '../../wrappers/peerTitle';
+import {ConfettiContainer, ConfettiRef} from '../../confetti';
 
 export function ChecklistBubble(props: {
   out: boolean
@@ -30,6 +31,8 @@ export function ChecklistBubble(props: {
     setChecklist(reconcile(value));
   }))
 
+  let confetti!: ConfettiRef;
+
   const completionsById = createMemo(() => {
     const results: Record<number, TodoCompletion> = {};
     for(const item of checklist.completions ?? []) {
@@ -37,6 +40,21 @@ export function ChecklistBubble(props: {
     }
     return results;
   })
+
+  const isFullyCompleted = createMemo(() => {
+    return checklist.todo.list.every((item) => completionsById()[item.id]);
+  })
+
+  createEffect(on(isFullyCompleted, (value, prev) => {
+    if(value && !prev) {
+      confetti.create({
+        mode: 'poppers',
+        size: 4,
+        speedScale: 0.6,
+        count: 50
+      });
+    }
+  }, {defer: true}))
 
   const isGroupChecklist = checklist.todo.pFlags.others_can_complete
   const isReadonly = props.message.fwd_from || !props.out && !isGroupChecklist;
@@ -76,6 +94,7 @@ export function ChecklistBubble(props: {
 
   return (
     <div class={styles.wrap}>
+      <ConfettiContainer ref={confetti} class={styles.confetti} />
       <div class={styles.title}>
         {wrapEmojiTextWithEntities(checklist.todo.title)}
       </div>

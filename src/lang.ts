@@ -954,7 +954,7 @@ const lang = {
   'Suggestion.Frozen.Subtitle': 'Tap to view details and submit an appeal >',
   'Frozen.Title': 'Your Account is Frozen',
   'Frozen.Violation.Title': 'Violation of Terms',
-  'Frozen.Violation.Subtitle': 'Your account was frozen for breaking Telegram\'s Terms and Conditions.',
+  'Frozen.Violation.Subtitle': 'Your account was frozen for breaking Telegram’s Terms of Service.',
   'Frozen.ReadOnly.Title': 'Read-Only Mode',
   'Frozen.ReadOnly.Subtitle': 'You can access your account but can\'t send messages or take actions.',
   'Frozen.Appeal.Title': 'Appeal Before Deactivation',
@@ -964,6 +964,16 @@ const lang = {
   'Verified.Bot': 'This bot is verified as official by the representatives of Telegram.',
   'Verified.Channel': 'This channel was verified by Telegram.',
   'Verified.Group': 'This group was verified by Telegram.',
+  // 'SavedMessages.Count': {
+  //   'one_value': '%d saved message',
+  //   'other_value': '%d saved messages'
+  // },
+  'WebPage.InstantView': 'INSTANT VIEW',
+  // 'InstantView.RelatedArticles': 'Other News',
+  'InstantView.WrongLayout': 'Wrong layout?',
+  'InstantView.Media.Url': 'Click to open the link:',
+  'InstantView.Media.Url.Touch': 'Tap to open the link:',
+  'Chat.Message.RequestToJoin': 'REQUEST TO JOIN',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2632,12 +2642,21 @@ const lang = {
     'one_value': '**You** sent a gift for **%d Star**',
     'other_value': '**You** sent a gift for **%d Stars**'
   },
+  'StarGiftSentMessagePrepaidIncoming': {
+    'one_value': '**%s** sent an upgrade worth **%d Star** for your gift',
+    'other_value': '**%s** sent an upgrade worth **%d Stars** for your gift'
+  },
+  'StarGiftSentMessagePrepaidOutgoing': {
+    'one_value': 'You sent an upgrade worth **%d Star**',
+    'other_value': 'You sent an upgrade worth **%d Stars**'
+  },
   'StarGiftSentMessageSelf': {
     'one_value': 'You bought a gift for **%d Star**',
     'other_value': 'You bought a gift for **%d Stars**'
   },
   'StarGiftSentMessageSelfTon': 'You bought a gift for **%d TON**',
   'StarGiftFrom': 'Gift from %s',
+  'StarGiftUpgradeFrom': 'Upgrade from %s',
   'StarGiftDefaultMessage': 'You can add this gift to your profile.',
   'StarGiftDefaultMessageOut': '%s can display this gift on their profile.',
   'StarGiftDefaultMessageConvertable': {
@@ -2715,19 +2734,24 @@ const lang = {
   'StarGiftStatus': 'Status',
   'StarGiftStatusNonUnique': 'Non-Unique',
   'StarGiftStatusUpgrade': 'upgrade',
+  'StarGiftGiftUpgrade': 'Gift an Upgrade',
   'StarGiftUpgradeTitle': 'Upgrade Gift',
   'StarGiftUpgradeTitleFor': 'Make Unique',
   'StarGiftUpgradeSubtitle': 'Turn your gift into a unique collectible that you can transfer or auction.',
   'StarGiftUpgradeSubtitleFor': 'Let %s turn this gift into a unique collectible.',
   'StarGiftUpgradeUniqueTitle': 'Unique',
   'StarGiftUpgradeUniqueText': 'Get a unique number, model, backdrop and symbol for your gift.',
+  'StarGiftUpgradeUniqueTextPrepaid': '%s will get a unique number, model, backdrop and symbol for the gift.',
   'StarGiftUpgradeTransferableTitle': 'Transferable',
   'StarGiftUpgradeTransferableText': 'Send your upgraded gift to any of your friends on Telegram.',
+  'StarGiftUpgradeTransferableTextPrepaid': '%s will be able to send the gift to anyone on Telegram.',
   'StarGiftUpgradeTradableTitle': 'Tradable',
   'StarGiftUpgradeTradableText': 'Sell or auction your gift on third-party NFT marketplaces.',
+  'StarGiftUpgradeTradableTextPrepaid': '%s will be able to auction the gift on third-party NFT marketplaces.',
   'StarGiftUpgradeKeepInfo': 'Add sender’s name and comment',
   'StarGiftUpgradeFree': 'Upgrade for Free',
   'StarGiftUpgrade': 'Upgrade %s',
+  'StarGiftUpgradePrepaid': 'Pay %s for Upgrade',
   'StarGiftPriceDecrease': 'Price decreases in %s',
   'StarGiftPriceDecreaseLink': 'See how price will decrease',
   'StarGiftModel': 'Model',
@@ -4056,7 +4080,30 @@ const lang = {
   'AdminLog.ToggleAutoTranslationDisabled': '%s disabled auto-translation',
 
   'Topic': 'Topic',
-  'DownloadMedia': 'Download Media'
+  'DownloadMedia': 'Download Media',
+  'LoginEmail': 'Login Email',
+  'EmailSetup.Title': 'Add Email',
+  'EmailSetup.Subtitle': 'Please add your email address to keep access to your account.',
+  'EmailSetup.InputCaption': 'Your Email',
+  'EmailSetup.CheckEmail': 'Check Your Email',
+  'EmailSetup.CheckEmailSubtitle': 'Please enter the code we have sent to your email **%s**.',
+  'EmailSetup.WrongCode': 'Wrong code, please try again.',
+  'EmailSetup.InvalidEmail': 'Invalid email address',
+  'EmailSetup.BadEmail': 'Sorry, this email is not allowed.',
+  'EmailSetup.ChangeTitle': 'Enter New Email',
+  'EmailSetup.ChangeSubtitle': 'You will receive Telegram login codes via email and not SMS. Please enter an email address to which you have access.',
+  'EmailSetup.ChangeEmail': 'Change Email',
+  'EmailSetup.SetupToast': 'Email added successfully.',
+  'EmailSetup.ChangeToast': 'Email changed successfully.',
+  'ResetPassword.Title': 'Reset Password',
+  'ResetPassword.NoRecovery': 'Since you didn\'t provide a recovery email when setting up your password, your remaining options are either to remember your password or wait 7 days until your password is reset',
+  'ResetPassword.Confirm': 'Are you sure you want to reset your 2-Step Verification password?',
+  'ResetPassword.Success': 'Your 2-Step Verification password was reset.',
+  'ResetPassword.Wait': 'You recently requested a password reset that was canceled. Please wait %s before making a new request.',
+  'ResetPassword.RequestPending': 'You can reset your password in %d ([cancel]())',
+  'ResetPassword.TroubleText': 'If you don’t have access to your recovery email, your remaining options are either to remember your password or wait 7 days until your password is reset.',
+  'ResetPassword.Action': '[Reset password]()',
+  'PasswordDeactivated': 'Password deactivated'
 };
 
 export default lang;

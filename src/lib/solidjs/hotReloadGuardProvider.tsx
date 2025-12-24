@@ -1,5 +1,6 @@
 import {ParentProps} from 'solid-js';
 
+import AppMediaViewer from '../../components/appMediaViewer';
 import {AutonomousMonoforumThreadList} from '../../components/autonomousDialogList/monoforumThreads';
 import {avatarNew} from '../../components/avatarNew';
 import BusinessHours from '../../components/businessHours';
@@ -26,16 +27,20 @@ import Row from '../../components/rowTsx';
 import appSidebarLeft from '../../components/sidebarLeft';
 import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
+import Slideshow from '../../components/slideshow'; // Added import
 import {toast, toastNew} from '../../components/toast';
 import {wrapAdaptiveCustomEmoji} from '../../components/wrappers/customEmojiSimple';
+import DocumentTsx from '../../components/wrappers/documentTsx';
 import getPeerTitle from '../../components/wrappers/getPeerTitle';
 import {wrapTopicIcon} from '../../components/wrappers/messageActionTextNewUnsafe';
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import wrapPhoto from '../../components/wrappers/photo';
+import PhotoTsx from '../../components/wrappers/photoTsx';
 import wrapReply from '../../components/wrappers/reply';
 import wrapSticker from '../../components/wrappers/sticker';
 import wrapStickerSetThumb from '../../components/wrappers/stickerSetThumb';
 import wrapTopicNameButton from '../../components/wrappers/topicNameButton';
+import VideoTsx from '../../components/wrappers/videoTsx';
 import themeController from '../../helpers/themeController';
 import {useAppSettings} from '../../stores/appSettings';
 import appDialogsManager from '../appManagers/appDialogsManager';
@@ -100,11 +105,16 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       PopupSendGift,
       showBirthdayPopup,
       saveMyBirthday,
-      Row,
       useAppSettings,
       ChatType,
       wrapReply,
-      wrapTopicIcon
+      wrapTopicIcon,
+      VideoTsx,
+      Row,
+      PhotoTsx,
+      DocumentTsx,
+      Slideshow,
+      AppMediaViewer
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

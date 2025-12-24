@@ -355,7 +355,7 @@ export class AppChatsManager extends AppManager {
   /**
    * The amount of stars necessary to be paid for every message if the target chat had enabled it
    */
-  public async getStarsAmount(chatId: ChatId): Promise<number | undefined> {
+  public getStarsAmount(chatId: ChatId): number | undefined {
     const chat = this.getChat(chatId);
     if(chat?._ !== 'channel') return;
 

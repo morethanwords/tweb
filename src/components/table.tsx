@@ -90,6 +90,7 @@ export function TableButton(props: ComponentProps<typeof Button>) {
     />
   )
 }
+export const TableButtonClassname = styles.button;
 
 export function TableButtonWithTooltip(props: ComponentProps<typeof Button> & {
   tooltipClass?: string

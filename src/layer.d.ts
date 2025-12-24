@@ -4878,7 +4878,7 @@ export namespace WebPage {
     document?: Document,
     cached_page?: Page,
     attributes?: Array<WebPageAttribute>,
-    type?: 'document' | 'photo' | 'telegram_channel' | 'telegram_megagroup' | 'telegram_bot' | 'telegram_botapp' | 'telegram_user' | 'telegram_chatlist' | 'telegram_story' | 'telegram_channel_boost' | 'telegram_giftcode' | 'telegram_chat' | 'telegram_videochat' | 'telegram_voicechat' | 'telegram_livestream' | 'telegram_nft' | 'telegram_collection' | 'telegram_story_album',
+    type?: 'document' | 'photo' | 'telegram_channel' | 'telegram_megagroup' | 'telegram_bot' | 'telegram_botapp' | 'telegram_user' | 'telegram_chatlist' | 'telegram_story' | 'telegram_channel_boost' | 'telegram_giftcode' | 'telegram_chat' | 'telegram_videochat' | 'telegram_voicechat' | 'telegram_livestream' | 'telegram_nft' | 'telegram_collection' | 'telegram_story_album' | 'telegram_megagroup_request',
     entities?: MessageEntity[]
   };
 
@@ -5445,7 +5445,7 @@ export namespace ReplyMarkup {
 /**
  * @link https://core.telegram.org/type/MessageEntity
  */
-export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBankCard | MessageEntity.messageEntitySpoiler | MessageEntity.messageEntityCustomEmoji | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret | MessageEntity.messageEntityTimestamp;
+export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBankCard | MessageEntity.messageEntitySpoiler | MessageEntity.messageEntityCustomEmoji | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret | MessageEntity.messageEntityTimestamp | MessageEntity.messageEntityImage | MessageEntity.messageEntitySubscript | MessageEntity.messageEntitySuperscript | MessageEntity.messageEntityAnchor;
 
 export namespace MessageEntity {
   export type messageEntityUnknown = {
@@ -5571,7 +5571,9 @@ export namespace MessageEntity {
     _: 'messageEntityCustomEmoji',
     offset: number,
     length: number,
-    document_id: string | number
+    document_id: string | number,
+    w?: number,
+    h?: number
   };
 
   export type messageEntityBlockquote = {
@@ -5615,6 +5617,32 @@ export namespace MessageEntity {
     length?: number,
     time?: number,
     raw?: string
+  };
+
+  export type messageEntityImage = {
+    _: 'messageEntityImage',
+    offset?: number,
+    length?: number,
+    document_id?: Long
+  };
+
+  export type messageEntitySubscript = {
+    _: 'messageEntitySubscript',
+    offset?: number,
+    length?: number
+  };
+
+  export type messageEntitySuperscript = {
+    _: 'messageEntitySuperscript',
+    offset?: number,
+    length?: number
+  };
+
+  export type messageEntityAnchor = {
+    _: 'messageEntityAnchor',
+    offset?: number,
+    length?: number,
+    name?: string
   };
 }
 
@@ -17031,6 +17059,10 @@ export interface ConstructorDeclMap {
   'messageMediaPhotoExternal': MessageMedia.messageMediaPhotoExternal,
   'messageMediaDocumentExternal': MessageMedia.messageMediaDocumentExternal,
   'updatePts': Update.updatePts,
+  'messageEntityImage': MessageEntity.messageEntityImage,
+  'messageEntitySubscript': MessageEntity.messageEntitySubscript,
+  'messageEntitySuperscript': MessageEntity.messageEntitySuperscript,
+  'messageEntityAnchor': MessageEntity.messageEntityAnchor,
 }
 
 export type InvokeAfterMsg = {
