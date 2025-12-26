@@ -301,22 +301,7 @@ export default class ChatTopbar {
         return;
       }
 
-      // const item = appNavigationController.findItemByType('chat');
-      // * return manually to chat by arrow, since can't get back to
-      if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
-        this.chat.appImManager.setPeer({peerId: this.peerId});
-      } else {
-        const isFirstChat = this.chat.appImManager.chats.indexOf(this.chat) === 0;
-        appNavigationController.back(isFirstChat ? 'im' : 'chat');
-        /* return;
-
-        if(mediaSizes.activeScreen === ScreenSize.medium && !appNavigationController.findItemByType('chat')) {
-          this.chat.appImManager.setPeer(0);
-          blurActiveElement();
-        } else {
-          appNavigationController.back('chat');
-        } */
-      }
+      this.chat.pop();
     };
 
     attachClickEvent(this.btnBack, onBtnBackClick, {listenerSetter: this.listenerSetter});
@@ -714,7 +699,10 @@ export default class ChatTopbar {
       icon: 'clipboard',
       text: 'CompactDiffView',
       onClick: wrapAsyncClickHandler(async() => {
-        await this.chat.setPeer({peerId: this.peerId});
+        if(!this.chat.popIfMoreThanOne()) {
+          await this.chat.setPeer({peerId: this.peerId});
+        }
+
         setAppSettings('logsDiffView', true);
 
         // awaiting this doesn't help

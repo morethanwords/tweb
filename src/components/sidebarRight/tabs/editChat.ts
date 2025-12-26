@@ -10,7 +10,7 @@ import EditPeer from '../../editPeer';
 import Row, {CreateRowFromCheckboxField} from '../../row';
 import Button from '../../button';
 import {ChatRights} from '../../../lib/appManagers/appChatsManager';
-import {Chat, ChatFull, ChatParticipants} from '../../../layer';
+import {Chat, ChatFull} from '../../../layer';
 import AppChatTypeTab from './chatType';
 import rootScope from '../../../lib/rootScope';
 import AppGroupPermissionsTab from './groupPermissions';
@@ -411,7 +411,7 @@ export default class AppEditChatTab extends SliderSuperTab {
             if(appSettings.logsDiffView) {
               this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
             } else {
-              appImManager.setPeer({
+              appImManager.setInnerPeer({
                 peerId: this.chatId.toPeerId(true),
                 type: ChatType.Logs
               });
