@@ -76,6 +76,8 @@ import useHistoryStorage from '../../stores/historyStorages';
 import useAutoDownloadSettings, {ChatAutoDownloadSettings} from '../../hooks/useAutoDownloadSettings';
 import usePeerTranslation from '../../hooks/usePeerTranslation';
 import debounce from '../../helpers/schedulers/debounce';
+import appNavigationController from '../appNavigationController';
+import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '../sidebarLeft';
 
 
 export enum ChatType {
@@ -1558,5 +1560,34 @@ export default class Chat extends EventListenerBase<{
     this.starsAmount = starsAmount;
     this.input.setStarsAmount(starsAmount);
     getCurrentNewMediaPopup()?.setStarsAmount(starsAmount);
+  }
+
+  public toggleChatIfMedium() {
+    if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
+      this.appImManager.setPeer({peerId: this.peerId});
+      return true;
+    }
+
+    return false;
+  }
+
+  public pop() {
+    if(this.toggleChatIfMedium()) return;
+
+    const isFirstChat = this.appImManager.chats.indexOf(this) === 0;
+    appNavigationController.back(isFirstChat ? 'im' : 'chat');
+  }
+
+  /**
+   * returns false if this is the only chat
+   */
+  public popIfMoreThanOne() {
+    if(this.toggleChatIfMedium()) return true;
+
+    const isFirstChat = this.appImManager.chats.indexOf(this) === 0;
+    if(isFirstChat) return false;
+
+    appNavigationController.back('chat');
+    return true;
   }
 }

@@ -151,7 +151,7 @@ const AdminRecentActionsTab = () => {
   const onChatView = () => {
     setAppSettings('logsDiffView', false);
     tab.close();
-    appImManager.setPeer({
+    appImManager.setInnerPeer({
       peerId: tab.payload.channelId.toPeerId(true),
       type: ChatType.Logs
     });
