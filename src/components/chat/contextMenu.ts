@@ -1334,6 +1334,7 @@ export default class ChatContextMenu {
     let reactionsMenu: ChatReactionsMenu;
     let reactionsMenuPosition: 'horizontal' | 'vertical';
     if(
+      this.chat.type !== ChatType.Logs &&
       this.message &&
       (this.message._ === 'message' || (this.message._ === 'messageService' && this.message.pFlags.reactions_are_possible)) &&
       !this.chat.selection.isSelecting &&
