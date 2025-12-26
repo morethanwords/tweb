@@ -1,0 +1,68 @@
+.Row {
+  --padding: 12px;
+
+  overflow: hidden;
+  border-radius: 8px;
+
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+
+  &Checkbox {
+    margin: 0;
+    display: inline-flex;
+    pointer-events: none;
+
+    &Wrapper {
+      position: relative;
+      display: flex;
+      padding: var(--padding);
+    }
+
+    &CickArea {
+      position: absolute;
+      inset: 0;
+    }
+  }
+
+  &Separator {
+    height: 1.5em;
+    width: 1px;
+    margin-right: var(--padding);
+    background-color: rgba(var(--secondary-text-color-rgb), 0.25);
+  }
+
+  &Label {
+    padding: var(--padding);
+    padding-left: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: space-between;
+  }
+
+  &Offset {
+    padding-left: 20px;
+  }
+}
+
+.Count {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--secondary-text-color);
+  font-size: 14px;
+
+  &Arrow {
+    transition: transform 0.28s ease-in-out;
+
+    &.toggled {
+      transform: rotate(180deg);
+    }
+  }
+}
+
+.ExpandedItems {
+  overflow: hidden;
+}

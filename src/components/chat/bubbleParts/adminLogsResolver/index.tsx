@@ -1,0 +1,879 @@
+import {Component, For, Show} from 'solid-js';
+import {makeDateFromTimestamp} from '../../../../helpers/date/makeDateFromTimestamp';
+import formatDuration from '../../../../helpers/formatDuration';
+import {I18nTsx} from '../../../../helpers/solid/i18n';
+import {ChannelAdminLogEvent, ChannelAdminLogEventAction, ChatBannedRights} from '../../../../layer';
+import {AdminLog} from '../../../../lib/appManagers/appChatsManager';
+import {MyMessage} from '../../../../lib/appManagers/appMessagesManager';
+import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getParticipantPeerId';
+import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
+import removeChatBannedRightsFromParticipant from '../../../../lib/appManagers/utils/chats/removeChatBannedRightsFromParticipant';
+import getPeerId from '../../../../lib/appManagers/utils/peers/getPeerId';
+import I18n, {i18n, LangPackKey} from '../../../../lib/langPack';
+import wrapRichText from '../../../../lib/richTextProcessor/wrapRichText';
+import wrapTelegramUrlToAnchor from '../../../../lib/richTextProcessor/wrapTelegramUrlToAnchor';
+import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import {resolveAdminRightFlagI18n} from '../../../sidebarRight/tabs/adminRecentActions/adminRightsI18nResolver';
+import {participantRightsMap} from '../../../sidebarRight/tabs/adminRecentActions/participantRightsMap';
+import {TopicName} from '../../../sidebarRight/tabs/adminRecentActions/topicName';
+import {diffFlags} from '../../../sidebarRight/tabs/adminRecentActions/utils';
+import Space from '../../../space';
+import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
+import {isMessage, linkColor} from '../../utils';
+import {MinimalBubbleMessageContent} from '../minimalBubbleMessageContent';
+import {Reply} from './reply';
+import {CopyTextResult, createConditionalCopyText, createMessageCopyText, createMessageWithPreviousCopyText, createMultiLineCopyText, createPreviousValueCopyText, createSimpleServiceCopyText, createTwoPeerCopyText, extractAdminChanges, extractBanChanges, extractDefaultRightsChanges, formatDurationAsText, getDateTextForCopy, getMessageTextForCopy} from './copyTextHelpers';
+
+
+type RenderArgs = {
+  channelId: ChatId;
+  event: AdminLog;
+  isBroadcast: boolean;
+  isForum: boolean;
+  peerId: PeerId;
+  makePeerTitle: (peerId: PeerId) => Node;
+  makeMessagePeerTitle: (peerId: PeerId) => Node;
+  isOut: boolean;
+};
+
+type ServiceResult = {
+  type: 'service';
+  Content: Component;
+  getCopyText: () => Promise<CopyTextResult>;
+};
+
+type RegularResult = {
+  type: 'regular';
+  bubbleClass: string;
+  Content: Component;
+  getCopyText: () => Promise<CopyTextResult>;
+};
+
+type DefaultResult = {
+  type: 'default';
+  message: MyMessage;
+  originalMessage?: MyMessage;
+  colorPeerId?: PeerId;
+  ServiceContent: Component;
+  getCopyText: () => Promise<CopyTextResult>;
+};
+
+type MapCallbackResult = ServiceResult | RegularResult | DefaultResult | null;
+
+type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
+  action: Extract<ChannelAdminLogEventAction, {_: Key}>;
+} & RenderArgs;
+
+type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: MapCallbackArgs<Key>) => MapCallbackResult;
+
+const defaultBubbleClass = 'can-have-tail has-fake-service is-forced-rounded';
+
+const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key> } = {
+  'channelAdminLogEventActionChangeTitle': ({isBroadcast, action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(isBroadcast ? 'AdminLog.ChangeTitleChannel' : 'AdminLog.ChangeTitleGroup', [makePeerTitle(peerId), action.new_value]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ChangeTitleChannel' : 'AdminLog.ChangeTitleGroup', true, [peerTitle, action.new_value])
+    )
+  }),
+  'channelAdminLogEventActionChangeAbout': ({isBroadcast, action, event, peerId, makePeerTitle, makeMessagePeerTitle, isOut}) => ({
+    type: 'regular',
+    bubbleClass: defaultBubbleClass,
+    Content: () => {
+      return (
+        <>
+          <div class='service-msg'>
+            <I18nTsx key={isBroadcast ? 'AdminLog.ChangeAboutChannel' : 'AdminLog.ChangeAboutGroup'} args={[makePeerTitle(peerId)]} />
+          </div>
+          <MinimalBubbleMessageContent
+            date={makeDateFromTimestamp(event.date)}
+            name={isOut ? null : makeMessagePeerTitle(peerId)}
+          >
+            {wrapRichText(action.new_value)}
+            <Space amount='0.5rem' />
+            <Reply
+              colorPeerId={peerId}
+              title={i18n('AdminRecentActions.PreviousDescription')}
+              text={action.prev_value}
+            />
+          </MinimalBubbleMessageContent>
+        </>
+      );
+    },
+    getCopyText: () => createPreviousValueCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ChangeAboutChannel' : 'AdminLog.ChangeAboutGroup', true, [peerTitle]),
+      action.new_value,
+      action.prev_value,
+      () => I18n.format('AdminRecentActions.PreviousDescription', true)
+    )
+  }),
+  'channelAdminLogEventActionChangeUsername': ({isBroadcast, event, action, peerId, makePeerTitle, makeMessagePeerTitle, isOut}) => ({
+    type: 'regular',
+    bubbleClass: defaultBubbleClass,
+    Content: () => {
+      const translationKey = ((): LangPackKey => {
+        if(action.new_value) {
+          return isBroadcast ? 'AdminLog.ChangeLinkChannel' : 'AdminLog.ChangeLinkGroup';
+        } else {
+          return isBroadcast ? 'AdminLog.RemovedLinkChannel' : 'AdminLog.RemovedLinkGroup';
+        }
+      })();
+
+      const anchor = (() => {
+        if(!action.new_value) return;
+        const link = `t.me/${action.new_value}`
+
+        const anchor = wrapTelegramUrlToAnchor(link);
+        anchor.textContent = link;
+
+        return anchor;
+      })();
+
+      return (
+        <>
+          <div class='service-msg'>
+            <I18nTsx key={translationKey} args={[makePeerTitle(peerId)]} />
+          </div>
+          <MinimalBubbleMessageContent
+            date={makeDateFromTimestamp(event.date)}
+            name={isOut ? null : makeMessagePeerTitle(peerId)}
+          >
+            <Show when={anchor}>
+              {anchor}
+              <Space amount='0.5rem' />
+            </Show>
+            <Show when={action.prev_value}>
+              <Reply
+                colorPeerId={peerId}
+                title={i18n('AdminRecentActions.PreviousLink')}
+                text={`https://t.me/${action.prev_value}`}
+              />
+            </Show>
+          </MinimalBubbleMessageContent>
+        </>
+      );
+    },
+    getCopyText: () => createMultiLineCopyText(
+      event.date,
+      peerId,
+      (peerTitle, dateText) => {
+        const translationKey: LangPackKey = action.new_value ?
+          (isBroadcast ? 'AdminLog.ChangeLinkChannel' : 'AdminLog.ChangeLinkGroup') :
+          (isBroadcast ? 'AdminLog.RemovedLinkChannel' : 'AdminLog.RemovedLinkGroup');
+        const previousLabel = I18n.format('AdminRecentActions.PreviousLink', true);
+        const lines = [`${I18n.format(translationKey, true, [peerTitle])} [${dateText}]`];
+        if(action.new_value) {
+          lines.push(`https://t.me/${action.new_value}`);
+        }
+        if(action.prev_value) {
+          lines.push(`${previousLabel}: https://t.me/${action.prev_value}`);
+        }
+        return lines;
+      }
+    )
+  }),
+  'channelAdminLogEventActionChangePhoto': ({isBroadcast, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(isBroadcast ? 'AdminLog.ChangePhotoChannel' : 'AdminLog.ChangePhotoGroup', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ChangePhotoChannel' : 'AdminLog.ChangePhotoGroup', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionToggleInvites': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleInvitesEnabled' : 'AdminLog.ToggleInvitesDisabled', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(action.new_value ? 'AdminLog.ToggleInvitesEnabled' : 'AdminLog.ToggleInvitesDisabled', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionToggleSignatures': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleSignaturesEnabled' : 'AdminLog.ToggleSignaturesDisabled', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(action.new_value ? 'AdminLog.ToggleSignaturesEnabled' : 'AdminLog.ToggleSignaturesDisabled', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionUpdatePinned': ({action, peerId, makePeerTitle, event}) => isMessage(action.message) ? ({
+    type: 'default',
+    message: action.message,
+    ServiceContent: () => {
+      const pinned = action.message._ === 'message' && action.message.pFlags?.pinned;
+      return i18n(pinned ? 'AdminLog.PinnedMessage' : 'AdminLog.UnpinnedMessage', [makePeerTitle(peerId)]);
+    },
+    getCopyText: () => {
+      const pinned = action.message._ === 'message' && action.message.pFlags?.pinned;
+      return createMessageCopyText(
+        event.date,
+        peerId,
+        action.message,
+        (peerTitle) => I18n.format(pinned ? 'AdminLog.PinnedMessage' : 'AdminLog.UnpinnedMessage', true, [peerTitle])
+      );
+    }
+  }) : null,
+  'channelAdminLogEventActionEditMessage': ({action, peerId, makePeerTitle, event}) => isMessage(action.new_message) ? ({
+    type: 'default',
+    message: action.new_message,
+    colorPeerId: peerId,
+    originalMessage: isMessage(action.prev_message) ? action.prev_message : null,
+    ServiceContent: () => i18n('AdminLog.EditedMessage', [makePeerTitle(peerId)]),
+    getCopyText: () => createMessageWithPreviousCopyText(
+      event.date,
+      peerId,
+      action.new_message,
+      action.prev_message,
+      (peerTitle) => I18n.format('AdminLog.EditedMessage', true, [peerTitle]),
+      () => I18n.format('AdminRecentActions.PreviousMessage', true)
+    )
+  }) : null,
+  'channelAdminLogEventActionDeleteMessage': ({action, peerId, makePeerTitle, event}) => isMessage(action.message) ? ({
+    type: 'default',
+    message: action.message,
+    ServiceContent: () => i18n('AdminLog.DeletedMessage', [makePeerTitle(peerId)]),
+    getCopyText: () => createMessageCopyText(
+      event.date,
+      peerId,
+      action.message,
+      (peerTitle) => I18n.format('AdminLog.DeletedMessage', true, [peerTitle])
+    )
+  }) : null,
+  'channelAdminLogEventActionParticipantJoin': ({isBroadcast, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(isBroadcast ? 'AdminLog.ParticipantJoinedChannel' : 'AdminLog.ParticipantJoinedGroup', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ParticipantJoinedChannel' : 'AdminLog.ParticipantJoinedGroup', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionParticipantLeave': ({isBroadcast, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(isBroadcast ? 'AdminLog.ParticipantLeftChannel' : 'AdminLog.ParticipantLeftGroup', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ParticipantLeftChannel' : 'AdminLog.ParticipantLeftGroup', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionParticipantInvite': ({peerId, action, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ParticipantInvited', [makePeerTitle(peerId), makePeerTitle(getParticipantPeerId(action.participant))]),
+    getCopyText: () => createTwoPeerCopyText(
+      event.date,
+      peerId,
+      getParticipantPeerId(action.participant),
+      (peerTitle, participantTitle) => I18n.format('AdminLog.ParticipantInvited', true, [peerTitle, participantTitle])
+    )
+  }),
+  'channelAdminLogEventActionParticipantToggleBan': ({event, action, channelId, peerId, makeMessagePeerTitle, makePeerTitle, isOut}) => ({
+    type: 'regular',
+    bubbleClass: defaultBubbleClass,
+    Content: () => {
+      const isBanned = isBannedParticipant(action.new_participant);
+      const {apiManagerProxy} = useHotReloadGuard();
+
+      const prevBannedParticipant = action.prev_participant?._ === 'channelParticipantBanned' ? action.prev_participant : undefined;
+      const newBannedParticipant = action.new_participant?._ === 'channelParticipantBanned' ? action.new_participant : undefined;
+
+      const channel = apiManagerProxy.getChat(channelId);
+
+      const removeDefaultRights = (rights: ChatBannedRights.chatBannedRights) =>
+        channel?._ === 'channel' && rights ?
+          removeChatBannedRightsFromParticipant(channel, rights) :
+          rights;
+
+      const participantPeerId = getParticipantPeerId(action.prev_participant || action.new_participant);
+
+      const participantUser = apiManagerProxy.getUser(participantPeerId.toUserId());
+      const username = participantUser?.username || '';
+
+      const diff = diffFlags(
+        removeDefaultRights(prevBannedParticipant?.banned_rights)?.pFlags,
+        removeDefaultRights(newBannedParticipant?.banned_rights)?.pFlags
+      );
+
+      // yes, they need to be inversed here
+      const removed = diff.new.map(key => participantRightsMap[key])
+      .filter(Boolean).map(key => i18n(key))
+
+      const added = diff.old.map(key => participantRightsMap[key])
+      .filter(Boolean).map(key => i18n(key))
+
+
+      return (
+        <>
+          <MinimalBubbleMessageContent
+            date={makeDateFromTimestamp(event.date)}
+            name={isOut ? null : makeMessagePeerTitle(peerId)}
+          >
+            <Show when={isBanned}>
+              <I18nTsx
+                key={username ? 'AdminLog.ParticipantBannedUsername' : 'AdminLog.ParticipantBanned'}
+                args={[linkColor(makePeerTitle(participantPeerId)), username ? linkColor(`@${username}`) : '']}
+              />
+            </Show>
+            <Show when={!isBanned}>
+              <I18nTsx
+                key={username ? 'AdminLog.ParticipantPermissionsToggledUsername' : 'AdminLog.ParticipantPermissionsToggled'}
+                args={[linkColor(makePeerTitle(participantPeerId)), username ? linkColor(`@${username}`) : '']}
+              />
+            </Show>
+            <Show when={!isBanned}>
+              <Space amount='0.5rem' />
+              <For each={added}>
+                {key => <div>+ {key}</div>}
+              </For>
+              <For each={removed}>
+                {key => <div>- {key}</div>}
+              </For>
+            </Show>
+          </MinimalBubbleMessageContent>
+        </>
+      );
+    },
+    getCopyText: async() => {
+      const dateText = getDateTextForCopy(event.date);
+      const {apiManagerProxy, getPeerTitle} = useHotReloadGuard();
+      const {isBanned, participantPeerId, added, removed} = extractBanChanges(action, channelId, apiManagerProxy);
+      const participantName = await getPeerTitle({peerId: participantPeerId, plainText: true});
+      const adminName = await getPeerTitle({peerId, plainText: true});
+
+      const lines = [`${adminName} [${dateText}]`];
+      lines.push(I18n.format(isBanned ? 'AdminLog.ParticipantBanned' : 'AdminLog.ParticipantPermissionsToggled', true, [participantName]));
+      added.forEach(perm => lines.push(`+ ${perm}`));
+      removed.forEach(perm => lines.push(`- ${perm}`));
+
+      return {text: lines.join('\n')};
+    }
+  }),
+  'channelAdminLogEventActionParticipantToggleAdmin': ({event, action, peerId, makePeerTitle, makeMessagePeerTitle, isBroadcast, isOut}) => ({
+    type: 'regular',
+    bubbleClass: defaultBubbleClass,
+    Content: () => {
+      const {apiManagerProxy} = useHotReloadGuard();
+
+      const prevParticipantRights = 'admin_rights' in action.prev_participant ? action.prev_participant.admin_rights : null;
+      const newParticipantRights = 'admin_rights' in action.new_participant ? action.new_participant.admin_rights : null;
+
+      const diff = diffFlags(prevParticipantRights?.pFlags, newParticipantRights?.pFlags);
+      const participantPeerId = getParticipantPeerId(action.prev_participant || action.new_participant);
+
+      const participantUser = apiManagerProxy.getUser(participantPeerId.toUserId());
+      const username = participantUser?.username || '';
+
+      const added = diff.new.map(key => i18n(resolveAdminRightFlagI18n(key, {isBroadcast})));
+      const removed = diff.old.map(key => i18n(resolveAdminRightFlagI18n(key, {isBroadcast})));
+
+      return (
+        <>
+          <MinimalBubbleMessageContent
+            date={makeDateFromTimestamp(event.date)}
+            name={isOut ? null : makeMessagePeerTitle(peerId)}
+          >
+            <I18nTsx
+              key={username ? 'AdminLog.AdminPermissionsChangedUsername' : 'AdminLog.AdminPermissionsChanged'}
+              args={[linkColor(makePeerTitle(participantPeerId)), username ? linkColor(`@${username}`) : '']}
+            />
+            <Space amount='0.5rem' />
+            <For each={added}>
+              {key => <div>+ {key}</div>}
+            </For>
+            <For each={removed}>
+              {key => <div>- {key}</div>}
+            </For>
+          </MinimalBubbleMessageContent>
+        </>
+      );
+    },
+    getCopyText: async() => {
+      const dateText = getDateTextForCopy(event.date);
+      const {apiManagerProxy, getPeerTitle} = useHotReloadGuard();
+      const {participantPeerId, added, removed} = extractAdminChanges(action, apiManagerProxy, isBroadcast);
+      const participantName = await getPeerTitle({peerId: participantPeerId, plainText: true});
+      const adminName = await getPeerTitle({peerId, plainText: true});
+
+      const lines = [`${adminName} [${dateText}]`];
+      lines.push(I18n.format('AdminLog.AdminPermissionsChanged', true, [participantName]));
+      added.forEach(perm => lines.push(`+ ${perm}`));
+      removed.forEach(perm => lines.push(`- ${perm}`));
+
+      return {text: lines.join('\n')};
+    }
+  }),
+  'channelAdminLogEventActionChangeStickerSet': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ChangeStickerSet', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeStickerSet', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionTogglePreHistoryHidden': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(action.new_value ? 'AdminLog.TogglePreHistoryHiddenEnabled' : 'AdminLog.TogglePreHistoryHiddenDisabled', [makePeerTitle(peerId)]),
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.TogglePreHistoryHiddenEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.TogglePreHistoryHiddenDisabled', true, [peerTitle])
+      })
+    )
+  }),
+  'channelAdminLogEventActionDefaultBannedRights': ({event, action, peerId, makeMessagePeerTitle, isOut}) => ({
+    type: 'regular',
+    bubbleClass: defaultBubbleClass,
+    Content: () => {
+      const diff = diffFlags(action.prev_banned_rights?.pFlags, action.new_banned_rights?.pFlags);
+
+      const added = diff.old.map(key => participantRightsMap[key])
+      .filter(Boolean).map(key => i18n(key))
+
+      const removed = diff.new.map(key => participantRightsMap[key])
+      .filter(Boolean).map(key => i18n(key))
+
+      return (
+        <>
+          <MinimalBubbleMessageContent
+            date={makeDateFromTimestamp(event.date)}
+            name={isOut ? null : makeMessagePeerTitle(peerId)}
+          >
+            <I18nTsx key={'AdminLog.DefaultBannedRightsChanged'} />
+            <Space amount='0.5rem' />
+            <For each={added}>
+              {key => <div>+ {key}</div>}
+            </For>
+            <For each={removed}>
+              {key => <div>- {key}</div>}
+            </For>
+          </MinimalBubbleMessageContent>
+        </>
+      );
+    },
+    getCopyText: async() => {
+      const {getPeerTitle} = useHotReloadGuard();
+      const dateText = getDateTextForCopy(event.date);
+      const peerTitle = await getPeerTitle({peerId, plainText: true});
+      const {added, removed} = extractDefaultRightsChanges(action);
+
+      const lines = [`${peerTitle} [${dateText}]`];
+      lines.push(I18n.format('AdminLog.DefaultBannedRightsChanged', true, [peerTitle]));
+      added.forEach(perm => lines.push(`+ ${perm}`));
+      removed.forEach(perm => lines.push(`- ${perm}`));
+
+      return {text: lines.join('\n')};
+    }
+  }),
+  'channelAdminLogEventActionStopPoll':  ({action, peerId, makePeerTitle, event}) => isMessage(action.message) ? ({
+    type: 'default',
+    message: action.message,
+    ServiceContent: () => i18n('AdminLog.PollStopped', [makePeerTitle(peerId)]),
+    getCopyText: () => createMessageCopyText(
+      event.date,
+      peerId,
+      action.message,
+      (peerTitle) => I18n.format('AdminLog.PollStopped', true, [peerTitle])
+    )
+  }) : null,
+  'channelAdminLogEventActionChangeLinkedChat': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ChangeLinkedChat', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeLinkedChat', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionChangeLocation': ({isBroadcast, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(isBroadcast ? 'AdminLog.ChangeLocationChannel' : 'AdminLog.ChangeLocationGroup', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format(isBroadcast ? 'AdminLog.ChangeLocationChannel' : 'AdminLog.ChangeLocationGroup', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionToggleSlowMode': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => {
+      if(action.new_value) {
+        const duration = wrapFormattedDuration(formatDuration(action.new_value));
+        return i18n('AdminLog.ToggleSlowModeSet', [makePeerTitle(peerId), duration]);
+      } else {
+        return i18n('AdminLog.ToggleSlowModeDisabled', [makePeerTitle(peerId)]);
+      }
+    },
+    getCopyText: async() => {
+      const {getPeerTitle} = useHotReloadGuard();
+      const dateText = getDateTextForCopy(event.date);
+      const peerTitle = await getPeerTitle({peerId, plainText: true});
+      if(action.new_value) {
+        const duration = formatDurationAsText(action.new_value);
+        const text = I18n.format('AdminLog.ToggleSlowModeSet', true, [peerTitle, duration]);
+        return {text: `${text} [${dateText}]`};
+      } else {
+        const text = I18n.format('AdminLog.ToggleSlowModeDisabled', true, [peerTitle]);
+        return {text: `${text} [${dateText}]`};
+      }
+    }
+  }),
+  'channelAdminLogEventActionStartGroupCall': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.StartGroupCall', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.StartGroupCall', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionDiscardGroupCall': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.DiscardGroupCall', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.DiscardGroupCall', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionParticipantMute': ({peerId, action, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ParticipantMuted', [makePeerTitle(getPeerId(action.participant?.peer)), makePeerTitle(peerId)]),
+    getCopyText: () => createTwoPeerCopyText(
+      event.date,
+      getPeerId(action.participant?.peer),
+      peerId,
+      (participantTitle, peerTitle) => I18n.format('AdminLog.ParticipantMuted', true, [participantTitle, peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionParticipantUnmute': ({peerId, action, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ParticipantUnmuted', [makePeerTitle(getPeerId(action.participant?.peer)), makePeerTitle(peerId)]),
+    getCopyText: () => createTwoPeerCopyText(
+      event.date,
+      getPeerId(action.participant?.peer),
+      peerId,
+      (participantTitle, peerTitle) => I18n.format('AdminLog.ParticipantUnmuted', true, [participantTitle, peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionToggleGroupCallSetting': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(action.join_muted ? 'AdminLog.ToggleGroupCallSettingEnabled' : 'AdminLog.ToggleGroupCallSettingDisabled', [makePeerTitle(peerId)]),
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.join_muted,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleGroupCallSettingEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleGroupCallSettingDisabled', true, [peerTitle])
+      })
+    )
+  }),
+  'channelAdminLogEventActionParticipantJoinByInvite': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ParticipantJoinedByInvite', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ParticipantJoinedByInvite', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionExportedInviteDelete': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ExportedInviteDeleted', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ExportedInviteDeleted', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionExportedInviteRevoke': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ExportedInviteRevoked', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ExportedInviteRevoked', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionExportedInviteEdit': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ExportedInviteEdit', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ExportedInviteEdit', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionParticipantVolume': ({peerId, action, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ParticipantVolumeChanged', [makePeerTitle(getPeerId(action.participant?.peer)), makePeerTitle(peerId)]),
+    getCopyText: () => createTwoPeerCopyText(
+      event.date,
+      getPeerId(action.participant?.peer),
+      peerId,
+      (participantTitle, peerTitle) => I18n.format('AdminLog.ParticipantVolumeChanged', true, [participantTitle, peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionChangeHistoryTTL': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => {
+      if(action.new_value) {
+        const duration = wrapFormattedDuration(formatDuration(action.new_value));
+        return i18n('AdminLog.ChangeHistoryTTLEnabled', [makePeerTitle(peerId), duration]);
+      } else {
+        return i18n('AdminLog.ChangeHistoryTTLDisabled', [makePeerTitle(peerId)]);
+      }
+    },
+    getCopyText: async() => {
+      const {getPeerTitle} = useHotReloadGuard();
+      const dateText = getDateTextForCopy(event.date);
+      const peerTitle = await getPeerTitle({peerId, plainText: true});
+      if(action.new_value) {
+        const duration = formatDurationAsText(action.new_value);
+        const text = I18n.format('AdminLog.ChangeHistoryTTLEnabled', true, [peerTitle, duration]);
+        return {text: `${text} [${dateText}]`};
+      } else {
+        const text = I18n.format('AdminLog.ChangeHistoryTTLDisabled', true, [peerTitle]);
+        return {text: `${text} [${dateText}]`};
+      }
+    }
+  }),
+  'channelAdminLogEventActionParticipantJoinByRequest': ({peerId, action, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ParticipantJoinedByRequest', [makePeerTitle(peerId), makePeerTitle(action.approved_by.toPeerId())]),
+    getCopyText: () => createTwoPeerCopyText(
+      event.date,
+      peerId,
+      action.approved_by.toPeerId(),
+      (peerTitle, approvedByTitle) => I18n.format('AdminLog.ParticipantJoinedByRequest', true, [peerTitle, approvedByTitle])
+    )
+  }),
+  'channelAdminLogEventActionToggleNoForwards': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleNoForwardsEnabled' : 'AdminLog.ToggleNoForwardsDisabled', [makePeerTitle(peerId)]),
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleNoForwardsEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleNoForwardsDisabled', true, [peerTitle])
+      })
+    )
+  }),
+  'channelAdminLogEventActionSendMessage': ({action, peerId, makePeerTitle, event}) => isMessage(action.message) ? ({
+    type: 'default',
+    message: action.message,
+    ServiceContent: () => i18n('AdminLog.MessageSent', [makePeerTitle(peerId)]),
+    getCopyText: () => createMessageCopyText(
+      event.date,
+      peerId,
+      action.message,
+      (peerTitle) => I18n.format('AdminLog.MessageSent', true, [peerTitle])
+    )
+  }) : null,
+  'channelAdminLogEventActionChangeAvailableReactions': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ChangeAvailableReactions', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeAvailableReactions', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionChangeUsernames': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () =>
+      i18n('AdminLog.ChangeUsernames', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeUsernames', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionToggleForum': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleForumEnabled' : 'AdminLog.ToggleForumDisabled', [makePeerTitle(peerId)]),
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleForumEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleForumDisabled', true, [peerTitle])
+      })
+    )
+  }),
+  'channelAdminLogEventActionCreateTopic': ({peerId, action, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => <I18nTsx key='AdminLog.TopicCreated' args={[makePeerTitle(peerId), <TopicName topic={action.topic} />]} />,
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => {
+        const topicTitle = action.topic._ === 'forumTopicDeleted' ? '' : action.topic.title;
+        return I18n.format('AdminLog.TopicCreated', true, [peerTitle, topicTitle]);
+      }
+    )
+  }),
+  'channelAdminLogEventActionEditTopic': ({peerId, makePeerTitle, action, event}) => ({
+    type: 'service',
+    Content: () => <I18nTsx key='AdminLog.TopicEdited' args={[makePeerTitle(peerId), <TopicName topic={action.new_topic} />]} />,
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => {
+        const topicTitle = action.new_topic._ === 'forumTopicDeleted' ? '' : action.new_topic.title;
+        return I18n.format('AdminLog.TopicEdited', true, [peerTitle, topicTitle]);
+      }
+    )
+  }),
+  'channelAdminLogEventActionDeleteTopic': ({peerId, makePeerTitle, action, event}) => ({
+    type: 'service',
+    Content: () => <I18nTsx key='AdminLog.TopicDeleted' args={[makePeerTitle(peerId), <TopicName topic={action.topic} />]} />,
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => {
+        const topicTitle = action.topic._ === 'forumTopicDeleted' ? '' : action.topic.title;
+        return I18n.format('AdminLog.TopicDeleted', true, [peerTitle, topicTitle]);
+      }
+    )
+  }),
+  'channelAdminLogEventActionPinTopic': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => {
+      const pinned = !!action.new_topic;
+      const topic = action.new_topic ? action.new_topic : action.prev_topic;
+
+      return <I18nTsx key={pinned ? 'AdminLog.TopicPinned' : 'AdminLog.TopicUnpinned'} args={[makePeerTitle(peerId), <TopicName topic={topic} />]} />;
+    },
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => {
+        const pinned = !!action.new_topic;
+        const topic = action.new_topic ? action.new_topic : action.prev_topic;
+        const topicTitle = topic._ === 'forumTopic' ? topic.title : '';
+        return I18n.format(pinned ? 'AdminLog.TopicPinned' : 'AdminLog.TopicUnpinned', true, [peerTitle, topicTitle]);
+      }
+    )
+  }),
+  'channelAdminLogEventActionToggleAntiSpam': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleAntiSpamEnabled' : 'AdminLog.ToggleAntiSpamDisabled', [makePeerTitle(peerId)]),
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleAntiSpamEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleAntiSpamDisabled', true, [peerTitle])
+      })
+    )
+  }),
+  'channelAdminLogEventActionChangePeerColor': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ChangePeerColor', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangePeerColor', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionChangeProfilePeerColor': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ChangeProfilePeerColor', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeProfilePeerColor', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionChangeWallpaper': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ChangeWallpaper', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeWallpaper', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionChangeEmojiStatus': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ChangeEmojiStatus', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeEmojiStatus', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionChangeEmojiStickerSet': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ChangeEmojiStickerSet', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ChangeEmojiStickerSet', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionToggleSignatureProfiles': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleSignatureProfilesEnabled' : 'AdminLog.ToggleSignatureProfilesDisabled', [makePeerTitle(peerId)]),
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleSignatureProfilesEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleSignatureProfilesDisabled', true, [peerTitle])
+      })
+    )
+  }),
+  'channelAdminLogEventActionParticipantSubExtend': ({peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n('AdminLog.ParticipantSubscriptionExtended', [makePeerTitle(peerId)]),
+    getCopyText: () => createSimpleServiceCopyText(
+      event.date,
+      peerId,
+      (peerTitle) => I18n.format('AdminLog.ParticipantSubscriptionExtended', true, [peerTitle])
+    )
+  }),
+  'channelAdminLogEventActionToggleAutotranslation': ({action, peerId, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: () => i18n(action.new_value ? 'AdminLog.ToggleAutoTranslationEnabled' : 'AdminLog.ToggleAutoTranslationDisabled', [makePeerTitle(peerId)]),
+    getCopyText: () => createConditionalCopyText(
+      event.date,
+      peerId,
+      action.new_value,
+      (peerTitle) => ({
+        trueText: I18n.format('AdminLog.ToggleAutoTranslationEnabled', true, [peerTitle]),
+        falseText: I18n.format('AdminLog.ToggleAutoTranslationDisabled', true, [peerTitle])
+      })
+    )
+  })
+};
+
+type ResolveAdminLogArgs = RenderArgs;
+
+export const resolveAdminLog = (args: ResolveAdminLogArgs) => {
+  const {event} = args;
+  const resolver = adminLogsMap[event.action._];
+
+  if(!resolver) {
+    return null;
+  }
+
+  return resolver({...args, action: event.action as never});
+};

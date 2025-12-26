@@ -1,0 +1,122 @@
+.Container {
+  border-radius: 15px;
+  background-color: var(--surface-color);
+
+  cursor: pointer;
+
+  &:hover:not(:has(:global(.interactable:hover))) {
+    background-color: hsl(from var(--surface-color) h s calc(l - 3));
+  }
+
+  :global(.night) &:hover:not(:has(:global(.interactable:hover))) {
+    background-color: hsl(from var(--surface-color) h s calc(l + 5));
+  }
+
+  border: 1px solid rgba(0, 0, 0, 0.075);
+
+  :global(.night) & {
+    border-color: rgba(255, 255, 255, 0.025);
+  }
+}
+
+.Header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 12px;
+}
+
+.Group {
+  flex: 1;
+  min-width: 0; /* crucial – allows the item to shrink below its content width */
+}
+
+.Icon {
+  display: flex;
+  font-size: 22px;
+}
+
+.NameRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.PeerTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 1.2;
+
+  padding: 2px 4px;
+  padding-top: 3px;
+
+  border-radius: 6px;
+
+  &Text {
+    position: relative;
+    display: inline-flex;
+
+    &ClickArea {
+      position: absolute;
+      --x-offset: -4px;
+      --y-offset: -2px;
+      top: var(--y-offset);
+      left: var(--x-offset);
+      right: var(--x-offset);
+      bottom: var(--y-offset);
+
+      border-radius: 6px;
+    }
+
+    &:hover &ClickArea {
+      background-color: rgba(0, 0, 0, 0.075);
+    }
+
+    :global(.night) &:hover &ClickArea {
+      background-color: rgba(255, 255, 255, 0.12);
+    }
+  }
+}
+
+.Message {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  font-size: 14px;
+  color: var(--secondary-text-color);
+  line-height: 1.2;
+  padding-top: 2px;
+  padding-left: 4px;
+}
+
+.Date {
+  font-size: 13px;
+  line-height: 1;
+  /* color: var(--secondary-text-color); */
+  opacity: 0.4;
+  font-weight: 200;
+}
+
+.ExpandableContent {
+  font-size: 16px;
+  padding: 8px 12px 12px;
+  /* padding-bottom: 12px; */
+  border-top: 1px solid var(--background-color);
+
+  &Wrapper {
+    overflow: hidden;
+  }
+
+  &Title {
+    padding: 0 2px;
+  }
+
+  &Space {
+    height: 4px;
+  }
+}

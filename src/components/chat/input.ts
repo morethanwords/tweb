@@ -32,7 +32,7 @@ import tsNow from '../../helpers/tsNow';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '../../environment/userAgent';
 import I18n, {FormatterArguments, i18n, join, LangPackKey} from '../../lib/langPack';
-import {generateTail} from './bubbles';
+import {generateTail} from './utils';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import ButtonCorner from '../buttonCorner';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -2075,7 +2075,8 @@ export default class ChatInput {
       const {isMonoforum, canManageDirectMessages, monoforumThreadId} = this.chat;
       // console.warn('[input] finishpeerchange start');
 
-      chatInput.classList.remove('hide');
+      chatInput.classList.toggle('hide', this.chat.noInput);
+
       if(goDownBtn) {
         goDownBtn.classList.toggle('is-broadcast', isBroadcast);
         goDownBtn.classList.remove('hide');

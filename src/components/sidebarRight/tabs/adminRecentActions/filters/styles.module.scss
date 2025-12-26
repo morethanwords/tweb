@@ -1,0 +1,93 @@
+.Container {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+
+  --padding: 12px;
+  --padding-bottom: 64px;
+
+  padding: var(--padding);
+  padding-bottom: var(--padding-bottom);
+  top: 0;
+  left: 0;
+  right: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  /* height: 340px; */
+  max-height: 100%;
+
+  --backdrop-color: rgba(0, 0, 0, 0.15);
+
+  :global(.night) & {
+    --backdrop-color: rgba(0, 0, 0, 0.35);
+  }
+
+  &Backdrop {
+    &Fill {
+      z-index: -1;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: calc(100% - var(--padding-bottom));
+      background-color: var(--backdrop-color);
+    }
+
+    &Extension {
+      z-index: -1;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--padding-bottom);
+
+      /* --start-color: var(--background-color); */
+      background-image: linear-gradient(to bottom, var(--backdrop-color), transparent);
+    }
+  }
+
+
+  &EnterActive, &ExitActive {
+    transition: opacity 0.1s ease-in-out, transform 0.16s ease-in-out;
+  }
+
+  &Enter, &ExitTo {
+    opacity: 0;
+    transform: translateY(-16px) scale(1.0075);
+  }
+}
+
+.Card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  background-color: var(--surface-color);
+  border-radius: 12px;
+
+  min-height: 0;
+  padding: 16px 12px;
+
+  pointer-events: initial;
+}
+
+.Content {
+}
+
+.hideThumb {
+  :global(.scrollable-thumb) {
+    opacity: 0 !important;
+  }
+}
+
+.Overlay {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+}
+
+.TopLevelCheckbox {
+  background-color: red;
+}

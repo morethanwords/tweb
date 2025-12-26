@@ -1,0 +1,106 @@
+.Container {
+  &:not(&.vertical) {
+    user-select: text;
+    cursor: text;
+  }
+
+  &.vertical {
+    display: flex;
+
+    .Block {
+      flex: 1;
+    }
+  }
+}
+
+.Block {
+  position: relative;
+  padding: 6px 8px;
+  padding-left: 7px;
+  border-radius: 5px;
+  overflow: hidden;
+
+  color: rgba(0, 0, 0, 0.8);
+
+  :global(.night) & {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  &.added {
+    /* border-left: 3px solid rgba(40, 167, 69, 0.5); */
+    background-color: rgba(40, 167, 69, 0.2);
+  }
+
+  &.removed {
+    /* border-left: 3px solid rgba(220, 53, 69, 0.5); */
+    background-color: rgba(220, 53, 69, 0.2);
+  }
+
+  &.unroundedTop {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  &.unroundedBottom {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  &.unroundedRight {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  &.unroundedLeft {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+}
+
+.Border {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+
+  &.added {
+    background-color: rgba(40, 167, 69, 0.5);
+  }
+
+  &.removed {
+    background-color: rgba(220, 53, 69, 0.5);
+  }
+}
+
+.Line {
+  display: flex;
+}
+
+.Separator {
+  height: 1px;
+  background-color: var(--surface-color);
+}
+
+.Strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 2px;
+  padding-right: 4px;
+  opacity: 0.3;
+
+  user-select: none;
+
+  font-size: 14px;
+
+  :global(.night) & {
+    opacity: 0.5;
+  }
+}
+
+.Content {
+  flex: 1;
+  word-break: break-word;
+  white-space: pre-wrap;
+}

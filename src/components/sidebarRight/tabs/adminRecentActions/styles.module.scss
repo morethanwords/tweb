@@ -1,0 +1,26 @@
+.IconsFlex {
+  display: flex;
+  align-items: center;
+}
+
+.Item {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  padding: 6px 12px;
+
+  top: var(--top, 0px);
+  transform: translateY(var(--translation, 0px));
+
+  &.hidden {
+    opacity: 0;
+  }
+}
+
+.absolute {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+}

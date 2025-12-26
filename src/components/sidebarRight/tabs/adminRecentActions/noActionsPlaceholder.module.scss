@@ -1,0 +1,35 @@
+.Overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 32px
+}
+
+.Container {
+  padding: 24px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  text-align: center;
+
+  background-color: var(--surface-color);
+  border: 1px solid rgba(0, 0, 0, 0.075);
+  border-radius: 16px;
+  max-width: 300px;
+}
+
+.Icon {
+  font-size: 64px;
+  margin-bottom: 10px;
+}
+
+.Title {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 10px;
+}

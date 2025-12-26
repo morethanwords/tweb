@@ -10,12 +10,10 @@ import {i18n, LangPackKey} from '../../../../lib/langPack';
 import {usePromiseCollector} from '../../../solidJsTabs/promiseCollector';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
 import type {AppPasscodeLockTab} from '../../../solidJsTabs';
-import confirmationPopup from '../../../confirmationPopup';
 import type SliderSuperTab from '../../../sliderTab';
 import ripple from '../../../ripple'; ripple; // keep
 import StaticSwitch from '../../../staticSwitch';
 import Section from '../../../section';
-import Row from '../../../rowTsx';
 import Space from '../../../space';
 
 import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
@@ -24,7 +22,6 @@ import InlineSelect from './inlineSelect';
 
 import commonStyles from './common.module.scss';
 import styles from './mainTab.module.scss';
-import {useAppSettings} from '../../../../stores/appSettings';
 
 
 type AppPasscodeLockTabType = typeof AppPasscodeLockTab;
@@ -138,7 +135,7 @@ const PasscodeSetContent: Component<{
 }> = (props) => {
   const [tab, {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppPrivacyAndSecurityTab}] = useSuperTab<AppPasscodeLockTabType>();
   const {disablePasscode, changePasscode} = usePasscodeActions();
-  const {rootScope, setQuizHint} = useHotReloadGuard();
+  const {rootScope, setQuizHint, Row, useAppSettings, confirmationPopup} = useHotReloadGuard();
   const [, setAppSettings] = useAppSettings();
 
   const options = [

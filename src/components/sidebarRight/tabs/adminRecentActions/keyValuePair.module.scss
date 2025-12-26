@@ -1,0 +1,33 @@
+.Container {
+  position: relative;
+  overflow: hidden;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  padding: 3px 8px 2px 9px;
+  border-radius: 5px;
+
+  font-size: 14px;
+
+  background-color: rgba(var(--primary-color-rgb), 0.2);
+
+  &.hoverable:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.35);
+  }
+}
+
+.Value {
+  font-weight: 500;
+}
+
+.Border {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+
+  background-color: rgba(var(--primary-color-rgb), 0.5);
+}

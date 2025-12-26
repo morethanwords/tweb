@@ -1,0 +1,36 @@
+@import '../../../../scss/variables';
+@import '../../../../scss/mixins';
+
+.Placeholder {
+  opacity: 0;
+}
+
+.Icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+
+  transform: translate(-50%, -50%) translateY(var(--translate-y)) rotate(var(--rotate)) scale(0.75);
+
+  @include animation-level-global(2) {
+    transition: transform 0.1s;
+  }
+
+  &.first {
+    --rotate: 180deg;
+    --translate-y: -5px;
+
+    &.toggled {
+      --translate-y: 5px;
+    }
+  }
+
+  &.second {
+    --rotate: 0deg;
+    --translate-y: 5px;
+
+    &.toggled {
+      --translate-y: -5px;
+    }
+  }
+}

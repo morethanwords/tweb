@@ -9,6 +9,9 @@ const Button = (props: Partial<{
   as: 'a' | 'div' | 'button',
   class: string,
   disabled: boolean,
+  primaryFilled: boolean,
+  primary: boolean,
+  large: boolean,
   children: JSX.Element,
   icon: Icon,
   iconAfter: Icon,
@@ -27,6 +30,9 @@ const Button = (props: Partial<{
       component={props.as || 'button'}
       class={classNames(
         props.class,
+        props.primaryFilled && 'btn-primary btn-color-primary',
+        props.primary && 'btn btn-primary primary',
+        props.large && 'btn-large',
         props.onlyMobile && 'only-handhelds'
       )}
       disabled={props.disabled}

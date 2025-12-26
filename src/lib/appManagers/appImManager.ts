@@ -134,6 +134,7 @@ import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport
 import ChatAudio from '../../components/chat/audio';
 import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
 import {getRgbColorFromTelegramColor, rgbIntToHex} from '../../helpers/color';
+import {MyMessage} from './appMessagesManager';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -155,7 +156,8 @@ export type ChatSetPeerOptions = {
   entities?: MessageEntity[],
   call?: string | number,
   isDeleting?: boolean,
-  fromTemporaryThread?: boolean
+  fromTemporaryThread?: boolean,
+  messages?: MyMessage[]
 } & Partial<ChatSearchKeys>;
 
 export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
@@ -2763,6 +2765,8 @@ export class AppImManager extends EventListenerBase<{
     return options1.peerId === options2.peerId &&
       options1.threadId === options2.threadId &&
       options1.monoforumThreadId === options2.monoforumThreadId &&
+      (options1.type !== ChatType.Static && options2.type !== ChatType.Static) &&
+      (options1.type !== ChatType.Logs && options2.type !== ChatType.Logs) &&
       (typeof(options1.type) !== typeof(options2.type) || options1.type === options2.type);
   }
 

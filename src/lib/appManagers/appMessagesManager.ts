@@ -198,7 +198,7 @@ export type PinnedStorage = Partial<{
   maxId: number
 }>;
 export type MessagesStorage = Map<number, Message.message | Message.messageService> & {peerId: PeerId, type: MessagesStorageType, key: MessagesStorageKey};
-export type MessagesStorageType = 'scheduled' | 'history' | 'grouped';
+export type MessagesStorageType = 'scheduled' | 'history' | 'grouped' | 'logs';
 export type MessagesStorageKey = `${PeerId}_${MessagesStorageType}`;
 
 export type MyMessageActionType = Message.messageService['action']['_'];
@@ -399,6 +399,8 @@ export class AppMessagesManager extends AppManager {
   private messagesStorageByPeerId: {[peerId: string]: MessagesStorage};
   private groupedMessagesStorage: {[groupId: string]: MessagesStorage}; // will be used for albums
   private scheduledMessagesStorage: {[peerId: PeerId]: MessagesStorage};
+  private logsMessagesStorage: {[peerId: PeerId]: MessagesStorage}; // messages extracted from admin logs
+
   private historiesStorage: {
     [peerId: PeerId]: HistoryStorage
   };
@@ -731,6 +733,7 @@ export class AppMessagesManager extends AppManager {
     this.messagesStorageByPeerId = {};
     this.groupedMessagesStorage = {};
     this.scheduledMessagesStorage = {};
+    this.logsMessagesStorage = {};
     this.historiesStorage = {};
     this.threadsStorage = {};
     this.searchesStorage = {};
@@ -3787,6 +3790,10 @@ export class AppMessagesManager extends AppManager {
     return this.messagesStorageByPeerId[peerId] ??= this.createMessageStorage(peerId, 'history');
   }
 
+  public getLogsMessagesStorage(peerId: PeerId) {
+    return this.logsMessagesStorage[peerId] ??= this.createMessageStorage(peerId, 'logs');
+  }
+
   public getGlobalHistoryMessagesStorage() {
     return this.getHistoryMessagesStorage(GLOBAL_HISTORY_PEER_ID);
   }
@@ -3826,6 +3833,14 @@ export class AppMessagesManager extends AppManager {
     }
 
     return this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), messageId);
+  }
+
+  public getMessageByPeerOrFromLogs(peerId: PeerId, messageId: number) {
+    if(!peerId) {
+      return this.getMessageById(messageId);
+    }
+
+    return this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), messageId) || this.getMessageFromStorage(this.getLogsMessagesStorage(peerId), messageId);
   }
 
   public getMessagePeer(message: any): PeerId {
@@ -9203,7 +9218,9 @@ export class AppMessagesManager extends AppManager {
   }
 
   private clearMessageReplyTo(message: MyMessage) {
-    message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
+    if(!message) return;
+    message = this.getMessageByPeerOrFromLogs(message.peerId, message.mid); // message can come from other thread
+    if(!message) return;
     this.modifyMessage(message, (message) => {
       delete message.reply_to_mid; // ! WARNING!
       delete message.reply_to; // ! WARNING!
@@ -9211,8 +9228,9 @@ export class AppMessagesManager extends AppManager {
   }
 
   public fetchMessageReplyTo(message: MyMessage) {
-    message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
-    if(!message.reply_to) return Promise.resolve(this.generateEmptyMessage(0));
+    if(!message) return Promise.resolve(this.generateEmptyMessage(0));
+    message = this.getMessageByPeerOrFromLogs(message.peerId, message.mid); // message can come from other thread
+    if(!message?.reply_to) return Promise.resolve(this.generateEmptyMessage(0));
     const replyTo = message.reply_to;
     if(replyTo._ === 'messageReplyStoryHeader') {
       const result = this.appStoriesManager.getStoryById(this.appPeersManager.getPeerId(replyTo.peer), replyTo.story_id);
@@ -10046,6 +10064,11 @@ export class AppMessagesManager extends AppManager {
         reply_to_msg_id: threadId
       }
     } satisfies Message.message;
+  }
+
+  public saveLogsMessage(peerId: PeerId, message: MyMessage) {
+    this.saveMessages([message], {storage: this.getLogsMessagesStorage(peerId)});
+    return message;
   }
 }
 

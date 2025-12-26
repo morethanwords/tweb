@@ -2,6 +2,7 @@ import {Accessor, createMemo, createRenderEffect, createRoot, onCleanup} from 's
 import {createStore, Store} from 'solid-js/store';
 
 import pickKeys from '../helpers/object/pickKeys';
+import {requestRAF} from '../helpers/solid/requestRAF';
 
 
 type SizeRoot = {
@@ -22,8 +23,25 @@ const createSizeRoot = (element: Accessor<Element>) => createRoot(dispose => {
 
     setStore(pickKeys(element().getBoundingClientRect(), ['width', 'height']));
 
+    let callback: () => void, isQueued = false;
+
     const resizeObserver = new ResizeObserver(([entry]) => {
-      setStore(pickKeys(entry.contentRect, ['width', 'height']));
+      const boxSize = entry.borderBoxSize[0];
+      if(!boxSize) return;
+
+      callback = () => setStore({
+        width: boxSize.inlineSize,
+        height: boxSize.blockSize
+      });
+
+      if(isQueued) return;
+      isQueued = true;
+
+      requestRAF(() => {
+        callback?.();
+        callback = undefined;
+        isQueued = false;
+      });
     });
 
     resizeObserver.observe(element());

@@ -138,6 +138,10 @@
   @include animation-level-global(2) {
     transition: all .2s, font-weight .05s 0.1s;
   }
+
+  &.noTransition {
+    transition: none !important;
+  }
 }
 
 .SideContent {

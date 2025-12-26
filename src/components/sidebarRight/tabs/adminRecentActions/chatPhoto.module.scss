@@ -1,0 +1,34 @@
+.Container {
+  padding: 8px;
+  padding-right: 16px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  &.rounded .Photo {
+    border-radius: 50%;
+  }
+
+  &.forum .Photo {
+    border-radius: 40%;
+  }
+}
+
+.Photo {
+  position: relative;
+
+  width: 100% !important;
+  height: unset !important;
+  max-width: 120px;
+  border-radius: 6px;
+
+  aspect-ratio: 1;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}

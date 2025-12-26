@@ -1,0 +1,33 @@
+.Container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.Button {
+  flex: 1;
+  height: 2.5rem;
+  overflow: hidden;
+
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+
+  &.added {
+    background-color: rgba(40, 167, 69, 0.7);
+
+    &:hover {
+      background-color: rgba(40, 167, 69, 1);
+    }
+  }
+
+  &.removed {
+    background-color: rgba(220, 53, 69, 0.7);
+
+    &:hover {
+      background-color: rgba(220, 53, 69, 1);
+    }
+  }
+}

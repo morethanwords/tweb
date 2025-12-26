@@ -41,6 +41,10 @@ import PopupBoost from '../../popups/boost';
 import namedPromises from '../../../helpers/namedPromises';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import {AppDirectMessagesTab} from '../../solidJsTabs';
+import {AppAdminRecentActionsTab} from '../../solidJsTabs/tabs';
+import appImManager from '../../../lib/appManagers/appImManager';
+import {ChatType} from '../../chat/chat';
+import {appSettings} from '../../../stores/appSettings';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -397,6 +401,26 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         section.caption.replaceChildren(i18n('DiscussionInfo'));
         section.content.append(discussionRow.container);
+      }
+
+      if(isAdmin) {
+        const recentActionsRow = new Row({
+          icon: 'clipboard',
+          titleLangKey: 'RecentActions',
+          clickable: () => {
+            if(appSettings.logsDiffView) {
+              this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
+            } else {
+              appImManager.setPeer({
+                peerId: this.chatId.toPeerId(true),
+                type: ChatType.Logs
+              });
+            }
+          },
+          listenerSetter: this.listenerSetter
+        });
+
+        section.content.append(recentActionsRow.container);
       }
 
       if(canManageTopics && isAdmin && (chat.participants_count >= appConfig.forum_upgrade_participants_min || (chat as Chat.channel).pFlags.forum) && !isBroadcast) {

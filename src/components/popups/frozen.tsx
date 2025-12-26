@@ -28,7 +28,7 @@ export default function showFrozenPopup() {
   const rows: [Icon, HTMLElement, HTMLElement][] = [
     ['hand', i18n('Frozen.Violation.Title'), i18n('Frozen.Violation.Subtitle')],
     ['lock', i18n('Frozen.ReadOnly.Title'), i18n('Frozen.ReadOnly.Subtitle')],
-    ['hourglass', i18n('Frozen.Appeal.Title'), i18n('Frozen.Appeal.Subtitle', [anchor, formatDate(new Date(appConfig.freeze_until_date * 1000), undefined, true)])]
+    ['hourglass', i18n('Frozen.Appeal.Title'), i18n('Frozen.Appeal.Subtitle', [anchor, formatDate(new Date(appConfig.freeze_until_date * 1000), {withTime: true})])]
   ];
 
   createPopup(() => (

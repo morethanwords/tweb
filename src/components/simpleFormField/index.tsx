@@ -1,4 +1,5 @@
-import {Accessor, createContext, createSignal, JSX, mergeProps, onMount, ParentProps, Setter, splitProps, useContext, createEffect, batch} from 'solid-js';
+import {Accessor, batch, createContext, createSignal, JSX, onMount, ParentProps, Ref, Setter, splitProps, useContext} from 'solid-js';
+import {requestRAF} from '../../helpers/solid/requestRAF';
 import styles from './styles.module.scss';
 
 
@@ -63,9 +64,10 @@ const SimpleFormField = (inProps: ParentProps<{
 };
 
 SimpleFormField.Input = (inProps: {
+  ref?: Ref<HTMLInputElement>;
   forceFieldValue?: boolean;
 } & Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onInput' | 'ref'>) => {
-  const [props, restProps] = splitProps(inProps, ['class', 'classList', 'forceFieldValue']);
+  const [props, restProps] = splitProps(inProps, ['ref', 'class', 'classList', 'forceFieldValue']);
 
   const context = useContext(Context);
 
@@ -74,6 +76,7 @@ SimpleFormField.Input = (inProps: {
       ref={(el) => batch(() => {
         context.setInput(el);
         context.setOffsetElement(el);
+        if(props.ref instanceof Function) props.ref(el);
       })}
       class={styles.Input}
       classList={{
@@ -110,6 +113,7 @@ SimpleFormField.Label = (props: ParentProps<{
   const context = useContext(Context);
 
   const [offset, setOffset] = createSignal(0);
+  const [noTransition, setNoTransition] = createSignal(true);
 
   onMount(() => {
     if(props.forceOffset || !context.offsetElement()) return;
@@ -121,11 +125,18 @@ SimpleFormField.Label = (props: ParentProps<{
     setOffset(inputRect.left - rect.left);
   });
 
+  onMount(() => {
+    requestRAF(() => {
+      setNoTransition(false);
+    });
+  });
+
   return (
     <div
       class={styles.Label}
       classList={{
-        [styles.active]: props.active || !!context.value()
+        [styles.active]: props.active || !!context.value(),
+        [styles.noTransition]: noTransition()
       }}
       style={{
         '--offset': `${props.forceOffset || offset()}px`

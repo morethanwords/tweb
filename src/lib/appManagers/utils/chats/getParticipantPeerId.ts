@@ -14,6 +14,6 @@ export default function getParticipantPeerId(participant: PeerId | ChannelPartic
 
   const peerId = (participant as ChannelParticipant.channelParticipantBanned).peer ?
     getPeerId((participant as ChannelParticipant.channelParticipantBanned).peer) :
-    (participant as ChatParticipant.chatParticipant).user_id.toPeerId();
+    (participant as ChatParticipant.chatParticipant).user_id?.toPeerId();
   return peerId;
 }
