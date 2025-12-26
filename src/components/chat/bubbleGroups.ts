@@ -97,7 +97,10 @@ export class BubbleGroup {
       const entry = this.chat.bubbles.resolveAdminLogUnsafe({log, noJsx: true});
 
       if(entry?.type === 'default') {
-        if(entry.message._ === 'message') return getPeerId(entry.message.from_id);
+        if(entry.message._ === 'message') return getPeerId(
+          entry.message.from_id ||
+          entry.message.peer_id
+        );
       }
 
       return log?.user_id?.toPeerId();
