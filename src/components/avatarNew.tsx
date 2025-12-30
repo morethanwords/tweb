@@ -19,7 +19,7 @@ import {
   Show,
   Accessor,
   on,
-  splitProps, onMount
+  createComputed
 } from 'solid-js';
 import rootScope from '../lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
@@ -48,6 +48,7 @@ import currencyStarIcon from './currencyStarIcon';
 import {ActiveAccountNumber} from '../lib/accounts/types';
 import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
 import {appSettings} from '../stores/appSettings';
+import {createAutoDeleteIcon} from './chat/utils';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -336,6 +337,7 @@ export const AvatarNew = (props: {
   processImageOnLoad?: (image: HTMLImageElement) => void,
   meAsNotes?: boolean,
   asAllChats?: boolean,
+  autoDeletePeriod?: number,
   onStoriesStatus?: (has: boolean) => void,
   class?: string
 }) => {
@@ -354,6 +356,10 @@ export const AvatarNew = (props: {
     colors: props.storyColors,
     isStoryFolded: props.isStoryFolded
   });
+
+  const [autoDeletePeriod, setAutoDeletePeriod] = createSignal<number>();
+
+  createComputed(() => setAutoDeletePeriod(props.autoDeletePeriod ?? 0));
 
   const readyPromise = deferredPromise<void>();
   const readyThumbPromise = deferredPromise<void>();
@@ -810,6 +816,7 @@ export const AvatarNew = (props: {
       'is-forum': isForum(),
       'is-topic': isTopic(),
       'is-monoforum': isMonoforum(),
+      'is-relative': !!autoDeletePeriod(),
       'avatar-relative': !!thumb() || isSubscribed()
     };
   };
@@ -835,6 +842,7 @@ export const AvatarNew = (props: {
       {thumb()}
       {[media(), abbreviature()].find(Boolean)}
       {isSubscribed() && currencyStarIcon({class: 'avatar-star', stroke: true})}
+      {autoDeletePeriod() && <div class="avatar-auto-delete-timer">{createAutoDeleteIcon(autoDeletePeriod())}</div>}
     </>
   );
 
@@ -882,6 +890,7 @@ export const AvatarNew = (props: {
     setIcon,
     setStoriesSegments,
     setIsSubscribed,
+    setAutoDeletePeriod,
     updateStoriesSegments,
     set,
     color

@@ -688,11 +688,14 @@ export default class ChatContextMenu {
         return this.canViewReadTime !== undefined;
       }
     }, createSubmenuTrigger({
-      icon: 'more',
-      get regularText() { return self.checklistItem ? wrapEmojiTextWithEntities(self.checklistItem.item.title) : undefined },
-      verify: () => this.checklistItem !== undefined,
-      separatorDown: true
-    }, this.createChecklistItemSubmenu) as ChatContextMenuButton, {
+      options: {
+        icon: 'more',
+        get regularText() { return self.checklistItem ? wrapEmojiTextWithEntities(self.checklistItem.item.title) : undefined },
+        verify: () => this.checklistItem !== undefined,
+        separatorDown: true
+      },
+      createSubmenu: this.createChecklistItemSubmenu
+    }) as ChatContextMenuButton, {
       icon: 'send2',
       text: 'MessageScheduleSend',
       onClick: this.onSendScheduledClick,

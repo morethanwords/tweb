@@ -97,6 +97,7 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   }
 
   if(iconElement) {
+    iconElement.classList.add('btn-menu-item-icon');
     el.append(iconElement);
   } else if(iconSplitted) {
     el.append(Icon(iconSplitted[0] as Icon, 'btn-menu-item-icon'));

@@ -187,7 +187,7 @@
     cursor: pointer;
   }
 
-  &.avatar-relative {
+  &.avatar-relative, &.is-relative {
     position: relative;
   }
 
@@ -228,6 +228,25 @@
     overflow: unset;
     pointer-events: none;
     z-index: 1;
+  }
+
+  &-auto-delete-timer {
+    position: absolute;
+    right: -4px;
+    bottom: -2px;
+    z-index: 1;
+
+    border-radius: 50%;
+    font-size: 1.25rem;
+    padding: 1px;
+
+    pointer-events: none;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background-color: rgba(0, 0, 0, 0.75);
   }
 
   &.has-stories {

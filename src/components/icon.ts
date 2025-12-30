@@ -7,6 +7,16 @@ export function getIconContent(icon: Icon) {
   return String.fromCharCode(parseInt(Icons[icon], 16));
 }
 
+export function OverlayedIcon(icons: Icon[]) {
+  const span = document.createElement('span');
+  span.classList.add('overlayed-icon');
+
+  span.append(Icon(icons[0]));
+  span.append(...icons.slice(1).map(icon => Icon(icon, 'overlayed-icon__floating-icon')));
+
+  return span;
+}
+
 export default function Icon(icon: Icon, ...classes: string[]) {
   const span = document.createElement('span');
   if(I18n.isRTL && IconsReverse.has(icon)) {

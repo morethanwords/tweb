@@ -488,7 +488,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
             langPackKey = 'ActionTTLYouChanged';
           } else {
             langPackKey = 'ActionTTLChanged';
-            args.push(getNameDivHTML(message.fromId, plain));
+            args.push(await getNameDivHTML(message.fromId, plain));
           }
 
           let duration: ReturnType<typeof wrapCallDuration>;

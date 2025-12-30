@@ -241,6 +241,8 @@ export type BroadcastEvents = {
 
   'botforum_pending_topic_created': {peerId: PeerId, tempId: number, newId?: number},
   'promo_data_update': MyPromoData,
+
+  'auto_delete_period_update': {peerId: PeerId, period: number},
 };
 
 export type BroadcastEventsListeners = {

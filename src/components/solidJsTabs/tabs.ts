@@ -88,3 +88,13 @@ export const AppPasskeysTab =
     getComponentModule: () => import('../sidebarLeft/tabs/passkeys')
   });
 
+type AppMessagesAutoDeleteTabPayload = {
+  period: number;
+  onSaved: (period: number) => void;
+};
+
+export const AppMessagesAutoDeleteTab =
+  scaffoldSolidJSTab<AppMessagesAutoDeleteTabPayload>({
+    title: 'AutoDeleteMessages',
+    getComponentModule: () => import('../sidebarLeft/tabs/autoDeleteMessages')
+  });

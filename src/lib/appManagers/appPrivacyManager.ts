@@ -114,4 +114,20 @@ export class AppPrivacyManager extends AppManager {
     });
     await this.setContentSettings({sensitive_enabled: true});
   }
+
+  public async getDefaultAutoDeletePeriod() {
+    const result = await this.apiManager.invokeApi('messages.getDefaultHistoryTTL');
+    return result.period;
+  }
+
+  public async setDefaultAutoDeletePeriod(period: number) {
+    return this.apiManager.invokeApi('messages.setDefaultHistoryTTL', {period});
+  }
+
+  public async setAutoDeletePeriodFor(peerId: PeerId, period: number) {
+    return this.apiManager.invokeApi('messages.setHistoryTTL', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      period
+    });
+  }
 }

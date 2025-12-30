@@ -304,3 +304,13 @@ $popup-footer-abitlarger-padding: 1rem;
     margin-bottom: 0.5rem;
   }
 }
+
+.auto-delete-messages-custom-time-popup {
+  .popup-container {
+    max-width: 340px !important;
+  }
+
+  .popup-header {
+    margin-bottom: 0.5rem;
+  }
+}

@@ -51,6 +51,8 @@ import IS_WEB_AUTHN_SUPPORTED from '../../../environment/webAuthn';
 import {createStore, SetStoreFunction} from 'solid-js/store';
 import {createEffect, createRoot} from 'solid-js';
 import showPasskeyPopup from '../../popups/passkey';
+import {AppMessagesAutoDeleteTab} from '../../solidJsTabs/tabs';
+import {findExistingOrCreateCustomOption} from './autoDeleteMessages/options';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -222,10 +224,33 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       });
       websitesRow.freezed = true;
 
+      let autoDeletePeriod: number;
+
+      const autoDeleteMessagesRowOptions: ConstructorParameters<typeof Row>[0] = {
+        icon: 'auto_delete_circle_clock',
+        titleLangKey: 'AutoDeleteMessages',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          if(isNaN(autoDeletePeriod)) return;
+          this.slider.createTab(AppMessagesAutoDeleteTab).open({
+            period: autoDeletePeriod,
+            onSaved: (period) => {
+              autoDeletePeriod = period;
+              updateAutoDeleteRow();
+            }
+          });
+        },
+        listenerSetter: this.listenerSetter
+      };
+
+      const autoDeleteMessagesRow = new Row(autoDeleteMessagesRowOptions);
+      autoDeleteMessagesRow.freezed = true;
+
       section.content.append(
         blockedUsersRow.container,
         websitesRow.container,
         activeSessionsRow.container,
+        autoDeleteMessagesRow.container,
         passcodeLockRow.container,
         twoFactorRow.container,
         passkeyRow.container
@@ -289,6 +314,21 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
       this.updateActiveSessions();
       promises.push(this.updateActiveWebsites(p.webAuthorizations));
+
+
+      function updateAutoDeleteRow() {
+        autoDeleteMessagesRow.subtitle.replaceChildren(
+          !autoDeletePeriod ?
+            i18n('Off') :
+            findExistingOrCreateCustomOption(autoDeletePeriod).label()
+        );
+      }
+
+      (async() => {
+        autoDeletePeriod = await this.managers.appPrivacyManager.getDefaultAutoDeletePeriod();
+        updateAutoDeleteRow();
+        autoDeleteMessagesRow.freezed = false;
+      })();
     }
 
     {

@@ -1,0 +1,8 @@
+.MenuContainer {
+  position: relative;
+}
+
+.Menu {
+  left: 50%;
+  --transform-extra: translate(-50%, -25%);
+}

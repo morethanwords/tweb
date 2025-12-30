@@ -1,8 +1,10 @@
 import {Component, Show} from 'solid-js';
-import {IconTsx} from '../../../../iconTsx';
-import ripple from '../../../../ripple';
-import AppearZoomTransition from './appearZoomTransition';
-ripple; // keep
+import {keepMe} from '../helpers/keepMe';
+import {IconTsx} from './iconTsx';
+import ripple from './ripple';
+import AppearZoomTransition from './sidebarLeft/tabs/privacy/messages/appearZoomTransition';
+
+keepMe(ripple);
 
 
 const SaveButton: Component<{

@@ -1,9 +1,12 @@
 import {formatFullSentTimeRaw, formatTime} from '../../helpers/date';
+import {DurationType} from '../../helpers/formatDuration';
 import {Message} from '../../layer';
 import {AdminLog} from '../../lib/appManagers/appChatsManager';
 import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
+import Icon, {OverlayedIcon} from '../icon';
+import {findMatchingCustomOption} from '../sidebarLeft/tabs/autoDeleteMessages/options';
 
 
 export function isMessageForVerificationBot(message: MyMessage) {
@@ -62,3 +65,73 @@ export function linkColor(el: string | Node) {
 
   return el;
 }
+
+const typeToIcon: Partial<Record<DurationType, Icon>> = {
+  [DurationType.Days]: 'auto_delete_circle_days',
+  [DurationType.Weeks]: 'auto_delete_circle_weeks',
+  [DurationType.Months]: 'auto_delete_circle_months',
+  [DurationType.Years]: 'auto_delete_circle_years'
+};
+
+const durationToIcon: Partial<Record<number, Icon>> = {
+  1: 'auto_delete_circle_1',
+  2: 'auto_delete_circle_2',
+  3: 'auto_delete_circle_3',
+  4: 'auto_delete_circle_4',
+  5: 'auto_delete_circle_5',
+  6: 'auto_delete_circle_6'
+};
+
+export function createAutoDeleteIcon(period?: number) {
+  const defaultResult = () => Icon('auto_delete_circle_clock');
+
+  if(!period) return defaultResult();
+
+  const option = findMatchingCustomOption(period);
+  if(!option) return defaultResult();
+
+  const durationIcon = durationToIcon[option.duration];
+  const typeIcon = typeToIcon[option.type];
+
+  if(!durationIcon || !typeIcon) return defaultResult();
+
+  return OverlayedIcon(['auto_delete_circle_empty', durationIcon, typeIcon])
+}
+
+
+/*
+// TODO: Backup, Cleanup
+
+  const typeToLetter: Partial<Record<DurationType, string>> = {
+    [DurationType.Days]: 'D',
+    [DurationType.Weeks]: 'W',
+    [DurationType.Months]: 'M',
+    [DurationType.Years]: 'Y'
+  };
+
+  export function createAutoDeleteIcon(period?: number) {
+    const defaultResult = () => Icon('auto_delete_circle_clock');
+
+    if(!period) return defaultResult();
+
+    const option = findMatchingCustomOption(period);
+    if(!option || option.duration > 9) return defaultResult();
+
+    const letter = typeToLetter[option.type];
+    if(!letter) return defaultResult();
+
+    const span = document.createElement('span');
+    span.classList.add('auto-delete-icon');
+
+    span.append(Icon('auto_delete_circle_empty'));
+
+    const durationSpan = document.createElement('span');
+    durationSpan.classList.add('auto-delete-icon__duration');
+    durationSpan.textContent = `${option.duration}${letter}`;
+
+    span.append(durationSpan)
+
+    return span;
+  }
+
+*/

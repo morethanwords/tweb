@@ -641,16 +641,22 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     const moreSubmenu = createSubmenuTrigger({
-      text: 'MultiAccount.More',
-      icon: 'more'
-    }, (args) => this.createMoreSubmenu(args, closeTabsBefore));
+      options: {
+        text: 'MultiAccount.More',
+        icon: 'more'
+      },
+      createSubmenu: (args) => this.createMoreSubmenu(args, closeTabsBefore)
+    });
 
     const newSubmenu = createSubmenuTrigger({
-      text: 'CreateANew',
-      icon: 'edit',
-      verify: () => this.isCollapsed(),
-      separator: true
-    }, () => this.createNewChatsSubmenu());
+      options: {
+        text: 'CreateANew',
+        icon: 'edit',
+        verify: () => this.isCollapsed(),
+        separator: true
+      },
+      createSubmenu: () => this.createNewChatsSubmenu()
+    });
 
     const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
       icon: 'plus',
