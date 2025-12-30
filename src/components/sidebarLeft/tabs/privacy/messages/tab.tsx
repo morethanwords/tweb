@@ -1,20 +1,15 @@
 import {createEffect, createSignal, Show} from 'solid-js';
 import {Portal} from 'solid-js/web';
-
-import {logger} from '../../../../../lib/logger';
 import DEBUG from '../../../../../config/debug';
-
+import useIsConfirmationNeededOnClose from '../../../../../hooks/useIsConfirmationNeededOnClose';
+import {logger} from '../../../../../lib/logger';
+import SaveButton from '../../../../saveButton';
 import {useSuperTab} from '../../../../solidJsTabs/superTabProvider';
-import {IconTsx} from '../../../../iconTsx';
-
-import useIsConfirmationNeededOnClose from './useIsConfirmationNeededOnClose';
-import AppearZoomTransition from './appearZoomTransition';
+import OptionsSection from './optionsSection';
 import PaidSettingsSection from './paidSettingsSection';
 import useSaveSettings from './useSaveSettings';
-import OptionsSection from './optionsSection';
-import useStateStore from './useStateStore';
 import useSettings from './useSettings';
-import SaveButton from './saveButton';
+import useStateStore from './useStateStore';
 
 
 const log = logger('MessagesPrivacyTab');
@@ -44,7 +39,6 @@ const MessagesTab = () => {
   });
 
   tab.isConfirmationNeededOnClose = useIsConfirmationNeededOnClose({hasChanges, saveAllSettings, descriptionLangKey: 'UnsavedChangesDescription.Privacy'});
-
 
   const [exitAnimationPromise, setExitAnimationPromise] = createSignal<Promise<any>>();
 

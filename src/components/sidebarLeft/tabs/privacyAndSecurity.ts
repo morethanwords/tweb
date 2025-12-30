@@ -47,6 +47,8 @@ import useContentSettings from '../../../stores/contentSettings';
 import AppPrivacyBirthdayTab from './privacy/birthday';
 import ChangeLoginEmailTab from './changeLoginEmail';
 import {wrapEmailPattern} from '../../popups/emailSetup';
+import {AppMessagesAutoDeleteTab} from '../../solidJsTabs/tabs';
+import {tryFindMatchingCustomOption} from '../../sidebarRight/tabs/autoDeleteMessages/options';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -433,6 +435,36 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         });
       };
 
+      let autoDeletePeriod: number;
+
+      const autoDeleteMessagesRow = new Row({
+        title: i18n('AutoDeleteMessages'),
+        subtitle: SUBTITLE,
+        clickable: () => {
+          if(isNaN(autoDeletePeriod)) return;
+          this.slider.createTab(AppMessagesAutoDeleteTab).open({
+            period: autoDeletePeriod,
+            onSaved: (period) => {
+              autoDeletePeriod = period;
+              updateAutoDeleteRow();
+            }
+          });
+        }
+      });
+
+      function updateAutoDeleteRow() {
+        autoDeleteMessagesRow.subtitle.replaceChildren(
+          !autoDeletePeriod ?
+            i18n('Off') :
+            tryFindMatchingCustomOption(autoDeletePeriod).label()
+        );
+      }
+
+      (async() => {
+        autoDeletePeriod = await this.managers.appPrivacyManager.getDefaultAutoDeletePeriod();
+        updateAutoDeleteRow();
+      })();
+
       section.content.append(...[
         numberVisibilityRow,
         lastSeenTimeRow,
@@ -443,7 +475,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         groupChatsAddRow,
         voicesRow,
         messagesRow,
-        birthdayRow
+        birthdayRow,
+        autoDeleteMessagesRow
       ].filter(Boolean).map((row) => row.container));
       this.scrollable.append(section.container);
 

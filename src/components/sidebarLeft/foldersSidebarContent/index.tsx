@@ -1,13 +1,13 @@
-import {batch, createEffect, createRoot, createSelector, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
+import {batch, createEffect, createSelector, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 import createFolderContextMenu from '../../../helpers/dom/createFolderContextMenu';
+import {keepMe} from '../../../helpers/keepMe';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import {Middleware} from '../../../helpers/middleware';
 import pause from '../../../helpers/schedulers/pause';
 import Animated from '../../../helpers/solid/animations';
-import {i18n} from '../../../lib/langPack';
 import {logger, LogTypes} from '../../../lib/logger';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
@@ -21,7 +21,8 @@ import extractEmojiFromFilterTitle, {ExtractEmojiFromFilterTitleResult} from './
 import FolderItem from './folderItem';
 import type {FolderItemPayload} from './types';
 import {getFolderItemsInOrder, getIconForFilter, getNotificationCountForFilter} from './utils';
-ripple; // keep
+
+keepMe(ripple);
 
 
 const log = logger('FoldersSidebarContent', LogTypes.Debug);
@@ -44,7 +45,8 @@ export function FoldersSidebarContent(props: {
     appSidebarLeft,
     AppChatFoldersTab,
     AppEditFolderTab,
-    showLimitPopup
+    showLimitPopup,
+    i18n
   } = useHotReloadGuard();
 
   const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);

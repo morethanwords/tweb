@@ -1,17 +1,13 @@
 import {Component, Show} from 'solid-js';
 import {SetStoreFunction} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
-
-import {i18n, join} from '../../../../../lib/langPack';
-
-import {useSuperTab} from '../../../../solidJsTabs/superTabProvider';
+import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import Section from '../../../../section';
-import Row from '../../../../rowTsx';
-
-import useStarsCommissionAndWithdrawalPrice from './useStarsCommissionAndWithdrawalPrice';
+import {useSuperTab} from '../../../../solidJsTabs/superTabProvider';
 import {MessagesTabStateStore, TRANSITION_TIME} from './config';
-import {ChosenPeersByType} from './useStateStore';
 import StarRangeInput from './starsRangeInput';
+import useStarsCommissionAndWithdrawalPrice from './useStarsCommissionAndWithdrawalPrice';
+import {ChosenPeersByType} from './useStateStore';
 
 
 const PaidSettingsSection: Component<{
@@ -22,6 +18,7 @@ const PaidSettingsSection: Component<{
   exitAnimationPromise: Promise<any>;
 }> = (props) => {
   const [tab, {AppAddMembersTab}] = useSuperTab();
+  const {i18n, join, Row} = useHotReloadGuard();
 
   const {commissionPercents, willReceiveDollars} = useStarsCommissionAndWithdrawalPrice(() => props.store.stars);
 

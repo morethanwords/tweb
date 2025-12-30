@@ -74,3 +74,14 @@ export const AppAdminRecentActionsTab =
     title: 'RecentActions',
     getComponentModule: () => import('../sidebarRight/tabs/adminRecentActions')
   });
+
+type AppMessagesAutoDeleteTabPayload = {
+  period: number;
+  onSaved: (period: number) => void;
+};
+
+export const AppMessagesAutoDeleteTab =
+  scaffoldSolidJSTab<AppMessagesAutoDeleteTabPayload>({
+    title: 'AutoDeleteMessages',
+    getComponentModule: () => import('../sidebarRight/tabs/autoDeleteMessages')
+  });

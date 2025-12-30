@@ -58,6 +58,7 @@ export type LottieAssetName =
   | 'Cake'
   | 'Mailbox'
   | 'LoveLetter'
+  | 'UtyaAutoDelete'
 ;
 
 export class LottieLoader {

@@ -1,14 +1,15 @@
 import {createComputed, createEffect, createMemo, createSignal, Show} from 'solid-js';
+import {keepMe} from '../../../helpers/keepMe';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
 import {CustomEmojiRendererElement} from '../../../lib/customEmoji/renderer';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import Badge from '../../badge';
 import {IconTsx} from '../../iconTsx';
 import ripple from '../../ripple';
-import wrapFolderTitle from '../../wrappers/folderTitle';
 import FolderAnimatedIcon from './folderAnimatedIcon';
 import {FolderItemPayload} from './types';
-ripple; // keep
+
+keepMe(ripple);
 
 
 type FolderItemProps = FolderItemPayload & {
@@ -21,7 +22,7 @@ type FolderItemProps = FolderItemPayload & {
 const ICON_SIZE = 30;
 
 export default function FolderItem(props: FolderItemProps) {
-  const {rootScope} = useHotReloadGuard();
+  const {rootScope, wrapFolderTitle} = useHotReloadGuard();
 
   const [failedToFetchIconDoc, setFailedToFetchIconDoc] = createSignal(false);
 

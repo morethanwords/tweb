@@ -2,13 +2,12 @@ import {createEffect, createSignal, Show} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import throttle from '../../../helpers/schedulers/throttle';
+import useIsConfirmationNeededOnClose from '../../../hooks/useIsConfirmationNeededOnClose';
 import {i18n} from '../../../lib/langPack';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import Row from '../../rowTsx';
+import SaveButton from '../../saveButton';
 import Section from '../../section';
-import SaveButton from '../../sidebarLeft/tabs/privacy/messages/saveButton';
 import StarRangeInput from '../../sidebarLeft/tabs/privacy/messages/starsRangeInput';
-import useIsConfirmationNeededOnClose from '../../sidebarLeft/tabs/privacy/messages/useIsConfirmationNeededOnClose';
 import useStarsCommissionAndWithdrawalPrice from '../../sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
 import type {AppDirectMessagesTab} from '../../solidJsTabs';
 import {useSuperTab} from '../../solidJsTabs/superTabProvider';
@@ -17,7 +16,7 @@ import StaticSwitch from '../../staticSwitch';
 
 const ChannelDirectMessages = () => {
   const [tab] = useSuperTab<typeof AppDirectMessagesTab>();
-  const {apiManagerProxy, rootScope} = useHotReloadGuard();
+  const {apiManagerProxy, rootScope, Row} = useHotReloadGuard();
 
   const chat = tab.payload.chat;
   if(!chat) return <></>;
