@@ -34,6 +34,7 @@ const lang = {
   'Login.ResetEmail.NeedPremiumText': 'Due to the high cost of SMS in your country, you need a **Telegram Premium** account to immediately reset this email via an SMS code.\n\nYou can ask a friend to gift a Premium subscription for your account',
   'Login.Passkey': 'Log in by passkey',
   'Login.Passkey.Error': 'Something went wrong',
+  'Login.Passkey.Error.NotFound': 'Used passkey is not tied to any account',
 
   // * android
   'Code': 'Code',

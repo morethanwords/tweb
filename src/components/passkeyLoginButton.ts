@@ -43,21 +43,21 @@ const PasskeyLoginButton = () => {
       }
 
       await rootScope.managers.apiManager.setBaseDcId(dcId);
-      try {
-        await rootScope.managers.appAccountManager.finishPasskeyLogin(
-          inputPasskeyCredential,
-          passkeyInitDcId === dcId ? undefined : passkeyInitDcId
-        );
-        import('../pages/pageIm').then((m) => m.default.mount());
-      } catch(err) {
-        if((err as ApiError).type === 'SESSION_PASSWORD_NEEDED') {
-          import('../pages/pagePassword').then((m) => m.default.mount());
-        } else {
-          throw err;
-        }
-      }
+      await rootScope.managers.appAccountManager.finishPasskeyLogin(
+        inputPasskeyCredential,
+        passkeyInitDcId === dcId ? undefined : passkeyInitDcId
+      );
+      import('../pages/pageIm').then((m) => m.default.mount());
     } catch(err) {
-      toastNew({langPackKey: 'Login.Passkey.Error'});
+      if((err as ApiError).type === 'SESSION_PASSWORD_NEEDED') {
+        import('../pages/pagePassword').then((m) => m.default.mount());
+        return;
+      } else if((err as ApiError).type === 'PASSKEY_CREDENTIAL_NOT_FOUND') {
+        toastNew({langPackKey: 'Login.Passkey.Error.NotFound'});
+      } else {
+        toastNew({langPackKey: 'Login.Passkey.Error'});
+      }
+
       await fetchPasskeyOption();
       toggle();
       throw err;
