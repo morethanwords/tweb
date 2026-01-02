@@ -59,9 +59,10 @@ import type {AppManagers} from './managers';
 import type AppGifsManager from './appGifsManager';
 import type AppGiftsManager from './appGiftsManager';
 import type {AppLangPackManager} from './appLangPackManager';
+import type {ActiveAccountNumber} from '../accounts/types';
+import type AppPromoManager from './appPromoManager';
+import type AppAccountManager from './appAccountManager';
 import {logger, LogTypes} from '../logger';
-import {ActiveAccountNumber} from '../accounts/types';
-import AppPromoManager from './appPromoManager';
 
 export class AppManager {
   private accountNumber: ActiveAccountNumber;
@@ -122,6 +123,7 @@ export class AppManager {
   protected appGiftsManager: AppGiftsManager;
   protected monoforumDialogsStorage: MonoforumDialogsStorage;
   protected appPromoManager: AppPromoManager;
+  protected appAccountManager: AppAccountManager;
 
   protected name: string;
   public log: ReturnType<typeof logger>;

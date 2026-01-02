@@ -135,6 +135,8 @@ import ChatAudio from '../../components/chat/audio';
 import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
 import {getRgbColorFromTelegramColor, rgbIntToHex} from '../../helpers/color';
 import {MyMessage} from './appMessagesManager';
+import showFrozenPopup from '../../components/popups/frozen';
+import showPasskeyPopup from '../../components/popups/passkey';
 
 export type ChatSavedPosition = {
   mids: number[],

@@ -25,7 +25,8 @@ import classNames from '../../helpers/string/classNames';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import {IconTsx} from '../iconTsx';
 
-export function getGiftAssetName(months?: number) {
+export function getGiftAssetName(days?: number) {
+  const months = days === undefined ? days : Math.round(days / 30);
   const durationAssetMap: {[key: number]: LottieAssetName} = {
     3: 'Gift3',
     6: 'Gift6',

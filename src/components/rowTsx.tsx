@@ -49,7 +49,7 @@ const Row = (props: {children: JSX.Element} & Partial<{
   const {store} = value;
 
   const isCheckbox = () => !!(store.checkboxField || store.checkboxFieldToggle || store.radioField);
-  const isClickable = () => !!(props.clickable || isCheckbox());
+  const isClickable = () => !!(props.clickable || isCheckbox() || props.contextMenu);
   const haveRipple = () => !!(!props.noRipple && isClickable());
   const havePadding = () => !!(
     props.havePadding ||
@@ -59,12 +59,13 @@ const Row = (props: {children: JSX.Element} & Partial<{
     store.media
   );
 
-  const resolvedChildren = children(() =>
+  const resolvedChildren = children(() => (
     <RowContext.Provider value={value}>
       {props.children}
     </RowContext.Provider>
-  );
+  ));
 
+  let openContextMenu: ReturnType<typeof createContextMenu>['open'];
   const ref = createMemo(() => {
     return props.contextMenu ? (container: HTMLElement) => {
       const listenerSetter = new ListenerSetter();
@@ -74,7 +75,10 @@ const Row = (props: {children: JSX.Element} & Partial<{
         listenerSetter
       });
 
+      openContextMenu = open;
+
       onCleanup(() => {
+        openContextMenu = undefined;
         listenerSetter.removeAll();
       });
 
@@ -101,7 +105,10 @@ const Row = (props: {children: JSX.Element} & Partial<{
         ...(props.classList || {}),
         [props.class]: !!props.class
       }}
-      onClick={typeof(props.clickable) !== 'boolean' && props.clickable}
+      onClick={
+        (typeof(props.clickable) !== 'boolean' && props.clickable) ||
+        (props.contextMenu ? openContextMenu : undefined)
+      }
       noRipple={!haveRipple()}
     >
       {resolvedChildren()}

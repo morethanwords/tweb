@@ -6,7 +6,7 @@
 
 import SliderSuperTab, {SliderSuperTabEventable} from '../../sliderTab';
 import Row from '../../row';
-import {AccountPassword, Authorization, GlobalPrivacySettings, InputPrivacyKey, Updates, WebAuthorization} from '../../../layer';
+import {AccountPasskeys, AccountPassword, Authorization, GlobalPrivacySettings, InputPrivacyKey, Passkey, Updates, WebAuthorization} from '../../../layer';
 import AppPrivacyPhoneNumberTab from './privacy/phoneNumber';
 import AppTwoStepVerificationTab from './2fa';
 import AppTwoStepVerificationEnterPasswordTab from './2fa/enterPassword';
@@ -39,7 +39,7 @@ import AppPrivacyAboutTab from './privacy/about';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
 import {AppPrivacyMessagesTab} from '../../solidJsTabs';
-import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, providedTabs} from '../../solidJsTabs';
+import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppPasskeysTab, providedTabs} from '../../solidJsTabs';
 import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 import {AgeVerificationPopup} from '../../popups/ageVerification';
 import {clearSensitiveSpoilers} from '../../wrappers/mediaSpoiler';
@@ -47,6 +47,10 @@ import useContentSettings from '../../../stores/contentSettings';
 import AppPrivacyBirthdayTab from './privacy/birthday';
 import ChangeLoginEmailTab from './changeLoginEmail';
 import {wrapEmailPattern} from '../../popups/emailSetup';
+import IS_WEB_AUTHN_SUPPORTED from '../../../environment/webAuthn';
+import {createStore, SetStoreFunction} from 'solid-js/store';
+import {createEffect, createRoot} from 'solid-js';
+import showPasskeyPopup from '../../popups/passkey';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -54,6 +58,10 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
   private websitesRow: Row;
   private websites: WebAuthorization[];
+
+  private passkeyRow: Row;
+  private passkeys: Passkey[];
+  private setPasskeys: SetStoreFunction<Passkey[]>;
 
   public static getInitArgs(fromTab: SliderSuperTab) {
     return {
@@ -115,6 +123,33 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
       const twoFactorRow = new Row(twoFactorRowOptions);
       twoFactorRow.freezed = true;
+
+      const openPasskeysTab = () => {
+        this.slider.createTab(AppPasskeysTab).open({
+          passkeys: this.passkeys,
+          setPasskeys: this.setPasskeys
+        });
+      };
+
+      const passkeyRow = this.passkeyRow = new Row({
+        icon: 'faceid',
+        titleLangKey: 'Privacy.Passkeys',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          if(this.passkeys.length) {
+            openPasskeysTab();
+            return;
+          }
+
+          showPasskeyPopup((passkey) => {
+            this.setPasskeys([passkey]);
+            openPasskeysTab();
+          });
+        },
+        listenerSetter: this.listenerSetter
+      });
+
+      this.updatePasskeys();
 
       const emailRow = new Row({
         titleLangKey: 'LoginEmail',
@@ -189,10 +224,11 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
       section.content.append(
         blockedUsersRow.container,
+        websitesRow.container,
+        activeSessionsRow.container,
         passcodeLockRow.container,
         twoFactorRow.container,
-        activeSessionsRow.container,
-        websitesRow.container
+        passkeyRow.container
       );
       this.scrollable.append(section.container);
 
@@ -653,7 +689,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   }
 
   public updateActiveSessions() {
-    return this.managers.apiManager.invokeApi('account.getAuthorizations').then((auths) => {
+    return this.managers.appAccountManager.getAuthorizations().then((auths) => {
       this.activeSessionsRow.freezed = false;
       this.authorizations = auths.authorizations;
       _i18n(this.activeSessionsRow.subtitle, 'Privacy.Devices', [this.authorizations.length]);
@@ -666,6 +702,28 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       this.websites = authorizations;
       _i18n(this.websitesRow.subtitle, 'Privacy.Websites', [this.websites.length]);
       this.websitesRow.container.classList.toggle('hide', !this.websites.length);
+    });
+  }
+
+  public updatePasskeys() {
+    this.passkeyRow.freezed = true;
+    return Promise.all([
+      this.managers.apiManager.getAppConfig(),
+      this.managers.appAccountManager.getPasskeys()
+    ]).then(([appConfig, passkeys]) => {
+      this.passkeyRow.freezed = false;
+      [this.passkeys, this.setPasskeys] = createStore(passkeys.passkeys);
+
+      createRoot((dispose) => {
+        this.middlewareHelper.onDestroy(dispose);
+        createEffect(() => {
+          _i18n(this.passkeyRow.subtitle, 'Passkeys', [this.passkeys.length]);
+          this.passkeyRow.container.classList.toggle(
+            'hide',
+            !this.passkeys.length && (!appConfig.settings_display_passkeys || !IS_WEB_AUTHN_SUPPORTED)
+          );
+        });
+      });
     });
   }
 }

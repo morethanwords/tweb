@@ -302,7 +302,7 @@ export class AppProfileManager extends AppManager {
         }
 
         if(chatFull.call) {
-          this.appGroupCallsManager.saveGroupCall(chatFull.call as InputGroupCall.inputGroupCall, id);
+          this.appGroupCallsManager.saveGroupCall(chatFull.call as InputGroupCall.inputGroupCall, peerId);
         }
 
         // appMessagesManager.savePinnedMessage(peerId, fullChat.pinned_msg_id);
@@ -549,7 +549,7 @@ export class AppProfileManager extends AppManager {
         fullChannel.wallpaper = this.appThemesManager.saveWallPaper(fullChannel.wallpaper);
 
         if(fullChannel.call) {
-          this.appGroupCallsManager.saveGroupCall(fullChannel.call as InputGroupCall.inputGroupCall, id);
+          this.appGroupCallsManager.saveGroupCall(fullChannel.call as InputGroupCall.inputGroupCall, peerId);
         }
 
         this.appNotificationsManager.savePeerSettings({

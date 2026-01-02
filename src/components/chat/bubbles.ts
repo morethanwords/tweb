@@ -145,7 +145,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {_tgico} from '../../helpers/tgico';
 import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
 import addAnchorListener, {UNSAFE_ANCHOR_LINK_TYPES} from '../../helpers/addAnchorListener';
-import {formatDate, formatMonthsDuration} from '../../helpers/date';
+import {formatDate, formatDaysDuration, formatMonthsDuration} from '../../helpers/date';
 import {JSX} from 'solid-js';
 import Giveaway, {getGiftAssetName, onGiveawayClick} from './giveaway';
 import PopupGiftLink from '../popups/giftLink';
@@ -5801,11 +5801,11 @@ export default class ChatBubbles {
             document.createElement('br'),
             i18n(
               isUnclaimed ? 'BoostingUnclaimedPrizeDuration' : (isGiveaway ? 'BoostingReceivedPrizeDuration' : 'BoostingReceivedGiftDuration'),
-              [formatMonthsDuration(action.months, true)]
+              [formatDaysDuration(action.days, true)]
             )
           );
 
-          const assetName = getGiftAssetName(action.months);
+          const assetName = getGiftAssetName(action.days);
 
           this.wrapSomeSolid(() => PremiumGiftBubble({
             rlottieOptions: {middleware},
@@ -5882,10 +5882,9 @@ export default class ChatBubbles {
           const content = bubbleContainer.cloneNode(false) as HTMLElement;
           content.classList.add('has-service-before');
 
-          const months = action.months;
-          const assetName = getGiftAssetName(months);
+          const assetName = getGiftAssetName(action.days);
 
-          const title = i18n('ActionGiftPremiumTitle2', [formatMonthsDuration(months, false)]);
+          const title = i18n('ActionGiftPremiumTitle2', [formatDaysDuration(action.days, false)]);
           const subtitle =
             action.message ?
               wrapRichText(action.message.text, {entities: action.message.entities}) :

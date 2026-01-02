@@ -1,4 +1,4 @@
-import {JSX, Ref} from 'solid-js';
+import {Accessor, createMemo, createSignal, JSX, Ref, Setter} from 'solid-js';
 import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
 import {IconTsx} from './iconTsx';
 import classNames from '../helpers/string/classNames';
@@ -11,12 +11,13 @@ const Button = (props: Partial<{
   disabled: boolean,
   primaryFilled: boolean,
   primary: boolean,
+  primaryTransparent: boolean,
   large: boolean,
   children: JSX.Element,
   icon: Icon,
   iconAfter: Icon,
   iconClass: string,
-  onClick: (e: MouseEvent) => void,
+  onClick: (e: MouseEvent) => any,
   text: LangPackKey,
   textArgs: FormatterArguments,
   noRipple: boolean,
@@ -24,6 +25,13 @@ const Button = (props: Partial<{
   onlyMobile: boolean
   tabIndex: number,
 }> = {}): JSX.Element => {
+  let disabled: Accessor<boolean>, setDisabled: Setter<boolean>;
+  if(props.disabled !== undefined) {
+    disabled = createMemo(() => props.disabled);
+  } else {
+    [disabled, setDisabled] = createSignal(false);
+  }
+
   return (
     <RippleElement
       ref={props.ref as Ref<any>}
@@ -32,11 +40,24 @@ const Button = (props: Partial<{
         props.class,
         props.primaryFilled && 'btn-primary btn-color-primary',
         props.primary && 'btn btn-primary primary',
+        props.primaryTransparent && 'btn-primary primary btn-transparent',
         props.large && 'btn-large',
         props.onlyMobile && 'only-handhelds'
       )}
-      disabled={props.disabled}
-      onClick={props.onClick}
+      disabled={disabled()}
+      onClick={props.onClick && setDisabled ? ((e: any) => {
+        try {
+          const result = props.onClick(e);
+          if(result instanceof Promise) {
+            setDisabled(true);
+            result.finally(() => {
+              setDisabled(false);
+            });
+          }
+        } catch(err) {
+          throw err;
+        }
+      }) : props.onClick}
       noRipple={props.noRipple}
       rippleSquare={props.rippleSquare}
       tabIndex={props.tabIndex}

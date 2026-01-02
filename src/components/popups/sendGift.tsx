@@ -766,7 +766,7 @@ function ChosenGiftPage(props: {
       _: 'messageActionGiftPremium',
       currency: payWithStars() ? STARS_CURRENCY : props.chosenGift.currency,
       amount: payWithStars() ? props.chosenGift.priceStars : props.chosenGift.price,
-      months: props.chosenGift.months
+      days: props.chosenGift.months * 30
     }
   }));
 

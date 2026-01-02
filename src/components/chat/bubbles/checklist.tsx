@@ -18,6 +18,7 @@ import PopupPremium from '../../popups/premium';
 import {toastNew} from '../../toast';
 import wrapPeerTitle from '../../wrappers/peerTitle';
 import {ConfettiContainer, ConfettiRef} from '../../confetti';
+import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 
 export function ChecklistBubble(props: {
   out: boolean
@@ -109,7 +110,7 @@ export function ChecklistBubble(props: {
             createEffect(() => {
               const completion = completionsById()[item.id];
               if(completion) {
-                setCompletedById(completion.completed_by.toPeerId());
+                setCompletedById(getPeerId(completion.completed_by));
               }
             })
 
@@ -151,7 +152,7 @@ export function ChecklistBubble(props: {
                     {(it) => (
                       <PeerTitleTsx
                         class={styles.itemCompletedBy}
-                        peerId={it.completed_by.toPeerId()}
+                        peerId={getPeerId(it.completed_by)}
                         onlyFirstName
                       />
                     )}

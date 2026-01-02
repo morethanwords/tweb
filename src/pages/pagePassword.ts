@@ -81,9 +81,7 @@ const onFirstMount = (): Promise<any> => {
           })
 
           // Promise.reject({type: '2FA_CONFIRM_WAIT_518400'})
-          await rootScope.managers.apiManager.invokeApi('account.deleteAccount', {
-            reason: 'Forgot password'
-          })
+          await rootScope.managers.appAccountManager.deleteAccount('Forgot password')
           .then(() => {
             pageSignIn.mount();
           }).catch((err: ApiError) => {

@@ -32,6 +32,8 @@ const lang = {
   'Login.ResetEmail.PleaseWait': 'Resetting email, please wait...',
   'Login.ResetEmail.NeedPremium': 'Telegram Premium Required',
   'Login.ResetEmail.NeedPremiumText': 'Due to the high cost of SMS in your country, you need a **Telegram Premium** account to immediately reset this email via an SMS code.\n\nYou can ask a friend to gift a Premium subscription for your account',
+  'Login.Passkey': 'Log in by passkey',
+  'Login.Passkey.Error': 'Something went wrong',
 
   // * android
   'Code': 'Code',

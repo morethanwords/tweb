@@ -40,10 +40,8 @@ const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
 };
 
-const getBoostMonths = (from: number, to: number) => {
-  const days = (to - from) / 86400;
-  return Math.round(days / 30);
-};
+const getBoostsDays = (from: number, to: number) => Math.round((to - from) / 86400);
+const getBoostMonths = (from: number, to: number) => Math.round(getBoostsDays(from, to) / 30);
 
 export const CPrepaidGiveaway = (props: {
   giveaway: PrepaidGiveaway,
@@ -351,7 +349,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
                   _: 'payments.checkedGiftCode',
                   chats: [],
                   date: boost.date,
-                  months: getBoostMonths(boost.date, boost.expires),
+                  days: getBoostsDays(boost.date, boost.expires),
                   pFlags: {via_giveaway: boost.pFlags.giveaway || undefined},
                   users: [],
                   from_id: await this.managers.appPeersManager.getOutputPeer(this.peerId),

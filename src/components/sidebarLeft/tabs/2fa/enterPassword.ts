@@ -64,7 +64,7 @@ export class ForgotPasswordLink {
   private handleCancel = () => {
     if(this.pending) return;
     this.pending = true;
-    this.managers.apiManager.invokeApi('account.declinePasswordReset', {})
+    this.managers.passwordManager.declinePasswordReset()
     .then(() => {
       this.state.pending_reset_date = undefined;
       this.update();
@@ -106,7 +106,7 @@ export class ForgotPasswordLink {
         if(this.pending) return;
         this.pending = true;
 
-        this.managers.apiManager.invokeApi('account.resetPassword', {})
+        this.managers.passwordManager.resetPassword()
         .then((result) => {
           switch(result._) {
             case 'account.resetPasswordFailedWait':

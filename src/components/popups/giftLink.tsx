@@ -11,7 +11,7 @@ import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
 import {LangPackKey, i18n} from '../../lib/langPack';
 import {InviteLink} from '../sidebarLeft/tabs/sharedFolder';
 import {For, JSX} from 'solid-js';
-import {formatFullSentTime, formatMonthsDuration} from '../../helpers/date';
+import {formatDaysDuration, formatFullSentTime, formatMonthsDuration} from '../../helpers/date';
 import {AvatarNew} from '../avatarNew';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import appImManager, {ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
@@ -116,7 +116,7 @@ export default class PopupGiftLink extends PopupElement {
     let content: [LangPackKey, JSX.Element][] = [
       ['BoostingFrom', makePeer(fromPeerId)],
       ['BoostingTo', toPeerId ? makePeer(toPeerId) : i18n('BoostingNoRecipient')],
-      ['BoostingGift', i18n('BoostingTelegramPremiumFor', [formatMonthsDuration(this.checkedGiftCode.months)])],
+      ['BoostingGift', i18n('BoostingTelegramPremiumFor', [formatDaysDuration(this.checkedGiftCode.days)])],
       !this.isInChat && ['BoostingReason', reasonValue],
       ['BoostingDate', formatFullSentTime(this.checkedGiftCode.date, undefined, true)]
     ];

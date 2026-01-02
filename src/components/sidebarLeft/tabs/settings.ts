@@ -338,7 +338,7 @@ export default class AppSettingsTab extends SliderSuperTab {
   private getAuthorizations(overwrite?: boolean) {
     if(this.getAuthorizationsPromise && !overwrite) return this.getAuthorizationsPromise;
 
-    const promise = this.getAuthorizationsPromise = this.managers.apiManager.invokeApi('account.getAuthorizations')
+    const promise = this.getAuthorizationsPromise = this.managers.appAccountManager.getAuthorizations()
     .finally(() => {
       if(this.getAuthorizationsPromise === promise) {
         this.getAuthorizationsPromise = undefined;

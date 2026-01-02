@@ -20,6 +20,13 @@ import {usePendingSuggestions} from '../../stores/promo';
 import showBirthdayPopup, {saveMyBirthday} from '../popups/birthday';
 import {showEmailSetupPopup} from '../popups/emailSetup';
 import rootScope from '../../lib/rootScope';
+import showPasskeyPopup from '../popups/passkey';
+import IS_WEB_AUTHN_SUPPORTED from '../../environment/webAuthn';
+
+const BIRTHDAY_SETUP_SUGGESTION_KEY = 'BIRTHDAY_SETUP';
+const EMAIL_SETUP_KEY = 'SETUP_LOGIN_EMAIL';
+const EMAIL_SETUP_KEY_NOSKIP = 'SETUP_LOGIN_EMAIL_NOSKIP';
+const PASSKEY_SETUP_KEY = 'SETUP_PASSKEY';
 
 const PendingSuggestion = (props: Parameters<typeof Row>[0] & {closable?: () => void}) => {
   // const [, rest] = splitProps(props, ['closable']);
@@ -59,32 +66,36 @@ PendingSuggestion.Subtitle = (props: Parameters<typeof Row.Subtitle>[0]) => {
   );
 };
 
-function FrozenSuggestion() {
+function SimpleSuggestion(props: {
+  emoji: string | (() => DocumentFragment),
+  title: JSX.Element,
+  subtitle: JSX.Element,
+  danger?: boolean,
+  onClick: () => void,
+  onClose?: () => void
+}) {
   const [isSidebarCollapsed] = useIsSidebarCollapsed();
-  const emoji = () => wrapEmojiText('🚫');
-
-  const onClick = () => {
-    showFrozenPopup();
-  };
+  const emoji = typeof(props.emoji) === 'string' ? () => wrapEmojiText(props.emoji as string) : props.emoji;
 
   return (
     <Show
       when={isSidebarCollapsed()}
       fallback={
         <PendingSuggestion
-          class={styles.danger}
-          clickable={onClick}
-          color="danger"
+          class={props.danger ? styles.danger : styles.secondary}
+          clickable={props.onClick}
+          closable={props.onClose}
+          color={props.danger ? 'danger' : undefined}
         >
-          <PendingSuggestion.Title>{i18n('Suggestion.Frozen.Title', [emoji()])}</PendingSuggestion.Title>
-          <PendingSuggestion.Subtitle>{i18n('Suggestion.Frozen.Subtitle')}</PendingSuggestion.Subtitle>
+          <PendingSuggestion.Title>{props.title}</PendingSuggestion.Title>
+          <PendingSuggestion.Subtitle>{props.subtitle}</PendingSuggestion.Subtitle>
         </PendingSuggestion>
       }
     >
       <RippleElement
         component="div"
-        class={classNames(styles.collapsed, 'hover-danger-effect')}
-        onClick={onClick}
+        class={classNames(styles.collapsed, props.danger ? 'hover-danger-effect' : 'hover-effect')}
+        onClick={props.onClick}
       >
         {documentFragmentToNodes(emoji())}
       </RippleElement>
@@ -92,8 +103,20 @@ function FrozenSuggestion() {
   );
 }
 
+function FrozenSuggestion() {
+  const emoji = () => wrapEmojiText('🚫');
+  const onClick = () => showFrozenPopup();
+  return (
+    <SimpleSuggestion
+      emoji={emoji}
+      title={i18n('Suggestion.Frozen.Title', [emoji()])}
+      subtitle={i18n('Suggestion.Frozen.Subtitle')}
+      onClick={onClick}
+    />
+  );
+}
+
 function NotificationsSuggestion() {
-  const [isSidebarCollapsed] = useIsSidebarCollapsed();
   const [appSettings, setAppSettings] = useAppSettings();
   const emoji = () => wrapEmojiText('🔔');
 
@@ -118,40 +141,17 @@ function NotificationsSuggestion() {
   };
 
   return (
-    <Show
-      when={isSidebarCollapsed()}
-      fallback={
-        <PendingSuggestion
-          class={styles.secondary}
-          clickable={onClick}
-          closable={onDismissed}
-        >
-          <PendingSuggestion.Title>
-            {i18n('Suggestion.Notifications', [emoji()])}
-          </PendingSuggestion.Title>
-          <PendingSuggestion.Subtitle>
-            {i18n('Suggestion.Notifications.Subtitle')}
-          </PendingSuggestion.Subtitle>
-        </PendingSuggestion>
-      }
-    >
-      <RippleElement
-        component="div"
-        class={classNames(styles.collapsed, 'hover-effect')}
-        onClick={onClick}
-      >
-        {documentFragmentToNodes(emoji())}
-      </RippleElement>
-    </Show>
+    <SimpleSuggestion
+      emoji={emoji}
+      title={i18n('Suggestion.Notifications', [emoji()])}
+      subtitle={i18n('Suggestion.Notifications.Subtitle')}
+      onClick={onClick}
+      onClose={onDismissed}
+    />
   );
 }
-const BIRTHDAY_SETUP_SUGGESTION_KEY = 'BIRTHDAY_SETUP';
-const EMAIL_SETUP_KEY = 'SETUP_LOGIN_EMAIL';
-const EMAIL_SETUP_KEY_NOSKIP = 'SETUP_LOGIN_EMAIL_NOSKIP';
 
 function BirthdaySetupSuggestion() {
-  const [isSidebarCollapsed] = useIsSidebarCollapsed();
-
   const emoji = () => wrapEmojiText('🎂');
 
   const onDismissed = () => {
@@ -171,27 +171,37 @@ function BirthdaySetupSuggestion() {
   };
 
   return (
-    <Show
-      when={isSidebarCollapsed()}
-      fallback={
-        <PendingSuggestion
-          class={styles.secondary}
-          clickable={onClick}
-          closable={onDismissed}
-        >
-          <PendingSuggestion.Title>{i18n('Suggestion.BirthdaySetup', [emoji()])}</PendingSuggestion.Title>
-          <PendingSuggestion.Subtitle>{i18n('Suggestion.BirthdaySetup.Subtitle')}</PendingSuggestion.Subtitle>
-        </PendingSuggestion>
-      }
-    >
-      <RippleElement
-        component="div"
-        class={classNames(styles.collapsed, 'hover-effect')}
-        onClick={onClick}
-      >
-        {documentFragmentToNodes(emoji())}
-      </RippleElement>
-    </Show>
+    <SimpleSuggestion
+      emoji={emoji}
+      title={i18n('Suggestion.BirthdaySetup', [emoji()])}
+      subtitle={i18n('Suggestion.BirthdaySetup.Subtitle')}
+      onClick={onClick}
+      onClose={onDismissed}
+    />
+  );
+}
+
+function PasskeySetupSuggestion() {
+  const emoji = () => wrapEmojiText('🔑');
+
+  const onDismissed = () => {
+    rootScope.managers.appPromoManager.dismissSuggestion(PASSKEY_SETUP_KEY);
+  };
+
+  const onClick = () => {
+    showPasskeyPopup(() => {
+      rootScope.managers.appPromoManager.dismissSuggestion(PASSKEY_SETUP_KEY);
+    });
+  };
+
+  return (
+    <SimpleSuggestion
+      emoji={emoji}
+      title={i18n('Suggestion.PasskeySetup', [emoji()])}
+      subtitle={i18n('Suggestion.PasskeySetup.Subtitle')}
+      onClick={onClick}
+      onClose={onDismissed}
+    />
   );
 }
 
@@ -238,6 +248,8 @@ export function renderPendingSuggestion(toElement: HTMLElement) {
       let element: JSX.Element;
       if(appConfig.freeze_since_date) {
         element = FrozenSuggestion();
+      } else if(IS_WEB_AUTHN_SUPPORTED && pendingSuggestions().has(PASSKEY_SETUP_KEY)) {
+        element = PasskeySetupSuggestion();
       } else if(pendingSuggestions().has(BIRTHDAY_SETUP_SUGGESTION_KEY)) {
         element = BirthdaySetupSuggestion();
       } else if(

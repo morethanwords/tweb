@@ -9846,8 +9846,8 @@ export class AppMessagesManager extends AppManager {
     let oldItem: TodoCompletion;
     this.modifyMessage(message, (message) => {
       const checklist = message.media as MessageMedia.messageMediaToDo;
-      if(!checklist.completions) checklist.completions = []
-      const now = Date.now() / 1000
+      if(!checklist.completions) checklist.completions = [];
+      const now = Date.now() / 1000;
 
       if(params.action === 'complete') {
         const existing = checklist.completions.findIndex((completion) => completion.id === params.taskId);
@@ -9858,9 +9858,9 @@ export class AppMessagesManager extends AppManager {
         checklist.completions.push({
           _: 'todoCompletion',
           id: params.taskId,
-          completed_by: this.rootScope.myId,
+          completed_by: this.appPeersManager.getOutputPeer(this.rootScope.myId),
           date: now
-        })
+        });
       } else {
         const existing = checklist.completions.findIndex((completion) => completion.id === params.taskId);
         if(existing !== -1) {
@@ -9868,14 +9868,14 @@ export class AppMessagesManager extends AppManager {
           checklist.completions.splice(existing, 1);
         }
       }
-    }, storage)
+    }, storage);
 
     this.rootScope.dispatchEvent('message_edit', {
       storageKey: storage.key,
       peerId: params.peerId,
       mid: params.mid,
       message
-    })
+    });
 
     const key = `${params.peerId}:${params.mid}`;
     this.checklistBatcher.addToBatch(key, {taskId: params.taskId, oldItem, action: params.action});

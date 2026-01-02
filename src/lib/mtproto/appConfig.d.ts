@@ -146,6 +146,8 @@ export interface MTAppConfig {
   freeze_since_date?:                         number;
   freeze_until_date?:                         number;
   freeze_appeal_url?:                         string;
+  settings_display_passkeys?:                 boolean;
+  passkeys_account_passkeys_max?:             number;
 }
 
 export interface EmojiesSendDiceSuccess {

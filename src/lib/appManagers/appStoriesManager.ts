@@ -420,9 +420,16 @@ export default class AppStoriesManager extends AppManager {
     if(cache.stories.length && cacheType === StoriesCacheType.Stories) { // * fix peer missing flag
       const peer = this.getPeer(cache.peerId);
       if(!peer.stories_max_id) {
+        const storyItem = cache.storiesMap.get(cache.stories[cache.stories.length - 1]);
         const newPeer: typeof peer = {
           ...peer,
-          stories_max_id: cache.storiesMap.get(cache.stories[cache.stories.length - 1]).id
+          stories_max_id: {
+            _: 'recentStory',
+            pFlags: {
+              live: (storyItem as StoryItem.storyItemSkipped).pFlags.live
+            },
+            max_id: storyItem.id
+          }
         };
 
         if(cache.peerId.isUser()) this.appUsersManager.saveApiUsers([newPeer as User.user]);

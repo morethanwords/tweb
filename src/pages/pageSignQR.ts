@@ -20,6 +20,7 @@ import bytesToBase64 from '../helpers/bytes/bytesToBase64';
 import textToSvgURL from '../helpers/textToSvgURL';
 import AccountController from '../lib/accounts/accountController';
 import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
+import PasskeyLoginButton from '../components/passkeyLoginButton';
 
 const FETCH_INTERVAL = 3;
 
@@ -33,7 +34,8 @@ const onFirstMount = async() => {
   inputWrapper.classList.add('input-wrapper');
 
   const btnBack = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Cancel'});
-  inputWrapper.append(btnBack);
+  const passkeyButton = PasskeyLoginButton();
+  inputWrapper.append(...[btnBack, passkeyButton?.button].filter(Boolean));
 
   if(getCurrentAccount() === 1) {
     getLanguageChangeButton(inputWrapper);
@@ -216,7 +218,14 @@ const onFirstMount = async() => {
 
   // await iterate(false);
 
+  let first = true;
+
   return async() => {
+    if(first) {
+      first = false;
+      passkeyButton && passkeyButton.fetch();
+    }
+
     stop = false;
 
     do {

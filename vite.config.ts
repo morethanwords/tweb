@@ -13,6 +13,7 @@ import {watchLangFile} from './watch-lang.js';
 import path from 'path';
 
 const rootDir = resolve(__dirname);
+const certsDir = path.join(rootDir, 'certs');
 const ENV_LOCAL_FILE_PATH = path.join(rootDir, '.env.local');
 
 const isDEV = process.env.NODE_ENV === 'development';
@@ -33,14 +34,28 @@ const handlebarsPlugin = handlebars({
   }
 });
 
+const USE_SSL = true;
+const USE_SIGNED_CERTS = USE_SSL && true;
+const USE_SELF_SIGNED_CERTS = USE_SSL && false;
+
+// * mkdir certs; cd certs
+// * mkcert web.telegram.org
+// * chmod 644 web.telegram.org-key.pem
+// * nano /etc/hosts
+// * 127.0.0.1 web.telegram.org
+const host = USE_SSL ? 'web.telegram.org' : 'localhost';
 const serverOptions: ServerOptions = {
-  // host: '192.168.95.17',
-  port: 8080,
+  host,
+  port: USE_SSL ? 443 : 8080,
   sourcemapIgnoreList(sourcePath, sourcemapPath) {
     return sourcePath.includes('node_modules') ||
       sourcePath.includes('logger') ||
       sourcePath.includes('eventListenerBase');
-  }
+  },
+  https: USE_SIGNED_CERTS ? {
+    key: path.join(certsDir, host + '-key.pem'),
+    cert: path.join(certsDir, host + '.pem')
+  } : undefined
 };
 
 const SOLID_SRC_PATH = 'src/solid/packages/solid';
@@ -49,13 +64,11 @@ const USE_SOLID_SRC = false;
 const SOLID_PATH = USE_SOLID_SRC ? SOLID_SRC_PATH : SOLID_BUILT_PATH;
 const USE_OWN_SOLID = existsSync(resolve(rootDir, SOLID_PATH));
 
-const USE_SSL = false;
-const USE_SSL_CERTS = false;
 const NO_MINIFY = false;
-const SSL_CONFIG: any = USE_SSL_CERTS && USE_SSL && {
-  name: '192.168.95.17',
-  certDir: './certs/'
-};
+const BASIC_SSL_CONFIG: Parameters<typeof basicSsl>[0] = USE_SELF_SIGNED_CERTS ? {
+  name: host,
+  certDir: certsDir
+} : undefined;
 
 const ADDITIONAL_ALIASES = {
   'solid-transition-group': resolve(rootDir, 'src/vendor/solid-transition-group')
@@ -83,7 +96,7 @@ export default defineConfig({
     }),
     solidPlugin(),
     handlebarsPlugin as any,
-    USE_SSL ? (basicSsl as any)(SSL_CONFIG) : undefined,
+    USE_SELF_SIGNED_CERTS ? basicSsl(BASIC_SSL_CONFIG) : undefined,
     visualizer({
       gzipSize: true,
       template: 'treemap'

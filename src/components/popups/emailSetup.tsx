@@ -22,25 +22,25 @@ import {subscribeOn} from '../../helpers/solid/subscribeOn';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 
 export function wrapEmailPattern(pattern: string) {
-  if(pattern.includes(' ') || !pattern.includes('*')) return pattern
+  if(pattern.includes(' ') || !pattern.includes('*')) return pattern;
 
-  const entities: MessageEntity[] = []
+  const entities: MessageEntity[] = [];
   for(let i = 0; i < pattern.length;) {
-    const idx = pattern.indexOf('*', i)
-    if(idx === -1) break
-    let endIdx = idx + 1
-    while(pattern[endIdx] === '*') endIdx++
+    const idx = pattern.indexOf('*', i);
+    if(idx === -1) break;
+    let endIdx = idx + 1;
+    while(pattern[endIdx] === '*') endIdx++;
 
     entities.push({
       _: 'messageEntitySpoiler',
       offset: idx,
       length: endIdx - idx
-    })
+    });
 
-    i = endIdx
+    i = endIdx;
   }
 
-  return wrapRichText(pattern, {entities, noTextFormat: true})
+  return wrapRichText(pattern, {entities, noTextFormat: true});
 }
 
 export function EnterEmailStep(props: {
@@ -57,29 +57,29 @@ export function EnterEmailStep(props: {
 
   function onSubmit() {
     if(!email().includes('@')) {
-      inputRef.setError()
+      inputRef.setError();
       return;
     }
 
     setLoading(true);
-    rootScope.managers.apiManager.invokeApi('account.sendVerifyEmailCode', {
-      purpose: props.purpose,
-      email: email()
-    }).then(() => {
+    rootScope.managers.appAccountManager.sendVerifyEmailCode(
+      props.purpose,
+      email()
+    ).then(() => {
       setLoading(false);
       props.onCodeSent({
         _: 'account.sentEmailCode',
         email_pattern: email(),
         length: 6
-      })
+      });
     }).catch((err: ApiError) => {
       if(err.type === 'EMAIL_INVALID') {
-        setError('EmailSetup.InvalidEmail')
+        setError('EmailSetup.InvalidEmail');
       } else if(err.type === 'EMAIL_NOT_ALLOWED') {
-        setError('EmailSetup.BadEmail')
+        setError('EmailSetup.BadEmail');
       } else {
         console.error(err);
-        setError('Error.AnError')
+        setError('Error.AnError');
       }
 
       // avoid flashing while transitioning to error state
@@ -100,7 +100,7 @@ export function EnterEmailStep(props: {
         onSubmit();
       }
     });
-  })
+  });
 
   return (
     <div class={styles.page}>
@@ -182,13 +182,13 @@ export function EnterCodeStep(props: {
 
   function onSubmit() {
     setLoading(true);
-    rootScope.managers.apiManager.invokeApi('account.verifyEmail', {
-      purpose: props.purpose,
-      verification: {
+    rootScope.managers.appAccountManager.verifyEmail(
+      props.purpose,
+      {
         _: 'emailVerificationCode',
         code: codeSignal[0]()
       }
-    }).then(() => {
+    ).then(() => {
       setLoading(false);
       props.onSuccess();
     }).catch((err: ApiError) => {

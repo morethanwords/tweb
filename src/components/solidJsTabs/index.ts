@@ -5,7 +5,8 @@ import {
   AppNotificationsTab,
   AppPasscodeEnterPasswordTab,
   AppPasscodeLockTab,
-  AppPrivacyMessagesTab
+  AppPrivacyMessagesTab,
+  AppPasskeysTab
 } from './tabs';
 
 
@@ -19,5 +20,6 @@ export {
   AppNotificationsTab,
   AppPasscodeEnterPasswordTab,
   AppPasscodeLockTab,
-  AppPrivacyMessagesTab
+  AppPrivacyMessagesTab,
+  AppPasskeysTab
 };

@@ -152,6 +152,8 @@ const lang = {
   'Suggestion.Notifications.Dismissed': 'You can turn notifications back on in the settings.',
   'Suggestion.BirthdaySetup': 'Add your birthday! %s',
   'Suggestion.BirthdaySetup.Subtitle': 'Let your contacts know when you’re celebrating.',
+  'Suggestion.PasskeySetup': 'Create Passkey! %s',
+  'Suggestion.PasskeySetup.Subtitle': 'Log in safely and keep your account secure.',
   'NewPrivateChat': 'New Private Chat',
   'NewPoll.OptionLabel': 'Option %d',
   'Message.Context.Selection.Copy': 'Copy selected',
@@ -974,6 +976,29 @@ const lang = {
   'InstantView.Media.Url': 'Click to open the link:',
   'InstantView.Media.Url.Touch': 'Tap to open the link:',
   'Chat.Message.RequestToJoin': 'REQUEST TO JOIN',
+  'Passkey.Title': 'Protect your account',
+  'Passkey.Subtitle': 'Log in safely and keep your account secure.',
+  'Passkey.Row1.Title': 'Create a Passkey',
+  'Passkey.Row1.Subtitle': 'Make a passkey to log in easily and safely.',
+  'Passkey.Row2.Title': 'Log in with Face ID',
+  'Passkey.Row2.Subtitle': 'Use Face ID, Touch ID, or your passcode to log in.',
+  'Passkey.Row3.Title': 'Store Passkey Securely',
+  'Passkey.Row3.Subtitle': 'Your passkey is safely kept in your iCloud Keychain.',
+  'Passkey.Create': 'CREATE PASSKEY',
+  'Passkey.Skip': 'SKIP',
+  'Passkey.CreationError': 'Failed to create passkey. Please try again.',
+  'Passkey.Created': 'Passkey created successfully',
+  'Privacy.Passkeys': 'Passkeys',
+  'Privacy.Passkeys.Caption': 'Your passkey is stored securely in your password manager. [Learn more >]()',
+  'Passkeys': {
+    'one_value': '%d passkey',
+    'other_value': '%d passkeys'
+  },
+  'Privacy.Passkey.Created': 'Created %s',
+  'Passkey.Unsupported': 'UNSUPPORTED',
+  'Privacy.Passkey.Create': 'Create Passkey',
+  'Passkey.Deletion.Title': 'Delete Passkey?',
+  'Passkey.Deletion.Text': 'Once deleted, this passkey can\'t be used to log in.\n\nDon\'t forget to remove it from your password manager too.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2062,6 +2087,10 @@ const lang = {
     'other_value': 'among **%1$d** winners.'
   },
   'BoostingHowItWork': 'LEARN MORE',
+  'BoldDays': {
+    'one_value': '**%1$d** day',
+    'other_value': '**%1$d** days'
+  },
   'BoldMonths': {
     'one_value': '**%1$d** month',
     'other_value': '**%1$d** months'
@@ -2271,6 +2300,10 @@ const lang = {
   'GiftMonths': {
     'one_value': '%1$d-month',
     'other_value': '%1$d-months'
+  },
+  'GiftDays': {
+    'one_value': '%1$d-day',
+    'other_value': '%1$d-days'
   },
   'BoostingGiftLinkForwardedTo': 'Gift link forwarded to **%1$s**.',
   'BoostingGiftLinkForwardedToSavedMsg': 'Gift link forwarded to **Saved Messages**.',

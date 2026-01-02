@@ -182,13 +182,13 @@ export default class PromoSlideTab {
     if(giftDetails) {
       headingTextTitle.classList.add('smaller-text');
       const {fromPeerId, toPeerId, isOutbound, isUnclaimed, gift} = giftDetails;
-      const giftMonths = i18n('GiftMonths', [gift.months]);
+      const giftText = i18n('GiftDays', [gift.days]);
       if(isOutbound) {
         title = i18n(
           'GiftModal.Title.You',
           [
             await wrapPeerTitle({...wrapTitleOptions, peerId: toPeerId}),
-            giftMonths
+            giftText
           ]
         );
       } else {
@@ -198,7 +198,7 @@ export default class PromoSlideTab {
             'TelegramPremiumUserGiftedPremiumDialogTitleWithPluralSomeone',
           [
             fromPeerId && await wrapPeerTitle({...wrapTitleOptions, peerId: fromPeerId}),
-            giftMonths
+            giftText
           ].filter(Boolean)
         );
       }

@@ -15,9 +15,7 @@ import {AppManager} from '../appManagers/manager';
 
 export class PasswordManager extends AppManager {
   public getState(): Promise<AccountPassword> {
-    return this.apiManager.invokeApi('account.getPassword').then((result) => {
-      return result;
-    });
+    return this.apiManager.invokeApi('account.getPassword');
   }
 
   public updateSettings(settings: {
@@ -116,5 +114,17 @@ export class PasswordManager extends AppManager {
 
   public cancelPasswordEmail() {
     return this.apiManager.invokeApi('account.cancelPasswordEmail');
+  }
+
+  public resetPassword() {
+    return this.apiManager.invokeApi('account.resetPassword');
+  }
+
+  public declinePasswordReset() {
+    return this.apiManager.invokeApi('account.declinePasswordReset');
+  }
+
+  public getTmpPassword(srp: InputCheckPasswordSRP, period: number) {
+    return this.apiManager.invokeApi('account.getTmpPassword', {password: srp, period});
   }
 }

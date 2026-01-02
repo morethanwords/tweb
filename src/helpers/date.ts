@@ -191,6 +191,11 @@ export function formatTime(date: Date) {
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.formatDateAccordingToTodayNew = formatDateAccordingToTodayNew);
 
+export function formatDaysDuration(days: number, bold?: boolean) {
+  if(days >= 30) return formatMonthsDuration(Math.round(days / 30), bold);
+  return i18n(bold ? 'BoldDays' : 'Days', [days]);
+}
+
 export function formatMonthsDuration(months: number, bold?: boolean) {
   const isYears = months >= 12 && !(months % 12);
   return i18n(

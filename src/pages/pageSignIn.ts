@@ -27,6 +27,7 @@ import CountryInputField from '../components/countryInputField';
 import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
 import AccountController from '../lib/accounts/accountController';
 import commonStateStorage from '../lib/commonStateStorage';
+import PasskeyLoginButton from '../components/passkeyLoginButton';
 
 // import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -172,6 +173,7 @@ const onFirstMount = () => {
   attachClickEvent(btnNext, onSubmit);
 
   btnQr = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Login'});
+  const passkeyButton = PasskeyLoginButton();
 
   const qrMounted = false;
   btnQr.addEventListener('click', () => {
@@ -197,7 +199,7 @@ const onFirstMount = () => {
     }); */
   });
 
-  inputWrapper.append(countryInputField.container, telInputField.container, btnNext, btnQr);
+  inputWrapper.append(...[countryInputField.container, telInputField.container, btnNext, btnQr, passkeyButton?.button].filter(Boolean));
 
   const h4 = document.createElement('h4');
   h4.classList.add('text-center');
@@ -274,6 +276,8 @@ const onFirstMount = () => {
   }
 
   tryAgain();
+
+  passkeyButton && passkeyButton.fetch();
 };
 
 const page = new Page('page-sign', true, onFirstMount, () => {

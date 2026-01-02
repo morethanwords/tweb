@@ -118,7 +118,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
           langKey: 'Terminate',
           isDanger: true,
           callback: () => {
-            this.managers.apiManager.invokeApi('account.resetAuthorization', {hash})
+            this.managers.appAccountManager.resetAuthorization(hash)
             .then((value) => {
               if(value) {
                 target.remove();

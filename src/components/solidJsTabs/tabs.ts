@@ -1,8 +1,9 @@
 import {CancellablePromise} from '../../helpers/cancellablePromise';
-import {Chat, GlobalPrivacySettings} from '../../layer';
+import {AccountPasskeys, Chat, GlobalPrivacySettings, Passkey} from '../../layer';
 import {LangPackKey} from '../../lib/langPack';
 import type {PasscodeActions} from '../../lib/passcode/actions';
 import {InstanceOf} from '../../types';
+import {SetStoreFunction} from 'solid-js/store';
 import {scaffoldSolidJSTab} from './scaffoldSolidJSTab';
 import {SuperTabProvider} from './superTabProvider';
 
@@ -74,3 +75,16 @@ export const AppAdminRecentActionsTab =
     title: 'RecentActions',
     getComponentModule: () => import('../sidebarRight/tabs/adminRecentActions')
   });
+
+
+type AppPasskeysTabPayload = {
+  passkeys: Passkey[],
+  setPasskeys: SetStoreFunction<Passkey[]>
+};
+
+export const AppPasskeysTab =
+  scaffoldSolidJSTab<AppPasskeysTabPayload>({
+    title: 'Privacy.Passkeys',
+    getComponentModule: () => import('../sidebarLeft/tabs/passkeys')
+  });
+

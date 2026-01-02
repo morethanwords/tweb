@@ -1,0 +1,39 @@
+// .container {
+//   margin-bottom: .75rem;
+// }
+
+.title {
+  font-size: var(--font-size-24);
+  line-height: var(--line-height-24);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: .25rem;
+}
+
+.subtitle {
+  font-size: var(--font-size-16);
+  line-height: var(--line-height-16);
+  margin-top: .125rem;
+
+  &.secondary {
+    color: var(--secondary-text-color);
+    font-size: var(--font-size-14);
+    line-height: var(--line-height-14);
+  }
+}
+
+.lottieWrapper {
+  margin: .125rem auto .5rem;
+  width: 130px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lottieAnimation {
+  width: var(--size);
+  height: var(--size);
+  max-width: 100%;
+  max-height: 100%;
+  position: relative;
+}

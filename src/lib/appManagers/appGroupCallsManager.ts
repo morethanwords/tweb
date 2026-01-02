@@ -76,7 +76,7 @@ export class AppGroupCallsManager extends AppManager {
 
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateGroupCall: (update) => {
-        this.saveGroupCall(update.call, update.chat_id);
+        this.saveGroupCall(update.call, this.appPeersManager.getPeerId(update.peer));
       },
 
       updateGroupCallParticipants: (update) => {
@@ -240,7 +240,7 @@ export class AppGroupCallsManager extends AppManager {
     });
   }
 
-  public saveGroupCall(call: MyGroupCall, chatId?: ChatId) {
+  public saveGroupCall(call: MyGroupCall, peerId?: PeerId) {
     const oldCall = this.groupCalls.get(call.id);
     const shouldUpdate = call._ !== 'inputGroupCall' && (!oldCall || oldCall._ !== 'groupCallDiscarded');
     if(oldCall) {

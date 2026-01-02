@@ -25,7 +25,7 @@ import Button from '../buttonTsx';
 
 export type PopupButton = {
   text?: HTMLElement | DocumentFragment | Text,
-  callback?: (e: MouseEvent) => void | MaybePromise<boolean>,
+  callback?: (e: MouseEvent) => MaybePromise<boolean | void>,
   langKey?: LangPackKey,
   langArgs?: any[],
   isDanger?: boolean,
@@ -446,7 +446,7 @@ PopupElement.FooterButton = (props: Parameters<typeof PopupElement.Button>[0] & 
 
 PopupElement.Button = (props: {
   children?: JSX.Element,
-  callback?: (e: MouseEvent) => void | MaybePromise<boolean>,
+  callback?: (e: MouseEvent) => MaybePromise<boolean | void>,
   langKey?: LangPackKey,
   langArgs?: FormatterArguments,
   danger?: boolean,
@@ -470,6 +470,7 @@ PopupElement.Button = (props: {
       try {
         result = await result;
       } catch(err) {
+        console.log('popup button error', err);
         result = false;
       }
 
