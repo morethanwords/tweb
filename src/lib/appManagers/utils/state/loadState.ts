@@ -24,6 +24,7 @@ import {getOldDatabaseState} from '../../../../config/databases/state';
 import {IDB} from '../../../files/idb';
 import createStorages from '../storages/createStorages';
 import isObject from '../../../../helpers/object/isObject';
+import AppStorage from '../../../storage';
 
 export type LoadStateResult = {
   state: State,
@@ -344,6 +345,13 @@ async function loadOldState(): Promise<LoadStateResult> {
   if(langPack) {
     await commonStateStorage.set({langPack});
   }
+
+  const oldDb = getOldDatabaseState();
+  const clearPromises = oldDb.stores.map((store) => {
+    const stateStorage = new AppStorage(oldDb, store.name);
+    return stateStorage.clear();
+  });
+  await Promise.all(clearPromises);
 
   return {
     state: writer.state,

@@ -366,13 +366,10 @@ export default class AppStorage<
       const currentStorage = await this.getStorage();
       await currentStorage.clear();
 
-      if(currentStorage instanceof EncryptedStorageLayer)
-      {
+      if(currentStorage instanceof EncryptedStorageLayer) {
         const otherStorage = new IDBStorage(this.db, this.storeName);
         await otherStorage.clear();
-      }
-      else if(this.isEncryptable)
-      {
+      } else if(this.isEncryptable) {
         const otherStorage = EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName);
         await otherStorage.clear();
       }

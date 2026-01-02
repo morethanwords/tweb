@@ -13,8 +13,7 @@ import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import EncryptionKeyStore from './passcode/keyStore';
 
 
-export interface StorageLayer
-{
+export interface StorageLayer {
   save: (entryName: string | string[], value: any | any[]) => Promise<unknown>;
   get: <T>(entryNames: string[]) => Promise<T[]>;
   getAllEntries: () => Promise<IDBStorage.Entries>;

@@ -394,6 +394,9 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
   const allStates = await apiManagerProxy.loadAllStates();
   const stateResult = allStates[getCurrentAccount()];
 
+  // console.log(stateResult);
+  // await pause(10000000);
+
   console.timeLog(TIME_LABEL, 'allStates loaded');
 
   // * (2)

@@ -329,7 +329,8 @@ export class ApiManager extends ApiManagerMethods {
 
       this.baseDcId = undefined;
       // this.telegramMeNotify(false);
-      if(totalAccounts === 1 && accountNumber === 1 && !migrateAccountTo) {
+      // * totalAccounts can be 0 somehow
+      if(totalAccounts <= 1 && accountNumber === 1 && !migrateAccountTo) {
         await Promise.all([
           (async() => {
             const keys: Parameters<typeof sessionStorage['delete']>[0][] = [
