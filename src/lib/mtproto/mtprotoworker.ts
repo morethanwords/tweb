@@ -68,6 +68,7 @@ import {_changeHistoryStorageKey, _deleteHistoryStorage, _useHistoryStorage} fro
 import SlicedArray, {SliceEnd} from '../../helpers/slicedArray';
 import {createHistoryStorageSearchSlicedArray} from '../appManagers/utils/messages/createHistoryStorage';
 import tabId from '../../config/tabId';
+import Modes from '../../config/modes';
 
 
 export type Mirrors = {
@@ -519,6 +520,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
             url.hash = '';
             url.search = '';
           }
+        }
+
+        if(Modes.test) {
+          url.searchParams.set('test', '1');
         }
 
         history.replaceState(null, '', url);
