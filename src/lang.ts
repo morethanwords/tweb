@@ -3643,7 +3643,7 @@ const lang = {
     'one_value': 'You paid **%2$s** to send a message',
     'other_value': 'You paid **%2$s** to send %1$d messages.'
   },
-  'PaidMessages.YouReceivedStarsFrom': '%1$s paid %2$s to send a message',
+  'PaidMessages.YouReceivedStarsFrom': '%s paid %s to send a message',
   'PaidMessages.FeeForMessages': {
     'one_value': 'Fee for %d message',
     'other_value': 'Fee for %d messages'
