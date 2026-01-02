@@ -34,7 +34,7 @@ export default function addPaidServiceMessage({isAnyGroup, bubble, message, our,
       i18n('PaidMessages.FailedToPayForMessage', [messageCount, i18n('Stars', [totalStars])]) :
       our ?
         i18n('PaidMessages.YouPaidToSendMessages', [messageCount, i18n('Stars', [totalStars])]) :
-        i18n('PaidMessages.YouReceivedStarsFrom', [i18n('Stars', [totalStars]), await wrapPeerTitle({peerId: peerId, onlyFirstName: true})])
+        i18n('PaidMessages.YouReceivedStarsFrom', [await wrapPeerTitle({peerId: peerId, onlyFirstName: true}), i18n('Stars', [totalStars])])
 
     i18nElement.classList.add('service-msg-i18n-element');
 
