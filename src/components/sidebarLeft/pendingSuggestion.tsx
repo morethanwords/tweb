@@ -244,25 +244,24 @@ export function renderPendingSuggestion(toElement: HTMLElement) {
       }
     });
 
-    createEffect(() => {
-      let element: JSX.Element;
+    const suggestionConstructor = createMemo(() => {
       if(appConfig.freeze_since_date) {
-        element = FrozenSuggestion();
+        return FrozenSuggestion;
       } else if(IS_WEB_AUTHN_SUPPORTED && pendingSuggestions().has(PASSKEY_SETUP_KEY)) {
-        element = PasskeySetupSuggestion();
+        return PasskeySetupSuggestion;
       } else if(pendingSuggestions().has(BIRTHDAY_SETUP_SUGGESTION_KEY)) {
-        element = BirthdaySetupSuggestion();
+        return BirthdaySetupSuggestion;
       } else if(
         !appSettings.notifications.suggested &&
         Notification.permission !== 'granted'
       ) {
-        element = NotificationsSuggestion();
+        return NotificationsSuggestion;
       }
+    });
 
-      if(element) {
-        element = (<div class={styles.suggestionContainer}>{element}</div>)
-      }
-
+    createEffect(() => {
+      const constructor = suggestionConstructor();
+      const element = constructor ? (<div class={styles.suggestionContainer}>{constructor()}</div>) : undefined;
       setElement(element);
     });
 
