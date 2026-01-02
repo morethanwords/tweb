@@ -995,6 +995,7 @@ const lang = {
     'other_value': '%d passkeys'
   },
   'Privacy.Passkey.Created': 'Created %s',
+  'Privacy.Passkey.LastUsage': 'used %s',
   'Passkey.Unsupported': 'UNSUPPORTED',
   'Privacy.Passkey.Create': 'Create Passkey',
   'Passkey.Deletion.Title': 'Delete Passkey?',

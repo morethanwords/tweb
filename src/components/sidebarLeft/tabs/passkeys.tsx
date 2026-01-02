@@ -19,8 +19,14 @@ type AppPasskeysTabClass = typeof AppPasskeysTab;
 
 const PasskeyItem = (passkey: Passkey) => {
   const [tab] = useSuperTab<AppPasskeysTabClass>();
-  const {rootScope, wrapEmojiText, wrapAdaptiveCustomEmoji, Row, i18n, confirmationPopup} = useHotReloadGuard();
+  const {rootScope, wrapEmojiText, wrapAdaptiveCustomEmoji, Row, i18n, confirmationPopup, formatDate} = useHotReloadGuard();
   const [disabled, setDisabled] = createSignal(false);
+  const subtitle = () => {
+    const created = i18n('Privacy.Passkey.Created', [formatDate(new Date(passkey.date * 1000), {withTime: true})]);
+    if(!passkey.last_usage_date) return created;
+    const lastUsed = i18n('Privacy.Passkey.LastUsage', [formatDate(new Date(passkey.last_usage_date * 1000), {withTime: true})]);
+    return [created, ' • ', lastUsed];
+  };
   return (
     <Row
       disabled={disabled()}
@@ -55,7 +61,7 @@ const PasskeyItem = (passkey: Passkey) => {
         <Row.Icon icon="key" />
       </Show>
       <Row.Title class="text-bold">{wrapEmojiText(passkey.name)}</Row.Title>
-      <Row.Subtitle>{i18n('Privacy.Passkey.Created', [formatFullSentTime(passkey.date)])}</Row.Subtitle>
+      <Row.Subtitle>{subtitle()}</Row.Subtitle>
       <Show when={passkey.software_emoji_id}>
         <Row.Media size="abitbigger">
           {wrapAdaptiveCustomEmoji({

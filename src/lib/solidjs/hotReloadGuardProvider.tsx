@@ -53,6 +53,7 @@ import wrapRichText from '../richTextProcessor/wrapRichText';
 import lottieLoader from '../rlottie/lottieLoader';
 import rootScope from '../rootScope';
 import {SolidJSHotReloadGuardContext} from './hotReloadGuard';
+import {formatDate} from '../../helpers/date';
 
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
@@ -114,7 +115,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       PhotoTsx,
       DocumentTsx,
       Slideshow,
-      AppMediaViewer
+      AppMediaViewer,
+      formatDate
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

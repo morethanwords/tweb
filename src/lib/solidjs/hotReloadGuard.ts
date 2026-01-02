@@ -59,6 +59,7 @@ import type wrapRichText from '../richTextProcessor/wrapRichText';
 import type lottieLoader from '../rlottie/lottieLoader';
 import type {RootScope} from '../rootScope';
 import type SolidJSHotReloadGuardProvider from './hotReloadGuardProvider';
+import type {formatDate} from '../../helpers/date';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -119,6 +120,7 @@ export type SolidJSHotReloadGuardContextValue = {
   PhotoTsx: typeof PhotoTsx;
   Slideshow: typeof Slideshow;
   AppMediaViewer: typeof AppMediaViewer;
+  formatDate: typeof formatDate;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<
