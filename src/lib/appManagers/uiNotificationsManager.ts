@@ -622,11 +622,8 @@ export class UiNotificationsManager {
     this.prevFavicon = href;
     this.faviconElements.forEach((element, idx, arr) => {
       const link = element.cloneNode() as HTMLLinkElement;
-
       link.dataset.href ||= link.href;
-
-      href ??= link.dataset.href;
-      link.href = href;
+      link.href = href ?? link.dataset.href;
       element.replaceWith(arr[idx] = link);
     });
   }
