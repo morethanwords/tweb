@@ -1,27 +1,26 @@
 import {Component, createResource, createSignal, onCleanup, Show} from 'solid-js';
-
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
-import {usePasscodeActions} from '../../../../lib/passcode/actions';
-import ListenerSetter from '../../../../helpers/listenerSetter';
 import {IS_MOBILE} from '../../../../environment/userAgent';
+import {keepMe} from '../../../../helpers/keepMe';
+import ListenerSetter from '../../../../helpers/listenerSetter';
+import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
 import {i18n, LangPackKey} from '../../../../lib/langPack';
-
+import {usePasscodeActions} from '../../../../lib/passcode/actions';
+import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
+import SettingsTabLottieAnimation from '../../../settingsTabLottieAnimation';
+import ripple from '../../../ripple';
+import Section from '../../../section';
+import type SliderSuperTab from '../../../sliderTab';
+import type {AppPasscodeLockTab} from '../../../solidJsTabs';
 import {usePromiseCollector} from '../../../solidJsTabs/promiseCollector';
 import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
-import type {AppPasscodeLockTab} from '../../../solidJsTabs';
-import type SliderSuperTab from '../../../sliderTab';
-import ripple from '../../../ripple'; ripple; // keep
-import StaticSwitch from '../../../staticSwitch';
-import Section from '../../../section';
 import Space from '../../../space';
-
-import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
-import LottieAnimation from './lottieAnimation';
-import InlineSelect from './inlineSelect';
-
+import StaticSwitch from '../../../staticSwitch';
 import commonStyles from './common.module.scss';
+import InlineSelect from './inlineSelect';
 import styles from './mainTab.module.scss';
+import ShortcutBuilder, {ShortcutKey} from './shortcutBuilder';
+
+keepMe(ripple);
 
 
 type AppPasscodeLockTabType = typeof AppPasscodeLockTab;
@@ -108,7 +107,7 @@ const NoPasscodeContent = () => {
 
   return (
     <Section caption="PasscodeLock.Notice">
-      <LottieAnimation name="UtyanPasscode" />
+      <SettingsTabLottieAnimation name="UtyanPasscode" />
 
       <div class={styles.MainDescription}>{i18n('PasscodeLock.Description')}</div>
 
@@ -260,7 +259,7 @@ const PasscodeSetContent: Component<{
   return (
     <>
       <Section class={styles.FirstSection} caption={caption as any}>
-        <LottieAnimation name="UtyanPasscode" />
+        <SettingsTabLottieAnimation name="UtyanPasscode" />
 
         <Space amount="1.125rem" />
 

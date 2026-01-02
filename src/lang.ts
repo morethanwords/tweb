@@ -4103,7 +4103,14 @@ const lang = {
   'ResetPassword.RequestPending': 'You can reset your password in %d ([cancel]())',
   'ResetPassword.TroubleText': 'If you don’t have access to your recovery email, your remaining options are either to remember your password or wait 7 days until your password is reset.',
   'ResetPassword.Action': '[Reset password]()',
-  'PasswordDeactivated': 'Password deactivated'
+  'PasswordDeactivated': 'Password deactivated',
+
+  'AutoDeleteMessages': 'Auto-delete messages',
+  'AutoDeleteMessages.SectionTitle': 'Self-destruct timer',
+  'AutoDeleteMessages.SetCustomTime': 'Set custom time',
+  'AutoDeleteMessages.Info': 'If enabled, all new messages in chats you start will be automatically deleted for everyone at some point after they have been sent. This will not affect your existing chats.',
+
+  'Off': 'Off'
 };
 
 export default lang;

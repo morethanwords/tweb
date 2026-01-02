@@ -153,4 +153,6 @@ export default class RepliesElement extends HTMLElement {
   }
 }
 
-customElements.define(TAG_NAME, RepliesElement);
+if(!customElements.get(TAG_NAME)) {
+  customElements.define(TAG_NAME, RepliesElement);
+}

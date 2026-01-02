@@ -395,4 +395,6 @@ export default class ReactionsElement extends HTMLElement {
   }
 }
 
-customElements.define(TAG_NAME, ReactionsElement);
+if(!customElements.get(TAG_NAME)) {
+  customElements.define(TAG_NAME, ReactionsElement);
+}
