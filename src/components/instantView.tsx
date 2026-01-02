@@ -32,6 +32,7 @@ import prepareAlbum from './prepareAlbum';
 import type AppMediaViewer from './appMediaViewer';
 import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import {useAppSettings} from '../stores/appSettings';
 
 type InstantViewContextValue = {
   webPageId: Long,
@@ -136,6 +137,7 @@ export function InstantView(props: {
   });
 
   const {i18n, appImManager, rootScope} = useHotReloadGuard();
+  const [appSettings] = useAppSettings();
   let scrollableRef: HTMLDivElement;
   return (
     <Animated type="cross-fade" appear={props.needFadeIn} mode="add-remove">
@@ -151,6 +153,7 @@ export function InstantView(props: {
               dir={props.page.pFlags.rtl ? 'auto' : undefined}
               class={classNames(styles.InstantView, 'text-overflow-wrap')}
               onClick={onClick.bind(null, value)}
+              style={{'--iv-scale': (1.125 * appSettings.instantView.scale).toFixed(3)}}
             >
               {value.customEmojiRenderer}
               <div class={styles.InstantViewContent}>

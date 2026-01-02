@@ -381,3 +381,38 @@ $transition: .2s var(--transition-standard-easing);
     }
   }
 }
+
+.ScaleMenu {
+  // --padding-right: var(--padding-left);
+  display: flex;
+  text-align: center;
+  padding: 0;
+  background: none !important;
+  cursor: default;
+
+  &Smaller,
+  &Bigger {
+    flex: 0 0 auto;
+    width: 35%;
+    height: 100%;
+    cursor: pointer;
+    border-radius: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &Smaller {
+    font-size: 87.5%;
+  }
+
+  &Bigger {
+    font-size: 112.5%;
+  }
+
+  &Scale {
+    width: 30%;
+    flex: 0 0 auto;
+    color: var(--secondary-text-color);
+  }
+}

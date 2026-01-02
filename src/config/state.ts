@@ -111,7 +111,10 @@ export type StateSettings = {
     lockShortcut: PasscodeLockShortcutKey[],
     canAttemptAgainOn: number | null
   },
-  logsDiffView?: boolean
+  logsDiffView?: boolean,
+  instantView: {
+    scale: number
+  }
 };
 
 type CacheSomething<T> = {
@@ -381,6 +384,9 @@ export const SETTINGS_INIT: StateSettings = {
     lockShortcutEnabled: false,
     lockShortcut: ['Alt'],
     canAttemptAgainOn: null
+  },
+  instantView: {
+    scale: 1
   }
 };
 
