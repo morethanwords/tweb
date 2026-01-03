@@ -3154,7 +3154,7 @@
 "PaidMessages.YouPaidForMessages_other" = "You paid %d Stars.";
 "PaidMessages.YouPaidToSendMessages_one" = "You paid **%2$s** to send a message";
 "PaidMessages.YouPaidToSendMessages_other" = "You paid **%2$s** to send %1$d messages.";
-"PaidMessages.YouReceivedStarsFrom" = "%s paid %s to send a message";
+"PaidMessages.YouReceivedStarsFrom" = "%1$s paid %2$s to send a message";
 "PaidMessages.FeeForMessages_one" = "Fee for %d message";
 "PaidMessages.FeeForMessages_other" = "Fee for %d messages";
 "PaidMessages.YouReceiveWithCommissionNotice" = "You receive %d% of the price that you charge for each incoming message.";

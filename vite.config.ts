@@ -34,7 +34,7 @@ const handlebarsPlugin = handlebars({
   }
 });
 
-const USE_SSL = true;
+const USE_SSL = false;
 const USE_SIGNED_CERTS = USE_SSL && true;
 const USE_SELF_SIGNED_CERTS = USE_SSL && false;
 
