@@ -66,6 +66,8 @@ export function linkColor(el: string | Node) {
   return el;
 }
 
+const shiftedIcons = [DurationType.Days, DurationType.Years]
+
 const typeToIcon: Partial<Record<DurationType, Icon>> = {
   [DurationType.Days]: 'auto_delete_circle_days',
   [DurationType.Weeks]: 'auto_delete_circle_weeks',
@@ -95,7 +97,21 @@ export function createAutoDeleteIcon(period?: number) {
 
   if(!durationIcon || !typeIcon) return defaultResult();
 
-  return OverlayedIcon(['auto_delete_circle_empty', durationIcon, typeIcon])
+  const isShifted = shiftedIcons.includes(option.type);
+
+  return OverlayedIcon(
+    [
+      'auto_delete_circle_empty',
+      {
+        icon: durationIcon,
+        className: isShifted ? 'auto-delete-icon--shifted' : undefined
+      },
+      {
+        icon: typeIcon,
+        className: isShifted ? 'auto-delete-icon--shifted' : undefined
+      }
+    ],
+  );
 }
 
 

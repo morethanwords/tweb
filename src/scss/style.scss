@@ -2630,26 +2630,16 @@ hr {
   display: inline-flex;
 
   &__floating-icon {
+    --original-transform: translate(-50%, -50%);
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: var(--original-transform);
   }
 }
 
-/*
-// TODO: Backup, Cleanup
 .auto-delete-icon {
-  position: relative;
-  display: inline-flex;
-
-  &__duration {
-    font-family: var(--font-rounded);
-    font-size: 0.45em;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+  &--shifted {
+    transform: var(--original-transform) translateX(1px);
   }
 }
-*/
