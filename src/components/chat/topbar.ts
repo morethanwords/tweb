@@ -1047,7 +1047,7 @@ export default class ChatTopbar {
     });
 
     this.listenerSetter.add(rootScope)('auto_delete_period_update', ({peerId, period}) => {
-      if(peerId !== this.peerId) return;
+      if(peerId !== this.peerId || this.chat.type !== ChatType.Chat) return;
       this.avatar.setAutoDeletePeriod(period);
     });
 
