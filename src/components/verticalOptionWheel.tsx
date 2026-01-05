@@ -1,7 +1,7 @@
 import {createEffect, createMemo, createSignal, For, type JSX, on, onCleanup, untrack} from 'solid-js';
-import {animate, cancelAnimationByKey} from '../helpers/animation';
-import fastSmoothScroll from '../helpers/fastSmoothScroll';
+import {animate} from '../helpers/animation';
 import {keepMe} from '../helpers/keepMe';
+import {subscribeOn} from '../helpers/solid/subscribeOn';
 import swipe, {SwipeDirectiveArgs} from '../helpers/useSwipe';
 import useElementSize from '../hooks/useElementSize';
 import {useIsCleaned} from '../hooks/useIsCleaned';
@@ -21,6 +21,7 @@ const diffSampleCount = 5;
 const scrollDuration = 320;
 const optionSize = 40;
 const dragThreshold = 10;
+const generousDiffError = 0.1;
 
 export const VerticalOptionWheel = <V, >(props: {
   /**
@@ -71,17 +72,19 @@ export const VerticalOptionWheel = <V, >(props: {
     let bestItem = localElementsAndOptions[0];
     let bestDiff = Infinity;
 
-    for(const item of localElementsAndOptions) {
+    for(let i = 0; i < localElementsAndOptions.length; i++) {
+      const item = localElementsAndOptions[i];
       const element = item.element;
 
-      const diff = getDiff(element);
-      const absDiff = Math.abs(diff);
-      const distSigned = diff / size.height * 2;
+      const diffSigned = getDiff(i);
+      const diff = Math.abs(diffSigned);
+
+      const distSigned = diffSigned / size.height * 2;
       const dist = Math.abs(distSigned);
 
-      if(absDiff < bestDiff) {
+      if(diff < bestDiff) {
         bestItem = item;
-        bestDiff = absDiff;
+        bestDiff = diff;
       }
 
       element.classList.toggle(styles.hidden, dist > 1);
@@ -116,14 +119,25 @@ export const VerticalOptionWheel = <V, >(props: {
     });
   });
 
+  createEffect(() => {
+    const localScrollable = scrollable();
+    if(!localScrollable) return;
+
+    subscribeOn(localScrollable)('wheel', () => {
+      cancelSmoothScroll?.();
+    }, {passive: true});
+  })
+
+  let cancelDeceleration: () => void;
+  let cancelSmoothScroll: () => void;
+
   onCleanup(() => {
-    cancelSmoothScroll();
+    cancelSmoothScroll?.();
     cancelDeceleration?.();
   });
 
   let initialScroll = 0;
   let lastDiffs: number[] = []
-  let cancelDeceleration: () => void;
 
   const swipeArgs: SwipeDirectiveArgs = {
     onStart: () => {
@@ -131,7 +145,7 @@ export const VerticalOptionWheel = <V, >(props: {
       lastDiffs = [];
 
       cancelDeceleration?.();
-      cancelSmoothScroll();
+      cancelSmoothScroll?.();
       setIsDragging(true);
     },
     onMove: (_, yDiff) => {
@@ -140,7 +154,7 @@ export const VerticalOptionWheel = <V, >(props: {
 
       lastDiffs = [yDiff, ...lastDiffs.slice(0, diffSampleCount - 1)];
 
-      if(yDiff > dragThreshold) setHasDraggedALittle(true);
+      if(Math.abs(yDiff) > dragThreshold) setHasDraggedALittle(true);
 
       localScrollable.scrollTop = initialScroll - yDiff;
     },
@@ -153,9 +167,9 @@ export const VerticalOptionWheel = <V, >(props: {
     }
   };
 
-  function getDiff(element: HTMLElement) {
+  function getDiff(idx: number) {
     const center = size.height / 2 + scrollTop();
-    return center - (element.offsetTop + element.offsetHeight / 2);
+    return center - (idx + 2.5) * optionSize;
   };
 
   function runDeceleration() {
@@ -204,33 +218,34 @@ export const VerticalOptionWheel = <V, >(props: {
     const localElementsAndOptions = elementsAndOptions();
     if(!localElementsAndOptions.length || !localScrollable) return;
 
-    let bestItem = localElementsAndOptions[0];
+
+    let bestIdx = 0;
     let bestDiff = Infinity;
 
-    for(const item of elementsAndOptions()) {
-      const element = item.element;
-      const diff = Math.abs(getDiff(element));
+    for(let i = 0; i < localElementsAndOptions.length; i++) {
+      const diff = Math.abs(getDiff(i));
 
       if(diff < bestDiff) {
-        bestItem = item;
+        bestIdx = i;
         bestDiff = diff;
       }
     }
 
-    fastSmoothScroll({
-      container: localScrollable,
-      element: bestItem.element,
-      position: 'center',
-      axis: 'y',
-      forceDuration: scrollDuration
-    });
+    if(bestDiff > generousDiffError) scrollToIdx(bestIdx);
   }
 
   function onOptionClick(idx: number) {
-    const localScrollable = scrollable();
-    if(!localScrollable || hasDraggedALittle()) return;
+    if(hasDraggedALittle()) return;
 
-    animateValue(
+    scrollToIdx(idx);
+  }
+
+  function scrollToIdx(idx: number) {
+    const localScrollable = scrollable();
+    if(!localScrollable) return;
+
+    cancelSmoothScroll?.();
+    cancelSmoothScroll = animateValue(
       localScrollable.scrollTop,
       idx * optionSize,
       scrollDuration,
@@ -239,10 +254,6 @@ export const VerticalOptionWheel = <V, >(props: {
       }
     );
   }
-
-  function cancelSmoothScroll() {
-    cancelAnimationByKey(scrollable());
-  };
 
   return (
     <div class={styles.Container} style={{'--option-size': `${optionSize}px`}}>
