@@ -41,7 +41,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import groupCallsController from '../../lib/calls/groupCallsController';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {makeMediaSize} from '../../helpers/mediaSize';
-import {FOLDER_ID_ALL} from '../../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ALL, HIDDEN_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
 import formatNumber from '../../helpers/number/formatNumber';
 import PopupElement from '../popups';
 import ChatRequests from './requests';
@@ -449,9 +449,17 @@ export default class ChatTopbar {
   }
 
   private verifyAutoDeleteButton = async() => {
+    const specialChats = [REPLIES_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID.toPeerId(), VERIFICATION_CODES_BOT_ID, HIDDEN_PEER_ID, SERVICE_PEER_ID, rootScope.myId];
+    if(specialChats.includes(this.peerId)) return false;
+
     if(this.peerId.isUser()) return true;
-    const chat = await this.managers.appChatsManager.getChat(this.peerId.toChatId());
-    return hasRights(chat, 'change_info');
+
+    const {chat, isMonoforum}  = await namedPromises({
+      chat: this.managers.appChatsManager.getChat(this.peerId.toChatId()),
+      isMonoforum: this.managers.appChatsManager.isMonoforum(this.peerId.toChatId())
+    });
+
+    return !isMonoforum && hasRights(chat, 'change_info');
   }
 
   public constructUtils() {
@@ -459,7 +467,7 @@ export default class ChatTopbar {
       options: {
         text: 'AutoDeleteMessagesShort',
         separatorDown: true,
-        verify: () => this.verifyAutoDeleteButton()
+        verify: this.verifyAutoDeleteButton
       },
       createSubmenu: this.createAutoDeleteSubmenu.bind(this),
       direction: 'left-start'
