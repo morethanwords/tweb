@@ -76,7 +76,7 @@ export const VerticalOptionWheel = <V, >(props: {
       const item = localElementsAndOptions[i];
       const element = item.element;
 
-      const diffSigned = getDiff(i);
+      const diffSigned = calcDiffFromCenterFor(i);
       const diff = Math.abs(diffSigned);
 
       const distSigned = diffSigned / size.height * 2;
@@ -167,7 +167,7 @@ export const VerticalOptionWheel = <V, >(props: {
     }
   };
 
-  function getDiff(idx: number) {
+  function calcDiffFromCenterFor(idx: number) {
     const center = size.height / 2 + scrollTop();
     return center - (idx + 2.5) * optionSize;
   };
@@ -223,7 +223,7 @@ export const VerticalOptionWheel = <V, >(props: {
     let bestDiff = Infinity;
 
     for(let i = 0; i < localElementsAndOptions.length; i++) {
-      const diff = Math.abs(getDiff(i));
+      const diff = Math.abs(calcDiffFromCenterFor(i));
 
       if(diff < bestDiff) {
         bestIdx = i;
