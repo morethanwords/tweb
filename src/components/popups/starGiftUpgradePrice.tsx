@@ -4,7 +4,6 @@ import {LimitLineTsx} from '../limitLineTsx';
 import PopupElement, {createPopup} from './indexTsx';
 
 import styles from './starGiftUpgradePrice.module.scss';
-import {lerp} from '../mediaEditor/utils';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import {StarGiftUpgradePreview} from '../../lib/appManagers/appGiftsManager';
 import {easeOutCircApply} from '../../helpers/easing/easeOutCirc';

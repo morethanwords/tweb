@@ -1,19 +1,17 @@
 import {batch, createEffect, createMemo, createSignal, onCleanup, onMount} from 'solid-js';
 import {render} from 'solid-js/web';
 
+import {animateValue} from '../../helpers/animateValue';
+import {animate} from '../../helpers/animation';
 import ListenerSetter from '../../helpers/listenerSetter';
+import debounce from '../../helpers/schedulers/debounce';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import {logger} from '../../lib/logger';
-import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import {useHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
-import debounce from '../../helpers/schedulers/debounce';
-import {animate} from '../../helpers/animation';
-
-import {animateValue} from '../mediaEditor/utils';
-import DotRenderer from '../dotRenderer';
+import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import type {AnimationItemGroup} from '../animationIntersector';
+import DotRenderer from '../dotRenderer';
 import {observeResize} from '../resizeObserver';
-
 import {drawImageFromSource} from './drawImageFromSource';
 import {
   adjustSpaceBetweenCloseRects,
@@ -26,6 +24,7 @@ import {
   UnwrapEasing,
   waitResizeToBePainted
 } from './utils';
+
 
 type MessageSpoilerOverlayProps = {
   mid: number;

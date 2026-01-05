@@ -1,4 +1,6 @@
+import {animateValue} from '../../helpers/animateValue';
 import deferredPromise from '../../helpers/cancellablePromise';
+import {lerp} from '../../helpers/lerp';
 import {doubleRaf} from '../../helpers/schedulers';
 import type {AppManagers} from '../../lib/appManagers/managers';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
@@ -6,7 +8,7 @@ import {EditingMediaState} from './context';
 import {MediaEditorFinalResult} from './finalRender/createFinalResult';
 import {openMediaEditor} from './mediaEditor';
 import {MediaType, NumberPair} from './types';
-import {animateValue, delay, lerp, snapToViewport} from './utils';
+import {delay, snapToViewport} from './utils';
 
 
 type Args = {

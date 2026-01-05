@@ -1,18 +1,18 @@
 import {batch, createEffect, createMemo, createSignal, JSX, on, onCleanup, onMount} from 'solid-js';
-
 import {doubleRaf} from '../../helpers/schedulers';
-
-import AdjustmentsTab from './tabs/adjustmentsTab';
-import {animateValue, delay, lerp} from './utils';
 import {useMediaEditorContext} from './context';
-import StickersTab from './tabs/stickersTab';
-import TabContent from './tabs/tabContent';
-import useIsMobile from './useIsMobile';
+import AdjustmentsTab from './tabs/adjustmentsTab';
 import BrushTab from './tabs/brushTab';
 import CropTab from './tabs/cropTab';
-import TextTab from './tabs/textTab';
+import StickersTab from './tabs/stickersTab';
+import TabContent from './tabs/tabContent';
 import Tabs from './tabs/tabs';
+import TextTab from './tabs/textTab';
 import Topbar from './topbar';
+import useIsMobile from './useIsMobile';
+import {delay} from './utils';
+import {animateValue} from '../../helpers/animateValue';
+import {lerp} from '../../helpers/lerp';
 
 
 export default function Toolbar(props: {onFinish: () => void; onClose: () => void}) {

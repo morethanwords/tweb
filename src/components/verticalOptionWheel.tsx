@@ -1,4 +1,5 @@
 import {createEffect, createMemo, createSignal, For, type JSX, on, onCleanup, untrack} from 'solid-js';
+import {animateValue} from '../helpers/animateValue';
 import {animate} from '../helpers/animation';
 import {keepMe} from '../helpers/keepMe';
 import {subscribeOn} from '../helpers/solid/subscribeOn';
@@ -6,7 +7,6 @@ import swipe, {SwipeDirectiveArgs} from '../helpers/useSwipe';
 import useElementSize from '../hooks/useElementSize';
 import {useIsCleaned} from '../hooks/useIsCleaned';
 import {useScrollTop} from '../hooks/useScrollTop';
-import {animateValue} from './mediaEditor/utils';
 import styles from './verticalOptionWheel.module.scss';
 
 keepMe(swipe);

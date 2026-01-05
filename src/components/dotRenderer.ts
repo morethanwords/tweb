@@ -18,7 +18,7 @@ import getUnsafeRandomInt from '../helpers/number/getUnsafeRandomInt';
 import {applyColorOnContext} from '../lib/rlottie/rlottiePlayer';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from './animationIntersector';
 import BluffSpoilerController from './bluffSpoilerController';
-import {animateValue, simpleEasing} from './mediaEditor/utils';
+import {animateValue, simpleEasing} from '../helpers/animateValue';
 
 export class AnimationItemNested implements AnimationItemWrapper {
   public autoplay = true;
