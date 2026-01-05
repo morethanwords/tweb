@@ -92,7 +92,7 @@ const AutoDeleteMessages = () => {
 
 
       <Space amount='1rem' />
-      <SettingsTabLottieAnimation name="UtyaAutoDelete" />
+      <SettingsTabLottieAnimation name="UtyanDisappear" />
       <Space amount='2rem' />
 
       <Section name='AutoDeleteMessages.SectionTitle' caption='AutoDeleteMessages.SectionCaption'>
