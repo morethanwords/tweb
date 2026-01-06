@@ -236,6 +236,13 @@ export default class SidebarSlider {
     destroyable = true,
     doNotAppend?: boolean
   ) {
+    if(
+      (ctor as any).noSame &&
+      this.historyTabIds[this.historyTabIds.length - 1] instanceof SliderSuperTab
+    ) {
+      return this.historyTabIds[this.historyTabIds.length - 1] as T;
+    }
+
     const tab = new ctor(doNotAppend ? undefined : this, destroyable);
     tab.managers = this.managers;
     return tab;

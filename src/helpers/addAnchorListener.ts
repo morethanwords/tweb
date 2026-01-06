@@ -14,7 +14,7 @@ import parseUriParams from './string/parseUriParams';
 type InternalLinkAnchorType = 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
   'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
   'addemoji' | 'setMediaTimestamp' | 'addlist' | 'boost' | 'premium_offer' | 'giftcode' |
-  'm' | 'message' | 'stars_topup' | 'share' | 'msg_url' | 'nft' | 'iv';
+  'm' | 'message' | 'stars_topup' | 'share' | 'msg_url' | 'nft' | 'iv' | 'new' | 'settings' | 'contacts';
 
 export const UNSAFE_ANCHOR_LINK_TYPES: Set<InternalLinkAnchorType> = new Set([
   'showMaskedAlert',

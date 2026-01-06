@@ -24,6 +24,7 @@ export interface SliderSuperTabEventableConstructable {
 
 export default class SliderSuperTab {
   public static getInitArgs?(...args: any[]): any;
+  public static noSame?: boolean;
 
   public container: HTMLElement;
 

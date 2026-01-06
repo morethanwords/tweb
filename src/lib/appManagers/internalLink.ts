@@ -30,7 +30,10 @@ export enum INTERNAL_LINK_TYPE {
   UNIQUE_STAR_GIFT,
   STAR_GIFT_COLLECTION,
   STORY_ALBUM,
-  INSTANT_VIEW
+  INSTANT_VIEW,
+  NEW,
+  SETTINGS,
+  CONTACTS
 };
 
 export type InternalLink =
@@ -55,7 +58,10 @@ export type InternalLink =
   InternalLink.InternalLinkUniqueStarGift |
   InternalLink.InternalLinkStarGiftCollection |
   InternalLink.InternalLinkStoryAlbum |
-  InternalLink.InternalLinkInstantView;
+  InternalLink.InternalLinkInstantView |
+  InternalLink.InternalLinkNew |
+  InternalLink.InternalLinkSettings |
+  InternalLink.InternalLinkContacts;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -202,6 +208,21 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.INSTANT_VIEW,
     url: string
   }
+
+  export interface InternalLinkNew {
+    _: INTERNAL_LINK_TYPE.NEW,
+    type?: 'group' | 'contact' | 'channel'
+  }
+
+  export interface InternalLinkSettings {
+    _: INTERNAL_LINK_TYPE.SETTINGS,
+    path: string
+  }
+
+  export interface InternalLinkContacts {
+    _: INTERNAL_LINK_TYPE.CONTACTS,
+    type?: 'search' | 'sort' | 'new' | 'invite' | 'manage'
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -226,5 +247,8 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT]: InternalLink.InternalLinkUniqueStarGift,
   [INTERNAL_LINK_TYPE.STAR_GIFT_COLLECTION]: InternalLink.InternalLinkStarGiftCollection,
   [INTERNAL_LINK_TYPE.STORY_ALBUM]: InternalLink.InternalLinkStoryAlbum,
-  [INTERNAL_LINK_TYPE.INSTANT_VIEW]: InternalLink.InternalLinkInstantView
+  [INTERNAL_LINK_TYPE.INSTANT_VIEW]: InternalLink.InternalLinkInstantView,
+  [INTERNAL_LINK_TYPE.NEW]: InternalLink.InternalLinkNew,
+  [INTERNAL_LINK_TYPE.SETTINGS]: InternalLink.InternalLinkSettings,
+  [INTERNAL_LINK_TYPE.CONTACTS]: InternalLink.InternalLinkContacts
 };

@@ -17,6 +17,7 @@ import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
 
 export default class AppNewChannelTab extends SliderSuperTab {
+  public static noSame = true;
   private uploadAvatar: () => Promise<InputFile> = null;
 
   private channelNameInputField: InputField;

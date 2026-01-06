@@ -39,6 +39,7 @@ import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardPr
 import PopupPickUser from '../../popups/pickUser';
 import PopupSendGift from '../../popups/sendGift';
 import {formatNanoton} from '../../../helpers/paymentsWrapCurrencyAmount';
+import showLogOutPopup from '../../popups/logOut';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -67,19 +68,7 @@ export default class AppSettingsTab extends SliderSuperTab {
       buttons: [{
         icon: 'logout',
         text: 'EditAccount.Logout',
-        onClick: () => {
-          PopupElement.createPopup(PopupPeer, 'logout', {
-            titleLangKey: 'LogOut',
-            descriptionLangKey: 'LogOut.Description',
-            buttons: [{
-              langKey: 'LogOut',
-              callback: () => {
-                this.managers.apiManager.logOut();
-              },
-              isDanger: true
-            }]
-          }).show();
-        }
+        onClick: () => showLogOutPopup()
       }]
     });
 

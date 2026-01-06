@@ -655,36 +655,7 @@ export class AppSidebarLeft extends SidebarSlider {
     const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
       icon: 'plus',
       text: 'MultiAccount.AddAccount',
-      onClick: async(e) => {
-        const totalAccounts = await AccountController.getTotalAccounts();
-        if(totalAccounts >= MAX_ACCOUNTS) return;
-
-        const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
-
-        if(totalAccounts === MAX_ACCOUNTS_FREE && !hasSomeonePremium) {
-          new AccountsLimitPopup().show();
-          return;
-        }
-
-        localStorage.setItem('previous-account', getCurrentAccount() + '');
-        const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
-        const openTabs = apiManagerProxy.getOpenTabsCount();
-
-        const newTab = e.ctrlKey || e.metaKey || (openTabs <= 1 && isUsingPasscode);
-        if(!newTab) {
-          appImManager.goOffline();
-
-          localStorage.setItem('should-animate-auth', 'true');
-
-          const chatsPageEl = document.querySelector('.page-chats');
-          chatsPageEl.classList.add('main-screen-exit');
-          await doubleRaf();
-          chatsPageEl.classList.add('main-screen-exiting');
-          await pause(200);
-        }
-
-        changeAccount((totalAccounts + 1) as ActiveAccountNumber, newTab);
-      },
+      onClick: this.addAccount,
       verify: async() => {
         const totalAccounts = await AccountController.getTotalAccounts();
         return totalAccounts < MAX_ACCOUNTS;
@@ -1013,13 +984,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const onNewGroupClick = () => {
       closeTabsBefore(() => {
-        this.createTab(AppAddMembersTab).open({
-          type: 'chat',
-          skippable: true,
-          takeOut: (peerIds) => this.createTab(AppNewGroupTab).open({peerIds}),
-          title: 'GroupAddMembers',
-          placeholder: 'SendMessageTo'
-        });
+        AppAddMembersTab.createNewGroupTab(this);
       });
     };
 
@@ -1525,6 +1490,37 @@ export class AppSidebarLeft extends SidebarSlider {
     this.closeEverythingInside() && await pause(200);
     clb();
   }
+
+  public addAccount = async(e: MouseEvent | TouchEvent) => {
+    const totalAccounts = await AccountController.getTotalAccounts();
+    if(totalAccounts >= MAX_ACCOUNTS) return;
+
+    const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
+
+    if(totalAccounts === MAX_ACCOUNTS_FREE && !hasSomeonePremium) {
+      new AccountsLimitPopup().show();
+      return;
+    }
+
+    localStorage.setItem('previous-account', getCurrentAccount() + '');
+    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
+    const openTabs = apiManagerProxy.getOpenTabsCount();
+
+    const newTab = e.ctrlKey || e.metaKey || (openTabs <= 1 && isUsingPasscode);
+    if(!newTab) {
+      appImManager.goOffline();
+
+      localStorage.setItem('should-animate-auth', 'true');
+
+      const chatsPageEl = document.querySelector('.page-chats');
+      chatsPageEl.classList.add('main-screen-exit');
+      await doubleRaf();
+      chatsPageEl.classList.add('main-screen-exiting');
+      await pause(200);
+    }
+
+    changeAccount((totalAccounts + 1) as ActiveAccountNumber, newTab);
+  };
 }
 
 export class SettingChatListSection extends SettingSection {
