@@ -238,7 +238,7 @@ export default class SidebarSlider {
   ) {
     if(
       (ctor as any).noSame &&
-      this.historyTabIds[this.historyTabIds.length - 1] instanceof SliderSuperTab
+      this.historyTabIds[this.historyTabIds.length - 1] instanceof ctor
     ) {
       return this.historyTabIds[this.historyTabIds.length - 1] as T;
     }
