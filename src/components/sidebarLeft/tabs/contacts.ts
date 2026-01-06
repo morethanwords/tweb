@@ -137,4 +137,8 @@ export default class AppContactsTab extends SliderSuperTab {
       replaceContent(this.listsContainer, sortedUserList.list);
     });
   }
+
+  public focus() {
+    this.onOpenAfterTimeout();
+  }
 }

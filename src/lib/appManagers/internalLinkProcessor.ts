@@ -734,7 +734,8 @@ export class InternalLinkProcessor {
             return PopupElement.createPopup(PopupCreateContact);
           case 'search':
           case '':
-            return appSidebarLeft.createTab(AppContactsTab).open();
+            const tab = appSidebarLeft.createTab(AppContactsTab);
+            return tab.open().then(() => tab.focus());
           // case 'invite':
           // case 'manage':
           // case 'sort':
