@@ -142,6 +142,10 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
         }
       }
     });
+
+    this.listenerSetter.add(rootScope)('auto_delete_period_update', ({peerId, period}) => {
+      this.getDialogElement(peerId)?.dom?.avatarEl?.setAutoDeletePeriod(period);
+    });
   }
 
   private get isActive() {

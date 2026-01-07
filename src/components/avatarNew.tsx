@@ -19,7 +19,8 @@ import {
   Show,
   Accessor,
   on,
-  createComputed
+  createComputed,
+  createResource
 } from 'solid-js';
 import rootScope from '../lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
@@ -49,6 +50,9 @@ import {ActiveAccountNumber} from '../lib/accounts/types';
 import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
 import {appSettings} from '../stores/appSettings';
 import {createAutoDeleteIcon} from './chat/utils';
+import {resolveElements} from '@solid-primitives/refs';
+import toArray from '../helpers/array/toArray';
+import computeLockColor from '../helpers/computeLockColor';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -360,6 +364,24 @@ export const AvatarNew = (props: {
   const [autoDeletePeriod, setAutoDeletePeriod] = createSignal<number>();
 
   createComputed(() => setAutoDeletePeriod(props.autoDeletePeriod ?? 0));
+
+  const autoDeletePeriodBackground = createMemo(() => {
+    if(!autoDeletePeriod()) return;
+
+    const mediaElement = toArray(resolveElements(media, (el) => el instanceof HTMLImageElement)())[0];
+    if(!mediaElement) return;
+
+    const smallSize = 20;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = smallSize;
+    canvas.height = smallSize;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(mediaElement, 0, 0, smallSize, smallSize);
+
+    return computeLockColor(canvas);
+  });
 
   const readyPromise = deferredPromise<void>();
   const readyThumbPromise = deferredPromise<void>();
@@ -842,7 +864,16 @@ export const AvatarNew = (props: {
       {thumb()}
       {[media(), abbreviature()].find(Boolean)}
       {isSubscribed() && currencyStarIcon({class: 'avatar-star', stroke: true})}
-      {autoDeletePeriod() && <div class="avatar-auto-delete-timer">{createAutoDeleteIcon(autoDeletePeriod())}</div>}
+      {autoDeletePeriod() && (
+        <div
+          class="avatar-auto-delete-timer"
+        >
+          <div class="avatar-auto-delete-timer__background" style={{background: `url(${autoDeletePeriodBackground()})` || undefined}} />
+          <div class="avatar-auto-delete-timer__icon">
+            {createAutoDeleteIcon(autoDeletePeriod())}
+          </div>
+        </div>
+      )}
     </>
   );
 
