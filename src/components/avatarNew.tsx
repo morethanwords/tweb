@@ -377,8 +377,15 @@ export const AvatarNew = (props: {
     canvas.width = smallSize;
     canvas.height = smallSize;
 
+    const imgW = mediaElement.naturalWidth;
+    const imgH = mediaElement.naturalHeight;
+
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(mediaElement, 0, 0, smallSize, smallSize);
+    ctx.drawImage(
+      mediaElement,
+      imgW * 0.75, imgH * 0.75, imgW * 0.25, imgH * 0.25,
+      0, 0, smallSize, smallSize
+    );
 
     return computeLockColor(canvas);
   });
