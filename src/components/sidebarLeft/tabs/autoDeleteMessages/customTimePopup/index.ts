@@ -42,7 +42,7 @@ export default class AutoDeleteMessagesCustomTimePopup extends PopupElement {
     const content = new AutoDeleteMessagesCustomTimePopupContent;
     content.HotReloadGuard = HotReloadGuard;
     content.feedProps({
-      initialPeriod: period,
+      initialPeriod: period || 0,
       descriptionLangKey,
       onChange: (newPeriod) => {
         this.period = newPeriod;
