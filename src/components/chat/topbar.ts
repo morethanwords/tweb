@@ -207,7 +207,8 @@ export default class ChatTopbar {
           const hasAutoDeleteButton = await this.verifyAutoDeleteButton();
           if(!hasAutoDeleteButton) return;
 
-          this.autoDeleteBtnMenuOptions.iconElement = createAutoDeleteIcon(await this.getAutoDeletePeriod());
+          const period = await this.chat.getAutoDeletePeriod().then(ackedResult => ackedResult.result);
+          this.autoDeleteBtnMenuOptions.iconElement = createAutoDeleteIcon(period);
         },
         onOpen: async(e, element) => {
           const deleteButton = this.menuButtons[this.menuButtons.length - 1];
@@ -1212,7 +1213,7 @@ export default class ChatTopbar {
       modifyAckedPromise(this.chatRequests?.setPeerId(peerId)),
       modifyAckedPromise(this.chatActions?.setPeerId(peerId)),
       modifyAckedPromise(this.chatRemoveFee?.setPeerId(peerId)),
-      this.chat.type === ChatType.Chat ? await this.getAutoDeletePeriod() : undefined
+      this.chat.type === ChatType.Chat ? await modifyAckedPromise(this.chat.getAutoDeletePeriod()) : undefined
     ] as const;
 
     const [
@@ -1273,7 +1274,9 @@ export default class ChatTopbar {
         this.container.classList.toggle('has-avatar', !!newAvatar);
       }
 
-      this.avatar.setAutoDeletePeriod(autoDeletePeriod);
+      callbackify(autoDeletePeriod.result, (value) => {
+        this.avatar.setAutoDeletePeriod(value);
+      });
 
       this.setUtilsWidth();
 
@@ -1692,40 +1695,11 @@ export default class ChatTopbar {
         {
           icon: 'tools',
           text: 'Other',
-          onClick: async() => {
-            const {
-              popup: {default: AutoDeleteMessagesCustomTimePopup},
-              autoDeletePeriod
-            } = await namedPromises({
-              popup: import('../sidebarLeft/tabs/autoDeleteMessages/customTimePopup'),
-              autoDeletePeriod: this.getAutoDeletePeriod()
-            });
-
-            new AutoDeleteMessagesCustomTimePopup({
-              HotReloadGuard: SolidJSHotReloadGuardProvider,
-              descriptionLangKey: this.chat.isBroadcast ? 'AutoDeleteMessages.InfoChannel' : 'AutoDeleteMessages.InfoChat',
-              period: autoDeletePeriod,
-              onFinish: (period) => {
-                this.managers.appPrivacyManager.setAutoDeletePeriodFor(this.peerId, period);
-              }
-            }).show();
-          }
+          onClick: () => this.chat.openAutoDeleteMessagesCustomTimePopup()
         }
       ]
     });
 
     return menu;
-  }
-
-  private async getAutoDeletePeriod() {
-    try {
-      const fullPeer = this.peerId.isUser() ?
-        await this.managers.appProfileManager.getProfile(this.peerId.toUserId()) :
-        await this.managers.appProfileManager.getChatFull(this.peerId.toChatId());
-
-      return fullPeer?.ttl_period || 0;
-    } catch{
-      return 0;
-    }
   }
 }
