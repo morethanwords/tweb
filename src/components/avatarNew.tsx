@@ -875,7 +875,9 @@ export const AvatarNew = (props: {
         <div
           class="avatar-auto-delete-timer"
         >
-          <div class="avatar-auto-delete-timer__background" style={{background: `url(${autoDeletePeriodBackground()})` || undefined}} />
+          <div class="avatar-auto-delete-timer__background" style={{
+            background: autoDeletePeriodBackground() ? `url(${autoDeletePeriodBackground()})` : undefined
+          }} />
           <div class="avatar-auto-delete-timer__icon">
             {createAutoDeleteIcon(autoDeletePeriod())}
           </div>
