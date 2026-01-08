@@ -33,7 +33,7 @@ export const AutoDeleteMessagesCustomTimePopupContent = defineSolidElement({
 
     return (
       <div class={styles.Container}>
-        <I18nTsx  key={props.descriptionLangKey} />
+        <I18nTsx key={props.descriptionLangKey} />
 
         <VerticalOptionWheel
           value={period()}

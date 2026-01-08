@@ -19,8 +19,7 @@ import {
   Show,
   Accessor,
   on,
-  createComputed,
-  createResource
+  createComputed
 } from 'solid-js';
 import rootScope from '../lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';

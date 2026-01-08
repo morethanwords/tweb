@@ -1582,7 +1582,7 @@ export default class Chat extends EventListenerBase<{
       }
     } catch{
       return {
-        cached: false,
+        cached: true,
         result: Promise.resolve(0)
       };
     }
