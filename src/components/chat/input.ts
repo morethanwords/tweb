@@ -142,6 +142,7 @@ import PopupStars from '../popups/stars';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import {makeMessageMediaInputForSuggestedPost} from '../../lib/appManagers/utils/messages/makeMessageMediaInput';
 import showFrozenPopup from '../popups/frozen';
+import {setPeerColorToElement} from '../peerColors';
 
 // console.log('Recorder', Recorder);
 
@@ -4369,7 +4370,7 @@ export default class ChatInput {
       quote
     });
 
-    this.appImManager.setPeerColorToElement({peerId: setColorPeerId, element: replyParent});
+    setPeerColorToElement({peerId: setColorPeerId, element: replyParent});
 
     if(haveReply) {
       oldReply.replaceWith(container);

@@ -5,6 +5,7 @@
  */
 
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import makeError from '../../helpers/makeError';
 import pause from '../../helpers/schedulers/pause';
 import {TextWithEntities, MessagesTranslatedText, MessagesTranslateText} from '../../layer';
 import {AppManager} from './manager';
@@ -24,6 +25,13 @@ export default class AppTranslationsManager extends AppManager {
     }
   } = {};
   private triedToTranslateMessages: Map<`${PeerId}_${number}`, Set<string>> = new Map();
+  private summaries: {
+    [peerId: PeerId]: {
+      [mid: number]: {
+        [lang: string]: MaybeDeferredPromise<TextWithEntities>
+      }
+    }
+  } = {};
 
   public hasTriedToTranslateMessage(peerId: PeerId, mid: number) {
     return this.triedToTranslateMessages.has(`${peerId}_${mid}`);
@@ -192,5 +200,45 @@ export default class AppTranslationsManager extends AppManager {
       peer: this.appPeersManager.getInputPeerById(peerId),
       disabled
     });
+  }
+
+  public summarizeText({peerId, mid, lang}: {
+    peerId: PeerId,
+    mid: number,
+    lang?: string
+  }) {
+    let promise = ((this.summaries[peerId] ??= {})[mid] ??= {})[lang];
+    if(promise) {
+      return promise;
+    }
+
+    this.summaries[peerId][mid][lang] = promise = this.apiManager.invokeApi('messages.summarizeText', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      id: getServerMessageId(mid),
+      to_lang: lang
+    })/* .then(() => {
+      throw makeError('SUMMARY_FLOOD_PREMIUM');
+    }) */;
+
+    promise.then((textWithEntities) => {
+      if(this.summaries[peerId][mid][lang] === promise) {
+        this.summaries[peerId][mid][lang] = textWithEntities;
+      }
+    });
+
+    return promise;
+  }
+
+  public clearSummaries(peerId: PeerId, mid?: number) {
+    const summaries = this.summaries[peerId];
+    if(!summaries) {
+      return;
+    }
+
+    if(mid) {
+      delete summaries[mid];
+    } else {
+      delete this.summaries[peerId];
+    }
   }
 }

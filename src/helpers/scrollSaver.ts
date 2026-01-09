@@ -26,6 +26,7 @@ export default class ScrollSaver {
   private scrollHeight: number;
   private scrollHeightMinusTop: number;
   private scrollTop: number;
+  private scrolledToEnd: boolean;
   private clientHeight: number;
   private elements: {element: HTMLElement, rect: DOMRect}[];
 
@@ -112,7 +113,7 @@ export default class ScrollSaver {
     this.scrollTop = scrollTop;
     this.clientHeight = clientHeight;
     this.scrollHeightMinusTop = this.reverse ? scrollHeight - scrollTop : scrollTop;
-
+    this.scrolledToEnd = scrollTop + clientHeight >= scrollHeight;
     // this.chatInner.style.paddingTop = padding + 'px';
     /* if(reverse) {
       previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
@@ -179,7 +180,11 @@ export default class ScrollSaver {
 
     const {element, rect} = anchor;
     const newRect = element.getBoundingClientRect();
-    const diff = newRect.bottom - rect.bottom;
+    // const modifiedHeight = rect.height - newRect.height;
+    if(newRect.top === rect.top && !this.scrolledToEnd/*  && modifiedHeight >= 0 */) {
+      return; // no need to scroll
+    }
+    const diff = newRect.bottom - rect.bottom/*  + (modifiedHeight > 0 ? modifiedHeight : -modifiedHeight) */;
     this.setScrollTop(scrollTop + diff, useReflow);
     // if(diff) debugger;
     // console.warn('scroll restore', rect, diff, newRect);

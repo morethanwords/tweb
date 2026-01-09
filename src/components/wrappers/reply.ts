@@ -8,12 +8,12 @@ import {rgbIntToHex} from '../../helpers/color';
 import {setDirection} from '../../helpers/dom/setInnerHTML';
 import themeController from '../../helpers/themeController';
 import {MessageEntity, MessageReplyHeader, Peer, PeerColor, User} from '../../layer';
-import appImManager from '../../lib/appManagers/appImManager';
 import {getPeerColorsByPeer} from '../../lib/appManagers/utils/peers/getPeerColorById';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import rootScope from '../../lib/rootScope';
 import {WrapPinnedContainerOptions} from '../chat/pinnedContainer';
 import ReplyContainer from '../chat/replyContainer';
+import {setPeerColorToElement} from '../peerColors';
 import ripple from '../ripple';
 import wrapEmojiPattern from './emojiPattern';
 import wrapSticker from './sticker';
@@ -51,7 +51,7 @@ export default function wrapReply(options: WrapReplyOptions) {
 
   const {setColorPeerId} = options;
   if(setColorPeerId !== undefined) {
-    appImManager.setPeerColorToElement({
+    setPeerColorToElement({
       peerId: setColorPeerId,
       element: replyContainer.container,
       messageHighlighting: options.useHighlightingColor,
@@ -62,13 +62,13 @@ export default function wrapReply(options: WrapReplyOptions) {
     const color = (peer as User.user)?.color as PeerColor.peerColor | PeerColor.peerColorCollectible;
     const docId = color?.background_emoji_id;
     if(docId) {
-      let emojiColor: string
+      let emojiColor: string;
       if(color?._ === 'peerColorCollectible') {
-        let val = color.accent_color
-        if(themeController.isNight() && color.dark_accent_color) val = color.dark_accent_color
-        emojiColor = rgbIntToHex(val)
+        let val = color.accent_color;
+        if(themeController.isNight() && color.dark_accent_color) val = color.dark_accent_color;
+        emojiColor = rgbIntToHex(val);
       } else {
-        emojiColor = getPeerColorsByPeer(peer)[0]
+        emojiColor = getPeerColorsByPeer(peer)[0];
       }
 
       wrapEmojiPattern({
@@ -100,12 +100,12 @@ export default function wrapReply(options: WrapReplyOptions) {
     if(color?._ === 'peerColorCollectible') {
       const div = document.createElement('div');
       div.classList.add('reply-collectible');
-      replyContainer.container.classList.add('has-collectible')
-      replyContainer.container.appendChild(div)
+      replyContainer.container.classList.add('has-collectible');
+      replyContainer.container.appendChild(div);
 
       rootScope.managers.appEmojiManager.getCustomEmojiDocument(color.gift_emoji_id).then((doc) => {
         if(options.middleware && !options.middleware()) return;
-        if(!doc) return
+        if(!doc) return;
 
         return wrapSticker({
           doc,
@@ -113,8 +113,8 @@ export default function wrapReply(options: WrapReplyOptions) {
           middleware: options.middleware,
           width: 24,
           height: 24
-        })
-      })
+        });
+      });
     }
   }
 

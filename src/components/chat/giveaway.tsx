@@ -24,6 +24,7 @@ import PopupGiftLink from '../popups/giftLink';
 import classNames from '../../helpers/string/classNames';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import {IconTsx} from '../iconTsx';
+import {setPeerColorToElement} from '../peerColors';
 
 export function getGiftAssetName(days?: number) {
   const months = days === undefined ? days : Math.round(days / 30);
@@ -259,7 +260,7 @@ export default function Giveaway(props: {
       meAsSaved: false
     });
 
-    appImManager.setPeerColorToElement({peerId, element: entity.element});
+    setPeerColorToElement({peerId, element: entity.element});
 
     entity.element.classList.add('bubble-giveaway-channel', 'hover-primary');
 
