@@ -113,7 +113,7 @@ export default class ScrollSaver {
     this.scrollTop = scrollTop;
     this.clientHeight = clientHeight;
     this.scrollHeightMinusTop = this.reverse ? scrollHeight - scrollTop : scrollTop;
-    this.scrolledToEnd = scrollTop + clientHeight >= scrollHeight;
+    this.scrolledToEnd = Math.ceil(scrollTop + clientHeight) >= scrollHeight;
     // this.chatInner.style.paddingTop = padding + 'px';
     /* if(reverse) {
       previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
