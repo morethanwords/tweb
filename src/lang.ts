@@ -1736,7 +1736,7 @@ const lang = {
   'IncreaseLimit': 'Increase Limit',
   'LimitFree': 'Free',
   'LimitPremium': 'Premium',
-  'ActionTTLChanged': '%s set messages to auto-delete in %s',
+  'ActionTTLChanged': 'un1 set messages to auto-delete in %1$s',
   'ActionTTLYouChanged': 'You set messages to auto-delete in %1$s',
   'ActionTTLChannelChanged': 'Messages in this channel will be automatically deleted after %1$s',
   'ActionTTLChannelDisabled': 'Messages in this channel will no longer be automatically deleted',
