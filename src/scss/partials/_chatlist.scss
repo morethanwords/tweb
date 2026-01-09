@@ -279,6 +279,13 @@ ul.chatlist {
       }
     }
 
+    &:has(.avatar-badge) {
+      .avatar-auto-delete-timer {
+        transform: scale(0);
+      }
+    }
+
+
     @include respond-to(not-handhelds) {
       &.active {
         --background: var(--primary-color) !important;
@@ -712,22 +719,13 @@ ul.chatlist {
     flex: 0 0 auto;
     @include dialog-badge-transition(true);
 
-    &.animating .avatar-auto-delete-timer {
+    .avatar-auto-delete-timer {
       transition: transform var(--chatlist-badge-transition-in);
     }
 
     &.is-visible:not(.backwards) .avatar-auto-delete-timer  {
       transform: scale(0);
     }
-
-    &.backwards .avatar-auto-delete-timer {
-      opacity: 1;
-    }
-
-    &.animating.backwards .avatar-auto-delete-timer {
-      transition: transform var(--chatlist-badge-transition-out), opacity var(--chatlist-badge-transition-out);
-    }
-
   }
 
   &-muted-icon {
