@@ -4,7 +4,7 @@ import noop from '../helpers/noop';
 import pause from '../helpers/schedulers/pause';
 import {i18n} from '../lib/langPack';
 import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
-import attachFloatingButtonMenu from './floatingButtonMenu';
+import attachFloatingButtonMenu, {FloatingButtonMenuDirection} from './floatingButtonMenu';
 import Icon from './icon';
 
 
@@ -14,10 +14,17 @@ export type CreateSubmenuArgs = {
   middleware: Middleware;
 };
 
-export default function createSubmenuTrigger(
-  options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'regularText' | 'icon' | 'verify' | 'separator' | 'separatorDown' | 'onClose'>,
-  createSubmenu: (args: CreateSubmenuArgs) => MaybePromise<HTMLElement>
-) {
+type CreateSubmenuTriggerArgs = {
+  options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'regularText' | 'icon' | 'verify' | 'separator' | 'separatorDown' | 'onClose'>;
+  createSubmenu: (args: CreateSubmenuArgs) => MaybePromise<HTMLElement>;
+  direction?: FloatingButtonMenuDirection;
+};
+
+export default function createSubmenuTrigger({
+  options,
+  createSubmenu,
+  direction = 'right-start'
+}: CreateSubmenuTriggerArgs) {
   let
     isDisabled = false,
     currentMiddleware: MiddlewareHelper
@@ -34,7 +41,7 @@ export default function createSubmenuTrigger(
 
     attachFloatingButtonMenu({
       element: menuBtnOptions.element,
-      direction: 'right-start',
+      direction,
       createMenu: () => createSubmenu({middleware: currentMiddleware.get()}),
       offset: [-5, -5],
       level: 2,

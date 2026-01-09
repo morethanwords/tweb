@@ -19,7 +19,7 @@ import {
   Show,
   Accessor,
   on,
-  splitProps, onMount
+  createComputed
 } from 'solid-js';
 import rootScope from '../lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
@@ -48,6 +48,10 @@ import currencyStarIcon from './currencyStarIcon';
 import {ActiveAccountNumber} from '../lib/accounts/types';
 import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
 import {appSettings} from '../stores/appSettings';
+import {createAutoDeleteIcon} from './chat/utils';
+import {resolveElements} from '@solid-primitives/refs';
+import toArray from '../helpers/array/toArray';
+import computeLockColor from '../helpers/computeLockColor';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -336,6 +340,7 @@ export const AvatarNew = (props: {
   processImageOnLoad?: (image: HTMLImageElement) => void,
   meAsNotes?: boolean,
   asAllChats?: boolean,
+  autoDeletePeriod?: number,
   onStoriesStatus?: (has: boolean) => void,
   class?: string
 }) => {
@@ -353,6 +358,35 @@ export const AvatarNew = (props: {
     size: props.size as number,
     colors: props.storyColors,
     isStoryFolded: props.isStoryFolded
+  });
+
+  const [autoDeletePeriod, setAutoDeletePeriod] = createSignal<number>();
+
+  createComputed(() => setAutoDeletePeriod(props.autoDeletePeriod ?? 0));
+
+  const autoDeletePeriodBackground = createMemo(() => {
+    if(!autoDeletePeriod()) return;
+
+    const mediaElement = toArray(resolveElements(media, (el) => el instanceof HTMLImageElement)())[0];
+    if(!mediaElement) return;
+
+    const smallSize = 20;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = smallSize;
+    canvas.height = smallSize;
+
+    const imgW = mediaElement.naturalWidth;
+    const imgH = mediaElement.naturalHeight;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(
+      mediaElement,
+      imgW * 0.75, imgH * 0.75, imgW * 0.25, imgH * 0.25,
+      0, 0, smallSize, smallSize
+    );
+
+    return computeLockColor(canvas);
   });
 
   const readyPromise = deferredPromise<void>();
@@ -810,6 +844,7 @@ export const AvatarNew = (props: {
       'is-forum': isForum(),
       'is-topic': isTopic(),
       'is-monoforum': isMonoforum(),
+      'is-relative': !!autoDeletePeriod(),
       'avatar-relative': !!thumb() || isSubscribed()
     };
   };
@@ -835,6 +870,26 @@ export const AvatarNew = (props: {
       {thumb()}
       {[media(), abbreviature()].find(Boolean)}
       {isSubscribed() && currencyStarIcon({class: 'avatar-star', stroke: true})}
+      {autoDeletePeriod() && (
+        <div
+          class="avatar-auto-delete-timer"
+        >
+          <Show when={autoDeletePeriodBackground() || color()}>
+            <div
+              class="avatar-auto-delete-timer__background"
+              classList={{
+                'avatar-auto-delete-timer__background--color': !!color()
+              }}
+              style={{
+                background: autoDeletePeriodBackground() ? `url(${autoDeletePeriodBackground()})` : undefined
+              }}
+            />
+          </Show>
+          <div class="avatar-auto-delete-timer__icon">
+            {createAutoDeleteIcon(autoDeletePeriod())}
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -882,6 +937,7 @@ export const AvatarNew = (props: {
     setIcon,
     setStoriesSegments,
     setIsSubscribed,
+    setAutoDeletePeriod,
     updateStoriesSegments,
     set,
     color

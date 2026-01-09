@@ -1,17 +1,16 @@
 import {batch, createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
-
+import {animateValue} from '../../../helpers/animateValue';
+import {lerp} from '../../../helpers/lerp';
 import clamp from '../../../helpers/number/clamp';
-
 import {ButtonIconTsx} from '../../buttonIconTsx';
 import SwipeHandler from '../../swipeHandler';
-
-import {animateValue, lerp, withCurrentOwner} from '../utils';
 import {useMediaEditorContext} from '../context';
 import {NumberPair} from '../types';
-
+import {withCurrentOwner} from '../utils';
 import {animateToNewRotationOrRatio} from './animateToNewRotationOrRatio';
 import getConvenientPositioning from './getConvenientPositioning';
+
 
 const DEGREE_DIST_PX = 42;
 const DEGREE_STEP = 15;

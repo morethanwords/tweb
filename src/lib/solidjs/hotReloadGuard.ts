@@ -8,6 +8,7 @@ import type AppMediaViewer from '../../components/appMediaViewer';
 import type {AutonomousMonoforumThreadList} from '../../components/autonomousDialogList/monoforumThreads';
 import type {avatarNew} from '../../components/avatarNew';
 import type BusinessHours from '../../components/businessHours';
+import type ButtonMenu from '../../components/buttonMenu';
 import type {ChatType} from '../../components/chat/chat';
 import type confirmationPopup from '../../components/confirmationPopup';
 import type {EmoticonsDropdown} from '../../components/emoticonsDropdown';
@@ -33,9 +34,10 @@ import type {AppSidebarLeft} from '../../components/sidebarLeft';
 import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import type Slideshow from '../../components/slideshow';
-import type {toast, toastNew} from '../../components/toast';
+import type {hideToast, toast, toastNew} from '../../components/toast';
 import type {wrapAdaptiveCustomEmoji} from '../../components/wrappers/customEmojiSimple';
 import type DocumentTsx from '../../components/wrappers/documentTsx';
+import wrapFolderTitle from '../../components/wrappers/folderTitle';
 import type getPeerTitle from '../../components/wrappers/getPeerTitle';
 import type {wrapTopicIcon} from '../../components/wrappers/messageActionTextNewUnsafe';
 import type wrapPeerTitle from '../../components/wrappers/peerTitle';
@@ -104,6 +106,7 @@ export type SolidJSHotReloadGuardContextValue = {
   showStarsRatingPopup: typeof showStarsRatingPopup;
   toast: typeof toast;
   toastNew: typeof toastNew;
+  hideToast: typeof hideToast;
   BusinessHours: typeof BusinessHours;
   avatarNew: typeof avatarNew;
   PeerTitleTsx: typeof PeerTitleTsx;
@@ -121,6 +124,8 @@ export type SolidJSHotReloadGuardContextValue = {
   Slideshow: typeof Slideshow;
   AppMediaViewer: typeof AppMediaViewer;
   formatDate: typeof formatDate;
+  wrapFolderTitle: typeof wrapFolderTitle;
+  ButtonMenu: typeof ButtonMenu;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

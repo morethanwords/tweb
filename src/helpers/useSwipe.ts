@@ -1,6 +1,8 @@
 import {StandardLonghandPropertiesHyphen} from 'csstype';
-import {Accessor, onCleanup} from 'solid-js';
+import {Accessor} from 'solid-js';
 import useGlobalDocumentEvent from './useGlobalDocumentEvent';
+import {requestRAF} from './solid/requestRAF';
+import {useIsCleaned} from '../hooks/useIsCleaned';
 
 
 export type SwipeDirectiveArgs = {
@@ -19,6 +21,8 @@ declare module 'solid-js' {
 }
 
 export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiveArgs>) {
+  const isCleaned = useIsCleaned();
+
   let isDragging = false;
   let initialX: number, initialY: number;
 
@@ -47,11 +51,26 @@ export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiv
     }
   }
 
+  let isRAFing = false;
+  let callback: () => void;
+
   function handleMove(e: PointerEvent | TouchEvent, diff: readonly [number, number]) {
     if(!isDragging) return;
 
-    const {onMove} = args();
-    onMove?.(...diff, e);
+    callback = () => {
+      const {onMove} = args();
+      onMove?.(...diff, e);
+    };
+
+    if(isRAFing) return;
+
+    isRAFing = true;
+    requestRAF(() => {
+      isRAFing = false;
+      if(!isDragging || isCleaned()) return;
+
+      callback();
+    })
   }
 
   function handleEnd(e: PointerEvent | TouchEvent, diff: readonly [number, number]) {
@@ -65,6 +84,7 @@ export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiv
     }
 
     isDragging = false;
+    isRAFing = false;
     initialX = initialY = undefined;
   }
 

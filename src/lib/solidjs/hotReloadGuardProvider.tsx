@@ -4,6 +4,7 @@ import AppMediaViewer from '../../components/appMediaViewer';
 import {AutonomousMonoforumThreadList} from '../../components/autonomousDialogList/monoforumThreads';
 import {avatarNew} from '../../components/avatarNew';
 import BusinessHours from '../../components/businessHours';
+import ButtonMenu from '../../components/buttonMenu';
 import {ChatType} from '../../components/chat/chat';
 import confirmationPopup from '../../components/confirmationPopup';
 import {EmoticonsDropdown} from '../../components/emoticonsDropdown';
@@ -28,9 +29,10 @@ import appSidebarLeft from '../../components/sidebarLeft';
 import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import Slideshow from '../../components/slideshow'; // Added import
-import {toast, toastNew} from '../../components/toast';
+import {hideToast, toast, toastNew} from '../../components/toast';
 import {wrapAdaptiveCustomEmoji} from '../../components/wrappers/customEmojiSimple';
 import DocumentTsx from '../../components/wrappers/documentTsx';
+import wrapFolderTitle from '../../components/wrappers/folderTitle';
 import getPeerTitle from '../../components/wrappers/getPeerTitle';
 import {wrapTopicIcon} from '../../components/wrappers/messageActionTextNewUnsafe';
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
@@ -116,7 +118,10 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       DocumentTsx,
       Slideshow,
       AppMediaViewer,
-      formatDate
+      formatDate,
+      hideToast,
+      wrapFolderTitle,
+      ButtonMenu
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

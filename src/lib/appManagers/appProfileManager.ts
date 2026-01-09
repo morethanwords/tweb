@@ -66,7 +66,9 @@ export class AppProfileManager extends AppManager {
 
       updatePeerBlocked: this.onUpdatePeerBlocked,
 
-      updatePeerSettings: this.onUpdatePeerSettings
+      updatePeerSettings: this.onUpdatePeerSettings,
+
+      updatePeerHistoryTTL: this.onUpdatePeerHistoryTTL
     });
 
     this.rootScope.addEventListener('chat_update', (chatId) => {
@@ -1107,6 +1109,23 @@ export class AppProfileManager extends AppManager {
   private onUpdatePeerSettings = (update: Update.updatePeerSettings) => {
     const peerId = this.appPeersManager.getPeerId(update.peer);
     this.rootScope.dispatchEvent('peer_settings', {peerId, settings: update.settings});
+  };
+
+  private onUpdatePeerHistoryTTL = (update: Update.updatePeerHistoryTTL) => {
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+
+    // const peerFull = peerId.isUser() ? this.usersFull[peerId.toUserId()] : this.chatsFull[peerId.toChatId()];
+    this.modifyCachedFullPeer(peerId, (peerFull) => {
+      peerFull.ttl_period = update.ttl_period;
+    });
+
+    const dialog = this.dialogsStorage.getDialogOnly(peerId);
+    if(dialog) {
+      dialog.ttl_period = update.ttl_period;
+      this.dialogsStorage.setDialogToState(dialog);
+    }
+
+    this.rootScope.dispatchEvent('auto_delete_period_update', {peerId, period: update.ttl_period});
   };
 
   public setMyBirthday(date: Birthday | null) {

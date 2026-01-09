@@ -197,7 +197,8 @@ type DialogElementOptions = {
   withStories?: boolean,
   controlled?: boolean,
   dontSetActive?: boolean,
-  asAllChats?: AsAllChatsType;
+  asAllChats?: AsAllChatsType,
+  autoDeletePeriod?: number,
 };
 
 export class DialogElement extends Row {
@@ -222,7 +223,8 @@ export class DialogElement extends Row {
     withStories,
     controlled,
     dontSetActive,
-    asAllChats
+    asAllChats,
+    autoDeletePeriod
   }: DialogElementOptions) {
     super({
       clickable: true,
@@ -265,7 +267,8 @@ export class DialogElement extends Row {
       withStories,
       wrapOptions: newWrapOptions,
       meAsNotes: isSavedDialog,
-      asAllChats: asAllChats === 'monoforum'
+      asAllChats: asAllChats === 'monoforum',
+      autoDeletePeriod
     });
     loadPromises?.push(avatar?.readyThumbPromise);
     const avatarEl = avatar?.node;

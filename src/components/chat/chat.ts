@@ -78,6 +78,8 @@ import usePeerTranslation from '../../hooks/usePeerTranslation';
 import debounce from '../../helpers/schedulers/debounce';
 import appNavigationController from '../appNavigationController';
 import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '../sidebarLeft';
+import {AckedResult} from '../../lib/mtproto/superMessagePort';
+import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 
 
 export enum ChatType {
@@ -1560,6 +1562,49 @@ export default class Chat extends EventListenerBase<{
     this.starsAmount = starsAmount;
     this.input.setStarsAmount(starsAmount);
     getCurrentNewMediaPopup()?.setStarsAmount(starsAmount);
+  }
+
+  public async getAutoDeletePeriod(): Promise<AckedResult<number>> {
+    try {
+      const dialog = await this.managers.dialogsStorage.getDialogOnly(this.peerId);
+      if(dialog) return {
+        cached: true,
+        result: Promise.resolve(dialog.ttl_period)
+      };
+
+      const fullPeer = this.peerId.isUser() ?
+        await this.managers.acknowledged.appProfileManager.getProfile(this.peerId.toUserId()) :
+        await this.managers.acknowledged.appProfileManager.getChatFull(this.peerId.toChatId());
+
+      return {
+        cached: fullPeer.cached,
+        result: fullPeer.result.then((fullPeer) => fullPeer.ttl_period)
+      }
+    } catch{
+      return {
+        cached: true,
+        result: Promise.resolve(0)
+      };
+    }
+  }
+
+  public async openAutoDeleteMessagesCustomTimePopup() {
+    const {
+      popup: {default: AutoDeleteMessagesCustomTimePopup},
+      autoDeletePeriod
+    } = await namedPromises({
+      popup: import('../sidebarLeft/tabs/autoDeleteMessages/customTimePopup'),
+      autoDeletePeriod: this.getAutoDeletePeriod().then(ackedResult => ackedResult.result)
+    });
+
+    new AutoDeleteMessagesCustomTimePopup({
+      HotReloadGuard: SolidJSHotReloadGuardProvider,
+      descriptionLangKey: this.isBroadcast ? 'AutoDeleteMessages.InfoChannel' : 'AutoDeleteMessages.InfoChat',
+      period: autoDeletePeriod,
+      onFinish: (period) => {
+        this.managers.appPrivacyManager.setAutoDeletePeriodFor(this.peerId, period);
+      }
+    }).show();
   }
 
   public toggleChatIfMedium() {

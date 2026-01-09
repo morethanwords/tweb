@@ -279,6 +279,13 @@ ul.chatlist {
       }
     }
 
+    &:has(.avatar-badge) {
+      .avatar-auto-delete-timer {
+        transform: scale(0);
+      }
+    }
+
+
     @include respond-to(not-handhelds) {
       &.active {
         --background: var(--primary-color) !important;
@@ -711,6 +718,14 @@ ul.chatlist {
   &-avatar {
     flex: 0 0 auto;
     @include dialog-badge-transition(true);
+
+    .avatar-auto-delete-timer {
+      transition: transform var(--chatlist-badge-transition-in);
+    }
+
+    &.is-visible:not(.backwards) .avatar-auto-delete-timer  {
+      transform: scale(0);
+    }
   }
 
   &-muted-icon {

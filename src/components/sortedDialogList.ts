@@ -147,11 +147,24 @@ export default class SortedDialogList {
   public async createElementForKey(key: any) {
     const {options, loadPromises} = this.getDialogOptions(key);
 
+    const autoDeletePeriod = await this.getDialogAutoDeletePeriod(key);
+    options.autoDeletePeriod = autoDeletePeriod;
+
     const dialogElement = this.appDialogsManager.addListDialog(options);
 
     await Promise.all(loadPromises);
 
     return dialogElement;
+  }
+
+  private async getDialogAutoDeletePeriod(key: any) {
+    if(this.virtualFilterId) return;
+    if(this.monoforumParentPeerId) return;
+
+    const dialog = await this.managers.dialogsStorage.getDialogOnly(key);
+    if(!dialog) return;
+
+    return dialog.ttl_period || undefined;
   }
 
   public addDeferredItems(items: DeferredSortedVirtualListItem<DialogElement>[], totalCount: number) {

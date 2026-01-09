@@ -1529,7 +1529,7 @@
 "IncreaseLimit" = "Increase Limit";
 "LimitFree" = "Free";
 "LimitPremium" = "Premium";
-"ActionTTLChanged" = "un1 set messages to auto-delete in %1$s";
+"ActionTTLChanged" = "%s set messages to auto-delete in %s";
 "ActionTTLYouChanged" = "You set messages to auto-delete in %1$s";
 "ActionTTLChannelChanged" = "Messages in this channel will be automatically deleted after %1$s";
 "ActionTTLChannelDisabled" = "Messages in this channel will no longer be automatically deleted";
@@ -3606,6 +3606,17 @@
 "ResetPassword.TroubleText" = "If you don’t have access to your recovery email, your remaining options are either to remember your password or wait 7 days until your password is reset.";
 "ResetPassword.Action" = "[Reset password]()";
 "PasswordDeactivated" = "Password deactivated";
+"AutoDeleteMessages" = "Auto-delete messages";
+"AutoDeleteMessagesShort" = "Auto-delete";
+"AutoDeleteMessages.SectionTitle" = "Self-destruct timer";
+"AutoDeleteMessages.SetOtherTime" = "Set other time";
+"AutoDeleteMessages.SectionCaption" = "If enabled, all new messages in chats you start will be automatically deleted for everyone at some point after they have been sent. This will not affect your existing chats.";
+"AutoDeleteMessages.InfoDefault" = "Automatically delete messages for everyone in chats you start after a certain amount of time.";
+"AutoDeleteMessages.InfoChat" = "Automatically delete messages for everyone in this chat after a certain amount of time.";
+"AutoDeleteMessages.InfoChannel" = "Automatically delete messages for everyone in this channel after a certain amount of time.";
+"Off" = "Off";
+"Never" = "Never";
+"Other" = "Other";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

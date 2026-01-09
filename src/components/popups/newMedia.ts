@@ -60,9 +60,8 @@ import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount
 import Icon from '../icon';
 import {MediaEditorFinalResult, MediaEditorFinalResultPayload} from '../mediaEditor/finalRender/createFinalResult';
 import RenderProgressCircle from '../mediaEditor/renderProgressCircle';
-import {animateValue, delay, lerp} from '../mediaEditor/utils';
+import {delay} from '../mediaEditor/utils';
 import {IS_MOBILE} from '../../environment/userAgent';
-import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import throttle from '../../helpers/schedulers/throttle';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
 import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
@@ -71,6 +70,9 @@ import canVideoBeAnimated from '../../lib/appManagers/utils/docs/canVideoBeAnima
 import {NumberPair} from '../mediaEditor/types';
 import MarkupTooltip from '../chat/markupTooltip';
 import {MAX_EDITABLE_VIDEO_SIZE, supportsVideoEncoding} from '../mediaEditor/support';
+import {animateValue} from '../../helpers/animateValue';
+import {lerp} from '../../helpers/lerp';
+
 
 type SendFileParams = SendFileDetails & {
   file?: File,

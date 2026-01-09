@@ -853,4 +853,6 @@ export default class AudioElement extends HTMLElement {
   }
 }
 
-customElements.define('audio-element', AudioElement);
+if(!customElements.get('audio-element')) {
+  customElements.define('audio-element', AudioElement);
+}

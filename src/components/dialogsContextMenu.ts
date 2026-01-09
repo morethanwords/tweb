@@ -132,13 +132,16 @@ export default class DialogsContextMenu {
       onClick: this.onUnreadClick,
       verify: () => this.managers.appMessagesManager.isDialogUnread(this.dialog)
     }, createSubmenuTrigger({
-      icon: 'folder',
-      text: 'AddToFolder',
-      onClose: () => {
-        this.addToFolderMenu?.controls.closeTooltip?.();
+      options: {
+        icon: 'folder',
+        text: 'AddToFolder',
+        onClose: () => {
+          this.addToFolderMenu?.controls.closeTooltip?.();
+        },
+        verify: () => isDialog(this.dialog) && this.hasFilters()
       },
-      verify: () => isDialog(this.dialog) && this.hasFilters()
-    }, this.createAddToFolderSubmenu), {
+      createSubmenu: this.createAddToFolderSubmenu
+    }), {
       icon: 'pin',
       text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,

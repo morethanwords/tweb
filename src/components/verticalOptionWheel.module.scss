@@ -1,0 +1,61 @@
+.Container {
+  position: relative;
+}
+
+.Scrollable {
+  max-height: calc(var(--option-size) * 5);
+  overflow-y: auto;
+
+  /* Firefox */
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
+  }
+}
+
+.Option {
+  height: var(--option-size);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: calc(1 - var(--current-dist, 0));
+  transform:
+    translateY(calc(var(--current-dist-sign) * var(--current-dist, 0) * var(--current-dist, 0) * var(--option-size) * 0.625))
+    scale(
+      calc(1 - var(--current-dist, 0) * 0.2),
+      calc(1 - var(--current-dist, 0) * 0.45)
+    )
+  ;
+
+
+  &.hidden {
+    opacity: 0;
+  }
+}
+
+.EmptyOption {
+  height: var(--option-size);
+}
+
+.Divider {
+  position: absolute;
+
+  top: 50%;
+  left: 0;
+  width: 100%;
+
+  height: 1px;
+  /* background-color: var(--primary-color); */
+  background: linear-gradient(to right, transparent 5%, var(--primary-color) 45%, var(--primary-color) 55%, transparent 95%);
+
+  &.upper {
+    transform: translateY(calc(-50% - var(--option-size) / 2));
+  }
+
+  &.lower {
+    transform: translateY(calc(-50% + var(--option-size) / 2));
+  }
+}

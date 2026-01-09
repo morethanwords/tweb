@@ -1,7 +1,5 @@
-import {createSignal, onCleanup, Accessor, createEffect, on} from 'solid-js';
-
-import {simpleEasing} from '../../components/mediaEditor/utils';
-
+import {Accessor, createEffect, createSignal, on, onCleanup} from 'solid-js';
+import {simpleEasing} from '../animateValue';
 import {animate} from '../animation';
 
 

@@ -1,15 +1,14 @@
 import {batch, createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
-
+import {animateValue} from '../../../helpers/animateValue';
+import {lerp, lerpArray} from '../../../helpers/lerp';
 import SwipeHandler from '../../swipeHandler';
-
-import {animateValue, lerp, lerpArray, snapToViewport} from '../utils';
 import {useMediaEditorContext} from '../context';
-import {withCurrentOwner} from '../utils';
 import {NumberPair} from '../types';
-
-import {useCropOffset} from './useCropOffset';
+import {snapToViewport, withCurrentOwner} from '../utils';
 import _getConvenientPositioning from './getConvenientPositioning';
+import {useCropOffset} from './useCropOffset';
+
 
 const MAX_SCALE = 20;
 

@@ -1,16 +1,10 @@
 import {Component} from 'solid-js';
 import {SetStoreFunction} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
-
-import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import anchorCallback from '../../../../../helpers/dom/anchorCallback';
-import {i18n} from '../../../../../lib/langPack';
-
-import {hideToast, toastNew} from '../../../../toast';
-import StaticRadio from '../../../../staticRadio';
+import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
 import Section from '../../../../section';
-import Row from '../../../../rowTsx';
-
+import StaticRadio from '../../../../staticRadio';
 import {MessagesPrivacyOption, MessagesTabStateStore, TRANSITION_TIME} from './config';
 import useIsPremium from './useIsPremium';
 
@@ -23,7 +17,7 @@ const OptionsSection: Component<{
   isPaid: boolean;
   onExitAnimationPromise: (promise: Promise<any>) => void;
 }> = (props) => {
-  const {PopupPremium} = useHotReloadGuard();
+  const {PopupPremium, i18n, toastNew, hideToast, Row} = useHotReloadGuard();
 
   const isPremium = useIsPremium();
 

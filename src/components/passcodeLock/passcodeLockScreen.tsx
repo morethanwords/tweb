@@ -1,28 +1,26 @@
-import {Component, createEffect, createResource, on, onCleanup, onMount, Show} from 'solid-js';
+import {Component, createEffect, createResource, on, onCleanup, onMount} from 'solid-js';
 import {createMutable} from 'solid-js/store';
-
-import {useLockScreenHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
-import AccountController from '../../lib/accounts/accountController';
-import {MAX_PASSCODE_LENGTH} from '../../lib/passcode/constants';
-import {usePasscodeActions} from '../../lib/passcode/actions';
-import commonStateStorage from '../../lib/commonStateStorage';
-import throttle from '../../helpers/schedulers/throttle';
+import {animateValue} from '../../helpers/animateValue';
 import focusInput from '../../helpers/dom/focusInput';
+import {keepMe} from '../../helpers/keepMe';
 import pause from '../../helpers/schedulers/pause';
+import throttle from '../../helpers/schedulers/throttle';
+import AccountController from '../../lib/accounts/accountController';
+import commonStateStorage from '../../lib/commonStateStorage';
 import {i18n} from '../../lib/langPack';
-
+import {usePasscodeActions} from '../../lib/passcode/actions';
+import {MAX_PASSCODE_LENGTH} from '../../lib/passcode/constants';
+import {useLockScreenHotReloadGuard} from '../../lib/solidjs/hotReloadGuard';
 import ChatBackgroundGradientRenderer from '../chat/gradientRenderer';
 import type PasswordInputField from '../passwordInputField';
-import {animateValue} from '../mediaEditor/utils';
-import ripple from '../ripple'; ripple; // keep
+import ripple from '../ripple';
 import Space from '../space';
-
+import Background from './background';
+import styles from './passcodeLockScreen.module.scss';
 import PasswordMonkeyTsx from './passwordMonkeyTsx';
 import SimplePopup from './simplePopup';
-import Background from './background';
 
-import styles from './passcodeLockScreen.module.scss';
-import {ChatBackground} from '../chat/bubbles/chatBackground';
+keepMe(ripple);
 
 
 type StateStore = {

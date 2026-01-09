@@ -41,7 +41,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import groupCallsController from '../../lib/calls/groupCallsController';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {makeMediaSize} from '../../helpers/mediaSize';
-import {FOLDER_ID_ALL} from '../../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ALL, HIDDEN_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
 import formatNumber from '../../helpers/number/formatNumber';
 import PopupElement from '../popups';
 import ChatRequests from './requests';
@@ -77,6 +77,11 @@ import {AppAdminRecentActionsTab} from '../solidJsTabs/tabs';
 import {setAppSettings} from '../../stores/appSettings';
 import {wrapAsyncClickHandler} from '../../helpers/wrapAsyncClickHandler';
 import liteMode from '../../helpers/liteMode';
+import createSubmenuTrigger from '../createSubmenuTrigger';
+import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '../buttonMenu';
+import Icon from '../icon';
+import {getDefaultOptions} from '../sidebarLeft/tabs/autoDeleteMessages/options';
+import {createAutoDeleteIcon} from './utils';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -102,6 +107,8 @@ export default class ChatTopbar {
   private btnLogFilters: HTMLButtonElement;
   private btnMore: HTMLElement;
   private btnDirectMessages: HTMLElement;
+
+  private autoDeleteBtnMenuOptions: ButtonMenuItemOptionsVerifiable;
 
   private chatActions: ChatActions;
   private chatRequests: ChatRequests;
@@ -196,12 +203,24 @@ export default class ChatTopbar {
         listenerSetter: this.listenerSetter,
         direction: 'bottom-left',
         buttons: this.menuButtons,
+        onOpenBefore: async() => {
+          const hasAutoDeleteButton = await this.verifyAutoDeleteButton();
+          if(!hasAutoDeleteButton) return;
+
+          const period = await this.chat.getAutoDeletePeriod().then(ackedResult => ackedResult.result);
+          this.autoDeleteBtnMenuOptions.iconElement = createAutoDeleteIcon(period);
+        },
         onOpen: async(e, element) => {
           const deleteButton = this.menuButtons[this.menuButtons.length - 1];
           if(deleteButton?.element) {
             const deleteButtonText = await this.managers.appPeersManager.getDeleteButtonText(this.chat.monoforumThreadId || this.peerId);
             deleteButton.element.lastChild.replaceWith(i18n(deleteButtonText));
           }
+
+          this.autoDeleteBtnMenuOptions.onOpen?.();
+        },
+        onClose: () => {
+          this.autoDeleteBtnMenuOptions.onClose?.();
         }
       });
     }
@@ -430,8 +449,32 @@ export default class ChatTopbar {
     );
   }
 
+  private verifyAutoDeleteButton = async() => {
+    const specialChats = [REPLIES_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID.toPeerId(), VERIFICATION_CODES_BOT_ID, HIDDEN_PEER_ID, SERVICE_PEER_ID, rootScope.myId];
+    if(specialChats.includes(this.peerId)) return false;
+
+    if(this.peerId.isUser()) return true;
+
+    const {chat, isMonoforum}  = await namedPromises({
+      chat: this.managers.appChatsManager.getChat(this.peerId.toChatId()),
+      isMonoforum: this.managers.appChatsManager.isMonoforum(this.peerId.toChatId())
+    });
+
+    return !isMonoforum && hasRights(chat, 'change_info');
+  }
+
   public constructUtils() {
-    this.menuButtons = [{
+    this.autoDeleteBtnMenuOptions = createSubmenuTrigger({
+      options: {
+        text: 'AutoDeleteMessagesShort',
+        separatorDown: true,
+        verify: this.verifyAutoDeleteButton
+      },
+      createSubmenu: this.createAutoDeleteSubmenu.bind(this),
+      direction: 'left-start'
+    });
+
+    this.menuButtons = [this.autoDeleteBtnMenuOptions, {
       icon: 'search',
       text: 'Search',
       onClick: () => {
@@ -1004,6 +1047,11 @@ export default class ChatTopbar {
       callback();
     });
 
+    this.listenerSetter.add(rootScope)('auto_delete_period_update', ({peerId, period}) => {
+      if(peerId !== this.peerId || this.chat.type !== ChatType.Chat) return;
+      this.avatar.setAutoDeletePeriod(period);
+    });
+
     return this;
   }
 
@@ -1128,6 +1176,8 @@ export default class ChatTopbar {
       const usePeerId = monoforumThreadId ||(isSaved ? threadId : peerId);
       const useThreadId = isSaved ? undefined : threadId;
       const avatar = this.avatar;
+
+
       if(
         !avatar ||
         avatar.node.dataset.peerId.toPeerId() !== usePeerId ||
@@ -1162,7 +1212,8 @@ export default class ChatTopbar {
       status?.prepare(true),
       modifyAckedPromise(this.chatRequests?.setPeerId(peerId)),
       modifyAckedPromise(this.chatActions?.setPeerId(peerId)),
-      modifyAckedPromise(this.chatRemoveFee?.setPeerId(peerId))
+      modifyAckedPromise(this.chatRemoveFee?.setPeerId(peerId)),
+      this.chat.type === ChatType.Chat ? await modifyAckedPromise(this.chat.getAutoDeletePeriod()) : undefined
     ] as const;
 
     const [
@@ -1174,7 +1225,8 @@ export default class ChatTopbar {
       setStatusCallback,
       setRequestsCallback,
       setActionsCallback,
-      setChatRemoveFeeCallback
+      setChatRemoveFeeCallback,
+      autoDeletePeriod
     ] = await Promise.all(promises);
 
     if(!middleware() && newAvatarMiddlewareHelper) {
@@ -1221,6 +1273,10 @@ export default class ChatTopbar {
         this.avatarMiddlewareHelper = newAvatarMiddlewareHelper;
         this.container.classList.toggle('has-avatar', !!newAvatar);
       }
+
+      callbackify(autoDeletePeriod?.result, (value) => {
+        this.avatar?.setAutoDeletePeriod(value);
+      });
 
       this.setUtilsWidth();
 
@@ -1360,6 +1416,7 @@ export default class ChatTopbar {
       titleEl = el.element;
     } else if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Saved || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) {
       const usePeerId = monoforumThreadId || (this.chat.type === ChatType.Saved ? threadId : peerId);
+
       [titleEl/* , icons */] = await Promise.all([
         wrapPeerTitle({
           peerId: usePeerId,
@@ -1619,5 +1676,30 @@ export default class ChatTopbar {
       prepare,
       destroy: () => middlewareHelper.destroy()
     };
+  }
+
+  private async createAutoDeleteSubmenu() {
+    const options = getDefaultOptions({
+      offLabel: () => i18n('Never')
+    });
+
+    const menu = await ButtonMenu({
+      buttons: [
+        ...options.map((option): ButtonMenuItemOptionsVerifiable => ({
+          iconElement: option.value === 0 ? Icon('auto_delete_circle_off') : createAutoDeleteIcon(option.value),
+          regularText: option.label(),
+          onClick: () => {
+            this.managers.appPrivacyManager.setAutoDeletePeriodFor(this.peerId, option.value);
+          }
+        })),
+        {
+          icon: 'tools',
+          text: 'Other',
+          onClick: () => this.chat.openAutoDeleteMessagesCustomTimePopup()
+        }
+      ]
+    });
+
+    return menu;
   }
 }

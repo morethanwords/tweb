@@ -80,7 +80,6 @@ import {FoldersSidebarControls, renderFoldersSidebarContent} from './foldersSide
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import SwipeHandler, {getEvent} from '../swipeHandler';
 import clamp from '../../helpers/number/clamp';
-import {animateValue} from '../mediaEditor/utils';
 import throttle from '../../helpers/schedulers/throttle';
 import AppChatFoldersTab from './tabs/chatFolders';
 import {SliderSuperTabConstructable} from '../sliderTab';
@@ -101,6 +100,7 @@ import useHasFoldersSidebar, {useIsSidebarCollapsed} from '../../stores/foldersS
 import isObject from '../../helpers/object/isObject';
 import {useAppSettings} from '../../stores/appSettings';
 import {openEmojiStatusPicker} from './emojiStatusPicker';
+import {animateValue} from '../../helpers/animateValue';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -641,16 +641,22 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     const moreSubmenu = createSubmenuTrigger({
-      text: 'MultiAccount.More',
-      icon: 'more'
-    }, (args) => this.createMoreSubmenu(args, closeTabsBefore));
+      options: {
+        text: 'MultiAccount.More',
+        icon: 'more'
+      },
+      createSubmenu: (args) => this.createMoreSubmenu(args, closeTabsBefore)
+    });
 
     const newSubmenu = createSubmenuTrigger({
-      text: 'CreateANew',
-      icon: 'edit',
-      verify: () => this.isCollapsed(),
-      separator: true
-    }, () => this.createNewChatsSubmenu());
+      options: {
+        text: 'CreateANew',
+        icon: 'edit',
+        verify: () => this.isCollapsed(),
+        separator: true
+      },
+      createSubmenu: () => this.createNewChatsSubmenu()
+    });
 
     const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
       icon: 'plus',

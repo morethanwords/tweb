@@ -30,7 +30,6 @@ import {Sparkles} from '../sparkles';
 import ChatSendAs from '../chat/sendAs';
 import Icon from '../icon';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {lerp} from '../mediaEditor/utils';
 import {useAppState} from '../../stores/appState';
 import {SEND_PAID_REACTION_ANONYMOUS_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import type Chat from '../chat/chat';

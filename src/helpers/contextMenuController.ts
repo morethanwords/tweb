@@ -77,15 +77,20 @@ class ContextMenuController extends OverlayClickHandler {
   protected closeAndRemoveMenu(item: AdditionalMenuItem) {
     item.close();
     const idx = this.additionalMenus.indexOf(item);
-    if(idx > -1) this.additionalMenus.splice(idx, 1);
+    if(idx > -1) {
+      for(let i = idx + 1; i < this.additionalMenus.length; i++) {
+        this.additionalMenus[i].close();
+      }
+      this.additionalMenus.splice(idx);
+    }
   }
 
   public closeMenusByLevel(level: number) {
-    this.additionalMenus.filter((menu) => menu.level === level).forEach((item) => {
+    this.additionalMenus.filter((menu) => menu.level >= level).forEach((item) => {
       item.close();
-      const idx = this.additionalMenus.indexOf(item);
-      if(idx > -1) this.additionalMenus.splice(idx, 1);
     });
+
+    this.additionalMenus = this.additionalMenus.filter((menu) => menu.level < level);
   }
 
   public close() {
@@ -140,6 +145,8 @@ class ContextMenuController extends OverlayClickHandler {
   }
 
   public addAdditionalMenu(element: HTMLElement, triggerElement: HTMLElement, level: number, onClose?: () => void) {
+    if(!this.element) return;
+
     this.closeMenusByLevel(level);
 
     this.additionalMenus.push({

@@ -59,6 +59,7 @@ export type LottieAssetName =
   | 'Mailbox'
   | 'LoveLetter'
   | 'key'
+  | 'UtyanDisappear'
 ;
 
 export class LottieLoader {

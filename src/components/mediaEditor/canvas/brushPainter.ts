@@ -1,8 +1,9 @@
+import {animateValue} from '../../../helpers/animateValue';
 import deferredPromise from '../../../helpers/cancellablePromise';
 import {hexaToRgba} from '../../../helpers/color';
-
 import {NumberPair} from '../types';
-import {animateValue, delay, distance} from '../utils';
+import {distance} from '../utils';
+
 
 export type BrushDrawnLine = {
   color: string;
