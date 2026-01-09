@@ -134,7 +134,7 @@ import SwipeHandler from '../swipeHandler';
 import getSelectedText from '../../helpers/dom/getSelectedText';
 import {createStoriesViewerWithPeer} from '../stories/viewer';
 import {render} from 'solid-js/web';
-import {createRoot, createEffect, createSignal, Signal} from 'solid-js';
+import {createRoot, createEffect, createSignal, Signal, onCleanup} from 'solid-js';
 import {StoryPreview, wrapStoryMedia} from '../stories/preview';
 import wrapReply from '../wrappers/reply';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
@@ -217,6 +217,7 @@ import {NoneToVoidFunction} from '../../types';
 import type {CommittedFilters} from '../sidebarRight/tabs/adminRecentActions/filters';
 import deepEqual from '../../helpers/object/deepEqual';
 import {openInstantViewInAppBrowser} from '../browser';
+import {setPeerColorToElement} from '../peerColors';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -1341,7 +1342,8 @@ export default class ChatBubbles {
           findUpClassName(e.target, 'contact') ||
           findUpClassName(e.target, 'time') ||
           findUpClassName(e.target, 'code-header-button') ||
-          findUpClassName(e.target, 'reaction')
+          findUpClassName(e.target, 'reaction') ||
+          findUpClassName(e.target, 'bubble-beside-button')
         ) {
           return;
         }
@@ -6318,14 +6320,74 @@ export default class ChatBubbles {
       passMaskedLinks: !!(message as Message.message).sponsoredMessage
     });
 
-    const canTranslate = !bigEmojis && !our && this.chat.type !== ChatType.Search;
+    const canTranslate = !bigEmojis && (!our || (isMessage && message.summary_from_language)) && this.chat.type !== ChatType.Search;
+    const [summarizing, setSummarizing] = createSignal(false);
     const translatableParams: Parameters<typeof TranslatableMessage>[0] = canTranslate ? {
       peerId: message.peerId,
       middleware,
       observeElement: bubble,
       observer: this.observer,
-      onTranslation: this.modifyBubble,
-      richTextOptions: getRichTextOptions()
+      onTranslation: (set) => {
+        this.modifyBubble(() => {
+          set();
+          if(summarizing()) queueMicrotask(() => {
+            this.scrollToBubble(bubble, 'start');
+          });
+        });
+      },
+      richTextOptions: getRichTextOptions(),
+      summarizing,
+      onFragment: (fragment) => {
+        if(!summarizing()) {
+          return fragment;
+        }
+
+        const title = i18n('Summary.Title');
+        title.classList.add('text-bold');
+        const subtitle = i18n(IS_TOUCH_SUPPORTED ? 'Summary.Subtitle' : 'Summary.Subtitle.Click');
+        const {container} = wrapReply({
+          title,
+          subtitle,
+          // setColorPeerId: props.message.fromId,
+          // animationGroup: this.chat.animationGroup,
+          message,
+          textColor: 'secondary-text-color'
+          // quote
+        });
+        container.classList.add('reply-summary');
+
+        onCleanup(attachClickEvent(container, (e) => {
+          cancelEvent(e);
+          setSummarizing(false);
+        }));
+
+        container.prepend(Sparkles({
+          count: 30,
+          mode: 'progress'
+        }));
+
+        fragment.prepend(container);
+        return fragment;
+      },
+      onError: (error) => {
+        if(error.type === 'SUMMARY_FLOOD_PREMIUM') {
+          const {hide} = setQuizHint({
+            icon: 'premium_speed',
+            title: i18n('Summary.Limited'),
+            textElement: i18n('Summary.Limited.Text', [
+              anchorCallback(() => {
+                hide();
+                PopupPremium.show();
+              })
+            ]),
+            appendTo: this.container,
+            from: 'top',
+            duration: 10000
+          });
+        }
+
+        setSummarizing(false);
+      }
     } : undefined;
 
     const richText = messageMessage ? (
@@ -6486,6 +6548,7 @@ export default class ChatBubbles {
       topicNameButtonContainer.append(element);
     }
 
+    let hasBesideButton = false;
     if(isMessage && message.views) {
       bubble.classList.add('channel-post');
 
@@ -6495,11 +6558,50 @@ export default class ChatBubbles {
         forward.append(Icon('forward_filled'));
         bubbleContainer.append(forward);
         bubble.classList.add('with-beside-button');
+        hasBesideButton = true;
       }
 
       if(!message.pFlags.is_outgoing && this.observer) {
         this.observer.observe(bubble, this.viewsObserverCallback);
       }
+    }
+
+    if(isMessage && message.summary_from_language) {
+      const c = document.createElement('div');
+      c.classList.add('summarize-container');
+      const btn = document.createElement('div');
+      btn.classList.add('bubble-beside-button', 'summarize');
+      if(hasBesideButton) btn.classList.add('bubble-beside-button--not-last');
+      else c.classList.add('is-last-button');
+      const size = 38;
+      const sparkles = Sparkles({
+        mode: 'button',
+        containerSize: {width: size, height: size},
+        sparkles: [
+          {x: 22 / size * 100, y: 6 / size * 100, scale: 1.5, delay: 0, translateX: 0, translateY: 0, minOpacity: 0.2},
+          {x: 9.5 / size * 100, y: 19 / size * 100, scale: 1.25, delay: 1500, translateX: 0, translateY: 0, minOpacity: 0.2}
+        ],
+        isDiv: true,
+        fixedScale: true,
+        duration: 3000
+      });
+      let node: ChildNode = document.createTextNode('');
+      btn.append(sparkles, node);
+      createRoot((dispose) => {
+        middleware.onDestroy(dispose);
+        createEffect(() => {
+          const newNode = Icon(summarizing() ? 'expand' : 'collapse');
+          node.replaceWith(newNode);
+          node = newNode;
+        });
+        const detach = attachClickEvent(btn, () => {
+          setSummarizing((v) => !v);
+        });
+        onCleanup(detach);
+      });
+      c.append(btn);
+      bubbleContainer.append(c);
+      bubble.classList.add('with-beside-button');
     }
 
     const replyMarkup = isMessage && message.reply_markup;
@@ -7883,7 +7985,7 @@ export default class ChatBubbles {
     let savedFrom = '';
 
     if(isStandaloneMedia || !isOut || (message as Message.message).fwdFromId) {
-      this.chat.appImManager.setPeerColorToElement({
+      setPeerColorToElement({
         peerId: (message as Message.message).fwdFromId || message.fromId,
         element: bubble,
         messageHighlighting: isStandaloneMedia,

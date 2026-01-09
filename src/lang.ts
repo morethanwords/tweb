@@ -1000,6 +1000,11 @@ const lang = {
   'Privacy.Passkey.Create': 'Create Passkey',
   'Passkey.Deletion.Title': 'Delete Passkey?',
   'Passkey.Deletion.Text': 'Once deleted, this passkey can\'t be used to log in.\n\nDon\'t forget to remove it from your password manager too.',
+  'Summary.Title': 'AI Summary',
+  'Summary.Subtitle': 'Tap to see original message',
+  'Summary.Subtitle.Click': 'Click to see original message',
+  'Summary.Limited': 'Reached summary limits',
+  'Summary.Limited.Text': 'Subscribe to [Telegram Premium]() to increase summary limits.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

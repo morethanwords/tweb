@@ -44,6 +44,15 @@ import namedPromises from '../../helpers/namedPromises';
 import {openInstantViewInAppBrowser} from '../../components/browser';
 import SolidJSHotReloadGuardProvider from '../solidjs/hotReloadGuardProvider';
 import cancelEvent from '../../helpers/dom/cancelEvent';
+import appSidebarLeft from '../../components/sidebarLeft';
+import AppContactsTab from '../../components/sidebarLeft/tabs/contacts';
+import AppNewChannelTab from '../../components/sidebarLeft/tabs/newChannel';
+import PopupCreateContact from '../../components/popups/createContact';
+import AppAddMembersTab from '../../components/sidebarLeft/tabs/addMembers';
+import AppSettingsTab from '../../components/sidebarLeft/tabs/settings';
+import AppEditProfileTab from '../../components/sidebarLeft/tabs/editProfile';
+import showBirthdayPopup, {saveMyBirthday} from '../../components/popups/birthday';
+import showLogOutPopup from '../../components/popups/logOut';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -641,6 +650,96 @@ export class InternalLinkProcessor {
         cancelEvent(event);
         const link = this.makeLink(INTERNAL_LINK_TYPE.INSTANT_VIEW, {url: element.href});
         return this.processInternalLink(link);
+      }
+    });
+
+    // tg://new/
+    // tg://new/group
+    // tg://new/contact
+    // tg://new/channel
+    addAnchorListener<{
+      pathnameParams: [InternalLink.InternalLinkNew['type'] | '']
+    }>({
+      name: 'new',
+      protocol: 'tg',
+      callback: ({pathnameParams}) => {
+        const [type] = pathnameParams;
+        switch(type) {
+          case 'contact':
+            return PopupElement.createPopup(PopupCreateContact);
+          case 'channel':
+            return appSidebarLeft.createTab(AppNewChannelTab).open();
+          case 'group':
+            return AppAddMembersTab.createNewGroupTab(appSidebarLeft);
+          default:
+            return appSidebarLeft.createTab(AppContactsTab).open();
+        }
+      }
+    });
+
+    addAnchorListener<{
+      pathnameParams: string[]
+    }>({
+      name: 'settings',
+      protocol: 'tg',
+      callback: ({pathnameParams, event}) => {
+        const path = pathnameParams.join('/');
+        switch(path) {
+          case '':
+            return appSidebarLeft.createTab(AppSettingsTab).open();
+          case 'edit':
+          case 'edit/set-photo':
+          case 'edit/first-name':
+          case 'edit/last-name':
+          case 'edit/bio':
+          case 'edit/username':
+            const tab = appSidebarLeft.createTab(AppEditProfileTab);
+            return tab.open().then(() => tab.focus(pathnameParams[1]));
+          case 'edit/birthday':
+            return this.managers.appProfileManager.getProfile(rootScope.myId).then((userFull) => {
+              showBirthdayPopup({
+                initialDate: userFull.birthday,
+                fromProfile: true,
+                onSave: saveMyBirthday
+              });
+            });
+          case 'edit/add-account':
+            appSidebarLeft.addAccount(event as MouseEvent);
+            break;
+          case 'edit/log-out':
+            showLogOutPopup();
+            break;
+          // case 'edit/change-number':
+          // case 'edit/your-color':
+          // case 'edit/channel':
+        }
+      }
+    });
+
+    // tg://contacts/
+    // tg://contacts/search
+    // tg://contacts/sort
+    // tg://contacts/new
+    // tg://contacts/invite
+    // tg://contacts/manage
+    addAnchorListener<{
+      pathnameParams: [InternalLink.InternalLinkContacts['type'] | '']
+    }>({
+      name: 'contacts',
+      protocol: 'tg',
+      callback: ({pathnameParams}) => {
+        const [type] = pathnameParams;
+        switch(type) {
+          case 'new':
+            return PopupElement.createPopup(PopupCreateContact);
+          case 'search':
+          case '':
+            const tab = appSidebarLeft.createTab(AppContactsTab);
+            return tab.open().then(() => tab.focus());
+          // case 'invite':
+          // case 'manage':
+          // case 'sort':
+        }
       }
     });
   }

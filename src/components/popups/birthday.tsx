@@ -79,19 +79,19 @@ export default async function showBirthdayPopup(props: {
     const dayField = new InputField({
       label: 'BirthdayPopup.Day',
       plainText: true
-    })
+    });
     dayField.container.classList.add(styles.day);
 
     const monthField = new InputField({
       label: 'BirthdayPopup.Month',
       plainText: true
-    })
+    });
     monthField.container.classList.add(styles.month);
 
     const yearField = new InputField({
       label: 'BirthdayPopup.Year',
       plainText: true
-    })
+    });
     yearField.container.classList.add(styles.year);
 
     if(props.initialDate?.day) {
@@ -101,10 +101,10 @@ export default async function showBirthdayPopup(props: {
       yearField.setValueSilently(String(props.initialDate.year));
     }
 
-    const now = new Date()
-    const nowYear = now.getFullYear()
-    const nowMonth = now.getMonth() + 1
-    const nowDay = now.getDate()
+    const now = new Date();
+    const nowYear = now.getFullYear();
+    const nowMonth = now.getMonth() + 1;
+    const nowDay = now.getDate();
 
     function updateDayInput() {
       const value = dayField.value;
@@ -112,7 +112,7 @@ export default async function showBirthdayPopup(props: {
       if(!cleanValue) {
         setDay(undefined);
         return;
-      };
+      }
 
       const month$ = month();
 
@@ -132,9 +132,9 @@ export default async function showBirthdayPopup(props: {
       }
     }
 
-    dayField.input.addEventListener('input', updateDayInput)
-    monthField.input.addEventListener('beforeinput', e => cancelEvent(e));
-    monthField.input.addEventListener('paste', e => cancelEvent(e));
+    dayField.input.addEventListener('input', updateDayInput);
+    monthField.input.addEventListener('beforeinput', (e) => cancelEvent(e));
+    monthField.input.addEventListener('paste', (e) => cancelEvent(e));
 
     const {open: openMonthsMenu, close: closeMonthsMenu} = createButtonMenuSelect<MonthOption>({
       class: styles.monthMenu,
@@ -147,14 +147,14 @@ export default async function showBirthdayPopup(props: {
       },
       get options() {
         if(yearField.value === String(nowYear)) {
-          return monthOptions.filter(m => m.value <= nowMonth)
+          return monthOptions.filter((m) => m.value <= nowMonth)
         }
 
         return monthOptions
       },
       single: true,
-      optionKey: v => v.value.toString(),
-      renderOption: props => (
+      optionKey: (v) => v.value.toString(),
+      renderOption: (props) => (
         <>
           <div class="btn-menu-item-text">
             {props.option.text}
@@ -162,13 +162,13 @@ export default async function showBirthdayPopup(props: {
           {props.chosen && <IconTsx icon="check" class="btn-menu-item-icon-right" />}
         </>
       )
-    })
-    monthField.input.addEventListener('focus', () => openMonthsMenu(monthField.container))
-    monthField.input.addEventListener('click', () => openMonthsMenu(monthField.container))
+    });
+    monthField.input.addEventListener('focus', () => openMonthsMenu(monthField.container));
+    monthField.input.addEventListener('click', () => openMonthsMenu(monthField.container));
     monthField.input.addEventListener('blur', (e) => {
       if((e.relatedTarget as HTMLElement)?.closest('.btn-menu')) return;
-      closeMonthsMenu()
-    })
+      closeMonthsMenu();
+    });
 
     yearField.input.addEventListener('input', () => {
       const value = yearField.value;
@@ -199,8 +199,8 @@ export default async function showBirthdayPopup(props: {
     })
     yearField.input.addEventListener('blur', () => {
       const value = yearField.value;
-      if(value.length !== 4) yearField.value = ''
-    })
+      if(value.length !== 4) yearField.value = '';
+    });
 
     function openPrivacySettings() {
       appSidebarLeft.createTab(AppPrivacyBirthdayTab).open();
@@ -212,9 +212,9 @@ export default async function showBirthdayPopup(props: {
       if(month$) {
         monthField.value = month$.text;
       }
-    })
+    });
 
-    const doubleRafPromise = doubleRaf()
+    const doubleRafPromise = doubleRaf();
 
     return (
       <PopupElement class={styles.popup} containerClass={styles.popupContainer} show={show()}>

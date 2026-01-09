@@ -9335,6 +9335,10 @@ export class AppMessagesManager extends AppManager {
         this.appPollsManager.updatePollToMessage(message as Message.message, false);
       }
     }
+
+    if((message as Message.message).summary_from_language) {
+      this.appTranslationsManager.clearSummaries(message.peerId, message.mid);
+    }
   }
 
   private handleDeletedMessages(peerId: PeerId, storage: MessagesStorage, messages: number[]) {
@@ -9475,6 +9479,10 @@ export class AppMessagesManager extends AppManager {
         !deepEqual(oldMessage.entities, (newMessage as Message.message).entities)
       )) {
         this.appTranslationsManager.resetMessageTranslations(oldMessage.peerId, oldMessage.mid);
+      }
+
+      if(oldMessage.summary_from_language) {
+        this.appTranslationsManager.clearSummaries(oldMessage.peerId, oldMessage.mid);
       }
     }
   }

@@ -17,6 +17,9 @@ import SettingSection, {generateSection} from '../../settingSection';
 import UsernamesSection from '../../usernamesSection';
 import Row from '../../row';
 import showBirthdayPopup, {saveMyBirthday} from '../../popups/birthday';
+import {getHeavyAnimationPromise} from '../../../hooks/useHeavyAnimationCheck';
+import placeCaretAtEnd from '../../../helpers/dom/placeCaretAtEnd';
+import shake from '../../../helpers/dom/shake';
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -46,6 +49,7 @@ export function purchaseUsernameCaption() {
 }
 
 export default class AppEditProfileTab extends SliderSuperTab {
+  public static noSame = true;
   private firstNameInputField: InputField;
   private lastNameInputField: InputField;
   private bioInputField: InputField;
@@ -64,7 +68,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
     };
   }
 
-  public async init(p: ReturnType<typeof AppEditProfileTab['getInitArgs']> = AppEditProfileTab.getInitArgs()) {
+  public async init(p: ReturnType<typeof AppEditProfileTab['getInitArgs']> = AppEditProfileTab.getInitArgs(), focusOn?: string) {
     this.container.classList.add('edit-profile-container');
     this.setTitle('EditAccount.Title');
 
@@ -238,6 +242,23 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
     // this.setProfileUrl();
     this.editPeer.handleChange();
+  }
+
+  public focus(on: string) {
+    getHeavyAnimationPromise().then(() => {
+      const focusMap: {[key: string]: InputField} = {
+        'first-name': this.firstNameInputField,
+        'last-name': this.lastNameInputField,
+        'username': this.usernameInputField,
+        'bio': this.bioInputField
+      };
+
+      if(focusMap[on]) {
+        placeCaretAtEnd(focusMap[on].input);
+      } else if(on === 'set-photo') {
+        shake(this.editPeer.avatarElem.node);
+      }
+    });
   }
 
   // private setProfileUrl() {

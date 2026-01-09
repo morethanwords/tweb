@@ -4,14 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type SidebarSlider from '../../slider';
 import {SliderSuperTab} from '../../slider';
 import AppSelectPeers from '../../appSelectPeers';
 import {setButtonLoader} from '../../putPreloader';
 import {LangPackKey, _i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
-import {providedTabs} from '../../solidJsTabs';
+import AppNewGroupTab from './newGroup';
 
 export default class AppAddMembersTab extends SliderSuperTab {
+  public static noSame = true;
   private nextBtn: HTMLButtonElement;
   private selector: AppSelectPeers;
   private peerType: 'channel' | 'chat' | 'privacy';
@@ -82,6 +84,16 @@ export default class AppAddMembersTab extends SliderSuperTab {
       removeLoader();
     });
   }
+
+  public static createNewGroupTab(slider: SidebarSlider) {
+    slider.createTab(AppAddMembersTab).open({
+      type: 'chat',
+      skippable: true,
+      takeOut: (peerIds) => slider.createTab(AppNewGroupTab).open({peerIds}),
+      title: 'GroupAddMembers',
+      placeholder: 'SendMessageTo'
+    });
+  }
 }
 
-providedTabs.AppAddMembersTab = AppAddMembersTab;
+// providedTabs.AppAddMembersTab = AppAddMembersTab;

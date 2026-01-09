@@ -120,7 +120,7 @@ const onFirstMount = () => {
       cancelEvent(e);
     }
 
-    const toggle = toggleDisability([/* telEl, countryInput,  */btnNext, btnQr], true);
+    const toggle = toggleDisability([/* telEl, countryInput,  */btnNext, btnQr, passkeyButton?.button].filter(Boolean), true);
 
     replaceContent(btnNext, i18n('PleaseWait'));
     putPreloader(btnNext);

@@ -22,6 +22,7 @@ import PopupElement from '../../popups';
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
 export default class AppContactsTab extends SliderSuperTab {
+  public static noSame = true;
   private inputSearch: InputSearch;
   private middlewareHelperLoad: ReturnType<typeof getMiddleware>;
   private sortedUserList: SortedUserList;
@@ -135,5 +136,9 @@ export default class AppContactsTab extends SliderSuperTab {
 
       replaceContent(this.listsContainer, sortedUserList.list);
     });
+  }
+
+  public focus() {
+    this.onOpenAfterTimeout();
   }
 }

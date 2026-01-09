@@ -10,6 +10,7 @@
  */
 
 import {MessageEntity} from '../../layer';
+import matchUrlProtocol from '../../lib/richTextProcessor/matchUrlProtocol';
 import BOM from '../string/bom';
 
 export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' |
@@ -160,7 +161,17 @@ function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[]
         length: value.length
       });
     } else if(tag.entityName === 'messageEntityTextUrl') {
-      entities.push({
+      let sameUrl = false; // * don't make it textUrl entity if text is the same as the url
+      try {
+        const url1 = new URL((closest as HTMLAnchorElement).href).toString();
+        let url2Before = value;
+        if(!matchUrlProtocol(url2Before)) {
+          url2Before = 'https://' + url2Before;
+        }
+
+        sameUrl = url1 === new URL(url2Before).toString();
+      } catch(err) {}
+      !sameUrl && entities.push({
         _: tag.entityName,
         url: (closest as HTMLAnchorElement).href,
         offset: offset.offset,
@@ -190,11 +201,14 @@ function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[]
         length: emoji.length
       });
     } */ else {
-      entities.push({
-        _: tag.entityName,
-        offset: offset.offset,
-        length: value.length
-      });
+      // * ignore local visible entities
+      if(!(tag.entityName === 'messageEntityUnderline' && closest.classList.contains('anchor-url') && closest === parentElement)) {
+        entities.push({
+          _: tag.entityName,
+          offset: offset.offset,
+          length: value.length
+        });
+      }
     }
   }
 }

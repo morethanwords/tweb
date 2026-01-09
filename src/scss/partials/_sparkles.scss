@@ -1,27 +1,29 @@
 .sparkles-container {
+  --sparkles-duration: 5s;
   pointer-events: none;
 
   font-size: 0.5rem;
 }
 
 .sparkles-sparkle {
+  --sparkle-min-opacity: 0;
   position: absolute;
 
-  animation: sparkle 5s infinite;
+  animation: sparkle var(--sparkles-duration) infinite;
   width: 1em;
   height: 1em;
 }
 
 @keyframes sparkle {
   0% {
-    opacity: 0;
+    opacity: var(--sparkle-min-opacity);
     transform: translate(0, 0);
   }
   15% {
     opacity: 1;
   }
   100% {
-    opacity: 0;
+    opacity: var(--sparkle-min-opacity);
     transform: translate(var(--sparkle-tx), var(--sparkle-ty)) scale(var(--sparkle-scale)) /* rotate(var(--sparkle-rotate)) translate(calc(0.05 * var(--sparkle-tx)), calc(0.05 * var(--sparkle-ty))) */;
   }
 }

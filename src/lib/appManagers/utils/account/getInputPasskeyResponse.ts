@@ -24,7 +24,7 @@ export default function getInputPasskey(credential: PublicKeyCredential): InputP
   return ret;
 }
 
-export function getInputPasskeyCredential(credential: PublicKeyCredential): InputPasskeyCredential {
+export function getInputPasskeyCredential(credential: PublicKeyCredential): InputPasskeyCredential.inputPasskeyCredentialPublicKey {
   const response = getInputPasskey(credential);
   const json = credential.toJSON();
   return {

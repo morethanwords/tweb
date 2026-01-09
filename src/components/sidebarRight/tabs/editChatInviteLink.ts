@@ -58,7 +58,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
       const expireDateValue = timePeriodSelector.value;
       const expireDate = expireDateValue instanceof Date ? expireDateValue.getTime() / 1000 | 0 : (expireDateValue ? tsNow(true) + expireDateValue : 0);
       const title = nameInputField.value;
-      const requestNeeded = approveNewMembersCheckboxField.checked;
+      const requestNeeded = approveNewMembersCheckboxField?.checked;
       const usageLimit = requestNeeded ? 0 : (usersLimitSelector.value ?? 0);
 
       let chatInvite: ChatInvite;

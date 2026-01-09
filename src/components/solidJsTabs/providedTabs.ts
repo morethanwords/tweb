@@ -1,4 +1,5 @@
 import type AppAddMembersTab from '../sidebarLeft/tabs/addMembers';
+import type AppNewGroupTab from '../sidebarLeft/tabs/newGroup';
 import type AppPrivacyAndSecurityTab from '../sidebarLeft/tabs/privacyAndSecurity';
 import type AppUserPermissionsTab from '../sidebarRight/tabs/userPermissions';
 import {AppNotificationsTab, AppPasscodeEnterPasswordTab, AppPasscodeLockTab} from './tabs';
@@ -13,6 +14,7 @@ export type ProvidedTabs = {
   AppPrivacyAndSecurityTab: typeof AppPrivacyAndSecurityTab;
   AppAddMembersTab: typeof AppAddMembersTab;
   AppUserPermissionsTab: typeof AppUserPermissionsTab;
+  AppNewGroupTab: typeof AppNewGroupTab;
 };
 
 /**

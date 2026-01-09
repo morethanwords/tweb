@@ -30,6 +30,7 @@ interface OpenStreetMapInterface {
 }
 
 export default class AppNewGroupTab extends SliderSuperTab {
+  public static noSame = true;
   private avatarEdit: AvatarEdit;
   private uploadAvatar: () => Promise<InputFile> = null;
   private peerIds: PeerId[];
@@ -273,3 +274,4 @@ export default class AppNewGroupTab extends SliderSuperTab {
     });
   }
 }
+

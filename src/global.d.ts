@@ -99,7 +99,7 @@ declare global {
   type LocalFileError = ApiFileManagerError | ReferenceError | StorageError;
   type LocalErrorType = LocalFileError | NetworkerError | FiltersError |
     'UNKNOWN' | 'NO_DOC' | 'MIDDLEWARE' | 'PORT_DISCONNECTED' | 'NO_AUTO_DOWNLOAD' | 'CHAT_PRIVATE' | 'NO_WASM' |
-    'CANCELED' | 'TIMEOUT';
+    'CANCELED' | 'TIMEOUT' | 'TAB_ALREADY_OPEN';
 
   type ServerErrorType = 'FILE_REFERENCE_EXPIRED' | 'SESSION_REVOKED' | 'AUTH_KEY_DUPLICATED' |
     'SESSION_PASSWORD_NEEDED' | 'CONNECTION_NOT_INITED' | 'ERROR_EMPTY' | 'MTPROTO_CLUSTER_INVALID' |
@@ -127,7 +127,7 @@ declare global {
     'FILE_REFERENCE_INVALID' | 'USER_NOT_MUTUAL_CONTACT' | 'FROZEN_METHOD_INVALID' |
     'EMAIL_INVALID' | 'EMAIL_NOT_ALLOWED' | 'EMAIL_VERIFY_EXPIRED' | 'CODE_INVALID' |
     'PASSWORD_RECOVERY_NA' | '2FA_RECENT_CONFIRM' | `2FA_CONFIRM_WAIT_${number}` |
-    'PASSKEY_CREDENTIAL_NOT_FOUND';
+    'PASSKEY_CREDENTIAL_NOT_FOUND' | 'SUMMARY_FLOOD_PREMIUM';
 
   type ErrorType = LocalErrorType | ServerErrorType;
 
