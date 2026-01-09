@@ -1274,8 +1274,8 @@ export default class ChatTopbar {
         this.container.classList.toggle('has-avatar', !!newAvatar);
       }
 
-      callbackify(autoDeletePeriod.result, (value) => {
-        this.avatar.setAutoDeletePeriod(value);
+      callbackify(autoDeletePeriod?.result, (value) => {
+        this.avatar?.setAutoDeletePeriod(value);
       });
 
       this.setUtilsWidth();

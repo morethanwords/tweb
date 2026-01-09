@@ -1114,11 +1114,16 @@ export class AppProfileManager extends AppManager {
   private onUpdatePeerHistoryTTL = (update: Update.updatePeerHistoryTTL) => {
     const peerId = this.appPeersManager.getPeerId(update.peer);
 
-    const peerFull = peerId.isUser() ? this.usersFull[peerId.toUserId()] : this.chatsFull[peerId.toChatId()];
-    if(peerFull) peerFull.ttl_period = update.ttl_period;
+    // const peerFull = peerId.isUser() ? this.usersFull[peerId.toUserId()] : this.chatsFull[peerId.toChatId()];
+    this.modifyCachedFullPeer(peerId, (peerFull) => {
+      peerFull.ttl_period = update.ttl_period;
+    });
 
     const dialog = this.dialogsStorage.getDialogOnly(peerId);
-    if(dialog) dialog.ttl_period = update.ttl_period;
+    if(dialog) {
+      dialog.ttl_period = update.ttl_period;
+      this.dialogsStorage.setDialogToState(dialog);
+    }
 
     this.rootScope.dispatchEvent('auto_delete_period_update', {peerId, period: update.ttl_period});
   };
