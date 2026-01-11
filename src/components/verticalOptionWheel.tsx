@@ -206,6 +206,7 @@ export const VerticalOptionWheel = <V, >(props: {
     speed = speed * referenceFrameTime / (endTime - lastItem(lastDiffs).time);
 
     let lastTime = performance.now();
+    let lastScrollTop = -1;
 
     animate(() => {
       if(isCleaned() || isCanceled) return false;
@@ -214,12 +215,16 @@ export const VerticalOptionWheel = <V, >(props: {
       const deltaTime = time - lastTime;
       lastTime = time;
 
-      localScrollable.scrollTop += speed;
+      const currentScrollTop = localScrollable.scrollTop;
+
+      if(currentScrollTop === lastScrollTop) return false; // hit an end
+
+      lastScrollTop = localScrollable.scrollTop;
+      localScrollable.scrollTop = lastScrollTop + speed;
+
       speed -= Math.sign(speed) * (deceleration * deltaTime / referenceFrameTime);
 
-      if(Math.abs(speed) > 1) return true;
-
-      lastDiffs = [];
+      return Math.abs(speed) > 1;
     });
 
     return () => {
