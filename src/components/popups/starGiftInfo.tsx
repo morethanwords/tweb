@@ -57,6 +57,7 @@ import Animated, {SimpleAnimation} from '../../helpers/solid/animations';
 import BezierEasing from '../../vendor/bezierEasing';
 import {AnimatedSuper} from '../animatedSuper';
 import {ConfettiContainer, ConfettiRef} from '../confetti';
+import {PreloaderTsx} from '../putPreloader';
 
 function AttributeTableButton(props: { permille: number }) {
   return (
@@ -105,6 +106,7 @@ function AnimatedAttributeValue(props: {
   count: number,
   onComplete?: () => void,
   onClick?: () => void
+  started: boolean
 }) {
   const [position, setPosition] = createSignal(0);
 
@@ -130,7 +132,27 @@ function AnimatedAttributeValue(props: {
       }, intervals[index]);
     }
 
-    scheduleNext(0);
+    function scheduleRandom() {
+      let randomIndex = Math.floor(Math.random() * items.length);
+      if(position() === randomIndex) {
+        randomIndex = (randomIndex + 1) % items.length;
+      }
+      setPosition(randomIndex);
+
+      setTimeout(() => {
+        if(props.started) {
+          scheduleNext(0);
+        } else {
+          scheduleRandom();
+        }
+      }, 150);
+    }
+
+    if(props.started) {
+      scheduleNext(0);
+    } else {
+      scheduleRandom();
+    }
   });
 
   return (
@@ -161,6 +183,7 @@ function UpgradeAnimation(props: {
   actualModel: StarGiftAttribute.starGiftAttributeModel,
   actualBackdrop: StarGiftAttribute.starGiftAttributeBackdrop,
   confetti: ConfettiRef,
+  onReady: () => void,
   onComplete: () => void
 }) {
   const MODELS_COUNT = 20;
@@ -201,6 +224,7 @@ function UpgradeAnimation(props: {
 
   let modelsContainer!: HTMLDivElement;
   let backdropEl!: HTMLDivElement;
+  const [loading, setLoading] = createSignal(true);
 
   onMount(async() => {
     const middleware = createMiddleware();
@@ -229,6 +253,9 @@ function UpgradeAnimation(props: {
         }
       });
     }));
+
+    props.onReady();
+    setLoading(false);
 
     const containerWidth = modelsContainer.parentElement!.offsetWidth;
     const totalModelsWidth = MODELS_COUNT * MODEL_WIDTH + (MODELS_COUNT - 1) * MODEL_GAP;
@@ -312,7 +339,10 @@ function UpgradeAnimation(props: {
         }}
       />
       <div class="popup-star-gift-info-upgrade-models-container">
-        <div ref={modelsContainer} class="popup-star-gift-info-upgrade-models" />
+        <Show when={loading()}>
+          <PreloaderTsx />
+        </Show>
+        <div ref={modelsContainer} class="popup-star-gift-info-upgrade-models" style={{display: loading() ? 'none' : undefined}} />
       </div>
     </>
   );
@@ -320,6 +350,7 @@ function UpgradeAnimation(props: {
 
 function AnimatedCollectibleNumber(props: {
   targetNumber: number,
+  started: boolean
 }) {
   let containerRef!: HTMLSpanElement;
 
@@ -406,7 +437,22 @@ function AnimatedCollectibleNumber(props: {
       }, intervals[updateCount]);
     }
 
-    scheduleNext();
+    function scheduleRandom() {
+      setTimeout(() => {
+        setDigits(0, true)
+        if(props.started) {
+          scheduleNext();
+        } else {
+          scheduleRandom()
+        }
+      }, 150);
+    }
+
+    if(props.started) {
+      scheduleNext();
+    } else {
+      scheduleRandom()
+    }
   });
 
   return <span ref={containerRef} class="animated-counter" />;
@@ -478,6 +524,7 @@ export default class PopupStarGiftInfo extends PopupElement {
     const [resellPriceTon, setResellPriceTon] = createSignal(this.gift.resellPriceTon);
     const [resellPriceStars, setResellPriceStars] = createSignal(this.gift.resellPriceStars);
     const [isWearing, setIsWearing] = createSignal(this.gift.isWearing);
+    const [upgradeAnimationStarted, setUpgradeAnimationStarted] = createSignal(false);
     const [upgradeAnimationComplete, setUpgradeAnimationComplete] = createSignal(!this.upgradeAnimation);
 
     this.listenerSetter.add(rootScope)('star_gift_update', (event) => {
@@ -600,6 +647,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               duration={2000}
               count={10}
               onClick={() => handleAttributeClick(collectibleAttributes.model)}
+              started={upgradeAnimationStarted()}
             />
           ) : (
             <AttributeValue
@@ -619,6 +667,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               duration={800}
               count={4}
               onClick={() => handleAttributeClick(collectibleAttributes.backdrop)}
+              started={upgradeAnimationStarted()}
             />
           ) : (
             <AttributeValue
@@ -638,6 +687,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               duration={1000}
               count={5}
               onClick={() => handleAttributeClick(collectibleAttributes.pattern)}
+              started={upgradeAnimationStarted()}
             />
           ) : (
             <>
@@ -932,6 +982,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               preview={this.upgradeAnimation}
               actualModel={collectibleAttributes.model}
               actualBackdrop={collectibleAttributes.backdrop}
+              onReady={() => setUpgradeAnimationStarted(true)}
               onComplete={() => setUpgradeAnimationComplete(true)}
               confetti={confetti}
             />
@@ -1022,7 +1073,7 @@ export default class PopupStarGiftInfo extends PopupElement {
                     key="StarGiftCollectibleNumWithAuthor"
                     args={[
                       this.upgradeAnimation ? (
-                        <AnimatedCollectibleNumber targetNumber={gift.num} />
+                        <AnimatedCollectibleNumber targetNumber={gift.num} started={upgradeAnimationStarted()} />
                       ) : numberThousandSplitter(gift.num, ','),
                       <PeerTitleTsx
                         peerId={getPeerId(gift.released_by)}
@@ -1038,7 +1089,7 @@ export default class PopupStarGiftInfo extends PopupElement {
                     key="StarGiftCollectibleNum"
                     args={[
                       this.upgradeAnimation ? (
-                        <AnimatedCollectibleNumber targetNumber={gift.num} />
+                        <AnimatedCollectibleNumber targetNumber={gift.num} started={upgradeAnimationStarted()} />
                       ) : numberThousandSplitter(gift.num, ',')
                     ]}
                   />
