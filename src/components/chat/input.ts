@@ -124,7 +124,7 @@ import eachSecond from '../../helpers/eachSecond';
 import {wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
 import showTooltip from '../tooltip';
 import createContextMenu from '../../helpers/dom/createContextMenu';
-import {Accessor, createEffect, createMemo, createRoot, createSignal, onCleanup, Setter} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, on, onCleanup, Setter} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import SelectedEffect from './selectedEffect';
 import windowSize from '../../helpers/windowSize';
@@ -368,6 +368,7 @@ export default class ChatInput {
 
   public paidMessageInterceptor: PaidMessagesInterceptor;
 
+  private fileInputState: ReturnType<ChatInput['createFileInputState']>;
   private starsState: ReturnType<ChatInput['createStarsState']>;
   private directMessagesHandler: ReturnType<ChatInput['createDirectMessagesHandler']>;
 
@@ -500,6 +501,7 @@ export default class ChatInput {
       this.paidMessageInterceptor.dispose();
     });
 
+    this.fileInputState = this.createFileInputState();
     this.starsState = this.createStarsState();
     this.directMessagesHandler = this.createDirectMessagesHandler();
   }
@@ -3663,6 +3665,29 @@ export default class ChatInput {
     return {store, set};
   });
 
+  private createFileInputState = () => createRoot((dispose) => {
+    this.getMiddleware()?.onDestroy(() => void dispose());
+
+    const [store, set] = createStore({
+      isEditing: false,
+      isSuggesting: false
+    });
+
+    const isMultiple = createMemo(() => !store.isEditing && !store.isSuggesting);
+
+    createEffect(() => {
+      this.fileInput.multiple = isMultiple();
+    });
+
+    createEffect(on(() => store.isEditing, (isEditing) => {
+      this.attachMenu.firstElementChild.replaceChildren(Icon(isEditing ? 'attach_edit' : 'attach'));
+    }, {
+      defer: true
+    }));
+
+    return {store, set};
+  });
+
   private createDirectMessagesHandler = () => createRoot((dispose) => {
     this.getMiddleware()?.onDestroy(() => void dispose());
 
@@ -4296,9 +4321,13 @@ export default class ChatInput {
     if(type !== 'suggested') {
       this.suggestedPost = undefined;
       this.btnSuggestPost.classList.toggle('hide', !this.canShowSuggestPostButton(false))
-      this.fileInput.multiple = true;
       this.directMessagesHandler.set({isSuggestingUneditablePostChange: false});
     }
+
+    this.fileInputState.set({
+      isEditing: false,
+      isSuggesting: false
+    });
 
     this.editMsgId = this.editMessage = undefined;
     this.helperType = this.helperFunc = undefined;
@@ -4378,9 +4407,10 @@ export default class ChatInput {
       this.helperFunc = callerFunc;
     }
 
-    if(type === 'suggested') {
-      this.fileInput.multiple = false;
-    }
+    this.fileInputState.set({
+      isEditing: type === 'edit',
+      isSuggesting: type === 'suggested'
+    });
 
     this.btnSuggestPost?.classList.toggle('hide', !this.canShowSuggestPostButton(true));
 

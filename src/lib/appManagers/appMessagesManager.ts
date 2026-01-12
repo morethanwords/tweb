@@ -1175,15 +1175,7 @@ export class AppMessagesManager extends AppManager {
 
     const mediaTempId = options.useTempMediaId ? this.mediaTempId++ : message.id;
 
-    const {
-      document,
-      apiFileName,
-      actionName,
-      attachType,
-      photo,
-      fileType,
-      mediaUnread
-    } = this.makeDocumentAndMetaForSendingFile({
+    const documentAndMeta = this.makeDocumentAndMetaForSendingFile({
       mediaTempId,
       isDocument,
       file,
@@ -1203,6 +1195,20 @@ export class AppMessagesManager extends AppManager {
         'thumb'
       ])
     });
+
+    const {
+      document,
+      apiFileName,
+      actionName,
+      photo,
+      fileType,
+      mediaUnread,
+      attributes
+    } = documentAndMeta;
+
+    let {
+      attachType
+    } = documentAndMeta;
 
     if(message && mediaUnread) message.pFlags.media_unread = true;
 
@@ -1721,7 +1727,8 @@ export class AppMessagesManager extends AppManager {
       attachType,
       photo,
       fileType,
-      mediaUnread
+      mediaUnread,
+      attributes
     };
   }
 
