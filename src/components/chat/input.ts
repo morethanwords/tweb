@@ -2075,7 +2075,8 @@ export default class ChatInput {
       peerTitleShort,
       isPremiumRequired,
       appConfig,
-      autoDeletePeriod
+      autoDeletePeriod,
+      canManageAutoDelete
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
@@ -2089,7 +2090,8 @@ export default class ChatInput {
       wrapPeerTitle({peerId, onlyFirstName: true}),
       this.chat.isPremiumRequiredToContact(),
       apiManagerProxy.getAppConfig(),
-      modifyAckedPromise(this.chat.getAutoDeletePeriod())
+      modifyAckedPromise(this.chat.getAutoDeletePeriod()),
+      this.chat.canManageAutoDelete()
     ]);
 
     const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
@@ -2214,8 +2216,8 @@ export default class ChatInput {
 
       if(this.chat) {
         callbackify(autoDeletePeriod.result, (period) => {
-          if(period) this.btnAutoDeletePeriod.replaceChildren(createAutoDeleteIcon(period));
-          this.btnAutoDeletePeriod.classList.toggle('hide', !period);
+          if(canManageAutoDelete && period) this.btnAutoDeletePeriod.replaceChildren(createAutoDeleteIcon(period));
+          this.btnAutoDeletePeriod.classList.toggle('hide', !(canManageAutoDelete && period));
         });
       }
 

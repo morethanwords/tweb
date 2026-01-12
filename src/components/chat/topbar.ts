@@ -41,7 +41,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import groupCallsController from '../../lib/calls/groupCallsController';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {makeMediaSize} from '../../helpers/mediaSize';
-import {FOLDER_ID_ALL, HIDDEN_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ALL} from '../../lib/mtproto/mtproto_config';
 import formatNumber from '../../helpers/number/formatNumber';
 import PopupElement from '../popups';
 import ChatRequests from './requests';
@@ -204,7 +204,7 @@ export default class ChatTopbar {
         direction: 'bottom-left',
         buttons: this.menuButtons,
         onOpenBefore: async() => {
-          const hasAutoDeleteButton = await this.verifyAutoDeleteButton();
+          const hasAutoDeleteButton = await this.chat.canManageAutoDelete();
           if(!hasAutoDeleteButton) return;
 
           const period = await this.chat.getAutoDeletePeriod().then(ackedResult => ackedResult.result);
@@ -449,26 +449,12 @@ export default class ChatTopbar {
     );
   }
 
-  private verifyAutoDeleteButton = async() => {
-    const specialChats = [REPLIES_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID.toPeerId(), VERIFICATION_CODES_BOT_ID, HIDDEN_PEER_ID, SERVICE_PEER_ID, rootScope.myId];
-    if(specialChats.includes(this.peerId)) return false;
-
-    if(this.peerId.isUser()) return true;
-
-    const {chat, isMonoforum}  = await namedPromises({
-      chat: this.managers.appChatsManager.getChat(this.peerId.toChatId()),
-      isMonoforum: this.managers.appChatsManager.isMonoforum(this.peerId.toChatId())
-    });
-
-    return !isMonoforum && hasRights(chat, 'change_info');
-  }
-
   public constructUtils() {
     this.autoDeleteBtnMenuOptions = createSubmenuTrigger({
       options: {
         text: 'AutoDeleteMessagesShort',
         separatorDown: true,
-        verify: this.verifyAutoDeleteButton
+        verify: this.chat.canManageAutoDelete
       },
       createSubmenu: this.createAutoDeleteSubmenu.bind(this),
       direction: 'left-start'
