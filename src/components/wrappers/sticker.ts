@@ -44,9 +44,10 @@ import {SHOULD_HANDLE_VIDEO_LEAK, attachVideoLeakListeners, leakVideoFallbacks, 
 import noop from '../../helpers/noop';
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
 import toArray from '../../helpers/array/toArray';
-import {createEffect, createSignal, on, onCleanup, onMount, Ref} from 'solid-js';
+import {createEffect, createRoot, on, onCleanup, Ref, untrack} from 'solid-js';
 import createMiddleware from '../../helpers/solid/createMiddleware';
 import StickerType from '../../config/stickerType';
+import readValue from '../../helpers/solid/readValue';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -232,7 +233,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   }
 
   const toneIndex = emoji && !isCustomEmoji ? getEmojiToneIndex(emoji) : -1;
-  const lottieCachedThumbToneIndex = toneIndex === -1 ? textColor ?? toneIndex : toneIndex;
+  const lottieCachedThumbToneIndex = toneIndex === -1 ? untrack(() => readValue(textColor)) ?? toneIndex : toneIndex;
   const downloaded = cacheContext.downloaded && !needFadeIn;
 
   const isThumbNeededForType = isAnimated;
@@ -443,8 +444,24 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         middleware: loadStickerMiddleware ?? middleware,
         group,
         liteModeKey: liteModeKey || undefined,
-        textColor: !isCustomEmoji ? textColor : undefined
+        textColor: !isCustomEmoji ? readValue(textColor) : undefined
       });
+
+      if(typeof(textColor) === 'function') {
+        createRoot((dispose) => {
+          middleware.onClean(dispose);
+          createEffect(
+            on(
+              textColor,
+              () => {
+                animation.setColor(readValue(textColor), true);
+              },
+              {
+                defer: true
+              }
+            ));
+        });
+      }
 
       // const deferred = deferredPromise<void>();
 

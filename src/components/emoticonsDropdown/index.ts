@@ -44,6 +44,7 @@ import safeAssign from '../../helpers/object/safeAssign';
 import ButtonIcon from '../buttonIcon';
 import StickersTabCategory from './category';
 import {Middleware} from '../../helpers/middleware';
+import {Accessor, createSignal, Setter} from 'solid-js';
 
 export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
 
@@ -119,7 +120,8 @@ export class EmoticonsDropdown extends DropdownHover {
   private listenerSetter: ListenerSetter;
 
   private _chatInput: ChatInput;
-  public textColor: string;
+  public textColor: Accessor<string>;
+  private _setTextColor: Setter<string>;
 
   public isStandalone: boolean;
 
@@ -135,6 +137,8 @@ export class EmoticonsDropdown extends DropdownHover {
       ignoreOutClickClassName: 'input-message-input'
     });
     safeAssign(this, options);
+
+    [this.textColor, this._setTextColor] = createSignal(EMOJI_TEXT_COLOR);
 
     this.listenerSetter = new ListenerSetter();
     this.isStandalone = !!options?.tabsToRender;
@@ -249,8 +253,8 @@ export class EmoticonsDropdown extends DropdownHover {
   }
 
   public setTextColor(textColor: string = EMOJI_TEXT_COLOR) {
-    this.textColor = textColor;
-    this.getTab(EmojiTab)?.setTextColor(textColor);
+    this._setTextColor(textColor);
+    // this.getTab(EmojiTab)?.setTextColor(textColor);
   }
 
   public getTab<T extends EmoticonsTab>(instance: EmoticonsTabConstructable<T>) {

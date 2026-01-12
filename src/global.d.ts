@@ -9,6 +9,7 @@ import type {CustomProperty} from './helpers/dom/customProperties';
 import type Icons from './icons';
 import type {CancellablePromise} from './helpers/cancellablePromise';
 import type Languages from './lib/tinyld/languages';
+import type {ValueOrGetter} from './helpers/solid/readValue';
 
 declare global {
   interface AddEventListenerOptions extends EventListenerOptions {
@@ -157,7 +158,7 @@ declare global {
     lazyLoadQueue?: LazyLoadQueue | false,
     middleware?: Middleware,
     customEmojiSize?: MediaSize,
-    textColor?: CustomProperty,
+    textColor?: ValueOrGetter<CustomProperty>,
     animationGroup?: AnimationItemGroup,
     managers?: AppManagers
   };

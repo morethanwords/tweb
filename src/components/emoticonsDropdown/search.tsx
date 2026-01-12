@@ -26,7 +26,7 @@ function addSearchCategories(props: {
   inputSearch: InputSearch,
   onGroup: (group: EmojiGroup) => void,
   animatedItemGroup?: AnimationItemGroup,
-  color?: string
+  color?: WrapSomethingOptions['textColor']
 }) {
   const {inputSearch} = props;
   const [emojiGroups, setEmojiGroups] = createSignal<Awaited<ReturnType<AppEmojiManager['getEmojiGroups']>>>([]);
@@ -141,7 +141,7 @@ export default function EmoticonsSearch(props: {
   onFocusChange?: ConstructorParameters<typeof InputSearch>[0]['onFocusChange'],
   onGroup?: (group: EmojiGroup) => void,
   animatedItemGroup?: AnimationItemGroup,
-  categoryColor?: string
+  categoryColor?: WrapSomethingOptions['textColor']
 }) {
   const [searching, setSearching] = createSignal(false);
   const [debounced, setDebounced] = createSignal(false);

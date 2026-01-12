@@ -17,6 +17,7 @@ import QueryableWorker from './queryableWorker';
 import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
 import framesCache, {FramesCache, FramesCacheItem} from '../../helpers/framesCache';
 import customProperties from '../../helpers/dom/customProperties';
+import readValue from '../../helpers/solid/readValue';
 
 export type RLottieOptions = {
   container: HTMLElement | HTMLElement[],
@@ -373,8 +374,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   public applyColor(context: CanvasRenderingContext2D) {
     applyColorOnContext(
       context,
-      // this.color || customProperties.getPropertyAsColor(typeof(this.textColor) === 'function' ? this.textColor() : this.textColor),
-      this.color || customProperties.getPropertyAsColor(this.textColor),
+      this.color || customProperties.getPropertyAsColor(readValue(this.textColor)),
       0,
       0,
       this.width,

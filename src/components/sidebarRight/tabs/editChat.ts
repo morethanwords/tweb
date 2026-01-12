@@ -287,7 +287,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(reactionsRow.container);
       }
 
-      if(canChangeInfo && isChannel && isAdmin) {
+      if(canChangeInfo && isBroadcast && isAdmin) {
         const directMessagesRow = new Row({
           titleLangKey: 'ChannelDirectMessages.Settings.Title',
           icon: 'messageunread',

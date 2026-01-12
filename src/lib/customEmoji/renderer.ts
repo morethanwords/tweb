@@ -28,6 +28,8 @@ import {observeResize, unobserveResize} from '../../components/resizeObserver';
 import {PAID_REACTION_EMOJI_DOCID} from './constants';
 import lottieLoader from '../rlottie/lottieLoader';
 import StickerType from '../../config/stickerType';
+import {Accessor, createMemo, createSignal, Setter} from 'solid-js';
+import readValue from '../../helpers/solid/readValue';
 
 const globalLazyLoadQueue = new LazyLoadQueue();
 
@@ -59,7 +61,9 @@ export class CustomEmojiRendererElement extends HTMLElement {
   public middlewareHelper: MiddlewareHelper;
 
   public auto: boolean;
-  public textColor: CustomProperty;
+  public textColor: Accessor<CustomProperty>;
+  private _textColor: Accessor<CustomProperty>;
+  private _setTextColor: Setter<CustomProperty>;
 
   public observeResizeElement: HTMLElement | false;
 
@@ -213,6 +217,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.isCanvasClean = false;
 
     const {width, height, dpr} = canvas;
+    let _color: string;
     for(const [elements, offsets] of offsetsMap) {
       const player = this.playersSynced.get(elements);
       const frame = syncedPlayersFrames.get(player) || (player instanceof HTMLVideoElement ? player : undefined);
@@ -243,7 +248,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
       const maxTop = height - frameHeight;
       const maxLeft = width - frameWidth;
-      const color = this.textColored.has(elements) ? customProperties.getProperty(this.textColor) : undefined;
+      const color = this.textColored.has(elements) ? (_color ??= customProperties.getProperty(this.textColor())) : undefined;
 
       if(!this.clearedElements.has(elements) && !this.isSelectable) {
         if(this.isSelectable/*  && false */) {
@@ -788,7 +793,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   }
 
   public setTextColor(textColor: string) {
-    this.textColor = textColor;
+    this._setTextColor(textColor);
   }
 
   public static create(options: CustomEmojiRendererElementOptions) {
@@ -796,8 +801,8 @@ export class CustomEmojiRendererElement extends HTMLElement {
     renderer.animationGroup = options.animationGroup;
     renderer.size = options.customEmojiSize || mediaSizes.active.customEmoji;
     renderer.isSelectable = options.isSelectable;
-    renderer.textColor = options.textColor;
-    // renderer.textColor = typeof(options.textColor) === 'function' ? options.textColor() : options.textColor;
+    [renderer._textColor, renderer._setTextColor] = createSignal();
+    renderer.textColor = createMemo(() => renderer._textColor() || readValue(options.textColor));
     renderer.observeResizeElement = options.observeResizeElement;
     renderer.renderNonSticker = options.renderNonSticker;
     if(options.wrappingDraft) {

@@ -69,7 +69,7 @@ export type WrapRichTextOptions = Partial<{
   customWraps?: Set<HTMLElement>,
   ignoreNextIndex?: number,
   doubleLinebreak?: number
-  textColor?: string
+  textColor?: WrapSomethingOptions['textColor']
 }> & CustomEmojiRendererElementOptions;
 
 function createMarkupFormatting(formatting: string) {
@@ -889,9 +889,9 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       fragment.prepend(renderer);
     }
 
-    if(options.textColor) {
-      renderer.setTextColor(options.textColor);
-    }
+    // if(options.textColor) {
+    //   renderer.setTextColor(options.textColor);
+    // }
 
     const loadPromise = renderer.add({
       addCustomEmojis: customEmojis,

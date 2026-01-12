@@ -27,7 +27,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
   height: number,
   managers?: AppManagers
   middleware: Middleware,
-  textColor?: string
+  textColor?: WrapSomethingOptions['textColor']
 }) {
   if(set.thumbs?.length) {
     container.classList.add('media-sticker-wrapper');

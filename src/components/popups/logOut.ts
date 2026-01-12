@@ -7,10 +7,9 @@ export default function showLogOutPopup() {
     descriptionLangKey: 'LogOut.Description',
     button: {
       langKey: 'LogOut',
-      callback: () => {
-        rootScope.managers.apiManager.logOut();
-      },
       isDanger: true
     }
+  }).then(() => {
+    rootScope.managers.apiManager.logOut();
   });
 }
