@@ -15,6 +15,8 @@ import tabId from '../../config/tabId';
 import IS_SHARED_WORKER_SUPPORTED from '../../environment/sharedWorkerSupport';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import idleController from '../../helpers/idleController';
+import {getCurrentAccount} from '../accounts/getCurrentAccount';
+import type {ActiveAccountNumber} from '../accounts/types';
 import {logger} from '../logger';
 import rootScope from '../rootScope';
 import sessionStorage from '../sessionStorage';
@@ -23,7 +25,8 @@ import apiManagerProxy from './mtprotoworker';
 export type AppInstance = {
   id: number,
   idle: boolean,
-  time: number
+  time: number,
+  accountNumber?: ActiveAccountNumber
 };
 
 export type InstanceDeactivateReason = 'version' | 'tabs' | 'otherClient';
@@ -155,7 +158,8 @@ export class SingleInstance extends EventListenerBase<{
     const newInstance: AppInstance = {
       id: this.instanceId,
       idle,
-      time
+      time,
+      accountNumber: getCurrentAccount()
     };
 
     const [curInstance, build = App.build] = await Promise.all([

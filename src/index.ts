@@ -96,6 +96,25 @@ function randomlyChooseVersionFromSearch() {
   } catch(err) {}
 }
 
+async function checkLastActiveAccountFromTMe() {
+  try {
+    if(
+      App.isMainDomain &&
+      document.referrer &&
+      /^(t|telegram)\.me/i.test(new URL(document.referrer).host)
+    ) {
+      const [totalAccounts, {accountNumber}] = await Promise.all([
+        AccountController.getUnencryptedTotalAccounts(),
+        sessionStorage.get('xt_instance')
+      ]);
+
+      if(accountNumber <= totalAccounts && accountNumber !== getCurrentAccount()) {
+        changeAccount(accountNumber, false, true);
+      }
+    }
+  } catch(err) {}
+}
+
 function setManifest() {
   const manifest = document.getElementById('manifest') as HTMLLinkElement;
   if(manifest) manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=jw3mK7G9Aq`;
@@ -365,6 +384,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
   listenForWindowPrint();
   cancelImageEvents();
   setRootClasses();
+  await checkLastActiveAccountFromTMe();
 
   if(IS_INSTALL_PROMPT_SUPPORTED) {
     cacheInstallPrompt();
