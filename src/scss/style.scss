@@ -2512,8 +2512,9 @@ hr {
 
 .xtr {
   &-icon {
-    vertical-align: bottom;
-    line-height: inherit;
+    margin-top: 1px;
+    display: inline-block;
+    vertical-align: text-top;
   }
 }
 

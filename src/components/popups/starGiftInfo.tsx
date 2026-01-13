@@ -70,12 +70,14 @@ function AttributeTableButton(props: { permille: number }) {
   );
 }
 
-function AttributeValue(props: { name: string, permille: number, onClick?: () => void }) {
+export function AttributeValue(props: { name: string, permille: number, onClick?: () => void }) {
   return (
     <div class="popup-star-gift-info-attribute-value">
-      <span class="popup-star-gift-info-attribute-clickable" onClick={props.onClick}>
-        {props.name}
-      </span>
+      {props.onClick ? (
+        <span class="popup-star-gift-info-attribute-clickable" onClick={props.onClick}>
+          {props.name}
+        </span>
+      ) : props.name}
       <AttributeTableButton permille={props.permille} />
     </div>
   )
@@ -690,12 +692,11 @@ export default class PopupStarGiftInfo extends PopupElement {
               started={upgradeAnimationStarted()}
             />
           ) : (
-            <>
-              <span class="popup-star-gift-info-attribute-clickable" onClick={() => handleAttributeClick(collectibleAttributes.pattern)}>
-                {collectibleAttributes.pattern.name}
-              </span>
-              <AttributeTableButton permille={collectibleAttributes.pattern.rarity_permille} />
-            </>
+            <AttributeValue
+              name={collectibleAttributes.pattern.name}
+              permille={collectibleAttributes.pattern.rarity_permille}
+              onClick={() => handleAttributeClick(collectibleAttributes.pattern)}
+            />
           )
         ]);
 

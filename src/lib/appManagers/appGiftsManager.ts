@@ -163,7 +163,7 @@ export default class AppGiftsManager extends AppManager {
     };
   }
 
-  private wrapGift(gift: StarGift): MyStarGift {
+  public wrapGift(gift: StarGift): MyStarGift {
     if(gift._ === 'starGift') {
       return {
         type: 'stargift',
@@ -249,6 +249,7 @@ export default class AppGiftsManager extends AppManager {
       msg_id: action._ === 'messageActionStarGift' && action.pFlags.prepaid_upgrade ? action.gift_msg_id : message.id,
       convert_stars: gift._ === 'starGift' ? gift.convert_stars : undefined,
       upgrade_stars: gift._ === 'starGift' ? gift.upgrade_stars : undefined,
+      transfer_stars: action._ === 'messageActionStarGiftUnique' ? action.transfer_stars : undefined,
       saved_id: action.saved_id,
       can_transfer_at: action._ === 'messageActionStarGiftUnique' ? action.can_transfer_at : undefined,
       can_resell_at: action._ === 'messageActionStarGiftUnique' ? action.can_resell_at : undefined,

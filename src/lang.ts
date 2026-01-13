@@ -1849,6 +1849,7 @@ const lang = {
   'ActionGiftUpgradedSelf': 'You turned this gift into a unique collectible',
   'ActionGiftTransferredInbound': '%s transferred a gift to you',
   'ActionGiftTransferredOutbound': 'You transferred a gift to %s',
+  'ActionGiftSold': 'You sold a gift to %s',
   'ActionGiftTransferredSelf': 'You transferred a unique collectible',
   'ActionGiftPremiumTitle2': '%s Premium',
   'ActionGiftPremiumSubtitle2': 'Subscription for exclusive Telegram features.',
@@ -2584,7 +2585,8 @@ const lang = {
     'other_value': 'Do you want to transfer a gift for **%1$d stars**?'
   },
   'StarGiftConfirmFreeTransferTitle': 'Confirm Transfer',
-  'StarGiftConfirmFreeTransferText': 'Do you want to transfer %s to **%s**?',
+  'StarGiftConfirmFreeTransferText': 'Do you want to transfer ownership of %s to **%s**?',
+  'StarGiftConfirmTransferPopupText': 'Do you want to transfer ownership of %s to **%s** for **%s**?',
   'StarGiftFragmentTransferTitle': 'Manage with Fragment',
   'StarGiftFragmentTransferText': 'You can use Fragment, a third-party service, to transfer **%s** to the TON blockchain. After that, you can manage it as an NFT with any TON wallet application.\n\nYou can also move such NFTs back to your Telegram account via Fragment.',
   'StarGiftFragmentTransferConfirm': 'Open Fragment',
@@ -2813,6 +2815,7 @@ const lang = {
   'StarGiftCollectibleNumWithAuthor': 'Collectible #%s by %s',
   'StarGiftTransfer': 'transfer',
   'StarGiftTransferFull': 'Transfer',
+  'StarGiftTransferFullFor': 'Transfer for %s',
   'StarGiftWear': 'wear',
   'StarGiftWearStop': 'stop wearing',
   'StarGiftWearFull': 'Wear',
@@ -4155,7 +4158,23 @@ const lang = {
 
   'Off': 'Off',
   'Never': 'Never',
-  'Other': 'Other'
+  'Other': 'Other',
+
+  'StarGiftOffer.Outgoing': 'You offered **%s** **%s** for **%s**',
+  'StarGiftOffer.Incoming': '**%s** offered you **%s** for **%s**',
+  'StarGiftOffer.ExpiresIn': 'This offer expires in **%s**',
+  'StarGiftOffer.Reject': 'Reject',
+  'StarGiftOffer.Rejected': 'This offer was rejected.',
+  'StarGiftOffer.Accept': 'Accept',
+  'StarGiftOffer.Accepted': 'This offer was accepted.',
+  'StarGiftOffer.Expired': 'This offer has expired.',
+  'StarGiftOffer.ExpiredFull': 'Your offer to **%s** has expired. **%s** for **%s**',
+  'StarGiftOffer.RejectedFullIncoming': '**%1$s** rejected your offer of **%3$s** for **%2$s**',
+  'StarGiftOffer.RejectedFullOutgoing': 'You rejected **%1$s\'s** offer to buy your **%3$s** for **%2$s**',
+  'StarGiftOffer.RejectOfferTitle': 'Reject Offer',
+  'StarGiftOffer.RejectOfferText': 'Are you sure you want to reject the offer from **%s**?',
+  'StarGiftOffer.AcceptOfferText': 'Do you want to sell **%s** to **%s** for **%s**?\n\nYou will receive **%s** after fees.',
+  'StarGiftOffer.AcceptOfferButton': 'Sell for %s'
 };
 
 export default lang;
