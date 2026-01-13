@@ -366,9 +366,11 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       case 'messageEntityPhone': {
-        element = document.createElement('a');
-        element.classList.add('phone-url');
-        (element as HTMLAnchorElement).href = 'tel:' + fullEntityText;
+        if(!(options.noLinks && !passEntities[entity._])) {
+          element = document.createElement('a');
+          element.classList.add('phone-url');
+          (element as HTMLAnchorElement).href = encodeEntities('tel:' + fullEntityText);
+        }
         break;
       }
 
@@ -613,7 +615,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       case 'messageEntityEmail': {
-        if(!options.noLinks) {
+        if(!options.noLinks && !passEntities[entity._]) {
           element = document.createElement('a');
           (element as HTMLAnchorElement).href = encodeEntities('mailto:' + fullEntityText);
           setBlankToAnchor(element as HTMLAnchorElement);
