@@ -438,14 +438,23 @@ type MakeDocumentAndMetaForSendingFileArgs = Pick<SendFileArgs,
 };
 
 type EditMessageMediaArgs = {
-  message: Message.message,
-  text: string,
+  message: Message.message;
+  text: string;
   sendFileDetails: SendFileDetails;
   options?: Partial<{
-    newMedia: InputMedia,
-    scheduleDate: number,
-    entities: MessageEntity[]
+    newMedia: InputMedia;
+    scheduleDate: number;
+    entities: MessageEntity[];
+    isMedia: boolean;
   }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[0], 'webPage' | 'webPageOptions' | 'noWebPage' | 'invertMedia'>>
+};
+
+type InvokeEditMessageMediaArgs = {
+  message: Message.message;
+  inputMedia: InputMedia;
+  entities?: MessageEntity[];
+  scheduleDate?: number;
+  invertMedia?: boolean;
 };
 
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
@@ -562,6 +571,8 @@ export class AppMessagesManager extends AppManager {
   private repayRequestHandler: RepayRequestHandler;
 
   private typingBotforumMessages: Map<PeerId, Set<string>> = new Map();
+
+  private originalPendingEditedMessages: Map<number, Message.message> = new Map();
 
   constructor() {
     super();
@@ -798,6 +809,7 @@ export class AppMessagesManager extends AppManager {
     this.references = {};
     this.waitingTranscriptions = new Map();
     this.pendingNewBotforumTopics = {};
+    this.originalPendingEditedMessages = new Map();
 
     this.dialogsStorage && this.dialogsStorage.clear(init);
     this.filtersStorage && this.filtersStorage.clear(init);
@@ -890,7 +902,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public editMessageMedia({message, text, sendFileDetails, options = {}}: EditMessageMediaArgs) {
+  public async editMessageMedia({message, text, sendFileDetails, options = {}}: EditMessageMediaArgs) {
     let {file} = sendFileDetails;
     const {peerId} = message;
 
@@ -913,6 +925,7 @@ export class AppMessagesManager extends AppManager {
       isDocument,
       mediaTempId,
       entities,
+      isMedia: options.isMedia,
       ...pickKeys(sendFileDetails, [
         'strippedBytes',
         // 'useTempMediaId',
@@ -922,7 +935,6 @@ export class AppMessagesManager extends AppManager {
         'objectURL',
         // 'waveform',
         'duration',
-        // 'isMedia',
         // 'isRoundMessage',
         // 'noSound',
         'thumb'
@@ -944,17 +956,19 @@ export class AppMessagesManager extends AppManager {
       document
     };
 
-    // if(options.invertMedia) {
-    //   message.pFlags.invert_media = true;
-    // }
+    this.originalPendingEditedMessages.set(message.mid, structuredClone(message));
 
-    // message.entities = entities;
-    // message.message = caption;
-    // message.media = isDocument ? {
-    //   _: 'messageMediaDocument',
-    //   pFlags: {},
-    //   document: file
-    // } as MessageMedia.messageMediaDocument : media;
+    if(options.invertMedia) {
+      message.pFlags.invert_media = true;
+    }
+
+    message.entities = entities;
+    message.message = caption;
+    message.media = isDocument ? {
+      _: 'messageMediaDocument',
+      pFlags: {},
+      document: file
+    } as MessageMedia.messageMediaDocument : media;
     message.uploadingFileName = [uploadingFileName];
 
     let
@@ -1093,16 +1107,72 @@ export class AppMessagesManager extends AppManager {
 
     upload();
 
-    sentDeferred.then((inputMedia) =>
-      this.editMessage(
-        message,
-        text,
-        {
-          entities: options.entities,
-          newMedia: inputMedia
-        }
-      )
-    );
+    this.onUpdateEditMessage({
+      _: 'updateEditMessage',
+      message,
+      pts: 0,
+      pts_count: 0
+    });
+
+    const inputMedia = await sentDeferred;
+
+    const callInvoke = (message: Message.message) => this.invokeEditMessageMedia({
+      message,
+      inputMedia,
+      entities,
+      scheduleDate: options.scheduleDate,
+      invertMedia: options.invertMedia
+    });
+
+    if(!message.pFlags.is_outgoing) {
+      return callInvoke(message);
+    }
+
+    return this.invokeAfterMessageIsSent(message.mid, 'edit', (message) => {
+      if(message?._ !== 'message') return;
+      return callInvoke(message);
+    });
+  }
+
+  private invokeEditMessageMedia({message, inputMedia, entities, scheduleDate, invertMedia}: InvokeEditMessageMediaArgs) {
+    const sendEntities = this.getInputEntities(entities);
+
+    const schedule_date = scheduleDate || (message.pFlags.is_scheduled ? message.date : undefined);
+    return this.apiManager.invokeApi('messages.editMessage', {
+      peer: this.appPeersManager.getInputPeerById(message.peerId),
+      id: message.id,
+      message: message.message,
+      entities: sendEntities,
+      media: inputMedia,
+      schedule_date,
+      invert_media: invertMedia
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    }, (error: ApiError) => {
+      this.log.error('editMessage error:', error);
+
+      const originalMessage = this.originalPendingEditedMessages.get(message.mid);
+
+      this.onUpdateEditMessage({
+        _: 'updateEditMessage',
+        message: originalMessage,
+        pts: 0,
+        pts_count: 0
+      });
+
+      if(error?.type === 'MESSAGE_NOT_MODIFIED') {
+        error.handled = true;
+        return;
+      }
+
+      if(error?.type === 'MESSAGE_EMPTY') {
+        error.handled = true;
+      }
+
+      throw error;
+    }).finally(() => {
+      this.originalPendingEditedMessages.delete(message.mid);
+    });
   }
 
   public async transcribeAudio(message: Message.message, noPending?: boolean): Promise<MessagesTranscribedAudio> {

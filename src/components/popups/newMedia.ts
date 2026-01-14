@@ -837,7 +837,10 @@ export default class PopupNewMedia extends PopupElement {
           message: this.chat.input.editMessage,
           text: caption,
           options: {
-            entities
+            entities,
+            invertMedia: sendingParams.invertMedia,
+            scheduleDate: sendingParams.scheduleDate,
+            isMedia
           },
           sendFileDetails: d[0]
         })
