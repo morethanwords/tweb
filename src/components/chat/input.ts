@@ -1129,12 +1129,12 @@ export default class ChatInput {
       }
     });
     this.attachMenu.classList.add('attach-file');
-    this.attachMenu.firstElementChild.replaceWith(Icon('attach'));
+    this.attachMenu.firstElementChild.replaceWith(Icon(getAttachIcon()));
 
     this.btnSuggestPost = ButtonIcon('suggested hide');
-    attachClickEvent(this.btnSuggestPost, () => {
-      this.openSuggestPostPopup();
-    });
+    attachClickEvent(this.btnSuggestPost, wrapAsyncClickHandler(async() => {
+      await this.openSuggestPostPopup();
+    }));
 
     this.btnAutoDeletePeriod = ButtonIcon('auto_delete_circle_clock hide');
     attachClickEvent(this.btnAutoDeletePeriod, wrapAsyncClickHandler(async() => {
@@ -3680,7 +3680,7 @@ export default class ChatInput {
     });
 
     createEffect(on(() => store.isEditing, (isEditing) => {
-      this.attachMenu.firstElementChild.replaceChildren(Icon(isEditing ? 'attach_edit' : 'attach'));
+      this.attachMenu.firstElementChild.replaceChildren(Icon(getAttachIcon(isEditing)));
     }, {
       defer: true
     }));
@@ -4525,3 +4525,7 @@ export default class ChatInput {
     return element;
   }
 }
+
+const getAttachIcon = (isEditing?: boolean): Icon => {
+  return isEditing ? 'attach_edit' : 'attach';
+};

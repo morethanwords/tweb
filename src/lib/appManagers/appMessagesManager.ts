@@ -437,6 +437,17 @@ type MakeDocumentAndMetaForSendingFileArgs = Pick<SendFileArgs,
   isDocument: boolean;
 };
 
+type EditMessageMediaArgs = {
+  message: Message.message,
+  text: string,
+  sendFileDetails: SendFileDetails;
+  options?: Partial<{
+    newMedia: InputMedia,
+    scheduleDate: number,
+    entities: MessageEntity[]
+  }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[0], 'webPage' | 'webPageOptions' | 'noWebPage' | 'invertMedia'>>
+};
+
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
 
 export class AppMessagesManager extends AppManager {
@@ -877,6 +888,221 @@ export class AppMessagesManager extends AppManager {
 
       throw error;
     });
+  }
+
+  public editMessageMedia({message, text, sendFileDetails, options = {}}: EditMessageMediaArgs) {
+    let {file} = sendFileDetails;
+    const {peerId} = message;
+
+    const isDocument = !(file instanceof File) && !(file instanceof Blob);
+    if(isDocument) {
+      file = this.appDocsManager.getDoc((file as MyDocument).id) || file;
+    }
+
+    let caption = text || '';
+
+    let entities = options.entities || [];
+    if(caption) {
+      [caption, entities] = parseMarkdown(caption, entities);
+    }
+
+    const mediaTempId = message.id;
+
+    const {photo, document, attachType, actionName, fileType, apiFileName, attributes} = this.makeDocumentAndMetaForSendingFile({
+      file,
+      isDocument,
+      mediaTempId,
+      entities,
+      ...pickKeys(sendFileDetails, [
+        'strippedBytes',
+        // 'useTempMediaId',
+        // 'isVoiceMessage',
+        'width',
+        'height',
+        'objectURL',
+        // 'waveform',
+        'duration',
+        // 'isMedia',
+        // 'isRoundMessage',
+        // 'noSound',
+        'thumb'
+      ])
+    });
+
+    const sentDeferred = deferredPromise<InputMedia>();
+
+    const uploadingFileName = !isDocument ? getFileNameForUpload(file as File | Blob) : undefined;
+    if(uploadingFileName) {
+      this.uploadFilePromises[uploadingFileName] = sentDeferred;
+    }
+
+    const media: MessageMedia = isDocument ? undefined : {
+      _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
+      pFlags: {},
+      // preloader,
+      photo,
+      document
+    };
+
+    // if(options.invertMedia) {
+    //   message.pFlags.invert_media = true;
+    // }
+
+    // message.entities = entities;
+    // message.message = caption;
+    // message.media = isDocument ? {
+    //   _: 'messageMediaDocument',
+    //   pFlags: {},
+    //   document: file
+    // } as MessageMedia.messageMediaDocument : media;
+    message.uploadingFileName = [uploadingFileName];
+
+    let
+      uploaded = false,
+      uploadPromise: ReturnType<ApiFileManager['upload']> = null
+    ;
+
+    const toggleError = (error?: ApiError, repayRequest?: RepayRequest) => {
+      this.onMessagesSendError([message], error, repayRequest);
+      this.rootScope.dispatchEvent('messages_pending');
+    };
+
+    const upload = () => {
+      if(isDocument) {
+        const inputMedia: InputMedia = {
+          _: 'inputMediaDocument',
+          id: getDocumentInput(file as MyDocument),
+          pFlags: {}
+        };
+
+        sentDeferred.resolve(inputMedia);
+      } else if(file instanceof File || file instanceof Blob) {
+        const load = () => {
+          if(!uploaded || message?.error) {
+            uploaded = false;
+
+            uploadPromise = this.apiFileManager.upload({file, fileName: uploadingFileName});
+            uploadPromise.catch((err) => {
+              if(uploaded) {
+                return;
+              }
+
+              this.log('cancelling upload', media);
+
+              message && this.cancelPendingMessage(message.random_id);
+              // this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+              sentDeferred.reject(err);
+            });
+
+            uploadPromise.addNotifyListener((progress: Progress) => {
+              /* if(DEBUG) {
+                this.log('upload progress', progress);
+              } */
+
+              const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
+              // if(actionName) {
+              //   this.setTyping(peerId, {_: actionName, progress: percents | 0}, undefined, options.threadId);
+              // }
+              sentDeferred.notifyAll(progress);
+            });
+
+            sentDeferred.notifyAll({done: 0, total: file.size});
+          }
+
+          let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
+          if(attachType === 'video' && sendFileDetails.objectURL && sendFileDetails.thumb?.blob) {
+            thumbUploadPromise = this.uploadThumbAndCover({
+              blob: sendFileDetails.thumb.blob,
+              isCover: !!sendFileDetails.thumb.isCover,
+              peer: this.appPeersManager.getInputPeerById(peerId)
+            });
+          }
+
+          uploadPromise && uploadPromise.then(async(inputFile) => {
+            /* if(DEBUG) {
+              this.log('appMessagesManager: sendFile uploaded:', inputFile);
+            } */
+
+            (inputFile as InputFile.inputFile).name = apiFileName;
+            uploaded = true;
+            let inputMedia: InputMedia;
+            switch(attachType) {
+              case 'photo':
+                inputMedia = {
+                  _: 'inputMediaUploadedPhoto',
+                  file: inputFile,
+                  pFlags: {
+                    spoiler: sendFileDetails.spoiler || undefined
+                  }
+                };
+                break;
+
+              default:
+                inputMedia = {
+                  _: 'inputMediaUploadedDocument',
+                  file: inputFile,
+                  mime_type: fileType,
+                  pFlags: {
+                    force_file: actionName === 'sendMessageUploadDocumentAction' || undefined,
+                    spoiler: sendFileDetails.spoiler || undefined
+                    // nosound_video: options.noSound ? true : undefined
+                  },
+                  attributes
+                };
+            }
+
+            // if(options.stars && !options.isGroupedItem) {
+            //   inputMedia = {
+            //     _: 'inputMediaPaidMedia',
+            //     extended_media: [inputMedia],
+            //     stars_amount: '' + options.stars
+            //   };
+            // }
+
+            if(thumbUploadPromise) {
+              try {
+                const thumbUploadResult = await thumbUploadPromise;
+                assumeType<InputMedia.inputMediaUploadedDocument>(inputMedia);
+
+                inputMedia.thumb = thumbUploadResult.file;
+                inputMedia.video_cover = thumbUploadResult.coverPhoto;
+              } catch(err) {
+                this.log.error('sendFile thumb upload error:', err);
+              }
+            }
+
+            sentDeferred.resolve(inputMedia);
+          }, (error: ApiError) => {
+            toggleError(error);
+          });
+
+          return sentDeferred;
+        };
+
+        load();
+        // if(options.isGroupedItem) {
+        // } else {
+        //   this.sendSmthLazyLoadQueue.push({
+        //     load
+        //   });
+        // }
+      }
+
+      return sentDeferred;
+    };
+
+    upload();
+
+    sentDeferred.then((inputMedia) =>
+      this.editMessage(
+        message,
+        text,
+        {
+          entities: options.entities,
+          newMedia: inputMedia
+        }
+      )
+    );
   }
 
   public async transcribeAudio(message: Message.message, noPending?: boolean): Promise<MessagesTranscribedAudio> {
