@@ -1030,6 +1030,7 @@ export default class ChatInput {
       text: 'GiftPremium',
       onClick: () => this.chat.appImManager.giftPremium(this.chat.peerId),
       verify: () => {
+        if(this.editMsgId) return;
         return this.chat && Promise.all([
           this.chat.canGiftPremium(),
           this.managers.apiManager.getAppConfig()
@@ -1047,7 +1048,10 @@ export default class ChatInput {
 
         PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
-      verify: () => (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot
+      verify: () => {
+        if(this.editMsgId) return;
+        return (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot;
+      }
     }, {
       icon: 'poll',
       text: 'Checklist',
@@ -1067,7 +1071,7 @@ export default class ChatInput {
 
         PopupElement.createPopup(PopupChecklist, {chat: this.chat}).show();
       },
-      verify: () => !this.chat.isMonoforum
+      verify: () => !this.editMsgId && !this.chat.isMonoforum
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();
@@ -1077,7 +1081,7 @@ export default class ChatInput {
       direction: 'top-left',
       buttons: this.attachMenuButtons,
       onOpenBefore: this.excludeParts.attachMenu ? undefined : async() => {
-        const attachMenuBots = this.chat.isMonoforum ? [] : await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
+        const attachMenuBots = (this.chat.isMonoforum || this.editMsgId) ? [] : await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
         const buttons = attachMenuButtons.slice();
         const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
           return attachMenuBot.pFlags.show_in_attach_menu;

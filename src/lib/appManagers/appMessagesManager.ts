@@ -1121,6 +1121,7 @@ export class AppMessagesManager extends AppManager {
       originalMessage: structuredClone(message),
       mediaTempId
     });
+
     const inputMedia = await sentDeferred;
 
     const callInvoke = (message: Message.message) => this.invokeEditMessageMedia({
