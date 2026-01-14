@@ -843,7 +843,9 @@ export default class PopupNewMedia extends PopupElement {
             isMedia
           },
           sendFileDetails: d[0]
-        })
+        });
+
+        this.chat.input.onMessageSent();
       }
 
       caption = entities = effect = undefined;
