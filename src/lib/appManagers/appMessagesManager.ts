@@ -7356,6 +7356,10 @@ export class AppMessagesManager extends AppManager {
     const newMessage = this.modifyMessage(oldMessage, () => {
       this.saveMessages([message], {storage});
       const newMessage: Message = this.getMessageFromStorage(storage, mid);
+      if(newMessage?._ === 'message' && oldMessage?._ === 'message' && oldMessage.uploadingFileName) {
+        newMessage.uploadingFileName = [...oldMessage.uploadingFileName];
+      }
+
       return newMessage;
     }, false, true);
 
