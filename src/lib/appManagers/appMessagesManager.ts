@@ -572,7 +572,10 @@ export class AppMessagesManager extends AppManager {
 
   private typingBotforumMessages: Map<PeerId, Set<string>> = new Map();
 
-  private originalPendingEditedMessages: Map<number, Message.message> = new Map();
+  private pendingEditingMessages: Map<number, {
+    mediaTempId: number;
+    originalMessage: Message.message;
+  }> = new Map();
 
   constructor() {
     super();
@@ -809,7 +812,7 @@ export class AppMessagesManager extends AppManager {
     this.references = {};
     this.waitingTranscriptions = new Map();
     this.pendingNewBotforumTopics = {};
-    this.originalPendingEditedMessages = new Map();
+    this.pendingEditingMessages = new Map();
 
     this.dialogsStorage && this.dialogsStorage.clear(init);
     this.filtersStorage && this.filtersStorage.clear(init);
@@ -918,7 +921,7 @@ export class AppMessagesManager extends AppManager {
       [caption, entities] = parseMarkdown(caption, entities);
     }
 
-    const mediaTempId = message.id;
+    const mediaTempId = this.mediaTempId++;
 
     const {photo, document, attachType, actionName, fileType, apiFileName, attributes} = this.makeDocumentAndMetaForSendingFile({
       file,
@@ -956,7 +959,6 @@ export class AppMessagesManager extends AppManager {
       document
     };
 
-    this.originalPendingEditedMessages.set(message.mid, structuredClone(message));
 
     if(options.invertMedia) {
       message.pFlags.invert_media = true;
@@ -1003,7 +1005,7 @@ export class AppMessagesManager extends AppManager {
 
               this.log('cancelling upload', media);
 
-              message && this.cancelPendingMessage(message.random_id);
+              this.revertMessageEdit(message.mid);
               // this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
               sentDeferred.reject(err);
             });
@@ -1114,6 +1116,11 @@ export class AppMessagesManager extends AppManager {
       pts_count: 0
     });
 
+    // Needs to be after the updateEditMessage event
+    this.pendingEditingMessages.set(message.mid, {
+      originalMessage: structuredClone(message),
+      mediaTempId
+    });
     const inputMedia = await sentDeferred;
 
     const callInvoke = (message: Message.message) => this.invokeEditMessageMedia({
@@ -1151,14 +1158,7 @@ export class AppMessagesManager extends AppManager {
     }, (error: ApiError) => {
       this.log.error('editMessage error:', error);
 
-      const originalMessage = this.originalPendingEditedMessages.get(message.mid);
-
-      this.onUpdateEditMessage({
-        _: 'updateEditMessage',
-        message: originalMessage,
-        pts: 0,
-        pts_count: 0
-      });
+      this.revertMessageEdit(message.mid);
 
       if(error?.type === 'MESSAGE_NOT_MODIFIED') {
         error.handled = true;
@@ -1171,8 +1171,21 @@ export class AppMessagesManager extends AppManager {
 
       throw error;
     }).finally(() => {
-      this.originalPendingEditedMessages.delete(message.mid);
+      this.pendingEditingMessages.delete(message.mid);
     });
+  }
+
+  private revertMessageEdit(mid: number) {
+    const {originalMessage} = this.pendingEditingMessages.get(mid);
+
+    this.onUpdateEditMessage({
+      _: 'updateEditMessage',
+      message: originalMessage,
+      pts: 0,
+      pts_count: 0
+    });
+
+    this.pendingEditingMessages.delete(mid);
   }
 
   public async transcribeAudio(message: Message.message, noPending?: boolean): Promise<MessagesTranscribedAudio> {
@@ -7356,12 +7369,27 @@ export class AppMessagesManager extends AppManager {
     const newMessage = this.modifyMessage(oldMessage, () => {
       this.saveMessages([message], {storage});
       const newMessage: Message = this.getMessageFromStorage(storage, mid);
-      if(newMessage?._ === 'message' && oldMessage?._ === 'message' && oldMessage.uploadingFileName) {
-        newMessage.uploadingFileName = [...oldMessage.uploadingFileName];
-      }
+      // if(newMessage?._ === 'message' && oldMessage?._ === 'message' && oldMessage.uploadingFileName) {
+      //   newMessage.uploadingFileName = [...oldMessage.uploadingFileName];
+      // }
+
 
       return newMessage;
     }, false, true);
+
+    if(this.pendingEditingMessages.get(mid)) {
+      const {mediaTempId} = this.pendingEditingMessages.get(mid);
+      if(message._ === 'message') {
+        if(message.media?._ === 'messageMediaPhoto' && message.media.photo?._ === 'photo') {
+          this.updatePhoto(message.media.photo, '' + mediaTempId);
+        } else if(message.media?._ === 'messageMediaDocument' && message.media.document?._ === 'document') {
+          console.log('my-debug here')
+          this.updateDocument(message.media.document, mediaTempId);
+        }
+      }
+
+      this.pendingEditingMessages.delete(mid);
+    }
 
     this.handleEditedMessage(oldMessage, newMessage, storage);
 
@@ -8308,47 +8336,10 @@ export class AppMessagesManager extends AppManager {
       const {photo: newPhoto, document: newDoc} = message.media as any;
       const newExtendedMedia = (message.media as MessageMedia.messageMediaPaidMedia).extended_media as MessageExtendedMedia.messageExtendedMedia[];
 
-      const updatePhoto = (newPhoto: Photo.photo, photoId: string) => {
-        const photo = this.appPhotosManager.getPhoto(photoId);
-        if(!photo) {
-          return;
-        }
-
-        const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
-        const oldCacheContext = this.thumbsStorage.getCacheContext(photo, THUMB_TYPE_FULL);
-        this.thumbsStorage.setCacheContextURL(newPhoto, newPhotoSize.type, oldCacheContext.url, oldCacheContext.downloaded);
-
-        // const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
-        // const downloadOptions = getPhotoDownloadOptions(newPhoto, photoSize);
-        // const fileName = getFileNameByLocation(downloadOptions.location);
-        // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
-      };
-
-      const updateDocument = (newDoc: Document.document, docId: DocId) => {
-        const oldDoc = this.appDocsManager.getDoc(docId);
-        if(!oldDoc) {
-          return;
-        }
-
-        const oldCacheContext = this.thumbsStorage.getCacheContext(oldDoc);
-        if(
-          /* doc._ !== 'documentEmpty' &&  */
-          oldDoc.type &&
-          oldDoc.type !== 'sticker' &&
-          oldDoc.mime_type !== 'image/gif' &&
-          oldCacheContext.url
-        ) {
-          this.thumbsStorage.setCacheContextURL(newDoc, undefined, oldCacheContext.url, oldCacheContext.downloaded);
-
-          // const fileName = getDocumentInputFileName(newDoc);
-          // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
-        }
-      };
-
       if(newPhoto) {
-        updatePhoto(newPhoto, '' + tempId);
+        this.updatePhoto(newPhoto, '' + tempId);
       } else if(newDoc) {
-        updateDocument(newDoc, '' + tempId);
+        this.updateDocument(newDoc, '' + tempId);
       } else if((message.media as MessageMedia.messageMediaPoll).poll) {
         delete this.appPollsManager.polls[tempId];
         delete this.appPollsManager.results[tempId];
@@ -8358,8 +8349,8 @@ export class AppMessagesManager extends AppManager {
           const {photo} = extendedMedia.media as MessageMedia.messageMediaPhoto;
           const {document} = extendedMedia.media as MessageMedia.messageMediaDocument;
           const id = '' + (mediaTempId + idx);
-          if(photo) updatePhoto(photo as Photo.photo, id);
-          else if(document) updateDocument(document as Document.document, id);
+          if(photo) this.updatePhoto(photo as Photo.photo, id);
+          else if(document) this.updateDocument(document as Document.document, id);
         });
       }
     }
@@ -8382,6 +8373,43 @@ export class AppMessagesManager extends AppManager {
 
     this.rootScope.dispatchEvent('message_sent', {storageKey: storage.key, tempId, tempMessage, mid: message.mid, message});
   }
+
+  private updatePhoto(newPhoto: Photo.photo, photoId: string) {
+    const photo = this.appPhotosManager.getPhoto(photoId);
+    if(!photo) {
+      return;
+    }
+
+    const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
+    const oldCacheContext = this.thumbsStorage.getCacheContext(photo, THUMB_TYPE_FULL);
+    this.thumbsStorage.setCacheContextURL(newPhoto, newPhotoSize.type, oldCacheContext.url, oldCacheContext.downloaded);
+
+    // const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
+    // const downloadOptions = getPhotoDownloadOptions(newPhoto, photoSize);
+    // const fileName = getFileNameByLocation(downloadOptions.location);
+    // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
+  };
+
+  private updateDocument(newDoc: Document.document, docId: DocId) {
+    const oldDoc = this.appDocsManager.getDoc(docId);
+    if(!oldDoc) {
+      return;
+    }
+
+    const oldCacheContext = this.thumbsStorage.getCacheContext(oldDoc);
+    if(
+      /* doc._ !== 'documentEmpty' &&  */
+      oldDoc.type &&
+      oldDoc.type !== 'sticker' &&
+      oldDoc.mime_type !== 'image/gif' &&
+      oldCacheContext.url
+    ) {
+      this.thumbsStorage.setCacheContextURL(newDoc, undefined, oldCacheContext.url, oldCacheContext.downloaded);
+
+      // const fileName = getDocumentInputFileName(newDoc);
+      // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
+    }
+  };
 
   public incrementMaxSeenId(maxId: number) {
     if(!maxId || !(!this.maxSeenId || maxId > this.maxSeenId)) {
