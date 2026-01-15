@@ -135,6 +135,9 @@ import ChatAudio from '../../components/chat/audio';
 import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
 import {getRgbColorFromTelegramColor, rgbIntToHex} from '../../helpers/color';
 import {MyMessage} from './appMessagesManager';
+import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
+import {usePeer} from '../../stores/peers';
+import {untrack} from 'solid-js';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -270,7 +273,7 @@ export class AppImManager extends EventListenerBase<{
     this.columnEl.append(this.chatsContainer);
 
     this.createNewChat();
-    this.chatsSelectTab(this.chat.container);
+    this.chatsSelectTab(this.chat);
 
     appNavigationController.onHashChange = this.onHashChange;
     // window.addEventListener('hashchange', this.onHashChange);
@@ -1343,7 +1346,7 @@ export class AppImManager extends EventListenerBase<{
   private onHashChangeUnsafe = (saveState?: boolean) => {
     const hash = location.hash;
     if(!saveState) {
-      appNavigationController.replaceState();
+      // appNavigationController.replaceState();
     }
 
     const splitted = hash.split('?');
@@ -1882,7 +1885,8 @@ export class AppImManager extends EventListenerBase<{
 
   // * не могу использовать тут TransitionSlider, так как мне нужен отрисованный блок рядом
   // * (или под текущим чатом) чтобы правильно отрендерить чат (напр. scrollTop)
-  private chatsSelectTab(tab: HTMLElement, animate?: boolean) {
+  private chatsSelectTab(chat: Chat, animate?: boolean) {
+    const tab = chat.container;
     if(this.prevTab === tab) {
       return;
     }
@@ -1903,13 +1907,18 @@ export class AppImManager extends EventListenerBase<{
       const prevIdx = whichChild(this.prevTab);
       const idx = whichChild(tab);
       if(idx > prevIdx) {
-        appNavigationController.pushItem({
-          type: 'chat',
-          onPop: (canAnimate) => {
-            this.setPeer({}, canAnimate);
-            blurActiveElement();
+        const found = appNavigationController.findItem((item) => item.context === chat);
+        appNavigationController.spliceItems(
+          found ? found.index : appNavigationController.getNextIndex(),
+          0,
+          {
+            type: 'chat',
+            onPop: (canAnimate) => {
+              this.setPeer({}, canAnimate);
+              blurActiveElement();
+            }
           }
-        });
+        );
       }
     }
 
@@ -2130,10 +2139,10 @@ export class AppImManager extends EventListenerBase<{
     }
   };
 
-  private async overrideHash(peerId?: PeerId) {
+  private overrideHash(peerId?: PeerId) {
     let str: string;
     if(peerId) {
-      const username = await this.managers.appPeersManager.getPeerUsername(peerId);
+      const username = untrack(() => getPeerActiveUsernames(usePeer(peerId))[0]);
       str = username ? '@' + username : '' + peerId;
     }
 
@@ -2255,7 +2264,7 @@ export class AppImManager extends EventListenerBase<{
       });
     }
 
-    this.chatsSelectTab(chatTo.container, animate);
+    this.chatsSelectTab(chatTo, animate);
 
     if(justReturn) {
       this.dispatchEvent('peer_changed', chatTo);
@@ -2364,7 +2373,7 @@ export class AppImManager extends EventListenerBase<{
           // window.requestAnimationFrame(() => {
           setTimeout(() => { // * setTimeout is better here
             setTimeout(() => {
-              this.chatsSelectTab(this.chat.container);
+              this.chatsSelectTab(this.chat, undefined);
             }, 0);
             this.selectTab(APP_TABS.CHAT, animate);
           }, 0);
