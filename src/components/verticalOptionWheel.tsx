@@ -1,6 +1,7 @@
 import {createEffect, createMemo, createSignal, For, type JSX, on, onCleanup, untrack} from 'solid-js';
 import {animateValue} from '../helpers/animateValue';
 import {animate} from '../helpers/animation';
+import lastItem from '../helpers/array/lastItem';
 import {keepMe} from '../helpers/keepMe';
 import {subscribeOn} from '../helpers/solid/subscribeOn';
 import swipe, {SwipeDirectiveArgs} from '../helpers/useSwipe';
@@ -137,7 +138,15 @@ export const VerticalOptionWheel = <V, >(props: {
   });
 
   let initialScroll = 0;
-  let lastDiffs: number[] = []
+
+  type DiffWithTime = {
+    time: number;
+    diff: number;
+  };
+
+  let lastDiffs: DiffWithTime[] = []
+
+  // let c = -1;
 
   const swipeArgs: SwipeDirectiveArgs = {
     onStart: () => {
@@ -152,7 +161,10 @@ export const VerticalOptionWheel = <V, >(props: {
       const localScrollable = scrollable();
       if(!localScrollable) return;
 
-      lastDiffs = [yDiff, ...lastDiffs.slice(0, diffSampleCount - 1)];
+      // c = (c + 1) % 4;
+      // if(c % 4 === 0) {
+      pushDiffWithTime(yDiff);
+      // }
 
       if(Math.abs(yDiff) > dragThreshold) setHasDraggedALittle(true);
 
@@ -180,18 +192,21 @@ export const VerticalOptionWheel = <V, >(props: {
       return;
     }
 
+    const endTime = performance.now();
+
     let isCanceled = false;
-    const deceleration = 0.1;
+    const deceleration = 0.2;
     const referenceFrameTime = 1000 / 60;
 
     let speed = 0;
     for(let i = 0; i < lastDiffs.length - 1; i++) {
-      speed += lastDiffs[i + 1] - lastDiffs[i];
+      speed += lastDiffs[i + 1].diff - lastDiffs[i].diff;
     }
 
-    speed = speed / (lastDiffs.length - 1);
+    speed = speed * referenceFrameTime / (endTime - lastItem(lastDiffs).time);
 
     let lastTime = performance.now();
+    let lastScrollTop = -1;
 
     animate(() => {
       if(isCleaned() || isCanceled) return false;
@@ -200,17 +215,28 @@ export const VerticalOptionWheel = <V, >(props: {
       const deltaTime = time - lastTime;
       lastTime = time;
 
-      localScrollable.scrollTop += speed;
+      const currentScrollTop = localScrollable.scrollTop;
+
+      if(currentScrollTop === lastScrollTop) return false; // hit an end
+
+      lastScrollTop = localScrollable.scrollTop;
+      localScrollable.scrollTop = lastScrollTop + speed;
+
       speed -= Math.sign(speed) * (deceleration * deltaTime / referenceFrameTime);
 
-      if(Math.abs(speed) > 1) return true;
-
-      lastDiffs = [];
+      return Math.abs(speed) > 1;
     });
 
     return () => {
       isCanceled = true;
     };
+  }
+
+  function pushDiffWithTime(yDiff: number) {
+    lastDiffs = [{
+      time: performance.now(),
+      diff: yDiff
+    }, ...lastDiffs.slice(0, diffSampleCount - 1)];
   }
 
   function snapClosestToCenter() {
