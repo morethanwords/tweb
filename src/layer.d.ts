@@ -10380,7 +10380,8 @@ export namespace MessageReplyHeader {
     quote_text?: string,
     quote_entities?: Array<MessageEntity>,
     quote_offset?: number,
-    todo_item_id?: number
+    todo_item_id?: number,
+    reply_to_msg_deleted?: boolean
   };
 
   export type messageReplyStoryHeader = {

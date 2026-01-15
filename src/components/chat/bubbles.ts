@@ -2901,6 +2901,11 @@ export default class ChatBubbles {
           return;
         }
 
+        if(replyTo.reply_to_msg_deleted) {
+          toastNew({langPackKey: 'DeletedMessageToast'});
+          return;
+        }
+
         let replyToMid = replyTo.reply_to_msg_id;
         if(!replyToMid) {
           toastNew({langPackKey: replyTo.pFlags.quote ? 'QuotePrivate' : 'ReplyPrivate'});

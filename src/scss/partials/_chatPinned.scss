@@ -239,6 +239,10 @@
     }
   }
 
+  &-no-subtitle {
+    display: flex;
+  }
+
   &-background-canvas {
     position: absolute;
     top: -6px;

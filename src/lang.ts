@@ -2545,6 +2545,8 @@ const lang = {
     'other_value': 'View %1$d Replies'
   },
   'ViewAllReplies': 'View All Replies',
+  'DeletedMessage': 'Deleted message',
+  'DeletedMessageToast': 'This message has been deleted.',
   'DeleteAdditionalActions': 'Additional actions',
   'DeleteOptionsTitle': {
     'one_value': 'Delete %1$d Message?',

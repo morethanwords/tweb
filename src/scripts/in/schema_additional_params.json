@@ -555,4 +555,9 @@
     {"name": "w", "type": "number"},
     {"name": "h", "type": "number"}
   ]
+}, {
+  "predicate": "messageReplyHeader",
+  "params": [
+    {"name": "reply_to_msg_deleted", "type": "boolean"}
+  ]
 }]

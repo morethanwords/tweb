@@ -2211,6 +2211,8 @@
 "ViewReplies_one" = "View %1$d Reply";
 "ViewReplies_other" = "View %1$d Replies";
 "ViewAllReplies" = "View All Replies";
+"DeletedMessage" = "Deleted message";
+"DeletedMessageToast" = "This message has been deleted.";
 "DeleteAdditionalActions" = "Additional actions";
 "DeleteOptionsTitle_one" = "Delete %1$d Message?";
 "DeleteOptionsTitle_other" = "Delete %1$d Messages?";

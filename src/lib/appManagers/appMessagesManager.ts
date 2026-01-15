@@ -4455,6 +4455,9 @@ export class AppMessagesManager extends AppManager {
 
         if(replyTo.reply_to_msg_id) {
           replyTo.reply_to_msg_id = message.reply_to_mid = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_msg_id, replyToChannelId);
+          if(this.deletedMessages.has(`${peerId}_${replyTo.reply_to_msg_id}`)) {
+            replyTo.reply_to_msg_deleted = true;
+          }
         }
 
         if(replyTo.reply_to_top_id) {
@@ -9222,8 +9225,7 @@ export class AppMessagesManager extends AppManager {
     message = this.getMessageByPeerOrFromLogs(message.peerId, message.mid); // message can come from other thread
     if(!message) return;
     this.modifyMessage(message, (message) => {
-      delete message.reply_to_mid; // ! WARNING!
-      delete message.reply_to; // ! WARNING!
+      (message.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_msg_deleted = true;
     }, this.getHistoryMessagesStorage(message.peerId), true); // * mirror it
   }
 
