@@ -446,7 +446,9 @@ export class AppChatsManager extends AppManager {
       users: usersInputs
     }).then((messagesInvitedUsers) => {
       const timestamp = tsNow(true);
-      const participantUpdates: Update.updateChannelParticipant[] = userIds.map((userId) => {
+      const participantUpdates: Update.updateChannelParticipant[] = userIds
+      .filter((userId) => !messagesInvitedUsers.missing_invitees.some((missingInvitee) => missingInvitee.user_id === userId))
+      .map((userId) => {
         return this.generateUpdateChannelParticipant({
           chatId: id,
           newParticipant: {
