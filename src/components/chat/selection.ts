@@ -112,6 +112,9 @@ class AppSelection extends EventListenerBase<{
     this.listenerSetter = listenerSetter;
 
     if(!listenElement) {
+      if(this.navigationType) {
+        appNavigationController.removeByType(this.navigationType);
+      }
       return;
     }
 

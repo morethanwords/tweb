@@ -57,6 +57,47 @@ declare global {
     actions?: NotificationAction[];
   }
 
+  // * remove these types when navigation api is stable
+
+  interface NavigationEntry {
+    key: string;
+    url: string;
+    getState(): any;
+    sameDocument: boolean;
+    index: number;
+  }
+
+  interface NavigationOptions {
+    state: any;
+    history: 'push' | 'replace';
+  }
+
+  interface NavigationEvent extends Event {
+    navigationType: 'push' | 'replace' | 'reload' | 'traverse';
+    destination: NavigationEntry;
+    sameDocument: boolean;
+    intercept(options?: {
+      handler?: () => void,
+      focusReset?: 'after-transition' | 'manual',
+      scroll?: 'after-transition' | 'manual'
+    }): void;
+    scroll(): void;
+  }
+
+  interface Navigation {
+    entries(): NavigationEntry[];
+    currentEntry: NavigationEntry;
+    navigate(url: string | URL, options: NavigationOptions): void;
+    traverseTo(key: string): void;
+    updateCurrentEntry(options: NavigationEntryOptions): void;
+    addEventListener(type: 'navigate', listener: (event: NavigationEvent) => void): void;
+    back(): void;
+  }
+
+  declare const navigation: Navigation;
+
+  // * until here
+
   // typescript is lack of types
   interface Selection {
     modify(alter: 'move' | 'extend', direction: 'forward' | 'backward' | 'left' | 'right', granularity: 'character' | 'word' | 'sentence' | 'line' | 'paragraph' | 'lineboundary' | 'sentenceboundary' | 'paragraphboundary' | 'documentboundary'): void;

@@ -372,6 +372,7 @@ export default class ChatInput {
   private directMessagesHandler: ReturnType<ChatInput['createDirectMessagesHandler']>;
 
   public suggestedPost: SuggestedPostPayload;
+  private inputHelperNavigationItem: NavigationItem;
 
   constructor(
     public chat: Chat,
@@ -1912,6 +1913,8 @@ export default class ChatInput {
   public destroy() {
     // this.chat.log.error('Input destroying');
 
+    this.autocompleteHelperController.destroy();
+    appNavigationController.removeItem(this.inputHelperNavigationItem);
     this.listenerSetter.removeAll();
     this.setCurrentHover();
   }
@@ -4413,11 +4416,12 @@ export default class ChatInput {
     }
 
     if(!IS_MOBILE) {
-      appNavigationController.pushItem({
+      appNavigationController.pushItem(this.inputHelperNavigationItem = {
         type: 'input-helper',
         onPop: () => {
           this.onHelperCancel();
-        }
+        },
+        context: this.chat
       });
     }
 

@@ -26,6 +26,11 @@ export default class AutocompleteHelperController {
     }
   }
 
+  public destroy() {
+    this.middleware.destroy();
+    this.hideOtherHelpers();
+  }
+
   public getMiddleware() {
     this.middleware.clean();
     return this.middleware.get();
