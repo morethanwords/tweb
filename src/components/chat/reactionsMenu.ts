@@ -202,7 +202,11 @@ export class ChatReactionsMenu {
   ) {
     if(availableReactions) {
       this.availableReactions = availableReactions;
-      this.freeCustomEmoji = new Set(this.availableReactions.map((availableReaction) => availableReaction.select_animation.id));
+      this.freeCustomEmoji = new Set(
+        this.availableReactions
+        .map((availableReaction) => availableReaction.select_animation.id)
+        .concat(reactions.map((reaction) => this.reactionToDocId(reaction)))
+      );
     }
 
     const renderPromises = reactions.slice(0, REACTIONS_MAX_LENGTH).map((reaction) => {
