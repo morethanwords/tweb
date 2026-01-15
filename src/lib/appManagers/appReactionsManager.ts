@@ -55,7 +55,7 @@ export type PeerAvailableReactions = {
 export type SendReactionOptions = {
   message: Message.message | Message.messageService | ReactionsContext,
   reaction?: Reaction | AvailableReaction,
-  onlyLocal?: boolean,
+  // onlyLocal?: boolean,
   onlyLocalWithUpdate?: boolean,
   onlyReturn?: boolean,
   sendAsPeerId?: PeerId,
@@ -472,14 +472,12 @@ export class AppReactionsManager extends AppManager {
   public async sendReaction({
     message,
     reaction,
-    onlyLocal,
+    // onlyLocal,
     onlyLocalWithUpdate,
     onlyReturn,
     sendAsPeerId,
     count
   }: SendReactionOptions): Promise<MessageReactions> {
-    message = this.appMessagesManager.getMessageByPeer(message.peerId, message.mid) as Message.message;
-
     if(reaction._ === 'availableReaction') {
       reaction = {
         _: 'reactionEmoji',
@@ -492,6 +490,8 @@ export class AppReactionsManager extends AppManager {
       this.apiManager.getLimit('reactions'),
       isPaidReaction && this.getPaidReactionPrivacy()
     ]);
+
+    message = this.appMessagesManager.getMessageByPeer(message.peerId, message.mid) as Message.message;
 
     // const lastSendingTimeKey = message.peerId + '_' + message.mid;
     // const lastSendingTime = this.lastSendingTimes.get(lastSendingTimeKey);
@@ -554,7 +554,7 @@ export class AppReactionsManager extends AppManager {
       };
     }
 
-    let reactions = onlyLocal ? message.reactions : copy(message.reactions);
+    let reactions = /* onlyLocal ? message.reactions :  */copy(message.reactions);
     const chosenReactions = reactions.results.filter((reactionCount) => reactionCount.chosen_order !== undefined && reactionCount.chosen_order >= 0);
     chosenReactions.sort((a, b) => b.chosen_order - a.chosen_order);
     const unsetReactions: ReactionCount[] = [];
@@ -706,15 +706,15 @@ export class AppReactionsManager extends AppManager {
       return reactions;
     }
 
-    if(onlyLocal) {
-      message.reactions = reactions;
-      this.rootScope.dispatchEvent('messages_reactions', [{
-        message: message as Message.message,
-        changedResults: [],
-        removedResults: []
-      }]);
-      return;
-    }
+    // if(onlyLocal) {
+    //   message.reactions = reactions;
+    //   this.rootScope.dispatchEvent('messages_reactions', [{
+    //     message: message as Message.message,
+    //     changedResults: [],
+    //     removedResults: []
+    //   }]);
+    //   return;
+    // }
 
     this.apiUpdatesManager.processLocalUpdate({
       _: 'updateMessageReactions',
@@ -779,7 +779,7 @@ export class AppReactionsManager extends AppManager {
         this.sendReaction({
           message,
           reaction: chosenReactions[0]?.reaction,
-          onlyLocal: true,
+          onlyLocalWithUpdate: true,
           sendAsPeerId
         });
       }

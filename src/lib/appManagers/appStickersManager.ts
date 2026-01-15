@@ -15,7 +15,7 @@ import fixBase64String from '../../helpers/fixBase64String';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import {AppManager} from './manager';
-import fixEmoji from '../richTextProcessor/fixEmoji';
+import fixEmoji, {cleanEmoji} from '../richTextProcessor/fixEmoji';
 import ctx from '../../environment/ctx';
 import {getEnvironment} from '../../environment/utils';
 import getDocumentInput from './utils/docs/getDocumentInput';
@@ -396,10 +396,6 @@ export class AppStickersManager extends AppManager {
     });
   }
 
-  private cleanEmoji(emoji: string) {
-    return emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
-  }
-
   public getAnimatedEmojiSticker(emoji: string, isAnimation?: boolean) {
     const id = isAnimation ? LOCAL_IDS.EMOJI_ANIMATIONS : LOCAL_IDS.EMOJI;
     const stickerSet = this.storage.getFromCache(id);
@@ -412,13 +408,13 @@ export class AppStickersManager extends AppManager {
       }
     }
 
-    emoji = this.cleanEmoji(emoji);
+    emoji = cleanEmoji(emoji);
     const pack = stickerSet.packs.find((p) => p.emoticon === emoji);
     return pack ? this.appDocsManager.getDoc(pack.documents[0]) : undefined;
   }
 
   public getAnimatedEmojiSoundDocument(emoji: string) {
-    return this.sounds[this.cleanEmoji(emoji)];
+    return this.sounds[cleanEmoji(emoji)];
   }
 
   public preloadAnimatedEmojiSticker(emoji: string) {

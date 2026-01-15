@@ -1140,7 +1140,11 @@ export default class ChatBubbles {
                   bubble.timeAppenders[0].callback();
                 }
 
-                if(parentElement.classList.contains('document-message') && !parentElement.childNodes.length) {
+                if(
+                  parentElement &&
+                  parentElement.classList.contains('document-message') &&
+                  !parentElement.childNodes.length
+                ) {
                   parentElement.remove();
                 }
               }

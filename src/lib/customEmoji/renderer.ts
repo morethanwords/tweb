@@ -28,7 +28,7 @@ import {observeResize, unobserveResize} from '../../components/resizeObserver';
 import {PAID_REACTION_EMOJI_DOCID} from './constants';
 import lottieLoader from '../rlottie/lottieLoader';
 import StickerType from '../../config/stickerType';
-import {Accessor, createMemo, createSignal, Setter} from 'solid-js';
+import {Accessor, createMemo, createRoot, createSignal, Setter} from 'solid-js';
 import readValue from '../../helpers/solid/readValue';
 
 const globalLazyLoadQueue = new LazyLoadQueue();
@@ -802,7 +802,6 @@ export class CustomEmojiRendererElement extends HTMLElement {
     renderer.size = options.customEmojiSize || mediaSizes.active.customEmoji;
     renderer.isSelectable = options.isSelectable;
     [renderer._textColor, renderer._setTextColor] = createSignal();
-    renderer.textColor = createMemo(() => renderer._textColor() || readValue(options.textColor));
     renderer.observeResizeElement = options.observeResizeElement;
     renderer.renderNonSticker = options.renderNonSticker;
     if(options.wrappingDraft) {
@@ -821,6 +820,11 @@ export class CustomEmojiRendererElement extends HTMLElement {
       renderer.auto = true;
       renderer.middlewareHelper = getMiddleware();
     }
+
+    createRoot((dispose) => {
+      renderer.textColor = createMemo(() => renderer._textColor() || readValue(options.textColor));
+      renderer.middlewareHelper.get().onDestroy(dispose);
+    });
 
     return renderer;
   }

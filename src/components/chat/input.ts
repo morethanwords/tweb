@@ -1048,7 +1048,7 @@ export default class ChatInput {
       },
       verify: () => (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot
     }, {
-      icon: 'poll',
+      icon: 'checkround',
       text: 'Checklist',
       onClick: async() => {
         if(this.chat.peerId.isAnyChat()) {
