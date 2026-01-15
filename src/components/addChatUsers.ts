@@ -141,10 +141,12 @@ export async function handleMissingInvitees(chatId: ChatId, missingInvitees: Mis
 
 export default async function addChatUsers({
   peerId,
-  slider
+  slider,
+  skippable = false
 }: {
   peerId: PeerId,
-  slider: SidebarSlider
+  slider: SidebarSlider,
+  skippable?: boolean
 }) {
   const id = peerId.toChatId();
   const isChannel = await rootScope.managers.appChatsManager.isChannel(id);
@@ -219,7 +221,7 @@ export default async function addChatUsers({
   const tab = slider.createTab(AppAddMembersTab);
   tab.open({
     type: 'channel',
-    skippable: false,
+    skippable,
     takeOut: (peerIds) => {
       showConfirmation(peerIds, (e, checked) => {
         const promise = isChannel ?
