@@ -6,7 +6,8 @@
 
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import createParticipantContextMenu from '../../../helpers/dom/createParticipantContextMenu';
-import {ChannelParticipant} from '../../../layer';
+import {ChannelParticipant, Chat} from '../../../layer';
+import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
 import {i18n} from '../../../lib/langPack';
 import AppSelectPeers from '../../appSelectPeers';
 import ButtonCorner from '../../buttonCorner';
@@ -22,12 +23,14 @@ export default class AppRemovedUsersTab extends SliderSuperTabEventable {
   private selector: AppSelectPeers;
 
   public async init(chatId: ChatId) {
+    const chat = await this.managers.appChatsManager.getChat(chatId) as Chat.channel | Chat.chat;
     const isBroadcast = await this.managers.appChatsManager.isBroadcast(chatId);
     this.container.classList.add('edit-peer-container', 'removed-users-container');
     this.setTitle('ChannelBlacklist');
 
+    const canChangePermissions = hasRights(chat, 'change_permissions');
     this.addBtn = ButtonCorner({icon: 'addmember_filled', className: 'is-visible'});
-    this.content.append(this.addBtn);
+    if(canChangePermissions) this.content.append(this.addBtn);
 
     attachClickEvent(this.addBtn, () => {
       const popup = PopupElement.createPopup(

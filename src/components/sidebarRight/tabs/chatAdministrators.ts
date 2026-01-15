@@ -8,6 +8,7 @@ import deferredPromise from '../../../helpers/cancellablePromise';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import createParticipantContextMenu from '../../../helpers/dom/createParticipantContextMenu';
 import {ChannelParticipant, Chat, ChatFull, ChatParticipant} from '../../../layer';
+import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
 import {i18n} from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
 import AppSelectPeers from '../../appSelectPeers';
@@ -68,8 +69,9 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
       p.appConfig
     ]);
 
+    const canAddAdmins = hasRights(chat, 'add_admins');
     this.addBtn = ButtonCorner({icon: 'addmember_filled', className: 'is-visible'});
-    this.content.append(this.addBtn);
+    if(canAddAdmins) this.content.append(this.addBtn);
 
     attachClickEvent(this.addBtn, () => {
       const popup = PopupElement.createPopup(
