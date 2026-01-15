@@ -19,7 +19,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
-import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, ChannelParticipant, TextWithEntities, SponsoredPeer, TodoItem, TodoCompletion} from '../../layer';
+import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, ChannelParticipant, TextWithEntities, SponsoredPeer, TodoItem, TodoCompletion, MessageReplyHeader} from '../../layer';
 import assumeType from '../../helpers/assumeType';
 import PopupSponsored from '../popups/sponsored';
 import ListenerSetter from '../../helpers/listenerSetter';
@@ -764,6 +764,22 @@ export default class ChatContextMenu {
         return !!(replies && !replies.pFlags.comments && replies.replies);
       }
     }, {
+      icon: 'bubblereply',
+      text: 'ViewAllReplies',
+      onClick: () => {
+        this.chat.appImManager.openThread({
+          peerId: this.message.peerId,
+          threadId: (this.message.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_top_id,
+          lastMsgId: this.message.mid
+        });
+      },
+      verify: () => {
+        if(this.chat.threadId) return false;
+        const replies = (this.message as Message.message)?.replies;
+        const replyTo = this.message?.reply_to as MessageReplyHeader.messageReplyHeader;
+        return !!(!replies && replyTo?.reply_to_top_id);
+      }
+    }, {
       icon: isGif ? 'gifs' : 'favourites',
       text: isGif ? 'SaveToGIFs' : 'AddToFavorites',
       onClick: this.onFaveStickerClick.bind(this, false),
@@ -1470,12 +1486,13 @@ export default class ChatContextMenu {
       threadMessage = (await this.managers.appMessagesManager.getMessageByPeer(peerId, threadId)) as Message.message;
     }
 
-    const username = await this.managers.appPeersManager.getPeerUsername(threadMessage ? threadMessage.fromId : peerId);
+    const isDiscussionFromChannel = !!(threadMessage?.fwd_from?.channel_post && threadMessage.fwd_from.saved_from_msg_id);
+    const username = await this.managers.appPeersManager.getPeerUsername(isDiscussionFromChannel ? threadMessage.fromId : peerId);
     const msgId = getServerMessageId(mid);
     let url = 'https://t.me/';
     if(username) {
       url += username;
-      if(threadMessage) url += `/${getServerMessageId(threadMessage.fwd_from.channel_post)}?comment=${msgId}`;
+      if(isDiscussionFromChannel) url += `/${getServerMessageId(threadMessage.fwd_from.channel_post)}?comment=${msgId}`;
       else if(threadId) url += `/${getServerMessageId(threadId)}/${msgId}`;
       else url += '/' + msgId;
     } else {

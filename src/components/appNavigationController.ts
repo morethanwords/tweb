@@ -10,7 +10,6 @@ import {logger} from '../lib/logger';
 import blurActiveElement from '../helpers/dom/blurActiveElement';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import isSwipingBackSafari from '../helpers/dom/isSwipingBackSafari';
-import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
 import tabId from '../config/tabId';
 
 export type NavigationItem = {
@@ -27,7 +26,7 @@ export type NavigationItem = {
   context?: any
 };
 
-const USE_NAVIGATION_API = 'navigation' in window && true;
+export const USE_NAVIGATION_API = 'navigation' in window && true;
 const TRY_TO_TRAVERSE = USE_NAVIGATION_API && true; // * not tested for legacy api
 
 export class AppNavigationController {

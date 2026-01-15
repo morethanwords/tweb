@@ -2544,6 +2544,7 @@ const lang = {
     'one_value': 'View %1$d Reply',
     'other_value': 'View %1$d Replies'
   },
+  'ViewAllReplies': 'View All Replies',
   'DeleteAdditionalActions': 'Additional actions',
   'DeleteOptionsTitle': {
     'one_value': 'Delete %1$d Message?',

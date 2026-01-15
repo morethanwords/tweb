@@ -22,7 +22,7 @@ import ChatDragAndDrop from '../../components/chat/dragAndDrop';
 import {doubleRaf} from '../../helpers/schedulers';
 import useHeavyAnimationCheck, {dispatchHeavyAnimationEvent} from '../../hooks/useHeavyAnimationCheck';
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import appNavigationController from '../../components/appNavigationController';
+import appNavigationController, {USE_NAVIGATION_API} from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
 import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor, SponsoredMessage, InputGroupCall, WebPage} from '../../layer';
@@ -1344,7 +1344,9 @@ export class AppImManager extends EventListenerBase<{
   private onHashChangeUnsafe = (saveState?: boolean) => {
     const hash = location.hash;
     if(!saveState) {
-      // appNavigationController.replaceState();
+      if(!USE_NAVIGATION_API) {
+        appNavigationController.replaceState();
+      }
     }
 
     const splitted = hash.split('?');
