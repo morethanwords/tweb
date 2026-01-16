@@ -8750,7 +8750,8 @@ export class AppMessagesManager extends AppManager {
           if(
             groupedIds[0] &&
             groupedIds[0] !== groupedIds[MESSAGES_ALBUM_MAX_SIZE - 1] &&
-            slice?.index === (bottom ? 0 : slice.slice.length - 1)
+            slice &&
+            slice.index === (bottom ? 0 : slice.slice.length - 1)
           ) {
             messagesSlice.forEach((message) => {
               if(message.grouped_id === groupedIds[0]) {
