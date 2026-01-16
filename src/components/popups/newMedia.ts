@@ -838,7 +838,7 @@ export default class PopupNewMedia extends PopupElement {
           text: caption,
           options: {
             entities,
-            invertMedia: sendingParams.invertMedia,
+            invertMedia: willAttach.invertMedia,
             scheduleDate: sendingParams.scheduleDate,
             isMedia
           },
