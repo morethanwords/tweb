@@ -43,10 +43,10 @@ export default class OverlayClickHandler extends EventListenerBase<{
       cancelEvent(e);
     }
 
-    this.close();
+    this.close(e);
   };
 
-  public close() {
+  public close(e?: MouseEvent | TouchEvent) {
     if(this.element) {
       this.overlay?.remove();
       this.element = undefined;
