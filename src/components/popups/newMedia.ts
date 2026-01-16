@@ -657,7 +657,14 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   public addFiles(files: File[]) {
-    if(!this.canHaveMultipleFiles() && this.files.length) return;
+    if(!this.canHaveMultipleFiles() && this.files.length) {
+      if(files.length) {
+        this.files.splice(0, Infinity, files[0]);
+        this.attachFiles();
+      }
+      return;
+    }
+
     if(!this.canHaveMultipleFiles()) files.splice(1);
 
     const toPush = files.filter((file) => {
