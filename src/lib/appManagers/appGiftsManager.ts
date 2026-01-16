@@ -12,6 +12,7 @@ import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
 import {nanotonToJsNumber} from '../../helpers/paymentsWrapCurrencyAmount';
 import {inputStarGiftEquals} from './utils/gifts/inputStarGiftEquals';
+import {randomLong} from '../../helpers/random';
 
 export interface MyStarGift {
   type: 'stargift',
@@ -122,7 +123,7 @@ export default class AppGiftsManager extends AppManager {
           case 'messageActionStarGiftUnique': {
             const peerId = getPeerId(message.peer_id);
             this.rootScope.dispatchEvent('star_gift_list_update', {peerId});
-            if(action.pFlags.transferred && message.pFlags.out || action.resale_amount) {
+            if(action.pFlags.transferred && message.pFlags.out || action.resale_amount || action.pFlags.from_offer) {
               this.rootScope.dispatchEvent('star_gift_list_update', {peerId: this.rootScope.myId});
             }
             if(action._ === 'messageActionStarGiftUnique' && action.pFlags.upgrade) {
@@ -645,5 +646,39 @@ export default class AppGiftsManager extends AppManager {
     if(res.icon) this.appDocsManager.saveDoc(res.icon);
 
     return res;
+  }
+
+  public async resolveGiftOffer(msgId: number, action: 'accept' | 'reject') {
+    await this.apiManager.invokeApiSingleProcess({
+      method: 'payments.resolveStarGiftOffer',
+      params: {
+        offer_msg_id: msgId,
+        decline: action === 'reject'
+      },
+      processResult: async(updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates)
+      }
+    });
+  }
+
+  public async createGiftOffer(options: {
+    peerId: PeerId,
+    slug: string
+    amount: StarsAmount
+    duration: number
+  }) {
+    await this.apiManager.invokeApiSingleProcess({
+      method: 'payments.sendStarGiftOffer',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(options.peerId),
+        slug: options.slug,
+        price: options.amount,
+        duration: options.duration,
+        random_id: randomLong()
+      },
+      processResult: async(updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates)
+      }
+    });
   }
 }

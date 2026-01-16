@@ -18,7 +18,7 @@
       margin-top: 0.5rem;
       padding: 1rem;
       padding-top: 0.75rem;
-      
+
       .btn-primary {
         height: 48px;
         line-height: 48px;
@@ -38,37 +38,4 @@
 .input {
   margin: 0.5rem;
   margin-top: 1.5rem;
-  --padding-horizontal: 2.75rem;
-  --height: 48px;
-  --border-radius: 12px;
-  --padding: 0.8125rem;
-
-  .inputIcon {
-    position: absolute;
-    left: 0.875rem;
-    top: 0.625rem;
-    width: 1.375rem;
-    height: 1.375rem;
-    font-size: 1.375rem;
-    z-index: 2;
-    color: var(--primary-color);
-
-    svg {
-      width: 1.375rem;
-      height: 1.375rem;
-    }
-  }
-
-  .inputApproxLabel {
-    position: absolute;
-    right: 0.75rem;
-    top: 1.125rem;
-    font-size: var(--font-size-13);
-    color: var(--secondary-text-color);
-  }
-
-  :global(.input-field-input) {
-    padding-left: 2.75rem;
-    padding-right: 5rem;
-  }
 }

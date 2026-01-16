@@ -58,6 +58,7 @@ import BezierEasing from '../../vendor/bezierEasing';
 import {AnimatedSuper} from '../animatedSuper';
 import {ConfettiContainer, ConfettiRef} from '../confetti';
 import {PreloaderTsx} from '../putPreloader';
+import {showCreateStarGiftOfferPopup} from './createStarGiftOffer';
 
 function AttributeTableButton(props: { permille: number }) {
   return (
@@ -1020,6 +1021,15 @@ export default class PopupStarGiftInfo extends PopupElement {
                 text: 'StarGiftChangePrice',
                 verify: () => isOwnedUniqueGift && isListed(),
                 onClick: () => handleSell(true)
+              },
+              {
+                icon: 'tag_alt_outline',
+                text: 'StarGiftOffer.CreateOffer',
+                verify: () => gift._ === 'starGiftUnique' && gift.offer_min_stars !== undefined,
+                onClick: () => showCreateStarGiftOfferPopup({
+                  gift: this.gift,
+                  onFinish: (res) => res === 'created' && this.hide()
+                })
               },
               {
                 icon: 'forward',

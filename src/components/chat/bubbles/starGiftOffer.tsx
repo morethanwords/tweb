@@ -47,13 +47,13 @@ export function StarGiftOfferBubble(props: {
     <div class={/* @once */ styles.wrap}>
       <div class={/* @once */ styles.giftWrap}>
         <StarGiftBackdrop
-          backdrop={props.gift.collectibleAttributes?.backdrop}
-          patternEmoji={props.gift.collectibleAttributes?.pattern.document as MyDocument}
+          backdrop={props.gift.collectibleAttributes.backdrop}
+          patternEmoji={props.gift.collectibleAttributes.pattern.document as MyDocument}
           small
           canvasClass={/* @once */ styles.giftBackdropCanvas}
         />
         <StickerTsx
-          sticker={props.gift.collectibleAttributes?.model.document as MyDocument}
+          sticker={props.gift.collectibleAttributes.model.document as MyDocument}
           width={48}
           height={48}
           autoStyle
@@ -107,10 +107,7 @@ export function StarGiftOfferReplyMarkup(props: {
       }
     });
 
-    await rootScope.managers.apiManager.invokeApiSingle('payments.resolveStarGiftOffer', {
-      offer_msg_id: props.message.id,
-      decline: true
-    })
+    await rootScope.managers.appGiftsManager.resolveGiftOffer(props.message.id, 'reject')
   }
   const onAcceptClick = () => {
     transferStarGiftConfirmationPopup({
@@ -118,9 +115,7 @@ export function StarGiftOfferReplyMarkup(props: {
       recipient: props.message.peerId,
       fromOffer: props.message.action as MessageAction.messageActionStarGiftPurchaseOffer,
       handleSubmit: async() => {
-        await rootScope.managers.apiManager.invokeApiSingle('payments.resolveStarGiftOffer', {
-          offer_msg_id: props.message.id
-        })
+        await rootScope.managers.appGiftsManager.resolveGiftOffer(props.message.id, 'accept')
       }
     })
   }

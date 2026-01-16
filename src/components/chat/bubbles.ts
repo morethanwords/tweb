@@ -5888,7 +5888,7 @@ export default class ChatBubbles {
           }), middleware);
           s.append(container);
 
-          if(showStarGiftOfferButtons(action)) {
+          if(!message.pFlags.out && showStarGiftOfferButtons(action)) {
             bubble.classList.add('with-reply-markup');
             const buttons = wrapSolidComponent(() => StarGiftOfferReplyMarkup({
               gift,
