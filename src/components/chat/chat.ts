@@ -17,7 +17,7 @@ import ChatContextMenu from './contextMenu';
 import ChatInput from './input';
 import ChatSelection from './selection';
 import ChatTopbar from './topbar';
-import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY} from '../../lib/mtproto/mtproto_config';
+import {HIDDEN_PEER_ID, NULL_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
 import SetTransition from '../singleTransition';
 import AppPrivateSearchTab from '../sidebarRight/tabs/search';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
@@ -80,6 +80,7 @@ import appNavigationController from '../appNavigationController';
 import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '../sidebarLeft';
 import {AckedResult} from '../../lib/mtproto/superMessagePort';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import hasRights from '../../lib/appManagers/utils/chats/hasRights';
 
 
 export enum ChatType {
@@ -1605,6 +1606,20 @@ export default class Chat extends EventListenerBase<{
         this.managers.appPrivacyManager.setAutoDeletePeriodFor(this.peerId, period);
       }
     }).show();
+  }
+
+  public canManageAutoDelete = async() => {
+    const specialChats = [REPLIES_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID.toPeerId(), VERIFICATION_CODES_BOT_ID, HIDDEN_PEER_ID, SERVICE_PEER_ID, rootScope.myId];
+    if(specialChats.includes(this.peerId)) return false;
+
+    if(this.peerId.isUser()) return true;
+
+    const {chat, isMonoforum}  = await namedPromises({
+      chat: this.managers.appChatsManager.getChat(this.peerId.toChatId()),
+      isMonoforum: this.managers.appChatsManager.isMonoforum(this.peerId.toChatId())
+    });
+
+    return !isMonoforum && hasRights(chat, 'change_info');
   }
 
   public toggleChatIfMedium() {

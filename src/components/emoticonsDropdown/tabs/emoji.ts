@@ -624,7 +624,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     const recentCategory = this.categories[EMOJI_RECENT_ID];
     const recentCustomCategory = this.categories[CUSTOM_EMOJI_RECENT_ID];
     this.attachHelpers({
-      getTextColor: () => this.textColor,
+      getTextColor: this.textColor,
       verifyRecent: (target) => !!(findUpAsChild(target, recentCustomCategory.elements.items) || findUpAsChild(target, recentCategory.elements.items)),
       canHaveEmojiTimer: this.canHaveEmojiTimer
     });
@@ -787,17 +787,6 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     }
 
     super.toggleLocalCategory(category, visible);
-  }
-
-  public setTextColor(textColor: string = EMOJI_TEXT_COLOR) {
-    this.categoriesMap.forEach((category) => {
-      const renderer = category.elements.renderer;
-      renderer?.setTextColor(textColor);
-    });
-  }
-
-  public get textColor() {
-    return this.emoticonsDropdown?.textColor || EMOJI_TEXT_COLOR;
   }
 
   protected renderEmojiSet(set: StickerSet.stickerSet, prepend?: boolean) {

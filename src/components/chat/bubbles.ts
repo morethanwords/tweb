@@ -218,6 +218,8 @@ import type {CommittedFilters} from '../sidebarRight/tabs/adminRecentActions/fil
 import deepEqual from '../../helpers/object/deepEqual';
 import {openInstantViewInAppBrowser} from '../browser';
 import {setPeerColorToElement} from '../peerColors';
+import {showStarGiftOfferButtons, StarGiftOfferBubble, StarGiftOfferReplyMarkup} from './bubbles/starGiftOffer';
+import {wrapSolidComponent} from '../../helpers/solid/wrapSolidComponent';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -1140,7 +1142,11 @@ export default class ChatBubbles {
                   bubble.timeAppenders[0].callback();
                 }
 
-                if(parentElement.classList.contains('document-message') && !parentElement.childNodes.length) {
+                if(
+                  parentElement &&
+                  parentElement.classList.contains('document-message') &&
+                  !parentElement.childNodes.length
+                ) {
                   parentElement.remove();
                 }
               }
@@ -2898,6 +2904,11 @@ export default class ChatBubbles {
             peerId,
             id: replyTo.story_id
           });
+          return;
+        }
+
+        if(replyTo.reply_to_msg_deleted) {
+          toastNew({langPackKey: 'DeletedMessageToast'});
           return;
         }
 
@@ -5866,13 +5877,35 @@ export default class ChatBubbles {
           s.append(content);
         } else if(action._ === 'messageActionSuggestBirthday') {
           const title = await wrapMessageActionTextNew({message, middleware});
-          const container = document.createElement('div');
-          this.wrapSomeSolid(() => SuggestBirthdayBubble({
+          const container = wrapSolidComponent(() => SuggestBirthdayBubble({
             birthday: action.birthday,
             outgoing: message.pFlags.out,
             title
-          }), container, middleware);
+          }), middleware);
           s.append(container);
+        } else if(action._ === 'messageActionStarGiftPurchaseOffer') {
+          const [title, gift] = await Promise.all([
+            wrapMessageActionTextNew({message, middleware}),
+            this.managers.appGiftsManager.wrapGift(action.gift)
+          ]);
+
+          const container = wrapSolidComponent(() => StarGiftOfferBubble({
+            gift: gift,
+            title,
+            outgoing: message.pFlags.out,
+            action
+          }), middleware);
+          s.append(container);
+
+          if(!message.pFlags.out && showStarGiftOfferButtons(action)) {
+            bubble.classList.add('with-reply-markup');
+            const buttons = wrapSolidComponent(() => StarGiftOfferReplyMarkup({
+              gift,
+              message: message as Message.messageService,
+              chat: this.chat
+            }), middleware)
+            contentWrapper.append(buttons)
+          }
         } else {
           promise = wrapMessageActionTextNew({
             message,
@@ -6063,6 +6096,11 @@ export default class ChatBubbles {
             onViewClick: async() => {
               if(action._ === 'messageActionStarGift' && action.upgrade_msg_id) {
                 const upgradeMsg = await this.managers.appMessagesManager.getMessageById(action.upgrade_msg_id);
+                if(!upgradeMsg) {
+                  toastNew({langPackKey: 'MessageNotFound'});
+                  return;
+                }
+
                 const upgradedGift = await this.managers.appGiftsManager.wrapGiftFromMessage(upgradeMsg as Message.messageService);
                 PopupElement.createPopup(PopupStarGiftInfo, {gift: upgradedGift});
               } else {

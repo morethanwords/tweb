@@ -1,0 +1,38 @@
+@import '../../scss/mixins';
+
+.popup {
+  --popup-min-width: 26.25rem;
+  --popup-max-width: 26.25rem;
+
+  &Container {
+    border-radius: 14px;
+    padding: 0;
+    background: var(--background-color);
+  }
+
+  &Header {
+    margin: 0;
+    padding: 1rem 1rem 0;
+    background: var(--surface-color);
+  }
+
+  &CloseButton {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  &Footer {
+    padding: 0;
+    padding: 1rem;
+    padding-top: 0.75rem;
+  }
+}
+
+.input {
+  margin: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.chipTabs {
+  margin-inline: -0.5rem;
+}

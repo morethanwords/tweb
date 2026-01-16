@@ -9,12 +9,12 @@ import {InputFile} from '../../../layer';
 import InputField from '../../inputField';
 import {SliderSuperTab} from '../../slider';
 import AvatarEdit from '../../avatarEdit';
-import AppAddMembersTab from './addMembers';
 import {_i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import appImManager from '../../../lib/appManagers/appImManager';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
+import addChatUsers from '../../addChatUsers';
 
 export default class AppNewChannelTab extends SliderSuperTab {
   public static noSame = true;
@@ -86,14 +86,10 @@ export default class AppNewChannelTab extends SliderSuperTab {
         appImManager.setInnerPeer({peerId: channelId.toPeerId(true)});
 
         appSidebarLeft.removeTabFromHistory(this);
-        this.slider.createTab(AppAddMembersTab).open({
-          type: 'channel',
-          skippable: true,
-          title: 'GroupAddMembers',
-          placeholder: 'SendMessageTo',
-          takeOut: (peerIds) => {
-            return this.managers.appChatsManager.inviteToChannel(channelId, peerIds);
-          }
+        addChatUsers({
+          peerId: channelId.toPeerId(true),
+          slider: this.slider,
+          skippable: true
         });
       });
     }, {listenerSetter: this.listenerSetter});

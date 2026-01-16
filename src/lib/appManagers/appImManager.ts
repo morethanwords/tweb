@@ -22,7 +22,7 @@ import ChatDragAndDrop from '../../components/chat/dragAndDrop';
 import {doubleRaf} from '../../helpers/schedulers';
 import useHeavyAnimationCheck, {dispatchHeavyAnimationEvent} from '../../hooks/useHeavyAnimationCheck';
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import appNavigationController from '../../components/appNavigationController';
+import appNavigationController, {USE_NAVIGATION_API} from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
 import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor, SponsoredMessage, InputGroupCall, WebPage} from '../../layer';
@@ -59,14 +59,14 @@ import ChatBackgroundPatternRenderer from '../../components/chat/patternRenderer
 import {IS_CHROMIUM, IS_FIREFOX} from '../../environment/userAgent';
 import compareVersion from '../../helpers/compareVersion';
 import {AppManagers} from './managers';
-import uiNotificationsManager, {UiNotificationsManager} from './uiNotificationsManager';
+import uiNotificationsManager from './uiNotificationsManager';
 import appMediaPlaybackController from '../../components/appMediaPlaybackController';
 import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
 import wrapRichText from '../richTextProcessor/wrapRichText';
 import wrapUrl from '../richTextProcessor/wrapUrl';
 import getUserStatusString from '../../components/wrappers/getUserStatusString';
 import getChatMembersString from '../../components/wrappers/getChatMembersString';
-import {STATE_INIT, SETTINGS_INIT} from '../../config/state';
+import {SETTINGS_INIT} from '../../config/state';
 import CacheStorageController from '../files/cacheStorage';
 import themeController from '../../helpers/themeController';
 import overlayCounter from '../../helpers/overlayCounter';
@@ -78,7 +78,6 @@ import groupCallsController from '../calls/groupCallsController';
 import callsController from '../calls/callsController';
 import getFilesFromEvent from '../../helpers/files/getFilesFromEvent';
 import apiManagerProxy from '../mtproto/mtprotoworker';
-import appRuntimeManager from './appRuntimeManager';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
@@ -111,7 +110,7 @@ import {findUpAvatar} from '../../components/avatarNew';
 import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
-import {getPeerColorIndexByPeer, getPeerColorsByPeer, makeColorsGradient, setPeerColors} from './utils/peers/getPeerColorById';
+import {setPeerColors} from './utils/peers/getPeerColorById';
 import {savedReactionTags} from '../../components/chat/reactions';
 import {setAppState, useAppState} from '../../stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
@@ -125,7 +124,6 @@ import anchorCallback from '../../helpers/dom/anchorCallback';
 import PopupPremium from '../../components/popups/premium';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import {openWebAppInAppBrowser} from '../../components/browser';
-import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
 import {createProxiedManagersForAccount} from './getProxiedManagers';
 import ChatBackgroundStore from '../chatBackgroundStore';
 import useLockScreenShortcut from './utils/useLockScreenShortcut';
@@ -133,11 +131,11 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../../components/chat/p
 import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport';
 import ChatAudio from '../../components/chat/audio';
 import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
-import {getRgbColorFromTelegramColor, rgbIntToHex} from '../../helpers/color';
 import {MyMessage} from './appMessagesManager';
-import showFrozenPopup from '../../components/popups/frozen';
-import showPasskeyPopup from '../../components/popups/passkey';
 import {canUploadAsWhenEditing} from '../../components/chat/utils';
+import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
+import {usePeer} from '../../stores/peers';
+import {untrack} from 'solid-js';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -273,7 +271,7 @@ export class AppImManager extends EventListenerBase<{
     this.columnEl.append(this.chatsContainer);
 
     this.createNewChat();
-    this.chatsSelectTab(this.chat.container);
+    this.chatsSelectTab(this.chat);
 
     appNavigationController.onHashChange = this.onHashChange;
     // window.addEventListener('hashchange', this.onHashChange);
@@ -465,7 +463,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('toggle_locked', (isLocked) => {
-      if(isLocked) appRuntimeManager.reload(false);
+      if(isLocked) appNavigationController.reload();
     //   (() => {
     //     if(isLocked) {
     //       [
@@ -1346,7 +1344,9 @@ export class AppImManager extends EventListenerBase<{
   private onHashChangeUnsafe = (saveState?: boolean) => {
     const hash = location.hash;
     if(!saveState) {
-      appNavigationController.replaceState();
+      if(!USE_NAVIGATION_API) {
+        appNavigationController.replaceState();
+      }
     }
 
     const splitted = hash.split('?');
@@ -1885,7 +1885,8 @@ export class AppImManager extends EventListenerBase<{
 
   // * не могу использовать тут TransitionSlider, так как мне нужен отрисованный блок рядом
   // * (или под текущим чатом) чтобы правильно отрендерить чат (напр. scrollTop)
-  private chatsSelectTab(tab: HTMLElement, animate?: boolean) {
+  private chatsSelectTab(chat: Chat, animate?: boolean) {
+    const tab = chat.container;
     if(this.prevTab === tab) {
       return;
     }
@@ -1906,13 +1907,18 @@ export class AppImManager extends EventListenerBase<{
       const prevIdx = whichChild(this.prevTab);
       const idx = whichChild(tab);
       if(idx > prevIdx) {
-        appNavigationController.pushItem({
-          type: 'chat',
-          onPop: (canAnimate) => {
-            this.setPeer({}, canAnimate);
-            blurActiveElement();
+        const found = appNavigationController.findItem((item) => item.context === chat);
+        appNavigationController.spliceItems(
+          found ? found.index : appNavigationController.getNextIndex(),
+          0,
+          {
+            type: 'chat',
+            onPop: (canAnimate) => {
+              this.setPeer({}, canAnimate);
+              blurActiveElement();
+            }
           }
-        });
+        );
       }
     }
 
@@ -2138,10 +2144,10 @@ export class AppImManager extends EventListenerBase<{
     }
   };
 
-  private async overrideHash(peerId?: PeerId) {
+  private overrideHash(peerId?: PeerId) {
     let str: string;
     if(peerId) {
-      const username = await this.managers.appPeersManager.getPeerUsername(peerId);
+      const username = untrack(() => getPeerActiveUsernames(usePeer(peerId))[0]);
       str = username ? '@' + username : '' + peerId;
     }
 
@@ -2263,7 +2269,7 @@ export class AppImManager extends EventListenerBase<{
       });
     }
 
-    this.chatsSelectTab(chatTo.container, animate);
+    this.chatsSelectTab(chatTo, animate);
 
     if(justReturn) {
       this.dispatchEvent('peer_changed', chatTo);
@@ -2372,7 +2378,7 @@ export class AppImManager extends EventListenerBase<{
           // window.requestAnimationFrame(() => {
           setTimeout(() => { // * setTimeout is better here
             setTimeout(() => {
-              this.chatsSelectTab(this.chat.container);
+              this.chatsSelectTab(this.chat, undefined);
             }, 0);
             this.selectTab(APP_TABS.CHAT, animate);
           }, 0);

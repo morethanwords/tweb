@@ -8,6 +8,7 @@ module.exports = function(asset) {
     || asset.includes('rlottie-wasm')
     || asset.includes('Worker.min.js')
     || asset.includes('recorder.min.js')
+    || asset.includes('snapshot.html')
     || asset.includes('.hbs')) return true;
   return false;
 }

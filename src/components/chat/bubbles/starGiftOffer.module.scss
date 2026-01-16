@@ -1,0 +1,45 @@
+.wrap {
+  max-width: 12rem;
+  padding-block: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;;
+
+  :global(.bubble-service-button) {
+    overflow: hidden;
+  }
+}
+
+.giftWrap {
+  --stargift-backdrop-offset-y: -75px;
+  position: relative;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 12px;
+  overflow: hidden;
+
+  :global(.media-sticker-wrapper) {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+  }
+}
+
+.giftBackdropCanvas {
+  width: 4.5rem!important;
+  height: 4.5rem!important;
+  top: 6px;
+}
+
+.title {
+  margin-top: 0.75rem;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.status {
+  text-align: center;
+  text-wrap: balance;
+  margin-top: 0.75rem;
+}

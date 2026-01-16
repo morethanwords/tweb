@@ -373,6 +373,7 @@ export default class ChatInput {
   private directMessagesHandler: ReturnType<ChatInput['createDirectMessagesHandler']>;
 
   public suggestedPost: SuggestedPostPayload;
+  private inputHelperNavigationItem: NavigationItem;
 
   constructor(
     public chat: Chat,
@@ -1055,7 +1056,7 @@ export default class ChatInput {
         return (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot;
       }
     }, {
-      icon: 'poll',
+      icon: 'checkround',
       text: 'Checklist',
       onClick: async() => {
         if(this.chat.peerId.isAnyChat()) {
@@ -1920,6 +1921,8 @@ export default class ChatInput {
   public destroy() {
     // this.chat.log.error('Input destroying');
 
+    this.autocompleteHelperController.destroy();
+    appNavigationController.removeItem(this.inputHelperNavigationItem);
     this.listenerSetter.removeAll();
     this.setCurrentHover();
   }
@@ -2083,7 +2086,8 @@ export default class ChatInput {
       peerTitleShort,
       isPremiumRequired,
       appConfig,
-      autoDeletePeriod
+      autoDeletePeriod,
+      canManageAutoDelete
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
@@ -2097,7 +2101,8 @@ export default class ChatInput {
       wrapPeerTitle({peerId, onlyFirstName: true}),
       this.chat.isPremiumRequiredToContact(),
       apiManagerProxy.getAppConfig(),
-      modifyAckedPromise(this.chat.getAutoDeletePeriod())
+      modifyAckedPromise(this.chat.getAutoDeletePeriod()),
+      this.chat.canManageAutoDelete()
     ]);
 
     const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
@@ -2222,8 +2227,8 @@ export default class ChatInput {
 
       if(this.chat) {
         callbackify(autoDeletePeriod.result, (period) => {
-          if(period) this.btnAutoDeletePeriod.replaceChildren(createAutoDeleteIcon(period));
-          this.btnAutoDeletePeriod.classList.toggle('hide', !period);
+          if(canManageAutoDelete && period) this.btnAutoDeletePeriod.replaceChildren(createAutoDeleteIcon(period));
+          this.btnAutoDeletePeriod.classList.toggle('hide', !(canManageAutoDelete && period));
         });
       }
 
@@ -4449,11 +4454,12 @@ export default class ChatInput {
     }
 
     if(!IS_MOBILE) {
-      appNavigationController.pushItem({
+      appNavigationController.pushItem(this.inputHelperNavigationItem = {
         type: 'input-helper',
         onPop: () => {
           this.onHelperCancel();
-        }
+        },
+        context: this.chat
       });
     }
 

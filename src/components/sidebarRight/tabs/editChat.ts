@@ -287,7 +287,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(reactionsRow.container);
       }
 
-      if(canChangeInfo && isChannel && isAdmin) {
+      if(canChangeInfo && isBroadcast && isAdmin) {
         const directMessagesRow = new Row({
           titleLangKey: 'ChannelDirectMessages.Settings.Title',
           icon: 'messageunread',
@@ -363,7 +363,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(permissionsRow.container);
       }
 
-      if(canChangeInfo && isAdmin) {
+      if(/* canChangeInfo &&  */isAdmin) {
         const discussionRow = new Row({
           icon: 'comments',
           titleLangKey: isBroadcast ? 'PeerInfo.Discussion' : 'LinkedChannel',
@@ -498,7 +498,7 @@ export default class AppEditChatTab extends SliderSuperTab {
     {
       const section = new SettingSection({});
 
-      if(canManageAdmins) {
+      /* if(canManageAdmins)  */{
         const administratorsRow = new Row({
           titleLangKey: 'PeerInfo.Administrators',
           subtitle: true,
@@ -553,7 +553,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(membersRow.container);
       }
 
-      if(canChangePermissions) {
+      /* if(canChangePermissions)  */{
         const removedUsersRow = new Row({
           titleLangKey: 'ChannelBlockedUsers',
           subtitle: true,

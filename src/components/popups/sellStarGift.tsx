@@ -9,50 +9,15 @@ import I18n, {i18n, LangPackKey} from '../../lib/langPack';
 import Row from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
 import {InputFieldTsx} from '../inputFieldTsx';
-import InputField, {InputFieldOptions} from '../inputField';
 import {fastRaf} from '../../helpers/schedulers';
-import currencyStarIcon from '../currencyStarIcon';
-import Icon from '../icon';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {toastNew} from '../toast';
 import {StarsAmount} from '../../layer';
 import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber, parseNanotonFromDecimal} from '../../helpers/paymentsWrapCurrencyAmount';
 import Section from '../section';
-
-class SellPriceInputField extends InputField {
-  private icon: HTMLElement;
-  private approxLabel: HTMLElement;
-
-  constructor(options: InputFieldOptions) {
-    super(options);
-
-    this.container.classList.add(styles.input)
-
-    this.icon = document.createElement('div')
-    this.icon.classList.add(styles.inputIcon)
-
-    this.approxLabel = document.createElement('div')
-    this.approxLabel.classList.add(styles.inputApproxLabel)
-
-    this.container.append(this.icon, this.approxLabel)
-
-    this.setIcon('stars')
-    this.setApproxText('≈$0.00')
-  }
-
-  public setIcon(icon: 'ton' | 'stars') {
-    if(icon === 'ton') {
-      this.icon.replaceChildren(Icon('ton'))
-    } else {
-      this.icon.replaceChildren(currencyStarIcon() as HTMLElement)
-    }
-  }
-
-  public setApproxText(text: string) {
-    this.approxLabel.textContent = text
-  }
-}
+import {StarGiftPriceInputField} from '../stargifts/stargiftPriceInputField';
+import bigInt from 'big-integer';
 
 export default class PopupSellStarGift extends PopupElement<{
   finish: (result: 'list' | 'unlist' | 'cancel') => void
@@ -108,7 +73,7 @@ export default class PopupSellStarGift extends PopupElement<{
     } else if(this.gift.resellPriceStars) {
       setSellAmount(String(this.gift.resellPriceStars))
     } else if(floorPrice) {
-      setSellAmount(String(floorPrice))
+      setSellAmount(String(bigInt.min(floorPrice, appConfig.stars_stargift_resale_amount_max)))
     }
 
     const [loading, setLoading] = createSignal(false);
@@ -171,31 +136,7 @@ export default class PopupSellStarGift extends PopupElement<{
       }
     }))
 
-    createEffect(on(() => [ton(), sellAmount()], ([ton, sellAmount]) => {
-      if(ton) {
-        const float = Number(sellAmount)
-        const usd = appConfig.ton_usd_rate * float
-        inputRef.setApproxText(`≈${paymentsWrapCurrencyAmount(usd * 100, 'USD')}`)
-        return
-      }
-
-      const value = +sellAmount;
-      const usd = appConfig.stars_usd_sell_rate_x1000 / 1000 * value / 100;
-      inputRef.setApproxText(`≈${paymentsWrapCurrencyAmount(usd * 100, 'USD')}`)
-    }))
-
-    let inputRef: SellPriceInputField
-
-    createEffect(on(ton, (ton, prev) => {
-      inputRef.setIcon(ton ? 'ton' : 'stars')
-
-      if(prev !== undefined) {
-        setSellAmount('')
-        fastRaf(() => {
-          inputRef.input.focus()
-        })
-      }
-    }))
+    let inputRef: HTMLElement
 
     onMount(() => {
       attachClickEvent(this.btnConfirm, () => {
@@ -223,7 +164,7 @@ export default class PopupSellStarGift extends PopupElement<{
         })
       })
       fastRaf(() => {
-        inputRef.input.focus()
+        inputRef.focus()
       })
     })
 
@@ -241,22 +182,15 @@ export default class PopupSellStarGift extends PopupElement<{
             /> as Exclude<JSX.Element, string>
           }
         >
-          <InputFieldTsx
-            InputFieldClass={SellPriceInputField}
+          <StarGiftPriceInputField
+            class={styles.input}
             label={ton() ? 'StarGiftSellTitleTon' : 'StarGiftSellTitleStars'}
             value={sellAmount()}
-            plainText
-            onRawInput={(value) => {
-              let cleanValue = value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-              if(!ton()) cleanValue = cleanValue.replace(/\./g, '');
-              if(value !== cleanValue) {
-                inputRef.setValueSilently(cleanValue);
-              }
-              setSellAmount(cleanValue);
-            }}
+            onValueChange={setSellAmount}
+            ton={ton()}
             errorLabel={inputError()?.[0]}
             errorLabelOptions={inputError()?.[1]}
-            instanceRef={ref => { inputRef = ref }}
+            instanceRef={ref => { inputRef = ref.input }}
             disabled={loading()}
           />
         </Section>

@@ -12,6 +12,7 @@ import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
 import {nanotonToJsNumber} from '../../helpers/paymentsWrapCurrencyAmount';
 import {inputStarGiftEquals} from './utils/gifts/inputStarGiftEquals';
+import {randomLong} from '../../helpers/random';
 
 export interface MyStarGift {
   type: 'stargift',
@@ -122,7 +123,7 @@ export default class AppGiftsManager extends AppManager {
           case 'messageActionStarGiftUnique': {
             const peerId = getPeerId(message.peer_id);
             this.rootScope.dispatchEvent('star_gift_list_update', {peerId});
-            if(action.pFlags.transferred && message.pFlags.out || action.resale_amount) {
+            if(action.pFlags.transferred && message.pFlags.out || action.resale_amount || action.pFlags.from_offer) {
               this.rootScope.dispatchEvent('star_gift_list_update', {peerId: this.rootScope.myId});
             }
             if(action._ === 'messageActionStarGiftUnique' && action.pFlags.upgrade) {
@@ -163,7 +164,7 @@ export default class AppGiftsManager extends AppManager {
     };
   }
 
-  private wrapGift(gift: StarGift): MyStarGift {
+  public wrapGift(gift: StarGift): MyStarGift {
     if(gift._ === 'starGift') {
       return {
         type: 'stargift',
@@ -249,6 +250,7 @@ export default class AppGiftsManager extends AppManager {
       msg_id: action._ === 'messageActionStarGift' && action.pFlags.prepaid_upgrade ? action.gift_msg_id : message.id,
       convert_stars: gift._ === 'starGift' ? gift.convert_stars : undefined,
       upgrade_stars: gift._ === 'starGift' ? gift.upgrade_stars : undefined,
+      transfer_stars: action._ === 'messageActionStarGiftUnique' ? action.transfer_stars : undefined,
       saved_id: action.saved_id,
       can_transfer_at: action._ === 'messageActionStarGiftUnique' ? action.can_transfer_at : undefined,
       can_resell_at: action._ === 'messageActionStarGiftUnique' ? action.can_resell_at : undefined,
@@ -644,5 +646,39 @@ export default class AppGiftsManager extends AppManager {
     if(res.icon) this.appDocsManager.saveDoc(res.icon);
 
     return res;
+  }
+
+  public async resolveGiftOffer(msgId: number, action: 'accept' | 'reject') {
+    await this.apiManager.invokeApiSingleProcess({
+      method: 'payments.resolveStarGiftOffer',
+      params: {
+        offer_msg_id: msgId,
+        decline: action === 'reject'
+      },
+      processResult: async(updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates)
+      }
+    });
+  }
+
+  public async createGiftOffer(options: {
+    peerId: PeerId,
+    slug: string
+    amount: StarsAmount
+    duration: number
+  }) {
+    await this.apiManager.invokeApiSingleProcess({
+      method: 'payments.sendStarGiftOffer',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(options.peerId),
+        slug: options.slug,
+        price: options.amount,
+        duration: options.duration,
+        random_id: randomLong()
+      },
+      processResult: async(updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates)
+      }
+    });
   }
 }

@@ -414,10 +414,10 @@ PeerProfile.SubtitleStatus = () => {
 
   return (
     <div class="profile-subtitle-text">
+      {status()}
       <Show when={needWhen()}>
         {getStatusHiddenShow(context.peerId)}
       </Show>
-      {status()}
     </div>
   );
 };

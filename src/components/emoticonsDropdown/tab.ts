@@ -123,6 +123,10 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     }
   }
 
+  public textColor = () => {
+    return this.emoticonsDropdown?.textColor?.() || EMOJI_TEXT_COLOR;
+  };
+
   private createMenu() {
     this.menuWrapper = document.createElement('div');
     this.menuWrapper.classList.add('menu-wrapper', 'emoticons-menu-wrapper', 'emoticons-will-move-up');
@@ -188,7 +192,8 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
         loading,
         onValue: setQuery,
         onFocusChange: setFocused,
-        onGroup: this.groupFetcher ? setGroup : undefined
+        onGroup: this.groupFetcher ? setGroup : undefined,
+        categoryColor: this.textColor
       });
     }, searchContainer);
   }
@@ -466,7 +471,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     set: StickerSet.stickerSet,
     menuTabPadding: HTMLElement,
     middleware: Middleware,
-    textColor?: string
+    textColor?: WrapSomethingOptions['textColor']
   }) {
     wrapStickerSetThumb({
       set,

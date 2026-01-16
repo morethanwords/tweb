@@ -33,3 +33,8 @@ export default function fixEmoji(text: string, entities?: MessageEntity[]) {
 
   return text;
 }
+
+// * convert '❤️' to '❤' for server compatibility
+export function cleanEmoji(emoji: string) {
+  return emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
+}

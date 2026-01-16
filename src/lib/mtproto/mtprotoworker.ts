@@ -18,7 +18,6 @@ import webpWorkerController from '../webp/webpWorkerController';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import sessionStorage from '../sessionStorage';
 import webPushApiManager from './webPushApiManager';
-import appRuntimeManager from '../appManagers/appRuntimeManager';
 import telegramMeWebManager from './telegramMeWebManager';
 import pause from '../../helpers/schedulers/pause';
 import ENVIRONMENT from '../../environment';
@@ -69,6 +68,7 @@ import SlicedArray, {SliceEnd} from '../../helpers/slicedArray';
 import {createHistoryStorageSearchSlicedArray} from '../appManagers/utils/messages/createHistoryStorage';
 import tabId from '../../config/tabId';
 import Modes from '../../config/modes';
+import appNavigationController from '../../components/appNavigationController';
 
 
 export type Mirrors = {
@@ -504,34 +504,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         this.invokeVoid('terminate', undefined), // * terminate mtproto worker
         this.serviceWorkerRegistration?.unregister().catch(noop) // * release storages
       ]).finally(() => {
-        let url = new URL(location.href);
-
-        const currentAccount = getCurrentAccount();
-        if(!accountNumber) {
-          url.hash = '';
-          url.search = '';
-        } else if(currentAccount > accountNumber) {
-          const newAccountNumber = currentAccount - 1;
-          url = createAppURLForAccount(newAccountNumber as ActiveAccountNumber, undefined, true);
-          //
-        } else if(currentAccount === accountNumber) {
-          if(migrateTo) url = createAppURLForAccount(migrateTo);
-          else {
-            url.hash = '';
-            url.search = '';
-          }
-        }
-
-        if(Modes.test) {
-          url.searchParams.set('test', '1');
-        }
-
-        history.replaceState(null, '', url);
-
-        // Make sure managers don't have any obsolete data
-        this.closeMTProtoWorker(); // might be useless because of the above `this.invokeVoid('terminate', undefined)` ⬆️
-
-        appRuntimeManager.reload();
+        this.onLoggedOut(accountNumber, migrateTo);
       });
     });
 
@@ -550,6 +523,37 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.updateTabStateIdle(idleController.isIdle);
 
     // this.sendState();
+  }
+
+  private onLoggedOut(
+    accountNumber?: ActiveAccountNumber,
+    migrateTo?: ActiveAccountNumber
+  ) {
+    let url = new URL(location.href);
+
+    const currentAccount = getCurrentAccount();
+    if(!accountNumber) {
+      url.hash = '';
+      url.search = '';
+    } else if(currentAccount > accountNumber) {
+      const newAccountNumber = currentAccount - 1;
+      url = createAppURLForAccount(newAccountNumber as ActiveAccountNumber, undefined, true);
+    } else if(currentAccount === accountNumber) {
+      if(migrateTo) url = createAppURLForAccount(migrateTo);
+      else {
+        url.hash = '';
+        url.search = '';
+      }
+    }
+
+    if(Modes.test) {
+      url.searchParams.set('test', '1');
+    }
+
+    // Make sure managers don't have any obsolete data
+    this.closeMTProtoWorker(); // might be useless because of the above `this.invokeVoid('terminate', undefined)` ⬆️
+
+    appNavigationController.reload(url);
   }
 
   public onLanguageChange = (language: string) => {

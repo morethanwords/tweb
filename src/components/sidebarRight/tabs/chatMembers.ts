@@ -8,6 +8,7 @@ import deferredPromise from '../../../helpers/cancellablePromise';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import createParticipantContextMenu from '../../../helpers/dom/createParticipantContextMenu';
 import {Chat, ChatFull} from '../../../layer';
+import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
 import addChatUsers from '../../addChatUsers';
 import AppSelectPeers from '../../appSelectPeers';
 import ButtonCorner from '../../buttonCorner';
@@ -48,8 +49,9 @@ export default class AppChatMembersTab extends SliderSuperTabEventable {
     this.container.classList.add('edit-peer-container', 'chat-members-container');
     this.setTitle(isBroadcast ? 'PeerInfo.Subscribers' : 'GroupMembers');
 
+    const canAddMembers = hasRights(chat, 'invite_users');
     this.addBtn = ButtonCorner({icon: 'addmember_filled', className: 'is-visible'});
-    this.content.append(this.addBtn);
+    if(canAddMembers) this.content.append(this.addBtn);
 
     attachClickEvent(this.addBtn, () => {
       addChatUsers({

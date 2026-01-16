@@ -13,6 +13,8 @@ import appImManager from '../../lib/appManagers/appImManager';
 import canEditAdmin from '../../lib/appManagers/utils/chats/canEditAdmin';
 import AppUserPermissionsTab from '../../components/sidebarRight/tabs/userPermissions';
 import {Middleware} from '../middleware';
+import {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
+import {handleMissingInvitees} from '../../components/addChatUsers';
 
 type Participant = ChannelParticipant | ChatParticipant;
 
@@ -40,30 +42,8 @@ export default function createParticipantContextMenu(options: {
     AppUserPermissionsTab.openTab(slider, chatId, participant, isAdmin);
   };
 
-  return createContextMenu({
-    listenTo: listenTo,
-    appendTo,
-    middleware,
-    findElement: (e) => target = findUpClassName(e.target, 'chatlist-chat'),
-    onOpen: async() => {
-      participantPeerId = target.dataset.peerId.toPeerId();
-      participant = participants.get(participantPeerId);
-      [chat, isBroadcast, canChangePermissions, canManageAdmins] = await Promise.all([
-        rootScope.managers.appChatsManager.getChat(chatId) as Promise<typeof chat>,
-        rootScope.managers.appChatsManager.isBroadcast(chatId),
-        rootScope.managers.appChatsManager.hasRights(chatId, 'change_permissions'),
-        rootScope.managers.appChatsManager.hasRights(chatId, 'change_permissions')
-      ]);
-
-      target.classList.add('menu-open');
-      isBanned = canChangePermissions && participant._ === 'channelParticipantBanned' && participant.pFlags.left;
-      return onOpen?.();
-    },
-    onClose: () => {
-      target.classList.remove('menu-open');
-      return onClose?.();
-    },
-    buttons: [{
+  function getButtons(): ButtonMenuItemOptionsVerifiable[] {
+    return [{
       icon: 'message',
       text: 'SendMessage',
       onClick: () => {
@@ -74,7 +54,10 @@ export default function createParticipantContextMenu(options: {
       text: isBroadcast ? 'AddToChannel' : 'AddToGroup',
       onClick: () => {
         if(isBanned) {
-          rootScope.managers.appChatsManager.addToChat(chatId, participantPeerId);
+          rootScope.managers.appChatsManager.addToChat(chatId, participantPeerId)
+          .then((missingInvitees) => {
+            handleMissingInvitees(chatId, missingInvitees);
+          });
         }
       },
       verify: () => {
@@ -133,6 +116,34 @@ export default function createParticipantContextMenu(options: {
         participant._ !== 'channelParticipantCreator' &&
         (participant._ !== 'channelParticipantAdmin' || canEditAdmin(chat, participant, rootScope.myId)) &&
         (participant._ === 'channelParticipant' || !isBanned)
-    }]
+    }];
+  }
+
+  const buttons: ButtonMenuItemOptionsVerifiable[] = [];
+  return createContextMenu({
+    listenTo: listenTo,
+    appendTo,
+    middleware,
+    findElement: (e) => target = findUpClassName(e.target, 'chatlist-chat'),
+    onOpen: async() => {
+      participantPeerId = target.dataset.peerId.toPeerId();
+      participant = participants.get(participantPeerId);
+      [chat, isBroadcast, canChangePermissions, canManageAdmins] = await Promise.all([
+        rootScope.managers.appChatsManager.getChat(chatId) as Promise<typeof chat>,
+        rootScope.managers.appChatsManager.isBroadcast(chatId),
+        rootScope.managers.appChatsManager.hasRights(chatId, 'change_permissions'),
+        rootScope.managers.appChatsManager.hasRights(chatId, 'change_permissions')
+      ]);
+
+      target.classList.add('menu-open');
+      isBanned = canChangePermissions && participant._ === 'channelParticipantBanned' && participant.pFlags.left;
+      buttons.splice(0, Infinity, ...getButtons());
+      return onOpen?.();
+    },
+    onClose: () => {
+      target.classList.remove('menu-open');
+      return onClose?.();
+    },
+    buttons
   });
 }

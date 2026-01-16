@@ -38,6 +38,7 @@ import callbackify from '../../helpers/callbackify';
 import partition from '../../helpers/array/partition';
 import {PAID_REACTION_EMOJI_DOCID} from '../../lib/customEmoji/constants';
 import {StarsStar} from '../popups/stars';
+import {cleanEmoji} from '../../lib/richTextProcessor/fixEmoji';
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
@@ -202,7 +203,11 @@ export class ChatReactionsMenu {
   ) {
     if(availableReactions) {
       this.availableReactions = availableReactions;
-      this.freeCustomEmoji = new Set(this.availableReactions.map((availableReaction) => availableReaction.select_animation.id));
+      this.freeCustomEmoji = new Set(
+        this.availableReactions
+        .map((availableReaction) => availableReaction.select_animation.id)
+        .concat(reactions.map((reaction) => this.reactionToDocId(reaction)))
+      );
     }
 
     const renderPromises = reactions.slice(0, REACTIONS_MAX_LENGTH).map((reaction) => {
@@ -404,7 +409,7 @@ export class ChatReactionsMenu {
         } else {
           reaction = {
             _: 'reactionEmoji',
-            emoticon: emoji.emoji
+            emoticon: cleanEmoji(emoji.emoji) // * heart can be different, like '❤' and '❤️'
           };
         }
 
@@ -423,7 +428,22 @@ export class ChatReactionsMenu {
       searchFetcher: this.isEffects ? async(q) => {
         const availableEffects = await this.managers.appReactionsManager.searchAvailableEffects({q});
         return this.splitAvailableEffects(availableEffects);
-      } : undefined,
+      } : async(q) => {
+        const emojis = await this.managers.appEmojiManager.prepareAndSearchEmojis({q, limit: Infinity, minChars: 1, addCustom: true});
+        return {
+          emojis: emojis.filter((emoji) => {
+            if(!emoji.docId) {
+              if(this.availableReactions) {
+                return this.availableReactions.some((availableReaction) => availableReaction.reaction === emoji.emoji);
+              }
+
+              return false;
+            }
+
+            return true;
+          })
+        };
+      },
       groupFetcher: this.isEffects ? async(emojiGroup) => {
         const availableEffects = await this.managers.appReactionsManager.searchAvailableEffects({emoticon: (emojiGroup as EmojiGroup.emojiGroup).emoticons});
         return this.splitAvailableEffects(availableEffects);

@@ -9,6 +9,7 @@ import type {CustomProperty} from './helpers/dom/customProperties';
 import type Icons from './icons';
 import type {CancellablePromise} from './helpers/cancellablePromise';
 import type Languages from './lib/tinyld/languages';
+import type {ValueOrGetter} from './helpers/solid/readValue';
 
 declare global {
   interface AddEventListenerOptions extends EventListenerOptions {
@@ -55,6 +56,47 @@ declare global {
   interface NotificationOptions {
     actions?: NotificationAction[];
   }
+
+  // * remove these types when navigation api is stable
+
+  interface NavigationEntry {
+    key: string;
+    url: string;
+    getState(): any;
+    sameDocument: boolean;
+    index: number;
+  }
+
+  interface NavigationOptions {
+    state: any;
+    history: 'push' | 'replace';
+  }
+
+  interface NavigationEvent extends Event {
+    navigationType: 'push' | 'replace' | 'reload' | 'traverse';
+    destination: NavigationEntry;
+    sameDocument: boolean;
+    intercept(options?: {
+      handler?: () => void,
+      focusReset?: 'after-transition' | 'manual',
+      scroll?: 'after-transition' | 'manual'
+    }): void;
+    scroll(): void;
+  }
+
+  interface Navigation {
+    entries(): NavigationEntry[];
+    currentEntry: NavigationEntry;
+    navigate(url: string | URL, options: NavigationOptions): void;
+    traverseTo(key: string): void;
+    updateCurrentEntry(options: NavigationEntryOptions): void;
+    addEventListener(type: 'navigate', listener: (event: NavigationEvent) => void): void;
+    back(): void;
+  }
+
+  declare const navigation: Navigation;
+
+  // * until here
 
   // typescript is lack of types
   interface Selection {
@@ -157,7 +199,7 @@ declare global {
     lazyLoadQueue?: LazyLoadQueue | false,
     middleware?: Middleware,
     customEmojiSize?: MediaSize,
-    textColor?: CustomProperty,
+    textColor?: ValueOrGetter<CustomProperty>,
     animationGroup?: AnimationItemGroup,
     managers?: AppManagers
   };

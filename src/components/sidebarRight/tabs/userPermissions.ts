@@ -190,7 +190,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
     if(this.isAdmin) {
       const section = new SettingSection({});
 
-      if(!isCreator && canEditAdmin) {
+      if(!isCreator && _canEditAdmin) {
         const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'deleteuser', text: 'Channel.Admin.Dismiss'});
         attachClickEvent(btnDelete, async() => {
           const toggle = toggleDisability([btnDelete], true);

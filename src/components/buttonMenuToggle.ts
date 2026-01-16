@@ -13,6 +13,7 @@ import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
 import filterAsync from '../helpers/array/filterAsync';
 import {doubleRaf} from '../helpers/schedulers';
 import callbackify from '../helpers/callbackify';
+import findUpClassName from '../helpers/dom/findUpClassName';
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({
@@ -34,6 +35,10 @@ export function ButtonMenuToggleHandler({
     cancelEvent(e);
 
     if(el.classList.contains('menu-open')) {
+      if(e.target && (e.target as HTMLElement).classList.contains('btn-menu')) {
+        return;
+      }
+
       contextMenuController.close();
     } else {
       const result = onOpen?.(e);

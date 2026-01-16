@@ -3309,6 +3309,11 @@
     }
   }
 
+  &.with-reply-markup .service-msg {
+    border-bottom-left-radius: #{$bubble-border-radius-medium};
+    border-bottom-right-radius: #{$bubble-border-radius-medium};
+  }
+
   .reactions-like-block {
     justify-content: center;
   }

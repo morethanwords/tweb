@@ -118,5 +118,10 @@ export default function wrapReply(options: WrapReplyOptions) {
     }
   }
 
+  if(!options.subtitle && !options.message) {
+    replyContainer.container.classList.add('reply-no-subtitle');
+    replyContainer.subtitle.remove();
+  }
+
   return {container: replyContainer.container, fillPromise};
 }

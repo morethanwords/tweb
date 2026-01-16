@@ -953,7 +953,7 @@ export class AppDialogsManager {
 
     const customEmojiRenderers = listEl.querySelectorAll<CustomEmojiRendererElement>('.custom-emoji-renderer');
     customEmojiRenderers.forEach((customEmojiRenderer) => {
-      customEmojiRenderer.textColor = this.getTextColor(active);
+      customEmojiRenderer.setTextColor(this.getTextColor(active));
     });
 
     const dom = (listEl as any).dialogDom as DialogDom;

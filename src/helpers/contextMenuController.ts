@@ -5,6 +5,7 @@
  */
 
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import findUpClassName from './dom/findUpClassName';
 import mediaSizes from './mediaSizes';
 import OverlayClickHandler from './overlayClickHandler';
 import overlayCounter from './overlayCounter';
@@ -93,7 +94,11 @@ class ContextMenuController extends OverlayClickHandler {
     this.additionalMenus = this.additionalMenus.filter((menu) => menu.level < level);
   }
 
-  public close() {
+  public close(e?: MouseEvent | TouchEvent) {
+    if(e && (e.target as HTMLElement).classList.contains('btn-menu')) {
+      return;
+    }
+
     if(this.element) {
       const {parentElement} = this.element;
       this.element.classList.remove('active');

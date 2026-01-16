@@ -17,6 +17,7 @@ import pause from '../../helpers/schedulers/pause';
 import filterUnique from '../../helpers/array/filterUnique';
 import assumeType from '../../helpers/assumeType';
 import {EmojiGroup, EmojiList, MessagesEmojiGroups} from '../../layer';
+import flatten from '../../helpers/array/flatten';
 
 type EmojiLangPack = {
   keywords: {
@@ -214,7 +215,7 @@ export class AppEmojiManager extends AppManager {
     let emojis: Array<string>/* , docIds: Array<DocId> */;
     if(q.trim()) {
       const set = this.index.search(q, minChars);
-      emojis = Array.from(set).reduce((acc, v) => (acc.push(...v), acc), []);
+      emojis = filterUnique(flatten(Array.from(set)));
       emojis.length = Math.min(40, emojis.length);
     } else {
       emojis = this.recent.native.concat(AppEmojiManager.POPULAR_EMOJI).slice(0, RECENT_MAX_LENGTH);
@@ -222,11 +223,17 @@ export class AppEmojiManager extends AppManager {
     }
 
     const appEmojis: AppEmoji[] = [];
+    const foundCustomEmoji: Set<DocId> = new Set();
     const customEmojiIndex = addCustom && this.appStickersManager.getEmojisSearchIndex();
     emojis.forEach((emoji) => {
       if(/* this.rootScope.premium &&  */customEmojiIndex) {
         const customEmojisResult = customEmojiIndex.search(emoji, minChars);
-        const customEmojis = Array.from(customEmojisResult).map((docId) => ({docId, emoji}));
+        const customEmojis = Array.from(customEmojisResult)
+        .filter((docId) => !foundCustomEmoji.has(docId))
+        .map((docId) => {
+          foundCustomEmoji.add(docId);
+          return {docId, emoji};
+        });
         appEmojis.push(...customEmojis);
       }
 

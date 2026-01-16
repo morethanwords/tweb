@@ -48,12 +48,12 @@ import replaceChildrenPolyfill from './helpers/dom/replaceChildrenPolyfill';
 import listenForWindowPrint from './helpers/dom/windowPrint';
 import cancelImageEvents from './helpers/dom/cancelImageEvents';
 import PopupElement from './components/popups';
-import appRuntimeManager from './lib/appManagers/appRuntimeManager';
 import PasscodeLockScreenController from './components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
 import type {LangPackDifference} from './layer';
 import commonStateStorage from './lib/commonStateStorage';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './components/sidebarLeft/constants';
 import useHasFoldersSidebar, {useIsSidebarCollapsed} from './stores/foldersSidebar';
+import appNavigationController from './components/appNavigationController';
 
 // import commonStateStorage from './lib/commonStateStorage';
 // import { STATE_INIT } from './config/state';
@@ -91,6 +91,25 @@ function randomlyChooseVersionFromSearch() {
         location.href = 'https://web.telegram.org/a/';
       } else {
         localStorage.setItem('kz_version', 'K');
+      }
+    }
+  } catch(err) {}
+}
+
+async function checkLastActiveAccountFromTMe() {
+  try {
+    if(
+      App.isMainDomain &&
+      document.referrer &&
+      /^(t|telegram)\.me/i.test(new URL(document.referrer).host)
+    ) {
+      const [totalAccounts, {accountNumber}] = await Promise.all([
+        AccountController.getUnencryptedTotalAccounts(),
+        sessionStorage.get('xt_instance')
+      ]);
+
+      if(accountNumber <= totalAccounts && accountNumber !== getCurrentAccount()) {
+        changeAccount(accountNumber, false, true);
       }
     }
   } catch(err) {}
@@ -271,7 +290,7 @@ function setRootClasses() {
 
 function onInstanceDeactivated(reason: InstanceDeactivateReason) {
   const onVersionClick = () => {
-    appRuntimeManager.reload();
+    appNavigationController.reload();
   };
 
   const onTabsClick = () => {
@@ -365,6 +384,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
   listenForWindowPrint();
   cancelImageEvents();
   setRootClasses();
+  await checkLastActiveAccountFromTMe();
 
   if(IS_INSTALL_PROMPT_SUPPORTED) {
     cacheInstallPrompt();

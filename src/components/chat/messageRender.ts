@@ -423,6 +423,8 @@ export namespace MessageRender {
           plainText: false,
           fromName: getFwdFromName(replyTo.reply_from)
         }).element;
+      } else if(replyTo.reply_to_msg_deleted) {
+        originalPeerTitle = i18n('DeletedMessage');
       } else {
         // needUpdate.push(forUpdate = {replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid, peerId: message.peerId});
         rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);

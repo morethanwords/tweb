@@ -506,11 +506,12 @@ PopupElement.Button = (props: {
 };
 
 PopupElement.Buttons = (props: {
+  class?: string
   children?: JSX.Element
 }) => {
   const context = useContext(PopupContext);
   return context.register('buttons', (
-    <div class="popup-buttons">
+    <div class={classNames('popup-buttons', props.class)}>
       {props.children}
     </div>
   ));

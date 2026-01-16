@@ -150,8 +150,7 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
     this.isLocked = false;
     if(this.savedHash) {
       // window.location.hash = this.savedHash;
-      appNavigationController.overrideHash(this.savedHash)
-      appNavigationController.replaceState();
+      appNavigationController.overrideHash(this.savedHash, true);
     }
 
     if(element) (async() => {

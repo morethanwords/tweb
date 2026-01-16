@@ -10,7 +10,7 @@ import {logger} from '../lib/logger';
 import blurActiveElement from '../helpers/dom/blurActiveElement';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import isSwipingBackSafari from '../helpers/dom/isSwipingBackSafari';
-import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
+import tabId from '../config/tabId';
 
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' |
@@ -22,9 +22,12 @@ export type NavigationItem = {
   onEscape?: () => boolean,
   noHistory?: boolean,
   noBlurOnPop?: boolean,
+  removed?: boolean,
+  context?: any
 };
 
-const USE_NAVIGATION_API = 'navigation' in window;
+export const USE_NAVIGATION_API = 'navigation' in window && true;
+const TRY_TO_TRAVERSE = USE_NAVIGATION_API && true; // * not tested for legacy api
 
 export class AppNavigationController {
   private navigations: Array<NavigationItem>;
@@ -36,27 +39,84 @@ export class AppNavigationController {
   private overriddenHash: string; // have to start with # if not empty
   private isPossibleSwipe: boolean;
   private escapeHandlers: Array<() => boolean> = [];
+  private ignoreNextNavigations: string[];
+  private popping: boolean;
+  private modificationQueue: Array<() => void>;
+  private modificationBusy: boolean;
+  private modificationResolve: () => void;
   public onHashChange: () => void;
 
   constructor() {
     this.navigations = [];
-    this.id = Date.now();
+    this.id = tabId;
     this.manual = false;
     this.log = logger('NC');
     this.debug = true;
     this.currentHash = window.location.hash;
     this.overriddenHash = '';
     this.isPossibleSwipe = false;
+    this.ignoreNextNavigations = [];
+    this.popping = false;
+    this.modificationQueue = [];
+    this.modificationBusy = false;
 
     // * push init state
-    if(USE_NAVIGATION_API) {
-      this.debug && this.log('push');
-      const url = location.origin + location.pathname + location.search + location.hash;
-      history.pushState(this.id, '', url);
-    }
+    // if(USE_NAVIGATION_API) {
+    //   this.debug && this.log('push');
+    //   history.pushState(this.id, '', new URL(location.href));
+    // }
 
-    // @ts-ignore
-    if(USE_NAVIGATION_API) (navigation as any).addEventListener('navigate', (event) => {
+    if(USE_NAVIGATION_API) navigation.addEventListener('navigate', (event) => {
+      this.modificationResolve?.();
+      const log = this.log.bindPrefix('navigate');
+      // debugger;
+      log(event, navigation.currentEntry);
+
+      const fixHashIfNeeded = () => {
+        const destinationHash = new URL(event.destination.url).hash;
+        if(
+          event.navigationType === 'traverse' &&
+          destinationHash !== this.currentHash
+        ) {
+          this.modifyHistoryFromEvent(() => { // * fix hash
+            log('will fix hash', destinationHash, this.currentHash);
+            this.replaceState();
+          });
+        }
+      };
+
+      if(event.destination.index > navigation.currentEntry.index) {
+        log('ignoring forward navigation');
+        cancelEvent(event);
+        event.intercept();
+        fixHashIfNeeded();
+        return;
+      }
+
+      if(event.navigationType === this.ignoreNextNavigations[0]) {
+        log('ignoring event', event.navigationType);
+        this.ignoreNextNavigations.shift();
+        fixHashIfNeeded();
+        return;
+      }
+
+      if(
+        (
+          event.navigationType === 'push' ||
+          (event.navigationType === 'replace' && !event.destination.sameDocument)
+        ) &&
+        event.destination.getState() === this.id
+      ) {
+        event.intercept({
+          handler: () => {
+            log('push-like intercepted');
+          },
+          focusReset: 'manual', // * prevent losing focus
+          scroll: 'manual'
+        });
+        return;
+      }
+
       if(
         event.navigationType === 'reload' ||
         event.navigationType === 'replace' ||
@@ -65,17 +125,32 @@ export class AppNavigationController {
         return;
       }
 
-      this.debug && this.log('navigate', event);
-      cancelEvent(event);
       const url = new URL(event.destination.url);
 
       if(event.navigationType === 'push') {
         this.overrideHash(url.hash);
-        this.onHashChange && this.onHashChange();
+        this.onHashChange?.();
         return;
       }
 
-      this._onPopState(url.hash, 0);
+      let hash = url.hash;
+      // * don't set old hash if we're going back
+      if(event.destination.index < navigation.currentEntry.index) {
+        hash = this.currentHash;
+        fixHashIfNeeded();
+      }
+      this._onPopState(hash, 0);
+
+      // ! commented because it will still require a click after every back
+      // this.modifyHistoryFromEvent(() => {
+      //   const entries = navigation.entries().filter((entry) => entry.getState() === this.id);
+      //   const currentEntryIndex = entries.findIndex((entry) => entry.key === navigation.currentEntry.key);
+      //   log('entries', entries, currentEntryIndex);
+      //   if(currentEntryIndex < 1) {
+      //     log('push state because no entry left with this id');
+      //     this.pushState();
+      //   }
+      // });
     });
 
     if(!USE_NAVIGATION_API) window.addEventListener('popstate', this.onPopState);
@@ -89,7 +164,7 @@ export class AppNavigationController {
     history.scrollRestoration = 'manual';
 
     // * push init state
-    if(!USE_NAVIGATION_API) {
+    if(!USE_NAVIGATION_API/*  || true */) {
       this.pushState();
     }
   }
@@ -104,12 +179,12 @@ export class AppNavigationController {
       this.debug && this.log.warn(`hash changed, new=${hash}, current=${this.currentHash}, overridden=${this.overriddenHash}`);
       // fix for returning to wrong hash (e.g. chat -> archive -> chat -> 3x back)
       if((USE_NAVIGATION_API || id === this.id) && this.overriddenHash && this.overriddenHash !== hash) {
-        this.overrideHash(this.overriddenHash);
+        this.overrideHash(this.overriddenHash, true);
       } else if(id/*  === this.id */ && !this.overriddenHash && hash) {
-        this.overrideHash();
+        this.overrideHash(undefined, true);
       } else {
         this.currentHash = hash;
-        this.onHashChange && this.onHashChange();
+        this.onHashChange?.();
         // this.replaceState();
         return;
       }
@@ -130,7 +205,9 @@ export class AppNavigationController {
     }
 
     this.manual = !this.isPossibleSwipe;
+    this.popping = true;
     this.handleItem(item, this.navigations.length);
+    this.popping = false;
     // this.pushState(); // * prevent adding forward arrow
   }
 
@@ -192,17 +269,20 @@ export class AppNavigationController {
     window.addEventListener('touchmove', onTouchMove, options); */
   };
 
-  public overrideHash(hash: string = '') {
+  public overrideHash(hash: string = '', forceReplace?: boolean) {
+    // return;
     if(hash && hash[0] !== '#') hash = '#' + hash;
     else if(hash === '#') hash = '';
 
-    if(this.currentHash === hash) {
+    if(this.currentHash === hash && !forceReplace) {
       return;
     }
 
     this.overriddenHash = this.currentHash = hash;
-    this.replaceState();
-    this.pushState();
+    this.modifyHistoryFromEvent(() => {
+      this.replaceState();
+    });
+    // this.pushState();
   }
 
   private handleItem(item: NavigationItem, wasIndex = this.navigations.indexOf(item)) {
@@ -214,7 +294,39 @@ export class AppNavigationController {
       blurActiveElement(); // no better place for it
     }
 
+    if(good !== false) {
+      this.onItemDeleted(item);
+    }
+
     this.manual = false;
+  }
+
+  private onItemDeleted(item: NavigationItem) {
+    if(item.removed) {
+      return;
+    }
+
+    this.log.warn('onItemDeleted', item);
+    if(TRY_TO_TRAVERSE && !item.noHistory && !this.popping) {
+      // * have to have this timeout,
+      // * otherwise browser will eat the event if you do push and back together
+      this.modifyHistoryFromEvent(() => {
+        this.log('onItemDeleted: back');
+        this.ignoreNextNavigations.unshift('traverse');
+        if(USE_NAVIGATION_API) {
+          navigation.back();
+          // const entries = navigation.entries().reverse().filter((entry) => entry.getState() === this.id);
+          // const currentEntryIndex = entries.findIndex((entry) => entry.key === navigation.currentEntry.key);
+          // if(currentEntryIndex !== -1) entries.splice(0, currentEntryIndex);
+          // // navigation.traverseTo((entries[1] || entries[0]).key);
+          // navigation.traverseTo(entries[currentEntryIndex === 0 ? 1 : 0].key);
+        } else {
+          history.back();
+        }
+      });
+    }
+
+    item.removed = true;
   }
 
   public findItemByType(type: NavigationItem['type']) {
@@ -246,7 +358,7 @@ export class AppNavigationController {
     this.manual = true;
     // ! commented because 'popstate' event will be fired with delay
     // if(index !== (this.navigations.length - 1)) {
-    this.navigations.splice(index, 1);
+    this.spliceItems(index, 1);
     this.handleItem(item, index);
     // }
   }
@@ -254,8 +366,13 @@ export class AppNavigationController {
   private onItemAdded(item: NavigationItem) {
     this.debug && this.log('onItemAdded', item, this.navigations);
 
+    delete item.removed;
+
     if(!item.noHistory) {
-      this.pushState();
+      this.modifyHistoryFromEvent(() => {
+        this.log('onItemAdded: push');
+        this.pushState();
+      });
     }
   }
 
@@ -270,43 +387,55 @@ export class AppNavigationController {
   }
 
   public spliceItems(index: number, length: number, ...items: NavigationItem[]) {
-    this.navigations.splice(index, length, ...items);
+    const deleted = this.navigations.splice(index, length, ...items);
+    deleted.forEach((item) => {
+      this.onItemDeleted(item);
+    });
     items.forEach((item) => {
       this.onItemAdded(item);
     });
   }
 
   public pushState() {
-    this.debug && this.log('push');
+    this.debug && this.log.warn('push');
     this.manual = false;
 
     if(USE_NAVIGATION_API) {
-      history.replaceState(this.id, '');
+      navigation.navigate(location.href, {state: this.id, history: 'push'});
     } else {
       history.pushState(this.id, '');
     }
   }
 
-  public replaceState() {
+  public replaceState(url?: URL) {
     this.debug && this.log.warn('replace');
 
-    const url = location.origin + location.pathname + location.search + this.overriddenHash;
-    history.replaceState(this.id, '', url);
+    if(!url) {
+      url = new URL(location.href);
+      url.hash = this.overriddenHash;
+    }
+
+    if(USE_NAVIGATION_API) {
+      navigation.navigate(url/* url.hash || '#' */, {state: this.id, history: 'replace'});
+    } else {
+      history.replaceState(this.id, '', url);
+    }
   }
 
   public removeItem(item: NavigationItem) {
-    if(!item) {
+    const index = this.navigations.indexOf(item);
+    if(index === -1) {
       return;
     }
 
-    indexOfAndSplice(this.navigations, item);
+    this.spliceItems(index, 1);
   }
 
   public removeByType(type: NavigationItem['type'], single = false) {
     for(let i = this.navigations.length - 1; i >= 0; --i) {
       const item = this.navigations[i];
       if(item.type === type) {
-        this.navigations.splice(i, 1);
+        this.spliceItems(i, 1);
 
         if(single) {
           break;
@@ -325,6 +454,71 @@ export class AppNavigationController {
     return () => {
       this.escapeHandlers = this.escapeHandlers.filter((fn) => fn !== handler);
     };
+  }
+
+  private modifyHistoryFromEvent(callback?: () => void) {
+    if(!USE_NAVIGATION_API) {
+      callback?.();
+      return;
+    }
+
+    if(callback) {
+      this.modificationQueue.push(callback);
+    }
+
+    if(this.modificationBusy) return;
+    this.modificationBusy = true;
+    setTimeout(() => {
+      const callback = this.modificationQueue.shift();
+      if(!callback) {
+        return;
+      }
+
+      this.modificationResolve = () => {
+        this.modificationResolve = undefined;
+        this.modificationBusy = false;
+        if(this.modificationQueue.length) {
+          this.modifyHistoryFromEvent();
+        }
+      };
+      callback();
+    }, 0);
+  }
+
+  public getNextIndex() {
+    return this.navigations.length;
+  }
+
+  public findItem(predicate: (item: NavigationItem) => boolean) {
+    const index = this.navigations.findIndex(predicate);
+    return index === -1 ? undefined : {index, item: this.navigations[index]};
+  }
+
+  public reload(urlOrRemoveHash?: boolean | URL) {
+    this.spliceItems(0, Infinity); // * clear the stack
+    if(typeof(urlOrRemoveHash) === 'boolean') {
+      urlOrRemoveHash && this.overrideHash();
+    } else {
+      this.modifyHistoryFromEvent(() => {
+        this.replaceState(urlOrRemoveHash);
+      });
+    }
+    this.modifyHistoryFromEvent(() => {
+      location.reload();
+    });
+  }
+
+  public close() {
+    try {
+      window.close();
+    } catch(e) {}
+  }
+
+  /**
+   * Better to call from event
+   */
+  public focus() {
+    window.focus();
   }
 }
 

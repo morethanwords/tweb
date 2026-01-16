@@ -26,6 +26,7 @@ import {AnimatedCounter} from '../animatedCounter';
 import {createStarGiftUpgradePricePopup} from './starGiftUpgradePrice';
 import PopupStarGiftInfo from './starGiftInfo';
 import {subscribeOn} from '../../helpers/solid/subscribeOn';
+import {createCurrentTime} from '../../helpers/solid/createCurrentTime';
 
 export default async function createStarGiftUpgradePopup(props: {
   gift: MyStarGift,
@@ -106,10 +107,11 @@ export default async function createStarGiftUpgradePopup(props: {
     return upgradePromise;
   }
 
-  const [now, setNow] = createSignal(tsNow(true))
+  const now = createCurrentTime({
+    fn: () => tsNow(true),
+    updateInterval: 1000
+  })
   const [nextPrices, setNextPrices] = createSignal(preview.next_prices)
-  // todo if freeUpgrade
-  const interval = setInterval(() => setNow(tsNow(true)), 1000)
 
   const currentPriceIdx = createMemo(() => {
     const now$ = now()
@@ -139,7 +141,6 @@ export default async function createStarGiftUpgradePopup(props: {
 
   createPopup(() => {
     const middleware = createMiddleware()
-    onCleanup(() => clearInterval(interval))
 
     createEffect(() => {
       const model$ = model();
