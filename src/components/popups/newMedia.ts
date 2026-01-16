@@ -129,7 +129,7 @@ export default class PopupNewMedia extends PopupElement {
   ) {
     super('popup-send-photo popup-new-media', {
       closable: true,
-      withConfirm: 'Modal.Send',
+      withConfirm: getDefaultSendBtnLangKey({isEditing: !!chat.input.editMessage}),
       confirmShortcutIsSendShortcut: true,
       body: true,
       title: true,
@@ -193,7 +193,7 @@ export default class PopupNewMedia extends PopupElement {
         onClick: () => {
           this.chat.input.onAttachClick(false, false, false);
         },
-        verify: () => !this.isSuggestingPost() && !this.chat.input.editMsgId
+        verify: () => this.canHaveMultipleFiles()
       }, {
         icon: 'image',
         text: 'Popup.Attach.AsMedia',
@@ -231,12 +231,12 @@ export default class PopupNewMedia extends PopupElement {
         icon: 'groupmedia',
         text: 'Popup.Attach.GroupMedia',
         onClick: () => this.changeGroup(true),
-        verify: () => !this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif() && !this.isSuggestingPost()
+        verify: () => !this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif() && this.canHaveMultipleFiles()
       }, {
         icon: 'groupmediaoff',
         text: 'Popup.Attach.UngroupMedia',
         onClick: () => this.changeGroup(false),
-        verify: () => this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif() && !this.isSuggestingPost()
+        verify: () => this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif() && this.canHaveMultipleFiles()
       }, {
         icon: 'mediaspoiler',
         text: 'EnablePhotoSpoiler',
@@ -336,6 +336,10 @@ export default class PopupNewMedia extends PopupElement {
         this.messageInputField.setValueSilently(wrappedDraft);
         this.chat.input.messageInputField.value = '';
       }
+    }
+
+    if(this.chat.input.editMessage) {
+      this.willAttach.invertMedia = this.chat.input.editMessage.pFlags?.invert_media;
     }
 
     this.container.append(inputContainer);
@@ -653,8 +657,15 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   public addFiles(files: File[]) {
-    if(this.isSuggestingPost() && this.files.length) return;
-    if(this.isSuggestingPost()) files.splice(1);
+    if(!this.canHaveMultipleFiles() && this.files.length) {
+      if(files.length) {
+        this.files.splice(0, Infinity, files[0]);
+        this.attachFiles();
+      }
+      return;
+    }
+
+    if(!this.canHaveMultipleFiles()) files.splice(1);
 
     const toPush = files.filter((file) => {
       const found = this.files.find((_file) => {
@@ -702,12 +713,13 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    const isSlowModeActive = await this.chat.input.showSlowModeTooltipIfNeeded({
+    const isSlowModeActive = () => this.chat.input.showSlowModeTooltipIfNeeded({
       sendingFew: this.messagesCount() > 1,
       container: this.btnConfirm.parentElement,
       element: this.btnConfirm
     });
-    if(isSlowModeActive) {
+
+    if(!this.isEditing() && await isSlowModeActive()) {
       return;
     }
 
@@ -838,7 +850,7 @@ export default class PopupNewMedia extends PopupElement {
           text: caption,
           options: {
             entities,
-            invertMedia: sendingParams.invertMedia,
+            invertMedia: willAttach.invertMedia,
             scheduleDate: sendingParams.scheduleDate,
             isMedia
           },
@@ -1353,7 +1365,7 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private updateConfirmBtnContent(stars: number): void {
-    if(!stars) return void replaceContent(this.btnConfirm, i18n('Modal.Send'));
+    if(!stars) return void replaceContent(this.btnConfirm, i18n(getDefaultSendBtnLangKey({isEditing: this.isEditing()})));
 
     const span = document.createElement('span');
     span.classList.add('popup-confirm-btn-inner');
@@ -1549,6 +1561,14 @@ export default class PopupNewMedia extends PopupElement {
     return !!this.chat?.input?.suggestedPost;
   }
 
+  private isEditing() {
+    return !!this.chat?.input?.editMessage;
+  }
+
+  private canHaveMultipleFiles() {
+    return !this.isEditing() && !this.isSuggestingPost();
+  }
+
   private canShowActionsForBcr(bcr: DOMRect) {
     const scrollableBcr = this.scrollable.container.getBoundingClientRect();
     const approximateCenterY = bcr.bottom - 20;
@@ -1597,5 +1617,17 @@ export default class PopupNewMedia extends PopupElement {
     this.hideActiveActionsMenu();
   }
 }
+
+type GetDefaultSendBtnLangKeyArgs = {
+  isEditing: boolean;
+};
+
+function getDefaultSendBtnLangKey({isEditing}: GetDefaultSendBtnLangKeyArgs) {
+  if(isEditing) {
+    return 'Edit';
+  }
+  return 'Modal.Send';
+}
+
 
 (window as any).PopupNewMedia = PopupNewMedia;

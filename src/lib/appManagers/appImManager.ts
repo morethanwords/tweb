@@ -132,6 +132,7 @@ import IS_WEB_APP_BROWSER_SUPPORTED from '../../environment/webAppBrowserSupport
 import ChatAudio from '../../components/chat/audio';
 import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
 import {MyMessage} from './appMessagesManager';
+import {canUploadAsWhenEditing} from '../../components/chat/utils';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import {usePeer} from '../../stores/peers';
 import {untrack} from 'solid-js';
@@ -2002,7 +2003,10 @@ export class AppImManager extends EventListenerBase<{
             }));
           }
         } else {
-          if(foundDocuments.length || force) {
+          const canDragMediaWhenEditing = canUploadAsWhenEditing({message: this.chat.input?.editMessage, asWhat: 'media'});
+          const canDragDocumentWhenEditing = canUploadAsWhenEditing({message: this.chat.input?.editMessage, asWhat: 'document'});
+
+          if(canDragDocumentWhenEditing && (foundDocuments.length || force)) {
             _drops.push(new ChatDragAndDrop(_dropsContainer, {
               icon: 'dragfiles',
               header: 'Chat.DropTitle',
@@ -2015,7 +2019,8 @@ export class AppImManager extends EventListenerBase<{
             }));
           }
 
-          if(foundMedia.length || force) {
+
+          if(canDragMediaWhenEditing && (foundMedia.length || force)) {
             _drops.push(new ChatDragAndDrop(_dropsContainer, {
               icon: 'dragmedia',
               header: 'Chat.DropTitle',
@@ -2096,7 +2101,7 @@ export class AppImManager extends EventListenerBase<{
     const chat = this.chat;
     const peerId = chat?.peerId;
     const good = !(!peerId || overlayCounter.isOverlayActive || !(await chat.canSend('send_media')));
-    if(good) {
+    if(good && !chat.input?.editMessage) {
       if(await this.chat.input.showSlowModeTooltipIfNeeded({
         element: this.chat.input.attachMenu
       })) {
@@ -2133,7 +2138,8 @@ export class AppImManager extends EventListenerBase<{
       const chatInput = this.chat.input;
       if(!chatInput.canPaste()) return;
 
-      chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) ? 'media' : 'document');
+      const canUploadAsMedia = !chatInput.editMessage || canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'media'});
+      chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) && canUploadAsMedia ? 'media' : 'document');
       PopupElement.createPopup(PopupNewMedia, this.chat, files, chatInput.willAttachType);
     }
   };
