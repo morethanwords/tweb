@@ -92,7 +92,8 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
       AppUserPermissionsTab.openTab(this.slider, chatId, participant, true);
     };
 
-    const canToggleAntiSpam = !isBroadcast && (chat as Chat.chat | Chat.channel).participants_count >= appConfig.telegram_antispam_group_size_min;
+    const canSeeAntiSpam = !isBroadcast &&
+      (chat as Chat.chat | Chat.channel).participants_count >= appConfig.telegram_antispam_group_size_min;
 
     const {selector, loadPromise} = createSelectorForParticipants({
       appendTo: this.content,
@@ -126,11 +127,13 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
 
     this.selector = selector;
 
-    if(canToggleAntiSpam) {
+    if(canSeeAntiSpam) {
       const section = new SettingSection({
         noDelimiter: true,
         caption: 'ChannelAntiSpamInfo'
       });
+
+      const canToggleAntiSpam = hasRights(chat, 'delete_messages');
 
       const checked = !!(chatFull as ChatFull.channelFull)?.pFlags?.antispam;
       const row = new Row({
@@ -140,10 +143,13 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
           name: 'agg',
           toggle: true,
           listenerSetter: this.listenerSetter,
-          checked
+          checked,
+          disabled: !canToggleAntiSpam
         }),
         listenerSetter: this.listenerSetter
       });
+
+      if(!canToggleAntiSpam) row.toggleDisability(canToggleAntiSpam);
 
       this.eventListener.addEventListener('destroy', () => {
         const _checked = row.checkboxField.checked;
