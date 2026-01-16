@@ -32,7 +32,7 @@ import tsNow from '../../helpers/tsNow';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '../../environment/userAgent';
 import I18n, {FormatterArguments, i18n, join, LangPackKey} from '../../lib/langPack';
-import {createAutoDeleteIcon, generateTail} from './utils';
+import {AttachedMediaType, canUploadAsWhenEditing, createAutoDeleteIcon, generateTail} from './utils';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import ButtonCorner from '../buttonCorner';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -271,7 +271,7 @@ export default class ChatInput {
   private helperWaitingForward: boolean;
   private helperWaitingReply: boolean;
 
-  public willAttachType: 'document' | 'media';
+  public willAttachType: AttachedMediaType;
 
   private autocompleteHelperController: AutocompleteHelperController;
   private stickersHelper: StickersHelper;
@@ -1008,7 +1008,8 @@ export default class ChatInput {
     this.attachMenuButtons = [{
       icon: 'image',
       text: 'Chat.Input.Attach.PhotoOrVideo',
-      onClick: () => this.onAttachClick(false, true, true)
+      onClick: () => this.onAttachClick(false, true, true),
+      verify: () => canUploadAsWhenEditing({asWhat: 'media', message: this.editMessage})
       // verify: () => getSendMediaRights().then(({photos, videos}) => photos && videos)
     }, /* {
       icon: 'image',
@@ -1023,7 +1024,8 @@ export default class ChatInput {
     }, */ {
       icon: 'document',
       text: 'Chat.Input.Attach.Document',
-      onClick: () => this.onAttachClick(true)
+      onClick: () => this.onAttachClick(true),
+      verify: () => canUploadAsWhenEditing({asWhat: 'document', message: this.editMessage})
       // verify: () => this.chat.canSend('send_docs')
     }, {
       icon: 'gift',

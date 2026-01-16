@@ -137,6 +137,7 @@ import {getRgbColorFromTelegramColor, rgbIntToHex} from '../../helpers/color';
 import {MyMessage} from './appMessagesManager';
 import showFrozenPopup from '../../components/popups/frozen';
 import showPasskeyPopup from '../../components/popups/passkey';
+import {canUploadAsWhenEditing} from '../../components/chat/utils';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -1996,7 +1997,10 @@ export class AppImManager extends EventListenerBase<{
             }));
           }
         } else {
-          if(foundDocuments.length || force) {
+          const canDragMediaWhenEditing = canUploadAsWhenEditing({message: this.chat.input?.editMessage, asWhat: 'media'});
+          const canDragDocumentWhenEditing = canUploadAsWhenEditing({message: this.chat.input?.editMessage, asWhat: 'document'});
+
+          if(canDragDocumentWhenEditing && (foundDocuments.length || force)) {
             _drops.push(new ChatDragAndDrop(_dropsContainer, {
               icon: 'dragfiles',
               header: 'Chat.DropTitle',
@@ -2009,7 +2013,8 @@ export class AppImManager extends EventListenerBase<{
             }));
           }
 
-          if(foundMedia.length || force) {
+
+          if(canDragMediaWhenEditing && (foundMedia.length || force)) {
             _drops.push(new ChatDragAndDrop(_dropsContainer, {
               icon: 'dragmedia',
               header: 'Chat.DropTitle',
@@ -2127,7 +2132,8 @@ export class AppImManager extends EventListenerBase<{
       const chatInput = this.chat.input;
       if(!chatInput.canPaste()) return;
 
-      chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) ? 'media' : 'document');
+      const canUploadAsMedia = !chatInput.editMessage || canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'media'});
+      chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) && canUploadAsMedia ? 'media' : 'document');
       PopupElement.createPopup(PopupNewMedia, this.chat, files, chatInput.willAttachType);
     }
   };

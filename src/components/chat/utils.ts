@@ -1,6 +1,6 @@
 import {formatFullSentTimeRaw, formatTime} from '../../helpers/date';
 import {DurationType} from '../../helpers/formatDuration';
-import {Message} from '../../layer';
+import {Document, Message} from '../../layer';
 import {AdminLog} from '../../lib/appManagers/appChatsManager';
 import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
@@ -113,3 +113,37 @@ export function createAutoDeleteIcon(period?: number) {
     ],
   );
 }
+
+export type AttachedMediaType = 'document' | 'media';
+
+type CanUploadAsWhenEditingArgs = {
+  asWhat: AttachedMediaType;
+  message: Message.message | null | undefined;
+};
+
+const allowedDocumentTypesAsGroup: Array<Document.document['type']> = ['audio', 'photo', 'pdf'];
+
+export const canUploadAsWhenEditing = ({asWhat, message}: CanUploadAsWhenEditingArgs) => {
+  if(!message || !message.media) return true;
+
+  const isGrouped = !!message.grouped_id;
+  if(!isGrouped) return true;
+
+  const currentMediaType: AttachedMediaType = (() => {
+    if(message.media._ === 'messageMediaDocument') {
+      if(message.media.document?._ !== 'document') return null;
+      if(message.media.document.type === 'video') return 'media';
+      if(message.media.document.type && !allowedDocumentTypesAsGroup.includes(message.media.document.type)) return null;
+
+      return 'document';
+    }
+
+    if(message.media._ === 'messageMediaPhoto') {
+      return 'media';
+    }
+
+    return null;
+  })();
+
+  return currentMediaType === asWhat;
+};
