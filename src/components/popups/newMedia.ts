@@ -193,7 +193,7 @@ export default class PopupNewMedia extends PopupElement {
         onClick: () => {
           this.chat.input.onAttachClick(false, false, false);
         },
-        verify: () => !this.isSuggestingPost() && !this.chat.input.editMsgId
+        verify: () => this.canHaveMultipleFiles()
       }, {
         icon: 'image',
         text: 'Popup.Attach.AsMedia',
@@ -231,12 +231,12 @@ export default class PopupNewMedia extends PopupElement {
         icon: 'groupmedia',
         text: 'Popup.Attach.GroupMedia',
         onClick: () => this.changeGroup(true),
-        verify: () => !this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif() && !this.isSuggestingPost()
+        verify: () => !this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif() && this.canHaveMultipleFiles()
       }, {
         icon: 'groupmediaoff',
         text: 'Popup.Attach.UngroupMedia',
         onClick: () => this.changeGroup(false),
-        verify: () => this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif() && !this.isSuggestingPost()
+        verify: () => this.willAttach.group && this.canGroupSomething() && this.canCheckIfHasGif() && !this.hasGif() && this.canHaveMultipleFiles()
       }, {
         icon: 'mediaspoiler',
         text: 'EnablePhotoSpoiler',
@@ -653,8 +653,8 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   public addFiles(files: File[]) {
-    if(this.isSuggestingPost() && this.files.length) return;
-    if(this.isSuggestingPost()) files.splice(1);
+    if(!this.canHaveMultipleFiles() && this.files.length) return;
+    if(!this.canHaveMultipleFiles()) files.splice(1);
 
     const toPush = files.filter((file) => {
       const found = this.files.find((_file) => {
@@ -1547,6 +1547,14 @@ export default class PopupNewMedia extends PopupElement {
 
   private isSuggestingPost() {
     return !!this.chat?.input?.suggestedPost;
+  }
+
+  private isEditing() {
+    return !!this.chat?.input?.editMessage;
+  }
+
+  private canHaveMultipleFiles() {
+    return !this.isEditing() && !this.isSuggestingPost();
   }
 
   private canShowActionsForBcr(bcr: DOMRect) {
