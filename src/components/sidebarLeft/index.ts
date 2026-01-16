@@ -205,7 +205,7 @@ export class AppSidebarLeft extends SidebarSlider {
         return;
       }
 
-      location.reload();
+      appNavigationController.reload();
     });
 
     sidebarHeader.nextElementSibling.append(this.updateBtn);

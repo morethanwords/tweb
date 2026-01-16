@@ -48,12 +48,12 @@ import replaceChildrenPolyfill from './helpers/dom/replaceChildrenPolyfill';
 import listenForWindowPrint from './helpers/dom/windowPrint';
 import cancelImageEvents from './helpers/dom/cancelImageEvents';
 import PopupElement from './components/popups';
-import appRuntimeManager from './lib/appManagers/appRuntimeManager';
 import PasscodeLockScreenController from './components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
 import type {LangPackDifference} from './layer';
 import commonStateStorage from './lib/commonStateStorage';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from './components/sidebarLeft/constants';
 import useHasFoldersSidebar, {useIsSidebarCollapsed} from './stores/foldersSidebar';
+import appNavigationController from './components/appNavigationController';
 
 // import commonStateStorage from './lib/commonStateStorage';
 // import { STATE_INIT } from './config/state';
@@ -290,7 +290,7 @@ function setRootClasses() {
 
 function onInstanceDeactivated(reason: InstanceDeactivateReason) {
   const onVersionClick = () => {
-    appRuntimeManager.reload();
+    appNavigationController.reload();
   };
 
   const onTabsClick = () => {

@@ -26,7 +26,6 @@ import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import webPushApiManager from '../mtproto/webPushApiManager';
 import rootScope, {BroadcastEvents} from '../rootScope';
 import appImManager from './appImManager';
-import appRuntimeManager from './appRuntimeManager';
 import {getCurrentAccount} from '../accounts/getCurrentAccount';
 import limitSymbols from '../../helpers/string/limitSymbols';
 import apiManagerProxy, {NotificationBuildTaskPayload} from '../mtproto/mtprotoworker';
@@ -44,6 +43,7 @@ import {useAppSettings} from '../../stores/appSettings';
 import {unwrap} from 'solid-js/store';
 import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
 import {createEffect, createRoot, on} from 'solid-js';
+import appNavigationController from '../../components/appNavigationController';
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -720,7 +720,7 @@ export class UiNotificationsManager {
     notification.onclick = () => {
       this.log('notification onclick');
       notification.close();
-      appRuntimeManager.focus();
+      appNavigationController.focus();
       this.clear(pushData.accountNumber);
       data.onclick?.();
     };

@@ -6072,6 +6072,11 @@ export default class ChatBubbles {
             onViewClick: async() => {
               if(action._ === 'messageActionStarGift' && action.upgrade_msg_id) {
                 const upgradeMsg = await this.managers.appMessagesManager.getMessageById(action.upgrade_msg_id);
+                if(!upgradeMsg) {
+                  toastNew({langPackKey: 'MessageNotFound'});
+                  return;
+                }
+
                 const upgradedGift = await this.managers.appGiftsManager.wrapGiftFromMessage(upgradeMsg as Message.messageService);
                 PopupElement.createPopup(PopupStarGiftInfo, {gift: upgradedGift});
               } else {

@@ -18,7 +18,6 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import {logger} from '../logger';
 import I18n, {LangPackKey} from '../langPack';
 import {IS_MOBILE} from '../../environment/userAgent';
-import appRuntimeManager from '../appManagers/appRuntimeManager';
 import copy from '../../helpers/object/copy';
 import singleInstance from './singleInstance';
 import EventListenerBase from '../../helpers/eventListenerBase';
@@ -26,6 +25,7 @@ import getServerMessageId from '../appManagers/utils/messageId/getServerMessageI
 import AccountController from '../accounts/accountController';
 import App from '../../config/app';
 import apiManagerProxy from './mtprotoworker';
+import appNavigationController from '../../components/appNavigationController';
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -205,7 +205,7 @@ export class WebPushApiManager extends EventListenerBase<{
 
     this.serviceMessagePort.addEventListener('pushClick', (payload) => {
       if(singleInstance.deactivatedReason) {
-        appRuntimeManager.reload();
+        appNavigationController.reload();
         return;
       }
 

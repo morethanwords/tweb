@@ -13,13 +13,11 @@ export function changeAccount(
   if(accountNumber === 1) url.searchParams.delete(CURRENT_ACCOUNT_QUERY_PARAM);
   else url.searchParams.set(CURRENT_ACCOUNT_QUERY_PARAM, accountNumber + '');
 
-  let newUrl = url.search ? url.pathname + url.search : url.pathname;
-  if(preserveHash) newUrl += url.hash;
+  if(!preserveHash) url.hash = '';
+
   if(newTab) {
-    window.open(newUrl, '_blank');
+    window.open(url, '_blank');
   } else {
-    appNavigationController.overrideHash();
-    history.replaceState(null, '', newUrl);
-    location.reload();
+    appNavigationController.reload(url);
   }
 }

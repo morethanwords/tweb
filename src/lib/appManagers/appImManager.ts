@@ -78,7 +78,6 @@ import groupCallsController from '../calls/groupCallsController';
 import callsController from '../calls/callsController';
 import getFilesFromEvent from '../../helpers/files/getFilesFromEvent';
 import apiManagerProxy from '../mtproto/mtprotoworker';
-import appRuntimeManager from './appRuntimeManager';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
@@ -463,7 +462,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('toggle_locked', (isLocked) => {
-      if(isLocked) appRuntimeManager.reload(false);
+      if(isLocked) appNavigationController.reload();
     //   (() => {
     //     if(isLocked) {
     //       [

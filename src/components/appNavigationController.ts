@@ -179,9 +179,9 @@ export class AppNavigationController {
       this.debug && this.log.warn(`hash changed, new=${hash}, current=${this.currentHash}, overridden=${this.overriddenHash}`);
       // fix for returning to wrong hash (e.g. chat -> archive -> chat -> 3x back)
       if((USE_NAVIGATION_API || id === this.id) && this.overriddenHash && this.overriddenHash !== hash) {
-        this.modifyHistoryFromEvent(() => this.overrideHash(this.overriddenHash, true));
+        this.overrideHash(this.overriddenHash, true);
       } else if(id/*  === this.id */ && !this.overriddenHash && hash) {
-        this.modifyHistoryFromEvent(() => this.overrideHash(undefined, true));
+        this.overrideHash(undefined, true);
       } else {
         this.currentHash = hash;
         this.onHashChange?.();
@@ -279,7 +279,9 @@ export class AppNavigationController {
     }
 
     this.overriddenHash = this.currentHash = hash;
-    this.replaceState();
+    this.modifyHistoryFromEvent(() => {
+      this.replaceState();
+    });
     // this.pushState();
   }
 
@@ -308,22 +310,20 @@ export class AppNavigationController {
     if(TRY_TO_TRAVERSE && !item.noHistory && !this.popping) {
       // * have to have this timeout,
       // * otherwise browser will eat the event if you do push and back together
-      // this.modifyHistoryFromEvent(() => {
-      this.ignoreNextNavigations.unshift('traverse');
-      if(USE_NAVIGATION_API) {
-        this.modifyHistoryFromEvent(() => {
-          this.log('onItemDeleted: back');
+      this.modifyHistoryFromEvent(() => {
+        this.log('onItemDeleted: back');
+        this.ignoreNextNavigations.unshift('traverse');
+        if(USE_NAVIGATION_API) {
           navigation.back();
           // const entries = navigation.entries().reverse().filter((entry) => entry.getState() === this.id);
           // const currentEntryIndex = entries.findIndex((entry) => entry.key === navigation.currentEntry.key);
           // if(currentEntryIndex !== -1) entries.splice(0, currentEntryIndex);
           // // navigation.traverseTo((entries[1] || entries[0]).key);
           // navigation.traverseTo(entries[currentEntryIndex === 0 ? 1 : 0].key);
-        });
-      } else {
-        history.back();
-      }
-      // });
+        } else {
+          history.back();
+        }
+      });
     }
 
     item.removed = true;
@@ -407,11 +407,14 @@ export class AppNavigationController {
     }
   }
 
-  public replaceState() {
+  public replaceState(url?: URL) {
     this.debug && this.log.warn('replace');
 
-    const url = new URL(location.href);
-    url.hash = this.overriddenHash;
+    if(!url) {
+      url = new URL(location.href);
+      url.hash = this.overriddenHash;
+    }
+
     if(USE_NAVIGATION_API) {
       navigation.navigate(url/* url.hash || '#' */, {state: this.id, history: 'replace'});
     } else {
@@ -489,6 +492,33 @@ export class AppNavigationController {
   public findItem(predicate: (item: NavigationItem) => boolean) {
     const index = this.navigations.findIndex(predicate);
     return index === -1 ? undefined : {index, item: this.navigations[index]};
+  }
+
+  public reload(urlOrRemoveHash?: boolean | URL) {
+    this.spliceItems(0, Infinity); // * clear the stack
+    if(typeof(urlOrRemoveHash) === 'boolean') {
+      urlOrRemoveHash && this.overrideHash();
+    } else {
+      this.modifyHistoryFromEvent(() => {
+        this.replaceState(urlOrRemoveHash);
+      });
+    }
+    this.modifyHistoryFromEvent(() => {
+      location.reload();
+    });
+  }
+
+  public close() {
+    try {
+      window.close();
+    } catch(e) {}
+  }
+
+  /**
+   * Better to call from event
+   */
+  public focus() {
+    window.focus();
   }
 }
 
