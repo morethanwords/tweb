@@ -2090,7 +2090,7 @@ export class AppImManager extends EventListenerBase<{
     const chat = this.chat;
     const peerId = chat?.peerId;
     const good = !(!peerId || overlayCounter.isOverlayActive || !(await chat.canSend('send_media')));
-    if(good) {
+    if(good && !chat.input?.editMessage) {
       if(await this.chat.input.showSlowModeTooltipIfNeeded({
         element: this.chat.input.attachMenu
       })) {

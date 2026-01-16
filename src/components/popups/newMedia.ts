@@ -129,7 +129,7 @@ export default class PopupNewMedia extends PopupElement {
   ) {
     super('popup-send-photo popup-new-media', {
       closable: true,
-      withConfirm: 'Modal.Send',
+      withConfirm: getDefaultSendBtnLangKey({isEditing: !!chat.input.editMessage}),
       confirmShortcutIsSendShortcut: true,
       body: true,
       title: true,
@@ -706,12 +706,13 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    const isSlowModeActive = await this.chat.input.showSlowModeTooltipIfNeeded({
+    const isSlowModeActive = () => this.chat.input.showSlowModeTooltipIfNeeded({
       sendingFew: this.messagesCount() > 1,
       container: this.btnConfirm.parentElement,
       element: this.btnConfirm
     });
-    if(isSlowModeActive) {
+
+    if(!this.isEditing() && await isSlowModeActive()) {
       return;
     }
 
@@ -1357,7 +1358,7 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private updateConfirmBtnContent(stars: number): void {
-    if(!stars) return void replaceContent(this.btnConfirm, i18n('Modal.Send'));
+    if(!stars) return void replaceContent(this.btnConfirm, i18n(getDefaultSendBtnLangKey({isEditing: this.isEditing()})));
 
     const span = document.createElement('span');
     span.classList.add('popup-confirm-btn-inner');
@@ -1609,5 +1610,17 @@ export default class PopupNewMedia extends PopupElement {
     this.hideActiveActionsMenu();
   }
 }
+
+type GetDefaultSendBtnLangKeyArgs = {
+  isEditing: boolean;
+};
+
+function getDefaultSendBtnLangKey({isEditing}: GetDefaultSendBtnLangKeyArgs) {
+  if(isEditing) {
+    return 'Edit';
+  }
+  return 'Modal.Send';
+}
+
 
 (window as any).PopupNewMedia = PopupNewMedia;

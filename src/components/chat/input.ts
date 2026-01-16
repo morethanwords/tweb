@@ -1449,7 +1449,7 @@ export default class ChatInput {
   }
 
   public onAttachClick = async(documents?: boolean, photos?: boolean, videos?: boolean) => {
-    if(await this.showSlowModeTooltipIfNeeded({
+    if(!this.editMessage && await this.showSlowModeTooltipIfNeeded({
       element: this.attachMenu
     })) {
       return;
