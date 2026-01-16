@@ -3867,7 +3867,7 @@ export default class ChatInput {
             noWebPage,
             webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
             webPageOptions: this.webPageOptions,
-            invertMedia: this.willSendWebPage ? this.invertMedia : undefined
+            invertMedia: this.willSendWebPage ? this.invertMedia : this.editMessage?.pFlags?.invert_media
           }
         );
 
