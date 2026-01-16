@@ -93,6 +93,7 @@ import createHistoryStorage, {createHistoryStorageSearchSlicedArray} from './uti
 import {isTempId} from './utils/messages/isTempId';
 import fitSymbols from '../../helpers/string/fitSymbols';
 import isObject from '../../helpers/object/isObject';
+import pickKeys from '../../helpers/object/pickKeys';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -393,6 +394,69 @@ type GenerateTypingBotforumMessageArgs = {
   action: SendMessageAction.sendMessageTextDraftAction;
 };
 
+type SendFileArgs = MessageSendingParams & SendFileDetails & Partial<{
+  isRoundMessage: boolean,
+  isVoiceMessage: boolean,
+  isGroupedItem: boolean,
+  isMedia: boolean,
+
+  groupId: string,
+  caption: string,
+  entities: MessageEntity[],
+  background: boolean,
+  clearDraft: boolean,
+  noSound: boolean,
+
+  waveform: Uint8Array,
+
+  stars: number,
+  groupedMessage: Message.message,
+  useTempMediaId: boolean,
+
+  // ! only for internal use
+  processAfter?: typeof processAfter
+}>;
+
+type MakeDocumentAndMetaForSendingFileArgs = Pick<SendFileArgs,
+  | 'file'
+  | 'strippedBytes'
+  | 'entities'
+  | 'useTempMediaId'
+  | 'isVoiceMessage'
+  | 'width'
+  | 'height'
+  | 'objectURL'
+  | 'waveform'
+  | 'duration'
+  | 'isMedia'
+  | 'isRoundMessage'
+  | 'noSound'
+  | 'thumb'
+> & {
+  mediaTempId: number;
+  isDocument: boolean;
+};
+
+type EditMessageMediaArgs = {
+  message: Message.message;
+  text: string;
+  sendFileDetails: SendFileDetails;
+  options?: Partial<{
+    newMedia: InputMedia;
+    scheduleDate: number;
+    entities: MessageEntity[];
+    isMedia: boolean;
+  }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[0], 'webPage' | 'webPageOptions' | 'noWebPage' | 'invertMedia'>>
+};
+
+type InvokeEditMessageMediaArgs = {
+  message: Message.message;
+  inputMedia: InputMedia;
+  entities?: MessageEntity[];
+  scheduleDate?: number;
+  invertMedia?: boolean;
+};
+
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
 
 export class AppMessagesManager extends AppManager {
@@ -507,6 +571,11 @@ export class AppMessagesManager extends AppManager {
   private repayRequestHandler: RepayRequestHandler;
 
   private typingBotforumMessages: Map<PeerId, Set<string>> = new Map();
+
+  private pendingEditingMessages: Map<number, {
+    mediaTempId: number;
+    originalMessage: Message.message;
+  }> = new Map();
 
   constructor() {
     super();
@@ -743,6 +812,7 @@ export class AppMessagesManager extends AppManager {
     this.references = {};
     this.waitingTranscriptions = new Map();
     this.pendingNewBotforumTopics = {};
+    this.pendingEditingMessages = new Map();
 
     this.dialogsStorage && this.dialogsStorage.clear(init);
     this.filtersStorage && this.filtersStorage.clear(init);
@@ -833,6 +903,290 @@ export class AppMessagesManager extends AppManager {
 
       throw error;
     });
+  }
+
+  public async editMessageMedia({message, text, sendFileDetails, options = {}}: EditMessageMediaArgs) {
+    let {file} = sendFileDetails;
+    const {peerId} = message;
+
+    const isDocument = !(file instanceof File) && !(file instanceof Blob);
+    if(isDocument) {
+      file = this.appDocsManager.getDoc((file as MyDocument).id) || file;
+    }
+
+    let caption = text || '';
+
+    let entities = options.entities || [];
+    if(caption) {
+      [caption, entities] = parseMarkdown(caption, entities);
+    }
+
+    const mediaTempId = this.mediaTempId++;
+
+    const {photo, document, attachType, actionName, fileType, apiFileName, attributes} = this.makeDocumentAndMetaForSendingFile({
+      file,
+      isDocument,
+      mediaTempId,
+      entities,
+      isMedia: options.isMedia,
+      ...pickKeys(sendFileDetails, [
+        'strippedBytes',
+        // 'useTempMediaId',
+        // 'isVoiceMessage',
+        'width',
+        'height',
+        'objectURL',
+        // 'waveform',
+        'duration',
+        // 'isRoundMessage',
+        // 'noSound',
+        'thumb'
+      ])
+    });
+
+    const sentDeferred = deferredPromise<InputMedia>();
+
+    const uploadingFileName = !isDocument ? getFileNameForUpload(file as File | Blob) : undefined;
+    if(uploadingFileName) {
+      this.uploadFilePromises[uploadingFileName] = sentDeferred;
+    }
+
+    const media: MessageMedia = isDocument ? undefined : {
+      _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
+      pFlags: {},
+      // preloader,
+      photo,
+      document
+    };
+
+
+    if(options.invertMedia) {
+      message.pFlags.invert_media = true;
+    }
+
+    message.entities = entities;
+    message.message = caption;
+    message.media = isDocument ? {
+      _: 'messageMediaDocument',
+      pFlags: {},
+      document: file
+    } as MessageMedia.messageMediaDocument : media;
+    message.uploadingFileName = [uploadingFileName];
+
+    let
+      uploaded = false,
+      uploadPromise: ReturnType<ApiFileManager['upload']> = null
+    ;
+
+    const toggleError = (error?: ApiError, repayRequest?: RepayRequest) => {
+      this.onMessagesSendError([message], error, repayRequest);
+      this.rootScope.dispatchEvent('messages_pending');
+    };
+
+    const upload = () => {
+      if(isDocument) {
+        const inputMedia: InputMedia = {
+          _: 'inputMediaDocument',
+          id: getDocumentInput(file as MyDocument),
+          pFlags: {}
+        };
+
+        sentDeferred.resolve(inputMedia);
+      } else if(file instanceof File || file instanceof Blob) {
+        const load = () => {
+          if(!uploaded || message?.error) {
+            uploaded = false;
+
+            uploadPromise = this.apiFileManager.upload({file, fileName: uploadingFileName});
+            uploadPromise.catch((err) => {
+              if(uploaded) {
+                return;
+              }
+
+              this.log('cancelling upload', media);
+
+              this.revertMessageEdit(message.mid);
+              // this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+              sentDeferred.reject(err);
+            });
+
+            uploadPromise.addNotifyListener((progress: Progress) => {
+              /* if(DEBUG) {
+                this.log('upload progress', progress);
+              } */
+
+              const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
+              // if(actionName) {
+              //   this.setTyping(peerId, {_: actionName, progress: percents | 0}, undefined, options.threadId);
+              // }
+              sentDeferred.notifyAll(progress);
+            });
+
+            sentDeferred.notifyAll({done: 0, total: file.size});
+          }
+
+          let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
+          if(attachType === 'video' && sendFileDetails.objectURL && sendFileDetails.thumb?.blob) {
+            thumbUploadPromise = this.uploadThumbAndCover({
+              blob: sendFileDetails.thumb.blob,
+              isCover: !!sendFileDetails.thumb.isCover,
+              peer: this.appPeersManager.getInputPeerById(peerId)
+            });
+          }
+
+          uploadPromise && uploadPromise.then(async(inputFile) => {
+            /* if(DEBUG) {
+              this.log('appMessagesManager: sendFile uploaded:', inputFile);
+            } */
+
+            (inputFile as InputFile.inputFile).name = apiFileName;
+            uploaded = true;
+            let inputMedia: InputMedia;
+            switch(attachType) {
+              case 'photo':
+                inputMedia = {
+                  _: 'inputMediaUploadedPhoto',
+                  file: inputFile,
+                  pFlags: {
+                    spoiler: sendFileDetails.spoiler || undefined
+                  }
+                };
+                break;
+
+              default:
+                inputMedia = {
+                  _: 'inputMediaUploadedDocument',
+                  file: inputFile,
+                  mime_type: fileType,
+                  pFlags: {
+                    force_file: actionName === 'sendMessageUploadDocumentAction' || undefined,
+                    spoiler: sendFileDetails.spoiler || undefined
+                    // nosound_video: options.noSound ? true : undefined
+                  },
+                  attributes
+                };
+            }
+
+            // if(options.stars && !options.isGroupedItem) {
+            //   inputMedia = {
+            //     _: 'inputMediaPaidMedia',
+            //     extended_media: [inputMedia],
+            //     stars_amount: '' + options.stars
+            //   };
+            // }
+
+            if(thumbUploadPromise) {
+              try {
+                const thumbUploadResult = await thumbUploadPromise;
+                assumeType<InputMedia.inputMediaUploadedDocument>(inputMedia);
+
+                inputMedia.thumb = thumbUploadResult.file;
+                inputMedia.video_cover = thumbUploadResult.coverPhoto;
+              } catch(err) {
+                this.log.error('sendFile thumb upload error:', err);
+              }
+            }
+
+            sentDeferred.resolve(inputMedia);
+          }, (error: ApiError) => {
+            toggleError(error);
+          });
+
+          return sentDeferred;
+        };
+
+        load();
+        // if(options.isGroupedItem) {
+        // } else {
+        //   this.sendSmthLazyLoadQueue.push({
+        //     load
+        //   });
+        // }
+      }
+
+      return sentDeferred;
+    };
+
+    upload();
+
+    this.onUpdateEditMessage({
+      _: 'updateEditMessage',
+      message,
+      pts: 0,
+      pts_count: 0
+    });
+
+    // Needs to be after the updateEditMessage event
+    this.pendingEditingMessages.set(message.mid, {
+      originalMessage: structuredClone(message),
+      mediaTempId
+    });
+
+    const inputMedia = await sentDeferred;
+
+    const callInvoke = (message: Message.message) => this.invokeEditMessageMedia({
+      message,
+      inputMedia,
+      entities,
+      scheduleDate: options.scheduleDate,
+      invertMedia: options.invertMedia
+    });
+
+    if(!message.pFlags.is_outgoing) {
+      return callInvoke(message);
+    }
+
+    return this.invokeAfterMessageIsSent(message.mid, 'edit', (message) => {
+      if(message?._ !== 'message') return;
+      return callInvoke(message);
+    });
+  }
+
+  private invokeEditMessageMedia({message, inputMedia, entities, scheduleDate, invertMedia}: InvokeEditMessageMediaArgs) {
+    const sendEntities = this.getInputEntities(entities);
+
+    const schedule_date = scheduleDate || (message.pFlags.is_scheduled ? message.date : undefined);
+    return this.apiManager.invokeApi('messages.editMessage', {
+      peer: this.appPeersManager.getInputPeerById(message.peerId),
+      id: message.id,
+      message: message.message,
+      entities: sendEntities,
+      media: inputMedia,
+      schedule_date,
+      invert_media: invertMedia
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    }, (error: ApiError) => {
+      this.log.error('editMessage error:', error);
+
+      this.revertMessageEdit(message.mid);
+
+      if(error?.type === 'MESSAGE_NOT_MODIFIED') {
+        error.handled = true;
+        return;
+      }
+
+      if(error?.type === 'MESSAGE_EMPTY') {
+        error.handled = true;
+      }
+
+      throw error;
+    }).finally(() => {
+      this.pendingEditingMessages.delete(message.mid);
+    });
+  }
+
+  private revertMessageEdit(mid: number) {
+    const {originalMessage} = this.pendingEditingMessages.get(mid);
+
+    this.onUpdateEditMessage({
+      _: 'updateEditMessage',
+      message: originalMessage,
+      pts: 0,
+      pts_count: 0
+    });
+
+    this.pendingEditingMessages.delete(mid);
   }
 
   public async transcribeAudio(message: Message.message, noPending?: boolean): Promise<MessagesTranscribedAudio> {
@@ -1107,28 +1461,7 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises).then(noop);
   }
 
-  public sendFile(options: MessageSendingParams & SendFileDetails & Partial<{
-    isRoundMessage: boolean,
-    isVoiceMessage: boolean,
-    isGroupedItem: boolean,
-    isMedia: boolean,
-
-    groupId: string,
-    caption: string,
-    entities: MessageEntity[],
-    background: boolean,
-    clearDraft: boolean,
-    noSound: boolean,
-
-    waveform: Uint8Array,
-
-    stars: number,
-    groupedMessage: Message.message,
-    useTempMediaId: boolean,
-
-    // ! only for internal use
-    processAfter?: typeof processAfter
-  }>) {
+  public sendFile(options: SendFileArgs) {
     let file = options.file;
     let {peerId} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
@@ -1143,204 +1476,53 @@ export class AppMessagesManager extends AppManager {
     const hadMessageBefore = !!options.groupedMessage;
     const message = options.groupedMessage || this.generateOutgoingMessage(peerId, options);
 
-    let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
-
-    const fileType = (file as Document.document).mime_type || file.type;
-    const fileName = file instanceof File ? file.name : '';
     let caption = options.caption || '';
-
-    this.log('sendFile', file, fileType);
 
     let entities = options.entities || [];
     if(caption) {
       [caption, entities] = parseMarkdown(caption, entities);
     }
 
-    const attributes: DocumentAttribute[] = [];
-
-    const isPhoto = getEnvironment().IMAGE_MIME_TYPES_SUPPORTED.has(fileType);
-
-    const strippedPhotoSize: PhotoSize.photoStrippedSize = options.strippedBytes && {
-      _: 'photoStrippedSize',
-      bytes: options.strippedBytes,
-      type: 'i'
-    };
-
     const mediaTempId = options.useTempMediaId ? this.mediaTempId++ : message.id;
-    let photo: MyPhoto, document: MyDocument;
 
-    let actionName: Extract<SendMessageAction['_'], 'sendMessageUploadAudioAction' | 'sendMessageUploadDocumentAction' | 'sendMessageUploadPhotoAction' | 'sendMessageUploadVideoAction'>;
-    if(isDocument) { // maybe it's a sticker or gif
-      attachType = 'document';
-      apiFileName = '';
-    } else if(fileType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(fileType) >= 0) {
-      attachType = 'audio';
-      apiFileName = 'audio.' + (fileType.split('/')[1] === 'ogg' ? 'ogg' : 'mp3');
-      actionName = 'sendMessageUploadAudioAction';
+    const documentAndMeta = this.makeDocumentAndMetaForSendingFile({
+      mediaTempId,
+      isDocument,
+      file,
+      entities,
+      ...pickKeys(options, [
+        'strippedBytes',
+        'useTempMediaId',
+        'isVoiceMessage',
+        'width',
+        'height',
+        'objectURL',
+        'waveform',
+        'duration',
+        'isMedia',
+        'isRoundMessage',
+        'noSound',
+        'thumb'
+      ])
+    });
 
-      if(options.isVoiceMessage) {
-        attachType = 'voice';
-        if(message) message.pFlags.media_unread = true;
-      }
+    const {
+      document,
+      apiFileName,
+      actionName,
+      photo,
+      fileType,
+      mediaUnread,
+      attributes
+    } = documentAndMeta;
 
-      const attribute: DocumentAttribute.documentAttributeAudio = {
-        _: 'documentAttributeAudio',
-        pFlags: {
-          voice: options.isVoiceMessage || undefined
-        },
-        waveform: options.waveform,
-        duration: options.duration || undefined
-      };
+    let {
+      attachType
+    } = documentAndMeta;
 
-      attributes.push(attribute);
-    } else if(!options.isMedia) {
-      attachType = 'document';
-      apiFileName = 'document.' + fileType.split('/')[1];
-      actionName = 'sendMessageUploadDocumentAction';
-    } else if(isPhoto) {
-      attachType = 'photo';
-      apiFileName = 'photo.' + fileType.split('/')[1];
-      actionName = 'sendMessageUploadPhotoAction';
+    if(message && mediaUnread) message.pFlags.media_unread = true;
 
-      const photoSize = {
-        _: 'photoSize',
-        w: options.width,
-        h: options.height,
-        type: THUMB_TYPE_FULL,
-        location: null,
-        size: file.size
-      } as PhotoSize.photoSize;
-
-      photo = {
-        _: 'photo',
-        id: mediaTempId,
-        sizes: [photoSize],
-        w: options.width,
-        h: options.height
-      } as any;
-
-      if(strippedPhotoSize) {
-        photo.sizes.unshift(strippedPhotoSize);
-      }
-
-      this.thumbsStorage.setCacheContextURL(
-        photo,
-        photoSize.type,
-        options.objectURL || '',
-        file.size
-      );
-
-      photo = this.appPhotosManager.savePhoto(photo);
-    } else if(getEnvironment().VIDEO_MIME_TYPES_SUPPORTED.has(fileType as VIDEO_MIME_TYPE)) {
-      attachType = 'video';
-      apiFileName = 'video.mp4';
-      actionName = 'sendMessageUploadVideoAction';
-
-      const videoAttribute: DocumentAttribute.documentAttributeVideo = {
-        _: 'documentAttributeVideo',
-        pFlags: {
-          round_message: options.isRoundMessage || undefined,
-          supports_streaming: true
-        },
-        duration: options.duration,
-        w: options.width,
-        h: options.height
-      };
-
-      attributes.push(videoAttribute);
-
-      // * must follow after video attribute
-      if(canVideoBeAnimated(options.noSound, file.size)) {
-        attributes.push({
-          _: 'documentAttributeAnimated'
-        });
-      }
-    } else {
-      attachType = 'document';
-      apiFileName = 'document.' + fileType.split('/')[1];
-      actionName = 'sendMessageUploadDocumentAction';
-    }
-
-    attributes.push({_: 'documentAttributeFilename', file_name: fileName || apiFileName});
-
-    if(
-      (['document', 'video', 'audio', 'voice'] as (typeof attachType)[]).includes(attachType) &&
-      !isDocument
-    ) {
-      const thumbs: PhotoSize[] = [];
-      document = {
-        _: 'document',
-        id: mediaTempId,
-        duration: options.duration,
-        attributes,
-        w: options.width,
-        h: options.height,
-        thumbs,
-        mime_type: fileType,
-        size: file.size
-      } as any;
-
-      if(options.objectURL) {
-        this.thumbsStorage.setCacheContextURL(
-          document,
-          undefined,
-          options.objectURL,
-          file.size
-        );
-      }
-
-      let thumb: PhotoSize.photoSize;
-      if(isPhoto) {
-        attributes.push({
-          _: 'documentAttributeImageSize',
-          w: options.width,
-          h: options.height
-        });
-
-        thumb = {
-          _: 'photoSize',
-          w: options.width,
-          h: options.height,
-          type: THUMB_TYPE_FULL,
-          size: file.size
-        };
-      } else if(attachType === 'video') {
-        if(options.thumb) {
-          thumb = {
-            _: 'photoSize',
-            w: options.thumb.size.width,
-            h: options.thumb.size.height,
-            type: 'local-thumb',
-            size: options.thumb.blob.size
-          };
-
-          this.thumbsStorage.setCacheContextURL(
-            document,
-            thumb.type,
-            options.thumb.url,
-            thumb.size
-          );
-        }
-      }
-
-      if(thumb) {
-        thumbs.push(thumb);
-      }
-
-      if(strippedPhotoSize) {
-        thumbs.unshift(strippedPhotoSize);
-      }
-
-      /* if(thumbs.length) {
-        const thumb = thumbs[0] as PhotoSize.photoSize;
-        const docThumb = appPhotosManager.getDocumentCachedThumb(document.id);
-        docThumb.downloaded = thumb.size;
-        docThumb.url = thumb.url;
-      } */
-
-      document = this.appDocsManager.saveDoc(document);
-    }
-
+    this.log('sendFile', file, fileType);
     this.log('sendFile', attachType, apiFileName, file.type, options);
 
     const sentDeferred = deferredPromise<InputMedia>();
@@ -1652,6 +1834,212 @@ export class AppMessagesManager extends AppManager {
     ret.send = upload;
 
     return ret;
+  }
+
+  private makeDocumentAndMetaForSendingFile(args: MakeDocumentAndMetaForSendingFileArgs) {
+    const {file, isDocument, mediaTempId} = args;
+
+    let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
+    let mediaUnread: boolean;
+
+    const fileType = (file as Document.document).mime_type || file.type;
+    const fileName = file instanceof File ? file.name : '';
+
+    const attributes: DocumentAttribute[] = [];
+
+    const isPhoto = getEnvironment().IMAGE_MIME_TYPES_SUPPORTED.has(fileType);
+
+    const strippedPhotoSize: PhotoSize.photoStrippedSize = args.strippedBytes && {
+      _: 'photoStrippedSize',
+      bytes: args.strippedBytes,
+      type: 'i'
+    };
+
+    let photo: MyPhoto, document: MyDocument;
+
+    let actionName: Extract<SendMessageAction['_'], 'sendMessageUploadAudioAction' | 'sendMessageUploadDocumentAction' | 'sendMessageUploadPhotoAction' | 'sendMessageUploadVideoAction'>;
+
+    if(isDocument) { // maybe it's a sticker or gif
+      attachType = 'document';
+      apiFileName = '';
+    } else if(fileType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(fileType) >= 0) {
+      attachType = 'audio';
+      apiFileName = 'audio.' + (fileType.split('/')[1] === 'ogg' ? 'ogg' : 'mp3');
+      actionName = 'sendMessageUploadAudioAction';
+
+      if(args.isVoiceMessage) {
+        attachType = 'voice';
+        mediaUnread = true;
+      }
+
+      const attribute: DocumentAttribute.documentAttributeAudio = {
+        _: 'documentAttributeAudio',
+        pFlags: {
+          voice: args.isVoiceMessage || undefined
+        },
+        waveform: args.waveform,
+        duration: args.duration || undefined
+      };
+
+      attributes.push(attribute);
+    } else if(!args.isMedia) {
+      attachType = 'document';
+      apiFileName = 'document.' + fileType.split('/')[1];
+      actionName = 'sendMessageUploadDocumentAction';
+    } else if(isPhoto) {
+      attachType = 'photo';
+      apiFileName = 'photo.' + fileType.split('/')[1];
+      actionName = 'sendMessageUploadPhotoAction';
+
+      const photoSize = {
+        _: 'photoSize',
+        w: args.width,
+        h: args.height,
+        type: THUMB_TYPE_FULL,
+        location: null,
+        size: file.size
+      } as PhotoSize.photoSize;
+
+      photo = {
+        _: 'photo',
+        id: mediaTempId,
+        sizes: [photoSize],
+        w: args.width,
+        h: args.height
+      } as any;
+
+      if(strippedPhotoSize) {
+        photo.sizes.unshift(strippedPhotoSize);
+      }
+
+      this.thumbsStorage.setCacheContextURL(
+        photo,
+        photoSize.type,
+        args.objectURL || '',
+        file.size
+      );
+
+      photo = this.appPhotosManager.savePhoto(photo);
+    } else if(getEnvironment().VIDEO_MIME_TYPES_SUPPORTED.has(fileType as VIDEO_MIME_TYPE)) {
+      attachType = 'video';
+      apiFileName = 'video.mp4';
+      actionName = 'sendMessageUploadVideoAction';
+
+      const videoAttribute: DocumentAttribute.documentAttributeVideo = {
+        _: 'documentAttributeVideo',
+        pFlags: {
+          round_message: args.isRoundMessage || undefined,
+          supports_streaming: true
+        },
+        duration: args.duration,
+        w: args.width,
+        h: args.height
+      };
+
+      attributes.push(videoAttribute);
+
+      // * must follow after video attribute
+      if(canVideoBeAnimated(args.noSound, file.size)) {
+        attributes.push({
+          _: 'documentAttributeAnimated'
+        });
+      }
+    } else {
+      attachType = 'document';
+      apiFileName = 'document.' + fileType.split('/')[1];
+      actionName = 'sendMessageUploadDocumentAction';
+    }
+
+    attributes.push({_: 'documentAttributeFilename', file_name: fileName || apiFileName});
+
+    if(
+      (['document', 'video', 'audio', 'voice'] as (typeof attachType)[]).includes(attachType) &&
+      !isDocument
+    ) {
+      const thumbs: PhotoSize[] = [];
+      document = {
+        _: 'document',
+        id: mediaTempId,
+        duration: args.duration,
+        attributes,
+        w: args.width,
+        h: args.height,
+        thumbs,
+        mime_type: fileType,
+        size: file.size
+      } as any;
+
+      if(args.objectURL) {
+        this.thumbsStorage.setCacheContextURL(
+          document,
+          undefined,
+          args.objectURL,
+          file.size
+        );
+      }
+
+      let thumb: PhotoSize.photoSize;
+      if(isPhoto) {
+        attributes.push({
+          _: 'documentAttributeImageSize',
+          w: args.width,
+          h: args.height
+        });
+
+        thumb = {
+          _: 'photoSize',
+          w: args.width,
+          h: args.height,
+          type: THUMB_TYPE_FULL,
+          size: file.size
+        };
+      } else if(attachType === 'video') {
+        if(args.thumb) {
+          thumb = {
+            _: 'photoSize',
+            w: args.thumb.size.width,
+            h: args.thumb.size.height,
+            type: 'local-thumb',
+            size: args.thumb.blob.size
+          };
+
+          this.thumbsStorage.setCacheContextURL(
+            document,
+            thumb.type,
+            args.thumb.url,
+            thumb.size
+          );
+        }
+      }
+
+      if(thumb) {
+        thumbs.push(thumb);
+      }
+
+      if(strippedPhotoSize) {
+        thumbs.unshift(strippedPhotoSize);
+      }
+
+      /* if(thumbs.length) {
+        const thumb = thumbs[0] as PhotoSize.photoSize;
+        const docThumb = appPhotosManager.getDocumentCachedThumb(document.id);
+        docThumb.downloaded = thumb.size;
+        docThumb.url = thumb.url;
+      } */
+
+      document = this.appDocsManager.saveDoc(document);
+    }
+
+    return {
+      document,
+      apiFileName,
+      actionName,
+      attachType,
+      photo,
+      fileType,
+      mediaUnread,
+      attributes
+    };
   }
 
   private async uploadThumbAndCover({blob, isCover, peer}: UploadThumbAndCoverArgs) {
@@ -6985,8 +7373,27 @@ export class AppMessagesManager extends AppManager {
     const newMessage = this.modifyMessage(oldMessage, () => {
       this.saveMessages([message], {storage});
       const newMessage: Message = this.getMessageFromStorage(storage, mid);
+      // if(newMessage?._ === 'message' && oldMessage?._ === 'message' && oldMessage.uploadingFileName) {
+      //   newMessage.uploadingFileName = [...oldMessage.uploadingFileName];
+      // }
+
+
       return newMessage;
     }, false, true);
+
+    if(this.pendingEditingMessages.get(mid)) {
+      const {mediaTempId} = this.pendingEditingMessages.get(mid);
+      if(message._ === 'message') {
+        if(message.media?._ === 'messageMediaPhoto' && message.media.photo?._ === 'photo') {
+          this.updatePhoto(message.media.photo, '' + mediaTempId);
+        } else if(message.media?._ === 'messageMediaDocument' && message.media.document?._ === 'document') {
+          console.log('my-debug here')
+          this.updateDocument(message.media.document, mediaTempId);
+        }
+      }
+
+      this.pendingEditingMessages.delete(mid);
+    }
 
     this.handleEditedMessage(oldMessage, newMessage, storage);
 
@@ -7933,47 +8340,10 @@ export class AppMessagesManager extends AppManager {
       const {photo: newPhoto, document: newDoc} = message.media as any;
       const newExtendedMedia = (message.media as MessageMedia.messageMediaPaidMedia).extended_media as MessageExtendedMedia.messageExtendedMedia[];
 
-      const updatePhoto = (newPhoto: Photo.photo, photoId: string) => {
-        const photo = this.appPhotosManager.getPhoto(photoId);
-        if(!photo) {
-          return;
-        }
-
-        const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
-        const oldCacheContext = this.thumbsStorage.getCacheContext(photo, THUMB_TYPE_FULL);
-        this.thumbsStorage.setCacheContextURL(newPhoto, newPhotoSize.type, oldCacheContext.url, oldCacheContext.downloaded);
-
-        // const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
-        // const downloadOptions = getPhotoDownloadOptions(newPhoto, photoSize);
-        // const fileName = getFileNameByLocation(downloadOptions.location);
-        // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
-      };
-
-      const updateDocument = (newDoc: Document.document, docId: DocId) => {
-        const oldDoc = this.appDocsManager.getDoc(docId);
-        if(!oldDoc) {
-          return;
-        }
-
-        const oldCacheContext = this.thumbsStorage.getCacheContext(oldDoc);
-        if(
-          /* doc._ !== 'documentEmpty' &&  */
-          oldDoc.type &&
-          oldDoc.type !== 'sticker' &&
-          oldDoc.mime_type !== 'image/gif' &&
-          oldCacheContext.url
-        ) {
-          this.thumbsStorage.setCacheContextURL(newDoc, undefined, oldCacheContext.url, oldCacheContext.downloaded);
-
-          // const fileName = getDocumentInputFileName(newDoc);
-          // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
-        }
-      };
-
       if(newPhoto) {
-        updatePhoto(newPhoto, '' + tempId);
+        this.updatePhoto(newPhoto, '' + tempId);
       } else if(newDoc) {
-        updateDocument(newDoc, '' + tempId);
+        this.updateDocument(newDoc, '' + tempId);
       } else if((message.media as MessageMedia.messageMediaPoll).poll) {
         delete this.appPollsManager.polls[tempId];
         delete this.appPollsManager.results[tempId];
@@ -7983,8 +8353,8 @@ export class AppMessagesManager extends AppManager {
           const {photo} = extendedMedia.media as MessageMedia.messageMediaPhoto;
           const {document} = extendedMedia.media as MessageMedia.messageMediaDocument;
           const id = '' + (mediaTempId + idx);
-          if(photo) updatePhoto(photo as Photo.photo, id);
-          else if(document) updateDocument(document as Document.document, id);
+          if(photo) this.updatePhoto(photo as Photo.photo, id);
+          else if(document) this.updateDocument(document as Document.document, id);
         });
       }
     }
@@ -8007,6 +8377,43 @@ export class AppMessagesManager extends AppManager {
 
     this.rootScope.dispatchEvent('message_sent', {storageKey: storage.key, tempId, tempMessage, mid: message.mid, message});
   }
+
+  private updatePhoto(newPhoto: Photo.photo, photoId: string) {
+    const photo = this.appPhotosManager.getPhoto(photoId);
+    if(!photo) {
+      return;
+    }
+
+    const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
+    const oldCacheContext = this.thumbsStorage.getCacheContext(photo, THUMB_TYPE_FULL);
+    this.thumbsStorage.setCacheContextURL(newPhoto, newPhotoSize.type, oldCacheContext.url, oldCacheContext.downloaded);
+
+    // const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
+    // const downloadOptions = getPhotoDownloadOptions(newPhoto, photoSize);
+    // const fileName = getFileNameByLocation(downloadOptions.location);
+    // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
+  };
+
+  private updateDocument(newDoc: Document.document, docId: DocId) {
+    const oldDoc = this.appDocsManager.getDoc(docId);
+    if(!oldDoc) {
+      return;
+    }
+
+    const oldCacheContext = this.thumbsStorage.getCacheContext(oldDoc);
+    if(
+      /* doc._ !== 'documentEmpty' &&  */
+      oldDoc.type &&
+      oldDoc.type !== 'sticker' &&
+      oldDoc.mime_type !== 'image/gif' &&
+      oldCacheContext.url
+    ) {
+      this.thumbsStorage.setCacheContextURL(newDoc, undefined, oldCacheContext.url, oldCacheContext.downloaded);
+
+      // const fileName = getDocumentInputFileName(newDoc);
+      // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
+    }
+  };
 
   public incrementMaxSeenId(maxId: number) {
     if(!maxId || !(!this.maxSeenId || maxId > this.maxSeenId)) {

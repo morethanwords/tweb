@@ -193,7 +193,7 @@ export default class PopupNewMedia extends PopupElement {
         onClick: () => {
           this.chat.input.onAttachClick(false, false, false);
         },
-        verify: () => !this.isSuggestingPost()
+        verify: () => !this.isSuggestingPost() && !this.chat.input.editMsgId
       }, {
         icon: 'image',
         text: 'Popup.Attach.AsMedia',
@@ -325,7 +325,7 @@ export default class PopupNewMedia extends PopupElement {
     c.append(this.messageInputField.input, this.messageInputField.placeholder, this.messageInputField.inputFake);
     inputContainer.append(c, this.btnConfirm);
 
-    if(!this.ignoreInputValue && !this.chat.input.editMsgId) {
+    if(!this.ignoreInputValue) {
       this.wasDraft = this.chat.input.getCurrentInputAsDraft();
       if(this.wasDraft) {
         const wrappedDraft = wrapDraft(this.wasDraft, {
@@ -778,7 +778,10 @@ export default class PopupNewMedia extends PopupElement {
     const {length} = sendFileDetails;
     const sendingParams = this.chat.getMessageSendingParams();
 
-    const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages());
+    const preparedPaymentResult = !this.chat.input.editMsgId ?
+      await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages()) :
+      undefined;
+
     if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
     sendingParams.confirmedPaymentResult = preparedPaymentResult;
@@ -819,15 +822,31 @@ export default class PopupNewMedia extends PopupElement {
         delete w.stars;
       }
 
-      this.managers.appMessagesManager.sendGrouped({
-        ...sendingParams,
-        caption,
-        entities,
-        effect,
-        isMedia,
-        // clearDraft: true,
-        ...w
-      });
+      if(!this.chat.input.editMessage) {
+        this.managers.appMessagesManager.sendGrouped({
+          ...sendingParams,
+          caption,
+          entities,
+          effect,
+          isMedia,
+          // clearDraft: true,
+          ...w
+        });
+      } else {
+        this.managers.appMessagesManager.editMessageMedia({
+          message: this.chat.input.editMessage,
+          text: caption,
+          options: {
+            entities,
+            invertMedia: sendingParams.invertMedia,
+            scheduleDate: sendingParams.scheduleDate,
+            isMedia
+          },
+          sendFileDetails: d[0]
+        });
+
+        this.chat.input.onMessageSent();
+      }
 
       caption = entities = effect = undefined;
     });

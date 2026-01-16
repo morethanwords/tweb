@@ -124,7 +124,7 @@ import eachSecond from '../../helpers/eachSecond';
 import {wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
 import showTooltip from '../tooltip';
 import createContextMenu from '../../helpers/dom/createContextMenu';
-import {Accessor, createEffect, createMemo, createRoot, createSignal, onCleanup, Setter} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, on, onCleanup, Setter} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import SelectedEffect from './selectedEffect';
 import windowSize from '../../helpers/windowSize';
@@ -368,6 +368,7 @@ export default class ChatInput {
 
   public paidMessageInterceptor: PaidMessagesInterceptor;
 
+  private fileInputState: ReturnType<ChatInput['createFileInputState']>;
   private starsState: ReturnType<ChatInput['createStarsState']>;
   private directMessagesHandler: ReturnType<ChatInput['createDirectMessagesHandler']>;
 
@@ -501,6 +502,7 @@ export default class ChatInput {
       this.paidMessageInterceptor.dispose();
     });
 
+    this.fileInputState = this.createFileInputState();
     this.starsState = this.createStarsState();
     this.directMessagesHandler = this.createDirectMessagesHandler();
   }
@@ -1029,6 +1031,7 @@ export default class ChatInput {
       text: 'GiftPremium',
       onClick: () => this.chat.appImManager.giftPremium(this.chat.peerId),
       verify: () => {
+        if(this.editMsgId) return;
         return this.chat && Promise.all([
           this.chat.canGiftPremium(),
           this.managers.apiManager.getAppConfig()
@@ -1046,7 +1049,10 @@ export default class ChatInput {
 
         PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
-      verify: () => (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot
+      verify: () => {
+        if(this.editMsgId) return;
+        return (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot;
+      }
     }, {
       icon: 'checkround',
       text: 'Checklist',
@@ -1066,7 +1072,7 @@ export default class ChatInput {
 
         PopupElement.createPopup(PopupChecklist, {chat: this.chat}).show();
       },
-      verify: () => !this.chat.isMonoforum
+      verify: () => !this.editMsgId && !this.chat.isMonoforum
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();
@@ -1076,7 +1082,7 @@ export default class ChatInput {
       direction: 'top-left',
       buttons: this.attachMenuButtons,
       onOpenBefore: this.excludeParts.attachMenu ? undefined : async() => {
-        const attachMenuBots = this.chat.isMonoforum ? [] : await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
+        const attachMenuBots = (this.chat.isMonoforum || this.editMsgId) ? [] : await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
         const buttons = attachMenuButtons.slice();
         const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
           return attachMenuBot.pFlags.show_in_attach_menu;
@@ -1128,12 +1134,12 @@ export default class ChatInput {
       }
     });
     this.attachMenu.classList.add('attach-file');
-    this.attachMenu.firstElementChild.replaceWith(Icon('attach'));
+    this.attachMenu.firstElementChild.replaceWith(Icon(getAttachIcon()));
 
     this.btnSuggestPost = ButtonIcon('suggested hide');
-    attachClickEvent(this.btnSuggestPost, () => {
-      this.openSuggestPostPopup();
-    });
+    attachClickEvent(this.btnSuggestPost, wrapAsyncClickHandler(async() => {
+      await this.openSuggestPostPopup();
+    }));
 
     this.btnAutoDeletePeriod = ButtonIcon('auto_delete_circle_clock hide');
     attachClickEvent(this.btnAutoDeletePeriod, wrapAsyncClickHandler(async() => {
@@ -3668,6 +3674,29 @@ export default class ChatInput {
     return {store, set};
   });
 
+  private createFileInputState = () => createRoot((dispose) => {
+    this.getMiddleware()?.onDestroy(() => void dispose());
+
+    const [store, set] = createStore({
+      isEditing: false,
+      isSuggesting: false
+    });
+
+    const isMultiple = createMemo(() => !store.isEditing && !store.isSuggesting);
+
+    createEffect(() => {
+      this.fileInput.multiple = isMultiple();
+    });
+
+    createEffect(on(() => store.isEditing, (isEditing) => {
+      this.attachMenu.firstElementChild.replaceChildren(Icon(getAttachIcon(isEditing)));
+    }, {
+      defer: true
+    }));
+
+    return {store, set};
+  });
+
   private createDirectMessagesHandler = () => createRoot((dispose) => {
     this.getMiddleware()?.onDestroy(() => void dispose());
 
@@ -4301,9 +4330,13 @@ export default class ChatInput {
     if(type !== 'suggested') {
       this.suggestedPost = undefined;
       this.btnSuggestPost.classList.toggle('hide', !this.canShowSuggestPostButton(false))
-      this.fileInput.multiple = true;
       this.directMessagesHandler.set({isSuggestingUneditablePostChange: false});
     }
+
+    this.fileInputState.set({
+      isEditing: false,
+      isSuggesting: false
+    });
 
     this.editMsgId = this.editMessage = undefined;
     this.helperType = this.helperFunc = undefined;
@@ -4383,9 +4416,10 @@ export default class ChatInput {
       this.helperFunc = callerFunc;
     }
 
-    if(type === 'suggested') {
-      this.fileInput.multiple = false;
-    }
+    this.fileInputState.set({
+      isEditing: type === 'edit',
+      isSuggesting: type === 'suggested'
+    });
 
     this.btnSuggestPost?.classList.toggle('hide', !this.canShowSuggestPostButton(true));
 
@@ -4501,3 +4535,7 @@ export default class ChatInput {
     return element;
   }
 }
+
+const getAttachIcon = (isEditing?: boolean): Icon => {
+  return isEditing ? 'attach_edit' : 'attach';
+};
