@@ -1,0 +1,37 @@
+.popup {
+  --popup-min-width: 22.5rem;
+  --popup-max-width: 22.5rem;
+  overflow: visible;
+
+  &Container {
+    overflow: visible;
+    padding: 0;
+  }
+}
+
+.graph {
+  margin-top: 1.5rem;
+}
+
+.starsBalance {
+  left: 50%;
+  top: -1rem;
+  transform: translate(-50%, -100%);
+}
+
+.text {
+  margin-top: 1.5rem;
+  padding-inline: 1rem;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.table {
+  margin-block: 1rem;
+  padding-inline: 1rem;
+}
+
+.buttons {
+  padding-inline: 1rem;
+  padding-bottom: 1rem;
+}

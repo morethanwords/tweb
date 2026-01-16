@@ -31,6 +31,7 @@ import Icon from '../icon';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
 import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
+import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -731,6 +732,8 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         } else {
           if(action.pFlags.upgrade) {
             langPackKey = message.pFlags.out ? 'ActionGiftUpgradedOutbound' : 'ActionGiftUpgradedInbound'
+          } else if(message.pFlags.out && action.pFlags.from_offer) {
+            langPackKey = 'ActionGiftSold';
           } else {
             langPackKey = message.pFlags.out ? 'ActionGiftTransferredOutbound' : 'ActionGiftTransferredInbound'
           }
@@ -847,6 +850,27 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         break
       }
+      case 'messageActionStarGiftPurchaseOffer': {
+        langPackKey = message.pFlags.out ? 'StarGiftOffer.Outgoing' : 'StarGiftOffer.Incoming';
+        args = [
+          getNameDivHTML(message.peerId, plain),
+          i18n('Stars', [numberThousandSplitterForStars(action.price.amount)]),
+          getCollectibleName(action.gift as StarGift.starGiftUnique)
+        ];
+        break;
+      }
+      case 'messageActionStarGiftPurchaseOfferDeclined':
+        if(action.pFlags.expired) {
+          langPackKey = 'StarGiftOffer.ExpiredFull'
+        } else {
+          langPackKey = message.pFlags.out ? 'StarGiftOffer.RejectedFullOutgoing' : 'StarGiftOffer.RejectedFullIncoming'
+        }
+        args = [
+          getNameDivHTML(message.peerId, plain),
+          i18n('Stars', [numberThousandSplitterForStars(action.price.amount)]),
+          getCollectibleName(action.gift as StarGift.starGiftUnique)
+        ];
+        break
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;

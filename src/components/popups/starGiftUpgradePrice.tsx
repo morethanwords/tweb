@@ -15,6 +15,7 @@ import I18n from '../../lib/langPack';
 import toHHMMSS from '../../helpers/string/toHHMMSS';
 import Scrollable from '../scrollable2';
 import {fastRaf} from '../../helpers/schedulers';
+import {createCurrentTime} from '../../helpers/solid/createCurrentTime';
 
 export function createStarGiftUpgradePricePopup(props: {
   preview: StarGiftUpgradePreview,
@@ -33,7 +34,10 @@ export function createStarGiftUpgradePricePopup(props: {
     }
   }
 
-  const [now, setNow] = createSignal(tsNow(true))
+  const now = createCurrentTime({
+    fn: () => tsNow(true),
+    updateInterval: 1000
+  })
   const currentPriceNext = createMemo(() => {
     const now$ = now()
     for(let i = props.preview.next_prices.length - 1; i >= 0; i--) {
@@ -74,8 +78,6 @@ export function createStarGiftUpgradePricePopup(props: {
   }
 
   return createPopup(() => {
-    const interval = setInterval(() => setNow(tsNow(true)), 1000)
-    onCleanup(() => clearInterval(interval))
     onMount(() => fastRaf(() => setShow(true)))
     return (
       <PopupElement class={styles.popup} containerClass={styles.popupContainer} show={show()}>

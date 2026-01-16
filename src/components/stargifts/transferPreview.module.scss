@@ -19,8 +19,9 @@
   overflow: hidden;
 
   :global(.media-sticker-wrapper) {
-    top: 8px;
-    left: 8px;
+    top: 6px;
+    left: 6px;
+    z-index: 1;
   }
 }
 

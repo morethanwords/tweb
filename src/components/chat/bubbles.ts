@@ -218,6 +218,8 @@ import type {CommittedFilters} from '../sidebarRight/tabs/adminRecentActions/fil
 import deepEqual from '../../helpers/object/deepEqual';
 import {openInstantViewInAppBrowser} from '../browser';
 import {setPeerColorToElement} from '../peerColors';
+import {showStarGiftOfferButtons, StarGiftOfferBubble, StarGiftOfferReplyMarkup} from './bubbles/starGiftOffer';
+import {wrapSolidComponent} from '../../helpers/solid/wrapSolidComponent';
 
 
 export const USER_REACTIONS_INLINE = false;
@@ -5875,13 +5877,35 @@ export default class ChatBubbles {
           s.append(content);
         } else if(action._ === 'messageActionSuggestBirthday') {
           const title = await wrapMessageActionTextNew({message, middleware});
-          const container = document.createElement('div');
-          this.wrapSomeSolid(() => SuggestBirthdayBubble({
+          const container = wrapSolidComponent(() => SuggestBirthdayBubble({
             birthday: action.birthday,
             outgoing: message.pFlags.out,
             title
-          }), container, middleware);
+          }), middleware);
           s.append(container);
+        } else if(action._ === 'messageActionStarGiftPurchaseOffer') {
+          const [title, gift] = await Promise.all([
+            wrapMessageActionTextNew({message, middleware}),
+            this.managers.appGiftsManager.wrapGift(action.gift)
+          ]);
+
+          const container = wrapSolidComponent(() => StarGiftOfferBubble({
+            gift: gift,
+            title,
+            outgoing: message.pFlags.out,
+            action
+          }), middleware);
+          s.append(container);
+
+          if(!message.pFlags.out && showStarGiftOfferButtons(action)) {
+            bubble.classList.add('with-reply-markup');
+            const buttons = wrapSolidComponent(() => StarGiftOfferReplyMarkup({
+              gift,
+              message: message as Message.messageService,
+              chat: this.chat
+            }), middleware)
+            contentWrapper.append(buttons)
+          }
         } else {
           promise = wrapMessageActionTextNew({
             message,
