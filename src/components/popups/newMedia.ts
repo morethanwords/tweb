@@ -338,6 +338,10 @@ export default class PopupNewMedia extends PopupElement {
       }
     }
 
+    if(this.chat.input.editMessage) {
+      this.willAttach.invertMedia = this.chat.input.editMessage.pFlags?.invert_media;
+    }
+
     this.container.append(inputContainer);
 
     this.attachFiles();
