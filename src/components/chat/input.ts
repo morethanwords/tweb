@@ -3687,6 +3687,7 @@ export default class ChatInput {
     const isMultiple = createMemo(() => !store.isEditing && !store.isSuggesting);
 
     createEffect(() => {
+      if(!this.fileInput) return;
       this.fileInput.multiple = isMultiple();
     });
 

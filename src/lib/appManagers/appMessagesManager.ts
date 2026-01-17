@@ -573,6 +573,7 @@ export class AppMessagesManager extends AppManager {
   private typingBotforumMessages: Map<PeerId, Set<string>> = new Map();
 
   private pendingEditingMessages: Map<number, {
+    canceled?: boolean;
     mediaTempId: number;
     originalMessage: Message.message;
   }> = new Map();
@@ -909,6 +910,8 @@ export class AppMessagesManager extends AppManager {
     let {file} = sendFileDetails;
     const {peerId} = message;
 
+    const originalMessage = structuredClone(message);
+
     const isDocument = !(file instanceof File) && !(file instanceof Blob);
     if(isDocument) {
       file = this.appDocsManager.getDoc((file as MyDocument).id) || file;
@@ -978,11 +981,6 @@ export class AppMessagesManager extends AppManager {
       uploadPromise: ReturnType<ApiFileManager['upload']> = null
     ;
 
-    const toggleError = (error?: ApiError, repayRequest?: RepayRequest) => {
-      this.onMessagesSendError([message], error, repayRequest);
-      this.rootScope.dispatchEvent('messages_pending');
-    };
-
     const upload = () => {
       if(isDocument) {
         const inputMedia: InputMedia = {
@@ -1005,7 +1003,6 @@ export class AppMessagesManager extends AppManager {
 
               this.log('cancelling upload', media);
 
-              this.revertMessageEdit(message.mid);
               // this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
               sentDeferred.reject(err);
             });
@@ -1089,7 +1086,7 @@ export class AppMessagesManager extends AppManager {
 
             sentDeferred.resolve(inputMedia);
           }, (error: ApiError) => {
-            toggleError(error);
+            this.revertMessageEdit(message.mid);
           });
 
           return sentDeferred;
@@ -1109,16 +1106,11 @@ export class AppMessagesManager extends AppManager {
 
     upload();
 
-    this.onUpdateEditMessage({
-      _: 'updateEditMessage',
-      message,
-      pts: 0,
-      pts_count: 0
-    });
+    this.runTempUpdateForMessageEdit(message);
 
     // Needs to be after the updateEditMessage event
     this.pendingEditingMessages.set(message.mid, {
-      originalMessage: structuredClone(message),
+      originalMessage,
       mediaTempId
     });
 
@@ -1140,6 +1132,22 @@ export class AppMessagesManager extends AppManager {
       if(message?._ !== 'message') return;
       return callInvoke(message);
     });
+  }
+
+  private runTempUpdateForMessageEdit(message: Message.message) {
+    if(message.pFlags?.is_scheduled) {
+      this.onUpdateNewScheduledMessage({
+        _: 'updateNewScheduledMessage',
+        message
+      });
+    } else {
+      this.onUpdateEditMessage({
+        _:  'updateEditMessage',
+        message,
+        pts: 0,
+        pts_count: 0
+      });
+    }
   }
 
   private invokeEditMessageMedia({message, inputMedia, entities, scheduleDate, invertMedia}: InvokeEditMessageMediaArgs) {
@@ -1177,14 +1185,12 @@ export class AppMessagesManager extends AppManager {
   }
 
   private revertMessageEdit(mid: number) {
-    const {originalMessage} = this.pendingEditingMessages.get(mid);
+    const pending = this.pendingEditingMessages.get(mid);
+    if(!pending) return;
 
-    this.onUpdateEditMessage({
-      _: 'updateEditMessage',
-      message: originalMessage,
-      pts: 0,
-      pts_count: 0
-    });
+    pending.canceled = true;
+
+    this.runTempUpdateForMessageEdit(pending.originalMessage);
 
     this.pendingEditingMessages.delete(mid);
   }
@@ -7381,18 +7387,16 @@ export class AppMessagesManager extends AppManager {
       return newMessage;
     }, false, true);
 
-    if(this.pendingEditingMessages.get(mid)) {
-      const {mediaTempId} = this.pendingEditingMessages.get(mid);
+    const pendingEdit = this.pendingEditingMessages.get(mid);
+    if(pendingEdit && !pendingEdit.canceled) {
+      const {mediaTempId} = pendingEdit;
       if(message._ === 'message') {
         if(message.media?._ === 'messageMediaPhoto' && message.media.photo?._ === 'photo') {
           this.updatePhoto(message.media.photo, '' + mediaTempId);
         } else if(message.media?._ === 'messageMediaDocument' && message.media.document?._ === 'document') {
-          console.log('my-debug here')
           this.updateDocument(message.media.document, mediaTempId);
         }
       }
-
-      this.pendingEditingMessages.delete(mid);
     }
 
     this.handleEditedMessage(oldMessage, newMessage, storage);
