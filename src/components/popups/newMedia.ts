@@ -439,6 +439,7 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private async canSendPaidMedia() {
+    if(this.isEditing()) return false;
     return await this.managers.appPeersManager.isBroadcast(this.chat.peerId) &&
       !!(await this.managers.appProfileManager.getChannelFull(this.chat.peerId.toChatId())).pFlags.paid_media_allowed;
   }
